@@ -1,7 +1,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowRight, LayoutGrid, Shield, CalendarDays, UserPlus } from "lucide-react";
+import { ArrowRight, LayoutGrid, Shield, CalendarDays, UserPlus, ScrollText, HelpCircle } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -31,7 +31,7 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <section className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         <FeatureCard
           title="Team Registration"
           description="Easily register your team and player information through Discord."
@@ -52,12 +52,39 @@ export default function Home() {
         />
         <FeatureCard
           title="Team Profiles"
-          description="Explore detailed information about each participating team and their players."
+          description="Explore detailed information about each participating team."
           href="/teams"
           icon={Shield}
           imageSrc="https://placehold.co/600x400.png"
           imageAlt="Team profiles"
           aiHint="team esports"
+        />
+         <FeatureCard
+          title="Upcoming Matches"
+          description="See the schedule for upcoming games and add them to your calendar."
+          href="/schedule"
+          icon={CalendarDays}
+          imageSrc="https://placehold.co/600x400.png"
+          imageAlt="Match schedule"
+          aiHint="calendar schedule"
+        />
+        <FeatureCard
+          title="Tournament Rules"
+          description="Familiarize yourself with the official tournament regulations."
+          href="/rules"
+          icon={ScrollText}
+          imageSrc="https://placehold.co/600x400.png"
+          imageAlt="Tournament rules"
+          aiHint="rules document"
+        />
+        <FeatureCard
+          title="FAQ"
+          description="Find answers to common questions about the tournament."
+          href="/faq"
+          icon={HelpCircle}
+          imageSrc="https://placehold.co/600x400.png"
+          imageAlt="Frequently Asked Questions"
+          aiHint="question mark"
         />
       </section>
     </div>
@@ -92,7 +119,7 @@ function FeatureCard({ title, description, href, icon: Icon, imageSrc, imageAlt,
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <p className="text-muted-foreground mb-4">{description}</p>
+        <p className="text-muted-foreground mb-4 h-12 overflow-hidden">{description}</p> {/* Fixed height for description */}
         <Button variant="outline" asChild className="w-full">
           <Link href={href}>
             Learn More <ArrowRight className="ml-2 h-4 w-4" />
