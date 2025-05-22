@@ -9,50 +9,53 @@ body {
 
 @layer base {
   :root {
-    /* Default Theme: Miami Neon 80s (Updated based on image) */
-    --background: 230 25% 8%; /* Deep dark indigo/blue night sky */
-    --foreground: 220 20% 92%; /* Light cool gray for text */
+    /* Miami Neon 80s - Revision based on image inspiration */
+    --background: 250 40% 5%; /* Very Deep Purple/Blue-Black */
+    --foreground: 0 0% 95%; /* Off-White for high contrast */
 
-    --card: 240 20% 12%; /* Slightly lighter dark purple/blue for cards */
-    --card-foreground: 220 20% 92%; /* Light cool gray text on cards */
+    --card: 250 30% 10%; /* Dark Purple-Blue, slightly lighter than bg */
+    --card-foreground: 0 0% 95%; /* Off-White text on cards */
 
-    --popover: 240 20% 10%; /* Dark popover */
-    --popover-foreground: 220 20% 92%;
+    --popover: 250 25% 8%; /* Darker Popover, consistent with cards */
+    --popover-foreground: 0 0% 95%;
 
-    --primary: 320 90% 58%; /* Vibrant Hot Pink/Magenta */
-    --primary-foreground: 0 0% 100%; /* White */
+    --primary: 330 100% 62%; /* Electric Hot Pink */
+    --primary-foreground: 0 0% 10%; /* Dark text for high contrast on bright primary */
 
-    --secondary: 240 15% 20%; /* Muted dark blue */
-    --secondary-foreground: 220 15% 75%; 
+    --secondary: 200 80% 45%; /* A medium vibrant blue, less intense than primary/accent, for variety */
+    --secondary-foreground: 0 0% 95%; /* White text on secondary */
 
-    --muted: 240 15% 15%; /* Darker muted blue */
-    --muted-foreground: 220 10% 55%; 
+    --muted: 250 20% 15%; /* Muted version of background/card color */
+    --muted-foreground: 0 0% 60%; /* Dimmer text for muted elements */
 
-    --accent: 180 85% 50%; /* Electric Cyan/Teal */
-    --accent-foreground: 0 0% 100%; /* White */
+    --accent: 185 100% 50%; /* Vibrant Cyan/Teal */
+    --accent-foreground: 0 0% 10%; /* Dark text for high contrast on bright accent */
 
-    --destructive: 0 75% 55%; /* Bright, but slightly desaturated red */
-    --destructive-foreground: 0 0% 98%;
+    --destructive: 0 80% 60%; /* Neon Red */
+    --destructive-foreground: 0 0% 95%; /* White text on destructive */
 
-    --border: 240 15% 25%; /* Subtle Dark Blue/Purple Border */
-    --input: 240 20% 14%; 
-    --ring: 320 90% 58%; /* Primary color for rings (Hot Pink) */
+    --border: 250 20% 20%; /* Subtle border, related to cards/inputs */
+    --input: 250 25% 12%; /* Input fields, slightly distinct from card */
+    --ring: 330 100% 62%; /* Ring uses primary color (Electric Hot Pink) */
     
-    --chart-1: 320 90% 58%; /* Hot Pink */
-    --chart-2: 180 85% 50%; /* Electric Cyan */
-    --chart-3: 35 100% 60%;  /* Neon Orange/Yellow */
-    --chart-4: 260 90% 65%; /* Bright Purple */
-    --chart-5: 150 70% 55%; /* Neon Green */
-    --radius: 0.5rem;
+    --radius: 0.5rem; /* Keeping existing radius */
 
-    --sidebar-background: 230 25% 6%; /* Even Darker Indigo for Sidebar */
-    --sidebar-foreground: 220 20% 90%;
-    --sidebar-primary: 320 90% 58%; /* Hot Pink */
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 180 85% 50%; /* Electric Cyan */
-    --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 240 15% 20%;
-    --sidebar-ring: 320 90% 58%;
+    /* Chart Colors - maintaining a neon palette */
+    --chart-1: 330 100% 62%; /* Electric Hot Pink (matches primary) */
+    --chart-2: 185 100% 50%; /* Vibrant Cyan/Teal (matches accent) */
+    --chart-3: 45 100% 55%;  /* Neon Gold/Yellow (for sunset/warm glow hint) */
+    --chart-4: 270 100% 65%; /* Bright Electric Purple */
+    --chart-5: 130 100% 50%; /* Neon Lime Green */
+
+    /* Sidebar - consistent with the main theme */
+    --sidebar-background: 250 40% 4%; /* Even darker for sidebar, for depth */
+    --sidebar-foreground: 0 0% 90%; /* Slightly dimmer than main fg for subtlety */
+    --sidebar-primary: 330 100% 62%; /* Matches main primary */
+    --sidebar-primary-foreground: 0 0% 10%; /* Matches main primary-fg */
+    --sidebar-accent: 185 100% 50%; /* Matches main accent */
+    --sidebar-accent-foreground: 0 0% 10%; /* Matches main accent-fg */
+    --sidebar-border: 250 20% 15%; /* Subtle sidebar border */
+    --sidebar-ring: 330 100% 62%; /* Matches main ring */
   }
 
   /* .dark block removed as theme toggling is disabled */
