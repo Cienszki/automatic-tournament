@@ -2,10 +2,9 @@
 import type { Team, PlayerRole } from "@/lib/definitions";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import Image from "next/image";
 import Link from "next/link";
-import { Users, Sigma, ShieldCheck, Swords, Sparkles, Shield, HandHelping, Eye, List } from "lucide-react";
+import { Users, Sigma, ShieldCheck, Swords, Sparkles, Shield, HandHelping, Eye, List, TrendingUp } from "lucide-react";
 
 interface TeamCardProps {
   team: Team;
@@ -14,17 +13,17 @@ interface TeamCardProps {
 const getRoleIcon = (role: PlayerRole) => {
   switch (role) {
     case "Carry":
-      return <Swords className="h-4 w-4 text-primary mr-2" />;
+      return <Swords className="h-4 w-4 text-primary mr-2 shrink-0" />;
     case "Mid":
-      return <Sparkles className="h-4 w-4 text-primary mr-2" />;
+      return <Sparkles className="h-4 w-4 text-primary mr-2 shrink-0" />;
     case "Offlane":
-      return <Shield className="h-4 w-4 text-primary mr-2" />;
+      return <Shield className="h-4 w-4 text-primary mr-2 shrink-0" />;
     case "Soft Support":
-      return <HandHelping className="h-4 w-4 text-primary mr-2" />;
+      return <HandHelping className="h-4 w-4 text-primary mr-2 shrink-0" />;
     case "Hard Support":
-      return <Eye className="h-4 w-4 text-primary mr-2" />;
+      return <Eye className="h-4 w-4 text-primary mr-2 shrink-0" />;
     default:
-      return <List className="h-4 w-4 text-muted-foreground mr-2" />;
+      return <List className="h-4 w-4 text-muted-foreground mr-2 shrink-0" />;
   }
 };
 
@@ -47,40 +46,41 @@ export function TeamCard({ team }: TeamCardProps) {
           <p className="text-sm text-muted-foreground">View Team Details</p>
         </div>
       </CardHeader>
-      <CardContent className="flex-grow space-y-3">
-        <div className="flex items-center text-sm text-muted-foreground">
-          <Sigma className="h-4 w-4 mr-2 text-primary" />
-          <span>Total MMR: {totalMMR.toLocaleString()}</span>
-        </div>
-        <div className="flex items-center text-sm text-muted-foreground">
-          <ShieldCheck className="h-4 w-4 mr-2 text-primary" />
-          <span>{team.matchesWon ?? 0} Wins / {team.matchesLost ?? 0} Losses</span>
-        </div>
-         <div className="flex items-center text-sm text-muted-foreground">
-          <TrendingUp className="h-4 w-4 mr-2 text-primary" /> {/* Assuming TrendingUp for points is fine */}
-          <span>{team.points ?? 0} Points</span>
-        </div>
+      <CardContent className="flex-grow px-6 py-4">
+        <div className="grid md:grid-cols-2 gap-x-4 gap-y-3">
+          {/* Column 1: Team Stats */}
+          <div className="space-y-1">
+            <div className="flex items-center text-sm text-muted-foreground">
+              <Sigma className="h-4 w-4 mr-2 text-primary shrink-0" />
+              <span>Total MMR: {totalMMR.toLocaleString()}</span>
+            </div>
+            <div className="flex items-center text-sm text-muted-foreground">
+              <ShieldCheck className="h-4 w-4 mr-2 text-primary shrink-0" />
+              <span>{team.matchesWon ?? 0} Wins / {team.matchesLost ?? 0} Losses</span>
+            </div>
+            <div className="flex items-center text-sm text-muted-foreground">
+              <TrendingUp className="h-4 w-4 mr-2 text-primary shrink-0" />
+              <span>{team.points ?? 0} Points</span>
+            </div>
+          </div>
 
-        <Separator className="my-3" />
-        
-        <div>
-          <h4 className="text-sm font-semibold text-foreground mb-2 flex items-center">
-            <Users className="h-4 w-4 mr-2 text-primary" /> Players & Roles
-          </h4>
-          <ul className="space-y-1 text-xs">
-            {team.players.slice(0, 5).map((player) => ( // Ensure we only show 5 for brevity in card
-              <li key={player.id} className="flex items-center justify-between">
-                <div className="flex items-center">
+          {/* Column 2: Player List */}
+          <div className="space-y-1">
+            <h4 className="text-sm font-semibold text-foreground flex items-center">
+              <Users className="h-4 w-4 mr-2 text-primary shrink-0" /> Players
+            </h4>
+            <ul className="space-y-0.5 text-xs">
+              {team.players.slice(0, 5).map((player) => (
+                <li key={player.id} className="flex items-center">
                   {getRoleIcon(player.role)}
-                  <span>{player.nickname}</span>
-                </div>
-                <span className="text-muted-foreground capitalize">{player.role.toLowerCase().replace(' support', ' Sup.')}</span>
-              </li>
-            ))}
-          </ul>
+                  <span className="truncate" title={player.nickname}>{player.nickname}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
         </div>
       </CardContent>
-      <CardFooter>
+      <CardFooter className="pt-4"> {/* Added pt-4 to ensure some padding if content above is short */}
         <Button asChild className="w-full">
           <Link href={`/teams/${team.id}`}>View Profile</Link>
         </Button>
@@ -88,6 +88,3 @@ export function TeamCard({ team }: TeamCardProps) {
     </Card>
   );
 }
-
-// Add TrendingUp to lucide imports if it was removed
-import { TrendingUp } from "lucide-react";
