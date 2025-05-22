@@ -3,7 +3,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { useFormState } from "react-dom";
+import { useActionState, useEffect } from "react"; // Changed import
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -12,7 +12,6 @@ import { PlayerRegistrationFields } from "@/components/app/PlayerRegistrationFie
 import { registerTeamAction } from "./actions";
 import { registrationFormSchema } from "@/lib/registration-schema";
 import type { RegistrationFormState, TeamRegistrationFormData } from "@/lib/definitions";
-import { useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 
@@ -35,7 +34,7 @@ export default function RegistrationPage() {
     defaultValues,
   });
 
-  const [formState, formAction] = useFormState<RegistrationFormState, FormData>(
+  const [formState, formAction] = useActionState<RegistrationFormState, FormData>( // Changed hook name
     registerTeamAction,
     { message: "", success: false }
   );
@@ -161,3 +160,4 @@ export default function RegistrationPage() {
     </div>
   );
 }
+
