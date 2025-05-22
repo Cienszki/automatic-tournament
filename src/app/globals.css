@@ -9,7 +9,7 @@ body {
 
 @layer base {
   :root {
-    /* Default Theme: Miami Neon 80s */
+    /* Default Theme: Miami Neon 80s (Updated based on image) */
     --background: 230 25% 8%; /* Deep dark indigo/blue night sky */
     --foreground: 220 20% 92%; /* Light cool gray for text */
 
