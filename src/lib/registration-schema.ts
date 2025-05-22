@@ -22,7 +22,11 @@ export const optionalFileSchema = z.instanceof(File).optional()
 
 export const playerSchema = z.object({
   nickname: z.string().min(2, "Nickname must be at least 2 characters."),
-  mmr: z.string().regex(/^\d+$/, "MMR must be a number.").min(1, "MMR is required.").transform(Number),
+  mmr: z.string().min(1, "MMR is required.") // Ensure field is not empty before coercing
+    .pipe(z.coerce.number()
+      .int({ message: "MMR must be an integer." })
+      .positive({ message: "MMR must be a positive integer." })
+    ),
   profileScreenshot: requiredFileSchema,
   steamProfileUrl: z.string().url("Invalid Steam profile URL.").min(1, "Steam profile URL is required."),
 });
@@ -39,3 +43,4 @@ export const registrationFormSchema = z.object({
     errorMap: () => ({ message: "You must agree to the tournament rules to register." }),
   }),
 });
+
