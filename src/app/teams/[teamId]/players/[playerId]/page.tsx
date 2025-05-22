@@ -4,7 +4,7 @@ import type { Player, Team } from "@/lib/definitions";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { ExternalLink, BarChartHorizontalBig, Star, TrendingUp, Shield } from "lucide-react";
+import { ExternalLink, BarChartHorizontalBig, Star, TrendingUp, Shield, BarChart3 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -19,15 +19,18 @@ interface PlayerPageParams {
 async function getPlayerData(teamId: string, playerId: string): Promise<{ player: Player | undefined, team: Team | undefined }> {
   const team = mockTeams.find(t => t.id === teamId);
   // The player IDs in mockTeams might be appended with teamId, so adjust find logic
-  const player = mockPlayers.find(p => p.id === playerId || playerId.startsWith(p.id + "-t"));
+  const playerGeneralInfo = mockPlayers.find(p => p.id === playerId.split('-')[0]); // Match base player ID
   
-  if (player && team) {
-     // Find the specific player instance within the team's roster to get potentially team-specific details
-     const playerInTeam = team.players.find(tp => tp.id === playerId);
-     if (playerInTeam) {
-       return { player: {...player, ...playerInTeam}, team }; // Merge general player mock with team-specific instance
+  if (playerGeneralInfo && team) {
+     // Find the specific player instance within the team's roster to get potentially team-specific details and the correct ID
+     const playerInTeamRoster = team.players.find(tp => tp.id === playerId);
+     if (playerInTeamRoster) {
+       // Merge general info with roster-specific info (which includes the unique ID)
+       return { player: {...playerGeneralInfo, ...playerInTeamRoster}, team };
      }
   }
+  // Fallback if player not found in team roster for some reason, or team not found
+  const player = mockPlayers.find(p => p.id === playerId || playerId.startsWith(p.id + "-t"));
   return { player, team };
 }
 
@@ -62,11 +65,20 @@ export default async function PlayerPage({ params }: PlayerPageParams) {
               <CardDescription className="text-lg mt-1">
                 Member of <Link href={`/teams/${team.id}`} className="text-accent hover:underline font-medium">{team.name}</Link>
               </CardDescription>
-              <Button variant="outline" size="sm" asChild className="mt-3">
-                <a href={player.steamProfileUrl} target="_blank" rel="noopener noreferrer">
-                  Steam Profile <ExternalLink className="ml-2 h-4 w-4" />
-                </a>
-              </Button>
+              <div className="mt-3 flex space-x-2">
+                <Button variant="outline" size="sm" asChild>
+                  <a href={player.steamProfileUrl} target="_blank" rel="noopener noreferrer">
+                    Steam Profile <ExternalLink className="ml-2 h-4 w-4" />
+                  </a>
+                </Button>
+                {player.openDotaProfileUrl && (
+                  <Button variant="outline" size="sm" asChild>
+                    <a href={player.openDotaProfileUrl} target="_blank" rel="noopener noreferrer">
+                      OpenDota <BarChart3 className="ml-2 h-4 w-4" />
+                    </a>
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
         </CardHeader>
@@ -85,7 +97,7 @@ export default async function PlayerPage({ params }: PlayerPageParams) {
           <p className="text-sm text-muted-foreground text-center mt-8">
             Note: Player statistics are typically fetched from the OpenDota API. This page displays simulated data.
           </p>
-           {player.profileScreenshotUrl || !player.profileScreenshotUrl && ( // Show placeholder if no screenshot
+           {(player.profileScreenshotUrl || !player.profileScreenshotUrl) && ( 
              <div className="mt-8">
                 <h4 className="text-xl font-semibold mb-2">Profile Screenshot (Placeholder)</h4>
                 <Image 
@@ -133,14 +145,10 @@ export async function generateMetadata({ params }: PlayerPageParams) {
   };
 }
 
-// generateStaticParams can be complex here due to nested structure and mock data player IDs
-// For a real app, this would fetch all valid teamId/playerId combinations
-// For now, let's try to generate some based on mockTeams and mockPlayers
 export async function generateStaticParams() {
   const params: { teamId: string; playerId: string }[] = [];
   mockTeams.forEach(team => {
     team.players.forEach(player => {
-      // Player IDs in mockTeams.players are already unique like 'p1-t1'
       params.push({ teamId: team.id, playerId: player.id });
     });
   });

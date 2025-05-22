@@ -7,6 +7,7 @@ export type Player = {
   mmr: number;
   profileScreenshotUrl?: string; // URL after upload
   steamProfileUrl: string;
+  openDotaProfileUrl?: string;
 };
 
 export type Team = {
@@ -18,6 +19,7 @@ export type Team = {
   matchesWon?: number;
   matchesLost?: number;
   points?: number;
+  mostPlayedHeroes?: string[];
 };
 
 export type Match = {
@@ -60,3 +62,4 @@ export type RegistrationFormState = {
   errors?: z.ZodIssue[];
   success: boolean;
 };
+

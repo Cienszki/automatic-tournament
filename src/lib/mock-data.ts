@@ -2,27 +2,30 @@
 import type { Team, Player, Match, Group } from './definitions';
 
 export const mockPlayers: Player[] = [
-  { id: 'p1', nickname: 'ShadowStriker', mmr: 6200, steamProfileUrl: 'https://steamcommunity.com/id/shadowstriker' },
-  { id: 'p2', nickname: 'MysticMage', mmr: 5800, steamProfileUrl: 'https://steamcommunity.com/id/mysticmage' },
-  { id: 'p3', nickname: 'IronGuard', mmr: 5500, steamProfileUrl: 'https://steamcommunity.com/id/ironguard' },
-  { id: 'p4', nickname: 'SilentSniper', mmr: 6000, steamProfileUrl: 'https://steamcommunity.com/id/silentsniper' },
-  { id: 'p5', nickname: 'RapidReaper', mmr: 5900, steamProfileUrl: 'https://steamcommunity.com/id/rapidreaper' },
-  { id: 'p6', nickname: 'CrimsonBlade', mmr: 5700, steamProfileUrl: 'https://steamcommunity.com/id/crimsonblade' },
-  { id: 'p7', nickname: 'AzureSorcerer', mmr: 6100, steamProfileUrl: 'https://steamcommunity.com/id/azuresorcerer' },
-  { id: 'p8', nickname: 'StoneWall', mmr: 5400, steamProfileUrl: 'https://steamcommunity.com/id/stonewall' },
-  { id: 'p9', nickname: 'GhostWalker', mmr: 6300, steamProfileUrl: 'https://steamcommunity.com/id/ghostwalker' },
-  { id: 'p10', nickname: 'SwiftSavior', mmr: 5600, steamProfileUrl: 'https://steamcommunity.com/id/swiftsavior' },
+  { id: 'p1', nickname: 'ShadowStriker', mmr: 6200, steamProfileUrl: 'https://steamcommunity.com/id/shadowstriker', openDotaProfileUrl: 'https://www.opendota.com/search?q=ShadowStriker' },
+  { id: 'p2', nickname: 'MysticMage', mmr: 5800, steamProfileUrl: 'https://steamcommunity.com/id/mysticmage', openDotaProfileUrl: 'https://www.opendota.com/search?q=MysticMage' },
+  { id: 'p3', nickname: 'IronGuard', mmr: 5500, steamProfileUrl: 'https://steamcommunity.com/id/ironguard', openDotaProfileUrl: 'https://www.opendota.com/search?q=IronGuard' },
+  { id: 'p4', nickname: 'SilentSniper', mmr: 6000, steamProfileUrl: 'https://steamcommunity.com/id/silentsniper', openDotaProfileUrl: 'https://www.opendota.com/search?q=SilentSniper' },
+  { id: 'p5', nickname: 'RapidReaper', mmr: 5900, steamProfileUrl: 'https://steamcommunity.com/id/rapidreaper', openDotaProfileUrl: 'https://www.opendota.com/search?q=RapidReaper' },
+  { id: 'p6', nickname: 'CrimsonBlade', mmr: 5700, steamProfileUrl: 'https://steamcommunity.com/id/crimsonblade', openDotaProfileUrl: 'https://www.opendota.com/search?q=CrimsonBlade' },
+  { id: 'p7', nickname: 'AzureSorcerer', mmr: 6100, steamProfileUrl: 'https://steamcommunity.com/id/azuresorcerer', openDotaProfileUrl: 'https://www.opendota.com/search?q=AzureSorcerer' },
+  { id: 'p8', nickname: 'StoneWall', mmr: 5400, steamProfileUrl: 'https://steamcommunity.com/id/stonewall', openDotaProfileUrl: 'https://www.opendota.com/search?q=StoneWall' },
+  { id: 'p9', nickname: 'GhostWalker', mmr: 6300, steamProfileUrl: 'https://steamcommunity.com/id/ghostwalker', openDotaProfileUrl: 'https://www.opendota.com/search?q=GhostWalker' },
+  { id: 'p10', nickname: 'SwiftSavior', mmr: 5600, steamProfileUrl: 'https://steamcommunity.com/id/swiftsavior', openDotaProfileUrl: 'https://www.opendota.com/search?q=SwiftSavior' },
 ];
+
+const defaultHeroes = ['Invoker', 'Pudge', 'Juggernaut', 'Lion', 'Shadow Fiend'];
 
 export const mockTeams: Team[] = Array.from({ length: 12 }, (_, i) => ({
   id: `team${i + 1}`,
   name: `Team Alpha ${i + 1}`,
   logoUrl: `https://placehold.co/100x100.png?text=T${i+1}`,
-  players: mockPlayers.slice(0, 5).map(p => ({...p, id: `${p.id}-t${i+1}`})), // Simple player reuse, ensure unique IDs if needed
+  players: mockPlayers.slice(0, 5).map(p => ({...p, id: `${p.id}-t${i+1}`})), 
   matchesPlayed: Math.floor(Math.random() * 5),
   matchesWon: Math.floor(Math.random() * 3),
   matchesLost: Math.floor(Math.random() * 2),
   points: Math.floor(Math.random() * 10),
+  mostPlayedHeroes: [...defaultHeroes].sort(() => 0.5 - Math.random()).slice(0, 5), // Shuffle and pick 5
 }));
 
 export const mockMatches: Match[] = [
@@ -45,3 +48,4 @@ export const generateMockGroups = (teams: Team[]): Group[] => {
   }
   return groups;
 };
+

@@ -4,11 +4,12 @@ import type { Team, Player, Match } from "@/lib/definitions";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Separator } from "@/components/ui/separator";
 import Image from "next/image";
 import Link from "next/link";
-import { Shield, Users, ListChecks, ExternalLink, BarChart3, Medal } from "lucide-react";
+import { Shield, Users, ListChecks, ExternalLink, BarChart3, Medal, Swords } from "lucide-react";
 import { notFound } from "next/navigation";
 
 interface TeamPageParams {
@@ -21,8 +22,8 @@ async function getTeamData(teamId: string): Promise<{ team: Team | undefined, te
 
   // Assign full player details if not already present (mock data specific)
   const detailedPlayers = team.players.map(pStub => {
-    const fullPlayer = mockPlayers.find(mp => mp.id.startsWith(pStub.id.split('-')[0])); // basic match
-    return fullPlayer ? { ...fullPlayer, ...pStub } : pStub;
+    const generalPlayerInfo = mockPlayers.find(mp => mp.id.startsWith(pStub.id.split('-')[0])); // basic match for general info
+    return generalPlayerInfo ? { ...generalPlayerInfo, ...pStub } : pStub; // pStub has the unique ID and team-specific MMR if different
   });
   team.players = detailedPlayers;
 
@@ -78,6 +79,26 @@ export default async function TeamPage({ params }: TeamPageParams) {
           </div>
         </CardContent>
       </Card>
+
+      {team.mostPlayedHeroes && team.mostPlayedHeroes.length > 0 && (
+        <Card className="shadow-xl">
+          <CardHeader>
+            <CardTitle className="text-2xl font-semibold text-primary flex items-center">
+              <Swords className="h-6 w-6 mr-2" /> Team Signature Heroes
+            </CardTitle>
+            <CardDescription>The team's most frequently played heroes. (Simulated Data)</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-2">
+              {team.mostPlayedHeroes.map((heroName, index) => (
+                <Badge key={index} variant="secondary" className="text-base px-3 py-1">
+                  {heroName}
+                </Badge>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <Card className="shadow-xl">
         <CardHeader>
@@ -187,3 +208,4 @@ export async function generateStaticParams() {
     teamId: team.id,
   }));
 }
+
