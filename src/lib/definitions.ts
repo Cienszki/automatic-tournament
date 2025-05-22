@@ -1,10 +1,14 @@
 
 import type { z } from "zod";
 
+export const PlayerRoles = ["Carry", "Mid", "Offlane", "Soft Support", "Hard Support"] as const;
+export type PlayerRole = typeof PlayerRoles[number];
+
 export type Player = {
   id: string;
   nickname: string;
   mmr: number;
+  role: PlayerRole;
   profileScreenshotUrl?: string; // URL after upload
   steamProfileUrl: string;
   openDotaProfileUrl?: string;
@@ -62,4 +66,3 @@ export type RegistrationFormState = {
   errors?: z.ZodIssue[];
   success: boolean;
 };
-
