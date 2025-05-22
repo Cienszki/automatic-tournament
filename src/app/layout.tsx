@@ -31,10 +31,10 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased font-sans`} suppressHydrationWarning={true}>
         <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-          disableTransitionOnChange
+          // attribute="class"
+          // defaultTheme="system"
+          // enableSystem
+          // disableTransitionOnChange
         >
           <div className="flex flex-col min-h-screen bg-background text-foreground">
             <Navbar />
