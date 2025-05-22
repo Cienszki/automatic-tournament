@@ -4,7 +4,7 @@
 @tailwind utilities;
 
 body {
-  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  font-family: var(--font-raleway), Arial, Helvetica, sans-serif; /* Changed from --font-geist-sans */
 }
 
 @layer base {
@@ -56,7 +56,7 @@ body {
   }
 
   .dark {
-    /* Alternative Dark Theme: Graphite & Neon (previously the default) */
+    /* Alternative Dark Theme: Graphite & Neon */
     --background: 220 10% 10%; /* Very dark cool gray - Graphite */
     --foreground: 220 10% 85%; /* Light gray text */
 

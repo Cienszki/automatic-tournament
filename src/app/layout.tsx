@@ -1,20 +1,22 @@
 
 import type { Metadata } from 'next';
-import { Geist, Geist_Mono } from 'next/font/google'; // Corrected import
+import { Raleway, Space_Mono } from 'next/font/google'; // Changed font imports
 import './globals.css';
 import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
 import { Toaster } from "@/components/ui/toaster";
 import { ThemeProvider } from '@/components/layout/ThemeProvider';
 
-const geistSans = Geist({ // Corrected usage
-  variable: '--font-geist-sans',
+const raleway = Raleway({
+  variable: '--font-raleway',
   subsets: ['latin'],
+  weight: ['400', '700'], // Added common weights
 });
 
-const geistMono = Geist_Mono({ // Corrected usage
-  variable: '--font-geist-mono',
+const spaceMono = Space_Mono({
+  variable: '--font-space-mono',
   subsets: ['latin'],
+  weight: ['400', '700'], // Added available weights
 });
 
 export const metadata: Metadata = {
@@ -29,7 +31,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased font-sans`} suppressHydrationWarning={true}>
+      <body className={`${raleway.variable} ${spaceMono.variable} antialiased font-sans`} suppressHydrationWarning={true}>
         <ThemeProvider
           // attribute="class"
           // defaultTheme="system"
