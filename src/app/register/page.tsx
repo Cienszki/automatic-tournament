@@ -53,9 +53,18 @@ export default function RegistrationPage() {
       if (formState.success) {
         form.reset(defaultValues); 
       } else if (formState.errors) {
+        // Ensure errors are correctly mapped to fields
         formState.errors.forEach(error => {
           const fieldName = error.path.join(".") as keyof TeamRegistrationFormData;
-          form.setError(fieldName, { type: "manual", message: error.message });
+          // Check if the field exists in the form before setting an error
+          if (form.control._fields[fieldName]) {
+            form.setError(fieldName, { type: "manual", message: error.message });
+          } else {
+            // Fallback for general errors or errors not directly mappable to a field
+            console.warn(`Error for unmappable field ${fieldName}: ${error.message}`);
+            // Optionally, show a general error toast for unmappable errors
+            // toast({ title: "Error", description: `An issue with ${fieldName}: ${error.message}`, variant: "destructive" });
+          }
         });
       }
     }
@@ -71,7 +80,7 @@ export default function RegistrationPage() {
     (['player1', 'player2', 'player3', 'player4', 'player5'] as const).forEach(playerKey => {
       const player = data[playerKey];
       formData.append(`${playerKey}.nickname`, player.nickname);
-      formData.append(`${playerKey}.mmr`, player.mmr.toString());
+      formData.append(`${playerKey}.mmr`, player.mmr.toString()); // mmr is string in form, validated to number in schema
       if (player.profileScreenshot) {
         formData.append(`${playerKey}.profileScreenshot`, player.profileScreenshot);
       }
@@ -79,7 +88,7 @@ export default function RegistrationPage() {
     });
     formData.append("rulesAgreed", data.rulesAgreed.toString());
 
-    await formAction(formData);
+    formAction(formData); // No await needed here as useActionState handles it
   };
 
   return (
@@ -121,15 +130,15 @@ export default function RegistrationPage() {
                   <FormField
                     control={form.control}
                     name="teamLogo"
-                    render={({ field: { onChange, value, ...rest } }) => ( // value is File | undefined
+                    render={({ field: { onChange, value, ...rest } }) => ( 
                       <FormItem>
                         <FormLabel>Team Logo (max 1MB, .jpg, .png, .webp)</FormLabel>
                         <FormControl>
                            <Input 
                             type="file" 
                             accept=".jpg,.jpeg,.png,.webp"
-                            onChange={(e) => onChange(e.target.files?.[0])} // Pass single File or undefined
-                            {...rest} // Pass name, onBlur, ref
+                            onChange={(e) => onChange(e.target.files?.[0])} 
+                            {...rest} 
                           />
                         </FormControl>
                         <FormMessage />
@@ -160,9 +169,6 @@ export default function RegistrationPage() {
                       <FormLabel>
                         I have read and agree to the <Link href="/rules" className="text-primary hover:underline">tournament rules</Link>.
                       </FormLabel>
-                      <FormDescription>
-                        You must agree to the rules to participate.
-                      </FormDescription>
                        <FormMessage />
                     </div>
                   </FormItem>
@@ -180,3 +186,5 @@ export default function RegistrationPage() {
     </div>
   );
 }
+
+    
