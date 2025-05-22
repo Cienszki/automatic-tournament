@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -8,52 +9,54 @@ body {
 
 @layer base {
   :root {
-    --background: 220 17% 95%; /* Light gray (#F0F2F5) */
-    --foreground: 220 10% 25%; /* Dark gray text */
+    --background: 190 50% 15%; /* Dark Teal - Summer Night Sky/Deep Ocean */
+    --foreground: 45 50% 90%; /* Light Sand - Warm Off-White */
 
-    --card: 0 0% 100%; /* White cards */
-    --card-foreground: 220 10% 25%; /* Dark gray text on cards */
+    --card: 190 45% 20%; /* Slightly Lighter Dark Teal */
+    --card-foreground: 45 50% 90%; /* Light Sand */
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 220 10% 25%;
+    --popover: 190 45% 18%; /* Dark Popover, slightly different from card */
+    --popover-foreground: 45 50% 90%; /* Light Sand */
 
-    --primary: 197 71% 53%; /* Vibrant Blue (#29ABE2) */
-    --primary-foreground: 0 0% 98%; /* White/very light text */
+    --primary: 20 90% 60%; /* Vibrant Coral - Sunset Orange */
+    --primary-foreground: 30 100% 98%; /* Very Light Peach/White */
 
-    --secondary: 220 15% 90%; /* Lighter gray for secondary elements */
-    --secondary-foreground: 220 10% 20%; /* Darker text for secondary */
+    --secondary: 35 30% 40%; /* Muted Sandy Brown - Driftwood */
+    --secondary-foreground: 45 50% 90%; /* Light Sand */
 
-    --muted: 220 15% 90%;
-    --muted-foreground: 220 10% 45%; /* Muted text */
+    --muted: 190 40% 25%; /* Darker Muted Teal */
+    --muted-foreground: 45 40% 70%; /* Muted Sand */
 
-    --accent: 279 88% 63%; /* Electric Purple (#B150F2) */
-    --accent-foreground: 0 0% 98%; /* White/very light text */
+    --accent: 180 70% 55%; /* Bright Turquoise */
+    --accent-foreground: 190 100% 98%; /* Very Light Cyan/White */
 
-    --destructive: 0 84.2% 60.2%;
+    --destructive: 0 84.2% 60.2%; /* Keeping original destructive for clarity */
     --destructive-foreground: 0 0% 98%;
 
-    --border: 220 10% 88%;
-    --input: 0 0% 100%; /* White inputs */
-    --ring: 197 71% 53%; /* Primary color for rings */
+    --border: 190 40% 30%; /* Subtle Teal Border */
+    --input: 190 45% 22%; /* Input bg, slightly different from card for depth */
+    --ring: 20 90% 60%; /* Vibrant Coral - Primary color for rings */
     
-    --chart-1: 12 76% 61%;
-    --chart-2: 173 58% 39%;
-    --chart-3: 197 37% 24%;
-    --chart-4: 43 74% 66%;
-    --chart-5: 27 87% 67%;
+    --chart-1: 20 90% 60%; /* Coral */
+    --chart-2: 180 70% 55%; /* Turquoise */
+    --chart-3: 45 80% 60%; /* Sunny Yellow */
+    --chart-4: 300 60% 70%; /* Light Lavender (cool contrast) */
+    --chart-5: 150 60% 50%; /* Seafoam Green */
     --radius: 0.5rem;
 
-    --sidebar-background: 220 15% 92%;
-    --sidebar-foreground: 220 10% 25%;
-    --sidebar-primary: 197 71% 53%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 279 88% 63%;
-    --sidebar-accent-foreground: 0 0% 98%;
-    --sidebar-border: 220 10% 80%;
-    --sidebar-ring: 197 71% 53%;
+    /* Sidebar variables could also be adjusted if needed, for now, let them inherit or be distinct */
+    --sidebar-background: 190 50% 12%; /* Even Darker Teal for Sidebar */
+    --sidebar-foreground: 45 50% 85%; /* Slightly less bright sand */
+    --sidebar-primary: 20 90% 60%; /* Coral */
+    --sidebar-primary-foreground: 30 100% 98%;
+    --sidebar-accent: 180 70% 55%; /* Turquoise */
+    --sidebar-accent-foreground: 190 100% 98%;
+    --sidebar-border: 190 40% 25%;
+    --sidebar-ring: 20 90% 60%;
   }
 
   .dark {
+    /* This is the alternative dark theme, if toggled. Keeping it distinct. */
     --background: 220 10% 10%; /* Very dark gray */
     --foreground: 220 10% 85%; /* Light gray text */
 
@@ -63,23 +66,23 @@ body {
     --popover: 220 10% 15%;
     --popover-foreground: 220 10% 85%;
 
-    --primary: 197 71% 53%; /* Vibrant Blue */
-    --primary-foreground: 0 0% 98%; /* White/very light text */
+    --primary: 197 71% 53%; /* Vibrant Blue (original dark theme primary) */
+    --primary-foreground: 0 0% 98%; 
 
-    --secondary: 220 10% 20%; /* Darker gray for secondary elements */
-    --secondary-foreground: 220 10% 75%; /* Lighter text for secondary */
+    --secondary: 220 10% 20%; 
+    --secondary-foreground: 220 10% 75%; 
 
     --muted: 220 10% 20%;
-    --muted-foreground: 220 10% 55%; /* Muted text, less prominent */
+    --muted-foreground: 220 10% 55%; 
 
-    --accent: 279 88% 63%; /* Electric Purple */
-    --accent-foreground: 0 0% 98%; /* White/very light text */
+    --accent: 279 88% 63%; /* Electric Purple (original dark theme accent) */
+    --accent-foreground: 0 0% 98%; 
 
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
 
     --border: 220 10% 25%;
-    --input: 220 10% 15%; /* Dark inputs */
+    --input: 220 10% 15%; 
     --ring: 197 71% 53%;
     
     --chart-1: 220 70% 50%;
