@@ -9,7 +9,54 @@ body {
 
 @layer base {
   :root {
-    /* Default Theme: Graphite & Neon (previously the .dark theme) */
+    /* Default Theme: Miami Neon 80s */
+    --background: 230 25% 8%; /* Deep dark indigo/blue night sky */
+    --foreground: 220 20% 92%; /* Light cool gray for text */
+
+    --card: 240 20% 12%; /* Slightly lighter dark purple/blue for cards */
+    --card-foreground: 220 20% 92%; /* Light cool gray text on cards */
+
+    --popover: 240 20% 10%; /* Dark popover */
+    --popover-foreground: 220 20% 92%;
+
+    --primary: 320 90% 58%; /* Vibrant Hot Pink/Magenta */
+    --primary-foreground: 0 0% 100%; /* White */
+
+    --secondary: 240 15% 20%; /* Muted dark blue */
+    --secondary-foreground: 220 15% 75%; 
+
+    --muted: 240 15% 15%; /* Darker muted blue */
+    --muted-foreground: 220 10% 55%; 
+
+    --accent: 180 85% 50%; /* Electric Cyan/Teal */
+    --accent-foreground: 0 0% 100%; /* White */
+
+    --destructive: 0 75% 55%; /* Bright, but slightly desaturated red */
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 240 15% 25%; /* Subtle Dark Blue/Purple Border */
+    --input: 240 20% 14%; 
+    --ring: 320 90% 58%; /* Primary color for rings (Hot Pink) */
+    
+    --chart-1: 320 90% 58%; /* Hot Pink */
+    --chart-2: 180 85% 50%; /* Electric Cyan */
+    --chart-3: 35 100% 60%;  /* Neon Orange/Yellow */
+    --chart-4: 260 90% 65%; /* Bright Purple */
+    --chart-5: 150 70% 55%; /* Neon Green */
+    --radius: 0.5rem;
+
+    --sidebar-background: 230 25% 6%; /* Even Darker Indigo for Sidebar */
+    --sidebar-foreground: 220 20% 90%;
+    --sidebar-primary: 320 90% 58%; /* Hot Pink */
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 180 85% 50%; /* Electric Cyan */
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 240 15% 20%;
+    --sidebar-ring: 320 90% 58%;
+  }
+
+  .dark {
+    /* Alternative Dark Theme: Graphite & Neon (previously the default) */
     --background: 220 10% 10%; /* Very dark cool gray - Graphite */
     --foreground: 220 10% 85%; /* Light gray text */
 
@@ -43,7 +90,6 @@ body {
     --chart-3: 45 80% 60%;  /* Sunny Yellow */
     --chart-4: 150 60% 50%; /* Seafoam Green */
     --chart-5: 20 90% 60%;  /* Vibrant Coral */
-    --radius: 0.5rem;
 
     --sidebar-background: 220 10% 8%; /* Even Darker Cool Gray for Sidebar */
     --sidebar-foreground: 220 10% 88%;
@@ -53,52 +99,6 @@ body {
     --sidebar-accent-foreground: 0 0% 98%;
     --sidebar-border: 220 10% 20%;
     --sidebar-ring: 197 71% 53%;
-  }
-
-  .dark {
-    /* Alternative Dark Theme: Summertime Dark */
-    --background: 190 50% 15%; /* Dark Teal - Summer Night Sky/Deep Ocean */
-    --foreground: 45 50% 90%; /* Light Sand - Warm Off-White */
-
-    --card: 190 45% 20%; /* Slightly Lighter Dark Teal */
-    --card-foreground: 45 50% 90%; /* Light Sand */
-
-    --popover: 190 45% 18%; /* Dark Popover, slightly different from card */
-    --popover-foreground: 45 50% 90%; /* Light Sand */
-
-    --primary: 20 90% 60%; /* Vibrant Coral - Sunset Orange */
-    --primary-foreground: 30 100% 98%; /* Very Light Peach/White */
-
-    --secondary: 35 30% 40%; /* Muted Sandy Brown - Driftwood */
-    --secondary-foreground: 45 50% 90%; /* Light Sand */
-
-    --muted: 190 40% 25%; /* Darker Muted Teal */
-    --muted-foreground: 45 40% 70%; /* Muted Sand */
-
-    --accent: 180 70% 55%; /* Bright Turquoise */
-    --accent-foreground: 190 100% 98%; /* Very Light Cyan/White */
-
-    --destructive: 0 84.2% 60.2%; 
-    --destructive-foreground: 0 0% 98%;
-
-    --border: 190 40% 30%; /* Subtle Teal Border */
-    --input: 190 45% 22%; /* Input bg, slightly different from card for depth */
-    --ring: 20 90% 60%; /* Vibrant Coral - Primary color for rings */
-    
-    --chart-1: 20 90% 60%; /* Coral */
-    --chart-2: 180 70% 55%; /* Turquoise */
-    --chart-3: 45 80% 60%; /* Sunny Yellow */
-    --chart-4: 300 60% 70%; /* Light Lavender (cool contrast) */
-    --chart-5: 150 60% 50%; /* Seafoam Green */
-    
-    --sidebar-background: 190 50% 12%; /* Even Darker Teal for Sidebar */
-    --sidebar-foreground: 45 50% 85%; /* Slightly less bright sand */
-    --sidebar-primary: 20 90% 60%; /* Coral */
-    --sidebar-primary-foreground: 30 100% 98%;
-    --sidebar-accent: 180 70% 55%; /* Turquoise */
-    --sidebar-accent-foreground: 190 100% 98%;
-    --sidebar-border: 190 40% 25%;
-    --sidebar-ring: 20 90% 60%;
   }
 }
 
