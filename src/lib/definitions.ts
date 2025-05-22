@@ -1,4 +1,6 @@
 
+import type { z } from "zod";
+
 export type Player = {
   id: string;
   nickname: string;
@@ -50,4 +52,11 @@ export type TeamRegistrationFormData = {
   player3: PlayerFormData;
   player4: PlayerFormData;
   player5: PlayerFormData;
+};
+
+// For server action state
+export type RegistrationFormState = {
+  message: string;
+  errors?: z.ZodIssue[];
+  success: boolean;
 };

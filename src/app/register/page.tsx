@@ -9,10 +9,11 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { PlayerRegistrationFields } from "@/components/app/PlayerRegistrationFields";
-import { registerTeamAction, registrationFormSchema, type RegistrationFormState } from "./actions";
+import { registerTeamAction } from "./actions";
+import { registrationFormSchema } from "@/lib/registration-schema";
+import type { RegistrationFormState, TeamRegistrationFormData } from "@/lib/definitions";
 import { useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
-import type { TeamRegistrationFormData } from "@/lib/definitions";
 import { Loader2 } from "lucide-react";
 
 // Define initial form values matching TeamRegistrationFormData structure
