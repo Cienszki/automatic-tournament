@@ -1,3 +1,4 @@
+"use client";
 
 import type { Match } from "@/lib/definitions";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
