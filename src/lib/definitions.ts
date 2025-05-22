@@ -42,22 +42,25 @@ export type Group = {
   teams: Team[];
 };
 
-// For registration form
+// For registration form state with react-hook-form
+// File fields are File | undefined because user might not have selected one yet.
+// Zod schema will enforce they are 'File' upon validation if 'requiredFileSchema' is used.
 export type PlayerFormData = {
   nickname: string;
-  mmr: string; // string for form input, convert to number later
-  profileScreenshot?: FileList;
+  mmr: string; // string for form input, Zod will transform to number
+  profileScreenshot: File | undefined;
   steamProfileUrl: string;
 };
 
 export type TeamRegistrationFormData = {
   teamName: string;
-  teamLogo?: FileList;
+  teamLogo: File | undefined;
   player1: PlayerFormData;
   player2: PlayerFormData;
   player3: PlayerFormData;
   player4: PlayerFormData;
   player5: PlayerFormData;
+  rulesAgreed: boolean; // Form state before validation
 };
 
 // For server action state
