@@ -2,14 +2,14 @@
 "use client";
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, UserPlus, LayoutGrid, Shield, CalendarDays, GitFork, ScrollText, HelpCircle } from 'lucide-react';
+import { UserPlus, LayoutGrid, Shield, CalendarDays, GitFork, ScrollText, HelpCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Logo } from './Logo';
 import { ThemeToggleButton } from './ThemeToggleButton';
 
 const navItems = [
-  { href: '/', label: 'Home', icon: Home },
+  // { href: '/', label: 'Home', icon: Home }, // Removed Home
   { href: '/register', label: 'Register', icon: UserPlus },
   { href: '/groups', label: 'Group Stage', icon: LayoutGrid },
   { href: '/teams', label: 'Teams', icon: Shield },
