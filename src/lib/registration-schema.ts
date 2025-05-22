@@ -45,3 +45,4 @@ export const registrationFormSchema = z.object({
     errorMap: () => ({ message: "You must agree to the tournament rules to register." }),
   }),
 });
+
