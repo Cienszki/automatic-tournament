@@ -6,10 +6,9 @@ import { UserPlus, LayoutGrid, Shield, CalendarDays, GitFork, ScrollText, HelpCi
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Logo } from './Logo';
-import { ThemeToggleButton } from './ThemeToggleButton';
+// ThemeToggleButton import removed
 
 const navItems = [
-  // { href: '/', label: 'Home', icon: Home }, // Removed Home
   { href: '/register', label: 'Register', icon: UserPlus },
   { href: '/groups', label: 'Group Stage', icon: LayoutGrid },
   { href: '/teams', label: 'Teams', icon: Shield },
@@ -48,7 +47,7 @@ export function Navbar() {
               );
             })}
           </nav>
-          <ThemeToggleButton />
+          {/* ThemeToggleButton removed from here */}
         </div>
       </div>
     </header>

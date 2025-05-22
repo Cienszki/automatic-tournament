@@ -55,51 +55,7 @@ body {
     --sidebar-ring: 320 90% 58%;
   }
 
-  .dark {
-    /* Alternative Dark Theme: Graphite & Neon */
-    --background: 220 10% 10%; /* Very dark cool gray - Graphite */
-    --foreground: 220 10% 85%; /* Light gray text */
-
-    --card: 220 10% 15%; /* Darker cards */
-    --card-foreground: 220 10% 85%; /* Light gray text on cards */
-
-    --popover: 220 10% 15%;
-    --popover-foreground: 220 10% 85%;
-
-    --primary: 197 71% 53%; /* Vibrant Blue - Neon */
-    --primary-foreground: 0 0% 98%; /* White */
-
-    --secondary: 220 10% 20%; 
-    --secondary-foreground: 220 10% 75%; 
-
-    --muted: 220 10% 20%;
-    --muted-foreground: 220 10% 55%; 
-
-    --accent: 279 88% 63%; /* Electric Purple - Neon */
-    --accent-foreground: 0 0% 98%; /* White */
-
-    --destructive: 0 62.8% 30.6%; /* Dark Red */
-    --destructive-foreground: 0 0% 98%;
-
-    --border: 220 10% 25%; /* Subtle Dark Gray Border */
-    --input: 220 10% 15%; 
-    --ring: 197 71% 53%; /* Primary color for rings */
-    
-    --chart-1: 197 71% 53%; /* Vibrant Blue */
-    --chart-2: 279 88% 63%; /* Electric Purple */
-    --chart-3: 45 80% 60%;  /* Sunny Yellow */
-    --chart-4: 150 60% 50%; /* Seafoam Green */
-    --chart-5: 20 90% 60%;  /* Vibrant Coral */
-
-    --sidebar-background: 220 10% 8%; /* Even Darker Cool Gray for Sidebar */
-    --sidebar-foreground: 220 10% 88%;
-    --sidebar-primary: 197 71% 53%; /* Vibrant Blue */
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 279 88% 63%; /* Electric Purple */
-    --sidebar-accent-foreground: 0 0% 98%;
-    --sidebar-border: 220 10% 20%;
-    --sidebar-ring: 197 71% 53%;
-  }
+  /* .dark block removed as theme toggling is disabled */
 }
 
 @layer base {
