@@ -4,7 +4,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import Link from "next/link";
-import { Users, Sigma, ShieldCheck, Swords, Sparkles, Shield, HandHelping, Eye, List, TrendingUp } from "lucide-react";
+import { Sigma, Shield, Swords, Sparkles, HandHelping, Eye, ListChecks, Medal } from "lucide-react";
 
 interface TeamCardProps {
   team: Team;
@@ -23,7 +23,7 @@ const getRoleIcon = (role: PlayerRole) => {
     case "Hard Support":
       return <Eye className="h-4 w-4 text-primary mr-2 shrink-0" />;
     default:
-      return <List className="h-4 w-4 text-muted-foreground mr-2 shrink-0" />;
+      return <ListChecks className="h-4 w-4 text-muted-foreground mr-2 shrink-0" />;
   }
 };
 
@@ -55,20 +55,17 @@ export function TeamCard({ team }: TeamCardProps) {
               <span>Total MMR: {totalMMR.toLocaleString()}</span>
             </div>
             <div className="flex items-center text-sm text-muted-foreground">
-              <ShieldCheck className="h-4 w-4 mr-2 text-primary shrink-0" />
+              <ListChecks className="h-4 w-4 mr-2 text-primary shrink-0" />
               <span>{team.matchesWon ?? 0} Wins / {team.matchesLost ?? 0} Losses</span>
             </div>
             <div className="flex items-center text-sm text-muted-foreground">
-              <TrendingUp className="h-4 w-4 mr-2 text-primary shrink-0" />
+              <Medal className="h-4 w-4 mr-2 text-primary shrink-0" />
               <span>{team.points ?? 0} Points</span>
             </div>
           </div>
 
           {/* Column 2: Player List */}
           <div className="space-y-1">
-            <h4 className="text-sm font-semibold text-foreground flex items-center">
-              <Users className="h-4 w-4 mr-2 text-primary shrink-0" /> Players
-            </h4>
             <ul className="space-y-0.5 text-xs">
               {team.players.slice(0, 5).map((player) => (
                 <li key={player.id} className="flex items-center">

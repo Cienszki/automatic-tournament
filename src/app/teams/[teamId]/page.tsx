@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Separator } from "@/components/ui/separator";
 import Image from "next/image";
 import Link from "next/link";
-import { Shield, Users, ListChecks, ExternalLink, BarChart3, Medal, Swords } from "lucide-react";
+import { Users, ListChecks, ExternalLink, BarChart3, Medal, Swords } from "lucide-react";
 import { notFound } from "next/navigation";
 
 interface TeamPageParams {
@@ -52,8 +52,8 @@ export default async function TeamPage({ params }: TeamPageParams) {
               data-ai-hint="team logo"
             />
             <div>
-              <CardTitle className="text-4xl font-bold text-primary flex items-center">
-                <Shield className="h-10 w-10 mr-3 opacity-80" /> {team.name}
+              <CardTitle className="text-4xl font-bold text-primary">
+                {team.name}
               </CardTitle>
               <CardDescription className="text-lg mt-1">
                 Detailed profile and performance statistics.
@@ -208,4 +208,3 @@ export async function generateStaticParams() {
     teamId: team.id,
   }));
 }
-
