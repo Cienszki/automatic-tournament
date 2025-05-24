@@ -81,20 +81,33 @@ export const generateMockGroups = (teams: Team[]): Group[] => {
 
 // --- Stats Page Mock Data ---
 
-const getRandomPlayerAndTeam = () => {
+const getRandomPlayerAndTeam = (): { player: Player; team: Team } => {
   const teamIndex = Math.floor(Math.random() * mockTeams.length);
   const team = mockTeams[teamIndex];
-  // Ensure team.players is not empty before trying to pick a random player
+
   if (!team.players || team.players.length === 0) {
-    // Fallback or error handling: pick a player from global mockPlayers if team is empty
-    // This case should ideally not happen if createTeamPlayers always assigns players
-    const fallbackPlayerIndex = Math.floor(Math.random() * mockPlayers.length);
-    return { player: mockPlayers[fallbackPlayerIndex], team }; // Team might be incomplete here
+    // Fallback if a team somehow has no players (shouldn't happen with current setup)
+    // This is simplified, in a real app you might throw an error or handle differently
+    const fallbackPlayer = mockPlayers[Math.floor(Math.random() * mockPlayers.length)];
+    return { 
+      player: { // Construct a valid Player object
+        ...fallbackPlayer, 
+        id: `${fallbackPlayer.id}-tfb-pfb`, // Fallback ID
+        role: PlayerRoles[Math.floor(Math.random() * PlayerRoles.length)] 
+      }, 
+      team: team || { // Fallback for team if it was undefined
+        id: 'team-fallback', 
+        name: 'Fallback Team', 
+        players: [], 
+        logoUrl: `https://placehold.co/100x100.png?text=FB`
+      }
+    };
   }
   const playerIndex = Math.floor(Math.random() * team.players.length);
   const player = team.players[playerIndex];
   return { player, team };
 };
+
 
 const getRandomMatchContext = (): string => {
   const completedMatches = mockMatches.filter(m => m.status === 'completed');
@@ -124,10 +137,12 @@ export const generateMockSingleMatchRecords = (): StatItem[] => {
     const rawValue = Math.floor(Math.random() * (cat.max - cat.min + 1)) + cat.min;
     const displayValue = cat.formatter ? cat.formatter(rawValue) : rawValue;
     records.push({
-      id: `smr-${index}`,
+      id: `smr-${index}`, // Stat record's own ID
       category: cat.name,
-      playerName: player.nickname,
-      teamName: team.name,
+      playerName: player.nickname, // For display
+      teamName: team.name, // For display
+      playerId: player.id, // For linking
+      teamId: team.id, // For linking
       value: `${displayValue}${cat.unit}`,
       heroName: defaultHeroes[Math.floor(Math.random() * defaultHeroes.length)],
       matchContext: getRandomMatchContext(),
@@ -138,7 +153,6 @@ export const generateMockSingleMatchRecords = (): StatItem[] => {
 };
 
 export const generateMockPlayerAverageLeaders = (): StatItem[] => {
-  const leaders: StatItem[] = [];
   const categories = [
     { name: "Avg. Kills", icon: Swords, unit: "", min: 8, max: 15, decimals: 1 },
     { name: "Avg. Assists", icon: HeartHandshake, unit: "", min: 10, max: 20, decimals: 1 },
@@ -153,43 +167,48 @@ export const generateMockPlayerAverageLeaders = (): StatItem[] => {
   ];
   
   const uniqueLeaders: StatItem[] = [];
-  const assignedPlayersForCategories = new Set<string>(); // To ensure a player doesn't lead multiple average categories for this mock display
+  const assignedPlayersForCategories = new Set<string>();
 
   categories.forEach((cat, index) => {
     let selectedPlayer: Player | undefined;
     let selectedTeam: Team | undefined;
     let attempts = 0;
+    const maxAttempts = mockTeams.reduce((sum, t) => sum + t.players.length, 0) + 10; // Iterate through all possible players + buffer
 
-    // Try to find a player not yet assigned to a category
-    while(attempts < mockPlayers.length * 2) { // Limit attempts to avoid infinite loops
-        const { player: randomPlayerFromTeam, team: randomTeam } = getRandomPlayerAndTeam();
-        if (!assignedPlayersForCategories.has(randomPlayerFromTeam.id)) {
-            selectedPlayer = randomPlayerFromTeam;
+    while(attempts < maxAttempts) {
+        const { player: randomPlayer, team: randomTeam } = getRandomPlayerAndTeam();
+        // Ensure player object is valid before checking id
+        if (randomPlayer && randomPlayer.id && !assignedPlayersForCategories.has(randomPlayer.id)) {
+            selectedPlayer = randomPlayer;
             selectedTeam = randomTeam;
-            assignedPlayersForCategories.add(randomPlayerFromTeam.id);
+            assignedPlayersForCategories.add(randomPlayer.id);
             break;
         }
         attempts++;
     }
     
-    // Fallback if all players are assigned or no suitable player found
-    if (!selectedPlayer) {
-        const { player: randomPlayerFromTeam, team: randomTeam } = getRandomPlayerAndTeam();
-        selectedPlayer = randomPlayerFromTeam;
+    if (!selectedPlayer || !selectedTeam) { // Fallback if no unique player found
+        const { player: randomPlayer, team: randomTeam } = getRandomPlayerAndTeam();
+        selectedPlayer = randomPlayer;
         selectedTeam = randomTeam;
     }
 
     const rawValue = (Math.random() * (cat.max - cat.min)) + cat.min;
     const displayValue = cat.formatter ? cat.formatter(rawValue) : rawValue.toFixed(cat.decimals);
 
-    uniqueLeaders.push({
-      id: `pal-${index}-${selectedPlayer.id}`,
-      category: cat.name,
-      playerName: selectedPlayer.nickname,
-      teamName: selectedTeam ? selectedTeam.name : "N/A",
-      value: `${displayValue}${cat.unit}`,
-      icon: cat.icon,
-    });
+    // Ensure selectedPlayer and selectedTeam are defined before accessing their properties
+    if (selectedPlayer && selectedTeam) {
+      uniqueLeaders.push({
+        id: `pal-${index}-${selectedPlayer.id}`, // Stat record's own ID
+        category: cat.name,
+        playerName: selectedPlayer.nickname, // For display
+        teamName: selectedTeam.name, // For display
+        playerId: selectedPlayer.id, // For linking
+        teamId: selectedTeam.id, // For linking
+        value: `${displayValue}${cat.unit}`,
+        icon: cat.icon,
+      });
+    }
   });
 
   return uniqueLeaders;

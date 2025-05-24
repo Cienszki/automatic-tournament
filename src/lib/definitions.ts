@@ -73,10 +73,12 @@ export type RegistrationFormState = {
 
 // For Stats Page
 export type StatItem = {
-  id: string;
+  id: string; // This is the stat record's own ID, e.g., "smr-1"
   category: string;
-  playerName?: string; // Optional for tournament-wide stats
-  teamName?: string;   // Optional for tournament-wide stats
+  playerName?: string; // For display
+  teamName?: string;   // For display
+  playerId?: string;   // For linking
+  teamId?: string;     // For linking
   value: string | number;
   heroName?: string;
   matchContext?: string; // e.g., "Team X vs Team Y" for single match records

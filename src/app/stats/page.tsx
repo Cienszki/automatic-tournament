@@ -62,10 +62,18 @@ export default async function StatsPage() {
                       {record.category}
                     </TableCell>
                     <TableCell>
-                        <Link href={`/teams/${record.teamName?.toLowerCase().replace(/\s+/g, '-')}/players/${record.playerName?.toLowerCase()}`} className="hover:text-primary">{record.playerName}</Link>
+                      {record.playerId && record.teamId ? (
+                        <Link href={`/teams/${record.teamId}/players/${record.playerId}`} className="hover:text-primary">{record.playerName}</Link>
+                      ) : (
+                        record.playerName || 'N/A'
+                      )}
                     </TableCell>
                     <TableCell>
-                        <Link href={`/teams/${record.teamName?.toLowerCase().replace(/\s+/g, '-')}`} className="hover:text-primary">{record.teamName}</Link>
+                      {record.teamId ? (
+                        <Link href={`/teams/${record.teamId}`} className="hover:text-primary">{record.teamName}</Link>
+                      ) : (
+                        record.teamName || 'N/A'
+                      )}
                     </TableCell>
                     <TableCell className="font-semibold text-primary">{record.value}</TableCell>
                     <TableCell>{record.heroName}</TableCell>
@@ -104,10 +112,18 @@ export default async function StatsPage() {
                       {leader.category}
                     </TableCell>
                     <TableCell>
-                         <Link href={`/teams/${leader.teamName?.toLowerCase().replace(/\s+/g, '-')}/players/${leader.playerName?.toLowerCase()}`} className="hover:text-primary">{leader.playerName}</Link>
+                      {leader.playerId && leader.teamId ? (
+                         <Link href={`/teams/${leader.teamId}/players/${leader.playerId}`} className="hover:text-primary">{leader.playerName}</Link>
+                      ) : (
+                        leader.playerName || 'N/A'
+                      )}
                     </TableCell>
                      <TableCell>
-                        <Link href={`/teams/${leader.teamName?.toLowerCase().replace(/\s+/g, '-')}`} className="hover:text-primary">{leader.teamName}</Link>
+                      {leader.teamId ? (
+                        <Link href={`/teams/${leader.teamId}`} className="hover:text-primary">{leader.teamName}</Link>
+                      ) : (
+                        leader.teamName || 'N/A'
+                      )}
                     </TableCell>
                     <TableCell className="text-right font-semibold text-primary">{leader.value}</TableCell>
                   </TableRow>
@@ -140,7 +156,7 @@ export default async function StatsPage() {
       </Card>
 
       <p className="text-sm text-muted-foreground text-center mt-8">
-        Note: All statistics are simulated for demonstration purposes and would typically be sourced from game APIs like OpenDota. Player and Team links in tables are illustrative and might not lead to valid pages if mock data IDs don't perfectly align with existing team/player page routes.
+        Note: All statistics are simulated for demonstration purposes and would typically be sourced from game APIs like OpenDota.
       </p>
     </div>
   );
