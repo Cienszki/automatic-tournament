@@ -3,6 +3,7 @@
 
 import { Youtube } from 'lucide-react';
 import Link from 'next/link'; // Import Link for consistency if needed, but <a> is fine for external
+import React, { useState, useEffect } from 'react';
 
 // SVG Icon Components
 const DiscordIcon = (props: React.SVGProps<SVGSVGElement>) => (
@@ -27,7 +28,12 @@ const InstagramIcon = (props: React.SVGProps<SVGSVGElement>) => (
 
 
 export function Footer() {
-  // Removed useState and useEffect for year
+  const [year, setYear] = useState<number | null>(null);
+
+  useEffect(() => {
+    setYear(new Date().getFullYear());
+  }, []);
+
 
   return (
     <footer className="bg-card border-t border-border py-6 text-center">
@@ -77,10 +83,13 @@ export function Footer() {
         <p className="text-sm text-muted-foreground">
           Join our community and stay updated!
         </p>
-        <p className="text-xs text-muted-foreground mt-2">
-          Tournament Tracker &copy; {new Date().getFullYear()}
-        </p>
+        {year !== null && (
+          <p className="text-xs text-muted-foreground mt-2">
+            Tournament Tracker &copy; {year}
+          </p>
+        )}
       </div>
     </footer>
   );
 }
+
