@@ -1,5 +1,5 @@
 
-import { mockTeams, mockMatches, mockPlayers } from "@/lib/mock-data";
+import { mockTeams, mockMatches } from "@/lib/mock-data";
 import type { Team, Player, Match } from "@/lib/definitions";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -20,12 +20,9 @@ async function getTeamData(teamId: string): Promise<{ team: Team | undefined, te
   const team = mockTeams.find(t => t.id === teamId);
   if (!team) return { team: undefined, teamMatches: [] };
 
-  // Assign full player details if not already present (mock data specific)
-  const detailedPlayers = team.players.map(pStub => {
-    const generalPlayerInfo = mockPlayers.find(mp => mp.id.startsWith(pStub.id.split('-')[0])); // basic match for general info
-    return generalPlayerInfo ? { ...generalPlayerInfo, ...pStub } : pStub; // pStub has the unique ID and team-specific MMR if different
-  });
-  team.players = detailedPlayers;
+  // The 'team.players' array from mockTeams should already contain fully formed Player objects
+  // as constructed by 'createTeamPlayers' in mock-data.ts.
+  // The previous re-mapping logic is removed for simplification and to rely directly on mock-data structure.
 
   const teamMatches = mockMatches.filter(m => m.teamA.id === teamId || m.teamB.id === teamId);
   return { team, teamMatches };

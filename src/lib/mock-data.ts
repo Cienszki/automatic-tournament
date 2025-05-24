@@ -2,7 +2,7 @@
 import type { Team, Player, Match, Group, PlayerRole, StatItem, TournamentHighlightRecord } from './definitions';
 import { PlayerRoles } from './definitions';
 import {
-  Award, BarChart2, TrendingUp, TrendingDown, ShieldAlert, DollarSign, Eye, HelpCircle, Bomb, Swords, HeartHandshake, Zap, Clock, Activity, ShieldCheck, ChevronsUp, Timer, Skull
+  Award, BarChart2, TrendingUp, TrendingDown, ShieldAlert, DollarSign, Eye, HelpCircle, Bomb, Swords, HeartHandshake, Zap, Clock, Activity, ShieldCheck, ChevronsUp, Timer, Skull, ListChecks, Medal
 } from 'lucide-react';
 
 export const mockPlayers: Player[] = [
@@ -45,7 +45,7 @@ const createTeamPlayers = (teamIndex: number): Player[] => {
 
 export const mockTeams: Team[] = Array.from({ length: 12 }, (_, i) => ({
   id: `team${i + 1}`,
-  name: `Team Element ${i + 1}`, // Changed name for variety
+  name: `Team Element ${i + 1}`,
   logoUrl: `https://placehold.co/100x100.png?text=E${i+1}`,
   players: createTeamPlayers(i),
   matchesPlayed: Math.floor(Math.random() * 8) + 2, // Min 2 matches
@@ -84,14 +84,23 @@ export const generateMockGroups = (teams: Team[]): Group[] => {
 const getRandomPlayerAndTeam = () => {
   const teamIndex = Math.floor(Math.random() * mockTeams.length);
   const team = mockTeams[teamIndex];
+  // Ensure team.players is not empty before trying to pick a random player
+  if (!team.players || team.players.length === 0) {
+    // Fallback or error handling: pick a player from global mockPlayers if team is empty
+    // This case should ideally not happen if createTeamPlayers always assigns players
+    const fallbackPlayerIndex = Math.floor(Math.random() * mockPlayers.length);
+    return { player: mockPlayers[fallbackPlayerIndex], team }; // Team might be incomplete here
+  }
   const playerIndex = Math.floor(Math.random() * team.players.length);
   const player = team.players[playerIndex];
   return { player, team };
 };
 
 const getRandomMatchContext = (): string => {
-  const matchIndex = Math.floor(Math.random() * mockMatches.filter(m => m.status === 'completed').length);
-  const match = mockMatches.filter(m => m.status === 'completed')[matchIndex];
+  const completedMatches = mockMatches.filter(m => m.status === 'completed');
+  if (completedMatches.length === 0) return "An epic clash"; // Fallback if no completed matches
+  const matchIndex = Math.floor(Math.random() * completedMatches.length);
+  const match = completedMatches[matchIndex];
   return match ? `${match.teamA.name} vs ${match.teamB.name}` : "An epic clash";
 }
 
@@ -142,48 +151,46 @@ export const generateMockPlayerAverageLeaders = (): StatItem[] => {
     { name: "Avg. Net Worth", icon: DollarSign, unit: "", min: 18000, max: 28000, decimals: 0, formatter: (val: number) => (val/1000).toFixed(1) + 'k' },
     { name: "Avg. Fantasy Score", icon: Award, unit: " Points", min: 50, max: 120, decimals: 1 },
   ];
-
-  mockPlayers.slice(0, 10).forEach((player) => { // Show top 10 players for variety
-     const team = mockTeams.find(t => t.players.some(p => p.id.startsWith(player.id))); // Find player's team
-     const cat = categories[Math.floor(Math.random() * categories.length)]; // Pick a random category for this player to lead
-     const rawValue = (Math.random() * (cat.max - cat.min)) + cat.min;
-     const displayValue = cat.formatter ? cat.formatter(rawValue) : rawValue.toFixed(cat.decimals);
-      leaders.push({
-        id: `pal-${player.id}-${cat.name.replace(/\s/g, '')}`,
-        category: cat.name,
-        playerName: player.nickname,
-        teamName: team ? team.name : "Unknown Team",
-        value: `${displayValue}${cat.unit}`,
-        icon: cat.icon,
-      });
-  });
-  // Ensure we have one leader for each category if possible, by picking unique players
+  
   const uniqueLeaders: StatItem[] = [];
-  const playerIndices = new Set<number>();
+  const assignedPlayersForCategories = new Set<string>(); // To ensure a player doesn't lead multiple average categories for this mock display
+
   categories.forEach((cat, index) => {
-    let pIndex;
-    do {
-      pIndex = Math.floor(Math.random() * mockPlayers.length);
-    } while (playerIndices.has(pIndex) && playerIndices.size < mockPlayers.length);
-    playerIndices.add(pIndex);
+    let selectedPlayer: Player | undefined;
+    let selectedTeam: Team | undefined;
+    let attempts = 0;
+
+    // Try to find a player not yet assigned to a category
+    while(attempts < mockPlayers.length * 2) { // Limit attempts to avoid infinite loops
+        const { player: randomPlayerFromTeam, team: randomTeam } = getRandomPlayerAndTeam();
+        if (!assignedPlayersForCategories.has(randomPlayerFromTeam.id)) {
+            selectedPlayer = randomPlayerFromTeam;
+            selectedTeam = randomTeam;
+            assignedPlayersForCategories.add(randomPlayerFromTeam.id);
+            break;
+        }
+        attempts++;
+    }
     
-    const player = mockPlayers[pIndex];
-    const team = mockTeams.find(t => t.players.some(p => p.id.startsWith(player.id)));
+    // Fallback if all players are assigned or no suitable player found
+    if (!selectedPlayer) {
+        const { player: randomPlayerFromTeam, team: randomTeam } = getRandomPlayerAndTeam();
+        selectedPlayer = randomPlayerFromTeam;
+        selectedTeam = randomTeam;
+    }
+
     const rawValue = (Math.random() * (cat.max - cat.min)) + cat.min;
     const displayValue = cat.formatter ? cat.formatter(rawValue) : rawValue.toFixed(cat.decimals);
 
-    if (!uniqueLeaders.find(l => l.category === cat.name)) {
-       uniqueLeaders.push({
-        id: `pal-${index}`,
-        category: cat.name,
-        playerName: player.nickname,
-        teamName: team ? team.name : "N/A",
-        value: `${displayValue}${cat.unit}`,
-        icon: cat.icon,
-      });
-    }
+    uniqueLeaders.push({
+      id: `pal-${index}-${selectedPlayer.id}`,
+      category: cat.name,
+      playerName: selectedPlayer.nickname,
+      teamName: selectedTeam ? selectedTeam.name : "N/A",
+      value: `${displayValue}${cat.unit}`,
+      icon: cat.icon,
+    });
   });
-
 
   return uniqueLeaders;
 };
