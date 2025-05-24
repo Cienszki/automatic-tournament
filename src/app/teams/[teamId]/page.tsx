@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Separator } from "@/components/ui/separator";
 import Image from "next/image";
 import Link from "next/link";
-import { Users, ListChecks, ExternalLink, BarChart3, Medal, Swords, UserCheck, UserX, ShieldQuestion, PlayCircle } from "lucide-react";
+import { Users, ListChecks, ExternalLink, BarChart3, Medal, Swords, UserCheck, UserX, ShieldQuestion, PlayCircle, Sigma } from "lucide-react";
 import { notFound } from "next/navigation";
 import { cn } from "@/lib/utils";
 
@@ -61,6 +61,8 @@ export default async function TeamPage({ params }: TeamPageParams) {
   if (!team) {
     notFound();
   }
+  
+  const totalMMR = team.players.reduce((sum, player) => sum + player.mmr, 0);
 
   return (
     <div className="space-y-8">
@@ -96,6 +98,7 @@ export default async function TeamPage({ params }: TeamPageParams) {
              <InfoItem icon={Medal} label="Points" value={team.points ?? 0} />
              <InfoItem icon={ListChecks} label="Matches Played" value={team.matchesPlayed ?? 0} />
              <InfoItem icon={BarChart3} label="Wins / Losses" value={`${team.matchesWon ?? 0}W / ${team.matchesLost ?? 0}L`} />
+             <InfoItem icon={Sigma} label="Total MMR" value={totalMMR.toLocaleString()} />
           </div>
           <div className="md:col-span-2">
             <h3 className="text-2xl font-semibold mb-4 flex items-center text-foreground">
