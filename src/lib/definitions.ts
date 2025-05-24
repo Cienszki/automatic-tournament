@@ -5,11 +5,15 @@ import type { LucideIcon } from "lucide-react";
 export const PlayerRoles = ["Carry", "Mid", "Offlane", "Soft Support", "Hard Support"] as const;
 export type PlayerRole = typeof PlayerRoles[number];
 
+export const TournamentStatuses = ["Not Verified", "Verified", "Active", "Eliminated"] as const;
+export type TournamentStatus = typeof TournamentStatuses[number];
+
 export type Player = {
   id: string;
   nickname: string;
   mmr: number;
   role: PlayerRole;
+  status: TournamentStatus;
   profileScreenshotUrl?: string; // URL after upload
   steamProfileUrl: string;
   openDotaProfileUrl?: string;
@@ -20,6 +24,7 @@ export type Team = {
   name: string;
   logoUrl?: string; // URL after upload
   players: Player[];
+  status: TournamentStatus;
   matchesPlayed?: number;
   matchesWon?: number;
   matchesLost?: number;

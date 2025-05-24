@@ -1,13 +1,15 @@
 
 import { mockPlayers, mockTeams } from "@/lib/mock-data";
-import type { Player, Team } from "@/lib/definitions";
+import type { Player, Team, TournamentStatus } from "@/lib/definitions";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { ExternalLink, BarChartHorizontalBig, Star, TrendingUp, Shield, BarChart3 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { ExternalLink, BarChartHorizontalBig, Star, TrendingUp, Shield, BarChart3, UserCheck, UserX, ShieldQuestion, PlayCircle } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { cn } from "@/lib/utils";
 
 interface PlayerPageParams {
   params: {
@@ -18,20 +20,49 @@ interface PlayerPageParams {
 
 async function getPlayerData(teamId: string, playerId: string): Promise<{ player: Player | undefined, team: Team | undefined }> {
   const team = mockTeams.find(t => t.id === teamId);
-  // The player IDs in mockTeams might be appended with teamId, so adjust find logic
-  const playerGeneralInfo = mockPlayers.find(p => p.id === playerId.split('-')[0]); // Match base player ID
   
-  if (playerGeneralInfo && team) {
-     // Find the specific player instance within the team's roster to get potentially team-specific details and the correct ID
-     const playerInTeamRoster = team.players.find(tp => tp.id === playerId);
-     if (playerInTeamRoster) {
-       // Merge general info with roster-specific info (which includes the unique ID)
-       return { player: {...playerGeneralInfo, ...playerInTeamRoster}, team };
-     }
+  let playerInTeamRoster: Player | undefined;
+  if (team) {
+     playerInTeamRoster = team.players.find(tp => tp.id === playerId);
   }
-  // Fallback if player not found in team roster for some reason, or team not found
-  const player = mockPlayers.find(p => p.id === playerId || playerId.startsWith(p.id + "-t"));
-  return { player, team };
+  
+  if (playerInTeamRoster && team) {
+    return { player: playerInTeamRoster, team };
+  }
+  
+  // Fallback or if player might exist outside a specific team context (less likely with current data structure)
+  const playerGeneralInfo = mockPlayers.find(p => p.id === playerId || playerId.startsWith(p.id + "-t"));
+  return { player: playerGeneralInfo, team };
+}
+
+const getStatusBadgeClasses = (status: TournamentStatus) => {
+  switch (status) {
+    case "Not Verified":
+      return "bg-yellow-500/20 text-yellow-300 border-yellow-500/40 hover:bg-yellow-500/30";
+    case "Verified":
+      return "bg-green-500/20 text-green-300 border-green-500/40 hover:bg-green-500/30";
+    case "Active":
+      return "bg-secondary text-secondary-foreground hover:bg-secondary/80";
+    case "Eliminated":
+      return "bg-destructive text-destructive-foreground hover:bg-destructive/80";
+    default:
+      return "border-transparent bg-gray-500 text-gray-100";
+  }
+};
+
+const getStatusIcon = (status: TournamentStatus) => {
+  switch (status) {
+    case "Not Verified":
+      return <ShieldQuestion className="h-4 w-4 mr-1.5" />;
+    case "Verified":
+      return <UserCheck className="h-4 w-4 mr-1.5" />;
+    case "Active":
+      return <PlayCircle className="h-4 w-4 mr-1.5" />;
+    case "Eliminated":
+      return <UserX className="h-4 w-4 mr-1.5" />;
+    default:
+      return null;
+  }
 }
 
 
@@ -61,7 +92,13 @@ export default async function PlayerPage({ params }: PlayerPageParams) {
               <AvatarFallback className="text-4xl">{player.nickname.substring(0, 2).toUpperCase()}</AvatarFallback>
             </Avatar>
             <div>
-              <CardTitle className="text-4xl font-bold text-primary">{player.nickname}</CardTitle>
+              <div className="flex items-center space-x-3 mb-1">
+                <CardTitle className="text-4xl font-bold text-primary">{player.nickname}</CardTitle>
+                <Badge className={cn("text-sm px-3 py-1", getStatusBadgeClasses(player.status))}>
+                    {getStatusIcon(player.status)}
+                    {player.status}
+                </Badge>
+              </div>
               <CardDescription className="text-lg mt-1">
                 Member of <Link href={`/teams/${team.id}`} className="text-accent hover:underline font-medium">{team.name}</Link>
               </CardDescription>
@@ -154,4 +191,3 @@ export async function generateStaticParams() {
   });
   return params;
 }
-

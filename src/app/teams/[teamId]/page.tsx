@@ -1,6 +1,6 @@
 
 import { mockTeams, mockMatches } from "@/lib/mock-data";
-import type { Team, Player, Match } from "@/lib/definitions";
+import type { Team, Player, Match, TournamentStatus } from "@/lib/definitions";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -9,8 +9,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Separator } from "@/components/ui/separator";
 import Image from "next/image";
 import Link from "next/link";
-import { Users, ListChecks, ExternalLink, BarChart3, Medal, Swords } from "lucide-react";
+import { Users, ListChecks, ExternalLink, BarChart3, Medal, Swords, UserCheck, UserX, ShieldQuestion, PlayCircle } from "lucide-react";
 import { notFound } from "next/navigation";
+import { cn } from "@/lib/utils";
 
 interface TeamPageParams {
   params: { teamId: string };
@@ -20,12 +21,38 @@ async function getTeamData(teamId: string): Promise<{ team: Team | undefined, te
   const team = mockTeams.find(t => t.id === teamId);
   if (!team) return { team: undefined, teamMatches: [] };
 
-  // The 'team.players' array from mockTeams should already contain fully formed Player objects
-  // as constructed by 'createTeamPlayers' in mock-data.ts.
-  // The previous re-mapping logic is removed for simplification and to rely directly on mock-data structure.
-
   const teamMatches = mockMatches.filter(m => m.teamA.id === teamId || m.teamB.id === teamId);
   return { team, teamMatches };
+}
+
+const getStatusBadgeClasses = (status: TournamentStatus) => {
+  switch (status) {
+    case "Not Verified":
+      return "bg-yellow-500/20 text-yellow-300 border-yellow-500/40 hover:bg-yellow-500/30";
+    case "Verified":
+      return "bg-green-500/20 text-green-300 border-green-500/40 hover:bg-green-500/30";
+    case "Active":
+      return "bg-secondary text-secondary-foreground hover:bg-secondary/80";
+    case "Eliminated":
+      return "bg-destructive text-destructive-foreground hover:bg-destructive/80";
+    default:
+      return "border-transparent bg-gray-500 text-gray-100";
+  }
+};
+
+const getStatusIcon = (status: TournamentStatus) => {
+  switch (status) {
+    case "Not Verified":
+      return <ShieldQuestion className="h-4 w-4 mr-1.5" />;
+    case "Verified":
+      return <UserCheck className="h-4 w-4 mr-1.5" />;
+    case "Active":
+      return <PlayCircle className="h-4 w-4 mr-1.5" />;
+    case "Eliminated":
+      return <UserX className="h-4 w-4 mr-1.5" />;
+    default:
+      return null;
+  }
 }
 
 export default async function TeamPage({ params }: TeamPageParams) {
@@ -48,10 +75,16 @@ export default async function TeamPage({ params }: TeamPageParams) {
               className="rounded-xl border-4 border-card object-cover shadow-md"
               data-ai-hint="team logo"
             />
-            <div>
-              <CardTitle className="text-4xl font-bold text-primary">
-                {team.name}
-              </CardTitle>
+            <div className="flex-1">
+              <div className="flex items-center space-x-3 mb-2">
+                <CardTitle className="text-4xl font-bold text-primary">
+                  {team.name}
+                </CardTitle>
+                <Badge className={cn("text-sm px-3 py-1", getStatusBadgeClasses(team.status))}>
+                  {getStatusIcon(team.status)}
+                  {team.status}
+                </Badge>
+              </div>
               <CardDescription className="text-lg mt-1">
                 Detailed profile and performance statistics.
               </CardDescription>
@@ -125,7 +158,7 @@ export default async function TeamPage({ params }: TeamPageParams) {
                       <TableCell>
                         <Link href={`/teams/${opponent.id}`} className="hover:text-primary font-medium">{opponent.name}</Link>
                       </TableCell>
-                      <TableCell className={isWin && match.status === 'completed' ? "text-green-600 font-semibold" : match.status === 'completed' ? "text-red-600 font-semibold" : ""}>
+                      <TableCell className={isWin && match.status === 'completed' ? "text-green-400 font-semibold" : match.status === 'completed' ? "text-red-400 font-semibold" : ""}>
                         {resultText}
                       </TableCell>
                       <TableCell>{scoreText}</TableCell>
@@ -200,7 +233,6 @@ export async function generateMetadata({ params }: TeamPageParams) {
 }
 
 export async function generateStaticParams() {
-  // In a real app, fetch all team IDs
   return mockTeams.map(team => ({
     teamId: team.id,
   }));

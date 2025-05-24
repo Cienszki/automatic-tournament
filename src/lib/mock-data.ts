@@ -1,33 +1,37 @@
 
-import type { Team, Player, Match, Group, PlayerRole, StatItem, TournamentHighlightRecord } from './definitions';
-import { PlayerRoles } from './definitions';
+import type { Team, Player, Match, Group, PlayerRole, StatItem, TournamentHighlightRecord, TournamentStatus } from './definitions';
+import { PlayerRoles, TournamentStatuses } from './definitions';
 import {
   Award, BarChart2, TrendingUp, TrendingDown, ShieldAlert, DollarSign, Eye, HelpCircle, Bomb, Swords, HeartHandshake, Zap, Clock, Activity, ShieldCheck, ChevronsUp, Timer, Skull, ListChecks, Medal
 } from 'lucide-react';
 
+const getRandomStatus = (): TournamentStatus => {
+  return TournamentStatuses[Math.floor(Math.random() * TournamentStatuses.length)];
+}
+
 export const mockPlayers: Player[] = [
-  { id: 'p1', nickname: 'ShadowStriker', mmr: 6200, role: PlayerRoles[0], steamProfileUrl: 'https://steamcommunity.com/id/shadowstriker', openDotaProfileUrl: 'https://www.opendota.com/search?q=ShadowStriker' },
-  { id: 'p2', nickname: 'MysticMage', mmr: 5800, role: PlayerRoles[1], steamProfileUrl: 'https://steamcommunity.com/id/mysticmage', openDotaProfileUrl: 'https://www.opendota.com/search?q=MysticMage' },
-  { id: 'p3', nickname: 'IronGuard', mmr: 5500, role: PlayerRoles[2], steamProfileUrl: 'https://steamcommunity.com/id/ironguard', openDotaProfileUrl: 'https://www.opendota.com/search?q=IronGuard' },
-  { id: 'p4', nickname: 'SilentSniper', mmr: 6000, role: PlayerRoles[3], steamProfileUrl: 'https://steamcommunity.com/id/silentsniper', openDotaProfileUrl: 'https://www.opendota.com/search?q=SilentSniper' },
-  { id: 'p5', nickname: 'RapidReaper', mmr: 5900, role: PlayerRoles[4], steamProfileUrl: 'https://steamcommunity.com/id/rapidreaper', openDotaProfileUrl: 'https://www.opendota.com/search?q=RapidReaper' },
-  { id: 'p6', nickname: 'CrimsonBlade', mmr: 5700, role: PlayerRoles[0], steamProfileUrl: 'https://steamcommunity.com/id/crimsonblade', openDotaProfileUrl: 'https://www.opendota.com/search?q=CrimsonBlade' },
-  { id: 'p7', nickname: 'AzureSorcerer', mmr: 6100, role: PlayerRoles[1], steamProfileUrl: 'https://steamcommunity.com/id/azuresorcerer', openDotaProfileUrl: 'https://www.opendota.com/search?q=AzureSorcerer' },
-  { id: 'p8', nickname: 'StoneWall', mmr: 5400, role: PlayerRoles[2], steamProfileUrl: 'https://steamcommunity.com/id/stonewall', openDotaProfileUrl: 'https://www.opendota.com/search?q=StoneWall' },
-  { id: 'p9', nickname: 'GhostWalker', mmr: 6300, role: PlayerRoles[3], steamProfileUrl: 'https://steamcommunity.com/id/ghostwalker', openDotaProfileUrl: 'https://www.opendota.com/search?q=GhostWalker' },
-  { id: 'p10', nickname: 'SwiftSavior', mmr: 5600, role: PlayerRoles[4], steamProfileUrl: 'https://steamcommunity.com/id/swiftsavior', openDotaProfileUrl: 'https://www.opendota.com/search?q=SwiftSavior' },
+  { id: 'p1', nickname: 'ShadowStriker', mmr: 6200, role: PlayerRoles[0], status: getRandomStatus(), steamProfileUrl: 'https://steamcommunity.com/id/shadowstriker', openDotaProfileUrl: 'https://www.opendota.com/search?q=ShadowStriker' },
+  { id: 'p2', nickname: 'MysticMage', mmr: 5800, role: PlayerRoles[1], status: getRandomStatus(), steamProfileUrl: 'https://steamcommunity.com/id/mysticmage', openDotaProfileUrl: 'https://www.opendota.com/search?q=MysticMage' },
+  { id: 'p3', nickname: 'IronGuard', mmr: 5500, role: PlayerRoles[2], status: getRandomStatus(), steamProfileUrl: 'https://steamcommunity.com/id/ironguard', openDotaProfileUrl: 'https://www.opendota.com/search?q=IronGuard' },
+  { id: 'p4', nickname: 'SilentSniper', mmr: 6000, role: PlayerRoles[3], status: getRandomStatus(), steamProfileUrl: 'https://steamcommunity.com/id/silentsniper', openDotaProfileUrl: 'https://www.opendota.com/search?q=SilentSniper' },
+  { id: 'p5', nickname: 'RapidReaper', mmr: 5900, role: PlayerRoles[4], status: getRandomStatus(), steamProfileUrl: 'https://steamcommunity.com/id/rapidreaper', openDotaProfileUrl: 'https://www.opendota.com/search?q=RapidReaper' },
+  { id: 'p6', nickname: 'CrimsonBlade', mmr: 5700, role: PlayerRoles[0], status: getRandomStatus(), steamProfileUrl: 'https://steamcommunity.com/id/crimsonblade', openDotaProfileUrl: 'https://www.opendota.com/search?q=CrimsonBlade' },
+  { id: 'p7', nickname: 'AzureSorcerer', mmr: 6100, role: PlayerRoles[1], status: getRandomStatus(), steamProfileUrl: 'https://steamcommunity.com/id/azuresorcerer', openDotaProfileUrl: 'https://www.opendota.com/search?q=AzureSorcerer' },
+  { id: 'p8', nickname: 'StoneWall', mmr: 5400, role: PlayerRoles[2], status: getRandomStatus(), steamProfileUrl: 'https://steamcommunity.com/id/stonewall', openDotaProfileUrl: 'https://www.opendota.com/search?q=StoneWall' },
+  { id: 'p9', nickname: 'GhostWalker', mmr: 6300, role: PlayerRoles[3], status: getRandomStatus(), steamProfileUrl: 'https://steamcommunity.com/id/ghostwalker', openDotaProfileUrl: 'https://www.opendota.com/search?q=GhostWalker' },
+  { id: 'p10', nickname: 'SwiftSavior', mmr: 5600, role: PlayerRoles[4], status: getRandomStatus(), steamProfileUrl: 'https://steamcommunity.com/id/swiftsavior', openDotaProfileUrl: 'https://www.opendota.com/search?q=SwiftSavior' },
   // Add more players to have enough for 12 teams
-  { id: 'p11', nickname: 'BlazeRunner', mmr: 5950, role: PlayerRoles[0], steamProfileUrl: 'https://steamcommunity.com/id/blazerunner', openDotaProfileUrl: 'https://www.opendota.com/search?q=BlazeRunner' },
-  { id: 'p12', nickname: 'VoidShifter', mmr: 6050, role: PlayerRoles[1], steamProfileUrl: 'https://steamcommunity.com/id/voidshifter', openDotaProfileUrl: 'https://www.opendota.com/search?q=VoidShifter' },
-  { id: 'p13', nickname: 'RockSolid', mmr: 5300, role: PlayerRoles[2], steamProfileUrl: 'https://steamcommunity.com/id/rocksolid', openDotaProfileUrl: 'https://www.opendota.com/search?q=RockSolid' },
-  { id: 'p14', nickname: 'WhisperWind', mmr: 5750, role: PlayerRoles[3], steamProfileUrl: 'https://steamcommunity.com/id/whisperwind', openDotaProfileUrl: 'https://www.opendota.com/search?q=WhisperWind' },
-  { id: 'p15', nickname: 'HealingLight', mmr: 5450, role: PlayerRoles[4], steamProfileUrl: 'https://steamcommunity.com/id/healinglight', openDotaProfileUrl: 'https://www.opendota.com/search?q=HealingLight' },
+  { id: 'p11', nickname: 'BlazeRunner', mmr: 5950, role: PlayerRoles[0], status: getRandomStatus(), steamProfileUrl: 'https://steamcommunity.com/id/blazerunner', openDotaProfileUrl: 'https://www.opendota.com/search?q=BlazeRunner' },
+  { id: 'p12', nickname: 'VoidShifter', mmr: 6050, role: PlayerRoles[1], status: getRandomStatus(), steamProfileUrl: 'https://steamcommunity.com/id/voidshifter', openDotaProfileUrl: 'https://www.opendota.com/search?q=VoidShifter' },
+  { id: 'p13', nickname: 'RockSolid', mmr: 5300, role: PlayerRoles[2], status: getRandomStatus(), steamProfileUrl: 'https://steamcommunity.com/id/rocksolid', openDotaProfileUrl: 'https://www.opendota.com/search?q=RockSolid' },
+  { id: 'p14', nickname: 'WhisperWind', mmr: 5750, role: PlayerRoles[3], status: getRandomStatus(), steamProfileUrl: 'https://steamcommunity.com/id/whisperwind', openDotaProfileUrl: 'https://www.opendota.com/search?q=WhisperWind' },
+  { id: 'p15', nickname: 'HealingLight', mmr: 5450, role: PlayerRoles[4], status: getRandomStatus(), steamProfileUrl: 'https://steamcommunity.com/id/healinglight', openDotaProfileUrl: 'https://www.opendota.com/search?q=HealingLight' },
 ];
 
 const defaultHeroes = ['Invoker', 'Pudge', 'Juggernaut', 'Lion', 'Shadow Fiend', 'Anti-Mage', 'Phantom Assassin', 'Earthshaker', 'Lina', 'Crystal Maiden'];
 
 // Ensure each team gets a set of 5 players with distinct roles
-const createTeamPlayers = (teamIndex: number): Player[] => {
+const createTeamPlayers = (teamIndex: number, teamStatus: TournamentStatus): Player[] => {
   // Cycle through players to ensure variety if we have many teams
   const playerStartIndex = (teamIndex * 5) % mockPlayers.length;
   const teamPlayers: Player[] = [];
@@ -38,22 +42,28 @@ const createTeamPlayers = (teamIndex: number): Player[] => {
       ...basePlayer,
       id: `${basePlayer.id}-t${teamIndex + 1}-p${i + 1}`, // Unique player ID per team roster
       role: PlayerRoles[i % PlayerRoles.length] as PlayerRole, // Assign roles cyclically
+      // If team is eliminated, players on that team are also effectively eliminated in context
+      status: teamStatus === 'Eliminated' ? 'Eliminated' : basePlayer.status,
     });
   }
   return teamPlayers;
 };
 
-export const mockTeams: Team[] = Array.from({ length: 12 }, (_, i) => ({
-  id: `team${i + 1}`,
-  name: `Team Element ${i + 1}`,
-  logoUrl: `https://placehold.co/100x100.png?text=E${i+1}`,
-  players: createTeamPlayers(i),
-  matchesPlayed: Math.floor(Math.random() * 8) + 2, // Min 2 matches
-  matchesWon: Math.floor(Math.random() * 5) + 1,
-  matchesLost: Math.floor(Math.random() * 3),
-  points: Math.floor(Math.random() * 15) + 3,
-  mostPlayedHeroes: [...defaultHeroes].sort(() => 0.5 - Math.random()).slice(0, 5),
-}));
+export const mockTeams: Team[] = Array.from({ length: 12 }, (_, i) => {
+  const teamStatus = getRandomStatus();
+  return {
+    id: `team${i + 1}`,
+    name: `Team Element ${i + 1}`,
+    logoUrl: `https://placehold.co/100x100.png?text=E${i+1}`,
+    status: teamStatus,
+    players: createTeamPlayers(i, teamStatus),
+    matchesPlayed: Math.floor(Math.random() * 8) + 2, // Min 2 matches
+    matchesWon: Math.floor(Math.random() * 5) + 1,
+    matchesLost: Math.floor(Math.random() * 3),
+    points: Math.floor(Math.random() * 15) + 3,
+    mostPlayedHeroes: [...defaultHeroes].sort(() => 0.5 - Math.random()).slice(0, 5),
+  };
+});
 
 
 export const mockMatches: Match[] = [
@@ -86,19 +96,19 @@ const getRandomPlayerAndTeam = (): { player: Player; team: Team } => {
   const team = mockTeams[teamIndex];
 
   if (!team.players || team.players.length === 0) {
-    // Fallback if a team somehow has no players (shouldn't happen with current setup)
-    // This is simplified, in a real app you might throw an error or handle differently
     const fallbackPlayer = mockPlayers[Math.floor(Math.random() * mockPlayers.length)];
     return { 
-      player: { // Construct a valid Player object
+      player: {
         ...fallbackPlayer, 
-        id: `${fallbackPlayer.id}-tfb-pfb`, // Fallback ID
-        role: PlayerRoles[Math.floor(Math.random() * PlayerRoles.length)] 
+        id: `${fallbackPlayer.id}-tfb-pfb`, 
+        role: PlayerRoles[Math.floor(Math.random() * PlayerRoles.length)],
+        status: getRandomStatus(), // Ensure fallback has status
       }, 
-      team: team || { // Fallback for team if it was undefined
+      team: team || { 
         id: 'team-fallback', 
         name: 'Fallback Team', 
         players: [], 
+        status: getRandomStatus(), // Ensure fallback has status
         logoUrl: `https://placehold.co/100x100.png?text=FB`
       }
     };
@@ -111,7 +121,7 @@ const getRandomPlayerAndTeam = (): { player: Player; team: Team } => {
 
 const getRandomMatchContext = (): string => {
   const completedMatches = mockMatches.filter(m => m.status === 'completed');
-  if (completedMatches.length === 0) return "An epic clash"; // Fallback if no completed matches
+  if (completedMatches.length === 0) return "An epic clash"; 
   const matchIndex = Math.floor(Math.random() * completedMatches.length);
   const match = completedMatches[matchIndex];
   return match ? `${match.teamA.name} vs ${match.teamB.name}` : "An epic clash";
@@ -137,12 +147,12 @@ export const generateMockSingleMatchRecords = (): StatItem[] => {
     const rawValue = Math.floor(Math.random() * (cat.max - cat.min + 1)) + cat.min;
     const displayValue = cat.formatter ? cat.formatter(rawValue) : rawValue;
     records.push({
-      id: `smr-${index}`, // Stat record's own ID
+      id: `smr-${index}`, 
       category: cat.name,
-      playerName: player.nickname, // For display
-      teamName: team.name, // For display
-      playerId: player.id, // For linking
-      teamId: team.id, // For linking
+      playerName: player.nickname, 
+      teamName: team.name, 
+      playerId: player.id, 
+      teamId: team.id, 
       value: `${displayValue}${cat.unit}`,
       heroName: defaultHeroes[Math.floor(Math.random() * defaultHeroes.length)],
       matchContext: getRandomMatchContext(),
@@ -161,7 +171,7 @@ export const generateMockPlayerAverageLeaders = (): StatItem[] => {
     { name: "Avg. Wards Placed", icon: Eye, unit: " Wards", min: 10, max: 20, decimals: 1 },
     { name: "Avg. Hero Damage", icon: Bomb, unit: " DMG", min: 25000, max: 45000, decimals: 0, formatter: (val: number) => (val/1000).toFixed(1) + 'k' },
     { name: "Avg. Damage Taken", icon: ShieldAlert, unit: " DMG Taken", min: 20000, max: 35000, decimals: 0, formatter: (val: number) => (val/1000).toFixed(1) + 'k' },
-    { name: "Avg. Deaths", icon: TrendingDown, unit: " Deaths", min: 3, max: 7, decimals: 1 }, // Avg deaths, lower is better
+    { name: "Avg. Deaths", icon: TrendingDown, unit: " Deaths", min: 3, max: 7, decimals: 1 }, 
     { name: "Avg. Net Worth", icon: DollarSign, unit: "", min: 18000, max: 28000, decimals: 0, formatter: (val: number) => (val/1000).toFixed(1) + 'k' },
     { name: "Avg. Fantasy Score", icon: Award, unit: " Points", min: 50, max: 120, decimals: 1 },
   ];
@@ -173,11 +183,10 @@ export const generateMockPlayerAverageLeaders = (): StatItem[] => {
     let selectedPlayer: Player | undefined;
     let selectedTeam: Team | undefined;
     let attempts = 0;
-    const maxAttempts = mockTeams.reduce((sum, t) => sum + t.players.length, 0) + 10; // Iterate through all possible players + buffer
+    const maxAttempts = mockTeams.reduce((sum, t) => sum + t.players.length, 0) + 10; 
 
     while(attempts < maxAttempts) {
         const { player: randomPlayer, team: randomTeam } = getRandomPlayerAndTeam();
-        // Ensure player object is valid before checking id
         if (randomPlayer && randomPlayer.id && !assignedPlayersForCategories.has(randomPlayer.id)) {
             selectedPlayer = randomPlayer;
             selectedTeam = randomTeam;
@@ -187,7 +196,7 @@ export const generateMockPlayerAverageLeaders = (): StatItem[] => {
         attempts++;
     }
     
-    if (!selectedPlayer || !selectedTeam) { // Fallback if no unique player found
+    if (!selectedPlayer || !selectedTeam) { 
         const { player: randomPlayer, team: randomTeam } = getRandomPlayerAndTeam();
         selectedPlayer = randomPlayer;
         selectedTeam = randomTeam;
@@ -196,15 +205,14 @@ export const generateMockPlayerAverageLeaders = (): StatItem[] => {
     const rawValue = (Math.random() * (cat.max - cat.min)) + cat.min;
     const displayValue = cat.formatter ? cat.formatter(rawValue) : rawValue.toFixed(cat.decimals);
 
-    // Ensure selectedPlayer and selectedTeam are defined before accessing their properties
     if (selectedPlayer && selectedTeam) {
       uniqueLeaders.push({
-        id: `pal-${index}-${selectedPlayer.id}`, // Stat record's own ID
+        id: `pal-${index}-${selectedPlayer.id}`, 
         category: cat.name,
-        playerName: selectedPlayer.nickname, // For display
-        teamName: selectedTeam.name, // For display
-        playerId: selectedPlayer.id, // For linking
-        teamId: selectedTeam.id, // For linking
+        playerName: selectedPlayer.nickname, 
+        teamName: selectedTeam.name, 
+        playerId: selectedPlayer.id, 
+        teamId: selectedTeam.id, 
         value: `${displayValue}${cat.unit}`,
         icon: cat.icon,
       });
