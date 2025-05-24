@@ -1,7 +1,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowRight, LayoutGrid, Shield, CalendarDays, UserPlus, ScrollText, HelpCircle } from "lucide-react";
+import { ArrowRight, LayoutGrid, Shield, CalendarDays, UserPlus, ScrollText, HelpCircle, BarChart2, GitFork } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -67,6 +67,24 @@ export default function Home() {
           imageSrc="https://placehold.co/600x400.png"
           imageAlt="Match schedule"
           aiHint="calendar schedule"
+        />
+         <FeatureCard
+          title="Playoff Bracket"
+          description="View the tournament playoff bracket as teams advance."
+          href="/playoffs"
+          icon={GitFork}
+          imageSrc="https://placehold.co/600x400.png"
+          imageAlt="Playoff bracket"
+          aiHint="tournament bracket"
+        />
+        <FeatureCard
+          title="Tournament Stats"
+          description="Dive into detailed player and tournament statistics."
+          href="/stats"
+          icon={BarChart2}
+          imageSrc="https://placehold.co/600x400.png"
+          imageAlt="Tournament statistics"
+          aiHint="data analytics"
         />
         <FeatureCard
           title="Tournament Rules"

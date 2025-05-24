@@ -1,5 +1,6 @@
 
 import type { z } from "zod";
+import type { LucideIcon } from "lucide-react";
 
 export const PlayerRoles = ["Carry", "Mid", "Offlane", "Soft Support", "Hard Support"] as const;
 export type PlayerRole = typeof PlayerRoles[number];
@@ -68,4 +69,24 @@ export type RegistrationFormState = {
   message: string;
   errors?: z.ZodIssue[];
   success: boolean;
+};
+
+// For Stats Page
+export type StatItem = {
+  id: string;
+  category: string;
+  playerName?: string; // Optional for tournament-wide stats
+  teamName?: string;   // Optional for tournament-wide stats
+  value: string | number;
+  heroName?: string;
+  matchContext?: string; // e.g., "Team X vs Team Y" for single match records
+  icon: LucideIcon;
+};
+
+export type TournamentHighlightRecord = {
+  id: string;
+  title: string;
+  value: string;
+  details?: string;
+  icon: LucideIcon;
 };

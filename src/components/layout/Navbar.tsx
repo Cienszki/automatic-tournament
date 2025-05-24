@@ -2,7 +2,7 @@
 "use client";
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { UserPlus, LayoutGrid, Shield, CalendarDays, GitFork, ScrollText, HelpCircle } from 'lucide-react';
+import { UserPlus, LayoutGrid, Shield, CalendarDays, GitFork, ScrollText, HelpCircle, BarChart2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Logo } from './Logo';
@@ -14,6 +14,7 @@ const navItems = [
   { href: '/teams', label: 'Teams', icon: Shield },
   { href: '/schedule', label: 'Schedule', icon: CalendarDays },
   { href: '/playoffs', label: 'Playoffs', icon: GitFork },
+  { href: '/stats', label: 'Stats', icon: BarChart2 },
   { href: '/rules', label: 'Rules', icon: ScrollText },
   { href: '/faq', label: 'FAQ', icon: HelpCircle },
 ];
