@@ -25,15 +25,6 @@ export function MatchListItem({ match }: MatchListItemProps) {
     }
   }, [match.dateTime]);
 
-  const getScoreDisplay = (scoreA?: number, scoreB?: number, status?: string) => {
-    if (status === 'completed' && typeof scoreA === 'number' && typeof scoreB === 'number') {
-      return `${scoreA} - ${scoreB}`;
-    }
-    return null;
-  };
-
-  const score = getScoreDisplay(match.teamAScore, match.teamBScore, match.status);
-
   return (
     <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300 overflow-hidden">
       <CardHeader className="pb-2 bg-muted/20 text-center">
@@ -46,7 +37,7 @@ export function MatchListItem({ match }: MatchListItemProps) {
         <div className="flex items-center justify-center gap-3 md:gap-4 w-full">
           <TeamDisplay team={match.teamA} />
           {match.status === 'completed' && typeof match.teamAScore === 'number' && typeof match.teamBScore === 'number' ? (
-            <span className="text-xl md:text-2xl font-bold text-accent px-2">
+            <span className="text-xl md:text-2xl font-bold text-accent px-2 whitespace-nowrap">
               {match.teamAScore} - {match.teamBScore}
             </span>
           ) : (
@@ -54,7 +45,6 @@ export function MatchListItem({ match }: MatchListItemProps) {
           )}
           <TeamDisplay team={match.teamB} />
         </div>
-        {/* Score display was previously here, now integrated above for completed matches */}
       </CardContent>
       <CardFooter className="flex flex-col sm:flex-row justify-center items-center space-y-2 sm:space-y-0 sm:space-x-2 bg-muted/20 pt-3 pb-3">
         {match.status === 'upcoming' ? (
@@ -80,7 +70,7 @@ export function MatchListItem({ match }: MatchListItemProps) {
 
 function TeamDisplay({ team }: { team: Match['teamA']}) {
     return (
-        <Link href={`/teams/${team.id}`} className="flex flex-col items-center space-y-1 group w-full max-w-[calc(50%-1rem)] md:max-w-[calc(50%-2rem)]"> {/* Adjusted max-width for score */}
+        <Link href={`/teams/${team.id}`} className="flex flex-col items-center space-y-1 group w-full max-w-[calc(50%-1.5rem)] md:max-w-[calc(50%-2.5rem)]"> {/* Adjusted max-width for score */}
             <Image
                 src={team.logoUrl || `https://placehold.co/64x64.png?text=${team.name.charAt(0)}`}
                 alt={`${team.name} logo`}
