@@ -3,7 +3,7 @@ import { MatchListItem } from "@/components/app/MatchListItem";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { mockMatches } from "@/lib/mock-data";
 import type { Match } from "@/lib/definitions";
-import { AlertCircle, CalendarClock, History } from "lucide-react";
+import { AlertCircle, CalendarClock, History } from "lucide-react"; // Imported History and CalendarClock
 
 async function getUpcomingMatches(): Promise<Match[]> {
   // In a real app, fetch this data from your Google Sheet or API
@@ -19,16 +19,10 @@ async function getUpcomingMatches(): Promise<Match[]> {
 }
 
 async function getRecentMatches(): Promise<Match[]> {
-  // In a real app, fetch this data from your Google Sheet or API
   const now = new Date();
-  // Optionally, define how far back to look, e.g., last 7 or 30 days.
-  // For now, let's show all completed matches in the past.
-  // const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-
   return mockMatches
     .filter(match => {
       const matchDate = new Date(match.dateTime);
-      // return matchDate <= now && matchDate >= thirtyDaysAgo && match.status === 'completed';
       return matchDate <= now && match.status === 'completed';
     })
     .sort((a, b) => new Date(b.dateTime).getTime() - new Date(a.dateTime).getTime()); // Sort by most recent first
@@ -55,7 +49,7 @@ export default async function SchedulePage() {
         <section className="space-y-4">
           <div className="text-center py-2">
             <h2 className="text-3xl font-semibold text-accent flex items-center justify-center">
-              <History className="h-8 w-8 mr-3" />
+              <History className="h-8 w-8 mr-3" /> {/* Icon added */}
               Recent Results
             </h2>
           </div>
@@ -82,7 +76,7 @@ export default async function SchedulePage() {
         <section className="space-y-4">
            <div className="text-center py-2">
             <h2 className="text-3xl font-semibold text-accent flex items-center justify-center">
-                <CalendarClock className="h-8 w-8 mr-3" />
+                <CalendarClock className="h-8 w-8 mr-3" /> {/* Icon added */}
                 Upcoming Games
             </h2>
           </div>
@@ -117,3 +111,4 @@ export const metadata = {
   title: "Schedule | Tournament Tracker",
   description: "View upcoming and recent matches for the tournament."
 }
+

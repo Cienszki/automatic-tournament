@@ -3,9 +3,9 @@
 
 import { useState, useEffect } from "react";
 import type { Match } from "@/lib/definitions";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader } from "@/components/ui/card"; // CardTitle removed
+import { Card, CardContent, CardDescription, CardFooter, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { CalendarPlus } from "lucide-react";
+import { CalendarPlus, ExternalLink } from "lucide-react"; // Added ExternalLink
 import Image from "next/image";
 import Link from "next/link";
 
@@ -14,14 +14,14 @@ interface MatchListItemProps {
 }
 
 export function MatchListItem({ match }: MatchListItemProps) {
-  const [formattedDateTime, setFormattedDateTime] = useState<string | null>(null);
+  const [formattedDate, setFormattedDate] = useState<string | null>(null);
+  const [formattedTime, setFormattedTime] = useState<string | null>(null);
 
   useEffect(() => {
     if (match.dateTime) {
-      const matchDate = new Date(match.dateTime);
-      const datePart = matchDate.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-      const timePart = matchDate.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
-      setFormattedDateTime(`${datePart} at ${timePart}`);
+      const matchDateObj = new Date(match.dateTime);
+      setFormattedDate(matchDateObj.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' }));
+      setFormattedTime(matchDateObj.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }));
     }
   }, [match.dateTime]);
 
@@ -37,13 +37,13 @@ export function MatchListItem({ match }: MatchListItemProps) {
   return (
     <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300 overflow-hidden">
       <CardHeader className="pb-2 bg-muted/20 text-center">
-        {/* CardTitle removed */}
         <CardDescription className="text-sm">
-          {formattedDateTime !== null ? formattedDateTime : "Loading date & time..."}
+          {formattedDate !== null ? <span>{formattedDate}</span> : <span>Loading date...</span>}
+          {formattedTime !== null ? <span className="block">{formattedTime}</span> : <span className="block">Loading time...</span>}
         </CardDescription>
       </CardHeader>
       <CardContent className="py-4 flex flex-col items-center justify-center gap-2">
-        <div className="flex items-center justify-center gap-3 md:gap-4">
+        <div className="flex items-center justify-center gap-3 md:gap-4 w-full">
           <TeamDisplay team={match.teamA} />
           <span className="text-lg md:text-xl font-bold text-primary">vs</span>
           <TeamDisplay team={match.teamB} />
@@ -51,39 +51,47 @@ export function MatchListItem({ match }: MatchListItemProps) {
         {score && (
           <div className="mt-1 text-center">
             <span className="text-lg font-bold text-accent">{score}</span>
-            {match.status === 'completed' && (
-               <p className="text-xs text-muted-foreground">(Final Score)</p>
-            )}
+            {/* "(Final Score)" text removed */}
           </div>
         )}
       </CardContent>
       <CardFooter className="flex flex-col sm:flex-row justify-between items-center space-y-2 sm:space-y-0 sm:space-x-2 bg-muted/20 pt-3 pb-3">
-        <Button variant="outline" size="sm" onClick={() => alert('Add to Google Calendar (simulated)')}>
-          <CalendarPlus className="h-4 w-4 mr-2" /> Google Calendar
-        </Button>
-        <Button variant="outline" size="sm" onClick={() => alert('Add to Apple Calendar (simulated)')}>
-          <CalendarPlus className="h-4 w-4 mr-2" /> Apple Calendar
-        </Button>
+        {match.status === 'upcoming' ? (
+          <>
+            <Button variant="outline" size="sm" onClick={() => alert('Add to Google Calendar (simulated)')}>
+              <CalendarPlus className="h-4 w-4 mr-2" /> Google Calendar
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => alert('Add to Apple Calendar (simulated)')}>
+              <CalendarPlus className="h-4 w-4 mr-2" /> Apple Calendar
+            </Button>
+          </>
+        ) : match.status === 'completed' && match.openDotaMatchUrl ? (
+          <Button variant="outline" size="sm" asChild>
+            <Link href={match.openDotaMatchUrl} target="_blank" rel="noopener noreferrer">
+              <ExternalLink className="h-4 w-4 mr-2" /> View on OpenDota
+            </Link>
+          </Button>
+        ) : null}
       </CardFooter>
     </Card>
   );
 }
 
 function TeamDisplay({ team }: { team: Match['teamA']}) {
-    // Removed alignment prop as centering is handled by parent
     return (
-        <Link href={`/teams/${team.id}`} className="flex flex-col items-center space-y-1 group">
+        <Link href={`/teams/${team.id}`} className="flex flex-col items-center space-y-1 group w-full max-w-[calc(50%-1rem)] md:max-w-[calc(50%-1.5rem)]"> {/* Adjust max-width */}
             <Image
                 src={team.logoUrl || `https://placehold.co/64x64.png?text=${team.name.charAt(0)}`}
                 alt={`${team.name} logo`}
-                width={48} // Slightly smaller for better fit
+                width={48} 
                 height={48}
                 className="rounded-full object-cover border-2 border-transparent group-hover:border-primary transition-colors"
                 data-ai-hint="team logo"
             />
-            <span className="font-semibold text-md text-center group-hover:text-primary transition-colors w-24 truncate" title={team.name}>
+            <span className="font-semibold text-md text-center group-hover:text-primary transition-colors overflow-hidden text-ellipsis whitespace-nowrap w-full" title={team.name}>
               {team.name}
             </span>
         </Link>
     );
 }
+

@@ -40,6 +40,7 @@ export type Match = {
   teamBScore?: number;
   dateTime: Date;
   status: 'upcoming' | 'live' | 'completed';
+  openDotaMatchUrl?: string; // Added for OpenDota link
 };
 
 export type Group = {
@@ -66,7 +67,7 @@ export type TeamRegistrationFormData = {
   player3: PlayerFormData;
   player4: PlayerFormData;
   player5: PlayerFormData;
-  rulesAgreed: boolean; // Form state before validation
+  rulesAgreed: boolean;
 };
 
 // For server action state
@@ -97,3 +98,4 @@ export type TournamentHighlightRecord = {
   details?: string;
   icon: LucideIcon;
 };
+
