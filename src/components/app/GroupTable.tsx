@@ -46,7 +46,7 @@ export function GroupTable({ group }: GroupTableProps) {
                       alt={`${team.name} logo`} 
                       width={32} 
                       height={32} 
-                      className="rounded-full object-cover"
+                      className="rounded-md object-cover"
                       data-ai-hint="team logo"
                     />
                     <span className="font-medium">{team.name}</span>

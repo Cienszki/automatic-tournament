@@ -5,7 +5,7 @@ import { useState, useEffect } from "react";
 import type { Match } from "@/lib/definitions";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { CalendarPlus, ExternalLink } from "lucide-react"; // Added ExternalLink
+import { CalendarPlus, ExternalLink } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -21,7 +21,7 @@ export function MatchListItem({ match }: MatchListItemProps) {
     if (match.dateTime) {
       const matchDateObj = new Date(match.dateTime);
       setFormattedDate(matchDateObj.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' }));
-      setFormattedTime(matchDateObj.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }));
+      setFormattedTime(matchDateObj.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false }));
     }
   }, [match.dateTime]);
 
@@ -51,7 +51,6 @@ export function MatchListItem({ match }: MatchListItemProps) {
         {score && (
           <div className="mt-1 text-center">
             <span className="text-lg font-bold text-accent">{score}</span>
-            {/* "(Final Score)" text removed */}
           </div>
         )}
       </CardContent>
@@ -79,13 +78,13 @@ export function MatchListItem({ match }: MatchListItemProps) {
 
 function TeamDisplay({ team }: { team: Match['teamA']}) {
     return (
-        <Link href={`/teams/${team.id}`} className="flex flex-col items-center space-y-1 group w-full max-w-[calc(50%-1rem)] md:max-w-[calc(50%-1.5rem)]"> {/* Adjust max-width */}
+        <Link href={`/teams/${team.id}`} className="flex flex-col items-center space-y-1 group w-full max-w-[calc(50%-1rem)] md:max-w-[calc(50%-1.5rem)]">
             <Image
                 src={team.logoUrl || `https://placehold.co/64x64.png?text=${team.name.charAt(0)}`}
                 alt={`${team.name} logo`}
                 width={48} 
                 height={48}
-                className="rounded-full object-cover border-2 border-transparent group-hover:border-primary transition-colors"
+                className="rounded-md object-cover border-2 border-transparent group-hover:border-primary transition-colors"
                 data-ai-hint="team logo"
             />
             <span className="font-semibold text-md text-center group-hover:text-primary transition-colors overflow-hidden text-ellipsis whitespace-nowrap w-full" title={team.name}>
@@ -94,4 +93,3 @@ function TeamDisplay({ team }: { team: Match['teamA']}) {
         </Link>
     );
 }
-
