@@ -45,14 +45,16 @@ export function MatchListItem({ match }: MatchListItemProps) {
       <CardContent className="py-4 flex flex-col items-center justify-center gap-2">
         <div className="flex items-center justify-center gap-3 md:gap-4 w-full">
           <TeamDisplay team={match.teamA} />
-          <span className="text-lg md:text-xl font-bold text-primary">vs</span>
+          {match.status === 'completed' && typeof match.teamAScore === 'number' && typeof match.teamBScore === 'number' ? (
+            <span className="text-xl md:text-2xl font-bold text-accent px-2">
+              {match.teamAScore} - {match.teamBScore}
+            </span>
+          ) : (
+            <span className="text-lg md:text-xl font-bold text-primary">vs</span>
+          )}
           <TeamDisplay team={match.teamB} />
         </div>
-        {score && (
-          <div className="mt-1 text-center">
-            <span className="text-lg font-bold text-accent">{score}</span>
-          </div>
-        )}
+        {/* Score display was previously here, now integrated above for completed matches */}
       </CardContent>
       <CardFooter className="flex flex-col sm:flex-row justify-center items-center space-y-2 sm:space-y-0 sm:space-x-2 bg-muted/20 pt-3 pb-3">
         {match.status === 'upcoming' ? (
@@ -78,11 +80,11 @@ export function MatchListItem({ match }: MatchListItemProps) {
 
 function TeamDisplay({ team }: { team: Match['teamA']}) {
     return (
-        <Link href={`/teams/${team.id}`} className="flex flex-col items-center space-y-1 group w-full max-w-[calc(50%-1rem)] md:max-w-[calc(50%-1.5rem)]">
+        <Link href={`/teams/${team.id}`} className="flex flex-col items-center space-y-1 group w-full max-w-[calc(50%-1rem)] md:max-w-[calc(50%-2rem)]"> {/* Adjusted max-width for score */}
             <Image
                 src={team.logoUrl || `https://placehold.co/64x64.png?text=${team.name.charAt(0)}`}
                 alt={`${team.name} logo`}
-                width={48} 
+                width={48}
                 height={48}
                 className="rounded-md object-cover border-2 border-transparent group-hover:border-primary transition-colors"
                 data-ai-hint="team logo"
