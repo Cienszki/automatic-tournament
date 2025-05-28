@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import Image from "next/image";
 import Link from "next/link";
-import { Sigma, Shield, Swords, Sparkles, HandHelping, Eye, ListChecks, Medal, UserCheck, UserX, ShieldQuestion, PlayCircle } from "lucide-react";
+import { Sigma, Shield, Swords, Sparkles, HandHelping, Eye, ListChecks, Medal, UserCheck, UserX, ShieldQuestion, PlayCircle, Trophy } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface TeamCardProps {
@@ -33,12 +33,12 @@ const getStatusBadge = (status: TournamentStatus) => {
   switch (status) {
     case "Not Verified":
       return <Badge className="bg-yellow-500/20 text-yellow-300 border-yellow-500/40 hover:bg-yellow-500/30 text-xs"><ShieldQuestion className="h-3 w-3 mr-1.5" />Not Verified</Badge>;
-    case "Verified":
-      return <Badge className="bg-green-500/20 text-green-300 border-green-500/40 hover:bg-green-500/30 text-xs"><UserCheck className="h-3 w-3 mr-1.5" />Verified</Badge>;
     case "Active":
       return <Badge variant="secondary" className="text-xs"><PlayCircle className="h-3 w-3 mr-1.5" />Active</Badge>;
     case "Eliminated":
       return <Badge variant="destructive" className="text-xs"><UserX className="h-3 w-3 mr-1.5" />Eliminated</Badge>;
+    case "Champions":
+      return <Badge className="bg-yellow-400/20 text-yellow-300 border-yellow-500/40 hover:bg-yellow-400/30 text-xs"><Trophy className="h-3 w-3 mr-1.5" />Champions</Badge>;
     default:
       return <Badge variant="outline" className="text-xs">{status}</Badge>;
   }
@@ -51,7 +51,8 @@ export function TeamCard({ team }: TeamCardProps) {
   return (
     <Card className={cn(
       "flex flex-col h-full shadow-lg hover:shadow-xl transition-shadow duration-300",
-      team.status === 'Eliminated' && "bg-destructive/10 border-destructive/30"
+      team.status === 'Eliminated' && "bg-destructive/10 border-destructive/30",
+      team.status === 'Champions' && "bg-yellow-400/10 border-yellow-500/30"
     )}>
       <CardHeader className="flex flex-row items-start space-x-4 pb-4">
         <Image 
@@ -91,9 +92,9 @@ export function TeamCard({ team }: TeamCardProps) {
           <div className="space-y-1">
             <ul className="space-y-0.5 text-xs">
               {team.players.slice(0, 5).map((player) => (
-                <li key={player.id} className="flex items-center">
+                <li key={player.id} className="flex items-center" title={player.nickname}>
                   {getRoleIcon(player.role)}
-                  <span className="truncate" title={player.nickname}>{player.nickname}</span>
+                  <span className="truncate">{player.nickname}</span>
                 </li>
               ))}
             </ul>

@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ExternalLink, BarChartHorizontalBig, Star, TrendingUp, Shield, BarChart3, UserCheck, UserX, ShieldQuestion, PlayCircle } from "lucide-react";
+import { ExternalLink, BarChartHorizontalBig, Star, TrendingUp, Shield, BarChart3, UserCheck, UserX, ShieldQuestion, PlayCircle, Trophy } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -39,12 +39,12 @@ const getStatusBadgeClasses = (status: TournamentStatus) => {
   switch (status) {
     case "Not Verified":
       return "bg-yellow-500/20 text-yellow-300 border-yellow-500/40 hover:bg-yellow-500/30";
-    case "Verified":
-      return "bg-green-500/20 text-green-300 border-green-500/40 hover:bg-green-500/30";
     case "Active":
       return "bg-secondary text-secondary-foreground hover:bg-secondary/80";
     case "Eliminated":
       return "bg-destructive text-destructive-foreground hover:bg-destructive/80";
+    case "Champions":
+      return "bg-yellow-400/20 text-yellow-300 border-yellow-500/40 hover:bg-yellow-400/30";
     default:
       return "border-transparent bg-gray-500 text-gray-100";
   }
@@ -54,12 +54,12 @@ const getStatusIcon = (status: TournamentStatus) => {
   switch (status) {
     case "Not Verified":
       return <ShieldQuestion className="h-4 w-4 mr-1.5" />;
-    case "Verified":
-      return <UserCheck className="h-4 w-4 mr-1.5" />;
     case "Active":
       return <PlayCircle className="h-4 w-4 mr-1.5" />;
     case "Eliminated":
       return <UserX className="h-4 w-4 mr-1.5" />;
+    case "Champions":
+      return <Trophy className="h-4 w-4 mr-1.5" />;
     default:
       return null;
   }

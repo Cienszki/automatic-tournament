@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Separator } from "@/components/ui/separator";
 import Image from "next/image";
 import Link from "next/link";
-import { Users, ListChecks, ExternalLink, BarChart3, Medal, Swords, UserCheck, UserX, ShieldQuestion, PlayCircle, Sigma } from "lucide-react";
+import { Users, ListChecks, ExternalLink, BarChart3, Medal, Swords, UserCheck, UserX, ShieldQuestion, PlayCircle, Sigma, Trophy } from "lucide-react";
 import { notFound } from "next/navigation";
 import { cn } from "@/lib/utils";
 
@@ -29,12 +29,12 @@ const getStatusBadgeClasses = (status: TournamentStatus) => {
   switch (status) {
     case "Not Verified":
       return "bg-yellow-500/20 text-yellow-300 border-yellow-500/40 hover:bg-yellow-500/30";
-    case "Verified":
-      return "bg-green-500/20 text-green-300 border-green-500/40 hover:bg-green-500/30";
     case "Active":
       return "bg-secondary text-secondary-foreground hover:bg-secondary/80";
     case "Eliminated":
       return "bg-destructive text-destructive-foreground hover:bg-destructive/80";
+    case "Champions":
+      return "bg-yellow-400/20 text-yellow-300 border-yellow-500/40 hover:bg-yellow-400/30";
     default:
       return "border-transparent bg-gray-500 text-gray-100";
   }
@@ -44,12 +44,12 @@ const getStatusIcon = (status: TournamentStatus) => {
   switch (status) {
     case "Not Verified":
       return <ShieldQuestion className="h-4 w-4 mr-1.5" />;
-    case "Verified":
-      return <UserCheck className="h-4 w-4 mr-1.5" />;
     case "Active":
       return <PlayCircle className="h-4 w-4 mr-1.5" />;
     case "Eliminated":
       return <UserX className="h-4 w-4 mr-1.5" />;
+    case "Champions":
+      return <Trophy className="h-4 w-4 mr-1.5" />;
     default:
       return null;
   }

@@ -5,7 +5,7 @@ import type { LucideIcon } from "lucide-react";
 export const PlayerRoles = ["Carry", "Mid", "Offlane", "Soft Support", "Hard Support"] as const;
 export type PlayerRole = typeof PlayerRoles[number];
 
-export const TournamentStatuses = ["Not Verified", "Verified", "Active", "Eliminated"] as const;
+export const TournamentStatuses = ["Not Verified", "Active", "Eliminated", "Champions"] as const;
 export type TournamentStatus = typeof TournamentStatuses[number];
 
 export type Player = {
@@ -40,7 +40,7 @@ export type Match = {
   teamBScore?: number;
   dateTime: Date;
   status: 'upcoming' | 'live' | 'completed';
-  openDotaMatchUrl?: string; // Added for OpenDota link
+  openDotaMatchUrl?: string;
 };
 
 export type Group = {
@@ -70,24 +70,25 @@ export type TeamRegistrationFormData = {
   rulesAgreed: boolean;
 };
 
-// For server action state
+// For server action state (remains in definitions.ts as it's used by actions and page)
 export type RegistrationFormState = {
   message: string;
   errors?: z.ZodIssue[];
   success: boolean;
 };
 
+
 // For Stats Page
 export type StatItem = {
-  id: string; // This is the stat record's own ID, e.g., "smr-1"
+  id: string;
   category: string;
-  playerName?: string; // For display
-  teamName?: string;   // For display
-  playerId?: string;   // For linking
-  teamId?: string;     // For linking
+  playerName?: string;
+  teamName?: string;
+  playerId?: string; 
+  teamId?: string;   
   value: string | number;
   heroName?: string;
-  matchContext?: string; // e.g., "Team X vs Team Y" for single match records
+  matchContext?: string;
   icon: LucideIcon;
 };
 
@@ -98,4 +99,3 @@ export type TournamentHighlightRecord = {
   details?: string;
   icon: LucideIcon;
 };
-
