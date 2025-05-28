@@ -54,7 +54,7 @@ export function MatchListItem({ match }: MatchListItemProps) {
           </div>
         )}
       </CardContent>
-      <CardFooter className="flex flex-col sm:flex-row justify-between items-center space-y-2 sm:space-y-0 sm:space-x-2 bg-muted/20 pt-3 pb-3">
+      <CardFooter className="flex flex-col sm:flex-row justify-center items-center space-y-2 sm:space-y-0 sm:space-x-2 bg-muted/20 pt-3 pb-3">
         {match.status === 'upcoming' ? (
           <>
             <Button variant="outline" size="sm" onClick={() => alert('Add to Google Calendar (simulated)')}>
