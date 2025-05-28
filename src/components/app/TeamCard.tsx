@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import Image from "next/image";
 import Link from "next/link";
-import { Sigma, Shield, Swords, Sparkles, HandHelping, Eye, ListChecks, Medal, UserCheck, UserX, ShieldQuestion, PlayCircle, Trophy } from "lucide-react";
+import { Sigma, Shield, Swords, Sparkles, HandHelping, Eye, ListChecks, Medal, UserX, ShieldQuestion, PlayCircle, Trophy } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface TeamCardProps {
@@ -32,7 +32,7 @@ const getRoleIcon = (role: PlayerRole) => {
 const getStatusBadge = (status: TournamentStatus) => {
   switch (status) {
     case "Not Verified":
-      return <Badge className="bg-yellow-500/20 text-yellow-300 border-yellow-500/40 hover:bg-yellow-500/30 text-xs"><ShieldQuestion className="h-3 w-3 mr-1.5" />Not Verified</Badge>;
+      return <Badge className="bg-gray-500/20 text-gray-300 border-gray-500/40 hover:bg-gray-500/30 text-xs"><ShieldQuestion className="h-3 w-3 mr-1.5" />Not Verified</Badge>;
     case "Active":
       return <Badge variant="secondary" className="text-xs"><PlayCircle className="h-3 w-3 mr-1.5" />Active</Badge>;
     case "Eliminated":

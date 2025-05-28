@@ -28,7 +28,7 @@ async function getTeamData(teamId: string): Promise<{ team: Team | undefined, te
 const getStatusBadgeClasses = (status: TournamentStatus) => {
   switch (status) {
     case "Not Verified":
-      return "bg-yellow-500/20 text-yellow-300 border-yellow-500/40 hover:bg-yellow-500/30";
+      return "bg-gray-500/20 text-gray-300 border-gray-500/40 hover:bg-gray-500/30";
     case "Active":
       return "bg-secondary text-secondary-foreground hover:bg-secondary/80";
     case "Eliminated":
