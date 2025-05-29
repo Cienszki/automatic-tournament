@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ExternalLink, BarChartHorizontalBig, Star, TrendingUp, Shield, BarChart3, UserCheck, UserX, ShieldQuestion, PlayCircle, Trophy, Swords, Skull, Coins, Zap, Axe, Target, Wallet, ListChecks, Puzzle } from "lucide-react";
+import { ExternalLink, BarChartHorizontalBig, Star, TrendingUp, Shield, BarChart3, UserCheck, UserX, ShieldQuestion, PlayCircle, Trophy, Swords, Skull, Coins, Zap, Axe, Target, Wallet, ListChecks, Puzzle, Handshake } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -64,7 +64,7 @@ async function getPlayerData(teamId: string, playerId: string): Promise<PlayerDa
           opponentTeam: { id: opponentTeam.id, name: opponentTeam.name, logoUrl: opponentTeam.logoUrl },
           playerPerformance: performance,
           result,
-          matchDate: match.dateTime,
+          matchDate: new Date(match.dateTime),
           openDotaMatchUrl: match.openDotaMatchUrl
         });
       }
@@ -119,7 +119,6 @@ export default async function PlayerPage({ params }: PlayerPageParams) {
             <div>
               <div className="flex items-center space-x-3 mb-1">
                 <CardTitle className="text-4xl font-bold text-primary">{player.nickname}</CardTitle>
-                {/* Status Badge Removed */}
               </div>
               <CardDescription className="text-lg mt-1">
                 Member of <Link href={`/teams/${team.id}`} className="text-accent hover:underline font-medium">{team.name}</Link>
@@ -183,7 +182,7 @@ export default async function PlayerPage({ params }: PlayerPageParams) {
                         </Badge>
                       </div>
                       <CardDescription className="text-xs">
-                        Played as {histItem.playerPerformance.hero} on {new Date(histItem.matchDate).toLocaleDateString()}
+                        Played as {histItem.playerPerformance.hero} on {histItem.matchDate.toLocaleDateString()}
                         {histItem.openDotaMatchUrl && (
                           <Link href={histItem.openDotaMatchUrl} target="_blank" rel="noopener noreferrer" className="ml-2 text-primary/80 hover:text-primary text-xs">
                             (OpenDota)
@@ -275,3 +274,4 @@ export async function generateStaticParams() {
   });
   return params;
 }
+
