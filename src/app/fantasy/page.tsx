@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link"; // Added Link import
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
@@ -12,7 +12,7 @@ import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Loader2, Crown, Info, UserCircle, BarChart2, Swords, Sparkles, Shield as ShieldIconLucide, HandHelping, Eye as EyeIconLucide } from "lucide-react";
+import { Loader2, Crown, Info, UserCircle, BarChart2, Swords, Sparkles, Shield as ShieldIconLucide, HandHelping, Eye as EyeIconLucide, Lock, Unlock } from "lucide-react";
 import type { Player, PlayerRole, FantasyLeagueParticipant, FantasyLineup, Team } from "@/lib/definitions";
 import { PlayerRoles } from "@/lib/definitions";
 import { mockAllTournamentPlayersFlat, mockFantasyLeagueParticipants, FANTASY_BUDGET_MMR, mockTeams } from "@/lib/mock-data";
@@ -35,6 +35,7 @@ export default function FantasyLeaguePage() {
   const [availablePlayers, setAvailablePlayers] = React.useState<Player[]>([]);
   const [fantasyLeaderboard, setFantasyLeaderboard] = React.useState<FantasyLeagueParticipant[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
+  const [isLineupLockDeadlinePassed, setIsLineupLockDeadlinePassed] = React.useState(false);
 
   React.useEffect(() => {
     setAvailablePlayers(mockAllTournamentPlayersFlat);
@@ -94,6 +95,8 @@ export default function FantasyLeaguePage() {
       alert("Your lineup exceeds the budget. Please make adjustments.");
       return;
     }
+    // In a real app, this lineup would be saved to the database associated with the logged-in user.
+    // We'd also need to check if the deadline has passed before allowing confirmation.
     alert("Lineup confirmed (simulated)! In a real app, this would be saved to a database.");
   };
 
@@ -114,6 +117,10 @@ export default function FantasyLeaguePage() {
     const teamId = `team${teamIdSuffix}`;
     const team = mockTeams.find(t => t.id === teamId);
     return team?.name || 'N/A';
+  };
+
+  const toggleDeadlineState = () => {
+    setIsLineupLockDeadlinePassed(prevState => !prevState);
   };
 
   return (
@@ -143,9 +150,14 @@ export default function FantasyLeaguePage() {
         </Card>
       ) : (
         <>
-          <div className="flex justify-end">
+          <div className="flex justify-between items-center">
+            <Button onClick={toggleDeadlineState} variant="outline" className="mb-6">
+              {isLineupLockDeadlinePassed ? <Unlock className="mr-2 h-4 w-4" /> : <Lock className="mr-2 h-4 w-4" />}
+              Simulate Lineup Lock {isLineupLockDeadlinePassed ? "(Unlocked - Viewable)" : "(Locked - Hidden)"}
+            </Button>
             <Button onClick={handleLogout} variant="outline" className="mb-6">Logout (Simulated)</Button>
           </div>
+
           <Card className="shadow-lg">
             <CardHeader>
               <CardTitle className="text-2xl text-accent flex items-center">
@@ -173,7 +185,7 @@ export default function FantasyLeaguePage() {
                   <AccordionContent>
                     Your lineup must be set before the Group Stage begins.
                     You can change your lineup after the Group Stage is complete, and then again after each round of the Play-offs.
-                    Lock-in deadlines will be announced by the administrators.
+                    Lock-in deadlines will be announced by the administrators. Lineups are hidden from other participants until the deadline passes.
                   </AccordionContent>
                 </AccordionItem>
                 <AccordionItem value="rules-4">
@@ -194,6 +206,7 @@ export default function FantasyLeaguePage() {
               </CardTitle>
               <CardDescription>
                 Select one player for each role. Total cost must not exceed {FANTASY_BUDGET_MMR.toLocaleString()} MMR.
+                Your lineup can only be confirmed before the lineup lock deadline.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -250,6 +263,7 @@ export default function FantasyLeaguePage() {
                           <Select
                             value={selectedPlayerForRole?.id || ""}
                             onValueChange={(playerId) => { if(playerId && playerId !== "--select--") {handlePlayerSelect(role, playerId)}}}
+                            disabled={isLineupLockDeadlinePassed}
                           >
                             <SelectTrigger className="w-full">
                               <SelectValue placeholder="Select Player..." />
@@ -303,9 +317,10 @@ export default function FantasyLeaguePage() {
                 onClick={handleConfirmLineup} 
                 className="w-full bg-accent hover:bg-accent/90 text-accent-foreground" 
                 size="lg"
-                disabled={Object.values(selectedLineup).filter(p => p).length !== PlayerRoles.length || currentBudgetUsed > FANTASY_BUDGET_MMR}
+                disabled={isLineupLockDeadlinePassed || Object.values(selectedLineup).filter(p => p).length !== PlayerRoles.length || currentBudgetUsed > FANTASY_BUDGET_MMR}
               >
-                Confirm Lineup
+                {isLineupLockDeadlinePassed ? <Lock className="mr-2 h-5 w-5" /> : null}
+                {isLineupLockDeadlinePassed ? "Lineup Locked" : "Confirm Lineup"}
               </Button>
             </CardFooter>
           </Card>
@@ -330,6 +345,7 @@ export default function FantasyLeaguePage() {
                     <TableHead className="w-[60px] text-center">Rank</TableHead>
                     <TableHead>Player</TableHead>
                     <TableHead className="text-right">Fantasy Points</TableHead>
+                    <TableHead className="min-w-[250px]">Current Lineup</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -346,6 +362,39 @@ export default function FantasyLeaguePage() {
                         </div>
                       </TableCell>
                       <TableCell className="text-right font-semibold text-primary">{participant.totalFantasyPoints.toLocaleString()}</TableCell>
+                      <TableCell>
+                        {isLineupLockDeadlinePassed ? (
+                          <div className="flex flex-col space-y-0.5">
+                            {PlayerRoles.map(role => {
+                              const player = participant.selectedLineup[role];
+                              const RoleIcon = roleIcons[role];
+                              const playerIdParts = player?.id?.split('-t');
+                              const basePlayerId = playerIdParts?.[0];
+                              const teamIdSuffix = playerIdParts?.[1];
+                              const teamIdForLink = teamIdSuffix ? `team${teamIdSuffix}` : '';
+
+                              return (
+                                <div key={role} className="flex items-center space-x-1.5 text-xs">
+                                  <RoleIcon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                                  {player ? (
+                                    basePlayerId && teamIdForLink ? (
+                                      <Link href={`/teams/${teamIdForLink}/players/${basePlayerId}`} className="text-primary hover:underline truncate" title={player.nickname}>
+                                        {player.nickname}
+                                      </Link>
+                                    ) : (
+                                      <span className="text-foreground truncate" title={player.nickname}>{player.nickname}</span>
+                                    )
+                                  ) : (
+                                    <span className="text-muted-foreground italic">-</span>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <em className="text-xs text-muted-foreground">Lineup hidden until lock</em>
+                        )}
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
