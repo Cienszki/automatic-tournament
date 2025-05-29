@@ -90,11 +90,14 @@ function getRankForStat(
   currentTeamValue: number | undefined,
   allTeams: Team[],
   statKey: keyof Team,
-  sortOrder: 'asc' | 'desc' = 'desc' // 'asc' for deaths, 'desc' for others
+  sortOrder: 'asc' | 'desc' = 'desc' 
 ): string {
   if (currentTeamValue === undefined) return "N/A";
 
-  const validTeams = allTeams.filter(t => t[statKey] !== undefined && typeof t[statKey] === 'number');
+  const validTeams = allTeams.filter(t => {
+    const val = t[statKey];
+    return val !== undefined && typeof val === 'number' && !isNaN(val);
+  });
   if (validTeams.length === 0) return "N/A";
 
   const sortedTeams = [...validTeams].sort((a, b) => {
@@ -122,11 +125,10 @@ export default async function TeamPage({ params }: TeamPageParams) {
   const displayMinutes = avgMatchDurationMinutes % 60; 
   const minuteHandAngle = (displayMinutes / 60) * 360;
 
-  // Calculate tournament-wide maximums and ranks for progress bar stats
-  const maxKills = Math.max(...mockTeams.map(t => t.averageKillsPerGame ?? 0), 1);
-  const maxDeaths = Math.max(...mockTeams.map(t => t.averageDeathsPerGame ?? 0), 1);
-  const maxAssists = Math.max(...mockTeams.map(t => t.averageAssistsPerGame ?? 0), 1);
-  const maxFantasyPoints = Math.max(...mockTeams.map(t => t.averageFantasyPoints ?? 0), 1);
+  const maxKills = Math.max(...mockTeams.map(t => t.averageKillsPerGame ?? 0).filter(v => v !== undefined && !isNaN(v)), 1);
+  const maxDeaths = Math.max(...mockTeams.map(t => t.averageDeathsPerGame ?? 0).filter(v => v !== undefined && !isNaN(v)), 1);
+  const maxAssists = Math.max(...mockTeams.map(t => t.averageAssistsPerGame ?? 0).filter(v => v !== undefined && !isNaN(v)), 1);
+  const maxFantasyPoints = Math.max(...mockTeams.map(t => t.averageFantasyPoints ?? 0).filter(v => v !== undefined && !isNaN(v)), 1);
 
   const performanceStats = [
     { 
@@ -145,7 +147,7 @@ export default async function TeamPage({ params }: TeamPageParams) {
       type: 'progress', 
       rawValue: team.averageDeathsPerGame, 
       maxValue: maxDeaths,
-      rank: getRankForStat(team.averageDeathsPerGame, mockTeams, 'averageDeathsPerGame', 'asc') // Lower is better
+      rank: getRankForStat(team.averageDeathsPerGame, mockTeams, 'averageDeathsPerGame', 'asc') 
     },
     { 
       label: "Avg. Assists / Game", 
@@ -442,6 +444,7 @@ export async function generateStaticParams() {
     
 
     
+
 
 
 
