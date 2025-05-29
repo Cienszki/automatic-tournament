@@ -102,10 +102,11 @@ export default async function TeamPage({ params }: TeamPageParams) {
     { label: "Avg. Assists / Game", value: team.averageAssistsPerGame ?? 'N/A', icon: Handshake },
     { label: "Avg. Fantasy Points", value: team.averageFantasyPoints?.toFixed(1) ?? 'N/A', icon: Award }
   ];
-
+  
   const avgMatchDurationMinutes = team.averageMatchDurationMinutes || 0;
-  const displayMinutes = avgMatchDurationMinutes % 60;
+  const displayMinutes = avgMatchDurationMinutes % 60; // For hand position
   const minuteHandAngle = (displayMinutes / 60) * 360;
+
 
   return (
     <div className="space-y-8">
@@ -158,9 +159,9 @@ export default async function TeamPage({ params }: TeamPageParams) {
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card className="shadow-xl">
-           <CardHeader>
+           <CardHeader className="flex flex-col items-center text-center">
             <CardTitle className="text-2xl text-primary flex items-center">
-              <Users2 className="h-6 w-6 mr-2" /> Top Heroes
+              <Users2 className="h-6 w-6 mr-2 text-accent" /> Top Heroes
             </CardTitle>
           </CardHeader>
           <CardContent className="p-6 pt-2">
@@ -206,15 +207,14 @@ export default async function TeamPage({ params }: TeamPageParams) {
         </Card>
 
         <Card className="shadow-xl text-center hover:bg-muted/10 transition-colors duration-200">
-          <CardHeader className="items-center pb-2">
-            <Clock className="h-10 w-10 text-accent mb-2" />
-            <CardTitle className="text-xl font-semibold text-primary">Avg. Match Duration</CardTitle>
+          <CardHeader className="flex flex-row items-center space-x-3 pb-2 justify-center">
+            <Clock className="h-6 w-6 text-accent" />
+            <CardTitle className="text-lg text-primary">Avg. Match Duration</CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col items-center justify-center">
             <div className="relative w-28 h-28 md:w-32 md:h-32 mb-2">
               <svg viewBox="0 0 100 100" className="w-full h-full">
                 <circle cx="50" cy="50" r="45" stroke="hsl(var(--border))" strokeWidth="3" fill="hsl(var(--card))" />
-                {/* Hour Markers */}
                 {Array.from({ length: 12 }).map((_, i) => (
                   <line
                     key={`hour-marker-${i}`}
@@ -227,18 +227,17 @@ export default async function TeamPage({ params }: TeamPageParams) {
                     transform={`rotate(${i * 30} 50 50)`}
                   />
                 ))}
-                {/* Minute Hand */}
                 <line
                   x1="50"
                   y1="50"
                   x2="50"
-                  y2="20" // Length of minute hand
+                  y2="20"
                   stroke="hsl(var(--primary))"
                   strokeWidth="3"
                   strokeLinecap="round"
                   style={{ transformOrigin: '50% 50%', transform: `rotate(${minuteHandAngle}deg)` }}
                 />
-                <circle cx="50" cy="50" r="3" fill="hsl(var(--primary))" /> {/* Center dot */}
+                <circle cx="50" cy="50" r="3" fill="hsl(var(--primary))" />
               </svg>
             </div>
             <p className="text-2xl font-bold text-foreground">{avgMatchDurationMinutes} min</p>
@@ -247,9 +246,9 @@ export default async function TeamPage({ params }: TeamPageParams) {
 
         {performanceStats.map((stat) => (
           <Card key={stat.label} className="shadow-xl text-center hover:bg-muted/10 transition-colors duration-200">
-            <CardHeader className="items-center pb-2">
-              <stat.icon className="h-10 w-10 text-accent mb-2" />
-              <CardTitle className="text-xl font-semibold text-primary">{stat.label}</CardTitle>
+            <CardHeader className="flex flex-row items-center space-x-3 pb-2 justify-center">
+              <stat.icon className="h-6 w-6 text-accent" />
+              <CardTitle className="text-lg text-primary">{stat.label}</CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-4xl font-bold text-foreground">{stat.value}</p>
@@ -366,6 +365,5 @@ export async function generateStaticParams() {
     teamId: team.id,
   }));
 }
-
 
     
