@@ -20,6 +20,76 @@ async function getStatsData(): Promise<{
   };
 }
 
+const AccordionRowContent = ({ categoryData, isSingleMatchCategory }: { categoryData: CategoryDisplayStats, isSingleMatchCategory: boolean }) => {
+  const topEntry = categoryData.rankings[0];
+
+  return (
+    <>
+      {/* View for when accordion is OPEN */}
+      <div className="hidden group-data-[state=open]:flex group-data-[state=open]:flex-col group-data-[state=open]:items-center group-data-[state=open]:justify-center w-full text-lg py-4 px-4">
+        <categoryData.icon className="h-6 w-6 mr-0 mb-1 text-primary" />
+        <span className="font-semibold text-primary">{categoryData.categoryName}</span>
+      </div>
+
+      {/* View for when accordion is CLOSED */}
+      <div className="group-data-[state=open]:hidden grid grid-cols-5 md:grid-cols-7 items-center w-full text-sm py-3 px-4">
+        {/* Category Name + Icon */}
+        <div className="col-span-2 md:col-span-2 font-medium flex items-center">
+          <categoryData.icon className="h-5 w-5 mr-3 text-muted-foreground shrink-0" />
+          <span className="truncate" title={categoryData.categoryName}>{categoryData.categoryName}</span>
+        </div>
+
+        {topEntry ? (
+          <>
+            {/* Player */}
+            <div className="col-span-1 md:col-span-1 truncate" title={topEntry.playerName}>
+              {topEntry.playerId && topEntry.teamId ? (
+                <Link href={`/teams/${topEntry.teamId}/players/${topEntry.playerId}`} className="hover:text-primary font-semibold">{topEntry.playerName}</Link>
+              ) : (
+                <span className="font-semibold">{topEntry.playerName || 'N/A'}</span>
+              )}
+            </div>
+            {/* Team */}
+            <div className="col-span-1 md:col-span-1 truncate" title={topEntry.teamName}>
+              {topEntry.teamId ? (
+                <Link href={`/teams/${topEntry.teamId}`} className="hover:text-primary">{topEntry.teamName}</Link>
+              ) : (
+                topEntry.teamName || 'N/A'
+              )}
+            </div>
+            {/* Value */}
+            <div className="col-span-1 md:col-span-1 font-semibold text-primary text-right md:text-left">{topEntry.value}</div>
+            
+            {isSingleMatchCategory && (
+              <>
+                <div className="hidden md:table-cell md:col-span-1 truncate" title={topEntry.heroName}>{topEntry.heroName}</div>
+                <div className="hidden md:table-cell md:col-span-1 text-xs text-muted-foreground truncate">
+                  {topEntry.openDotaMatchUrl ? (
+                    <Link href={topEntry.openDotaMatchUrl} target="_blank" rel="noopener noreferrer" className="hover:text-primary hover:underline">
+                      {topEntry.matchContext}
+                    </Link>
+                  ) : (
+                    topEntry.matchContext || 'N/A'
+                  )}
+                </div>
+              </>
+            )}
+             {!isSingleMatchCategory && !topEntry.heroName && !topEntry.matchContext && ( // Fillers for average stats if no hero/match
+                <>
+                  <div className="hidden md:table-cell md:col-span-1"></div>
+                  <div className="hidden md:table-cell md:col-span-1"></div>
+                </>
+            )}
+          </>
+        ) : (
+          <div className="col-span-full md:col-span-5 text-muted-foreground italic text-center md:text-left">No entries for this category.</div>
+        )}
+      </div>
+    </>
+  );
+};
+
+
 export default async function StatsPage() {
   const { singleMatchRecords, playerAverageLeaders, tournamentHighlights } = await getStatsData();
 
@@ -72,64 +142,6 @@ export default async function StatsPage() {
     </Table>
   );
 
-  const AccordionRowContent = ({ categoryData, isSingleMatchCategory }: { categoryData: CategoryDisplayStats, isSingleMatchCategory: boolean }) => {
-    const topEntry = categoryData.rankings[0];
-    if (!topEntry) return (
-        <div className="grid grid-cols-5 md:grid-cols-7 items-center w-full text-sm py-3 px-4">
-             <div className="col-span-2 md:col-span-2 font-medium flex items-center">
-                <categoryData.icon className="h-5 w-5 mr-3 text-muted-foreground shrink-0" />
-                <span className="truncate" title={categoryData.categoryName}>{categoryData.categoryName}</span>
-            </div>
-            <div className="col-span-full md:col-span-5 text-muted-foreground italic">No entries for this category.</div>
-        </div>
-    );
-
-    return (
-      <div className="grid grid-cols-5 md:grid-cols-7 items-center w-full text-sm py-3 px-4">
-        {/* Category Name + Icon */}
-        <div className="col-span-2 md:col-span-2 font-medium flex items-center">
-          <categoryData.icon className="h-5 w-5 mr-3 text-muted-foreground shrink-0" />
-          <span className="truncate" title={categoryData.categoryName}>{categoryData.categoryName}</span>
-        </div>
-        {/* Player */}
-        <div className="col-span-1 md:col-span-1 truncate" title={topEntry.playerName}>
-          {topEntry.playerId && topEntry.teamId ? (
-              <Link href={`/teams/${topEntry.teamId}/players/${topEntry.playerId}`} className="hover:text-primary font-semibold">{topEntry.playerName}</Link>
-            ) : (
-              <span className="font-semibold">{topEntry.playerName || 'N/A'}</span>
-            )}
-        </div>
-        {/* Team */}
-        <div className="col-span-1 md:col-span-1 truncate" title={topEntry.teamName}>
-           {topEntry.teamId ? (
-              <Link href={`/teams/${topEntry.teamId}`} className="hover:text-primary">{topEntry.teamName}</Link>
-            ) : (
-              topEntry.teamName || 'N/A'
-            )}
-        </div>
-        {/* Value */}
-        <div className="col-span-1 md:col-span-1 font-semibold text-primary text-right md:text-left">{topEntry.value}</div>
-        
-        {/* Hero (Single Match Only) */}
-        {isSingleMatchCategory && (
-          <div className="hidden md:table-cell md:col-span-1 truncate" title={topEntry.heroName}>{topEntry.heroName}</div>
-        )}
-        {/* Match Context (Single Match Only) */}
-        {isSingleMatchCategory && (
-          <div className="hidden md:table-cell md:col-span-1 text-xs text-muted-foreground truncate">
-             {topEntry.openDotaMatchUrl ? (
-              <Link href={topEntry.openDotaMatchUrl} target="_blank" rel="noopener noreferrer" className="hover:text-primary hover:underline">
-                {topEntry.matchContext}
-              </Link>
-            ) : (
-              topEntry.matchContext || 'N/A'
-            )}
-          </div>
-        )}
-      </div>
-    );
-  };
-
 
   return (
     <div className="space-y-8">
@@ -150,18 +162,18 @@ export default async function StatsPage() {
           </CardTitle>
           <CardDescription>Top individual performances in a single match. Click a row to see more.</CardDescription>
         </CardHeader>
-        <CardContent className="px-0 sm:px-2 md:px-4"> {/* Reduced padding for CardContent */}
+        <CardContent className="px-0 sm:px-2 md:px-4">
           <Accordion type="single" collapsible className="w-full">
             {singleMatchRecords.map((categoryData) => (
               <AccordionItem value={categoryData.id} key={categoryData.id} className="border-b last:border-b-0">
                  <Card className="mb-0.5 shadow-none hover:bg-muted/5 transition-colors rounded-md overflow-hidden">
-                    <AccordionTrigger className="p-0 hover:no-underline w-full data-[state=open]:bg-muted/10">
+                    <AccordionTrigger className="p-0 hover:no-underline w-full group data-[state=open]:bg-muted/10">
                         <AccordionRowContent categoryData={categoryData} isSingleMatchCategory={true} />
                     </AccordionTrigger>
                     <AccordionContent className="p-2 md:p-4">
                         {categoryData.rankings.length > 0 ? 
                         renderRankingDetailsTable(categoryData.rankings, true) : 
-                        <p className="text-sm text-muted-foreground italic">No entries for this category.</p>}
+                        <p className="text-sm text-muted-foreground italic p-4">No entries for this category.</p>}
                     </AccordionContent>
                  </Card>
               </AccordionItem>
@@ -182,13 +194,13 @@ export default async function StatsPage() {
             {playerAverageLeaders.map((categoryData) => (
                 <AccordionItem value={categoryData.id} key={categoryData.id} className="border-b last:border-b-0">
                     <Card className="mb-0.5 shadow-none hover:bg-muted/5 transition-colors rounded-md overflow-hidden">
-                        <AccordionTrigger className="p-0 hover:no-underline w-full data-[state=open]:bg-muted/10">
+                        <AccordionTrigger className="p-0 hover:no-underline w-full group data-[state=open]:bg-muted/10">
                             <AccordionRowContent categoryData={categoryData} isSingleMatchCategory={false} />
                         </AccordionTrigger>
                         <AccordionContent className="p-2 md:p-4">
                            {categoryData.rankings.length > 0 ? 
                            renderRankingDetailsTable(categoryData.rankings, false) :
-                           <p className="text-sm text-muted-foreground italic">No entries for this category.</p>}
+                           <p className="text-sm text-muted-foreground italic p-4">No entries for this category.</p>}
                         </AccordionContent>
                     </Card>
                 </AccordionItem>
@@ -229,4 +241,3 @@ export const metadata = {
   title: "Statistics | Tournament Tracker",
   description: "Detailed player and tournament statistics.",
 };
-
