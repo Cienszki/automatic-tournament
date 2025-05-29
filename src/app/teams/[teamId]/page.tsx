@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import Image from "next/image";
 import Link from "next/link";
-import { Users, ListChecks, ExternalLink, BarChart3, Medal, Swords, UserCheck, UserX, ShieldQuestion, PlayCircle, Sigma, Trophy, Sparkles, Anchor, Sword as SwordIconLucide, Zap as ZapIcon, Ghost, Ban, MountainSnow, Flame, Snowflake, Axe as AxeIcon, Target, Moon, Copy as CopyIcon, ShieldOff, Waves, ShieldAlert, Trees, Bone, CloudLightning, UserCircle2, Clock, Percent, Skull, Ratio, Handshake, Award, Users2, Puzzle } from "lucide-react";
+import { Users, ListChecks, ExternalLink, BarChart3, Medal, Swords, UserCheck, UserX, ShieldQuestion, PlayCircle, Sigma, Trophy, Sparkles, Anchor, Sword as SwordIconLucide, Zap as ZapIcon, Ghost, Ban, MountainSnow, Flame, Snowflake, Axe as AxeIcon, Target, Moon, Copy as CopyIcon, ShieldOff, Waves, ShieldAlert, Trees, Bone, CloudLightning, UserCircle2, Clock, Percent, Skull, Ratio, Handshake, Award, Users2, Puzzle, TrendingUp } from "lucide-react";
 import type { Icon as LucideIconType } from "lucide-react";
 import { notFound } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -86,6 +86,27 @@ const podiumColors = [
   { border: 'border-chart-3', text: 'text-chart-3', bg: 'bg-chart-3/10' }, 
 ];
 
+function getRankForStat(
+  currentTeamValue: number | undefined,
+  allTeams: Team[],
+  statKey: keyof Team,
+  sortOrder: 'asc' | 'desc' = 'desc' // 'asc' for deaths, 'desc' for others
+): string {
+  if (currentTeamValue === undefined) return "N/A";
+
+  const validTeams = allTeams.filter(t => t[statKey] !== undefined && typeof t[statKey] === 'number');
+  if (validTeams.length === 0) return "N/A";
+
+  const sortedTeams = [...validTeams].sort((a, b) => {
+    const valA = a[statKey] as number;
+    const valB = b[statKey] as number;
+    return sortOrder === 'desc' ? valB - valA : valA - valB;
+  });
+
+  const rank = sortedTeams.findIndex(t => (t[statKey] as number) === currentTeamValue) + 1;
+  return rank > 0 ? `${rank} / ${sortedTeams.length}` : "N/A";
+}
+
 
 export default async function TeamPage({ params }: TeamPageParams) {
   const { team, teamMatches } = await getTeamData(params.teamId);
@@ -96,29 +117,59 @@ export default async function TeamPage({ params }: TeamPageParams) {
 
   const totalMMR = team.players.reduce((sum, player) => sum + player.mmr, 0);
   const sortedHeroes = team.mostPlayedHeroes ? [...team.mostPlayedHeroes].sort((a, b) => b.gamesPlayed - a.gamesPlayed).slice(0, 3) : [];
+  
+  const avgMatchDurationMinutes = team.averageMatchDurationMinutes || 0;
+  const displayMinutes = avgMatchDurationMinutes % 60; 
+  const minuteHandAngle = (displayMinutes / 60) * 360;
 
-  // Calculate tournament-wide maximums for progress bar scaling
+  const overallTeamRankSorted = [...mockTeams].sort((a, b) => (b.points ?? 0) - (a.points ?? 0));
+  const overallTeamRank = overallTeamRankSorted.findIndex(t => t.id === team.id) + 1;
+  const overallRankDisplay = overallTeamRank > 0 ? `${overallTeamRank} / ${mockTeams.length}` : "N/A";
+
+  // Calculate tournament-wide maximums and ranks for progress bar stats
   const maxKills = Math.max(...mockTeams.map(t => t.averageKillsPerGame ?? 0), 1);
   const maxDeaths = Math.max(...mockTeams.map(t => t.averageDeathsPerGame ?? 0), 1);
   const maxAssists = Math.max(...mockTeams.map(t => t.averageAssistsPerGame ?? 0), 1);
   const maxFantasyPoints = Math.max(...mockTeams.map(t => t.averageFantasyPoints ?? 0), 1);
 
   const performanceStats = [
-    { label: "Avg. Kills / Game", value: team.averageKillsPerGame?.toFixed(1) ?? 'N/A', icon: Swords, type: 'progress', rawValue: team.averageKillsPerGame, maxValue: maxKills },
-    { label: "Avg. Deaths / Game", value: team.averageDeathsPerGame?.toFixed(1) ?? 'N/A', icon: Skull, type: 'progress', rawValue: team.averageDeathsPerGame, maxValue: maxDeaths },
-    { label: "Avg. Assists / Game", value: team.averageAssistsPerGame?.toFixed(1) ?? 'N/A', icon: Handshake, type: 'progress', rawValue: team.averageAssistsPerGame, maxValue: maxAssists },
-    { label: "Avg. Fantasy Points", value: team.averageFantasyPoints?.toFixed(1) ?? 'N/A', icon: Award, type: 'progress', rawValue: team.averageFantasyPoints, maxValue: maxFantasyPoints }
+    { 
+      label: "Avg. Kills / Game", 
+      value: team.averageKillsPerGame?.toFixed(1) ?? 'N/A', 
+      icon: Swords, 
+      type: 'progress', 
+      rawValue: team.averageKillsPerGame, 
+      maxValue: maxKills,
+      rank: getRankForStat(team.averageKillsPerGame, mockTeams, 'averageKillsPerGame', 'desc')
+    },
+    { 
+      label: "Avg. Deaths / Game", 
+      value: team.averageDeathsPerGame?.toFixed(1) ?? 'N/A', 
+      icon: Skull, 
+      type: 'progress', 
+      rawValue: team.averageDeathsPerGame, 
+      maxValue: maxDeaths,
+      rank: getRankForStat(team.averageDeathsPerGame, mockTeams, 'averageDeathsPerGame', 'asc') // Lower is better
+    },
+    { 
+      label: "Avg. Assists / Game", 
+      value: team.averageAssistsPerGame?.toFixed(1) ?? 'N/A', 
+      icon: Handshake, 
+      type: 'progress', 
+      rawValue: team.averageAssistsPerGame, 
+      maxValue: maxAssists,
+      rank: getRankForStat(team.averageAssistsPerGame, mockTeams, 'averageAssistsPerGame', 'desc')
+    },
+    { 
+      label: "Avg. Fantasy Points", 
+      value: team.averageFantasyPoints?.toFixed(1) ?? 'N/A', 
+      icon: Award, 
+      type: 'progress', 
+      rawValue: team.averageFantasyPoints, 
+      maxValue: maxFantasyPoints,
+      rank: getRankForStat(team.averageFantasyPoints, mockTeams, 'averageFantasyPoints', 'desc')
+    }
   ];
-  
-  const avgMatchDurationMinutes = team.averageMatchDurationMinutes || 0;
-  const displayMinutes = avgMatchDurationMinutes % 60; 
-  const minuteHandAngle = (displayMinutes / 60) * 360;
-
-  // Calculate team rank
-  const sortedTeamsByRank = [...mockTeams].sort((a, b) => (b.points ?? 0) - (a.points ?? 0));
-  const currentTeamRank = sortedTeamsByRank.findIndex(t => t.id === team.id) + 1;
-  const totalTeams = mockTeams.length;
-  const rankDisplay = currentTeamRank > 0 ? `${currentTeamRank} / ${totalTeams}` : "N/A";
 
 
   return (
@@ -154,9 +205,9 @@ export default async function TeamPage({ params }: TeamPageParams) {
           <div className="md:col-span-1 space-y-4">
              <InfoItem icon={Award} label="Avg. Fantasy Points" value={team.averageFantasyPoints?.toFixed(1) ?? 'N/A'} />
              <InfoItem icon={ListChecks} label="Matches Played" value={team.matchesPlayed ?? 0} />
-             <InfoItem icon={BarChart3} label="Wins / Losses" value={`${team.matchesWon ?? 0}W / ${team.matchesLost ?? 0}L`} />
+             <InfoItem icon={TrendingUp} label="Wins / Losses" value={`${team.matchesWon ?? 0}W / ${team.matchesLost ?? 0}L`} />
              <InfoItem icon={Sigma} label="Total MMR" value={totalMMR.toLocaleString()} />
-             <InfoItem icon={Medal} label="Tournament Rank" value={rankDisplay} />
+             <InfoItem icon={Medal} label="Tournament Rank" value={overallRankDisplay} />
           </div>
           <div className="md:col-span-2">
             <h3 className="text-2xl font-semibold mb-4 flex items-center text-foreground">
@@ -276,6 +327,7 @@ export default async function TeamPage({ params }: TeamPageParams) {
                     className="w-3/4 h-2.5"
                     aria-label={`${stat.label} progress`}
                   />
+                  {stat.rank && <p className="text-xs text-muted-foreground mt-2">Rank: {stat.rank}</p>}
                 </>
               ) : (
                 <p className="text-4xl font-bold text-foreground pt-4">{stat.value}</p>
@@ -396,4 +448,5 @@ export async function generateStaticParams() {
     
 
     
+
 
