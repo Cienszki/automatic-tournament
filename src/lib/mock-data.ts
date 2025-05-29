@@ -23,7 +23,7 @@ export const mockPlayers: Player[] = Array.from({ length: 60 }, (_, i) => ({
 }));
 
 
-const defaultHeroNames = ['Invoker', 'Pudge', 'Juggernaut', 'Lion', 'Shadow Fiend', 'Anti-Mage', 'Phantom Assassin', 'Earthshaker', 'Lina', 'Crystal Maiden', 'Axe', 'Drow Ranger', 'Mirana', 'Rubick', 'Templar Assassin', 'Slark', 'Sven', 'Tiny', 'Witch Doctor', 'Zeus', 'Windranger', 'Storm Spirit', 'Templar Assassin', 'Faceless Void', 'Spectre'];
+export const defaultHeroNames = ['Invoker', 'Pudge', 'Juggernaut', 'Lion', 'Shadow Fiend', 'Anti-Mage', 'Phantom Assassin', 'Earthshaker', 'Lina', 'Crystal Maiden', 'Axe', 'Drow Ranger', 'Mirana', 'Rubick', 'Templar Assassin', 'Slark', 'Sven', 'Tiny', 'Witch Doctor', 'Zeus', 'Windranger', 'Storm Spirit', 'Templar Assassin', 'Faceless Void', 'Spectre'];
 
 const generateTeamSignatureHeroes = (): HeroPlayStats[] => {
   const heroes = [...defaultHeroNames].sort(() => 0.5 - Math.random()).slice(0, 5);
@@ -42,7 +42,7 @@ const createTeamPlayers = (teamIndex: number, teamStatus: TournamentStatus): Pla
   for (let i = 0; i < 5; i++) {
     const playerSourceIndex = playerStartIndex + i;
     
-    const basePlayer = mockPlayers[playerSourceIndex]; // Assumes mockPlayers has enough unique entries
+    const basePlayer = mockPlayers[playerSourceIndex]; 
 
     let playerStatus = basePlayer.status;
     if (teamStatus === 'Eliminated' || teamStatus === 'Champions') {
@@ -53,7 +53,7 @@ const createTeamPlayers = (teamIndex: number, teamStatus: TournamentStatus): Pla
 
     teamPlayers.push({
       ...basePlayer,
-      id: `${basePlayer.id}-t${teamIndex + 1}`, // Ensure player ID is unique per team context if needed, or just use basePlayer.id
+      id: `${basePlayer.id}-t${teamIndex + 1}`, 
       role: PlayerRoles[i % PlayerRoles.length] as PlayerRole,
       status: playerStatus,
     });
@@ -65,7 +65,7 @@ export const mockTeams: Team[] = Array.from({ length: 12 }, (_, i) => {
   let teamStatus: TournamentStatus;
   if (i === 0) {
     teamStatus = "Champions";
-  } else if (i >= 9 && i <=10) { // Ensure a couple of teams are eliminated
+  } else if (i >= 9 && i <=10) { 
     teamStatus = "Eliminated";
   } else {
     teamStatus = getRandomBaseStatus();
@@ -96,15 +96,28 @@ export const mockTeams: Team[] = Array.from({ length: 12 }, (_, i) => {
 
 const generatePlayerPerformancesForMatch = (match: Match): PlayerPerformanceInMatch[] => {
   const performances: PlayerPerformanceInMatch[] = [];
-  const involvedPlayers = [...match.teamA.players, ...match.teamB.players];
+  const teamAPlayers = mockTeams.find(t => t.id === match.teamA.id)?.players || [];
+  const teamBPlayers = mockTeams.find(t => t.id === match.teamB.id)?.players || [];
+  const involvedPlayers = [...teamAPlayers, ...teamBPlayers];
+
 
   involvedPlayers.forEach(player => {
-    const isWinner = (match.teamA.id === player.id.split('-t')[0] && (match.teamAScore ?? 0) > (match.teamBScore ?? 0)) ||
-                     (match.teamB.id === player.id.split('-t')[0] && (match.teamBScore ?? 0) > (match.teamAScore ?? 0));
+    // Determine if the player's team won. Need to check which team the player belongs to in the context of this match.
+    let playerTeamId: string | undefined;
+    if (teamAPlayers.some(p => p.id === player.id)) {
+      playerTeamId = match.teamA.id;
+    } else if (teamBPlayers.some(p => p.id === player.id)) {
+      playerTeamId = match.teamB.id;
+    }
+
+    if (!playerTeamId) return; // Should not happen if player is in one of the teams
+
+    const isWinner = (playerTeamId === match.teamA.id && (match.teamAScore ?? 0) > (match.teamBScore ?? 0)) ||
+                     (playerTeamId === match.teamB.id && (match.teamBScore ?? 0) > (match.teamAScore ?? 0));
 
     performances.push({
       playerId: player.id,
-      teamId: match.teamA.players.some(p => p.id === player.id) ? match.teamA.id : match.teamB.id,
+      teamId: playerTeamId,
       hero: defaultHeroNames[Math.floor(Math.random() * defaultHeroNames.length)],
       kills: Math.floor(Math.random() * (isWinner ? 15 : 10)),
       deaths: Math.floor(Math.random() * (isWinner ? 8 : 12)) + 1,
@@ -252,7 +265,7 @@ export const generateMockPlayerAverageLeaders = (): StatItem[] => {
     if (unassignedPlayers.length > 0) {
       selectedPlayer = unassignedPlayers[Math.floor(Math.random() * unassignedPlayers.length)];
     } else if (availablePlayers.length > 0) {
-      // Fallback if all players have been assigned, allow reuse (though less ideal for "leader" uniqueness)
+      
       selectedPlayer = availablePlayers[Math.floor(Math.random() * availablePlayers.length)];
     }
 
@@ -262,12 +275,12 @@ export const generateMockPlayerAverageLeaders = (): StatItem[] => {
       selectedTeam = mockTeams.find(team => team.players.some(p => p.id === selectedPlayer?.id));
     }
 
-    // Fallback if somehow player/team isn't found (shouldn't happen with current logic)
+    
     if (!selectedPlayer || !selectedTeam) {
         const { player: randomPlayer, team: randomTeam } = getRandomPlayerAndTeam();
         selectedPlayer = randomPlayer;
         selectedTeam = randomTeam;
-        if (selectedPlayer?.id) assignedPlayerIdsForCategories.add(selectedPlayer.id); // Attempt to add again
+        if (selectedPlayer?.id) assignedPlayerIdsForCategories.add(selectedPlayer.id); 
     }
 
     if (selectedPlayer && selectedTeam) {
@@ -285,7 +298,7 @@ export const generateMockPlayerAverageLeaders = (): StatItem[] => {
         icon: cat.icon,
       });
     } else {
-        // Absolute fallback if no player/team can be determined
+        
         uniqueLeaders.push({
             id: `pal-${index}-fallback`,
             category: cat.name,
@@ -333,3 +346,5 @@ export const generateMockTournamentHighlights = (): TournamentHighlightRecord[] 
   ];
   return highlights;
 };
+
+    
