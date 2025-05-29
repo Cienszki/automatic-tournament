@@ -225,7 +225,7 @@ export default function FantasyLeaguePage() {
                           <RoleIcon className="h-5 w-5 mr-2" /> {role}
                         </CardTitle>
                       </CardHeader>
-                      <CardContent className="space-y-3 flex-grow">
+                      <CardContent className="space-y-3 flex-grow px-4 py-3">
                         {selectedPlayerForRole ? (
                           <div className="p-3 border rounded-md bg-card flex items-center space-x-3">
                             <Avatar className="h-10 w-10">
@@ -379,6 +379,8 @@ export default function FantasyLeaguePage() {
   );
 }
 // Removed metadata export
+    
+
     
 
     
