@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ExternalLink, BarChartHorizontalBig, Star, TrendingUp, Shield, BarChart3, UserCheck, UserX, ShieldQuestion, PlayCircle, Trophy, Swords, Skull, Coins, Zap, Axe, Target, Wallet, ListChecks, Puzzle, Handshake } from "lucide-react";
+import { ExternalLink, BarChartHorizontalBig, Star, TrendingUp, Shield, BarChart3, UserCheck, UserX, ShieldQuestion, PlayCircle, Trophy, Swords, Skull, Coins, Zap, Axe, Target, Wallet, ListChecks, Puzzle, Handshake, Home } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -51,17 +51,14 @@ async function getPlayerData(teamId: string, playerId: string): Promise<PlayerDa
         const opponentTeam = match.teamA.id === team.id ? match.teamB : match.teamA;
         let result: PlayerMatchHistoryItem['result'] = 'Ongoing';
         if (typeof match.teamAScore === 'number' && typeof match.teamBScore === 'number') {
-          const playerPlayedForTeamA = teamAPlayers => teamAPlayers.some(p => p.id === playerId);
-          
-          // Need to check if match.teamA.players exists before calling some
-          const isPlayerInTeamA = match.teamA.players && playerPlayedForTeamA(match.teamA.players);
-
-          if (isPlayerInTeamA) {
-            result = match.teamAScore > match.teamBScore ? 'Win' : 'Loss';
-          } else {
-            // Assume player is in team B if not in team A and match involves player's team
-            result = match.teamBScore > match.teamAScore ? 'Win' : 'Loss';
+          // Determine if the player's team (team associated with player.id) won
+          let playerTeamWon = false;
+          if (match.teamA.id === team.id) { // Player is in Team A for this match
+            playerTeamWon = match.teamAScore > match.teamBScore;
+          } else if (match.teamB.id === team.id) { // Player is in Team B for this match
+             playerTeamWon = match.teamBScore > match.teamAScore;
           }
+          result = playerTeamWon ? 'Win' : 'Loss';
         }
         
         playerMatchHistory.push({
@@ -107,9 +104,10 @@ export default async function PlayerPage({ params }: PlayerPageParams) {
     xpm: Zap,
     fantasyPoints: Star,
     lastHits: Axe,
-    denies: Handshake, // Using handshake as a generic icon for denies
+    denies: Handshake,
     netWorth: Wallet,
     heroDamage: Target,
+    towerDamage: Home,
   };
 
   return (
@@ -178,15 +176,15 @@ export default async function PlayerPage({ params }: PlayerPageParams) {
                 playerMatchHistory.map(histItem => (
                   <Card key={histItem.matchId} className="bg-muted/20 shadow-md">
                     <CardHeader className="pb-3">
-                      <div className="flex justify-between items-start"> {/* Changed items-center to items-start */}
+                      <div className="flex justify-between items-start">
                         <CardTitle className="text-lg">
-                          Played as <span className="text-primary">{histItem.playerPerformance.hero}</span> vs <Link href={`/teams/${histItem.opponentTeam.id}`} className="text-accent hover:underline">{histItem.opponentTeam.name}</Link>
+                          <span className="text-primary">{histItem.playerPerformance.hero}</span> vs <Link href={`/teams/${histItem.opponentTeam.id}`} className="text-accent hover:underline">{histItem.opponentTeam.name}</Link>
                         </CardTitle>
-                        <Badge variant={histItem.result === 'Win' ? 'secondary' : histItem.result === 'Loss' ? 'destructive' : 'outline'} className="ml-2 shrink-0"> {/* Added shrink-0 and ml-2 */}
+                        <Badge variant={histItem.result === 'Win' ? 'secondary' : histItem.result === 'Loss' ? 'destructive' : 'outline'} className="ml-2 shrink-0">
                           {histItem.result}
                         </Badge>
                       </div>
-                      <CardDescription className="text-xs mt-1"> {/* Added mt-1 */}
+                      <CardDescription className="text-xs mt-1">
                         {histItem.matchDate.toLocaleDateString()}
                         {histItem.openDotaMatchUrl && (
                           <Link href={histItem.openDotaMatchUrl} target="_blank" rel="noopener noreferrer" className="ml-2 text-primary/80 hover:text-primary text-xs">
@@ -219,8 +217,8 @@ export default async function PlayerPage({ params }: PlayerPageParams) {
                           <TableRow>
                              <TableCell className="font-medium p-1.5"><statIcons.heroDamage className="inline h-3.5 w-3.5 mr-1.5 text-muted-foreground" />Hero Dmg</TableCell>
                             <TableCell className="text-right p-1.5">{(histItem.playerPerformance.heroDamage / 1000).toFixed(1)}k</TableCell>
-                            <TableCell className="p-1.5"></TableCell>
-                            <TableCell className="p-1.5"></TableCell>
+                            <TableCell className="font-medium p-1.5"><statIcons.towerDamage className="inline h-3.5 w-3.5 mr-1.5 text-muted-foreground" />Tower Dmg</TableCell>
+                            <TableCell className="text-right p-1.5">{(histItem.playerPerformance.towerDamage / 1000).toFixed(1)}k</TableCell>
                           </TableRow>
                         </TableBody>
                       </Table>

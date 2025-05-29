@@ -15,7 +15,6 @@ export const mockPlayers: Player[] = Array.from({ length: 60 }, (_, i) => ({
   nickname: `PlayerNick${i + 1}`,
   mmr: Math.floor(Math.random() * 3000) + 4000, // MMR between 4000 and 7000
   role: PlayerRoles[i % PlayerRoles.length] as PlayerRole,
-  // Status will be primarily determined by team status if applicable
   status: getRandomBaseStatus(), 
   steamProfileUrl: `https://steamcommunity.com/id/playernick${i + 1}`,
   openDotaProfileUrl: `https://www.opendota.com/search?q=PlayerNick${i + 1}`,
@@ -42,6 +41,9 @@ const createTeamPlayers = (teamIndex: number, teamStatus: TournamentStatus): Pla
   for (let i = 0; i < 5; i++) {
     const playerSourceIndex = playerStartIndex + i;
     
+    // Ensure we don't go out of bounds if mockPlayers isn't large enough (it should be now)
+    if (playerSourceIndex >= mockPlayers.length) break;
+
     const basePlayer = mockPlayers[playerSourceIndex]; 
 
     let playerStatus = basePlayer.status;
@@ -96,13 +98,18 @@ export const mockTeams: Team[] = Array.from({ length: 12 }, (_, i) => {
 
 const generatePlayerPerformancesForMatch = (match: Match): PlayerPerformanceInMatch[] => {
   const performances: PlayerPerformanceInMatch[] = [];
-  const teamAPlayers = mockTeams.find(t => t.id === match.teamA.id)?.players || [];
-  const teamBPlayers = mockTeams.find(t => t.id === match.teamB.id)?.players || [];
-  const involvedPlayers = [...teamAPlayers, ...teamBPlayers];
+  
+  // Retrieve full player objects for teamA and teamB for this specific match
+  const teamADetails = mockTeams.find(t => t.id === match.teamA.id);
+  const teamBDetails = mockTeams.find(t => t.id === match.teamB.id);
 
+  const teamAPlayers = teamADetails?.players || [];
+  const teamBPlayers = teamBDetails?.players || [];
+  
+  const involvedPlayers: Player[] = [...teamAPlayers, ...teamBPlayers];
 
   involvedPlayers.forEach(player => {
-    // Determine if the player's team won. Need to check which team the player belongs to in the context of this match.
+    // Determine which team the player belongs to *in the context of this match*
     let playerTeamId: string | undefined;
     if (teamAPlayers.some(p => p.id === player.id)) {
       playerTeamId = match.teamA.id;
@@ -114,9 +121,18 @@ const generatePlayerPerformancesForMatch = (match: Match): PlayerPerformanceInMa
 
     const isWinner = (playerTeamId === match.teamA.id && (match.teamAScore ?? 0) > (match.teamBScore ?? 0)) ||
                      (playerTeamId === match.teamB.id && (match.teamBScore ?? 0) > (match.teamAScore ?? 0));
+    
+    let towerDamage = Math.floor(Math.random() * 2000 + 500); // Base tower damage
+    if (player.role === 'Carry' || player.role === 'Mid') {
+      towerDamage += Math.floor(Math.random() * 8000); 
+    }
+    if (isWinner) {
+      towerDamage = Math.floor(towerDamage * 1.3); 
+    }
+    towerDamage = Math.max(0, Math.min(towerDamage, 25000)); // Cap tower damage for realism
 
     performances.push({
-      playerId: player.id,
+      playerId: player.id, 
       teamId: playerTeamId,
       hero: defaultHeroNames[Math.floor(Math.random() * defaultHeroNames.length)],
       kills: Math.floor(Math.random() * (isWinner ? 15 : 10)),
@@ -129,6 +145,7 @@ const generatePlayerPerformancesForMatch = (match: Match): PlayerPerformanceInMa
       denies: Math.floor(Math.random() * 30) + (player.role === 'Mid' || player.role === 'Carry' ? 10 : 0),
       netWorth: Math.floor(Math.random() * 15000) + (isWinner ? 20000 : 10000),
       heroDamage: Math.floor(Math.random() * 30000) + (isWinner ? 25000 : 15000),
+      towerDamage: towerDamage,
     });
   });
   return performances;
@@ -158,7 +175,7 @@ export const generateMockGroups = (teams: Team[]): Group[] => {
   for (let i = 0; i < numGroups; i++) {
     groups.push({
       id: `group${i + 1}`,
-      name: `Group ${String.fromCharCode(65 + i)}`,
+      name: `Group ${String.fromCharCode(65 + i)}`, // A, B, C...
       teams: teams.slice(i * 4, (i + 1) * 4),
     });
   }
@@ -253,11 +270,14 @@ export const generateMockPlayerAverageLeaders = (): StatItem[] => {
 
   const uniqueLeaders: StatItem[] = [];
   const assignedPlayerIdsForCategories = new Set<string>();
-  const availablePlayers = mockTeams.flatMap(team => team.players).filter(p => p && p.id);
+  // Ensure player objects here also include their teamId for linking purposes
+  const availablePlayers = mockTeams.flatMap(team => 
+    team.players.map(p => ({...p, teamId: team.id}))
+  ).filter(p => p && p.id);
 
 
   categories.forEach((cat, index) => {
-    let selectedPlayer: Player | undefined;
+    let selectedPlayer: (Player & {teamId?: string}) | undefined;
     let selectedTeam: Team | undefined;
 
     const unassignedPlayers = availablePlayers.filter(p => p.id && !assignedPlayerIdsForCategories.has(p.id));
@@ -265,22 +285,28 @@ export const generateMockPlayerAverageLeaders = (): StatItem[] => {
     if (unassignedPlayers.length > 0) {
       selectedPlayer = unassignedPlayers[Math.floor(Math.random() * unassignedPlayers.length)];
     } else if (availablePlayers.length > 0) {
-      
       selectedPlayer = availablePlayers[Math.floor(Math.random() * availablePlayers.length)];
     }
 
 
     if (selectedPlayer && selectedPlayer.id) {
       assignedPlayerIdsForCategories.add(selectedPlayer.id);
-      selectedTeam = mockTeams.find(team => team.players.some(p => p.id === selectedPlayer?.id));
+      selectedTeam = mockTeams.find(team => team.id === selectedPlayer?.teamId); // Use teamId from augmented player object
     }
-
     
     if (!selectedPlayer || !selectedTeam) {
-        const { player: randomPlayer, team: randomTeam } = getRandomPlayerAndTeam();
-        selectedPlayer = randomPlayer;
+        const { player: randomPlayer, team: randomTeam } = getRandomPlayerAndTeam(); // This returns a base Player object
+        selectedPlayer = randomPlayer; // Could be undefined
         selectedTeam = randomTeam;
-        if (selectedPlayer?.id) assignedPlayerIdsForCategories.add(selectedPlayer.id); 
+        if (selectedPlayer?.id) {
+            assignedPlayerIdsForCategories.add(selectedPlayer.id);
+            // If randomPlayer came from getRandomPlayerAndTeam, it won't have teamId directly.
+            // We need to ensure it's correctly associated or find its team.
+            if(randomTeam && selectedPlayer && !(selectedPlayer as Player & {teamId?:string}).teamId) {
+              (selectedPlayer as Player & {teamId: string}).teamId = randomTeam.id;
+            }
+            if (!selectedTeam && randomTeam) selectedTeam = randomTeam;
+        }
     }
 
     if (selectedPlayer && selectedTeam) {
@@ -298,7 +324,6 @@ export const generateMockPlayerAverageLeaders = (): StatItem[] => {
         icon: cat.icon,
       });
     } else {
-        
         uniqueLeaders.push({
             id: `pal-${index}-fallback`,
             category: cat.name,
@@ -347,4 +372,3 @@ export const generateMockTournamentHighlights = (): TournamentHighlightRecord[] 
   return highlights;
 };
 
-    

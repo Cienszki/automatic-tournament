@@ -56,6 +56,7 @@ export type PlayerPerformanceInMatch = {
   denies: number;
   netWorth: number;
   heroDamage: number;
+  towerDamage: number;
 };
 
 export type Match = {
@@ -98,6 +99,10 @@ export type TeamRegistrationFormData = {
 };
 
 // For server action state
+// RegistrationFormState used to be here, but was moved to its own file src/lib/registration-schema.ts
+// to avoid circular dependencies or issues with "use server" directive in actions.ts
+// However, upon review, it's better placed in definitions.ts if actions.ts only exports functions.
+// Let's ensure RegistrationFormState is here:
 export type RegistrationFormState = {
   message: string;
   errors?: z.ZodIssue[];
@@ -126,3 +131,4 @@ export type TournamentHighlightRecord = {
   details?: string;
   icon: LucideIcon;
 };
+
