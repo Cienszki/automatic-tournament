@@ -172,7 +172,7 @@ export default async function TeamPage({ params }: TeamPageParams) {
       </Card>
 
       {sortedHeroes && sortedHeroes.length > 0 && (
-        <Card className="shadow-xl">
+        <Card className="shadow-xl md:w-1/2 mx-auto">
           <CardHeader>
             <CardTitle className="text-2xl font-semibold text-primary flex items-center">
               <Trophy className="h-6 w-6 mr-2" /> {team.name}'s Top Heroes
@@ -184,7 +184,7 @@ export default async function TeamPage({ params }: TeamPageParams) {
               <div className="flex flex-col md:flex-row justify-around items-end gap-4 md:gap-2 py-4 min-h-[200px] md:min-h-[250px]"> {/* Reduced min-height */}
                 {/* Podium Order: 2nd, 1st, 3rd for visual layout */}
                 {[sortedHeroes[1], sortedHeroes[0], sortedHeroes[2]].map((heroStat, index) => {
-                  if (!heroStat) return <div key={`placeholder-${index}`} className="w-1/3 md:w-1/4"></div>; 
+                  if (!heroStat) return <div key={`placeholder-${index}`} className="w-full md:w-1/3 lg:w-1/4"></div>; 
 
                   const podiumOrderIndex = index === 0 ? 1 : (index === 1 ? 0 : 2); 
                   const podiumStyle = podiumColors[podiumOrderIndex];
