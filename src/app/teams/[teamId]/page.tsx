@@ -114,6 +114,12 @@ export default async function TeamPage({ params }: TeamPageParams) {
   const displayMinutes = avgMatchDurationMinutes % 60; 
   const minuteHandAngle = (displayMinutes / 60) * 360;
 
+  // Calculate team rank
+  const sortedTeamsByRank = [...mockTeams].sort((a, b) => (b.points ?? 0) - (a.points ?? 0));
+  const currentTeamRank = sortedTeamsByRank.findIndex(t => t.id === team.id) + 1;
+  const totalTeams = mockTeams.length;
+  const rankDisplay = currentTeamRank > 0 ? `${currentTeamRank} / ${totalTeams}` : "N/A";
+
 
   return (
     <div className="space-y-8">
@@ -150,6 +156,7 @@ export default async function TeamPage({ params }: TeamPageParams) {
              <InfoItem icon={ListChecks} label="Matches Played" value={team.matchesPlayed ?? 0} />
              <InfoItem icon={BarChart3} label="Wins / Losses" value={`${team.matchesWon ?? 0}W / ${team.matchesLost ?? 0}L`} />
              <InfoItem icon={Sigma} label="Total MMR" value={totalMMR.toLocaleString()} />
+             <InfoItem icon={Medal} label="Tournament Rank" value={rankDisplay} />
           </div>
           <div className="md:col-span-2">
             <h3 className="text-2xl font-semibold mb-4 flex items-center text-foreground">
@@ -166,7 +173,7 @@ export default async function TeamPage({ params }: TeamPageParams) {
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card className="shadow-xl">
-          <CardHeader className="flex flex-row items-center justify-center space-x-3 pb-2">
+           <CardHeader className="flex flex-row items-center justify-center space-x-3 pb-2">
             <Users2 className="h-6 w-6 text-accent" />
             <CardTitle className="text-xl text-primary">Top Heroes</CardTitle>
           </CardHeader>
@@ -389,3 +396,4 @@ export async function generateStaticParams() {
     
 
     
+
