@@ -77,7 +77,15 @@ export default async function StatsPage() {
                     </TableCell>
                     <TableCell className="font-semibold text-primary">{record.value}</TableCell>
                     <TableCell>{record.heroName}</TableCell>
-                    <TableCell className="text-xs text-muted-foreground">{record.matchContext}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground">
+                      {record.openDotaMatchUrl ? (
+                        <Link href={record.openDotaMatchUrl} target="_blank" rel="noopener noreferrer" className="hover:text-primary hover:underline">
+                          {record.matchContext}
+                        </Link>
+                      ) : (
+                        record.matchContext || 'N/A'
+                      )}
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>

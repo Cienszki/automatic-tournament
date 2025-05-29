@@ -33,7 +33,7 @@ export type Team = {
   matchesPlayed?: number;
   matchesWon?: number;
   matchesLost?: number;
-  points?: number;
+  points?: number; // Overall tournament points based on wins/draws
   mostPlayedHeroes?: HeroPlayStats[];
   averageMatchDurationMinutes?: number;
   averageKillsPerGame?: number;
@@ -77,9 +77,6 @@ export type Group = {
   teams: Team[];
 };
 
-// For registration form state with react-hook-form
-// File fields are File | undefined because user might not have selected one yet.
-// Zod schema will enforce they are 'File' upon validation if 'requiredFileSchema' is used.
 export type PlayerFormData = {
   nickname: string;
   mmr: string; // string for form input, Zod will transform to number
@@ -98,11 +95,6 @@ export type TeamRegistrationFormData = {
   rulesAgreed: boolean;
 };
 
-// For server action state
-// RegistrationFormState used to be here, but was moved to its own file src/lib/registration-schema.ts
-// to avoid circular dependencies or issues with "use server" directive in actions.ts
-// However, upon review, it's better placed in definitions.ts if actions.ts only exports functions.
-// Let's ensure RegistrationFormState is here:
 export type RegistrationFormState = {
   message: string;
   errors?: z.ZodIssue[];
@@ -121,6 +113,7 @@ export type StatItem = {
   value: string | number;
   heroName?: string;
   matchContext?: string;
+  openDotaMatchUrl?: string; // Added for OpenDota link
   icon: LucideIcon;
 };
 
@@ -131,4 +124,3 @@ export type TournamentHighlightRecord = {
   details?: string;
   icon: LucideIcon;
 };
-

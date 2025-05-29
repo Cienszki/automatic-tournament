@@ -10,11 +10,10 @@ const getRandomBaseStatus = (): TournamentStatus => {
   return baseStatuses[Math.floor(Math.random() * baseStatuses.length)];
 }
 
-// Generate a pool of 60 players with MMR between 1000 and 9000
 export const mockPlayers: Player[] = Array.from({ length: 60 }, (_, i) => ({
   id: `p${i + 1}`,
   nickname: `PlayerNick${i + 1}`,
-  mmr: Math.floor(Math.random() * 8001) + 1000, // MMR between 1000 and 9000
+  mmr: Math.floor(Math.random() * 8001) + 1000,
   role: PlayerRoles[i % PlayerRoles.length] as PlayerRole,
   status: getRandomBaseStatus(), 
   steamProfileUrl: `https://steamcommunity.com/id/playernick${i + 1}`,
@@ -24,7 +23,6 @@ export const mockPlayers: Player[] = Array.from({ length: 60 }, (_, i) => ({
 
 
 export const defaultHeroNames = ['Invoker', 'Pudge', 'Juggernaut', 'Lion', 'Shadow Fiend', 'Anti-Mage', 'Phantom Assassin', 'Earthshaker', 'Lina', 'Crystal Maiden', 'Axe', 'Drow Ranger', 'Mirana', 'Rubick', 'Templar Assassin', 'Slark', 'Sven', 'Tiny', 'Witch Doctor', 'Zeus', 'Windranger', 'Storm Spirit', 'Templar Assassin', 'Faceless Void', 'Spectre'];
-export { defaultHeroNames as heroNamesList };
 
 const generateTeamSignatureHeroes = (): HeroPlayStats[] => {
   const heroes = [...defaultHeroNames].sort(() => 0.5 - Math.random()).slice(0, 5);
@@ -42,48 +40,56 @@ const createTeamPlayers = (teamIndex: number, teamStatus: TournamentStatus): Pla
   const teamPlayersSource: Player[] = [];
   for (let i = 0; i < 5; i++) {
     const playerSourceIndex = playerStartIndex + i;
-    if (playerSourceIndex >= mockPlayers.length) break;
+    if (playerSourceIndex >= mockPlayers.length) break; // Should not happen if mockPlayers has 60
     teamPlayersSource.push(mockPlayers[playerSourceIndex]);
   }
 
-  // Assign initial MMRs and roles for the team
   let currentTeamPlayers = teamPlayersSource.map((basePlayer, i) => ({
     ...basePlayer,
-    id: `${basePlayer.id}-t${teamIndex + 1}`,
+    id: `${basePlayer.id}-t${teamIndex + 1}`, // Unique ID for player instance in this team
     role: PlayerRoles[i % PlayerRoles.length] as PlayerRole,
     status: teamStatus === 'Eliminated' || teamStatus === 'Champions' ? teamStatus : basePlayer.status,
-    mmr: Math.floor(Math.random() * 8001) + 1000, // Initial MMR between 1000 and 9000 for team assignment
+    mmr: Math.floor(Math.random() * 8001) + 1000, 
   }));
 
-  // Adjust MMRs to not exceed team cap of 25000
   let teamTotalMMR = currentTeamPlayers.reduce((sum, p) => sum + p.mmr, 0);
   const TEAM_MMR_CAP = 25000;
   const MIN_PLAYER_MMR = 1000;
 
   while (teamTotalMMR > TEAM_MMR_CAP) {
-    // Find player with highest MMR who is not already at MIN_PLAYER_MMR
-    currentTeamPlayers.sort((a, b) => b.mmr - a.mmr); // Sort descending by MMR
+    currentTeamPlayers.sort((a, b) => b.mmr - a.mmr); 
     let adjusted = false;
     for (let i = 0; i < currentTeamPlayers.length; i++) {
       if (currentTeamPlayers[i].mmr > MIN_PLAYER_MMR) {
-        const reductionAmount = Math.min(currentTeamPlayers[i].mmr - MIN_PLAYER_MMR, teamTotalMMR - TEAM_MMR_CAP, 100); // Reduce by up to 100 or remaining excess
+        const reductionAmount = Math.min(currentTeamPlayers[i].mmr - MIN_PLAYER_MMR, teamTotalMMR - TEAM_MMR_CAP, Math.max(1, Math.floor((teamTotalMMR - TEAM_MMR_CAP) / (5-i) )) ); // Smarter reduction
         currentTeamPlayers[i].mmr -= reductionAmount;
         teamTotalMMR -= reductionAmount;
         adjusted = true;
-        break; 
+        if (teamTotalMMR <= TEAM_MMR_CAP) break;
       }
     }
-    if (!adjusted) { // Should not happen if cap is reasonable and players can be reduced
+    if (!adjusted || teamTotalMMR <= TEAM_MMR_CAP) { 
         break;
     }
   }
-  // Final check to ensure no player is below MIN_PLAYER_MMR after potential aggressive reduction, though the loop logic aims to prevent this.
+  
   currentTeamPlayers.forEach(p => {
     if (p.mmr < MIN_PLAYER_MMR) p.mmr = MIN_PLAYER_MMR;
   });
-  // Recalculate final MMR if any clamping happened (edge case)
+  
   teamTotalMMR = currentTeamPlayers.reduce((sum, p) => sum + p.mmr, 0);
-  // If still over cap due to clamping (highly unlikely with current logic), it indicates a very tight constraint. For mock data, this might be acceptable or require more complex balancing.
+  if(teamTotalMMR > TEAM_MMR_CAP){
+    // Final aggressive reduction if still over, distribute excess reduction
+    let excess = teamTotalMMR - TEAM_MMR_CAP;
+    currentTeamPlayers.sort((a,b)=> b.mmr-a.mmr);
+    for(let i=0; i<currentTeamPlayers.length && excess > 0; i++){
+        const canReduce = currentTeamPlayers[i].mmr - MIN_PLAYER_MMR;
+        const reduction = Math.min(excess, canReduce);
+        currentTeamPlayers[i].mmr -= reduction;
+        excess -= reduction;
+    }
+  }
+
 
   return currentTeamPlayers;
 };
@@ -100,7 +106,13 @@ export const mockTeams: Team[] = Array.from({ length: 12 }, (_, i) => {
   
   const teamPlayers = createTeamPlayers(i, teamStatus);
   const matchesPlayed = Math.floor(Math.random() * 8) + 5; 
-  const matchesWon = Math.floor(Math.random() * (teamStatus === "Eliminated" || teamStatus === "Not Verified" ? Math.floor(matchesPlayed * 0.4) : Math.floor(matchesPlayed * 0.8))) + (teamStatus === "Champions" ? Math.floor(matchesPlayed*0.7) : 1);
+  let matchesWon = Math.floor(Math.random() * (matchesPlayed + 1));
+  if (teamStatus === "Champions") {
+    matchesWon = Math.max(matchesWon, Math.floor(matchesPlayed * 0.7));
+  } else if (teamStatus === "Eliminated" || teamStatus === "Not Verified") {
+    matchesWon = Math.min(matchesWon, Math.floor(matchesPlayed * 0.4));
+  }
+  matchesWon = Math.min(matchesWon, matchesPlayed);
   const matchesLost = matchesPlayed - matchesWon;
 
   return {
@@ -223,14 +235,10 @@ const getRandomPlayerAndTeam = (): { player: Player | undefined; team: Team | un
 };
 
 
-const getRandomMatchContext = (): string => {
-  const completedMatches = mockMatches.filter(m => m.status === 'completed');
-  if (completedMatches.length === 0) return "An epic clash";
-  const matchIndex = Math.floor(Math.random() * completedMatches.length);
-  const match = completedMatches[matchIndex];
-  const teamAName = match?.teamA?.name || "Team A";
-  const teamBName = match?.teamB?.name || "Team B";
-  return `${teamAName} vs ${teamBName}`;
+const getRandomCompletedMatch = (): Match | undefined => {
+  const completedMatches = mockMatches.filter(m => m.status === 'completed' && m.teamA && m.teamB);
+  if (completedMatches.length === 0) return undefined;
+  return completedMatches[Math.floor(Math.random() * completedMatches.length)];
 }
 
 export const generateMockSingleMatchRecords = (): StatItem[] => {
@@ -250,6 +258,10 @@ export const generateMockSingleMatchRecords = (): StatItem[] => {
 
   categories.forEach((cat, index) => {
     const { player, team } = getRandomPlayerAndTeam();
+    const randomMatch = getRandomCompletedMatch();
+    const matchContext = randomMatch ? `${randomMatch.teamA.name} vs ${randomMatch.teamB.name}` : "An epic clash";
+    const openDotaMatchUrl = randomMatch?.openDotaMatchUrl;
+
     const rawValue = Math.floor(Math.random() * (cat.max - cat.min + 1)) + cat.min;
     const displayValue = cat.formatter ? cat.formatter(rawValue) : rawValue;
 
@@ -263,7 +275,8 @@ export const generateMockSingleMatchRecords = (): StatItem[] => {
         teamId: team.id,
         value: `${displayValue}${cat.unit}`,
         heroName: defaultHeroNames[Math.floor(Math.random() * defaultHeroNames.length)],
-        matchContext: getRandomMatchContext(),
+        matchContext: matchContext,
+        openDotaMatchUrl: openDotaMatchUrl,
         icon: cat.icon,
       });
     } else {
@@ -274,7 +287,8 @@ export const generateMockSingleMatchRecords = (): StatItem[] => {
         teamName: 'N/A Team',
         value: `${cat.formatter ? cat.formatter(cat.min) : cat.min}${cat.unit}`,
         heroName: defaultHeroNames[Math.floor(Math.random() * defaultHeroNames.length)],
-        matchContext: getRandomMatchContext(),
+        matchContext: matchContext,
+        openDotaMatchUrl: openDotaMatchUrl,
         icon: cat.icon,
       });
     }
@@ -312,13 +326,13 @@ export const generateMockPlayerAverageLeaders = (): StatItem[] => {
 
     if (unassignedPlayers.length > 0) {
       selectedPlayer = unassignedPlayers[Math.floor(Math.random() * unassignedPlayers.length)];
-    } else if (availablePlayers.length > 0) { // Fallback if all players have been assigned at least once
+    } else if (availablePlayers.length > 0) { 
       selectedPlayer = availablePlayers[Math.floor(Math.random() * availablePlayers.length)];
     }
 
 
     if (selectedPlayer && selectedPlayer.id) {
-      if (!assignedPlayerIdsForCategories.has(selectedPlayer.id)) { // Check if already added for variety, not strict uniqueness
+      if (!assignedPlayerIdsForCategories.has(selectedPlayer.id)) { 
          assignedPlayerIdsForCategories.add(selectedPlayer.id);
       }
       selectedTeam = mockTeams.find(team => team.id === selectedPlayer?.teamId); 
@@ -411,5 +425,3 @@ export const generateMockTournamentHighlights = (): TournamentHighlightRecord[] 
   ];
   return highlights;
 };
-
-    
