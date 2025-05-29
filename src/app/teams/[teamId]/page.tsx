@@ -12,6 +12,7 @@ import Link from "next/link";
 import { Users, ListChecks, ExternalLink, BarChart3, Medal, Swords, UserCheck, UserX, ShieldQuestion, PlayCircle, Sigma, Trophy } from "lucide-react";
 import { notFound } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { HeroPieChart } from "@/components/app/HeroPieChart"; // Import the new component
 
 interface TeamPageParams {
   params: { teamId: string };
@@ -114,27 +115,7 @@ export default async function TeamPage({ params }: TeamPageParams) {
       </Card>
 
       {team.mostPlayedHeroes && team.mostPlayedHeroes.length > 0 && (
-        <Card className="shadow-xl">
-          <CardHeader>
-            <CardTitle className="text-2xl font-semibold text-primary flex items-center">
-              <Swords className="h-6 w-6 mr-2" /> Team Signature Heroes
-            </CardTitle>
-            <CardDescription>The team's most frequently played heroes. (Simulated Data)</CardDescription>
-          </CardHeader>
-          <CardContent className="pt-4">
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-              {team.mostPlayedHeroes.map((heroName, index) => (
-                <Card key={index} className="bg-muted/30 border-border hover:border-primary/70 transition-colors duration-200 ease-in-out shadow-sm hover:shadow-md">
-                  <CardContent className="p-3 flex items-center justify-center aspect-[3/2] min-h-0"> {/* min-h-0 helps with flex centering in some cases */}
-                    <p className="text-sm font-semibold text-center text-primary truncate w-full" title={heroName}>
-                      {heroName}
-                    </p>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+         <HeroPieChart heroes={team.mostPlayedHeroes} teamName={team.name} />
       )}
 
       <Card className="shadow-xl">
@@ -244,4 +225,3 @@ export async function generateStaticParams() {
     teamId: team.id,
   }));
 }
-
