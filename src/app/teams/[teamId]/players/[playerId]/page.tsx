@@ -1,5 +1,6 @@
 
-import { mockPlayers, mockTeams, mockMatches, defaultHeroNames as heroNamesList, heroColorMap } from "@/lib/mock-data"; // Added heroColorMap
+import { mockPlayers, mockTeams, mockMatches } from "@/lib/mock-data"; 
+import { defaultHeroNames as heroNamesList, heroColorMap, heroIconMap } from "@/lib/hero-data";
 import type { Player, Team, Match, PlayerPerformanceInMatch } from "@/lib/definitions";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -7,10 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { 
   ExternalLink, BarChartHorizontalBig, Star, TrendingUp, Shield, BarChart3, 
-  UserCheck, UserX, ShieldQuestion, PlayCircle, Trophy, Swords, Skull, Coins, 
-  Zap, Axe as AxeIconLucide, Target, Wallet, ListChecks, Puzzle, Handshake as HandshakeIcon, Home,
-  Anchor, Flame, Snowflake, MountainSnow, Ghost, Ban, Moon,
-  Copy as CopyIconLucide, ShieldOff, Waves, ShieldAlert, Trees, Bone, CloudLightning, Sparkles
+  Coins, Zap, Axe as AxeIconLucide, Target, Wallet, ListChecks, Puzzle, 
+  Handshake as HandshakeIcon, Home
 } from "lucide-react";
 import type { Icon as LucideIconType } from "lucide-react";
 import Image from "next/image";
@@ -41,39 +40,9 @@ interface PlayerMatchHistoryItem {
   openDotaMatchUrl?: string;
 }
 
-const heroIconMap: Record<string, LucideIconType> = {
-  'Invoker': Sparkles,
-  'Pudge': Anchor,
-  'Juggernaut': Swords,
-  'Lion': Zap,
-  'Shadow Fiend': Ghost,
-  'Anti-Mage': Ban,
-  'Phantom Assassin': Swords,
-  'Earthshaker': MountainSnow,
-  'Lina': Flame,
-  'Crystal Maiden': Snowflake,
-  'Axe': AxeIconLucide,
-  'Drow Ranger': Target,
-  'Mirana': Moon,
-  'Rubick': CopyIconLucide,
-  'Templar Assassin': ShieldOff,
-  'Slark': Waves,
-  'Sven': ShieldAlert,
-  'Tiny': Trees,
-  'Witch Doctor': Bone,
-  'Zeus': CloudLightning,
-  'Windranger': Puzzle,
-  'Storm Spirit': Puzzle,
-  'Faceless Void': Puzzle,
-  'Spectre': Puzzle,
-  'Bristleback': Puzzle,
-  'Default': Puzzle,
-};
-
-
 async function getPlayerData(teamId: string, playerId: string): Promise<PlayerData> {
   const team = mockTeams.find(t => t.id === teamId);
-  const playerBaseId = playerId;
+  const playerBaseId = playerId; 
   const player = team?.players.find(p => p.id.startsWith(playerBaseId + '-'));
 
 
@@ -210,14 +179,14 @@ export default async function PlayerPage({ params }: PlayerPageParams) {
               {playerMatchHistory.length > 0 ? (
                 playerMatchHistory.map(histItem => {
                   const HeroIconComponent = heroIconMap[histItem.playerPerformance.hero] || heroIconMap['Default'];
-                  const heroColor = heroColorMap[histItem.playerPerformance.hero] || 'text-primary';
+                  const heroColorClass = heroColorMap[histItem.playerPerformance.hero] || 'text-primary';
                   return (
                     <Card key={histItem.matchId} className="bg-muted/20 shadow-md">
                       <CardHeader className="pb-3">
                         <div className="flex justify-between items-start">
                            <CardTitle className="text-lg flex items-center flex-wrap">
-                            {HeroIconComponent && <HeroIconComponent className={cn("h-5 w-5 mr-1.5 shrink-0", heroColor)} />}
-                            <span className={cn("font-semibold", heroColor)}>{histItem.playerPerformance.hero}</span>
+                            {HeroIconComponent && <HeroIconComponent className={cn("h-5 w-5 mr-1.5 shrink-0", heroColorClass)} />}
+                            <span className={cn("font-semibold", heroColorClass)}>{histItem.playerPerformance.hero}</span>
                             <span className="text-muted-foreground mx-1.5 font-normal">vs</span>
                             <Link href={`/teams/${histItem.opponentTeam.id}`} className="text-accent hover:underline">{histItem.opponentTeam.name}</Link>
                           </CardTitle>
@@ -314,8 +283,11 @@ export async function generateStaticParams() {
   const params: { teamId: string; playerId: string }[] = [];
   mockTeams.forEach(team => {
     team.players.forEach(player => {
-      params.push({ teamId: team.id, playerId: player.id.split('-')[0] });
+      // Ensure we are splitting off the team-specific suffix from player.id correctly
+      const basePlayerId = player.id.split('-t')[0];
+      params.push({ teamId: team.id, playerId: basePlayerId });
     });
   });
+  // Deduplicate params to avoid issues with generateStaticParams
   return Array.from(new Set(params.map(p => JSON.stringify(p)))).map(s => JSON.parse(s));
 }

@@ -8,11 +8,16 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import Image from "next/image";
 import Link from "next/link";
-import { Users, ListChecks, ExternalLink, Medal, Swords, UserCheck, UserX, ShieldQuestion, PlayCircle, Sigma, Trophy, Sparkles, Anchor, Sword as SwordIconLucide, Zap as ZapIcon, Ghost, Ban, MountainSnow, Flame, Snowflake, Axe as AxeIcon, Target, Moon, Copy as CopyIcon, ShieldOff, Waves, ShieldAlert, Trees, Bone, CloudLightning, UserCircle2, Clock, Percent, Skull, Ratio, Handshake, Award, Users2, Puzzle, TrendingUp, Shield as TeamIcon } from "lucide-react";
+import { 
+  Users, ListChecks, ExternalLink, Medal, Swords, UserCheck, UserX, ShieldQuestion, 
+  PlayCircle, Sigma, Trophy, Users2, Clock, Percent, Skull, Ratio, 
+  Handshake as HandshakeIcon, Award, TeamIcon as TeamIconLucide 
+} from "lucide-react"; // Renamed TeamIcon to TeamIconLucide
 import type { Icon as LucideIconType } from "lucide-react";
 import { notFound } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Progress } from "@/components/ui/progress";
+import { heroIconMap } from "@/lib/hero-data"; // Import from new location
 
 interface TeamPageParams {
   params: { teamId: string };
@@ -56,30 +61,6 @@ const getStatusIcon = (status: TournamentStatus) => {
   }
 }
 
-const heroIconMap: Record<string, LucideIconType> = {
-  'Invoker': Sparkles,
-  'Pudge': Anchor,
-  'Juggernaut': SwordIconLucide,
-  'Lion': ZapIcon,
-  'Shadow Fiend': Ghost,
-  'Anti-Mage': Ban,
-  'Phantom Assassin': Swords,
-  'Earthshaker': MountainSnow,
-  'Lina': Flame,
-  'Crystal Maiden': Snowflake,
-  'Axe': AxeIcon,
-  'Drow Ranger': Target,
-  'Mirana': Moon,
-  'Rubick': CopyIcon,
-  'Templar Assassin': ShieldOff,
-  'Slark': Waves,
-  'Sven': ShieldAlert,
-  'Tiny': Trees,
-  'Witch Doctor': Bone,
-  'Zeus': CloudLightning,
-  'Default': Puzzle, // Fallback icon
-};
-
 const podiumColors = [
   { border: 'border-chart-1', text: 'text-chart-1', bg: 'bg-chart-1/10' }, 
   { border: 'border-chart-2', text: 'text-chart-2', bg: 'bg-chart-2/10' }, 
@@ -89,7 +70,7 @@ const podiumColors = [
 function getRankForStat(
   currentTeamValue: number | undefined,
   allTeams: Team[],
-  statKey: keyof Team,
+  statKey: keyof Pick<Team, 'averageKillsPerGame' | 'averageDeathsPerGame' | 'averageAssistsPerGame' | 'averageFantasyPoints'>,
   sortOrder: 'asc' | 'desc' = 'desc' 
 ): string {
   if (currentTeamValue === undefined || currentTeamValue === null || isNaN(currentTeamValue)) return "N/A";
@@ -152,7 +133,7 @@ export default async function TeamPage({ params }: TeamPageParams) {
     { 
       label: "Avg. Assists / Game", 
       value: team.averageAssistsPerGame?.toFixed(1) ?? 'N/A', 
-      icon: Handshake, 
+      icon: HandshakeIcon, 
       type: 'progress', 
       rawValue: team.averageAssistsPerGame, 
       maxValue: maxAssists,
@@ -202,10 +183,10 @@ export default async function TeamPage({ params }: TeamPageParams) {
         <CardContent className="p-6 md:p-8 grid md:grid-cols-3 gap-6">
           <div className="md:col-span-1 space-y-4">
             <h3 className="text-2xl font-semibold mb-4 flex items-center text-foreground">
-               <TeamIcon className="h-6 w-6 mr-2 text-primary" /> Team Summary
+               <TeamIconLucide className="h-6 w-6 mr-2 text-primary" /> Team Summary
             </h3>
              <InfoItem icon={ListChecks} label="Matches Played" value={team.matchesPlayed ?? 0} />
-             <InfoItem icon={TrendingUp} label="Wins / Losses" value={`${team.matchesWon ?? 0}W / ${team.matchesLost ?? 0}L`} />
+             <InfoItem icon={Swords} label="Wins / Losses" value={`${team.matchesWon ?? 0}W / ${team.matchesLost ?? 0}L`} />
              <InfoItem icon={Sigma} label="Total MMR" value={totalMMR.toLocaleString()} />
           </div>
           <div className="md:col-span-2">
@@ -321,7 +302,7 @@ export default async function TeamPage({ params }: TeamPageParams) {
                     value={
                       stat.label === "Avg. Deaths / Game"
                         ? Math.min(100, Math.max(0, (1 - (stat.rawValue / stat.maxValue)) * 100))
-                        : Math.min(100, (stat.rawValue / stat.maxValue) * 100)
+                        : Math.min(100, Math.max(0, (stat.rawValue / stat.maxValue) * 100))
                     }
                     className="w-3/4 h-2.5"
                     aria-label={`${stat.label} progress`}
@@ -414,12 +395,12 @@ function PlayerCard({ player, teamId }: PlayerCardProps) {
           <AvatarFallback>{player.nickname.substring(0, 2).toUpperCase()}</AvatarFallback>
         </Avatar>
         <div>
-          <Link href={`/teams/${teamId}/players/${player.id}`} className="font-semibold text-foreground hover:text-primary">{player.nickname}</Link>
+          <Link href={`/teams/${teamId}/players/${player.id.split('-t')[0]}`} className="font-semibold text-foreground hover:text-primary">{player.nickname}</Link>
           <p className="text-xs text-muted-foreground">MMR: {player.mmr}</p>
         </div>
       </div>
       <Button variant="ghost" size="sm" asChild>
-        <Link href={`/teams/${teamId}/players/${player.id}`}>
+        <Link href={`/teams/${teamId}/players/${player.id.split('-t')[0]}`}>
           View Stats <ExternalLink className="ml-2 h-3 w-3" />
         </Link>
       </Button>
@@ -444,12 +425,3 @@ export async function generateStaticParams() {
     teamId: team.id,
   }));
 }
-    
-
-    
-
-
-
-
-
-
