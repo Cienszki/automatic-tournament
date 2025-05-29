@@ -172,7 +172,7 @@ export default async function TeamPage({ params }: TeamPageParams) {
       </Card>
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card className="shadow-xl">
+        <Card className="shadow-xl text-center hover:bg-muted/10 transition-colors duration-200 flex flex-col">
            <CardHeader className="flex flex-row items-center justify-center space-x-3 pb-2">
             <Users2 className="h-6 w-6 text-accent" />
             <CardTitle className="text-xl text-primary">Top Heroes</CardTitle>
