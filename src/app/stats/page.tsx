@@ -1,4 +1,6 @@
 
+"use client";
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
@@ -13,11 +15,17 @@ async function getStatsData(): Promise<{
   playerAverageLeaders: CategoryDisplayStats[];
   tournamentHighlights: TournamentHighlightRecord[];
 }> {
-  return {
-    singleMatchRecords: generateMockSingleMatchRecords(),
-    playerAverageLeaders: generateMockPlayerAverageLeaders(),
-    tournamentHighlights: generateMockTournamentHighlights(),
-  };
+  // In a real app, this data would come from a database/API
+  // For now, we simulate the data fetching
+  return new Promise((resolve) => {
+    setTimeout(() => { // Simulate network delay
+      resolve({
+        singleMatchRecords: generateMockSingleMatchRecords(),
+        playerAverageLeaders: generateMockPlayerAverageLeaders(),
+        tournamentHighlights: generateMockTournamentHighlights(),
+      });
+    }, 500);
+  });
 }
 
 const AccordionRowContent = ({ categoryData, isSingleMatchCategory }: { categoryData: CategoryDisplayStats, isSingleMatchCategory: boolean }) => {
@@ -27,22 +35,33 @@ const AccordionRowContent = ({ categoryData, isSingleMatchCategory }: { category
     <>
       {/* View for when accordion is OPEN */}
       <div className="hidden group-data-[state=open]:flex group-data-[state=open]:flex-col group-data-[state=open]:items-center group-data-[state=open]:justify-center w-full text-lg py-4 px-4">
-        <categoryData.icon className="h-6 w-6 mr-0 mb-1 text-accent" /> {/* Changed text-primary to text-accent */}
+        <categoryData.icon className="h-6 w-6 mr-0 mb-1 text-accent" />
         <span className="font-semibold text-primary">{categoryData.categoryName}</span>
       </div>
 
       {/* View for when accordion is CLOSED */}
-      <div className="group-data-[state=open]:hidden grid grid-cols-5 md:grid-cols-7 items-center w-full text-sm py-3 px-4">
+      <div className={cn(
+        "group-data-[state=open]:hidden grid items-center w-full text-sm py-3 px-4",
+        "grid-cols-5 md:grid-cols-12" // Base grid for small and medium+
+      )}>
         {/* Category Name + Icon */}
-        <div className="col-span-2 md:col-span-2 font-medium flex items-center">
-          <categoryData.icon className="h-5 w-5 mr-3 text-accent shrink-0" /> {/* Changed text-muted-foreground to text-accent */}
+        <div className={cn(
+          "font-medium flex items-center",
+          "col-span-2", // Takes 2/5 on small screens
+          isSingleMatchCategory ? "md:col-span-3" : "md:col-span-4" // Takes 3/12 or 4/12 on medium+
+        )}>
+          <categoryData.icon className="h-5 w-5 mr-3 text-accent shrink-0" />
           <span className="truncate" title={categoryData.categoryName}>{categoryData.categoryName}</span>
         </div>
 
         {topEntry ? (
           <>
             {/* Player */}
-            <div className="col-span-1 md:col-span-1 truncate" title={topEntry.playerName}>
+            <div className={cn(
+              "truncate",
+              "col-span-1", // Takes 1/5 on small screens
+              isSingleMatchCategory ? "md:col-span-2" : "md:col-span-3" // Takes 2/12 or 3/12 on medium+
+            )} title={topEntry.playerName}>
               {topEntry.playerId && topEntry.teamId ? (
                 <Link href={`/teams/${topEntry.teamId}/players/${topEntry.playerId}`} className="hover:text-primary font-semibold">{topEntry.playerName}</Link>
               ) : (
@@ -50,7 +69,11 @@ const AccordionRowContent = ({ categoryData, isSingleMatchCategory }: { category
               )}
             </div>
             {/* Team */}
-            <div className="col-span-1 md:col-span-1 truncate" title={topEntry.teamName}>
+            <div className={cn(
+              "truncate",
+              "col-span-1", // Takes 1/5 on small screens
+              isSingleMatchCategory ? "md:col-span-2" : "md:col-span-3" // Takes 2/12 or 3/12 on medium+
+            )} title={topEntry.teamName}>
               {topEntry.teamId ? (
                 <Link href={`/teams/${topEntry.teamId}`} className="hover:text-primary">{topEntry.teamName}</Link>
               ) : (
@@ -58,12 +81,16 @@ const AccordionRowContent = ({ categoryData, isSingleMatchCategory }: { category
               )}
             </div>
             {/* Value */}
-            <div className="col-span-1 md:col-span-1 font-semibold text-primary text-right md:text-left">{topEntry.value}</div>
+            <div className={cn(
+              "font-semibold text-primary text-right",
+              "col-span-1", // Takes 1/5 on small screens
+              isSingleMatchCategory ? "md:col-span-1" : "md:col-span-2" // Takes 1/12 or 2/12 on medium+
+            )}>{topEntry.value}</div>
             
             {isSingleMatchCategory && (
               <>
-                <div className="hidden md:table-cell md:col-span-1 truncate" title={topEntry.heroName}>{topEntry.heroName}</div>
-                <div className="hidden md:table-cell md:col-span-1 text-xs text-muted-foreground truncate">
+                <div className="hidden md:block md:col-span-2 truncate" title={topEntry.heroName}>{topEntry.heroName}</div>
+                <div className="hidden md:block md:col-span-2 text-xs text-muted-foreground truncate">
                   {topEntry.openDotaMatchUrl ? (
                     <Link href={topEntry.openDotaMatchUrl} target="_blank" rel="noopener noreferrer" className="hover:text-primary hover:underline">
                       {topEntry.matchContext}
@@ -74,15 +101,9 @@ const AccordionRowContent = ({ categoryData, isSingleMatchCategory }: { category
                 </div>
               </>
             )}
-             {!isSingleMatchCategory && !topEntry.heroName && !topEntry.matchContext && ( // Fillers for average stats if no hero/match
-                <>
-                  <div className="hidden md:table-cell md:col-span-1"></div>
-                  <div className="hidden md:table-cell md:col-span-1"></div>
-                </>
-            )}
           </>
         ) : (
-          <div className="col-span-full md:col-span-5 text-muted-foreground italic text-center md:text-left">No entries for this category.</div>
+          <div className="col-span-full text-muted-foreground italic text-center">No entries for this category.</div>
         )}
       </div>
     </>
@@ -241,4 +262,3 @@ export const metadata = {
   title: "Statistics | Tournament Tracker",
   description: "Detailed player and tournament statistics.",
 };
-
