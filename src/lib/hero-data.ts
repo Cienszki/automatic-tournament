@@ -22,7 +22,8 @@ export const defaultHeroNames = [
   'Legion Commander', 'Leshrac', 'Lich', 'Lifestealer', 'Lina', 'Lion', 'Lone Druid', 'Luna', 'Lycan', 
   'Magnus', 'Marci', 'Mars', 'Medusa', 'Meepo', 'Mirana', 'Monkey King', 'Morphling', 'Muerta', 
   'Naga Siren', "Nature's Prophet", 'Necrophos', 'Night Stalker', 'Nyx Assassin', 'Ogre Magi', 'Omniknight', 
-  'Oracle', 'Outworld Devourer', 'Pangolier', 'Phantom Assassin', 'Phantom Lancer', 'Phoenix', 'Primal Beast', 
+  'Oracle', 'Outworld Destroyer', // Changed from Devourer to match provided color list
+  'Pangolier', 'Phantom Assassin', 'Phantom Lancer', 'Phoenix', 'Primal Beast', 
   'Puck', 'Pudge', 'Pugna', 'Queen of Pain', 'Razor', 'Riki', 'Ringmaster', 'Rubick', 'Sand King', 
   'Shadow Demon', 'Shadow Fiend', 'Shadow Shaman', 'Silencer', 'Skywrath Mage', 'Slardar', 'Slark', 
   'Snapfire', 'Sniper', 'Spectre', 'Spirit Breaker', 'Storm Spirit', 'Sven', 'Techies', 'Templar Assassin', 
@@ -32,50 +33,26 @@ export const defaultHeroNames = [
 ];
 
 export const heroIconMap: Record<string, LucideIconType> = {
-  // Existing common heroes
-  'Invoker': Sparkles,
-  'Pudge': Anchor,
-  'Juggernaut': Swords, 
-  'Lion': Zap, 
-  'Shadow Fiend': Ghost,
-  'Anti-Mage': Ban,
-  'Phantom Assassin': VenetianMask,
-  'Earthshaker': MountainSnow,
-  'Lina': Flame,
-  'Crystal Maiden': Snowflake,
-  'Axe': AxeIconLucide,
-  'Drow Ranger': Target,
-  'Mirana': Moon,
-  'Rubick': CopyIconLucide,
-  'Templar Assassin': ShieldOff,
-  'Slark': Waves,
-  'Sven': ShieldAlert,
-  'Tiny': Trees,
-  'Witch Doctor': Bone,
-  'Zeus': CloudLightning,
-  'Windranger': Wind, 
-  'Storm Spirit': CloudLightning,
-  'Faceless Void': Circle,
-  'Spectre': Ghost,
-  'Bristleback': Pickaxe,
-
-  // New heroes from the list
   'Abaddon': ShieldCheck,
   'Alchemist': FlaskConical,
   'Ancient Apparition': Snowflake,
+  'Anti-Mage': Ban,
   'Arc Warden': GitFork,
+  'Axe': AxeIconLucide,
   'Bane': Brain,
   'Batrider': Flame,
   'Beastmaster': AxeIconLucide,
   'Bloodseeker': Droplets,
   'Bounty Hunter': Coins,
   'Brewmaster': Beer,
-  'Broodmother': Bug, 
+  'Bristleback': Pickaxe,
+  'Broodmother': Bug,
   'Centaur Warrunner': Footprints,
   'Chaos Knight': Dices,
   'Chen': Handshake,
   'Clinkz': Flame,
   'Clockwerk': Cog,
+  'Crystal Maiden': Snowflake,
   'Dark Seer': Shell,
   'Dark Willow': Palmtree,
   'Dawnbreaker': Sunrise,
@@ -84,32 +61,40 @@ export const heroIconMap: Record<string, LucideIconType> = {
   'Disruptor': CloudLightning,
   'Doom': Flame,
   'Dragon Knight': Castle,
+  'Drow Ranger': Target,
   'Earth Spirit': MountainSnow,
+  'Earthshaker': MountainSnow,
   'Elder Titan': Hammer,
   'Ember Spirit': Flame,
   'Enchantress': Rabbit,
   'Enigma': Gem,
+  'Faceless Void': Circle,
   'Grimstroke': SprayCan,
   'Gyrocopter': Plane,
   'Hoodwink': Nut,
   'Huskar': Flame,
+  'Invoker': Sparkles,
   'Io': Circle,
   'Jakiro': Flame,
+  'Juggernaut': Swords,
   'Keeper of the Light': Sun,
-  'Kez': Puzzle,
+  'Kez': Puzzle, // Placeholder, no specific hero named Kez
   'Kunkka': Ship,
   'Legion Commander': Swords,
   'Leshrac': Zap,
   'Lich': Snowflake,
   'Lifestealer': Rat,
+  'Lina': Flame,
+  'Lion': Zap,
   'Lone Druid': PawPrint,
   'Luna': Moon,
   'Lycan': Dog,
-  'Magnus': Tornado, 
+  'Magnus': Tornado,
   'Marci': Hand,
   'Mars': Shield,
   'Medusa': Siren,
   'Meepo': CopyIconLucide,
+  'Mirana': Moon,
   'Monkey King': Pickaxe,
   'Morphling': Waves,
   'Muerta': Crosshair,
@@ -117,35 +102,45 @@ export const heroIconMap: Record<string, LucideIconType> = {
   "Nature's Prophet": Trees,
   'Necrophos': Skull,
   'Night Stalker': Moon,
-  'Nyx Assassin': Bug, 
+  'Nyx Assassin': Bug,
   'Ogre Magi': Dice5,
   'Omniknight': ShieldPlus,
   'Oracle': Eye,
-  'Outworld Devourer': Brain,
+  'Outworld Destroyer': Brain, // Using Brain for OD
   'Pangolier': Swords,
+  'Phantom Assassin': VenetianMask,
   'Phantom Lancer': CopyIconLucide,
   'Phoenix': Flame,
   'Primal Beast': PawPrint,
   'Puck': Sparkles,
-  'Pugna': Home, // Changed from Tower to Home
+  'Pudge': Anchor,
+  'Pugna': Home,
   'Queen of Pain': Drama,
   'Razor': Zap,
   'Riki': EyeOff,
-  'Ringmaster': Puzzle,
-  'Sand King': Bug, 
+  'Ringmaster': Puzzle, // Placeholder
+  'Rubick': CopyIconLucide,
+  'Sand King': Bug,
   'Shadow Demon': Ghost,
+  'Shadow Fiend': Ghost,
   'Shadow Shaman': Bot,
   'Silencer': VolumeX,
   'Skywrath Mage': Bird,
   'Slardar': Fish,
+  'Slark': Waves,
   'Snapfire': Flame,
   'Sniper': Target,
-  'Spirit Breaker': Activity, 
-  'Techies': Bomb, 
+  'Spectre': Ghost,
+  'Spirit Breaker': Activity,
+  'Storm Spirit': CloudLightning,
+  'Sven': ShieldAlert,
+  'Techies': Bomb,
+  'Templar Assassin': ShieldOff,
   'Terrorblade': Swords,
   'Tidehunter': Anchor,
   'Timbersaw': AxeIconLucide,
   'Tinker': Cog,
+  'Tiny': Trees,
   'Treant Protector': Trees,
   'Troll Warlord': AxeIconLucide,
   'Tusk': Snowflake,
@@ -158,145 +153,136 @@ export const heroIconMap: Record<string, LucideIconType> = {
   'Visage': Bird,
   'Void Spirit': Sparkles,
   'Warlock': BookIcon,
-  'Weaver': Bug, 
+  'Weaver': Bug,
+  'Windranger': Wind,
   'Winter Wyvern': Snowflake,
+  'Witch Doctor': Bone,
   'Wraith King': Crown,
-
-  // Default
+  'Zeus': CloudLightning,
   'Default': Puzzle,
 };
 
-// Assigning colors based on visual themes or common associations.
-// Using a mix of primary, secondary, accent, and chart colors.
 export const heroColorMap: Record<string, string> = {
-  // Existing thematic colors
-  'Invoker': 'text-chart-4',        // Purple (arcane magic)
-  'Pudge': 'text-chart-5',          // Green (decay, rot)
-  'Juggernaut': 'text-destructive',  // Red (aggressive, warrior)
-  'Lion': 'text-destructive',       // Red (demonic, fire)
-  'Shadow Fiend': 'text-muted-foreground', // Dark/Gray (shadows)
-  'Anti-Mage': 'text-chart-4',      // Purple (anti-magic, void)
-  'Phantom Assassin': 'text-secondary',// Blue (stealthy, sharp)
-  'Earthshaker': 'text-chart-3',    // Yellow/Gold (earth, stone)
-  'Lina': 'text-primary',           // Hot Pink (fire, intense)
-  'Crystal Maiden': 'text-accent',    // Cyan/Teal (ice)
-  'Axe': 'text-destructive',        // Red (aggressive, blood)
-  'Drow Ranger': 'text-accent',       // Cyan/Teal (cold, precise)
-  'Mirana': 'text-foreground',      // Off-White (lunar, divine)
-  'Rubick': 'text-chart-5',         // Green (trickster, stolen magic)
-  'Templar Assassin': 'text-primary', // Hot Pink (psionic, mysterious)
-  'Slark': 'text-secondary',        // Blue (aquatic, stealthy)
-  'Sven': 'text-secondary',         // Blue (knightly, strong)
-  'Tiny': 'text-muted-foreground',  // Gray (stone giant)
-  'Witch Doctor': 'text-chart-4',   // Purple (voodoo, dark magic)
-  'Zeus': 'text-chart-3',           // Yellow/Gold (lightning)
-  'Windranger': 'text-chart-5',     // Green (wind, nature)
-  'Storm Spirit': 'text-secondary',   // Blue (electric, storm)
-  'Faceless Void': 'text-chart-4',    // Purple (cosmic, timeless)
-  'Spectre': 'text-chart-4',        // Purple (ethereal, haunting)
-  'Bristleback': 'text-chart-3',    // Yellow/Gold (tough, quills)
-
-  // New heroes - trying to match visual themes
-  'Abaddon': 'text-accent',          // Light blue/ethereal
-  'Alchemist': 'text-chart-5',       // Green (concoctions)
-  'Ancient Apparition': 'text-accent',// Cyan/Ice
-  'Arc Warden': 'text-chart-4',      // Purple/Electric
-  'Bane': 'text-muted-foreground',   // Dark/Shadowy
-  'Batrider': 'text-primary',        // Orange/Red (fire)
-  'Beastmaster': 'text-chart-3',     // Brown/Yellow (wild)
-  'Bloodseeker': 'text-destructive', // Red (blood)
-  'Bounty Hunter': 'text-chart-3',   // Gold
-  'Brewmaster': 'text-chart-5',      // Earthy green/brown
-  'Broodmother': 'text-chart-4',     // Dark purple/black
-  'Centaur Warrunner': 'text-destructive', // Reddish-brown
-  'Chaos Knight': 'text-primary',    // Dark red/purple (chaos)
-  'Chen': 'text-foreground',       // White/Gold (holy)
-  'Clinkz': 'text-destructive',      // Fiery red/orange
-  'Clockwerk': 'text-muted-foreground',// Metallic gray
-  'Dark Seer': 'text-chart-4',       // Purple (dark magic)
-  'Dark Willow': 'text-primary',     // Pink/Purple (fey)
-  'Dawnbreaker': 'text-chart-3',     // Gold/White (celestial)
-  'Dazzle': 'text-accent',           // Light blue/teal (healing)
-  'Death Prophet': 'text-chart-5',   // sickly green/ethereal
-  'Disruptor': 'text-secondary',     // Blue (storm)
-  'Doom': 'text-destructive',      // Red/Black (demonic)
-  'Dragon Knight': 'text-destructive',// Red (dragon form)
-  'Earth Spirit': 'text-chart-5',    // Green/Brown (earth)
-  'Elder Titan': 'text-muted-foreground', // Gray/Stone
-  'Ember Spirit': 'text-primary',    // Orange/Red (fire)
-  'Enchantress': 'text-chart-5',     // Green (nature)
-  'Enigma': 'text-chart-4',          // Dark Purple/Black (void)
-  'Grimstroke': 'text-primary',      // Dark Red/Ink
-  'Gyrocopter': 'text-secondary',    // Blue/Gray (mechanical)
-  'Hoodwink': 'text-chart-5',        // Green/Brown (forest)
-  'Huskar': 'text-destructive',      // Red (berserker, fire)
-  'Io': 'text-accent',               // Light Blue/White (wisp)
-  'Jakiro': 'text-secondary',        // Blue (ice aspect) / Red (fire aspect) - choosing one
-  'Keeper of the Light': 'text-foreground',// White/Gold (light)
-  'Kez': 'text-muted-foreground',     // Placeholder
-  'Kunkka': 'text-secondary',        // Blue (water)
-  'Legion Commander': 'text-destructive',// Red (battle)
-  'Leshrac': 'text-accent',          // Blue/Teal (pulse nova)
-  'Lich': 'text-accent',             // Cyan/Blue (ice)
-  'Lifestealer': 'text-destructive',   // Red/Dark (infested)
-  'Lone Druid': 'text-chart-5',      // Green/Brown (nature, bear)
-  'Luna': 'text-accent',             // Silvery Blue/White (moon)
-  'Lycan': 'text-muted-foreground',  // Brown/Gray (wolf)
-  'Magnus': 'text-secondary',        // Blue/Purple (empower)
-  'Marci': 'text-primary',           // Pink/Red
-  'Mars': 'text-destructive',        // Red (war)
-  'Medusa': 'text-chart-5',          // Green (serpentine)
-  'Meepo': 'text-chart-3',           // Brown/Yellow (earthy)
-  'Monkey King': 'text-chart-3',     // Gold/Red
-  'Morphling': 'text-accent',        // Cyan/Blue (water)
-  'Muerta': 'text-primary',          // Red/Black
-  'Naga Siren': 'text-accent',       // Teal/Blue (oceanic)
-  "Nature's Prophet": 'text-chart-5',// Green (nature)
-  'Necrophos': 'text-chart-5',       // Sickly Green (death aura)
-  'Night Stalker': 'text-chart-4',   // Dark Blue/Purple (night)
-  'Nyx Assassin': 'text-chart-4',    // Dark Purple/Blue (insectoid)
-  'Ogre Magi': 'text-secondary',     // Blue (ogre skin)
-  'Omniknight': 'text-foreground',   // White/Gold (holy)
-  'Oracle': 'text-chart-3',          // Gold/Ethereal
-  'Outworld Devourer': 'text-chart-4',// Dark Purple/Black (void)
-  'Pangolier': 'text-destructive',   // Reddish-brown (swashbuckler)
-  'Phantom Lancer': 'text-accent',   // Blue/Teal (illusions)
-  'Phoenix': 'text-primary',         // Fiery Orange/Red
-  'Primal Beast': 'text-destructive',// Red/Brown
-  'Puck': 'text-chart-4',            // Purple/Pink (fey dragon)
-  'Pugna': 'text-chart-5',           // Green (nether)
-  'Queen of Pain': 'text-primary',   // Pink/Purple (succubus)
-  'Razor': 'text-secondary',         // Electric Blue
-  'Riki': 'text-muted-foreground',   // Dark/Stealthy
-  'Ringmaster': 'text-muted-foreground', // Placeholder
-  'Sand King': 'text-chart-3',       // Sandy Yellow/Brown
-  'Shadow Demon': 'text-primary',    // Dark Red/Purple
-  'Shadow Shaman': 'text-destructive',// Red/Orange (serpent wards)
-  'Silencer': 'text-chart-4',        // Purple (arcane)
-  'Skywrath Mage': 'text-chart-3',   // Gold/Blue (celestial)
-  'Slardar': 'text-secondary',       // Deep Blue/Green (slithereen)
-  'Snapfire': 'text-primary',        // Orange/Red (fiery)
-  'Sniper': 'text-chart-5',          // Brown/Green (dwarven)
-  'Spirit Breaker': 'text-chart-4',  // Purple/Blue (nether charge)
-  'Techies': 'text-primary',         // Orange/Red (explosions)
-  'Terrorblade': 'text-chart-4',     // Dark Purple/Demonic
-  'Tidehunter': 'text-chart-5',      // Green (leviathan)
-  'Timbersaw': 'text-muted-foreground',// Brown/Gray (mechanical)
-  'Tinker': 'text-chart-3',          // Yellow/Orange (mechanical)
-  'Treant Protector': 'text-chart-5',// Deep Green (forest)
-  'Troll Warlord': 'text-destructive',// Red/Green (rage)
-  'Tusk': 'text-accent',             // Icy Blue
-  'Underlord': 'text-chart-5',       // Dark Green/Black (abyssal)
-  'Undying': 'text-chart-5',         // Pale Green/Gray (undead)
-  'Ursa': 'text-chart-5',            // Brown/Green (ursine)
-  'Vengeful Spirit': 'text-accent',  // Ethereal Blue
-  'Venomancer': 'text-chart-5',      // Toxic Green
-  'Viper': 'text-chart-5',           // Green/Black (netherdrake)
-  'Visage': 'text-muted-foreground', // Gray/Stone (gargoyle)
-  'Void Spirit': 'text-chart-4',     // Purple (void remnant)
-  'Warlock': 'text-destructive',     // Dark Red/Purple (demonic)
-  'Weaver': 'text-chart-4',          // Purple/Green (insectoid)
-  'Winter Wyvern': 'text-accent',    // Icy Blue/White
-  'Wraith King': 'text-chart-5',     // Ethereal Green/Bone
-  'Default': 'text-primary',
+  "Abaddon": "#4a4a4a",
+  "Alchemist": "#8b4513",
+  "Axe": "#dc143c",
+  "Beastmaster": "#cd853f",
+  "Brewmaster": "#ff6347",
+  "Bristleback": "#8b4513",
+  "Centaur Warrunner": "#a0522d",
+  "Chaos Knight": "#800080",
+  "Clockwerk": "#ff4500",
+  "Dawnbreaker": "#ffd700",
+  "Doom": "#ff0000",
+  "Dragon Knight": "#ff6347",
+  "Earth Spirit": "#8b4513",
+  "Earthshaker": "#a0522d",
+  "Elder Titan": "#4682b4",
+  "Huskar": "#ff4500",
+  "Io": "#00ffff",
+  "Kunkka": "#4682b4",
+  "Legion Commander": "#dc143c",
+  "Lifestealer": "#8b0000",
+  "Magnus": "#4682b4",
+  "Marci": "#ff69b4",
+  "Mars": "#dc143c",
+  "Night Stalker": "#2f4f4f",
+  "Omniknight": "#ffd700",
+  "Primal Beast": "#8b4513",
+  "Pudge": "#228b22",
+  "Sand King": "#daa520",
+  "Slardar": "#4682b4",
+  "Snapfire": "#ff4500",
+  "Spirit Breaker": "#9370db",
+  "Sven": "#1e90ff",
+  "Tidehunter": "#006400",
+  "Timbersaw": "#32cd32",
+  "Tiny": "#696969",
+  "Tusk": "#87ceeb",
+  "Underlord": "#8b0000",
+  "Undying": "#228b22",
+  "Wraith King": "#32cd32",
+  "Anti-Mage": "#9370db",
+  "Arc Warden": "#1e90ff",
+  "Bloodseeker": "#dc143c",
+  "Bounty Hunter": "#daa520",
+  "Broodmother": "#8b0000",
+  "Clinkz": "#2f4f4f",
+  "Drow Ranger": "#87ceeb",
+  "Ember Spirit": "#ff4500",
+  "Faceless Void": "#9370db",
+  "Gyrocopter": "#ff6347",
+  "Hoodwink": "#8b4513",
+  "Juggernaut": "#ff6347",
+  "Luna": "#1e90ff",
+  "Medusa": "#32cd32",
+  "Meepo": "#8b4513",
+  "Mirana": "#87ceeb",
+  "Monkey King": "#daa520",
+  "Morphling": "#1e90ff",
+  "Naga Siren": "#20b2aa",
+  "Nyx Assassin": "#9370db",
+  "Pangolier": "#daa520",
+  "Phantom Assassin": "#4b0082",
+  "Phantom Lancer": "#1e90ff",
+  "Razor": "#1e90ff",
+  "Riki": "#9370db",
+  "Shadow Fiend": "#8b0000",
+  "Slark": "#2f4f4f",
+  "Sniper": "#daa520",
+  "Spectre": "#9370db",
+  "Templar Assassin": "#ff69b4",
+  "Terrorblade": "#8b0000",
+  "Troll Warlord": "#8b4513",
+  "Ursa": "#8b4513",
+  "Vengeful Spirit": "#9370db",
+  "Venomancer": "#32cd32",
+  "Viper": "#32cd32",
+  "Weaver": "#daa520",
+  "Ancient Apparition": "#87ceeb",
+  "Bane": "#4b0082",
+  "Batrider": "#ff4500",
+  "Chen": "#ffd700",
+  "Crystal Maiden": "#87ceeb",
+  "Dark Seer": "#9370db",
+  "Dark Willow": "#9370db",
+  "Dazzle": "#ff69b4",
+  "Death Prophet": "#32cd32",
+  "Disruptor": "#1e90ff",
+  "Enchantress": "#32cd32",
+  "Enigma": "#4b0082",
+  "Grimstroke": "#2f4f4f",
+  "Invoker": "#daa520",
+  "Jakiro": "#ff4500",
+  "Keeper of the Light": "#ffd700",
+  "Leshrac": "#1e90ff",
+  "Lich": "#87ceeb",
+  "Lina": "#ff0000",
+  "Lion": "#4b0082",
+  "Muerta": "#32cd32",
+  "Nature's Prophet": "#32cd32",
+  "Necrophos": "#32cd32",
+  "Ogre Magi": "#1e90ff",
+  "Oracle": "#ffd700",
+  "Outworld Destroyer": "#1e90ff",
+  "Puck": "#ff69b4",
+  "Queen of Pain": "#ff69b4",
+  "Rubick": "#32cd32",
+  "Shadow Demon": "#9370db",
+  "Shadow Shaman": "#9370db",
+  "Silencer": "#9370db",
+  "Skywrath Mage": "#1e90ff",
+  "Storm Spirit": "#1e90ff",
+  "Techies": "#daa520",
+  "Tinker": "#ff6347",
+  "Visage": "#2f4f4f",
+  "Void Spirit": "#9370db",
+  "Warlock": "#ff0000",
+  "Windranger": "#32cd32",
+  "Winter Wyvern": "#87ceeb",
+  "Witch Doctor": "#9370db",
+  "Zeus": "#1e90ff",
 };
+
+// Fallback color if hero not in map
+export const FALLBACK_HERO_COLOR = '#FF3BEA'; // Neon Pink (Primary Theme Color)

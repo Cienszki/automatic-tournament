@@ -1,6 +1,7 @@
 
+import * as React from "react";
 import { mockPlayers, mockTeams, mockMatches } from "@/lib/mock-data"; 
-import { defaultHeroNames as heroNamesList, heroColorMap, heroIconMap } from "@/lib/hero-data";
+import { heroIconMap, heroColorMap, FALLBACK_HERO_COLOR, defaultHeroNames } from "@/lib/hero-data";
 import type { Player, Team, Match, PlayerPerformanceInMatch } from "@/lib/definitions";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -97,7 +98,7 @@ export default async function PlayerPage({ params }: PlayerPageParams) {
     gpm: Math.floor(Math.random() * 300 + 400), 
     xpm: Math.floor(Math.random() * 300 + 450), 
     winRate: (Math.random() * 30 + 45).toFixed(1) + "%", 
-    mostPlayedHero: heroNamesList[Math.floor(Math.random() * heroNamesList.length)], 
+    mostPlayedHero: defaultHeroNames[Math.floor(Math.random() * defaultHeroNames.length)], 
   };
 
   const avatarPlaceholder = `https://placehold.co/128x128.png?text=${player.nickname.substring(0, 2).toUpperCase()}`;
@@ -179,14 +180,14 @@ export default async function PlayerPage({ params }: PlayerPageParams) {
               {playerMatchHistory.length > 0 ? (
                 playerMatchHistory.map(histItem => {
                   const HeroIconComponent = heroIconMap[histItem.playerPerformance.hero] || heroIconMap['Default'];
-                  const heroColorClass = heroColorMap[histItem.playerPerformance.hero] || 'text-primary';
+                  const heroColorHex = heroColorMap[histItem.playerPerformance.hero] || FALLBACK_HERO_COLOR;
                   return (
                     <Card key={histItem.matchId} className="bg-muted/20 shadow-md">
                       <CardHeader className="pb-3">
                         <div className="flex justify-between items-start">
                            <CardTitle className="text-lg flex items-center flex-wrap">
-                            {HeroIconComponent && <HeroIconComponent className={cn("h-5 w-5 mr-1.5 shrink-0", heroColorClass)} />}
-                            <span className={cn("font-semibold", heroColorClass)}>{histItem.playerPerformance.hero}</span>
+                            {HeroIconComponent && <HeroIconComponent color={heroColorHex} className="h-5 w-5 mr-1.5 shrink-0" />}
+                            <span style={{ color: heroColorHex }} className="font-semibold">{histItem.playerPerformance.hero}</span>
                             <span className="text-muted-foreground mx-1.5 font-normal">vs</span>
                             <Link href={`/teams/${histItem.opponentTeam.id}`} className="text-accent hover:underline">{histItem.opponentTeam.name}</Link>
                           </CardTitle>

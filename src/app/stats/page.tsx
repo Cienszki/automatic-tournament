@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { generateMockSingleMatchRecords, generateMockPlayerAverageLeaders, generateMockTournamentHighlights } from "@/lib/mock-data"; 
-import { defaultHeroNames, heroColorMap, heroIconMap } from "@/lib/hero-data"; // Import from new location
+import { heroIconMap, heroColorMap, FALLBACK_HERO_COLOR, defaultHeroNames } from "@/lib/hero-data"; 
 import type { CategoryDisplayStats, CategoryRankingDetail, TournamentHighlightRecord } from "@/lib/definitions";
 import { 
   BarChartHorizontalBig, Trophy, Zap, Swords, HeartHandshake as HandshakeIconLucide, Coins, Eye, Bomb, ShieldAlert, DollarSign, Award,
@@ -48,7 +48,7 @@ const AccordionRowContent = ({ categoryData, isSingleMatchCategory }: { category
           "col-span-2", 
           isSingleMatchCategory ? "md:col-span-3" : "md:col-span-4" 
         )}>
-          <categoryData.icon className="h-5 w-5 mr-3 shrink-0" />
+          <categoryData.icon className="h-5 w-5 mr-3 shrink-0 text-accent" />
           <span className="truncate" title={categoryData.categoryName}>{categoryData.categoryName}</span>
         </div>
 
@@ -93,10 +93,11 @@ const AccordionRowContent = ({ categoryData, isSingleMatchCategory }: { category
                   )} title={topEntry.heroName}>
                   {(heroIconMap[topEntry.heroName] || heroIconMap['Default']) && 
                     React.createElement(heroIconMap[topEntry.heroName] || heroIconMap['Default'], { 
-                      className: cn("h-4 w-4 mr-1 inline-block shrink-0", heroColorMap[topEntry.heroName] || 'text-primary') 
+                      className: cn("h-4 w-4 mr-1 inline-block shrink-0"),
+                      color: heroColorMap[topEntry.heroName] || FALLBACK_HERO_COLOR
                     })
                   }
-                  <span className={cn(heroColorMap[topEntry.heroName] || 'text-primary')}>{topEntry.heroName}</span>
+                  <span style={{color: heroColorMap[topEntry.heroName] || FALLBACK_HERO_COLOR}}>{topEntry.heroName}</span>
                 </div> 
                 <div className="hidden md:block md:col-span-2 text-xs text-muted-foreground truncate" title={topEntry.matchContext}>
                   {topEntry.openDotaMatchUrl ? (
@@ -140,7 +141,7 @@ const StatsPage = ({ data }: { data: Awaited<ReturnType<typeof getStatsData>> })
       <TableBody>
         {details.map((detail) => {
           const HeroIconComponent = isSingleMatchCategory && detail.heroName ? (heroIconMap[detail.heroName] || heroIconMap['Default']) : null;
-          const heroColorClass = isSingleMatchCategory && detail.heroName ? (heroColorMap[detail.heroName] || 'text-primary') : 'text-primary';
+          const heroColorHex = isSingleMatchCategory && detail.heroName ? (heroColorMap[detail.heroName] || FALLBACK_HERO_COLOR) : FALLBACK_HERO_COLOR;
           return (
             <TableRow key={`${detail.rank}-${detail.playerName}-${detail.teamName}-${detail.value}`} className="text-sm">
               <TableCell className="font-semibold px-3 py-2">{detail.rank}</TableCell>
@@ -158,12 +159,12 @@ const StatsPage = ({ data }: { data: Awaited<ReturnType<typeof getStatsData>> })
                   <span className="text-accent">{detail.teamName || 'N/A'}</span>
                 )}
               </TableCell>
-              <TableCell className="font-semibold text-primary px-3 py-2">{detail.value}</TableCell>
+              <TableCell className="font-semibold px-3 py-2" style={{color: isSingleMatchCategory ? heroColorHex : 'hsl(var(--primary))'}}>{detail.value}</TableCell>
               {isSingleMatchCategory && (
                 <TableCell className="px-3 py-2">
                   <div className="flex items-center">
-                    {HeroIconComponent && <HeroIconComponent className={cn("h-4 w-4 mr-1.5 shrink-0", heroColorClass)} />}
-                    <span className={heroColorClass}>{detail.heroName}</span>
+                    {HeroIconComponent && <HeroIconComponent color={heroColorHex} className={cn("h-4 w-4 mr-1.5 shrink-0")} />}
+                    <span style={{ color: heroColorHex }}>{detail.heroName}</span>
                   </div>
                 </TableCell>
               )}
@@ -210,7 +211,7 @@ const StatsPage = ({ data }: { data: Awaited<ReturnType<typeof getStatsData>> })
             {singleMatchRecords.map((categoryData) => (
               <AccordionItem value={categoryData.id} key={categoryData.id} className="border-b last:border-b-0">
                  <Card className="mb-0.5 shadow-none hover:bg-muted/5 transition-colors rounded-md overflow-hidden group">
-                    <AccordionTrigger className="p-0 hover:no-underline w-full data-[state=open]:bg-muted/10">
+                    <AccordionTrigger className="p-0 hover:no-underline w-full data-[state=open]:bg-muted/10 group">
                         <AccordionRowContent categoryData={categoryData} isSingleMatchCategory={true} />
                     </AccordionTrigger>
                     <AccordionContent className="p-4 bg-card">
@@ -241,7 +242,7 @@ const StatsPage = ({ data }: { data: Awaited<ReturnType<typeof getStatsData>> })
             {playerAverageLeaders.map((categoryData) => (
                 <AccordionItem value={categoryData.id} key={categoryData.id} className="border-b last:border-b-0">
                     <Card className="mb-0.5 shadow-none hover:bg-muted/5 transition-colors rounded-md overflow-hidden group">
-                        <AccordionTrigger className="p-0 hover:no-underline w-full data-[state=open]:bg-muted/10">
+                        <AccordionTrigger className="p-0 hover:no-underline w-full data-[state=open]:bg-muted/10 group">
                             <AccordionRowContent categoryData={categoryData} isSingleMatchCategory={false} />
                         </AccordionTrigger>
                         <AccordionContent className="p-4 bg-card">
