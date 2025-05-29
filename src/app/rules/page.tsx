@@ -1,6 +1,7 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollText } from "lucide-react";
+import Link from "next/link";
 
 export default function RulesPage() {
   return (
@@ -8,154 +9,156 @@ export default function RulesPage() {
       <Card className="shadow-xl">
         <CardHeader className="text-center">
            <ScrollText className="h-16 w-16 mx-auto text-primary mb-4" />
-          <CardTitle className="text-4xl font-bold text-primary">Tournament Rules & Regulations</CardTitle>
+          <CardTitle className="text-4xl font-bold text-primary">Regulamin Turnieju "Jesienna Zadyma"</CardTitle>
           <CardDescription className="text-lg text-muted-foreground">
-            Please read all rules carefully to ensure fair play and a smooth tournament experience for all participants.
+            Prosimy o dokładne zapoznanie się z regulaminem, aby zapewnić uczciwą grę i płynny przebieg turnieju dla wszystkich uczestników.
           </CardDescription>
         </CardHeader>
       </Card>
 
       <Card>
         <CardContent className="p-6 md:p-8 space-y-6 prose prose-sm sm:prose-base lg:prose-lg xl:prose-xl 2xl:prose-2xl mx-auto dark:prose-invert">
-          <section id="introduction">
-            <h2 className="text-2xl font-semibold text-primary border-b pb-2 mb-4">1. Introduction & Acceptance</h2>
-            <ol className="list-decimal pl-5 space-y-2">
-              <li><strong>1.1. Acceptance of Rules:</strong> By participating in this tournament, all players and teams agree to abide by these official rules and regulations, as well as any decisions made by tournament administrators.</li>
-              <li><strong>1.2. Rule Changes:</strong> Tournament administrators reserve the right to amend, modify, or supplement these rules at any time to ensure fair play and the integrity of the competition. All changes will be communicated through official channels.</li>
-              <li><strong>1.3. Spirit of the Game:</strong> All participants are expected to compete in the spirit of fair play, honesty, and respect towards opponents, teammates, and tournament staff.</li>
-            </ol>
+          <section id="administratorzy-zapisy">
+            <h2 className="text-2xl font-semibold text-primary border-b pb-2 mb-4">1. Administratorzy i Zapisy</h2>
+            <p><strong>Administratorzy:</strong> Cienszki, SATO, AxePerson, vanRooD</p>
+            <p>Zapisy trwają od <strong>16.09.24</strong> do <strong>28.09.2024</strong> do północy (czasu polskiego).</p>
+            <p>Kapitan drużyny jest odpowiedzialny za:</p>
+            <ul className="list-disc pl-5 space-y-1 mt-1">
+              <li>Kontakt z administracją i innymi uczestnikami turnieju.</li>
+              <li>Zapisanie drużyny na kanale Zapisy oraz Challonge pod linkiem <Link href="#" className="text-accent hover:underline">LINK</Link> (<Link href="#" className="text-accent hover:underline">instrukcja wideo</Link>).</li>
+              <li>Informowanie jej członków na temat regulaminu, ogłoszeń i wszystkich pozostałych kwestii organizacyjnych.</li>
+            </ul>
           </section>
 
-          <section id="eligibility-registration">
-            <h2 className="text-2xl font-semibold text-primary border-b pb-2 mb-4">2. Eligibility & Registration</h2>
-            <ol className="list-decimal pl-5 space-y-2">
-              <li><strong>2.1. Player Eligibility:</strong>
-                <ul className="list-disc pl-5 space-y-1 mt-1">
-                  <li>Participants must have a valid Discord account and Steam account with Dota 2.</li>
-                  <li>Players must meet any specified regional, age, or skill level requirements announced for the tournament.</li>
-                  <li>Accounts used must be the player's main gaming account and not be subject to any current game bans (e.g., VAC bans relevant to Dota 2).</li>
-                </ul>
-              </li>
-              <li><strong>2.2. Team Composition:</strong>
-                <ul className="list-disc pl-5 space-y-1 mt-1">
-                  <li>Teams must consist of five (5) core players. Substitutes may be allowed if specified in tournament announcements, and their registration must follow official procedures.</li>
-                  <li>Each player may only compete for one team in the tournament.</li>
-                </ul>
-              </li>
-              <li><strong>2.3. Registration Process:</strong>
-                <ul className="list-disc pl-5 space-y-1 mt-1">
-                  <li>All teams must register through the official registration page/form before the specified deadline.</li>
-                  <li>Team captains are responsible for ensuring all player information (nicknames, Steam IDs, MMR proof, etc.) is accurate and complete.</li>
-                  <li>Incomplete or inaccurate registrations may be rejected.</li>
-                </ul>
-              </li>
-              <li><strong>2.4. Roster Changes:</strong> Roster changes after the registration deadline are generally not permitted. In exceptional circumstances (e.g., medical emergencies), team captains must contact tournament administrators for approval. Unauthorized roster changes may lead to disqualification.</li>
-            </ol>
+          <section id="mmr">
+            <h2 className="text-2xl font-semibold text-primary border-b pb-2 mb-4">2. Zasady MMR</h2>
+            <p>Sumaryczny MMR wszystkich 5-ciu zawodników w drużynie nie może przekroczyć <strong>22000</strong>, np:</p>
+            <ul className="list-disc pl-5 space-y-1 mt-1">
+                <li>5000+5000+5000+5000+5000 = 25000 {"<-"} <span className="text-destructive">❌za dużo</span></li>
+                <li>5000+5000+5000+5000+2000 = 22000 {"<-"} <span className="text-green-400">✅max, dopuszczalny</span></li>
+                <li>5000+5000+5000+4000+2000 = 21000 {"<-"} <span className="text-green-400">✅prawidłowo, można grać</span></li>
+            </ul>
+            <p>Kapitan musi wysłać zrzuty ekranu zawierające MMR wszystkich członków drużyny do jednego z adminów: Cienszki lub AxePerson.</p>
+            <p>Nieskalibrowani gracze będą rozpatrywani indywidualnie. Na podstawie historii ich gier administracja zdecyduje o randze na tyle dokładnie na tyle ile będzie to możliwe.</p>
+            <p>Gracze posiadający mniej niż 1000 MMR liczeni będą za 1000.</p>
           </section>
 
-          <section id="game-specific-rules">
-            <h2 className="text-2xl font-semibold text-primary border-b pb-2 mb-4">3. Game Specific Rules (Dota 2)</h2>
-            <ol className="list-decimal pl-5 space-y-2">
-              <li><strong>3.1. Game Version:</strong> All matches will be played on the latest official live patch of Dota 2, unless otherwise specified by administrators.</li>
-              <li><strong>3.2. Game Mode:</strong> The default game mode is Captains Mode (CM), unless stated otherwise for specific stages of the tournament.</li>
-              <li><strong>3.3. Server Selection:</strong>
-                <ul className="list-disc pl-5 space-y-1 mt-1">
-                  <li>The server will be determined by mutual agreement between team captains.</li>
-                  <li>If no agreement can be reached, a server will be chosen to provide the most balanced ping for both teams (e.g., US East, EU West). Administrators will have the final say in server disputes.</li>
-                </ul>
-              </li>
-              <li><strong>3.4. Side Choice & Draft Order:</strong>
-                <ul className="list-disc pl-5 space-y-1 mt-1">
-                  <li>For the first game of a series, side choice (Radiant/Dire) and draft order (1st/2nd pick) will be determined by a coin toss or by the higher-seeded team, as specified in tournament announcements.</li>
-                  <li>In subsequent games of a series, the loser of the previous game typically gets to choose side or draft order.</li>
-                </ul>
-              </li>
-              <li><strong>3.5. Pauses:</strong>
-                <ul className="list-disc pl-5 space-y-1 mt-1">
-                  <li>Each team is allowed a limited amount of tactical pause time per game (e.g., 5 minutes total). This must be announced in all-chat (e.g., "pp" or "tactical pause").</li>
-                  <li>Disconnect pauses ("dc pause") can be initiated if a player disconnects. The game should remain paused for a reasonable duration (e.g., up to 10 minutes) to allow the player to reconnect. Opponents must be notified.</li>
-                  <li>Abuse of the pause function may result in penalties.</li>
-                </ul>
-              </li>
-              <li><strong>3.6. Bugs & Exploits:</strong> The intentional use of any known game-breaking bugs or exploits is strictly prohibited. If a bug occurs, players should pause the game immediately and inform an administrator. Unintentional occurrences will be reviewed by admins.</li>
-              <li><strong>3.7. Third-Party Software:</strong> The use of any third-party software, scripts, or applications that provide an unfair competitive advantage (e.g., map hacks, auto-aim, etc.) is strictly forbidden and will result in immediate disqualification and potential future bans.</li>
-            </ol>
-          </section>
-
-          <section id="player-conduct">
-            <h2 className="text-2xl font-semibold text-primary border-b pb-2 mb-4">4. Player & Team Conduct</h2>
-            <ol className="list-decimal pl-5 space-y-2">
-              <li><strong>4.1. Professionalism & Sportsmanship:</strong>
-                <ul className="list-disc pl-5 space-y-1 mt-1">
-                  <li>All players and teams must exhibit good sportsmanship and maintain a professional attitude throughout the tournament.</li>
-                  <li>Respect for opponents, teammates, casters, and tournament staff is mandatory.</li>
-                  <li>Toxic behavior, including but not limited to flaming, excessive taunting, offensive language, harassment, or discrimination (based on race, gender, religion, sexual orientation, etc.) will not be tolerated.</li>
-                </ul>
-              </li>
-              <li><strong>4.2. Punctuality:</strong> Teams are expected to be ready in the game lobby at least 10 minutes before the scheduled match time. Delays may result in penalties, including game or match forfeits, at the discretion of administrators. A grace period (e.g., 10-15 minutes) may be allowed if communicated to admins.</li>
-              <li><strong>4.3. Communication:</strong>
-                <ul className="list-disc pl-5 space-y-1 mt-1">
-                  <li>Official tournament communication will primarily occur through the designated Discord server. Team captains are responsible for staying informed of all announcements and schedules.</li>
-                  <li>In-game communication should be respectful. All-chat should be limited to essential game-related communication (e.g., "gg", "pp", server issues).</li>
-                </ul>
-              </li>
-              <li><strong>4.4. Account Sharing & Smurfing:</strong> Playing on another person's account or using an account that does not accurately reflect the player's skill level (smurfing) to gain an unfair advantage is strictly prohibited.</li>
-              <li><strong>4.5. Streaming:</strong> Players may be permitted to stream their Point-Of-View (POV) during matches, but typically with a mandatory stream delay (e.g., 5 minutes) to prevent stream sniping. Specific streaming rules will be announced.</li>
-              <li><strong>4.6. Admin Instructions:</strong> All players and teams must adhere to the instructions and decisions of tournament administrators. Admin decisions are final.</li>
-            </ol>
-          </section>
-
-          <section id="match-procedures">
-            <h2 className="text-2xl font-semibold text-primary border-b pb-2 mb-4">5. Match Procedures</h2>
-            <ol className="list-decimal pl-5 space-y-2">
-              <li><strong>5.1. Lobby Creation:</strong> The higher-seeded team, or as designated by administrators or pre-determined schedule, is typically responsible for creating the game lobby with the correct settings (game mode, server, password if required). Lobby details must be communicated to the opposing team captain.</li>
-              <li><strong>5.2. Pre-Match Setup:</strong> Both teams must confirm their readiness before the game starts. Ensure all players are connected and settings are correct.</li>
-              <li><strong>5.3. Match Reporting:</strong> After each match or series, the winning team's captain is responsible for reporting the score on the designated platform/channel (e.g., Discord, tournament website) within a specified timeframe. Screenshots of the end-game scoreboard may be required.</li>
-              <li><strong>5.4. Disputes & Issues:</strong> Any disputes, rule clarifications, or technical issues during a match should be brought to an administrator's attention immediately. If possible, pause the game. Do not continue playing if a significant issue arises that could affect the outcome.</li>
-              <li><strong>5.5. Forfeits:</strong>
-                <ul className="list-disc pl-5 space-y-1 mt-1">
-                  <li>If a team fails to show up within the grace period (e.g., 15 minutes past scheduled start time) without prior communication to admins, they may forfeit the match.</li>
-                  <li>A team may choose to forfeit a match. This must be communicated to the opposing captain and an administrator.</li>
-                  <li>If a team forfeits multiple matches, they may be removed from the tournament.</li>
-                </ul>
-              </li>
-              <li><strong>5.6. Disconnects & Reconnects:</strong> If a player disconnects, the game should be paused immediately (see rule 3.5). The player should attempt to reconnect. If a player cannot reconnect within a reasonable time (e.g., 10 minutes), the match may continue 4v5 or be subject to admin review, depending on specific tournament rules.</li>
-            </ol>
-          </section>
-
-          <section id="penalties">
-            <h2 className="text-2xl font-semibold text-primary border-b pb-2 mb-4">6. Cheating & Penalties</h2>
-            <ol className="list-decimal pl-5 space-y-2">
-              <li><strong>6.1. Definition of Cheating:</strong> Cheating includes, but is not limited to, ghosting (receiving outside information about the opponent's gameplay), stream sniping, using unauthorized third-party software, match-fixing, colluding with opponents, or any other action designed to gain an unfair advantage.</li>
-              <li><strong>6.2. Investigation:</strong> Tournament administrators reserve the right to investigate any claims of cheating or rule violations. Teams and players are expected to cooperate fully with such investigations.</li>
-              <li><strong>6.3. Penalties for Violations:</strong> Violation of tournament rules or engaging in unsportsmanlike conduct may result in penalties, applied at the discretion of tournament administrators. These penalties can include, but are not limited to:
-                <ul className="list-disc pl-5 space-y-1 mt-1">
-                  <li>Verbal warnings</li>
-                  <li>Loss of draft priority (e.g., side choice or pick order)</li>
-                  <li>Game forfeit</li>
-                  <li>Match forfeit</li>
-                  <li>Player suspension for one or more matches</li>
-                  <li>Team disqualification from the tournament</li>
-                  <li>Temporary or permanent bans from future events organized by the same entity</li>
-                </ul>
-              </li>
-              <li><strong>6.4. Severity of Penalties:</strong> The severity of the penalty will be determined by tournament administrators based on the nature, severity, and repetition of the offense. All decisions regarding penalties are final.</li>
-            </ol>
-          </section>
-
-          <section id="tournament-format-schedule">
-            <h2 className="text-2xl font-semibold text-primary border-b pb-2 mb-4">7. Tournament Format & Schedule</h2>
-            <p>Specific details on the tournament format (e.g., group stage format, playoff bracket type, match series format - Bo1, Bo3, Bo5) and the full schedule will be announced on the main tournament page, schedule page, and/or the official Discord server.</p>
+          <section id="format-turnieju">
+            <h2 className="text-2xl font-semibold text-primary border-b pb-2 mb-4">3. Format Turnieju</h2>
+            <p>Turniej składa się z dwóch etapów: Faza grupowa oraz Drabinka.</p>
+            <h3 className="text-xl font-semibold text-accent mt-4 mb-2">Faza grupowa:</h3>
             <ul className="list-disc pl-5 space-y-1">
-              <li><strong>7.1. Group Stage:</strong> If applicable, details on how teams advance from group stages (e.g., points system, tie-breaker rules) will be clearly outlined.</li>
-              <li><strong>7.2. Playoffs:</strong> If applicable, the playoff bracket (Single Elimination, Double Elimination) will be displayed and rules for progression explained.</li>
-              <li><strong>7.3. Match Format:</strong> The format for matches (e.g., Best of 1, Best of 3, Best of 5 for finals) will be specified for each stage of the tournament.</li>
-              <li><strong>7.4. Schedule Adherence:</strong> Teams are responsible for knowing their match schedule and being prepared on time. Changes to the schedule will be communicated officially by administrators.</li>
+              <li>W systemie szwajcarskim na platformie Challonge (System szwajcarski to sposób rozgrywania turnieju, w którym uczestnicy grają kilka rund z przeciwnikami o podobnych wynikach, a nie każdy z każdym - <Link href="#" className="text-accent hover:underline">link</Link>).</li>
+              <li>Mecze rozgrywane są w formacie BO1.</li>
+              <li>Przeciwnicy na kolejną rundę zostaną wyłonieni dopiero po rozegraniu wcześniejszej.</li>
+            </ul>
+            <h3 className="text-xl font-semibold text-accent mt-4 mb-2">Drabinka (Play-off):</h3>
+            <ul className="list-disc pl-5 space-y-1">
+              <li>Drabinka składa się z Drabinki Wygranych (DW) i Drabinki Przegranych (DP).</li>
+              <li>12 drużyn z najgorszym wynikiem po Fazie Grupowej odpada z turnieju.</li>
+              <li>8 drużyn z najlepszymi wynikami trafia do Drabinki Wygranych.</li>
+              <li>Pozostałe 8 drużyn trafia do Drabinki Przegranych (DP).</li>
+              <li>Mecze DW odbywają się w trybie BO3.</li>
+              <li>Mecze DP odbywają się w trybie BO1 a od rundy 3. włącznie - B03.</li>
+              <li>Drużyna po przegranym meczu DW spada do DP.</li>
+              <li>Drużyny które przegrają swoje mecze w DP odpadają z turnieju.</li>
+            </ul>
+          </section>
+
+          <section id="harmonogram">
+            <h2 className="text-2xl font-semibold text-primary border-b pb-2 mb-4">4. Harmonogram Meczów</h2>
+            <p>Mecze muszą zostać rozegrane zgodnie z poniższym harmonogramem. Mecze muszą być rozegrane do północy 23:59 ostatniego dnia terminów (Czwartki/Niedziele).</p>
+            <h3 className="text-xl font-semibold text-accent mt-4 mb-2">Faza grupowa:</h3>
+            <ul className="list-disc pl-5 space-y-1">
+              <li>Do 03/10 (Czwartek) 23:00 RUNDA 1</li>
+              <li>Do 06/10 (Niedziela) 23:00 RUNDA 2</li>
+              <li>Do 10/10 (Czwartek) 23:00 RUNDA 3</li>
+              <li>Do 13/10 (Niedziela) 23:00 RUNDA 4</li>
+              <li>Do 17/10 (Czwartek) 23:00 RUNDA 5</li>
+            </ul>
+            <h3 className="text-xl font-semibold text-accent mt-4 mb-2">Drabinka play-off:</h3>
+            <ul className="list-disc pl-5 space-y-1">
+              <li>Do 20/10 (Niedziela) 23:00 RUNDA 1 DW i DP</li>
+              <li>Do 24/10 (Czwartek) 23:00 RUNDA 2 DW i DP</li>
+              <li>Do 27/10 (Niedziela) 23:00 RUNDA 3 DW i Semifinal DP</li>
+              <li>Do 31/10 (Czwartek) 23:00 RUNDA 4 i 5 DP</li>
+              <li>03/11 Finał DP oraz Wielki Finał</li>
+            </ul>
+          </section>
+
+          <section id="terminy-punktualnosc">
+            <h2 className="text-2xl font-semibold text-primary border-b pb-2 mb-4">5. Terminy Meczów i Punktualność</h2>
+            <ol className="list-decimal pl-5 space-y-2">
+              <li><strong>Ostateczny termin meczu:</strong> W przypadku gdy drużyny nie mogą dojść do porozumienia w kwestii terminu, ostatecznym terminem jest godzina 20:00 ostatniego dnia Rundy.</li>
+              <li>Drużyna która nie stawi się na mecz w ustalonym (lub ostatecznym pkt.1) terminie to przegrywa spotkanie.</li>
+              <li>W przypadku gdy mecz się nie odbędzie, bo nie został ustalony termin lub drużyny się nie stawiły do ostatecznego terminu (pkt. 1) obie drużyny ponoszą porażkę.</li>
+              <li>Dopuszcza się 15 min spóźnienia na ustalony termin meczu.</li>
+              <li>Jeśli drużyna nie pojawi się po 15 min to przegrywa mecz, a przypadku spotkań rozgrywanych BO3/BO5 przegrywa jeden z meczy z całej serii i otrzymuje kolejne 15 min na stawienie się do meczu.</li>
+              <li>Po zakończonym meczu Kapitan wygranej drużyny musi wpisać wynik na Challonge niezwłocznie po zakończonym meczu.</li>
+            </ol>
+          </section>
+
+          <section id="ustawienia-meczu">
+            <h2 className="text-2xl font-semibold text-primary border-b pb-2 mb-4">6. Ustawienia Meczu i Procedury</h2>
+            <p>Kapitanowie zobowiązani są do stworzenia poczekalni przed meczem zgodnie z następującymi wytycznymi: (<Link href="#" className="text-accent hover:underline">podgląd tutaj</Link>)</p>
+            <ul className="list-disc pl-5 space-y-1 mt-1">
+              <li>Tryb: Captains Mode</li>
+              <li>Wybór stron/Selection Priority: Automatic(Coin toss)</li>
+              <li>Opóźnienie: 5 min</li>
+              <li>Ustawienie ligi turniejowej (League): Jesienna Zadyma</li>
+              <li>Serwer: Europa West/Austria</li>
+              <li>Widoczność: publiczna</li>
+            </ul>
+            <p className="mt-2">Pauzowanie dopuszczalne jest zgodnie z regułami wewnątrz gry tzn. Przeciwna drużyna może odpauzować kiedy jest taka możliwość. To samo dotyczy sytuacji gdy gracz opuści grę.</p>
+            <p>Dopuszcza się opcje rehostowania gry w ciągu pierwszych 5 min (od czasu gry 0:00) jeśli kapitanowie obu drużyn wyrażą zgodę. Po upływie 5 min nie ma takiej możliwości. Rehostowanie może zdarzyć się tylko w przypadku bugów w grze, crashu serwera, lub kiedy z powodu błędu w grze gracz nie może ponownie połączyć się z rozgrywką.</p>
+          </section>
+
+          <section id="standins">
+            <h2 className="text-2xl font-semibold text-primary border-b pb-2 mb-4">7. Stand-ins (Zawodnicy Rezerwowi)</h2>
+            <ol className="list-decimal pl-5 space-y-2">
+              <li>W przypadku konieczności zastąpienia zawodnika tzw. Standinem, dopuszczalna jest wymiana maksymalnie 2 zawodników przez drużynę. Spełniając poniższe warunki:</li>
+                <ul className="list-disc pl-5 space-y-1 mt-1">
+                    <li>Drużyna grająca ze standnin’em nie może przekroczyć sumarycznego limitu 22000 MMR.</li>
+                    <li>Standin nie może być członkiem innego zespołu biorącego aktualnie udział w turnieju. Można natomiast wykorzystać zawodnika który z turnieju już odpadł (pamiętając o pkt. 1).</li>
+                </ul>
+              <li>W razie problemu ze znalezieniem standina prosimy o kontakt z administracją.</li>
+              <li>Kapitan ma obowiązek bezzwłocznie zweryfikować MMR standin’a z administracją.</li>
+            </ol>
+          </section>
+
+          <section id="zabronione">
+            <h2 className="text-2xl font-semibold text-primary border-b pb-2 mb-4">8. Działania Zabronione</h2>
+            <p>ZABRONIONE jest:</p>
+            <ul className="list-disc pl-5 space-y-1 mt-1">
+              <li>Smurfowanie.</li>
+              <li>Granie jednego zawodnika na więcej niż jednym koncie.</li>
+              <li>Granie zawodnika w więcej niż 1 drużynie.</li>
+              <li>Korzystanie z trenerów w czasie meczu.</li>
+              <li>Wykorzystywanie zewnętrznych programów ułatwiających rozgrywkę, skryptów oraz cheatów.</li>
+              <li>Wykorzystywanie bugów i exploitów które nie powinny mieć miejsca np. Niszczenie fontanny, korzystanie z midas buga, itp.</li>
+            </ul>
+          </section>
+
+          <section id="kodeks-postepowania">
+            <h2 className="text-2xl font-semibold text-primary border-b pb-2 mb-4">9. Kodeks Postępowania i Kary</h2>
+            <p>Oczekuje się, że wszyscy gracze wykażą się pozytywną postawą i zachowają szacunek dla organizatorów, innych graczy i widzów. Wykażą się uczciwością i będą stosować zasadę fair play. Każdy zawodnik, który zachowuje się niewłaściwie lub narusza regulamin może podlegać karze dyskwalifikacji (np. publicznie obrażanie, znęcanie się, szkalowanie organizatorów, uczestników lub widzów) oraz stracić możliwość przyszłego udziału lub wygrania potencjalnych nagród. Dotyczy to wszystkich otwartych kanałów np. Discord, Twitch itp.</p>
+            <p>Zachowaniem niedopuszczalnym jest abusowanie pauzy tzn. używanie pauzy w krytycznych momentach gry: teamfight, lub środek akcji. W takich przypadkach incydent powinien zostać zgłoszony do administracji, a drużyna nadużywająca pauzy otrzymuje żółtą kartkę. W przypadku drugiej żółtej kartki, drużyna jest wykluczona z turnieju.</p>
+          </section>
+
+          <section id="streaming-postanowienia-koncowe">
+            <h2 className="text-2xl font-semibold text-primary border-b pb-2 mb-4">10. Streaming i Postanowienia Końcowe</h2>
+            <ul className="list-disc pl-5 space-y-2">
+              <li>Gracze mogą streamować własne mecze. Jednak administracja nie ponosi odpowiedzialności za podglądanie meczu przez przeciwnika (zalecamy delay 10 min).</li>
+              <li>Wszelkie podejrzenia złamania regulaminu powinny być niezwłocznie zgłaszane do administracji.</li>
+              <li>Wszelkie sytuacje nieprzewidziane w regulaminie będą rozpatrywane przez administrację w trakcie turnieju.</li>
+              <li>Administracja zobowiązana jest do traktowania wszystkich uczestników równo, sprawiedliwie i zgodnie z zasadami turnieju.</li>
+              <li>Wszyscy uczestnicy zobowiązują się do przestrzegania regulaminu turnieju. Brak znajomości regulaminu i wynikające z tego powodu nieporozumienia są na niekorzyść drużyny.</li>
+              <li>Wybrane mecze streamowane będą na oficjalnym kanale Twitch <Link href="https://www.twitch.tv/polishdota2inhouse" target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">https://www.twitch.tv/polishdota2inhouse</Link></li>
             </ul>
           </section>
           
           <p className="text-center text-muted-foreground pt-4 italic">
-            Tournament administrators reserve the right to make final decisions on all matters not explicitly covered in these rules or in unforeseen circumstances, always with the goal of maintaining fair competition and the integrity of the tournament. Good luck to all participants!
+            Administratorzy zastrzegają sobie prawo do podejmowania ostatecznych decyzji we wszystkich sprawach nieobjętych wyraźnie niniejszym regulaminem lub w nieprzewidzianych okolicznościach, zawsze w celu utrzymania uczciwej konkurencji i integralności turnieju. Powodzenia dla wszystkich uczestników!
           </p>
         </CardContent>
       </Card>
@@ -164,8 +167,6 @@ export default function RulesPage() {
 }
 
 export const metadata = {
-  title: "Rules | Tournament Tracker",
-  description: "Official rules and regulations for the tournament.",
+  title: "Regulamin | Tournament Tracker",
+  description: "Oficjalny regulamin turnieju Jesienna Zadyma.",
 };
-
-    
