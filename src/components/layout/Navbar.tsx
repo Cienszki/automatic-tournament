@@ -2,7 +2,7 @@
 "use client";
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { UserPlus, LayoutGrid, Shield, CalendarDays, GitFork, ScrollText, HelpCircle, BarChart2, X } from 'lucide-react';
+import { UserPlus, LayoutGrid, Shield, CalendarDays, GitFork, ScrollText, HelpCircle, BarChart2, Crown } from 'lucide-react'; // Added Crown
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Logo } from './Logo';
@@ -16,6 +16,7 @@ const navItems = [
   { href: '/teams', label: 'Teams', icon: Shield },
   { href: '/schedule', label: 'Schedule', icon: CalendarDays },
   { href: '/playoffs', label: 'Playoffs', icon: GitFork },
+  { href: '/fantasy', label: 'Fantasy', icon: Crown }, // Added Fantasy link
   { href: '/stats', label: 'Stats', icon: BarChart2 },
   { href: '/rules', label: 'Rules', icon: ScrollText },
   { href: '/faq', label: 'FAQ', icon: HelpCircle },
@@ -35,9 +36,9 @@ const RightBracket = () => (
 
 const CustomHamburgerIcon = (props: React.SVGProps<SVGSVGElement>) => (
   <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
-    <rect x="3" y="6" width="18" height="2.5" fill="hsl(330 100% 62%)" rx="1.25"/>
-    <rect x="3" y="11" width="18" height="2.5" fill="hsl(185 100% 50%)" rx="1.25"/>
-    <rect x="3" y="16" width="18" height="2.5" fill="hsl(0 0% 95%)" rx="1.25"/>
+    <rect x="3" y="6" width="18" height="2.5" fill="hsl(var(--primary))" rx="1.25"/>
+    <rect x="3" y="11" width="18" height="2.5" fill="hsl(var(--accent))" rx="1.25"/>
+    <rect x="3" y="16" width="18" height="2.5" fill="hsl(var(--foreground))" rx="1.25"/>
   </svg>
 );
 
@@ -117,12 +118,12 @@ export function Navbar() {
                   <Link 
                     href={item.href} 
                     className={cn(
-                      "flex items-center justify-between", // Added justify-between
+                      "flex items-center justify-between", 
                       isActive ? 'gap-1 px-1.5 md:px-2 py-1 md:py-2' : 'space-x-2 px-2 py-1 md:px-3 md:py-2'
                     )}
                   >
                     {isActive && <LeftBracket />}
-                    <div className={cn("flex items-center px-1.5 md:px-2", isActive ? "gap-1.5 md:gap-2" : "gap-2")}> {/* Added padding to content div */}
+                    <div className={cn("flex items-center px-1.5 md:px-2", isActive ? "gap-1.5 md:gap-2" : "gap-2")}>
                       <item.icon className="h-4 w-4" />
                       <span className="hidden md:inline">{item.label}</span>
                     </div>

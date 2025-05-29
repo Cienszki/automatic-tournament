@@ -84,21 +84,6 @@ export type RegistrationFormState = {
 };
 
 
-// For Stats Page (Original StatItem, potentially for other uses or as a base)
-export type StatItem = {
-  id: string; // Unique ID for the stat entry
-  category: string;
-  playerName?: string;
-  teamName?: string;
-  playerId?: string;
-  teamId?: string;
-  value: string | number;
-  heroName?: string;
-  matchContext?: string;
-  openDotaMatchUrl?: string;
-  icon: LucideIcon; // Icon for the category
-};
-
 // Details for each ranked entry in an expandable stats category
 export type CategoryRankingDetail = {
   rank: number;
@@ -117,8 +102,6 @@ export type CategoryDisplayStats = {
   id: string; // Unique ID for the category row, e.g., 'single-most-kills'
   categoryName: string;
   icon: LucideIcon;
-  // rankings[0] is the top performer for the collapsed (AccordionTrigger) view
-  // rankings[1] to rankings[4] are for the expanded (AccordionContent) view
   rankings: CategoryRankingDetail[]; // Array of top 5 records
 };
 
@@ -147,4 +130,19 @@ export type TeamRegistrationFormData = {
   player4: PlayerFormData;
   player5: PlayerFormData;
   rulesAgreed: boolean;
+};
+
+// Fantasy League Definitions
+export type FantasyLineup = {
+  [key in PlayerRole]?: Player; // Player object or undefined if not selected
+};
+
+export type FantasyLeagueParticipant = {
+  id: string; // User ID, e.g., Discord user ID
+  discordUsername: string;
+  avatarUrl?: string; // URL to user's Discord avatar
+  selectedLineup: FantasyLineup;
+  totalMMRCost: number;
+  totalFantasyPoints: number;
+  rank?: number;
 };

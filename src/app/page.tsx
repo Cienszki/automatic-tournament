@@ -1,7 +1,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowRight, LayoutGrid, Shield, CalendarDays, UserPlus, ScrollText, HelpCircle, BarChart2, GitFork } from "lucide-react";
+import { ArrowRight, LayoutGrid, Shield, CalendarDays, UserPlus, ScrollText, HelpCircle, BarChart2, GitFork, Crown } from "lucide-react"; // Added Crown
 import Image from "next/image";
 import Link from "next/link";
 
@@ -78,6 +78,15 @@ export default function Home() {
           aiHint="tournament bracket"
         />
         <FeatureCard
+          title="Fantasy League"
+          description="Build your dream team within budget and compete for glory!"
+          href="/fantasy"
+          icon={Crown} 
+          imageSrc="https://placehold.co/600x400.png"
+          imageAlt="Fantasy league concept"
+          aiHint="fantasy sports trophy"
+        />
+        <FeatureCard
           title="Tournament Stats"
           description="Dive into detailed player and tournament statistics."
           href="/stats"
@@ -137,7 +146,7 @@ function FeatureCard({ title, description, href, icon: Icon, imageSrc, imageAlt,
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <p className="text-muted-foreground mb-4 h-12 overflow-hidden">{description}</p> {/* Fixed height for description */}
+        <p className="text-muted-foreground mb-4 h-12 overflow-hidden">{description}</p>
         <Button variant="outline" asChild className="w-full">
           <Link href={href}>
             Learn More <ArrowRight className="ml-2 h-4 w-4" />

@@ -1,9 +1,9 @@
 
-import type { Team, Player, Match, Group, PlayerRole, TournamentStatus, HeroPlayStats, PlayerPerformanceInMatch, CategoryDisplayStats, CategoryRankingDetail, TournamentHighlightRecord } from './definitions';
+import type { Team, Player, Match, Group, PlayerRole, TournamentStatus, HeroPlayStats, PlayerPerformanceInMatch, CategoryDisplayStats, CategoryRankingDetail, TournamentHighlightRecord, FantasyLineup, FantasyLeagueParticipant } from './definitions';
 import { PlayerRoles, TournamentStatuses } from './definitions';
-import { defaultHeroNames } from './hero-data'; // Import from new location
+import { defaultHeroNames } from './hero-data';
 import {
-  Award, BarChart2, TrendingUp, TrendingDown, ShieldAlert, DollarSign, Eye, HelpCircle, Bomb, Swords, HeartHandshake, Zap, Clock, Activity, ShieldCheck, ChevronsUp, Timer, Skull, ListChecks, Medal, Trophy, Percent, Ratio, Handshake as HandshakeIcon, Puzzle, Target, Coins, Home
+  Award, BarChart2, TrendingUp, TrendingDown, ShieldAlert, DollarSign, Eye, HelpCircle, Bomb, Swords, HeartHandshake, Zap, Clock, Activity, ShieldCheck, ChevronsUp, Timer, Skull, ListChecks, Medal, Trophy, Percent, Ratio, Handshake as HandshakeIcon, Puzzle, Target, Coins, Home, Users2
 } from 'lucide-react';
 
 const getRandomBaseStatus = (): TournamentStatus => {
@@ -16,13 +16,12 @@ export const mockPlayers: Player[] = Array.from({ length: 60 }, (_, i) => ({
   nickname: `Player${i + 1}${i % 3 === 0 ? 'Prime' : i % 3 === 1 ? 'Ace' : 'Nova'}`,
   mmr: Math.floor(Math.random() * (9000 - 1000 + 1)) + 1000,
   role: PlayerRoles[i % PlayerRoles.length] as PlayerRole,
-  status: getRandomBaseStatus(),
+  status: getRandomBaseStatus(), // This will be overridden by team status for eliminated/champions
   steamProfileUrl: `https://steamcommunity.com/id/player${i + 1}`,
   openDotaProfileUrl: `https://www.opendota.com/search?q=Player${i + 1}`,
   profileScreenshotUrl: `https://placehold.co/600x400.png?text=P${i+1}-Scr&bg=333333&fc=888888`,
 }));
 
-// heroColorMap is now in hero-data.ts
 
 const generateTeamSignatureHeroes = (): HeroPlayStats[] => {
   const heroes = [...defaultHeroNames].sort(() => 0.5 - Math.random()).slice(0, 5);
@@ -40,16 +39,17 @@ const createTeamPlayers = (teamIndex: number, teamStatus: TournamentStatus): Pla
   const teamPlayersSource: Player[] = [];
   for (let i = 0; i < 5; i++) {
     const playerSourceIndex = playerStartIndex + i;
+     // Make sure we don't go out of bounds of mockPlayers
     if (playerSourceIndex >= mockPlayers.length) {
-         console.warn(`Not enough mock players to form team ${teamIndex + 1} uniquely. Player ${i+1} will be a template.`);
-         teamPlayersSource.push({
-           id: `pclone${playerSourceIndex}-t${teamIndex+1}`, 
-           nickname: `PlayerClone${playerSourceIndex}`,
-           mmr: Math.floor(Math.random() * (9000 - 1000 + 1)) + 1000,
+        // Create a fallback player if not enough unique players (should not happen with 60 players for 12 teams)
+        teamPlayersSource.push({
+           id: `pfallback${playerSourceIndex}-t${teamIndex+1}`, 
+           nickname: `FallbackPlayer${playerSourceIndex}`,
+           mmr: Math.floor(Math.random() * (6000 - 1000 + 1)) + 1000,
            role: PlayerRoles[i % PlayerRoles.length],
            status: teamStatus, 
-           steamProfileUrl: 'http://steamcommunity.com/id/playerclone',
-           profileScreenshotUrl: `https://placehold.co/600x400.png?text=PC${playerSourceIndex}`
+           steamProfileUrl: 'http://steamcommunity.com/id/fallback',
+           profileScreenshotUrl: `https://placehold.co/600x400.png?text=FB${playerSourceIndex}`
          });
          continue;
     }
@@ -58,28 +58,32 @@ const createTeamPlayers = (teamIndex: number, teamStatus: TournamentStatus): Pla
 
   let currentTeamPlayers = teamPlayersSource.map((basePlayer, i) => ({
     ...basePlayer,
-    id: `${basePlayer.id.split('-t')[0]}-t${teamIndex + 1}`, 
+    id: `${basePlayer.id.split('-t')[0]}-t${teamIndex + 1}`, // Ensure player ID is team-specific if base ID might repeat
     role: PlayerRoles[i % PlayerRoles.length] as PlayerRole, 
     status: (teamStatus === 'Eliminated' || teamStatus === 'Champions') ? teamStatus : basePlayer.status,
     mmr: Math.floor(Math.random() * (8000)) + 1000, // Initial MMR: 1000 to 8999
   }));
-
+  
+  // MMR Capping Logic
   let teamTotalMMR = currentTeamPlayers.reduce((sum, p) => sum + p.mmr, 0);
   const TEAM_MMR_CAP = 25000;
   const MIN_PLAYER_MMR = 1000;
 
+  // Iteratively reduce MMR from the highest MMR player if cap is exceeded
   while (teamTotalMMR > TEAM_MMR_CAP) {
-    currentTeamPlayers.sort((a, b) => b.mmr - a.mmr); 
+    currentTeamPlayers.sort((a, b) => b.mmr - a.mmr); // Find player with highest MMR
     const highestMmrPlayer = currentTeamPlayers[0];
 
-    if (!highestMmrPlayer) break; 
+    if (!highestMmrPlayer) break; // Should not happen if team has players
 
     const neededReduction = teamTotalMMR - TEAM_MMR_CAP;
     const reducibleAmountForPlayer = highestMmrPlayer.mmr - MIN_PLAYER_MMR;
-
+    
+    // If the highest MMR player is already at min MMR, try the next one or stop
     if (reducibleAmountForPlayer <= 0) {
+        // Attempt to reduce from other players if the top one is at min
         let reducedInIteration = false;
-        for (let i = 1; i < currentTeamPlayers.length; i++) { 
+        for (let i = 1; i < currentTeamPlayers.length; i++) { // Start from 2nd highest
             if(currentTeamPlayers[i].mmr > MIN_PLAYER_MMR) {
                 const playerCanReduceBy = currentTeamPlayers[i].mmr - MIN_PLAYER_MMR;
                 const reductionForThisPlayer = Math.min(neededReduction, playerCanReduceBy);
@@ -87,12 +91,12 @@ const createTeamPlayers = (teamIndex: number, teamStatus: TournamentStatus): Pla
                     currentTeamPlayers[i].mmr -= reductionForThisPlayer;
                     teamTotalMMR -= reductionForThisPlayer;
                     reducedInIteration = true;
-                    if(teamTotalMMR <= TEAM_MMR_CAP) break;
+                    if(teamTotalMMR <= TEAM_MMR_CAP) break; // Exit loop if budget met
                 }
             }
         }
-        if(!reducedInIteration || teamTotalMMR <= TEAM_MMR_CAP) break; 
-        continue; 
+        if(!reducedInIteration || teamTotalMMR <= TEAM_MMR_CAP) break; // If no reduction possible or budget met
+        continue; // Re-sort and try again if budget still not met
     }
     
     const reduction = Math.min(neededReduction, reducibleAmountForPlayer);
@@ -102,6 +106,7 @@ const createTeamPlayers = (teamIndex: number, teamStatus: TournamentStatus): Pla
     if (teamTotalMMR <= TEAM_MMR_CAP) break;
   }
   
+  // Final check to ensure no player is below min MMR
   currentTeamPlayers.forEach(p => {
     if (p.mmr < MIN_PLAYER_MMR) p.mmr = MIN_PLAYER_MMR;
   });
@@ -249,9 +254,9 @@ export const generateMockSingleMatchRecords = (): CategoryDisplayStats[] => {
     { id: 'smr-assists', name: "Most Assists", icon: HandshakeIcon, unit: "" , min: 20, max: 40, sort: 'desc', field: 'assists'},
     { id: 'smr-gpm', name: "Highest GPM", icon: Coins, unit: "", min: 700, max: 1100, sort: 'desc', field: 'gpm' },
     { id: 'smr-xpm', name: "Highest XPM", icon: Zap, unit: "", min: 750, max: 1200, sort: 'desc', field: 'xpm' },
-    { id: 'smr-wards', name: "Most Wards Placed", icon: Eye, unit: "", min: 25, max: 50, sort: 'desc', field: 'fantasyPoints'  }, // Using fantasyPoints field for mock, real data needed for wards
+    { id: 'smr-wards', name: "Most Wards Placed", icon: Eye, unit: "", min: 25, max: 50, sort: 'desc', field: 'fantasyPoints'  }, 
     { id: 'smr-hero-dmg', name: "Most Hero Damage", icon: Bomb, unit: "", min: 50000, max: 100000, sort: 'desc', field: 'heroDamage', formatter: (val: number) => (val/1000).toFixed(1) + 'k' },
-    { id: 'smr-dmg-taken', name: "Most Damage Taken", icon: ShieldAlert, unit: "", min: 40000, max: 80000, sort: 'desc', field: 'netWorth' , formatter: (val: number) => (val/1000).toFixed(1) + 'k' }, // Using netWorth for mock
+    { id: 'smr-dmg-taken', name: "Most Damage Taken", icon: ShieldAlert, unit: "", min: 40000, max: 80000, sort: 'desc', field: 'netWorth' , formatter: (val: number) => (val/1000).toFixed(1) + 'k' }, 
     { id: 'smr-deaths', name: "Most Deaths", icon: Skull, unit: "", min: 10, max: 20, sort: 'desc', field: 'deaths' }, 
     { id: 'smr-networth', name: "Highest Net Worth", icon: DollarSign, unit: "", min: 30000, max: 60000, sort: 'desc', field: 'netWorth', formatter: (val: number) => (val/1000).toFixed(1) + 'k' },
     { id: 'smr-fantasy', name: "Best Fantasy Score", icon: Award, unit: "", min: 100, max: 250, sort: 'desc', field: 'fantasyPoints' },
@@ -302,7 +307,9 @@ export const generateMockSingleMatchRecords = (): CategoryDisplayStats[] => {
          matchData = getRandomCompletedMatchWithPerformances();
          if (matchData && matchData.performances && matchData.performances.length > 0) {
             perfData = matchData.performances[Math.floor(Math.random() * matchData.performances.length)];
-            opponentTeam = matchData.teamA.id === perfData?.teamId ? matchData.teamB : matchData.teamA;
+            if (perfData) { // Ensure perfData is not undefined
+                opponentTeam = matchData.teamA.id === perfData.teamId ? matchData.teamB : matchData.teamA;
+            }
          }
       }
 
@@ -331,7 +338,7 @@ export const generateMockSingleMatchRecords = (): CategoryDisplayStats[] => {
           rank: i + 1,
           playerName: `Player ${i+1}`,
           teamName: `Team ${i+1}`,
-          value: cat.formatter ? cat.formatter(cat.min) : cat.min,
+          value: cat.formatter ? cat.formatter(cat.min) : cat.min.toString(),
           heroName: defaultHeroNames[Math.floor(Math.random() * defaultHeroNames.length)],
           matchContext: "vs N/A",
         });
@@ -359,8 +366,8 @@ export const generateMockPlayerAverageLeaders = (): CategoryDisplayStats[] => {
   const categoriesMeta = [
     { id: 'avg-kills', name: "Avg. Kills", icon: Swords, unit: "", min: 8, max: 15, decimals: 1, sort: 'desc', teamField: 'averageKillsPerGame' },
     { id: 'avg-assists', name: "Avg. Assists", icon: HandshakeIcon, unit: "", min: 10, max: 20, decimals: 1, sort: 'desc', teamField: 'averageAssistsPerGame' },
-    { id: 'avg-gpm', name: "Avg. GPM", icon: Coins, unit: "", min: 500, max: 700, decimals: 0, sort: 'desc', teamField: 'averageFantasyPoints'  }, // Using fantasy points for GPM mock data
-    { id: 'avg-xpm', name: "Avg. XPM", icon: Zap, unit: "", min: 550, max: 750, decimals: 0, sort: 'desc', teamField: 'averageFantasyPoints'  }, // Using fantasy points for XPM mock data
+    { id: 'avg-gpm', name: "Avg. GPM", icon: Coins, unit: "", min: 500, max: 700, decimals: 0, sort: 'desc', teamField: 'averageFantasyPoints'  }, 
+    { id: 'avg-xpm', name: "Avg. XPM", icon: Zap, unit: "", min: 550, max: 750, decimals: 0, sort: 'desc', teamField: 'averageFantasyPoints'  }, 
     { id: 'avg-wards', name: "Avg. Wards Placed", icon: Eye, unit: "", min: 10, max: 20, decimals: 1, sort: 'desc' }, 
     { id: 'avg-hero-dmg', name: "Avg. Hero Damage", icon: Bomb, unit: "", min: 25000, max: 45000, decimals: 0, sort: 'desc', formatter: (val: number) => (val/1000).toFixed(1) + 'k' },
     { id: 'avg-dmg-taken', name: "Avg. Damage Taken", icon: ShieldAlert, unit: "", min: 20000, max: 35000, decimals: 0, sort: 'desc', formatter: (val: number) => (val/1000).toFixed(1) + 'k' },
@@ -420,7 +427,7 @@ export const generateMockPlayerAverageLeaders = (): CategoryDisplayStats[] => {
             teamName: fallbackTeam.name,
             playerId: fallbackPlayer.id, 
             teamId: fallbackTeam.id,
-            value: cat.formatter ? cat.formatter(cat.min) : cat.min.toFixed(cat.decimals),
+            value: cat.formatter ? cat.formatter(cat.min) : cat.min.toFixed(cat.decimals).toString(),
         });
     }
 
@@ -479,5 +486,66 @@ export const generateMockTournamentHighlights = (): TournamentHighlightRecord[] 
   return highlights;
 };
 
+export const FANTASY_BUDGET_MMR = 30000;
 
-    
+// Combine all players from all teams into one list for fantasy selection
+export const mockAllTournamentPlayers: Player[] = mockTeams.reduce((acc, team) => {
+  team.players.forEach(player => {
+    const basePlayerId = player.id.split('-t')[0];
+    if (!acc.find(p => p.id === basePlayerId)) { 
+      acc.push({ ...player, id: basePlayerId }); // Store with base ID, ensuring unique player entries
+    }
+  });
+  return acc;
+}, [] as Player[]);
+
+
+// Helper to generate a somewhat random, valid fantasy lineup (simplified)
+const generateMockFantasyLineup = (allPlayers: Player[], budget: number, roles: readonly PlayerRole[]): { lineup: FantasyLineup, cost: number } => {
+  const lineup: FantasyLineup = {};
+  let currentCost = 0;
+  const availablePlayersForLineup = [...allPlayers]; // Clone to mutate
+
+  for (const role of roles) {
+    // Filter by role and sort by MMR (cheapest first) to try and fit players
+    const playersForRole = availablePlayersForLineup
+      .filter(p => p.role === role)
+      .sort((a, b) => a.mmr - b.mmr);
+
+    let playerChosenForRole = false;
+    for (const player of playersForRole) {
+      // Check if player is already in lineup and if adding them exceeds budget
+      const isAlreadySelected = Object.values(lineup).some(p => p?.id === player.id);
+      if (!isAlreadySelected && (currentCost + player.mmr <= budget)) {
+        lineup[role] = player;
+        currentCost += player.mmr;
+        // Remove chosen player from available pool for this lineup
+        const indexToRemove = availablePlayersForLineup.findIndex(p => p.id === player.id);
+        if (indexToRemove > -1) availablePlayersForLineup.splice(indexToRemove, 1);
+        playerChosenForRole = true;
+        break;
+      }
+    }
+     // If no player could be chosen for the role (e.g., due to budget or no suitable players left), the role remains empty.
+     // A more complex strategy could involve backtracking or prioritizing roles.
+  }
+  return { lineup, cost: currentCost };
+};
+
+export const mockFantasyLeagueParticipants: FantasyLeagueParticipant[] = Array.from({ length: 15 }, (_, i) => {
+  const { lineup, cost } = generateMockFantasyLineup(mockAllTournamentPlayers, FANTASY_BUDGET_MMR, PlayerRoles);
+  // Simulate fantasy points based on number of players selected and some randomness
+  const selectedPlayerCount = Object.values(lineup).filter(p => p).length;
+  const basePointsPerPlayer = Math.floor(Math.random() * 30) + 20; // 20-50 points per player
+  const points = selectedPlayerCount * basePointsPerPlayer + Math.floor(Math.random() * 50); // Add some overall variance
+  
+  return {
+    id: `user${i + 1}`,
+    discordUsername: `FantasyFan${i + 1}${i % 2 === 0 ? 'Pro' : ''}`,
+    avatarUrl: `https://placehold.co/40x40.png?text=U${i+1}&bg=5A6${i}F${i}&fc=FFFFFF`,
+    selectedLineup: lineup,
+    totalMMRCost: cost,
+    totalFantasyPoints: points,
+  };
+}).sort((a, b) => b.totalFantasyPoints - a.totalFantasyPoints) // Sort by points descending
+  .map((p, idx) => ({ ...p, rank: idx + 1 })); // Assign rank after sorting
