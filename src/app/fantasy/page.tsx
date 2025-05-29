@@ -248,7 +248,7 @@ export default function FantasyLeaguePage() {
                           onValueChange={(playerId) => { if(playerId && playerId !== "--select--") {handlePlayerSelect(role, playerId)}}}
                         >
                           <SelectTrigger className="w-full mt-auto">
-                            <SelectValue placeholder={`Select ${role} Player...`} />
+                            <SelectValue placeholder="Select Player..." />
                           </SelectTrigger>
                           <SelectContent position="popper" className="max-h-[300px]">
                             <SelectItem value="--select--" disabled>-- Select a Player --</SelectItem>
@@ -379,6 +379,8 @@ export default function FantasyLeaguePage() {
   );
 }
 // Removed metadata export
+    
+
     
 
     
