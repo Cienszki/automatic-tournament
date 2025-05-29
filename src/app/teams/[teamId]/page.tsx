@@ -8,16 +8,16 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import Image from "next/image";
 import Link from "next/link";
-import { 
-  Users, ListChecks, ExternalLink, Medal, Swords, UserCheck, UserX, ShieldQuestion, 
-  PlayCircle, Sigma, Trophy, Users2, Clock, Percent, Skull, Ratio, 
-  Handshake as HandshakeIcon, Award, TeamIcon as TeamIconLucide 
-} from "lucide-react"; // Renamed TeamIcon to TeamIconLucide
+import {
+  Users, ListChecks, ExternalLink, Medal, Swords, UserCheck, UserX, ShieldQuestion,
+  PlayCircle, Sigma, Trophy, Users2, Clock, Percent, Skull, Ratio,
+  Handshake as HandshakeIcon, Award, Shield // Corrected: Shield is imported, TeamIcon is removed
+} from "lucide-react";
 import type { Icon as LucideIconType } from "lucide-react";
 import { notFound } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Progress } from "@/components/ui/progress";
-import { heroIconMap } from "@/lib/hero-data"; // Import from new location
+import { heroIconMap } from "@/lib/hero-data";
 
 interface TeamPageParams {
   params: { teamId: string };
@@ -62,16 +62,16 @@ const getStatusIcon = (status: TournamentStatus) => {
 }
 
 const podiumColors = [
-  { border: 'border-chart-1', text: 'text-chart-1', bg: 'bg-chart-1/10' }, 
-  { border: 'border-chart-2', text: 'text-chart-2', bg: 'bg-chart-2/10' }, 
-  { border: 'border-chart-3', text: 'text-chart-3', bg: 'bg-chart-3/10' }, 
+  { border: 'border-chart-1', text: 'text-chart-1', bg: 'bg-chart-1/10' },
+  { border: 'border-chart-2', text: 'text-chart-2', bg: 'bg-chart-2/10' },
+  { border: 'border-chart-3', text: 'text-chart-3', bg: 'bg-chart-3/10' },
 ];
 
 function getRankForStat(
   currentTeamValue: number | undefined,
   allTeams: Team[],
   statKey: keyof Pick<Team, 'averageKillsPerGame' | 'averageDeathsPerGame' | 'averageAssistsPerGame' | 'averageFantasyPoints'>,
-  sortOrder: 'asc' | 'desc' = 'desc' 
+  sortOrder: 'asc' | 'desc' = 'desc'
 ): string {
   if (currentTeamValue === undefined || currentTeamValue === null || isNaN(currentTeamValue)) return "N/A";
 
@@ -101,9 +101,9 @@ export default async function TeamPage({ params }: TeamPageParams) {
 
   const totalMMR = team.players.reduce((sum, player) => sum + player.mmr, 0);
   const sortedHeroes = team.mostPlayedHeroes ? [...team.mostPlayedHeroes].sort((a, b) => b.gamesPlayed - a.gamesPlayed).slice(0, 3) : [];
-  
+
   const avgMatchDurationMinutes = team.averageMatchDurationMinutes || 0;
-  const displayMinutes = avgMatchDurationMinutes % 60; 
+  const displayMinutes = avgMatchDurationMinutes % 60;
   const minuteHandAngle = (displayMinutes / 60) * 360;
 
   const maxKills = Math.max(...mockTeams.map(t => t.averageKillsPerGame ?? 0).filter(v => v !== undefined && !isNaN(v)), 1);
@@ -112,41 +112,49 @@ export default async function TeamPage({ params }: TeamPageParams) {
   const maxFantasyPoints = Math.max(...mockTeams.map(t => t.averageFantasyPoints ?? 0).filter(v => v !== undefined && !isNaN(v)), 1);
 
   const performanceStats = [
-    { 
-      label: "Avg. Kills / Game", 
-      value: team.averageKillsPerGame?.toFixed(1) ?? 'N/A', 
-      icon: Swords, 
-      type: 'progress', 
-      rawValue: team.averageKillsPerGame, 
+    {
+      label: "Avg. Kills / Game",
+      value: team.averageKillsPerGame?.toFixed(1) ?? 'N/A',
+      icon: Swords,
+      type: 'progress',
+      rawValue: team.averageKillsPerGame,
       maxValue: maxKills,
-      rank: getRankForStat(team.averageKillsPerGame, mockTeams, 'averageKillsPerGame', 'desc')
+      rank: getRankForStat(team.averageKillsPerGame, mockTeams, 'averageKillsPerGame', 'desc'),
+      statKey: 'averageKillsPerGame' as keyof Team,
+      sortOrder: 'desc' as 'desc' | 'asc',
     },
-    { 
-      label: "Avg. Deaths / Game", 
-      value: team.averageDeathsPerGame?.toFixed(1) ?? 'N/A', 
-      icon: Skull, 
-      type: 'progress', 
-      rawValue: team.averageDeathsPerGame, 
+    {
+      label: "Avg. Deaths / Game",
+      value: team.averageDeathsPerGame?.toFixed(1) ?? 'N/A',
+      icon: Skull,
+      type: 'progress',
+      rawValue: team.averageDeathsPerGame,
       maxValue: maxDeaths,
-      rank: getRankForStat(team.averageDeathsPerGame, mockTeams, 'averageDeathsPerGame', 'asc') 
+      rank: getRankForStat(team.averageDeathsPerGame, mockTeams, 'averageDeathsPerGame', 'asc'),
+      statKey: 'averageDeathsPerGame' as keyof Team,
+      sortOrder: 'asc' as 'desc' | 'asc',
     },
-    { 
-      label: "Avg. Assists / Game", 
-      value: team.averageAssistsPerGame?.toFixed(1) ?? 'N/A', 
-      icon: HandshakeIcon, 
-      type: 'progress', 
-      rawValue: team.averageAssistsPerGame, 
+    {
+      label: "Avg. Assists / Game",
+      value: team.averageAssistsPerGame?.toFixed(1) ?? 'N/A',
+      icon: HandshakeIcon,
+      type: 'progress',
+      rawValue: team.averageAssistsPerGame,
       maxValue: maxAssists,
-      rank: getRankForStat(team.averageAssistsPerGame, mockTeams, 'averageAssistsPerGame', 'desc')
+      rank: getRankForStat(team.averageAssistsPerGame, mockTeams, 'averageAssistsPerGame', 'desc'),
+      statKey: 'averageAssistsPerGame' as keyof Team,
+      sortOrder: 'desc' as 'desc' | 'asc',
     },
-    { 
-      label: "Avg. Fantasy Points", 
-      value: team.averageFantasyPoints?.toFixed(1) ?? 'N/A', 
-      icon: Award, 
-      type: 'progress', 
-      rawValue: team.averageFantasyPoints, 
+    {
+      label: "Avg. Fantasy Points",
+      value: team.averageFantasyPoints?.toFixed(1) ?? 'N/A',
+      icon: Award,
+      type: 'progress',
+      rawValue: team.averageFantasyPoints,
       maxValue: maxFantasyPoints,
-      rank: getRankForStat(team.averageFantasyPoints, mockTeams, 'averageFantasyPoints', 'desc')
+      rank: getRankForStat(team.averageFantasyPoints, mockTeams, 'averageFantasyPoints', 'desc'),
+      statKey: 'averageFantasyPoints' as keyof Team,
+      sortOrder: 'desc' as 'desc' | 'asc',
     }
   ];
 
@@ -180,18 +188,18 @@ export default async function TeamPage({ params }: TeamPageParams) {
             </div>
           </div>
         </CardHeader>
-        <CardContent className="p-6 md:p-8 grid md:grid-cols-3 gap-6">
+        <CardContent className="p-6 md:p-8 grid md:grid-cols-2 gap-6">
           <div className="md:col-span-1 space-y-4">
-            <h3 className="text-2xl font-semibold mb-4 flex items-center text-foreground">
-               <TeamIconLucide className="h-6 w-6 mr-2 text-primary" /> Team Summary
+            <h3 className="text-xl font-semibold mb-4 flex items-center text-foreground">
+               <Shield className="h-6 w-6 mr-2 text-primary" /> Team Summary
             </h3>
              <InfoItem icon={ListChecks} label="Matches Played" value={team.matchesPlayed ?? 0} />
              <InfoItem icon={Swords} label="Wins / Losses" value={`${team.matchesWon ?? 0}W / ${team.matchesLost ?? 0}L`} />
              <InfoItem icon={Sigma} label="Total MMR" value={totalMMR.toLocaleString()} />
           </div>
-          <div className="md:col-span-2">
-            <h3 className="text-2xl font-semibold mb-4 flex items-center text-foreground">
-              <Users className="h-6 w-6 mr-2 text-primary" /> Player Roster
+          <div className="md:col-span-1 space-y-4">
+             <h3 className="text-xl font-semibold mb-4 flex items-center text-foreground">
+                <Users className="h-6 w-6 mr-2 text-primary" /> Player Roster
             </h3>
             <div className="space-y-3">
               {team.players.map((player) => (
@@ -201,7 +209,7 @@ export default async function TeamPage({ params }: TeamPageParams) {
           </div>
         </CardContent>
       </Card>
-      
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card className="shadow-xl text-center hover:bg-muted/10 transition-colors duration-200 flex flex-col">
           <CardHeader className="flex flex-row items-center justify-center space-x-3 pb-2">
@@ -212,14 +220,14 @@ export default async function TeamPage({ params }: TeamPageParams) {
             {sortedHeroes.length > 0 ? (
               <div className="flex flex-col md:flex-row justify-around items-end gap-4 md:gap-2 py-4 min-h-[200px] md:min-h-[220px]">
                 {[sortedHeroes[1], sortedHeroes[0], sortedHeroes[2]].map((heroStat, index) => {
-                  if (!heroStat) return <div key={`placeholder-${index}`} className="w-full md:w-1/3 lg:w-1/4"></div>; 
+                  if (!heroStat) return <div key={`placeholder-${index}`} className="w-full md:w-1/3 lg:w-1/4"></div>;
 
-                  const podiumOrderIndex = index === 0 ? 1 : (index === 1 ? 0 : 2); 
+                  const podiumOrderIndex = index === 0 ? 1 : (index === 1 ? 0 : 2);
                   const podiumStyle = podiumColors[podiumOrderIndex];
-                  const heightClasses = [ 
-                    "h-[90%] md:h-[190px]", 
-                    "h-[75%] md:h-[160px]", 
-                    "h-[60%] md:h-[130px]", 
+                  const heightClasses = [
+                    "h-[90%] md:h-[190px]",
+                    "h-[75%] md:h-[160px]",
+                    "h-[60%] md:h-[130px]",
                   ];
                   const currentHeight = heightClasses[podiumOrderIndex];
                   const HeroIcon = heroIconMap[heroStat.name] || heroIconMap['Default'];
