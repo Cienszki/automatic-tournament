@@ -1,6 +1,4 @@
 
-"use client";
-
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
@@ -262,3 +260,4 @@ export const metadata = {
   title: "Statistics | Tournament Tracker",
   description: "Detailed player and tournament statistics.",
 };
+
