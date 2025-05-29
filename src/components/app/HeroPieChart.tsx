@@ -2,13 +2,12 @@
 "use client";
 
 import type { ReactNode } from 'react';
-import { PieChart, Pie, Cell, ResponsiveContainer, LabelList } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts'; // Removed LabelList as it's not used
 import {
   ChartContainer,
 } from "@/components/ui/chart";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { UserCircle2, Sparkles, Anchor, Sword, Zap, Ghost, Ban, Swords, MountainSnow, Flame, Snowflake, Axe as AxeIcon, Target, Moon, Copy, ShieldOff, Waves, ShieldAlert, Trees, Bone, CloudLightning, Icon as LucideIconType } from 'lucide-react';
-import type { Team } from '@/lib/definitions';
 
 interface HeroPieChartProps {
   heroes: string[];
@@ -19,7 +18,7 @@ interface HeroPieChartProps {
 type HeroChartData = {
   name: string;
   value: number; // All heroes get equal value for equal slices
-  icon?: LucideIconType;
+  icon: LucideIconType; // Changed from optional to required for simplicity in label
   fill: string;
 };
 
@@ -44,7 +43,6 @@ const heroIconMap: Record<string, LucideIconType> = {
   'Tiny': Trees,
   'Witch Doctor': Bone,
   'Zeus': CloudLightning,
-  // Add more mappings as needed for your defaultHeroes list
 };
 
 const chartColors = [
@@ -55,19 +53,48 @@ const chartColors = [
   'hsl(var(--chart-5))',
 ];
 
-const CustomLabel = ({ cx, cy, midAngle, outerRadius, percent, index, payload }: any): ReactNode => {
+interface CustomLabelRenderProps {
+  cx: number;
+  cy: number;
+  midAngle: number;
+  outerRadius: number;
+  name: string; // This 'name' comes from nameKey and corresponds to chartData[i].name
+  icon: LucideIconType; // This 'icon' comes directly from chartData[i].icon
+  fill: string; // This 'fill' comes directly from chartData[i].fill
+  // Other props like percent, index, value might also be available if needed
+}
+
+const CustomLabel = (props: CustomLabelRenderProps): ReactNode => {
+  const { cx, cy, midAngle, outerRadius, name, icon: HeroIconComponent, fill } = props;
+
+  // Robust check for necessary geometric and data props
+  if (typeof cx !== 'number' || 
+      typeof cy !== 'number' || 
+      typeof midAngle !== 'number' || 
+      typeof outerRadius !== 'number' ||
+      !name ||
+      !HeroIconComponent ||
+      !fill
+      ) {
+    // console.warn("CustomLabel: Missing required props", props);
+    return null;
+  }
+
   const RADIAN = Math.PI / 180;
   // Position for the hero name (outside the slice)
-  const nameRadius = outerRadius + 25; // Distance from center for names
+  const nameRadius = outerRadius + 25;
   const nameX = cx + nameRadius * Math.cos(-midAngle * RADIAN);
   const nameY = cy + nameRadius * Math.sin(-midAngle * RADIAN);
 
   // Position for the icon (inside the slice)
-  const iconRadius = outerRadius * 0.65; // Distance from center for icons
+  const iconRadius = outerRadius * 0.65;
   const iconX = cx + iconRadius * Math.cos(-midAngle * RADIAN);
   const iconY = cy + iconRadius * Math.sin(-midAngle * RADIAN);
-
-  const HeroIcon = payload.icon;
+  
+  // Determine icon color based on the slice's fill color for better contrast
+  const iconColor = fill === 'hsl(var(--chart-1))' || fill === 'hsl(var(--chart-3))' || fill === 'hsl(var(--chart-5))' 
+                  ? 'hsl(var(--accent-foreground))' 
+                  : 'hsl(var(--foreground))';
 
   return (
     <>
@@ -80,13 +107,11 @@ const CustomLabel = ({ cx, cy, midAngle, outerRadius, percent, index, payload }:
         fontSize="14px"
         fontWeight="medium"
       >
-        {payload.name}
+        {name}
       </text>
-      {HeroIcon && (
-         <g transform={`translate(${iconX - 12}, ${iconY - 12})`}> {/* Adjust -12 to center 24x24 icon */}
-          <HeroIcon size={24} color={payload.fill === 'hsl(var(--chart-1))' || payload.fill === 'hsl(var(--chart-3))' || payload.fill === 'hsl(var(--chart-5))' ? 'hsl(var(--accent-foreground))' : 'hsl(var(--foreground))'} />
-        </g>
-      )}
+      <g transform={`translate(${iconX - 12}, ${iconY - 12})`}> {/* Adjust -12 to center 24x24 icon */}
+        <HeroIconComponent size={24} color={iconColor} />
+      </g>
     </>
   );
 };
@@ -130,20 +155,19 @@ export function HeroPieChart({ heroes, teamName }: HeroPieChartProps) {
               <Pie
                 data={chartData}
                 dataKey="value"
-                nameKey="name"
+                nameKey="name" // This key's value will be passed as 'name' prop to CustomLabel
                 cx="50%"
                 cy="50%"
-                outerRadius={80} // Adjust size of pie
-                innerRadius={50} // Creates the donut hole
+                outerRadius={80}
+                innerRadius={50}
                 labelLine={false}
-                // label={<CustomLabel />} // Using LabelList instead for better control if needed
-                paddingAngle={2} // Small gap between slices
+                label={<CustomLabel />} // Use CustomLabel directly here
+                paddingAngle={2}
                 animationDuration={500}
               >
                 {chartData.map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={entry.fill} stroke="hsl(var(--background))" strokeWidth={2} />
                 ))}
-                <LabelList dataKey="name" content={<CustomLabel />} />
               </Pie>
                {/* Central Icon */}
                <foreignObject x="50%" y="50%" width="1" height="1" overflow="visible">
