@@ -85,12 +85,12 @@ const AccordionRowContent = ({ categoryData, isSingleMatchCategory }: { category
             <div className={cn(
               "font-semibold text-primary text-right",
               "col-span-1", // Takes 1/5 on small screens
-              isSingleMatchCategory ? "md:col-span-1" : "md:col-span-2" // Takes 1/12 or 2/12 on medium+
+              isSingleMatchCategory ? "md:col-span-2" : "md:col-span-2" // Increased span for value for single match, was md:col-span-1
             )}>{topEntry.value}</div>
             
             {isSingleMatchCategory && (
               <>
-                <div className="hidden md:block md:col-span-2 truncate" title={topEntry.heroName}>{topEntry.heroName}</div>
+                <div className="hidden md:block md:col-span-1 truncate" title={topEntry.heroName}>{topEntry.heroName}</div> {/* Decreased span for hero, was md:col-span-2 */}
                 <div className="hidden md:block md:col-span-2 text-xs text-muted-foreground truncate" title={topEntry.matchContext}>
                   {topEntry.openDotaMatchUrl ? (
                     <Link href={topEntry.openDotaMatchUrl} target="_blank" rel="noopener noreferrer" className="hover:text-primary hover:underline">
