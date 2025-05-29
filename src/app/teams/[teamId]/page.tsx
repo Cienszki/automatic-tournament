@@ -181,17 +181,17 @@ export default async function TeamPage({ params }: TeamPageParams) {
           </CardHeader>
           <CardContent className="p-6 pt-2">
             {sortedHeroes.length > 0 ? (
-              <div className="flex flex-col md:flex-row justify-around items-end gap-4 md:gap-2 py-4 min-h-[250px] md:min-h-[300px]">
+              <div className="flex flex-col md:flex-row justify-around items-end gap-4 md:gap-2 py-4 min-h-[200px] md:min-h-[250px]"> {/* Reduced min-height */}
                 {/* Podium Order: 2nd, 1st, 3rd for visual layout */}
                 {[sortedHeroes[1], sortedHeroes[0], sortedHeroes[2]].map((heroStat, index) => {
                   if (!heroStat) return <div key={`placeholder-${index}`} className="w-1/3 md:w-1/4"></div>; 
 
                   const podiumOrderIndex = index === 0 ? 1 : (index === 1 ? 0 : 2); 
                   const podiumStyle = podiumColors[podiumOrderIndex];
-                  const heightClasses = [
-                    "h-[90%] md:h-[280px]", 
-                    "h-[70%] md:h-[220px]", 
-                    "h-[50%] md:h-[160px]", 
+                  const heightClasses = [ // Reduced heights
+                    "h-[90%] md:h-[220px]", 
+                    "h-[75%] md:h-[180px]", 
+                    "h-[60%] md:h-[140px]", 
                   ];
                   const currentHeight = heightClasses[podiumOrderIndex];
                   const HeroIcon = heroIconMap[heroStat.name] || UserCircle2;
@@ -207,7 +207,7 @@ export default async function TeamPage({ params }: TeamPageParams) {
                         "transition-all duration-300 ease-out transform hover:scale-105"
                       )}
                     >
-                      <HeroIcon className={cn("h-10 w-10 md:h-12 md:w-12 mb-2 md:mb-3", podiumStyle.text)} />
+                      <HeroIcon className={cn("h-8 w-8 md:h-10 md:w-10 mb-1 md:mb-2", podiumStyle.text)} /> {/* Reduced icon size and margin */}
                       <p className={cn("font-bold text-base md:text-lg text-center", podiumStyle.text)}>{heroStat.name}</p>
                       <p className={cn("text-xs md:text-sm text-center", podiumStyle.text, "opacity-80")}>
                         {heroStat.gamesPlayed} Game{heroStat.gamesPlayed !== 1 ? 's' : ''}
@@ -348,3 +348,5 @@ export async function generateStaticParams() {
     teamId: team.id,
   }));
 }
+
+    
