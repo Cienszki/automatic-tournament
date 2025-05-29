@@ -51,10 +51,15 @@ async function getPlayerData(teamId: string, playerId: string): Promise<PlayerDa
         const opponentTeam = match.teamA.id === team.id ? match.teamB : match.teamA;
         let result: PlayerMatchHistoryItem['result'] = 'Ongoing';
         if (typeof match.teamAScore === 'number' && typeof match.teamBScore === 'number') {
-          const playerPlayedForTeamA = match.teamA.players.some(p => p.id === playerId);
-          if (playerPlayedForTeamA) {
+          const playerPlayedForTeamA = teamAPlayers => teamAPlayers.some(p => p.id === playerId);
+          
+          // Need to check if match.teamA.players exists before calling some
+          const isPlayerInTeamA = match.teamA.players && playerPlayedForTeamA(match.teamA.players);
+
+          if (isPlayerInTeamA) {
             result = match.teamAScore > match.teamBScore ? 'Win' : 'Loss';
           } else {
+            // Assume player is in team B if not in team A and match involves player's team
             result = match.teamBScore > match.teamAScore ? 'Win' : 'Loss';
           }
         }
@@ -173,16 +178,16 @@ export default async function PlayerPage({ params }: PlayerPageParams) {
                 playerMatchHistory.map(histItem => (
                   <Card key={histItem.matchId} className="bg-muted/20 shadow-md">
                     <CardHeader className="pb-3">
-                      <div className="flex justify-between items-center">
+                      <div className="flex justify-between items-start"> {/* Changed items-center to items-start */}
                         <CardTitle className="text-lg">
-                          vs <Link href={`/teams/${histItem.opponentTeam.id}`} className="text-accent hover:underline">{histItem.opponentTeam.name}</Link>
+                          Played as <span className="text-primary">{histItem.playerPerformance.hero}</span> vs <Link href={`/teams/${histItem.opponentTeam.id}`} className="text-accent hover:underline">{histItem.opponentTeam.name}</Link>
                         </CardTitle>
-                        <Badge variant={histItem.result === 'Win' ? 'secondary' : histItem.result === 'Loss' ? 'destructive' : 'outline'}>
+                        <Badge variant={histItem.result === 'Win' ? 'secondary' : histItem.result === 'Loss' ? 'destructive' : 'outline'} className="ml-2 shrink-0"> {/* Added shrink-0 and ml-2 */}
                           {histItem.result}
                         </Badge>
                       </div>
-                      <CardDescription className="text-xs">
-                        Played as {histItem.playerPerformance.hero} on {histItem.matchDate.toLocaleDateString()}
+                      <CardDescription className="text-xs mt-1"> {/* Added mt-1 */}
+                        {histItem.matchDate.toLocaleDateString()}
                         {histItem.openDotaMatchUrl && (
                           <Link href={histItem.openDotaMatchUrl} target="_blank" rel="noopener noreferrer" className="ml-2 text-primary/80 hover:text-primary text-xs">
                             (OpenDota)
