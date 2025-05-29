@@ -34,11 +34,13 @@ const AccordionRowContent = ({ categoryData, isSingleMatchCategory }: { category
 
   return (
     <>
-      {/* View for when accordion is OPEN */}
+      {/* View for when accordion is OPEN - This part is removed to prevent double title */}
+      {/* 
       <div className="hidden group-data-[state=open]:flex group-data-[state=open]:flex-col group-data-[state=open]:items-center group-data-[state=open]:justify-center w-full text-lg py-4 px-4">
         <categoryData.icon className="h-6 w-6 mr-0 mb-1 text-accent" />
         <span className="font-semibold text-primary">{categoryData.categoryName}</span>
-      </div>
+      </div> 
+      */}
 
       {/* View for when accordion is CLOSED */}
       <div className={cn(
@@ -116,15 +118,15 @@ const StatsPage = ({ data }: { data: Awaited<ReturnType<typeof getStatsData>> })
   const { singleMatchRecords, playerAverageLeaders, tournamentHighlights } = data;
 
   const renderRankingDetailsTable = (details: CategoryRankingDetail[], isSingleMatchCategory: boolean) => (
-    <Table className="mt-2 mb-4 rounded-md"> {/* Removed bg-muted/20 */}
+    <Table className="mt-2 mb-4 rounded-md">
       <TableHeader>
         <TableRow>
           <TableHead className="w-[60px] px-3 py-2">Rank</TableHead>
-          <TableHead className="px-3 py-2">Player</TableHead>
-          <TableHead className="px-3 py-2">Team</TableHead>
-          <TableHead className="w-[120px] text-right px-3 py-2">{isSingleMatchCategory ? "Value" : "Average Value"}</TableHead>
+          <TableHead className="w-[180px] px-3 py-2">Player</TableHead>
+          <TableHead className="w-[180px] px-3 py-2">Team</TableHead>
+          <TableHead className="w-[80px] px-3 py-2">{isSingleMatchCategory ? "Value" : "Value"}</TableHead>
           {isSingleMatchCategory && <TableHead className="w-[150px] px-3 py-2">Hero</TableHead>}
-          {isSingleMatchCategory && <TableHead className="w-[250px] px-3 py-2">Match</TableHead>}
+          {isSingleMatchCategory && <TableHead className="px-3 py-2">Match</TableHead>}
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -145,7 +147,7 @@ const StatsPage = ({ data }: { data: Awaited<ReturnType<typeof getStatsData>> })
                 <span className="text-accent">{detail.teamName || 'N/A'}</span>
               )}
             </TableCell>
-            <TableCell className="font-semibold text-primary text-right px-3 py-2">{detail.value}</TableCell> {/* Value is primary color */}
+            <TableCell className="font-semibold text-primary px-3 py-2">{detail.value}</TableCell>
             {isSingleMatchCategory && <TableCell className="px-3 py-2">{detail.heroName}</TableCell>}
             {isSingleMatchCategory && (
               <TableCell className="text-xs text-muted-foreground px-3 py-2 truncate" title={detail.matchContext}>

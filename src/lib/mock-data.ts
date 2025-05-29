@@ -241,12 +241,12 @@ export const generateMockSingleMatchRecords = (): CategoryDisplayStats[] => {
     { id: 'smr-assists', name: "Most Assists", icon: HeartHandshake, unit: "" , min: 20, max: 40, sort: 'desc', field: 'assists'},
     { id: 'smr-gpm', name: "Highest GPM", icon: Coins, unit: "", min: 700, max: 1100, sort: 'desc', field: 'gpm' },
     { id: 'smr-xpm', name: "Highest XPM", icon: Zap, unit: "", min: 750, max: 1200, sort: 'desc', field: 'xpm' },
-    { id: 'smr-wards', name: "Most Wards Placed", icon: Eye, unit: " Wards", min: 25, max: 50, sort: 'desc', field: 'fantasyPoints' /* Placeholder field */ },
-    { id: 'smr-hero-dmg', name: "Most Hero Damage", icon: Bomb, unit: " DMG", min: 50000, max: 100000, sort: 'desc', field: 'heroDamage', formatter: (val: number) => (val/1000).toFixed(1) + 'k' },
-    { id: 'smr-dmg-taken', name: "Most Damage Taken", icon: ShieldAlert, unit: " DMG", min: 40000, max: 80000, sort: 'desc', field: 'netWorth' /* Placeholder field */, formatter: (val: number) => (val/1000).toFixed(1) + 'k' },
+    { id: 'smr-wards', name: "Most Wards Placed", icon: Eye, unit: "", min: 25, max: 50, sort: 'desc', field: 'fantasyPoints' /* Placeholder field */ },
+    { id: 'smr-hero-dmg', name: "Most Hero Damage", icon: Bomb, unit: "", min: 50000, max: 100000, sort: 'desc', field: 'heroDamage', formatter: (val: number) => (val/1000).toFixed(1) + 'k' },
+    { id: 'smr-dmg-taken', name: "Most Damage Taken", icon: ShieldAlert, unit: "", min: 40000, max: 80000, sort: 'desc', field: 'netWorth' /* Placeholder field */, formatter: (val: number) => (val/1000).toFixed(1) + 'k' },
     { id: 'smr-deaths', name: "Most Deaths", icon: Skull, unit: "", min: 10, max: 20, sort: 'desc', field: 'deaths' },
     { id: 'smr-networth', name: "Highest Net Worth", icon: DollarSign, unit: "", min: 30000, max: 60000, sort: 'desc', field: 'netWorth', formatter: (val: number) => (val/1000).toFixed(1) + 'k' },
-    { id: 'smr-fantasy', name: "Best Fantasy Score", icon: Award, unit: " Pts", min: 100, max: 250, sort: 'desc', field: 'fantasyPoints' },
+    { id: 'smr-fantasy', name: "Best Fantasy Score", icon: Award, unit: "", min: 100, max: 250, sort: 'desc', field: 'fantasyPoints' },
   ];
 
   return categoriesMeta.map(cat => {
@@ -344,12 +344,12 @@ export const generateMockPlayerAverageLeaders = (): CategoryDisplayStats[] => {
     { id: 'avg-xpm', name: "Avg. XPM", icon: Zap, unit: "", min: 550, max: 750, decimals: 0, sort: 'desc', teamField: 'averageFantasyPoints' /* Placeholder for now */ },
     // For Wards, Hero Damage, Damage Taken, Net Worth - these are typically not team averages, but player specific.
     // Simulating by creating varied player stats.
-    { id: 'avg-wards', name: "Avg. Wards Placed", icon: Eye, unit: " Wards/Game", min: 10, max: 20, decimals: 1, sort: 'desc' },
-    { id: 'avg-hero-dmg', name: "Avg. Hero Damage", icon: Bomb, unit: " Dmg/Game", min: 25000, max: 45000, decimals: 0, sort: 'desc', formatter: (val: number) => (val/1000).toFixed(1) + 'k' },
-    { id: 'avg-dmg-taken', name: "Avg. Damage Taken", icon: ShieldAlert, unit: " Dmg/Game", min: 20000, max: 35000, decimals: 0, sort: 'desc', formatter: (val: number) => (val/1000).toFixed(1) + 'k' },
-    { id: 'avg-deaths', name: "Avg. Deaths", icon: TrendingDown, unit: "/Game", min: 3, max: 7, decimals: 1, sort: 'asc', teamField: 'averageDeathsPerGame' },
-    { id: 'avg-networth', name: "Avg. Net Worth", icon: DollarSign, unit: "/Game", min: 18000, max: 28000, decimals: 0, sort: 'desc', formatter: (val: number) => (val/1000).toFixed(1) + 'k' },
-    { id: 'avg-fantasy', name: "Avg. Fantasy Score", icon: Award, unit: " Pts/Game", min: 50, max: 120, decimals: 1, sort: 'desc', teamField: 'averageFantasyPoints' },
+    { id: 'avg-wards', name: "Avg. Wards Placed", icon: Eye, unit: "", min: 10, max: 20, decimals: 1, sort: 'desc' },
+    { id: 'avg-hero-dmg', name: "Avg. Hero Damage", icon: Bomb, unit: "", min: 25000, max: 45000, decimals: 0, sort: 'desc', formatter: (val: number) => (val/1000).toFixed(1) + 'k' },
+    { id: 'avg-dmg-taken', name: "Avg. Damage Taken", icon: ShieldAlert, unit: "", min: 20000, max: 35000, decimals: 0, sort: 'desc', formatter: (val: number) => (val/1000).toFixed(1) + 'k' },
+    { id: 'avg-deaths', name: "Avg. Deaths", icon: TrendingDown, unit: "", min: 3, max: 7, decimals: 1, sort: 'asc', teamField: 'averageDeathsPerGame' },
+    { id: 'avg-networth', name: "Avg. Net Worth", icon: DollarSign, unit: "", min: 18000, max: 28000, decimals: 0, sort: 'desc', formatter: (val: number) => (val/1000).toFixed(1) + 'k' },
+    { id: 'avg-fantasy', name: "Avg. Fantasy Score", icon: Award, unit: "", min: 50, max: 120, decimals: 1, sort: 'desc', teamField: 'averageFantasyPoints' },
   ];
   
   const allPlayerStats: {playerId: string, playerName?: string, teamId?: string, teamName?: string, statValue: number}[] = [];
