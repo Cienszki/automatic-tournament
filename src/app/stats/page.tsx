@@ -61,9 +61,9 @@ const AccordionRowContent = ({ categoryData, isSingleMatchCategory }: { category
               isSingleMatchCategory ? "md:col-span-2" : "md:col-span-3" // Takes 2/12 or 3/12 on medium+
             )} title={topEntry.playerName}>
               {topEntry.playerId && topEntry.teamId ? (
-                <Link href={`/teams/${topEntry.teamId}/players/${topEntry.playerId}`} className="hover:text-primary font-semibold">{topEntry.playerName}</Link>
+                <Link href={`/teams/${topEntry.teamId}/players/${topEntry.playerId}`} className="text-primary font-semibold hover:underline">{topEntry.playerName}</Link>
               ) : (
-                <span className="font-semibold">{topEntry.playerName || 'N/A'}</span>
+                <span className="text-primary font-semibold">{topEntry.playerName || 'N/A'}</span>
               )}
             </div>
             {/* Team */}
@@ -73,9 +73,9 @@ const AccordionRowContent = ({ categoryData, isSingleMatchCategory }: { category
               isSingleMatchCategory ? "md:col-span-2" : "md:col-span-3" // Takes 2/12 or 3/12 on medium+
             )} title={topEntry.teamName}>
               {topEntry.teamId ? (
-                <Link href={`/teams/${topEntry.teamId}`} className="hover:text-primary">{topEntry.teamName}</Link>
+                <Link href={`/teams/${topEntry.teamId}`} className="text-accent hover:underline">{topEntry.teamName}</Link>
               ) : (
-                topEntry.teamName || 'N/A'
+                <span className="text-accent">{topEntry.teamName || 'N/A'}</span>
               )}
             </div>
             {/* Value */}
@@ -130,16 +130,16 @@ export default async function StatsPage() {
             <TableCell className="font-semibold px-3 py-2">{detail.rank}</TableCell>
             <TableCell className="px-3 py-2">
               {detail.playerId && detail.teamId ? (
-                <Link href={`/teams/${detail.teamId}/players/${detail.playerId}`} className="hover:text-primary">{detail.playerName}</Link>
+                <Link href={`/teams/${detail.teamId}/players/${detail.playerId}`} className="text-primary hover:underline">{detail.playerName}</Link>
               ) : (
-                detail.playerName || 'N/A'
+                <span className="text-primary">{detail.playerName || 'N/A'}</span>
               )}
             </TableCell>
             <TableCell className="px-3 py-2">
               {detail.teamId ? (
-                <Link href={`/teams/${detail.teamId}`} className="hover:text-primary">{detail.teamName}</Link>
+                <Link href={`/teams/${detail.teamId}`} className="text-accent hover:underline">{detail.teamName}</Link>
               ) : (
-                detail.teamName || 'N/A'
+                <span className="text-accent">{detail.teamName || 'N/A'}</span>
               )}
             </TableCell>
             <TableCell className="font-semibold text-primary px-3 py-2">{detail.value}</TableCell>
