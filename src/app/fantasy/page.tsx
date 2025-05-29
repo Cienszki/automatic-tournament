@@ -12,7 +12,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Loader2, Crown, Info, UserCircle, BarChart2, Swords, Sparkles, Shield as ShieldIcon, HandHelping, Eye as EyeIcon } from "lucide-react";
 import type { Player, PlayerRole, FantasyLeagueParticipant, FantasyLineup } from "@/lib/definitions";
-import { mockAllTournamentPlayers, mockFantasyLeagueParticipants, FANTASY_BUDGET_MMR, PlayerRoles } from "@/lib/mock-data";
+import { PlayerRoles } from "@/lib/definitions"; // Corrected import path
+import { mockAllTournamentPlayers, mockFantasyLeagueParticipants, FANTASY_BUDGET_MMR } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 
 const roleIcons: Record<PlayerRole, React.ElementType> = {
@@ -33,6 +34,8 @@ export default function FantasyLeaguePage() {
   const [availablePlayers, setAvailablePlayers] = React.useState<Player[]>([]);
   const [fantasyLeaderboard, setFantasyLeaderboard] = React.useState<FantasyLeagueParticipant[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
+  const [playerCurrentlyInRole, setPlayerCurrentlyInRole] = React.useState<Player | undefined>(undefined);
+
 
   React.useEffect(() => {
     setAvailablePlayers(mockAllTournamentPlayers);
@@ -50,15 +53,15 @@ export default function FantasyLeaguePage() {
     if (!playerToSelect) return;
 
     const currentLineup = { ...selectedLineup };
-    const playerCurrentlyInRole = currentLineup[role];
+    const existingPlayerInRole = currentLineup[role];
     let tempBudget = currentBudgetUsed;
 
-    if (playerCurrentlyInRole) {
-      tempBudget -= playerCurrentlyInRole.mmr; // Subtract cost of player being replaced
+    if (existingPlayerInRole) {
+      tempBudget -= existingPlayerInRole.mmr; // Subtract cost of player being replaced
     }
     tempBudget += playerToSelect.mmr; // Add cost of new player
 
-    if (tempBudget > FANTASY_BUDGET_MMR && playerToSelect.id !== playerCurrentlyInRole?.id) {
+    if (tempBudget > FANTASY_BUDGET_MMR && playerToSelect.id !== existingPlayerInRole?.id) {
       alert(`Selecting this player exceeds the budget of ${FANTASY_BUDGET_MMR.toLocaleString()} MMR.`);
       return;
     }
@@ -256,11 +259,20 @@ export default function FantasyLeaguePage() {
                               );
                               
                               let costIfSelected = currentBudgetUsed;
-                              if(playerCurrentlyInRole && player.id !== playerCurrentlyInRole.id){
-                                costIfSelected = (currentBudgetUsed - playerCurrentlyInRole.mmr) + player.mmr;
-                              } else if (!playerCurrentlyInRole) {
+                              // Temporarily store the currently selected player in this role, if any,
+                              // to correctly calculate the cost change IF we are SWAPPING a player.
+                              const currentPlayerInThisRole = selectedLineup[role]; 
+
+                              if(currentPlayerInThisRole && player.id !== currentPlayerInThisRole.id){
+                                // Swapping: subtract old player's cost, add new player's cost
+                                costIfSelected = (currentBudgetUsed - currentPlayerInThisRole.mmr) + player.mmr;
+                              } else if (!currentPlayerInThisRole) {
+                                // Adding a new player to an empty slot
                                 costIfSelected = currentBudgetUsed + player.mmr;
                               }
+                              // If player is already selected for this role, costIfSelected is effectively currentBudgetUsed (no change)
+                              // This case is implicitly handled because if isCurrentlySelectedInThisRole, then
+                              // currentPlayerInThisRole.id === player.id, so the 'else if' above won't trigger for that player.
                               
                               const wouldExceedBudget = costIfSelected > FANTASY_BUDGET_MMR;
                               const isDisabled = isSelectedElsewhere || (!isCurrentlySelectedInThisRole && wouldExceedBudget);
@@ -366,8 +378,8 @@ export default function FantasyLeaguePage() {
     </div>
   );
 }
+// Removed metadata export
 
-export const metadata = {
-  title: "Fantasy League | Tournament Tracker",
-  description: "Join the fantasy league, build your team, and compete for points!",
-};
+    
+
+    
