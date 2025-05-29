@@ -19,6 +19,11 @@ export type Player = {
   openDotaProfileUrl?: string;
 };
 
+export type HeroPlayStats = {
+  name: string;
+  gamesPlayed: number;
+};
+
 export type Team = {
   id: string;
   name: string;
@@ -29,7 +34,7 @@ export type Team = {
   matchesWon?: number;
   matchesLost?: number;
   points?: number;
-  mostPlayedHeroes?: string[];
+  mostPlayedHeroes?: HeroPlayStats[];
 };
 
 export type Match = {
@@ -99,3 +104,4 @@ export type TournamentHighlightRecord = {
   details?: string;
   icon: LucideIcon;
 };
+

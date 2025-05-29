@@ -1,6 +1,6 @@
 
 import { mockTeams, mockMatches } from "@/lib/mock-data";
-import type { Team, Player, Match, TournamentStatus } from "@/lib/definitions";
+import type { Team, Player, Match, TournamentStatus, HeroPlayStats } from "@/lib/definitions";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -12,7 +12,6 @@ import { Users, ListChecks, ExternalLink, BarChart3, Medal, Swords, UserCheck, U
 import type { Icon as LucideIconType } from "lucide-react";
 import { notFound } from "next/navigation";
 import { cn } from "@/lib/utils";
-// HeroPieChart import removed
 
 interface TeamPageParams {
   params: { teamId: string };
@@ -79,6 +78,13 @@ const heroIconMap: Record<string, LucideIconType> = {
   'Zeus': CloudLightning,
 };
 
+const podiumColors = [
+  { border: 'border-chart-1', text: 'text-chart-1', bg: 'bg-chart-1/10' }, // 1st place (e.g., pink)
+  { border: 'border-chart-2', text: 'text-chart-2', bg: 'bg-chart-2/10' }, // 2nd place (e.g., cyan)
+  { border: 'border-chart-3', text: 'text-chart-3', bg: 'bg-chart-3/10' }, // 3rd place (e.g., gold/yellow)
+];
+
+
 export default async function TeamPage({ params }: TeamPageParams) {
   const { team, teamMatches } = await getTeamData(params.teamId);
 
@@ -87,6 +93,7 @@ export default async function TeamPage({ params }: TeamPageParams) {
   }
   
   const totalMMR = team.players.reduce((sum, player) => sum + player.mmr, 0);
+  const sortedHeroes = team.mostPlayedHeroes ? [...team.mostPlayedHeroes].sort((a, b) => b.gamesPlayed - a.gamesPlayed).slice(0, 3) : [];
 
   return (
     <div className="space-y-8">
@@ -137,27 +144,60 @@ export default async function TeamPage({ params }: TeamPageParams) {
         </CardContent>
       </Card>
 
-      {team.mostPlayedHeroes && team.mostPlayedHeroes.length > 0 && (
+      {sortedHeroes && sortedHeroes.length > 0 && (
         <Card className="shadow-xl">
           <CardHeader>
             <CardTitle className="text-2xl font-semibold text-primary flex items-center">
-              <Swords className="h-6 w-6 mr-2" /> {team.name}'s Signature Heroes
+              <Trophy className="h-6 w-6 mr-2" /> {team.name}'s Top Heroes
             </CardTitle>
-            <CardDescription>Top 5 most played heroes by the team (Simulated Data)</CardDescription>
+            <CardDescription>Top {sortedHeroes.length} most played heroes by the team.</CardDescription>
           </CardHeader>
-          <CardContent className="flex flex-wrap gap-3 p-6 pt-2">
-            {team.mostPlayedHeroes.slice(0, 5).map((heroName) => {
-              const HeroIcon = heroIconMap[heroName] || UserCircle2; // Fallback icon
-              return (
-                <div
-                  key={heroName}
-                  className="flex items-center space-x-2 p-2 px-3 rounded-md bg-muted/30 border border-muted hover:border-primary transition-colors group"
-                >
-                  <HeroIcon className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
-                  <span className="font-medium text-foreground group-hover:text-primary transition-colors">{heroName}</span>
+          <CardContent className="p-6 pt-2">
+            {sortedHeroes.length > 0 ? (
+              <div className="flex flex-col md:flex-row justify-around items-end gap-4 md:gap-2 py-4 min-h-[250px] md:min-h-[300px]">
+                {/* Podium Order: 2nd, 1st, 3rd for visual layout */}
+                {[sortedHeroes[1], sortedHeroes[0], sortedHeroes[2]].map((heroStat, index) => {
+                  if (!heroStat) return <div key={`placeholder-${index}`} className="w-1/3 md:w-1/4"></div>; // Placeholder for layout if less than 3 heroes
+
+                  // Determine podium position for correct styling (0=2nd, 1=1st, 2=3rd)
+                  const podiumOrderIndex = index === 0 ? 1 : (index === 1 ? 0 : 2); // maps visual index to sortedHeroes original index for color
+                  const podiumStyle = podiumColors[podiumOrderIndex];
+                  const heightClasses = [
+                    "h-[90%] md:h-[280px]", // 1st place (center)
+                    "h-[70%] md:h-[220px]", // 2nd place (left)
+                    "h-[50%] md:h-[160px]", // 3rd place (right)
+                  ];
+                  const currentHeight = heightClasses[podiumOrderIndex];
+                  const HeroIcon = heroIconMap[heroStat.name] || UserCircle2;
+
+                  return (
+                    <div
+                      key={heroStat.name}
+                      className={cn(
+                        "w-full md:w-1/3 lg:w-1/4 flex flex-col items-center justify-end p-3 md:p-4 rounded-t-lg border-2 border-b-0",
+                        currentHeight,
+                        podiumStyle.border,
+                        podiumStyle.bg,
+                        "transition-all duration-300 ease-out transform hover:scale-105"
+                      )}
+                    >
+                      <HeroIcon className={cn("h-10 w-10 md:h-12 md:w-12 mb-2 md:mb-3", podiumStyle.text)} />
+                      <p className={cn("font-bold text-base md:text-lg text-center", podiumStyle.text)}>{heroStat.name}</p>
+                      <p className={cn("text-xs md:text-sm text-center", podiumStyle.text, "opacity-80")}>
+                        {heroStat.gamesPlayed} Game{heroStat.gamesPlayed !== 1 ? 's' : ''}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="text-muted-foreground text-center">No hero play stats available for this team yet.</p>
+            )}
+             {sortedHeroes.length < 3 && sortedHeroes.length > 0 && (
+                <div className="flex justify-around items-end gap-4 md:gap-2 py-4 min-h-[250px] md:min-h-[300px] md:hidden">
+                    {/* Fallback for less than 3 heroes on small screens if needed or adjust above logic */}
                 </div>
-              );
-            })}
+            )}
           </CardContent>
         </Card>
       )}
@@ -190,7 +230,7 @@ export default async function TeamPage({ params }: TeamPageParams) {
                       <TableCell>
                         <Link href={`/teams/${opponent.id}`} className="hover:text-primary font-medium">{opponent.name}</Link>
                       </TableCell>
-                      <TableCell className={isWin && match.status === 'completed' ? "text-green-400 font-semibold" : match.status === 'completed' ? "text-red-400 font-semibold" : ""}>
+                      <TableCell className={cn(match.status === 'completed' ? (isWin ? "text-green-400" : "text-red-400") : "", "font-semibold")}>
                         {resultText}
                       </TableCell>
                       <TableCell>{scoreText}</TableCell>
@@ -235,7 +275,7 @@ function PlayerCard({ player, teamId }: PlayerCardProps) {
     <div className="flex items-center justify-between p-3 bg-muted/20 rounded-lg hover:bg-muted/40 transition-colors">
       <div className="flex items-center space-x-3">
         <Avatar>
-          <AvatarImage src={`https://placehold.co/40x40.png?text=${player.nickname.charAt(0)}`} alt={player.nickname} data-ai-hint="gaming avatar" />
+          <AvatarImage src={player.profileScreenshotUrl || `https://placehold.co/40x40.png?text=${player.nickname.charAt(0)}`} alt={player.nickname} data-ai-hint="gaming avatar" />
           <AvatarFallback>{player.nickname.substring(0, 2).toUpperCase()}</AvatarFallback>
         </Avatar>
         <div>
@@ -270,4 +310,3 @@ export async function generateStaticParams() {
   }));
 }
 
-    
