@@ -6,13 +6,13 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Separator } from "@/components/ui/separator";
 import Image from "next/image";
 import Link from "next/link";
-import { Users, ListChecks, ExternalLink, BarChart3, Medal, Swords, UserCheck, UserX, ShieldQuestion, PlayCircle, Sigma, Trophy } from "lucide-react";
+import { Users, ListChecks, ExternalLink, BarChart3, Medal, Swords, UserCheck, UserX, ShieldQuestion, PlayCircle, Sigma, Trophy, Sparkles, Anchor, Sword, Zap as ZapIcon, Ghost, Ban, MountainSnow, Flame, Snowflake, Axe as AxeIcon, Target, Moon, Copy as CopyIcon, ShieldOff, Waves, ShieldAlert, Trees, Bone, CloudLightning, UserCircle2 } from "lucide-react";
+import type { Icon as LucideIconType } from "lucide-react";
 import { notFound } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { HeroPieChart } from "@/components/app/HeroPieChart"; // Import the new component
+// HeroPieChart import removed
 
 interface TeamPageParams {
   params: { teamId: string };
@@ -55,6 +55,29 @@ const getStatusIcon = (status: TournamentStatus) => {
       return null;
   }
 }
+
+const heroIconMap: Record<string, LucideIconType> = {
+  'Invoker': Sparkles,
+  'Pudge': Anchor,
+  'Juggernaut': Sword,
+  'Lion': ZapIcon,
+  'Shadow Fiend': Ghost,
+  'Anti-Mage': Ban,
+  'Phantom Assassin': Swords,
+  'Earthshaker': MountainSnow,
+  'Lina': Flame,
+  'Crystal Maiden': Snowflake,
+  'Axe': AxeIcon,
+  'Drow Ranger': Target,
+  'Mirana': Moon,
+  'Rubick': CopyIcon,
+  'Templar Assassin': ShieldOff,
+  'Slark': Waves,
+  'Sven': ShieldAlert,
+  'Tiny': Trees,
+  'Witch Doctor': Bone,
+  'Zeus': CloudLightning,
+};
 
 export default async function TeamPage({ params }: TeamPageParams) {
   const { team, teamMatches } = await getTeamData(params.teamId);
@@ -115,7 +138,28 @@ export default async function TeamPage({ params }: TeamPageParams) {
       </Card>
 
       {team.mostPlayedHeroes && team.mostPlayedHeroes.length > 0 && (
-         <HeroPieChart heroes={team.mostPlayedHeroes} teamName={team.name} />
+        <Card className="shadow-xl">
+          <CardHeader>
+            <CardTitle className="text-2xl font-semibold text-primary flex items-center">
+              <Swords className="h-6 w-6 mr-2" /> {team.name}'s Signature Heroes
+            </CardTitle>
+            <CardDescription>Top 5 most played heroes by the team (Simulated Data)</CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-wrap gap-3 p-6 pt-2">
+            {team.mostPlayedHeroes.slice(0, 5).map((heroName) => {
+              const HeroIcon = heroIconMap[heroName] || UserCircle2; // Fallback icon
+              return (
+                <div
+                  key={heroName}
+                  className="flex items-center space-x-2 p-2 px-3 rounded-md bg-muted/30 border border-muted hover:border-primary transition-colors group"
+                >
+                  <HeroIcon className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
+                  <span className="font-medium text-foreground group-hover:text-primary transition-colors">{heroName}</span>
+                </div>
+              );
+            })}
+          </CardContent>
+        </Card>
       )}
 
       <Card className="shadow-xl">
@@ -225,3 +269,5 @@ export async function generateStaticParams() {
     teamId: team.id,
   }));
 }
+
+    
