@@ -245,13 +245,13 @@ export default function FantasyLeaguePage() {
                         
                         <Select
                           value={selectedPlayerForRole?.id || ""}
-                          onValueChange={(playerId) => { if(playerId) {handlePlayerSelect(role, playerId)}}}
+                          onValueChange={(playerId) => { if(playerId && playerId !== "--select--") {handlePlayerSelect(role, playerId)}}}
                         >
                           <SelectTrigger className="w-full mt-auto">
                             <SelectValue placeholder={`Select ${role} Player...`} />
                           </SelectTrigger>
                           <SelectContent position="popper" className="max-h-[300px]">
-                            <SelectItem value="" disabled>-- Select a Player --</SelectItem>
+                            <SelectItem value="--select--" disabled>-- Select a Player --</SelectItem>
                             {playersForThisRole.sort((a,b) => a.nickname.localeCompare(b.nickname)).map(player => {
                               const isCurrentlySelectedInThisRole = selectedPlayerForRole?.id === player.id;
                               const isSelectedElsewhere = Object.entries(selectedLineup).some(
@@ -379,6 +379,7 @@ export default function FantasyLeaguePage() {
   );
 }
 // Removed metadata export
+    
 
     
 
