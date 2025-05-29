@@ -7,10 +7,11 @@ import { generateMockSingleMatchRecords, generateMockPlayerAverageLeaders, gener
 import { heroIconMap, heroColorMap, FALLBACK_HERO_COLOR, defaultHeroNames } from "@/lib/hero-data"; 
 import type { CategoryDisplayStats, CategoryRankingDetail, TournamentHighlightRecord } from "@/lib/definitions";
 import { 
-  BarChartHorizontalBig, Trophy, Zap, Swords, HeartHandshake as HandshakeIconLucide, Coins, Eye, Bomb, ShieldAlert, DollarSign, Award,
+  BarChartHorizontalBig, Trophy, Zap, Swords, Coins, Eye, Bomb, ShieldAlert, Award,
   TrendingDown, Puzzle, Anchor, Flame, Snowflake, MountainSnow, Ghost, Ban, Moon,
   Copy as CopyIconLucide, ShieldOff, Waves, Trees, Bone, CloudLightning, Sparkles, Target,
-  Axe as AxeIconLucide, Clock, Activity, ShieldCheck, ChevronsUp, Timer, Skull, ListChecks, Medal, Percent, Ratio, Home
+  Axe as AxeIconLucide, Clock, Activity, ShieldCheck, ChevronsUp, Timer, Skull, ListChecks, Medal, Percent, Ratio, Home,
+  Handshake as HandshakeIcon, // Ensured Handshake is imported
 } from "lucide-react";
 import type { Icon as LucideIconType } from "lucide-react";
 import Link from "next/link";
@@ -76,7 +77,7 @@ const AccordionRowContent = ({ categoryData, isSingleMatchCategory }: { category
               )}
             </div>
             <div className={cn(
-              "font-semibold text-primary text-center", 
+              "font-semibold text-center", 
               "col-span-1", 
               isSingleMatchCategory ? "md:col-span-2" : "md:col-span-2" 
             )}>{topEntry.value}</div>
@@ -85,7 +86,7 @@ const AccordionRowContent = ({ categoryData, isSingleMatchCategory }: { category
               <>
                 <div className={cn(
                     "truncate flex items-center",
-                    "hidden md:block md:col-span-1"
+                    "hidden md:block md:col-span-2" // Increased span for Hero Name
                   )} title={topEntry.heroName}>
                   {(heroIconMap[topEntry.heroName] || heroIconMap['Default']) && 
                     React.createElement(heroIconMap[topEntry.heroName] || heroIconMap['Default'], { 
@@ -95,7 +96,10 @@ const AccordionRowContent = ({ categoryData, isSingleMatchCategory }: { category
                   }
                   <span style={{color: heroColorMap[topEntry.heroName] || FALLBACK_HERO_COLOR}}>{topEntry.heroName}</span>
                 </div> 
-                <div className="hidden md:block md:col-span-2 text-xs text-muted-foreground truncate" title={topEntry.matchContext}>
+                <div className={cn(
+                    "hidden md:block md:col-span-1 text-xs text-muted-foreground truncate", // Decreased span for Match Context
+                    "overflow-hidden text-ellipsis whitespace-nowrap"
+                )} title={topEntry.matchContext}>
                   {topEntry.openDotaMatchUrl ? (
                     <Link href={topEntry.openDotaMatchUrl} target="_blank" rel="noopener noreferrer" className="hover:text-primary hover:underline">
                       {topEntry.matchContext}
@@ -105,9 +109,6 @@ const AccordionRowContent = ({ categoryData, isSingleMatchCategory }: { category
                   )}
                 </div>
               </>
-            )}
-             {!isSingleMatchCategory && ( 
-              <div className="hidden md:block md:col-span-0"></div> 
             )}
           </>
         ) : (
@@ -129,7 +130,7 @@ const StatsPage = ({ data }: { data: Awaited<ReturnType<typeof getStatsData>> })
           <TableHead className="w-[60px] px-3 py-2">Rank</TableHead>
           <TableHead className="w-[180px] px-3 py-2">Player</TableHead>
           <TableHead className="w-[180px] px-3 py-2">Team</TableHead>
-          <TableHead className="w-[100px] px-3 py-2 text-center">Value</TableHead>
+          <TableHead className="w-[100px] px-3 py-2 text-center">Value</TableHead> {/* Centered header */}
           {isSingleMatchCategory && <TableHead className="w-[150px] px-3 py-2">Hero</TableHead>}
           {isSingleMatchCategory && <TableHead className="w-[250px] px-3 py-2">Match</TableHead>}
         </TableRow>
@@ -138,6 +139,7 @@ const StatsPage = ({ data }: { data: Awaited<ReturnType<typeof getStatsData>> })
         {details.map((detail) => {
           const HeroIconComponent = isSingleMatchCategory && detail.heroName ? (heroIconMap[detail.heroName] || heroIconMap['Default']) : null;
           const heroColorHex = isSingleMatchCategory && detail.heroName ? (heroColorMap[detail.heroName] || FALLBACK_HERO_COLOR) : FALLBACK_HERO_COLOR;
+          const valueColor = isSingleMatchCategory ? heroColorHex : 'hsl(var(--primary))';
           return (
             <TableRow key={`${detail.rank}-${detail.playerName}-${detail.teamName}-${detail.value}`} className="text-sm">
               <TableCell className="font-semibold px-3 py-2">{detail.rank}</TableCell>
@@ -155,7 +157,7 @@ const StatsPage = ({ data }: { data: Awaited<ReturnType<typeof getStatsData>> })
                   <span className="text-accent">{detail.teamName || 'N/A'}</span>
                 )}
               </TableCell>
-              <TableCell className="font-semibold px-3 py-2 text-center" style={{color: isSingleMatchCategory ? heroColorHex : 'hsl(var(--primary))'}}>{detail.value}</TableCell>
+              <TableCell className="font-semibold px-3 py-2 text-center" style={{color: valueColor}}>{detail.value}</TableCell> {/* Centered cell content */}
               {isSingleMatchCategory && (
                 <TableCell className="px-3 py-2">
                   <div className="flex items-center">
@@ -294,6 +296,3 @@ export const metadata = {
   title: "Statistics | Tournament Tracker",
   description: "Detailed player and tournament statistics.",
 };
-
-
-    
