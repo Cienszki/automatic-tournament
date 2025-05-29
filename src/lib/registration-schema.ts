@@ -33,7 +33,7 @@ export const playerSchema = z.object({
 export const registrationFormSchema = z.object({
   teamName: z.string().min(3, "Team name must be at least 3 characters."),
   teamLogo: requiredFileSchema,
-  teamMotto: z.string().max(150, "Team motto cannot exceed 150 characters.").optional().or(z.literal('')), // Allow empty string or optional
+  teamMotto: z.string().max(150, "Team motto cannot exceed 150 characters.").optional().or(z.literal('')),
   player1: playerSchema,
   player2: playerSchema,
   player3: playerSchema,
@@ -55,5 +55,18 @@ export const registrationFormSchema = z.object({
 }, {
   message: "Each player role (Carry, Mid, Offlane, Soft Support, Hard Support) must be assigned to exactly one player.",
   path: ["player1.role"], 
+}).refine(data => {
+  const steamUrls = [
+    data.player1.steamProfileUrl,
+    data.player2.steamProfileUrl,
+    data.player3.steamProfileUrl,
+    data.player4.steamProfileUrl,
+    data.player5.steamProfileUrl,
+  ].filter(url => url.trim() !== ""); // Filter out empty strings in case some are optional or not yet filled
+  const uniqueSteamUrls = new Set(steamUrls);
+  return uniqueSteamUrls.size === steamUrls.length;
+}, {
+  message: "Each player must have a unique Steam Profile URL within this registration.",
+  // You can target a specific player's URL field or a general path
+  path: ["player1.steamProfileUrl"], 
 });
-
