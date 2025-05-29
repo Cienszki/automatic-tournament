@@ -159,8 +159,8 @@ export default async function TeamPage({ params }: TeamPageParams) {
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card className="shadow-xl">
-           <CardHeader className="flex flex-col items-center text-center">
-            <Users2 className="h-6 w-6 text-accent mb-1" />
+           <CardHeader className="flex flex-row items-center justify-center space-x-3 pb-2">
+            <Users2 className="h-6 w-6 text-accent" />
             <CardTitle className="text-xl text-primary">Top Heroes</CardTitle>
           </CardHeader>
           <CardContent className="p-6 pt-2">
@@ -206,7 +206,7 @@ export default async function TeamPage({ params }: TeamPageParams) {
         </Card>
 
         <Card className="shadow-xl text-center hover:bg-muted/10 transition-colors duration-200">
-          <CardHeader className="flex flex-row items-center space-x-3 pb-2 justify-center">
+          <CardHeader className="flex flex-row items-center justify-center space-x-3 pb-2">
             <Clock className="h-6 w-6 text-accent" />
             <CardTitle className="text-xl text-primary">Avg. Match Duration</CardTitle>
           </CardHeader>
@@ -245,7 +245,7 @@ export default async function TeamPage({ params }: TeamPageParams) {
 
         {performanceStats.map((stat) => (
           <Card key={stat.label} className="shadow-xl text-center hover:bg-muted/10 transition-colors duration-200">
-            <CardHeader className="flex flex-row items-center space-x-3 pb-2 justify-center">
+            <CardHeader className="flex flex-row items-center justify-center space-x-3 pb-2">
               <stat.icon className="h-6 w-6 text-accent" />
               <CardTitle className="text-xl text-primary">{stat.label}</CardTitle>
             </CardHeader>
@@ -368,4 +368,5 @@ export async function generateStaticParams() {
     
 
     
+
 
