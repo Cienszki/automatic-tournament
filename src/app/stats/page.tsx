@@ -74,7 +74,15 @@ export default async function StatsPage() {
 
   const AccordionRowContent = ({ categoryData, isSingleMatchCategory }: { categoryData: CategoryDisplayStats, isSingleMatchCategory: boolean }) => {
     const topEntry = categoryData.rankings[0];
-    if (!topEntry) return null; // Should not happen if mock data is correct
+    if (!topEntry) return (
+        <div className="grid grid-cols-5 md:grid-cols-7 items-center w-full text-sm py-3 px-4">
+             <div className="col-span-2 md:col-span-2 font-medium flex items-center">
+                <categoryData.icon className="h-5 w-5 mr-3 text-muted-foreground shrink-0" />
+                <span className="truncate" title={categoryData.categoryName}>{categoryData.categoryName}</span>
+            </div>
+            <div className="col-span-full md:col-span-5 text-muted-foreground italic">No entries for this category.</div>
+        </div>
+    );
 
     return (
       <div className="grid grid-cols-5 md:grid-cols-7 items-center w-full text-sm py-3 px-4">
@@ -151,9 +159,9 @@ export default async function StatsPage() {
                         <AccordionRowContent categoryData={categoryData} isSingleMatchCategory={true} />
                     </AccordionTrigger>
                     <AccordionContent className="p-2 md:p-4">
-                        {categoryData.rankings.length > 1 ? 
-                        renderRankingDetailsTable(categoryData.rankings.slice(1), true) : 
-                        <p className="text-sm text-muted-foreground">No further details.</p>}
+                        {categoryData.rankings.length > 0 ? 
+                        renderRankingDetailsTable(categoryData.rankings, true) : 
+                        <p className="text-sm text-muted-foreground italic">No entries for this category.</p>}
                     </AccordionContent>
                  </Card>
               </AccordionItem>
@@ -178,9 +186,9 @@ export default async function StatsPage() {
                             <AccordionRowContent categoryData={categoryData} isSingleMatchCategory={false} />
                         </AccordionTrigger>
                         <AccordionContent className="p-2 md:p-4">
-                           {categoryData.rankings.length > 1 ? 
-                           renderRankingDetailsTable(categoryData.rankings.slice(1), false) :
-                           <p className="text-sm text-muted-foreground">No further details.</p>}
+                           {categoryData.rankings.length > 0 ? 
+                           renderRankingDetailsTable(categoryData.rankings, false) :
+                           <p className="text-sm text-muted-foreground italic">No entries for this category.</p>}
                         </AccordionContent>
                     </Card>
                 </AccordionItem>
@@ -221,3 +229,4 @@ export const metadata = {
   title: "Statistics | Tournament Tracker",
   description: "Detailed player and tournament statistics.",
 };
+
