@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Loader2, Crown, Info, UserCircle, BarChart2, Swords, Sparkles, Shield as ShieldIcon, HandHelping, Eye as EyeIcon } from "lucide-react";
 import type { Player, PlayerRole, FantasyLeagueParticipant, FantasyLineup } from "@/lib/definitions";
-import { PlayerRoles } from "@/lib/definitions"; // Corrected import path
+import { PlayerRoles } from "@/lib/definitions";
 import { mockAllTournamentPlayers, mockFantasyLeagueParticipants, FANTASY_BUDGET_MMR } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 
@@ -225,75 +225,72 @@ export default function FantasyLeaguePage() {
                           <RoleIcon className="h-5 w-5 mr-2" /> {role}
                         </CardTitle>
                       </CardHeader>
-                      <CardContent className="space-y-3 flex-grow px-4 py-3">
-                        {selectedPlayerForRole ? (
-                          <div className="p-3 border rounded-md bg-card flex items-center space-x-3">
-                            <Avatar className="h-10 w-10">
-                              <AvatarImage src={selectedPlayerForRole.profileScreenshotUrl || `https://placehold.co/40x40.png?text=${selectedPlayerForRole.nickname.charAt(0)}`} />
-                              <AvatarFallback>{selectedPlayerForRole.nickname.substring(0,1)}</AvatarFallback>
-                            </Avatar>
-                            <div>
-                              <p className="font-semibold text-foreground truncate" title={selectedPlayerForRole.nickname}>{selectedPlayerForRole.nickname}</p>
-                              <p className="text-xs text-muted-foreground">Cost: {selectedPlayerForRole.mmr.toLocaleString()} MMR</p>
+                      <CardContent className="grid grid-cols-2 gap-x-4 items-center flex-grow px-4 py-3">
+                        <div>
+                          {selectedPlayerForRole ? (
+                            <div className="p-3 border rounded-md bg-card flex items-center space-x-3 min-h-[76px]">
+                              <Avatar className="h-10 w-10">
+                                <AvatarImage src={selectedPlayerForRole.profileScreenshotUrl || `https://placehold.co/40x40.png?text=${selectedPlayerForRole.nickname.charAt(0)}`} />
+                                <AvatarFallback>{selectedPlayerForRole.nickname.substring(0,1)}</AvatarFallback>
+                              </Avatar>
+                              <div>
+                                <p className="font-semibold text-foreground truncate" title={selectedPlayerForRole.nickname}>{selectedPlayerForRole.nickname}</p>
+                                <p className="text-xs text-muted-foreground">Cost: {selectedPlayerForRole.mmr.toLocaleString()} MMR</p>
+                              </div>
                             </div>
-                          </div>
-                        ) : (
-                          <div className="p-3 border rounded-md bg-muted/20 text-center h-full flex items-center justify-center">
-                            <p className="text-sm text-muted-foreground italic">No player selected</p>
-                          </div>
-                        )}
+                          ) : (
+                            <div className="p-3 border rounded-md bg-muted/20 text-center h-full flex items-center justify-center min-h-[76px]">
+                              <p className="text-sm text-muted-foreground italic">No player selected</p>
+                            </div>
+                          )}
+                        </div>
                         
-                        <Select
-                          value={selectedPlayerForRole?.id || ""}
-                          onValueChange={(playerId) => { if(playerId && playerId !== "--select--") {handlePlayerSelect(role, playerId)}}}
-                        >
-                          <SelectTrigger className="w-full mt-auto">
-                            <SelectValue placeholder="Select Player..." />
-                          </SelectTrigger>
-                          <SelectContent position="popper" className="max-h-[300px]">
-                            <SelectItem value="--select--" disabled>-- Select a Player --</SelectItem>
-                            {playersForThisRole.sort((a,b) => a.nickname.localeCompare(b.nickname)).map(player => {
-                              const isCurrentlySelectedInThisRole = selectedPlayerForRole?.id === player.id;
-                              const isSelectedElsewhere = Object.entries(selectedLineup).some(
-                                ([r, p]) => r !== role && p?.id === player.id
-                              );
-                              
-                              let costIfSelected = currentBudgetUsed;
-                              // Temporarily store the currently selected player in this role, if any,
-                              // to correctly calculate the cost change IF we are SWAPPING a player.
-                              const currentPlayerInThisRole = selectedLineup[role]; 
+                        <div>
+                          <Select
+                            value={selectedPlayerForRole?.id || ""}
+                            onValueChange={(playerId) => { if(playerId && playerId !== "--select--") {handlePlayerSelect(role, playerId)}}}
+                          >
+                            <SelectTrigger className="w-full">
+                              <SelectValue placeholder="Select Player..." />
+                            </SelectTrigger>
+                            <SelectContent position="popper" className="max-h-[300px]">
+                              <SelectItem value="--select--" disabled>-- Select a Player --</SelectItem>
+                              {playersForThisRole.sort((a,b) => a.nickname.localeCompare(b.nickname)).map(player => {
+                                const isCurrentlySelectedInThisRole = selectedPlayerForRole?.id === player.id;
+                                const isSelectedElsewhere = Object.entries(selectedLineup).some(
+                                  ([r, p]) => r !== role && p?.id === player.id
+                                );
+                                
+                                let costIfSelected = currentBudgetUsed;
+                                const currentPlayerInThisRole = selectedLineup[role]; 
 
-                              if(currentPlayerInThisRole && player.id !== currentPlayerInThisRole.id){
-                                // Swapping: subtract old player's cost, add new player's cost
-                                costIfSelected = (currentBudgetUsed - currentPlayerInThisRole.mmr) + player.mmr;
-                              } else if (!currentPlayerInThisRole) {
-                                // Adding a new player to an empty slot
-                                costIfSelected = currentBudgetUsed + player.mmr;
-                              }
-                              // If player is already selected for this role, costIfSelected is effectively currentBudgetUsed (no change)
-                              // This case is implicitly handled because if isCurrentlySelectedInThisRole, then
-                              // currentPlayerInThisRole.id === player.id, so the 'else if' above won't trigger for that player.
-                              
-                              const wouldExceedBudget = costIfSelected > FANTASY_BUDGET_MMR;
-                              const isDisabled = isSelectedElsewhere || (!isCurrentlySelectedInThisRole && wouldExceedBudget);
+                                if(currentPlayerInThisRole && player.id !== currentPlayerInThisRole.id){
+                                  costIfSelected = (currentBudgetUsed - currentPlayerInThisRole.mmr) + player.mmr;
+                                } else if (!currentPlayerInThisRole) {
+                                  costIfSelected = currentBudgetUsed + player.mmr;
+                                }
+                                
+                                const wouldExceedBudget = costIfSelected > FANTASY_BUDGET_MMR;
+                                const isDisabled = isSelectedElsewhere || (!isCurrentlySelectedInThisRole && wouldExceedBudget);
 
-                              return (
-                                <SelectItem key={player.id} value={player.id} disabled={isDisabled}>
-                                  <div className="flex justify-between w-full items-center">
-                                    <span>{player.nickname}</span>
-                                    <span className={cn("text-xs ml-2", 
-                                      isDisabled && !isCurrentlySelectedInThisRole && wouldExceedBudget ? "text-destructive" : "text-muted-foreground",
-                                      isSelectedElsewhere ? "text-amber-500" : ""
-                                    )}>
-                                      {player.mmr.toLocaleString()} MMR
-                                      {isSelectedElsewhere && " (Picked)"}
-                                    </span>
-                                  </div>
-                                </SelectItem>
-                              );
-                            })}
-                          </SelectContent>
-                        </Select>
+                                return (
+                                  <SelectItem key={player.id} value={player.id} disabled={isDisabled}>
+                                    <div className="flex justify-between w-full items-center">
+                                      <span>{player.nickname}</span>
+                                      <span className={cn("text-xs ml-2", 
+                                        isDisabled && !isCurrentlySelectedInThisRole && wouldExceedBudget ? "text-destructive" : "text-muted-foreground",
+                                        isSelectedElsewhere ? "text-amber-500" : ""
+                                      )}>
+                                        {player.mmr.toLocaleString()} MMR
+                                        {isSelectedElsewhere && " (Picked)"}
+                                      </span>
+                                    </div>
+                                  </SelectItem>
+                                );
+                              })}
+                            </SelectContent>
+                          </Select>
+                        </div>
                       </CardContent>
                     </Card>
                   );
@@ -378,13 +375,5 @@ export default function FantasyLeaguePage() {
     </div>
   );
 }
-// Removed metadata export
-    
-
-    
-
-    
-
-    
 
     
