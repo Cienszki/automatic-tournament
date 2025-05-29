@@ -1,4 +1,7 @@
 
+// This page was previously marked "use client", but to export metadata,
+// it needs to be a Server Component. ShadCN Accordions can work within this setup.
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
@@ -88,7 +91,7 @@ const AccordionRowContent = ({ categoryData, isSingleMatchCategory }: { category
             {isSingleMatchCategory && (
               <>
                 <div className="hidden md:block md:col-span-2 truncate" title={topEntry.heroName}>{topEntry.heroName}</div>
-                <div className="hidden md:block md:col-span-2 text-xs text-muted-foreground truncate">
+                <div className="hidden md:block md:col-span-2 text-xs text-muted-foreground truncate" title={topEntry.matchContext}>
                   {topEntry.openDotaMatchUrl ? (
                     <Link href={topEntry.openDotaMatchUrl} target="_blank" rel="noopener noreferrer" className="hover:text-primary hover:underline">
                       {topEntry.matchContext}
@@ -109,8 +112,8 @@ const AccordionRowContent = ({ categoryData, isSingleMatchCategory }: { category
 };
 
 
-export default async function StatsPage() {
-  const { singleMatchRecords, playerAverageLeaders, tournamentHighlights } = await getStatsData();
+const StatsPage = ({ data }: { data: Awaited<ReturnType<typeof getStatsData>> }) => {
+  const { singleMatchRecords, playerAverageLeaders, tournamentHighlights } = data;
 
   const renderRankingDetailsTable = (details: CategoryRankingDetail[], isSingleMatchCategory: boolean) => (
     <Table className="mt-2 mb-4 bg-muted/20 rounded-md">
@@ -119,9 +122,9 @@ export default async function StatsPage() {
           <TableHead className="w-[60px] px-3 py-2">Rank</TableHead>
           <TableHead className="px-3 py-2">Player</TableHead>
           <TableHead className="px-3 py-2">Team</TableHead>
-          <TableHead className="px-3 py-2">{isSingleMatchCategory ? "Value" : "Average Value"}</TableHead>
-          {isSingleMatchCategory && <TableHead className="px-3 py-2">Hero</TableHead>}
-          {isSingleMatchCategory && <TableHead className="px-3 py-2">Match</TableHead>}
+          <TableHead className="w-[120px] text-right px-3 py-2">{isSingleMatchCategory ? "Value" : "Average Value"}</TableHead>
+          {isSingleMatchCategory && <TableHead className="w-[150px] px-3 py-2">Hero</TableHead>}
+          {isSingleMatchCategory && <TableHead className="min-w-[200px] px-3 py-2">Match</TableHead>}
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -142,10 +145,10 @@ export default async function StatsPage() {
                 <span className="text-accent">{detail.teamName || 'N/A'}</span>
               )}
             </TableCell>
-            <TableCell className="font-semibold text-primary px-3 py-2">{detail.value}</TableCell>
+            <TableCell className="font-semibold text-primary text-right px-3 py-2">{detail.value}</TableCell>
             {isSingleMatchCategory && <TableCell className="px-3 py-2">{detail.heroName}</TableCell>}
             {isSingleMatchCategory && (
-              <TableCell className="text-xs text-muted-foreground px-3 py-2">
+              <TableCell className="text-xs text-muted-foreground px-3 py-2 truncate" title={detail.matchContext}>
                 {detail.openDotaMatchUrl ? (
                   <Link href={detail.openDotaMatchUrl} target="_blank" rel="noopener noreferrer" className="hover:text-primary hover:underline">
                     {detail.matchContext}
@@ -254,6 +257,12 @@ export default async function StatsPage() {
       </p>
     </div>
   );
+}
+
+// Fetch data on the server and pass it to the client component
+export default async function StatsPageServer() {
+  const data = await getStatsData();
+  return <StatsPage data={data} />;
 }
 
 export const metadata = {
