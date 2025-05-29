@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import Image from "next/image";
 import Link from "next/link";
-import { Users, ListChecks, ExternalLink, BarChart3, Medal, Swords, UserCheck, UserX, ShieldQuestion, PlayCircle, Sigma, Trophy, Sparkles, Anchor, Sword as SwordIconLucide, Zap as ZapIcon, Ghost, Ban, MountainSnow, Flame, Snowflake, Axe as AxeIcon, Target, Moon, Copy as CopyIcon, ShieldOff, Waves, ShieldAlert, Trees, Bone, CloudLightning, UserCircle2, Clock, Percent, Skull, Ratio, Handshake, Award, Users2, Puzzle, TrendingUp } from "lucide-react";
+import { Users, ListChecks, ExternalLink, Medal, Swords, UserCheck, UserX, ShieldQuestion, PlayCircle, Sigma, Trophy, Sparkles, Anchor, Sword as SwordIconLucide, Zap as ZapIcon, Ghost, Ban, MountainSnow, Flame, Snowflake, Axe as AxeIcon, Target, Moon, Copy as CopyIcon, ShieldOff, Waves, ShieldAlert, Trees, Bone, CloudLightning, UserCircle2, Clock, Percent, Skull, Ratio, Handshake, Award, Users2, Puzzle, TrendingUp } from "lucide-react";
 import type { Icon as LucideIconType } from "lucide-react";
 import { notFound } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -122,10 +122,6 @@ export default async function TeamPage({ params }: TeamPageParams) {
   const displayMinutes = avgMatchDurationMinutes % 60; 
   const minuteHandAngle = (displayMinutes / 60) * 360;
 
-  const overallTeamRankSorted = [...mockTeams].sort((a, b) => (b.points ?? 0) - (a.points ?? 0));
-  const overallTeamRank = overallTeamRankSorted.findIndex(t => t.id === team.id) + 1;
-  const overallRankDisplay = overallTeamRank > 0 ? `${overallTeamRank} / ${mockTeams.length}` : "N/A";
-
   // Calculate tournament-wide maximums and ranks for progress bar stats
   const maxKills = Math.max(...mockTeams.map(t => t.averageKillsPerGame ?? 0), 1);
   const maxDeaths = Math.max(...mockTeams.map(t => t.averageDeathsPerGame ?? 0), 1);
@@ -203,11 +199,9 @@ export default async function TeamPage({ params }: TeamPageParams) {
         </CardHeader>
         <CardContent className="p-6 md:p-8 grid md:grid-cols-3 gap-6">
           <div className="md:col-span-1 space-y-4">
-             <InfoItem icon={Award} label="Avg. Fantasy Points" value={team.averageFantasyPoints?.toFixed(1) ?? 'N/A'} />
              <InfoItem icon={ListChecks} label="Matches Played" value={team.matchesPlayed ?? 0} />
              <InfoItem icon={TrendingUp} label="Wins / Losses" value={`${team.matchesWon ?? 0}W / ${team.matchesLost ?? 0}L`} />
              <InfoItem icon={Sigma} label="Total MMR" value={totalMMR.toLocaleString()} />
-             <InfoItem icon={Medal} label="Tournament Rank" value={overallRankDisplay} />
           </div>
           <div className="md:col-span-2">
             <h3 className="text-2xl font-semibold mb-4 flex items-center text-foreground">
@@ -224,7 +218,7 @@ export default async function TeamPage({ params }: TeamPageParams) {
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card className="shadow-xl text-center hover:bg-muted/10 transition-colors duration-200 flex flex-col">
-           <CardHeader className="flex flex-row items-center justify-center space-x-3 pb-2">
+          <CardHeader className="flex flex-row items-center justify-center space-x-3 pb-2">
             <Users2 className="h-6 w-6 text-accent" />
             <CardTitle className="text-xl text-primary">Top Heroes</CardTitle>
           </CardHeader>
@@ -448,5 +442,6 @@ export async function generateStaticParams() {
     
 
     
+
 
 
