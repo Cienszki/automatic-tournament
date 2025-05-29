@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -374,7 +373,7 @@ export default function FantasyLeaguePage() {
                       </TableCell>
                       <TableCell>
                         {showLineup ? (
-                          <div className="flex flex-col space-y-0.5">
+                          <div className="flex flex-row flex-wrap items-center gap-x-2 gap-y-1">
                             {PlayerRoles.map(role => {
                               const player = lineupToDisplay?.[role];
                               const RoleIcon = roleIcons[role];
