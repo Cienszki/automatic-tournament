@@ -12,7 +12,7 @@ import { Users, ListChecks, ExternalLink, BarChart3, Medal, Swords, UserCheck, U
 import type { Icon as LucideIconType } from "lucide-react";
 import { notFound } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { Progress } from "@/components/ui/progress"; // Import Progress component
+import { Progress } from "@/components/ui/progress";
 
 interface TeamPageParams {
   params: { teamId: string };
@@ -77,7 +77,7 @@ const heroIconMap: Record<string, LucideIconType> = {
   'Tiny': Trees,
   'Witch Doctor': Bone,
   'Zeus': CloudLightning,
-  'Default': Puzzle, // Default icon if hero not in map
+  'Default': Puzzle,
 };
 
 const podiumColors = [
@@ -97,11 +97,17 @@ export default async function TeamPage({ params }: TeamPageParams) {
   const totalMMR = team.players.reduce((sum, player) => sum + player.mmr, 0);
   const sortedHeroes = team.mostPlayedHeroes ? [...team.mostPlayedHeroes].sort((a, b) => b.gamesPlayed - a.gamesPlayed).slice(0, 3) : [];
 
+  // Calculate tournament-wide maximums for progress bar scaling
+  const maxKills = Math.max(...mockTeams.map(t => t.averageKillsPerGame ?? 0), 1);
+  const maxDeaths = Math.max(...mockTeams.map(t => t.averageDeathsPerGame ?? 0), 1);
+  const maxAssists = Math.max(...mockTeams.map(t => t.averageAssistsPerGame ?? 0), 1);
+  const maxFantasyPoints = Math.max(...mockTeams.map(t => t.averageFantasyPoints ?? 0), 1);
+
   const performanceStats = [
-    { label: "Avg. Kills / Game", value: team.averageKillsPerGame?.toFixed(1) ?? 'N/A', icon: Swords, type: 'kills', rawValue: team.averageKillsPerGame },
-    { label: "Avg. Deaths / Game", value: team.averageDeathsPerGame?.toFixed(1) ?? 'N/A', icon: Skull, type: 'deaths', rawValue: team.averageDeathsPerGame },
-    { label: "Avg. Assists / Game", value: team.averageAssistsPerGame?.toFixed(1) ?? 'N/A', icon: Handshake, type: 'other' },
-    { label: "Avg. Fantasy Points", value: team.averageFantasyPoints?.toFixed(1) ?? 'N/A', icon: Award, type: 'other' }
+    { label: "Avg. Kills / Game", value: team.averageKillsPerGame?.toFixed(1) ?? 'N/A', icon: Swords, type: 'progress', rawValue: team.averageKillsPerGame, maxValue: maxKills },
+    { label: "Avg. Deaths / Game", value: team.averageDeathsPerGame?.toFixed(1) ?? 'N/A', icon: Skull, type: 'progress', rawValue: team.averageDeathsPerGame, maxValue: maxDeaths },
+    { label: "Avg. Assists / Game", value: team.averageAssistsPerGame?.toFixed(1) ?? 'N/A', icon: Handshake, type: 'progress', rawValue: team.averageAssistsPerGame, maxValue: maxAssists },
+    { label: "Avg. Fantasy Points", value: team.averageFantasyPoints?.toFixed(1) ?? 'N/A', icon: Award, type: 'progress', rawValue: team.averageFantasyPoints, maxValue: maxFantasyPoints }
   ];
   
   const avgMatchDurationMinutes = team.averageMatchDurationMinutes || 0;
@@ -251,22 +257,17 @@ export default async function TeamPage({ params }: TeamPageParams) {
               <CardTitle className="text-xl text-primary">{stat.label}</CardTitle>
             </CardHeader>
             <CardContent className="flex flex-col items-center justify-center flex-grow p-6">
-              {(stat.type === 'kills' && typeof stat.rawValue === 'number') ? (
+              {stat.type === 'progress' && typeof stat.rawValue === 'number' && typeof stat.maxValue === 'number' && stat.maxValue > 0 ? (
                 <>
-                  <p className="text-3xl font-bold text-foreground mb-2">{stat.rawValue.toFixed(1)}</p>
+                  <p className="text-3xl font-bold text-foreground mb-2">{stat.value}</p>
                   <Progress
-                    value={(stat.rawValue / 30) * 100} // Max kills for progress bar = 30
+                    value={
+                      stat.label === "Avg. Deaths / Game"
+                        ? Math.min(100, Math.max(0, (1 - (stat.rawValue / stat.maxValue)) * 100))
+                        : Math.min(100, (stat.rawValue / stat.maxValue) * 100)
+                    }
                     className="w-3/4 h-2.5"
-                    aria-label="Average Kills per Game progress"
-                  />
-                </>
-              ) : (stat.type === 'deaths' && typeof stat.rawValue === 'number') ? (
-                <>
-                  <p className="text-3xl font-bold text-foreground mb-2">{stat.rawValue.toFixed(1)}</p>
-                  <Progress
-                    value={(stat.rawValue / 20) * 100} // Max deaths for progress bar = 20
-                    className="w-3/4 h-2.5"
-                    aria-label="Average Deaths per Game progress"
+                    aria-label={`${stat.label} progress`}
                   />
                 </>
               ) : (
