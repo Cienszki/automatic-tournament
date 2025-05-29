@@ -10,10 +10,11 @@ const getRandomBaseStatus = (): TournamentStatus => {
   return baseStatuses[Math.floor(Math.random() * baseStatuses.length)];
 }
 
+// Generate a pool of 60 players with MMR between 1000 and 9000
 export const mockPlayers: Player[] = Array.from({ length: 60 }, (_, i) => ({
   id: `p${i + 1}`,
   nickname: `PlayerNick${i + 1}`,
-  mmr: Math.floor(Math.random() * 3000) + 4000, // MMR between 4000 and 7000
+  mmr: Math.floor(Math.random() * 8001) + 1000, // MMR between 1000 and 9000
   role: PlayerRoles[i % PlayerRoles.length] as PlayerRole,
   status: getRandomBaseStatus(), 
   steamProfileUrl: `https://steamcommunity.com/id/playernick${i + 1}`,
@@ -23,6 +24,7 @@ export const mockPlayers: Player[] = Array.from({ length: 60 }, (_, i) => ({
 
 
 export const defaultHeroNames = ['Invoker', 'Pudge', 'Juggernaut', 'Lion', 'Shadow Fiend', 'Anti-Mage', 'Phantom Assassin', 'Earthshaker', 'Lina', 'Crystal Maiden', 'Axe', 'Drow Ranger', 'Mirana', 'Rubick', 'Templar Assassin', 'Slark', 'Sven', 'Tiny', 'Witch Doctor', 'Zeus', 'Windranger', 'Storm Spirit', 'Templar Assassin', 'Faceless Void', 'Spectre'];
+export { defaultHeroNames as heroNamesList };
 
 const generateTeamSignatureHeroes = (): HeroPlayStats[] => {
   const heroes = [...defaultHeroNames].sort(() => 0.5 - Math.random()).slice(0, 5);
@@ -37,30 +39,53 @@ const generateTeamSignatureHeroes = (): HeroPlayStats[] => {
 
 const createTeamPlayers = (teamIndex: number, teamStatus: TournamentStatus): Player[] => {
   const playerStartIndex = teamIndex * 5;
-  const teamPlayers: Player[] = [];
+  const teamPlayersSource: Player[] = [];
   for (let i = 0; i < 5; i++) {
     const playerSourceIndex = playerStartIndex + i;
-    
-    // Ensure we don't go out of bounds if mockPlayers isn't large enough (it should be now)
     if (playerSourceIndex >= mockPlayers.length) break;
-
-    const basePlayer = mockPlayers[playerSourceIndex]; 
-
-    let playerStatus = basePlayer.status;
-    if (teamStatus === 'Eliminated' || teamStatus === 'Champions') {
-      playerStatus = teamStatus;
-    } else if (teamStatus === 'Active' && basePlayer.status === 'Not Verified') {
-      playerStatus = 'Active'; 
-    }
-
-    teamPlayers.push({
-      ...basePlayer,
-      id: `${basePlayer.id}-t${teamIndex + 1}`, 
-      role: PlayerRoles[i % PlayerRoles.length] as PlayerRole,
-      status: playerStatus,
-    });
+    teamPlayersSource.push(mockPlayers[playerSourceIndex]);
   }
-  return teamPlayers;
+
+  // Assign initial MMRs and roles for the team
+  let currentTeamPlayers = teamPlayersSource.map((basePlayer, i) => ({
+    ...basePlayer,
+    id: `${basePlayer.id}-t${teamIndex + 1}`,
+    role: PlayerRoles[i % PlayerRoles.length] as PlayerRole,
+    status: teamStatus === 'Eliminated' || teamStatus === 'Champions' ? teamStatus : basePlayer.status,
+    mmr: Math.floor(Math.random() * 8001) + 1000, // Initial MMR between 1000 and 9000 for team assignment
+  }));
+
+  // Adjust MMRs to not exceed team cap of 25000
+  let teamTotalMMR = currentTeamPlayers.reduce((sum, p) => sum + p.mmr, 0);
+  const TEAM_MMR_CAP = 25000;
+  const MIN_PLAYER_MMR = 1000;
+
+  while (teamTotalMMR > TEAM_MMR_CAP) {
+    // Find player with highest MMR who is not already at MIN_PLAYER_MMR
+    currentTeamPlayers.sort((a, b) => b.mmr - a.mmr); // Sort descending by MMR
+    let adjusted = false;
+    for (let i = 0; i < currentTeamPlayers.length; i++) {
+      if (currentTeamPlayers[i].mmr > MIN_PLAYER_MMR) {
+        const reductionAmount = Math.min(currentTeamPlayers[i].mmr - MIN_PLAYER_MMR, teamTotalMMR - TEAM_MMR_CAP, 100); // Reduce by up to 100 or remaining excess
+        currentTeamPlayers[i].mmr -= reductionAmount;
+        teamTotalMMR -= reductionAmount;
+        adjusted = true;
+        break; 
+      }
+    }
+    if (!adjusted) { // Should not happen if cap is reasonable and players can be reduced
+        break;
+    }
+  }
+  // Final check to ensure no player is below MIN_PLAYER_MMR after potential aggressive reduction, though the loop logic aims to prevent this.
+  currentTeamPlayers.forEach(p => {
+    if (p.mmr < MIN_PLAYER_MMR) p.mmr = MIN_PLAYER_MMR;
+  });
+  // Recalculate final MMR if any clamping happened (edge case)
+  teamTotalMMR = currentTeamPlayers.reduce((sum, p) => sum + p.mmr, 0);
+  // If still over cap due to clamping (highly unlikely with current logic), it indicates a very tight constraint. For mock data, this might be acceptable or require more complex balancing.
+
+  return currentTeamPlayers;
 };
 
 export const mockTeams: Team[] = Array.from({ length: 12 }, (_, i) => {
@@ -72,7 +97,8 @@ export const mockTeams: Team[] = Array.from({ length: 12 }, (_, i) => {
   } else {
     teamStatus = getRandomBaseStatus();
   }
-
+  
+  const teamPlayers = createTeamPlayers(i, teamStatus);
   const matchesPlayed = Math.floor(Math.random() * 8) + 5; 
   const matchesWon = Math.floor(Math.random() * (teamStatus === "Eliminated" || teamStatus === "Not Verified" ? Math.floor(matchesPlayed * 0.4) : Math.floor(matchesPlayed * 0.8))) + (teamStatus === "Champions" ? Math.floor(matchesPlayed*0.7) : 1);
   const matchesLost = matchesPlayed - matchesWon;
@@ -82,7 +108,7 @@ export const mockTeams: Team[] = Array.from({ length: 12 }, (_, i) => {
     name: `Team Element ${i + 1}`,
     logoUrl: `https://placehold.co/100x100.png?text=E${i+1}`,
     status: teamStatus,
-    players: createTeamPlayers(i, teamStatus),
+    players: teamPlayers,
     matchesPlayed: matchesPlayed,
     matchesWon: matchesWon,
     matchesLost: matchesLost,
@@ -99,7 +125,6 @@ export const mockTeams: Team[] = Array.from({ length: 12 }, (_, i) => {
 const generatePlayerPerformancesForMatch = (match: Match): PlayerPerformanceInMatch[] => {
   const performances: PlayerPerformanceInMatch[] = [];
   
-  // Retrieve full player objects for teamA and teamB for this specific match
   const teamADetails = mockTeams.find(t => t.id === match.teamA.id);
   const teamBDetails = mockTeams.find(t => t.id === match.teamB.id);
 
@@ -109,7 +134,6 @@ const generatePlayerPerformancesForMatch = (match: Match): PlayerPerformanceInMa
   const involvedPlayers: Player[] = [...teamAPlayers, ...teamBPlayers];
 
   involvedPlayers.forEach(player => {
-    // Determine which team the player belongs to *in the context of this match*
     let playerTeamId: string | undefined;
     if (teamAPlayers.some(p => p.id === player.id)) {
       playerTeamId = match.teamA.id;
@@ -117,19 +141,21 @@ const generatePlayerPerformancesForMatch = (match: Match): PlayerPerformanceInMa
       playerTeamId = match.teamB.id;
     }
 
-    if (!playerTeamId) return; // Should not happen if player is in one of the teams
+    if (!playerTeamId) return; 
 
     const isWinner = (playerTeamId === match.teamA.id && (match.teamAScore ?? 0) > (match.teamBScore ?? 0)) ||
                      (playerTeamId === match.teamB.id && (match.teamBScore ?? 0) > (match.teamAScore ?? 0));
     
-    let towerDamage = Math.floor(Math.random() * 2000 + 500); // Base tower damage
+    let towerDamage = Math.floor(Math.random() * 2000 + 500); 
     if (player.role === 'Carry' || player.role === 'Mid') {
       towerDamage += Math.floor(Math.random() * 8000); 
+    } else if (player.role === 'Offlane') {
+      towerDamage += Math.floor(Math.random() * 3000);
     }
     if (isWinner) {
       towerDamage = Math.floor(towerDamage * 1.3); 
     }
-    towerDamage = Math.max(0, Math.min(towerDamage, 25000)); // Cap tower damage for realism
+    towerDamage = Math.max(0, Math.min(towerDamage, 25000)); 
 
     performances.push({
       playerId: player.id, 
@@ -202,7 +228,9 @@ const getRandomMatchContext = (): string => {
   if (completedMatches.length === 0) return "An epic clash";
   const matchIndex = Math.floor(Math.random() * completedMatches.length);
   const match = completedMatches[matchIndex];
-  return match ? `${match.teamA.name} vs ${match.teamB.name}` : "An epic clash";
+  const teamAName = match?.teamA?.name || "Team A";
+  const teamBName = match?.teamB?.name || "Team B";
+  return `${teamAName} vs ${teamBName}`;
 }
 
 export const generateMockSingleMatchRecords = (): StatItem[] => {
@@ -270,7 +298,7 @@ export const generateMockPlayerAverageLeaders = (): StatItem[] => {
 
   const uniqueLeaders: StatItem[] = [];
   const assignedPlayerIdsForCategories = new Set<string>();
-  // Ensure player objects here also include their teamId for linking purposes
+  
   const availablePlayers = mockTeams.flatMap(team => 
     team.players.map(p => ({...p, teamId: team.id}))
   ).filter(p => p && p.id);
@@ -284,24 +312,26 @@ export const generateMockPlayerAverageLeaders = (): StatItem[] => {
 
     if (unassignedPlayers.length > 0) {
       selectedPlayer = unassignedPlayers[Math.floor(Math.random() * unassignedPlayers.length)];
-    } else if (availablePlayers.length > 0) {
+    } else if (availablePlayers.length > 0) { // Fallback if all players have been assigned at least once
       selectedPlayer = availablePlayers[Math.floor(Math.random() * availablePlayers.length)];
     }
 
 
     if (selectedPlayer && selectedPlayer.id) {
-      assignedPlayerIdsForCategories.add(selectedPlayer.id);
-      selectedTeam = mockTeams.find(team => team.id === selectedPlayer?.teamId); // Use teamId from augmented player object
+      if (!assignedPlayerIdsForCategories.has(selectedPlayer.id)) { // Check if already added for variety, not strict uniqueness
+         assignedPlayerIdsForCategories.add(selectedPlayer.id);
+      }
+      selectedTeam = mockTeams.find(team => team.id === selectedPlayer?.teamId); 
     }
     
     if (!selectedPlayer || !selectedTeam) {
-        const { player: randomPlayer, team: randomTeam } = getRandomPlayerAndTeam(); // This returns a base Player object
-        selectedPlayer = randomPlayer; // Could be undefined
+        const { player: randomPlayer, team: randomTeam } = getRandomPlayerAndTeam(); 
+        selectedPlayer = randomPlayer; 
         selectedTeam = randomTeam;
         if (selectedPlayer?.id) {
-            assignedPlayerIdsForCategories.add(selectedPlayer.id);
-            // If randomPlayer came from getRandomPlayerAndTeam, it won't have teamId directly.
-            // We need to ensure it's correctly associated or find its team.
+            if (!assignedPlayerIdsForCategories.has(selectedPlayer.id)) {
+               assignedPlayerIdsForCategories.add(selectedPlayer.id);
+            }
             if(randomTeam && selectedPlayer && !(selectedPlayer as Player & {teamId?:string}).teamId) {
               (selectedPlayer as Player & {teamId: string}).teamId = randomTeam.id;
             }
@@ -339,36 +369,47 @@ export const generateMockPlayerAverageLeaders = (): StatItem[] => {
 };
 
 export const generateMockTournamentHighlights = (): TournamentHighlightRecord[] => {
+  const teamA = mockTeams[1]?.name || 'Some Team';
+  const teamB = mockTeams[2]?.name || 'Another Team';
+  const teamC = mockTeams[3]?.name || 'A Fast Team';
+  const teamD = mockTeams[4]?.name || 'A Faster Team';
+  const teamE = mockTeams[5]?.name || 'A Team';
+  const teamF = mockTeams[6]?.name || 'B Team';
+  const playerNickname = mockPlayers[2]?.nickname || 'Speedy Player';
+  const randomHero = defaultHeroNames[Math.floor(Math.random() * defaultHeroNames.length)] || 'Random Hero';
+
+
   const highlights: TournamentHighlightRecord[] = [
     {
       id: 'th-1',
       title: "Longest Match",
       value: `${Math.floor(Math.random() * 30) + 60}m ${Math.floor(Math.random() * 60)}s`,
-      details: `${mockTeams[1]?.name || 'Some Team'} vs ${mockTeams[2]?.name || 'Another Team'}`,
+      details: `${teamA} vs ${teamB}`,
       icon: Clock,
     },
     {
       id: 'th-2',
       title: "Shortest Match",
       value: `${Math.floor(Math.random() * 10) + 15}m ${Math.floor(Math.random() * 60)}s`,
-      details: `${mockTeams[3]?.name || 'A Fast Team'} vs ${mockTeams[4]?.name || 'A Faster Team'}`,
+      details: `${teamC} vs ${teamD}`,
       icon: Timer,
     },
     {
       id: 'th-3',
       title: "Earliest Level 6",
       value: `4m ${Math.floor(Math.random() * 50) + 10}s`,
-      details: `${(mockPlayers[2]?.nickname) || 'Speedy Player'} (${defaultHeroNames[Math.floor(Math.random() * defaultHeroNames.length)] || 'Random Hero'})`,
+      details: `${playerNickname} (${randomHero})`,
       icon: ChevronsUp,
     },
     {
       id: 'th-4',
       title: "Most Kills Before Horn",
       value: `${Math.floor(Math.random() * 3) + 1} kills`,
-      details: `In match ${mockTeams[5]?.name || 'A Team'} vs ${mockTeams[6]?.name || 'B Team'}`,
+      details: `In match ${teamE} vs ${teamF}`,
       icon: Activity,
     },
   ];
   return highlights;
 };
 
+    
