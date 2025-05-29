@@ -124,7 +124,7 @@ const StatsPage = ({ data }: { data: Awaited<ReturnType<typeof getStatsData>> })
           <TableHead className="px-3 py-2">Team</TableHead>
           <TableHead className="w-[120px] text-right px-3 py-2">{isSingleMatchCategory ? "Value" : "Average Value"}</TableHead>
           {isSingleMatchCategory && <TableHead className="w-[150px] px-3 py-2">Hero</TableHead>}
-          {isSingleMatchCategory && <TableHead className="min-w-[200px] px-3 py-2">Match</TableHead>}
+          {isSingleMatchCategory && <TableHead className="w-[250px] px-3 py-2">Match</TableHead>}
         </TableRow>
       </TableHeader>
       <TableBody>
