@@ -42,6 +42,22 @@ export type Team = {
   averageFantasyPoints?: number;
 };
 
+export type PlayerPerformanceInMatch = {
+  playerId: string;
+  teamId: string;
+  hero: string;
+  kills: number;
+  deaths: number;
+  assists: number;
+  gpm: number;
+  xpm: number;
+  fantasyPoints: number;
+  lastHits: number;
+  denies: number;
+  netWorth: number;
+  heroDamage: number;
+};
+
 export type Match = {
   id: string;
   teamA: Team;
@@ -51,6 +67,7 @@ export type Match = {
   dateTime: Date;
   status: 'upcoming' | 'live' | 'completed';
   openDotaMatchUrl?: string;
+  performances?: PlayerPerformanceInMatch[];
 };
 
 export type Group = {
@@ -109,4 +126,3 @@ export type TournamentHighlightRecord = {
   details?: string;
   icon: LucideIcon;
 };
-

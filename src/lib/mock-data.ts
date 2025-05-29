@@ -1,8 +1,8 @@
 
-import type { Team, Player, Match, Group, PlayerRole, StatItem, TournamentHighlightRecord, TournamentStatus, HeroPlayStats } from './definitions';
+import type { Team, Player, Match, Group, PlayerRole, StatItem, TournamentHighlightRecord, TournamentStatus, HeroPlayStats, PlayerPerformanceInMatch } from './definitions';
 import { PlayerRoles, TournamentStatuses } from './definitions';
 import {
-  Award, BarChart2, TrendingUp, TrendingDown, ShieldAlert, DollarSign, Eye, HelpCircle, Bomb, Swords, HeartHandshake, Zap, Clock, Activity, ShieldCheck, ChevronsUp, Timer, Skull, ListChecks, Medal, Trophy, Percent, Ratio, Handshake
+  Award, BarChart2, TrendingUp, TrendingDown, ShieldAlert, DollarSign, Eye, HelpCircle, Bomb, Swords, HeartHandshake, Zap, Clock, Activity, ShieldCheck, ChevronsUp, Timer, Skull, ListChecks, Medal, Trophy, Percent, Ratio, Handshake, Puzzle
 } from 'lucide-react';
 
 const getRandomBaseStatus = (): TournamentStatus => {
@@ -15,23 +15,24 @@ export const mockPlayers: Player[] = Array.from({ length: 60 }, (_, i) => ({
   nickname: `PlayerNick${i + 1}`,
   mmr: Math.floor(Math.random() * 3000) + 4000, // MMR between 4000 and 7000
   role: PlayerRoles[i % PlayerRoles.length] as PlayerRole,
-  status: getRandomBaseStatus(),
+  // Status will be primarily determined by team status if applicable
+  status: getRandomBaseStatus(), 
   steamProfileUrl: `https://steamcommunity.com/id/playernick${i + 1}`,
   openDotaProfileUrl: `https://www.opendota.com/search?q=PlayerNick${i + 1}`,
-  profileScreenshotUrl: `https://placehold.co/600x400.png?text=P${i+1}`,
+  profileScreenshotUrl: `https://placehold.co/600x400.png?text=P${i+1}-Scr`,
 }));
 
 
-const defaultHeroNames = ['Invoker', 'Pudge', 'Juggernaut', 'Lion', 'Shadow Fiend', 'Anti-Mage', 'Phantom Assassin', 'Earthshaker', 'Lina', 'Crystal Maiden', 'Axe', 'Drow Ranger', 'Mirana', 'Rubick', 'Templar Assassin', 'Slark', 'Sven', 'Tiny', 'Witch Doctor', 'Zeus'];
+const defaultHeroNames = ['Invoker', 'Pudge', 'Juggernaut', 'Lion', 'Shadow Fiend', 'Anti-Mage', 'Phantom Assassin', 'Earthshaker', 'Lina', 'Crystal Maiden', 'Axe', 'Drow Ranger', 'Mirana', 'Rubick', 'Templar Assassin', 'Slark', 'Sven', 'Tiny', 'Witch Doctor', 'Zeus', 'Windranger', 'Storm Spirit', 'Templar Assassin', 'Faceless Void', 'Spectre'];
 
 const generateTeamSignatureHeroes = (): HeroPlayStats[] => {
   const heroes = [...defaultHeroNames].sort(() => 0.5 - Math.random()).slice(0, 5);
-  let baseGames = Math.floor(Math.random() * 10) + 15; // Base for most played hero
+  let baseGames = Math.floor(Math.random() * 10) + 15; 
   return heroes.map((heroName, index) => {
-    const gamesPlayed = Math.max(1, baseGames - index * (Math.floor(Math.random() * 3) + 1)); // Decrease games for less played heroes
-    if (index === 0) baseGames = gamesPlayed; // ensure subsequent heroes have fewer or equal games
+    const gamesPlayed = Math.max(1, baseGames - index * (Math.floor(Math.random() * 3) + 1)); 
+    if (index === 0) baseGames = gamesPlayed; 
     return { name: heroName, gamesPlayed };
-  }).sort((a, b) => b.gamesPlayed - a.gamesPlayed); // Ensure sorted by games played desc
+  }).sort((a, b) => b.gamesPlayed - a.gamesPlayed); 
 };
 
 
@@ -40,21 +41,8 @@ const createTeamPlayers = (teamIndex: number, teamStatus: TournamentStatus): Pla
   const teamPlayers: Player[] = [];
   for (let i = 0; i < 5; i++) {
     const playerSourceIndex = playerStartIndex + i;
-    if (playerSourceIndex >= mockPlayers.length) {
-        console.warn(`Not enough mock players to fully populate team ${teamIndex + 1}`);
-        teamPlayers.push({
-            id: `fallback-p${teamIndex}-${i}`,
-            nickname: `FallbackPlayer${i + 1}`,
-            mmr: 3000,
-            role: PlayerRoles[i % PlayerRoles.length] as PlayerRole,
-            status: teamStatus, 
-            steamProfileUrl: `https://steamcommunity.com/id/fallbackplayer${i + 1}`,
-            openDotaProfileUrl: `https://www.opendota.com/search?q=FallbackPlayer${i + 1}`,
-            profileScreenshotUrl: `https://placehold.co/600x400.png?text=FP${i+1}`,
-        });
-        continue;
-    }
-    const basePlayer = mockPlayers[playerSourceIndex];
+    
+    const basePlayer = mockPlayers[playerSourceIndex]; // Assumes mockPlayers has enough unique entries
 
     let playerStatus = basePlayer.status;
     if (teamStatus === 'Eliminated' || teamStatus === 'Champions') {
@@ -63,10 +51,9 @@ const createTeamPlayers = (teamIndex: number, teamStatus: TournamentStatus): Pla
       playerStatus = 'Active'; 
     }
 
-
     teamPlayers.push({
       ...basePlayer,
-      id: `${basePlayer.id}-t${teamIndex + 1}`,
+      id: `${basePlayer.id}-t${teamIndex + 1}`, // Ensure player ID is unique per team context if needed, or just use basePlayer.id
       role: PlayerRoles[i % PlayerRoles.length] as PlayerRole,
       status: playerStatus,
     });
@@ -78,13 +65,13 @@ export const mockTeams: Team[] = Array.from({ length: 12 }, (_, i) => {
   let teamStatus: TournamentStatus;
   if (i === 0) {
     teamStatus = "Champions";
-  } else if (i >= 9) {
+  } else if (i >= 9 && i <=10) { // Ensure a couple of teams are eliminated
     teamStatus = "Eliminated";
   } else {
     teamStatus = getRandomBaseStatus();
   }
 
-  const matchesPlayed = Math.floor(Math.random() * 8) + 5; // 5 to 12 matches
+  const matchesPlayed = Math.floor(Math.random() * 8) + 5; 
   const matchesWon = Math.floor(Math.random() * (teamStatus === "Eliminated" || teamStatus === "Not Verified" ? Math.floor(matchesPlayed * 0.4) : Math.floor(matchesPlayed * 0.8))) + (teamStatus === "Champions" ? Math.floor(matchesPlayed*0.7) : 1);
   const matchesLost = matchesPlayed - matchesWon;
 
@@ -97,15 +84,42 @@ export const mockTeams: Team[] = Array.from({ length: 12 }, (_, i) => {
     matchesPlayed: matchesPlayed,
     matchesWon: matchesWon,
     matchesLost: matchesLost,
-    points: matchesWon * 3, // Example point calculation
+    points: matchesWon * 3, 
     mostPlayedHeroes: generateTeamSignatureHeroes(),
-    averageMatchDurationMinutes: Math.floor(Math.random() * 20) + 25, // 25-45 mins
-    averageKillsPerGame: parseFloat(((Math.random() * 15) + 15).toFixed(1)), // 15.0 - 30.0
-    averageDeathsPerGame: parseFloat(((Math.random() * 15) + 10).toFixed(1)), // 10.0 - 25.0
-    averageAssistsPerGame: parseFloat(((Math.random() * 30) + 40).toFixed(1)), // 40.0 - 70.0
-    averageFantasyPoints: parseFloat(((Math.random() * 70) + 50).toFixed(1)), // 50.0 - 120.0
+    averageMatchDurationMinutes: Math.floor(Math.random() * 20) + 25, 
+    averageKillsPerGame: parseFloat(((Math.random() * 15) + 15).toFixed(1)), 
+    averageDeathsPerGame: parseFloat(((Math.random() * 15) + 10).toFixed(1)), 
+    averageAssistsPerGame: parseFloat(((Math.random() * 30) + 40).toFixed(1)), 
+    averageFantasyPoints: parseFloat(((Math.random() * 70) + 50).toFixed(1)), 
   };
 });
+
+const generatePlayerPerformancesForMatch = (match: Match): PlayerPerformanceInMatch[] => {
+  const performances: PlayerPerformanceInMatch[] = [];
+  const involvedPlayers = [...match.teamA.players, ...match.teamB.players];
+
+  involvedPlayers.forEach(player => {
+    const isWinner = (match.teamA.id === player.id.split('-t')[0] && (match.teamAScore ?? 0) > (match.teamBScore ?? 0)) ||
+                     (match.teamB.id === player.id.split('-t')[0] && (match.teamBScore ?? 0) > (match.teamAScore ?? 0));
+
+    performances.push({
+      playerId: player.id,
+      teamId: match.teamA.players.some(p => p.id === player.id) ? match.teamA.id : match.teamB.id,
+      hero: defaultHeroNames[Math.floor(Math.random() * defaultHeroNames.length)],
+      kills: Math.floor(Math.random() * (isWinner ? 15 : 10)),
+      deaths: Math.floor(Math.random() * (isWinner ? 8 : 12)) + 1,
+      assists: Math.floor(Math.random() * 20),
+      gpm: Math.floor(Math.random() * 300) + (isWinner ? 450 : 350),
+      xpm: Math.floor(Math.random() * 300) + (isWinner ? 500 : 400),
+      fantasyPoints: parseFloat(((Math.random() * 70) + (isWinner ? 60 : 30)).toFixed(1)),
+      lastHits: Math.floor(Math.random() * 200) + (player.role === 'Carry' ? 150 : 50),
+      denies: Math.floor(Math.random() * 30) + (player.role === 'Mid' || player.role === 'Carry' ? 10 : 0),
+      netWorth: Math.floor(Math.random() * 15000) + (isWinner ? 20000 : 10000),
+      heroDamage: Math.floor(Math.random() * 30000) + (isWinner ? 25000 : 15000),
+    });
+  });
+  return performances;
+};
 
 
 export const mockMatches: Match[] = [
@@ -119,7 +133,11 @@ export const mockMatches: Match[] = [
   { id: 'm8', teamA: mockTeams[1], teamB: mockTeams[11], dateTime: new Date(Date.now() + 4 * 24 * 60 * 60 * 1000), status: 'upcoming', openDotaMatchUrl: `https://www.opendota.com/matches/sim_m8`},
   { id: 'm9', teamA: mockTeams[0], teamB: mockTeams[4], dateTime: new Date(Date.now() + 6 * 24 * 60 * 60 * 1000), status: 'upcoming', openDotaMatchUrl: `https://www.opendota.com/matches/sim_m9`},
   { id: 'm10', teamA: mockTeams[2], teamB: mockTeams[5], dateTime: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000), teamAScore: 2, teamBScore: 0, status: 'completed', openDotaMatchUrl: `https://www.opendota.com/matches/sim_m10`},
-];
+].map(match => ({
+  ...match,
+  performances: match.status === 'completed' ? generatePlayerPerformancesForMatch(match) : undefined,
+}));
+
 
 export const generateMockGroups = (teams: Team[]): Group[] => {
   const groups: Group[] = [];
@@ -234,6 +252,7 @@ export const generateMockPlayerAverageLeaders = (): StatItem[] => {
     if (unassignedPlayers.length > 0) {
       selectedPlayer = unassignedPlayers[Math.floor(Math.random() * unassignedPlayers.length)];
     } else if (availablePlayers.length > 0) {
+      // Fallback if all players have been assigned, allow reuse (though less ideal for "leader" uniqueness)
       selectedPlayer = availablePlayers[Math.floor(Math.random() * availablePlayers.length)];
     }
 
@@ -243,11 +262,12 @@ export const generateMockPlayerAverageLeaders = (): StatItem[] => {
       selectedTeam = mockTeams.find(team => team.players.some(p => p.id === selectedPlayer?.id));
     }
 
+    // Fallback if somehow player/team isn't found (shouldn't happen with current logic)
     if (!selectedPlayer || !selectedTeam) {
         const { player: randomPlayer, team: randomTeam } = getRandomPlayerAndTeam();
         selectedPlayer = randomPlayer;
         selectedTeam = randomTeam;
-        if (selectedPlayer?.id) assignedPlayerIdsForCategories.add(selectedPlayer.id);
+        if (selectedPlayer?.id) assignedPlayerIdsForCategories.add(selectedPlayer.id); // Attempt to add again
     }
 
     if (selectedPlayer && selectedTeam) {
@@ -265,6 +285,7 @@ export const generateMockPlayerAverageLeaders = (): StatItem[] => {
         icon: cat.icon,
       });
     } else {
+        // Absolute fallback if no player/team can be determined
         uniqueLeaders.push({
             id: `pal-${index}-fallback`,
             category: cat.name,
@@ -299,7 +320,7 @@ export const generateMockTournamentHighlights = (): TournamentHighlightRecord[] 
       id: 'th-3',
       title: "Earliest Level 6",
       value: `4m ${Math.floor(Math.random() * 50) + 10}s`,
-      details: `${mockPlayers[2]?.nickname || 'Speedy Player'} (${defaultHeroNames[Math.floor(Math.random() * defaultHeroNames.length)]})`,
+      details: `${(mockPlayers[2]?.nickname) || 'Speedy Player'} (${defaultHeroNames[Math.floor(Math.random() * defaultHeroNames.length)] || 'Random Hero'})`,
       icon: ChevronsUp,
     },
     {
@@ -312,4 +333,3 @@ export const generateMockTournamentHighlights = (): TournamentHighlightRecord[] 
   ];
   return highlights;
 };
-
