@@ -11,9 +11,10 @@ const getRandomBaseStatus = (): TournamentStatus => {
   return baseStatuses[Math.floor(Math.random() * baseStatuses.length)];
 }
 
-export const mockPlayers: Player[] = Array.from({ length: 60 }, (_, i) => ({
+// Generate 120 players (24 teams * 5 players)
+export const mockPlayers: Player[] = Array.from({ length: 120 }, (_, i) => ({
   id: `p${i + 1}`,
-  nickname: `Player${i + 1}${i % 3 === 0 ? 'Prime' : i % 3 === 1 ? 'Ace' : 'Nova'}`,
+  nickname: `Player${i + 1}${i % 5 === 0 ? 'Prime' : i % 5 === 1 ? 'Ace' : i % 5 === 2 ? 'Nova' : i % 5 === 3 ? 'Ghost' : 'Viper'}`,
   mmr: Math.floor(Math.random() * (8000)) + 1000, 
   role: PlayerRoles[i % PlayerRoles.length] as PlayerRole,
   status: getRandomBaseStatus(),
@@ -35,18 +36,12 @@ const generateTeamSignatureHeroes = (): HeroPlayStats[] => {
 };
 
 const sampleMottos = [
-  "Fear Our Roar!",
-  "Forged in Fire",
-  "Silent But Deadly",
-  "Kings of the Lane",
-  "Masters of Mayhem",
-  "Victory is Our Echo",
-  "The Unseen Threat",
-  "Beyond the Meta",
-  "One Team, One Dream",
-  "No Retreat, No Surrender",
-  "Guardians of the Ancient",
-  "We Play to Win"
+  "Fear Our Roar!", "Forged in Fire", "Silent But Deadly", "Kings of the Lane",
+  "Masters of Mayhem", "Victory is Our Echo", "The Unseen Threat", "Beyond the Meta",
+  "One Team, One Dream", "No Retreat, No Surrender", "Guardians of the Ancient", "We Play to Win",
+  "Legends Never Die", "Glory Awaits", "Strength in Unity", "The Last Stand",
+  "Rising Champions", "Elite Syndicate", "Apex Predators", "Shadow Warriors",
+  "Crimson Guard", "Azure Dragons", "Golden Griffins", "Iron Wolves"
 ];
 
 const createTeamPlayers = (teamIndex: number, teamStatus: TournamentStatus): Player[] => {
@@ -54,7 +49,9 @@ const createTeamPlayers = (teamIndex: number, teamStatus: TournamentStatus): Pla
   const teamPlayersSource: Player[] = [];
   for (let i = 0; i < 5; i++) {
     const playerSourceIndex = playerStartIndex + i;
+    // With 120 mockPlayers, this fallback should not be hit for 24 teams.
     if (playerSourceIndex >= mockPlayers.length) { 
+        console.warn(`Fallback player created for teamIndex ${teamIndex}, playerSourceIndex ${playerSourceIndex}. mockPlayers length is ${mockPlayers.length}. This should not happen if mockPlayers has 120+ entries for 24 teams.`);
         teamPlayersSource.push({
            id: `pfallback${playerSourceIndex}-t${teamIndex+1}`,
            nickname: `FallbackPlayer${playerSourceIndex}`,
@@ -67,7 +64,6 @@ const createTeamPlayers = (teamIndex: number, teamStatus: TournamentStatus): Pla
          });
          continue;
     }
-    // For existing players, we ensure their MMR is within the 1000-9000 range for initial assignment
     const basePlayer = { ...mockPlayers[playerSourceIndex] };
     basePlayer.mmr = Math.max(1000, Math.min(9000, basePlayer.mmr));
     teamPlayersSource.push(basePlayer);
@@ -78,7 +74,7 @@ const createTeamPlayers = (teamIndex: number, teamStatus: TournamentStatus): Pla
     id: `${basePlayer.id.split('-t')[0]}-t${teamIndex + 1}`,
     role: PlayerRoles[i % PlayerRoles.length] as PlayerRole,
     status: (teamStatus === 'Eliminated' || teamStatus === 'Champions') ? teamStatus : basePlayer.status,
-    mmr: basePlayer.mmr, // Use the already adjusted MMR
+    mmr: basePlayer.mmr, 
     fantasyPointsEarned: basePlayer.fantasyPointsEarned || (Math.floor(Math.random() * 100) + 50),
   }));
 
@@ -86,9 +82,8 @@ const createTeamPlayers = (teamIndex: number, teamStatus: TournamentStatus): Pla
   const TEAM_MMR_CAP = 25000;
   const MIN_PLAYER_MMR = 1000;
 
-  // Iteratively reduce MMR from highest MMR players if cap exceeded
   while (teamTotalMMR > TEAM_MMR_CAP) {
-    currentTeamPlayers.sort((a, b) => b.mmr - a.mmr); // Sort by MMR descending
+    currentTeamPlayers.sort((a, b) => b.mmr - a.mmr); 
     let reducedThisIteration = false;
     for (let k = 0; k < currentTeamPlayers.length; k++) {
       const player = currentTeamPlayers[k];
@@ -100,12 +95,11 @@ const createTeamPlayers = (teamIndex: number, teamStatus: TournamentStatus): Pla
         player.mmr -= actualReduction;
         teamTotalMMR -= actualReduction;
         reducedThisIteration = true;
-        if (teamTotalMMR <= TEAM_MMR_CAP) break; // Exit inner loop if cap met
+        if (teamTotalMMR <= TEAM_MMR_CAP) break; 
       }
     }
-    if (!reducedThisIteration) break; // If no player could be reduced further, exit
+    if (!reducedThisIteration) break; 
   }
-  // Final check to ensure no player is below MIN_PLAYER_MMR
   currentTeamPlayers.forEach(p => {
     if (p.mmr < MIN_PLAYER_MMR) p.mmr = MIN_PLAYER_MMR;
   });
@@ -118,7 +112,7 @@ export const mockTeams: Team[] = Array.from({ length: 24 }, (_, i) => {
   let teamStatus: TournamentStatus;
   if (i === 0) {
     teamStatus = "Champions";
-  } else if (i >= 20 && i <= 22) { // Adjust eliminated teams based on new total
+  } else if (i >= 20 && i <= 22) { 
     teamStatus = "Eliminated";
   } else {
     teamStatus = getRandomBaseStatus();
@@ -135,12 +129,14 @@ export const mockTeams: Team[] = Array.from({ length: 24 }, (_, i) => {
   }
   matchesWon = Math.min(matchesWon, matchesPlayed); 
   const matchesLost = matchesPlayed - matchesWon;
+  const motto = i < sampleMottos.length ? sampleMottos[i] : `Elite Squad ${i + 1}`;
+
 
   return {
     id: `team${i + 1}`,
     name: `Team Element ${i + 1}`,
     logoUrl: `https://placehold.co/100x100.png?text=E${i+1}&bg=444444&fc=ffffff`,
-    motto: i < sampleMottos.length ? sampleMottos[i] : `Motto for Team ${i+1}`,
+    motto: motto,
     status: teamStatus,
     players: teamPlayers,
     matchesPlayed: matchesPlayed,
@@ -224,7 +220,6 @@ export const mockMatches: Match[] = [
   { id: 'm8', teamA: mockTeams[1], teamB: mockTeams[11], dateTime: new Date(Date.now() + 4 * 24 * 60 * 60 * 1000), status: 'upcoming', openDotaMatchUrl: `https://www.opendota.com/matches/sim_m8`},
   { id: 'm9', teamA: mockTeams[0], teamB: mockTeams[4], dateTime: new Date(Date.now() + 6 * 24 * 60 * 60 * 1000), status: 'upcoming', openDotaMatchUrl: `https://www.opendota.com/matches/sim_m9`},
   { id: 'm10', teamA: mockTeams[2], teamB: mockTeams[5], dateTime: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000), teamAScore: 2, teamBScore: 0, status: 'completed', openDotaMatchUrl: `https://www.opendota.com/matches/sim_m10`},
-  // Add more matches to involve more teams
   { id: 'm11', teamA: mockTeams[12], teamB: mockTeams[13], dateTime: new Date(Date.now() + 2.5 * 24 * 60 * 60 * 1000), status: 'upcoming', openDotaMatchUrl: `https://www.opendota.com/matches/sim_m11` },
   { id: 'm12', teamA: mockTeams[14], teamB: mockTeams[15], dateTime: new Date(Date.now() - 1.5 * 24 * 60 * 60 * 1000), teamAScore: 1, teamBScore: 2, status: 'completed', openDotaMatchUrl: `https://www.opendota.com/matches/sim_m12` },
   { id: 'm13', teamA: mockTeams[16], teamB: mockTeams[17], dateTime: new Date(Date.now() + 3.5 * 24 * 60 * 60 * 1000), status: 'upcoming', openDotaMatchUrl: `https://www.opendota.com/matches/sim_m13` },
@@ -352,9 +347,8 @@ export const generateMockSingleMatchRecords = (): CategoryDisplayStats[] => {
                 uniquePlayerMatchCombos.add(comboKey);
             }
         }
-        // Fill remaining spots if less than 5 unique performances found
         let fallbackAttempts = 0;
-        while (performances.length < 5 && fallbackAttempts < 20 && mockPlayers.length > 0) { // Limit attempts to prevent infinite loop
+        while (performances.length < 5 && fallbackAttempts < 20 && mockPlayers.length > 0) { 
             fallbackAttempts++;
             const randomData = getRandomPlayerAndTeamForStats();
             if (!randomData.player || !randomData.team || !randomData.performance || !randomData.match) continue;
@@ -449,13 +443,11 @@ export const generateMockPlayerAverageLeaders = (): CategoryDisplayStats[] => {
       };
     });
 
-    // Fill remaining spots if less than 5 unique performances found
     let fallbackAttempts = 0;
     while(rankings.length < 5 && fallbackAttempts < 20 && allPlayersFlatWithTeamInfo.length > rankings.length) {
         fallbackAttempts++;
-        const fallbackPlayerIndex = (rankings.length + fallbackAttempts) % allPlayersFlatWithTeamInfo.length; // Ensure index is within bounds
+        const fallbackPlayerIndex = (rankings.length + fallbackAttempts) % allPlayersFlatWithTeamInfo.length; 
         const fallbackPlayer = allPlayersFlatWithTeamInfo[fallbackPlayerIndex];
-        // Avoid adding the same player multiple times in the fallback if possible
         if (rankings.some(r => r.playerId === fallbackPlayer.id.split('-t')[0] && r.teamId === fallbackPlayer.teamId)) continue;
         
          rankings.push({
@@ -581,4 +573,3 @@ export const mockFantasyLeagueParticipants: FantasyLeagueParticipant[] = Array.f
   };
 }).sort((a, b) => b.totalFantasyPoints - a.totalFantasyPoints)
   .map((p, idx) => ({ ...p, rank: idx + 1 }));
-
