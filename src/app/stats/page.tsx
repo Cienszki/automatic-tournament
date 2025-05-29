@@ -32,16 +32,11 @@ async function getStatsData(): Promise<{
 const AccordionRowContent = ({ categoryData, isSingleMatchCategory }: { categoryData: CategoryDisplayStats, isSingleMatchCategory: boolean }) => {
   const topEntry = categoryData.rankings[0];
 
+  // This div is for the "open" state title, removed as per user request to avoid redundancy.
+  // It was: <div className="hidden group-data-[state=open]:flex ...">
+
   return (
     <>
-      {/* View for when accordion is OPEN - This part is removed to prevent double title */}
-      {/* 
-      <div className="hidden group-data-[state=open]:flex group-data-[state=open]:flex-col group-data-[state=open]:items-center group-data-[state=open]:justify-center w-full text-lg py-4 px-4">
-        <categoryData.icon className="h-6 w-6 mr-0 mb-1 text-accent" />
-        <span className="font-semibold text-primary">{categoryData.categoryName}</span>
-      </div> 
-      */}
-
       {/* View for when accordion is CLOSED */}
       <div className={cn(
         "group-data-[state=open]:hidden grid items-center w-full text-sm py-3 px-4",
@@ -50,8 +45,8 @@ const AccordionRowContent = ({ categoryData, isSingleMatchCategory }: { category
         {/* Category Name + Icon */}
         <div className={cn(
           "font-medium flex items-center",
-          "col-span-2", // Takes 2/5 on small screens
-          isSingleMatchCategory ? "md:col-span-3" : "md:col-span-4" // Takes 3/12 or 4/12 on medium+
+          "col-span-2", 
+          isSingleMatchCategory ? "md:col-span-3" : "md:col-span-4" 
         )}>
           <categoryData.icon className="h-5 w-5 mr-3 text-accent shrink-0" />
           <span className="truncate" title={categoryData.categoryName}>{categoryData.categoryName}</span>
@@ -62,8 +57,8 @@ const AccordionRowContent = ({ categoryData, isSingleMatchCategory }: { category
             {/* Player */}
             <div className={cn(
               "truncate",
-              "col-span-1", // Takes 1/5 on small screens
-              isSingleMatchCategory ? "md:col-span-2" : "md:col-span-3" // Takes 2/12 or 3/12 on medium+
+              "col-span-1",
+              isSingleMatchCategory ? "md:col-span-2" : "md:col-span-3" 
             )} title={topEntry.playerName}>
               {topEntry.playerId && topEntry.teamId ? (
                 <Link href={`/teams/${topEntry.teamId}/players/${topEntry.playerId}`} className="text-primary font-semibold hover:underline">{topEntry.playerName}</Link>
@@ -74,8 +69,8 @@ const AccordionRowContent = ({ categoryData, isSingleMatchCategory }: { category
             {/* Team */}
             <div className={cn(
               "truncate",
-              "col-span-1", // Takes 1/5 on small screens
-              isSingleMatchCategory ? "md:col-span-2" : "md:col-span-3" // Takes 2/12 or 3/12 on medium+
+              "col-span-1",
+              isSingleMatchCategory ? "md:col-span-2" : "md:col-span-3" 
             )} title={topEntry.teamName}>
               {topEntry.teamId ? (
                 <Link href={`/teams/${topEntry.teamId}`} className="text-accent hover:underline">{topEntry.teamName}</Link>
@@ -85,8 +80,8 @@ const AccordionRowContent = ({ categoryData, isSingleMatchCategory }: { category
             </div>
             {/* Value */}
             <div className={cn(
-              "font-semibold text-primary text-right", // Value is primary color
-              "col-span-1", // Takes 1/5 on small screens
+              "font-semibold text-primary text-right", 
+              "col-span-1", 
               isSingleMatchCategory ? "md:col-span-2" : "md:col-span-2" 
             )}>{topEntry.value}</div>
             
@@ -126,7 +121,7 @@ const StatsPage = ({ data }: { data: Awaited<ReturnType<typeof getStatsData>> })
           <TableHead className="w-[180px] px-3 py-2">Team</TableHead>
           <TableHead className="w-[80px] px-3 py-2">{isSingleMatchCategory ? "Value" : "Value"}</TableHead>
           {isSingleMatchCategory && <TableHead className="w-[150px] px-3 py-2">Hero</TableHead>}
-          {isSingleMatchCategory && <TableHead className="px-3 py-2">Match</TableHead>}
+          {isSingleMatchCategory && <TableHead className="w-[250px] px-3 py-2">Match</TableHead>}
         </TableRow>
       </TableHeader>
       <TableBody>
