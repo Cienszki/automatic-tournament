@@ -52,14 +52,9 @@ export function Navbar() {
             </SheetTrigger>
             <SheetContent side="left" className="w-[280px] sm:w-[320px] bg-card p-0">
               <SheetHeader className="p-4 border-b border-border">
-                <SheetTitle className="flex items-center justify-between">
+                <SheetTitle className="flex items-center">
                   <Logo />
-                   <SheetClose asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8">
-                      <X className="h-5 w-5" />
-                      <span className="sr-only">Close menu</span>
-                    </Button>
-                  </SheetClose>
+                  {/* Redundant SheetClose button removed from here. SheetContent provides its own. */}
                 </SheetTitle>
               </SheetHeader>
               <nav className="flex flex-col space-y-2 p-4">
@@ -134,3 +129,4 @@ export function Navbar() {
     </header>
   );
 }
+
