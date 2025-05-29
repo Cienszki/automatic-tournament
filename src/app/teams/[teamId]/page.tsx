@@ -12,6 +12,7 @@ import { Users, ListChecks, ExternalLink, BarChart3, Medal, Swords, UserCheck, U
 import type { Icon as LucideIconType } from "lucide-react";
 import { notFound } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { Progress } from "@/components/ui/progress"; // Import Progress component
 
 interface TeamPageParams {
   params: { teamId: string };
@@ -80,9 +81,9 @@ const heroIconMap: Record<string, LucideIconType> = {
 };
 
 const podiumColors = [
-  { border: 'border-chart-1', text: 'text-chart-1', bg: 'bg-chart-1/10' }, // 1st place (e.g., pink)
-  { border: 'border-chart-2', text: 'text-chart-2', bg: 'bg-chart-2/10' }, // 2nd place (e.g., cyan)
-  { border: 'border-chart-3', text: 'text-chart-3', bg: 'bg-chart-3/10' }, // 3rd place (e.g., gold/yellow)
+  { border: 'border-chart-1', text: 'text-chart-1', bg: 'bg-chart-1/10' }, 
+  { border: 'border-chart-2', text: 'text-chart-2', bg: 'bg-chart-2/10' }, 
+  { border: 'border-chart-3', text: 'text-chart-3', bg: 'bg-chart-3/10' }, 
 ];
 
 
@@ -97,10 +98,10 @@ export default async function TeamPage({ params }: TeamPageParams) {
   const sortedHeroes = team.mostPlayedHeroes ? [...team.mostPlayedHeroes].sort((a, b) => b.gamesPlayed - a.gamesPlayed).slice(0, 3) : [];
 
   const performanceStats = [
-    { label: "Avg. Kills / Game", value: team.averageKillsPerGame ?? 'N/A', icon: Swords },
-    { label: "Avg. Deaths / Game", value: team.averageDeathsPerGame ?? 'N/A', icon: Skull },
-    { label: "Avg. Assists / Game", value: team.averageAssistsPerGame ?? 'N/A', icon: Handshake },
-    { label: "Avg. Fantasy Points", value: team.averageFantasyPoints?.toFixed(1) ?? 'N/A', icon: Award }
+    { label: "Avg. Kills / Game", value: team.averageKillsPerGame?.toFixed(1) ?? 'N/A', icon: Swords, type: 'kills', rawValue: team.averageKillsPerGame },
+    { label: "Avg. Deaths / Game", value: team.averageDeathsPerGame?.toFixed(1) ?? 'N/A', icon: Skull, type: 'deaths', rawValue: team.averageDeathsPerGame },
+    { label: "Avg. Assists / Game", value: team.averageAssistsPerGame?.toFixed(1) ?? 'N/A', icon: Handshake, type: 'other' },
+    { label: "Avg. Fantasy Points", value: team.averageFantasyPoints?.toFixed(1) ?? 'N/A', icon: Award, type: 'other' }
   ];
   
   const avgMatchDurationMinutes = team.averageMatchDurationMinutes || 0;
@@ -159,7 +160,7 @@ export default async function TeamPage({ params }: TeamPageParams) {
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card className="shadow-xl">
-           <CardHeader className="flex flex-row items-center justify-center space-x-3 pb-2">
+          <CardHeader className="flex flex-row items-center justify-center space-x-3 pb-2">
             <Users2 className="h-6 w-6 text-accent" />
             <CardTitle className="text-xl text-primary">Top Heroes</CardTitle>
           </CardHeader>
@@ -210,7 +211,7 @@ export default async function TeamPage({ params }: TeamPageParams) {
             <Clock className="h-6 w-6 text-accent" />
             <CardTitle className="text-xl text-primary">Avg. Match Duration</CardTitle>
           </CardHeader>
-          <CardContent className="flex flex-col items-center justify-center flex-grow">
+          <CardContent className="flex flex-col items-center justify-center flex-grow p-6">
             <div className="relative w-40 h-40 md:w-48 md:h-48 mb-4">
               <svg viewBox="0 0 100 100" className="w-full h-full">
                 <circle cx="50" cy="50" r="45" stroke="hsl(var(--border))" strokeWidth="3" fill="hsl(var(--card))" />
@@ -249,11 +250,24 @@ export default async function TeamPage({ params }: TeamPageParams) {
               <stat.icon className="h-6 w-6 text-accent" />
               <CardTitle className="text-xl text-primary">{stat.label}</CardTitle>
             </CardHeader>
-            <CardContent className="flex flex-col items-center justify-center flex-grow">
-              {(stat.label === "Avg. Kills / Game" || stat.label === "Avg. Deaths / Game") ? (
+            <CardContent className="flex flex-col items-center justify-center flex-grow p-6">
+              {(stat.type === 'kills' && typeof stat.rawValue === 'number') ? (
                 <>
-                  <stat.icon className="h-12 w-12 md:h-16 md:w-16 text-primary mb-3 mt-2" />
-                  <p className="text-3xl font-bold text-foreground">{stat.value}</p>
+                  <p className="text-3xl font-bold text-foreground mb-2">{stat.rawValue.toFixed(1)}</p>
+                  <Progress
+                    value={(stat.rawValue / 30) * 100} // Max kills for progress bar = 30
+                    className="w-3/4 h-2.5"
+                    aria-label="Average Kills per Game progress"
+                  />
+                </>
+              ) : (stat.type === 'deaths' && typeof stat.rawValue === 'number') ? (
+                <>
+                  <p className="text-3xl font-bold text-foreground mb-2">{stat.rawValue.toFixed(1)}</p>
+                  <Progress
+                    value={(stat.rawValue / 20) * 100} // Max deaths for progress bar = 20
+                    className="w-3/4 h-2.5"
+                    aria-label="Average Deaths per Game progress"
+                  />
                 </>
               ) : (
                 <p className="text-4xl font-bold text-foreground pt-4">{stat.value}</p>
@@ -371,10 +385,6 @@ export async function generateStaticParams() {
     teamId: team.id,
   }));
 }
-
     
 
     
-
-
-
