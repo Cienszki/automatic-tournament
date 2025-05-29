@@ -53,50 +53,61 @@ const sampleMottos = [
   "The Vanguard", "Night Strikers", "Phoenix Legion", "Storm Callers"
 ];
 
+const teamNamesList = [
+  "Kebab u Dassem'a",
+  "Wina Pingwina",
+  "Gimnazjum im. Parlamentu Europejskiego we Fromborku",
+  "Bóbr Honor Włoszczyzna",
+  "Chestnut's",
+  "Team Uchodźcy",
+  "Dont Ban Spectre",
+  "Herbatka u Bratka",
+  "Biuro Ochrony Rapiera",
+  "Budzik Team",
+  "Team Bracer",
+  "Placki 🏆",
+  "QuitDrinking",
+  "Ofensywny Glimmer",
+  "Equitantes cum Meretricibus Dantur mercedes",
+  "Gejmingowa Ekstaza Janusza",
+  "Idziemy po Leona",
+  "Klaun Fiesta",
+  "Greatest Dota Team",
+  "Team Kruszarki",
+  "Misie Kolorowe",
+  "Oldschool",
+  "KS Bystra",
+  "Just One Game"
+];
+
 const createTeamPlayers = (teamIndex: number, teamStatus: TournamentStatus): Player[] => {
   const playerStartIndex = teamIndex * 5;
   const teamPlayersSource: Player[] = [];
   
   for (let i = 0; i < 5; i++) {
     const playerSourceIndex = playerStartIndex + i;
-    if (playerSourceIndex >= mockPlayers.length) {
-        console.warn(`Player source index ${playerSourceIndex} out of bounds for mockPlayers (length ${mockPlayers.length}). This may happen if not enough players were pre-generated for all teams.`);
-        // Create a very generic fallback if absolutely necessary, though ideally mockPlayers has enough.
-        teamPlayersSource.push({
-           id: `pfallback${playerSourceIndex}-t${teamIndex+1}`,
-           nickname: `FallbackP${playerSourceIndex}`,
-           mmr: 1000,
-           role: PlayerRoles[i % PlayerRoles.length],
-           status: teamStatus,
-           steamProfileUrl: 'http://steamcommunity.com/id/fallback',
-           profileScreenshotUrl: `https://placehold.co/600x400.png?text=FB${playerSourceIndex}`,
-           fantasyPointsEarned: Math.floor(Math.random() * 100) + 20,
-        });
-        continue;
-    }
-    const basePlayer = { ...mockPlayers[playerSourceIndex] }; // Create a copy
+    // No fallback needed here since mockPlayers should have 120 players
+    const basePlayer = { ...mockPlayers[playerSourceIndex] }; 
     teamPlayersSource.push(basePlayer);
   }
 
-  // Assign distinct roles to players within this team
-  const assignedRoles = [...PlayerRoles].sort(() => 0.5 - Math.random()); // Shuffle roles for variety
+  const assignedRoles = [...PlayerRoles].sort(() => 0.5 - Math.random()); 
 
   let currentTeamPlayers = teamPlayersSource.map((basePlayer, i) => ({
     ...basePlayer,
-    id: `${basePlayer.id}-t${teamIndex + 1}`, // Team-specific ID
-    role: assignedRoles[i % PlayerRoles.length] as PlayerRole, // Ensure distinct roles
+    id: `${basePlayer.id}-t${teamIndex + 1}`, 
+    role: assignedRoles[i % PlayerRoles.length] as PlayerRole, 
     status: (teamStatus === 'Eliminated' || teamStatus === 'Champions') ? teamStatus : basePlayer.status,
     mmr: basePlayer.mmr, 
     fantasyPointsEarned: basePlayer.fantasyPointsEarned || (Math.floor(Math.random() * 100) + 50),
   }));
 
   let teamTotalMMR = currentTeamPlayers.reduce((sum, p) => sum + p.mmr, 0);
-  const TEAM_MMR_CAP = 25000; // Max total MMR for a team
-  const MIN_PLAYER_MMR = 1000; // Min MMR for a player
+  const TEAM_MMR_CAP = 25000; 
+  const MIN_PLAYER_MMR = 1000; 
 
-  // Adjust MMR to meet team cap, ensuring no player goes below MIN_PLAYER_MMR
   while (teamTotalMMR > TEAM_MMR_CAP) {
-    currentTeamPlayers.sort((a, b) => b.mmr - a.mmr); // Sort by MMR descending
+    currentTeamPlayers.sort((a, b) => b.mmr - a.mmr); 
     let reducedThisIteration = false;
     for (let k = 0; k < currentTeamPlayers.length; k++) {
       const player = currentTeamPlayers[k];
@@ -111,22 +122,21 @@ const createTeamPlayers = (teamIndex: number, teamStatus: TournamentStatus): Pla
         if (teamTotalMMR <= TEAM_MMR_CAP) break; 
       }
     }
-    if (!reducedThisIteration) break; // Safety break if no reduction is possible
+    if (!reducedThisIteration) break; 
   }
-  // Final check for minimum MMR
+  
   currentTeamPlayers.forEach(p => {
     if (p.mmr < MIN_PLAYER_MMR) p.mmr = MIN_PLAYER_MMR;
   });
-
 
   return currentTeamPlayers;
 };
 
 export const mockTeams: Team[] = Array.from({ length: 24 }, (_, i) => {
   let teamStatus: TournamentStatus;
-  if (i === 0) {
+  if (i === 0) { // First team is Champions
     teamStatus = "Champions";
-  } else if (i >= 20 && i <= 22) { 
+  } else if (i >= 20 && i <= 22) { // Some teams are eliminated
     teamStatus = "Eliminated";
   } else {
     teamStatus = getRandomBaseStatus();
@@ -143,13 +153,17 @@ export const mockTeams: Team[] = Array.from({ length: 24 }, (_, i) => {
   }
   matchesWon = Math.min(matchesWon, matchesPlayed); 
   const matchesLost = matchesPlayed - matchesWon;
-  const motto = i < sampleMottos.length ? sampleMottos[i] : `Elite Squad ${i + 1}`;
+  const teamName = teamNamesList[i] || `Team Element ${i + 1}`; // Use provided name or fallback
+  const motto = sampleMottos[i % sampleMottos.length] || `Elite Squad ${i + 1}`;
+  
+  // Create a short, safe version of the team name for logo placeholder
+  const logoText = teamName.replace(/[^a-zA-Z0-9]/g, '').substring(0, 2).toUpperCase() || 'T' + (i+1);
 
 
   return {
     id: `team${i + 1}`,
-    name: `Team Element ${i + 1}`,
-    logoUrl: `https://placehold.co/100x100.png?text=E${i+1}&bg=444444&fc=ffffff`,
+    name: teamName,
+    logoUrl: `https://placehold.co/100x100.png?text=${logoText}&bg=444444&fc=ffffff`,
     motto: motto,
     status: teamStatus,
     players: teamPlayers,
@@ -234,12 +248,12 @@ export const mockMatches: Match[] = [
   { id: 'm8', teamA: mockTeams[1], teamB: mockTeams[11], dateTime: new Date(Date.now() + 4 * 24 * 60 * 60 * 1000), status: 'upcoming', openDotaMatchUrl: `https://www.opendota.com/matches/sim_m8`},
   { id: 'm9', teamA: mockTeams[0], teamB: mockTeams[4], dateTime: new Date(Date.now() + 6 * 24 * 60 * 60 * 1000), status: 'upcoming', openDotaMatchUrl: `https://www.opendota.com/matches/sim_m9`},
   { id: 'm10', teamA: mockTeams[2], teamB: mockTeams[5], dateTime: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000), teamAScore: 2, teamBScore: 0, status: 'completed', openDotaMatchUrl: `https://www.opendota.com/matches/sim_m10`},
-  { id: 'm11', teamA: mockTeams[12], teamB: mockTeams[13], dateTime: new Date(Date.now() + 2.5 * 24 * 60 * 60 * 1000), status: 'upcoming', openDotaMatchUrl: `https://www.opendota.com/matches/sim_m11` },
-  { id: 'm12', teamA: mockTeams[14], teamB: mockTeams[15], dateTime: new Date(Date.now() - 1.5 * 24 * 60 * 60 * 1000), teamAScore: 1, teamBScore: 2, status: 'completed', openDotaMatchUrl: `https://www.opendota.com/matches/sim_m12` },
-  { id: 'm13', teamA: mockTeams[16], teamB: mockTeams[17], dateTime: new Date(Date.now() + 3.5 * 24 * 60 * 60 * 1000), status: 'upcoming', openDotaMatchUrl: `https://www.opendota.com/matches/sim_m13` },
-  { id: 'm14', teamA: mockTeams[18], teamB: mockTeams[19], dateTime: new Date(Date.now() - 0.5 * 24 * 60 * 60 * 1000), teamAScore: 2, teamBScore: 0, status: 'completed', openDotaMatchUrl: `https://www.opendota.com/matches/sim_m14` },
-  { id: 'm15', teamA: mockTeams[20], teamB: mockTeams[21], dateTime: new Date(Date.now() + 4.5 * 24 * 60 * 60 * 1000), status: 'upcoming', openDotaMatchUrl: `https://www.opendota.com/matches/sim_m15` },
-  { id: 'm16', teamA: mockTeams[22], teamB: mockTeams[23], dateTime: new Date(Date.now() - 2.5 * 24 * 60 * 60 * 1000), teamAScore: 0, teamBScore: 2, status: 'completed', openDotaMatchUrl: `https://www.opendota.com/matches/sim_m16` },
+  { id: 'm11', teamA: mockTeams[12 % mockTeams.length], teamB: mockTeams[13 % mockTeams.length], dateTime: new Date(Date.now() + 2.5 * 24 * 60 * 60 * 1000), status: 'upcoming', openDotaMatchUrl: `https://www.opendota.com/matches/sim_m11` },
+  { id: 'm12', teamA: mockTeams[14 % mockTeams.length], teamB: mockTeams[15 % mockTeams.length], dateTime: new Date(Date.now() - 1.5 * 24 * 60 * 60 * 1000), teamAScore: 1, teamBScore: 2, status: 'completed', openDotaMatchUrl: `https://www.opendota.com/matches/sim_m12` },
+  { id: 'm13', teamA: mockTeams[16 % mockTeams.length], teamB: mockTeams[17 % mockTeams.length], dateTime: new Date(Date.now() + 3.5 * 24 * 60 * 60 * 1000), status: 'upcoming', openDotaMatchUrl: `https://www.opendota.com/matches/sim_m13` },
+  { id: 'm14', teamA: mockTeams[18 % mockTeams.length], teamB: mockTeams[19 % mockTeams.length], dateTime: new Date(Date.now() - 0.5 * 24 * 60 * 60 * 1000), teamAScore: 2, teamBScore: 0, status: 'completed', openDotaMatchUrl: `https://www.opendota.com/matches/sim_m14` },
+  { id: 'm15', teamA: mockTeams[20 % mockTeams.length], teamB: mockTeams[21 % mockTeams.length], dateTime: new Date(Date.now() + 4.5 * 24 * 60 * 60 * 1000), status: 'upcoming', openDotaMatchUrl: `https://www.opendota.com/matches/sim_m15` },
+  { id: 'm16', teamA: mockTeams[22 % mockTeams.length], teamB: mockTeams[23 % mockTeams.length], dateTime: new Date(Date.now() - 2.5 * 24 * 60 * 60 * 1000), teamAScore: 0, teamBScore: 2, status: 'completed', openDotaMatchUrl: `https://www.opendota.com/matches/sim_m16` },
 ].map(match => ({
   ...match,
   performances: match.status === 'completed' ? generatePlayerPerformancesForMatch(match) : undefined,
@@ -270,7 +284,6 @@ const getRandomPlayerAndTeamForStats = (allMatches: Match[], allPlayers: Player[
   if (!randomPerformance) return {};
 
   const team = mockTeams.find(t => t.id === randomPerformance.teamId);
-  // The player ID in performance (e.g., "p1-t1") needs to be stripped of team suffix to match base player ID ("p1")
   const basePlayerId = randomPerformance.playerId.split('-t')[0];
   const player = allPlayers.find(p => p.id === basePlayerId); 
 
@@ -356,7 +369,7 @@ export const generateMockSingleMatchRecords = (): CategoryDisplayStats[] => {
                     teamId: teamDetails?.id,
                     value: `${displayValue}${cat.unit}`,
                     heroName: perfData.hero,
-                    matchContext: `vs ${opponentName}`, // Updated match context
+                    matchContext: `vs ${opponentName}`,
                     openDotaMatchUrl: perfData.openDotaMatchUrl,
                 });
                 uniquePlayerMatchCombos.add(comboKey);
@@ -383,7 +396,7 @@ export const generateMockSingleMatchRecords = (): CategoryDisplayStats[] => {
                 teamId: randomData.team.id,
                 value: `${displayValue}${cat.unit}`,
                 heroName: randomData.performance.hero,
-                matchContext: `vs ${opponent.name}`, // Updated match context
+                matchContext: `vs ${opponent.name}`,
                 openDotaMatchUrl: randomData.match.openDotaMatchUrl,
             });
             uniquePlayerMatchCombos.add(comboKey);
@@ -534,12 +547,9 @@ export const generateMockTournamentHighlights = (): TournamentHighlightRecord[] 
 
 export const FANTASY_BUDGET_MMR = 30000;
 
-// Ensure this list contains actual player objects from the teams
 export const mockAllTournamentPlayersFlat: Player[] = mockTeams.flatMap(team => 
   team.players.map(player => ({
-    ...player, 
-    // Make sure base player ID is used for cross-team reference if needed,
-    // but for fantasy, the player object itself with its team-specific ID is fine
+    ...player,
   }))
 );
 
@@ -589,3 +599,4 @@ export const mockFantasyLeagueParticipants: FantasyLeagueParticipant[] = Array.f
   };
 }).sort((a, b) => b.totalFantasyPoints - a.totalFantasyPoints)
   .map((p, idx) => ({ ...p, rank: idx + 1 }));
+
