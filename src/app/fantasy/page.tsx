@@ -10,22 +10,22 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { Loader2, Crown, Info, UserCircle, BarChart2, Swords, Sparkles, Shield as ShieldIcon, HandHelping, Eye as EyeIcon } from "lucide-react";
-import type { Player, PlayerRole, FantasyLeagueParticipant, FantasyLineup } from "@/lib/definitions";
-import { PlayerRoles } from "@/lib/definitions";
-import { mockAllTournamentPlayers, mockFantasyLeagueParticipants, FANTASY_BUDGET_MMR } from "@/lib/mock-data";
+import { ScrollArea } from "@/components/ui/scroll-area"; // Added ScrollArea import
+import { Loader2, Crown, Info, UserCircle, BarChart2, Swords, Sparkles, Shield as ShieldIconLucide, HandHelping, Eye as EyeIconLucide } from "lucide-react";
+import type { Player, PlayerRole, FantasyLeagueParticipant, FantasyLineup, Team } from "@/lib/definitions";
+import { PlayerRoles } from "@/lib/definitions"; // Correct import for PlayerRoles
+import { mockAllTournamentPlayersFlat, mockFantasyLeagueParticipants, FANTASY_BUDGET_MMR, mockTeams } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 
 const roleIcons: Record<PlayerRole, React.ElementType> = {
   Carry: Swords,
   Mid: Sparkles,
-  Offlane: ShieldIcon,
+  Offlane: ShieldIconLucide,
   "Soft Support": HandHelping,
-  "Hard Support": EyeIcon,
+  "Hard Support": EyeIconLucide,
 };
 
-// Simulated current user - replace with actual auth state if implemented
-const SIMULATED_CURRENT_USER_ID = mockFantasyLeagueParticipants[2]?.id || "user-fallback"; // Example, pick a user from mock
+const SIMULATED_CURRENT_USER_ID = mockFantasyLeagueParticipants[2]?.id || "user-fallback";
 
 export default function FantasyLeaguePage() {
   const [isLoggedIn, setIsLoggedIn] = React.useState(false);
@@ -34,11 +34,9 @@ export default function FantasyLeaguePage() {
   const [availablePlayers, setAvailablePlayers] = React.useState<Player[]>([]);
   const [fantasyLeaderboard, setFantasyLeaderboard] = React.useState<FantasyLeagueParticipant[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
-  const [playerCurrentlyInRole, setPlayerCurrentlyInRole] = React.useState<Player | undefined>(undefined);
-
 
   React.useEffect(() => {
-    setAvailablePlayers(mockAllTournamentPlayers);
+    setAvailablePlayers(mockAllTournamentPlayersFlat);
     setFantasyLeaderboard(mockFantasyLeagueParticipants.sort((a,b) => b.totalFantasyPoints - a.totalFantasyPoints).map((p,i) => ({...p, rank: i+1}) ));
     setIsLoading(false);
   }, []);
@@ -57,16 +55,15 @@ export default function FantasyLeaguePage() {
     let tempBudget = currentBudgetUsed;
 
     if (existingPlayerInRole) {
-      tempBudget -= existingPlayerInRole.mmr; // Subtract cost of player being replaced
+      tempBudget -= existingPlayerInRole.mmr;
     }
-    tempBudget += playerToSelect.mmr; // Add cost of new player
+    tempBudget += playerToSelect.mmr;
 
     if (tempBudget > FANTASY_BUDGET_MMR && playerToSelect.id !== existingPlayerInRole?.id) {
       alert(`Selecting this player exceeds the budget of ${FANTASY_BUDGET_MMR.toLocaleString()} MMR.`);
       return;
     }
 
-    // Check if player is already selected in another role (excluding the current role being changed)
     const isAlreadySelectedElsewhere = Object.entries(currentLineup).some(
       ([r, p]) => r !== role && p?.id === playerToSelect.id
     );
@@ -109,11 +106,14 @@ export default function FantasyLeaguePage() {
       </div>
     );
   }
-  
-  const currentUserLeaderboardEntry = fantasyLeaderboard.find(p => p.id === SIMULATED_CURRENT_USER_ID);
-  const top10Leaderboard = fantasyLeaderboard.slice(0, 10);
-  const displayCurrentUserInTable = currentUserLeaderboardEntry && !top10Leaderboard.some(p => p.id === SIMULATED_CURRENT_USER_ID) && currentUserLeaderboardEntry.rank > 10;
 
+  const getPlayerTeamName = (playerId: string): string => {
+    const teamIdSuffix = playerId.split('-t')[1];
+    if (!teamIdSuffix) return 'N/A';
+    const teamId = `team${teamIdSuffix}`;
+    const team = mockTeams.find(t => t.id === teamId);
+    return team?.name || 'N/A';
+  };
 
   return (
     <div className="space-y-12">
@@ -314,61 +314,104 @@ export default function FantasyLeaguePage() {
       <Card className="shadow-lg">
         <CardHeader>
           <CardTitle className="text-2xl text-accent flex items-center">
-            <BarChart2 className="h-6 w-6 mr-2" />Fantasy Leaderboard
+            <BarChart2 className="h-6 w-6 mr-2" />Fantasy League Standings
           </CardTitle>
-          <CardDescription>Top 10 players in the Fantasy League. (Simulated data)</CardDescription>
+          <CardDescription>Current standings in the Fantasy League. (Simulated data)</CardDescription>
         </CardHeader>
         <CardContent>
           {fantasyLeaderboard.length === 0 ? (
             <p className="text-muted-foreground text-center">No participants yet. Be the first!</p>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[60px] text-center">Rank</TableHead>
-                  <TableHead>Player</TableHead>
-                  <TableHead className="text-right">Fantasy Points</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {top10Leaderboard.map((participant) => (
-                  <TableRow key={participant.id} className={cn(participant.id === SIMULATED_CURRENT_USER_ID && "bg-primary/10 ring-1 ring-primary")}>
-                    <TableCell className="font-medium text-center">{participant.rank}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center space-x-3">
-                        <Avatar className="h-8 w-8">
-                          <AvatarImage src={participant.avatarUrl} alt={participant.discordUsername} />
-                          <AvatarFallback>{participant.discordUsername.substring(0, 2).toUpperCase()}</AvatarFallback>
-                        </Avatar>
-                        <span className="font-medium text-foreground">{participant.discordUsername} {participant.id === SIMULATED_CURRENT_USER_ID && "(You)"}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-right font-semibold text-primary">{participant.totalFantasyPoints.toLocaleString()}</TableCell>
+            <ScrollArea className="h-[400px] rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[60px] text-center">Rank</TableHead>
+                    <TableHead>Player</TableHead>
+                    <TableHead className="text-right">Fantasy Points</TableHead>
                   </TableRow>
-                ))}
-                {displayCurrentUserInTable && currentUserLeaderboardEntry && (
-                    <>
-                    <TableRow><TableCell colSpan={3} className="text-center text-muted-foreground text-xs py-1">...</TableCell></TableRow>
-                    <TableRow key={currentUserLeaderboardEntry.id} className="bg-primary/20 ring-1 ring-primary">
-                        <TableCell className="font-medium text-center">{currentUserLeaderboardEntry.rank}</TableCell>
-                        <TableCell>
+                </TableHeader>
+                <TableBody>
+                  {fantasyLeaderboard.map((participant) => (
+                    <TableRow key={participant.id} className={cn(participant.id === SIMULATED_CURRENT_USER_ID && "bg-primary/10 ring-1 ring-primary")}>
+                      <TableCell className="font-medium text-center">{participant.rank}</TableCell>
+                      <TableCell>
                         <div className="flex items-center space-x-3">
-                            <Avatar className="h-8 w-8">
-                            <AvatarImage src={currentUserLeaderboardEntry.avatarUrl} alt={currentUserLeaderboardEntry.discordUsername} />
-                            <AvatarFallback>{currentUserLeaderboardEntry.discordUsername.substring(0, 2).toUpperCase()}</AvatarFallback>
-                            </Avatar>
-                            <span className="font-medium text-primary-foreground">{currentUserLeaderboardEntry.discordUsername} (You)</span>
+                          <Avatar className="h-8 w-8">
+                            <AvatarImage src={participant.avatarUrl} alt={participant.discordUsername} />
+                            <AvatarFallback>{participant.discordUsername.substring(0, 2).toUpperCase()}</AvatarFallback>
+                          </Avatar>
+                          <span className="font-medium text-foreground">{participant.discordUsername} {participant.id === SIMULATED_CURRENT_USER_ID && "(You)"}</span>
                         </div>
-                        </TableCell>
-                        <TableCell className="text-right font-semibold text-primary-foreground">{currentUserLeaderboardEntry.totalFantasyPoints.toLocaleString()}</TableCell>
+                      </TableCell>
+                      <TableCell className="text-right font-semibold text-primary">{participant.totalFantasyPoints.toLocaleString()}</TableCell>
                     </TableRow>
-                    </>
-                )}
-              </TableBody>
-            </Table>
+                  ))}
+                </TableBody>
+              </Table>
+            </ScrollArea>
           )}
         </CardContent>
       </Card>
+
+      <div className="mt-12 space-y-8">
+        <h2 className="text-3xl font-bold text-center text-primary mb-6">Top Tournament Player Fantasy Points by Role</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {PlayerRoles.map((role) => {
+            const RoleIcon = roleIcons[role];
+            const topPlayersForRole = mockAllTournamentPlayersFlat
+              .filter(p => p.role === role)
+              .sort((a, b) => (b.fantasyPointsEarned || 0) - (a.fantasyPointsEarned || 0))
+              .slice(0, 5);
+
+            return (
+              <Card key={role} className="shadow-lg">
+                <CardHeader>
+                  <CardTitle className="text-xl text-accent flex items-center">
+                    <RoleIcon className="h-6 w-6 mr-2" /> Top {role} Players
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {topPlayersForRole.length === 0 ? (
+                     <p className="text-muted-foreground text-center">No player data for this role yet.</p>
+                  ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-[40px]">#</TableHead>
+                        <TableHead>Player</TableHead>
+                        <TableHead>Team</TableHead>
+                        <TableHead className="text-right">FP</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {topPlayersForRole.map((player, index) => (
+                        <TableRow key={player.id}>
+                          <TableCell className="font-medium">{index + 1}</TableCell>
+                          <TableCell>
+                            <div className="flex items-center space-x-2">
+                              <Avatar className="h-6 w-6">
+                                <AvatarImage src={player.profileScreenshotUrl || `https://placehold.co/24x24.png?text=${player.nickname.charAt(0)}`} alt={player.nickname} />
+                                <AvatarFallback>{player.nickname.substring(0,1)}</AvatarFallback>
+                              </Avatar>
+                              <span className="text-sm font-medium text-foreground truncate" title={player.nickname}>{player.nickname}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-xs text-muted-foreground truncate" title={getPlayerTeamName(player.id)}>{getPlayerTeamName(player.id)}</TableCell>
+                          <TableCell className="text-right font-semibold text-primary">{player.fantasyPointsEarned?.toLocaleString() || 0}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      </div>
+
+
       <p className="text-sm text-muted-foreground text-center mt-8">
         Note: Fantasy League data is simulated for demonstration purposes. Scoring and player availability will update based on tournament progression.
       </p>
@@ -376,4 +419,4 @@ export default function FantasyLeaguePage() {
   );
 }
 
-    
+```

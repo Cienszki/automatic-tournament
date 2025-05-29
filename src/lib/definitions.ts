@@ -17,6 +17,7 @@ export type Player = {
   profileScreenshotUrl?: string; // URL after upload
   steamProfileUrl: string;
   openDotaProfileUrl?: string;
+  fantasyPointsEarned?: number; // Fantasy points earned by this player in the tournament
 };
 
 export type HeroPlayStats = {
@@ -75,12 +76,6 @@ export type Group = {
   id: string;
   name: string;
   teams: Team[];
-};
-
-export type RegistrationFormState = {
-  message: string;
-  errors?: z.ZodIssue[];
-  success: boolean;
 };
 
 
