@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Loader2, Crown, Info, UserCircle, BarChart2, Swords, Sparkles, Shield as ShieldIconLucide, HandHelping, Eye as EyeIconLucide, Lock, Unlock } from "lucide-react";
 import type { Player, PlayerRole, FantasyLeagueParticipant, FantasyLineup, Team } from "@/lib/definitions";
-import { PlayerRoles } from "@/lib/definitions";
+import { PlayerRoles } from "@/lib/definitions"; // Corrected import
 import { mockAllTournamentPlayersFlat, mockFantasyLeagueParticipants, FANTASY_BUDGET_MMR, mockTeams } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 
@@ -95,8 +95,6 @@ export default function FantasyLeaguePage() {
       alert("Your lineup exceeds the budget. Please make adjustments.");
       return;
     }
-    // In a real app, this lineup would be saved to the database associated with the logged-in user.
-    // We'd also need to check if the deadline has passed before allowing confirmation.
     alert("Lineup confirmed (simulated)! In a real app, this would be saved to a database.");
   };
 
@@ -122,6 +120,14 @@ export default function FantasyLeaguePage() {
   const toggleDeadlineState = () => {
     setIsLineupLockDeadlinePassed(prevState => !prevState);
   };
+
+  const deadlineButtonText = isLineupLockDeadlinePassed 
+    ? "Simulate Before Deadline (Show Previous Lineups)" 
+    : "Simulate Deadline Passed (Show Current Lineups)";
+  
+  const leaderboardColumnHeaderText = isLineupLockDeadlinePassed
+    ? "Current Round Lineup"
+    : "Previous Round Lineup";
 
   return (
     <div className="space-y-12">
@@ -153,7 +159,7 @@ export default function FantasyLeaguePage() {
           <div className="flex justify-between items-center">
             <Button onClick={toggleDeadlineState} variant="outline" className="mb-6">
               {isLineupLockDeadlinePassed ? <Unlock className="mr-2 h-4 w-4" /> : <Lock className="mr-2 h-4 w-4" />}
-              Simulate Lineup Lock {isLineupLockDeadlinePassed ? "(Unlocked - Viewable)" : "(Locked - Hidden)"}
+              {deadlineButtonText}
             </Button>
             <Button onClick={handleLogout} variant="outline" className="mb-6">Logout (Simulated)</Button>
           </div>
@@ -185,7 +191,8 @@ export default function FantasyLeaguePage() {
                   <AccordionContent>
                     Your lineup must be set before the Group Stage begins.
                     You can change your lineup after the Group Stage is complete, and then again after each round of the Play-offs.
-                    Lock-in deadlines will be announced by the administrators. Lineups are hidden from other participants until the deadline passes.
+                    Lock-in deadlines will be announced by the administrators. 
+                    Before a lock-in deadline, other participants will only see your previously locked-in lineup for that phase. After the deadline, your current lineup is visible.
                   </AccordionContent>
                 </AccordionItem>
                 <AccordionItem value="rules-4">
@@ -344,12 +351,16 @@ export default function FantasyLeaguePage() {
                   <TableRow>
                     <TableHead className="w-[60px] text-center">Rank</TableHead>
                     <TableHead>Player</TableHead>
-                    <TableHead className="min-w-[250px]">Current Lineup</TableHead>
+                    <TableHead className="min-w-[250px]">{leaderboardColumnHeaderText}</TableHead>
                     <TableHead className="text-right">Fantasy Points</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {fantasyLeaderboard.map((participant) => (
+                  {fantasyLeaderboard.map((participant) => {
+                    const lineupToDisplay = isLineupLockDeadlinePassed ? participant.selectedLineup : participant.previousLineup;
+                    const showLineup = lineupToDisplay && Object.keys(lineupToDisplay).length > 0;
+
+                    return (
                     <TableRow key={participant.id} className={cn(participant.id === SIMULATED_CURRENT_USER_ID && "bg-primary/10 ring-1 ring-primary")}>
                       <TableCell className="font-medium text-center">{participant.rank}</TableCell>
                       <TableCell>
@@ -362,10 +373,10 @@ export default function FantasyLeaguePage() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        {isLineupLockDeadlinePassed ? (
+                        {showLineup ? (
                           <div className="flex flex-col space-y-0.5">
                             {PlayerRoles.map(role => {
-                              const player = participant.selectedLineup[role];
+                              const player = lineupToDisplay?.[role];
                               const RoleIcon = roleIcons[role];
                               const playerIdParts = player?.id?.split('-t');
                               const basePlayerId = playerIdParts?.[0];
@@ -391,12 +402,15 @@ export default function FantasyLeaguePage() {
                             })}
                           </div>
                         ) : (
-                          <em className="text-xs text-muted-foreground">Lineup hidden until lock</em>
+                          <em className="text-xs text-muted-foreground">
+                            {isLineupLockDeadlinePassed ? "No lineup set for current round." : "No previous lineup available."}
+                          </em>
                         )}
                       </TableCell>
                       <TableCell className="text-right font-semibold text-primary">{participant.totalFantasyPoints.toLocaleString()}</TableCell>
                     </TableRow>
-                  ))}
+                  );
+                 })}
                 </TableBody>
               </Table>
             </ScrollArea>
@@ -437,9 +451,9 @@ export default function FantasyLeaguePage() {
                     <TableBody>
                       {topPlayersForRole.map((player, index) => {
                         const playerIdParts = player.id.split('-t');
-                        const basePlayerId = playerIdParts[0];
-                        const teamIdSuffix = playerIdParts[1];
-                        const teamIdForLink = teamIdSuffix ? `team${teamIdSuffix}` : '';
+                        const basePlayerId = playerIdParts[0]; // e.g., "p1"
+                        const teamIdSuffix = playerIdParts[1]; // e.g., "1"
+                        const teamIdForLink = teamIdSuffix ? `team${teamIdSuffix}` : ''; // e.g., "team1"
                         const teamName = getPlayerTeamName(player.id);
 
                         return (
@@ -483,11 +497,9 @@ export default function FantasyLeaguePage() {
         </div>
       </div>
 
-
       <p className="text-sm text-muted-foreground text-center mt-8">
         Note: Fantasy League data is simulated for demonstration purposes. Scoring and player availability will update based on tournament progression.
       </p>
     </div>
   );
 }
-

@@ -84,7 +84,7 @@ export type CategoryRankingDetail = {
   rank: number;
   playerName?: string;
   teamName?: string;
-  playerId?: string;
+  playerId?: string; // base player id e.g. p1
   teamId?: string;
   value: string | number; // The actual stat value
   heroName?: string;       // For single match records
@@ -136,8 +136,16 @@ export type FantasyLeagueParticipant = {
   id: string; // User ID, e.g., Discord user ID
   discordUsername: string;
   avatarUrl?: string; // URL to user's Discord avatar
-  selectedLineup: FantasyLineup;
+  selectedLineup: FantasyLineup; // Current round lineup (or being built)
+  previousLineup?: FantasyLineup; // Lineup from the previous locked round
   totalMMRCost: number;
   totalFantasyPoints: number;
   rank?: number;
+};
+
+// Form state for Server Actions
+export type RegistrationFormState = {
+  message: string;
+  errors?: z.ZodIssue[];
+  success: boolean;
 };
