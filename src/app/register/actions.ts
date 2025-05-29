@@ -12,6 +12,7 @@ export async function registerTeamAction(
     const dataToValidate: Record<string, any> = {
       teamName: formData.get("teamName"),
       teamLogo: formData.get("teamLogo"),
+      teamMotto: formData.get("teamMotto") || undefined, // Handle optional motto
       rulesAgreed: formData.get("rulesAgreed") === "true",
     };
 
@@ -21,7 +22,7 @@ export async function registerTeamAction(
         mmr: formData.get(`player${i}.mmr`),
         profileScreenshot: formData.get(`player${i}.profileScreenshot`),
         steamProfileUrl: formData.get(`player${i}.steamProfileUrl`),
-        role: formData.get(`player${i}.role`), // Add role
+        role: formData.get(`player${i}.role`),
       };
     }
     
@@ -38,10 +39,15 @@ export async function registerTeamAction(
 
     const teamData = validatedFields.data;
 
-    console.log("Team Registration Data (Server Action):", teamData);
+    console.log("Team Registration Data (Server Action):", {
+        teamName: teamData.teamName,
+        teamMotto: teamData.teamMotto, // Log motto
+        player1: teamData.player1.nickname,
+        // ... (log other player details if needed)
+    });
     
     return {
-      message: `Team "${teamData.teamName}" registered successfully! Ensure all player MMRs, roles, and Steam URLs are correct.`,
+      message: `Team "${teamData.teamName}" registered successfully! ${teamData.teamMotto ? `Motto: "${teamData.teamMotto}". ` : ''}Ensure all player MMRs, roles, and Steam URLs are correct.`,
       success: true,
     };
 
@@ -53,3 +59,4 @@ export async function registerTeamAction(
     };
   }
 }
+

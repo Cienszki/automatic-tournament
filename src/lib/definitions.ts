@@ -29,6 +29,7 @@ export type Team = {
   id: string;
   name: string;
   logoUrl?: string; // URL after upload
+  motto?: string; // Added team motto
   players: Player[]; // These players will have team-specific IDs like "p1-t1"
   status: TournamentStatus;
   matchesPlayed?: number;
@@ -114,12 +115,13 @@ export type PlayerFormData = {
   mmr: string; // string for form input, Zod will transform to number
   profileScreenshot: File | undefined;
   steamProfileUrl: string;
-  role: PlayerRole | ""; // Added role, allow "" for initial empty state
+  role: PlayerRole | ""; 
 };
 
 export type TeamRegistrationFormData = {
   teamName: string;
   teamLogo: File | undefined;
+  teamMotto?: string; // Added team motto
   player1: PlayerFormData;
   player2: PlayerFormData;
   player3: PlayerFormData;
@@ -150,3 +152,4 @@ export type RegistrationFormState = {
   errors?: z.ZodIssue[];
   success: boolean;
 };
+

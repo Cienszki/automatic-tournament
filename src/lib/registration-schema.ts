@@ -7,7 +7,7 @@ export const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png", "im
 
 // Schema for a required single file
 export const requiredFileSchema = z.instanceof(File, { message: "This file is required." })
-  .refine(file => file.size > 0, "File cannot be empty.") // Added to ensure file is not just an empty File object
+  .refine(file => file.size > 0, "File cannot be empty.")
   .refine(file => file.size <= MAX_FILE_SIZE, `Max file size is 1MB.`)
   .refine(
     file => ACCEPTED_IMAGE_TYPES.includes(file.type),
@@ -20,7 +20,7 @@ export const playerSchema = z.object({
     .min(1, "MMR is required.")
     .regex(/^[0-9]+$/, { message: "MMR must be a whole number using only digits (e.g., 4500)." })
     .pipe(z.coerce.number()
-      .int({ message: "MMR must be a whole number."}) // Ensure it's an integer after coercion
+      .int({ message: "MMR must be a whole number."})
       .positive({ message: "MMR must be greater than zero." })
     ),
   profileScreenshot: requiredFileSchema,
@@ -33,6 +33,7 @@ export const playerSchema = z.object({
 export const registrationFormSchema = z.object({
   teamName: z.string().min(3, "Team name must be at least 3 characters."),
   teamLogo: requiredFileSchema,
+  teamMotto: z.string().max(150, "Team motto cannot exceed 150 characters.").optional().or(z.literal('')), // Allow empty string or optional
   player1: playerSchema,
   player2: playerSchema,
   player3: playerSchema,
@@ -53,6 +54,6 @@ export const registrationFormSchema = z.object({
   return uniqueRoles.size === PlayerRoles.length;
 }, {
   message: "Each player role (Carry, Mid, Offlane, Soft Support, Hard Support) must be assigned to exactly one player.",
-  // Path can be made more general or point to the first role field as a hint
   path: ["player1.role"], 
 });
+

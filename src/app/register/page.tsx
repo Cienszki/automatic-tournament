@@ -3,7 +3,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { useActionState, useEffect, useState } from "react"; // Added useState
+import { useActionState, useEffect, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -13,14 +13,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { PlayerRegistrationFields } from "@/components/app/PlayerRegistrationFields";
 import { registerTeamAction } from "./actions";
 import { registrationFormSchema } from "@/lib/registration-schema";
-import type { RegistrationFormState, TeamRegistrationFormData, PlayerRole } from "@/lib/definitions";
+import type { RegistrationFormState, TeamRegistrationFormData } from "@/lib/definitions";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Info, AlertTriangle, FileText, Users, ShieldCheck } from "lucide-react"; // Added icons
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"; // Added Accordion
+import { Loader2, Info, AlertTriangle, FileText, Users, ShieldCheck } from "lucide-react";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
 const defaultValues: TeamRegistrationFormData = {
   teamName: "",
   teamLogo: undefined,
+  teamMotto: "", // Added default for team motto
   player1: { nickname: "", mmr: "", profileScreenshot: undefined, steamProfileUrl: "", role: "" },
   player2: { nickname: "", mmr: "", profileScreenshot: undefined, steamProfileUrl: "", role: "" },
   player3: { nickname: "", mmr: "", profileScreenshot: undefined, steamProfileUrl: "", role: "" },
@@ -31,7 +32,7 @@ const defaultValues: TeamRegistrationFormData = {
 
 export default function RegistrationPage() {
   const { toast } = useToast();
-  const [isDiscordLoggedIn, setIsDiscordLoggedIn] = useState(false); // Simulated login state
+  const [isDiscordLoggedIn, setIsDiscordLoggedIn] = useState(false);
 
   const form = useForm<TeamRegistrationFormData>({
     resolver: zodResolver(registrationFormSchema),
@@ -72,6 +73,9 @@ export default function RegistrationPage() {
     if (data.teamLogo) {
       formData.append("teamLogo", data.teamLogo);
     }
+    if (data.teamMotto) { // Add team motto to FormData
+      formData.append("teamMotto", data.teamMotto);
+    }
     
     (['player1', 'player2', 'player3', 'player4', 'player5'] as const).forEach(playerKey => {
       const player = data[playerKey];
@@ -81,7 +85,7 @@ export default function RegistrationPage() {
         formData.append(`${playerKey}.profileScreenshot`, player.profileScreenshot);
       }
       formData.append(`${playerKey}.steamProfileUrl`, player.steamProfileUrl);
-      formData.append(`${playerKey}.role`, player.role); // Add role
+      formData.append(`${playerKey}.role`, player.role);
     });
     formData.append("rulesAgreed", data.rulesAgreed.toString());
 
@@ -89,7 +93,6 @@ export default function RegistrationPage() {
   };
 
   const handleDiscordLogin = () => {
-    // In a real app, this would initiate OAuth flow
     setIsDiscordLoggedIn(true);
     toast({ title: "Login Successful", description: "You are now logged in with Discord (Simulated)." });
   };
@@ -130,6 +133,7 @@ export default function RegistrationPage() {
                 <ul className="list-disc pl-5 space-y-1">
                   <li>Team Name</li>
                   <li>Team Logo (Image file: JPG, PNG, WEBP, max 1MB)</li>
+                  <li>Team Motto (Optional, max 150 characters)</li>
                 </ul>
                 <strong className="text-foreground">For Each of the 5 Players:</strong>
                 <ul className="list-disc pl-5 space-y-1">
@@ -207,6 +211,20 @@ export default function RegistrationPage() {
                         </FormItem>
                       )}
                     />
+                    <FormField
+                      control={form.control}
+                      name="teamMotto"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Team Motto (Optional)</FormLabel>
+                          <FormControl>
+                            <Input placeholder="e.g., Victory or Valhalla!" {...field} />
+                          </FormControl>
+                          <FormDescription>Max 150 characters.</FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                   </CardContent>
                 </Card>
 
@@ -250,3 +268,4 @@ export default function RegistrationPage() {
     </div>
   );
 }
+
