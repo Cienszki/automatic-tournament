@@ -61,7 +61,7 @@ export function PlayerRegistrationFields({ form, playerIndex }: PlayerRegistrati
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  <SelectItem value="" disabled>-- Select a Role --</SelectItem>
+                  <SelectItem value="--select--" disabled>-- Select a Role --</SelectItem>
                   {PlayerRoles.map(role => (
                     <SelectItem key={role} value={role}>
                       {role}
@@ -108,3 +108,4 @@ export function PlayerRegistrationFields({ form, playerIndex }: PlayerRegistrati
     </Card>
   );
 }
+
