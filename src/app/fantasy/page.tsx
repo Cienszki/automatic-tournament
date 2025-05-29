@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -55,7 +56,7 @@ export default function FantasyLeaguePage() {
     const existingPlayerInRole = currentLineup[role];
     let tempBudget = currentBudgetUsed;
 
-    if (existingPlayerInRole) {
+    if (existingPlayerInRole) { // Added guard
       tempBudget -= existingPlayerInRole.mmr;
     }
     tempBudget += playerToSelect.mmr;
@@ -502,3 +503,5 @@ export default function FantasyLeaguePage() {
     </div>
   );
 }
+
+
