@@ -1,7 +1,7 @@
 
 // This page was previously marked "use client", but to export metadata,
 // it needs to be a Server Component. ShadCN Accordions can work within this setup.
-
+import * as React from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
