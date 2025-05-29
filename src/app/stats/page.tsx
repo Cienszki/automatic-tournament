@@ -83,14 +83,14 @@ const AccordionRowContent = ({ categoryData, isSingleMatchCategory }: { category
             </div>
             {/* Value */}
             <div className={cn(
-              "font-semibold text-primary text-right",
+              "font-semibold text-primary text-right", // Value is primary color
               "col-span-1", // Takes 1/5 on small screens
-              isSingleMatchCategory ? "md:col-span-2" : "md:col-span-2" // Increased span for value for single match, was md:col-span-1
+              isSingleMatchCategory ? "md:col-span-2" : "md:col-span-2" 
             )}>{topEntry.value}</div>
             
             {isSingleMatchCategory && (
               <>
-                <div className="hidden md:block md:col-span-1 truncate" title={topEntry.heroName}>{topEntry.heroName}</div> {/* Decreased span for hero, was md:col-span-2 */}
+                <div className="hidden md:block md:col-span-1 truncate" title={topEntry.heroName}>{topEntry.heroName}</div> 
                 <div className="hidden md:block md:col-span-2 text-xs text-muted-foreground truncate" title={topEntry.matchContext}>
                   {topEntry.openDotaMatchUrl ? (
                     <Link href={topEntry.openDotaMatchUrl} target="_blank" rel="noopener noreferrer" className="hover:text-primary hover:underline">
@@ -104,7 +104,7 @@ const AccordionRowContent = ({ categoryData, isSingleMatchCategory }: { category
             )}
           </>
         ) : (
-          <div className="col-span-full text-muted-foreground italic text-center">No entries for this category.</div>
+          <div className="col-span-full text-muted-foreground italic text-center py-2">No entries for this category.</div>
         )}
       </div>
     </>
@@ -116,7 +116,7 @@ const StatsPage = ({ data }: { data: Awaited<ReturnType<typeof getStatsData>> })
   const { singleMatchRecords, playerAverageLeaders, tournamentHighlights } = data;
 
   const renderRankingDetailsTable = (details: CategoryRankingDetail[], isSingleMatchCategory: boolean) => (
-    <Table className="mt-2 mb-4 bg-muted/20 rounded-md">
+    <Table className="mt-2 mb-4 rounded-md"> {/* Removed bg-muted/20 */}
       <TableHeader>
         <TableRow>
           <TableHead className="w-[60px] px-3 py-2">Rank</TableHead>
@@ -145,7 +145,7 @@ const StatsPage = ({ data }: { data: Awaited<ReturnType<typeof getStatsData>> })
                 <span className="text-accent">{detail.teamName || 'N/A'}</span>
               )}
             </TableCell>
-            <TableCell className="font-semibold text-primary text-right px-3 py-2">{detail.value}</TableCell>
+            <TableCell className="font-semibold text-primary text-right px-3 py-2">{detail.value}</TableCell> {/* Value is primary color */}
             {isSingleMatchCategory && <TableCell className="px-3 py-2">{detail.heroName}</TableCell>}
             {isSingleMatchCategory && (
               <TableCell className="text-xs text-muted-foreground px-3 py-2 truncate" title={detail.matchContext}>
@@ -192,7 +192,11 @@ const StatsPage = ({ data }: { data: Awaited<ReturnType<typeof getStatsData>> })
                     <AccordionTrigger className="p-0 hover:no-underline w-full group data-[state=open]:bg-muted/10">
                         <AccordionRowContent categoryData={categoryData} isSingleMatchCategory={true} />
                     </AccordionTrigger>
-                    <AccordionContent className="p-2 md:p-4">
+                    <AccordionContent className="p-4 bg-card">
+                        <div className="text-center mb-4">
+                            <categoryData.icon className="h-8 w-8 mx-auto text-accent mb-1" />
+                            <h3 className="text-xl font-semibold text-primary">{categoryData.categoryName}</h3>
+                        </div>
                         {categoryData.rankings.length > 0 ? 
                         renderRankingDetailsTable(categoryData.rankings, true) : 
                         <p className="text-sm text-muted-foreground italic p-4 text-center">No entries for this category.</p>}
@@ -219,7 +223,11 @@ const StatsPage = ({ data }: { data: Awaited<ReturnType<typeof getStatsData>> })
                         <AccordionTrigger className="p-0 hover:no-underline w-full group data-[state=open]:bg-muted/10">
                             <AccordionRowContent categoryData={categoryData} isSingleMatchCategory={false} />
                         </AccordionTrigger>
-                        <AccordionContent className="p-2 md:p-4">
+                        <AccordionContent className="p-4 bg-card">
+                           <div className="text-center mb-4">
+                                <categoryData.icon className="h-8 w-8 mx-auto text-accent mb-1" />
+                                <h3 className="text-xl font-semibold text-primary">{categoryData.categoryName}</h3>
+                           </div>
                            {categoryData.rankings.length > 0 ? 
                            renderRankingDetailsTable(categoryData.rankings, false) :
                            <p className="text-sm text-muted-foreground italic p-4 text-center">No entries for this category.</p>}
