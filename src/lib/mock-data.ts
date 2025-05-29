@@ -2,7 +2,7 @@
 import type { Team, Player, Match, Group, PlayerRole, StatItem, TournamentHighlightRecord, TournamentStatus, HeroPlayStats } from './definitions';
 import { PlayerRoles, TournamentStatuses } from './definitions';
 import {
-  Award, BarChart2, TrendingUp, TrendingDown, ShieldAlert, DollarSign, Eye, HelpCircle, Bomb, Swords, HeartHandshake, Zap, Clock, Activity, ShieldCheck, ChevronsUp, Timer, Skull, ListChecks, Medal, Trophy
+  Award, BarChart2, TrendingUp, TrendingDown, ShieldAlert, DollarSign, Eye, HelpCircle, Bomb, Swords, HeartHandshake, Zap, Clock, Activity, ShieldCheck, ChevronsUp, Timer, Skull, ListChecks, Medal, Trophy, Percent, Ratio, Handshake
 } from 'lucide-react';
 
 const getRandomBaseStatus = (): TournamentStatus => {
@@ -41,21 +41,34 @@ const createTeamPlayers = (teamIndex: number, teamStatus: TournamentStatus): Pla
   for (let i = 0; i < 5; i++) {
     const playerSourceIndex = playerStartIndex + i;
     if (playerSourceIndex >= mockPlayers.length) {
+        // This should ideally not happen if mockPlayers has 60+ players for 12 teams
         console.warn(`Not enough mock players to fully populate team ${teamIndex + 1}`);
-        break;
+        // Create a fallback player if necessary
+        teamPlayers.push({
+            id: `fallback-p${teamIndex}-${i}`,
+            nickname: `FallbackPlayer${i + 1}`,
+            mmr: 3000,
+            role: PlayerRoles[i % PlayerRoles.length] as PlayerRole,
+            status: teamStatus, // Player status aligns with team if Eliminated/Champions
+            steamProfileUrl: `https://steamcommunity.com/id/fallbackplayer${i + 1}`,
+            openDotaProfileUrl: `https://www.opendota.com/search?q=FallbackPlayer${i + 1}`,
+            profileScreenshotUrl: `https://placehold.co/600x400.png?text=FP${i+1}`,
+        });
+        continue;
     }
     const basePlayer = mockPlayers[playerSourceIndex];
-    
+
     let playerStatus = basePlayer.status;
     if (teamStatus === 'Eliminated' || teamStatus === 'Champions') {
       playerStatus = teamStatus;
     } else if (teamStatus === 'Active' && basePlayer.status === 'Not Verified') {
-      playerStatus = 'Active';
+      playerStatus = 'Active'; // Promote player status if team is active
     }
+
 
     teamPlayers.push({
       ...basePlayer,
-      id: `${basePlayer.id}-t${teamIndex + 1}`, 
+      id: `${basePlayer.id}-t${teamIndex + 1}`,
       role: PlayerRoles[i % PlayerRoles.length] as PlayerRole,
       status: playerStatus,
     });
@@ -67,23 +80,31 @@ export const mockTeams: Team[] = Array.from({ length: 12 }, (_, i) => {
   let teamStatus: TournamentStatus;
   if (i === 0) {
     teamStatus = "Champions";
-  } else if (i >= 9) { 
+  } else if (i >= 9) {
     teamStatus = "Eliminated";
   } else {
     teamStatus = getRandomBaseStatus();
   }
-  
+
+  const matchesPlayed = Math.floor(Math.random() * 8) + 5; // 5 to 12 matches
+  const matchesWon = Math.floor(Math.random() * (teamStatus === "Eliminated" || teamStatus === "Not Verified" ? Math.floor(matchesPlayed * 0.4) : Math.floor(matchesPlayed * 0.8))) + (teamStatus === "Champions" ? Math.floor(matchesPlayed*0.7) : 1);
+  const matchesLost = matchesPlayed - matchesWon;
+
   return {
     id: `team${i + 1}`,
     name: `Team Element ${i + 1}`,
     logoUrl: `https://placehold.co/100x100.png?text=E${i+1}`,
     status: teamStatus,
     players: createTeamPlayers(i, teamStatus),
-    matchesPlayed: Math.floor(Math.random() * 8) + 2,
-    matchesWon: Math.floor(Math.random() * (teamStatus === "Eliminated" || teamStatus === "Not Verified" ? 3 : 5)) + 1,
-    matchesLost: Math.floor(Math.random() * 3),
-    points: Math.floor(Math.random() * (teamStatus === "Eliminated" || teamStatus === "Not Verified" ? 5 : 15)) + (teamStatus === "Champions" ? 15 : 3),
+    matchesPlayed: matchesPlayed,
+    matchesWon: matchesWon,
+    matchesLost: matchesLost,
+    points: matchesWon * 3, // Example point calculation
     mostPlayedHeroes: generateTeamSignatureHeroes(),
+    averageMatchDurationMinutes: Math.floor(Math.random() * 20) + 25, // 25-45 mins
+    averageKillsPerGame: parseFloat(((Math.random() * 15) + 15).toFixed(1)), // 15.0 - 30.0
+    averageDeathsPerGame: parseFloat(((Math.random() * 15) + 10).toFixed(1)), // 10.0 - 25.0
+    averageAssistsPerGame: parseFloat(((Math.random() * 30) + 40).toFixed(1)), // 40.0 - 70.0
   };
 });
 
@@ -107,7 +128,7 @@ export const generateMockGroups = (teams: Team[]): Group[] => {
   for (let i = 0; i < numGroups; i++) {
     groups.push({
       id: `group${i + 1}`,
-      name: `Group ${String.fromCharCode(65 + i)}`, 
+      name: `Group ${String.fromCharCode(65 + i)}`,
       teams: teams.slice(i * 4, (i + 1) * 4),
     });
   }
@@ -116,7 +137,7 @@ export const generateMockGroups = (teams: Team[]): Group[] => {
 
 const getRandomPlayerAndTeam = (): { player: Player | undefined; team: Team | undefined } => {
   if (mockTeams.length === 0) return { player: undefined, team: undefined };
-  
+
   const availableTeams = mockTeams.filter(t => t.players && t.players.length > 0);
   if (availableTeams.length === 0) return {player: undefined, team: undefined};
 
@@ -131,7 +152,7 @@ const getRandomPlayerAndTeam = (): { player: Player | undefined; team: Team | un
 
 const getRandomMatchContext = (): string => {
   const completedMatches = mockMatches.filter(m => m.status === 'completed');
-  if (completedMatches.length === 0) return "An epic clash"; 
+  if (completedMatches.length === 0) return "An epic clash";
   const matchIndex = Math.floor(Math.random() * completedMatches.length);
   const match = completedMatches[matchIndex];
   return match ? `${match.teamA.name} vs ${match.teamB.name}` : "An epic clash";
@@ -156,16 +177,27 @@ export const generateMockSingleMatchRecords = (): StatItem[] => {
     const { player, team } = getRandomPlayerAndTeam();
     const rawValue = Math.floor(Math.random() * (cat.max - cat.min + 1)) + cat.min;
     const displayValue = cat.formatter ? cat.formatter(rawValue) : rawValue;
-    
+
     if (player && team) {
       records.push({
-        id: `smr-${index}-${player.id || `randPlayer${index}`}`, 
+        id: `smr-${index}-${player.id || `randPlayer${index}`}`,
         category: cat.name,
-        playerName: player.nickname, 
-        teamName: team.name, 
-        playerId: player.id, 
-        teamId: team.id, 
+        playerName: player.nickname,
+        teamName: team.name,
+        playerId: player.id,
+        teamId: team.id,
         value: `${displayValue}${cat.unit}`,
+        heroName: defaultHeroNames[Math.floor(Math.random() * defaultHeroNames.length)],
+        matchContext: getRandomMatchContext(),
+        icon: cat.icon,
+      });
+    } else {
+       records.push({
+        id: `smr-${index}-fallback`,
+        category: cat.name,
+        playerName: 'N/A Player',
+        teamName: 'N/A Team',
+        value: `${cat.formatter ? cat.formatter(cat.min) : cat.min}${cat.unit}`,
         heroName: defaultHeroNames[Math.floor(Math.random() * defaultHeroNames.length)],
         matchContext: getRandomMatchContext(),
         icon: cat.icon,
@@ -178,17 +210,17 @@ export const generateMockSingleMatchRecords = (): StatItem[] => {
 export const generateMockPlayerAverageLeaders = (): StatItem[] => {
   const categories = [
     { name: "Avg. Kills", icon: Swords, unit: "", min: 8, max: 15, decimals: 1 },
-    { name: "Avg. Assists", icon: HeartHandshake, unit: "", min: 10, max: 20, decimals: 1 },
+    { name: "Avg. Assists", icon: Handshake, unit: "", min: 10, max: 20, decimals: 1 },
     { name: "Avg. GPM", icon: TrendingUp, unit: " GPM", min: 500, max: 700, decimals: 0 },
     { name: "Avg. XPM", icon: Zap, unit: " XPM", min: 550, max: 750, decimals: 0 },
     { name: "Avg. Wards Placed", icon: Eye, unit: " Wards", min: 10, max: 20, decimals: 1 },
     { name: "Avg. Hero Damage", icon: Bomb, unit: " DMG", min: 25000, max: 45000, decimals: 0, formatter: (val: number) => (val/1000).toFixed(1) + 'k' },
     { name: "Avg. Damage Taken", icon: ShieldAlert, unit: " DMG Taken", min: 20000, max: 35000, decimals: 0, formatter: (val: number) => (val/1000).toFixed(1) + 'k' },
-    { name: "Avg. Deaths", icon: TrendingDown, unit: " Deaths", min: 3, max: 7, decimals: 1 }, 
+    { name: "Avg. Deaths", icon: TrendingDown, unit: " Deaths", min: 3, max: 7, decimals: 1 },
     { name: "Avg. Net Worth", icon: DollarSign, unit: "", min: 18000, max: 28000, decimals: 0, formatter: (val: number) => (val/1000).toFixed(1) + 'k' },
     { name: "Avg. Fantasy Score", icon: Award, unit: " Points", min: 50, max: 120, decimals: 1 },
   ];
-  
+
   const uniqueLeaders: StatItem[] = [];
   const assignedPlayerIdsForCategories = new Set<string>();
   const availablePlayers = mockTeams.flatMap(team => team.players).filter(p => p && p.id);
@@ -197,12 +229,12 @@ export const generateMockPlayerAverageLeaders = (): StatItem[] => {
   categories.forEach((cat, index) => {
     let selectedPlayer: Player | undefined;
     let selectedTeam: Team | undefined;
-    
-    const unassignedPlayers = availablePlayers.filter(p => !assignedPlayerIdsForCategories.has(p.id));
+
+    const unassignedPlayers = availablePlayers.filter(p => p.id && !assignedPlayerIdsForCategories.has(p.id));
 
     if (unassignedPlayers.length > 0) {
       selectedPlayer = unassignedPlayers[Math.floor(Math.random() * unassignedPlayers.length)];
-    } else if (availablePlayers.length > 0) { 
+    } else if (availablePlayers.length > 0) {
       selectedPlayer = availablePlayers[Math.floor(Math.random() * availablePlayers.length)];
     }
 
@@ -212,24 +244,24 @@ export const generateMockPlayerAverageLeaders = (): StatItem[] => {
       selectedTeam = mockTeams.find(team => team.players.some(p => p.id === selectedPlayer?.id));
     }
 
-    if (!selectedPlayer || !selectedTeam) { 
+    if (!selectedPlayer || !selectedTeam) {
         const { player: randomPlayer, team: randomTeam } = getRandomPlayerAndTeam();
         selectedPlayer = randomPlayer;
         selectedTeam = randomTeam;
         if (selectedPlayer?.id) assignedPlayerIdsForCategories.add(selectedPlayer.id);
     }
-    
+
     if (selectedPlayer && selectedTeam) {
       const rawValue = (Math.random() * (cat.max - cat.min)) + cat.min;
       const displayValue = cat.formatter ? cat.formatter(rawValue) : rawValue.toFixed(cat.decimals);
 
       uniqueLeaders.push({
-        id: `pal-${index}-${selectedPlayer.id || `randPlayerLead${index}`}`, 
+        id: `pal-${index}-${selectedPlayer.id || `randPlayerLead${index}`}`,
         category: cat.name,
-        playerName: selectedPlayer.nickname, 
-        teamName: selectedTeam.name, 
-        playerId: selectedPlayer.id, 
-        teamId: selectedTeam.id, 
+        playerName: selectedPlayer.nickname,
+        teamName: selectedTeam.name,
+        playerId: selectedPlayer.id,
+        teamId: selectedTeam.id,
         value: `${displayValue}${cat.unit}`,
         icon: cat.icon,
       });
@@ -237,8 +269,8 @@ export const generateMockPlayerAverageLeaders = (): StatItem[] => {
         uniqueLeaders.push({
             id: `pal-${index}-fallback`,
             category: cat.name,
-            playerName: 'Random Player',
-            teamName: 'Random Team',
+            playerName: 'N/A Player',
+            teamName: 'N/A Team',
             value: `${cat.formatter ? cat.formatter(cat.min) : cat.min.toFixed(cat.decimals)}${cat.unit}`,
             icon: cat.icon
         });
@@ -281,4 +313,3 @@ export const generateMockTournamentHighlights = (): TournamentHighlightRecord[] 
   ];
   return highlights;
 };
-

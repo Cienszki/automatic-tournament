@@ -35,6 +35,10 @@ export type Team = {
   matchesLost?: number;
   points?: number;
   mostPlayedHeroes?: HeroPlayStats[];
+  averageMatchDurationMinutes?: number;
+  averageKillsPerGame?: number;
+  averageDeathsPerGame?: number;
+  averageAssistsPerGame?: number;
 };
 
 export type Match = {
@@ -75,7 +79,7 @@ export type TeamRegistrationFormData = {
   rulesAgreed: boolean;
 };
 
-// For server action state (remains in definitions.ts as it's used by actions and page)
+// For server action state
 export type RegistrationFormState = {
   message: string;
   errors?: z.ZodIssue[];
@@ -89,8 +93,8 @@ export type StatItem = {
   category: string;
   playerName?: string;
   teamName?: string;
-  playerId?: string; 
-  teamId?: string;   
+  playerId?: string;
+  teamId?: string;
   value: string | number;
   heroName?: string;
   matchContext?: string;
@@ -104,4 +108,3 @@ export type TournamentHighlightRecord = {
   details?: string;
   icon: LucideIcon;
 };
-

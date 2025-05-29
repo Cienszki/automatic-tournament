@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import Image from "next/image";
 import Link from "next/link";
-import { Users, ListChecks, ExternalLink, BarChart3, Medal, Swords, UserCheck, UserX, ShieldQuestion, PlayCircle, Sigma, Trophy, Sparkles, Anchor, Sword, Zap as ZapIcon, Ghost, Ban, MountainSnow, Flame, Snowflake, Axe as AxeIcon, Target, Moon, Copy as CopyIcon, ShieldOff, Waves, ShieldAlert, Trees, Bone, CloudLightning, UserCircle2 } from "lucide-react";
+import { Users, ListChecks, ExternalLink, BarChart3, Medal, Swords, UserCheck, UserX, ShieldQuestion, PlayCircle, Sigma, Trophy, Sparkles, Anchor, Sword, Zap as ZapIcon, Ghost, Ban, MountainSnow, Flame, Snowflake, Axe as AxeIcon, Target, Moon, Copy as CopyIcon, ShieldOff, Waves, ShieldAlert, Trees, Bone, CloudLightning, UserCircle2, Clock, Percent, Skull, Ratio, Handshake, Award } from "lucide-react";
 import type { Icon as LucideIconType } from "lucide-react";
 import { notFound } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -84,6 +84,25 @@ const podiumColors = [
   { border: 'border-chart-3', text: 'text-chart-3', bg: 'bg-chart-3/10' }, // 3rd place (e.g., gold/yellow)
 ];
 
+interface TeamStatCardItemProps {
+  icon: LucideIconType;
+  label: string;
+  value: string | number;
+  valueClassName?: string;
+}
+
+function TeamStatCardItem({ icon: StatIcon, label, value, valueClassName }: TeamStatCardItemProps) {
+  return (
+    <Card className="bg-muted/30 shadow-sm hover:shadow-md transition-shadow">
+      <CardContent className="p-4 flex flex-col items-center text-center">
+        <StatIcon className="h-8 w-8 text-accent mb-2" />
+        <p className="text-sm text-muted-foreground font-medium">{label}</p>
+        <p className={cn("text-2xl font-bold text-primary", valueClassName)}>{value}</p>
+      </CardContent>
+    </Card>
+  );
+}
+
 
 export default async function TeamPage({ params }: TeamPageParams) {
   const { team, teamMatches } = await getTeamData(params.teamId);
@@ -91,9 +110,17 @@ export default async function TeamPage({ params }: TeamPageParams) {
   if (!team) {
     notFound();
   }
-  
+
   const totalMMR = team.players.reduce((sum, player) => sum + player.mmr, 0);
   const sortedHeroes = team.mostPlayedHeroes ? [...team.mostPlayedHeroes].sort((a, b) => b.gamesPlayed - a.gamesPlayed).slice(0, 3) : [];
+
+  const winRate = team.matchesPlayed && team.matchesPlayed > 0
+    ? ((team.matchesWon || 0) / team.matchesPlayed * 100).toFixed(1) + "%"
+    : "N/A";
+
+  const kdRatio = team.averageKillsPerGame && team.averageDeathsPerGame && team.averageDeathsPerGame > 0
+    ? (team.averageKillsPerGame / team.averageDeathsPerGame).toFixed(2)
+    : "N/A";
 
   return (
     <div className="space-y-8">
@@ -150,22 +177,21 @@ export default async function TeamPage({ params }: TeamPageParams) {
             <CardTitle className="text-2xl font-semibold text-primary flex items-center">
               <Trophy className="h-6 w-6 mr-2" /> {team.name}'s Top Heroes
             </CardTitle>
-            <CardDescription>Top {sortedHeroes.length} most played heroes by the team.</CardDescription>
+            <CardDescription>Top {Math.min(sortedHeroes.length, 3)} most played heroes by the team.</CardDescription>
           </CardHeader>
           <CardContent className="p-6 pt-2">
             {sortedHeroes.length > 0 ? (
               <div className="flex flex-col md:flex-row justify-around items-end gap-4 md:gap-2 py-4 min-h-[250px] md:min-h-[300px]">
                 {/* Podium Order: 2nd, 1st, 3rd for visual layout */}
                 {[sortedHeroes[1], sortedHeroes[0], sortedHeroes[2]].map((heroStat, index) => {
-                  if (!heroStat) return <div key={`placeholder-${index}`} className="w-1/3 md:w-1/4"></div>; // Placeholder for layout if less than 3 heroes
+                  if (!heroStat) return <div key={`placeholder-${index}`} className="w-1/3 md:w-1/4"></div>; 
 
-                  // Determine podium position for correct styling (0=2nd, 1=1st, 2=3rd)
-                  const podiumOrderIndex = index === 0 ? 1 : (index === 1 ? 0 : 2); // maps visual index to sortedHeroes original index for color
+                  const podiumOrderIndex = index === 0 ? 1 : (index === 1 ? 0 : 2); 
                   const podiumStyle = podiumColors[podiumOrderIndex];
                   const heightClasses = [
-                    "h-[90%] md:h-[280px]", // 1st place (center)
-                    "h-[70%] md:h-[220px]", // 2nd place (left)
-                    "h-[50%] md:h-[160px]", // 3rd place (right)
+                    "h-[90%] md:h-[280px]", 
+                    "h-[70%] md:h-[220px]", 
+                    "h-[50%] md:h-[160px]", 
                   ];
                   const currentHeight = heightClasses[podiumOrderIndex];
                   const HeroIcon = heroIconMap[heroStat.name] || UserCircle2;
@@ -193,14 +219,27 @@ export default async function TeamPage({ params }: TeamPageParams) {
             ) : (
               <p className="text-muted-foreground text-center">No hero play stats available for this team yet.</p>
             )}
-             {sortedHeroes.length < 3 && sortedHeroes.length > 0 && (
-                <div className="flex justify-around items-end gap-4 md:gap-2 py-4 min-h-[250px] md:min-h-[300px] md:hidden">
-                    {/* Fallback for less than 3 heroes on small screens if needed or adjust above logic */}
-                </div>
-            )}
           </CardContent>
         </Card>
       )}
+
+      <Card className="shadow-xl">
+        <CardHeader>
+          <CardTitle className="text-2xl font-semibold text-primary flex items-center">
+            <BarChart3 className="h-6 w-6 mr-2" /> Overall Team Performance
+          </CardTitle>
+          <CardDescription>Key statistics for {team.name} throughout the tournament.</CardDescription>
+        </CardHeader>
+        <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-6">
+          <TeamStatCardItem icon={Award} label="Win Rate" value={winRate} />
+          <TeamStatCardItem icon={Clock} label="Avg. Match Duration" value={`${team.averageMatchDurationMinutes ?? 'N/A'} min`} />
+          <TeamStatCardItem icon={Swords} label="Avg. Kills / Game" value={team.averageKillsPerGame ?? 'N/A'} />
+          <TeamStatCardItem icon={Skull} label="Avg. Deaths / Game" value={team.averageDeathsPerGame ?? 'N/A'} />
+          <TeamStatCardItem icon={Ratio} label="K/D Ratio" value={kdRatio} />
+          <TeamStatCardItem icon={Handshake} label="Avg. Assists / Game" value={team.averageAssistsPerGame ?? 'N/A'} />
+        </CardContent>
+      </Card>
+
 
       <Card className="shadow-xl">
         <CardHeader>
@@ -309,4 +348,3 @@ export async function generateStaticParams() {
     teamId: team.id,
   }));
 }
-
