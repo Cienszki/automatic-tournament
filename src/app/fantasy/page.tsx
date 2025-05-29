@@ -2,6 +2,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link"; // Added Link import
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
@@ -10,10 +11,10 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { ScrollArea } from "@/components/ui/scroll-area"; // Added ScrollArea import
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Loader2, Crown, Info, UserCircle, BarChart2, Swords, Sparkles, Shield as ShieldIconLucide, HandHelping, Eye as EyeIconLucide } from "lucide-react";
 import type { Player, PlayerRole, FantasyLeagueParticipant, FantasyLineup, Team } from "@/lib/definitions";
-import { PlayerRoles } from "@/lib/definitions"; // Correct import for PlayerRoles
+import { PlayerRoles } from "@/lib/definitions";
 import { mockAllTournamentPlayersFlat, mockFantasyLeagueParticipants, FANTASY_BUDGET_MMR, mockTeams } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 
@@ -385,22 +386,44 @@ export default function FantasyLeaguePage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {topPlayersForRole.map((player, index) => (
-                        <TableRow key={player.id}>
-                          <TableCell className="font-medium">{index + 1}</TableCell>
-                          <TableCell>
-                            <div className="flex items-center space-x-2">
-                              <Avatar className="h-6 w-6">
-                                <AvatarImage src={player.profileScreenshotUrl || `https://placehold.co/24x24.png?text=${player.nickname.charAt(0)}`} alt={player.nickname} />
-                                <AvatarFallback>{player.nickname.substring(0,1)}</AvatarFallback>
-                              </Avatar>
-                              <span className="text-sm font-medium text-foreground truncate" title={player.nickname}>{player.nickname}</span>
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-xs text-muted-foreground truncate" title={getPlayerTeamName(player.id)}>{getPlayerTeamName(player.id)}</TableCell>
-                          <TableCell className="text-right font-semibold text-primary">{player.fantasyPointsEarned?.toLocaleString() || 0}</TableCell>
-                        </TableRow>
-                      ))}
+                      {topPlayersForRole.map((player, index) => {
+                        const playerIdParts = player.id.split('-t');
+                        const basePlayerId = playerIdParts[0];
+                        const teamIdSuffix = playerIdParts[1];
+                        const teamIdForLink = teamIdSuffix ? `team${teamIdSuffix}` : '';
+                        const teamName = getPlayerTeamName(player.id);
+
+                        return (
+                          <TableRow key={player.id}>
+                            <TableCell className="font-medium">{index + 1}</TableCell>
+                            <TableCell>
+                              <div className="flex items-center space-x-2">
+                                <Avatar className="h-6 w-6">
+                                  <AvatarImage src={player.profileScreenshotUrl || `https://placehold.co/24x24.png?text=${player.nickname.charAt(0)}`} alt={player.nickname} />
+                                  <AvatarFallback>{player.nickname.substring(0,1)}</AvatarFallback>
+                                </Avatar>
+                                {teamIdForLink && basePlayerId ? (
+                                  <Link href={`/teams/${teamIdForLink}/players/${basePlayerId}`} className="text-sm font-medium text-primary hover:underline truncate" title={player.nickname}>
+                                    {player.nickname}
+                                  </Link>
+                                ) : (
+                                  <span className="text-sm font-medium text-foreground truncate" title={player.nickname}>{player.nickname}</span>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-xs text-muted-foreground truncate" title={teamName}>
+                              {teamIdForLink ? (
+                                <Link href={`/teams/${teamIdForLink}`} className="hover:text-accent hover:underline">
+                                  {teamName}
+                                </Link>
+                              ) : (
+                                teamName
+                              )}
+                            </TableCell>
+                            <TableCell className="text-right font-semibold text-primary">{player.fantasyPointsEarned?.toLocaleString() || 0}</TableCell>
+                          </TableRow>
+                        );
+                      })}
                     </TableBody>
                   </Table>
                   )}
@@ -418,5 +441,3 @@ export default function FantasyLeaguePage() {
     </div>
   );
 }
-
-    
