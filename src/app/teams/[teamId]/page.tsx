@@ -104,7 +104,7 @@ export default async function TeamPage({ params }: TeamPageParams) {
   ];
   
   const avgMatchDurationMinutes = team.averageMatchDurationMinutes || 0;
-  const displayMinutes = avgMatchDurationMinutes % 60; // For hand position
+  const displayMinutes = avgMatchDurationMinutes % 60; 
   const minuteHandAngle = (displayMinutes / 60) * 360;
 
 
@@ -139,7 +139,7 @@ export default async function TeamPage({ params }: TeamPageParams) {
         </CardHeader>
         <CardContent className="p-6 md:p-8 grid md:grid-cols-3 gap-6">
           <div className="md:col-span-1 space-y-4">
-             <InfoItem icon={Medal} label="Points" value={team.points ?? 0} />
+             <InfoItem icon={Award} label="Avg. Fantasy Points" value={team.averageFantasyPoints?.toFixed(1) ?? 'N/A'} />
              <InfoItem icon={ListChecks} label="Matches Played" value={team.matchesPlayed ?? 0} />
              <InfoItem icon={BarChart3} label="Wins / Losses" value={`${team.matchesWon ?? 0}W / ${team.matchesLost ?? 0}L`} />
              <InfoItem icon={Sigma} label="Total MMR" value={totalMMR.toLocaleString()} />
@@ -211,7 +211,7 @@ export default async function TeamPage({ params }: TeamPageParams) {
             <CardTitle className="text-xl text-primary">Avg. Match Duration</CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col items-center justify-center">
-            <div className="relative w-40 h-40 md:w-48 md:h-48 mb-4"> {/* Increased size and margin */}
+            <div className="relative w-40 h-40 md:w-48 md:h-48 mb-4">
               <svg viewBox="0 0 100 100" className="w-full h-full">
                 <circle cx="50" cy="50" r="45" stroke="hsl(var(--border))" strokeWidth="3" fill="hsl(var(--card))" />
                 {Array.from({ length: 12 }).map((_, i) => (
@@ -368,3 +368,4 @@ export async function generateStaticParams() {
     
 
     
+
