@@ -249,9 +249,9 @@ export const generateMockSingleMatchRecords = (): CategoryDisplayStats[] => {
     { id: 'smr-assists', name: "Most Assists", icon: HandshakeIcon, unit: "" , min: 20, max: 40, sort: 'desc', field: 'assists'},
     { id: 'smr-gpm', name: "Highest GPM", icon: Coins, unit: "", min: 700, max: 1100, sort: 'desc', field: 'gpm' },
     { id: 'smr-xpm', name: "Highest XPM", icon: Zap, unit: "", min: 750, max: 1200, sort: 'desc', field: 'xpm' },
-    { id: 'smr-wards', name: "Most Wards Placed", icon: Eye, unit: "", min: 25, max: 50, sort: 'desc', field: 'fantasyPoints'  },
+    { id: 'smr-wards', name: "Most Wards Placed", icon: Eye, unit: "", min: 25, max: 50, sort: 'desc', field: 'fantasyPoints'  }, // Using fantasyPoints field for mock, real data needed for wards
     { id: 'smr-hero-dmg', name: "Most Hero Damage", icon: Bomb, unit: "", min: 50000, max: 100000, sort: 'desc', field: 'heroDamage', formatter: (val: number) => (val/1000).toFixed(1) + 'k' },
-    { id: 'smr-dmg-taken', name: "Most Damage Taken", icon: ShieldAlert, unit: "", min: 40000, max: 80000, sort: 'desc', field: 'netWorth' , formatter: (val: number) => (val/1000).toFixed(1) + 'k' },
+    { id: 'smr-dmg-taken', name: "Most Damage Taken", icon: ShieldAlert, unit: "", min: 40000, max: 80000, sort: 'desc', field: 'netWorth' , formatter: (val: number) => (val/1000).toFixed(1) + 'k' }, // Using netWorth for mock
     { id: 'smr-deaths', name: "Most Deaths", icon: Skull, unit: "", min: 10, max: 20, sort: 'desc', field: 'deaths' }, 
     { id: 'smr-networth', name: "Highest Net Worth", icon: DollarSign, unit: "", min: 30000, max: 60000, sort: 'desc', field: 'netWorth', formatter: (val: number) => (val/1000).toFixed(1) + 'k' },
     { id: 'smr-fantasy', name: "Best Fantasy Score", icon: Award, unit: "", min: 100, max: 250, sort: 'desc', field: 'fantasyPoints' },
@@ -266,6 +266,7 @@ export const generateMockSingleMatchRecords = (): CategoryDisplayStats[] => {
       let uniquePerformanceFound = false;
       let perfData: PlayerPerformanceInMatch | undefined;
       let matchData: Match | undefined;
+      let opponentTeam: Team | undefined;
 
       while(attempts < 20 && !uniquePerformanceFound) {
         matchData = getRandomCompletedMatchWithPerformances();
@@ -290,6 +291,7 @@ export const generateMockSingleMatchRecords = (): CategoryDisplayStats[] => {
 
         if (!uniquePlayerMatchCombos.has(comboKey)) {
           perfData = potentialPerf;
+          opponentTeam = matchData.teamA.id === perfData.teamId ? matchData.teamB : matchData.teamA;
           uniquePlayerMatchCombos.add(comboKey);
           uniquePerformanceFound = true;
         }
@@ -300,11 +302,12 @@ export const generateMockSingleMatchRecords = (): CategoryDisplayStats[] => {
          matchData = getRandomCompletedMatchWithPerformances();
          if (matchData && matchData.performances && matchData.performances.length > 0) {
             perfData = matchData.performances[Math.floor(Math.random() * matchData.performances.length)];
+            opponentTeam = matchData.teamA.id === perfData?.teamId ? matchData.teamB : matchData.teamA;
          }
       }
 
 
-      if (perfData && matchData) {
+      if (perfData && matchData && opponentTeam) {
         const basePlayerId = perfData.playerId.split('-t')[0];
         const playerDetails = mockPlayers.find(p => p.id === basePlayerId);
         const teamDetails = mockTeams.find(t => t.id === perfData?.teamId);
@@ -320,7 +323,7 @@ export const generateMockSingleMatchRecords = (): CategoryDisplayStats[] => {
           teamId: teamDetails?.id,
           value: `${displayValue}${cat.unit}`,
           heroName: perfData.hero,
-          matchContext: `${matchData.teamA.name} vs ${matchData.teamB.name}`,
+          matchContext: `vs ${opponentTeam.name}`,
           openDotaMatchUrl: matchData.openDotaMatchUrl,
         });
       } else {
@@ -330,7 +333,7 @@ export const generateMockSingleMatchRecords = (): CategoryDisplayStats[] => {
           teamName: `Team ${i+1}`,
           value: cat.formatter ? cat.formatter(cat.min) : cat.min,
           heroName: defaultHeroNames[Math.floor(Math.random() * defaultHeroNames.length)],
-          matchContext: "N/A vs N/A",
+          matchContext: "vs N/A",
         });
       }
     }
@@ -356,8 +359,8 @@ export const generateMockPlayerAverageLeaders = (): CategoryDisplayStats[] => {
   const categoriesMeta = [
     { id: 'avg-kills', name: "Avg. Kills", icon: Swords, unit: "", min: 8, max: 15, decimals: 1, sort: 'desc', teamField: 'averageKillsPerGame' },
     { id: 'avg-assists', name: "Avg. Assists", icon: HandshakeIcon, unit: "", min: 10, max: 20, decimals: 1, sort: 'desc', teamField: 'averageAssistsPerGame' },
-    { id: 'avg-gpm', name: "Avg. GPM", icon: Coins, unit: "", min: 500, max: 700, decimals: 0, sort: 'desc', teamField: 'averageFantasyPoints'  },
-    { id: 'avg-xpm', name: "Avg. XPM", icon: Zap, unit: "", min: 550, max: 750, decimals: 0, sort: 'desc', teamField: 'averageFantasyPoints'  },
+    { id: 'avg-gpm', name: "Avg. GPM", icon: Coins, unit: "", min: 500, max: 700, decimals: 0, sort: 'desc', teamField: 'averageFantasyPoints'  }, // Using fantasy points for GPM mock data
+    { id: 'avg-xpm', name: "Avg. XPM", icon: Zap, unit: "", min: 550, max: 750, decimals: 0, sort: 'desc', teamField: 'averageFantasyPoints'  }, // Using fantasy points for XPM mock data
     { id: 'avg-wards', name: "Avg. Wards Placed", icon: Eye, unit: "", min: 10, max: 20, decimals: 1, sort: 'desc' }, 
     { id: 'avg-hero-dmg', name: "Avg. Hero Damage", icon: Bomb, unit: "", min: 25000, max: 45000, decimals: 0, sort: 'desc', formatter: (val: number) => (val/1000).toFixed(1) + 'k' },
     { id: 'avg-dmg-taken', name: "Avg. Damage Taken", icon: ShieldAlert, unit: "", min: 20000, max: 35000, decimals: 0, sort: 'desc', formatter: (val: number) => (val/1000).toFixed(1) + 'k' },
@@ -475,3 +478,6 @@ export const generateMockTournamentHighlights = (): TournamentHighlightRecord[] 
   ];
   return highlights;
 };
+
+
+    
