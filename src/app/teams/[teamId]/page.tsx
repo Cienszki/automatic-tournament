@@ -205,12 +205,12 @@ export default async function TeamPage({ params }: TeamPageParams) {
           </CardContent>
         </Card>
 
-        <Card className="shadow-xl text-center hover:bg-muted/10 transition-colors duration-200">
+        <Card className="shadow-xl text-center hover:bg-muted/10 transition-colors duration-200 flex flex-col">
           <CardHeader className="flex flex-row items-center justify-center space-x-3 pb-2">
             <Clock className="h-6 w-6 text-accent" />
             <CardTitle className="text-xl text-primary">Avg. Match Duration</CardTitle>
           </CardHeader>
-          <CardContent className="flex flex-col items-center justify-center">
+          <CardContent className="flex flex-col items-center justify-center flex-grow">
             <div className="relative w-40 h-40 md:w-48 md:h-48 mb-4">
               <svg viewBox="0 0 100 100" className="w-full h-full">
                 <circle cx="50" cy="50" r="45" stroke="hsl(var(--border))" strokeWidth="3" fill="hsl(var(--card))" />
@@ -244,13 +244,20 @@ export default async function TeamPage({ params }: TeamPageParams) {
         </Card>
 
         {performanceStats.map((stat) => (
-          <Card key={stat.label} className="shadow-xl text-center hover:bg-muted/10 transition-colors duration-200">
+          <Card key={stat.label} className="shadow-xl text-center hover:bg-muted/10 transition-colors duration-200 flex flex-col">
             <CardHeader className="flex flex-row items-center justify-center space-x-3 pb-2">
               <stat.icon className="h-6 w-6 text-accent" />
               <CardTitle className="text-xl text-primary">{stat.label}</CardTitle>
             </CardHeader>
-            <CardContent>
-              <p className="text-4xl font-bold text-foreground">{stat.value}</p>
+            <CardContent className="flex flex-col items-center justify-center flex-grow">
+              {(stat.label === "Avg. Kills / Game" || stat.label === "Avg. Deaths / Game") ? (
+                <>
+                  <stat.icon className="h-12 w-12 md:h-16 md:w-16 text-primary mb-3 mt-2" />
+                  <p className="text-3xl font-bold text-foreground">{stat.value}</p>
+                </>
+              ) : (
+                <p className="text-4xl font-bold text-foreground pt-4">{stat.value}</p>
+              )}
             </CardContent>
           </Card>
         ))}
@@ -368,5 +375,6 @@ export async function generateStaticParams() {
     
 
     
+
 
 
