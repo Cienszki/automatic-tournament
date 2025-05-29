@@ -34,8 +34,6 @@ export function StatsPageClient({ data }: StatsPageClientProps) {
     const topEntry = categoryData.rankings[0];
   
     return (
-      <>
-        {/* View for when accordion is CLOSED */}
         <div className={cn(
           "group-data-[state=open]:hidden grid items-center w-full text-sm py-3 px-4",
           "grid-cols-5 md:grid-cols-12" 
@@ -83,7 +81,7 @@ export function StatsPageClient({ data }: StatsPageClientProps) {
                 <>
                   <div className={cn(
                       "truncate flex items-center",
-                      "hidden md:block md:col-span-2" // Increased span for Hero Name
+                      "hidden md:block md:col-span-2" 
                     )} title={topEntry.heroName}>
                     {(heroIconMap[topEntry.heroName] || heroIconMap['Default']) && 
                       React.createElement(heroIconMap[topEntry.heroName] || heroIconMap['Default'], { 
@@ -94,7 +92,7 @@ export function StatsPageClient({ data }: StatsPageClientProps) {
                     <span style={{color: heroColorMap[topEntry.heroName] || FALLBACK_HERO_COLOR}}>{topEntry.heroName}</span>
                   </div> 
                   <div className={cn(
-                      "hidden md:block md:col-span-1 text-xs text-muted-foreground truncate", // Decreased span for Match Context
+                      "hidden md:block md:col-span-1 text-xs text-muted-foreground truncate", 
                       "overflow-hidden text-ellipsis whitespace-nowrap"
                   )} title={topEntry.matchContext}>
                     {topEntry.openDotaMatchUrl ? (
@@ -112,7 +110,6 @@ export function StatsPageClient({ data }: StatsPageClientProps) {
             <div className="col-span-full text-muted-foreground italic text-center py-2">No entries for this category.</div>
           )}
         </div>
-      </>
     );
   };
 
@@ -133,14 +130,15 @@ export function StatsPageClient({ data }: StatsPageClientProps) {
       <Table className="mt-2 mb-4 rounded-md">
         <TableHeader>
           <TableRow>
-            {headerCells}
+            {headerCells.filter(React.isValidElement)}
           </TableRow>
         </TableHeader>
         <TableBody>
           {details.map((detail) => {
+            const heroColorHex = (isSingleMatchCategory && detail.heroName ? (heroColorMap[detail.heroName] || FALLBACK_HERO_COLOR) : FALLBACK_HERO_COLOR);
+            const valueColor = (isSingleMatchCategory && detail.heroName && detail.value) ? heroColorHex : 'hsl(var(--primary))';
+            
             const HeroIconComponent = isSingleMatchCategory && detail.heroName ? (heroIconMap[detail.heroName] || heroIconMap['Default']) : null;
-            const heroColorHex = isSingleMatchCategory && detail.heroName ? (heroColorMap[detail.heroName] || FALLBACK_HERO_COLOR) : FALLBACK_HERO_COLOR;
-            const valueColor = isSingleMatchCategory ? heroColorHex : 'hsl(var(--primary))';
 
             const rowCells = [
               <TableCell key="rank" className="font-semibold px-3 py-2">{detail.rank}</TableCell>,
@@ -158,7 +156,7 @@ export function StatsPageClient({ data }: StatsPageClientProps) {
                   <span className="text-accent">{detail.teamName || 'N/A'}</span>
                 )}
               </TableCell>,
-              <TableCell key="value" style={{color: valueColor}} className="font-semibold px-3 py-2 w-[100px] text-center">{detail.value}</TableCell>
+              <TableCell key="value" style={{color: valueColor}} className="font-semibold px-3 py-2 text-center w-[100px]">{detail.value}</TableCell>
             ];
 
             if (isSingleMatchCategory) {
@@ -185,7 +183,7 @@ export function StatsPageClient({ data }: StatsPageClientProps) {
 
             return (
               <TableRow key={`${detail.rank}-${detail.playerName}-${detail.teamName}-${detail.value}`} className="text-sm">
-                {rowCells}
+                {rowCells.filter(React.isValidElement)}
               </TableRow>
             );
           })}
@@ -314,5 +312,3 @@ export function StatsPageClient({ data }: StatsPageClientProps) {
     </div>
   );
 }
-
-    
