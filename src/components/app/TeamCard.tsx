@@ -1,12 +1,20 @@
 
+"use client";
+
 import type { Team, PlayerRole, TournamentStatus } from "@/lib/definitions";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import Image from "next/image";
 import Link from "next/link";
-import { Sigma, Shield, Swords, Sparkles, HandHelping, Eye, ListChecks, Medal, UserX, ShieldQuestion, PlayCircle, Trophy } from "lucide-react";
+import { Sigma, Shield, Swords, Sparkles, HandHelping, Eye, ListChecks, UserX, ShieldQuestion, PlayCircle, Trophy } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface TeamCardProps {
   team: Team;
@@ -65,15 +73,14 @@ export function TeamCard({ team }: TeamCardProps) {
         />
         <div className="flex-1">
           <CardTitle className="text-2xl text-primary">{team.name}</CardTitle>
-          <div className="mt-1.5">
-            {getStatusBadge(team.status)}
-          </div>
+          {/* Status badge moved to CardContent */}
         </div>
       </CardHeader>
       <CardContent className="flex-grow px-6 py-4">
         <div className="grid md:grid-cols-2 gap-x-4 gap-y-3">
           {/* Column 1: Team Stats */}
-          <div className="space-y-1">
+          <div className="space-y-2">
+            <div className="flex justify-start mb-1.5">{getStatusBadge(team.status)}</div>
             <div className="flex items-center text-sm text-muted-foreground">
               <Sigma className="h-4 w-4 mr-2 text-primary shrink-0" />
               <span>Total MMR: {totalMMR.toLocaleString()}</span>
@@ -82,27 +89,41 @@ export function TeamCard({ team }: TeamCardProps) {
               <ListChecks className="h-4 w-4 mr-2 text-primary shrink-0" />
               <span>{team.matchesWon ?? 0} Wins / {team.matchesLost ?? 0} Losses</span>
             </div>
-            <div className="flex items-center text-sm text-muted-foreground">
-              <Medal className="h-4 w-4 mr-2 text-primary shrink-0" />
-              <span>{team.points ?? 0} Points</span>
-            </div>
           </div>
 
           {/* Column 2: Player List */}
           <div className="space-y-1">
-            <ul className="space-y-0.5 text-xs">
-              {team.players.slice(0, 5).map((player) => (
-                <li key={player.id} className="flex items-center" title={player.nickname}>
-                  {getRoleIcon(player.role)}
-                  <span className="truncate">{player.nickname}</span>
-                </li>
-              ))}
-            </ul>
+            <TooltipProvider delayDuration={100}>
+              <ul className="space-y-1 text-xs">
+                {team.players.slice(0, 5).map((player) => (
+                  <li key={player.id} className="flex items-center">
+                    {getRoleIcon(player.role)}
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Link 
+                          href={`/teams/${team.id}/players/${player.id}`} 
+                          className="truncate hover:text-primary transition-colors"
+                          title={player.nickname} // Added title attribute for full name on hover if truncated
+                        >
+                          {player.nickname}
+                        </Link>
+                      </TooltipTrigger>
+                      <TooltipContent side="top" className="text-xs p-1.5 bg-popover text-popover-foreground border-border">
+                        <p>MMR: {player.mmr}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </li>
+                ))}
+              </ul>
+            </TooltipProvider>
           </div>
         </div>
       </CardContent>
       <CardFooter className="pt-4">
-        <Button asChild className="w-full">
+        <Button 
+          asChild 
+          className="w-full hover:bg-accent hover:text-accent-foreground"
+        >
           <Link href={`/teams/${team.id}`}>View Profile</Link>
         </Button>
       </CardFooter>
