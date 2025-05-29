@@ -34,6 +34,7 @@ export function StatsPageClient({ data }: StatsPageClientProps) {
     const topEntry = categoryData.rankings[0];
   
     return (
+        // This div's content is effectively the AccordionTrigger's appearance when closed
         <div className={cn(
           "group-data-[state=open]:hidden grid items-center w-full text-sm py-3 px-4",
           "grid-cols-5 md:grid-cols-12" 
@@ -114,7 +115,7 @@ export function StatsPageClient({ data }: StatsPageClientProps) {
   };
 
   const renderRankingDetailsTable = (details: CategoryRankingDetail[], isSingleMatchCategory: boolean) => {
-    const headerCells = [
+    const headerCells: JSX.Element[] = [
       <TableHead key="rank" className="w-[60px] px-3 py-2">Rank</TableHead>,
       <TableHead key="player" className="w-[180px] px-3 py-2">Player</TableHead>,
       <TableHead key="team" className="w-[180px] px-3 py-2">Team</TableHead>,
@@ -130,7 +131,7 @@ export function StatsPageClient({ data }: StatsPageClientProps) {
       <Table className="mt-2 mb-4 rounded-md">
         <TableHeader>
           <TableRow>
-            {headerCells.filter(React.isValidElement)}
+            {headerCells}
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -140,13 +141,13 @@ export function StatsPageClient({ data }: StatsPageClientProps) {
             
             const HeroIconComponent = isSingleMatchCategory && detail.heroName ? (heroIconMap[detail.heroName] || heroIconMap['Default']) : null;
 
-            const rowCells = [
+            const rowCells: JSX.Element[] = [
               <TableCell key="rank" className="font-semibold px-3 py-2">{detail.rank}</TableCell>,
               <TableCell key="player" className="px-3 py-2 w-[180px]">
                 {detail.playerId && detail.teamId ? (
-                  <Link href={`/teams/${detail.teamId}/players/${detail.playerId}`} className="text-primary hover:underline">{detail.playerName}</Link>
+                  <Link href={`/teams/${detail.teamId}/players/${detail.playerId}`} className="text-primary font-semibold hover:underline">{detail.playerName}</Link>
                 ) : (
-                  <span className="text-primary">{detail.playerName || 'N/A'}</span>
+                  <span className="text-primary font-semibold">{detail.playerName || 'N/A'}</span>
                 )}
               </TableCell>,
               <TableCell key="team" className="px-3 py-2 w-[180px]">
@@ -183,7 +184,7 @@ export function StatsPageClient({ data }: StatsPageClientProps) {
 
             return (
               <TableRow key={`${detail.rank}-${detail.playerName}-${detail.teamName}-${detail.value}`} className="text-sm">
-                {rowCells.filter(React.isValidElement)}
+                {rowCells}
               </TableRow>
             );
           })}
@@ -312,3 +313,6 @@ export function StatsPageClient({ data }: StatsPageClientProps) {
     </div>
   );
 }
+
+
+    
