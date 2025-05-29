@@ -1,17 +1,15 @@
 
-// This page was previously marked "use client", but to export metadata,
-// it needs to be a Server Component. ShadCN Accordions can work within this setup.
 import * as React from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { generateMockSingleMatchRecords, generateMockPlayerAverageLeaders, generateMockTournamentHighlights } from "@/lib/mock-data";
+import { generateMockSingleMatchRecords, generateMockPlayerAverageLeaders, generateMockTournamentHighlights, heroColorMap, defaultHeroNames } from "@/lib/mock-data"; // Added heroColorMap
 import type { CategoryDisplayStats, CategoryRankingDetail, TournamentHighlightRecord } from "@/lib/definitions";
 import { 
-  BarChartHorizontalBig, Trophy, Zap, Swords, HeartHandshake, Coins, Eye, Bomb, ShieldAlert, DollarSign, Award,
+  BarChartHorizontalBig, Trophy, Zap, Swords, HeartHandshake as HandshakeIcon, Coins, Eye, Bomb, ShieldAlert, DollarSign, Award,
   TrendingDown, Puzzle, Anchor, Flame, Snowflake, MountainSnow, Ghost, Ban, Moon,
   Copy as CopyIconLucide, ShieldOff, Waves, Trees, Bone, CloudLightning, Sparkles, Target,
-  Axe as AxeIconLucide
+  Axe as AxeIconLucide, Clock, Activity, ShieldCheck, ChevronsUp, Timer, Skull, ListChecks, Medal, Percent, Ratio, Home
 } from "lucide-react";
 import type { Icon as LucideIconType } from "lucide-react";
 import Link from "next/link";
@@ -33,7 +31,6 @@ async function getStatsData(): Promise<{
   });
 }
 
-// Replicated heroIconMap for consistency
 const heroIconMap: Record<string, LucideIconType> = {
   'Invoker': Sparkles,
   'Pudge': Anchor,
@@ -123,9 +120,9 @@ const AccordionRowContent = ({ categoryData, isSingleMatchCategory }: { category
                     "hidden md:block md:col-span-1"
                   )} title={topEntry.heroName}>
                   {(heroIconMap[topEntry.heroName] || heroIconMap['Default']) && 
-                    React.createElement(heroIconMap[topEntry.heroName] || heroIconMap['Default'], { className: "h-4 w-4 mr-1 text-primary inline-block shrink-0" })
+                    React.createElement(heroIconMap[topEntry.heroName] || heroIconMap['Default'], { className: cn("h-4 w-4 mr-1 inline-block shrink-0", heroColorMap[topEntry.heroName] || 'text-primary') })
                   }
-                  <span className="text-primary">{topEntry.heroName}</span>
+                  <span className={cn(heroColorMap[topEntry.heroName] || 'text-primary')}>{topEntry.heroName}</span>
                 </div> 
                 <div className="hidden md:block md:col-span-2 text-xs text-muted-foreground truncate" title={topEntry.matchContext}>
                   {topEntry.openDotaMatchUrl ? (
@@ -138,8 +135,8 @@ const AccordionRowContent = ({ categoryData, isSingleMatchCategory }: { category
                 </div>
               </>
             )}
-             {!isSingleMatchCategory && ( /* Fill remaining columns for average stats to align Value */
-              <div className="hidden md:block md:col-span-2"></div>
+             {!isSingleMatchCategory && ( 
+              <div className="hidden md:block md:col-span-3"></div>
             )}
           </>
         ) : (
@@ -162,13 +159,14 @@ const StatsPage = ({ data }: { data: Awaited<ReturnType<typeof getStatsData>> })
           <TableHead className="w-[180px] px-3 py-2">Player</TableHead>
           <TableHead className="w-[180px] px-3 py-2">Team</TableHead>
           <TableHead className="w-[80px] px-3 py-2 text-primary">Value</TableHead>
-          {isSingleMatchCategory && <TableHead className="w-[150px] px-3 py-2 text-primary">Hero</TableHead>}
+          {isSingleMatchCategory && <TableHead className="w-[150px] px-3 py-2">Hero</TableHead>}
           {isSingleMatchCategory && <TableHead className="w-[250px] px-3 py-2">Match</TableHead>}
         </TableRow>
       </TableHeader>
       <TableBody>
         {details.map((detail) => {
           const HeroIconComponent = isSingleMatchCategory && detail.heroName ? (heroIconMap[detail.heroName] || heroIconMap['Default']) : null;
+          const heroColor = isSingleMatchCategory && detail.heroName ? (heroColorMap[detail.heroName] || 'text-primary') : 'text-primary';
           return (
             <TableRow key={`${detail.rank}-${detail.playerName}-${detail.teamName}-${detail.value}`} className="text-sm">
               <TableCell className="font-semibold px-3 py-2">{detail.rank}</TableCell>
@@ -190,8 +188,8 @@ const StatsPage = ({ data }: { data: Awaited<ReturnType<typeof getStatsData>> })
               {isSingleMatchCategory && (
                 <TableCell className="px-3 py-2">
                   <div className="flex items-center">
-                    {HeroIconComponent && <HeroIconComponent className="h-4 w-4 mr-1.5 text-primary shrink-0" />}
-                    <span className="text-primary">{detail.heroName}</span>
+                    {HeroIconComponent && <HeroIconComponent className={cn("h-4 w-4 mr-1.5 shrink-0", heroColor)} />}
+                    <span className={heroColor}>{detail.heroName}</span>
                   </div>
                 </TableCell>
               )}
@@ -325,5 +323,3 @@ export const metadata = {
   title: "Statistics | Tournament Tracker",
   description: "Detailed player and tournament statistics.",
 };
-
-    

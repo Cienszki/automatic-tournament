@@ -1,5 +1,5 @@
 
-import { mockPlayers, mockTeams, mockMatches, defaultHeroNames as heroNamesList } from "@/lib/mock-data";
+import { mockPlayers, mockTeams, mockMatches, defaultHeroNames as heroNamesList, heroColorMap } from "@/lib/mock-data"; // Added heroColorMap
 import type { Player, Team, Match, PlayerPerformanceInMatch } from "@/lib/definitions";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { 
   ExternalLink, BarChartHorizontalBig, Star, TrendingUp, Shield, BarChart3, 
   UserCheck, UserX, ShieldQuestion, PlayCircle, Trophy, Swords, Skull, Coins, 
-  Zap, Axe as AxeIconLucide, Target, Wallet, ListChecks, Puzzle, Handshake, Home,
+  Zap, Axe as AxeIconLucide, Target, Wallet, ListChecks, Puzzle, Handshake as HandshakeIcon, Home,
   Anchor, Flame, Snowflake, MountainSnow, Ghost, Ban, Moon,
   Copy as CopyIconLucide, ShieldOff, Waves, ShieldAlert, Trees, Bone, CloudLightning, Sparkles
 } from "lucide-react";
@@ -41,12 +41,11 @@ interface PlayerMatchHistoryItem {
   openDotaMatchUrl?: string;
 }
 
-// Replicated heroIconMap from team page for consistency
 const heroIconMap: Record<string, LucideIconType> = {
   'Invoker': Sparkles,
   'Pudge': Anchor,
-  'Juggernaut': Swords, // Assuming Swords is imported if SwordIconLucide was an alias
-  'Lion': Zap, // Assuming Zap is imported if ZapIcon was an alias
+  'Juggernaut': Swords,
+  'Lion': Zap,
   'Shadow Fiend': Ghost,
   'Anti-Mage': Ban,
   'Phantom Assassin': Swords,
@@ -63,19 +62,17 @@ const heroIconMap: Record<string, LucideIconType> = {
   'Tiny': Trees,
   'Witch Doctor': Bone,
   'Zeus': CloudLightning,
-  'Windranger': Puzzle, // Added as example
-  'Storm Spirit': Puzzle, // Added as example
-  'Faceless Void': Puzzle, // Added as example
-  'Spectre': Puzzle, // Added as example
-  'Bristleback': Puzzle, // Added as example
+  'Windranger': Puzzle,
+  'Storm Spirit': Puzzle,
+  'Faceless Void': Puzzle,
+  'Spectre': Puzzle,
+  'Bristleback': Puzzle,
   'Default': Puzzle,
 };
 
 
 async function getPlayerData(teamId: string, playerId: string): Promise<PlayerData> {
   const team = mockTeams.find(t => t.id === teamId);
-  // Player IDs in mockTeams are like "p1-t1", "p2-t1". The playerId param is "p1".
-  // We need to find the player whose base ID matches.
   const playerBaseId = playerId;
   const player = team?.players.find(p => p.id.startsWith(playerBaseId + '-'));
 
@@ -87,7 +84,6 @@ async function getPlayerData(teamId: string, playerId: string): Promise<PlayerDa
   const playerMatchHistory: PlayerMatchHistoryItem[] = [];
   mockMatches.forEach(match => {
     if (match.status === 'completed' && match.performances && (match.teamA.id === team.id || match.teamB.id === team.id)) {
-      // Match performances use player IDs like "p1-t1", so we use player.id directly
       const performance = match.performances.find(p => p.playerId === player.id);
       if (performance) {
         const opponentTeam = match.teamA.id === team.id ? match.teamB : match.teamA;
@@ -143,7 +139,7 @@ export default async function PlayerPage({ params }: PlayerPageParams) {
     xpm: Zap,
     fantasyPoints: Star,
     lastHits: AxeIconLucide,
-    denies: Handshake,
+    denies: HandshakeIcon,
     netWorth: Wallet,
     heroDamage: Target,
     towerDamage: Home,
@@ -214,13 +210,14 @@ export default async function PlayerPage({ params }: PlayerPageParams) {
               {playerMatchHistory.length > 0 ? (
                 playerMatchHistory.map(histItem => {
                   const HeroIconComponent = heroIconMap[histItem.playerPerformance.hero] || heroIconMap['Default'];
+                  const heroColor = heroColorMap[histItem.playerPerformance.hero] || 'text-primary';
                   return (
                     <Card key={histItem.matchId} className="bg-muted/20 shadow-md">
                       <CardHeader className="pb-3">
                         <div className="flex justify-between items-start">
                            <CardTitle className="text-lg flex items-center flex-wrap">
-                            {HeroIconComponent && <HeroIconComponent className="h-5 w-5 mr-1.5 text-primary shrink-0" />}
-                            <span className="font-semibold text-foreground">{histItem.playerPerformance.hero}</span>
+                            {HeroIconComponent && <HeroIconComponent className={cn("h-5 w-5 mr-1.5 shrink-0", heroColor)} />}
+                            <span className={cn("font-semibold", heroColor)}>{histItem.playerPerformance.hero}</span>
                             <span className="text-muted-foreground mx-1.5 font-normal">vs</span>
                             <Link href={`/teams/${histItem.opponentTeam.id}`} className="text-accent hover:underline">{histItem.opponentTeam.name}</Link>
                           </CardTitle>
@@ -317,13 +314,8 @@ export async function generateStaticParams() {
   const params: { teamId: string; playerId: string }[] = [];
   mockTeams.forEach(team => {
     team.players.forEach(player => {
-      // Construct player ID to match format "pX-tY"
-      params.push({ teamId: team.id, playerId: player.id.split('-')[0] }); // Use base player ID for route
+      params.push({ teamId: team.id, playerId: player.id.split('-')[0] });
     });
   });
-  // Deduplicate params in case a player base ID is associated with multiple teams in a complex scenario
-  // (though not the case with current mock data generation)
   return Array.from(new Set(params.map(p => JSON.stringify(p)))).map(s => JSON.parse(s));
 }
-
-    
