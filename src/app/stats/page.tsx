@@ -27,7 +27,7 @@ const AccordionRowContent = ({ categoryData, isSingleMatchCategory }: { category
     <>
       {/* View for when accordion is OPEN */}
       <div className="hidden group-data-[state=open]:flex group-data-[state=open]:flex-col group-data-[state=open]:items-center group-data-[state=open]:justify-center w-full text-lg py-4 px-4">
-        <categoryData.icon className="h-6 w-6 mr-0 mb-1 text-primary" />
+        <categoryData.icon className="h-6 w-6 mr-0 mb-1 text-accent" /> {/* Changed text-primary to text-accent */}
         <span className="font-semibold text-primary">{categoryData.categoryName}</span>
       </div>
 
@@ -35,7 +35,7 @@ const AccordionRowContent = ({ categoryData, isSingleMatchCategory }: { category
       <div className="group-data-[state=open]:hidden grid grid-cols-5 md:grid-cols-7 items-center w-full text-sm py-3 px-4">
         {/* Category Name + Icon */}
         <div className="col-span-2 md:col-span-2 font-medium flex items-center">
-          <categoryData.icon className="h-5 w-5 mr-3 text-muted-foreground shrink-0" />
+          <categoryData.icon className="h-5 w-5 mr-3 text-accent shrink-0" /> {/* Changed text-muted-foreground to text-accent */}
           <span className="truncate" title={categoryData.categoryName}>{categoryData.categoryName}</span>
         </div>
 
@@ -173,7 +173,7 @@ export default async function StatsPage() {
                     <AccordionContent className="p-2 md:p-4">
                         {categoryData.rankings.length > 0 ? 
                         renderRankingDetailsTable(categoryData.rankings, true) : 
-                        <p className="text-sm text-muted-foreground italic p-4">No entries for this category.</p>}
+                        <p className="text-sm text-muted-foreground italic p-4 text-center">No entries for this category.</p>}
                     </AccordionContent>
                  </Card>
               </AccordionItem>
@@ -200,7 +200,7 @@ export default async function StatsPage() {
                         <AccordionContent className="p-2 md:p-4">
                            {categoryData.rankings.length > 0 ? 
                            renderRankingDetailsTable(categoryData.rankings, false) :
-                           <p className="text-sm text-muted-foreground italic p-4">No entries for this category.</p>}
+                           <p className="text-sm text-muted-foreground italic p-4 text-center">No entries for this category.</p>}
                         </AccordionContent>
                     </Card>
                 </AccordionItem>
@@ -241,3 +241,4 @@ export const metadata = {
   title: "Statistics | Tournament Tracker",
   description: "Detailed player and tournament statistics.",
 };
+
