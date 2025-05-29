@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import Image from "next/image";
 import Link from "next/link";
-import { Sigma, Shield, Swords, Sparkles, HandHelping, Eye, ListChecks, UserX, ShieldQuestion, PlayCircle, Trophy } from "lucide-react";
+import { Sigma, Shield, Swords, Sparkles, HandHelping, Eye, ListChecks, UserX, ShieldQuestion, PlayCircle, Trophy, Medal } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   Tooltip,
@@ -73,7 +73,6 @@ export function TeamCard({ team }: TeamCardProps) {
         />
         <div className="flex-1">
           <CardTitle className="text-2xl text-primary">{team.name}</CardTitle>
-          {/* Status badge moved to CardContent */}
         </div>
       </CardHeader>
       <CardContent className="flex-grow px-6 py-4">
@@ -103,7 +102,7 @@ export function TeamCard({ team }: TeamCardProps) {
                         <Link 
                           href={`/teams/${team.id}/players/${player.id}`} 
                           className="truncate hover:text-primary transition-colors"
-                          title={player.nickname} // Added title attribute for full name on hover if truncated
+                          // title={player.nickname} // Removed this line
                         >
                           {player.nickname}
                         </Link>
