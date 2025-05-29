@@ -3,7 +3,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useEffect, useState, startTransition } from "react"; // Added startTransition
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -21,7 +21,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 const defaultValues: TeamRegistrationFormData = {
   teamName: "",
   teamLogo: undefined,
-  teamMotto: "", // Added default for team motto
+  teamMotto: "", 
   player1: { nickname: "", mmr: "", profileScreenshot: undefined, steamProfileUrl: "", role: "" },
   player2: { nickname: "", mmr: "", profileScreenshot: undefined, steamProfileUrl: "", role: "" },
   player3: { nickname: "", mmr: "", profileScreenshot: undefined, steamProfileUrl: "", role: "" },
@@ -67,13 +67,13 @@ export default function RegistrationPage() {
     }
   }, [formState, toast, form]);
 
-  const onFormSubmit = async (data: TeamRegistrationFormData) => {
+  const onFormSubmit = (data: TeamRegistrationFormData) => { // Removed async as formAction is handled by useActionState
     const formData = new FormData();
     formData.append("teamName", data.teamName);
     if (data.teamLogo) {
       formData.append("teamLogo", data.teamLogo);
     }
-    if (data.teamMotto) { // Add team motto to FormData
+    if (data.teamMotto) { 
       formData.append("teamMotto", data.teamMotto);
     }
     
@@ -89,7 +89,9 @@ export default function RegistrationPage() {
     });
     formData.append("rulesAgreed", data.rulesAgreed.toString());
 
-    formAction(formData);
+    startTransition(() => { // Wrap formAction call
+      formAction(formData);
+    });
   };
 
   const handleDiscordLogin = () => {
