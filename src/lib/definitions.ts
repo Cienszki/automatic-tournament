@@ -77,6 +77,60 @@ export type Group = {
   teams: Team[];
 };
 
+export type RegistrationFormState = {
+  message: string;
+  errors?: z.ZodIssue[];
+  success: boolean;
+};
+
+
+// For Stats Page (Original StatItem, potentially for other uses or as a base)
+export type StatItem = {
+  id: string; // Unique ID for the stat entry
+  category: string;
+  playerName?: string;
+  teamName?: string;
+  playerId?: string;
+  teamId?: string;
+  value: string | number;
+  heroName?: string;
+  matchContext?: string;
+  openDotaMatchUrl?: string;
+  icon: LucideIcon; // Icon for the category
+};
+
+// Details for each ranked entry in an expandable stats category
+export type CategoryRankingDetail = {
+  rank: number;
+  playerName?: string;
+  teamName?: string;
+  playerId?: string;
+  teamId?: string;
+  value: string | number; // The actual stat value
+  heroName?: string;       // For single match records
+  matchContext?: string;   // For single match records
+  openDotaMatchUrl?: string; // For single match records
+};
+
+// Structure for displaying a category with its top rankings
+export type CategoryDisplayStats = {
+  id: string; // Unique ID for the category row, e.g., 'single-most-kills'
+  categoryName: string;
+  icon: LucideIcon;
+  // rankings[0] is the top performer for the collapsed (AccordionTrigger) view
+  // rankings[1] to rankings[4] are for the expanded (AccordionContent) view
+  rankings: CategoryRankingDetail[]; // Array of top 5 records
+};
+
+
+export type TournamentHighlightRecord = {
+  id: string;
+  title: string;
+  value: string;
+  details?: string;
+  icon: LucideIcon;
+};
+
 export type PlayerFormData = {
   nickname: string;
   mmr: string; // string for form input, Zod will transform to number
@@ -93,34 +147,4 @@ export type TeamRegistrationFormData = {
   player4: PlayerFormData;
   player5: PlayerFormData;
   rulesAgreed: boolean;
-};
-
-export type RegistrationFormState = {
-  message: string;
-  errors?: z.ZodIssue[];
-  success: boolean;
-};
-
-
-// For Stats Page
-export type StatItem = {
-  id: string;
-  category: string;
-  playerName?: string;
-  teamName?: string;
-  playerId?: string;
-  teamId?: string;
-  value: string | number;
-  heroName?: string;
-  matchContext?: string;
-  openDotaMatchUrl?: string; // Added for OpenDota link
-  icon: LucideIcon;
-};
-
-export type TournamentHighlightRecord = {
-  id: string;
-  title: string;
-  value: string;
-  details?: string;
-  icon: LucideIcon;
 };
