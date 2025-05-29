@@ -82,13 +82,15 @@ export default async function PlayerPage({ params }: PlayerPageParams) {
     mostPlayedHero: "Invoker", // Example
   };
 
+  const avatarPlaceholder = `https://placehold.co/128x128.png?text=${player.nickname.substring(0, 2).toUpperCase()}`;
+
   return (
     <div className="space-y-8">
       <Card className="shadow-xl overflow-hidden">
         <CardHeader className="bg-muted/30 p-6 md:p-8">
           <div className="flex flex-col md:flex-row items-center space-y-4 md:space-y-0 md:space-x-6">
             <Avatar className="h-32 w-32 border-4 border-card shadow-md">
-              <AvatarImage src={player.profileScreenshotUrl || `https://placehold.co/128x128.png?text=${player.nickname.charAt(0)}`} alt={player.nickname} data-ai-hint="gaming avatar" />
+              <AvatarImage src={avatarPlaceholder} alt={`${player.nickname} avatar`} data-ai-hint="gaming avatar" />
               <AvatarFallback className="text-4xl">{player.nickname.substring(0, 2).toUpperCase()}</AvatarFallback>
             </Avatar>
             <div>
@@ -134,16 +136,16 @@ export default async function PlayerPage({ params }: PlayerPageParams) {
           <p className="text-sm text-muted-foreground text-center mt-8">
             Note: Player statistics are typically fetched from the OpenDota API. This page displays simulated data.
           </p>
-           {(player.profileScreenshotUrl || !player.profileScreenshotUrl) && ( 
+           {player.profileScreenshotUrl && ( 
              <div className="mt-8">
-                <h4 className="text-xl font-semibold mb-2">Profile Screenshot (Placeholder)</h4>
+                <h4 className="text-xl font-semibold mb-2 text-foreground">Profile Screenshot</h4>
                 <Image 
-                    src={player.profileScreenshotUrl || "https://placehold.co/600x400.png"} 
+                    src={player.profileScreenshotUrl} 
                     alt={`${player.nickname} profile screenshot`}
                     width={600}
                     height={400}
                     className="rounded-md border object-contain"
-                    data-ai-hint="profile screenshot"
+                    data-ai-hint="profile screenshot dota2" // Added more specific hint
                 />
              </div>
            )}
@@ -191,3 +193,4 @@ export async function generateStaticParams() {
   });
   return params;
 }
+
