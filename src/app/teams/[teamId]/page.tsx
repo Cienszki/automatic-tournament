@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import Image from "next/image";
 import Link from "next/link";
-import { Users, ListChecks, ExternalLink, Medal, Swords, UserCheck, UserX, ShieldQuestion, PlayCircle, Sigma, Trophy, Sparkles, Anchor, Sword as SwordIconLucide, Zap as ZapIcon, Ghost, Ban, MountainSnow, Flame, Snowflake, Axe as AxeIcon, Target, Moon, Copy as CopyIcon, ShieldOff, Waves, ShieldAlert, Trees, Bone, CloudLightning, UserCircle2, Clock, Percent, Skull, Ratio, Handshake, Award, Users2, Puzzle, TrendingUp } from "lucide-react";
+import { Users, ListChecks, ExternalLink, Medal, Swords, UserCheck, UserX, ShieldQuestion, PlayCircle, Sigma, Trophy, Sparkles, Anchor, Sword as SwordIconLucide, Zap as ZapIcon, Ghost, Ban, MountainSnow, Flame, Snowflake, Axe as AxeIcon, Target, Moon, Copy as CopyIcon, ShieldOff, Waves, ShieldAlert, Trees, Bone, CloudLightning, UserCircle2, Clock, Percent, Skull, Ratio, Handshake, Award, Users2, Puzzle, TrendingUp, Shield as TeamIcon } from "lucide-react";
 import type { Icon as LucideIconType } from "lucide-react";
 import { notFound } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -92,11 +92,11 @@ function getRankForStat(
   statKey: keyof Team,
   sortOrder: 'asc' | 'desc' = 'desc' 
 ): string {
-  if (currentTeamValue === undefined) return "N/A";
+  if (currentTeamValue === undefined || currentTeamValue === null || isNaN(currentTeamValue)) return "N/A";
 
   const validTeams = allTeams.filter(t => {
     const val = t[statKey];
-    return val !== undefined && typeof val === 'number' && !isNaN(val);
+    return val !== undefined && val !== null && typeof val === 'number' && !isNaN(val);
   });
   if (validTeams.length === 0) return "N/A";
 
@@ -201,6 +201,9 @@ export default async function TeamPage({ params }: TeamPageParams) {
         </CardHeader>
         <CardContent className="p-6 md:p-8 grid md:grid-cols-3 gap-6">
           <div className="md:col-span-1 space-y-4">
+            <h3 className="text-2xl font-semibold mb-4 flex items-center text-foreground">
+               <TeamIcon className="h-6 w-6 mr-2 text-primary" /> Team Summary
+            </h3>
              <InfoItem icon={ListChecks} label="Matches Played" value={team.matchesPlayed ?? 0} />
              <InfoItem icon={TrendingUp} label="Wins / Losses" value={`${team.matchesWon ?? 0}W / ${team.matchesLost ?? 0}L`} />
              <InfoItem icon={Sigma} label="Total MMR" value={totalMMR.toLocaleString()} />
@@ -444,6 +447,7 @@ export async function generateStaticParams() {
     
 
     
+
 
 
 
