@@ -41,15 +41,13 @@ const createTeamPlayers = (teamIndex: number, teamStatus: TournamentStatus): Pla
   for (let i = 0; i < 5; i++) {
     const playerSourceIndex = playerStartIndex + i;
     if (playerSourceIndex >= mockPlayers.length) {
-        // This should ideally not happen if mockPlayers has 60+ players for 12 teams
         console.warn(`Not enough mock players to fully populate team ${teamIndex + 1}`);
-        // Create a fallback player if necessary
         teamPlayers.push({
             id: `fallback-p${teamIndex}-${i}`,
             nickname: `FallbackPlayer${i + 1}`,
             mmr: 3000,
             role: PlayerRoles[i % PlayerRoles.length] as PlayerRole,
-            status: teamStatus, // Player status aligns with team if Eliminated/Champions
+            status: teamStatus, 
             steamProfileUrl: `https://steamcommunity.com/id/fallbackplayer${i + 1}`,
             openDotaProfileUrl: `https://www.opendota.com/search?q=FallbackPlayer${i + 1}`,
             profileScreenshotUrl: `https://placehold.co/600x400.png?text=FP${i+1}`,
@@ -62,7 +60,7 @@ const createTeamPlayers = (teamIndex: number, teamStatus: TournamentStatus): Pla
     if (teamStatus === 'Eliminated' || teamStatus === 'Champions') {
       playerStatus = teamStatus;
     } else if (teamStatus === 'Active' && basePlayer.status === 'Not Verified') {
-      playerStatus = 'Active'; // Promote player status if team is active
+      playerStatus = 'Active'; 
     }
 
 
@@ -105,6 +103,7 @@ export const mockTeams: Team[] = Array.from({ length: 12 }, (_, i) => {
     averageKillsPerGame: parseFloat(((Math.random() * 15) + 15).toFixed(1)), // 15.0 - 30.0
     averageDeathsPerGame: parseFloat(((Math.random() * 15) + 10).toFixed(1)), // 10.0 - 25.0
     averageAssistsPerGame: parseFloat(((Math.random() * 30) + 40).toFixed(1)), // 40.0 - 70.0
+    averageFantasyPoints: parseFloat(((Math.random() * 70) + 50).toFixed(1)), // 50.0 - 120.0
   };
 });
 
@@ -313,3 +312,4 @@ export const generateMockTournamentHighlights = (): TournamentHighlightRecord[] 
   ];
   return highlights;
 };
+

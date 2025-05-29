@@ -95,21 +95,12 @@ export default async function TeamPage({ params }: TeamPageParams) {
   const totalMMR = team.players.reduce((sum, player) => sum + player.mmr, 0);
   const sortedHeroes = team.mostPlayedHeroes ? [...team.mostPlayedHeroes].sort((a, b) => b.gamesPlayed - a.gamesPlayed).slice(0, 3) : [];
 
-  const winRate = team.matchesPlayed && team.matchesPlayed > 0 && typeof team.matchesWon === 'number'
-    ? ((team.matchesWon) / team.matchesPlayed * 100).toFixed(1) + "%"
-    : "N/A";
-
-  const kdRatio = team.averageKillsPerGame && team.averageDeathsPerGame && team.averageDeathsPerGame > 0
-    ? (team.averageKillsPerGame / team.averageDeathsPerGame).toFixed(2)
-    : "N/A";
-
   const performanceStats = [
-    { label: "Win Rate", value: winRate, icon: Award },
     { label: "Avg. Match Duration", value: `${team.averageMatchDurationMinutes ?? 'N/A'} min`, icon: Clock },
     { label: "Avg. Kills / Game", value: team.averageKillsPerGame ?? 'N/A', icon: Swords },
     { label: "Avg. Deaths / Game", value: team.averageDeathsPerGame ?? 'N/A', icon: Skull },
-    { label: "K/D Ratio", value: kdRatio, icon: Ratio },
     { label: "Avg. Assists / Game", value: team.averageAssistsPerGame ?? 'N/A', icon: Handshake },
+    { label: "Avg. Fantasy Points", value: team.averageFantasyPoints?.toFixed(1) ?? 'N/A', icon: Award }
   ];
 
   return (
@@ -212,7 +203,7 @@ export default async function TeamPage({ params }: TeamPageParams) {
         </Card>
       )}
       
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {performanceStats.map((stat) => (
           <Card key={stat.label} className="shadow-xl text-center hover:bg-muted/10 transition-colors duration-200">
             <CardHeader className="items-center pb-2">
@@ -334,3 +325,4 @@ export async function generateStaticParams() {
     teamId: team.id,
   }));
 }
+

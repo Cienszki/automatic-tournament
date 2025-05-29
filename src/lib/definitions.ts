@@ -39,6 +39,7 @@ export type Team = {
   averageKillsPerGame?: number;
   averageDeathsPerGame?: number;
   averageAssistsPerGame?: number;
+  averageFantasyPoints?: number;
 };
 
 export type Match = {
@@ -108,3 +109,4 @@ export type TournamentHighlightRecord = {
   details?: string;
   icon: LucideIcon;
 };
+
