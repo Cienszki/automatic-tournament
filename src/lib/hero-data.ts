@@ -6,9 +6,10 @@ import {
   Target, Moon, Copy as CopyIconLucide, Axe as AxeIconLucide,
   Shield, FlaskConical, Brain, Bird, Droplets, Coins, Beer, Spider, Footprints, Dice5,
   Handshake, Cog, Shell, Sunrise, Hammer, ShieldPlus, Circle, BookOpen as BookIcon,
-  Plane, Nut, Sun, Ship, HeartHandshake, Dog, Horn, Hand, Eye, PawPrint, VolumeX, Fish,
+  Plane, Nut, Sun, Ship, HeartHandshake, Dog, Hand, Eye, PawPrint, VolumeX, Fish, 
   Waypoints as GateIcon, UserCircle2, Swirl, Pickaxe, VenetianMask, SprayCan, Gem, Palmtree,
-  Siren, Rat, Castle, Wheat, Dices, Unplug, Box, ShieldCheck, GitFork, Bot, Rabbit, Crown, Drama
+  Siren, Rat, Castle, Wheat, Dices, Unplug, Box, ShieldCheck, GitFork, Bot, Rabbit, Crown, Drama,
+  Skull, Tower, Crosshair, EyeOff, Tornado, Activity
   // Add other icons used in your heroIconMap as needed
 } from "lucide-react";
 
@@ -89,7 +90,6 @@ export const heroIconMap: Record<string, LucideIconType> = {
   'Ember Spirit': Flame, // Searing Chains, Sleight of Fist
   'Enchantress': Rabbit, // Nature's Attendants (whimsical, nature)
   'Enigma': Gem, // Black Hole (cosmic, powerful) - Gem as a generic powerful item
-  'Faceless Void': Circle, // Chronosphere (re-entry for clarity)
   'Grimstroke': SprayCan, // Stroke of Fate, Ink Swell
   'Gyrocopter': Plane, // Rocket Barrage, Call Down
   'Hoodwink': Nut, // Acorn Shot
@@ -106,7 +106,7 @@ export const heroIconMap: Record<string, LucideIconType> = {
   'Lone Druid': PawPrint, // Spirit Bear
   'Luna': Moon, // Lunar Glaives
   'Lycan': Dog, // Summon Wolves
-  'Magnus': Horn, // Reverse Polarity
+  'Magnus': Tornado, // Replaced Horn with Tornado for Reverse Polarity
   'Marci': Hand, // Dispose, Unleash
   'Mars': Shield, // Bulwark
   'Medusa': Siren, // Stone Gaze, Mystic Snake
@@ -128,10 +128,10 @@ export const heroIconMap: Record<string, LucideIconType> = {
   'Phoenix': Flame, // Supernova
   'Primal Beast': PawPrint, // Onslaught, Pulverize
   'Puck': Sparkles, // Illusory Orb
-  'Pugna': Tower, // Nether Ward (using Puzzle as Tower not available)
+  'Pugna': Tower, // Nether Ward
   'Queen of Pain': Drama, // Scream of Pain, Sonic Wave (Drama mask represents her persona)
   'Razor': Zap, // Static Link
-  'Riki': EyeOff, // Cloak and Dagger (using Puzzle as EyeOff not ideal)
+  'Riki': EyeOff, // Cloak and Dagger
   'Ringmaster': Puzzle, // New hero
   'Sand King': Spider, // Burrowstrike, Caustic Finale (using Spider for bug-like)
   'Shadow Demon': Ghost, // Demonic Purge
@@ -141,7 +141,8 @@ export const heroIconMap: Record<string, LucideIconType> = {
   'Slardar': Fish, // Corrosive Haze, Guardian Sprint
   'Snapfire': Flame, // Mortimer Kisses
   'Sniper': Target, // Assassinate
-  'Spirit Breaker': Horn, // Charge of Darkness
+  'Spirit Breaker': Activity, // Replaced Horn with Activity for Charge of Darkness
+  'Techies': Bomb, // Techies now uses Bomb
   'Terrorblade': Swords, // Metamorphosis
   'Tidehunter': Anchor, // Ravage
   'Timbersaw': AxeIconLucide, // Whirling Death (Axe as a cutting tool)
@@ -159,6 +160,7 @@ export const heroIconMap: Record<string, LucideIconType> = {
   'Void Spirit': Sparkles, // Astral Step
   'Warlock': BookIcon, // Fatal Bonds, Chaotic Offering
   'Weaver': Spider, // The Swarm (using Spider for bug-like)
+  'Windranger': Swirl, // Focus Fire, Powershot
   'Winter Wyvern': Snowflake, // Winter's Curse
   'Wraith King': Crown, // Reincarnation
 
@@ -278,6 +280,7 @@ export const heroColorMap: Record<string, string> = {
   'Snapfire': 'text-primary',        // Orange/Red (fiery)
   'Sniper': 'text-chart-5',          // Brown/Green (dwarven)
   'Spirit Breaker': 'text-chart-4',  // Purple/Blue (nether charge)
+  'Techies': 'text-primary',         // Orange/Red (explosions)
   'Terrorblade': 'text-chart-4',     // Dark Purple/Demonic
   'Tidehunter': 'text-chart-5',      // Green (leviathan)
   'Timbersaw': 'text-muted-foreground',// Brown/Gray (mechanical)
@@ -297,4 +300,5 @@ export const heroColorMap: Record<string, string> = {
   'Weaver': 'text-chart-4',          // Purple/Green (insectoid)
   'Winter Wyvern': 'text-accent',    // Icy Blue/White
   'Wraith King': 'text-chart-5',     // Ethereal Green/Bone
+  'Default': 'text-primary',
 };
