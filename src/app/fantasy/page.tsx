@@ -39,7 +39,7 @@ export default function FantasyLeaguePage() {
 
   React.useEffect(() => {
     setAvailablePlayers(mockAllTournamentPlayersFlat);
-    setFantasyLeaderboard(mockFantasyLeagueParticipants.sort((a,b) => b.totalFantasyPoints - a.totalFantasyPoints).map((p,i) => ({...p, rank: i+1}) ));
+    setFantasyLeaderboard(mockFantasyLeagueParticipants.sort((a,b) => b.totalFantasyPoints - a.totalFantasyPoints).map((p,i) => ({...p, rank: i+1})));
     setIsLoading(false);
   }, []);
 
@@ -344,8 +344,8 @@ export default function FantasyLeaguePage() {
                   <TableRow>
                     <TableHead className="w-[60px] text-center">Rank</TableHead>
                     <TableHead>Player</TableHead>
-                    <TableHead className="text-right">Fantasy Points</TableHead>
                     <TableHead className="min-w-[250px]">Current Lineup</TableHead>
+                    <TableHead className="text-right">Fantasy Points</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -361,7 +361,6 @@ export default function FantasyLeaguePage() {
                           <span className="font-medium text-foreground">{participant.discordUsername} {participant.id === SIMULATED_CURRENT_USER_ID && "(You)"}</span>
                         </div>
                       </TableCell>
-                      <TableCell className="text-right font-semibold text-primary">{participant.totalFantasyPoints.toLocaleString()}</TableCell>
                       <TableCell>
                         {isLineupLockDeadlinePassed ? (
                           <div className="flex flex-col space-y-0.5">
@@ -395,6 +394,7 @@ export default function FantasyLeaguePage() {
                           <em className="text-xs text-muted-foreground">Lineup hidden until lock</em>
                         )}
                       </TableCell>
+                      <TableCell className="text-right font-semibold text-primary">{participant.totalFantasyPoints.toLocaleString()}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -490,3 +490,4 @@ export default function FantasyLeaguePage() {
     </div>
   );
 }
+
