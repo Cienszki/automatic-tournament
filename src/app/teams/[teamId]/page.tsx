@@ -151,59 +151,54 @@ export default async function TeamPage({ params }: TeamPageParams) {
           </div>
         </CardContent>
       </Card>
-
-      {sortedHeroes && sortedHeroes.length > 0 && (
-        <Card className="shadow-xl md:w-1/2 mx-auto">
-          <CardHeader>
-            <CardTitle className="text-2xl font-semibold text-primary flex items-center justify-center">
-              <Trophy className="h-6 w-6 mr-2" /> {team.name}'s Top Heroes
-            </CardTitle>
-            <CardDescription className="text-center">Top {Math.min(sortedHeroes.length, 3)} most played heroes by the team.</CardDescription>
-          </CardHeader>
-          <CardContent className="p-6 pt-2">
-            {sortedHeroes.length > 0 ? (
-              <div className="flex flex-col md:flex-row justify-around items-end gap-4 md:gap-2 py-4 min-h-[200px] md:min-h-[250px]">
-                {[sortedHeroes[1], sortedHeroes[0], sortedHeroes[2]].map((heroStat, index) => {
-                  if (!heroStat) return <div key={`placeholder-${index}`} className="w-full md:w-1/3 lg:w-1/4"></div>; 
-
-                  const podiumOrderIndex = index === 0 ? 1 : (index === 1 ? 0 : 2); 
-                  const podiumStyle = podiumColors[podiumOrderIndex];
-                  const heightClasses = [ 
-                    "h-[90%] md:h-[220px]", 
-                    "h-[75%] md:h-[180px]", 
-                    "h-[60%] md:h-[140px]", 
-                  ];
-                  const currentHeight = heightClasses[podiumOrderIndex];
-                  const HeroIcon = heroIconMap[heroStat.name] || UserCircle2;
-
-                  return (
-                    <div
-                      key={heroStat.name}
-                      className={cn(
-                        "w-full md:w-1/3 lg:w-1/4 flex flex-col items-center justify-end p-3 md:p-4 rounded-t-lg border-2 border-b-0",
-                        currentHeight,
-                        podiumStyle.border,
-                        podiumStyle.bg,
-                        "transition-all duration-300 ease-out transform hover:scale-105"
-                      )}
-                    >
-                      <HeroIcon className={cn("h-8 w-8 md:h-10 md:w-10 mb-1 md:mb-2", podiumStyle.text)} />
-                      <p className={cn("font-bold text-base md:text-lg text-center", podiumStyle.text)}>{heroStat.name}</p>
-                      <p className={cn("text-xs md:text-sm text-center", podiumStyle.text, "opacity-80")}>
-                        {heroStat.gamesPlayed} Game{heroStat.gamesPlayed !== 1 ? 's' : ''}
-                      </p>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <p className="text-muted-foreground text-center">No hero play stats available for this team yet.</p>
-            )}
-          </CardContent>
-        </Card>
-      )}
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {sortedHeroes && sortedHeroes.length > 0 && (
+          <Card className="shadow-xl">
+            {/* CardHeader removed */}
+            <CardContent className="p-6 pt-2">
+              {sortedHeroes.length > 0 ? (
+                <div className="flex flex-col md:flex-row justify-around items-end gap-4 md:gap-2 py-4 min-h-[200px] md:min-h-[250px]">
+                  {[sortedHeroes[1], sortedHeroes[0], sortedHeroes[2]].map((heroStat, index) => {
+                    if (!heroStat) return <div key={`placeholder-${index}`} className="w-full md:w-1/3 lg:w-1/4"></div>; 
+
+                    const podiumOrderIndex = index === 0 ? 1 : (index === 1 ? 0 : 2); 
+                    const podiumStyle = podiumColors[podiumOrderIndex];
+                    const heightClasses = [ 
+                      "h-[90%] md:h-[220px]", 
+                      "h-[75%] md:h-[180px]", 
+                      "h-[60%] md:h-[140px]", 
+                    ];
+                    const currentHeight = heightClasses[podiumOrderIndex];
+                    const HeroIcon = heroIconMap[heroStat.name] || UserCircle2;
+
+                    return (
+                      <div
+                        key={heroStat.name}
+                        className={cn(
+                          "w-full md:w-1/3 lg:w-1/4 flex flex-col items-center justify-end p-3 md:p-4 rounded-t-lg border-2 border-b-0",
+                          currentHeight,
+                          podiumStyle.border,
+                          podiumStyle.bg,
+                          "transition-all duration-300 ease-out transform hover:scale-105"
+                        )}
+                      >
+                        <HeroIcon className={cn("h-8 w-8 md:h-10 md:w-10 mb-1 md:mb-2", podiumStyle.text)} />
+                        <p className={cn("font-bold text-base md:text-lg text-center", podiumStyle.text)}>{heroStat.name}</p>
+                        <p className={cn("text-xs md:text-sm text-center", podiumStyle.text, "opacity-80")}>
+                          {heroStat.gamesPlayed} Game{heroStat.gamesPlayed !== 1 ? 's' : ''}
+                        </p>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="text-muted-foreground text-center">No hero play stats available for this team yet.</p>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
         {performanceStats.map((stat) => (
           <Card key={stat.label} className="shadow-xl text-center hover:bg-muted/10 transition-colors duration-200">
             <CardHeader className="items-center pb-2">
