@@ -9,20 +9,19 @@ export async function registerTeamAction(
   formData: FormData
 ): Promise<RegistrationFormState> {
   try {
-    // Construct the object for Zod parsing from FormData
-    // FormData values are strings or File objects.
     const dataToValidate: Record<string, any> = {
       teamName: formData.get("teamName"),
-      teamLogo: formData.get("teamLogo"), // This will be a File object or null
-      rulesAgreed: formData.get("rulesAgreed") === "true", // Convert string "true" to boolean
+      teamLogo: formData.get("teamLogo"),
+      rulesAgreed: formData.get("rulesAgreed") === "true",
     };
 
     for (let i = 1; i <= 5; i++) {
       dataToValidate[`player${i}`] = {
         nickname: formData.get(`player${i}.nickname`),
-        mmr: formData.get(`player${i}.mmr`), // Zod schema will transform this string to number
-        profileScreenshot: formData.get(`player${i}.profileScreenshot`), // File object or null
+        mmr: formData.get(`player${i}.mmr`),
+        profileScreenshot: formData.get(`player${i}.profileScreenshot`),
         steamProfileUrl: formData.get(`player${i}.steamProfileUrl`),
+        role: formData.get(`player${i}.role`), // Add role
       };
     }
     
@@ -37,21 +36,12 @@ export async function registerTeamAction(
       };
     }
 
-    // validatedFields.data now contains data according to Zod schema output types
-    // (e.g., teamLogo is File, mmr is number, rulesAgreed is true)
     const teamData = validatedFields.data;
-
-    // In a real app, you would:
-    // 1. Authenticate user (e.g., Discord OAuth)
-    // 2. Upload files (teamData.teamLogo, teamData.playerX.profileScreenshot) to a storage service
-    //    and get their URLs.
-    // 3. Save the teamData (with file URLs and other processed data) to a database.
 
     console.log("Team Registration Data (Server Action):", teamData);
     
-    // Simulate successful registration
     return {
-      message: `Team "${teamData.teamName}" registered successfully! Ensure all player MMRs and Steam URLs are correct.`,
+      message: `Team "${teamData.teamName}" registered successfully! Ensure all player MMRs, roles, and Steam URLs are correct.`,
       success: true,
     };
 

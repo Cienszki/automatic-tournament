@@ -1,10 +1,12 @@
 
 "use client";
 import type { UseFormReturn } from "react-hook-form";
-import { FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import type { TeamRegistrationFormData } from "@/lib/definitions";
+import type { TeamRegistrationFormData, PlayerRole } from "@/lib/definitions"; // Added PlayerRole
+import { PlayerRoles } from "@/lib/definitions"; // Import PlayerRoles for options
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"; // Import Select components
 
 interface PlayerRegistrationFieldsProps {
   form: UseFormReturn<TeamRegistrationFormData>;
@@ -42,6 +44,31 @@ export function PlayerRegistrationFields({ form, playerIndex }: PlayerRegistrati
               <FormControl>
                 <Input type="number" placeholder="e.g., 5000" {...field} />
               </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name={`${fieldNamePrefix}.role`}
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Role</FormLabel>
+              <Select onValueChange={field.onChange} defaultValue={field.value || ""}>
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select Role..." />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  <SelectItem value="" disabled>-- Select a Role --</SelectItem>
+                  {PlayerRoles.map(role => (
+                    <SelectItem key={role} value={role}>
+                      {role}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <FormMessage />
             </FormItem>
           )}

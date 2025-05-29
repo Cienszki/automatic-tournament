@@ -9,7 +9,7 @@ export const TournamentStatuses = ["Not Verified", "Active", "Eliminated", "Cham
 export type TournamentStatus = typeof TournamentStatuses[number];
 
 export type Player = {
-  id: string;
+  id: string; // For mock data, base player ID like "p1", team-specific is "p1-t1"
   nickname: string;
   mmr: number;
   role: PlayerRole;
@@ -17,7 +17,7 @@ export type Player = {
   profileScreenshotUrl?: string; // URL after upload
   steamProfileUrl: string;
   openDotaProfileUrl?: string;
-  fantasyPointsEarned?: number; // Fantasy points earned by this player in the tournament
+  fantasyPointsEarned?: number;
 };
 
 export type HeroPlayStats = {
@@ -29,7 +29,7 @@ export type Team = {
   id: string;
   name: string;
   logoUrl?: string; // URL after upload
-  players: Player[];
+  players: Player[]; // These players will have team-specific IDs like "p1-t1"
   status: TournamentStatus;
   matchesPlayed?: number;
   matchesWon?: number;
@@ -44,7 +44,7 @@ export type Team = {
 };
 
 export type PlayerPerformanceInMatch = {
-  playerId: string;
+  playerId: string; // Team-specific player ID like "p1-t1"
   teamId: string;
   hero: string;
   kills: number;
@@ -88,7 +88,7 @@ export type CategoryRankingDetail = {
   teamId?: string;
   value: string | number; // The actual stat value
   heroName?: string;       // For single match records
-  matchContext?: string;   // For single match records
+  matchContext?: string;   // For single match records, e.g. "vs TeamX"
   openDotaMatchUrl?: string; // For single match records
 };
 
@@ -114,6 +114,7 @@ export type PlayerFormData = {
   mmr: string; // string for form input, Zod will transform to number
   profileScreenshot: File | undefined;
   steamProfileUrl: string;
+  role: PlayerRole | ""; // Added role, allow "" for initial empty state
 };
 
 export type TeamRegistrationFormData = {
