@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import Image from "next/image";
 import Link from "next/link";
-import { Users, ListChecks, ExternalLink, BarChart3, Medal, Swords, UserCheck, UserX, ShieldQuestion, PlayCircle, Sigma, Trophy, Sparkles, Anchor, Sword as SwordIconLucide, Zap as ZapIcon, Ghost, Ban, MountainSnow, Flame, Snowflake, Axe as AxeIcon, Target, Moon, Copy as CopyIcon, ShieldOff, Waves, ShieldAlert, Trees, Bone, CloudLightning, UserCircle2, Clock, Percent, Skull, Ratio, Handshake, Award } from "lucide-react";
+import { Users, ListChecks, ExternalLink, BarChart3, Medal, Swords, UserCheck, UserX, ShieldQuestion, PlayCircle, Sigma, Trophy, Sparkles, Anchor, Sword as SwordIconLucide, Zap as ZapIcon, Ghost, Ban, MountainSnow, Flame, Snowflake, Axe as AxeIcon, Target, Moon, Copy as CopyIcon, ShieldOff, Waves, ShieldAlert, Trees, Bone, CloudLightning, UserCircle2, Clock, Percent, Skull, Ratio, Handshake, Award, Users2, Puzzle } from "lucide-react";
 import type { Icon as LucideIconType } from "lucide-react";
 import { notFound } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -76,6 +76,7 @@ const heroIconMap: Record<string, LucideIconType> = {
   'Tiny': Trees,
   'Witch Doctor': Bone,
   'Zeus': CloudLightning,
+  'Default': Puzzle, // Default icon if hero not in map
 };
 
 const podiumColors = [
@@ -96,12 +97,15 @@ export default async function TeamPage({ params }: TeamPageParams) {
   const sortedHeroes = team.mostPlayedHeroes ? [...team.mostPlayedHeroes].sort((a, b) => b.gamesPlayed - a.gamesPlayed).slice(0, 3) : [];
 
   const performanceStats = [
-    { label: "Avg. Match Duration", value: `${team.averageMatchDurationMinutes ?? 'N/A'} min`, icon: Clock },
     { label: "Avg. Kills / Game", value: team.averageKillsPerGame ?? 'N/A', icon: Swords },
     { label: "Avg. Deaths / Game", value: team.averageDeathsPerGame ?? 'N/A', icon: Skull },
     { label: "Avg. Assists / Game", value: team.averageAssistsPerGame ?? 'N/A', icon: Handshake },
     { label: "Avg. Fantasy Points", value: team.averageFantasyPoints?.toFixed(1) ?? 'N/A', icon: Award }
   ];
+
+  const avgMatchDurationMinutes = team.averageMatchDurationMinutes || 0;
+  const displayMinutes = avgMatchDurationMinutes % 60;
+  const minuteHandAngle = (displayMinutes / 60) * 360;
 
   return (
     <div className="space-y-8">
@@ -153,51 +157,93 @@ export default async function TeamPage({ params }: TeamPageParams) {
       </Card>
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {sortedHeroes && sortedHeroes.length > 0 && (
-          <Card className="shadow-xl">
-            {/* CardHeader removed */}
-            <CardContent className="p-6 pt-2">
-              {sortedHeroes.length > 0 ? (
-                <div className="flex flex-col md:flex-row justify-around items-end gap-4 md:gap-2 py-4 min-h-[200px] md:min-h-[250px]">
-                  {[sortedHeroes[1], sortedHeroes[0], sortedHeroes[2]].map((heroStat, index) => {
-                    if (!heroStat) return <div key={`placeholder-${index}`} className="w-full md:w-1/3 lg:w-1/4"></div>; 
+        <Card className="shadow-xl">
+           <CardHeader>
+            <CardTitle className="text-2xl text-primary flex items-center">
+              <Users2 className="h-6 w-6 mr-2" /> Top Heroes
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-6 pt-2">
+            {sortedHeroes.length > 0 ? (
+              <div className="flex flex-col md:flex-row justify-around items-end gap-4 md:gap-2 py-4 min-h-[200px] md:min-h-[220px]">
+                {[sortedHeroes[1], sortedHeroes[0], sortedHeroes[2]].map((heroStat, index) => {
+                  if (!heroStat) return <div key={`placeholder-${index}`} className="w-full md:w-1/3 lg:w-1/4"></div>; 
 
-                    const podiumOrderIndex = index === 0 ? 1 : (index === 1 ? 0 : 2); 
-                    const podiumStyle = podiumColors[podiumOrderIndex];
-                    const heightClasses = [ 
-                      "h-[90%] md:h-[220px]", 
-                      "h-[75%] md:h-[180px]", 
-                      "h-[60%] md:h-[140px]", 
-                    ];
-                    const currentHeight = heightClasses[podiumOrderIndex];
-                    const HeroIcon = heroIconMap[heroStat.name] || UserCircle2;
+                  const podiumOrderIndex = index === 0 ? 1 : (index === 1 ? 0 : 2); 
+                  const podiumStyle = podiumColors[podiumOrderIndex];
+                  const heightClasses = [ 
+                    "h-[90%] md:h-[190px]", 
+                    "h-[75%] md:h-[160px]", 
+                    "h-[60%] md:h-[130px]", 
+                  ];
+                  const currentHeight = heightClasses[podiumOrderIndex];
+                  const HeroIcon = heroIconMap[heroStat.name] || heroIconMap['Default'];
 
-                    return (
-                      <div
-                        key={heroStat.name}
-                        className={cn(
-                          "w-full md:w-1/3 lg:w-1/4 flex flex-col items-center justify-end p-3 md:p-4 rounded-t-lg border-2 border-b-0",
-                          currentHeight,
-                          podiumStyle.border,
-                          podiumStyle.bg,
-                          "transition-all duration-300 ease-out transform hover:scale-105"
-                        )}
-                      >
-                        <HeroIcon className={cn("h-8 w-8 md:h-10 md:w-10 mb-1 md:mb-2", podiumStyle.text)} />
-                        <p className={cn("font-bold text-base md:text-lg text-center", podiumStyle.text)}>{heroStat.name}</p>
-                        <p className={cn("text-xs md:text-sm text-center", podiumStyle.text, "opacity-80")}>
-                          {heroStat.gamesPlayed} Game{heroStat.gamesPlayed !== 1 ? 's' : ''}
-                        </p>
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <p className="text-muted-foreground text-center">No hero play stats available for this team yet.</p>
-              )}
-            </CardContent>
-          </Card>
-        )}
+                  return (
+                    <div
+                      key={heroStat.name}
+                      className={cn(
+                        "w-full md:w-1/3 lg:w-1/4 flex flex-col items-center justify-end p-3 md:p-4 rounded-t-lg border-2 border-b-0",
+                        currentHeight,
+                        podiumStyle.border,
+                        podiumStyle.bg,
+                        "transition-all duration-300 ease-out transform hover:scale-105"
+                      )}
+                    >
+                      <HeroIcon className={cn("h-6 w-6 md:h-8 md:w-8 mb-1 md:mb-2", podiumStyle.text)} />
+                      <p className={cn("font-bold text-sm md:text-base text-center", podiumStyle.text)}>{heroStat.name}</p>
+                      <p className={cn("text-xs md:text-sm text-center", podiumStyle.text, "opacity-80")}>
+                        {heroStat.gamesPlayed} Game{heroStat.gamesPlayed !== 1 ? 's' : ''}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="text-muted-foreground text-center">No hero play stats available for this team yet.</p>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-xl text-center hover:bg-muted/10 transition-colors duration-200">
+          <CardHeader className="items-center pb-2">
+            <Clock className="h-10 w-10 text-accent mb-2" />
+            <CardTitle className="text-xl font-semibold text-primary">Avg. Match Duration</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col items-center justify-center">
+            <div className="relative w-28 h-28 md:w-32 md:h-32 mb-2">
+              <svg viewBox="0 0 100 100" className="w-full h-full">
+                <circle cx="50" cy="50" r="45" stroke="hsl(var(--border))" strokeWidth="3" fill="hsl(var(--card))" />
+                {/* Hour Markers */}
+                {Array.from({ length: 12 }).map((_, i) => (
+                  <line
+                    key={`hour-marker-${i}`}
+                    x1="50"
+                    y1="10"
+                    x2="50"
+                    y2="15"
+                    stroke="hsl(var(--muted-foreground))"
+                    strokeWidth="2"
+                    transform={`rotate(${i * 30} 50 50)`}
+                  />
+                ))}
+                {/* Minute Hand */}
+                <line
+                  x1="50"
+                  y1="50"
+                  x2="50"
+                  y2="20" // Length of minute hand
+                  stroke="hsl(var(--primary))"
+                  strokeWidth="3"
+                  strokeLinecap="round"
+                  style={{ transformOrigin: '50% 50%', transform: `rotate(${minuteHandAngle}deg)` }}
+                />
+                <circle cx="50" cy="50" r="3" fill="hsl(var(--primary))" /> {/* Center dot */}
+              </svg>
+            </div>
+            <p className="text-2xl font-bold text-foreground">{avgMatchDurationMinutes} min</p>
+          </CardContent>
+        </Card>
 
         {performanceStats.map((stat) => (
           <Card key={stat.label} className="shadow-xl text-center hover:bg-muted/10 transition-colors duration-200">
@@ -321,3 +367,5 @@ export async function generateStaticParams() {
   }));
 }
 
+
+    
