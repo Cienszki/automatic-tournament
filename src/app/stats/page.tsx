@@ -76,7 +76,7 @@ const AccordionRowContent = ({ categoryData, isSingleMatchCategory }: { category
               )}
             </div>
             <div className={cn(
-              "font-semibold text-primary text-right", 
+              "font-semibold text-primary text-center", 
               "col-span-1", 
               isSingleMatchCategory ? "md:col-span-2" : "md:col-span-2" 
             )}>{topEntry.value}</div>
@@ -107,7 +107,7 @@ const AccordionRowContent = ({ categoryData, isSingleMatchCategory }: { category
               </>
             )}
              {!isSingleMatchCategory && ( 
-              <div className="hidden md:block md:col-span-3"></div> // Filler for average stats on larger screens
+              <div className="hidden md:block md:col-span-0"></div> 
             )}
           </>
         ) : (
@@ -129,7 +129,7 @@ const StatsPage = ({ data }: { data: Awaited<ReturnType<typeof getStatsData>> })
           <TableHead className="w-[60px] px-3 py-2">Rank</TableHead>
           <TableHead className="w-[180px] px-3 py-2">Player</TableHead>
           <TableHead className="w-[180px] px-3 py-2">Team</TableHead>
-          <TableHead className="w-[100px] px-3 py-2 text-primary text-center">Value</TableHead>
+          <TableHead className="w-[100px] px-3 py-2 text-center">Value</TableHead>
           {isSingleMatchCategory && <TableHead className="w-[150px] px-3 py-2">Hero</TableHead>}
           {isSingleMatchCategory && <TableHead className="w-[250px] px-3 py-2">Match</TableHead>}
         </TableRow>
@@ -284,8 +284,6 @@ const StatsPage = ({ data }: { data: Awaited<ReturnType<typeof getStatsData>> })
     </div>
   );
 }
-
-// Removed "use client"; directive
 
 export default async function StatsPageServer() {
   const data = await getStatsData();
