@@ -160,9 +160,8 @@ export default async function TeamPage({ params }: TeamPageParams) {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card className="shadow-xl">
            <CardHeader className="flex flex-col items-center text-center">
-            <CardTitle className="text-xl text-primary flex items-center">
-              <Users2 className="h-6 w-6 mr-2 text-accent" /> Top Heroes
-            </CardTitle>
+            <Users2 className="h-6 w-6 text-accent mb-1" />
+            <CardTitle className="text-xl text-primary">Top Heroes</CardTitle>
           </CardHeader>
           <CardContent className="p-6 pt-2">
             {sortedHeroes.length > 0 ? (
@@ -212,7 +211,7 @@ export default async function TeamPage({ params }: TeamPageParams) {
             <CardTitle className="text-xl text-primary">Avg. Match Duration</CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col items-center justify-center">
-            <div className="relative w-28 h-28 md:w-32 md:h-32 mb-2">
+            <div className="relative w-40 h-40 md:w-48 md:h-48 mb-4"> {/* Increased size and margin */}
               <svg viewBox="0 0 100 100" className="w-full h-full">
                 <circle cx="50" cy="50" r="45" stroke="hsl(var(--border))" strokeWidth="3" fill="hsl(var(--card))" />
                 {Array.from({ length: 12 }).map((_, i) => (
