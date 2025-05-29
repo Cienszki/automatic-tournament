@@ -77,7 +77,7 @@ const heroIconMap: Record<string, LucideIconType> = {
   'Tiny': Trees,
   'Witch Doctor': Bone,
   'Zeus': CloudLightning,
-  'Default': Puzzle,
+  'Default': Puzzle, // Fallback icon
 };
 
 const podiumColors = [
@@ -447,6 +447,7 @@ export async function generateStaticParams() {
     
 
     
+
 
 
 
