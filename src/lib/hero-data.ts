@@ -4,13 +4,12 @@ import {
   Sparkles, Anchor, Swords, Zap, Ghost, Ban, MountainSnow, Flame, Snowflake, 
   Puzzle, ShieldOff, Waves, ShieldAlert, Trees, Bone, CloudLightning, 
   Target, Moon, Copy as CopyIconLucide, Axe as AxeIconLucide,
-  Shield, FlaskConical, Brain, Bird, Droplets, Coins, Beer, Spider, Footprints, Dice5,
+  Shield, FlaskConical, Brain, Bird, Droplets, Coins, Beer, Bug, Footprints, Dice5, // Replaced Spider with Bug
   Handshake, Cog, Shell, Sunrise, Hammer, ShieldPlus, Circle, BookOpen as BookIcon,
   Plane, Nut, Sun, Ship, HeartHandshake, Dog, Hand, Eye, PawPrint, VolumeX, Fish, 
-  Waypoints as GateIcon, UserCircle2, Swirl, Pickaxe, VenetianMask, SprayCan, Gem, Palmtree,
+  Waypoints as GateIcon, UserCircle2, Pickaxe, VenetianMask, SprayCan, Gem, Palmtree, // Removed Swirl
   Siren, Rat, Castle, Wheat, Dices, Unplug, Box, ShieldCheck, GitFork, Bot, Rabbit, Crown, Drama,
-  Skull, Tower, Crosshair, EyeOff, Tornado, Activity
-  // Add other icons used in your heroIconMap as needed
+  Skull, Tower, Crosshair, EyeOff, Tornado, Activity, Bomb, Wind // Added Wind, Bomb
 } from "lucide-react";
 
 export const defaultHeroNames = [
@@ -51,118 +50,117 @@ export const heroIconMap: Record<string, LucideIconType> = {
   'Templar Assassin': ShieldOff,
   'Slark': Waves,
   'Sven': ShieldAlert,
-  'Tiny': Trees, // Using Trees as more generic than a specific rock icon
+  'Tiny': Trees,
   'Witch Doctor': Bone,
   'Zeus': CloudLightning,
-  'Windranger': Swirl, // More abstract for wind
-  'Storm Spirit': CloudLightning, // Shared with Zeus, but fitting
-  'Faceless Void': Circle, // For Chronosphere
-  'Spectre': Ghost, // Shared, but fitting
-  'Bristleback': Pickaxe, // Representing quills/toughness
+  'Windranger': Wind, // Changed from Swirl to Wind
+  'Storm Spirit': CloudLightning,
+  'Faceless Void': Circle,
+  'Spectre': Ghost,
+  'Bristleback': Pickaxe,
 
   // New heroes from the list
-  'Abaddon': ShieldCheck, // Mist Coil, Aphotic Shield
-  'Alchemist': FlaskConical, // Chemical Rage, Acid Spray
-  'Ancient Apparition': Snowflake, // Ice Vortex, Ice Blast
-  'Arc Warden': GitFork, // Tempest Double
-  'Bane': Brain, // Nightmare, Enfeeble
-  'Batrider': Flame, // Sticky Napalm, Flaming Lasso
-  'Beastmaster': AxeIconLucide, // Primal Axes, Call of the Wild (axes are iconic)
-  'Bloodseeker': Droplets, // Blood Rite, Thirst
-  'Bounty Hunter': Coins, // Track
-  'Brewmaster': Beer, // Drunken Brawler, Primal Split
-  'Broodmother': Spider, // Spawn Spiderlings
-  'Centaur Warrunner': Footprints, // Hoof Stomp
-  'Chaos Knight': Dices, // Chaos Bolt, Phantasm (randomness, illusions)
-  'Chen': Handshake, // Holy Persuasion
-  'Clinkz': Flame, // Searing Arrows
-  'Clockwerk': Cog, // Power Cogs
-  'Dark Seer': Shell, // Ion Shell
-  'Dark Willow': Palmtree, // Bramble Maze, Cursed Crown (using something whimsical)
-  'Dawnbreaker': Sunrise, // Starbreaker, Solar Guardian
-  'Dazzle': ShieldPlus, // Shallow Grave
-  'Death Prophet': Ghost, // Exorcism
-  'Disruptor': CloudLightning, // Thunder Strike, Static Storm
-  'Doom': Flame, // Scorched Earth, Doom
-  'Dragon Knight': Castle, // Dragon Form (representing strength/fortitude)
-  'Earth Spirit': MountainSnow, // Boulder Smash, Stone Remnants
-  'Elder Titan': Hammer, // Echo Stomp, Earth Splitter
-  'Ember Spirit': Flame, // Searing Chains, Sleight of Fist
-  'Enchantress': Rabbit, // Nature's Attendants (whimsical, nature)
-  'Enigma': Gem, // Black Hole (cosmic, powerful) - Gem as a generic powerful item
-  'Grimstroke': SprayCan, // Stroke of Fate, Ink Swell
-  'Gyrocopter': Plane, // Rocket Barrage, Call Down
-  'Hoodwink': Nut, // Acorn Shot
-  'Huskar': Flame, // Burning Spears
-  'Io': Circle, // Tether, Relocate (representing spirits/connection)
-  'Jakiro': Flame, // Dual Breath (focusing on one aspect)
-  'Keeper of the Light': Sun, // Illuminate
-  'Kez': Puzzle, // New hero
-  'Kunkka': Ship, // Ghostship
-  'Legion Commander': Swords, // Duel
-  'Leshrac': Zap, // Lightning Storm
-  'Lich': Snowflake, // Frost Blast
-  'Lifestealer': Rat, // Infest (more thematic than a generic heart)
-  'Lone Druid': PawPrint, // Spirit Bear
-  'Luna': Moon, // Lunar Glaives
-  'Lycan': Dog, // Summon Wolves
-  'Magnus': Tornado, // Replaced Horn with Tornado for Reverse Polarity
-  'Marci': Hand, // Dispose, Unleash
-  'Mars': Shield, // Bulwark
-  'Medusa': Siren, // Stone Gaze, Mystic Snake
-  'Meepo': CopyIconLucide, // Divided We Stand
-  'Monkey King': Pickaxe, // Jingu Mastery (using Pickaxe as a staff-like weapon)
-  'Morphling': Waves, // Waveform
-  'Muerta': Crosshair, // Gunslinger (using Puzzle as Crosshair not available)
-  'Naga Siren': Siren, // Song of the Siren, Rip Tide
-  "Nature's Prophet": Trees, // Sprout, Wrath of Nature
-  'Necrophos': Skull, // Reaper's Scythe
-  'Night Stalker': Moon, // Hunter in the Night, Darkness
-  'Nyx Assassin': Spider, // Vendetta, Spiked Carapace (using Spider for bug-like creature)
-  'Ogre Magi': Dice5, // Multicast
-  'Omniknight': ShieldPlus, // Guardian Angel
-  'Oracle': Eye, // Fate's Edict
-  'Outworld Devourer': Brain, // Astral Imprisonment, Sanity's Eclipse
-  'Pangolier': Swords, // Swashbuckle
-  'Phantom Lancer': CopyIconLucide, // Juxtapose
-  'Phoenix': Flame, // Supernova
-  'Primal Beast': PawPrint, // Onslaught, Pulverize
-  'Puck': Sparkles, // Illusory Orb
-  'Pugna': Tower, // Nether Ward
-  'Queen of Pain': Drama, // Scream of Pain, Sonic Wave (Drama mask represents her persona)
-  'Razor': Zap, // Static Link
-  'Riki': EyeOff, // Cloak and Dagger
-  'Ringmaster': Puzzle, // New hero
-  'Sand King': Spider, // Burrowstrike, Caustic Finale (using Spider for bug-like)
-  'Shadow Demon': Ghost, // Demonic Purge
-  'Shadow Shaman': Bot, // Mass Serpent Ward (Bot representing summons)
-  'Silencer': VolumeX, // Global Silence
-  'Skywrath Mage': Bird, // Arcane Bolt, Mystic Flare
-  'Slardar': Fish, // Corrosive Haze, Guardian Sprint
-  'Snapfire': Flame, // Mortimer Kisses
-  'Sniper': Target, // Assassinate
-  'Spirit Breaker': Activity, // Replaced Horn with Activity for Charge of Darkness
-  'Techies': Bomb, // Techies now uses Bomb
-  'Terrorblade': Swords, // Metamorphosis
-  'Tidehunter': Anchor, // Ravage
-  'Timbersaw': AxeIconLucide, // Whirling Death (Axe as a cutting tool)
-  'Tinker': Cog, // March of the Machines
-  'Treant Protector': Trees, // Living Armor
-  'Troll Warlord': AxeIconLucide, // Berserker's Rage
-  'Tusk': Snowflake, // Walrus Punch, Snowball
-  'Underlord': GateIcon, // Fiend's Gate
-  'Undying': Skull, // Decay, Tombstone
-  'Ursa': PawPrint, // Fury Swipes
-  'Vengeful Spirit': Sparkles, // Magic Missile
-  'Venomancer': Droplets, // Poison Sting, Plague Ward
-  'Viper': Droplets, // Poison Attack
-  'Visage': Bird, // Summon Familiars
-  'Void Spirit': Sparkles, // Astral Step
-  'Warlock': BookIcon, // Fatal Bonds, Chaotic Offering
-  'Weaver': Spider, // The Swarm (using Spider for bug-like)
-  'Windranger': Swirl, // Focus Fire, Powershot
-  'Winter Wyvern': Snowflake, // Winter's Curse
-  'Wraith King': Crown, // Reincarnation
+  'Abaddon': ShieldCheck,
+  'Alchemist': FlaskConical,
+  'Ancient Apparition': Snowflake,
+  'Arc Warden': GitFork,
+  'Bane': Brain,
+  'Batrider': Flame,
+  'Beastmaster': AxeIconLucide,
+  'Bloodseeker': Droplets,
+  'Bounty Hunter': Coins,
+  'Brewmaster': Beer,
+  'Broodmother': Bug, 
+  'Centaur Warrunner': Footprints,
+  'Chaos Knight': Dices,
+  'Chen': Handshake,
+  'Clinkz': Flame,
+  'Clockwerk': Cog,
+  'Dark Seer': Shell,
+  'Dark Willow': Palmtree,
+  'Dawnbreaker': Sunrise,
+  'Dazzle': ShieldPlus,
+  'Death Prophet': Ghost,
+  'Disruptor': CloudLightning,
+  'Doom': Flame,
+  'Dragon Knight': Castle,
+  'Earth Spirit': MountainSnow,
+  'Elder Titan': Hammer,
+  'Ember Spirit': Flame,
+  'Enchantress': Rabbit,
+  'Enigma': Gem,
+  'Grimstroke': SprayCan,
+  'Gyrocopter': Plane,
+  'Hoodwink': Nut,
+  'Huskar': Flame,
+  'Io': Circle,
+  'Jakiro': Flame,
+  'Keeper of the Light': Sun,
+  'Kez': Puzzle,
+  'Kunkka': Ship,
+  'Legion Commander': Swords,
+  'Leshrac': Zap,
+  'Lich': Snowflake,
+  'Lifestealer': Rat,
+  'Lone Druid': PawPrint,
+  'Luna': Moon,
+  'Lycan': Dog,
+  'Magnus': Tornado, // Changed from Horn
+  'Marci': Hand,
+  'Mars': Shield,
+  'Medusa': Siren,
+  'Meepo': CopyIconLucide,
+  'Monkey King': Pickaxe,
+  'Morphling': Waves,
+  'Muerta': Crosshair,
+  'Naga Siren': Siren,
+  "Nature's Prophet": Trees,
+  'Necrophos': Skull,
+  'Night Stalker': Moon,
+  'Nyx Assassin': Bug, 
+  'Ogre Magi': Dice5,
+  'Omniknight': ShieldPlus,
+  'Oracle': Eye,
+  'Outworld Devourer': Brain,
+  'Pangolier': Swords,
+  'Phantom Lancer': CopyIconLucide,
+  'Phoenix': Flame,
+  'Primal Beast': PawPrint,
+  'Puck': Sparkles,
+  'Pugna': Tower,
+  'Queen of Pain': Drama,
+  'Razor': Zap,
+  'Riki': EyeOff,
+  'Ringmaster': Puzzle,
+  'Sand King': Bug, 
+  'Shadow Demon': Ghost,
+  'Shadow Shaman': Bot,
+  'Silencer': VolumeX,
+  'Skywrath Mage': Bird,
+  'Slardar': Fish,
+  'Snapfire': Flame,
+  'Sniper': Target,
+  'Spirit Breaker': Activity, // Changed from Horn
+  'Techies': Bomb, 
+  'Terrorblade': Swords,
+  'Tidehunter': Anchor,
+  'Timbersaw': AxeIconLucide,
+  'Tinker': Cog,
+  'Treant Protector': Trees,
+  'Troll Warlord': AxeIconLucide,
+  'Tusk': Snowflake,
+  'Underlord': GateIcon,
+  'Undying': Skull,
+  'Ursa': PawPrint,
+  'Vengeful Spirit': Sparkles,
+  'Venomancer': Droplets,
+  'Viper': Droplets,
+  'Visage': Bird,
+  'Void Spirit': Sparkles,
+  'Warlock': BookIcon,
+  'Weaver': Bug, 
+  'Winter Wyvern': Snowflake,
+  'Wraith King': Crown,
 
   // Default
   'Default': Puzzle,
