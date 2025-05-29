@@ -56,7 +56,7 @@ export default function FantasyLeaguePage() {
     const existingPlayerInRole = currentLineup[role];
     let tempBudget = currentBudgetUsed;
 
-    if (existingPlayerInRole) { // Added guard
+    if (existingPlayerInRole) { 
       tempBudget -= existingPlayerInRole.mmr;
     }
     tempBudget += playerToSelect.mmr;
@@ -122,12 +122,12 @@ export default function FantasyLeaguePage() {
   };
 
   const deadlineButtonText = isLineupLockDeadlinePassed 
-    ? "Simulate Before Deadline (Show Previous Lineups)" 
-    : "Simulate Deadline Passed (Show Current Lineups)";
+    ? "Simulate Before Deadline (Show Hidden Lineups)" 
+    : "Simulate Deadline Passed (Reveal Current Lineups)";
   
   const leaderboardColumnHeaderText = isLineupLockDeadlinePassed
     ? "Current Round Lineup"
-    : "Previous Round Lineup";
+    : "Lineup (Hidden Until Deadline)";
 
   return (
     <div className="space-y-12">
@@ -192,7 +192,7 @@ export default function FantasyLeaguePage() {
                     Your lineup must be set before the Group Stage begins.
                     You can change your lineup after the Group Stage is complete, and then again after each round of the Play-offs.
                     Lock-in deadlines will be announced by the administrators. 
-                    Before a lock-in deadline, other participants will only see your previously locked-in lineup for that phase. After the deadline, your current lineup is visible.
+                    Before a lock-in deadline, other participants' lineups are hidden. After the deadline, current lineups are visible.
                   </AccordionContent>
                 </AccordionItem>
                 <AccordionItem value="rules-4">
@@ -357,8 +357,8 @@ export default function FantasyLeaguePage() {
                 </TableHeader>
                 <TableBody>
                   {fantasyLeaderboard.map((participant) => {
-                    const lineupToDisplay = isLineupLockDeadlinePassed ? participant.selectedLineup : participant.previousLineup;
-                    const showLineup = lineupToDisplay && Object.keys(lineupToDisplay).length > 0;
+                    const lineupToDisplay = participant.selectedLineup; // Always refers to current lineup data from participant
+                    const showLineupDetails = isLineupLockDeadlinePassed && lineupToDisplay && Object.keys(lineupToDisplay).length > 0;
 
                     return (
                     <TableRow key={participant.id} className={cn(participant.id === SIMULATED_CURRENT_USER_ID && "bg-primary/10 ring-1 ring-primary")}>
@@ -373,37 +373,43 @@ export default function FantasyLeaguePage() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        {showLineup ? (
-                          <div className="flex flex-row flex-wrap items-center gap-x-2 gap-y-1">
-                            {PlayerRoles.map(role => {
-                              const player = lineupToDisplay?.[role];
-                              const RoleIcon = roleIcons[role];
-                              const playerIdParts = player?.id?.split('-t');
-                              const basePlayerId = playerIdParts?.[0];
-                              const teamIdSuffix = playerIdParts?.[1];
-                              const teamIdForLink = teamIdSuffix ? `team${teamIdSuffix}` : '';
+                        {isLineupLockDeadlinePassed ? (
+                          showLineupDetails ? (
+                            <div className="flex flex-row flex-wrap items-center gap-x-2 gap-y-1">
+                              {PlayerRoles.map(role => {
+                                const player = lineupToDisplay?.[role];
+                                const RoleIcon = roleIcons[role];
+                                const playerIdParts = player?.id?.split('-t');
+                                const basePlayerId = playerIdParts?.[0];
+                                const teamIdSuffix = playerIdParts?.[1];
+                                const teamIdForLink = teamIdSuffix ? `team${teamIdSuffix}` : '';
 
-                              return (
-                                <div key={role} className="flex items-center space-x-1.5 text-xs">
-                                  <RoleIcon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                                  {player ? (
-                                    basePlayerId && teamIdForLink ? (
-                                      <Link href={`/teams/${teamIdForLink}/players/${basePlayerId}`} className="text-primary hover:underline truncate" title={player.nickname}>
-                                        {player.nickname}
-                                      </Link>
+                                return (
+                                  <div key={role} className="flex items-center space-x-1.5 text-xs">
+                                    <RoleIcon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                                    {player ? (
+                                      basePlayerId && teamIdForLink ? (
+                                        <Link href={`/teams/${teamIdForLink}/players/${basePlayerId}`} className="text-primary hover:underline truncate" title={player.nickname}>
+                                          {player.nickname}
+                                        </Link>
+                                      ) : (
+                                        <span className="text-foreground truncate" title={player.nickname}>{player.nickname}</span>
+                                      )
                                     ) : (
-                                      <span className="text-foreground truncate" title={player.nickname}>{player.nickname}</span>
-                                    )
-                                  ) : (
-                                    <span className="text-muted-foreground italic">-</span>
-                                  )}
-                                </div>
-                              );
-                            })}
-                          </div>
+                                      <span className="text-muted-foreground italic">-</span>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          ) : (
+                            <em className="text-xs text-muted-foreground">
+                              No lineup set for current round.
+                            </em>
+                          )
                         ) : (
                           <em className="text-xs text-muted-foreground">
-                            {isLineupLockDeadlinePassed ? "No lineup set for current round." : "No previous lineup available."}
+                            Lineup hidden until deadline.
                           </em>
                         )}
                       </TableCell>
@@ -451,9 +457,9 @@ export default function FantasyLeaguePage() {
                     <TableBody>
                       {topPlayersForRole.map((player, index) => {
                         const playerIdParts = player.id.split('-t');
-                        const basePlayerId = playerIdParts[0]; // e.g., "p1"
-                        const teamIdSuffix = playerIdParts[1]; // e.g., "1"
-                        const teamIdForLink = teamIdSuffix ? `team${teamIdSuffix}` : ''; // e.g., "team1"
+                        const basePlayerId = playerIdParts[0]; 
+                        const teamIdSuffix = playerIdParts[1]; 
+                        const teamIdForLink = teamIdSuffix ? `team${teamIdSuffix}` : ''; 
                         const teamName = getPlayerTeamName(player.id);
 
                         return (
@@ -503,5 +509,3 @@ export default function FantasyLeaguePage() {
     </div>
   );
 }
-
-
