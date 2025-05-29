@@ -2,11 +2,11 @@
 "use client";
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { UserPlus, LayoutGrid, Shield, CalendarDays, GitFork, ScrollText, HelpCircle, BarChart2, Menu, X } from 'lucide-react';
+import { UserPlus, LayoutGrid, Shield, CalendarDays, GitFork, ScrollText, HelpCircle, BarChart2, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Logo } from './Logo';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetClose } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { useIsMobile } from '@/hooks/use-mobile';
 import React from 'react';
 
@@ -33,6 +33,15 @@ const RightBracket = () => (
   </svg>
 );
 
+const CustomHamburgerIcon = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
+    <rect x="3" y="6" width="18" height="2.5" fill="hsl(330 100% 62%)" rx="1.25"/>
+    <rect x="3" y="11" width="18" height="2.5" fill="hsl(185 100% 50%)" rx="1.25"/>
+    <rect x="3" y="16" width="18" height="2.5" fill="hsl(0 0% 95%)" rx="1.25"/>
+  </svg>
+);
+
+
 export function Navbar() {
   const pathname = usePathname();
   const isMobile = useIsMobile();
@@ -46,7 +55,7 @@ export function Navbar() {
           <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
             <SheetTrigger asChild>
               <Button variant="ghost" size="icon">
-                <Menu className="h-6 w-6" />
+                <CustomHamburgerIcon className="h-7 w-7" />
                 <span className="sr-only">Open menu</span>
               </Button>
             </SheetTrigger>
@@ -54,7 +63,6 @@ export function Navbar() {
               <SheetHeader className="p-4 border-b border-border">
                 <SheetTitle className="flex items-center">
                   <Logo />
-                  {/* Redundant SheetClose button removed from here. SheetContent provides its own. */}
                 </SheetTitle>
               </SheetHeader>
               <nav className="flex flex-col space-y-2 p-4">
@@ -109,12 +117,12 @@ export function Navbar() {
                   <Link 
                     href={item.href} 
                     className={cn(
-                      "flex items-center",
+                      "flex items-center justify-between", // Added justify-between
                       isActive ? 'gap-1 px-1.5 md:px-2 py-1 md:py-2' : 'space-x-2 px-2 py-1 md:px-3 md:py-2'
                     )}
                   >
                     {isActive && <LeftBracket />}
-                    <div className={cn("flex items-center", isActive ? "gap-1.5 md:gap-2" : "gap-2")}>
+                    <div className={cn("flex items-center px-1.5 md:px-2", isActive ? "gap-1.5 md:gap-2" : "gap-2")}> {/* Added padding to content div */}
                       <item.icon className="h-4 w-4" />
                       <span className="hidden md:inline">{item.label}</span>
                     </div>
@@ -129,4 +137,3 @@ export function Navbar() {
     </header>
   );
 }
-
