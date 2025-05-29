@@ -9,7 +9,7 @@ import {
   Plane, Nut, Sun, Ship, HeartHandshake, Dog, Hand, Eye, PawPrint, VolumeX, Fish, 
   Waypoints as GateIcon, UserCircle2, Pickaxe, VenetianMask, SprayCan, Gem, Palmtree, // Removed Swirl
   Siren, Rat, Castle, Wheat, Dices, Unplug, Box, ShieldCheck, GitFork, Bot, Rabbit, Crown, Drama,
-  Skull, Tower, Crosshair, EyeOff, Tornado, Activity, Bomb, Wind // Added Wind, Bomb
+  Skull, Crosshair, EyeOff, Tornado, Activity, Bomb, Wind, Home // Added Wind, Bomb, Home. Removed Tower.
 } from "lucide-react";
 
 export const defaultHeroNames = [
@@ -53,7 +53,7 @@ export const heroIconMap: Record<string, LucideIconType> = {
   'Tiny': Trees,
   'Witch Doctor': Bone,
   'Zeus': CloudLightning,
-  'Windranger': Wind, // Changed from Swirl to Wind
+  'Windranger': Wind, 
   'Storm Spirit': CloudLightning,
   'Faceless Void': Circle,
   'Spectre': Ghost,
@@ -105,7 +105,7 @@ export const heroIconMap: Record<string, LucideIconType> = {
   'Lone Druid': PawPrint,
   'Luna': Moon,
   'Lycan': Dog,
-  'Magnus': Tornado, // Changed from Horn
+  'Magnus': Tornado, 
   'Marci': Hand,
   'Mars': Shield,
   'Medusa': Siren,
@@ -127,7 +127,7 @@ export const heroIconMap: Record<string, LucideIconType> = {
   'Phoenix': Flame,
   'Primal Beast': PawPrint,
   'Puck': Sparkles,
-  'Pugna': Tower,
+  'Pugna': Home, // Changed from Tower to Home
   'Queen of Pain': Drama,
   'Razor': Zap,
   'Riki': EyeOff,
@@ -140,7 +140,7 @@ export const heroIconMap: Record<string, LucideIconType> = {
   'Slardar': Fish,
   'Snapfire': Flame,
   'Sniper': Target,
-  'Spirit Breaker': Activity, // Changed from Horn
+  'Spirit Breaker': Activity, 
   'Techies': Bomb, 
   'Terrorblade': Swords,
   'Tidehunter': Anchor,
