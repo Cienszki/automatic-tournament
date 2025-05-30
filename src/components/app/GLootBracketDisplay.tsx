@@ -46,7 +46,7 @@ const miamiNeonTheme: DefaultTheme = {
     backgroundColor: 'hsl(var(--card))',
     fontColor: 'hsl(var(--card-foreground))'
   },
-  roundHeaders: {  // Added plural as a workaround for library's internal access
+  roundHeaders: { // Workaround for library internal access
     backgroundColor: 'hsl(var(--card))',
     fontColor: 'hsl(var(--card-foreground))'
   },
@@ -79,9 +79,9 @@ const GLOOT_MATCH_STATES = {
   NO_SHOW: 'NO_SHOW',
   WALK_OVER: 'WALK_OVER',
   NO_PARTY: 'NO_PARTY',
-  DONE: 'DONE',
-  SCORE_DONE: 'SCORE_DONE',
-  SCHEDULED: 'SCHEDULED',
+  DONE: 'DONE', // For overall match state
+  SCORE_DONE: 'SCORE_DONE', // For overall match state if scores are final
+  SCHEDULED: 'SCHEDULED', // For overall match state
 };
 
 
@@ -103,7 +103,7 @@ const transformInternalMatchToGLootMatch = (
         name: team?.name || 'Unknown Team',
         isWinner: isActuallyWinner ? true : undefined, // Pass true for winners, undefined otherwise
         resultText: p.score?.toString() ?? (isActuallyWinner ? 'W' : (p.isWinner === false ? 'L' : undefined)),
-        status: p.isWinner !== undefined ? GLOOT_MATCH_STATES.PLAYED : null,
+        status: p.isWinner !== undefined ? GLOOT_MATCH_STATES.PLAYED : null, // Participant status for played matches
       };
     }
 
@@ -130,14 +130,13 @@ const transformInternalMatchToGLootMatch = (
 
   let matchStateGLoot: string = GLOOT_MATCH_STATES.SCHEDULED;
   if (internalMatch.status === 'completed') {
-    matchStateGLoot = GLOOT_MATCH_STATES.DONE; // Or SCORE_DONE if applicable
-  }
-
-  // Check if both participants are effectively TBD (not yet seeded and not from a completed match source)
-  const pAIsEffectivelyTBD = !internalMatch.participantA.team && internalMatch.participantA.source?.type !== 'seed';
-  const pBIsEffectivelyTBD = !internalMatch.participantB.team && internalMatch.participantB.source?.type !== 'seed';
-  if (pAIsEffectivelyTBD && pBIsEffectivelyTBD && internalMatch.status !== 'completed') {
-    matchStateGLoot = GLOOT_MATCH_STATES.NO_PARTY;
+    matchStateGLoot = GLOOT_MATCH_STATES.DONE; 
+  } else if (internalMatch.status === 'pending') {
+     const pAIsSeededOrFromSource = internalMatch.participantA.team || (internalMatch.participantA.source && internalMatch.participantA.source.type !== 'tbd');
+     const pBIsSeededOrFromSource = internalMatch.participantB.team || (internalMatch.participantB.source && internalMatch.participantB.source.type !== 'tbd');
+     if (!pAIsSeededOrFromSource || !pBIsSeededOrFromSource) {
+        matchStateGLoot = GLOOT_MATCH_STATES.NO_PARTY;
+     }
   }
 
 
@@ -202,3 +201,4 @@ const GLootBracketDisplay: React.FC<GLootBracketDisplayProps> = ({ bracketData, 
 };
 
 export default GLootBracketDisplay;
+
