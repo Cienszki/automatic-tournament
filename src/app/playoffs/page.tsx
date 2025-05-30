@@ -162,7 +162,7 @@ export default function PlayoffsPage() {
       {/* Upper Bracket & Finals Card */}
       <Card className="shadow-lg">
         <CardHeader>
-          <CardTitle className="text-2xl font-semibold text-primary text-center">Upper Bracket & Finals</CardTitle>
+          <CardTitle className="text-3xl font-semibold text-primary text-center">Upper Bracket</CardTitle>
         </CardHeader>
         <CardContent className="p-2 md:p-4 overflow-x-auto">
           <div className="min-w-[1200px] grid grid-cols-[repeat(5,minmax(200px,1fr))] grid-rows-[auto_repeat(8,minmax(4rem,auto))] gap-x-4 gap-y-1">
@@ -202,43 +202,41 @@ export default function PlayoffsPage() {
       {/* Lower Bracket Card */}
       <Card className="shadow-lg">
         <CardHeader>
-          <CardTitle className="text-2xl font-semibold text-primary text-center">Lower Bracket</CardTitle>
+          <CardTitle className="text-3xl font-semibold text-primary text-center">Lower Bracket</CardTitle>
         </CardHeader>
         <CardContent className="p-2 md:p-4 overflow-x-auto">
           <div className="min-w-[1450px] grid grid-cols-[repeat(6,minmax(200px,1fr))] grid-rows-[auto_repeat(8,minmax(4rem,auto))] gap-x-4 gap-y-1">
             {/* Round Titles */}
-            <div className="col-start-1 row-start-9"><RoundTitle title="LB R1 (BO1)" icon={Skull} /></div>
-            <div className="col-start-2 row-start-9"><RoundTitle title="LB R2 (BO1)" icon={Skull} /></div>
-            <div className="col-start-3 row-start-9"><RoundTitle title="LB R3 (BO3)" icon={Swords} /></div>
-            <div className="col-start-4 row-start-9"><RoundTitle title="LB R4 (BO3)" icon={Swords} /></div>
-            <div className="col-start-5 row-start-9"><RoundTitle title="LB R5 (BO3)" icon={Handshake} /></div>
-            <div className="col-start-6 row-start-9"><RoundTitle title="LB Final (BO3)" icon={Star} /></div>
+            <div className="col-start-1 row-start-1"><RoundTitle title="LB R1 (BO1)" icon={Skull} /></div>
+            <div className="col-start-2 row-start-1"><RoundTitle title="LB R2 (BO1)" icon={Skull} /></div>
+            <div className="col-start-3 row-start-1"><RoundTitle title="LB R3 (BO3)" icon={Swords} /></div>
+            <div className="col-start-4 row-start-1"><RoundTitle title="LB R4 (BO3)" icon={Swords} /></div>
+            <div className="col-start-5 row-start-1"><RoundTitle title="LB R5 (BO3)" icon={Handshake} /></div>
+            <div className="col-start-6 row-start-1"><RoundTitle title="LB Final (BO3)" icon={Star} /></div>
 
             {/* True LB R1 Matches (Column 1) */}
-            <div className="row-start-10 col-start-1"><MatchCard matchId="TLB-R1-M1" format="BO1" p1={{name: lbStartTeam9.name, score:1, isWinner: true, logoUrl: lbStartTeam9.logoUrl}} p2={{name: lbStartTeam10.name, score:0, logoUrl: lbStartTeam10.logoUrl}} /></div>
-            <div className="row-start-12 col-start-1"><MatchCard matchId="TLB-R1-M2" format="BO1" p1={{name: lbStartTeam11.name, score:1, isWinner: true, logoUrl: lbStartTeam11.logoUrl}} p2={{name: lbStartTeam12.name, score:0, logoUrl: lbStartTeam12.logoUrl}} /></div>
-            <div className="row-start-14 col-start-1"><MatchCard matchId="TLB-R1-M3" format="BO1" p1={{name: lbStartTeam13.name, score:1, isWinner: true, logoUrl: lbStartTeam13.logoUrl}} p2={{name: lbStartTeam14.name, score:0, logoUrl: lbStartTeam14.logoUrl}} /></div>
-            <div className="row-start-16 col-start-1"><MatchCard matchId="TLB-R1-M4" format="BO1" p1={{name: lbStartTeam15.name, score:1, isWinner: true, logoUrl: lbStartTeam15.logoUrl}} p2={{name: lbStartTeam16.name, score:0, logoUrl: lbStartTeam16.logoUrl}} /></div>
+            <div className="row-start-2 col-start-1"><MatchCard matchId="TLB-R1-M1" format="BO1" p1={{name: lbStartTeam9.name, score:1, isWinner: true, logoUrl: lbStartTeam9.logoUrl}} p2={{name: lbStartTeam10.name, score:0, logoUrl: lbStartTeam10.logoUrl}} /></div>
+            <div className="row-start-4 col-start-1"><MatchCard matchId="TLB-R1-M2" format="BO1" p1={{name: lbStartTeam11.name, score:1, isWinner: true, logoUrl: lbStartTeam11.logoUrl}} p2={{name: lbStartTeam12.name, score:0, logoUrl: lbStartTeam12.logoUrl}} /></div>
+            <div className="row-start-6 col-start-1"><MatchCard matchId="TLB-R1-M3" format="BO1" p1={{name: lbStartTeam13.name, score:1, isWinner: true, logoUrl: lbStartTeam13.logoUrl}} p2={{name: lbStartTeam14.name, score:0, logoUrl: lbStartTeam14.logoUrl}} /></div>
+            <div className="row-start-8 col-start-1"><MatchCard matchId="TLB-R1-M4" format="BO1" p1={{name: lbStartTeam15.name, score:1, isWinner: true, logoUrl: lbStartTeam15.logoUrl}} p2={{name: lbStartTeam16.name, score:0, logoUrl: lbStartTeam16.logoUrl}} /></div>
 
             {/* LB R2 Matches (Merger) (Column 2) */}
-            <div className="row-start-10 col-start-2"><MatchCard matchId="LB-R2-M1" format="BO1" p1={{name: ubR1M1Loser.name, score:1, isWinner: true, logoUrl: ubR1M1Loser.logoUrl}} p2={{name: trueLBR1M1Winner.name, score:0, logoUrl: trueLBR1M1Winner.logoUrl}}/></div>
-            <div className="row-start-12 col-start-2"><MatchCard matchId="LB-R2-M2" format="BO1" p1={{name: ubR1M2Loser.name, score:1, isWinner: true, logoUrl: ubR1M2Loser.logoUrl}} p2={{name: trueLBR1M2Winner.name, score:0, logoUrl: trueLBR1M2Winner.logoUrl}}/></div>
-            <div className="row-start-14 col-start-2"><MatchCard matchId="LB-R2-M3" format="BO1" p1={{name: ubR1M3Loser.name, score:1, isWinner: true, logoUrl: ubR1M3Loser.logoUrl}} p2={{name: trueLBR1M3Winner.name, score:0, logoUrl: trueLBR1M3Winner.logoUrl}}/></div>
-            <div className="row-start-16 col-start-2"><MatchCard matchId="LB-R2-M4" format="BO1" p1={{name: ubR1M4Loser.name, score:1, isWinner: true, logoUrl: ubR1M4Loser.logoUrl}} p2={{name: trueLBR1M4Winner.name, score:0, logoUrl: trueLBR1M4Winner.logoUrl}}/></div>
-
+            <div className="row-start-3 col-start-2"><MatchCard matchId="LB-R2-M1" format="BO1" p1={{name: ubR1M1Loser.name, score:1, isWinner: true, logoUrl: ubR1M1Loser.logoUrl}} p2={{name: trueLBR1M1Winner.name, score:0, logoUrl: trueLBR1M1Winner.logoUrl}}/></div>
+            <div className="row-start-7 col-start-2"><MatchCard matchId="LB-R2-M2" format="BO1" p1={{name: ubR1M2Loser.name, score:1, isWinner: true, logoUrl: ubR1M2Loser.logoUrl}} p2={{name: trueLBR1M2Winner.name, score:0, logoUrl: trueLBR1M2Winner.logoUrl}}/></div>
+            
             {/* LB R3 Matches (Column 3) */}
-            <div className="row-start-11 col-start-3"><MatchCard matchId="LB-R3-M1" format="BO3" p1={{name: lbR2M1Winner.name, score:2, isWinner: true, logoUrl: lbR2M1Winner.logoUrl}} p2={{name: lbR2M2Winner.name, score:1, logoUrl: lbR2M2Winner.logoUrl}} /></div>
-            <div className="row-start-15 col-start-3"><MatchCard matchId="LB-R3-M2" format="BO3" p1={{name: lbR2M3Winner.name, score:2, isWinner: true, logoUrl: lbR2M3Winner.logoUrl}} p2={{name: lbR2M4Winner.name, score:0, logoUrl: lbR2M4Winner.logoUrl}} /></div>
+            <div className="row-start-3 col-start-3"><MatchCard matchId="LB-R3-M1" format="BO3" p1={{name: lbR2M1Winner.name, score:2, isWinner: true, logoUrl: lbR2M1Winner.logoUrl}} p2={{name: lbR2M2Winner.name, score:1, logoUrl: lbR2M2Winner.logoUrl}} /></div>
+            <div className="row-start-7 col-start-3"><MatchCard matchId="LB-R3-M2" format="BO3" p1={{name: lbR2M3Winner.name, score:2, isWinner: true, logoUrl: lbR2M3Winner.logoUrl}} p2={{name: lbR2M4Winner.name, score:0, logoUrl: lbR2M4Winner.logoUrl}} /></div>
 
             {/* LB R4 Matches (Merger) (Column 4) */}
-            <div className="row-start-11 col-start-4"><MatchCard matchId="LB-R4-M1" format="BO3" p1={{name: ubR2M1LoserForLB.name, score:2, isWinner: true, logoUrl: ubR2M1LoserForLB.logoUrl}} p2={{name: lbR3M1Winner.name, score:1, logoUrl: lbR3M1Winner.logoUrl}} /></div>
-            <div className="row-start-15 col-start-4"><MatchCard matchId="LB-R4-M2" format="BO3" p1={{name: ubR2M2LoserForLB.name, score:2, isWinner: true, logoUrl: ubR2M2LoserForLB.logoUrl}} p2={{name: lbR3M2Winner.name, score:1, logoUrl: lbR3M2Winner.logoUrl}} /></div>
+            <div className="row-start-4 col-start-4"><MatchCard matchId="LB-R4-M1" format="BO3" p1={{name: ubR2M1LoserForLB.name, score:2, isWinner: true, logoUrl: ubR2M1LoserForLB.logoUrl}} p2={{name: lbR3M1Winner.name, score:1, logoUrl: lbR3M1Winner.logoUrl}} /></div>
+            <div className="row-start-6 col-start-4"><MatchCard matchId="LB-R4-M2" format="BO3" p1={{name: ubR2M2LoserForLB.name, score:2, isWinner: true, logoUrl: ubR2M2LoserForLB.logoUrl}} p2={{name: lbR3M2Winner.name, score:1, logoUrl: lbR3M2Winner.logoUrl}} /></div>
 
             {/* LB R5 Match (Column 5) */}
-            <div className="row-start-13 col-start-5"><MatchCard matchId="LB-R5-M1" format="BO3" p1={{name: lbR4M1Winner.name, score:0, logoUrl: lbR4M1Winner.logoUrl}} p2={{name: lbR4M2Winner.name, score:2, isWinner: true, logoUrl: lbR4M2Winner.logoUrl}} /></div>
+            <div className="row-start-5 col-start-5"><MatchCard matchId="LB-R5-M1" format="BO3" p1={{name: lbR4M1Winner.name, score:0, logoUrl: lbR4M1Winner.logoUrl}} p2={{name: lbR4M2Winner.name, score:2, isWinner: true, logoUrl: lbR4M2Winner.logoUrl}} /></div>
             
             {/* LB Final Match (Column 6) */}
-            <div className="row-start-13 col-start-6"><MatchCard matchId="LB-Final-M1" format="BO3" p1={{name: lbR5M1Winner.name, score:1, logoUrl: lbR5M1Winner.logoUrl}} p2={{name: ubFinalLoserForLB.name, score:2, isWinner: true, logoUrl: ubFinalLoserForLB.logoUrl}} /></div>
+            <div className="row-start-5 col-start-6"><MatchCard matchId="LB-Final-M1" format="BO3" p1={{name: lbR5M1Winner.name, score:1, logoUrl: lbR5M1Winner.logoUrl}} p2={{name: ubFinalLoserForLB.name, score:2, isWinner: true, logoUrl: ubFinalLoserForLB.logoUrl}} /></div>
           </div>
         </CardContent>
       </Card>
