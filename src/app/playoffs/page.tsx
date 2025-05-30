@@ -4,7 +4,7 @@
 import * as React from "react";
 import Image from "next/image"; // Added import for Image
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { GitBranch, Trophy, Users, Shield, Star, Users2, ArrowRight, Home, Skull, Swords, Handshake } from "lucide-react";
+import { GitBranch, Trophy, Users, Shield, Star, Users2, ArrowRight, Home, Skull, Swords, Handshake, Crown } from "lucide-react"; // Added Crown
 import { mockTeams } from "@/lib/mock-data";
 import type { Team } from "@/lib/definitions";
 import { cn } from "@/lib/utils";
@@ -47,14 +47,14 @@ interface MatchCardProps {
 const MatchCard: React.FC<MatchCardProps> = ({ matchId, p1, p2, isPlaceholder, placeholderText, format }) => {
   if (isPlaceholder) {
     return (
-      <div className="h-24 min-w-[220px] border border-dashed border-muted-foreground/50 rounded-lg flex items-center justify-center text-muted-foreground text-xs p-2 text-center">
+      <div className="h-24 min-w-[200px] border border-dashed border-muted-foreground/50 rounded-lg flex items-center justify-center text-muted-foreground text-xs p-2 text-center">
         {placeholderText || 'Awaiting Match'}
       </div>
     );
   }
 
   return (
-    <Card className="shadow-md min-w-[220px] bg-card border-border hover:border-primary/50 transition-colors duration-150">
+    <Card className="shadow-md min-w-[200px] bg-card border-border hover:border-primary/50 transition-colors duration-150">
       <CardHeader className="p-2 border-b border-border">
         <div className="text-xs text-muted-foreground text-center">
           {matchId} {format && `(${format})`}
@@ -83,13 +83,20 @@ const RoundTitle: React.FC<RoundTitleProps> = ({ title, icon: Icon }) => (
 
 
 export default function PlayoffsPage() {
-  const top16Teams = [...mockTeams].sort((a, b) => (b.points ?? 0) - (a.points ?? 0)).slice(0, 16);
+  // Simulate fetching top 16 teams (or use all if fewer)
+  const playoffTeams = [...mockTeams].sort((a, b) => (b.points ?? 0) - (a.points ?? 0)).slice(0, 16);
 
-  // Simulate team assignments if not enough teams
+  // Helper to get team or provide a placeholder if not enough teams
   const getTeam = (index: number, defaultName: string): Team => 
-    top16Teams[index] || { id: `t${index + 1}`, name: defaultName, players: [], status: "Active", logoUrl: `https://placehold.co/32x32.png?text=${defaultName.charAt(0)}` };
+    playoffTeams[index] || { 
+      id: `placeholder-${index + 1}`, 
+      name: `${defaultName} (P)`, 
+      players: [], 
+      status: "Active", 
+      logoUrl: `https://placehold.co/32x32.png?text=${defaultName.charAt(0)}` 
+    };
 
-  // UB Data
+  // UB Data - Assigning top 8 seeds to UB R1
   const ubTeam1 = getTeam(0, "Kebab u Dassem'a");
   const ubTeam2 = getTeam(1, "Herbatka u Bratka");
   const ubTeam3 = getTeam(2, "Chestnut's");
@@ -99,7 +106,7 @@ export default function PlayoffsPage() {
   const ubTeam7 = getTeam(6, "Gimnazjum...");
   const ubTeam8 = getTeam(7, "Team Uchodźcy");
 
-  // LB Starting Data
+  // LB Starting Data - Assigning seeds 9-16 to LB R1
   const lbStartTeam9 = getTeam(8, "Gejmingowa Ekstaza Jar");
   const lbStartTeam10 = getTeam(9, "Team Bracer");
   const lbStartTeam11 = getTeam(10, "Placki 🏆");
@@ -109,25 +116,26 @@ export default function PlayoffsPage() {
   const lbStartTeam15 = getTeam(14, "Ofensywny Glimmer");
   const lbStartTeam16 = getTeam(15, "Biuro Ochrony Rapiera");
 
-  // Simulated Winners/Losers UB R1
+  // --- Upper Bracket Simulation ---
+  // UB R1
   const ubR1M1Winner = ubTeam1; const ubR1M1Loser = ubTeam2; // Kebab wins vs Herbatka
   const ubR1M2Winner = ubTeam3; const ubR1M2Loser = ubTeam4; // Chestnut's wins vs Bóbr
   const ubR1M3Winner = ubTeam5; const ubR1M3Loser = ubTeam6; // Wina wins vs Dont Ban Spectre
   const ubR1M4Winner = ubTeam7; const ubR1M4Loser = ubTeam8; // Gimnazjum wins vs Uchodźcy
 
-  // Simulated Winners/Losers UB R2 (Semis)
-  const ubR2M1Winner = ubR1M1Winner; const ubR2M1Loser = ubR1M2Winner; // Kebab wins vs Chestnut's
-  const ubR2M2Winner = ubR1M3Winner; const ubR2M2Loser = ubR1M4Winner; // Wina wins vs Gimnazjum
+  // UB R2 (Semis)
+  const ubR2M1Winner = ubR1M1Winner; const ubR2M1LoserForLB = ubR1M2Winner; // Kebab wins vs Chestnut's
+  const ubR2M2Winner = ubR1M3Winner; const ubR2M2LoserForLB = ubR1M4Winner; // Wina wins vs Gimnazjum
   
-  // Simulated UB Final
-  const ubFinalWinner = ubR2M1Winner; const ubFinalLoser = ubR2M2Winner; // Kebab wins vs Wina
+  // UB Final
+  const ubFinalWinner = ubR2M1Winner; const ubFinalLoserForLB = ubR2M2Winner; // Kebab wins vs Wina
 
   // --- Lower Bracket Simulation ---
-  // True LB R1 (8 starting LB teams play)
-  const trueLBR1M1Winner = lbStartTeam9; // Gejmingowa wins
-  const trueLBR1M2Winner = lbStartTeam11; // Placki wins
-  const trueLBR1M3Winner = lbStartTeam13; // Equitantes wins
-  const trueLBR1M4Winner = lbStartTeam15; // Ofensywny wins
+  // True LB R1 (Teams starting in LB play)
+  const trueLBR1M1Winner = lbStartTeam9;   // Gejmingowa wins
+  const trueLBR1M2Winner = lbStartTeam11;  // Placki wins
+  const trueLBR1M3Winner = lbStartTeam13;  // Equitantes wins
+  const trueLBR1M4Winner = lbStartTeam15;  // Ofensywny wins
 
   // LB R2 (Merger: Losers of UB R1 vs Winners of true LB R1)
   const lbR2M1Winner = ubR1M1Loser; // Herbatka (UBR1M1Loser) wins vs Gejmingowa (TrueLBR1M1Winner)
@@ -140,14 +148,14 @@ export default function PlayoffsPage() {
   const lbR3M2Winner = lbR2M3Winner; // Equitantes wins vs Ofensywny
   
   // LB R4 (Merger: Losers of UB R2 vs Winners of LB R3)
-  const lbR4M1Winner = lbR3M1Winner; // Herbatka (LBR3M1Winner) wins vs Chestnut's (UBR2M1Loser)
-  const lbR4M2Winner = ubR2M2Loser; // Gimnazjum (UBR2M2Loser) wins vs Equitantes (LBR3M2Winner)
+  const lbR4M1Winner = lbR3M1Winner; // Herbatka (LBR3M1Winner) wins vs Chestnut's (UBR2M1LoserForLB)
+  const lbR4M2Winner = ubR2M2LoserForLB; // Gimnazjum (UBR2M2LoserForLB) wins vs Equitantes (LBR3M2Winner)
 
   // LB R5 (Winners of LB R4 play)
   const lbR5M1Winner = lbR4M1Winner; // Herbatka wins vs Gimnazjum
 
   // LB Final (Winner of LB R5 vs Loser of UB Final)
-  const lbFinalMatchWinner = ubFinalLoser; // Wina (UBFinalLoser) wins vs Herbatka (LBR5M1Winner)
+  const lbFinalMatchWinner = ubFinalLoserForLB; // Wina (UBFinalLoserForLB) wins vs Herbatka (LBR5M1Winner)
 
   // Grand Final
   const grandFinalWinner = ubFinalWinner; // Kebab wins vs Wina
@@ -159,7 +167,7 @@ export default function PlayoffsPage() {
           <GitBranch className="h-16 w-16 mx-auto text-primary mb-4" />
           <CardTitle className="text-4xl font-bold text-primary">Playoff Bracket</CardTitle>
           <CardDescription className="text-lg text-muted-foreground">
-            Follow the journey to the championship! (Static Example)
+            Follow the journey to the championship! (Static Mock Data)
           </CardDescription>
         </CardHeader>
       </Card>
@@ -219,7 +227,7 @@ export default function PlayoffsPage() {
             <div className="col-start-5 row-start-9"><RoundTitle title="LB R5 (BO3)" icon={Handshake} /></div>
             <div className="col-start-6 row-start-9"><RoundTitle title="LB Final (BO3)" icon={Star} /></div>
 
-            {/* True LB R1 */}
+            {/* True LB R1 (Teams starting in LB play each other) */}
             <div className="row-start-10 col-start-1"><MatchCard matchId="TLB-R1-M1" format="BO1" p1={{name: lbStartTeam9.name, score:1, isWinner: true, logoUrl: lbStartTeam9.logoUrl}} p2={{name: lbStartTeam10.name, score:0, logoUrl: lbStartTeam10.logoUrl}} /></div>
             <div className="row-start-12 col-start-1"><MatchCard matchId="TLB-R1-M2" format="BO1" p1={{name: lbStartTeam11.name, score:1, isWinner: true, logoUrl: lbStartTeam11.logoUrl}} p2={{name: lbStartTeam12.name, score:0, logoUrl: lbStartTeam12.logoUrl}} /></div>
             <div className="row-start-14 col-start-1"><MatchCard matchId="TLB-R1-M3" format="BO1" p1={{name: lbStartTeam13.name, score:1, isWinner: true, logoUrl: lbStartTeam13.logoUrl}} p2={{name: lbStartTeam14.name, score:0, logoUrl: lbStartTeam14.logoUrl}} /></div>
@@ -236,14 +244,14 @@ export default function PlayoffsPage() {
             <div className="row-start-15 col-start-3"><MatchCard matchId="LB-R3-M2" format="BO3" p1={{name: lbR2M3Winner.name, score:2, isWinner: true, logoUrl: lbR2M3Winner.logoUrl}} p2={{name: lbR2M4Winner.name, score:0, logoUrl: lbR2M4Winner.logoUrl}} /></div>
 
             {/* LB R4 (Merger: Losers of UB R2 vs Winners of LB R3) */}
-            <div className="row-start-11 col-start-4"><MatchCard matchId="LB-R4-M1" format="BO3" p1={{name: ubR2M1Loser.name, score:1, logoUrl: ubR2M1Loser.logoUrl}} p2={{name: lbR3M1Winner.name, score:2, isWinner: true, logoUrl: lbR3M1Winner.logoUrl}} /></div>
-            <div className="row-start-15 col-start-4"><MatchCard matchId="LB-R4-M2" format="BO3" p1={{name: ubR2M2Loser.name, score:2, isWinner: true, logoUrl: ubR2M2Loser.logoUrl}} p2={{name: lbR3M2Winner.name, score:1, logoUrl: lbR3M2Winner.logoUrl}} /></div>
+            <div className="row-start-11 col-start-4"><MatchCard matchId="LB-R4-M1" format="BO3" p1={{name: ubR2M1LoserForLB.name, score:1, logoUrl: ubR2M1LoserForLB.logoUrl}} p2={{name: lbR3M1Winner.name, score:2, isWinner: true, logoUrl: lbR3M1Winner.logoUrl}} /></div>
+            <div className="row-start-15 col-start-4"><MatchCard matchId="LB-R4-M2" format="BO3" p1={{name: ubR2M2LoserForLB.name, score:2, isWinner: true, logoUrl: ubR2M2LoserForLB.logoUrl}} p2={{name: lbR3M2Winner.name, score:1, logoUrl: lbR3M2Winner.logoUrl}} /></div>
 
             {/* LB R5 (Winners of LB R4 play) */}
             <div className="row-start-13 col-start-5"><MatchCard matchId="LB-R5-M1" format="BO3" p1={{name: lbR4M1Winner.name, score:1, logoUrl: lbR4M1Winner.logoUrl}} p2={{name: lbR4M2Winner.name, score:2, isWinner: true, logoUrl: lbR4M2Winner.logoUrl}} /></div>
             
             {/* LB Final (Winner of LB R5 vs Loser of UB Final) */}
-            <div className="row-start-13 col-start-6"><MatchCard matchId="LB-Final-M1" format="BO3" p1={{name: lbR5M1Winner.name, score:1, logoUrl: lbR5M1Winner.logoUrl}} p2={{name: ubFinalLoser.name, score:2, isWinner: true, logoUrl: ubFinalLoser.logoUrl}} /></div>
+            <div className="row-start-13 col-start-6"><MatchCard matchId="LB-Final-M1" format="BO3" p1={{name: lbR5M1Winner.name, score:1, logoUrl: lbR5M1Winner.logoUrl}} p2={{name: ubFinalLoserForLB.name, score:2, isWinner: true, logoUrl: ubFinalLoserForLB.logoUrl}} /></div>
           </div>
         </CardContent>
       </Card>
