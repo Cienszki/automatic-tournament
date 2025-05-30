@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, Suspense } from 'react';
 import dynamic from 'next/dynamic';
 import { ThemeProvider as StyledThemeProvider, type DefaultTheme, createGlobalStyle } from 'styled-components';
 
@@ -42,12 +42,11 @@ const miamiNeonTheme: DefaultTheme = {
     color: 'hsl(var(--border))',
     highlightedColor: 'hsl(var(--primary))'
   },
-  roundHeader: { // Singular, as per docs and common sense
+  roundHeader: { 
     backgroundColor: 'hsl(var(--card))',
     fontColor: 'hsl(var(--card-foreground))'
   },
-  // Add the plural version as a workaround for the library's internal access
-  roundHeaders: { 
+  roundHeaders: {  // Added plural as a workaround for library's internal access
     backgroundColor: 'hsl(var(--card))',
     fontColor: 'hsl(var(--card-foreground))'
   },
@@ -74,13 +73,14 @@ interface GLootBracketDisplayProps {
 
 const PLACEHOLDER_DATE_ISO_STRING = '2000-01-01T00:00:00.000Z';
 
+// Using string literals as MATCH_STATES import was problematic
 const GLOOT_MATCH_STATES = {
   PLAYED: 'PLAYED',
   NO_SHOW: 'NO_SHOW',
   WALK_OVER: 'WALK_OVER',
   NO_PARTY: 'NO_PARTY',
   DONE: 'DONE',
-  SCORE_DONE: 'SCORE_DONE', // Added as per docs
+  SCORE_DONE: 'SCORE_DONE',
   SCHEDULED: 'SCHEDULED',
 };
 
@@ -92,16 +92,17 @@ const transformInternalMatchToGLootMatch = (
 
   const transformParticipant = (p: InternalParticipant | undefined | null, slot: string): any /* BracketParticipantProps */ => {
     if (!p || !p.source) {
-        return { id: `tbd-nosource-${internalMatch.id}-${slot}`, name: 'TBD', isWinner: false, status: GLOOT_MATCH_STATES.NO_PARTY };
+        return { id: `tbd-nosource-${internalMatch.id}-${slot}`, name: 'TBD', isWinner: undefined, status: GLOOT_MATCH_STATES.NO_PARTY };
     }
 
     if (p.team) {
       const team = teamsMap.get(p.team.id);
+      const isActuallyWinner = p.isWinner === true;
       return {
         id: p.team.id.toString(),
         name: team?.name || 'Unknown Team',
-        isWinner: !!p.isWinner,
-        resultText: p.score?.toString() ?? (p.isWinner ? 'W' : (p.isWinner === false ? 'L' : undefined)),
+        isWinner: isActuallyWinner ? true : undefined, // Pass true for winners, undefined otherwise
+        resultText: p.score?.toString() ?? (isActuallyWinner ? 'W' : (p.isWinner === false ? 'L' : undefined)),
         status: p.isWinner !== undefined ? GLOOT_MATCH_STATES.PLAYED : null,
       };
     }
@@ -120,22 +121,25 @@ const transformInternalMatchToGLootMatch = (
       name = seededTeam?.name || 'TBD Seed';
       sourceIdBase = `seed-${(p.source as SeedSource).teamId}`;
       if (seededTeam) {
-        return { id: seededTeam.id.toString(), name: seededTeam.name, isWinner: false, status: null };
+        return { id: seededTeam.id.toString(), name: seededTeam.name, isWinner: undefined, status: null };
       }
     }
-    return { id: `${sourceIdBase}-${internalMatch.id}-${slot}`.replace(/\s+/g, '-'), name, isWinner: false, status: GLOOT_MATCH_STATES.NO_PARTY };
+    // For TBD/placeholder participants, isWinner should be undefined
+    return { id: `${sourceIdBase}-${internalMatch.id}-${slot}`.replace(/\s+/g, '-'), name, isWinner: undefined, status: GLOOT_MATCH_STATES.NO_PARTY };
   };
 
   let matchStateGLoot: string = GLOOT_MATCH_STATES.SCHEDULED;
   if (internalMatch.status === 'completed') {
-    matchStateGLoot = GLOOT_MATCH_STATES.DONE;
+    matchStateGLoot = GLOOT_MATCH_STATES.DONE; // Or SCORE_DONE if applicable
   }
 
+  // Check if both participants are effectively TBD (not yet seeded and not from a completed match source)
   const pAIsEffectivelyTBD = !internalMatch.participantA.team && internalMatch.participantA.source?.type !== 'seed';
   const pBIsEffectivelyTBD = !internalMatch.participantB.team && internalMatch.participantB.source?.type !== 'seed';
   if (pAIsEffectivelyTBD && pBIsEffectivelyTBD && internalMatch.status !== 'completed') {
     matchStateGLoot = GLOOT_MATCH_STATES.NO_PARTY;
   }
+
 
   const transformedMatch = {
     id: internalMatch.id,
@@ -189,7 +193,7 @@ const GLootBracketDisplay: React.FC<GLootBracketDisplayProps> = ({ bracketData, 
       <div className="w-full flex-grow flex flex-col items-center bg-[hsl(var(--background))] p-4 overflow-auto">
           <DoubleEliminationBracket
             matches={gLootMatchesData}
-            matchComponent={GlootMatchComponent}
+            matchComponent={GlootMatchComponent} 
             theme={miamiNeonTheme} // Library's specific theme prop
           />
       </div>
