@@ -81,7 +81,7 @@ export function Navbar() {
                       className={cn(
                         "w-full justify-start text-base py-3 px-3",
                         isActive ? 'text-primary bg-primary/10' : 'text-muted-foreground hover:text-foreground hover:bg-accent/50',
-                        item.href === '/my-team' && (isActive ? 'text-secondary bg-secondary/10' : 'text-secondary hover:text-secondary'),
+                        item.href === '/my-team' && (isActive ? 'text-secondary bg-secondary/10' : 'text-secondary hover:text-primary hover:bg-primary/10'),
                       )}
                     >
                       <Link href={item.href} className="flex items-center space-x-3">
@@ -117,7 +117,7 @@ export function Navbar() {
                     isActive 
                       ? 'text-primary bg-primary/10 px-1' 
                       : 'text-muted-foreground hover:text-foreground hover:bg-accent/50 px-2 py-1 md:px-3 md:py-2',
-                    item.href === '/my-team' && (isActive ? 'text-secondary bg-secondary/10' : 'text-secondary hover:text-secondary/90'),
+                    item.href === '/my-team' && (isActive ? 'text-secondary bg-secondary/10' : 'text-secondary hover:text-primary hover:bg-primary/10'),
                   )}
                 >
                   <Link 
