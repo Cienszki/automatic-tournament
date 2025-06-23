@@ -1,5 +1,6 @@
 
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { CalendarDays, UserPlus } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
@@ -40,6 +41,14 @@ export default function Home() {
             </Button>
           </div>
         </div>
+      </section>
+
+      {/* New sections */}
+      <section className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
+        <Card className="min-h-[200px]"></Card>
+        <Card className="min-h-[200px]"></Card>
+        <Card className="min-h-[200px]"></Card>
+        <Card className="min-h-[200px]"></Card>
       </section>
     </div>
   );
