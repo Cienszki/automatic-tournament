@@ -23,7 +23,7 @@ const roleIcons: Record<PlayerRole, React.ElementType> = {
 
 export function RosterCard({ players, teamId }: RosterCardProps) {
   return (
-    <Card className="shadow-lg h-full flex flex-col">
+    <Card className="shadow-lg flex flex-col">
       <CardHeader>
         <CardTitle className="flex items-center text-primary">
           <User className="mr-2" />

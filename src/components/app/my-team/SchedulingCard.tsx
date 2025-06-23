@@ -51,7 +51,7 @@ export function SchedulingCard({ nextMatch, team }: SchedulingCardProps) {
 
   if (!nextMatch || !opponent) {
     return (
-      <Card className="shadow-lg h-full">
+      <Card className="shadow-lg">
         <CardHeader>
           <CardTitle className="flex items-center text-primary">
             <CalendarClock className="mr-2" />
@@ -67,7 +67,7 @@ export function SchedulingCard({ nextMatch, team }: SchedulingCardProps) {
   }
 
   return (
-    <Card className="shadow-lg h-full">
+    <Card className="shadow-lg">
       <CardHeader>
         <CardTitle className="flex items-center justify-between text-primary">
           <div className="flex items-center">

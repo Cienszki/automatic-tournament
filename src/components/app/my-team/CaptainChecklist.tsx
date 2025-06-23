@@ -13,7 +13,7 @@ interface CaptainsChecklistProps {
 
 export function CaptainsChecklist({ items }: CaptainsChecklistProps) {
   return (
-    <Card className="h-full shadow-lg">
+    <Card className="shadow-lg">
       <CardHeader>
         <CardTitle className="flex items-center text-primary">
           <CheckCircle2 className="mr-2" />
