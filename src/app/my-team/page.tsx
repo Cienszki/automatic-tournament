@@ -72,7 +72,7 @@ export default async function MyTeamPage() {
         {/* Right Column */}
         <div className="lg:col-span-1 space-y-6">
           <TeamStatusCard team={team} />
-          <RosterCard players={team.players} teamId={team.id} />
+          <RosterCard team={team} upcomingMatches={upcomingMatches} />
            <Card className="shadow-lg">
                 <CardHeader>
                     <CardTitle className="flex items-center text-primary">

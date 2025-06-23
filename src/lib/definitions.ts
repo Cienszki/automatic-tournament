@@ -30,6 +30,17 @@ export type HeroPlayStats = {
   gamesPlayed: number;
 };
 
+export const StandInStatuses = ["approved", "pending"] as const;
+export type StandInStatus = (typeof StandInStatuses)[number];
+
+export type StandIn = {
+  id: string;
+  nickname: string;
+  mmr: number;
+  steamProfileUrl: string;
+  status: StandInStatus;
+};
+
 export type Team = {
   id: string;
   name: string;
@@ -37,6 +48,7 @@ export type Team = {
   motto?: string; // Added team motto
   players: Player[]; // These players will have team-specific IDs like "p1-t1"
   status: TournamentStatus;
+  standIns?: StandIn[];
   matchesPlayed?: number;
   matchesWon?: number;
   matchesLost?: number;

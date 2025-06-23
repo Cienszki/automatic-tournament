@@ -1,10 +1,12 @@
 
-import type { Team, Player, Match, Group, PlayerRole, TournamentStatus, HeroPlayStats, PlayerPerformanceInMatch, CategoryDisplayStats, CategoryRankingDetail, TournamentHighlightRecord, FantasyLineup, FantasyLeagueParticipant } from './definitions';
+import type { Team, Player, Match, Group, PlayerRole, TournamentStatus, HeroPlayStats, PlayerPerformanceInMatch, CategoryDisplayStats, CategoryRankingDetail, TournamentHighlightRecord, FantasyLineup, FantasyLeagueParticipant, StandIn } from './definitions';
 import { PlayerRoles, TournamentStatuses } from './definitions';
 import { defaultHeroNames, heroIconMap, heroColorMap, FALLBACK_HERO_COLOR } from './hero-data'; 
 import {
   Award, BarChart2, TrendingUp, TrendingDown, ShieldAlert, DollarSign, Eye, HelpCircle, Bomb, Swords, HeartHandshake, Zap, Clock, Activity, ShieldCheck, ChevronsUp, Timer, Skull, ListChecks, Medal, Trophy, Percent, Ratio, Handshake as HandshakeIcon, Puzzle, Target, Coins, Home, Users2
 } from 'lucide-react';
+
+export const TEAM_MMR_CAP = 22000;
 
 const playerNamesFromLeaderboard = [
   "deepdoto", "grechca", "Pelé", "watson", "Ghost", "Amaterasu", "Allah", "Nightfall", "DM", "Ws", "Xm", "Yatoro", "Scofield", "Kiritych", "bzm", "skem", "TA2000", "Noticed", "23savage", "Quinn", "Wisper", "Worick", "Malr1ne", "AMMAR_THE_F", "CHIRA_JUNIOR", "GH", "Niku", "ChodEX", "Matson", "yamich", "Stefan Gavrila", "swedenstrong", "salamat1", "OneJey", "9Class", "Emo", "payk", "Ghost", "V-Tune", "мистер мораль", "lorenof", "Fayde", "Yuta", "emptiness死", "Tobi", "JANTER", "Immersion", "squad1x", "DarkMago", "teror", "Stojkov", "cutcutcut", "rincyq", "WoE", "Maladych", "Munkushi", "pma", "Depk1d", "No[o]ne-", "tOfu", "Undyne", "wonderk1d", "TORONTOTOKYO", "Dukalis", "Mira", "mellojul", "Serenada", "Lelis", "sila", "Nicky", "you", "Mikoto", "Ari", "daze", "No!ob", "Davai Lama", "Invokerboy", "Xakoda", "El SaberLightO", "bottega", "Shad", "Armel", "eyesxght", "Nande", "Ame", "gotthejuice", "BOOM", "7jesu", "Mikey", "MieRo", "Save-", "OmaR", "Stormstormer", "Pure", "amoralis", "Thiolicor", "sanctity", "ssnovv1", "Gazyava", "2ls", "Batyuk", "skiter", "Se", "RCY", "Daxao", "Difference", "Copy", "Abed", "dualrazee", "shigetsu", "KingJungles", "Mirage", "423", "laise", "bb3px", "Kataomi", "seimei", "Mo13ei", "Ekki", "kaori"
@@ -108,7 +110,6 @@ const createTeamPlayers = (teamIndex: number, teamStatus: TournamentStatus): Pla
   }));
 
   let teamTotalMMR = currentTeamPlayers.reduce((sum, p) => sum + p.mmr, 0);
-  const TEAM_MMR_CAP = 25000; 
   const MIN_PLAYER_MMR = 1000; 
 
   while (teamTotalMMR > TEAM_MMR_CAP) {
@@ -164,6 +165,15 @@ export const mockTeams: Team[] = Array.from({ length: 24 }, (_, i) => {
   // Create a short, safe version of the team name for logo placeholder
   const logoText = teamName.replace(/[^a-zA-Z0-9]/g, '').substring(0, 2).toUpperCase() || 'T' + (i+1);
 
+  let standIns: StandIn[] | undefined = undefined;
+  if (i === 0) { // Add stand-ins only to team1 for demonstration
+    standIns = [
+      { id: 'standin1', nickname: 'Mercenary Mike', mmr: 4800, steamProfileUrl: 'https://steamcommunity.com/id/mikemerc', status: 'approved' },
+      { id: 'standin2', nickname: 'Sub-Zero', mmr: 5500, steamProfileUrl: 'https://steamcommunity.com/id/subzero', status: 'approved' },
+      { id: 'standin3', nickname: 'Pending Pete', mmr: 4100, steamProfileUrl: 'https://steamcommunity.com/id/pendingpete', status: 'pending' },
+    ];
+  }
+
 
   return {
     id: `team${i + 1}`,
@@ -172,6 +182,7 @@ export const mockTeams: Team[] = Array.from({ length: 24 }, (_, i) => {
     motto: motto,
     status: teamStatus,
     players: teamPlayers,
+    standIns: standIns,
     matchesPlayed: matchesPlayed,
     matchesWon: matchesWon,
     matchesLost: matchesLost,
