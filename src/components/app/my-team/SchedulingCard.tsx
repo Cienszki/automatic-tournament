@@ -5,28 +5,46 @@ import * as React from "react";
 import type { Match, Team } from "@/lib/definitions";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Calendar, CalendarClock, ExternalLink, Send } from "lucide-react";
+import { Calendar, CalendarClock, Send } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
-import Link from "next/link";
 import { Input } from "@/components/ui/input";
 
 interface SchedulingCardProps {
-  nextMatch: Match | undefined;
+  upcomingMatches: Match[];
   team: Team;
 }
 
-export function SchedulingCard({ nextMatch, team }: SchedulingCardProps) {
+export function SchedulingCard({ upcomingMatches, team }: SchedulingCardProps) {
   const { toast } = useToast();
+  const [selectedOpponentId, setSelectedOpponentId] = React.useState<string>("");
   const [date, setDate] = React.useState<Date | undefined>();
   const [time, setTime] = React.useState<string>("20:00");
 
-  const opponent = nextMatch?.teamA.id === team.id ? nextMatch?.teamB : nextMatch?.teamA;
+  // Find the selected opponent's details from the full match object
+  const selectedMatch = upcomingMatches.find(m => {
+    const opponent = m.teamA.id === team.id ? m.teamB : m.teamA;
+    return opponent.id === selectedOpponentId;
+  });
+  const opponent = selectedMatch ? (selectedMatch.teamA.id === team.id ? selectedMatch.teamB : selectedMatch.teamA) : undefined;
+  
+  const potentialOpponents = upcomingMatches.map(m => m.teamA.id === team.id ? m.teamB : m.teamA);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!selectedOpponentId) {
+      toast({
+        title: "Error",
+        description: "Please select an opponent.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (!date) {
       toast({
         title: "Error",
@@ -49,17 +67,17 @@ export function SchedulingCard({ nextMatch, team }: SchedulingCardProps) {
     });
   };
 
-  if (!nextMatch || !opponent) {
+  if (!upcomingMatches || upcomingMatches.length === 0) {
     return (
       <Card className="shadow-lg">
         <CardHeader>
           <CardTitle className="flex items-center text-primary">
             <CalendarClock className="mr-2" />
-            Upcoming Match
+            Schedule Match
           </CardTitle>
         </CardHeader>
         <CardContent className="text-center text-muted-foreground">
-          <p>No upcoming matches scheduled.</p>
+          <p>No upcoming matches to schedule.</p>
           <p className="text-xs mt-2">Check back after the next round is drawn.</p>
         </CardContent>
       </Card>
@@ -72,23 +90,29 @@ export function SchedulingCard({ nextMatch, team }: SchedulingCardProps) {
         <CardTitle className="flex items-center justify-between text-primary">
           <div className="flex items-center">
             <CalendarClock className="mr-2" />
-            Upcoming Match
+            Schedule Match
           </div>
-          <Link href={`/teams/${opponent.id}`} passHref>
-             <Button variant="ghost" size="sm">Scout <ExternalLink className="h-4 w-4 ml-2" /></Button>
-          </Link>
         </CardTitle>
         <CardDescription>
-          Your next opponent is <strong className="text-accent">{opponent.name}</strong> for{" "}
-          {nextMatch.round || "the next round"}.
+          Propose a time to play your next match. A match is confirmed when both captains propose the same date and time.
         </CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <p className="text-sm text-muted-foreground">
-            Propose a time to play. If both captains agree on the same time, the match
-            will be scheduled.
-          </p>
+
+          <Select onValueChange={setSelectedOpponentId} value={selectedOpponentId}>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Select opponent..." />
+            </SelectTrigger>
+            <SelectContent>
+              {potentialOpponents.map(opp => (
+                <SelectItem key={opp.id} value={opp.id}>
+                  {opp.name} (Round: {upcomingMatches.find(m => m.teamA.id === opp.id || m.teamB.id === opp.id)?.round || 'N/A'})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
           <div className="flex flex-col sm:flex-row gap-2">
             <Popover>
               <PopoverTrigger asChild>
@@ -123,9 +147,6 @@ export function SchedulingCard({ nextMatch, team }: SchedulingCardProps) {
              <Button type="submit" className="w-full sm:flex-1 bg-accent hover:bg-accent/90">
                 <Send className="mr-2 h-4 w-4" />
                 Propose Time
-            </Button>
-            <Button type="button" disabled className="w-full sm:flex-1">
-              Confirm Match (Disabled)
             </Button>
           </div>
         </form>

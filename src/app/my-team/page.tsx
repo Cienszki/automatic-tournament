@@ -65,7 +65,7 @@ export default async function MyTeamPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column */}
         <div className="lg:col-span-2 space-y-6">
-          <SchedulingCard nextMatch={upcomingMatches[0]} team={team} />
+          <SchedulingCard upcomingMatches={upcomingMatches} team={team} />
           <TeamStatsGrid team={team} />
           <PlayerAnalyticsTable players={team.players} />
         </div>
