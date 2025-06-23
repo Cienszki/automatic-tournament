@@ -82,19 +82,19 @@ const AccordionRowContent = ({ categoryData, isSingleMatchCategory }: { category
               isSingleMatchCategory ? "md:col-span-2" : "md:col-span-2" 
             )}>{topEntry.value}</div>
             
-            {isSingleMatchCategory && topEntry.heroName && (
+            {isSingleMatchCategory ? (
               <>
                 <div className={cn(
                     "truncate flex items-center",
                     "hidden md:block md:col-span-2" // Increased span for Hero Name
                   )} title={topEntry.heroName}>
-                  {(heroIconMap[topEntry.heroName] || heroIconMap['Default']) && 
-                    React.createElement(heroIconMap[topEntry.heroName] || heroIconMap['Default'], { 
+                  {(heroIconMap[topEntry.heroName || ''] || heroIconMap['Default']) && 
+                    React.createElement(heroIconMap[topEntry.heroName || ''] || heroIconMap['Default'], { 
                       className: cn("h-4 w-4 mr-1 inline-block shrink-0"),
-                      color: heroColorMap[topEntry.heroName] || FALLBACK_HERO_COLOR
+                      color: heroColorMap[topEntry.heroName || ''] || FALLBACK_HERO_COLOR
                     })
                   }
-                  <span style={{color: heroColorMap[topEntry.heroName] || FALLBACK_HERO_COLOR}}>{topEntry.heroName}</span>
+                  <span style={{color: heroColorMap[topEntry.heroName || ''] || FALLBACK_HERO_COLOR}}>{topEntry.heroName}</span>
                 </div> 
                 <div className={cn(
                     "hidden md:block md:col-span-1 text-xs text-muted-foreground truncate", // Decreased span for Match Context
@@ -109,7 +109,7 @@ const AccordionRowContent = ({ categoryData, isSingleMatchCategory }: { category
                   )}
                 </div>
               </>
-            )}
+            ) : null}
           </>
         ) : (
           <div className="col-span-full text-muted-foreground italic text-center py-2">No entries for this category.</div>
@@ -131,8 +131,12 @@ const StatsPage = ({ data }: { data: Awaited<ReturnType<typeof getStatsData>> })
           <TableHead className="w-[180px] px-3 py-2">Player</TableHead>
           <TableHead className="w-[180px] px-3 py-2">Team</TableHead>
           <TableHead className="w-[100px] px-3 py-2 text-center">Value</TableHead> {/* Centered header */}
-          {isSingleMatchCategory && <TableHead className="w-[150px] px-3 py-2">Hero</TableHead>}
-          {isSingleMatchCategory && <TableHead className="w-[250px] px-3 py-2">Match</TableHead>}
+          {isSingleMatchCategory ? (
+            <>
+              <TableHead className="w-[150px] px-3 py-2">Hero</TableHead>
+              <TableHead className="w-[250px] px-3 py-2">Match</TableHead>
+            </>
+          ) : null}
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -158,25 +162,25 @@ const StatsPage = ({ data }: { data: Awaited<ReturnType<typeof getStatsData>> })
                 )}
               </TableCell>
               <TableCell className="font-semibold px-3 py-2 text-center" style={{color: valueColor}}>{detail.value}</TableCell> {/* Centered cell content */}
-              {isSingleMatchCategory && (
-                <TableCell className="px-3 py-2">
-                  <div className="flex items-center">
-                    {HeroIconComponent && <HeroIconComponent color={heroColorHex} className={cn("h-4 w-4 mr-1.5 shrink-0")} />}
-                    <span style={{ color: heroColorHex }}>{detail.heroName}</span>
-                  </div>
-                </TableCell>
-              )}
-              {isSingleMatchCategory && (
-                <TableCell className="text-xs text-muted-foreground px-3 py-2 truncate" title={detail.matchContext}>
-                  {detail.openDotaMatchUrl ? (
-                    <Link href={detail.openDotaMatchUrl} target="_blank" rel="noopener noreferrer" className="hover:text-primary hover:underline">
-                      {detail.matchContext}
-                    </Link>
-                  ) : (
-                    detail.matchContext || 'N/A'
-                  )}
-                </TableCell>
-              )}
+              {isSingleMatchCategory ? (
+                <>
+                  <TableCell className="px-3 py-2">
+                    <div className="flex items-center">
+                      {HeroIconComponent && <HeroIconComponent color={heroColorHex} className={cn("h-4 w-4 mr-1.5 shrink-0")} />}
+                      <span style={{ color: heroColorHex }}>{detail.heroName}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-xs text-muted-foreground px-3 py-2 truncate" title={detail.matchContext}>
+                    {detail.openDotaMatchUrl ? (
+                      <Link href={detail.openDotaMatchUrl} target="_blank" rel="noopener noreferrer" className="hover:text-primary hover:underline">
+                        {detail.matchContext}
+                      </Link>
+                    ) : (
+                      detail.matchContext || 'N/A'
+                    )}
+                  </TableCell>
+                </>
+              ) : null}
             </TableRow>
           );
         })}
