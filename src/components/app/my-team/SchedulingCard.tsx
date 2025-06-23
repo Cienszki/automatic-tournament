@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
+import { Calendar as DayPickerCalendar } from "@/components/ui/calendar";
 
 interface SchedulingCardProps {
   upcomingMatches: Match[];
@@ -128,11 +129,10 @@ export function SchedulingCard({ upcomingMatches, team }: SchedulingCardProps) {
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
+                <DayPickerCalendar
                   mode="single"
                   selected={date}
                   onSelect={setDate}
-                  initialFocus
                 />
               </PopoverContent>
             </Popover>
