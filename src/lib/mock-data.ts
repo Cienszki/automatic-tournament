@@ -29,6 +29,11 @@ export const mockPlayers: Player[] = Array.from({ length: 120 }, (_, i) => {
     openDotaProfileUrl: `https://www.opendota.com/search?q=${encodeURIComponent(nickname)}`,
     profileScreenshotUrl: `https://placehold.co/600x400.png?text=${nickname.substring(0,3)}&bg=333333&fc=888888`,
     fantasyPointsEarned: Math.floor(Math.random() * 150) + 50,
+    avgKills: parseFloat(((Math.random() * 5) + 5).toFixed(1)),
+    avgDeaths: parseFloat(((Math.random() * 5) + 2).toFixed(1)),
+    avgAssists: parseFloat(((Math.random() * 10) + 5).toFixed(1)),
+    avgGPM: Math.floor(Math.random() * 200) + 400,
+    avgXPM: Math.floor(Math.random() * 200) + 450,
   };
 });
 
@@ -238,22 +243,22 @@ const generatePlayerPerformancesForMatch = (match: Match): PlayerPerformanceInMa
 
 
 export const mockMatches: Match[] = [
-  { id: 'm1', teamA: mockTeams[1], teamB: mockTeams[2], dateTime: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000), status: 'upcoming', openDotaMatchUrl: `https://www.opendota.com/matches/sim_m1` },
-  { id: 'm2', teamA: mockTeams[3], teamB: mockTeams[4], dateTime: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000), status: 'upcoming', openDotaMatchUrl: `https://www.opendota.com/matches/sim_m2` },
-  { id: 'm3', teamA: mockTeams[5], teamB: mockTeams[6], dateTime: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000), status: 'upcoming', openDotaMatchUrl: `https://www.opendota.com/matches/sim_m3` },
-  { id: 'm4', teamA: mockTeams[0], teamB: mockTeams[7], dateTime: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000), teamAScore: 2, teamBScore: 1, status: 'completed', openDotaMatchUrl: `https://www.opendota.com/matches/sim_m4` },
-  { id: 'm5', teamA: mockTeams[8], teamB: mockTeams[9], dateTime: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), teamAScore: 0, teamBScore: 2, status: 'completed', openDotaMatchUrl: `https://www.opendota.com/matches/sim_m5` },
-  { id: 'm6', teamA: mockTeams[10], teamB: mockTeams[11], dateTime: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000), status: 'upcoming', openDotaMatchUrl: `https://www.opendota.com/matches/sim_m6` },
-  { id: 'm7', teamA: mockTeams[0], teamB: mockTeams[10], dateTime: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000), teamAScore: 2, teamBScore: 0, status: 'completed', openDotaMatchUrl: `https://www.opendota.com/matches/sim_m7`},
-  { id: 'm8', teamA: mockTeams[1], teamB: mockTeams[11], dateTime: new Date(Date.now() + 4 * 24 * 60 * 60 * 1000), status: 'upcoming', openDotaMatchUrl: `https://www.opendota.com/matches/sim_m8`},
-  { id: 'm9', teamA: mockTeams[0], teamB: mockTeams[4], dateTime: new Date(Date.now() + 6 * 24 * 60 * 60 * 1000), status: 'upcoming', openDotaMatchUrl: `https://www.opendota.com/matches/sim_m9`},
-  { id: 'm10', teamA: mockTeams[2], teamB: mockTeams[5], dateTime: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000), teamAScore: 2, teamBScore: 0, status: 'completed', openDotaMatchUrl: `https://www.opendota.com/matches/sim_m10`},
-  { id: 'm11', teamA: mockTeams[12 % mockTeams.length], teamB: mockTeams[13 % mockTeams.length], dateTime: new Date(Date.now() + 2.5 * 24 * 60 * 60 * 1000), status: 'upcoming', openDotaMatchUrl: `https://www.opendota.com/matches/sim_m11` },
-  { id: 'm12', teamA: mockTeams[14 % mockTeams.length], teamB: mockTeams[15 % mockTeams.length], dateTime: new Date(Date.now() - 1.5 * 24 * 60 * 60 * 1000), teamAScore: 1, teamBScore: 2, status: 'completed', openDotaMatchUrl: `https://www.opendota.com/matches/sim_m12` },
-  { id: 'm13', teamA: mockTeams[16 % mockTeams.length], teamB: mockTeams[17 % mockTeams.length], dateTime: new Date(Date.now() + 3.5 * 24 * 60 * 60 * 1000), status: 'upcoming', openDotaMatchUrl: `https://www.opendota.com/matches/sim_m13` },
-  { id: 'm14', teamA: mockTeams[18 % mockTeams.length], teamB: mockTeams[19 % mockTeams.length], dateTime: new Date(Date.now() - 0.5 * 24 * 60 * 60 * 1000), teamAScore: 2, teamBScore: 0, status: 'completed', openDotaMatchUrl: `https://www.opendota.com/matches/sim_m14` },
-  { id: 'm15', teamA: mockTeams[20 % mockTeams.length], teamB: mockTeams[21 % mockTeams.length], dateTime: new Date(Date.now() + 4.5 * 24 * 60 * 60 * 1000), status: 'upcoming', openDotaMatchUrl: `https://www.opendota.com/matches/sim_m15` },
-  { id: 'm16', teamA: mockTeams[22 % mockTeams.length], teamB: mockTeams[23 % mockTeams.length], dateTime: new Date(Date.now() - 2.5 * 24 * 60 * 60 * 1000), teamAScore: 0, teamBScore: 2, status: 'completed', openDotaMatchUrl: `https://www.opendota.com/matches/sim_m16` },
+  { id: 'm1', teamA: mockTeams[1], teamB: mockTeams[2], dateTime: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000), status: 'upcoming', round: 'Group Stage R1', openDotaMatchUrl: `https://www.opendota.com/matches/sim_m1` },
+  { id: 'm2', teamA: mockTeams[3], teamB: mockTeams[4], dateTime: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000), status: 'upcoming', round: 'Group Stage R1', openDotaMatchUrl: `https://www.opendota.com/matches/sim_m2` },
+  { id: 'm3', teamA: mockTeams[5], teamB: mockTeams[6], dateTime: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000), status: 'upcoming', round: 'Group Stage R2', openDotaMatchUrl: `https://www.opendota.com/matches/sim_m3` },
+  { id: 'm4', teamA: mockTeams[0], teamB: mockTeams[7], dateTime: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000), teamAScore: 2, teamBScore: 1, status: 'completed', round: 'WB Finals', openDotaMatchUrl: `https://www.opendota.com/matches/sim_m4` },
+  { id: 'm5', teamA: mockTeams[8], teamB: mockTeams[9], dateTime: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), teamAScore: 0, teamBScore: 2, status: 'completed', round: 'LB R1', openDotaMatchUrl: `https://www.opendota.com/matches/sim_m5` },
+  { id: 'm6', teamA: mockTeams[10], teamB: mockTeams[11], dateTime: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000), status: 'upcoming', round: 'Group Stage R2', openDotaMatchUrl: `https://www.opendota.com/matches/sim_m6` },
+  { id: 'm7', teamA: mockTeams[0], teamB: mockTeams[10], dateTime: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000), teamAScore: 2, teamBScore: 0, status: 'completed', round: 'WB Semifinals', openDotaMatchUrl: `https://www.opendota.com/matches/sim_m7`},
+  { id: 'm8', teamA: mockTeams[1], teamB: mockTeams[11], dateTime: new Date(Date.now() + 4 * 24 * 60 * 60 * 1000), status: 'upcoming', round: 'Group Stage R3', openDotaMatchUrl: `https://www.opendota.com/matches/sim_m8`},
+  { id: 'm9', teamA: mockTeams[0], teamB: mockTeams[4], dateTime: new Date(Date.now() + 6 * 24 * 60 * 60 * 1000), status: 'upcoming', round: 'Grand Finals', openDotaMatchUrl: `https://www.opendota.com/matches/sim_m9`},
+  { id: 'm10', teamA: mockTeams[2], teamB: mockTeams[5], dateTime: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000), teamAScore: 2, teamBScore: 0, status: 'completed', round: 'LB R2', openDotaMatchUrl: `https://www.opendota.com/matches/sim_m10`},
+  { id: 'm11', teamA: mockTeams[12 % mockTeams.length], teamB: mockTeams[13 % mockTeams.length], dateTime: new Date(Date.now() + 2.5 * 24 * 60 * 60 * 1000), status: 'upcoming', round: 'Group Stage R3', openDotaMatchUrl: `https://www.opendota.com/matches/sim_m11` },
+  { id: 'm12', teamA: mockTeams[14 % mockTeams.length], teamB: mockTeams[15 % mockTeams.length], dateTime: new Date(Date.now() - 1.5 * 24 * 60 * 60 * 1000), teamAScore: 1, teamBScore: 2, status: 'completed', round: 'LB R3', openDotaMatchUrl: `https://www.opendota.com/matches/sim_m12` },
+  { id: 'm13', teamA: mockTeams[16 % mockTeams.length], teamB: mockTeams[17 % mockTeams.length], dateTime: new Date(Date.now() + 3.5 * 24 * 60 * 60 * 1000), status: 'upcoming', round: 'Group Stage R4', openDotaMatchUrl: `https://www.opendota.com/matches/sim_m13` },
+  { id: 'm14', teamA: mockTeams[18 % mockTeams.length], teamB: mockTeams[19 % mockTeams.length], dateTime: new Date(Date.now() - 0.5 * 24 * 60 * 60 * 1000), teamAScore: 2, teamBScore: 0, status: 'completed', round: 'LB Finals', openDotaMatchUrl: `https://www.opendota.com/matches/sim_m14` },
+  { id: 'm15', teamA: mockTeams[20 % mockTeams.length], teamB: mockTeams[21 % mockTeams.length], dateTime: new Date(Date.now() + 4.5 * 24 * 60 * 60 * 1000), status: 'upcoming', round: 'Group Stage R4', openDotaMatchUrl: `https://www.opendota.com/matches/sim_m15` },
+  { id: 'm16', teamA: mockTeams[22 % mockTeams.length], teamB: mockTeams[23 % mockTeams.length], dateTime: new Date(Date.now() - 2.5 * 24 * 60 * 60 * 1000), teamAScore: 0, teamBScore: 2, status: 'completed', round: 'LB R1', openDotaMatchUrl: `https://www.opendota.com/matches/sim_m16` },
 ].map(match => ({
   ...match,
   performances: match.status === 'completed' ? generatePlayerPerformancesForMatch(match) : undefined,
@@ -599,4 +604,3 @@ export const mockFantasyLeagueParticipants: FantasyLeagueParticipant[] = Array.f
   };
 }).sort((a, b) => b.totalFantasyPoints - a.totalFantasyPoints)
   .map((p, idx) => ({ ...p, rank: idx + 1 }));
-

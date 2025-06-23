@@ -18,6 +18,11 @@ export type Player = {
   steamProfileUrl: string;
   openDotaProfileUrl?: string;
   fantasyPointsEarned?: number;
+  avgKills?: number;
+  avgDeaths?: number;
+  avgAssists?: number;
+  avgGPM?: number;
+  avgXPM?: number;
 };
 
 export type HeroPlayStats = {
@@ -71,6 +76,7 @@ export type Match = {
   status: 'upcoming' | 'live' | 'completed';
   openDotaMatchUrl?: string;
   performances?: PlayerPerformanceInMatch[];
+  round?: string; // e.g., "Group Stage R2", "WB Semifinals"
 };
 
 export type Group = {
@@ -153,3 +159,11 @@ export type RegistrationFormState = {
   success: boolean;
 };
 
+// For My Team page
+export interface CaptainsChecklistItem {
+    id: string;
+    label: string;
+    isCompleted: boolean;
+    link?: string;
+    linkText?: string;
+}
