@@ -15,7 +15,7 @@ export function PlayerAnalyticsTable({ players }: PlayerAnalyticsTableProps) {
   };
 
   return (
-    <Card className="shadow-lg col-span-1 lg:col-span-2">
+    <Card className="shadow-lg">
       <CardHeader>
         <CardTitle className="flex items-center text-primary">
           <BarChart2 className="mr-2" />
