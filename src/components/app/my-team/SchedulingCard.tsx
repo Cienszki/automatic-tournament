@@ -70,7 +70,7 @@ export function SchedulingCard({ upcomingMatches, team }: SchedulingCardProps) {
 
   if (!upcomingMatches || upcomingMatches.length === 0) {
     return (
-      <Card className="shadow-lg">
+      <Card>
         <CardHeader>
           <CardTitle className="flex items-center text-primary">
             <CalendarClock className="mr-2" />
@@ -86,7 +86,7 @@ export function SchedulingCard({ upcomingMatches, team }: SchedulingCardProps) {
   }
 
   return (
-    <Card className="shadow-lg">
+    <Card>
       <CardHeader>
         <CardTitle className="flex items-center justify-between text-primary">
           <div className="flex items-center">
@@ -114,41 +114,40 @@ export function SchedulingCard({ upcomingMatches, team }: SchedulingCardProps) {
             </SelectContent>
           </Select>
 
-          <div className="flex flex-col sm:flex-row gap-2">
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant={"outline"}
-                  className={cn(
-                    "w-full sm:w-[240px] justify-start text-left font-normal",
-                    !date && "text-muted-foreground"
-                  )}
-                >
-                  <Calendar className="mr-2 h-4 w-4" />
-                  {date ? format(date, "PPP") : <span>Pick a date</span>}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <DayPickerCalendar
-                  mode="single"
-                  selected={date}
-                  onSelect={setDate}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant={"outline"}
+                className={cn(
+                  "w-full justify-start text-left font-normal",
+                  !date && "text-muted-foreground"
+                )}
+              >
+                <Calendar className="mr-2 h-4 w-4" />
+                {date ? `${format(date, "PPP")} at ${time}` : <span>Pick a date and time</span>}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <DayPickerCalendar
+                mode="single"
+                selected={date}
+                onSelect={setDate}
+              />
+              <div className="p-2 border-t">
+                <Input
+                  type="time"
+                  value={time}
+                  onChange={(e) => setTime(e.target.value)}
+                  className="w-full"
                 />
-              </PopoverContent>
-            </Popover>
-            <Input
-              type="time"
-              value={time}
-              onChange={(e) => setTime(e.target.value)}
-              className="w-full sm:w-auto"
-            />
-          </div>
-          <div className="flex flex-col sm:flex-row gap-2">
-             <Button type="submit" className="w-full sm:flex-1 bg-accent hover:bg-accent/90">
-                <Send className="mr-2 h-4 w-4" />
-                Propose Time
-            </Button>
-          </div>
+              </div>
+            </PopoverContent>
+          </Popover>
+          
+          <Button type="submit" className="w-full bg-accent hover:bg-accent/90">
+              <Send className="mr-2 h-4 w-4" />
+              Propose Time
+          </Button>
         </form>
       </CardContent>
     </Card>
