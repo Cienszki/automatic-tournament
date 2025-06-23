@@ -6,7 +6,7 @@ import Link from "next/link";
 export default function Home() {
   return (
     <div className="space-y-12">
-      <section className="text-center py-12 bg-card rounded-lg shadow-lg">
+      <section className="relative flex min-h-[60vh] flex-col items-center justify-center overflow-hidden rounded-lg bg-card p-8 text-center shadow-xl md:p-12">
         <div className="container mx-auto px-4">
           <h1 className="text-5xl font-bold tracking-tight text-primary mb-6">
             Welcome to Tournament Tracker
