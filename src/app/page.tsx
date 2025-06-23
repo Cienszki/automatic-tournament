@@ -9,12 +9,13 @@ export default function Home() {
     <div className="space-y-12">
       <section className="relative flex min-h-[60vh] flex-col items-center justify-center overflow-hidden rounded-lg bg-card p-8 text-center shadow-xl md:p-12">
         <Image
-          src="/hero-background.jpg"
-          alt="Letnia Batalia tournament promotional background"
+          src="https://placehold.co/1200x600.png"
+          alt="Esports tournament promotional background"
           fill={true}
           className="object-cover"
           quality={80}
           priority
+          data-ai-hint="esports tournament"
         />
         {/* Overlay to improve text readability */}
         <div className="absolute inset-0 bg-black/40 z-0" />
