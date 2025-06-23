@@ -2,8 +2,7 @@
 "use client";
 
 import { Youtube } from 'lucide-react';
-import Link from 'next/link'; // Import Link for consistency if needed, but <a> is fine for external
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 
 // SVG Icon Components
 const DiscordIcon = (props: React.SVGProps<SVGSVGElement>) => (
@@ -28,17 +27,10 @@ const InstagramIcon = (props: React.SVGProps<SVGSVGElement>) => (
 
 
 export function Footer() {
-  const [year, setYear] = useState<number | null>(null);
-
-  useEffect(() => {
-    setYear(new Date().getFullYear());
-  }, []);
-
-
   return (
     <footer className="bg-card border-t border-border py-6 text-center">
       <div className="container mx-auto px-4">
-        <div className="flex justify-center items-center space-x-6 mb-4">
+        <div className="flex justify-center items-center space-x-6">
           <a
             href="https://discord.gg/pd2ih"
             target="_blank"
@@ -80,16 +72,7 @@ export function Footer() {
             <span className="sr-only">YouTube</span>
           </a>
         </div>
-        <p className="text-sm text-muted-foreground">
-          Join our community and stay updated!
-        </p>
-        {year !== null && (
-          <p className="text-xs text-muted-foreground mt-2">
-            Tournament Tracker &copy; {year}
-          </p>
-        )}
       </div>
     </footer>
   );
 }
-
