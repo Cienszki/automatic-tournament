@@ -2,7 +2,7 @@
 "use client";
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { UserPlus, LayoutGrid, Shield, CalendarDays, GitFork, ScrollText, HelpCircle, BarChart2, Crown } from 'lucide-react'; // Added Crown
+import { UserPlus, LayoutGrid, Shield, CalendarDays, GitFork, ScrollText, HelpCircle, BarChart2, Crown, Users, ClipboardCheck, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Logo } from './Logo';
@@ -11,15 +11,18 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import React from 'react';
 
 const navItems = [
+  { href: '/my-team', label: 'My Team', icon: Users },
   { href: '/register', label: 'Register', icon: UserPlus },
   { href: '/groups', label: 'Group Stage', icon: LayoutGrid },
   { href: '/teams', label: 'Teams', icon: Shield },
   { href: '/schedule', label: 'Schedule', icon: CalendarDays },
   { href: '/playoffs', label: 'Playoffs', icon: GitFork },
-  { href: '/fantasy', label: 'Fantasy', icon: Crown }, // Added Fantasy link
+  { href: '/fantasy', label: 'Fantasy', icon: Crown },
+  { href: '/pickem', label: 'Pick\'em', icon: ClipboardCheck },
   { href: '/stats', label: 'Stats', icon: BarChart2 },
   { href: '/rules', label: 'Rules', icon: ScrollText },
   { href: '/faq', label: 'FAQ', icon: HelpCircle },
+  { href: '/admin', label: 'Admin', icon: Settings },
 ];
 
 const LeftBracket = () => (
