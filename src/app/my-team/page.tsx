@@ -1,6 +1,6 @@
 
 import { mockTeams, mockMatches } from "@/lib/mock-data";
-import type { Team, CaptainsChecklistItem } from "@/lib/definitions";
+import type { Team } from "@/lib/definitions";
 import { notFound } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Crown } from "lucide-react";
@@ -9,7 +9,7 @@ import { SchedulingCard } from "@/components/app/my-team/SchedulingCard";
 import { TeamStatsGrid } from "@/components/app/my-team/TeamStatsGrid";
 import { PlayerAnalyticsTable } from "@/components/app/my-team/PlayerAnalyticsTable";
 import { MatchHistoryTable } from "@/components/app/my-team/MatchHistoryTable";
-import { CaptainsChecklist } from "@/components/app/my-team/CaptainChecklist";
+import { NextMatchCard } from "@/components/app/my-team/NextMatchCard";
 import { MyTeamHeader } from "@/components/app/my-team/MyTeamHeader";
 
 // In a real app, this would come from user authentication
@@ -48,13 +48,8 @@ export default async function MyTeamPage() {
     (sum, player) => sum + (player.fantasyPointsEarned ?? 0),
     0
   );
-
-  const checklistItems: CaptainsChecklistItem[] = [
-    { id: '1', label: 'Review tournament rules', isCompleted: true, link: '/rules', linkText: 'View Rules' },
-    { id: '2', label: 'Confirm roster and MMR with admin', isCompleted: team.status !== 'Not Verified', link: '#', linkText: 'Contact Admin' },
-    { id: '3', label: `Schedule match vs ${upcomingMatches[0]?.teamA.id === team.id ? upcomingMatches[0]?.teamB.name : upcomingMatches[0]?.teamA.name || 'next opponent'}`, isCompleted: false },
-    { id: '4', label: 'Submit result for previous match', isCompleted: true },
-  ];
+  
+  const nextMatch = upcomingMatches[0];
 
   return (
     <div className="space-y-8">
@@ -67,7 +62,7 @@ export default async function MyTeamPage() {
         <div className="lg:col-span-2 space-y-6">
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
             <SchedulingCard upcomingMatches={upcomingMatches} team={team} />
-            <CaptainsChecklist items={checklistItems} />
+            <NextMatchCard match={nextMatch} teamId={team.id} />
           </div>
           <TeamStatsGrid team={team} />
           <PlayerAnalyticsTable players={team.players} />

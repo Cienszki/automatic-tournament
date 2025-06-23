@@ -158,12 +158,3 @@ export type RegistrationFormState = {
   errors?: z.ZodIssue[];
   success: boolean;
 };
-
-// For My Team page
-export interface CaptainsChecklistItem {
-    id: string;
-    label: string;
-    isCompleted: boolean;
-    link?: string;
-    linkText?: string;
-}
