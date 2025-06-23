@@ -54,11 +54,10 @@ const MatchCard: React.FC<MatchCardProps> = ({ matchId, p1, p2, isPlaceholder, p
   }
 
   return (
-    <Card className="shadow-md bg-card border-border hover:border-primary/50 transition-colors duration-150 h-20 flex flex-col justify-between">
-      {/* CardHeader removed */}
-      <CardContent className="p-0 flex-grow flex flex-col justify-around"> {/* Adjusted to flex flex-col justify-around */}
+    <Card className="shadow-md bg-card border-border hover:border-primary/50 transition-colors duration-150 h-20 flex flex-col justify-center">
+      <CardContent className="p-0">
         <MatchParticipant {...p1} />
-        <div className="border-t border-border my-0.5"></div> {/* Adjusted border and added small margin */}
+        <div className="border-t border-border"></div>
         <MatchParticipant {...p2} />
       </CardContent>
     </Card>
@@ -243,3 +242,4 @@ export default function PlayoffsPage() {
   );
 }
 
+    
