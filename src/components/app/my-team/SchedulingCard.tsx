@@ -11,7 +11,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
-import { Input } from "@/components/ui/input";
 import { Calendar as DayPickerCalendar } from "@/components/ui/calendar";
 
 interface SchedulingCardProps {
@@ -23,7 +22,8 @@ export function SchedulingCard({ upcomingMatches, team }: SchedulingCardProps) {
   const { toast } = useToast();
   const [selectedOpponentId, setSelectedOpponentId] = React.useState<string>("");
   const [date, setDate] = React.useState<Date | undefined>();
-  const [time, setTime] = React.useState<string>("20:00");
+  const [hour, setHour] = React.useState<string>("20");
+  const [minute, setMinute] = React.useState<string>("00");
 
   // Find the selected opponent's details from the full match object
   const selectedMatch = upcomingMatches.find(m => {
@@ -56,8 +56,7 @@ export function SchedulingCard({ upcomingMatches, team }: SchedulingCardProps) {
     }
 
     const proposedDateTime = new Date(date);
-    const [hours, minutes] = time.split(":").map(Number);
-    proposedDateTime.setHours(hours, minutes);
+    proposedDateTime.setHours(parseInt(hour), parseInt(minute));
 
     toast({
       title: "Proposal Sent!",
@@ -84,6 +83,9 @@ export function SchedulingCard({ upcomingMatches, team }: SchedulingCardProps) {
       </Card>
     );
   }
+
+  const hours = Array.from({ length: 24 }, (_, i) => i.toString().padStart(2, '0'));
+  const minutes = ['00', '15', '30', '45'];
 
   return (
     <Card>
@@ -124,7 +126,7 @@ export function SchedulingCard({ upcomingMatches, team }: SchedulingCardProps) {
                 )}
               >
                 <Calendar className="mr-2 h-4 w-4" />
-                {date ? `${format(date, "PPP")} at ${time}` : <span>Pick a date and time</span>}
+                {date ? `${format(date, "PPP")} at ${hour}:${minute}` : <span>Pick a date and time</span>}
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0" align="start">
@@ -133,13 +135,24 @@ export function SchedulingCard({ upcomingMatches, team }: SchedulingCardProps) {
                 selected={date}
                 onSelect={setDate}
               />
-              <div className="p-2 border-t">
-                <Input
-                  type="time"
-                  value={time}
-                  onChange={(e) => setTime(e.target.value)}
-                  className="w-full"
-                />
+              <div className="p-2 border-t flex items-center justify-center space-x-2">
+                <Select value={hour} onValueChange={setHour}>
+                  <SelectTrigger className="w-[80px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {hours.map(h => <SelectItem key={h} value={h}>{h}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                <span>:</span>
+                <Select value={minute} onValueChange={setMinute}>
+                  <SelectTrigger className="w-[80px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {minutes.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+                  </SelectContent>
+                </Select>
               </div>
             </PopoverContent>
           </Popover>
