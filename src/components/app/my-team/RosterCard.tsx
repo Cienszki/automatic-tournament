@@ -1,12 +1,25 @@
-
 'use client';
 
+import * as React from "react";
 import type { Player, PlayerRole } from "@/lib/definitions";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { User, Shield, Swords, Sparkles, HandHelping, Eye, ListChecks, Edit } from "lucide-react";
+import { User, Shield, Swords, Sparkles, HandHelping, Eye, ListChecks, Edit, UserPlus } from "lucide-react";
 import Link from "next/link";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useToast } from "@/hooks/use-toast";
 
 interface RosterCardProps {
   players: Player[];
@@ -22,6 +35,19 @@ const roleIcons: Record<PlayerRole, React.ElementType> = {
 };
 
 export function RosterCard({ players, teamId }: RosterCardProps) {
+  const { toast } = useToast();
+  const [open, setOpen] = React.useState(false);
+
+  const handleSubmitStandIn = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    // In a real app, this would call a server action to save the request
+    toast({
+      title: "Stand-in Submitted",
+      description: "Your request for a stand-in has been sent to the admins for approval.",
+    });
+    setOpen(false); // Close the dialog on submit
+  };
+
   return (
     <Card className="shadow-lg flex flex-col">
       <CardHeader>
@@ -58,9 +84,64 @@ export function RosterCard({ players, teamId }: RosterCardProps) {
         </ul>
       </CardContent>
        <CardFooter className="border-t pt-4">
-          <Button variant="outline" className="w-full" onClick={() => alert("Stand-in management UI (simulated)")}>
-            Manage Stand-ins
-          </Button>
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" className="w-full">
+                <UserPlus className="mr-2 h-4 w-4" />
+                Manage Stand-ins
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[425px]">
+              <DialogHeader>
+                <DialogTitle>Register a Stand-in</DialogTitle>
+                <DialogDescription>
+                  Submit a stand-in for admin approval. Remember to check the team MMR limit and tournament rules.
+                </DialogDescription>
+              </DialogHeader>
+              <form onSubmit={handleSubmitStandIn}>
+                <div className="grid gap-4 py-4">
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="player-to-replace" className="text-right">
+                      Replacing
+                    </Label>
+                    <Select required>
+                      <SelectTrigger id="player-to-replace" className="col-span-3">
+                        <SelectValue placeholder="Select a player..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {players.map((player) => (
+                          <SelectItem key={player.id} value={player.id}>
+                            {player.nickname} ({player.role})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="standin-nickname" className="text-right">
+                      Nickname
+                    </Label>
+                    <Input id="standin-nickname" placeholder="Stand-in's name" className="col-span-3" required/>
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="standin-mmr" className="text-right">
+                      MMR
+                    </Label>
+                    <Input id="standin-mmr" type="number" placeholder="e.g., 4500" className="col-span-3" required/>
+                  </div>
+                   <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="standin-steam" className="text-right">
+                      Steam URL
+                    </Label>
+                    <Input id="standin-steam" type="url" placeholder="https://steamcommunity.com/..." className="col-span-3" required/>
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button type="submit">Submit for Approval</Button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
           <Button variant="ghost" size="sm" className="ml-2" onClick={() => alert("Edit team details UI (simulated)")}>
             <Edit className="h-4 w-4" />
           </Button>
