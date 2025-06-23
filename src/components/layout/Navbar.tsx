@@ -50,6 +50,24 @@ export function Navbar() {
   const pathname = usePathname();
   const isMobile = useIsMobile();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
+  const [isClient, setIsClient] = React.useState(false);
+
+  React.useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  if (!isClient) {
+    // Return a static placeholder on the server and initial client render to avoid hydration mismatch.
+    return (
+      <header className="bg-card border-b border-border shadow-sm sticky top-0 z-50">
+        <div className="container mx-auto px-4 py-3 flex items-center justify-between">
+          <Logo />
+          {/* Render a placeholder for the nav controls to prevent layout shift */}
+          <div className="h-10 w-10 md:w-auto" />
+        </div>
+      </header>
+    );
+  }
 
   if (isMobile) {
     return (
@@ -72,6 +90,7 @@ export function Navbar() {
               <nav className="flex flex-col space-y-2 p-4">
                 {navItems.map((item) => {
                   const isActive = pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href));
+                  const isMyTeam = item.href === '/my-team';
                   return (
                     <Button
                       key={item.href}
@@ -80,8 +99,12 @@ export function Navbar() {
                       onClick={() => setIsMobileMenuOpen(false)}
                       className={cn(
                         "w-full justify-start text-base py-3 px-3",
-                        isActive ? 'text-primary bg-primary/10' : 'text-muted-foreground hover:text-foreground hover:bg-accent/50',
-                        item.href === '/my-team' && (isActive ? 'text-secondary bg-secondary/10' : 'text-secondary hover:text-primary hover:bg-primary/10'),
+                        {
+                          'text-primary bg-primary/10': isActive && !isMyTeam,
+                          'text-secondary bg-secondary/10': isActive && isMyTeam,
+                          'text-muted-foreground hover:text-foreground hover:bg-accent/50': !isActive && !isMyTeam,
+                          'text-secondary hover:text-primary hover:bg-primary/10': !isActive && isMyTeam,
+                        }
                       )}
                     >
                       <Link href={item.href} className="flex items-center space-x-3">
@@ -107,6 +130,7 @@ export function Navbar() {
           <nav className="flex items-center space-x-1 md:space-x-2 overflow-x-auto pb-2 md:pb-0">
             {navItems.map((item) => {
               const isActive = pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href));
+              const isMyTeam = item.href === '/my-team';
               return (
                 <Button
                   key={item.href}
@@ -114,10 +138,12 @@ export function Navbar() {
                   asChild
                   className={cn(
                     "text-sm font-medium shrink-0",
-                    isActive 
-                      ? 'text-primary bg-primary/10 px-1' 
-                      : 'text-muted-foreground hover:text-foreground hover:bg-accent/50 px-2 py-1 md:px-3 md:py-2',
-                    item.href === '/my-team' && (isActive ? 'text-secondary bg-secondary/10' : 'text-secondary hover:text-primary hover:bg-primary/10'),
+                    {
+                      'text-primary bg-primary/10 px-1': isActive && !isMyTeam,
+                      'text-secondary bg-secondary/10 px-1': isActive && isMyTeam,
+                      'text-muted-foreground hover:text-foreground hover:bg-accent/50 px-2 py-1 md:px-3 md:py-2': !isActive && !isMyTeam,
+                      'text-secondary hover:text-primary hover:bg-primary/10 px-2 py-1 md:px-3 md:py-2': !isActive && isMyTeam,
+                    }
                   )}
                 >
                   <Link 
