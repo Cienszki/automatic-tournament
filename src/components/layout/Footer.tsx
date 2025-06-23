@@ -1,4 +1,3 @@
-
 "use client";
 
 import { Youtube } from 'lucide-react';
@@ -28,7 +27,7 @@ const InstagramIcon = (props: React.SVGProps<SVGSVGElement>) => (
 
 export function Footer() {
   return (
-    <footer className="bg-card border-t border-border py-6 text-center">
+    <footer className="bg-card border-t border-border py-4 text-center">
       <div className="container mx-auto px-4">
         <div className="flex justify-center items-center space-x-6">
           <a
