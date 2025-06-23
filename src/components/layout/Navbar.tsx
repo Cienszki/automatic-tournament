@@ -50,25 +50,9 @@ export function Navbar() {
   const pathname = usePathname();
   const isMobile = useIsMobile();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
-  const [isClient, setIsClient] = React.useState(false);
 
-  React.useEffect(() => {
-    setIsClient(true);
-  }, []);
-
-  if (!isClient) {
-    // Return a static placeholder on the server and initial client render to avoid hydration mismatch.
-    return (
-      <header className="bg-card border-b border-border shadow-sm sticky top-0 z-50">
-        <div className="container mx-auto px-4 py-3 flex items-center justify-between">
-          <Logo />
-          {/* Render a placeholder for the nav controls to prevent layout shift */}
-          <div className="h-10 w-10 md:w-auto" />
-        </div>
-      </header>
-    );
-  }
-
+  // By defaulting useIsMobile to false, the server and initial client render will always be the desktop version,
+  // preventing a hydration mismatch. The client will then switch to the mobile view if needed after hydration.
   if (isMobile) {
     return (
       <header className="bg-card border-b border-border shadow-sm sticky top-0 z-50">
@@ -122,6 +106,7 @@ export function Navbar() {
     );
   }
 
+  // Desktop navigation (also serves as initial render for mobile to prevent hydration error)
   return (
     <header className="bg-card border-b border-border shadow-sm sticky top-0 z-50">
       <div className="container mx-auto px-4 py-3 flex items-center justify-between">
