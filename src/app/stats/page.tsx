@@ -82,19 +82,19 @@ const AccordionRowContent = ({ categoryData, isSingleMatchCategory }: { category
               isSingleMatchCategory ? "md:col-span-2" : "md:col-span-2" 
             )}>{topEntry.value}</div>
             
-            {isSingleMatchCategory ? (
+            {isSingleMatchCategory && topEntry.heroName ? (
               <>
                 <div className={cn(
                     "truncate flex items-center",
                     "hidden md:block md:col-span-2" // Increased span for Hero Name
                   )} title={topEntry.heroName}>
-                  {(heroIconMap[topEntry.heroName || ''] || heroIconMap['Default']) && 
-                    React.createElement(heroIconMap[topEntry.heroName || ''] || heroIconMap['Default'], { 
+                  {(heroIconMap[topEntry.heroName] || heroIconMap['Default']) && 
+                    React.createElement(heroIconMap[topEntry.heroName] || heroIconMap['Default'], { 
                       className: cn("h-4 w-4 mr-1 inline-block shrink-0"),
-                      color: heroColorMap[topEntry.heroName || ''] || FALLBACK_HERO_COLOR
+                      color: heroColorMap[topEntry.heroName] || FALLBACK_HERO_COLOR
                     })
                   }
-                  <span style={{color: heroColorMap[topEntry.heroName || ''] || FALLBACK_HERO_COLOR}}>{topEntry.heroName}</span>
+                  <span style={{color: heroColorMap[topEntry.heroName] || FALLBACK_HERO_COLOR}}>{topEntry.heroName}</span>
                 </div> 
                 <div className={cn(
                     "hidden md:block md:col-span-1 text-xs text-muted-foreground truncate", // Decreased span for Match Context
@@ -123,70 +123,84 @@ const AccordionRowContent = ({ categoryData, isSingleMatchCategory }: { category
 const StatsPage = ({ data }: { data: Awaited<ReturnType<typeof getStatsData>> }) => {
   const { singleMatchRecords, playerAverageLeaders, tournamentHighlights } = data;
 
-  const renderRankingDetailsTable = (details: CategoryRankingDetail[], isSingleMatchCategory: boolean) => (
-    <Table className="mt-2 mb-4 rounded-md">
-      <TableHeader>
-        <TableRow>
-          <TableHead className="w-[60px] px-3 py-2">Rank</TableHead>
-          <TableHead className="w-[180px] px-3 py-2">Player</TableHead>
-          <TableHead className="w-[180px] px-3 py-2">Team</TableHead>
-          <TableHead className="w-[100px] px-3 py-2 text-center">Value</TableHead> {/* Centered header */}
-          {isSingleMatchCategory ? (
-            <>
-              <TableHead className="w-[150px] px-3 py-2">Hero</TableHead>
-              <TableHead className="w-[250px] px-3 py-2">Match</TableHead>
-            </>
-          ) : null}
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {details.map((detail) => {
-          const HeroIconComponent = isSingleMatchCategory && detail.heroName ? (heroIconMap[detail.heroName] || heroIconMap['Default']) : null;
-          const heroColorHex = isSingleMatchCategory && detail.heroName ? (heroColorMap[detail.heroName] || FALLBACK_HERO_COLOR) : FALLBACK_HERO_COLOR;
-          const valueColor = isSingleMatchCategory ? heroColorHex : 'hsl(var(--primary))';
-          return (
-            <TableRow key={`${detail.rank}-${detail.playerName}-${detail.teamName}-${detail.value}`} className="text-sm">
-              <TableCell className="font-semibold px-3 py-2">{detail.rank}</TableCell>
-              <TableCell className="px-3 py-2">
+  const renderRankingDetailsTable = (details: CategoryRankingDetail[], isSingleMatchCategory: boolean) => {
+    const headerCells: JSX.Element[] = [
+      <TableHead key="rank" className="w-[60px] px-3 py-2">Rank</TableHead>,
+      <TableHead key="player" className="w-[180px] px-3 py-2">Player</TableHead>,
+      <TableHead key="team" className="w-[180px] px-3 py-2">Team</TableHead>,
+      <TableHead key="value" className="w-[100px] px-3 py-2 text-center">Value</TableHead>
+    ];
+
+    if (isSingleMatchCategory) {
+      headerCells.push(<TableHead key="hero" className="w-[150px] px-3 py-2">Hero</TableHead>);
+      headerCells.push(<TableHead key="match" className="w-[250px] px-3 py-2">Match</TableHead>);
+    }
+    
+    return (
+      <Table className="mt-2 mb-4 rounded-md">
+        <TableHeader>
+          <TableRow>
+            {headerCells}
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {details.map((detail) => {
+            const heroColorHex = (isSingleMatchCategory && detail.heroName ? (heroColorMap[detail.heroName] || FALLBACK_HERO_COLOR) : FALLBACK_HERO_COLOR);
+            const valueColor = (isSingleMatchCategory && detail.heroName && detail.value) ? heroColorHex : 'hsl(var(--primary))';
+            
+            const HeroIconComponent = isSingleMatchCategory && detail.heroName ? (heroIconMap[detail.heroName] || heroIconMap['Default']) : null;
+
+            const rowCells: JSX.Element[] = [
+              <TableCell key="rank" className="font-semibold px-3 py-2">{detail.rank}</TableCell>,
+              <TableCell key="player" className="px-3 py-2 w-[180px]">
                 {detail.playerId && detail.teamId ? (
-                  <Link href={`/teams/${detail.teamId}/players/${detail.playerId}`} className="text-primary hover:underline">{detail.playerName}</Link>
+                  <Link href={`/teams/${detail.teamId}/players/${detail.playerId}`} className="text-primary font-semibold hover:underline">{detail.playerName}</Link>
                 ) : (
-                  <span className="text-primary">{detail.playerName || 'N/A'}</span>
+                  <span className="text-primary font-semibold">{detail.playerName || 'N/A'}</span>
                 )}
-              </TableCell>
-              <TableCell className="px-3 py-2">
+              </TableCell>,
+              <TableCell key="team" className="px-3 py-2 w-[180px]">
                 {detail.teamId ? (
                   <Link href={`/teams/${detail.teamId}`} className="text-accent hover:underline">{detail.teamName}</Link>
                 ) : (
                   <span className="text-accent">{detail.teamName || 'N/A'}</span>
                 )}
-              </TableCell>
-              <TableCell className="font-semibold px-3 py-2 text-center" style={{color: valueColor}}>{detail.value}</TableCell> {/* Centered cell content */}
-              {isSingleMatchCategory ? (
-                <>
-                  <TableCell className="px-3 py-2">
-                    <div className="flex items-center">
-                      {HeroIconComponent && <HeroIconComponent color={heroColorHex} className={cn("h-4 w-4 mr-1.5 shrink-0")} />}
-                      <span style={{ color: heroColorHex }}>{detail.heroName}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-xs text-muted-foreground px-3 py-2 truncate" title={detail.matchContext}>
-                    {detail.openDotaMatchUrl ? (
-                      <Link href={detail.openDotaMatchUrl} target="_blank" rel="noopener noreferrer" className="hover:text-primary hover:underline">
-                        {detail.matchContext}
-                      </Link>
-                    ) : (
-                      detail.matchContext || 'N/A'
-                    )}
-                  </TableCell>
-                </>
-              ) : null}
-            </TableRow>
-          );
-        })}
-      </TableBody>
-    </Table>
-  );
+              </TableCell>,
+              <TableCell key="value" style={{color: valueColor}} className="font-semibold px-3 py-2 text-center w-[100px]">{detail.value}</TableCell>
+            ];
+
+            if (isSingleMatchCategory) {
+              rowCells.push(
+                <TableCell key="hero" className="px-3 py-2 w-[150px]">
+                  <div className="flex items-center">
+                    {HeroIconComponent && <HeroIconComponent color={heroColorHex} className={cn("h-4 w-4 mr-1.5 shrink-0")} />}
+                    <span style={{ color: heroColorHex }}>{detail.heroName}</span>
+                  </div>
+                </TableCell>
+              );
+              rowCells.push(
+                <TableCell key="match" className="text-xs text-muted-foreground px-3 py-2 w-[250px] truncate" title={detail.matchContext || undefined}>
+                  {detail.openDotaMatchUrl ? (
+                    <Link href={detail.openDotaMatchUrl} target="_blank" rel="noopener noreferrer" className="hover:text-primary hover:underline">
+                      {detail.matchContext}
+                    </Link>
+                  ) : (
+                    detail.matchContext || 'N/A'
+                  )}
+                </TableCell>
+              );
+            }
+
+            return (
+              <TableRow key={`${detail.rank}-${detail.playerName}-${detail.teamName}-${detail.value}`} className="text-sm">
+                {rowCells}
+              </TableRow>
+            );
+          })}
+        </TableBody>
+      </Table>
+    );
+  };
 
 
   return (
