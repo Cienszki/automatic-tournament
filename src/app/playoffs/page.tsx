@@ -189,9 +189,8 @@ export default function PlayoffsPage() {
             
             {/* Champion */}
             <div className="row-start-5 col-start-5 flex flex-col items-center justify-center h-full">
-              <Trophy className="h-16 w-16 text-yellow-400 mb-2" />
+              <Trophy className="h-12 w-12 text-yellow-400 mb-2" />
               <p className="text-xl font-bold text-yellow-400">{grandFinalWinner.name}</p>
-              <p className="text-sm text-muted-foreground">Tournament Champion!</p>
             </div>
           </div>
         </CardContent>
@@ -241,5 +240,3 @@ export default function PlayoffsPage() {
     </div>
   );
 }
-
-    
