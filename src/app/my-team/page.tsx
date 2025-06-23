@@ -11,6 +11,7 @@ import { PlayerAnalyticsTable } from "@/components/app/my-team/PlayerAnalyticsTa
 import { MatchHistoryTable } from "@/components/app/my-team/MatchHistoryTable";
 import { NextMatchCard } from "@/components/app/my-team/NextMatchCard";
 import { MyTeamHeader } from "@/components/app/my-team/MyTeamHeader";
+import { TeamStatusCard } from "@/components/app/my-team/TeamStatusCard";
 
 // In a real app, this would come from user authentication
 const CAPTAIN_TEAM_ID = 'team1';
@@ -70,6 +71,7 @@ export default async function MyTeamPage() {
 
         {/* Right Column */}
         <div className="lg:col-span-1 space-y-6">
+          <TeamStatusCard team={team} />
           <RosterCard players={team.players} teamId={team.id} />
            <Card className="shadow-lg">
                 <CardHeader>
