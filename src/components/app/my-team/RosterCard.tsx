@@ -1,4 +1,6 @@
 
+'use client';
+
 import type { Player, PlayerRole } from "@/lib/definitions";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
