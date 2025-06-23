@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { CalendarPlus, ExternalLink } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+import { format } from "date-fns";
 
 interface MatchListItemProps {
   match: Match;
@@ -20,8 +21,8 @@ export function MatchListItem({ match }: MatchListItemProps) {
   useEffect(() => {
     if (match.dateTime) {
       const matchDateObj = new Date(match.dateTime);
-      setFormattedDate(matchDateObj.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' }));
-      setFormattedTime(matchDateObj.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false }));
+      setFormattedDate(format(matchDateObj, "EEEE, MMMM d"));
+      setFormattedTime(format(matchDateObj, "HH:mm")); // Explicit 24-hour format
     }
   }, [match.dateTime]);
 
