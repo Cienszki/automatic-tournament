@@ -146,7 +146,6 @@ export default function PlayoffsPage() {
   // Grand Final
   const grandFinalWinner = ubFinalWinner; // Kebab wins vs Wina
 
-
   return (
     <div className="space-y-8 p-1 md:p-2">
       <Card className="shadow-xl">
