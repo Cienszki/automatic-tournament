@@ -170,3 +170,12 @@ export type RegistrationFormState = {
   errors?: z.ZodIssue[];
   success: boolean;
 };
+
+// Pick'em Challenge Definitions
+export type PickEmSelections = {
+  upperBracket: Team['id'][]; // Array of 8 team IDs
+  lowerBracket: Team['id'][]; // Array of 8 team IDs
+  bracketPicks: {
+    [matchId: string]: Team['id'] | null; // Key: matchId, Value: predicted winning team ID
+  };
+};
