@@ -15,6 +15,9 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 const db = getFirestore(app);
-const auth = getAuth(app);
 
-export { app, db, auth };
+// In a real app, you would initialize auth for client-side operations.
+// For now, it's removed to prevent server-side errors.
+// const auth = getAuth(app);
+
+export { app, db };
