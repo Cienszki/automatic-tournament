@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Trophy, Award, Medal, Users, Download, Lock, Unlock, ClipboardCheck, ArrowLeft, RotateCcw } from 'lucide-react';
+import { Trophy, Award, Medal, Users, Download, Lock, Unlock, ClipboardCheck, RotateCcw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
 
@@ -24,7 +24,6 @@ const pickContainers = {
   seventhToEighth: { id: 'seventhToEighth', title: '7th - 8th Place', limit: 2, icon: Users },
   ninthToTwelfth: { id: 'ninthToTwelfth', title: '9th - 12th Place', limit: 4, icon: Users },
   thirteenthToSixteenth: { id: 'thirteenthToSixteenth', title: '13th - 16th Place', limit: 4, icon: Users },
-  groupsElimination: { id: 'groupsElimination', title: 'Eliminated in Groups', limit: 8, icon: Users },
   pool: { id: 'pool', title: 'Available Teams', limit: Infinity, icon: null },
 };
 
@@ -36,7 +35,7 @@ const initialPicksState: PicksState = {
   pool: mockTeams.map(t => t.id),
   champion: [], runnerUp: [], thirdPlace: [], fourthPlace: [],
   fifthToSixth: [], seventhToEighth: [], ninthToTwelfth: [],
-  thirteenthToSixteenth: [], groupsElimination: [],
+  thirteenthToSixteenth: [],
 };
 
 // Main Component
@@ -56,13 +55,7 @@ export default function PickEmPage() {
 
     if (sourceId === destId && source.index === destination.index) return;
     
-    // Check if destination container is full
-    const destContainer = pickContainers[destId];
-    if (destContainer && picks[destId].length >= destContainer.limit) {
-      // Maybe show a toast message here in a real app
-      return;
-    }
-
+    // Logic to move teams between lists
     const newPicks = { ...picks };
     const sourceList = [...newPicks[sourceId]];
     const [movedTeam] = sourceList.splice(source.index, 1);
@@ -80,8 +73,31 @@ export default function PickEmPage() {
     setPicks(newPicks);
   };
   
-  const isAllPicked = picks.pool.length === 0;
-  
+  const isSubmissionReady = useMemo(() => {
+    const placementContainerIds = Object.keys(pickContainers).filter(k => k !== 'pool') as ContainerId[];
+    return placementContainerIds.every(id => {
+        const container = pickContainers[id];
+        return picks[id].length === container.limit;
+    });
+  }, [picks]);
+
+  const incorrectContainersCount = useMemo(() => {
+     const placementContainerIds = Object.keys(pickContainers).filter(k => k !== 'pool') as ContainerId[];
+     return placementContainerIds.filter(id => {
+         const container = pickContainers[id];
+         return picks[id].length !== container.limit;
+     }).length;
+  }, [picks]);
+
+  let submitButtonText = 'Submit Predictions';
+  if (!isSubmissionReady) {
+      if (incorrectContainersCount > 0) {
+          submitButtonText = `Correct ${incorrectContainersCount} placement(s) to submit`;
+      } else {
+          submitButtonText = 'Submit Predictions';
+      }
+  }
+
   const resetPicks = () => setPicks(initialPicksState);
   
   const handleLogin = () => setIsLoggedIn(true);
@@ -145,7 +161,7 @@ export default function PickEmPage() {
                 <Card>
                   <CardHeader>
                     <CardTitle className="text-xl">Team Pool</CardTitle>
-                    <CardDescription>Drag teams to their predicted placement.</CardDescription>
+                    <CardDescription>Teams left here are eliminated in groups.</CardDescription>
                   </CardHeader>
                   <Droppable droppableId="pool">
                     {(provided) => (
@@ -177,7 +193,7 @@ export default function PickEmPage() {
                 <Card>
                   <CardHeader>
                     <CardTitle className="text-xl">Final Placements</CardTitle>
-                    <CardDescription>Place all 24 teams to submit your predictions.</CardDescription>
+                    <CardDescription>Place the top 16 teams into their final positions.</CardDescription>
                   </CardHeader>
                   <CardContent className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                     {renderContainers.map(container => (
@@ -202,9 +218,9 @@ export default function PickEmPage() {
                 <RotateCcw className="mr-2" />
                 Reset All Picks
               </Button>
-              <Button size="lg" onClick={() => alert('Picks submitted!')} disabled={!isAllPicked}>
+              <Button size="lg" onClick={() => alert('Picks submitted!')} disabled={!isSubmissionReady}>
                 <ClipboardCheck className="mr-2" />
-                {isAllPicked ? 'Submit Predictions' : `Place ${picks.pool.length} more teams`}
+                {submitButtonText}
               </Button>
             </CardFooter>
           </Card>
@@ -225,13 +241,13 @@ const HowToPlay = () => (
         <AccordionItem value="item-1">
           <AccordionTrigger>Step 1: Predict The Final Standings</AccordionTrigger>
           <AccordionContent>
-            Drag and drop each of the 24 registered teams from the "Team Pool" on the left into one of the final placement containers on the right. You must place every team to be able to submit your predictions.
+            Drag and drop each of the 24 registered teams from the "Team Pool" on the left into one of the final placement containers on the right. You must correctly fill all placement slots to submit your predictions. Teams remaining in the pool are considered eliminated in the group stage.
           </AccordionContent>
         </AccordionItem>
         <AccordionItem value="item-2">
           <AccordionTrigger>Step 2: Lock In Your Picks</AccordionTrigger>
           <AccordionContent>
-            Once you have placed all 24 teams, the "Submit Predictions" button will be enabled. Make sure your picks are final, as they cannot be changed after the deadline. An admin will later be able to download a spreadsheet of all user predictions for scoring.
+            Once you have correctly filled all placement containers, the "Submit Predictions" button will be enabled. Make sure your picks are final, as they cannot be changed after the deadline. An admin will later be able to download a spreadsheet of all user predictions for scoring.
           </AccordionContent>
         </AccordionItem>
       </Accordion>
@@ -247,7 +263,18 @@ const DroppableList = ({ id, title, icon: Icon, teams, getTeamById, requiredCoun
                   {Icon && <Icon className="h-5 w-5 mr-2 text-primary shrink-0" />}
                   {title}
                 </span>
-                <Badge variant={teams.length === requiredCount ? "secondary" : "destructive"}>{teams.length} / {requiredCount}</Badge>
+                <Badge
+                    variant={
+                        teams.length > requiredCount ? "destructive" :
+                        teams.length === requiredCount ? "secondary" :
+                        "outline"
+                    }
+                    className={cn(
+                        teams.length < requiredCount && "bg-muted text-muted-foreground border-transparent"
+                    )}
+                >
+                    {teams.length} / {requiredCount}
+                </Badge>
             </CardTitle>
         </CardHeader>
         <Droppable droppableId={id}>
