@@ -196,8 +196,3 @@ export default function ManageStandingsPage() {
     </div>
   );
 }
-
-export const metadata = {
-  title: "Manage Standings | Admin",
-  description: "Enter and edit match results.",
-};
