@@ -1,7 +1,7 @@
 
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Settings, BarChartHorizontal } from "lucide-react";
+import { Settings, BarChartHorizontal, Users, UserCheck, Trophy, Megaphone } from "lucide-react";
 import Link from "next/link";
 
 export default function AdminPage() {
@@ -16,7 +16,7 @@ export default function AdminPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-4xl mx-auto">
             <Card className="hover:bg-muted/30 transition-colors">
               <CardHeader>
                 <CardTitle className="flex items-center text-accent">
@@ -36,11 +36,75 @@ export default function AdminPage() {
              <Card className="hover:bg-muted/30 transition-colors">
               <CardHeader>
                 <CardTitle className="flex items-center text-accent">
-                  <Settings className="mr-2" />
-                  Other Settings
+                  <Users className="mr-2" />
+                  Team Management
                 </CardTitle>
                 <CardDescription>
-                  Placeholder for other tournament administration settings and tools.
+                  Verify, edit, or disqualify registered teams. Manually adjust player data.
+                </CardDescription>
+              </CardHeader>
+               <CardFooter>
+                  <Button asChild className="w-full" disabled>
+                    <Link href="#">Coming Soon</Link>
+                  </Button>
+              </CardFooter>
+            </Card>
+             <Card className="hover:bg-muted/30 transition-colors">
+              <CardHeader>
+                <CardTitle className="flex items-center text-accent">
+                  <UserCheck className="mr-2" />
+                  Stand-in Approvals
+                </CardTitle>
+                <CardDescription>
+                  Review and approve or deny stand-in requests submitted by team captains.
+                </CardDescription>
+              </CardHeader>
+               <CardFooter>
+                  <Button asChild className="w-full" disabled>
+                    <Link href="#">Coming Soon</Link>
+                  </Button>
+              </CardFooter>
+            </Card>
+             <Card className="hover:bg-muted/30 transition-colors">
+              <CardHeader>
+                <CardTitle className="flex items-center text-accent">
+                  <Trophy className="mr-2" />
+                  Pick'em & Fantasy
+                </CardTitle>
+                <CardDescription>
+                  Set deadlines, download Pick'em data, and manage fantasy league settings.
+                </CardDescription>
+              </CardHeader>
+               <CardFooter>
+                  <Button asChild className="w-full" disabled>
+                    <Link href="#">Coming Soon</Link>
+                  </Button>
+              </CardFooter>
+            </Card>
+             <Card className="hover:bg-muted/30 transition-colors">
+              <CardHeader>
+                <CardTitle className="flex items-center text-accent">
+                  <Megaphone className="mr-2" />
+                  Announcements
+                </CardTitle>
+                <CardDescription>
+                  Create and display site-wide announcements or update banners.
+                </CardDescription>
+              </CardHeader>
+               <CardFooter>
+                  <Button asChild className="w-full" disabled>
+                    <Link href="#">Coming Soon</Link>
+                  </Button>
+              </CardFooter>
+            </Card>
+             <Card className="hover:bg-muted/30 transition-colors">
+              <CardHeader>
+                <CardTitle className="flex items-center text-accent">
+                  <Settings className="mr-2" />
+                  Global Settings
+                </CardTitle>
+                <CardDescription>
+                   Configure global tournament variables like the MMR cap or tournament status.
                 </CardDescription>
               </CardHeader>
                <CardFooter>
