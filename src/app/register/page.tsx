@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -332,8 +331,3 @@ export default function RegisterPage() {
     </div>
   );
 }
-
-export const metadata = {
-  title: "Register | Tournament Tracker",
-  description: "Register your team for the tournament.",
-};
