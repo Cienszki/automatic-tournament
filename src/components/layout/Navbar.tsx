@@ -2,7 +2,7 @@
 "use client";
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { UserPlus, LayoutGrid, Shield, CalendarDays, GitFork, ScrollText, HelpCircle, BarChart2, Crown, Users, ClipboardCheck, Settings } from 'lucide-react';
+import { LayoutGrid, Shield, CalendarDays, GitFork, ScrollText, HelpCircle, BarChart2, Crown, Users, ClipboardCheck, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Logo } from './Logo';
@@ -12,7 +12,6 @@ import React from 'react';
 
 const navItems = [
   { href: '/my-team', label: 'My Team', icon: Users },
-  { href: '/register', label: 'Register', icon: UserPlus },
   { href: '/groups', label: 'Group Stage', icon: LayoutGrid },
   { href: '/teams', label: 'Teams', icon: Shield },
   { href: '/schedule', label: 'Schedule', icon: CalendarDays },
@@ -50,9 +49,24 @@ export function Navbar() {
   const pathname = usePathname();
   const isMobile = useIsMobile();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
+  const [hasMounted, setHasMounted] = React.useState(false);
 
-  // By defaulting useIsMobile to false, the server and initial client render will always be the desktop version,
-  // preventing a hydration mismatch. The client will then switch to the mobile view if needed after hydration.
+  React.useEffect(() => {
+    setHasMounted(true);
+  }, []);
+
+  if (!hasMounted) {
+    return (
+      <header className="bg-card border-b border-border shadow-sm sticky top-0 z-50">
+        <div className="container mx-auto px-4 py-3 flex items-center justify-between">
+          <Logo />
+          {/* Render a placeholder for the nav controls to prevent layout shift */}
+          <div className="h-10 w-10 md:w-auto" />
+        </div>
+      </header>
+    );
+  }
+
   if (isMobile) {
     return (
       <header className="bg-card border-b border-border shadow-sm sticky top-0 z-50">
@@ -106,7 +120,7 @@ export function Navbar() {
     );
   }
 
-  // Desktop navigation (also serves as initial render for mobile to prevent hydration error)
+  // Desktop navigation
   return (
     <header className="bg-card border-b border-border shadow-sm sticky top-0 z-50">
       <div className="container mx-auto px-4 py-3 flex items-center justify-between">
@@ -126,8 +140,8 @@ export function Navbar() {
                     {
                       'text-primary bg-primary/10 px-1': isActive && !isMyTeam,
                       'text-secondary bg-secondary/10 px-1': isActive && isMyTeam,
-                      'text-muted-foreground hover:text-foreground hover:bg-accent/50 px-2 py-1 md:px-3 md:py-2': !isActive && !isMyTeam,
-                      'text-secondary hover:text-primary hover:bg-primary/10 px-2 py-1 md:px-3 md:py-2': !isActive && isMyTeam,
+                      'text-muted-foreground hover:text-foreground hover:bg-accent/50 px-2 py-1 md:px-3 md:py-2': !isActive,
+                      'hover:bg-primary/10': isMyTeam // Explicit hover for My Team
                     }
                   )}
                 >

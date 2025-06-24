@@ -1,9 +1,12 @@
 
+"use client";
+
+import * as React from "react";
 import { mockTeams, mockMatches } from "@/lib/mock-data";
-import type { Team } from "@/lib/definitions";
+import type { Team, Match } from "@/lib/definitions";
 import { notFound } from "next/navigation";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Crown } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Crown, Loader2, ShieldQuestion } from "lucide-react";
 import { RosterCard } from "@/components/app/my-team/RosterCard";
 import { SchedulingCard } from "@/components/app/my-team/SchedulingCard";
 import { TeamStatsGrid } from "@/components/app/my-team/TeamStatsGrid";
@@ -12,54 +15,50 @@ import { MatchHistoryTable } from "@/components/app/my-team/MatchHistoryTable";
 import { NextMatchCard } from "@/components/app/my-team/NextMatchCard";
 import { MyTeamHeader } from "@/components/app/my-team/MyTeamHeader";
 import { TeamStatusCard } from "@/components/app/my-team/TeamStatusCard";
+import { Button } from "@/components/ui/button";
 
 // In a real app, this would come from user authentication
 const CAPTAIN_TEAM_ID = 'team1';
 
-async function getMyTeamData(teamId: string) {
-  const team = mockTeams.find((t) => t.id === teamId);
-  if (!team) {
-    return { team: undefined, upcomingMatches: [], pastMatches: [] };
-  }
+// This function now runs on the client after a delay to simulate fetching
+async function getMyTeamData(teamId: string): Promise<{ team: Team | undefined, upcomingMatches: Match[], pastMatches: Match[] }> {
+  return new Promise(resolve => {
+    setTimeout(() => {
+      const team = mockTeams.find((t) => t.id === teamId);
+      if (!team) {
+        resolve({ team: undefined, upcomingMatches: [], pastMatches: [] });
+        return;
+      }
 
-  const teamMatches = mockMatches.filter(
-    (m) => m.teamA.id === teamId || m.teamB.id === teamId
-  );
+      const teamMatches = mockMatches.filter(
+        (m) => m.teamA.id === teamId || m.teamB.id === teamId
+      );
 
-  const upcomingMatches = teamMatches
-    .filter((m) => m.status === 'upcoming')
-    .sort((a, b) => new Date(a.dateTime).getTime() - new Date(b.dateTime).getTime());
+      const upcomingMatches = teamMatches
+        .filter((m) => m.status === 'upcoming')
+        .sort((a, b) => new Date(a.dateTime).getTime() - new Date(b.dateTime).getTime());
 
-  const pastMatches = teamMatches
-    .filter((m) => m.status === 'completed')
-    .sort((a, b) => new Date(b.dateTime).getTime() - new Date(a.dateTime).getTime());
+      const pastMatches = teamMatches
+        .filter((m) => m.status === 'completed')
+        .sort((a, b) => new Date(b.dateTime).getTime() - new Date(a.dateTime).getTime());
 
-  return { team, upcomingMatches, pastMatches };
+      resolve({ team, upcomingMatches, pastMatches });
+    }, 500); // 500ms delay
+  });
 }
 
-export default async function MyTeamPage() {
-  const { team, upcomingMatches, pastMatches } = await getMyTeamData(CAPTAIN_TEAM_ID);
-
-  if (!team) {
-    // This could redirect to a team selection page or show an error
-    notFound();
-  }
-
+// The main dashboard component when the user is logged in
+function MyTeamDashboard({ team, upcomingMatches, pastMatches }: { team: Team; upcomingMatches: Match[]; pastMatches: Match[] }) {
   const totalFantasyPoints = team.players.reduce(
     (sum, player) => sum + (player.fantasyPointsEarned ?? 0),
     0
   );
-  
   const nextMatch = upcomingMatches[0];
 
   return (
     <div className="space-y-8">
-      {/* Header Card replaced with client component */}
       <MyTeamHeader team={team} />
-
-      {/* Main Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column */}
         <div className="lg:col-span-2 space-y-6">
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
             <SchedulingCard upcomingMatches={upcomingMatches} team={team} />
@@ -68,8 +67,6 @@ export default async function MyTeamPage() {
           <TeamStatsGrid team={team} />
           <PlayerAnalyticsTable players={team.players} />
         </div>
-
-        {/* Right Column */}
         <div className="lg:col-span-1 space-y-6">
           <TeamStatusCard team={team} />
           <RosterCard team={team} upcomingMatches={upcomingMatches} />
@@ -87,11 +84,75 @@ export default async function MyTeamPage() {
             </Card>
         </div>
       </div>
-      
-      {/* Match History (Full Width) */}
       <MatchHistoryTable matches={pastMatches} teamId={team.id} />
-
     </div>
+  );
+}
+
+// The prompt to show when the user is not logged in
+function LoginPrompt({ onLogin }: { onLogin: () => void }) {
+  return (
+    <Card className="shadow-xl max-w-2xl mx-auto">
+      <CardHeader className="text-center">
+        <ShieldQuestion className="h-16 w-16 mx-auto text-primary mb-4" />
+        <CardTitle className="text-4xl font-bold text-primary">Team Dashboard</CardTitle>
+        <CardDescription className="text-lg text-muted-foreground">
+          Log in to manage your team, schedule matches, and view your stats.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="text-center">
+        <p className="text-muted-foreground mb-6">
+          If you are a team captain, you can access your dashboard here. If you don't have a team yet, you can register after logging in.
+        </p>
+        <Button onClick={onLogin} size="lg" className="bg-[#5865F2] text-white hover:bg-[#4752C4] hover:text-white">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" className="mr-2"><path d="M19.54 0c1.356 0 2.46 1.104 2.46 2.472v21.528l-2.58-2.28-1.452-1.344-1.536-1.428.636 2.22h-13.62c-1.356 0-2.46-1.104-2.46-2.472v-16.224c0-1.368 1.104-2.472 2.46-2.472h16.08zm-4.632 15.672c2.652-.084 3.672-1.824 3.672-1.824 0-3.864-1.728-6.996-1.728-6.996-1.728-1.296-3.372-1.26-3.372-1.26l-.168.192c2.04.624 2.988 1.524 2.988 1.524-2.256-.816-4.008-1.524-5.964-1.524-1.956 0-3.708.708-5.964 1.524 0 0 .948-.9 2.988-1.524l-.168-.192c0 0-1.644-.036-3.372 1.26 0 0-1.728 3.132-1.728 6.996 0 0 1.02 1.74 3.672 1.824 0 0 .864-.276 1.68-.924-1.608.972-3.12 1.956-3.12 1.956l1.224 1.056s1.38-.348 2.808-.936c.912.42 1.872.576 2.784.576.912 0 1.872-.156 2.784-.576 1.428.588 2.808.936 2.808.936l1.224-1.056s-1.512-.984-3.12-1.956c.816.648 1.68.924 1.68.924zm-6.552-5.616c-.684 0-1.224.6-1.224 1.332 0 .732.552 1.332 1.224 1.332.684 0 1.224-.6 1.224-1.332.012-.732-.54-1.332-1.224-1.332zm4.38 0c-.684 0-1.224.6-1.224 1.332 0 .732.552 1.332 1.224 1.332.684 0 1.224-.6 1.224-1.332s-.54-1.332-1.224-1.332z"/></svg>
+          Login with Discord (Simulated)
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
+// The main page component that handles logic
+export default function MyTeamPage() {
+  const [isLoggedIn, setIsLoggedIn] = React.useState(false);
+  const [teamData, setTeamData] = React.useState<{ team: Team | undefined; upcomingMatches: Match[]; pastMatches: Match[] } | null>(null);
+  const [isLoading, setIsLoading] = React.useState(false);
+
+  React.useEffect(() => {
+    if (isLoggedIn) {
+      setIsLoading(true);
+      getMyTeamData(CAPTAIN_TEAM_ID).then(data => {
+        setTeamData(data);
+        setIsLoading(false);
+      });
+    }
+  }, [isLoggedIn]);
+  
+  if (!isLoggedIn) {
+    return <LoginPrompt onLogin={() => setIsLoggedIn(true)} />;
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <Loader2 className="h-16 w-16 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!teamData || !teamData.team) {
+    // In a real app, this might redirect to a registration form
+    // For now, we show a "not found" style message
+    return <div>Team data could not be loaded or team not found.</div>;
+  }
+  
+  return (
+    <MyTeamDashboard 
+      team={teamData.team} 
+      upcomingMatches={teamData.upcomingMatches} 
+      pastMatches={teamData.pastMatches} 
+    />
   );
 }
 
