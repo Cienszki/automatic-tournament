@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -155,8 +154,3 @@ export default function MyTeamPage() {
     />
   );
 }
-
-export const metadata = {
-  title: "My Team | Tournament Tracker",
-  description: "Manage your team, schedule matches, and track performance.",
-};
