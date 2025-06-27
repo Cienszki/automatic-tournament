@@ -131,14 +131,22 @@ export default function FantasyLeaguePage() {
 
   return (
     <div className="space-y-12">
-      <Card className="shadow-xl text-center">
-        <CardHeader>
-          <Crown className="h-16 w-16 mx-auto text-primary mb-4" />
-          <CardTitle className="text-4xl font-bold text-primary">Fantasy League</CardTitle>
-          <CardDescription className="text-lg text-muted-foreground">
-            Assemble your dream team, manage your budget, and climb the ranks!
-          </CardDescription>
-        </CardHeader>
+      <Card className="shadow-xl text-center relative overflow-hidden min-h-[30vh] flex flex-col justify-center p-6">
+        <div 
+          className="absolute inset-0 z-0 bg-cover bg-center" 
+          style={{ backgroundImage: `url(/fantasy-bg.png)` }} 
+          data-ai-hint="neon fantasy space"
+        />
+        <div className="absolute inset-0 bg-black/60 z-0" />
+        <div className="relative z-10">
+            <Crown className="h-16 w-16 mx-auto text-primary mb-4" />
+            <h2 className="text-4xl font-bold text-primary" style={{ textShadow: '2px 2px 8px rgba(0,0,0,0.7)' }}>
+              Fantasy League
+            </h2>
+            <p className="text-lg text-white mt-2" style={{ textShadow: '1px 1px 6px rgba(0,0,0,0.8)' }}>
+              Assemble your dream team, manage your budget, and climb the ranks!
+            </p>
+        </div>
       </Card>
 
       {!isLoggedIn ? (
