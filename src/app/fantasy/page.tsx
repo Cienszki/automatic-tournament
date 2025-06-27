@@ -137,7 +137,7 @@ export default function FantasyLeaguePage() {
           style={{ backgroundImage: `url(/fantasy-bg.png)` }} 
           data-ai-hint="neon fantasy space"
         />
-        <div className="absolute inset-0 bg-black/60 z-0" />
+        
         <div className="relative z-10">
             <Crown className="h-16 w-16 mx-auto text-primary mb-4" />
             <h2 className="text-4xl font-bold text-primary" style={{ textShadow: '2px 2px 8px rgba(0,0,0,0.7)' }}>
