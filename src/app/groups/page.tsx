@@ -3,7 +3,7 @@ import { GroupTable } from "@/components/app/GroupTable";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { mockTeams, generateMockGroups } from "@/lib/mock-data";
 import type { Group } from "@/lib/definitions";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, Users } from "lucide-react";
 
 // Simulate fetching registered teams and generating groups
 // In a real app, this data would come from a database/API
@@ -20,13 +20,21 @@ export default async function GroupStagePage() {
 
   return (
     <div className="space-y-8">
-      <Card className="shadow-xl bg-card">
-        <CardHeader className="text-center">
-          <CardTitle className="text-4xl font-bold text-primary">Group Stage Standings</CardTitle>
-          <CardDescription className="text-lg text-muted-foreground">
+      <Card className="shadow-xl text-center relative overflow-hidden min-h-[30vh] flex flex-col justify-center p-6">
+        <div 
+          className="absolute inset-0 z-0 bg-cover bg-center" 
+          style={{ backgroundImage: `url(/backgrounds/groups.png)` }} 
+          data-ai-hint="neon fantasy space"
+        />
+        <div className="relative z-10">
+          <Users className="h-16 w-16 mx-auto text-primary mb-4" />
+          <h2 className="text-4xl font-bold text-primary" style={{ textShadow: '2px 2px 8px rgba(0,0,0,0.7)' }}>
+            Group Stage Standings
+          </h2>
+          <p className="text-lg text-white mt-2" style={{ textShadow: '1px 1px 6px rgba(0,0,0,0.8)' }}>
             Follow the progress of teams through the group stages. Scores are updated based on match results from OpenDota API (simulated).
-          </CardDescription>
-        </CardHeader>
+          </p>
+        </div>
       </Card>
 
       {groups.length === 0 && (

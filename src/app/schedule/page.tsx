@@ -3,7 +3,7 @@ import { MatchListItem } from "@/components/app/MatchListItem";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { mockMatches } from "@/lib/mock-data";
 import type { Match } from "@/lib/definitions";
-import { AlertCircle, CalendarClock, History } from "lucide-react"; // Imported History and CalendarClock
+import { AlertCircle, Calendar, CalendarClock, History } from "lucide-react"; // Imported History and CalendarClock
 
 async function getUpcomingMatches(): Promise<Match[]> {
   // In a real app, fetch this data from your Google Sheet or API
@@ -35,13 +35,21 @@ export default async function SchedulePage() {
 
   return (
     <div className="space-y-8">
-      <Card className="shadow-xl bg-card">
-        <CardHeader className="text-center">
-          <CardTitle className="text-4xl font-bold text-primary">Match Schedule</CardTitle>
-          <CardDescription className="text-lg text-muted-foreground">
+      <Card className="shadow-xl text-center relative overflow-hidden min-h-[30vh] flex flex-col justify-center p-6">
+        <div 
+          className="absolute inset-0 z-0 bg-cover bg-center" 
+          style={{ backgroundImage: `url(/backgrounds/schedule.png)` }} 
+          data-ai-hint="neon fantasy space"
+        />
+        <div className="relative z-10">
+          <Calendar className="h-16 w-16 mx-auto text-primary mb-4" />
+          <h2 className="text-4xl font-bold text-primary" style={{ textShadow: '2px 2px 8px rgba(0,0,0,0.7)' }}>
+            Match Schedule
+          </h2>
+          <p className="text-lg text-white mt-2" style={{ textShadow: '1px 1px 6px rgba(0,0,0,0.8)' }}>
             View upcoming games, past results, and add matches to your calendar.
-          </CardDescription>
-        </CardHeader>
+          </p>
+        </div>
       </Card>
 
       <div className="grid md:grid-cols-2 gap-8">

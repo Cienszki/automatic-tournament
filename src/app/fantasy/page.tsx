@@ -134,7 +134,7 @@ export default function FantasyLeaguePage() {
       <Card className="shadow-xl text-center relative overflow-hidden min-h-[30vh] flex flex-col justify-center p-6">
         <div 
           className="absolute inset-0 z-0 bg-cover bg-center" 
-          style={{ backgroundImage: `url(/fantasy-bg.png)` }} 
+          style={{ backgroundImage: `url(/backgrounds/liga_fantasy.png)` }} 
           data-ai-hint="neon fantasy space"
         />
         

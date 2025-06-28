@@ -6,14 +6,21 @@ import Link from "next/link";
 export default function RulesPage() {
   return (
     <div className="space-y-8">
-      <Card className="shadow-xl">
-        <CardHeader className="text-center">
+      <Card className="shadow-xl text-center relative overflow-hidden min-h-[30vh] flex flex-col justify-center p-6">
+        <div 
+          className="absolute inset-0 z-0 bg-cover bg-center" 
+          style={{ backgroundImage: `url(/backgrounds/rules.png)` }} 
+          data-ai-hint="neon fantasy space"
+        />
+        <div className="relative z-10">
            <ScrollText className="h-16 w-16 mx-auto text-primary mb-4" />
-          <CardTitle className="text-4xl font-bold text-primary">Regulamin Turnieju "Jesienna Zadyma"</CardTitle>
-          <CardDescription className="text-lg text-muted-foreground">
+          <h2 className="text-4xl font-bold text-primary" style={{ textShadow: '2px 2px 8px rgba(0,0,0,0.7)' }}>
+            Regulamin Turnieju "Jesienna Zadyma"
+          </h2>
+          <p className="text-lg text-white mt-2" style={{ textShadow: '1px 1px 6px rgba(0,0,0,0.8)' }}>
             Prosimy o dokładne zapoznanie się z regulaminem, aby zapewnić uczciwą grę i płynny przebieg turnieju dla wszystkich uczestników.
-          </CardDescription>
-        </CardHeader>
+          </p>
+        </div>
       </Card>
 
       <Card>

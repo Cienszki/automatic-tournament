@@ -120,20 +120,27 @@ export default function PickEmPage() {
 
   return (
     <div className="space-y-8">
-      <Card className="shadow-xl">
-        <CardHeader className="text-center">
+      <Card className="shadow-xl text-center relative overflow-hidden min-h-[30vh] flex flex-col justify-center p-6">
+        <div 
+          className="absolute inset-0 z-0 bg-cover bg-center" 
+          style={{ backgroundImage: `url(/backgrounds/pickem.png)` }} 
+          data-ai-hint="neon fantasy space"
+        />
+        <div className="relative z-10">
           <ClipboardCheck className="h-16 w-16 mx-auto text-primary mb-4" />
-          <CardTitle className="text-4xl font-bold text-primary">Pick'em Challenge</CardTitle>
-          <CardDescription className="text-lg text-muted-foreground">
+          <h2 className="text-4xl font-bold text-primary" style={{ textShadow: '2px 2px 8px rgba(0,0,0,0.7)' }}>
+            Pick'em Challenge
+          </h2>
+          <p className="text-lg text-white mt-2" style={{ textShadow: '1px 1px 6px rgba(0,0,0,0.8)' }}>
             Predict the final standings for every team in the tournament.
-          </CardDescription>
+          </p>
           <div className="pt-4">
             <Button onClick={() => setIsDeadlinePassed(p => !p)} variant="outline">
               {isDeadlinePassed ? <Unlock className="mr-2" /> : <Lock className="mr-2" />}
               Simulate Deadline {isDeadlinePassed ? 'Open' : 'Passed'}
             </Button>
           </div>
-        </CardHeader>
+        </div>
       </Card>
 
       {isDeadlinePassed ? (

@@ -147,14 +147,21 @@ export default function PlayoffsPage() {
 
   return (
     <div className="space-y-8 p-1 md:p-2">
-      <Card className="shadow-xl">
-        <CardHeader className="text-center">
-          <GitBranch className="h-16 w-16 mx-auto text-primary mb-4" />
-          <CardTitle className="text-4xl font-bold text-primary">Playoff Bracket</CardTitle>
-          <CardDescription className="text-lg text-muted-foreground">
-            Follow the journey to the championship! (Static Mock Data)
-          </CardDescription>
-        </CardHeader>
+      <Card className="shadow-xl text-center relative overflow-hidden min-h-[30vh] flex flex-col justify-center p-6">
+        <div 
+          className="absolute inset-0 z-0 bg-cover bg-center" 
+          style={{ backgroundImage: `url(/backgrounds/playoffs.png)` }} 
+          data-ai-hint="neon fantasy space"
+        />
+        <div className="relative z-10">
+            {/* <GitBranch className="h-16 w-16 mx-auto text-primary mb-4" /> */}
+            <h2 className="text-4xl font-bold text-primary" style={{ textShadow: '2px 2px 8px rgba(0,0,0,0.7)' }}>
+              {/* Playoff Bracket */}
+            </h2>
+            <p className="text-lg text-white mt-2" style={{ textShadow: '1px 1px 6px rgba(0,0,0,0.8)' }}>
+              {/* Follow the journey to the championship! (Static Mock Data) */}
+            </p>
+        </div>
       </Card>
 
       {/* Upper Bracket & Finals Card */}

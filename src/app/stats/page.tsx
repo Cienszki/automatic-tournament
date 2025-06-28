@@ -205,14 +205,21 @@ const StatsPage = ({ data }: { data: Awaited<ReturnType<typeof getStatsData>> })
 
   return (
     <div className="space-y-8">
-      <Card className="shadow-xl">
-        <CardHeader className="text-center">
+      <Card className="shadow-xl text-center relative overflow-hidden min-h-[30vh] flex flex-col justify-center p-6">
+        <div 
+          className="absolute inset-0 z-0 bg-cover bg-center" 
+          style={{ backgroundImage: `url(/backgrounds/stats.png)` }} 
+          data-ai-hint="neon fantasy space"
+        />
+        <div className="relative z-10">
           <BarChartHorizontalBig className="h-16 w-16 mx-auto text-primary mb-4" />
-          <CardTitle className="text-4xl font-bold text-primary">Tournament Statistics</CardTitle>
-          <CardDescription className="text-lg text-muted-foreground">
+          <h2 className="text-4xl font-bold text-primary" style={{ textShadow: '2px 2px 8px rgba(0,0,0,0.7)' }}>
+            Tournament Statistics
+          </h2>
+          <p className="text-lg text-white mt-2" style={{ textShadow: '1px 1px 6px rgba(0,0,0,0.8)' }}>
             Deep dive into player performances and tournament records.
-          </CardDescription>
-        </CardHeader>
+          </p>
+        </div>
       </Card>
 
       <Card>
