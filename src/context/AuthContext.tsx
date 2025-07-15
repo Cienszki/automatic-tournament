@@ -4,12 +4,13 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { 
   onAuthStateChanged, 
-  signInWithPopup, 
+  signInWithRedirect, // Changed from signInWithPopup
   signOut as firebaseSignOut, 
   OAuthProvider, 
   type User,
+  getRedirectResult, // Added to handle the result after redirect
 } from "firebase/auth";
-import { auth } from "@/lib/firebase"; // Import the single auth instance
+import { auth } from "@/lib/firebase"; 
 import { Loader2 } from "lucide-react";
 
 interface AuthContextType {
@@ -26,27 +27,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // onAuthStateChanged uses the imported 'auth' instance
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setUser(user);
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
       setIsLoading(false);
     });
+
+    // Check for redirect result on initial load
+    getRedirectResult(auth)
+      .catch((error) => {
+        // Handle or log errors from the redirect.
+        // This can happen if the user closes the window before signing in.
+        console.error("Error getting redirect result:", error);
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
+      
     return () => unsubscribe();
   }, []);
 
   const signInWithDiscord = async () => {
     const provider = new OAuthProvider("discord.com");
-    try {
-      // signInWithPopup uses the imported 'auth' instance
-      await signInWithPopup(auth, provider);
-    } catch (error) {
-      console.error("Error signing in with Discord", error);
-    }
+    // Start the redirect flow. The user will be sent to Discord and then back to your app.
+    await signInWithRedirect(auth, provider);
   };
 
   const signOut = async () => {
     try {
-      // firebaseSignOut uses the imported 'auth' instance
       await firebaseSignOut(auth);
     } catch (error) {
       console.error("Error signing out", error);
