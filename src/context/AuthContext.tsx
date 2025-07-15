@@ -2,8 +2,8 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { onAuthStateChanged, signInWithPopup, signOut as firebaseSignOut, OAuthProvider, type User } from "firebase/auth";
-import { auth } from "@/lib/firebase";
+import { onAuthStateChanged, signInWithPopup, signOut as firebaseSignOut, OAuthProvider, type User, getAuth } from "firebase/auth";
+import { app } from "@/lib/firebase"; // Import the app instance
 import { Loader2 } from "lucide-react";
 
 interface AuthContextType {
@@ -19,13 +19,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // It's sometimes more robust to get the auth instance directly on the client
+  const auth = getAuth(app);
+
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setUser(user);
       setIsLoading(false);
     });
     return () => unsubscribe();
-  }, []);
+  }, [auth]);
 
   const signInWithDiscord = async () => {
     const provider = new OAuthProvider("discord.com");
