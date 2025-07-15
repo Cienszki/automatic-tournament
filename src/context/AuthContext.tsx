@@ -4,11 +4,11 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { 
   onAuthStateChanged, 
-  signInWithRedirect, // Changed from signInWithPopup
+  signInWithRedirect,
   signOut as firebaseSignOut, 
   OAuthProvider, 
   type User,
-  getRedirectResult, // Added to handle the result after redirect
+  getRedirectResult,
 } from "firebase/auth";
 import { auth } from "@/lib/firebase"; 
 import { Loader2 } from "lucide-react";
@@ -35,8 +35,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Check for redirect result on initial load
     getRedirectResult(auth)
       .catch((error) => {
-        // Handle or log errors from the redirect.
-        // This can happen if the user closes the window before signing in.
         console.error("Error getting redirect result:", error);
       })
       .finally(() => {
@@ -48,7 +46,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signInWithDiscord = async () => {
     const provider = new OAuthProvider("discord.com");
-    // Start the redirect flow. The user will be sent to Discord and then back to your app.
     await signInWithRedirect(auth, provider);
   };
 
