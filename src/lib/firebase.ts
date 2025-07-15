@@ -15,7 +15,6 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 const db = getFirestore(app);
-// We will get auth on the client to ensure it's always the correct instance.
 const auth = getAuth(app);
 
 
