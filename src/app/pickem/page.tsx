@@ -13,8 +13,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Trophy, Award, Medal, Users, Download, Lock, Unlock, ClipboardCheck, RotateCcw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
+import { useAuth } from '@/context/AuthContext';
 
-// Define the structure for pick containers
 const pickContainers = {
   champion: { id: 'champion', title: 'Champion', limit: 1, icon: Trophy },
   runnerUp: { id: 'runnerUp', title: 'Runner-up', limit: 1, icon: Award },
@@ -40,7 +40,7 @@ const initialPicksState: PicksState = {
 
 // Main Component
 export default function PickEmPage() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const { user, signInWithDiscord } = useAuth();
   const [picks, setPicks] = useState<PicksState>(initialPicksState);
   const [isDeadlinePassed, setIsDeadlinePassed] = useState(false);
   
@@ -99,10 +99,8 @@ export default function PickEmPage() {
   }
 
   const resetPicks = () => setPicks(initialPicksState);
-  
-  const handleLogin = () => setIsLoggedIn(true);
 
-  if (!isLoggedIn) {
+  if (!user) {
     return (
       <Card className="max-w-2xl mx-auto text-center shadow-xl">
         <CardHeader>
@@ -110,7 +108,7 @@ export default function PickEmPage() {
         </CardHeader>
         <CardContent>
           <p className="mb-4 text-muted-foreground">Login with Discord to make your predictions.</p>
-          <Button onClick={handleLogin} size="lg" className="bg-[#5865F2] hover:bg-[#5865F2]/90">Login (Simulated)</Button>
+          <Button onClick={signInWithDiscord} size="lg" className="bg-[#5865F2] hover:bg-[#5865F2]/90">Login with Discord</Button>
         </CardContent>
       </Card>
     );

@@ -2,43 +2,40 @@
 "use client";
 
 import * as React from "react";
-import { useRouter } from "next/navigation";
-import { getCurrentUser, checkIfAdmin } from "@/lib/auth";
+import { useAuth } from "@/context/AuthContext";
+import { checkIfAdmin } from "@/lib/auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ShieldAlert, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import Link from "next/link";
 
 export default function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const router = useRouter();
+  const { user, isLoading: isAuthLoading } = useAuth();
   const [isAdmin, setIsAdmin] = React.useState(false);
-  const [isLoading, setIsLoading] = React.useState(true);
-  const [isTestingAsAdmin, setIsTestingAsAdmin] = React.useState(false);
-  
+  const [isCheckingAdmin, setIsCheckingAdmin] = React.useState(true);
+
   React.useEffect(() => {
     async function checkAdminStatus() {
-      const user = await getCurrentUser();
+      if (isAuthLoading) return;
+      
       if (!user) {
-        // In a real app with login, you might redirect to a login page.
-        // For now, we assume a user is always "logged in" for simulation.
-        // router.push("/login"); 
-        // return;
+        setIsAdmin(false);
+        setIsCheckingAdmin(false);
+        return;
       }
       
-      // The user object is now simulated, so we can proceed.
-      // In a real app, you'd get the user from your auth provider.
-      const simulatedUser = { id: "user-admin-test" }; // Using the simulated ID from auth.ts
-      const adminStatus = await checkIfAdmin(simulatedUser.id);
+      const adminStatus = await checkIfAdmin(user);
       setIsAdmin(adminStatus);
-      setIsLoading(false);
+      setIsCheckingAdmin(false);
     }
     checkAdminStatus();
-  }, [router]);
+  }, [user, isAuthLoading]);
 
-  if (isLoading) {
+  if (isAuthLoading || isCheckingAdmin) {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="flex flex-col items-center">
@@ -49,12 +46,10 @@ export default function AdminLayout({
     );
   }
   
-  // If user is a real admin or is testing as one, show the content.
-  if (isAdmin || isTestingAsAdmin) {
+  if (isAdmin) {
     return <>{children}</>;
   }
 
-  // If the user is not an admin, show an access denied message with the test button.
   return (
     <div className="flex items-center justify-center h-full">
       <Card className="max-w-md w-full text-center shadow-xl">
@@ -69,8 +64,10 @@ export default function AdminLayout({
             You do not have the necessary permissions to view this page. Please
             contact a tournament administrator if you believe this is an error.
           </p>
-          <Button onClick={() => setIsTestingAsAdmin(true)}>
-            Simulate Admin Access (For Testing)
+          <Button asChild>
+            <Link href="/">
+              Go to Homepage
+            </Link>
           </Button>
         </CardContent>
       </Card>

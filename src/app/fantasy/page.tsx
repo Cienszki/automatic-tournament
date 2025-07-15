@@ -14,9 +14,10 @@ import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Loader2, Crown, Info, UserCircle, BarChart2, Swords, Sparkles, Shield as ShieldIconLucide, HandHelping, Eye as EyeIconLucide, Lock, Unlock } from "lucide-react";
 import type { Player, PlayerRole, FantasyLeagueParticipant, FantasyLineup, Team } from "@/lib/definitions";
-import { PlayerRoles } from "@/lib/definitions"; // Corrected import
+import { PlayerRoles } from "@/lib/definitions";
 import { mockAllTournamentPlayersFlat, mockFantasyLeagueParticipants, FANTASY_BUDGET_MMR, mockTeams } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/context/AuthContext";
 
 const roleIcons: Record<PlayerRole, React.ElementType> = {
   Carry: Swords,
@@ -26,22 +27,34 @@ const roleIcons: Record<PlayerRole, React.ElementType> = {
   "Hard Support": EyeIconLucide,
 };
 
-const SIMULATED_CURRENT_USER_ID = mockFantasyLeagueParticipants[2]?.id || "user-fallback";
 
 export default function FantasyLeaguePage() {
-  const [isLoggedIn, setIsLoggedIn] = React.useState(false);
+  const { user, signInWithDiscord, signOut } = useAuth();
   const [selectedLineup, setSelectedLineup] = React.useState<FantasyLineup>({});
   const [currentBudgetUsed, setCurrentBudgetUsed] = React.useState(0);
   const [availablePlayers, setAvailablePlayers] = React.useState<Player[]>([]);
   const [fantasyLeaderboard, setFantasyLeaderboard] = React.useState<FantasyLeagueParticipant[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [isLineupLockDeadlinePassed, setIsLineupLockDeadlinePassed] = React.useState(false);
+  const [simulatedUserId, setSimulatedUserId] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     setAvailablePlayers(mockAllTournamentPlayersFlat);
     setFantasyLeaderboard(mockFantasyLeagueParticipants.sort((a,b) => b.totalFantasyPoints - a.totalFantasyPoints).map((p,i) => ({...p, rank: i+1})));
     setIsLoading(false);
   }, []);
+  
+  React.useEffect(() => {
+    if(user) {
+        // In a real app, you'd associate the Firebase user with a fantasy participant profile.
+        // For this demo, we'll assign them a random mock participant profile.
+        const participant = mockFantasyLeagueParticipants[2];
+        setSimulatedUserId(participant?.id || "user-fallback");
+    } else {
+        setSimulatedUserId(null);
+    }
+  }, [user]);
+
 
   React.useEffect(() => {
     const cost = Object.values(selectedLineup).reduce((sum, player) => sum + (player ? player.mmr : 0), 0);
@@ -79,9 +92,8 @@ export default function FantasyLeaguePage() {
     setSelectedLineup(currentLineup);
   };
   
-  const handleLogin = () => setIsLoggedIn(true);
   const handleLogout = () => {
-    setIsLoggedIn(false);
+    signOut();
     setSelectedLineup({});
   };
 
@@ -149,16 +161,16 @@ export default function FantasyLeaguePage() {
         </div>
       </Card>
 
-      {!isLoggedIn ? (
+      {!user ? (
         <Card className="shadow-lg">
           <CardHeader>
             <CardTitle className="text-2xl text-accent">Join the Fantasy League!</CardTitle>
           </CardHeader>
           <CardContent className="text-center">
             <p className="mb-4 text-muted-foreground">Login with Discord to create your team and compete.</p>
-            <Button onClick={handleLogin} size="lg" className="bg-[#5865F2] text-white hover:bg-[#4752C4] hover:text-white">
+            <Button onClick={signInWithDiscord} size="lg" className="bg-[#5865F2] text-white hover:bg-[#4752C4] hover:text-white">
               <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" className="mr-2"><path d="M19.54 0c1.356 0 2.46 1.104 2.46 2.472v21.528l-2.58-2.28-1.452-1.344-1.536-1.428.636 2.22h-13.62c-1.356 0-2.46-1.104-2.46-2.472v-16.224c0-1.368 1.104-2.472 2.46-2.472h16.08zm-4.632 15.672c2.652-.084 3.672-1.824 3.672-1.824 0-3.864-1.728-6.996-1.728-6.996-1.728-1.296-3.372-1.26-3.372-1.26l-.168.192c2.04.624 2.988 1.524 2.988 1.524-2.256-.816-4.008-1.524-5.964-1.524-1.956 0-3.708.708-5.964 1.524 0 0 .948-.9 2.988-1.524l-.168-.192c0 0-1.644-.036-3.372 1.26 0 0-1.728 3.132-1.728 6.996 0 0 1.02 1.74 3.672 1.824 0 0 .864-.276 1.68-.924-1.608.972-3.12 1.956-3.12 1.956l1.224 1.056s1.38-.348 2.808-.936c.912.42 1.872.576 2.784.576.912 0 1.872-.156 2.784-.576 1.428.588 2.808.936 2.808.936l1.224-1.056s-1.512-.984-3.12-1.956c.816.648 1.68.924 1.68.924zm-6.552-5.616c-.684 0-1.224.6-1.224 1.332 0 .732.552 1.332 1.224 1.332.684 0 1.224-.6 1.224-1.332.012-.732-.54-1.332-1.224-1.332zm4.38 0c-.684 0-1.224.6-1.224 1.332 0 .732.552 1.332 1.224 1.332.684 0 1.224-.6 1.224-1.332s-.54-1.332-1.224-1.332z"/></svg>
-              Login with Discord (Simulated)
+              Login with Discord
             </Button>
           </CardContent>
         </Card>
@@ -169,7 +181,7 @@ export default function FantasyLeaguePage() {
               {isLineupLockDeadlinePassed ? <Unlock className="mr-2 h-4 w-4" /> : <Lock className="mr-2 h-4 w-4" />}
               {deadlineButtonText}
             </Button>
-            <Button onClick={handleLogout} variant="outline" className="mb-6">Logout (Simulated)</Button>
+            <Button onClick={handleLogout} variant="outline" className="mb-6">Logout</Button>
           </div>
 
           <Card className="shadow-lg">
@@ -365,11 +377,11 @@ export default function FantasyLeaguePage() {
                 </TableHeader>
                 <TableBody>
                   {fantasyLeaderboard.map((participant) => {
-                    const lineupToDisplay = participant.selectedLineup; // Always refers to current lineup data from participant
+                    const lineupToDisplay = participant.selectedLineup;
                     const showLineupDetails = isLineupLockDeadlinePassed && lineupToDisplay && Object.keys(lineupToDisplay).length > 0;
 
                     return (
-                    <TableRow key={participant.id} className={cn(participant.id === SIMULATED_CURRENT_USER_ID && "bg-primary/10 ring-1 ring-primary")}>
+                    <TableRow key={participant.id} className={cn(participant.id === simulatedUserId && "bg-primary/10 ring-1 ring-primary")}>
                       <TableCell className="font-medium text-center">{participant.rank}</TableCell>
                       <TableCell>
                         <div className="flex items-center space-x-3">
@@ -377,7 +389,7 @@ export default function FantasyLeaguePage() {
                             <AvatarImage src={participant.avatarUrl} alt={participant.discordUsername} />
                             <AvatarFallback>{participant.discordUsername.substring(0, 2).toUpperCase()}</AvatarFallback>
                           </Avatar>
-                          <span className="font-medium text-foreground">{participant.discordUsername} {participant.id === SIMULATED_CURRENT_USER_ID && "(You)"}</span>
+                          <span className="font-medium text-foreground">{participant.discordUsername} {participant.id === simulatedUserId && "(You)"}</span>
                         </div>
                       </TableCell>
                       <TableCell>

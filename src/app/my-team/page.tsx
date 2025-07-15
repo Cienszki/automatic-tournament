@@ -4,7 +4,6 @@ import * as React from "react";
 import Link from "next/link";
 import { mockTeams, mockMatches } from "@/lib/mock-data";
 import type { Team, Match } from "@/lib/definitions";
-import { notFound } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Crown, Loader2, ShieldQuestion, UserPlus } from "lucide-react";
 import { RosterCard } from "@/components/app/my-team/RosterCard";
@@ -16,11 +15,13 @@ import { NextMatchCard } from "@/components/app/my-team/NextMatchCard";
 import { MyTeamHeader } from "@/components/app/my-team/MyTeamHeader";
 import { TeamStatusCard } from "@/components/app/my-team/TeamStatusCard";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/context/AuthContext";
 
 // In a real app, this would come from user authentication
+// We will now simulate this by linking the logged-in user to a team
+// For demo purposes, we'll assume the logged-in user is captain of 'team1' if they log in.
 const CAPTAIN_TEAM_ID = 'team1';
 
-// This function now runs on the client after a delay to simulate fetching
 async function getMyTeamData(teamId: string): Promise<{ team: Team | undefined, upcomingMatches: Match[], pastMatches: Match[] }> {
   return new Promise(resolve => {
     setTimeout(() => {
@@ -90,27 +91,21 @@ function MyTeamDashboard({ team, upcomingMatches, pastMatches }: { team: Team; u
 }
 
 // The prompt to show when the user is not logged in
-function LoginPrompt({ onLogin }: { onLogin: (teamId: string | null) => void }) {
+function LoginPrompt() {
+    const { signInWithDiscord } = useAuth();
     return (
       <Card className="shadow-xl max-w-2xl mx-auto">
         <CardHeader className="text-center">
           <ShieldQuestion className="h-16 w-16 mx-auto text-primary mb-4" />
           <CardTitle className="text-4xl font-bold text-primary">Team Dashboard</CardTitle>
           <CardDescription className="text-lg text-muted-foreground">
-            Log in to manage your team or register a new one.
+            Log in with Discord to manage your team or register a new one.
           </CardDescription>
         </CardHeader>
         <CardContent className="text-center space-y-4">
-          <p className="text-muted-foreground">
-            Choose an option below to simulate different user experiences.
-          </p>
-          <Button onClick={() => onLogin(CAPTAIN_TEAM_ID)} size="lg" className="w-full bg-[#5865F2] text-white hover:bg-[#4752C4] hover:text-white">
+          <Button onClick={signInWithDiscord} size="lg" className="w-full bg-[#5865F2] text-white hover:bg-[#4752C4] hover:text-white">
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" className="mr-2"><path d="M19.54 0c1.356 0 2.46 1.104 2.46 2.472v21.528l-2.58-2.28-1.452-1.344-1.536-1.428.636 2.22h-13.62c-1.356 0-2.46-1.104-2.46-2.472v-16.224c0-1.368 1.104-2.472 2.46-2.472h16.08zm-4.632 15.672c2.652-.084 3.672-1.824 3.672-1.824 0-3.864-1.728-6.996-1.728-6.996-1.728-1.296-3.372-1.26-3.372-1.26l-.168.192c2.04.624 2.988 1.524 2.988 1.524-2.256-.816-4.008-1.524-5.964-1.524-1.956 0-3.708.708-5.964 1.524 0 0 .948-.9 2.988-1.524l-.168-.192c0 0-1.644-.036-3.372 1.26 0 0-1.728 3.132-1.728 6.996 0 0 1.02 1.74 3.672 1.824 0 0 .864-.276 1.68-.924-1.608.972-3.12 1.956-3.12 1.956l1.224 1.056s1.38-.348 2.808-.936c.912.42 1.872.576 2.784.576.912 0 1.872-.156 2.784-.576 1.428.588 2.808.936 2.808.936l1.224-1.056s-1.512-.984-3.12-1.956c.816.648 1.68.924 1.68.924zm-6.552-5.616c-.684 0-1.224.6-1.224 1.332 0 .732.552 1.332 1.224 1.332.684 0 1.224-.6 1.224-1.332.012-.732-.54-1.332-1.224-1.332zm4.38 0c-.684 0-1.224.6-1.224 1.332 0 .732.552 1.332 1.224 1.332.684 0 1.224-.6 1.224-1.332s-.54-1.332-1.224-1.332z"/></svg>
-            Login as Team Captain
-          </Button>
-          <Button onClick={() => onLogin(null)} size="lg" variant="secondary" className="w-full">
-              <UserPlus className="mr-2 h-5 w-5" />
-              Login as New User
+            Login with Discord
           </Button>
         </CardContent>
       </Card>
@@ -144,34 +139,33 @@ function NoTeamPrompt() {
 
 // The main page component that handles logic
 export default function MyTeamPage() {
-  const [isLoggedIn, setIsLoggedIn] = React.useState(false);
-  const [loggedInTeamId, setLoggedInTeamId] = React.useState<string | null>(null);
+  const { user } = useAuth();
   const [teamData, setTeamData] = React.useState<{ team: Team | undefined; upcomingMatches: Match[]; pastMatches: Match[] } | null>(null);
   const [isLoading, setIsLoading] = React.useState(false);
-
-  const handleLogin = (teamId: string | null) => {
-    setIsLoggedIn(true);
-    setLoggedInTeamId(teamId);
-  };
+  
+  // This state will simulate whether the logged-in user is associated with a team.
+  // In a real app, this check would happen on the backend.
+  const [userHasTeam, setUserHasTeam] = React.useState(false);
 
   React.useEffect(() => {
-    if (isLoggedIn) {
-      if (loggedInTeamId) {
-        setIsLoading(true);
-        getMyTeamData(loggedInTeamId).then(data => {
-          setTeamData(data);
-          setIsLoading(false);
-        });
-      } else {
-        // User is logged in but has no team.
-        setTeamData(null);
+    if (user) {
+      // Simulate checking if the user is a captain of a team.
+      // For now, we just assume they are the captain of CAPTAIN_TEAM_ID.
+      // In a real app, you'd fetch this from your database.
+      setIsLoading(true);
+      setUserHasTeam(true); // Assume user has a team for demo purposes
+      getMyTeamData(CAPTAIN_TEAM_ID).then(data => {
+        setTeamData(data);
         setIsLoading(false);
-      }
+      });
+    } else {
+      setUserHasTeam(false);
+      setTeamData(null);
     }
-  }, [isLoggedIn, loggedInTeamId]);
+  }, [user]);
   
-  if (!isLoggedIn) {
-    return <LoginPrompt onLogin={handleLogin} />;
+  if (!user) {
+    return <LoginPrompt />;
   }
 
   if (isLoading) {
@@ -182,7 +176,7 @@ export default function MyTeamPage() {
     );
   }
 
-  if (loggedInTeamId && teamData?.team) {
+  if (userHasTeam && teamData?.team) {
     return (
       <MyTeamDashboard 
         team={teamData.team} 
@@ -192,14 +186,9 @@ export default function MyTeamPage() {
     );
   }
   
-  if (isLoggedIn && !loggedInTeamId) {
+  if (user && !userHasTeam) {
     return <NoTeamPrompt />;
   }
   
-  // Fallback for cases like a user being logged in with a team that no longer exists
-  if (loggedInTeamId && !teamData?.team) {
-      return <div>Team data could not be loaded or team not found.</div>;
-  }
-
-  return null; // Should not be reached
+  return <NoTeamPrompt />; // Fallback
 }

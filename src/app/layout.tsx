@@ -5,7 +5,7 @@ import './globals.css';
 import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
 import { Toaster } from "@/components/ui/toaster";
-// ThemeProvider import removed
+import { AuthProvider } from '@/context/AuthContext';
 
 const raleway = Raleway({
   variable: '--font-raleway',
@@ -32,15 +32,16 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${raleway.variable} ${spaceMono.variable} antialiased font-sans`} suppressHydrationWarning={true}>
-        {/* ThemeProvider wrapper removed */}
-        <div className="flex flex-col min-h-screen bg-background text-foreground">
-          <Navbar />
-          <main className="flex-grow container mx-auto px-4 py-8">
-            {children}
-          </main>
-          <Footer />
-        </div>
-        <Toaster />
+        <AuthProvider>
+          <div className="flex flex-col min-h-screen bg-background text-foreground">
+            <Navbar />
+            <main className="flex-grow container mx-auto px-4 py-8">
+              {children}
+            </main>
+            <Footer />
+          </div>
+          <Toaster />
+        </AuthProvider>
       </body>
     </html>
   );
