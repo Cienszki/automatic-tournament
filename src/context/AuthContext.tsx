@@ -4,13 +4,13 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { 
   onAuthStateChanged, 
-  signInWithRedirect,
+  signInWithPopup,
   signOut as firebaseSignOut, 
   OAuthProvider, 
   type User,
-  getRedirectResult,
+  getAuth,
 } from "firebase/auth";
-import { auth } from "@/lib/firebase"; 
+import { app } from "@/lib/firebase"; 
 import { Loader2 } from "lucide-react";
 
 interface AuthContextType {
@@ -25,35 +25,31 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const auth = getAuth(app);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
       setIsLoading(false);
     });
-
-    // Check for redirect result on initial load
-    getRedirectResult(auth)
-      .catch((error) => {
-        console.error("Error getting redirect result:", error);
-      })
-      .finally(() => {
-        setIsLoading(false);
-      });
       
     return () => unsubscribe();
-  }, []);
+  }, [auth]);
 
   const signInWithDiscord = async () => {
     const provider = new OAuthProvider("discord.com");
-    await signInWithRedirect(auth, provider);
+    try {
+      await signInWithPopup(auth, provider);
+    } catch (error) {
+      console.error("Error during sign-in with pop-up:", error);
+    }
   };
 
   const signOut = async () => {
     try {
       await firebaseSignOut(auth);
     } catch (error) {
-      console.error("Error signing out", error);
+      console.error("Error signing out:", error);
     }
   };
 
