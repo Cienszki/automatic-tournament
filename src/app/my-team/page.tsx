@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -5,7 +6,7 @@ import Link from "next/link";
 import { mockTeams, mockMatches } from "@/lib/mock-data";
 import type { Team, Match } from "@/lib/definitions";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Crown, Loader2, ShieldQuestion, UserPlus } from "lucide-react";
+import { Crown, Loader2, ShieldQuestion, UserPlus, Fingerprint, Copy } from "lucide-react";
 import { RosterCard } from "@/components/app/my-team/RosterCard";
 import { SchedulingCard } from "@/components/app/my-team/SchedulingCard";
 import { TeamStatsGrid } from "@/components/app/my-team/TeamStatsGrid";
@@ -16,6 +17,7 @@ import { MyTeamHeader } from "@/components/app/my-team/MyTeamHeader";
 import { TeamStatusCard } from "@/components/app/my-team/TeamStatusCard";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
+import { useToast } from "@/hooks/use-toast";
 
 // In a real app, this would come from user authentication
 // We will now simulate this by linking the logged-in user to a team
@@ -111,9 +113,22 @@ function LoginPrompt() {
       </Card>
     );
 }
-  
+
 // Prompt for logged-in users without a team
 function NoTeamPrompt() {
+    const { user } = useAuth();
+    const { toast } = useToast();
+
+    const handleCopyId = () => {
+        if (user?.uid) {
+            navigator.clipboard.writeText(user.uid);
+            toast({
+                title: "User ID Copied!",
+                description: "Your Firebase User ID has been copied to the clipboard.",
+            });
+        }
+    };
+
     return (
         <Card className="shadow-xl max-w-2xl mx-auto">
             <CardHeader className="text-center">
@@ -123,8 +138,8 @@ function NoTeamPrompt() {
                     It looks like you don't have a team yet.
                 </CardDescription>
             </CardHeader>
-            <CardContent className="text-center">
-                <p className="text-muted-foreground mb-6">
+            <CardContent className="text-center space-y-6">
+                <p className="text-muted-foreground">
                     Ready to compete? Register your team now to join the tournament!
                 </p>
                 <Button asChild size="lg">
@@ -132,6 +147,24 @@ function NoTeamPrompt() {
                         Register a New Team
                     </Link>
                 </Button>
+                 {user?.uid && (
+                    <Card className="mt-6 bg-muted/50 p-4 text-left">
+                        <h3 className="text-sm font-semibold text-foreground flex items-center mb-2">
+                           <Fingerprint className="h-4 w-4 mr-2 text-accent"/> For Admin Setup
+                        </h3>
+                        <p className="text-xs text-muted-foreground mb-3">To become an admin, copy your User ID below and add it to the 'admins' collection in your Firestore database.</p>
+                        <div className="flex items-center space-x-2">
+                            <input
+                                readOnly
+                                value={user.uid}
+                                className="flex-1 p-2 bg-background border rounded-md text-xs font-mono"
+                            />
+                            <Button variant="ghost" size="icon" onClick={handleCopyId} aria-label="Copy User ID">
+                                <Copy className="h-4 w-4"/>
+                            </Button>
+                        </div>
+                    </Card>
+                )}
             </CardContent>
         </Card>
     );

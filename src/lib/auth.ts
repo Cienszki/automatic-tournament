@@ -6,11 +6,8 @@ import { type User } from "firebase/auth";
 // This function is now deprecated as we use a real-time auth context.
 // It's kept here for reference but should not be used for new features.
 export async function getCurrentUser_DEPRECATED(): Promise<{ id: string; name: string } | null> {
-  // SIMULATION: This simulates fetching a logged-in user.
-  // In a real scenario, you would get this from a session cookie.
-  // 'user-admin-test' is the ID we'll use to test the admin flow.
-  // To test as a non-admin, change this ID to something else.
-  return { id: "user-admin-test", name: "AdminUser" };
+  // SIMULATION: This function is no longer in use with real authentication.
+  return null;
 }
 
 /**
