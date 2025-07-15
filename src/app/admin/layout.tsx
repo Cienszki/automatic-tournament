@@ -22,12 +22,16 @@ export default function AdminLayout({
     async function checkAdminStatus() {
       const user = await getCurrentUser();
       if (!user) {
-        // User not logged in, redirect to home page.
-        router.push("/");
-        return;
+        // In a real app with login, you might redirect to a login page.
+        // For now, we assume a user is always "logged in" for simulation.
+        // router.push("/login"); 
+        // return;
       }
       
-      const adminStatus = await checkIfAdmin(user.id);
+      // The user object is now simulated, so we can proceed.
+      // In a real app, you'd get the user from your auth provider.
+      const simulatedUser = { id: "user-admin-test" }; // Using the simulated ID from auth.ts
+      const adminStatus = await checkIfAdmin(simulatedUser.id);
       setIsAdmin(adminStatus);
       setIsLoading(false);
     }
@@ -44,7 +48,7 @@ export default function AdminLayout({
       </div>
     );
   }
-
+  
   // If user is a real admin or is testing as one, show the content.
   if (isAdmin || isTestingAsAdmin) {
     return <>{children}</>;
