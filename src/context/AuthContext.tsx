@@ -4,7 +4,8 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { 
   onAuthStateChanged, 
-  signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   signOut as firebaseSignOut, 
   OAuthProvider, 
   type User,
@@ -25,9 +26,17 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const auth = getAuth(app); // Simplified initialization
+  const [isMounted, setIsMounted] = useState(false);
+  const auth = getAuth(app);
 
   useEffect(() => {
+    setIsMounted(true);
+    
+    getRedirectResult(auth)
+      .catch((error) => {
+        console.error("Error getting redirect result:", error);
+      });
+
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
       setIsLoading(false);
@@ -37,9 +46,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [auth]);
 
   const signInWithDiscord = async () => {
-    const provider = new OAuthProvider("discord.com");
+    const provider = new OAuthProvider("oidc.discord");
     try {
-      await signInWithPopup(auth, provider);
+      await signInWithRedirect(auth, provider);
     } catch (error) {
       console.error("Error signing in with Discord:", error);
     }
@@ -55,7 +64,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const value = { user, isLoading, signInWithDiscord, signOut };
   
-  if (isLoading) {
+  if (isLoading || !isMounted) {
     return (
       <div className="flex items-center justify-center h-screen bg-background">
         <Loader2 className="h-16 w-16 animate-spin text-primary" />

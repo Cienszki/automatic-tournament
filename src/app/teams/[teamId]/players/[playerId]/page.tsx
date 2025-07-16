@@ -1,8 +1,8 @@
 
 import * as React from "react";
-import { mockPlayers, mockTeams, mockMatches } from "@/lib/mock-data"; 
-import { heroIconMap, heroColorMap, FALLBACK_HERO_COLOR, defaultHeroNames } from "@/lib/hero-data";
-import type { Player, Team, Match, PlayerPerformanceInMatch } from "@/lib/definitions";
+import { getPlayerFromTeam, getAllMatches, getAllTeams } from "@/lib/firestore";
+import { heroIconMap, heroColorMap, FALLBACK_HERO_COLOR } from "@/lib/hero-data";
+import type { Player, Team, PlayerPerformanceInMatch } from "@/lib/definitions";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -12,8 +12,6 @@ import {
   Coins, Zap, Axe as AxeIconLucide, Target, Wallet, ListChecks, Puzzle, 
   Handshake as HandshakeIcon, Home
 } from "lucide-react";
-import type { Icon as LucideIconType } from "lucide-react";
-import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -27,9 +25,16 @@ interface PlayerPageParams {
 }
 
 interface PlayerData {
-  player: Player | undefined;
-  team: Team | undefined;
-  playerMatchHistory: PlayerMatchHistoryItem[];
+  player: Player;
+  team: Team;
+  matchHistory: PlayerMatchHistoryItem[];
+  averageStats: {
+    kda: string;
+    gpm: number;
+    xpm: number;
+    fantasyPoints: number;
+    winRate: string;
+  };
 }
 
 interface PlayerMatchHistoryItem {
@@ -41,254 +46,174 @@ interface PlayerMatchHistoryItem {
   openDotaMatchUrl?: string;
 }
 
-async function getPlayerData(teamId: string, playerId: string): Promise<PlayerData> {
-  const team = mockTeams.find(t => t.id === teamId);
-  const playerBaseId = playerId; 
-  const player = team?.players.find(p => p.id.startsWith(playerBaseId + '-'));
+async function getPlayerData(teamId: string, playerId: string): Promise<PlayerData | null> {
+  const data = await getPlayerFromTeam(teamId, playerId);
+  if (!data) return null;
+  
+  const { team, player } = data;
 
+  const allMatches = await getAllMatches();
+  const matchHistory: PlayerMatchHistoryItem[] = [];
+  
+  let totalKills = 0, totalDeaths = 0, totalAssists = 0;
+  let totalGpm = 0, totalXpm = 0, totalFantasyPoints = 0;
+  let matchesPlayed = 0, wins = 0;
 
-  if (!player || !team) {
-    return { player: undefined, team: undefined, playerMatchHistory: [] };
+  for (const match of allMatches) {
+    if (match.status !== 'completed' || !match.teams.includes(team.id) || !match.playerPerformances) continue;
+
+    const performance = match.playerPerformances.find(p => p.playerId === player.id);
+    if (performance) {
+      matchesPlayed++;
+      totalKills += performance.kills;
+      totalDeaths += performance.deaths;
+      totalAssists += performance.assists;
+      totalGpm += performance.gpm;
+      totalXpm += performance.xpm;
+      totalFantasyPoints += performance.fantasyPoints;
+
+      const opponentTeamData = match.teamA.id === team.id ? match.teamB : match.teamA;
+      const playerTeamWon = (match.teamA.id === team.id && match.teamA.score > match.teamB.score) || 
+                            (match.teamB.id === team.id && match.teamB.score > match.teamA.score);
+      if (playerTeamWon) wins++;
+      
+      matchHistory.push({
+        matchId: match.id,
+        opponentTeam: { id: opponentTeamData.id, name: opponentTeamData.name, logoUrl: opponentTeamData.logoUrl },
+        playerPerformance: performance,
+        result: playerTeamWon ? 'Win' : 'Loss',
+        matchDate: new Date(match.dateTime),
+        openDotaMatchUrl: match.openDotaMatchUrl
+      });
+    }
   }
 
-  const playerMatchHistory: PlayerMatchHistoryItem[] = [];
-  mockMatches.forEach(match => {
-    if (match.status === 'completed' && match.performances && (match.teamA.id === team.id || match.teamB.id === team.id)) {
-      const performance = match.performances.find(p => p.playerId === player.id);
-      if (performance) {
-        const opponentTeam = match.teamA.id === team.id ? match.teamB : match.teamA;
-        let result: PlayerMatchHistoryItem['result'] = 'Ongoing';
-        if (typeof match.teamAScore === 'number' && typeof match.teamBScore === 'number') {
-          let playerTeamWon = false;
-          if (match.teamA.id === team.id) { 
-            playerTeamWon = match.teamAScore > match.teamBScore;
-          } else if (match.teamB.id === team.id) { 
-             playerTeamWon = match.teamBScore > match.teamAScore;
-          }
-          result = playerTeamWon ? 'Win' : 'Loss';
-        }
-        
-        playerMatchHistory.push({
-          matchId: match.id,
-          opponentTeam: { id: opponentTeam.id, name: opponentTeam.name, logoUrl: opponentTeam.logoUrl },
-          playerPerformance: performance,
-          result,
-          matchDate: new Date(match.dateTime),
-          openDotaMatchUrl: match.openDotaMatchUrl
-        });
-      }
-    }
-  });
+  const averageStats = {
+    kda: matchesPlayed > 0 ? ((totalKills + totalAssists) / Math.max(1, totalDeaths)).toFixed(2) : "0.00",
+    gpm: matchesPlayed > 0 ? Math.round(totalGpm / matchesPlayed) : 0,
+    xpm: matchesPlayed > 0 ? Math.round(totalXpm / matchesPlayed) : 0,
+    fantasyPoints: matchesPlayed > 0 ? parseFloat((totalFantasyPoints / matchesPlayed).toFixed(1)) : 0,
+    winRate: matchesPlayed > 0 ? `${((wins / matchesPlayed) * 100).toFixed(1)}%` : "0.0%",
+  };
   
-  playerMatchHistory.sort((a, b) => b.matchDate.getTime() - a.matchDate.getTime());
+  matchHistory.sort((a, b) => b.matchDate.getTime() - a.matchDate.getTime());
 
-  return { player, team, playerMatchHistory: playerMatchHistory.slice(0, 5) };
+  return { player, team, matchHistory: matchHistory.slice(0, 5), averageStats };
 }
 
 
 export default async function PlayerPage({ params }: PlayerPageParams) {
-  const { player, team, playerMatchHistory } = await getPlayerData(params.teamId, params.playerId);
-
-  if (!player || !team) {
-    notFound();
-  }
-
-  const playerOverallStats = {
-    kda: (Math.random() * 5 + 2).toFixed(2), 
-    gpm: Math.floor(Math.random() * 300 + 400), 
-    xpm: Math.floor(Math.random() * 300 + 450), 
-    winRate: (Math.random() * 30 + 45).toFixed(1) + "%", 
-    mostPlayedHero: defaultHeroNames[Math.floor(Math.random() * defaultHeroNames.length)], 
-  };
-
-  const avatarPlaceholder = `https://placehold.co/128x128.png?text=${player.nickname.substring(0, 2).toUpperCase()}`;
-
-  const statIcons = {
-    kda: ListChecks,
-    gpm: Coins,
-    xpm: Zap,
-    fantasyPoints: Star,
-    lastHits: AxeIconLucide,
-    denies: HandshakeIcon,
-    netWorth: Wallet,
-    heroDamage: Target,
-    towerDamage: Home,
-  };
+  const data = await getPlayerData(params.teamId, params.playerId);
+  if (!data) notFound();
+  
+  const { player, team, matchHistory, averageStats } = data;
 
   return (
     <div className="space-y-8">
       <Card className="shadow-xl overflow-hidden">
         <CardHeader className="bg-muted/30 p-6 md:p-8">
-          <div className="flex flex-col md:flex-row items-center space-y-4 md:space-y-0 md:space-x-6">
-            <Avatar className="h-32 w-32 border-4 border-card shadow-md">
-              <AvatarImage src={avatarPlaceholder} alt={`${player.nickname} Steam avatar`} data-ai-hint="gaming avatar" />
-              <AvatarFallback className="text-4xl">{player.nickname.substring(0, 2).toUpperCase()}</AvatarFallback>
-            </Avatar>
-            <div>
-              <div className="flex items-center space-x-3 mb-1">
-                <CardTitle className="text-4xl font-bold text-primary">{player.nickname}</CardTitle>
-              </div>
-              <CardDescription className="text-lg mt-1">
-                Member of <Link href={`/teams/${team.id}`} className="text-accent hover:underline font-medium">{team.name}</Link>
-              </CardDescription>
-              <div className="mt-3 flex space-x-2">
-                <Button variant="outline" size="sm" asChild>
-                  <a href={player.steamProfileUrl} target="_blank" rel="noopener noreferrer">
-                    Steam Profile <ExternalLink className="ml-2 h-4 w-4" />
-                  </a>
-                </Button>
-                {player.openDotaProfileUrl && (
-                  <Button variant="outline" size="sm" asChild>
-                    <a href={player.openDotaProfileUrl} target="_blank" rel="noopener noreferrer">
-                      OpenDota <BarChart3 className="ml-2 h-4 w-4" />
-                    </a>
-                  </Button>
-                )}
-              </div>
+            <div className="flex flex-col md:flex-row items-center space-y-4 md:space-y-0 md:space-x-6">
+                <Avatar className="h-32 w-32 border-4 border-card shadow-md">
+                    <AvatarImage src={player.profileScreenshotUrl} alt={`${player.nickname} avatar`} />
+                    <AvatarFallback className="text-4xl">{player.nickname.substring(0, 2).toUpperCase()}</AvatarFallback>
+                </Avatar>
+                <div>
+                    <CardTitle className="text-4xl font-bold text-primary">{player.nickname}</CardTitle>
+                    <CardDescription className="text-lg mt-1">
+                        Member of <Link href={`/teams/${team.id}`} className="text-accent hover:underline font-medium">{team.name}</Link>
+                    </CardDescription>
+                </div>
             </div>
-          </div>
         </CardHeader>
         <CardContent className="p-6 md:p-8">
-          <h3 className="text-2xl font-semibold mb-6 text-foreground flex items-center">
-            <BarChartHorizontalBig className="h-7 w-7 mr-3 text-primary" /> Overall Player Statistics (Simulated)
-          </h3>
+          <h3 className="text-2xl font-semibold mb-6 text-foreground">Average Tournament Statistics</h3>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
             <StatDisplayCard icon={Star} label="MMR" value={player.mmr.toString()} />
-            <StatDisplayCard icon={TrendingUp} label="Overall KDA Ratio" value={playerOverallStats.kda} />
-            <StatDisplayCard icon={Coins} label="Overall GPM" value={playerOverallStats.gpm.toString()} />
-            <StatDisplayCard icon={Zap} label="Overall XPM" value={playerOverallStats.xpm.toString()} />
-            <StatDisplayCard icon={Shield} label="Overall Win Rate" value={playerOverallStats.winRate} />
-            <StatDisplayCard icon={Puzzle} label="Overall Most Played Hero" value={playerOverallStats.mostPlayedHero} />
+            <StatDisplayCard icon={TrendingUp} label="Average KDA Ratio" value={averageStats.kda} />
+            <StatDisplayCard icon={Coins} label="Average GPM" value={averageStats.gpm.toString()} />
+            <StatDisplayCard icon={Zap} label="Average XPM" value={averageStats.xpm.toString()} />
+            <StatDisplayCard icon={Shield} label="Win Rate" value={averageStats.winRate} />
+            <StatDisplayCard icon={Star} label="Avg. Fantasy Points" value={averageStats.fantasyPoints.toString()} />
           </div>
           
-          <div className="grid md:grid-cols-2 gap-8 items-start">
-            {player.profileScreenshotUrl && ( 
-             <div className="space-y-2">
-                <h4 className="text-xl font-semibold text-foreground">Profile Screenshot</h4>
-                <Image 
-                    src={player.profileScreenshotUrl} 
-                    alt={`${player.nickname} profile screenshot`}
-                    width={600}
-                    height={400}
-                    className="rounded-md border object-contain aspect-[3/2]"
-                    data-ai-hint="profile screenshot dota2"
-                />
-             </div>
-           )}
-            <div className="space-y-4">
-              <h4 className="text-xl font-semibold text-foreground">Recent Match History</h4>
-              {playerMatchHistory.length > 0 ? (
-                playerMatchHistory.map(histItem => {
-                  const HeroIconComponent = heroIconMap[histItem.playerPerformance.hero] || heroIconMap['Default'];
-                  const heroColorHex = heroColorMap[histItem.playerPerformance.hero] || FALLBACK_HERO_COLOR;
-                  return (
-                    <Card key={histItem.matchId} className="bg-muted/20 shadow-md">
-                      <CardHeader className="pb-3">
-                        <div className="flex justify-between items-start">
-                           <CardTitle className="text-lg flex items-center flex-wrap">
-                            {HeroIconComponent && <HeroIconComponent color={heroColorHex} className="h-5 w-5 mr-1.5 shrink-0" />}
-                            <span style={{ color: heroColorHex }} className="font-semibold">{histItem.playerPerformance.hero}</span>
-                            <span className="text-muted-foreground mx-1.5 font-normal">vs</span>
-                            <Link href={`/teams/${histItem.opponentTeam.id}`} className="text-accent hover:underline">{histItem.opponentTeam.name}</Link>
-                          </CardTitle>
-                          <Badge variant={histItem.result === 'Win' ? 'secondary' : histItem.result === 'Loss' ? 'destructive' : 'outline'} className="ml-2 shrink-0">
-                            {histItem.result}
-                          </Badge>
-                        </div>
-                        <CardDescription className="text-xs mt-1">
-                          {histItem.matchDate.toLocaleDateString()}
-                          {histItem.openDotaMatchUrl && (
-                            <Link href={histItem.openDotaMatchUrl} target="_blank" rel="noopener noreferrer" className="ml-2 text-primary/80 hover:text-primary text-xs">
-                              (OpenDota)
-                            </Link>
-                          )}
-                        </CardDescription>
-                      </CardHeader>
-                      <CardContent className="pt-0">
-                         <Table className="text-xs">
-                          <TableBody>
-                            <TableRow>
-                              <TableCell className="font-medium p-1.5"><statIcons.kda className="inline h-3.5 w-3.5 mr-1.5 text-muted-foreground" />K/D/A</TableCell>
-                              <TableCell className="text-right p-1.5">{histItem.playerPerformance.kills}/{histItem.playerPerformance.deaths}/{histItem.playerPerformance.assists}</TableCell>
-                              <TableCell className="font-medium p-1.5"><statIcons.gpm className="inline h-3.5 w-3.5 mr-1.5 text-muted-foreground" />GPM</TableCell>
-                              <TableCell className="text-right p-1.5">{histItem.playerPerformance.gpm}</TableCell>
-                            </TableRow>
-                            <TableRow>
-                              <TableCell className="font-medium p-1.5"><statIcons.xpm className="inline h-3.5 w-3.5 mr-1.5 text-muted-foreground" />XPM</TableCell>
-                              <TableCell className="text-right p-1.5">{histItem.playerPerformance.xpm}</TableCell>
-                               <TableCell className="font-medium p-1.5"><statIcons.fantasyPoints className="inline h-3.5 w-3.5 mr-1.5 text-muted-foreground" />Fantasy Pts</TableCell>
-                              <TableCell className="text-right p-1.5">{histItem.playerPerformance.fantasyPoints}</TableCell>
-                            </TableRow>
-                             <TableRow>
-                              <TableCell className="font-medium p-1.5"><statIcons.lastHits className="inline h-3.5 w-3.5 mr-1.5 text-muted-foreground" />LH/DN</TableCell>
-                              <TableCell className="text-right p-1.5">{histItem.playerPerformance.lastHits}/{histItem.playerPerformance.denies}</TableCell>
-                               <TableCell className="font-medium p-1.5"><statIcons.netWorth className="inline h-3.5 w-3.5 mr-1.5 text-muted-foreground" />Net Worth</TableCell>
-                              <TableCell className="text-right p-1.5">{(histItem.playerPerformance.netWorth / 1000).toFixed(1)}k</TableCell>
-                            </TableRow>
-                            <TableRow>
-                               <TableCell className="font-medium p-1.5"><statIcons.heroDamage className="inline h-3.5 w-3.5 mr-1.5 text-muted-foreground" />Hero Dmg</TableCell>
-                              <TableCell className="text-right p-1.5">{(histItem.playerPerformance.heroDamage / 1000).toFixed(1)}k</TableCell>
-                              <TableCell className="font-medium p-1.5"><statIcons.towerDamage className="inline h-3.5 w-3.5 mr-1.5 text-muted-foreground" />Tower Dmg</TableCell>
-                              <TableCell className="text-right p-1.5">{(histItem.playerPerformance.towerDamage / 1000).toFixed(1)}k</TableCell>
-                            </TableRow>
-                          </TableBody>
-                        </Table>
-                      </CardContent>
-                    </Card>
-                  )
-                })
-              ) : (
-                <p className="text-muted-foreground text-center py-4">No recent match performance data available.</p>
-              )}
-            </div>
+          <div className="space-y-4">
+            <h4 className="text-xl font-semibold text-foreground">Recent Match History</h4>
+            {matchHistory.length > 0 ? (
+              matchHistory.map(histItem => <MatchHistoryCard key={histItem.matchId} histItem={histItem} />)
+            ) : (
+              <p className="text-muted-foreground text-center py-4">No match performance data available.</p>
+            )}
           </div>
-          <p className="text-sm text-muted-foreground text-center mt-8">
-            Note: Overall player statistics and match performance data are simulated.
-          </p>
         </CardContent>
       </Card>
     </div>
   );
 }
 
-interface StatDisplayCardProps {
-  icon: React.ElementType;
-  label: string;
-  value: string;
-}
-
-function StatDisplayCard({ icon: Icon, label, value }: StatDisplayCardProps) {
+const MatchHistoryCard = ({ histItem }: { histItem: PlayerMatchHistoryItem }) => {
+  const { playerPerformance: perf, opponentTeam, result, matchDate, openDotaMatchUrl } = histItem;
+  const HeroIconComponent = heroIconMap[perf.hero] || heroIconMap['Default'];
+  const heroColorHex = heroColorMap[perf.hero] || FALLBACK_HERO_COLOR;
+  
   return (
-    <Card className="bg-muted/20 p-4 shadow-sm">
-      <div className="flex items-center mb-1">
-        <Icon className="h-5 w-5 mr-2 text-primary" />
-        <CardDescription className="text-sm font-medium">{label}</CardDescription>
-      </div>
-      <p className="text-2xl font-bold text-foreground">{value}</p>
+    <Card className="bg-muted/20 shadow-md">
+      <CardHeader className="pb-3">
+        <div className="flex justify-between items-start">
+           <CardTitle className="text-lg flex items-center flex-wrap">
+            <HeroIconComponent color={heroColorHex} className="h-5 w-5 mr-1.5 shrink-0" />
+            <span style={{ color: heroColorHex }} className="font-semibold">{perf.hero}</span>
+            <span className="text-muted-foreground mx-1.5 font-normal">vs</span>
+            <Link href={`/teams/${opponentTeam.id}`} className="text-accent hover:underline">{opponentTeam.name}</Link>
+          </CardTitle>
+          <Badge variant={result === 'Win' ? 'secondary' : 'destructive'} className="ml-2 shrink-0">{result}</Badge>
+        </div>
+        <CardDescription className="text-xs mt-1">
+          {matchDate.toLocaleDateString()}
+          {openDotaMatchUrl && <Link href={openDotaMatchUrl} target="_blank" rel="noopener noreferrer" className="ml-2 text-primary/80 hover:text-primary">(OpenDota)</Link>}
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="pt-0">
+         <Table className="text-xs">
+          <TableBody>
+            <TableRow>
+              <TableCell className="font-medium p-1.5"><ListChecks className="inline h-3.5 w-3.5 mr-1.5" />K/D/A</TableCell>
+              <TableCell className="text-right p-1.5">{perf.kills}/{perf.deaths}/{perf.assists}</TableCell>
+              <TableCell className="font-medium p-1.5"><Coins className="inline h-3.5 w-3.5 mr-1.5" />GPM</TableCell>
+              <TableCell className="text-right p-1.5">{perf.gpm}</TableCell>
+            </TableRow>
+            <TableRow>
+              <TableCell className="font-medium p-1.5"><Zap className="inline h-3.5 w-3.5 mr-1.5" />XPM</TableCell>
+              <TableCell className="text-right p-1.5">{perf.xpm}</TableCell>
+               <TableCell className="font-medium p-1.5"><Star className="inline h-3.5 w-3.5 mr-1.5" />Fantasy Pts</TableCell>
+              <TableCell className="text-right p-1.5 font-bold text-primary">{perf.fantasyPoints}</TableCell>
+            </TableRow>
+          </TableBody>
+        </Table>
+      </CardContent>
     </Card>
   );
-}
+};
 
-export async function generateMetadata({ params }: PlayerPageParams) {
-  const { player, team } = await getPlayerData(params.teamId, params.playerId);
-  if (!player) {
-    return { title: "Player Not Found" };
-  }
-  return {
-    title: `${player.nickname} | ${team?.name || 'Team'} | Tournament Tracker`,
-    description: `Statistics and profile for player ${player.nickname}.`
-  };
+const StatDisplayCard = ({ icon: Icon, label, value }: { icon: React.ElementType, label: string, value: string }) => (
+  <Card className="bg-muted/20 p-4 shadow-sm">
+    <div className="flex items-center mb-1"><Icon className="h-5 w-5 mr-2 text-primary" /><CardDescription className="text-sm font-medium">{label}</CardDescription></div>
+    <p className="text-2xl font-bold text-foreground">{value}</p>
+  </Card>
+);
+
+export async function generateMetadata({ params }: { params: PlayerPageParams['params'] }) {
+  const data = await getPlayerData(params.teamId, params.playerId);
+  if (!data) return { title: "Player Not Found" };
+  return { title: `${data.player.nickname} | ${data.team.name}`, description: `Stats for ${data.player.nickname}.` };
 }
 
 export async function generateStaticParams() {
-  const params: { teamId: string; playerId: string }[] = [];
-  mockTeams.forEach(team => {
-    team.players.forEach(player => {
-      // Ensure we are splitting off the team-specific suffix from player.id correctly
-      const basePlayerId = player.id.split('-t')[0];
-      params.push({ teamId: team.id, playerId: basePlayerId });
-    });
-  });
-  // Deduplicate params to avoid issues with generateStaticParams
-  return Array.from(new Set(params.map(p => JSON.stringify(p)))).map(s => JSON.parse(s));
+    const teams = await getAllTeams();
+    const params = teams.flatMap(team => 
+        (team.players || []).map(player => ({
+            teamId: team.id,
+            playerId: player.id,
+        }))
+    );
+    return params;
 }

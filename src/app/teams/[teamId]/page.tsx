@@ -1,5 +1,15 @@
 
-import { mockTeams, mockMatches } from "@/lib/mock-data";
+import {
+  Users, ListChecks, ExternalLink, Medal, Swords, UserCheck, UserX, ShieldQuestion,
+  PlayCircle, Sigma, Trophy, Users2, Clock, Percent, Skull, Ratio,
+  Handshake as HandshakeIcon, Award, Shield
+} from "lucide-react";
+import type { Icon as LucideIconType } from "lucide-react";
+import { notFound } from "next/navigation";
+import { cn } from "@/lib/utils";
+import { Progress } from "@/components/ui/progress";
+import { heroIconMap } from "@/lib/hero-data";
+import { getTeamById, getAllMatches, getAllTeams } from "@/lib/firestore";
 import type { Team, Player, Match, TournamentStatus, HeroPlayStats } from "@/lib/definitions";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -8,26 +18,17 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import Image from "next/image";
 import Link from "next/link";
-import {
-  Users, ListChecks, ExternalLink, Medal, Swords, UserCheck, UserX, ShieldQuestion,
-  PlayCircle, Sigma, Trophy, Users2, Clock, Percent, Skull, Ratio,
-  Handshake as HandshakeIcon, Award, Shield // Corrected: Shield is imported, TeamIcon is removed
-} from "lucide-react";
-import type { Icon as LucideIconType } from "lucide-react";
-import { notFound } from "next/navigation";
-import { cn } from "@/lib/utils";
-import { Progress } from "@/components/ui/progress";
-import { heroIconMap } from "@/lib/hero-data";
 
 interface TeamPageParams {
   params: { teamId: string };
 }
 
 async function getTeamData(teamId: string): Promise<{ team: Team | undefined, teamMatches: Match[] }> {
-  const team = mockTeams.find(t => t.id === teamId);
+  const team = await getTeamById(teamId);
   if (!team) return { team: undefined, teamMatches: [] };
 
-  const teamMatches = mockMatches.filter(m => m.teamA.id === teamId || m.teamB.id === teamId);
+  const allMatches = await getAllMatches();
+  const teamMatches = allMatches.filter(m => m.teams.includes(teamId));
   return { team, teamMatches };
 }
 
@@ -94,6 +95,7 @@ function getRankForStat(
 
 export default async function TeamPage({ params }: TeamPageParams) {
   const { team, teamMatches } = await getTeamData(params.teamId);
+  const allTeams = await getAllTeams(); // Fetch all teams for ranking
 
   if (!team) {
     notFound();
@@ -106,10 +108,10 @@ export default async function TeamPage({ params }: TeamPageParams) {
   const displayMinutes = avgMatchDurationMinutes % 60;
   const minuteHandAngle = (displayMinutes / 60) * 360;
 
-  const maxKills = Math.max(...mockTeams.map(t => t.averageKillsPerGame ?? 0).filter(v => v !== undefined && !isNaN(v)), 1);
-  const maxDeaths = Math.max(...mockTeams.map(t => t.averageDeathsPerGame ?? 0).filter(v => v !== undefined && !isNaN(v)), 1);
-  const maxAssists = Math.max(...mockTeams.map(t => t.averageAssistsPerGame ?? 0).filter(v => v !== undefined && !isNaN(v)), 1);
-  const maxFantasyPoints = Math.max(...mockTeams.map(t => t.averageFantasyPoints ?? 0).filter(v => v !== undefined && !isNaN(v)), 1);
+  const maxKills = Math.max(...allTeams.map(t => t.averageKillsPerGame ?? 0).filter(v => v !== undefined && !isNaN(v)), 1);
+  const maxDeaths = Math.max(...allTeams.map(t => t.averageDeathsPerGame ?? 0).filter(v => v !== undefined && !isNaN(v)), 1);
+  const maxAssists = Math.max(...allTeams.map(t => t.averageAssistsPerGame ?? 0).filter(v => v !== undefined && !isNaN(v)), 1);
+  const maxFantasyPoints = Math.max(...allTeams.map(t => t.averageFantasyPoints ?? 0).filter(v => v !== undefined && !isNaN(v)), 1);
 
   const performanceStats = [
     {
@@ -119,7 +121,7 @@ export default async function TeamPage({ params }: TeamPageParams) {
       type: 'progress',
       rawValue: team.averageKillsPerGame,
       maxValue: maxKills,
-      rank: getRankForStat(team.averageKillsPerGame, mockTeams, 'averageKillsPerGame', 'desc'),
+      rank: getRankForStat(team.averageKillsPerGame, allTeams, 'averageKillsPerGame', 'desc'),
       statKey: 'averageKillsPerGame' as keyof Team,
       sortOrder: 'desc' as 'desc' | 'asc',
     },
@@ -130,7 +132,7 @@ export default async function TeamPage({ params }: TeamPageParams) {
       type: 'progress',
       rawValue: team.averageDeathsPerGame,
       maxValue: maxDeaths,
-      rank: getRankForStat(team.averageDeathsPerGame, mockTeams, 'averageDeathsPerGame', 'asc'),
+      rank: getRankForStat(team.averageDeathsPerGame, allTeams, 'averageDeathsPerGame', 'asc'),
       statKey: 'averageDeathsPerGame' as keyof Team,
       sortOrder: 'asc' as 'desc' | 'asc',
     },
@@ -141,7 +143,7 @@ export default async function TeamPage({ params }: TeamPageParams) {
       type: 'progress',
       rawValue: team.averageAssistsPerGame,
       maxValue: maxAssists,
-      rank: getRankForStat(team.averageAssistsPerGame, mockTeams, 'averageAssistsPerGame', 'desc'),
+      rank: getRankForStat(team.averageAssistsPerGame, allTeams, 'averageAssistsPerGame', 'desc'),
       statKey: 'averageAssistsPerGame' as keyof Team,
       sortOrder: 'desc' as 'desc' | 'asc',
     },
@@ -152,7 +154,7 @@ export default async function TeamPage({ params }: TeamPageParams) {
       type: 'progress',
       rawValue: team.averageFantasyPoints,
       maxValue: maxFantasyPoints,
-      rank: getRankForStat(team.averageFantasyPoints, mockTeams, 'averageFantasyPoints', 'desc'),
+      rank: getRankForStat(team.averageFantasyPoints, allTeams, 'averageFantasyPoints', 'desc'),
       statKey: 'averageFantasyPoints' as keyof Team,
       sortOrder: 'desc' as 'desc' | 'asc',
     }
@@ -194,7 +196,7 @@ export default async function TeamPage({ params }: TeamPageParams) {
                <Shield className="h-6 w-6 mr-2 text-primary" /> Team Summary
             </h3>
              <InfoItem icon={ListChecks} label="Matches Played" value={team.matchesPlayed ?? 0} />
-             <InfoItem icon={Swords} label="Wins / Losses" value={`${team.matchesWon ?? 0}W / ${team.matchesLost ?? 0}L`} />
+             <InfoItem icon={Swords} label="Wins / Losses" value={`${team.wins ?? 0}W / ${team.losses ?? 0}L`} />
              <InfoItem icon={Sigma} label="Total MMR" value={totalMMR.toLocaleString()} />
           </div>
           <div className="md:col-span-1 space-y-4">
@@ -329,7 +331,7 @@ export default async function TeamPage({ params }: TeamPageParams) {
       <Card className="shadow-xl">
         <CardHeader>
           <CardTitle className="text-2xl font-semibold text-primary">Match History</CardTitle>
-          <CardDescription>Results of all matches played by {team.name}. (Data from OpenDota API - simulated)</CardDescription>
+          <CardDescription>Results of all matches played by {team.name}.</CardDescription>
         </CardHeader>
         <CardContent>
           {teamMatches.length > 0 ? (
@@ -345,10 +347,10 @@ export default async function TeamPage({ params }: TeamPageParams) {
               <TableBody>
                 {teamMatches.map((match) => {
                   const opponent = match.teamA.id === team.id ? match.teamB : match.teamA;
-                  const isWin = (match.teamA.id === team.id && (match.teamAScore ?? 0) > (match.teamBScore ?? 0)) ||
-                                (match.teamB.id === team.id && (match.teamBScore ?? 0) > (match.teamAScore ?? 0));
+                  const isWin = (match.teamA.id === team.id && (match.teamA.score ?? 0) > (match.teamB.score ?? 0)) ||
+                                (match.teamB.id === team.id && (match.teamB.score ?? 0) > (match.teamA.score ?? 0));
                   const resultText = match.status === 'completed' ? (isWin ? "Win" : "Loss") : "Upcoming";
-                  const scoreText = match.status === 'completed' ? `${match.teamAScore} - ${match.teamBScore}` : "-";
+                  const scoreText = match.status === 'completed' ? `${match.teamA.score} - ${match.teamB.score}` : "-";
                   return (
                     <TableRow key={match.id}>
                       <TableCell>
@@ -403,12 +405,12 @@ function PlayerCard({ player, teamId }: PlayerCardProps) {
           <AvatarFallback>{player.nickname.substring(0, 2).toUpperCase()}</AvatarFallback>
         </Avatar>
         <div>
-          <Link href={`/teams/${teamId}/players/${player.id.split('-t')[0]}`} className="font-semibold text-foreground hover:text-primary">{player.nickname}</Link>
+          <Link href={`/teams/${teamId}/players/${player.id}`} className="font-semibold text-foreground hover:text-primary">{player.nickname}</Link>
           <p className="text-xs text-muted-foreground">MMR: {player.mmr}</p>
         </div>
       </div>
       <Button variant="ghost" size="sm" asChild>
-        <Link href={`/teams/${teamId}/players/${player.id.split('-t')[0]}`}>
+        <Link href={`/teams/${teamId}/players/${player.id}`}>
           View Stats <ExternalLink className="ml-2 h-3 w-3" />
         </Link>
       </Button>
@@ -418,7 +420,7 @@ function PlayerCard({ player, teamId }: PlayerCardProps) {
 
 
 export async function generateMetadata({ params }: TeamPageParams) {
-  const team = mockTeams.find(t => t.id === params.teamId);
+  const team = await getTeamById(params.teamId);
   if (!team) {
     return { title: "Team Not Found" };
   }
@@ -429,7 +431,8 @@ export async function generateMetadata({ params }: TeamPageParams) {
 }
 
 export async function generateStaticParams() {
-  return mockTeams.map(team => ({
+  const teams = await getAllTeams();
+  return teams.map(team => ({
     teamId: team.id,
   }));
 }

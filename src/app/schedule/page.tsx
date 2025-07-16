@@ -1,37 +1,27 @@
 
 import { MatchListItem } from "@/components/app/MatchListItem";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { mockMatches } from "@/lib/mock-data";
+import { getAllMatches } from "@/lib/firestore";
 import type { Match } from "@/lib/definitions";
-import { AlertCircle, Calendar, CalendarClock, History } from "lucide-react"; // Imported History and CalendarClock
+import { AlertCircle, Calendar, CalendarClock, History } from "lucide-react";
 
-async function getUpcomingMatches(): Promise<Match[]> {
-  // In a real app, fetch this data from your Google Sheet or API
+async function getMatches(): Promise<{ upcomingMatches: Match[], recentMatches: Match[] }> {
+  const allMatches = await getAllMatches();
   const now = new Date();
-  const sevenDaysLater = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
 
-  return mockMatches
-    .filter(match => {
-      const matchDate = new Date(match.dateTime);
-      return matchDate >= now && matchDate <= sevenDaysLater && match.status === 'upcoming';
-    })
+  const upcomingMatches = allMatches
+    .filter(match => new Date(match.dateTime) >= now && match.status === 'upcoming')
     .sort((a, b) => new Date(a.dateTime).getTime() - new Date(b.dateTime).getTime());
-}
 
-async function getRecentMatches(): Promise<Match[]> {
-  const now = new Date();
-  return mockMatches
-    .filter(match => {
-      const matchDate = new Date(match.dateTime);
-      return matchDate <= now && match.status === 'completed';
-    })
-    .sort((a, b) => new Date(b.dateTime).getTime() - new Date(a.dateTime).getTime()); // Sort by most recent first
-}
+  const recentMatches = allMatches
+    .filter(match => new Date(match.dateTime) <= now && match.status === 'completed')
+    .sort((a, b) => new Date(b.dateTime).getTime() - new Date(a.dateTime).getTime());
 
+  return { upcomingMatches, recentMatches };
+}
 
 export default async function SchedulePage() {
-  const upcomingMatches = await getUpcomingMatches();
-  const recentMatches = await getRecentMatches();
+  const { upcomingMatches, recentMatches } = await getMatches();
 
   return (
     <div className="space-y-8">
@@ -57,7 +47,7 @@ export default async function SchedulePage() {
         <section className="space-y-4">
           <div className="text-center py-2">
             <h2 className="text-3xl font-semibold text-accent flex items-center justify-center">
-              <History className="h-8 w-8 mr-3" /> {/* Icon added */}
+              <History className="h-8 w-8 mr-3" />
               Recent Results
             </h2>
           </div>
@@ -84,7 +74,7 @@ export default async function SchedulePage() {
         <section className="space-y-4">
            <div className="text-center py-2">
             <h2 className="text-3xl font-semibold text-accent flex items-center justify-center">
-                <CalendarClock className="h-8 w-8 mr-3" /> {/* Icon added */}
+                <CalendarClock className="h-8 w-8 mr-3" />
                 Upcoming Games
             </h2>
           </div>
@@ -94,8 +84,7 @@ export default async function SchedulePage() {
                 <AlertCircle className="w-16 h-16 text-primary mb-4" />
                 <h3 className="text-2xl font-semibold mb-2">No Upcoming Matches</h3>
                 <p className="text-muted-foreground">
-                  There are no matches scheduled in the next 7 days.
-                  Please check back later for updates.
+                  There are no matches scheduled.
                 </p>
               </CardContent>
             </Card>
@@ -108,9 +97,6 @@ export default async function SchedulePage() {
           )}
         </section>
       </div>
-      <p className="text-sm text-muted-foreground text-center mt-8">
-        Note: Match schedules are typically imported from a Google Sheet or other data source. This page displays simulated data.
-      </p>
     </div>
   );
 }
@@ -119,4 +105,3 @@ export const metadata = {
   title: "Schedule | Tournament Tracker",
   description: "View upcoming and recent matches for the tournament."
 }
-

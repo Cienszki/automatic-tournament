@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { BarChartHorizontal, Save, Edit, AlertCircle } from "lucide-react";
-import { mockMatches } from "@/lib/mock-data";
+import { getAllMatches } from "@/lib/firestore";
 import type { Match } from "@/lib/definitions";
 import { useToast } from "@/hooks/use-toast";
 import Image from "next/image";
@@ -22,8 +22,17 @@ type MatchScoreState = {
 
 export default function ManageStandingsPage() {
   const { toast } = useToast();
+  const [matches, setMatches] = React.useState<Match[]>([]);
   const [scores, setScores] = React.useState<MatchScoreState>({});
   const [editingMatchId, setEditingMatchId] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    async function fetchMatches() {
+      const allMatches = await getAllMatches();
+      setMatches(allMatches);
+    }
+    fetchMatches();
+  }, []);
 
   const handleScoreChange = (matchId: string, team: 'A' | 'B', value: string) => {
     setScores(prev => ({
@@ -61,14 +70,14 @@ export default function ManageStandingsPage() {
     setScores(prev => ({
         ...prev,
         [match.id]: {
-            teamAScore: match.teamAScore?.toString() || '',
-            teamBScore: match.teamBScore?.toString() || ''
+            teamAScore: match.teamA.score?.toString() || '',
+            teamBScore: match.teamB.score?.toString() || ''
         }
     }));
   };
 
-  const pendingMatches = mockMatches.filter(m => m.status !== 'completed');
-  const completedMatches = mockMatches.filter(m => m.status === 'completed');
+  const pendingMatches = matches.filter(m => m.status !== 'completed');
+  const completedMatches = matches.filter(m => m.status === 'completed');
 
   const renderMatchRow = (match: Match) => {
     const isEditing = editingMatchId === match.id;
@@ -110,7 +119,7 @@ export default function ManageStandingsPage() {
                 />
               </>
             ) : (
-              <span>{match.teamAScore ?? '-'} : {match.teamBScore ?? '-'}</span>
+              <span>{match.teamA.score ?? '-'} : {match.teamB.score ?? '-'}</span>
             )}
           </div>
         </TableCell>

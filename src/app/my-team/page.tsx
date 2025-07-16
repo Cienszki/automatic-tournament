@@ -3,7 +3,8 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { mockTeams, mockMatches } from "@/lib/mock-data";
+import { doc, getDoc, collection, query, where, getDocs, orderBy } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 import type { Team, Match } from "@/lib/definitions";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Crown, Loader2, ShieldQuestion, UserPlus, Fingerprint, Copy } from "lucide-react";
@@ -18,36 +19,37 @@ import { TeamStatusCard } from "@/components/app/my-team/TeamStatusCard";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-
-// In a real app, this would come from user authentication
-// We will now simulate this by linking the logged-in user to a team
-// For demo purposes, we'll assume the logged-in user is captain of 'team1' if they log in.
-const CAPTAIN_TEAM_ID = 'team1';
+import { getUserTeam } from "@/lib/team";
 
 async function getMyTeamData(teamId: string): Promise<{ team: Team | undefined, upcomingMatches: Match[], pastMatches: Match[] }> {
-  return new Promise(resolve => {
-    setTimeout(() => {
-      const team = mockTeams.find((t) => t.id === teamId);
-      if (!team) {
-        resolve({ team: undefined, upcomingMatches: [], pastMatches: [] });
-        return;
-      }
+  try {
+    const teamDocRef = doc(db, "teams", teamId);
+    const teamDocSnap = await getDoc(teamDocRef);
 
-      const teamMatches = mockMatches.filter(
-        (m) => m.teamA.id === teamId || m.teamB.id === teamId
-      );
+    if (!teamDocSnap.exists()) {
+      return { team: undefined, upcomingMatches: [], pastMatches: [] };
+    }
 
-      const upcomingMatches = teamMatches
-        .filter((m) => m.status === 'upcoming')
-        .sort((a, b) => new Date(a.dateTime).getTime() - new Date(b.dateTime).getTime());
+    const team = { id: teamDocSnap.id, ...teamDocSnap.data() } as Team;
 
-      const pastMatches = teamMatches
-        .filter((m) => m.status === 'completed')
-        .sort((a, b) => new Date(b.dateTime).getTime() - new Date(a.dateTime).getTime());
+    const matchesRef = collection(db, "matches");
+    const q = query(matchesRef, where("teams", "array-contains", teamId));
+    const querySnapshot = await getDocs(q);
+    const teamMatches = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Match));
 
-      resolve({ team, upcomingMatches, pastMatches });
-    }, 500); // 500ms delay
-  });
+    const upcomingMatches = teamMatches
+      .filter((m) => m.status === 'upcoming')
+      .sort((a, b) => new Date(a.dateTime).getTime() - new Date(b.dateTime).getTime());
+
+    const pastMatches = teamMatches
+      .filter((m) => m.status === 'completed')
+      .sort((a, b) => new Date(b.dateTime).getTime() - new Date(a.dateTime).getTime());
+
+    return { team, upcomingMatches, pastMatches };
+  } catch (error) {
+    console.error("Error fetching team data:", error);
+    return { team: undefined, upcomingMatches: [], pastMatches: [] };
+  }
 }
 
 // The main dashboard component when the user is logged in
@@ -173,34 +175,28 @@ function NoTeamPrompt() {
 // The main page component that handles logic
 export default function MyTeamPage() {
   const { user } = useAuth();
+  const [teamId, setTeamId] = React.useState<string | null>(null);
   const [teamData, setTeamData] = React.useState<{ team: Team | undefined; upcomingMatches: Match[]; pastMatches: Match[] } | null>(null);
-  const [isLoading, setIsLoading] = React.useState(false);
+  const [isLoading, setIsLoading] = React.useState(true);
   
-  // This state will simulate whether the logged-in user is associated with a team.
-  // In a real app, this check would happen on the backend.
-  const [userHasTeam, setUserHasTeam] = React.useState(false);
-
   React.useEffect(() => {
-    if (user) {
-      // Simulate checking if the user is a captain of a team.
-      // For now, we just assume they are the captain of CAPTAIN_TEAM_ID.
-      // In a real app, you'd fetch this from your database.
-      setIsLoading(true);
-      setUserHasTeam(true); // Assume user has a team for demo purposes
-      getMyTeamData(CAPTAIN_TEAM_ID).then(data => {
-        setTeamData(data);
+    async function checkUserTeam() {
+      if (user) {
+        setIsLoading(true);
+        const id = await getUserTeam(user.uid);
+        setTeamId(id);
+        if (id) {
+          const data = await getMyTeamData(id);
+          setTeamData(data);
+        }
         setIsLoading(false);
-      });
-    } else {
-      setUserHasTeam(false);
-      setTeamData(null);
+      } else {
+        setIsLoading(false);
+      }
     }
+    checkUserTeam();
   }, [user]);
   
-  if (!user) {
-    return <LoginPrompt />;
-  }
-
   if (isLoading) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -209,7 +205,11 @@ export default function MyTeamPage() {
     );
   }
 
-  if (userHasTeam && teamData?.team) {
+  if (!user) {
+    return <LoginPrompt />;
+  }
+
+  if (teamId && teamData?.team) {
     return (
       <MyTeamDashboard 
         team={teamData.team} 
@@ -219,9 +219,5 @@ export default function MyTeamPage() {
     );
   }
   
-  if (user && !userHasTeam) {
-    return <NoTeamPrompt />;
-  }
-  
-  return <NoTeamPrompt />; // Fallback
+  return <NoTeamPrompt />;
 }

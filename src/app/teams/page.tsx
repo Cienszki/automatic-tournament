@@ -1,13 +1,12 @@
 
 import { TeamCard } from "@/components/app/TeamCard";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { mockTeams } from "@/lib/mock-data";
+import { getAllTeams } from "@/lib/firestore";
 import type { Team } from "@/lib/definitions";
 import { Users } from "lucide-react";
 
 async function getTeams(): Promise<Team[]> {
-  // In a real app, fetch teams from your database/API
-  return mockTeams;
+  return await getAllTeams();
 }
 
 export default async function TeamsPage() {

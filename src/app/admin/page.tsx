@@ -1,7 +1,7 @@
 
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Settings, BarChartHorizontal, Users, UserCheck, Trophy, Megaphone } from "lucide-react";
+import { Settings, BarChartHorizontal, Users, UserCheck, Trophy, Megaphone, ShieldEllipsis } from "lucide-react";
 import Link from "next/link";
 
 export default function AdminPage() {
@@ -17,6 +17,22 @@ export default function AdminPage() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-4xl mx-auto">
+            <Card className="hover:bg-muted/30 transition-colors">
+              <CardHeader>
+                <CardTitle className="flex items-center text-accent">
+                  <ShieldEllipsis className="mr-2" />
+                  Tournament State
+                </CardTitle>
+                <CardDescription>
+                  Advance the tournament stage, from pre-season to the final winner.
+                </CardDescription>
+              </CardHeader>
+              <CardFooter>
+                <Button asChild className="w-full">
+                  <Link href="/admin/management">Manage State</Link>
+                </Button>
+              </CardFooter>
+            </Card>
             <Card className="hover:bg-muted/30 transition-colors">
               <CardHeader>
                 <CardTitle className="flex items-center text-accent">
@@ -89,22 +105,6 @@ export default function AdminPage() {
                 </CardTitle>
                 <CardDescription>
                   Create and display site-wide announcements or update banners.
-                </CardDescription>
-              </CardHeader>
-               <CardFooter>
-                  <Button asChild className="w-full" disabled>
-                    <Link href="#">Coming Soon</Link>
-                  </Button>
-              </CardFooter>
-            </Card>
-             <Card className="hover:bg-muted/30 transition-colors">
-              <CardHeader>
-                <CardTitle className="flex items-center text-accent">
-                  <Settings className="mr-2" />
-                  Global Settings
-                </CardTitle>
-                <CardDescription>
-                   Configure global tournament variables like the MMR cap or tournament status.
                 </CardDescription>
               </CardHeader>
                <CardFooter>

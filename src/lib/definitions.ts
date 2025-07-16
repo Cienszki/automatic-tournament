@@ -2,6 +2,9 @@
 import type { z } from "zod";
 import type { LucideIcon } from "lucide-react";
 
+export const TEAM_MMR_CAP = 30000;
+export const FANTASY_BUDGET_MMR = 30000;
+
 export const PlayerRoles = ["Carry", "Mid", "Offlane", "Soft Support", "Hard Support"] as const;
 export type PlayerRole = typeof PlayerRoles[number];
 
@@ -9,20 +12,20 @@ export const TournamentStatuses = ["Not Verified", "Active", "Eliminated", "Cham
 export type TournamentStatus = typeof TournamentStatuses[number];
 
 export type Player = {
-  id: string; // For mock data, base player ID like "p1", team-specific is "p1-t1"
+  id: string;
   nickname: string;
   mmr: number;
   role: PlayerRole;
-  status: TournamentStatus;
-  profileScreenshotUrl?: string; // URL after upload
   steamProfileUrl: string;
+  profileScreenshotUrl?: string;
   openDotaProfileUrl?: string;
   fantasyPointsEarned?: number;
-  avgKills?: number;
-  avgDeaths?: number;
-  avgAssists?: number;
-  avgGPM?: number;
-  avgXPM?: number;
+};
+
+export type TournamentPlayer = Player & {
+    teamId: string;
+    teamName: string;
+    teamTag: string;
 };
 
 export type HeroPlayStats = {
@@ -44,25 +47,26 @@ export type StandIn = {
 export type Team = {
   id: string;
   name: string;
-  logoUrl?: string; // URL after upload
-  motto?: string; // Added team motto
-  players: Player[]; // These players will have team-specific IDs like "p1-t1"
+  tag: string;
+  motto: string;
+  logoUrl: string;
+  captainId: string;
+  players: Player[];
   status: TournamentStatus;
   standIns?: StandIn[];
-  matchesPlayed?: number;
-  matchesWon?: number;
-  matchesLost?: number;
-  points?: number; // Overall tournament points based on wins/draws
-  mostPlayedHeroes?: HeroPlayStats[];
-  averageMatchDurationMinutes?: number;
+  wins: number;
+  losses: number;
   averageKillsPerGame?: number;
   averageDeathsPerGame?: number;
   averageAssistsPerGame?: number;
   averageFantasyPoints?: number;
+  averageMatchDurationMinutes?: number;
+  matchesPlayed?: number;
+  mostPlayedHeroes?: HeroPlayStats[];
 };
 
 export type PlayerPerformanceInMatch = {
-  playerId: string; // Team-specific player ID like "p1-t1"
+  playerId: string;
   teamId: string;
   hero: string;
   kills: number;
@@ -80,15 +84,14 @@ export type PlayerPerformanceInMatch = {
 
 export type Match = {
   id: string;
-  teamA: Team;
-  teamB: Team;
-  teamAScore?: number;
-  teamBScore?: number;
-  dateTime: Date;
+  teamA: { id: string, name: string, score: number, logoUrl?: string };
+  teamB: { id: string, name: string, score: number, logoUrl?: string };
+  teams: string[];
+  dateTime: string;
   status: 'upcoming' | 'live' | 'completed';
   openDotaMatchUrl?: string;
-  performances?: PlayerPerformanceInMatch[];
-  round?: string; // e.g., "Group Stage R2", "WB Semifinals"
+  playerPerformances?: PlayerPerformanceInMatch[];
+  round?: string;
 };
 
 export type Group = {
@@ -97,85 +100,28 @@ export type Group = {
   teams: Team[];
 };
 
-
-// Details for each ranked entry in an expandable stats category
-export type CategoryRankingDetail = {
-  rank: number;
-  playerName?: string;
-  teamName?: string;
-  playerId?: string; // base player id e.g. p1
-  teamId?: string;
-  value: string | number; // The actual stat value
-  heroName?: string;       // For single match records
-  matchContext?: string;   // For single match records, e.g. "vs TeamX"
-  openDotaMatchUrl?: string; // For single match records
+export type PlayoffData = {
+    rounds: {
+        name: string;
+        matches: Match[];
+    }[];
 };
 
-// Structure for displaying a category with its top rankings
-export type CategoryDisplayStats = {
-  id: string; // Unique ID for the category row, e.g., 'single-most-kills'
-  categoryName: string;
-  icon: LucideIcon;
-  rankings: CategoryRankingDetail[]; // Array of top 5 records
-};
-
-
-export type TournamentHighlightRecord = {
-  id: string;
-  title: string;
-  value: string;
-  details?: string;
-  icon: LucideIcon;
-};
-
-export type PlayerFormData = {
-  nickname: string;
-  mmr: string; // string for form input, Zod will transform to number
-  profileScreenshot: File | undefined;
-  steamProfileUrl: string;
-  role: PlayerRole | ""; 
-};
-
-export type TeamRegistrationFormData = {
-  teamName: string;
-  teamLogo: File | undefined;
-  teamMotto?: string; // Added team motto
-  player1: PlayerFormData;
-  player2: PlayerFormData;
-  player3: PlayerFormData;
-  player4: PlayerFormData;
-  player5: PlayerFormData;
-  rulesAgreed: boolean;
-};
-
-// Fantasy League Definitions
 export type FantasyLineup = {
-  [key in PlayerRole]?: Player; // Player object or undefined if not selected
+  [key in PlayerRole]?: TournamentPlayer;
 };
 
-export type FantasyLeagueParticipant = {
-  id: string; // User ID, e.g., Discord user ID
-  discordUsername: string;
-  avatarUrl?: string; // URL to user's Discord avatar
-  selectedLineup: FantasyLineup; // Current round lineup (or being built)
-  previousLineup?: FantasyLineup; // Lineup from the previous locked round
-  totalMMRCost: number;
-  totalFantasyPoints: number;
-  rank?: number;
+export type FantasyData = {
+    userId: string;
+    participantName: string;
+    totalFantasyPoints: number;
+    currentLineup: FantasyLineup;
+    roundId: string;
+    lastUpdated: Date;
 };
 
-// Form state for Server Actions
-export type RegistrationFormState = {
-  message: string;
-  errors?: z.ZodIssue[];
-  success: boolean;
-};
-
-// Pick'em Challenge Definitions
-export type PickEmSelections = {
-  upperBracket: Team['id'][]; // Array of 8 team IDs
-  lowerBracket: Team['id'][]; // Array of 8 team IDs
-  bracketPicks: {
-    [matchId: string]: Team['id'] | null; // Key: matchId, Value: predicted winning team ID
-  };
+export type PickemPrediction = {
+    userId: string;
+    predictions: { [key: string]: string[] };
+    lastUpdated: Date;
 };
