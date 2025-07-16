@@ -1,4 +1,5 @@
 
+
 import * as React from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -87,6 +88,10 @@ const StatsPage = ({ data }: { data: Awaited<ReturnType<typeof getPlayerStats>> 
                           <AccordionRowContent categoryData={categoryData} isSingleMatchCategory={true} />
                         </AccordionTrigger>
                         <AccordionContent className="p-4">
+                           <div className="text-center mb-4">
+                                <categoryData.icon className="h-8 w-8 text-accent mx-auto mb-2" />
+                                <h3 className="text-xl font-semibold text-primary">{categoryData.categoryName}</h3>
+                            </div>
                             {renderRankingDetailsTable(categoryData.rankings, true)}
                         </AccordionContent>
                     </AccordionItem>
@@ -105,6 +110,10 @@ const StatsPage = ({ data }: { data: Awaited<ReturnType<typeof getPlayerStats>> 
                       <AccordionRowContent categoryData={categoryData} isSingleMatchCategory={false} />
                     </AccordionTrigger>
                     <AccordionContent className="p-4">
+                        <div className="text-center mb-4">
+                            <categoryData.icon className="h-8 w-8 text-accent mx-auto mb-2" />
+                            <h3 className="text-xl font-semibold text-primary">{categoryData.categoryName}</h3>
+                        </div>
                         {renderRankingDetailsTable(categoryData.rankings, false)}
                     </AccordionContent>
                 </AccordionItem>
