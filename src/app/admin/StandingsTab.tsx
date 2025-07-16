@@ -6,12 +6,11 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { BarChartHorizontal, Save, Edit, AlertCircle } from "lucide-react";
-import { getAllMatches } from "@/lib/firestore";
+import { Save, Edit, AlertCircle, CheckCircle2, Hourglass } from "lucide-react";
+import { getAllMatches, updateMatchScores } from "@/lib/firestore";
 import type { Match } from "@/lib/definitions";
 import { useToast } from "@/hooks/use-toast";
 import Image from "next/image";
-import { cn } from "@/lib/utils";
 
 type MatchScoreState = {
   [matchId: string]: {
@@ -20,7 +19,7 @@ type MatchScoreState = {
   };
 };
 
-export default function ManageStandingsPage() {
+export function StandingsTab() {
   const { toast } = useToast();
   const [matches, setMatches] = React.useState<Match[]>([]);
   const [scores, setScores] = React.useState<MatchScoreState>({});
@@ -44,7 +43,7 @@ export default function ManageStandingsPage() {
     }));
   };
 
-  const handleSaveScore = (match: Match) => {
+  const handleSaveScore = async (match: Match) => {
     const matchScores = scores[match.id];
     if (!matchScores || matchScores.teamAScore === '' || matchScores.teamBScore === '') {
       toast({
@@ -54,15 +53,34 @@ export default function ManageStandingsPage() {
       });
       return;
     }
-    
-    // Here you would typically call a server action to save the scores
-    console.log(`Saving scores for match ${match.id}:`, matchScores);
-    
-    toast({
-      title: "Success!",
-      description: `Scores for ${match.teamA.name} vs ${match.teamB.name} have been saved.`,
-    });
-    setEditingMatchId(null); 
+
+    const teamAScore = parseInt(matchScores.teamAScore, 10);
+    const teamBScore = parseInt(matchScores.teamBScore, 10);
+
+    try {
+      await updateMatchScores(match.id, teamAScore, teamBScore);
+      
+      setMatches(prevMatches => 
+        prevMatches.map(m => 
+          m.id === match.id 
+            ? { ...m, teamA: {...m.teamA, score: teamAScore}, teamB: {...m.teamB, score: teamBScore}, status: 'completed' } 
+            : m
+        )
+      );
+      
+      toast({
+        title: "Success!",
+        description: `Scores for ${match.teamA?.name || 'TBD'} vs ${match.teamB?.name || 'TBD'} have been saved.`,
+      });
+      setEditingMatchId(null);
+    } catch (error) {
+      console.error("Failed to save scores:", error);
+      toast({
+        title: "Error",
+        description: "Could not save the scores. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
   
   const startEditing = (match: Match) => {
@@ -70,14 +88,11 @@ export default function ManageStandingsPage() {
     setScores(prev => ({
         ...prev,
         [match.id]: {
-            teamAScore: match.teamA.score?.toString() || '',
-            teamBScore: match.teamB.score?.toString() || ''
+            teamAScore: match.teamA?.score?.toString() || '',
+            teamBScore: match.teamB?.score?.toString() || ''
         }
     }));
   };
-
-  const pendingMatches = matches.filter(m => m.status !== 'completed');
-  const completedMatches = matches.filter(m => m.status === 'completed');
 
   const renderMatchRow = (match: Match) => {
     const isEditing = editingMatchId === match.id;
@@ -87,16 +102,24 @@ export default function ManageStandingsPage() {
       <TableRow key={match.id}>
         <TableCell className="font-medium">{match.round || 'N/A'}</TableCell>
         <TableCell>
+          {match.teamA ? (
             <div className="flex items-center space-x-2">
-                <Image src={match.teamA.logoUrl!} alt={match.teamA.name} width={24} height={24} className="rounded-sm" data-ai-hint="team logo" />
-                <span>{match.teamA.name}</span>
+              <Image src={match.teamA.logoUrl!} alt={match.teamA.name} width={24} height={24} className="rounded-sm" />
+              <span>{match.teamA.name}</span>
             </div>
+          ) : (
+            <span className="text-muted-foreground">Team TBD</span>
+          )}
         </TableCell>
         <TableCell>
-             <div className="flex items-center space-x-2">
-                <Image src={match.teamB.logoUrl!} alt={match.teamB.name} width={24} height={24} className="rounded-sm" data-ai-hint="team logo" />
-                <span>{match.teamB.name}</span>
+          {match.teamB ? (
+            <div className="flex items-center space-x-2">
+              <Image src={match.teamB.logoUrl!} alt={match.teamB.name} width={24} height={24} className="rounded-sm" />
+              <span>{match.teamB.name}</span>
             </div>
+          ) : (
+            <span className="text-muted-foreground">Team TBD</span>
+          )}
         </TableCell>
         <TableCell>
           <div className="flex items-center justify-center space-x-2">
@@ -108,6 +131,7 @@ export default function ManageStandingsPage() {
                   placeholder="0"
                   value={currentScores.teamAScore}
                   onChange={(e) => handleScoreChange(match.id, 'A', e.target.value)}
+                  disabled={!match.teamA || !match.teamB}
                 />
                 <span>-</span>
                 <Input
@@ -116,21 +140,22 @@ export default function ManageStandingsPage() {
                   placeholder="0"
                   value={currentScores.teamBScore}
                   onChange={(e) => handleScoreChange(match.id, 'B', e.target.value)}
+                  disabled={!match.teamA || !match.teamB}
                 />
               </>
             ) : (
-              <span>{match.teamA.score ?? '-'} : {match.teamB.score ?? '-'}</span>
+              <span>{match.teamA?.score ?? '-'} : {match.teamB?.score ?? '-'}</span>
             )}
           </div>
         </TableCell>
         <TableCell className="text-right">
           {isEditing ? (
-            <Button size="sm" onClick={() => handleSaveScore(match)}>
+            <Button size="sm" onClick={() => handleSaveScore(match)} disabled={!match.teamA || !match.teamB}>
               <Save className="h-4 w-4 mr-2" />
               Save
             </Button>
           ) : (
-            <Button size="sm" variant="outline" onClick={() => startEditing(match)}>
+            <Button size="sm" variant="outline" onClick={() => startEditing(match)} disabled={!match.teamA || !match.teamB}>
               <Edit className="h-4 w-4 mr-2" />
               {match.status === 'completed' ? 'Edit Score' : 'Enter Score'}
             </Button>
@@ -140,19 +165,11 @@ export default function ManageStandingsPage() {
     );
   };
 
+  const pendingMatches = matches.filter(m => m.status !== 'completed' && m.teamA && m.teamB);
+  const completedMatches = matches.filter(m => m.status === 'completed');
 
   return (
     <div className="space-y-8">
-      <Card className="shadow-xl">
-        <CardHeader className="text-center">
-          <BarChartHorizontal className="h-16 w-16 mx-auto text-primary mb-4" />
-          <CardTitle className="text-4xl font-bold text-primary">Manage Standings</CardTitle>
-          <CardDescription className="text-lg text-muted-foreground">
-            Input and edit match results here to update the tournament data.
-          </CardDescription>
-        </CardHeader>
-      </Card>
-      
       <Card>
         <CardHeader>
           <CardTitle>Pending Matches</CardTitle>
@@ -174,8 +191,8 @@ export default function ManageStandingsPage() {
             </Table>
           ) : (
             <div className="text-center text-muted-foreground py-10">
-                <AlertCircle className="mx-auto h-12 w-12 text-green-500" />
-                <p className="mt-4">No pending matches. All results are up to date!</p>
+                <Hourglass className="mx-auto h-12 w-12 text-gray-400" />
+                <p className="mt-4">No matches are currently pending.</p>
             </div>
           )}
         </CardContent>
@@ -187,21 +204,27 @@ export default function ManageStandingsPage() {
           <CardDescription>Recently completed matches. You can edit the scores if needed.</CardDescription>
         </CardHeader>
         <CardContent>
-           <Table>
-                <TableHeader>
-                    <TableRow>
-                        <TableHead>Round</TableHead>
-                        <TableHead>Team A</TableHead>
-                        <TableHead>Team B</TableHead>
-                        <TableHead className="text-center">Final Score</TableHead>
-                        <TableHead className="text-right">Action</TableHead>
-                    </TableRow>
-                </TableHeader>
-                <TableBody>{completedMatches.map(renderMatchRow)}</TableBody>
-            </Table>
+          {completedMatches.length > 0 ? (
+            <Table>
+                  <TableHeader>
+                      <TableRow>
+                          <TableHead>Round</TableHead>
+                          <TableHead>Team A</TableHead>
+                          <TableHead>Team B</TableHead>
+                          <TableHead className="text-center">Final Score</TableHead>
+                          <TableHead className="text-right">Action</TableHead>
+                      </TableRow>
+                  </TableHeader>
+                  <TableBody>{completedMatches.map(renderMatchRow)}</TableBody>
+              </Table>
+          ) : (
+            <div className="text-center text-muted-foreground py-10">
+                <CheckCircle2 className="mx-auto h-12 w-12 text-gray-400" />
+                <p className="mt-4">No matches have been completed yet.</p>
+            </div>
+          )}
         </CardContent>
       </Card>
-
     </div>
   );
 }

@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect } from 'react';
@@ -8,6 +9,12 @@ import { Loader2, ShieldEllipsis, ArrowRight } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 const stageConfig: Record<string, { title: string; description: string; nextStage: string; buttonText: string }> = {
+    'initial': {
+        title: 'Tournament Initialized',
+        description: 'The tournament is ready to begin. Start the pre-season to open registrations.',
+        nextStage: 'pre_season',
+        buttonText: 'Start Pre-Season',
+    },
     'pre_season': {
         title: 'Pre-Season / Registration Open',
         description: 'Teams can register, and fantasy lineups are being set for the pre-season.',
@@ -46,7 +53,7 @@ const stageConfig: Record<string, { title: string; description: string; nextStag
     },
 };
 
-export default function ManageTournamentPage() {
+export function StageManagementTab() {
     const [status, setStatus] = useState<TournamentStatus | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isUpdating, setIsUpdating] = useState(false);
@@ -98,37 +105,25 @@ export default function ManageTournamentPage() {
     const currentStage = stageConfig[status.roundId] || { title: 'Unknown State', description: 'The tournament is in an unrecognized state.', nextStage: '', buttonText: '' };
 
     return (
-        <div className="space-y-8">
-            <Card className="shadow-xl">
-                <CardHeader className="text-center">
-                    <ShieldEllipsis className="h-16 w-16 mx-auto text-primary mb-4" />
-                    <CardTitle className="text-4xl font-bold text-primary">Tournament State Management</CardTitle>
-                    <CardDescription className="text-lg text-muted-foreground">
-                        Control the flow of the tournament from one stage to the next.
-                    </CardDescription>
-                </CardHeader>
-            </Card>
-
-            <Card>
-                <CardHeader>
-                    <CardTitle>Current Status</CardTitle>
-                    <CardDescription>This is the current, live stage of the tournament.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <div className="p-4 bg-muted rounded-lg">
-                        <p className="text-2xl font-bold text-primary">{currentStage.title}</p>
-                        <p className="text-muted-foreground mt-1">{currentStage.description}</p>
-                    </div>
-                </CardContent>
-                {currentStage.nextStage && (
-                    <CardFooter>
-                        <Button onClick={handleAdvanceStage} disabled={isUpdating} size="lg">
-                            {isUpdating ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <ArrowRight className="mr-2 h-5 w-5" />}
-                            {isUpdating ? "Updating..." : currentStage.buttonText}
-                        </Button>
-                    </CardFooter>
-                )}
-            </Card>
-        </div>
+        <Card>
+            <CardHeader>
+                <CardTitle>Current Status</CardTitle>
+                <CardDescription>This is the current, live stage of the tournament.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <div className="p-4 bg-muted rounded-lg">
+                    <p className="text-2xl font-bold text-primary">{currentStage.title}</p>
+                    <p className="text-muted-foreground mt-1">{currentStage.description}</p>
+                </div>
+            </CardContent>
+            {currentStage.nextStage && (
+                <CardFooter>
+                    <Button onClick={handleAdvanceStage} disabled={isUpdating} size="lg">
+                        {isUpdating ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <ArrowRight className="mr-2 h-5 w-5" />}
+                        {isUpdating ? "Updating..." : currentStage.buttonText}
+                    </Button>
+                </CardFooter>
+            )}
+        </Card>
     );
 }

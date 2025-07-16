@@ -2,6 +2,8 @@
 
 import { Youtube } from 'lucide-react';
 import React from 'react';
+import { useAuth } from '../../context/AuthContext';
+import { Button } from '../ui/button';
 
 // SVG Icon Components
 const DiscordIcon = (props: React.SVGProps<SVGSVGElement>) => (
@@ -26,6 +28,7 @@ const InstagramIcon = (props: React.SVGProps<SVGSVGElement>) => (
 
 
 export function Footer() {
+  const { user, signOut } = useAuth();
   return (
     <footer className="bg-card border-t border-border py-4 text-center">
       <div className="container mx-auto px-4">
@@ -70,6 +73,11 @@ export function Footer() {
             <Youtube className="h-6 w-6" />
             <span className="sr-only">YouTube</span>
           </a>
+          {user && (
+            <Button onClick={signOut} variant="ghost">
+              Log Out
+            </Button>
+          )}
         </div>
       </div>
     </footer>

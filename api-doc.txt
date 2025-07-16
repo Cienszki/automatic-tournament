@@ -1,0 +1,2428 @@
+
+
+    Introduction
+    matches
+
+players
+
+    getGET /players/{account_id}
+    getGET /players/{account_id}/wl
+    getGET /players/{account_id}/recentMatches
+    getGET /players/{account_id}/matches
+    getGET /players/{account_id}/heroes
+    getGET /players/{account_id}/peers
+    getGET /players/{account_id}/pros
+    getGET /players/{account_id}/totals
+    getGET /players/{account_id}/counts
+    getGET /players/{account_id}/histograms
+    getGET /players/{account_id}/wardmap
+    getGET /players/{account_id}/wordcloud
+    getGET /players/{account_id}/ratings
+    getGET /players/{account_id}/rankings
+    postPOST /players/{account_id}/refresh
+
+pro players
+pro matches
+public matches
+parsed matches
+explorer
+metadata
+distributions
+search
+rankings
+benchmarks
+health
+request
+findMatches
+heroes
+hero stats
+leagues
+teams
+records
+live
+scenarios
+schema
+constants
+
+redocly logoAPI docs by Redocly
+OpenDota API (26.0.0)
+
+Download OpenAPI specification:Download
+Introduction
+
+The OpenDota API provides Dota 2 related data including advanced match data extracted from match replays.
+
+You can find data that can be used to convert hero and ability IDs and other information provided by the API from the dotaconstants repository.
+
+Without a key, you can make 2,000 free calls per day at a rate limit of 60 requests/minute. We also offer a Premium Tier with unlimited API calls and higher rate limits. Check out the API page to learn more.
+matches
+GET /matches/{match_id}
+
+Match data
+path Parameters
+match_id
+required
+	
+integer
+Responses
+Response samples
+
+    200
+
+Content type
+application/json; charset=utf-8
+{
+
+    "match_id": 3703866531,
+    "barracks_status_dire": 0,
+    "barracks_status_radiant": 0,
+    "chat": 
+
+[
+
+    {}
+
+],
+"cluster": 0,
+"cosmetics": 
+{
+
+    "property1": 0,
+    "property2": 0
+
+},
+"dire_score": 0,
+"draft_timings": 
+[
+
+    {}
+
+],
+"duration": 0,
+"engine": 0,
+"first_blood_time": 0,
+"game_mode": 0,
+"human_players": 0,
+"leagueid": 0,
+"lobby_type": 0,
+"match_seq_num": 0,
+"negative_votes": 0,
+"objectives": 
+[
+
+    { }
+
+],
+"picks_bans": 
+[
+
+    {}
+
+],
+"positive_votes": 0,
+"radiant_gold_adv": 
+[
+
+    0
+
+],
+"radiant_score": 0,
+"radiant_win": true,
+"radiant_xp_adv": 
+[
+
+    0
+
+],
+"start_time": 0,
+"teamfights": 
+[
+
+    { }
+
+],
+"tower_status_dire": 0,
+"tower_status_radiant": 0,
+"version": 0,
+"replay_salt": 0,
+"series_id": 0,
+"series_type": 0,
+"radiant_team": { },
+"dire_team": { },
+"league": { },
+"skill": 0,
+"players": 
+[
+
+        {}
+    ],
+    "patch": 0,
+    "region": 0,
+    "all_word_counts": { },
+    "my_word_counts": { },
+    "throw": 0,
+    "comeback": 0,
+    "loss": 0,
+    "win": 0,
+    "replay_url": "string"
+
+}
+players
+GET /players/{account_id}
+
+Player data
+path Parameters
+account_id
+required
+	
+integer
+
+Steam32 account ID
+Responses
+Response samples
+
+    200
+
+Content type
+application/json; charset=utf-8
+{
+
+    "solo_competitive_rank": 0,
+    "competitive_rank": 0,
+    "rank_tier": 0,
+    "leaderboard_rank": 0,
+    "profile": 
+
+    {
+        "account_id": 0,
+        "personaname": "420 booty wizard",
+        "name": "string",
+        "plus": true,
+        "cheese": 0,
+        "steamid": "string",
+        "avatar": "string",
+        "avatarmedium": "string",
+        "avatarfull": "string",
+        "profileurl": "string",
+        "last_login": "string",
+        "loccountrycode": "string",
+        "is_contributor": false,
+        "is_subscriber": false
+    }
+
+}
+GET /players/{account_id}/wl
+
+Win/Loss count
+path Parameters
+account_id
+required
+	
+integer
+
+Steam32 account ID
+query Parameters
+limit	
+integer
+
+Number of matches to limit to
+offset	
+integer
+
+Number of matches to offset start by
+win	
+integer
+
+Whether the player won
+patch	
+integer
+
+Patch ID, from dotaconstants
+game_mode	
+integer
+
+Game Mode ID
+lobby_type	
+integer
+
+Lobby type ID
+region	
+integer
+
+Region ID
+date	
+integer
+
+Days previous
+lane_role	
+integer
+
+Lane Role ID
+hero_id	
+integer
+
+Hero ID
+is_radiant	
+integer
+
+Whether the player was radiant
+included_account_id	
+integer
+
+Account IDs in the match (array)
+excluded_account_id	
+integer
+
+Account IDs not in the match (array)
+with_hero_id	
+integer
+
+Hero IDs on the player's team (array)
+against_hero_id	
+integer
+
+Hero IDs against the player's team (array)
+significant	
+integer
+
+Whether the match was significant for aggregation purposes. Defaults to 1 (true), set this to 0 to return data for non-standard modes/matches.
+having	
+integer
+
+The minimum number of games played, for filtering hero stats
+sort	
+string
+
+The field to return matches sorted by in descending order
+Responses
+Response samples
+
+    200
+
+Content type
+application/json; charset=utf-8
+{
+
+    "win": 0,
+    "lose": 0
+
+}
+GET /players/{account_id}/recentMatches
+
+Recent matches played
+path Parameters
+account_id
+required
+	
+integer
+
+Steam32 account ID
+Responses
+Response samples
+
+    200
+
+Content type
+application/json; charset=utf-8
+[
+
+    { }
+
+]
+GET /players/{account_id}/matches
+
+Matches played
+path Parameters
+account_id
+required
+	
+integer
+
+Steam32 account ID
+query Parameters
+limit	
+integer
+
+Number of matches to limit to
+offset	
+integer
+
+Number of matches to offset start by
+win	
+integer
+
+Whether the player won
+patch	
+integer
+
+Patch ID, from dotaconstants
+game_mode	
+integer
+
+Game Mode ID
+lobby_type	
+integer
+
+Lobby type ID
+region	
+integer
+
+Region ID
+date	
+integer
+
+Days previous
+lane_role	
+integer
+
+Lane Role ID
+hero_id	
+integer
+
+Hero ID
+is_radiant	
+integer
+
+Whether the player was radiant
+included_account_id	
+integer
+
+Account IDs in the match (array)
+excluded_account_id	
+integer
+
+Account IDs not in the match (array)
+with_hero_id	
+integer
+
+Hero IDs on the player's team (array)
+against_hero_id	
+integer
+
+Hero IDs against the player's team (array)
+significant	
+integer
+
+Whether the match was significant for aggregation purposes. Defaults to 1 (true), set this to 0 to return data for non-standard modes/matches.
+having	
+integer
+
+The minimum number of games played, for filtering hero stats
+sort	
+string
+
+The field to return matches sorted by in descending order
+project	
+string
+
+Fields to project (array)
+Responses
+Response samples
+
+    200
+
+Content type
+application/json; charset=utf-8
+[
+
+    {
+        "match_id": 3703866531,
+        "player_slot": 0,
+        "radiant_win": true,
+        "duration": 0,
+        "game_mode": 0,
+        "lobby_type": 0,
+        "hero_id": 0,
+        "start_time": 0,
+        "version": 0,
+        "kills": 0,
+        "deaths": 0,
+        "assists": 0,
+        "skill": 0,
+        "average_rank": 0,
+        "leaver_status": 0,
+        "party_size": 0,
+        "hero_variant": 0
+    }
+
+]
+GET /players/{account_id}/heroes
+
+Heroes played
+path Parameters
+account_id
+required
+	
+integer
+
+Steam32 account ID
+query Parameters
+limit	
+integer
+
+Number of matches to limit to
+offset	
+integer
+
+Number of matches to offset start by
+win	
+integer
+
+Whether the player won
+patch	
+integer
+
+Patch ID, from dotaconstants
+game_mode	
+integer
+
+Game Mode ID
+lobby_type	
+integer
+
+Lobby type ID
+region	
+integer
+
+Region ID
+date	
+integer
+
+Days previous
+lane_role	
+integer
+
+Lane Role ID
+hero_id	
+integer
+
+Hero ID
+is_radiant	
+integer
+
+Whether the player was radiant
+included_account_id	
+integer
+
+Account IDs in the match (array)
+excluded_account_id	
+integer
+
+Account IDs not in the match (array)
+with_hero_id	
+integer
+
+Hero IDs on the player's team (array)
+against_hero_id	
+integer
+
+Hero IDs against the player's team (array)
+significant	
+integer
+
+Whether the match was significant for aggregation purposes. Defaults to 1 (true), set this to 0 to return data for non-standard modes/matches.
+having	
+integer
+
+The minimum number of games played, for filtering hero stats
+sort	
+string
+
+The field to return matches sorted by in descending order
+Responses
+Response samples
+
+    200
+
+Content type
+application/json; charset=utf-8
+[
+
+    {
+        "hero_id": 0,
+        "last_played": 0,
+        "games": 0,
+        "win": 0,
+        "with_games": 0,
+        "with_win": 0,
+        "against_games": 0,
+        "against_win": 0
+    }
+
+]
+GET /players/{account_id}/peers
+
+Players played with
+path Parameters
+account_id
+required
+	
+integer
+
+Steam32 account ID
+query Parameters
+limit	
+integer
+
+Number of matches to limit to
+offset	
+integer
+
+Number of matches to offset start by
+win	
+integer
+
+Whether the player won
+patch	
+integer
+
+Patch ID, from dotaconstants
+game_mode	
+integer
+
+Game Mode ID
+lobby_type	
+integer
+
+Lobby type ID
+region	
+integer
+
+Region ID
+date	
+integer
+
+Days previous
+lane_role	
+integer
+
+Lane Role ID
+hero_id	
+integer
+
+Hero ID
+is_radiant	
+integer
+
+Whether the player was radiant
+included_account_id	
+integer
+
+Account IDs in the match (array)
+excluded_account_id	
+integer
+
+Account IDs not in the match (array)
+with_hero_id	
+integer
+
+Hero IDs on the player's team (array)
+against_hero_id	
+integer
+
+Hero IDs against the player's team (array)
+significant	
+integer
+
+Whether the match was significant for aggregation purposes. Defaults to 1 (true), set this to 0 to return data for non-standard modes/matches.
+having	
+integer
+
+The minimum number of games played, for filtering hero stats
+sort	
+string
+
+The field to return matches sorted by in descending order
+Responses
+Response samples
+
+    200
+
+Content type
+application/json; charset=utf-8
+[
+
+    {
+        "account_id": 0,
+        "last_played": 0,
+        "win": 0,
+        "games": 0,
+        "with_win": 0,
+        "with_games": 0,
+        "against_win": 0,
+        "against_games": 0,
+        "with_gpm_sum": 0,
+        "with_xpm_sum": 0,
+        "personaname": "420 booty wizard",
+        "name": "string",
+        "is_contributor": true,
+        "is_subscriber": true,
+        "last_login": "string",
+        "avatar": "string",
+        "avatarfull": "string"
+    }
+
+]
+GET /players/{account_id}/pros
+
+Pro players played with
+path Parameters
+account_id
+required
+	
+integer
+
+Steam32 account ID
+query Parameters
+limit	
+integer
+
+Number of matches to limit to
+offset	
+integer
+
+Number of matches to offset start by
+win	
+integer
+
+Whether the player won
+patch	
+integer
+
+Patch ID, from dotaconstants
+game_mode	
+integer
+
+Game Mode ID
+lobby_type	
+integer
+
+Lobby type ID
+region	
+integer
+
+Region ID
+date	
+integer
+
+Days previous
+lane_role	
+integer
+
+Lane Role ID
+hero_id	
+integer
+
+Hero ID
+is_radiant	
+integer
+
+Whether the player was radiant
+included_account_id	
+integer
+
+Account IDs in the match (array)
+excluded_account_id	
+integer
+
+Account IDs not in the match (array)
+with_hero_id	
+integer
+
+Hero IDs on the player's team (array)
+against_hero_id	
+integer
+
+Hero IDs against the player's team (array)
+significant	
+integer
+
+Whether the match was significant for aggregation purposes. Defaults to 1 (true), set this to 0 to return data for non-standard modes/matches.
+having	
+integer
+
+The minimum number of games played, for filtering hero stats
+sort	
+string
+
+The field to return matches sorted by in descending order
+Responses
+Response samples
+
+    200
+
+Content type
+application/json; charset=utf-8
+[
+
+    {
+        "account_id": 0,
+        "name": "string",
+        "country_code": "string",
+        "fantasy_role": 0,
+        "team_id": 0,
+        "team_name": "Newbee",
+        "team_tag": "string",
+        "is_locked": true,
+        "is_pro": true,
+        "locked_until": 0,
+        "steamid": "string",
+        "avatar": "string",
+        "avatarmedium": "string",
+        "avatarfull": "string",
+        "profileurl": "string",
+        "last_login": "2019-08-24T14:15:22Z",
+        "full_history_time": "2019-08-24T14:15:22Z",
+        "cheese": 0,
+        "fh_unavailable": true,
+        "loccountrycode": "string",
+        "last_played": 0,
+        "win": 0,
+        "games": 0,
+        "with_win": 0,
+        "with_games": 0,
+        "against_win": 0,
+        "against_games": 0,
+        "with_gpm_sum": 0,
+        "with_xpm_sum": 0
+    }
+
+]
+GET /players/{account_id}/totals
+
+Totals in stats
+path Parameters
+account_id
+required
+	
+integer
+
+Steam32 account ID
+query Parameters
+limit	
+integer
+
+Number of matches to limit to
+offset	
+integer
+
+Number of matches to offset start by
+win	
+integer
+
+Whether the player won
+patch	
+integer
+
+Patch ID, from dotaconstants
+game_mode	
+integer
+
+Game Mode ID
+lobby_type	
+integer
+
+Lobby type ID
+region	
+integer
+
+Region ID
+date	
+integer
+
+Days previous
+lane_role	
+integer
+
+Lane Role ID
+hero_id	
+integer
+
+Hero ID
+is_radiant	
+integer
+
+Whether the player was radiant
+included_account_id	
+integer
+
+Account IDs in the match (array)
+excluded_account_id	
+integer
+
+Account IDs not in the match (array)
+with_hero_id	
+integer
+
+Hero IDs on the player's team (array)
+against_hero_id	
+integer
+
+Hero IDs against the player's team (array)
+significant	
+integer
+
+Whether the match was significant for aggregation purposes. Defaults to 1 (true), set this to 0 to return data for non-standard modes/matches.
+having	
+integer
+
+The minimum number of games played, for filtering hero stats
+sort	
+string
+
+The field to return matches sorted by in descending order
+Responses
+Response samples
+
+    200
+
+Content type
+application/json; charset=utf-8
+[
+
+    {
+        "field": "string",
+        "n": 0,
+        "sum": 0
+    }
+
+]
+GET /players/{account_id}/counts
+
+Counts in categories
+path Parameters
+account_id
+required
+	
+integer
+
+Steam32 account ID
+query Parameters
+limit	
+integer
+
+Number of matches to limit to
+offset	
+integer
+
+Number of matches to offset start by
+win	
+integer
+
+Whether the player won
+patch	
+integer
+
+Patch ID, from dotaconstants
+game_mode	
+integer
+
+Game Mode ID
+lobby_type	
+integer
+
+Lobby type ID
+region	
+integer
+
+Region ID
+date	
+integer
+
+Days previous
+lane_role	
+integer
+
+Lane Role ID
+hero_id	
+integer
+
+Hero ID
+is_radiant	
+integer
+
+Whether the player was radiant
+included_account_id	
+integer
+
+Account IDs in the match (array)
+excluded_account_id	
+integer
+
+Account IDs not in the match (array)
+with_hero_id	
+integer
+
+Hero IDs on the player's team (array)
+against_hero_id	
+integer
+
+Hero IDs against the player's team (array)
+significant	
+integer
+
+Whether the match was significant for aggregation purposes. Defaults to 1 (true), set this to 0 to return data for non-standard modes/matches.
+having	
+integer
+
+The minimum number of games played, for filtering hero stats
+sort	
+string
+
+The field to return matches sorted by in descending order
+Responses
+Response samples
+
+    200
+
+Content type
+application/json; charset=utf-8
+{
+
+    "leaver_status": { },
+    "game_mode": { },
+    "lobby_type": { },
+    "lane_role": { },
+    "region": { },
+    "patch": { }
+
+}
+GET /players/{account_id}/histograms
+
+Distribution of matches in a single stat
+path Parameters
+account_id
+required
+	
+integer
+
+Steam32 account ID
+field
+required
+	
+string
+
+Field to aggregate on
+query Parameters
+limit	
+integer
+
+Number of matches to limit to
+offset	
+integer
+
+Number of matches to offset start by
+win	
+integer
+
+Whether the player won
+patch	
+integer
+
+Patch ID, from dotaconstants
+game_mode	
+integer
+
+Game Mode ID
+lobby_type	
+integer
+
+Lobby type ID
+region	
+integer
+
+Region ID
+date	
+integer
+
+Days previous
+lane_role	
+integer
+
+Lane Role ID
+hero_id	
+integer
+
+Hero ID
+is_radiant	
+integer
+
+Whether the player was radiant
+included_account_id	
+integer
+
+Account IDs in the match (array)
+excluded_account_id	
+integer
+
+Account IDs not in the match (array)
+with_hero_id	
+integer
+
+Hero IDs on the player's team (array)
+against_hero_id	
+integer
+
+Hero IDs against the player's team (array)
+significant	
+integer
+
+Whether the match was significant for aggregation purposes. Defaults to 1 (true), set this to 0 to return data for non-standard modes/matches.
+having	
+integer
+
+The minimum number of games played, for filtering hero stats
+sort	
+string
+
+The field to return matches sorted by in descending order
+Responses
+Response samples
+
+    200
+
+Content type
+application/json; charset=utf-8
+[
+
+    { }
+
+]
+GET /players/{account_id}/wardmap
+
+Wards placed in matches played
+path Parameters
+account_id
+required
+	
+integer
+
+Steam32 account ID
+query Parameters
+limit	
+integer
+
+Number of matches to limit to
+offset	
+integer
+
+Number of matches to offset start by
+win	
+integer
+
+Whether the player won
+patch	
+integer
+
+Patch ID, from dotaconstants
+game_mode	
+integer
+
+Game Mode ID
+lobby_type	
+integer
+
+Lobby type ID
+region	
+integer
+
+Region ID
+date	
+integer
+
+Days previous
+lane_role	
+integer
+
+Lane Role ID
+hero_id	
+integer
+
+Hero ID
+is_radiant	
+integer
+
+Whether the player was radiant
+included_account_id	
+integer
+
+Account IDs in the match (array)
+excluded_account_id	
+integer
+
+Account IDs not in the match (array)
+with_hero_id	
+integer
+
+Hero IDs on the player's team (array)
+against_hero_id	
+integer
+
+Hero IDs against the player's team (array)
+significant	
+integer
+
+Whether the match was significant for aggregation purposes. Defaults to 1 (true), set this to 0 to return data for non-standard modes/matches.
+having	
+integer
+
+The minimum number of games played, for filtering hero stats
+sort	
+string
+
+The field to return matches sorted by in descending order
+Responses
+Response samples
+
+    200
+
+Content type
+application/json; charset=utf-8
+{
+
+    "obs": { },
+    "sen": { }
+
+}
+GET /players/{account_id}/wordcloud
+
+Words said/read in matches played
+path Parameters
+account_id
+required
+	
+integer
+
+Steam32 account ID
+query Parameters
+limit	
+integer
+
+Number of matches to limit to
+offset	
+integer
+
+Number of matches to offset start by
+win	
+integer
+
+Whether the player won
+patch	
+integer
+
+Patch ID, from dotaconstants
+game_mode	
+integer
+
+Game Mode ID
+lobby_type	
+integer
+
+Lobby type ID
+region	
+integer
+
+Region ID
+date	
+integer
+
+Days previous
+lane_role	
+integer
+
+Lane Role ID
+hero_id	
+integer
+
+Hero ID
+is_radiant	
+integer
+
+Whether the player was radiant
+included_account_id	
+integer
+
+Account IDs in the match (array)
+excluded_account_id	
+integer
+
+Account IDs not in the match (array)
+with_hero_id	
+integer
+
+Hero IDs on the player's team (array)
+against_hero_id	
+integer
+
+Hero IDs against the player's team (array)
+significant	
+integer
+
+Whether the match was significant for aggregation purposes. Defaults to 1 (true), set this to 0 to return data for non-standard modes/matches.
+having	
+integer
+
+The minimum number of games played, for filtering hero stats
+sort	
+string
+
+The field to return matches sorted by in descending order
+Responses
+Response samples
+
+    200
+
+Content type
+application/json; charset=utf-8
+{
+
+    "my_word_counts": { },
+    "all_word_counts": { }
+
+}
+GET /players/{account_id}/ratings
+
+Player rating history
+path Parameters
+account_id
+required
+	
+integer
+
+Steam32 account ID
+Responses
+Response samples
+
+    200
+
+Content type
+application/json; charset=utf-8
+[
+
+    {
+        "account_id": 0,
+        "match_id": 3703866531,
+        "solo_competitive_rank": 0,
+        "competitive_rank": 0,
+        "time": 0
+    }
+
+]
+GET /players/{account_id}/rankings
+
+Player hero rankings
+path Parameters
+account_id
+required
+	
+integer
+
+Steam32 account ID
+Responses
+Response samples
+
+    200
+
+Content type
+application/json; charset=utf-8
+[
+
+    {
+        "hero_id": 0,
+        "score": 0,
+        "percent_rank": 0,
+        "card": 0
+    }
+
+]
+POST /players/{account_id}/refresh
+
+Refresh player match history
+path Parameters
+account_id
+required
+	
+integer
+
+Steam32 account ID
+Responses
+Response samples
+
+    200
+
+Content type
+application/json; charset=utf-8
+{ }
+pro players
+GET /proPlayers
+
+Get list of pro players
+Responses
+Response samples
+
+    200
+
+Content type
+application/json; charset=utf-8
+[
+
+    {
+        "account_id": 0,
+        "steamid": "string",
+        "avatar": "string",
+        "avatarmedium": "string",
+        "avatarfull": "string",
+        "profileurl": "string",
+        "personaname": "420 booty wizard",
+        "last_login": "2019-08-24T14:15:22Z",
+        "full_history_time": "2019-08-24T14:15:22Z",
+        "cheese": 0,
+        "fh_unavailable": true,
+        "loccountrycode": "string",
+        "name": "string",
+        "country_code": "string",
+        "fantasy_role": 0,
+        "team_id": 0,
+        "team_name": "Newbee",
+        "team_tag": "string",
+        "is_locked": true,
+        "is_pro": true,
+        "locked_until": 0
+    }
+
+]
+pro matches
+GET /proMatches
+
+Get list of pro matches
+query Parameters
+less_than_match_id	
+integer
+
+Get matches with a match ID lower than this value
+Responses
+Response samples
+
+    200
+
+Content type
+application/json; charset=utf-8
+[
+
+    {
+        "match_id": 3703866531,
+        "duration": 0,
+        "start_time": 0,
+        "radiant_team_id": 0,
+        "radiant_name": "string",
+        "dire_team_id": 0,
+        "dire_name": "string",
+        "leagueid": 0,
+        "league_name": "string",
+        "series_id": 0,
+        "series_type": 0,
+        "radiant_score": 0,
+        "dire_score": 0,
+        "radiant_win": true,
+        "radiant": true
+    }
+
+]
+public matches
+GET /publicMatches
+
+Get list of randomly sampled public matches
+query Parameters
+less_than_match_id	
+integer
+
+Get matches with a match ID lower than this value
+min_rank	
+integer
+
+Minimum rank for the matches. Ranks are represented by integers (10-15: Herald, 20-25: Guardian, 30-35: Crusader, 40-45: Archon, 50-55: Legend, 60-65: Ancient, 70-75: Divine, 80-85: Immortal). Each increment represents an additional star.
+max_rank	
+integer
+
+Maximum rank for the matches. Ranks are represented by integers (10-15: Herald, 20-25: Guardian, 30-35: Crusader, 40-45: Archon, 50-55: Legend, 60-65: Ancient, 70-75: Divine, 80-85: Immortal). Each increment represents an additional star.
+mmr_ascending	
+integer
+
+Order by average rank ascending
+mmr_descending	
+integer
+
+Order by average rank descending
+Responses
+Response samples
+
+    200
+
+Content type
+application/json; charset=utf-8
+[
+
+{
+
+    "match_id": 3703866531,
+    "match_seq_num": 0,
+    "radiant_win": true,
+    "start_time": 0,
+    "duration": 0,
+    "lobby_type": 0,
+    "game_mode": 0,
+    "avg_rank_tier": 0,
+    "num_rank_tier": 0,
+    "cluster": 0,
+    "radiant_team": 
+
+[],
+"dire_team": 
+
+        []
+    }
+
+]
+parsed matches
+GET /parsedMatches
+
+Get list of parsed match IDs
+query Parameters
+less_than_match_id	
+integer
+
+Get matches with a match ID lower than this value
+Responses
+Response samples
+
+    200
+
+Content type
+application/json; charset=utf-8
+[
+
+    {
+        "match_id": 3703866531
+    }
+
+]
+explorer
+GET /explorer
+
+Submit arbitrary SQL queries to the database
+query Parameters
+sql	
+string
+
+The PostgreSQL query as percent-encoded string.
+Responses
+Response samples
+
+    200
+
+Content type
+application/json; charset=utf-8
+{ }
+metadata
+GET /metadata
+
+Site metadata
+Responses
+Response samples
+
+    200
+
+Content type
+application/json; charset=utf-8
+{
+
+    "banner": { }
+
+}
+distributions
+GET /distributions
+
+Distributions of MMR data by bracket and country
+Responses
+Response samples
+
+    200
+
+Content type
+application/json; charset=utf-8
+{
+
+    "ranks": 
+
+{
+
+    "rows": 
+
+[],
+"sum": 
+
+        {}
+    }
+
+}
+search
+GET /search
+
+Search players by personaname.
+query Parameters
+q
+required
+	
+string
+
+Search string
+Responses
+Response samples
+
+    200
+
+Content type
+application/json; charset=utf-8
+[
+
+    {
+        "account_id": 0,
+        "avatarfull": "string",
+        "personaname": "420 booty wizard",
+        "last_match_time": "string",
+        "similarity": 0
+    }
+
+]
+rankings
+GET /rankings
+
+Top players by hero
+query Parameters
+hero_id
+required
+	
+string
+
+Hero ID
+Responses
+Response samples
+
+    200
+
+Content type
+application/json; charset=utf-8
+{
+
+    "hero_id": 0,
+    "rankings": 
+
+[
+
+        {}
+    ]
+
+}
+benchmarks
+GET /benchmarks
+
+Benchmarks of average stat values for a hero
+query Parameters
+hero_id
+required
+	
+string
+
+Hero ID
+Responses
+Response samples
+
+    200
+
+Content type
+application/json; charset=utf-8
+{
+
+    "hero_id": 0,
+    "result": 
+
+{
+
+    "gold_per_min": 
+
+[],
+"xp_per_min": 
+[],
+"kills_per_min": 
+[],
+"last_hits_per_min": 
+[],
+"hero_damage_per_min": 
+[],
+"hero_healing_per_min": 
+[],
+"tower_damage": 
+
+        []
+    }
+
+}
+health
+GET /health
+
+Get service health data
+Responses
+Response samples
+
+    200
+
+Content type
+application/json; charset=utf-8
+{ }
+request
+GET /request/{jobId}
+
+Get parse request state
+path Parameters
+jobId
+required
+	
+string
+
+The job ID to query.
+Responses
+Response samples
+
+    200
+
+Content type
+application/json; charset=utf-8
+{ }
+POST /request/{match_id}
+
+Submit a new parse request. This call counts as 10 calls for rate limit (but not billing) purposes.
+path Parameters
+match_id
+required
+	
+integer
+Responses
+Response samples
+
+    200
+
+Content type
+application/json; charset=utf-8
+{ }
+findMatches
+GET /
+
+Finds recent matches by heroes played
+query Parameters
+teamA	
+Array of integers
+
+Hero IDs on first team (array)
+teamB	
+Array of integers
+
+Hero IDs on second team (array)
+Responses
+Response samples
+
+    200
+
+Content type
+application/json; charset=utf-8
+[
+
+    { }
+
+]
+heroes
+GET /heroes
+
+Get hero data
+Responses
+Response samples
+
+    200
+
+Content type
+application/json; charset=utf-8
+[
+
+{
+
+    "id": 0,
+    "name": "npc_dota_hero_antimage",
+    "localized_name": "Anti-Mage",
+    "primary_attr": "string",
+    "attack_type": "string",
+    "roles": 
+
+        []
+    }
+
+]
+GET /heroes/{hero_id}/matches
+
+Get recent matches with a hero
+path Parameters
+hero_id
+required
+	
+integer
+
+Hero ID
+Responses
+Response samples
+
+    200
+
+Content type
+application/json; charset=utf-8
+[
+
+    {
+        "match_id": 3703866531,
+        "duration": 0,
+        "start_time": 0,
+        "radiant_team_id": 0,
+        "radiant_name": "string",
+        "dire_team_id": 0,
+        "dire_name": "string",
+        "leagueid": 0,
+        "league_name": "string",
+        "series_id": 0,
+        "series_type": 0,
+        "radiant_score": 0,
+        "dire_score": 0,
+        "radiant_win": true,
+        "radiant": true
+    }
+
+]
+GET /heroes/{hero_id}/matchups
+
+Get results against other heroes for a hero
+path Parameters
+hero_id
+required
+	
+integer
+
+Hero ID
+Responses
+Response samples
+
+    200
+
+Content type
+application/json; charset=utf-8
+[
+
+    {
+        "hero_id": 0,
+        "games_played": 0,
+        "wins": 0
+    }
+
+]
+GET /heroes/{hero_id}/durations
+
+Get hero performance over a range of match durations
+path Parameters
+hero_id
+required
+	
+integer
+
+Hero ID
+Responses
+Response samples
+
+    200
+
+Content type
+application/json; charset=utf-8
+[
+
+    {
+        "duration_bin": "string",
+        "games_played": 0,
+        "wins": 0
+    }
+
+]
+GET /heroes/{hero_id}/players
+
+Get players who have played this hero
+path Parameters
+hero_id
+required
+	
+integer
+
+Hero ID
+Responses
+Response samples
+
+    200
+
+Content type
+application/json; charset=utf-8
+[
+
+[
+
+        {}
+    ]
+
+]
+GET /heroes/{hero_id}/itemPopularity
+
+Get item popularity of hero categoried by start, early, mid and late game, analyzed from professional games
+path Parameters
+hero_id
+required
+	
+integer
+
+Hero ID
+Responses
+Response samples
+
+    200
+
+Content type
+application/json; charset=utf-8
+{
+
+    "start_game_items": 
+
+{
+
+    "item": 0
+
+},
+"early_game_items": 
+{
+
+    "item": 0
+
+},
+"mid_game_items": 
+{
+
+    "item": 0
+
+},
+"late_game_items": 
+
+    {
+        "item": 0
+    }
+
+}
+hero stats
+GET /heroStats
+
+Get stats about hero performance in recent matches
+Responses
+Response samples
+
+    200
+
+Content type
+application/json; charset=utf-8
+[
+
+{
+
+    "id": 0,
+    "name": "npc_dota_hero_antimage",
+    "localized_name": "Anti-Mage",
+    "primary_attr": "string",
+    "attack_type": "string",
+    "roles": 
+
+        [],
+        "img": "string",
+        "icon": "string",
+        "base_health": 0,
+        "base_health_regen": 0,
+        "base_mana": 0,
+        "base_mana_regen": 0,
+        "base_armor": 0,
+        "base_mr": 0,
+        "base_attack_min": 0,
+        "base_attack_max": 0,
+        "base_str": 0,
+        "base_agi": 0,
+        "base_int": 0,
+        "str_gain": 0,
+        "agi_gain": 0,
+        "int_gain": 0,
+        "attack_range": 0,
+        "projectile_speed": 0,
+        "attack_rate": 0,
+        "base_attack_time": 0,
+        "attack_point": 0,
+        "move_speed": 0,
+        "turn_rate": 0,
+        "cm_enabled": true,
+        "legs": 0,
+        "day_vision": 0,
+        "night_vision": 0,
+        "hero_id": 0,
+        "turbo_picks": 0,
+        "turbo_wins": 0,
+        "pro_ban": 0,
+        "pro_win": 0,
+        "pro_pick": 0,
+        "1_pick": 0,
+        "1_win": 0,
+        "2_pick": 0,
+        "2_win": 0,
+        "3_pick": 0,
+        "3_win": 0,
+        "4_pick": 0,
+        "4_win": 0,
+        "5_pick": 0,
+        "5_win": 0,
+        "6_pick": 0,
+        "6_win": 0,
+        "7_pick": 0,
+        "7_win": 0,
+        "8_pick": 0,
+        "8_win": 0
+    }
+
+]
+leagues
+GET /leagues
+
+Get league data
+Responses
+Response samples
+
+    200
+
+Content type
+application/json; charset=utf-8
+[
+
+    {
+        "leagueid": 0,
+        "ticket": "string",
+        "banner": "string",
+        "tier": "string",
+        "name": "ASUS ROG DreamLeague Season 4"
+    }
+
+]
+GET /leagues/{league_id}
+
+Get data for a league
+path Parameters
+league_id
+required
+	
+integer
+
+League ID
+Responses
+Response samples
+
+    200
+
+Content type
+application/json; charset=utf-8
+[
+
+    {
+        "leagueid": 0,
+        "ticket": "string",
+        "banner": "string",
+        "tier": "string",
+        "name": "ASUS ROG DreamLeague Season 4"
+    }
+
+]
+GET /leagues/{league_id}/matches
+
+Get matches for a team
+path Parameters
+league_id
+required
+	
+integer
+
+League ID
+Responses
+Response samples
+
+    200
+
+Content type
+application/json; charset=utf-8
+{
+
+    "match_id": 3703866531,
+    "duration": 0,
+    "start_time": 0,
+    "radiant_team_id": 0,
+    "radiant_name": "string",
+    "dire_team_id": 0,
+    "dire_name": "string",
+    "leagueid": 0,
+    "league_name": "string",
+    "series_id": 0,
+    "series_type": 0,
+    "radiant_score": 0,
+    "dire_score": 0,
+    "radiant_win": true,
+    "radiant": true
+
+}
+GET /leagues/{league_id}/teams
+
+Get teams for a league
+path Parameters
+league_id
+required
+	
+integer
+
+League ID
+Responses
+Response samples
+
+    200
+
+Content type
+application/json; charset=utf-8
+{
+
+    "team_id": 0,
+    "rating": 0,
+    "wins": 0,
+    "losses": 0,
+    "last_match_time": 0,
+    "name": "Newbee",
+    "tag": "string"
+
+}
+teams
+GET /teams
+
+Get team data
+query Parameters
+page	
+integer
+
+Page number, zero indexed. Each page returns up to 1000 entries.
+Responses
+Response samples
+
+    200
+
+Content type
+application/json; charset=utf-8
+[
+
+    {
+        "team_id": 0,
+        "rating": 0,
+        "wins": 0,
+        "losses": 0,
+        "last_match_time": 0,
+        "name": "Newbee",
+        "tag": "string"
+    }
+
+]
+GET /teams/{team_id}
+
+Get data for a team
+path Parameters
+team_id
+required
+	
+integer
+
+Team ID
+Responses
+Response samples
+
+    200
+
+Content type
+application/json; charset=utf-8
+{
+
+    "team_id": 0,
+    "rating": 0,
+    "wins": 0,
+    "losses": 0,
+    "last_match_time": 0,
+    "name": "Newbee",
+    "tag": "string"
+
+}
+GET /teams/{team_id}/matches
+
+Get matches for a team
+path Parameters
+team_id
+required
+	
+integer
+
+Team ID
+Responses
+Response samples
+
+    200
+
+Content type
+application/json; charset=utf-8
+{
+
+    "match_id": 3703866531,
+    "radiant": true,
+    "radiant_win": true,
+    "radiant_score": 0,
+    "dire_score": 0,
+    "duration": 0,
+    "start_time": 0,
+    "leagueid": 0,
+    "league_name": "string",
+    "cluster": 0,
+    "opposing_team_id": 0,
+    "opposing_team_name": "string",
+    "opposing_team_logo": "string"
+
+}
+GET /teams/{team_id}/players
+
+Get players who have played for a team
+path Parameters
+team_id
+required
+	
+integer
+
+Team ID
+Responses
+Response samples
+
+    200
+
+Content type
+application/json; charset=utf-8
+{
+
+    "account_id": 0,
+    "name": "string",
+    "games_played": 0,
+    "wins": 0,
+    "is_current_team_member": true
+
+}
+GET /teams/{team_id}/heroes
+
+Get heroes for a team
+path Parameters
+team_id
+required
+	
+integer
+
+Team ID
+Responses
+Response samples
+
+    200
+
+Content type
+application/json; charset=utf-8
+{
+
+    "hero_id": 0,
+    "name": "Anti-Mage",
+    "games_played": 0,
+    "wins": 0
+
+}
+records
+GET /records/{field}
+
+Get top performances in a stat
+path Parameters
+field
+required
+	
+string
+
+Field name to query
+Responses
+Response samples
+
+    200
+
+Content type
+application/json; charset=utf-8
+[
+
+    {
+        "match_id": 3703866531,
+        "start_time": 0,
+        "hero_id": 0,
+        "score": 0
+    }
+
+]
+live
+GET /live
+
+Get top currently ongoing live games
+Responses
+Response samples
+
+    200
+
+Content type
+application/json; charset=utf-8
+[
+
+    { }
+
+]
+scenarios
+GET /scenarios/itemTimings
+
+Win rates for certain item timings on a hero for items that cost at least 1400 gold
+query Parameters
+item	
+string
+
+Filter by item name e.g. "spirit_vessel"
+hero_id	
+integer
+
+Hero ID
+Responses
+Response samples
+
+    200
+
+Content type
+application/json; charset=utf-8
+[
+
+    {
+        "hero_id": 0,
+        "item": "string",
+        "time": 0,
+        "games": "string",
+        "wins": "string"
+    }
+
+]
+GET /scenarios/laneRoles
+
+Win rates for heroes in certain lane roles
+query Parameters
+lane_role	
+string
+
+Filter by lane role 1-4 (Safe, Mid, Off, Jungle)
+hero_id	
+integer
+
+Hero ID
+Responses
+Response samples
+
+    200
+
+Content type
+application/json; charset=utf-8
+[
+
+    {
+        "hero_id": 0,
+        "lane_role": 0,
+        "time": 0,
+        "games": "string",
+        "wins": "string"
+    }
+
+]
+GET /scenarios/misc
+
+Miscellaneous team scenarios
+query Parameters
+scenario	
+string
+
+Name of the scenario (see teamScenariosQueryParams)
+Responses
+Response samples
+
+    200
+
+Content type
+application/json; charset=utf-8
+[
+
+    {
+        "scenario": "string",
+        "is_radiant": true,
+        "region": 0,
+        "games": "string",
+        "wins": "string"
+    }
+
+]
+schema
+GET /schema
+
+Get database schema
+Responses
+Response samples
+
+    200
+
+Content type
+application/json; charset=utf-8
+[
+
+    {
+        "table_name": "string",
+        "column_name": "string",
+        "data_type": "string"
+    }
+
+]
+constants
+GET /constants
+
+Get static game data mirrored from the dotaconstants repository.
+path Parameters
+resource
+required
+	
+string
+
+Resource name e.g. heroes. List of resources
+Responses
+Response samples
+
+    200
+
+Content type
+application/json; charset=utf-8
+[ ]

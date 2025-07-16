@@ -1,7 +1,7 @@
 // src/lib/firestore.ts
-import { collection, getDocs, doc, getDoc, setDoc, query, orderBy, addDoc } from "firebase/firestore";
+import { collection, getDocs, doc, getDoc, setDoc, query, orderBy, addDoc, writeBatch, updateDoc, serverTimestamp, deleteDoc, Timestamp } from "firebase/firestore";
 import { db } from "./firebase";
-import type { Team, Match, PlayoffData, FantasyLineup, FantasyData, TournamentPlayer, PickemPrediction, Player, CategoryDisplayStats, TournamentHighlightRecord, CategoryRankingDetail } from "./definitions";
+import type { Team, Match, PlayoffData, FantasyLineup, FantasyData, TournamentPlayer, PickemPrediction, Player, CategoryDisplayStats, TournamentHighlightRecord, CategoryRankingDetail, PlayerPerformanceInMatch, Announcement } from "./definitions";
 import { getTournamentStatus } from "./admin";
 import {
   Trophy, Zap, Swords, Coins, Eye, Bomb, ShieldAlert, Award,
@@ -10,6 +10,48 @@ import {
 
 // --- Team and Match Data ---
 // ... (omitting already defined functions for brevity)
+export async function updateMatchScores(matchId: string, teamAScore: number, teamBScore: number): Promise<void> {
+    const matchRef = doc(db, "matches", matchId);
+    await updateDoc(matchRef, {
+        "teamA.score": teamAScore,
+        "teamB.score": teamBScore,
+        "status": "completed"
+    });
+}
+
+export async function updateTeamStatus(teamId: string, status: 'verified' | 'warning' | 'banned' | 'pending'): Promise<void> {
+    const teamRef = doc(db, "teams", teamId);
+    await updateDoc(teamRef, { status: status });
+}
+
+// --- Announcements ---
+export async function createAnnouncement(content: string): Promise<void> {
+    const announcementsCollection = collection(db, "announcements");
+    await addDoc(announcementsCollection, {
+        content,
+        createdAt: serverTimestamp(),
+    });
+}
+
+export async function getAnnouncements(): Promise<Announcement[]> {
+    const announcementsCollection = collection(db, "announcements");
+    const q = query(announcementsCollection, orderBy("createdAt", "desc"));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => {
+        const data = doc.data();
+        const firestoreTimestamp = data.createdAt as Timestamp;
+        return {
+            id: doc.id,
+            content: data.content,
+            createdAt: firestoreTimestamp.toDate(),
+        } as Announcement;
+    });
+}
+
+export async function deleteAnnouncement(announcementId: string): Promise<void> {
+    const announcementRef = doc(db, "announcements", announcementId);
+    await deleteDoc(announcementRef);
+}
 
 // --- Stats Page Data ---
 export async function getPlayerStats(): Promise<{
@@ -33,7 +75,7 @@ export async function getPlayerStats(): Promise<{
         { id: 'sm-gpm', categoryName: 'Highest GPM', icon: Coins, rankings: placeholderRankings },
         { id: 'sm-xpm', categoryName: 'Highest XPM', icon: Zap, rankings: placeholderRankings },
         { id: 'sm-hero-damage', categoryName: 'Most Hero Damage', icon: Activity, rankings: placeholderRankings },
-        { id: 'sm-tower-damage', categoryName: 'Most Tower Damage', icon: Bomb, rankings: placeholderRankings },
+        { id: 'sm-tower-damage', 'categoryName': 'Most Tower Damage', icon: Bomb, rankings: placeholderRankings },
         { id: 'sm-damage-taken', categoryName: 'Most Damage Taken', icon: ShieldAlert, rankings: placeholderRankings },
         { id: 'sm-net-worth', categoryName: 'Highest Net Worth', icon: Award, rankings: placeholderRankings },
         { id: 'sm-fantasy', categoryName: 'Best Fantasy Score', icon: Star, rankings: placeholderRankings },
@@ -94,5 +136,37 @@ export async function saveUserFantasyLineup(userId: string, lineup: FantasyLineu
     const data: FantasyData = { userId, participantName, currentLineup: lineup, totalFantasyPoints: existingPoints, lastUpdated: new Date(), roundId: roundId };
     await setDoc(fantasyDocRef, data, { merge: true });
 }
-export async function getUserPickem(userId: string): Promise<PickemPrediction | null> { const r = doc(db, "pickem", userId); const s = await getDoc(r); return s.exists() ? s.data() as PickemPrediction : null; }
+export async function getUserPickem(userId:string): Promise<PickemPrediction | null> { const r = doc(db, "pickem", userId); const s = await getDoc(r); return s.exists() ? s.data() as PickemPrediction : null; }
 export async function saveUserPickem(userId: string, predictions: { [key: string]: string[] }): Promise<void> { const r = doc(db, "pickem", userId); await setDoc(r, { userId, predictions, lastUpdated: new Date() }, { merge: true }); }
+
+/**
+ * Saves the results of a match and the performance of each player to Firestore.
+ * This function uses a batch write to ensure atomicity.
+ *
+ * @param match The transformed match data.
+ * @param performances An array of player performance data.
+ */
+export async function saveMatchResults(
+    match: Partial<Match>,
+    performances: PlayerPerformanceInMatch[]
+): Promise<void> {
+    if (!match.id) {
+        throw new Error("Match ID is required to save results.");
+    }
+
+    const batch = writeBatch(db);
+
+    // 1. Update the match document
+    const matchRef = doc(db, "matches", match.id);
+    batch.set(matchRef, match, { merge: true }); // Use merge to avoid overwriting existing fields
+
+    // 2. Create a new document for each player's performance in this match
+    const performancesCollection = collection(db, "matches", match.id, "performances");
+    performances.forEach(performance => {
+        const performanceRef = doc(performancesCollection, performance.playerId);
+        batch.set(performanceRef, performance);
+    });
+
+    // 3. Commit the batch
+    await batch.commit();
+}

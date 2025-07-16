@@ -2,23 +2,26 @@
 import type { z } from "zod";
 import type { LucideIcon } from "lucide-react";
 
+export const LEAGUE_ID = 18389;
+
 export const TEAM_MMR_CAP = 30000;
 export const FANTASY_BUDGET_MMR = 30000;
 
 export const PlayerRoles = ["Carry", "Mid", "Offlane", "Soft Support", "Hard Support"] as const;
 export type PlayerRole = typeof PlayerRoles[number];
 
-export const TournamentStatuses = ["Not Verified", "Active", "Eliminated", "Champions"] as const;
-export type TournamentStatus = typeof TournamentStatuses[number];
+export const VerificationStatuses = ["pending", "verified", "warning", "banned"] as const;
+export type VerificationStatus = typeof VerificationStatuses[number];
 
 export type Player = {
-  id: string;
+  id: string; 
+  openDotaAccountId?: number; 
   nickname: string;
   mmr: number;
   role: PlayerRole;
   steamProfileUrl: string;
-  profileScreenshotUrl?: string;
-  openDotaProfileUrl?: string;
+  mmrScreenshotUrl?: string; 
+  openDotaProfileUrl?: string; 
   fantasyPointsEarned?: number;
 };
 
@@ -45,20 +48,22 @@ export type StandIn = {
 };
 
 export type Team = {
-  id: string;
+  id:string;
+  openDotaTeamId?: number;
   name: string;
   tag: string;
   motto: string;
   logoUrl: string;
   captainId: string;
   players: Player[];
-  status: TournamentStatus;
+  status?: VerificationStatus;
   standIns?: StandIn[];
   wins: number;
   losses: number;
   averageKillsPerGame?: number;
   averageDeathsPerGame?: number;
   averageAssistsPerGame?: number;
+
   averageFantasyPoints?: number;
   averageMatchDurationMinutes?: number;
   matchesPlayed?: number;
@@ -124,4 +129,10 @@ export type PickemPrediction = {
     userId: string;
     predictions: { [key: string]: string[] };
     lastUpdated: Date;
+};
+
+export type Announcement = {
+    id: string;
+    content: string;
+    createdAt: Date;
 };

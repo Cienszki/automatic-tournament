@@ -1,8 +1,53 @@
 
+"use client";
+
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { CalendarDays, UserPlus } from "lucide-react";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { CalendarDays, UserPlus, Megaphone } from "lucide-react";
 import Link from "next/link";
+import { getAnnouncements } from "@/lib/firestore";
+import { Announcement } from "@/lib/definitions";
+import { formatDistanceToNow } from 'date-fns';
+import { useEffect, useState } from "react";
+
+function Announcements() {
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+
+  useEffect(() => {
+    async function fetchAnnouncements() {
+      const allAnnouncements = await getAnnouncements();
+      setAnnouncements(allAnnouncements);
+    }
+    fetchAnnouncements();
+  }, []);
+
+  if (announcements.length === 0) {
+    return null;
+  }
+
+  return (
+    <Card className="shadow-lg">
+      <CardHeader>
+        <CardTitle className="flex items-center">
+          <Megaphone className="h-6 w-6 mr-2 text-primary" />
+          Latest Announcements
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <ul className="space-y-4">
+          {announcements.map((announcement) => (
+            <li key={announcement.id} className="p-4 bg-muted/50 rounded-lg">
+              <p className="text-foreground">{announcement.content}</p>
+              <p className="text-xs text-muted-foreground mt-2">
+                {formatDistanceToNow(new Date(announcement.createdAt), { addSuffix: true })}
+              </p>
+            </li>
+          ))}
+        </ul>
+      </CardContent>
+    </Card>
+  );
+}
 
 export default function Home() {
   return (
@@ -32,17 +77,19 @@ export default function Home() {
           <div className="flex justify-center space-x-4">
             <Button asChild size="lg">
               <Link href="/register">
-                Register Your Team <UserPlus className="ml-2 h-5 w-5" />
+                Register Your Team <UserPlus className="ml-2 h-5" />
               </Link>
             </Button>
             <Button asChild variant="secondary" size="lg">
               <Link href="/schedule">
-                View Schedule <CalendarDays className="ml-2 h-5 w-5" />
+                View Schedule <CalendarDays className="ml-2 h-5" />
               </Link>
             </Button>
           </div>
         </div>
       </section>
+
+      <Announcements />
 
       {/* New sections */}
       <section className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">

@@ -1,4 +1,3 @@
-
 "use client";
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -17,24 +16,12 @@ const navItems = [
   { href: '/schedule', label: 'Schedule', icon: CalendarDays },
   { href: '/playoffs', label: 'Playoffs', icon: GitFork },
   { href: '/fantasy', label: 'Fantasy', icon: Crown },
-  { href: '/pickem', label: 'Pick\'em', icon: ClipboardCheck },
+  { href: '/pickem', label: "Pick'em", icon: ClipboardCheck },
   { href: '/stats', label: 'Stats', icon: BarChart2 },
   { href: '/rules', label: 'Rules', icon: ScrollText },
   { href: '/faq', label: 'FAQ', icon: HelpCircle },
   { href: '/admin', label: 'Admin', icon: Settings },
 ];
-
-const LeftBracket = () => (
-  <svg width="8" height="24" viewBox="0 0 8 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-[1.25em] text-primary">
-    <path d="M7 1C7 1 1 5.58172 1 12C1 18.4183 7 23 7 23" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-  </svg>
-);
-
-const RightBracket = () => (
-  <svg width="8" height="24" viewBox="0 0 8 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-[1.25em] text-primary">
-    <path d="M1 1C1 1 7 5.58172 7 12C7 18.4183 1 23 1 23" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-  </svg>
-);
 
 const CustomHamburgerIcon = (props: React.SVGProps<SVGSVGElement>) => (
   <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
@@ -136,28 +123,18 @@ export function Navbar() {
                   variant="ghost"
                   asChild
                   className={cn(
-                    "text-sm font-medium shrink-0",
+                    "text-sm font-medium shrink-0 px-2 py-1 md:px-3 md:py-2",
                     {
-                      'text-primary bg-primary/10 px-1': isActive && !isMyTeam,
-                      'text-secondary bg-secondary/10 px-1': isActive && isMyTeam,
-                      'text-muted-foreground hover:text-foreground hover:bg-accent/50 px-2 py-1 md:px-3 md:py-2': !isActive,
-                      'hover:bg-primary/10': isMyTeam // Explicit hover for My Team
+                      'text-primary bg-primary/10': isActive && !isMyTeam,
+                      'text-secondary bg-secondary/10': isActive && isMyTeam,
+                      'text-muted-foreground hover:text-foreground hover:bg-accent/50': !isActive,
+                      'hover:bg-primary/10': isMyTeam
                     }
                   )}
                 >
-                  <Link 
-                    href={item.href} 
-                    className={cn(
-                      "flex items-center justify-between", 
-                      isActive ? 'gap-1 px-1.5 md:px-2 py-1 md:py-2' : 'space-x-2 px-2 py-1 md:px-3 md:py-2'
-                    )}
-                  >
-                    {isActive && <LeftBracket />}
-                    <div className={cn("flex items-center px-1.5 md:px-2", isActive ? "gap-1.5 md:gap-2" : "gap-2")}>
-                      <item.icon className="h-4 w-4" />
-                      <span className="hidden md:inline">{item.label}</span>
-                    </div>
-                    {isActive && <RightBracket />}
+                  <Link href={item.href} className="flex items-center gap-2">
+                    <item.icon className="h-4 w-4" />
+                    <span className="hidden md:inline">{item.label}</span>
                   </Link>
                 </Button>
               );
