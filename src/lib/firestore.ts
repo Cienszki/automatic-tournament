@@ -5,7 +5,7 @@ import type { Team, Match, PlayoffData, FantasyLineup, FantasyData, TournamentPl
 import { getTournamentStatus } from "./admin";
 import {
   Trophy, Zap, Swords, Coins, Eye, Bomb, ShieldAlert, Award,
-  Puzzle, Flame, Skull, Handshake as HandshakeIcon, Star, Shield
+  Puzzle, Flame, Skull, Handshake as HandshakeIcon, Star, Shield, Activity
 } from "lucide-react";
 
 // --- Team and Match Data ---
@@ -31,14 +31,24 @@ export async function getPlayerStats(): Promise<{
         { id: 'sm-assists', categoryName: 'Most Assists', icon: HandshakeIcon, rankings: placeholderRankings },
         { id: 'sm-gpm', categoryName: 'Highest GPM', icon: Coins, rankings: placeholderRankings },
         { id: 'sm-xpm', categoryName: 'Highest XPM', icon: Zap, rankings: placeholderRankings },
-        { id: 'sm-fantasy', categoryName: 'Top Fantasy Score', icon: Star, rankings: placeholderRankings },
+        { id: 'sm-wards', categoryName: 'Most Wards Placed', icon: Eye, rankings: placeholderRankings },
+        { id: 'sm-hero-damage', categoryName: 'Most Hero Damage', icon: Activity, rankings: placeholderRankings },
+        { id: 'sm-damage-taken', categoryName: 'Most Damage Taken', icon: ShieldAlert, rankings: placeholderRankings },
+        { id: 'sm-deaths', categoryName: 'Most Deaths', icon: Skull, rankings: placeholderRankings },
+        { id: 'sm-net-worth', categoryName: 'Highest Net Worth', icon: Coins, rankings: placeholderRankings },
+        { id: 'sm-fantasy', categoryName: 'Best Fantasy Score', icon: Star, rankings: placeholderRankings },
     ];
     const playerAverageLeaders: CategoryDisplayStats[] = [
-        { id: 'avg-kda', categoryName: 'Best KDA Ratio', icon: Award, rankings: placeholderRankings },
-        { id: 'avg-gpm', categoryName: 'Highest Avg. GPM', icon: Coins, rankings: placeholderRankings },
-        { id: 'avg-xpm', categoryName: 'Highest Avg. XPM', icon: Zap, rankings: placeholderRankings },
-        { id: 'avg-kills', categoryName: 'Highest Avg. Kills', icon: Swords, rankings: placeholderRankings },
-        { id: 'avg-deaths', categoryName: 'Lowest Avg. Deaths', icon: Shield, rankings: placeholderRankings },
+        { id: 'avg-kills', categoryName: 'Avg. Kills', icon: Swords, rankings: placeholderRankings },
+        { id: 'avg-assists', categoryName: 'Avg. Assists', icon: HandshakeIcon, rankings: placeholderRankings },
+        { id: 'avg-gpm', categoryName: 'Avg. GPM', icon: Coins, rankings: placeholderRankings },
+        { id: 'avg-xpm', categoryName: 'Avg. XPM', icon: Zap, rankings: placeholderRankings },
+        { id: 'avg-wards', categoryName: 'Avg. Wards Placed', icon: Eye, rankings: placeholderRankings },
+        { id: 'avg-hero-damage', categoryName: 'Avg. Hero Damage', icon: Activity, rankings: placeholderRankings },
+        { id: 'avg-damage-taken', categoryName: 'Avg. Damage Taken', icon: ShieldAlert, rankings: placeholderRankings },
+        { id: 'avg-deaths', categoryName: 'Avg. Deaths', icon: Skull, rankings: placeholderRankings },
+        { id: 'avg-net-worth', categoryName: 'Avg. Net Worth', icon: Coins, rankings: placeholderRankings },
+        { id: 'avg-fantasy', categoryName: 'Avg. Fantasy Score', icon: Star, rankings: placeholderRankings },
     ];
     const tournamentHighlights: TournamentHighlightRecord[] = [
         { id: 'th-kills', title: 'Most Kills in a Game', value: '-', details: 'N/A', icon: Swords },
