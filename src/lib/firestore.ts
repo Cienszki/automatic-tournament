@@ -5,7 +5,7 @@ import type { Team, Match, PlayoffData, FantasyLineup, FantasyData, TournamentPl
 import { getTournamentStatus } from "./admin";
 import {
   Trophy, Zap, Swords, Coins, Eye, Bomb, ShieldAlert, Award,
-  Puzzle, Flame, Skull, Handshake as HandshakeIcon, Star, Shield, Activity
+  Puzzle, Flame, Skull, Handshake as HandshakeIcon, Star, Shield, Activity, Timer, ChevronsUp, Ban, Clock
 } from "lucide-react";
 
 // --- Team and Match Data ---
@@ -29,33 +29,41 @@ export async function getPlayerStats(): Promise<{
     const singleMatchRecords: CategoryDisplayStats[] = [
         { id: 'sm-kills', categoryName: 'Most Kills', icon: Swords, rankings: placeholderRankings },
         { id: 'sm-assists', categoryName: 'Most Assists', icon: HandshakeIcon, rankings: placeholderRankings },
+        { id: 'sm-deaths', categoryName: 'Most Deaths', icon: Skull, rankings: placeholderRankings },
         { id: 'sm-gpm', categoryName: 'Highest GPM', icon: Coins, rankings: placeholderRankings },
         { id: 'sm-xpm', categoryName: 'Highest XPM', icon: Zap, rankings: placeholderRankings },
-        { id: 'sm-wards', categoryName: 'Most Wards Placed', icon: Eye, rankings: placeholderRankings },
         { id: 'sm-hero-damage', categoryName: 'Most Hero Damage', icon: Activity, rankings: placeholderRankings },
+        { id: 'sm-tower-damage', categoryName: 'Most Tower Damage', icon: Bomb, rankings: placeholderRankings },
         { id: 'sm-damage-taken', categoryName: 'Most Damage Taken', icon: ShieldAlert, rankings: placeholderRankings },
-        { id: 'sm-deaths', categoryName: 'Most Deaths', icon: Skull, rankings: placeholderRankings },
-        { id: 'sm-net-worth', categoryName: 'Highest Net Worth', icon: Coins, rankings: placeholderRankings },
+        { id: 'sm-net-worth', categoryName: 'Highest Net Worth', icon: Award, rankings: placeholderRankings },
         { id: 'sm-fantasy', categoryName: 'Best Fantasy Score', icon: Star, rankings: placeholderRankings },
+        { id: 'sm-wards', categoryName: 'Most Wards Placed', icon: Eye, rankings: placeholderRankings },
     ];
+    
     const playerAverageLeaders: CategoryDisplayStats[] = [
         { id: 'avg-kills', categoryName: 'Avg. Kills', icon: Swords, rankings: placeholderRankings },
         { id: 'avg-assists', categoryName: 'Avg. Assists', icon: HandshakeIcon, rankings: placeholderRankings },
+        { id: 'avg-deaths', categoryName: 'Avg. Deaths', icon: Skull, rankings: placeholderRankings },
         { id: 'avg-gpm', categoryName: 'Avg. GPM', icon: Coins, rankings: placeholderRankings },
         { id: 'avg-xpm', categoryName: 'Avg. XPM', icon: Zap, rankings: placeholderRankings },
-        { id: 'avg-wards', categoryName: 'Avg. Wards Placed', icon: Eye, rankings: placeholderRankings },
         { id: 'avg-hero-damage', categoryName: 'Avg. Hero Damage', icon: Activity, rankings: placeholderRankings },
         { id: 'avg-damage-taken', categoryName: 'Avg. Damage Taken', icon: ShieldAlert, rankings: placeholderRankings },
-        { id: 'avg-deaths', categoryName: 'Avg. Deaths', icon: Skull, rankings: placeholderRankings },
-        { id: 'avg-net-worth', categoryName: 'Avg. Net Worth', icon: Coins, rankings: placeholderRankings },
+        { id: 'avg-net-worth', categoryName: 'Avg. Net Worth', icon: Award, rankings: placeholderRankings },
         { id: 'avg-fantasy', categoryName: 'Avg. Fantasy Score', icon: Star, rankings: placeholderRankings },
+        { id: 'avg-wards', categoryName: 'Avg. Wards Placed', icon: Eye, rankings: placeholderRankings },
     ];
+
     const tournamentHighlights: TournamentHighlightRecord[] = [
-        { id: 'th-kills', title: 'Most Kills in a Game', value: '-', details: 'N/A', icon: Swords },
-        { id: 'th-gpm', title: 'Highest GPM Ever', value: '-', details: 'N/A', icon: Coins },
-        { id: 'th-hero', title: 'Most Picked Hero', value: '-', details: 'N/A', icon: Puzzle },
+        { id: 'th-longest-match', title: 'Longest Match', value: '-', details: 'N/A', icon: Timer },
+        { id: 'th-shortest-match', title: 'Shortest Match', value: '-', details: 'N/A', icon: Clock },
+        { id: 'th-lvl6', title: 'Earliest Level 6', value: '-', details: 'N/A', icon: ChevronsUp },
+        { id: 'th-roshan', title: 'Earliest Roshan', value: '-', details: 'N/A', icon: Shield },
+        { id: 'th-prehorn-kills', title: 'Most Kills Before Horn', value: '-', details: 'N/A', icon: Swords },
         { id: 'th-rampage', title: 'Total Rampages', value: '0', details: '', icon: Flame },
+        { id: 'th-hero', title: 'Most Picked Hero', value: '-', details: 'N/A', icon: Puzzle },
+        { id: 'th-banned-hero', title: 'Most Banned Hero', value: '-', details: 'N/A', icon: Ban },
     ];
+    
     return { singleMatchRecords, playerAverageLeaders, tournamentHighlights };
 }
 
