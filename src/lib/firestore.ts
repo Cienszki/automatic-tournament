@@ -60,9 +60,10 @@ export async function updateTeamStatus(teamId: string, status: 'verified' | 'war
 
 // --- Announcements ---
 export async function createAnnouncement(title: string, content: string, user: User): Promise<void> {
-    // Use the title as the document ID
-    const announcementRef = doc(db, "announcements", title); 
+    const announcementRef = doc(collection(db, "announcements")); 
     await setDoc(announcementRef, {
+        id: announcementRef.id,
+        title,
         content,
         authorId: user.uid,
         authorName: user.displayName || "Admin",
@@ -72,19 +73,17 @@ export async function createAnnouncement(title: string, content: string, user: U
 
 export async function getAnnouncements(): Promise<Announcement[]> {
     const announcementsCollection = collection(db, "announcements");
-    // Remove server-side ordering to include documents without a createdAt field
-    const snapshot = await getDocs(announcementsCollection);
+    const q = query(announcementsCollection, orderBy("createdAt", "desc"));
+    const snapshot = await getDocs(q);
     return snapshot.docs.map(doc => {
         const data = doc.data();
         const firestoreTimestamp = data.createdAt as Timestamp | undefined;
-        // Use the document ID for both id and title fields
         return {
             id: doc.id,
-            title: doc.id, 
+            title: data.title, 
             content: data.content,
             authorId: data.authorId || '',
             authorName: data.authorName || 'N/A',
-            // Use a default old date for sorting if createdAt is missing
             createdAt: firestoreTimestamp ? firestoreTimestamp.toDate() : new Date(0),
         } as Announcement;
     });
@@ -94,6 +93,7 @@ export async function deleteAnnouncement(announcementId: string): Promise<void> 
     const announcementRef = doc(db, "announcements", announcementId);
     await deleteDoc(announcementRef);
 }
+
 
 // --- Stats Page Data ---
 export async function getPlayerStats(): Promise<{

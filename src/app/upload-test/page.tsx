@@ -1,11 +1,11 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useTransition } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { uploadScreenshot, db } from '@/lib/firebase';
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { uploadScreenshot } from '@/lib/firebase'; // db import removed
+import { createTestTeam } from '@/lib/actions'; // Import the new server action
 import { Loader2, LogIn, LogOut } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -14,7 +14,7 @@ import { Label } from '@/components/ui/label';
 import { useAuth } from '@/context/AuthContext';
 
 export default function UploadTestPage() {
-    const { user, signInWithGoogle, signOut } = useAuth(); // Updated to use Google sign-in
+    const { user, signInWithGoogle, signOut } = useAuth();
 
     const [file, setFile] = useState<File | null>(null);
     const [isFileUploading, setIsFileUploading] = useState(false);
@@ -22,7 +22,7 @@ export default function UploadTestPage() {
 
     const [teamName, setTeamName] = useState('');
     const [teamTag, setTeamTag] = useState('');
-    const [isDbSubmitting, setIsDbSubmitting] = useState(false);
+    const [isDbSubmitting, startDbTransition] = useTransition(); // Using useTransition for server actions
     const [dbResult, setDbResult] = useState<{ message?: string; type: 'success' | 'error' } | null>(null);
 
     const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -44,27 +44,21 @@ export default function UploadTestPage() {
         }
     };
     
+    // REFACTORED to use the server action
     const handleDbSubmit = async (event: React.FormEvent) => {
         event.preventDefault();
         if (!teamName || !teamTag) return;
         
-        setIsDbSubmitting(true);
         setDbResult(null);
         
-        try {
-            const docRef = await addDoc(collection(db, "testTeams"), {
-              name: teamName,
-              tag: teamTag,
-              createdAt: serverTimestamp(),
-              ownerId: user?.uid || 'unknown'
-            });
-            setDbResult({ message: `Test team saved with ID: ${docRef.id}`, type: 'success' });
-        } catch (error) {
-            console.error("Database test failed:", error);
-            setDbResult({ message: (error as Error).message, type: 'error' });
-        } finally {
-            setIsDbSubmitting(false);
-        }
+        startDbTransition(async () => {
+            const result = await createTestTeam({ name: teamName, tag: teamTag });
+            if (result.success) {
+                setDbResult({ message: result.message, type: 'success' });
+            } else {
+                setDbResult({ message: result.message, type: 'error' });
+            }
+        });
     };
 
     return (
@@ -73,7 +67,7 @@ export default function UploadTestPage() {
                 <CardHeader>
                     <CardTitle>System Test Page</CardTitle>
                     <CardDescription>
-                        Use this page to test individual pieces of functionality.
+                        Use this page to test individual pieces of functionality. Now with server-side DB writes.
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-8">
@@ -141,7 +135,9 @@ export default function UploadTestPage() {
                                 {uploadResult.url && (
                                     <div className="pt-4 text-center">
                                         <Link href={uploadResult.url} target="_blank" className="text-sm text-primary hover:underline break-all">{uploadResult.url}</Link>
+
                                         <div className="relative w-full h-64 mt-2"><Image src={uploadResult.url} alt="Uploaded screenshot" layout="fill" objectFit="contain" /></div>
+
                                     </div>
                                 )}
                             </div>

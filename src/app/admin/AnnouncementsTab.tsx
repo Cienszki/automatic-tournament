@@ -65,7 +65,6 @@ export function AnnouncementsTab() {
             toast({
                 title: 'Success!',
                 description: 'Your announcement has been posted.',
-                variant: 'success',
             });
         } catch (error) {
             console.error("Failed to create announcement:", error);
@@ -149,7 +148,7 @@ export function AnnouncementsTab() {
                                             Posted {formatDistanceToNow(new Date(item.createdAt), { addSuffix: true })} by {item.authorName}
                                         </p>
                                     </div>
-                                    <Button size="sm" variant="destructive-outline" onClick={() => handleDelete(item.id)}>
+                                    <Button size="sm" variant="destructive" onClick={() => handleDelete(item.id)}>
                                         <Trash2 className="h-4 w-4" />
                                     </Button>
                                 </li>

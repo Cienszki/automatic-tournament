@@ -6,6 +6,7 @@ import { getAuth } from "firebase/auth";
 import { getStorage, ref, uploadString, getDownloadURL } from "firebase/storage";
 import { v4 as uuidv4 } from 'uuid';
 import { initializeAppCheck, ReCaptchaV3Provider } from "firebase/app-check";
+import { getFunctions } from 'firebase/functions';
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -27,9 +28,9 @@ if (typeof window !== 'undefined') {
   });
 }
 
-// Explicitly initialize Firestore with the default database ID.
 const db = getFirestore(app);
 const auth = getAuth(app);
 const storage = getStorage(app);
+const functions = getFunctions(app, 'us-central1'); // Specify region if not default
 
-export { app, db, auth, storage, ref, uploadString, getDownloadURL, uuidv4 };
+export { app, db, auth, storage, ref, uploadString, getDownloadURL, uuidv4, functions };

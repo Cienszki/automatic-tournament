@@ -3,18 +3,18 @@
 
 import * as React from "react";
 import { useAuth } from "@/context/AuthContext";
-import { checkIfAdmin } from "@/lib/admin";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ShieldAlert, Loader2, LogIn } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { checkIfAdmin } from "@/lib/auth"; // Corrected import
 
 export default function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const { user, isLoading: isAuthLoading, signInWithGoogle } = useAuth();
+  const { user, loading: isAuthLoading, signInWithGoogle } = useAuth();
   const [isAdmin, setIsAdmin] = React.useState<boolean | null>(null);
   const [authError, setAuthError] = React.useState<string | null>(null);
 

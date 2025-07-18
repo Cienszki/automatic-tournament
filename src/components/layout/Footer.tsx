@@ -1,6 +1,7 @@
 "use client";
 
-import { Youtube, LogIn, LogOut } from 'lucide-react';
+import { Youtube, LogIn, LogOut, TestTube } from 'lucide-react';
+import Link from 'next/link';
 import React from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { Button } from '../ui/button';
@@ -39,6 +40,8 @@ const InstagramIcon = (props: React.SVGProps<SVGSVGElement>) => (
 
 export function Footer() {
   const { user, signInWithGoogle, signOut } = useAuth();
+  const isDevelopment = process.env.NODE_ENV === 'development';
+
   return (
     <footer className="bg-card border-t border-border py-4 text-center">
       <div className="container mx-auto px-4">
@@ -83,6 +86,24 @@ export function Footer() {
             <Youtube className="h-6 w-6" />
             <span className="sr-only">YouTube</span>
           </a>
+
+          {/* Testing Dropdown - Only shows in development */}
+          {isDevelopment && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="icon" aria-label="Testing Links">
+                  <TestTube className="h-5 w-5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel>Testing</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link href="/upload-test">Upload Test</Link>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
           
           {/* Auth Section */}
           {user ? (

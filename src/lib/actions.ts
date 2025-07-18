@@ -4,10 +4,11 @@
 import { getMatchDetails, getHeroes, transformMatchData, getLeagueMatches } from './opendota';
 import { saveMatchResults, getAllTeams, getAllTournamentPlayers, getAllMatches, saveTeam } from './firestore';
 import { db } from './firebase'; 
+import { adminDb } from './admin'; // Import the admin instance
 import { Team, Player, LEAGUE_ID } from './definitions';
 import { getOpenDotaAccountIdFromUrl } from './utils';
 import { z } from 'zod';
-import { doc, collection, writeBatch } from 'firebase/firestore';
+import { doc, collection, writeBatch, serverTimestamp } from 'firebase/firestore';
 
 // A simple in-memory cache for hero data to avoid repeated API calls.
 let heroCache: any[] | null = null;
@@ -25,6 +26,28 @@ const formSchema = z.object({
     mmrScreenshotUrl: z.string().url("Screenshot URL is required."),
   })).length(5, "You must register exactly 5 players."),
 });
+
+/**
+ * [SERVER ACTION] Creates a new team in Firestore using the Admin SDK.
+ * This is a secure, server-only operation.
+ * @param teamData The team data to save.
+ * @returns An object indicating success or failure.
+ */
+export async function createTestTeam(teamData: { name: string; tag: string }) {
+  try {
+    console.log("Attempting to create test team on the server with data:", teamData);
+    const teamsCollection = adminDb.collection('teams');
+    const newTeamRef = await teamsCollection.add({
+      ...teamData,
+      createdAt: new Date(), // Use server timestamp in a real scenario
+    });
+    console.log(`Successfully created team with ID: ${newTeamRef.id}`);
+    return { success: true, message: `Team "${teamData.name}" created successfully.` };
+  } catch (error) {
+    console.error("Error in createTestTeam server action:", error);
+    return { success: false, message: "Failed to create team on server.", error: (error as Error).message };
+  }
+}
 
 export async function registerTeam(captainId: string, prevState: { message: string | null }, formData: FormData) {
     try {

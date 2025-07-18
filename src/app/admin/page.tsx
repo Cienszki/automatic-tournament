@@ -3,7 +3,7 @@
 
 import React from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { checkIfAdmin } from '@/lib/admin';
+import { checkIfAdmin } from '@/lib/auth';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Loader2, Shield, LogIn } from 'lucide-react';
@@ -12,6 +12,7 @@ import { StageManagementTab } from './StageManagementTab';
 import { StandingsTab } from './StandingsTab';
 import { TeamVerificationTab } from './TeamVerificationTab';
 import { AnnouncementsTab } from './AnnouncementsTab';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function AdminPage() {
     const { user, signInWithGoogle } = useAuth();
@@ -71,11 +72,26 @@ export default function AdminPage() {
                 </CardHeader>
             </Card>
 
-            <StageManagementTab />
-            <StandingsTab />
-            <TeamVerificationTab />
-            <AnnouncementsTab />
-
+            <Tabs defaultValue="stage">
+                <TabsList className="grid w-full grid-cols-4">
+                    <TabsTrigger value="stage">Stage</TabsTrigger>
+                    <TabsTrigger value="standings">Standings</TabsTrigger>
+                    <TabsTrigger value="teams">Teams</TabsTrigger>
+                    <TabsTrigger value="announcements">Announcements</TabsTrigger>
+                </TabsList>
+                <TabsContent value="stage">
+                    <StageManagementTab />
+                </TabsContent>
+                <TabsContent value="standings">
+                    <StandingsTab />
+                </TabsContent>
+                <TabsContent value="teams">
+                    <TeamVerificationTab />
+                </TabsContent>
+                <TabsContent value="announcements">
+                    <AnnouncementsTab />
+                </TabsContent>
+            </Tabs>
         </div>
     );
 }
