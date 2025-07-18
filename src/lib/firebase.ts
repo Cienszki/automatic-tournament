@@ -3,7 +3,7 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
-import { getStorage, ref, uploadString, getDownloadURL } from "firebase/storage";
+import { getStorage, ref, uploadString, getDownloadURL, uploadBytes } from "firebase/storage";
 import { v4 as uuidv4 } from 'uuid';
 import { initializeAppCheck, ReCaptchaV3Provider } from "firebase/app-check";
 import { getFunctions } from 'firebase/functions';
@@ -32,5 +32,13 @@ const db = getFirestore(app);
 const auth = getAuth(app);
 const storage = getStorage(app);
 const functions = getFunctions(app, 'us-central1'); // Specify region if not default
+
+export const uploadScreenshot = async (file: File, teamId: string) => {
+    const storageRef = ref(storage, `screenshots/${teamId}/${uuidv4()}`);
+    await uploadBytes(storageRef, file);
+    const downloadURL = await getDownloadURL(storageRef);
+    return downloadURL;
+};
+  
 
 export { app, db, auth, storage, ref, uploadString, getDownloadURL, uuidv4, functions };

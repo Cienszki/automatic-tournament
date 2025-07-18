@@ -4,11 +4,12 @@ import { collection, getDocs, doc, getDoc, setDoc, query, orderBy, addDoc, write
 import { db } from "./firebase";
 import type { User } from "firebase/auth";
 import type { Team, Match, PlayoffData, FantasyLineup, FantasyData, TournamentPlayer, PickemPrediction, Player, CategoryDisplayStats, TournamentHighlightRecord, CategoryRankingDetail, PlayerPerformanceInMatch, Announcement } from "./definitions";
-import { getTournamentStatus } from "./admin";
 import {
   Trophy, Zap, Swords, Coins, Eye, Bomb, ShieldAlert, Award,
   Puzzle, Flame, Skull, Handshake as HandshakeIcon, Star, Shield, Activity, Timer, ChevronsUp, Ban, Clock
 } from "lucide-react";
+import { getTournamentStatus } from "./admin-actions";
+
 
 /**
  * Saves a new team and its players to Firestore using a batch write.
@@ -43,7 +44,6 @@ export async function saveTeam(teamData: Omit<Team, 'id'>): Promise<void> {
 
 
 // --- Team and Match Data ---
-// ... (omitting already defined functions for brevity)
 export async function updateMatchScores(matchId: string, teamAScore: number, teamBScore: number): Promise<void> {
     const matchRef = doc(db, "matches", matchId);
     await updateDoc(matchRef, {
@@ -53,24 +53,8 @@ export async function updateMatchScores(matchId: string, teamAScore: number, tea
     });
 }
 
-export async function updateTeamStatus(teamId: string, status: 'verified' | 'warning' | 'banned' | 'pending'): Promise<void> {
-    const teamRef = doc(db, "teams", teamId);
-    await updateDoc(teamRef, { status: status });
-}
 
 // --- Announcements ---
-export async function createAnnouncement(title: string, content: string, user: User): Promise<void> {
-    const announcementRef = doc(collection(db, "announcements")); 
-    await setDoc(announcementRef, {
-        id: announcementRef.id,
-        title,
-        content,
-        authorId: user.uid,
-        authorName: user.displayName || "Admin",
-        createdAt: serverTimestamp(),
-    });
-}
-
 export async function getAnnouncements(): Promise<Announcement[]> {
     const announcementsCollection = collection(db, "announcements");
     const q = query(announcementsCollection, orderBy("createdAt", "desc"));
@@ -87,11 +71,6 @@ export async function getAnnouncements(): Promise<Announcement[]> {
             createdAt: firestoreTimestamp ? firestoreTimestamp.toDate() : new Date(0),
         } as Announcement;
     });
-}
-
-export async function deleteAnnouncement(announcementId: string): Promise<void> {
-    const announcementRef = doc(db, "announcements", announcementId);
-    await deleteDoc(announcementRef);
 }
 
 

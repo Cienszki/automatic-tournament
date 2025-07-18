@@ -1,12 +1,13 @@
 
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useTransition } from 'react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
 import { ShieldCheck, ShieldAlert, ShieldX, Loader2 } from 'lucide-react';
-import { getAllTeams, updateTeamStatus } from '@/lib/firestore'; // Assuming updateTeamStatus exists
+import { getAllTeams } from '@/lib/firestore';
+import { updateTeamStatus } from '@/lib/team-actions';
 import { Team } from '@/lib/definitions';
 import { useToast } from '@/hooks/use-toast';
 import Image from 'next/image';
@@ -16,6 +17,7 @@ import { cn } from '@/lib/utils';
 export function TeamVerificationTab() {
     const [teams, setTeams] = useState<Team[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [isUpdating, startTransition] = useTransition();
     const { toast } = useToast();
 
     useEffect(() => {
@@ -29,31 +31,33 @@ export function TeamVerificationTab() {
     }, []);
 
     const handleStatusUpdate = async (teamId: string, status: 'verified' | 'warning' | 'banned') => {
-        try {
-            await updateTeamStatus(teamId, status);
-            setTeams(prevTeams => 
-                prevTeams.map(t => t.id === teamId ? { ...t, status } : t)
-            );
-            toast({
-                title: 'Success!',
-                description: `Team status has been updated to ${status}.`,
-            });
-        } catch (error) {
-            console.error("Failed to update team status:", error);
-            toast({
-                title: 'Error',
-                description: 'Could not update the team status.',
-                variant: 'destructive',
-            });
-        }
+        startTransition(async () => {
+            const result = await updateTeamStatus(teamId, status);
+            if (result.success) {
+                setTeams(prevTeams => 
+                    prevTeams.map(t => t.id === teamId ? { ...t, status } : t)
+                );
+                toast({
+                    title: 'Success!',
+                    description: `Team status has been updated to ${status}.`,
+                });
+            } else {
+                console.error("Failed to update team status:", result.error);
+                toast({
+                    title: 'Error',
+                    description: 'Could not update the team status.',
+                    variant: 'destructive',
+                });
+            }
+        });
     };
 
     const getStatusBadgeVariant = (status?: 'verified' | 'warning' | 'banned' | 'pending') => {
         switch (status) {
-            case 'verified': return 'success';
-            case 'warning': return 'warning';
+            case 'verified': return 'secondary';
+            case 'warning': return 'default';
             case 'banned': return 'destructive';
-            default: return 'secondary';
+            default: return 'outline';
         }
     };
 
@@ -97,17 +101,17 @@ export function TeamVerificationTab() {
                                     <h4 className="font-semibold mb-2">Roster:</h4>
                                     <ul className="space-y-1 list-disc list-inside">
                                         {team.players?.map(p => (
-                                            <li key={p.id}>{p.name} - <span className="font-mono">{p.mmr} MMR</span></li>
+                                            <li key={p.id}>{p.nickname} - <span className="font-mono">{p.mmr} MMR</span></li>
                                         ))}
                                     </ul>
                                     <div className="flex justify-end space-x-2 mt-4">
-                                        <Button size="sm" variant="success" onClick={() => handleStatusUpdate(team.id, 'verified')}>
+                                        <Button size="sm" variant="secondary" onClick={() => handleStatusUpdate(team.id, 'verified')} disabled={isUpdating}>
                                             <ShieldCheck className="h-4 w-4 mr-2" /> Verify
                                         </Button>
-                                        <Button size="sm" variant="warning" onClick={() => handleStatusUpdate(team.id, 'warning')}>
+                                        <Button size="sm" variant="default" onClick={() => handleStatusUpdate(team.id, 'warning')} disabled={isUpdating}>
                                             <ShieldAlert className="h-4 w-4 mr-2" /> Issue Warning
                                         </Button>
-                                        <Button size="sm" variant="destructive" onClick={() => handleStatusUpdate(team.id, 'banned')}>
+                                        <Button size="sm" variant="destructive" onClick={() => handleStatusUpdate(team.id, 'banned')} disabled={isUpdating}>
                                             <ShieldX className="h-4 w-4 mr-2" /> Ban
                                         </Button>
                                     </div>

@@ -1,23 +1,70 @@
-// src/lib/admin-actions.ts
-"use server";
 
-import { adminDb } from './admin'; // Import the correctly initialized adminDb
+'use server';
+
+import { adminDb } from './admin';
+import type { TournamentStatus } from './definitions';
+import { getAuth } from 'firebase-admin/auth';
+import { headers } from 'next/headers';
+
+async function verifyAdmin() {
+    const authHeader = headers().get('Authorization');
+    if (!authHeader) {
+      throw new Error('Not authenticated');
+    }
+    const token = authHeader.split('Bearer ')[1];
+    const decodedToken = await getAuth(adminDb.app).verifyIdToken(token);
+    const adminDoc = await adminDb.collection('admins').doc(decodedToken.uid).get();
+    if (!adminDoc.exists) {
+      throw new Error('Not authorized');
+    }
+    return decodedToken;
+}
 
 /**
- * Updates the tournament status in a dedicated document.
- * @param {string} status - The new status to set.
+ * [SERVER ACTION] Fetches the current tournament status from Firestore.
  */
-export async function updateTournamentStatus(status: string) {
+export async function getTournamentStatus(): Promise<TournamentStatus | null> {
   try {
-    const settingsRef = adminDb.collection('settings').doc('tournament');
-    await settingsRef.set({
-      status: status,
-      updatedAt: new Date(),
-    }, { merge: true });
-    console.log(`Tournament status updated to: ${status}`);
-    return { success: true, message: `Status updated to ${status}` };
+    const statusDocRef = adminDb.collection('tournament').doc('status');
+    const statusDocSnap = await statusDocRef.get();
+
+    if (statusDocSnap.exists) {
+      return statusDocSnap.data() as TournamentStatus;
+    }
+    return null;
   } catch (error) {
-    console.error("Error updating tournament status:", error);
-    return { success: false, message: "Failed to update status." };
+    console.error("Error fetching tournament status:", error);
+    return null;
   }
+}
+
+/**
+ * [SERVER ACTION] Initializes the tournament status document.
+ */
+export async function initializeTournament() {
+    try {
+        await verifyAdmin();
+        const statusDocRef = adminDb.collection('tournament').doc('status');
+        await statusDocRef.set({ roundId: 'initial' });
+        return { success: true };
+    } catch(error) {
+        console.error("Error initializing tournament:", error);
+        return { success: false, error: (error as Error).message };
+    }
+}
+
+/**
+ * [SERVER ACTION] Updates the tournament status document.
+ * @param newStatus - The new status object to set.
+ */
+export async function updateTournamentStatus(newStatus: Partial<TournamentStatus>) {
+    try {
+        await verifyAdmin();
+        const statusDocRef = adminDb.collection('tournament').doc('status');
+        await statusDocRef.set(newStatus, { merge: true });
+        return { success: true };
+    } catch (error) {
+        console.error("Error updating tournament status:", error);
+        return { success: false, error: (error as Error).message };
+    }
 }

@@ -1,14 +1,15 @@
 
 "use client";
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useTransition } from 'react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Megaphone, Loader2, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { createAnnouncement, getAnnouncements, deleteAnnouncement } from '@/lib/firestore';
+import { createAnnouncement, deleteAnnouncement } from '@/lib/announcement-actions';
+import { getAnnouncements } from '@/lib/firestore';
 import { Announcement } from '@/lib/definitions';
 import { formatDistanceToNow } from 'date-fns';
 import { useAuth } from '@/context/AuthContext';
@@ -18,7 +19,7 @@ export function AnnouncementsTab() {
     const [title, setTitle] = useState('');
     const [announcement, setAnnouncement] = useState('');
     const [announcements, setAnnouncements] = useState<Announcement[]>([]);
-    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isSubmitting, startTransition] = useTransition();
     const [isLoading, setIsLoading] = useState(true);
     const { toast } = useToast();
 
@@ -26,13 +27,14 @@ export function AnnouncementsTab() {
         return [...announcements].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
     }, [announcements]);
 
+    const fetchAnnouncements = async () => {
+        setIsLoading(true);
+        const allAnnouncements = await getAnnouncements();
+        setAnnouncements(allAnnouncements);
+        setIsLoading(false);
+    };
+
     useEffect(() => {
-        async function fetchAnnouncements() {
-            setIsLoading(true);
-            const allAnnouncements = await getAnnouncements();
-            setAnnouncements(allAnnouncements);
-            setIsLoading(false);
-        }
         fetchAnnouncements();
     }, []);
 
@@ -55,27 +57,25 @@ export function AnnouncementsTab() {
             return;
         }
 
-        setIsSubmitting(true);
-        try {
-            await createAnnouncement(title, announcement, user);
-            setTitle('');
-            setAnnouncement('');
-            const allAnnouncements = await getAnnouncements();
-            setAnnouncements(allAnnouncements);
-            toast({
-                title: 'Success!',
-                description: 'Your announcement has been posted.',
-            });
-        } catch (error) {
-            console.error("Failed to create announcement:", error);
-            toast({
-                title: 'Error',
-                description: 'Could not post the announcement. Please try again.',
-                variant: 'destructive',
-            });
-        } finally {
-            setIsSubmitting(false);
-        }
+        startTransition(async () => {
+            const result = await createAnnouncement(title, announcement);
+            if (result.success) {
+                setTitle('');
+                setAnnouncement('');
+                await fetchAnnouncements(); // Re-fetch announcements
+                toast({
+                    title: 'Success!',
+                    description: 'Your announcement has been posted.',
+                });
+            } else {
+                console.error("Failed to create announcement:", result.error);
+                toast({
+                    title: 'Error',
+                    description: 'Could not post the announcement. Please try again.',
+                    variant: 'destructive',
+                });
+            }
+        });
     };
 
     const handleDelete = async (id: string) => {
@@ -88,21 +88,23 @@ export function AnnouncementsTab() {
             return;
         }
 
-        try {
-            await deleteAnnouncement(id);
-            setAnnouncements(prev => prev.filter(a => a.id !== id));
-            toast({
-                title: 'Deleted',
-                description: 'The announcement has been removed.',
-            });
-        } catch (error) {
-            console.error("Failed to delete announcement:", error);
-            toast({
-                title: 'Error',
-                description: 'Could not delete the announcement. Please try again.',
-                variant: 'destructive',
-            });
-        }
+        startTransition(async () => {
+            const result = await deleteAnnouncement(id);
+            if (result.success) {
+                await fetchAnnouncements(); // Re-fetch announcements
+                toast({
+                    title: 'Deleted',
+                    description: 'The announcement has been removed.',
+                });
+            } else {
+                console.error("Failed to delete announcement:", result.error);
+                toast({
+                    title: 'Error',
+                    description: 'Could not delete the announcement. Please try again.',
+                    variant: 'destructive',
+                });
+            }
+        });
     };
 
     return (
@@ -120,12 +122,14 @@ export function AnnouncementsTab() {
                         placeholder="Announcement Title"
                         value={title}
                         onChange={(e) => setTitle(e.target.value)}
+                        disabled={isSubmitting}
                     />
                     <Textarea
                         placeholder="Type your announcement here..."
                         value={announcement}
                         onChange={(e) => setAnnouncement(e.target.value)}
                         rows={4}
+                        disabled={isSubmitting}
                     />
                      <Button onClick={handleSubmit} disabled={isSubmitting || !user} className="mt-2">
                         {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Megaphone className="mr-2 h-4 w-4" />}
@@ -148,7 +152,7 @@ export function AnnouncementsTab() {
                                             Posted {formatDistanceToNow(new Date(item.createdAt), { addSuffix: true })} by {item.authorName}
                                         </p>
                                     </div>
-                                    <Button size="sm" variant="destructive" onClick={() => handleDelete(item.id)}>
+                                    <Button size="sm" variant="destructive" onClick={() => handleDelete(item.id)} disabled={isSubmitting}>
                                         <Trash2 className="h-4 w-4" />
                                     </Button>
                                 </li>

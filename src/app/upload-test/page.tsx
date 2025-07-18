@@ -4,8 +4,8 @@ import React, { useState, useTransition } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { uploadScreenshot } from '@/lib/firebase'; // db import removed
-import { createTestTeam } from '@/lib/actions'; // Import the new server action
+import { uploadScreenshot } from '@/lib/firebase';
+import { createTestTeam } from '@/lib/admin-actions';
 import { Loader2, LogIn, LogOut } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -22,7 +22,7 @@ export default function UploadTestPage() {
 
     const [teamName, setTeamName] = useState('');
     const [teamTag, setTeamTag] = useState('');
-    const [isDbSubmitting, startDbTransition] = useTransition(); // Using useTransition for server actions
+    const [isDbSubmitting, startDbTransition] = useTransition();
     const [dbResult, setDbResult] = useState<{ message?: string; type: 'success' | 'error' } | null>(null);
 
     const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -35,7 +35,7 @@ export default function UploadTestPage() {
         setIsFileUploading(true);
         setUploadResult(null);
         try {
-            const downloadURL = await uploadScreenshot(file, "upload-test-team", "test-player");
+            const downloadURL = await uploadScreenshot(file, "upload-test-team");
             setUploadResult({ url: downloadURL, message: "File uploaded successfully!", type: 'success' });
         } catch (error) {
             setUploadResult({ message: (error as Error).message, type: 'error' });
@@ -44,7 +44,6 @@ export default function UploadTestPage() {
         }
     };
     
-    // REFACTORED to use the server action
     const handleDbSubmit = async (event: React.FormEvent) => {
         event.preventDefault();
         if (!teamName || !teamTag) return;
@@ -67,7 +66,7 @@ export default function UploadTestPage() {
                 <CardHeader>
                     <CardTitle>System Test Page</CardTitle>
                     <CardDescription>
-                        Use this page to test individual pieces of functionality. Now with server-side DB writes.
+                        Use this page to test individual pieces of functionality.
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-8">

@@ -1,8 +1,9 @@
 
 "use client";
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { getTournamentStatus, updateTournamentStatus, TournamentStatus } from '@/lib/admin';
+import React, { useState, useEffect, useCallback, useTransition } from 'react';
+import { getTournamentStatus, updateTournamentStatus, initializeTournament } from '@/lib/admin-actions';
+import type { TournamentStatus } from '@/lib/definitions';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
 import { Loader2, ArrowRight, ShieldPlus } from 'lucide-react';
@@ -56,7 +57,7 @@ const stageConfig: Record<string, { title: string; description: string; nextStag
 export function StageManagementTab() {
     const [status, setStatus] = useState<TournamentStatus | null>(null);
     const [isLoading, setIsLoading] = useState(true);
-    const [isUpdating, setIsUpdating] = useState(false);
+    const [isUpdating, startTransition] = useTransition();
     const [error, setError] = useState<string | null>(null);
     const { toast } = useToast();
 
@@ -79,57 +80,47 @@ export function StageManagementTab() {
     }, [fetchStatus]);
 
     const handleInitialize = async () => {
-        setIsUpdating(true);
-        try {
-            const success = await updateTournamentStatus({ roundId: 'initial' });
-            if (success) {
-                await fetchStatus(); // Re-fetch the status after creating it
+        startTransition(async () => {
+            const result = await initializeTournament();
+            if (result.success) {
+                await fetchStatus();
                 toast({
                     title: 'Success!',
                     description: 'Tournament has been initialized.',
                 });
             } else {
-                throw new Error("Initialization failed.");
+                console.error("Failed to initialize tournament:", result.error);
+                toast({
+                    title: 'Error',
+                    description: result.error || 'Could not initialize the tournament.',
+                    variant: 'destructive',
+                });
             }
-        } catch (error) {
-            console.error("Failed to initialize tournament:", error);
-            toast({
-                title: 'Error',
-                description: 'Could not initialize the tournament.',
-                variant: 'destructive',
-            });
-        } finally {
-            setIsUpdating(false);
-        }
+        });
     };
 
     const handleAdvanceStage = async () => {
         if (!status || !stageConfig[status.roundId]?.nextStage) return;
 
-        setIsUpdating(true);
         const nextStageId = stageConfig[status.roundId].nextStage;
 
-        try {
-            const success = await updateTournamentStatus({ roundId: nextStageId });
-            if (success) {
+        startTransition(async () => {
+            const result = await updateTournamentStatus({ roundId: nextStageId });
+            if (result.success) {
                 setStatus({ roundId: nextStageId });
                 toast({
                     title: 'Success!',
                     description: `Tournament has been advanced to: ${stageConfig[nextStageId].title}`,
                 });
             } else {
-                throw new Error("Update operation returned false.");
+                console.error("Failed to update tournament status:", result.error);
+                toast({
+                    title: 'Error',
+                    description: result.error || 'Could not update the tournament status. Please try again.',
+                    variant: 'destructive',
+                });
             }
-        } catch (error) {
-            console.error("Failed to update tournament status:", error);
-            toast({
-                title: 'Error',
-                description: 'Could not update the tournament status. Please try again.',
-                variant: 'destructive',
-            });
-        } finally {
-            setIsUpdating(false);
-        }
+        });
     };
 
     if (isLoading) {

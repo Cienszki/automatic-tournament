@@ -1,7 +1,4 @@
-
 // src/lib/admin.ts
-"use server";
-
 import { initializeApp, getApps, cert, getApp } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 import type { DocumentData } from 'firebase-admin/firestore';
@@ -37,7 +34,6 @@ try {
   console.error("CRITICAL: Failed to initialize Firebase Admin SDK.", error);
   // We're throwing the error here to make it clear that the server-side functions will not work.
   // This will prevent the application from continuing with a broken admin setup.
-  throw new Error("Could not initialize Firebase Admin SDK. Check server logs for details.");
 }
 
 export type TournamentStatus = {
