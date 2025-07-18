@@ -9,9 +9,24 @@ import {
   GoogleAuthProvider,
   type User,
 } from "firebase/auth";
-import { auth } from "@/lib/firebase"; // Import the auth service directly
+import { auth, functions } from "@/lib/firebase"; // Import the auth service directly
 import { Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { httpsCallable } from "firebase/functions";
+
+// This is a global fetch wrapper that will be used for all server actions.
+// It intercepts fetch requests and adds the Firebase auth token to the headers.
+const originalFetch = global.fetch;
+global.fetch = async (input, init) => {
+  const user = auth.currentUser;
+  if (user && typeof input === 'string' && (input.startsWith('/api') || init?.body)) {
+      const token = await user.getIdToken();
+      const headers = new Headers(init?.headers);
+      headers.set('Authorization', `Bearer ${token}`);
+      init = { ...init, headers };
+  }
+  return originalFetch(input, init);
+};
 
 interface AuthContextType {
   user: User | null;
