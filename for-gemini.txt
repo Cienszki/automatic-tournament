@@ -1,0 +1,852 @@
+firestore: PERMISSION_DENIED: Missing or insufficient permissions
+Asked 7 years, 9 months ago
+Modified 5 months ago
+Viewed 605k times
+ Part of Mobile Development and Google Cloud Collectives
+386
+
+I am getting the Error
+
+gettingdocuments.com.google.firebase.firestore.FirebaseFirestoreException: PERMISSION_DENIED: Missing or insufficient permissions.
+
+for the below code on else statement
+
+db.collection("users")
+    .get()
+    .addOnCompleteListener(new OnCompleteListener<QuerySnapshot>() {
+        @Override
+        public void onComplete(@NonNull Task<QuerySnapshot> task) {
+             if (task.isSuccessful()) {
+                 for (DocumentSnapshot document : task.getResult()) {
+                     s(document.getId() + " => " + document.getData());
+                 }
+             } else {
+                 s("Error getting documents."+ task.getException());
+             }
+         }
+     });
+androidfirebasegoogle-cloud-firestore
+Share
+Improve this question
+Follow
+edited Dec 14, 2019 at 19:04
+Banana's user avatar
+Banana
+2,44388 gold badges3737 silver badges6262 bronze badges
+asked Oct 5, 2017 at 16:03
+SUHAS REKHU's user avatar
+SUHAS REKHU
+3,93322 gold badges1313 silver badges1313 bronze badges
+Is the user logged in? – 
+Suhayl SH
+ CommentedOct 5, 2017 at 16:10
+11
+Have you set the rules under Security Tab in Firebase Console? – 
+Suhayl SH
+ CommentedOct 5, 2017 at 16:11
+1
+My mistake, I didn't see the drop box for the cloud firestore. I was checking in realtime database only. – 
+SUHAS REKHU
+ CommentedOct 5, 2017 at 16:31
+check stackoverflow.com/a/46636036/1028256 – 
+Mixaz
+ CommentedOct 23, 2017 at 21:06
+stackoverflow.com/a/47270946/3166417 – 
+itzhar
+ CommentedNov 13, 2017 at 18:17
+Show 3 more comments
+33 Answers
+Sorted by:
+
+Highest score (default)
+1
+2
+Next
+531
+
+ Answer recommended by Google Cloud Collective
+Go in Database -> Rules ->
+
+For development:
+
+Change allow read, write: if false; to true;
+
+Note: It's quick solution for development purpose only because it will turns off all the security. So, it's not recommended for production.
+
+For production:
+
+If authenticated from firebase: Change allow read, write: if false; to request.auth != null;
+
+Share
+Improve this answer
+Follow
+edited Oct 27, 2021 at 9:18
+answered Oct 25, 2017 at 6:44
+Luvnish Monga's user avatar
+Luvnish Monga
+7,84044 gold badges2828 silver badges3333 bronze badges
+84
+note it allows everybody to read,write your database without any authorization. – 
+saigopi.me
+ CommentedSep 12, 2018 at 11:26
+250
+This is a horrible solution, this literally just disables security. Go read this instead: firebase.google.com/docs/firestore/security/get-started – 
+Duncan Lukkenaer
+ CommentedOct 30, 2018 at 15:21
+2
+@ojonugwaochalifu because this is working for everyone – 
+Luvnish Monga
+ CommentedJan 2, 2019 at 10:22
+28
+Like @DuncanLuk said, it's a terrible solution. I wouldn't even call it a solution – 
+Ojonugwa Jude Ochalifu
+ CommentedJan 3, 2019 at 6:51
+21
+Best solution to get started really fast. Security concerns could be fixed later actually. – 
+Slava Dobromyslov
+ CommentedAug 25, 2019 at 0:51
+Show 5 more comments
+152
+
+Go to Database -> Rules :
+
+Then changed below rules
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+to below
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}
+Share
+Improve this answer
+Follow
+answered Jan 30, 2019 at 16:17
+Md Nakibul Hassan's user avatar
+Md Nakibul Hassan
+2,88811 gold badge1717 silver badges1919 bronze badges
+50
+This is a bad idea, this makes ALL documents writable by ANY authenticated user, even stuff that belongs to other users, stuff that should only be writable by admin or never been writable at all. Please keep the first piece of code as it's a guard against unimplemented security rules. – 
+Noxxys
+ CommentedJun 11, 2019 at 12:56
+2
+Note that if you let people sign up (with Google SSO for example) they will automatically have access to all of your data. – 
+ForrestLyman
+ CommentedAug 14, 2019 at 7:29
+3
+I want to allow my authenticated users (a small number) to access all the documents, so this recipe is perfect for my case. – 
+Andrei Drynov
+ CommentedNov 19, 2019 at 13:08
+Add a comment
+78
+
+So in my case I had the following DB rules:
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /stories/{story} {
+      function isSignedIn() {
+        return request.auth.uid != null;
+      }
+    
+      allow read, write: if isSignedIn() && request.auth.uid == resource.data.uid
+    }
+  }
+}
+As you can see there is a uid field on the story document to mark the owner.
+
+Then in my code I was querying all the stories (Flutter):
+
+Firestore.instance
+          .collection('stories')
+          .snapshots()
+And it failed because I have already added some stories via different users. To fix it you need to add condition to the query:
+
+Firestore.instance
+          .collection('stories')
+          .where('uid', isEqualTo: user.uid)
+          .snapshots()
+More details here: https://firebase.google.com/docs/firestore/security/rules-query
+
+EDIT: from the link
+
+Rules are not filters When writing queries to retrieve documents, keep in mind that security rules are not filters—queries are all or nothing. To save you time and resources, Cloud Firestore evaluates a query against its potential result set instead of the actual field values for all of your documents. If a query could potentially return documents that the client does not have permission to read, the entire request fails.
+
+Share
+Improve this answer
+Follow
+edited Jul 9, 2020 at 11:16
+Elia Weiss's user avatar
+Elia Weiss
+10.3k1313 gold badges8080 silver badges121121 bronze badges
+answered Mar 12, 2019 at 7:13
+rwozniak's user avatar
+rwozniak
+1,3861515 silver badges1717 bronze badges
+what is the user object? – 
+Phani Rithvij
+ CommentedMay 1, 2020 at 18:00
+2
+I get Invalid variable name: request. Should request be an argument param somewhere? – 
+Ian Davis
+ CommentedAug 29, 2021 at 13:27
+1
+hours were just solved with your .where('uid', isEqualTo: user.uid) point. Rules are not filters indeed! – 
+Brad P.
+ CommentedMay 11, 2022 at 22:00
+Add a comment
+42
+
+I also had the "Missing or insufficient permissions" error after specifying security rules. Turns out that the the rules are not recursive by default! i.e. if you wrote a rule like
+
+match /users/{userId} {
+  allow read, write: if request.auth != null && request.auth.uid == userId;
+}
+The rule will not apply to any subcollections under /users/{userId}. This was the reason for my error.
+
+I fixed it by specifying the rule as:
+
+match /users/{userId}/{document=**} {
+  allow read, write: if request.auth != null && request.auth.uid == userId;
+}
+Read more at the relevant section of the documentation.
+
+Share
+Improve this answer
+Follow
+answered Sep 16, 2020 at 23:21
+xji's user avatar
+xji
+8,34555 gold badges4747 silver badges6464 bronze badges
+I have learnt some creativity here; thank you – 
+Samuel Wakoli
+ CommentedMar 3, 2024 at 14:54
+Add a comment
+23
+
+The above voted answers are dangerous for the health of your database. You can still make your database available just for reading and not for writing:
+
+  service cloud.firestore {
+    match /databases/{database}/documents {
+     match /{document=**} {
+       allow read: if true;
+       allow write: if false;
+      }
+   }
+}
+Share
+Improve this answer
+Follow
+answered Aug 27, 2019 at 9:15
+Ssubrat Rrudra's user avatar
+Ssubrat Rrudra
+9601010 silver badges2020 bronze badges
+3
+what's the correct way of enabling the permissions, but not for everyone? – 
+nyxee
+ CommentedMay 21, 2020 at 20:04
+Add a comment
+22
+
+If you try in Java Swing Application.
+
+Go To Firebase Console > Project Overview > Project Settings
+
+Then Go to Service Accounts Tab and Then Click on Generate New Private Key.
+
+You will get a .json file, place it in a known path
+
+Then Go to My Computer Properties, Advanced System Settings, Environment Variables.
+
+Create New Path Variable GOOGLE_APPLICATION_CREDENTIALS Value with your path to json file.
+
+Share
+Improve this answer
+Follow
+edited Jul 12, 2020 at 4:37
+TuGordoBello's user avatar
+TuGordoBello
+4,5191010 gold badges5858 silver badges8888 bronze badges
+answered Sep 24, 2019 at 8:53
+Nadun Liyanage's user avatar
+Nadun Liyanage
+46444 silver badges55 bronze badges
+3
+This was my issue too, there's information for this on the docs. – 
+tris timb
+ CommentedJan 23, 2020 at 2:28
+Add a comment
+16
+
+Change here
+set false to true
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if true;
+    }
+  }
+}
+And publish new rules
+
+enter image description here
+
+Share
+Improve this answer
+Follow
+answered Mar 7, 2022 at 9:34
+Rasel Khan's user avatar
+Rasel Khan
+4,3452727 silver badges2929 bronze badges
+7
+Do not use this solution. It allows any user to read and write from your bucket. – 
+Joe Moore
+ CommentedAug 17, 2022 at 11:26
+brother isn't it on develop & testing purpose? and if you don't have any read or write permission then how could you use?? – 
+Rasel Khan
+ CommentedOct 29, 2022 at 0:31
+1
+allow read, write if true allows anyone, authenticated or unauthenticated to read and write from the bucket – 
+Joe Moore
+ CommentedDec 15, 2022 at 13:23
+4
+@JoeMoore tell us a proper solution for this instead of pointing out errors. – 
+Arijeet
+ CommentedMar 13, 2023 at 9:05
+@actually I also want this too. – 
+Rasel Khan
+ CommentedMar 14, 2023 at 8:25
+Show 1 more comment
+16
+
+Approved answer is very dangerous as anyone can read or write to your database without any permission. I suggest using this.
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow write: if request.auth != null;
+      allow read: if true;
+    }
+  }
+}
+This will allow authorized personnel to write the database while anyone can read the database which in case visitors to the website.
+
+Share
+Improve this answer
+Follow
+answered Dec 22, 2022 at 8:42
+Pasindu Ranasinghe's user avatar
+Pasindu Ranasinghe
+24333 silver badges1212 bronze badges
+Add a comment
+15
+
+If someone lands here trying to access Firestore with a service-account:
+
+I solved this issue by granting the service-account the Service Account User role in addition to the Cloud Datastore User role in the IAM settings of GCP.
+
+Share
+Improve this answer
+Follow
+answered May 14, 2020 at 12:49
+maxarndt's user avatar
+maxarndt
+61088 silver badges1616 bronze badges
+No need for Service Account User if your user is a service account. – 
+Christian Vielma
+ CommentedNov 19, 2020 at 11:24
+This didn't work for me. How long does it take to update? – 
+Miguel Coder
+ CommentedJun 14, 2023 at 2:01
+Add a comment
+14
+
+For development and Test
+
+From: enter image description here
+
+To: enter image description here
+
+Share
+Improve this answer
+Follow
+answered Feb 22, 2023 at 9:54
+Mohammed Gamal's user avatar
+Mohammed Gamal
+43955 silver badges55 bronze badges
+Add a comment
+8
+
+Additionally, you may get this error if the collection reference from your code does not match the collection name on firebase.
+
+For example the collection name on firebase is users, but your referencing it with db.collection("Users") or db.collection("user")
+
+It is case sensitive as well.
+
+Hope this helps someone
+
+Share
+Improve this answer
+Follow
+edited Aug 28, 2018 at 13:11
+answered Aug 28, 2018 at 8:17
+Anga's user avatar
+Anga
+2,77022 gold badges2727 silver badges3333 bronze badges
+Isn't the collection created implicitly? In your example "Users" and "user" collection would get created as and when it is referenced. – 
+BalaTJ
+ CommentedJul 18, 2019 at 10:23
+Information can be found here. codelabs.developers.google.com/codelabs/firestore-android/#3 – 
+BalaTJ
+ CommentedJul 18, 2019 at 10:24
+1
+@DevTJ you're correct when it's an add or set request, but from the question it's a get request. I have experienced this before – 
+Anga
+ CommentedJul 18, 2019 at 20:28
+Add a comment
+8
+
+There are lots of good answers, but as this is the top Google response for Firestore permission denied errors, I thought I would add an answer for beginners and rookies.
+
+Why Security Rules?
+If you wrote your own backend, you would have users ask your server for something, and the server would decide what they are allowed to do. For example your server wouldn't allow user1 to delete all of user2's data.
+
+But since your users are interacting with Firebase directly, you can't really trust anything your users are sending you. User1 could just change the user id on his delete request to 'user2' for example.
+
+Firestore Security Rules are where you tell Firestore aka your backend server, who is allowed to read and write what data.
+
+This video from the Firestore team is extremely helpful.
+
+enter image description here https://www.youtube.com/watch?v=eW5MdE3ZcAw
+
+If you are hitting 'missing or insufficient permissions' errors I would strongly suggest you watch the full 22 minutes of this video, before you try anything else.
+
+I went from 1/10 to 7/10 understand of how the security rules work, and why I was getting the error from this video alone.
+
+The getting started guide is also useful and can help answer questions the video doesn't cover. https://firebase.google.com/docs/firestore/security/get-started
+
+Share
+Improve this answer
+Follow
+answered Oct 4, 2022 at 20:50
+Joshua Dance's user avatar
+Joshua Dance
+10.6k44 gold badges8080 silver badges8484 bronze badges
+This video is fantastic. Anyone who needs to present information quickly and efficiently should use this as a benchmark. – 
+David
+ CommentedSep 30, 2024 at 17:54
+Add a comment
+6
+
+npm i --save firebase @angular/fire
+
+in app.module make sure you imported
+
+import { AngularFireModule } from '@angular/fire';
+import { AngularFirestoreModule } from '@angular/fire/firestore';
+in imports
+
+AngularFireModule.initializeApp(environment.firebase),
+    AngularFirestoreModule,
+    AngularFireAuthModule,
+in realtime database rules make sure you have
+
+{
+  /* Visit  rules. */
+  "rules": {
+    ".read": true,
+    ".write": true
+  }
+}
+in cloud firestore rules make sure you have
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if true;
+    }
+  }
+}
+Share
+Improve this answer
+Follow
+answered Nov 10, 2019 at 16:24
+M.Mar's user avatar
+M.Mar
+9111 silver badge33 bronze badges
+Add a comment
+3
+
+make sure your DB is not empty nor your query is for collection whom not exist
+
+Share
+Improve this answer
+Follow
+answered Nov 13, 2017 at 18:17
+itzhar's user avatar
+itzhar
+13.1k66 gold badges6161 silver badges6565 bronze badges
+13
+This exception has nothing to do with empty collection or db, it's a permission issue – 
+Ojonugwa Jude Ochalifu
+ CommentedDec 31, 2018 at 10:08
+This exception has nothing to do with empty Db etc. Problem with security rules and Auth. – 
+Rehan Ali
+ CommentedMay 8, 2019 at 15:59
+2
+Me & at least 3 others have this exception on this scenario. If it's not help you, move on to the next solution – 
+itzhar
+ CommentedMar 9, 2020 at 1:01
+Add a comment
+2
+
+Check if the service account is added in IAM & Admin https://console.cloud.google.com/iam-admin/iam with an appropriate role such as Editor
+
+Share
+Improve this answer
+Follow
+answered Feb 25, 2020 at 23:33
+Pramendra Gupta's user avatar
+Pramendra Gupta
+14.9k44 gold badges3535 silver badges3535 bronze badges
+Add a comment
+2
+
+the problem is that you tried to read or write data to realtime database or firestore before the user has be authenticated. please try to check the scope of your code. hope it helped!
+
+Share
+Improve this answer
+Follow
+answered Mar 28, 2020 at 8:47
+dova dominique kabengela's user avatar
+dova dominique kabengela
+1922 bronze badges
+Add a comment
+2
+
+time limit may be over
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // This rule allows anyone on the internet to view, edit, and delete
+    // all data in your Firestore database. It is useful for getting
+    // started, but it is configured to expire after 30 days because it
+    // leaves your app open to attackers. At that time, all client
+    // requests to your Firestore database will be denied.
+    //
+    // Make sure to write security rules for your app before that time, or else
+    // your app will lose access to your Firestore database
+    match /{document=**} {
+      allow read, write: if request.time < timestamp.date(2020,7, 1);
+    }
+  }
+}
+there change date for nowadays in this line:
+
+ allow read, write: if request.time < timestamp.date(2020,7, 1);
+Share
+Improve this answer
+Follow
+answered Jul 11, 2020 at 20:05
+sohrabonline's user avatar
+sohrabonline
+66499 silver badges1313 bronze badges
+Add a comment
+2
+
+Go in Firestore's Database > Rules:
+
+rules_version = '2';
+    service cloud.firestore {
+      match /databases/{database}/documents {
+        match /{document=**} {
+          allow read, get: if true;
+          allow write: if false;
+      }
+    }
+}
+for more informatin: https://firebase.google.com/docs/rules/rules-language?authuser=0
+
+100% working as of now!😬
+
+Share
+Improve this answer
+Follow
+answered Jun 3, 2021 at 19:35
+Bilal Ahmad's user avatar
+Bilal Ahmad
+8591010 silver badges1010 bronze badges
+firebase.google.com/docs/rules/get-started?authuser=0 for even more information! – 
+Bilal Ahmad
+ CommentedJun 3, 2021 at 19:38
+Add a comment
+2
+
+original code:
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if request.auth != null;
+          
+    }
+  }
+}
+change code:
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+       allow read: if true;
+       allow write: if request.auth != null;
+    }
+  }
+}
+Share
+Improve this answer
+Follow
+answered Oct 23, 2022 at 3:24
+DozeStrawberry's user avatar
+DozeStrawberry
+2922 bronze badges
+Add a comment
+2
+
+To me the problem was that AppCheck was also activated in my Firestore console. So I had to so what the guide stated in the app check Flutter guide
+
+https://firebase.google.com/docs/app-check/flutter/debug-provider?hl=it&authuser=0
+
+Turned on the androidDebugProvider: true, copied the debug token from the console and pasted it in the Firestore section (AppCheck --> app --> add debug token) and it worked immediately.
+
+Share
+Improve this answer
+Follow
+answered Nov 27, 2022 at 10:28
+Elzazo Zazzaz's user avatar
+Elzazo Zazzaz
+2111 bronze badge
+Add a comment
+2
+
+After a few days of research, I figured out that Firestore security rule for request.auth is only going to be valid if the request is made client side, after the auth state of the user has been initialized and is set to != null. If your request is (by any chance) requesting for data server side while using request.auth != null as a rule, it will be rejected. Not sure if there is any solution to this yet, but I'll try to find one or come up with one. Do leave a comment if you guys have any ideas.
+
+Share
+Improve this answer
+Follow
+answered Jan 21, 2023 at 15:53
+raven2218's user avatar
+raven2218
+7111 silver badge33 bronze badges
+Add a comment
+1
+
+At this time, June 2020, by default the firebase is defined by time. Define the time to meet your needs.
+
+allow read, write: if request.time < timestamp.date(2020, 7, 10);
+Please note: your DB still open to anyone. I suggest, please read the documentation and configure the DB the way that is useful for you.
+
+Share
+Improve this answer
+Follow
+edited Aug 15, 2020 at 21:05
+answered Jun 11, 2020 at 13:00
+Richardd's user avatar
+Richardd
+1,0121616 silver badges2929 bronze badges
+This is not even a solution, this is kinda a joke. Who wants to use their database only to a certain time while everyone can access it? – 
+GLHF
+ CommentedFeb 11, 2023 at 14:38
+Add a comment
+1
+
+Go to firebase console => cloud firestore database and add rule allowing users to read and write.
+
+=> allow read, write
+
+Share
+Improve this answer
+Follow
+answered Sep 25, 2020 at 7:46
+IBoteju's user avatar
+IBoteju
+1111 bronze badge
+Add a comment
+1
+
+maybe you need to remove the date
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if
+          request.time < timestamp.date(2021, 12, 12);
+    }
+  }
+}
+Share
+Improve this answer
+Follow
+answered Dec 13, 2021 at 15:20
+rnewd_user's user avatar
+rnewd_user
+1,7121414 silver badges1717 bronze badges
+Add a comment
+1
+
+Adding another reason for this - AppCheck. I had it enabled on a new project (created ~ May 2022) but hadn't completed the integration steps which caused the "Missing or insufficient permissions" error.
+
+To resolve, first complete the AppCheck setup steps listed under the AppCheck section in Firebase. I used the ReCAPTCHA provider for my web application, you'll need to copy the ReCAPTCHA public key to use in your codebase.
+
+Next add the AppCheck initialisaiton code to wherever you initialise the firebase app. Mine looks like this in React:
+
+  import { initializeAppCheck, ReCaptchaV3Provider } from 'firebase/app-check';
+
+  // ......
+
+  // Initialize Firebase
+  const app = initializeApp(firebaseConfig);
+  const analytics = getAnalytics(app);
+
+  self['FIREBASE_APPCHECK_DEBUG_TOKEN'] = true;
+  // Pass your reCAPTCHA v3 site key (public key) to activate(). Make sure this
+  // key is the counterpart to the secret key you set in the Firebase console.
+  initializeAppCheck(app, {
+    provider: new ReCaptchaV3Provider('PASTE KEY HERE'),
+
+    // Optional argument. If true, the SDK automatically refreshes App Check
+    // tokens as needed.
+    isTokenAutoRefreshEnabled: true,
+  });
+Note the FIREBASE_APPCHECK_DEBUG_TOKEN line prints a debug token in your browser console, you'll need to copy this back into the Firebase console under AppCheck to complete the setup, afterwhich you can comment/delete that line.
+
+This fixed my issue.
+
+Further info:
+
+https://firebase.google.com/docs/app-check/web/recaptcha-provider
+https://firebase.google.com/docs/app-check/web/debug-provider?authuser=0&hl=en
+Share
+Improve this answer
+Follow
+answered Jun 30, 2022 at 10:39
+Chris Webb's user avatar
+Chris Webb
+79677 silver badges2323 bronze badges
+Add a comment
+1
+
+If you are working on React Native and you're anything like me, you might be using the wrong library:
+
+// Working
+import firestore from '@react-native-firebase/firestore'
+
+firestore().collection('customers').doc(uid).get().then(response => {
+    console.log(response.data())
+  }).catch((error) => {
+    console.error(error)
+  })
+// Not working
+import { getFirestore, getDoc, doc, getDocFromCache } from 'firebase/firestore'
+
+getDoc(doc(firestore, 'users', uid)).then(response => {
+    console.log(response.data())
+  }).catch((error) => {
+    console.error(error)
+  })
+Share
+Improve this answer
+Follow
+edited Mar 1, 2024 at 11:44
+answered Mar 1, 2024 at 11:35
+Timothée Billiet's user avatar
+Timothée Billiet
+34822 silver badges1111 bronze badges
+Add a comment
+0
+
+For me it was the issue with the date. Updated it and the issue was resolved.
+
+Allow read/write:
+
+ if request.time < timestamp.date(2020, 5, 21);
+Edit: If you are still confused and unable to figure out what's the issue just have a look at the rules section in your firebase console.
+
+Share
+Improve this answer
+Follow
+edited Jun 10, 2020 at 11:11
+answered May 20, 2020 at 10:03
+Wakas Abbasid's user avatar
+Wakas Abbasid
+44655 silver badges1111 bronze badges
+Add a comment
+0
+
+Edit:
+
+The issue is resolved now.
+
+After hours of debugging, I found the Google auth service is down.
+
+Progress can be tracked here: https://status.cloud.google.com/incidents/iRvJVnsbz8T47ySiy5Hg
+
+enter image description here enter image description here
+
+Share
+Improve this answer
+Follow
+answered Nov 16, 2023 at 11:14
+M.AQIB's user avatar
+M.AQIB
+38355 silver badges1414 bronze badges
+Add a comment
+0
+
+this rule worked for me!
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if request.auth != null ;
+    }
+  }
+}
+Share
+Improve this answer
+Follow
+answered Jan 28 at 14:45
+Yakup Ad's user avatar
+Yakup Ad
+1,6511818 silver badges1313 bronze badges
+Add a comment
+-1
+
+GO to rules in firebase and edit rules ..... (provide a timestamp or set to false) My solution.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if request.time < timestamp.date(2021, 8, 18);
+    }
+  }
+}

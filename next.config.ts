@@ -8,6 +8,9 @@ const nextConfig: NextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
+  env: {
+    STEAM_WEB_API_KEY: process.env.STEAM_WEB_API_KEY,
+  },
   images: {
     remotePatterns: [
       {

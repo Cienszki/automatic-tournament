@@ -60,6 +60,7 @@ export type Team = {
   standIns?: StandIn[];
   wins: number;
   losses: number;
+
   averageKillsPerGame?: number;
   averageDeathsPerGame?: number;
   averageAssistsPerGame?: number;
@@ -132,7 +133,10 @@ export type PickemPrediction = {
 };
 
 export type Announcement = {
-    id: string;
+    id: string; // This will be the title
+    title: string;
     content: string;
+    authorId: string;
+    authorName: string;
     createdAt: Date;
 };

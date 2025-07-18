@@ -5,16 +5,16 @@ import React from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { checkIfAdmin } from '@/lib/admin';
 import { useEffect, useState } from 'react';
-import { Loader2, Shield } from 'lucide-react';
-import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Button } from '@/components/ui/button';
+import { Loader2, Shield, LogIn } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { StageManagementTab } from './StageManagementTab';
 import { StandingsTab } from './StandingsTab';
 import { TeamVerificationTab } from './TeamVerificationTab';
 import { AnnouncementsTab } from './AnnouncementsTab';
 
-
 export default function AdminPage() {
-    const { user } = useAuth();
+    const { user, signInWithGoogle } = useAuth();
     const [isAdmin, setIsAdmin] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
 
@@ -33,6 +33,23 @@ export default function AdminPage() {
         return <div className="flex justify-center items-center h-screen"><Loader2 className="h-16 w-16 animate-spin" /></div>;
     }
 
+    if (!user) {
+        return (
+            <Card className="text-center max-w-md mx-auto mt-20">
+                <CardHeader>
+                    <CardTitle>Admin Access Required</CardTitle>
+                    <CardDescription>Please log in to access the admin panel.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Button onClick={signInWithGoogle}>
+                        <LogIn className="mr-2 h-4 w-4" />
+                        Sign in with Google
+                    </Button>
+                </CardContent>
+            </Card>
+        );
+    }
+    
     if (!isAdmin) {
         return (
             <div className="text-center py-20">

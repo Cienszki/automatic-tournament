@@ -1,12 +1,46 @@
+
 // src/lib/firestore.ts
 import { collection, getDocs, doc, getDoc, setDoc, query, orderBy, addDoc, writeBatch, updateDoc, serverTimestamp, deleteDoc, Timestamp } from "firebase/firestore";
 import { db } from "./firebase";
+import type { User } from "firebase/auth";
 import type { Team, Match, PlayoffData, FantasyLineup, FantasyData, TournamentPlayer, PickemPrediction, Player, CategoryDisplayStats, TournamentHighlightRecord, CategoryRankingDetail, PlayerPerformanceInMatch, Announcement } from "./definitions";
 import { getTournamentStatus } from "./admin";
 import {
   Trophy, Zap, Swords, Coins, Eye, Bomb, ShieldAlert, Award,
   Puzzle, Flame, Skull, Handshake as HandshakeIcon, Star, Shield, Activity, Timer, ChevronsUp, Ban, Clock
 } from "lucide-react";
+
+/**
+ * Saves a new team and its players to Firestore using a batch write.
+ * @param teamData An object containing the team details and an array of players.
+ */
+export async function saveTeam(teamData: Omit<Team, 'id'>): Promise<void> {
+    const batch = writeBatch(db);
+
+    // Create a new document reference for the team in the 'teams' collection
+    const teamRef = doc(collection(db, "teams"));
+    
+    // Separate players from the main team data
+    const { players, ...mainTeamData } = teamData;
+
+    // Set the main team data
+    batch.set(teamRef, { 
+        ...mainTeamData, 
+        id: teamRef.id,
+        status: 'pending', // Default status for new teams
+        createdAt: serverTimestamp() 
+    });
+
+    // Add each player to the 'players' subcollection of the new team
+    const playersCollectionRef = collection(teamRef, 'players');
+    players.forEach(player => {
+        const playerRef = doc(playersCollectionRef);
+        batch.set(playerRef, { ...player, id: playerRef.id });
+    });
+
+    await batch.commit();
+}
+
 
 // --- Team and Match Data ---
 // ... (omitting already defined functions for brevity)
@@ -25,25 +59,33 @@ export async function updateTeamStatus(teamId: string, status: 'verified' | 'war
 }
 
 // --- Announcements ---
-export async function createAnnouncement(content: string): Promise<void> {
-    const announcementsCollection = collection(db, "announcements");
-    await addDoc(announcementsCollection, {
+export async function createAnnouncement(title: string, content: string, user: User): Promise<void> {
+    // Use the title as the document ID
+    const announcementRef = doc(db, "announcements", title); 
+    await setDoc(announcementRef, {
         content,
+        authorId: user.uid,
+        authorName: user.displayName || "Admin",
         createdAt: serverTimestamp(),
     });
 }
 
 export async function getAnnouncements(): Promise<Announcement[]> {
     const announcementsCollection = collection(db, "announcements");
-    const q = query(announcementsCollection, orderBy("createdAt", "desc"));
-    const snapshot = await getDocs(q);
+    // Remove server-side ordering to include documents without a createdAt field
+    const snapshot = await getDocs(announcementsCollection);
     return snapshot.docs.map(doc => {
         const data = doc.data();
-        const firestoreTimestamp = data.createdAt as Timestamp;
+        const firestoreTimestamp = data.createdAt as Timestamp | undefined;
+        // Use the document ID for both id and title fields
         return {
             id: doc.id,
+            title: doc.id, 
             content: data.content,
-            createdAt: firestoreTimestamp.toDate(),
+            authorId: data.authorId || '',
+            authorName: data.authorName || 'N/A',
+            // Use a default old date for sorting if createdAt is missing
+            createdAt: firestoreTimestamp ? firestoreTimestamp.toDate() : new Date(0),
         } as Announcement;
     });
 }

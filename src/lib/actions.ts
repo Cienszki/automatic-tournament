@@ -2,14 +2,15 @@
 'use server';
 
 import { getMatchDetails, getHeroes, transformMatchData, getLeagueMatches } from './opendota';
-import { saveMatchResults, getAllTeams, getAllTournamentPlayers, getAllMatches } from './firestore';
+import { saveMatchResults, getAllTeams, getAllTournamentPlayers, getAllMatches, saveTeam } from './firestore';
+import { db } from './firebase'; 
 import { Team, Player, LEAGUE_ID } from './definitions';
 import { getOpenDotaAccountIdFromUrl } from './utils';
 import { z } from 'zod';
+import { doc, collection, writeBatch } from 'firebase/firestore';
 
 // A simple in-memory cache for hero data to avoid repeated API calls.
 let heroCache: any[] | null = null;
-
 
 const formSchema = z.object({
   name: z.string().min(3, "Team name must be at least 3 characters."),
@@ -29,7 +30,6 @@ export async function registerTeam(captainId: string, prevState: { message: stri
     try {
         const rawFormData = Object.fromEntries(formData.entries());
         
-        // Reconstruct the players array from the flat form data
         const playersData = Array.from({ length: 5 }).map((_, i) => ({
             nickname: rawFormData[`players[${i}].nickname`],
             mmr: rawFormData[`players[${i}].mmr`],
@@ -46,8 +46,6 @@ export async function registerTeam(captainId: string, prevState: { message: stri
             players: playersData,
         });
 
-        // --- CORE INTEGRATION ---
-        // Resolve OpenDota account IDs and construct profile URLs for all players.
         const playersWithIds = await Promise.all(
             validatedData.players.map(async (player, index) => {
                 try {
@@ -56,9 +54,8 @@ export async function registerTeam(captainId: string, prevState: { message: stri
                     
                     return {
                         ...player,
-                        id: `player_${index + 1}`, // Temporary ID, can be replaced by Firestore's generated ID
                         openDotaAccountId,
-                        openDotaProfileUrl, // Add the constructed URL
+                        openDotaProfileUrl,
                         fantasyPointsEarned: 0,
                     };
                 } catch (error) {
@@ -66,17 +63,19 @@ export async function registerTeam(captainId: string, prevState: { message: stri
                 }
             })
         );
-        // --- END INTEGRATION ---
 
-        // Here you would proceed to save the new team and the `playersWithIds` array to Firestore.
-        // For example:
-        // await saveTeamToFirestore({ ...validatedData, players: playersWithIds, captainId });
+        const teamToSave = {
+            name: validatedData.name,
+            tag: validatedData.tag,
+            motto: validatedData.motto,
+            logoUrl: validatedData.logoUrl,
+            captainId: captainId,
+            players: playersWithIds,
+        };
 
-        console.log("Team registration data is valid and all player data has been generated.");
-        console.log("Team:", validatedData.name);
-        console.log("Players with Full Data:", playersWithIds);
+        await saveTeam(teamToSave);
 
-        return { message: "Team registered successfully! (This is a mock response)" };
+        return { message: `Team ${validatedData.name} registered successfully!` };
 
     } catch (e) {
         if (e instanceof z.ZodError) {

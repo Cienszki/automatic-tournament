@@ -8,10 +8,14 @@ import Link from "next/link";
 import { getAnnouncements } from "@/lib/firestore";
 import { Announcement } from "@/lib/definitions";
 import { formatDistanceToNow } from 'date-fns';
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 
 function Announcements() {
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  
+  const sortedAnnouncements = useMemo(() => {
+    return [...announcements].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  }, [announcements]);
 
   useEffect(() => {
     async function fetchAnnouncements() {
@@ -35,11 +39,12 @@ function Announcements() {
       </CardHeader>
       <CardContent>
         <ul className="space-y-4">
-          {announcements.map((announcement) => (
+          {sortedAnnouncements.map((announcement) => (
             <li key={announcement.id} className="p-4 bg-muted/50 rounded-lg">
-              <p className="text-foreground">{announcement.content}</p>
+              <p className="font-bold text-lg">{announcement.title}</p>
+              <p className="text-foreground mt-1">{announcement.content}</p>
               <p className="text-xs text-muted-foreground mt-2">
-                {formatDistanceToNow(new Date(announcement.createdAt), { addSuffix: true })}
+                Posted {formatDistanceToNow(new Date(announcement.createdAt), { addSuffix: true })}
               </p>
             </li>
           ))}

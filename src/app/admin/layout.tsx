@@ -14,7 +14,7 @@ export default function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { user, isLoading: isAuthLoading, signInWithDiscord } = useAuth();
+  const { user, isLoading: isAuthLoading, signInWithGoogle } = useAuth();
   const [isAdmin, setIsAdmin] = React.useState<boolean | null>(null);
   const [authError, setAuthError] = React.useState<string | null>(null);
 
@@ -42,9 +42,9 @@ export default function AdminLayout({
 
   const handleLogin = async () => {
     try {
-        await signInWithDiscord();
+        await signInWithGoogle();
     } catch (error) {
-        setAuthError("Failed to sign in with Discord. Please try again.");
+        setAuthError("Failed to sign in with Google. Please try again.");
     }
   }
 
@@ -72,12 +72,12 @@ export default function AdminLayout({
               Admin Access Required
             </CardTitle>
              <CardDescription>
-              Please log in with your authorized Discord account to continue.
+              Please log in with your authorized Google account to continue.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <Button onClick={handleLogin} size="lg">
-              Login with Discord
+              Sign in with Google
             </Button>
             {authError && <p className="text-sm font-medium text-destructive">{authError}</p>}
           </CardContent>

@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useActionState } from "react";
+import Link from "next/link";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -11,14 +11,15 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { UserPlus, ShieldPlus, Loader2, Upload } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { UserPlus, ShieldPlus, Loader2 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { PlayerRoles, TEAM_MMR_CAP } from "@/lib/definitions";
 import { cn } from "@/lib/utils";
 import { registerTeam } from "@/lib/actions";
-import { uploadScreenshot } from "@/lib/firebase"; // Import the upload function
+import { uploadScreenshot } from "@/lib/firebase";
 
-const MAX_FILE_SIZE = 4 * 1024 * 1024; // 4MB
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
 
 const formSchema = z.object({
@@ -34,12 +35,15 @@ const formSchema = z.object({
     profileScreenshot: z.custom<File | null>(
       (file) => file instanceof File, "Screenshot is required."
     ).refine(
-      (file) => file && file.size <= MAX_FILE_SIZE, `Max file size is 4MB.`
+      (file) => !!file && file.size <= MAX_FILE_SIZE, `Max file size is 5MB.`
     ).refine(
-      (file) => file && ACCEPTED_IMAGE_TYPES.includes(file.type),
+      (file) => !!file && ACCEPTED_IMAGE_TYPES.includes(file.type),
       "Only .jpg, .jpeg, .png and .webp formats are supported."
     ),
   })).length(5, "You must register exactly 5 players."),
+  rulesAcknowledged: z.boolean().refine((val) => val === true, {
+    message: "You must acknowledge the tournament rules.",
+  }),
 }).refine(data => {
   const totalMMR = data.players.reduce((sum, player) => sum + player.mmr, 0);
   return totalMMR <= TEAM_MMR_CAP;
@@ -49,57 +53,79 @@ const formSchema = z.object({
 });
 
 export default function RegisterPage() {
-  const { user } = useAuth();
+  const { user, signInWithGoogle } = useAuth();
+  const [serverError, setServerError] = React.useState<string | null>(null);
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
+    mode: "onBlur",
     defaultValues: {
+      name: "",
+      tag: "",
+      motto: "",
+      logoUrl: "",
       players: Array(5).fill({ nickname: "", role: undefined, mmr: 0, steamProfileUrl: "", profileScreenshot: null }),
+      rulesAcknowledged: false,
     },
   });
 
   const { fields } = useFieldArray({ control: form.control, name: "players" });
   const totalMMR = form.watch("players").reduce((sum, player) => sum + (Number(player.mmr) || 0), 0);
-  const [formState, dispatch] = useActionState(registerTeam.bind(null, user?.uid || ""), { message: null });
-  const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const { isSubmitting, isValid } = form.formState;
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
-    setIsSubmitting(true);
-    
+    if (!user) {
+      setServerError("You must be logged in to register a team.");
+      return;
+    }
+    setServerError(null);
     try {
-        // Step 1: Upload screenshots and get their URLs
         const screenshotUrls = await Promise.all(
             values.players.map(player => 
                 uploadScreenshot(player.profileScreenshot!, values.name, player.nickname)
             )
         );
 
-        // Step 2: Prepare form data for the server action
         const formData = new FormData();
         formData.append("name", values.name);
         formData.append("tag", values.tag);
         formData.append("motto", values.motto);
         formData.append("logoUrl", values.logoUrl);
-
-        values.players.forEach((p, i) => {
-            formData.append(`players[${i}].nickname`, p.nickname);
-            formData.append(`players[${i}].role`, p.role);
-            formData.append(`players[${i}].mmr`, p.mmr.toString());
-            formData.append(`players[${i}].steamProfileUrl`, p.steamProfileUrl);
-            formData.append(`players[${i}].profileScreenshotUrl`, screenshotUrls[i]); // Add the new URL
+        values.players.forEach((player, index) => {
+            formData.append(`players[${index}].nickname`, player.nickname);
+            formData.append(`players[${index}].mmr`, String(player.mmr));
+            formData.append(`players[${index}].role`, player.role);
+            formData.append(`players[${index}].steamProfileUrl`, player.steamProfileUrl);
+            formData.append(`players[${index}].mmrScreenshotUrl`, screenshotUrls[index]);
         });
-        
-        // Step 3: Dispatch the server action
-        await dispatch(formData);
 
+
+        const result = await registerTeam(user.uid, { message: serverError }, formData);
+
+        if (result?.message) {
+            setServerError(result.message);
+        } else {
+            // Handle success, e.g., redirect or show a success message
+            console.log('Team registered successfully!');
+            // e.g., router.push('/my-team');
+        }
     } catch (error) {
-        form.setError("root", { message: (error as Error).message });
+        setServerError((error as Error).message || "An unexpected error occurred during registration.");
     }
-
-    setIsSubmitting(false);
   };
 
   if (!user) {
-    return <Card><CardHeader><CardTitle>Please Login</CardTitle><CardDescription>You must be logged in to register a team.</CardDescription></CardHeader></Card>;
+    return (
+        <Card className="text-center">
+            <CardHeader>
+                <CardTitle>Please Login</CardTitle>
+                <CardDescription>You must be logged in to register a team.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <Button onClick={signInWithGoogle}>Sign in with Google</Button>
+            </CardContent>
+        </Card>
+    );
   }
 
   return (
@@ -120,50 +146,72 @@ export default function RegisterPage() {
           
           <Card>
             <CardHeader>
-                <CardTitle>Player Roster</CardTitle>
-                <div className={cn("p-3 rounded-md text-center", totalMMR > TEAM_MMR_CAP ? "text-destructive" : "text-primary")}>
-                    Total MMR: {totalMMR.toLocaleString()} / {TEAM_MMR_CAP.toLocaleString()}
-                </div>
-                {form.formState.errors.players && <p className="text-sm font-medium text-destructive">{form.formState.errors.players.message}</p>}
+              <CardTitle>Player Roster</CardTitle>
+              <div className={cn("p-3 rounded-md text-center", totalMMR > TEAM_MMR_CAP ? "text-destructive" : "text-primary")}>
+                Total MMR: {totalMMR.toLocaleString()} / {TEAM_MMR_CAP.toLocaleString()}
+              </div>
+              {form.formState.errors.players && <p className="text-sm font-medium text-destructive">{form.formState.errors.players.message}</p>}
             </CardHeader>
             <CardContent>
-                <Accordion type="single" collapsible defaultValue="item-0" className="w-full">
-                    {fields.map((field, index) => (
-                        <AccordionItem value={`item-${index}`} key={field.id}>
-                            <AccordionTrigger>Player {index + 1}: {form.watch(`players.${index}.nickname`)}</AccordionTrigger>
-                            <AccordionContent className="grid md:grid-cols-2 gap-6 p-4">
-                                <FormField name={`players.${index}.nickname`} control={form.control} render={({ field }) => (<FormItem><FormLabel>Nickname</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                <FormField name={`players.${index}.mmr`} control={form.control} render={({ field }) => (<FormItem><FormLabel>MMR</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                <FormField name={`players.${index}.steamProfileUrl`} control={form.control} render={({ field }) => (<FormItem><FormLabel>Steam Profile URL</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                <FormField name={`players.${index}.role`} control={form.control} render={({ field }) => (<FormItem><FormLabel>Role</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>{PlayerRoles.map(role => (<SelectItem key={role} value={role}>{role}</SelectItem>))}</SelectContent></Select><FormMessage /></FormItem>)} />
-                                <FormField
-                                    control={form.control}
-                                    name={`players.${index}.profileScreenshot`}
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>MMR Screenshot</FormLabel>
-                                            <FormControl>
-                                                <Input type="file" accept="image/*" onChange={(e) => field.onChange(e.target.files ? e.target.files[0] : null)} />
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-                            </AccordionContent>
-                        </AccordionItem>
-                    ))}
-                </Accordion>
+              <Accordion type="single" collapsible defaultValue="item-0" className="w-full">
+                {fields.map((field, index) => (
+                  <AccordionItem value={`item-${index}`} key={field.id}>
+                    <AccordionTrigger>Player {index + 1}: {form.watch(`players.${index}.nickname`)}</AccordionTrigger>
+                    <AccordionContent className="grid md:grid-cols-2 gap-6 p-4">
+                      <FormField name={`players.${index}.nickname`} control={form.control} render={({ field }) => (<FormItem><FormLabel>Nickname</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                      <FormField name={`players.${index}.mmr`} control={form.control} render={({ field }) => (<FormItem><FormLabel>MMR</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                      <FormField name={`players.${index}.steamProfileUrl`} control={form.control} render={({ field }) => (<FormItem><FormLabel>Steam Profile URL</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                      <FormField name={`players.${index}.role`} control={form.control} render={({ field }) => (<FormItem><FormLabel>Role</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>{PlayerRoles.map(role => (<SelectItem key={role} value={role}>{role}</SelectItem>))}</SelectContent></Select><FormMessage /></FormItem>)} />
+                      <FormField
+                        control={form.control}
+                        name={`players.${index}.profileScreenshot`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>MMR Screenshot</FormLabel>
+                            <FormControl>
+                              <Input type="file" accept="image/*" onChange={(e) => field.onChange(e.target.files ? e.target.files[0] : null)} />
+                            </FormControl>
+                            <FormDescription>
+                              Max file size: 5MB. Accepted formats: JPG, PNG, WEBP.
+                            </FormDescription>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </AccordionContent>
+                  </AccordionItem>
+                ))}
+              </Accordion>
             </CardContent>
           </Card>
 
           <Card>
             <CardContent className="pt-6">
-                 <Button type="submit" size="lg" className="w-full" disabled={isSubmitting}>
-                    {isSubmitting ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <ShieldPlus className="mr-2 h-5 w-5" />}
-                    Submit Registration
-                </Button>
-                {formState?.message && <p className="text-sm font-medium text-destructive mt-4 text-center">{formState.message}</p>}
-                {form.formState.errors.root && <p className="text-sm font-medium text-destructive mt-4 text-center">{form.formState.errors.root.message}</p>}
+              <FormField
+                control={form.control}
+                name="rulesAcknowledged"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                    <FormControl>
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                    <div className="space-y-1 leading-none">
+                      <FormLabel>
+                        I have read and agree to the <Link href="/rules" className="text-primary hover:underline">tournament rules</Link>.
+                      </FormLabel>
+                      <FormMessage />
+                    </div>
+                  </FormItem>
+                )}
+              />
+              <Button type="submit" size="lg" className="w-full mt-6" disabled={isSubmitting || !isValid}>
+                {isSubmitting ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <ShieldPlus className="mr-2 h-5 w-5" />}
+                Submit Registration
+              </Button>
+              {serverError && <p className="text-sm font-medium text-destructive mt-4 text-center">{serverError}</p>}
             </CardContent>
           </Card>
         </form>

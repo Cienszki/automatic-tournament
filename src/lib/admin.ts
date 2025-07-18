@@ -1,8 +1,8 @@
 
-// src/lib/admin.ts
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { db } from "./firebase";
 import { type User } from "firebase/auth";
+import { getFunctions, httpsCallable } from "firebase/functions";
 
 export interface TournamentStatus {
   roundId: string;
@@ -12,55 +12,63 @@ export interface TournamentStatus {
 }
 
 /**
- * Checks if a user is an administrator by checking their UID against the 'admins' collection.
+ * Checks if a user is an administrator by calling a Firebase Cloud Function.
  * @param user The Firebase User object.
  * @returns A promise that resolves to true if the user is an admin, otherwise false.
  */
 export async function checkIfAdmin(user: User | null): Promise<boolean> {
-  if (!user || !user.uid) {
+  if (!user) {
     return false;
   }
-  
+
   try {
-    const adminDocRef = doc(db, "admins", user.uid);
-    const adminDocSnap = await getDoc(adminDocRef);
-    return adminDocSnap.exists();
+    const functions = getFunctions();
+    const checkAdminStatus = httpsCallable(functions, 'checkAdminStatus');
+    const result = await checkAdminStatus();
+    return (result.data as { isAdmin: boolean }).isAdmin;
   } catch (error) {
     console.error("Error checking admin status:", error);
     return false;
   }
 }
 
+
 /**
  * Retrieves the current status of the tournament from Firestore.
- * Fetches the document 'status' from the 'tournament' collection.
- * @returns A promise that resolves to the tournament status object, or a default if not found.
+ * This function handles legacy data structures by checking for 'current' and mapping it to 'roundId'.
+ * @returns A promise that resolves to the tournament status object if it exists, otherwise null.
  */
 export async function getTournamentStatus(): Promise<TournamentStatus | null> {
+  const statusDocRef = doc(db, "tournament", "status");
   try {
-    const statusDocRef = doc(db, "tournament", "status");
     const statusDocSnap = await getDoc(statusDocRef);
     if (statusDocSnap.exists()) {
-      return statusDocSnap.data() as TournamentStatus;
+      const data = statusDocSnap.data() as any; // Read data with any type
+      // Check for legacy 'current' field and map to 'roundId'
+      if (data.current && !data.roundId) {
+        return { roundId: data.current };
+      }
+      return data as TournamentStatus;
     } else {
-      console.log("Tournament status document not found, returning default.");
-      // Return a default status if the document doesn't exist yet
-      return { roundId: 'initial' };
+      // Return null if the document does not exist. The UI will handle this.
+      return null;
     }
   } catch (error) {
     console.error("Error getting tournament status:", error);
+    // Return null on error as well, so the UI can display an error message.
     return null;
   }
 }
 
 /**
- * Updates the tournament status in Firestore.
+ * Creates or updates the tournament status in Firestore.
  * @param newStatus The new status object to set.
  * @returns A promise that resolves to true if the update was successful, otherwise false.
  */
 export async function updateTournamentStatus(newStatus: Partial<TournamentStatus>): Promise<boolean> {
   try {
     const statusDocRef = doc(db, "tournament", "status");
+    // Use set with merge:true to create the document if it doesn't exist or update it if it does.
     await setDoc(statusDocRef, newStatus, { merge: true });
     return true;
   } catch (error) {

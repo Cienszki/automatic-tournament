@@ -1,11 +1,11 @@
 
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { getTournamentStatus, updateTournamentStatus, TournamentStatus } from '@/lib/admin';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
-import { Loader2, ShieldEllipsis, ArrowRight } from 'lucide-react';
+import { Loader2, ArrowRight, ShieldPlus } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 const stageConfig: Record<string, { title: string; description: string; nextStage: string; buttonText: string }> = {
@@ -57,17 +57,51 @@ export function StageManagementTab() {
     const [status, setStatus] = useState<TournamentStatus | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isUpdating, setIsUpdating] = useState(false);
+    const [error, setError] = useState<string | null>(null);
     const { toast } = useToast();
 
-    useEffect(() => {
-        async function fetchStatus() {
-            setIsLoading(true);
+    const fetchStatus = useCallback(async () => {
+        setIsLoading(true);
+        setError(null);
+        try {
             const currentStatus = await getTournamentStatus();
             setStatus(currentStatus);
+        } catch (e) {
+            setError("An unexpected error occurred while fetching the status.");
+            console.error(e);
+        } finally {
             setIsLoading(false);
         }
-        fetchStatus();
     }, []);
+
+    useEffect(() => {
+        fetchStatus();
+    }, [fetchStatus]);
+
+    const handleInitialize = async () => {
+        setIsUpdating(true);
+        try {
+            const success = await updateTournamentStatus({ roundId: 'initial' });
+            if (success) {
+                await fetchStatus(); // Re-fetch the status after creating it
+                toast({
+                    title: 'Success!',
+                    description: 'Tournament has been initialized.',
+                });
+            } else {
+                throw new Error("Initialization failed.");
+            }
+        } catch (error) {
+            console.error("Failed to initialize tournament:", error);
+            toast({
+                title: 'Error',
+                description: 'Could not initialize the tournament.',
+                variant: 'destructive',
+            });
+        } finally {
+            setIsUpdating(false);
+        }
+    };
 
     const handleAdvanceStage = async () => {
         if (!status || !stageConfig[status.roundId]?.nextStage) return;
@@ -76,12 +110,16 @@ export function StageManagementTab() {
         const nextStageId = stageConfig[status.roundId].nextStage;
 
         try {
-            await updateTournamentStatus({ roundId: nextStageId });
-            setStatus({ roundId: nextStageId });
-            toast({
-                title: 'Success!',
-                description: `Tournament has been advanced to: ${stageConfig[nextStageId].title}`,
-            });
+            const success = await updateTournamentStatus({ roundId: nextStageId });
+            if (success) {
+                setStatus({ roundId: nextStageId });
+                toast({
+                    title: 'Success!',
+                    description: `Tournament has been advanced to: ${stageConfig[nextStageId].title}`,
+                });
+            } else {
+                throw new Error("Update operation returned false.");
+            }
         } catch (error) {
             console.error("Failed to update tournament status:", error);
             toast({
@@ -98,11 +136,31 @@ export function StageManagementTab() {
         return <div className="flex justify-center items-center h-64"><Loader2 className="h-16 w-16 animate-spin" /></div>;
     }
 
-    if (!status) {
-        return <div className="text-center text-red-500">Could not load tournament status.</div>;
+    if (error) {
+        return <div className="text-center text-red-500">{error}</div>;
     }
 
-    const currentStage = stageConfig[status.roundId] || { title: 'Unknown State', description: 'The tournament is in an unrecognized state.', nextStage: '', buttonText: '' };
+    if (!status) {
+        return (
+            <Card>
+                <CardHeader>
+                    <CardTitle>Initialize Tournament</CardTitle>
+                    <CardDescription>The tournament status document does not exist in the database yet.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <p className="text-muted-foreground">Click the button below to create the initial record and start the tournament management process.</p>
+                </CardContent>
+                <CardFooter>
+                    <Button onClick={handleInitialize} disabled={isUpdating} size="lg">
+                        {isUpdating ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <ShieldPlus className="mr-2 h-5 w-5" />}
+                        {isUpdating ? "Initializing..." : "Initialize Tournament"}
+                    </Button>
+                </CardFooter>
+            </Card>
+        );
+    }
+    
+    const currentStage = stageConfig[status.roundId] || { title: 'Unknown State', description: `The tournament is in an unrecognized state: '${status.roundId}'`, nextStage: '', buttonText: '' };
 
     return (
         <Card>

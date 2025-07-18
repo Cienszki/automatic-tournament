@@ -1,0 +1,267 @@
+Odczytywanie danych za pomocą GET
+Dane z naszej bazy danych Firebase możemy odczytać, wysyłając GET do jego punktu końcowego URL. Wróćmy do przykładu bloga z poprzedniej sekcji i przeczytaj wszystkie dane z postu:
+
+
+curl 'https://docs-examples.firebaseio.com/fireblog/posts.json?print=pretty'
+Pomyślne żądanie będzie sygnalizowane kodem stanu HTTP 200 OK, a odpowiedź będzie zawierać dane, które pobieramy.
+
+Dodawanie parametrów identyfikatora URI
+Interfejs REST API akceptuje kilka parametrów zapytania podczas odczytu danych z naszej bazy danych Firebase. Poniżej znajdziesz listę najczęściej używanych parametrów. Pełną listę znajdziesz w przewodniku po interfejsie API REST.
+
+uwierzytelnienie
+Parametr auth w żądaniu umożliwia dostęp do danych chronionych przez Firebase Realtime Database Security Rules i jest obsługiwany przez wszystkie typy żądań. Argument może być tajnym kluczem aplikacji Firebase lub tokenem uwierzytelniającym, jak opisano w artykule Użytkownicy w projektach Firebase. W tym przykładzie wysyłamy żądanie GET z parametrem auth, gdzie CREDENTIAL to obiekt tajny aplikacji Firebase lub token uwierzytelniający:
+
+
+curl 'https://docs-examples.firebaseio.com/auth-example.json?auth=CREDENTIAL'
+Jeśli ustawiony jest flaga debug tokenu, informacje debugowania można znaleźć w nagłówku X-Firebase-Auth-Debug odpowiedzi.
+drukuj
+Podanie wartości print=pretty powoduje zwrócenie danych w formacie zrozumiałym dla człowieka.
+
+
+curl 'https://docs-examples.firebaseio.com/fireblog/posts.json?print=pretty'
+Jeśli print=silent jest określone, funkcja zwraca 204 No Content, jeśli operacja zakończy się powodzeniem.
+
+
+curl 'https://docs-examples.firebaseio.com/fireblog/posts.json?print=silent'
+callback
+Aby wykonywać wywołania REST z przeglądarki w różnych domenach, możesz użyć JSONP, aby opakować odpowiedź w funkcji wywołania zwrotnego JavaScript. Dodaj callback=, aby interfejs REST API owiłował zwrócone dane w określonej przez Ciebie funkcji wywołania zwrotnego. Przykład:
+
+
+<script>
+  function gotData(data) {
+    console.log(data);
+  }
+</script>
+<script src="https://docs-examples.firebaseio.com/fireblog/posts.json?callback=gotData">
+płytki
+Jest to zaawansowana funkcja, która ułatwia pracę z dużymi zbiorami danych bez konieczności pobierania wszystkich danych. Aby go użyć, dodaj parametr shallow=true. Spowoduje to ograniczenie głębokości zwracanych danych. Jeśli dane w danej lokalizacji są typu JSON (ciąg tekstowy, liczba lub wartość logiczna), zwrócona zostanie ich wartość. Jeśli w danej lokalizacji znajduje się migawka danych w postaci obiektu JSON, wartości każdego klucza zostaną obcięte do true. Na przykład:
+
+
+{
+  "message": {
+    "user": {
+      "name": "Chris"
+    },
+    "body": "Hello!"
+  }
+}
+
+// A request to /message.json?shallow=true
+// would return the following:
+{
+  "user": true,
+  "body": true
+}
+
+// A request to /message/body.json?shallow=true
+// would simply return:
+"Hello!"
+Wypróbuj to na przykładzie prośby curl:
+
+
+curl 'https://docs-examples.firebaseio.com/rest/retrieving-data.json?shallow=true&print=pretty'
+W przypadku parametru shallow nie można używać żadnych parametrów zapytania „filtrowanie danych”.
+czas oczekiwania
+Użyj tego, aby ograniczyć czas odczytu po stronie serwera. Jeśli żądanie odczytu nie zostanie ukończone w wyznaczonym czasie, zakończy się błędem HTTP 400. Jest to szczególnie przydatne, gdy spodziewasz się niewielkiego przesyłania danych i nie chcesz zbyt długo czekać na pobranie potencjalnie ogromnego poddrzewa. Rzeczywisty czas odczytu może się różnić w zależności od rozmiaru danych i używanego buforowania.
+
+Określ timeouts w tym formacie: 3ms, 3s lub 3min, z liczbą i jednostką. Jeśli nie określisz maksymalnej wartości timeout, zostanie zastosowana wartość 15min. Jeśli timeout nie jest dodatnia lub przekracza maksymalną wartość, żądanie zostanie odrzucone z błędem HTTP 400. W tym przykładzie żądanie GET zawiera timeout o długości 10 sekund.
+
+
+curl 'https://docs-examples.firebaseio.com/rest/retrieving-data.json?timeout=10s'
+Filtrowanie danych
+Możemy tworzyć zapytania, aby filtrować dane na podstawie różnych czynników. Na początek określ, jak mają być filtrowane dane, używając parametru orderBy. Następnie łączysz parametr orderBy z dowolnym z pozostałych 5 parametrów: limitToFirst, limitToLast, startAt, endAt i equalTo.
+
+Filtrowane dane są zwracane w nieuporządkowanej kolejności: gdy korzystasz z interfejsu REST API, odfiltrowane wyniki są zwracane w nieokreślonej kolejności, ponieważ interpretery JSON nie narzucają żadnej kolejności. Jeśli kolejność danych jest ważna, po otrzymaniu danych z Firebase musisz je posortować w aplikacji.
+Ponieważ wszyscy w Firebase uważamy dinozaury za fajne, posłużymy się fragmentem z przykładowej bazy danych z informacjami o dinosaurach, aby pokazać, jak można filtrować dane:
+
+
+{
+  "lambeosaurus": {
+    "height": 2.1,
+    "length": 12.5,
+    "weight": 5000
+  },
+  "stegosaurus": {
+    "height": 4,
+    "length": 9,
+    "weight": 2500
+  }
+}
+Dane możemy filtrować na 3 sposoby: według klucza podrzędnego, według klucza lub według wartości. Zapytanie zaczyna się od jednego z tych parametrów, a następnie musi być połączone z jednym lub kilkoma z tych parametrów: startAt, endAt, limitToFirst, limitToLast lub equalTo.
+
+Filtrowanie według określonego klucza podrzędnego
+Możemy filtrować węzły według wspólnego klucza podrzędnego, przekazując ten klucz do parametru orderBy. Aby na przykład pobrać wszystkie dinozaury o wysokości większej niż 3, możesz wykonać te czynności:
+
+
+curl 'https://dinosaur-facts.firebaseio.com/dinosaurs.json?orderBy="height"&startAt=3&print=pretty'
+Każdy węzeł, który nie ma klucza podrzędnego, według którego przeprowadzamy filtrowanie, zostanie posortowany z wartością null. Szczegółowe informacje o tym, jak są sortowane dane, znajdziesz w artykule Sortowanie danych.
+
+Firebase obsługuje też zapytania uporządkowane według głęboko zagnieżdżonych elementów podrzędnych, a nie tylko elementów podrzędnych znajdujących się na 1 poziomie. Jest to przydatne, jeśli masz głęboko zagnieżdżone dane, np. takie:
+
+
+{
+  "lambeosaurus": {
+    "dimensions": {
+      "height" : 2.1,
+      "length" : 12.5,
+      "weight": 5000
+    }
+  },
+  "stegosaurus": {
+    "dimensions": {
+      "height" : 4,
+      "length" : 9,
+      "weight" : 2500
+    }
+  }
+}
+Aby teraz zapytać o wysokość, użyjemy pełnej ścieżki do obiektu zamiast pojedynczego klucza:
+
+
+curl 'https://dinosaur-facts.firebaseio.com/dinosaurs.json?orderBy="dimensions/height"&startAt=3&print=pretty'
+Zapytania mogą być filtrowane tylko według 1 klucza naraz. Użycie parametru orderBy kilka razy w tym samym żądaniu powoduje błąd.
+
+Dodaj indeksowanie do aplikacji Firebase Realtime Database Security Rules: Jeśli w aplikacji używasz orderBy, musisz zdefiniować klucze, według których będziesz indeksować, za pomocą reguły .indexOn w aplikacji Firebase Realtime Database Security Rules. Aby dowiedzieć się więcej, zapoznaj się z dokumentacją dotyczącą reguły .indexOn.
+Filtrowanie według klucza
+Możemy też filtrować węzły według ich kluczy za pomocą parametru orderBy="$key". Poniższy przykład zwraca wszystkich dinozaurów o nazwie zaczynającej się od litery a do m:
+
+
+curl 'https://dinosaur-facts.firebaseio.com/dinosaurs.json?orderBy="$key"&startAt="a"&endAt="m"&print=pretty'
+Filtrowanie według wartości
+Za pomocą parametru orderBy="$value" możemy filtrować węzły według wartości ich kluczy podrzędnych. Załóżmy, że dinozaury biorą udział w zawodach sportowych i śledzimy ich wyniki w takim formacie:
+
+
+{
+  "scores": {
+    "bruhathkayosaurus": 55,
+    "lambeosaurus": 21,
+    "linhenykus": 80,
+    "pterodactyl": 93,
+    "stegosaurus": 5,
+    "triceratops": 22
+  }
+}
+Aby pobrać wszystkie dinozaury z wysoką oceną, możemy wysłać takie żądanie:
+
+
+curl 'https://dinosaur-facts.firebaseio.com/scores.json?orderBy="$value"&startAt=50&print=pretty'
+Więcej informacji o tym, jak sortowane są wartości null, wartości logiczne, ciągi tekstowe i wartości obiektów podczas używania funkcji orderBy="$value", znajdziesz w sekcji Uporządkowanie danych.
+
+Dodaj indeksowanie do Firebase Realtime Database Security Rules: Jeśli w aplikacji używasz orderBy="$value", musisz dodać .value do reguł w odpowiednim indeksie. Aby dowiedzieć się więcej, zapoznaj się z dokumentacją dotyczącą reguły .indexOn.
+Filtrowanie złożone
+Możemy łączyć wiele parametrów, aby tworzyć bardziej złożone zapytania.
+
+Limit zapytań
+Parametry limitToFirst i limitToLast służą do określania maksymalnej liczby elementów podrzędnych, których dane mają być otrzymywane. Jeśli ustawimy limit na 100 wartości, otrzymamy maksymalnie 100 pasujących elementów podrzędnych. Jeśli w naszej bazie danych jest mniej niż 100 wiadomości, otrzymamy wszystkie dzieci. Jeśli jednak mamy ponad 100 wiadomości, otrzymamy dane tylko o 100 z nich. Jeśli używamy funkcji limitToFirst, będą to pierwsze 100 uporządkowanych wiadomości, a jeśli limitToLast – ostatnie 100 uporządkowanych wiadomości.
+
+Korzystając z naszej bazy danych o dinosaurach i orderBy, możemy znaleźć 2 najcięższe dinozaury:
+
+
+curl 'https://dinosaur-facts.firebaseio.com/dinosaurs.json?orderBy="weight"&limitToLast=2&print=pretty'
+Podobnie możemy znaleźć 2 najkrótsze dinozaury, używając zapytania limitToFirst:
+
+
+curl 'https://dinosaur-facts.firebaseio.com/dinosaurs.json?orderBy="height"&limitToFirst=2&print=pretty'
+Możemy też stosować zapytania z ograniczonym zakresem za pomocą funkcji orderBy="$value". Jeśli chcemy utworzyć tabelę wyników z trzema najlepszymi zawodnikami w grze Dino Sports, możemy:
+
+
+curl 'https://dinosaur-facts.firebaseio.com/scores.json?orderBy="$value"&limitToLast=3&print=pretty'
+Zapytania dotyczące zakresu
+Korzystanie z parametrów startAt, endAt i equalTo pozwala nam wybrać dowolne punkty początkowe i końcowe zapytań. Jeśli np. chcemy znaleźć wszystkie dinozaury o wysokości co najmniej 3 metrów, możemy połączyć orderBy i startAt:
+
+
+curl 'https://dinosaur-facts.firebaseio.com/dinosaurs.json?orderBy="height"&startAt=3&print=pretty'
+Za pomocą endAt możemy znaleźć wszystkie dinozaury, których nazwy występują w alfabetycznym porządku przed nazwą Pterodactyl:
+
+
+curl 'https://dinosaur-facts.firebaseio.com/dinosaurs.json?orderBy="$key"&endAt="pterodactyl"&print=pretty'
+startAt i endAt obejmują wszystkie możliwe warianty, co oznacza, że „pterodactyl” będzie pasować do zapytania powyżej.
+Możemy połączyć startAt i endAt, aby ograniczyć oba końce zapytania. W tym przykładzie zostaną znalezione wszystkie dinozaury, których nazwa zaczyna się od litery „b”:
+
+
+curl 'https://dinosaur-facts.firebaseio.com/dinosaurs.json?orderBy="$key"&startAt="b"&endAt="b\uf8ff"&print=pretty'
+Znak \uf8ff użyty w zapytaniu powyżej to bardzo wysoki punkt kodu w zakresie Unicode. Ponieważ występuje po większości zwykłych znaków w Unicode, zapytanie pasuje do wszystkich wartości, które zaczynają się od b.
+Zapytania zakresowe są też przydatne, gdy chcesz podzielić dane na strony.
+
+Podsumowanie
+Możemy łączyć te techniki, aby tworzyć złożone zapytania. Możesz na przykład chcieć znaleźć nazwy wszystkich dinozaurów, które są niższe lub równe wzrostem naszemu ulubieńcowi – stegozaurowi:
+
+
+MY_FAV_DINO_HEIGHT=`curl "https://dinosaur-facts.firebaseio.com/dinosaurs/stegosaurus/height.json"`
+curl "https://dinosaur-facts.firebaseio.com/dinosaurs.json?orderBy=\"height\"&endAt=${MY_FAV_DINO_HEIGHT}&print=pretty"
+Jak są sortowane dane
+W tej sekcji wyjaśniamy, jak są sortowane dane, gdy używasz każdego z 3 parametrów filtrowania.
+
+Interfejs API REST zwraca niezsortowane wyniki: interpretery JSON nie narzucają żadnej kolejności zbiorowi wyników. Chociaż za pomocą zapytania orderBy można zwracać podzbiór danych za pomocą parametrów startAt, endAt, limitToFirst lub limitToLast, wyniki nie będą posortowane. Dlatego, jeśli kolejność ma znaczenie, może być konieczne ręczne posortowanie wyników.
+orderBy
+Gdy używasz zapytania orderBy z nazwą klucza podrzędnego, dane zawierające określony klucz podrzędny zostaną posortowane w taki sposób:
+
+Najpierw są wybierane elementy podrzędne, dla których wartość atrybutu null jest równa 1.
+Następnie pojawiają się elementy podrzędne o wartości false dla określonego klucza podrzędnego. Jeśli wiele elementów podrzędnych ma wartość false, są one sortowane alfabetycznie według klucza.
+Następnie pojawiają się elementy podrzędne o wartości true dla określonego klucza podrzędnego. Jeśli wiele elementów podrzędnych ma wartość true, są one sortowane alfabetycznie według klucza.
+Następnie pojawiają się elementy podrzędne z wartością liczbową, posortowane w kolejności rosnącej. Jeśli wiele elementów podrzędnych ma tę samą wartość numeryczną w przypadku określonego węzła podrzędnego, są one sortowane według klucza.
+Ciągi znaków występują po liczbach i są sortowane alfabetycznie w kolejności rosnącej. Jeśli wiele elementów podrzędnych ma tę samą wartość w określonym węźle podrzędnym, są one uporządkowane alfabetycznie według klucza.
+Obiekty znajdują się na końcu i są posortowane leksykograficznie według klucza w kolejności rosnącej.
+Odfiltrowane wyniki są zwracane bez określonej kolejności. Jeśli kolejność danych jest ważna, po otrzymaniu danych z Firebase musisz je posortować w aplikacji.
+orderBy="$key"
+Gdy do sortowania danych użyjesz parametru orderBy="$key", dane zostaną zwrócone w kolejności rosnącej według klucza w taki sposób: Pamiętaj, że klucze mogą być tylko ciągami znaków.
+
+Najpierw wyświetlane są dzieci, których klucz można przeanalizować jako 32-bitową liczbę całkowitą, posortowane w kolejności rosnącej.
+Następnie występują elementy podrzędne z wartością ciągu znaków jako kluczem, posortowane leksykograficznie w kolejności rosnącej.
+orderBy="$value"
+Gdy do sortowania danych używasz parametru orderBy="$value", elementy podrzędne zostaną posortowane według ich wartości. Kryteria sortowania są takie same jak dane uporządkowane według klucza podrzędnego, z tym że zamiast wartości określonego klucza podrzędnego jest używana wartość węzła.
+
+orderBy="$priority"
+Gdy do sortowania danych używasz parametru orderBy="$priority", kolejność dzieci jest określana przez ich priorytet i klucz w następujący sposób: Pamiętaj, że wartości priorytetu mogą być tylko liczbami lub ciągami znaków.
+
+Priorytety liczbowe są przechowywane i uporządkowane jako liczby zmiennoprzecinkowe podwójnej precyzji IEEE 754. Klucze są zawsze przechowywane jako ciągi znaków i są traktowane jako liczby tylko wtedy, gdy można je przeanalizować jako 32-bitową liczbę całkowitą.
+Najpierw są wyświetlane dzieci bez priorytetu (domyślnie).
+Następnie wyświetlane są dzieci z numerem priorytetu. Są one posortowane według priorytetu od najmniejszego do największego.
+Dzieci z ciągiem znaków jako priorytetem są wyświetlane na końcu. Są one sortowane alfabetycznie według priorytetu.
+Gdy 2 elementy podrzędne mają ten sam priorytet (w tym brak priorytetu), są one sortowane według klucza. Najpierw podawane są klucze liczbowe (posortowane według wartości liczbowej), a potem pozostałe klucze (posortowane leksykograficznie).
+Więcej informacji o priorytetach znajdziesz w dokumentacji interfejsu API.
+
+Odtwarzanie strumieniowe z interfejsu API typu REST
+Punkty końcowe REST Firebase obsługują protokół EventSource / Server-Sent Events, co ułatwia przesyłanie zmian strumieniowo do pojedynczego miejsca w naszej bazie danych Firebase.
+
+Aby rozpocząć strumieniowe przesyłanie danych, wykonaj te czynności:
+
+Ustaw nagłówek Accept klienta na text/event-stream
+Przestrzegaj przekierowań HTTP, w szczególności kodu stanu HTTP 307
+Dołącz parametr zapytania auth, jeśli lokalizacja bazy danych Firebase wymaga uprawnienia do odczytu.
+W zamian serwer będzie wysyłać nazwane zdarzenia, gdy stan danych w żądanym adresie URL ulegnie zmianie. Struktura tych komunikatów jest zgodna z protokołem EventSource:
+
+
+event: event name
+data: JSON encoded data payload
+Serwer może wysyłać te zdarzenia:
+
+put	Dane zakodowane w formacie JSON będą obiektem z 2 kluczami: ścieżką i danymi.
+Ścieżka wskazuje lokalizację w stosunku do adresu URL żądania.
+Klient powinien zastąpić wszystkie dane w tej lokalizacji w swojej pamięci podręcznej danymi podanymi w wiadomości.
+patch	Dane zakodowane w formacie JSON będą obiektem z 2 kluczami: path i data.
+Ścieżka wskazuje lokalizację w stosunku do adresu URL żądania.
+W przypadku każdego klucza w danych klient powinien zastąpić odpowiadający mu klucz w swojej pamięci podręcznej danymi tego klucza w wiadomości.
+utrzymywanie aktywności	Dane tego zdarzenia są puste, nie musisz nic robić
+anuluj	Dane tego zdarzenia są puste.
+To zdarzenie zostanie wysłane, jeśli Firebase Realtime Database Security Rules spowoduje, że odczyt w wymaganym miejscu nie będzie już dozwolony.
+auth_revoked	Dane tego zdarzenia to ciąg znaków wskazujący, że dane uwierzytelniające utraciły ważność.
+Zdarzenie to zostanie wysłane, gdy podany parametr uwierzytelniania nie będzie już ważny.
+Poniżej znajdziesz przykładowy zestaw zdarzeń, które może wysyłać serwer:
+
+
+// Set your entire cache to {"a": 1, "b": 2}
+event: put
+data: {"path": "/", "data": {"a": 1, "b": 2}}
+
+
+// Put the new data in your cache under the key 'c', so that the complete cache now looks like:
+// {"a": 1, "b": 2, "c": {"foo": true, "bar": false}}
+event: put
+data: {"path": "/c", "data": {"foo": true, "bar": false}}
+
+
+// For each key in the data, update (or add) the corresponding key in your cache at path /c,
+// for a final cache of: {"a": 1, "b": 2, "c": {"foo": 3, "bar": false, "baz": 4}}
+event: patch
+data: {"path": "/c", "data": {"foo": 3, "baz": 4}}
