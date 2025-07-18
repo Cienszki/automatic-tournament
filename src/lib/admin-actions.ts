@@ -68,3 +68,21 @@ export async function updateTournamentStatus(newStatus: Partial<TournamentStatus
         return { success: false, error: (error as Error).message };
     }
 }
+
+export async function createTestTeam(data: { name: string; tag: string }) {
+    try {
+        const decodedToken = await verifyAdmin();
+        const teamData = {
+            ...data,
+            captainId: decodedToken.uid,
+            createdAt: new Date().toISOString(),
+            status: 'verified',
+            players: [], // Add dummy players if needed
+        };
+        const newTeamRef = adminDb.collection('teams').doc();
+        await newTeamRef.set(teamData);
+        return { success: true, message: `Team '${data.name}' created successfully!` };
+    } catch (error) {
+        return { success: false, message: (error as Error).message };
+    }
+}
