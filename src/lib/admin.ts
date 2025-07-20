@@ -1,81 +1,26 @@
-// src/lib/admin.ts
-import { initializeApp, getApps, cert, getApp } from 'firebase-admin/app';
-import { getFirestore } from 'firebase-admin/firestore';
-import type { DocumentData } from 'firebase-admin/firestore';
 
-// --- More robust admin app initialization with detailed logging ---
-const ADMIN_APP_NAME = "firebase-admin-app-2"; // Using a new name to be safe
+import { initializeApp, getApps, cert, getApp, App } from 'firebase-admin/app';
+import { getFirestore, Firestore } from 'firebase-admin/firestore';
+import 'server-only';
 
-let adminDb: ReturnType<typeof getFirestore>;
+// Get the Base64 encoded service account from environment variables
+const base64EncodedServiceAccount = process.env.FIREBASE_SERVICE_ACCOUNT_BASE64;
 
-try {
-  console.log("Attempting to initialize Firebase Admin SDK...");
-
-  const serviceAccountString = process.env.FIREBASE_SERVICE_ACCOUNT;
-  if (!serviceAccountString) {
-    throw new Error("FIREBASE_SERVICE_ACCOUNT environment variable is not set.");
-  }
-  console.log("Service account environment variable found.");
-
-  const serviceAccount = JSON.parse(serviceAccountString);
-
-  const adminApp = getApps().find(app => app.name === ADMIN_APP_NAME)
-    ? getApp(ADMIN_APP_NAME)
-    : initializeApp({
-        credential: cert(serviceAccount),
-      }, ADMIN_APP_NAME);
-
-  console.log("Firebase Admin App initialized successfully:", adminApp.name);
-
-  adminDb = getFirestore(adminApp);
-  console.log("Firestore for admin app obtained successfully.");
-
-} catch (error) {
-  console.error("CRITICAL: Failed to initialize Firebase Admin SDK.", error);
-  // We're throwing the error here to make it clear that the server-side functions will not work.
-  // This will prevent the application from continuing with a broken admin setup.
+if (!base64EncodedServiceAccount) {
+  throw new Error('The FIREBASE_SERVICE_ACCOUNT_BASE64 environment variable is not set. Please add it to your .env.local file.');
 }
 
-export type TournamentStatus = {
-  roundId: string;
-};
+// Decode the Base64 string back to a JSON string
+const decodedServiceAccount = Buffer.from(base64EncodedServiceAccount, 'base64').toString('utf-8');
 
-/**
- * Fetches the current tournament status from Firestore.
- * This is a server-side function.
- */
-export async function getTournamentStatus(): Promise<TournamentStatus | null> {
-  try {
-    const statusDocRef = adminDb.collection('tournament').doc('status');
-    const statusDocSnap = await statusDocRef.get();
+// Parse the JSON string into a service account object
+const serviceAccount = JSON.parse(decodedServiceAccount);
 
-    if (statusDocSnap.exists) {
-      return statusDocSnap.data() as TournamentStatus;
-    }
-    // If the document doesn't exist, return a default initial state or null.
-    return null;
-  } catch (error) {
-    console.error("Error fetching tournament status:", error);
-    // In case of an error, it's safer to return null and handle it in the UI.
-    return null;
-  }
-}
+// Initialize the Firebase Admin App
+const app: App = !getApps().length
+  ? initializeApp({ credential: cert(serviceAccount) })
+  : getApp();
 
-/**
- * Updates the tournament status document.
- * @param newStatus - The new status object to set.
- * @returns An object indicating success or failure.
- */
-export async function updateTournamentStatus(newStatus: Partial<TournamentStatus>): Promise<boolean> {
-    try {
-        const statusDocRef = adminDb.collection('tournament').doc('status');
-        await statusDocRef.set(newStatus, { merge: true });
-        return true;
-    } catch (error) {
-        console.error("Error updating tournament status:", error);
-        return false;
-    }
-}
-
+const adminDb: Firestore = getFirestore(app);
 
 export { adminDb };

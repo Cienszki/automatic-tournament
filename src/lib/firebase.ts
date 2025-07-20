@@ -1,12 +1,9 @@
 
-// src/lib/firebase.ts
-import { initializeApp, getApps, getApp } from "firebase/app";
-import { getFirestore } from "firebase/firestore";
-import { getAuth } from "firebase/auth";
-import { getStorage, ref, uploadString, getDownloadURL, uploadBytes } from "firebase/storage";
-import { v4 as uuidv4 } from 'uuid';
-import { initializeAppCheck, ReCaptchaV3Provider } from "firebase/app-check";
-import { getFunctions } from 'firebase/functions';
+import { initializeApp, getApp, getApps, App } from "firebase/app";
+import { getAuth, Auth } from "firebase/auth";
+import { getFirestore, Firestore } from "firebase/firestore";
+import { getStorage, FirebaseStorage } from "firebase/storage";
+import { getFunctions, Functions } from "firebase/functions";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -17,28 +14,10 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-// Initialize Firebase
-const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+const app: App = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+const auth: Auth = getAuth(app);
+const db: Firestore = getFirestore(app);
+const storage: FirebaseStorage = getStorage(app);
+const functions: Functions = getFunctions(app);
 
-// Initialize App Check
-if (typeof window !== 'undefined') {
-  initializeAppCheck(app, {
-    provider: new ReCaptchaV3Provider(process.env.NEXT_PUBLIC_FIREBASE_RECAPTCHA_SITE_KEY!),
-    isTokenAutoRefreshEnabled: true
-  });
-}
-
-const db = getFirestore(app);
-const auth = getAuth(app);
-const storage = getStorage(app);
-const functions = getFunctions(app, 'us-central1'); // Specify region if not default
-
-export const uploadScreenshot = async (file: File, teamId: string) => {
-    const storageRef = ref(storage, `screenshots/${teamId}/${uuidv4()}`);
-    await uploadBytes(storageRef, file);
-    const downloadURL = await getDownloadURL(storageRef);
-    return downloadURL;
-};
-  
-
-export { app, db, auth, storage, ref, uploadString, getDownloadURL, uuidv4, functions };
+export { app, auth, db, storage, functions };

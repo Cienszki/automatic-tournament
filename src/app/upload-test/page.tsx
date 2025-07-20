@@ -4,7 +4,7 @@ import React, { useState, useTransition } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { uploadScreenshot } from '@/lib/firebase';
+import { uploadScreenshot } from '@/lib/storage';
 import { createTestTeam } from '@/lib/admin-actions';
 import { Loader2, LogIn, LogOut } from 'lucide-react';
 import Link from 'next/link';
