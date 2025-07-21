@@ -2,10 +2,10 @@
 'use server';
 
 import { getMatchDetails, getHeroes, transformMatchData, getLeagueMatches } from './opendota';
-import { saveMatchResults, getAllTeams, getAllTournamentPlayers, getAllMatches, saveTeam } from './firestore';
+import { saveMatchResults, getAllTeams as getAllTeamsFromDb, getAllTournamentPlayers as getAllTournamentPlayersFromDb, getAllMatches, saveTeam as saveTeamToDb } from './firestore';
 import { db } from './firebase'; 
 import { Team, Player, LEAGUE_ID } from './definitions';
-import { getOpenDotaAccountIdFromUrl } from './utils';
+import { getOpenDotaAccountIdFromUrl as getOpenDotaAccountIdFromUrlServer } from './server-utils'; // Use server-specific util
 import { z } from 'zod';
 import { doc, collection, writeBatch, serverTimestamp } from 'firebase/firestore';
 
@@ -49,7 +49,7 @@ export async function registerTeam(captainId: string, prevState: { message: stri
         const playersWithIds = await Promise.all(
             validatedData.players.map(async (player, index) => {
                 try {
-                    const openDotaAccountId = await getOpenDotaAccountIdFromUrl(player.steamProfileUrl);
+                    const openDotaAccountId = await getOpenDotaAccountIdFromUrlServer(player.steamProfileUrl);
                     const openDotaProfileUrl = `https://www.opendota.com/players/${openDotaAccountId}`;
                     
                     return {
@@ -75,7 +75,7 @@ export async function registerTeam(captainId: string, prevState: { message: stri
             losses: 0,
         };
 
-        await saveTeam(teamToSave);
+        await saveTeamToDb(teamToSave);
 
         return { message: `Team ${validatedData.name} registered successfully!` };
 
@@ -107,8 +107,8 @@ export async function importMatchFromOpenDota(matchId: number) {
       heroes
     ] = await Promise.all([
       getMatchDetails(matchId),
-      getAllTeams(),
-      getAllTournamentPlayers(),
+      getAllTeamsFromDb(),
+      getAllTournamentPlayersFromDb(),
       heroCache ? Promise.resolve(heroCache) : getHeroes(),
     ]);
 

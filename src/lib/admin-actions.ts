@@ -1,11 +1,29 @@
+
 "use server";
 
 import { adminDb, adminStorage } from './admin';
 import { revalidatePath } from 'next/cache';
-import { getSteam64IdFromUrl, getOpenDotaAccountIdFromUrl, getSteamPlayerSummary } from './utils'; // Import server-side utility
-import { TournamentStatus, Player } from './definitions';
+import { getSteam64IdFromUrl, getOpenDotaAccountIdFromUrl, getSteamPlayerSummary } from './server-utils'; // Import server-side utility
+import { TournamentStatus, Player, Team } from './definitions';
 import { v4 as uuidv4 } from 'uuid';
 import { firestore } from 'firebase-admin';
+import { getAuth } from 'firebase-admin/auth';
+import { headers } from 'next/headers';
+
+// Securely verify admin privileges on the server
+async function verifyAdmin() {
+    const authHeader = headers().get('Authorization');
+    if (!authHeader) {
+        throw new Error('Not authenticated');
+    }
+    const token = authHeader.split('Bearer ')[1];
+    const decodedToken = await getAuth(adminDb.app).verifyIdToken(token);
+    const adminDoc = await adminDb.collection('admins').doc(decodedToken.uid).get();
+    if (!adminDoc.exists) {
+        throw new Error('Not authorized');
+    }
+    return decodedToken;
+}
 
 // --- Team Logo Upload Action ---
 export async function uploadTeamLogo(formData: FormData): Promise<{ success: true, url: string } | { success: false, message: string }> {
@@ -42,7 +60,6 @@ export async function uploadTeamLogo(formData: FormData): Promise<{ success: tru
         return { success: false, message: `Upload failed: ${errorMessage}` };
     }
 }
-
 
 // --- Single Screenshot Upload Action ---
 export async function uploadPlayerScreenshot(formData: FormData): Promise<{ success: true, url: string } | { success: false, message: string }> {
@@ -161,6 +178,7 @@ export async function registerTeam(teamData: {
 // --- Group Stage Match Generation ---
 export async function generateGroupStageMatches(groupId: string, deadline: Date) {
     try {
+        await verifyAdmin();
         const groupRef = adminDb.collection('groups').doc(groupId);
         const groupDoc = await groupRef.get();
 
@@ -242,6 +260,7 @@ export async function generateGroupStageMatches(groupId: string, deadline: Date)
 // --- Testing Tool: Create Test Group ---
 export async function createTestGroup() {
     try {
+        await verifyAdmin();
         const batch = adminDb.batch();
         const teamIds = [];
 
@@ -279,10 +298,50 @@ export async function createTestGroup() {
     }
 }
 
+export async function createTestTeam(data: { name: string, tag: string }) {
+    try {
+        await verifyAdmin(); // Secure the action
+        const { name, tag } = data;
+        const decodedToken = await verifyAdmin();
+
+        const teamData = {
+            name,
+            tag,
+            captainId: decodedToken.uid,
+            createdAt: new Date().toISOString(),
+            status: 'verified', // Test teams are auto-verified
+        };
+
+        const newTeamRef = adminDb.collection('teams').doc();
+        await newTeamRef.set(teamData);
+
+        return { success: true, teamId: newTeamRef.id };
+    } catch (error) {
+        return { success: false, message: (error as Error).message };
+    }
+}
+
+export async function getGroups(): Promise<{id: string, name: string}[]> {
+    try {
+      await verifyAdmin();
+      const groupsSnapshot = await adminDb.collection('groups').get();
+      if (groupsSnapshot.empty) {
+        return [];
+      }
+      return groupsSnapshot.docs.map(doc => ({
+        id: doc.id,
+        name: doc.data().name as string,
+      }));
+    } catch (error) {
+      console.error("Failed to get groups:", error);
+      return [];
+    }
+}
 
 // --- Other Actions ---
 export async function getTournamentStatus(): Promise<TournamentStatus> {
     try {
+        await verifyAdmin();
         const docRef = adminDb.collection('tournament').doc('status');
         const docSnap = await docRef.get();
         if (docSnap.exists()) {
@@ -302,5 +361,8 @@ export async function getUserTeam(userId: string) {
         if (snapshot.empty) return { hasTeam: false, team: null };
         const teamDoc = snapshot.docs[0];
         return { hasTeam: true, team: { id: teamDoc.id, name: teamDoc.data().name } };
+    } catch(error) {
+        console.error("Error getting user team:", error);
+        return { hasTeam: false, team: null };
     }
 }
