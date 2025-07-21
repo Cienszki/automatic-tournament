@@ -5,25 +5,53 @@ import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { CalendarDays, UserPlus, Megaphone } from "lucide-react";
 import Link from "next/link";
-import { getAnnouncements } from "@/lib/firestore";
 import { Announcement } from "@/lib/definitions";
 import { formatDistanceToNow } from 'date-fns';
 import { useEffect, useState, useMemo } from "react";
+import { Skeleton } from "@/components/ui/skeleton";
 
 function Announcements() {
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [loading, setLoading] = useState(true);
   
   const sortedAnnouncements = useMemo(() => {
-    return [...announcements].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    // The announcements are already sorted by the server
+    return announcements;
   }, [announcements]);
 
   useEffect(() => {
     async function fetchAnnouncements() {
-      const allAnnouncements = await getAnnouncements();
-      setAnnouncements(allAnnouncements);
+      try {
+        setLoading(true);
+        const response = await fetch('/api/announcements');
+        const data = await response.json();
+        setAnnouncements(data);
+      } catch (error) {
+        console.error("Failed to fetch announcements:", error);
+        // Optionally, set an error state here to show a message to the user
+      } finally {
+        setLoading(false);
+      }
     }
     fetchAnnouncements();
   }, []);
+
+  if (loading) {
+    return (
+      <Card className="shadow-lg">
+        <CardHeader>
+          <CardTitle className="flex items-center">
+            <Megaphone className="h-6 w-6 mr-2 text-primary" />
+            Latest Announcements
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Skeleton className="h-24 w-full" />
+          <Skeleton className="h-24 w-full" />
+        </CardContent>
+      </Card>
+    );
+  }
 
   if (announcements.length === 0) {
     return null;

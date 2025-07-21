@@ -13,16 +13,46 @@ export type PlayerRole = typeof PlayerRoles[number];
 export const VerificationStatuses = ["pending", "verified", "warning", "banned"] as const;
 export type VerificationStatus = typeof VerificationStatuses[number];
 
+export type TournamentStatus = {
+  registrationOpen: boolean;
+  currentStage: string;
+  verificationRequired: boolean;
+};
+
 export type Player = {
-  id: string; 
-  openDotaAccountId?: number; 
+  id: string;
+  steamId?: string;
+  openDotaAccountId?: number;
   nickname: string;
   mmr: number;
   role: PlayerRole;
   steamProfileUrl: string;
-  mmrScreenshotUrl?: string; 
-  openDotaProfileUrl?: string; 
+  avatarUrlSmall?: string;
+  avatarUrlMedium?: string;
+  avatarUrlFull?: string;
+  mmrScreenshotUrl?: string;
+  profileScreenshotUrl?: string;
+  openDotaProfileUrl?: string;
+  
+  // Existing aggregated stats
   fantasyPointsEarned?: number;
+  avgKills?: number;
+  avgDeaths?: number;
+  avgAssists?: number;
+  avgGPM?: number;
+  avgXPM?: number;
+
+  // New aggregated stats
+  avgKda?: number;
+  avgKillParticipation?: number;
+  avgHeroDamagePerMinute?: number;
+  avgLastHitsPerMinute?: number;
+  avgNetWorthPerMinute?: number;
+  avgTowerDamagePerMinute?: number;
+  avgWardsPlacedPerMinute?: number;
+  avgStunsPerMinute?: number;
+  avgCampsStacked?: number;
+  avgSaves?: number;
 };
 
 export type TournamentPlayer = Player & {
@@ -55,11 +85,15 @@ export type Team = {
   motto: string;
   logoUrl: string;
   captainId: string;
+  captainDiscordUsername?: string;
   players: Player[];
   status?: VerificationStatus;
   standIns?: StandIn[];
   wins: number;
   losses: number;
+  points?: number;
+  matchesWon?: number;
+  matchesLost?: number;
 
   averageKillsPerGame?: number;
   averageDeathsPerGame?: number;
@@ -86,12 +120,26 @@ export type PlayerPerformanceInMatch = {
   netWorth: number;
   heroDamage: number;
   towerDamage: number;
+  
+  // New per-match stats
+  kda?: number;
+  killParticipation?: number;
+  heroDamagePerMinute?: number;
+  lastHitsPerMinute?: number;
+  netWorthPerMinute?: number;
+  towerDamagePerMinute?: number;
+  wardsPlacedPerMinute?: number;
+  stunsPerMinute?: number;
+  campsStacked?: number;
+  saves?: number;
 };
 
 export type Match = {
   id: string;
   teamA: { id: string, name: string, score: number, logoUrl?: string };
   teamB: { id: string, name: string, score: number, logoUrl?: string };
+  teamAScore?: number;
+  teamBScore?: number;
   teams: string[];
   dateTime: string;
   status: 'upcoming' | 'live' | 'completed';
@@ -139,4 +187,23 @@ export type Announcement = {
     authorId: string;
     authorName: string;
     createdAt: Date;
+};
+
+export type CategoryDisplayStats = {
+    [key: string]: {
+        title: string;
+        data: any[];
+    }
+};
+
+export type CategoryRankingDetail = {
+    category: string;
+    player: Player;
+    value: number;
+};
+
+export type TournamentHighlightRecord = {
+    category: string;
+    player: Player;
+    value: number;
 };

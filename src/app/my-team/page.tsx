@@ -6,6 +6,7 @@ import Link from "next/link";
 import { doc, getDoc, collection, query, where, getDocs, orderBy } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import type { Team, Match, Player } from "@/lib/definitions";
+import { PlayerRoles } from "@/lib/definitions";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Crown, Loader2, ShieldQuestion, UserPlus, Fingerprint, Copy, LogIn } from "lucide-react";
 import { RosterCard } from "@/components/app/my-team/RosterCard";
@@ -19,7 +20,7 @@ import { TeamStatusCard } from "@/components/app/my-team/TeamStatusCard";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { getUserTeam } from "@/lib/team";
+import { getUserTeam } from "@/lib/admin-actions";
 
 async function getMyTeamData(teamId: string): Promise<{ team: Team | undefined, upcomingMatches: Match[], pastMatches: Match[] }> {
   try {
@@ -31,23 +32,23 @@ async function getMyTeamData(teamId: string): Promise<{ team: Team | undefined, 
     }
 
     const teamData = teamDocSnap.data() as Omit<Team, 'id' | 'players'>;
-
-    // Fetch players from the subcollection
     const playersCollectionRef = collection(db, "teams", teamId, "players");
-    const playersQuery = query(playersCollectionRef, orderBy("nickname"));
-    const playersSnapshot = await getDocs(playersQuery);
-    const players = playersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Player));
+    const playersSnapshot = await getDocs(playersCollectionRef);
+    const players = playersSnapshot.docs.map(doc => doc.data() as Player);
+
+    // Sort players by role according to the standard order
+    const sortedPlayers = players.sort((a, b) => PlayerRoles.indexOf(a.role) - PlayerRoles.indexOf(b.role));
 
     const team: Team = { 
         id: teamDocSnap.id, 
         ...teamData,
-        players 
+        players: sortedPlayers 
     };
 
     const matchesRef = collection(db, "matches");
     const q = query(matchesRef, where("teams", "array-contains", teamId));
     const querySnapshot = await getDocs(q);
-    const teamMatches = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Match));
+    const teamMatches = querySnapshot.docs.map(doc => ({ ...doc.data(), documentId: doc.id } as Match));
 
     const upcomingMatches = teamMatches
       .filter((m) => m.status === 'upcoming')
@@ -77,10 +78,9 @@ function MyTeamDashboard({ team, upcomingMatches, pastMatches }: { team: Team; u
       <MyTeamHeader team={team} />
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-            <SchedulingCard upcomingMatches={upcomingMatches} team={team} />
-            <NextMatchCard match={nextMatch} teamId={team.id} />
-          </div>
+            {upcomingMatches.map(match => (
+              <SchedulingCard key={match.documentId} match={match} teamId={team.id} captainId={team.captainId} />
+            ))}
           <TeamStatsGrid team={team} />
           <PlayerAnalyticsTable players={team.players} />
         </div>
@@ -130,19 +130,6 @@ function LoginPrompt() {
 
 // Prompt for logged-in users without a team
 function NoTeamPrompt() {
-    const { user } = useAuth();
-    const { toast } = useToast();
-
-    const handleCopyId = () => {
-        if (user?.uid) {
-            navigator.clipboard.writeText(user.uid);
-            toast({
-                title: "User ID Copied!",
-                description: "Your Firebase User ID has been copied to the clipboard.",
-            });
-        }
-    };
-
     return (
         <Card className="shadow-xl max-w-2xl mx-auto">
             <CardHeader className="text-center">
@@ -161,24 +148,6 @@ function NoTeamPrompt() {
                         Register a New Team
                     </Link>
                 </Button>
-                 {user?.uid && (
-                    <Card className="mt-6 bg-muted/50 p-4 text-left">
-                        <h3 className="text-sm font-semibold text-foreground flex items-center mb-2">
-                           <Fingerprint className="h-4 w-4 mr-2 text-accent"/> For Admin Setup
-                        </h3>
-                        <p className="text-xs text-muted-foreground mb-3">To become an admin, copy your User ID below and add it to the 'admins' collection in your Firestore database.</p>
-                        <div className="flex items-center space-x-2">
-                            <input
-                                readOnly
-                                value={user.uid}
-                                className="flex-1 p-2 bg-background border rounded-md text-xs font-mono"
-                            />
-                            <Button variant="ghost" size="icon" onClick={handleCopyId} aria-label="Copy User ID">
-                                <Copy className="h-4 w-4"/>
-                            </Button>
-                        </div>
-                    </Card>
-                )}
             </CardContent>
         </Card>
     );
@@ -186,30 +155,36 @@ function NoTeamPrompt() {
 
 // The main page component that handles logic
 export default function MyTeamPage() {
-  const { user } = useAuth();
-  const [teamId, setTeamId] = React.useState<string | null>(null);
+  const { user, loading: authLoading } = useAuth();
   const [teamData, setTeamData] = React.useState<{ team: Team | undefined; upcomingMatches: Match[]; pastMatches: Match[] } | null>(null);
+  const [hasTeam, setHasTeam] = React.useState<boolean | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
   
   React.useEffect(() => {
-    async function checkUserTeam() {
+    const checkUserAndTeam = async () => {
+      if (authLoading) {
+        return; 
+      }
       if (user) {
         setIsLoading(true);
-        const id = await getUserTeam(user.uid);
-        setTeamId(id);
-        if (id) {
-          const data = await getMyTeamData(id);
+        const teamInfo = await getUserTeam(user.uid);
+        if (teamInfo.hasTeam && teamInfo.team?.id) {
+          const data = await getMyTeamData(teamInfo.team.id);
           setTeamData(data);
+          setHasTeam(true);
+        } else {
+          setHasTeam(false);
         }
         setIsLoading(false);
       } else {
+        setHasTeam(false);
         setIsLoading(false);
       }
-    }
-    checkUserTeam();
-  }, [user]);
+    };
+    checkUserAndTeam();
+  }, [user, authLoading]);
   
-  if (isLoading) {
+  if (isLoading || authLoading) {
     return (
       <div className="flex justify-center items-center h-64">
         <Loader2 className="h-16 w-16 animate-spin text-primary" />
@@ -221,7 +196,7 @@ export default function MyTeamPage() {
     return <LoginPrompt />;
   }
 
-  if (teamId && teamData?.team) {
+  if (hasTeam === true && teamData?.team) {
     return (
       <MyTeamDashboard 
         team={teamData.team} 

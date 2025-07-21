@@ -4,7 +4,7 @@ import { getPlayerFromTeam, getAllMatches, getAllTeams } from "@/lib/firestore";
 import { heroIconMap, heroColorMap, FALLBACK_HERO_COLOR } from "@/lib/hero-data";
 import type { Player, Team, PlayerPerformanceInMatch } from "@/lib/definitions";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { PlayerAvatar } from "@/components/app/PlayerAvatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { 
@@ -113,10 +113,7 @@ export default async function PlayerPage({ params }: PlayerPageParams) {
       <Card className="shadow-xl overflow-hidden">
         <CardHeader className="bg-muted/30 p-6 md:p-8">
             <div className="flex flex-col md:flex-row items-center space-y-4 md:space-y-0 md:space-x-6">
-                <Avatar className="h-32 w-32 border-4 border-card shadow-md">
-                    <AvatarImage src={player.profileScreenshotUrl} alt={`${player.nickname} avatar`} />
-                    <AvatarFallback className="text-4xl">{player.nickname.substring(0, 2).toUpperCase()}</AvatarFallback>
-                </Avatar>
+                <PlayerAvatar src={player.avatarUrlFull} nickname={player.nickname} size="large" />
                 <div>
                     <CardTitle className="text-4xl font-bold text-primary">{player.nickname}</CardTitle>
                     <CardDescription className="text-lg mt-1">

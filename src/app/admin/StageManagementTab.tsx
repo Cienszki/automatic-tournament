@@ -1,178 +1,165 @@
 
 "use client";
 
-import React, { useState, useEffect, useCallback, useTransition } from 'react';
-import { getTournamentStatus, updateTournamentStatus, initializeTournament } from '@/lib/admin-actions';
-import type { TournamentStatus } from '@/lib/definitions';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
-import { Button } from '@/components/ui/button';
-import { Loader2, ArrowRight, ShieldPlus } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
-
-const stageConfig: Record<string, { title: string; description: string; nextStage: string; buttonText: string }> = {
-    'initial': {
-        title: 'Tournament Initialized',
-        description: 'The tournament is ready to begin. Start the pre-season to open registrations.',
-        nextStage: 'pre_season',
-        buttonText: 'Start Pre-Season',
-    },
-    'pre_season': {
-        title: 'Pre-Season / Registration Open',
-        description: 'Teams can register, and fantasy lineups are being set for the pre-season.',
-        nextStage: 'group_stage',
-        buttonText: 'Start Group Stage',
-    },
-    'group_stage': {
-        title: 'Group Stage',
-        description: 'The group stage is currently active. Team registrations are closed.',
-        nextStage: 'playoffs_r1',
-        buttonText: 'Start Playoffs',
-    },
-    'playoffs_r1': {
-        title: 'Playoffs - Round 1',
-        description: 'The first round of playoffs is underway.',
-        nextStage: 'playoffs_r2',
-        buttonText: 'Advance to Round 2',
-    },
-    'playoffs_r2': {
-        title: 'Playoffs - Round 2',
-        description: 'The second round of playoffs is underway.',
-        nextStage: 'playoffs_r3',
-        buttonText: 'Advance to Round 3',
-    },
-    'playoffs_r3': {
-        title: 'Playoffs - Round 3',
-        description: 'The third round of playoffs is underway.',
-        nextStage: 'tournament_end',
-        buttonText: 'End Tournament',
-    },
-    'tournament_end': {
-        title: 'Tournament Ended',
-        description: 'The tournament has concluded. No further actions can be taken.',
-        nextStage: '',
-        buttonText: '',
-    },
-};
+import * as React from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { CalendarIcon, Loader2 } from "lucide-react";
+import { format } from "date-fns";
+import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
+// Assume these server actions will be created
+import { getGroups, generateGroupStageMatches, createTestGroup } from "@/lib/admin-actions";
 
 export function StageManagementTab() {
-    const [status, setStatus] = useState<TournamentStatus | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
-    const [isUpdating, startTransition] = useTransition();
-    const [error, setError] = useState<string | null>(null);
-    const { toast } = useToast();
+  const { toast } = useToast();
+  const [groups, setGroups] = React.useState<{ id: string; name: string }[]>([]);
+  const [selectedGroupId, setSelectedGroupId] = React.useState<string>("");
+  const [deadline, setDeadline] = React.useState<Date | undefined>();
+  const [isLoading, setIsLoading] = React.useState(false);
+  const [isGenerating, setIsGenerating] = React.useState(false);
+  const [isCreatingTestGroup, setIsCreatingTestGroup] = React.useState(false);
 
-    const fetchStatus = useCallback(async () => {
-        setIsLoading(true);
-        setError(null);
-        try {
-            const currentStatus = await getTournamentStatus();
-            setStatus(currentStatus);
-        } catch (e) {
-            setError("An unexpected error occurred while fetching the status.");
-            console.error(e);
-        } finally {
-            setIsLoading(false);
-        }
-    }, []);
+  const fetchGroups = React.useCallback(async () => {
+    setIsLoading(true);
+    const fetchedGroups = await getGroups();
+    setGroups(fetchedGroups);
+    setIsLoading(false);
+  }, []);
 
-    useEffect(() => {
-        fetchStatus();
-    }, [fetchStatus]);
+  React.useEffect(() => {
+    fetchGroups();
+  }, [fetchGroups]);
 
-    const handleInitialize = async () => {
-        startTransition(async () => {
-            const result = await initializeTournament();
-            if (result.success) {
-                await fetchStatus();
-                toast({
-                    title: 'Success!',
-                    description: 'Tournament has been initialized.',
-                });
-            } else {
-                console.error("Failed to initialize tournament:", result.error);
-                toast({
-                    title: 'Error',
-                    description: result.error || 'Could not initialize the tournament.',
-                    variant: 'destructive',
-                });
-            }
-        });
-    };
-
-    const handleAdvanceStage = async () => {
-        if (!status || !stageConfig[status.roundId]?.nextStage) return;
-
-        const nextStageId = stageConfig[status.roundId].nextStage;
-
-        startTransition(async () => {
-            const result = await updateTournamentStatus({ roundId: nextStageId });
-            if (result.success) {
-                setStatus({ roundId: nextStageId });
-                toast({
-                    title: 'Success!',
-                    description: `Tournament has been advanced to: ${stageConfig[nextStageId].title}`,
-                });
-            } else {
-                console.error("Failed to update tournament status:", result.error);
-                toast({
-                    title: 'Error',
-                    description: result.error || 'Could not update the tournament status. Please try again.',
-                    variant: 'destructive',
-                });
-            }
-        });
-    };
-
-    if (isLoading) {
-        return <div className="flex justify-center items-center h-64"><Loader2 className="h-16 w-16 animate-spin" /></div>;
-    }
-
-    if (error) {
-        return <div className="text-center text-red-500">{error}</div>;
-    }
-
-    if (!status) {
-        return (
-            <Card>
-                <CardHeader>
-                    <CardTitle>Initialize Tournament</CardTitle>
-                    <CardDescription>The tournament status document does not exist in the database yet.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <p className="text-muted-foreground">Click the button below to create the initial record and start the tournament management process.</p>
-                </CardContent>
-                <CardFooter>
-                    <Button onClick={handleInitialize} disabled={isUpdating} size="lg">
-                        {isUpdating ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <ShieldPlus className="mr-2 h-5 w-5" />}
-                        {isUpdating ? "Initializing..." : "Initialize Tournament"}
-                    </Button>
-                </CardFooter>
-            </Card>
-        );
+  const handleGenerateMatches = async () => {
+    if (!selectedGroupId || !deadline) {
+      toast({
+        title: "Error",
+        description: "Please select a group and a deadline.",
+        variant: "destructive",
+      });
+      return;
     }
     
-    const currentStage = stageConfig[status.roundId] || { title: 'Unknown State', description: `The tournament is in an unrecognized state: '${status.roundId}'`, nextStage: '', buttonText: '' };
+    setIsGenerating(true);
+    const result = await generateGroupStageMatches(selectedGroupId, deadline);
+    if (result.success) {
+      toast({
+        title: "Success!",
+        description: result.message,
+      });
+      setSelectedGroupId("");
+      setDeadline(undefined);
+    } else {
+      toast({
+        title: "Generation Failed",
+        description: result.message,
+        variant: "destructive",
+      });
+    }
+    setIsGenerating(false);
+  };
+  
+  const handleCreateTestGroup = async () => {
+    setIsCreatingTestGroup(true);
+    const result = await createTestGroup();
+    if (result.success) {
+      toast({
+        title: "Test Group Created",
+        description: "Successfully created a test group with dummy teams and captains.",
+      });
+      await fetchGroups(); // Refresh the groups list
+    } else {
+      toast({
+        title: "Failed to Create Test Group",
+        description: result.message,
+        variant: "destructive",
+      });
+    }
+    setIsCreatingTestGroup(false);
+  }
 
-    return (
-        <Card>
-            <CardHeader>
-                <CardTitle>Current Status</CardTitle>
-                <CardDescription>This is the current, live stage of the tournament.</CardDescription>
-            </CardHeader>
-            <CardContent>
-                <div className="p-4 bg-muted rounded-lg">
-                    <p className="text-2xl font-bold text-primary">{currentStage.title}</p>
-                    <p className="text-muted-foreground mt-1">{currentStage.description}</p>
-                </div>
-            </CardContent>
-            {currentStage.nextStage && (
-                <CardFooter>
-                    <Button onClick={handleAdvanceStage} disabled={isUpdating} size="lg">
-                        {isUpdating ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <ArrowRight className="mr-2 h-5 w-5" />}
-                        {isUpdating ? "Updating..." : currentStage.buttonText}
-                    </Button>
-                </CardFooter>
-            )}
-        </Card>
-    );
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Stage Management</CardTitle>
+        <CardDescription>
+          Control tournament stages, generate matches, and set deadlines.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        <div className="p-4 border rounded-lg">
+          <h4 className="text-lg font-semibold mb-2">Generate Group Stage Matches</h4>
+          <p className="text-sm text-muted-foreground mb-4">
+            Select a group and a deadline to generate all matches for that group. The system will automatically assign unique, non-conflicting default match times for each pair of teams, scheduled for 20:00 on the days leading up to the deadline.
+          </p>
+          <div className="grid md:grid-cols-3 gap-4">
+            <div>
+              <Label htmlFor="group-select">Group</Label>
+              {isLoading ? <p>Loading groups...</p> : (
+                <Select value={selectedGroupId} onValueChange={setSelectedGroupId}>
+                  <SelectTrigger id="group-select">
+                    <SelectValue placeholder="Select a group" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {groups.map(group => (
+                      <SelectItem key={group.id} value={group.id}>{group.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+            <div>
+              <Label>Scheduling Deadline</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant={"outline"}
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !deadline && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {deadline ? format(deadline, "PPP") : <span>Pick a date</span>}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0">
+                  <Calendar
+                    mode="single"
+                    selected={deadline}
+                    onSelect={setDeadline}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+            <div className="flex items-end">
+              <Button onClick={handleGenerateMatches} disabled={isGenerating || !selectedGroupId || !deadline} className="w-full">
+                {isGenerating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Generate Matches
+              </Button>
+            </div>
+          </div>
+        </div>
+        
+        <div className="p-4 border rounded-lg bg-muted/20">
+            <h4 className="text-lg font-semibold mb-2">Testing Tools</h4>
+            <p className="text-sm text-muted-foreground mb-4">
+                Use these tools to test the scheduling system. This will create dummy data that can be safely deleted.
+            </p>
+            <Button onClick={handleCreateTestGroup} disabled={isCreatingTestGroup}>
+                {isCreatingTestGroup && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Create Test Group
+            </Button>
+        </div>
+        
+      </CardContent>
+    </Card>
+  );
 }

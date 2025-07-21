@@ -9,7 +9,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter }
 import { Button } from '@/components/ui/button';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Trophy, Award, Medal, Users, Download, Lock, ClipboardCheck, RotateCcw, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
@@ -32,7 +32,7 @@ type ContainerId = keyof typeof pickContainers;
 type PicksState = Record<ContainerId, string[]>;
 
 export default function PickEmPage() {
-  const { user, signInWithDiscord } = useAuth();
+  const { user, signInWithGoogle } = useAuth();
   const { toast } = useToast();
   const [allTeams, setAllTeams] = useState<Team[]>([]);
   const [picks, setPicks] = useState<PicksState | null>(null);
@@ -116,8 +116,7 @@ export default function PickEmPage() {
     if (!user || !picks || !isSubmissionReady) return;
     setIsSaving(true);
     try {
-        const predictionsToSave = { ...picks };
-        delete predictionsToSave.pool; // Don't save the pool to the DB
+        const { pool, ...predictionsToSave } = picks;
         await saveUserPickem(user.uid, predictionsToSave);
         toast({ title: "Success!", description: "Your Pick'em predictions have been saved." });
     } catch (error) {
@@ -141,8 +140,8 @@ export default function PickEmPage() {
       <Card className="max-w-2xl mx-auto text-center shadow-xl">
         <CardHeader><CardTitle className="text-2xl text-accent">Join the Pick'em Challenge!</CardTitle></CardHeader>
         <CardContent>
-          <p className="mb-4 text-muted-foreground">Login with Discord to make your predictions.</p>
-          <Button onClick={signInWithDiscord} size="lg">Login with Discord</Button>
+          <p className="mb-4 text-muted-foreground">Login with Google to make your predictions.</p>
+          <Button onClick={signInWithGoogle} size="lg">Login with Google</Button>
         </CardContent>
       </Card>
     );

@@ -5,28 +5,27 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { PlayerAvatar } from "@/components/app/PlayerAvatar";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Loader2, Crown, Info, UserCircle, BarChart2, Swords, Sparkles, Shield as ShieldIconLucide, HandHelping, Eye as EyeIconLucide, Lock } from "lucide-react";
-import type { PlayerRole, FantasyLineup, FantasyData, TournamentPlayer } from "@/lib/definitions";
+import type { PlayerRole, FantasyLineup, FantasyData, TournamentPlayer, TournamentStatus } from "@/lib/definitions";
 import { PlayerRoles, FANTASY_BUDGET_MMR } from "@/lib/definitions";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { getAllTournamentPlayers, getFantasyLeaderboard, getUserFantasyLineup, saveUserFantasyLineup } from "@/lib/firestore";
-import { getTournamentStatus, TournamentStatus } from "@/lib/admin";
+import { getTournamentStatus } from "@/lib/admin-actions";
 
 const roleIcons: Record<PlayerRole, React.ElementType> = {
   Carry: Swords, Mid: Sparkles, Offlane: ShieldIconLucide, "Soft Support": HandHelping, "Hard Support": EyeIconLucide,
 };
 
 export default function FantasyLeaguePage() {
-  const { user, signInWithDiscord, signOut } = useAuth();
+  const { user, signInWithGoogle, signOut } = useAuth();
   const { toast } = useToast();
   const [status, setStatus] = useState<TournamentStatus | null>(null);
   const [selectedLineup, setSelectedLineup] = useState<FantasyLineup>({});
@@ -128,12 +127,12 @@ export default function FantasyLeaguePage() {
       </Card>
 
       {!user ? (
-        <Card className="shadow-lg text-center"><CardHeader><CardTitle>Join the League!</CardTitle></CardHeader><CardContent><p className="mb-4">Login to create your team.</p><Button onClick={signInWithDiscord}>Login with Discord</Button></CardContent></Card>
+        <Card className="shadow-lg text-center"><CardHeader><CardTitle>Join the League!</CardTitle></CardHeader><CardContent><p className="mb-4">Login to create your team.</p><Button onClick={signInWithGoogle}>Login with Google</Button></CardContent></Card>
       ) : (
         <>
           <div className="flex justify-end items-center"><Button onClick={signOut} variant="outline">Logout</Button></div>
           <Card className="shadow-lg">
-            <CardHeader><CardTitle className="text-2xl flex items-center"><UserCircle className="mr-2" />Build Your Team</CardTitle><CardDescription>Current Round: <span className="font-bold text-primary">{status?.roundId || 'N/A'}</span></CardDescription></CardHeader>
+            <CardHeader><CardTitle className="text-2xl flex items-center"><UserCircle className="mr-2" />Build Your Team</CardTitle><CardDescription>Current Round: <span className="font-bold text-primary">{status?.currentStage || 'N/A'}</span></CardDescription></CardHeader>
             <CardContent className="space-y-6">
               <div className="p-4 border rounded-lg"><div className="flex justify-between items-center mb-1"><Label>Budget Used:</Label><div className={cn("font-bold", currentBudgetUsed > FANTASY_BUDGET_MMR ? 'text-destructive' : 'text-primary')}>{currentBudgetUsed.toLocaleString()} / {FANTASY_BUDGET_MMR.toLocaleString()}</div></div><Progress value={(currentBudgetUsed / FANTASY_BUDGET_MMR) * 100} indicatorClassName={cn(currentBudgetUsed > FANTASY_BUDGET_MMR && "bg-destructive")} /></div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -170,7 +169,7 @@ const PlayerSelectionCard = ({ role, availablePlayers, selectedLineup, onPlayerS
   return (
     <Card className="flex flex-col"><CardHeader><CardTitle className="flex items-center"><RoleIcon className="mr-2" />{role}</CardTitle></CardHeader>
       <CardContent className="flex-grow grid grid-cols-2 gap-x-4 items-center">
-        <div>{selectedPlayer ? <div className="p-3 border rounded-md flex items-center space-x-3"><Avatar><AvatarImage src={selectedPlayer.profileScreenshotUrl} /><AvatarFallback>{selectedPlayer.nickname.charAt(0)}</AvatarFallback></Avatar><div><p className="font-semibold truncate">{selectedPlayer.nickname}</p><p className="text-xs text-muted-foreground">Cost: {selectedPlayer.mmr.toLocaleString()}</p></div></div> : <div className="p-3 border rounded-md text-center flex items-center justify-center min-h-[76px]"><p className="text-sm italic">Not Selected</p></div>}</div>
+        <div>{selectedPlayer ? <div className="p-3 border rounded-md flex items-center space-x-3"><PlayerAvatar steamProfileUrl={selectedPlayer.steamProfileUrl} nickname={selectedPlayer.nickname} /><div><p className="font-semibold truncate">{selectedPlayer.nickname}</p><p className="text-xs text-muted-foreground">Cost: {selectedPlayer.mmr.toLocaleString()}</p></div></div> : <div className="p-3 border rounded-md text-center flex items-center justify-center min-h-[76px]"><p className="text-sm italic">Not Selected</p></div>}</div>
         <div>
           <Select value={selectedPlayer?.id || ""} onValueChange={(pid) => onPlayerSelect(role, pid)}>
             <SelectTrigger><SelectValue placeholder="Select Player..." /></SelectTrigger>

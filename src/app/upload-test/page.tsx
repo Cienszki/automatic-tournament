@@ -1,146 +1,108 @@
 "use client";
 
 import React, { useState, useTransition } from 'react';
+import { useAuth } from '@/context/AuthContext';
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { uploadScreenshot } from '@/lib/storage';
 import { createTestTeam } from '@/lib/admin-actions';
 import { Loader2, LogIn, LogOut } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Separator } from '@/components/ui/separator';
-import { Label } from '@/components/ui/label';
-import { useAuth } from '@/context/AuthContext';
+import { useToast } from '@/hooks/use-toast';
+import { Input } from '@/components/ui/input';
+
+
+// NOTE: This is a test page for demonstrating the database write flow.
+// It is not part of the main application navigation.
 
 export default function UploadTestPage() {
     const { user, signInWithGoogle, signOut } = useAuth();
-
-    const [file, setFile] = useState<File | null>(null);
-    const [isFileUploading, setIsFileUploading] = useState(false);
-    const [uploadResult, setUploadResult] = useState<{ url?: string; message?: string; type: 'success' | 'error' } | null>(null);
-
-    const [teamName, setTeamName] = useState('');
-    const [teamTag, setTeamTag] = useState('');
+    const { toast } = useToast();
     const [isDbSubmitting, startDbTransition] = useTransition();
-    const [dbResult, setDbResult] = useState<{ message?: string; type: 'success' | 'error' } | null>(null);
 
-    const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-        const selectedFile = event.target.files?.[0];
-        if (selectedFile) setFile(selectedFile);
-    };
+    const [teamName, setTeamName] = useState("Test Team Alpha");
+    const [teamTag, setTeamTag] = useState("TTA");
 
-    const handleFileUpload = async () => {
-        if (!file) return;
-        setIsFileUploading(true);
-        setUploadResult(null);
-        try {
-            const downloadURL = await uploadScreenshot(file, "upload-test-team");
-            setUploadResult({ url: downloadURL, message: "File uploaded successfully!", type: 'success' });
-        } catch (error) {
-            setUploadResult({ message: (error as Error).message, type: 'error' });
-        } finally {
-            setIsFileUploading(false);
-        }
-    };
-    
     const handleDbSubmit = async (event: React.FormEvent) => {
         event.preventDefault();
-        if (!teamName || !teamTag) return;
-        
-        setDbResult(null);
-        
+        if (!user) {
+            toast({ title: "Not logged in", description: "You must be logged in to test database writes.", variant: "destructive" });
+            return;
+        }
+
         startDbTransition(async () => {
             const result = await createTestTeam({ name: teamName, tag: teamTag });
             if (result.success) {
-                setDbResult({ message: result.message, type: 'success' });
+                toast({ title: "Success!", description: "Test team saved to the database." });
             } else {
-                setDbResult({ message: result.message, type: 'error' });
+                toast({ title: "Error", description: result.message, variant: "destructive" });
             }
         });
     };
 
     return (
-        <div className="container mx-auto p-8 flex justify-center">
-            <Card className="w-full max-w-2xl">
+        <div className="container mx-auto p-4">
+            <Card className="max-w-2xl mx-auto">
                 <CardHeader>
-                    <CardTitle>System Test Page</CardTitle>
+                    <CardTitle>System Test: Secure Database Write</CardTitle>
                     <CardDescription>
-                        Use this page to test individual pieces of functionality.
+                        This page demonstrates how a client component can trigger a secure, server-only database write using a Next.js Server Action.
                     </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-8">
-                    {/* --- AUTHENTICATION --- */}
-                    <div className="p-4 border rounded-md bg-muted/50">
+                <CardContent className="space-y-6">
+                    <div className="p-4 border rounded-md">
+                        <h3 className="font-semibold mb-2">Authentication</h3>
                         {user ? (
                             <div className="flex items-center justify-between">
                                 <p>Signed in as <strong>{user.displayName}</strong></p>
-                                <Button variant="outline" onClick={signOut}><LogOut className="mr-2 h-4 w-4"/>Sign Out</Button>
+                                <Button variant="outline" onClick={() => signOut()}><LogOut className="mr-2 h-4 w-4" />Sign Out</Button>
                             </div>
                         ) : (
                             <div className="flex items-center justify-between">
-                               <p className="text-destructive font-semibold">You are not signed in.</p>
-                                <Button onClick={signInWithGoogle}><LogIn className="mr-2 h-4 w-4"/>Sign In with Google</Button>
+                                <p>You are not signed in.</p>
+                                <Button onClick={() => signInWithGoogle()}><LogIn className="mr-2 h-4 w-4" />Sign In with Google</Button>
                             </div>
                         )}
+                         <p className="text-xs text-muted-foreground mt-2">
+                            Note: To write to the database, you must be signed in with an account that is listed in the `admins` collection in Firestore.
+                        </p>
                     </div>
 
-                    {/* --- DATABASE WRITE TEST --- */}
-                    <div className="space-y-4">
-                        <h3 className="text-lg font-semibold">1. Database Write Test</h3>
-                        <form onSubmit={handleDbSubmit} className="p-4 border rounded-md">
-                            <fieldset disabled={!user} className="space-y-4">
-                               <div className="space-y-2">
-                                   <Label htmlFor="teamName">Team Name</Label>
-                                   <Input id="teamName" value={teamName} onChange={(e) => setTeamName(e.target.value)} placeholder="Enter a test team name" />
-                               </div>
-                               <div className="space-y-2">
-                                   <Label htmlFor="teamTag">Team Tag</Label>
-                                   <Input id="teamTag" value={teamTag} onChange={(e) => setTeamTag(e.target.value)} placeholder="Enter a test team tag" />
-                               </div>
-                               <Button type="submit" disabled={isDbSubmitting} className="w-full">
-                                   {isDbSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Save to Database"}
-                               </Button>
-                            </fieldset>
-                           {dbResult && (
-                                <p className={`text-sm font-medium p-3 rounded-md mt-4 text-center ${dbResult.type === 'success' ? "bg-green-100 text-green-800" : "bg-red-100 text-destructive"}`}>
-                                    {dbResult.message}
-                                </p>
-                           )}
-                        </form>
-                    </div>
-                    
-                    <Separator />
-
-                    {/* --- FILE UPLOAD TEST --- */}
-                    <div className="space-y-4">
-                        <h3 className="text-lg font-semibold">2. File Upload Test</h3>
+                    <form onSubmit={handleDbSubmit} className="space-y-4">
                         <div className="p-4 border rounded-md">
-                           <fieldset disabled={!user} className="space-y-4">
-                               <div className="space-y-2">
-                                 <Label htmlFor="fileUpload">MMR Screenshot</Label>
-                                 <Input id="fileUpload" type="file" accept="image/*" onChange={handleFileChange} />
-                               </div>
-                               <Button onClick={handleFileUpload} disabled={!file || isFileUploading} className="w-full">
-                                   {isFileUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Upload File"}
-                               </Button>
-                           </fieldset>
-                        </div>
-                        {uploadResult && (
-                            <div>
-                                <p className={`text-sm font-medium p-3 rounded-md mt-4 text-center ${uploadResult.type === 'success' ? "bg-green-100 text-green-800" : "bg-red-100 text-destructive"}`}>
-                                    {uploadResult.message}
-                                </p>
-                                {uploadResult.url && (
-                                    <div className="pt-4 text-center">
-                                        <Link href={uploadResult.url} target="_blank" className="text-sm text-primary hover:underline break-all">{uploadResult.url}</Link>
-
-                                        <div className="relative w-full h-64 mt-2"><Image src={uploadResult.url} alt="Uploaded screenshot" layout="fill" objectFit="contain" /></div>
-
-                                    </div>
-                                )}
+                            <h3 className="font-semibold mb-2">Step 1: Input Data</h3>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label htmlFor="teamName" className="text-sm font-medium">Team Name</label>
+                                    <Input id="teamName" value={teamName} onChange={e => setTeamName(e.target.value)} />
+                                </div>
+                                <div>
+                                    <label htmlFor="teamTag" className="text-sm font-medium">Team Tag</label>
+                                    <Input id="teamTag" value={teamTag} onChange={e => setTeamTag(e.target.value)} />
+                                </div>
                             </div>
-                        )}
+                        </div>
+
+                        <div className="p-4 border rounded-md">
+                            <h3 className="font-semibold mb-2">Step 2: Trigger Server Action</h3>
+                            <p className="text-sm text-muted-foreground mb-4">
+                                Clicking this button calls the `createTestTeam` server action. This action will first verify you are an admin and then write the data to the `teams` collection in Firestore.
+                            </p>
+                            <Button type="submit" className="w-full" disabled={isDbSubmitting || !user}>
+                                {isDbSubmitting ? <Loader2 className="animate-spin mr-2" /> : null}
+                                {isDbSubmitting ? 'Saving...' : 'Save to Database'}
+                            </Button>
+                        </div>
+                    </form>
+
+                     <div className="p-4 border rounded-md bg-muted/50">
+                        <h3 className="font-semibold mb-2">How It Works</h3>
+                        <p className="text-sm text-muted-foreground">
+                            For a detailed explanation of the secure flow from the client to the server and into the database, please see the documentation.
+                        </p>
+                         <Button asChild variant="link" className="px-0">
+                            <Link href="/HOW_IT_WORKS.md" target="_blank">Read the Technical Deep Dive</Link>
+                        </Button>
                     </div>
                 </CardContent>
             </Card>

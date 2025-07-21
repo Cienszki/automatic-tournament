@@ -20,8 +20,8 @@ import { cn } from "@/lib/utils";
 
 interface StatsPageClientProps {
   data: {
-    singleMatchRecords: CategoryDisplayStats[];
-    playerAverageLeaders: CategoryDisplayStats[];
+    singleMatchRecords: CategoryDisplayStats;
+    playerAverageLeaders: CategoryDisplayStats;
     tournamentHighlights: TournamentHighlightRecord[];
   }
 }
@@ -30,8 +30,13 @@ export function StatsPageClient({ data }: StatsPageClientProps) {
   const { singleMatchRecords, playerAverageLeaders, tournamentHighlights } = data;
   const [openAccordionItem, setOpenAccordionItem] = useState<string | undefined>();
 
-  const AccordionRowContent = ({ categoryData, isSingleMatchCategory }: { categoryData: CategoryDisplayStats, isSingleMatchCategory: boolean }) => {
+  const ICONS: { [key: string]: React.ElementType } = {
+    Trophy, Zap, Swords, Coins, Eye, Bomb, ShieldAlert, Award, TrendingDown, Puzzle, Anchor, Flame, Snowflake, MountainSnow, Ghost, Ban, Moon, CopyIconLucide, ShieldOff, Waves, Trees, Bone, CloudLightning, Sparkles, Target, AxeIconLucide, Clock, Activity, ShieldCheck, ChevronsUp, Timer, Skull, ListChecks, Medal, Percent, Ratio, Home, HandshakeIcon, BarChartHorizontalBig
+  };
+
+  const AccordionRowContent = ({ categoryData, isSingleMatchCategory }: { categoryData: { id: string, categoryName: string, icon: string, rankings: CategoryRankingDetail[] }, isSingleMatchCategory: boolean }) => {
     const topEntry = categoryData.rankings[0];
+    const Icon = ICONS[categoryData.icon];
   
     return (
         // This div's content is effectively the AccordionTrigger's appearance when closed
@@ -44,7 +49,7 @@ export function StatsPageClient({ data }: StatsPageClientProps) {
             "col-span-2", 
             isSingleMatchCategory ? "md:col-span-3" : "md:col-span-4" 
           )}>
-            <categoryData.icon className="h-5 w-5 mr-3 shrink-0 text-accent" />
+            <Icon className="h-5 w-5 mr-3 shrink-0 text-accent" />
             <span className="truncate" title={categoryData.categoryName}>{categoryData.categoryName}</span>
           </div>
   
@@ -54,11 +59,11 @@ export function StatsPageClient({ data }: StatsPageClientProps) {
                 "truncate",
                 "col-span-1",
                 isSingleMatchCategory ? "md:col-span-2" : "md:col-span-3" 
-              )} title={topEntry.playerName}>
-                {topEntry.playerId && topEntry.teamId ? (
-                  <Link href={`/teams/${topEntry.teamId}/players/${topEntry.playerId}`} className="text-primary font-semibold hover:underline">{topEntry.playerName}</Link>
+              )} title={topEntry.player.nickname}>
+                {topEntry.player.id && topEntry.teamId ? (
+                  <Link href={`/teams/${topEntry.teamId}/players/${topEntry.player.id}`} className="text-primary font-semibold hover:underline">{topEntry.player.nickname}</Link>
                 ) : (
-                  <span className="text-primary font-semibold">{topEntry.playerName || 'N/A'}</span>
+                  <span className="text-primary font-semibold">{topEntry.player.nickname || 'N/A'}</span>
                 )}
               </div>
               <div className={cn(
@@ -144,10 +149,10 @@ export function StatsPageClient({ data }: StatsPageClientProps) {
             const rowCells: JSX.Element[] = [
               <TableCell key="rank" className="font-semibold px-3 py-2">{detail.rank}</TableCell>,
               <TableCell key="player" className="px-3 py-2 w-[180px]">
-                {detail.playerId && detail.teamId ? (
-                  <Link href={`/teams/${detail.teamId}/players/${detail.playerId}`} className="text-primary font-semibold hover:underline">{detail.playerName}</Link>
+                {detail.player.id && detail.teamId ? (
+                  <Link href={`/teams/${detail.teamId}/players/${detail.player.id}`} className="text-primary font-semibold hover:underline">{detail.player.nickname}</Link>
                 ) : (
-                  <span className="text-primary font-semibold">{detail.playerName || 'N/A'}</span>
+                  <span className="text-primary font-semibold">{detail.player.nickname || 'N/A'}</span>
                 )}
               </TableCell>,
               <TableCell key="team" className="px-3 py-2 w-[180px]">
@@ -183,7 +188,7 @@ export function StatsPageClient({ data }: StatsPageClientProps) {
             }
 
             return (
-              <TableRow key={`${detail.rank}-${detail.playerName}-${detail.teamName}-${detail.value}`} className="text-sm">
+              <TableRow key={`${detail.rank}-${detail.player.nickname}-${detail.teamName}-${detail.value}`} className="text-sm">
                 {rowCells}
               </TableRow>
             );
@@ -221,7 +226,9 @@ export function StatsPageClient({ data }: StatsPageClientProps) {
             value={openAccordionItem}
             onValueChange={setOpenAccordionItem}
           >
-            {singleMatchRecords.map((categoryData) => (
+            {Object.values(singleMatchRecords).map((categoryData) => {
+              const Icon = ICONS[categoryData.icon];
+              return (
               <AccordionItem value={categoryData.id} key={categoryData.id} className="border-b last:border-b-0">
                  <Card className="mb-0.5 shadow-none hover:bg-muted/5 transition-colors rounded-md overflow-hidden group">
                     <AccordionTrigger className="p-0 hover:no-underline w-full data-[state=open]:bg-muted/10 group">
@@ -232,7 +239,7 @@ export function StatsPageClient({ data }: StatsPageClientProps) {
                           className="text-center mb-4 flex flex-col items-center cursor-pointer"
                           onClick={() => setOpenAccordionItem(openAccordionItem === categoryData.id ? undefined : categoryData.id)}
                         >
-                            <categoryData.icon className="h-8 w-8 text-accent mb-1" />
+                            <Icon className="h-8 w-8 text-accent mb-1" />
                             <h3 className="text-xl font-semibold text-primary">{categoryData.categoryName}</h3>
                         </div>
                         {categoryData.rankings.length > 0 ? 
@@ -241,7 +248,7 @@ export function StatsPageClient({ data }: StatsPageClientProps) {
                     </AccordionContent>
                  </Card>
               </AccordionItem>
-            ))}
+            )})}
           </Accordion>
         </CardContent>
       </Card>
@@ -261,7 +268,9 @@ export function StatsPageClient({ data }: StatsPageClientProps) {
               value={openAccordionItem}
               onValueChange={setOpenAccordionItem}
             >
-            {playerAverageLeaders.map((categoryData) => (
+            {Object.values(playerAverageLeaders).map((categoryData) => {
+              const Icon = ICONS[categoryData.icon];
+              return (
                 <AccordionItem value={categoryData.id} key={categoryData.id} className="border-b last:border-b-0">
                     <Card className="mb-0.5 shadow-none hover:bg-muted/5 transition-colors rounded-md overflow-hidden group">
                         <AccordionTrigger className="p-0 hover:no-underline w-full data-[state=open]:bg-muted/10 group">
@@ -272,7 +281,7 @@ export function StatsPageClient({ data }: StatsPageClientProps) {
                              className="text-center mb-4 flex flex-col items-center cursor-pointer"
                              onClick={() => setOpenAccordionItem(openAccordionItem === categoryData.id ? undefined : categoryData.id)}
                            >
-                                <categoryData.icon className="h-8 w-8 text-accent mb-1" />
+                                <Icon className="h-8 w-8 text-accent mb-1" />
                                 <h3 className="text-xl font-semibold text-primary">{categoryData.categoryName}</h3>
                            </div>
                            {categoryData.rankings.length > 0 ? 
@@ -281,7 +290,7 @@ export function StatsPageClient({ data }: StatsPageClientProps) {
                         </AccordionContent>
                     </Card>
                 </AccordionItem>
-            ))}
+            )})}
           </Accordion>
         </CardContent>
       </Card>
@@ -292,10 +301,12 @@ export function StatsPageClient({ data }: StatsPageClientProps) {
           <CardDescription>Memorable moments and records from the tournament.</CardDescription>
         </CardHeader>
         <CardContent className="grid md:grid-cols-2 gap-6">
-          {tournamentHighlights.map((highlight) => (
+          {tournamentHighlights.map((highlight) => {
+            const Icon = ICONS[highlight.icon];
+            return (
             <Card key={highlight.id} className="bg-muted/30">
               <CardHeader className="flex flex-row items-center space-x-3 pb-2">
-                <highlight.icon className="h-6 w-6 text-accent" />
+                <Icon className="h-6 w-6 text-accent" />
                 <CardTitle className="text-lg">{highlight.title}</CardTitle>
               </CardHeader>
               <CardContent>
@@ -303,7 +314,7 @@ export function StatsPageClient({ data }: StatsPageClientProps) {
                 {highlight.details && <p className="text-xs text-muted-foreground pt-1">{highlight.details}</p>}
               </CardContent>
             </Card>
-          ))}
+          )})}
         </CardContent>
       </Card>
 
@@ -313,6 +324,3 @@ export function StatsPageClient({ data }: StatsPageClientProps) {
     </div>
   );
 }
-
-
-    

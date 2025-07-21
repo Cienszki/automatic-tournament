@@ -64,13 +64,15 @@ export async function registerTeam(captainId: string, prevState: { message: stri
             })
         );
 
-        const teamToSave = {
+        const teamToSave: Omit<Team, 'id'> = {
             name: validatedData.name,
             tag: validatedData.tag,
             motto: validatedData.motto,
             logoUrl: validatedData.logoUrl,
             captainId: captainId,
             players: playersWithIds,
+            wins: 0,
+            losses: 0,
         };
 
         await saveTeam(teamToSave);

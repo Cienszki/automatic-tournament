@@ -1,58 +1,77 @@
 
 import type { Player } from "@/lib/definitions";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { BarChart2 } from "lucide-react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { BarChart2, HelpCircle } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface PlayerAnalyticsTableProps {
   players: Player[];
 }
 
-export function PlayerAnalyticsTable({ players }: PlayerAnalyticsTableProps) {
-  const getKDA = (player: Player) => {
-    if (player.avgDeaths === 0) return "Perfect";
-    return (((player.avgKills ?? 0) + (player.avgAssists ?? 0)) / (player.avgDeaths ?? 1)).toFixed(2);
-  };
+const statColumns = [
+    { key: "avgKda", label: "KDA", description: "Kills, Deaths, Assists Ratio ((K+A)/D)" },
+    { key: "avgKillParticipation", label: "KP%", description: "Kill Participation Percentage" },
+    { key: "avgGPM", label: "GPM", description: "Gold Per Minute" },
+    { key: "avgXPM", label: "XPM", description: "Experience Per Minute" },
+    { key: "avgLastHitsPerMinute", label: "LH/min", description: "Last Hits Per Minute" },
+    { key: "avgHeroDamagePerMinute", label: "HD/min", description: "Hero Damage Per Minute" },
+    { key: "avgTowerDamagePerMinute", label: "TD/min", description: "Tower Damage Per Minute" },
+    { key: "avgWardsPlacedPerMinute", label: "Wards/min", description: "Wards Placed Per Minute" },
+    { key: "avgStunsPerMinute", label: "Stuns/min", description: "Stun Duration Per Minute" },
+    { key: "avgSaves", label: "Saves", description: "Saves on Teammates" },
+    { key: "avgCampsStacked", label: "Stacks", description: "Camps Stacked" },
+];
 
+export function PlayerAnalyticsTable({ players }: PlayerAnalyticsTableProps) {
   return (
     <Card className="shadow-lg">
       <CardHeader>
         <CardTitle className="flex items-center text-primary">
           <BarChart2 className="mr-2" />
-          Individual Player Analytics
+          Player Analytics
         </CardTitle>
+        <CardDescription>
+          Hover over column headers for stat descriptions. All stats are averaged per game.
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <div className="overflow-x-auto">
           <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Player</TableHead>
-                <TableHead className="text-center">Role</TableHead>
-                <TableHead className="text-center">KDA</TableHead>
-                <TableHead className="text-center">Kills</TableHead>
-                <TableHead className="text-center">Deaths</TableHead>
-                <TableHead className="text-center">Assists</TableHead>
-                <TableHead className="text-center">GPM</TableHead>
-                <TableHead className="text-center">XPM</TableHead>
-                <TableHead className="text-center">Fantasy Pts</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {players.map((player) => (
-                <TableRow key={player.id}>
-                  <TableCell className="font-medium">{player.nickname}</TableCell>
-                  <TableCell className="text-center text-muted-foreground">{player.role}</TableCell>
-                  <TableCell className="text-center font-semibold text-primary">{getKDA(player)}</TableCell>
-                  <TableCell className="text-center">{player.avgKills?.toFixed(1) ?? 'N/A'}</TableCell>
-                  <TableCell className="text-center">{player.avgDeaths?.toFixed(1) ?? 'N/A'}</TableCell>
-                  <TableCell className="text-center">{player.avgAssists?.toFixed(1) ?? 'N/A'}</TableCell>
-                  <TableCell className="text-center">{player.avgGPM ?? 'N/A'}</TableCell>
-                  <TableCell className="text-center">{player.avgXPM ?? 'N/A'}</TableCell>
-                  <TableCell className="text-center">{player.fantasyPointsEarned ?? 'N/A'}</TableCell>
+            <TooltipProvider>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="sticky left-0 bg-card z-10">Player</TableHead>
+                  {statColumns.map(col => (
+                    <TableHead key={col.key} className="text-center">
+                       <Tooltip>
+                          <TooltipTrigger className="flex items-center justify-center w-full">
+                            {col.label} <HelpCircle className="h-3.5 w-3.5 ml-1.5 opacity-50" />
+                          </TooltipTrigger>
+                          <TooltipContent>{col.description}</TooltipContent>
+                        </Tooltip>
+                    </TableHead>
+                  ))}
                 </TableRow>
-              ))}
-            </TableBody>
+              </TableHeader>
+              <TableBody>
+                {players.map((player) => (
+                  <TableRow key={player.id}>
+                    <TableCell className="font-medium sticky left-0 bg-card z-10">{player.nickname}</TableCell>
+                    {statColumns.map(col => (
+                        <TableCell key={`${player.id}-${col.key}`} className="text-center">
+                            {(player as any)[col.key]?.toFixed(2) ?? 'N/A'}
+                        </TableCell>
+                    ))}
+                  </TableRow>
+                ))}
+              </TableBody>
+            </TooltipProvider>
           </Table>
         </div>
       </CardContent>

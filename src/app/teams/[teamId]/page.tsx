@@ -2,7 +2,7 @@
 import {
   Users, ListChecks, ExternalLink, Medal, Swords, UserCheck, UserX, ShieldQuestion,
   PlayCircle, Sigma, Trophy, Users2, Clock, Percent, Skull, Ratio,
-  Handshake as HandshakeIcon, Award, Shield
+  Handshake as HandshakeIcon, Award, Shield, MessageSquare
 } from "lucide-react";
 import type { Icon as LucideIconType } from "lucide-react";
 import { notFound } from "next/navigation";
@@ -10,14 +10,16 @@ import { cn } from "@/lib/utils";
 import { Progress } from "@/components/ui/progress";
 import { heroIconMap } from "@/lib/hero-data";
 import { getTeamById, getAllMatches, getAllTeams } from "@/lib/firestore";
-import type { Team, Player, Match, TournamentStatus, HeroPlayStats } from "@/lib/definitions";
+import type { Team, Player, Match, VerificationStatus } from "@/lib/definitions";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { PlayerAvatar } from "@/components/app/PlayerAvatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import Image from "next/image";
 import Link from "next/link";
+import { CopyToClipboard } from "@/components/app/CopyToClipboard";
+
 
 interface TeamPageParams {
   params: { teamId: string };
@@ -28,34 +30,34 @@ async function getTeamData(teamId: string): Promise<{ team: Team | undefined, te
   if (!team) return { team: undefined, teamMatches: [] };
 
   const allMatches = await getAllMatches();
-  const teamMatches = allMatches.filter(m => m.teams.includes(teamId));
+  const teamMatches = allMatches.filter(m => m.teams && m.teams.includes(teamId));
   return { team, teamMatches };
 }
 
-const getStatusBadgeClasses = (status: TournamentStatus) => {
+const getStatusBadgeClasses = (status?: VerificationStatus) => {
   switch (status) {
-    case "Not Verified":
+    case "pending":
       return "bg-gray-500/20 text-gray-300 border-gray-500/40 hover:bg-gray-500/30";
-    case "Active":
+    case "verified":
       return "bg-secondary text-secondary-foreground hover:bg-secondary/80";
-    case "Eliminated":
-      return "bg-destructive text-destructive-foreground hover:bg-destructive/80";
-    case "Champions":
+    case "warning":
       return "bg-yellow-400/20 text-yellow-300 border-yellow-500/40 hover:bg-yellow-400/30";
+    case "banned":
+      return "bg-destructive text-destructive-foreground hover:bg-destructive/80";
     default:
       return "border-transparent bg-gray-500 text-gray-100";
   }
 };
 
-const getStatusIcon = (status: TournamentStatus) => {
+const getStatusIcon = (status?: VerificationStatus) => {
   switch (status) {
-    case "Not Verified":
+    case "pending":
       return <ShieldQuestion className="h-4 w-4 mr-1.5" />;
-    case "Active":
+    case "verified":
       return <PlayCircle className="h-4 w-4 mr-1.5" />;
-    case "Eliminated":
+    case "warning":
       return <UserX className="h-4 w-4 mr-1.5" />;
-    case "Champions":
+    case "banned":
       return <Trophy className="h-4 w-4 mr-1.5" />;
     default:
       return null;
@@ -172,7 +174,6 @@ export default async function TeamPage({ params }: TeamPageParams) {
               width={128}
               height={128}
               className="rounded-xl border-4 border-card object-cover shadow-md"
-              data-ai-hint="team logo"
             />
             <div className="flex-1">
               <div className="flex items-center space-x-3 mb-2">
@@ -198,6 +199,14 @@ export default async function TeamPage({ params }: TeamPageParams) {
              <InfoItem icon={ListChecks} label="Matches Played" value={team.matchesPlayed ?? 0} />
              <InfoItem icon={Swords} label="Wins / Losses" value={`${team.wins ?? 0}W / ${team.losses ?? 0}L`} />
              <InfoItem icon={Sigma} label="Total MMR" value={totalMMR.toLocaleString()} />
+             {team.captainDiscordUsername && (
+                <div className="flex items-center text-md p-3 bg-muted/20 rounded-md">
+                    <MessageSquare className="h-5 w-5 mr-3 text-primary" />
+                    <span className="font-medium text-muted-foreground">Captain's Discord:</span>
+                    <span className="ml-auto font-semibold text-foreground">{team.captainDiscordUsername}</span>
+                    <CopyToClipboard text={team.captainDiscordUsername} />
+                </div>
+             )}
           </div>
           <div className="md:col-span-1 space-y-4">
              <h3 className="text-xl font-semibold mb-4 flex items-center text-foreground">
@@ -400,10 +409,7 @@ function PlayerCard({ player, teamId }: PlayerCardProps) {
   return (
     <div className="flex items-center justify-between p-3 bg-muted/20 rounded-lg hover:bg-muted/40 transition-colors">
       <div className="flex items-center space-x-3">
-        <Avatar>
-          <AvatarImage src={player.profileScreenshotUrl || `https://placehold.co/40x40.png?text=${player.nickname.charAt(0)}`} alt={player.nickname} data-ai-hint="gaming avatar" />
-          <AvatarFallback>{player.nickname.substring(0, 2).toUpperCase()}</AvatarFallback>
-        </Avatar>
+        <PlayerAvatar src={player.avatarUrlMedium} nickname={player.nickname} />
         <div>
           <Link href={`/teams/${teamId}/players/${player.id}`} className="font-semibold text-foreground hover:text-primary">{player.nickname}</Link>
           <p className="text-xs text-muted-foreground">MMR: {player.mmr}</p>
@@ -432,7 +438,10 @@ export async function generateMetadata({ params }: TeamPageParams) {
 
 export async function generateStaticParams() {
   const teams = await getAllTeams();
-  return teams.map(team => ({
-    teamId: team.id,
-  }));
+  return teams.flatMap(team => 
+    team.players.map(player => ({
+      teamId: team.id,
+      playerId: player.id
+    }))
+  );
 }

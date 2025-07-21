@@ -1,81 +1,14 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Deny all reads and writes by default
+    // Allow public read access to all documents.
     match /{document=**} {
-      allow read, write: if false;
-    }
-
-    // Allow public read access to teams, but only authenticated users can create/update/delete.
-    match /teams/{teamId} {
-      allow read: if true;
-      allow create, update, delete: if request.auth != null;
-    }
-    
-    // --- NEW RULE FOR TESTING ---
-    // Allow any authenticated user to create documents in the 'testTeams' collection.
-    match /testTeams/{testId} {
-        allow create: if request.auth != null;
-    }
-    // --- END NEW RULE ---
-
-    // Allow public read access to players.
-    match /players/{playerId} {
-      allow read: if true;
-    }
-    
-    // Allow public read access to matches and their performances subcollection.
-    match /matches/{matchId} {
-      allow read: if true;
-      
-      // Allow public read on the performances subcollection
-      match /performances/{performanceId} {
-        allow read: if true;
-      }
-    }
-
-    // Allow public read access to the playoff bracket.
-    match /playoffs/{bracket} {
       allow read: if true;
     }
 
-    // --- Fantasy Rules ---
-    // Allow public read for the fantasy leaderboard
-    match /fantasy/{userId} {
-      allow read: if true;
-      allow write: if request.auth != null && request.auth.uid == userId;
-    }
-
-    // Allow users to create their own lineup history
-    match /fantasy_lineup_history/{historyId} {
-      allow read: if true; // Or make more restrictive if needed
-      allow create: if request.auth != null;
-    }
-
-    // --- Pickem Rules ---
-    match /pickem/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
-    }
-    
-    // Allow public read access to announcements, but only admins can write.
-    match /announcements/{announcementId} {
-      allow read: if true;
-      allow write: if get(/databases/$(database)/documents/admins/$(request.auth.uid)).exists;
-    }
-    
-    // Allow public read access to tournament status, but only admins can write.
-    match /tournament/{docId} {
-      allow read: if true;
-      allow write: if get(/databases/$(database)/documents/admins/$(request.auth.uid)).exists;
-    }
-
-    // Corrected Admin Rules
-    match /admins/{adminId} {
-        // A user can read their own document to verify their admin status.
-        allow read: if request.auth.uid == adminId;
-        
-        // Only an existing admin can add or remove other admins.
-        allow write: if get(/databases/$(database)/documents/admins/$(request.auth.uid)).exists;
+    // Allow write access only for authenticated users.
+    match /{document=**} {
+      allow write: if request.auth != null;
     }
   }
 }

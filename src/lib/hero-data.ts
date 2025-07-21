@@ -1,5 +1,5 @@
 
-import type { Icon as LucideIconType } from "lucide-react";
+import type { LucideProps } from "lucide-react";
 import { 
   Sparkles, Anchor, Swords, Zap, Ghost, Ban, MountainSnow, Flame, Snowflake, 
   Puzzle, ShieldOff, Waves, ShieldAlert, Trees, Bone, CloudLightning, 
@@ -11,6 +11,7 @@ import {
   Siren, Rat, Castle, Wheat, Dices, Unplug, Box, ShieldCheck, GitFork, Bot, Rabbit, Crown, Drama,
   Skull, Crosshair, EyeOff, Tornado, Activity, Bomb, Wind, Home // Added Wind, Bomb, Home. Removed Tower.
 } from "lucide-react";
+import { ForwardRefExoticComponent, RefAttributes } from "react";
 
 export const defaultHeroNames = [
   'Abaddon', 'Alchemist', 'Ancient Apparition', 'Anti-Mage', 'Arc Warden', 'Axe', 'Bane', 'Batrider', 'Beastmaster', 
@@ -32,7 +33,7 @@ export const defaultHeroNames = [
   'Warlock', 'Weaver', 'Windranger', 'Winter Wyvern', 'Witch Doctor', 'Wraith King', 'Zeus'
 ];
 
-export const heroIconMap: Record<string, LucideIconType> = {
+export const heroIconMap: Record<string, ForwardRefExoticComponent<Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>>> = {
   'Abaddon': ShieldCheck,
   'Alchemist': FlaskConical,
   'Ancient Apparition': Snowflake,
@@ -300,4 +301,3 @@ export const heroColorMap: Record<string, string> = {
 
 // Fallback color if hero not in map (using your theme's primary neon pink)
 export const FALLBACK_HERO_COLOR = '#FF3BEA'; 
-

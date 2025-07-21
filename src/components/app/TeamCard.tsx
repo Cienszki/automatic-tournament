@@ -1,13 +1,13 @@
 
 "use client";
 
-import type { Team, PlayerRole, TournamentStatus } from "@/lib/definitions";
+import type { Team, PlayerRole, VerificationStatus } from "@/lib/definitions";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import Image from "next/image";
 import Link from "next/link";
-import { Sigma, Shield, Swords, Sparkles, HandHelping, Eye, ListChecks, UserX, ShieldQuestion, PlayCircle, Trophy, Medal } from "lucide-react";
+import { Sigma, Shield, Swords, Sparkles, HandHelping, Eye, ListChecks, UserX, ShieldQuestion, PlayCircle, Trophy } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   Tooltip,
@@ -37,21 +37,20 @@ const getRoleIcon = (role: PlayerRole) => {
   }
 };
 
-const getStatusBadge = (status: TournamentStatus) => {
+const getStatusBadge = (status?: VerificationStatus) => {
   switch (status) {
-    case "Not Verified":
+    case "pending":
       return <Badge className="bg-gray-500/20 text-gray-300 border-gray-500/40 hover:bg-gray-500/30 text-xs"><ShieldQuestion className="h-3 w-3 mr-1.5" />Not Verified</Badge>;
-    case "Active":
+    case "verified":
       return <Badge variant="secondary" className="text-xs"><PlayCircle className="h-3 w-3 mr-1.5" />Active</Badge>;
-    case "Eliminated":
-      return <Badge variant="destructive" className="text-xs"><UserX className="h-3 w-3 mr-1.5" />Eliminated</Badge>;
-    case "Champions":
-      return <Badge className="bg-yellow-400/20 text-yellow-300 border-yellow-500/40 hover:bg-yellow-400/30 text-xs"><Trophy className="h-3 w-3 mr-1.5" />Champions</Badge>;
+    case "warning":
+        return <Badge variant="destructive" className="text-xs"><UserX className="h-3 w-3 mr-1.5" />Warning</Badge>;
+    case "banned":
+      return <Badge className="bg-yellow-400/20 text-yellow-300 border-yellow-500/40 hover:bg-yellow-400/30 text-xs"><Trophy className="h-3 w-3 mr-1.5" />Banned</Badge>;
     default:
       return <Badge variant="outline" className="text-xs">{status}</Badge>;
   }
 };
-
 
 export function TeamCard({ team }: TeamCardProps) {
   const totalMMR = team.players.reduce((sum, player) => sum + player.mmr, 0);
@@ -59,8 +58,7 @@ export function TeamCard({ team }: TeamCardProps) {
   return (
     <Card className={cn(
       "flex flex-col h-full shadow-lg hover:shadow-xl transition-shadow duration-300",
-      team.status === 'Eliminated' && "bg-destructive/10 border-destructive/30",
-      team.status === 'Champions' && "bg-yellow-400/10 border-yellow-500/30"
+      team.status === 'banned' && "bg-destructive/10 border-destructive/30",
     )}>
       <CardHeader className="flex flex-row items-start space-x-4 pb-4">
         <Image 
@@ -69,7 +67,6 @@ export function TeamCard({ team }: TeamCardProps) {
           width={64} 
           height={64} 
           className="rounded-lg object-cover border"
-          data-ai-hint="team logo"
         />
         <div className="flex-1">
           <CardTitle className="text-2xl text-primary">{team.name}</CardTitle>
@@ -86,7 +83,7 @@ export function TeamCard({ team }: TeamCardProps) {
             </div>
             <div className="flex items-center text-sm text-muted-foreground">
               <ListChecks className="h-4 w-4 mr-2 text-primary shrink-0" />
-              <span>{team.matchesWon ?? 0} Wins / {team.matchesLost ?? 0} Losses</span>
+              <span>{team.wins ?? 0} Wins / {team.losses ?? 0} Losses</span>
             </div>
           </div>
 
@@ -102,13 +99,12 @@ export function TeamCard({ team }: TeamCardProps) {
                         <Link 
                           href={`/teams/${team.id}/players/${player.id}`} 
                           className="truncate hover:text-primary transition-colors"
-                          // title={player.nickname} // Removed this line
                         >
                           {player.nickname}
                         </Link>
                       </TooltipTrigger>
                       <TooltipContent side="top" className="text-xs p-1.5 bg-popover text-popover-foreground border-border">
-                        <p>MMR: {player.mmr}</p>
+                        <p>MMR: {player.mmr.toLocaleString()}</p>
                       </TooltipContent>
                     </Tooltip>
                   </li>

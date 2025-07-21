@@ -2,7 +2,7 @@
 'use server';
 
 import { adminDb } from './admin';
-import { serverTimestamp } from 'firebase-admin/firestore';
+import { FieldValue } from 'firebase-admin/firestore';
 import { getAuth } from 'firebase-admin/auth';
 import { headers } from 'next/headers';
 
@@ -30,7 +30,7 @@ export async function createAnnouncement(title: string, content: string) {
             content,
             authorId: decodedToken.uid,
             authorName: decodedToken.name || "Admin",
-            createdAt: serverTimestamp(),
+            createdAt: FieldValue.serverTimestamp(),
         });
         return { success: true };
     } catch(error) {

@@ -1,6 +1,7 @@
 
 import { initializeApp, getApps, cert, getApp, App } from 'firebase-admin/app';
 import { getFirestore, Firestore } from 'firebase-admin/firestore';
+import { getStorage, Storage } from 'firebase-admin/storage';
 import 'server-only';
 
 // Get the Base64 encoded service account from environment variables
@@ -16,11 +17,21 @@ const decodedServiceAccount = Buffer.from(base64EncodedServiceAccount, 'base64')
 // Parse the JSON string into a service account object
 const serviceAccount = JSON.parse(decodedServiceAccount);
 
+// Get the storage bucket from environment variables
+const storageBucket = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
+if (!storageBucket) {
+    throw new Error('The NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET environment variable is not set.');
+}
+
 // Initialize the Firebase Admin App
 const app: App = !getApps().length
-  ? initializeApp({ credential: cert(serviceAccount) })
+  ? initializeApp({ 
+      credential: cert(serviceAccount),
+      storageBucket: storageBucket 
+    })
   : getApp();
 
 const adminDb: Firestore = getFirestore(app);
+const adminStorage: Storage = getStorage(app);
 
-export { adminDb };
+export { adminDb, adminStorage };
