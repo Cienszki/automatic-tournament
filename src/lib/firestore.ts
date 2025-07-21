@@ -1,4 +1,3 @@
-
 // src/lib/firestore.ts
 import { collection, getDocs, doc, getDoc, setDoc, query, orderBy, addDoc, writeBatch, updateDoc, serverTimestamp, deleteDoc, Timestamp } from "firebase/firestore";
 import { db } from "./firebase";
@@ -9,7 +8,6 @@ import {
   Trophy, Zap, Swords, Coins, Eye, Bomb, ShieldAlert, Award,
   Puzzle, Flame, Skull, Handshake as HandshakeIcon, Star, Shield, Activity, Timer, ChevronsUp, Ban, Clock
 } from "lucide-react";
-import { getTournamentStatus } from "./admin-actions";
 
 
 /**
@@ -100,14 +98,14 @@ export async function getPlayerStats(): Promise<{
         };
 
     const tournamentHighlights: TournamentHighlightRecord[] = [
-        { id: 'th-longest-match', title: 'Longest Match', value: 0, details: 'N/A', icon: 'Timer', category: '', player: { nickname: 'N/A' } as Player },
-        { id: 'th-shortest-match', title: 'Shortest Match', value: 0, details: 'N/A', icon: 'Clock', category: '', player: { nickname: 'N/A' } as Player },
-        { id: 'th-lvl6', title: 'Earliest Level 6', value: 0, details: 'N/A', icon: 'ChevronsUp', category: '', player: { nickname: 'N/A' } as Player },
-        { id: 'th-roshan', title: 'Earliest Roshan', value: 0, details: 'N/A', icon: 'Shield', category: '', player: { nickname: 'N/A' } as Player },
+        { id: 'th-longest-match', title: 'Longest Match', value: '0', details: 'N/A', icon: 'Timer', category: '', player: { nickname: 'N/A' } as Player },
+        { id: 'th-shortest-match', title: 'Shortest Match', value: '0', details: 'N/A', icon: 'Clock', category: '', player: { nickname: 'N/A' } as Player },
+        { id: 'th-lvl6', title: 'Earliest Level 6', value: '0', details: 'N/A', icon: 'ChevronsUp', category: '', player: { nickname: 'N/A' } as Player },
+        { id: 'th-roshan', title: 'Earliest Roshan', value: '0', details: 'N/A', icon: 'Shield', category: '', player: { nickname: 'N/A' } as Player },
         { id: 'th-prehorn-kills', title: 'Most Kills Before Horn', value: 0, details: 'N/A', icon: 'Swords', category: '', player: { nickname: 'N/A' } as Player },
         { id: 'th-rampage', title: 'Total Rampages', value: 0, details: '', icon: 'Flame', category: '', player: { nickname: 'N/A' } as Player },
-        { id: 'th-hero', title: 'Most Picked Hero', value: 0, details: 'N/A', icon: 'Puzzle', category: '', player: { nickname: 'N/A' } as Player },
-        { id: 'th-banned-hero', title: 'Most Banned Hero', value: 0, details: 'N/A', icon: 'Ban', category: '', player: { nickname: 'N/A' } as Player },
+        { id: 'th-hero', title: 'Most Picked Hero', value: '0', details: 'N/A', icon: 'Puzzle', category: '', player: { nickname: 'N/A' } as Player },
+        { id: 'th-banned-hero', title: 'Most Banned Hero', value: '0', details: 'N/A', icon: 'Ban', category: '', player: { nickname: 'N/A' } as Player },
     ];
     
     return { singleMatchRecords, playerAverageLeaders, tournamentHighlights };
@@ -172,18 +170,22 @@ export async function getAllTournamentPlayers(): Promise<TournamentPlayer[]> {
 }
 export async function getFantasyLeaderboard(): Promise<FantasyData[]> { const c = collection(db, "fantasy"); const q = query(c, orderBy("totalFantasyPoints", "desc")); const s = await getDocs(q); return s.docs.map(d => d.data() as FantasyData); }
 export async function getUserFantasyLineup(userId: string): Promise<FantasyLineup | null> { const r = doc(db, "fantasy", userId); const s = await getDoc(r); return s.exists() ? s.data().currentLineup as FantasyLineup : null; }
+
 export async function saveUserFantasyLineup(userId: string, lineup: FantasyLineup, participantName: string): Promise<void> {
-    const status = await getTournamentStatus();
-    if (!status) throw new Error("Tournament status is not configured.");
+    const docRef = doc(db, 'tournament', 'status');
+    const docSnap = await getDoc(docRef);
+    const status = docSnap.exists() ? docSnap.data() : { currentStage: 'unknown' };
+
     const { currentStage } = status;
     const historyCollection = collection(db, "fantasy_lineup_history");
     await addDoc(historyCollection, { userId, roundId: currentStage, lineup, submittedAt: new Date() });
     const fantasyDocRef = doc(db, "fantasy", userId);
-    const docSnap = await getDoc(fantasyDocRef);
-    const existingPoints = docSnap.exists() ? docSnap.data().totalFantasyPoints : 0;
+    const fantasySnap = await getDoc(fantasyDocRef);
+    const existingPoints = fantasySnap.exists() ? fantasySnap.data().totalFantasyPoints : 0;
     const data: FantasyData = { userId, participantName, currentLineup: lineup, totalFantasyPoints: existingPoints, lastUpdated: new Date(), roundId: currentStage };
     await setDoc(fantasyDocRef, data, { merge: true });
 }
+
 export async function getUserPickem(userId:string): Promise<PickemPrediction | null> { const r = doc(db, "pickem", userId); const s = await getDoc(r); return s.exists() ? s.data() as PickemPrediction : null; }
 export async function saveUserPickem(userId: string, predictions: { [key: string]: string[] }): Promise<void> { const r = doc(db, "pickem", userId); await setDoc(r, { userId, predictions, lastUpdated: new Date() }, { merge: true }); }
 
@@ -217,4 +219,22 @@ export async function saveMatchResults(
 
     // 3. Commit the batch
     await batch.commit();
+}
+
+export async function getAnnouncements(): Promise<Announcement[]> {
+    const announcementsCollection = collection(db, "announcements");
+    const q = query(announcementsCollection, orderBy("createdAt", "desc"));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => {
+        const data = doc.data();
+        const firestoreTimestamp = data.createdAt as Timestamp | undefined;
+        return {
+            id: doc.id,
+            title: data.title, 
+            content: data.content,
+            authorId: data.authorId || '',
+            authorName: data.authorName || 'N/A',
+            createdAt: firestoreTimestamp ? firestoreTimestamp.toDate() : new Date(0),
+        } as Announcement;
+    });
 }

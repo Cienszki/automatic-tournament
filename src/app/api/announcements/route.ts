@@ -1,4 +1,3 @@
-
 // src/app/api/announcements/route.ts
 import { NextResponse } from 'next/server';
 import { collection, getDocs, query, orderBy, Timestamp } from "firebase/firestore";
