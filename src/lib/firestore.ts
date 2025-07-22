@@ -2,8 +2,9 @@
 import { collection, getDocs, doc, getDoc, setDoc, query, orderBy, addDoc, writeBatch, updateDoc, serverTimestamp, deleteDoc, Timestamp } from "firebase/firestore";
 import { db } from "./firebase";
 import type { User } from "firebase/auth";
-import type { Team, Match, PlayoffData, FantasyLineup, FantasyData, TournamentPlayer, PickemPrediction, Player, CategoryDisplayStats, TournamentHighlightRecord, CategoryRankingDetail, PlayerPerformanceInMatch, Announcement } from "./definitions";
+import type { Team, Match, PlayoffData, FantasyLineup, FantasyData, TournamentPlayer, PickemPrediction, Player, CategoryDisplayStats, TournamentHighlightRecord, CategoryRankingDetail, PlayerPerformanceInMatch, Announcement, Group, GroupStanding } from "./definitions";
 import { PlayerRoles } from "@/lib/definitions";
+import { updateStandingsAfterGame } from './group-actions';
 import {
   Trophy, Zap, Swords, Coins, Eye, Bomb, ShieldAlert, Award,
   Puzzle, Flame, Skull, Handshake as HandshakeIcon, Star, Shield, Activity, Timer, ChevronsUp, Ban, Clock
@@ -20,23 +21,8 @@ export async function saveTeam(teamData: Omit<Team, 'id'>): Promise<void> {
     // Create a new document reference for the team in the 'teams' collection
     const teamRef = doc(collection(db, "teams"));
     
-    // Separate players from the main team data
-    const { players, ...mainTeamData } = teamData;
-
-    // Set the main team data
-    batch.set(teamRef, { 
-        ...mainTeamData, 
-        id: teamRef.id,
-        status: 'pending', // Default status for new teams
-        createdAt: serverTimestamp() 
-    });
-
-    // Add each player to the 'players' subcollection of the new team
-    const playersCollectionRef = collection(teamRef, 'players');
-    players.forEach(player => {
-        const playerRef = doc(playersCollectionRef);
-        batch.set(playerRef, { ...player, id: playerRef.id });
-    });
+    // The 'players' data is now expected to be an array on the team document itself
+    batch.set(teamRef, { ...teamData, id: teamRef.id, status: 'pending', createdAt: serverTimestamp() });
 
     await batch.commit();
 }
@@ -116,25 +102,20 @@ export async function getPlayerStats(): Promise<{
 export async function getAllTeams(): Promise<Team[]> {
     const teamsCollection = collection(db, "teams");
     const teamsSnapshot = await getDocs(teamsCollection);
-    const teams = await Promise.all(teamsSnapshot.docs.map(async (d) => {
+    const teams = teamsSnapshot.docs.map(d => {
         const teamData = d.data();
-        const playersCollectionRef = collection(db, "teams", d.id, "players");
-        const playersSnapshot = await getDocs(playersCollectionRef);
-        const players = playersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Player));
-        
         const createdAt = teamData.createdAt as Timestamp | undefined;
-        
-        const sortedPlayers = players.sort((a, b) => PlayerRoles.indexOf(a.role) - PlayerRoles.indexOf(b.role));
-
         return { 
             id: d.id, 
             ...teamData, 
-            players: sortedPlayers,
+            // Ensure players is always an array
+            players: teamData.players || [],
             createdAt: createdAt ? createdAt.toDate().toISOString() : new Date(0).toISOString(),
         } as Team;
-    }));
+    });
     return teams;
 }
+
 export async function getTeamById(id: string): Promise<Team | undefined> {
     const teamDocRef = doc(db, "teams", id);
     const teamDocSnap = await getDoc(teamDocRef);
@@ -144,18 +125,13 @@ export async function getTeamById(id: string): Promise<Team | undefined> {
     }
 
     const teamData = teamDocSnap.data() as Omit<Team, 'id' | 'players'> & { createdAt: Timestamp };
-    const playersCollectionRef = collection(db, "teams", id, "players");
-    const playersSnapshot = await getDocs(playersCollectionRef);
-    const players = playersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Player));
-
-    const createdAt = teamData.createdAt;
     
-    const sortedPlayers = players.sort((a, b) => PlayerRoles.indexOf(a.role) - PlayerRoles.indexOf(b.role));
+    const createdAt = teamData.createdAt;
 
     return {
         id: teamDocSnap.id,
         ...teamData,
-        players: sortedPlayers,
+        players: teamData.players || [],
         createdAt: createdAt ? createdAt.toDate().toISOString() : new Date(0).toISOString(),
     } as Team;
 }
@@ -191,13 +167,10 @@ export async function saveUserPickem(userId: string, predictions: { [key: string
 
 /**
  * Saves the results of a match and the performance of each player to Firestore.
- * This function uses a batch write to ensure atomicity.
- *
- * @param match The transformed match data.
- * @param performances An array of player performance data.
+ * It now also triggers the automatic update of group standings.
  */
 export async function saveMatchResults(
-    match: Partial<Match>,
+    match: Match,
     performances: PlayerPerformanceInMatch[]
 ): Promise<void> {
     if (!match.id) {
@@ -206,19 +179,19 @@ export async function saveMatchResults(
 
     const batch = writeBatch(db);
 
-    // 1. Update the match document
     const matchRef = doc(db, "matches", match.id);
-    batch.set(matchRef, match, { merge: true }); // Use merge to avoid overwriting existing fields
+    const finalMatchData = { ...match, status: 'completed' };
+    batch.set(matchRef, finalMatchData, { merge: true });
 
-    // 2. Create a new document for each player's performance in this match
     const performancesCollection = collection(db, "matches", match.id, "performances");
     performances.forEach(performance => {
         const performanceRef = doc(performancesCollection, performance.playerId);
         batch.set(performanceRef, performance);
     });
 
-    // 3. Commit the batch
     await batch.commit();
+
+    await updateStandingsAfterGame(match);
 }
 
 export async function getAnnouncements(): Promise<Announcement[]> {
@@ -237,4 +210,24 @@ export async function getAnnouncements(): Promise<Announcement[]> {
             createdAt: firestoreTimestamp ? firestoreTimestamp.toDate() : new Date(0),
         } as Announcement;
     });
+}
+
+/**
+ * Fetches all groups with their raw standings data.
+ * This is now a simple and efficient fetch operation.
+ */
+export async function getAllGroups(): Promise<Group[]> {
+    const groupsCollection = collection(db, "groups");
+    const groupsSnapshot = await getDocs(groupsCollection);
+
+    const groups = groupsSnapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+            id: doc.id,
+            name: data.name,
+            standings: data.standings || {},
+        } as Group;
+    });
+
+    return groups;
 }

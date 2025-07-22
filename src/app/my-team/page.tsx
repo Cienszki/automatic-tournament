@@ -2,209 +2,90 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link";
-import { doc, getDoc, collection, query, where, getDocs, orderBy } from "firebase/firestore";
-import { db } from "@/lib/firebase";
-import type { Team, Match, Player } from "@/lib/definitions";
-import { PlayerRoles } from "@/lib/definitions";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Crown, Loader2, ShieldQuestion, UserPlus, Fingerprint, Copy, LogIn } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
+import { MyTeamHeader } from "@/components/app/my-team/MyTeamHeader";
 import { RosterCard } from "@/components/app/my-team/RosterCard";
+import { TeamStatusCard } from "@/components/app/my-team/TeamStatusCard";
 import { SchedulingCard } from "@/components/app/my-team/SchedulingCard";
+import { MatchHistoryTable } from "@/components/app/my-team/MatchHistoryTable";
 import { TeamStatsGrid } from "@/components/app/my-team/TeamStatsGrid";
 import { PlayerAnalyticsTable } from "@/components/app/my-team/PlayerAnalyticsTable";
-import { MatchHistoryTable } from "@/components/app/my-team/MatchHistoryTable";
-import { NextMatchCard } from "@/components/app/my-team/NextMatchCard";
-import { MyTeamHeader } from "@/components/app/my-team/MyTeamHeader";
-import { TeamStatusCard } from "@/components/app/my-team/TeamStatusCard";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { useAuth } from "@/context/AuthContext";
-import { useToast } from "@/hooks/use-toast";
+import { Loader2 } from "lucide-react";
+import Link from "next/link";
 import { getUserTeam } from "@/lib/admin-actions";
+import type { Team } from "@/lib/definitions";
 
-async function getMyTeamData(teamId: string): Promise<{ team: Team | undefined, upcomingMatches: Match[], pastMatches: Match[] }> {
-  try {
-    const teamDocRef = doc(db, "teams", teamId);
-    const teamDocSnap = await getDoc(teamDocRef);
+export default function MyTeamPage() {
+  const { user, loading: authLoading } = useAuth();
+  const [team, setTeam] = React.useState<Team | null>(null);
+  const [hasTeam, setHasTeam] = React.useState(false);
+  const [loading, setLoading] = React.useState(true);
 
-    if (!teamDocSnap.exists()) {
-      return { team: undefined, upcomingMatches: [], pastMatches: [] };
-    }
-
-    const teamData = teamDocSnap.data() as Omit<Team, 'id' | 'players'>;
-    const playersCollectionRef = collection(db, "teams", teamId, "players");
-    const playersSnapshot = await getDocs(playersCollectionRef);
-    const players = playersSnapshot.docs.map(doc => doc.data() as Player);
-
-    // Sort players by role according to the standard order
-    const sortedPlayers = players.sort((a, b) => PlayerRoles.indexOf(a.role) - PlayerRoles.indexOf(b.role));
-
-    const team: Team = { 
-        id: teamDocSnap.id, 
-        ...teamData,
-        players: sortedPlayers 
+  React.useEffect(() => {
+    const fetchTeamData = async () => {
+      if (user) {
+        setLoading(true);
+        const { hasTeam, team } = await getUserTeam(user.uid);
+        setHasTeam(hasTeam);
+        setTeam(team || null);
+        setLoading(false);
+      } else {
+        setLoading(false);
+      }
     };
-
-    const matchesRef = collection(db, "matches");
-    const q = query(matchesRef, where("teams", "array-contains", teamId));
-    const querySnapshot = await getDocs(q);
-    const teamMatches = querySnapshot.docs.map(doc => ({ ...doc.data(), documentId: doc.id } as Match));
-
-    const upcomingMatches = teamMatches
-      .filter((m) => m.status === 'upcoming')
-      .sort((a, b) => new Date(a.dateTime).getTime() - new Date(b.dateTime).getTime());
-
-    const pastMatches = teamMatches
-      .filter((m) => m.status === 'completed')
-      .sort((a, b) => new Date(b.dateTime).getTime() - new Date(a.dateTime).getTime());
-
-    return { team, upcomingMatches, pastMatches };
-  } catch (error) {
-    console.error("Error fetching team data:", error);
-    return { team: undefined, upcomingMatches: [], pastMatches: [] };
+    if (!authLoading) {
+      fetchTeamData();
+    }
+  }, [user, authLoading]);
+  
+  if (authLoading || loading) {
+    return <div className="flex justify-center items-center h-screen"><Loader2 className="h-16 w-16 animate-spin" /></div>;
   }
-}
+  
+  if (!user) {
+    return (
+      <Card className="text-center">
+        <CardHeader><CardTitle>Access Denied</CardTitle></CardHeader>
+        <CardContent>
+          <p>You must be signed in to view your team page.</p>
+        </CardContent>
+      </Card>
+    );
+  }
+  
+  if (!hasTeam) {
+    return (
+       <Card className="text-center">
+        <CardHeader><CardTitle>No Team Found</CardTitle></CardHeader>
+        <CardContent>
+          <p className="mb-4">You have not registered a team yet.</p>
+          <Button asChild><Link href="/register">Register Your Team</Link></Button>
+        </CardContent>
+      </Card>
+    );
+  }
 
-// The main dashboard component when the user is logged in
-function MyTeamDashboard({ team, upcomingMatches, pastMatches }: { team: Team; upcomingMatches: Match[]; pastMatches: Match[] }) {
-  const totalFantasyPoints = team.players.reduce(
-    (sum, player) => sum + (player.fantasyPointsEarned ?? 0),
-    0
-  );
-  const nextMatch = upcomingMatches[0];
+  if (!team) {
+     return <div className="flex justify-center items-center h-screen"><Loader2 className="h-16 w-16 animate-spin" /></div>;
+  }
 
   return (
     <div className="space-y-8">
       <MyTeamHeader team={team} />
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-6">
-            {upcomingMatches.map(match => (
-              <SchedulingCard key={match.documentId} match={match} teamId={team.id} captainId={team.captainId} />
-            ))}
-          <TeamStatsGrid team={team} />
-          <PlayerAnalyticsTable players={team.players} />
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="lg:col-span-2 space-y-8">
+          <SchedulingCard matches={[]} teamId={team.id} />
+          <MatchHistoryTable matches={[]} />
         </div>
-        <div className="lg:col-span-1 space-y-6">
-          <TeamStatusCard team={team} />
-          <RosterCard team={team} upcomingMatches={upcomingMatches} />
-           <Card className="shadow-lg">
-                <CardHeader>
-                    <CardTitle className="flex items-center text-primary">
-                        <Crown className="mr-2" />
-                        Fantasy Performance
-                    </CardTitle>
-                </CardHeader>
-                <CardContent className="text-center">
-                    <p className="text-4xl font-bold text-foreground">{totalFantasyPoints.toFixed(1)}</p>
-                    <p className="text-muted-foreground">Total fantasy points generated by your players.</p>
-                </CardContent>
-            </Card>
+        <div className="space-y-8">
+          <RosterCard players={team.players} />
+          <TeamStatusCard status={team.status} />
         </div>
       </div>
-      <MatchHistoryTable matches={pastMatches} teamId={team.id} />
+      <TeamStatsGrid />
+      <PlayerAnalyticsTable players={team.players} />
     </div>
   );
-}
-
-// The prompt to show when the user is not logged in
-function LoginPrompt() {
-    const { signInWithGoogle } = useAuth();
-    return (
-      <Card className="shadow-xl max-w-2xl mx-auto">
-        <CardHeader className="text-center">
-          <ShieldQuestion className="h-16 w-16 mx-auto text-primary mb-4" />
-          <CardTitle className="text-4xl font-bold text-primary">Team Dashboard</CardTitle>
-          <CardDescription className="text-lg text-muted-foreground">
-            Log in to manage your team or register a new one.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="text-center space-y-4">
-          <Button onClick={signInWithGoogle} size="lg" className="w-full">
-            <LogIn className="mr-2 h-5 w-5" />
-            Sign in with Google
-          </Button>
-        </CardContent>
-      </Card>
-    );
-}
-
-// Prompt for logged-in users without a team
-function NoTeamPrompt() {
-    return (
-        <Card className="shadow-xl max-w-2xl mx-auto">
-            <CardHeader className="text-center">
-                <UserPlus className="h-16 w-16 mx-auto text-primary mb-4" />
-                <CardTitle className="text-4xl font-bold text-primary">Welcome!</CardTitle>
-                <CardDescription className="text-lg text-muted-foreground">
-                    It looks like you don't have a team yet.
-                </CardDescription>
-            </CardHeader>
-            <CardContent className="text-center space-y-6">
-                <p className="text-muted-foreground">
-                    Ready to compete? Register your team now to join the tournament!
-                </p>
-                <Button asChild size="lg">
-                    <Link href="/register">
-                        Register a New Team
-                    </Link>
-                </Button>
-            </CardContent>
-        </Card>
-    );
-}
-
-// The main page component that handles logic
-export default function MyTeamPage() {
-  const { user, loading: authLoading } = useAuth();
-  const [teamData, setTeamData] = React.useState<{ team: Team | undefined; upcomingMatches: Match[]; pastMatches: Match[] } | null>(null);
-  const [hasTeam, setHasTeam] = React.useState<boolean | null>(null);
-  const [isLoading, setIsLoading] = React.useState(true);
-  
-  React.useEffect(() => {
-    const checkUserAndTeam = async () => {
-      if (authLoading) {
-        return; 
-      }
-      if (user) {
-        setIsLoading(true);
-        const teamInfo = await getUserTeam(user.uid);
-        if (teamInfo.hasTeam && teamInfo.team?.id) {
-          const data = await getMyTeamData(teamInfo.team.id);
-          setTeamData(data);
-          setHasTeam(true);
-        } else {
-          setHasTeam(false);
-        }
-        setIsLoading(false);
-      } else {
-        setHasTeam(false);
-        setIsLoading(false);
-      }
-    };
-    checkUserAndTeam();
-  }, [user, authLoading]);
-  
-  if (isLoading || authLoading) {
-    return (
-      <div className="flex justify-center items-center h-64">
-        <Loader2 className="h-16 w-16 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-  if (!user) {
-    return <LoginPrompt />;
-  }
-
-  if (hasTeam === true && teamData?.team) {
-    return (
-      <MyTeamDashboard 
-        team={teamData.team} 
-        upcomingMatches={teamData.upcomingMatches} 
-        pastMatches={teamData.pastMatches} 
-      />
-    );
-  }
-  
-  return <NoTeamPrompt />;
 }

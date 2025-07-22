@@ -4,34 +4,68 @@ import { getFirestore, Firestore } from 'firebase-admin/firestore';
 import { getStorage, Storage } from 'firebase-admin/storage';
 import 'server-only';
 
-// Get the Base64 encoded service account from environment variables
-const base64EncodedServiceAccount = process.env.FIREBASE_SERVICE_ACCOUNT_BASE64;
+let adminDb: Firestore;
+let adminStorage: Storage;
+let adminInitialized = false;
+let isInitializing = false;
 
-if (!base64EncodedServiceAccount) {
-  throw new Error('The FIREBASE_SERVICE_ACCOUNT_BASE64 environment variable is not set. Please add it to your .env.local file.');
+// This function will be called on-demand and has a timeout.
+async function initializeAdmin() {
+  if (adminInitialized) return;
+  if (isInitializing) {
+    // Avoid concurrent initializations
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    return;
+  }
+  isInitializing = true;
+
+  try {
+    const base64EncodedServiceAccount = process.env.FIREBASE_SERVICE_ACCOUNT_BASE64;
+
+    if (base64EncodedServiceAccount && base64EncodedServiceAccount.length > 1) {
+      const decodedServiceAccount = Buffer.from(base64EncodedServiceAccount, 'base64').toString('utf-8');
+      const serviceAccount = JSON.parse(decodedServiceAccount);
+      const storageBucket = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
+
+      if (!storageBucket) throw new Error('NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET is not set.');
+
+      const appConfig = {
+        credential: cert(serviceAccount),
+        storageBucket: storageBucket 
+      };
+
+      const app: App = !getApps().length ? initializeApp(appConfig) : getApp();
+
+      adminDb = getFirestore(app);
+      adminStorage = getStorage(app);
+      adminInitialized = true;
+      console.log("Firebase Admin SDK initialized successfully.");
+    } else {
+      console.warn("FIREBASE_SERVICE_ACCOUNT_BASE64 env variable not found. Admin features will be disabled.");
+    }
+  } catch (error) {
+    console.error("CRITICAL: Failed to initialize Firebase Admin SDK. Admin features will be disabled.", error);
+  } finally {
+    isInitializing = false;
+  }
 }
 
-// Decode the Base64 string back to a JSON string
-const decodedServiceAccount = Buffer.from(base64EncodedServiceAccount, 'base64').toString('utf-8');
+// This is the only function that server actions should call.
+export const ensureAdminInitialized = async () => {
+    if (adminInitialized) return;
 
-// Parse the JSON string into a service account object
-const serviceAccount = JSON.parse(decodedServiceAccount);
+    // Race the initialization against a timeout.
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error("Firebase Admin SDK initialization timed out after 5 seconds.")), 5000)
+    );
+    
+    try {
+        await Promise.race([initializeAdmin(), timeoutPromise]);
+    } catch (error) {
+        console.error(error); // Log the timeout error
+        adminInitialized = false; // Ensure it's marked as not initialized
+    }
+};
 
-// Get the storage bucket from environment variables
-const storageBucket = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
-if (!storageBucket) {
-    throw new Error('The NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET environment variable is not set.');
-}
-
-// Initialize the Firebase Admin App
-const app: App = !getApps().length
-  ? initializeApp({ 
-      credential: cert(serviceAccount),
-      storageBucket: storageBucket 
-    })
-  : getApp();
-
-const adminDb: Firestore = getFirestore(app);
-const adminStorage: Storage = getStorage(app);
-
+export const isAdminInitialized = () => adminInitialized;
 export { adminDb, adminStorage };

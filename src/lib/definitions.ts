@@ -1,209 +1,229 @@
+// src/lib/definitions.ts
 
-import type { z } from "zod";
-import type { LucideIcon } from "lucide-react";
-
-export const LEAGUE_ID = 18389;
-
-export const TEAM_MMR_CAP = 30000;
-export const FANTASY_BUDGET_MMR = 30000;
-
-export const PlayerRoles = ["Carry", "Mid", "Offlane", "Soft Support", "Hard Support"] as const;
-export type PlayerRole = typeof PlayerRoles[number];
-
-export const VerificationStatuses = ["pending", "verified", "warning", "banned"] as const;
-export type VerificationStatus = typeof VerificationStatuses[number];
-
-export type TournamentStatus = {
-  registrationOpen: boolean;
-  currentStage: string;
-  verificationRequired: boolean;
+export type Team = {
+  id: string;
+  name: string;
+  tag: string;
+  logoUrl?: string;
+  captainId: string;
+  players: Player[];
+  status: 'pending' | 'verified' | 'rejected';
+  createdAt: string;
+  openDotaTeamId?: number; 
 };
 
 export type Player = {
   id: string;
-  steamId?: string;
+  nickname: string;
+  role: 'core' | 'support' | 'captain';
+  steamId: string;
   openDotaAccountId?: number;
-  nickname: string;
-  mmr: number;
-  role: PlayerRole;
-  steamProfileUrl: string;
-  avatarUrlSmall?: string;
-  avatarUrlMedium?: string;
-  avatarUrlFull?: string;
-  mmrScreenshotUrl?: string;
-  profileScreenshotUrl?: string;
-  openDotaProfileUrl?: string;
-  
-  // Existing aggregated stats
-  fantasyPointsEarned?: number;
-  avgKills?: number;
-  avgDeaths?: number;
-  avgAssists?: number;
-  avgGPM?: number;
-  avgXPM?: number;
-
-  // New aggregated stats
-  avgKda?: number;
-  avgKillParticipation?: number;
-  avgHeroDamagePerMinute?: number;
-  avgLastHitsPerMinute?: number;
-  avgNetWorthPerMinute?: number;
-  avgTowerDamagePerMinute?: number;
-  avgWardsPlacedPerMinute?: number;
-  avgStunsPerMinute?: number;
-  avgCampsStacked?: number;
-  avgSaves?: number;
 };
 
-export type TournamentPlayer = Player & {
-    teamId: string;
-    teamName: string;
-    teamTag: string;
-};
-
-export type HeroPlayStats = {
-  name: string;
-  gamesPlayed: number;
-};
-
-export const StandInStatuses = ["approved", "pending"] as const;
-export type StandInStatus = (typeof StandInStatuses)[number];
-
-export type StandIn = {
-  id: string;
-  nickname: string;
-  mmr: number;
-  steamProfileUrl: string;
-  status: StandInStatus;
-};
-
-export type Team = {
-  id:string;
-  openDotaTeamId?: number;
-  name: string;
-  tag: string;
-  motto: string;
-  logoUrl: string;
-  captainId: string;
-  captainDiscordUsername?: string;
-  players: Player[];
-  status?: VerificationStatus;
-  standIns?: StandIn[];
-  wins: number;
-  losses: number;
-  points?: number;
-  matchesWon?: number;
-  matchesLost?: number;
-
-  averageKillsPerGame?: number;
-  averageDeathsPerGame?: number;
-  averageAssistsPerGame?: number;
-
-  averageFantasyPoints?: number;
-  averageMatchDurationMinutes?: number;
-  matchesPlayed?: number;
-  mostPlayedHeroes?: HeroPlayStats[];
-};
-
-export type PlayerPerformanceInMatch = {
-  playerId: string;
-  teamId: string;
-  hero: string;
-  kills: number;
-  deaths: number;
-  assists: number;
-  gpm: number;
-  xpm: number;
-  fantasyPoints: number;
-  lastHits: number;
-  denies: number;
-  netWorth: number;
-  heroDamage: number;
-  towerDamage: number;
-  
-  // New per-match stats
-  kda?: number;
-  killParticipation?: number;
-  heroDamagePerMinute?: number;
-  lastHitsPerMinute?: number;
-  netWorthPerMinute?: number;
-  towerDamagePerMinute?: number;
-  wardsPlacedPerMinute?: number;
-  stunsPerMinute?: number;
-  campsStacked?: number;
-  saves?: number;
-};
-
+// Represents a single game from OpenDota
 export type Match = {
-  id: string;
-  teamA: { id: string, name: string, score: number, logoUrl?: string };
-  teamB: { id: string, name: string, score: number, logoUrl?: string };
-  teamAScore?: number;
-  teamBScore?: number;
-  teams: string[];
+  id: string; // Corresponds to OpenDota's match_id
+  teamA: { id: string; name: string; score: number, logoUrl?: string }; // Score is kills in this game
+  teamB: { id: string; name: string; score: number, logoUrl?: string };
+  teams: [string, string]; // Array of the two team IDs
+  winnerId: string; // The ID of the winning team
   dateTime: string;
-  status: 'upcoming' | 'live' | 'completed';
+  status: 'completed';
+  duration: number; // Duration of the game in seconds
   openDotaMatchUrl?: string;
-  playerPerformances?: PlayerPerformanceInMatch[];
-  round?: string;
 };
 
+// Represents a team's performance and rank within a specific group
+export type GroupStanding = {
+  teamId: string;
+  teamName: string;
+  teamLogoUrl?: string;
+  matchesPlayed: number; // Total games played
+  points: number; // Total games won
+  wins: number; // Total games won
+  losses: number; // Total games lost
+  // Tie-breaker stats
+  headToHead: { [opponentId: string]: number }; // Maps opponentId to games won against them
+  neustadtlScore: number;
+  status: 'pending' | 'upper_bracket' | 'lower_bracket' | 'eliminated' | 'awaiting_upper_bracket_tiebreaker' | 'awaiting_lower_bracket_tiebreaker';
+};
+
+// Represents a single group containing multiple teams
 export type Group = {
   id: string;
   name: string;
-  teams: Team[];
+  standings: { [teamId: string]: GroupStanding }; // A map of teamId to their standing
 };
 
+
+export type PlayoffMatch = {
+  id: string;
+  round: number;
+  match: number;
+  teams: (string | null)[];
+  winner?: string;
+};
 export type PlayoffData = {
-    rounds: {
-        name: string;
-        matches: Match[];
-    }[];
+  upper: PlayoffMatch[][];
+  lower: PlayoffMatch[][];
 };
 
-export type FantasyLineup = {
-  [key in PlayerRole]?: TournamentPlayer;
+
+export type UserProfile = {
+  id: string;
+  username: string;
+  avatarUrl: string;
+  roles: ('admin' | 'captain')[];
+  teamId?: string;
 };
+
+// OpenDota API Specific Types
+export type OpenDotaMatch = {
+  match_id: number;
+  radiant_win: boolean;
+  radiant_score: number;
+  dire_score: number;
+  start_time: number;
+  duration: number;
+  radiant_team?: { team_id: number; name: string; };
+  dire_team?: { team_id: number; name: string; };
+  players: OpenDotaPlayer[];
+};
+
+export type OpenDotaPlayer = {
+  account_id: number;
+  personaname: string;
+  hero_id: number;
+  kills: number;
+  deaths: number;
+  assists: number;
+  gold_per_min: number;
+  xp_per_min: number;
+  net_worth: number;
+  hero_damage: number;
+  tower_damage: number;
+  // ... other stats
+};
+
+export type OpenDotaHero = {
+    id: number;
+    name: string;
+    localized_name: string;
+    primary_attr: string;
+    attack_type: string;
+    roles: string[];
+    img: string;
+    icon: string;
+    base_health: number;
+    base_health_regen: number;
+    base_mana: number;
+    base_mana_regen: number;
+    base_armor: number;
+    base_mr: number;
+    base_attack_min: number;
+    base_attack_max: number;
+    base_str: number;
+    base_agi: number;
+    base_int: number;
+    str_gain: number;
+    agi_gain: number;
+    int_gain: number;
+    attack_range: number;
+    projectile_speed: number;
+    attack_rate: number;
+    move_speed: number;
+    turn_rate: number;
+    cm_enabled: boolean;
+    legs: number;
+};
+  
 
 export type FantasyData = {
     userId: string;
     participantName: string;
-    totalFantasyPoints: number;
     currentLineup: FantasyLineup;
+    totalFantasyPoints: number;
+    lastUpdated: Date;
     roundId: string;
-    lastUpdated: Date;
-};
+  };
+  
+  export type FantasyLineup = {
+    core: string[];
+    support: string[];
+  };
 
-export type PickemPrediction = {
+  export type TournamentPlayer = Player & {
+    teamId: string;
+    teamName: string;
+
+    teamTag: string;
+  };
+
+  export type PickemPrediction = {
     userId: string;
-    predictions: { [key: string]: string[] };
+    predictions: {
+        [key: string]: string[];
+    };
     lastUpdated: Date;
-};
+  };
+  export const PlayerRoles = ['core', 'support', 'captain'];
 
-export type Announcement = {
-    id: string; // This will be the title
+
+  export type CategoryDisplayStats = {
+    [key: string]: {
+      id: string;
+      categoryName: string;
+      title: string;
+      icon: string;
+      rankings: CategoryRankingDetail[];
+      data: any[];
+    }
+  };
+
+  export type CategoryRankingDetail = {
+    rank: number;
+    player: Player;
+    teamName: string;
+    value: number | string;
+
+    heroName?: string;
+    matchContext?: string;
+    category: string;
+  };
+
+  export type TournamentHighlightRecord = {
+    id: string;
+    title: string;
+    value: number | string;
+    details: string;
+    icon: string;
+
+    category: string;
+    player: Player;
+  };
+
+  export type PlayerPerformanceInMatch = {
+    playerId: string;
+    matchId: string;
+    kills: number;
+    deaths: number;
+    assists: number;
+gpm: number;
+    xpm: number;
+    netWorth: number;
+    heroDamage: number;
+    towerDamage: number;
+    healing: number;
+    wardsPlaced: number;
+    fantasyPoints: number;
+  };
+  
+  export type Announcement = {
+    id: string;
     title: string;
     content: string;
     authorId: string;
     authorName: string;
     createdAt: Date;
-};
-
-export type CategoryDisplayStats = {
-    [key: string]: {
-        title: string;
-        data: any[];
-    }
-};
-
-export type CategoryRankingDetail = {
-    category: string;
-    player: Player;
-    value: number;
-};
-
-export type TournamentHighlightRecord = {
-    category: string;
-    player: Player;
-    value: number;
-};
+  };
+  

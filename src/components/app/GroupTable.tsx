@@ -1,5 +1,5 @@
 
-import type { Group } from "@/lib/definitions";
+import type { Group, GroupStanding } from "@/lib/definitions";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import Image from "next/image";
@@ -9,14 +9,48 @@ interface GroupTableProps {
   group: Group;
 }
 
-export function GroupTable({ group }: GroupTableProps) {
-  // Sort teams by points (descending), then by name (ascending) as a tie-breaker
-  const sortedTeams = [...group.teams].sort((a, b) => {
-    if (b.points !== a.points) {
-      return (b.points ?? 0) - (a.points ?? 0);
+const sortStandings = (standings: GroupStanding[]): GroupStanding[] => {
+  return standings.sort((a, b) => {
+    // Handle cases where team data might be missing
+    if (!a.teamName) return 1;
+    if (!b.teamName) return -1;
+
+    // 1. Primary sort by points
+    if (a.points !== b.points) {
+      return b.points - a.points;
     }
-    return a.name.localeCompare(b.name);
+
+    // 2. Secondary sort by head-to-head results among tied teams
+    const tiedTeams = standings.filter(s => s.points === a.points).map(s => s.teamId);
+    if (tiedTeams.length > 1) {
+      const aHeadToHeadPoints = tiedTeams.reduce((sum, teamId) => {
+        if (teamId === a.teamId) return sum;
+        return sum + (a.headToHead?.[teamId] || 0);
+      }, 0);
+      const bHeadToHeadPoints = tiedTeams.reduce((sum, teamId) => {
+        if (teamId === b.teamId) return sum;
+        return sum + (b.headToHead?.[teamId] || 0);
+      }, 0);
+
+      if (aHeadToHeadPoints !== bHeadToHeadPoints) {
+        return bHeadToHeadPoints - aHeadToHeadPoints;
+      }
+    }
+
+    // 3. Tertiary sort by Neustadtl score
+    if (a.neustadtlScore !== b.neustadtlScore) {
+      return b.neustadtlScore - a.neustadtlScore;
+    }
+
+    // 4. Final sort by team name if still tied
+    return a.teamName.localeCompare(b.teamName);
   });
+};
+
+
+export function GroupTable({ group }: GroupTableProps) {
+  const standingsArray = Object.values(group.standings);
+  const sortedStandings = sortStandings(standingsArray);
 
   return (
     <Card className="shadow-lg">
@@ -36,31 +70,30 @@ export function GroupTable({ group }: GroupTableProps) {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {sortedTeams.map((team, index) => (
-              <TableRow key={team.id}>
+            {sortedStandings.map((standing, index) => (
+              <TableRow key={standing.teamId}>
                 <TableCell>{index + 1}</TableCell>
                 <TableCell>
-                  <Link href={`/teams/${team.id}`} className="flex items-center space-x-3 hover:text-primary transition-colors">
+                  <Link href={`/teams/${standing.teamId}`} className="flex items-center space-x-3 hover:text-primary transition-colors">
                     <Image 
-                      src={team.logoUrl || `https://placehold.co/40x40.png?text=${team.name.charAt(0)}`} 
-                      alt={`${team.name} logo`} 
+                      src={standing.teamLogoUrl || `https://placehold.co/40x40.png?text=${standing.teamName.charAt(0)}`} 
+                      alt={`${standing.teamName} logo`} 
                       width={32} 
                       height={32} 
                       className="rounded-md object-cover"
-                      data-ai-hint="team logo"
                     />
-                    <span className="font-medium">{team.name}</span>
+                    <span className="font-medium">{standing.teamName}</span>
                   </Link>
                 </TableCell>
-                <TableCell className="text-center">{team.matchesPlayed ?? 0}</TableCell>
-                <TableCell className="text-center">{team.matchesWon ?? 0}</TableCell>
-                <TableCell className="text-center">{team.matchesLost ?? 0}</TableCell>
-                <TableCell className="text-right font-semibold">{team.points ?? 0}</TableCell>
+                <TableCell className="text-center">{standing.matchesPlayed}</TableCell>
+                <TableCell className="text-center">{standing.wins}</TableCell>
+                <TableCell className="text-center">{standing.losses}</TableCell>
+                <TableCell className="text-right font-semibold">{standing.points}</TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
-        {group.teams.length === 0 && <p className="text-muted-foreground text-center py-4">No teams in this group yet.</p>}
+        {standingsArray.length === 0 && <p className="text-muted-foreground text-center py-4">No teams in this group yet.</p>}
       </CardContent>
     </Card>
   );

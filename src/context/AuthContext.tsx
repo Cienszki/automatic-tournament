@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { createContext, useContext, useEffect, useState, ReactNode, useCallback } from "react";
+import React, { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { 
   onAuthStateChanged, 
   signInWithPopup,
@@ -12,19 +12,12 @@ import {
 import { auth } from "@/lib/firebase"; 
 import { Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { getUserTeam as fetchUserTeam } from "@/lib/admin-actions";
 
-interface UserTeamInfo {
-    hasTeam: boolean;
-    teamId: string | null;
-    teamName: string | null;
-}
-
+// The AuthContext is now much simpler. It only deals with the user's auth state
+// and does NOT perform any server-side data fetching. This is the key to fixing the timeout.
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  userTeamInfo: UserTeamInfo;
-  refreshUserTeam: () => Promise<void>;
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
 }
@@ -34,34 +27,16 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [userTeamInfo, setUserTeamInfo] = useState<UserTeamInfo>({ hasTeam: false, teamId: null, teamName: null });
   const { toast } = useToast();
   
-  const refreshUserTeam = useCallback(async () => {
-    if (auth.currentUser) {
-      const teamData = await fetchUserTeam(auth.currentUser.uid);
-      setUserTeamInfo({
-        hasTeam: teamData.hasTeam,
-        teamId: teamData.team?.id || null,
-        teamName: teamData.team?.name || null,
-      });
-    } else {
-      setUserTeamInfo({ hasTeam: false, teamId: null, teamName: null });
-    }
-  }, []);
-
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+    // This just listens for Firebase auth changes on the client-side. It is very fast.
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
-      if (currentUser) {
-        await refreshUserTeam();
-      } else {
-        setUserTeamInfo({ hasTeam: false, teamId: null, teamName: null });
-      }
       setLoading(false);
     });
     return () => unsubscribe();
-  }, [refreshUserTeam]);
+  }, []);
 
   const signInWithGoogle = async () => {
     const provider = new GoogleAuthProvider();
@@ -99,7 +74,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, userTeamInfo, refreshUserTeam, signInWithGoogle, signOut }}>
+    <AuthContext.Provider value={{ user, loading, signInWithGoogle, signOut }}>
       {loading ? (
         <div className="flex justify-center items-center h-screen">
           <Loader2 className="h-16 w-16 animate-spin" />

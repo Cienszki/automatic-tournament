@@ -1,39 +1,61 @@
 
 import { GroupTable } from "@/components/app/GroupTable";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { getAllTeams } from "@/lib/firestore";
+import { Card, CardContent } from "@/components/ui/card";
+import { getAllGroups, getAllTeams } from "@/lib/firestore";
 import type { Group, Team } from "@/lib/definitions";
 import { AlertTriangle, Users } from "lucide-react";
+import { unstable_noStore as noStore } from 'next/cache';
 
-// In a real app, this might involve more complex logic like seeding
-function generateGroups(teams: Team[]): Group[] {
-  const shuffledTeams = [...teams].sort(() => 0.5 - Math.random());
-  const groups: Group[] = [];
-  const teamsPerGroup = 4;
-  const numGroups = Math.ceil(shuffledTeams.length / teamsPerGroup);
 
-  for (let i = 0; i < numGroups; i++) {
-    const groupTeams = shuffledTeams.slice(i * teamsPerGroup, (i + 1) * teamsPerGroup);
-    groups.push({
-      id: `group-${i + 1}`,
-      name: `Group ${String.fromCharCode(65 + i)}`,
-      teams: groupTeams,
+// This function fetches all necessary data in parallel and then combines it.
+async function getHydratedGroupsData(): Promise<Group[]> {
+  noStore(); // Ensure data is fetched dynamically
+  
+  const [groups, teams] = await Promise.all([
+    getAllGroups(),
+    getAllTeams()
+  ]);
+
+  const teamsMap = new Map(teams.map(team => [team.id, team]));
+
+  const hydratedGroups = groups.map(group => {
+    const hydratedStandings: { [teamId: string]: any } = {};
+    
+    for (const teamId in group.standings) {
+      const team = teamsMap.get(teamId);
+      if (team) {
+        const standing = group.standings[teamId];
+        hydratedStandings[teamId] = {
+          ...standing,
+          teamName: team.name,
+          teamLogoUrl: team.logoUrl || '',
+        };
+      }
+    }
+    
+    // Calculate Neustadtl scores after all standings are hydrated with points
+    Object.values(hydratedStandings).forEach(standing => {
+      let neustadtl = 0;
+      const defeatedOpponents = standing.headToHead ? Object.keys(standing.headToHead) : [];
+      defeatedOpponents.forEach(opponentId => {
+        const gamesWon = standing.headToHead[opponentId];
+        const opponentPoints = hydratedStandings[opponentId]?.points || 0;
+        neustadtl += gamesWon * opponentPoints;
+      });
+      standing.neustadtlScore = neustadtl;
     });
-  }
-  return groups;
-}
 
-async function getGroupsData(): Promise<Group[]> {
-  const teams = await getAllTeams();
-  if (teams.length < 4) {
-    // Not enough teams to form a group
-    return [];
-  }
-  return generateGroups(teams);
+    return {
+      ...group,
+      standings: hydratedStandings,
+    };
+  });
+
+  return hydratedGroups;
 }
 
 export default async function GroupStagePage() {
-  const groups = await getGroupsData();
+  const groups = await getHydratedGroupsData();
 
   return (
     <div className="space-y-8">
@@ -59,7 +81,7 @@ export default async function GroupStagePage() {
             <AlertTriangle className="w-16 h-16 text-yellow-500 mb-4" />
             <h2 className="text-2xl font-semibold mb-2">Groups Not Formed Yet</h2>
             <p className="text-muted-foreground">
-              There are not enough registered teams to form groups.
+              An administrator has not yet created the groups for the tournament. Please check back later.
             </p>
           </CardContent>
         </Card>
