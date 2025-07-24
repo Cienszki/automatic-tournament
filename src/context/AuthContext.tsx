@@ -8,18 +8,18 @@ import {
   signOut as firebaseSignOut, 
   GoogleAuthProvider,
   type User,
+  signInWithEmailAndPassword,
 } from "firebase/auth";
 import { auth } from "@/lib/firebase"; 
 import { Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
-// The AuthContext is now much simpler. It only deals with the user's auth state
-// and does NOT perform any server-side data fetching. This is the key to fixing the timeout.
 interface AuthContextType {
   user: User | null;
   loading: boolean;
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
+  signInWithEmail: (email: string, pass: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -30,10 +30,23 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const { toast } = useToast();
   
   useEffect(() => {
-    // This just listens for Firebase auth changes on the client-side. It is very fast.
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
       setLoading(false);
+      if (currentUser) {
+        const idToken = await currentUser.getIdToken();
+        await fetch('/api/auth/session', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ idToken }),
+        });
+      } else {
+        await fetch('/api/auth/session', {
+          method: 'DELETE',
+        });
+      }
     });
     return () => unsubscribe();
   }, []);
@@ -41,12 +54,26 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const signInWithGoogle = async () => {
     const provider = new GoogleAuthProvider();
     try {
-      await signInWithPopup(auth, provider);
+      const result = await signInWithPopup(auth, provider);
+      const idToken = await result.user.getIdToken();
+
+      await fetch('/api/auth/session', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ idToken }),
+      });
+      
       toast({
         title: "Signed In",
-        description: "You have successfully signed in.",
+        description: "You have successfully signed in with Google.",
       });
-    } catch (error) {
+    } catch (error: any) {
+      if (error.code === 'auth/cancelled-popup-request' || error.code === 'auth/popup-closed-by-user') {
+        // User closed the popup, so we don't need to show an error
+        return;
+      }
       console.error("Error signing in with Google:", error);
       toast({
         title: "Sign-in Error",
@@ -56,9 +83,29 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
+  const signInWithEmail = async (email: string, pass: string) => {
+    try {
+        await signInWithEmailAndPassword(auth, email, pass);
+        toast({
+            title: "Signed In",
+            description: "You have successfully signed in with email.",
+        });
+    } catch (error: any) {
+        console.error("Error signing in with email:", error);
+        toast({
+            title: "Sign-in Error",
+            description: "Could not sign in with email. Please check your credentials.",
+            variant: "destructive",
+        });
+    }
+  };
+
   const signOut = async () => {
     try {
       await firebaseSignOut(auth);
+      await fetch('/api/auth/session', {
+        method: 'DELETE',
+      });
       toast({
         title: "Signed Out",
         description: "You have been successfully signed out.",
@@ -74,7 +121,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, signInWithGoogle, signOut }}>
+    <AuthContext.Provider value={{ user, loading, signInWithGoogle, signOut, signInWithEmail }}>
       {loading ? (
         <div className="flex justify-center items-center h-screen">
           <Loader2 className="h-16 w-16 animate-spin" />

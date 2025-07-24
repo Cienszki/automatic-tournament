@@ -49,7 +49,7 @@ const faqSections = [
       {
         id: "reg-3",
         question: "What are the MMR restrictions for teams?",
-        answer: "The sum of MMR for all 5 players in a team cannot exceed 22,000. Specific examples and verification processes are detailed on the 'Rules' page.",
+        answer: "The sum of MMR for all 5 players in a team cannot exceed 24,000. Specific examples and verification processes are detailed on the 'Rules' page.",
       },
       {
         id: "reg-4",
@@ -110,18 +110,23 @@ const faqSections = [
         question: "Where can I find the match schedule?",
         answer: "The full match schedule, including deadlines for each round, is available on the 'Schedule' page and also outlined in the 'Rules' page.",
       },
-      {
+       {
         id: "sch-2",
-        question: "What if teams cannot agree on a match time?",
-        answer: "If teams cannot agree, the default match time is 20:00 (Polish time) on the last day of the designated round period. Failure to appear results in a forfeit.",
+        question: "How does match scheduling and timezones work?",
+        answer: "The system is designed for global play. All times are stored universally (in UTC) but displayed in your local browser time. When you propose a time, you do so in your timezone, and the opposing captain sees it in theirs. This ensures clarity. For example, a proposal for 9:00 PM in New York will correctly show as 3:00 AM in Warsaw. If teams can't agree, the default time is 20:00 Polish Time (CEST/CET) on the final day of the round.",
       },
       {
         id: "sch-3",
+        question: "What happens if my opponent and I don't agree on a time before the deadline?",
+        answer: "Each match round has a firm deadline. As a captain, you are responsible for communicating with your opponent to agree on a time. If you cannot agree, the match is automatically set to the 'default time' (usually 20:00 Polish Time on the round's last day). Once the deadline passes, you will no longer be able to propose, accept, or reject times in the app. The match becomes locked to the default time, and failure to show up will result in a forfeit.",
+      },
+      {
+        id: "sch-4",
         question: "What is the punctuality policy?",
         answer: "A 15-minute grace period is allowed for tardiness. Further delays can result in game or match forfeits, as specified in the 'Rules' page.",
       },
       {
-        id: "sch-4",
+        id: "sch-5",
         question: "How are match results reported?",
         answer: "The captain of the winning team is responsible for promptly reporting the match result on the designated platform (e.g., Challonge) after the match concludes.",
       },
@@ -224,4 +229,3 @@ export const metadata = {
   title: "FAQ | Tournament Tracker",
   description: "Frequently asked questions about the 'Jesienna Zadyma' tournament.",
 };
-

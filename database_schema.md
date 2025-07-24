@@ -52,6 +52,11 @@ This is a subcollection within each `team` document. It stores the details for e
     -   `openDotaProfileUrl` (string): A full URL to the player's OpenDota profile.
     -   `role` (string): The player's role (e.g., 'Carry', 'Mid', etc.).
     -   `steamProfileUrl` (string): A URL to the player's Steam profile.
+    -   `steamId` (string): The player's 64-bit Steam ID.
+    -   `steamId32` (string): The player's 32-bit Steam ID.
+    -   `avatar` (string): URL to the player's small Steam avatar.
+    -   `avatarmedium` (string): URL to the player's medium Steam avatar.
+    -   `avatarfull` (string): URL to the player's large Steam avatar.
 
 ---
 

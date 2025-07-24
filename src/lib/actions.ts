@@ -3,90 +3,80 @@
 
 import { getMatchDetails, getHeroes, transformMatchData, getLeagueMatches } from './opendota';
 import { saveMatchResults, getAllTeams as getAllTeamsFromDb, getAllTournamentPlayers as getAllTournamentPlayersFromDb, getAllMatches, saveTeam as saveTeamToDb } from './firestore';
-import { db } from './firebase'; 
 import { Team, Player, LEAGUE_ID } from './definitions';
-import { getOpenDotaAccountIdFromUrl as getOpenDotaAccountIdFromUrlServer } from './server-utils'; // Use server-specific util
+import { getSteam64IdFromUrl, getSteamPlayerSummary, getOpenDotaAccountIdFromUrl as getOpenDotaAccountIdFromUrlServer } from './server-utils';
 import { z } from 'zod';
-import { doc, collection, writeBatch, serverTimestamp } from 'firebase/firestore';
 
 // A simple in-memory cache for hero data to avoid repeated API calls.
 let heroCache: any[] | null = null;
 
-const formSchema = z.object({
-  name: z.string().min(3, "Team name must be at least 3 characters."),
-  tag: z.string().min(2, "Tag must be 2-4 characters.").max(4),
-  motto: z.string().min(5, "Motto must be at least 5 characters."),
-  logoUrl: z.string().url("Must be a valid URL."),
+// Schema for the registration form data (without file uploads)
+const registrationSchema = z.object({
+  name: z.string().min(3),
+  tag: z.string().min(2).max(4),
+  discordUsername: z.string().min(2),
+  motto: z.string().min(5),
+  logoUrl: z.string().url(),
+  captainId: z.string(),
   players: z.array(z.object({
-    nickname: z.string().min(2, "Nickname is required."),
+    id: z.string(),
+    nickname: z.string().min(2),
+    mmr: z.number().min(1000).max(12000),
     role: z.enum(["Carry", "Mid", "Offlane", "Soft Support", "Hard Support"]),
-    mmr: z.coerce.number().min(1000).max(12000),
-    steamProfileUrl: z.string().url("Must be a valid Steam profile URL."),
-    mmrScreenshotUrl: z.string().url("Screenshot URL is required."),
-  })).length(5, "You must register exactly 5 players."),
+    steamProfileUrl: z.string().url(), 
+    profileScreenshotUrl: z.string().url(),
+  })).length(5),
 });
 
-export async function registerTeam(captainId: string, prevState: { message: string | null }, formData: FormData) {
+export async function registerTeam(payload: unknown) {
     try {
-        const rawFormData = Object.fromEntries(formData.entries());
+        // 1. Validate the incoming payload against the schema
+        const validatedData = registrationSchema.parse(payload);
         
-        const playersData = Array.from({ length: 5 }).map((_, i) => ({
-            nickname: rawFormData[`players[${i}].nickname`],
-            mmr: rawFormData[`players[${i}].mmr`],
-            role: rawFormData[`players[${i}].role`],
-            steamProfileUrl: rawFormData[`players[${i}].steamProfileUrl`],
-            mmrScreenshotUrl: rawFormData[`players[${i}].mmrScreenshotUrl`],
-        }));
-        
-        const validatedData = formSchema.parse({
-            name: rawFormData.name,
-            tag: rawFormData.tag,
-            motto: rawFormData.motto,
-            logoUrl: rawFormData.logoUrl,
-            players: playersData,
-        });
+        // 2. Enhance player data with Steam information
+        const playersWithFullDetails = await Promise.all(
+            validatedData.players.map(async (player) => {
+                const steamId64 = await getSteam64IdFromUrl(player.steamProfileUrl);
+                const steamId32 = await getOpenDotaAccountIdFromUrlServer(player.steamProfileUrl);
+                const steamSummary = await getSteamPlayerSummary(steamId64);
 
-        const playersWithIds = await Promise.all(
-            validatedData.players.map(async (player, index) => {
-                try {
-                    const openDotaAccountId = await getOpenDotaAccountIdFromUrlServer(player.steamProfileUrl);
-                    const openDotaProfileUrl = `https://www.opendota.com/players/${openDotaAccountId}`;
-                    
-                    return {
-                        ...player,
-                        openDotaAccountId,
-                        openDotaProfileUrl,
-                        fantasyPointsEarned: 0,
-                    };
-                } catch (error) {
-                    throw new Error(`Player ${index + 1} (${player.nickname}): Could not validate Steam URL. ${(error as Error).message}`);
-                }
+                return {
+                    ...player,
+                    steamId: steamId64,
+                    steamId32: steamId32.toString(),
+                    nickname: steamSummary.personaname,
+                    avatar: steamSummary.avatar,
+                    avatarmedium: steamSummary.avatarmedium,
+                    avatarfull: steamSummary.avatarfull,
+                };
             })
         );
-
-        const teamToSave: Omit<Team, 'id'> = {
+        
+        // 3. Construct the final team object for saving
+        const teamToSave: Omit<Team, 'id' | 'createdAt' | 'status'> = {
             name: validatedData.name,
             tag: validatedData.tag,
+            discordUsername: validatedData.discordUsername,
             motto: validatedData.motto,
             logoUrl: validatedData.logoUrl,
-            captainId: captainId,
-            players: playersWithIds,
-            wins: 0,
-            losses: 0,
+            captainId: validatedData.captainId,
+            players: playersWithFullDetails,
         };
 
+        // 4. Save the team to the database (this now handles subcollections)
         await saveTeamToDb(teamToSave);
 
-        return { message: `Team ${validatedData.name} registered successfully!` };
+        return { success: true, message: `Team ${validatedData.name} registered successfully!` };
 
     } catch (e) {
         if (e instanceof z.ZodError) {
-            return { message: e.errors.map(err => err.message).join(', ') };
+            console.error("Zod validation error:", e.errors);
+            return { success: false, message: "Validation failed: " + e.errors.map(err => `${err.path.join('.')} - ${err.message}`).join(', ') };
         }
-        return { message: (e as Error).message };
+        console.error("Error registering team:", e);
+        return { success: false, message: (e as Error).message || "An unknown error occurred." };
     }
 }
-
 
 /**
  * Fetches match data from the OpenDota API, transforms it, and saves it to Firestore.

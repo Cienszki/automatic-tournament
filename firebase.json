@@ -1,6 +1,6 @@
 {
   "hosting": {
-    "public": "out",
+    "public": "public",
     "ignore": [
       "firebase.json",
       "**/.*",
@@ -8,7 +8,11 @@
     ],
     "rewrites": [
       {
-        "source": "/api/*",
+        "source": "/api/**",
+        "function": "codebase1"
+      },
+      {
+        "source": "**",
         "function": "codebase1"
       }
     ]
@@ -31,5 +35,23 @@
         "*.local"
       ]
     }
-  ]
+  ],
+  "emulators": {
+    "auth": {
+      "port": 9099
+    },
+    "functions": {
+      "port": 5001
+    },
+    "firestore": {
+      "port": 8081
+    },
+    "ui": {
+      "enabled": true,
+      "port": 4001
+    },
+    "storage": {
+      "port": 9199
+    }
+  }
 }

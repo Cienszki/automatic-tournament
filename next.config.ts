@@ -22,6 +22,12 @@ const nextConfig = {
                 pathname: '/**',
             },
             {
+                protocol: 'https',
+                hostname: 'firebasestorage.googleapis.com',
+                port: '',
+                pathname: '/**',
+            },
+            {
                 protocol: 'https'
                 ,
                 hostname: 'community.cloudflare.steamstatic.com',

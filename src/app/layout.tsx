@@ -6,6 +6,7 @@ import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
 import { Toaster } from "@/components/ui/toaster";
 import { AuthProvider } from '@/context/AuthContext';
+import { TimeProvider } from '@/context/TimeContext';
 
 const raleway = Raleway({
   variable: '--font-raleway',
@@ -33,14 +34,16 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={`${raleway.variable} ${spaceMono.variable} antialiased font-sans`} suppressHydrationWarning={true}>
         <AuthProvider>
-          <div className="flex flex-col min-h-screen bg-background text-foreground">
-            <Navbar />
-            <main className="flex-grow container mx-auto px-4 py-8">
-              {children}
-            </main>
-            <Footer />
-          </div>
-          <Toaster />
+          <TimeProvider>
+            <div className="flex flex-col min-h-screen bg-background text-foreground">
+              <Navbar />
+              <main className="flex-grow container mx-auto px-4 py-8">
+                {children}
+              </main>
+              <Footer />
+            </div>
+            <Toaster />
+          </TimeProvider>
         </AuthProvider>
       </body>
     </html>

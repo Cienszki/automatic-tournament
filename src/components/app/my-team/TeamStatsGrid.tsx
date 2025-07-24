@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Award, BarChart, Clock, Percent, Ratio, Shield, Sigma, Trophy, Users, BarChart3, TrendingUp, TrendingDown } from "lucide-react";
 
 interface TeamStatsGridProps {
-  team: Team;
+  team?: Team | null;
 }
 
 interface StatCardProps {
@@ -32,9 +32,28 @@ function StatCard({ icon: Icon, label, value, description }: StatCardProps) {
 }
 
 export function TeamStatsGrid({ team }: TeamStatsGridProps) {
+  if (!team) {
+    return (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            {Array.from({ length: 8 }).map((_, i) => (
+                 <Card key={i} className="shadow-md bg-muted/20 animate-pulse">
+                    <CardHeader className="pb-2">
+                        <div className="h-5 bg-muted rounded w-3/4"></div>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="h-8 bg-muted rounded w-1/2 mb-2"></div>
+                        <div className="h-3 bg-muted rounded w-full"></div>
+                    </CardContent>
+                </Card>
+            ))}
+        </div>
+    );
+  }
+
+  const matchesPlayed = (team.matchesWon ?? 0) + (team.matchesLost ?? 0);
   const winRate =
-    team.matchesPlayed && team.matchesPlayed > 0
-      ? ((team.matchesWon ?? 0) / team.matchesPlayed) * 100
+    matchesPlayed > 0
+      ? ((team.matchesWon ?? 0) / matchesPlayed) * 100
       : 0;
 
   const kda = team.averageDeathsPerGame && team.averageDeathsPerGame > 0
@@ -54,7 +73,7 @@ export function TeamStatsGrid({ team }: TeamStatsGridProps) {
         icon={Percent}
         label="Win Rate"
         value={`${winRate.toFixed(1)}%`}
-        description={`${team.matchesPlayed ?? 0} games played`}
+        description={`${matchesPlayed} games played`}
       />
       <StatCard
         icon={Clock}

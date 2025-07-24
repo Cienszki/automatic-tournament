@@ -1,229 +1,164 @@
 // src/lib/definitions.ts
 
-export type Team = {
-  id: string;
-  name: string;
-  tag: string;
-  logoUrl?: string;
-  captainId: string;
-  players: Player[];
-  status: 'pending' | 'verified' | 'rejected';
-  createdAt: string;
-  openDotaTeamId?: number; 
-};
+// This is the official ID for the tournament league on the OpenDota API.
+// You should replace 0 with the actual ID for your league.
+export const LEAGUE_ID = 0;
+export const TEAM_MMR_CAP = 24000;
 
-export type Player = {
+export type TeamStatus = 'pending' | 'verified' | 'rejected';
+export const PlayerRoles = ['Carry', 'Mid', 'Offlane', 'Soft Support', 'Hard Support'] as const;
+export type PlayerRole = typeof PlayerRoles[number];
+
+export interface Player {
   id: string;
   nickname: string;
-  role: 'core' | 'support' | 'captain';
+  mmr: number;
+  role: PlayerRole;
   steamId: string;
-  openDotaAccountId?: number;
-};
+  steamId32: string;
+  profileScreenshotUrl: string;
+  avatar?: string;
+  avatarmedium?: string;
+  avatarfull?: string;
+}
 
-// Represents a single game from OpenDota
-export type Match = {
-  id: string; // Corresponds to OpenDota's match_id
-  teamA: { id: string; name: string; score: number, logoUrl?: string }; // Score is kills in this game
-  teamB: { id: string; name: string; score: number, logoUrl?: string };
-  teams: [string, string]; // Array of the two team IDs
-  winnerId: string; // The ID of the winning team
-  dateTime: string;
-  status: 'completed';
-  duration: number; // Duration of the game in seconds
-  openDotaMatchUrl?: string;
-};
+export interface Team {
+  id:string;
+  name: string;
+  tag: string;
+  logoUrl: string;
+  captainId: string;
+  discordUsername: string;
+  motto: string;
+  status: TeamStatus;
+  createdAt: string; // Stored as ISO string
+  players: Player[];
+  // Optional fields for test accounts
+  testCaptainEmail?: string;
+  testCaptainPassword?: string;
+}
 
-// Represents a team's performance and rank within a specific group
-export type GroupStanding = {
+export interface Match {
+  id: string;
+  teamA: { id: string; name: string; score: number; logoUrl: string; };
+  teamB: { id: string; name: string; score: number; logoUrl: string; };
+  teams: string[];
+  status: 'scheduled' | 'completed' | 'live';
+  scheduled_for: string; // ISO string for the scheduling deadline
+  defaultMatchTime: string; // ISO string
+  dateTime?: string; // ISO string for the confirmed match time
+  group_id?: string;
+  playoff_round?: number;
+  // Fields for the time proposal system
+  schedulingStatus: 'unscheduled' | 'proposed' | 'confirmed';
+  proposedTime?: string; // ISO string
+  proposingCaptainId?: string;
+  // Data from OpenDota
+  opendota_match_id?: number;
+  // Completion timestamp
+  completed_at?: string; // ISO string
+}
+
+export interface GroupStanding {
   teamId: string;
   teamName: string;
-  teamLogoUrl?: string;
-  matchesPlayed: number; // Total games played
-  points: number; // Total games won
-  wins: number; // Total games won
-  losses: number; // Total games lost
-  // Tie-breaker stats
-  headToHead: { [opponentId: string]: number }; // Maps opponentId to games won against them
+  teamLogoUrl: string;
+  matchesPlayed: number;
+  points: number;
+  wins: number;
+  losses: number;
+  headToHead: { [opponentId: string]: 'win' | 'loss' };
   neustadtlScore: number;
-  status: 'pending' | 'upper_bracket' | 'lower_bracket' | 'eliminated' | 'awaiting_upper_bracket_tiebreaker' | 'awaiting_lower_bracket_tiebreaker';
-};
+  status: 'pending' | 'updated';
+}
 
-// Represents a single group containing multiple teams
-export type Group = {
+export interface Group {
   id: string;
   name: string;
-  standings: { [teamId: string]: GroupStanding }; // A map of teamId to their standing
-};
+  standings: { [teamId: string]: GroupStanding };
+}
 
-
-export type PlayoffMatch = {
-  id: string;
-  round: number;
-  match: number;
-  teams: (string | null)[];
-  winner?: string;
-};
-export type PlayoffData = {
-  upper: PlayoffMatch[][];
-  lower: PlayoffMatch[][];
-};
-
-
-export type UserProfile = {
-  id: string;
-  username: string;
-  avatarUrl: string;
-  roles: ('admin' | 'captain')[];
-  teamId?: string;
-};
-
-// OpenDota API Specific Types
-export type OpenDotaMatch = {
-  match_id: number;
-  radiant_win: boolean;
-  radiant_score: number;
-  dire_score: number;
-  start_time: number;
-  duration: number;
-  radiant_team?: { team_id: number; name: string; };
-  dire_team?: { team_id: number; name: string; };
-  players: OpenDotaPlayer[];
-};
-
-export type OpenDotaPlayer = {
-  account_id: number;
-  personaname: string;
-  hero_id: number;
-  kills: number;
-  deaths: number;
-  assists: number;
-  gold_per_min: number;
-  xp_per_min: number;
-  net_worth: number;
-  hero_damage: number;
-  tower_damage: number;
-  // ... other stats
-};
-
-export type OpenDotaHero = {
-    id: number;
+export interface PlayoffData {
+    id: string; // e.g., 'round-1', 'grand-finals'
+    round: number;
     name: string;
-    localized_name: string;
-    primary_attr: string;
-    attack_type: string;
-    roles: string[];
-    img: string;
-    icon: string;
-    base_health: number;
-    base_health_regen: number;
-    base_mana: number;
-    base_mana_regen: number;
-    base_armor: number;
-    base_mr: number;
-    base_attack_min: number;
-    base_attack_max: number;
-    base_str: number;
-    base_agi: number;
-    base_int: number;
-    str_gain: number;
-    agi_gain: number;
-    int_gain: number;
-    attack_range: number;
-    projectile_speed: number;
-    attack_rate: number;
-    move_speed: number;
-    turn_rate: number;
-    cm_enabled: boolean;
-    legs: number;
-};
-  
+    matches: Match[];
+}
 
-export type FantasyData = {
-    userId: string;
-    participantName: string;
-    currentLineup: FantasyLineup;
-    totalFantasyPoints: number;
-    lastUpdated: Date;
-    roundId: string;
-  };
-  
-  export type FantasyLineup = {
-    core: string[];
-    support: string[];
-  };
-
-  export type TournamentPlayer = Player & {
+export interface TournamentPlayer extends Player {
     teamId: string;
     teamName: string;
-
     teamTag: string;
-  };
+}
 
-  export type PickemPrediction = {
+// Fantasy & Pick'em
+export interface FantasyLineup {
     userId: string;
-    predictions: {
-        [key: string]: string[];
+    players: TournamentPlayer[];
+    totalScore: number;
+}
+
+export interface FantasyData {
+    players: TournamentPlayer[];
+    lineups: FantasyLineup[];
+}
+
+export interface PickemPrediction {
+    userId: string;
+    matchId: string;
+    predictedWinnerId: string;
+}
+
+// Stats Page
+export interface CategoryDisplayStats {
+    categoryName: string;
+    leader: {
+        playerId: string;
+        playerNickname: string;
+        teamName: string;
+        teamTag: string;
+        value: number;
     };
-    lastUpdated: Date;
-  };
-  export const PlayerRoles = ['core', 'support', 'captain'];
+}
 
-
-  export type CategoryDisplayStats = {
-    [key: string]: {
-      id: string;
-      categoryName: string;
-      title: string;
-      icon: string;
-      rankings: CategoryRankingDetail[];
-      data: any[];
-    }
-  };
-
-  export type CategoryRankingDetail = {
-    rank: number;
-    player: Player;
-    teamName: string;
-    value: number | string;
-
-    heroName?: string;
-    matchContext?: string;
-    category: string;
-  };
-
-  export type TournamentHighlightRecord = {
-    id: string;
-    title: string;
-    value: number | string;
-    details: string;
-    icon: string;
-
-    category: string;
-    player: Player;
-  };
-
-  export type PlayerPerformanceInMatch = {
+export interface PlayerPerformanceInMatch {
     playerId: string;
     matchId: string;
     kills: number;
     deaths: number;
     assists: number;
-gpm: number;
+    gpm: number;
     xpm: number;
-    netWorth: number;
+    lastHits: number;
+    denies: number;
     heroDamage: number;
     towerDamage: number;
-    healing: number;
-    wardsPlaced: number;
-    fantasyPoints: number;
-  };
-  
-  export type Announcement = {
+}
+
+export interface CategoryRankingDetail {
+    playerId: string;
+    playerNickname: string;
+    teamName: string;
+    teamTag: string;
+    averageValue: number;
+    matchesPlayed: number;
+}
+
+export interface TournamentHighlightRecord {
+    category: string;
+    playerId: string;
+    playerNickname: string;
+    teamName: string;
+    teamTag: string;
+    value: number;
+    matchId: string;
+}
+
+export interface Announcement {
     id: string;
     title: string;
     content: string;
     authorId: string;
     authorName: string;
     createdAt: Date;
-  };
-  
+}

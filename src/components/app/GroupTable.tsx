@@ -76,8 +76,8 @@ export function GroupTable({ group }: GroupTableProps) {
                 <TableCell>
                   <Link href={`/teams/${standing.teamId}`} className="flex items-center space-x-3 hover:text-primary transition-colors">
                     <Image 
-                      src={standing.teamLogoUrl || `https://placehold.co/40x40.png?text=${standing.teamName.charAt(0)}`} 
-                      alt={`${standing.teamName} logo`} 
+                      src={standing.teamLogoUrl || `https://placehold.co/40x40.png?text=${standing.teamName?.charAt(0)}`} 
+                      alt={standing.teamName ? `${standing.teamName} logo` : 'Team logo'} 
                       width={32} 
                       height={32} 
                       className="rounded-md object-cover"

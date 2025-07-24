@@ -10,16 +10,17 @@ import { SchedulingCard } from "@/components/app/my-team/SchedulingCard";
 import { MatchHistoryTable } from "@/components/app/my-team/MatchHistoryTable";
 import { TeamStatsGrid } from "@/components/app/my-team/TeamStatsGrid";
 import { PlayerAnalyticsTable } from "@/components/app/my-team/PlayerAnalyticsTable";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
-import Link from "next/link";
 import { getUserTeam } from "@/lib/admin-actions";
-import type { Team } from "@/lib/definitions";
+import { getMatchesForTeam } from "@/lib/firestore";
+import type { Team, Match } from "@/lib/definitions";
+import NoTeamFound from '@/components/app/my-team/NoTeamFound';
 
 export default function MyTeamPage() {
   const { user, loading: authLoading } = useAuth();
   const [team, setTeam] = React.useState<Team | null>(null);
+  const [matches, setMatches] = React.useState<Match[]>([]);
   const [hasTeam, setHasTeam] = React.useState(false);
   const [loading, setLoading] = React.useState(true);
 
@@ -30,6 +31,12 @@ export default function MyTeamPage() {
         const { hasTeam, team } = await getUserTeam(user.uid);
         setHasTeam(hasTeam);
         setTeam(team || null);
+
+        if (team) {
+            const teamMatches = await getMatchesForTeam(team.id);
+            setMatches(teamMatches);
+        }
+        
         setLoading(false);
       } else {
         setLoading(false);
@@ -41,29 +48,27 @@ export default function MyTeamPage() {
   }, [user, authLoading]);
   
   if (authLoading || loading) {
-    return <div className="flex justify-center items-center h-screen"><Loader2 className="h-16 w-16 animate-spin" /></div>;
+    return <div className="flex justify-center items-center h-[calc(100vh-80px)]"><Loader2 className="h-16 w-16 animate-spin" /></div>;
   }
   
   if (!user) {
     return (
-      <Card className="text-center">
-        <CardHeader><CardTitle>Access Denied</CardTitle></CardHeader>
-        <CardContent>
-          <p>You must be signed in to view your team page.</p>
-        </CardContent>
-      </Card>
+        <div className="flex justify-center items-center h-[calc(100vh-80px)]">
+            <Card className="text-center">
+                <CardHeader><CardTitle>Access Denied</CardTitle></CardHeader>
+                <CardContent>
+                <p>You must be signed in to view your team page.</p>
+                </CardContent>
+            </Card>
+        </div>
     );
   }
   
   if (!hasTeam) {
     return (
-       <Card className="text-center">
-        <CardHeader><CardTitle>No Team Found</CardTitle></CardHeader>
-        <CardContent>
-          <p className="mb-4">You have not registered a team yet.</p>
-          <Button asChild><Link href="/register">Register Your Team</Link></Button>
-        </CardContent>
-      </Card>
+        <div className="flex justify-center items-center h-[calc(100vh-80px)]">
+            <NoTeamFound />
+        </div>
     );
   }
 
@@ -71,21 +76,33 @@ export default function MyTeamPage() {
      return <div className="flex justify-center items-center h-screen"><Loader2 className="h-16 w-16 animate-spin" /></div>;
   }
 
+  const upcomingMatches = matches.filter(m => m.status !== 'completed');
+  const pastMatches = matches.filter(m => m.status === 'completed');
+
   return (
     <div className="space-y-8">
       <MyTeamHeader team={team} />
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-8">
-          <SchedulingCard matches={[]} teamId={team.id} />
-          <MatchHistoryTable matches={[]} />
+          {upcomingMatches.length > 0 ? (
+            upcomingMatches.map(match => (
+              <SchedulingCard key={match.id} match={match} teamId={team.id} captainId={user.uid} />
+            ))
+          ) : (
+            <Card>
+              <CardHeader><CardTitle>No Upcoming Matches</CardTitle></CardHeader>
+              <CardContent><p>Your team has no matches scheduled.</p></CardContent>
+            </Card>
+          )}
+          <MatchHistoryTable matches={pastMatches} />
         </div>
         <div className="space-y-8">
-          <RosterCard players={team.players} />
-          <TeamStatusCard status={team.status} />
+          <RosterCard team={team} />
+          <TeamStatusCard team={team} />
         </div>
       </div>
-      <TeamStatsGrid />
-      <PlayerAnalyticsTable players={team.players} />
+      <TeamStatsGrid team={team} />
+      <PlayerAnalyticsTable team={team} />
     </div>
   );
 }

@@ -12,6 +12,7 @@ import { StageManagementTab } from './StageManagementTab';
 import { StandingsTab } from './StandingsTab';
 import { TeamVerificationTab } from './TeamVerificationTab';
 import { AnnouncementsTab } from './AnnouncementsTab';
+import { SystemTestTab } from './SystemTestTab';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function AdminPage() {
@@ -73,11 +74,12 @@ export default function AdminPage() {
             </Card>
 
             <Tabs defaultValue="stage">
-                <TabsList className="grid w-full grid-cols-4">
+                <TabsList className="grid w-full grid-cols-5">
                     <TabsTrigger value="stage">Stage</TabsTrigger>
                     <TabsTrigger value="standings">Standings</TabsTrigger>
                     <TabsTrigger value="teams">Teams</TabsTrigger>
                     <TabsTrigger value="announcements">Announcements</TabsTrigger>
+                    <TabsTrigger value="advanced">Advanced</TabsTrigger>
                 </TabsList>
                 <TabsContent value="stage">
                     <StageManagementTab />
@@ -90,6 +92,9 @@ export default function AdminPage() {
                 </TabsContent>
                 <TabsContent value="announcements">
                     <AnnouncementsTab />
+                </TabsContent>
+                <TabsContent value="advanced">
+                    <SystemTestTab />
                 </TabsContent>
             </Tabs>
         </div>

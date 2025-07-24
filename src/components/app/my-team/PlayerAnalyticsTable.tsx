@@ -1,5 +1,5 @@
 
-import type { Player } from "@/lib/definitions";
+import type { Team } from "@/lib/definitions";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { BarChart2, HelpCircle } from "lucide-react";
@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/tooltip";
 
 interface PlayerAnalyticsTableProps {
-  players: Player[];
+  team?: Team | null;
 }
 
 const statColumns = [
@@ -28,7 +28,9 @@ const statColumns = [
     { key: "avgCampsStacked", label: "Stacks", description: "Camps Stacked" },
 ];
 
-export function PlayerAnalyticsTable({ players }: PlayerAnalyticsTableProps) {
+export function PlayerAnalyticsTable({ team }: PlayerAnalyticsTableProps) {
+  const players = team?.players || [];
+    
   return (
     <Card className="shadow-lg">
       <CardHeader>
@@ -60,16 +62,24 @@ export function PlayerAnalyticsTable({ players }: PlayerAnalyticsTableProps) {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {players.map((player) => (
-                  <TableRow key={player.id}>
-                    <TableCell className="font-medium sticky left-0 bg-card z-10">{player.nickname}</TableCell>
-                    {statColumns.map(col => (
-                        <TableCell key={`${player.id}-${col.key}`} className="text-center">
-                            {(player as any)[col.key]?.toFixed(2) ?? 'N/A'}
+                {players.length > 0 ? (
+                    players.map((player) => (
+                      <TableRow key={player.id}>
+                        <TableCell className="font-medium sticky left-0 bg-card z-10">{player.nickname}</TableCell>
+                        {statColumns.map(col => (
+                            <TableCell key={`${player.id}-${col.key}`} className="text-center">
+                                {(player as any)[col.key]?.toFixed(2) ?? 'N/A'}
+                            </TableCell>
+                        ))}
+                      </TableRow>
+                    ))
+                ) : (
+                    <TableRow>
+                        <TableCell colSpan={statColumns.length + 1} className="text-center h-24">
+                            No player data available.
                         </TableCell>
-                    ))}
-                  </TableRow>
-                ))}
+                    </TableRow>
+                )}
               </TableBody>
             </TooltipProvider>
           </Table>

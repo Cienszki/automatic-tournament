@@ -5,8 +5,8 @@ import { ListChecks, Swords, Sparkles, Shield, HandHelping, Eye, Users } from "l
 import { PlayerAvatar } from "../PlayerAvatar";
 
 interface RosterCardProps {
-  team: Team;
-  upcomingMatches: Match[];
+  team?: Team | null;
+  upcomingMatches?: Match[];
 }
 
 const roleIcons: Record<PlayerRole, React.ElementType> = {
@@ -18,6 +18,22 @@ const roleIcons: Record<PlayerRole, React.ElementType> = {
 };
 
 export function RosterCard({ team, upcomingMatches }: RosterCardProps) {
+  if (!team) {
+    return (
+        <Card className="shadow-lg">
+            <CardHeader>
+                <CardTitle className="flex items-center text-primary">
+                    <Users className="mr-2" />
+                    Team Roster
+                </CardTitle>
+            </CardHeader>
+            <CardContent>
+                <p>No team data available.</p>
+            </CardContent>
+        </Card>
+    );
+  }
+  
   return (
     <Card className="shadow-lg">
       <CardHeader>
@@ -28,18 +44,18 @@ export function RosterCard({ team, upcomingMatches }: RosterCardProps) {
       </CardHeader>
       <CardContent>
         <ul className="space-y-4">
-          {team.players.map((player) => {
+          {(team.players || []).map((player) => {
             const RoleIcon = roleIcons[player.role] || ListChecks;
             return (
               <li key={player.id} className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
-                  <PlayerAvatar src={player.avatarUrlMedium} nickname={player.nickname} />
+                  <PlayerAvatar player={player} />
                   <div>
                     <p className="font-semibold text-foreground">{player.nickname}</p>
                     <p className="text-sm text-muted-foreground">{player.mmr.toLocaleString()} MMR</p>
                   </div>
                 </div>
-                <RoleIcon className="h-5 w-5 text-accent" />
+                <RoleIcon className="h-6 w-6 text-muted-foreground" />
               </li>
             );
           })}
