@@ -6,7 +6,7 @@ import { headers } from 'next/headers';
 
 export async function POST(request: Request) {
   try {
-    ensureAdminInitialized();
+    ensureAdminInitialized(); // Ensure initialized at the start of the request
     const authHeader = headers().get('Authorization');
 
     if (!authHeader) {
