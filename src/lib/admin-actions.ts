@@ -2,12 +2,13 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { adminDb, ensureAdminInitialized } from './admin';
+import { adminDb, ensureAdminInitialized, isAdminInitialized } from './admin';
 import type { Group, GroupStanding, Team, Player, Match } from './definitions';
 import { PlayerRoles, TeamStatus } from './definitions';
 import { getAllTeams as fetchAllTeams, getAllGroups as fetchAllGroups, getTeamById, getAllMatches } from './firestore';
 import { Timestamp } from 'firebase-admin/firestore';
 import { getAuth as getAdminAuth } from 'firebase-admin/auth';
+import { headers } from 'next/headers';
 import { toZonedTime } from 'date-fns-tz';
 
 
@@ -39,10 +40,12 @@ async function performAdminAction<T>(action: () => Promise<{ success: boolean; m
 }
 
 // --- AUTHENTICATION ---
-async function verifyAdmin(token: string) {
-    if (!token) {
+async function verifyAdmin() {
+    const authHeader = headers().get('Authorization');
+    if (!authHeader) {
       throw new Error('Not authenticated');
     }
+    const token = authHeader.split('Bearer ')[1];
     await ensureAdminInitialized();
     const decodedToken = await getAdminAuth(adminDb.app).verifyIdToken(token);
     const adminDoc = await adminDb.collection('admins').doc(decodedToken.uid).get();
@@ -52,15 +55,37 @@ async function verifyAdmin(token: string) {
     return decodedToken;
 }
 
-export async function updateTeamStatus(teamId: string, status: TeamStatus, token: string): Promise<{ success: boolean; message: string }> {
-    return performAdminAction(async () => {
-        await verifyAdmin(token);
-        await adminDb.collection("teams").doc(teamId).update({ status });
-        revalidatePath('/admin');
-        return { success: true, message: `Team status updated to ${status}.` };
-    });
+export async function createTestTeam(data: { name: string; tag: string }): Promise<{ success: boolean; message: string }> {
+    try {
+        const decodedToken = await verifyAdmin();
+        const teamData = {
+            ...data,
+            captainId: decodedToken.uid,
+            createdAt: Timestamp.now(),
+            status: 'verified',
+            logoUrl: 'https://placehold.co/128x128.png',
+        };
+        const newTeamRef = adminDb.collection('teams').doc();
+        await newTeamRef.set(teamData);
+        return { success: true, message: 'Test team created successfully.' };
+    } catch (error) {
+        console.error("Error creating test team:", error);
+        return { success: false, message: (error as Error).message };
+    }
 }
 
+
+export async function updateTeamStatus(teamId: string, status: TeamStatus): Promise<{ success: boolean; error?: string }> {
+    try {
+        await verifyAdmin();
+        await adminDb.collection("teams").doc(teamId).update({ status });
+        revalidatePath('/admin');
+        return { success: true };
+    } catch(e) {
+        const error = e as Error;
+        return { success: false, error: error.message };
+    }
+}
 
 // --- TEAM ACTIONS ---
 export async function createFakeTeam(isTestTeam = false): Promise<{ success: boolean; message: string; data?: { teamId: string, captainEmail: string, captainPassword: string } }> {
@@ -112,6 +137,7 @@ export async function createFakeTeam(isTestTeam = false): Promise<{ success: boo
 
         await batch.commit();
         revalidatePath('/admin');
+        revalidatePath('/my-team');
         return { success: true, message: `Fake team "${teamName}" created successfully.`, data: { teamId, captainEmail, captainPassword } };
     });
 }
@@ -358,6 +384,10 @@ export async function createTestGroup(): Promise<{ success: boolean; message: st
 // --- DATA FETCHING ---
 export async function getUserTeam(userId: string): Promise<{ hasTeam: boolean; team?: Team | null; }> {
     await ensureAdminInitialized();
+    if (!isAdminInitialized()) {
+        console.error("Admin SDK not initialized. Cannot fetch user team.");
+        return { hasTeam: false, team: null };
+    }
     const q = adminDb.collection('teams').where('captainId', '==', userId);
     const querySnapshot = await q.get();
     if (querySnapshot.empty) return { hasTeam: false, team: null };
@@ -368,3 +398,6 @@ export async function getUserTeam(userId: string): Promise<{ hasTeam: boolean; t
 export async function getTeams(): Promise<Team[]> { return fetchAllTeams(); }
 export async function getGroups(): Promise<Group[]> { return fetchAllGroups(); }
 export async function getMatches(): Promise<Match[]> { return getAllMatches(); }
+export async function getTournamentStatus() {
+    return { currentStage: "Group Stage" };
+}

@@ -1,15 +1,15 @@
+
 // src/lib/firebase-admin.ts
 import * as admin from 'firebase-admin';
 
-// Check if the service account JSON is available in the environment variables
-if (!process.env.SERVICE_ACCOUNT_KEY_JSON) {
-  throw new Error('The SERVICE_ACCOUNT_KEY_JSON environment variable is not set.');
+if (!process.env.APP_FIREBASE_SERVICE_ACCOUNT_BASE64) {
+  throw new Error('The APP_FIREBASE_SERVICE_ACCOUNT_BASE64 environment variable is not set.');
 }
 
-// Parse the service account key from the environment variable
-const serviceAccount = JSON.parse(process.env.SERVICE_ACCOUNT_KEY_JSON);
+const serviceAccount = JSON.parse(
+    Buffer.from(process.env.APP_FIREBASE_SERVICE_ACCOUNT_BASE64, 'base64').toString('utf-8')
+);
 
-// Initialize the Firebase Admin SDK if it hasn't been already
 if (!admin.apps.length) {
   try {
     admin.initializeApp({
