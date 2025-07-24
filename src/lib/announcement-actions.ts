@@ -1,9 +1,8 @@
 
 'use server';
 
-import { adminDb } from './admin';
+import { getAdminDb, getAdminAuth } from './admin';
 import { FieldValue } from 'firebase-admin/firestore';
-import { getAuth } from 'firebase-admin/auth';
 import { headers } from 'next/headers';
 
 async function verifyAdmin() {
@@ -12,8 +11,8 @@ async function verifyAdmin() {
       throw new Error('Not authenticated');
     }
     const token = authHeader.split('Bearer ')[1];
-    const decodedToken = await getAuth(adminDb.app).verifyIdToken(token);
-    const adminDoc = await adminDb.collection('admins').doc(decodedToken.uid).get();
+    const decodedToken = await getAdminAuth().verifyIdToken(token);
+    const adminDoc = await getAdminDb().collection('admins').doc(decodedToken.uid).get();
     if (!adminDoc.exists) {
       throw new Error('Not authorized');
     }
@@ -23,7 +22,7 @@ async function verifyAdmin() {
 export async function createAnnouncement(title: string, content: string) {
     try {
         const decodedToken = await verifyAdmin();
-        const announcementRef = adminDb.collection("announcements").doc();
+        const announcementRef = getAdminDb().collection("announcements").doc();
         await announcementRef.set({
             id: announcementRef.id,
             title,
@@ -42,7 +41,7 @@ export async function createAnnouncement(title: string, content: string) {
 export async function deleteAnnouncement(announcementId: string) {
     try {
         await verifyAdmin();
-        const announcementRef = adminDb.collection("announcements").doc(announcementId);
+        const announcementRef = getAdminDb().collection("announcements").doc(announcementId);
         await announcementRef.delete();
         return { success: true };
     } catch (error) {

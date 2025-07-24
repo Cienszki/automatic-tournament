@@ -3,12 +3,11 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { adminDb, ensureAdminInitialized, isAdminInitialized } from './admin';
+import { getAdminApp, getAdminDb, getAdminAuth, ensureAdminInitialized, isAdminInitialized } from './admin';
 import type { Group, GroupStanding, Team, Player, Match } from './definitions';
 import { PlayerRoles, TeamStatus } from './definitions';
 import { getAllTeams as fetchAllTeams, getAllGroups as fetchAllGroups, getTeamById, getAllMatches } from './firestore';
 import { Timestamp } from 'firebase-admin/firestore';
-import { getAuth as getAdminAuth } from 'firebase-admin/auth';
 import { headers } from 'next/headers';
 import { toZonedTime } from 'date-fns-tz';
 
@@ -29,7 +28,7 @@ const generatePassword = (length = 10) => {
 async function performAdminAction<T>(action: () => Promise<{ success: boolean; message: string; data?: T }>): Promise<{ success: boolean; message: string; data?: T }> {
     try {
         ensureAdminInitialized();
-        if (!adminDb) {
+        if (!isAdminInitialized()) {
             throw new Error("Firebase Admin is not initialized.");
         }
         return await action();
@@ -48,8 +47,8 @@ async function verifyAdmin() {
     }
     const token = authHeader.split('Bearer ')[1];
     ensureAdminInitialized();
-    const decodedToken = await getAdminAuth(adminDb.app).verifyIdToken(token);
-    const adminDoc = await adminDb.collection('admins').doc(decodedToken.uid).get();
+    const decodedToken = await getAdminAuth().verifyIdToken(token);
+    const adminDoc = await getAdminDb().collection('admins').doc(decodedToken.uid).get();
     if (!adminDoc.exists) {
       throw new Error('Not authorized');
     }
@@ -66,7 +65,7 @@ export async function createTestTeam(data: { name: string; tag: string }): Promi
             status: 'verified',
             logoUrl: 'https://placehold.co/128x128.png',
         };
-        const newTeamRef = adminDb.collection('teams').doc();
+        const newTeamRef = getAdminDb().collection('teams').doc();
         await newTeamRef.set(teamData);
         return { success: true, message: 'Test team created successfully.' };
     } catch (error) {
@@ -79,7 +78,7 @@ export async function createTestTeam(data: { name: string; tag: string }): Promi
 export async function updateTeamStatus(teamId: string, status: TeamStatus): Promise<{ success: boolean; error?: string }> {
     try {
         await verifyAdmin();
-        await adminDb.collection("teams").doc(teamId).update({ status });
+        await getAdminDb().collection("teams").doc(teamId).update({ status });
         revalidatePath('/admin');
         return { success: true };
     } catch(e) {
@@ -91,9 +90,9 @@ export async function updateTeamStatus(teamId: string, status: TeamStatus): Prom
 // --- TEAM ACTIONS ---
 export async function createFakeTeam(isTestTeam = false): Promise<{ success: boolean; message: string; data?: { teamId: string, captainEmail: string, captainPassword: string } }> {
     return performAdminAction(async () => {
-        const auth = getAdminAuth(adminDb.app);
-        const batch = adminDb.batch();
-        const teamRef = adminDb.collection('teams').doc();
+        const auth = getAdminAuth();
+        const batch = getAdminDb().batch();
+        const teamRef = getAdminDb().collection('teams').doc();
         const teamId = teamRef.id;
 
         const randomSuffix = Math.random().toString(36).substring(2, 8);
@@ -145,13 +144,13 @@ export async function createFakeTeam(isTestTeam = false): Promise<{ success: boo
 
 export async function deleteTeam(teamId: string): Promise<{ success: boolean; message: string }> {
     return performAdminAction(async () => {
-        const teamRef = adminDb.collection('teams').doc(teamId);
+        const teamRef = getAdminDb().collection('teams').doc(teamId);
         const teamDoc = await teamRef.get();
         const teamData = teamDoc.data();
 
         if (teamData?.captainId && teamData.testCaptainEmail) {
             try {
-                await getAdminAuth(adminDb.app).deleteUser(teamData.captainId);
+                await getAdminAuth().deleteUser(teamData.captainId);
             } catch (error: any) {
                 if (error.code !== 'auth/user-not-found') {
                     console.error(`Failed to delete auth user ${teamData.captainId}:`, error);
@@ -161,7 +160,7 @@ export async function deleteTeam(teamId: string): Promise<{ success: boolean; me
         
         const playersRef = teamRef.collection('players');
         const playersSnapshot = await playersRef.get();
-        const batch = adminDb.batch();
+        const batch = getAdminDb().batch();
         playersSnapshot.docs.forEach(doc => batch.delete(doc.ref));
         batch.delete(teamRef);
 
@@ -177,8 +176,8 @@ export async function createGroup(groupName: string, teamIds: string[]): Promise
         if (!groupName || teamIds.length === 0) {
             return { success: false, message: 'Group name and at least one team are required.' };
         }
-        const batch = adminDb.batch();
-        const groupRef = adminDb.collection('groups').doc(groupName.toLowerCase().replace(/\s+/g, '-'));
+        const batch = getAdminDb().batch();
+        const groupRef = getAdminDb().collection('groups').doc(groupName.toLowerCase().replace(/\s+/g, '-'));
         const initialStandings: { [teamId: string]: GroupStanding } = {};
         teamIds.forEach(teamId => {
             initialStandings[teamId] = { teamId, teamName: 'Fetching...', teamLogoUrl: '', matchesPlayed: 0, points: 0, wins: 0, losses: 0, headToHead: {}, neustadtlScore: 0, status: 'pending' };
@@ -193,12 +192,12 @@ export async function createGroup(groupName: string, teamIds: string[]): Promise
 
 export async function deleteGroup(groupId: string): Promise<{ success: boolean; message:string }> {
      return performAdminAction(async () => {
-        const batch = adminDb.batch();
+        const batch = getAdminDb().batch();
         
-        const groupRef = adminDb.collection('groups').doc(groupId);
+        const groupRef = getAdminDb().collection('groups').doc(groupId);
         batch.delete(groupRef);
 
-        const matchesQuery = adminDb.collection('matches').where('group_id', '==', groupId);
+        const matchesQuery = getAdminDb().collection('matches').where('group_id', '==', groupId);
         const matchesSnapshot = await matchesQuery.get();
         matchesSnapshot.docs.forEach(doc => batch.delete(doc.ref));
 
@@ -213,14 +212,14 @@ export async function deleteGroup(groupId: string): Promise<{ success: boolean; 
 
 export async function deleteAllGroups(): Promise<{ success: boolean; message: string }> {
     return performAdminAction(async () => {
-        const batch = adminDb.batch();
+        const batch = getAdminDb().batch();
         
-        const groupsCollectionRef = adminDb.collection('groups');
+        const groupsCollectionRef = getAdminDb().collection('groups');
         const groupsSnapshot = await groupsCollectionRef.get();
         if (groupsSnapshot.empty) return { success: true, message: 'No groups to delete.' };
         groupsSnapshot.docs.forEach(doc => batch.delete(doc.ref));
 
-        const matchesCollectionRef = adminDb.collection('matches');
+        const matchesCollectionRef = getAdminDb().collection('matches');
         const matchesSnapshot = await matchesCollectionRef.get();
         matchesSnapshot.docs.forEach(doc => {
             // We only delete matches that belong to a group, preserving other potential matches
@@ -244,8 +243,8 @@ export async function deleteSelectedMatches(matchIds: string[]): Promise<{ succe
         if (!matchIds || matchIds.length === 0) {
             return { success: false, message: 'No match IDs provided.' };
         }
-        const batch = adminDb.batch();
-        const matchesCollection = adminDb.collection('matches');
+        const batch = getAdminDb().batch();
+        const matchesCollection = getAdminDb().collection('matches');
         matchIds.forEach(id => {
             batch.delete(matchesCollection.doc(id));
         });
@@ -258,12 +257,12 @@ export async function deleteSelectedMatches(matchIds: string[]): Promise<{ succe
 
 export async function deleteAllMatches(): Promise<{ success: boolean; message: string }> {
     return performAdminAction(async () => {
-        const matchesCollection = adminDb.collection('matches');
+        const matchesCollection = getAdminDb().collection('matches');
         const snapshot = await matchesCollection.get();
         if (snapshot.empty) {
             return { success: true, message: 'No matches to delete.' };
         }
-        const batch = adminDb.batch();
+        const batch = getAdminDb().batch();
         snapshot.docs.forEach(doc => batch.delete(doc.ref));
         await batch.commit();
         revalidatePath('/schedule');
@@ -289,8 +288,8 @@ export async function generateMatchesForGroup(groupId: string, deadline: Date | 
                 .map(m => [...m.teams].sort().join('-'))
         );
         
-        const batch = adminDb.batch();
-        const matchesCollection = adminDb.collection('matches');
+        const batch = getAdminDb().batch();
+        const matchesCollection = getAdminDb().collection('matches');
         let matchesCreated = 0;
         const timeZone = "Europe/Warsaw"; 
         
@@ -389,7 +388,7 @@ export async function getUserTeam(userId: string): Promise<{ hasTeam: boolean; t
         console.error("Admin SDK not initialized. Cannot fetch user team.");
         return { hasTeam: false, team: null };
     }
-    const q = adminDb.collection('teams').where('captainId', '==', userId);
+    const q = getAdminDb().collection('teams').where('captainId', '==', userId);
     const querySnapshot = await q.get();
     if (querySnapshot.empty) return { hasTeam: false, team: null };
     const team = await getTeamById(querySnapshot.docs[0].id); 

@@ -1,6 +1,7 @@
+
 // src/app/api/auth/session/route.ts
 import { NextResponse } from 'next/server';
-import { adminAuth } from '@/lib/admin';
+import { getAdminAuth } from '@/lib/admin';
 import { cookies } from 'next/headers';
 import { NextRequest } from 'next/server';
 
@@ -10,6 +11,7 @@ export async function POST(request: NextRequest) {
     const idToken = body.idToken;
     const expiresIn = 60 * 60 * 24 * 5 * 1000; // 5 days
 
+    const adminAuth = getAdminAuth();
     const decodedIdToken = await adminAuth.verifyIdToken(idToken);
     
     // Check if the user is an admin and set a custom claim.

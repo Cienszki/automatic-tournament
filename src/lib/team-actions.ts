@@ -1,15 +1,15 @@
+
 // src/lib/team-actions.ts
 "use server";
 import { revalidatePath } from 'next/cache';
-import { adminDb, ensureAdminInitialized } from '@/lib/admin';
-import { getAuth } from 'firebase-admin/auth';
+import { getAdminDb, ensureAdminInitialized, getAdminAuth } from '@/lib/admin';
 import { Timestamp } from 'firebase-admin/firestore';
 
 async function verifyUser(token: string) {
     if (!token) throw new Error('Authentication token not provided.');
     await ensureAdminInitialized();
     try {
-        const decodedToken = await getAuth(adminDb.app).verifyIdToken(token);
+        const decodedToken = await getAdminAuth().verifyIdToken(token);
         return decodedToken;
     } catch (error) {
         throw new Error('Invalid or expired authentication token.');
@@ -17,7 +17,7 @@ async function verifyUser(token: string) {
 }
 
 async function getMatchAndVerifyCaptain(matchId: string, uid: string) {
-    const matchRef = adminDb.collection('matches').doc(matchId);
+    const matchRef = getAdminDb().collection('matches').doc(matchId);
     const matchSnap = await matchRef.get();
     if (!matchSnap.exists) throw new Error('Match not found.');
     
@@ -26,8 +26,8 @@ async function getMatchAndVerifyCaptain(matchId: string, uid: string) {
     const teamBId = match.teamB.id;
 
     const [teamASnap, teamBSnap] = await Promise.all([
-        adminDb.collection('teams').doc(teamAId).get(),
-        adminDb.collection('teams').doc(teamBId).get()
+        getAdminDb().collection('teams').doc(teamAId).get(),
+        getAdminDb().collection('teams').doc(teamBId).get()
     ]);
 
     const teamACaptain = teamASnap.data()?.captainId;

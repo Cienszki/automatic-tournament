@@ -1,7 +1,7 @@
+
 // src/app/api/checkAdmin/route.ts
 import { NextResponse } from 'next/server';
-import { adminApp, adminDb, ensureAdminInitialized } from '@/lib/admin';
-import { getAuth } from 'firebase-admin/auth';
+import { getAdminApp, getAdminDb, ensureAdminInitialized, getAdminAuth } from '@/lib/admin';
 import { headers } from 'next/headers';
 
 export async function POST(request: Request) {
@@ -18,8 +18,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ isAdmin: false, error: 'No token provided' }, { status: 401 });
     }
 
-    const decodedToken = await getAuth(adminApp).verifyIdToken(token);
-    const adminDoc = await adminDb.collection('admins').doc(decodedToken.uid).get();
+    const decodedToken = await getAdminAuth().verifyIdToken(token);
+    const adminDoc = await getAdminDb().collection('admins').doc(decodedToken.uid).get();
     
     return NextResponse.json({ isAdmin: adminDoc.exists });
 

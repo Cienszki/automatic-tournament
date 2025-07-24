@@ -6,9 +6,6 @@ import { getAuth, Auth } from 'firebase-admin/auth';
 import 'server-only';
 
 let adminApp: App;
-let adminDb: Firestore;
-let adminAuth: Auth;
-let adminStorage: Storage;
 let _adminInitialized = false;
 
 function initializeAdmin() {
@@ -32,9 +29,6 @@ function initializeAdmin() {
     };
 
     adminApp = !getApps().length ? initializeApp(appConfig) : getApp();
-    adminDb = getFirestore(adminApp);
-    adminAuth = getAuth(adminApp);
-    adminStorage = getStorage(adminApp);
     _adminInitialized = true;
     console.log("Firebase Admin SDK initialized successfully.");
   } catch (error) {
@@ -52,7 +46,26 @@ export function isAdminInitialized() {
     return _adminInitialized;
 }
 
-// Call initialization logic when the module is loaded.
-initializeAdmin();
+export function getAdminDb(): Firestore {
+    ensureAdminInitialized();
+    if (!adminApp) throw new Error("Admin App not initialized");
+    return getFirestore(adminApp);
+}
 
-export { adminApp, adminDb, adminAuth, adminStorage };
+export function getAdminAuth(): Auth {
+    ensureAdminInitialized();
+    if (!adminApp) throw new Error("Admin App not initialized");
+    return getAuth(adminApp);
+}
+
+export function getAdminStorage(): Storage {
+    ensureAdminInitialized();
+    if (!adminApp) throw new Error("Admin App not initialized");
+    return getStorage(adminApp);
+}
+
+export function getAdminApp(): App {
+    ensureAdminInitialized();
+    if (!adminApp) throw new Error("Admin App not initialized");
+    return adminApp;
+}
