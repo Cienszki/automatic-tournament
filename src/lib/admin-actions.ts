@@ -3,7 +3,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { getAdminDb, getAdminAuth, ensureAdminInitialized } from './admin';
+import { getAdminDb, getAdminAuth, ensureAdminInitialized, getAdminApp } from './admin';
 import type { Group, GroupStanding, Team, Player, Match } from './definitions';
 import { PlayerRoles, TeamStatus } from './definitions';
 import { getAllTeams as fetchAllTeams, getAllGroups as fetchAllGroups, getTeamById, getAllMatches } from './firestore';
@@ -401,11 +401,8 @@ export async function createTestGroup(): Promise<{ success: boolean; message: st
 // --- DATA FETCHING ---
 export async function getUserTeam(userId: string): Promise<{ hasTeam: boolean; team?: Team | null; }> {
     ensureAdminInitialized();
-    if (!isAdminInitialized()) {
-        console.error("Admin SDK not initialized. Cannot fetch user team.");
-        return { hasTeam: false, team: null };
-    }
-    const q = getAdminDb().collection('teams').where('captainId', '==', userId);
+    const adminApp = getAdminApp(); // Use the getter
+    const q = getFirestore(adminApp).collection('teams').where('captainId', '==', userId);
     const querySnapshot = await q.get();
     if (querySnapshot.empty) return { hasTeam: false, team: null };
     const team = await getTeamById(querySnapshot.docs[0].id); 

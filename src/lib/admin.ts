@@ -4,6 +4,9 @@ import { getFirestore, Firestore } from 'firebase-admin/firestore';
 import { getStorage, Storage } from 'firebase-admin/storage';
 import { getAuth, Auth } from 'firebase-admin/auth';
 import 'server-only';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 let adminApp: App | undefined;
 let _adminInitialized = false;
@@ -15,10 +18,7 @@ function initializeAdmin() {
 
   const base64EncodedServiceAccount = process.env.FIREBASE_SERVICE_ACCOUNT_BASE64;
   if (!base64EncodedServiceAccount || base64EncodedServiceAccount.length <= 1) {
-    console.error("FIREBASE_SERVICE_ACCOUNT_BASE64 env variable is not set. Admin features will be disabled.");
-    // Do not set _adminInitialized to true, and do not create the app.
-    // The getAdmin... functions will now throw a clear error.
-    return;
+    throw new Error("FIREBASE_SERVICE_ACCOUNT_BASE64 env variable is not set. Admin features will be disabled.");
   }
   
   try {
@@ -39,6 +39,7 @@ function initializeAdmin() {
     console.error("CRITICAL: Failed to initialize Firebase Admin SDK.", error);
     _adminInitialized = false;
     adminApp = undefined;
+    throw error;
   }
 }
 
