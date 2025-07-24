@@ -27,7 +27,7 @@ const generatePassword = (length = 10) => {
 // It directly returns the result of the action function, which should be a { success, message, data? } object.
 async function performAdminAction<T>(action: () => Promise<{ success: boolean; message: string; data?: T }>): Promise<{ success: boolean; message: string; data?: T }> {
     try {
-        await ensureAdminInitialized();
+        ensureAdminInitialized();
         if (!adminDb) {
             throw new Error("Firebase Admin is not initialized.");
         }
@@ -46,7 +46,7 @@ async function verifyAdmin() {
       throw new Error('Not authenticated');
     }
     const token = authHeader.split('Bearer ')[1];
-    await ensureAdminInitialized();
+    ensureAdminInitialized();
     const decodedToken = await getAdminAuth(adminDb.app).verifyIdToken(token);
     const adminDoc = await adminDb.collection('admins').doc(decodedToken.uid).get();
     if (!adminDoc.exists) {
@@ -75,7 +75,7 @@ export async function createTestTeam(data: { name: string; tag: string }): Promi
 }
 
 
-export async function updateTeamStatus(teamId: string, status: TeamStatus): Promise<{ success: boolean; error?: string }> {
+export async function updateTeamStatus(teamId: string, status: TeamStatus, token: string): Promise<{ success: boolean; error?: string }> {
     try {
         await verifyAdmin();
         await adminDb.collection("teams").doc(teamId).update({ status });
@@ -383,7 +383,7 @@ export async function createTestGroup(): Promise<{ success: boolean; message: st
 
 // --- DATA FETCHING ---
 export async function getUserTeam(userId: string): Promise<{ hasTeam: boolean; team?: Team | null; }> {
-    await ensureAdminInitialized();
+    ensureAdminInitialized();
     if (!isAdminInitialized()) {
         console.error("Admin SDK not initialized. Cannot fetch user team.");
         return { hasTeam: false, team: null };

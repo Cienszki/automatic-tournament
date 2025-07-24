@@ -9,10 +9,12 @@ let adminApp: App;
 let adminDb: Firestore;
 let adminAuth: Auth;
 let adminStorage: Storage;
-let adminInitialized = false;
+let _adminInitialized = false;
 
 function initializeAdmin() {
-  if (adminInitialized) return;
+  if (_adminInitialized) {
+    return;
+  }
 
   const base64EncodedServiceAccount = process.env.FIREBASE_SERVICE_ACCOUNT_BASE64;
   if (!base64EncodedServiceAccount || base64EncodedServiceAccount.length <= 1) {
@@ -33,15 +35,24 @@ function initializeAdmin() {
     adminDb = getFirestore(adminApp);
     adminAuth = getAuth(adminApp);
     adminStorage = getStorage(adminApp);
-    adminInitialized = true;
+    _adminInitialized = true;
     console.log("Firebase Admin SDK initialized successfully.");
   } catch (error) {
     console.error("CRITICAL: Failed to initialize Firebase Admin SDK.", error);
-    adminInitialized = false;
+    _adminInitialized = false;
   }
+}
+
+// These functions ensure the admin SDK is only initialized once.
+export function ensureAdminInitialized() {
+    initializeAdmin();
+}
+
+export function isAdminInitialized() {
+    return _adminInitialized;
 }
 
 // Call initialization logic when the module is loaded.
 initializeAdmin();
 
-export { adminApp, adminDb, adminAuth, adminStorage, adminInitialized };
+export { adminApp, adminDb, adminAuth, adminStorage };
