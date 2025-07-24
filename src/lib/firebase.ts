@@ -29,6 +29,8 @@ try {
 
 
 const auth: Auth = getAuth(app);
+// Explicitly setting the tenant to null can resolve domain-related auth issues in some environments.
+auth.tenantId = null; 
 const db: Firestore = getFirestore(app);
 const storage: FirebaseStorage = getStorage(app);
 const functions: Functions = getFunctions(app);
