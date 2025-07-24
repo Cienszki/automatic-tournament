@@ -1,6 +1,6 @@
 // src/app/api/auth/session/route.ts
 import { NextResponse } from 'next/server';
-import { adminAuth } from '@/lib/firebase-admin';
+import { adminAuth } from '@/lib/admin';
 import { cookies } from 'next/headers';
 import { NextRequest } from 'next/server';
 
