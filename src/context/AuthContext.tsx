@@ -31,14 +31,20 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const { toast } = useToast();
   
   useEffect(() => {
+    // This function will handle all auth state changes,
+    // including the result from a redirect.
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
       setLoading(false);
     });
 
+    // Check for redirect result specifically on component mount
     getRedirectResult(auth)
       .then(async (result) => {
         if (result && result.user) {
+          // If we get a result, a sign-in just happened.
+          // onAuthStateChanged will handle setting the user,
+          // but we still need to create our server session.
           const idToken = await result.user.getIdToken();
           await fetch('/api/auth/session', {
             method: 'POST',
@@ -52,7 +58,20 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }
       })
       .catch((error) => {
+        // Handle potential errors from the redirect, e.g., user cancels
         console.error("Redirect result error:", error.message);
+        if (error.code !== 'auth/cancelled-popup-request') {
+            toast({
+                title: "Sign-in Error",
+                description: "Could not complete sign-in with Google.",
+                variant: "destructive",
+            });
+        }
+      })
+      .finally(() => {
+        // Even if there's no redirect result, we might still be loading
+        // the initial user state from the onAuthStateChanged listener.
+        // The listener itself will set loading to false.
       });
 
     return () => unsubscribe();
@@ -60,6 +79,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const signInWithGoogle = async () => {
     const provider = new GoogleAuthProvider();
+    setLoading(true); // Set loading to true before redirecting
     try {
       await signInWithRedirect(auth, provider);
     } catch (error: any) {
@@ -69,10 +89,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         description: "Could not sign in with Google. Please try again.",
         variant: "destructive",
       });
+      setLoading(false); // Reset loading on error
     }
   };
 
   const signInWithEmail = async (email: string, pass: string) => {
+    setLoading(true);
     try {
         const userCredential = await signInWithEmailAndPassword(auth, email, pass);
         const idToken = await userCredential.user.getIdToken();
@@ -92,10 +114,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             description: error.message || "Could not sign in. Please check your credentials.",
             variant: "destructive",
         });
+    } finally {
+        setLoading(false);
     }
   };
 
   const signOut = async () => {
+    setLoading(true);
     try {
       await firebaseSignOut(auth);
       await fetch('/api/auth/session', {
@@ -112,6 +137,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         description: "Could not sign out. Please try again.",
         variant: "destructive",
       });
+    } finally {
+      // onAuthStateChanged will set the user to null and loading to false
     }
   };
 
