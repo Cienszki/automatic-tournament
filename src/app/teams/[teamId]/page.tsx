@@ -30,7 +30,7 @@ async function getTeamData(teamId: string): Promise<{ team: Team | undefined, te
   if (!team) return { team: undefined, teamMatches: [] };
 
   const allMatches = await getAllMatches();
-  const teamMatches = allMatches.filter(m => m.teams && m.teams.includes(teamId));
+  const teamMatches = allMatches.filter(m => m.teams && m.teams.includes(teamId) && m.status === 'completed');
   return { team, teamMatches };
 }
 
@@ -358,15 +358,15 @@ export default async function TeamPage({ params }: PageProps) {
                   const opponent = match.teamA.id === team.id ? match.teamB : match.teamA;
                   const isWin = (match.teamA.id === team.id && (match.teamA.score ?? 0) > (match.teamB.score ?? 0)) ||
                                 (match.teamB.id === team.id && (match.teamB.score ?? 0) > (match.teamA.score ?? 0));
-                  const resultText = match.status === 'completed' ? (isWin ? "Win" : "Loss") : "Upcoming";
-                  const scoreText = match.status === 'completed' ? `${match.teamA.score} - ${match.teamB.score}` : "-";
+                  const resultText = isWin ? "Win" : "Loss";
+                  const scoreText = `${match.teamA.score} - ${match.teamB.score}`;
                   const date = match.dateTime ? new Date(match.dateTime) : new Date(match.defaultMatchTime);
                   return (
                     <TableRow key={match.id}>
                       <TableCell>
                         <Link href={`/teams/${opponent.id}`} className="hover:text-primary font-medium">{opponent.name}</Link>
                       </TableCell>
-                      <TableCell className={cn(match.status === 'completed' ? (isWin ? "text-green-400" : "text-red-400") : "", "font-semibold")}>
+                      <TableCell className={cn(isWin ? "text-green-400" : "text-red-400", "font-semibold")}>
                         {resultText}
                       </TableCell>
                       <TableCell>{scoreText}</TableCell>
@@ -410,7 +410,7 @@ function PlayerCard({ player, teamId }: PlayerCardProps) {
   return (
     <div className="flex items-center justify-between p-3 bg-muted/20 rounded-lg hover:bg-muted/40 transition-colors">
       <div className="flex items-center space-x-3">
-        <PlayerAvatar src={player.avatarUrlMedium} nickname={player.nickname} />
+        <PlayerAvatar player={player} />
         <div>
           <Link href={`/teams/${teamId}/players/${player.id}`} className="font-semibold text-foreground hover:text-primary">{player.nickname}</Link>
           <p className="text-xs text-muted-foreground">MMR: {player.mmr}</p>

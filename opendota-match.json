@@ -1,0 +1,98 @@
+#
+
+
+
+{
+    "match_id": 3703866531,
+    "barracks_status_dire": 0,
+    "barracks_status_radiant": 0,
+    "chat": [
+      {
+        // Chat messages during the match
+      }
+    ],
+    "cluster": 0,
+    "cosmetics": {
+      "property1": 0,
+      "property2": 0
+    },
+    "dire_score": 0,
+    "draft_timings": [
+      {
+        // Pick/ban timing information
+      }
+    ],
+    "duration": 0, // Match duration in seconds
+    "engine": 0,
+    "first_blood_time": 0,
+    "game_mode": 0, // Game mode ID
+    "human_players": 0,
+    "leagueid": 0, // League ID - important for your amateur league
+    "lobby_type": 0,
+    "match_seq_num": 0,
+    "negative_votes": 0,
+    "objectives": [
+      {
+        // Objectives like towers, barracks, roshan kills
+      }
+    ],
+    "picks_bans": [
+      {
+        // Draft phase picks and bans
+      }
+    ],
+    "positive_votes": 0,
+    "radiant_gold_adv": [
+      0 // Gold advantage over time
+    ],
+    "radiant_score": 0, // Final kill score for Radiant team
+    "radiant_win": true, // Boolean - did Radiant win?
+    "radiant_xp_adv": [
+      0 // XP advantage over time
+    ],
+    "start_time": 0, // Unix timestamp of match start
+    "teamfights": [
+      {
+        // Teamfight details
+      }
+    ],
+    "tower_status_dire": 0,
+    "tower_status_radiant": 0,
+    "version": 0,
+    "replay_salt": 0,
+    "series_id": 0,
+    "series_type": 0,
+    "radiant_team": {
+      // Radiant team information
+    },
+    "dire_team": {
+      // Dire team information  
+    },
+    "league": {
+      // League information object
+    },
+    "skill": 0, // Skill bracket
+    "players": [
+      {
+        // Array of 10 player objects with detailed stats
+        // Each player object contains:
+        // - account_id, hero_id, kills, deaths, assists
+        // - gold_per_min, xp_per_min, last_hits, denies
+        // - items, abilities, damage dealt/taken
+        // - And many more detailed statistics
+      }
+    ],
+    "patch": 0, // Game patch version
+    "region": 0, // Server region
+    "all_word_counts": {
+      // Word frequency from all chat
+    },
+    "my_word_counts": {
+      // Word frequency from requesting player's chat
+    },
+    "throw": 0,
+    "comeback": 0,
+    "loss": 0,
+    "win": 0,
+    "replay_url": "string" // URL to download replay file
+  }

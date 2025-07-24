@@ -36,6 +36,7 @@ export function SystemTestTab() {
     const [matches, setMatches] = React.useState<Match[]>([]);
     const [selectedMatches, setSelectedMatches] = React.useState<string[]>([]);
     const { toast } = useToast();
+    const { user } = useAuth();
     const captainImpersonatorRef = React.useRef<CaptainImpersonatorRef>(null);
 
     const fetchMatches = React.useCallback(async () => {
@@ -75,8 +76,13 @@ export function SystemTestTab() {
     };
     
     const handleDeleteSelected = async () => {
+        if (!user) {
+            toast({ title: "Authentication Error", description: "You must be logged in to delete matches.", variant: "destructive" });
+            return;
+        }
+        const token = await user.getIdToken();
         setIsDeleting(true);
-        const result = await deleteSelectedMatches(selectedMatches);
+        const result = await deleteSelectedMatches(token, selectedMatches);
         toast({ title: result.success ? "Success!" : "Deletion Failed", description: result.message, variant: result.success ? "default" : "destructive" });
         setSelectedMatches([]);
         setIsDeleting(false);
@@ -84,8 +90,13 @@ export function SystemTestTab() {
     };
 
     const handleDeleteAll = async () => {
+        if (!user) {
+            toast({ title: "Authentication Error", description: "You must be logged in to delete matches.", variant: "destructive" });
+            return;
+        }
+        const token = await user.getIdToken();
         setIsDeleting(true);
-        const result = await deleteAllMatches();
+        const result = await deleteAllMatches(token);
         toast({ title: result.success ? "Success!" : "Deletion Failed", description: result.message, variant: result.success ? "default" : "destructive" });
         setIsDeleting(false);
         fetchMatches();

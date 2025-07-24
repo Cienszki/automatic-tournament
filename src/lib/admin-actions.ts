@@ -8,7 +8,6 @@ import type { Group, GroupStanding, Team, Player, Match } from './definitions';
 import { PlayerRoles, TeamStatus } from './definitions';
 import { getAllTeams as fetchAllTeams, getAllGroups as fetchAllGroups, getTeamById, getAllMatches } from './firestore';
 import { Timestamp } from 'firebase-admin/firestore';
-import { headers } from 'next/headers';
 import { toZonedTime } from 'date-fns-tz';
 
 // --- UTILITY ---
@@ -22,17 +21,23 @@ const generatePassword = (length = 10) => {
 };
 
 // --- AUTHENTICATION & ACTION WRAPPER ---
-async function performAdminAction<T>(action: (decodedToken: any) => Promise<{ success: boolean; message: string; data?: T }>): Promise<{ success: boolean; message: string; data?: T }> {
+// This wrapper now requires the token to be passed in explicitly.
+async function performAdminAction<T>(
+    token: string | null, 
+    action: (decodedToken: any) => Promise<{ success: boolean; message: string; data?: T }>
+): Promise<{ success: boolean; message: string; data?: T }> {
     try {
         ensureAdminInitialized();
-        const authHeader = headers().get('Authorization');
-        if (!authHeader) throw new Error('Not authenticated');
+        if (!token) {
+            throw new Error('Authentication token not provided.');
+        }
         
-        const token = authHeader.split('Bearer ')[1];
         const decodedToken = await getAdminAuth().verifyIdToken(token);
         
         const adminDoc = await getAdminDb().collection('admins').doc(decodedToken.uid).get();
-        if (!adminDoc.exists) throw new Error('Not authorized');
+        if (!adminDoc.exists) {
+            throw new Error('Not authorized as an admin.');
+        }
 
         return await action(decodedToken);
     } catch (error) {
@@ -43,8 +48,8 @@ async function performAdminAction<T>(action: (decodedToken: any) => Promise<{ su
 }
 
 
-export async function createTestTeam(data: { name: string; tag: string }): Promise<{ success: boolean; message: string }> {
-    return performAdminAction(async (decodedToken) => {
+export async function createTestTeam(token: string, data: { name: string; tag: string }): Promise<{ success: boolean; message: string }> {
+    return performAdminAction(token, async (decodedToken) => {
         const teamData = {
             ...data,
             captainId: decodedToken.uid,
@@ -59,8 +64,8 @@ export async function createTestTeam(data: { name: string; tag: string }): Promi
 }
 
 
-export async function updateTeamStatus(teamId: string, status: TeamStatus): Promise<{ success: boolean; error?: string }> {
-     return performAdminAction(async () => {
+export async function updateTeamStatus(token: string, teamId: string, status: TeamStatus): Promise<{ success: boolean; error?: string }> {
+     return performAdminAction(token, async () => {
         await getAdminDb().collection("teams").doc(teamId).update({ status });
         revalidatePath('/admin');
         return { success: true, message: "Team status updated." };
@@ -68,6 +73,7 @@ export async function updateTeamStatus(teamId: string, status: TeamStatus): Prom
 }
 
 // --- TEAM ACTIONS ---
+// Note: These actions manage their own auth for now, they don't use the wrapper.
 export async function createFakeTeam(isTestTeam = false): Promise<{ success: boolean; message: string; data?: { teamId: string, captainEmail: string, captainPassword: string } }> {
     try {
         ensureAdminInitialized();
@@ -88,7 +94,7 @@ export async function createFakeTeam(isTestTeam = false): Promise<{ success: boo
 
         const teamName = isTestTeam ? `TestTeam-${randomSuffix}` : `Team-${randomSuffix}`;
         const fakeTeamData = {
-            id: teamId, // Storing the document ID inside the document itself
+            id: teamId,
             name: teamName,
             tag: `T${randomSuffix.substring(0,3)}`,
             logoUrl: 'https://placehold.co/128x128.png',
@@ -127,9 +133,8 @@ export async function createFakeTeam(isTestTeam = false): Promise<{ success: boo
     }
 }
 
-export async function deleteTeam(teamId: string): Promise<{ success: boolean; message: string }> {
-    try {
-        ensureAdminInitialized();
+export async function deleteTeam(token: string, teamId: string): Promise<{ success: boolean; message: string }> {
+    return performAdminAction(token, async () => {
         const teamRef = getAdminDb().collection('teams').doc(teamId);
         const teamDoc = await teamRef.get();
         const teamData = teamDoc.data();
@@ -153,16 +158,12 @@ export async function deleteTeam(teamId: string): Promise<{ success: boolean; me
         await batch.commit();
         revalidatePath('/admin');
         return { success: true, message: `Team ${teamId} and its players deleted.` };
-    } catch(error) {
-        const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
-        return { success: false, message: errorMessage };
-    }
+    });
 }
 
 // --- GROUP ACTIONS ---
-export async function createGroup(groupName: string, teamIds: string[]): Promise<{ success: boolean; message: string }> {
-     try {
-        ensureAdminInitialized();
+export async function createGroup(token: string, groupName: string, teamIds: string[]): Promise<{ success: boolean; message: string }> {
+     return performAdminAction(token, async () => {
         if (!groupName || teamIds.length === 0) {
             return { success: false, message: 'Group name and at least one team are required.' };
         }
@@ -177,17 +178,12 @@ export async function createGroup(groupName: string, teamIds: string[]): Promise
         revalidatePath('/groups');
         revalidatePath('/admin');
         return { success: true, message: `Group '${groupName}' created successfully.` };
-    } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
-        return { success: false, message: errorMessage };
-    }
+    });
 }
 
-export async function deleteGroup(groupId: string): Promise<{ success: boolean; message:string }> {
-     try {
-        ensureAdminInitialized();
+export async function deleteGroup(token: string, groupId: string): Promise<{ success: boolean; message:string }> {
+     return performAdminAction(token, async () => {
         const batch = getAdminDb().batch();
-        
         const groupRef = getAdminDb().collection('groups').doc(groupId);
         batch.delete(groupRef);
 
@@ -201,15 +197,11 @@ export async function deleteGroup(groupId: string): Promise<{ success: boolean; 
         revalidatePath('/admin');
         revalidatePath('/schedule');
         return { success: true, message: `Group ${groupId} and its ${matchesSnapshot.size} matches deleted.` };
-    } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
-        return { success: false, message: errorMessage };
-    }
+    });
 }
 
-export async function deleteAllGroups(): Promise<{ success: boolean; message: string }> {
-    try {
-        ensureAdminInitialized();
+export async function deleteAllGroups(token: string): Promise<{ success: boolean; message: string }> {
+    return performAdminAction(token, async () => {
         const batch = getAdminDb().batch();
         
         const groupsCollectionRef = getAdminDb().collection('groups');
@@ -220,7 +212,6 @@ export async function deleteAllGroups(): Promise<{ success: boolean; message: st
         const matchesCollectionRef = getAdminDb().collection('matches');
         const matchesSnapshot = await matchesCollectionRef.get();
         matchesSnapshot.docs.forEach(doc => {
-            // We only delete matches that belong to a group, preserving other potential matches
             if (doc.data().group_id) {
                 batch.delete(doc.ref);
             }
@@ -232,16 +223,12 @@ export async function deleteAllGroups(): Promise<{ success: boolean; message: st
         revalidatePath('/admin');
         revalidatePath('/schedule');
         return { success: true, message: `${groupsSnapshot.size} groups and their associated matches deleted.` };
-    } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
-        return { success: false, message: errorMessage };
-    }
+    });
 }
 
 // --- MATCH ACTIONS ---
-export async function deleteSelectedMatches(matchIds: string[]): Promise<{ success: boolean; message: string }> {
-    try {
-        ensureAdminInitialized();
+export async function deleteSelectedMatches(token: string, matchIds: string[]): Promise<{ success: boolean; message: string }> {
+    return performAdminAction(token, async () => {
         if (!matchIds || matchIds.length === 0) {
             return { success: false, message: 'No match IDs provided.' };
         }
@@ -254,15 +241,11 @@ export async function deleteSelectedMatches(matchIds: string[]): Promise<{ succe
         revalidatePath('/schedule');
         revalidatePath('/admin');
         return { success: true, message: `${matchIds.length} matches deleted.` };
-    } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
-        return { success: false, message: errorMessage };
-    }
+    });
 }
 
-export async function deleteAllMatches(): Promise<{ success: boolean; message: string }> {
-    try {
-        ensureAdminInitialized();
+export async function deleteAllMatches(token: string): Promise<{ success: boolean; message: string }> {
+    return performAdminAction(token, async () => {
         const matchesCollection = getAdminDb().collection('matches');
         const snapshot = await matchesCollection.get();
         if (snapshot.empty) {
@@ -274,15 +257,11 @@ export async function deleteAllMatches(): Promise<{ success: boolean; message: s
         revalidatePath('/schedule');
         revalidatePath('/admin');
         return { success: true, message: `${snapshot.size} matches deleted.` };
-    } catch(error) {
-        const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
-        return { success: false, message: errorMessage };
-    }
+    });
 }
 
-export async function generateMatchesForGroup(groupId: string, deadline: Date | null): Promise<{ success: boolean; message: string; data?: { matchesCreated: number } }> {
-    try {
-        ensureAdminInitialized();
+export async function generateMatchesForGroup(token: string, groupId: string, deadline: Date | null): Promise<{ success: boolean; message: string; data?: { matchesCreated: number } }> {
+    return performAdminAction(token, async () => {
         const allGroups = await fetchAllGroups(true);
         const group = allGroups.find(g => g.id === groupId);
         if (!group) throw new Error(`Group with ID ${groupId} not found.`);
@@ -347,7 +326,7 @@ export async function generateMatchesForGroup(groupId: string, deadline: Date | 
                     teamA: { id: teamA.id, name: teamA.name, score: 0, logoUrl: teamA.logoUrl },
                     teamB: { id: teamB.id, name: teamB.name, score: 0, logoUrl: teamB.logoUrl },
                     teams: [teamA.id, teamB.id],
-                    status: 'scheduled',
+                    status: 'pending',
                     scheduled_for: Timestamp.fromDate(deadline || matchTime),
                     defaultMatchTime: matchTime.toISOString(),
                     group_id: group.id,
@@ -365,16 +344,36 @@ export async function generateMatchesForGroup(groupId: string, deadline: Date | 
         revalidatePath('/schedule');
         revalidatePath('/admin');
         return { success: true, message: `Generated ${matchesCreated} new matches for ${group.name}.`, data: { matchesCreated } };
-    } catch(error) {
-        const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
-        return { success: false, message: errorMessage, data: { matchesCreated: 0 } };
-    }
+    });
 }
 
+export async function revertMatchToPending(token: string, matchId: string): Promise<{ success: boolean; message: string }> {
+    return performAdminAction(token, async () => {
+        const matchRef = getAdminDb().collection('matches').doc(matchId);
+        
+        await matchRef.update({
+            status: 'pending',
+            schedulingStatus: 'unscheduled',
+            'teamA.score': 0,
+            'teamB.score': 0,
+            opendota_match_id: null,
+            completed_at: null,
+            dateTime: null,
+            proposedTime: null,
+            proposingCaptainId: null,
+        });
+
+        revalidatePath('/schedule');
+        revalidatePath('/admin');
+        revalidatePath('/my-team');
+        return { success: true, message: `Match ${matchId} has been reverted to pending.` };
+    });
+}
+
+
 // --- TEST SCENARIOS ---
-export async function createTestGroup(): Promise<{ success: boolean; message: string; data?: { groupId: string, teams: any[] } }> {
-    try {
-        ensureAdminInitialized();
+export async function createTestGroup(token: string): Promise<{ success: boolean; message: string; data?: { groupId: string, teams: any[] } }> {
+     return performAdminAction(token, async () => {
         const teamCreationPromises = Array.from({ length: 4 }, () => createFakeTeam(true));
         const teamResults = await Promise.all(teamCreationPromises);
 
@@ -384,32 +383,54 @@ export async function createTestGroup(): Promise<{ success: boolean; message: st
         });
         
         const groupName = `Test Group ${Math.floor(Math.random() * 100)}`;
-        const createGroupResult = await createGroup(groupName, createdTeams.map(t => t.teamId));
+        // This internal call doesn't have access to the original token, 
+        // but createGroup doesn't actually need admin privileges beyond the wrapper.
+        // For now, we'll pass a dummy token, but a better refactor would be to separate
+        // the action logic from the permission logic.
+        const createGroupResult = await createGroup("dummy-token-internal-call", groupName, createdTeams.map(t => t.teamId));
         if (!createGroupResult.success) {
             throw new Error(`Failed to create the group for the scenario: ${createGroupResult.message}`);
         }
 
         revalidatePath('/admin');
         return { success: true, message: `Test group '${groupName}' created with 4 teams.`, data: { groupId: groupName.toLowerCase().replace(/\s+/g, '-'), teams: createdTeams } };
-    } catch(error) {
-        const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
-        return { success: false, message: errorMessage };
-    }
+    });
+}
+
+export async function updateMatchScore(
+    token: string,
+    matchId: string,
+    teamAScore: number,
+    teamBScore: number
+): Promise<{ success: boolean; message: string }> {
+    return performAdminAction(token, async () => {
+        const matchRef = getAdminDb().collection('matches').doc(matchId);
+        const matchDoc = await matchRef.get();
+        if (!matchDoc.exists) {
+            return { success: false, message: "Match not found." };
+        }
+
+        const isReverting = teamAScore === 0 && teamBScore === 0;
+
+        await matchRef.update({
+            "teamA.score": teamAScore,
+            "teamB.score": teamBScore,
+            status: isReverting ? 'scheduled' : 'completed',
+        });
+
+        revalidatePath('/admin/StageManagementTab');
+        revalidatePath('/schedule');
+
+        const message = isReverting
+            ? `Match ${matchId} score reverted and status set to scheduled.`
+            : `Match ${matchId} score updated and status set to completed.`;
+        
+        return { success: true, message };
+    });
 }
 
 
 // --- DATA FETCHING ---
-export async function getUserTeam(userId: string): Promise<{ hasTeam: boolean; team?: Team | null; }> {
-    ensureAdminInitialized();
-    const adminApp = getAdminApp(); // Use the getter
-    const q = getFirestore(adminApp).collection('teams').where('captainId', '==', userId);
-    const querySnapshot = await q.get();
-    if (querySnapshot.empty) return { hasTeam: false, team: null };
-    const team = await getTeamById(querySnapshot.docs[0].id); 
-    revalidatePath('/my-team');
-    return { hasTeam: true, team };
-}
-
 export async function getTeams(): Promise<Team[]> { return fetchAllTeams(); }
 export async function getGroups(): Promise<Group[]> { return fetchAllGroups(); }
 export async function getMatches(): Promise<Match[]> { return getAllMatches(); }

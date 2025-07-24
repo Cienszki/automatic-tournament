@@ -6,11 +6,24 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Save, Edit, AlertCircle, CheckCircle2, Hourglass } from "lucide-react";
+import { Save, Edit, CheckCircle2, Hourglass, RotateCcw, Loader2 } from "lucide-react";
 import { getAllMatches, updateMatchScores } from "@/lib/firestore";
+import { revertMatchToPending } from "@/lib/admin-actions";
 import type { Match } from "@/lib/definitions";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/context/AuthContext";
 import Image from "next/image";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 type MatchScoreState = {
   [matchId: string]: {
@@ -21,14 +34,17 @@ type MatchScoreState = {
 
 export function StandingsTab() {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [matches, setMatches] = React.useState<Match[]>([]);
   const [scores, setScores] = React.useState<MatchScoreState>({});
   const [editingMatchId, setEditingMatchId] = React.useState<string | null>(null);
+  const [revertingMatchId, setRevertingMatchId] = React.useState<string | null>(null);
+
 
   React.useEffect(() => {
     async function fetchMatches() {
       const allMatches = await getAllMatches();
-      setMatches(allMatches);
+      setMatches(allMatches.sort((a,b) => (a.group_id || '').localeCompare(b.group_id || '')));
     }
     fetchMatches();
   }, []);
@@ -42,6 +58,32 @@ export function StandingsTab() {
       },
     }));
   };
+
+  const handleRevertMatch = async (matchId: string) => {
+    if (!user) {
+        toast({ title: "Authentication Error", description: "You must be logged in to perform this action.", variant: "destructive" });
+        return;
+    }
+    setRevertingMatchId(matchId);
+    const token = await user.getIdToken();
+    const result = await revertMatchToPending(token, matchId);
+    toast({
+        title: result.success ? "Success!" : "Revert Failed",
+        description: result.message,
+        variant: result.success ? "default" : "destructive"
+    });
+    if (result.success) {
+      // Update local state to reflect the change immediately
+      setMatches(prevMatches => 
+        prevMatches.map(m => 
+          m.id === matchId 
+            ? { ...m, status: 'scheduled', schedulingStatus: 'unscheduled', teamA: {...m.teamA, score: 0}, teamB: {...m.teamB, score: 0} } 
+            : m
+        )
+      );
+    }
+    setRevertingMatchId(null);
+  }
 
   const handleSaveScore = async (match: Match) => {
     const matchScores = scores[match.id];
@@ -96,10 +138,11 @@ export function StandingsTab() {
 
   const renderMatchRow = (match: Match) => {
     const isEditing = editingMatchId === match.id;
+    const isReverting = revertingMatchId === match.id;
     const currentScores = scores[match.id] || { teamAScore: '', teamBScore: '' };
 
     return (
-      <TableRow key={match.id}>
+      <TableRow key={match.id} className={isEditing ? "bg-muted/50" : ""}>
         <TableCell className="font-medium">{match.group_id || 'N/A'}</TableCell>
         <TableCell>
           {match.teamA ? (
@@ -149,17 +192,48 @@ export function StandingsTab() {
           </div>
         </TableCell>
         <TableCell className="text-right">
-          {isEditing ? (
-            <Button size="sm" onClick={() => handleSaveScore(match)} disabled={!match.teamA || !match.teamB}>
-              <Save className="h-4 w-4 mr-2" />
-              Save
-            </Button>
-          ) : (
-            <Button size="sm" variant="outline" onClick={() => startEditing(match)} disabled={!match.teamA || !match.teamB}>
-              <Edit className="h-4 w-4 mr-2" />
-              {match.status === 'completed' ? 'Edit Score' : 'Enter Score'}
-            </Button>
-          )}
+            <div className="flex items-center justify-end gap-2">
+                {isEditing ? (
+                    <>
+                        <Button size="sm" onClick={() => handleSaveScore(match)} disabled={!match.teamA || !match.teamB}>
+                            <Save className="h-4 w-4 mr-2" />
+                            Save
+                        </Button>
+                        <Button size="sm" variant="ghost" onClick={() => setEditingMatchId(null)}>
+                            Cancel
+                        </Button>
+                    </>
+                ) : (
+                    <>
+                        <Button size="sm" variant="outline" onClick={() => startEditing(match)} disabled={!match.teamA || !match.teamB || isReverting}>
+                            <Edit className="h-4 w-4 mr-2" />
+                            {match.status === 'completed' ? 'Edit Score' : 'Enter Score'}
+                        </Button>
+                        {match.status === 'completed' && (
+                            <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                    <Button size="sm" variant="destructive" disabled={isReverting}>
+                                        {isReverting ? <Loader2 className="h-4 w-4 mr-2 animate-spin"/> : <RotateCcw className="h-4 w-4 mr-2" />}
+                                        Revert
+                                    </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                    <AlertDialogTitle>Revert Match?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                        This will reset the score of the match between {match.teamA.name} and {match.teamB.name} to 0-0 and set its status back to pending. This allows captains to manage it again. Are you sure?
+                                    </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction onClick={() => handleRevertMatch(match.id)}>Confirm Revert</AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
+                        )}
+                    </>
+                )}
+            </div>
         </TableCell>
       </TableRow>
     );
@@ -180,7 +254,7 @@ export function StandingsTab() {
             <Table>
                 <TableHeader>
                     <TableRow>
-                        <TableHead>Round</TableHead>
+                        <TableHead>Group</TableHead>
                         <TableHead>Team A</TableHead>
                         <TableHead>Team B</TableHead>
                         <TableHead className="text-center">Score</TableHead>
@@ -201,14 +275,14 @@ export function StandingsTab() {
       <Card>
         <CardHeader>
           <CardTitle>Completed Matches</CardTitle>
-          <CardDescription>Recently completed matches. You can edit the scores if needed.</CardDescription>
+          <CardDescription>Recently completed matches. You can edit the scores or revert the match to a pending state.</CardDescription>
         </CardHeader>
         <CardContent>
           {completedMatches.length > 0 ? (
             <Table>
                   <TableHeader>
                       <TableRow>
-                          <TableHead>Round</TableHead>
+                          <TableHead>Group</TableHead>
                           <TableHead>Team A</TableHead>
                           <TableHead>Team B</TableHead>
                           <TableHead className="text-center">Final Score</TableHead>

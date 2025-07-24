@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useTransition } from 'react';
@@ -101,7 +100,8 @@ export function TeamVerificationTab() {
                 return;
             }
             try {
-                const result = await updateTeamStatus(teamId, status);
+                const token = await user.getIdToken();
+                const result = await updateTeamStatus(token, teamId, status);
 
                 if (result?.success) {
                     setTeams(prevTeams =>
@@ -130,7 +130,12 @@ export function TeamVerificationTab() {
 
     const handleDeleteTeam = (teamId: string) => {
         startTransition(async () => {
-            const result = await deleteTeam(teamId);
+            if (!user) {
+                toast({ title: 'Authentication Error', description: 'You must be logged in to perform this action.', variant: 'destructive' });
+                return;
+            }
+            const token = await user.getIdToken();
+            const result = await deleteTeam(token, teamId);
             if (result.success) {
                 setTeams(prevTeams => prevTeams.filter(t => t.id !== teamId));
                 toast({

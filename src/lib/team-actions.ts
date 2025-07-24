@@ -3,7 +3,9 @@
 "use server";
 import { revalidatePath } from 'next/cache';
 import { getAdminDb, ensureAdminInitialized, getAdminAuth } from '@/lib/admin';
-import { Timestamp } from 'firebase-admin/firestore';
+import { Timestamp, getFirestore } from 'firebase-admin/firestore';
+import { getTeamById } from './firestore';
+import { Team } from './definitions';
 
 async function verifyUser(token: string) {
     if (!token) throw new Error('Authentication token not provided.');
@@ -77,6 +79,7 @@ export async function acceptMatchTime(token: string, matchId: string) {
 
         await matchRef.update({
             schedulingStatus: 'confirmed',
+            status: 'scheduled',
             dateTime: match.proposedTime, // The proposed time is already a server timestamp.
             proposedTime: null,
             proposingCaptainId: null
@@ -100,6 +103,7 @@ export async function rejectMatchTime(token: string, matchId: string) {
 
         await matchRef.update({
             schedulingStatus: 'unscheduled',
+            status: 'pending',
             proposedTime: null,
             proposingCaptainId: null
         });
@@ -122,6 +126,7 @@ export async function cancelProposal(token: string, matchId: string) {
 
         await matchRef.update({
             schedulingStatus: 'unscheduled',
+            status: 'pending',
             proposedTime: null,
             proposingCaptainId: null
         });
@@ -131,4 +136,20 @@ export async function cancelProposal(token: string, matchId: string) {
     } catch (error) {
         return { success: false, message: (error as Error).message };
     }
+}
+
+export async function getUserTeam(userId: string): Promise<{ hasTeam: boolean; team?: Team | null; }> {
+    await ensureAdminInitialized();
+    const db = getAdminDb();
+    const q = db.collection('teams').where('captainId', '==', userId);
+    const querySnapshot = await q.get();
+    if (querySnapshot.empty) return { hasTeam: false, team: null };
+    
+    // querySnapshot.docs[0].id is the team ID
+    const team = await getTeamById(querySnapshot.docs[0].id);
+    
+    // No need to revalidate the path on a simple fetch action.
+    // revalidatePath('/my-team');
+    
+    return { hasTeam: true, team };
 }

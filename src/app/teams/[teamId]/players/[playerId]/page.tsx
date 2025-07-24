@@ -114,7 +114,7 @@ export default async function PlayerPage({ params }: PageProps) {
       <Card className="shadow-xl overflow-hidden">
         <CardHeader className="bg-muted/30 p-6 md:p-8">
             <div className="flex flex-col md:flex-row items-center space-y-4 md:space-y-0 md:space-x-6">
-                <PlayerAvatar src={player.avatarUrlFull} nickname={player.nickname} size="large" />
+                <PlayerAvatar player={player} size="large" />
                 <div>
                     <CardTitle className="text-4xl font-bold text-primary">{player.nickname}</CardTitle>
                     <CardDescription className="text-lg mt-1">

@@ -12,7 +12,7 @@ import { TeamStatsGrid } from "@/components/app/my-team/TeamStatsGrid";
 import { PlayerAnalyticsTable } from "@/components/app/my-team/PlayerAnalyticsTable";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
-import { getUserTeam } from "@/lib/admin-actions";
+import { getUserTeam } from "@/lib/team-actions";
 import { getMatchesForTeam } from "@/lib/firestore";
 import type { Team, Match } from "@/lib/definitions";
 import NoTeamFound from '@/components/app/my-team/NoTeamFound';

@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { getGroups, getTeams, createGroup, deleteGroup, deleteAllGroups, generateMatchesForGroup, getMatches } from "@/lib/admin-actions";
 import type { Team, Group, Match } from "@/lib/definitions";
+import { useAuth } from "@/context/AuthContext";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "@/components/ui/command";
 import {
   AlertDialog,
@@ -28,6 +29,7 @@ import { format } from "date-fns";
 
 export function StageManagementTab() {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [allTeams, setAllTeams] = React.useState<Team[]>([]);
   const [selectedTeamIds, setSelectedTeamIds] = React.useState<string[]>([]);
   const [newGroupName, setNewGroupName] = React.useState("");
@@ -65,12 +67,14 @@ export function StageManagementTab() {
   }, [fetchData]);
 
   const handleCreateGroup = async () => {
+    if (!user) return toast({ title: "Authentication Error", description: "Please sign in.", variant: "destructive" });
     if (!newGroupName || selectedTeamIds.length === 0) {
       toast({ title: "Error", description: "Please provide a group name and select at least one team.", variant: "destructive" });
       return;
     }
     setIsCreatingGroup(true);
-    const result = await createGroup(newGroupName, selectedTeamIds);
+    const token = await user.getIdToken();
+    const result = await createGroup(token, newGroupName, selectedTeamIds);
     toast({ title: result.success ? "Success!" : "Creation Failed", description: result.message, variant: result.success ? "default" : "destructive" });
     if (result.success) {
       setNewGroupName("");
@@ -81,16 +85,20 @@ export function StageManagementTab() {
   };
 
   const handleDeleteGroup = async (groupId: string) => {
+    if (!user) return toast({ title: "Authentication Error", description: "Please sign in.", variant: "destructive" });
     setIsDeleting(groupId);
-    const result = await deleteGroup(groupId);
+    const token = await user.getIdToken();
+    const result = await deleteGroup(token, groupId);
     toast({ title: result.success ? "Success!" : "Deletion Failed", description: result.message, variant: result.success ? "default" : "destructive" });
     if (result.success) fetchData();
     setIsDeleting(false);
   };
   
   const handleGenerateMatches = async (groupId: string) => {
+    if (!user) return toast({ title: "Authentication Error", description: "Please sign in.", variant: "destructive" });
     setGeneratingGroupId(groupId);
-    const result = await generateMatchesForGroup(groupId, deadline || null);
+    const token = await user.getIdToken();
+    const result = await generateMatchesForGroup(token, groupId, deadline || null);
     toast({
         title: result.success ? "Success!" : "Generation Failed",
         description: result.message,
@@ -101,8 +109,10 @@ export function StageManagementTab() {
   };
 
   const handleDeleteAllGroups = async () => {
+    if (!user) return toast({ title: "Authentication Error", description: "Please sign in.", variant: "destructive" });
     setIsDeletingAll(true);
-    const result = await deleteAllGroups();
+    const token = await user.getIdToken();
+    const result = await deleteAllGroups(token);
     toast({ title: result.success ? "Success!" : "Deletion Failed", description: result.message, variant: result.success ? "default" : "destructive" });
     if (result.success) fetchData();
     setIsDeletingAll(false);
@@ -219,7 +229,7 @@ export function StageManagementTab() {
                                 >
                                     {generatingGroupId === group.id ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <GitBranchPlus className="mr-2 h-4 w-4" />}
                                     {hasAllMatches ? "Generated" : "Generate"}
-                                </Button>
+                                 </Button>
                                 <AlertDialog>
                                     <AlertDialogTrigger asChild>
                                         <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive hover:bg-destructive/10" disabled={!!generatingGroupId || isDeleting === group.id || isDeletingAll}>

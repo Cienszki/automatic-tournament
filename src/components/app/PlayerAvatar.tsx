@@ -27,7 +27,7 @@ export function PlayerAvatar({ player, size = 'medium', className }: PlayerAvata
     );
   }
 
-  const avatarSrc = player.avatarmedium || player.avatar;
+  const avatarSrc = size === 'large' ? player.avatarfull : player.avatarmedium || player.avatar;
   const fallbackText = player.nickname.substring(0, 2);
 
   return (
