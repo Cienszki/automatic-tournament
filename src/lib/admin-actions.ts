@@ -3,14 +3,13 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { getAdminApp, getAdminDb, getAdminAuth, ensureAdminInitialized, isAdminInitialized } from './admin';
+import { getAdminDb, getAdminAuth, ensureAdminInitialized } from './admin';
 import type { Group, GroupStanding, Team, Player, Match } from './definitions';
 import { PlayerRoles, TeamStatus } from './definitions';
 import { getAllTeams as fetchAllTeams, getAllGroups as fetchAllGroups, getTeamById, getAllMatches } from './firestore';
 import { Timestamp } from 'firebase-admin/firestore';
 import { headers } from 'next/headers';
 import { toZonedTime } from 'date-fns-tz';
-
 
 // --- UTILITY ---
 const generatePassword = (length = 10) => {
@@ -22,16 +21,20 @@ const generatePassword = (length = 10) => {
     return password;
 };
 
-// --- ACTION WRAPPER ---
-// This new wrapper centralizes auth checks, initialization, and error handling.
-// It directly returns the result of the action function, which should be a { success, message, data? } object.
-async function performAdminAction<T>(action: () => Promise<{ success: boolean; message: string; data?: T }>): Promise<{ success: boolean; message: string; data?: T }> {
+// --- AUTHENTICATION & ACTION WRAPPER ---
+async function performAdminAction<T>(action: (decodedToken: any) => Promise<{ success: boolean; message: string; data?: T }>): Promise<{ success: boolean; message: string; data?: T }> {
     try {
         ensureAdminInitialized();
-        if (!isAdminInitialized()) {
-            throw new Error("Firebase Admin is not initialized.");
-        }
-        return await action();
+        const authHeader = headers().get('Authorization');
+        if (!authHeader) throw new Error('Not authenticated');
+        
+        const token = authHeader.split('Bearer ')[1];
+        const decodedToken = await getAdminAuth().verifyIdToken(token);
+        
+        const adminDoc = await getAdminDb().collection('admins').doc(decodedToken.uid).get();
+        if (!adminDoc.exists) throw new Error('Not authorized');
+
+        return await action(decodedToken);
     } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
         console.error("Admin action failed:", error);
@@ -39,57 +42,35 @@ async function performAdminAction<T>(action: () => Promise<{ success: boolean; m
     }
 }
 
-// --- AUTHENTICATION ---
-async function verifyAdmin() {
-    const authHeader = headers().get('Authorization');
-    if (!authHeader) {
-      throw new Error('Not authenticated');
-    }
-    const token = authHeader.split('Bearer ')[1];
-    ensureAdminInitialized();
-    const decodedToken = await getAdminAuth().verifyIdToken(token);
-    const adminDoc = await getAdminDb().collection('admins').doc(decodedToken.uid).get();
-    if (!adminDoc.exists) {
-      throw new Error('Not authorized');
-    }
-    return decodedToken;
-}
 
 export async function createTestTeam(data: { name: string; tag: string }): Promise<{ success: boolean; message: string }> {
-    try {
-        const decodedToken = await verifyAdmin();
+    return performAdminAction(async (decodedToken) => {
         const teamData = {
             ...data,
             captainId: decodedToken.uid,
             createdAt: Timestamp.now(),
-            status: 'verified',
+            status: 'verified' as TeamStatus,
             logoUrl: 'https://placehold.co/128x128.png',
         };
         const newTeamRef = getAdminDb().collection('teams').doc();
         await newTeamRef.set(teamData);
         return { success: true, message: 'Test team created successfully.' };
-    } catch (error) {
-        console.error("Error creating test team:", error);
-        return { success: false, message: (error as Error).message };
-    }
+    });
 }
 
 
 export async function updateTeamStatus(teamId: string, status: TeamStatus): Promise<{ success: boolean; error?: string }> {
-    try {
-        await verifyAdmin();
+     return performAdminAction(async () => {
         await getAdminDb().collection("teams").doc(teamId).update({ status });
         revalidatePath('/admin');
-        return { success: true };
-    } catch(e) {
-        const error = e as Error;
-        return { success: false, error: error.message };
-    }
+        return { success: true, message: "Team status updated." };
+    }).then(res => ({ success: res.success, error: res.success ? undefined : res.message }));
 }
 
 // --- TEAM ACTIONS ---
 export async function createFakeTeam(isTestTeam = false): Promise<{ success: boolean; message: string; data?: { teamId: string, captainEmail: string, captainPassword: string } }> {
-    return performAdminAction(async () => {
+    try {
+        ensureAdminInitialized();
         const auth = getAdminAuth();
         const batch = getAdminDb().batch();
         const teamRef = getAdminDb().collection('teams').doc();
@@ -139,11 +120,16 @@ export async function createFakeTeam(isTestTeam = false): Promise<{ success: boo
         revalidatePath('/admin');
         revalidatePath('/my-team');
         return { success: true, message: `Fake team "${teamName}" created successfully.`, data: { teamId, captainEmail, captainPassword } };
-    });
+    } catch(error) {
+         const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
+        console.error("Fake team creation failed:", error);
+        return { success: false, message: `An unexpected error occurred: ${errorMessage}` };
+    }
 }
 
 export async function deleteTeam(teamId: string): Promise<{ success: boolean; message: string }> {
-    return performAdminAction(async () => {
+    try {
+        ensureAdminInitialized();
         const teamRef = getAdminDb().collection('teams').doc(teamId);
         const teamDoc = await teamRef.get();
         const teamData = teamDoc.data();
@@ -167,12 +153,16 @@ export async function deleteTeam(teamId: string): Promise<{ success: boolean; me
         await batch.commit();
         revalidatePath('/admin');
         return { success: true, message: `Team ${teamId} and its players deleted.` };
-    });
+    } catch(error) {
+        const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
+        return { success: false, message: errorMessage };
+    }
 }
 
 // --- GROUP ACTIONS ---
 export async function createGroup(groupName: string, teamIds: string[]): Promise<{ success: boolean; message: string }> {
-    return performAdminAction(async () => {
+     try {
+        ensureAdminInitialized();
         if (!groupName || teamIds.length === 0) {
             return { success: false, message: 'Group name and at least one team are required.' };
         }
@@ -187,11 +177,15 @@ export async function createGroup(groupName: string, teamIds: string[]): Promise
         revalidatePath('/groups');
         revalidatePath('/admin');
         return { success: true, message: `Group '${groupName}' created successfully.` };
-    });
+    } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
+        return { success: false, message: errorMessage };
+    }
 }
 
 export async function deleteGroup(groupId: string): Promise<{ success: boolean; message:string }> {
-     return performAdminAction(async () => {
+     try {
+        ensureAdminInitialized();
         const batch = getAdminDb().batch();
         
         const groupRef = getAdminDb().collection('groups').doc(groupId);
@@ -207,11 +201,15 @@ export async function deleteGroup(groupId: string): Promise<{ success: boolean; 
         revalidatePath('/admin');
         revalidatePath('/schedule');
         return { success: true, message: `Group ${groupId} and its ${matchesSnapshot.size} matches deleted.` };
-    });
+    } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
+        return { success: false, message: errorMessage };
+    }
 }
 
 export async function deleteAllGroups(): Promise<{ success: boolean; message: string }> {
-    return performAdminAction(async () => {
+    try {
+        ensureAdminInitialized();
         const batch = getAdminDb().batch();
         
         const groupsCollectionRef = getAdminDb().collection('groups');
@@ -234,12 +232,16 @@ export async function deleteAllGroups(): Promise<{ success: boolean; message: st
         revalidatePath('/admin');
         revalidatePath('/schedule');
         return { success: true, message: `${groupsSnapshot.size} groups and their associated matches deleted.` };
-    });
+    } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
+        return { success: false, message: errorMessage };
+    }
 }
 
 // --- MATCH ACTIONS ---
 export async function deleteSelectedMatches(matchIds: string[]): Promise<{ success: boolean; message: string }> {
-    return performAdminAction(async () => {
+    try {
+        ensureAdminInitialized();
         if (!matchIds || matchIds.length === 0) {
             return { success: false, message: 'No match IDs provided.' };
         }
@@ -252,11 +254,15 @@ export async function deleteSelectedMatches(matchIds: string[]): Promise<{ succe
         revalidatePath('/schedule');
         revalidatePath('/admin');
         return { success: true, message: `${matchIds.length} matches deleted.` };
-    });
+    } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
+        return { success: false, message: errorMessage };
+    }
 }
 
 export async function deleteAllMatches(): Promise<{ success: boolean; message: string }> {
-    return performAdminAction(async () => {
+    try {
+        ensureAdminInitialized();
         const matchesCollection = getAdminDb().collection('matches');
         const snapshot = await matchesCollection.get();
         if (snapshot.empty) {
@@ -268,11 +274,15 @@ export async function deleteAllMatches(): Promise<{ success: boolean; message: s
         revalidatePath('/schedule');
         revalidatePath('/admin');
         return { success: true, message: `${snapshot.size} matches deleted.` };
-    });
+    } catch(error) {
+        const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
+        return { success: false, message: errorMessage };
+    }
 }
 
 export async function generateMatchesForGroup(groupId: string, deadline: Date | null): Promise<{ success: boolean; message: string; data?: { matchesCreated: number } }> {
-    return performAdminAction(async () => {
+    try {
+        ensureAdminInitialized();
         const allGroups = await fetchAllGroups(true);
         const group = allGroups.find(g => g.id === groupId);
         if (!group) throw new Error(`Group with ID ${groupId} not found.`);
@@ -355,12 +365,16 @@ export async function generateMatchesForGroup(groupId: string, deadline: Date | 
         revalidatePath('/schedule');
         revalidatePath('/admin');
         return { success: true, message: `Generated ${matchesCreated} new matches for ${group.name}.`, data: { matchesCreated } };
-    });
+    } catch(error) {
+        const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
+        return { success: false, message: errorMessage, data: { matchesCreated: 0 } };
+    }
 }
 
 // --- TEST SCENARIOS ---
 export async function createTestGroup(): Promise<{ success: boolean; message: string; data?: { groupId: string, teams: any[] } }> {
-    return performAdminAction(async () => {
+    try {
+        ensureAdminInitialized();
         const teamCreationPromises = Array.from({ length: 4 }, () => createFakeTeam(true));
         const teamResults = await Promise.all(teamCreationPromises);
 
@@ -377,7 +391,10 @@ export async function createTestGroup(): Promise<{ success: boolean; message: st
 
         revalidatePath('/admin');
         return { success: true, message: `Test group '${groupName}' created with 4 teams.`, data: { groupId: groupName.toLowerCase().replace(/\s+/g, '-'), teams: createdTeams } };
-    });
+    } catch(error) {
+        const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
+        return { success: false, message: errorMessage };
+    }
 }
 
 

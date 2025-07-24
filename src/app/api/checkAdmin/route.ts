@@ -1,7 +1,7 @@
 
 // src/app/api/checkAdmin/route.ts
 import { NextResponse } from 'next/server';
-import { getAdminApp, getAdminDb, ensureAdminInitialized, getAdminAuth } from '@/lib/admin';
+import { getAdminDb, getAdminAuth, ensureAdminInitialized } from '@/lib/admin';
 import { headers } from 'next/headers';
 
 export async function POST(request: Request) {
