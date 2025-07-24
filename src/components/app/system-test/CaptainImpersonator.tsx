@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -26,13 +27,10 @@ export interface CaptainImpersonatorRef {
 }
 
 export const CaptainImpersonator = React.forwardRef<CaptainImpersonatorRef, {}>((props, ref) => {
-  const { user, signInWithGoogle, signInWithEmail, signOut } = useAuth();
+  const { user, signInWithGoogle, signOut } = useAuth();
   const [teams, setTeams] = React.useState<Team[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [impersonationTarget, setImpersonationTarget] = React.useState<Team | null>(null);
-  const [email, setEmail] = React.useState("");
-  const [password, setPassword] = React.useState("");
-  const [isSigningIn, setIsSigningIn] = React.useState(false);
   const { toast } = useToast();
 
   const fetchTeams = React.useCallback(async () => {
@@ -65,13 +63,7 @@ export const CaptainImpersonator = React.forwardRef<CaptainImpersonatorRef, {}>(
         setImpersonationTarget(team);
     }
   };
-  
-  const handleEmailSignIn = async () => {
-      setIsSigningIn(true);
-      await signInWithEmail(email, password);
-      setIsSigningIn(false);
-  }
-  
+    
   const copyToClipboard = (text: string, field: string) => {
     navigator.clipboard.writeText(text);
     toast({
@@ -88,7 +80,7 @@ export const CaptainImpersonator = React.forwardRef<CaptainImpersonatorRef, {}>(
         <div className="flex justify-between items-center">
             <div>
                 <CardTitle>Captain Impersonator & Sign-In</CardTitle>
-                <CardDescription>Sign in with Google, a test account, or select a captain to view their credentials.</CardDescription>
+                <CardDescription>Sign in with Google or select a test captain to view their credentials.</CardDescription>
             </div>
             <Button variant="outline" size="icon" onClick={fetchTeams} disabled={isLoading}>
                 <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
@@ -105,23 +97,9 @@ export const CaptainImpersonator = React.forwardRef<CaptainImpersonatorRef, {}>(
                 </div>
             ) : (
                 <div className="p-4 border rounded-md">
-                    <div className="space-y-2 mb-4">
-                        <Label htmlFor="email-signin">Email</Label>
-                        <Input id="email-signin" type="email" placeholder="test-captain@example.com" value={email} onChange={(e) => setEmail(e.target.value)} />
-                    </div>
-                    <div className="space-y-2 mb-4">
-                        <Label htmlFor="password-signin">Password</Label>
-                        <Input id="password-signin" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
-                    </div>
-                    <div className="flex flex-col sm:flex-row gap-2">
-                        <Button onClick={handleEmailSignIn} disabled={isSigningIn || !email || !password} className="flex-1">
-                            {isSigningIn && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
-                            Sign In with Email
-                        </Button>
-                        <Button variant="outline" onClick={signInWithGoogle} className="flex-1">
-                            <LogIn className="mr-2 h-4 w-4"/>Sign In with Google
-                        </Button>
-                    </div>
+                    <Button variant="outline" onClick={signInWithGoogle} className="w-full">
+                        <LogIn className="mr-2 h-4 w-4"/>Sign In with Google
+                    </Button>
                 </div>
             )}
             
@@ -160,7 +138,7 @@ export const CaptainImpersonator = React.forwardRef<CaptainImpersonatorRef, {}>(
           <DialogHeader>
             <DialogTitle>Impersonate Captain of {impersonationTarget?.name}</DialogTitle>
             <DialogDescription>
-              Copy these credentials and use the form to sign in as this captain.
+              This user was created for testing. You would need to implement email/password sign in to use these credentials.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">

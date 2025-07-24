@@ -7,7 +7,6 @@ import {
   signInWithRedirect,
   signOut as firebaseSignOut, 
   GoogleAuthProvider,
-  signInWithEmailAndPassword,
   type User,
   getRedirectResult,
 } from "firebase/auth";
@@ -19,7 +18,6 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   signInWithGoogle: () => Promise<void>;
-  signInWithEmail: (email: string, pass: string) => Promise<void>;
   signOut: () => Promise<void>;
 }
 
@@ -93,32 +91,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  const signInWithEmail = async (email: string, pass: string) => {
-    setLoading(true);
-    try {
-        const userCredential = await signInWithEmailAndPassword(auth, email, pass);
-        const idToken = await userCredential.user.getIdToken();
-        await fetch('/api/auth/session', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ idToken }),
-        });
-        toast({
-            title: "Signed In",
-            description: "You have successfully signed in.",
-        });
-    } catch (error: any) {
-        console.error("Error signing in with email:", error);
-        toast({
-            title: "Sign-in Error",
-            description: error.message || "Could not sign in. Please check your credentials.",
-            variant: "destructive",
-        });
-    } finally {
-        setLoading(false);
-    }
-  };
-
   const signOut = async () => {
     setLoading(true);
     try {
@@ -143,7 +115,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, signInWithGoogle, signInWithEmail, signOut }}>
+    <AuthContext.Provider value={{ user, loading, signInWithGoogle, signOut }}>
       {loading ? (
         <div className="flex justify-center items-center h-screen">
           <Loader2 className="h-16 w-16 animate-spin" />
