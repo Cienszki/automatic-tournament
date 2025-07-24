@@ -7,6 +7,7 @@ import {
   signInWithRedirect,
   signOut as firebaseSignOut, 
   GoogleAuthProvider,
+  signInWithEmailAndPassword,
   type User,
   getRedirectResult,
 } from "firebase/auth";
@@ -18,6 +19,7 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   signInWithGoogle: () => Promise<void>;
+  signInWithEmail: (email: string, pass: string) => Promise<void>;
   signOut: () => Promise<void>;
 }
 
@@ -32,25 +34,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
       setLoading(false);
-      if (currentUser) {
-        const idToken = await currentUser.getIdToken();
-        await fetch('/api/auth/session', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ idToken }),
-        });
-      } else {
-        await fetch('/api/auth/session', {
-          method: 'DELETE',
-        });
-      }
     });
 
     getRedirectResult(auth)
-      .then((result) => {
-        if (result) {
+      .then(async (result) => {
+        if (result && result.user) {
+          const idToken = await result.user.getIdToken();
+          await fetch('/api/auth/session', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ idToken }),
+          });
           toast({
             title: "Signed In",
             description: "You have successfully signed in with Google.",
@@ -58,7 +52,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }
       })
       .catch((error) => {
-        // Don't show an error toast on startup
+        console.error("Redirect result error:", error.message);
       });
 
     return () => unsubscribe();
@@ -75,6 +69,29 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         description: "Could not sign in with Google. Please try again.",
         variant: "destructive",
       });
+    }
+  };
+
+  const signInWithEmail = async (email: string, pass: string) => {
+    try {
+        const userCredential = await signInWithEmailAndPassword(auth, email, pass);
+        const idToken = await userCredential.user.getIdToken();
+        await fetch('/api/auth/session', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ idToken }),
+        });
+        toast({
+            title: "Signed In",
+            description: "You have successfully signed in.",
+        });
+    } catch (error: any) {
+        console.error("Error signing in with email:", error);
+        toast({
+            title: "Sign-in Error",
+            description: error.message || "Could not sign in. Please check your credentials.",
+            variant: "destructive",
+        });
     }
   };
 
@@ -99,7 +116,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, signInWithGoogle, signOut }}>
+    <AuthContext.Provider value={{ user, loading, signInWithGoogle, signInWithEmail, signOut }}>
       {loading ? (
         <div className="flex justify-center items-center h-screen">
           <Loader2 className="h-16 w-16 animate-spin" />
