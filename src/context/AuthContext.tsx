@@ -4,11 +4,10 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { 
   onAuthStateChanged, 
-  signInWithPopup, // Changed from signInWithRedirect
+  signInWithPopup,
   signOut as firebaseSignOut, 
   GoogleAuthProvider,
   type User,
-  getRedirectResult,
 } from "firebase/auth";
 import { auth } from "@/lib/firebase"; 
 import { Loader2 } from "lucide-react";
@@ -29,17 +28,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const { toast } = useToast();
   
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
       setLoading(false);
     });
 
     return () => unsubscribe();
-  }, [toast]);
+  }, []);
 
   const signInWithGoogle = async () => {
     const provider = new GoogleAuthProvider();
-    setLoading(true);
     try {
       const result = await signInWithPopup(auth, provider);
       if (result && result.user) {
@@ -63,13 +61,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             variant: "destructive",
           });
        }
-    } finally {
-        // The onAuthStateChanged listener will handle setting loading to false
     }
   };
 
   const signOut = async () => {
-    setLoading(true);
     try {
       await firebaseSignOut(auth);
       await fetch('/api/auth/session', {
@@ -86,8 +81,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         description: "Could not sign out. Please try again.",
         variant: "destructive",
       });
-    } finally {
-      // onAuthStateChanged will set the user to null and loading to false
     }
   };
 
