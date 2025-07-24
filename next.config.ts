@@ -42,6 +42,20 @@ const nextConfig = {
             }
         ],
     },
+    async headers() {
+        return [
+            {
+                // This applies to all routes
+                source: '/:path*',
+                headers: [
+                    {
+                        key: 'Cross-Origin-Opener-Policy',
+                        value: 'same-origin-allow-popups',
+                    },
+                ],
+            },
+        ];
+    },
 };
 
 module.exports = nextConfig;
