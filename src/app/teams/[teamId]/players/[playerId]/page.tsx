@@ -17,11 +17,11 @@ import { notFound } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
-interface PlayerPageParams {
-  params: {
+interface PageProps {
+  params: Promise<{
     teamId: string;
     playerId: string;
-  };
+  }>;
 }
 
 interface PlayerData {
@@ -102,8 +102,9 @@ async function getPlayerData(teamId: string, playerId: string): Promise<PlayerDa
 }
 
 
-export default async function PlayerPage({ params }: PlayerPageParams) {
-  const data = await getPlayerData(params.teamId, params.playerId);
+export default async function PlayerPage({ params }: PageProps) {
+  const resolvedParams = await params;
+  const data = await getPlayerData(resolvedParams.teamId, resolvedParams.playerId);
   if (!data) notFound();
   
   const { player, team, matchHistory, averageStats } = data;
@@ -198,7 +199,8 @@ const StatDisplayCard = ({ icon: Icon, label, value }: { icon: React.ElementType
   </Card>
 );
 
-export async function generateMetadata({ params }: { params: PlayerPageParams['params'] }) {
+export async function generateMetadata({ params: paramsPromise }: PageProps) {
+  const params = await paramsPromise;
   const data = await getPlayerData(params.teamId, params.playerId);
   if (!data) return { title: "Player Not Found" };
   return { title: `${data.player.nickname} | ${data.team.name}`, description: `Stats for ${data.player.nickname}.` };

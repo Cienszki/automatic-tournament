@@ -1,14 +1,9 @@
-
 // src/lib/auth.ts
-import { doc, getDoc } from "firebase/firestore";
-import { db } from "./firebase";
 import { type User } from "firebase/auth";
-import { functions } from './firebase'; // Make sure functions is exported from firebase.ts
-import { httpsCallable } from 'firebase/functions';
 
 /**
- * Checks if a user is an administrator by calling a Cloud Function.
- * This is the secure way to check for admin privileges.
+ * Checks if a user is an administrator by calling a dedicated API route.
+ * This is the secure way to check for admin privileges from the client.
  *
  * @param user The Firebase user object.
  * @returns A promise that resolves to true if the user is an admin, otherwise false.
@@ -17,19 +12,28 @@ export async function checkIfAdmin(user: User): Promise<boolean> {
   if (!user) return false;
 
   try {
-    // Ensure the user's ID token is refreshed before calling the function.
-    await user.getIdToken(true); 
-
-    const checkAdminStatus = httpsCallable(functions, 'checkAdminStatus');
-    const result = await checkAdminStatus();
+    const token = await user.getIdToken(true);
     
-    // The callable function returns an object with a 'data' property.
-    const { isAdmin } = result.data as { isAdmin: boolean };
-    return isAdmin;
+    const response = await fetch('/api/checkAdmin', {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${token}`
+        }
+    });
+
+    if (!response.ok) {
+        // Log the error but still return false for security.
+        const errorData = await response.json();
+        console.error("Error from checkAdmin API:", errorData.error);
+        return false;
+    }
+
+    const data = await response.json();
+    return data.isAdmin === true;
 
   } catch (error) {
-    console.error("Error calling checkAdminStatus function:", error);
-    // In case of any error (e.g., network, function not found), default to not being an admin.
+    console.error("Error calling checkAdmin API route:", error);
+    // In case of any client-side error (e.g., network), default to not being an admin.
     return false;
   }
 }

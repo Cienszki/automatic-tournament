@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
-import { getAllTeams, getUserPickem, saveUserPickem } from '@/lib/firestore';
+// import { getAllTeams, getUserPickem, saveUserPickem } from '@/lib/firestore';
 import type { Team } from '@/lib/definitions';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
@@ -42,28 +42,28 @@ export default function PickEmPage() {
   useEffect(() => {
     async function loadData() {
       setIsLoading(true);
-      const teams = await getAllTeams();
-      setAllTeams(teams);
+      // const teams = await getAllTeams();
+      // setAllTeams(teams);
 
-      const initialPicks: PicksState = {
-        pool: teams.map(t => t.id),
-        champion: [], runnerUp: [], thirdPlace: [], fourthPlace: [],
-        fifthToSixth: [], seventhToEighth: [], ninthToTwelfth: [],
-        thirteenthToSixteenth: [],
-      };
+      // const initialPicks: PicksState = {
+      //   pool: teams.map(t => t.id),
+      //   champion: [], runnerUp: [], thirdPlace: [], fourthPlace: [],
+      //   fifthToSixth: [], seventhToEighth: [], ninthToTwelfth: [],
+      //   thirteenthToSixteenth: [],
+      // };
 
       if (user) {
-        const userPickem = await getUserPickem(user.uid);
-        if (userPickem?.predictions) {
-          const userPicks = userPickem.predictions;
-          const allPickedIds = new Set(Object.values(userPicks).flat());
-          initialPicks.pool = teams.map(t => t.id).filter(id => !allPickedIds.has(id));
-          Object.keys(userPicks).forEach(key => {
-            initialPicks[key as ContainerId] = userPicks[key];
-          });
-        }
+        // const userPickem = await getUserPickem(user.uid);
+        // if (userPickem?.predictions) {
+        //   const userPicks = userPickem.predictions;
+        //   const allPickedIds = new Set(Object.values(userPicks).flat());
+        //   initialPicks.pool = teams.map(t => t.id).filter(id => !allPickedIds.has(id));
+        //   Object.keys(userPicks).forEach(key => {
+        //     initialPicks[key as ContainerId] = userPicks[key];
+        //   });
+        // }
       }
-      setPicks(initialPicks);
+      // setPicks(initialPicks);
       setIsLoading(false);
     }
     loadData();
@@ -104,12 +104,12 @@ export default function PickEmPage() {
   }, [picks]);
   
   const resetPicks = () => {
-    setPicks({
-        pool: allTeams.map(t => t.id),
-        champion: [], runnerUp: [], thirdPlace: [], fourthPlace: [],
-        fifthToSixth: [], seventhToEighth: [], ninthToTwelfth: [],
-        thirteenthToSixteenth: [],
-    });
+    // setPicks({
+    //     pool: allTeams.map(t => t.id),
+    //     champion: [], runnerUp: [], thirdPlace: [], fourthPlace: [],
+    //     fifthToSixth: [], seventhToEighth: [], ninthToTwelfth: [],
+    //     thirteenthToSixteenth: [],
+    // });
   }
   
   const handleSubmit = async () => {
@@ -117,7 +117,7 @@ export default function PickEmPage() {
     setIsSaving(true);
     try {
         const { pool, ...predictionsToSave } = picks;
-        await saveUserPickem(user.uid, predictionsToSave);
+        // await saveUserPickem(user.uid, predictionsToSave);
         toast({ title: "Success!", description: "Your Pick'em predictions have been saved." });
     } catch (error) {
         console.error("Error saving Pick'em:", error);
@@ -168,7 +168,7 @@ export default function PickEmPage() {
                 {(provided) => (
                   <CardContent ref={provided.innerRef} {...provided.droppableProps}>
                     <ScrollArea className="h-[600px] p-2 bg-muted/20 rounded-md">
-                      {picks.pool.map((teamId, index) => (
+                      {/* {picks.pool.map((teamId, index) => (
                         <Draggable key={teamId} draggableId={teamId} index={index}>
                           {(provided) => (
                             <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps}>
@@ -176,7 +176,7 @@ export default function PickEmPage() {
                             </div>
                           )}
                         </Draggable>
-                      ))}
+                      ))} */}
                       {provided.placeholder}
                     </ScrollArea>
                   </CardContent>

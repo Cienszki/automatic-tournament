@@ -7,7 +7,7 @@ import { Loader2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { TimeMachine } from '@/components/app/system-test/TimeMachine';
 import { CaptainImpersonator } from '@/components/app/system-test/CaptainImpersonator';
-import { ScenarioSimulator } from '@/components/app/system-test/ScenarioSimulator';
+// import { ScenarioSimulator } from '@/components/app/system-test/ScenarioSimulator';
 import { TimeProvider } from '@/context/TimeContext';
 
 export default function SystemTestPage() {
@@ -26,7 +26,7 @@ export default function SystemTestPage() {
                     <CardContent className="space-y-8">
                         <CaptainImpersonator currentUser={user} signIn={signInWithGoogle} signOut={signOut} />
                         <TimeMachine />
-                        <ScenarioSimulator />
+                        {/* <ScenarioSimulator /> */}
                     </CardContent>
                 </Card>
             </div>

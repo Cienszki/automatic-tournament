@@ -3,8 +3,8 @@ import * as React from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { getPlayerStats } from "@/lib/firestore";
-import { heroIconMap, heroColorMap, FALLBACK_HERO_COLOR } from "@/lib/hero-data";
+// import { getPlayerStats } from "@/lib/firestore";
+// import { heroIconMap, heroColorMap, FALLBACK_HERO_COLOR } from "@/lib/hero-data";
 import type { CategoryDisplayStats, CategoryRankingDetail, TournamentHighlightRecord } from "@/lib/definitions";
 import { 
   BarChartHorizontalBig, Trophy, Zap, Shield, Sword, Skull, Star, Diamond, TrendingUp, HeartPulse
@@ -68,7 +68,7 @@ const renderRankingDetailsTable = (details: CategoryRankingDetail[], isSingleMat
     );
 };
 
-const StatsPage = ({ data }: { data: Awaited<ReturnType<typeof getPlayerStats>> }) => {
+const StatsPage = ({ data }: { data: any }) => {
   const { singleMatchRecords, playerAverageLeaders, tournamentHighlights } = data;
 
   return (
@@ -86,7 +86,7 @@ const StatsPage = ({ data }: { data: Awaited<ReturnType<typeof getPlayerStats>> 
         <CardHeader><CardTitle className="text-2xl text-primary flex items-center"><Trophy className="h-6 w-6 mr-2" /> Single Match Standouts</CardTitle></CardHeader>
         <CardContent className="px-0 sm:px-2 md:px-4">
             <Accordion type="single" collapsible className="w-full">
-                {Object.values(singleMatchRecords).map((categoryData) => {
+                {/* {Object.values(singleMatchRecords).map((categoryData) => {
                     const Icon = ICONS[categoryData.icon];
                     return (
                         <AccordionItem value={categoryData.id} key={categoryData.id}>
@@ -102,7 +102,7 @@ const StatsPage = ({ data }: { data: Awaited<ReturnType<typeof getPlayerStats>> 
                             </AccordionContent>
                         </AccordionItem>
                     );
-                })}
+                })} */}
             </Accordion>
         </CardContent>
       </Card>
@@ -111,7 +111,7 @@ const StatsPage = ({ data }: { data: Awaited<ReturnType<typeof getPlayerStats>> 
         <CardHeader><CardTitle className="text-2xl text-primary flex items-center"><Zap className="h-6 w-6 mr-2" /> Tournament Average Leaders</CardTitle></CardHeader>
         <CardContent className="px-0 sm:px-2 md:px-4">
            <Accordion type="single" collapsible className="w-full">
-            {Object.values(playerAverageLeaders).map((categoryData) => {
+            {/* {Object.values(playerAverageLeaders).map((categoryData) => {
                 const Icon = ICONS[categoryData.icon];
                 return (
                     <AccordionItem value={categoryData.id} key={categoryData.id}>
@@ -127,7 +127,7 @@ const StatsPage = ({ data }: { data: Awaited<ReturnType<typeof getPlayerStats>> 
                         </AccordionContent>
                     </AccordionItem>
                 );
-            })}
+            })} */}
           </Accordion>
         </CardContent>
       </Card>
@@ -135,7 +135,7 @@ const StatsPage = ({ data }: { data: Awaited<ReturnType<typeof getPlayerStats>> 
       <Card>
         <CardHeader><CardTitle className="text-2xl text-primary">Overall Tournament Records</CardTitle></CardHeader>
         <CardContent className="grid md:grid-cols-2 gap-6">
-            {Object.values(tournamentHighlights).map((highlight) => {
+            {/* {Object.values(tournamentHighlights).map((highlight) => {
                 const Icon = ICONS[highlight.icon];
                 return (
                   <Card key={highlight.id} className="bg-muted/30">
@@ -143,7 +143,7 @@ const StatsPage = ({ data }: { data: Awaited<ReturnType<typeof getPlayerStats>> 
                     <CardContent><p className="text-3xl font-bold text-primary">{highlight.value}</p>{highlight.details && <p className="text-xs text-muted-foreground pt-1">{highlight.details}</p>}</CardContent>
                   </Card>
                 );
-            })}
+            })} */}
         </CardContent>
       </Card>
 
@@ -153,7 +153,12 @@ const StatsPage = ({ data }: { data: Awaited<ReturnType<typeof getPlayerStats>> 
 }
 
 export default async function StatsPageServer() {
-  const data = await getPlayerStats();
+  // const data = await getPlayerStats();
+  const data = {
+    singleMatchRecords: {},
+    playerAverageLeaders: {},
+    tournamentHighlights: {},
+  }
   return <StatsPage data={data} />;
 }
 

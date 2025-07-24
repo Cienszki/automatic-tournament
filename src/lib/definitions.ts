@@ -5,7 +5,7 @@
 export const LEAGUE_ID = 0;
 export const TEAM_MMR_CAP = 24000;
 
-export type TeamStatus = 'pending' | 'verified' | 'rejected';
+export type TeamStatus = 'pending' | 'verified' | 'rejected' | 'warning' | 'banned';
 export const PlayerRoles = ['Carry', 'Mid', 'Offlane', 'Soft Support', 'Hard Support'] as const;
 export type PlayerRole = typeof PlayerRoles[number];
 

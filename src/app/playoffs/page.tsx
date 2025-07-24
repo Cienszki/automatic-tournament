@@ -5,7 +5,7 @@ import * as React from "react";
 import Image from "next/image";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { GitBranch, Trophy, Users, Shield, Star, Users2, ArrowRight, Home, Skull, Swords, Handshake, Crown } from "lucide-react";
-import { getPlayoffBracket } from "@/lib/firestore";
+// import { getPlayoffBracket } from "@/lib/firestore";
 import type { PlayoffData, Match as PlayoffMatch } from "@/lib/definitions";
 import { cn } from "@/lib/utils";
 import { PlayoffBracketDisplay } from "@/components/app/PlayoffBracketDisplay";
@@ -16,8 +16,8 @@ export default function PlayoffsPage() {
 
   React.useEffect(() => {
     async function fetchData() {
-      const data = await getPlayoffBracket();
-      setBracketData(data);
+      // const data = await getPlayoffBracket();
+      // setBracketData(data);
       setLoading(false);
     }
     fetchData();

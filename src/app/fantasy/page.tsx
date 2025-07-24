@@ -13,12 +13,16 @@ import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Loader2, Crown, Info, UserCircle, BarChart2, Swords, Sparkles, Shield as ShieldIconLucide, HandHelping, Eye as EyeIconLucide, Lock } from "lucide-react";
 import type { PlayerRole, FantasyLineup, FantasyData, TournamentPlayer, TournamentStatus } from "@/lib/definitions";
-import { PlayerRoles, FANTASY_BUDGET_MMR } from "@/lib/definitions";
+// import { PlayerRoles, FANTASY_BUDGET_MMR } from "@/lib/definitions";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { getAllTournamentPlayers, getFantasyLeaderboard, getUserFantasyLineup, saveUserFantasyLineup } from "@/lib/firestore";
+// import { getAllTournamentPlayers, getFantasyLeaderboard, getUserFantasyLineup, saveUserFantasyLineup } from "@/lib/firestore";
 import { getTournamentStatus } from "@/lib/admin-actions";
+
+const PlayerRoles: PlayerRole[] = ["Carry", "Mid", "Offlane", "Soft Support", "Hard Support"];
+const FANTASY_BUDGET_MMR = 60000;
+
 
 const roleIcons: Record<PlayerRole, React.ElementType> = {
   Carry: Swords, Mid: Sparkles, Offlane: ShieldIconLucide, "Soft Support": HandHelping, "Hard Support": EyeIconLucide,
@@ -38,21 +42,21 @@ export default function FantasyLeaguePage() {
   const loadFantasyData = useCallback(async () => {
     setIsLoading(true);
     try {
-      const [players, leaderboard, currentStatus] = await Promise.all([
-        getAllTournamentPlayers(),
-        getFantasyLeaderboard(),
-        getTournamentStatus(),
-      ]);
-      setAvailablePlayers(players);
-      setFantasyLeaderboard(leaderboard);
-      setStatus(currentStatus);
+      // const [players, leaderboard, currentStatus] = await Promise.all([
+      //   getAllTournamentPlayers(),
+      //   getFantasyLeaderboard(),
+      //   getTournamentStatus(),
+      // ]);
+      // setAvailablePlayers(players);
+      // setFantasyLeaderboard(leaderboard);
+      // setStatus(currentStatus);
 
-      if (user) {
-        const userLineup = await getUserFantasyLineup(user.uid);
-        if (userLineup) {
-          setSelectedLineup(userLineup);
-        }
-      }
+      // if (user) {
+      //   const userLineup = await getUserFantasyLineup(user.uid);
+      //   if (userLineup) {
+      //     setSelectedLineup(userLineup);
+      //   }
+      // }
     } catch (error) {
       toast({ title: "Error", description: "Could not load fantasy data.", variant: "destructive" });
     } finally {
@@ -95,7 +99,7 @@ export default function FantasyLeaguePage() {
     if (!user) return;
     setIsSaving(true);
     try {
-      await saveUserFantasyLineup(user.uid, selectedLineup, user.displayName || "Anonymous");
+      // await saveUserFantasyLineup(user.uid, selectedLineup, user.displayName || "Anonymous");
       toast({ title: "Success!", description: "Your fantasy lineup has been saved for the next round." });
       await loadFantasyData(); // Refresh all data
     } catch (error) {
@@ -151,7 +155,7 @@ export default function FantasyLeaguePage() {
             <Table>
               <TableHeader><TableRow><TableHead>Rank</TableHead><TableHead>Player</TableHead><TableHead>Current Lineup</TableHead><TableHead className="text-right">Total Points</TableHead></TableRow></TableHeader>
               <TableBody>
-                {fantasyLeaderboard.map((p, i) => <LeaderboardRow key={p.userId} participant={p} rank={i + 1} isCurrentUser={user?.uid === p.userId} />)}
+                {/* {fantasyLeaderboard.map((p, i) => <LeaderboardRow key={p.userId} participant={p} rank={i + 1} isCurrentUser={user?.uid === p.userId} />)} */}
               </TableBody>
             </Table>
           </ScrollArea>
@@ -198,7 +202,7 @@ const LeaderboardRow = ({ participant, rank, isCurrentUser }: { participant: Fan
           const player = participant.currentLineup?.[role];
           return <div key={role} className="flex items-center space-x-1.5 text-xs" title={`${role}: ${player?.nickname || 'N/A'}`}>
             {React.createElement(roleIcons[role], { className: "h-3.5 w-3.5 text-muted-foreground shrink-0" })}
-            {player ? <Link href={`/teams/${player.teamId}/players/${player.id}`} className="text-primary hover:underline truncate">{player.nickname}</Link> : <span className="italic">-</span>}
+            {/* {player ? <Link href={`/teams/${player.teamId}/players/${player.id}`} className="text-primary hover:underline truncate">{player.nickname}</Link> : <span className="italic">-</span>} */}
           </div>
         })}
       </div>

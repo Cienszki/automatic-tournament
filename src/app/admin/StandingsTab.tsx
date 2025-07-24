@@ -100,7 +100,7 @@ export function StandingsTab() {
 
     return (
       <TableRow key={match.id}>
-        <TableCell className="font-medium">{match.round || 'N/A'}</TableCell>
+        <TableCell className="font-medium">{match.group_id || 'N/A'}</TableCell>
         <TableCell>
           {match.teamA ? (
             <div className="flex items-center space-x-2">

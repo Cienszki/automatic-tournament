@@ -1,3 +1,4 @@
+
 // src/lib/admin-actions.ts
 'use server';
 
@@ -75,7 +76,7 @@ export async function createTestTeam(data: { name: string; tag: string }): Promi
 }
 
 
-export async function updateTeamStatus(teamId: string, status: TeamStatus, token: string): Promise<{ success: boolean; error?: string }> {
+export async function updateTeamStatus(teamId: string, status: TeamStatus): Promise<{ success: boolean; error?: string }> {
     try {
         await verifyAdmin();
         await adminDb.collection("teams").doc(teamId).update({ status });
@@ -392,6 +393,7 @@ export async function getUserTeam(userId: string): Promise<{ hasTeam: boolean; t
     const querySnapshot = await q.get();
     if (querySnapshot.empty) return { hasTeam: false, team: null };
     const team = await getTeamById(querySnapshot.docs[0].id); 
+    revalidatePath('/my-team');
     return { hasTeam: true, team };
 }
 

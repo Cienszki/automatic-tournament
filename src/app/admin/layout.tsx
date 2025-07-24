@@ -105,6 +105,9 @@ export default function AdminLayout({
           <p className="text-muted-foreground">
             You are logged in, but you do not have the necessary permissions to view this page.
           </p>
+          <p className="text-sm text-muted-foreground">
+            Your User ID is: <code className="font-mono bg-muted p-1 rounded-md">{user.uid}</code>
+          </p>
           <Button asChild>
             <Link href="/">
               Go to Homepage

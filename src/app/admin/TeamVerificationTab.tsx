@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { ShieldCheck, ShieldAlert, ShieldX, Loader2, Trash2 } from 'lucide-react';
 import { getAllTeams } from '@/lib/firestore';
 import { updateTeamStatus, deleteTeam } from '@/lib/admin-actions';
-import { Team } from '@/lib/definitions';
+import { Team, TeamStatus } from '@/lib/definitions';
 import { useToast } from '@/hooks/use-toast';
 import Image from 'next/image';
 import { Badge } from '@/components/ui/badge';
@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useAuth } from '@/context/AuthContext';
 
-function TeamDetails({ team, onStatusUpdate, onDelete, isUpdating }: { team: Team, onStatusUpdate: (teamId: string, status: 'verified' | 'warning' | 'banned') => void, onDelete: (teamId: string) => void, isUpdating: boolean }) {
+function TeamDetails({ team, onStatusUpdate, onDelete, isUpdating }: { team: Team, onStatusUpdate: (teamId: string, status: TeamStatus) => void, onDelete: (teamId: string) => void, isUpdating: boolean }) {
     return (
         <AccordionContent>
             <div className="p-4 bg-muted/50 rounded-lg">
@@ -41,6 +41,9 @@ function TeamDetails({ team, onStatusUpdate, onDelete, isUpdating }: { team: Tea
                     </Button>
                     <Button size="sm" variant="default" onClick={() => onStatusUpdate(team.id, 'warning')} disabled={isUpdating}>
                         <ShieldAlert className="h-4 w-4 mr-2" /> Issue Warning
+                    </Button>
+                     <Button size="sm" variant="destructive" onClick={() => onStatusUpdate(team.id, 'rejected')} disabled={isUpdating}>
+                        <ShieldX className="h-4 w-4 mr-2" /> Reject
                     </Button>
                     <Button size="sm" variant="destructive" onClick={() => onStatusUpdate(team.id, 'banned')} disabled={isUpdating}>
                         <ShieldX className="h-4 w-4 mr-2" /> Ban
@@ -91,15 +94,14 @@ export function TeamVerificationTab() {
         fetchTeams();
     }, []);
 
-    const handleStatusUpdate = (teamId: string, status: 'verified' | 'warning' | 'banned') => {
+    const handleStatusUpdate = (teamId: string, status: TeamStatus) => {
         startTransition(async () => {
             if (!user) {
                 toast({ title: 'Authentication Error', description: 'You must be logged in to perform this action.', variant: 'destructive' });
                 return;
             }
             try {
-                const token = await user.getIdToken();
-                const result = await updateTeamStatus(teamId, status, token);
+                const result = await updateTeamStatus(teamId, status);
 
                 if (result?.success) {
                     setTeams(prevTeams =>
@@ -145,11 +147,12 @@ export function TeamVerificationTab() {
         });
     };
 
-    const getStatusBadgeVariant = (status?: 'verified' | 'warning' | 'banned' | 'pending') => {
+    const getStatusBadgeVariant = (status?: TeamStatus) => {
         switch (status) {
             case 'verified': return 'secondary';
             case 'warning': return 'default';
             case 'banned': return 'destructive';
+            case 'rejected': return 'destructive';
             default: return 'outline';
         }
     };

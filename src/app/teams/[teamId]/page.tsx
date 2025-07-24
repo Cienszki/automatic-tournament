@@ -21,7 +21,7 @@ import Link from "next/link";
 import { CopyToClipboard } from "@/components/app/CopyToClipboard";
 
 
-interface TeamPageParams {
+interface PageProps {
   params: { teamId: string };
 }
 
@@ -95,7 +95,7 @@ function getRankForStat(
 }
 
 
-export default async function TeamPage({ params }: TeamPageParams) {
+export default async function TeamPage({ params }: PageProps) {
   const { team, teamMatches } = await getTeamData(params.teamId);
   const allTeams = await getAllTeams(); // Fetch all teams for ranking
 
@@ -360,6 +360,7 @@ export default async function TeamPage({ params }: TeamPageParams) {
                                 (match.teamB.id === team.id && (match.teamB.score ?? 0) > (match.teamA.score ?? 0));
                   const resultText = match.status === 'completed' ? (isWin ? "Win" : "Loss") : "Upcoming";
                   const scoreText = match.status === 'completed' ? `${match.teamA.score} - ${match.teamB.score}` : "-";
+                  const date = match.dateTime ? new Date(match.dateTime) : new Date(match.defaultMatchTime);
                   return (
                     <TableRow key={match.id}>
                       <TableCell>
@@ -369,7 +370,7 @@ export default async function TeamPage({ params }: TeamPageParams) {
                         {resultText}
                       </TableCell>
                       <TableCell>{scoreText}</TableCell>
-                      <TableCell>{new Date(match.dateTime).toLocaleDateString()}</TableCell>
+                      <TableCell>{date.toLocaleDateString()}</TableCell>
                     </TableRow>
                   );
                 })}
@@ -425,7 +426,7 @@ function PlayerCard({ player, teamId }: PlayerCardProps) {
 }
 
 
-export async function generateMetadata({ params }: TeamPageParams) {
+export async function generateMetadata({ params }: PageProps) {
   const team = await getTeamById(params.teamId);
   if (!team) {
     return { title: "Team Not Found" };
@@ -438,10 +439,7 @@ export async function generateMetadata({ params }: TeamPageParams) {
 
 export async function generateStaticParams() {
   const teams = await getAllTeams();
-  return teams.flatMap(team => 
-    team.players.map(player => ({
-      teamId: team.id,
-      playerId: player.id
-    }))
-  );
+  return teams.map((team) => ({
+    teamId: team.id,
+  }));
 }

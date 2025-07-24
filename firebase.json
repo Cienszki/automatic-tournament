@@ -1,21 +1,14 @@
 {
   "hosting": {
-    "public": "public",
+    "source": ".",
     "ignore": [
       "firebase.json",
       "**/.*",
       "**/node_modules/**"
     ],
-    "rewrites": [
-      {
-        "source": "/api/**",
-        "function": "codebase1"
-      },
-      {
-        "source": "**",
-        "function": "codebase1"
-      }
-    ]
+    "frameworksBackend": {
+      "region": "us-central1"
+    }
   },
   "firestore": {
     "rules": "firestore.rules"
@@ -25,8 +18,8 @@
   },
   "functions": [
     {
-      "source": "codebase1",
-      "codebase": "codebase1",
+      "source": "functions",
+      "runtime": "nodejs20",
       "ignore": [
         "node_modules",
         ".git",
@@ -34,7 +27,9 @@
         "firebase-debug.*.log",
         "*.local"
       ],
-      "cors": "cors-specific.json"
+      "predeploy": [
+        "npm --prefix \"$RESOURCE_DIR\" run build"
+      ]
     }
   ],
   "emulators": {
