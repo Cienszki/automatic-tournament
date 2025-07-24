@@ -4,7 +4,7 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { 
   onAuthStateChanged, 
-  signInWithRedirect,
+  signInWithPopup, // Changed from signInWithRedirect
   signOut as firebaseSignOut, 
   GoogleAuthProvider,
   type User,
@@ -29,65 +29,42 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const { toast } = useToast();
   
   useEffect(() => {
-    // This function will handle all auth state changes,
-    // including the result from a redirect.
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
       setLoading(false);
     });
-
-    // Check for redirect result specifically on component mount
-    getRedirectResult(auth)
-      .then(async (result) => {
-        if (result && result.user) {
-          // If we get a result, a sign-in just happened.
-          // onAuthStateChanged will handle setting the user,
-          // but we still need to create our server session.
-          const idToken = await result.user.getIdToken();
-          await fetch('/api/auth/session', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ idToken }),
-          });
-          toast({
-            title: "Signed In",
-            description: "You have successfully signed in with Google.",
-          });
-        }
-      })
-      .catch((error) => {
-        // Handle potential errors from the redirect, e.g., user cancels
-        console.error("Redirect result error:", error.message);
-        if (error.code !== 'auth/cancelled-popup-request') {
-            toast({
-                title: "Sign-in Error",
-                description: "Could not complete sign-in with Google.",
-                variant: "destructive",
-            });
-        }
-      })
-      .finally(() => {
-        // Even if there's no redirect result, we might still be loading
-        // the initial user state from the onAuthStateChanged listener.
-        // The listener itself will set loading to false.
-      });
 
     return () => unsubscribe();
   }, [toast]);
 
   const signInWithGoogle = async () => {
     const provider = new GoogleAuthProvider();
-    setLoading(true); // Set loading to true before redirecting
+    setLoading(true);
     try {
-      await signInWithRedirect(auth, provider);
+      const result = await signInWithPopup(auth, provider);
+      if (result && result.user) {
+        const idToken = await result.user.getIdToken();
+        await fetch('/api/auth/session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ idToken }),
+        });
+        toast({
+          title: "Signed In",
+          description: "You have successfully signed in with Google.",
+        });
+      }
     } catch (error: any) {
       console.error("Error signing in with Google:", error);
-      toast({
-        title: "Sign-in Error",
-        description: "Could not sign in with Google. Please try again.",
-        variant: "destructive",
-      });
-      setLoading(false); // Reset loading on error
+       if (error.code !== 'auth/popup-closed-by-user') {
+          toast({
+            title: "Sign-in Error",
+            description: "Could not sign in with Google. Please try again.",
+            variant: "destructive",
+          });
+       }
+    } finally {
+        // The onAuthStateChanged listener will handle setting loading to false
     }
   };
 
