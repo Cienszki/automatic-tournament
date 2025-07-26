@@ -60,5 +60,9 @@ service cloud.firestore {
       allow read: if isUser();
       allow create, update, delete: if isAdmin();
     }
+
+    match /firebase-frameworks-hosting-controlled-rollouts/{rolloutId} {
+      allow read, write: if isAdmin();
+    }
   }
 }
