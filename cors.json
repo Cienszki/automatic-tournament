@@ -1,6 +1,13 @@
 [
   {
-    "origin": ["https://9000-firebase-studio-1747924944703.cluster-c23mj7ubf5fxwq6nrbev4ugaxa.cloudworkstations.dev", "http://localhost:3000", "http://localhost:9000", "http://localhost:9006"],
+    "origin": [
+      "https://9000-firebase-studio-1747924944703.cluster-c23mj7ubf5fxwq6nrbev4ugaxa.cloudworkstations.dev",
+      "http://localhost:3000",
+      "http://localhost:9000",
+      "http://localhost:9006",
+      "https://tournament-tracker-f35tb.firebaseapp.com",
+      "https://dota2inhouse.pl"
+    ],
     "method": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     "responseHeader": [
       "Content-Type",

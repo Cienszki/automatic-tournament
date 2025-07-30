@@ -45,9 +45,8 @@ export function Navbar() {
   if (!hasMounted) {
     return (
       <header className="bg-card border-b border-border shadow-sm sticky top-0 z-50">
-        <div className="container mx-auto px-4 py-3 flex items-center justify-between">
+        <div className="container mx-auto px-4 flex items-center justify-between">
           <Logo />
-          {/* Render a placeholder for the nav controls to prevent layout shift */}
           <div className="h-10 w-10 md:w-auto" />
         </div>
       </header>
@@ -57,7 +56,7 @@ export function Navbar() {
   if (isMobile) {
     return (
       <header className="bg-card border-b border-border shadow-sm sticky top-0 z-50">
-        <div className="container mx-auto px-4 py-3 flex items-center justify-between">
+        <div className="container mx-auto px-4 flex items-center justify-between">
           <Logo />
           <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
             <SheetTrigger asChild>
@@ -75,21 +74,13 @@ export function Navbar() {
               <nav className="flex flex-col space-y-2 p-4">
                 {navItems.map((item) => {
                   const isActive = pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href));
-                  const isMyTeam = item.href === '/my-team';
                   return (
                     <Button
                       key={item.href}
                       variant="ghost"
                       asChild
                       onClick={() => setIsMobileMenuOpen(false)}
-                      className={cn(
-                        "w-full justify-start text-base py-3 px-3",
-                        {
-                          'text-primary bg-primary/10': isActive && !isMyTeam,
-                          'text-secondary bg-secondary/10': isActive && isMyTeam,
-                          'text-muted-foreground hover:text-foreground hover:bg-accent/50': !isActive && !isMyTeam,
-                          'text-secondary hover:text-primary hover:bg-primary/10': !isActive && isMyTeam,
-                        }
+                      className={cn( "w-full justify-start text-base py-3 px-3", { 'text-primary bg-primary/10': isActive }
                       )}
                     >
                       <Link href={item.href} className="flex items-center space-x-3">
@@ -110,32 +101,33 @@ export function Navbar() {
   // Desktop navigation
   return (
     <header className="bg-card border-b border-border shadow-sm sticky top-0 z-50">
-      <div className="container mx-auto px-4 py-3 flex items-center justify-between">
+      <div className="container mx-auto px-4 flex items-center justify-between">
         <Logo />
         <div className="flex-1 flex justify-center">
-            <nav className="flex items-center space-x-1 md:space-x-2 overflow-x-auto pb-2 md:pb-0">
+            <nav className="flex items-center space-x-2">
                 {navItems.map((item) => {
                 const isActive = pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href));
                 const isMyTeam = item.href === '/my-team';
                 return (
                     <Button
-                    key={item.href}
-                    variant="ghost"
-                    asChild
-                    className={cn(
-                        "text-sm font-medium shrink-0 px-2 py-1 md:px-3 md:py-2",
-                        {
-                        'text-primary bg-primary/10': isActive && !isMyTeam,
-                        'text-secondary bg-secondary/10': isActive && isMyTeam,
-                        'text-muted-foreground hover:text-foreground hover:bg-accent/50': !isActive,
-                        'hover:bg-primary/10': isMyTeam
-                        }
-                    )}
+                      key={item.href}
+                      variant="ghost"
+                      asChild
+                      className={cn(
+                        "relative text-sm font-medium shrink-0 px-3 py-2 transition-all duration-200 group",
+                        "hover:bg-accent/50",
+                        isActive ? "text-primary" : "text-muted-foreground hover:text-foreground",
+                        isMyTeam && isActive && "shadow-sm shadow-secondary/50",
+                      )}
                     >
-                    <Link href={item.href} className="flex items-center gap-2">
+                      <Link href={item.href} className="flex items-center gap-2">
                         <item.icon className="h-4 w-4" />
                         <span className="hidden md:inline">{item.label}</span>
-                    </Link>
+                        <span className={cn(
+                            "absolute bottom-0 left-0 h-0.5 bg-primary w-full transform scale-x-0 transition-transform duration-300 ease-out group-hover:scale-x-100",
+                            isActive && "scale-x-100"
+                        )} />
+                      </Link>
                     </Button>
                 );
                 })}

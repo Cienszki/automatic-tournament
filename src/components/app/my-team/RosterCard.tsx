@@ -3,6 +3,7 @@ import type { Team, Match, PlayerRole } from "@/lib/definitions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ListChecks, Swords, Sparkles, Shield, HandHelping, Eye, Users } from "lucide-react";
 import { PlayerAvatar } from "../PlayerAvatar";
+import { sortPlayersByRole } from "@/lib/utils";
 
 interface RosterCardProps {
   team?: Team | null;
@@ -33,6 +34,8 @@ export function RosterCard({ team, upcomingMatches }: RosterCardProps) {
         </Card>
     );
   }
+
+  const sortedPlayers = sortPlayersByRole(team.players || []);
   
   return (
     <Card className="shadow-lg">
@@ -44,7 +47,7 @@ export function RosterCard({ team, upcomingMatches }: RosterCardProps) {
       </CardHeader>
       <CardContent>
         <ul className="space-y-4">
-          {(team.players || []).map((player) => {
+          {sortedPlayers.map((player) => {
             const RoleIcon = roleIcons[player.role] || ListChecks;
             return (
               <li key={player.id} className="flex items-center justify-between">

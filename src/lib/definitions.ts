@@ -1,9 +1,65 @@
 // src/lib/definitions.ts
 
-// This is the official ID for the tournament league on the OpenDota API.
-// You should replace 0 with the actual ID for your league.
+// ... (other definitions remain the same)
+
+export interface PlayerPerformanceInGame {
+    playerId: string;
+    teamId: string;
+    heroId: number;
+    kills: number;
+    deaths: number;
+    assists: number;
+    gpm: number;
+    xpm: number;
+    lastHits: number;
+    denies: number;
+    netWorth: number;
+    heroDamage: number;
+    towerDamage: number;
+    obsPlaced: number;
+    senPlaced: number;
+    courierKills: number;
+    firstBloodClaimed: boolean;
+    observerKills: number;
+    sentryKills: number;
+    highestKillStreak: number;
+    buybackCount: number;
+    heroHealing: number;
+    fantasyPoints: number;
+}
+
+export interface Game {
+    id: string; // OpenDota match_id
+    radiant_win: boolean;
+    duration: number;
+    start_time: number;
+    firstBloodTime: number;
+    picksBans?: any[];
+}
+
+export interface Match {
+  id: string;
+  teamA: { id: string; name: string; score: number; logoUrl: string; };
+  teamB: { id: string; name: string; score: number; logoUrl: string; };
+  teams: string[];
+  status: 'scheduled' | 'completed' | 'live';
+  scheduled_for: string; 
+  defaultMatchTime: string; 
+  dateTime?: string; 
+  group_id?: string;
+  playoff_round?: number;
+  schedulingStatus: 'unscheduled' | 'proposed' | 'confirmed';
+  proposedTime?: string;
+  proposingCaptainId?: string; 
+  proposedById?: string; 
+  game_ids?: number[]; // This now holds the IDs of the individual games
+  completed_at?: string;
+}
+
+// ... (rest of definitions)
 export const LEAGUE_ID = 0;
 export const TEAM_MMR_CAP = 24000;
+export const FANTASY_BUDGET_MMR = 24000;
 
 export type TeamStatus = 'pending' | 'verified' | 'rejected' | 'warning' | 'banned';
 export const PlayerRoles = ['Carry', 'Mid', 'Offlane', 'Soft Support', 'Hard Support'] as const;
@@ -16,10 +72,22 @@ export interface Player {
   role: PlayerRole;
   steamId: string;
   steamId32: string;
+  openDotaAccountId?: number;
   profileScreenshotUrl: string;
   avatar?: string;
   avatarmedium?: string;
   avatarfull?: string;
+}
+
+export interface UserProfile {
+  uid: string;
+  email?: string;
+  displayName?: string;
+  photoURL?: string;
+  discordUsername?: string;
+  roles?: {
+    admin?: boolean;
+  };
 }
 
 export interface Team {
@@ -31,32 +99,11 @@ export interface Team {
   discordUsername: string;
   motto: string;
   status: TeamStatus;
-  createdAt: string; // Stored as ISO string
+  createdAt: string;
   players: Player[];
-  // Optional fields for test accounts
+  openDotaTeamId?: number;
   testCaptainEmail?: string;
   testCaptainPassword?: string;
-}
-
-export interface Match {
-  id: string;
-  teamA: { id: string; name: string; score: number; logoUrl: string; };
-  teamB: { id: string; name: string; score: number; logoUrl: string; };
-  teams: string[];
-  status: 'scheduled' | 'completed' | 'live';
-  scheduled_for: string; // ISO string for the scheduling deadline
-  defaultMatchTime: string; // ISO string
-  dateTime?: string; // ISO string for the confirmed match time
-  group_id?: string;
-  playoff_round?: number;
-  // Fields for the time proposal system
-  schedulingStatus: 'unscheduled' | 'proposed' | 'confirmed';
-  proposedTime?: string; // ISO string
-  proposingCaptainId?: string;
-  // Data from OpenDota
-  opendota_match_id?: number;
-  // Completion timestamp
-  completed_at?: string; // ISO string
 }
 
 export interface GroupStanding {
@@ -70,6 +117,7 @@ export interface GroupStanding {
   headToHead: { [opponentId: string]: 'win' | 'loss' };
   neustadtlScore: number;
   status: 'pending' | 'updated';
+  totalMMR: number;
 }
 
 export interface Group {
@@ -79,7 +127,7 @@ export interface Group {
 }
 
 export interface PlayoffData {
-    id: string; // e.g., 'round-1', 'grand-finals'
+    id: string; 
     round: number;
     name: string;
     matches: Match[];
@@ -91,16 +139,32 @@ export interface TournamentPlayer extends Player {
     teamTag: string;
 }
 
-// Fantasy & Pick'em
 export interface FantasyLineup {
     userId: string;
-    players: TournamentPlayer[];
-    totalScore: number;
+    lineup: Partial<Record<PlayerRole, TournamentPlayer>>;
+    totalFantasyScore: number;
 }
 
 export interface FantasyData {
     players: TournamentPlayer[];
     lineups: FantasyLineup[];
+}
+
+export interface Pickem {
+    userId: string;
+    predictions: {
+        champion: string[];
+        runnerUp: string[];
+        thirdPlace: string[];
+        fourthPlace: string[];
+        fifthToSixth: string[];
+        seventhToEighth: string[];
+        ninthToTwelfth: string[];
+        thirteenthToSixteenth: string[];
+        pool: string[];
+    };
+    scores: Record<string, number>;
+    lastUpdated: any;
 }
 
 export interface PickemPrediction {
@@ -109,7 +173,6 @@ export interface PickemPrediction {
     predictedWinnerId: string;
 }
 
-// Stats Page
 export interface CategoryDisplayStats {
     categoryName: string;
     leader: {
@@ -119,20 +182,6 @@ export interface CategoryDisplayStats {
         teamTag: string;
         value: number;
     };
-}
-
-export interface PlayerPerformanceInMatch {
-    playerId: string;
-    matchId: string;
-    kills: number;
-    deaths: number;
-    assists: number;
-    gpm: number;
-    xpm: number;
-    lastHits: number;
-    denies: number;
-    heroDamage: number;
-    towerDamage: number;
 }
 
 export interface CategoryRankingDetail {

@@ -8,7 +8,7 @@ import type { Group, GroupStanding, Team, Player, Match } from './definitions';
 import { PlayerRoles, TeamStatus } from './definitions';
 import { getAllTeams as fetchAllTeams, getAllGroups as fetchAllGroups, getTeamById, getAllMatches } from './firestore';
 import { Timestamp } from 'firebase-admin/firestore';
-import { toZonedTime } from 'date-fns-tz';
+import { addDays, format } from 'date-fns';
 
 // --- UTILITY ---
 const generatePassword = (length = 10) => {
@@ -21,7 +21,6 @@ const generatePassword = (length = 10) => {
 };
 
 // --- AUTHENTICATION & ACTION WRAPPER ---
-// This wrapper now requires the token to be passed in explicitly.
 async function performAdminAction<T>(
     token: string | null, 
     action: (decodedToken: any) => Promise<{ success: boolean; message: string; data?: T }>
@@ -73,7 +72,6 @@ export async function updateTeamStatus(token: string, teamId: string, status: Te
 }
 
 // --- TEAM ACTIONS ---
-// Note: These actions manage their own auth for now, they don't use the wrapper.
 export async function createFakeTeam(isTestTeam = false): Promise<{ success: boolean; message: string; data?: { teamId: string, captainEmail: string, captainPassword: string } }> {
     try {
         ensureAdminInitialized();
@@ -280,10 +278,8 @@ export async function generateMatchesForGroup(token: string, groupId: string, de
         const batch = getAdminDb().batch();
         const matchesCollection = getAdminDb().collection('matches');
         let matchesCreated = 0;
-        const timeZone = "Europe/Warsaw"; 
         
-        let scheduleDate = deadline ? toZonedTime(deadline, timeZone) : toZonedTime(new Date(), timeZone);
-        scheduleDate.setHours(0, 0, 0, 0);
+        let scheduleDate = new Date();
 
         const timeSlots = [18, 21];
         const teamIds = Object.keys(group.standings);
@@ -305,9 +301,12 @@ export async function generateMatchesForGroup(token: string, groupId: string, de
                 let foundSlot = false;
                 while (!foundSlot) {
                     for (const hour of timeSlots) {
-                        const potentialDate = new Date(scheduleDate);
-                        potentialDate.setHours(hour, 0, 0, 0);
-                        const potentialTime = toZonedTime(potentialDate, timeZone);
+                        const potentialTime = new Date(scheduleDate);
+                        potentialTime.setUTCHours(hour - 2, 0, 0, 0); // Explicitly set UTC time by subtracting offset
+
+                        if (deadline && potentialTime > deadline) {
+                            return { success: false, message: "Ran out of available time slots before the deadline." };
+                        }
 
                         if (!existingTimes.has(potentialTime.getTime())) {
                             matchTime = potentialTime;
@@ -317,7 +316,7 @@ export async function generateMatchesForGroup(token: string, groupId: string, de
                         }
                     }
                     if (!foundSlot) {
-                        scheduleDate.setDate(scheduleDate.getDate() + 1);
+                        scheduleDate = addDays(scheduleDate, 1);
                     }
                 }
 
@@ -383,10 +382,6 @@ export async function createTestGroup(token: string): Promise<{ success: boolean
         });
         
         const groupName = `Test Group ${Math.floor(Math.random() * 100)}`;
-        // This internal call doesn't have access to the original token, 
-        // but createGroup doesn't actually need admin privileges beyond the wrapper.
-        // For now, we'll pass a dummy token, but a better refactor would be to separate
-        // the action logic from the permission logic.
         const createGroupResult = await createGroup("dummy-token-internal-call", groupName, createdTeams.map(t => t.teamId));
         if (!createGroupResult.success) {
             throw new Error(`Failed to create the group for the scenario: ${createGroupResult.message}`);

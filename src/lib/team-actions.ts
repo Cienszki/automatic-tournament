@@ -46,15 +46,19 @@ async function getMatchAndVerifyCaptain(matchId: string, uid: string) {
 export async function proposeMatchTime(token: string, matchId: string, proposedDate: Date) {
     try {
         const decodedToken = await verifyUser(token);
-        const { matchRef, userTeamId } = await getMatchAndVerifyCaptain(matchId, decodedToken.uid);
+        const { matchRef, match, userTeamId } = await getMatchAndVerifyCaptain(matchId, decodedToken.uid);
 
-        // Convert the client-side Date object to a server-side Firestore Timestamp.
+        const deadline = (match.scheduled_for as Timestamp).toDate();
+        if (proposedDate > deadline) {
+            return { success: false, message: 'Proposed time cannot be after the deadline.' };
+        }
+
         const serverTimestamp = Timestamp.fromDate(new Date(proposedDate));
-
         await matchRef.update({
             schedulingStatus: 'proposed',
-            proposedTime: serverTimestamp, // Use the server-side timestamp here.
-            proposingCaptainId: decodedToken.uid
+            proposedTime: serverTimestamp,
+            proposingCaptainId: decodedToken.uid,
+            proposedById: userTeamId
         });
 
         revalidatePath('/my-team');
@@ -77,12 +81,19 @@ export async function acceptMatchTime(token: string, matchId: string) {
             throw new Error('You cannot accept your own proposal.');
         }
 
+        const deadline = (match.scheduled_for as Timestamp).toDate();
+        const proposedTime = (match.proposedTime as Timestamp).toDate();
+        if (proposedTime > deadline) {
+            return { success: false, message: 'Cannot accept a time that is after the deadline.' };
+        }
+
         await matchRef.update({
             schedulingStatus: 'confirmed',
             status: 'scheduled',
-            dateTime: match.proposedTime, // The proposed time is already a server timestamp.
+            dateTime: match.proposedTime,
             proposedTime: null,
-            proposingCaptainId: null
+            proposingCaptainId: null,
+            proposedById: null
         });
 
         revalidatePath('/my-team');
@@ -105,7 +116,8 @@ export async function rejectMatchTime(token: string, matchId: string) {
             schedulingStatus: 'unscheduled',
             status: 'pending',
             proposedTime: null,
-            proposingCaptainId: null
+            proposingCaptainId: null,
+            proposedById: null
         });
 
         revalidatePath('/my-team');
@@ -128,7 +140,8 @@ export async function cancelProposal(token: string, matchId: string) {
             schedulingStatus: 'unscheduled',
             status: 'pending',
             proposedTime: null,
-            proposingCaptainId: null
+            proposingCaptainId: null,
+            proposedById: null
         });
 
         revalidatePath('/my-team');

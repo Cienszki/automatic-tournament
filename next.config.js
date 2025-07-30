@@ -14,6 +14,10 @@ const nextConfig = {
             {
                 protocol: 'https',
                 hostname: 'steamcdn-a.akamaihd.net',
+            },
+            {
+                protocol: 'https',
+                hostname: 'firebasestorage.googleapis.com',
             }
         ],
     },

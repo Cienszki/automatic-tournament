@@ -5,12 +5,13 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/com
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
 import { ShieldCheck, ShieldAlert, ShieldX, Loader2, Trash2 } from 'lucide-react';
-import { getAllTeams } from '@/lib/firestore';
+import { getAllTeams, getAllPickems } from '@/lib/firestore';
 import { updateTeamStatus, deleteTeam } from '@/lib/admin-actions';
-import { Team, TeamStatus } from '@/lib/definitions';
+import { Team, TeamStatus, Player, Pickem } from '@/lib/definitions';
 import { useToast } from '@/hooks/use-toast';
 import Image from 'next/image';
 import { Badge } from '@/components/ui/badge';
+import { ImageModal } from '@/components/ui/image-modal';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -24,14 +25,18 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useAuth } from '@/context/AuthContext';
 
-function TeamDetails({ team, onStatusUpdate, onDelete, isUpdating }: { team: Team, onStatusUpdate: (teamId: string, status: TeamStatus) => void, onDelete: (teamId: string) => void, isUpdating: boolean }) {
+type TeamWithCommunityScore = Team & { communityScore: number };
+
+function TeamDetails({ team, onStatusUpdate, onDelete, isUpdating, onPlayerClick }: { team: Team, onStatusUpdate: (teamId: string, status: TeamStatus) => void, onDelete: (teamId: string) => void, isUpdating: boolean, onPlayerClick: (player: Player) => void }) {
     return (
         <AccordionContent>
             <div className="p-4 bg-muted/50 rounded-lg">
                 <h4 className="font-semibold mb-2">Roster:</h4>
                 <ul className="space-y-1 list-disc list-inside">
                     {team.players?.map(p => (
-                        <li key={`${team.id}-${p.id}`}>{p.nickname} - <span className="font-mono">{p.mmr} MMR</span></li>
+                        <li key={`${team.id}-${p.id}`} onClick={() => onPlayerClick(p)} className="cursor-pointer hover:text-primary">
+                            {p.nickname} - <span className="font-mono">{p.mmr} MMR</span>
+                        </li>
                     ))}
                 </ul>
                 <div className="flex justify-end space-x-2 mt-4">
@@ -78,20 +83,46 @@ function TeamDetails({ team, onStatusUpdate, onDelete, isUpdating }: { team: Tea
 
 export function TeamVerificationTab() {
     const { user } = useAuth();
-    const [teams, setTeams] = useState<Team[]>([]);
+    const [teams, setTeams] = useState<TeamWithCommunityScore[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isUpdating, startTransition] = useTransition();
     const { toast } = useToast();
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
 
     useEffect(() => {
-        async function fetchTeams() {
+        async function fetchTeamsAndScores() {
             setIsLoading(true);
-            const allTeams = await getAllTeams();
-            setTeams(allTeams);
+            const [allTeams, allPickems] = await Promise.all([getAllTeams(), getAllPickems()]);
+            
+            const communityScores: Record<string, number> = {};
+            allTeams.forEach(team => communityScores[team.id] = 0);
+
+            allPickems.forEach(pickem => {
+                if (pickem.scores) {
+                    Object.entries(pickem.scores).forEach(([teamId, score]) => {
+                        if (communityScores[teamId] !== undefined) {
+                            communityScores[teamId] += score;
+                        }
+                    });
+                }
+            });
+
+            const teamsWithScores = allTeams.map(team => ({
+                ...team,
+                communityScore: communityScores[team.id] || 0,
+            })).sort((a, b) => b.communityScore - a.communityScore);
+            
+            setTeams(teamsWithScores);
             setIsLoading(false);
         }
-        fetchTeams();
+        fetchTeamsAndScores();
     }, []);
+
+    const handlePlayerClick = (player: Player) => {
+        setSelectedPlayer(player);
+        setIsModalOpen(true);
+    };
 
     const handleStatusUpdate = (teamId: string, status: TeamStatus) => {
         startTransition(async () => {
@@ -174,39 +205,54 @@ export function TeamVerificationTab() {
     }
     
     return (
-        <Card>
-            <CardHeader>
-                <CardTitle>Team Verification</CardTitle>
-                <CardDescription>
-                    Review and verify team rosters and player eligibility.
-                </CardDescription>
-            </CardHeader>
-            <CardContent>
-                <Accordion type="single" collapsible className="w-full">
-                    {teams.map((team) => (
-                        <AccordionItem key={team.id} value={team.id}>
-                            <AccordionTrigger>
-                                <div className="flex items-center space-x-4 w-full mr-4">
-                                    <Image src={team.logoUrl || '/backgrounds/liga_fantasy.png'} alt={team.name} width={40} height={40} className="rounded-md" />
-                                    <div className="flex-grow text-left">
-                                        <p className="font-bold text-lg">{team.name} <span className="text-sm text-muted-foreground">({team.tag})</span></p>
-                                        <p className="text-sm">Total MMR: {team.players?.reduce((acc, p) => acc + p.mmr, 0) || 'N/A'}</p>
+        <>
+            <Card>
+                <CardHeader>
+                    <CardTitle>Team Verification</CardTitle>
+                    <CardDescription>
+                        Review and verify team rosters and player eligibility.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Accordion type="single" collapsible className="w-full">
+                        {teams.map((team) => (
+                            <AccordionItem key={team.id} value={team.id}>
+                                <AccordionTrigger>
+                                    <div className="flex items-center space-x-4 w-full mr-4">
+                                        <Image src={team.logoUrl || '/backgrounds/liga_fantasy.png'} alt={team.name} width={40} height={40} className="rounded-md" />
+                                        <div className="flex-grow text-left">
+                                            <p className="font-bold text-lg">{team.name} <span className="text-sm text-muted-foreground">({team.tag})</span></p>
+                                            <p className="text-sm">Total MMR: {team.players?.reduce((acc, p) => acc + p.mmr, 0) || 'N/A'}</p>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className="font-semibold">Community Score</p>
+                                            <p className="text-lg font-bold text-primary">{team.communityScore}</p>
+                                        </div>
+                                        <Badge variant={getStatusBadgeVariant(team.status)} className="ml-auto">
+                                            {team.status || 'Pending'}
+                                        </Badge>
                                     </div>
-                                    <Badge variant={getStatusBadgeVariant(team.status)} className="ml-auto">
-                                        {team.status || 'Pending'}
-                                    </Badge>
-                                </div>
-                            </AccordionTrigger>
-                            <TeamDetails
-                                team={team}
-                                onStatusUpdate={handleStatusUpdate}
-                                onDelete={handleDeleteTeam}
-                                isUpdating={isUpdating}
-                            />
-                        </AccordionItem>
-                    ))}
-                </Accordion>
-            </CardContent>
-        </Card>
+                                </AccordionTrigger>
+                                <TeamDetails
+                                    team={team}
+                                    onStatusUpdate={handleStatusUpdate}
+                                    onDelete={handleDeleteTeam}
+                                    isUpdating={isUpdating}
+                                    onPlayerClick={handlePlayerClick}
+                                />
+                            </AccordionItem>
+                        ))}
+                    </Accordion>
+                </CardContent>
+            </Card>
+            {selectedPlayer && (
+                <ImageModal
+                    isOpen={isModalOpen}
+                    onClose={() => setIsModalOpen(false)}
+                    imageUrl={selectedPlayer.profileScreenshotUrl}
+                    title={`MMR Proof for ${selectedPlayer.nickname}`}
+                />
+            )}
+        </>
     );
 }

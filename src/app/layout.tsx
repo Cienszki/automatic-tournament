@@ -7,6 +7,7 @@ import { Footer } from '@/components/layout/Footer';
 import { Toaster } from "@/components/ui/toaster";
 import { AuthProvider } from '@/context/AuthContext';
 import { TimeProvider } from '@/context/TimeContext';
+import { neonBines } from '@/app/fonts';
 
 const raleway = Raleway({
   variable: '--font-raleway',
@@ -32,7 +33,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${raleway.variable} ${spaceMono.variable} antialiased font-sans`} suppressHydrationWarning={true}>
+      <body className={`${raleway.variable} ${spaceMono.variable} ${neonBines.variable} antialiased font-sans`} suppressHydrationWarning={true}>
         <AuthProvider>
           <TimeProvider>
             <div className="flex flex-col min-h-screen bg-background text-foreground">

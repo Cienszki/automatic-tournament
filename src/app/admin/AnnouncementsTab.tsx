@@ -14,32 +14,6 @@ import { Announcement } from '@/lib/definitions';
 import { formatDistanceToNow } from 'date-fns';
 import { useAuth } from '@/context/AuthContext';
 
-async function callAuthenticatedAction<T>(user: any, action: () => Promise<T>): Promise<T> {
-    const token = await user.getIdToken();
-    // This is a simplified way; in a real app, you'd likely use a fetch wrapper
-    // that automatically adds the header. For this direct action call, we'll
-    // rely on a custom fetch implementation if needed, or a library like Axios.
-    // For now, let's assume a global fetch override or context handles the header.
-    // The key is that the token *must* be sent in the 'Authorization' header.
-    // As Next.js Server Actions don't have a direct way to pass headers,
-    // we would typically use a dedicated API route or a library that supports this.
-    
-    // A more direct approach with fetch would look like this:
-    // const response = await fetch('/api/create-announcement', {
-    //   method: 'POST',
-    //   headers: {
-    //     'Content-Type': 'application/json',
-    //     'Authorization': `Bearer ${token}`
-    //   },
-    //   body: JSON.stringify({ title, content })
-    // });
-    // return response.json();
-    
-    // For simplicity, we'll call the action and assume the auth context
-    // or a global fetch wrapper adds the header.
-    return action();
-}
-
 export function AnnouncementsTab() {
     const { user } = useAuth();
     const [title, setTitle] = useState('');
@@ -84,7 +58,8 @@ export function AnnouncementsTab() {
         }
 
         startTransition(async () => {
-            const result = await createAnnouncement(title, announcement);
+            const token = await user.getIdToken();
+            const result = await createAnnouncement(token, title, announcement);
             if (result.success) {
                 setTitle('');
                 setAnnouncement('');
@@ -115,7 +90,8 @@ export function AnnouncementsTab() {
         }
 
         startTransition(async () => {
-            const result = await deleteAnnouncement(id);
+            const token = await user.getIdToken();
+            const result = await deleteAnnouncement(token, id);
             if (result.success) {
                 await fetchAnnouncements(); // Re-fetch announcements
                 toast({

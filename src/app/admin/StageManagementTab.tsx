@@ -40,8 +40,23 @@ export function StageManagementTab() {
   const [isDeleting, setIsDeleting] = React.useState<string | boolean>(false);
   const [isDeletingAll, setIsDeletingAll] = React.useState(false);
   const [generatingGroupId, setGeneratingGroupId] = React.useState<string | null>(null);
-  const [deadline, setDeadline] = React.useState<Date | undefined>();
+  
+  const [deadlineDate, setDeadlineDate] = React.useState<Date | undefined>();
+  const [deadlineHour, setDeadlineHour] = React.useState<string>("23");
+  const [deadlineMinute, setDeadlineMinute] = React.useState<string>("59");
+
   const [isCalendarOpen, setIsCalendarOpen] = React.useState(false);
+
+  const combinedDeadline = React.useMemo(() => {
+    if (!deadlineDate) return undefined;
+    const newDate = new Date(deadlineDate);
+    const h = parseInt(deadlineHour, 10);
+    const m = parseInt(deadlineMinute, 10);
+    if (!isNaN(h) && !isNaN(m)) {
+      newDate.setHours(h, m, 0, 0);
+    }
+    return newDate;
+  }, [deadlineDate, deadlineHour, deadlineMinute]);
 
   const fetchData = React.useCallback(async () => {
     setIsLoading(true);
@@ -98,7 +113,7 @@ export function StageManagementTab() {
     if (!user) return toast({ title: "Authentication Error", description: "Please sign in.", variant: "destructive" });
     setGeneratingGroupId(groupId);
     const token = await user.getIdToken();
-    const result = await generateMatchesForGroup(token, groupId, deadline || null);
+    const result = await generateMatchesForGroup(token, groupId, combinedDeadline || null);
     toast({
         title: result.success ? "Success!" : "Generation Failed",
         description: result.message,
@@ -185,25 +200,29 @@ export function StageManagementTab() {
                 Set a universal deadline for all group stage matches (optional), then generate schedules for each group individually.
                 This action is idempotent - it will only generate matches that don't already exist.
             </p>
-            <div className="max-w-xs mb-6">
+            <div className="max-w-md mb-6">
                 <Label>Scheduling Deadline (Optional)</Label>
-                <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
-                    <PopoverTrigger asChild>
-                    <Button
-                        variant={"outline"}
-                        className={cn("w-full justify-start text-left font-normal", !deadline && "text-muted-foreground")}
-                    >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {deadline ? format(deadline, "PPP") : <span>Pick a date</span>}
-                    </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0">
-                        <Calendar mode="single" selected={deadline} onSelect={setDeadline} initialFocus/>
-                        <div className="p-2 border-t border-border">
-                           <Button variant="outline" size="sm" onClick={() => setIsCalendarOpen(false)} className="w-full">Done</Button>
-                        </div>
-                    </PopoverContent>
-                </Popover>
+                <div className="flex gap-2">
+                    <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
+                        <PopoverTrigger asChild>
+                        <Button
+                            variant={"outline"}
+                            className={cn("flex-grow justify-start text-left font-normal", !combinedDeadline && "text-muted-foreground")}
+                        >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {combinedDeadline ? format(combinedDeadline, "PPP 'at' HH:mm") : <span>Pick a date & time</span>}
+                        </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0">
+                            <Calendar mode="single" selected={deadlineDate} onSelect={setDeadlineDate} initialFocus/>
+                            <div className="p-2 border-t border-border">
+                               <Button variant="outline" size="sm" onClick={() => setIsCalendarOpen(false)} className="w-full">Done</Button>
+                            </div>
+                        </PopoverContent>
+                    </Popover>
+                    <Input type="number" value={deadlineHour} onChange={e => setDeadlineHour(e.target.value)} min="0" max="23" className="w-16" />
+                    <Input type="number" value={deadlineMinute} onChange={e => setDeadlineMinute(e.target.value)} min="0" max="59" step="1" className="w-16" />
+                </div>
             </div>
 
             <div className="space-y-2">

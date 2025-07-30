@@ -2,67 +2,83 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Helper function to check for admin privileges from a custom claim.
+    // Helper function to check for admin privileges.
     function isAdmin() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.roles.admin == true || request.auth.token.isAdmin == true;
-    }
-    
-    function isUser() {
-      return request.auth.uid != null || request.auth.token.isUser == true;
+      return exists(/databases/$(database)/documents/admins/$(request.auth.uid));
     }
 
-    // Global:
+    // Helper function to check if the user is a captain of a specific team.
+    function isCaptain(teamId) {
+      return request.auth.uid == get(/databases/$(database)/documents/teams/$(teamId)).data.captainId;
+    }
+
+    // Helper to check if the user is a captain of a team in a match.
+    function isCaptainOfMatch(matchId) {
+      let teamA_Id = get(/databases/$(database)/documents/matches/$(matchId)).data.teamA.id;
+      let teamB_Id = get(/databases/$(database)/documents/matches/$(matchId)).data.teamB.id;
+      return isCaptain(teamA_Id) || isCaptain(teamB_Id);
+    }
+
+    // Global deny-all rule.
     match /{document=**} {
       allow read, write: if false;
     }
 
-    // Overrides:
+    // --- PUBLIC READABLE COLLECTIONS ---
+    match /announcements/{docId} { allow read: if true; }
+    match /teams/{docId} { allow read: if true; }
+    match /matches/{docId} { allow read: if true; }
+    match /groups/{docId} { allow read: if true; }
+    match /stages/{docId} { allow read: if true; }
+    match /configs/{docId} { allow read: if true; }
+    match /tournament/{docId} { allow read: if true; }
+    match /fantasyLineups/{userId} { allow read: if true; }
+    match /players/{playerId} { allow read: if true; }
+
+    // --- USER-SPECIFIC WRITE RULES ---
     match /users/{userId} {
       allow read, write: if request.auth.uid == userId || isAdmin();
     }
-
-    match /announcements/{announcementId} {
-      allow read: if isUser();
-      allow create, update, delete: if isAdmin();
+    
+    match /pickems/{userId} { // CORRECTED SPELLING
+      allow read: if true;
+      allow write: if request.auth.uid == userId || isAdmin();
     }
 
+    match /fantasyLineups/{userId} {
+      allow write: if request.auth.uid == userId || isAdmin();
+      match /rounds/{roundId} {
+        allow read, write: if request.auth.uid == userId || isAdmin();
+      }
+    }
+
+    // --- ADMIN-ONLY WRITE RULES ---
+    match /announcements/{docId} { allow write: if isAdmin(); }
+    match /groups/{docId} { allow write: if isAdmin(); }
+    match /stages/{docId} { allow write: if isAdmin(); }
+    match /configs/{docId} { allow write: if isAdmin(); }
+    match /tournament/{docId} { allow write: if isAdmin(); }
+    match /firebase-frameworks-hosting-controlled-rollouts/{rolloutId} { allow write: if isAdmin(); }
+
+
+    // --- COMPLEX RULES ---
     match /teams/{teamId} {
-        allow read: if isUser();
-        allow create: if isUser();
-        allow update: if get(/databases/$(database)/documents/teams/$(teamId)).data.captainId == request.auth.uid || isAdmin();
-        allow delete: if isAdmin();
+      allow create: if request.auth.uid != null;
+      allow update: if (isCaptain(teamId) && 
+                      request.resource.data.diff(resource.data).affectedKeys()
+                      .hasOnly(['motto', 'logoUrl', 'discordUsername'])) || isAdmin();
+      allow delete: if isAdmin();
+
+      match /players/{playerId} {
+        allow read: if true;
+        allow create: if isCaptain(teamId);
+        allow update, delete: if isAdmin();
+      }
     }
 
     match /matches/{matchId} {
-      allow read: if isUser();
-      allow create, update, delete: if isAdmin();
-    }
-    
-    match /groups/{groupId} {
-      allow read: if isUser();
-      allow create, update, delete: if isAdmin();
-    }
-
-    match /players/{playerId} {
-        allow read: if isUser();
-        allow create: if isUser();
-        // assuming only admins or the player themselves can update their data
-        allow update: if request.auth.uid == playerId || isAdmin();
-        allow delete: if isAdmin();
-    }
-
-    match /stages/{stageId} {
-      allow read: if isUser();
-      allow create, update, delete: if isAdmin();
-    }
-
-    match /configs/{configId} {
-      allow read: if isUser();
-      allow create, update, delete: if isAdmin();
-    }
-
-    match /firebase-frameworks-hosting-controlled-rollouts/{rolloutId} {
-      allow read, write: if isAdmin();
+      allow create, delete: if isAdmin();
+      allow update: if isCaptainOfMatch(matchId) || isAdmin();
     }
   }
 }

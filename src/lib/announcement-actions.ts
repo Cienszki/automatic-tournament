@@ -3,14 +3,11 @@
 
 import { getAdminDb, getAdminAuth } from './admin';
 import { FieldValue } from 'firebase-admin/firestore';
-import { headers } from 'next/headers';
 
-async function verifyAdmin() {
-    const authHeader = headers().get('Authorization');
-    if (!authHeader) {
+async function verifyAdmin(token: string) {
+    if (!token) {
       throw new Error('Not authenticated');
     }
-    const token = authHeader.split('Bearer ')[1];
     const decodedToken = await getAdminAuth().verifyIdToken(token);
     const adminDoc = await getAdminDb().collection('admins').doc(decodedToken.uid).get();
     if (!adminDoc.exists) {
@@ -19,9 +16,9 @@ async function verifyAdmin() {
     return decodedToken;
 }
 
-export async function createAnnouncement(title: string, content: string) {
+export async function createAnnouncement(token: string, title: string, content: string) {
     try {
-        const decodedToken = await verifyAdmin();
+        const decodedToken = await verifyAdmin(token);
         const announcementRef = getAdminDb().collection("announcements").doc();
         await announcementRef.set({
             id: announcementRef.id,
@@ -38,9 +35,9 @@ export async function createAnnouncement(title: string, content: string) {
     }
 }
 
-export async function deleteAnnouncement(announcementId: string) {
+export async function deleteAnnouncement(token: string, announcementId: string) {
     try {
-        await verifyAdmin();
+        await verifyAdmin(token);
         const announcementRef = getAdminDb().collection("announcements").doc(announcementId);
         await announcementRef.delete();
         return { success: true };

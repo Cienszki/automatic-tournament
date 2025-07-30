@@ -2,14 +2,12 @@
 import { GroupTable } from "@/components/app/GroupTable";
 import { Card, CardContent } from "@/components/ui/card";
 import { getAllGroups, getAllTeams } from "@/lib/firestore";
-import type { Group, Team } from "@/lib/definitions";
+import type { Group, Team, GroupStanding } from "@/lib/definitions";
 import { AlertTriangle, Users } from "lucide-react";
 import { unstable_noStore as noStore } from 'next/cache';
 
-
-// This function fetches all necessary data in parallel and then combines it.
 async function getHydratedGroupsData(): Promise<Group[]> {
-  noStore(); // Ensure data is fetched dynamically
+  noStore();
   
   const [groups, teams] = await Promise.all([
     getAllGroups(),
@@ -19,7 +17,7 @@ async function getHydratedGroupsData(): Promise<Group[]> {
   const teamsMap = new Map(teams.map(team => [team.id, team]));
 
   const hydratedGroups = groups.map(group => {
-    const hydratedStandings: { [teamId: string]: any } = {};
+    const hydratedStandings: { [teamId: string]: GroupStanding } = {};
     
     for (const teamId in group.standings) {
       const team = teamsMap.get(teamId);
@@ -29,19 +27,21 @@ async function getHydratedGroupsData(): Promise<Group[]> {
           ...standing,
           teamName: team.name,
           teamLogoUrl: team.logoUrl || '',
+          totalMMR: team.players.reduce((sum, p) => sum + p.mmr, 0)
         };
       }
     }
     
-    // Calculate Neustadtl scores after all standings are hydrated with points
     Object.values(hydratedStandings).forEach(standing => {
       let neustadtl = 0;
-      const defeatedOpponents = standing.headToHead ? Object.keys(standing.headToHead) : [];
-      defeatedOpponents.forEach(opponentId => {
-        const gamesWon = standing.headToHead[opponentId];
-        const opponentPoints = hydratedStandings[opponentId]?.points || 0;
-        neustadtl += gamesWon * opponentPoints;
-      });
+      if (standing.headToHead) {
+        Object.entries(standing.headToHead).forEach(([opponentId, result]) => {
+           if (result === 'win') {
+             const opponentPoints = hydratedStandings[opponentId]?.points || 0;
+             neustadtl += opponentPoints;
+           }
+        });
+      }
       standing.neustadtlScore = neustadtl;
     });
 
@@ -56,6 +56,7 @@ async function getHydratedGroupsData(): Promise<Group[]> {
 
 export default async function GroupStagePage() {
   const groups = await getHydratedGroupsData();
+  const sortedGroups = [...groups].sort((a, b) => a.name.localeCompare(b.name));
 
   return (
     <div className="space-y-8">
@@ -75,7 +76,7 @@ export default async function GroupStagePage() {
         </div>
       </Card>
 
-      {groups.length === 0 ? (
+      {sortedGroups.length === 0 ? (
         <Card className="shadow-md">
           <CardContent className="p-6 flex flex-col items-center justify-center text-center">
             <AlertTriangle className="w-16 h-16 text-yellow-500 mb-4" />
@@ -87,7 +88,7 @@ export default async function GroupStagePage() {
         </Card>
       ) : (
         <div className="grid md:grid-cols-1 lg:grid-cols-2 gap-8">
-          {groups.map((group) => (
+          {sortedGroups.map((group) => (
             <GroupTable key={group.id} group={group} />
           ))}
         </div>

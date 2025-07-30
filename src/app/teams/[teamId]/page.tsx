@@ -6,7 +6,7 @@ import {
 } from "lucide-react";
 import type { Icon as LucideIconType } from "lucide-react";
 import { notFound } from "next/navigation";
-import { cn } from "@/lib/utils";
+import { cn, sortPlayersByRole } from "@/lib/utils";
 import { Progress } from "@/components/ui/progress";
 import { heroIconMap } from "@/lib/hero-data";
 import { getTeamById, getAllMatches, getAllTeams } from "@/lib/firestore";
@@ -102,8 +102,9 @@ export default async function TeamPage({ params }: PageProps) {
   if (!team) {
     notFound();
   }
-
-  const totalMMR = team.players.reduce((sum, player) => sum + player.mmr, 0);
+  
+  const sortedPlayers = sortPlayersByRole(team.players || []);
+  const totalMMR = sortedPlayers.reduce((sum, player) => sum + player.mmr, 0);
   const sortedHeroes = team.mostPlayedHeroes ? [...team.mostPlayedHeroes].sort((a, b) => b.gamesPlayed - a.gamesPlayed).slice(0, 3) : [];
 
   const avgMatchDurationMinutes = team.averageMatchDurationMinutes || 0;
@@ -213,7 +214,7 @@ export default async function TeamPage({ params }: PageProps) {
                 <Users className="h-6 w-6 mr-2 text-primary" /> Player Roster
             </h3>
             <div className="space-y-3">
-              {team.players.map((player) => (
+              {sortedPlayers.map((player) => (
                 <PlayerCard key={player.id} player={player} teamId={team.id} />
               ))}
             </div>

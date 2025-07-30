@@ -6,7 +6,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Save, Edit, CheckCircle2, Hourglass, RotateCcw, Loader2 } from "lucide-react";
+import { Save, Edit, CheckCircle2, Hourglass, RotateCcw, Loader2, FileJson } from "lucide-react";
 import { getAllMatches, updateMatchScores } from "@/lib/firestore";
 import { revertMatchToPending } from "@/lib/admin-actions";
 import type { Match } from "@/lib/definitions";
@@ -25,6 +25,9 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
+// Import the new modal component (we'll create this next)
+import { MatchImportModal } from '@/components/admin/MatchImportModal';
+
 type MatchScoreState = {
   [matchId: string]: {
     teamAScore: string;
@@ -39,7 +42,8 @@ export function StandingsTab() {
   const [scores, setScores] = React.useState<MatchScoreState>({});
   const [editingMatchId, setEditingMatchId] = React.useState<string | null>(null);
   const [revertingMatchId, setRevertingMatchId] = React.useState<string | null>(null);
-
+  const [isImportModalOpen, setIsImportModalOpen] = React.useState(false);
+  const [matchToImport, setMatchToImport] = React.useState<Match | null>(null);
 
   React.useEffect(() => {
     async function fetchMatches() {
@@ -77,7 +81,7 @@ export function StandingsTab() {
       setMatches(prevMatches => 
         prevMatches.map(m => 
           m.id === matchId 
-            ? { ...m, status: 'scheduled', schedulingStatus: 'unscheduled', teamA: {...m.teamA, score: 0}, teamB: {...m.teamB, score: 0} } 
+            ? { ...m, status: 'scheduled', schedulingStatus: 'unscheduled', teamA: {...m.teamA, score: 0}, teamB: {...m.teamB, score: 0}, game_ids: [] } 
             : m
         )
       );
@@ -134,6 +138,11 @@ export function StandingsTab() {
             teamBScore: match.teamB?.score?.toString() || ''
         }
     }));
+  };
+
+  const handleOpenImportModal = (match: Match) => {
+    setMatchToImport(match);
+    setIsImportModalOpen(true);
   };
 
   const renderMatchRow = (match: Match) => {
@@ -205,6 +214,12 @@ export function StandingsTab() {
                     </>
                 ) : (
                     <>
+                         {match.status !== 'completed' && match.teamA && match.teamB && (
+                            <Button size="sm" variant="outline" onClick={() => handleOpenImportModal(match)} disabled={isReverting}>
+                                <FileJson className="h-4 w-4 mr-2" />
+                                Import Game Data
+                            </Button>
+                         )}
                         <Button size="sm" variant="outline" onClick={() => startEditing(match)} disabled={!match.teamA || !match.teamB || isReverting}>
                             <Edit className="h-4 w-4 mr-2" />
                             {match.status === 'completed' ? 'Edit Score' : 'Enter Score'}
@@ -244,6 +259,17 @@ export function StandingsTab() {
 
   return (
     <div className="space-y-8">
+      <MatchImportModal 
+          isOpen={isImportModalOpen}
+          onClose={() => setIsImportModalOpen(false)}
+          match={matchToImport}
+          onImportSuccess={() => {
+            setIsImportModalOpen(false);
+            setMatchToImport(null);
+            // Optionally re-fetch matches here to update the UI
+            // fetchMatches(); // You might need to pass fetchMatches down or use a context
+          }}
+      />
       <Card>
         <CardHeader>
           <CardTitle>Pending Matches</CardTitle>

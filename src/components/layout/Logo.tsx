@@ -1,12 +1,17 @@
 
 import Link from 'next/link';
-import { Trophy } from 'lucide-react';
+import Image from 'next/image';
 
 export function Logo() {
   return (
-    <Link href="/" className="flex items-center space-x-2 text-primary hover:opacity-80 transition-opacity">
-      <Trophy className="h-8 w-8" />
-      <span className="text-2xl font-bold">Tournament Tracker</span>
+    <Link href="/">
+      <Image
+        src="/logo_transparent.webp"
+        alt="Letnia Batalia Logo"
+        width={150} // Adjust width as needed
+        height={150} // Adjust height as needed
+        className="cursor-pointer"
+      />
     </Link>
   );
 }
