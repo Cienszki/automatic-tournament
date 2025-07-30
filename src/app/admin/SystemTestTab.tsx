@@ -55,10 +55,16 @@ export function SystemTestTab() {
         // Potentially refresh other data as well
     };
 
+    // New: Call API route for sync (for SSR safety)
     const handleSync = async () => {
         setIsSyncing(true);
-        const result = await syncLeagueMatches();
-        toast({ title: result.success ? "Success!" : "Sync Failed", description: result.message, variant: result.success ? "default" : "destructive" });
+        try {
+            const res = await fetch('/api/admin-sync-matches', { method: 'POST' });
+            const result = await res.json();
+            toast({ title: result.success ? "Success!" : "Sync Failed", description: result.message, variant: result.success ? "default" : "destructive" });
+        } catch (err) {
+            toast({ title: "Sync Failed", description: 'Network or server error.', variant: "destructive" });
+        }
         setIsSyncing(false);
         fetchMatches();
     };

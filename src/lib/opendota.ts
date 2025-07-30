@@ -31,11 +31,21 @@ export function transformMatchData(
   players: Player[]
 ): { game: Game; performances: PlayerPerformanceInGame[] } {
   
-  const radiantTeam = teams.find(t => t.openDotaTeamId === openDotaMatch.radiant_team?.team_id);
-  const direTeam = teams.find(t => t.openDotaTeamId === openDotaMatch.dire_team?.team_id);
+  // Try to match by openDotaTeamId first, then by name (case-insensitive, trimmed)
+  function findTeam(openDotaTeamId: number | undefined, name: string | undefined) {
+    let team = teams.find(t => t.openDotaTeamId === openDotaTeamId);
+    if (!team && name) {
+      const normName = name.trim().toLowerCase();
+      team = teams.find(t => t.name.trim().toLowerCase() === normName);
+    }
+    return team;
+  }
+
+  const radiantTeam = findTeam(openDotaMatch.radiant_team?.team_id, openDotaMatch.radiant_name);
+  const direTeam = findTeam(openDotaMatch.dire_team?.team_id, openDotaMatch.dire_name);
 
   if (!radiantTeam || !direTeam) {
-    throw new Error(`Could not find one or both teams in the database. Radiant ID: ${openDotaMatch.radiant_team?.team_id}, Dire ID: ${openDotaMatch.dire_team?.team_id}`);
+    throw new Error(`Could not find one or both teams in the database. Radiant: ${openDotaMatch.radiant_team?.team_id} / ${openDotaMatch.radiant_name}, Dire: ${openDotaMatch.dire_team?.team_id} / ${openDotaMatch.dire_name}`);
   }
 
   const game: Game = {
@@ -48,7 +58,8 @@ export function transformMatchData(
   };
 
   const performances: PlayerPerformanceInGame[] = openDotaMatch.players.map(p => {
-    const player = players.find(pl => pl.openDotaAccountId === p.account_id);
+    // Match player by steamId32 (string) to OpenDota account_id (number)
+    const player = players.find(pl => pl.steamId32 === String(p.account_id));
     const isRadiant = p.player_slot < 128;
 
     // Calculate highest kill streak
