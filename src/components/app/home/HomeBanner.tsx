@@ -4,11 +4,17 @@ import Image from "next/image";
 
 export function HomeBanner() {
     return (
-        <Card className="shadow-xl relative overflow-hidden min-h-[55vh]">
-            <div className="absolute inset-0 z-0 bg-cover bg-center" style={{ backgroundImage: `url(/main_logo.png)` }} />
-            <div className="relative z-10 flex items-center justify-center h-full min-h-[55vh] p-6">
-                {/* The image is now the background */}
-            </div>
-        </Card>
+        <>
+            {/* Desktop: show image banner with fixed height */}
+            <Card className="hidden md:flex shadow-xl text-center relative overflow-hidden h-[320px] fhd:h-[320px] 2k:h-[500px] flex-col justify-center p-6">
+                <div className="absolute inset-0 z-0 bg-cover bg-center" style={{ backgroundImage: `url(/backgrounds/main_logo.png)` }} />
+            </Card>
+            {/* Mobile: show text banner with neon font */}
+            <Card className="flex md:hidden shadow-xl text-center relative overflow-hidden h-[120px] flex-col justify-center items-center p-4 bg-black">
+                <span className="text-3xl font-extrabold text-[#39ff14] drop-shadow-[0_0_8px_#39ff14] font-neon-bines">
+                    Automatic Tournament
+                </span>
+            </Card>
+        </>
     );
 }

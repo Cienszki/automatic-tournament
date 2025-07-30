@@ -1,0 +1,1377 @@
+[
+  {
+    "id": 8018323078,
+    "startDateTime": 1730668041,
+    "durationSeconds": 2964,
+    "radiantTeam": {
+      "id": 9546725,
+      "name": "Budzik Team"
+    },
+    "direTeam": {
+      "id": 9554545,
+      "name": "kebab u dassem`a"
+    },
+    "players": [
+      {
+        "steamAccountId": 86908614,
+        "heroId": 7
+      },
+      {
+        "steamAccountId": 86741058,
+        "heroId": 42
+      },
+      {
+        "steamAccountId": 382910795,
+        "heroId": 15
+      },
+      {
+        "steamAccountId": 26222389,
+        "heroId": 64
+      },
+      {
+        "steamAccountId": 182926097,
+        "heroId": 91
+      },
+      {
+        "steamAccountId": 75119933,
+        "heroId": 16
+      },
+      {
+        "steamAccountId": 96715068,
+        "heroId": 39
+      },
+      {
+        "steamAccountId": 1096582873,
+        "heroId": 31
+      },
+      {
+        "steamAccountId": 41872979,
+        "heroId": 71
+      },
+      {
+        "steamAccountId": 916149667,
+        "heroId": 80
+      }
+    ]
+  },
+  {
+    "id": 8018245400,
+    "startDateTime": 1730664496,
+    "durationSeconds": 2452,
+    "radiantTeam": {
+      "id": 9546725,
+      "name": "Budzik Team"
+    },
+    "direTeam": {
+      "id": 9554545,
+      "name": "kebab u dassem`a"
+    },
+    "players": [
+      {
+        "steamAccountId": 86741058,
+        "heroId": 9
+      },
+      {
+        "steamAccountId": 86908614,
+        "heroId": 11
+      },
+      {
+        "steamAccountId": 382910795,
+        "heroId": 20
+      },
+      {
+        "steamAccountId": 26222389,
+        "heroId": 79
+      },
+      {
+        "steamAccountId": 182926097,
+        "heroId": 135
+      },
+      {
+        "steamAccountId": 41872979,
+        "heroId": 7
+      },
+      {
+        "steamAccountId": 916149667,
+        "heroId": 70
+      },
+      {
+        "steamAccountId": 96715068,
+        "heroId": 46
+      },
+      {
+        "steamAccountId": 1096582873,
+        "heroId": 31
+      },
+      {
+        "steamAccountId": 75119933,
+        "heroId": 15
+      }
+    ]
+  },
+  {
+    "id": 8017993590,
+    "startDateTime": 1730654739,
+    "durationSeconds": 3027,
+    "radiantTeam": {
+      "id": 9554545,
+      "name": "kebab u dassem`a"
+    },
+    "direTeam": {
+      "id": 9546725,
+      "name": "Budzik Team"
+    },
+    "players": [
+      {
+        "steamAccountId": 75119933,
+        "heroId": 135
+      },
+      {
+        "steamAccountId": 96715068,
+        "heroId": 114
+      },
+      {
+        "steamAccountId": 1096582873,
+        "heroId": 20
+      },
+      {
+        "steamAccountId": 41872979,
+        "heroId": 110
+      },
+      {
+        "steamAccountId": 916149667,
+        "heroId": 48
+      },
+      {
+        "steamAccountId": 86908614,
+        "heroId": 15
+      },
+      {
+        "steamAccountId": 26222389,
+        "heroId": 30
+      },
+      {
+        "steamAccountId": 382910795,
+        "heroId": 55
+      },
+      {
+        "steamAccountId": 86741058,
+        "heroId": 44
+      },
+      {
+        "steamAccountId": 182926097,
+        "heroId": 7
+      }
+    ]
+  },
+  {
+    "id": 8017846814,
+    "startDateTime": 1730649620,
+    "durationSeconds": 3745,
+    "radiantTeam": {
+      "id": 9546725,
+      "name": "Budzik Team"
+    },
+    "direTeam": {
+      "id": 9554545,
+      "name": "kebab u dassem`a"
+    },
+    "players": [
+      {
+        "steamAccountId": 86908614,
+        "heroId": 107
+      },
+      {
+        "steamAccountId": 86741058,
+        "heroId": 6
+      },
+      {
+        "steamAccountId": 382910795,
+        "heroId": 96
+      },
+      {
+        "steamAccountId": 26222389,
+        "heroId": 85
+      },
+      {
+        "steamAccountId": 182926097,
+        "heroId": 86
+      },
+      {
+        "steamAccountId": 75119933,
+        "heroId": 15
+      },
+      {
+        "steamAccountId": 41872979,
+        "heroId": 7
+      },
+      {
+        "steamAccountId": 96715068,
+        "heroId": 74
+      },
+      {
+        "steamAccountId": 916149667,
+        "heroId": 73
+      },
+      {
+        "steamAccountId": 1096582873,
+        "heroId": 31
+      }
+    ]
+  },
+  {
+    "id": 8011946478,
+    "startDateTime": 1730326700,
+    "durationSeconds": 2067,
+    "radiantTeam": {
+      "id": 9545831,
+      "name": "Herbatka u Bratka"
+    },
+    "direTeam": {
+      "id": 9546725,
+      "name": "Budzik Team"
+    },
+    "players": [
+      {
+        "steamAccountId": 35747920,
+        "heroId": 94
+      },
+      {
+        "steamAccountId": 86809678,
+        "heroId": 13
+      },
+      {
+        "steamAccountId": 101117643,
+        "heroId": 96
+      },
+      {
+        "steamAccountId": 99895855,
+        "heroId": 27
+      },
+      {
+        "steamAccountId": 892751881,
+        "heroId": 51
+      },
+      {
+        "steamAccountId": 86908614,
+        "heroId": 49
+      },
+      {
+        "steamAccountId": 86741058,
+        "heroId": 54
+      },
+      {
+        "steamAccountId": 382910795,
+        "heroId": 20
+      },
+      {
+        "steamAccountId": 26222389,
+        "heroId": 30
+      },
+      {
+        "steamAccountId": 182926097,
+        "heroId": 7
+      }
+    ]
+  },
+  {
+    "id": 8011891497,
+    "startDateTime": 1730322741,
+    "durationSeconds": 2499,
+    "radiantTeam": {
+      "id": 9545831,
+      "name": "Herbatka u Bratka"
+    },
+    "direTeam": {
+      "id": 9546725,
+      "name": "Budzik Team"
+    },
+    "players": [
+      {
+        "steamAccountId": 35747920,
+        "heroId": 54
+      },
+      {
+        "steamAccountId": 99895855,
+        "heroId": 31
+      },
+      {
+        "steamAccountId": 892751881,
+        "heroId": 51
+      },
+      {
+        "steamAccountId": 101117643,
+        "heroId": 47
+      },
+      {
+        "steamAccountId": 86809678,
+        "heroId": 13
+      },
+      {
+        "steamAccountId": 26222389,
+        "heroId": 50
+      },
+      {
+        "steamAccountId": 86908614,
+        "heroId": 74
+      },
+      {
+        "steamAccountId": 382910795,
+        "heroId": 97
+      },
+      {
+        "steamAccountId": 86741058,
+        "heroId": 8
+      },
+      {
+        "steamAccountId": 182926097,
+        "heroId": 128
+      }
+    ]
+  },
+  {
+    "id": 8011830170,
+    "startDateTime": 1730319405,
+    "durationSeconds": 1962,
+    "radiantTeam": {
+      "id": 9545831,
+      "name": "Herbatka u Bratka"
+    },
+    "direTeam": {
+      "id": 9546725,
+      "name": "Budzik Team"
+    },
+    "players": [
+      {
+        "steamAccountId": 35747920,
+        "heroId": 25
+      },
+      {
+        "steamAccountId": 86809678,
+        "heroId": 51
+      },
+      {
+        "steamAccountId": 99895855,
+        "heroId": 79
+      },
+      {
+        "steamAccountId": 101117643,
+        "heroId": 136
+      },
+      {
+        "steamAccountId": 892751881,
+        "heroId": 128
+      },
+      {
+        "steamAccountId": 86741058,
+        "heroId": 6
+      },
+      {
+        "steamAccountId": 86908614,
+        "heroId": 126
+      },
+      {
+        "steamAccountId": 382910795,
+        "heroId": 96
+      },
+      {
+        "steamAccountId": 26222389,
+        "heroId": 85
+      },
+      {
+        "steamAccountId": 182926097,
+        "heroId": 86
+      }
+    ]
+  },
+  {
+    "id": 8010527962,
+    "startDateTime": 1730240263,
+    "durationSeconds": 3536,
+    "radiantTeam": {
+      "id": 9546725,
+      "name": "Budzik Team"
+    },
+    "direTeam": {
+      "id": 9555249,
+      "name": "Uchodźcy"
+    },
+    "players": [
+      {
+        "steamAccountId": 382910795,
+        "heroId": 23
+      },
+      {
+        "steamAccountId": 86908614,
+        "heroId": 107
+      },
+      {
+        "steamAccountId": 86741058,
+        "heroId": 54
+      },
+      {
+        "steamAccountId": 26222389,
+        "heroId": 30
+      },
+      {
+        "steamAccountId": 182926097,
+        "heroId": 110
+      },
+      {
+        "steamAccountId": 232596365,
+        "heroId": 51
+      },
+      {
+        "steamAccountId": 114011482,
+        "heroId": 114
+      },
+      {
+        "steamAccountId": 1174821304,
+        "heroId": 49
+      },
+      {
+        "steamAccountId": 1077016870,
+        "heroId": 78
+      },
+      {
+        "steamAccountId": 162998269,
+        "heroId": 128
+      }
+    ]
+  },
+  {
+    "id": 8010460529,
+    "startDateTime": 1730235855,
+    "durationSeconds": 3010,
+    "radiantTeam": {
+      "id": 9555249,
+      "name": "Uchodźcy"
+    },
+    "direTeam": {
+      "id": 9546725,
+      "name": "Budzik Team"
+    },
+    "players": [
+      {
+        "steamAccountId": 232596365,
+        "heroId": 84
+      },
+      {
+        "steamAccountId": 162998269,
+        "heroId": 85
+      },
+      {
+        "steamAccountId": 1077016870,
+        "heroId": 120
+      },
+      {
+        "steamAccountId": 114011482,
+        "heroId": 114
+      },
+      {
+        "steamAccountId": 1174821304,
+        "heroId": 15
+      },
+      {
+        "steamAccountId": 86908614,
+        "heroId": 107
+      },
+      {
+        "steamAccountId": 382910795,
+        "heroId": 20
+      },
+      {
+        "steamAccountId": 86741058,
+        "heroId": 6
+      },
+      {
+        "steamAccountId": 26222389,
+        "heroId": 30
+      },
+      {
+        "steamAccountId": 182926097,
+        "heroId": 7
+      }
+    ]
+  },
+  {
+    "id": 8010412264,
+    "startDateTime": 1730233251,
+    "durationSeconds": 1334,
+    "radiantTeam": {
+      "id": 9555249,
+      "name": "Uchodźcy"
+    },
+    "direTeam": {
+      "id": 9546725,
+      "name": "Budzik Team"
+    },
+    "players": [
+      {
+        "steamAccountId": 114011482,
+        "heroId": 114
+      },
+      {
+        "steamAccountId": 1174821304,
+        "heroId": 46
+      },
+      {
+        "steamAccountId": 1077016870,
+        "heroId": 92
+      },
+      {
+        "steamAccountId": 232596365,
+        "heroId": 84
+      },
+      {
+        "steamAccountId": 162998269,
+        "heroId": 85
+      },
+      {
+        "steamAccountId": 86908614,
+        "heroId": 65
+      },
+      {
+        "steamAccountId": 86741058,
+        "heroId": 70
+      },
+      {
+        "steamAccountId": 382910795,
+        "heroId": 23
+      },
+      {
+        "steamAccountId": 26222389,
+        "heroId": 88
+      },
+      {
+        "steamAccountId": 182926097,
+        "heroId": 91
+      }
+    ]
+  },
+  {
+    "id": 8009100456,
+    "startDateTime": 1730154147,
+    "durationSeconds": 2267,
+    "radiantTeam": {
+      "id": 9546725,
+      "name": "Budzik Team"
+    },
+    "direTeam": {
+      "id": 9555261,
+      "name": "Placki"
+    },
+    "players": [
+      {
+        "steamAccountId": 86741058,
+        "heroId": 8
+      },
+      {
+        "steamAccountId": 86908614,
+        "heroId": 74
+      },
+      {
+        "steamAccountId": 382910795,
+        "heroId": 23
+      },
+      {
+        "steamAccountId": 26222389,
+        "heroId": 71
+      },
+      {
+        "steamAccountId": 182926097,
+        "heroId": 45
+      },
+      {
+        "steamAccountId": 113415285,
+        "heroId": 126
+      },
+      {
+        "steamAccountId": 1126721277,
+        "heroId": 31
+      },
+      {
+        "steamAccountId": 131882609,
+        "heroId": 47
+      },
+      {
+        "steamAccountId": 145864010,
+        "heroId": 67
+      },
+      {
+        "steamAccountId": 74892320,
+        "heroId": 102
+      }
+    ]
+  },
+  {
+    "id": 8009059044,
+    "startDateTime": 1730151023,
+    "durationSeconds": 1575,
+    "radiantTeam": {
+      "id": 9555261,
+      "name": "Placki"
+    },
+    "direTeam": {
+      "id": 9546725,
+      "name": "Budzik Team"
+    },
+    "players": [
+      {
+        "steamAccountId": 113415285,
+        "heroId": 22
+      },
+      {
+        "steamAccountId": 1126721277,
+        "heroId": 31
+      },
+      {
+        "steamAccountId": 131882609,
+        "heroId": 2
+      },
+      {
+        "steamAccountId": 145864010,
+        "heroId": 49
+      },
+      {
+        "steamAccountId": 74892320,
+        "heroId": 20
+      },
+      {
+        "steamAccountId": 86741058,
+        "heroId": 42
+      },
+      {
+        "steamAccountId": 86908614,
+        "heroId": 17
+      },
+      {
+        "steamAccountId": 382910795,
+        "heroId": 55
+      },
+      {
+        "steamAccountId": 26222389,
+        "heroId": 88
+      },
+      {
+        "steamAccountId": 182926097,
+        "heroId": 91
+      }
+    ]
+  },
+  {
+    "id": 8009002760,
+    "startDateTime": 1730147660,
+    "durationSeconds": 1786,
+    "radiantTeam": {
+      "id": 9546725,
+      "name": "Budzik Team"
+    },
+    "direTeam": {
+      "id": 9555261,
+      "name": "Placki"
+    },
+    "players": [
+      {
+        "steamAccountId": 86908614,
+        "heroId": 65
+      },
+      {
+        "steamAccountId": 86741058,
+        "heroId": 56
+      },
+      {
+        "steamAccountId": 382910795,
+        "heroId": 135
+      },
+      {
+        "steamAccountId": 26222389,
+        "heroId": 50
+      },
+      {
+        "steamAccountId": 182926097,
+        "heroId": 100
+      },
+      {
+        "steamAccountId": 1126721277,
+        "heroId": 136
+      },
+      {
+        "steamAccountId": 113415285,
+        "heroId": 39
+      },
+      {
+        "steamAccountId": 131882609,
+        "heroId": 108
+      },
+      {
+        "steamAccountId": 145864010,
+        "heroId": 11
+      },
+      {
+        "steamAccountId": 74892320,
+        "heroId": 75
+      }
+    ]
+  },
+  {
+    "id": 8007665231,
+    "startDateTime": 1730068690,
+    "durationSeconds": 2312,
+    "radiantTeam": {
+      "id": 9555249,
+      "name": "Uchodźcy"
+    },
+    "direTeam": {
+      "id": 9546316,
+      "name": "QuitDrinking"
+    },
+    "players": [
+      {
+        "steamAccountId": 114011482,
+        "heroId": 17
+      },
+      {
+        "steamAccountId": 162998269,
+        "heroId": 86
+      },
+      {
+        "steamAccountId": 1077016870,
+        "heroId": 92
+      },
+      {
+        "steamAccountId": 1174821304,
+        "heroId": 15
+      },
+      {
+        "steamAccountId": 232596365,
+        "heroId": 84
+      },
+      {
+        "steamAccountId": 83843808,
+        "heroId": 31
+      },
+      {
+        "steamAccountId": 105600406,
+        "heroId": 81
+      },
+      {
+        "steamAccountId": 1083117272,
+        "heroId": 129
+      },
+      {
+        "steamAccountId": 136708636,
+        "heroId": 7
+      },
+      {
+        "steamAccountId": 101210339,
+        "heroId": 13
+      }
+    ]
+  },
+  {
+    "id": 8007626534,
+    "startDateTime": 1730065880,
+    "durationSeconds": 1768,
+    "radiantTeam": {
+      "id": 9554545,
+      "name": "kebab u dassem`a"
+    },
+    "direTeam": {
+      "id": 9545831,
+      "name": "Herbatka u Bratka"
+    },
+    "players": [
+      {
+        "steamAccountId": 41872979,
+        "heroId": 71
+      },
+      {
+        "steamAccountId": 916149667,
+        "heroId": 80
+      },
+      {
+        "steamAccountId": 1096582873,
+        "heroId": 31
+      },
+      {
+        "steamAccountId": 96715068,
+        "heroId": 114
+      },
+      {
+        "steamAccountId": 75119933,
+        "heroId": 69
+      },
+      {
+        "steamAccountId": 99895855,
+        "heroId": 50
+      },
+      {
+        "steamAccountId": 892751881,
+        "heroId": 119
+      },
+      {
+        "steamAccountId": 101117643,
+        "heroId": 135
+      },
+      {
+        "steamAccountId": 35747920,
+        "heroId": 46
+      },
+      {
+        "steamAccountId": 86809678,
+        "heroId": 62
+      }
+    ]
+  },
+  {
+    "id": 8007607425,
+    "startDateTime": 1730064602,
+    "durationSeconds": 2932,
+    "radiantTeam": {
+      "id": 9555249,
+      "name": "Uchodźcy"
+    },
+    "direTeam": {
+      "id": 9546316,
+      "name": "QuitDrinking"
+    },
+    "players": [
+      {
+        "steamAccountId": 114011482,
+        "heroId": 14
+      },
+      {
+        "steamAccountId": 232596365,
+        "heroId": 84
+      },
+      {
+        "steamAccountId": 1077016870,
+        "heroId": 137
+      },
+      {
+        "steamAccountId": 1174821304,
+        "heroId": 48
+      },
+      {
+        "steamAccountId": 162998269,
+        "heroId": 20
+      },
+      {
+        "steamAccountId": 83843808,
+        "heroId": 87
+      },
+      {
+        "steamAccountId": 105600406,
+        "heroId": 81
+      },
+      {
+        "steamAccountId": 1083117272,
+        "heroId": 92
+      },
+      {
+        "steamAccountId": 136708636,
+        "heroId": 107
+      },
+      {
+        "steamAccountId": 101210339,
+        "heroId": 98
+      }
+    ]
+  },
+  {
+    "id": 8007549112,
+    "startDateTime": 1730061370,
+    "durationSeconds": 1988,
+    "radiantTeam": {
+      "id": 9546316,
+      "name": "QuitDrinking"
+    },
+    "direTeam": {
+      "id": 9555249,
+      "name": "Uchodźcy"
+    },
+    "players": [
+      {
+        "steamAccountId": 83843808,
+        "heroId": 37
+      },
+      {
+        "steamAccountId": 105600406,
+        "heroId": 70
+      },
+      {
+        "steamAccountId": 1083117272,
+        "heroId": 78
+      },
+      {
+        "steamAccountId": 136708636,
+        "heroId": 72
+      },
+      {
+        "steamAccountId": 101210339,
+        "heroId": 76
+      },
+      {
+        "steamAccountId": 114011482,
+        "heroId": 17
+      },
+      {
+        "steamAccountId": 1174821304,
+        "heroId": 49
+      },
+      {
+        "steamAccountId": 1077016870,
+        "heroId": 38
+      },
+      {
+        "steamAccountId": 162998269,
+        "heroId": 119
+      },
+      {
+        "steamAccountId": 232596365,
+        "heroId": 84
+      }
+    ]
+  },
+  {
+    "id": 8007537623,
+    "startDateTime": 1730060785,
+    "durationSeconds": 2534,
+    "radiantTeam": {
+      "id": 9555261,
+      "name": "Placki"
+    },
+    "direTeam": {
+      "id": 9279351,
+      "name": "Chef Industries"
+    },
+    "players": [
+      {
+        "steamAccountId": 1126721277,
+        "heroId": 31
+      },
+      {
+        "steamAccountId": 113415285,
+        "heroId": 39
+      },
+      {
+        "steamAccountId": 131882609,
+        "heroId": 96
+      },
+      {
+        "steamAccountId": 145864010,
+        "heroId": 11
+      },
+      {
+        "steamAccountId": 74892320,
+        "heroId": 20
+      },
+      {
+        "steamAccountId": 179758327,
+        "heroId": 108
+      },
+      {
+        "steamAccountId": 36080514,
+        "heroId": 30
+      },
+      {
+        "steamAccountId": 238995203,
+        "heroId": 18
+      },
+      {
+        "steamAccountId": 32790070,
+        "heroId": 128
+      },
+      {
+        "steamAccountId": 102806766,
+        "heroId": 120
+      }
+    ]
+  },
+  {
+    "id": 8007519762,
+    "startDateTime": 1730059987,
+    "durationSeconds": 4517,
+    "radiantTeam": {
+      "id": 9545831,
+      "name": "Herbatka u Bratka"
+    },
+    "direTeam": {
+      "id": 9554545,
+      "name": "kebab u dassem`a"
+    },
+    "players": [
+      {
+        "steamAccountId": 99895855,
+        "heroId": 31
+      },
+      {
+        "steamAccountId": 101117643,
+        "heroId": 135
+      },
+      {
+        "steamAccountId": 892751881,
+        "heroId": 136
+      },
+      {
+        "steamAccountId": 35747920,
+        "heroId": 6
+      },
+      {
+        "steamAccountId": 86809678,
+        "heroId": 47
+      },
+      {
+        "steamAccountId": 41872979,
+        "heroId": 26
+      },
+      {
+        "steamAccountId": 96715068,
+        "heroId": 13
+      },
+      {
+        "steamAccountId": 1096582873,
+        "heroId": 119
+      },
+      {
+        "steamAccountId": 916149667,
+        "heroId": 35
+      },
+      {
+        "steamAccountId": 75119933,
+        "heroId": 23
+      }
+    ]
+  },
+  {
+    "id": 8007431588,
+    "startDateTime": 1730056265,
+    "durationSeconds": 2370,
+    "radiantTeam": {
+      "id": 9554545,
+      "name": "kebab u dassem`a"
+    },
+    "direTeam": {
+      "id": 9545831,
+      "name": "Herbatka u Bratka"
+    },
+    "players": [
+      {
+        "steamAccountId": 916149667,
+        "heroId": 73
+      },
+      {
+        "steamAccountId": 1096582873,
+        "heroId": 31
+      },
+      {
+        "steamAccountId": 96715068,
+        "heroId": 17
+      },
+      {
+        "steamAccountId": 75119933,
+        "heroId": 38
+      },
+      {
+        "steamAccountId": 41872979,
+        "heroId": 62
+      },
+      {
+        "steamAccountId": 35747920,
+        "heroId": 6
+      },
+      {
+        "steamAccountId": 101117643,
+        "heroId": 69
+      },
+      {
+        "steamAccountId": 892751881,
+        "heroId": 34
+      },
+      {
+        "steamAccountId": 99895855,
+        "heroId": 83
+      },
+      {
+        "steamAccountId": 86809678,
+        "heroId": 2
+      }
+    ]
+  },
+  {
+    "id": 8002592313,
+    "startDateTime": 1729801233,
+    "durationSeconds": 2874,
+    "radiantTeam": {
+      "id": 9546316,
+      "name": "QuitDrinking"
+    },
+    "direTeam": {
+      "id": 9544897,
+      "name": "Ofensywny glimmer"
+    },
+    "players": [
+      {
+        "steamAccountId": 56677281,
+        "heroId": 63
+      },
+      {
+        "steamAccountId": 83843808,
+        "heroId": 31
+      },
+      {
+        "steamAccountId": 1083117272,
+        "heroId": 92
+      },
+      {
+        "steamAccountId": 105600406,
+        "heroId": 70
+      },
+      {
+        "steamAccountId": 101210339,
+        "heroId": 39
+      },
+      {
+        "steamAccountId": 1402484072,
+        "heroId": 54
+      },
+      {
+        "steamAccountId": 31952042,
+        "heroId": 30
+      },
+      {
+        "steamAccountId": 49963920,
+        "heroId": 29
+      },
+      {
+        "steamAccountId": 195163100,
+        "heroId": 123
+      },
+      {
+        "steamAccountId": 414431383,
+        "heroId": 74
+      }
+    ]
+  },
+  {
+    "id": 8002541470,
+    "startDateTime": 1729798769,
+    "durationSeconds": 1279,
+    "radiantTeam": {
+      "id": 9546316,
+      "name": "QuitDrinking"
+    },
+    "direTeam": {
+      "id": 9544897,
+      "name": "Ofensywny glimmer"
+    },
+    "players": [
+      {
+        "steamAccountId": 83843808,
+        "heroId": 31
+      },
+      {
+        "steamAccountId": 56677281,
+        "heroId": 72
+      },
+      {
+        "steamAccountId": 105600406,
+        "heroId": 67
+      },
+      {
+        "steamAccountId": 1083117272,
+        "heroId": 78
+      },
+      {
+        "steamAccountId": 101210339,
+        "heroId": 23
+      },
+      {
+        "steamAccountId": 195163100,
+        "heroId": 20
+      },
+      {
+        "steamAccountId": 31952042,
+        "heroId": 30
+      },
+      {
+        "steamAccountId": 49963920,
+        "heroId": 16
+      },
+      {
+        "steamAccountId": 414431383,
+        "heroId": 98
+      },
+      {
+        "steamAccountId": 1402484072,
+        "heroId": 6
+      }
+    ]
+  },
+  {
+    "id": 8001221706,
+    "startDateTime": 1729718087,
+    "durationSeconds": 3679,
+    "radiantTeam": {
+      "id": 9554545,
+      "name": "kebab u dassem`a"
+    },
+    "direTeam": {
+      "id": 9546725,
+      "name": "Budzik Team"
+    },
+    "players": [
+      {
+        "steamAccountId": 75119933,
+        "heroId": 69
+      },
+      {
+        "steamAccountId": 96715068,
+        "heroId": 17
+      },
+      {
+        "steamAccountId": 41872979,
+        "heroId": 123
+      },
+      {
+        "steamAccountId": 916149667,
+        "heroId": 6
+      },
+      {
+        "steamAccountId": 1096582873,
+        "heroId": 119
+      },
+      {
+        "steamAccountId": 86741058,
+        "heroId": 15
+      },
+      {
+        "steamAccountId": 86908614,
+        "heroId": 107
+      },
+      {
+        "steamAccountId": 382910795,
+        "heroId": 55
+      },
+      {
+        "steamAccountId": 26222389,
+        "heroId": 88
+      },
+      {
+        "steamAccountId": 182926097,
+        "heroId": 79
+      }
+    ]
+  },
+  {
+    "id": 8001168523,
+    "startDateTime": 1729714831,
+    "durationSeconds": 1992,
+    "radiantTeam": {
+      "id": 9554545,
+      "name": "kebab u dassem`a"
+    },
+    "direTeam": {
+      "id": 9546725,
+      "name": "Budzik Team"
+    },
+    "players": [
+      {
+        "steamAccountId": 75119933,
+        "heroId": 129
+      },
+      {
+        "steamAccountId": 96715068,
+        "heroId": 107
+      },
+      {
+        "steamAccountId": 1096582873,
+        "heroId": 20
+      },
+      {
+        "steamAccountId": 916149667,
+        "heroId": 48
+      },
+      {
+        "steamAccountId": 41872979,
+        "heroId": 128
+      },
+      {
+        "steamAccountId": 86908614,
+        "heroId": 98
+      },
+      {
+        "steamAccountId": 86741058,
+        "heroId": 42
+      },
+      {
+        "steamAccountId": 382910795,
+        "heroId": 23
+      },
+      {
+        "steamAccountId": 26222389,
+        "heroId": 50
+      },
+      {
+        "steamAccountId": 182926097,
+        "heroId": 45
+      }
+    ]
+  },
+  {
+    "id": 8001094054,
+    "startDateTime": 1729711156,
+    "durationSeconds": 2124,
+    "radiantTeam": {
+      "id": 9546725,
+      "name": "Budzik Team"
+    },
+    "direTeam": {
+      "id": 9554545,
+      "name": "kebab u dassem`a"
+    },
+    "players": [
+      {
+        "steamAccountId": 26222389,
+        "heroId": 64
+      },
+      {
+        "steamAccountId": 86908614,
+        "heroId": 98
+      },
+      {
+        "steamAccountId": 382910795,
+        "heroId": 73
+      },
+      {
+        "steamAccountId": 86741058,
+        "heroId": 48
+      },
+      {
+        "steamAccountId": 182926097,
+        "heroId": 103
+      },
+      {
+        "steamAccountId": 916149667,
+        "heroId": 6
+      },
+      {
+        "steamAccountId": 1096582873,
+        "heroId": 20
+      },
+      {
+        "steamAccountId": 41872979,
+        "heroId": 51
+      },
+      {
+        "steamAccountId": 96715068,
+        "heroId": 65
+      },
+      {
+        "steamAccountId": 75119933,
+        "heroId": 60
+      }
+    ]
+  }
+]

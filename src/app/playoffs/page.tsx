@@ -25,20 +25,15 @@ export default function PlayoffsPage() {
 
   return (
     <div className="space-y-8 p-1 md:p-2">
-      <Card className="shadow-xl text-center relative overflow-hidden min-h-[30vh] flex flex-col justify-center p-6">
-        <div 
-          className="absolute inset-0 z-0 bg-cover bg-center" 
-          style={{ backgroundImage: `url(/backgrounds/playoffs.png)` }} 
-          data-ai-hint="neon fantasy space"
-        />
-        <div className="relative z-10">
-            <h2 className="text-4xl font-bold text-primary" style={{ textShadow: '2px 2px 8px rgba(0,0,0,0.7)' }}>
-              Playoff Bracket
-            </h2>
-            <p className="text-lg text-white mt-2" style={{ textShadow: '1px 1px 6px rgba(0,0,0,0.8)' }}>
-              Follow the journey to the championship!
-            </p>
-        </div>
+      {/* Desktop: show image banner with fixed height */}
+      <Card className="hidden md:flex shadow-xl text-center relative overflow-hidden h-[320px] fhd:h-[320px] 2k:h-[500px] flex-col justify-center p-6">
+        <div className="absolute inset-0 z-0 bg-cover bg-center" style={{ backgroundImage: `url(/backgrounds/playoffs.png)` }} data-ai-hint="neon fantasy space" />
+      </Card>
+      {/* Mobile: show text banner with neon font */}
+      <Card className="flex md:hidden shadow-xl text-center relative overflow-hidden h-[120px] flex-col justify-center items-center p-4 bg-black">
+        <span className="text-3xl font-extrabold text-[#39ff14] drop-shadow-[0_0_8px_#39ff14] font-neon-bines">
+          Playoffs
+        </span>
       </Card>
       
       {loading ? (

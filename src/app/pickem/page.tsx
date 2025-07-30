@@ -187,13 +187,15 @@ export default function PickEmPage() {
         onSubmit={handleModalSubmit}
         isSubmitting={isSaving}
       />
-      <Card className="shadow-xl text-center relative overflow-hidden min-h-[30vh] flex flex-col justify-center p-6">
-        <div className="absolute inset-0 z-0 bg-cover bg-center" style={{ backgroundImage: `url(/backgrounds/pickem.png)` }} />
-        <div className="relative z-10">
-          <ClipboardCheck className="h-16 w-16 mx-auto text-primary mb-4" />
-          <h2 className="text-4xl font-bold text-primary" style={{ textShadow: '2px 2px 8px rgba(0,0,0,0.7)' }}>Fantasy & Pick'em</h2>
-          <p className="text-lg text-white mt-2" style={{ textShadow: '1px 1px 6px rgba(0,0,0,0.8)' }}>Build your fantasy lineup and predict the final tournament standings.</p>
-        </div>
+      {/* Desktop: show image banner with fixed height */}
+      <Card className="hidden md:flex shadow-xl text-center relative overflow-hidden h-[320px] fhd:h-[320px] 2k:h-[500px] flex-col justify-center p-6">
+        <div className="absolute inset-0 z-0 bg-cover bg-center" style={{ backgroundImage: `url(/backgrounds/pick%27em.png)` }} />
+      </Card>
+      {/* Mobile: show text banner with neon font */}
+      <Card className="flex md:hidden shadow-xl text-center relative overflow-hidden h-[120px] flex-col justify-center items-center p-4 bg-black">
+        <span className="text-3xl font-extrabold text-[#39ff14] drop-shadow-[0_0_8px_#39ff14] font-neon-bines">
+          Pick'em
+        </span>
       </Card>
 
       <HowToPlay />

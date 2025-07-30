@@ -31,14 +31,11 @@ export function transformMatchData(
   players: Player[]
 ): { game: Game; performances: PlayerPerformanceInGame[] } {
   
-  // Try to match by openDotaTeamId first, then by name (case-insensitive, trimmed)
-  function findTeam(openDotaTeamId: number | undefined, name: string | undefined) {
-    let team = teams.find(t => t.openDotaTeamId === openDotaTeamId);
-    if (!team && name) {
-      const normName = name.trim().toLowerCase();
-      team = teams.find(t => t.name.trim().toLowerCase() === normName);
-    }
-    return team;
+  // Match only by name (case-insensitive, trimmed)
+  function findTeam(_openDotaTeamId: number | undefined, name: string | undefined) {
+    if (!name) return undefined;
+    const normName = name.trim().toLowerCase();
+    return teams.find(t => t.name.trim().toLowerCase() === normName);
   }
 
   const radiantTeam = findTeam(openDotaMatch.radiant_team?.team_id, openDotaMatch.radiant_name);
