@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import type { Match } from "@/lib/definitions";
 import { getAllTeams, getAllTournamentPlayers, saveGameResults } from "@/lib/firestore";
-import { transformMatchData } from "@/lib/opendota";
+
 
 
 interface MatchImportModalProps {
@@ -70,20 +70,22 @@ export function MatchImportModal({ isOpen, onClose, match, onImportSuccess }: Ma
                 setIsImporting(false);
                 return;
             }
-            // Fetch teams and players from Firestore
-            const [teams, players] = await Promise.all([
-                getAllTeams(),
-                getAllTournamentPlayers()
-            ]);
-            // Patch team IDs in OpenDota data
-            openDotaData.radiant_team = { ...openDotaData.radiant_team, team_id: radiantTeam };
-            openDotaData.dire_team = { ...openDotaData.dire_team, team_id: direTeam };
-            // Transform data
-            const { game, performances } = transformMatchData(openDotaData, teams, players);
-            // Use selected game number as game.id
-            game.id = gameNumber;
-            // Save to Firestore
-            await saveGameResults(match.id, game, performances);
+            // Call API route to handle import on the server
+            const res = await fetch("/api/import-match", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                openDotaData,
+                radiantTeam,
+                direTeam,
+                matchId: match.id,
+                gameNumber
+              })
+            });
+            if (!res.ok) {
+              const data = await res.json();
+              throw new Error(data.error || "Import failed.");
+            }
             setIsImporting(false);
             onImportSuccess();
         } catch (err: any) {

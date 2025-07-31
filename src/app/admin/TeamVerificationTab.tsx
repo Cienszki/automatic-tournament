@@ -5,7 +5,8 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/com
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
 import { ShieldCheck, ShieldAlert, ShieldX, Loader2, Trash2 } from 'lucide-react';
-import { getAllTeams, getAllPickems } from '@/lib/firestore';
+import { getTeams } from '@/lib/admin-actions';
+import { getAllPickems } from '@/lib/firestore';
 import { updateTeamStatus, deleteTeam } from '@/lib/admin-actions';
 import { Team, TeamStatus, Player, Pickem } from '@/lib/definitions';
 import { useToast } from '@/hooks/use-toast';
@@ -93,7 +94,7 @@ export function TeamVerificationTab() {
     useEffect(() => {
         async function fetchTeamsAndScores() {
             setIsLoading(true);
-            const [allTeams, allPickems] = await Promise.all([getAllTeams(), getAllPickems()]);
+            const [allTeams, allPickems] = await Promise.all([getTeams(), getAllPickems()]);
             
             const communityScores: Record<string, number> = {};
             allTeams.forEach(team => communityScores[team.id] = 0);

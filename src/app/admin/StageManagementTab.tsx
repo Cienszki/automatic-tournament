@@ -66,6 +66,9 @@ export function StageManagementTab() {
           getGroups(),
           getMatches(),
       ]);
+      // Debug log
+      console.log("[StageManagementTab] fetchedTeams:", fetchedTeams);
+      console.log("[StageManagementTab] fetchedGroups:", fetchedGroups);
       const assignedTeamIds = new Set(fetchedGroups.flatMap(g => Object.keys(g.standings)));
       setAllTeams(fetchedTeams.filter(team => team.status === 'verified' && !assignedTeamIds.has(team.id)));
       setGroups(fetchedGroups.sort((a, b) => a.name.localeCompare(b.name)));

@@ -75,7 +75,9 @@ export function SystemTestTab() {
             return;
         }
         setIsImporting(true);
-        const result = await importMatchFromOpenDota(Number(matchId));
+        // ourMatchId should be the ID of the match in your system to map to OpenDota matchId
+        // Here, we use matchId as both for demonstration, but you may want to select a match from your system
+        const result = await importMatchFromOpenDota(Number(matchId), matchId);
         toast({ title: result.success ? "Success!" : "Import Failed", description: result.message, variant: result.success ? "default" : "destructive" });
         setIsImporting(false);
         fetchMatches();

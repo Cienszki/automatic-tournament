@@ -37,101 +37,56 @@ export function StatsPageClient({ data }: StatsPageClientProps) {
   const AccordionRowContent = ({ categoryData, isSingleMatchCategory }: { categoryData: { id: string, categoryName: string, icon: string, rankings: CategoryRankingDetail[] }, isSingleMatchCategory: boolean }) => {
     const topEntry = categoryData.rankings[0];
     const Icon = ICONS[categoryData.icon];
-  
     return (
-        // This div's content is effectively the AccordionTrigger's appearance when closed
+      <div className={cn(
+        "group-data-[state=open]:hidden grid items-center w-full text-sm py-3 px-4",
+        "grid-cols-5 md:grid-cols-12"
+      )}>
         <div className={cn(
-          "group-data-[state=open]:hidden grid items-center w-full text-sm py-3 px-4",
-          "grid-cols-5 md:grid-cols-12" 
+          "font-medium flex items-center text-accent",
+          "col-span-2",
+          isSingleMatchCategory ? "md:col-span-3" : "md:col-span-4"
         )}>
-          <div className={cn(
-            "font-medium flex items-center text-accent",
-            "col-span-2", 
-            isSingleMatchCategory ? "md:col-span-3" : "md:col-span-4" 
-          )}>
-            <Icon className="h-5 w-5 mr-3 shrink-0 text-accent" />
-            <span className="truncate" title={categoryData.categoryName}>{categoryData.categoryName}</span>
-          </div>
-  
-          {topEntry ? (
-            <>
-              <div className={cn(
-                "truncate",
-                "col-span-1",
-                isSingleMatchCategory ? "md:col-span-2" : "md:col-span-3" 
-              )} title={topEntry.player.nickname}>
-                {topEntry.player.id && topEntry.teamId ? (
-                  <Link href={`/teams/${topEntry.teamId}/players/${topEntry.player.id}`} className="text-primary font-semibold hover:underline">{topEntry.player.nickname}</Link>
-                ) : (
-                  <span className="text-primary font-semibold">{topEntry.player.nickname || 'N/A'}</span>
-                )}
-              </div>
-              <div className={cn(
-                "truncate",
-                "col-span-1",
-                isSingleMatchCategory ? "md:col-span-2" : "md:col-span-3" 
-              )} title={topEntry.teamName}>
-                {topEntry.teamId ? (
-                  <Link href={`/teams/${topEntry.teamId}`} className="text-accent hover:underline">{topEntry.teamName}</Link>
-                ) : (
-                  <span className="text-accent">{topEntry.teamName || 'N/A'}</span>
-                )}
-              </div>
-              <div className={cn(
-                "font-semibold text-center", 
-                "col-span-1", 
-                isSingleMatchCategory ? "md:col-span-2" : "md:col-span-2" 
-              )}>{topEntry.value}</div>
-              
-              {isSingleMatchCategory && topEntry.heroName && (
-                <>
-                  <div className={cn(
-                      "truncate flex items-center",
-                      "hidden md:block md:col-span-2" 
-                    )} title={topEntry.heroName}>
-                    {(heroIconMap[topEntry.heroName] || heroIconMap['Default']) && 
-                      React.createElement(heroIconMap[topEntry.heroName] || heroIconMap['Default'], { 
-                        className: cn("h-4 w-4 mr-1.5 shrink-0"),
-                        color: heroColorMap[topEntry.heroName] || FALLBACK_HERO_COLOR
-                      })
-                    }
-                    <span style={{color: heroColorMap[topEntry.heroName] || FALLBACK_HERO_COLOR}}>{topEntry.heroName}</span>
-                  </div> 
-                  <div className={cn(
-                      "hidden md:block md:col-span-1 text-xs text-muted-foreground truncate", 
-                      "overflow-hidden text-ellipsis whitespace-nowrap"
-                  )} title={topEntry.matchContext}>
-                    {topEntry.openDotaMatchUrl ? (
-                      <Link href={topEntry.openDotaMatchUrl} target="_blank" rel="noopener noreferrer" className="hover:text-primary hover:underline">
-                        {topEntry.matchContext}
-                      </Link>
-                    ) : (
-                      topEntry.matchContext || 'N/A'
-                    )}
-                  </div>
-                </>
-              )}
-            </>
-          ) : (
-            <div className="col-span-full text-muted-foreground italic text-center py-2">No entries for this category.</div>
-          )}
+          <Icon className="h-5 w-5 mr-3 shrink-0 text-accent" />
+          <span className="truncate" title={categoryData.categoryName}>{categoryData.categoryName}</span>
         </div>
+        {topEntry ? (
+          <>
+            <div className={cn(
+              "truncate",
+              "col-span-1",
+              isSingleMatchCategory ? "md:col-span-2" : "md:col-span-3"
+            )} title={topEntry.playerNickname}>
+              <span className="text-primary font-semibold">{topEntry.playerNickname || 'N/A'}</span>
+            </div>
+            <div className={cn(
+              "truncate",
+              "col-span-1",
+              isSingleMatchCategory ? "md:col-span-2" : "md:col-span-3"
+            )} title={topEntry.teamName}>
+              <span className="text-accent">{topEntry.teamName || 'N/A'}</span>
+            </div>
+            <div className={cn(
+              "font-semibold text-center",
+              "col-span-1",
+              isSingleMatchCategory ? "md:col-span-2" : "md:col-span-2"
+            )}>{isSingleMatchCategory ? '—' : topEntry.averageValue}</div>
+            {/* No hero/match context in CategoryRankingDetail, so skip for now */}
+          </>
+        ) : (
+          <div className="col-span-full text-muted-foreground italic text-center py-2">No entries for this category.</div>
+        )}
+      </div>
     );
   };
 
   const renderRankingDetailsTable = (details: CategoryRankingDetail[], isSingleMatchCategory: boolean) => {
     const headerCells: JSX.Element[] = [
-      <TableHead key="rank" className="w-[60px] px-3 py-2">Rank</TableHead>,
       <TableHead key="player" className="w-[180px] px-3 py-2">Player</TableHead>,
       <TableHead key="team" className="w-[180px] px-3 py-2">Team</TableHead>,
-      <TableHead key="value" className="w-[100px] px-3 py-2 text-center">Value</TableHead>
+      <TableHead key="value" className="w-[100px] px-3 py-2 text-center">{isSingleMatchCategory ? 'Value' : 'Average Value'}</TableHead>,
+      <TableHead key="matches" className="w-[100px] px-3 py-2 text-center">Matches</TableHead>
     ];
-
-    if (isSingleMatchCategory) {
-      headerCells.push(<TableHead key="hero" className="w-[150px] px-3 py-2">Hero</TableHead>);
-      headerCells.push(<TableHead key="match" className="w-[250px] px-3 py-2">Match</TableHead>);
-    }
-    
     return (
       <Table className="mt-2 mb-4 rounded-md">
         <TableHeader>
@@ -140,59 +95,14 @@ export function StatsPageClient({ data }: StatsPageClientProps) {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {details.map((detail) => {
-            const heroColorHex = (isSingleMatchCategory && detail.heroName ? (heroColorMap[detail.heroName] || FALLBACK_HERO_COLOR) : FALLBACK_HERO_COLOR);
-            const valueColor = (isSingleMatchCategory && detail.heroName && detail.value) ? heroColorHex : 'hsl(var(--primary))';
-            
-            const HeroIconComponent = isSingleMatchCategory && detail.heroName ? (heroIconMap[detail.heroName] || heroIconMap['Default']) : null;
-
-            const rowCells: JSX.Element[] = [
-              <TableCell key="rank" className="font-semibold px-3 py-2">{detail.rank}</TableCell>,
-              <TableCell key="player" className="px-3 py-2 w-[180px]">
-                {detail.player.id && detail.teamId ? (
-                  <Link href={`/teams/${detail.teamId}/players/${detail.player.id}`} className="text-primary font-semibold hover:underline">{detail.player.nickname}</Link>
-                ) : (
-                  <span className="text-primary font-semibold">{detail.player.nickname || 'N/A'}</span>
-                )}
-              </TableCell>,
-              <TableCell key="team" className="px-3 py-2 w-[180px]">
-                {detail.teamId ? (
-                  <Link href={`/teams/${detail.teamId}`} className="text-accent hover:underline">{detail.teamName}</Link>
-                ) : (
-                  <span className="text-accent">{detail.teamName || 'N/A'}</span>
-                )}
-              </TableCell>,
-              <TableCell key="value" style={{color: valueColor}} className="font-semibold px-3 py-2 text-center w-[100px]">{detail.value}</TableCell>
-            ];
-
-            if (isSingleMatchCategory) {
-              rowCells.push(
-                <TableCell key="hero" className="px-3 py-2 w-[150px]">
-                  <div className="flex items-center">
-                    {HeroIconComponent && <HeroIconComponent color={heroColorHex} className={cn("h-4 w-4 mr-1.5 shrink-0")} />}
-                    <span style={{ color: heroColorHex }}>{detail.heroName}</span>
-                  </div>
-                </TableCell>
-              );
-              rowCells.push(
-                <TableCell key="match" className="text-xs text-muted-foreground px-3 py-2 w-[250px] truncate" title={detail.matchContext || undefined}>
-                  {detail.openDotaMatchUrl ? (
-                    <Link href={detail.openDotaMatchUrl} target="_blank" rel="noopener noreferrer" className="hover:text-primary hover:underline">
-                      {detail.matchContext}
-                    </Link>
-                  ) : (
-                    detail.matchContext || 'N/A'
-                  )}
-                </TableCell>
-              );
-            }
-
-            return (
-              <TableRow key={`${detail.rank}-${detail.player.nickname}-${detail.teamName}-${detail.value}`} className="text-sm">
-                {rowCells}
-              </TableRow>
-            );
-          })}
+          {details.map((detail, idx) => (
+            <TableRow key={`${detail.playerId}-${detail.teamName}-${idx}`} className="text-sm">
+              <TableCell className="px-3 py-2 w-[180px] font-semibold">{detail.playerNickname}</TableCell>
+              <TableCell className="px-3 py-2 w-[180px]">{detail.teamName}</TableCell>
+              <TableCell className="px-3 py-2 w-[100px] text-center font-semibold">{isSingleMatchCategory ? '—' : detail.averageValue}</TableCell>
+              <TableCell className="px-3 py-2 w-[100px] text-center">{detail.matchesPlayed}</TableCell>
+            </TableRow>
+          ))}
         </TableBody>
       </Table>
     );
@@ -201,7 +111,7 @@ export function StatsPageClient({ data }: StatsPageClientProps) {
 
   return (
     <div className="space-y-8">
-      <Card className="shadow-xl">
+      <Card className="shadow-none border-0 bg-gradient-to-br from-[#181c2f] via-[#3a295a] to-[#2d1b3c] transition-transform duration-300 hover:scale-105 hover:shadow-[0_0_48px_8px_#b86fc6cc,0_0_32px_0_#0ff0fc99]">
         <CardHeader className="text-center">
           <BarChartHorizontalBig className="h-16 w-16 mx-auto text-primary mb-4" />
           <CardTitle className="text-4xl font-bold text-primary">Tournament Statistics</CardTitle>
@@ -211,7 +121,7 @@ export function StatsPageClient({ data }: StatsPageClientProps) {
         </CardHeader>
       </Card>
 
-      <Card>
+      <Card className="shadow-none border-0 bg-gradient-to-br from-[#2d1b3c] via-[#3a295a] to-[#181c2f] transition-transform duration-300 hover:scale-105 hover:shadow-[0_0_48px_8px_#0ff0fccc,0_0_32px_0_#b86fc699]">
         <CardHeader>
           <CardTitle className="text-2xl text-primary flex items-center">
             <Trophy className="h-6 w-6 mr-2" /> Single Match Standouts
@@ -253,7 +163,7 @@ export function StatsPageClient({ data }: StatsPageClientProps) {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="shadow-none border-0 bg-gradient-to-br from-[#23243a] via-[#3a295a] to-[#181c2f] transition-transform duration-300 hover:scale-105 hover:shadow-[0_0_48px_8px_#b86fc6cc,0_0_32px_0_#0ff0fc99]">
         <CardHeader>
           <CardTitle className="text-2xl text-primary flex items-center">
             <Zap className="h-6 w-6 mr-2" /> Tournament Average Leaders
@@ -301,20 +211,18 @@ export function StatsPageClient({ data }: StatsPageClientProps) {
           <CardDescription>Memorable moments and records from the tournament.</CardDescription>
         </CardHeader>
         <CardContent className="grid md:grid-cols-2 gap-6">
-          {tournamentHighlights.map((highlight) => {
-            const Icon = ICONS[highlight.icon];
-            return (
-            <Card key={highlight.id} className="bg-muted/30">
+          {tournamentHighlights.map((highlight, idx) => (
+            <Card key={idx} className="shadow-none border-0 bg-gradient-to-br from-[#181c2f] via-[#3a295a] to-[#2d1b3c] transition-transform duration-300 hover:scale-105 hover:shadow-[0_0_48px_8px_#b86fc6cc,0_0_32px_0_#0ff0fc99]">
               <CardHeader className="flex flex-row items-center space-x-3 pb-2">
-                <Icon className="h-6 w-6 text-accent" />
-                <CardTitle className="text-lg">{highlight.title}</CardTitle>
+                <span className="h-6 w-6 text-accent">🏆</span>
+                <CardTitle className="text-lg">{highlight.category}</CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-3xl font-bold text-primary">{highlight.value}</p>
-                {highlight.details && <p className="text-xs text-muted-foreground pt-1">{highlight.details}</p>}
+                <p className="text-xs text-muted-foreground pt-1">{highlight.playerNickname} ({highlight.teamName})</p>
               </CardContent>
             </Card>
-          )})}
+          ))}
         </CardContent>
       </Card>
 

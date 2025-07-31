@@ -57,7 +57,7 @@ export interface Match {
 }
 
 // ... (rest of definitions)
-export const LEAGUE_ID = 0;
+export const LEAGUE_ID = 17296;
 export const TEAM_MMR_CAP = 24000;
 export const FANTASY_BUDGET_MMR = 24000;
 

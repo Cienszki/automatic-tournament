@@ -6,19 +6,31 @@ import { revalidatePath } from 'next/cache';
 import { getAdminDb, getAdminAuth, ensureAdminInitialized, getAdminApp } from './admin';
 import type { Group, GroupStanding, Team, Player, Match } from './definitions';
 import { PlayerRoles, TeamStatus } from './definitions';
-import { getAllTeams as fetchAllTeams, getAllGroups as fetchAllGroups, getTeamById, getAllMatches } from './firestore';
-import { Timestamp } from 'firebase-admin/firestore';
-import { addDays, format } from 'date-fns';
-
-// --- UTILITY ---
-const generatePassword = (length = 10) => {
-    const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    let password = '';
-    for (let i = 0; i < length; i++) {
-        password += chars.charAt(Math.floor(Math.random() * chars.length));
+import { getAllGroups as fetchAllGroups, getTeamById, getAllMatches } from './firestore';
+// Admin-side getAllTeams using Admin SDK
+export async function getAllTeamsAdmin(): Promise<Team[]> {
+    ensureAdminInitialized();
+    const db = getAdminDb();
+    const teamsSnapshot = await db.collection('teams').get();
+    const teams: Team[] = [];
+    for (const docSnap of teamsSnapshot.docs) {
+        const teamData = docSnap.data();
+        // Fetch players subcollection
+        const playersSnapshot = await db.collection('teams').doc(docSnap.id).collection('players').get();
+        const players = playersSnapshot.docs.map(playerDoc => playerDoc.data() as Player);
+        teams.push({
+            id: docSnap.id,
+            ...teamData,
+            players,
+            createdAt: teamData.createdAt && typeof teamData.createdAt.toDate === 'function'
+                ? teamData.createdAt.toDate().toISOString()
+                : new Date(0).toISOString(),
+        } as Team);
     }
-    return password;
-};
+    return teams;
+}
+import { generatePassword, Timestamp, addDays, format } from './admin-constants';
+
 
 // --- AUTHENTICATION & ACTION WRAPPER ---
 async function performAdminAction<T>(
@@ -265,7 +277,7 @@ export async function generateMatchesForGroup(token: string, groupId: string, de
         if (!group) throw new Error(`Group with ID ${groupId} not found.`);
 
         const allExistingMatches = await getAllMatches();
-        const allTeams = await fetchAllTeams(true);
+        const allTeams = await getAllTeamsAdmin();
         const teamsMap = new Map(allTeams.map(t => [t.id, t]));
 
         const existingTimes = new Set(allExistingMatches.map(m => new Date(m.defaultMatchTime).getTime()));
@@ -426,7 +438,7 @@ export async function updateMatchScore(
 
 
 // --- DATA FETCHING ---
-export async function getTeams(): Promise<Team[]> { return fetchAllTeams(); }
+export async function getTeams(): Promise<Team[]> { return getAllTeamsAdmin(); }
 export async function getGroups(): Promise<Group[]> { return fetchAllGroups(); }
 export async function getMatches(): Promise<Match[]> { return getAllMatches(); }
 export async function getTournamentStatus() {

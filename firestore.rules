@@ -1,3 +1,7 @@
+    // --- ADMIN-ONLY COLLECTIONS ---
+    match /processedGames/{gameId} {
+      allow read, write: if isAdmin();
+    }
 rules_version = '2';
 
 service cloud.firestore {

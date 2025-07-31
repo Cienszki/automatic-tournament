@@ -55,7 +55,7 @@ export function GroupTable({ group }: GroupTableProps) {
   const sortedStandings = sortStandings(standingsArray);
 
   return (
-    <Card className="shadow-lg">
+    <Card className="shadow-none border-0 bg-gradient-to-br from-[#181c2f] via-[#3a295a] to-[#2d1b3c] transition-transform duration-300 hover:scale-105 hover:shadow-[0_0_48px_8px_#b86fc6cc,0_0_32px_0_#0ff0fc99]">
       <CardHeader>
         <CardTitle className="text-2xl text-primary">{group.name}</CardTitle>
       </CardHeader>

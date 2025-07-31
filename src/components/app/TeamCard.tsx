@@ -1,7 +1,7 @@
 
 "use client";
 
-import type { Team, PlayerRole, VerificationStatus } from "@/lib/definitions";
+import type { Team, PlayerRole } from "@/lib/definitions";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -37,7 +37,7 @@ const getRoleIcon = (role: PlayerRole) => {
   }
 };
 
-const getStatusBadge = (status?: VerificationStatus) => {
+const getStatusBadge = (status?: string) => {
   switch (status) {
     case "pending":
       return <Badge className="bg-gray-500/20 text-gray-300 border-gray-500/40 hover:bg-gray-500/30 text-xs"><ShieldQuestion className="h-3 w-3 mr-1.5" />Not Verified</Badge>;
@@ -57,7 +57,7 @@ export function TeamCard({ team }: TeamCardProps) {
 
   return (
     <Card className={cn(
-      "flex flex-col h-full shadow-lg hover:shadow-xl transition-shadow duration-300",
+      "flex flex-col h-full shadow-none border-0 bg-gradient-to-br from-[#181c2f] via-[#3a295a] to-[#2d1b3c] transition-transform duration-300 hover:scale-105 hover:shadow-[0_0_48px_8px_#b86fc6cc,0_0_32px_0_#0ff0fc99]",
       team.status === 'banned' && "bg-destructive/10 border-destructive/30",
     )}>
       <CardHeader className="flex flex-row items-start space-x-4 pb-4">
@@ -81,9 +81,10 @@ export function TeamCard({ team }: TeamCardProps) {
               <Sigma className="h-4 w-4 mr-2 text-primary shrink-0" />
               <span>Total MMR: {totalMMR.toLocaleString()}</span>
             </div>
+            {/* Wins/Losses are not available on Team, so we omit this or show N/A */}
             <div className="flex items-center text-sm text-muted-foreground">
               <ListChecks className="h-4 w-4 mr-2 text-primary shrink-0" />
-              <span>{team.wins ?? 0} Wins / {team.losses ?? 0} Losses</span>
+              <span>Wins/Losses: N/A</span>
             </div>
           </div>
 

@@ -1,14 +1,32 @@
+import fetch from 'node-fetch';
+
+/**
+ * Fetch a match from the OpenDota API.
+ */
+export async function fetchOpenDotaMatch(matchId: number, apiKey?: string): Promise<any> {
+  let url = `${OPENDOTA_API_BASE_URL}/matches/${matchId}`;
+  if (apiKey || process.env.OPENDOTA_API_KEY) {
+    const key = apiKey || process.env.OPENDOTA_API_KEY;
+    url += (url.includes('?') ? '&' : '?') + 'api_key=' + key;
+  }
+  const res = await fetch(url, {
+    headers: {
+      'User-Agent': 'OpenDota_API_Fetch'
+    }
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Failed to fetch OpenDota match: ${res.status} ${res.statusText}\n${text}`);
+  }
+  return res.json();
+}
 // src/lib/opendota.ts
 
 import {
   PlayerPerformanceInGame,
   Game,
   Team,
-  Player,
-  OpenDotaMatch,
-  OpenDotaHero,
-  OpenDotaLeagueMatch,
-  OpenDotaSearchedPlayer
+  Player
 } from './definitions';
 import { promises as fs } from 'fs';
 import path from 'path';
@@ -26,7 +44,7 @@ const OPENDOTA_API_BASE_URL = 'https://api.opendota.com/api';
  * @returns An object containing the transformed Game and an array of PlayerPerformanceInGame data.
  */
 export function transformMatchData(
-  openDotaMatch: OpenDotaMatch,
+  openDotaMatch: any,
   teams: Team[],
   players: Player[]
 ): { game: Game; performances: PlayerPerformanceInGame[] } {
@@ -54,7 +72,7 @@ export function transformMatchData(
     picksBans: openDotaMatch.picks_bans || [],
   };
 
-  const performances: PlayerPerformanceInGame[] = openDotaMatch.players.map(p => {
+  const performances: PlayerPerformanceInGame[] = openDotaMatch.players.map((p: any) => {
     // Match player by steamId32 (string) to OpenDota account_id (number)
     const player = players.find(pl => pl.steamId32 === String(p.account_id));
     const isRadiant = p.player_slot < 128;

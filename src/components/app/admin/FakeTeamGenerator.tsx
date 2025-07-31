@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { Button } from "@/components/ui/button";
-import { createFakeTeam } from "@/lib/admin-actions";
+import { createFakeTeamServerAction } from "@/lib/fake-team-action";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, PlusCircle } from "lucide-react";
 import {
@@ -23,7 +23,7 @@ export function FakeTeamGenerator({ onTeamCreated }: FakeTeamGeneratorProps) {
 
   const handleCreateFakeTeam = async () => {
     setIsCreating(true);
-    const result = await createFakeTeam(true);
+    const result = await createFakeTeamServerAction(true);
     if (result.success) {
       toast({
         title: "Success!",

@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Save, Edit, CheckCircle2, Hourglass, RotateCcw, Loader2, FileJson } from "lucide-react";
 import { getAllMatches, updateMatchScores } from "@/lib/firestore";
 import { revertMatchToPending } from "@/lib/admin-actions";
+import { adminDeleteGameAndHandleScore } from "@/lib/admin-match-actions-server";
+import { GameDeleteModal } from "@/components/admin/GameDeleteModal";
 import type { Match } from "@/lib/definitions";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/AuthContext";
@@ -44,6 +46,39 @@ export function StandingsTab() {
   const [revertingMatchId, setRevertingMatchId] = React.useState<string | null>(null);
   const [isImportModalOpen, setIsImportModalOpen] = React.useState(false);
   const [matchToImport, setMatchToImport] = React.useState<Match | null>(null);
+  const [isGameDeleteModalOpen, setIsGameDeleteModalOpen] = React.useState(false);
+  const [gameDeleteMatch, setGameDeleteMatch] = React.useState<Match | null>(null);
+  const [gamesForDelete, setGamesForDelete] = React.useState<{ id: string; name: string }[]>([]);
+  // Helper to fetch games for a match (from games subcollection)
+  async function fetchGamesForMatch(match: Match) {
+    // This should be replaced with a real API call or Firestore query
+    // For now, fake it with game_ids
+    if (!match.game_ids || match.game_ids.length === 0) return [];
+    return match.game_ids.map((id) => ({ id: id.toString(), name: `Game ${id}` }));
+  }
+
+  const handleOpenGameDeleteModal = async (match: Match) => {
+    setGameDeleteMatch(match);
+    setIsGameDeleteModalOpen(true);
+    const games = await fetchGamesForMatch(match);
+    setGamesForDelete(games);
+  };
+
+  const handleDeleteGame = async (gameId: string) => {
+    if (!gameDeleteMatch) return;
+    const result = await adminDeleteGameAndHandleScore(gameDeleteMatch, gameId);
+    toast({
+      title: result.success ? "Game Deleted" : "Delete Failed",
+      description: result.message,
+      variant: result.success ? "default" : "destructive",
+    });
+    setIsGameDeleteModalOpen(false);
+    setGameDeleteMatch(null);
+    setGamesForDelete([]);
+    // Optionally re-fetch matches to update UI
+    const allMatches = await getAllMatches();
+    setMatches(allMatches.sort((a,b) => (a.group_id || '').localeCompare(b.group_id || '')));
+  };
 
   React.useEffect(() => {
     async function fetchMatches() {
@@ -202,6 +237,9 @@ export function StandingsTab() {
         </TableCell>
         <TableCell className="text-right">
             <div className="flex items-center justify-end gap-2">
+                <Button size="sm" variant="destructive" onClick={() => handleOpenGameDeleteModal(match)} disabled={!match.game_ids || match.game_ids.length === 0}>
+                  Delete Game
+                </Button>
                 {isEditing ? (
                     <>
                         <Button size="sm" onClick={() => handleSaveScore(match)} disabled={!match.teamA || !match.teamB}>
@@ -269,6 +307,12 @@ export function StandingsTab() {
             // Optionally re-fetch matches here to update the UI
             // fetchMatches(); // You might need to pass fetchMatches down or use a context
           }}
+      />
+      <GameDeleteModal
+        isOpen={isGameDeleteModalOpen}
+        onClose={() => setIsGameDeleteModalOpen(false)}
+        games={gamesForDelete}
+        onDelete={handleDeleteGame}
       />
       <Card>
         <CardHeader>
