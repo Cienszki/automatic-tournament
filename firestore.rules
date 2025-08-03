@@ -47,9 +47,11 @@ service cloud.firestore {
     }
 
     match /fantasyLineups/{userId} {
+      allow read: if true;
       allow write: if request.auth.uid == userId || isAdmin();
       match /rounds/{roundId} {
-        allow read, write: if request.auth.uid == userId || isAdmin();
+        allow read: if true; // Allow public read for leaderboard functionality
+        allow write: if request.auth.uid == userId || isAdmin();
       }
     }
 

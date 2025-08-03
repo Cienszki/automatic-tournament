@@ -1,14 +1,15 @@
 
+"use client";
+
 import { GroupTable } from "@/components/app/GroupTable";
 import { Card, CardContent } from "@/components/ui/card";
 import { getAllGroups, getAllTeams } from "@/lib/firestore";
+import { useTranslation } from "@/hooks/useTranslation";
 import type { Group, Team, GroupStanding } from "@/lib/definitions";
 import { AlertTriangle, Users } from "lucide-react";
-import { unstable_noStore as noStore } from 'next/cache';
+import { useState, useEffect } from "react";
 
 async function getHydratedGroupsData(): Promise<Group[]> {
-  noStore();
-  
   const [groups, teams] = await Promise.all([
     getAllGroups(),
     getAllTeams()
@@ -55,8 +56,24 @@ async function getHydratedGroupsData(): Promise<Group[]> {
   return hydratedGroups;
 }
 
-export default async function GroupStagePage() {
-  const groups = await getHydratedGroupsData();
+export default function GroupStagePage() {
+  const { t } = useTranslation();
+  const [groups, setGroups] = useState<Group[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadGroups() {
+      const data = await getHydratedGroupsData();
+      setGroups(data);
+      setLoading(false);
+    }
+    loadGroups();
+  }, []);
+
+  if (loading) {
+    return <div className="flex justify-center items-center h-64">{t("common.loading")}</div>;
+  }
+
   const sortedGroups = [...groups].sort((a, b) => a.name.localeCompare(b.name));
 
   return (
@@ -68,7 +85,7 @@ export default async function GroupStagePage() {
       {/* Mobile: show text banner with neon font */}
       <Card className="flex md:hidden shadow-xl text-center relative overflow-hidden h-[120px] flex-col justify-center items-center p-4 bg-black">
         <span className="text-3xl font-extrabold text-[#39ff14] drop-shadow-[0_0_8px_#39ff14] font-neon-bines">
-          Group Stage
+          {t("groups.title")}
         </span>
       </Card>
 
@@ -76,9 +93,9 @@ export default async function GroupStagePage() {
         <Card className="shadow-md">
           <CardContent className="p-6 flex flex-col items-center justify-center text-center">
             <AlertTriangle className="w-16 h-16 text-yellow-500 mb-4" />
-            <h2 className="text-2xl font-semibold mb-2">Groups Not Formed Yet</h2>
+            <h2 className="text-2xl font-semibold mb-2">{t("groups.notFormedYet")}</h2>
             <p className="text-muted-foreground">
-              An administrator has not yet created the groups for the tournament. Please check back later.
+              {t("groups.notFormedYetDesc")}
             </p>
           </CardContent>
         </Card>
@@ -91,9 +108,4 @@ export default async function GroupStagePage() {
       )}
     </div>
   );
-}
-
-export const metadata = {
-  title: "Group Stage | Tournament Tracker",
-  description: "View group stage standings for the tournament."
 }

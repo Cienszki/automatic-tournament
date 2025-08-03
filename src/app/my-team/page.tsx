@@ -3,6 +3,7 @@
 
 import * as React from "react";
 import { useAuth } from "@/context/AuthContext";
+import { useTranslation } from "@/hooks/useTranslation";
 import { MyTeamHeader } from "@/components/app/my-team/MyTeamHeader";
 import { RosterCard } from "@/components/app/my-team/RosterCard";
 import { TeamStatusCard } from "@/components/app/my-team/TeamStatusCard";
@@ -19,6 +20,7 @@ import NoTeamFound from '@/components/app/my-team/NoTeamFound';
 
 export default function MyTeamPage() {
   const { user, loading: authLoading, signInWithGoogle } = useAuth();
+  const { t } = useTranslation();
   const [team, setTeam] = React.useState<Team | null>(null);
   const [matches, setMatches] = React.useState<Match[]>([]);
   const [hasTeam, setHasTeam] = React.useState(false);
@@ -56,20 +58,20 @@ export default function MyTeamPage() {
       <div className="flex justify-center items-center h-[calc(100vh-80px)] p-4">
         <Card className="w-full max-w-lg text-center shadow-lg border-0 bg-gradient-to-br from-[#181c2f] via-[#3a295a] to-[#2d1b3c]">
           <CardHeader>
-            <CardTitle className="text-3xl font-bold text-[#0ff0fc] drop-shadow-[0_0_8px_#0ff0fc]">Welcome, Future Captain!</CardTitle>
+            <CardTitle className="text-3xl font-bold text-[#0ff0fc] drop-shadow-[0_0_8px_#0ff0fc]">{t("myTeam.welcomeCaptain")}</CardTitle>
             <CardDescription className="text-lg text-[#b86fc6] pt-2">
-              Ready to join the tournament? Register your team and lead them to glory.<br />
-              <span className="block mt-2 text-[#e0d7f7]">Need a team or looking for players? Join our <a href="https://discord.gg/letniatournament" target="_blank" rel="noopener noreferrer" className="underline hover:text-[#0ff0fc]">Discord</a> and visit the #find-a-team channel!</span>
+              {t("myTeam.welcomeDesc")}<br />
+              <span className="block mt-2 text-[#e0d7f7]">{t("myTeam.needTeamOrPlayers")} <a href="https://discord.gg/letniatournament" target="_blank" rel="noopener noreferrer" className="underline hover:text-[#0ff0fc]">{t("myTeam.discord")}</a> {t("myTeam.findTeamChannel")}</span>
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            <p className="text-[#e0d7f7]">Sign in to get started and create your team.</p>
+            <p className="text-[#e0d7f7]">{t("myTeam.signInToStart")}</p>
             <button
               type="button"
               onClick={signInWithGoogle}
               className="w-full py-3 px-6 rounded-lg font-bold text-lg bg-[#0ff0fc] text-[#181c2f] hover:bg-[#b86fc6] hover:text-[#fff] transition-all duration-300 shadow-lg drop-shadow-[0_0_8px_#0ff0fc]"
             >
-              Sign in with Google
+              {t("myTeam.signInWithGoogle")}
             </button>
           </CardContent>
         </Card>
@@ -82,20 +84,20 @@ export default function MyTeamPage() {
       <div className="flex justify-center items-center h-[calc(100vh-80px)] p-4">
         <Card className="w-full max-w-lg text-center shadow-lg border-0 bg-gradient-to-br from-[#181c2f] via-[#3a295a] to-[#2d1b3c]">
           <CardHeader>
-            <CardTitle className="text-3xl font-bold text-[#0ff0fc] drop-shadow-[0_0_8px_#0ff0fc]">Welcome, Future Captain!</CardTitle>
+            <CardTitle className="text-3xl font-bold text-[#0ff0fc] drop-shadow-[0_0_8px_#0ff0fc]">{t("myTeam.welcomeCaptain")}</CardTitle>
             <CardDescription className="text-lg text-[#b86fc6] pt-2">
-              Ready to join the tournament? Register your team and lead them to glory.<br />
-              <span className="block mt-2 text-[#e0d7f7]">Need a team or looking for players? Join our <a href="https://discord.gg/letniatournament" target="_blank" rel="noopener noreferrer" className="underline hover:text-[#0ff0fc]">Discord</a> and visit the #find-a-team channel!</span>
+              {t("myTeam.readyToJoin")}<br />
+              <span className="block mt-2 text-[#e0d7f7]">{t("myTeam.needTeamOrPlayers")} <a href="https://discord.gg/letniatournament" target="_blank" rel="noopener noreferrer" className="underline hover:text-[#0ff0fc]">{t("myTeam.discord")}</a> {t("myTeam.findTeamChannel")}</span>
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            <p className="text-[#e0d7f7]">Take the first step and register your team.</p>
+            <p className="text-[#e0d7f7]">{t("myTeam.takeFirstStep")}</p>
             <button
               type="button"
               onClick={() => window.location.href = '/register'}
               className="w-full py-3 px-6 rounded-lg font-bold text-lg bg-[#b86fc6] text-[#fff] hover:bg-[#0ff0fc] hover:text-[#181c2f] transition-all duration-300 shadow-lg drop-shadow-[0_0_8px_#b86fc6]"
             >
-              Register your team
+              {t("myTeam.registerYourTeam")}
             </button>
           </CardContent>
         </Card>
@@ -121,8 +123,8 @@ export default function MyTeamPage() {
             ))
           ) : (
             <Card>
-              <CardHeader><CardTitle>No Upcoming Matches</CardTitle></CardHeader>
-              <CardContent><p>Your team has no matches scheduled.</p></CardContent>
+              <CardHeader><CardTitle>{t("myTeam.noUpcomingMatches")}</CardTitle></CardHeader>
+              <CardContent><p>{t("myTeam.noMatchesScheduled")}</p></CardContent>
             </Card>
           )}
           <MatchHistoryTable matches={pastMatches} teamId={team.id} />

@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import type { Match } from "@/lib/definitions";
 import { getAllTeams, getAllTournamentPlayers, saveGameResults } from "@/lib/firestore";
+import { useTranslation } from "@/hooks/useTranslation";
 
 
 
@@ -19,6 +20,7 @@ interface MatchImportModalProps {
 }
 
 export function MatchImportModal({ isOpen, onClose, match, onImportSuccess }: MatchImportModalProps) {
+    const { t } = useTranslation();
 
     const [file, setFile] = useState<File | null>(null);
     const [jsonError, setJsonError] = useState<string | null>(null);
@@ -66,7 +68,7 @@ export function MatchImportModal({ isOpen, onClose, match, onImportSuccess }: Ma
         setImportError(null);
         try {
             if (!openDotaData || !radiantTeam || !direTeam || !match) {
-                setImportError("Please provide all required information.");
+                setImportError(t('toasts.requiredInfo'));
                 setIsImporting(false);
                 return;
             }

@@ -15,6 +15,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { UserPlus, ShieldPlus, Loader2, Image as ImageIcon, MessageCircle } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import { useTranslation } from "@/hooks/useTranslation";
 import { PlayerRoles, TEAM_MMR_CAP } from "@/lib/definitions";
 import { cn } from "@/lib/utils";
 import { registerTeam } from "@/lib/actions";
@@ -25,41 +26,41 @@ const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/web
 
 const formSchema = z.object({
   name: z.string()
-    .min(3, "Team name must be at least 3 characters.")
-    .regex(/^[A-Za-z0-9 _-]+$/, "Team name can only contain letters, numbers, spaces, hyphens, and underscores."),
-  tag: z.string().min(2, "Tag must be 2-4 characters.").max(4),
-  discordUsername: z.string().min(2, "Discord username is required."),
-  motto: z.string().min(5, "Motto must be at least 5 characters."),
+    .min(3, "Nazwa zespołu musi mieć co najmniej 3 znaki.")
+    .regex(/^[A-Za-z0-9 _-]+$/, "Nazwa zespołu może zawierać tylko litery, cyfry, spacje, myślniki i podkreślenia."),
+  tag: z.string().min(2, "Tag musi mieć 2-4 znaki.").max(4),
+  discordUsername: z.string().min(2, "Nick Discord jest wymagany."),
+  motto: z.string().min(5, "Motto musi mieć co najmniej 5 znaków."),
   logo: z.custom<File | null>(
-    (file) => file instanceof File, "Logo is required."
+    (file) => file instanceof File, "Logo jest wymagane."
   ).refine(
-    (file) => !!file && file.size <= MAX_FILE_SIZE, `Max file size is 5MB.`
+    (file) => !!file && file.size <= MAX_FILE_SIZE, `Maksymalny rozmiar pliku to 5MB.`
   ).refine(
     (file) => !!file && ACCEPTED_IMAGE_TYPES.includes(file.type),
-    "Only .jpg, .jpeg, .png and .webp formats are supported."
+    "Obsługiwane są tylko formaty .jpg, .jpeg, .png i .webp."
   ),
   players: z.array(z.object({
-    nickname: z.string().min(2, "Nickname is required."),
+    nickname: z.string().min(2, "Nick jest wymagany."),
     role: z.enum(PlayerRoles),
     mmr: z.coerce.number().min(1000).max(12000),
-    steamProfileUrl: z.string().url("Must be a valid Steam profile URL."),
+    steamProfileUrl: z.string().url("Musi być prawidłowym URL profilu Steam."),
     profileScreenshot: z.custom<File | null>(
-      (file) => file instanceof File, "Screenshot is required."
+      (file) => file instanceof File, "Zrzut ekranu jest wymagany."
     ).refine(
-      (file) => !!file && file.size <= MAX_FILE_SIZE, `Max file size is 5MB.`
+      (file) => !!file && file.size <= MAX_FILE_SIZE, `Maksymalny rozmiar pliku to 5MB.`
     ).refine(
       (file) => !!file && ACCEPTED_IMAGE_TYPES.includes(file.type),
-      "Only .jpg, .jpeg, .png and .webp formats are supported."
+      "Obsługiwane są tylko formaty .jpg, .jpeg, .png i .webp."
     ),
-  })).min(5, "You must register exactly 5 players.").max(5),
+  })).min(5, "Musisz zarejestrować dokładnie 5 graczy.").max(5),
   rulesAcknowledged: z.boolean().refine((val) => val === true, {
-    message: "You must acknowledge the tournament rules.",
+    message: "Musisz zaakceptować regulamin turnieju.",
   }),
 }).refine(data => {
   const totalMMR = data.players.reduce((sum, player) => sum + player.mmr, 0);
   return totalMMR <= TEAM_MMR_CAP;
 }, {
-  message: `Total team MMR cannot exceed ${TEAM_MMR_CAP.toLocaleString()}.`,
+  message: `Łączne MMR zespołu nie może przekroczyć ${TEAM_MMR_CAP.toLocaleString()}.`,
   path: ["players"],
 });
 
@@ -67,6 +68,7 @@ import { getApp } from "firebase/app";
 
 export default function RegisterPage() {
     const { user, signInWithGoogle } = useAuth();
+    const { t } = useTranslation();
     const [serverError, setServerError] = React.useState<string | null>(null);
     const [logoPreview, setLogoPreview] = React.useState<string | null>(null);
     const [screenshotPreviews, setScreenshotPreviews] = React.useState<(string | null)[]>(Array(5).fill(null));
@@ -184,42 +186,42 @@ export default function RegisterPage() {
     if (!user) {
         return (
             <Card className="text-center">
-                <CardHeader><CardTitle>Please Login</CardTitle><CardDescription>You must be logged in to register a team.</CardDescription></CardHeader>
-                <CardContent><Button onClick={signInWithGoogle}>Sign in with Google</Button></CardContent>
+                <CardHeader><CardTitle>{t("messages.loginRequired")}</CardTitle><CardDescription>{t("messages.loginRequiredDesc")}</CardDescription></CardHeader>
+                <CardContent><Button onClick={signInWithGoogle}>{t("common.signInWithGoogle")}</Button></CardContent>
             </Card>
         );
     }
 
   return (
     <div className="space-y-8">
-      <Card><CardHeader className="text-center"><UserPlus className="h-16 w-16 mx-auto text-primary" /><CardTitle className="text-4xl font-bold">Team Registration</CardTitle></CardHeader></Card>
+      <Card><CardHeader className="text-center"><UserPlus className="h-16 w-16 mx-auto text-primary" /><CardTitle className="text-4xl font-bold">{t("registration.teamRegistration")}</CardTitle></CardHeader></Card>
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
           <Card>
-            <CardHeader><CardTitle>Team & Captain Details</CardTitle></CardHeader>
+            <CardHeader><CardTitle>{t("registration.teamDetails")}</CardTitle></CardHeader>
             <CardContent className="space-y-6">
                 <div className="grid md:grid-cols-2 gap-6">
                     <FormField name="name" control={form.control} render={({ field }) => (
                       <FormItem>
                         <FormLabel>
-                          Team Name
-                          <span className="block text-sm font-semibold text-[#b86fc6] mt-1">(Must be identical to the ingame team name!)</span>
+                          {t("registration.teamName")}
+                          <span className="block text-sm font-semibold text-[#b86fc6] mt-1">(Musi być identyczna z nazwą drużyny w grze!)</span>
                         </FormLabel>
                         <FormControl><Input {...field} /></FormControl>
                         <FormMessage />
                       </FormItem>
                     )} />
-                    <FormField name="tag" control={form.control} render={({ field }) => (<FormItem><FormLabel>Team Tag</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
-                    <FormField name="discordUsername" control={form.control} render={({ field }) => (<FormItem><FormLabel>Captain's Discord</FormLabel><FormControl><Input {...field} placeholder="your_discord_name" /></FormControl><FormMessage /></FormItem>)} />
-                    <FormField name="motto" control={form.control} render={({ field }) => (<FormItem><FormLabel>Team Motto</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                    <FormField name="tag" control={form.control} render={({ field }) => (<FormItem><FormLabel>{t("registration.teamTag")}</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                    <FormField name="discordUsername" control={form.control} render={({ field }) => (<FormItem><FormLabel>{t("registration.discordUsername")}</FormLabel><FormControl><Input {...field} placeholder="your_discord_name" /></FormControl><FormMessage /></FormItem>)} />
+                    <FormField name="motto" control={form.control} render={({ field }) => (<FormItem><FormLabel>{t("registration.teamMotto")}</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
                 </div>
                 <FormField
                     control={form.control}
                     name="logo"
                     render={() => (
                       <FormItem>
-                        <FormLabel>Team Logo</FormLabel>
+                        <FormLabel>{t("registration.teamLogo")}</FormLabel>
                         <div className="flex items-center gap-6">
                             <div className="w-32 h-32 rounded-lg bg-muted flex items-center justify-center border">
                                 {logoPreview ? 
@@ -232,7 +234,7 @@ export default function RegisterPage() {
                                   <Input type="file" accept="image/*" onChange={handleLogoChange} />
                                 </FormControl>
                                 <FormDescription className="mt-2">
-                                  Max 5MB. JPG, PNG, WEBP. Recommended: Square aspect ratio.
+                                  Maks 5MB. JPG, PNG, WEBP. Zalecane: kwadratowe proporcje.
                                 </FormDescription>
                                 <FormMessage />
                             </div>
@@ -245,29 +247,29 @@ export default function RegisterPage() {
           
           <Card>
             <CardHeader>
-              <CardTitle>Player Roster</CardTitle>
+              <CardTitle>{t("registration.playerDetails")}</CardTitle>
               <div className={cn("p-3 mt-4 rounded-md text-center font-semibold", totalMMR > TEAM_MMR_CAP ? "text-destructive bg-destructive/10" : "text-primary bg-primary/10")}>
-                Total MMR: {totalMMR.toLocaleString()} / {TEAM_MMR_CAP.toLocaleString()}
+                Łączne MMR: {totalMMR.toLocaleString()} / {TEAM_MMR_CAP.toLocaleString()}
               </div>
               {form.formState.errors.players && <p className="text-sm font-medium text-destructive mt-2 text-center">{form.formState.errors.players.message}</p>}
             </CardHeader>
             <CardContent className="space-y-6">
                 {fields.map((field, index) => (
                     <Card key={field.id} className="p-4">
-                        <h4 className="font-bold text-lg text-center mb-4">Player {index + 1}</h4>
+                        <h4 className="font-bold text-lg text-center mb-4">Gracz {index + 1}</h4>
                         <div className="space-y-4 pt-2">
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <FormField name={`players.${index}.nickname`} control={form.control} render={({ field }) => (<FormItem><FormLabel>Nickname</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                <FormField name={`players.${index}.nickname`} control={form.control} render={({ field }) => (<FormItem><FormLabel>{t("players.nickname")}</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
                                 <FormField name={`players.${index}.mmr`} control={form.control} render={({ field }) => (<FormItem><FormLabel>MMR</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                <FormField name={`players.${index}.steamProfileUrl`} control={form.control} render={({ field }) => (<FormItem className="sm:col-span-2"><FormLabel>Steam Profile URL</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                <FormField name={`players.${index}.role`} control={form.control} render={({ field }) => (<FormItem><FormLabel>Role</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select a role" /></SelectTrigger></FormControl><SelectContent>{PlayerRoles.map(role => (<SelectItem key={role} value={role}>{role}</SelectItem>))}</SelectContent></Select><FormMessage /></FormItem>)} />
+                                <FormField name={`players.${index}.steamProfileUrl`} control={form.control} render={({ field }) => (<FormItem className="sm:col-span-2"><FormLabel>{t("registration.steamProfile")}</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                <FormField name={`players.${index}.role`} control={form.control} render={({ field }) => (<FormItem><FormLabel>{t("players.role")}</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder={t("registration.selectRole")} /></SelectTrigger></FormControl><SelectContent>{PlayerRoles.map(role => (<SelectItem key={role} value={role}>{t(`players.roles.${role}`)}</SelectItem>))}</SelectContent></Select><FormMessage /></FormItem>)} />
                             </div>
                             <FormField
                                 control={form.control}
                                 name={`players.${index}.profileScreenshot`}
                                 render={() => (
                                 <FormItem>
-                                    <FormLabel>MMR Screenshot</FormLabel>
+                                    <FormLabel>{t("registration.uploadScreenshot")}</FormLabel>
                                     <FormControl>
                                     <Input type="file" accept="image/*" onChange={(e) => handleScreenshotChange(e, index)} />
                                     </FormControl>
@@ -276,7 +278,7 @@ export default function RegisterPage() {
                                         <div className="mt-2 rounded-md border bg-muted p-2">
                                             <Image 
                                                 src={screenshotPreviews[index]!} 
-                                                alt={`Player ${index + 1} screenshot preview`} 
+                                                alt={`Gracz ${index + 1} podgląd zrzutu ekranu`} 
                                                 width={400} 
                                                 height={225} 
                                                 className="rounded-md object-contain mx-auto"
@@ -301,7 +303,7 @@ export default function RegisterPage() {
                   <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
                     <FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl>
                     <div className="space-y-1 leading-none">
-                      <FormLabel>I agree to the <Link href="/rules" className="text-primary hover:underline">tournament rules</Link>.</FormLabel>
+                      <FormLabel>Zgadzam się z <Link href="/rules" className="text-primary hover:underline">regulaminem turnieju</Link>.</FormLabel>
                       <FormMessage />
                     </div>
                   </FormItem>
@@ -309,7 +311,7 @@ export default function RegisterPage() {
               />
               <Button type="submit" size="lg" className="w-full mt-6" disabled={isSubmitting || !isValid}>
                 {isSubmitting ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <ShieldPlus className="mr-2 h-5 w-5" />}
-                Submit Registration
+                {t("registration.submitRegistration")}
               </Button>
               {serverError && <p className="text-sm font-medium text-destructive mt-4 text-center">{serverError}</p>}
             </CardContent>

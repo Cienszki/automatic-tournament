@@ -1,52 +1,63 @@
 
+"use client";
+
 import { MatchListItem } from "@/components/app/MatchListItem";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { getAllMatches } from "@/lib/firestore";
+import { useTranslation } from "@/hooks/useTranslation";
 import type { Match } from "@/lib/definitions";
 import { AlertCircle, Calendar, CalendarClock, History } from "lucide-react";
-import { unstable_noStore as noStore } from 'next/cache';
+import { useEffect, useState } from "react";
 
-async function getMatches(): Promise<{ upcomingMatches: Match[], completedMatches: Match[] }> {
-  noStore();
-  const allMatches = await getAllMatches();
+export default function SchedulePage() {
+  const { t } = useTranslation();
+  const [upcomingMatches, setUpcomingMatches] = useState<Match[]>([]);
+  const [completedMatches, setCompletedMatches] = useState<Match[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Only show matches that have a confirmed custom time (dateTime).
-  const upcomingMatches = allMatches
-    .filter(match => match.status !== 'completed' && match.dateTime)
-    .sort((a, b) => new Date(a.dateTime!).getTime() - new Date(b.dateTime!).getTime());
+  useEffect(() => {
+    const loadMatches = async () => {
+      try {
+        const allMatches = await getAllMatches();
 
-  // Completed matches are sorted by their completion or scheduled date.
-  const completedMatches = allMatches
-    .filter(match => match.status === 'completed')
-    .sort((a, b) => {
-        const dateA = a.completed_at ? new Date(a.completed_at) : new Date(a.dateTime || 0);
-        const dateB = b.completed_at ? new Date(b.completed_at) : new Date(b.dateTime || 0);
-        return dateB.getTime() - dateA.getTime();
-    });
+        // Only show matches that have a confirmed custom time (dateTime).
+        const upcoming = allMatches
+          .filter(match => match.status !== 'completed' && match.dateTime)
+          .sort((a, b) => new Date(a.dateTime!).getTime() - new Date(b.dateTime!).getTime());
 
-  return { upcomingMatches, completedMatches };
-}
+        // Completed matches are sorted by their completion or scheduled date.
+        const completed = allMatches
+          .filter(match => match.status === 'completed')
+          .sort((a, b) => {
+              const dateA = a.completed_at ? new Date(a.completed_at) : new Date(a.dateTime || 0);
+              const dateB = b.completed_at ? new Date(b.completed_at) : new Date(b.dateTime || 0);
+              return dateB.getTime() - dateA.getTime();
+          });
 
-export default async function SchedulePage() {
-  const { upcomingMatches, completedMatches } = await getMatches();
+        setUpcomingMatches(upcoming);
+        setCompletedMatches(completed);
+      } catch (error) {
+        console.error("Failed to load matches:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadMatches();
+  }, []);
+
+  if (loading) {
+    return <div className="text-center py-10">{t('common.loading')}...</div>;
+  }
 
   return (
     <div className="space-y-8">
-      <Card className="shadow-xl text-center relative overflow-hidden min-h-[30vh] flex flex-col justify-center p-6">
+      <Card className="shadow-xl text-center relative overflow-hidden h-[320px] fhd:h-[320px] 2k:h-[500px] flex-col justify-center p-6">
         <div 
           className="absolute inset-0 z-0 bg-cover bg-center" 
           style={{ backgroundImage: `url(/backgrounds/schedule.png)` }} 
           data-ai-hint="neon fantasy space"
         />
-        <div className="relative z-10">
-          <Calendar className="h-16 w-16 mx-auto text-primary mb-4" />
-          <h2 className="text-4xl font-bold text-primary" style={{ textShadow: '2px 2px 8px rgba(0,0,0,0.7)' }}>
-            Match Schedule
-          </h2>
-          <p className="text-lg text-white mt-2" style={{ textShadow: '1px 1px 6px rgba(0,0,0,0.8)' }}>
-            View upcoming games and past results.
-          </p>
-        </div>
       </Card>
 
       <div className="grid md:grid-cols-2 gap-8">
@@ -55,16 +66,16 @@ export default async function SchedulePage() {
            <div className="text-center py-2">
             <h2 className="text-3xl font-semibold text-accent flex items-center justify-center">
                 <CalendarClock className="h-8 w-8 mr-3" />
-                Upcoming Games
+                {t('schedule.upcomingGames')}
             </h2>
           </div>
           {upcomingMatches.length === 0 ? (
             <Card className="shadow-none border-0 bg-gradient-to-br from-[#181c2f] via-[#3a295a] to-[#2d1b3c] transition-transform duration-300 hover:scale-105 hover:shadow-[0_0_48px_8px_#b86fc6cc,0_0_32px_0_#0ff0fc99]">
               <CardContent className="p-10 flex flex-col items-center text-center">
                 <AlertCircle className="w-16 h-16 text-primary mb-4" />
-                <h3 className="text-2xl font-semibold mb-2">No Upcoming Matches</h3>
+                <h3 className="text-2xl font-semibold mb-2">{t('schedule.noUpcomingMatches')}</h3>
                 <p className="text-muted-foreground">
-                  There are no confirmed matches scheduled.
+                  {t('schedule.noUpcomingMatchesDesc')}
                 </p>
               </CardContent>
             </Card>
@@ -81,16 +92,16 @@ export default async function SchedulePage() {
           <div className="text-center py-2">
             <h2 className="text-3xl font-semibold text-accent flex items-center justify-center">
               <History className="h-8 w-8 mr-3" />
-              Recent Results
+              {t('schedule.recentResults')}
             </h2>
           </div>
           {completedMatches.length === 0 ? (
             <Card className="shadow-none border-0 bg-gradient-to-br from-[#181c2f] via-[#3a295a] to-[#2d1b3c] transition-transform duration-300 hover:scale-105 hover:shadow-[0_0_48px_8px_#b86fc6cc,0_0_32px_0_#0ff0fc99]">
               <CardContent className="p-10 flex flex-col items-center text-center">
                 <AlertCircle className="w-16 h-16 text-primary mb-4" />
-                <h3 className="text-2xl font-semibold mb-2">No Recent Matches</h3>
+                <h3 className="text-2xl font-semibold mb-2">{t('schedule.noRecentMatches')}</h3>
                 <p className="text-muted-foreground">
-                  There are no recently completed matches to display.
+                  {t('schedule.noRecentMatchesDesc')}
                 </p>
               </CardContent>
             </Card>
@@ -106,9 +117,4 @@ export default async function SchedulePage() {
       </div>
     </div>
   );
-}
-
-export const metadata = {
-  title: "Schedule | Tournament Tracker",
-  description: "View upcoming and recent matches for the tournament."
 }

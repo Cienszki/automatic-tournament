@@ -7,36 +7,37 @@ import { Button } from '@/components/ui/button';
 import { Logo } from './Logo';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useTranslation } from '@/hooks/useTranslation';
 import React from 'react';
-
-const navItems = [
-  { href: '/my-team', label: 'My Team', icon: Users },
-  { href: '/groups', label: 'Group Stage', icon: LayoutGrid },
-  { href: '/teams', label: 'Teams', icon: Shield },
-  { href: '/schedule', label: 'Schedule', icon: CalendarDays },
-  { href: '/playoffs', label: 'Playoffs', icon: GitFork },
-  { href: '/fantasy', label: 'Fantasy', icon: Crown },
-  { href: '/pickem', label: "Pick'em", icon: ClipboardCheck },
-  { href: '/stats', label: 'Stats', icon: BarChart2 },
-  { href: '/rules', label: 'Rules', icon: ScrollText },
-  { href: '/faq', label: 'FAQ', icon: HelpCircle },
-  { href: '/admin', label: 'Admin', icon: Settings },
-];
-
-const CustomHamburgerIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
-    <rect x="3" y="6" width="18" height="2.5" fill="hsl(var(--primary))" rx="1.25"/>
-    <rect x="3" y="11" width="18" height="2.5" fill="hsl(var(--accent))" rx="1.25"/>
-    <rect x="3" y="16" width="18" height="2.5" fill="hsl(var(--foreground))" rx="1.25"/>
-  </svg>
-);
-
 
 export function Navbar() {
   const pathname = usePathname();
   const isMobile = useIsMobile();
+  const { t } = useTranslation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
   const [hasMounted, setHasMounted] = React.useState(false);
+
+  const navItems = [
+    { href: '/my-team', label: t('nav.register'), icon: Users },
+    { href: '/groups', label: t('nav.groups'), icon: LayoutGrid },
+    { href: '/teams', label: t('nav.teams'), icon: Shield },
+    { href: '/schedule', label: t('nav.schedule'), icon: CalendarDays },
+    { href: '/playoffs', label: t('nav.playoffs'), icon: GitFork },
+    { href: '/fantasy', label: t('nav.fantasy'), icon: Crown },
+    { href: '/pickem', label: t('nav.pickem'), icon: ClipboardCheck },
+    { href: '/stats', label: t('nav.stats'), icon: BarChart2 },
+    { href: '/rules', label: t('nav.rules'), icon: ScrollText },
+    { href: '/faq', label: t('nav.faq'), icon: HelpCircle },
+    { href: '/admin', label: 'Admin', icon: Settings }, // Keep admin in English
+  ];
+
+  const CustomHamburgerIcon = (props: React.SVGProps<SVGSVGElement>) => (
+    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
+      <rect x="3" y="6" width="18" height="2.5" fill="hsl(var(--primary))" rx="1.25"/>
+      <rect x="3" y="11" width="18" height="2.5" fill="hsl(var(--accent))" rx="1.25"/>
+      <rect x="3" y="16" width="18" height="2.5" fill="hsl(var(--foreground))" rx="1.25"/>
+    </svg>
+  );
 
   React.useEffect(() => {
     setHasMounted(true);

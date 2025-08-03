@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
+import { useTranslation } from "@/hooks/useTranslation";
 
 
 
@@ -16,6 +17,7 @@ export function RegistrationPayloadsTab() {
   const [teams, setTeams] = React.useState<any[]>([]);
   const [loading, setLoading] = React.useState(true);
   const { toast } = useToast();
+  const { t } = useTranslation();
 
   React.useEffect(() => {
     async function fetchTeams() {
@@ -26,7 +28,11 @@ export function RegistrationPayloadsTab() {
         const data = await res.json();
         setTeams(data);
       } catch (e) {
-        toast({ title: "Error", description: "Could not load registration payloads.", variant: "destructive" });
+        toast({ 
+          title: t('toasts.errors.title'), 
+          description: t('toasts.errors.loadRegistrationPayloads'), 
+          variant: "destructive" 
+        });
       } finally {
         setLoading(false);
       }

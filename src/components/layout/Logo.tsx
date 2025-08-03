@@ -11,6 +11,8 @@ export function Logo() {
         width={150} // Adjust width as needed
         height={150} // Adjust height as needed
         className="cursor-pointer"
+        priority
+        unoptimized
       />
     </Link>
   );

@@ -1,6 +1,6 @@
 "use client";
 
-import { Youtube, LogIn, LogOut, TestTube } from 'lucide-react';
+import { Youtube, LogIn, LogOut } from 'lucide-react';
 import Link from 'next/link';
 import React from 'react';
 import { useAuth } from '../../context/AuthContext';
@@ -87,24 +87,6 @@ export function Footer() {
             <span className="sr-only">YouTube</span>
           </a>
 
-          {/* Testing Dropdown - Only shows in development */}
-          {isDevelopment && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="icon" aria-label="Testing Links">
-                  <TestTube className="h-5 w-5" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuLabel>Testing</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                  <Link href="/system-test">System Test</Link>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
-          
           {/* Auth Section */}
           {user ? (
             <DropdownMenu>

@@ -9,6 +9,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { Check, ChevronsUpDown, Loader2, Trash2, ShieldAlert, CalendarIcon, GitBranchPlus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useTranslation } from "@/hooks/useTranslation";
 import { cn } from "@/lib/utils";
 import { getGroups, getTeams, createGroup, deleteGroup, deleteAllGroups, generateMatchesForGroup, getMatches } from "@/lib/admin-actions";
 import type { Team, Group, Match } from "@/lib/definitions";
@@ -29,6 +30,7 @@ import { format } from "date-fns";
 
 export function StageManagementTab() {
   const { toast } = useToast();
+  const { t } = useTranslation();
   const { user } = useAuth();
   const [allTeams, setAllTeams] = React.useState<Team[]>([]);
   const [selectedTeamIds, setSelectedTeamIds] = React.useState<string[]>([]);
@@ -74,7 +76,11 @@ export function StageManagementTab() {
       setGroups(fetchedGroups.sort((a, b) => a.name.localeCompare(b.name)));
       setMatches(fetchedMatches);
     } catch (error) {
-      toast({ title: "Error fetching data", description: "Could not load required data.", variant: "destructive"})
+      toast({ 
+        title: t('toasts.errors.dataFetch'), 
+        description: t('toasts.errors.loadRequired'), 
+        variant: "destructive"
+      })
     } finally {
       setIsLoading(false);
     }
@@ -85,15 +91,27 @@ export function StageManagementTab() {
   }, [fetchData]);
 
   const handleCreateGroup = async () => {
-    if (!user) return toast({ title: "Authentication Error", description: "Please sign in.", variant: "destructive" });
+    if (!user) return toast({ 
+      title: t('toasts.errors.auth.title'), 
+      description: t('toasts.errors.auth.signInRequired'), 
+      variant: "destructive" 
+    });
     if (!newGroupName || selectedTeamIds.length === 0) {
-      toast({ title: "Error", description: "Please provide a group name and select at least one team.", variant: "destructive" });
+      toast({ 
+        title: t('toasts.errors.title'), 
+        description: t('toasts.errors.validation.groupNameAndTeam'), 
+        variant: "destructive" 
+      });
       return;
     }
     setIsCreatingGroup(true);
     const token = await user.getIdToken();
     const result = await createGroup(token, newGroupName, selectedTeamIds);
-    toast({ title: result.success ? "Success!" : "Creation Failed", description: result.message, variant: result.success ? "default" : "destructive" });
+    toast({ 
+      title: result.success ? t('toasts.success.title') : t('toasts.errors.admin.creationFailed'), 
+      description: result.message, 
+      variant: result.success ? "default" : "destructive" 
+    });
     if (result.success) {
       setNewGroupName("");
       setSelectedTeamIds([]);
@@ -103,22 +121,34 @@ export function StageManagementTab() {
   };
 
   const handleDeleteGroup = async (groupId: string) => {
-    if (!user) return toast({ title: "Authentication Error", description: "Please sign in.", variant: "destructive" });
+    if (!user) return toast({ 
+      title: t('toasts.errors.auth.title'), 
+      description: t('toasts.errors.auth.signInRequired'), 
+      variant: "destructive" 
+    });
     setIsDeleting(groupId);
     const token = await user.getIdToken();
     const result = await deleteGroup(token, groupId);
-    toast({ title: result.success ? "Success!" : "Deletion Failed", description: result.message, variant: result.success ? "default" : "destructive" });
+    toast({ 
+      title: result.success ? t('toasts.success.title') : t('toasts.errors.admin.deletionFailed'), 
+      description: result.message, 
+      variant: result.success ? "default" : "destructive" 
+    });
     if (result.success) fetchData();
     setIsDeleting(false);
   };
   
   const handleGenerateMatches = async (groupId: string) => {
-    if (!user) return toast({ title: "Authentication Error", description: "Please sign in.", variant: "destructive" });
+    if (!user) return toast({ 
+      title: t('toasts.errors.auth.title'), 
+      description: t('toasts.errors.auth.signInRequired'), 
+      variant: "destructive" 
+    });
     setGeneratingGroupId(groupId);
     const token = await user.getIdToken();
     const result = await generateMatchesForGroup(token, groupId, combinedDeadline || null);
     toast({
-        title: result.success ? "Success!" : "Generation Failed",
+        title: result.success ? t('toasts.success.title') : t('toasts.errors.admin.generationFailed'),
         description: result.message,
         variant: result.success ? "default" : "destructive"
     });
@@ -127,11 +157,19 @@ export function StageManagementTab() {
   };
 
   const handleDeleteAllGroups = async () => {
-    if (!user) return toast({ title: "Authentication Error", description: "Please sign in.", variant: "destructive" });
+    if (!user) return toast({ 
+      title: t('toasts.errors.auth.title'), 
+      description: t('toasts.errors.auth.signInRequired'), 
+      variant: "destructive" 
+    });
     setIsDeletingAll(true);
     const token = await user.getIdToken();
     const result = await deleteAllGroups(token);
-    toast({ title: result.success ? "Success!" : "Deletion Failed", description: result.message, variant: result.success ? "default" : "destructive" });
+    toast({ 
+      title: result.success ? t('toasts.success.title') : t('toasts.errors.admin.deletionFailed'), 
+      description: result.message, 
+      variant: result.success ? "default" : "destructive" 
+    });
     if (result.success) fetchData();
     setIsDeletingAll(false);
   };

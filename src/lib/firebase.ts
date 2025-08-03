@@ -15,12 +15,9 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-console.log("Firebase Config:", firebaseConfig);
-
 let app: FirebaseApp;
 try {
     app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
-    console.log("Firebase App Initialized:", app.name);
 } catch (e) {
     console.error("Firebase initialization error", e);
     // @ts-ignore

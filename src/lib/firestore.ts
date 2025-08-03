@@ -93,7 +93,8 @@ export async function getTournamentStatus(): Promise<{ roundId: string } | null>
     if (!statusSnap.exists()) {
         return { roundId: 'initial' }; // Default to initial if not set
     }
-    return statusSnap.data() as { roundId: string };
+    const data = statusSnap.data();
+    return { roundId: data?.roundId || data?.current || 'initial' };
 }
 
 export async function saveTeam(teamData: Omit<Team, 'id' | 'createdAt'>, user?: any): Promise<void> {
@@ -330,7 +331,8 @@ export async function getUserPickem(userId: string): Promise<Pickem | null> {
 export async function saveUserPickem(userId: string, predictions: Pickem['predictions']): Promise<void> {
     const tournamentStatusRef = doc(db, "tournament", "status");
     const tournamentStatusSnap = await getDoc(tournamentStatusRef);
-    const currentRoundId = tournamentStatusSnap.data()?.roundId || 'initial';
+    const statusData = tournamentStatusSnap.data();
+    const currentRoundId = statusData?.roundId || statusData?.current || 'initial';
 
     if (currentRoundId !== 'initial') {
         throw new Error("Pick'em submissions are now locked as the tournament registration phase is over.");
@@ -375,10 +377,80 @@ export async function getUserFantasyLineup(userId: string, roundId: string): Pro
 }
 
 export async function getFantasyLeaderboard(): Promise<any[]> {
-    const leaderboardCol = collection(db, "fantasyLineups");
-    const q = query(leaderboardCol, orderBy("totalFantasyScore", "desc"));
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => doc.data());
+    try {
+        const leaderboardCol = collection(db, "fantasyLineups");
+        
+        // First try to get documents with ordering, if that fails, get all documents
+        let snapshot;
+        try {
+            const q = query(leaderboardCol, orderBy("totalFantasyScore", "desc"));
+            snapshot = await getDocs(q);
+        } catch (orderError) {
+            console.warn("Could not order by totalFantasyScore, fetching all documents:", orderError);
+            snapshot = await getDocs(leaderboardCol);
+        }
+        
+        // Get the current tournament status to know which round to load
+        const statusDoc = await getDoc(doc(db, "tournament", "status"));
+        const currentRoundId = statusDoc.exists() ? (statusDoc.data()?.roundId || statusDoc.data()?.current) : null;
+        
+        if (!currentRoundId) {
+            return snapshot.docs.map(doc => ({ 
+                userId: doc.id,
+                displayName: doc.data().displayName || "Anonymous",
+                totalFantasyScore: doc.data().totalFantasyScore || 0,
+                ...doc.data(), 
+                lineup: {} 
+            }));
+        }
+        
+        // Fetch the lineup data for each user for the current round
+        const leaderboardWithLineups = await Promise.all(
+            snapshot.docs.map(async (userDoc) => {
+                const userId = userDoc.id;
+                const userData = userDoc.data();
+                
+                try {
+                    // Get the lineup for the current round
+                    const lineupRef = doc(db, "fantasyLineups", userId, "rounds", currentRoundId);
+                    const lineupSnap = await getDoc(lineupRef);
+                    
+                    const lineupData = lineupSnap.exists() ? lineupSnap.data()?.lineup || {} : {};
+                    
+                    // Validate lineup data structure
+                    const validatedLineup: any = {};
+                    Object.entries(lineupData).forEach(([role, player]: [string, any]) => {
+                        if (player && typeof player === 'object' && player.nickname && player.id) {
+                            validatedLineup[role] = player;
+                        }
+                    });
+                    
+                    return {
+                        userId,
+                        displayName: userData.displayName || "Anonymous",
+                        totalFantasyScore: userData.totalFantasyScore || 0,
+                        ...userData,
+                        lineup: validatedLineup
+                    };
+                } catch (error) {
+                    console.warn(`Could not load lineup for user ${userId}:`, error);
+                    return {
+                        userId,
+                        displayName: userData.displayName || "Anonymous",
+                        totalFantasyScore: userData.totalFantasyScore || 0,
+                        ...userData,
+                        lineup: {}
+                    };
+                }
+            })
+        );
+        
+        // Sort manually if orderBy failed
+        return leaderboardWithLineups.sort((a, b) => (b.totalFantasyScore || 0) - (a.totalFantasyScore || 0));
+    } catch (error) {
+        console.warn("Could not load fantasy leaderboard, returning empty array:", error);
+        return [];
+    }
 }
 
 export async function saveUserFantasyLineup(userId: string, lineup: Record<PlayerRole, TournamentPlayer>, roundId: string, displayName: string): Promise<void> {

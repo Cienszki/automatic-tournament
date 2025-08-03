@@ -1,3 +1,5 @@
+"use client";
+
 // Role icon utility (copied from TeamCard)
 const getRoleIcon = (role: string) => {
   switch (role) {
@@ -37,20 +39,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import Image from "next/image";
 import Link from "next/link";
 import { CopyToClipboard } from "@/components/app/CopyToClipboard";
+import { useTranslation } from "@/hooks/useTranslation";
+import { useEffect, useState } from "react";
 
-
-interface PageProps {
-  params: Promise<{ teamId: string }>;
-}
-
-async function getTeamData(teamId: string): Promise<{ team: Team | undefined, teamMatches: Match[] }> {
-  const team = await getTeamById(teamId);
-  if (!team) return { team: undefined, teamMatches: [] };
-
-  const allMatches = await getAllMatches();
-  const teamMatches = allMatches.filter(m => m.teams && m.teams.includes(teamId) && m.status === 'completed');
-  return { team, teamMatches };
-}
 
 const getStatusBadgeClasses = (status?: TeamStatus) => {
   switch (status) {
@@ -81,6 +72,67 @@ const getStatusIcon = (status?: TeamStatus) => {
       return null;
   }
 }
+
+interface PageProps {
+  params: Promise<{ teamId: string }>;
+}
+
+export default function TeamPage({ params }: PageProps) {
+  const { t } = useTranslation();
+  const [team, setTeam] = useState<Team | null>(null);
+  const [teamMatches, setTeamMatches] = useState<Match[]>([]);
+  const [allTeams, setAllTeams] = useState<Team[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [teamId, setTeamId] = useState<string>('');
+
+  useEffect(() => {
+    const initializeParams = async () => {
+      const resolvedParams = await params;
+      setTeamId(resolvedParams.teamId);
+    };
+    initializeParams();
+  }, [params]);
+
+  useEffect(() => {
+    if (!teamId) return;
+    
+    const fetchData = async () => {
+      try {
+        const teamData = await getTeamById(teamId);
+        if (!teamData) {
+          notFound();
+          return;
+        }
+
+        const [allMatchesData, allTeamsData] = await Promise.all([
+          getAllMatches(),
+          getAllTeams()
+        ]);
+
+        const teamMatchesFiltered = allMatchesData.filter(m => 
+          m.teams && m.teams.includes(teamId) && m.status === 'completed'
+        );
+
+        setTeam(teamData);
+        setTeamMatches(teamMatchesFiltered);
+        setAllTeams(allTeamsData);
+      } catch (error) {
+        console.error('Error fetching team data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [teamId]);
+
+  if (loading) {
+    return <div className="flex justify-center items-center min-h-96">Loading...</div>;
+  }
+
+  if (!team) {
+    notFound();
+  }
 
 const podiumColors = [
   { border: 'border-chart-1', text: 'text-chart-1', bg: 'bg-chart-1/10' },
@@ -113,14 +165,6 @@ function getRankForStat(
 }
 
 
-export default async function TeamPage({ params }: PageProps) {
-  const resolvedParams = await params;
-  const { team, teamMatches } = await getTeamData(resolvedParams.teamId);
-  const allTeams = await getAllTeams(); // Fetch all teams for ranking
-
-  if (!team) {
-    notFound();
-  }
   
   const sortedPlayers = sortPlayersByRole(team.players || []);
   const totalMMR = sortedPlayers.reduce((sum, player) => sum + player.mmr, 0);
@@ -143,7 +187,7 @@ export default async function TeamPage({ params }: PageProps) {
 
   const performanceStats = [
     {
-      label: "Avg. Kills / Game",
+      label: t('teamDetail.avgKillsPerGame'),
       value: team.averageKillsPerGame?.toFixed(1) ?? 'N/A',
       icon: Swords,
       type: 'progress',
@@ -156,7 +200,7 @@ export default async function TeamPage({ params }: PageProps) {
       sortOrder: 'desc' as 'desc' | 'asc',
     },
     {
-      label: "Avg. Deaths / Game",
+      label: t('teamDetail.avgDeathsPerGame'),
       value: team.averageDeathsPerGame?.toFixed(1) ?? 'N/A',
       icon: Skull,
       type: 'progress',
@@ -169,7 +213,7 @@ export default async function TeamPage({ params }: PageProps) {
       sortOrder: 'asc' as 'desc' | 'asc',
     },
     {
-      label: "Avg. Assists / Game",
+      label: t('teamDetail.avgAssistsPerGame'),
       value: team.averageAssistsPerGame?.toFixed(1) ?? 'N/A',
       icon: HandshakeIcon,
       type: 'progress',
@@ -182,7 +226,7 @@ export default async function TeamPage({ params }: PageProps) {
       sortOrder: 'desc' as 'desc' | 'asc',
     },
     {
-      label: "Avg. Fantasy Points",
+      label: t('teamDetail.avgFantasyPoints'),
       value: team.averageFantasyPoints?.toFixed(1) ?? 'N/A',
       icon: Award,
       type: 'progress',
@@ -195,7 +239,6 @@ export default async function TeamPage({ params }: PageProps) {
       sortOrder: 'desc' as 'desc' | 'asc',
     }
   ];
-
 
   return (
     <div className="space-y-8">
@@ -219,11 +262,11 @@ export default async function TeamPage({ params }: PageProps) {
                 </CardTitle>
                 <Badge className={cn("text-sm px-3 py-1", getStatusBadgeClasses(team.status))}>
                   {getStatusIcon(team.status)}
-                  {team.status}
+                  {t(`teamDetail.${team.status}` as any) || team.status}
                 </Badge>
               </div>
               <CardDescription className="text-lg mt-1">
-                Detailed profile and performance statistics.
+                {t('teamDetail.detailedProfile')}
               </CardDescription>
             </div>
           </div>
@@ -231,15 +274,15 @@ export default async function TeamPage({ params }: PageProps) {
         <CardContent className="p-6 md:p-8 grid md:grid-cols-2 gap-6">
           <div className="md:col-span-1 space-y-4">
             <h3 className="text-xl font-semibold mb-4 flex items-center text-foreground">
-               <Shield className="h-6 w-6 mr-2 text-primary" /> Team Summary
+               <Shield className="h-6 w-6 mr-2 text-primary" /> {t('teamDetail.teamSummary')}
             </h3>
-             <InfoItem icon={ListChecks} label="Matches Played" value={team.matchesPlayed ?? 0} />
-             <InfoItem icon={Swords} label="Wins / Draws / Losses" value={`${team.wins ?? 0}W / ${team.draws ?? 0}D / ${team.losses ?? 0}L`} />
-             <InfoItem icon={Sigma} label="Total MMR" value={formatNumber(totalMMR)} />
+             <InfoItem icon={ListChecks} label={t('teamDetail.matchesPlayed')} value={team.matchesPlayed ?? 0} />
+             <InfoItem icon={Swords} label={t('teamDetail.winsDrawsLosses')} value={`${team.wins ?? 0}W / ${team.draws ?? 0}D / ${team.losses ?? 0}L`} />
+             <InfoItem icon={Sigma} label={t('teamDetail.totalMMR')} value={formatNumber(totalMMR)} />
              {team.captainDiscordUsername && (
                 <div className="flex items-center text-md p-3 bg-muted/20 rounded-md">
                     <MessageSquare className="h-5 w-5 mr-3 text-primary" />
-                    <span className="font-medium text-muted-foreground">Captain's Discord:</span>
+                    <span className="font-medium text-muted-foreground">{t('teamDetail.captainDiscord')}:</span>
                     <span className="ml-auto font-semibold text-foreground">{team.captainDiscordUsername}</span>
                     <CopyToClipboard text={team.captainDiscordUsername} />
                 </div>
@@ -247,7 +290,7 @@ export default async function TeamPage({ params }: PageProps) {
           </div>
           <div className="md:col-span-1 space-y-4">
              <h3 className="text-xl font-semibold mb-4 flex items-center text-foreground">
-                <Users className="h-6 w-6 mr-2 text-primary" /> Player Roster
+                <Users className="h-6 w-6 mr-2 text-primary" /> {t('teamDetail.playerRoster')}
             </h3>
             <div className="space-y-3">
               {sortedPlayers.map((player) => (
@@ -273,7 +316,7 @@ export default async function TeamPage({ params }: PageProps) {
         <Card className="shadow-xl text-center hover:bg-muted/10 transition-colors duration-200 flex flex-col">
           <CardHeader className="flex flex-row items-center justify-center space-x-3 pb-2">
             <Users2 className="h-6 w-6 text-accent" />
-            <CardTitle className="text-xl text-primary">Top Heroes</CardTitle>
+            <CardTitle className="text-xl text-primary">{t('teamDetail.topHeroes')}</CardTitle>
           </CardHeader>
           <CardContent className="p-6 pt-2">
             {sortedHeroes.length > 0 ? (
@@ -305,14 +348,14 @@ export default async function TeamPage({ params }: PageProps) {
                       <HeroIcon className={cn("h-6 w-6 md:h-8 md:w-8 mb-1 md:mb-2", podiumStyle.text)} />
                       <p className={cn("font-bold text-sm md:text-base text-center", podiumStyle.text)}>{heroStat.name}</p>
                       <p className={cn("text-xs md:text-sm text-center", podiumStyle.text, "opacity-80")}>
-                        {heroStat.gamesPlayed} Game{heroStat.gamesPlayed !== 1 ? 's' : ''}
+                        {heroStat.gamesPlayed} {heroStat.gamesPlayed !== 1 ? t('teamDetail.games') : t('teamDetail.game')}
                       </p>
                     </div>
                   );
                 })}
               </div>
             ) : (
-              <p className="text-muted-foreground text-center">No hero play stats available for this team yet.</p>
+              <p className="text-muted-foreground text-center">{t('teamDetail.noHeroStats')}</p>
             )}
           </CardContent>
         </Card>
@@ -320,7 +363,7 @@ export default async function TeamPage({ params }: PageProps) {
         <Card className="shadow-xl text-center hover:bg-muted/10 transition-colors duration-200 flex flex-col">
           <CardHeader className="flex flex-row items-center justify-center space-x-3 pb-2">
             <Clock className="h-6 w-6 text-accent" />
-            <CardTitle className="text-xl text-primary">Avg. Match Duration</CardTitle>
+            <CardTitle className="text-xl text-primary">{t('teamDetail.avgMatchDuration')}</CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col items-center justify-center flex-grow p-6">
             <div className="relative w-40 h-40 md:w-48 md:h-48 mb-4">
@@ -351,7 +394,7 @@ export default async function TeamPage({ params }: PageProps) {
                 <circle cx="50" cy="50" r="3" fill="hsl(var(--primary))" />
               </svg>
             </div>
-            <p className="text-2xl font-bold text-foreground">{avgMatchDurationMinutes} min</p>
+            <p className="text-2xl font-bold text-foreground">{avgMatchDurationMinutes} {t('teamDetail.min')}</p>
           </CardContent>
         </Card>
 
@@ -375,9 +418,9 @@ export default async function TeamPage({ params }: PageProps) {
                     aria-label={`${stat.label} progress`}
                   />
                   <p className="text-xs text-muted-foreground mt-1">
-                    League avg: {stat.leagueAvg} | Best: {stat.bestValue}
+                    {t('teamDetail.leagueAvg')}: {stat.leagueAvg} | {t('teamDetail.best')}: {stat.bestValue}
                   </p>
-                  {stat.rank && <p className="text-xs text-muted-foreground mt-2">Rank: {stat.rank}</p>}
+                  {stat.rank && <p className="text-xs text-muted-foreground mt-2">{t('teamDetail.rank')}: {stat.rank}</p>}
                 </>
               ) : (
                 <p className="text-4xl font-bold text-foreground pt-4">{stat.value}</p>
@@ -393,11 +436,11 @@ export default async function TeamPage({ params }: PageProps) {
         <Card className="shadow-xl text-center hover:bg-muted/10 transition-colors duration-200 flex flex-col">
           <CardHeader className="flex flex-row items-center justify-center space-x-3 pb-2">
             <Coins className="h-6 w-6 text-yellow-400" />
-            <CardTitle className="text-lg text-primary">Avg. GPM</CardTitle>
+            <CardTitle className="text-lg text-primary">{t('teamDetail.avgGPM')}</CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col items-center justify-center flex-grow p-4">
             <p className="text-3xl font-bold text-foreground">{team.averageGpm?.toFixed(0) ?? 'N/A'}</p>
-            <p className="text-xs text-muted-foreground mt-1">Gold Per Minute</p>
+            <p className="text-xs text-muted-foreground mt-1">{t('teamDetail.goldPerMinute')}</p>
           </CardContent>
         </Card>
 
@@ -405,11 +448,11 @@ export default async function TeamPage({ params }: PageProps) {
         <Card className="shadow-xl text-center hover:bg-muted/10 transition-colors duration-200 flex flex-col">
           <CardHeader className="flex flex-row items-center justify-center space-x-3 pb-2">
             <TrendingUp className="h-6 w-6 text-blue-400" />
-            <CardTitle className="text-lg text-primary">Avg. XPM</CardTitle>
+            <CardTitle className="text-lg text-primary">{t('teamDetail.avgXPM')}</CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col items-center justify-center flex-grow p-4">
             <p className="text-3xl font-bold text-foreground">{team.averageXpm?.toFixed(0) ?? 'N/A'}</p>
-            <p className="text-xs text-muted-foreground mt-1">Experience Per Minute</p>
+            <p className="text-xs text-muted-foreground mt-1">{t('teamDetail.experiencePerMinute')}</p>
           </CardContent>
         </Card>
 
@@ -417,11 +460,11 @@ export default async function TeamPage({ params }: PageProps) {
         <Card className="shadow-xl text-center hover:bg-muted/10 transition-colors duration-200 flex flex-col">
           <CardHeader className="flex flex-row items-center justify-center space-x-3 pb-2">
             <Pickaxe className="h-6 w-6 text-green-400" />
-            <CardTitle className="text-lg text-primary">Avg. Last Hits</CardTitle>
+            <CardTitle className="text-lg text-primary">{t('teamDetail.avgLastHits')}</CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col items-center justify-center flex-grow p-4">
             <p className="text-3xl font-bold text-foreground">{team.averageLastHits?.toFixed(0) ?? 'N/A'}</p>
-            <p className="text-xs text-muted-foreground mt-1">Creep Kills</p>
+            <p className="text-xs text-muted-foreground mt-1">{t('teamDetail.creepKills')}</p>
           </CardContent>
         </Card>
 
@@ -429,11 +472,11 @@ export default async function TeamPage({ params }: PageProps) {
         <Card className="shadow-xl text-center hover:bg-muted/10 transition-colors duration-200 flex flex-col">
           <CardHeader className="flex flex-row items-center justify-center space-x-3 pb-2">
             <Trophy className="h-6 w-6 text-yellow-500" />
-            <CardTitle className="text-lg text-primary">Avg. Net Worth</CardTitle>
+            <CardTitle className="text-lg text-primary">{t('teamDetail.avgNetWorth')}</CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col items-center justify-center flex-grow p-4">
             <p className="text-3xl font-bold text-foreground">{team.averageNetWorth ? formatNumber(team.averageNetWorth) : 'N/A'}</p>
-            <p className="text-xs text-muted-foreground mt-1">Total Gold Value</p>
+            <p className="text-xs text-muted-foreground mt-1">{t('teamDetail.totalGoldValue')}</p>
           </CardContent>
         </Card>
 
@@ -441,11 +484,11 @@ export default async function TeamPage({ params }: PageProps) {
         <Card className="shadow-xl text-center hover:bg-muted/10 transition-colors duration-200 flex flex-col">
           <CardHeader className="flex flex-row items-center justify-center space-x-3 pb-2">
             <Target className="h-6 w-6 text-red-400" />
-            <CardTitle className="text-lg text-primary">Avg. Hero Damage</CardTitle>
+            <CardTitle className="text-lg text-primary">{t('teamDetail.avgHeroDamage')}</CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col items-center justify-center flex-grow p-4">
             <p className="text-3xl font-bold text-foreground">{team.averageHeroDamage ? formatNumber(team.averageHeroDamage) : 'N/A'}</p>
-            <p className="text-xs text-muted-foreground mt-1">Damage to Heroes</p>
+            <p className="text-xs text-muted-foreground mt-1">{t('teamDetail.damageToHeroes')}</p>
           </CardContent>
         </Card>
 
@@ -453,11 +496,11 @@ export default async function TeamPage({ params }: PageProps) {
         <Card className="shadow-xl text-center hover:bg-muted/10 transition-colors duration-200 flex flex-col">
           <CardHeader className="flex flex-row items-center justify-center space-x-3 pb-2">
             <Zap className="h-6 w-6 text-orange-400" />
-            <CardTitle className="text-lg text-primary">Avg. Tower Damage</CardTitle>
+            <CardTitle className="text-lg text-primary">{t('teamDetail.avgTowerDamage')}</CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col items-center justify-center flex-grow p-4">
             <p className="text-3xl font-bold text-foreground">{team.averageTowerDamage ? formatNumber(team.averageTowerDamage) : 'N/A'}</p>
-            <p className="text-xs text-muted-foreground mt-1">Damage to Buildings</p>
+            <p className="text-xs text-muted-foreground mt-1">{t('teamDetail.damageToBuildings')}</p>
           </CardContent>
         </Card>
 
@@ -465,11 +508,11 @@ export default async function TeamPage({ params }: PageProps) {
         <Card className="shadow-xl text-center hover:bg-muted/10 transition-colors duration-200 flex flex-col">
           <CardHeader className="flex flex-row items-center justify-center space-x-3 pb-2">
             <Heart className="h-6 w-6 text-pink-400" />
-            <CardTitle className="text-lg text-primary">Avg. Healing</CardTitle>
+            <CardTitle className="text-lg text-primary">{t('teamDetail.avgHealing')}</CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col items-center justify-center flex-grow p-4">
             <p className="text-3xl font-bold text-foreground">{team.averageHeroHealing ? formatNumber(team.averageHeroHealing) : 'N/A'}</p>
-            <p className="text-xs text-muted-foreground mt-1">Hero Healing Done</p>
+            <p className="text-xs text-muted-foreground mt-1">{t('teamDetail.heroHealingDone')}</p>
           </CardContent>
         </Card>
       </div>
@@ -477,7 +520,7 @@ export default async function TeamPage({ params }: PageProps) {
 
       <Card className="shadow-xl">
         <CardHeader>
-          <CardTitle className="text-2xl font-semibold text-primary">Match History</CardTitle>
+          <CardTitle className="text-2xl font-semibold text-primary">{t('teamDetail.matchHistory')}</CardTitle>
           <CardDescription>Results of all matches played by {team.name}.</CardDescription>
         </CardHeader>
         <CardContent>
@@ -485,18 +528,18 @@ export default async function TeamPage({ params }: PageProps) {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Opponent</TableHead>
-                  <TableHead>Result</TableHead>
-                  <TableHead>Score</TableHead>
-                  <TableHead>Date</TableHead>
+                  <TableHead>{t('teamDetail.opponent')}</TableHead>
+                  <TableHead>{t('teamDetail.result')}</TableHead>
+                  <TableHead>{t('teamDetail.score')}</TableHead>
+                  <TableHead>{t('teamDetail.date')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {teamMatches.map((match) => {
+                {teamMatches.map((match: Match) => {
                   const opponent = match.teamA.id === team.id ? match.teamB : match.teamA;
                   const isWin = (match.teamA.id === team.id && (match.teamA.score ?? 0) > (match.teamB.score ?? 0)) ||
                                 (match.teamB.id === team.id && (match.teamB.score ?? 0) > (match.teamA.score ?? 0));
-                  const resultText = isWin ? "Win" : "Loss";
+                  const resultText = isWin ? t('teamDetail.win') : t('teamDetail.loss');
                   const scoreText = `${match.teamA.score} - ${match.teamB.score}`;
                   const date = match.dateTime ? new Date(match.dateTime) : new Date(match.defaultMatchTime);
                   return (
@@ -515,7 +558,7 @@ export default async function TeamPage({ params }: PageProps) {
               </TableBody>
             </Table>
           ) : (
-            <p className="text-muted-foreground text-center py-4">No match history available for this team yet.</p>
+            <p className="text-muted-foreground text-center py-4">{t('teamDetail.noMatchHistory')}</p>
           )}
         </CardContent>
       </Card>
@@ -545,6 +588,8 @@ interface PlayerCardProps {
 }
 
 function PlayerCard({ player, teamId }: PlayerCardProps) {
+  const { t } = useTranslation();
+  
   return (
     <div className="flex items-center justify-between p-3 bg-muted/20 rounded-lg hover:bg-muted/40 transition-colors">
       <div className="flex items-center space-x-3">
@@ -556,29 +601,9 @@ function PlayerCard({ player, teamId }: PlayerCardProps) {
       </div>
       <Button variant="ghost" size="sm" asChild>
         <Link href={`/teams/${teamId}/players/${player.id}`}>
-          View Stats <ExternalLink className="ml-2 h-3 w-3" />
+          {t('teamDetail.viewStats')} <ExternalLink className="ml-2 h-3 w-3" />
         </Link>
       </Button>
     </div>
   );
-}
-
-
-export async function generateMetadata({ params }: PageProps) {
-  const resolvedParams = await params;
-  const team = await getTeamById(resolvedParams.teamId);
-  if (!team) {
-    return { title: "Team Not Found" };
-  }
-  return {
-    title: `${team.name} | Teams | Tournament Tracker`,
-    description: `Profile and statistics for team ${team.name}.`
-  };
-}
-
-export async function generateStaticParams() {
-  const teams = await getAllTeams();
-  return teams.map((team) => ({
-    teamId: team.id,
-  }));
 }

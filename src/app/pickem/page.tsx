@@ -4,6 +4,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 import { getAllTeams, getUserPickem, saveUserPickem, getUserProfile, updateUserProfile } from '@/lib/firestore';
+import { useTranslation } from '@/hooks/useTranslation';
 import type { Team, UserProfile } from '@/lib/definitions';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
@@ -17,30 +18,32 @@ import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { DiscordUsernameModal } from '@/components/app/DiscordUsernameModal';
 
-const pickContainers = {
-  champion: { id: 'champion', title: 'Champion', limit: 1, icon: Trophy, score: 16 },
-  runnerUp: { id: 'runnerUp', title: 'Runner-up', limit: 1, icon: Award, score: 15 },
-  thirdPlace: { id: 'thirdPlace', title: '3rd Place', limit: 1, icon: Medal, score: 14 },
-  fourthPlace: { id: 'fourthPlace', title: '4th Place', limit: 1, icon: Medal, score: 13 },
-  fifthToSixth: { id: 'fifthToSixth', title: '5th - 6th Place', limit: 2, icon: Users, score: 11 },
-  seventhToEighth: { id: 'seventhToEighth', title: '7th - 8th Place', limit: 2, icon: Users, score: 9 },
-  ninthToTwelfth: { id: 'ninthToTwelfth', title: '9th - 12th Place', limit: 4, icon: Users, score: 6 },
-  thirteenthToSixteenth: { id: 'thirteenthToSixteenth', title: '13th - 16th Place', limit: 4, icon: Users, score: 2 },
-  pool: { id: 'pool', title: 'Group Stage Elimination', limit: Infinity, icon: null, score: 0 },
-};
+type ContainerId = 'champion' | 'runnerUp' | 'thirdPlace' | 'fourthPlace' | 'fifthToSixth' | 'seventhToEighth' | 'ninthToTwelfth' | 'thirteenthToSixteenth' | 'pool';
 
 const scoreToContainerMap: Record<number, ContainerId> = {
     16: 'champion', 15: 'runnerUp', 14: 'thirdPlace', 13: 'fourthPlace',
     11: 'fifthToSixth', 9: 'seventhToEighth', 6: 'ninthToTwelfth', 2: 'thirteenthToSixteenth'
 };
 
-type ContainerId = keyof typeof pickContainers;
 type PicksState = Record<ContainerId, string[]>;
 
 export default function PickEmPage() {
   const { user, signInWithGoogle } = useAuth();
   const { toast } = useToast();
+  const { t } = useTranslation();
   const [allTeams, setAllTeams] = useState<Team[]>([]);
+
+  const pickContainers = {
+    champion: { id: 'champion', title: t("pickem.champion"), limit: 1, icon: Trophy, score: 16 },
+    runnerUp: { id: 'runnerUp', title: t("pickem.runnerUp"), limit: 1, icon: Award, score: 15 },
+    thirdPlace: { id: 'thirdPlace', title: t("pickem.thirdPlace"), limit: 1, icon: Medal, score: 14 },
+    fourthPlace: { id: 'fourthPlace', title: t("pickem.fourthPlace"), limit: 1, icon: Medal, score: 13 },
+    fifthToSixth: { id: 'fifthToSixth', title: t("pickem.fifthToSixth"), limit: 2, icon: Users, score: 11 },
+    seventhToEighth: { id: 'seventhToEighth', title: t("pickem.seventhToEighth"), limit: 2, icon: Users, score: 9 },
+    ninthToTwelfth: { id: 'ninthToTwelfth', title: t("pickem.ninthToTwelfth"), limit: 4, icon: Users, score: 6 },
+    thirteenthToSixteenth: { id: 'thirteenthToSixteenth', title: t("pickem.thirteenthToSixteenth"), limit: 4, icon: Users, score: 2 },
+    pool: { id: 'pool', title: t("pickem.groupStageElimination"), limit: Infinity, icon: null, score: 0 },
+  };
   const [picks, setPicks] = useState<PicksState | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -127,10 +130,17 @@ export default function PickEmPage() {
     try {
         const { ...predictionsToSave } = picks;
         await saveUserPickem(user.uid, predictionsToSave);
-        toast({ title: "Success!", description: "Your Pick'em predictions have been saved." });
+        toast({ 
+          title: t('toasts.success.title'), 
+          description: t('toasts.success.pickem.saved') 
+        });
     } catch (error) {
         console.error("Error saving Pick'em:", error);
-        toast({ title: "Error", description: (error as Error).message || "Failed to save your predictions.", variant: "destructive" });
+        toast({ 
+          title: t('toasts.errors.title'), 
+          description: (error as Error).message || t('toasts.errors.pickem.failedToSave'), 
+          variant: "destructive" 
+        });
     } finally {
         setIsSaving(false);
     }
@@ -153,7 +163,11 @@ export default function PickEmPage() {
         setIsModalOpen(false);
         await performSave();
     } catch (error) {
-        toast({ title: "Error", description: "Could not save your Discord username.", variant: "destructive"});
+        toast({ 
+          title: t('toasts.errors.title'), 
+          description: t('toasts.errors.discordSave'), 
+          variant: "destructive"
+        });
     } finally {
         setIsSaving(false);
     }
@@ -212,7 +226,7 @@ export default function PickEmPage() {
                         <Draggable key={teamId} draggableId={teamId} index={index}>
                           {(provided) => (
                             <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps}>
-                              <TeamCardItem team={getTeamById(teamId)!} />
+                              <TeamCardItem team={getTeamById(teamId)} />
                             </div>
                           )}
                         </Draggable>
@@ -265,9 +279,8 @@ const HowToPlay = () => (
     <Card><CardHeader><CardTitle className="text-2xl text-accent">How to Play</CardTitle></CardHeader>
     <CardContent>
       <Accordion type="single" collapsible defaultValue="item-1">
-        <AccordionItem value="item-1"><AccordionTrigger>Fantasy League</AccordionTrigger><AccordionContent>Select one player for each of the five roles from the dropdown menus. You cannot select the same player more than once.</AccordionContent></AccordionItem>
-        <AccordionItem value="item-2"><AccordionTrigger>Pick'em Challenge</AccordionTrigger><AccordionContent>Drag and drop each team from the "Team Pool" into one of the final placement containers to predict the tournament's outcome. Teams left in the "Group Stage Elimination" pool are those you predict will not make it to the playoffs.</AccordionContent></AccordionItem>
-        <AccordionItem value="item-3"><AccordionTrigger>Lock In Your Picks</AccordionTrigger><AccordionContent>Once you have filled all fantasy slots and placement containers, the "Submit Predictions" button will be enabled. Your picks cannot be changed after submission.</AccordionContent></AccordionItem>
+        <AccordionItem value="item-1"><AccordionTrigger>Pick'em Challenge</AccordionTrigger><AccordionContent>Drag and drop each team from the "Team Pool" into one of the final placement containers to predict the tournament's outcome. Teams left in the "Group Stage Elimination" pool are those you predict will not make it to the playoffs.</AccordionContent></AccordionItem>
+        <AccordionItem value="item-2"><AccordionTrigger>Lock In Your Picks</AccordionTrigger><AccordionContent>Once you have filled all placement containers, the "Submit Predictions" button will be enabled. Your picks cannot be changed after submission.</AccordionContent></AccordionItem>
       </Accordion>
     </CardContent>
   </Card>
@@ -288,7 +301,7 @@ const DroppableList = ({ id, title, icon: Icon, teams, getTeamById, requiredCoun
                 <CardContent ref={provided.innerRef} {...provided.droppableProps} className={cn("flex-grow min-h-[60px] rounded-md p-2 transition-colors", snapshot.isDraggingOver ? "bg-primary/10" : "")}>
                     {teams.length > 0 ? teams.map((teamId, index) => (
                         <Draggable key={teamId} draggableId={teamId} index={index}>
-                            {(provided) => (<div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps}><TeamCardItem team={getTeamById(teamId)!} /></div>)}
+                            {(provided) => (<div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps}><TeamCardItem team={getTeamById(teamId)} /></div>)}
                         </Draggable>
                     )) : (<div className="flex items-center justify-center h-full text-muted-foreground italic text-xs">Drop team(s) here</div>)}
                     {provided.placeholder}
@@ -298,9 +311,27 @@ const DroppableList = ({ id, title, icon: Icon, teams, getTeamById, requiredCoun
     </Card>
 );
 
-const TeamCardItem = ({ team }: { team: Team }) => (
+const TeamCardItem = ({ team }: { team: Team | undefined }) => {
+  if (!team) {
+    return (
+      <div className="p-2 mb-2 bg-muted rounded-md shadow-sm flex items-center space-x-3">
+        <div className="w-6 h-6 bg-muted-foreground rounded-sm flex-shrink-0" />
+        <span className="font-medium text-sm text-muted-foreground">Unknown Team</span>
+      </div>
+    );
+  }
+  
+  return (
     <div className="p-2 mb-2 bg-card rounded-md shadow-sm flex items-center space-x-3 cursor-grab active:cursor-grabbing">
-        <Image src={team.logoUrl!} alt={team.name} width={24} height={24} className="rounded-sm flex-shrink-0" />
+        <Image 
+          src={team.logoUrl || `https://placehold.co/24x24.png?text=${team.name.charAt(0)}`} 
+          alt={team.name} 
+          width={24} 
+          height={24} 
+          className="rounded-sm flex-shrink-0"
+          unoptimized={true}
+        />
         <span className="font-medium text-sm truncate">{team.name}</span>
     </div>
-);
+  );
+};

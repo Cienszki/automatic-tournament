@@ -13,6 +13,7 @@ import { revertMatchToPending } from "@/lib/admin-actions";
 import { GameDeleteModal } from "@/components/admin/GameDeleteModal";
 import type { Match } from "@/lib/definitions";
 import { useToast } from "@/hooks/use-toast";
+import { useTranslation } from "@/hooks/useTranslation";
 import { useAuth } from "@/context/AuthContext";
 import Image from "next/image";
 import {
@@ -39,6 +40,7 @@ type MatchScoreState = {
 
 export function StandingsTab() {
   const { toast } = useToast();
+  const { t } = useTranslation();
   const { user } = useAuth();
   const [matches, setMatches] = React.useState<Match[]>([]);
   const [scores, setScores] = React.useState<MatchScoreState>({});
@@ -107,7 +109,11 @@ export function StandingsTab() {
 
   const handleRecalculateStandings = async () => {
     if (!user) {
-      toast({ title: "Authentication Error", description: "You must be logged in to perform this action.", variant: "destructive" });
+      toast({ 
+        title: t('toasts.errors.auth.title'), 
+        description: t('toasts.errors.auth.loginRequired'), 
+        variant: "destructive" 
+      });
       return;
     }
 
@@ -125,13 +131,24 @@ export function StandingsTab() {
       const result = await response.json();
       
       if (result.success) {
-        toast({ title: "Success", description: "Group standings have been recalculated successfully!" });
+        toast({ 
+          title: t('toasts.success.title'), 
+          description: t('toasts.success.standingsRecalculated') 
+        });
       } else {
-        toast({ title: "Error", description: result.message || "Failed to recalculate standings", variant: "destructive" });
+        toast({ 
+          title: t('toasts.errors.title'), 
+          description: result.message || t('toasts.errors.admin.recalculateStandings'), 
+          variant: "destructive" 
+        });
       }
     } catch (error) {
       console.error('Error recalculating standings:', error);
-      toast({ title: "Error", description: "An unexpected error occurred while recalculating standings.", variant: "destructive" });
+      toast({ 
+        title: t('toasts.errors.title'), 
+        description: t('toasts.errors.unexpectedStandings'), 
+        variant: "destructive" 
+      });
     } finally {
       setIsRecalculatingStandings(false);
     }
@@ -157,7 +174,11 @@ export function StandingsTab() {
 
   const handleRevertMatch = async (matchId: string) => {
     if (!user) {
-        toast({ title: "Authentication Error", description: "You must be logged in to perform this action.", variant: "destructive" });
+        toast({ 
+          title: t('toasts.errors.auth.title'), 
+          description: t('toasts.errors.auth.loginRequired'), 
+          variant: "destructive" 
+        });
         return;
     }
     setRevertingMatchId(matchId);

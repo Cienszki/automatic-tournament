@@ -1,13 +1,40 @@
 
+"use client";
+
+import { useEffect, useState } from "react";
 import { getHomePageData } from "./getHomePageData";
 import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
+import { useTranslation } from "@/hooks/useTranslation";
 import Link from "next/link";
 import Image from "next/image";
 import { Megaphone, Flame, BarChart2, Trophy } from "lucide-react";
 import { formatDistanceToNow, format } from "date-fns";
 
-export async function InfoWidgets() {
-  const { latestAnnouncements, featuredMatch, recentResult, fantasyLeader } = await getHomePageData();
+export function InfoWidgets() {
+  const { t } = useTranslation();
+  const [data, setData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const homeData = await getHomePageData();
+        setData(homeData);
+      } catch (error) {
+        console.error("Failed to load home page data:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadData();
+  }, []);
+
+  if (loading) {
+    return <div className="text-center py-10">{t('common.loading')}...</div>;
+  }
+
+  const { latestAnnouncements = [], featuredMatch, recentResult, fantasyLeader } = data || {};
 
   return (
     <>
@@ -18,21 +45,22 @@ export async function InfoWidgets() {
             <Megaphone size={96} className="text-[#b86fc6] drop-shadow-[0_0_8px_#b86fc6] rotate-12" />
           </div>
           <CardHeader className="z-10">
-            <CardTitle className="flex items-center gap-2 text-2xl font-extrabold tracking-widest text-[#b86fc6] drop-shadow-[0_0_4px_#b86fc6] uppercase">Latest News</CardTitle>
+            <CardTitle className="flex items-center gap-2 text-2xl font-extrabold tracking-widest text-[#b86fc6] drop-shadow-[0_0_4px_#b86fc6] uppercase">{t('home.latestNews')}</CardTitle>
           </CardHeader>
           <CardContent className="flex-grow z-10">
             {latestAnnouncements.length > 0 ? (
               <ul className="space-y-3">
-                {latestAnnouncements.map(item => (
+                {latestAnnouncements.map((item: any) => (
                   <li key={item.id} className="text-sm bg-[#23243a]/70 rounded px-2 py-1 hover:bg-[#b86fc6]/10 transition-colors">
                     <p className="font-semibold truncate text-[#e0d7f7]">{item.title}</p>
-                    <p className="text-xs text-[#b86fc6]">
+                    <p className="text-sm text-[#e0d7f7]/90 mt-1 line-clamp-3">{item.content}</p>
+                    <p className="text-xs text-[#b86fc6] mt-1">
                       {formatDistanceToNow(new Date(item.createdAt), { addSuffix: true })}
                     </p>
                   </li>
                 ))}
               </ul>
-            ) : <p className="text-[#e0d7f7]/70 text-center">No announcements yet.</p>}
+            ) : <p className="text-[#e0d7f7]/70 text-center">{t('home.noAnnouncements')}</p>}
           </CardContent>
         </Card>
         {/* Featured Match */}
@@ -41,7 +69,7 @@ export async function InfoWidgets() {
             <Flame size={96} className="text-[#0ff0fc] drop-shadow-[0_0_8px_#0ff0fc] -rotate-12" />
           </div>
           <CardHeader className="z-10">
-            <CardTitle className="flex items-center gap-2 text-2xl font-extrabold tracking-widest text-[#0ff0fc] drop-shadow-[0_0_4px_#0ff0fc] uppercase">Featured Match</CardTitle>
+            <CardTitle className="flex items-center gap-2 text-2xl font-extrabold tracking-widest text-[#0ff0fc] drop-shadow-[0_0_4px_#0ff0fc] uppercase">{t('home.featuredMatch')}</CardTitle>
           </CardHeader>
           <CardContent className="flex-grow flex items-center justify-center z-10">
             {featuredMatch ? (
@@ -59,7 +87,7 @@ export async function InfoWidgets() {
                 </div>
                 <p className="text-sm text-[#0ff0fc] mt-4 tracking-wide drop-shadow-[0_0_4px_#0ff0fc]">{format(new Date(featuredMatch.dateTime!), "MMM d, HH:mm")}</p>
               </div>
-            ) : <p className="text-[#e0d7f7]/70">No upcoming matches.</p>}
+            ) : <p className="text-[#e0d7f7]/70">{t('home.noUpcomingMatches')}</p>}
           </CardContent>
         </Card>
         {/* Recent Result */}
@@ -68,7 +96,7 @@ export async function InfoWidgets() {
             <BarChart2 size={96} className="text-[#b86fc6] drop-shadow-[0_0_8px_#b86fc6] rotate-12" />
           </div>
           <CardHeader className="z-10">
-            <CardTitle className="flex items-center gap-2 text-2xl font-extrabold tracking-widest text-[#b86fc6] drop-shadow-[0_0_4px_#b86fc6] uppercase">Recent Result</CardTitle>
+            <CardTitle className="flex items-center gap-2 text-2xl font-extrabold tracking-widest text-[#b86fc6] drop-shadow-[0_0_4px_#b86fc6] uppercase">{t('home.recentResult')}</CardTitle>
           </CardHeader>
           <CardContent className="flex-grow flex items-center justify-center z-10">
             {recentResult ? (
@@ -86,7 +114,7 @@ export async function InfoWidgets() {
                 </div>
                 <p className="text-sm text-[#e0d7f7]/80 mt-2 tracking-wide">{recentResult.teamA.name} vs {recentResult.teamB.name}</p>
               </div>
-            ) : <p className="text-[#e0d7f7]/70">No recent results.</p>}
+            ) : <p className="text-[#e0d7f7]/70">{t('home.noRecentResults')}</p>}
           </CardContent>
         </Card>
         {/* Fantasy Leader */}
@@ -95,15 +123,15 @@ export async function InfoWidgets() {
             <Trophy size={96} className="text-[#b86fc6] drop-shadow-[0_0_8px_#b86fc6] -rotate-12" />
           </div>
           <CardHeader className="z-10">
-            <CardTitle className="flex items-center gap-2 text-2xl font-extrabold tracking-widest text-[#b86fc6] drop-shadow-[0_0_4px_#b86fc6] uppercase">Fantasy Leader</CardTitle>
+            <CardTitle className="flex items-center gap-2 text-2xl font-extrabold tracking-widest text-[#b86fc6] drop-shadow-[0_0_4px_#b86fc6] uppercase">{t('home.fantasyLeader')}</CardTitle>
           </CardHeader>
           <CardContent className="flex-grow flex items-center justify-center z-10">
             {fantasyLeader ? (
               <div className="text-center w-full">
                 <p className="font-extrabold text-2xl text-[#0ff0fc] drop-shadow-[0_0_4px_#0ff0fc] mb-1">{fantasyLeader.displayName}</p>
-                <p className="text-lg text-[#e0d7f7] font-mono">{fantasyLeader.totalFantasyScore.toLocaleString()} <span className="text-[#b86fc6] font-bold">Points</span></p>
+                <p className="text-lg text-[#e0d7f7] font-mono">{fantasyLeader.totalFantasyScore.toLocaleString()} <span className="text-[#b86fc6] font-bold">{t('common.points')}</span></p>
               </div>
-            ) : <p className="text-[#e0d7f7]/70">No fantasy data yet.</p>}
+            ) : <p className="text-[#e0d7f7]/70">{t('home.noFantasyData')}</p>}
           </CardContent>
         </Card>
       </section>
@@ -113,7 +141,7 @@ export async function InfoWidgets() {
         {/* Informational: MMR Limit */}
         <Card className="min-h-[120px] flex flex-col items-center justify-center bg-gradient-to-br from-[#23243a] via-[#3a295a] to-[#181c2f] shadow-none border-0 relative overflow-hidden transition-transform duration-300 hover:scale-105 hover:shadow-[0_0_32px_8px_#b86fc6cc,0_0_24px_0_#0ff0fc99]">
           <CardContent className="flex items-center justify-center w-full h-full">
-            <span className="text-2xl font-extrabold text-[#b86fc6] drop-shadow-[0_0_4px_#b86fc6] tracking-widest animate-pulse uppercase">Turniej z Limitem MMR 24k</span>
+            <span className="text-2xl font-extrabold text-[#b86fc6] drop-shadow-[0_0_4px_#b86fc6] tracking-widest animate-pulse uppercase">{t('home.mmrLimitTournament')}</span>
           </CardContent>
         </Card>
         {/* Informational: Magenta Button */}
@@ -124,7 +152,7 @@ export async function InfoWidgets() {
               className="w-full h-full flex items-center justify-center text-[#0ff0fc] font-extrabold text-lg py-6 rounded-lg bg-[#b86fc6] hover:bg-[#0ff0fc] hover:text-[#b86fc6] transition-all duration-300 tracking-widest shadow-lg uppercase border-2 border-transparent hover:border-[#0ff0fc] hover:shadow-[0_0_16px_4px_#0ff0fc99]"
               style={{ borderRadius: 8 }}
             >
-              <span className="drop-shadow-[0_0_8px_#0ff0fc]">Zarejestruj się teraz</span>
+              <span className="drop-shadow-[0_0_8px_#0ff0fc]">{t('home.registerNow')}</span>
             </a>
           </CardContent>
         </Card>

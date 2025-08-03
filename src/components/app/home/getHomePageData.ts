@@ -21,10 +21,15 @@ export async function getHomePageData() {
   }
 
   // Fantasy leader: top scorer from fantasy leaderboard
-  const fantasyLeaderboard = await getFantasyLeaderboard();
   let fantasyLeader = null;
-  if (fantasyLeaderboard.length > 0) {
-    fantasyLeader = fantasyLeaderboard.sort((a, b) => b.totalFantasyScore - a.totalFantasyScore)[0];
+  try {
+    const fantasyLeaderboard = await getFantasyLeaderboard();
+    if (fantasyLeaderboard.length > 0) {
+      fantasyLeader = fantasyLeaderboard.sort((a, b) => b.totalFantasyScore - a.totalFantasyScore)[0];
+    }
+  } catch (error) {
+    console.log('Fantasy leaderboard temporarily unavailable:', error);
+    // Fantasy leader will remain null, which is handled gracefully in the UI
   }
 
   return {

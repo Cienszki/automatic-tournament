@@ -10,10 +10,11 @@ import { importMatchFromOpenDota, syncLeagueMatches } from '@/lib/actions';
 import { deleteAllMatches, deleteSelectedMatches, clearProcessedGamesAdmin, updateAllTeamStatisticsAdmin } from '@/lib/admin-actions';
 import { getAllMatches } from '@/lib/firestore';
 import { useToast } from '@/hooks/use-toast';
+import { useTranslation } from '@/hooks/useTranslation';
 import { Loader2, PlusCircle, RefreshCw, Trash2, ShieldAlert } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
-import { TimeMachine } from '@/components/app/system-test/TimeMachine';
-import { CaptainImpersonator, CaptainImpersonatorRef } from '@/components/app/system-test/CaptainImpersonator';
+// import { TimeMachine } from '@/components/app/system-test/TimeMachine';
+// import { CaptainImpersonator, CaptainImpersonatorRef } from '@/components/app/system-test/CaptainImpersonator';
 import { FakeTeamGenerator } from '@/components/app/admin/FakeTeamGenerator';
 import {
   AlertDialog,
@@ -38,8 +39,9 @@ export function SystemTestTab() {
     const [matches, setMatches] = React.useState<Match[]>([]);
     const [selectedMatches, setSelectedMatches] = React.useState<string[]>([]);
     const { toast } = useToast();
+    const { t } = useTranslation();
     const { user } = useAuth();
-    const captainImpersonatorRef = React.useRef<CaptainImpersonatorRef>(null);
+    // const captainImpersonatorRef = React.useRef<CaptainImpersonatorRef>(null);
 
     const fetchMatches = React.useCallback(async () => {
         const allMatches = await getAllMatches();
@@ -51,9 +53,9 @@ export function SystemTestTab() {
     }, [fetchMatches]);
 
     const handleTeamCreated = () => {
-        if (captainImpersonatorRef.current) {
-            captainImpersonatorRef.current.refreshTeams();
-        }
+        // if (captainImpersonatorRef.current) {
+        //     captainImpersonatorRef.current.refreshTeams();
+        // }
         // Potentially refresh other data as well
     };
 
@@ -63,9 +65,17 @@ export function SystemTestTab() {
         try {
             const res = await fetch('/api/admin-sync-matches', { method: 'POST' });
             const result = await res.json();
-            toast({ title: result.success ? "Success!" : "Sync Failed", description: result.message, variant: result.success ? "default" : "destructive" });
+            toast({ 
+              title: result.success ? t('toasts.success.title') : t('toasts.errors.admin.syncFailed'), 
+              description: result.message, 
+              variant: result.success ? "default" : "destructive" 
+            });
         } catch (err) {
-            toast({ title: "Sync Failed", description: 'Network or server error.', variant: "destructive" });
+            toast({ 
+              title: t('toasts.errors.admin.syncFailed'), 
+              description: t('toasts.errors.networkError'), 
+              variant: "destructive" 
+            });
         }
         setIsSyncing(false);
         fetchMatches();
@@ -77,12 +87,16 @@ export function SystemTestTab() {
             const res = await fetch('/api/debug/clear-processed', { method: 'POST' });
             const result = await res.json();
             toast({ 
-                title: result.success ? "Success!" : "Clear Failed", 
+                title: result.success ? t('toasts.success.title') : t('toasts.errors.admin.clearFailed'), 
                 description: result.success ? result.message : result.error, 
                 variant: result.success ? "default" : "destructive" 
             });
         } catch (err) {
-            toast({ title: "Clear Failed", description: 'Network or server error.', variant: "destructive" });
+            toast({ 
+              title: t('toasts.errors.admin.clearFailed'), 
+              description: t('toasts.errors.networkError'), 
+              variant: "destructive" 
+            });
         }
         setIsClearingProcessed(false);
     };
@@ -93,39 +107,59 @@ export function SystemTestTab() {
             const res = await fetch('/api/admin/update-team-stats', { method: 'POST' });
             const result = await res.json();
             toast({ 
-                title: result.success ? "Success!" : "Update Failed", 
+                title: result.success ? t('toasts.success.title') : t('toasts.errors.admin.updateFailed'), 
                 description: result.success ? result.message : result.error, 
                 variant: result.success ? "default" : "destructive" 
             });
         } catch (err) {
-            toast({ title: "Update Failed", description: 'Network or server error.', variant: "destructive" });
+            toast({ 
+              title: t('toasts.errors.admin.updateFailed'), 
+              description: t('toasts.errors.networkError'), 
+              variant: "destructive" 
+            });
         }
         setIsUpdatingStats(false);
     };
 
     const handleImport = async () => {
         if (!matchId || isNaN(Number(matchId))) {
-            toast({ title: "Invalid Match ID", description: "Please enter a numeric OpenDota match ID.", variant: "destructive" });
+            toast({ 
+              title: t('toasts.errors.validation.invalidMatchId'), 
+              description: t('toasts.errors.validation.numericMatchId'), 
+              variant: "destructive" 
+            });
             return;
         }
         setIsImporting(true);
         // ourMatchId should be the ID of the match in your system to map to OpenDota matchId
         // Here, we use matchId as both for demonstration, but you may want to select a match from your system
         const result = await importMatchFromOpenDota(Number(matchId), matchId);
-        toast({ title: result.success ? "Success!" : "Import Failed", description: result.message, variant: result.success ? "default" : "destructive" });
+        toast({ 
+          title: result.success ? t('toasts.success.title') : t('toasts.errors.admin.importFailed'), 
+          description: result.message, 
+          variant: result.success ? "default" : "destructive" 
+        });
         setIsImporting(false);
         fetchMatches();
     };
     
     const handleDeleteSelected = async () => {
         if (!user) {
-            toast({ title: "Authentication Error", description: "You must be logged in to delete matches.", variant: "destructive" });
+            toast({ 
+              title: t('toasts.errors.auth.title'), 
+              description: t('toasts.errors.auth.loginRequired'), 
+              variant: "destructive" 
+            });
             return;
         }
         const token = await user.getIdToken();
         setIsDeleting(true);
         const result = await deleteSelectedMatches(token, selectedMatches);
-        toast({ title: result.success ? "Success!" : "Deletion Failed", description: result.message, variant: result.success ? "default" : "destructive" });
+        toast({ 
+          title: result.success ? t('toasts.success.title') : t('toasts.errors.admin.deletionFailed'), 
+          description: result.message, 
+          variant: result.success ? "default" : "destructive" 
+        });
         setSelectedMatches([]);
         setIsDeleting(false);
         fetchMatches();
@@ -133,13 +167,21 @@ export function SystemTestTab() {
 
     const handleDeleteAll = async () => {
         if (!user) {
-            toast({ title: "Authentication Error", description: "You must be logged in to delete matches.", variant: "destructive" });
+            toast({ 
+              title: t('toasts.errors.auth.title'), 
+              description: t('toasts.errors.auth.loginRequired'), 
+              variant: "destructive" 
+            });
             return;
         }
         const token = await user.getIdToken();
         setIsDeleting(true);
         const result = await deleteAllMatches(token);
-        toast({ title: result.success ? "Success!" : "Deletion Failed", description: result.message, variant: result.success ? "default" : "destructive" });
+        toast({ 
+          title: result.success ? t('toasts.success.title') : t('toasts.errors.admin.deletionFailed'), 
+          description: result.message, 
+          variant: result.success ? "default" : "destructive" 
+        });
         setIsDeleting(false);
         fetchMatches();
     };
@@ -160,8 +202,8 @@ export function SystemTestTab() {
             </CardHeader>
             <CardContent className="space-y-6">
                 <FakeTeamGenerator onTeamCreated={handleTeamCreated} />
-                <CaptainImpersonator ref={captainImpersonatorRef} />
-                <TimeMachine />
+                {/* <CaptainImpersonator ref={captainImpersonatorRef} /> */}
+                {/* <TimeMachine /> */}
                 <Card>
                     <CardHeader>
                         <CardTitle>OpenDota Integration</CardTitle>
