@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Save, Edit, CheckCircle2, Hourglass, RotateCcw, Loader2, FileJson } from "lucide-react";
 import { getAllMatches, updateMatchScores } from "@/lib/firestore";
 import { revertMatchToPending } from "@/lib/admin-actions";
-import { adminDeleteGameAndHandleScore } from "@/lib/admin-match-actions-server";
+// Removed direct import of adminDeleteGameAndHandleScore - now using API
 import { GameDeleteModal } from "@/components/admin/GameDeleteModal";
 import type { Match } from "@/lib/definitions";
 import { useToast } from "@/hooks/use-toast";
@@ -49,6 +49,7 @@ export function StandingsTab() {
   const [isGameDeleteModalOpen, setIsGameDeleteModalOpen] = React.useState(false);
   const [gameDeleteMatch, setGameDeleteMatch] = React.useState<Match | null>(null);
   const [gamesForDelete, setGamesForDelete] = React.useState<{ id: string; name: string }[]>([]);
+  const [isRecalculatingStandings, setIsRecalculatingStandings] = React.useState(false);
   // Helper to fetch games for a match (from games subcollection)
   async function fetchGamesForMatch(match: Match) {
     // This should be replaced with a real API call or Firestore query
@@ -65,19 +66,75 @@ export function StandingsTab() {
   };
 
   const handleDeleteGame = async (gameId: string) => {
-    if (!gameDeleteMatch) return;
-    const result = await adminDeleteGameAndHandleScore(gameDeleteMatch, gameId);
-    toast({
-      title: result.success ? "Game Deleted" : "Delete Failed",
-      description: result.message,
-      variant: result.success ? "default" : "destructive",
-    });
+    if (!gameDeleteMatch || !user) return;
+    
+    try {
+      const token = await user.getIdToken();
+      const response = await fetch('/api/admin/deleteGame', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ 
+          match: gameDeleteMatch, 
+          gameId 
+        }),
+      });
+
+      const result = await response.json();
+      
+      toast({
+        title: result.success ? "Game Deleted" : "Delete Failed",
+        description: result.message,
+        variant: result.success ? "default" : "destructive",
+      });
+    } catch (error) {
+      toast({
+        title: "Delete Failed",
+        description: "Could not delete the game. Please try again.",
+        variant: "destructive",
+      });
+    }
+    
     setIsGameDeleteModalOpen(false);
     setGameDeleteMatch(null);
     setGamesForDelete([]);
     // Optionally re-fetch matches to update UI
     const allMatches = await getAllMatches();
     setMatches(allMatches.sort((a,b) => (a.group_id || '').localeCompare(b.group_id || '')));
+  };
+
+  const handleRecalculateStandings = async () => {
+    if (!user) {
+      toast({ title: "Authentication Error", description: "You must be logged in to perform this action.", variant: "destructive" });
+      return;
+    }
+
+    setIsRecalculatingStandings(true);
+    try {
+      const token = await user.getIdToken();
+      const response = await fetch('/api/admin/recalculateStandings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      const result = await response.json();
+      
+      if (result.success) {
+        toast({ title: "Success", description: "Group standings have been recalculated successfully!" });
+      } else {
+        toast({ title: "Error", description: result.message || "Failed to recalculate standings", variant: "destructive" });
+      }
+    } catch (error) {
+      console.error('Error recalculating standings:', error);
+      toast({ title: "Error", description: "An unexpected error occurred while recalculating standings.", variant: "destructive" });
+    } finally {
+      setIsRecalculatingStandings(false);
+    }
   };
 
   React.useEffect(() => {
@@ -314,6 +371,34 @@ export function StandingsTab() {
         games={gamesForDelete}
         onDelete={handleDeleteGame}
       />
+      
+      <Card>
+        <CardHeader>
+          <CardTitle>Group Stage Management</CardTitle>
+          <CardDescription>Administrative tools for managing group stage standings and calculations.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col sm:flex-row gap-4">
+            <Button 
+              onClick={handleRecalculateStandings}
+              disabled={isRecalculatingStandings}
+              variant="outline"
+              className="flex items-center gap-2"
+            >
+              {isRecalculatingStandings ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <RotateCcw className="h-4 w-4" />
+              )}
+              {isRecalculatingStandings ? "Recalculating..." : "Recalculate Group Standings"}
+            </Button>
+            <p className="text-sm text-muted-foreground self-center">
+              Use this button to manually recalculate all group standings based on completed matches.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <CardTitle>Pending Matches</CardTitle>

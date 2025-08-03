@@ -34,8 +34,8 @@ function TeamDetails({ team, onStatusUpdate, onDelete, isUpdating, onPlayerClick
             <div className="p-4 bg-muted/50 rounded-lg">
                 <h4 className="font-semibold mb-2">Roster:</h4>
                 <ul className="space-y-1 list-disc list-inside">
-                    {team.players?.map(p => (
-                        <li key={`${team.id}-${p.id}`} onClick={() => onPlayerClick(p)} className="cursor-pointer hover:text-primary">
+                    {team.players?.map((p, index) => (
+                        <li key={`${team.id}-${p.id || p.nickname || index}`} onClick={() => onPlayerClick(p)} className="cursor-pointer hover:text-primary">
                             {p.nickname} - <span className="font-mono">{p.mmr} MMR</span>
                         </li>
                     ))}

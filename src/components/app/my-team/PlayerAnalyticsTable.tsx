@@ -63,16 +63,19 @@ export function PlayerAnalyticsTable({ team }: PlayerAnalyticsTableProps) {
               </TableHeader>
               <TableBody>
                 {players.length > 0 ? (
-                    players.map((player) => (
-                      <TableRow key={player.id}>
-                        <TableCell className="font-medium sticky left-0 bg-card z-10">{player.nickname}</TableCell>
-                        {statColumns.map(col => (
-                            <TableCell key={`${player.id}-${col.key}`} className="text-center">
-                                {(player as any)[col.key]?.toFixed(2) ?? 'N/A'}
-                            </TableCell>
-                        ))}
-                      </TableRow>
-                    ))
+                    players.map((player, index) => {
+                      const key = player.id || player.nickname || index;
+                      return (
+                        <TableRow key={key}>
+                          <TableCell className="font-medium sticky left-0 bg-card z-10">{player.nickname}</TableCell>
+                          {statColumns.map(col => (
+                              <TableCell key={`${key}-${col.key}`} className="text-center">
+                                  {(player as any)[col.key]?.toFixed(2) ?? 'N/A'}
+                              </TableCell>
+                          ))}
+                        </TableRow>
+                      );
+                    })
                 ) : (
                     <TableRow>
                         <TableCell colSpan={statColumns.length + 1} className="text-center h-24">

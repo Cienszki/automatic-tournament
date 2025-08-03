@@ -1,7 +1,4 @@
-    // --- ADMIN-ONLY COLLECTIONS ---
-    match /processedGames/{gameId} {
-      allow read, write: if isAdmin();
-    }
+
 rules_version = '2';
 
 service cloud.firestore {
@@ -23,7 +20,7 @@ service cloud.firestore {
       return isCaptain(teamA_Id) || isCaptain(teamB_Id);
     }
 
-    // Global deny-all rule.
+    // Global deny-all rule (except for specific matches below)
     match /{document=**} {
       allow read, write: if false;
     }
@@ -67,22 +64,40 @@ service cloud.firestore {
 
     // --- COMPLEX RULES ---
     match /teams/{teamId} {
-      allow create: if request.auth.uid != null;
-      allow update: if (isCaptain(teamId) && 
-                      request.resource.data.diff(resource.data).affectedKeys()
-                      .hasOnly(['motto', 'logoUrl', 'discordUsername'])) || isAdmin();
+      allow read: if true;
+      allow write: if request.auth.uid != null;
       allow delete: if isAdmin();
 
       match /players/{playerId} {
         allow read: if true;
-        allow create: if isCaptain(teamId);
-        allow update, delete: if isAdmin();
+        allow write: if request.auth.uid != null;
+        allow delete: if isAdmin();
       }
     }
 
     match /matches/{matchId} {
       allow create, delete: if isAdmin();
       allow update: if isCaptainOfMatch(matchId) || isAdmin();
+      
+      // Subcollections for match games
+      match /games/{gameId} {
+        allow read: if true;
+        allow write: if isAdmin();
+        
+        match /performances/{playerId} {
+          allow read: if true;
+          allow write: if isAdmin();
+        }
+      }
+    }
+
+    // --- ADMIN-ONLY COLLECTIONS ---
+    match /processedGames/{gameId} {
+      allow read, write: if isAdmin();
+    }
+    
+    match /blockedGames/{gameId} {
+      allow read, write: if isAdmin();
     }
   }
 }

@@ -5,42 +5,47 @@
     "discordUsername": "captain9279351#1234",
     "motto": "Motto for team 9279351",
     "logoUrl": "https://placehold.co/200x200?text=Chef%20Industries",
-    "captainId": "Billan",
+    "captainId": "vVXgufbvX3P9F91ZNKnEyNEPmpl1",
     "players": [
       {
         "nickname": "Billan",
         "role": "Carry",
         "mmr": 4000,
         "steamProfileUrl": "https://steamcommunity.com/id/bilman/",
-        "profileScreenshotUrl": "https://avatars.steamstatic.com/5d9ef3b6427eaf6c3bb924d811163435d354d8ab_full.jpg"
+        "profileScreenshotUrl": "https://avatars.steamstatic.com/5d9ef3b6427eaf6c3bb924d811163435d354d8ab_full.jpg",
+        "id": "vVXgufbvX3P9F91ZNKnEyNEPmpl1-0"
       },
       {
         "nickname": "Narrator",
         "role": "Mid",
         "mmr": 4000,
         "steamProfileUrl": "https://steamcommunity.com/profiles/76561197996346242/",
-        "profileScreenshotUrl": "https://avatars.steamstatic.com/8d0c19c637ac0c77c2bb4a623ce4677edf362156_full.jpg"
+        "profileScreenshotUrl": "https://avatars.steamstatic.com/8d0c19c637ac0c77c2bb4a623ce4677edf362156_full.jpg",
+        "id": "vVXgufbvX3P9F91ZNKnEyNEPmpl1-1"
       },
       {
         "nickname": "Suffering",
         "role": "Offlane",
         "mmr": 4000,
         "steamProfileUrl": "https://steamcommunity.com/profiles/76561198035158048/",
-        "profileScreenshotUrl": "https://avatars.steamstatic.com/92166cb0fabdc4b92ddc51550639059bcf85a7e1_full.jpg"
+        "profileScreenshotUrl": "https://avatars.steamstatic.com/92166cb0fabdc4b92ddc51550639059bcf85a7e1_full.jpg",
+        "id": "vVXgufbvX3P9F91ZNKnEyNEPmpl1-2"
       },
       {
         "nickname": "ɹǝʇsᴉɐɯ ʅǝnp",
         "role": "Soft Support",
         "mmr": 4000,
         "steamProfileUrl": "https://steamcommunity.com/id/DuelMaister/",
-        "profileScreenshotUrl": "https://avatars.steamstatic.com/ec4739119f1bd6fe3abf655b886297901ded92ab_full.jpg"
+        "profileScreenshotUrl": "https://avatars.steamstatic.com/ec4739119f1bd6fe3abf655b886297901ded92ab_full.jpg",
+        "id": "vVXgufbvX3P9F91ZNKnEyNEPmpl1-3"
       },
       {
         "nickname": "chuj do szczania na rope",
         "role": "Hard Support",
         "mmr": 4000,
         "steamProfileUrl": "https://steamcommunity.com/profiles/76561198073681013/",
-        "profileScreenshotUrl": "https://avatars.steamstatic.com/43a5227db0f7960e2e8802f13ab641016f16ad3a_full.jpg"
+        "profileScreenshotUrl": "https://avatars.steamstatic.com/43a5227db0f7960e2e8802f13ab641016f16ad3a_full.jpg",
+        "id": "vVXgufbvX3P9F91ZNKnEyNEPmpl1-4"
       }
     ]
   },
@@ -50,42 +55,47 @@
     "discordUsername": "captain9544897#1234",
     "motto": "Motto for team 9544897",
     "logoUrl": "https://placehold.co/200x200?text=Ofensywny%20glimmer",
-    "captainId": "BitterMeater",
+    "captainId": "JuwhBPXyYLgD3xjwgYNCZwvVvNF3",
     "players": [
       {
         "nickname": "BitterMeater",
         "role": "Carry",
         "mmr": 4000,
         "steamProfileUrl": "https://steamcommunity.com/id/Koboo/",
-        "profileScreenshotUrl": "https://avatars.steamstatic.com/983f461a43abc8d5450a5c1985e3cbce03dc7055_full.jpg"
+        "profileScreenshotUrl": "https://avatars.steamstatic.com/983f461a43abc8d5450a5c1985e3cbce03dc7055_full.jpg",
+        "id": "JuwhBPXyYLgD3xjwgYNCZwvVvNF3-0"
       },
       {
         "nickname": "Chomik",
         "role": "Mid",
         "mmr": 4000,
         "steamProfileUrl": "https://steamcommunity.com/id/chomik96/",
-        "profileScreenshotUrl": "https://avatars.steamstatic.com/5f50ac4cad3c0aee8d62dfcccb735d70e03eef3d_full.jpg"
+        "profileScreenshotUrl": "https://avatars.steamstatic.com/5f50ac4cad3c0aee8d62dfcccb735d70e03eef3d_full.jpg",
+        "id": "JuwhBPXyYLgD3xjwgYNCZwvVvNF3-1"
       },
       {
         "nickname": "radian",
         "role": "Offlane",
         "mmr": 4000,
         "steamProfileUrl": "https://steamcommunity.com/profiles/76561198016943009/",
-        "profileScreenshotUrl": "https://avatars.steamstatic.com/a79c46a7e8679aa7452ffed1a9c29127015bf6cf_full.jpg"
+        "profileScreenshotUrl": "https://avatars.steamstatic.com/a79c46a7e8679aa7452ffed1a9c29127015bf6cf_full.jpg",
+        "id": "JuwhBPXyYLgD3xjwgYNCZwvVvNF3-2"
       },
       {
         "nickname": "Sęp z Poznania",
         "role": "Soft Support",
         "mmr": 4000,
         "steamProfileUrl": "https://steamcommunity.com/id/Maniiiiek/",
-        "profileScreenshotUrl": "https://avatars.steamstatic.com/242287fc3627b769240a88ee409b4eb0b040aa19_full.jpg"
+        "profileScreenshotUrl": "https://avatars.steamstatic.com/242287fc3627b769240a88ee409b4eb0b040aa19_full.jpg",
+        "id": "JuwhBPXyYLgD3xjwgYNCZwvVvNF3-3"
       },
       {
         "nickname": "NicSieNieDa_/",
         "role": "Hard Support",
         "mmr": 4000,
         "steamProfileUrl": "https://steamcommunity.com/profiles/76561198061476067/",
-        "profileScreenshotUrl": "https://avatars.steamstatic.com/c2a65e07ee07977dd0e18408de6c2e57247d319a_full.jpg"
+        "profileScreenshotUrl": "https://avatars.steamstatic.com/c2a65e07ee07977dd0e18408de6c2e57247d319a_full.jpg",
+        "id": "JuwhBPXyYLgD3xjwgYNCZwvVvNF3-4"
       }
     ]
   },
@@ -95,42 +105,47 @@
     "discordUsername": "captain9545831#1234",
     "motto": "Motto for team 9545831",
     "logoUrl": "https://placehold.co/200x200?text=Herbatka%20u%20Bratka",
-    "captainId": "Cienszki",
+    "captainId": "6QYvneNqyVOQ5pgL1pI3bSSVBKl1",
     "players": [
       {
         "nickname": "Cienszki",
         "role": "Carry",
         "mmr": 4000,
         "steamProfileUrl": "https://steamcommunity.com/id/cienszki/",
-        "profileScreenshotUrl": "https://avatars.steamstatic.com/b2ca6289a8301bbf2ced9adf538d8f2de3422048_full.jpg"
+        "profileScreenshotUrl": "https://avatars.steamstatic.com/b2ca6289a8301bbf2ced9adf538d8f2de3422048_full.jpg",
+        "id": "6QYvneNqyVOQ5pgL1pI3bSSVBKl1-0"
       },
       {
         "nickname": "nawle",
         "role": "Mid",
         "mmr": 4000,
         "steamProfileUrl": "https://steamcommunity.com/id/naavle/",
-        "profileScreenshotUrl": "https://avatars.steamstatic.com/ae2e3726f4d04e005ee51997953398de1ff49fcf_full.jpg"
+        "profileScreenshotUrl": "https://avatars.steamstatic.com/ae2e3726f4d04e005ee51997953398de1ff49fcf_full.jpg",
+        "id": "6QYvneNqyVOQ5pgL1pI3bSSVBKl1-1"
       },
       {
         "nickname": "KirzyK",
         "role": "Offlane",
         "mmr": 4000,
         "steamProfileUrl": "https://steamcommunity.com/profiles/76561198060161583/",
-        "profileScreenshotUrl": "https://avatars.steamstatic.com/e5789a08fa421abe4e6485af919d40982bab3ed4_full.jpg"
+        "profileScreenshotUrl": "https://avatars.steamstatic.com/e5789a08fa421abe4e6485af919d40982bab3ed4_full.jpg",
+        "id": "6QYvneNqyVOQ5pgL1pI3bSSVBKl1-2"
       },
       {
         "nickname": "Pocieszny",
         "role": "Soft Support",
         "mmr": 4000,
         "steamProfileUrl": "https://steamcommunity.com/id/pocieszny/",
-        "profileScreenshotUrl": "https://avatars.steamstatic.com/e22103830f88963655445333da47b1ffefeb6c60_full.jpg"
+        "profileScreenshotUrl": "https://avatars.steamstatic.com/e22103830f88963655445333da47b1ffefeb6c60_full.jpg",
+        "id": "6QYvneNqyVOQ5pgL1pI3bSSVBKl1-3"
       },
       {
         "nickname": "Podróżnik Tartarosu",
         "role": "Hard Support",
         "mmr": 4000,
         "steamProfileUrl": "https://steamcommunity.com/profiles/76561198853017609/",
-        "profileScreenshotUrl": "https://avatars.steamstatic.com/b3ce4fdf702b3e73ccabfcaa4de7e166a3afa0d8_full.jpg"
+        "profileScreenshotUrl": "https://avatars.steamstatic.com/b3ce4fdf702b3e73ccabfcaa4de7e166a3afa0d8_full.jpg",
+        "id": "6QYvneNqyVOQ5pgL1pI3bSSVBKl1-4"
       }
     ]
   },
@@ -140,42 +155,47 @@
     "discordUsername": "captain9546316#1234",
     "motto": "Motto for team 9546316",
     "logoUrl": "https://placehold.co/200x200?text=QuitDrinking",
-    "captainId": "Sęp z Poznania",
+    "captainId": "xcxfITwWEwW8UVEm22Yrs63R7Sx2",
     "players": [
       {
         "nickname": "Sęp z Poznania",
         "role": "Carry",
         "mmr": 4000,
         "steamProfileUrl": "https://steamcommunity.com/id/Maniiiiek/",
-        "profileScreenshotUrl": "https://avatars.steamstatic.com/242287fc3627b769240a88ee409b4eb0b040aa19_full.jpg"
+        "profileScreenshotUrl": "https://avatars.steamstatic.com/242287fc3627b769240a88ee409b4eb0b040aa19_full.jpg",
+        "id": "xcxfITwWEwW8UVEm22Yrs63R7Sx2-0"
       },
       {
         "nickname": "NicSieNieDa_/",
         "role": "Mid",
         "mmr": 4000,
         "steamProfileUrl": "https://steamcommunity.com/profiles/76561198061476067/",
-        "profileScreenshotUrl": "https://avatars.steamstatic.com/c2a65e07ee07977dd0e18408de6c2e57247d319a_full.jpg"
+        "profileScreenshotUrl": "https://avatars.steamstatic.com/c2a65e07ee07977dd0e18408de6c2e57247d319a_full.jpg",
+        "id": "xcxfITwWEwW8UVEm22Yrs63R7Sx2-1"
       },
       {
         "nickname": "Szczyt Góry",
         "role": "Offlane",
         "mmr": 4000,
         "steamProfileUrl": "https://steamcommunity.com/profiles/76561198065866134/",
-        "profileScreenshotUrl": "https://avatars.steamstatic.com/a0bcc9b72d79f4bd524720c2371244708a18d89f_full.jpg"
+        "profileScreenshotUrl": "https://avatars.steamstatic.com/a0bcc9b72d79f4bd524720c2371244708a18d89f_full.jpg",
+        "id": "xcxfITwWEwW8UVEm22Yrs63R7Sx2-2"
       },
       {
         "nickname": "Waszkarz~",
         "role": "Soft Support",
         "mmr": 4000,
         "steamProfileUrl": "https://steamcommunity.com/profiles/76561199043383000/",
-        "profileScreenshotUrl": "https://avatars.steamstatic.com/1d129c344ed6871fa563c73360fcfbe215b3cd7d_full.jpg"
+        "profileScreenshotUrl": "https://avatars.steamstatic.com/1d129c344ed6871fa563c73360fcfbe215b3cd7d_full.jpg",
+        "id": "xcxfITwWEwW8UVEm22Yrs63R7Sx2-3"
       },
       {
         "nickname": "Joxxi",
         "role": "Hard Support",
         "mmr": 4000,
         "steamProfileUrl": "https://steamcommunity.com/profiles/76561198074277210/",
-        "profileScreenshotUrl": "https://avatars.steamstatic.com/29c5f9a2f4a343badfbed32720b36cd06d7b72c8_full.jpg"
+        "profileScreenshotUrl": "https://avatars.steamstatic.com/29c5f9a2f4a343badfbed32720b36cd06d7b72c8_full.jpg",
+        "id": "xcxfITwWEwW8UVEm22Yrs63R7Sx2-4"
       }
     ]
   },
@@ -185,42 +205,47 @@
     "discordUsername": "captain9546725#1234",
     "motto": "Motto for team 9546725",
     "logoUrl": "https://placehold.co/200x200?text=Budzik%20Team",
-    "captainId": "MrBuFF",
+    "captainId": "49lUgtppHbMU5qXGck5mXE6tx5u2",
     "players": [
       {
         "nickname": "MrBuFF",
         "role": "Carry",
         "mmr": 4000,
         "steamProfileUrl": "https://steamcommunity.com/profiles/76561197986488117/",
-        "profileScreenshotUrl": "https://avatars.steamstatic.com/49b8fc0f64109308009c25636336670ba7d6066e_full.jpg"
+        "profileScreenshotUrl": "https://avatars.steamstatic.com/49b8fc0f64109308009c25636336670ba7d6066e_full.jpg",
+        "id": "49lUgtppHbMU5qXGck5mXE6tx5u2-0"
       },
       {
         "nickname": "$ΛTΩ",
         "role": "Mid",
         "mmr": 4000,
         "steamProfileUrl": "https://steamcommunity.com/id/voocashplay/",
-        "profileScreenshotUrl": "https://avatars.steamstatic.com/7e3a980d1d7da5082f9d187aca1102d0231dffe1_full.jpg"
+        "profileScreenshotUrl": "https://avatars.steamstatic.com/7e3a980d1d7da5082f9d187aca1102d0231dffe1_full.jpg",
+        "id": "49lUgtppHbMU5qXGck5mXE6tx5u2-1"
       },
       {
         "nickname": "CumdalfTheGay",
         "role": "Offlane",
         "mmr": 4000,
         "steamProfileUrl": "https://steamcommunity.com/id/verdux/",
-        "profileScreenshotUrl": "https://avatars.steamstatic.com/4a636a5d25e12ba11f30a3e0ead4be772e84b40e_full.jpg"
+        "profileScreenshotUrl": "https://avatars.steamstatic.com/4a636a5d25e12ba11f30a3e0ead4be772e84b40e_full.jpg",
+        "id": "49lUgtppHbMU5qXGck5mXE6tx5u2-2"
       },
       {
         "nickname": "ToWarzysz",
         "role": "Soft Support",
         "mmr": 4000,
         "steamProfileUrl": "https://steamcommunity.com/profiles/76561198143191825/",
-        "profileScreenshotUrl": "https://avatars.steamstatic.com/5644b70892e2d1ff9fb3fb728f5111ba2167aeec_full.jpg"
+        "profileScreenshotUrl": "https://avatars.steamstatic.com/5644b70892e2d1ff9fb3fb728f5111ba2167aeec_full.jpg",
+        "id": "49lUgtppHbMU5qXGck5mXE6tx5u2-3"
       },
       {
         "nickname": "Tap4uk",
         "role": "Hard Support",
         "mmr": 4000,
         "steamProfileUrl": "https://steamcommunity.com/profiles/76561198343176523/",
-        "profileScreenshotUrl": "https://avatars.steamstatic.com/b8ee3e2152a94ae7ed60ec3d20858e8949de3a19_full.jpg"
+        "profileScreenshotUrl": "https://avatars.steamstatic.com/b8ee3e2152a94ae7ed60ec3d20858e8949de3a19_full.jpg",
+        "id": "49lUgtppHbMU5qXGck5mXE6tx5u2-4"
       }
     ]
   },
@@ -230,42 +255,47 @@
     "discordUsername": "captain9554545#1234",
     "motto": "Motto for team 9554545",
     "logoUrl": "https://placehold.co/200x200?text=kebab%20u%20dassem%60a",
-    "captainId": "LEON ZAWODOWIEC",
+    "captainId": "RhbvGiI57aZoFob7nmQrse4Bis43",
     "players": [
       {
         "nickname": "LEON ZAWODOWIEC",
         "role": "Carry",
         "mmr": 4000,
         "steamProfileUrl": "https://steamcommunity.com/profiles/76561198002138707/",
-        "profileScreenshotUrl": "https://avatars.steamstatic.com/9edfe91007e19783774d2ac2e9cc0998f77c0584_full.jpg"
+        "profileScreenshotUrl": "https://avatars.steamstatic.com/9edfe91007e19783774d2ac2e9cc0998f77c0584_full.jpg",
+        "id": "RhbvGiI57aZoFob7nmQrse4Bis43-0"
       },
       {
         "nickname": "Inferno",
         "role": "Mid",
         "mmr": 4000,
         "steamProfileUrl": "https://steamcommunity.com/profiles/76561198035385661/",
-        "profileScreenshotUrl": "https://avatars.steamstatic.com/255d85f7133e09d370437c60e3c74becf8875678_full.jpg"
+        "profileScreenshotUrl": "https://avatars.steamstatic.com/255d85f7133e09d370437c60e3c74becf8875678_full.jpg",
+        "id": "RhbvGiI57aZoFob7nmQrse4Bis43-1"
       },
       {
         "nickname": "JB",
         "role": "Offlane",
         "mmr": 4000,
         "steamProfileUrl": "https://steamcommunity.com/profiles/76561198056980796/",
-        "profileScreenshotUrl": "https://avatars.steamstatic.com/8d0cc69cabdba240bf4ae9d15cacc39231d64bf7_full.jpg"
+        "profileScreenshotUrl": "https://avatars.steamstatic.com/8d0cc69cabdba240bf4ae9d15cacc39231d64bf7_full.jpg",
+        "id": "RhbvGiI57aZoFob7nmQrse4Bis43-2"
       },
       {
         "nickname": "Filavandrel",
         "role": "Soft Support",
         "mmr": 4000,
         "steamProfileUrl": "https://steamcommunity.com/profiles/76561198876415395/",
-        "profileScreenshotUrl": "https://avatars.steamstatic.com/b840b8ae97f31ddce3621af52fa67c215606e584_full.jpg"
+        "profileScreenshotUrl": "https://avatars.steamstatic.com/b840b8ae97f31ddce3621af52fa67c215606e584_full.jpg",
+        "id": "RhbvGiI57aZoFob7nmQrse4Bis43-3"
       },
       {
         "nickname": "Kadma",
         "role": "Hard Support",
         "mmr": 4000,
         "steamProfileUrl": "https://steamcommunity.com/profiles/76561199056848601/",
-        "profileScreenshotUrl": "https://avatars.steamstatic.com/e6746c6358bd2136f54a61c8eb3d654efbaa8bcf_full.jpg"
+        "profileScreenshotUrl": "https://avatars.steamstatic.com/e6746c6358bd2136f54a61c8eb3d654efbaa8bcf_full.jpg",
+        "id": "RhbvGiI57aZoFob7nmQrse4Bis43-4"
       }
     ]
   },
@@ -275,42 +305,47 @@
     "discordUsername": "captain9555249#1234",
     "motto": "Motto for team 9555249",
     "logoUrl": "https://placehold.co/200x200?text=Uchod%C5%BAcy",
-    "captainId": "Joxxi",
+    "captainId": "fZrP1DnnxnYgswetbCtvTieMtfk1",
     "players": [
       {
         "nickname": "Joxxi",
         "role": "Carry",
         "mmr": 4000,
         "steamProfileUrl": "https://steamcommunity.com/profiles/76561198074277210/",
-        "profileScreenshotUrl": "https://avatars.steamstatic.com/29c5f9a2f4a343badfbed32720b36cd06d7b72c8_full.jpg"
+        "profileScreenshotUrl": "https://avatars.steamstatic.com/29c5f9a2f4a343badfbed32720b36cd06d7b72c8_full.jpg",
+        "id": "fZrP1DnnxnYgswetbCtvTieMtfk1-0"
       },
       {
         "nickname": "Karina Kotova",
         "role": "Mid",
         "mmr": 4000,
         "steamProfileUrl": "https://steamcommunity.com/profiles/76561198123263997/",
-        "profileScreenshotUrl": "https://avatars.steamstatic.com/cac75ff7db905a2a768e188635ef036527ab5279_full.jpg"
+        "profileScreenshotUrl": "https://avatars.steamstatic.com/cac75ff7db905a2a768e188635ef036527ab5279_full.jpg",
+        "id": "fZrP1DnnxnYgswetbCtvTieMtfk1-1"
       },
       {
         "nickname": "The Maniac Labubu 🎶",
         "role": "Offlane",
         "mmr": 4000,
         "steamProfileUrl": "https://steamcommunity.com/profiles/76561198192862093/",
-        "profileScreenshotUrl": "https://avatars.steamstatic.com/8f79ebb406e758157034de2459333e33cba78e6f_full.jpg"
+        "profileScreenshotUrl": "https://avatars.steamstatic.com/8f79ebb406e758157034de2459333e33cba78e6f_full.jpg",
+        "id": "fZrP1DnnxnYgswetbCtvTieMtfk1-2"
       },
       {
         "nickname": "remquisence",
         "role": "Soft Support",
         "mmr": 4000,
         "steamProfileUrl": "https://steamcommunity.com/profiles/76561199037282598/",
-        "profileScreenshotUrl": "https://avatars.steamstatic.com/e25ceae6400e947d5a79dbfa8c650f0b29645d41_full.jpg"
+        "profileScreenshotUrl": "https://avatars.steamstatic.com/e25ceae6400e947d5a79dbfa8c650f0b29645d41_full.jpg",
+        "id": "fZrP1DnnxnYgswetbCtvTieMtfk1-3"
       },
       {
         "nickname": "DJ_ZAP",
         "role": "Hard Support",
         "mmr": 4000,
         "steamProfileUrl": "https://steamcommunity.com/profiles/76561199135087032/",
-        "profileScreenshotUrl": "https://avatars.steamstatic.com/fb386040fd20d844b24e04e90fe349c7c5e3575c_full.jpg"
+        "profileScreenshotUrl": "https://avatars.steamstatic.com/fb386040fd20d844b24e04e90fe349c7c5e3575c_full.jpg",
+        "id": "fZrP1DnnxnYgswetbCtvTieMtfk1-4"
       }
     ]
   },
@@ -320,42 +355,47 @@
     "discordUsername": "captain9555261#1234",
     "motto": "Motto for team 9555261",
     "logoUrl": "https://placehold.co/200x200?text=Placki",
-    "captainId": "Suffering",
+    "captainId": "q80tISaAGMWcwVSFkbccTC87szG2",
     "players": [
       {
         "nickname": "Suffering",
         "role": "Carry",
         "mmr": 4000,
         "steamProfileUrl": "https://steamcommunity.com/profiles/76561198035158048/",
-        "profileScreenshotUrl": "https://avatars.steamstatic.com/92166cb0fabdc4b92ddc51550639059bcf85a7e1_full.jpg"
+        "profileScreenshotUrl": "https://avatars.steamstatic.com/92166cb0fabdc4b92ddc51550639059bcf85a7e1_full.jpg",
+        "id": "q80tISaAGMWcwVSFkbccTC87szG2-0"
       },
       {
         "nickname": "chuj do szczania na rope",
         "role": "Mid",
         "mmr": 4000,
         "steamProfileUrl": "https://steamcommunity.com/profiles/76561198073681013/",
-        "profileScreenshotUrl": "https://avatars.steamstatic.com/43a5227db0f7960e2e8802f13ab641016f16ad3a_full.jpg"
+        "profileScreenshotUrl": "https://avatars.steamstatic.com/43a5227db0f7960e2e8802f13ab641016f16ad3a_full.jpg",
+        "id": "q80tISaAGMWcwVSFkbccTC87szG2-1"
       },
       {
         "nickname": "Pugna carry rozpierdala kosmos 3",
         "role": "Offlane",
         "mmr": 4000,
         "steamProfileUrl": "https://steamcommunity.com/profiles/76561198092148337/",
-        "profileScreenshotUrl": "https://avatars.steamstatic.com/6e803f762f0b8be9db3248bcec094c51ae95c983_full.jpg"
+        "profileScreenshotUrl": "https://avatars.steamstatic.com/6e803f762f0b8be9db3248bcec094c51ae95c983_full.jpg",
+        "id": "q80tISaAGMWcwVSFkbccTC87szG2-2"
       },
       {
         "nickname": "Hans~~",
         "role": "Soft Support",
         "mmr": 4000,
         "steamProfileUrl": "https://steamcommunity.com/profiles/76561198106129738/",
-        "profileScreenshotUrl": "https://avatars.steamstatic.com/772a842ce3d3be138ed7c103cb858079e6785db9_full.jpg"
+        "profileScreenshotUrl": "https://avatars.steamstatic.com/772a842ce3d3be138ed7c103cb858079e6785db9_full.jpg",
+        "id": "q80tISaAGMWcwVSFkbccTC87szG2-3"
       },
       {
         "nickname": "Be Boy!",
         "role": "Hard Support",
         "mmr": 4000,
         "steamProfileUrl": "https://steamcommunity.com/profiles/76561199086987005/",
-        "profileScreenshotUrl": "https://avatars.steamstatic.com/8f85d530b3c90e4c828bce3a6346ec77d12d00d4_full.jpg"
+        "profileScreenshotUrl": "https://avatars.steamstatic.com/8f85d530b3c90e4c828bce3a6346ec77d12d00d4_full.jpg",
+        "id": "q80tISaAGMWcwVSFkbccTC87szG2-4"
       }
     ]
   }

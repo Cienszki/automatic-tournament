@@ -47,10 +47,12 @@ export function RosterCard({ team, upcomingMatches }: RosterCardProps) {
       </CardHeader>
       <CardContent>
         <ul className="space-y-4">
-          {sortedPlayers.map((player) => {
+          {sortedPlayers.map((player, index) => {
             const RoleIcon = roleIcons[player.role] || ListChecks;
+            // Fallback: use nickname and index if id is missing/duplicate
+            const key = player.id || player.nickname || index;
             return (
-              <li key={player.id} className="flex items-center justify-between">
+              <li key={key} className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
                   <PlayerAvatar player={player} />
                   <div>

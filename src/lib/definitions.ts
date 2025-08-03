@@ -35,6 +35,8 @@ export interface Game {
     start_time: number;
     firstBloodTime: number;
     picksBans?: any[];
+    radiant_team?: { id: string; name: string; };
+    dire_team?: { id: string; name: string; };
 }
 
 export interface Match {
@@ -54,6 +56,22 @@ export interface Match {
   proposedById?: string; 
   game_ids?: number[]; // This now holds the IDs of the individual games
   completed_at?: string;
+  series_format?: 'bo1' | 'bo2' | 'bo3' | 'bo5'; // Series format (BO2 for groups, BO3/BO5 for playoffs)
+  winnerId?: string | null; // Winner of the match, null for draws
+  playerPerformances?: PlayerPerformanceInMatch[];
+  openDotaMatchUrl?: string;
+}
+
+export interface PlayerPerformanceInMatch {
+  playerId: string;
+  teamId: string;
+  hero: string;
+  kills: number;
+  deaths: number;
+  assists: number;
+  gpm: number;
+  xpm: number;
+  fantasyPoints: number;
 }
 
 // ... (rest of definitions)
@@ -104,6 +122,29 @@ export interface Team {
   openDotaTeamId?: number;
   testCaptainEmail?: string;
   testCaptainPassword?: string;
+  
+  // Team statistics
+  matchesPlayed?: number;
+  wins?: number;
+  draws?: number;
+  losses?: number;
+  averageKillsPerGame?: number;
+  averageDeathsPerGame?: number;
+  averageAssistsPerGame?: number;
+  averageFantasyPoints?: number;
+  averageMatchDurationMinutes?: number;
+  averageGpm?: number;
+  averageXpm?: number;
+  averageLastHits?: number;
+  averageNetWorth?: number;
+  averageHeroDamage?: number;
+  averageTowerDamage?: number;
+  averageHeroHealing?: number;
+  mostPlayedHeroes?: Array<{
+    name: string;
+    gamesPlayed: number;
+  }>;
+  captainDiscordUsername?: string;
 }
 
 export interface GroupStanding {
@@ -113,8 +154,9 @@ export interface GroupStanding {
   matchesPlayed: number;
   points: number;
   wins: number;
+  draws: number;
   losses: number;
-  headToHead: { [opponentId: string]: 'win' | 'loss' };
+  headToHead: { [opponentId: string]: 'win' | 'loss' | 'draw' };
   neustadtlScore: number;
   status: 'pending' | 'updated';
   totalMMR: number;

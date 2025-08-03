@@ -25,6 +25,7 @@ async function getHydratedGroupsData(): Promise<Group[]> {
         const standing = group.standings[teamId];
         hydratedStandings[teamId] = {
           ...standing,
+          draws: standing.draws || 0, // Backwards compatibility
           teamName: team.name,
           teamLogoUrl: team.logoUrl || '',
           totalMMR: team.players.reduce((sum, p) => sum + p.mmr, 0)

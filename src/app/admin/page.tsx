@@ -10,6 +10,7 @@ import { Loader2, Shield, LogIn } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { StageManagementTab } from './StageManagementTab';
 import { StandingsTab } from './StandingsTab';
+import { MatchManagementTab } from './MatchManagementTab';
 import { TeamVerificationTab } from './TeamVerificationTab';
 import { AnnouncementsTab } from './AnnouncementsTab';
 import { SystemTestTab } from './SystemTestTab';
@@ -78,9 +79,9 @@ export default function AdminPage() {
                 <TabsList className="grid w-full grid-cols-6">
                     <TabsTrigger value="stage">Stage</TabsTrigger>
                     <TabsTrigger value="standings">Standings</TabsTrigger>
+                    <TabsTrigger value="matches">Matches</TabsTrigger>
                     <TabsTrigger value="teams">Teams</TabsTrigger>
                     <TabsTrigger value="announcements">Announcements</TabsTrigger>
-
                     <TabsTrigger value="advanced">Advanced</TabsTrigger>
                 </TabsList>
                 <TabsContent value="stage">
@@ -89,13 +90,15 @@ export default function AdminPage() {
                 <TabsContent value="standings">
                     <StandingsTab />
                 </TabsContent>
+                <TabsContent value="matches">
+                    <MatchManagementTab />
+                </TabsContent>
                 <TabsContent value="teams">
                     <TeamVerificationTab />
                 </TabsContent>
                 <TabsContent value="announcements">
                     <AnnouncementsTab />
                 </TabsContent>
-
                 <TabsContent value="advanced">
                     <SystemTestTab />
                 </TabsContent>

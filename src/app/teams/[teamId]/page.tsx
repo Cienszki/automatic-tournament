@@ -1,16 +1,34 @@
+// Role icon utility (copied from TeamCard)
+const getRoleIcon = (role: string) => {
+  switch (role) {
+    case "Carry":
+      return <Swords className="h-4 w-4 text-primary mr-2 shrink-0" />;
+    case "Mid":
+      return <Medal className="h-4 w-4 text-primary mr-2 shrink-0" />;
+    case "Offlane":
+      return <Shield className="h-4 w-4 text-primary mr-2 shrink-0" />;
+    case "Soft Support":
+      return <HandshakeIcon className="h-4 w-4 text-primary mr-2 shrink-0" />;
+    case "Hard Support":
+      return <Users className="h-4 w-4 text-primary mr-2 shrink-0" />;
+    default:
+      return <ListChecks className="h-4 w-4 text-muted-foreground mr-2 shrink-0" />;
+  }
+};
 
 import {
   Users, ListChecks, ExternalLink, Medal, Swords, UserCheck, UserX, ShieldQuestion,
   PlayCircle, Sigma, Trophy, Users2, Clock, Percent, Skull, Ratio,
-  Handshake as HandshakeIcon, Award, Shield, MessageSquare
+  Handshake as HandshakeIcon, Award, Shield, MessageSquare, Coins, 
+  TrendingUp, Target, Zap, Heart, Pickaxe
 } from "lucide-react";
 import type { Icon as LucideIconType } from "lucide-react";
 import { notFound } from "next/navigation";
-import { cn, sortPlayersByRole } from "@/lib/utils";
+import { cn, sortPlayersByRole, formatNumber } from "@/lib/utils";
 import { Progress } from "@/components/ui/progress";
 import { heroIconMap } from "@/lib/hero-data";
 import { getTeamById, getAllMatches, getAllTeams } from "@/lib/firestore";
-import type { Team, Player, Match, VerificationStatus } from "@/lib/definitions";
+import type { Team, Player, Match, TeamStatus } from "@/lib/definitions";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { PlayerAvatar } from "@/components/app/PlayerAvatar";
 import { Button } from "@/components/ui/button";
@@ -22,7 +40,7 @@ import { CopyToClipboard } from "@/components/app/CopyToClipboard";
 
 
 interface PageProps {
-  params: { teamId: string };
+  params: Promise<{ teamId: string }>;
 }
 
 async function getTeamData(teamId: string): Promise<{ team: Team | undefined, teamMatches: Match[] }> {
@@ -34,7 +52,7 @@ async function getTeamData(teamId: string): Promise<{ team: Team | undefined, te
   return { team, teamMatches };
 }
 
-const getStatusBadgeClasses = (status?: VerificationStatus) => {
+const getStatusBadgeClasses = (status?: TeamStatus) => {
   switch (status) {
     case "pending":
       return "bg-gray-500/20 text-gray-300 border-gray-500/40 hover:bg-gray-500/30";
@@ -49,7 +67,7 @@ const getStatusBadgeClasses = (status?: VerificationStatus) => {
   }
 };
 
-const getStatusIcon = (status?: VerificationStatus) => {
+const getStatusIcon = (status?: TeamStatus) => {
   switch (status) {
     case "pending":
       return <ShieldQuestion className="h-4 w-4 mr-1.5" />;
@@ -96,7 +114,8 @@ function getRankForStat(
 
 
 export default async function TeamPage({ params }: PageProps) {
-  const { team, teamMatches } = await getTeamData(params.teamId);
+  const resolvedParams = await params;
+  const { team, teamMatches } = await getTeamData(resolvedParams.teamId);
   const allTeams = await getAllTeams(); // Fetch all teams for ranking
 
   if (!team) {
@@ -112,9 +131,15 @@ export default async function TeamPage({ params }: PageProps) {
   const minuteHandAngle = (displayMinutes / 60) * 360;
 
   const maxKills = Math.max(...allTeams.map(t => t.averageKillsPerGame ?? 0).filter(v => v !== undefined && !isNaN(v)), 1);
-  const maxDeaths = Math.max(...allTeams.map(t => t.averageDeathsPerGame ?? 0).filter(v => v !== undefined && !isNaN(v)), 1);
+  const minDeaths = Math.min(...allTeams.map(t => t.averageDeathsPerGame ?? 999).filter(v => v !== undefined && !isNaN(v)), 999);
   const maxAssists = Math.max(...allTeams.map(t => t.averageAssistsPerGame ?? 0).filter(v => v !== undefined && !isNaN(v)), 1);
   const maxFantasyPoints = Math.max(...allTeams.map(t => t.averageFantasyPoints ?? 0).filter(v => v !== undefined && !isNaN(v)), 1);
+
+  // Calculate league averages for each stat
+  const leagueAvgKills = allTeams.length ? (allTeams.reduce((sum, t) => sum + (t.averageKillsPerGame || 0), 0) / allTeams.length).toFixed(1) : 'N/A';
+  const leagueAvgDeaths = allTeams.length ? (allTeams.reduce((sum, t) => sum + (t.averageDeathsPerGame || 0), 0) / allTeams.length).toFixed(1) : 'N/A';
+  const leagueAvgAssists = allTeams.length ? (allTeams.reduce((sum, t) => sum + (t.averageAssistsPerGame || 0), 0) / allTeams.length).toFixed(1) : 'N/A';
+  const leagueAvgFantasy = allTeams.length ? (allTeams.reduce((sum, t) => sum + (t.averageFantasyPoints || 0), 0) / allTeams.length).toFixed(1) : 'N/A';
 
   const performanceStats = [
     {
@@ -124,6 +149,8 @@ export default async function TeamPage({ params }: PageProps) {
       type: 'progress',
       rawValue: team.averageKillsPerGame,
       maxValue: maxKills,
+      leagueAvg: leagueAvgKills,
+      bestValue: maxKills,
       rank: getRankForStat(team.averageKillsPerGame, allTeams, 'averageKillsPerGame', 'desc'),
       statKey: 'averageKillsPerGame' as keyof Team,
       sortOrder: 'desc' as 'desc' | 'asc',
@@ -134,7 +161,9 @@ export default async function TeamPage({ params }: PageProps) {
       icon: Skull,
       type: 'progress',
       rawValue: team.averageDeathsPerGame,
-      maxValue: maxDeaths,
+      maxValue: minDeaths,
+      leagueAvg: leagueAvgDeaths,
+      bestValue: minDeaths,
       rank: getRankForStat(team.averageDeathsPerGame, allTeams, 'averageDeathsPerGame', 'asc'),
       statKey: 'averageDeathsPerGame' as keyof Team,
       sortOrder: 'asc' as 'desc' | 'asc',
@@ -146,6 +175,8 @@ export default async function TeamPage({ params }: PageProps) {
       type: 'progress',
       rawValue: team.averageAssistsPerGame,
       maxValue: maxAssists,
+      leagueAvg: leagueAvgAssists,
+      bestValue: maxAssists,
       rank: getRankForStat(team.averageAssistsPerGame, allTeams, 'averageAssistsPerGame', 'desc'),
       statKey: 'averageAssistsPerGame' as keyof Team,
       sortOrder: 'desc' as 'desc' | 'asc',
@@ -157,6 +188,8 @@ export default async function TeamPage({ params }: PageProps) {
       type: 'progress',
       rawValue: team.averageFantasyPoints,
       maxValue: maxFantasyPoints,
+      leagueAvg: leagueAvgFantasy,
+      bestValue: maxFantasyPoints,
       rank: getRankForStat(team.averageFantasyPoints, allTeams, 'averageFantasyPoints', 'desc'),
       statKey: 'averageFantasyPoints' as keyof Team,
       sortOrder: 'desc' as 'desc' | 'asc',
@@ -166,7 +199,10 @@ export default async function TeamPage({ params }: PageProps) {
 
   return (
     <div className="space-y-8">
-      <Card className="shadow-xl overflow-hidden">
+      <Card className={cn(
+        "flex flex-col h-full shadow-none border-0 bg-gradient-to-br from-[#181c2f] via-[#3a295a] to-[#2d1b3c] transition-transform duration-300 hover:scale-105 hover:shadow-[0_0_48px_8px_#b86fc6cc,0_0_32px_0_#0ff0fc99]",
+        team.status === 'banned' && "bg-destructive/10 border-destructive/30",
+      )}>
         <CardHeader className="bg-muted/30 p-6 md:p-8">
           <div className="flex flex-col md:flex-row items-center space-y-4 md:space-y-0 md:space-x-6">
             <Image
@@ -198,8 +234,8 @@ export default async function TeamPage({ params }: PageProps) {
                <Shield className="h-6 w-6 mr-2 text-primary" /> Team Summary
             </h3>
              <InfoItem icon={ListChecks} label="Matches Played" value={team.matchesPlayed ?? 0} />
-             <InfoItem icon={Swords} label="Wins / Losses" value={`${team.wins ?? 0}W / ${team.losses ?? 0}L`} />
-             <InfoItem icon={Sigma} label="Total MMR" value={totalMMR.toLocaleString()} />
+             <InfoItem icon={Swords} label="Wins / Draws / Losses" value={`${team.wins ?? 0}W / ${team.draws ?? 0}D / ${team.losses ?? 0}L`} />
+             <InfoItem icon={Sigma} label="Total MMR" value={formatNumber(totalMMR)} />
              {team.captainDiscordUsername && (
                 <div className="flex items-center text-md p-3 bg-muted/20 rounded-md">
                     <MessageSquare className="h-5 w-5 mr-3 text-primary" />
@@ -215,7 +251,18 @@ export default async function TeamPage({ params }: PageProps) {
             </h3>
             <div className="space-y-3">
               {sortedPlayers.map((player) => (
-                <PlayerCard key={player.id} player={player} teamId={team.id} />
+                <Link 
+                  key={player.id} 
+                  href={`/teams/${team.id}/players/${player.id}`}
+                  className="flex items-center gap-2 p-2 rounded-md bg-muted/10 hover:bg-muted/20 transition-colors group"
+                >
+                  {getRoleIcon(player.role)}
+                  <PlayerAvatar player={player} size="small" />
+                  <span className="font-medium text-foreground text-base group-hover:text-primary">{player.nickname}</span>
+                  <span className="ml-2 text-xs text-muted-foreground">{player.role}</span>
+                  <span className="ml-auto text-xs text-muted-foreground">MMR: {player.mmr ? formatNumber(player.mmr) : 'N/A'}</span>
+                  <ExternalLink className="h-3 w-3 text-muted-foreground group-hover:text-primary ml-1" />
+                </Link>
               ))}
             </div>
           </div>
@@ -321,12 +368,15 @@ export default async function TeamPage({ params }: PageProps) {
                   <Progress
                     value={
                       stat.label === "Avg. Deaths / Game"
-                        ? Math.min(100, Math.max(0, (1 - (stat.rawValue / stat.maxValue)) * 100))
+                        ? Math.min(100, Math.max(0, (stat.maxValue / (stat.rawValue || 1)) * 100))
                         : Math.min(100, Math.max(0, (stat.rawValue / stat.maxValue) * 100))
                     }
                     className="w-3/4 h-2.5"
                     aria-label={`${stat.label} progress`}
                   />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    League avg: {stat.leagueAvg} | Best: {stat.bestValue}
+                  </p>
                   {stat.rank && <p className="text-xs text-muted-foreground mt-2">Rank: {stat.rank}</p>}
                 </>
               ) : (
@@ -335,6 +385,93 @@ export default async function TeamPage({ params }: PageProps) {
             </CardContent>
           </Card>
         ))}
+      </div>
+
+      {/* Additional Performance Statistics */}
+      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
+        {/* GPM Card */}
+        <Card className="shadow-xl text-center hover:bg-muted/10 transition-colors duration-200 flex flex-col">
+          <CardHeader className="flex flex-row items-center justify-center space-x-3 pb-2">
+            <Coins className="h-6 w-6 text-yellow-400" />
+            <CardTitle className="text-lg text-primary">Avg. GPM</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col items-center justify-center flex-grow p-4">
+            <p className="text-3xl font-bold text-foreground">{team.averageGpm?.toFixed(0) ?? 'N/A'}</p>
+            <p className="text-xs text-muted-foreground mt-1">Gold Per Minute</p>
+          </CardContent>
+        </Card>
+
+        {/* XPM Card */}
+        <Card className="shadow-xl text-center hover:bg-muted/10 transition-colors duration-200 flex flex-col">
+          <CardHeader className="flex flex-row items-center justify-center space-x-3 pb-2">
+            <TrendingUp className="h-6 w-6 text-blue-400" />
+            <CardTitle className="text-lg text-primary">Avg. XPM</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col items-center justify-center flex-grow p-4">
+            <p className="text-3xl font-bold text-foreground">{team.averageXpm?.toFixed(0) ?? 'N/A'}</p>
+            <p className="text-xs text-muted-foreground mt-1">Experience Per Minute</p>
+          </CardContent>
+        </Card>
+
+        {/* Last Hits Card */}
+        <Card className="shadow-xl text-center hover:bg-muted/10 transition-colors duration-200 flex flex-col">
+          <CardHeader className="flex flex-row items-center justify-center space-x-3 pb-2">
+            <Pickaxe className="h-6 w-6 text-green-400" />
+            <CardTitle className="text-lg text-primary">Avg. Last Hits</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col items-center justify-center flex-grow p-4">
+            <p className="text-3xl font-bold text-foreground">{team.averageLastHits?.toFixed(0) ?? 'N/A'}</p>
+            <p className="text-xs text-muted-foreground mt-1">Creep Kills</p>
+          </CardContent>
+        </Card>
+
+        {/* Net Worth Card */}
+        <Card className="shadow-xl text-center hover:bg-muted/10 transition-colors duration-200 flex flex-col">
+          <CardHeader className="flex flex-row items-center justify-center space-x-3 pb-2">
+            <Trophy className="h-6 w-6 text-yellow-500" />
+            <CardTitle className="text-lg text-primary">Avg. Net Worth</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col items-center justify-center flex-grow p-4">
+            <p className="text-3xl font-bold text-foreground">{team.averageNetWorth ? formatNumber(team.averageNetWorth) : 'N/A'}</p>
+            <p className="text-xs text-muted-foreground mt-1">Total Gold Value</p>
+          </CardContent>
+        </Card>
+
+        {/* Hero Damage Card */}
+        <Card className="shadow-xl text-center hover:bg-muted/10 transition-colors duration-200 flex flex-col">
+          <CardHeader className="flex flex-row items-center justify-center space-x-3 pb-2">
+            <Target className="h-6 w-6 text-red-400" />
+            <CardTitle className="text-lg text-primary">Avg. Hero Damage</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col items-center justify-center flex-grow p-4">
+            <p className="text-3xl font-bold text-foreground">{team.averageHeroDamage ? formatNumber(team.averageHeroDamage) : 'N/A'}</p>
+            <p className="text-xs text-muted-foreground mt-1">Damage to Heroes</p>
+          </CardContent>
+        </Card>
+
+        {/* Tower Damage Card */}
+        <Card className="shadow-xl text-center hover:bg-muted/10 transition-colors duration-200 flex flex-col">
+          <CardHeader className="flex flex-row items-center justify-center space-x-3 pb-2">
+            <Zap className="h-6 w-6 text-orange-400" />
+            <CardTitle className="text-lg text-primary">Avg. Tower Damage</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col items-center justify-center flex-grow p-4">
+            <p className="text-3xl font-bold text-foreground">{team.averageTowerDamage ? formatNumber(team.averageTowerDamage) : 'N/A'}</p>
+            <p className="text-xs text-muted-foreground mt-1">Damage to Buildings</p>
+          </CardContent>
+        </Card>
+
+        {/* Hero Healing Card */}
+        <Card className="shadow-xl text-center hover:bg-muted/10 transition-colors duration-200 flex flex-col">
+          <CardHeader className="flex flex-row items-center justify-center space-x-3 pb-2">
+            <Heart className="h-6 w-6 text-pink-400" />
+            <CardTitle className="text-lg text-primary">Avg. Healing</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col items-center justify-center flex-grow p-4">
+            <p className="text-3xl font-bold text-foreground">{team.averageHeroHealing ? formatNumber(team.averageHeroHealing) : 'N/A'}</p>
+            <p className="text-xs text-muted-foreground mt-1">Hero Healing Done</p>
+          </CardContent>
+        </Card>
       </div>
 
 
@@ -428,7 +565,8 @@ function PlayerCard({ player, teamId }: PlayerCardProps) {
 
 
 export async function generateMetadata({ params }: PageProps) {
-  const team = await getTeamById(params.teamId);
+  const resolvedParams = await params;
+  const team = await getTeamById(resolvedParams.teamId);
   if (!team) {
     return { title: "Team Not Found" };
   }

@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import Image from "next/image";
 import Link from "next/link";
 import { Sigma, Shield, Swords, Sparkles, HandHelping, Eye, ListChecks, UserX, ShieldQuestion, PlayCircle, Trophy } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, formatNumber } from "@/lib/utils";
 import {
   Tooltip,
   TooltipContent,
@@ -55,6 +55,14 @@ const getStatusBadge = (status?: string) => {
 export function TeamCard({ team }: TeamCardProps) {
   const totalMMR = team.players.reduce((sum, player) => sum + player.mmr, 0);
 
+  // Sort players by role: Carry, Mid, Offlane, Soft Support, Hard Support
+  const roleOrder = ["Carry", "Mid", "Offlane", "Soft Support", "Hard Support"];
+  const sortedPlayers = [...team.players].sort((a, b) => {
+    const aIdx = roleOrder.indexOf(a.role);
+    const bIdx = roleOrder.indexOf(b.role);
+    return (aIdx === -1 ? 99 : aIdx) - (bIdx === -1 ? 99 : bIdx);
+  });
+
   return (
     <Card className={cn(
       "flex flex-col h-full shadow-none border-0 bg-gradient-to-br from-[#181c2f] via-[#3a295a] to-[#2d1b3c] transition-transform duration-300 hover:scale-105 hover:shadow-[0_0_48px_8px_#b86fc6cc,0_0_32px_0_#0ff0fc99]",
@@ -79,7 +87,7 @@ export function TeamCard({ team }: TeamCardProps) {
             <div className="flex justify-start mb-1.5">{getStatusBadge(team.status)}</div>
             <div className="flex items-center text-sm text-muted-foreground">
               <Sigma className="h-4 w-4 mr-2 text-primary shrink-0" />
-              <span>Total MMR: {totalMMR.toLocaleString()}</span>
+              <span>Total MMR: {formatNumber(totalMMR)}</span>
             </div>
             {/* Wins/Losses are not available on Team, so we omit this or show N/A */}
             <div className="flex items-center text-sm text-muted-foreground">
@@ -92,7 +100,7 @@ export function TeamCard({ team }: TeamCardProps) {
           <div className="space-y-1">
             <TooltipProvider delayDuration={100}>
               <ul className="space-y-1 text-xs">
-                {team.players.slice(0, 5).map((player) => (
+                {sortedPlayers.slice(0, 5).map((player) => (
                   <li key={player.id} className="flex items-center">
                     {getRoleIcon(player.role)}
                     <Tooltip>
@@ -105,7 +113,7 @@ export function TeamCard({ team }: TeamCardProps) {
                         </Link>
                       </TooltipTrigger>
                       <TooltipContent side="top" className="text-xs p-1.5 bg-popover text-popover-foreground border-border">
-                        <p>MMR: {player.mmr.toLocaleString()}</p>
+                        <p>MMR: {formatNumber(player.mmr)}</p>
                       </TooltipContent>
                     </Tooltip>
                   </li>

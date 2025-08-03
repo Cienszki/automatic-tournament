@@ -24,7 +24,7 @@ export default function SystemTestPage() {
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-8">
-                        <CaptainImpersonator currentUser={user} signIn={signInWithGoogle} signOut={signOut} />
+                        <CaptainImpersonator />
                         <TimeMachine />
                         {/* <ScenarioSimulator /> */}
                     </CardContent>

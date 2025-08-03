@@ -1,4 +1,4 @@
-import fetch from 'node-fetch';
+// import fetch from 'node-fetch'; // Node.js-only: move to scripts/server if needed
 
 /**
  * Fetch a match from the OpenDota API.
@@ -28,8 +28,8 @@ import {
   Team,
   Player
 } from './definitions';
-import { promises as fs } from 'fs';
-import path from 'path';
+// import { promises as fs } from 'fs'; // Node.js-only: move to scripts/server if needed
+// import path from 'path'; // Node.js-only: move to scripts/server if needed
 
 const OPENDOTA_API_BASE_URL = 'https://api.opendota.com/api';
 
@@ -60,7 +60,10 @@ export function transformMatchData(
   const direTeam = findTeam(openDotaMatch.dire_team?.team_id, openDotaMatch.dire_name);
 
   if (!radiantTeam || !direTeam) {
-    throw new Error(`Could not find one or both teams in the database. Radiant: ${openDotaMatch.radiant_team?.team_id} / ${openDotaMatch.radiant_name}, Dire: ${openDotaMatch.dire_team?.team_id} / ${openDotaMatch.dire_name}`);
+    const missingTeams = [];
+    if (!radiantTeam) missingTeams.push(`Radiant: ${openDotaMatch.radiant_name}`);
+    if (!direTeam) missingTeams.push(`Dire: ${openDotaMatch.dire_name}`);
+    throw new Error(`Tournament teams not found in database: ${missingTeams.join(', ')}. This might be a scrim or practice game.`);
   }
 
   const game: Game = {
@@ -70,6 +73,8 @@ export function transformMatchData(
     start_time: openDotaMatch.start_time,
     firstBloodTime: openDotaMatch.first_blood_time,
     picksBans: openDotaMatch.picks_bans || [],
+    radiant_team: { id: radiantTeam.id, name: radiantTeam.name },
+    dire_team: { id: direTeam.id, name: direTeam.name },
   };
 
   const performances: PlayerPerformanceInGame[] = openDotaMatch.players.map((p: any) => {

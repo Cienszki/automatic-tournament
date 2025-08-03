@@ -7,24 +7,29 @@ import type { Match, Group, GroupStanding } from './definitions';
 import { revalidatePath } from 'next/cache';
 
 /**
- * Updates the group standings based on the result of a single game (match).
- * This function is designed to be called automatically after a game result is saved.
- * @param match The completed match object, representing one game.
+ * Updates the group standings based on the result of a single match.
+ * Points are awarded based on individual games won (not matches won):
+ * - Win 2-0: 2 points
+ * - Draw 1-1: 1 point each
+ * - Loss 0-2: 0 points
+ * @param match The completed match object.
  */
 export async function updateStandingsAfterGame(match: Match): Promise<{ success: boolean; message: string }> {
   const { teams, winnerId } = match;
-  if (teams.length !== 2 || !winnerId) {
-    return { success: false, message: 'Match must have exactly two teams and a winner.' };
+  if (teams.length !== 2) {
+    return { success: false, message: 'Match must have exactly two teams.' };
   }
 
-  const loserId = teams.find(id => id !== winnerId);
-  if (!loserId) {
-    return { success: false, message: 'Could not determine loser.' };
-  }
+  const [teamAId, teamBId] = teams;
+  const isDraw = !winnerId; // No winner means it's a draw (BO2 1-1)
+
+  // Get the actual scores from the match
+  const teamAScore = match.teamA?.score || 0; // Number of games won by team A
+  const teamBScore = match.teamB?.score || 0; // Number of games won by team B
 
   // Find the group that contains both teams.
   const groupsRef = collection(db, 'groups');
-  const q = query(groupsRef, where(`standings.${winnerId}.teamId`, '==', winnerId), where(`standings.${loserId}.teamId`, '==', loserId));
+  const q = query(groupsRef, where(`standings.${teamAId}.teamId`, '==', teamAId), where(`standings.${teamBId}.teamId`, '==', teamBId));
   
   const querySnapshot = await getDocs(q);
   if (querySnapshot.empty) {
@@ -43,26 +48,45 @@ export async function updateStandingsAfterGame(match: Match): Promise<{ success:
       const groupData = groupSnapshot.data() as Group;
       const standings = groupData.standings;
 
-      const winnerStanding = standings[winnerId];
-      const loserStanding = standings[loserId];
+      const teamAStanding = standings[teamAId];
+      const teamBStanding = standings[teamBId];
 
-      // Update winner's stats
-      winnerStanding.matchesPlayed += 1;
-      winnerStanding.points += 1;
-      winnerStanding.wins += 1;
-      if (!winnerStanding.headToHead) winnerStanding.headToHead = {};
-      winnerStanding.headToHead[loserId] = (winnerStanding.headToHead[loserId] || 0) + 1;
+      // Award points based on individual games won
+      teamAStanding.matchesPlayed += 1;
+      teamAStanding.points += teamAScore; // Points = games won
+      
+      teamBStanding.matchesPlayed += 1;
+      teamBStanding.points += teamBScore; // Points = games won
 
+      // Update wins/losses based on match result
+      if (isDraw) {
+        // Both teams get no additional wins/losses for draws
+        // Head-to-head tracking for draws (optional)
+        if (!teamAStanding.headToHead) teamAStanding.headToHead = {};
+        if (!teamBStanding.headToHead) teamBStanding.headToHead = {};
+      } else {
+        // Update match wins/losses
+        const winnerStanding = standings[winnerId];
+        const loserId = teamAId === winnerId ? teamBId : teamAId;
+        const loserStanding = standings[loserId];
 
-      // Update loser's stats
-      loserStanding.matchesPlayed += 1;
-      loserStanding.losses += 1;
+        winnerStanding.wins += 1;
+        loserStanding.losses += 1;
+        
+        // Update head-to-head
+        if (!winnerStanding.headToHead) winnerStanding.headToHead = {};
+        if (!loserStanding.headToHead) loserStanding.headToHead = {};
+        winnerStanding.headToHead[loserId] = 'win';
+        loserStanding.headToHead[winnerId] = 'loss';
+      }
       
       transaction.update(groupRef, { standings });
     });
 
     revalidatePath('/groups'); // Invalidate cache for the groups page
-    return { success: true, message: `Standings updated for group ${groupDoc.id} after match ${match.id}.` };
+    const resultType = isDraw ? 'draw' : 'win/loss';
+    const scoreText = `${teamAScore}-${teamBScore}`;
+    return { success: true, message: `Standings updated for group ${groupDoc.id} after match ${match.id} (${scoreText}, ${resultType}).` };
   } catch (error) {
     console.error('Error updating standings:', error);
     const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';

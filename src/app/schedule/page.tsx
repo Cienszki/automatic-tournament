@@ -59,7 +59,7 @@ export default async function SchedulePage() {
             </h2>
           </div>
           {upcomingMatches.length === 0 ? (
-            <Card className="shadow-md">
+            <Card className="shadow-none border-0 bg-gradient-to-br from-[#181c2f] via-[#3a295a] to-[#2d1b3c] transition-transform duration-300 hover:scale-105 hover:shadow-[0_0_48px_8px_#b86fc6cc,0_0_32px_0_#0ff0fc99]">
               <CardContent className="p-10 flex flex-col items-center text-center">
                 <AlertCircle className="w-16 h-16 text-primary mb-4" />
                 <h3 className="text-2xl font-semibold mb-2">No Upcoming Matches</h3>
@@ -85,7 +85,7 @@ export default async function SchedulePage() {
             </h2>
           </div>
           {completedMatches.length === 0 ? (
-            <Card className="shadow-md">
+            <Card className="shadow-none border-0 bg-gradient-to-br from-[#181c2f] via-[#3a295a] to-[#2d1b3c] transition-transform duration-300 hover:scale-105 hover:shadow-[0_0_48px_8px_#b86fc6cc,0_0_32px_0_#0ff0fc99]">
               <CardContent className="p-10 flex flex-col items-center text-center">
                 <AlertCircle className="w-16 h-16 text-primary mb-4" />
                 <h3 className="text-2xl font-semibold mb-2">No Recent Matches</h3>

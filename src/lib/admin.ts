@@ -1,3 +1,4 @@
+// This file is intentionally left blank. All admin logic is now in server/lib/admin.ts. Import from '../../server/lib/admin' instead.
 
 import { initializeApp, getApps, cert, getApp, App } from 'firebase-admin/app';
 import { getFirestore, Firestore } from 'firebase-admin/firestore';

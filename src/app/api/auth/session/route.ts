@@ -24,7 +24,8 @@ export async function POST(request: NextRequest) {
 
     const sessionCookie = await adminAuth.createSessionCookie(idToken, { expiresIn });
 
-    cookies().set('session', sessionCookie, { maxAge: expiresIn, httpOnly: true, secure: true, path: '/' });
+    const cookieStore = await cookies();
+    cookieStore.set('session', sessionCookie, { maxAge: expiresIn, httpOnly: true, secure: true, path: '/' });
     
     return NextResponse.json({ status: 'success' });
   } catch (error) {
@@ -35,7 +36,8 @@ export async function POST(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    cookies().delete('session');
+    const cookieStore = await cookies();
+    cookieStore.delete('session');
     return NextResponse.json({ status: 'success' });
   } catch (error) {
     console.error('Session logout error:', error);

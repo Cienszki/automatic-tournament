@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getAllTeams, getAllTournamentPlayers, saveGameResults } from "@/lib/firestore";
 import { transformMatchData } from "@/lib/opendota";
+import { recalculateMatchScoresAdmin } from "@/lib/admin-match-actions-server";
 
 export async function POST(req: Request) {
   try {
@@ -22,6 +23,16 @@ export async function POST(req: Request) {
     game.id = gameNumber;
     // Save to Firestore
     await saveGameResults(matchId, game, performances);
+    
+    // Automatically recalculate match scores and update standings after saving the game
+    try {
+      await recalculateMatchScoresAdmin(matchId);
+      console.log(`Automatically recalculated scores and standings for match ${matchId}`);
+    } catch (recalcError) {
+      console.error(`Failed to recalculate scores for match ${matchId}:`, recalcError);
+      // Don't fail the entire operation if recalculation fails
+    }
+    
     return NextResponse.json({ success: true });
   } catch (err: any) {
     return NextResponse.json({ error: err?.message || "Import failed." }, { status: 500 });

@@ -3,7 +3,6 @@ import { collection, getDocs, doc, getDoc, setDoc, query, where, orderBy, addDoc
 import { db } from "./firebase";
 import type { User } from "firebase/auth";
 import type { Team, Match, PlayoffData, FantasyLineup, FantasyData, TournamentPlayer, PickemPrediction, Player, CategoryDisplayStats, TournamentHighlightRecord, CategoryRankingDetail, PlayerPerformanceInGame, Announcement, Group, GroupStanding, Pickem, UserProfile, PlayerRole, Game } from "./definitions";
-import { updateStandingsAfterGame } from './group-actions';
 
 // ... (other functions)
 
@@ -11,6 +10,14 @@ export async function saveGameResults(ourMatchId: string, game: Game, performanc
     const batch = writeBatch(db);
 
     const matchRef = doc(db, "matches", ourMatchId);
+    
+    // Check if the match document exists - if not, this might be a scrim/practice game
+    const matchSnap = await getDoc(matchRef);
+    if (!matchSnap.exists()) {
+        console.log(`Match document ${ourMatchId} does not exist. This might be a scrim or practice game - skipping database save.`);
+        return; // Gracefully skip saving games for non-tournament matches
+    }
+
     const gameRef = doc(matchRef, "games", game.id);
 
     // 1. Add the new game ID to the main match document
@@ -30,7 +37,53 @@ export async function saveGameResults(ourMatchId: string, game: Game, performanc
     await batch.commit();
 
     // After saving, you might want to re-calculate and update the overall match score
-    // For now, this is just saving the raw game data.
+}
+
+// New function for saving external matches (creates match document if needed)
+export async function saveExternalGameResults(ourMatchId: string, game: Game, performances: PlayerPerformanceInGame[], teams: { radiantTeam: any, direTeam: any }): Promise<void> {
+    const batch = writeBatch(db);
+
+    const matchRef = doc(db, "matches", ourMatchId);
+    
+    // Check if the match document exists
+    const matchSnap = await getDoc(matchRef);
+    if (!matchSnap.exists()) {
+        // Create a new match document for external matches
+        console.log(`Creating new match document for external match ${ourMatchId}`);
+        const matchData = {
+            id: ourMatchId,
+            type: 'external', // Mark as external match
+            radiant_team_id: teams.radiantTeam.id,
+            dire_team_id: teams.direTeam.id,
+            radiant_team_name: teams.radiantTeam.name,
+            dire_team_name: teams.direTeam.name,
+            status: 'completed',
+            game_ids: [parseInt(game.id)],
+            created_at: new Date().toISOString(),
+            external_match_id: ourMatchId
+        };
+        batch.set(matchRef, matchData);
+    } else {
+        // Update existing match document
+        batch.update(matchRef, {
+            game_ids: arrayUnion(parseInt(game.id))
+        });
+    }
+
+    const gameRef = doc(matchRef, "games", game.id);
+
+    // 2. Set the data for the new game document
+    batch.set(gameRef, game);
+
+    // 3. Set the performance data for each player in a subcollection
+    performances.forEach(performance => {
+        const performanceRef = doc(gameRef, "performances", performance.playerId);
+        batch.set(performanceRef, performance);
+    });
+
+    await batch.commit();
+
+    console.log(`Successfully saved external match ${ourMatchId} with game ${game.id}`);
 }
 
 // ... (rest of firestore.ts)
@@ -43,17 +96,38 @@ export async function getTournamentStatus(): Promise<{ roundId: string } | null>
     return statusSnap.data() as { roundId: string };
 }
 
-export async function saveTeam(teamData: Omit<Team, 'id' | 'createdAt'>): Promise<void> {
+export async function saveTeam(teamData: Omit<Team, 'id' | 'createdAt'>, user?: any): Promise<void> {
+    // Defensive: Require user with valid uid for all writes
+    if (!user || !user.uid || typeof user.uid !== "string" || user.uid.trim() === "") {
+        console.error('[FATAL] saveTeam: Missing or invalid user object for Firestore write:', user);
+        throw new Error('You must be logged in to register a team. (No valid user for Firestore write)');
+    }
+    
+    // Security: Ensure user can only register teams where they are the captain
+    if (teamData.captainId !== user.uid) {
+        throw new Error('You can only register teams where you are the captain');
+    }
+    
     const batch = writeBatch(db);
     const teamRef = doc(collection(db, "teams"));
     const { players, ...teamDetails } = teamData;
-    const teamPayload = { ...teamDetails, id: teamRef.id, status: 'pending', createdAt: serverTimestamp() };
+    const teamPayload = { 
+        ...teamDetails, 
+        id: teamRef.id, 
+        captainId: user.uid, // Force captain to be current user for security
+        status: 'pending', 
+        createdAt: serverTimestamp() 
+    };
     batch.set(teamRef, teamPayload);
     const playersCollectionRef = collection(db, "teams", teamRef.id, "players");
-    players.forEach(player => {
-        const playerRef = doc(playersCollectionRef, player.id);
-        batch.set(playerRef, player);
-    });
+    // Defensive log: print all player objects
+    console.log('saveTeam: players for team', teamPayload.name, players.map(p => ({nickname: p.nickname})));
+    // Add each player with Firestore auto-ID and store the ID back to the player object
+    for (const player of players) {
+        const playerDocRef = doc(playersCollectionRef);
+        const playerWithId = { ...player, id: playerDocRef.id };
+        batch.set(playerDocRef, playerWithId);
+    }
     await batch.commit();
 }
 
@@ -65,7 +139,10 @@ export async function getAllTeams(): Promise<Team[]> {
         const createdAt = teamData.createdAt as Timestamp | undefined;
         const playersCollection = collection(db, "teams", d.id, "players");
         const playersSnapshot = await getDocs(playersCollection);
-        const players = playersSnapshot.docs.map(playerDoc => playerDoc.data() as Player);
+        const players = playersSnapshot.docs.map(playerDoc => ({
+            ...playerDoc.data() as Player,
+            id: playerDoc.id  // Ensure player ID is included
+        }));
         return {
             id: d.id,
             ...teamData,
@@ -84,7 +161,10 @@ export async function getTeamById(id: string): Promise<Team | undefined> {
     const teamData = teamDocSnap.data() as Omit<Team, 'id' | 'players' | 'createdAt'> & { createdAt: Timestamp };
     const playersCollection = collection(db, "teams", id, "players");
     const playersSnapshot = await getDocs(playersCollection);
-    const players = playersSnapshot.docs.map(doc => doc.data() as Player);
+    const players = playersSnapshot.docs.map(doc => ({
+        ...doc.data() as Player,
+        id: doc.id  // Ensure player ID is included
+    }));
     const createdAt = teamData.createdAt;
 
     return {
@@ -184,10 +264,48 @@ export async function getAnnouncements(): Promise<Announcement[]> {
 
 export async function updateMatchScores(matchId: string, teamAScore: number, teamBScore: number): Promise<void> {
     const matchRef = doc(db, "matches", matchId);
-    await updateDoc(matchRef, {
+    
+    // Get the current match data to determine teams and winnerId
+    const matchSnap = await getDoc(matchRef);
+    if (!matchSnap.exists()) {
+        throw new Error('Match not found');
+    }
+    
+    const matchData = matchSnap.data();
+    const teamAId = matchData.teams?.[0];
+    const teamBId = matchData.teams?.[1];
+    
+    // Determine winnerId based on scores
+    let winnerId = null;
+    if (teamAScore > teamBScore) {
+        winnerId = teamAId;
+    } else if (teamBScore > teamAScore) {
+        winnerId = teamBId;
+    }
+    // If scores are equal, winnerId remains null (draw)
+    
+    // Determine if match should be marked as completed (any non-zero score)
+    const isCompleted = teamAScore > 0 || teamBScore > 0;
+    
+    const updateData: any = {
         "teamA.score": teamAScore,
         "teamB.score": teamBScore,
-    });
+    };
+    
+    if (isCompleted) {
+        updateData.status = 'completed';
+        updateData.winnerId = winnerId;
+        updateData.completed_at = new Date().toISOString();
+    } else {
+        // If both scores are 0, reset to pending
+        updateData.status = 'pending';
+        updateData.winnerId = null;
+        updateData.completed_at = null;
+    }
+    
+    await updateDoc(matchRef, updateData);
+    
+    // Note: Standings update will be handled by admin interface separately
 }
 
 export async function getAllTournamentPlayers(): Promise<TournamentPlayer[]> {
@@ -292,4 +410,148 @@ export async function getAllPickems(): Promise<Pickem[]> {
     const pickemsCollection = collection(db, "pickems");
     const snapshot = await getDocs(pickemsCollection);
     return snapshot.docs.map(doc => doc.data() as Pickem);
+}
+
+// Function to calculate and update team statistics based on completed matches
+export async function updateTeamStatistics(teamId: string): Promise<void> {
+    try {
+        console.log(`Updating statistics for team ${teamId}...`);
+        const team = await getTeamById(teamId);
+        if (!team) {
+            console.warn(`Team ${teamId} not found when updating statistics`);
+            return;
+        }
+
+        const allMatches = await getAllMatches();
+        console.log(`Found ${allMatches.length} total matches`);
+        
+        const teamMatches = allMatches.filter(m => 
+            m.teams && m.teams.includes(teamId) && m.status === 'completed'
+        );
+        console.log(`Found ${teamMatches.length} completed matches for team ${teamId}`);
+
+        if (teamMatches.length === 0) {
+            console.log(`No completed matches found for team ${teamId}, setting stats to 0`);
+            // Still update with 0 values to clear any existing incorrect data
+            const teamRef = doc(db, "teams", teamId);
+            await updateDoc(teamRef, {
+                matchesPlayed: 0,
+                wins: 0,
+                draws: 0,
+                losses: 0,
+                averageKillsPerGame: 0,
+                averageDeathsPerGame: 0,
+                averageAssistsPerGame: 0,
+                averageFantasyPoints: 0,
+                mostPlayedHeroes: [],
+                lastStatsUpdate: new Date().toISOString()
+            });
+            return;
+        }
+
+        let wins = 0;
+        let draws = 0;
+        let losses = 0;
+        let totalKills = 0;
+        let totalDeaths = 0;
+        let totalAssists = 0;
+        let totalFantasyPoints = 0;
+        let totalMatchDuration = 0;
+        const heroStats: { [heroName: string]: number } = {};
+
+        for (const match of teamMatches) {
+            console.log(`Processing match ${match.id}: ${match.teamA.name} vs ${match.teamB.name}`);
+            // Calculate win/draw/loss
+            const teamAScore = match.teamA.score ?? 0;
+            const teamBScore = match.teamB.score ?? 0;
+            
+            if (match.teamA.id === teamId) {
+                if (teamAScore > teamBScore) wins++;
+                else if (teamAScore === teamBScore) draws++;
+                else losses++;
+                console.log(`  Team A result: score ${teamAScore}-${teamBScore}, W:${wins} D:${draws} L:${losses}`);
+            } else {
+                if (teamBScore > teamAScore) wins++;
+                else if (teamBScore === teamAScore) draws++;
+                else losses++;
+                console.log(`  Team B result: score ${teamBScore}-${teamAScore}, W:${wins} D:${draws} L:${losses}`);
+            }
+
+            // Calculate performance statistics from playerPerformances
+            if (match.playerPerformances) {
+                const teamPerformances = match.playerPerformances.filter(p => p.teamId === teamId);
+                console.log(`  Found ${teamPerformances.length} player performances for this team`);
+                
+                for (const perf of teamPerformances) {
+                    totalKills += perf.kills;
+                    totalDeaths += perf.deaths;
+                    totalAssists += perf.assists;
+                    totalFantasyPoints += perf.fantasyPoints;
+                    
+                    // Track hero usage
+                    if (perf.hero) {
+                        heroStats[perf.hero] = (heroStats[perf.hero] || 0) + 1;
+                    }
+                }
+                console.log(`  Match totals so far: K:${totalKills} D:${totalDeaths} A:${totalAssists} F:${totalFantasyPoints}`);
+            } else {
+                console.log(`  No player performances found for match ${match.id}`);
+            }
+        }
+
+        const matchesPlayed = teamMatches.length;
+        const averageKillsPerGame = matchesPlayed > 0 ? totalKills / matchesPlayed : 0;
+        const averageDeathsPerGame = matchesPlayed > 0 ? totalDeaths / matchesPlayed : 0;
+        const averageAssistsPerGame = matchesPlayed > 0 ? totalAssists / matchesPlayed : 0;
+        const averageFantasyPoints = matchesPlayed > 0 ? totalFantasyPoints / matchesPlayed : 0;
+
+        // Get top 3 most played heroes
+        const mostPlayedHeroes = Object.entries(heroStats)
+            .map(([name, gamesPlayed]) => ({ name, gamesPlayed }))
+            .sort((a, b) => b.gamesPlayed - a.gamesPlayed)
+            .slice(0, 3);
+
+        console.log(`Final stats for team ${teamId}:`, {
+            matchesPlayed,
+            wins,
+            draws,
+            losses,
+            averageKillsPerGame: averageKillsPerGame.toFixed(2),
+            averageDeathsPerGame: averageDeathsPerGame.toFixed(2),
+            averageAssistsPerGame: averageAssistsPerGame.toFixed(2),
+            averageFantasyPoints: averageFantasyPoints.toFixed(2),
+            mostPlayedHeroes
+        });
+
+        // Update team document with calculated statistics
+        const teamRef = doc(db, "teams", teamId);
+        await updateDoc(teamRef, {
+            matchesPlayed,
+            wins,
+            draws,
+            losses,
+            averageKillsPerGame,
+            averageDeathsPerGame,
+            averageAssistsPerGame,
+            averageFantasyPoints,
+            mostPlayedHeroes,
+            lastStatsUpdate: new Date().toISOString()
+        });
+
+        console.log(`Successfully updated statistics for team ${teamId}: ${matchesPlayed} matches, ${wins}W/${draws}D/${losses}L`);
+    } catch (error) {
+        console.error(`Error updating team statistics for ${teamId}:`, error);
+    }
+}
+
+// Function to update statistics for all teams
+export async function updateAllTeamStatistics(): Promise<void> {
+    const teams = await getAllTeams();
+    console.log(`Updating statistics for ${teams.length} teams...`);
+    
+    for (const team of teams) {
+        await updateTeamStatistics(team.id);
+    }
+    
+    console.log('Finished updating all team statistics');
 }

@@ -76,20 +76,25 @@ const faqSections = [
       {
         id: "game-1",
         question: "What is the tournament format?",
-        answer: "The tournament consists of a Swiss-system group stage (BO1 matches) followed by a double-elimination playoff bracket (BO3 for Winners Bracket, BO1 then BO3 for Losers Bracket). Full details are on the 'Rules' page.",
+        answer: "The tournament consists of a Swiss-system group stage (BO2 matches) followed by a double-elimination playoff bracket (BO3 for Winners Bracket, BO1 then BO3 for Losers Bracket). Full details are on the 'Rules' page.",
       },
       {
         id: "game-2",
+        question: "How does group stage scoring work?",
+        answer: "Group stage matches are BO2 (best of 2). Points are awarded based on individual games won: Win 2-0 = 2 points, Draw 1-1 = 1 point each, Loss 0-2 = 0 points. This means matches can end in draws.",
+      },
+      {
+        id: "game-3",
         question: "What are the match lobby settings?",
         answer: "Specific lobby settings (Mode: Captains Mode, Server: Europe West/Austria, Delay: 5 mins, League: Jesienna Zadyma, etc.) are detailed on the 'Rules' page.",
       },
       {
-        id: "game-3",
+        id: "game-4",
         question: "What is the policy on smurfing or cheating?",
         answer: "Smurfing, cheating, using external programs, or exploiting bugs is strictly prohibited and will result in disqualification and potential future bans. Refer to the 'Rules' page for a full list of prohibited actions.",
       },
       {
-        id: "game-4",
+        id: "game-5",
         question: "What is the code of conduct for players?",
         answer: "All participants are expected to maintain a positive attitude, show respect to opponents and organizers, and uphold fair play. Unsportsmanlike conduct can lead to penalties, as detailed in the 'Rules' page.",
       },
@@ -204,8 +209,8 @@ export default function FaqPage() {
           <CardContent className="p-6 md:p-8">
             {section.items.length > 0 ? (
               <Accordion type="single" collapsible className="w-full">
-                {section.items.map((item) => (
-                  <AccordionItem value={item.id} key={item.id}>
+                {section.items.map((item, idx) => (
+                  <AccordionItem value={`${section.id}-${item.id}-${idx}`} key={`${section.id}-${item.id}-${idx}`}>
                     <AccordionTrigger className="text-lg hover:no-underline text-left">
                       {item.question}
                     </AccordionTrigger>

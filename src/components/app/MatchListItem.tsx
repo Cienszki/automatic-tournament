@@ -34,8 +34,8 @@ export function MatchListItem({ match }: MatchListItemProps) {
   const dateText = format(displayDate, "EEEE, MMMM d");
   const timeText = isClient ? format(displayDate, "HH:mm") : format(new Date(0), "HH:mm"); // Render a static time on server
 
-  const winnerId = isCompleted && match.teamAScore > match.teamBScore ? match.teamA.id :
-                   isCompleted && match.teamBScore > match.teamAScore ? match.teamB.id : null;
+  const winnerId = isCompleted && match.teamA.score > match.teamB.score ? match.teamA.id :
+                   isCompleted && match.teamB.score > match.teamA.score ? match.teamB.id : null;
 
   const getStageLabel = () => {
       if (match.group_id) return match.group_id.replace(/-/g, ' ').replace(/\w/g, l => l.toUpperCase());
@@ -44,7 +44,7 @@ export function MatchListItem({ match }: MatchListItemProps) {
   }
 
   return (
-    <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300 overflow-hidden flex flex-col h-full">
+    <Card className="shadow-none border-0 bg-gradient-to-br from-[#181c2f] via-[#3a295a] to-[#2d1b3c] transition-transform duration-300 hover:scale-105 hover:shadow-[0_0_48px_8px_#b86fc6cc,0_0_32px_0_#0ff0fc99] overflow-hidden flex flex-col h-full">
       <CardHeader className="pb-3 bg-muted/20 text-center">
         <p className="font-semibold text-lg">{dateText}</p>
         <p className="text-sm text-muted-foreground">{isClient ? timeText : "..."}</p>
@@ -57,7 +57,7 @@ export function MatchListItem({ match }: MatchListItemProps) {
             <div className="text-center mx-2">
                 {isCompleted ? (
                     <span className="text-2xl font-bold text-accent px-2 whitespace-nowrap">
-                        {match.teamAScore} - {match.teamBScore}
+                        {match.teamA.score} - {match.teamB.score}
                     </span>
                 ) : (
                     <span className="text-xl font-bold text-primary">vs</span>
@@ -72,6 +72,23 @@ export function MatchListItem({ match }: MatchListItemProps) {
         <Badge variant="outline" className="flex items-center">
           <Shield className="h-3 w-3 mr-1.5" /> {getStageLabel()}
         </Badge>
+        {isCompleted && Array.isArray(match.game_ids) && match.game_ids.length > 0 && (
+          <div className="flex flex-wrap gap-2 justify-center mt-1">
+            {match.game_ids.map((gameId: number | string, idx: number) => (
+              <a
+                key={gameId}
+                href={`https://www.opendota.com/matches/${gameId}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 px-2 py-1 rounded bg-background/70 hover:bg-primary/80 text-xs font-medium border border-primary/30 transition-colors"
+                title={`View game ${idx + 1} on OpenDota`}
+              >
+                <ExternalLink className="w-3 h-3 mr-1" />
+                Game {idx + 1}
+              </a>
+            ))}
+          </div>
+        )}
         {!isCompleted && !hasOfficialTime && (
             <TooltipProvider>
                 <Tooltip>
@@ -87,13 +104,6 @@ export function MatchListItem({ match }: MatchListItemProps) {
                     </TooltipContent>
                 </Tooltip>
             </TooltipProvider>
-        )}
-        {isCompleted && match.opendota_match_id && (
-          <Button variant="outline" size="sm" asChild>
-            <Link href={`https://www.opendota.com/matches/${match.opendota_match_id}`} target="_blank" rel="noopener noreferrer">
-              <ExternalLink className="h-4 w-4 mr-2" /> View on OpenDota
-            </Link>
-          </Button>
         )}
       </CardFooter>
     </Card>

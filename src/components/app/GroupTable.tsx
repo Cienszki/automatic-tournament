@@ -68,6 +68,7 @@ export function GroupTable({ group }: GroupTableProps) {
                 <TableHead>Team</TableHead>
                 <TableHead className="text-center">Played</TableHead>
                 <TableHead className="text-center">Won</TableHead>
+                <TableHead className="text-center">Drawn</TableHead>
                 <TableHead className="text-center">Lost</TableHead>
                 <TableHead className="text-right">Points</TableHead>
               </TableRow>
@@ -90,6 +91,7 @@ export function GroupTable({ group }: GroupTableProps) {
                   </TableCell>
                   <TableCell className="text-center">{standing.matchesPlayed}</TableCell>
                   <TableCell className="text-center">{standing.wins}</TableCell>
+                  <TableCell className="text-center">{standing.draws || 0}</TableCell>
                   <TableCell className="text-center">{standing.losses}</TableCell>
                   <TableCell className="text-right font-semibold">
                     <Tooltip>

@@ -24,7 +24,9 @@ const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
 
 const formSchema = z.object({
-  name: z.string().min(3, "Team name must be at least 3 characters."),
+  name: z.string()
+    .min(3, "Team name must be at least 3 characters.")
+    .regex(/^[A-Za-z0-9 _-]+$/, "Team name can only contain letters, numbers, spaces, hyphens, and underscores."),
   tag: z.string().min(2, "Tag must be 2-4 characters.").max(4),
   discordUsername: z.string().min(2, "Discord username is required."),
   motto: z.string().min(5, "Motto must be at least 5 characters."),
@@ -61,8 +63,39 @@ const formSchema = z.object({
   path: ["players"],
 });
 
+import { getApp } from "firebase/app";
+
 export default function RegisterPage() {
     const { user, signInWithGoogle } = useAuth();
+    // Firestore write test button handler
+    async function handleTestFirestoreWrite() {
+        try {
+            const { getFirestore, collection, doc, setDoc, deleteDoc } = await import("firebase/firestore");
+            const { getAuth } = await import("firebase/auth");
+            const db = getFirestore();
+            const auth = getAuth();
+            console.log("Current user:", auth.currentUser);
+            
+            // Create a temporary test document and immediately delete it
+            const testDocRef = doc(collection(db, "teams"), "temp-test-" + Date.now());
+            await setDoc(testDocRef, { 
+                test: true, 
+                name: "Temporary Test", 
+                tag: "TEMP",
+                captainId: auth.currentUser?.uid,
+                status: "pending",
+                createdAt: new Date()
+            });
+            
+            // Immediately delete the test document
+            await deleteDoc(testDocRef);
+            
+            alert("Firestore write test succeeded! (Test document created and deleted)");
+        } catch (e: any) {
+            console.error("Firestore write failed", e);
+            alert("Firestore write failed: " + (typeof e === 'object' && e !== null && 'message' in e ? (e as any).message : String(e)));
+        }
+    }
     const [serverError, setServerError] = React.useState<string | null>(null);
     const [logoPreview, setLogoPreview] = React.useState<string | null>(null);
     const [screenshotPreviews, setScreenshotPreviews] = React.useState<(string | null)[]>(Array(5).fill(null));
@@ -120,9 +153,23 @@ export default function RegisterPage() {
         }
     };
     
+    // Log Firebase project ID for debugging
+    try {
+        const projectId = getApp().options.projectId;
+        console.log("[DEBUG] Frontend Firebase projectId:", projectId);
+    } catch (e) {
+        console.log("[DEBUG] Could not get Firebase projectId", e);
+    }
+
     const onSubmit = async (values: z.infer<typeof formSchema>) => {
+        console.log("[DEBUG] user object at submit:", user);
         if (!user) {
             setServerError("You must be logged in to register a team.");
+            return;
+        }
+        if (!user.uid || typeof user.uid !== "string" || user.uid.trim() === "") {
+            console.error("Registration error: user.uid is missing or invalid", user);
+            setServerError("Your user ID is missing. Please log out and log in again, or contact support.");
             return;
         }
         setServerError(null);
@@ -142,7 +189,6 @@ export default function RegisterPage() {
                 logoUrl,
                 captainId: user.uid,
                 players: values.players.map((p, i) => ({
-                    id: `${user.uid}-${i}`,
                     nickname: p.nickname,
                     mmr: p.mmr,
                     role: p.role,
@@ -151,7 +197,8 @@ export default function RegisterPage() {
                 })),
             };
 
-            const result = await registerTeam(teamPayload);
+            // Pass the actual Firebase Auth user object for authentication
+            const result = await registerTeam({ ...teamPayload, _authUser: user });
 
             if (result?.success) {
                 router.push('/my-team');
@@ -176,13 +223,31 @@ export default function RegisterPage() {
     <div className="space-y-8">
       <Card><CardHeader className="text-center"><UserPlus className="h-16 w-16 mx-auto text-primary" /><CardTitle className="text-4xl font-bold">Team Registration</CardTitle></CardHeader></Card>
 
+      {/* Firestore write test button for debugging */}
+      {user && (
+        <div className="flex justify-center mb-4">
+          <Button type="button" variant="outline" onClick={handleTestFirestoreWrite}>
+            Test Firestore Write
+          </Button>
+        </div>
+      )}
+
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
           <Card>
             <CardHeader><CardTitle>Team & Captain Details</CardTitle></CardHeader>
             <CardContent className="space-y-6">
                 <div className="grid md:grid-cols-2 gap-6">
-                    <FormField name="name" control={form.control} render={({ field }) => (<FormItem><FormLabel>Team Name</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                    <FormField name="name" control={form.control} render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>
+                          Team Name
+                          <span className="block text-sm font-semibold text-[#b86fc6] mt-1">(Must be identical to the ingame team name!)</span>
+                        </FormLabel>
+                        <FormControl><Input {...field} /></FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
                     <FormField name="tag" control={form.control} render={({ field }) => (<FormItem><FormLabel>Team Tag</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
                     <FormField name="discordUsername" control={form.control} render={({ field }) => (<FormItem><FormLabel>Captain's Discord</FormLabel><FormControl><Input {...field} placeholder="your_discord_name" /></FormControl><FormMessage /></FormItem>)} />
                     <FormField name="motto" control={form.control} render={({ field }) => (<FormItem><FormLabel>Team Motto</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />

@@ -50,7 +50,7 @@
     "lucide-react": "^0.475.0",
     "next": "15.2.3",
     "next-themes": "^0.4.6",
-    "node-fetch": "^3.3.2",
+    "node-fetch": "^2.6.1",
     "patch-package": "^8.0.0",
     "react": "^18.3.1",
     "react-day-picker": "^8.10.1",
@@ -71,7 +71,11 @@
     "genkit-cli": "^1.8.0",
     "postcss": "^8",
     "tailwindcss": "^3.4.1",
+    "ts-node": "^10.9.2",
     "tsx": "^4.20.3",
-    "typescript": "^5"
+    "typescript": "^5.9.2"
+  },
+  "overrides": {
+    "node-fetch": "^2.6.1"
   }
 }

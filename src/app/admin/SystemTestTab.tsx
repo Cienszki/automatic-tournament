@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { importMatchFromOpenDota, syncLeagueMatches } from '@/lib/actions';
-import { deleteAllMatches, deleteSelectedMatches } from '@/lib/admin-actions';
+import { deleteAllMatches, deleteSelectedMatches, clearProcessedGamesAdmin, updateAllTeamStatisticsAdmin } from '@/lib/admin-actions';
 import { getAllMatches } from '@/lib/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, PlusCircle, RefreshCw, Trash2, ShieldAlert } from 'lucide-react';
@@ -32,6 +32,8 @@ export function SystemTestTab() {
     const [isSyncing, setIsSyncing] = React.useState(false);
     const [isImporting, setIsImporting] = React.useState(false);
     const [isDeleting, setIsDeleting] = React.useState(false);
+    const [isClearingProcessed, setIsClearingProcessed] = React.useState(false);
+    const [isUpdatingStats, setIsUpdatingStats] = React.useState(false);
     const [matchId, setMatchId] = React.useState('');
     const [matches, setMatches] = React.useState<Match[]>([]);
     const [selectedMatches, setSelectedMatches] = React.useState<string[]>([]);
@@ -67,6 +69,38 @@ export function SystemTestTab() {
         }
         setIsSyncing(false);
         fetchMatches();
+    };
+
+    const handleClearProcessed = async () => {
+        setIsClearingProcessed(true);
+        try {
+            const res = await fetch('/api/debug/clear-processed', { method: 'POST' });
+            const result = await res.json();
+            toast({ 
+                title: result.success ? "Success!" : "Clear Failed", 
+                description: result.success ? result.message : result.error, 
+                variant: result.success ? "default" : "destructive" 
+            });
+        } catch (err) {
+            toast({ title: "Clear Failed", description: 'Network or server error.', variant: "destructive" });
+        }
+        setIsClearingProcessed(false);
+    };
+
+    const handleUpdateTeamStats = async () => {
+        setIsUpdatingStats(true);
+        try {
+            const res = await fetch('/api/admin/update-team-stats', { method: 'POST' });
+            const result = await res.json();
+            toast({ 
+                title: result.success ? "Success!" : "Update Failed", 
+                description: result.success ? result.message : result.error, 
+                variant: result.success ? "default" : "destructive" 
+            });
+        } catch (err) {
+            toast({ title: "Update Failed", description: 'Network or server error.', variant: "destructive" });
+        }
+        setIsUpdatingStats(false);
     };
 
     const handleImport = async () => {
@@ -149,6 +183,14 @@ export function SystemTestTab() {
                          <Button onClick={handleSync} disabled={isSyncing}>
                             {isSyncing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
                             {isSyncing ? "Syncing..." : "Sync All New Matches"}
+                        </Button>
+                        <Button onClick={handleClearProcessed} disabled={isClearingProcessed} variant="destructive">
+                            {isClearingProcessed ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
+                            {isClearingProcessed ? "Clearing..." : "Clear Processed Games"}
+                        </Button>
+                        <Button onClick={handleUpdateTeamStats} disabled={isUpdatingStats} variant="outline">
+                            {isUpdatingStats ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+                            {isUpdatingStats ? "Updating..." : "Update Team Statistics"}
                         </Button>
                     </CardContent>
                 </Card>

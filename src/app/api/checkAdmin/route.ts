@@ -1,13 +1,14 @@
 
 // src/app/api/checkAdmin/route.ts
 import { NextResponse } from 'next/server';
-import { getAdminDb, getAdminAuth, ensureAdminInitialized } from '@/lib/admin';
+import { getAdminDb, getAdminAuth, ensureAdminInitialized } from '../../../../server/lib/admin';
 import { headers } from 'next/headers';
 
 export async function POST(request: Request) {
   try {
     ensureAdminInitialized(); // Ensure initialized at the start of the request
-    const authHeader = headers().get('Authorization');
+    const headersList = await headers();
+    const authHeader = headersList.get('Authorization');
 
     if (!authHeader) {
       return NextResponse.json({ isAdmin: false, error: 'No Authorization header' }, { status: 401 });

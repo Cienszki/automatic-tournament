@@ -42,12 +42,12 @@ export function MatchHistoryTable({ matches, teamId }: MatchHistoryTableProps) {
             {matches.map((match) => {
               const opponent = match.teamA.id === teamId ? match.teamB : match.teamA;
               const isWin =
-                (match.teamA.id === teamId && (match.teamAScore ?? 0) > (match.teamBScore ?? 0)) ||
-                (match.teamB.id === teamId && (match.teamBScore ?? 0) > (match.teamAScore ?? 0));
+                (match.teamA.id === teamId && (match.teamA.score ?? 0) > (match.teamB.score ?? 0)) ||
+                (match.teamB.id === teamId && (match.teamB.score ?? 0) > (match.teamA.score ?? 0));
               const resultText = match.status === "completed" ? (isWin ? "Win" : "Loss") : "N/A";
               const scoreText =
                 match.status === "completed"
-                  ? `${match.teamAScore ?? '-'} - ${match.teamBScore ?? '-'}`
+                  ? `${match.teamA.score ?? '-'} - ${match.teamB.score ?? '-'}`
                   : "-";
 
               return (
@@ -69,21 +69,8 @@ export function MatchHistoryTable({ matches, teamId }: MatchHistoryTableProps) {
                     {resultText}
                   </TableCell>
                   <TableCell>{scoreText}</TableCell>
-                  <TableCell>{new Date(match.dateTime).toLocaleDateString()}</TableCell>
-                  <TableCell>
-                    {match.openDotaMatchUrl ? (
-                      <a
-                        href={match.openDotaMatchUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-primary hover:underline"
-                      >
-                        <ExternalLink className="h-4 w-4" />
-                      </a>
-                    ) : (
-                      "-"
-                    )}
-                  </TableCell>
+                  <TableCell>{match.dateTime ? new Date(match.dateTime).toLocaleDateString() : 'TBD'}</TableCell>
+                  <TableCell>-</TableCell>
                 </TableRow>
               );
             })}

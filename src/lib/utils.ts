@@ -27,3 +27,13 @@ export function sortPlayersByRole(players: Player[]): Player[] {
     return orderA - orderB;
   });
 }
+
+/**
+ * Formats a number with commas as thousands separators.
+ * Provides consistent formatting between server and client to prevent hydration errors.
+ * @param num - The number to format.
+ * @returns A string with the number formatted with commas.
+ */
+export function formatNumber(num: number): string {
+  return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}

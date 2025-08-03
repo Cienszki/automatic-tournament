@@ -3,7 +3,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { getAdminDb, getAdminAuth, ensureAdminInitialized, getAdminApp } from './admin';
+import { getAdminDb, getAdminAuth, ensureAdminInitialized, getAdminApp } from '../../server/lib/admin';
 import type { Group, GroupStanding, Team, Player, Match } from './definitions';
 import { PlayerRoles, TeamStatus } from './definitions';
 import { getAllGroups as fetchAllGroups, getTeamById, getAllMatches } from './firestore';
@@ -181,7 +181,7 @@ export async function createGroup(token: string, groupName: string, teamIds: str
         const groupRef = getAdminDb().collection('groups').doc(groupName.toLowerCase().replace(/\s+/g, '-'));
         const initialStandings: { [teamId: string]: GroupStanding } = {};
         teamIds.forEach(teamId => {
-            initialStandings[teamId] = { teamId, teamName: 'Fetching...', teamLogoUrl: '', matchesPlayed: 0, points: 0, wins: 0, losses: 0, headToHead: {}, neustadtlScore: 0, status: 'pending' };
+            initialStandings[teamId] = { teamId, teamName: 'Fetching...', teamLogoUrl: '', matchesPlayed: 0, points: 0, wins: 0, draws: 0, losses: 0, headToHead: {}, neustadtlScore: 0, status: 'pending', totalMMR: 0 };
         });
         batch.set(groupRef, { name: groupName, standings: initialStandings });
         await batch.commit();
@@ -272,7 +272,7 @@ export async function deleteAllMatches(token: string): Promise<{ success: boolea
 
 export async function generateMatchesForGroup(token: string, groupId: string, deadline: Date | null): Promise<{ success: boolean; message: string; data?: { matchesCreated: number } }> {
     return performAdminAction(token, async () => {
-        const allGroups = await fetchAllGroups(true);
+        const allGroups = await fetchAllGroups();
         const group = allGroups.find(g => g.id === groupId);
         if (!group) throw new Error(`Group with ID ${groupId} not found.`);
 
@@ -291,9 +291,10 @@ export async function generateMatchesForGroup(token: string, groupId: string, de
         const matchesCollection = getAdminDb().collection('matches');
         let matchesCreated = 0;
         
-        let scheduleDate = new Date();
-
-        const timeSlots = [18, 21];
+        // Start scheduling from the deadline (or today if no deadline)
+        let scheduleDate = deadline ? new Date(deadline) : new Date();
+        // We'll try 21:00 first, then 18:00, then previous day, etc.
+        const timeSlots = [21, 18];
         const teamIds = Object.keys(group.standings);
 
         if (teamIds.length < 2) {
@@ -316,8 +317,9 @@ export async function generateMatchesForGroup(token: string, groupId: string, de
                         const potentialTime = new Date(scheduleDate);
                         potentialTime.setUTCHours(hour - 2, 0, 0, 0); // Explicitly set UTC time by subtracting offset
 
+                        // Only allow times <= deadline (if deadline exists)
                         if (deadline && potentialTime > deadline) {
-                            return { success: false, message: "Ran out of available time slots before the deadline." };
+                            continue;
                         }
 
                         if (!existingTimes.has(potentialTime.getTime())) {
@@ -328,7 +330,12 @@ export async function generateMatchesForGroup(token: string, groupId: string, de
                         }
                     }
                     if (!foundSlot) {
-                        scheduleDate = addDays(scheduleDate, 1);
+                        // Go to previous day
+                        scheduleDate = addDays(scheduleDate, -1);
+                        // If we go before today, stop to avoid infinite loop
+                        if (scheduleDate < new Date()) {
+                            return { success: false, message: "Ran out of available time slots before the deadline." };
+                        }
                     }
                 }
 
@@ -342,6 +349,7 @@ export async function generateMatchesForGroup(token: string, groupId: string, de
                     defaultMatchTime: matchTime.toISOString(),
                     group_id: group.id,
                     schedulingStatus: 'unscheduled',
+                    series_format: 'bo2', // Group stage matches are always BO2
                 });
                 matchesCreated++;
             }
@@ -417,16 +425,70 @@ export async function updateMatchScore(
             return { success: false, message: "Match not found." };
         }
 
-        const isReverting = teamAScore === 0 && teamBScore === 0;
+        const matchData = matchDoc.data();
+        if (!matchData) {
+            return { success: false, message: "Match data not found." };
+        }
 
-        await matchRef.update({
+        const isReverting = teamAScore === 0 && teamBScore === 0;
+        
+        // Determine winnerId based on scores
+        let winnerId = null;
+        if (!isReverting) {
+            const teamAId = matchData.teams?.[0];
+            const teamBId = matchData.teams?.[1];
+            
+            if (teamAScore > teamBScore) {
+                winnerId = teamAId;
+            } else if (teamBScore > teamAScore) {
+                winnerId = teamBId;
+            }
+            // If scores are equal, winnerId remains null (draw)
+        }
+
+        const updateData: any = {
             "teamA.score": teamAScore,
             "teamB.score": teamBScore,
             status: isReverting ? 'scheduled' : 'completed',
-        });
+        };
+
+        if (!isReverting) {
+            updateData.winnerId = winnerId;
+            updateData.completed_at = new Date().toISOString();
+        } else {
+            updateData.winnerId = null;
+            updateData.completed_at = null;
+        }
+
+        await matchRef.update(updateData);
+
+        // If match is completed (not reverting), update group standings
+        if (!isReverting) {
+            try {
+                // Import the admin version of standings update
+                const { updateStandingsAfterGameAdmin } = await import('./group-actions-admin');
+                
+                // Create a match object to pass to the standings update function
+                const updatedMatch = {
+                    id: matchId,
+                    ...matchData,
+                    teamA: { ...matchData.teamA, score: teamAScore },
+                    teamB: { ...matchData.teamB, score: teamBScore },
+                    winnerId,
+                    status: 'completed'
+                };
+                
+                const standingsResult = await updateStandingsAfterGameAdmin(updatedMatch as any);
+                console.log('Standings update result:', standingsResult);
+            } catch (error) {
+                console.error('Failed to update standings:', error);
+                // Don't fail the entire operation - the score update should still succeed
+            }
+        }
 
         revalidatePath('/admin/StageManagementTab');
         revalidatePath('/schedule');
+        revalidatePath('/groups'); // Invalidate groups page cache
 
         const message = isReverting
             ? `Match ${matchId} score reverted and status set to scheduled.`
@@ -443,4 +505,374 @@ export async function getGroups(): Promise<Group[]> { return fetchAllGroups(); }
 export async function getMatches(): Promise<Match[]> { return getAllMatches(); }
 export async function getTournamentStatus() {
     return { currentStage: "Group Stage" };
+}
+
+// --- ADMIN SAVE FUNCTIONS ---
+async function saveGameResultsAdmin(ourMatchId: string, game: any, performances: any[]): Promise<void> {
+    const { getAdminDb, ensureAdminInitialized } = await import('../../server/lib/admin');
+    const { FieldValue } = await import('firebase-admin/firestore');
+    ensureAdminInitialized();
+    const db = getAdminDb();
+
+    const matchRef = db.collection("matches").doc(ourMatchId);
+    
+    // Check if the match document exists - if not, this might be a scrim/practice game
+    const matchSnap = await matchRef.get();
+    if (!matchSnap.exists) {
+        console.log(`Match document ${ourMatchId} does not exist. This might be a scrim or practice game - skipping database save.`);
+        return; // Gracefully skip saving games for non-tournament matches
+    }
+
+    const batch = db.batch();
+    const gameRef = matchRef.collection("games").doc(game.id);
+
+    // 1. Add the new game ID to the main match document
+    batch.update(matchRef, {
+        game_ids: FieldValue.arrayUnion(parseInt(game.id))
+    });
+
+    // 2. Set the data for the new game document
+    batch.set(gameRef, game);
+
+    // 3. Set the performance data for each player in a subcollection
+    performances.forEach(performance => {
+        const performanceRef = gameRef.collection("performances").doc(performance.playerId);
+        batch.set(performanceRef, performance);
+    });
+
+    await batch.commit();
+    
+    // After saving, check if the match is now complete
+    await checkAndUpdateMatchCompletionAdmin(ourMatchId);
+}
+
+// Function to calculate match completion based on games
+async function checkAndUpdateMatchCompletionAdmin(matchId: string): Promise<void> {
+    const { getAdminDb, ensureAdminInitialized } = await import('../../server/lib/admin');
+    ensureAdminInitialized();
+    const db = getAdminDb();
+
+    const matchRef = db.collection("matches").doc(matchId);
+    const matchDoc = await matchRef.get();
+    
+    if (!matchDoc.exists) {
+        return;
+    }
+
+    const matchData = matchDoc.data();
+    if (!matchData) {
+        return;
+    }
+    
+    // Get all games for this match
+    const gamesSnapshot = await matchRef.collection("games").get();
+    const games = gamesSnapshot.docs.map(doc => doc.data());
+    
+    if (games.length === 0) {
+        return; // No games yet
+    }
+
+    // Calculate series score
+    const teamAId = matchData.teams?.[0];
+    const teamBId = matchData.teams?.[1];
+    
+    if (!teamAId || !teamBId) {
+        return; // Invalid match structure
+    }
+
+    let teamAWins = 0;
+    let teamBWins = 0;
+
+    // Count wins for each team
+    games.forEach(game => {
+        if (game.radiant_win) {
+            // Check which team was radiant in this game
+            if (game.radiant_team?.id === teamAId) {
+                teamAWins++;
+            } else if (game.radiant_team?.id === teamBId) {
+                teamBWins++;
+            }
+        } else {
+            // Dire won
+            if (game.dire_team?.id === teamAId) {
+                teamAWins++;
+            } else if (game.dire_team?.id === teamBId) {
+                teamBWins++;
+            }
+        }
+    });
+
+    const totalGames = games.length;
+
+    // Determine if series is complete based on format
+    const seriesFormat = matchData.series_format || (matchData.group_id ? 'bo2' : 'bo3'); // Default: BO2 for groups, BO3 for playoffs
+    
+    let isComplete = false;
+    let winnerId = null;
+    
+    if (seriesFormat === 'bo1') {
+        // BO1: Complete after 1 game
+        isComplete = totalGames >= 1;
+        winnerId = teamAWins > teamBWins ? teamAId : teamBId;
+    } else if (seriesFormat === 'bo2') {
+        // BO2: Complete after 2 games OR if one team has 2 wins
+        isComplete = totalGames >= 2 || teamAWins >= 2 || teamBWins >= 2;
+        // Winner is only determined if one team has more wins
+        if (teamAWins > teamBWins) winnerId = teamAId;
+        else if (teamBWins > teamAWins) winnerId = teamBId;
+        // If tied (1-1), winnerId remains null (draw)
+    } else if (seriesFormat === 'bo3') {
+        // BO3: Complete when one team gets 2 wins
+        isComplete = teamAWins >= 2 || teamBWins >= 2;
+        winnerId = teamAWins >= 2 ? teamAId : teamBWins >= 2 ? teamBId : null;
+    } else if (seriesFormat === 'bo5') {
+        // BO5: Complete when one team gets 3 wins
+        isComplete = teamAWins >= 3 || teamBWins >= 3;
+        winnerId = teamAWins >= 3 ? teamAId : teamBWins >= 3 ? teamBId : null;
+    }
+
+    // Update match document with scores and completion status
+    const updateData: any = {
+        'teamA.score': teamAWins,
+        'teamB.score': teamBWins
+    };
+
+    if (isComplete) {
+        updateData.status = 'completed';
+        updateData.winnerId = winnerId; // Can be null for draws in BO2
+        updateData.completed_at = new Date().toISOString();
+    }
+
+    await matchRef.update(updateData);
+
+    // If match is complete, trigger standings update (for group stage matches)
+    if (isComplete) {
+        try {
+            // Import the admin-compatible group-actions function
+            const { updateStandingsAfterGameAdmin } = await import('./group-actions-admin');
+            
+            // Get the updated match data to pass to standings update
+            const updatedMatchSnapshot = await matchRef.get();
+            if (updatedMatchSnapshot.exists) {
+                const updatedMatchData = { id: matchId, ...updatedMatchSnapshot.data() } as any;
+                await updateStandingsAfterGameAdmin(updatedMatchData);
+                console.log(`Updated standings for completed match ${matchId}`);
+            }
+        } catch (error) {
+            console.error(`Failed to update standings for match ${matchId}:`, error);
+            // Don't throw - the match completion should still succeed
+        }
+    }
+
+    console.log(`Match ${matchId} updated: ${teamAWins}-${teamBWins}, complete: ${isComplete}`);
+}
+
+async function saveExternalGameResultsAdmin(ourMatchId: string, game: any, performances: any[], teams: { radiantTeam: any, direTeam: any }): Promise<void> {
+    const { getAdminDb, ensureAdminInitialized } = await import('../../server/lib/admin');
+    const { FieldValue } = await import('firebase-admin/firestore');
+    ensureAdminInitialized();
+    const db = getAdminDb();
+
+    const matchRef = db.collection("matches").doc(ourMatchId);
+    
+    // Check if the match document exists
+    const matchSnap = await matchRef.get();
+    const batch = db.batch();
+
+    if (!matchSnap.exists) {
+        // Create the match document for external matches
+        const matchData = {
+            teams: [teams.radiantTeam.id, teams.direTeam.id],
+            team_names: [teams.radiantTeam.name, teams.direTeam.name],
+            status: 'completed',
+            external: true,
+            created_at: new Date().toISOString(),
+            game_ids: [parseInt(game.id)]
+        };
+        batch.set(matchRef, matchData);
+    } else {
+        // Update existing match to add this game
+        batch.update(matchRef, {
+            game_ids: FieldValue.arrayUnion(parseInt(game.id))
+        });
+    }
+
+    const gameRef = matchRef.collection("games").doc(game.id);
+
+    // 2. Set the data for the new game document
+    batch.set(gameRef, game);
+
+    // 3. Set the performance data for each player in a subcollection
+    performances.forEach(performance => {
+        const performanceRef = gameRef.collection("performances").doc(performance.playerId);
+        batch.set(performanceRef, performance);
+    });
+
+    await batch.commit();
+    
+    // After saving, check if the match is now complete
+    await checkAndUpdateMatchCompletionAdmin(ourMatchId);
+}
+
+// --- ADMIN SYNC FUNCTIONS ---
+export async function syncLeagueMatchesAdmin() {
+    try {
+        console.log(`Starting match sync using STRATZ match list...`);
+
+        // Import admin functions
+        const { getAllProcessedGameIdsAdmin, markGameAsProcessedAdmin } = await import('./processed-games-admin');
+        const { fetchAllStratzLeagueMatches } = await import('./actions');
+        const { transformMatchData } = await import('./opendota');
+        const { getAllTeams, getAllTournamentPlayers } = await import('./firestore');
+        const { LEAGUE_ID } = await import('./definitions');
+
+        // Fetch all match IDs from STRATZ API live
+        const stratzMatches = await fetchAllStratzLeagueMatches(LEAGUE_ID);
+        const stratzMatchIds = stratzMatches.map((m: any) => Number(m.id));
+
+        // Get all processed match IDs from processedGames collection (using admin SDK)
+        const processedMatchIds = new Set(await getAllProcessedGameIdsAdmin());
+
+        // Only import matches not already processed
+        const newMatchIds = stratzMatchIds.filter(id => !processedMatchIds.has(String(id)));
+
+        if (newMatchIds.length === 0) {
+            console.log("No new matches to import.");
+            return { success: true, message: "Database is already up to date.", importedCount: 0 };
+        }
+
+        console.log(`Found ${newMatchIds.length} new matches to import.`);
+
+        // Import each new match
+        const importResults = await Promise.allSettled(
+            newMatchIds.map(async (matchId) => {
+                try {
+                    console.log(`Starting import for OpenDota match ID: ${matchId}`);
+
+                    const [teams, players] = await Promise.all([
+                        getAllTeams(),
+                        getAllTournamentPlayers(),
+                    ]);
+                    
+                    // Fetch match from OpenDota
+                    const { fetchOpenDotaMatch } = await import('./opendota');
+                    const openDotaMatch = await fetchOpenDotaMatch(matchId);
+                    
+                    try {
+                        const { game, performances } = transformMatchData(openDotaMatch, teams as any[], players as any[]);
+                        
+                        // Extract team info for finding the correct match
+                        const radiantTeam = teams.find((t: any) => t.name.trim().toLowerCase() === openDotaMatch.radiant_name?.trim().toLowerCase());
+                        const direTeam = teams.find((t: any) => t.name.trim().toLowerCase() === openDotaMatch.dire_name?.trim().toLowerCase());
+                        
+                        if (radiantTeam && direTeam) {
+                            // Find existing match between these teams
+                            const { getAllMatches } = await import('./firestore');
+                            const allMatches = await getAllMatches();
+                            
+                            const existingMatch = allMatches.find(match => 
+                                (match.teams.includes(radiantTeam.id) && match.teams.includes(direTeam.id))
+                            );
+                            
+                            if (existingMatch) {
+                                // Save to existing tournament match
+                                await saveGameResultsAdmin(existingMatch.id, game, performances);
+                                console.log(`Successfully saved game ${game.id} to existing match ${existingMatch.id} (${radiantTeam.name} vs ${direTeam.name})`);
+                            } else {
+                                // Create new external match (shouldn't happen for tournament teams, but just in case)
+                                await saveExternalGameResultsAdmin(String(matchId), game, performances, { radiantTeam, direTeam });
+                                console.log(`Created new external match ${matchId} for ${radiantTeam.name} vs ${direTeam.name}`);
+                            }
+                        } else {
+                            // Fallback - try the original save method (will likely skip if no match document exists)
+                            await saveGameResultsAdmin(String(matchId), game, performances);
+                        }
+                        
+                        // Mark this external match/game as processed (admin version)
+                        await markGameAsProcessedAdmin(matchId.toString());
+                        console.log(`Successfully imported and saved data for match ID: ${matchId}`);
+                        return { success: true, message: `Match ${matchId} imported successfully.` };
+                    } catch (transformError) {
+                        // If transform fails (e.g., teams not found), this might be a scrim - still mark as processed
+                        console.log(`Could not transform match ${matchId} - likely a scrim or practice game: ${(transformError as Error).message}`);
+                        await markGameAsProcessedAdmin(matchId.toString());
+                        return { success: true, message: `Match ${matchId} skipped (likely scrim/practice game).`, skipped: true };
+                    }
+                } catch (error) {
+                    console.error(`Failed to import match ${matchId}:`, error);
+                    return { success: false, message: 'Failed to import match.', error: (error as Error).message };
+                }
+            })
+        );
+
+        let successfulImports = 0;
+        let skippedMatches = 0;
+        let failedImports = 0;
+
+        importResults.forEach(result => {
+            if (result.status === 'fulfilled') {
+                const value = result.value as any;
+                if (value.success) {
+                    if (value.skipped) {
+                        skippedMatches++;
+                    } else {
+                        successfulImports++;
+                    }
+                } else {
+                    failedImports++;
+                }
+            } else {
+                failedImports++;
+            }
+        });
+
+        console.log(`Sync complete. Imported ${successfulImports} new matches. ${skippedMatches} skipped (scrims/practice). ${failedImports} failed.`);
+
+        return {
+            success: true,
+            message: `Sync complete. Imported ${successfulImports} new matches. ${skippedMatches} skipped (scrims/practice). ${failedImports > 0 ? `${failedImports} failed.` : ''}`.trim(),
+            importedCount: successfulImports,
+            skippedCount: skippedMatches,
+            failedCount: failedImports,
+        };
+    } catch (error) {
+        console.error(`Failed to sync matches:`, error);
+        return { 
+            success: false, 
+            message: 'Failed to sync league matches.', 
+            error: (error as Error).message,
+            importedCount: 0,
+        };
+    }
+}
+
+export async function clearProcessedGamesAdmin(): Promise<{ success: boolean; message: string; error?: string }> {
+    try {
+        const { clearAllProcessedGamesAdmin } = await import('@/lib/processed-games-admin');
+        await clearAllProcessedGamesAdmin();
+        return { success: true, message: 'All processed games cleared successfully.' };
+    } catch (error) {
+        console.error('Failed to clear processed games:', error);
+        return { 
+            success: false, 
+            message: 'Failed to clear processed games.', 
+            error: (error as Error).message 
+        };
+    }
+}
+
+// Update team statistics for all teams
+export async function updateAllTeamStatisticsAdmin(): Promise<{ success: boolean; message: string; error?: string }> {
+    try {
+        const { updateAllTeamStatistics } = await import('./firestore');
+        await updateAllTeamStatistics();
+        return { success: true, message: 'All team statistics updated successfully.' };
+    } catch (error) {
+        console.error('Failed to update team statistics:', error);
+        return { 
+            success: false, 
+            message: 'Failed to update team statistics.', 
+            error: (error as Error).message 
+        };
+    }
 }

@@ -1,8 +1,9 @@
-import { PlayerRoles, TeamStatus } from './definitions';
+import { PlayerRoles } from './definitions';
 import { Timestamp } from 'firebase-admin/firestore';
 import { addDays, format } from 'date-fns';
 
-// --- UTILITY ---
+// Define TeamStatus here instead of importing from definitions
+export type TeamStatus = 'pending' | 'verified' | 'rejected' | 'warning' | 'banned';
 export const generatePassword = (length = 10) => {
     const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
     let password = '';
@@ -12,4 +13,4 @@ export const generatePassword = (length = 10) => {
     return password;
 };
 
-export { PlayerRoles, TeamStatus, Timestamp, addDays, format };
+export { PlayerRoles, Timestamp, addDays, format };

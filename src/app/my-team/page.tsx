@@ -79,9 +79,27 @@ export default function MyTeamPage() {
   
   if (!hasTeam) {
     return (
-        <div className="flex justify-center items-center h-[calc(100vh-80px)]">
-            <NoTeamFound />
-        </div>
+      <div className="flex justify-center items-center h-[calc(100vh-80px)] p-4">
+        <Card className="w-full max-w-lg text-center shadow-lg border-0 bg-gradient-to-br from-[#181c2f] via-[#3a295a] to-[#2d1b3c]">
+          <CardHeader>
+            <CardTitle className="text-3xl font-bold text-[#0ff0fc] drop-shadow-[0_0_8px_#0ff0fc]">Welcome, Future Captain!</CardTitle>
+            <CardDescription className="text-lg text-[#b86fc6] pt-2">
+              Ready to join the tournament? Register your team and lead them to glory.<br />
+              <span className="block mt-2 text-[#e0d7f7]">Need a team or looking for players? Join our <a href="https://discord.gg/letniatournament" target="_blank" rel="noopener noreferrer" className="underline hover:text-[#0ff0fc]">Discord</a> and visit the #find-a-team channel!</span>
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <p className="text-[#e0d7f7]">Take the first step and register your team.</p>
+            <button
+              type="button"
+              onClick={() => window.location.href = '/register'}
+              className="w-full py-3 px-6 rounded-lg font-bold text-lg bg-[#b86fc6] text-[#fff] hover:bg-[#0ff0fc] hover:text-[#181c2f] transition-all duration-300 shadow-lg drop-shadow-[0_0_8px_#b86fc6]"
+            >
+              Register your team
+            </button>
+          </CardContent>
+        </Card>
+      </div>
     );
   }
 
