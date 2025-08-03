@@ -120,9 +120,9 @@ export function SchedulingCard({ match, teamId, captainId }: SchedulingCardProps
       schedulingStatus: 'confirmed',
       status: 'scheduled',
       dateTime: optimisticMatch.proposedTime,
-      proposedTime: null,
-      proposingCaptainId: null,
-      proposedById: null,
+      proposedTime: undefined,
+      proposingCaptainId: undefined,
+      proposedById: undefined,
     };
     handleAction(acceptMatchTime, optimisticUpdate);
   };
@@ -130,10 +130,10 @@ export function SchedulingCard({ match, teamId, captainId }: SchedulingCardProps
   const handleReject = () => {
     const optimisticUpdate: Partial<Match> = {
       schedulingStatus: 'unscheduled',
-      status: 'pending',
-      proposedTime: null,
-      proposingCaptainId: null,
-      proposedById: null,
+      status: 'scheduled',
+      proposedTime: undefined,
+      proposingCaptainId: undefined,
+      proposedById: undefined,
     };
     handleAction(rejectMatchTime, optimisticUpdate);
   };
@@ -141,10 +141,10 @@ export function SchedulingCard({ match, teamId, captainId }: SchedulingCardProps
   const handleCancel = () => {
     const optimisticUpdate: Partial<Match> = {
       schedulingStatus: 'unscheduled',
-      status: 'pending',
-      proposedTime: null,
-      proposingCaptainId: null,
-      proposedById: null,
+      status: 'scheduled',
+      proposedTime: undefined,
+      proposingCaptainId: undefined,
+      proposedById: undefined,
     };
     handleAction(cancelProposal, optimisticUpdate);
   };

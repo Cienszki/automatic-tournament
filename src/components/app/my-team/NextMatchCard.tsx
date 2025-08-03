@@ -69,10 +69,12 @@ export function NextMatchCard({ match, teamId }: NextMatchCardProps) {
           </div>
         </div>
         <p className="text-lg font-semibold text-accent">
-          {format(new Date(match.dateTime), "PPP 'at' HH:mm")}
+          {match.dateTime || match.defaultMatchTime
+            ? format(new Date(match.dateTime || match.defaultMatchTime), "PPP 'at' HH:mm")
+            : "TBD"}
         </p>
         <p className="text-sm text-muted-foreground mt-1">
-          Round: {match.round}
+          Status: {match.status}
         </p>
       </CardContent>
     </Card>

@@ -67,35 +67,6 @@ import { getApp } from "firebase/app";
 
 export default function RegisterPage() {
     const { user, signInWithGoogle } = useAuth();
-    // Firestore write test button handler
-    async function handleTestFirestoreWrite() {
-        try {
-            const { getFirestore, collection, doc, setDoc, deleteDoc } = await import("firebase/firestore");
-            const { getAuth } = await import("firebase/auth");
-            const db = getFirestore();
-            const auth = getAuth();
-            console.log("Current user:", auth.currentUser);
-            
-            // Create a temporary test document and immediately delete it
-            const testDocRef = doc(collection(db, "teams"), "temp-test-" + Date.now());
-            await setDoc(testDocRef, { 
-                test: true, 
-                name: "Temporary Test", 
-                tag: "TEMP",
-                captainId: auth.currentUser?.uid,
-                status: "pending",
-                createdAt: new Date()
-            });
-            
-            // Immediately delete the test document
-            await deleteDoc(testDocRef);
-            
-            alert("Firestore write test succeeded! (Test document created and deleted)");
-        } catch (e: any) {
-            console.error("Firestore write failed", e);
-            alert("Firestore write failed: " + (typeof e === 'object' && e !== null && 'message' in e ? (e as any).message : String(e)));
-        }
-    }
     const [serverError, setServerError] = React.useState<string | null>(null);
     const [logoPreview, setLogoPreview] = React.useState<string | null>(null);
     const [screenshotPreviews, setScreenshotPreviews] = React.useState<(string | null)[]>(Array(5).fill(null));
@@ -222,15 +193,6 @@ export default function RegisterPage() {
   return (
     <div className="space-y-8">
       <Card><CardHeader className="text-center"><UserPlus className="h-16 w-16 mx-auto text-primary" /><CardTitle className="text-4xl font-bold">Team Registration</CardTitle></CardHeader></Card>
-
-      {/* Firestore write test button for debugging */}
-      {user && (
-        <div className="flex justify-center mb-4">
-          <Button type="button" variant="outline" onClick={handleTestFirestoreWrite}>
-            Test Firestore Write
-          </Button>
-        </div>
-      )}
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">

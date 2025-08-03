@@ -21,24 +21,22 @@ const MatchCard = ({ match }: { match: PlayoffMatch }) => {
 };
 
 export const PlayoffBracketDisplay = ({ bracketData }: { bracketData: PlayoffData }) => {
-    if (!bracketData || !bracketData.rounds) {
+    if (!bracketData || !bracketData.matches) {
         return <p>Bracket data is not available.</p>;
     }
 
     return (
         <div className="flex space-x-4 overflow-x-auto p-4 bg-muted/20 rounded-lg">
-            {bracketData.rounds.map((round, roundIndex) => (
-                <div key={round.name} className="flex flex-col space-y-4 min-w-[200px]">
-                    <h3 className="text-lg font-bold text-center text-primary">{round.name}</h3>
-                    <div className="flex flex-col space-y-8">
-                        {round.matches.map(match => (
-                            <div key={match.id} className="relative">
-                                <MatchCard match={match} />
-                            </div>
-                        ))}
-                    </div>
+            <div className="flex flex-col space-y-4 min-w-[200px]">
+                <h3 className="text-lg font-bold text-center text-primary">{bracketData.name}</h3>
+                <div className="flex flex-col space-y-8">
+                    {bracketData.matches.map(match => (
+                        <div key={match.id} className="relative">
+                            <MatchCard match={match} />
+                        </div>
+                    ))}
                 </div>
-            ))}
+            </div>
         </div>
     );
 };

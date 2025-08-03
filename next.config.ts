@@ -14,7 +14,23 @@ const nextConfig = {
             {
                 protocol: 'https',
                 hostname: 'steamcdn-a.akamaihd.net',
-            }
+            },
+            {
+                protocol: 'https',
+                hostname: 'cdn.steamusercontent.com',
+            },
+            {
+                protocol: 'https',
+                hostname: 'firebasestorage.googleapis.com',
+            },
+            {
+                protocol: 'https',
+                hostname: 'tournament-tracker-f35tb.firebasestorage.app',
+            },
+            {
+                protocol: 'https',
+                hostname: 'avatars.steamstatic.com',
+            },
         ],
     },
 };

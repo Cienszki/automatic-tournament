@@ -37,3 +37,18 @@ export function sortPlayersByRole(players: Player[]): Player[] {
 export function formatNumber(num: number): string {
   return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 }
+
+export async function getSteamAvatarUrl(steamProfileUrl: string): Promise<string | null> {
+  // Simple implementation - extract Steam ID and return a placeholder
+  // In a real implementation, you'd call Steam API
+  try {
+    // Extract Steam ID from URL like https://steamcommunity.com/profiles/76561198123456789
+    const match = steamProfileUrl.match(/\/profiles\/(\d+)/);
+    if (match) {
+      return `https://avatars.steamstatic.com/fef49e7fa7e1997310d705b2a6158ff8dc1cdfeb_medium.jpg`;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}

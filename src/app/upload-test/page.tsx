@@ -31,7 +31,8 @@ export default function UploadTestPage() {
         }
 
         startDbTransition(async () => {
-            const result = await createTestTeam({ name: teamName, tag: teamTag });
+            const idToken = await user.getIdToken();
+            const result = await createTestTeam(idToken, { name: teamName, tag: teamTag });
             if (result.success) {
                 toast({ title: "Success!", description: "Test team saved to the database." });
             } else {

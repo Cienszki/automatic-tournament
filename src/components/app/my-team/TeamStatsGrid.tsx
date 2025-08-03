@@ -50,10 +50,10 @@ export function TeamStatsGrid({ team }: TeamStatsGridProps) {
     );
   }
 
-  const matchesPlayed = (team.matchesWon ?? 0) + (team.matchesLost ?? 0);
+  const matchesPlayed = (team.wins ?? 0) + (team.losses ?? 0) + (team.draws ?? 0);
   const winRate =
     matchesPlayed > 0
-      ? ((team.matchesWon ?? 0) / matchesPlayed) * 100
+      ? ((team.wins ?? 0) / matchesPlayed) * 100
       : 0;
 
   const kda = team.averageDeathsPerGame && team.averageDeathsPerGame > 0
@@ -66,7 +66,7 @@ export function TeamStatsGrid({ team }: TeamStatsGridProps) {
       <StatCard
         icon={Trophy}
         label="Record"
-        value={`${team.matchesWon ?? 0}W - ${team.matchesLost ?? 0}L`}
+        value={`${team.wins ?? 0}W - ${team.losses ?? 0}L - ${team.draws ?? 0}D`}
         description="Wins / Losses"
       />
       <StatCard
