@@ -148,3 +148,9 @@ deno.lock
 
 #  Firebase
 firebase-acc.json
+.firebase
+
+# Development and testing scripts with hardcoded config
+test-*.js
+check-*.js
+fix-*.js
