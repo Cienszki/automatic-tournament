@@ -22,8 +22,8 @@ const spaceMono = Space_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'Tournament Tracker',
-  description: 'Track your esports tournament with ease.',
+  title: 'Letnia Batalia',
+  description: 'Turniej z limitem MMR',
 };
 
 export default function RootLayout({

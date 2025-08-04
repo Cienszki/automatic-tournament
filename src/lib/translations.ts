@@ -364,7 +364,7 @@ export const translations = {
     welcomeDesc: "Gotowy do dołączenia do turnieju? Zarejestruj swoją drużynę i poprowadź ją do zwycięstwa.",
     needTeamOrPlayers: "Potrzebujesz drużyny lub szukasz graczy? Dołącz do naszego",
     discord: "Discorda",
-    findTeamChannel: "i odwiedź kanał #find-a-team!",
+    findTeamChannel: "i odwiedź kanał #szukam-teamu-gracza",
     signInToStart: "Zaloguj się, aby rozpocząć i stworzyć swoją drużynę.",
     signInWithGoogle: "Zaloguj się przez Google",
     readyToJoin: "Gotowy do dołączenia do turnieju? Zarejestruj swoją drużynę i poprowadź ją do zwycięstwa.",
@@ -416,7 +416,7 @@ export const translations = {
       organizers: "Organizatorzy:",
       organizersList: "Polish Dota2 InHouse",
       website: "Oficjalna strona turnieju:",
-      websiteUrl: "https://letnia-batalia.vercel.app"
+      websiteUrl: "https://dota2inhouse.pl",
     },
 
     // Section 2: Team Registration
@@ -457,7 +457,7 @@ export const translations = {
       title: "3. Wymagania Dotyczące Zawodników",
       accountRequirements: {
         title: "3.1 Wymagania Konta",
-        minimum50Games: "Minimum 50 rozegranych meczów na koncie",
+        minimum50Games: "Minimum 250 rozegranych meczów na koncie",
         noVacBans: "Brak VAC banów na Steam",
         activeAccount: "Aktywne konto Steam i Dota 2",
         oneAccountPerPlayer: "Jeden gracz może grać tylko na jednym koncie"
@@ -515,7 +515,7 @@ export const translations = {
     // Section 7: Stand-ins
     standins: {
       title: "7. Zawodnicy Rezerwowi",
-      description: "Zawodnicy rezerwowi (stand-in) mogą zastąpić podstawowych graczy w określonych sytuacjach.",
+      description: "Zawodnicy rezerwowi (stand-in) mogą zastąpić podstawowych graczy na konkretną serię. Cała seria musi być rozegrana tym samym składem.",
       requirements: {
         title: "7.1 Wymagania dla stand-in",
         notInOtherTeam: "Nie może być członkiem innej aktywnej drużyny",
@@ -553,7 +553,7 @@ export const translations = {
       title: "10. Postanowienia Dodatkowe",
       penalties: {
         title: "10.1 Kary i sankcje",
-        description: "Naruszenie regulaminu może skutkować ostrzeżeniem, dyskwalifikacją lub banem."
+        description: "Naruszenie regulaminu może skutkować ostrzeżeniem, dyskwalifikacją lub wykluczeniem z przyszłych rozgrywek."
       },
       disputes: {
         title: "10.2 Spory i protesty",
@@ -578,7 +578,7 @@ export const translations = {
       },
       technicalIssues: {
         title: "11.3 Problemy techniczne",
-        description: "W przypadku problemów ze stroną internetową, skontaktuj się z administracją na Discord."
+        description: "W przypadku problemów ze stroną internetową, skontaktuj się z administracją na Discordzie."
       }
     },
 
@@ -664,7 +664,7 @@ export const translations = {
       },
       prizes: {
         question: "Czy są jakieś nagrody?",
-        answer: "Informacje o nagrodach zostaną ogłoszone bliżej rozpoczęcia turnieju. Śledź oficjalne kanały komunikacji (Discord, strona internetowa) aby być na bieżąco."
+        answer: "Informacje o nagrodach ogłoszone są na discordzie na kanale #newsy. Śledź oficjalne kanały komunikacji (Discord, strona internetowa) aby być na bieżąco."
       },
       mmrLimit: {
         question: "Jak działa limit MMR 24,000?",
@@ -687,7 +687,7 @@ export const translations = {
       },
       mmrVerification: {
         question: "Jak zweryfikować MMR graczy?",
-        answer: "Kapitan musi przesłać zrzuty ekranu MMR każdego gracza pokazujące: profil gracza, aktualny MMR i datę. Zrzuty można przesłać przez formularz rejestracyjny lub bezpośrednio do administracji na Discord."
+        answer: "Kapitan musi przesłać zrzuty ekranu MMR każdego gracza pokazujące: profil gracza, aktualny MMR. Zrzuty należy przesłać przez formularz rejestracyjny."
       },
       teamChanges: {
         question: "Czy mogę zmienić skład po rejestracji?",
@@ -760,15 +760,15 @@ export const translations = {
     technical: {
       website: {
         question: "Jak korzystać ze strony turnieju?",
-        answer: "Zaloguj się przez Google, wszystkie funkcje dostępne po zalogowaniu. Sekcje: Moja Drużyna (rejestracja, mecze), Liga Fantasy, Pick'em, wyniki na bieżąco. Strona działa na urządzeniach mobilnych."
+        answer: "Zaloguj się przez Google, niektóre funkcje dostępne są dopiero po zalogowaniu. Przejdź do sekcji 'Moja Drużyna' aby zarejestrować drużynę, zaplanować mecze, sprawdzić statystyki i przewidywania. Strona jest responsywna i działa na komputerach i urządzeniach mobilnych."
       },
       account: {
         question: "Problemy z logowaniem lub kontem?",
-        answer: "Upewnij się, że używasz konta Google użytego do rejestracji. Wyczyść cache przeglądarki, sprawdź blokery reklam. Jeśli problem persystuje, napisz na Discord z szczegółami błędu."
+        answer: "Upewnij się, że używasz konta Google użytego do rejestracji. Wyczyść cache przeglądarki, sprawdź blokery reklam. Jeśli problem nie ustępuje, napisz na Discord z szczegółami błędu."
       },
       bugs: {
         question: "Co robić gdy znajdę błąd na stronie?",
-        answer: "Zgłoś błąd na Discord z opisem: co robiłeś, jaki błąd wystąpił, zrzut ekranu jeśli możliwe, przeglądarka i system. Administratorzy techniczny szybko naprawią problem."
+        answer: "Zgłoś błąd na Discord z opisem: co robiłeś, jaki błąd wystąpił, zrzut ekranu jeśli możliwe, przeglądarka i system. Administrator techniczny szybko naprawi problem."
       },
       mobile: {
         question: "Czy strona działa na telefonie?",
@@ -776,7 +776,7 @@ export const translations = {
       },
       data: {
         question: "Jak są chronione moje dane?",
-        answer: "Dane osobowe chronione zgodnie z RODO. Używane tylko do celów turnieju. Nie udostępniamy danych trzecim stronom. Możesz poprosić o usunięcie danych po turnieju."
+        answer: "Dane osobowe używane są tylko do celów turnieju. Nie udostępniamy danych trzecim stronom. Możesz poprosić o usunięcie danych po turnieju."
       }
     },
 
@@ -787,7 +787,7 @@ export const translations = {
       },
       support: {
         question: "Gdzie mogę uzyskać pomoc?",
-        answer: "1) Sprawdź FAQ na stronie, 2) Napisz na Discord kanał #pomoc lub bezpośrednio do administratorów, 3) W nagłych przypadkach DK do @Cienszki ."
+        answer: "1) Sprawdź FAQ na stronie :) 2) Napisz na Discord kanał #dyskusja 3) W nagłych przypadkach DK do @Cienszki ."
       },
       streaming: {
         question: "Czy mogę streamować swoje mecze?",
@@ -806,34 +806,34 @@ export const translations = {
       },
       scoring: {
         question: "Jak są naliczane punkty Fantasy?",
-        answer: "Punkty za: zabójstwa (+3), asysty (+1.5), śmierci (-1), GPM i XPM (bonus/malus), last hits, damage. Szczegółowy algorytm dostępny w sekcji Liga Fantasy."
+        answer: "Punkty fantasy naliczane są zgodnie z algorytmem Dota2."
       },
       deadline: {
         question: "Kiedy muszę ustawić skład Fantasy?",
-        answer: "Skład musi być ustawiony przed rozpoczęciem każdej rundy. Deadline wyświetlany na stronie. Po rozpoczęciu meczów rundy nie można zmienić składu."
+        answer: "Skład musi być ustawiony przed rozpoczęciem każdej rundy. Po tym czasie nie można ich zmienić. Dokładny deadline dla fazy grupowej to 15.08.25 23:59."
       },
       budget: {
         question: "Jak działa budżet Fantasy?",
-        answer: "Każdy gracz ma wartość bazującą na MMR i poprzednich występach. Musisz zmieścić się w limicie budżetu. Wartości mogą się zmieniać między rundami."
+        answer: "Każdy gracz ma wartość bazującą na MMR. Musisz zmieścić się w limicie budżetu."
       }
     },
 
     pickem: {
       howItWorks: {
         question: "Jak działa Pick'em Challenge?",
-        answer: "Przewiduj końcowe miejsca drużyn w playoff przez przeciąganie ich do odpowiednich pozycji. Złóż przewidywania przed rozpoczęciem playoff. Punkty za dokładne prognozy."
+        answer: "Przewiduj końcowe miejsca drużyn w playoff przez przeciąganie ich do odpowiednich pozycji. Złóż przewidywania przed rozpoczęciem playoff. Punkty za dokładne prognozy. Zwycięża ten kto będzie najbliżej."
       },
       scoring: {
         question: "Ile punktów za przewidywania Pick'em?",
-        answer: "Mistrz: 16 pkt, 2. miejsce: 15 pkt, 3. miejsce: 14 pkt, 4. miejsce: 13 pkt, miejsca 5-6: 11 pkt każde, 7-8: 9 pkt, 9-12: 6 pkt, 13-16: 2 pkt."
+        answer: "Mistrz: 16 pkt, 2. miejsce: 15 pkt, 3. miejsce: 14 pkt, 4. miejsce: 13 pkt, miejsca 5-6: 11 pkt każde, 7-8: 9 pkt, 9-12: 6 pkt, 13-16: 2 pkt, faza grupowa 0 pkt."
       },
       deadline: {
         question: "Kiedy muszę złożyć przewidywania?",
-        answer: "Przewidywania Pick'em muszą być złożone przed rozpoczęciem fazy playoff. Po tym czasie nie można ich zmienić. Dokładny deadline będzie ogłoszony."
+        answer: "Przewidywania Pick'em muszą być złożone przed rozpoczęciem fazy grupowej. Po tym czasie nie można ich zmienić. Dokładny deadline to 15.08.25 23:59."
       },
       requirements: {
         question: "Co jest potrzebne do Pick'em?",
-        answer: "Konto na stronie + nick Discord. Jeden zestaw przewidywań na osobę. Administracja może zweryfikować tożsamość w przypadku podejrzeń."
+        answer: "Konto na stronie + nick Discord. Jeden zestaw przewidywań na osobę."
       }
     },
 

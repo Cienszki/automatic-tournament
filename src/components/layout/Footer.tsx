@@ -47,7 +47,7 @@ export function Footer() {
       <div className="container mx-auto px-4">
         <div className="flex justify-center items-center space-x-6">
           <a
-            href="https://discord.gg/pd2ih"
+            href="https://discord.gg/ZxgmF7Kr4t"
             target="_blank"
             rel="noopener noreferrer"
             aria-label="Discord"
