@@ -184,10 +184,10 @@ export default function PickEmPage() {
   if (!user) {
     return (
       <Card className="max-w-2xl mx-auto text-center shadow-xl">
-        <CardHeader><CardTitle className="text-2xl text-accent">Join the Challenge!</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="text-2xl text-accent">{t("pickem.joinChallenge")}</CardTitle></CardHeader>
         <CardContent>
-          <p className="mb-4 text-muted-foreground">Login with Google to make your predictions.</p>
-          <Button onClick={signInWithGoogle} size="lg">Login with Google</Button>
+          <p className="mb-4 text-muted-foreground">{t("pickem.loginToPredict")}</p>
+          <Button onClick={signInWithGoogle} size="lg">{t("common.signInWithGoogle")}</Button>
         </CardContent>
       </Card>
     );
@@ -208,7 +208,7 @@ export default function PickEmPage() {
       {/* Mobile: show text banner with neon font */}
       <Card className="flex md:hidden shadow-xl text-center relative overflow-hidden h-[120px] flex-col justify-center items-center p-4 bg-black">
         <span className="text-3xl font-extrabold text-[#39ff14] drop-shadow-[0_0_8px_#39ff14] font-neon-bines">
-          Pick'em
+          {t("nav.pickem")}
         </span>
       </Card>
 
@@ -241,7 +241,7 @@ export default function PickEmPage() {
 
           <div className="lg:col-span-3">
             <Card>
-              <CardHeader><CardTitle className="text-xl">Pick'em: Final Placements</CardTitle></CardHeader>
+              <CardHeader><CardTitle className="text-xl">{t("pickem.finalPlacements")}</CardTitle></CardHeader>
               <CardContent className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                 {Object.values(pickContainers).filter(c => c.id !== 'pool').map(container => (
                   <DroppableList 
@@ -262,11 +262,11 @@ export default function PickEmPage() {
       <Card className="shadow-lg">
         <CardFooter className="p-4 flex flex-col md:flex-row justify-center items-center gap-4">
           <Button size="lg" variant="destructive" onClick={resetPicks} disabled={isSaving}>
-            <RotateCcw className="mr-2" /> Reset All Picks
+            <RotateCcw className="mr-2" /> {t("pickem.resetAllPicks")}
           </Button>
           <Button size="lg" onClick={handleSubmitClick} disabled={!isSubmissionReady || isSaving}>
             {isSaving ? <Loader2 className="mr-2 animate-spin" /> : <ClipboardCheck className="mr-2" />}
-            {isSaving ? "Saving..." : "Submit Predictions"}
+            {isSaving ? t("pickem.saving") : t("pickem.submitPredictions")}
           </Button>
         </CardFooter>
       </Card>
@@ -275,48 +275,58 @@ export default function PickEmPage() {
 }
 
 // Sub-Components
-const HowToPlay = () => (
-    <Card><CardHeader><CardTitle className="text-2xl text-accent">How to Play</CardTitle></CardHeader>
-    <CardContent>
-      <Accordion type="single" collapsible defaultValue="item-1">
-        <AccordionItem value="item-1"><AccordionTrigger>Pick'em Challenge</AccordionTrigger><AccordionContent>Drag and drop each team from the "Team Pool" into one of the final placement containers to predict the tournament's outcome. Teams left in the "Group Stage Elimination" pool are those you predict will not make it to the playoffs.</AccordionContent></AccordionItem>
-        <AccordionItem value="item-2"><AccordionTrigger>Lock In Your Picks</AccordionTrigger><AccordionContent>Once you have filled all placement containers, the "Submit Predictions" button will be enabled. Your picks cannot be changed after submission.</AccordionContent></AccordionItem>
-      </Accordion>
-    </CardContent>
-  </Card>
-);
-
-const DroppableList = ({ id, title, icon: Icon, teams, getTeamById, requiredCount }: { id: ContainerId; title: string; icon: React.ElementType | null; teams: string[]; getTeamById: (id: string) => Team | undefined; requiredCount: number }) => (
-    <Card className="flex flex-col min-w-[200px] bg-muted/20">
-        <CardHeader className="pb-2">
-            <CardTitle className="text-base flex justify-between items-center">
-                <span className="flex items-center">{Icon && <Icon className="h-5 w-5 mr-2 text-primary shrink-0" />}{title}</span>
-                <Badge variant={teams.length > requiredCount ? "destructive" : teams.length === requiredCount ? "secondary" : "outline"} className={cn(teams.length < requiredCount && "bg-muted text-muted-foreground border-transparent")}>
-                    {teams.length} / {requiredCount}
-                </Badge>
-            </CardTitle>
-        </CardHeader>
-        <Droppable droppableId={id}>
-            {(provided, snapshot) => (
-                <CardContent ref={provided.innerRef} {...provided.droppableProps} className={cn("flex-grow min-h-[60px] rounded-md p-2 transition-colors", snapshot.isDraggingOver ? "bg-primary/10" : "")}>
-                    {teams.length > 0 ? teams.map((teamId, index) => (
-                        <Draggable key={teamId} draggableId={teamId} index={index}>
-                            {(provided) => (<div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps}><TeamCardItem team={getTeamById(teamId)} /></div>)}
-                        </Draggable>
-                    )) : (<div className="flex items-center justify-center h-full text-muted-foreground italic text-xs">Drop team(s) here</div>)}
-                    {provided.placeholder}
-                </CardContent>
-            )}
-        </Droppable>
+const HowToPlay = () => {
+    const { t } = useTranslation();
+    
+    return (
+      <Card><CardHeader><CardTitle className="text-2xl text-accent">{t("pickem.howToPlayTitle")}</CardTitle></CardHeader>
+      <CardContent>
+        <Accordion type="single" collapsible defaultValue="item-1">
+          <AccordionItem value="item-1"><AccordionTrigger>{t("pickem.pickemChallenge")}</AccordionTrigger><AccordionContent>{t("pickem.pickemDescription")}</AccordionContent></AccordionItem>
+          <AccordionItem value="item-2"><AccordionTrigger>{t("pickem.lockInYourPicks")}</AccordionTrigger><AccordionContent>{t("pickem.lockInDescription2")}</AccordionContent></AccordionItem>
+        </Accordion>
+      </CardContent>
     </Card>
-);
+  );
+};
+
+const DroppableList = ({ id, title, icon: Icon, teams, getTeamById, requiredCount }: { id: ContainerId; title: string; icon: React.ElementType | null; teams: string[]; getTeamById: (id: string) => Team | undefined; requiredCount: number }) => {
+    const { t } = useTranslation();
+    
+    return (
+      <Card className="flex flex-col min-w-[200px] bg-muted/20">
+          <CardHeader className="pb-2">
+              <CardTitle className="text-base flex justify-between items-center">
+                  <span className="flex items-center">{Icon && <Icon className="h-5 w-5 mr-2 text-primary shrink-0" />}{title}</span>
+                  <Badge variant={teams.length > requiredCount ? "destructive" : teams.length === requiredCount ? "secondary" : "outline"} className={cn(teams.length < requiredCount && "bg-muted text-muted-foreground border-transparent")}>
+                      {teams.length} / {requiredCount}
+                  </Badge>
+              </CardTitle>
+          </CardHeader>
+          <Droppable droppableId={id}>
+              {(provided, snapshot) => (
+                  <CardContent ref={provided.innerRef} {...provided.droppableProps} className={cn("flex-grow min-h-[60px] rounded-md p-2 transition-colors", snapshot.isDraggingOver ? "bg-primary/10" : "")}>
+                      {teams.length > 0 ? teams.map((teamId, index) => (
+                          <Draggable key={teamId} draggableId={teamId} index={index}>
+                              {(provided) => (<div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps}><TeamCardItem team={getTeamById(teamId)} /></div>)}
+                          </Draggable>
+                      )) : (<div className="flex items-center justify-center h-full text-muted-foreground italic text-xs">{t("pickem.dropTeamsHere")}</div>)}
+                      {provided.placeholder}
+                  </CardContent>
+              )}
+          </Droppable>
+      </Card>
+    );
+};
 
 const TeamCardItem = ({ team }: { team: Team | undefined }) => {
+  const { t } = useTranslation();
+  
   if (!team) {
     return (
       <div className="p-2 mb-2 bg-muted rounded-md shadow-sm flex items-center space-x-3">
         <div className="w-6 h-6 bg-muted-foreground rounded-sm flex-shrink-0" />
-        <span className="font-medium text-sm text-muted-foreground">Unknown Team</span>
+        <span className="font-medium text-sm text-muted-foreground">{t("pickem.unknownTeam")}</span>
       </div>
     );
   }

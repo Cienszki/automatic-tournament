@@ -85,6 +85,7 @@ export function GroupTable({ group }: GroupTableProps) {
                         width={32} 
                         height={32} 
                         className="rounded-md object-cover"
+                        unoptimized={standing.teamLogoUrl?.endsWith('.gif')}
                       />
                       <span className="font-medium">{standing.teamName}</span>
                     </Link>

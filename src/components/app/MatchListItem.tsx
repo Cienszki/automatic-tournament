@@ -121,6 +121,7 @@ function TeamDisplay({ team, isWinner }: { team: Match['teamA'], isWinner: boole
                 className={cn("rounded-md object-cover border-4 transition-all duration-300", 
                     isWinner ? "border-primary shadow-lg" : "border-transparent group-hover:border-primary/50"
                 )}
+                unoptimized={team.logoUrl?.endsWith('.gif')}
             />
             <span className={cn("font-semibold text-lg text-center w-full truncate",
                 isWinner ? "text-primary" : "text-foreground group-hover:text-primary"

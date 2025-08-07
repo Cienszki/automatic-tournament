@@ -9,6 +9,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Sigma, Shield, Swords, Sparkles, HandHelping, Eye, ListChecks, UserX, ShieldQuestion, PlayCircle, Trophy } from "lucide-react";
 import { cn, formatNumber } from "@/lib/utils";
+import { useTranslation } from "@/hooks/useTranslation";
 import {
   Tooltip,
   TooltipContent,
@@ -37,22 +38,23 @@ const getRoleIcon = (role: PlayerRole) => {
   }
 };
 
-const getStatusBadge = (status?: string) => {
+const getStatusBadge = (status?: string, t?: any) => {
   switch (status) {
     case "pending":
-      return <Badge className="bg-gray-500/20 text-gray-300 border-gray-500/40 hover:bg-gray-500/30 text-xs"><ShieldQuestion className="h-3 w-3 mr-1.5" />Not Verified</Badge>;
+      return <Badge className="bg-gray-500/20 text-gray-300 border-gray-500/40 hover:bg-gray-500/30 text-xs"><ShieldQuestion className="h-3 w-3 mr-1.5" />{t('teams.notVerified')}</Badge>;
     case "verified":
-      return <Badge variant="secondary" className="text-xs"><PlayCircle className="h-3 w-3 mr-1.5" />Active</Badge>;
+      return <Badge variant="secondary" className="text-xs"><PlayCircle className="h-3 w-3 mr-1.5" />{t('teams.verified')}</Badge>;
     case "warning":
-        return <Badge variant="destructive" className="text-xs"><UserX className="h-3 w-3 mr-1.5" />Warning</Badge>;
+        return <Badge variant="destructive" className="text-xs"><UserX className="h-3 w-3 mr-1.5" />{t('teams.warning')}</Badge>;
     case "banned":
-      return <Badge className="bg-yellow-400/20 text-yellow-300 border-yellow-500/40 hover:bg-yellow-400/30 text-xs"><Trophy className="h-3 w-3 mr-1.5" />Banned</Badge>;
+      return <Badge className="bg-yellow-400/20 text-yellow-300 border-yellow-500/40 hover:bg-yellow-400/30 text-xs"><Trophy className="h-3 w-3 mr-1.5" />{t('teams.banned')}</Badge>;
     default:
       return <Badge variant="outline" className="text-xs">{status}</Badge>;
   }
 };
 
 export function TeamCard({ team }: TeamCardProps) {
+  const { t } = useTranslation();
   const totalMMR = team.players.reduce((sum, player) => sum + player.mmr, 0);
 
   // Sort players by role: Carry, Mid, Offlane, Soft Support, Hard Support
@@ -75,24 +77,30 @@ export function TeamCard({ team }: TeamCardProps) {
           width={64} 
           height={64} 
           className="rounded-lg object-cover border"
+          unoptimized={team.logoUrl?.endsWith('.gif')}
         />
         <div className="flex-1">
           <CardTitle className="text-2xl text-primary">{team.name}</CardTitle>
+          {team.motto && (
+            <p className="text-sm text-muted-foreground italic mt-1">"{team.motto}"</p>
+          )}
         </div>
       </CardHeader>
       <CardContent className="flex-grow px-6 py-4">
         <div className="grid md:grid-cols-2 gap-x-4 gap-y-3">
           {/* Column 1: Team Stats */}
           <div className="space-y-2">
-            <div className="flex justify-start mb-1.5">{getStatusBadge(team.status)}</div>
+            <div className="flex justify-start mb-1.5">{getStatusBadge(team.status, t)}</div>
             <div className="flex items-center text-sm text-muted-foreground">
               <Sigma className="h-4 w-4 mr-2 text-primary shrink-0" />
-              <span>Total MMR: {formatNumber(totalMMR)}</span>
+              <span>{t('teams.totalMMR')}: {formatNumber(totalMMR)}</span>
             </div>
-            {/* Wins/Losses are not available on Team, so we omit this or show N/A */}
+            {/* Team match record */}
             <div className="flex items-center text-sm text-muted-foreground">
               <ListChecks className="h-4 w-4 mr-2 text-primary shrink-0" />
-              <span>Wins/Losses: N/A</span>
+              <span>
+                {team.wins || 0}W / {team.draws || 0}D / {team.losses || 0}L
+              </span>
             </div>
           </div>
 
@@ -128,7 +136,7 @@ export function TeamCard({ team }: TeamCardProps) {
           asChild 
           className="w-full hover:bg-accent hover:text-accent-foreground"
         >
-          <Link href={`/teams/${team.id}`}>View Profile</Link>
+          <Link href={`/teams/${team.id}`}>{t('teams.viewProfile')}</Link>
         </Button>
       </CardFooter>
     </Card>

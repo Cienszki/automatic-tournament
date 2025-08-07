@@ -90,6 +90,7 @@ export interface Player {
   role: PlayerRole;
   steamId: string;
   steamId32: string;
+  steamProfileUrl?: string;
   openDotaAccountId?: number;
   profileScreenshotUrl: string;
   avatar?: string;

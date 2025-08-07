@@ -52,7 +52,7 @@ export function MMRCalculator() {
             "text-2xl font-bold",
             isOverCap ? "text-destructive" : "text-green-500"
           )}>
-            {totalMMR.toLocaleString()} / {TEAM_MMR_CAP.toLocaleString()}
+            {totalMMR.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ")} / {TEAM_MMR_CAP.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ")}
           </p>
           {isOverCap && (
             <p className="text-sm text-destructive mt-1">

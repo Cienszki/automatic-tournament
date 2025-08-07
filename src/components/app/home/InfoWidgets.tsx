@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState } from "react";
@@ -9,11 +8,13 @@ import Link from "next/link";
 import Image from "next/image";
 import { Megaphone, Flame, BarChart2, Trophy } from "lucide-react";
 import { formatDistanceToNow, format } from "date-fns";
+import { isTwitchLive } from '@/lib/twitch';
 
 export function InfoWidgets() {
   const { t } = useTranslation();
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [twitchLive, setTwitchLive] = useState(false);
 
   useEffect(() => {
     const loadData = async () => {
@@ -28,6 +29,10 @@ export function InfoWidgets() {
     };
 
     loadData();
+    // Twitch live check
+    isTwitchLive().then(setTwitchLive);
+    const interval = setInterval(() => isTwitchLive().then(setTwitchLive), 60000);
+    return () => clearInterval(interval);
   }, []);
 
   if (loading) {
@@ -156,18 +161,77 @@ export function InfoWidgets() {
             </a>
           </CardContent>
         </Card>
-        {/* Empty placeholder 1 */}
-        <Card className="min-h-[120px] flex flex-col items-center justify-center bg-gradient-to-br from-[#181c2f] via-[#3a295a] to-[#23243a] opacity-60 border-0 transition-transform duration-300 hover:scale-105 hover:shadow-[0_0_32px_8px_#b86fc6cc,0_0_24px_0_#0ff0fc99] shadow-none">
-          <CardContent className="flex items-center justify-center w-full h-full">
-            {/* Empty for future content */}
+        {/* Discord Section */}
+        <a
+          href="https://discord.gg/ZxgmF7Kr4t "
+          target="_blank"
+          rel="noopener noreferrer"
+          className="block"
+        >
+        <Card className="min-h-[120px] flex flex-col items-center justify-center bg-gradient-to-br from-[#181c2f] via-[#3a295a] to-[#23243a] border-0 transition-transform duration-300 hover:scale-105 hover:shadow-[0_0_32px_8px_#5865F2cc,0_0_24px_0_#7289DAaa] shadow-none relative overflow-hidden group cursor-pointer">
+          <CardContent className="flex items-center justify-center w-full h-full p-4 relative z-10">
+            <div className="flex items-center gap-4">
+              <div className="relative">
+                <Image 
+                  src="/dc_logo.png" 
+                  alt="Discord Logo" 
+                  width={64} 
+                  height={64} 
+                  className="group-hover:scale-110 transition-transform duration-300 drop-shadow-lg group-hover:drop-shadow-[0_0_8px_#5865F2]"
+                />
+                {/* Animated pulse ring */}
+                <div className="absolute inset-0 rounded-full border-2 border-[#5865F2] opacity-0 group-hover:opacity-100 animate-ping" />
+                <div className="absolute inset-0 rounded-full bg-[#5865F2] opacity-0 group-hover:opacity-20 transition-opacity duration-300" />
+              </div>
+              <span className="text-xl font-bold text-[#0ff0fc] drop-shadow-[0_0_4px_#0ff0fc] text-center group-hover:text-[#5865F2] transition-colors duration-300 tracking-wide">
+                {t('home.joinDiscord')}
+              </span>
+            </div>
           </CardContent>
+          {/* Background effect */}
+          <div className="absolute inset-0 bg-gradient-to-r from-[#5865F2]/10 via-[#7289DA]/15 to-[#5865F2]/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+          {/* Animated border glow */}
+          <div className="absolute inset-0 rounded-lg border border-[#5865F2]/0 group-hover:border-[#5865F2]/50 transition-all duration-300 group-hover:shadow-[inset_0_0_20px_rgba(88,101,242,0.2)]" />
         </Card>
-        {/* Empty placeholder 2 */}
-        <Card className="min-h-[120px] flex flex-col items-center justify-center bg-gradient-to-br from-[#181c2f] via-[#3a295a] to-[#23243a] opacity-60 border-0 transition-transform duration-300 hover:scale-105 hover:shadow-[0_0_32px_8px_#b86fc6cc,0_0_24px_0_#0ff0fc99] shadow-none">
-          <CardContent className="flex items-center justify-center w-full h-full">
-            {/* Empty for future content */}
-          </CardContent>
-        </Card>
+        </a>
+        {/* Twitch Section */}
+        <a
+          href="https://www.twitch.tv/polishdota2inhouse"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="block"
+        >
+          <Card className={`min-h-[120px] flex flex-col items-center justify-center bg-gradient-to-br from-[#181c2f] via-[#3a295a] to-[#23243a] border-0 transition-transform duration-300 hover:scale-105 shadow-none relative overflow-hidden group cursor-pointer ${twitchLive ? 'ring-4 ring-[#a970ff] animate-pulse' : ''}`}
+          >
+            <CardContent className="flex items-center justify-center w-full h-full p-4 relative z-10">
+              <div className="flex items-center gap-4">
+                <div className="relative">
+                  <Image
+                    src="/twitch_logo.png"
+                    alt="Twitch Logo"
+                    width={64}
+                    height={64}
+                    className={`transition-transform duration-300 drop-shadow-lg ${twitchLive ? 'scale-110 drop-shadow-[0_0_16px_#a970ff]' : ''}`}
+                  />
+                  {twitchLive && (
+                    <span className="absolute -top-2 -right-2 bg-[#a970ff] text-white text-xs font-bold px-2 py-1 rounded shadow animate-pulse border-2 border-white">{t('home.liveNow')}</span>
+                  )}
+                </div>
+                <span className={`text-xl font-bold text-[#a970ff] drop-shadow-[0_0_4px_#a970ff] text-center transition-colors duration-300 tracking-wide ${twitchLive ? 'animate-pulse' : ''}`}>
+                  {t('home.watchTwitch')}
+                </span>
+              </div>
+            </CardContent>
+            {twitchLive && (
+              <div className="absolute bottom-2 left-1/2 -translate-x-1/2 text-xs text-[#a970ff] font-semibold bg-black/60 px-3 py-1 rounded-full border border-[#a970ff]/40 animate-pulse">
+                {t('home.twitchLiveDesc')}
+              </div>
+            )}
+            <div className="absolute inset-0 bg-gradient-to-r from-[#a970ff]/10 via-[#9147ff]/15 to-[#a970ff]/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+            <div className="absolute inset-0 rounded-lg border border-[#a970ff]/0 group-hover:border-[#a970ff]/50 transition-all duration-300 group-hover:shadow-[inset_0_0_20px_rgba(169,112,255,0.2)]" />
+          </Card>
+        </a>
+        
       </section>
     </>
   );

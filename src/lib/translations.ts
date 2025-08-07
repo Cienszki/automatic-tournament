@@ -8,7 +8,7 @@ export const translations = {
     groups: "Grupy",
     playoffs: "Playoff",
     stats: "Statystyki",
-    pickem: "Pick'em",
+    pickem: "Pick\'em",
     fantasy: "Liga Fantasy",
     rules: "Zasady",
     faq: "FAQ",
@@ -45,7 +45,8 @@ export const translations = {
     upload: "Prześlij",
     copy: "Kopiuj",
     share: "Udostępnij",
-    points: "Punkty"
+    points: "Punkty",
+    notAvailable: "N/D"
   },
 
   // Home page
@@ -69,7 +70,11 @@ export const translations = {
     noRecentResults: "Brak ostatnich wyników.",
     noFantasyData: "Brak danych fantasy.",
     mmrLimitTournament: "Turniej z Limitem MMR 24k",
-    registerNow: "Zarejestruj się teraz"
+    registerNow: "Zarejestruj się teraz",
+    joinDiscord: "Odwiedź Discord PD2IH",
+    watchTwitch: "Oglądaj na Twitchu",
+    liveNow: "NA ŻYWO",
+    twitchLiveDesc: "Aktualnie trwa transmisja na Twitchu!"
   },
 
   // Team related
@@ -97,7 +102,13 @@ export const translations = {
     recentMatches: "Ostatnie mecze",
     registeredTeams: "Zarejestrowane Drużyny",
     browseDescription: "Przeglądaj wszystkie drużyny uczestniczące w turnieju. Kliknij na drużynę, aby zobaczyć jej profil i historię meczów.",
-    noTeamsRegistered: "Żadne drużyny nie zostały jeszcze zarejestrowane."
+    noTeamsRegistered: "Żadne drużyny nie zostały jeszcze zarejestrowane.",
+    viewProfile: "Zobacz profil",
+    notVerified: "Niezweryfikowana",
+    verified: "Zweryfikowana",
+    active: "Aktywna",
+    warning: "Ostrzeżenie",
+    banned: "Zbanowana"
   },
 
   // Player related
@@ -194,7 +205,8 @@ export const translations = {
     title: "Liga Fantasy",
     hero: {
       title: "Liga Fantasy",
-      subtitle: "Stwórz swoją wymarzą drużynę z najlepszych graczy i zdobądź tytuł najlepszego managera!"
+      subtitle: "Stwórz swoją wymarzą drużynę z najlepszych graczy i zdobądź tytuł najlepszego managera!",
+      openToAll: "Liga Fantasy jest otwarta dla wszystkich - nie musisz uczestniczyć w turnieju jako gracz!"
     },
     joinLeague: {
       title: "Dołącz do Ligi!",
@@ -206,7 +218,17 @@ export const translations = {
       budgetUsed: "Wykorzystany budżet",
       selectA: "Wybierz",
       saving: "Zapisywanie",
-      saveLineup: "Zapisz Skład"
+      saveLineup: "Zapisz Skład",
+      instructions: {
+        title: "Instrukcja Ligi Fantasy",
+        step1: "1. Wybierz gracza dla każdej pozycji (Carry, Mid, Offlane, Soft Support, Hard Support)",
+        step2: "2. Mieść się w budżecie MMR - każdy gracz ma wartość bazującą na jego MMR",
+        step3: "3. Zapisz swój skład przed rozpoczęciem rundy",
+        step4: "4. Zdobywaj punkty na podstawie rzeczywistych występów wybranych graczy",
+        step5: "5. Aktualizuj skład między rundami, aby zmaksymalizować punkty",
+        scoring: "Punktacja: Punkty naliczane są przez algorytm wewnątrz gry za zabójstwa, asysty, GPM, XPM i inne statystyki",
+        deadline: "WAŻNE: Skład musi być ustawiony przed rozpoczęciem każdej rundy!"
+      }
     },
     leaderboard: {
       title: "Tabela Wyników",
@@ -246,9 +268,9 @@ export const translations = {
     couldNotSaveDiscordUsername: "Nie można było zapisać nicku Discord."
   },
 
-  // Pick'em
+  // Pick\\'em
   pickem: {
-    title: "Pick\\'em Challenge",
+    title: "Pick\'em Challenge",
     predictions: "Przewidywania",
     makePredictions: "Dokonaj przewidywań",
     submitPredictions: "Wyślij przewidywania",
@@ -262,8 +284,8 @@ export const translations = {
     winner: "Zwycięzca",
     pickWinner: "Wybierz zwycięzcę",
     predictOutcome: "Przewiduj wynik",
-    submissionsLocked: "Zgłoszenia Pick\\'em są teraz zablokowane, ponieważ faza rejestracji turnieju dobiegła końca.",
-    challengeDescription: "Przewiduj wyniki meczów i zdobywaj punkty za poprawne odpowiedzi!",
+    submissionsLocked: "Zgłoszenia Pick\'em są teraz zablokowane, ponieważ faza rejestracji turnieju dobiegła końca.",
+    challengeDescription: "Przewiduj wyniki meczów i zdobywaj punkty za poprawne odpowiedzi! Pick\'em Challenge jest otwarty dla wszystkich - nie musisz uczestniczyć w turnieju jako gracz.",
     lockInPredictions: "Potwierdź przewidywania",
     lockInDescription: "Pamiętaj, że po potwierdzeniu przewidywań nie będzie można ich zmienić!",
     champion: "Mistrz",
@@ -285,7 +307,24 @@ export const translations = {
     resetConfirm: "Czy na pewno chcesz zresetować wszystkie przewidywania?",
     discordRequired: "Wymagany jest nick Discord",
     discordRequiredDesc: "Aby zapisać przewidywania, musisz podać swój nick Discord w ustawieniach profilu.",
-    setDiscordUsername: "Ustaw Nick Discord"
+    setDiscordUsername: "Ustaw Nick Discord",
+    joinChallenge: "Dołącz do wyzwania!",
+    loginToPredict: "Zaloguj się przez Google, aby dokonać przewidywań.",
+    finalPlacements: "Pick'em: Ostateczne Miejsca",
+    resetAllPicks: "Resetuj Wszystkie Wybory",
+    saving: "Zapisywanie...",
+    howToPlayTitle: "Jak Grać",
+    pickemChallenge: "Wyzwanie Pick'em",
+    pickemDescription: "Przeciągnij i upuść każdy zespół z \"Puli Zespołów\" do jednego z kontenerów końcowych miejsc, aby przewidzieć wynik turnieju. Zespoły pozostawione w puli \"Eliminacja w fazie grupowej\" to te, które według twoich przewidywań nie dotrą do playoffów.",
+    lockInYourPicks: "Potwierdź Swoje Wybory",
+    lockInDescription2: "Po wypełnieniu wszystkich kontenerów miejsc, przycisk \"Wyślij Przewidywania\" zostanie aktywowany. Twoich wyborów nie można będzie zmienić po wysłaniu.",
+    dropTeamsHere: "Upuść tutaj zespół(y)",
+    unknownTeam: "Nieznany Zespół",
+    enterDiscordUsernameTitle: "Wprowadź swój nick Discord",
+    enterDiscordUsernameDesc: "Proszę podaj swój nick Discord, abyśmy mogli się z Tobą skontaktować w przypadku wygranej. To jednorazowa prośba.",
+    username: "Nick użytkownika",
+    discordPlaceholder: "twoj_nick_discord",
+    saveAndSubmit: "Zapisz i Wyślij"
   },
 
   // Stats page
@@ -331,11 +370,11 @@ export const translations = {
     teamMotto: "Motto zespołu",
     teamLogo: "Logo zespołu",
     captainInfo: "Informacje kapitana",
-    discordUsername: "Nick Discord",
+    discordUsername: "Nick Discord z serwera PD2IH",
     playerDetails: "Szczegóły gracza",
     addPlayer: "Dodaj gracza",
     removePlayer: "Usuń gracza",
-    steamProfile: "Profil Steam",
+    steamProfile: "Link do profilu Steam",
     steamID: "Steam ID",
     selectRole: "Wybierz rolę",
     uploadScreenshot: "Prześlij zrzut ekranu",
@@ -382,7 +421,7 @@ export const translations = {
 
   // Rules/FAQ
   rules: {
-    title: 'Regulamin Turnieju Dota 2 "Letnia Batalia"',
+    title: "Regulamin Turnieju Dota 2 \"Letnia Batalia\"",
     description: "Proszę uważnie przeczytać regulamin, aby zapewnić uczciwe granie i płynne doświadczenie turnieju dla wszystkich uczestników.",
     lastUpdated: "Ostatnia aktualizacja:",
     
@@ -392,16 +431,26 @@ export const translations = {
       general: "1. Informacje Ogólne",
       registration: "2. Rejestracja Drużyn", 
       playerRequirements: "3. Wymagania Dotyczące Zawodników",
-      format: "4. Format Turnieju",
-      scheduling: "5. Harmonogram i Terminy Meczów",
-      technical: "6. Ustawienia Techniczne Meczów",
+      scheduling: "4. Umawianie meczów",
+      matchSettings: "5. Ustawienia meczów",
+      tournamentStructure: "6. Struktura turnieju",
       standins: "7. Zawodnicy Rezerwowi",
       prohibitions: "8. Zakazy i Ograniczenia",
       conduct: "9. Kodeks Postępowania",
       additional: "10. Postanowienia Dodatkowe",
       digital: "11. Zasady Platformy Cyfrowej",
       fantasy: "12. Liga Fantasy",
-      pickem: "13. Pick'em Challenge"
+      pickem: "13. Pick\'em Challenge"
+    },
+    
+    // Section Groups
+    groups: {
+      tournamentInfo: "Informacje o Turnieju",
+      registrationTeams: "Rejestracja i Drużyny",
+      players: "Gracze",
+      matchRules: "Zasady Meczów",
+      restrictions: "Ograniczenia",
+      additionalFeatures: "Dodatkowe Funkcje"
     },
 
     // Section 1: General Information
@@ -412,7 +461,7 @@ export const translations = {
       registrationPeriod: "Termin rejestracji:",
       registrationDates: "do 13.08.2025 do godz. 23:59",
       officialCommunication: "Oficjalny kanał komunikacji:",
-      discordServer: "Serwer Discord PDIH",
+      discordServer: "Serwer Discord PD2IH",
       organizers: "Organizatorzy:",
       organizersList: "Polish Dota2 InHouse",
       website: "Oficjalna strona turnieju:",
@@ -439,7 +488,8 @@ export const translations = {
         players: "Każda drużyna składa się z 5 zawodników",
         teamName: "Każda z drużyn musi rozgrywać swoje mecze z ustawioną w grze nazwą drużyny identyczną z nazwą zarejestrowaną w turnieju (Dota 2 → Ustawienia → Konto → Manage Pro)",
         noRosterChanges: "Po dokonaniu rejestracji nie można zmienić składu drużyny",
-        accountRestriction: "Każdy zawodnik musi grać wyłącznie na koncie użytym do rejestracji"
+        accountRestriction: "Każdy zawodnik musi grać wyłącznie na koncie użytym do rejestracji",
+        leagueSettings: "Drużyny muszą dokładnie ustawić ligę i nazwy drużyn w grze zgodnie z danymi rejestracyjnymi - w przeciwnym razie mecz nie zostanie zaliczony"
       }
     },
 
@@ -455,61 +505,71 @@ export const translations = {
     // Section 3: Player Requirements
     playerRequirements: {
       title: "3. Wymagania Dotyczące Zawodników",
-      accountRequirements: {
-        title: "3.1 Wymagania Konta",
-        minimum50Games: "Minimum 250 rozegranych meczów na koncie",
-        noVacBans: "Brak VAC banów na Steam",
-        activeAccount: "Aktywne konto Steam i Dota 2",
-        oneAccountPerPlayer: "Jeden gracz może grać tylko na jednym koncie"
-      },
-      mmrRequirements: {
-        title: "3.2 Wymagania MMR",
-        description: "Sumaryczne MMR wszystkich 5 graczy w drużynie nie może przekroczyć 24,000 punktów",
-        calculation: "Użyj kalkulatora powyżej do sprawdzenia limitu"
-      }
+      minimum50Games: "Minimum 250 rozegranych meczów na koncie",
+      noVacBans: "Brak VAC banów na Steam",
+      activeAccount: "Aktywne konto Steam i Dota 2",
+      oneAccountPerPlayer: "Jeden gracz może grać tylko na jednym koncie",
+      smurfEvidence: "W przypadku podejrzeń o smurfowanie, gracz zobowiązany jest do przedstawienia dowodów niezbędnych do weryfikacji konta gracza",
+      mmrLimit: "Sumaryczne MMR wszystkich 5 graczy w drużynie nie może przekroczyć 24,000 punktów",
+      calculation: "Użyj kalkulatora powyżej do sprawdzenia limitu",
+      minimumMMR: "Zawodnicy poniżej 1000 MMR liczeni są za 1000 MMR"
     },
 
-    // Section 4: Tournament Format
-    format: {
-      title: "4. Format Turnieju",
-      gameMode: "Tryb gry:",
-      gameModeValue: "Captains Mode",
-      matchFormat: "Format meczów:",
-      matchFormatValue: "BO2 w grupach, BO3/BO5 w playoff",
-      phases: {
-        title: "Fazy turnieju:",
-        description: "Faza grupowa i faza playoff"
-      },
-      qualification: "Kwalifikacja:",
-      qualificationDesc: "Najlepsze drużyny z grup przechodzą do playoff"
-    },
-
-    // Section 5: Scheduling
+    // Section 4: Match Scheduling
     scheduling: {
-      title: "5. Harmonogram i Terminy Meczów",
-      procedure: {
-        title: "5.1 Procedura planowania",
-        step1: "Kapitanowie uzgadniają termin meczu",
-        step2: "Jeden kapitan proponuje czas na stronie turnieju",
-        step3: "Drugi kapitan akceptuje lub odrzuca propozycję",
-        step4: "Po akceptacji termin jest ostateczny",
-        step5: "Brak porozumienia = mecz w terminie domyślnym",
-        step6: "Spóźnienie powyżej 15 minut = walkover"
-      },
+      title: "4. Umawianie meczów",
+      step1: "Kapitanowie uzgadniają termin meczu",
+      step2: "Jeden kapitan proponuje czas na stronie turnieju",
+      step3: "Drugi kapitan akceptuje lub odrzuca propozycję",
+      step4: "Po akceptacji termin jest ostateczny",
+      step5: "Brak porozumienia = mecz w terminie domyślnym: 18:00 lub 21:00. Każdy mecz ma z góry ustalony termin domyślny.",
+      step6: "Spóźnienie powyżej 15 minut = przegrana gra, po 30 minutach = przegrana seria",
       captainResponsibility: "⚠️ Kapitanowie są odpowiedzialni za uzgodnienie terminu meczu!"
     },
 
-    // Section 6: Technical Settings
-    technical: {
-      title: "6. Ustawienia Techniczne",
-      server: "Serwer:",
-      serverValue: "Europa West/Austria",
-      mode: "Tryb:",
-      modeValue: "Captains Mode",
-      picks: "Wybór stron:",
-      picksValue: "Automatic (coin toss), w 2. meczu mirror",
-      pause: "Pauzowanie:",
-      pauseValue: "Dozwolone, zakaz nadużywania podczas teamfightów"
+    // Section 5: Match Settings
+    matchSettings: {
+      title: "5. Ustawienia meczów",
+      
+      // Game Configuration
+      gameConfig: {
+        title: "Konfiguracja gry",
+        gameMode: "Tryb gry: Captains Mode",
+        matchFormat: "Format serii: Brak",
+        server: "Serwer: EU West (Europa Zachodnia)",
+      },
+      
+      // Lobby Settings
+      lobbySettings: {
+        title: "Ustawienia lobby",
+        gameName: "Nazwa poczekalni: [Nazwa Drużyny 1] vs [Nazwa Drużyny 2]",
+        lobbyVisibility: "Widoczność lobby: Public (Publiczne)",
+        league: "Liga: Letnia Batalia",
+        teamNames: "Drużyny muszą dokładnie ustawić ligę i nazwy drużyn w grze (NIE tylko nazwę lobby) zgodnie z danymi rejestracyjnymi"
+      },
+      
+      // Game Rules
+      gameRules: {
+        title: "Zasady rozgrywki",
+        picks: "Wybór stron: Automatic (coin toss), w 2. meczu mirror: drużyny dokonują przeciwnego wyboru Radiant → Dire, First Pick → Second Pick",
+        surrender: "Wpisanie 'GG' na all chacie powoduje poddanie gry"
+      },
+      
+      // Tournament Structure
+      tournamentStructure: {
+        title: "Struktura turnieju",
+        groupStage: "Faza grupowa każdy z każdym: mecze BO2, możliwe remisy (1-1)",
+        groupStageDates: "16.08-27.08",
+        playoffs: "Format pododwójnej eliminacji. Górna Drabinka: BO3, Dolna Drabinka: BO1/BO3, Finał: BO5",
+        playoffDates: "28.08 - 29.09",
+        internationalBreak: "Przerwa z powodu The International 2025",
+        breakDates: "10.09-14.09"
+      }
+    },
+
+    // Section 6: Tournament Structure  
+    tournamentStructure: {
+      title: "6. Struktura turnieju"
     },
 
     // Section 7: Stand-ins
@@ -517,10 +577,11 @@ export const translations = {
       title: "7. Zawodnicy Rezerwowi",
       description: "Zawodnicy rezerwowi (stand-in) mogą zastąpić podstawowych graczy na konkretną serię. Cała seria musi być rozegrana tym samym składem.",
       requirements: {
-        title: "7.1 Wymagania dla stand-in",
+        title: "8.1 Wymagania dla stand-in",
         notInOtherTeam: "Nie może być członkiem innej aktywnej drużyny",
         mmrLimit: "Musi mieścić się w limicie MMR drużyny",
-        accountRequirements: "Musi spełniać wszystkie wymagania konta jak podstawowi gracze"
+        accountRequirements: "Musi spełniać wszystkie wymagania konta jak podstawowi gracze",
+        registration: "Stand-in rejestrowany jest na konkretny mecz przez zakładkę zarządzania drużyną i musi zostać zweryfikowany przez administratora."
       }
     },
 
@@ -532,7 +593,10 @@ export const translations = {
       smurf: "Smurfowanie i sztuczne zaniżanie MMR",
       matchFixing: "Ustawianie wyników meczów",
       harassment: "Obrażanie, nękanie innych graczy",
-      multipleAccounts: "Granie na wielu kontach w turnieju"
+      multipleAccounts: "Granie na wielu kontach w turnieju",
+      coaching: "Używanie trenerów podczas oficjalnych gier turniejowych łącznie z draftem",
+      bugsExploits: "Używanie bugów i exploitów",
+      rankedRules: "Wszystkie zakazy stosowane przez Valve do meczy rankingowych również mają zastosowanie do meczów turniejowych."
     },
 
     // Section 9: Conduct
@@ -540,11 +604,12 @@ export const translations = {
       title: "9. Kodeks Postępowania",
       description: "Wszyscy uczestnicy zobowiązani są do zachowania sportowego ducha i szacunku.",
       expectations: {
-        title: "9.1 Oczekiwania",
-        respect: "Szacunek dla organizatorów, graczy i widzów",
+        title: "10.1 Oczekiwania",
+        respect: "Szacunek dla graczy, organizatorów i widzów",
         fairPlay: "Uczciwa gra bez oszukiwania",
         punctuality: "Punktualność i terminowość",
-        communication: "Konstruktywna komunikacja"
+        communication: "Konstruktywna komunikacja i chęć współpracy w rozwiązywaniu problemów",
+        allChannels: "Zasady dotyczące zachowania obowiązują na wszystkich kanałach komunikacji, w tym Discordzie, Twitchu itp."
       }
     },
 
@@ -552,15 +617,15 @@ export const translations = {
     additional: {
       title: "10. Postanowienia Dodatkowe",
       penalties: {
-        title: "10.1 Kary i sankcje",
+        title: "11.1 Kary i sankcje",
         description: "Naruszenie regulaminu może skutkować ostrzeżeniem, dyskwalifikacją lub wykluczeniem z przyszłych rozgrywek."
       },
       disputes: {
-        title: "10.2 Spory i protesty",
+        title: "11.2 Spory i protesty",
         description: "Wszystkie spory rozpatruje administracja. Decyzje są ostateczne."
       },
       updates: {
-        title: "10.3 Aktualizacje regulaminu",
+        title: "11.3 Aktualizacje regulaminu",
         description: "Administracja zastrzega sobie prawo do zmian w regulaminie."
       }
     },
@@ -569,15 +634,15 @@ export const translations = {
     digital: {
       title: "11. Zasady Platformy Cyfrowej",
       websiteUsage: {
-        title: "11.1 Korzystanie ze strony",
+        title: "12.1 Korzystanie ze strony",
         description: "Strona turnieju służy do rejestracji, planowania meczów i śledzenia wyników. Wszyscy uczestnicy muszą używać strony zgodnie z przeznaczeniem."
       },
       dataProtection: {
-        title: "11.2 Ochrona danych",
+        title: "12.2 Ochrona danych",
         description: "Dane osobowe uczestników są chronione zgodnie z polityką prywatności. Wykorzystywane są wyłącznie do celów organizacyjnych turnieju."
       },
       technicalIssues: {
-        title: "11.3 Problemy techniczne",
+        title: "12.3 Problemy techniczne",
         description: "W przypadku problemów ze stroną internetową, skontaktuj się z administracją na Discordzie."
       }
     },
@@ -587,7 +652,7 @@ export const translations = {
       title: "12. Liga Fantasy",
       description: "Liga Fantasy pozwala na tworzenie własnych drużyn z graczy turnieju i zbieranie punktów na podstawie ich występów.",
       rules: {
-        title: "12.1 Zasady Fantasy",
+        title: "13.1 Zasady Fantasy",
         teamSelection: "Wybierz 5 graczy z różnych pozycji w ramach budżetu",
         scoring: "Punkty za zabójstwa, asysty, GPM, XPM i inne statystyki",
         updates: "Aktualizuj skład między rundami turnieju"
@@ -596,10 +661,10 @@ export const translations = {
 
     // Section 13: Pick'em Challenge
     pickem: {
-      title: "13. Pick'em Challenge", 
-      description: "Pick'em Challenge to konkurencja przewidywań końcowych miejsc drużyn w fazie playoff.",
+      title: "13. Pick\'em Challenge", 
+      description: "Pick\'em Challenge to konkurencja przewidywań końcowych miejsc drużyn w fazie playoff.",
       rules: {
-        title: "13.1 Zasady Pick'em",
+        title: "14.1 Zasady Pick\'em",
         predictions: "Przewiduj końcowe miejsca wszystkich drużyn playoff",
         points: "Zdobywaj punkty za dokładne prognozy",
         deadlines: "Złóż przewidywania przed rozpoczęciem playoff"
@@ -609,7 +674,7 @@ export const translations = {
 
   faq: {
     title: "Często zadawane pytania",
-    description: "Znajdź odpowiedzi na najczęściej zadawane pytania dotyczące turnieju 'Letnia Batalia'.",
+    description: "Znajdź odpowiedzi na najczęściej zadawane pytania dotyczące turnieju \'Letnia Batalia\'.",
     searchPlaceholder: "Szukaj w FAQ...",
     searchAndFilter: "Wyszukiwanie i filtrowanie",
     searchDescription: "Użyj wyszukiwarki i filtrów kategorii aby szybko znaleźć odpowiedzi na swoje pytania.",
@@ -641,14 +706,14 @@ export const translations = {
       technical: "Techniczne i Platforma",
       communication: "Komunikacja i Wsparcie",
       fantasy: "Liga Fantasy",
-      pickem: "Pick'em Challenge",
+      pickem: "Pick\'em Challenge",
       platform: "Platforma Internetowa"
     },
 
     general: {
       whatIsThis: {
-        question: "O czym jest turniej 'Letnia Batalia'?",
-        answer: "To jest turniej Dota 2 'Letnia Batalia', wydarzenie skupione na społeczności polskich graczy. Jest to turniej z limitem MMR (24,000 łącznie na drużynę), zaprojektowany dla graczy różnych poziomów umiejętności do rywalizacji, poprawy i zabawy w przyjaznej atmosferze."
+        question: "O czym jest turniej \'Letnia Batalia\'?",
+        answer: "To jest turniej Dota 2 \'Letnia Batalia\', wydarzenie skupione na społeczności polskich graczy. Jest to turniej z limitem MMR (24,000 łącznie na drużynę), zaprojektowany dla graczy różnych poziomów umiejętności do rywalizacji, poprawy i zabawy w przyjaznej atmosferze."
       },
       dates: {
         question: "Kiedy odbędzie się turniej?",
@@ -660,7 +725,7 @@ export const translations = {
       },
       entryFee: {
         question: "Czy jest opłata startowa?",
-        answer: "Nie, udział w turnieju jest całkowicie bezpłatny. Wszystkie funkcje - rejestracja drużyny, Liga Fantasy, Pick'em Challenge - są dostępne za darmo. Zachęcamy jednak do wpłaty 150zł na rzecz fundacji walki z otyłością."
+        answer: "Nie, udział w turnieju jest całkowicie bezpłatny. Wszystkie funkcje - rejestracja drużyny, Liga Fantasy, Pick\'em Challenge - są dostępne za darmo. Zachęcamy jednak do wpłaty 150zł na rzecz fundacji walki z otyłością."
       },
       prizes: {
         question: "Czy są jakieś nagrody?",
@@ -675,7 +740,7 @@ export const translations = {
     registration: {
       howToRegister: {
         question: "Jak zarejestrować moją drużynę?",
-        answer: "1. Zaloguj się na stronie używając Google. 2. Przejdź do sekcji 'Moja Drużyna'. 3. Wypełnij formularz rejestracyjny z danymi drużyny i wszystkich graczy. 4. Prześlij zrzuty ekranu MMR dla każdego gracza. 5. Poczekaj na weryfikację przez administrację."
+        answer: "1. Zaloguj się na stronie używając Google. 2. Przejdź do sekcji \'Moja Drużyna\'. 3. Wypełnij formularz rejestracyjny z danymi drużyny i wszystkich graczy. 4. Prześlij zrzuty ekranu MMR dla każdego gracza. 5. Poczekaj na weryfikację przez administrację."
       },
       deadline: {
         question: "Jaki jest termin rejestracji?",
@@ -683,7 +748,7 @@ export const translations = {
       },
       requirements: {
         question: "Jakie są wymagania dla graczy?",
-        answer: "Wszyscy gracze muszą: 1) Posiadać skalibrowane konto Dota 2 (min. 1000 MMR), 2) Grać tylko na koncie użytym do rejestracji, 3) Być członkiem tylko jednej drużyny w turnieju, 4) Mieć aktywne konto Steam."
+        answer: "Wszyscy gracze muszą: 1) Posiadać skalibrowane konto Dota 2 (min. 1000 MMR i 250 rozegranych meczy), 2) Grać tylko na koncie użytym do rejestracji, 3) Być członkiem tylko jednej drużyny w turnieju, 4) Mieć aktywne konto Steam bez VAC banów."
       },
       mmrVerification: {
         question: "Jak zweryfikować MMR graczy?",
@@ -699,7 +764,7 @@ export const translations = {
       },
       teamStatus: {
         question: "Co oznaczają statusy drużyn?",
-        answer: "• Oczekująca: Oczekuje na weryfikację przez admin\n• Zweryfikowana: Zatwierdzona do gry\n• Ostrzeżenie: Problem wymagający natychmiastowej uwagi\n• Odrzucona/Zbanowana: Dyskwalifikacja z turnieju"
+        answer: "• Oczekująca: Oczekuje na weryfikację przez admina\n• Zweryfikowana: Zatwierdzona do gry\n• Ostrzeżenie: Problem wymagający natychmiastowej uwagi\n• Odrzucona/Zbanowana: Dyskwalifikacja z turnieju"
       }
     },
 
@@ -714,7 +779,7 @@ export const translations = {
       },
       lobbySettings: {
         question: "Jakie są ustawienia lobby dla meczów?",
-        answer: "Tryb: Captains Mode | Serwer: Europa West/Austria | Opóźnienie: 5 min | Liga: Letnia Batalia | Widoczność: Publiczna | Wybór stron: Automatic (coin toss), w 2. meczu mirror"
+        answer: "Tryb: Captains Mode | Serwer: Europa West/Austria | Opóźnienie: 5 min | Liga: Letnia Batalia | Widoczność: Publiczna | Wybór stron: Automatic (coin toss), w 2. meczu mirror : drużyny dokonują przeciwnego wyboru Radiant → Dire, First Pick → Second Pick."
       },
       pausing: {
         question: "Kiedy można pauzować mecz?",
@@ -737,11 +802,11 @@ export const translations = {
     scheduling: {
       howToSchedule: {
         question: "Jak zaplanować mecz z przeciwnikiem?",
-        answer: "Użyj narzędzia planowania na stronie w sekcji 'Moja Drużyna'. Jeden kapitan proponuje czas, drugi akceptuje lub odrzuca. Wszystkie ustalone terminy muszą być zatwierdzone przez stronę internetową."
+        answer: "Użyj narzędzia planowania na stronie w sekcji \'Moja Drużyna\'. Jeden kapitan proponuje czas, drugi akceptuje lub odrzuca. Wszystkie ustalone terminy muszą być zatwierdzone przez stronę internetową."
       },
       defaultTime: {
-        question: "Co to jest 'domyślny czas meczu'?",
-        answer: "Każdy mecz ma automatycznie przypisany unikalny termin domyślny widoczny na stronie. Jeśli kapitanowie nie uzgodnią własnego terminu, mecz odbędzie się w czasie domyślnym."
+        question: "Co to jest \'domyślny czas meczu\'?",
+        answer: "Każdy mecz ma automatycznie przypisany unikalny termin domyślny widoczny na stronie. Terminy te wypadają na godzinę 18:00 lub 21:00 w dni poprzedzające deadline. Jeśli kapitanowie nie uzgodnią własnego terminu, mecz odbędzie się w czasie domyślnym."
       },
       deadline: {
         question: "Co jeśli nie zdążę uzgodnić terminu?",
@@ -749,7 +814,7 @@ export const translations = {
       },
       lateness: {
         question: "Co się dzieje gdy drużyna się spóźni?",
-        answer: "• 0-15 min spóźnienia: normalny start\n• 15+ min: walkover dla przeciwnika\n• Obie drużyny nieobecne: obie przegrywają walkowerem\n• W seriach BO3/BO5: 15-30 min = -1 mecz, 30+ min = przegrana seria"
+        answer: "• 0-15 min spóźnienia: normalny start\n• Obie drużyny nieobecne: obie przegrywają walkowerem\n• W seriach BO2/BO3/BO5: 15-30 min = -1 mecz, 30+ min = przegrana seria"
       },
       timezone: {
         question: "W jakiej strefie czasowej są podawane terminy?",
@@ -760,7 +825,7 @@ export const translations = {
     technical: {
       website: {
         question: "Jak korzystać ze strony turnieju?",
-        answer: "Zaloguj się przez Google, niektóre funkcje dostępne są dopiero po zalogowaniu. Przejdź do sekcji 'Moja Drużyna' aby zarejestrować drużynę, zaplanować mecze, sprawdzić statystyki i przewidywania. Strona jest responsywna i działa na komputerach i urządzeniach mobilnych."
+        answer: "Zaloguj się przez Google, niektóre funkcje dostępne są dopiero po zalogowaniu. Przejdź do sekcji \'Moja Drużyna\' aby zarejestrować drużynę, zaplanować mecze, sprawdzić statystyki i przewidywania. Strona jest responsywna i działa na komputerach i urządzeniach mobilnych."
       },
       account: {
         question: "Problemy z logowaniem lub kontem?",
@@ -777,13 +842,17 @@ export const translations = {
       data: {
         question: "Jak są chronione moje dane?",
         answer: "Dane osobowe używane są tylko do celów turnieju. Nie udostępniamy danych trzecim stronom. Możesz poprosić o usunięcie danych po turnieju."
+      },
+      rehost: {
+        question: "Co to jest rehost i kiedy jest potrzebny?",
+        answer: "Rehost oznacza ponowne utworzenie lobby gry. Jest potrzebny gdy: 1) Mecz nie może się rozpocząć z powodu błędów technicznych (lag, disconnecty), 2) Gracz disconnectuje się podczas fazy bans/picks, 3) Wykryto nieprawidłowe ustawienia lobby (zły tryb gry, serwer). Przykłady: 'Musimy zrobić rehost, bot nie działa' lub 'Rehost z powodu dc w drafcie'."
       }
     },
 
     communication: {
       discord: {
         question: "Czy muszę być na serwerze Discord?",
-        answer: "Tak, obecność na Discord PDIH jest obowiązkowa dla kapitanów. To główny kanał komunikacji z administracją i innymi drużynami. Link dostępny na stronie turnieju."
+        answer: "Tak, obecność na Discord PD2IH jest obowiązkowa dla kapitanów. To główny kanał komunikacji z administracją i innymi drużynami. Link dostępny na stronie turnieju."
       },
       support: {
         question: "Gdzie mogę uzyskać pomoc?",
@@ -802,7 +871,7 @@ export const translations = {
     fantasy: {
       howItWorks: {
         question: "Jak działa Liga Fantasy?",
-        answer: "Wybierz 5 graczy z różnych pozycji w ramach budżetu. Zdobywasz punkty na podstawie ich rzeczywistych występów: zabójstwa, asysty, GPM, XPM itp. Aktualizuj skład między rundami."
+        answer: "Wybierz 5 graczy z różnych pozycji w ramach budżetu. Zdobywasz punkty na podstawie ich rzeczywistych występów: zabójstwa, asysty, GPM, XPM itp. Aktualizuj skład między rundami. Liga Fantasy jest otwarta dla wszystkich - nie musisz uczestniczyć w turnieju jako gracz."
       },
       scoring: {
         question: "Jak są naliczane punkty Fantasy?",
@@ -815,32 +884,40 @@ export const translations = {
       budget: {
         question: "Jak działa budżet Fantasy?",
         answer: "Każdy gracz ma wartość bazującą na MMR. Musisz zmieścić się w limicie budżetu."
+      },
+      participation: {
+        question: "Kto może uczestniczyć w Lidze Fantasy?",
+        answer: "Każdy może uczestniczyć w Lidze Fantasy, niezależnie od udziału w turnieju jako gracz. Wystarczy założyć konto na stronie i ustawić swój skład."
       }
     },
 
     pickem: {
       howItWorks: {
-        question: "Jak działa Pick'em Challenge?",
-        answer: "Przewiduj końcowe miejsca drużyn w playoff przez przeciąganie ich do odpowiednich pozycji. Złóż przewidywania przed rozpoczęciem playoff. Punkty za dokładne prognozy. Zwycięża ten kto będzie najbliżej."
+        question: "Jak działa Pick\'em Challenge?",
+        answer: "Przewiduj końcowe miejsca drużyn w playoff przez przeciąganie ich do odpowiednich pozycji. Złóż przewidywania przed rozpoczęciem playoff. Punkty za dokładne prognozy. Zwycięża ten kto będzie najbliżej. Pick\'em Challenge jest otwarty dla wszystkich - nie musisz uczestniczyć w turnieju jako gracz."
       },
       scoring: {
-        question: "Ile punktów za przewidywania Pick'em?",
+        question: "Ile punktów za przewidywania Pick\'em?",
         answer: "Mistrz: 16 pkt, 2. miejsce: 15 pkt, 3. miejsce: 14 pkt, 4. miejsce: 13 pkt, miejsca 5-6: 11 pkt każde, 7-8: 9 pkt, 9-12: 6 pkt, 13-16: 2 pkt, faza grupowa 0 pkt."
       },
       deadline: {
         question: "Kiedy muszę złożyć przewidywania?",
-        answer: "Przewidywania Pick'em muszą być złożone przed rozpoczęciem fazy grupowej. Po tym czasie nie można ich zmienić. Dokładny deadline to 15.08.25 23:59."
+        answer: "Przewidywania Pick\'em muszą być złożone przed rozpoczęciem fazy grupowej. Po tym czasie nie można ich zmienić. Dokładny deadline to 15.08.25 23:59."
       },
       requirements: {
-        question: "Co jest potrzebne do Pick'em?",
+        question: "Co jest potrzebne do Pick\'em?",
         answer: "Konto na stronie + nick Discord. Jeden zestaw przewidywań na osobę."
+      },
+      participation: {
+        question: "Kto może uczestniczyć w Pick\'em Challenge?",
+        answer: "Każdy może uczestniczyć w Pick\'em Challenge, niezależnie od udziału w turnieju jako gracz. Wystarczy założyć konto na stronie i złożyć przewidywania."
       }
     },
 
     platform: {
       features: {
         question: "Jakie funkcje ma strona turnieju?",
-        answer: "• Rejestracja i zarządzanie drużyną\n• Liga Fantasy z live punktacją\n• Pick'em Challenge\n• Live wyniki i tabele\n• Harmonogram meczów\n• Statystyki graczy i drużyn\n• System komunikacji z admin"
+        answer: "• Rejestracja i zarządzanie drużyną\n• Liga Fantasy z live punktacją\n• Pick\'em Challenge\n• Live wyniki i tabele\n• Harmonogram meczów\n• Statystyki graczy i drużyn\n• System komunikacji z admin"
       },
       updates: {
         question: "Jak często aktualizowane są dane?",
@@ -1009,7 +1086,7 @@ export const translations = {
     success: {
       title: "Sukces!",
       pickem: {
-        saved: "Twoje przewidywania Pick'em zostały zapisane."
+        saved: "Twoje przewidywania Pick\'em zostały zapisane."
       },
       fantasy: {
         saved: "Twój skład fantasy został zapisany.",

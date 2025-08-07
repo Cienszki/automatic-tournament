@@ -24,6 +24,9 @@ const spaceMono = Space_Mono({
 export const metadata: Metadata = {
   title: 'Letnia Batalia',
   description: 'Turniej z limitem MMR',
+  icons: {
+    icon: '/favicon.png',
+  },
 };
 
 export default function RootLayout({

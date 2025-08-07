@@ -22,12 +22,12 @@ import { registerTeam } from "@/lib/actions";
 import { uploadScreenshot, uploadTeamLogo } from "@/lib/storage";
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
-const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
+const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif"];
 
 const formSchema = z.object({
   name: z.string()
     .min(3, "Nazwa zespołu musi mieć co najmniej 3 znaki.")
-    .regex(/^[A-Za-z0-9 _-]+$/, "Nazwa zespołu może zawierać tylko litery, cyfry, spacje, myślniki i podkreślenia."),
+    .regex(/^[A-Za-zĄąĆćĘęŁłŃńÓóŚśŹźŻż0-9 _-]+$/, "Nazwa zespołu może zawierać tylko litery (w tym polskie), cyfry, spacje, myślniki i podkreślenia."),
   tag: z.string().min(2, "Tag musi mieć 2-4 znaki.").max(4),
   discordUsername: z.string().min(2, "Nick Discord jest wymagany."),
   motto: z.string().min(5, "Motto musi mieć co najmniej 5 znaków."),
@@ -37,10 +37,12 @@ const formSchema = z.object({
     (file) => !!file && file.size <= MAX_FILE_SIZE, `Maksymalny rozmiar pliku to 5MB.`
   ).refine(
     (file) => !!file && ACCEPTED_IMAGE_TYPES.includes(file.type),
-    "Obsługiwane są tylko formaty .jpg, .jpeg, .png i .webp."
+    "Obsługiwane są tylko formaty .jpg, .jpeg, .png, .webp i .gif."
   ),
   players: z.array(z.object({
-    nickname: z.string().min(2, "Nick jest wymagany."),
+    nickname: z.string()
+      .min(2, "Nick jest wymagany.")
+      .regex(/^[A-Za-zĄąĆćĘęŁłŃńÓóŚśŹźŻż0-9 _-]+$/, "Nick może zawierać tylko litery (w tym polskie), cyfry, spacje, myślniki i podkreślenia."),
     role: z.enum(PlayerRoles),
     mmr: z.coerce.number().min(1000).max(12000),
     steamProfileUrl: z.string().url("Musi być prawidłowym URL profilu Steam."),
@@ -50,7 +52,7 @@ const formSchema = z.object({
       (file) => !!file && file.size <= MAX_FILE_SIZE, `Maksymalny rozmiar pliku to 5MB.`
     ).refine(
       (file) => !!file && ACCEPTED_IMAGE_TYPES.includes(file.type),
-      "Obsługiwane są tylko formaty .jpg, .jpeg, .png i .webp."
+      "Obsługiwane są tylko formaty .jpg, .jpeg, .png, .webp i .gif."
     ),
   })).min(5, "Musisz zarejestrować dokładnie 5 graczy.").max(5),
   rulesAcknowledged: z.boolean().refine((val) => val === true, {
@@ -61,6 +63,21 @@ const formSchema = z.object({
   return totalMMR <= TEAM_MMR_CAP;
 }, {
   message: `Łączne MMR zespołu nie może przekroczyć ${TEAM_MMR_CAP.toLocaleString()}.`,
+  path: ["players"],
+}).refine(data => {
+  const roles = data.players.map(player => player.role);
+  const uniqueRoles = new Set(roles);
+  return uniqueRoles.size === roles.length;
+}, {
+  message: "Każdy gracz musi mieć unikalną rolę. Nie można duplikować ról.",
+  path: ["players"],
+}).refine(data => {
+  const roles = data.players.map(player => player.role);
+  const allRoles = new Set(PlayerRoles);
+  const playerRoles = new Set(roles);
+  return PlayerRoles.every(role => playerRoles.has(role));
+}, {
+  message: "Musisz mieć gracza na każdej pozycji: Carry, Mid, Offlane, Soft Support, Hard Support.",
   path: ["players"],
 });
 
@@ -303,7 +320,7 @@ export default function RegisterPage() {
                   <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
                     <FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl>
                     <div className="space-y-1 leading-none">
-                      <FormLabel>Zgadzam się z <Link href="/rules" className="text-primary hover:underline">regulaminem turnieju</Link>.</FormLabel>
+                      <FormLabel>Zgadzam się z <Link href="/rules" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">regulaminem turnieju</Link>.</FormLabel>
                       <FormMessage />
                     </div>
                   </FormItem>

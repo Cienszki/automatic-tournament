@@ -266,7 +266,11 @@ function getRankForStat(
                 </Badge>
               </div>
               <CardDescription className="text-lg mt-1">
-                {t('teamDetail.detailedProfile')}
+                {team.motto ? (
+                  <span className="italic">"{team.motto}"</span>
+                ) : (
+                  <span className="text-muted-foreground">{t('teamDetail.detailedProfile')}</span>
+                )}
               </CardDescription>
             </div>
           </div>

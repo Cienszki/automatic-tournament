@@ -190,8 +190,24 @@ export default function PlayerPage({ params }: PageProps) {
               <CardTitle className="text-4xl font-bold text-primary">{player.nickname}</CardTitle>
               <CardDescription className="text-lg mt-1">
                 <Badge variant="secondary" className="mr-2">{player.role}</Badge>
-                {t('playerDetail.memberOf')} <Link href={`/teams/${team.id}`} className="text-accent hover:underline font-medium">{team.name}</Link>
+                <Link href={`/teams/${team.id}`} className="text-accent hover:underline font-medium">{team.name}</Link>
               </CardDescription>
+              <div className="flex flex-wrap gap-2 mt-3 justify-center md:justify-start">
+                {player.steamProfileUrl && (
+                  <Button variant="outline" size="sm" asChild>
+                    <Link href={player.steamProfileUrl} target="_blank" rel="noopener noreferrer">
+                      <ExternalLink className="h-4 w-4 mr-2" />
+                      Steam Profile
+                    </Link>
+                  </Button>
+                )}
+                <Button variant="outline" size="sm" asChild>
+                  <Link href={`https://www.opendota.com/players/${player.steamId}`} target="_blank" rel="noopener noreferrer">
+                    <ExternalLink className="h-4 w-4 mr-2" />
+                    OpenDota
+                  </Link>
+                </Button>
+              </div>
             </div>
           </div>
         </CardHeader>

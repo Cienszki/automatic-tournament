@@ -208,6 +208,53 @@ export default function FantasyLeaguePage() {
         </span>
       </Card>
 
+      {/* Instructions Card */}
+      <Card className="shadow-lg">
+        <CardHeader>
+          <CardTitle className="text-2xl flex items-center">
+            <Info className="mr-2" />
+            {t('fantasy.buildTeam.instructions.title')}
+          </CardTitle>
+          <CardDescription>
+            {t('fantasy.hero.openToAll')}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-3">
+            <div className="flex items-start space-x-3">
+              <div className="flex-shrink-0 w-6 h-6 bg-primary rounded-full flex items-center justify-center text-white text-sm font-bold">1</div>
+              <p>{t('fantasy.buildTeam.instructions.step1')}</p>
+            </div>
+            <div className="flex items-start space-x-3">
+              <div className="flex-shrink-0 w-6 h-6 bg-primary rounded-full flex items-center justify-center text-white text-sm font-bold">2</div>
+              <p>{t('fantasy.buildTeam.instructions.step2')}</p>
+            </div>
+            <div className="flex items-start space-x-3">
+              <div className="flex-shrink-0 w-6 h-6 bg-primary rounded-full flex items-center justify-center text-white text-sm font-bold">3</div>
+              <p>{t('fantasy.buildTeam.instructions.step3')}</p>
+            </div>
+            <div className="flex items-start space-x-3">
+              <div className="flex-shrink-0 w-6 h-6 bg-primary rounded-full flex items-center justify-center text-white text-sm font-bold">4</div>
+              <p>{t('fantasy.buildTeam.instructions.step4')}</p>
+            </div>
+            <div className="flex items-start space-x-3">
+              <div className="flex-shrink-0 w-6 h-6 bg-primary rounded-full flex items-center justify-center text-white text-sm font-bold">5</div>
+              <p>{t('fantasy.buildTeam.instructions.step5')}</p>
+            </div>
+          </div>
+          <div className="border-t pt-4 space-y-2">
+            <div className="flex items-center space-x-2">
+              <BarChart2 className="h-4 w-4 text-primary" />
+              <p className="font-semibold text-sm">{t('fantasy.buildTeam.instructions.scoring')}</p>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Lock className="h-4 w-4 text-destructive" />
+              <p className="font-semibold text-sm text-destructive">{t('fantasy.buildTeam.instructions.deadline')}</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {!user ? (
         <Card className="shadow-lg text-center">
           <CardHeader>
