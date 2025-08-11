@@ -1,20 +1,25 @@
 
 "use client";
 
-import type { Match } from "@/lib/definitions";
+import type { Match, Team, Standin } from "@/lib/definitions";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { CalendarCheck, ShieldAlert } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { format } from "date-fns";
+import { StandinInfoDisplay } from "../StandinInfoDisplay";
+import { useTranslation } from "@/hooks/useTranslation";
 
 interface NextMatchCardProps {
   match?: Match;
   teamId: string;
+  teams?: Team[];
+  standins?: Standin[];
 }
 
-export function NextMatchCard({ match, teamId }: NextMatchCardProps) {
+export function NextMatchCard({ match, teamId, teams = [], standins = [] }: NextMatchCardProps) {
+  const { t } = useTranslation();
 
   if (!match) {
     return (
@@ -22,13 +27,13 @@ export function NextMatchCard({ match, teamId }: NextMatchCardProps) {
         <CardHeader>
           <CardTitle className="flex items-center text-primary">
             <CalendarCheck className="mr-2" />
-            Next Match
+            {t("teams.nextMatch")}
           </CardTitle>
         </CardHeader>
         <CardContent className="flex flex-grow flex-col items-center justify-center text-center text-muted-foreground p-6">
           <ShieldAlert className="w-12 h-12 mb-4 text-muted-foreground/50" />
-          <p className="font-semibold">No upcoming matches are scheduled yet.</p>
-          <p className="text-xs mt-2">Check back after the next round is drawn.</p>
+          <p className="font-semibold">{t("teams.noUpcomingMatches")}</p>
+          <p className="text-xs mt-2">{t("teams.noUpcomingMatchesDesc")}</p>
         </CardContent>
       </Card>
     );
@@ -41,7 +46,7 @@ export function NextMatchCard({ match, teamId }: NextMatchCardProps) {
       <CardHeader>
         <CardTitle className="flex items-center text-primary">
           <CalendarCheck className="mr-2" />
-          Next Match
+          {t("teams.nextMatch")}
         </CardTitle>
       </CardHeader>
       <CardContent className="text-center">
@@ -56,7 +61,7 @@ export function NextMatchCard({ match, teamId }: NextMatchCardProps) {
             />
             <p className="font-semibold">{match.teamA.name}</p>
           </div>
-          <p className="text-2xl font-bold text-muted-foreground">vs</p>
+          <p className="text-2xl font-bold text-muted-foreground">{t("teams.vs")}</p>
           <div className="flex flex-col items-center">
             <Image
               src={opponent.logoUrl || `https://placehold.co/64x64.png`}
@@ -71,11 +76,21 @@ export function NextMatchCard({ match, teamId }: NextMatchCardProps) {
         <p className="text-lg font-semibold text-accent">
           {match.dateTime || match.defaultMatchTime
             ? format(new Date(match.dateTime || match.defaultMatchTime), "PPP 'at' HH:mm")
-            : "TBD"}
+            : t("teams.tbd")}
         </p>
         <p className="text-sm text-muted-foreground mt-1">
-          Status: {match.status}
+          {t("teams.status")}: {match.status}
         </p>
+        {match.standinInfo && Object.keys(match.standinInfo).length > 0 && (
+          <div className="mt-3">
+            <StandinInfoDisplay 
+              match={match}
+              teams={teams}
+              standins={standins}
+              size="sm"
+            />
+          </div>
+        )}
       </CardContent>
     </Card>
   );

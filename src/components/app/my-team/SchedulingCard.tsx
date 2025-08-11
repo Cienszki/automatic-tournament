@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import type { Match } from "@/lib/definitions";
+import type { Match, Team, Standin } from "@/lib/definitions";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -11,20 +11,25 @@ import { Input } from "@/components/ui/input";
 import { format, isAfter } from "date-fns";
 import { Calendar as CalendarIcon, Check, X, Send, AlertTriangle, Loader2, Clock } from "lucide-react";
 import { useTime } from "@/context/TimeContext";
-import { proposeMatchTime, acceptMatchTime, rejectMatchTime, cancelProposal } from "@/lib/team-actions";
+import { proposeMatchTime, acceptMatchTime, rejectMatchTime, cancelProposal, cancelStandinRequest } from "@/lib/team-actions";
+import { useTranslation } from "@/hooks/useTranslation";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { CopyToClipboard } from "@/components/app/CopyToClipboard";
+import { StandinInfoDisplay } from "../StandinInfoDisplay";
 
 interface SchedulingCardProps {
   match: Match;
   teamId: string;
   captainId: string;
+  teams?: Team[];
+  standins?: Standin[];
 }
 
-export function SchedulingCard({ match, teamId, captainId }: SchedulingCardProps) {
+export function SchedulingCard({ match, teamId, captainId, teams = [], standins = [] }: SchedulingCardProps) {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { t } = useTranslation();
   const { simulatedTime } = useTime();
   const router = useRouter();
 
@@ -70,7 +75,7 @@ export function SchedulingCard({ match, teamId, captainId }: SchedulingCardProps
     ...args: any[]
   ) => {
     if (!user) {
-        toast({ title: "Not Authenticated", description: "You must be signed in.", variant: "destructive"});
+        toast({ title: t("teams.notAuthenticated"), description: t("teams.mustSignIn"), variant: "destructive"});
         return;
     }
     
@@ -82,14 +87,14 @@ export function SchedulingCard({ match, teamId, captainId }: SchedulingCardProps
         const token = await user.getIdToken();
         const result = await action(token, optimisticMatch.id, ...args);
         if (result.success) {
-            toast({ title: "Success!", description: result.message });
+            toast({ title: t("teams.success"), description: result.message });
             router.refresh(); 
         } else {
-            toast({ title: "Action Failed", description: result.message, variant: "destructive" });
+            toast({ title: t("teams.actionFailed"), description: result.message, variant: "destructive" });
             setOptimisticMatch(previousMatch);
         }
     } catch (error) {
-        toast({ title: "An Unexpected Error Occurred", description: (error as Error).message, variant: "destructive" });
+        toast({ title: t("teams.unexpectedError"), description: (error as Error).message, variant: "destructive" });
         setOptimisticMatch(previousMatch);
     }
     setIsSubmitting(false);
@@ -106,14 +111,14 @@ export function SchedulingCard({ match, teamId, captainId }: SchedulingCardProps
       handleAction(proposeMatchTime, optimisticUpdate, composedDate);
       setIsCalendarOpen(false);
     } else {
-        toast({ title: "Invalid Time", description: "Cannot propose a time after the deadline.", variant: "destructive"});
+        toast({ title: t("teams.invalidTime"), description: t("teams.cannotProposeAfterDeadline"), variant: "destructive"});
     }
   };
 
   const handleAccept = () => {
     if (!optimisticMatch.proposedTime) return;
      if (isAfter(new Date(optimisticMatch.proposedTime), deadline)) {
-        toast({ title: "Invalid Time", description: "Cannot accept a time that is past the deadline.", variant: "destructive"});
+        toast({ title: t("teams.invalidTime"), description: t("teams.cannotAcceptPastDeadline"), variant: "destructive"});
         return;
     }
     const optimisticUpdate: Partial<Match> = {
@@ -154,9 +159,9 @@ export function SchedulingCard({ match, teamId, captainId }: SchedulingCardProps
   return (
     <Card className="shadow-lg">
       <CardHeader>
-        <CardTitle>Schedule vs. {opponent.name}</CardTitle>
+        <CardTitle>{t("teams.scheduleVs")} {opponent.name}</CardTitle>
         <CardDescription>
-          Round Deadline: {format(deadline, "PPP 'at' HH:mm")}
+          {t("teams.roundDeadline")}: {format(deadline, "PPP 'at' HH:mm")}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -164,23 +169,100 @@ export function SchedulingCard({ match, teamId, captainId }: SchedulingCardProps
         {isUrgent && !officialTime && (
             <div className="p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-md flex items-center text-yellow-300">
                 <AlertTriangle className="h-5 w-5 mr-3" />
-                <p className="text-sm font-medium">Deadline approaching! Agree on a time to avoid the default.</p>
+                <p className="text-sm font-medium">{t("teams.deadlineApproaching")}</p>
             </div>
         )}
 
         {isDeadlinePassed && !officialTime && (
             <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-md flex items-center text-red-300">
                 <Clock className="h-5 w-5 mr-3" />
-                <p className="text-sm font-medium">Deadline has passed. Scheduling is locked.</p>
+                <p className="text-sm font-medium">{t("teams.deadlinePassed")}</p>
             </div>
         )}
         
+        {optimisticMatch.standinInfo && Object.keys(optimisticMatch.standinInfo).length > 0 && (
+          <div className="p-3 bg-orange-500/10 border border-orange-500/30 rounded-md">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <AlertTriangle className="h-4 w-4 mr-2 text-orange-300" />
+                <span className="text-sm font-medium text-orange-300">{t("teams.standinsAssigned")}</span>
+              </div>
+              {optimisticMatch.standinInfo[teamId] && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={async () => {
+                    if (!user) {
+                      toast({
+                        title: t('standins.notAuthenticated'),
+                        description: t('standins.mustSignIn'),
+                        variant: "destructive",
+                      });
+                      return;
+                    }
+                    setIsSubmitting(true);
+                    try {
+                      const token = await user.getIdToken();
+                      const result = await cancelStandinRequest(token, optimisticMatch.id, teamId);
+                      
+                      if (result.success) {
+                        // Update optimistic state to remove standin info
+                        const updatedMatch = { ...optimisticMatch };
+                        if (updatedMatch.standinInfo && updatedMatch.standinInfo[teamId]) {
+                          delete updatedMatch.standinInfo[teamId];
+                          // If no teams have standin info, remove the entire standinInfo
+                          if (Object.keys(updatedMatch.standinInfo).length === 0) {
+                            delete updatedMatch.standinInfo;
+                          }
+                        }
+                        setOptimisticMatch(updatedMatch);
+                        
+                        toast({
+                          title: t('standins.success'),
+                          description: result.message,
+                        });
+                        // Also refresh to get updated data from server
+                        router.refresh();
+                      } else {
+                        toast({
+                          title: t('standins.error'), 
+                          description: result.message,
+                          variant: "destructive",
+                        });
+                      }
+                    } catch (error) {
+                      console.error("Error cancelling standin:", error);
+                      toast({
+                        title: t('standins.error'), 
+                        description: t('standins.cancelStandinFailed'),
+                        variant: "destructive",
+                      });
+                    } finally {
+                      setIsSubmitting(false);
+                    }
+                  }}
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                  {t('standins.cancelStandin')}
+                </Button>
+              )}
+            </div>
+            <StandinInfoDisplay 
+              match={optimisticMatch}
+              teams={teams}
+              standins={standins}
+              size="sm"
+            />
+          </div>
+        )}
+        
         <div className="p-4 bg-muted/30 rounded-lg">
-          <p className="text-sm font-semibold mb-1">Official Match Time</p>
+          <p className="text-sm font-semibold mb-1">{t("teams.officialMatchTime")}</p>
           {officialTime ? (
             <p className="text-lg font-bold text-primary">{format(officialTime, "PPPP 'at' HH:mm")}</p>
           ) : (
-            <p className="text-muted-foreground italic">Not yet scheduled. Defaults to {format(defaultTime, "PPP 'at' HH:mm")}</p>
+            <p className="text-muted-foreground italic">{t("teams.notYetScheduled")} {format(defaultTime, "PPP 'at' HH:mm")}</p>
           )}
         </div>
 
@@ -192,7 +274,7 @@ export function SchedulingCard({ match, teamId, captainId }: SchedulingCardProps
                     <PopoverTrigger asChild>
                       <Button variant="outline" className="flex-grow justify-start font-normal">
                         <CalendarIcon className="mr-2 h-4 w-4" />
-                        {composedDate ? format(composedDate, "PPP 'at' HH:mm") : <span>Pick a date</span>}
+                        {composedDate ? format(composedDate, "PPP 'at' HH:mm") : <span>{t("teams.pickDate")}</span>}
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0">
@@ -204,53 +286,53 @@ export function SchedulingCard({ match, teamId, captainId }: SchedulingCardProps
                             initialFocus
                         />
                         <div className="p-4 border-t border-border">
-                          <p className="text-sm font-medium mb-2">Set Time (24h format)</p>
+                          <p className="text-sm font-medium mb-2">{t("teams.setTime")}</p>
                           <div className="flex items-center gap-2">
                             <Input type="number" value={hour} onChange={e => setHour(e.target.value)} min="0" max="23" className="w-16"/>
                             <span>:</span>
                             <Input type="number" value={minute} onChange={e => setMinute(e.target.value)} min="0" max="59" step="1" className="w-16"/>
                           </div>
-                           <Button variant="outline" size="sm" onClick={() => setIsCalendarOpen(false)} className="w-full mt-4">Done</Button>
+                           <Button variant="outline" size="sm" onClick={() => setIsCalendarOpen(false)} className="w-full mt-4">{t("teams.done")}</Button>
                         </div>
                     </PopoverContent>
                  </Popover>
                  <Button onClick={handlePropose} disabled={!composedDate || isSubmitting || isComposedDateInvalid}>
                     {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Send className="mr-2 h-4 w-4"/>}
-                    Propose Time
+                    {t("teams.proposeTime")}
                 </Button>
               </div>
             )}
             {isComposedDateInvalid && (
-                 <p className="text-xs text-destructive mt-2 text-center">The selected time is after the match deadline.</p>
+                 <p className="text-xs text-destructive mt-2 text-center">{t("teams.selectedTimeAfterDeadline")}</p>
             )}
 
             {optimisticMatch.schedulingStatus === 'proposed' && proposedTime && (
               <>
                 {isProposer && (
                   <div className="p-4 bg-blue-900/20 border border-blue-500/30 rounded-md text-center space-y-3">
-                    <p className="font-semibold">You proposed a new time!</p>
+                    <p className="font-semibold">{t("teams.youProposedTime")}</p>
                     <p className="text-lg font-bold text-blue-300">{format(proposedTime, "PPPP 'at' HH:mm")}</p>
-                    <p className="text-sm text-muted-foreground">Waiting for {opponent.name} to respond.</p>
+                    <p className="text-sm text-muted-foreground">{t("teams.waitingForResponse")} {opponent.name}.</p>
                     <Button variant="ghost" size="sm" onClick={handleCancel} disabled={isSubmitting} className="w-full mt-2">
-                        {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin"/> : "Cancel Proposal"}
+                        {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin"/> : t("teams.cancelProposal")}
                     </Button>
                   </div>
                 )}
                 {!isProposer && (
                   <div className="text-center p-4 border rounded-md">
-                    <p className="font-semibold">{opponent.name} proposed a new time:</p>
+                    <p className="font-semibold">{opponent.name} {t("teams.proposedNewTime")}</p>
                     <p className="text-lg font-bold text-primary my-2">{format(proposedTime, "PPPP 'at' HH:mm")}</p>
                      {isAfter(proposedTime, deadline) && (
-                         <p className="text-sm text-destructive my-2">This proposal is invalid as it is after the deadline.</p>
+                         <p className="text-sm text-destructive my-2">{t("teams.proposalInvalid")}</p>
                      )}
                     <div className="flex justify-center gap-2 mt-4">
                        <Button onClick={handleAccept} variant="secondary" className="bg-green-500 hover:bg-green-600" disabled={isSubmitting || isAfter(proposedTime, deadline)}>
                             {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Check className="mr-2 h-4 w-4"/>}
-                            Accept
+                            {t("teams.accept")}
                         </Button>
                        <Button onClick={handleReject} variant="destructive" disabled={isSubmitting}>
                             {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <X className="mr-2 h-4 w-4"/>}
-                            Reject
+                            {t("teams.reject")}
                         </Button>
                     </div>
                   </div>

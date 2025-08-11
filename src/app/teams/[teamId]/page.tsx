@@ -41,6 +41,7 @@ import Link from "next/link";
 import { CopyToClipboard } from "@/components/app/CopyToClipboard";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useEffect, useState } from "react";
+import { getUserProfile } from "@/lib/firestore";
 
 
 const getStatusBadgeClasses = (status?: TeamStatus) => {
@@ -80,6 +81,7 @@ interface PageProps {
 export default function TeamPage({ params }: PageProps) {
   const { t } = useTranslation();
   const [team, setTeam] = useState<Team | null>(null);
+  const [captainDiscord, setCaptainDiscord] = useState<string | null>(null);
   const [teamMatches, setTeamMatches] = useState<Match[]>([]);
   const [allTeams, setAllTeams] = useState<Team[]>([]);
   const [loading, setLoading] = useState(true);
@@ -116,6 +118,20 @@ export default function TeamPage({ params }: PageProps) {
         setTeam(teamData);
         setTeamMatches(teamMatchesFiltered);
         setAllTeams(allTeamsData);
+        // Fetch captain's Discord if not present on team
+        if (teamData.discordUsername) {
+          setCaptainDiscord(teamData.discordUsername);
+        } else if (teamData.captainDiscordUsername) {
+          setCaptainDiscord(teamData.captainDiscordUsername);
+        } else if (teamData.captainId) {
+          try {
+            const profile = await getUserProfile(teamData.captainId);
+            setCaptainDiscord(profile?.discordUsername || null);
+          } catch (error) {
+            console.log('Could not fetch captain profile (permissions):', error);
+            setCaptainDiscord(null);
+          }
+        }
       } catch (error) {
         console.error('Error fetching team data:', error);
       } finally {
@@ -283,12 +299,12 @@ function getRankForStat(
              <InfoItem icon={ListChecks} label={t('teamDetail.matchesPlayed')} value={team.matchesPlayed ?? 0} />
              <InfoItem icon={Swords} label={t('teamDetail.winsDrawsLosses')} value={`${team.wins ?? 0}W / ${team.draws ?? 0}D / ${team.losses ?? 0}L`} />
              <InfoItem icon={Sigma} label={t('teamDetail.totalMMR')} value={formatNumber(totalMMR)} />
-             {team.captainDiscordUsername && (
+             {captainDiscord && (
                 <div className="flex items-center text-md p-3 bg-muted/20 rounded-md">
                     <MessageSquare className="h-5 w-5 mr-3 text-primary" />
                     <span className="font-medium text-muted-foreground">{t('teamDetail.captainDiscord')}:</span>
-                    <span className="ml-auto font-semibold text-foreground">{team.captainDiscordUsername}</span>
-                    <CopyToClipboard text={team.captainDiscordUsername} />
+                    <span className="ml-auto font-semibold text-foreground">{captainDiscord}</span>
+                    <CopyToClipboard text={captainDiscord} />
                 </div>
              )}
           </div>

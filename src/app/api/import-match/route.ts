@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getAllTeams, getAllTournamentPlayers, saveGameResults } from "@/lib/firestore";
 import { transformMatchData } from "@/lib/opendota";
 import { recalculateMatchScoresAdmin } from "@/lib/admin-match-actions-server";
+import { updateStatsAfterMatchChange } from "@/lib/stats-service-simple";
 
 export async function POST(req: Request) {
   try {
@@ -31,6 +32,15 @@ export async function POST(req: Request) {
     } catch (recalcError) {
       console.error(`Failed to recalculate scores for match ${matchId}:`, recalcError);
       // Don't fail the entire operation if recalculation fails
+    }
+    
+    // Update tournament statistics
+    try {
+      await updateStatsAfterMatchChange(matchId);
+      console.log('Tournament statistics updated after match import');
+    } catch (statsError) {
+      console.error('Failed to update tournament statistics:', statsError);
+      // Don't fail the entire operation if stats update fails
     }
     
     return NextResponse.json({ success: true });

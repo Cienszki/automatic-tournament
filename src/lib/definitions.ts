@@ -60,6 +60,13 @@ export interface Match {
   winnerId?: string | null; // Winner of the match, null for draws
   playerPerformances?: PlayerPerformanceInMatch[];
   openDotaMatchUrl?: string;
+  standinInfo?: { 
+    [teamId: string]: {
+      teamId: string;
+      unavailablePlayers: string[];
+      standins: string[];
+    }
+  };
 }
 
 export interface PlayerPerformanceInMatch {
@@ -253,4 +260,35 @@ export interface Announcement {
     authorId: string;
     authorName: string;
     createdAt: Date;
+}
+
+export type StandinStatus = 'pending' | 'verified';
+
+export interface Standin {
+    id: string;
+    userId: string;
+    nickname: string;
+    discordUsername: string;
+    mmr: number;
+    profileScreenshotUrl: string;
+    steamProfileUrl: string;
+    steamId?: string;
+    steamId32?: string;
+    roles: string[]; // Array of roles they can play: 'Carry', 'Mid', 'Offlane', 'Soft Support', 'Hard Support'
+    description: string; // Max 300 characters - when available, heroes they play, additional info
+    status: StandinStatus;
+    createdAt: string;
+    verifiedAt?: string;
+    matches?: string[]; // Array of match IDs where they are standing in
+}
+
+export interface StandinRequest {
+    id: string;
+    matchId: string;
+    teamId: string;
+    captainId: string;
+    unavailablePlayers: string[]; // Player IDs who won't be available
+    requestedStandins: string[]; // Standin IDs requested
+    createdAt: string;
+    status: 'pending' | 'approved' | 'rejected';
 }

@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ListChecks, Swords, Sparkles, Shield, HandHelping, Eye, Users } from "lucide-react";
 import { PlayerAvatar } from "../PlayerAvatar";
 import { sortPlayersByRole } from "@/lib/utils";
+import { useTranslation } from "@/hooks/useTranslation";
 
 interface RosterCardProps {
   team?: Team | null;
@@ -19,17 +20,19 @@ const roleIcons: Record<PlayerRole, React.ElementType> = {
 };
 
 export function RosterCard({ team, upcomingMatches }: RosterCardProps) {
+  const { t } = useTranslation();
+
   if (!team) {
     return (
         <Card className="shadow-lg">
             <CardHeader>
                 <CardTitle className="flex items-center text-primary">
                     <Users className="mr-2" />
-                    Team Roster
+                    {t("teams.teamRoster")}
                 </CardTitle>
             </CardHeader>
             <CardContent>
-                <p>No team data available.</p>
+                <p>{t("teams.noTeamData")}</p>
             </CardContent>
         </Card>
     );
@@ -42,7 +45,7 @@ export function RosterCard({ team, upcomingMatches }: RosterCardProps) {
       <CardHeader>
         <CardTitle className="flex items-center text-primary">
           <Users className="mr-2" />
-          Team Roster
+          {t("teams.teamRoster")}
         </CardTitle>
       </CardHeader>
       <CardContent>

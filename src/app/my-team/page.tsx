@@ -14,8 +14,8 @@ import { PlayerAnalyticsTable } from "@/components/app/my-team/PlayerAnalyticsTa
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
 import { getUserTeam } from "@/lib/team-actions";
-import { getMatchesForTeam } from "@/lib/firestore";
-import type { Team, Match } from "@/lib/definitions";
+import { getMatchesForTeam, getAllTeams, getAllStandins } from "@/lib/firestore";
+import type { Team, Match, Standin } from "@/lib/definitions";
 import NoTeamFound from '@/components/app/my-team/NoTeamFound';
 
 export default function MyTeamPage() {
@@ -23,6 +23,8 @@ export default function MyTeamPage() {
   const { t } = useTranslation();
   const [team, setTeam] = React.useState<Team | null>(null);
   const [matches, setMatches] = React.useState<Match[]>([]);
+  const [teams, setTeams] = React.useState<Team[]>([]);
+  const [standins, setStandins] = React.useState<Standin[]>([]);
   const [hasTeam, setHasTeam] = React.useState(false);
   const [loading, setLoading] = React.useState(true);
 
@@ -30,16 +32,28 @@ export default function MyTeamPage() {
     const fetchTeamData = async () => {
       if (user) {
         setLoading(true);
-        const { hasTeam, team } = await getUserTeam(user.uid);
-        setHasTeam(hasTeam);
-        setTeam(team || null);
+        try {
+          const { hasTeam, team } = await getUserTeam(user.uid);
+          setHasTeam(hasTeam);
+          setTeam(team || null);
 
-        if (team) {
-            const teamMatches = await getMatchesForTeam(team.id);
-            setMatches(teamMatches);
+          if (team) {
+              const teamMatches = await getMatchesForTeam(team.id);
+              setMatches(teamMatches);
+          }
+          
+          // Fetch teams and standins for standin display
+          const [allTeams, allStandins] = await Promise.all([
+            getAllTeams(),
+            getAllStandins()
+          ]);
+          setTeams(allTeams);
+          setStandins(allStandins);
+        } catch (error) {
+          console.error('Error fetching team data:', error);
+        } finally {
+          setLoading(false);
         }
-        
-        setLoading(false);
       } else {
         setLoading(false);
       }
@@ -119,7 +133,14 @@ export default function MyTeamPage() {
         <div className="lg:col-span-2 space-y-8">
           {upcomingMatches.length > 0 ? (
             upcomingMatches.map(match => (
-              <SchedulingCard key={match.id} match={match} teamId={team.id} captainId={user.uid} />
+              <SchedulingCard 
+                key={match.id} 
+                match={match} 
+                teamId={team.id} 
+                captainId={user.uid}
+                teams={teams}
+                standins={standins}
+              />
             ))
           ) : (
             <Card>
@@ -127,7 +148,12 @@ export default function MyTeamPage() {
               <CardContent><p>{t("myTeam.noMatchesScheduled")}</p></CardContent>
             </Card>
           )}
-          <MatchHistoryTable matches={pastMatches} teamId={team.id} />
+          <MatchHistoryTable 
+            matches={pastMatches} 
+            teamId={team.id}
+            teams={teams}
+            standins={standins}
+          />
         </div>
         <div className="space-y-8">
           <RosterCard team={team} />

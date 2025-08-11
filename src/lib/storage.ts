@@ -18,3 +18,12 @@ export const uploadTeamLogo = async (file: File, teamName: string) => {
     const downloadURL = await getDownloadURL(storageRef);
     return downloadURL;
 };
+
+export const uploadStandinScreenshot = async (file: File, standinId: string) => {
+    const fileExtension = file.name.split('.').pop();
+    const screenshotFileName = `standin-${standinId}-${uuidv4()}.${fileExtension}`;
+    const storageRef = ref(storage, `standin-screenshots/${screenshotFileName}`);
+    await uploadBytes(storageRef, file);
+    const downloadURL = await getDownloadURL(storageRef);
+    return downloadURL;
+};

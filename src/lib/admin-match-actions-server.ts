@@ -1,5 +1,6 @@
 import type { Match } from "./definitions";
 import { updateStandingsAfterGameAdmin } from "./group-actions-admin";
+import { updateStatsAfterMatchChange } from "./stats-service-simple";
 
 // Delete a game, block it from sync, and update match/game_ids and standings - ADMIN VERSION
 export async function adminDeleteGameAndHandleScore(match: Match, gameId: string): Promise<{ success: boolean; message: string }> {
@@ -23,6 +24,15 @@ export async function adminDeleteGameAndHandleScore(match: Match, gameId: string
 
     // 4. Recalculate match scores based on remaining games
     await recalculateMatchScoresAdmin(match.id);
+    
+    // 5. Update tournament statistics
+    try {
+      await updateStatsAfterMatchChange(match.id);
+      console.log('Tournament statistics updated after game deletion');
+    } catch (statsError) {
+      console.error('Failed to update tournament statistics:', statsError);
+      // Don't fail the entire operation if stats update fails
+    }
 
     return { success: true, message: "Game deleted, blocked from sync, and scores/standings updated." };
   } catch (error) {

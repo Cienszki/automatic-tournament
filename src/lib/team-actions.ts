@@ -3,7 +3,7 @@
 "use server";
 import { revalidatePath } from 'next/cache';
 import { getAdminDb, ensureAdminInitialized, getAdminAuth } from '@/lib/admin';
-import { Timestamp, getFirestore } from 'firebase-admin/firestore';
+import { Timestamp, getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { getTeamById } from './firestore';
 import { Team } from './definitions';
 
@@ -147,6 +147,63 @@ export async function cancelProposal(token: string, matchId: string) {
         revalidatePath('/my-team');
         return { success: true, message: 'Your proposal has been cancelled.' };
     } catch (error) {
+        return { success: false, message: (error as Error).message };
+    }
+}
+
+export async function cancelStandinRequest(token: string, matchId: string, teamId: string) {
+    try {
+        const decodedToken = await verifyUser(token);
+        
+        const { matchRef, match } = await getMatchAndVerifyCaptain(matchId, decodedToken.uid);
+
+        const db = getAdminDb();
+        
+        // Get match document reference and data
+        const currentMatchData = match;
+        
+        // Remove standin information for this team from the match
+        const updatedStandinInfo = { ...currentMatchData.standinInfo };
+        if (updatedStandinInfo && updatedStandinInfo[teamId]) {
+            delete updatedStandinInfo[teamId];
+        }
+        
+        // If no teams have standin info, remove the entire field
+        const hasStandinInfo = Object.keys(updatedStandinInfo).length > 0;
+        
+        if (hasStandinInfo) {
+            await matchRef.update({ standinInfo: updatedStandinInfo });
+        } else {
+            await matchRef.update({ standinInfo: FieldValue.delete() });
+        }
+        
+        // Find and delete all standin requests for this team and match
+        const standinRequestsRef = db.collection('standinRequests');
+        const query = standinRequestsRef
+            .where('matchId', '==', matchId)
+            .where('teamId', '==', teamId);
+        
+        const snapshot = await query.get();
+        
+        // Delete all matching standin request documents
+        const batch = db.batch();
+        snapshot.docs.forEach(doc => {
+            batch.delete(doc.ref);
+        });
+        
+        if (!snapshot.empty) {
+            await batch.commit();
+        }
+        
+        const teamRef = db.collection('teams').doc(teamId);
+        await teamRef.update({
+            standinPlayerIds: FieldValue.delete()
+        });
+
+        revalidatePath('/my-team');
+        return { success: true, message: 'Prośba o rezerwowego została anulowana. Twoi pierwotni gracze mogą teraz uczestniczyć.' };
+    } catch (error) {
+        console.error('Error in cancelStandinRequest:', error);
         return { success: false, message: (error as Error).message };
     }
 }

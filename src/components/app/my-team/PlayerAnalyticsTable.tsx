@@ -9,37 +9,41 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useTranslation } from "@/hooks/useTranslation";
 
 interface PlayerAnalyticsTableProps {
   team?: Team | null;
 }
 
-const statColumns = [
-    { key: "avgKda", label: "KDA", description: "Kills, Deaths, Assists Ratio ((K+A)/D)" },
-    { key: "avgKillParticipation", label: "KP%", description: "Kill Participation Percentage" },
-    { key: "avgGPM", label: "GPM", description: "Gold Per Minute" },
-    { key: "avgXPM", label: "XPM", description: "Experience Per Minute" },
-    { key: "avgLastHitsPerMinute", label: "LH/min", description: "Last Hits Per Minute" },
-    { key: "avgHeroDamagePerMinute", label: "HD/min", description: "Hero Damage Per Minute" },
-    { key: "avgTowerDamagePerMinute", label: "TD/min", description: "Tower Damage Per Minute" },
-    { key: "avgWardsPlacedPerMinute", label: "Wards/min", description: "Wards Placed Per Minute" },
-    { key: "avgStunsPerMinute", label: "Stuns/min", description: "Stun Duration Per Minute" },
-    { key: "avgSaves", label: "Saves", description: "Saves on Teammates" },
-    { key: "avgCampsStacked", label: "Stacks", description: "Camps Stacked" },
-];
-
 export function PlayerAnalyticsTable({ team }: PlayerAnalyticsTableProps) {
+  const { t } = useTranslation();
   const players = team?.players || [];
+  
+  const statColumns = [
+    { key: "avgKda", label: t("teams.kda"), description: t("teams.kdaDesc") },
+    { key: "avgKillParticipation", label: t("teams.killParticipation"), description: t("teams.killParticipationDesc") },
+    { key: "avgGPM", label: t("teams.gpm"), description: t("teams.gpmDesc") },
+    { key: "avgXPM", label: t("teams.xpm"), description: t("teams.xpmDesc") },
+    { key: "avgLastHitsPerMinute", label: t("teams.lastHitsMin"), description: t("teams.lastHitsMinDesc") },
+    { key: "avgHeroDamagePerMinute", label: t("teams.heroDamageMin"), description: t("teams.heroDamageMinDesc") },
+    { key: "avgTowerDamagePerMinute", label: t("teams.towerDamageMin"), description: t("teams.towerDamageMinDesc") },
+    { key: "avgWardsPlacedPerMinute", label: t("teams.wardsMin"), description: t("teams.wardsMinDesc") },
+    { key: "avgStunsPerMinute", label: t("teams.stunsMin"), description: t("teams.stunsMinDesc") },
+    { key: "avgHeroHealingPerMinute", label: t("teams.heroHealingMin"), description: t("teams.heroHealingMinDesc") },
+    { key: "avgDeniesPerMinute", label: t("teams.deniesMin"), description: t("teams.deniesMinDesc") },
+    { key: "avgObserverKills", label: t("teams.wardKills"), description: t("teams.wardKillsDesc") },
+    { key: "avgCampsStacked", label: t("teams.stacks"), description: t("teams.stacksDesc") },
+  ];
     
   return (
     <Card className="shadow-lg">
       <CardHeader>
         <CardTitle className="flex items-center text-primary">
           <BarChart2 className="mr-2" />
-          Player Analytics
+          {t("teams.playerAnalytics")}
         </CardTitle>
         <CardDescription>
-          Hover over column headers for stat descriptions. All stats are averaged per game.
+          {t("teams.playerAnalyticsDesc")}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -48,7 +52,7 @@ export function PlayerAnalyticsTable({ team }: PlayerAnalyticsTableProps) {
             <TooltipProvider>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="sticky left-0 bg-card z-10">Player</TableHead>
+                  <TableHead className="sticky left-0 bg-card z-10">{t("player.player")}</TableHead>
                   {statColumns.map(col => (
                     <TableHead key={col.key} className="text-center">
                        <Tooltip>
@@ -79,7 +83,7 @@ export function PlayerAnalyticsTable({ team }: PlayerAnalyticsTableProps) {
                 ) : (
                     <TableRow>
                         <TableCell colSpan={statColumns.length + 1} className="text-center h-24">
-                            No player data available.
+                            {t("teams.noPlayerData")}
                         </TableCell>
                     </TableRow>
                 )}

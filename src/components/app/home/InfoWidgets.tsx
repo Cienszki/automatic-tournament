@@ -143,10 +143,16 @@ export function InfoWidgets() {
 
       {/* New sections below the main 4 */}
       <section className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4 mt-8">
-        {/* Informational: MMR Limit */}
+        {/* Stand-in Registration */}
         <Card className="min-h-[120px] flex flex-col items-center justify-center bg-gradient-to-br from-[#23243a] via-[#3a295a] to-[#181c2f] shadow-none border-0 relative overflow-hidden transition-transform duration-300 hover:scale-105 hover:shadow-[0_0_32px_8px_#b86fc6cc,0_0_24px_0_#0ff0fc99]">
-          <CardContent className="flex items-center justify-center w-full h-full">
-            <span className="text-2xl font-extrabold text-[#b86fc6] drop-shadow-[0_0_4px_#b86fc6] tracking-widest animate-pulse uppercase">{t('home.mmrLimitTournament')}</span>
+          <CardContent className="flex items-center justify-center w-full h-full p-0">
+            <Link
+              href="/standins"
+              className="w-full h-full flex items-center justify-center text-[#b86fc6] font-extrabold text-lg py-6 rounded-lg bg-transparent hover:bg-[#b86fc6]/10 transition-all duration-300 tracking-widest shadow-lg uppercase border-2 border-[#b86fc6] hover:border-[#0ff0fc] hover:shadow-[0_0_16px_4px_#b86fc699] hover:text-[#0ff0fc]"
+              style={{ borderRadius: 8 }}
+            >
+              <span className="drop-shadow-[0_0_8px_#b86fc6]">{t('home.becomeStandin')}</span>
+            </Link>
           </CardContent>
         </Card>
         {/* Informational: Magenta Button */}

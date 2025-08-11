@@ -2,6 +2,7 @@
 import type { Team } from "@/lib/definitions";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Award, BarChart, Clock, Percent, Ratio, Shield, Sigma, Trophy, Users, BarChart3, TrendingUp, TrendingDown } from "lucide-react";
+import { useTranslation } from "@/hooks/useTranslation";
 
 interface TeamStatsGridProps {
   team?: Team | null;
@@ -32,6 +33,8 @@ function StatCard({ icon: Icon, label, value, description }: StatCardProps) {
 }
 
 export function TeamStatsGrid({ team }: TeamStatsGridProps) {
+  const { t } = useTranslation();
+
   if (!team) {
     return (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -58,58 +61,58 @@ export function TeamStatsGrid({ team }: TeamStatsGridProps) {
 
   const kda = team.averageDeathsPerGame && team.averageDeathsPerGame > 0
       ? (((team.averageKillsPerGame ?? 0) + (team.averageAssistsPerGame ?? 0)) / team.averageDeathsPerGame).toFixed(2)
-      : 'Perfect';
+      : t("teams.perfect");
 
 
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
       <StatCard
         icon={Trophy}
-        label="Record"
+        label={t("teams.record")}
         value={`${team.wins ?? 0}W - ${team.losses ?? 0}L - ${team.draws ?? 0}D`}
-        description="Wins / Losses"
+        description={t("teams.winsLosses")}
       />
       <StatCard
         icon={Percent}
-        label="Win Rate"
+        label={t("teams.winRate")}
         value={`${winRate.toFixed(1)}%`}
-        description={`${matchesPlayed} games played`}
+        description={`${matchesPlayed} ${t("teams.gamesPlayed")}`}
       />
       <StatCard
         icon={Clock}
-        label="Avg. Duration"
-        value={`${team.averageMatchDurationMinutes ?? 0} min`}
-        description="Average match length"
+        label={t("teams.avgDuration")}
+        value={`${team.averageMatchDurationMinutes ?? 0} ${t("teams.min")}`}
+        description={t("teams.averageMatchLength")}
       />
       <StatCard
         icon={TrendingUp}
-        label="Avg. KDA"
+        label={t("teams.avgKDA")}
         value={kda}
-        description="Team KDA Ratio"
+        description={t("teams.teamKDARatio")}
       />
       <StatCard
         icon={TrendingUp}
-        label="Avg. Kills"
+        label={t("teams.avgKills")}
         value={team.averageKillsPerGame?.toFixed(1) ?? 'N/A'}
-        description="Kills per game"
+        description={t("teams.killsPerGame")}
       />
       <StatCard
         icon={TrendingDown}
-        label="Avg. Deaths"
+        label={t("teams.avgDeaths")}
         value={team.averageDeathsPerGame?.toFixed(1) ?? 'N/A'}
-        description="Deaths per game"
+        description={t("teams.deathsPerGame")}
       />
       <StatCard
         icon={BarChart3}
-        label="Avg. Assists"
+        label={t("teams.avgAssists")}
         value={team.averageAssistsPerGame?.toFixed(1) ?? 'N/A'}
-        description="Assists per game"
+        description={t("teams.assistsPerGame")}
       />
       <StatCard
         icon={Award}
-        label="Avg. Fantasy Pts"
+        label={t("teams.avgFantasyPts")}
         value={team.averageFantasyPoints?.toFixed(1) ?? 'N/A'}
-        description="Team fantasy total"
+        description={t("teams.teamFantasyTotal")}
       />
     </div>
   );

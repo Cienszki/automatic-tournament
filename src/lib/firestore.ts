@@ -1,8 +1,8 @@
 // src/lib/firestore.ts
-import { collection, getDocs, doc, getDoc, setDoc, query, where, orderBy, addDoc, writeBatch, updateDoc, serverTimestamp, deleteDoc, Timestamp, arrayUnion } from "firebase/firestore";
+import { collection, getDocs, doc, getDoc, setDoc, query, where, orderBy, addDoc, writeBatch, updateDoc, serverTimestamp, deleteDoc, Timestamp, arrayUnion, deleteField, arrayRemove } from "firebase/firestore";
 import { db } from "./firebase";
 import type { User } from "firebase/auth";
-import type { Team, Match, PlayoffData, FantasyLineup, FantasyData, TournamentPlayer, PickemPrediction, Player, CategoryDisplayStats, TournamentHighlightRecord, CategoryRankingDetail, PlayerPerformanceInGame, Announcement, Group, GroupStanding, Pickem, UserProfile, PlayerRole, Game } from "./definitions";
+import type { Team, Match, PlayoffData, FantasyLineup, FantasyData, TournamentPlayer, PickemPrediction, Player, CategoryDisplayStats, TournamentHighlightRecord, CategoryRankingDetail, PlayerPerformanceInGame, Announcement, Group, GroupStanding, Pickem, UserProfile, PlayerRole, Game, Standin } from "./definitions";
 
 // ... (other functions)
 
@@ -626,4 +626,189 @@ export async function updateAllTeamStatistics(): Promise<void> {
     }
     
     console.log('Finished updating all team statistics');
+}
+
+// ========== STANDIN FUNCTIONS ==========
+
+export async function getAllStandins(): Promise<Standin[]> {
+    const standinsCollection = collection(db, 'standins');
+    const q = query(standinsCollection, orderBy('createdAt', 'desc'));
+    const querySnapshot = await getDocs(q);
+    
+    return querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+    })) as Standin[];
+}
+
+export async function getVerifiedStandins(): Promise<Standin[]> {
+    const standinsCollection = collection(db, 'standins');
+    const q = query(
+        standinsCollection, 
+        where('status', '==', 'verified'), 
+        orderBy('mmr', 'desc')
+    );
+    const querySnapshot = await getDocs(q);
+    
+    return querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+    })) as Standin[];
+}
+
+export async function getStandinById(standinId: string): Promise<Standin | null> {
+    const standinDoc = await getDoc(doc(db, 'standins', standinId));
+    if (standinDoc.exists()) {
+        return { id: standinDoc.id, ...standinDoc.data() } as Standin;
+    }
+    return null;
+}
+
+export async function verifyStandin(standinId: string): Promise<void> {
+    const standinRef = doc(db, 'standins', standinId);
+    await updateDoc(standinRef, {
+        status: 'verified',
+        verifiedAt: new Date().toISOString()
+    });
+}
+
+export async function deleteStandin(standinId: string): Promise<void> {
+    await deleteDoc(doc(db, 'standins', standinId));
+}
+
+export async function createStandinRequest(
+    matchId: string, 
+    teamId: string, 
+    captainId: string, 
+    unavailablePlayers: string[], 
+    requestedStandins: string[]
+): Promise<void> {
+    const standinRequestData = {
+        matchId,
+        teamId,
+        captainId,
+        unavailablePlayers,
+        requestedStandins,
+        createdAt: new Date().toISOString(),
+        status: 'approved' // Changed from 'pending' since standins are auto-approved
+    };
+    
+    await addDoc(collection(db, 'standinRequests'), standinRequestData);
+    
+    // Update match document with standin info
+    const matchRef = doc(db, 'matches', matchId);
+    const standinInfo = {
+        teamId,
+        unavailablePlayers,
+        standins: requestedStandins
+    };
+    
+    await updateDoc(matchRef, {
+        [`standinInfo.${teamId}`]: standinInfo
+    });
+    
+    // Update standin documents with match reference
+    for (const standinId of requestedStandins) {
+        const standinRef = doc(db, 'standins', standinId);
+        await updateDoc(standinRef, {
+            matches: arrayUnion(matchId)
+        });
+    }
+}
+
+export async function cancelStandinRequest(
+    matchId: string, 
+    teamId: string, 
+    captainId: string
+): Promise<void> {
+    console.log('=== CANCEL STANDIN DEBUG ===');
+    console.log('Input params:', { matchId, teamId, captainId });
+    
+    try {
+        // Step 1: Remove standin info from match document
+        console.log('Step 1: Removing standin info from match');
+        const matchRef = doc(db, 'matches', matchId);
+        await updateDoc(matchRef, {
+            [`standinInfo.${teamId}`]: deleteField()
+        });
+        console.log('✅ Step 1 completed: Match standin info removed');
+        
+        // Step 2: Find standin requests
+        console.log('Step 2: Finding standin requests');
+        const standinRequestsQuery = query(
+            collection(db, 'standinRequests'),
+            where('matchId', '==', matchId),
+            where('teamId', '==', teamId),
+            where('captainId', '==', captainId)
+        );
+        
+        const querySnapshot = await getDocs(standinRequestsQuery);
+        console.log(`✅ Step 2 completed: Found ${querySnapshot.size} standin request(s)`);
+        
+        if (querySnapshot.empty) {
+            console.log('⚠️ No standin requests found to delete');
+            return;
+        }
+        
+        // Step 3: Process standin requests
+        console.log('Step 3: Processing standin requests');
+        const batch = writeBatch(db);
+        
+        querySnapshot.docs.forEach((docSnap, index) => {
+            const requestData = docSnap.data();
+            console.log(`Processing request ${index + 1}:`, requestData);
+            
+            // Remove match reference from standin documents
+            if (requestData.requestedStandins && Array.isArray(requestData.requestedStandins)) {
+                console.log(`Updating ${requestData.requestedStandins.length} standin document(s)`);
+                for (const standinId of requestData.requestedStandins) {
+                    const standinRef = doc(db, 'standins', standinId);
+                    batch.update(standinRef, {
+                        matches: arrayRemove(matchId)
+                    });
+                    console.log(`Added standin update to batch: ${standinId}`);
+                }
+            }
+            
+            // Delete the request
+            batch.delete(docSnap.ref);
+            console.log(`Added request deletion to batch: ${docSnap.id}`);
+        });
+        
+        console.log('Step 4: Committing batch operations');
+        await batch.commit();
+        console.log('✅ Step 4 completed: Batch committed successfully');
+        console.log('=== CANCEL STANDIN SUCCESS ===');
+        
+    } catch (error) {
+        console.error('❌ CANCEL STANDIN ERROR:', error);
+        console.error('Error details:', {
+            name: error instanceof Error ? error.name : 'Unknown',
+            message: error instanceof Error ? error.message : 'Unknown error',
+            code: (error as any)?.code,
+            stack: error instanceof Error ? error.stack : undefined
+        });
+        throw error;
+    }
+}
+
+export async function checkIfSteamIdIsAlreadyPlayer(steamId32: string): Promise<boolean> {
+    try {
+        const allTeams = await getAllTeams();
+        
+        for (const team of allTeams) {
+            if (team.players) {
+                for (const player of team.players) {
+                    if (player.steamId32 === steamId32 || player.steamId === steamId32) {
+                        return true;
+                    }
+                }
+            }
+        }
+        
+        return false;
+    } catch (error) {
+        console.error('Error checking if Steam ID is already a player:', error);
+        throw error;
+    }
 }

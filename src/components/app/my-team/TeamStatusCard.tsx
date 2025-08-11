@@ -4,7 +4,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { Mail, Info, CheckCircle, AlertTriangle, Ban, Clock } from "lucide-react";
+import { Users, Info, CheckCircle, AlertTriangle, Ban, Clock } from "lucide-react";
+import { StandinRequestModal } from "@/components/app/StandinRequestModal";
+import { useTranslation } from "@/hooks/useTranslation";
 
 interface TeamStatusCardProps {
   team?: Team | null;
@@ -23,17 +25,19 @@ function getStatusInfo(status: TeamStatus) {
 }
 
 export function TeamStatusCard({ team }: TeamStatusCardProps) {
+  const { t } = useTranslation();
+  
   if (!team) {
     return (
       <Card className="shadow-lg">
         <CardHeader>
           <CardTitle className="flex items-center text-primary">
             <Info className="mr-2" />
-            Team Status
+            {t("teams.teamStatus")}
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <p>Loading status...</p>
+          <p>{t("teams.loadingStatus")}</p>
         </CardContent>
       </Card>
     );
@@ -46,7 +50,7 @@ export function TeamStatusCard({ team }: TeamStatusCardProps) {
       <CardHeader>
         <CardTitle className="flex items-center text-primary">
           <Info className="mr-2" />
-          Team Status
+          {t("teams.teamStatus")}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -54,9 +58,16 @@ export function TeamStatusCard({ team }: TeamStatusCardProps) {
           <StatusIcon className="mr-2 h-4 w-4" />
           {team.status}
         </Badge>
-        <Button variant="outline" className="w-full" onClick={() => alert('Contact Admin form (simulated)')}>
-          <Mail className="mr-2 h-4 w-4" /> Contact Admin
-        </Button>
+        
+        <StandinRequestModal 
+          team={team}
+          trigger={
+            <Button variant="outline" className="w-full">
+              <Users className="mr-2 h-4 w-4" /> 
+              {t("teams.needStandin")}
+            </Button>
+          }
+        />
       </CardContent>
     </Card>
   );

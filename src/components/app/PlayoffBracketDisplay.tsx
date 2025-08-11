@@ -3,11 +3,12 @@
 import React from 'react';
 import type { PlayoffData, Match as PlayoffMatch, Team } from '@/lib/definitions';
 import Link from 'next/link';
+import { StandinInfoCompact } from './StandinInfoDisplay';
 
 const MatchCard = ({ match }: { match: PlayoffMatch }) => {
     const winner = match.teamA.score > match.teamB.score ? match.teamA : match.teamB;
     return (
-        <div className="border rounded-lg p-2 text-sm">
+        <div className="border rounded-lg p-2 text-sm space-y-2">
             <div className={`flex justify-between ${match.teamA.id === winner.id ? 'font-bold text-primary' : ''}`}>
                 <Link href={`/teams/${match.teamA.id}`} className="hover:underline">{match.teamA.name}</Link>
                 <span>{match.teamA.score}</span>
@@ -16,6 +17,7 @@ const MatchCard = ({ match }: { match: PlayoffMatch }) => {
                 <Link href={`/teams/${match.teamB.id}`} className="hover:underline">{match.teamB.name}</Link>
                 <span>{match.teamB.score}</span>
             </div>
+            <StandinInfoCompact match={match} />
         </div>
     );
 };
