@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useState, useEffect } from 'react';
 import { collection, onSnapshot } from 'firebase/firestore';
@@ -57,12 +57,51 @@ interface TournamentStats {
 interface PlayerStats {
   id: string;
   playerId: string;
+  // Combat Records
   mostKillsSingleMatch?: { value: number };
+  mostAssistsSingleMatch?: { value: number };
+  highestKDA?: { value: number };
+  mostHeroDamageSingleMatch?: { value: number };
+  mostTowerDamageSingleMatch?: { value: number };
+  mostHealingSingleMatch?: { value: number };
+  longestKillStreak?: { value: number };
+  fastestVictory?: { value: number };
+  mostCourierKills?: { value: number };
+  mostRoshanKills?: { value: number };
+  
+  // Farming & Economy
   highestGPMSingleMatch?: { value: number };
   highestXPMSingleMatch?: { value: number };
   mostLastHitsSingleMatch?: { value: number };
   mostDeniesSingleMatch?: { value: number };
-  longestKillStreak?: { value: number };
+  mostGoldSpentSingleMatch?: { value: number };
+  mostBuybacksSingleMatch?: { value: number };
+  fastestMidasTime?: { value: number };
+  mostTPScrollsUsed?: { value: number };
+  earliestLevel25?: { value: number };
+  highestNetWorth?: { value: number };
+  fastestAghanims?: { value: number };
+  
+  // Vision & Map Control  
+  mostObserverWardsSingleMatch?: { value: number };
+  mostSentryWardsSingleMatch?: { value: number };
+  mostObserverKillsSingleMatch?: { value: number };
+  mostSentryKillsSingleMatch?: { value: number };
+  mostCampsStacked?: { value: number };
+  mostRunesCollected?: { value: number };
+  highestAPMSingleMatch?: { value: number };
+  longestStunDuration?: { value: number };
+  
+  // Special Achievements
+  mostRampagesSingleMatch?: { value: number };
+  mostNeutralKillsSingleMatch?: { value: number };
+  mostAncientKillsSingleMatch?: { value: number };
+  totalRampages?: { value: number };
+  mostVersatile?: { value: number }; // number of different heroes played
+  
+  // Fantasy Performance
+  bestFantasyScore?: { value: number };
+  averageFantasyPoints?: { value: number };
 }
 
 interface TeamStats {
@@ -239,10 +278,15 @@ export default function StatsPage() {
 
   if (isLoading) {
     return (
-      <div className="flex justify-center items-center h-64">
+      <div className="min-h-screen bg-background flex justify-center items-center">
         <div className="text-center">
-          <Loader2 className="h-16 w-16 animate-spin text-primary mx-auto mb-4" />
-          <p className="text-lg">Loading tournament statistics...</p>
+          <div className="inline-flex items-center justify-center p-4 bg-gradient-to-r from-primary to-accent rounded-full shadow-lg mb-6">
+            <Loader2 className="h-12 w-12 animate-spin text-white" />
+          </div>
+          <h2 className="text-2xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent mb-2">
+            {t('stats.loadingStats')}
+          </h2>
+          <p className="text-muted-foreground">{t('stats.statsWillAppear')}</p>
         </div>
       </div>
     );
@@ -268,1352 +312,1166 @@ export default function StatsPage() {
   // Always show the dashboard, but with N/A values when data is missing
 
   return (
-    <div className="space-y-8">
-      {/* Hero Section */}
-      <Card className="shadow-xl text-center relative overflow-hidden h-[320px] fhd:h-[320px] 2k:h-[500px] flex-col justify-center p-6">
-        <div 
-          className="absolute inset-0 z-0 bg-cover bg-center" 
-          style={{ backgroundImage: 'url(/backgrounds/stats.png)' }} 
-          data-ai-hint="neon fantasy space"
-        />
-        <div className="absolute inset-0 z-10 bg-gradient-to-br from-black/30 via-black/20 to-black/30" />
-        <CardContent className="relative z-20 flex flex-col justify-center h-full">
-          {/* Hero section text removed to reveal background image */}
-        </CardContent>
-      </Card>
-
-      {/* Tournament Overview - Expanded Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">{t('stats.totalMatches')}</CardTitle>
-            <Target className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{tournamentStats?.totalGames ?? totalMatches}</div>
-            <p className="text-xs text-muted-foreground">
-              {completedMatches.length} {t('stats.completed')} ({totalMatches > 0 ? ((completedMatches.length / totalMatches) * 100).toFixed(1) : '0'}%)
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">{t('stats.totalKills')}</CardTitle>
-            <Sword className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{tournamentStats?.totalKills ?? 'N/A'}</div>
-            <p className="text-xs text-muted-foreground">
-              {tournamentStats && completedMatches.length > 0 ? (tournamentStats.totalKills / completedMatches.length).toFixed(1) : 'N/A'} {t('stats.avgPerMatch')}
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">{t('stats.avgMatchDuration')}</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {tournamentStats ? 
-                `${Math.floor(tournamentStats.averageMatchDuration / 60)}:${String(tournamentStats.averageMatchDuration % 60).padStart(2, '0')}` 
-                : 'N/A'
-              }
-            </div>
-            <p className="text-xs text-muted-foreground">{t('stats.minutes')}</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Gold</CardTitle>
-            <Zap className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{tournamentStats?.totalGoldGenerated?.toLocaleString() ?? 'N/A'}</div>
-            <p className="text-xs text-muted-foreground">
-              {tournamentStats && completedMatches.length > 0 ? (tournamentStats.totalGoldGenerated / completedMatches.length).toFixed(0) : 'N/A'} {t('stats.avgPerMatch')}
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Teams</CardTitle>
-            <Trophy className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{teams.length}</div>
-            <p className="text-xs text-muted-foreground">
-              {teams.filter(t => (t.matchesPlayed || 0) > 0).length} played matches
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Additional Overview Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
-        <Card className="p-4">
-          <div className="text-center">
-            <div className="text-lg font-bold text-blue-600">
-              {completedMatches.filter(m => m.winnerId === m.teamA?.id).length}
-            </div>
-            <div className="text-sm text-muted-foreground">{t('stats.radiantWins')}</div>
-            <div className="text-xs text-muted-foreground">
-              {completedMatches.length > 0 ? ((completedMatches.filter(m => m.winnerId === m.teamA?.id).length / completedMatches.length) * 100).toFixed(1) : '50.0'}%
+    <div className="container mx-auto py-8 px-4">
+      <div className="space-y-8">
+        {/* Hero Section with Clean Background Image */}
+        <Card className="shadow-xl text-center relative overflow-hidden h-[400px] flex-col justify-center p-0 border-0">
+          <div 
+            className="absolute inset-0 z-0 bg-cover bg-center" 
+            style={{ backgroundImage: 'url(/backgrounds/stats.png)' }} 
+          />
+          {/* Minimal overlay for text readability */}
+          <div className="absolute inset-0 z-10 bg-black/10" />
+          <div className="relative z-20 h-full flex flex-col justify-center space-y-6 px-6">
+            <div className="space-y-4">
+              {/* Title removed */}
             </div>
           </div>
         </Card>
 
-        <Card className="p-4">
-          <div className="text-center">
-            <div className="text-lg font-bold text-red-600">
-              {completedMatches.filter(m => m.winnerId !== m.teamA?.id).length}
+        {/* Quick Overview Stats */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <Card className="p-4 text-center border border-primary/20 bg-gradient-to-br from-primary/5 to-primary/10">
+            <div className="text-2xl md:text-3xl font-bold text-primary mb-1">
+              {matches.length}
             </div>
-            <div className="text-sm text-muted-foreground">{t('stats.direWins')}</div>
-            <div className="text-xs text-muted-foreground">
-              {completedMatches.length > 0 ? ((completedMatches.filter(m => m.winnerId !== m.teamA?.id).length / completedMatches.length) * 100).toFixed(1) : '50.0'}%
+            <div className="text-sm text-muted-foreground">{t('stats.totalMatches')}</div>
+          </Card>
+          <Card className="p-4 text-center border border-accent/20 bg-gradient-to-br from-accent/5 to-accent/10">
+            <div className="text-2xl md:text-3xl font-bold text-accent mb-1">
+              {teams.length}
             </div>
-          </div>
-        </Card>
+            <div className="text-sm text-muted-foreground">{t('stats.totalTeams')}</div>
+          </Card>
+          <Card className="p-4 text-center border border-secondary/20 bg-gradient-to-br from-secondary/5 to-secondary/10">
+            <div className="text-2xl md:text-3xl font-bold text-secondary mb-1">
+              {players.length}
+            </div>
+            <div className="text-sm text-muted-foreground">{t('stats.totalPlayers')}</div>
+          </Card>
+          <Card className="p-4 text-center border border-green-500/20 bg-gradient-to-br from-green-500/5 to-green-500/10">
+            <div className="text-2xl md:text-3xl font-bold text-secondary mb-1">
+              {Math.round(completionRate)}%
+            </div>
+            <div className="text-sm text-muted-foreground">{t('stats.completionRate')}</div>
+          </Card>
+        </div>
 
-        <Card className="p-4">
-          <div className="text-center">
-            <div className="text-lg font-bold text-green-600">
-              {tournamentStats?.totalKills && tournamentStats?.totalGames ? Math.round(tournamentStats.totalKills / tournamentStats.totalGames) : 'N/A'}
-            </div>
-            <div className="text-sm text-muted-foreground">{t('stats.killsPerGame')}</div>
-          </div>
-        </Card>
+        <Tabs defaultValue="players" className="w-full">
+          <TabsList className="grid w-full grid-cols-4 mb-8 h-12 rounded-xl p-1 bg-gradient-to-r from-primary/20 to-accent/20 backdrop-blur-md border-2 border-primary/30">
+            <TabsTrigger 
+              value="players" 
+              className="text-sm font-bold rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-primary data-[state=active]:to-primary/80 data-[state=active]:text-white data-[state=active]:shadow-lg transition-all duration-300"
+            >
+              <Target className="w-4 h-4 mr-2" />
+              {t('stats.playerRecords')}
+            </TabsTrigger>
+            <TabsTrigger 
+              value="vision" 
+              className="text-sm font-bold rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-primary data-[state=active]:to-primary/80 data-[state=active]:text-white data-[state=active]:shadow-lg transition-all duration-300"
+            >
+              <Zap className="w-4 h-4 mr-2" />
+              {t('stats.tournamentOverview')}
+            </TabsTrigger>
+            <TabsTrigger 
+              value="teams" 
+              className="text-sm font-bold rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-primary data-[state=active]:to-primary/80 data-[state=active]:text-white data-[state=active]:shadow-lg transition-all duration-300"
+            >
+              <Sword className="w-4 h-4 mr-2" />
+              {t('stats.teamRecords')}
+            </TabsTrigger>
+            <TabsTrigger 
+              value="meta" 
+              className="text-sm font-bold rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-primary data-[state=active]:to-primary/80 data-[state=active]:text-white data-[state=active]:shadow-lg transition-all duration-300"
+            >
+              <Trophy className="w-4 h-4 mr-2" />
+              {t('stats.metaStats')}
+            </TabsTrigger>
+          </TabsList>
 
-        <Card className="p-4">
-          <div className="text-center">
-            <div className="text-lg font-bold text-purple-600">
-              {tournamentStats?.mostPickedHero?.pickCount ?? 'N/A'}
-            </div>
-            <div className="text-sm text-muted-foreground">{t('stats.mostPicks')}</div>
-            <div className="text-xs text-muted-foreground truncate">
-              {tournamentStats?.mostPickedHero?.heroName ?? 'N/A'}
-            </div>
-          </div>
-        </Card>
-
-        <Card className="p-4">
-          <div className="text-center">
-            <div className="text-lg font-bold text-orange-600">
-              {tournamentStats?.mostBannedHero?.banCount ?? 'N/A'}
-            </div>
-            <div className="text-sm text-muted-foreground">{t('stats.mostBans')}</div>
-            <div className="text-xs text-muted-foreground truncate">
-              {tournamentStats?.mostBannedHero?.heroName ?? 'N/A'}
-            </div>
-          </div>
-        </Card>
-
-        <Card className="p-4">
-          <div className="text-center">
-            <div className="text-lg font-bold text-yellow-600">
-              {tournamentStats?.totalKills ? Math.round(tournamentStats.totalKills / 10) : 'N/A'}
-            </div>
-            <div className="text-sm text-muted-foreground">{t('stats.avgTeamFight')}</div>
-          </div>
-        </Card>
-      </div>
-
-      <Tabs defaultValue="players" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="players">{t('stats.playerRecords')}</TabsTrigger>
-          <TabsTrigger value="teams">{t('stats.teamRecords')}</TabsTrigger>
-          <TabsTrigger value="meta">{t('stats.metaStats')}</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="players" className="space-y-6">
-          <div className="grid gap-6">
-            {/* MVP Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Card className="bg-gradient-to-br from-yellow-500/10 to-amber-500/10 border-yellow-500/20">
+          <TabsContent value="players" className="space-y-8">
+            <div className="grid gap-6">
+              {/* Individual Combat Records */}
+              <Card>
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-yellow-600">
-                    <Trophy className="h-5 w-5" />
-                    <Tooltip content={t('stats.tournamentMVPTooltip')}>
-                      <span className="flex items-center gap-1">
-                        {t('stats.tournamentMVP')}
-                        <InfoIcon className="h-3 w-3 opacity-50" />
-                      </span>
-                    </Tooltip>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Sword className="h-5 w-5 text-primary" />
+                    {t('stats.combatRecords')}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-2">
-                    <p className="font-bold text-xl">{t('stats.noData')}</p>
-                    <p className="text-sm text-muted-foreground">{t('stats.tournamentMVPTooltip')}</p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="p-3 border rounded-lg bg-gradient-to-br from-primary/20 to-primary/10">
+                      <div className="text-lg font-bold text-primary">
+                        {playerStats.length > 0 ? Math.max(...playerStats.map(p => p.mostKillsSingleMatch?.value || 0)) : 'N/A'}
+                      </div>
+                      <Tooltip content={t('stats.mostKillsTooltip')}>
+                        <div className="text-sm font-medium flex items-center gap-1 cursor-help">
+                          {t('stats.mostKills')}
+                          <InfoIcon className="h-3 w-3 opacity-50" />
+                        </div>
+                      </Tooltip>
+                      <div className="text-xs text-muted-foreground">
+                        {playerStats.length > 0 ? 
+                          findPlayerName(playerStats.find(ps => ps.mostKillsSingleMatch?.value === Math.max(...playerStats.map(p => p.mostKillsSingleMatch?.value || 0)))?.playerId || '') :
+                          t('stats.noData')
+                        }
+                      </div>
+                    </div>
+
+                    <div className="p-3 border rounded-lg bg-gradient-to-br from-accent/20 to-accent/10">
+                      <div className="text-lg font-bold text-accent">
+                        {playerStats.length > 0 ? Math.max(...playerStats.map(p => p.mostAssistsSingleMatch?.value || 0)) : 'N/A'}
+                      </div>
+                      <Tooltip content={t('stats.mostAssistsTooltip')}>
+                        <div className="text-sm font-medium flex items-center gap-1 cursor-help">
+                          {t('stats.mostAssists')}
+                          <InfoIcon className="h-3 w-3 opacity-50" />
+                        </div>
+                      </Tooltip>
+                      <div className="text-xs text-muted-foreground">
+                        {playerStats.length > 0 ? 
+                          findPlayerName(playerStats.find(ps => ps.mostAssistsSingleMatch?.value === Math.max(...playerStats.map(p => p.mostAssistsSingleMatch?.value || 0)))?.playerId || '') :
+                          t('stats.noData')
+                        }
+                      </div>
+                    </div>
+
+                    <div className="p-3 border rounded-lg bg-gradient-to-br from-chart-2/20 to-chart-2/10">
+                      <div className="text-lg font-bold text-chart-2">
+                        {playerStats.length > 0 ? Math.max(...playerStats.map(p => p.highestKDA?.value || 0)).toFixed(2) : 'N/A'}
+                      </div>
+                      <Tooltip content={t('stats.highestKDATooltip')}>
+                        <div className="text-sm font-medium flex items-center gap-1 cursor-help">
+                          {t('stats.highestKDA')}
+                          <InfoIcon className="h-3 w-3 opacity-50" />
+                        </div>
+                      </Tooltip>
+                      <div className="text-xs text-muted-foreground">
+                        {playerStats.length > 0 ? 
+                          findPlayerName(playerStats.find(ps => ps.highestKDA?.value === Math.max(...playerStats.map(p => p.highestKDA?.value || 0)))?.playerId || '') :
+                          t('stats.noData')
+                        }
+                      </div>
+                    </div>
+
+                    <div className="p-3 border rounded-lg bg-gradient-to-br from-chart-4/20 to-chart-4/10">
+                      <div className="text-lg font-bold text-chart-4">
+                        {playerStats.length > 0 ? Math.max(...playerStats.map(p => p.fastestVictory?.value || 0)) + 'm' : 'N/A'}
+                      </div>
+                      <Tooltip content={t('stats.fastestVictoryTooltip')}>
+                        <div className="text-sm font-medium flex items-center gap-1 cursor-help">
+                          {t('stats.fastestVictory')}
+                          <InfoIcon className="h-3 w-3 opacity-50" />
+                        </div>
+                      </Tooltip>
+                      <div className="text-xs text-muted-foreground">
+                        {playerStats.length > 0 ? 
+                          findPlayerName(playerStats.find(ps => ps.fastestVictory?.value === Math.max(...playerStats.map(p => p.fastestVictory?.value || 0)))?.playerId || '') :
+                          t('stats.noData')
+                        }
+                      </div>
+                    </div>
+
+                    <div className="p-3 border rounded-lg bg-gradient-to-br from-chart-3/20 to-chart-3/10">
+                      <div className="text-lg font-bold text-chart-3">
+                        {playerStats.length > 0 ? Math.max(...playerStats.map(p => p.mostHeroDamageSingleMatch?.value || 0)).toLocaleString() : 'N/A'}
+                      </div>
+                      <Tooltip content={t('stats.mostHeroDamageTooltip')}>
+                        <div className="text-sm font-medium flex items-center gap-1 cursor-help">
+                          {t('stats.mostHeroDamage')}
+                          <InfoIcon className="h-3 w-3 opacity-50" />
+                        </div>
+                      </Tooltip>
+                      <div className="text-xs text-muted-foreground">
+                        {playerStats.length > 0 ? 
+                          findPlayerName(playerStats.find(ps => ps.mostHeroDamageSingleMatch?.value === Math.max(...playerStats.map(p => p.mostHeroDamageSingleMatch?.value || 0)))?.playerId || '') :
+                          t('stats.noData')
+                        }
+                      </div>
+                    </div>
+
+                    <div className="p-3 border rounded-lg bg-gradient-to-br from-secondary/20 to-secondary/10">
+                      <div className="text-lg font-bold text-secondary">
+                        {playerStats.length > 0 ? Math.max(...playerStats.map(p => p.mostHealingSingleMatch?.value || 0)).toLocaleString() : 'N/A'}
+                      </div>
+                      <Tooltip content={t('stats.mostHealingTooltip')}>
+                        <div className="text-sm font-medium flex items-center gap-1 cursor-help">
+                          {t('stats.mostHealing')}
+                          <InfoIcon className="h-3 w-3 opacity-50" />
+                        </div>
+                      </Tooltip>
+                      <div className="text-xs text-muted-foreground">
+                        {playerStats.length > 0 ? 
+                          findPlayerName(playerStats.find(ps => ps.mostHealingSingleMatch?.value === Math.max(...playerStats.map(p => p.mostHealingSingleMatch?.value || 0)))?.playerId || '') :
+                          t('stats.noData')
+                        }
+                      </div>
+                    </div>
+
+                    <div className="p-3 border rounded-lg bg-gradient-to-br from-chart-1/20 to-chart-1/10">
+                      <div className="text-lg font-bold text-chart-1">
+                        {playerStats.length > 0 ? Math.max(...playerStats.map(p => p.mostTowerDamageSingleMatch?.value || 0)).toLocaleString() : 'N/A'}
+                      </div>
+                      <Tooltip content={t('stats.mostTowerDamageTooltip')}>
+                        <div className="text-sm font-medium flex items-center gap-1 cursor-help">
+                          {t('stats.mostTowerDamage')}
+                          <InfoIcon className="h-3 w-3 opacity-50" />
+                        </div>
+                      </Tooltip>
+                      <div className="text-xs text-muted-foreground">
+                        {playerStats.length > 0 ? 
+                          findPlayerName(playerStats.find(ps => ps.mostTowerDamageSingleMatch?.value === Math.max(...playerStats.map(p => p.mostTowerDamageSingleMatch?.value || 0)))?.playerId || '') :
+                          t('stats.noData')
+                        }
+                      </div>
+                    </div>
+
+                    <div className="p-3 border rounded-lg bg-gradient-to-br from-chart-5/20 to-chart-5/10">
+                      <div className="text-lg font-bold text-chart-5">
+                        {playerStats.length > 0 ? Math.max(...playerStats.map(p => p.longestKillStreak?.value || 0)) : 'N/A'}
+                      </div>
+                      <Tooltip content={t('stats.longestKillStreakTooltip')}>
+                        <div className="text-sm font-medium flex items-center gap-1 cursor-help">
+                          {t('stats.longestKillStreak')}
+                          <InfoIcon className="h-3 w-3 opacity-50" />
+                        </div>
+                      </Tooltip>
+                      <div className="text-xs text-muted-foreground">
+                        {playerStats.length > 0 ? 
+                          findPlayerName(playerStats.find(ps => ps.longestKillStreak?.value === Math.max(...playerStats.map(p => p.longestKillStreak?.value || 0)))?.playerId || '') :
+                          t('stats.noData')
+                        }
+                      </div>
+                    </div>
+
+                    <div className="p-3 border rounded-lg bg-gradient-to-br from-chart-1/20 to-chart-1/10">
+                      <div className="text-lg font-bold text-chart-1">
+                        {playerStats.length > 0 ? Math.max(...playerStats.map(p => p.mostCourierKills?.value || 0)) : 'N/A'}
+                      </div>
+                      <Tooltip content={t('stats.mostCourierKillsTooltip')}>
+                        <div className="text-sm font-medium flex items-center gap-1 cursor-help">
+                          {t('stats.mostCourierKills')}
+                          <InfoIcon className="h-3 w-3 opacity-50" />
+                        </div>
+                      </Tooltip>
+                      <div className="text-xs text-muted-foreground">
+                        {playerStats.length > 0 ? 
+                          findPlayerName(playerStats.find(ps => ps.mostCourierKills?.value === Math.max(...playerStats.map(p => p.mostCourierKills?.value || 0)))?.playerId || '') :
+                          t('stats.noData')
+                        }
+                      </div>
+                    </div>
+
+                    <div className="p-3 border rounded-lg bg-gradient-to-br from-primary/20 to-primary/10">
+                      <div className="text-lg font-bold text-primary">
+                        {playerStats.length > 0 ? Math.max(...playerStats.map(p => p.mostRoshanKills?.value || 0)) : 'N/A'}
+                      </div>
+                      <Tooltip content={t('stats.mostRoshanKillsTooltip')}>
+                        <div className="text-sm font-medium flex items-center gap-1 cursor-help">
+                          {t('stats.mostRoshanKills')}
+                          <InfoIcon className="h-3 w-3 opacity-50" />
+                        </div>
+                      </Tooltip>
+                      <div className="text-xs text-muted-foreground">
+                        {playerStats.length > 0 ? 
+                          findPlayerName(playerStats.find(ps => ps.mostRoshanKills?.value === Math.max(...playerStats.map(p => p.mostRoshanKills?.value || 0)))?.playerId || '') :
+                          t('stats.noData')
+                        }
+                      </div>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
 
-              <Card className="bg-gradient-to-br from-blue-500/10 to-cyan-500/10 border-blue-500/20">
+              {/* Farming & Economy Records */}
+              <Card>
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-blue-600">
-                    <Target className="h-5 w-5" />
-                    <Tooltip content={t('stats.supportMVPTooltip')}>
-                      <span className="flex items-center gap-1">
-                        {t('stats.supportMVP')}
-                        <InfoIcon className="h-3 w-3 opacity-50" />
-                      </span>
-                    </Tooltip>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <TrendingUp className="h-5 w-5 text-secondary" />
+                    ?? {t('stats.farmingEconomy')}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-2">
-                    <p className="font-bold text-xl">{t('stats.noData')}</p>
-                    <p className="text-sm text-muted-foreground">{t('stats.supportMVPTooltip')}</p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="p-3 border rounded-lg bg-gradient-to-br from-secondary/20 to-secondary/10">
+                      <div className="text-lg font-bold text-secondary">
+                        {playerStats.length > 0 ? Math.max(...playerStats.map(p => p.highestGPMSingleMatch?.value || 0)) : 'N/A'}
+                      </div>
+                      <Tooltip content={t('stats.highestGPMTooltip')}>
+                        <div className="text-sm font-medium flex items-center gap-1 cursor-help">
+                          {t('stats.highestGPM')}
+                          <InfoIcon className="h-3 w-3 opacity-50" />
+                        </div>
+                      </Tooltip>
+                      <div className="text-xs text-muted-foreground">
+                        {playerStats.length > 0 ? 
+                          findPlayerName(playerStats.find(ps => ps.highestGPMSingleMatch?.value === Math.max(...playerStats.map(p => p.highestGPMSingleMatch?.value || 0)))?.playerId || '') :
+                          t('stats.noData')
+                        }
+                      </div>
+                    </div>
+
+                    <div className="p-3 border rounded-lg bg-gradient-to-br from-accent/20 to-accent/10">
+                      <div className="text-lg font-bold text-accent">
+                        {playerStats.length > 0 ? Math.max(...playerStats.map(p => p.highestXPMSingleMatch?.value || 0)) : 'N/A'}
+                      </div>
+                      <Tooltip content={t('stats.highestXPMTooltip')}>
+                        <div className="text-sm font-medium flex items-center gap-1 cursor-help">
+                          {t('stats.highestXPM')}
+                          <InfoIcon className="h-3 w-3 opacity-50" />
+                        </div>
+                      </Tooltip>
+                      <div className="text-xs text-muted-foreground">
+                        {playerStats.length > 0 ? 
+                          findPlayerName(playerStats.find(ps => ps.highestXPMSingleMatch?.value === Math.max(...playerStats.map(p => p.highestXPMSingleMatch?.value || 0)))?.playerId || '') :
+                          t('stats.noData')
+                        }
+                      </div>
+                    </div>
+
+                    <div className="p-3 border rounded-lg bg-gradient-to-br from-chart-2/20 to-chart-2/10">
+                      <div className="text-lg font-bold text-chart-2">
+                        {playerStats.length > 0 ? Math.max(...playerStats.map(p => p.mostLastHitsSingleMatch?.value || 0)) : 'N/A'}
+                      </div>
+                      <Tooltip content={t('stats.mostLastHitsTooltip')}>
+                        <div className="text-sm font-medium flex items-center gap-1 cursor-help">
+                          {t('stats.mostLastHits')}
+                          <InfoIcon className="h-3 w-3 opacity-50" />
+                        </div>
+                      </Tooltip>
+                      <div className="text-xs text-muted-foreground">
+                        {playerStats.length > 0 ? 
+                          findPlayerName(playerStats.find(ps => ps.mostLastHitsSingleMatch?.value === Math.max(...playerStats.map(p => p.mostLastHitsSingleMatch?.value || 0)))?.playerId || '') :
+                          t('stats.noData')
+                        }
+                      </div>
+                    </div>
+
+                    <div className="p-3 border rounded-lg bg-gradient-to-br from-chart-3/20 to-chart-3/10">
+                      <div className="text-lg font-bold text-chart-3">
+                        {playerStats.length > 0 ? Math.max(...playerStats.map(p => p.mostDeniesSingleMatch?.value || 0)) : 'N/A'}
+                      </div>
+                      <Tooltip content={t('stats.mostDeniesTooltip')}>
+                        <div className="text-sm font-medium flex items-center gap-1 cursor-help">
+                          {t('stats.mostDenies')}
+                          <InfoIcon className="h-3 w-3 opacity-50" />
+                        </div>
+                      </Tooltip>
+                      <div className="text-xs text-muted-foreground">
+                        {playerStats.length > 0 ? 
+                          findPlayerName(playerStats.find(ps => ps.mostDeniesSingleMatch?.value === Math.max(...playerStats.map(p => p.mostDeniesSingleMatch?.value || 0)))?.playerId || '') :
+                          t('stats.noData')
+                        }
+                      </div>
+                    </div>
+
+                    <div className="p-3 border rounded-lg bg-gradient-to-br from-chart-4/20 to-chart-4/10">
+                      <div className="text-lg font-bold text-chart-4">
+                        {playerStats.length > 0 ? Math.max(...playerStats.map(p => p.mostGoldSpentSingleMatch?.value || 0)).toLocaleString() : 'N/A'}
+                      </div>
+                      <Tooltip content={t('stats.mostGoldSpentTooltip')}>
+                        <div className="text-sm font-medium flex items-center gap-1 cursor-help">
+                          {t('stats.mostGoldSpent')}
+                          <InfoIcon className="h-3 w-3 opacity-50" />
+                        </div>
+                      </Tooltip>
+                      <div className="text-xs text-muted-foreground">
+                        {playerStats.length > 0 ? 
+                          findPlayerName(playerStats.find(ps => ps.mostGoldSpentSingleMatch?.value === Math.max(...playerStats.map(p => p.mostGoldSpentSingleMatch?.value || 0)))?.playerId || '') :
+                          t('stats.noData')
+                        }
+                      </div>
+                    </div>
+
+                    <div className="p-3 border rounded-lg bg-gradient-to-br from-primary/20 to-primary/10">
+                      <div className="text-lg font-bold text-primary">
+                        {playerStats.length > 0 ? Math.max(...playerStats.map(p => p.mostBuybacksSingleMatch?.value || 0)) : 'N/A'}
+                      </div>
+                      <Tooltip content={t('stats.mostBuybacksTooltip')}>
+                        <div className="text-sm font-medium flex items-center gap-1 cursor-help">
+                          {t('stats.mostBuybacks')}
+                          <InfoIcon className="h-3 w-3 opacity-50" />
+                        </div>
+                      </Tooltip>
+                      <div className="text-xs text-muted-foreground">
+                        {playerStats.length > 0 ? 
+                          findPlayerName(playerStats.find(ps => ps.mostBuybacksSingleMatch?.value === Math.max(...playerStats.map(p => p.mostBuybacksSingleMatch?.value || 0)))?.playerId || '') :
+                          t('stats.noData')
+                        }
+                      </div>
+                    </div>
+
+                    <div className="p-3 border rounded-lg bg-gradient-to-br from-primary/20 to-primary/10">
+                      <div className="text-lg font-bold text-primary">
+                        {playerStats.length > 0 ? Math.max(...playerStats.map(p => p.fastestMidasTime?.value || 0)) + 'm' : 'N/A'}
+                      </div>
+                      <Tooltip content={t('stats.fastestMidasTooltip')}>
+                        <div className="text-sm font-medium flex items-center gap-1 cursor-help">
+                          {t('stats.fastestMidas')}
+                          <InfoIcon className="h-3 w-3 opacity-50" />
+                        </div>
+                      </Tooltip>
+                      <div className="text-xs text-muted-foreground">
+                        {playerStats.length > 0 ? 
+                          findPlayerName(playerStats.find(ps => ps.fastestMidasTime?.value === Math.max(...playerStats.map(p => p.fastestMidasTime?.value || 0)))?.playerId || '') :
+                          t('stats.noData')
+                        }
+                      </div>
+                    </div>
+
+                    <div className="p-3 border rounded-lg bg-gradient-to-br from-accent/20 to-accent/10">
+                      <div className="text-lg font-bold text-accent">
+                        {playerStats.length > 0 ? Math.max(...playerStats.map(p => p.earliestLevel25?.value || 0)) + 'm' : 'N/A'}
+                      </div>
+                      <Tooltip content={t('stats.earliestLevel25Tooltip')}>
+                        <div className="text-sm font-medium flex items-center gap-1 cursor-help">
+                          {t('stats.earliestLevel25')}
+                          <InfoIcon className="h-3 w-3 opacity-50" />
+                        </div>
+                      </Tooltip>
+                      <div className="text-xs text-muted-foreground">
+                        {playerStats.length > 0 ? 
+                          findPlayerName(playerStats.find(ps => ps.earliestLevel25?.value === Math.max(...playerStats.map(p => p.earliestLevel25?.value || 0)))?.playerId || '') :
+                          t('stats.noData')
+                        }
+                      </div>
+                    </div>
+
+                    <div className="p-3 border rounded-lg bg-gradient-to-br from-secondary/20 to-secondary/10">
+                      <div className="text-lg font-bold text-secondary">
+                        {playerStats.length > 0 ? (Math.max(...playerStats.map(p => p.highestNetWorth?.value || 0)) / 1000).toFixed(0) + 'K' : 'N/A'}
+                      </div>
+                      <Tooltip content={t('stats.highestNetWorthTooltip')}>
+                        <div className="text-sm font-medium flex items-center gap-1 cursor-help">
+                          {t('stats.highestNetWorth')}
+                          <InfoIcon className="h-3 w-3 opacity-50" />
+                        </div>
+                      </Tooltip>
+                      <div className="text-xs text-muted-foreground">
+                        {playerStats.length > 0 ? 
+                          findPlayerName(playerStats.find(ps => ps.highestNetWorth?.value === Math.max(...playerStats.map(p => p.highestNetWorth?.value || 0)))?.playerId || '') :
+                          t('stats.noData')
+                        }
+                      </div>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
 
-              <Card className="bg-gradient-to-br from-green-500/10 to-emerald-500/10 border-green-500/20">
+              {/* Special Achievements */}
+              <Card>
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-green-600">
-                    <Zap className="h-5 w-5" />
-                    <Tooltip content={t('stats.carryMVPTooltip')}>
-                      <span className="flex items-center gap-1">
-                        {t('stats.carryMVP')}
-                        <InfoIcon className="h-3 w-3 opacity-50" />
-                      </span>
-                    </Tooltip>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Trophy className="h-5 w-5 text-chart-2" />
+                    ?? {t('stats.specialAchievements')}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-2">
-                    <p className="font-bold text-xl">{t('stats.noData')}</p>
-                    <p className="text-sm text-muted-foreground">{t('stats.carryMVPTooltip')}</p>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Combat Performance Records */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">⚔️ {t('stats.combatPerformance')}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-lg font-bold text-red-600">
-                      {playerStats.length > 0 ? Math.max(...playerStats.map(p => p.mostKillsSingleMatch?.value || 0)) : 'N/A'}
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="p-3 border rounded-lg bg-gradient-to-br from-chart-2/20 to-chart-2/10">
+                      <div className="text-lg font-bold text-chart-2">
+                        {playerStats.length > 0 ? Math.max(...playerStats.map(p => p.totalRampages?.value || 0)) : 'N/A'}
+                      </div>
+                      <Tooltip content={t('stats.totalRampagesTooltip')}>
+                        <div className="text-sm font-medium flex items-center gap-1 cursor-help">
+                          {t('stats.totalRampages')}
+                          <InfoIcon className="h-3 w-3 opacity-50" />
+                        </div>
+                      </Tooltip>
+                      <div className="text-xs text-muted-foreground">
+                        {playerStats.length > 0 ? 
+                          findPlayerName(playerStats.find(ps => ps.totalRampages?.value === Math.max(...playerStats.map(p => p.totalRampages?.value || 0)))?.playerId || '') :
+                          t('stats.noData')
+                        }
+                      </div>
                     </div>
-                    <Tooltip content={t('stats.mostKillsTooltip')}>
-                      <div className="text-sm font-medium flex items-center gap-1 cursor-help">
-                        {t('stats.mostKills')}
-                        <InfoIcon className="h-3 w-3 opacity-50" />
+
+                    <div className="p-3 border rounded-lg bg-gradient-to-br from-secondary/20 to-secondary/10">
+                      <div className="text-lg font-bold text-secondary">
+                        {playerStats.length > 0 ? Math.max(...playerStats.map(p => p.mostNeutralKillsSingleMatch?.value || 0)) : 'N/A'}
                       </div>
-                    </Tooltip>
-                    <div className="text-xs text-muted-foreground">
-                      {playerStats.length > 0 ? 
-                        findPlayerName(playerStats.find(ps => ps.mostKillsSingleMatch?.value === Math.max(...playerStats.map(p => p.mostKillsSingleMatch?.value || 0)))?.playerId || '') :
-                        t('stats.noData')
-                      }
+                      <Tooltip content={t('stats.mostNeutralKillsTooltip')}>
+                        <div className="text-sm font-medium flex items-center gap-1 cursor-help">
+                          {t('stats.mostNeutralKills')}
+                          <InfoIcon className="h-3 w-3 opacity-50" />
+                        </div>
+                      </Tooltip>
+                      <div className="text-xs text-muted-foreground">
+                        {playerStats.length > 0 ? 
+                          findPlayerName(playerStats.find(ps => ps.mostNeutralKillsSingleMatch?.value === Math.max(...playerStats.map(p => p.mostNeutralKillsSingleMatch?.value || 0)))?.playerId || '') :
+                          t('stats.noData')
+                        }
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-lg font-bold text-blue-600">N/A</div>
-                    <Tooltip content={t('stats.mostAssistsTooltip')}>
-                      <div className="text-sm font-medium flex items-center gap-1 cursor-help">
-                        {t('stats.mostAssists')}
-                        <InfoIcon className="h-3 w-3 opacity-50" />
+                    <div className="p-3 border rounded-lg bg-gradient-to-br from-chart-3/20 to-chart-3/10">
+                      <div className="text-lg font-bold text-chart-3">
+                        {playerStats.length > 0 ? Math.max(...playerStats.map(p => p.mostAncientKillsSingleMatch?.value || 0)) : 'N/A'}
                       </div>
-                    </Tooltip>
-                    <div className="text-xs text-muted-foreground">{t('stats.noData')}</div>
-                  </div>
-
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-lg font-bold text-purple-600">N/A</div>
-                    <Tooltip content={t('stats.highestKDATooltip')}>
-                      <div className="text-sm font-medium flex items-center gap-1 cursor-help">
-                        Highest KDA
-                        <InfoIcon className="h-3 w-3 opacity-50" />
+                      <Tooltip content={t('stats.mostAncientKillsTooltip')}>
+                        <div className="text-sm font-medium flex items-center gap-1 cursor-help">
+                          {t('stats.mostAncientKills')}
+                          <InfoIcon className="h-3 w-3 opacity-50" />
+                        </div>
+                      </Tooltip>
+                      <div className="text-xs text-muted-foreground">
+                        {playerStats.length > 0 ? 
+                          findPlayerName(playerStats.find(ps => ps.mostAncientKillsSingleMatch?.value === Math.max(...playerStats.map(p => p.mostAncientKillsSingleMatch?.value || 0)))?.playerId || '') :
+                          t('stats.noData')
+                        }
                       </div>
-                    </Tooltip>
-                    <div className="text-xs text-muted-foreground">{t('stats.noData')}</div>
-                  </div>
-
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-lg font-bold text-orange-600">N/A</div>
-                    <Tooltip content={t('stats.mostHeroDamageTooltip')}>
-                      <div className="text-sm font-medium flex items-center gap-1 cursor-help">
-                        {t('stats.mostHeroDamage')}
-                        <InfoIcon className="h-3 w-3 opacity-50" />
-                      </div>
-                    </Tooltip>
-                    <div className="text-xs text-muted-foreground">{t('stats.noData')}</div>
-                  </div>
-
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-lg font-bold text-green-600">N/A</div>
-                    <Tooltip content={t('stats.mostHeroHealingTooltip')}>
-                      <div className="text-sm font-medium flex items-center gap-1 cursor-help">
-                        {t('stats.mostHeroHealing')}
-                        <InfoIcon className="h-3 w-3 opacity-50" />
-                      </div>
-                    </Tooltip>
-                    <div className="text-xs text-muted-foreground">{t('stats.noData')}</div>
-                  </div>
-
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-lg font-bold text-yellow-600">N/A</div>
-                    <Tooltip content={t('stats.mostTowerDamageTooltip')}>
-                      <div className="text-sm font-medium flex items-center gap-1 cursor-help">
-                        {t('stats.mostTowerDamage')}
-                        <InfoIcon className="h-3 w-3 opacity-50" />
-                      </div>
-                    </Tooltip>
-                    <div className="text-xs text-muted-foreground">{t('stats.noData')}</div>
-                  </div>
-
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-lg font-bold text-cyan-600">
-                      {playerStats.length > 0 ? Math.max(...playerStats.map(p => p.highestGPMSingleMatch?.value || 0)) : 'N/A'}
                     </div>
-                    <Tooltip content={t('stats.highestGPMTooltip')}>
-                      <div className="text-sm font-medium flex items-center gap-1 cursor-help">
-                        {t('stats.highestGPM')}
-                        <InfoIcon className="h-3 w-3 opacity-50" />
+
+                    <div className="p-3 border rounded-lg bg-gradient-to-br from-chart-5/20 to-chart-5/10">
+                      <div className="text-lg font-bold text-chart-5">
+                        {playerStats.length > 0 ? Math.max(...playerStats.map(p => p.fastestAghanims?.value || 0)) + 'm' : 'N/A'}
                       </div>
-                    </Tooltip>
-                    <div className="text-xs text-muted-foreground">
-                      {playerStats.length > 0 ? 
-                        findPlayerName(playerStats.find(ps => ps.highestGPMSingleMatch?.value === Math.max(...playerStats.map(p => p.highestGPMSingleMatch?.value || 0)))?.playerId || '') :
-                        t('stats.noData')
-                      }
+                      <Tooltip content={t('stats.fastestAghanimsTooltip')}>
+                        <div className="text-sm font-medium flex items-center gap-1 cursor-help">
+                          {t('stats.fastestAghanims')}
+                          <InfoIcon className="h-3 w-3 opacity-50" />
+                        </div>
+                      </Tooltip>
+                      <div className="text-xs text-muted-foreground">
+                        {playerStats.length > 0 ? 
+                          findPlayerName(playerStats.find(ps => ps.fastestAghanims?.value === Math.max(...playerStats.map(p => p.fastestAghanims?.value || 0)))?.playerId || '') :
+                          t('stats.noData')
+                        }
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-lg font-bold text-indigo-600">
-                      {playerStats.length > 0 ? Math.max(...playerStats.map(p => p.highestXPMSingleMatch?.value || 0)) : 'N/A'}
+                    <div className="p-3 border rounded-lg bg-gradient-to-br from-chart-4/20 to-chart-4/10">
+                      <div className="text-lg font-bold text-chart-4">
+                        {playerStats.length > 0 ? Math.max(...playerStats.map(p => p.mostVersatile?.value || 0)) : 'N/A'}
+                      </div>
+                      <Tooltip content={t('stats.mostVersatileTooltip')}>
+                        <div className="text-sm font-medium flex items-center gap-1 cursor-help">
+                          {t('stats.mostVersatile')}
+                          <InfoIcon className="h-3 w-3 opacity-50" />
+                        </div>
+                      </Tooltip>
+                      <div className="text-xs text-muted-foreground">
+                        {playerStats.length > 0 ? 
+                          findPlayerName(playerStats.find(ps => ps.mostVersatile?.value === Math.max(...playerStats.map(p => p.mostVersatile?.value || 0)))?.playerId || '') :
+                          t('stats.noData')
+                        }
+                      </div>
                     </div>
-                    <Tooltip content={t('stats.highestXPMTooltip')}>
-                      <div className="text-sm font-medium flex items-center gap-1 cursor-help">
-                        {t('stats.highestXPM')}
-                        <InfoIcon className="h-3 w-3 opacity-50" />
-                      </div>
-                    </Tooltip>
-                    <div className="text-xs text-muted-foreground">
-                      {playerStats.length > 0 ? 
-                        findPlayerName(playerStats.find(ps => ps.highestXPMSingleMatch?.value === Math.max(...playerStats.map(p => p.highestXPMSingleMatch?.value || 0)))?.playerId || '') :
-                        t('stats.noData')
-                      }
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Farming & Economy Records */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">🌾 {t('stats.farmingEconomy')}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-lg font-bold text-green-600">
-                      {playerStats.length > 0 ? Math.max(...playerStats.map(p => p.mostLastHitsSingleMatch?.value || 0)) : 'N/A'}
-                    </div>
-                    <Tooltip content={t('stats.mostLastHitsTooltip')}>
-                      <div className="text-sm font-medium flex items-center gap-1 cursor-help">
-                        {t('stats.mostLastHits')}
-                        <InfoIcon className="h-3 w-3 opacity-50" />
-                      </div>
-                    </Tooltip>
-                    <div className="text-xs text-muted-foreground">
-                      {playerStats.length > 0 ? 
-                        findPlayerName(playerStats.find(ps => ps.mostLastHitsSingleMatch?.value === Math.max(...playerStats.map(p => p.mostLastHitsSingleMatch?.value || 0)))?.playerId || '') :
-                        t('stats.noData')
-                      }
-                    </div>
-                  </div>
-
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-lg font-bold text-red-600">
-                      {playerStats.length > 0 ? Math.max(...playerStats.map(p => p.mostDeniesSingleMatch?.value || 0)) : 'N/A'}
-                    </div>
-                    <Tooltip content={t('stats.mostDeniesTooltip')}>
-                      <div className="text-sm font-medium flex items-center gap-1 cursor-help">
-                        {t('stats.mostDenies')}
-                        <InfoIcon className="h-3 w-3 opacity-50" />
-                      </div>
-                    </Tooltip>
-                    <div className="text-xs text-muted-foreground">
-                      {playerStats.length > 0 ? 
-                        findPlayerName(playerStats.find(ps => ps.mostDeniesSingleMatch?.value === Math.max(...playerStats.map(p => p.mostDeniesSingleMatch?.value || 0)))?.playerId || '') :
-                        t('stats.noData')
-                      }
-                    </div>
-                  </div>
-
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-lg font-bold text-yellow-600">N/A</div>
-                    <Tooltip content={t('stats.highestNetWorthTooltip')}>
-                      <div className="text-sm font-medium flex items-center gap-1 cursor-help">
-                        {t('stats.highestNetWorth')}
-                        <InfoIcon className="h-3 w-3 opacity-50" />
-                      </div>
-                    </Tooltip>
-                    <div className="text-xs text-muted-foreground">{t('stats.noData')}</div>
-                  </div>
-
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-lg font-bold text-purple-600">N/A</div>
-                    <Tooltip content={t('stats.mostGoldSpentTooltip')}>
-                      <div className="text-sm font-medium flex items-center gap-1 cursor-help">
-                        {t('stats.mostGoldSpent')}
-                        <InfoIcon className="h-3 w-3 opacity-50" />
-                      </div>
-                    </Tooltip>
-                    <div className="text-xs text-muted-foreground">{t('stats.noData')}</div>
-                  </div>
-
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-lg font-bold text-orange-600">N/A</div>
-                    <Tooltip content={t('stats.mostBuybacksTooltip')}>
-                      <div className="text-sm font-medium flex items-center gap-1 cursor-help">
-                        {t('stats.mostBuybacks')}
-                        <InfoIcon className="h-3 w-3 opacity-50" />
-                      </div>
-                    </Tooltip>
-                    <div className="text-xs text-muted-foreground">{t('stats.noData')}</div>
-                  </div>
-
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-lg font-bold text-blue-600">N/A</div>
-                    <Tooltip content={t('stats.fastestMidasTooltip')}>
-                      <div className="text-sm font-medium flex items-center gap-1 cursor-help">
-                        {t('stats.fastestMidas')}
-                        <InfoIcon className="h-3 w-3 opacity-50" />
-                      </div>
-                    </Tooltip>
-                    <div className="text-xs text-muted-foreground">{t('stats.noData')}</div>
-                  </div>
-
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-lg font-bold text-cyan-600">N/A</div>
-                    <Tooltip content={t('stats.mostTPScrollsTooltip')}>
-                      <div className="text-sm font-medium flex items-center gap-1 cursor-help">
-                        {t('stats.mostTPScrolls')}
-                        <InfoIcon className="h-3 w-3 opacity-50" />
-                      </div>
-                    </Tooltip>
-                    <div className="text-xs text-muted-foreground">{t('stats.noData')}</div>
-                  </div>
-
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-lg font-bold text-pink-600">N/A</div>
-                    <Tooltip content={t('stats.earliestLevel25Tooltip')}>
-                      <div className="text-sm font-medium flex items-center gap-1 cursor-help">
-                        {t('stats.earliestLevel25')}
-                        <InfoIcon className="h-3 w-3 opacity-50" />
-                      </div>
-                    </Tooltip>
-                    <div className="text-xs text-muted-foreground">{t('stats.noData')}</div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Support & Vision Records */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">👁️ {t('stats.supportVision')}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-lg font-bold text-blue-600">N/A</div>
-                    <Tooltip content={t('stats.mostObserverWardsTooltip')}>
-                      <div className="text-sm font-medium flex items-center gap-1 cursor-help">
-                        {t('stats.mostObserverWards')}
-                        <InfoIcon className="h-3 w-3 opacity-50" />
-                      </div>
-                    </Tooltip>
-                    <div className="text-xs text-muted-foreground">{t('stats.noData')}</div>
-                  </div>
-
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-lg font-bold text-purple-600">N/A</div>
-                    <Tooltip content={t('stats.mostSentryWardsTooltip')}>
-                      <div className="text-sm font-medium flex items-center gap-1 cursor-help">
-                        {t('stats.mostSentryWards')}
-                        <InfoIcon className="h-3 w-3 opacity-50" />
-                      </div>
-                    </Tooltip>
-                    <div className="text-xs text-muted-foreground">{t('stats.noData')}</div>
-                  </div>
-
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-lg font-bold text-red-600">N/A</div>
-                    <Tooltip content={t('stats.mostObserverKillsTooltip')}>
-                      <div className="text-sm font-medium flex items-center gap-1 cursor-help">
-                        {t('stats.mostObserverKills')}
-                        <InfoIcon className="h-3 w-3 opacity-50" />
-                      </div>
-                    </Tooltip>
-                    <div className="text-xs text-muted-foreground">{t('stats.noData')}</div>
-                  </div>
-
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-lg font-bold text-yellow-600">N/A</div>
-                    <Tooltip content={t('stats.mostSentryKillsTooltip')}>
-                      <div className="text-sm font-medium flex items-center gap-1 cursor-help">
-                        {t('stats.mostSentryKills')}
-                        <InfoIcon className="h-3 w-3 opacity-50" />
-                      </div>
-                    </Tooltip>
-                    <div className="text-xs text-muted-foreground">{t('stats.noData')}</div>
-                  </div>
-
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-lg font-bold text-green-600">N/A</div>
-                    <Tooltip content={t('stats.mostCampsStackedTooltip')}>
-                      <div className="text-sm font-medium flex items-center gap-1 cursor-help">
-                        {t('stats.mostCampsStacked')}
-                        <InfoIcon className="h-3 w-3 opacity-50" />
-                      </div>
-                    </Tooltip>
-                    <div className="text-xs text-muted-foreground">{t('stats.noData')}</div>
-                  </div>
-
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-lg font-bold text-orange-600">N/A</div>
-                    <div className="text-sm font-medium">Most Runes Collected</div>
-                    <div className="text-xs text-muted-foreground">No data</div>
-                  </div>
-
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-lg font-bold text-cyan-600">N/A</div>
-                    <div className="text-sm font-medium">Highest APM</div>
-                    <div className="text-xs text-muted-foreground">No data</div>
-                  </div>
-
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-lg font-bold text-indigo-600">N/A</div>
-                    <div className="text-sm font-medium">Longest Stun</div>
-                    <div className="text-xs text-muted-foreground">No data</div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Special Achievements */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">🏆 Special Achievements</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-lg font-bold text-red-600">
-                      {playerStats.length > 0 ? Math.max(...playerStats.map(p => p.longestKillStreak?.value || 0)) : 'N/A'}
-                    </div>
-                    <div className="text-sm font-medium">Longest Kill Streak</div>
-                    <div className="text-xs text-muted-foreground">
-                      {playerStats.length > 0 ? 
-                        findPlayerName(playerStats.find(ps => ps.longestKillStreak?.value === Math.max(...playerStats.map(p => p.longestKillStreak?.value || 0)))?.playerId || '') :
-                        'No data'
-                      }
-                    </div>
-                  </div>
-
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-lg font-bold text-purple-600">N/A</div>
-                    <div className="text-sm font-medium">Most Courier Kills</div>
-                    <div className="text-xs text-muted-foreground">No data</div>
-                  </div>
-
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-lg font-bold text-yellow-600">N/A</div>
-                    <div className="text-sm font-medium">Most Roshan Kills</div>
-                    <div className="text-xs text-muted-foreground">No data</div>
-                  </div>
-
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-lg font-bold text-green-600">N/A</div>
-                    <div className="text-sm font-medium">Most Versatile</div>
-                    <div className="text-xs text-muted-foreground">Most unique heroes</div>
-                  </div>
-
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-lg font-bold text-blue-600">N/A</div>
-                    <div className="text-sm font-medium">Most Neutral Kills</div>
-                    <div className="text-xs text-muted-foreground">No data</div>
-                  </div>
-
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-lg font-bold text-orange-600">N/A</div>
-                    <div className="text-sm font-medium">Most Ancient Kills</div>
-                    <div className="text-xs text-muted-foreground">No data</div>
-                  </div>
-
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-lg font-bold text-pink-600">N/A</div>
-                    <div className="text-sm font-medium">Fastest Aghanim's</div>
-                    <div className="text-xs text-muted-foreground">No data</div>
-                  </div>
-
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-lg font-bold text-cyan-600">N/A</div>
-                    <div className="text-sm font-medium">Total Rampages</div>
-                    <div className="text-xs text-muted-foreground">No data</div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="teams" className="space-y-6">
-          <div className="grid gap-6">
-            {/* Team Achievement Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Card className="bg-gradient-to-br from-red-500/10 to-orange-500/10 border-red-500/20">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-red-600">
-                    <Trophy className="h-5 w-5" />
-                    <Tooltip content={t('stats.dominanceKingTooltip')}>
-                      <span className="flex items-center gap-1">
-                        {t('stats.dominanceKing')}
-                        <InfoIcon className="h-3 w-3 opacity-50" />
-                      </span>
-                    </Tooltip>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    <p className="font-bold text-xl">{t('stats.noData')}</p>
-                    <p className="text-sm text-muted-foreground">{t('stats.dominanceKingTooltip')}</p>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="bg-gradient-to-br from-purple-500/10 to-pink-500/10 border-purple-500/20">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-purple-600">
-                    <Sword className="h-5 w-5" />
-                    <Tooltip content={t('stats.darkHorseTooltip')}>
-                      <span className="flex items-center gap-1">
-                        {t('stats.darkHorse')}
-                        <InfoIcon className="h-3 w-3 opacity-50" />
-                      </span>
-                    </Tooltip>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    <p className="font-bold text-xl">{t('stats.noData')}</p>
-                    <p className="text-sm text-muted-foreground">{t('stats.darkHorseTooltip')}</p>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="bg-gradient-to-br from-blue-500/10 to-cyan-500/10 border-blue-500/20">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-blue-600">
-                    <Target className="h-5 w-5" />
-                    <Tooltip content={t('stats.bestDraftTooltip')}>
-                      <span className="flex items-center gap-1">
-                        {t('stats.bestDraft')}
-                        <InfoIcon className="h-3 w-3 opacity-50" />
-                      </span>
-                    </Tooltip>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    <p className="font-bold text-xl">{t('stats.noData')}</p>
-                    <p className="text-sm text-muted-foreground">{t('stats.bestDraftTooltip')}</p>
                   </div>
                 </CardContent>
               </Card>
             </div>
+          </TabsContent>
 
-            {/* Combat Performance Records */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">⚔️ {t('stats.teamCombat')}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-lg font-bold text-red-600">
-                      {teamStats.length > 0 ? Math.max(...teamStats.map(t => t.mostTeamKillsSingleMatch?.value || 0)) : 'N/A'}
-                    </div>
-                    <Tooltip content={t('stats.mostTeamKillsTooltip')}>
-                      <div className="text-sm font-medium flex items-center gap-1 cursor-help">
-                        {t('stats.highestTeamKills')}
-                        <InfoIcon className="h-3 w-3 opacity-50" />
+          <TabsContent value="vision" className="space-y-6">
+            <div className="grid gap-6">
+              {/* Tournament Overview Records */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Trophy className="h-5 w-5 text-chart-2" />
+                    ?? {t('stats.tournamentOverview')}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="text-center p-4 bg-gradient-to-br from-secondary/20 to-secondary/10 rounded-lg">
+                      <div className="text-2xl font-bold text-secondary mb-1">
+                        {teams.length || 0}
                       </div>
-                    </Tooltip>
-                    <div className="text-xs text-muted-foreground">
-                      {teamStats.length > 0 ? 
-                        teams.find(t => t.id === teamStats.find(ts => ts.mostTeamKillsSingleMatch?.value === Math.max(...teamStats.map(t => t.mostTeamKillsSingleMatch?.value || 0)))?.teamId)?.name || 'Unknown' :
-                        t('stats.noData')
-                      }
-                    </div>
-                  </div>
-
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-lg font-bold text-blue-600">N/A</div>
-                    <Tooltip content={t('stats.fewestDeathsTooltip')}>
-                      <div className="text-sm font-medium flex items-center gap-1 cursor-help">
-                        {t('stats.fewestDeaths')}
-                        <InfoIcon className="h-3 w-3 opacity-50" />
+                      <Tooltip content={t('stats.totalTeamsTooltip')}>
+                        <div className="text-sm font-medium cursor-help flex items-center justify-center gap-1">
+                          {t('stats.totalTeams')}
+                          <InfoIcon className="h-3 w-3 opacity-50" />
+                        </div>
+                      </Tooltip>
+                      <div className="text-xs text-muted-foreground">
+                        {teams.filter(t => t.matchesPlayed && t.matchesPlayed > 0).length} {t('stats.playedMatches')}
                       </div>
-                    </Tooltip>
-                    <div className="text-xs text-muted-foreground">{t('stats.noData')}</div>
-                  </div>
-
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-lg font-bold text-green-600">N/A</div>
-                    <Tooltip content={t('stats.highestTeamKDATooltip')}>
-                      <div className="text-sm font-medium flex items-center gap-1 cursor-help">
-                        {t('stats.highestTeamKDA')}
-                        <InfoIcon className="h-3 w-3 opacity-50" />
+                    </div>
+                    
+                    <div className="text-center p-4 bg-gradient-to-br from-accent/20 to-accent/10 rounded-lg">
+                      <div className="text-2xl font-bold text-accent mb-1">
+                        {completedMatches.length}
                       </div>
-                    </Tooltip>
-                    <div className="text-xs text-muted-foreground">{t('stats.noData')}</div>
-                  </div>
-
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-lg font-bold text-purple-600">N/A</div>
-                    <Tooltip content={t('stats.mostTeamAssistsTooltip')}>
-                      <div className="text-sm font-medium flex items-center gap-1 cursor-help">
-                        {t('stats.mostTeamAssists')}
-                        <InfoIcon className="h-3 w-3 opacity-50" />
+                      <Tooltip content={t('stats.matchesCompletedTooltip')}>
+                        <div className="text-sm font-medium cursor-help flex items-center justify-center gap-1">
+                          {t('stats.matchesCompleted')}
+                          <InfoIcon className="h-3 w-3 opacity-50" />
+                        </div>
+                      </Tooltip>
+                      <div className="text-xs text-muted-foreground">
+                        of {totalMatches} scheduled
                       </div>
-                    </Tooltip>
-                    <div className="text-xs text-muted-foreground">{t('stats.noData')}</div>
-                  </div>
-
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-lg font-bold text-orange-600">N/A</div>
-                    <div className="text-sm font-medium">Most Hero Damage</div>
-                    <div className="text-xs text-muted-foreground">No data</div>
-                  </div>
-
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-lg font-bold text-yellow-600">N/A</div>
-                    <div className="text-sm font-medium">Most Hero Healing</div>
-                    <div className="text-xs text-muted-foreground">No data</div>
-                  </div>
-
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-lg font-bold text-cyan-600">N/A</div>
-                    <div className="text-sm font-medium">Most Tower Damage</div>
-                    <div className="text-xs text-muted-foreground">No data</div>
-                  </div>
-
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-lg font-bold text-pink-600">N/A</div>
-                    <div className="text-sm font-medium">Most First Bloods</div>
-                    <div className="text-xs text-muted-foreground">No data</div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Economy & Resources */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">💰 Economy & Resources</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-lg font-bold text-yellow-600">N/A</div>
-                    <div className="text-sm font-medium">Highest Team GPM</div>
-                    <div className="text-xs text-muted-foreground">No data</div>
-                  </div>
-
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-lg font-bold text-blue-600">N/A</div>
-                    <div className="text-sm font-medium">Highest Team XPM</div>
-                    <div className="text-xs text-muted-foreground">No data</div>
-                  </div>
-
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-lg font-bold text-green-600">N/A</div>
-                    <div className="text-sm font-medium">Biggest Net Worth Lead</div>
-                    <div className="text-xs text-muted-foreground">No data</div>
-                  </div>
-
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-lg font-bold text-purple-600">N/A</div>
-                    <div className="text-sm font-medium">Most Gold Earned</div>
-                    <div className="text-xs text-muted-foreground">No data</div>
-                  </div>
-
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-lg font-bold text-orange-600">N/A</div>
-                    <div className="text-sm font-medium">Most Gold Spent</div>
-                    <div className="text-xs text-muted-foreground">No data</div>
-                  </div>
-
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-lg font-bold text-red-600">N/A</div>
-                    <div className="text-sm font-medium">Most Last Hits</div>
-                    <div className="text-xs text-muted-foreground">No data</div>
-                  </div>
-
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-lg font-bold text-cyan-600">N/A</div>
-                    <div className="text-sm font-medium">Most Total XP</div>
-                    <div className="text-xs text-muted-foreground">No data</div>
-                  </div>
-
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-lg font-bold text-pink-600">N/A</div>
-                    <div className="text-sm font-medium">Most Buybacks</div>
-                    <div className="text-xs text-muted-foreground">No data</div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Vision & Map Control */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">👁️ Vision & Map Control</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-lg font-bold text-blue-600">N/A</div>
-                    <div className="text-sm font-medium">Most Observer Wards</div>
-                    <div className="text-xs text-muted-foreground">No data</div>
-                  </div>
-
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-lg font-bold text-purple-600">N/A</div>
-                    <div className="text-sm font-medium">Most Sentry Wards</div>
-                    <div className="text-xs text-muted-foreground">No data</div>
-                  </div>
-
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-lg font-bold text-red-600">N/A</div>
-                    <div className="text-sm font-medium">Most Wards Killed</div>
-                    <div className="text-xs text-muted-foreground">No data</div>
-                  </div>
-
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-lg font-bold text-green-600">N/A</div>
-                    <div className="text-sm font-medium">Most Camps Stacked</div>
-                    <div className="text-xs text-muted-foreground">No data</div>
-                  </div>
-
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-lg font-bold text-orange-600">N/A</div>
-                    <div className="text-sm font-medium">Most Runes Secured</div>
-                    <div className="text-xs text-muted-foreground">No data</div>
-                  </div>
-
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-lg font-bold text-cyan-600">N/A</div>
-                    <div className="text-sm font-medium">Highest Team APM</div>
-                    <div className="text-xs text-muted-foreground">No data</div>
-                  </div>
-
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-lg font-bold text-yellow-600">N/A</div>
-                    <div className="text-sm font-medium">Most Neutral Kills</div>
-                    <div className="text-xs text-muted-foreground">No data</div>
-                  </div>
-
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-lg font-bold text-pink-600">N/A</div>
-                    <div className="text-sm font-medium">Most Ancient Kills</div>
-                    <div className="text-xs text-muted-foreground">No data</div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Objectives & Structures */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">🏰 Objectives & Structures</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-lg font-bold text-yellow-600">
-                      {teamStats.length > 0 ? 
-                        `${Math.floor(Math.min(...teamStats.map(t => t.fastestVictory?.duration || Infinity)) / 60)}:${String(Math.min(...teamStats.map(t => t.fastestVictory?.duration || Infinity)) % 60).padStart(2, '0')}` :
-                        'N/A'
-                      }
                     </div>
-                    <div className="text-sm font-medium">Fastest Victory</div>
-                    <div className="text-xs text-muted-foreground">
-                      {teamStats.length > 0 ? 
-                        teams.find(t => t.id === teamStats.find(ts => ts.fastestVictory?.duration === Math.min(...teamStats.map(t => t.fastestVictory?.duration || Infinity)))?.teamId)?.name || 'Unknown' :
-                        'No data'
-                      }
+                    
+                    <div className="text-center p-4 bg-gradient-to-br from-chart-4/20 to-chart-4/10 rounded-lg">
+                      <div className="text-2xl font-bold text-chart-4 mb-1">
+                        {players.length || 0}
+                      </div>
+                      <Tooltip content={t('stats.activeTeamsTooltip')}>
+                        <div className="text-sm font-medium cursor-help flex items-center justify-center gap-1">
+                          {t('stats.activePlayers')}
+                          <InfoIcon className="h-3 w-3 opacity-50" />
+                        </div>
+                      </Tooltip>
+                      <div className="text-xs text-muted-foreground">
+                        registered players
+                      </div>
+                    </div>
+                    
+                    <div className="text-center p-4 bg-gradient-to-br from-chart-3/20 to-chart-3/10 rounded-lg">
+                      <div className="text-2xl font-bold text-chart-3 mb-1">
+                        {tournamentStats?.averageMatchDuration ? Math.round(tournamentStats.averageMatchDuration / 60) + 'm' : 'N/A'}
+                      </div>
+                      <Tooltip content={t('stats.avgMatchDurationTooltip')}>
+                        <div className="text-sm font-medium cursor-help flex items-center justify-center gap-1">
+                          {t('stats.avgMatchDuration')}
+                          <InfoIcon className="h-3 w-3 opacity-50" />
+                        </div>
+                      </Tooltip>
+                      <div className="text-xs text-muted-foreground">
+                        {tournamentStats?.averageMatchDuration ? Math.round(tournamentStats.averageMatchDuration % 60) + 's' : ''}
+                      </div>
                     </div>
                   </div>
+                </CardContent>
+              </Card>
 
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-lg font-bold text-red-600">N/A</div>
-                    <div className="text-sm font-medium">Most Tower Kills</div>
-                    <div className="text-xs text-muted-foreground">No data</div>
-                  </div>
-
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-lg font-bold text-purple-600">N/A</div>
-                    <div className="text-sm font-medium">Most Roshan Kills</div>
-                    <div className="text-xs text-muted-foreground">No data</div>
-                  </div>
-
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-lg font-bold text-green-600">N/A</div>
-                    <div className="text-sm font-medium">Most Barracks</div>
-                    <div className="text-xs text-muted-foreground">No data</div>
-                  </div>
-
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-lg font-bold text-blue-600">
-                      {teamStats.length > 0 ? teamStats.filter(t => t.perfectStructureGame?.value).length : '0'}
+              {/* MVP & Performance Awards */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Target className="h-5 w-5 text-chart-3" />
+                    ?? {t('stats.topPerformers')}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div className="text-center p-4 bg-gradient-to-br from-chart-2/20 to-chart-2/10 rounded-lg border-2 border-chart-2/30">
+                      <div className="text-lg font-bold text-chart-2 mb-1">
+                        {playerStats.length > 0 ? 
+                          findPlayerName(playerStats.find(ps => ps.highestKDA?.value === Math.max(...playerStats.map(p => p.highestKDA?.value || 0)))?.playerId || '') :
+                          t('stats.noData')
+                        }
+                      </div>
+                      <Tooltip content={t('stats.tournamentMVPTooltip')}>
+                        <div className="text-sm font-medium cursor-help flex items-center justify-center gap-1">
+                          {t('stats.tournamentMVP')}
+                          <InfoIcon className="h-3 w-3 opacity-50" />
+                        </div>
+                      </Tooltip>
+                      <div className="text-xs text-muted-foreground">
+                        {playerStats.length > 0 ? 
+                          (Math.max(...playerStats.map(p => p.highestKDA?.value || 0)) / 1).toFixed(2) + ' KDA' :
+                          'N/A'
+                        }
+                      </div>
                     </div>
-                    <div className="text-sm font-medium">Perfect Games</div>
-                    <div className="text-xs text-muted-foreground">
-                      {teamStats.length > 0 ? 
-                        teams.find(t => t.id === teamStats.find(ts => ts.perfectStructureGame?.value)?.teamId)?.name || 'No perfect games yet' :
-                        'No data'
-                      }
+
+                    <div className="text-center p-4 bg-gradient-to-br from-accent/20 to-accent/10 rounded-lg border-2 border-accent/30">
+                      <div className="text-lg font-bold text-accent mb-1">
+                        {playerStats.length > 0 ? 
+                          findPlayerName(playerStats.find(ps => ps.mostObserverWardsSingleMatch?.value === Math.max(...playerStats.map(p => p.mostObserverWardsSingleMatch?.value || 0)))?.playerId || '') :
+                          t('stats.noData')
+                        }
+                      </div>
+                      <Tooltip content={t('stats.supportMVPTooltip')}>
+                        <div className="text-sm font-medium cursor-help flex items-center justify-center gap-1">
+                          {t('stats.supportMVP')}
+                          <InfoIcon className="h-3 w-3 opacity-50" />
+                        </div>
+                      </Tooltip>
+                      <div className="text-xs text-muted-foreground">
+                        {playerStats.length > 0 ? 
+                          Math.max(...playerStats.map(p => p.mostObserverWardsSingleMatch?.value || 0)) + ' wards' :
+                          'N/A'
+                        }
+                      </div>
+                    </div>
+
+                    <div className="text-center p-4 bg-gradient-to-br from-secondary/20 to-secondary/10 rounded-lg border-2 border-secondary/30">
+                      <div className="text-lg font-bold text-secondary mb-1">
+                        {playerStats.length > 0 ? 
+                          findPlayerName(playerStats.find(ps => ps.highestGPMSingleMatch?.value === Math.max(...playerStats.map(p => p.highestGPMSingleMatch?.value || 0)))?.playerId || '') :
+                          t('stats.noData')
+                        }
+                      </div>
+                      <Tooltip content={t('stats.carryMVPTooltip')}>
+                        <div className="text-sm font-medium cursor-help flex items-center justify-center gap-1">
+                          {t('stats.carryMVP')}
+                          <InfoIcon className="h-3 w-3 opacity-50" />
+                        </div>
+                      </Tooltip>
+                      <div className="text-xs text-muted-foreground">
+                        {playerStats.length > 0 ? 
+                          Math.max(...playerStats.map(p => p.highestGPMSingleMatch?.value || 0)) + ' GPM' :
+                          'N/A'
+                        }
+                      </div>
                     </div>
                   </div>
+                </CardContent>
+              </Card>
 
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-lg font-bold text-orange-600">N/A</div>
-                    <div className="text-sm font-medium">Most Teamfights Won</div>
-                    <div className="text-xs text-muted-foreground">No data</div>
+              {/* Tournament Combat Statistics */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Sword className="h-5 w-5 text-primary" />
+                    ?? {t('stats.tournamentCombat')}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="text-center p-4 bg-gradient-to-br from-primary/20 to-primary/10 rounded-lg">
+                      <div className="text-2xl font-bold text-primary mb-1">
+                        {tournamentStats?.totalKills?.toLocaleString() || 'N/A'}
+                      </div>
+                      <Tooltip content={t('stats.totalKillsTooltip')}>
+                        <div className="text-sm font-medium cursor-help flex items-center justify-center gap-1">
+                          {t('stats.totalKills')}
+                          <InfoIcon className="h-3 w-3 opacity-50" />
+                        </div>
+                      </Tooltip>
+                      <div className="text-xs text-muted-foreground">
+                        {tournamentStats?.totalKills && completedMatches.length > 0 ? 
+                          Math.round(tournamentStats.totalKills / completedMatches.length) + ' avg/match' : 
+                          ''
+                        }
+                      </div>
+                    </div>
+
+                    <div className="text-center p-4 bg-gradient-to-br from-chart-4/20 to-chart-4/10 rounded-lg">
+                      <div className="text-2xl font-bold text-chart-4 mb-1">
+                        {playerStats.length > 0 ? playerStats.reduce((sum, p) => sum + (p.totalRampages?.value || 0), 0) : 'N/A'}
+                      </div>
+                      <Tooltip content={t('stats.totalRampagesCountTooltip')}>
+                        <div className="text-sm font-medium cursor-help flex items-center justify-center gap-1">
+                          {t('stats.totalRampagesCount')}
+                          <InfoIcon className="h-3 w-3 opacity-50" />
+                        </div>
+                      </Tooltip>
+                      <div className="text-xs text-muted-foreground">
+                        pentakills total
+                      </div>
+                    </div>
+
+                    <div className="text-center p-4 bg-gradient-to-br from-secondary/20 to-secondary/10 rounded-lg">
+                      <div className="text-2xl font-bold text-secondary mb-1">
+                        {completedMatches.length > 0 ? 
+                          ((completedMatches.filter(m => m.winnerId === m.teamA?.id).length / completedMatches.length) * 100).toFixed(1) :
+                          '50.0'
+                        }%
+                      </div>
+                      <Tooltip content={t('stats.radiantWinRateTooltip')}>
+                        <div className="text-sm font-medium cursor-help flex items-center justify-center gap-1">
+                          {t('stats.radiantWinRate')}
+                          <InfoIcon className="h-3 w-3 opacity-50" />
+                        </div>
+                      </Tooltip>
+                      <div className="text-xs text-muted-foreground">
+                        vs {completedMatches.length > 0 ? 
+                          ((completedMatches.filter(m => m.winnerId !== m.teamA?.id).length / completedMatches.length) * 100).toFixed(1) :
+                          '50.0'
+                        }% Dire
+                      </div>
+                    </div>
+
+                    <div className="text-center p-4 bg-gradient-to-br from-chart-2/20 to-chart-2/10 rounded-lg">
+                      <div className="text-2xl font-bold text-chart-2 mb-1">
+                        {playerStats.length > 0 ? Math.max(...playerStats.map(p => p.mostKillsSingleMatch?.value || 0)) : 'N/A'}
+                      </div>
+                      <Tooltip content={t('stats.bloodiestGameTooltip')}>
+                        <div className="text-sm font-medium cursor-help flex items-center justify-center gap-1">
+                          {t('stats.bloodiestGame')}
+                          <InfoIcon className="h-3 w-3 opacity-50" />
+                        </div>
+                      </Tooltip>
+                      <div className="text-xs text-muted-foreground">
+                        single match record
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
 
-            {/* Team Rankings */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Trophy className="h-5 w-5 text-yellow-500" />
-                  Current Team Rankings
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {teams.length > 0 ? (
-                    teams
-                      .sort((a, b) => {
-                        const aWinRate = a.wins && a.matchesPlayed ? (a.wins / a.matchesPlayed) : 0;
-                        const bWinRate = b.wins && b.matchesPlayed ? (b.wins / b.matchesPlayed) : 0;
-                        return bWinRate - aWinRate;
-                      })
-                      .slice(0, 10)
-                      .map((team, index) => {
-                        return (
-                          <div key={team.id} className="flex items-center justify-between p-3 rounded-lg border">
-                            <div className="flex items-center gap-3">
-                              <Badge variant={index < 3 ? "default" : "secondary"}>
-                                #{index + 1}
-                              </Badge>
-                              <div>
-                                <p className="font-medium">{team.name}</p>
-                                <p className="text-sm text-muted-foreground">
-                                  {team.wins || 0}W - {team.losses || 0}L ({team.matchesPlayed || 0} played)
-                                </p>
-                              </div>
-                            </div>
-                            <div className="text-right">
-                              <p className="font-bold text-primary">
-                                {team.wins && team.matchesPlayed 
-                                  ? ((team.wins / team.matchesPlayed) * 100).toFixed(1) 
-                                  : '0.0'}%
-                              </p>
-                              <p className="text-xs text-muted-foreground">
-                                {team.averageFantasyPoints?.toFixed(1) || '0.0'} avg fantasy
-                              </p>
-                            </div>
+          <TabsContent value="teams" className="space-y-6">
+            <div className="grid gap-6">
+              {/* Team Performance Overview */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Trophy className="h-5 w-5 text-chart-2" />
+                    ?? {t('stats.teamPerformance')}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {teams.slice(0, 8).map((team, index) => (
+                      <div key={team.id} className="p-4 border rounded-lg bg-gradient-to-br from-primary/5 to-primary/10">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="text-lg font-bold text-primary">{team.name}</div>
+                          <div className="text-sm font-medium text-muted-foreground">#{index + 1}</div>
+                        </div>
+                        <div className="space-y-1">
+                          <div className="flex justify-between text-sm">
+                            <span>Wins:</span>
+                            <span className="font-medium text-secondary">{team.wins || 0}</span>
                           </div>
-                        );
-                      })
-                  ) : (
-                    <div className="text-center py-8">
-                      <p className="text-muted-foreground">No team data available yet.</p>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="meta" className="space-y-6">
-          <div className="grid gap-6">
-            {/* Tournament Overview Stats */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">🏆 {t('stats.tournamentOverview')}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-lg font-bold text-blue-600">{teams.length}</div>
-                    <Tooltip content={t('stats.totalTeamsTooltip')}>
-                      <div className="text-sm font-medium flex items-center gap-1 cursor-help">
-                        {t('stats.totalTeams')}
-                        <InfoIcon className="h-3 w-3 opacity-50" />
+                          <div className="flex justify-between text-sm">
+                            <span>Losses:</span>
+                            <span className="font-medium text-primary">{team.losses || 0}</span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span>Win Rate:</span>
+                            <span className="font-medium">
+                              {((team.wins || 0) / Math.max((team.wins || 0) + (team.losses || 0), 1) * 100).toFixed(1)}%
+                            </span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span>Avg Match:</span>
+                            <span className="font-medium">{team.averageMatchDurationMinutes || 0}m</span>
+                          </div>
+                        </div>
                       </div>
-                    </Tooltip>
-                    <div className="text-xs text-muted-foreground">Zarejestrowane</div>
+                    ))}
                   </div>
+                </CardContent>
+              </Card>
 
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-lg font-bold text-green-600">{completedMatches.length}</div>
-                    <Tooltip content={t('stats.matchesCompletedTooltip')}>
-                      <div className="text-sm font-medium flex items-center gap-1 cursor-help">
-                        {t('stats.matchesCompleted')}
-                        <InfoIcon className="h-3 w-3 opacity-50" />
+              {/* Team Records */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Sword className="h-5 w-5 text-primary" />
+                    ?? {t('stats.teamRecords')}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="p-3 border rounded-lg bg-gradient-to-br from-secondary/20 to-secondary/10">
+                      <div className="text-lg font-bold text-secondary">
+                        {teamStats.length > 0 ? Math.min(...teamStats.map(t => t.fastestVictory?.duration || Infinity)) + 'm' : 'N/A'}
                       </div>
-                    </Tooltip>
-                    <div className="text-xs text-muted-foreground">Z {totalMatches}</div>
-                  </div>
-
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-lg font-bold text-purple-600">
-                      {tournamentStats?.totalGames || completedMatches.length}
-                    </div>
-                    <Tooltip content={t('stats.totalGamesTooltip')}>
-                      <div className="text-sm font-medium flex items-center gap-1 cursor-help">
-                        {t('stats.totalGames')}
-                        <InfoIcon className="h-3 w-3 opacity-50" />
+                      <Tooltip content={t('stats.fastestTeamVictoryTooltip')}>
+                        <div className="text-sm font-medium flex items-center gap-1 cursor-help">
+                          {t('stats.fastestTeamVictory')}
+                          <InfoIcon className="h-3 w-3 opacity-50" />
+                        </div>
+                      </Tooltip>
+                      <div className="text-xs text-muted-foreground">
+                        {teamStats.length > 0 ? 
+                          teams.find(t => t.id === teamStats.find(ts => ts.fastestVictory?.duration === Math.min(...teamStats.map(t => t.fastestVictory?.duration || Infinity)))?.teamId)?.name || t('stats.noData') :
+                          t('stats.noData')
+                        }
                       </div>
-                    </Tooltip>
-                    <div className="text-xs text-muted-foreground">Rozegrane</div>
-                  </div>
-
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-lg font-bold text-orange-600">
-                      {tournamentStats ? 
-                        `${Math.floor(tournamentStats.averageMatchDuration / 60)}:${String(tournamentStats.averageMatchDuration % 60).padStart(2, '0')}` 
-                        : 'N/A'
-                      }
                     </div>
-                    <div className="text-sm font-medium">Avg Match Duration</div>
-                    <div className="text-xs text-muted-foreground">Minutes</div>
-                  </div>
 
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-lg font-bold text-red-600">N/A</div>
-                    <div className="text-sm font-medium">Longest Match</div>
-                    <div className="text-xs text-muted-foreground">Duration</div>
-                  </div>
-
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-lg font-bold text-yellow-600">N/A</div>
-                    <div className="text-sm font-medium">Shortest Match</div>
-                    <div className="text-xs text-muted-foreground">Duration</div>
-                  </div>
-
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-lg font-bold text-cyan-600">
-                      {completedMatches.length > 0 ? 
-                        ((completedMatches.filter(m => m.winnerId === m.teamA?.id).length / completedMatches.length) * 100).toFixed(1) : 
-                        '50.0'
-                      }%
+                    <div className="p-3 border rounded-lg bg-gradient-to-br from-primary/20 to-primary/10">
+                      <div className="text-lg font-bold text-primary">
+                        {teamStats.length > 0 ? Math.max(...teamStats.map(t => t.mostTeamKillsSingleMatch?.value || 0)) : 'N/A'}
+                      </div>
+                      <Tooltip content={t('stats.mostTeamKillsTooltip')}>
+                        <div className="text-sm font-medium flex items-center gap-1 cursor-help">
+                          {t('stats.mostTeamKills')}
+                          <InfoIcon className="h-3 w-3 opacity-50" />
+                        </div>
+                      </Tooltip>
+                      <div className="text-xs text-muted-foreground">
+                        {teamStats.length > 0 ? 
+                          teams.find(t => t.id === teamStats.find(ts => ts.mostTeamKillsSingleMatch?.value === Math.max(...teamStats.map(t => t.mostTeamKillsSingleMatch?.value || 0)))?.teamId)?.name || t('stats.noData') :
+                          t('stats.noData')
+                        }
+                      </div>
                     </div>
-                    <div className="text-sm font-medium">Radiant Win Rate</div>
-                    <div className="text-xs text-muted-foreground">
-                      {completedMatches.filter(m => m.winnerId === m.teamA?.id).length}/{completedMatches.length}
+
+                    <div className="p-3 border rounded-lg bg-gradient-to-br from-chart-2/20 to-chart-2/10">
+                      <div className="text-lg font-bold text-chart-2">
+                        {teamStats.filter(t => t.perfectStructureGame?.value).length}
+                      </div>
+                      <Tooltip content={t('stats.perfectStructureGamesTooltip')}>
+                        <div className="text-sm font-medium flex items-center gap-1 cursor-help">
+                          {t('stats.perfectStructureGames')}
+                          <InfoIcon className="h-3 w-3 opacity-50" />
+                        </div>
+                      </Tooltip>
+                      <div className="text-xs text-muted-foreground">
+                        {t('stats.totalAchieved')}
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-lg font-bold text-pink-600">
-                      {completedMatches.length > 0 ? 
-                        ((completedMatches.filter(m => m.winnerId !== m.teamA?.id).length / completedMatches.length) * 100).toFixed(1) : 
-                        '50.0'
-                      }%
-                    </div>
-                    <div className="text-sm font-medium">Dire Win Rate</div>
-                    <div className="text-xs text-muted-foreground">
-                      {completedMatches.filter(m => m.winnerId !== m.teamA?.id).length}/{completedMatches.length}
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Combat Statistics */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">⚔️ Tournament Combat Stats</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-lg font-bold text-red-600">
-                      {tournamentStats?.totalKills?.toLocaleString() || 'N/A'}
-                    </div>
-                    <div className="text-sm font-medium">Total Kills</div>
-                    <div className="text-xs text-muted-foreground">All matches</div>
-                  </div>
-
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-lg font-bold text-blue-600">N/A</div>
-                    <div className="text-sm font-medium">Total Deaths</div>
-                    <div className="text-xs text-muted-foreground">All matches</div>
-                  </div>
-
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-lg font-bold text-green-600">N/A</div>
-                    <div className="text-sm font-medium">Total Assists</div>
-                    <div className="text-xs text-muted-foreground">All matches</div>
-                  </div>
-
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-lg font-bold text-purple-600">N/A</div>
-                    <div className="text-sm font-medium">Total Rampages</div>
-                    <div className="text-xs text-muted-foreground">5+ kill streaks</div>
-                  </div>
-
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-lg font-bold text-orange-600">N/A</div>
-                    <div className="text-sm font-medium">Total Ultra Kills</div>
-                    <div className="text-xs text-muted-foreground">4 kill streaks</div>
-                  </div>
-
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-lg font-bold text-yellow-600">N/A</div>
-                    <div className="text-sm font-medium">First Bloods</div>
-                    <div className="text-xs text-muted-foreground">Secured</div>
-                  </div>
-
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-lg font-bold text-cyan-600">
-                      {tournamentStats?.totalKills && completedMatches.length > 0 ? 
-                        (tournamentStats.totalKills / completedMatches.length).toFixed(1) : 'N/A'}
-                    </div>
-                    <div className="text-sm font-medium">Kills Per Game</div>
-                    <div className="text-xs text-muted-foreground">Average</div>
-                  </div>
-
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-lg font-bold text-pink-600">N/A</div>
-                    <div className="text-sm font-medium">Bloodiest Game</div>
-                    <div className="text-xs text-muted-foreground">Most kills</div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Heroes & Meta */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">🦸 Heroes & Meta Analysis</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-lg font-bold text-red-600">
-                      {tournamentStats?.mostPickedHero?.heroName || 'N/A'}
-                    </div>
-                    <div className="text-sm font-medium">Most Picked Hero</div>
-                    <div className="text-xs text-muted-foreground">
-                      {tournamentStats?.mostPickedHero?.pickCount || '0'} picks
+                    <div className="p-3 border rounded-lg bg-gradient-to-br from-accent/20 to-accent/10">
+                      <div className="text-lg font-bold text-accent">
+                        {teams.length > 0 ? Math.max(...teams.map(t => t.averageFantasyPoints || 0)).toFixed(1) : 'N/A'}
+                      </div>
+                      <Tooltip content={t('stats.bestFantasyPerformanceTooltip')}>
+                        <div className="text-sm font-medium flex items-center gap-1 cursor-help">
+                          {t('stats.bestFantasyPerformance')}
+                          <InfoIcon className="h-3 w-3 opacity-50" />
+                        </div>
+                      </Tooltip>
+                      <div className="text-xs text-muted-foreground">
+                        {teams.length > 0 ? 
+                          teams.find(t => t.averageFantasyPoints === Math.max(...teams.map(t => t.averageFantasyPoints || 0)))?.name || t('stats.noData') :
+                          t('stats.noData')
+                        }
+                      </div>
                     </div>
                   </div>
+                </CardContent>
+              </Card>
 
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-lg font-bold text-purple-600">
-                      {tournamentStats?.mostBannedHero?.heroName || 'N/A'}
+              {/* Tournament Statistics */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <TrendingUp className="h-5 w-5 text-secondary" />
+                    ?? {t('stats.tournamentStatistics')}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="text-center p-4 bg-gradient-to-br from-accent/20 to-accent/10 rounded-lg">
+                      <div className="text-2xl font-bold text-accent mb-1">{teams.length}</div>
+                      <div className="text-sm font-medium">{t('stats.totalTeams')}</div>
                     </div>
-                    <div className="text-sm font-medium">Most Banned Hero</div>
-                    <div className="text-xs text-muted-foreground">
-                      {tournamentStats?.mostBannedHero?.banCount || '0'} bans
+                    
+                    <div className="text-center p-4 bg-gradient-to-br from-secondary/20 to-secondary/10 rounded-lg">
+                      <div className="text-2xl font-bold text-secondary mb-1">
+                        {completedMatches.length}
+                      </div>
+                      <div className="text-sm font-medium">{t('stats.completedMatches')}</div>
+                    </div>
+                    
+                    <div className="text-center p-4 bg-gradient-to-br from-chart-4/20 to-chart-4/10 rounded-lg">
+                      <div className="text-2xl font-bold text-chart-4 mb-1">
+                        {Math.round(completionRate)}%
+                      </div>
+                      <div className="text-sm font-medium">{t('stats.completionRate')}</div>
+                    </div>
+                    
+                    <div className="text-center p-4 bg-gradient-to-br from-chart-3/20 to-chart-3/10 rounded-lg">
+                      <div className="text-2xl font-bold text-chart-3 mb-1">
+                        {tournamentStats?.averageMatchDuration ? Math.round(tournamentStats.averageMatchDuration / 60) : 'N/A'}
+                      </div>
+                      <div className="text-sm font-medium">{t('stats.avgMatchDuration')} (min)</div>
                     </div>
                   </div>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
 
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-lg font-bold text-green-600">
-                      {tournamentStats?.highestWinRateHero?.heroName || 'N/A'}
+          <TabsContent value="meta" className="space-y-6">
+            <div className="grid gap-6">
+              {/* Hero Meta Overview */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Card className="text-center">
+                  <CardHeader>
+                    <CardTitle className="flex items-center justify-center gap-2 text-lg">
+                      <Target className="h-5 w-5 text-primary" />
+                      {t('stats.mostPopularHero')}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-primary mb-2">
+                      {tournamentStats?.mostPickedHero?.heroName || t('stats.noData')}
                     </div>
-                    <div className="text-sm font-medium">Highest Win Rate</div>
-                    <div className="text-xs text-muted-foreground">
-                      {tournamentStats?.highestWinRateHero ? 
-                        `${(tournamentStats.highestWinRateHero.winRate * 100).toFixed(1)}%` : 'N/A'
-                      } ({tournamentStats?.highestWinRateHero?.gamesPlayed || 0} games)
+                    <p className="text-sm text-muted-foreground">
+                      {tournamentStats?.mostPickedHero?.pickCount || 0} {t('stats.picks')}
+                    </p>
+                  </CardContent>
+                </Card>
+                
+                <Card className="text-center">
+                  <CardHeader>
+                    <CardTitle className="flex items-center justify-center gap-2 text-lg">
+                      <Zap className="h-5 w-5 text-chart-4" />
+                      {t('stats.mostBannedHero')}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-chart-4 mb-2">
+                      {tournamentStats?.mostBannedHero?.heroName || t('stats.noData')}
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      {tournamentStats?.mostBannedHero?.banCount || 0} {t('stats.bans')}
+                    </p>
+                  </CardContent>
+                </Card>
+
+                <Card className="text-center">
+                  <CardHeader>
+                    <CardTitle className="flex items-center justify-center gap-2 text-lg">
+                      <Trophy className="h-5 w-5 text-secondary" />
+                      {t('stats.highestWinRate')}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-secondary mb-2">
+                      {tournamentStats?.highestWinRateHero?.heroName || t('stats.noData')}
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      {tournamentStats?.highestWinRateHero?.winRate ? Math.round(tournamentStats.highestWinRateHero.winRate * 100) : 0}% {t('stats.winRate')}
+                      <span className="block text-xs">
+                        ({tournamentStats?.highestWinRateHero?.gamesPlayed || 0} games)
+                      </span>
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Tournament Meta Statistics */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <TrendingUp className="h-5 w-5 text-accent" />
+                    ?? {t('stats.tournamentMeta')}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="text-center p-4 bg-gradient-to-br from-primary/20 to-primary/10 rounded-lg">
+                      <div className="text-2xl font-bold text-primary mb-1">
+                        {tournamentStats?.totalKills?.toLocaleString() || 'N/A'}
+                      </div>
+                      <div className="text-sm font-medium">{t('stats.totalKills')}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {tournamentStats?.totalKills && completedMatches.length > 0 ? 
+                          Math.round(tournamentStats.totalKills / completedMatches.length) + ' avg/match' : 
+                          ''
+                        }
+                      </div>
+                    </div>
+                    
+                    <div className="text-center p-4 bg-gradient-to-br from-chart-2/20 to-chart-2/10 rounded-lg">
+                      <div className="text-2xl font-bold text-chart-2 mb-1">
+                        {tournamentStats?.totalGoldGenerated ? Math.round(tournamentStats.totalGoldGenerated / 1000000) + 'M' : 'N/A'}
+                      </div>
+                      <div className="text-sm font-medium">{t('stats.totalGold')}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {tournamentStats?.totalGoldGenerated && completedMatches.length > 0 ? 
+                          Math.round(tournamentStats.totalGoldGenerated / completedMatches.length / 1000) + 'K avg/match' : 
+                          ''
+                        }
+                      </div>
+                    </div>
+                    
+                    <div className="text-center p-4 bg-gradient-to-br from-accent/20 to-accent/10 rounded-lg">
+                      <div className="text-2xl font-bold text-accent mb-1">
+                        {tournamentStats?.averageMatchDuration ? Math.round(tournamentStats.averageMatchDuration / 60) + 'm' : 'N/A'}
+                      </div>
+                      <div className="text-sm font-medium">{t('stats.avgGameLength')}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {tournamentStats?.averageMatchDuration ? 
+                          Math.round(tournamentStats.averageMatchDuration % 60) + 's' : 
+                          ''
+                        }
+                      </div>
+                    </div>
+                    
+                    <div className="text-center p-4 bg-gradient-to-br from-secondary/20 to-secondary/10 rounded-lg">
+                      <div className="text-2xl font-bold text-secondary mb-1">
+                        {players.length || 0}
+                      </div>
+                      <div className="text-sm font-medium">{t('stats.activePlayers')}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {teams.length} teams
+                      </div>
                     </div>
                   </div>
+                </CardContent>
+              </Card>
 
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-lg font-bold text-blue-600">N/A</div>
-                    <div className="text-sm font-medium">Unique Heroes Played</div>
-                    <div className="text-xs text-muted-foreground">Total different</div>
-                  </div>
+              {/* Game Phases & Side Analysis */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <Sword className="h-5 w-5 text-chart-3" />
+                      ?? {t('stats.sideAnalysis')}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <div className="flex justify-between items-center p-3 bg-gradient-to-r from-secondary/20 to-secondary/10 rounded-lg">
+                        <div>
+                          <div className="font-medium text-secondary">{t('stats.radiantWins')}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {completedMatches.filter(m => m.winnerId === m.teamA?.id).length} victories
+                          </div>
+                        </div>
+                        <div className="text-2xl font-bold text-secondary">
+                          {completedMatches.length > 0 ? 
+                            ((completedMatches.filter(m => m.winnerId === m.teamA?.id).length / completedMatches.length) * 100).toFixed(1) :
+                            '50.0'
+                          }%
+                        </div>
+                      </div>
 
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-lg font-bold text-orange-600">N/A</div>
-                    <div className="text-sm font-medium">Most Versatile Player</div>
-                    <div className="text-xs text-muted-foreground">Most unique heroes</div>
-                  </div>
-
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-lg font-bold text-yellow-600">N/A</div>
-                    <div className="text-sm font-medium">Most Popular Role</div>
-                    <div className="text-xs text-muted-foreground">Lane preference</div>
-                  </div>
-
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-lg font-bold text-cyan-600">N/A</div>
-                    <div className="text-sm font-medium">Meta Shift Count</div>
-                    <div className="text-xs text-muted-foreground">Hero rotations</div>
-                  </div>
-
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-lg font-bold text-pink-600">N/A</div>
-                    <div className="text-sm font-medium">Sleeper Pick</div>
-                    <div className="text-xs text-muted-foreground">Unexpected success</div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Economy & Items */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">💰 Economy & Items</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-lg font-bold text-yellow-600">
-                      {tournamentStats?.totalGoldGenerated?.toLocaleString() || 'N/A'}
+                      <div className="flex justify-between items-center p-3 bg-gradient-to-r from-primary/20 to-primary/10 rounded-lg">
+                        <div>
+                          <div className="font-medium text-primary">{t('stats.direWins')}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {completedMatches.filter(m => m.winnerId !== m.teamA?.id).length} victories
+                          </div>
+                        </div>
+                        <div className="text-2xl font-bold text-primary">
+                          {completedMatches.length > 0 ? 
+                            ((completedMatches.filter(m => m.winnerId !== m.teamA?.id).length / completedMatches.length) * 100).toFixed(1) :
+                            '50.0'
+                          }%
+                        </div>
+                      </div>
                     </div>
-                    <div className="text-sm font-medium">Total Gold Earned</div>
-                    <div className="text-xs text-muted-foreground">All matches</div>
-                  </div>
+                  </CardContent>
+                </Card>
 
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-lg font-bold text-green-600">N/A</div>
-                    <div className="text-sm font-medium">Total Gold Spent</div>
-                    <div className="text-xs text-muted-foreground">All purchases</div>
-                  </div>
-
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-lg font-bold text-red-600">N/A</div>
-                    <div className="text-sm font-medium">Divine Rapiers</div>
-                    <div className="text-xs text-muted-foreground">High-risk items</div>
-                  </div>
-
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-lg font-bold text-blue-600">N/A</div>
-                    <div className="text-sm font-medium">Aghanim's Scepters</div>
-                    <div className="text-xs text-muted-foreground">Ultimate upgrades</div>
-                  </div>
-
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-lg font-bold text-purple-600">N/A</div>
-                    <div className="text-sm font-medium">Hand of Midas</div>
-                    <div className="text-xs text-muted-foreground">Farming items</div>
-                  </div>
-
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-lg font-bold text-orange-600">N/A</div>
-                    <div className="text-sm font-medium">Most Expensive Item</div>
-                    <div className="text-xs text-muted-foreground">Highest cost built</div>
-                  </div>
-
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-lg font-bold text-cyan-600">
-                      {tournamentStats?.totalGoldGenerated && completedMatches.length > 0 ? 
-                        Math.round(tournamentStats.totalGoldGenerated / completedMatches.length).toLocaleString() : 'N/A'}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <Trophy className="h-5 w-5 text-chart-4" />
+                      ?? {t('stats.gamePhases')}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      <div className="flex justify-between">
+                        <span className="text-sm font-medium">{t('stats.earlyGame')} (0-15m)</span>
+                        <span className="text-sm font-medium text-secondary">N/A</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-sm font-medium">{t('stats.midGame')} (15-35m)</span>
+                        <span className="text-sm font-medium text-chart-2">N/A</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-sm font-medium">{t('stats.lateGame')} (35m+)</span>
+                        <span className="text-sm font-medium text-primary">N/A</span>
+                      </div>
+                      <div className="pt-2 border-t">
+                        <div className="flex justify-between">
+                          <span className="text-sm font-medium">{t('stats.avgGameDuration')}</span>
+                          <span className="text-sm font-bold text-primary">
+                            {tournamentStats?.averageMatchDuration ? 
+                              Math.round(tournamentStats.averageMatchDuration / 60) + 'm ' + 
+                              Math.round(tournamentStats.averageMatchDuration % 60) + 's' : 
+                              'N/A'
+                            }
+                          </span>
+                        </div>
+                      </div>
                     </div>
-                    <div className="text-sm font-medium">Avg Gold Per Game</div>
-                    <div className="text-xs text-muted-foreground">Economy pace</div>
-                  </div>
-
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-lg font-bold text-pink-600">N/A</div>
-                    <div className="text-sm font-medium">Total Buybacks</div>
-                    <div className="text-xs text-muted-foreground">Desperation plays</div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Map Control & Objectives */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">🗺️ Map Control & Objectives</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-lg font-bold text-blue-600">N/A</div>
-                    <div className="text-sm font-medium">Observer Wards</div>
-                    <div className="text-xs text-muted-foreground">Total placed</div>
-                  </div>
-
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-lg font-bold text-purple-600">N/A</div>
-                    <div className="text-sm font-medium">Sentry Wards</div>
-                    <div className="text-xs text-muted-foreground">Total placed</div>
-                  </div>
-
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-lg font-bold text-red-600">N/A</div>
-                    <div className="text-sm font-medium">Roshan Kills</div>
-                    <div className="text-xs text-muted-foreground">Total secured</div>
-                  </div>
-
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-lg font-bold text-yellow-600">N/A</div>
-                    <div className="text-sm font-medium">Towers Destroyed</div>
-                    <div className="text-xs text-muted-foreground">Total fallen</div>
-                  </div>
-
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-lg font-bold text-green-600">N/A</div>
-                    <div className="text-sm font-medium">Ancient Creeps</div>
-                    <div className="text-xs text-muted-foreground">Total killed</div>
-                  </div>
-
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-lg font-bold text-orange-600">N/A</div>
-                    <div className="text-sm font-medium">Runes Collected</div>
-                    <div className="text-xs text-muted-foreground">Total secured</div>
-                  </div>
-
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-lg font-bold text-cyan-600">N/A</div>
-                    <div className="text-sm font-medium">Vision Score</div>
-                    <div className="text-xs text-muted-foreground">Tournament average</div>
-                  </div>
-
-                  <div className="p-3 border rounded-lg">
-                    <div className="text-lg font-bold text-pink-600">N/A</div>
-                    <div className="text-sm font-medium">Map Control %</div>
-                    <div className="text-xs text-muted-foreground">Territory average</div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-      </Tabs>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          </TabsContent>
+        </Tabs>
+      </div>
     </div>
   );
 }

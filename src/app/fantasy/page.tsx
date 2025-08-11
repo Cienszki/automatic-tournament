@@ -135,7 +135,7 @@ export default function FantasyLeaguePage() {
     if (!user || !canSaveLineup || !currentRoundId) return;
     setIsSaving(true);
     try {
-      await saveUserFantasyLineup(user.uid, selectedLineup as Record<PlayerRole, TournamentPlayer>, currentRoundId, user.displayName || "Anonymous");
+      await saveUserFantasyLineup(user.uid, selectedLineup as Record<PlayerRole, TournamentPlayer>, currentRoundId, userProfile?.discordUsername || "Anonymous");
       toast({ 
         title: t('fantasy.messages.success'), 
         description: t('fantasy.messages.lineupSaved') 

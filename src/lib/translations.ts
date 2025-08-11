@@ -697,7 +697,21 @@ export const translations = {
     // Heroes & Meta
     heroesMeta: "Bohaterowie i Analiza Meta",
     mostPickedHeroTooltip: "Bohater wybierany najczęściej w turnieju",
-    mostBannedHeroTooltip: "Bohater banowany najczęściej w turnieju", 
+    mostBannedHeroTooltip: "Bohater banowany najczęściej w turnieju",
+
+    // Additional missing translations
+    totalGold: "Łączne Złoto",
+    totalGoldTooltip: "Całkowita ilość złota wygenerowana w turnieju",
+    activeTeamsTooltip: "Liczba drużyn które rozegrały przynajmniej jeden mecz",
+    playedMatches: "rozegrały mecze",
+    loadingStats: "Wczytywanie statystyk...",
+    highestKDA: "Najwyższe KDA",
+
+    // Additional missing translations for stats page
+    visionMapControl: "Wizja i Kontrola Mapy",
+    totalGoldSpent: "Łączne Wydane Złoto",
+    tournamentAverage: "średnia turnieju",
+    territoryAverage: "średnia terytoriów", 
     highestWinRateTooltip: "Bohater z najwyższym współczynnikiem zwycięstw",
     uniqueHeroesPlayed: "Unikalni Bohaterowie",
     uniqueHeroesPlayedTooltip: "Liczba różnych bohaterów użytych w turnieju",

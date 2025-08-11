@@ -427,7 +427,7 @@ export async function getFantasyLeaderboard(): Promise<any[]> {
                     
                     return {
                         userId,
-                        displayName: userData.displayName || "Anonymous",
+                        displayName: userData.discordUsername || userData.displayName || "Anonymous",
                         totalFantasyScore: userData.totalFantasyScore || 0,
                         ...userData,
                         lineup: validatedLineup
@@ -436,7 +436,7 @@ export async function getFantasyLeaderboard(): Promise<any[]> {
                     console.warn(`Could not load lineup for user ${userId}:`, error);
                     return {
                         userId,
-                        displayName: userData.displayName || "Anonymous",
+                        displayName: userData.discordUsername || userData.displayName || "Anonymous",
                         totalFantasyScore: userData.totalFantasyScore || 0,
                         ...userData,
                         lineup: {}

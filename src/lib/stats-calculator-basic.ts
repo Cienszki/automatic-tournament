@@ -124,7 +124,7 @@ function findBusiestDay(games: any[]): { date: string; count: number; } {
   return busiestDay;
 }
 
-function findBloodiestMatch(games: any[], performances: any[]) {
+export function findBloodiestMatch(games: any[], performances: any[]) {
   if (games.length === 0) return { matchId: '', totalKills: 0, teamA: '', teamB: '' };
   
   const matchKills: Record<string, number> = {};
@@ -147,7 +147,7 @@ function findBloodiestMatch(games: any[], performances: any[]) {
   };
 }
 
-function findMostPeacefulMatch(games: any[], performances: any[]) {
+export function findMostPeacefulMatch(games: any[], performances: any[]) {
   if (games.length === 0) return { matchId: '', totalKills: 0, teamA: '', teamB: '' };
   
   const matchKills: Record<string, number> = {};
@@ -170,16 +170,16 @@ function findMostPeacefulMatch(games: any[], performances: any[]) {
   };
 }
 
-function countMultiKills(performances: any[], killType: number): number {
+export function countMultiKills(performances: any[], killType: number): number {
   // This would need more detailed kill data
   return 0;
 }
 
-function findFastestFirstBlood(games: any[], performances: any[]) {
+export function findFastestFirstBlood(games: any[], performances: any[]) {
   return { matchId: '', time: 0, player: '', team: '' };
 }
 
-function findMostPickedHero(performances: any[]) {
+export function findMostPickedHero(performances: any[]) {
   if (performances.length === 0) return { heroId: 0, heroName: 'Unknown', pickCount: 0 };
   
   const heroCounts: Record<number, number> = {};
@@ -196,15 +196,15 @@ function findMostPickedHero(performances: any[]) {
   return { heroId: mostPicked.heroId, heroName: `Hero ${mostPicked.heroId}`, pickCount: mostPicked.count };
 }
 
-function findMostBannedHero(games: any[]) {
+export function findMostBannedHero(games: any[]) {
   return { heroId: 0, heroName: 'Unknown', banCount: 0 };
 }
 
-function findHighestWinRateHero(performances: any[], games: any[]) {
+export function findHighestWinRateHero(performances: any[], games: any[]) {
   return { heroId: 0, heroName: 'Unknown', winRate: 0, gamesPlayed: 0 };
 }
 
-function findMostVersatilePlayer(performances: any[]) {
+export function findMostVersatilePlayer(performances: any[]) {
   const playerHeroes: Record<string, Set<number>> = {};
   
   performances.forEach(perf => {
@@ -228,7 +228,7 @@ function findMostVersatilePlayer(performances: any[]) {
   };
 }
 
-function findRichestPlayer(performances: any[]) {
+export function findRichestPlayer(performances: any[]) {
   if (performances.length === 0) return { playerId: '', playerName: 'Unknown', netWorth: 0, matchId: '' };
   
   const richest = performances.reduce((max, current) => 
@@ -243,7 +243,7 @@ function findRichestPlayer(performances: any[]) {
   };
 }
 
-function findMostEfficientFarmer(performances: any[]) {
+export function findMostEfficientFarmer(performances: any[]) {
   if (performances.length === 0) return { playerId: '', playerName: 'Unknown', averageGPM: 0 };
   
   const playerGPM: Record<string, number[]> = {};
