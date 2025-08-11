@@ -260,7 +260,7 @@ export default function RulesPage() {
               </ul>
               <Separator />
               <div className="space-y-3">
-                <h4 className="font-semibold">MMR Requirements</h4>
+                <h4 className="font-semibold">{t("rules.playerRequirements.mmrRequirements")}</h4>
                 <p className="text-sm text-muted-foreground">{t("rules.playerRequirements.mmrLimit")}</p>
                 <ul className="space-y-2">
                   <li className="flex items-start gap-2">

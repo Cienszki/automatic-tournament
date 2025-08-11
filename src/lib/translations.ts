@@ -507,10 +507,11 @@ export const translations = {
       title: "3. Wymagania Dotyczące Zawodników",
       minimum50Games: "Minimum 250 rozegranych meczów na koncie",
       noVacBans: "Brak VAC banów na Steam",
-      activeAccount: "Aktywne konto Steam i Dota 2",
+      activeAccount: "Używanie podczas meczów nazwy gracza rozpoznawalnej z podaną w rejestracji",
       oneAccountPerPlayer: "Jeden gracz może grać tylko na jednym koncie",
       smurfEvidence: "W przypadku podejrzeń o smurfowanie, gracz zobowiązany jest do przedstawienia dowodów niezbędnych do weryfikacji konta gracza",
-      mmrLimit: "Sumaryczne MMR wszystkich 5 graczy w drużynie nie może przekroczyć 24,000 punktów",
+  mmrRequirements: "Wymagania dotyczące MMR",
+  mmrLimit: "Sumaryczne MMR wszystkich 5 graczy w drużynie nie może przekroczyć 24,000 punktów",
       calculation: "Użyj kalkulatora powyżej do sprawdzenia limitu",
       minimumMMR: "Zawodnicy poniżej 1000 MMR liczeni są za 1000 MMR"
     },
@@ -665,9 +666,9 @@ export const translations = {
       description: "Pick\'em Challenge to konkurencja przewidywań końcowych miejsc drużyn w fazie playoff.",
       rules: {
         title: "14.1 Zasady Pick\'em",
-        predictions: "Przewiduj końcowe miejsca wszystkich drużyn playoff",
+        predictions: "Przewiduj końcowe miejsca wszystkich drużyn",
         points: "Zdobywaj punkty za dokładne prognozy",
-        deadlines: "Złóż przewidywania przed rozpoczęciem playoff"
+        deadlines: "Złóż przewidywania przed rozpoczęciem fazy grupowej"
       }
     }
   },
@@ -720,27 +721,27 @@ export const translations = {
         answer: "Rejestracja trwa od 03.08.2025 do 13.08.2025 do godz. 23:59. Turniej rozpocznie się wkrótce po zakończeniu rejestracji. Dokładne daty faz turnieju zostaną ogłoszone po finalizacji liczby uczestników."
       },
       organizers: {
-        question: "Kto są organizatorami turnieju?",
+        question: "Kto jest organizatorem turnieju?",
         answer: "Turniej jest organizowany przez dedykowany zespół członków społeczności PD2IH a głównym administratorem jest Cienszki."
       },
       entryFee: {
-        question: "Czy jest opłata startowa?",
+        question: "Czy jest wpisowe?",
         answer: "Nie, udział w turnieju jest całkowicie bezpłatny. Wszystkie funkcje - rejestracja drużyny, Liga Fantasy, Pick\'em Challenge - są dostępne za darmo. Zachęcamy jednak do wpłaty 150zł na rzecz fundacji walki z otyłością."
       },
       prizes: {
         question: "Czy są jakieś nagrody?",
-        answer: "Informacje o nagrodach ogłoszone są na discordzie na kanale #newsy. Śledź oficjalne kanały komunikacji (Discord, strona internetowa) aby być na bieżąco."
+        answer: "Informacje o nagrodach ogłoszone są na discordzie na kanale #newsy. Śledź oficjalne kanały komunikacji aby być na bieżąco."
       },
       mmrLimit: {
         question: "Jak działa limit MMR 24,000?",
-        answer: "Suma MMR wszystkich 5 graczy w drużynie nie może przekroczyć 24,000 punktów. Na przykład: drużyna może mieć gracza 8000 MMR, trzech po 4000 MMR i jednego 4000 MMR (8000+4000+4000+4000+4000=24000)."
+        answer: "Suma MMR wszystkich 5 graczy w drużynie nie może przekroczyć 24,000 punktów. Na przykład: drużyna może mieć gracza 8000 MMR, trzech po 4000 MMR i jednego 3900 MMR (8000+4000+4000+4000+3900=23900)."
       }
     },
 
     registration: {
       howToRegister: {
         question: "Jak zarejestrować moją drużynę?",
-        answer: "1. Zaloguj się na stronie używając Google. 2. Przejdź do sekcji \'Moja Drużyna\'. 3. Wypełnij formularz rejestracyjny z danymi drużyny i wszystkich graczy. 4. Prześlij zrzuty ekranu MMR dla każdego gracza. 5. Poczekaj na weryfikację przez administrację."
+        answer: "1. Zaloguj się na stronie używając Google. 2. Przejdź do sekcji \'Moja Drużyna\'. 3. Wypełnij formularz rejestracyjny z danymi drużyny i wszystkich graczy. 4. Poczekaj na weryfikację przez administrację."
       },
       deadline: {
         question: "Jaki jest termin rejestracji?",
@@ -760,7 +761,7 @@ export const translations = {
       },
       standins: {
         question: "Jak działają zawodnicy rezerwowi (stand-in)?",
-        answer: "Maksymalnie 2 stand-in na serię. Muszą spełniać limit MMR drużyny, nie mogą być w innej aktywnej drużynie i wymagają akceptacji administracji. Rejestracja przez stronę internetową przed meczem."
+        answer: "Maksymalnie 2 stand-in na serię. Muszą spełniać limit MMR drużyny, nie mogą być w innej aktywnej drużynie i wymagają akceptacji administracji. Rejestracja przez stronę internetową przed meczem. Cała seria musi być rozegrana z tymi samymi zawodnikami."
       },
       teamStatus: {
         question: "Co oznaczają statusy drużyn?",
@@ -771,7 +772,7 @@ export const translations = {
     gameplay: {
       format: {
         question: "Jaki jest format turnieju?",
-        answer: "Turniej składa się z dwóch faz: 1) Faza grupowa - mecze BO2 (Best of 2), 2) Faza playoff - format zależny od liczby drużyn. W grupach możliwe są remisy (1-1), w playoff mecze na eliminację."
+        answer: "Turniej składa się z dwóch faz: 1) Faza grupowa - mecze BO2 (Best of 2), 2) Faza playoff - format zależny od liczby drużyn. W grupach możliwe są remisy (1-1), w playoff format podwójnej eliminacji."
       },
       scoring: {
         question: "Jak działa punktacja w fazie grupowej?",
