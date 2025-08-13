@@ -360,7 +360,28 @@ export async function saveUserPickem(userId: string, predictions: Pickem['predic
 export async function getUserProfile(userId: string): Promise<UserProfile | null> {
     const userRef = doc(db, "users", userId);
     const userSnap = await getDoc(userRef);
+    
     return userSnap.exists() ? userSnap.data() as UserProfile : null;
+}
+
+export async function createUserProfileIfNotExists(user: { uid: string; email?: string | null; displayName?: string | null; photoURL?: string | null }): Promise<UserProfile> {
+    const userRef = doc(db, "users", user.uid);
+    const userSnap = await getDoc(userRef);
+    
+    if (!userSnap.exists()) {
+        const newProfile: UserProfile = {
+            uid: user.uid,
+            email: user.email || undefined,
+            displayName: user.displayName || undefined,
+            photoURL: user.photoURL || undefined,
+        };
+        
+        console.log("Debug - Creating new user profile:", newProfile);
+        await setDoc(userRef, newProfile);
+        return newProfile;
+    }
+    
+    return userSnap.data() as UserProfile;
 }
 
 export async function updateUserProfile(userId: string, data: Partial<UserProfile>): Promise<void> {

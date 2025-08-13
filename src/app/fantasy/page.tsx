@@ -18,7 +18,7 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "@/hooks/useTranslation";
-import { getAllTournamentPlayers, getFantasyLeaderboard, getUserFantasyLineup, saveUserFantasyLineup, getUserProfile, updateUserProfile, getTournamentStatus } from "@/lib/firestore";
+import { getAllTournamentPlayers, getFantasyLeaderboard, getUserFantasyLineup, saveUserFantasyLineup, getUserProfile, updateUserProfile, getTournamentStatus, createUserProfileIfNotExists } from "@/lib/firestore";
 import { DiscordUsernameModal } from '@/components/app/DiscordUsernameModal';
 
 const roleIcons: Record<PlayerRole, React.ElementType> = {
@@ -75,8 +75,9 @@ export default function FantasyLeaguePage() {
       if (user && status?.roundId) {
         const [userLineup, profile] = await Promise.all([
             getUserFantasyLineup(user.uid, status.roundId),
-            getUserProfile(user.uid)
+            createUserProfileIfNotExists(user).catch(() => getUserProfile(user.uid)) // fallback to getUserProfile if createUserProfileIfNotExists fails
         ]);
+        
         if (userLineup) setSelectedLineup(userLineup.lineup);
         setUserProfile(profile);
       }
@@ -133,9 +134,17 @@ export default function FantasyLeaguePage() {
 
   const performSave = async () => {
     if (!user || !canSaveLineup || !currentRoundId) return;
+    
+    // Require Discord username - no fallbacks for privacy
+    if (!userProfile?.discordUsername) {
+      setIsModalOpen(true);
+      return;
+    }
+    
     setIsSaving(true);
+    
     try {
-      await saveUserFantasyLineup(user.uid, selectedLineup as Record<PlayerRole, TournamentPlayer>, currentRoundId, userProfile?.discordUsername || "Anonymous");
+      await saveUserFantasyLineup(user.uid, selectedLineup as Record<PlayerRole, TournamentPlayer>, currentRoundId, userProfile.discordUsername);
       toast({ 
         title: t('fantasy.messages.success'), 
         description: t('fantasy.messages.lineupSaved') 
@@ -153,6 +162,7 @@ export default function FantasyLeaguePage() {
   };
 
   const handleSaveClick = () => {
+      // Always require Discord username - no privacy fallbacks
       if (!userProfile?.discordUsername) {
           setIsModalOpen(true);
       } else {
@@ -163,9 +173,12 @@ export default function FantasyLeaguePage() {
   const handleModalSubmit = async (username: string) => {
     if (!user) return;
     setIsSaving(true);
+    
     try {
         await updateUserProfile(user.uid, { discordUsername: username });
+        
         setUserProfile(prev => ({ ...prev, uid: user.uid, discordUsername: username }));
+        
         setIsModalOpen(false);
         await performSave();
     } catch (error) {
@@ -299,7 +312,17 @@ export default function FantasyLeaguePage() {
                 )}
               </div>
             </CardContent>
-            <CardFooter>
+            <CardFooter className="flex-col space-y-3">
+              {!userProfile?.discordUsername && (
+                <div className="w-full p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                  <div className="flex items-center space-x-2 text-amber-800">
+                    <Info className="h-4 w-4 flex-shrink-0" />
+                    <div className="text-sm">
+                      <strong>Discord username required:</strong> You need to provide your Discord username to save lineups and participate in the leaderboard.
+                    </div>
+                  </div>
+                </div>
+              )}
               <Button onClick={handleSaveClick} size="lg" disabled={!canSaveLineup || isSaving} className="w-full">
                 {isSaving ? (
                   <>
