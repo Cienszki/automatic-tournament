@@ -322,16 +322,42 @@ export default function GroupsDrawPage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <Droppable droppableId="available-teams" direction="horizontal">
+              <Droppable
+                droppableId="available-teams"
+                direction="horizontal"
+                renderClone={(provided, snapshot, rubric) => {
+                  const team = availableTeams[rubric.source.index];
+                  return (
+                    <div
+                      ref={provided.innerRef}
+                      {...provided.draggableProps}
+                      {...provided.dragHandleProps}
+                      style={provided.draggableProps.style}
+                      className={cn(
+                        "flex items-center space-x-3 p-3 rounded-lg border transition-all duration-300 min-w-0 bg-card/80",
+                        "shadow-2xl scale-105 border-primary z-50 bg-card shadow-primary/30"
+                      )}
+                    >
+                      {team?.logoUrl && (
+                        <div className="relative w-10 h-10 rounded-lg overflow-hidden bg-background/80 flex-shrink-0 border border-border">
+                          <Image src={team.logoUrl} alt={`${team.name} logo`} fill className="object-contain p-1" />
+                        </div>
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <p className="font-semibold text-sm truncate text-foreground">{team?.name}</p>
+                        {team?.tag && <p className="text-xs text-muted-foreground truncate">[{team.tag}]</p>}
+                      </div>
+                    </div>
+                  );
+                }}
+              >
                 {(provided, snapshot) => (
                   <div
                     ref={provided.innerRef}
                     {...provided.droppableProps}
                     className={cn(
                       "min-h-32 p-6 rounded-xl border-2 border-dashed transition-all duration-300",
-                      snapshot.isDraggingOver
-                        ? "border-accent bg-accent/5 shadow-lg shadow-accent/20" 
-                        : "border-muted/30",
+                      snapshot.isDraggingOver ? "border-accent bg-accent/5 shadow-lg shadow-accent/20" : "border-muted/30",
                       availableTeams.length === 0 && !snapshot.isDraggingOver && "bg-muted/5"
                     )}
                   >
@@ -352,26 +378,19 @@ export default function GroupsDrawPage() {
                                 {...provided.dragHandleProps}
                                 className={cn(
                                   "flex items-center space-x-3 p-3 rounded-lg border transition-all duration-300 min-w-0 bg-card/80 backdrop-blur-sm",
-                                  snapshot.isDragging 
-                                    ? "shadow-2xl rotate-2 scale-105 border-primary z-50 bg-card shadow-primary/30" 
+                                  snapshot.isDragging
+                                    ? "shadow-2xl rotate-2 scale-105 border-primary z-50 bg-card shadow-primary/30"
                                     : "hover:border-primary/30 hover:-translate-y-1 hover:shadow-lg hover:shadow-primary/20 border-border"
                                 )}
                               >
                                 {team.logoUrl && (
                                   <div className="relative w-10 h-10 rounded-lg overflow-hidden bg-background/80 flex-shrink-0 border border-border">
-                                    <Image
-                                      src={team.logoUrl}
-                                      alt={`${team.name} logo`}
-                                      fill
-                                      className="object-contain p-1"
-                                    />
+                                    <Image src={team.logoUrl} alt={`${team.name} logo`} fill className="object-contain p-1" />
                                   </div>
                                 )}
                                 <div className="min-w-0 flex-1">
                                   <p className="font-semibold text-sm truncate text-foreground">{team.name}</p>
-                                  {team.tag && (
-                                    <p className="text-xs text-muted-foreground truncate">[{team.tag}]</p>
-                                  )}
+                                  {team.tag && <p className="text-xs text-muted-foreground truncate">[{team.tag}]</p>}
                                 </div>
                               </div>
                             )}
@@ -414,16 +433,41 @@ export default function GroupsDrawPage() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <Droppable droppableId={config.id}>
+                    <Droppable
+                      droppableId={config.id}
+                      renderClone={(provided, snapshot, rubric) => {
+                        const team = groups[config.id]?.[rubric.source.index];
+                        return (
+                          <div
+                            ref={provided.innerRef}
+                            {...provided.draggableProps}
+                            {...provided.dragHandleProps}
+                            style={provided.draggableProps.style}
+                            className={cn(
+                              "flex items-center space-x-3 p-3 rounded-lg border transition-all duration-300 bg-card/80",
+                              "shadow-2xl scale-105 border-primary z-50 bg-card shadow-primary/30"
+                            )}
+                          >
+                            {team?.logoUrl && (
+                              <div className="relative w-8 h-8 rounded overflow-hidden bg-background/80 flex-shrink-0 border border-border">
+                                <Image src={team.logoUrl} alt={`${team.name} logo`} fill className="object-contain p-0.5" />
+                              </div>
+                            )}
+                            <div className="min-w-0 flex-1">
+                              <p className="font-medium text-sm truncate text-foreground">{team?.name}</p>
+                              {team?.tag && <p className="text-xs text-muted-foreground truncate">[{team.tag}]</p>}
+                            </div>
+                          </div>
+                        );
+                      }}
+                    >
                       {(provided, snapshot) => (
                         <div
                           ref={provided.innerRef}
                           {...provided.droppableProps}
                           className={cn(
                             "min-h-40 p-4 rounded-xl border-2 border-dashed transition-all duration-300",
-                            snapshot.isDraggingOver
-                              ? cn(colorSet.accent, colorSet.border.replace('/20', '/40'))
-                              : "border-muted/30",
+                            snapshot.isDraggingOver ? cn(colorSet.accent, colorSet.border.replace('/20', '/40')) : "border-muted/30",
                             groupTeams.length === 0 && !snapshot.isDraggingOver && "bg-muted/5"
                           )}
                         >
@@ -448,26 +492,19 @@ export default function GroupsDrawPage() {
                                       {...provided.dragHandleProps}
                                       className={cn(
                                         "flex items-center space-x-3 p-3 rounded-lg border transition-all duration-300 bg-card/80 backdrop-blur-sm",
-                                        snapshot.isDragging 
-                                          ? "shadow-2xl rotate-2 scale-105 border-primary z-50 bg-card shadow-primary/30" 
+                                        snapshot.isDragging
+                                          ? "shadow-2xl rotate-2 scale-105 border-primary z-50 bg-card shadow-primary/30"
                                           : "hover:border-primary/30 hover:-translate-y-1 hover:shadow-lg hover:shadow-primary/20 border-border"
                                       )}
                                     >
                                       {team.logoUrl && (
                                         <div className="relative w-8 h-8 rounded overflow-hidden bg-background/80 flex-shrink-0 border border-border">
-                                          <Image
-                                            src={team.logoUrl}
-                                            alt={`${team.name} logo`}
-                                            fill
-                                            className="object-contain p-0.5"
-                                          />
+                                          <Image src={team.logoUrl} alt={`${team.name} logo`} fill className="object-contain p-0.5" />
                                         </div>
                                       )}
                                       <div className="min-w-0 flex-1">
                                         <p className="font-medium text-sm truncate text-foreground">{team.name}</p>
-                                        {team.tag && (
-                                          <p className="text-xs text-muted-foreground truncate">[{team.tag}]</p>
-                                        )}
+                                        {team.tag && <p className="text-xs text-muted-foreground truncate">[{team.tag}]</p>}
                                       </div>
                                     </div>
                                   )}
