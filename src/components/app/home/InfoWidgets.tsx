@@ -36,7 +36,12 @@ export function InfoWidgets() {
   }, []);
 
   if (loading) {
-    return <div className="text-center py-10">{t('common.loading')}...</div>;
+    return (
+      <div className="text-center py-10">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-3"></div>
+        <p className="text-muted-foreground">{t('common.loading')}...</p>
+      </div>
+    );
   }
 
   const { latestAnnouncements = [], featuredMatch, recentResult, fantasyLeader } = data || {};

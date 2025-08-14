@@ -143,7 +143,11 @@ export default function TeamPage({ params }: PageProps) {
   }, [teamId]);
 
   if (loading) {
-    return <div className="flex justify-center items-center min-h-96">Loading...</div>;
+    return (
+      <div className="flex justify-center items-center min-h-96">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
   }
 
   if (!team) {

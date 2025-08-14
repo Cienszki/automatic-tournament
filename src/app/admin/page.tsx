@@ -15,6 +15,7 @@ import { TeamVerificationTab } from './TeamVerificationTab';
 import { AnnouncementsTab } from './AnnouncementsTab';
 import { SystemTestTab } from './SystemTestTab';
 import { StandinManagementTab } from './StandinManagementTab';
+import { TournamentStatusTab } from './TournamentStatusTab';
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -35,7 +36,7 @@ export default function AdminPage() {
     }, [user]);
 
     if (isLoading) {
-        return <div className="flex justify-center items-center h-screen"><Loader2 className="h-16 w-16 animate-spin" /></div>;
+        return <div className="flex justify-center items-center h-screen"><div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary mx-auto"></div></div>;
     }
 
     if (!user) {
@@ -76,8 +77,9 @@ export default function AdminPage() {
                 </CardHeader>
             </Card>
 
-            <Tabs defaultValue="stage">
-                <TabsList className="grid w-full grid-cols-7">
+            <Tabs defaultValue="status">
+                <TabsList className="grid w-full grid-cols-8">
+                    <TabsTrigger value="status">Status</TabsTrigger>
                     <TabsTrigger value="stage">Stage</TabsTrigger>
                     <TabsTrigger value="standings">Standings</TabsTrigger>
                     <TabsTrigger value="matches">Matches</TabsTrigger>
@@ -86,6 +88,9 @@ export default function AdminPage() {
                     <TabsTrigger value="announcements">Announcements</TabsTrigger>
                     <TabsTrigger value="advanced">Advanced</TabsTrigger>
                 </TabsList>
+                <TabsContent value="status">
+                    <TournamentStatusTab />
+                </TabsContent>
                 <TabsContent value="stage">
                     <StageManagementTab />
                 </TabsContent>

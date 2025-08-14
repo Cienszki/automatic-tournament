@@ -72,17 +72,17 @@ export function TeamCard({ team }: TeamCardProps) {
     )}>
       <CardHeader className="flex flex-row items-start space-x-4 pb-4">
         <Image 
-          src={team.logoUrl || `https://placehold.co/80x80.png?text=${team.name.charAt(0)}`} 
+          src={team.logoUrl || `https://placehold.co/96x96.png?text=${team.name.charAt(0)}`} 
           alt={`${team.name} logo`} 
-          width={64} 
-          height={64} 
-          className="rounded-lg object-cover border"
+          width={80} 
+          height={80} 
+          className="rounded-lg object-cover border shadow-md"
           unoptimized={team.logoUrl?.endsWith('.gif')}
         />
-        <div className="flex-1">
-          <CardTitle className="text-2xl text-primary">{team.name}</CardTitle>
+        <div className="flex-1 min-w-0">
+          <CardTitle className="text-2xl text-primary leading-tight">{team.name}</CardTitle>
           {team.motto && (
-            <p className="text-sm text-muted-foreground italic mt-1">"{team.motto}"</p>
+            <p className="text-sm text-muted-foreground italic mt-2 line-clamp-2">"{team.motto}"</p>
           )}
         </div>
       </CardHeader>

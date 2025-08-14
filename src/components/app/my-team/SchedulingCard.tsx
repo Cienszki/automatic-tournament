@@ -9,7 +9,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
 import { format, isAfter } from "date-fns";
-import { Calendar as CalendarIcon, Check, X, Send, AlertTriangle, Loader2, Clock } from "lucide-react";
+import { Calendar as CalendarIcon, Check, X, Send, AlertTriangle, Clock } from "lucide-react";
 import { useTime } from "@/context/TimeContext";
 import { proposeMatchTime, acceptMatchTime, rejectMatchTime, cancelProposal, cancelStandinRequest } from "@/lib/team-actions";
 import { useTranslation } from "@/hooks/useTranslation";
@@ -243,7 +243,7 @@ export function SchedulingCard({ match, teamId, captainId, teams = [], standins 
                   }}
                   disabled={isSubmitting}
                 >
-                  {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                  {isSubmitting ? <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div> : null}
                   {t('standins.cancelStandin')}
                 </Button>
               )}
@@ -297,7 +297,7 @@ export function SchedulingCard({ match, teamId, captainId, teams = [], standins 
                     </PopoverContent>
                  </Popover>
                  <Button onClick={handlePropose} disabled={!composedDate || isSubmitting || isComposedDateInvalid}>
-                    {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Send className="mr-2 h-4 w-4"/>}
+                    {isSubmitting ? <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div> : <Send className="mr-2 h-4 w-4"/>}
                     {t("teams.proposeTime")}
                 </Button>
               </div>
@@ -314,7 +314,7 @@ export function SchedulingCard({ match, teamId, captainId, teams = [], standins 
                     <p className="text-lg font-bold text-blue-300">{format(proposedTime, "PPPP 'at' HH:mm")}</p>
                     <p className="text-sm text-muted-foreground">{t("teams.waitingForResponse")} {opponent.name}.</p>
                     <Button variant="ghost" size="sm" onClick={handleCancel} disabled={isSubmitting} className="w-full mt-2">
-                        {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin"/> : t("teams.cancelProposal")}
+                        {isSubmitting ? <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></div> : t("teams.cancelProposal")}
                     </Button>
                   </div>
                 )}
@@ -327,11 +327,11 @@ export function SchedulingCard({ match, teamId, captainId, teams = [], standins 
                      )}
                     <div className="flex justify-center gap-2 mt-4">
                        <Button onClick={handleAccept} variant="secondary" className="bg-green-500 hover:bg-green-600" disabled={isSubmitting || isAfter(proposedTime, deadline)}>
-                            {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Check className="mr-2 h-4 w-4"/>}
+                            {isSubmitting ? <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div> : <Check className="mr-2 h-4 w-4"/>}
                             {t("teams.accept")}
                         </Button>
                        <Button onClick={handleReject} variant="destructive" disabled={isSubmitting}>
-                            {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <X className="mr-2 h-4 w-4"/>}
+                            {isSubmitting ? <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div> : <X className="mr-2 h-4 w-4"/>}
                             {t("teams.reject")}
                         </Button>
                     </div>

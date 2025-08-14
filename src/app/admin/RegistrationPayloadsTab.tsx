@@ -71,7 +71,9 @@ export function RegistrationPayloadsTab() {
         <ScrollArea className="h-72 w-full rounded-md border p-4 mb-4">
           <div className="space-y-2">
             {loading ? (
-              <div>Loading...</div>
+              <div className="flex justify-center py-4">
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+              </div>
             ) : teams.length === 0 ? (
               <div className="text-muted-foreground">No registration payloads found.</div>
             ) : (

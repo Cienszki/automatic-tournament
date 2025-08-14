@@ -130,7 +130,7 @@ export function StandinManagementTab() {
                 </CardHeader>
                 <CardContent>
                     <div className="flex justify-center py-8">
-                        <div className="text-muted-foreground">Ładowanie...</div>
+                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
                     </div>
                 </CardContent>
             </Card>

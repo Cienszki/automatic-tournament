@@ -5,7 +5,7 @@ import { useAuth } from '@/context/AuthContext';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { createTestTeam } from '@/lib/admin-actions';
-import { Loader2, LogIn, LogOut } from 'lucide-react';
+import { LogIn, LogOut } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useToast } from '@/hooks/use-toast';
@@ -90,7 +90,7 @@ export default function UploadTestPage() {
                                 Clicking this button calls the `createTestTeam` server action. This action will first verify you are an admin and then write the data to the `teams` collection in Firestore.
                             </p>
                             <Button type="submit" className="w-full" disabled={isDbSubmitting || !user}>
-                                {isDbSubmitting ? <Loader2 className="animate-spin mr-2" /> : null}
+                                {isDbSubmitting ? <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div> : null}
                                 {isDbSubmitting ? 'Saving...' : 'Save to Database'}
                             </Button>
                         </div>

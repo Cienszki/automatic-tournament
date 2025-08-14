@@ -11,7 +11,7 @@ import { deleteAllMatches, deleteSelectedMatches, clearProcessedGamesAdmin, upda
 import { getAllMatches } from '@/lib/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { useTranslation } from '@/hooks/useTranslation';
-import { Loader2, PlusCircle, RefreshCw, Trash2, ShieldAlert } from 'lucide-react';
+import { Loader2, PlusCircle, RefreshCw, Trash2, ShieldAlert, Users } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 // import { TimeMachine } from '@/components/app/system-test/TimeMachine';
 // import { CaptainImpersonator, CaptainImpersonatorRef } from '@/components/app/system-test/CaptainImpersonator';
@@ -202,6 +202,25 @@ export function SystemTestTab() {
             </CardHeader>
             <CardContent className="space-y-6">
                 <FakeTeamGenerator onTeamCreated={handleTeamCreated} />
+                
+                {/* Groups Builder */}
+                <Card>
+                    <CardHeader>
+                        <CardTitle>🎲 Groups Builder</CardTitle>
+                        <CardDescription>
+                            Interactive tool for live group draws. Drag teams from the pool into groups during broadcast.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <Button asChild>
+                            <a href="/groups-draw" target="_blank" rel="noopener noreferrer">
+                                <Users className="mr-2 h-4 w-4" />
+                                Open Groups Draw Builder
+                            </a>
+                        </Button>
+                    </CardContent>
+                </Card>
+
                 {/* <CaptainImpersonator ref={captainImpersonatorRef} /> */}
                 {/* <TimeMachine /> */}
                 <Card>
@@ -218,20 +237,20 @@ export function SystemTestTab() {
                                 className="p-2 border rounded-md w-full"
                             />
                             <Button onClick={handleImport} disabled={isImporting}>
-                                {isImporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />}
+                                {isImporting ? <div className="animate-spin rounded-full h-4 w-4 border-b border-white mr-2"></div> : <PlusCircle className="mr-2 h-4 w-4" />}
                                 {isImporting ? "Importing..." : "Import Match"}
                             </Button>
                         </div>
                          <Button onClick={handleSync} disabled={isSyncing}>
-                            {isSyncing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+                            {isSyncing ? <div className="animate-spin rounded-full h-4 w-4 border-b border-white mr-2"></div> : <RefreshCw className="mr-2 h-4 w-4" />}
                             {isSyncing ? "Syncing..." : "Sync All New Matches"}
                         </Button>
                         <Button onClick={handleClearProcessed} disabled={isClearingProcessed} variant="destructive">
-                            {isClearingProcessed ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
+                            {isClearingProcessed ? <div className="animate-spin rounded-full h-4 w-4 border-b border-white mr-2"></div> : <Trash2 className="mr-2 h-4 w-4" />}
                             {isClearingProcessed ? "Clearing..." : "Clear Processed Games"}
                         </Button>
                         <Button onClick={handleUpdateTeamStats} disabled={isUpdatingStats} variant="outline">
-                            {isUpdatingStats ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+                            {isUpdatingStats ? <div className="animate-spin rounded-full h-4 w-4 border-b border-white mr-2"></div> : <RefreshCw className="mr-2 h-4 w-4" />}
                             {isUpdatingStats ? "Updating..." : "Update Team Statistics"}
                         </Button>
                     </CardContent>
@@ -260,7 +279,7 @@ export function SystemTestTab() {
                     </ScrollArea>
                     <div className="flex justify-between items-center">
                         <Button variant="destructive" onClick={handleDeleteSelected} disabled={isDeleting || selectedMatches.length === 0}>
-                             {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
+                             {isDeleting ? <div className="animate-spin rounded-full h-4 w-4 border-b border-white mr-2"></div> : <Trash2 className="mr-2 h-4 w-4" />}
                             Delete Selected ({selectedMatches.length})
                         </Button>
                         <AlertDialog>

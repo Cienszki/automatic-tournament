@@ -199,7 +199,7 @@ export default function FantasyLeaguePage() {
   }, [selectedLineup, currentBudgetUsed]);
 
   if (isLoading) {
-    return <div className="flex justify-center items-center h-64"><Loader2 className="h-16 w-16 animate-spin text-primary" /></div>;
+    return <div className="flex justify-center items-center h-64"><div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary mx-auto"></div></div>;
   }
 
   return (
@@ -326,7 +326,7 @@ export default function FantasyLeaguePage() {
               <Button onClick={handleSaveClick} size="lg" disabled={!canSaveLineup || isSaving} className="w-full">
                 {isSaving ? (
                   <>
-                    <Loader2 className="mr-2 animate-spin" /> 
+                    <div className="animate-spin rounded-full h-4 w-4 border-b border-white mr-2"></div>
                     {t('fantasy.buildTeam.saving')}...
                   </>
                 ) : (

@@ -4,7 +4,7 @@ import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { createFakeTeamServerAction } from "@/lib/fake-team-action";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, PlusCircle } from "lucide-react";
+import { PlusCircle } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -52,7 +52,7 @@ export function FakeTeamGenerator({ onTeamCreated }: FakeTeamGeneratorProps) {
       <CardContent>
         <Button onClick={handleCreateFakeTeam} disabled={isCreating}>
           {isCreating ? (
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
           ) : (
             <PlusCircle className="mr-2 h-4 w-4" />
           )}

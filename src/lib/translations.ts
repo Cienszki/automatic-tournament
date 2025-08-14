@@ -46,7 +46,9 @@ export const translations = {
     copy: "Kopiuj",
     share: "Udostępnij",
     points: "Punkty",
-    notAvailable: "N/D"
+    notAvailable: "N/D",
+    backHome: "Wróć do strony głównej",
+    viewTeamsShort: "Zobacz zespoły"
   },
 
   // Home page
@@ -801,7 +803,15 @@ export const translations = {
     invalidSteamID: "Nieprawidłowe Steam ID",
     teamAlreadyExists: "Zespół o tej nazwie już istnieje",
     playerLimit: "Limit graczy został osiągnięty",
-    registrationClosed: "Rejestracja jest zamknięta"
+    registrationClosed: "Rejestracja jest zamknięta",
+    registrationClosedTitle: "Rejestracja zakończona",
+    registrationClosedMessage: "Rejestracja zespołów na turniej została oficjalnie zamknięta.",
+    registrationClosedDescription: "Turniej przeszedł do następnej fazy. Rejestracja nowych zespołów nie jest już możliwa.",
+    tournamentPhaseMessage: "Turniej znajduje się obecnie w fazie:",
+    backToHome: "Powrót do strony głównej",
+    viewTeams: "Zobacz zarejestrowane zespoły",
+    fantasyStillOpen: "Fantasy League i Pick'em nadal dostępne!",
+    checkOtherFeatures: "Sprawdź inne funkcje turnieju"
   },
 
   // My Team page

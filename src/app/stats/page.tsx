@@ -281,7 +281,7 @@ export default function StatsPage() {
       <div className="min-h-screen bg-background flex justify-center items-center">
         <div className="text-center">
           <div className="inline-flex items-center justify-center p-4 bg-gradient-to-r from-primary to-accent rounded-full shadow-lg mb-6">
-            <Loader2 className="h-12 w-12 animate-spin text-white" />
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white"></div>
           </div>
           <h2 className="text-2xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent mb-2">
             {t('stats.loadingStats')}

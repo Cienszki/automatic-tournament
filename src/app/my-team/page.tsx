@@ -75,7 +75,7 @@ export default function MyTeamPage() {
             <CardTitle className="text-3xl font-bold text-[#0ff0fc] drop-shadow-[0_0_8px_#0ff0fc]">{t("myTeam.welcomeCaptain")}</CardTitle>
             <CardDescription className="text-lg text-[#b86fc6] pt-2">
               {t("myTeam.welcomeDesc")}<br />
-              <span className="block mt-2 text-[#e0d7f7]">{t("myTeam.needTeamOrPlayers")} <a href="https://discord.gg/letniatournament" target="_blank" rel="noopener noreferrer" className="underline hover:text-[#0ff0fc]">{t("myTeam.discord")}</a> {t("myTeam.findTeamChannel")}</span>
+              <span className="block mt-2 text-[#e0d7f7]">{t("myTeam.needTeamOrPlayers")} <a href="https://discord.gg/ZxgmF7Kr4t" target="_blank" rel="noopener noreferrer" className="underline hover:text-[#0ff0fc]">{t("myTeam.discord")}</a> {t("myTeam.findTeamChannel")}</span>
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -101,7 +101,7 @@ export default function MyTeamPage() {
             <CardTitle className="text-3xl font-bold text-[#0ff0fc] drop-shadow-[0_0_8px_#0ff0fc]">{t("myTeam.welcomeCaptain")}</CardTitle>
             <CardDescription className="text-lg text-[#b86fc6] pt-2">
               {t("myTeam.readyToJoin")}<br />
-              <span className="block mt-2 text-[#e0d7f7]">{t("myTeam.needTeamOrPlayers")} <a href="https://discord.gg/letniatournament" target="_blank" rel="noopener noreferrer" className="underline hover:text-[#0ff0fc]">{t("myTeam.discord")}</a> {t("myTeam.findTeamChannel")}</span>
+              <span className="block mt-2 text-[#e0d7f7]">{t("myTeam.needTeamOrPlayers")} <a href="https://discord.gg/ZxgmF7Kr4t" target="_blank" rel="noopener noreferrer" className="underline hover:text-[#0ff0fc]">{t("myTeam.discord")}</a> {t("myTeam.findTeamChannel")}</span>
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">

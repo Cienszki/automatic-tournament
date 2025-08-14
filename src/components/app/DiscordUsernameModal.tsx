@@ -14,7 +14,6 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2 } from "lucide-react";
 import { useTranslation } from "@/hooks/useTranslation";
 
 interface DiscordUsernameModalProps {
@@ -62,7 +61,7 @@ export function DiscordUsernameModal({ isOpen, onClose, onSubmit, isSubmitting }
           </div>
           <DialogFooter>
             <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {isSubmitting && <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>}
               {t("pickem.saveAndSubmit")}
             </Button>
           </DialogFooter>

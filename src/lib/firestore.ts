@@ -97,6 +97,16 @@ export async function getTournamentStatus(): Promise<{ roundId: string } | null>
     return { roundId: data?.roundId || data?.current || 'initial' };
 }
 
+export async function updateTournamentStatus(roundId: string): Promise<void> {
+    const statusRef = doc(db, "tournament", "status");
+    await setDoc(statusRef, { roundId }, { merge: true });
+}
+
+export async function isRegistrationOpen(): Promise<boolean> {
+    const status = await getTournamentStatus();
+    return status?.roundId === 'initial';
+}
+
 export async function saveTeam(teamData: Omit<Team, 'id' | 'createdAt'>, user?: any): Promise<void> {
     // Defensive: Require user with valid uid for all writes
     if (!user || !user.uid || typeof user.uid !== "string" || user.uid.trim() === "") {
@@ -334,8 +344,9 @@ export async function saveUserPickem(userId: string, predictions: Pickem['predic
     const statusData = tournamentStatusSnap.data();
     const currentRoundId = statusData?.roundId || statusData?.current || 'initial';
 
-    if (currentRoundId !== 'initial') {
-        throw new Error("Pick'em submissions are now locked as the tournament registration phase is over.");
+    // Allow pick'em submissions during initial and pre_season phases
+    if (!['initial', 'pre_season'].includes(currentRoundId)) {
+        throw new Error("Pick'em submissions are now locked as the tournament has started.");
     }
     
     const pickemRef = doc(db, "pickems", userId);
