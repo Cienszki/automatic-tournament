@@ -1,0 +1,244 @@
+{
+  "id": "main-playoffs",
+  "name": "Letnia Liga 2025 Playoffs",
+  "brackets": [
+    {
+      "id": "wildcard-bracket",
+      "name": "Wildcard Bracket", 
+      "type": "wildcard",
+      "isActive": true,
+      "slots": [],
+      "matches": [
+        {
+          "id": "wc1",
+          "round": 1,
+          "position": 0,
+          "teamA": null,
+          "teamB": null,
+          "status": "pending",
+          "format": "BO3",
+          "scheduledFor": "2025-08-20T18:00:00Z",
+          "result": null
+        },
+        {
+          "id": "wc2", 
+          "round": 1,
+          "position": 1,
+          "teamA": null,
+          "teamB": null,
+          "status": "pending",
+          "format": "BO3", 
+          "scheduledFor": "2025-08-20T20:00:00Z",
+          "result": null
+        }
+      ]
+    },
+    {
+      "id": "upper-bracket-1",
+      "name": "Upper Bracket",
+      "type": "upper",
+      "isActive": true,
+      "slots": [],
+      "matches": [
+        {
+          "id": "ub-r1-m1",
+          "round": 1,
+          "position": 0,
+          "teamA": { "id": "team1", "name": "Team Alpha", "logoUrl": "" },
+          "teamB": { "id": "team2", "name": "Team Beta", "logoUrl": "" },
+          "status": "completed",
+          "format": "BO3",
+          "scheduledFor": "2025-08-21T18:00:00Z",
+          "result": { "teamAScore": 2, "teamBScore": 1, "winnerId": "team1" }
+        },
+        {
+          "id": "ub-r1-m2",
+          "round": 1,
+          "position": 1,
+          "teamA": { "id": "team3", "name": "Team Gamma", "logoUrl": "" },
+          "teamB": { "id": "team4", "name": "Team Delta", "logoUrl": "" },
+          "status": "live",
+          "format": "BO3",
+          "scheduledFor": "2025-08-21T20:00:00Z",
+          "result": { "teamAScore": 1, "teamBScore": 1, "winnerId": null }
+        },
+        {
+          "id": "ub-r1-m3",
+          "round": 1,
+          "position": 2,
+          "teamA": null,
+          "teamB": null,
+          "status": "pending",
+          "format": "BO3",
+          "scheduledFor": "2025-08-22T18:00:00Z", 
+          "result": null
+        },
+        {
+          "id": "ub-r1-m4",
+          "round": 1,
+          "position": 3,
+          "teamA": null,
+          "teamB": null,
+          "status": "pending",
+          "format": "BO3",
+          "scheduledFor": "2025-08-22T20:00:00Z",
+          "result": null
+        },
+        {
+          "id": "ub-r2-m1",
+          "round": 2,
+          "position": 0,
+          "teamA": null,
+          "teamB": null,
+          "status": "pending",
+          "format": "BO3",
+          "scheduledFor": "2025-08-23T19:00:00Z",
+          "result": null
+        },
+        {
+          "id": "ub-r2-m2",
+          "round": 2,
+          "position": 1,
+          "teamA": null,
+          "teamB": null,
+          "status": "pending",
+          "format": "BO3",
+          "scheduledFor": "2025-08-23T21:00:00Z",
+          "result": null
+        },
+        {
+          "id": "ub-final",
+          "round": 3,
+          "position": 0,
+          "teamA": null,
+          "teamB": null,
+          "status": "pending",
+          "format": "BO5",
+          "scheduledFor": "2025-08-24T19:00:00Z",
+          "result": null
+        }
+      ]
+    },
+    {
+      "id": "lower-bracket-1",
+      "name": "Lower Bracket",
+      "type": "lower",
+      "isActive": true,
+      "slots": [],
+      "matches": [
+        {
+          "id": "lb-r1-m1",
+          "round": 1,
+          "position": 0,
+          "teamA": null,
+          "teamB": null,
+          "status": "pending",
+          "format": "BO3",
+          "scheduledFor": "2025-08-22T19:00:00Z",
+          "result": null
+        },
+        {
+          "id": "lb-r1-m2",
+          "round": 1,
+          "position": 1,
+          "teamA": null,
+          "teamB": null,
+          "status": "pending",
+          "format": "BO3",
+          "scheduledFor": "2025-08-22T21:00:00Z",
+          "result": null
+        },
+        {
+          "id": "lb-r2-m1",
+          "round": 2,
+          "position": 0,
+          "teamA": null,
+          "teamB": null,
+          "status": "pending",
+          "format": "BO3",
+          "scheduledFor": "2025-08-23T18:00:00Z",
+          "result": null
+        },
+        {
+          "id": "lb-r2-m2",
+          "round": 2,
+          "position": 1,
+          "teamA": null,
+          "teamB": null,
+          "status": "pending",
+          "format": "BO3",
+          "scheduledFor": "2025-08-23T20:00:00Z",
+          "result": null
+        },
+        {
+          "id": "lb-r3-m1",
+          "round": 3,
+          "position": 0,
+          "teamA": null,
+          "teamB": null,
+          "status": "pending",
+          "format": "BO3",
+          "scheduledFor": "2025-08-24T17:00:00Z",
+          "result": null
+        },
+        {
+          "id": "lb-r4-m1",
+          "round": 4,
+          "position": 0,
+          "teamA": null,
+          "teamB": null,
+          "status": "pending",
+          "format": "BO3",
+          "scheduledFor": "2025-08-24T19:00:00Z",
+          "result": null
+        },
+        {
+          "id": "lb-r5-m1",
+          "round": 5,
+          "position": 0,
+          "teamA": null,
+          "teamB": null,
+          "status": "pending",
+          "format": "BO3",
+          "scheduledFor": "2025-08-25T17:00:00Z",
+          "result": null
+        },
+        {
+          "id": "lb-final",
+          "round": 6,
+          "position": 0,
+          "teamA": null,
+          "teamB": null,
+          "status": "pending",
+          "format": "BO5",
+          "scheduledFor": "2025-08-25T19:00:00Z",
+          "result": null
+        }
+      ]
+    },
+    {
+      "id": "grand-final",
+      "name": "Grand Final",
+      "type": "final",
+      "isActive": false,
+      "slots": [],
+      "matches": [
+        {
+          "id": "grand-final-match",
+          "round": 1,
+          "position": 0,
+          "teamA": null,
+          "teamB": null,
+          "status": "pending",
+          "format": "BO5",
+          "scheduledFor": "2025-08-25T20:00:00Z",
+          "result": null
+        }
+      ]
+    }
+  ],
+  "wildcardSlots": 2,
+  "isSetup": true,
+  "createdAt": "2025-08-10T10:00:00.000Z",
+  "updatedAt": "2025-08-15T16:30:00.000Z"
+}

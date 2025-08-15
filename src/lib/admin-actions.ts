@@ -29,6 +29,53 @@ export async function getAllTeamsAdmin(): Promise<Team[]> {
     }
     return teams;
 }
+
+// Admin-side getAllGroups using Admin SDK
+export async function getAllGroupsAdmin(): Promise<Group[]> {
+    ensureAdminInitialized();
+    const db = getAdminDb();
+    const groupsSnapshot = await db.collection('groups').get();
+    const groups = groupsSnapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+            id: doc.id,
+            name: data.name,
+            standings: data.standings || {},
+        } as Group;
+    });
+    return groups;
+}
+
+// Admin-side getAllMatches using Admin SDK
+export async function getAllMatchesAdmin(): Promise<Match[]> {
+    ensureAdminInitialized();
+    const db = getAdminDb();
+    const matchesSnapshot = await db.collection('matches').get();
+    return matchesSnapshot.docs.map(doc => {
+        const data = doc.data();
+        return { 
+            id: doc.id, 
+            ...data,
+            // Convert Timestamps to ISO strings for client compatibility
+            scheduled_for: data.scheduled_for && typeof data.scheduled_for.toDate === 'function'
+                ? data.scheduled_for.toDate().toISOString()
+                : data.scheduled_for,
+            defaultMatchTime: data.defaultMatchTime && typeof data.defaultMatchTime.toDate === 'function'
+                ? data.defaultMatchTime.toDate().toISOString()
+                : data.defaultMatchTime,
+            dateTime: data.dateTime && typeof data.dateTime.toDate === 'function'
+                ? data.dateTime.toDate().toISOString()
+                : data.dateTime,
+            proposedTime: data.proposedTime && typeof data.proposedTime.toDate === 'function'
+                ? data.proposedTime.toDate().toISOString()
+                : data.proposedTime,
+            completed_at: data.completed_at && typeof data.completed_at.toDate === 'function'
+                ? data.completed_at.toDate().toISOString()
+                : data.completed_at,
+        } as Match;
+    });
+}
+
 import { generatePassword, Timestamp, addDays, format } from './admin-constants';
 
 
@@ -272,12 +319,35 @@ export async function deleteAllMatches(token: string): Promise<{ success: boolea
 
 export async function generateMatchesForGroup(token: string, groupId: string, deadline: Date | null): Promise<{ success: boolean; message: string; data?: { matchesCreated: number } }> {
     return performAdminAction(token, async () => {
-        const allGroups = await fetchAllGroups();
+        console.log("[generateMatchesForGroup] Starting function...");
+        
+        // Use the same pattern as getAllTeamsAdmin - this works!
+        const db = getAdminDb();
+        console.log("[generateMatchesForGroup] Database instance type:", typeof db);
+        console.log("[generateMatchesForGroup] Database instance constructor:", db.constructor.name);
+        
+        console.log("[generateMatchesForGroup] About to call getAllGroupsAdmin...");
+        const allGroups = await getAllGroupsAdmin();
+        console.log("[generateMatchesForGroup] Successfully got groups:", allGroups.length);
+        
         const group = allGroups.find(g => g.id === groupId);
         if (!group) throw new Error(`Group with ID ${groupId} not found.`);
+        console.log("[generateMatchesForGroup] Found group:", group.name);
 
-        const allExistingMatches = await getAllMatches();
-        const allTeams = await getAllTeamsAdmin();
+        console.log("[generateMatchesForGroup] About to call getAllMatches...");
+        const allExistingMatches = await getAllMatchesAdmin();
+        console.log("[generateMatchesForGroup] Successfully got matches:", allExistingMatches.length);
+        
+        console.log("[generateMatchesForGroup] About to call getAllTeamsAdmin...");
+        let allTeams;
+        try {
+            allTeams = await getAllTeamsAdmin();
+            console.log("[generateMatchesForGroup] Successfully got teams:", allTeams.length);
+        } catch (error) {
+            console.error("[generateMatchesForGroup] Error in getAllTeamsAdmin:", error);
+            throw error;
+        }
+        
         const teamsMap = new Map(allTeams.map(t => [t.id, t]));
 
         const existingTimes = new Set(allExistingMatches.map(m => new Date(m.defaultMatchTime).getTime()));
@@ -287,20 +357,116 @@ export async function generateMatchesForGroup(token: string, groupId: string, de
                 .map(m => [...m.teams].sort().join('-'))
         );
         
-        const batch = getAdminDb().batch();
-        const matchesCollection = getAdminDb().collection('matches');
+        console.log("[generateMatchesForGroup] About to create batch...");
+        let batch;
+        try {
+            batch = db.batch();
+            console.log("[generateMatchesForGroup] Successfully created batch");
+        } catch (error) {
+            console.error("[generateMatchesForGroup] Error creating batch:", error);
+            throw error;
+        }
+        
+        // Try alternative syntax for collection access
+        let matchesCollection;
+        try {
+            console.log("[generateMatchesForGroup] Attempting db.collection('matches')...");
+            matchesCollection = db.collection('matches');
+            console.log("[generateMatchesForGroup] Successfully got collection");
+        } catch (error) {
+            console.error("[generateMatchesForGroup] Error with db.collection:", error);
+            throw error;
+        }
         let matchesCreated = 0;
         
-        // Start scheduling from the deadline (or today if no deadline)
-        let scheduleDate = deadline ? new Date(deadline) : new Date();
-        // We'll try 21:00 first, then 18:00, then previous day, etc.
-        const timeSlots = [21, 18];
+        // Calculate how many matches we need to create
         const teamIds = Object.keys(group.standings);
-
         if (teamIds.length < 2) {
              return { success: true, message: "Not enough teams in the group to create matches.", data: { matchesCreated: 0 } };
         }
 
+        // Count matches that need to be created
+        let matchesToCreate = 0;
+        for (let i = 0; i < teamIds.length; i++) {
+            for (let j = i + 1; j < teamIds.length; j++) {
+                const sortedIds = [teamIds[i], teamIds[j]].sort().join('-');
+                if (!existingMatchPairsInGroup.has(sortedIds)) {
+                    matchesToCreate++;
+                }
+            }
+        }
+
+        // Enhanced scheduling algorithm
+        // Start from today and work forward, allowing more time slots per day
+        let scheduleDate = new Date();
+        const timeSlots = [18, 21]; // 6 PM and 9 PM Warsaw time only
+        const maxDaysToSchedule = 30; // Allow up to 30 days for scheduling
+        
+        console.log(`[generateMatchesForGroup] Need to create ${matchesToCreate} matches`);
+        console.log(`[generateMatchesForGroup] Time slots per day: ${timeSlots.length}`);
+        console.log(`[generateMatchesForGroup] Deadline: ${deadline ? deadline.toISOString() : 'None'}`);
+        console.log(`[generateMatchesForGroup] Current date: ${scheduleDate.toISOString()}`);
+        console.log(`[generateMatchesForGroup] Max days to schedule: ${maxDaysToSchedule}`);
+        
+        if (deadline) {
+            const daysUntilDeadline = Math.ceil((deadline.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+            console.log(`[generateMatchesForGroup] Days until deadline: ${daysUntilDeadline}`);
+        };
+        
+        // Pre-calculate available time slots
+        const availableSlots: Date[] = [];
+        let currentDate = new Date(scheduleDate);
+        let slotsSkippedAfterDeadline = 0;
+        let slotsSkippedDueToConflicts = 0;
+        let totalSlotsChecked = 0;
+        
+        for (let dayOffset = 0; dayOffset < maxDaysToSchedule; dayOffset++) {
+            const dayDate = addDays(currentDate, dayOffset);
+            
+            for (const hour of timeSlots) {
+                totalSlotsChecked++;
+                const slotTime = new Date(dayDate);
+                slotTime.setHours(hour, 0, 0, 0); // Use local time instead of UTC
+                
+                // Skip if after deadline
+                if (deadline && slotTime > deadline) {
+                    slotsSkippedAfterDeadline++;
+                    continue;
+                }
+                
+                // Only check for conflicts with existing matches in the same group
+                const timeKey = slotTime.getTime();
+                const hasConflict = allExistingMatches.some(match => {
+                    // Only check conflicts within the same group
+                    if (match.group_id !== group.id) return false;
+                    
+                    const matchTime = new Date(match.defaultMatchTime).getTime();
+                    return Math.abs(matchTime - timeKey) < 60000; // Within 1 minute tolerance
+                });
+                
+                if (hasConflict) {
+                    slotsSkippedDueToConflicts++;
+                    continue;
+                }
+                
+                availableSlots.push(slotTime);
+            }
+        }
+
+        console.log(`[generateMatchesForGroup] Total slots checked: ${totalSlotsChecked}`);
+        console.log(`[generateMatchesForGroup] Slots skipped after deadline: ${slotsSkippedAfterDeadline}`);
+        console.log(`[generateMatchesForGroup] Slots skipped due to conflicts: ${slotsSkippedDueToConflicts}`);
+        console.log(`[generateMatchesForGroup] Found ${availableSlots.length} available time slots`);
+        
+        // Smart scheduling: Use latest slots and allow simultaneous matches within group
+        console.log(`[generateMatchesForGroup] Starting smart scheduling for ${matchesToCreate} matches`);
+        
+        // Sort available slots in reverse order (latest first)
+        availableSlots.sort((a, b) => b.getTime() - a.getTime());
+        console.log(`[generateMatchesForGroup] Using slots from latest to earliest, starting with: ${availableSlots[0]?.toISOString()}`);
+        
+        // Create match pairs that need to be scheduled
+        const matchPairs: { teamA: Team, teamB: Team }[] = [];
         for (let i = 0; i < teamIds.length; i++) {
             for (let j = i + 1; j < teamIds.length; j++) {
                 const teamA = teamsMap.get(teamIds[i]);
@@ -308,51 +474,71 @@ export async function generateMatchesForGroup(token: string, groupId: string, de
                 if (!teamA || !teamB) continue;
 
                 const sortedIds = [teamA.id, teamB.id].sort().join('-');
-                if (existingMatchPairsInGroup.has(sortedIds)) continue;
-
-                let matchTime!: Date;
-                let foundSlot = false;
-                while (!foundSlot) {
-                    for (const hour of timeSlots) {
-                        const potentialTime = new Date(scheduleDate);
-                        potentialTime.setUTCHours(hour - 2, 0, 0, 0); // Explicitly set UTC time by subtracting offset
-
-                        // Only allow times <= deadline (if deadline exists)
-                        if (deadline && potentialTime > deadline) {
-                            continue;
-                        }
-
-                        if (!existingTimes.has(potentialTime.getTime())) {
-                            matchTime = potentialTime;
-                            existingTimes.add(matchTime.getTime());
-                            foundSlot = true;
-                            break;
-                        }
-                    }
-                    if (!foundSlot) {
-                        // Go to previous day
-                        scheduleDate = addDays(scheduleDate, -1);
-                        // If we go before today, stop to avoid infinite loop
-                        if (scheduleDate < new Date()) {
-                            return { success: false, message: "Ran out of available time slots before the deadline." };
-                        }
-                    }
+                if (!existingMatchPairsInGroup.has(sortedIds)) {
+                    matchPairs.push({ teamA, teamB });
                 }
-
-                const matchRef = matchesCollection.doc();
-                batch.set(matchRef, {
-                    teamA: { id: teamA.id, name: teamA.name, score: 0, logoUrl: teamA.logoUrl },
-                    teamB: { id: teamB.id, name: teamB.name, score: 0, logoUrl: teamB.logoUrl },
-                    teams: [teamA.id, teamB.id],
-                    status: 'pending',
-                    scheduled_for: Timestamp.fromDate(deadline || matchTime),
-                    defaultMatchTime: matchTime.toISOString(),
-                    group_id: group.id,
-                    schedulingStatus: 'unscheduled',
-                    series_format: 'bo2', // Group stage matches are always BO2
-                });
-                matchesCreated++;
             }
+        }
+        
+        // Schedule matches using latest slots, allowing simultaneous play
+        const scheduledMatches: { matchPair: { teamA: Team, teamB: Team }, time: Date }[] = [];
+        const usedTeamsBySlot = new Map<string, Set<string>>(); // track which teams are busy at each time
+        
+        // Process each time slot from latest to earliest
+        let remainingMatchPairs = [...matchPairs];
+        
+        for (const time of availableSlots) {
+            if (remainingMatchPairs.length === 0) break;
+            
+            const timeKey = time.toISOString();
+            const busyTeams = usedTeamsBySlot.get(timeKey) || new Set<string>();
+            
+            // Try to schedule as many non-conflicting matches as possible at this time
+            for (let i = remainingMatchPairs.length - 1; i >= 0; i--) {
+                const matchPair = remainingMatchPairs[i];
+                
+                // Check if either team is already busy at this time
+                if (busyTeams.has(matchPair.teamA.id) || busyTeams.has(matchPair.teamB.id)) {
+                    continue; // Skip this match, teams are busy
+                }
+                
+                // Schedule this match
+                scheduledMatches.push({ matchPair, time });
+                busyTeams.add(matchPair.teamA.id);
+                busyTeams.add(matchPair.teamB.id);
+                usedTeamsBySlot.set(timeKey, busyTeams);
+                
+                // Remove this match from the remaining list
+                remainingMatchPairs.splice(i, 1);
+                
+                console.log(`[generateMatchesForGroup] Scheduled ${matchPair.teamA.name} vs ${matchPair.teamB.name} at ${time.toISOString()}`);
+            }
+        }
+        
+        console.log(`[generateMatchesForGroup] Successfully scheduled ${scheduledMatches.length} out of ${matchesToCreate} needed matches`);
+        
+        if (scheduledMatches.length < matchesToCreate) {
+            return { 
+                success: false, 
+                message: `Could only schedule ${scheduledMatches.length} out of ${matchesToCreate} needed matches. Need more time slots or extend deadline.` 
+            };
+        }
+        
+        // Create the matches in Firestore
+        for (const { matchPair, time } of scheduledMatches) {
+            const matchRef = matchesCollection.doc();
+            batch.set(matchRef, {
+                teamA: { id: matchPair.teamA.id, name: matchPair.teamA.name, score: 0, logoUrl: matchPair.teamA.logoUrl },
+                teamB: { id: matchPair.teamB.id, name: matchPair.teamB.name, score: 0, logoUrl: matchPair.teamB.logoUrl },
+                teams: [matchPair.teamA.id, matchPair.teamB.id],
+                status: 'pending',
+                scheduled_for: Timestamp.fromDate(time),
+                defaultMatchTime: time.toISOString(),
+                group_id: group.id,
+                schedulingStatus: 'unscheduled',
+                series_format: 'bo2', // Group stage matches are always BO2
+            });
+            matchesCreated++;
         }
 
         if (matchesCreated === 0) {
@@ -501,8 +687,8 @@ export async function updateMatchScore(
 
 // --- DATA FETCHING ---
 export async function getTeams(): Promise<Team[]> { return getAllTeamsAdmin(); }
-export async function getGroups(): Promise<Group[]> { return fetchAllGroups(); }
-export async function getMatches(): Promise<Match[]> { return getAllMatches(); }
+export async function getGroups(): Promise<Group[]> { return getAllGroupsAdmin(); }
+export async function getMatches(): Promise<Match[]> { return getAllMatchesAdmin(); }
 export async function getTournamentStatus() {
     return { currentStage: "Group Stage" };
 }

@@ -114,6 +114,12 @@ service cloud.firestore {
       allow read, write: if isAdmin();
     }
     
+    // Playoffs collection - admin can manage, everyone can read
+    match /playoffs/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    
     // Global deny-all rule for any unmatched documents
     match /{document=**} {
       allow read, write: if false;

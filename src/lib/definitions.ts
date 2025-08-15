@@ -176,13 +176,6 @@ export interface Group {
   standings: { [teamId: string]: GroupStanding };
 }
 
-export interface PlayoffData {
-    id: string; 
-    round: number;
-    name: string;
-    matches: Match[];
-}
-
 export interface TournamentPlayer extends Player {
     teamId: string;
     teamName: string;
@@ -291,4 +284,62 @@ export interface StandinRequest {
     requestedStandins: string[]; // Standin IDs requested
     createdAt: string;
     status: 'pending' | 'approved' | 'rejected';
+}
+
+// Playoff System Types
+export type PlayoffMatchFormat = 'bo1' | 'bo3' | 'bo5';
+export type PlayoffMatchStatus = 'scheduled' | 'live' | 'completed' | 'bye';
+export type PlayoffBracketType = 'upper' | 'lower' | 'wildcard' | 'final';
+
+export interface PlayoffSlot {
+    id: string;
+    position: number; // Position in bracket (1-8 for upper, 1-8 for lower, etc.)
+    teamId?: string; // null if slot is empty
+    bracketType: PlayoffBracketType;
+    round: number; // Which round this slot belongs to
+}
+
+export interface PlayoffMatch {
+    id: string;
+    matchId?: string; // Reference to regular Match if created
+    bracketType: PlayoffBracketType;
+    round: number;
+    position: number; // Position within the round
+    teamASlotId?: string; // Reference to playoff slot
+    teamBSlotId?: string; // Reference to playoff slot
+    teamA?: { id: string; name: string; logoUrl?: string; };
+    teamB?: { id: string; name: string; logoUrl?: string; };
+    winnerSlotId?: string; // Where winner advances to
+    loserSlotId?: string; // Where loser goes (for upper bracket)
+    format: PlayoffMatchFormat; // bo1, bo3, bo5
+    status: PlayoffMatchStatus;
+    result?: {
+        winnerId: string;
+        loserId: string;
+        teamAScore: number;
+        teamBScore: number;
+        completedAt: string;
+    };
+    scheduledFor?: string;
+    createdAt: string;
+    updatedAt: string;
+}
+
+export interface PlayoffBracket {
+    id: string;
+    name: string; // e.g., "Upper Bracket", "Lower Bracket", "Wildcards"
+    type: PlayoffBracketType;
+    slots: PlayoffSlot[];
+    matches: PlayoffMatch[];
+    isActive: boolean;
+}
+
+export interface PlayoffData {
+    id: string;
+    name: string; // Tournament name
+    brackets: PlayoffBracket[];
+    wildcardSlots: number; // Number of wildcard spots (default 2)
+    isSetup: boolean; // Whether admin has completed initial setup
+    createdAt: string;
+    updatedAt: string;
 }

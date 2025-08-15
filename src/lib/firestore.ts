@@ -224,6 +224,22 @@ export async function getMatchesForTeam(teamId: string): Promise<Match[]> {
     });
 }
 
+export async function getUserTeam(userId: string): Promise<{ hasTeam: boolean; team?: Team | null; }> {
+    const teamsCollection = collection(db, "teams");
+    const q = query(teamsCollection, where("captainId", "==", userId));
+    const querySnapshot = await getDocs(q);
+    
+    if (querySnapshot.empty) {
+        return { hasTeam: false, team: null };
+    }
+    
+    // Get the team data from the first result
+    const teamDoc = querySnapshot.docs[0];
+    const team = await getTeamById(teamDoc.id);
+    
+    return { hasTeam: true, team };
+}
+
 export async function getAllMatches(): Promise<Match[]> {
     const matchesCollection = collection(db, "matches");
     const snapshot = await getDocs(matchesCollection);

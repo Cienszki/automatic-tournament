@@ -16,6 +16,8 @@ import { AnnouncementsTab } from './AnnouncementsTab';
 import { SystemTestTab } from './SystemTestTab';
 import { StandinManagementTab } from './StandinManagementTab';
 import { TournamentStatusTab } from './TournamentStatusTab';
+import { PlayoffManagementTab } from './PlayoffManagementTab';
+import { MakeAdminButton } from '@/components/dev/MakeAdminButton';
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -58,9 +60,10 @@ export default function AdminPage() {
     
     if (!isAdmin) {
         return (
-            <div className="text-center py-20">
+            <div className="text-center py-20 max-w-2xl mx-auto space-y-6">
                 <h1 className="text-3xl font-bold text-red-500">Access Denied</h1>
                 <p className="mt-4 text-muted-foreground">You do not have permission to view this page.</p>
+                <MakeAdminButton />
             </div>
         );
     }
@@ -78,11 +81,12 @@ export default function AdminPage() {
             </Card>
 
             <Tabs defaultValue="status">
-                <TabsList className="grid w-full grid-cols-8">
+                <TabsList className="grid w-full grid-cols-9">
                     <TabsTrigger value="status">Status</TabsTrigger>
                     <TabsTrigger value="stage">Stage</TabsTrigger>
                     <TabsTrigger value="standings">Standings</TabsTrigger>
                     <TabsTrigger value="matches">Matches</TabsTrigger>
+                    <TabsTrigger value="playoffs">Playoffs</TabsTrigger>
                     <TabsTrigger value="teams">Teams</TabsTrigger>
                     <TabsTrigger value="standins">Standins</TabsTrigger>
                     <TabsTrigger value="announcements">Announcements</TabsTrigger>
@@ -99,6 +103,9 @@ export default function AdminPage() {
                 </TabsContent>
                 <TabsContent value="matches">
                     <MatchManagementTab />
+                </TabsContent>
+                <TabsContent value="playoffs">
+                    <PlayoffManagementTab />
                 </TabsContent>
                 <TabsContent value="teams">
                     <TeamVerificationTab />

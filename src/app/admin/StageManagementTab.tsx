@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "@/hooks/useTranslation";
 import { cn } from "@/lib/utils";
 import { getGroups, getTeams, createGroup, deleteGroup, deleteAllGroups, generateMatchesForGroup, getMatches } from "@/lib/admin-actions";
+import { getAllTeams, getAllGroups, getAllMatches } from "@/lib/firestore";
 import type { Team, Group, Match } from "@/lib/definitions";
 import { useAuth } from "@/context/AuthContext";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "@/components/ui/command";
@@ -61,24 +62,29 @@ export function StageManagementTab() {
   }, [deadlineDate, deadlineHour, deadlineMinute]);
 
   const fetchData = React.useCallback(async () => {
+    console.log("[StageManagementTab] Starting fetchData...");
     setIsLoading(true);
     try {
+      console.log("[StageManagementTab] Calling Promise.all...");
       const [fetchedTeams, fetchedGroups, fetchedMatches] = await Promise.all([
-          getTeams(),
-          getGroups(),
-          getMatches(),
+          getAllTeams(),
+          getAllGroups(),
+          getAllMatches(),
       ]);
       // Debug log
       console.log("[StageManagementTab] fetchedTeams:", fetchedTeams);
       console.log("[StageManagementTab] fetchedGroups:", fetchedGroups);
+      console.log("[StageManagementTab] fetchedMatches:", fetchedMatches);
       const assignedTeamIds = new Set(fetchedGroups.flatMap(g => Object.keys(g.standings)));
       setAllTeams(fetchedTeams.filter(team => team.status === 'verified' && !assignedTeamIds.has(team.id)));
       setGroups(fetchedGroups.sort((a, b) => a.name.localeCompare(b.name)));
       setMatches(fetchedMatches);
+      console.log("[StageManagementTab] Data set successfully");
     } catch (error) {
+      console.error("[StageManagementTab] Error fetching data:", error);
       toast({ 
         title: t('toasts.errors.dataFetch'), 
-        description: t('toasts.errors.loadRequired'), 
+        description: `${t('toasts.errors.loadRequired')} Error: ${error instanceof Error ? error.message : 'Unknown error'}`, 
         variant: "destructive"
       })
     } finally {
@@ -87,8 +93,14 @@ export function StageManagementTab() {
   }, [toast]);
 
   React.useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    console.log("[StageManagementTab] useEffect triggered, user:", user);
+    if (user) {
+      console.log("[StageManagementTab] User is authenticated, calling fetchData");
+      fetchData();
+    } else {
+      console.log("[StageManagementTab] User is not authenticated");
+    }
+  }, [fetchData, user]);
 
   const handleCreateGroup = async () => {
     if (!user) return toast({ 

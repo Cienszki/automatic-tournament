@@ -1,0 +1,164 @@
+{
+  "brackets": [
+    {
+      "type": "wildcard",
+      "roundNames": {
+        "1": "Wildcard"
+      },
+      "matches": [
+        {
+          "id": "wc-1",
+          "round": 1,
+          "position": 1,
+          "team1": {
+            "name": "3rd in Group A",
+            "seed": 3,
+            "groupPosition": 3,
+            "group": "A"
+          },
+          "team2": {
+            "name": "2nd in Group D",
+            "seed": 6,
+            "groupPosition": 2,
+            "group": "D"
+          },
+          "winner": null
+        },
+        {
+          "id": "wc-2",
+          "round": 1,
+          "position": 2,
+          "team1": {
+            "name": "3rd in Group B",
+            "seed": 7,
+            "groupPosition": 3,
+            "group": "B"
+          },
+          "team2": {
+            "name": "2nd in Group C",
+            "seed": 2,
+            "groupPosition": 2,
+            "group": "C"
+          },
+          "winner": null
+        }
+      ]
+    },
+    {
+      "type": "upper",
+      "roundNames": {
+        "1": "Upper Round 1",
+        "2": "Upper Semifinals",
+        "3": "Upper Final"
+      },
+      "matches": [
+        {
+          "id": "upper-r1-1",
+          "round": 1,
+          "position": 1,
+          "team1": {
+            "name": "1st in Group A",
+            "seed": 1,
+            "groupPosition": 1,
+            "group": "A"
+          },
+          "team2": {
+            "name": "Winner of WC2",
+            "fromMatch": "wc-2"
+          },
+          "winner": null
+        },
+        {
+          "id": "upper-r1-2",
+          "round": 1,
+          "position": 2,
+          "team1": {
+            "name": "1st in Group B",
+            "seed": 4,
+            "groupPosition": 1,
+            "group": "B"
+          },
+          "team2": {
+            "name": "Winner of WC1",
+            "fromMatch": "wc-1"
+          },
+          "winner": null
+        },
+        {
+          "id": "upper-r2-1",
+          "round": 2,
+          "position": 1,
+          "team1": {
+            "name": "Winner of U1A",
+            "fromMatch": "upper-r1-1"
+          },
+          "team2": {
+            "name": "Winner of U1B",
+            "fromMatch": "upper-r1-2"
+          },
+          "winner": null
+        }
+      ]
+    },
+    {
+      "type": "lower",
+      "roundNames": {
+        "1": "Lower Round 1",
+        "2": "Lower Round 2",
+        "3": "Lower Final"
+      },
+      "matches": [
+        {
+          "id": "lower-r1-1",
+          "round": 1,
+          "position": 1,
+          "team1": {
+            "name": "Loser of U1A",
+            "fromMatch": "upper-r1-1"
+          },
+          "team2": {
+            "name": "Loser of U1B",
+            "fromMatch": "upper-r1-2"
+          },
+          "winner": null
+        },
+        {
+          "id": "lower-r2-1",
+          "round": 2,
+          "position": 1,
+          "team1": {
+            "name": "Winner of L1A",
+            "fromMatch": "lower-r1-1"
+          },
+          "team2": {
+            "name": "Loser of U2A",
+            "fromMatch": "upper-r2-1"
+          },
+          "winner": null
+        }
+      ]
+    },
+    {
+      "type": "final",
+      "roundNames": {
+        "1": "Grand Final"
+      },
+      "matches": [
+        {
+          "id": "grand-final-1",
+          "round": 1,
+          "position": 1,
+          "team1": {
+            "name": "Winner of U2A",
+            "fromMatch": "upper-r2-1"
+          },
+          "team2": {
+            "name": "Winner of L2A",
+            "fromMatch": "lower-r2-1"
+          },
+          "winner": null
+        }
+      ]
+    }
+  ]
+}

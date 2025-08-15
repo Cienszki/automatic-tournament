@@ -17,7 +17,7 @@ export default {
 	},
 	extend: {
 	  fontFamily: {
-		sans: ["var(--font-raleway)"],
+		sans: ["system-ui", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", "sans-serif"],
 		mono: ["var(--font-space-mono)"],
 		neon: ["var(--font-neon-bines)"],
 	  },

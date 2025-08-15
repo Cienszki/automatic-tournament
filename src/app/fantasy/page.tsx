@@ -73,10 +73,26 @@ export default function FantasyLeaguePage() {
       setCurrentRoundId(status?.roundId || 'initial');
 
       if (user && status?.roundId) {
-        const [userLineup, profile] = await Promise.all([
-            getUserFantasyLineup(user.uid, status.roundId),
+        const [profile] = await Promise.all([
             createUserProfileIfNotExists(user).catch(() => getUserProfile(user.uid)) // fallback to getUserProfile if createUserProfileIfNotExists fails
         ]);
+        
+        // Try to get lineup for current round, then fallback to previous rounds to preserve selections
+        let userLineup = null;
+        const currentRound = status.roundId;
+        
+        // Define round priority for fallback (most recent first)
+        const roundPriority = ['playoffs', 'group_stage', 'pre_season', 'initial'];
+        const rounds = [currentRound, ...roundPriority.filter(r => r !== currentRound)];
+        
+        for (const roundId of rounds) {
+          try {
+            userLineup = await getUserFantasyLineup(user.uid, roundId);
+            if (userLineup) break;
+          } catch (error) {
+            console.log(`No lineup found for round: ${roundId}`);
+          }
+        }
         
         if (userLineup) setSelectedLineup(userLineup.lineup);
         setUserProfile(profile);
@@ -144,7 +160,12 @@ export default function FantasyLeaguePage() {
     setIsSaving(true);
     
     try {
-      await saveUserFantasyLineup(user.uid, selectedLineup as Record<PlayerRole, TournamentPlayer>, currentRoundId, userProfile.discordUsername);
+      // Map initial and pre_season to group_stage for fantasy lineups
+      const fantasyRoundId = (currentRoundId === 'initial' || currentRoundId === 'pre_season') 
+        ? 'group_stage' 
+        : currentRoundId;
+      
+      await saveUserFantasyLineup(user.uid, selectedLineup as Record<PlayerRole, TournamentPlayer>, fantasyRoundId, userProfile.discordUsername);
       toast({ 
         title: t('fantasy.messages.success'), 
         description: t('fantasy.messages.lineupSaved') 

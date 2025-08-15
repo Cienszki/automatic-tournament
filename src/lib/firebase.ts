@@ -16,20 +16,37 @@ const firebaseConfig = {
 };
 
 let app: FirebaseApp;
+let auth: Auth;
+let db: Firestore;
+let storage: FirebaseStorage;
+let functions: Functions;
+
 try {
-    app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+    // Only initialize if we're in the browser and have the required config
+    if (typeof window !== 'undefined' && firebaseConfig.apiKey) {
+        app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+        auth = getAuth(app);
+        auth.tenantId = null; 
+        db = getFirestore(app);
+        storage = getStorage(app);
+        functions = getFunctions(app);
+        console.log("Firebase initialized successfully");
+    } else {
+        // Create placeholder objects for server-side rendering
+        app = {} as FirebaseApp;
+        auth = {} as Auth;
+        db = {} as Firestore;
+        storage = {} as FirebaseStorage;
+        functions = {} as Functions;
+    }
 } catch (e) {
-    console.error("Firebase initialization error", e);
-    // @ts-ignore
-    app = null;
+    console.error("Firebase initialization error:", e);
+    // Create placeholder objects
+    app = {} as FirebaseApp;
+    auth = {} as Auth;
+    db = {} as Firestore;
+    storage = {} as FirebaseStorage;
+    functions = {} as Functions;
 }
-
-
-const auth: Auth = getAuth(app);
-// Explicitly setting the tenant to null can resolve domain-related auth issues in some environments.
-auth.tenantId = null; 
-const db: Firestore = getFirestore(app);
-const storage: FirebaseStorage = getStorage(app);
-const functions: Functions = getFunctions(app);
 
 export { app, auth, db, storage, functions };

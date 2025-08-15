@@ -19,10 +19,17 @@ function initializeAdmin() {
 
   const base64EncodedServiceAccount = process.env.FIREBASE_SERVICE_ACCOUNT_BASE64;
   if (!base64EncodedServiceAccount || base64EncodedServiceAccount.length <= 1) {
-    throw new Error("FIREBASE_SERVICE_ACCOUNT_BASE64 env variable is not set. Admin features will be disabled.");
+    console.warn("FIREBASE_SERVICE_ACCOUNT_BASE64 env variable is not set. Admin features will be disabled.");
+    return; // Return early instead of throwing
   }
   
   try {
+    // Check if the base64 string is valid before parsing
+    if (base64EncodedServiceAccount === 'undefined' || base64EncodedServiceAccount === 'null') {
+      console.warn("FIREBASE_SERVICE_ACCOUNT_BASE64 contains invalid value. Admin features will be disabled.");
+      return;
+    }
+    
     const serviceAccount = JSON.parse(Buffer.from(base64EncodedServiceAccount, 'base64').toString('utf-8'));
     const storageBucket = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
 

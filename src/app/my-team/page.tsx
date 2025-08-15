@@ -13,7 +13,7 @@ import { TeamStatsGrid } from "@/components/app/my-team/TeamStatsGrid";
 import { PlayerAnalyticsTable } from "@/components/app/my-team/PlayerAnalyticsTable";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
-import { getUserTeam } from "@/lib/team-actions";
+import { getUserTeam } from "@/lib/firestore";
 import { getMatchesForTeam, getAllTeams, getAllStandins } from "@/lib/firestore";
 import type { Team, Match, Standin } from "@/lib/definitions";
 import NoTeamFound from '@/components/app/my-team/NoTeamFound';
