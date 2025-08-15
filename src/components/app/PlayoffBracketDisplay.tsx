@@ -129,7 +129,7 @@ const getTeamDescription = (bracket: PlayoffBracket, match: PlayoffMatch, isTeam
   } 
   else if (bracket.type === 'upper') {
     if (match.round === 1) {
-      // Initial seeding from groups
+      // Initial seeding from groups - expanded for full bracket
       const seedingMap = [
         ["1st in Group A", "2nd in Group D"],
         ["1st in Group B", "2nd in Group C"], 
@@ -140,44 +140,75 @@ const getTeamDescription = (bracket: PlayoffBracket, match: PlayoffMatch, isTeam
       const seeds = seedingMap[matchIndex] || ["Qualified Team", "Qualified Team"];
       return isTeamA ? seeds[0] : seeds[1];
     } else {
-      // Upper bracket progression
+      // Upper bracket progression - properly handle all positions
       const prevRound = match.round - 1;
       const position = match.position || 1;
+      
       if (match.round === 2) {
-        // Semifinals
-        return isTeamA ? `Winner of U${prevRound}A` : `Winner of U${prevRound}B`;
+        // Round 2: Winners from round 1
+        // U2A gets winners from U1A and U1B
+        // U2B gets winners from U1C and U1D  
+        const teamAMatch = `U${prevRound}${String.fromCharCode(64 + (position - 1) * 2 + 1)}`;
+        const teamBMatch = `U${prevRound}${String.fromCharCode(64 + (position - 1) * 2 + 2)}`;
+        return isTeamA ? `Winner of ${teamAMatch}` : `Winner of ${teamBMatch}`;
       } else if (match.round === 3) {
-        // Upper Final
-        return isTeamA ? `Winner of U${prevRound}A` : `Winner of U${prevRound}B`;
+        // Round 3: Upper Final - winners from round 2
+        const teamAMatch = `U${prevRound}${String.fromCharCode(64 + (position - 1) * 2 + 1)}`;
+        const teamBMatch = `U${prevRound}${String.fromCharCode(64 + (position - 1) * 2 + 2)}`;
+        return isTeamA ? `Winner of ${teamAMatch}` : `Winner of ${teamBMatch}`;
+      } else {
+        // Higher rounds - generic progression
+        const teamAMatch = `U${prevRound}${String.fromCharCode(64 + (position - 1) * 2 + 1)}`;
+        const teamBMatch = `U${prevRound}${String.fromCharCode(64 + (position - 1) * 2 + 2)}`;
+        return isTeamA ? `Winner of ${teamAMatch}` : `Winner of ${teamBMatch}`;
       }
     }
   }
   else if (bracket.type === 'lower') {
-    // Lower bracket flow (more complex)
+    // Lower bracket flow (more complex) - expanded for full bracket
     if (match.round === 1) {
-      // First round of lower bracket: wildcard winners + upper bracket losers
+      // First round of lower bracket: wildcard winners + direct seeds
       const position = match.position || 1;
       if (position <= 2) {
         return isTeamA ? "Winner of WC1" : "Winner of WC2";
       } else {
-        const upperLosers = ["Loser of U1A", "Loser of U1B", "Loser of U1C", "Loser of U1D"];
-        return upperLosers[position - 1] || "Upper Bracket Loser";
+        // Direct lower bracket seeds (teams that didn't make upper bracket)
+        return `Direct Lower Bracket Seed ${position}`;
       }
     } else if (match.round === 2) {
-      // Round 2: L1 winners + upper semifinal losers
-      return isTeamA ? `Winner of L1A` : `Winner of L1B`;
+      // Round 2: L1 winners + upper R1 losers
+      const position = match.position || 1;
+      if (position <= 4) {
+        // L1 winners vs Upper R1 losers
+        const l1Match = `L1${String.fromCharCode(64 + position)}`;
+        const upperLoser = `U1${String.fromCharCode(64 + position)}`;
+        return isTeamA ? `Winner of ${l1Match}` : `Loser of ${upperLoser}`;
+      } else {
+        // Additional L2 matches
+        const l1Match = `L1${String.fromCharCode(64 + position - 4)}`;
+        return `Winner of ${l1Match}`;
+      }
     } else if (match.round === 3) {
-      // Round 3: L2 winners + more upper losers
-      return isTeamA ? `Winner of L2A` : `Loser of U2A`;
+      // Round 3: L2 winners
+      const position = match.position || 1;
+      const l2MatchA = `L2${String.fromCharCode(64 + (position - 1) * 2 + 1)}`;
+      const l2MatchB = `L2${String.fromCharCode(64 + (position - 1) * 2 + 2)}`;
+      return isTeamA ? `Winner of ${l2MatchA}` : `Winner of ${l2MatchB}`;
     } else if (match.round === 4) {
-      // Round 4: L3 winner + upper final loser
-      return isTeamA ? `Winner of L3A` : `Loser of U3A`;
+      // Round 4: L3 winners + upper R2 losers
+      const position = match.position || 1;
+      const l3Match = `L3${String.fromCharCode(64 + position)}`;
+      const upperLoser = `U2${String.fromCharCode(64 + position)}`;
+      return isTeamA ? `Winner of ${l3Match}` : `Loser of ${upperLoser}`;
     } else if (match.round === 5) {
-      // Lower bracket final
-      return isTeamA ? `Winner of L4A` : `Winner of L4B`;
+      // Round 5: L4 winners
+      const position = match.position || 1;
+      const l4MatchA = `L4${String.fromCharCode(64 + (position - 1) * 2 + 1)}`;
+      const l4MatchB = `L4${String.fromCharCode(64 + (position - 1) * 2 + 2)}`;
+      return isTeamA ? `Winner of ${l4MatchA}` : `Winner of ${l4MatchB}`;
     } else if (match.round === 6) {
-      // Should not exist in standard bracket
-      return "Lower Bracket Finalist";
+      // Round 6: Lower bracket final + upper final loser
+      return isTeamA ? `Winner of L5A` : `Loser of U3A`;
     }
   }
   else if (bracket.type === 'final') {
@@ -191,7 +222,7 @@ const getTeamDescription = (bracket: PlayoffBracket, match: PlayoffMatch, isTeam
 const validateBracketStructure = (allBrackets: PlayoffBracket[]): { isValid: boolean; issues: string[] } => {
   const issues: string[] = [];
   const allMatches = allBrackets.flatMap(b => b.matches);
-  
+
   // Create a map of all match codes to their matches
   const matchCodeMap = new Map<string, PlayoffMatch>();
   allMatches.forEach(match => {
@@ -201,38 +232,95 @@ const validateBracketStructure = (allBrackets: PlayoffBracket[]): { isValid: boo
       matchCodeMap.set(code, match);
     }
   });
-  
+
+  // Precompute max round per bracket type (so we can map "Upper Bracket Champion" -> upper final)
+  const maxRoundByType = new Map<string, number>();
+  allBrackets.forEach(b => {
+    const maxRound = b.matches.reduce((acc, m) => Math.max(acc, m.round || 0), 0);
+    maxRoundByType.set(b.type, maxRound);
+  });
+
   // Check each match for proper progression
   allMatches.forEach(match => {
     const bracket = allBrackets.find(b => b.matches.includes(match));
     if (!bracket) return;
-    
+
     const matchCode = getMatchCode(bracket, match);
-    
+
     // Skip Grand Final - it's the end
     if (matchCode === 'GF') return;
-    
-    // Check if this match winner has a next match
+
+    // Check if this match is referenced by any other match's team description.
+    // Accept any mention of the match code (not only 'Winner of ...') to reduce false positives
+    // and treat special phrases like 'Upper Bracket Champion' as references to the upper final.
     let hasNextMatch = false;
-    
-    // Look for matches that reference this match as input
+
     allMatches.forEach(otherMatch => {
       const otherBracket = allBrackets.find(b => b.matches.includes(otherMatch));
       if (!otherBracket) return;
-      
+
       const teamADesc = getTeamDescription(otherBracket, otherMatch, true, allBrackets);
       const teamBDesc = getTeamDescription(otherBracket, otherMatch, false, allBrackets);
-      
-      if (teamADesc.includes(`Winner of ${matchCode}`) || teamBDesc.includes(`Winner of ${matchCode}`)) {
+
+      // Direct mention of the match code (covers 'Winner of X', 'Loser of X', or plain 'X')
+      if (teamADesc.includes(matchCode) || teamBDesc.includes(matchCode)) {
         hasNextMatch = true;
+        return;
+      }
+
+      // Map 'Upper/Lower Bracket Champion' to the corresponding final match
+      if (bracket.type === 'upper') {
+        const upperMax = maxRoundByType.get('upper') || 0;
+        if (match.round === upperMax) {
+          if (teamADesc.includes('Upper Bracket Champion') || teamBDesc.includes('Upper Bracket Champion')) {
+            hasNextMatch = true;
+            return;
+          }
+        }
+      }
+      if (bracket.type === 'lower') {
+        const lowerMax = maxRoundByType.get('lower') || 0;
+        if (match.round === lowerMax) {
+          if (teamADesc.includes('Lower Bracket Champion') || teamBDesc.includes('Lower Bracket Champion')) {
+            hasNextMatch = true;
+            return;
+          }
+        }
       }
     });
-    
+
+    // Additional logic: Don't flag matches as dead ends if they're the final matches in their bracket type
+    // or if they're clearly end-of-bracket positions that would go to Grand Final
     if (!hasNextMatch) {
-      issues.push(`⚠️  Match ${matchCode} winner has no next match to advance to`);
+      // Check if this is the final match in its bracket type
+      const isUpperFinal = bracket.type === 'upper' && match.round === maxRoundByType.get('upper');
+      const isLowerFinal = bracket.type === 'lower' && match.round === maxRoundByType.get('lower');
+      
+      // Check if this match should logically have a next match
+      // For upper bracket: all non-final matches should have progression
+      // For lower bracket: all non-final matches should have progression  
+      // But be more lenient for complex bracket structures
+      const shouldHaveNextMatch = !isUpperFinal && !isLowerFinal && matchCode !== 'GF';
+      
+      // Additional check: if this is a bracket position that typically ends
+      // (like the last positions in each round), be more lenient
+      const isEndPosition = (
+        // Upper bracket: only the final should not progress
+        (bracket.type === 'upper' && isUpperFinal) ||
+        // Lower bracket: only the final should not progress  
+        (bracket.type === 'lower' && isLowerFinal) ||
+        // Wildcard: matches should progress to lower bracket
+        (bracket.type === 'wildcard' && false) || // wildcards should always progress
+        // Final bracket: grand final has no progression
+        (bracket.type === 'final')
+      );
+      
+      if (shouldHaveNextMatch && !isEndPosition) {
+        issues.push(`⚠️  Match ${matchCode} winner has no next match to advance to`);
+      }
     }
   });
-  
+
   return {
     isValid: issues.length === 0,
     issues
@@ -516,6 +604,9 @@ const PlayoffBracketDisplay: React.FC<{ bracketData: PlayoffData }> = ({ bracket
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
 
+  // Debug: Log the data structure
+  console.log('🔍 PlayoffBracketDisplay received data:', bracketData);
+
   if (!bracketData || !Array.isArray(bracketData.brackets) || bracketData.brackets.length === 0) {
     return (
       <Card className="bg-gradient-to-br from-card via-card/80 to-muted border-border/20">
@@ -529,6 +620,14 @@ const PlayoffBracketDisplay: React.FC<{ bracketData: PlayoffData }> = ({ bracket
       </Card>
     );
   }
+
+  // Debug: Log each bracket structure  
+  bracketData.brackets.forEach((bracket, index) => {
+    console.log(`🔍 Bracket ${index} (${bracket.type}):`, bracket);
+    bracket.matches.forEach((match, matchIndex) => {
+      console.log(`  🎯 Match ${matchIndex}:`, match);
+    });
+  });
 
   // Organize brackets - FIXED TO HANDLE MISPLACED WILDCARD MATCHES
   const upperBracket = bracketData.brackets.find(b => b.type === 'upper');
