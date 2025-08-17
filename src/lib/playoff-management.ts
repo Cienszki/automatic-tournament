@@ -398,7 +398,8 @@ function createLowerBracket(): PlayoffBracket {
     }
 
     // Round 3: 4 LB R2 winners -> 2 matches -> 2 winners
-    for (let i = 1; i <= 2; i++) {
+    // Round 3 needs 4 slots (winners from R2 are paired into 2 matches -> each match consumes 2 slots)
+    for (let i = 1; i <= 4; i++) {
         slots.push({
             id: `lb-slot-r3-${i}`,
             position: i,
@@ -471,7 +472,7 @@ function createLowerBracket(): PlayoffBracket {
             position: i,
             teamASlotId: `lb-slot-r2-${i}`, // LB R1 winner
             teamBSlotId: `lb-slot-r2-${i + 4}`, // Upper R1 loser
-            winnerSlotId: `lb-slot-r3-${Math.ceil(i / 2)}`, // Winners go to R3 (2 winners per R3 slot)
+            winnerSlotId: `lb-slot-r3-${i}`, // Each R2 winner goes to their own R3 slot
             format: 'bo1',
             status: 'scheduled',
             createdAt: new Date().toISOString(),

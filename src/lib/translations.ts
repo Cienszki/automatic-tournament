@@ -356,6 +356,54 @@ export const translations = {
     notFormedYetDesc: "Administrator nie utworzył jeszcze grup dla turnieju. Sprawdź ponownie później."
   },
 
+  // Playoffs page
+  playoffs: {
+    title: "Playoff",
+    description: "Drabinka playoff z formatem podwójnej eliminacji",
+    loading: "Ładowanie drabinki...",
+    loadingDescription: "Przygotowywanie danych drabinki...",
+    loadingError: "Błąd Ładowania",
+    noTournamentData: "Brak Danych Turnieju",
+    noTournamentDataDesc: "Drabinka playoff nie została jeszcze skonfigurowana.",
+    noBracket: "Brak drabinki play-off",
+    notSetupYet: "Drabinka play-off nie została jeszcze ustawiona.",
+    tryAgain: "Spróbuj Ponownie",
+    
+    // Bracket names
+    upperBracket: "Górna Drabinka",
+    lowerBracket: "Dolna Drabinka", 
+    wildcardMatches: "Mecze Wildcard",
+    grandFinal: "Wielki Finał",
+    
+    // Round names
+    round: "Runda",
+    wildcardRound: "Dzika Karta",
+    
+    // Match format
+    bestOf1: "BO1",
+    bestOf3: "BO3", 
+    bestOf5: "BO5",
+    
+    // Team descriptions
+    groupWinner: "1. miejsce Grupa",
+    groupSecond: "2. miejsce Grupa", 
+    groupThird: "3. miejsce Grupa",
+    wildcardWinner: "Zwycięzca",
+    matchWinner: "Zwycięzca meczu",
+    matchLoser: "Przegrany meczu",
+    upperBracketWinner: "Zwycięzca Górnej Drabinki",
+    lowerBracketWinner: "Zwycięzca Dolnej Drabinki",
+    toBeDetermined: "Do ustalenia",
+    
+    // Group labels  
+    groupA: "A",
+    groupB: "B",
+    groupC: "C", 
+    groupD: "D",
+    groupE: "E",
+    groupF: "F"
+  },
+
   // Fantasy League
   fantasy: {
     title: "Liga Fantasy",

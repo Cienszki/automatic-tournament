@@ -16,7 +16,7 @@
           "teamA": null,
           "teamB": null,
           "status": "pending",
-          "format": "BO3",
+          "format": "BO1",
           "scheduledFor": "2025-08-20T18:00:00Z",
           "result": null
         },
@@ -27,7 +27,7 @@
           "teamA": null,
           "teamB": null,
           "status": "pending",
-          "format": "BO3", 
+          "format": "BO1", 
           "scheduledFor": "2025-08-20T20:00:00Z",
           "result": null
         }
@@ -133,7 +133,7 @@
           "teamA": null,
           "teamB": null,
           "status": "pending",
-          "format": "BO3",
+          "format": "BO1",
           "scheduledFor": "2025-08-22T19:00:00Z",
           "result": null
         },
@@ -144,7 +144,29 @@
           "teamA": null,
           "teamB": null,
           "status": "pending",
-          "format": "BO3",
+          "format": "BO1",
+          "scheduledFor": "2025-08-22T21:00:00Z",
+          "result": null
+        },
+        {
+          "id": "lb-r1-m3",
+          "round": 1,
+          "position": 2,
+          "teamA": null,
+          "teamB": null,
+          "status": "pending",
+          "format": "BO1",
+          "scheduledFor": "2025-08-22T19:00:00Z",
+          "result": null
+        },
+        {
+          "id": "lb-r1-m4",
+          "round": 1,
+          "position": 3,
+          "teamA": null,
+          "teamB": null,
+          "status": "pending",
+          "format": "BO1",
           "scheduledFor": "2025-08-22T21:00:00Z",
           "result": null
         },
@@ -155,7 +177,7 @@
           "teamA": null,
           "teamB": null,
           "status": "pending",
-          "format": "BO3",
+          "format": "BO1",
           "scheduledFor": "2025-08-23T18:00:00Z",
           "result": null
         },
@@ -163,6 +185,28 @@
           "id": "lb-r2-m2",
           "round": 2,
           "position": 1,
+          "teamA": null,
+          "teamB": null,
+          "status": "pending",
+          "format": "BO1",
+          "scheduledFor": "2025-08-23T20:00:00Z",
+          "result": null
+        },
+        {
+          "id": "lb-r2-m3",
+          "round": 2,
+          "position": 2,
+          "teamA": null,
+          "teamB": null,
+          "status": "pending",
+          "format": "BO3",
+          "scheduledFor": "2025-08-23T18:00:00Z",
+          "result": null
+        },
+        {
+          "id": "lb-r2-m4",
+          "round": 2,
+          "position": 3,
           "teamA": null,
           "teamB": null,
           "status": "pending",
@@ -182,6 +226,17 @@
           "result": null
         },
         {
+          "id": "lb-r3-m2",
+          "round": 3,
+          "position": 1,
+          "teamA": null,
+          "teamB": null,
+          "status": "pending",
+          "format": "BO3",
+          "scheduledFor": "2025-08-24T18:00:00Z",
+          "result": null
+        },
+        {
           "id": "lb-r4-m1",
           "round": 4,
           "position": 0,
@@ -190,6 +245,17 @@
           "status": "pending",
           "format": "BO3",
           "scheduledFor": "2025-08-24T19:00:00Z",
+          "result": null
+        },
+        {
+          "id": "lb-r4-m2",
+          "round": 4,
+          "position": 1,
+          "teamA": null,
+          "teamB": null,
+          "status": "pending",
+          "format": "BO3",
+          "scheduledFor": "2025-08-24T21:00:00Z",
           "result": null
         },
         {

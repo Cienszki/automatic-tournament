@@ -15,6 +15,17 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
+// Debug: log missing environment variables
+if (typeof window !== 'undefined') {
+  const missingVars = Object.entries(firebaseConfig)
+    .filter(([key, value]) => !value)
+    .map(([key]) => key);
+  
+  if (missingVars.length > 0) {
+    console.error('Missing Firebase environment variables:', missingVars);
+  }
+}
+
 let app: FirebaseApp;
 let auth: Auth;
 let db: Firestore;
@@ -33,6 +44,7 @@ try {
         console.log("Firebase initialized successfully");
     } else {
         // Create placeholder objects for server-side rendering
+        console.warn("Firebase not initialized - running in server environment or missing config");
         app = {} as FirebaseApp;
         auth = {} as Auth;
         db = {} as Firestore;
@@ -50,3 +62,13 @@ try {
 }
 
 export { app, auth, db, storage, functions };
+
+// Helper function to check if Firebase is properly initialized
+export function isFirebaseInitialized(): boolean {
+  return (
+    typeof window !== 'undefined' && 
+    db && 
+    typeof db === 'object' && 
+    '_delegate' in db
+  );
+}

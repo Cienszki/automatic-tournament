@@ -1,70 +1,111 @@
 
 "use client";
 
-import * as React from "react";
-import Image from "next/image";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { GitBranch, Trophy, Users, Shield, Star, Users2, ArrowRight, Home, Skull, Swords, Handshake, Crown } from "lucide-react";
-import { cn } from "@/lib/utils";
-import PlayoffBracketDisplay from "@/components/app/PlayoffBracketDisplay";
-import { PlayoffProgress } from "@/components/app/PlayoffProgress";
-import { PlayoffProvider, usePlayoffs } from "@/context/PlayoffContext";
+import React, { useEffect, useState } from 'react';
+import PlayoffBracketDisplay from '@/components/app/PlayoffBracketDisplay';
+import { getPlayoffData } from '@/lib/playoff-management';
+import { useTranslation } from '@/hooks/useTranslation';
 
-function PlayoffsContent() {
-  const { playoffData, isLoading, error } = usePlayoffs();
-
-  if (isLoading) {
-    return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary" />
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <Card>
-        <CardContent className="text-center py-8">
-          <p className="text-destructive">Error loading playoff data: {error}</p>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  return (
-    <div className="space-y-6">
-      <PlayoffProgress />
-      {playoffData ? (
-        <PlayoffBracketDisplay bracketData={playoffData} />
-      ) : (
-        <Card>
-          <CardContent className="text-center py-8">
-            <Trophy className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-            <p className="text-muted-foreground">The playoff bracket has not been set yet.</p>
-          </CardContent>
-        </Card>
-      )}
-    </div>
-  );
-}
+import type { PlayoffData } from '@/lib/definitions';
 
 export default function PlayoffsPage() {
-  return (
-    <PlayoffProvider>
-      <div className="space-y-8 p-1 md:p-2">
-        {/* Desktop: show image banner with fixed height */}
-        <Card className="hidden md:flex shadow-xl text-center relative overflow-hidden h-[320px] fhd:h-[320px] 2k:h-[500px] flex-col justify-center p-6">
-          <div className="absolute inset-0 z-0 bg-cover bg-center" style={{ backgroundImage: `url(/backgrounds/playoffs.png)` }} data-ai-hint="neon fantasy space" />
-        </Card>
-        {/* Mobile: show text banner with neon font */}
-        <Card className="flex md:hidden shadow-xl text-center relative overflow-hidden h-[120px] flex-col justify-center items-center p-4 bg-black">
-          <span className="text-3xl font-extrabold text-[#39ff14] drop-shadow-[0_0_8px_#39ff14] font-neon-bines">
-            Playoffs
-          </span>
-        </Card>
-        
-        <PlayoffsContent />
-      </div>
-    </PlayoffProvider>
-  );
+    const { t } = useTranslation();
+    const [bracketData, setBracketData] = useState<PlayoffData | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+        setLoading(true);
+        getPlayoffData()
+            .then(data => {
+                setBracketData(data);
+                setLoading(false);
+            })
+            .catch(e => {
+                setError(e.message);
+                setLoading(false);
+            });
+    }, []);
+
+    if (loading) {
+        return (
+            <div className="min-h-screen bg-gradient-to-br from-background via-background/95 to-muted/50 flex items-center justify-center p-4">
+                <div className="text-center space-y-4">
+                    <div className="w-16 h-16 mx-auto border-4 border-primary/30 border-t-primary rounded-full animate-spin"></div>
+                    <div className="space-y-2">
+                        <h2 className="text-xl lg:text-2xl font-semibold text-foreground">{t('playoffs.loading')}</h2>
+                        <p className="text-sm text-muted-foreground">{t('playoffs.loadingDescription')}</p>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+    
+    if (error) {
+        return (
+            <div className="min-h-screen bg-gradient-to-br from-background via-background/95 to-muted/50 flex items-center justify-center p-4">
+                <div className="text-center space-y-4 max-w-md">
+                    <div className="w-16 h-16 mx-auto bg-red-500/10 rounded-full flex items-center justify-center">
+                        <svg className="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.314 18.5c-.77.833.192 2.5 1.732 2.5z" />
+                        </svg>
+                    </div>
+                    <div className="space-y-2">
+                        <h2 className="text-xl lg:text-2xl font-semibold text-red-600">{t('playoffs.loadingError')}</h2>
+                        <p className="text-sm text-muted-foreground">{error}</p>
+                        <button 
+                            onClick={() => window.location.reload()}
+                            className="mt-4 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors text-sm"
+                        >
+                            {t('playoffs.tryAgain')}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+    
+    if (!bracketData) {
+        const handleInitialize = async () => {
+            try {
+                setLoading(true);
+                const { initializePlayoffBracket } = await import('@/lib/playoff-management');
+                const newBracketData = await initializePlayoffBracket();
+                setBracketData(newBracketData);
+                setLoading(false);
+            } catch (error) {
+                console.error('Error initializing playoffs:', error);
+                setError(error instanceof Error ? error.message : 'Failed to initialize playoffs');
+                setLoading(false);
+            }
+        };
+
+        return (
+            <div className="min-h-screen bg-gradient-to-br from-background via-background/95 to-muted/50 flex items-center justify-center p-4">
+                <div className="text-center space-y-4">
+                    <div className="w-16 h-16 mx-auto bg-muted/20 rounded-full flex items-center justify-center">
+                        <svg className="w-8 h-8 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                        </svg>
+                    </div>
+                    <div className="space-y-2">
+                        <h2 className="text-xl lg:text-2xl font-semibold text-foreground">{t('playoffs.noTournamentData')}</h2>
+                        <p className="text-sm text-muted-foreground">{t('playoffs.noTournamentDataDesc')}</p>
+                    </div>
+                    <button 
+                        onClick={handleInitialize}
+                        className="px-6 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+                    >
+                        Initialize Playoff Brackets
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
+    return (
+        <div className="min-h-screen bg-gradient-to-br from-background via-muted/80 to-card/80 p-0 m-0">
+            <PlayoffBracketDisplay bracketData={bracketData} />
+        </div>
+    );
 }

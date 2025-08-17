@@ -12,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Users, Shield, CheckCircle, Clock, Upload } from "lucide-react";
 import { doc, setDoc, getDoc, collection } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { db, isFirebaseInitialized } from "@/lib/firebase";
 import type { Standin } from "@/lib/definitions";
 import { useToast } from "@/hooks/use-toast";
 import { uploadStandinScreenshot } from "@/lib/storage";
@@ -82,6 +82,12 @@ export default function StandinsPage() {
       
       // Add a small delay to ensure user is fully authenticated
       await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Check if Firebase is properly initialized
+      if (!isFirebaseInitialized()) {
+        console.log('Firebase not properly initialized, skipping standin check');
+        return;
+      }
       
       const standinDoc = await getDoc(doc(db, 'standins', user.uid));
       console.log('Standin doc exists:', standinDoc.exists());
@@ -219,6 +225,11 @@ export default function StandinsPage() {
         status: 'pending',
         createdAt: new Date().toISOString()
       };
+
+      // Check if Firebase is properly initialized before attempting to save
+      if (!isFirebaseInitialized()) {
+        throw new Error('Firebase nie jest poprawnie zainicjalizowany. Odśwież stronę i spróbuj ponownie.');
+      }
 
       await setDoc(doc(db, 'standins', user.uid), standinData);
       toast({

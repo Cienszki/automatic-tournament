@@ -1,29 +1,58 @@
 // src/types/react-tournament-bracket.d.ts
 
 declare module 'react-tournament-bracket' {
-  export interface BracketProps {
-    rounds: Round[];
-    roundTitleComponent?: React.ComponentType<any>;
-    bracketClassName?: string;
+  export enum Side {
+    HOME = "home",
+    VISITOR = "visitor",
   }
 
-  export interface Round {
-    title: string;
-    seeds: Seed[];
+  export type ID = string;
+
+  export interface SideInfo {
+    score?: {
+      score: number;
+    };
+    seed?: {
+      displayName: string;
+      rank: number;
+      sourceGame?: Game;
+      sourcePool?: object;
+    };
+    team?: {
+      id: ID;
+      name: string;
+    };
   }
 
-  export interface Seed {
-    id: number | string;
-    date: string;
-    teams: SeedTeam[];
-  }
-
-  export interface SeedTeam {
+  export interface Game {
+    id: ID;
     name: string;
-    score?: number;
+    bracketLabel?: string;
+    scheduled: number;
+    court?: {
+      name: string;
+      venue: {
+        name: string;
+      };
+    };
+    sides: {
+      [side in Side]: SideInfo;
+    };
   }
 
-  export const Bracket: React.ComponentType<BracketProps>;
-  export const RoundHeader: React.ComponentType<any>;
-  export const SingleLineSeed: React.ComponentType<any>;
+  export interface BracketProps {
+    game: Game;
+    homeOnTop?: boolean;
+    gameDimensions?: {
+      height: number;
+      width: number;
+    };
+    svgPadding?: number;
+    roundSeparatorWidth?: number;
+  }
+
+  export default class Bracket extends React.Component<BracketProps> {}
+  export const BracketGame: React.ComponentType<any>;
+  export const BracketGenerator: React.ComponentType<any>;
+  export const Model: any;
 }

@@ -1,8 +1,15 @@
 // src/lib/firestore.ts
 import { collection, getDocs, doc, getDoc, setDoc, query, where, orderBy, addDoc, writeBatch, updateDoc, serverTimestamp, deleteDoc, Timestamp, arrayUnion, deleteField, arrayRemove } from "firebase/firestore";
-import { db } from "./firebase";
+import { db, isFirebaseInitialized } from "./firebase";
 import type { User } from "firebase/auth";
 import type { Team, Match, PlayoffData, FantasyLineup, FantasyData, TournamentPlayer, PickemPrediction, Player, CategoryDisplayStats, TournamentHighlightRecord, CategoryRankingDetail, PlayerPerformanceInGame, Announcement, Group, GroupStanding, Pickem, UserProfile, PlayerRole, Game, Standin } from "./definitions";
+
+// Helper function to check if Firebase is properly initialized
+function ensureFirebaseInitialized(): void {
+    if (!isFirebaseInitialized()) {
+        throw new Error('Firebase Firestore is not properly initialized. Please refresh the page and try again.');
+    }
+}
 
 // ... (other functions)
 
@@ -100,6 +107,30 @@ export async function getTournamentStatus(): Promise<{ roundId: string } | null>
 export async function updateTournamentStatus(roundId: string): Promise<void> {
     const statusRef = doc(db, "tournament", "status");
     await setDoc(statusRef, { roundId }, { merge: true });
+}
+
+// Get the round that lineups should be saved FOR based on the current round
+function getTargetRoundForLineup(currentRound: string): string {
+    const roundSequence = [
+        'initial', 
+        'pre_season', 
+        'group_stage', 
+        'wildcards', 
+        'playoffs_round1', 
+        'playoffs_round2', 
+        'playoffs_round3', 
+        'playoffs_round4', 
+        'playoffs_round5', 
+        'playoffs_round6', 
+        'playoffs_round7'
+    ];
+    
+    const currentIndex = roundSequence.indexOf(currentRound);
+    if (currentIndex === -1 || currentIndex === roundSequence.length - 1) {
+        return currentRound; // Unknown round or last round, use as-is
+    }
+    
+    return roundSequence[currentIndex + 1]; // Return next round
 }
 
 export async function isRegistrationOpen(): Promise<boolean> {
@@ -206,6 +237,8 @@ const toISOStringIfTimestamp = (value: any) => {
 };
 
 export async function getMatchesForTeam(teamId: string): Promise<Match[]> {
+    ensureFirebaseInitialized();
+    
     const matchesCollection = collection(db, "matches");
     const q = query(matchesCollection, where("teams", "array-contains", teamId));
     const querySnapshot = await getDocs(q);
@@ -438,28 +471,20 @@ export async function getFantasyLeaderboard(): Promise<any[]> {
             snapshot = await getDocs(leaderboardCol);
         }
         
-        // Get the current tournament status to know which round to load
+        // Get the current tournament status to know which round to display lineups for
         const statusDoc = await getDoc(doc(db, "tournament", "status"));
-        const currentRoundId = statusDoc.exists() ? (statusDoc.data()?.roundId || statusDoc.data()?.current) : null;
+        const currentRoundId = statusDoc.exists() ? (statusDoc.data()?.roundId || statusDoc.data()?.current || 'initial') : 'initial';
         
-        if (!currentRoundId) {
-            return snapshot.docs.map(doc => ({ 
-                userId: doc.id,
-                displayName: doc.data().displayName || "Anonymous",
-                totalFantasyScore: doc.data().totalFantasyScore || 0,
-                ...doc.data(), 
-                lineup: {} 
-            }));
-        }
+        console.log('Fantasy leaderboard loading lineups for round:', currentRoundId);
         
-        // Fetch the lineup data for each user for the current round
+        // Fetch the lineup data for each user for the current round only
         const leaderboardWithLineups = await Promise.all(
             snapshot.docs.map(async (userDoc) => {
                 const userId = userDoc.id;
                 const userData = userDoc.data();
                 
                 try {
-                    // Get the lineup for the current round
+                    // Get the lineup for the current round exactly as stored
                     const lineupRef = doc(db, "fantasyLineups", userId, "rounds", currentRoundId);
                     const lineupSnap = await getDoc(lineupRef);
                     
@@ -468,7 +493,7 @@ export async function getFantasyLeaderboard(): Promise<any[]> {
                     // Validate lineup data structure
                     const validatedLineup: any = {};
                     Object.entries(lineupData).forEach(([role, player]: [string, any]) => {
-                        if (player && typeof player === 'object' && player.nickname && player.id) {
+                        if (player && typeof player === 'object' && (player.nickname || player.name) && player.id) {
                             validatedLineup[role] = player;
                         }
                     });
@@ -690,6 +715,8 @@ export async function getAllStandins(): Promise<Standin[]> {
 }
 
 export async function getVerifiedStandins(): Promise<Standin[]> {
+    ensureFirebaseInitialized();
+    
     const standinsCollection = collection(db, 'standins');
     const q = query(
         standinsCollection, 
@@ -731,6 +758,9 @@ export async function createStandinRequest(
     unavailablePlayers: string[], 
     requestedStandins: string[]
 ): Promise<void> {
+    // Check if Firebase is properly initialized
+    ensureFirebaseInitialized();
+
     const standinRequestData = {
         matchId,
         teamId,

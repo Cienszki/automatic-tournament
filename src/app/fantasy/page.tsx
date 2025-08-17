@@ -19,6 +19,30 @@ import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "@/hooks/useTranslation";
 import { getAllTournamentPlayers, getFantasyLeaderboard, getUserFantasyLineup, saveUserFantasyLineup, getUserProfile, updateUserProfile, getTournamentStatus, createUserProfileIfNotExists } from "@/lib/firestore";
+
+// Get the round that lineups should be saved FOR based on the current round
+function getTargetRoundForLineup(currentRound: string): string {
+  const roundSequence = [
+    'initial', 
+    'pre_season', 
+    'group_stage', 
+    'wildcards', 
+    'playoffs_round1', 
+    'playoffs_round2', 
+    'playoffs_round3', 
+    'playoffs_round4', 
+    'playoffs_round5', 
+    'playoffs_round6', 
+    'playoffs_round7'
+  ];
+  
+  const currentIndex = roundSequence.indexOf(currentRound);
+  if (currentIndex === -1 || currentIndex === roundSequence.length - 1) {
+    return currentRound; // Unknown round or last round, use as-is
+  }
+  
+  return roundSequence[currentIndex + 1]; // Return next round
+}
 import { DiscordUsernameModal } from '@/components/app/DiscordUsernameModal';
 
 const roleIcons: Record<PlayerRole, React.ElementType> = {
@@ -160,12 +184,11 @@ export default function FantasyLeaguePage() {
     setIsSaving(true);
     
     try {
-      // Map initial and pre_season to group_stage for fantasy lineups
-      const fantasyRoundId = (currentRoundId === 'initial' || currentRoundId === 'pre_season') 
-        ? 'group_stage' 
-        : currentRoundId;
+      // Get the target round to save lineup FOR (next round)
+      const targetRound = getTargetRoundForLineup(currentRoundId);
+      console.log(`Saving lineup for target round: ${targetRound} (current round: ${currentRoundId})`);
       
-      await saveUserFantasyLineup(user.uid, selectedLineup as Record<PlayerRole, TournamentPlayer>, fantasyRoundId, userProfile.discordUsername);
+      await saveUserFantasyLineup(user.uid, selectedLineup as Record<PlayerRole, TournamentPlayer>, targetRound, userProfile.discordUsername);
       toast({ 
         title: t('fantasy.messages.success'), 
         description: t('fantasy.messages.lineupSaved') 

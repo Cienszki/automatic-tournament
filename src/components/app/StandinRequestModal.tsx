@@ -68,9 +68,19 @@ export function StandinRequestModal({ team, trigger }: StandinRequestModalProps)
       setStandins(verifiedStandins);
     } catch (error) {
       console.error('Error loading standin request data:', error);
+      let errorMessage = "Nie udało się załadować danych.";
+      
+      if (error instanceof Error) {
+        if (error.message.includes('Firebase Firestore is not properly initialized')) {
+          errorMessage = 'Firebase nie jest poprawnie zainicjalizowany. Odśwież stronę i spróbuj ponownie.';
+        } else if (error.message.includes('insufficient permissions')) {
+          errorMessage = 'Brak uprawnień do pobrania danych. Upewnij się, że jesteś zalogowany.';
+        }
+      }
+      
       toast({
         title: "Błąd",
-        description: "Nie udało się załadować danych.",
+        description: errorMessage,
         variant: "destructive"
       });
     } finally {
@@ -167,9 +177,21 @@ export function StandinRequestModal({ team, trigger }: StandinRequestModalProps)
       
     } catch (error) {
       console.error('Error submitting standin request:', error);
+      let errorMessage = t('standins.standinRequestFailed');
+      
+      if (error instanceof Error) {
+        if (error.message.includes('Firebase Firestore is not properly initialized')) {
+          errorMessage = 'Firebase nie jest poprawnie zainicjalizowany. Odśwież stronę i spróbuj ponownie.';
+        } else if (error.message.includes('insufficient permissions')) {
+          errorMessage = 'Brak uprawnień. Upewnij się, że jesteś zalogowany i spróbuj ponownie.';
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
       toast({
         title: t('standins.error'),
-        description: t('standins.standinRequestFailed'),
+        description: errorMessage,
         variant: "destructive"
       });
     } finally {
