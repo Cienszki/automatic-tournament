@@ -56,7 +56,7 @@ export interface Match {
   proposedById?: string; 
   game_ids?: number[]; // This now holds the IDs of the individual games
   completed_at?: string;
-  series_format?: 'bo1' | 'bo2' | 'bo3' | 'bo5'; // Series format (BO2 for groups, BO3/BO5 for playoffs)
+  series_format?: 'bo1' | 'bo2' | 'bo3' | 'bo5'; // Series format (BO2 for groups, BO1/BO3/BO5 for playoffs)
   winnerId?: string | null; // Winner of the match, null for draws
   playerPerformances?: PlayerPerformanceInMatch[];
   openDotaMatchUrl?: string;
@@ -82,7 +82,7 @@ export interface PlayerPerformanceInMatch {
 }
 
 // ... (rest of definitions)
-export const LEAGUE_ID = 17296;
+export const LEAGUE_ID = 18559;
 export const TEAM_MMR_CAP = 24000;
 export const FANTASY_BUDGET_MMR = 24000;
 

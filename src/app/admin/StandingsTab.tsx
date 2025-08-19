@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Save, Edit, CheckCircle2, Hourglass, RotateCcw, Loader2, FileJson } from "lucide-react";
 import { getAllMatches, updateMatchScores } from "@/lib/firestore";
+import { isFirebaseInitialized } from "@/lib/firebase";
 import { revertMatchToPending } from "@/lib/admin-actions";
 // Removed direct import of adminDeleteGameAndHandleScore - now using API
 import { GameDeleteModal } from "@/components/admin/GameDeleteModal";
@@ -116,7 +117,14 @@ export function StandingsTab() {
       });
       return;
     }
-
+    if (!isFirebaseInitialized()) {
+      toast({
+        title: 'Firebase Error',
+        description: 'Firebase is not properly initialized. Please check your environment variables and reload the page.',
+        variant: 'destructive',
+      });
+      return;
+    }
     setIsRecalculatingStandings(true);
     try {
       const token = await user.getIdToken();

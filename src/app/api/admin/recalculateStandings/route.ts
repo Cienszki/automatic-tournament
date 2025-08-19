@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAllMatches } from '@/lib/firestore';
+import { getAllMatchesAdmin } from '../../../../../server/lib/getAllMatchesAdmin';
 
 // Function to reset all group standings to zero
 async function resetAllGroupStandings(): Promise<{ success: boolean; message: string; resetCount?: number }> {
@@ -161,7 +161,7 @@ export async function POST(request: NextRequest) {
     console.log(`Reset complete: ${resetResult.message}`);
     
     // Step 2: Get all completed matches and recalculate
-    const allMatches = await getAllMatches();
+    const allMatches = await getAllMatchesAdmin();
     const completedMatches = allMatches.filter(match => match.status === 'completed');
     
     let updatedCount = 0;

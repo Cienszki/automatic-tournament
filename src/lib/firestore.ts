@@ -7,6 +7,9 @@ import type { Team, Match, PlayoffData, FantasyLineup, FantasyData, TournamentPl
 // Helper function to check if Firebase is properly initialized
 function ensureFirebaseInitialized(): void {
     if (!isFirebaseInitialized()) {
+        console.error('Firebase Firestore is not properly initialized.');
+        console.error('This usually happens during server-side rendering or if environment variables are missing.');
+        console.error('Please check your environment variables and ensure this function is only called client-side.');
         throw new Error('Firebase Firestore is not properly initialized. Please refresh the page and try again.');
     }
 }
@@ -174,6 +177,8 @@ export async function saveTeam(teamData: Omit<Team, 'id' | 'createdAt'>, user?: 
 }
 
 export async function getAllTeams(): Promise<Team[]> {
+    ensureFirebaseInitialized();
+    
     const teamsCollection = collection(db, "teams");
     const teamsSnapshot = await getDocs(teamsCollection);
     const teams = await Promise.all(teamsSnapshot.docs.map(async (d) => {
@@ -196,6 +201,7 @@ export async function getAllTeams(): Promise<Team[]> {
 }
 
 export async function getTeamById(id: string): Promise<Team | undefined> {
+    ensureFirebaseInitialized();
     const teamDocRef = doc(db, "teams", id);
     const teamDocSnap = await getDoc(teamDocRef);
     if (!teamDocSnap.exists()) return undefined;
@@ -218,6 +224,7 @@ export async function getTeamById(id: string): Promise<Team | undefined> {
 }
 
 export async function getPlayerFromTeam(teamId: string, playerId: string): Promise<{ team: Team, player: Player } | null> {
+    ensureFirebaseInitialized();
     const playerDocRef = doc(db, "teams", teamId, "players", playerId);
     const playerSnap = await getDoc(playerDocRef);
     if (!playerSnap.exists()) return null;
@@ -258,6 +265,8 @@ export async function getMatchesForTeam(teamId: string): Promise<Match[]> {
 }
 
 export async function getUserTeam(userId: string): Promise<{ hasTeam: boolean; team?: Team | null; }> {
+    ensureFirebaseInitialized();
+    
     const teamsCollection = collection(db, "teams");
     const q = query(teamsCollection, where("captainId", "==", userId));
     const querySnapshot = await getDocs(q);
@@ -274,6 +283,7 @@ export async function getUserTeam(userId: string): Promise<{ hasTeam: boolean; t
 }
 
 export async function getAllMatches(): Promise<Match[]> {
+    ensureFirebaseInitialized();
     const matchesCollection = collection(db, "matches");
     const snapshot = await getDocs(matchesCollection);
     return snapshot.docs.map(d => {
@@ -704,6 +714,7 @@ export async function updateAllTeamStatistics(): Promise<void> {
 // ========== STANDIN FUNCTIONS ==========
 
 export async function getAllStandins(): Promise<Standin[]> {
+    ensureFirebaseInitialized();
     const standinsCollection = collection(db, 'standins');
     const q = query(standinsCollection, orderBy('createdAt', 'desc'));
     const querySnapshot = await getDocs(q);

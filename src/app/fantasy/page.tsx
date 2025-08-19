@@ -1,11 +1,12 @@
-
 "use client";
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import PlayerSelectionCard from './PlayerSelectionCard';
+import LeaderboardRow from './LeaderboardRow';
+import React, { useState, useMemo, useCallback } from 'react';
+import Link from 'next/link';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { PlayerAvatar } from "@/components/app/PlayerAvatar";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -18,7 +19,18 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "@/hooks/useTranslation";
+import type { PlayerSelectionCardProps } from "./PlayerSelectionCardProps";
 import { getAllTournamentPlayers, getFantasyLeaderboard, getUserFantasyLineup, saveUserFantasyLineup, getUserProfile, updateUserProfile, getTournamentStatus, createUserProfileIfNotExists } from "@/lib/firestore";
+import { translations } from "@/lib/translations";
+import { DiscordUsernameModal } from '@/components/app/DiscordUsernameModal';
+
+export const roleIcons: Record<PlayerRole, React.ElementType> = {
+  "Carry": Swords,
+  "Mid": Sparkles,
+  "Offlane": ShieldIconLucide,
+  "Soft Support": HandHelping,
+  "Hard Support": EyeIconLucide
+};
 
 // Get the round that lineups should be saved FOR based on the current round
 function getTargetRoundForLineup(currentRound: string): string {
@@ -35,32 +47,26 @@ function getTargetRoundForLineup(currentRound: string): string {
     'playoffs_round6', 
     'playoffs_round7'
   ];
-  
   const currentIndex = roundSequence.indexOf(currentRound);
   if (currentIndex === -1 || currentIndex === roundSequence.length - 1) {
     return currentRound; // Unknown round or last round, use as-is
   }
-  
   return roundSequence[currentIndex + 1]; // Return next round
 }
-import { DiscordUsernameModal } from '@/components/app/DiscordUsernameModal';
 
-const roleIcons: Record<PlayerRole, React.ElementType> = {
-  Carry: Swords, Mid: Sparkles, Offlane: ShieldIconLucide, "Soft Support": HandHelping, "Hard Support": EyeIconLucide,
-};
-
-// Define a more specific type for leaderboard participants
 interface LeaderboardParticipant {
-    userId: string;
-    displayName: string;
-    totalFantasyScore: number;
-    lineup: Partial<Record<PlayerRole, TournamentPlayer>>;
+  userId: string;
+  displayName: string;
+  totalFantasyScore: number;
+  lineup: Partial<Record<PlayerRole, TournamentPlayer>>;
 }
 
-export default function FantasyLeaguePage() {
+
+function FantasyLeaguePage() {
+  // ...existing code...
+  const { t } = useTranslation();
   const { user, signInWithGoogle } = useAuth();
   const { toast } = useToast();
-  const { t } = useTranslation();
   const [selectedLineup, setSelectedLineup] = useState<Partial<Record<PlayerRole, TournamentPlayer>>>({});
   const [availablePlayers, setAvailablePlayers] = useState<TournamentPlayer[]>([]);
   const [fantasyLeaderboard, setFantasyLeaderboard] = useState<LeaderboardParticipant[]>([]);
@@ -69,6 +75,100 @@ export default function FantasyLeaguePage() {
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentRoundId, setCurrentRoundId] = useState<string | null>(null);
+
+  type Scoring = {
+    title: string;
+    general: string;
+    roshan: string;
+    win: string;
+    barracks: string;
+    towers: string;
+    playerStats: string;
+    kill: string;
+    death: string;
+    assist: string;
+    gpm: string;
+    xpm: string;
+    points: string;
+  };
+
+  const scoringDefaults: Scoring = {
+    title: '',
+    general: '',
+    roshan: '',
+    win: '',
+    barracks: '',
+    towers: '',
+    playerStats: '',
+    kill: '',
+    death: '',
+    assist: '',
+    gpm: '',
+    xpm: '',
+    points: ''
+  };
+
+  const lang = typeof window !== 'undefined' && (navigator.language.startsWith('pl') ? 'pl' : 'en');
+
+  const scoring: Scoring = (typeof translations.fantasyScoring === 'object' && translations.fantasyScoring !== null && !Array.isArray(translations.fantasyScoring))
+    ? { ...scoringDefaults, ...(translations.fantasyScoring[lang as keyof typeof translations.fantasyScoring] || translations.fantasyScoring.pl) }
+    : scoringDefaults;
+
+  const currentBudgetUsed = useMemo(() => {
+    return Object.values(selectedLineup).reduce(
+      (sum, player) => sum + (player && typeof player.mmr === 'number' ? player.mmr : 0),
+      0
+    );
+  }, [selectedLineup]);
+
+  // Fantasy scoring table
+  const ScoringTable = () => {
+    return (
+      <Card className="mb-8">
+        <CardHeader>
+          <CardTitle>{scoring.title}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div>
+            <div className="mb-4">
+              <strong>{scoring.general}:</strong>
+              <ul className="list-disc ml-6 mt-2">
+                <li>{scoring.roshan}: +20 {scoring.points}</li>
+                <li>{scoring.win}: +10 {scoring.points}</li>
+                <li>{scoring.barracks}: +10 {scoring.points}</li>
+                <li>{scoring.towers}: +10 {scoring.points}</li>
+              </ul>
+            </div>
+            <div>
+              <strong>{scoring.playerStats}:</strong>
+              <ul className="list-disc ml-6 mt-2">
+                <li>{scoring.kill}: +3 {scoring.points}</li>
+                <li>{scoring.death}: -1 {scoring.points}</li>
+                <li>{scoring.assist}: +2 {scoring.points}</li>
+                <li>{scoring.gpm}: +1 {scoring.points} / 100 GPM</li>
+                <li>{scoring.xpm}: +1 {scoring.points} / 100 XPM</li>
+              </ul>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
+
+  const playersByRole = useMemo(() => {
+    const grouped: Record<PlayerRole, TournamentPlayer[]> = {
+      "Carry": [], "Mid": [], "Offlane": [], "Soft Support": [], "Hard Support": [],
+    };
+    availablePlayers.forEach(player => {
+      if (grouped[player.role]) {
+        grouped[player.role].push(player);
+      }
+    });
+    for (const role in grouped) {
+      grouped[role as PlayerRole].sort((a, b) => a.nickname.localeCompare(b.nickname));
+    }
+    return grouped;
+  }, [availablePlayers]);
 
   const loadFantasyData = useCallback(async () => {
     setIsLoading(true);
@@ -123,38 +223,20 @@ export default function FantasyLeaguePage() {
       }
     } catch (error) {
       console.error("Fantasy data loading error:", error);
-      toast({ 
-        title: t('fantasy.messages.error'), 
-        description: `${t('fantasy.messages.failedToLoadData')}: ${error instanceof Error ? error.message : t('fantasy.messages.unknownError')}`, 
-        variant: "destructive" 
+      toast({
+        title: t('fantasy.messages.error'),
+        description: `${t('fantasy.messages.failedToLoadData')}: ${error instanceof Error ? error.message : t('fantasy.messages.unknownError')}`,
+        variant: "destructive"
       });
     } finally {
       setIsLoading(false);
     }
-  }, [user, toast]);
+  }, [user, toast, t]);
 
-  useEffect(() => {
+  React.useEffect(() => {
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     loadFantasyData();
-  }, [loadFantasyData]);
-
-  const currentBudgetUsed = useMemo(() => {
-    return Object.values(selectedLineup).reduce((sum, player) => sum + (player ? player.mmr : 0), 0);
-  }, [selectedLineup]);
-
-  const playersByRole = useMemo(() => {
-    const grouped: Record<PlayerRole, TournamentPlayer[]> = {
-      "Carry": [], "Mid": [], "Offlane": [], "Soft Support": [], "Hard Support": [],
-    };
-    availablePlayers.forEach(player => {
-        if (grouped[player.role]) {
-            grouped[player.role].push(player);
-        }
-    });
-    for (const role in grouped) {
-        grouped[role as PlayerRole].sort((a, b) => a.nickname.localeCompare(b.nickname));
-    }
-    return grouped;
-  }, [availablePlayers]);
+  }, []);
 
   const handlePlayerSelect = (role: PlayerRole, playerId: string) => {
     const playerToSelect = availablePlayers.find(p => p.id === playerId);
@@ -414,83 +496,4 @@ export default function FantasyLeaguePage() {
   );
 }
 
-const PlayerSelectionCard = ({ role, playersByRole, selectedLineup, onPlayerSelect }: { role: PlayerRole, playersByRole: Record<PlayerRole, TournamentPlayer[]>, selectedLineup: Partial<Record<PlayerRole, TournamentPlayer>>, onPlayerSelect: Function }) => {
-  const { t } = useTranslation();
-  const RoleIcon = roleIcons[role];
-  const selectedPlayer = selectedLineup[role];
-
-  return (
-    <Card className="flex flex-col">
-      <CardHeader>
-        <CardTitle className="flex items-center">
-          <RoleIcon className="mr-2" />
-          {t(`players.roles.${role}` as any)}
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="flex-grow flex flex-col justify-between space-y-4 pt-0">
-        <Select value={selectedPlayer?.id || ""} onValueChange={(pid) => onPlayerSelect(role, pid)}>
-          <SelectTrigger className="w-full">
-            <SelectValue placeholder={`${t('fantasy.buildTeam.selectA')} ${t(`players.roles.${role}` as any)}...`} />
-          </SelectTrigger>
-          <SelectContent>
-            {playersByRole[role].map(p => (
-              <SelectItem key={p.id} value={p.id} disabled={Object.values(selectedLineup).some(sp => sp?.id === p.id && sp.role !== role)}>
-                <div className="flex justify-between w-full">
-                  <span className="truncate" title={`${p.nickname} (${p.teamTag})`}>{p.nickname} ({p.teamTag})</span>
-                  <span className="text-xs text-muted-foreground ml-4 shrink-0">{p.mmr.toLocaleString()} MMR</span>
-                </div>
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        {selectedPlayer ? (
-          <div className="p-3 border rounded-md flex items-center space-x-3 bg-muted/20 min-h-[76px]">
-            <PlayerAvatar player={selectedPlayer} />
-            <div className="overflow-hidden">
-              <p className="font-semibold truncate" title={selectedPlayer.nickname}>{selectedPlayer.nickname}</p>
-              <p className="text-xs text-muted-foreground">MMR: {selectedPlayer.mmr.toLocaleString()}</p>
-            </div>
-          </div>
-        ) : (
-          <div className="p-3 border rounded-md text-center flex items-center justify-center min-h-[76px] bg-muted/20">
-            <p className="text-sm italic text-muted-foreground">No player selected</p>
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  );
-}
-
-const LeaderboardRow = ({ participant, rank, isCurrentUser }: { participant: LeaderboardParticipant, rank: number, isCurrentUser: boolean }) => {
-  const { t } = useTranslation();
-  
-  return (
-    <TableRow className={cn(isCurrentUser && "bg-primary/10")}>
-      <TableCell className="font-bold text-center">{rank}</TableCell>
-      <TableCell>
-        {participant.displayName} {isCurrentUser && `(${t('fantasy.leaderboard.you')})`}
-      </TableCell>
-      <TableCell>
-        <div className="flex flex-row flex-wrap items-center gap-x-3 gap-y-1">
-          {PlayerRoles.map(role => {
-            const player = participant.lineup?.[role];
-            return (
-              <div key={role} className="flex items-center space-x-1.5 text-xs" title={`${t(`players.roles.${role}` as any)}: ${player?.nickname || 'N/A'}`}>
-                {React.createElement(roleIcons[role], { className: "h-3.5 w-3.5 text-muted-foreground shrink-0" })}
-                {player ? (
-                  <Link href={`/teams/${player.teamId}/players/${player.id}`} className="text-primary hover:underline truncate">
-                    {player.nickname}
-                  </Link>
-                ) : (
-                  <span className="italic">-</span>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </TableCell>
-      <TableCell className="text-right font-semibold">{participant.totalFantasyScore.toLocaleString()}</TableCell>
-    </TableRow>
-  );
-};
+export default FantasyLeaguePage;

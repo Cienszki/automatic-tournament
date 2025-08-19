@@ -1,5 +1,37 @@
 // Translation dictionary for Polish localization
 export const translations = {
+  fantasyScoring: {
+    en: {
+      title: "Fantasy Scoring Rules",
+      general: "General Scoring",
+      roshan: "Roshan kill (team)",
+      win: "Team win",
+      barracks: "Barracks destroyed (team)",
+      towers: "Towers destroyed (team)",
+      points: "points",
+      roles: "Role-specific Scoring",
+      carry: "Carry: +2.5 per kill, -2.5 per death, +1 per 1000 gold earned",
+      mid: "Mid: +2.5 per kill, -1.5 per death, +1.5 per assist",
+      offlane: "Offlane: +2.5 per kill, -1.5 per death, +2.5 per assist",
+      soft: "Soft Support: +1 per kill, -2.5 per death, +3 per assist",
+      hard: "Hard Support: +1 per kill, -2.5 per death, +5 per assist",
+    },
+    pl: {
+      title: "Zasady punktacji fantasy",
+      general: "Punktacja ogólna",
+      roshan: "Zabicie Roshana (drużyna)",
+      win: "Wygrana drużyny",
+      barracks: "Zniszczone baraki (drużyna)",
+      towers: "Zniszczone wieże (drużyna)",
+      points: "punktów",
+      roles: "Punktacja za rolę",
+      carry: "Carry: +2.5 za zabójstwo, -2.5 za śmierć, +1 za każde 1000 złota",
+      mid: "Mid: +2.5 za zabójstwo, -1.5 za śmierć, +1.5 za asystę",
+      offlane: "Offlane: +2.5 za zabójstwo, -1.5 za śmierć, +2.5 za asystę",
+      soft: "Soft Support: +1 za zabójstwo, -2.5 za śmierć, +3 za asystę",
+      hard: "Hard Support: +1 za zabójstwo, -2.5 za śmierć, +5 za asystę",
+    }
+  },
   // Navigation
   nav: {
     home: "Strona główna",

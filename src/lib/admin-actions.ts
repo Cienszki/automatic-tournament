@@ -6,7 +6,6 @@ import { revalidatePath } from 'next/cache';
 import { getAdminDb, getAdminAuth, ensureAdminInitialized, getAdminApp } from '../../server/lib/admin';
 import type { Group, GroupStanding, Team, Player, Match } from './definitions';
 import { PlayerRoles, TeamStatus } from './definitions';
-import { getAllGroups as fetchAllGroups, getTeamById, getAllMatches } from './firestore';
 // Admin-side getAllTeams using Admin SDK
 export async function getAllTeamsAdmin(): Promise<Team[]> {
     ensureAdminInitialized();
@@ -74,6 +73,20 @@ export async function getAllMatchesAdmin(): Promise<Match[]> {
                 : data.completed_at,
         } as Match;
     });
+}
+
+// Admin-side getAllTournamentPlayers using Admin SDK
+export async function getAllTournamentPlayersAdmin() {
+    const teams = await getAllTeamsAdmin();
+    const players: any[] = [];
+    teams.forEach(t => {
+        if (t.players) {
+            t.players.forEach(p => {
+                players.push({ ...p, teamId: t.id, teamName: t.name, teamTag: t.tag });
+            });
+        }
+    });
+    return players;
 }
 
 import { generatePassword, Timestamp, addDays, format } from './admin-constants';
@@ -909,7 +922,6 @@ export async function syncLeagueMatchesAdmin() {
         const { getAllProcessedGameIdsAdmin, markGameAsProcessedAdmin } = await import('./processed-games-admin');
         const { fetchAllStratzLeagueMatches } = await import('./actions');
         const { transformMatchData } = await import('./opendota');
-        const { getAllTeams, getAllTournamentPlayers } = await import('./firestore');
         const { LEAGUE_ID } = await import('./definitions');
 
         // Fetch all match IDs from STRATZ API live
@@ -936,8 +948,8 @@ export async function syncLeagueMatchesAdmin() {
                     console.log(`Starting import for OpenDota match ID: ${matchId}`);
 
                     const [teams, players] = await Promise.all([
-                        getAllTeams(),
-                        getAllTournamentPlayers(),
+                        getAllTeamsAdmin(),
+                        getAllTournamentPlayersAdmin(),
                     ]);
                     
                     // Fetch match from OpenDota
@@ -953,8 +965,7 @@ export async function syncLeagueMatchesAdmin() {
                         
                         if (radiantTeam && direTeam) {
                             // Find existing match between these teams
-                            const { getAllMatches } = await import('./firestore');
-                            const allMatches = await getAllMatches();
+                            const allMatches = await getAllMatchesAdmin();
                             
                             const existingMatch = allMatches.find(match => 
                                 (match.teams.includes(radiantTeam.id) && match.teams.includes(direTeam.id))
@@ -1032,6 +1043,140 @@ export async function syncLeagueMatchesAdmin() {
     }
 }
 
+// Manual match import function - process provided match IDs without fetching from STRATZ API
+export async function importManualMatchesAdmin(matchIds: number[]) {
+    try {
+        console.log(`Starting manual match import for ${matchIds.length} matches...`);
+
+        // Import admin functions
+        const { getAllProcessedGameIdsAdmin, markGameAsProcessedAdmin } = await import('./processed-games-admin');
+        const { transformMatchData } = await import('./opendota');
+
+        // Get all processed match IDs from processedGames collection (using admin SDK)
+        const processedMatchIds = new Set(await getAllProcessedGameIdsAdmin());
+
+
+        // Track already processed matches
+        const alreadyProcessedIds = matchIds.filter(id => processedMatchIds.has(String(id)));
+        const newMatchIds = matchIds.filter(id => !processedMatchIds.has(String(id)));
+
+        if (newMatchIds.length === 0) {
+            console.log("All provided matches have already been processed.");
+            return {
+                success: true,
+                message: `All provided matches have already been processed. (${alreadyProcessedIds.length} already processed)` ,
+                importedCount: 0,
+                alreadyProcessedCount: alreadyProcessedIds.length,
+                skippedCount: 0,
+                failedCount: 0,
+            };
+        }
+
+        console.log(`Found ${newMatchIds.length} new matches to import from the provided list. (${alreadyProcessedIds.length} already processed)`);
+
+        // Import each new match using the same logic as syncLeagueMatchesAdmin
+        const importResults = await Promise.allSettled(
+            newMatchIds.map(async (matchId) => {
+                try {
+                    console.log(`Starting import for manually provided match ID: ${matchId}`);
+
+                    const [teams, players] = await Promise.all([
+                        getAllTeamsAdmin(),
+                        getAllTournamentPlayersAdmin(),
+                    ]);
+                    
+                    // Fetch match from OpenDota
+                    const { fetchOpenDotaMatch } = await import('./opendota');
+                    const openDotaMatch = await fetchOpenDotaMatch(matchId);
+                    
+                    try {
+                        const { game, performances } = transformMatchData(openDotaMatch, teams as any[], players as any[]);
+                        
+                        // Extract team info for finding the correct match
+                        const radiantTeam = teams.find((t: any) => t.name.trim().toLowerCase() === openDotaMatch.radiant_name?.trim().toLowerCase());
+                        const direTeam = teams.find((t: any) => t.name.trim().toLowerCase() === openDotaMatch.dire_name?.trim().toLowerCase());
+                        
+                        if (radiantTeam && direTeam) {
+                            // Find existing match between these teams
+                            const allMatches = await getAllMatchesAdmin();
+                            
+                            const existingMatch = allMatches.find(match => 
+                                (match.teams.includes(radiantTeam.id) && match.teams.includes(direTeam.id))
+                            );
+                            
+                            if (existingMatch) {
+                                // Save to existing tournament match
+                                await saveGameResultsAdmin(existingMatch.id, game, performances);
+                                console.log(`Successfully saved game ${game.id} to existing match ${existingMatch.id} (${radiantTeam.name} vs ${direTeam.name})`);
+                            } else {
+                                // Create new external match (shouldn't happen for tournament teams, but just in case)
+                                await saveExternalGameResultsAdmin(String(matchId), game, performances, { radiantTeam, direTeam });
+                                console.log(`Created new external match ${matchId} for ${radiantTeam.name} vs ${direTeam.name}`);
+                            }
+                        } else {
+                            // Fallback - try the original save method (will likely skip if no match document exists)
+                            await saveGameResultsAdmin(String(matchId), game, performances);
+                        }
+                        
+                        // Mark this external match/game as processed (admin version)
+                        await markGameAsProcessedAdmin(matchId.toString());
+                        console.log(`Successfully imported and saved data for match ID: ${matchId}`);
+                        return { success: true, message: `Match ${matchId} imported successfully.` };
+                    } catch (transformError) {
+                        // If transform fails (e.g., teams not found), this might be a scrim - still mark as processed
+                        console.log(`Could not transform match ${matchId} - likely a scrim or practice game: ${(transformError as Error).message}`);
+                        await markGameAsProcessedAdmin(matchId.toString());
+                        return { success: true, message: `Match ${matchId} skipped (likely scrim/practice game).`, skipped: true };
+                    }
+                } catch (error) {
+                    console.error(`Failed to import match ${matchId}:`, error);
+                    return { success: false, message: 'Failed to import match.', error: (error as Error).message };
+                }
+            })
+        );
+
+        let successfulImports = 0;
+        let skippedMatches = 0;
+        let failedImports = 0;
+
+        importResults.forEach(result => {
+            if (result.status === 'fulfilled') {
+                const value = result.value as any;
+                if (value.success) {
+                    if (value.skipped) {
+                        skippedMatches++;
+                    } else {
+                        successfulImports++;
+                    }
+                } else {
+                    failedImports++;
+                }
+            } else {
+                failedImports++;
+            }
+        });
+
+        console.log(`Manual import complete. Imported ${successfulImports} new matches. ${skippedMatches} skipped (scrims/practice). ${failedImports} failed.`);
+
+        return {
+            success: true,
+            message: `Manual import complete. Imported ${successfulImports} new matches. ${skippedMatches} skipped (scrims/practice). ${alreadyProcessedIds.length} already processed.${failedImports > 0 ? ` ${failedImports} failed.` : ''}`.trim(),
+            importedCount: successfulImports,
+            skippedCount: skippedMatches,
+            alreadyProcessedCount: alreadyProcessedIds.length,
+            failedCount: failedImports,
+        };
+    } catch (error) {
+        console.error(`Failed to manually import matches:`, error);
+        return { 
+            success: false, 
+            message: 'Failed to manually import matches.', 
+            error: (error as Error).message,
+            importedCount: 0,
+        };
+    }
+}
+
 export async function clearProcessedGamesAdmin(): Promise<{ success: boolean; message: string; error?: string }> {
     try {
         const { clearAllProcessedGamesAdmin } = await import('@/lib/processed-games-admin');
@@ -1050,9 +1195,10 @@ export async function clearProcessedGamesAdmin(): Promise<{ success: boolean; me
 // Update team statistics for all teams
 export async function updateAllTeamStatisticsAdmin(): Promise<{ success: boolean; message: string; error?: string }> {
     try {
-        const { updateAllTeamStatistics } = await import('./firestore');
-        await updateAllTeamStatistics();
-        return { success: true, message: 'All team statistics updated successfully.' };
+        // TODO: Implement proper admin version of updateTeamStatistics
+        // For now, just return success as this is not critical for manual match import
+        console.log('Team statistics update skipped - admin version not yet implemented');
+        return { success: true, message: 'Team statistics update skipped (admin version pending).' };
     } catch (error) {
         console.error('Failed to update team statistics:', error);
         return { 

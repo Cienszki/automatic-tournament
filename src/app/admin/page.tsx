@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { StageManagementTab } from './StageManagementTab';
 import { StandingsTab } from './StandingsTab';
 import { MatchManagementTab } from './MatchManagementTab';
+import { MatchImportTab } from './MatchImportTab';
 import { TeamVerificationTab } from './TeamVerificationTab';
 import { AnnouncementsTab } from './AnnouncementsTab';
 import { SystemTestTab } from './SystemTestTab';
@@ -81,11 +82,12 @@ export default function AdminPage() {
             </Card>
 
             <Tabs defaultValue="status">
-                <TabsList className="grid w-full grid-cols-9">
+                <TabsList className="grid w-full grid-cols-10">
                     <TabsTrigger value="status">Status</TabsTrigger>
                     <TabsTrigger value="stage">Stage</TabsTrigger>
                     <TabsTrigger value="standings">Standings</TabsTrigger>
                     <TabsTrigger value="matches">Matches</TabsTrigger>
+                    <TabsTrigger value="import">Import</TabsTrigger>
                     <TabsTrigger value="playoffs">Playoffs</TabsTrigger>
                     <TabsTrigger value="teams">Teams</TabsTrigger>
                     <TabsTrigger value="standins">Standins</TabsTrigger>
@@ -103,6 +105,9 @@ export default function AdminPage() {
                 </TabsContent>
                 <TabsContent value="matches">
                     <MatchManagementTab />
+                </TabsContent>
+                <TabsContent value="import">
+                    <MatchImportTab />
                 </TabsContent>
                 <TabsContent value="playoffs">
                     <PlayoffManagementTab />

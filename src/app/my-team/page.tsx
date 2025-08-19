@@ -30,9 +30,13 @@ export default function MyTeamPage() {
 
   React.useEffect(() => {
     const fetchTeamData = async () => {
-      if (user) {
+      // Only proceed if we have a user and we're on the client side
+      if (user && typeof window !== 'undefined') {
         setLoading(true);
         try {
+          // Small delay to ensure Firebase is fully initialized
+          await new Promise(resolve => setTimeout(resolve, 100));
+          
           const { hasTeam, team } = await getUserTeam(user.uid);
           setHasTeam(hasTeam);
           setTeam(team || null);

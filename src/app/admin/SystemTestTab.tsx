@@ -32,10 +32,12 @@ import type { Match } from '@/lib/definitions';
 export function SystemTestTab() {
     const [isSyncing, setIsSyncing] = React.useState(false);
     const [isImporting, setIsImporting] = React.useState(false);
+    const [isManualImporting, setIsManualImporting] = React.useState(false);
     const [isDeleting, setIsDeleting] = React.useState(false);
     const [isClearingProcessed, setIsClearingProcessed] = React.useState(false);
     const [isUpdatingStats, setIsUpdatingStats] = React.useState(false);
     const [matchId, setMatchId] = React.useState('');
+    const [manualMatchIds, setManualMatchIds] = React.useState('');
     const [matches, setMatches] = React.useState<Match[]>([]);
     const [selectedMatches, setSelectedMatches] = React.useState<string[]>([]);
     const { toast } = useToast();
@@ -142,6 +144,75 @@ export function SystemTestTab() {
         setIsImporting(false);
         fetchMatches();
     };
+
+    const handleManualImport = async () => {
+        if (!manualMatchIds.trim()) {
+            toast({
+                title: "Error",
+                description: "Please enter match IDs",
+                variant: "destructive"
+            });
+            return;
+        }
+
+        if (!user) {
+            toast({
+                title: "Authentication Error",
+                description: "You must be logged in to perform this action.",
+                variant: "destructive",
+            });
+            return;
+        }
+
+        setIsManualImporting(true);
+        try {
+            // Parse match IDs from input (support comma, space, or newline separated)
+            const matchIds = manualMatchIds
+                .split(/[,\s\n]+/)
+                .map(id => id.trim())
+                .filter(id => id.length > 0);
+
+            if (matchIds.length === 0) {
+                throw new Error("No valid match IDs found");
+            }
+
+            // Validate that all are numbers
+            const invalidIds = matchIds.filter(id => isNaN(Number(id)) || Number(id) <= 0);
+            if (invalidIds.length > 0) {
+                throw new Error(`Invalid match IDs: ${invalidIds.join(', ')}`);
+            }
+
+            const token = await user.getIdToken();
+            const response = await fetch('/api/admin-import-manual-matches', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`,
+                },
+                body: JSON.stringify({ matchIds }),
+            });
+
+            const result = await response.json();
+            
+            if (result.success) {
+                toast({
+                    title: "Success!",
+                    description: result.message,
+                });
+                setManualMatchIds('');
+                fetchMatches();
+            } else {
+                throw new Error(result.error || result.message || 'Failed to import matches');
+            }
+        } catch (err: any) {
+            toast({
+                title: "Manual Import Failed",
+                description: err.message || 'An error occurred during import',
+                variant: "destructive"
+            });
+        }
+        setIsManualImporting(false);
+    };
     
     const handleDeleteSelected = async () => {
         if (!user) {
@@ -241,6 +312,42 @@ export function SystemTestTab() {
                                 {isImporting ? "Importing..." : "Import Match"}
                             </Button>
                         </div>
+                        
+                        {/* Manual Import Section */}
+                        <div className="border-t pt-4">
+                            <h4 className="text-sm font-medium mb-2">Manual Bulk Import</h4>
+                            <p className="text-xs text-muted-foreground mb-3">
+                                Import multiple matches by providing a list of match IDs (comma, space, or newline separated). 
+                                Use this when STRATZ API is unavailable.
+                            </p>
+                            <div className="space-y-2">
+                                <textarea
+                                    value={manualMatchIds}
+                                    onChange={(e) => setManualMatchIds(e.target.value)}
+                                    placeholder="Enter match IDs separated by commas, spaces, or new lines&#10;Example: 7123456789, 7123456790&#10;7123456791"
+                                    className="w-full p-2 border rounded-md min-h-[100px] text-sm"
+                                    disabled={isManualImporting}
+                                />
+                                <Button 
+                                    onClick={handleManualImport} 
+                                    disabled={isManualImporting || !manualMatchIds.trim()}
+                                    className="w-full"
+                                >
+                                    {isManualImporting ? (
+                                        <>
+                                            <div className="animate-spin rounded-full h-4 w-4 border-b border-white mr-2"></div>
+                                            Processing...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <PlusCircle className="mr-2 h-4 w-4" />
+                                            Import Match List
+                                        </>
+                                    )}
+                                </Button>
+                            </div>
+                        </div>
+                        
                          <Button onClick={handleSync} disabled={isSyncing}>
                             {isSyncing ? <div className="animate-spin rounded-full h-4 w-4 border-b border-white mr-2"></div> : <RefreshCw className="mr-2 h-4 w-4" />}
                             {isSyncing ? "Syncing..." : "Sync All New Matches"}

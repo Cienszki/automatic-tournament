@@ -93,7 +93,7 @@ export function StageManagementTab() {
   }, [toast]);
 
   React.useEffect(() => {
-    console.log("[StageManagementTab] useEffect triggered, user:", user);
+  // console.log("[StageManagementTab] useEffect triggered, user:", user); // Removed for security
     if (user) {
       console.log("[StageManagementTab] User is authenticated, calling fetchData");
       fetchData();

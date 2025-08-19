@@ -77,6 +77,73 @@ export function transformMatchData(
     dire_team: { id: direTeam.id, name: direTeam.name },
   };
 
+  // Helper: calculate fantasy points for a player
+  function calculateFantasyPoints(p: any, player: Player | undefined, isRadiant: boolean): number {
+    // General scoring
+    let points = 0;
+    // Roshan kills (team stat)
+    if (openDotaMatch.roshan_kills) {
+      // Distribute Roshan kills to all players on the team
+      const teamRoshanKills = isRadiant ? openDotaMatch.radiant_roshan_kills : openDotaMatch.dire_roshan_kills;
+      points += (teamRoshanKills || 0) * 20;
+    }
+    // Team win
+    const teamWon = (isRadiant && openDotaMatch.radiant_win) || (!isRadiant && !openDotaMatch.radiant_win);
+    if (teamWon) points += 10;
+    // Barracks destroyed
+    if (p.barracks_killed) {
+      // OpenDota does not provide per-player barracks, so skip or use team total if available
+    }
+    // Use team barracks destroyed if available
+    if (isRadiant && openDotaMatch.radiant_barracks_status !== undefined) {
+      // Each bit represents a barracks, 6 total (melee/range pairs)
+      const barracks = openDotaMatch.radiant_barracks_status;
+      const destroyed = 6 - barracks.toString(2).replace(/0/g, '').length;
+      points += destroyed * 10;
+    }
+    if (!isRadiant && openDotaMatch.dire_barracks_status !== undefined) {
+      const barracks = openDotaMatch.dire_barracks_status;
+      const destroyed = 6 - barracks.toString(2).replace(/0/g, '').length;
+      points += destroyed * 10;
+    }
+    // Towers destroyed (team stat, not per player)
+    if (isRadiant && openDotaMatch.radiant_tower_status !== undefined) {
+      const towers = openDotaMatch.radiant_tower_status;
+      const destroyed = 11 - towers.toString(2).replace(/0/g, '').length;
+      points += destroyed * 10;
+    }
+    if (!isRadiant && openDotaMatch.dire_tower_status !== undefined) {
+      const towers = openDotaMatch.dire_tower_status;
+      const destroyed = 11 - towers.toString(2).replace(/0/g, '').length;
+      points += destroyed * 10;
+    }
+
+    // Role-specific scoring
+    const role = player?.role;
+    if (role === 'Carry') {
+      points += (p.kills || 0) * 2.5;
+      points += (p.deaths || 0) * -2.5;
+      points += (p.gold || 0) / 1000 * 1;
+    } else if (role === 'Mid') {
+      points += (p.kills || 0) * 2.5;
+      points += (p.deaths || 0) * -1.5;
+      points += (p.assists || 0) * 1.5;
+    } else if (role === 'Offlane') {
+      points += (p.kills || 0) * 2.5;
+      points += (p.deaths || 0) * -1.5;
+      points += (p.assists || 0) * 2.5;
+    } else if (role === 'Soft Support') {
+      points += (p.kills || 0) * 1;
+      points += (p.deaths || 0) * -2.5;
+      points += (p.assists || 0) * 3;
+    } else if (role === 'Hard Support') {
+      points += (p.kills || 0) * 1;
+      points += (p.deaths || 0) * -2.5;
+      points += (p.assists || 0) * 5;
+    }
+    return points;
+  }
+
   const performances: PlayerPerformanceInGame[] = openDotaMatch.players.map((p: any) => {
     // Match player by steamId32 (string) to OpenDota account_id (number)
     const player = players.find(pl => pl.steamId32 === String(p.account_id));
@@ -115,7 +182,7 @@ export function transformMatchData(
       highestKillStreak: highestKillStreak,
       buybackCount: p.buyback_count || 0,
       heroHealing: p.hero_healing || 0,
-      fantasyPoints: 0, // This will be calculated by a separate function
+      fantasyPoints: calculateFantasyPoints(p, player, isRadiant),
     };
   });
 
