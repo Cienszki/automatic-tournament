@@ -4,7 +4,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { PlayerAvatar } from '@/components/app/PlayerAvatar';
 import type { PlayerSelectionCardProps } from './PlayerSelectionCardProps';
 import { useTranslation } from '@/hooks/useTranslation';
-import { roleIcons } from './page';
+import { roleIcons } from './roleIcons';
 
 const PlayerSelectionCard: React.FC<PlayerSelectionCardProps> = ({ role, playersByRole, selectedLineup, onPlayerSelect }) => {
   const { t } = useTranslation();

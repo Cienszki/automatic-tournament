@@ -226,12 +226,16 @@ export default function StandinsPage() {
         createdAt: new Date().toISOString()
       };
 
-      // Check if Firebase is properly initialized before attempting to save
-      if (!isFirebaseInitialized()) {
-        throw new Error('Firebase nie jest poprawnie zainicjalizowany. Odśwież stronę i spróbuj ponownie.');
+      // Submit to server-side API route
+      const response = await fetch('/api/register-standin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(standinData)
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Błąd podczas rejestracji rezerwowego.');
       }
-
-      await setDoc(doc(db, 'standins', user.uid), standinData);
       toast({
         title: "Sukces!",
         description: "Zgłoszenie zostało wysłane! Oczekuj weryfikacji przez administratora."

@@ -12,9 +12,10 @@ import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Loader2, Crown, Info, UserCircle, BarChart2, Swords, Sparkles, Shield as ShieldIconLucide, HandHelping, Eye as EyeIconLucide, Lock } from "lucide-react";
+import { Loader2, Crown, Info, UserCircle, BarChart2, Lock } from "lucide-react";
 import type { PlayerRole, FantasyLineup, FantasyData, TournamentPlayer, UserProfile } from "@/lib/definitions";
 import { PlayerRoles, TEAM_MMR_CAP } from "@/lib/definitions";
+import { roleIcons } from "./roleIcons";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -24,13 +25,6 @@ import { getAllTournamentPlayers, getFantasyLeaderboard, getUserFantasyLineup, s
 import { translations } from "@/lib/translations";
 import { DiscordUsernameModal } from '@/components/app/DiscordUsernameModal';
 
-export const roleIcons: Record<PlayerRole, React.ElementType> = {
-  "Carry": Swords,
-  "Mid": Sparkles,
-  "Offlane": ShieldIconLucide,
-  "Soft Support": HandHelping,
-  "Hard Support": EyeIconLucide
-};
 
 // Get the round that lineups should be saved FOR based on the current round
 function getTargetRoundForLineup(currentRound: string): string {

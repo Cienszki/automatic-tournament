@@ -4,7 +4,7 @@ import { TableRow, TableCell } from '@/components/ui/table';
 import { PlayerRoles } from '@/lib/definitions';
 import { cn } from '@/lib/utils';
 import { useTranslation } from '@/hooks/useTranslation';
-import { roleIcons } from './page';
+import { roleIcons } from './roleIcons';
 
 export interface LeaderboardRowProps {
   participant: any;

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSteam64IdFromUrl, getOpenDotaAccountIdFromUrl } from '@/lib/server-utils';
-import { checkIfSteamIdIsAlreadyPlayer } from '@/lib/firestore';
+import { getAdminDb, ensureAdminInitialized } from '@/lib/admin';
 
 export async function POST(request: NextRequest) {
   try {
@@ -17,9 +17,23 @@ export async function POST(request: NextRequest) {
     const steamId64 = await getSteam64IdFromUrl(steamProfileUrl);
     const steamId32 = await getOpenDotaAccountIdFromUrl(steamProfileUrl);
 
-    // Check if already a player
-    const isAlreadyPlayer = await checkIfSteamIdIsAlreadyPlayer(steamId32.toString());
 
+    // Check if already a player using Admin SDK
+    ensureAdminInitialized();
+    const db = getAdminDb();
+    let isAlreadyPlayer = false;
+    const teamsSnapshot = await db.collection('teams').get();
+    for (const teamDoc of teamsSnapshot.docs) {
+      const playersSnapshot = await db.collection('teams').doc(teamDoc.id).collection('players').get();
+      for (const playerDoc of playersSnapshot.docs) {
+        const player = playerDoc.data();
+        if (player.steamId32 === steamId32.toString() || player.steamId === steamId32.toString()) {
+          isAlreadyPlayer = true;
+          break;
+        }
+      }
+      if (isAlreadyPlayer) break;
+    }
     if (isAlreadyPlayer) {
       return NextResponse.json(
         { 
