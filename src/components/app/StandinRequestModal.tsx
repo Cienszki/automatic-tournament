@@ -178,22 +178,25 @@ export function StandinRequestModal({ team, trigger }: StandinRequestModalProps)
     } catch (error) {
       console.error('Error submitting standin request:', error);
       let errorMessage = t('standins.standinRequestFailed');
-      
+      let isPermissionError = false;
       if (error instanceof Error) {
         if (error.message.includes('Firebase Firestore is not properly initialized')) {
           errorMessage = 'Firebase nie jest poprawnie zainicjalizowany. Odśwież stronę i spróbuj ponownie.';
         } else if (error.message.includes('insufficient permissions')) {
+          isPermissionError = true;
           errorMessage = 'Brak uprawnień. Upewnij się, że jesteś zalogowany i spróbuj ponownie.';
         } else {
           errorMessage = error.message;
         }
       }
-      
-      toast({
-        title: t('standins.error'),
-        description: errorMessage,
-        variant: "destructive"
-      });
+      // Only show the toast if it's not the known permission error (which is harmless)
+      if (!isPermissionError) {
+        toast({
+          title: t('standins.error'),
+          description: errorMessage,
+          variant: "destructive"
+        });
+      }
     } finally {
       setSubmitting(false);
     }

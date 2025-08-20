@@ -1,5 +1,7 @@
+import { FieldValue } from "firebase-admin/firestore";
 import { NextResponse } from "next/server";
-import { getAllTeams, getAllTournamentPlayers, saveGameResults } from "@/lib/firestore";
+import { getAllTeamsAdmin, getAllTournamentPlayersAdmin } from "../../../../server/lib/getAllAdmin";
+import { getAdminDb } from "@/lib/admin";
 import { transformMatchData } from "@/lib/opendota";
 import { recalculateMatchScoresAdmin } from "@/lib/admin-match-actions-server";
 import { updateStatsAfterMatchChange } from "@/lib/stats-service-simple";
@@ -11,10 +13,10 @@ export async function POST(req: Request) {
     if (!openDotaData || !radiantTeam || !direTeam || !matchId || !gameNumber) {
       return NextResponse.json({ error: "Missing required fields." }, { status: 400 });
     }
-    // Fetch teams and players from Firestore
+    // Fetch teams and players from Firestore (Admin SDK)
     const [teams, players] = await Promise.all([
-      getAllTeams(),
-      getAllTournamentPlayers()
+      getAllTeamsAdmin(),
+      getAllTournamentPlayersAdmin()
     ]);
     // Patch team IDs in OpenDota data
     openDotaData.radiant_team = { ...openDotaData.radiant_team, team_id: radiantTeam };
@@ -22,8 +24,15 @@ export async function POST(req: Request) {
     // Transform data
     const { game, performances } = transformMatchData(openDotaData, teams, players);
     game.id = gameNumber;
-    // Save to Firestore
-    await saveGameResults(matchId, game, performances);
+    // Save to Firestore (Admin SDK)
+    const db = getAdminDb();
+    const matchRef = db.collection('matches').doc(matchId);
+    // 1. Add the new game ID to the main match document
+    await matchRef.update({
+      game_ids: FieldValue.arrayUnion(parseInt(game.id))
+    });
+    // 2. Set the data for the new game document
+    await matchRef.collection('games').doc(game.id).set(game);
     
     // Automatically recalculate match scores and update standings after saving the game
     try {

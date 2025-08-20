@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAllMatches } from '@/lib/firestore';
+import { getAllMatchesAdmin } from '../../../../server/lib/getAllMatchesAdmin';
 
 export async function GET(request: NextRequest) {
   try {
-    const allMatches = await getAllMatches();
+  const allMatches = await getAllMatchesAdmin();
     const completedMatches = allMatches.filter(match => match.status === 'completed');
     
     const matchDetails = completedMatches.map(match => ({

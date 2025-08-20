@@ -109,6 +109,7 @@ export async function POST(request: NextRequest) {
             let totalTowerDamage = 0;
             let totalHeroHealing = 0;
             const heroStats: { [heroName: string]: number } = {};
+            const matchesPlayed = teamMatches.length;
 
             for (const match of teamMatches) {
                 console.log(`Processing match ${match.id}: ${match.teamA?.name} vs ${match.teamB?.name}`);
@@ -225,19 +226,19 @@ export async function POST(request: NextRequest) {
                 }
             }
 
-            const matchesPlayed = teamMatches.length;
-            const averageKillsPerGame = matchesPlayed > 0 ? totalKills / matchesPlayed : 0;
-            const averageDeathsPerGame = matchesPlayed > 0 ? totalDeaths / matchesPlayed : 0;
-            const averageAssistsPerGame = matchesPlayed > 0 ? totalAssists / matchesPlayed : 0;
-            const averageFantasyPoints = matchesPlayed > 0 ? totalFantasyPoints / matchesPlayed : 0;
-            const averageMatchDurationMinutes = totalGames > 0 ? Math.round((totalMatchDurationSeconds / totalGames) / 60) : 0;
-            const averageGpm = matchesPlayed > 0 ? totalGpm / matchesPlayed : 0;
-            const averageXpm = matchesPlayed > 0 ? totalXpm / matchesPlayed : 0;
-            const averageLastHits = matchesPlayed > 0 ? totalLastHits / matchesPlayed : 0;
-            const averageNetWorth = matchesPlayed > 0 ? totalNetWorth / matchesPlayed : 0;
-            const averageHeroDamage = matchesPlayed > 0 ? totalHeroDamage / matchesPlayed : 0;
-            const averageTowerDamage = matchesPlayed > 0 ? totalTowerDamage / matchesPlayed : 0;
-            const averageHeroHealing = matchesPlayed > 0 ? totalHeroHealing / matchesPlayed : 0;
+            const round1 = (v: number) => Math.round(v * 10) / 10;
+            const averageKillsPerGame = round1(totalGames > 0 ? totalKills / totalGames : 0);
+            const averageDeathsPerGame = round1(totalGames > 0 ? totalDeaths / totalGames : 0);
+            const averageAssistsPerGame = round1(totalGames > 0 ? totalAssists / totalGames : 0);
+            const averageFantasyPoints = round1(totalGames > 0 ? totalFantasyPoints / totalGames : 0);
+            const averageGpm = round1(totalGames > 0 ? totalGpm / totalGames : 0);
+            const averageXpm = round1(totalGames > 0 ? totalXpm / totalGames : 0);
+            const averageLastHits = round1(totalGames > 0 ? totalLastHits / totalGames : 0);
+            const averageNetWorth = round1(totalGames > 0 ? totalNetWorth / totalGames : 0);
+            const averageHeroDamage = round1(totalGames > 0 ? totalHeroDamage / totalGames : 0);
+            const averageTowerDamage = round1(totalGames > 0 ? totalTowerDamage / totalGames : 0);
+            const averageHeroHealing = round1(totalGames > 0 ? totalHeroHealing / totalGames : 0);
+            const averageMatchDurationMinutes = round1(totalGames > 0 ? (totalMatchDurationSeconds / 60) / totalGames : 0);
 
             // Get top 3 most played heroes
             const mostPlayedHeroes = Object.entries(heroStats)

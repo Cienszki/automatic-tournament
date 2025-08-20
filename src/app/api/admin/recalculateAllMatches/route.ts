@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { recalculateMatchScoresAdmin } from '@/lib/admin-match-actions-server';
-import { getAllMatches } from '@/lib/firestore';
+import { getAllMatchesAdmin } from '../../../../server/lib/getAllMatchesAdmin';
 
 export async function POST(request: NextRequest) {
   try {
     console.log('Starting manual recalculation of all matches...');
     
     // Get all matches
-    const matches = await getAllMatches();
+  const matches = await getAllMatchesAdmin();
     
     let recalculatedCount = 0;
     

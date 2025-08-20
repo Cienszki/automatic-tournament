@@ -1,11 +1,12 @@
 import { NextResponse } from 'next/server';
-import { getAllGroups, getAllMatches } from '@/lib/firestore';
+import { getAllGroupsAdmin } from '../../../../server/lib/getAllAdmin';
+import { getAllMatchesAdmin } from '../../../../server/lib/getAllMatchesAdmin';
 
 export async function GET() {
   try {
     const [groups, matches] = await Promise.all([
-      getAllGroups(),
-      getAllMatches()
+      getAllGroupsAdmin(),
+      getAllMatchesAdmin()
     ]);
 
     const completedMatches = matches.filter(m => m.status === 'completed');
