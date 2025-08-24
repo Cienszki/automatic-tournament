@@ -42,6 +42,7 @@ interface BracketRound {
   id: string;
   name: string;
   matches: PlayoffMatch[];
+  dateRange?: string;
 }
 
 // Helper functions
@@ -71,47 +72,69 @@ const getMatchCode = (bracket: PlayoffBracket, match: PlayoffMatch): string => {
 
 const getTeamDescription = (bracket: PlayoffBracket, match: PlayoffMatch, isTeamA: boolean, allBrackets: PlayoffBracket[], t: (key: string) => string): string => {
   if (bracket.type === 'wildcard') {
-    // WCA: Group E 3rd vs Group F 3rd
-    // WCB: Group A 3rd vs Group B 3rd  
+    // WCA: A3 vs B3
+    // WCB: C3 vs D3  
     if (match.position === 1) { // WCA
-      return isTeamA ? `${t('playoffs.groupThird')} ${t('playoffs.groupE')}` : `${t('playoffs.groupThird')} ${t('playoffs.groupF')}`;
-    } else { // WCB
       return isTeamA ? `${t('playoffs.groupThird')} ${t('playoffs.groupA')}` : `${t('playoffs.groupThird')} ${t('playoffs.groupB')}`;
+    } else { // WCB
+      return isTeamA ? `${t('playoffs.groupThird')} ${t('playoffs.groupC')}` : `${t('playoffs.groupThird')} ${t('playoffs.groupD')}`;
     }
   }
   
   if (bracket.type === 'upper') {
     if (match.round === 1) {
       const matchPos = match.position || 1;
-      if (matchPos === 1) { // U1A
-        return isTeamA ? `${t('playoffs.groupWinner')} ${t('playoffs.groupA')}` : `${t('playoffs.groupWinner')} ${t('playoffs.groupB')}`;
-      } else if (matchPos === 2) { // U1B
-        return isTeamA ? `${t('playoffs.groupWinner')} ${t('playoffs.groupC')}` : `${t('playoffs.groupWinner')} ${t('playoffs.groupD')}`;
-      } else if (matchPos === 3) { // U1C
-        return isTeamA ? `${t('playoffs.groupWinner')} ${t('playoffs.groupE')}` : `${t('playoffs.groupWinner')} ${t('playoffs.groupF')}`;
-      } else if (matchPos === 4) { // U1D
-        return isTeamA ? `${t('playoffs.groupSecond')} ${t('playoffs.groupA')}` : `${t('playoffs.groupSecond')} ${t('playoffs.groupB')}`;
+      if (matchPos === 1) { // U1A: A1 vs F2
+        return isTeamA ? `${t('playoffs.groupWinner')} ${t('playoffs.groupA')}` : `${t('playoffs.groupSecond')} ${t('playoffs.groupF')}`;
+      } else if (matchPos === 2) { // U1B: D1 vs E1
+        return isTeamA ? `${t('playoffs.groupWinner')} ${t('playoffs.groupD')}` : `${t('playoffs.groupWinner')} ${t('playoffs.groupE')}`;
+      } else if (matchPos === 3) { // U1C: B1 vs E2
+        return isTeamA ? `${t('playoffs.groupWinner')} ${t('playoffs.groupB')}` : `${t('playoffs.groupSecond')} ${t('playoffs.groupE')}`;
+      } else if (matchPos === 4) { // U1D: C1 vs F1
+        return isTeamA ? `${t('playoffs.groupWinner')} ${t('playoffs.groupC')}` : `${t('playoffs.groupWinner')} ${t('playoffs.groupF')}`;
       }
+    } else if (match.round === 2) {
+      // U2A: Winner of U1A vs Winner of U1B
+      // U2B: Winner of U1C vs Winner of U1D
+      const matchPos = match.position || 1;
+      let teamAMatch = '', teamBMatch = '';
+      if (matchPos === 1) {
+        teamAMatch = 'U1A';
+        teamBMatch = 'U1B';
+      } else if (matchPos === 2) {
+        teamAMatch = 'U1C';
+        teamBMatch = 'U1D';
+      } else {
+        teamAMatch = 'U1?';
+        teamBMatch = 'U1?';
+      }
+      return isTeamA ? `${t('playoffs.matchWinner')} ${teamAMatch}` : `${t('playoffs.matchWinner')} ${teamBMatch}`;
     } else {
-      // For subsequent rounds, refer to previous match winners
-      const prevMatchIndex = Math.floor(((match.position || 1) - 1) / 2) + 1;
-      const teamIndex = ((match.position || 1) - 1) % 2;
-      const prevMatchCode = `U${match.round - 1}${String.fromCharCode(64 + prevMatchIndex)}`;
-      return `${t('playoffs.matchWinner')} ${prevMatchCode}`;
+      // Upper Final: Winner of U2A vs Winner of U2B
+      const matchPos = match.position || 1;
+      let teamAMatch = '', teamBMatch = '';
+      if (matchPos === 1) {
+        teamAMatch = 'U2A';
+        teamBMatch = 'U2B';
+      } else {
+        teamAMatch = 'U2?';
+        teamBMatch = 'U2?';
+      }
+      return isTeamA ? `${t('playoffs.matchWinner')} ${teamAMatch}` : `${t('playoffs.matchWinner')} ${teamBMatch}`;
     }
   }
   
   if (bracket.type === 'lower') {
     if (match.round === 1) {
       const matchPos = match.position || 1;
-      if (matchPos === 1) { // L1A
-        return isTeamA ? `${t('playoffs.wildcardWinner')} WCA` : `${t('playoffs.groupSecond')} ${t('playoffs.groupC')}`;
-      } else if (matchPos === 2) { // L1B
-        return isTeamA ? `${t('playoffs.wildcardWinner')} WCB` : `${t('playoffs.groupSecond')} ${t('playoffs.groupD')}`;
-      } else if (matchPos === 3) { // L1C
-        return isTeamA ? `${t('playoffs.groupSecond')} ${t('playoffs.groupE')}` : `${t('playoffs.groupSecond')} ${t('playoffs.groupF')}`;
-      } else if (matchPos === 4) { // L1D
-        return isTeamA ? `${t('playoffs.groupThird')} ${t('playoffs.groupC')}` : `${t('playoffs.groupThird')} ${t('playoffs.groupD')}`;
+      if (matchPos === 1) { // L1A: F3 vs Winner of WCA
+        return isTeamA ? `${t('playoffs.groupThird')} ${t('playoffs.groupF')}` : `${t('playoffs.wildcardWinner')} WCA`;
+      } else if (matchPos === 2) { // L1B: C2 vs D2
+        return isTeamA ? `${t('playoffs.groupSecond')} ${t('playoffs.groupC')}` : `${t('playoffs.groupSecond')} ${t('playoffs.groupD')}`;
+      } else if (matchPos === 3) { // L1C: Winner of WCB vs A2
+        return isTeamA ? `${t('playoffs.wildcardWinner')} WCB` : `${t('playoffs.groupSecond')} ${t('playoffs.groupA')}`;
+      } else if (matchPos === 4) { // L1D: B2 vs E3
+        return isTeamA ? `${t('playoffs.groupSecond')} ${t('playoffs.groupB')}` : `${t('playoffs.groupThird')} ${t('playoffs.groupE')}`;
       }
     } else if (match.round === 2) {
       const matchPos = match.position || 1;
@@ -164,7 +187,10 @@ const getTeamDescription = (bracket: PlayoffBracket, match: PlayoffMatch, isTeam
   }
   
   if (bracket.type === 'final') {
-    return isTeamA ? t('playoffs.upperBracketWinner') : t('playoffs.lowerBracketWinner');
+    // Wielki finał: Team A = zwycięzca U3A, Team B = zwycięzca L6A
+    return isTeamA
+      ? `${t('playoffs.matchWinner')} U3A`
+      : `${t('playoffs.matchWinner')} L6A`;
   }
   
   return t('playoffs.toBeDetermined');
@@ -191,14 +217,39 @@ function createRounds(bracket: PlayoffBracket | undefined, t?: (key: string) => 
     const matches = (roundsMap.get(r) || []).slice().sort((a, b) => (a.position || 0) - (b.position || 0));
     // Do not show any round label for wildcard rounds
     let name = '';
-    if (bracket.type !== 'wildcard') {
-      if (bracket.type === 'final') {
-        name = t ? t('playoffs.grandFinal') : 'Wielki Finał';
-      } else {
-        name = t ? `${t('playoffs.round')} ${r}` : `Runda ${r}`;
+    let dateRange = '';
+    
+    if (bracket.type === 'wildcard') {
+      dateRange = '01.09 - 03.09';
+    } else if (bracket.type === 'final') {
+      name = t ? t('playoffs.grandFinal') : 'Wielki Finał';
+      dateRange = '05.10';
+    } else if (bracket.type === 'upper') {
+      // Upper bracket: Round 1 -> "Runda 1", Round 2 -> "Runda 2", Round 3 -> "Runda 4"
+      const displayRound = r === 3 ? 4 : r;
+      name = t ? `${t('playoffs.round')} ${displayRound}` : `Runda ${displayRound}`;
+      if (r === 1) dateRange = '04.09 - 10.09';
+      else if (r === 2) dateRange = '15.09 - 20.09';
+      else if (r === 3) dateRange = '26.09 - 30.09'; // This is actually round 4
+    } else if (bracket.type === 'lower') {
+      name = t ? `${t('playoffs.round')} ${r}` : `Runda ${r}`;
+      if (r === 1) dateRange = '04.09 - 10.09';
+      else if (r === 2) dateRange = '15.09 - 20.09';
+      else if (r === 3) dateRange = '21.09 - 25.09';
+      else if (r === 4) dateRange = '26.09 - 30.09';
+      else if (r === 5) dateRange = '01.10 - 03.10';
+      else if (r === 6) {
+        name = 'Finał Dolnej Drabinki';
+        dateRange = '04.10';
       }
     }
-    rounds.push({ id: `${bracket.type}-round-${r}`, name, matches });
+    
+    rounds.push({ 
+      id: `${bracket.type}-round-${r}`, 
+      name, 
+      matches,
+      dateRange 
+    } as BracketRound & { dateRange?: string });
   }
 
   return rounds;
@@ -285,9 +336,9 @@ const MatchCard: React.FC<MatchCardProps> = ({
               </Badge>
             )}
             <Badge variant="outline" className="text-xs px-2 py-1 bg-accent/10 text-accent border-accent/30">
-              {/* L6B should always be BO3 */}
+              {/* L6A should always be BO3 */}
               {(() => {
-                if (matchCode === 'L6B') return 'BO3';
+                if (matchCode === 'L6A') return 'BO3';
                 return match.format?.toUpperCase() || 'BO1';
               })()}
             </Badge>
@@ -416,11 +467,18 @@ const BracketTree: React.FC<BracketTreeProps> = ({
             >
               {/* Round Header */}
               <div className="text-center mb-6 z-10">
-                {round.name && (
+                {(round.name || round.dateRange) && (
                   <>
-                    <h3 className="text-lg lg:text-xl font-bold text-white mb-3">
-                      {type === 'final' ? t('playoffs.grandFinal') : round.name}
-                    </h3>
+                    {round.name && (
+                      <h3 className="text-lg lg:text-xl font-bold text-white mb-2">
+                        {type === 'final' ? t('playoffs.grandFinal') : round.name}
+                      </h3>
+                    )}
+                    {round.dateRange && (
+                      <p className="text-sm text-muted-foreground mb-3 font-medium opacity-80">
+                        {round.dateRange}
+                      </p>
+                    )}
                     <div className="w-20 h-1 bg-gradient-to-r from-primary to-accent rounded-full mx-auto opacity-80"></div>
                   </>
                 )}
@@ -429,9 +487,12 @@ const BracketTree: React.FC<BracketTreeProps> = ({
               {/* Matches Column - Properly Spaced */}
               <div className="flex flex-col justify-center items-center gap-8 flex-1 w-full max-w-[320px]">
                 {round.matches.map((match, matchIndex) => {
-                  const matchCode = getMatchCode({ type, matches: round.matches } as PlayoffBracket, match);
-                  const teamADescription = getTeamDescription({ type, matches: round.matches } as PlayoffBracket, match, true, allBrackets, t);
-                  const teamBDescription = getTeamDescription({ type, matches: round.matches } as PlayoffBracket, match, false, allBrackets, t);
+                  const matchCode = round.id === 'grand-final' ? 'GF' : getMatchCode({ type, matches: round.matches } as PlayoffBracket, match);
+                  // Check if this is the grand final match within upper bracket
+                  const isGrandFinal = round.id === 'grand-final';
+                  const bracketTypeForDescription = isGrandFinal ? 'final' : type;
+                  const teamADescription = getTeamDescription({ type: bracketTypeForDescription, matches: round.matches } as PlayoffBracket, match, true, allBrackets, t);
+                  const teamBDescription = getTeamDescription({ type: bracketTypeForDescription, matches: round.matches } as PlayoffBracket, match, false, allBrackets, t);
 
                   return (
                     <div key={`${match.teamA?.id || 'teamA'}-${match.teamB?.id || 'teamB'}-${matchIndex}`} className="relative w-full">

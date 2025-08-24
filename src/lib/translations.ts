@@ -15,6 +15,10 @@ export const translations = {
       offlane: "Offlane: +2.5 per kill, -1.5 per death, +2.5 per assist",
       soft: "Soft Support: +1 per kill, -2.5 per death, +3 per assist",
       hard: "Hard Support: +1 per kill, -2.5 per death, +5 per assist",
+      fairScoring: "Fair Scoring",
+      fairScoringDesc: "Points per game ensures fair competition regardless of matches played.",
+      averageSystem: "Average System",
+      averageSystemDesc: "Your score = Total points ÷ Games with your players participating",
     },
     pl: {
       title: "Zasady punktacji fantasy",
@@ -30,6 +34,10 @@ export const translations = {
       offlane: "Offlane: +2.5 za zabójstwo, -1.5 za śmierć, +2.5 za asystę",
       soft: "Soft Support: +1 za zabójstwo, -2.5 za śmierć, +3 za asystę",
       hard: "Hard Support: +1 za zabójstwo, -2.5 za śmierć, +5 za asystę",
+      fairScoring: "Sprawiedliwa punktacja",
+      fairScoringDesc: "Punkty na grę zapewniają uczciwą konkurencję niezależnie od liczby rozegranych meczów.",
+      averageSystem: "System średnich",
+      averageSystemDesc: "Twój wynik = Łączne punkty ÷ Liczba gier z udziałem Twoich graczy",
     }
   },
   // Navigation
@@ -472,6 +480,7 @@ export const translations = {
       player: "Gracz",
       currentLineup: "Aktualny Skład",
       totalPoints: "Łączne Punkty",
+      pointsPerGame: "Wynik",
       you: "Ty"
     },
     messages: {
@@ -495,6 +504,7 @@ export const translations = {
     currentLineup: "Obecny skład",
     points: "Punkty",
     totalPoints: "Łączne punkty",
+    pointsPerGame: "Wynik",
     rank: "Pozycja",
     round: "Runda",
     noPlayerSelected: "Nie wybrano gracza",
