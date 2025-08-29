@@ -232,7 +232,7 @@ export async function POST(request: Request) {
           let role = 'Mid'; // Default fallback
           if (tournamentPlayerSnap.exists) {
             const playerData = tournamentPlayerSnap.data();
-            role = playerData.role || 'Mid';
+            role = playerData?.role || 'Mid';
           }
           
           // Determine if team won
