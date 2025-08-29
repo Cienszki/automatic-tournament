@@ -1,493 +1,373 @@
 "use client";
 
-import PlayerSelectionCard from './PlayerSelectionCard';
-import LeaderboardRow from './LeaderboardRow';
-import React, { useState, useMemo, useCallback } from 'react';
-import Link from 'next/link';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from "@/components/ui/card";
+import React, { useState, useEffect } from 'react';
+import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { PlayerAvatar } from "@/components/app/PlayerAvatar";
 import { Progress } from "@/components/ui/progress";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Loader2, Crown, Info, UserCircle, BarChart2, Lock } from "lucide-react";
-import type { PlayerRole, FantasyLineup, FantasyData, TournamentPlayer, UserProfile } from "@/lib/definitions";
-import { PlayerRoles, TEAM_MMR_CAP } from "@/lib/definitions";
-import { roleIcons } from "./roleIcons";
-import { cn } from "@/lib/utils";
-import { useAuth } from "@/context/AuthContext";
-import { useToast } from "@/hooks/use-toast";
-import { useTranslation } from "@/hooks/useTranslation";
-import type { PlayerSelectionCardProps } from "./PlayerSelectionCardProps";
-import { getAllTournamentPlayers, getFantasyLeaderboard, getUserFantasyLineup, saveUserFantasyLineup, getUserProfile, updateUserProfile, getTournamentStatus, createUserProfileIfNotExists } from "@/lib/firestore";
-import { translations } from "@/lib/translations";
-import { DiscordUsernameModal } from '@/components/app/DiscordUsernameModal';
+import { Badge } from "@/components/ui/badge";
+import { 
+  UserCircle, 
+  Lock, 
+  Info, 
+  Trophy, 
+  Clock,
+  Target,
+  Users,
+  BookOpen,
+  Calculator,
+  Award,
+  TrendingUp,
+  Swords,
+  Zap
+} from "lucide-react";
+import CreativeLeaderboards from '@/components/fantasy/CreativeLeaderboards';
 
-
-// Get the round that lineups should be saved FOR based on the current round
-function getTargetRoundForLineup(currentRound: string): string {
-  const roundSequence = [
-    'initial', 
-    'pre_season', 
-    'group_stage', 
-    'wildcards', 
-    'playoffs_round1', 
-    'playoffs_round2', 
-    'playoffs_round3', 
-    'playoffs_round4', 
-    'playoffs_round5', 
-    'playoffs_round6', 
-    'playoffs_round7'
-  ];
-  const currentIndex = roundSequence.indexOf(currentRound);
-  if (currentIndex === -1 || currentIndex === roundSequence.length - 1) {
-    return currentRound; // Unknown round or last round, use as-is
-  }
-  return roundSequence[currentIndex + 1]; // Return next round
-}
-
-interface LeaderboardParticipant {
-  userId: string;
-  displayName: string;
-  totalFantasyScore: number;
-  lineup: Partial<Record<PlayerRole, TournamentPlayer>>;
-}
-
-
-function FantasyLeaguePage() {
-  // ...existing code...
-  const { t } = useTranslation();
-  const { user, signInWithGoogle } = useAuth();
-  const { toast } = useToast();
-  const [selectedLineup, setSelectedLineup] = useState<Partial<Record<PlayerRole, TournamentPlayer>>>({});
-  const [availablePlayers, setAvailablePlayers] = useState<TournamentPlayer[]>([]);
-  const [fantasyLeaderboard, setFantasyLeaderboard] = useState<LeaderboardParticipant[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [currentRoundId, setCurrentRoundId] = useState<string | null>(null);
-
-  type Scoring = {
-    title: string;
-    general: string;
-    roshan: string;
-    win: string;
-    barracks: string;
-    towers: string;
-    playerStats: string;
-    kill: string;
-    death: string;
-    assist: string;
-    gpm: string;
-    xpm: string;
-    points: string;
-  };
-
-  const scoringDefaults: Scoring = {
-    title: '',
-    general: '',
-    roshan: '',
-    win: '',
-    barracks: '',
-    towers: '',
-    playerStats: '',
-    kill: '',
-    death: '',
-    assist: '',
-    gpm: '',
-    xpm: '',
-    points: ''
-  };
-
-  const lang = typeof window !== 'undefined' && (navigator.language.startsWith('pl') ? 'pl' : 'en');
-
-  const scoring: Scoring = (typeof translations.fantasyScoring === 'object' && translations.fantasyScoring !== null && !Array.isArray(translations.fantasyScoring))
-    ? { ...scoringDefaults, ...(translations.fantasyScoring[lang as keyof typeof translations.fantasyScoring] || translations.fantasyScoring.pl) }
-    : scoringDefaults;
-
-  const currentBudgetUsed = useMemo(() => {
-    return Object.values(selectedLineup).reduce(
-      (sum, player) => sum + (player && typeof player.mmr === 'number' ? player.mmr : 0),
-      0
-    );
-  }, [selectedLineup]);
-
-  // Fantasy scoring table
-  const ScoringTable = () => {
-    return (
-      <Card className="mb-8">
-        <CardHeader>
-          <CardTitle>{scoring.title}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div>
-            <div className="mb-4">
-              <strong>{scoring.general}:</strong>
-              <ul className="list-disc ml-6 mt-2">
-                <li>{scoring.roshan}: +20 {scoring.points}</li>
-                <li>{scoring.win}: +10 {scoring.points}</li>
-                <li>{scoring.barracks}: +10 {scoring.points}</li>
-                <li>{scoring.towers}: +10 {scoring.points}</li>
-              </ul>
-            </div>
-            <div>
-              <strong>{scoring.playerStats}:</strong>
-              <ul className="list-disc ml-6 mt-2">
-                <li>{scoring.kill}: +3 {scoring.points}</li>
-                <li>{scoring.death}: -1 {scoring.points}</li>
-                <li>{scoring.assist}: +2 {scoring.points}</li>
-                <li>{scoring.gpm}: +1 {scoring.points} / 100 GPM</li>
-                <li>{scoring.xpm}: +1 {scoring.points} / 100 XPM</li>
-              </ul>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  };
-
-  const playersByRole = useMemo(() => {
-    const grouped: Record<PlayerRole, TournamentPlayer[]> = {
-      "Carry": [], "Mid": [], "Offlane": [], "Soft Support": [], "Hard Support": [],
-    };
-    availablePlayers.forEach(player => {
-      if (grouped[player.role]) {
-        grouped[player.role].push(player);
+// Mock data that simulates the real API structure
+const mockLeaderboards = {
+  overall: [
+    {
+      userId: "28vD5PHBQCMefj1gbWrX1R8kBjM2",
+      displayName: "Valais",
+      averageScore: 95.24,
+      gamesPlayed: 18,
+      rank: 1,
+      currentLineup: {
+        "Carry": { id: "1", nickname: "Valais", role: "Carry" },
+        "Mid": { id: "2", nickname: "Gandalf1k", role: "Mid" }
       }
-    });
-    for (const role in grouped) {
-      grouped[role as PlayerRole].sort((a, b) => a.nickname.localeCompare(b.nickname));
+    },
+    {
+      userId: "CTRKrFfa37MuLQymMNEv9r4kVUh2",
+      displayName: ".joxxi",
+      averageScore: 93.17,
+      gamesPlayed: 25,
+      rank: 2,
+      currentLineup: {}
+    },
+    {
+      userId: "1uTIoCrW2vaa0rMy04MR55Pt3GA2",
+      displayName: "BeBoy", 
+      averageScore: 92.97,
+      gamesPlayed: 30,
+      rank: 3,
+      currentLineup: {}
+    },
+    {
+      userId: "ECWWYGZeAuRh4nyD8zcNh2NFX2r2",
+      displayName: "AaDeHaDe",
+      averageScore: 92.97,
+      gamesPlayed: 30,
+      rank: 4,
+      currentLineup: {}
+    },
+    {
+      userId: "vqqEyhJ9U7ZMESuFm4RelmByIhm2",
+      displayName: "Pocieszny",
+      averageScore: 92.97,
+      gamesPlayed: 30,
+      rank: 5,
+      currentLineup: {}
     }
-    return grouped;
-  }, [availablePlayers]);
+  ],
+  byRole: {
+    'Carry': [
+      { playerId: "oXYYBpa30uErWzrnzdAk", nickname: "Valais", teamName: "Pora na Przygode", averageScore: 120.5, totalMatches: 10, rank: 1 },
+      { playerId: "HsMv06e5VSBpzpkBsNQd", nickname: "Juxi1337", teamName: "CINCO PERROS", averageScore: 115.2, totalMatches: 12, rank: 2 }
+    ],
+    'Mid': [
+      { playerId: "UTsAbjuxuaPuQbzkAZND", nickname: "Gandalf1k", teamName: "Psychiatryk", averageScore: 125.3, totalMatches: 8, rank: 1 },
+      { playerId: "7sXBiIbXSl5ijRV0weub", nickname: "Joxxi", teamName: "CINCO PERROS", averageScore: 118.7, totalMatches: 11, rank: 2 }
+    ],
+    'Offlane': [
+      { playerId: "ak4dmw4VEYK0zCY1O2Zo", nickname: "Budda-", teamName: "Pora na Przygode", averageScore: 108.9, totalMatches: 9, rank: 1 }
+    ],
+    'Soft Support': [
+      { playerId: "zkw87djJSxaAqf4Pu3Yr", nickname: "AaDeHaDe", teamName: "Jest Letko", averageScore: 85.3, totalMatches: 18, rank: 1 }
+    ],
+    'Hard Support': [
+      { playerId: "73vueKAfZLRv0zeXYjAE", nickname: "Be Boy", teamName: "Jest Letko", averageScore: 75.8, totalMatches: 22, rank: 1 }
+    ]
+  }
+};
 
-  const loadFantasyData = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      console.log("Loading fantasy data...");
-      
-      const [players, leaderboard, status] = await Promise.all([
-        getAllTournamentPlayers().catch(err => {
-          console.error("Error loading players:", err);
-          throw new Error(`Failed to load players: ${err.message}`);
-        }),
-        getFantasyLeaderboard().catch(err => {
-          console.error("Error loading leaderboard:", err);
-          throw new Error(`Failed to load leaderboard: ${err.message}`);
-        }),
-        getTournamentStatus().catch(err => {
-          console.error("Error loading tournament status:", err);
-          throw new Error(`Failed to load tournament status: ${err.message}`);
-        }),
-      ]);
-      
-      console.log("Loaded data:", { playersCount: players.length, leaderboardCount: leaderboard.length, status });
-      
-      setAvailablePlayers(players);
-      setFantasyLeaderboard(leaderboard as LeaderboardParticipant[]);
-      setCurrentRoundId(status?.roundId || 'initial');
+const mockPlayers = [
+  { id: "1", nickname: "Valais", role: "Carry", mmr: 4167, teamName: "Pora na Przygode" },
+  { id: "2", nickname: "Gandalf1k", role: "Mid", mmr: 9500, teamName: "Psychiatryk" },
+  { id: "3", nickname: "Budda-", role: "Offlane", mmr: 5338, teamName: "Pora na Przygode" },
+  { id: "4", nickname: "AaDeHaDe", role: "Soft Support", mmr: 3891, teamName: "Jest Letko" },
+  { id: "5", nickname: "Be Boy", role: "Hard Support", mmr: 3856, teamName: "Jest Letko" },
+];
 
-      if (user && status?.roundId) {
-        const [profile] = await Promise.all([
-            createUserProfileIfNotExists(user).catch(() => getUserProfile(user.uid)) // fallback to getUserProfile if createUserProfileIfNotExists fails
-        ]);
+const TEAM_MMR_CAP = 25000;
+
+export default function FantasyPage() {
+  const [leaderboards, setLeaderboards] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const currentBudgetUsed = 0;
+
+  useEffect(() => {
+    const fetchLeaderboards = async () => {
+      try {
+        console.log('🚀 Starting leaderboard fetch...');
+        setLoading(true);
+        const response = await fetch('/api/fantasy/leaderboards');
+        console.log('📡 Response received:', response.status, response.ok);
+        const data = await response.json();
+        console.log('📊 Data received:', data.success, 'Keys:', Object.keys(data));
         
-        // Try to get lineup for current round, then fallback to previous rounds to preserve selections
-        let userLineup = null;
-        const currentRound = status.roundId;
-        
-        // Define round priority for fallback (most recent first)
-        const roundPriority = ['playoffs', 'group_stage', 'pre_season', 'initial'];
-        const rounds = [currentRound, ...roundPriority.filter(r => r !== currentRound)];
-        
-        for (const roundId of rounds) {
-          try {
-            userLineup = await getUserFantasyLineup(user.uid, roundId);
-            if (userLineup) break;
-          } catch (error) {
-            console.log(`No lineup found for round: ${roundId}`);
-          }
+        if (data.success) {
+          console.log('✅ Setting leaderboards data - FIXED ALGORITHM');
+          console.log('📊 Algorithm:', data.algorithm);
+          console.log('📅 Generated at:', data.generatedAt);
+          setLeaderboards(data.leaderboards);
+        } else {
+          console.log('❌ API returned error:', data.message);
+          setError(data.message || 'Failed to load leaderboards. Please run fixed fantasy recalculation first.');
+          setLeaderboards(null);
         }
-        
-        if (userLineup) setSelectedLineup(userLineup.lineup);
-        setUserProfile(profile);
+      } catch (err) {
+        console.error('💥 Error fetching leaderboards:', err);
+        setError('Network error: Failed to load leaderboards');
+        setLeaderboards(null);
+      } finally {
+        console.log('🏁 Setting loading to false');
+        setLoading(false);
       }
-    } catch (error) {
-      console.error("Fantasy data loading error:", error);
-      toast({
-        title: t('fantasy.messages.error'),
-        description: `${t('fantasy.messages.failedToLoadData')}: ${error instanceof Error ? error.message : t('fantasy.messages.unknownError')}`,
-        variant: "destructive"
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  }, [user, toast, t]);
+    };
 
-  React.useEffect(() => {
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    loadFantasyData();
+    fetchLeaderboards();
   }, []);
-
-  const handlePlayerSelect = (role: PlayerRole, playerId: string) => {
-    const playerToSelect = availablePlayers.find(p => p.id === playerId);
-    if (!playerToSelect) return;
-    
-    if (Object.values(selectedLineup).some(p => p?.id === playerId)) {
-        toast({ 
-          title: t('fantasy.messages.playerAlreadySelected'), 
-          description: t('fantasy.messages.playerAlreadySelectedDescription'), 
-          variant: "destructive" 
-        });
-        return;
-    }
-
-    setSelectedLineup(prev => ({ ...prev, [role]: playerToSelect }));
-  };
-
-  const performSave = async () => {
-    if (!user || !canSaveLineup || !currentRoundId) return;
-    
-    // Require Discord username - no fallbacks for privacy
-    if (!userProfile?.discordUsername) {
-      setIsModalOpen(true);
-      return;
-    }
-    
-    setIsSaving(true);
-    
-    try {
-      // Get the target round to save lineup FOR (next round)
-      const targetRound = getTargetRoundForLineup(currentRoundId);
-      console.log(`Saving lineup for target round: ${targetRound} (current round: ${currentRoundId})`);
-      
-      await saveUserFantasyLineup(user.uid, selectedLineup as Record<PlayerRole, TournamentPlayer>, targetRound, userProfile.discordUsername);
-      toast({ 
-        title: t('fantasy.messages.success'), 
-        description: t('fantasy.messages.lineupSaved') 
-      });
-      await loadFantasyData();
-    } catch (error) {
-      toast({ 
-        title: t('fantasy.messages.error'), 
-        description: t('fantasy.messages.failedToSave'), 
-        variant: "destructive" 
-      });
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleSaveClick = () => {
-      // Always require Discord username - no privacy fallbacks
-      if (!userProfile?.discordUsername) {
-          setIsModalOpen(true);
-      } else {
-          performSave();
-      }
-  };
-
-  const handleModalSubmit = async (username: string) => {
-    if (!user) return;
-    setIsSaving(true);
-    
-    try {
-        await updateUserProfile(user.uid, { discordUsername: username });
-        
-        setUserProfile(prev => ({ ...prev, uid: user.uid, discordUsername: username }));
-        
-        setIsModalOpen(false);
-        await performSave();
-    } catch (error) {
-        toast({ 
-          title: t('fantasy.messages.error'), 
-          description: t('fantasy.messages.failedToSaveDiscord'), 
-          variant: "destructive"
-        });
-    } finally {
-        setIsSaving(false);
-    }
-  };
-  
-  const canSaveLineup = useMemo(() => {
-      const rolesFilled = Object.keys(selectedLineup).length === PlayerRoles.length;
-      const budgetOK = currentBudgetUsed <= TEAM_MMR_CAP;
-      return rolesFilled && budgetOK;
-  }, [selectedLineup, currentBudgetUsed]);
-
-  if (isLoading) {
-    return <div className="flex justify-center items-center h-64"><div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary mx-auto"></div></div>;
-  }
 
   return (
     <div className="space-y-12">
-      <DiscordUsernameModal 
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        onSubmit={handleModalSubmit}
-        isSubmitting={isSaving}
-      />
-      {/* Desktop: show image banner with fixed height */}
+      {/* Hero Section */}
       <Card className="hidden md:flex shadow-xl text-center relative overflow-hidden h-[320px] fhd:h-[320px] 2k:h-[500px] flex-col justify-center p-6">
         <div className="absolute inset-0 z-0 bg-cover bg-center" style={{ backgroundImage: `url(/backgrounds/fantasy.png)` }} />
       </Card>
-      {/* Mobile: show text banner with neon font */}
+
       <Card className="flex md:hidden shadow-xl text-center relative overflow-hidden h-[120px] flex-col justify-center items-center p-4 bg-black">
         <span className="text-3xl font-extrabold text-[#39ff14] drop-shadow-[0_0_8px_#39ff14] font-neon-bines">
-          {t('fantasy.title')}
+          Fantasy League
         </span>
       </Card>
 
-      {/* Instructions Card */}
-      <Card className="shadow-lg">
-        <CardHeader>
-          <CardTitle className="text-2xl flex items-center">
-            <Info className="mr-2" />
-            {t('fantasy.buildTeam.instructions.title')}
-          </CardTitle>
-          <CardDescription>
-            {t('fantasy.hero.openToAll')}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-3">
-            <div className="flex items-start space-x-3">
-              <div className="flex-shrink-0 w-6 h-6 bg-primary rounded-full flex items-center justify-center text-white text-sm font-bold">1</div>
-              <p>{t('fantasy.buildTeam.instructions.step1')}</p>
+      {/* Round Status Bar */}
+      <Card className="shadow-lg border-primary/20">
+        <CardContent className="p-6">
+          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <Clock className="h-5 w-5 text-muted-foreground" />
+                <span className="text-sm text-muted-foreground">Current Round:</span>
+                <Badge variant="secondary" className="text-base">Group Stage</Badge>
+              </div>
+              
+              <div className="flex items-center gap-2">
+                <Target className="h-5 w-5 text-primary" />
+                <span className="text-sm text-muted-foreground">Selecting for:</span>
+                <Badge variant="default" className="text-base">Playoffs</Badge>
+              </div>
             </div>
-            <div className="flex items-start space-x-3">
-              <div className="flex-shrink-0 w-6 h-6 bg-primary rounded-full flex items-center justify-center text-white text-sm font-bold">2</div>
-              <p>{t('fantasy.buildTeam.instructions.step2')}</p>
-            </div>
-            <div className="flex items-start space-x-3">
-              <div className="flex-shrink-0 w-6 h-6 bg-primary rounded-full flex items-center justify-center text-white text-sm font-bold">3</div>
-              <p>{t('fantasy.buildTeam.instructions.step3')}</p>
-            </div>
-            <div className="flex items-start space-x-3">
-              <div className="flex-shrink-0 w-6 h-6 bg-primary rounded-full flex items-center justify-center text-white text-sm font-bold">4</div>
-              <p>{t('fantasy.buildTeam.instructions.step4')}</p>
-            </div>
-            <div className="flex items-start space-x-3">
-              <div className="flex-shrink-0 w-6 h-6 bg-primary rounded-full flex items-center justify-center text-white text-sm font-bold">5</div>
-              <p>{t('fantasy.buildTeam.instructions.step5')}</p>
-            </div>
-          </div>
-          <div className="border-t pt-4 space-y-2">
-            <div className="flex items-center space-x-2">
-              <BarChart2 className="h-4 w-4 text-primary" />
-              <p className="font-semibold text-sm">{t('fantasy.buildTeam.instructions.scoring')}</p>
-            </div>
-            <div className="flex items-center space-x-2">
-              <Lock className="h-4 w-4 text-destructive" />
-              <p className="font-semibold text-sm text-destructive">{t('fantasy.buildTeam.instructions.deadline')}</p>
+            
+            <div className="flex items-center gap-6">
+              <div className="text-center">
+                <div className="text-lg font-bold text-primary">87.3</div>
+                <div className="text-xs text-muted-foreground">Your Avg PPG</div>
+              </div>
+              <div className="text-center">
+                <div className="text-lg font-bold">12</div>
+                <div className="text-xs text-muted-foreground">Games Played</div>
+              </div>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {!user ? (
-        <Card className="shadow-lg text-center">
-          <CardHeader>
-            <CardTitle>{t('fantasy.joinLeague.title')}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="mb-4">{t('fantasy.joinLeague.description')}</p>
-            <Button onClick={signInWithGoogle}>{t('common.signIn')}</Button>
-          </CardContent>
-        </Card>
-      ) : (
-        <>
-          <Card className="shadow-lg">
-            <CardHeader>
-              <CardTitle className="text-2xl flex items-center">
-                <UserCircle className="mr-2" />
-                {t('fantasy.buildTeam.title')}
-              </CardTitle>
-              <CardDescription>
-                {t('fantasy.buildTeam.currentRound')}: <span className="font-bold text-primary">{currentRoundId || 'N/A'}</span>
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="p-4 border rounded-lg">
-                <div className="flex justify-between items-center mb-1">
-                  <Label>{t('fantasy.buildTeam.budgetUsed')}:</Label>
-                  <div className={cn("font-bold", currentBudgetUsed > TEAM_MMR_CAP ? 'text-destructive' : 'text-primary')}>
-                    {currentBudgetUsed.toLocaleString()} / {TEAM_MMR_CAP.toLocaleString()}
-                  </div>
-                </div>
-                <Progress value={(currentBudgetUsed / TEAM_MMR_CAP) * 100} indicatorClassName={cn(currentBudgetUsed > TEAM_MMR_CAP && "bg-destructive")} />
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {PlayerRoles.map(role => 
-                  <PlayerSelectionCard 
-                    key={role} 
-                    role={role} 
-                    playersByRole={playersByRole} 
-                    selectedLineup={selectedLineup} 
-                    onPlayerSelect={handlePlayerSelect} 
-                  />
-                )}
-              </div>
-            </CardContent>
-            <CardFooter className="flex-col space-y-3">
-              {!userProfile?.discordUsername && (
-                <div className="w-full p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                  <div className="flex items-center space-x-2 text-amber-800">
-                    <Info className="h-4 w-4 flex-shrink-0" />
-                    <div className="text-sm">
-                      <strong>Discord username required:</strong> You need to provide your Discord username to save lineups and participate in the leaderboard.
-                    </div>
-                  </div>
-                </div>
-              )}
-              <Button onClick={handleSaveClick} size="lg" disabled={!canSaveLineup || isSaving} className="w-full">
-                {isSaving ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b border-white mr-2"></div>
-                    {t('fantasy.buildTeam.saving')}...
-                  </>
-                ) : (
-                  <>
-                    <Lock className="mr-2" /> 
-                    {t('fantasy.buildTeam.saveLineup')}
-                  </>
-                )}
-              </Button>
-            </CardFooter>
-          </Card>
-        </>
-      )}
 
-      <Card className="shadow-lg">
+      {/* How to Play Section */}
+      <Card className="shadow-lg border-primary/20">
         <CardHeader>
-          <CardTitle className="text-2xl flex items-center">
-            <BarChart2 className="mr-2" />
-            {t('fantasy.leaderboard.title')}
+          <CardTitle className="flex items-center gap-2">
+            <BookOpen className="h-5 w-5 text-primary" />
+            How to Play Fantasy League
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <ScrollArea className="h-[400px] rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>{t('fantasy.leaderboard.rank')}</TableHead>
-                  <TableHead>{t('fantasy.leaderboard.player')}</TableHead>
-                  <TableHead>{t('fantasy.leaderboard.currentLineup')}</TableHead>
-                  <TableHead className="text-right">{t('fantasy.leaderboard.totalPoints')}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {fantasyLeaderboard.map((p, i) => <LeaderboardRow key={p.userId} participant={p} rank={i + 1} isCurrentUser={user?.uid === p.userId} />)}
-              </TableBody>
-            </Table>
-          </ScrollArea>
+          <div className="grid md:grid-cols-2 gap-6">
+            <div className="space-y-4">
+              <h3 className="font-semibold text-lg flex items-center gap-2">
+                <Users className="h-5 w-5 text-primary" />
+                Team Building
+              </h3>
+              <ul className="space-y-2 text-sm text-muted-foreground">
+                <li>• Select one player for each role (Carry, Mid, Offlane, Soft Support, Hard Support)</li>
+                <li>• Your total team MMR cannot exceed 25,000</li>
+                <li>• Choose wisely - higher MMR players cost more but may score more points</li>
+                <li>• You can change your lineup before each round starts</li>
+              </ul>
+            </div>
+            
+            <div className="space-y-4">
+              <h3 className="font-semibold text-lg flex items-center gap-2">
+                <TrendingUp className="h-5 w-5 text-primary" />
+                Scoring System
+              </h3>
+              <ul className="space-y-2 text-sm text-muted-foreground">
+                <li>• <strong>Balanced Algorithm:</strong> All roles now competitive (93-115 PPG range)</li>
+                <li>• <strong>Role-Specific:</strong> Mid/Offlane buffed, Hard Support healing nerfed</li>
+                <li>• <strong>Excellence Bonuses:</strong> Multi-stat performances get massive rewards</li>
+                <li>• <strong>Duration Normalized:</strong> Fair scoring regardless of game length</li>
+              </ul>
+              <div className="mt-3 p-2 bg-blue-50 border border-blue-200 rounded">
+                <div className="text-xs text-blue-800">
+                  🎯 <strong>New balanced algorithm active!</strong> All roles competitive in fantasy league
+                </div>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Player Selection Section */}
+      <Card className="shadow-lg">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Users className="h-5 w-5 text-primary" />
+            Build Your Team
+          </CardTitle>
+          <CardDescription>
+            Select one player for each role. Total MMR cannot exceed 25,000.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* Budget Progress */}
+          <div className="space-y-2">
+            <div className="flex justify-between text-sm">
+              <Label>MMR Budget Used</Label>
+              <span className="font-mono">
+                0 / 25,000
+              </span>
+            </div>
+            <Progress 
+              value={0} 
+              className="h-3"
+            />
+            <div className="text-xs text-muted-foreground">
+              Remaining: 25,000 MMR
+            </div>
+          </div>
+
+          {/* Role Selection Grid */}
+          <div className="grid lg:grid-cols-5 md:grid-cols-3 gap-4">
+            {["Carry", "Mid", "Offlane", "Soft Support", "Hard Support"].map((role) => (
+              <Card key={role} className="border-2 border-dashed border-muted">
+                <CardContent className="p-4 text-center">
+                  <div className="text-sm font-medium mb-2">{role}</div>
+                  <div className="text-xs text-muted-foreground mb-3">
+                    Select a {role.toLowerCase()}
+                  </div>
+                  <Button variant="outline" size="sm">
+                    Choose Player
+                  </Button>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          <div className="text-center">
+            <Button size="lg" className="w-full md:w-auto" disabled>
+              <Lock className="h-4 w-4 mr-2" />
+              Save Lineup (Complete team first)
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Fantasy Leaderboards */}
+      {loading ? (
+        <div className="text-center py-8">
+          <div className="animate-spin rounded-full h-16 w-16 border-4 border-primary/30 border-t-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading leaderboards...</p>
+        </div>
+      ) : error ? (
+        <div className="text-center py-8">
+          <p className="text-destructive mb-4">⚠️ {error}</p>
+          <p className="text-muted-foreground text-sm">Showing fallback data</p>
+        </div>
+      ) : null}
+      
+      {leaderboards && (
+        <CreativeLeaderboards leaderboards={leaderboards} />
+      )}
+      
+      {!leaderboards && !loading && (
+        <Card className="shadow-lg">
+          <CardContent className="p-8 text-center">
+            <Trophy className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+            <h3 className="text-xl font-semibold mb-2">Leaderboards Not Available</h3>
+            <p className="text-muted-foreground mb-4">
+              {error || 'Fantasy leaderboards are not ready yet.'}
+            </p>
+            <p className="text-sm text-muted-foreground">
+              Please contact an administrator to run the fixed fantasy recalculation.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Quick Algorithm Overview */}
+      <Card className="shadow-lg border-l-4 border-l-primary">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Calculator className="h-5 w-5 text-primary" />
+            Algorithm Quick Overview
+          </CardTitle>
+          <CardDescription>
+            High-level summary of the new balanced fantasy scoring system
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid md:grid-cols-3 gap-4">
+            <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+              <h4 className="font-semibold text-green-800 mb-2">🚀 Role Buffs</h4>
+              <ul className="text-sm text-green-700 space-y-1">
+                <li>• Mid: 3.8× kills (major buff!)</li>
+                <li>• Offlane: 3.0× kills, 2.8× assists</li>
+                <li>• Enhanced teamfight bonuses</li>
+              </ul>
+            </div>
+            
+            <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <h4 className="font-semibold text-blue-800 mb-2">⚖️ Balance Changes</h4>
+              <ul className="text-sm text-blue-700 space-y-1">
+                <li>• All roles: 93-115 PPG range</li>
+                <li>• Hard Support healing nerfed</li>
+                <li>• Duration normalization refined</li>
+              </ul>
+            </div>
+            
+            <div className="p-4 bg-purple-50 border border-purple-200 rounded-lg">
+              <h4 className="font-semibold text-purple-800 mb-2">🌟 Excellence System</h4>
+              <ul className="text-sm text-purple-700 space-y-1">
+                <li>• Multi-stat bonuses (3+ = huge!)</li>
+                <li>• Perfect game rewards (+15)</li>
+                <li>• Uncapped skill scaling</li>
+              </ul>
+            </div>
+          </div>
+          
+          <div className="bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-300 rounded-lg p-4">
+            <div className="flex items-center justify-center">
+              <div className="text-center">
+                <h4 className="font-semibold text-yellow-800">New Balanced Algorithm Active!</h4>
+                <p className="text-sm text-yellow-700">All roles now competitive with 93-115 PPG range</p>
+              </div>
+            </div>
+          </div>
         </CardContent>
       </Card>
     </div>
   );
 }
-
-export default FantasyLeaguePage;

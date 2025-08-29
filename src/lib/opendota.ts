@@ -1,6 +1,47 @@
 // import fetch from 'node-fetch'; // Node.js-only: move to scripts/server if needed
 
 /**
+ * Request parsing for a match from the OpenDota API.
+ * This will queue the match for parsing if the replay is still available.
+ */
+export async function requestOpenDotaMatchParse(matchId: number, apiKey?: string): Promise<{ success: boolean; jobId?: string; message?: string }> {
+  let url = `${OPENDOTA_API_BASE_URL}/request/${matchId}`;
+  if (apiKey || process.env.OPENDOTA_API_KEY) {
+    const key = apiKey || process.env.OPENDOTA_API_KEY;
+    url += (url.includes('?') ? '&' : '?') + 'api_key=' + key;
+  }
+  
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'User-Agent': 'OpenDota_API_Parse_Request'
+      }
+    });
+    
+    if (!res.ok) {
+      const text = await res.text();
+      return {
+        success: false,
+        message: `Failed to request parse: ${res.status} ${res.statusText} - ${text}`
+      };
+    }
+    
+    const result = await res.json();
+    return {
+      success: true,
+      jobId: result.job?.jobId,
+      message: 'Parse request submitted successfully'
+    };
+  } catch (error) {
+    return {
+      success: false,
+      message: `Error requesting parse: ${(error as Error).message}`
+    };
+  }
+}
+
+/**
  * Fetch a match from the OpenDota API.
  */
 export async function fetchOpenDotaMatch(matchId: number, apiKey?: string): Promise<any> {
@@ -33,6 +74,34 @@ import {
 
 const OPENDOTA_API_BASE_URL = 'https://api.opendota.com/api';
 
+/**
+ * Determines if a match from OpenDota has been fully parsed.
+ * Parsed matches contain detailed replay data, while unparsed matches only have basic WebAPI data.
+ */
+export function isMatchParsed(openDotaMatch: any): boolean {
+  // Check version field - parsed matches have version >= 20
+  if (openDotaMatch.version && openDotaMatch.version >= 20) {
+    return true;
+  }
+  
+  // Check if advanced player data is available (only in parsed matches)
+  if (openDotaMatch.players && openDotaMatch.players.length > 0) {
+    const firstPlayer = openDotaMatch.players[0];
+    // These fields are only available in parsed matches
+    const hasAdvancedData = 
+      firstPlayer.gold_per_min !== null &&
+      firstPlayer.gold_per_min !== undefined &&
+      firstPlayer.xp_per_min !== null &&
+      firstPlayer.xp_per_min !== undefined &&
+      firstPlayer.last_hits !== null &&
+      firstPlayer.last_hits !== undefined;
+    
+    return hasAdvancedData;
+  }
+  
+  return false;
+}
+
 // ... (API fetching functions remain the same)
 
 /**
@@ -46,25 +115,78 @@ const OPENDOTA_API_BASE_URL = 'https://api.opendota.com/api';
 export function transformMatchData(
   openDotaMatch: any,
   teams: Team[],
-  players: Player[]
+  players: Player[],
+  isManualImport: boolean = false,
+  existingTeamAssignments?: { radiant_team?: { id: string; name: string }, dire_team?: { id: string; name: string } }
 ): { game: Game; performances: PlayerPerformanceInGame[] } {
   
-  // Match only by name (case-insensitive, trimmed)
-  function findTeam(_openDotaTeamId: number | undefined, name: string | undefined) {
-    if (!name) return undefined;
-    const normName = name.trim().toLowerCase();
-    return teams.find(t => t.name.trim().toLowerCase() === normName);
-  }
+  console.log(`Transforming match ${openDotaMatch.match_id} (manual import: ${isManualImport}, parsed: ${isMatchParsed(openDotaMatch)})`);
+  
+  let radiantTeam: Team | undefined;
+  let direTeam: Team | undefined;
 
-  const radiantTeam = findTeam(openDotaMatch.radiant_team?.team_id, openDotaMatch.radiant_name);
-  const direTeam = findTeam(openDotaMatch.dire_team?.team_id, openDotaMatch.dire_name);
+  // If we have existing team assignments (from database), use them instead of trying to match from OpenDota
+  if (existingTeamAssignments?.radiant_team && existingTeamAssignments?.dire_team) {
+    console.log(`Using existing team assignments: Radiant="${existingTeamAssignments.radiant_team.name}" (${existingTeamAssignments.radiant_team.id}), Dire="${existingTeamAssignments.dire_team.name}" (${existingTeamAssignments.dire_team.id})`);
+    
+    radiantTeam = teams.find(t => t.id === existingTeamAssignments.radiant_team!.id);
+    direTeam = teams.find(t => t.id === existingTeamAssignments.dire_team!.id);
+    
+    if (!radiantTeam || !direTeam) {
+      const missingTeams = [];
+      if (!radiantTeam) missingTeams.push(`Radiant team ID: ${existingTeamAssignments.radiant_team.id}`);
+      if (!direTeam) missingTeams.push(`Dire team ID: ${existingTeamAssignments.dire_team.id}`);
+      const errorMsg = `Existing team assignments reference non-existent teams: ${missingTeams.join(', ')}`;
+      console.error(errorMsg);
+      throw new Error(errorMsg);
+    }
+    
+  } else {
+    // Fallback to original team matching logic
+    console.log(`No existing team assignments, attempting to match from OpenDota data...`);
+    
+    // Match only by name (case-insensitive, trimmed)
+    function findTeam(_openDotaTeamId: number | undefined, name: string | undefined) {
+      if (!name) return undefined;
+      const normName = name.trim().toLowerCase();
+      return teams.find(t => t.name.trim().toLowerCase() === normName);
+    }
 
-  if (!radiantTeam || !direTeam) {
-    const missingTeams = [];
-    if (!radiantTeam) missingTeams.push(`Radiant: ${openDotaMatch.radiant_name}`);
-    if (!direTeam) missingTeams.push(`Dire: ${openDotaMatch.dire_name}`);
-    throw new Error(`Tournament teams not found in database: ${missingTeams.join(', ')}. This might be a scrim or practice game.`);
+    if (isManualImport) {
+      // For manual imports, teams are specified by ID in the OpenDota data
+      console.log(`Manual import: looking for team IDs radiant=${openDotaMatch.radiant_team?.team_id}, dire=${openDotaMatch.dire_team?.team_id}`);
+      radiantTeam = teams.find(t => t.id === openDotaMatch.radiant_team?.team_id);
+      direTeam = teams.find(t => t.id === openDotaMatch.dire_team?.team_id);
+    } else {
+      // For automatic imports, match by name
+      console.log(`Automatic import: looking for team names radiant="${openDotaMatch.radiant_name}", dire="${openDotaMatch.dire_name}"`);
+      radiantTeam = findTeam(openDotaMatch.radiant_team?.team_id, openDotaMatch.radiant_name);
+      direTeam = findTeam(openDotaMatch.dire_team?.team_id, openDotaMatch.dire_name);
+    }
+
+    if (!radiantTeam || !direTeam) {
+      const missingTeams = [];
+      if (!radiantTeam) {
+        if (isManualImport) {
+          missingTeams.push(`Radiant team ID: ${openDotaMatch.radiant_team?.team_id}`);
+        } else {
+          missingTeams.push(`Radiant: ${openDotaMatch.radiant_name}`);
+        }
+      }
+      if (!direTeam) {
+        if (isManualImport) {
+          missingTeams.push(`Dire team ID: ${openDotaMatch.dire_team?.team_id}`);
+        } else {
+          missingTeams.push(`Dire: ${openDotaMatch.dire_name}`);
+        }
+      }
+      const errorMsg = `Tournament teams not found in database: ${missingTeams.join(', ')}. This might be a scrim or practice game.`;
+      console.error(errorMsg);
+      throw new Error(errorMsg);
+    }
   }
+  
+  console.log(`Final teams: Radiant="${radiantTeam.name}" (${radiantTeam.id}), Dire="${direTeam.name}" (${direTeam.id})`);
 
   const game: Game = {
     id: openDotaMatch.match_id.toString(),
@@ -77,77 +199,274 @@ export function transformMatchData(
     dire_team: { id: direTeam.id, name: direTeam.name },
   };
 
-  // Helper: calculate fantasy points for a player
+  // Helper: calculate fantasy points for a player (FINAL OPTIMIZED EQUALIZED SYSTEM)
   function calculateFantasyPoints(p: any, player: Player | undefined, isRadiant: boolean): number {
-    // General scoring
     let points = 0;
-    // Roshan kills (team stat)
-    if (openDotaMatch.roshan_kills) {
-      // Distribute Roshan kills to all players on the team
-      const teamRoshanKills = isRadiant ? openDotaMatch.radiant_roshan_kills : openDotaMatch.dire_roshan_kills;
-      points += (teamRoshanKills || 0) * 20;
-    }
-    // Team win
-    const teamWon = (isRadiant && openDotaMatch.radiant_win) || (!isRadiant && !openDotaMatch.radiant_win);
-    if (teamWon) points += 10;
-    // Barracks destroyed
-    if (p.barracks_killed) {
-      // OpenDota does not provide per-player barracks, so skip or use team total if available
-    }
-    // Use team barracks destroyed if available
-    if (isRadiant && openDotaMatch.radiant_barracks_status !== undefined) {
-      // Each bit represents a barracks, 6 total (melee/range pairs)
-      const barracks = openDotaMatch.radiant_barracks_status;
-      const destroyed = 6 - barracks.toString(2).replace(/0/g, '').length;
-      points += destroyed * 10;
-    }
-    if (!isRadiant && openDotaMatch.dire_barracks_status !== undefined) {
-      const barracks = openDotaMatch.dire_barracks_status;
-      const destroyed = 6 - barracks.toString(2).replace(/0/g, '').length;
-      points += destroyed * 10;
-    }
-    // Towers destroyed (team stat, not per player)
-    if (isRadiant && openDotaMatch.radiant_tower_status !== undefined) {
-      const towers = openDotaMatch.radiant_tower_status;
-      const destroyed = 11 - towers.toString(2).replace(/0/g, '').length;
-      points += destroyed * 10;
-    }
-    if (!isRadiant && openDotaMatch.dire_tower_status !== undefined) {
-      const towers = openDotaMatch.dire_tower_status;
-      const destroyed = 11 - towers.toString(2).replace(/0/g, '').length;
-      points += destroyed * 10;
-    }
+    const gameDurationMinutes = openDotaMatch.duration / 60;
+    
+    // === EXTRACT GAME DATA ===
+    const role = player?.role || 'Unknown';
+    const kills = p.kills || 0;
+    const deaths = p.deaths || 0;
+    const assists = p.assists || 0;
+    const lastHits = p.last_hits || 0;
+    const denies = p.denies || 0;
+    const gpm = p.gold_per_min || 0;
+    const xpm = p.xp_per_min || 0;
+    const heroDamage = p.hero_damage || 0;
+    const heroHealing = p.hero_healing || 0;
+    const towerDamage = p.tower_damage || 0;
+    const netWorth = p.net_worth || 0;
+    const obsPlaced = p.obs_placed || 0;
+    const senPlaced = p.sen_placed || 0;
+    const playerWon = (isRadiant && openDotaMatch.radiant_win) || (!isRadiant && !openDotaMatch.radiant_win);
+    const firstBloodClaimed = p.firstblood_claimed || false;
+    const courierKills = p.courier_kills || 0;
+    const observerKills = p.observer_kills || 0;
+    const sentryKills = p.sentry_kills || 0;
+    const highestKillStreak = p.kill_streaks ? Math.max(...Object.keys(p.kill_streaks).map(Number)) : Math.max(1, Math.floor(kills / 2.5));
+    const buybackCount = netWorth > 25000 ? 1 : 0;
 
-    // Role-specific scoring
-    const role = player?.role;
-    if (role === 'Carry') {
-      points += (p.kills || 0) * 2.5;
-      points += (p.deaths || 0) * -2.5;
-      points += (p.gold || 0) / 1000 * 1;
-    } else if (role === 'Mid') {
-      points += (p.kills || 0) * 2.5;
-      points += (p.deaths || 0) * -1.5;
-      points += (p.assists || 0) * 1.5;
-    } else if (role === 'Offlane') {
-      points += (p.kills || 0) * 2.5;
-      points += (p.deaths || 0) * -1.5;
-      points += (p.assists || 0) * 2.5;
-    } else if (role === 'Soft Support') {
-      points += (p.kills || 0) * 1;
-      points += (p.deaths || 0) * -2.5;
-      points += (p.assists || 0) * 3;
-    } else if (role === 'Hard Support') {
-      points += (p.kills || 0) * 1;
-      points += (p.deaths || 0) * -2.5;
-      points += (p.assists || 0) * 5;
+    // === UNIVERSAL BASE SCORING ===
+    if (playerWon) points += 5;
+    if (firstBloodClaimed) points += 12; 
+    
+    points += towerDamage / 1000; 
+    points += (observerKills || 0) * 2.5;
+    points += (courierKills || 0) * 10;
+    points += (sentryKills || 0) * 2;
+    
+    if (highestKillStreak >= 3) {
+        points += Math.pow(highestKillStreak - 2, 1.2) * 2.5;
     }
-    return points;
+    
+    const deathPenalty = deaths * -0.7; // Updated to match optimized algorithm
+    points += deathPenalty;
+    
+    const netWorthPerMin = netWorth / gameDurationMinutes;
+    if (netWorthPerMin > 350) {
+        points += Math.sqrt(netWorthPerMin - 350) / 10;
+    }
+    
+    // === OPTIMIZED ROLE-SPECIFIC SCORING ===
+    
+    if (role === 'Carry') {
+        // Current: 94.4, Target: 100 → Need +6% boost
+        points += kills * 2.5; // Increased from 2.4
+        points += assists * 1.3; // Increased from 1.2
+        
+        const farmEfficiency = (gpm - 300) / 40; // More generous
+        points += Math.max(farmEfficiency, 0);
+        
+        const lastHitBonus = lastHits / gameDurationMinutes / 5.5; // More generous
+        points += lastHitBonus;
+        
+        points += (denies || 0) / 3.5; // More generous
+        
+        if (netWorth > 15000) {
+            points += Math.sqrt(netWorth - 15000) / 110; // More generous
+        }
+        
+        if (gameDurationMinutes > 38) {
+            const lateGameMultiplier = 1 + (gameDurationMinutes - 38) / 140;
+            points *= lateGameMultiplier;
+        }
+        
+    } else if (role === 'Mid') {
+        // Current: 79.2, Target: 100 → Need +26% boost (MAJOR BUFF)
+        points += kills * 3.8; // MAJOR increase from 3.0
+        points += assists * 2.0; // Increased from 1.6
+        
+        // Enhanced XP mastery (Mid's signature)
+        const xpmBonus = Math.max(xpm - 400, 0) / 40; // More generous threshold
+        points += xpmBonus;
+        
+        // Hero damage excellence (major buff)
+        const heroDamagePerMin = heroDamage / gameDurationMinutes;
+        points += heroDamagePerMin / 100; // Much more generous from /140
+        
+        // GPM efficiency for farming mids
+        if (gpm > 480) { // Lower threshold
+            points += (gpm - 480) / 50; // More generous
+        }
+        
+        // Solo dominance bonus (enhanced)
+        if (kills >= 7 && assists < kills) { // Lower threshold
+            points += 12; // Increased from 8
+        }
+        
+        // XP leadership bonus (enhanced)
+        if (xpm > 600) {
+            points += Math.sqrt(xpm - 600) / 12; // More generous
+        }
+        
+        // NEW: Mid game impact bonus
+        if (kills >= 10 || heroDamagePerMin > 600) {
+            points += 8; // New bonus for high impact
+        }
+        
+        // NEW: Last hit efficiency for farming mids
+        if (lastHits >= gameDurationMinutes * 6) {
+            points += (lastHits - gameDurationMinutes * 6) / 15; // Farming mid bonus
+        }
+        
+    } else if (role === 'Offlane') {
+        // Current: 84.0, Target: 100 → Need +19% boost (MAJOR BUFF)
+        points += kills * 3.0; // MAJOR increase from 2.4
+        points += assists * 2.8; // MAJOR increase from 2.2
+        
+        // Enhanced teamfight participation (signature offlane)
+        const participationRate = (kills + assists) / Math.max((kills + assists + deaths), 1);
+        points += participationRate * 18; // Increased from 14
+        
+        // Enhanced space creation
+        const spaceCreationScore = (kills + assists) * 2.2 - deaths; // Increased multiplier
+        if (spaceCreationScore > 8) { // Lower threshold
+            points += Math.sqrt(spaceCreationScore - 8) * 2; // More generous
+        }
+        
+        // Durability bonus (enhanced)
+        if (deaths <= 6 && (kills + assists) >= 7) { // More forgiving thresholds
+            points += 10; // Increased from 8
+        }
+        
+        // Hero damage for fighting offlaners
+        points += heroDamage / gameDurationMinutes / 200;
+        
+        // Initiation/teamfight bonus (enhanced)
+        if (assists > kills && assists >= 10) { // Lower threshold
+            points += assists * 0.4; // More generous
+        }
+        
+        // NEW: High-assist performance bonus
+        if (assists >= 15) {
+            points += (assists - 15) * 0.5; // Additional scaling for exceptional teamfight
+        }
+        
+        // NEW: Offlane survival bonus
+        if ((kills + assists) >= 15 && deaths <= 8) {
+            points += 8; // Reward surviving big teamfights
+        }
+        
+    } else if (role === 'Soft Support') {
+        // Current: 96.5, Target: 100 → Need +4% boost (minor)
+        points += kills * 1.9; // Slightly increased from 1.8
+        points += assists * 2.1; // Slightly increased from 2.0
+        
+        points += (obsPlaced || 0) * 2.1; // Slightly increased
+        points += (senPlaced || 0) * 1.9; // Slightly increased
+        
+        const teamfightImpact = kills + assists;
+        if (teamfightImpact >= 15) {
+            points += Math.sqrt(teamfightImpact - 15) * 2.2; // Slightly increased
+        }
+        
+        const supportEfficiency = (kills + assists) / Math.max(gpm / 100, 1);
+        points += Math.min(supportEfficiency * 1.6, 12); // Slightly increased
+        
+        const wardEfficiency = (obsPlaced + senPlaced) / Math.max(gameDurationMinutes / 10, 1);
+        if (wardEfficiency > 2) {
+            points += (wardEfficiency - 2) * 5.5; // Slightly increased
+        }
+        
+        if (kills >= 5 && gpm < 350) {
+            points += kills * 1.6; // Slightly increased
+        }
+        
+    } else if (role === 'Hard Support') {
+        // Combat Contribution (Reduced)
+        points += kills * 1.3;
+        points += assists * 1.1;
+        
+        // Vision Control (Slightly Reduced)
+        points += (obsPlaced || 0) * 2.0;
+        points += (senPlaced || 0) * 1.8;
+        
+        // Healing Contribution (MAJOR NERF - Was Overpowered)
+        points += (heroHealing || 0) / 150;
+        
+        // Sacrifice Play Recognition
+        if (deaths >= 8 && assists >= 20) {
+            points += 5;
+        }
+        
+        // Vision Mastery
+        if ((obsPlaced + senPlaced) >= 15) {
+            points += 8;
+        }
+        
+        // Support Excellence
+        const supportExcellence = assists + obsPlaced + senPlaced + (heroHealing / 1500);
+        if (supportExcellence > 30) {
+            points += Math.sqrt(supportExcellence - 30) * 1.0;
+        }
+        
+        // Buyback Dedication
+        if (buybackCount && buybackCount > 0) {
+            points += buybackCount * 4;
+        }
+        
+        // Major Healing Bonus (Higher Threshold)
+        if (heroHealing > 8000) {
+            points += Math.sqrt(heroHealing - 8000) / 100;
+        }
+        
+    } else {
+        points += kills * 2.2;
+        points += assists * 2.0;
+    }
+    
+    // === DURATION NORMALIZATION ===
+    const durationMultiplier = Math.min(gameDurationMinutes / 40, 1.25);
+    points = points / durationMultiplier;
+    
+    // No floor - bad performances should be punished with negative scores 
+    
+    // === EXCELLENCE BONUSES ===
+    const kda = deaths > 0 ? (kills + assists) / deaths : (kills + assists);
+    if (kda >= 6) {
+        points += Math.pow(kda - 6, 0.7) * 2;
+    }
+    
+    let excellenceCount = 0;
+    let excellenceBonus = 0;
+    
+    if (kills >= 12) { excellenceCount++; excellenceBonus += (kills - 12) * 0.8; }
+    if (assists >= 18) { excellenceCount++; excellenceBonus += (assists - 18) * 0.3; }
+    if (gpm >= 600) { excellenceCount++; excellenceBonus += (gpm - 600) / 80; }
+    if (heroDamage >= gameDurationMinutes * 500) { excellenceCount++; excellenceBonus += 4; }
+    if (lastHits >= gameDurationMinutes * 7) { excellenceCount++; excellenceBonus += 2; }
+    if ((obsPlaced + senPlaced) >= 15) { excellenceCount++; excellenceBonus += 3; }
+    
+    if (excellenceCount >= 3) {
+        points += excellenceBonus + (excellenceCount * 3);
+    }
+    
+    if (deaths === 0 && kills >= 5 && assists >= 10) {
+        points += 15;
+    }
+    
+    return Math.round(points * 100) / 100;
+  }
+  
+  // Helper function to calculate net worth difference
+  function calculateNetWorthDifference(match: any, isRadiant: boolean): number {
+    const radiantNW = match.players.filter((p: any) => p.player_slot < 128)
+      .reduce((sum: number, p: any) => sum + (p.net_worth || 0), 0);
+    const direNW = match.players.filter((p: any) => p.player_slot >= 128)
+      .reduce((sum: number, p: any) => sum + (p.net_worth || 0), 0);
+    return isRadiant ? radiantNW - direNW : direNW - radiantNW;
   }
 
-  const performances: PlayerPerformanceInGame[] = openDotaMatch.players.map((p: any) => {
+  const performances: PlayerPerformanceInGame[] = openDotaMatch.players.map((p: any, index: number) => {
     // Match player by steamId32 (string) to OpenDota account_id (number)
     const player = players.find(pl => pl.steamId32 === String(p.account_id));
     const isRadiant = p.player_slot < 128;
+    const isParsed = isMatchParsed(openDotaMatch);
+
+    if (!player) {
+      console.warn(`Player with account_id ${p.account_id} not found in tournament players database - creating placeholder entry`);
+    }
 
     // Calculate highest kill streak
     let highestKillStreak = 0;
@@ -159,20 +478,39 @@ export function transformMatchData(
         }
     }
     
+    // Log missing fields for unparsed matches
+    if (!isParsed) {
+      const missingFields = [];
+      if (!p.obs_placed && p.obs_placed !== 0) missingFields.push('obs_placed');
+      if (!p.sen_placed && p.sen_placed !== 0) missingFields.push('sen_placed');
+      if (!p.observer_kills && p.observer_kills !== 0) missingFields.push('observer_kills');
+      if (!p.courier_kills && p.courier_kills !== 0) missingFields.push('courier_kills');
+      if (!p.buyback_count && p.buyback_count !== 0) missingFields.push('buyback_count');
+      if (!p.hero_healing && p.hero_healing !== 0) missingFields.push('hero_healing');
+      
+      if (missingFields.length > 0) {
+        console.warn(`Unparsed match ${openDotaMatch.match_id} player ${p.account_id} missing fields: ${missingFields.join(', ')}`);
+      }
+    }
+    
+    const fantasyPoints = calculateFantasyPoints(p, player, isRadiant);
+    
+    console.log(`Player ${player?.id || p.account_id} (${isRadiant ? 'Radiant' : 'Dire'}): ${fantasyPoints.toFixed(2)} fantasy points`);
+    
     return {
       playerId: player?.id || `unknown_${p.account_id}`,
       teamId: isRadiant ? radiantTeam.id : direTeam.id,
       heroId: p.hero_id,
-      kills: p.kills,
-      deaths: p.deaths,
-      assists: p.assists,
-      gpm: p.gold_per_min,
-      xpm: p.xp_per_min,
-      lastHits: p.last_hits,
-      denies: p.denies,
-      netWorth: p.net_worth,
-      heroDamage: p.hero_damage,
-      towerDamage: p.tower_damage,
+      kills: p.kills || 0,
+      deaths: p.deaths || 0,
+      assists: p.assists || 0,
+      gpm: p.gold_per_min || 0,
+      xpm: p.xp_per_min || 0,
+      lastHits: p.last_hits || 0,
+      denies: p.denies || 0,
+      netWorth: p.net_worth || 0,
+      heroDamage: p.hero_damage || 0,
+      towerDamage: p.tower_damage || 0,
       obsPlaced: p.obs_placed || 0,
       senPlaced: p.sen_placed || 0,
       courierKills: p.courier_kills || 0,
@@ -182,7 +520,7 @@ export function transformMatchData(
       highestKillStreak: highestKillStreak,
       buybackCount: p.buyback_count || 0,
       heroHealing: p.hero_healing || 0,
-      fantasyPoints: calculateFantasyPoints(p, player, isRadiant),
+      fantasyPoints: fantasyPoints,
     };
   });
 
