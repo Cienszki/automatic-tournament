@@ -1,0 +1,132 @@
+
+🎯 FANTASY STRATEGY GUIDE
+
+═══════════════════════════════════════════════════════════════
+HIGH-VALUE TARGETS BY ROLE
+═══════════════════════════════════════════════════════════════
+🛡️  CARRY PRIORITIES:
+   • High GPM games (scaling bonuses)
+   • Long games (38+ min late game multiplier)
+   • Good farmers (last hits, denies)
+   • Net worth efficiency (20k+ in <40min)
+
+⚡ MID PRIORITIES:
+   • High kill players (3.8× multiplier!)
+   • High hero damage (÷100 scaling)
+   • XPM leaders (600+ XPM bonuses)
+   • Solo players (assists < kills = +12 bonus)
+
+🗡️  OFFLANE PRIORITIES:
+   • Teamfight participants (2.8× assists!)
+   • High kill participation rates
+   • Space creators (high K+A, controlled deaths)
+   • Consistent performers (7+ K+A each game)
+
+🎭 SOFT SUPPORT PRIORITIES:
+   • Ward efficiency masters (15+ wards)
+   • Teamfight impact (15+ K+A)
+   • Low GPM, high impact players
+   • Versatile supports (kills + assists)
+
+🛡️  HARD SUPPORT PRIORITIES:
+   • Ward placement experts (vision control)
+   • Healing supports (but nerfed - don't overvalue)
+   • Sacrifice play recognition
+   • Perfect positioning (assists without deaths)
+
+═══════════════════════════════════════════════════════════════
+EXCELLENCE CATEGORY STRATEGY
+═══════════════════════════════════════════════════════════════
+Target players who can hit 3+ categories for massive bonuses:
+
+META COMBINATIONS:
+• Core Player: Kills≥12 + GPM≥600 + Hero Damage≥500/min
+• Farming Mid: Kills≥12 + GPM≥600 + LastHits≥7/min  
+• Support God: Assists≥18 + Wards≥15 + GPM≥600
+• Perfect Game: 0 Deaths + High K+A + Any excellence
+
+AVOID COMBINATIONS:
+• One-trick carries (only GPM, no versatility)
+• Passive mids (low kills despite 3.8× multiplier)
+• Greedy supports (high GPM but low impact)
+
+═══════════════════════════════════════════════════════════════
+GAME META CONSIDERATIONS
+═══════════════════════════════════════════════════════════════
+SHORT GAMES (25-35 min):
+✅ Aggressive early game players
+✅ High kill/min ratios
+✅ Duration normalization boost (+25-33%)
+❌ Scaling carries (no late game bonus)
+
+NORMAL GAMES (35-45 min):
+✅ Balanced lineups work well
+✅ All roles competitive
+✅ Standard scoring (no penalties/bonuses)
+
+LONG GAMES (45+ min):
+✅ Carries with late game scaling
+✅ Teamfight specialists (more opportunities)
+❌ Early game specialists (duration penalty)
+❌ One-dimensional players
+
+HIGH-KILL GAMES (30+ team kills):
+✅ Mid laners (3.8× kill multiplier)
+✅ Offlane teamfighters (2.8× assist multiplier)
+✅ Excellence bonus opportunities
+❌ Passive farming carries
+
+VISION-HEAVY GAMES:
+✅ Dedicated supports (ward efficiency bonuses)
+✅ Multi-stat excellence (wards + assists)
+✅ Map control specialists
+
+═══════════════════════════════════════════════════════════════
+LINEUP CONSTRUCTION TIPS
+═══════════════════════════════════════════════════════════════
+BALANCED APPROACH:
+• 1 High-ceiling core (excellence potential)
+• 1 Consistent performer (reliable 80+ points)
+• 1 Meta specialist (offlane teamfighter)
+• 1 Support excellence player (wards + assists)
+• 1 Wild card (undervalued role/player)
+
+HIGH-RISK HIGH-REWARD:
+• Target 3+ players with excellence potential
+• Focus on Mid/Offlane (highest scoring roles)
+• Avoid Hard Support (lowest ceiling)
+• All-in on specific game meta
+
+SAFE FLOOR APPROACH:
+• Prioritize consistency over peaks
+• Mix roles evenly (hedged bets)  
+• Target reliable 60-100 point players
+• Avoid volatile feast-or-famine players
+
+═══════════════════════════════════════════════════════════════
+ADVANCED ANALYTICS
+═══════════════════════════════════════════════════════════════
+PLAYER RESEARCH PRIORITIES:
+1. Historical excellence category hit rate
+2. Role performance vs. team performance
+3. Game duration tendencies
+4. Meta adaptation speed
+5. Consistency vs. peak performance ratio
+
+RED FLAGS:
+• One-stat wonders (only 1 excellence category)
+• Team-dependent performers (only good when team wins)
+• Meta slaves (only good in specific patches)
+• Feast-or-famine (huge variance in scores)
+
+GREEN FLAGS:  
+• Multi-stat excellence (3+ categories regularly)
+• Individual brilliance (good even in losses)
+• Consistent excellence (reliable 100+ points)
+• Meta adaptation (good across different game types)
+
+═══════════════════════════════════════════════════════════════
+Final Algorithm: Optimized Equalized System
+All roles balanced: 93-115 PPG competitive range
+Role imbalance reduced from 152.5% to 24.4%
+Individual skill rewarded, team luck minimized

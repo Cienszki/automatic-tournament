@@ -1,0 +1,29 @@
+Rule Category,Role,Metric,Multiplier,Max Points,Description
+Base Scoring,All,Team Win,,15,Bonus for team victory
+Base Scoring,All,First Blood,,10,Bonus for claiming first blood
+Base Scoring,All,Tower Damage,,15,Tower damage contribution (max 15 pts 1 pt per 1000 damage)
+Base Scoring,All,Hero Damage,,10,Hero damage per minute bonus (>400 DPM max 10 pts)
+Role Scoring,Carry,Kills,2.5,,Kill points for Carry role
+Role Scoring,Carry,Deaths,-2,,Death penalty for Carry role
+Role Scoring,Carry,Assists,0.8,,Assist bonus for Carry role
+Role Scoring,Mid,Kills,2.3,,Kill points for Mid role
+Role Scoring,Mid,Deaths,-1.8,,Death penalty for Mid role
+Role Scoring,Mid,Assists,1.2,,Assist bonus for Mid role
+Role Scoring,Offlane,Kills,2,,Kill points for Offlane role
+Role Scoring,Offlane,Deaths,-1.5,,Death penalty for Offlane role
+Role Scoring,Offlane,Assists,2,,Assist bonus for Offlane role
+Role Scoring,Soft Support,Kills,1.2,,Kill points for Soft Support role
+Role Scoring,Soft Support,Deaths,-1.2,,Death penalty for Soft Support role
+Role Scoring,Soft Support,Assists,2.5,50,Assist bonus for Soft Support role (capped)
+Role Scoring,Soft Support,Observer Wards,1.5,,Observer ward placement bonus
+Role Scoring,Soft Support,Sentry Wards,1.2,,Sentry ward placement bonus
+Role Scoring,Hard Support,Kills,1,,Kill points for Hard Support role
+Role Scoring,Hard Support,Deaths,-1,,Death penalty for Hard Support role
+Role Scoring,Hard Support,Assists,3,60,Assist bonus for Hard Support role (capped)
+Role Scoring,Hard Support,Observer Wards,2,,Observer ward placement bonus
+Role Scoring,Hard Support,Sentry Wards,1.8,,Sentry ward placement bonus
+Role Scoring,Hard Support,Hero Healing,0.01,,Hero healing bonus (1 pt per 100 healing)
+Adjustments,All,Duration Normalization,,,Score normalized for game duration (40min baseline)
+Adjustments,All,Performance Floor,,-10,Minimum fantasy score floor
+Adjustments,All,Comeback Bonus,,8,Team wins with >3000 networth deficit
+Adjustments,All,Stomp Reduction,0.8,,Team loses with >8000 networth lead

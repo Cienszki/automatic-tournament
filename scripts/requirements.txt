@@ -1,0 +1,3 @@
+# requirements.txt for fetch_league_games.py
+python-dotenv
+requests

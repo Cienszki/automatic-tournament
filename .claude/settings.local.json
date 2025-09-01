@@ -1,0 +1,49 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run build:*)",
+      "Bash(npm run type-check:*)",
+      "Bash(npm run typecheck:*)",
+      "WebFetch(domain:docs.opendota.com)",
+      "WebSearch",
+      "Bash(grep:*)",
+      "Bash(curl:*)",
+      "Bash(npm run dev:*)",
+      "Bash(node:*)",
+      "Bash(npx tsx:*)",
+      "Bash(npx tsc:*)",
+      "Bash(firebase deploy:*)",
+      "Bash(git add:*)",
+      "Bash(dir:*)",
+      "Bash(npm install:*)",
+      "Bash(timeout 10 curl -s \"http://localhost:3000/fantasy\")",
+      "Bash(timeout 15 curl -s \"http://localhost:3000/fantasy\")",
+      "Bash(timeout 10 curl -s \"http://localhost:3005/fantasy\")",
+      "Bash(timeout 15 curl -s \"http://localhost:3005/fantasy\")",
+      "Bash(timeout 15 curl -s \"http://localhost:3006/fantasy\")",
+      "Bash(timeout 15 curl -s \"http://localhost:3007/fantasy\")",
+      "Bash(timeout 15 curl -s \"http://localhost:3008/fantasy\")",
+      "Bash(timeout 15 curl -s \"http://localhost:3009/fantasy\")",
+      "Bash(timeout 10 curl -s \"http://localhost:3009/fantasy\")",
+      "Bash(timeout 15 curl -s \"http://localhost:3010/fantasy\")",
+      "Bash(timeout 10 curl -s \"http://localhost:3010/fantasy\")",
+      "Bash(timeout 15 curl -s \"http://localhost:3011/fantasy\")",
+      "Bash(timeout 10 curl -s \"http://localhost:3012/fantasy\")",
+      "Read(/C:\\c\\Users\\wilqw\\Desktop\\code\\Letnia/**)",
+      "Bash(timeout 10 curl -s \"http://localhost:3005/api/fantasy/leaderboards\")",
+      "Bash(npx next dev:*)",
+      "Bash(timeout 10 curl -s \"http://localhost:3000/api/fantasy/leaderboards\")",
+      "Bash(timeout:*)",
+      "Bash(taskkill:*)",
+      "Bash(firebase hosting:channel:deploy:*)",
+      "Bash(git checkout:*)",
+      "Bash(git stash:*)",
+      "WebFetch(domain:dota2inhouse.pl)"
+    ],
+    "deny": [],
+    "ask": [],
+    "additionalDirectories": [
+      "C:\\c\\Users\\wilqw\\Desktop\\code\\Letnia"
+    ]
+  }
+}
