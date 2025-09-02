@@ -189,6 +189,71 @@ export function validateGameData(game: Game, performances: PlayerPerformanceInGa
         });
     }
 
+    // Check if this appears to be a practice/scrim game that shouldn't be saved
+    const practiceGameCheck = isPracticeGame(game, performances);
+    if (!practiceGameCheck.isValid) {
+        errors.push(...practiceGameCheck.errors);
+    }
+
+    return {
+        isValid: errors.length === 0,
+        errors
+    };
+}
+
+/**
+ * Detects practice/scrim games that should not be saved to avoid cluttering tournament data.
+ * Based on analysis of problematic matches like game 8437261734.
+ */
+export function isPracticeGame(game: Game, performances: PlayerPerformanceInGame[]): {
+    isValid: boolean;
+    errors: string[];
+} {
+    const errors: string[] = [];
+    
+    // Get total stats across all players
+    const totalKills = performances.reduce((sum, p) => sum + (p.kills || 0), 0);
+    const totalDeaths = performances.reduce((sum, p) => sum + (p.deaths || 0), 0);
+    const totalAssists = performances.reduce((sum, p) => sum + (p.assists || 0), 0);
+    const totalLastHits = performances.reduce((sum, p) => sum + ((p as any).last_hits || 0), 0);
+    const totalHeroDamage = performances.reduce((sum, p) => sum + ((p as any).hero_damage || 0), 0);
+    
+    // Check for extremely low engagement (likely practice/AFK game)
+    if (totalKills === 0 && totalDeaths === 0 && totalAssists === 0) {
+        errors.push('Match appears to be a practice game: No kills, deaths, or assists recorded');
+    }
+    
+    // Check for abnormally low activity relative to game duration
+    const gameDurationMinutes = game.duration / 60;
+    const killsPerMinute = totalKills / gameDurationMinutes;
+    
+    // For games longer than 15 minutes, expect at least some engagement
+    if (gameDurationMinutes > 15 && killsPerMinute < 0.1) {
+        errors.push(`Match appears to be a practice game: Very low activity (${killsPerMinute.toFixed(2)} kills/min) for ${Math.round(gameDurationMinutes)}min game`);
+    }
+    
+    // Check if all players have identical or extremely low stats (bot/practice scenario)
+    if (performances.length >= 8) { // At least 8 players for meaningful check
+        const uniqueKills = new Set(performances.map(p => p.kills || 0));
+        const uniqueDeaths = new Set(performances.map(p => p.deaths || 0));
+        const uniqueAssists = new Set(performances.map(p => p.assists || 0));
+        
+        // If all players have identical low stats, likely a practice game
+        if (uniqueKills.size <= 2 && uniqueDeaths.size <= 2 && uniqueAssists.size <= 2 && totalKills <= 3) {
+            errors.push('Match appears to be a practice game: All players have nearly identical low stats');
+        }
+    }
+    
+    // Check for extremely low hero damage in longer games
+    if (gameDurationMinutes > 20 && totalHeroDamage < 10000) {
+        errors.push(`Match appears to be a practice game: Very low total hero damage (${totalHeroDamage}) for ${Math.round(gameDurationMinutes)}min game`);
+    }
+    
+    // Check for very short games that might be connection tests
+    if (gameDurationMinutes < 5 && totalKills + totalDeaths + totalAssists < 5) {
+        errors.push('Match appears to be a practice game: Very short duration with minimal activity');
+    }
+    
     return {
         isValid: errors.length === 0,
         errors

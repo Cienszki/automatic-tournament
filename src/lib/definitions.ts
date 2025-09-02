@@ -184,8 +184,11 @@ export interface TournamentPlayer extends Player {
 
 export interface FantasyLineup {
     userId: string;
+    displayName?: string;
+    roundId?: string;
     lineup: Partial<Record<PlayerRole, TournamentPlayer>>;
-    totalFantasyScore: number;
+    submittedAt?: string;
+    totalFantasyScore?: number;
 }
 
 export interface FantasyData {

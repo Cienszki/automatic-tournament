@@ -973,7 +973,14 @@ export async function syncLeagueMatchesAdmin() {
                             
                             if (existingMatch) {
                                 // Save to existing tournament match
-                                await saveGameResultsAdmin(existingMatch.id, game, performances);
+                                const { saveGameResultsUnifiedSafe } = await import('./unified-game-save');
+                                const saveResult = await saveGameResultsUnifiedSafe(existingMatch.id, game, performances, {
+                                    logPrefix: '[SyncMatches]'
+                                });
+                                if (!saveResult.success) {
+                                    console.log(`Skipped game ${game.id} for match ${existingMatch.id}: ${saveResult.errors?.join(', ')}`);
+                                    return { success: true, message: `Game ${matchId} skipped (${saveResult.errors?.[0] || 'validation failed'}).`, skipped: true };
+                                }
                                 console.log(`Successfully saved game ${game.id} to existing match ${existingMatch.id} (${radiantTeam.name} vs ${direTeam.name})`);
                             } else {
                                 // Create new external match (shouldn't happen for tournament teams, but just in case)
@@ -982,7 +989,14 @@ export async function syncLeagueMatchesAdmin() {
                             }
                         } else {
                             // Fallback - try the original save method (will likely skip if no match document exists)
-                            await saveGameResultsAdmin(String(matchId), game, performances);
+                            const { saveGameResultsUnifiedSafe } = await import('./unified-game-save');
+                            const saveResult = await saveGameResultsUnifiedSafe(String(matchId), game, performances, {
+                                logPrefix: '[SyncMatches-Fallback]'
+                            });
+                            if (!saveResult.success) {
+                                console.log(`Skipped fallback game ${game.id}: ${saveResult.errors?.join(', ')}`);
+                                return { success: true, message: `Game ${matchId} skipped (${saveResult.errors?.[0] || 'validation failed'}).`, skipped: true };
+                            }
                         }
                         
                         // Mark this external match/game as processed (admin version)
@@ -1106,7 +1120,14 @@ export async function importManualMatchesAdmin(matchIds: number[]) {
                             
                             if (existingMatch) {
                                 // Save to existing tournament match
-                                await saveGameResultsAdmin(existingMatch.id, game, performances);
+                                const { saveGameResultsUnifiedSafe } = await import('./unified-game-save');
+                                const saveResult = await saveGameResultsUnifiedSafe(existingMatch.id, game, performances, {
+                                    logPrefix: '[SyncMatches]'
+                                });
+                                if (!saveResult.success) {
+                                    console.log(`Skipped game ${game.id} for match ${existingMatch.id}: ${saveResult.errors?.join(', ')}`);
+                                    return { success: true, message: `Game ${matchId} skipped (${saveResult.errors?.[0] || 'validation failed'}).`, skipped: true };
+                                }
                                 console.log(`Successfully saved game ${game.id} to existing match ${existingMatch.id} (${radiantTeam.name} vs ${direTeam.name})`);
                             } else {
                                 // Create new external match (shouldn't happen for tournament teams, but just in case)
@@ -1115,7 +1136,14 @@ export async function importManualMatchesAdmin(matchIds: number[]) {
                             }
                         } else {
                             // Fallback - try the original save method (will likely skip if no match document exists)
-                            await saveGameResultsAdmin(String(matchId), game, performances);
+                            const { saveGameResultsUnifiedSafe } = await import('./unified-game-save');
+                            const saveResult = await saveGameResultsUnifiedSafe(String(matchId), game, performances, {
+                                logPrefix: '[SyncMatches-Fallback]'
+                            });
+                            if (!saveResult.success) {
+                                console.log(`Skipped fallback game ${game.id}: ${saveResult.errors?.join(', ')}`);
+                                return { success: true, message: `Game ${matchId} skipped (${saveResult.errors?.[0] || 'validation failed'}).`, skipped: true };
+                            }
                         }
                         
                         // Mark this external match/game as processed (admin version)

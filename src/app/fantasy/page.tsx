@@ -213,6 +213,13 @@ export default function FantasyPage() {
 
     setIsSubmitting(true);
     try {
+      await saveUserFantasyLineup(
+        user.uid,
+        selectedLineup as Record<PlayerRole, TournamentPlayer>,
+        currentRound,
+        user.displayName || 'Anonymous'
+      );
+
       const lineup: FantasyLineup = {
         userId: user.uid,
         displayName: user.displayName || 'Anonymous',
@@ -220,8 +227,6 @@ export default function FantasyPage() {
         lineup: selectedLineup as Record<PlayerRole, TournamentPlayer>,
         submittedAt: new Date().toISOString(),
       };
-
-      await saveUserFantasyLineup(lineup);
       setExistingLineup(lineup);
 
       toast({

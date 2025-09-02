@@ -38,7 +38,8 @@
       "Bash(firebase hosting:channel:deploy:*)",
       "Bash(git checkout:*)",
       "Bash(git stash:*)",
-      "WebFetch(domain:dota2inhouse.pl)"
+      "WebFetch(domain:dota2inhouse.pl)",
+      "WebFetch(domain:api.opendota.com)"
     ],
     "deny": [],
     "ask": [],

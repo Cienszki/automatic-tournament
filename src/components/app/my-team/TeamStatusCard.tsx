@@ -18,6 +18,7 @@ const statusConfig: Record<TeamStatus, { icon: React.ElementType; className: str
   warning: { icon: AlertTriangle, className: "bg-orange-500 hover:bg-orange-600" },
   banned: { icon: Ban, className: "bg-red-500 hover:bg-red-600" },
   rejected: { icon: Ban, className: "bg-red-500 hover:bg-red-600" },
+  eliminated: { icon: Ban, className: "bg-gray-500 hover:bg-gray-600" },
 };
 
 function getStatusInfo(status: TeamStatus) {
