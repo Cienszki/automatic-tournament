@@ -3,7 +3,7 @@
 
 import React, { useEffect, useState } from 'react';
 import PlayoffBracketDisplay from '@/components/app/PlayoffBracketDisplay';
-import { getPlayoffData } from '@/lib/playoff-management';
+import { getPlayoffDataWithResults } from '@/lib/playoff-management';
 import { useTranslation } from '@/hooks/useTranslation';
 
 import type { PlayoffData } from '@/lib/definitions';
@@ -16,7 +16,7 @@ export default function PlayoffsPage() {
 
     useEffect(() => {
         setLoading(true);
-        getPlayoffData()
+        getPlayoffDataWithResults()
             .then(data => {
                 setBracketData(data);
                 setLoading(false);

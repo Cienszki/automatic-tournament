@@ -18,26 +18,33 @@ export async function POST(request: NextRequest) {
     const steamId32 = await getOpenDotaAccountIdFromUrl(steamProfileUrl);
 
 
-    // Check if already a player using Admin SDK
+    // Check if already a player using Admin SDK, but allow players from eliminated teams
     ensureAdminInitialized();
     const db = getAdminDb();
-    let isAlreadyPlayer = false;
+    let isAlreadyActivePlayer = false;
     const teamsSnapshot = await db.collection('teams').get();
     for (const teamDoc of teamsSnapshot.docs) {
+      const teamData = teamDoc.data();
+      
+      // Skip eliminated teams - their players can register as standins
+      if (teamData.status === 'eliminated') {
+        continue;
+      }
+      
       const playersSnapshot = await db.collection('teams').doc(teamDoc.id).collection('players').get();
       for (const playerDoc of playersSnapshot.docs) {
         const player = playerDoc.data();
         if (player.steamId32 === steamId32.toString() || player.steamId === steamId32.toString()) {
-          isAlreadyPlayer = true;
+          isAlreadyActivePlayer = true;
           break;
         }
       }
-      if (isAlreadyPlayer) break;
+      if (isAlreadyActivePlayer) break;
     }
-    if (isAlreadyPlayer) {
+    if (isAlreadyActivePlayer) {
       return NextResponse.json(
         { 
-          error: 'This Steam account is already registered as a player in one of the teams!',
+          error: 'This Steam account is already registered as a player in an active team!',
           isAlreadyPlayer: true 
         },
         { status: 400 }

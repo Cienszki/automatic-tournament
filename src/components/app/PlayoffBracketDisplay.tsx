@@ -48,6 +48,39 @@ interface BracketRound {
   dateRange?: string;
 }
 
+// Mapping from user-friendly match codes to database match IDs
+const getMatchIdFromCode = (matchCode: string): string | null => {
+  const mappings: { [key: string]: string } = {
+    // Wildcard matches
+    'WCA': 'wc-m1',
+    'WCB': 'wc-m2',
+    // Upper bracket matches
+    'U1A': 'ub-r1-m1',
+    'U1B': 'ub-r1-m2', 
+    'U1C': 'ub-r1-m3',
+    'U1D': 'ub-r1-m4',
+    'U2A': 'ub-r2-m1',
+    'U2B': 'ub-r2-m2',
+    'U3A': 'ub-final',
+    // Lower bracket matches
+    'L1A': 'lb-r1-m1',
+    'L1B': 'lb-r1-m2',
+    'L1C': 'lb-r1-m3',
+    'L1D': 'lb-r1-m4',
+    'L2A': 'lb-r2-m1',
+    'L2B': 'lb-r2-m2',
+    'L2C': 'lb-r2-m3',
+    'L2D': 'lb-r2-m4',
+    'L3A': 'lb-r3-m1',
+    'L3B': 'lb-r3-m2',
+    'L4A': 'lb-r4-m1',
+    'L4B': 'lb-r4-m2',
+    'L5A': 'lb-r5-m1',
+    'L6A': 'lb-final'
+  };
+  return mappings[matchCode] || null;
+};
+
 // Helper functions to resolve team names and progression
 const resolveTeamFromMatch = (matchId: string, allBrackets: PlayoffBracket[], isWinner: boolean, teamsMap?: Map<string, any>): string | null => {
   for (const bracket of allBrackets) {
@@ -92,21 +125,51 @@ const getResolvedTeamName = (
   }
   
   // Try to resolve from match progression descriptions
-  const matchPattern = /Winner of (U\d+[A-Z]|L\d+[A-Z]|WC[A-Z])/i;
+  const winnerPattern = /Winner of (U\d+[A-Z]|L\d+[A-Z]|WC[A-Z])/i;
   const loserPattern = /Loser of (U\d+[A-Z]|L\d+[A-Z])/i;
+  const matchWinnerPattern = /meczu (U\d+[A-Z]|L\d+[A-Z])/i;
+  const wildcardPattern = /(WC[A-Z])\b/i; // Match WCA or WCB anywhere in the text
   
-  let matchResult = description.match(matchPattern);
+  let matchResult = description.match(winnerPattern);
   if (matchResult) {
     const matchCode = matchResult[1];
-    const resolvedName = resolveTeamFromMatch(matchCode, allBrackets, true, teamsMap);
-    if (resolvedName) return resolvedName;
+    const matchId = getMatchIdFromCode(matchCode);
+    if (matchId) {
+      const resolvedName = resolveTeamFromMatch(matchId, allBrackets, true, teamsMap);
+      if (resolvedName) return resolvedName;
+    }
   }
   
   matchResult = description.match(loserPattern);
   if (matchResult) {
     const matchCode = matchResult[1];
-    const resolvedName = resolveTeamFromMatch(matchCode, allBrackets, false, teamsMap);
-    if (resolvedName) return resolvedName;
+    const matchId = getMatchIdFromCode(matchCode);
+    if (matchId) {
+      const resolvedName = resolveTeamFromMatch(matchId, allBrackets, false, teamsMap);
+      if (resolvedName) return resolvedName;
+    }
+  }
+  
+  // Handle "Zwycięzca meczu U1A" pattern
+  matchResult = description.match(matchWinnerPattern);
+  if (matchResult) {
+    const matchCode = matchResult[1];
+    const matchId = getMatchIdFromCode(matchCode);
+    if (matchId) {
+      const resolvedName = resolveTeamFromMatch(matchId, allBrackets, true, teamsMap);
+      if (resolvedName) return resolvedName;
+    }
+  }
+  
+  // Handle wildcard patterns - match WCA or WCB anywhere in the text
+  matchResult = description.match(wildcardPattern);
+  if (matchResult) {
+    const matchCode = matchResult[1];
+    const matchId = getMatchIdFromCode(matchCode);
+    if (matchId) {
+      const resolvedName = resolveTeamFromMatch(matchId, allBrackets, true, teamsMap);
+      if (resolvedName) return resolvedName;
+    }
   }
   
   return description;
@@ -406,9 +469,12 @@ const MatchCard: React.FC<MatchCardProps> = ({
               </Badge>
             )}
             <Badge variant="outline" className="text-xs px-2 py-1 bg-accent/10 text-accent border-accent/30">
-              {/* L6A should always be BO3 */}
+              {/* All lower bracket matches and wildcard matches are BO3 */}
               {(() => {
-                if (matchCode === 'L6A') return 'BO3';
+                // Check if this is a lower bracket match (matchCode starts with 'L')
+                if (matchCode?.startsWith('L')) return 'BO3';
+                // Check if this is a wildcard match (matchCode starts with 'WC')
+                if (matchCode?.startsWith('WC')) return 'BO3';
                 return match.format?.toUpperCase() || 'BO1';
               })()}
             </Badge>
@@ -814,7 +880,8 @@ const PlayoffBracketDisplay: React.FC<{ bracketData: PlayoffData }> = ({ bracket
                         ...(finalBracket ? [{
                           id: 'grand-final',
                           name: t('playoffs.grandFinal'),
-                          matches: finalBracket.matches
+                          matches: finalBracket.matches,
+                          dateRange: '05.10'
                         }] : [])
                       ]}
                       allBrackets={allBrackets}

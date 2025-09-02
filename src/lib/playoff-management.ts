@@ -673,6 +673,84 @@ export async function getAvailableTeams(): Promise<Team[]> {
     }
 }
 
+// Fetch live match results and merge them into playoff data
+export async function getPlayoffDataWithResults(): Promise<PlayoffData | null> {
+    try {
+        const playoffData = await getPlayoffData();
+        if (!playoffData) return null;
+
+        // Fetch all match results
+        const allMatchIds: string[] = [];
+        playoffData.brackets.forEach(bracket => {
+            bracket.matches.forEach(match => {
+                allMatchIds.push(match.id);
+            });
+        });
+
+        // Fetch all matches and find them by playoff_match_id
+        const matchResults = new Map();
+        
+        try {
+            const allMatchesSnapshot = await getDocs(collection(db, 'matches'));
+            
+            // Create a map of playoff_match_id -> match data
+            allMatchesSnapshot.docs.forEach(doc => {
+                const data = doc.data();
+                if (data.playoff_match_id) {
+                    // Create result structure based on match data
+                    let result = null;
+                    if (data.status === 'completed' && data.teamA?.score !== undefined && data.teamB?.score !== undefined) {
+                        const teamAScore = data.teamA.score;
+                        const teamBScore = data.teamB.score;
+                        
+                        // Determine winner based on scores
+                        const winnerId = teamAScore > teamBScore ? data.teams?.[0] : data.teams?.[1];
+                        
+                        result = {
+                            winnerId: winnerId,
+                            teamAScore: teamAScore,
+                            teamBScore: teamBScore
+                        };
+                    }
+                    
+                    
+                    matchResults.set(data.playoff_match_id, {
+                        result: result,
+                        status: data.status
+                    });
+                }
+            });
+            
+        } catch (error) {
+            console.warn('Failed to fetch matches:', error);
+        }
+
+        // Merge results into playoff data
+        const updatedBrackets = playoffData.brackets.map(bracket => ({
+            ...bracket,
+            matches: bracket.matches.map(match => {
+                const liveData = matchResults.get(match.id);
+                if (liveData) {
+                    return {
+                        ...match,
+                        result: liveData.result || match.result,
+                        status: liveData.status || match.status
+                    };
+                }
+                return match;
+            })
+        }));
+
+        return {
+            ...playoffData,
+            brackets: updatedBrackets
+        };
+    } catch (error) {
+        console.error('Error getting playoff data with results:', error);
+        return await getPlayoffData(); // Fallback to static data
+    }
+}
+
 // Mark playoffs as setup complete
 export async function completePlayoffSetup(): Promise<boolean> {
     try {
