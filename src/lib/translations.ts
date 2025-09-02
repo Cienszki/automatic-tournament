@@ -152,6 +152,7 @@ export const translations = {
     active: "Aktywna",
     warning: "Ostrzeżenie",
     banned: "Zbanowana",
+    eliminated: "Wyeliminowana",
     
     // My Team Page specific
     teamStatus: "Status Drużyny",
@@ -511,7 +512,94 @@ export const translations = {
     discordUsername: "Nick Discord",
     enterDiscordUsername: "Wprowadź swój nick Discord",
     discordUsernameRequired: "Nick Discord jest wymagany do zapisania składu.",
-    couldNotSaveDiscordUsername: "Nie można było zapisać nicku Discord."
+    couldNotSaveDiscordUsername: "Nie można było zapisać nicku Discord.",
+    
+    // New extended fantasy translations
+    rounds: {
+      currentRound: "Aktualna runda",
+      selectingFor: "Wybierasz dla",
+      groupStage: "Faza grupowa",
+      playoffs: "Playoff"
+    },
+    stats: {
+      yourAvgPPG: "Twój śr. PPG",
+      gamesPlayed: "Rozegrane mecze"
+    },
+    howToPlay: {
+      title: "Jak grać w Lidze Fantasy",
+      teamBuilding: {
+        title: "Budowanie drużyny",
+        selectPlayers: "Wybierz jednego gracza dla każdej roli (Carry, Mid, Offlane, Soft Support, Hard Support)",
+        mmrLimit: "Twój całkowity MMR drużyny nie może przekroczyć 25,000",
+        chooseWisely: "Wybieraj mądrze - gracze z wyższym MMR kosztują więcej, ale mogą zdobyć więcej punktów",
+        changeLineup: "Możesz zmienić skład przed rozpoczęciem każdej rundy"
+      },
+      scoring: {
+        title: "System punktacji",
+        point1: "Punkty zdobywasz za zabójstwa, asysty, GPM, XPM i inne statystyki swoich graczy",
+        point2: "Każda rola ma różne mnożniki - np. supports dostają więcej za asysty",
+        point3: "Twój wynik to średnia punktów na grę wszystkich wybranych graczy",
+        point4: "Bonusowe punkty za szczególnie dobre występy (rampage, zero śmierci, itp.)",
+        point5: "Punkty naliczane są automatycznie po każdym meczu turnieju",
+        point6: "Tabela liderów aktualizowana na żywo - sprawdzaj swoją pozycję!"
+      }
+    },
+    teamBuilder: {
+      title: "Zbuduj swoją drużynę",
+      description: "Wybierz jednego gracza dla każdej roli. Całkowity MMR nie może przekroczyć 25,000.",
+      mmrBudgetUsed: "Wykorzystany budżet MMR",
+      remaining: "Pozostałe",
+      selectRole: "Wybierz",
+      choosePlayer: "Wybierz gracza",
+      saveLineup: "Zapisz skład (najpierw ukończ drużynę)"
+    },
+    roles: {
+      carry: "Carry",
+      mid: "Mid",
+      offlane: "Offlane",
+      softsupport: "Soft Support",
+      hardsupport: "Hard Support"
+    },
+    leaderboards: {
+      loading: "Ładowanie tabeli liderów...",
+      showingFallback: "Pokazywanie danych zastępczych",
+      notAvailable: "Tabele liderów niedostępne",
+      notReady: "Tabele liderów fantasy nie są jeszcze gotowe.",
+      contactAdmin: "Skontaktuj się z administratorem, aby uruchomić ponowne przeliczenie fantasy.",
+      title: "Tabele Liderów Fantasy",
+      subtitle: "Zobacz najlepszych graczy w każdej kategorii",
+      overall: "Ogólna klasyfikacja",
+      carry: "Carry",
+      mid: "Mid", 
+      offlane: "Offlane",
+      softSupport: "Soft Support",
+      hardSupport: "Hard Support",
+      games: "Mecze"
+    },
+    algorithm: {
+      title: "Szybki przegląd algorytmu",
+      description: "Podsumowanie nowego zbalansowanego systemu punktacji fantasy",
+      roleBuffs: {
+        title: "Wzmocnienia ról",
+        mid: "Mid: 3.8× zabójstwa (duże wzmocnienie!)",
+        offlane: "Offlane: 3.0× zabójstwa, 2.8× asysty",
+        teamfight: "Ulepszone bonusy za walki drużynowe"
+      },
+      balance: {
+        title: "Zmiany balansu",
+        ppgRange: "Wszystkie role: zakres 93-115 PPG",
+        supportNerf: "Leczenie Hard Support osłabione",
+        duration: "Udoskonalona normalizacja długości"
+      },
+      excellence: {
+        title: "System doskonałości",
+        multiStat: "Bonusy wielostatystyczne (3+ = ogromne!)",
+        perfectGame: "Nagrody za perfekcyjną grę (+15)",
+        skillScaling: "Nieograniczone skalowanie umiejętności"
+      },
+      newAlgorithmActive: "Nowy zbalansowany algorytm aktywny!",
+      allRolesCompetitive: "Wszystkie role teraz konkurencyjne z zakresem 93-115 PPG"
+    }
   },
 
   // Pick\\'em
@@ -1560,7 +1648,8 @@ export const translations = {
     pending: "Oczekująca",
     verified: "Zweryfikowana",
     warning: "Ostrzeżenie",
-    banned: "Zbanowana"
+    banned: "Zbanowana",
+    eliminated: "Wyeliminowana"
   },
   
   // Player detail page translations

@@ -20,6 +20,11 @@ export async function updateStandingsAfterGame(match: Match): Promise<{ success:
     return { success: false, message: 'Match must have exactly two teams.' };
   }
 
+  // Only process matches that have a group_id (group stage matches)
+  if (!match.group_id) {
+    return { success: true, message: 'Match is not a group stage match (no group_id), no standings updated.' };
+  }
+
   const [teamAId, teamBId] = teams;
   const isDraw = !winnerId; // No winner means it's a draw (BO2 1-1)
 

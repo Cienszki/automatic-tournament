@@ -75,7 +75,7 @@ export async function POST(req: Request) {
     game.id = matchData.match_id.toString();
     
     // Add parsed status to game data
-    game.isParsed = isParsed;
+    (game as any).isParsed = isParsed;
     // Save to Firestore (Admin SDK)
     const db = getAdminDb();
     const matchRef = db.collection('matches').doc(matchId);

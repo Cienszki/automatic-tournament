@@ -245,20 +245,22 @@ export async function registerTeam(payload: unknown) {
 
 export async function syncLeagueMatches() {
     try {
-        console.log(`Starting match sync using STRATZ match list...`);
+        console.log(`Starting match sync using Steam API match list...`);
 
+        // Import Steam API function
+        const { fetchAllStratzLeagueMatchesFromSteam } = await import('./steam-api');
 
-        // Fetch all match IDs from STRATZ API live
-        const stratzMatches = await fetchAllStratzLeagueMatches(LEAGUE_ID);
-        const stratzMatchIds = stratzMatches.map((m: any) => Number(m.id));
-        const stratzMatchIdSet = new Set(stratzMatchIds.map(String));
+        // Fetch all match IDs from Steam API live
+        const steamMatches = await fetchAllStratzLeagueMatchesFromSteam(LEAGUE_ID);
+        const steamMatchIds = steamMatches.map((m: any) => Number(m.id));
+        const steamMatchIdSet = new Set(steamMatchIds.map(String));
 
 
         // Get all processed match IDs from processedGames collection
         const processedMatchIds = new Set(await getAllProcessedGameIds());
 
         // Only import matches not already processed
-        const newMatchIds = stratzMatchIds.filter(id => !processedMatchIds.has(String(id)));
+        const newMatchIds = steamMatchIds.filter(id => !processedMatchIds.has(String(id)));
 
         if (newMatchIds.length === 0) {
             console.log("No new matches to import.");

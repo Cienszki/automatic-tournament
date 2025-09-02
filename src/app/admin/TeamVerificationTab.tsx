@@ -4,7 +4,7 @@ import React, { useState, useEffect, useTransition } from 'react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
-import { ShieldCheck, ShieldAlert, ShieldX, Loader2, Trash2 } from 'lucide-react';
+import { ShieldCheck, ShieldAlert, ShieldX, Loader2, Trash2, UserX, UserCheck } from 'lucide-react';
 import { getTeams } from '@/lib/admin-actions';
 import { getAllPickems } from '@/lib/firestore';
 import { updateTeamStatus, deleteTeam } from '@/lib/admin-actions';
@@ -28,7 +28,7 @@ import { useAuth } from '@/context/AuthContext';
 
 type TeamWithCommunityScore = Team & { communityScore: number };
 
-function TeamDetails({ team, onStatusUpdate, onDelete, isUpdating, onPlayerClick }: { team: Team, onStatusUpdate: (teamId: string, status: TeamStatus) => void, onDelete: (teamId: string) => void, isUpdating: boolean, onPlayerClick: (player: Player) => void }) {
+function TeamDetails({ team, onStatusUpdate, onDelete, isUpdating, onPlayerClick, onEliminationToggle }: { team: Team, onStatusUpdate: (teamId: string, status: TeamStatus) => void, onDelete: (teamId: string) => void, isUpdating: boolean, onPlayerClick: (player: Player) => void, onEliminationToggle: (teamId: string, currentStatus?: TeamStatus) => void }) {
     return (
         <AccordionContent>
             <div className="p-4 bg-muted/50 rounded-lg">
@@ -52,6 +52,22 @@ function TeamDetails({ team, onStatusUpdate, onDelete, isUpdating, onPlayerClick
                     </Button>
                     <Button size="sm" variant="destructive" onClick={() => onStatusUpdate(team.id, 'banned')} disabled={isUpdating}>
                         <ShieldX className="h-4 w-4 mr-2" /> Ban
+                    </Button>
+                    <Button 
+                        size="sm" 
+                        variant={team.status === 'eliminated' ? 'outline' : 'destructive'} 
+                        onClick={() => onEliminationToggle(team.id, team.status)} 
+                        disabled={isUpdating}
+                    >
+                        {team.status === 'eliminated' ? (
+                            <>
+                                <UserCheck className="h-4 w-4 mr-2" /> Restore
+                            </>
+                        ) : (
+                            <>
+                                <UserX className="h-4 w-4 mr-2" /> Eliminate
+                            </>
+                        )}
                     </Button>
                     <AlertDialog>
                         <AlertDialogTrigger asChild>
@@ -190,8 +206,14 @@ export function TeamVerificationTab() {
             case 'warning': return 'default';
             case 'banned': return 'destructive';
             case 'rejected': return 'destructive';
+            case 'eliminated': return 'destructive';
             default: return 'outline';
         }
+    };
+
+    const handleEliminationToggle = (teamId: string, currentStatus?: TeamStatus) => {
+        const newStatus = currentStatus === 'eliminated' ? 'verified' : 'eliminated';
+        handleStatusUpdate(teamId, newStatus);
     };
 
     if (isLoading) {
@@ -240,6 +262,7 @@ export function TeamVerificationTab() {
                                     onDelete={handleDeleteTeam}
                                     isUpdating={isUpdating}
                                     onPlayerClick={handlePlayerClick}
+                                    onEliminationToggle={handleEliminationToggle}
                                 />
                             </AccordionItem>
                         ))}

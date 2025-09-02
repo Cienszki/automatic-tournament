@@ -38,9 +38,13 @@ async function getHydratedGroupsData(): Promise<Group[]> {
       let neustadtl = 0;
       if (standing.headToHead) {
         Object.entries(standing.headToHead).forEach(([opponentId, result]) => {
+           const opponentPoints = hydratedStandings[opponentId]?.points || 0;
            if (result === 'win') {
-             const opponentPoints = hydratedStandings[opponentId]?.points || 0;
+             // Full points for wins
              neustadtl += opponentPoints;
+           } else if (result === 'draw') {
+             // Half points for draws
+             neustadtl += opponentPoints * 0.5;
            }
         });
       }

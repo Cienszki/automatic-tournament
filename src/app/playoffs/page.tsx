@@ -80,6 +80,19 @@ export default function PlayoffsPage() {
             }
         };
 
+        const handleGenerateMatches = async () => {
+            try {
+                setLoading(true);
+                // TODO: Implement match generation function
+                alert('Generate matches functionality will be implemented');
+                setLoading(false);
+            } catch (error) {
+                console.error('Error generating matches:', error);
+                setError(error instanceof Error ? error.message : 'Failed to generate matches');
+                setLoading(false);
+            }
+        };
+
         return (
             <div className="min-h-screen bg-gradient-to-br from-background via-background/95 to-muted/50 flex items-center justify-center p-4">
                 <div className="text-center space-y-4">
@@ -92,12 +105,20 @@ export default function PlayoffsPage() {
                         <h2 className="text-xl lg:text-2xl font-semibold text-foreground">{t('playoffs.noTournamentData')}</h2>
                         <p className="text-sm text-muted-foreground">{t('playoffs.noTournamentDataDesc')}</p>
                     </div>
-                    <button 
-                        onClick={handleInitialize}
-                        className="px-6 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
-                    >
-                        Initialize Playoff Brackets
-                    </button>
+                    <div className="flex gap-4 justify-center">
+                        <button 
+                            onClick={handleInitialize}
+                            className="px-6 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+                        >
+                            Initialize Playoff Brackets
+                        </button>
+                        <button 
+                            onClick={handleGenerateMatches}
+                            className="px-6 py-3 bg-secondary text-secondary-foreground rounded-lg hover:bg-secondary/90 transition-colors"
+                        >
+                            Generate Matches
+                        </button>
+                    </div>
                 </div>
             </div>
         );

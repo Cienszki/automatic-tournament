@@ -916,23 +916,23 @@ async function saveExternalGameResultsAdmin(ourMatchId: string, game: any, perfo
 // --- ADMIN SYNC FUNCTIONS ---
 export async function syncLeagueMatchesAdmin() {
     try {
-        console.log(`Starting match sync using STRATZ match list...`);
+        console.log(`Starting match sync using Steam API match list...`);
 
         // Import admin functions
         const { getAllProcessedGameIdsAdmin, markGameAsProcessedAdmin } = await import('./processed-games-admin');
-        const { fetchAllStratzLeagueMatches } = await import('./actions');
+        const { fetchAllStratzLeagueMatchesFromSteam } = await import('./steam-api');
         const { transformMatchData } = await import('./opendota');
         const { LEAGUE_ID } = await import('./definitions');
 
-        // Fetch all match IDs from STRATZ API live
-        const stratzMatches = await fetchAllStratzLeagueMatches(LEAGUE_ID);
-        const stratzMatchIds = stratzMatches.map((m: any) => Number(m.id));
+        // Fetch all match IDs from Steam API live
+        const steamMatches = await fetchAllStratzLeagueMatchesFromSteam(LEAGUE_ID);
+        const steamMatchIds = steamMatches.map((m: any) => Number(m.id));
 
         // Get all processed match IDs from processedGames collection (using admin SDK)
         const processedMatchIds = new Set(await getAllProcessedGameIdsAdmin());
 
         // Only import matches not already processed
-        const newMatchIds = stratzMatchIds.filter(id => !processedMatchIds.has(String(id)));
+        const newMatchIds = steamMatchIds.filter(id => !processedMatchIds.has(String(id)));
 
         if (newMatchIds.length === 0) {
             console.log("No new matches to import.");
@@ -1206,5 +1206,56 @@ export async function updateAllTeamStatisticsAdmin(): Promise<{ success: boolean
             message: 'Failed to update team statistics.', 
             error: (error as Error).message 
         };
+    }
+}
+
+// Missing functions that need to be implemented
+export async function checkAndQueueUnparsedGamesAdmin(): Promise<{ success: boolean; message: string }> {
+    // Placeholder implementation
+    return { success: true, message: 'Check and queue unparsed games function placeholder.' };
+}
+
+export async function retryUnparsedMatchesAdmin(): Promise<{ success: boolean; message: string }> {
+    // Placeholder implementation
+    return { success: true, message: 'Retry unparsed matches function placeholder.' };
+}
+
+export async function getTournamentStatusAdmin(): Promise<any> {
+    return { currentStage: "Group Stage" };
+}
+
+export async function getNextRoundIdAdmin(): Promise<string | null> {
+    // Placeholder implementation - would need actual logic to determine next round
+    return null;
+}
+
+export async function getUserFantasyLineupAdmin(userId: string, roundId: string): Promise<any> {
+    ensureAdminInitialized();
+    const db = getAdminDb();
+    try {
+        const lineupDoc = await db.collection('fantasyLineups').doc(`${userId}_${roundId}`).get();
+        return lineupDoc.exists ? lineupDoc.data() : null;
+    } catch (error) {
+        console.error('Error getting user fantasy lineup:', error);
+        return null;
+    }
+}
+
+export async function saveUserFantasyLineupAdmin(userId: string, lineup: any, roundId: string, displayName: string): Promise<{ success: boolean; message: string }> {
+    ensureAdminInitialized();
+    const db = getAdminDb();
+    try {
+        const lineupDoc = {
+            userId,
+            displayName,
+            roundId,
+            lineup,
+            submittedAt: new Date().toISOString(),
+        };
+        await db.collection('fantasyLineups').doc(`${userId}_${roundId}`).set(lineupDoc);
+        return { success: true, message: 'Fantasy lineup saved successfully.' };
+    } catch (error) {
+        console.error('Error saving user fantasy lineup:', error);
+        return { success: false, message: 'Failed to save fantasy lineup.' };
     }
 }

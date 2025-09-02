@@ -12,6 +12,11 @@ export async function updateStandingsAfterGameAdmin(match: Match): Promise<{ suc
       return { success: false, message: 'Match must have exactly two teams.' };
     }
 
+    // Only process matches that have a group_id (group stage matches)
+    if (!match.group_id) {
+      return { success: true, message: 'Match is not a group stage match (no group_id), no standings updated.' };
+    }
+
     const [teamAId, teamBId] = teams;
     
     // Get the actual scores from the match

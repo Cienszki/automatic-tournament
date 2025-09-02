@@ -86,7 +86,7 @@ export const LEAGUE_ID = 18559;
 export const TEAM_MMR_CAP = 24000;
 export const FANTASY_BUDGET_MMR = 24000;
 
-export type TeamStatus = 'pending' | 'verified' | 'rejected' | 'warning' | 'banned';
+export type TeamStatus = 'pending' | 'verified' | 'rejected' | 'warning' | 'banned' | 'eliminated';
 export const PlayerRoles = ['Carry', 'Mid', 'Offlane', 'Soft Support', 'Hard Support'] as const;
 export type PlayerRole = typeof PlayerRoles[number];
 

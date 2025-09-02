@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import Image from "next/image";
 import Link from "next/link";
-import { Sigma, Shield, Swords, Sparkles, HandHelping, Eye, ListChecks, UserX, ShieldQuestion, PlayCircle, Trophy } from "lucide-react";
+import { Sigma, Shield, Swords, Sparkles, HandHelping, Eye, ListChecks, UserX, ShieldQuestion, PlayCircle, Trophy, X } from "lucide-react";
 import { cn, formatNumber } from "@/lib/utils";
 import { useTranslation } from "@/hooks/useTranslation";
 import {
@@ -48,6 +48,8 @@ const getStatusBadge = (status?: string, t?: any) => {
         return <Badge variant="destructive" className="text-xs"><UserX className="h-3 w-3 mr-1.5" />{t('teams.warning')}</Badge>;
     case "banned":
       return <Badge className="bg-yellow-400/20 text-yellow-300 border-yellow-500/40 hover:bg-yellow-400/30 text-xs"><Trophy className="h-3 w-3 mr-1.5" />{t('teams.banned')}</Badge>;
+    case "eliminated":
+      return <Badge className="bg-red-500/20 text-red-300 border-red-500/40 hover:bg-red-500/30 text-xs"><X className="h-3 w-3 mr-1.5" />{t('teams.eliminated')}</Badge>;
     default:
       return <Badge variant="outline" className="text-xs">{status}</Badge>;
   }
@@ -69,6 +71,7 @@ export function TeamCard({ team }: TeamCardProps) {
     <Card className={cn(
       "flex flex-col h-full shadow-none border-0 bg-gradient-to-br from-[#181c2f] via-[#3a295a] to-[#2d1b3c] transition-transform duration-300 hover:scale-105 hover:shadow-[0_0_48px_8px_#b86fc6cc,0_0_32px_0_#0ff0fc99]",
       team.status === 'banned' && "bg-destructive/10 border-destructive/30",
+      team.status === 'eliminated' && "bg-red-900/20 border-red-500/30 opacity-75",
     )}>
       <CardHeader className="flex flex-row items-start space-x-4 pb-4">
         <Image 

@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { PlayoffData, PlayoffBracket, PlayoffMatch } from '@/lib/definitions';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { cn } from '@/lib/utils';
 import { useTranslation } from '@/hooks/useTranslation';
@@ -28,6 +28,8 @@ interface MatchCardProps {
   matchCode?: string;
   teamADescription?: string;
   teamBDescription?: string;
+  teamsMap?: Map<string, any>;
+  allBrackets?: PlayoffBracket[];
 }
 
 interface BracketTreeProps {
@@ -36,6 +38,7 @@ interface BracketTreeProps {
   type: 'upper' | 'lower' | 'final' | 'wildcard';
   allBrackets?: PlayoffBracket[];
   t: (key: string) => string;
+  teamsMap?: Map<string, any>;
 }
 
 interface BracketRound {
@@ -45,11 +48,68 @@ interface BracketRound {
   dateRange?: string;
 }
 
-// Helper functions
-const getTeamDisplayName = (teamId: string | null, description?: string): string => {
+// Helper functions to resolve team names and progression
+const resolveTeamFromMatch = (matchId: string, allBrackets: PlayoffBracket[], isWinner: boolean, teamsMap?: Map<string, any>): string | null => {
+  for (const bracket of allBrackets) {
+    const match = bracket.matches.find(m => m.id === matchId);
+    if (match && match.result) {
+      const winnerId = match.result.winnerId;
+      const loserId = winnerId === match.teamA?.id ? match.teamB?.id : match.teamA?.id;
+      const targetTeamId = isWinner ? winnerId : loserId;
+      
+      if (targetTeamId && teamsMap?.has(targetTeamId)) {
+        return teamsMap.get(targetTeamId)?.name || null;
+      }
+      return targetTeamId ? `Team ${targetTeamId}` : null;
+    }
+  }
+  return null;
+};
+
+const getTeamDisplayName = (teamId: string | null, description?: string, teamsMap?: Map<string, any>): string => {
+  if (teamId && teamsMap?.has(teamId)) {
+    const team = teamsMap.get(teamId);
+    return team?.name || `Team ${teamId}`;
+  }
   if (teamId) return `Team ${teamId}`;
   if (description) return description;
   return 'TBD';
+};
+
+const getResolvedTeamName = (
+  match: PlayoffMatch, 
+  isTeamA: boolean, 
+  description: string, 
+  allBrackets: PlayoffBracket[],
+  teamsMap?: Map<string, any>
+): string => {
+  const team = isTeamA ? match.teamA : match.teamB;
+  
+  // If we have the actual team data, use it
+  if (team?.name) return team.name;
+  if (team?.id && teamsMap?.has(team.id)) {
+    return teamsMap.get(team.id)?.name || `Team ${team.id}`;
+  }
+  
+  // Try to resolve from match progression descriptions
+  const matchPattern = /Winner of (U\d+[A-Z]|L\d+[A-Z]|WC[A-Z])/i;
+  const loserPattern = /Loser of (U\d+[A-Z]|L\d+[A-Z])/i;
+  
+  let matchResult = description.match(matchPattern);
+  if (matchResult) {
+    const matchCode = matchResult[1];
+    const resolvedName = resolveTeamFromMatch(matchCode, allBrackets, true, teamsMap);
+    if (resolvedName) return resolvedName;
+  }
+  
+  matchResult = description.match(loserPattern);
+  if (matchResult) {
+    const matchCode = matchResult[1];
+    const resolvedName = resolveTeamFromMatch(matchCode, allBrackets, false, teamsMap);
+    if (resolvedName) return resolvedName;
+  }
+  
+  return description;
 };
 
 const getMatchCode = (bracket: PlayoffBracket, match: PlayoffMatch): string => {
@@ -259,16 +319,26 @@ const MatchCard: React.FC<MatchCardProps> = ({
   match, 
   matchCode,
   teamADescription,
-  teamBDescription 
+  teamBDescription,
+  teamsMap,
+  allBrackets = []
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [liveResult, setLiveResult] = useState<any>(null);
   const [liveStatus, setLiveStatus] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Prefer real team name, otherwise use description (e.g., 'Zwycięzca meczu U1B')
-  const teamAName = match.teamA?.name || teamADescription;
-  const teamBName = match.teamB?.name || teamBDescription;
+  // Try multiple resolution strategies for team names
+  let teamAName = match.teamA?.name;
+  let teamBName = match.teamB?.name;
+  
+  if (!teamAName) {
+    teamAName = getResolvedTeamName(match, true, teamADescription || 'TBD', allBrackets, teamsMap);
+  }
+  
+  if (!teamBName) {
+    teamBName = getResolvedTeamName(match, false, teamBDescription || 'TBD', allBrackets, teamsMap);
+  }
 
   useEffect(() => {
     let ignore = false;
@@ -440,7 +510,8 @@ const BracketTree: React.FC<BracketTreeProps> = ({
   rounds, 
   type,
   allBrackets = [],
-  t
+  t,
+  teamsMap
 }) => {
   // No filtering, just use rounds as-is
   if (!rounds || rounds.length === 0) {
@@ -501,6 +572,8 @@ const BracketTree: React.FC<BracketTreeProps> = ({
                         matchCode={matchCode}
                         teamADescription={teamADescription}
                         teamBDescription={teamBDescription}
+                        teamsMap={teamsMap}
+                        allBrackets={allBrackets}
                       />
                     </div>
                   );
@@ -564,7 +637,8 @@ const LowerBracketVisualizer: React.FC<{
   bracket: PlayoffBracket;
   allBrackets?: PlayoffBracket[];
   t: (key: string) => string;
-}> = ({ title, bracket, allBrackets = [], t }) => {
+  teamsMap?: Map<string, any>;
+}> = ({ title, bracket, allBrackets = [], t, teamsMap }) => {
   const rounds = createRounds(bracket, t);
 
   return (
@@ -574,15 +648,82 @@ const LowerBracketVisualizer: React.FC<{
       type="lower"
       allBrackets={allBrackets}
       t={t}
+      teamsMap={teamsMap}
     />
   );
 };
 
 const PlayoffBracketDisplay: React.FC<{ bracketData: PlayoffData }> = ({ bracketData }) => {
   const { t } = useTranslation();
-  // Usunięto szczegóły, wyszukiwanie i filtry na żądanie użytkownika
+  const [teamsMap, setTeamsMap] = useState<Map<string, any>>(new Map());
+  const [resolvedBracketData, setResolvedBracketData] = useState<PlayoffData | null>(null);
+  
+  // Function to resolve slots to actual team objects
+  const resolveSlots = (playoffData: PlayoffData, teamsMap: Map<string, any>): PlayoffData => {
+    const resolvedBrackets = playoffData.brackets.map(bracket => {
+      // Create a slot lookup map for this bracket
+      const slotMap = new Map();
+      if (bracket.slots) {
+        bracket.slots.forEach(slot => {
+          if (slot.teamId && teamsMap.has(slot.teamId)) {
+            const team = teamsMap.get(slot.teamId);
+            slotMap.set(slot.id, { id: team.id, name: team.name, logoUrl: team.logoUrl || '' });
+          }
+        });
+      }
+      
+      // Resolve matches by looking up teams from slots
+      const resolvedMatches = bracket.matches.map(match => {
+        const teamA = slotMap.get(match.teamASlotId) || null;
+        const teamB = slotMap.get(match.teamBSlotId) || null;
+        
+        return {
+          ...match,
+          teamA,
+          teamB
+        };
+      });
+      
+      return {
+        ...bracket,
+        matches: resolvedMatches
+      };
+    });
+    
+    return {
+      ...playoffData,
+      brackets: resolvedBrackets
+    };
+  };
+  
+  // Load team data and resolve slots
+  useEffect(() => {
+    const loadTeamsAndResolve = async () => {
+      try {
+        const teamsSnapshot = await getDocs(collection(db, 'teams'));
+        const newTeamsMap = new Map();
+        teamsSnapshot.forEach(doc => {
+          const teamData = { id: doc.id, ...doc.data() };
+          newTeamsMap.set(doc.id, teamData);
+        });
+        setTeamsMap(newTeamsMap);
+        
+        // Resolve slots to teams in bracket data
+        if (bracketData) {
+          const resolved = resolveSlots(bracketData, newTeamsMap);
+          setResolvedBracketData(resolved);
+        }
+      } catch (error) {
+        console.error('Failed to load teams:', error);
+      }
+    };
+    loadTeamsAndResolve();
+  }, [bracketData]);
 
-  if (!bracketData || !Array.isArray(bracketData.brackets) || bracketData.brackets.length === 0) {
+  // Use resolved bracket data if available, otherwise use original
+  const displayData = resolvedBracketData || bracketData;
+  
+  if (!displayData || !Array.isArray(displayData.brackets) || displayData.brackets.length === 0) {
     return (
       <Card className="bg-gradient-to-br from-card via-card/80 to-muted border-border/20">
         <CardContent className="text-center py-12">
@@ -597,12 +738,12 @@ const PlayoffBracketDisplay: React.FC<{ bracketData: PlayoffData }> = ({ bracket
   }
 
   // Organize brackets
-  const upperBracket = bracketData.brackets.find(b => b.type === 'upper');
-  const lowerBracket = bracketData.brackets.find(b => b.type === 'lower');
-  const wildcardBracket = bracketData.brackets.find(b => b.type === 'wildcard');
-  const finalBracket = bracketData.brackets.find(b => b.type === 'final');
+  const upperBracket = displayData.brackets.find(b => b.type === 'upper');
+  const lowerBracket = displayData.brackets.find(b => b.type === 'lower');
+  const wildcardBracket = displayData.brackets.find(b => b.type === 'wildcard');
+  const finalBracket = displayData.brackets.find(b => b.type === 'final');
 
-  const allBrackets = bracketData.brackets;
+  const allBrackets = displayData.brackets;
   const allMatches = allBrackets.flatMap(b => b.matches);
   const totalMatches = allMatches.length;
   const completedMatches = allMatches.filter(m => m.status === 'completed').length;
@@ -679,6 +820,7 @@ const PlayoffBracketDisplay: React.FC<{ bracketData: PlayoffData }> = ({ bracket
                       allBrackets={allBrackets}
                       type="upper"
                       t={t}
+                      teamsMap={teamsMap}
                     />
                   </div>
                 </div>
@@ -715,6 +857,7 @@ const PlayoffBracketDisplay: React.FC<{ bracketData: PlayoffData }> = ({ bracket
                       bracket={lowerBracket}
                       allBrackets={allBrackets}
                       t={t}
+                      teamsMap={teamsMap}
                     />
                   </div>
                 </div>
@@ -750,6 +893,7 @@ const PlayoffBracketDisplay: React.FC<{ bracketData: PlayoffData }> = ({ bracket
                       allBrackets={allBrackets}
                       type="wildcard"
                       t={t}
+                      teamsMap={teamsMap}
                     />
                   </div>
                 </div>

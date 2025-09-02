@@ -26,31 +26,85 @@ const TOURNAMENT_STAGES = [
     id: 'initial', 
     name: 'Registration Open', 
     description: 'Teams can register, fantasy and pick\'em open',
-    color: 'bg-green-500/20 text-green-300 border-green-500/40'
+    color: 'bg-green-500/20 text-green-300 border-green-500/40',
+    category: 'pre-tournament'
   },
   { 
     id: 'pre_season', 
     name: 'Pre-Season', 
     description: 'Registration closed, fantasy and pick\'em still open',
-    color: 'bg-yellow-500/20 text-yellow-300 border-yellow-500/40'
+    color: 'bg-yellow-500/20 text-yellow-300 border-yellow-500/40',
+    category: 'pre-tournament'
   },
   { 
     id: 'group_stage', 
     name: 'Group Stage', 
-    description: 'Tournament active, all predictions locked',
-    color: 'bg-blue-500/20 text-blue-300 border-blue-500/40'
+    description: 'Round robin matches, fantasy lineups for wildcards',
+    color: 'bg-blue-500/20 text-blue-300 border-blue-500/40',
+    category: 'tournament'
   },
   { 
-    id: 'playoffs', 
-    name: 'Playoffs', 
-    description: 'Knockout stage active',
-    color: 'bg-purple-500/20 text-purple-300 border-purple-500/40'
+    id: 'wildcards', 
+    name: 'Wildcards', 
+    description: 'Wildcard elimination matches, fantasy lineups for playoffs round 1',
+    color: 'bg-orange-500/20 text-orange-300 border-orange-500/40',
+    category: 'tournament'
+  },
+  { 
+    id: 'playoffs_round1', 
+    name: 'Playoffs Round 1', 
+    description: 'First playoff round, fantasy lineups for round 2',
+    color: 'bg-purple-500/20 text-purple-300 border-purple-500/40',
+    category: 'playoffs'
+  },
+  { 
+    id: 'playoffs_round2', 
+    name: 'Playoffs Round 2', 
+    description: 'Second playoff round, fantasy lineups for round 3',
+    color: 'bg-purple-500/20 text-purple-300 border-purple-500/40',
+    category: 'playoffs'
+  },
+  { 
+    id: 'playoffs_round3', 
+    name: 'Playoffs Round 3', 
+    description: 'Third playoff round, fantasy lineups for round 4',
+    color: 'bg-purple-500/20 text-purple-300 border-purple-500/40',
+    category: 'playoffs'
+  },
+  { 
+    id: 'playoffs_round4', 
+    name: 'Playoffs Round 4', 
+    description: 'Fourth playoff round, fantasy lineups for round 5',
+    color: 'bg-purple-500/20 text-purple-300 border-purple-500/40',
+    category: 'playoffs'
+  },
+  { 
+    id: 'playoffs_round5', 
+    name: 'Playoffs Round 5', 
+    description: 'Fifth playoff round, fantasy lineups for round 6',
+    color: 'bg-purple-500/20 text-purple-300 border-purple-500/40',
+    category: 'playoffs'
+  },
+  { 
+    id: 'playoffs_round6', 
+    name: 'Playoffs Round 6', 
+    description: 'Sixth playoff round, fantasy lineups for round 7',
+    color: 'bg-purple-500/20 text-purple-300 border-purple-500/40',
+    category: 'playoffs'
+  },
+  { 
+    id: 'playoffs_round7', 
+    name: 'Playoffs Round 7 (Finals)', 
+    description: 'Final round - tournament completion',
+    color: 'bg-red-500/20 text-red-300 border-red-500/40',
+    category: 'playoffs'
   },
   { 
     id: 'finished', 
     name: 'Tournament Finished', 
     description: 'Tournament completed',
-    color: 'bg-gray-500/20 text-gray-300 border-gray-500/40'
+    color: 'bg-gray-500/20 text-gray-300 border-gray-500/40',
+    category: 'post-tournament'
   }
 ];
 
@@ -166,13 +220,23 @@ export function TournamentStatusTab() {
               <SelectValue placeholder="Select tournament stage" />
             </SelectTrigger>
             <SelectContent>
-              {TOURNAMENT_STAGES.map((stage) => (
-                <SelectItem key={stage.id} value={stage.id}>
-                  <div className="flex flex-col">
-                    <span className="font-medium">{stage.name}</span>
-                    <span className="text-xs text-muted-foreground">{stage.description}</span>
+              {['pre-tournament', 'tournament', 'playoffs', 'post-tournament'].map(category => (
+                <div key={category}>
+                  <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                    {category === 'pre-tournament' && 'Pre-Tournament'}
+                    {category === 'tournament' && 'Tournament'}
+                    {category === 'playoffs' && 'Playoffs'}
+                    {category === 'post-tournament' && 'Post-Tournament'}
                   </div>
-                </SelectItem>
+                  {TOURNAMENT_STAGES.filter(stage => stage.category === category).map((stage) => (
+                    <SelectItem key={stage.id} value={stage.id}>
+                      <div className="flex flex-col">
+                        <span className="font-medium">{stage.name}</span>
+                        <span className="text-xs text-muted-foreground">{stage.description}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </div>
               ))}
             </SelectContent>
           </Select>
@@ -239,11 +303,27 @@ export function TournamentStatusTab() {
                 {selectedStatus === 'group_stage' && (
                   <>
                     <li>All registrations and predictions will be locked</li>
-                    <li>Tournament matches become active</li>
+                    <li>Group stage matches become active</li>
+                    <li>Fantasy users can submit lineups for wildcards</li>
                   </>
                 )}
-                {selectedStatus === 'playoffs' && (
-                  <li>Tournament enters knockout phase</li>
+                {selectedStatus === 'wildcards' && (
+                  <>
+                    <li>Wildcard elimination matches active</li>
+                    <li>Fantasy users can submit lineups for playoffs round 1</li>
+                  </>
+                )}
+                {selectedStatus?.startsWith('playoffs_round') && (
+                  <>
+                    <li>{`${selectedStage?.name} matches active`}</li>
+                    <li>Fantasy users can submit lineups for the next round</li>
+                  </>
+                )}
+                {selectedStatus === 'finished' && (
+                  <>
+                    <li>Tournament declared complete</li>
+                    <li>Final fantasy and pick'em rankings locked</li>
+                  </>
                 )}
               </ul>
             </div>

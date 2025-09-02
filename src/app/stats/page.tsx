@@ -228,6 +228,16 @@ interface TournamentStats {
   averageDeaths: number;
   averageAssists: number;
   totalRoshanKills: number;
+  totalRampages: number;
+  totalHealing: number;
+  totalWardsPlaced: number;
+  totalBuybacks: number;
+  totalCreepsKilled: number;
+  totalDenies: number;
+  totalCouriersKilled: number;
+  totalWardsDestroyed: number;
+  uniqueHeroesPicked: number;
+  totalFantasyPoints: number;
   
   // Economy
   totalGoldGenerated: number;
