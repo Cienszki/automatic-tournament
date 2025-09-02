@@ -139,7 +139,7 @@ export function InfoWidgets() {
             {fantasyLeader ? (
               <div className="text-center w-full">
                 <p className="font-extrabold text-2xl text-[#0ff0fc] drop-shadow-[0_0_4px_#0ff0fc] mb-1">{fantasyLeader.displayName}</p>
-                <p className="text-lg text-[#e0d7f7] font-mono">{fantasyLeader.totalFantasyScore.toLocaleString()} <span className="text-[#b86fc6] font-bold">{t('common.points')}</span></p>
+                <p className="text-3xl text-[#e0d7f7] font-mono font-bold">{fantasyLeader.totalFantasyScore.toFixed(1)}</p>
               </div>
             ) : <p className="text-[#e0d7f7]/70">{t('home.noFantasyData')}</p>}
           </CardContent>

@@ -1,4 +1,4 @@
-import { getAnnouncements, getAllMatches, getFantasyLeaderboard } from "@/lib/firestore";
+import { getAnnouncements, getAllMatches } from "@/lib/firestore";
 
 export async function getHomePageData() {
   // Announcements
@@ -23,12 +23,17 @@ export async function getHomePageData() {
   // Fantasy leader: top scorer from fantasy leaderboard
   let fantasyLeader = null;
   try {
-    const fantasyLeaderboard = await getFantasyLeaderboard();
-    if (fantasyLeaderboard.length > 0) {
-      fantasyLeader = fantasyLeaderboard.sort((a, b) => b.totalFantasyScore - a.totalFantasyScore)[0];
+    // Use client-side fetch to our API route
+    const baseUrl = typeof window !== 'undefined' ? '' : (process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000');
+    const response = await fetch(`${baseUrl}/api/home/fantasy-leader`);
+    if (response.ok) {
+      const data = await response.json();
+      if (data.success && data.fantasyLeader) {
+        fantasyLeader = data.fantasyLeader;
+      }
     }
   } catch (error) {
-    console.log('Fantasy leaderboard temporarily unavailable:', error);
+    console.log('Fantasy leader API temporarily unavailable:', error);
     // Fantasy leader will remain null, which is handled gracefully in the UI
   }
 
