@@ -716,7 +716,13 @@ export async function getPlayoffDataWithResults(): Promise<PlayoffData | null> {
                     
                     matchResults.set(data.playoff_match_id, {
                         result: result,
-                        status: data.status
+                        status: data.status,
+                        game_ids: data.game_ids || [],
+                        game_results: data.game_results || [],
+                        teamA: data.teamA,
+                        teamB: data.teamB,
+                        dateTime: data.dateTime,
+                        defaultMatchTime: data.defaultMatchTime
                     });
                 }
             });
@@ -734,7 +740,13 @@ export async function getPlayoffDataWithResults(): Promise<PlayoffData | null> {
                     return {
                         ...match,
                         result: liveData.result || match.result,
-                        status: liveData.status || match.status
+                        status: liveData.status || match.status,
+                        game_ids: liveData.game_ids,
+                        game_results: liveData.game_results,
+                        teamA: liveData.teamA,
+                        teamB: liveData.teamB,
+                        dateTime: liveData.dateTime,
+                        defaultMatchTime: liveData.defaultMatchTime
                     };
                 }
                 return match;
@@ -762,5 +774,130 @@ export async function completePlayoffSetup(): Promise<boolean> {
     } catch (error) {
         console.error('Error completing playoff setup:', error);
         return false;
+    }
+}
+
+// Recalculate entire bracket based on current match results
+export async function recalculatePlayoffBracket(): Promise<boolean> {
+    try {
+        console.log('Starting bracket recalculation...');
+        
+        // Get fresh playoff data and reset all team advancements
+        const playoffData = await getPlayoffData();
+        if (!playoffData) {
+            throw new Error('No playoff data found');
+        }
+
+        // Reset all slots (except initial seeded slots)
+        const resetBrackets = playoffData.brackets.map(bracket => ({
+            ...bracket,
+            slots: bracket.slots.map(slot => {
+                // Keep initial seeded slots but clear advancement slots
+                if (bracket.type === 'upper' && slot.round === 1) return slot; // Keep initial upper bracket seeds
+                if (bracket.type === 'lower' && slot.round === 1 && slot.id.includes('direct')) return slot; // Keep initial lower bracket seeds
+                if (bracket.type === 'wildcard' && slot.round === 1) return slot; // Keep wildcard seeds
+                
+                // Clear advancement slots
+                const { teamId, ...slotWithoutTeam } = slot;
+                return slotWithoutTeam;
+            })
+        }));
+
+        // Get all completed matches from Firestore
+        const allMatchesSnapshot = await getDocs(collection(db, 'matches'));
+        const completedMatches = new Map();
+        
+        allMatchesSnapshot.docs.forEach(doc => {
+            const data = doc.data();
+            if (data.playoff_match_id && data.status === 'completed' && 
+                data.teamA?.score !== undefined && data.teamB?.score !== undefined) {
+                
+                const teamAScore = data.teamA.score;
+                const teamBScore = data.teamB.score;
+                const winnerId = teamAScore > teamBScore ? data.teams?.[0] : data.teams?.[1];
+                const loserId = teamAScore > teamBScore ? data.teams?.[1] : data.teams?.[0];
+                
+                completedMatches.set(data.playoff_match_id, {
+                    winnerId,
+                    loserId,
+                    teamAScore,
+                    teamBScore
+                });
+            }
+        });
+
+        console.log(`Found ${completedMatches.size} completed matches to process`);
+
+        // Process matches in dependency order (wildcards -> upper R1 -> lower R1 -> etc.)
+        const processOrder = [
+            // Wildcard matches first
+            'wc-m1', 'wc-m2',
+            // Upper bracket R1
+            'ub-r1-m1', 'ub-r1-m2', 'ub-r1-m3', 'ub-r1-m4',
+            // Lower bracket R1 (needs wildcard winners)
+            'lb-r1-m1', 'lb-r1-m2', 'lb-r1-m3', 'lb-r1-m4',
+            // Lower bracket R2 (needs upper R1 losers)
+            'lb-r2-m1', 'lb-r2-m2', 'lb-r2-m3', 'lb-r2-m4',
+            // Upper bracket R2
+            'ub-r2-m1', 'ub-r2-m2',
+            // Lower bracket R3
+            'lb-r3-m1', 'lb-r3-m2',
+            // Lower bracket R4 (needs upper R2 losers)
+            'lb-r4-m1', 'lb-r4-m2',
+            // Upper final
+            'ub-final',
+            // Lower bracket R5
+            'lb-r5-m1',
+            // Lower bracket final (needs upper final loser)
+            'lb-final',
+            // Grand final
+            'grand-final'
+        ];
+
+        // Apply advancements in order
+        let updatedBrackets = resetBrackets;
+        for (const matchId of processOrder) {
+            const matchResult = completedMatches.get(matchId);
+            if (matchResult) {
+                console.log(`Processing ${matchId}: winner ${matchResult.winnerId}, loser ${matchResult.loserId}`);
+                
+                // Find the match in brackets
+                for (const bracket of updatedBrackets) {
+                    const match = bracket.matches.find(m => m.id === matchId);
+                    if (match && match.winnerSlotId) {
+                        // Advance winner
+                        const winnerSlot = findSlotInBrackets(updatedBrackets, match.winnerSlotId);
+                        if (winnerSlot) {
+                            winnerSlot.teamId = matchResult.winnerId;
+                        }
+                        
+                        // Advance loser (for upper bracket matches that send losers to lower bracket)
+                        if (match.loserSlotId) {
+                            const loserSlot = findSlotInBrackets(updatedBrackets, match.loserSlotId);
+                            if (loserSlot) {
+                                loserSlot.teamId = matchResult.loserId;
+                            }
+                        }
+                        break;
+                    }
+                }
+            }
+        }
+
+        // Update playoff data with recalculated brackets
+        const updatedPlayoffData = {
+            ...playoffData,
+            brackets: updatedBrackets,
+            updatedAt: new Date().toISOString()
+        };
+
+        await setDoc(doc(db, 'playoffs', playoffData.id), updatedPlayoffData);
+        
+        console.log('Bracket recalculation completed successfully');
+        return true;
+        
+    } catch (error) {
+        console.error('Error recalculating playoff bracket:', error);
+        throw error;
     }
 }

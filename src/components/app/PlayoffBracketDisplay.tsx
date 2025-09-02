@@ -431,10 +431,11 @@ const MatchCard: React.FC<MatchCardProps> = ({
     return () => { ignore = true; };
   }, [match.id]);
 
-  const scoreA = liveResult?.teamAScore ?? null;
-  const scoreB = liveResult?.teamBScore ?? null;
-  const winnerId = liveResult?.winnerId ?? null;
-  const isCompleted = liveStatus === 'completed';
+  // Use match result data from bracket (merged by getPlayoffDataWithResults)
+  const scoreA = match.result?.teamAScore ?? liveResult?.teamAScore ?? null;
+  const scoreB = match.result?.teamBScore ?? liveResult?.teamBScore ?? null;
+  const winnerId = match.result?.winnerId ?? liveResult?.winnerId ?? null;
+  const isCompleted = match.status === 'completed' || liveStatus === 'completed';
 
   return (
     <Card 
@@ -566,6 +567,8 @@ const MatchCard: React.FC<MatchCardProps> = ({
             )}
           </div>
         )}
+
+
       </CardContent>
     </Card>
   );

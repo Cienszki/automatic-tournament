@@ -19,7 +19,8 @@ import {
     assignTeamToSlot,
     setMatchFormat,
     completePlayoffSetup,
-    initializePlayoffBracket
+    initializePlayoffBracket,
+    recalculatePlayoffBracket
 } from '@/lib/playoff-management';
 import {
     PlayoffData,
@@ -146,6 +147,26 @@ export function PlayoffManagementTab() {
             await loadPlayoffData();
         } catch (error) {
             console.error('Error resetting brackets:', error);
+        } finally {
+            setUpdating(false);
+        }
+    };
+
+    const handleRecalculateBracket = async () => {
+        if (!confirm('This will recalculate all team advancements based on current match results. Any manually adjusted team positions will be overwritten. Continue?')) {
+            return;
+        }
+        
+        setUpdating(true);
+        try {
+            const success = await recalculatePlayoffBracket();
+            if (success) {
+                alert('Bracket recalculation completed successfully!');
+                await loadPlayoffData();
+            }
+        } catch (error) {
+            console.error('Error recalculating bracket:', error);
+            alert('Failed to recalculate bracket: ' + (error instanceof Error ? error.message : 'Unknown error'));
         } finally {
             setUpdating(false);
         }
@@ -383,6 +404,13 @@ export function PlayoffManagementTab() {
                                         </Alert>
                                     )}
 
+                                    <Alert>
+                                        <Play className="h-4 w-4" />
+                                        <AlertDescription>
+                                            <strong>Bracket Recalculation:</strong> Use this when match results have been updated (e.g., after remakes) and team advancements need to be corrected. This will process all completed matches from scratch and update team positions accordingly.
+                                        </AlertDescription>
+                                    </Alert>
+
                                     <div className="flex gap-2">
                                         <Button 
                                             onClick={handleCompleteSetup} 
@@ -391,6 +419,15 @@ export function PlayoffManagementTab() {
                                         >
                                             {updating && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                                             {playoffData.isSetup ? "Setup Complete" : "Complete Setup"}
+                                        </Button>
+                                        <Button 
+                                            onClick={handleRecalculateBracket} 
+                                            disabled={updating}
+                                            variant="outline"
+                                            className="flex-1"
+                                        >
+                                            {updating && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                                            Recalculate Bracket
                                         </Button>
                                     </div>
                                 </div>
