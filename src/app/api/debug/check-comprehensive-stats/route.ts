@@ -31,22 +31,22 @@ export async function GET() {
     // Get some sample values
     const teamSamples = teamStatsKeys.slice(0, 5).map(teamId => ({
       teamId,
-      teamName: data.teamStats[teamId]?.teamName || 'Unknown',
-      hasFewestAssistsPerKill: data.teamStats[teamId]?.fewestAssistsPerKill !== undefined,
-      fewestAssistsPerKill: data.teamStats[teamId]?.fewestAssistsPerKill?.value || 'N/A',
-      hasMostAssistsPerKill: data.teamStats[teamId]?.mostAssistsPerKill !== undefined,
-      mostAssistsPerKill: data.teamStats[teamId]?.mostAssistsPerKill?.value || 'N/A',
-      hasFewestKillsPerWin: data.teamStats[teamId]?.fewestKillsPerWin !== undefined,
-      fewestKillsPerWin: data.teamStats[teamId]?.fewestKillsPerWin?.value || 'N/A',
+      teamName: data?.teamStats?.[teamId]?.teamName || 'Unknown',
+      hasFewestAssistsPerKill: data?.teamStats?.[teamId]?.fewestAssistsPerKill !== undefined,
+      fewestAssistsPerKill: data?.teamStats?.[teamId]?.fewestAssistsPerKill?.value || 'N/A',
+      hasMostAssistsPerKill: data?.teamStats?.[teamId]?.mostAssistsPerKill !== undefined,
+      mostAssistsPerKill: data?.teamStats?.[teamId]?.mostAssistsPerKill?.value || 'N/A',
+      hasFewestKillsPerWin: data?.teamStats?.[teamId]?.fewestKillsPerWin !== undefined,
+      fewestKillsPerWin: data?.teamStats?.[teamId]?.fewestKillsPerWin?.value || 'N/A',
       // Check old field
-      hasAverageAssists: data.teamStats[teamId]?.averageAssists !== undefined,
-      averageAssists: data.teamStats[teamId]?.averageAssists?.value || 'N/A'
+      hasAverageAssists: data?.teamStats?.[teamId]?.averageAssists !== undefined,
+      averageAssists: data?.teamStats?.[teamId]?.averageAssists?.value || 'N/A'
     }));
 
     // Check what team has the lowest fewestAssistsPerKill value
     let lowestAssistsPerKill = { teamId: '', teamName: '', value: 999 };
     
-    for (const [teamId, teamData] of Object.entries(data.teamStats || {})) {
+    for (const [teamId, teamData] of Object.entries(data?.teamStats || {})) {
       const team = teamData as any;
       if (team.fewestAssistsPerKill?.value < lowestAssistsPerKill.value) {
         lowestAssistsPerKill = {
