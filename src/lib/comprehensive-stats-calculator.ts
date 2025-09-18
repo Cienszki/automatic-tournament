@@ -173,7 +173,7 @@ async function fetchAllGameData(db: any) {
   const allPerformances: any[] = [];
   
   console.log(`Processing ${matches.length} matches...`);
-  const completedMatches = matches.filter(m => m.status === 'completed');
+  const completedMatches = matches.filter((m: any) => m.status === 'completed');
   console.log(`Found ${completedMatches.length} completed matches out of ${matches.length} total`);
   
   for (const match of matches) {

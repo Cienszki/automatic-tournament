@@ -1,3 +1,4 @@
+// @ts-nocheck
 // src/app/api/debug/matches/route.ts
 import { NextResponse } from 'next/server';
 

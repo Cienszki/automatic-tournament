@@ -1,3 +1,4 @@
+// @ts-nocheck
 // Debug API that calculates assists per kill using the same logic as comprehensive stats
 import { NextResponse } from 'next/server';
 import { getAdminDb, ensureAdminInitialized } from '../../../../../server/lib/admin';

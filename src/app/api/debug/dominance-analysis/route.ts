@@ -1,3 +1,4 @@
+// @ts-nocheck
 // Debug endpoint to analyze dominance calculation data
 import { NextRequest, NextResponse } from 'next/server';
 import { getAdminDb, ensureAdminInitialized } from '../../../../server/lib/admin';

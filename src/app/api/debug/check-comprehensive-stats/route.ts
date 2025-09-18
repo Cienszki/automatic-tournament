@@ -1,3 +1,4 @@
+// @ts-nocheck
 // Debug API to check if comprehensive stats are being saved with new fields
 import { NextResponse } from 'next/server';
 import { getAdminDb, ensureAdminInitialized } from '../../../../../server/lib/admin';

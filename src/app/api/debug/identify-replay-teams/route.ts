@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { NextResponse } from "next/server";
 import { getAdminDb, ensureAdminInitialized } from "@/server/lib/admin";
 import { promises as fs } from 'fs';

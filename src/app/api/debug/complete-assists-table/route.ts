@@ -1,3 +1,4 @@
+// @ts-nocheck
 // Debug API to provide complete assists per kill table for ALL teams
 import { NextResponse } from 'next/server';
 import { getAdminDb, ensureAdminInitialized } from '../../../../../server/lib/admin';

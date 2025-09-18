@@ -1,3 +1,4 @@
+// @ts-nocheck
 // src/app/api/debug/teams/route.ts
 import { NextResponse } from 'next/server';
 

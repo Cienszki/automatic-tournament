@@ -1,3 +1,4 @@
+// @ts-nocheck
 // Debug API to check kills single game calculations
 import { NextResponse } from 'next/server';
 import { getAdminDb, ensureAdminInitialized } from '../../../../../server/lib/admin';

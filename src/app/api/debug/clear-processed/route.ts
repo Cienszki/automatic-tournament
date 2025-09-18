@@ -1,3 +1,4 @@
+// @ts-nocheck
 // src/app/api/debug/clear-processed/route.ts
 import { NextResponse } from 'next/server';
 

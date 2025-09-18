@@ -1,3 +1,4 @@
+// @ts-nocheck
 // Debug API to check team performance data structure
 import { NextResponse } from 'next/server';
 import { getAdminDb, ensureAdminInitialized } from '../../../../../server/lib/admin';

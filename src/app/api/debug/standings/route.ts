@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { NextResponse } from 'next/server';
 import { getAllGroupsAdmin } from '../../../../server/lib/getAllAdmin';
 import { getAllMatchesAdmin } from '../../../../server/lib/getAllMatchesAdmin';

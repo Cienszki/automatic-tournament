@@ -40,7 +40,9 @@
       "Bash(git stash:*)",
       "WebFetch(domain:dota2inhouse.pl)",
       "WebFetch(domain:api.opendota.com)",
-      "Bash(python:*)"
+      "Bash(python:*)",
+      "Bash(git commit:*)",
+      "Bash(find:*)"
     ],
     "deny": [],
     "ask": [],
