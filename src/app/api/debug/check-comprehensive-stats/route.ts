@@ -21,7 +21,7 @@ export async function GET() {
     
     // Check team stats structure
     const teamStatsKeys = data?.teamStats ? Object.keys(data.teamStats) : [];
-    const sampleTeam = teamStatsKeys.length > 0 ? data.teamStats[teamStatsKeys[0]] : null;
+    const sampleTeam = teamStatsKeys.length > 0 && data?.teamStats ? data.teamStats[teamStatsKeys[0]] : null;
     
     // Look for our new fields
     const hasFewestAssistsPerKill = sampleTeam?.fewestAssistsPerKill !== undefined;
