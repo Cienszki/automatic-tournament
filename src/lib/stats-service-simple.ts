@@ -5,17 +5,29 @@ import { db } from '@/lib/firebase';
 import { recalculateBasicTournamentStats } from '@/lib/stats-calculator-basic';
 
 /**
- * Recalculate all tournament statistics
+ * Recalculate all tournament statistics using comprehensive calculator
  */
 export async function recalculateAllStats(): Promise<void> {
-  console.log('Starting comprehensive stats recalculation...');
+  console.log('🚀 Starting comprehensive stats recalculation...');
   
   try {
-    await recalculateBasicTournamentStats();
-    console.log('Stats recalculation completed successfully');
+    // Import and use the comprehensive stats calculator
+    console.log('📊 Using comprehensive stats calculator...');
+    const { calculateAllComprehensiveStats } = await import('./comprehensive-stats-calculator');
+    await calculateAllComprehensiveStats();
+    
+    console.log('✅ Comprehensive stats recalculation completed successfully!');
   } catch (error) {
-    console.error('Error during stats recalculation:', error);
-    throw error;
+    console.error('❌ Error during comprehensive stats recalculation:', error);
+    console.error('Falling back to basic stats calculator...');
+    
+    try {
+      await recalculateBasicTournamentStats();
+      console.log('✅ Basic stats recalculation completed successfully');
+    } catch (fallbackError) {
+      console.error('❌ Both comprehensive and basic stats calculations failed:', fallbackError);
+      throw fallbackError;
+    }
   }
 }
 

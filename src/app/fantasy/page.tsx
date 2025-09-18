@@ -288,7 +288,7 @@ export default function FantasyPage() {
       try {
         console.log('🚀 Starting leaderboard fetch...');
         setLeaderboardsLoading(true);
-        const response = await fetch('/api/fantasy/leaderboards');
+        const response = await fetch(`/api/fantasy/leaderboards?t=${Date.now()}`);
         console.log('📡 Response received:', response.status, response.ok);
         const data = await response.json();
         console.log('📊 Data received:', data.success, 'Keys:', Object.keys(data));

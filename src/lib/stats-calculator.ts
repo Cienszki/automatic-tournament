@@ -232,13 +232,24 @@ function calculateTournamentStats(
     // Vision & Map Control
     totalObserverWardsPlaced: performances.reduce((sum, perf) => sum + (perf.obsPlaced || 0), 0),
     totalSentryWardsPlaced: performances.reduce((sum, perf) => sum + (perf.senPlaced || 0), 0),
-    totalWardsDestroyed: performances.reduce((sum, perf) => sum + (perf.observerKills || 0) + (perf.sentryKills || 0), 0),
+    // totalWardsDestroyed: removed from display
     tournamentWardMaster: (() => { const p = { playerId: '', playerName: 'Unknown', wardsPlaced: 0 }; return { ...p, wardsPlaced: round1(p.wardsPlaced) }; })(),
     bestWardHunter: (() => { const p = { playerId: '', playerName: 'Unknown', wardsKilled: 0 }; return { ...p, wardsKilled: round1(p.wardsKilled) }; })(),
     totalCampsStacked: performances.reduce((sum, perf) => sum + (perf.campsStacked || 0), 0),
     totalRunesCollected: performances.reduce((sum, perf) => sum + (perf.runesPickedUp || 0), 0),
     // Special Achievements
     cinderellaStory: { teamId: '', teamName: 'Unknown', initialSeed: 0, finalPosition: 0 },
+    
+    // Additional fields for stats page compatibility
+    totalRoshanKills: 0,
+    totalHealing: 0,
+    totalBuybacks: 0,
+    totalCreepsKilled: 0,
+    // totalCouriersKilled: removed from display
+    totalFantasyPoints: 0,
+    mostPlayedRoleHero: 'Unknown',
+    totalDenies: performances.reduce((sum, perf) => sum + (perf.denies || 0), 0),
+    
     lastUpdated: new Date().toISOString()
   };
   return stats;
@@ -268,23 +279,36 @@ function calculateAllPlayerStats(
       teamId: player.teamId,
       teamName: team?.name || 'Unknown Team',
       
-      // Combat Excellence
-  mostKillsSingleMatch: { ...findMaxStat(playerPerformances, 'kills'), heroName: findMaxStat(playerPerformances, 'kills').heroName || '' },
-  mostAssistsSingleMatch: { ...findMaxStat(playerPerformances, 'assists'), heroName: findMaxStat(playerPerformances, 'assists').heroName || '' },
-  highestKDASingleMatch: { ...findMaxStat(playerPerformances, 'kda'), heroName: findMaxStat(playerPerformances, 'kda').heroName || '' },
-  mostHeroDamageSingleMatch: { ...findMaxStat(playerPerformances, 'heroDamage'), heroName: findMaxStat(playerPerformances, 'heroDamage').heroName || '' },
-  mostHeroHealingSingleMatch: { ...findMaxStat(playerPerformances, 'heroHealing'), heroName: findMaxStat(playerPerformances, 'heroHealing').heroName || '' },
-  mostTowerDamageSingleMatch: { ...findMaxStat(playerPerformances, 'towerDamage'), heroName: findMaxStat(playerPerformances, 'towerDamage').heroName || '' },
-  longestKillStreak: { ...findMaxStat(playerPerformances, 'highestKillStreak'), heroName: findMaxStat(playerPerformances, 'highestKillStreak').heroName || '' },
-  mostDoubleKills: { ...findMaxStat(playerPerformances, 'doubleKills'), heroName: findMaxStat(playerPerformances, 'doubleKills').heroName || '' },
-  mostTripleKills: { ...findMaxStat(playerPerformances, 'tripleKills'), heroName: findMaxStat(playerPerformances, 'tripleKills').heroName || '' },
-  rampageCount: { ...findMaxStat(playerPerformances, 'rampages'), heroName: findMaxStat(playerPerformances, 'rampages').heroName || '' },
+      // Cached findMaxStat results to avoid duplicate calculations
+      ...(() => {
+        const maxStatCache = new Map();
+        const getCachedMaxStat = (field: string) => {
+          if (!maxStatCache.has(field)) {
+            maxStatCache.set(field, findMaxStat(playerPerformances, field));
+          }
+          return maxStatCache.get(field);
+        };
+        
+        return {
+          // Combat Excellence
+          mostKillsSingleMatch: (() => { const stat = getCachedMaxStat('kills'); return { ...stat, heroName: stat.heroName || '' }; })(),
+          mostAssistsSingleMatch: (() => { const stat = getCachedMaxStat('assists'); return { ...stat, heroName: stat.heroName || '' }; })(),
+          highestKDASingleMatch: (() => { const stat = findHighestKDA(playerPerformances); return { ...stat, heroName: stat.heroName || '' }; })(),
+          mostHeroDamageSingleMatch: (() => { const stat = getCachedMaxStat('heroDamage'); return { ...stat, heroName: stat.heroName || '' }; })(),
+          mostHeroHealingSingleMatch: (() => { const stat = getCachedMaxStat('heroHealing'); return { ...stat, heroName: stat.heroName || '' }; })(),
+          mostTowerDamageSingleMatch: (() => { const stat = getCachedMaxStat('towerDamage'); return { ...stat, heroName: stat.heroName || '' }; })(),
+          longestKillStreak: (() => { const stat = getCachedMaxStat('highestKillStreak'); return { ...stat, heroName: stat.heroName || '' }; })(),
+          mostDoubleKills: (() => { const stat = getCachedMaxStat('doubleKills'); return { ...stat, heroName: stat.heroName || '' }; })(),
+          mostTripleKills: (() => { const stat = getCachedMaxStat('tripleKills'); return { ...stat, heroName: stat.heroName || '' }; })(),
+          rampageCount: (() => { const stat = getCachedMaxStat('rampages'); return { ...stat, heroName: stat.heroName || '' }; })(),
+        };
+      })(),
       
       // Economic Mastery
-  highestGPMSingleMatch: { ...findMaxStat(playerPerformances, 'gpm'), heroName: findMaxStat(playerPerformances, 'gpm').heroName || '' },
-  highestXPMSingleMatch: { ...findMaxStat(playerPerformances, 'xpm'), heroName: findMaxStat(playerPerformances, 'xpm').heroName || '' },
-  highestNetWorthSingleMatch: { ...findMaxStat(playerPerformances, 'netWorth'), heroName: findMaxStat(playerPerformances, 'netWorth').heroName || '' },
-  mostGoldSpentSingleMatch: { ...findMaxStat(playerPerformances, 'goldSpent'), heroName: findMaxStat(playerPerformances, 'goldSpent').heroName || '' },
+      highestGPMSingleMatch: (() => { const stat = findMaxStat(playerPerformances, 'gpm'); return { ...stat, heroName: stat.heroName || '' }; })(),
+      highestXPMSingleMatch: (() => { const stat = findMaxStat(playerPerformances, 'xpm'); return { ...stat, heroName: stat.heroName || '' }; })(),
+      highestNetWorthSingleMatch: (() => { const stat = findMaxStat(playerPerformances, 'netWorth'); return { ...stat, heroName: stat.heroName || '' }; })(),
+      mostGoldSpentSingleMatch: (() => { const stat = findMaxStat(playerPerformances, 'goldSpent'); return { ...stat, heroName: stat.heroName || '' }; })(),
       fastestLevel6: { 
         ...findMinStat(playerPerformances, 'level6Time'), 
         heroName: findMinStat(playerPerformances, 'level6Time').heroName || '',
@@ -470,6 +494,10 @@ function calculateMetaStats(
 
 // Helper functions for statistical calculations
 function findMaxStat(performances: any[], statField: string): StatRecord {
+  if (performances.length === 0) {
+    return { value: 0, matchId: '', heroName: '', timestamp: new Date().toISOString() };
+  }
+  
   const maxPerf = performances.reduce((max, current) => 
     (current[statField] || 0) > (max[statField] || 0) ? current : max
   );
@@ -548,6 +576,29 @@ function findBusiestDay(games: any[]): { date: string; count: number; } {
   );
   
   return busiestDay;
+}
+
+// Helper function to find the performance with the highest KDA ratio
+function findHighestKDA(performances: any[]): StatRecord {
+  if (performances.length === 0) {
+    return { value: 0, matchId: '', heroName: '', timestamp: new Date().toISOString() };
+  }
+  
+  const performancesWithKDA = performances.map(perf => ({
+    ...perf,
+    kda: perf.deaths > 0 ? (perf.kills + perf.assists) / perf.deaths : (perf.kills + perf.assists)
+  }));
+  
+  const maxPerf = performancesWithKDA.reduce((max, current) => 
+    current.kda > max.kda ? current : max
+  );
+  
+  return {
+    value: maxPerf.kda,
+    matchId: maxPerf.matchId || '',
+    heroName: maxPerf.heroName || '',
+    timestamp: new Date().toISOString()
+  };
 }
 
 // Export function to be called when matches are added/deleted

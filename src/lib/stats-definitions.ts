@@ -46,7 +46,7 @@ export interface TournamentStats {
   // Vision & Map Control
   totalObserverWardsPlaced: number;
   totalSentryWardsPlaced: number;
-  totalWardsDestroyed: number;
+  // totalWardsDestroyed: removed from display
   tournamentWardMaster: { playerId: string; playerName: string; wardsPlaced: number; };
   bestWardHunter: { playerId: string; playerName: string; wardsKilled: number; };
   totalCampsStacked: number;
@@ -54,6 +54,16 @@ export interface TournamentStats {
   
   // Special Achievements
   cinderellaStory: { teamId: string; teamName: string; initialSeed: number; finalPosition: number; };
+  
+  // Additional fields for stats page compatibility
+  totalRoshanKills: number;
+  totalHealing: number;
+  totalBuybacks: number;
+  totalCreepsKilled: number;
+  totalDenies: number;
+  // totalCouriersKilled: removed from display
+  totalFantasyPoints: number;
+  mostPlayedRoleHero: string;
   
   lastUpdated: string;
 }

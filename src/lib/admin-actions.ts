@@ -866,7 +866,7 @@ async function checkAndUpdateMatchCompletionAdmin(matchId: string): Promise<void
     console.log(`Match ${matchId} updated: ${teamAWins}-${teamBWins}, complete: ${isComplete}`);
 }
 
-async function saveExternalGameResultsAdmin(ourMatchId: string, game: any, performances: any[], teams: { radiantTeam: any, direTeam: any }): Promise<void> {
+export async function saveExternalGameResultsAdmin(ourMatchId: string, game: any, performances: any[], teams: { radiantTeam: any, direTeam: any }): Promise<void> {
     const { getAdminDb, ensureAdminInitialized } = await import('../../server/lib/admin');
     const { FieldValue } = await import('firebase-admin/firestore');
     ensureAdminInitialized();
@@ -941,9 +941,21 @@ export async function syncLeagueMatchesAdmin() {
 
         console.log(`Found ${newMatchIds.length} new matches to import.`);
 
-        // Import each new match
+        // Also check for unparsed matches that might now be parsed
+        const { getAllUnparsedMatchesAdmin, removeUnparsedMatchAdmin, updateUnparsedMatchAttemptAdmin } = await import('./unparsed-matches-admin');
+        const unparsedMatches = await getAllUnparsedMatchesAdmin();
+        console.log(`Found ${unparsedMatches.length} previously unparsed matches to re-check.`);
+
+        // Add unparsed matches to the processing queue (they're not marked as processed yet)
+        const unparsedMatchIds = unparsedMatches.map(um => parseInt(um.openDotaMatchId));
+        const allMatchesToProcess = [...newMatchIds, ...unparsedMatchIds];
+        
+        console.log(`Total matches to process: ${allMatchesToProcess.length} (${newMatchIds.length} new + ${unparsedMatchIds.length} unparsed re-checks)`);
+
+        // Import each match (new + unparsed re-checks)
         const importResults = await Promise.allSettled(
-            newMatchIds.map(async (matchId) => {
+            allMatchesToProcess.map(async (matchId) => {
+                const isUnparsedRecheck = unparsedMatchIds.includes(matchId);
                 try {
                     console.log(`Starting import for OpenDota match ID: ${matchId}`);
 
@@ -953,11 +965,37 @@ export async function syncLeagueMatchesAdmin() {
                     ]);
                     
                     // Fetch match from OpenDota
-                    const { fetchOpenDotaMatch } = await import('./opendota');
+                    const { fetchOpenDotaMatch, isMatchParsed, requestOpenDotaMatchParse } = await import('./opendota');
                     const openDotaMatch = await fetchOpenDotaMatch(matchId);
                     
+                    // Check if match is parsed, and if not, request parsing and track for re-sync
+                    const isParsed = isMatchParsed(openDotaMatch);
+                    if (!isParsed) {
+                        console.log(`Match ${matchId} is unparsed, requesting parse from OpenDota...`);
+                        try {
+                            const parseResult = await requestOpenDotaMatchParse(matchId);
+                            if (parseResult.success) {
+                                console.log(`✅ Parse request successful for match ${matchId}: ${parseResult.message || 'Queued for parsing'}`);
+                            } else {
+                                console.log(`⚠️ Parse request failed for match ${matchId}: ${parseResult.message}`);
+                            }
+                            
+                            // Add to unparsed matches tracking for future re-sync
+                            const { addUnparsedMatchAdmin } = await import('./unparsed-matches-admin');
+                            await addUnparsedMatchAdmin({
+                                matchId: 'external', // Will be determined later when saving
+                                openDotaMatchId: matchId.toString(),
+                                radiantTeam: openDotaMatch.radiant_name || 'Unknown',
+                                direTeam: openDotaMatch.dire_name || 'Unknown',
+                                gameNumber: '1' // Default for single game matches
+                            });
+                        } catch (parseError) {
+                            console.log(`❌ Parse request error for match ${matchId}: ${(parseError as Error).message}`);
+                        }
+                    }
+                    
                     try {
-                        const { game, performances } = transformMatchData(openDotaMatch, teams as any[], players as any[]);
+                        const { game, performances } = transformMatchData(openDotaMatch, teams as any[], players as any[], false);
                         
                         // Extract team info for finding the correct match
                         const radiantTeam = teams.find((t: any) => t.name.trim().toLowerCase() === openDotaMatch.radiant_name?.trim().toLowerCase());
@@ -999,10 +1037,33 @@ export async function syncLeagueMatchesAdmin() {
                             }
                         }
                         
-                        // Mark this external match/game as processed (admin version)
-                        await markGameAsProcessedAdmin(matchId.toString());
+                        // Handle marking as processed and unparsed tracking
+                        if (isParsed) {
+                            // Fully processed with enhanced stats
+                            await markGameAsProcessedAdmin(matchId.toString());
+                            console.log(`✅ Match ${matchId} fully processed with enhanced stats`);
+                            
+                            // If this was a re-check of an unparsed match, remove from unparsed tracking
+                            if (isUnparsedRecheck) {
+                                const { removeUnparsedMatchAdmin } = await import('./unparsed-matches-admin');
+                                await removeUnparsedMatchAdmin(matchId.toString());
+                                console.log(`🎉 Match ${matchId} was unparsed, now parsed and re-synced! Removed from unparsed tracking.`);
+                            }
+                        } else {
+                            // Unparsed - don't mark as processed yet, will re-check later
+                            console.log(`⏸️ Match ${matchId} saved with basic stats only (unparsed - will re-sync later)`);
+                            
+                            if (isUnparsedRecheck) {
+                                // Still unparsed, update attempt count
+                                const { updateUnparsedMatchAttemptAdmin } = await import('./unparsed-matches-admin');
+                                await updateUnparsedMatchAttemptAdmin(matchId.toString());
+                                console.log(`⏰ Match ${matchId} still unparsed, updated attempt count.`);
+                            }
+                        }
+                        
                         console.log(`Successfully imported and saved data for match ID: ${matchId}`);
-                        return { success: true, message: `Match ${matchId} imported successfully.` };
+                        const statusMessage = isParsed ? `Match ${matchId} imported with full enhanced stats.` : `Match ${matchId} imported with basic stats (unparsed - will enhance later).`;
+                        return { success: true, message: statusMessage, isParsed, isUnparsedRecheck };
                     } catch (transformError) {
                         // If transform fails (e.g., teams not found), this might be a scrim - still mark as processed
                         console.log(`Could not transform match ${matchId} - likely a scrim or practice game: ${(transformError as Error).message}`);
@@ -1103,8 +1164,33 @@ export async function importManualMatchesAdmin(matchIds: number[]) {
                     const { fetchOpenDotaMatch } = await import('./opendota');
                     const openDotaMatch = await fetchOpenDotaMatch(matchId);
                     
+                    // Check if match is parsed, and if not, request parsing and track for re-sync
+                    const { isMatchParsed } = await import('./opendota');
+                    const isParsed = isMatchParsed(openDotaMatch);
+                    const isUnparsedRecheck = false; // Manual imports are not unparsed rechecks
+                    if (!isParsed) {
+                        console.log(`Match ${matchId} is unparsed, requesting parse from OpenDota...`);
+                        try {
+                            const { requestOpenDotaMatchParse } = await import('./opendota');
+                            const parseResult = await requestOpenDotaMatchParse(matchId);
+                            console.log(`Parse request for ${matchId}: ${parseResult ? 'requested' : 'failed'}`);
+                            
+                            // Add to unparsed tracking for later re-sync
+                            const { addUnparsedMatchAdmin } = await import('./unparsed-matches-admin');
+                            await addUnparsedMatchAdmin({
+                                matchId: String(matchId),
+                                openDotaMatchId: String(matchId),
+                                radiantTeam: openDotaMatch.radiant_name || 'Unknown',
+                                direTeam: openDotaMatch.dire_name || 'Unknown',
+                                gameNumber: '1',
+                            });
+                        } catch (parseError) {
+                            console.warn(`Failed to request parse for ${matchId}:`, parseError);
+                        }
+                    }
+                    
                     try {
-                        const { game, performances } = transformMatchData(openDotaMatch, teams as any[], players as any[]);
+                        const { game, performances } = transformMatchData(openDotaMatch, teams as any[], players as any[], false);
                         
                         // Extract team info for finding the correct match
                         const radiantTeam = teams.find((t: any) => t.name.trim().toLowerCase() === openDotaMatch.radiant_name?.trim().toLowerCase());
@@ -1146,10 +1232,33 @@ export async function importManualMatchesAdmin(matchIds: number[]) {
                             }
                         }
                         
-                        // Mark this external match/game as processed (admin version)
-                        await markGameAsProcessedAdmin(matchId.toString());
+                        // Handle marking as processed and unparsed tracking
+                        if (isParsed) {
+                            // Fully processed with enhanced stats
+                            await markGameAsProcessedAdmin(matchId.toString());
+                            console.log(`✅ Match ${matchId} fully processed with enhanced stats`);
+                            
+                            // If this was a re-check of an unparsed match, remove from unparsed tracking
+                            if (isUnparsedRecheck) {
+                                const { removeUnparsedMatchAdmin } = await import('./unparsed-matches-admin');
+                                await removeUnparsedMatchAdmin(matchId.toString());
+                                console.log(`🎉 Match ${matchId} was unparsed, now parsed and re-synced! Removed from unparsed tracking.`);
+                            }
+                        } else {
+                            // Unparsed - don't mark as processed yet, will re-check later
+                            console.log(`⏸️ Match ${matchId} saved with basic stats only (unparsed - will re-sync later)`);
+                            
+                            if (isUnparsedRecheck) {
+                                // Still unparsed, update attempt count
+                                const { updateUnparsedMatchAttemptAdmin } = await import('./unparsed-matches-admin');
+                                await updateUnparsedMatchAttemptAdmin(matchId.toString());
+                                console.log(`⏰ Match ${matchId} still unparsed, updated attempt count.`);
+                            }
+                        }
+                        
                         console.log(`Successfully imported and saved data for match ID: ${matchId}`);
-                        return { success: true, message: `Match ${matchId} imported successfully.` };
+                        const statusMessage = isParsed ? `Match ${matchId} imported with full enhanced stats.` : `Match ${matchId} imported with basic stats (unparsed - will enhance later).`;
+                        return { success: true, message: statusMessage, isParsed, isUnparsedRecheck };
                     } catch (transformError) {
                         // If transform fails (e.g., teams not found), this might be a scrim - still mark as processed
                         console.log(`Could not transform match ${matchId} - likely a scrim or practice game: ${(transformError as Error).message}`);

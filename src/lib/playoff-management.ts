@@ -192,6 +192,9 @@ export async function processMatchResult(
         // Advance teams to next round
         await advanceTeams(playoffData, targetMatch, winnerId, loserId);
 
+        // Update match documents for affected next-round matches
+        await updateAffectedMatchDocuments(playoffData, targetMatch, winnerId, loserId);
+
         // Update the document
         await updateDoc(doc(db, 'playoffs', playoffData.id), {
             brackets: playoffData.brackets,
@@ -237,6 +240,141 @@ async function advanceTeams(
         }
     }
     // Lower bracket losers are eliminated (no advancement)
+}
+
+// Update match documents when teams advance
+async function updateAffectedMatchDocuments(
+    playoffData: PlayoffData,
+    completedMatch: PlayoffMatch,
+    winnerId: string,
+    loserId: string
+) {
+    try {
+        const { winnerSlotId, loserSlotId } = completedMatch;
+        
+        // Find matches that use the winner or loser slots
+        const matchesToUpdate: { matchId: string; updates: any }[] = [];
+        
+        for (const bracket of playoffData.brackets) {
+            for (const match of bracket.matches) {
+                let updates: any = {};
+                let needsUpdate = false;
+                
+                // Check if this match uses the winner slot
+                if (winnerSlotId && (match.teamASlotId === winnerSlotId || match.teamBSlotId === winnerSlotId)) {
+                    // Find the team that won
+                    const teamDoc = await getDoc(doc(db, 'teams', winnerId));
+                    if (teamDoc.exists()) {
+                        const teamData = teamDoc.data();
+                        const teamInfo = {
+                            id: winnerId,
+                            name: teamData.name,
+                            score: 0,
+                            logoUrl: teamData.logoUrl || ''
+                        };
+                        
+                        if (match.teamASlotId === winnerSlotId) {
+                            updates.teamA = teamInfo;
+                            needsUpdate = true;
+                        } else if (match.teamBSlotId === winnerSlotId) {
+                            updates.teamB = teamInfo;
+                            needsUpdate = true;
+                        }
+                    }
+                }
+                
+                // Check if this match uses the loser slot (for upper bracket losers going to lower bracket)
+                if (loserSlotId && (match.teamASlotId === loserSlotId || match.teamBSlotId === loserSlotId)) {
+                    // Find the team that lost
+                    const teamDoc = await getDoc(doc(db, 'teams', loserId));
+                    if (teamDoc.exists()) {
+                        const teamData = teamDoc.data();
+                        const teamInfo = {
+                            id: loserId,
+                            name: teamData.name,
+                            score: 0,
+                            logoUrl: teamData.logoUrl || ''
+                        };
+                        
+                        if (match.teamASlotId === loserSlotId) {
+                            updates.teamA = teamInfo;
+                            needsUpdate = true;
+                        } else if (match.teamBSlotId === loserSlotId) {
+                            updates.teamB = teamInfo;
+                            needsUpdate = true;
+                        }
+                    }
+                }
+                
+                // If we have updates and the match has a corresponding match document, queue it
+                if (needsUpdate) {
+                    // Find the actual match document by playoff_match_id
+                    const matchesSnapshot = await getDocs(
+                        query(
+                            collection(db, 'matches'),
+                            where('playoff_match_id', '==', match.id)
+                        )
+                    );
+                    
+                    if (!matchesSnapshot.empty) {
+                        const matchDoc = matchesSnapshot.docs[0];
+                        matchesToUpdate.push({
+                            matchId: matchDoc.id,
+                            updates
+                        });
+                    }
+                }
+            }
+        }
+        
+        // Apply all the match document updates
+        const updatePromises = matchesToUpdate.map(async ({ matchId, updates }) => {
+            // Get current match data to preserve existing team info
+            const currentMatchDoc = await getDoc(doc(db, 'matches', matchId));
+            if (!currentMatchDoc.exists()) return;
+            
+            const currentData = currentMatchDoc.data();
+            
+            // Skip updating completed matches only if they already have the correct teams
+            // This allows team updates for completed matches that need team info updates
+            if (currentData.status === 'completed') {
+                // Check if the teams being updated are different from current teams
+                const needsTeamUpdate = 
+                    (updates.teamA && updates.teamA.id !== currentData.teamA?.id) ||
+                    (updates.teamB && updates.teamB.id !== currentData.teamB?.id);
+                
+                if (!needsTeamUpdate) {
+                    console.log(`Skipping update for completed match ${matchId} - teams already correct`);
+                    return;
+                }
+                console.log(`Updating team info for completed match ${matchId} while preserving scores`);
+            }
+            
+            // Preserve existing scores when updating team info
+            const updatedTeamA = updates.teamA ? {
+                ...updates.teamA,
+                score: currentData.teamA?.score ?? updates.teamA.score
+            } : currentData.teamA;
+            
+            const updatedTeamB = updates.teamB ? {
+                ...updates.teamB,
+                score: currentData.teamB?.score ?? updates.teamB.score
+            } : currentData.teamB;
+            
+            return updateDoc(doc(db, 'matches', matchId), {
+                teamA: updatedTeamA,
+                teamB: updatedTeamB,
+                teams: [updatedTeamA?.id, updatedTeamB?.id].filter(Boolean)
+            });
+        });
+        
+        await Promise.all(updatePromises);
+        
+        console.log(`Updated ${matchesToUpdate.length} match documents after team advancement`);
+        
+    } catch (error) {
+        console.error('Error updating affected match documents:', error);
+    }
 }
 
 // Helper function to find a slot across all brackets
@@ -313,7 +451,7 @@ function createUpperBracket(): PlayoffBracket {
         const teamASlot = `ub-slot-r2-${(i - 1) * 2 + 1}`;
         const teamBSlot = `ub-slot-r2-${(i - 1) * 2 + 2}`;
         const winnerSlot = `ub-slot-r3-${i}`;
-        const loserSlot = `lb-slot-r4-${i}`; // Upper R2 losers go to LB R4
+        const loserSlot = `lb-slot-r4-${i + 2}`; // Upper R2 losers go to LB R4 slots 3,4
 
         matches.push({
             id: `ub-r2-m${i}`,
@@ -737,14 +875,57 @@ export async function getPlayoffDataWithResults(): Promise<PlayoffData | null> {
             matches: bracket.matches.map(match => {
                 const liveData = matchResults.get(match.id);
                 if (liveData) {
+                    // Clean up any team assignments for matches that shouldn't have teams yet
+                    const shouldClearTeams = (match: any) => {
+                        // Always keep teams if the match has results (it was actually played)
+                        if (liveData.result && liveData.status === 'completed') {
+                            return false;
+                        }
+                        
+                        // Clear teams from matches that depend on unplayed matches
+                        // Round 2+ matches in Lower Bracket should not have teams until R1 is complete
+                        if (match.id && match.id.startsWith('lb-r') && match.round && match.round >= 2) {
+                            return true;
+                        }
+                        
+                        // Round 2+ matches in Upper Bracket should not have teams until R1 is complete  
+                        if (match.id && match.id.startsWith('ub-r') && match.round && match.round >= 2) {
+                            return true;
+                        }
+                        
+                        return false;
+                    };
+                    
+                    // Also check for placeholder teams with English names
+                    const isPlaceholderTeam = (team: any) => {
+                        if (!team) return false;
+                        if (team.id && team.id.includes('placeholder')) return true;
+                        if (team.name && (
+                            team.name.includes('Winner of LB Match') ||
+                            team.name.includes('Upper Team') ||
+                            team.name.includes('Lower Team') ||
+                            team.name.includes('Bracket Champion') ||
+                            team.name.includes('Winner of') ||
+                            team.name.includes('Loser of')
+                        )) return true;
+                        return false;
+                    };
+                    
+                    let teamA = liveData.teamA;
+                    let teamB = liveData.teamB;
+                    
+                    // Clear teams if this match shouldn't have them yet, OR if they're placeholders
+                    if (shouldClearTeams(match) || isPlaceholderTeam(teamA)) teamA = match.teamA;
+                    if (shouldClearTeams(match) || isPlaceholderTeam(teamB)) teamB = match.teamB;
+                    
                     return {
                         ...match,
                         result: liveData.result || match.result,
                         status: liveData.status || match.status,
                         game_ids: liveData.game_ids,
                         game_results: liveData.game_results,
-                        teamA: liveData.teamA,
-                        teamB: liveData.teamB,
+                        teamA: teamA,
+                        teamB: teamB,
                         dateTime: liveData.dateTime,
                         defaultMatchTime: liveData.defaultMatchTime
                     };
@@ -803,7 +984,7 @@ export async function recalculatePlayoffBracket(): Promise<boolean> {
             })
         }));
 
-        // Get all completed matches from Firestore
+        // Get all completed matches from Firestore using client SDK (since this can be called from client)
         const allMatchesSnapshot = await getDocs(collection(db, 'matches'));
         const completedMatches = new Map();
         
@@ -878,6 +1059,15 @@ export async function recalculatePlayoffBracket(): Promise<boolean> {
                                 loserSlot.teamId = matchResult.loserId;
                             }
                         }
+                        
+                        // Update affected match documents
+                        await updateAffectedMatchDocuments(
+                            { ...playoffData, brackets: updatedBrackets },
+                            match,
+                            matchResult.winnerId,
+                            matchResult.loserId
+                        );
+                        
                         break;
                     }
                 }

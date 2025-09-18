@@ -26,6 +26,24 @@ export interface PlayerPerformanceInGame {
     buybackCount: number;
     heroHealing: number;
     fantasyPoints: number;
+    
+    // Multikill data
+    multiKills: { [key: string]: number }; // Object with 2, 3, 4, 5 kill counts
+    doubleKills: number;
+    tripleKills: number;
+    ultraKills: number;
+    rampages: number;
+    
+    // Additional stats
+    roshanKills: number;
+    towerKills: number;
+    neutralKills: number;
+    laneKills: number;
+    heroKills: number;
+    totalGold: number;
+    goldSpent: number;
+    runesPickedUp: number;
+    campsStacked: number;
 }
 
 export interface Game {

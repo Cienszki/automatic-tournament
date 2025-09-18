@@ -133,6 +133,117 @@ def extract_player_slots(events: List[Dict[str, Any]]) -> Dict[int, int]:
                 player_slots[player_id] = slot
     return player_slots
 
+def extract_combat_stats(events: List[Dict[str, Any]], player_info: Dict[int, Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
+    """Extract combat statistics from DOTA_COMBATLOG events."""
+    # Map hero names to player slots for combat event attribution
+    hero_to_slot = {}
+    for slot, info in player_info.items():
+        if isinstance(slot, int) and slot < 10:  # Only process player slots 0-9
+            hero_name = info.get('hero_name')
+            if hero_name:
+                hero_to_slot[hero_name] = slot
+    
+    # Initialize combat stats for each player
+    combat_stats = {}
+    for slot in range(10):
+        combat_stats[slot] = {
+            'hero_damage': 0,
+            'tower_damage': 0,
+            'hero_healing': 0,
+            'gold_spent': 0,
+            'ability_uses': {},
+            'item_uses': {},
+            'damage_taken': {},
+            'heal_targets': {}
+        }
+    
+    print("Processing combat events...")
+    damage_events = 0
+    heal_events = 0
+    purchase_events = 0
+    ability_events = 0
+    
+    for event in events:
+        event_type = event.get('type')
+        
+        # Process damage events
+        if event_type == 'DOTA_COMBATLOG_DAMAGE':
+            damage_events += 1
+            attacker = event.get('attackername')
+            target = event.get('targetname')
+            damage_value = event.get('value', 0)
+            
+            # Find attacker slot
+            attacker_slot = hero_to_slot.get(attacker)
+            target_slot = hero_to_slot.get(target)
+            
+            if attacker_slot is not None:
+                # Add damage dealt
+                if event.get('targethero', False):
+                    combat_stats[attacker_slot]['hero_damage'] += damage_value
+                elif 'tower' in target.lower() or 'barracks' in target.lower():
+                    combat_stats[attacker_slot]['tower_damage'] += damage_value
+            
+            if target_slot is not None:
+                # Add damage taken
+                if attacker not in combat_stats[target_slot]['damage_taken']:
+                    combat_stats[target_slot]['damage_taken'][attacker] = 0
+                combat_stats[target_slot]['damage_taken'][attacker] += damage_value
+        
+        # Process healing events
+        elif event_type == 'DOTA_COMBATLOG_HEAL':
+            heal_events += 1
+            healer = event.get('attackername')
+            target = event.get('targetname')
+            heal_value = event.get('value', 0)
+            
+            healer_slot = hero_to_slot.get(healer)
+            target_slot = hero_to_slot.get(target)
+            
+            if healer_slot is not None:
+                combat_stats[healer_slot]['hero_healing'] += heal_value
+                
+                # Track heal targets
+                if target not in combat_stats[healer_slot]['heal_targets']:
+                    combat_stats[healer_slot]['heal_targets'][target] = 0
+                combat_stats[healer_slot]['heal_targets'][target] += heal_value
+        
+        # Process purchase events for gold spent
+        elif event_type == 'DOTA_COMBATLOG_PURCHASE':
+            purchase_events += 1
+            target = event.get('targetname')
+            cost = event.get('value', 0)
+            
+            target_slot = hero_to_slot.get(target)
+            if target_slot is not None:
+                combat_stats[target_slot]['gold_spent'] += cost
+        
+        # Process ability usage events
+        elif event_type == 'DOTA_COMBATLOG_ABILITY':
+            ability_events += 1
+            caster = event.get('attackername')
+            ability = event.get('inflictor')
+            
+            caster_slot = hero_to_slot.get(caster)
+            if caster_slot is not None and ability:
+                if ability not in combat_stats[caster_slot]['ability_uses']:
+                    combat_stats[caster_slot]['ability_uses'][ability] = 0
+                combat_stats[caster_slot]['ability_uses'][ability] += 1
+        
+        # Process item usage events
+        elif event_type == 'DOTA_COMBATLOG_ITEM':
+            user = event.get('attackername')
+            item = event.get('inflictor')
+            
+            user_slot = hero_to_slot.get(user)
+            if user_slot is not None and item:
+                if item not in combat_stats[user_slot]['item_uses']:
+                    combat_stats[user_slot]['item_uses'][item] = 0
+                combat_stats[user_slot]['item_uses'][item] += 1
+    
+    print(f"Processed {damage_events} damage, {heal_events} healing, {purchase_events} purchase, {ability_events} ability events")
+    return combat_stats
+
 def get_final_player_stats(events: List[Dict[str, Any]], player_slots: Dict[int, int]) -> Dict[int, Dict[str, Any]]:
     """Extract final statistics for each player from interval events."""
     # Find the last interval event for each player
@@ -151,18 +262,30 @@ def calculate_game_metadata(events: List[Dict[str, Any]], final_stats: Dict[int,
     """Calculate game duration, winner, and other metadata."""
     # Find the latest timestamp to determine game duration
     max_time = 0
-    game_state_events = []
+    min_time = 0
+    first_blood_time = None
+    game_start_time = None
     
     for event in events:
         time = event.get('time', 0)
         if time > max_time:
             max_time = time
+        if time < min_time:
+            min_time = time
+            
+        # Find first blood
+        if event.get('type') == 'DOTA_COMBATLOG_FIRST_BLOOD' and first_blood_time is None:
+            first_blood_time = max(0, time)  # Convert to positive game time
         
-        if event.get('type') == 'DOTA_COMBATLOG_GAME_STATE':
-            game_state_events.append(event)
+        # Find game start (when time goes from negative to positive)
+        if game_start_time is None and time >= 0:
+            game_start_time = time
     
-    # Duration in seconds (convert from negative pre-game time)
-    duration = max_time if max_time > 0 else abs(max_time)
+    # Duration in seconds
+    if game_start_time is not None:
+        duration = max_time - game_start_time
+    else:
+        duration = max_time if max_time > 0 else abs(min_time)
     
     # Determine winner by comparing final scores or team performance
     radiant_kills = sum(stats.get('kills', 0) for slot, stats in final_stats.items() if slot < 5)
@@ -172,15 +295,15 @@ def calculate_game_metadata(events: List[Dict[str, Any]], final_stats: Dict[int,
     radiant_win = radiant_kills >= dire_kills
     
     return {
-        'duration': duration,
+        'duration': int(duration),
         'radiant_win': radiant_win,
-        'start_time': 0,  # Unknown from replay data
-        'first_blood_time': None,  # Could be extracted from combat log if needed
+        'start_time': 0,  # Could use Unix timestamp if available
+        'first_blood_time': first_blood_time,
         'match_id': None,  # Will be set from filename
         'picks_bans': []  # Not available in parsed data
     }
 
-def convert_player_stats(slot: int, stats: Dict[str, Any], player_slots: Dict[int, int], match_metadata: Dict[str, Any], player_info: Dict[int, Dict[str, Any]] = None) -> Dict[str, Any]:
+def convert_player_stats(slot: int, stats: Dict[str, Any], player_slots: Dict[int, int], match_metadata: Dict[str, Any], player_info: Dict[int, Dict[str, Any]] = None, combat_stats: Dict[int, Dict[str, Any]] = None) -> Dict[str, Any]:
     """Convert interval stats to OpenDota player format."""
     # Map slot to player_slot (0-4 for radiant, 128-132 for dire)
     if slot < 5:
@@ -207,6 +330,9 @@ def convert_player_stats(slot: int, stats: Dict[str, Any], player_slots: Dict[in
     
     # Get player info from epilogue if available
     player_data = player_info.get(slot, {}) if player_info else {}
+    
+    # Get combat stats if available
+    player_combat = combat_stats.get(slot, {}) if combat_stats else {}
     
     return {
         # Core player identification (now from epilogue data)
@@ -240,14 +366,14 @@ def convert_player_stats(slot: int, stats: Dict[str, Any], player_slots: Dict[in
         'aghanims_shard': 0,
         'moonshard': 0,
         
-        # Damage and healing
-        'hero_damage': 0,  # Not available in basic interval stats
-        'tower_damage': 0,  # Not available in basic interval stats  
-        'hero_healing': 0,  # Not available in basic interval stats
+        # Damage and healing (now from combat events)
+        'hero_damage': player_combat.get('hero_damage', 0),
+        'tower_damage': player_combat.get('tower_damage', 0),  
+        'hero_healing': player_combat.get('hero_healing', 0),
         
         # Economy
         'gold': stats.get('gold', 0),
-        'gold_spent': 0,  # Not available
+        'gold_spent': player_combat.get('gold_spent', 0),
         'total_gold': total_gold,
         'total_xp': total_xp,
         
@@ -266,6 +392,12 @@ def convert_player_stats(slot: int, stats: Dict[str, Any], player_slots: Dict[in
         
         # Ability upgrades
         'ability_upgrades_arr': [],  # Not available
+        
+        # Combat event statistics (additional fields)
+        'ability_uses': player_combat.get('ability_uses', {}),
+        'item_uses': player_combat.get('item_uses', {}),
+        'damage_taken': player_combat.get('damage_taken', {}),
+        'damage_targets': {},  # Could be computed from damage events if needed
         
         # Player metadata (now from epilogue data)
         'personaname': player_data.get('personaname'),
@@ -310,6 +442,9 @@ def convert_to_opendota_format(file_path: str) -> Dict[str, Any]:
     player_slots = extract_player_slots(events)
     print(f"Found player slots: {player_slots}")
     
+    # Extract combat statistics
+    combat_stats = extract_combat_stats(events, player_info)
+    
     # Get final player statistics
     final_stats = get_final_player_stats(events, player_slots)
     print(f"Extracted stats for {len(final_stats)} players")
@@ -330,7 +465,7 @@ def convert_to_opendota_format(file_path: str) -> Dict[str, Any]:
     players = []
     for slot in sorted(final_stats.keys()):
         if slot < 10:  # Only process player slots 0-9
-            player_data = convert_player_stats(slot, final_stats[slot], player_slots, metadata, player_info)
+            player_data = convert_player_stats(slot, final_stats[slot], player_slots, metadata, player_info, combat_stats)
             players.append(player_data)
     
     # Build OpenDota format with all required fields

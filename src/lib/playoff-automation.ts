@@ -152,7 +152,7 @@ export async function createMatchesForPlayoffRound(roundNumber: number, bracketT
                 round: `${bracketType}-R${roundNumber}`,
                 bestOf: getBestOfFromFormat(playoffMatch.format),
                 isPlayoff: true,
-                playoffMatchId: playoffMatch.id
+                playoff_match_id: playoffMatch.id
             };
 
             // Add the match to Firestore

@@ -112,38 +112,120 @@ export function isMatchParsed(openDotaMatch: any): boolean {
  * @param players A list of all tournament players from your database.
  * @returns An object containing the transformed Game and an array of PlayerPerformanceInGame data.
  */
+// Overloaded function signatures for backwards compatibility
 export function transformMatchData(
   openDotaMatch: any,
   teams: Team[],
   players: Player[],
-  isManualImport: boolean = false,
+  isManualImport: boolean,
   existingTeamAssignments?: { radiant_team?: { id: string; name: string }, dire_team?: { id: string; name: string } }
-): { game: Game; performances: PlayerPerformanceInGame[] } {
+): { game: Game; performances: PlayerPerformanceInGame[] };
+
+export function transformMatchData(
+  openDotaMatch: any,
+  teams: Team[],
+  players: Player[],
+  options: {
+    isManualImport?: boolean;
+    existingTeamAssignments?: { radiant_team?: { id: string; name: string }, dire_team?: { id: string; name: string } };
+    manualTeamMapping?: { radiant: { id: string; name: string }, dire: { id: string; name: string } };
+    logPrefix?: string;
+  }
+): { gameData: Game; performances: PlayerPerformanceInGame[]; playerMappings?: Array<{ steamId32: string; playerName: string; tournamentPlayer: string; team: string }> };
+
+export function transformMatchData(
+  openDotaMatch: any,
+  teams: Team[],
+  players: Player[],
+  optionsOrIsManualImport?: boolean | {
+    isManualImport?: boolean;
+    existingTeamAssignments?: { radiant_team?: { id: string; name: string }, dire_team?: { id: string; name: string } };
+    manualTeamMapping?: { radiant: { id: string; name: string }, dire: { id: string; name: string } };
+    logPrefix?: string;
+  },
+  existingTeamAssignments?: { radiant_team?: { id: string; name: string }, dire_team?: { id: string; name: string } }
+): any {
   
-  console.log(`Transforming match ${openDotaMatch.match_id} (manual import: ${isManualImport}, parsed: ${isMatchParsed(openDotaMatch)})`);
+  // Handle both calling patterns for backwards compatibility
+  let options: {
+    isManualImport?: boolean;
+    existingTeamAssignments?: { radiant_team?: { id: string; name: string }, dire_team?: { id: string; name: string } };
+    manualTeamMapping?: { radiant: { id: string; name: string }, dire: { id: string; name: string } };
+    logPrefix?: string;
+  };
+  
+  if (typeof optionsOrIsManualImport === 'boolean') {
+    // Legacy calling pattern: (openDotaMatch, teams, players, isManualImport, existingTeamAssignments)
+    options = {
+      isManualImport: optionsOrIsManualImport,
+      existingTeamAssignments: existingTeamAssignments,
+      logPrefix: '[TransformMatch]'
+    };
+  } else {
+    // New calling pattern: (openDotaMatch, teams, players, options)
+    options = optionsOrIsManualImport || {};
+  }
+  
+  const isManualImport = options.isManualImport || false;
+  const existingTeamAssignmentsToUse = options.existingTeamAssignments;
+  const manualTeamMapping = options.manualTeamMapping;
+  const logPrefix = options.logPrefix || '[TransformMatch]';
+  
+  // Validate that we have essential match data
+  if (!openDotaMatch) {
+    throw new Error('OpenDota match data is required');
+  }
+  if (!openDotaMatch.match_id) {
+    throw new Error('Match ID is missing from OpenDota data - this might be an invalid or corrupted match');
+  }
+  if (!openDotaMatch.players || !Array.isArray(openDotaMatch.players)) {
+    throw new Error('Player data is missing from OpenDota match - this might be an incomplete or corrupted match');
+  }
+  if (typeof openDotaMatch.radiant_win !== 'boolean') {
+    throw new Error('Match result (radiant_win) is missing from OpenDota data - this might be an incomplete match');
+  }
+  
+  console.log(`${logPrefix} Transforming match ${openDotaMatch.match_id} (manual import: ${isManualImport}, parsed: ${isMatchParsed(openDotaMatch)})`);
   
   let radiantTeam: Team | undefined;
   let direTeam: Team | undefined;
+  const playerMappings: Array<{ steamId32: string; playerName: string; tournamentPlayer: string; team: string }> = [];
 
-  // If we have existing team assignments (from database), use them instead of trying to match from OpenDota
-  if (existingTeamAssignments?.radiant_team && existingTeamAssignments?.dire_team) {
-    console.log(`Using existing team assignments: Radiant="${existingTeamAssignments.radiant_team.name}" (${existingTeamAssignments.radiant_team.id}), Dire="${existingTeamAssignments.dire_team.name}" (${existingTeamAssignments.dire_team.id})`);
+  // Priority 1: Manual team mapping (for parsed replay uploads)
+  if (manualTeamMapping?.radiant && manualTeamMapping?.dire) {
+    console.log(`${logPrefix} Using manual team mapping: Radiant="${manualTeamMapping.radiant.name}" (${manualTeamMapping.radiant.id}), Dire="${manualTeamMapping.dire.name}" (${manualTeamMapping.dire.id})`);
     
-    radiantTeam = teams.find(t => t.id === existingTeamAssignments.radiant_team!.id);
-    direTeam = teams.find(t => t.id === existingTeamAssignments.dire_team!.id);
+    radiantTeam = teams.find(t => t.id === manualTeamMapping.radiant.id);
+    direTeam = teams.find(t => t.id === manualTeamMapping.dire.id);
     
     if (!radiantTeam || !direTeam) {
       const missingTeams = [];
-      if (!radiantTeam) missingTeams.push(`Radiant team ID: ${existingTeamAssignments.radiant_team.id}`);
-      if (!direTeam) missingTeams.push(`Dire team ID: ${existingTeamAssignments.dire_team.id}`);
+      if (!radiantTeam) missingTeams.push(`Radiant team ID: ${manualTeamMapping.radiant.id}`);
+      if (!direTeam) missingTeams.push(`Dire team ID: ${manualTeamMapping.dire.id}`);
+      const errorMsg = `Manual team mapping references non-existent teams: ${missingTeams.join(', ')}`;
+      console.error(`${logPrefix} ${errorMsg}`);
+      throw new Error(errorMsg);
+    }
+    
+  } else if (existingTeamAssignmentsToUse?.radiant_team && existingTeamAssignmentsToUse?.dire_team) {
+    // Priority 2: Existing team assignments (from database)
+    console.log(`${logPrefix} Using existing team assignments: Radiant="${existingTeamAssignmentsToUse.radiant_team.name}" (${existingTeamAssignmentsToUse.radiant_team.id}), Dire="${existingTeamAssignmentsToUse.dire_team.name}" (${existingTeamAssignmentsToUse.dire_team.id})`);
+    
+    radiantTeam = teams.find(t => t.id === existingTeamAssignmentsToUse.radiant_team!.id);
+    direTeam = teams.find(t => t.id === existingTeamAssignmentsToUse.dire_team!.id);
+    
+    if (!radiantTeam || !direTeam) {
+      const missingTeams = [];
+      if (!radiantTeam) missingTeams.push(`Radiant team ID: ${existingTeamAssignmentsToUse.radiant_team.id}`);
+      if (!direTeam) missingTeams.push(`Dire team ID: ${existingTeamAssignmentsToUse.dire_team.id}`);
       const errorMsg = `Existing team assignments reference non-existent teams: ${missingTeams.join(', ')}`;
-      console.error(errorMsg);
+      console.error(`${logPrefix} ${errorMsg}`);
       throw new Error(errorMsg);
     }
     
   } else {
-    // Fallback to original team matching logic
-    console.log(`No existing team assignments, attempting to match from OpenDota data...`);
+    // Priority 3: Fallback to original team matching logic
+    console.log(`${logPrefix} No team assignments provided, attempting to match from OpenDota data...`);
     
     // Match only by name (case-insensitive, trimmed)
     function findTeam(_openDotaTeamId: number | undefined, name: string | undefined) {
@@ -154,12 +236,12 @@ export function transformMatchData(
 
     if (isManualImport) {
       // For manual imports, teams are specified by ID in the OpenDota data
-      console.log(`Manual import: looking for team IDs radiant=${openDotaMatch.radiant_team?.team_id}, dire=${openDotaMatch.dire_team?.team_id}`);
+      console.log(`${logPrefix} Manual import: looking for team IDs radiant=${openDotaMatch.radiant_team?.team_id}, dire=${openDotaMatch.dire_team?.team_id}`);
       radiantTeam = teams.find(t => t.id === openDotaMatch.radiant_team?.team_id);
       direTeam = teams.find(t => t.id === openDotaMatch.dire_team?.team_id);
     } else {
       // For automatic imports, match by name
-      console.log(`Automatic import: looking for team names radiant="${openDotaMatch.radiant_name}", dire="${openDotaMatch.dire_name}"`);
+      console.log(`${logPrefix} Automatic import: looking for team names radiant="${openDotaMatch.radiant_name}", dire="${openDotaMatch.dire_name}"`);
       radiantTeam = findTeam(openDotaMatch.radiant_team?.team_id, openDotaMatch.radiant_name);
       direTeam = findTeam(openDotaMatch.dire_team?.team_id, openDotaMatch.dire_name);
     }
@@ -181,12 +263,12 @@ export function transformMatchData(
         }
       }
       const errorMsg = `Tournament teams not found in database: ${missingTeams.join(', ')}. This might be a scrim or practice game.`;
-      console.error(errorMsg);
+      console.error(`${logPrefix} ${errorMsg}`);
       throw new Error(errorMsg);
     }
   }
   
-  console.log(`Final teams: Radiant="${radiantTeam.name}" (${radiantTeam.id}), Dire="${direTeam.name}" (${direTeam.id})`);
+  console.log(`${logPrefix} Final teams: Radiant="${radiantTeam.name}" (${radiantTeam.id}), Dire="${direTeam.name}" (${direTeam.id})`);
 
   const game: Game = {
     id: openDotaMatch.match_id.toString(),
@@ -465,7 +547,15 @@ export function transformMatchData(
     const isParsed = isMatchParsed(openDotaMatch);
 
     if (!player) {
-      console.warn(`Player with account_id ${p.account_id} not found in tournament players database - creating placeholder entry`);
+      console.warn(`${logPrefix} Player with account_id ${p.account_id} not found in tournament players database - creating placeholder entry`);
+    } else {
+      // Add to player mappings for reference
+      playerMappings.push({
+        steamId32: String(p.account_id),
+        playerName: p.personaname || 'Unknown',
+        tournamentPlayer: player.nickname || 'Unknown',
+        team: (isRadiant ? radiantTeam?.name : direTeam?.name) || 'Unknown'
+      });
     }
 
     // Calculate highest kill streak
@@ -476,6 +566,9 @@ export function transformMatchData(
                 highestKillStreak = parseInt(streak);
             }
         }
+    } else {
+        // Fallback for unparsed matches - estimate based on kills
+        highestKillStreak = Math.max(1, Math.floor((p.kills || 0) / 2.5));
     }
     
     // Log missing fields for unparsed matches
@@ -521,8 +614,33 @@ export function transformMatchData(
       buybackCount: p.buyback_count || 0,
       heroHealing: p.hero_healing || 0,
       fantasyPoints: fantasyPoints,
+      
+      // Multikill data
+      multiKills: p.multi_kills || {},
+      doubleKills: (p.multi_kills && p.multi_kills['2']) || 0,
+      tripleKills: (p.multi_kills && p.multi_kills['3']) || 0,
+      ultraKills: (p.multi_kills && p.multi_kills['4']) || 0,
+      rampages: (p.multi_kills && p.multi_kills['5']) || 0,
+      
+      // Additional stats
+      roshanKills: p.roshans_killed || 0,
+      towerKills: p.tower_kills || 0,
+      neutralKills: p.neutral_kills || 0,
+      laneKills: p.lane_kills || 0,
+      heroKills: p.hero_kills || 0,
+      totalGold: p.total_gold || 0,
+      goldSpent: p.gold_spent || 0,
+      runesPickedUp: (p.runes && Object.values(p.runes).reduce((sum: number, count) => sum + (count as number || 0), 0)) || 0,
+      campsStacked: p.camps_stacked || 0,
     };
   });
 
-  return { game, performances };
+  // Return different formats based on calling pattern for backwards compatibility
+  if (typeof optionsOrIsManualImport === 'boolean') {
+    // Legacy calling pattern expects { game, performances }
+    return { game, performances };
+  } else {
+    // New calling pattern expects { gameData, performances, playerMappings }
+    return { gameData: game, performances, playerMappings };
+  }
 }

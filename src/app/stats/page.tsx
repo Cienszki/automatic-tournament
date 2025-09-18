@@ -230,13 +230,13 @@ interface TournamentStats {
   totalRoshanKills: number;
   totalRampages: number;
   totalHealing: number;
-  totalWardsPlaced: number;
   totalBuybacks: number;
   totalCreepsKilled: number;
   totalDenies: number;
   totalCouriersKilled: number;
   totalWardsDestroyed: number;
-  uniqueHeroesPicked: number;
+  totalObserverWardsPlaced: number;
+  totalSentryWardsPlaced: number;
   totalFantasyPoints: number;
   
   // Economy
@@ -276,12 +276,8 @@ interface PlayerStats {
   averageHeroHealing: { value: number };
   
   // Single game records
-  highestKillsSingleGame: { value: number; matchId: string };
   highestNetWorthSingleGame: { value: number; matchId: string };
-  highestGPMSingleGame: { value: number; matchId: string };
-  highestXPMSingleGame: { value: number; matchId: string };
   highestLastHitsSingleGame: { value: number; matchId: string };
-  highestHeroDamageSingleGame: { value: number; matchId: string };
   highestTowerDamageSingleGame: { value: number; matchId: string };
   highestHeroHealingSingleGame: { value: number; matchId: string };
 }
@@ -464,15 +460,14 @@ export default function StatsPage() {
             <StatCard icon={Activity} title="Total Assists" value={tournamentStats?.totalAssists?.toLocaleString() || "TBD"} delay="450ms" gradient />
             <StatCard icon={Users} title="Total Deaths" value={tournamentStats?.totalDeaths?.toLocaleString() || "TBD"} delay="500ms" gradient />
             <StatCard icon={Flame} title="Total Healing" value={tournamentStats?.totalHealing?.toLocaleString() || "TBD"} delay="550ms" gradient />
-            <StatCard icon={Eye} title="Total Wards Placed" value={tournamentStats?.totalWardsPlaced?.toLocaleString() || "TBD"} delay="600ms" gradient />
-            <StatCard icon={Zap} title="Total Buybacks Used" value={tournamentStats?.totalBuybacks?.toLocaleString() || "TBD"} delay="650ms" gradient />
+            <StatCard icon={Eye} title="Observer Wards Placed" value={tournamentStats?.totalObserverWardsPlaced?.toLocaleString() || "TBD"} delay="600ms" gradient />
+            <StatCard icon={Eye} title="Sentry Wards Placed" value={tournamentStats?.totalSentryWardsPlaced?.toLocaleString() || "TBD"} delay="625ms" gradient />
+            <StatCard icon={Zap} title="Total Buybacks Used" value={tournamentStats?.totalBuybacks?.toLocaleString() || "TBD"} delay="675ms" gradient />
             <StatCard icon={DollarSign} title="Total Gold Earned" value={`${Math.round((tournamentStats?.totalGoldGenerated || 0) / 1000)}K`} delay="700ms" gradient />
             <StatCard icon={Target} title="Total Creeps Killed" value={tournamentStats?.totalCreepsKilled?.toLocaleString() || "TBD"} delay="750ms" gradient />
             <StatCard icon={Crosshair} title="Total Denies" value={tournamentStats?.totalDenies?.toLocaleString() || "TBD"} delay="800ms" gradient />
-            <StatCard icon={Users} title="Total Couriers Killed" value={tournamentStats?.totalCouriersKilled?.toLocaleString() || "TBD"} delay="850ms" gradient />
-            <StatCard icon={Eye} title="Wards Destroyed" value={tournamentStats?.totalWardsDestroyed?.toLocaleString() || "TBD"} delay="900ms" gradient />
-            <StatCard icon={Star} title="Unique Heroes Picked" value={tournamentStats?.uniqueHeroesPicked || "TBD"} delay="950ms" gradient />
-            <StatCard icon={Trophy} title="Total Fantasy Points" value={tournamentStats?.totalFantasyPoints?.toLocaleString() || "TBD"} delay="1000ms" gradient />
+            <StatCard icon={Star} title="Unique Heroes Picked" value={tournamentStats?.totalUniqueHeroesPicked || "TBD"} delay="850ms" gradient />
+            <StatCard icon={Trophy} title="Total Fantasy Points" value={tournamentStats?.totalFantasyPoints?.toLocaleString() || "TBD"} delay="900ms" gradient />
             <StatCard icon={Crown} title="Most Picked Hero" value={tournamentStats?.mostPickedHero?.heroName || "TBD"} delay="1050ms" gradient />
             <StatCard icon={Shield} title="Total Roshan Kills" value={tournamentStats?.totalRoshanKills?.toLocaleString() || "TBD"} delay="1100ms" gradient />
             <StatCard icon={Crosshair} title="Most Banned Hero" value={tournamentStats?.mostBannedHero?.heroName || "TBD"} delay="1150ms" gradient />
@@ -497,16 +492,16 @@ export default function StatsPage() {
             <StatCard 
               icon={Sword} 
               title="Most Kills (Single Game)" 
-              value={playerStats.length > 0 ? Math.max(...playerStats.map(p => (p as any).highestKillsSingleGame?.value || 0)) : "TBD"}
-              subtitle={playerStats.length > 0 ? findPlayerName(playerStats.find(p => (p as any).highestKillsSingleGame?.value === Math.max(...playerStats.map(p => (p as any).highestKillsSingleGame?.value || 0)))?.playerId || '') : ""}
+              value={playerStats.length > 0 ? Math.max(...playerStats.map(p => (p as any).mostKillsSingleMatch?.value || 0)) : "TBD"}
+              subtitle={playerStats.length > 0 ? findPlayerName(playerStats.find(p => (p as any).mostKillsSingleMatch?.value === Math.max(...playerStats.map(p => (p as any).mostKillsSingleMatch?.value || 0)))?.playerId || '') : ""}
               delay="1300ms"
               gradient
             />
             <StatCard 
               icon={Activity} 
               title="Best KDA Ratio" 
-              value={playerStats.length > 0 ? Math.max(...playerStats.map(p => (p as any).bestKDAGameRatio?.value || 0)).toFixed(2) : "TBD"}
-              subtitle={playerStats.length > 0 ? findPlayerName(playerStats.find(p => (p as any).bestKDAGameRatio?.value === Math.max(...playerStats.map(p => (p as any).bestKDAGameRatio?.value || 0)))?.playerId || '') : ""}
+              value={playerStats.length > 0 ? Math.max(...playerStats.map(p => (p as any).highestKDASingleMatch?.value || 0)).toFixed(2) : "TBD"}
+              subtitle={playerStats.length > 0 ? findPlayerName(playerStats.find(p => (p as any).highestKDASingleMatch?.value === Math.max(...playerStats.map(p => (p as any).highestKDASingleMatch?.value || 0)))?.playerId || '') : ""}
               delay="1350ms"
               gradient
             />
@@ -521,24 +516,24 @@ export default function StatsPage() {
             <StatCard 
               icon={Flame} 
               title="Highest Hero Damage" 
-              value={playerStats.length > 0 ? Math.max(...playerStats.map(p => (p as any).highestHeroDamageSingleGame?.value || 0)).toLocaleString() : "TBD"}
-              subtitle={playerStats.length > 0 ? findPlayerName(playerStats.find(p => (p as any).highestHeroDamageSingleGame?.value === Math.max(...playerStats.map(p => (p as any).highestHeroDamageSingleGame?.value || 0)))?.playerId || '') : ""}
+              value={playerStats.length > 0 ? Math.max(...playerStats.map(p => (p as any).mostHeroDamageSingleMatch?.value || 0)).toLocaleString() : "TBD"}
+              subtitle={playerStats.length > 0 ? findPlayerName(playerStats.find(p => (p as any).mostHeroDamageSingleMatch?.value === Math.max(...playerStats.map(p => (p as any).mostHeroDamageSingleMatch?.value || 0)))?.playerId || '') : ""}
               delay="1450ms"
               gradient
             />
             <StatCard 
               icon={TrendingUp} 
               title="Highest GPM (Single Game)" 
-              value={playerStats.length > 0 ? Math.max(...playerStats.map(p => (p as any).highestGPMSingleGame?.value || 0)).toLocaleString() : "TBD"}
-              subtitle={playerStats.length > 0 ? findPlayerName(playerStats.find(p => (p as any).highestGPMSingleGame?.value === Math.max(...playerStats.map(p => (p as any).highestGPMSingleGame?.value || 0)))?.playerId || '') : ""}
+              value={playerStats.length > 0 ? Math.max(...playerStats.map(p => (p as any).highestGPMSingleMatch?.value || 0)).toLocaleString() : "TBD"}
+              subtitle={playerStats.length > 0 ? findPlayerName(playerStats.find(p => (p as any).highestGPMSingleMatch?.value === Math.max(...playerStats.map(p => (p as any).highestGPMSingleMatch?.value || 0)))?.playerId || '') : ""}
               delay="1500ms"
               gradient
             />
             <StatCard 
               icon={Zap} 
               title="Highest XPM (Single Game)" 
-              value={playerStats.length > 0 ? Math.max(...playerStats.map(p => (p as any).highestXPMSingleGame?.value || 0)).toLocaleString() : "TBD"}
-              subtitle={playerStats.length > 0 ? findPlayerName(playerStats.find(p => (p as any).highestXPMSingleGame?.value === Math.max(...playerStats.map(p => (p as any).highestXPMSingleGame?.value || 0)))?.playerId || '') : ""}
+              value={playerStats.length > 0 ? Math.max(...playerStats.map(p => (p as any).highestXPMSingleMatch?.value || 0)).toLocaleString() : "TBD"}
+              subtitle={playerStats.length > 0 ? findPlayerName(playerStats.find(p => (p as any).highestXPMSingleMatch?.value === Math.max(...playerStats.map(p => (p as any).highestXPMSingleMatch?.value || 0)))?.playerId || '') : ""}
               delay="1550ms"
               gradient
             />
@@ -833,25 +828,25 @@ export default function StatsPage() {
             />
             <StatCard 
               icon={Shield} 
-              title="Fewest Kills Per Game" 
-              value={teamStats.length > 0 ? Math.min(...teamStats.map(t => (t as any).averageKills?.value || 999)).toFixed(1) : "TBD"}
-              subtitle={teamStats.length > 0 ? findTeamName(teamStats.find(t => (t as any).averageKills?.value === Math.min(...teamStats.map(t => (t as any).averageKills?.value || 999)))?.teamId || '') : ""}
+              title="Fewest Kills Per Win" 
+              value={teamStats.length > 0 ? Math.min(...teamStats.map(t => (t as any).fewestKillsPerWin?.value || 999)).toFixed(1) : "TBD"}
+              subtitle={teamStats.length > 0 ? findTeamName(teamStats.find(t => (t as any).fewestKillsPerWin?.value === Math.min(...teamStats.map(t => (t as any).fewestKillsPerWin?.value || 999)))?.teamId || '') : ""}
               delay="3350ms"
               gradient
             />
             <StatCard 
               icon={Activity} 
-              title="Most Assists Per Game" 
-              value={teamStats.length > 0 ? Math.max(...teamStats.map(t => (t as any).averageAssists?.value || 0)).toFixed(1) : "TBD"}
-              subtitle={teamStats.length > 0 ? findTeamName(teamStats.find(t => (t as any).averageAssists?.value === Math.max(...teamStats.map(t => (t as any).averageAssists?.value || 0)))?.teamId || '') : ""}
+              title="Most Assists Per Kill" 
+              value={teamStats.length > 0 ? Math.max(...teamStats.map(t => (t as any).overallAssistsPerKill?.value || 0)).toFixed(2) : "TBD"}
+              subtitle={teamStats.length > 0 ? findTeamName(teamStats.find(t => (t as any).overallAssistsPerKill?.value === Math.max(...teamStats.map(t => (t as any).overallAssistsPerKill?.value || 0)))?.teamId || '') : ""}
               delay="3400ms"
               gradient
             />
             <StatCard 
               icon={Users} 
-              title="Fewest Assists Per Game" 
-              value={teamStats.length > 0 ? Math.min(...teamStats.map(t => (t as any).averageAssists?.value || 999)).toFixed(1) : "TBD"}
-              subtitle={teamStats.length > 0 ? findTeamName(teamStats.find(t => (t as any).averageAssists?.value === Math.min(...teamStats.map(t => (t as any).averageAssists?.value || 999)))?.teamId || '') : ""}
+              title="Fewest Assists Per Kill" 
+              value={teamStats.length > 0 ? Math.min(...teamStats.map(t => (t as any).overallAssistsPerKill?.value || 999)).toFixed(2) : "TBD"}
+              subtitle={teamStats.length > 0 ? findTeamName(teamStats.find(t => (t as any).overallAssistsPerKill?.value === Math.min(...teamStats.map(t => (t as any).overallAssistsPerKill?.value || 999)))?.teamId || '') : ""}
               delay="3450ms"
               gradient
             />
@@ -882,8 +877,8 @@ export default function StatsPage() {
             <StatCard 
               icon={Users} 
               title="Fewest Kills Single Game" 
-              value={teamStats.length > 0 ? Math.min(...teamStats.map(t => (t as any).mostKillsSingleGame?.value || 999)) : "TBD"}
-              subtitle={teamStats.length > 0 ? findTeamName(teamStats.find(t => (t as any).mostKillsSingleGame?.value === Math.min(...teamStats.map(t => (t as any).mostKillsSingleGame?.value || 999)))?.teamId || '') : ""}
+              value={teamStats.length > 0 ? Math.min(...teamStats.map(t => (t as any).fewestKillsSingleGame?.value || 999)) : "TBD"}
+              subtitle={teamStats.length > 0 ? findTeamName(teamStats.find(t => (t as any).fewestKillsSingleGame?.value === Math.min(...teamStats.map(t => (t as any).fewestKillsSingleGame?.value || 999)))?.teamId || '') : ""}
               delay="3650ms"
               gradient
             />
@@ -917,14 +912,6 @@ export default function StatsPage() {
               value={teamStats.length > 0 ? Math.max(...teamStats.map(t => (t as any).teamVersatility?.value || 0)).toFixed(1) : "TBD"}
               subtitle={teamStats.length > 0 ? findTeamName(teamStats.find(t => (t as any).teamVersatility?.value === Math.max(...teamStats.map(t => (t as any).teamVersatility?.value || 0)))?.teamId || '') : ""}
               delay="3850ms"
-              gradient
-            />
-            <StatCard 
-              icon={Shield} 
-              title="Fastest Roshan Kill" 
-              value={teamStats.length > 0 ? `${Math.min(...teamStats.map(t => (t as any).fastestRoshanKill?.value || 99999)).toFixed(0)} min` : "TBD"}
-              subtitle={teamStats.length > 0 ? findTeamName(teamStats.find(t => (t as any).fastestRoshanKill?.value === Math.min(...teamStats.map(t => (t as any).fastestRoshanKill?.value || 99999)))?.teamId || '') : ""}
-              delay="3900ms"
               gradient
             />
             <StatCard 
@@ -967,14 +954,14 @@ export default function StatsPage() {
               delay="4150ms"
               gradient
             />
-            <StatCard 
+{/* <StatCard 
               icon={Activity} 
               title="Most Throws" 
               value={teamStats.length > 0 ? Math.max(...teamStats.map(t => (t as any).mostThrows?.value || 0)) : "TBD"}
               subtitle={teamStats.length > 0 ? findTeamName(teamStats.find(t => (t as any).mostThrows?.value === Math.max(...teamStats.map(t => (t as any).mostThrows?.value || 0)))?.teamId || '') : ""}
               delay="4200ms"
               gradient
-            />
+            /> */}
             <StatCard 
               icon={TrendingUp} 
               title="Highest Tower Damage Per Minute" 
@@ -983,14 +970,14 @@ export default function StatsPage() {
               delay="4250ms"
               gradient
             />
-            <StatCard 
+{/* <StatCard 
               icon={Target} 
               title="Fastest Tier 3 Tower" 
               value={teamStats.length > 0 ? `${Math.min(...teamStats.map(t => (t as any).fastestTier3Tower?.value || 99999)).toFixed(0)} min` : "TBD"}
               subtitle={teamStats.length > 0 ? findTeamName(teamStats.find(t => (t as any).fastestTier3Tower?.value === Math.min(...teamStats.map(t => (t as any).fastestTier3Tower?.value || 99999)))?.teamId || '') : ""}
               delay="4300ms"
               gradient
-            />
+            /> */}
           </div>
         </div>
       </div>

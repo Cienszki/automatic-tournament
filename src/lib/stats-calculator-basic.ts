@@ -2,6 +2,10 @@
 import { writeBatch, doc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { TournamentStats } from '@/lib/stats-definitions';
+import { findMostPickedHero, findMostBannedHero } from './hero-mapping';
+
+// Re-export hero-mapping functions for compatibility
+export { findMostPickedHero, findMostBannedHero } from './hero-mapping';
 
 export async function calculateBasicTournamentStats(
   games: any[],
@@ -22,35 +26,96 @@ export async function calculateBasicTournamentStats(
     // Tournament Overview
     totalTeams: teams.length,
     totalMatches: new Set(games.map(g => g.matchId || g.id)).size,
-    totalGames: games.length,
-    totalHoursPlayed: games.reduce((sum, game) => sum + (game.duration || 0), 0) / 3600,
-    averageMatchDuration: games.length > 0 ? games.reduce((sum, game) => sum + (game.duration || 0), 0) / games.length : 0,
+    // Game duration calculations (single-pass optimization)
+    ...(() => {
+      const gameStats = games.reduce((acc, game) => {
+        const duration = game.duration || 0;
+        acc.totalDuration += duration;
+        acc.totalGames++;
+        return acc;
+      }, { totalDuration: 0, totalGames: 0 });
+      
+      return {
+        totalGames: gameStats.totalGames,
+        totalHoursPlayed: gameStats.totalDuration / 3600,
+        averageMatchDuration: gameStats.totalGames > 0 ? gameStats.totalDuration / gameStats.totalGames : 0
+      };
+    })(),
     longestMatch: findLongestMatch(games),
     shortestMatch: findShortestMatch(games),
     totalMatchesInSingleDay: findBusiestDay(games),
     
-    // Combat Statistics  
-    totalKills: performances.reduce((sum, perf) => sum + (perf.kills || 0), 0),
-    totalDeaths: performances.reduce((sum, perf) => sum + (perf.deaths || 0), 0),
-    totalAssists: performances.reduce((sum, perf) => sum + (perf.assists || 0), 0),
+    // Single-pass aggregation for all performance-based stats
+    ...(() => {
+      const aggregatedStats = performances.reduce((acc, perf) => {
+        // Combat Statistics
+        acc.totalKills += perf.kills || 0;
+        acc.totalDeaths += perf.deaths || 0;
+        acc.totalAssists += perf.assists || 0;
+        
+        // Count first bloods
+        if (perf.firstBloodClaimed) acc.totalFirstBloods++;
+        
+        // Economy (with game duration from performance context)
+        const gameDuration = perf.duration || games.find(g => g.id === perf.gameId)?.duration || 0;
+        acc.totalGoldGenerated += (perf.gpm || 0) * (gameDuration / 60);
+        acc.totalGoldSpent += perf.goldSpent || 0;
+        
+        // Vision & Map Control
+        acc.totalObserverWardsPlaced += perf.obsPlaced || 0;
+        acc.totalSentryWardsPlaced += perf.senPlaced || 0;
+        acc.totalWardsDestroyed += (perf.observerKills || 0) + (perf.sentryKills || 0);
+        acc.totalCampsStacked += perf.campsStacked || 0;
+        acc.totalRunesCollected += perf.runesPickedUp || 0;
+        
+        // Hero tracking for uniqueness
+        if (perf.heroId) acc.uniqueHeroes.add(perf.heroId);
+        
+        return acc;
+      }, { 
+        totalKills: 0, totalDeaths: 0, totalAssists: 0, totalFirstBloods: 0,
+        totalGoldGenerated: 0, totalGoldSpent: 0,
+        totalObserverWardsPlaced: 0, totalSentryWardsPlaced: 0, totalWardsDestroyed: 0,
+        totalCampsStacked: 0, totalRunesCollected: 0,
+        uniqueHeroes: new Set()
+      });
+      
+      return {
+        // Combat Statistics
+        totalKills: aggregatedStats.totalKills,
+        totalDeaths: aggregatedStats.totalDeaths,
+        totalAssists: aggregatedStats.totalAssists,
+        totalFirstBloods: aggregatedStats.totalFirstBloods,
+        
+        // Economy
+        totalGoldGenerated: aggregatedStats.totalGoldGenerated,
+        totalGoldSpent: aggregatedStats.totalGoldSpent,
+        
+        // Vision & Map Control
+        totalObserverWardsPlaced: aggregatedStats.totalObserverWardsPlaced,
+        totalSentryWardsPlaced: aggregatedStats.totalSentryWardsPlaced,
+        totalWardsDestroyed: aggregatedStats.totalWardsDestroyed,
+        totalCampsStacked: aggregatedStats.totalCampsStacked,
+        totalRunesCollected: aggregatedStats.totalRunesCollected,
+        
+        // Heroes & Meta
+        totalUniqueHeroesPicked: aggregatedStats.uniqueHeroes.size
+      };
+    })(),
     bloodiestMatch: findBloodiestMatch(games, performances),
     mostPeacefulMatch: findMostPeacefulMatch(games, performances),
     totalRampages: countMultiKills(performances, 5),
     totalUltraKills: countMultiKills(performances, 4),
     totalTripleKills: countMultiKills(performances, 3),
-    totalFirstBloods: performances.filter(p => p.firstBloodClaimed).length,
     fastestFirstBlood: findFastestFirstBlood(games, performances),
     
     // Heroes & Meta
     mostPickedHero: findMostPickedHero(performances),
     mostBannedHero: findMostBannedHero(games),
     highestWinRateHero: findHighestWinRateHero(performances, games),
-    totalUniqueHeroesPicked: new Set(performances.map(p => p.heroId)).size,
     mostVersatilePlayer: findMostVersatilePlayer(performances),
     
-    // Economy
-    totalGoldGenerated: performances.reduce((sum, perf) => sum + (perf.gpm || 0) * ((perf.duration || 0) / 60), 0),
-    totalGoldSpent: performances.reduce((sum, perf) => sum + (perf.goldSpent || 0), 0),
+    // Economy (calculated above in single-pass)
     richestPlayer: findRichestPlayer(performances),
     mostEfficientFarmer: findMostEfficientFarmer(performances),
     totalHandOfMidasBuilt: 0, // Would need item data
@@ -58,17 +123,23 @@ export async function calculateBasicTournamentStats(
     totalAghanimsItems: 0, // Would need item data
     fastestScalingPlayer: findFastestScalingPlayer(performances),
     
-    // Vision & Map Control
-    totalObserverWardsPlaced: performances.reduce((sum, perf) => sum + (perf.obsPlaced || 0), 0),
-    totalSentryWardsPlaced: performances.reduce((sum, perf) => sum + (perf.senPlaced || 0), 0),
-    totalWardsDestroyed: performances.reduce((sum, perf) => sum + (perf.observerKills || 0) + (perf.sentryKills || 0), 0),
+    // Vision & Map Control (calculated above in single-pass)
     tournamentWardMaster: findWardMaster(performances),
     bestWardHunter: findBestWardHunter(performances),
-    totalCampsStacked: 0, // Would need additional data
-    totalRunesCollected: 0, // Would need additional data
+    // totalCampsStacked and totalRunesCollected calculated above in single-pass
     
     // Special Achievements
     cinderellaStory: defaultTeam,
+    
+    // Additional fields for stats page compatibility
+    totalRoshanKills: performances.reduce((sum, perf) => sum + (perf.roshanKills || 0), 0),
+    totalHealing: performances.reduce((sum, perf) => sum + (perf.heroHealing || 0), 0),
+    totalBuybacks: performances.reduce((sum, perf) => sum + (perf.buybackCount || 0), 0),
+    totalCreepsKilled: performances.reduce((sum, perf) => sum + (perf.lastHits || 0), 0),
+    totalDenies: performances.reduce((sum, perf) => sum + (perf.denies || 0), 0),
+    // totalCouriersKilled: removed from display
+    totalFantasyPoints: performances.reduce((sum, perf) => sum + (perf.fantasyPoints || 0), 0),
+    mostPlayedRoleHero: 'Unknown',
     
     lastUpdated: new Date().toISOString()
   };
@@ -171,34 +242,22 @@ export function findMostPeacefulMatch(games: any[], performances: any[]) {
 }
 
 export function countMultiKills(performances: any[], killType: number): number {
-  // This would need more detailed kill data
-  return 0;
+  return performances.reduce((total, perf) => {
+    switch (killType) {
+      case 2: return total + (perf.doubleKills || 0);
+      case 3: return total + (perf.tripleKills || 0);
+      case 4: return total + (perf.ultraKills || 0);
+      case 5: return total + (perf.rampages || 0);
+      default: return total;
+    }
+  }, 0);
 }
 
 export function findFastestFirstBlood(games: any[], performances: any[]) {
   return { matchId: '', time: 0, player: '', team: '' };
 }
 
-export function findMostPickedHero(performances: any[]) {
-  if (performances.length === 0) return { heroId: 0, heroName: 'Unknown', pickCount: 0 };
-  
-  const heroCounts: Record<number, number> = {};
-  performances.forEach(perf => {
-    if (perf.heroId) {
-      heroCounts[perf.heroId] = (heroCounts[perf.heroId] || 0) + 1;
-    }
-  });
-  
-  const mostPicked = Object.entries(heroCounts).reduce((max, [heroId, count]) => 
-    count > max.count ? { heroId: parseInt(heroId), count } : max, { heroId: 0, count: 0 }
-  );
-  
-  return { heroId: mostPicked.heroId, heroName: `Hero ${mostPicked.heroId}`, pickCount: mostPicked.count };
-}
-
-export function findMostBannedHero(games: any[]) {
-  return { heroId: 0, heroName: 'Unknown', banCount: 0 };
-}
+// Removed: findMostPickedHero and findMostBannedHero are now imported from hero-mapping.ts
 
 export function findHighestWinRateHero(performances: any[], games: any[]) {
   return { heroId: 0, heroName: 'Unknown', winRate: 0, gamesPlayed: 0 };
@@ -342,16 +401,28 @@ export async function recalculateBasicTournamentStats(): Promise<void> {
   console.log('Recalculating basic tournament statistics...');
   
   try {
-    // Fetch current data (simplified - in production, you'd fetch from Firestore)
-    const games: any[] = [];
-    const teams: any[] = [];
-    const performances: any[] = [];
+    // Fetch current data from Firestore
+    const { getDocs, collection, collectionGroup } = await import('firebase/firestore');
+    
+    // Fetch teams
+    const teamsSnapshot = await getDocs(collection(db, 'teams'));
+    const teams = teamsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    
+    // Fetch all games from all matches
+    const gamesSnapshot = await getDocs(collectionGroup(db, 'games'));
+    const games = gamesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    
+    // Fetch all performances from all games
+    const performancesSnapshot = await getDocs(collectionGroup(db, 'performances'));
+    const performances = performancesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    
+    console.log(`Fetched ${teams.length} teams, ${games.length} games, ${performances.length} performances`);
     
     const stats = await calculateBasicTournamentStats(games, teams, performances);
     
     // Save to Firestore
     const batch = writeBatch(db);
-    batch.set(doc(db, 'tournamentStats', 'main'), stats);
+    batch.set(doc(db, 'tournamentStats', 'tournament-stats'), stats);
     await batch.commit();
     
     console.log('Basic tournament statistics recalculated successfully');

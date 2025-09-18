@@ -30,6 +30,7 @@ interface MatchCardProps {
   teamBDescription?: string;
   teamsMap?: Map<string, any>;
   allBrackets?: PlayoffBracket[];
+  teamsLoaded?: boolean;
 }
 
 interface BracketTreeProps {
@@ -39,6 +40,7 @@ interface BracketTreeProps {
   allBrackets?: PlayoffBracket[];
   t: (key: string) => string;
   teamsMap?: Map<string, any>;
+  teamsLoaded?: boolean;
 }
 
 interface BracketRound {
@@ -82,31 +84,61 @@ const getMatchIdFromCode = (matchCode: string): string | null => {
 };
 
 // Helper functions to resolve team names and progression
+// Simple logging cache to avoid spam
+const loggedCalls = new Set<string>();
+
 const resolveTeamFromMatch = (matchId: string, allBrackets: PlayoffBracket[], isWinner: boolean, teamsMap?: Map<string, any>): string | null => {
+  const logKey = `${matchId}-${isWinner}`;
+  if (!loggedCalls.has(logKey)) {
+    console.log('resolveTeamFromMatch called:', { matchId, isWinner, bracketsCount: allBrackets.length });
+    loggedCalls.add(logKey);
+  }
+  
   for (const bracket of allBrackets) {
     const match = bracket.matches.find(m => m.id === matchId);
-    if (match && match.result) {
-      const winnerId = match.result.winnerId;
-      const loserId = winnerId === match.teamA?.id ? match.teamB?.id : match.teamA?.id;
-      const targetTeamId = isWinner ? winnerId : loserId;
+    if (match) {
+      console.log(`Found match ${matchId}:`, {
+        hasResult: !!match.result,
+        result: match.result,
+        teamA: match.teamA,
+        teamB: match.teamB
+      });
       
-      if (targetTeamId && teamsMap?.has(targetTeamId)) {
-        return teamsMap.get(targetTeamId)?.name || null;
+      if (match.result) {
+        const winnerId = match.result.winnerId;
+        const loserId = winnerId === match.teamA?.id ? match.teamB?.id : match.teamA?.id;
+        const targetTeamId = isWinner ? winnerId : loserId;
+        
+        console.log('Using result:', { winnerId, loserId, targetTeamId, isWinner });
+        
+        if (targetTeamId && teamsMap?.has(targetTeamId)) {
+          const teamName = teamsMap.get(targetTeamId)?.name;
+          console.log('Found team in teamsMap:', teamName);
+          return teamName || null;
+        }
+        
+        if (targetTeamId) {
+          console.log(`Team ${targetTeamId} not found in teamsMap. Available teams:`, Array.from(teamsMap?.keys() || []));
+        }
+        
+        return targetTeamId ? `Team ${targetTeamId}` : null;
       }
-      return targetTeamId ? `Team ${targetTeamId}` : null;
+      // Only return team names when the match has actual results
+      // Don't use scheduled team data for progression - wait for match completion
     }
   }
+  console.log(`Match ${matchId} not found or no team data available`);
   return null;
 };
 
-const getTeamDisplayName = (teamId: string | null, description?: string, teamsMap?: Map<string, any>): string => {
+const getTeamDisplayName = (teamId: string | null, description?: string, teamsMap?: Map<string, any>, t?: (key: string) => string): string => {
   if (teamId && teamsMap?.has(teamId)) {
     const team = teamsMap.get(teamId);
     return team?.name || `Team ${teamId}`;
   }
   if (teamId) return `Team ${teamId}`;
   if (description) return description;
-  return 'TBD';
+  return t ? t('playoffs.toBeDetermined') : 'TBD';
 };
 
 const getResolvedTeamName = (
@@ -114,24 +146,40 @@ const getResolvedTeamName = (
   isTeamA: boolean, 
   description: string, 
   allBrackets: PlayoffBracket[],
-  teamsMap?: Map<string, any>
+  teamsMap?: Map<string, any>,
+  t?: (key: string) => string
 ): string => {
+  const logKey = `resolve-${description}-${isTeamA}`;
+  const shouldLog = !loggedCalls.has(logKey);
+  if (shouldLog) {
+    console.log('getResolvedTeamName called:', { description, isTeamA });
+    loggedCalls.add(logKey);
+  }
+  
   const team = isTeamA ? match.teamA : match.teamB;
   
   // If we have the actual team data, use it
-  if (team?.name) return team.name;
+  if (team?.name && !team.name.includes('Winner') && !team.name.includes('Wildcard')) {
+    if (shouldLog) console.log('Using team name directly:', team.name);
+    return team.name;
+  }
   if (team?.id && teamsMap?.has(team.id)) {
-    return teamsMap.get(team.id)?.name || `Team ${team.id}`;
+    const teamName = teamsMap.get(team.id)?.name || `Team ${team.id}`;
+    if (shouldLog) console.log('Using team from teamsMap:', teamName);
+    return teamName;
   }
   
   // Try to resolve from match progression descriptions
   const winnerPattern = /Winner of (U\d+[A-Z]|L\d+[A-Z]|WC[A-Z])/i;
   const loserPattern = /Loser of (U\d+[A-Z]|L\d+[A-Z])/i;
-  const matchWinnerPattern = /meczu (U\d+[A-Z]|L\d+[A-Z])/i;
+  const matchWinnerPattern = /meczu (U\d+[A-Z]|L\d+[A-Z]|WC[A-Z])/i; // Updated to include WCA/WCB
   const wildcardPattern = /(WC[A-Z])\b/i; // Match WCA or WCB anywhere in the text
+  
+  if (shouldLog) console.log('Testing patterns against:', description);
   
   let matchResult = description.match(winnerPattern);
   if (matchResult) {
+    if (shouldLog) console.log('Matched winnerPattern:', matchResult);
     const matchCode = matchResult[1];
     const matchId = getMatchIdFromCode(matchCode);
     if (matchId) {
@@ -142,6 +190,7 @@ const getResolvedTeamName = (
   
   matchResult = description.match(loserPattern);
   if (matchResult) {
+    if (shouldLog) console.log('Matched loserPattern:', matchResult);
     const matchCode = matchResult[1];
     const matchId = getMatchIdFromCode(matchCode);
     if (matchId) {
@@ -150,9 +199,10 @@ const getResolvedTeamName = (
     }
   }
   
-  // Handle "Zwycięzca meczu U1A" pattern
+  // Handle "Zwycięzca meczu U1A" or "Zwycięzca WCA" pattern
   matchResult = description.match(matchWinnerPattern);
   if (matchResult) {
+    if (shouldLog) console.log('Matched matchWinnerPattern:', matchResult);
     const matchCode = matchResult[1];
     const matchId = getMatchIdFromCode(matchCode);
     if (matchId) {
@@ -164,6 +214,7 @@ const getResolvedTeamName = (
   // Handle wildcard patterns - match WCA or WCB anywhere in the text
   matchResult = description.match(wildcardPattern);
   if (matchResult) {
+    if (shouldLog) console.log('Matched wildcardPattern:', matchResult);
     const matchCode = matchResult[1];
     const matchId = getMatchIdFromCode(matchCode);
     if (matchId) {
@@ -172,7 +223,119 @@ const getResolvedTeamName = (
     }
   }
   
+  if (shouldLog) console.log('No patterns matched, returning description:', description);
+  
+  // If the description contains placeholder text, use translated versions with match codes
+  if (t) {
+    // Pattern: "Winner of WC1", "Winner of WC2" -> "Zwycięzca WCA", "Zwycięzca WCB"
+    const winnerOfMatch = description.match(/Winner of (WC\d+|U\d+[A-Z]|L\d+[A-Z])/i);
+    if (winnerOfMatch) {
+      const matchCode = winnerOfMatch[1];
+      return `${t('playoffs.matchWinner')} ${matchCode}`;
+    }
+    
+    // Pattern: "Loser of U1A", "Loser of U2B" -> "Przegrany meczu U1A"
+    const loserOfMatch = description.match(/Loser of (U\d+[A-Z]|L\d+[A-Z])/i);
+    if (loserOfMatch) {
+      const matchCode = loserOfMatch[1];
+      return `${t('playoffs.matchLoser')} ${matchCode}`;
+    }
+    
+    // Pattern: "Direct LB Seed 1", "Direct LB Seed 2" -> "1. miejsce Dolna Drabinka"
+    const directSeed = description.match(/Direct LB Seed (\d+)/i);
+    if (directSeed) {
+      const seedNumber = directSeed[1];
+      return `${seedNumber}. miejsce Dolna Drabinka`;
+    }
+    
+    // Handle specific placeholder names
+    if (description === 'Upper Team 1') {
+      return 'Zwycięzca meczu U1A';
+    }
+    if (description === 'Upper Team 2') {
+      return 'Zwycięzca meczu U1B';
+    }
+    if (description === 'Upper Team 3') {
+      return 'Zwycięzca meczu U1C';
+    }
+    if (description === 'Upper Team 4') {
+      return 'Zwycięzca meczu U1D';
+    }
+    if (description === 'Upper Bracket Champion') {
+      return t('playoffs.upperBracketWinner');
+    }
+    if (description === 'Lower Bracket Champion') {
+      return t('playoffs.lowerBracketWinner');
+    }
+    
+    // Generic fallbacks
+    if (description.includes('Winner') && description.includes('Wildcard')) {
+      return t('playoffs.wildcardWinner');
+    }
+    if (description.includes('Winner') && description.includes('LB')) {
+      return t('playoffs.lowerBracketWinner');  
+    }
+    if (description.includes('Winner') && description.includes('UB')) {
+      return t('playoffs.upperBracketWinner');
+    }
+    if (description.includes('Winner')) {
+      return t('playoffs.matchWinner');
+    }
+    if (description === 'TBD' || description.includes('To be determined')) {
+      return t('playoffs.toBeDetermined');
+    }
+  }
+  
   return description;
+};
+
+// Helper function to resolve team ID (similar to getResolvedTeamName but returns team ID)
+const getResolvedTeamId = (
+  match: PlayoffMatch, 
+  isTeamA: boolean, 
+  description: string, 
+  allBrackets: PlayoffBracket[]
+): string | null => {
+  const team = isTeamA ? match.teamA : match.teamB;
+  
+  // If we have the actual team data with a real ID (not placeholder), use it
+  if (team?.id && !team.id.includes('placeholder')) {
+    return team.id;
+  }
+  
+  // Try to resolve from match progression descriptions using the same patterns
+  const winnerPattern = /Winner of (U\d+[A-Z]|L\d+[A-Z]|WC[A-Z])/i;
+  const loserPattern = /Loser of (U\d+[A-Z]|L\d+[A-Z])/i;
+  const matchWinnerPattern = /meczu (U\d+[A-Z]|L\d+[A-Z]|WC[A-Z])/i;
+  const wildcardPattern = /(WC[A-Z])\b/i;
+  
+  const patterns = [
+    { pattern: winnerPattern, isWinner: true },
+    { pattern: loserPattern, isWinner: false },
+    { pattern: matchWinnerPattern, isWinner: true },
+    { pattern: wildcardPattern, isWinner: true }
+  ];
+  
+  for (const { pattern, isWinner } of patterns) {
+    const matchResult = description.match(pattern);
+    if (matchResult) {
+      const matchCode = matchResult[1];
+      const matchId = getMatchIdFromCode(matchCode);
+      if (matchId) {
+        // Find the match and get the team ID directly
+        for (const bracket of allBrackets) {
+          const targetMatch = bracket.matches.find(m => m.id === matchId);
+          if (targetMatch && targetMatch.result) {
+            const winnerId = targetMatch.result.winnerId;
+            const loserId = winnerId === targetMatch.teamA?.id ? targetMatch.teamB?.id : targetMatch.teamA?.id;
+            return isWinner ? winnerId : (loserId || null);
+          }
+        }
+      }
+    }
+  }
+  
+  return null;
 };
 
 const getMatchCode = (bracket: PlayoffBracket, match: PlayoffMatch): string => {
@@ -384,8 +547,10 @@ const MatchCard: React.FC<MatchCardProps> = ({
   teamADescription,
   teamBDescription,
   teamsMap,
-  allBrackets = []
+  allBrackets = [],
+  teamsLoaded = false
 }) => {
+  const { t } = useTranslation();
   const [isExpanded, setIsExpanded] = useState(false);
   const [liveResult, setLiveResult] = useState<any>(null);
   const [liveStatus, setLiveStatus] = useState<string | null>(null);
@@ -395,12 +560,49 @@ const MatchCard: React.FC<MatchCardProps> = ({
   let teamAName = match.teamA?.name;
   let teamBName = match.teamB?.name;
   
-  if (!teamAName) {
-    teamAName = getResolvedTeamName(match, true, teamADescription || 'TBD', allBrackets, teamsMap);
+  // Debug logging for testing
+  const [hasLogged, setHasLogged] = useState(false);
+  
+  // Check for placeholder names that need resolution
+  const isPlaceholderName = (name: string | undefined): boolean => {
+    if (!name) return true;
+    return name.includes('Winner') || name.includes('Loser') || 
+           name.includes('winner') || name.includes('loser') ||
+           name.includes('Wildcard') || name.includes('TBD') ||
+           name.includes('Upper Team') || name.includes('Lower Team') ||
+           name.includes('Team 1') || name.includes('Team 2') || name.includes('Team 3') || name.includes('Team 4') ||
+           name === 'Upper Team 1' || name === 'Upper Team 2' || name === 'Upper Team 3' || name === 'Upper Team 4' ||
+           name === 'Upper Bracket Champion' || name === 'Lower Bracket Champion' ||
+           name === t('playoffs.toBeDetermined') ||
+           name === 'TBD';
+  };
+  
+  // Force translation for specific placeholder names from Firebase
+  if (teamAName === 'Upper Team 1') teamAName = 'Zwycięzca meczu U1A';
+  else if (teamAName === 'Upper Team 2') teamAName = 'Zwycięzca meczu U1B';
+  else if (teamAName === 'Upper Team 3') teamAName = 'Zwycięzca meczu U1C';
+  else if (teamAName === 'Upper Team 4') teamAName = 'Zwycięzca meczu U1D';
+  else if (teamAName === 'Upper Bracket Champion') teamAName = t('playoffs.upperBracketWinner');
+  else if (teamAName === 'Lower Bracket Champion') teamAName = t('playoffs.lowerBracketWinner');
+  else if (teamAName === 'Winner of LB Match') teamAName = 'Zwycięzca meczu Dolnej Drabinki';
+  else if (teamAName === 'Winner of LB') teamAName = 'Zwycięzca Dolnej Drabinki';
+  else if (teamAName === 'Wildcard 2 Winner') teamAName = 'Zwycięzca WCA';
+  else if (!teamAName || isPlaceholderName(teamAName)) {
+    teamAName = getResolvedTeamName(match, true, teamADescription || t('playoffs.toBeDetermined'), allBrackets, teamsMap, t);
   }
   
-  if (!teamBName) {
-    teamBName = getResolvedTeamName(match, false, teamBDescription || 'TBD', allBrackets, teamsMap);
+  // Force translation for specific placeholder names from Firebase
+  if (teamBName === 'Upper Team 1') teamBName = 'Zwycięzca meczu U1A';
+  else if (teamBName === 'Upper Team 2') teamBName = 'Zwycięzca meczu U1B';
+  else if (teamBName === 'Upper Team 3') teamBName = 'Zwycięzca meczu U1C';
+  else if (teamBName === 'Upper Team 4') teamBName = 'Zwycięzca meczu U1D';
+  else if (teamBName === 'Upper Bracket Champion') teamBName = t('playoffs.upperBracketWinner');
+  else if (teamBName === 'Lower Bracket Champion') teamBName = t('playoffs.lowerBracketWinner');
+  else if (teamBName === 'Winner of LB Match') teamBName = 'Zwycięzca meczu Dolnej Drabinki';
+  else if (teamBName === 'Winner of LB') teamBName = 'Zwycięzca Dolnej Drabinki';
+  else if (teamBName === 'Wildcard 2 Winner') teamBName = 'Zwycięzca WCA';
+  else if (!teamBName || isPlaceholderName(teamBName)) {
+    teamBName = getResolvedTeamName(match, false, teamBDescription || t('playoffs.toBeDetermined'), allBrackets, teamsMap, t);
   }
 
   useEffect(() => {
@@ -501,14 +703,62 @@ const MatchCard: React.FC<MatchCardProps> = ({
             )}
           >
             <div className="flex items-center gap-2 flex-1 min-w-0">
-              <div className={cn(
-                "w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold",
-                winnerId === match.teamA?.id 
-                  ? "bg-primary text-primary-foreground shadow-lg shadow-primary/30" 
-                  : "bg-muted-foreground/30 text-muted-foreground"
-              )}>
-                A
-              </div>
+              {(() => {
+                // Get the resolved team ID - if we resolved the name, we should have the correct team ID
+                let teamId = match.teamA?.id;
+                
+                // If we have a placeholder name but teams are loaded, try to resolve the actual team ID
+                if (teamsLoaded && (!match.teamA?.name || isPlaceholderName(match.teamA?.name))) {
+                  // Use the same resolution logic as team names to get the correct team ID
+                  const resolvedTeamId = getResolvedTeamId(match, true, teamADescription || t('playoffs.toBeDetermined'), allBrackets);
+                  if (resolvedTeamId) teamId = resolvedTeamId;
+                }
+                
+                const teamData = teamId && teamsMap?.has(teamId) ? teamsMap.get(teamId) : match.teamA;
+                const logoUrl = teamData?.logoUrl;
+                
+                if (logoUrl) {
+                  return (
+                    <div className={cn(
+                      "w-6 h-6 rounded-full overflow-hidden ring-2 transition-all duration-200",
+                      winnerId === match.teamA?.id 
+                        ? "ring-primary shadow-lg shadow-primary/30" 
+                        : "ring-muted-foreground/30"
+                    )}>
+                      <img 
+                        src={logoUrl} 
+                        alt={`${teamAName} logo`}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          // Fallback to letter avatar if image fails to load
+                          e.currentTarget.style.display = 'none';
+                          const fallback = e.currentTarget.nextElementSibling as HTMLElement;
+                          if (fallback) fallback.style.display = 'flex';
+                        }}
+                      />
+                      <div className={cn(
+                        "w-full h-full rounded-full items-center justify-center text-xs font-bold hidden",
+                        winnerId === match.teamA?.id 
+                          ? "bg-primary text-primary-foreground" 
+                          : "bg-muted-foreground/30 text-muted-foreground"
+                      )}>
+                        A
+                      </div>
+                    </div>
+                  );
+                } else {
+                  return (
+                    <div className={cn(
+                      "w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold",
+                      winnerId === match.teamA?.id 
+                        ? "bg-primary text-primary-foreground shadow-lg shadow-primary/30" 
+                        : "bg-muted-foreground/30 text-muted-foreground"
+                    )}>
+                      A
+                    </div>
+                  );
+                }
+              })()}
               <span className="truncate text-sm">
                 {teamAName}
               </span>
@@ -533,14 +783,62 @@ const MatchCard: React.FC<MatchCardProps> = ({
             )}
           >
             <div className="flex items-center gap-2 flex-1 min-w-0">
-              <div className={cn(
-                "w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold",
-                winnerId === match.teamB?.id 
-                  ? "bg-primary text-primary-foreground shadow-lg shadow-primary/30" 
-                  : "bg-muted-foreground/30 text-muted-foreground"
-              )}>
-                B
-              </div>
+              {(() => {
+                // Get the resolved team ID - if we resolved the name, we should have the correct team ID
+                let teamId = match.teamB?.id;
+                
+                // If we have a placeholder name but teams are loaded, try to resolve the actual team ID
+                if (teamsLoaded && (!match.teamB?.name || isPlaceholderName(match.teamB?.name))) {
+                  // Use the same resolution logic as team names to get the correct team ID
+                  const resolvedTeamId = getResolvedTeamId(match, false, teamBDescription || t('playoffs.toBeDetermined'), allBrackets);
+                  if (resolvedTeamId) teamId = resolvedTeamId;
+                }
+                
+                const teamData = teamId && teamsMap?.has(teamId) ? teamsMap.get(teamId) : match.teamB;
+                const logoUrl = teamData?.logoUrl;
+                
+                if (logoUrl) {
+                  return (
+                    <div className={cn(
+                      "w-6 h-6 rounded-full overflow-hidden ring-2 transition-all duration-200",
+                      winnerId === match.teamB?.id 
+                        ? "ring-primary shadow-lg shadow-primary/30" 
+                        : "ring-muted-foreground/30"
+                    )}>
+                      <img 
+                        src={logoUrl} 
+                        alt={`${teamBName} logo`}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          // Fallback to letter avatar if image fails to load
+                          e.currentTarget.style.display = 'none';
+                          const fallback = e.currentTarget.nextElementSibling as HTMLElement;
+                          if (fallback) fallback.style.display = 'flex';
+                        }}
+                      />
+                      <div className={cn(
+                        "w-full h-full rounded-full items-center justify-center text-xs font-bold hidden",
+                        winnerId === match.teamB?.id 
+                          ? "bg-primary text-primary-foreground" 
+                          : "bg-muted-foreground/30 text-muted-foreground"
+                      )}>
+                        B
+                      </div>
+                    </div>
+                  );
+                } else {
+                  return (
+                    <div className={cn(
+                      "w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold",
+                      winnerId === match.teamB?.id 
+                        ? "bg-primary text-primary-foreground shadow-lg shadow-primary/30" 
+                        : "bg-muted-foreground/30 text-muted-foreground"
+                    )}>
+                      B
+                    </div>
+                  );
+                }
+              })()}
               <span className="truncate text-sm">
                 {teamBName}
               </span>
@@ -580,7 +878,8 @@ const BracketTree: React.FC<BracketTreeProps> = ({
   type,
   allBrackets = [],
   t,
-  teamsMap
+  teamsMap,
+  teamsLoaded = false
 }) => {
   // No filtering, just use rounds as-is
   if (!rounds || rounds.length === 0) {
@@ -643,6 +942,7 @@ const BracketTree: React.FC<BracketTreeProps> = ({
                         teamBDescription={teamBDescription}
                         teamsMap={teamsMap}
                         allBrackets={allBrackets}
+                        teamsLoaded={teamsLoaded}
                       />
                     </div>
                   );
@@ -707,7 +1007,8 @@ const LowerBracketVisualizer: React.FC<{
   allBrackets?: PlayoffBracket[];
   t: (key: string) => string;
   teamsMap?: Map<string, any>;
-}> = ({ title, bracket, allBrackets = [], t, teamsMap }) => {
+  teamsLoaded?: boolean;
+}> = ({ title, bracket, allBrackets = [], t, teamsMap, teamsLoaded = false }) => {
   const rounds = createRounds(bracket, t);
 
   return (
@@ -718,6 +1019,7 @@ const LowerBracketVisualizer: React.FC<{
       allBrackets={allBrackets}
       t={t}
       teamsMap={teamsMap}
+      teamsLoaded={teamsLoaded}
     />
   );
 };
@@ -726,6 +1028,7 @@ const PlayoffBracketDisplay: React.FC<{ bracketData: PlayoffData }> = ({ bracket
   const { t } = useTranslation();
   const [teamsMap, setTeamsMap] = useState<Map<string, any>>(new Map());
   const [resolvedBracketData, setResolvedBracketData] = useState<PlayoffData | null>(null);
+  const [teamsLoaded, setTeamsLoaded] = useState(false);
   
   // Function to resolve slots to actual team objects
   const resolveSlots = (playoffData: PlayoffData, teamsMap: Map<string, any>): PlayoffData => {
@@ -743,13 +1046,25 @@ const PlayoffBracketDisplay: React.FC<{ bracketData: PlayoffData }> = ({ bracket
       
       // Resolve matches by looking up teams from slots
       const resolvedMatches = bracket.matches.map(match => {
-        const teamA = slotMap.get(match.teamASlotId) || null;
-        const teamB = slotMap.get(match.teamBSlotId) || null;
+        const teamA = slotMap.get(match.teamASlotId) || match.teamA || null;
+        const teamB = slotMap.get(match.teamBSlotId) || match.teamB || null;
+        
+        // Enhance team data with logos if we have team IDs but missing logos
+        const enhanceTeamData = (team: any) => {
+          if (team && team.id && teamsMap.has(team.id)) {
+            const fullTeamData = teamsMap.get(team.id);
+            return {
+              ...team,
+              logoUrl: team.logoUrl || fullTeamData.logoUrl || ''
+            };
+          }
+          return team;
+        };
         
         return {
           ...match,
-          teamA,
-          teamB
+          teamA: enhanceTeamData(teamA),
+          teamB: enhanceTeamData(teamB)
         };
       });
       
@@ -776,6 +1091,7 @@ const PlayoffBracketDisplay: React.FC<{ bracketData: PlayoffData }> = ({ bracket
           newTeamsMap.set(doc.id, teamData);
         });
         setTeamsMap(newTeamsMap);
+        setTeamsLoaded(true);
         
         // Resolve slots to teams in bracket data
         if (bracketData) {
@@ -891,6 +1207,7 @@ const PlayoffBracketDisplay: React.FC<{ bracketData: PlayoffData }> = ({ bracket
                       type="upper"
                       t={t}
                       teamsMap={teamsMap}
+                      teamsLoaded={teamsLoaded}
                     />
                   </div>
                 </div>
@@ -928,6 +1245,7 @@ const PlayoffBracketDisplay: React.FC<{ bracketData: PlayoffData }> = ({ bracket
                       allBrackets={allBrackets}
                       t={t}
                       teamsMap={teamsMap}
+                      teamsLoaded={teamsLoaded}
                     />
                   </div>
                 </div>
@@ -964,6 +1282,7 @@ const PlayoffBracketDisplay: React.FC<{ bracketData: PlayoffData }> = ({ bracket
                       type="wildcard"
                       t={t}
                       teamsMap={teamsMap}
+                      teamsLoaded={teamsLoaded}
                     />
                   </div>
                 </div>

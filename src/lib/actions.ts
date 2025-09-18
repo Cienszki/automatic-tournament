@@ -88,7 +88,7 @@ export async function importMatchFromOpenDota(matchId: number, ourMatchId: strin
     const openDotaMatch = await fetchOpenDotaMatch(matchId);
     
     try {
-      const { game, performances } = transformMatchData(openDotaMatch, teams as Team[], players as Player[]);
+      const { game, performances } = transformMatchData(openDotaMatch, teams as Team[], players as Player[], false);
       await saveGameResults(ourMatchId, game, performances);
       
       // Automatically recalculate match scores and standings after saving the game
@@ -143,7 +143,7 @@ export async function importMatchFromOpenDotaAdmin(matchId: number, ourMatchId: 
     const openDotaMatch = await fetchOpenDotaMatch(matchId);
     
     try {
-      const { game, performances } = transformMatchData(openDotaMatch, teams as Team[], players as Player[]);
+      const { game, performances } = transformMatchData(openDotaMatch, teams as Team[], players as Player[], false);
       await saveGameResults(ourMatchId, game, performances);
       
       // Automatically recalculate match scores and standings after saving the game

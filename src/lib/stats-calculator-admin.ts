@@ -109,7 +109,7 @@ export async function recalculateBasicTournamentStatsAdminLegacy(): Promise<void
     statsData.gameCount = gameCount;
 
     // Save to tournament stats collection
-    await db.collection('tournamentStats').doc('basic').set(statsData);
+    await db.collection('tournamentStats').doc('tournament-stats').set(statsData);
     
     console.log(`✅ Basic tournament stats recalculated: ${statsData.totalMatches} matches, ${statsData.totalGames} games, ${statsData.playerCount} player performances`);
     

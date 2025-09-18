@@ -37,6 +37,16 @@ interface CreativeLeaderboardsProps {
 export default function CreativeLeaderboards({ leaderboards }: CreativeLeaderboardsProps) {
   const { t } = useTranslation();
   
+  // Debug logging to see actual data received
+  console.log('🔍 CreativeLeaderboards received data:', {
+    overallCount: leaderboards?.overall?.length || 0,
+    first3Users: leaderboards?.overall?.slice(0, 3)?.map(user => ({
+      displayName: user.displayName,
+      gamesPlayed: user.gamesPlayed,
+      averageScore: user.averageScore
+    })) || []
+  });
+  
   const getRankEmoji = (rank: number) => {
     if (rank === 1) return "🥇";
     if (rank === 2) return "🥈";

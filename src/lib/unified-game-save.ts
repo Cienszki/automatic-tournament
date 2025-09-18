@@ -170,6 +170,12 @@ export function validateGameData(game: Game, performances: PlayerPerformanceInGa
 } {
     const errors: string[] = [];
 
+    // Validate game object exists
+    if (!game) {
+        errors.push('Game object is null or undefined');
+        return { isValid: false, errors };
+    }
+
     // Validate game object
     if (!game.id) errors.push('Game ID is required');
     if (!game.duration || game.duration <= 0) errors.push('Game duration must be positive');
@@ -215,8 +221,11 @@ export function isPracticeGame(game: Game, performances: PlayerPerformanceInGame
     const totalKills = performances.reduce((sum, p) => sum + (p.kills || 0), 0);
     const totalDeaths = performances.reduce((sum, p) => sum + (p.deaths || 0), 0);
     const totalAssists = performances.reduce((sum, p) => sum + (p.assists || 0), 0);
-    const totalLastHits = performances.reduce((sum, p) => sum + ((p as any).last_hits || 0), 0);
-    const totalHeroDamage = performances.reduce((sum, p) => sum + ((p as any).hero_damage || 0), 0);
+    const totalLastHits = performances.reduce((sum, p) => sum + (p.lastHits || 0), 0);
+    const totalHeroDamage = performances.reduce((sum, p) => sum + (p.heroDamage || 0), 0);
+    
+    // Check if this might be an unparsed match (hero damage is 0 but other stats exist)
+    const isLikelyUnparsed = totalHeroDamage === 0 && (totalKills > 0 || totalLastHits > 50);
     
     // Check for extremely low engagement (likely practice/AFK game)
     if (totalKills === 0 && totalDeaths === 0 && totalAssists === 0) {
@@ -244,8 +253,8 @@ export function isPracticeGame(game: Game, performances: PlayerPerformanceInGame
         }
     }
     
-    // Check for extremely low hero damage in longer games
-    if (gameDurationMinutes > 20 && totalHeroDamage < 10000) {
+    // Check for extremely low hero damage in longer games (but skip for unparsed matches)
+    if (gameDurationMinutes > 20 && totalHeroDamage < 10000 && !isLikelyUnparsed) {
         errors.push(`Match appears to be a practice game: Very low total hero damage (${totalHeroDamage}) for ${Math.round(gameDurationMinutes)}min game`);
     }
     
