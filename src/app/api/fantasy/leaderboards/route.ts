@@ -79,6 +79,10 @@ export async function GET() {
       }
     };
     
+    // FINAL VALIDATION: Check what we're actually returning
+    const beboyCheck = transformedLeaderboards.overall.find((u: any) => u.displayName === 'BeBoy');
+    console.log('🚨 FINAL API RESPONSE CHECK - BeBoy data:', JSON.stringify(beboyCheck, null, 2));
+
     const response = NextResponse.json({
       success: true,
       leaderboards: transformedLeaderboards,

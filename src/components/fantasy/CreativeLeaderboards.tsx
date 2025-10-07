@@ -36,7 +36,13 @@ interface CreativeLeaderboardsProps {
 
 export default function CreativeLeaderboards({ leaderboards }: CreativeLeaderboardsProps) {
   const { t } = useTranslation();
-  
+
+  // EMERGENCY DEBUG: This should ALWAYS show in server logs
+  console.log('🚨 EMERGENCY: CreativeLeaderboards component is rendering!');
+  console.log('🚨 EMERGENCY: leaderboards prop exists:', !!leaderboards);
+  console.log('🚨 EMERGENCY: overall array exists:', !!leaderboards?.overall);
+  console.log('🚨 EMERGENCY: overall array length:', leaderboards?.overall?.length || 'undefined');
+
   // Debug logging to see actual data received
   console.log('🔍 CreativeLeaderboards received data:', {
     overallCount: leaderboards?.overall?.length || 0,
@@ -45,6 +51,32 @@ export default function CreativeLeaderboards({ leaderboards }: CreativeLeaderboa
       gamesPlayed: user.gamesPlayed,
       averageScore: user.averageScore
     })) || []
+  });
+
+  // CRITICAL DEBUG: Add alert to see if this component is even rendering with data
+  if (leaderboards?.overall?.length > 0) {
+    const firstUser = leaderboards.overall[0];
+    console.log('🚨 CRITICAL DEBUG: First user data:', firstUser);
+    console.log('🚨 CRITICAL DEBUG: First user gamesPlayed type:', typeof firstUser.gamesPlayed);
+    console.log('🚨 CRITICAL DEBUG: First user gamesPlayed value:', firstUser.gamesPlayed);
+  }
+
+  // Debug: Check if overall data exists and log its structure
+  console.log('🔍 STRUCTURE CHECK:');
+  console.log('  leaderboards exists:', !!leaderboards);
+  console.log('  leaderboards.overall exists:', !!leaderboards?.overall);
+  console.log('  leaderboards.overall is array:', Array.isArray(leaderboards?.overall));
+  console.log('  leaderboards.overall.length:', leaderboards?.overall?.length || 0);
+
+  // Specific debug for problematic users
+  const testUsers = ['BeBoy', 'SZATOŚI CI PRZYSZTOSI FUJARE', 'OgnistyPszemek'];
+  testUsers.forEach(userName => {
+    const user = leaderboards?.overall?.find(u => u.displayName === userName);
+    if (user) {
+      console.log(`🔍 FRONTEND - ${userName}: gamesPlayed=${user.gamesPlayed}, averageScore=${user.averageScore}`);
+    } else {
+      console.log(`❌ FRONTEND - ${userName} not found in leaderboards`);
+    }
   });
   
   const getRankEmoji = (rank: number) => {
@@ -83,19 +115,29 @@ export default function CreativeLeaderboards({ leaderboards }: CreativeLeaderboa
     return gradients[type as keyof typeof gradients] || "from-muted to-muted/70";
   };
 
-  const LeaderboardSection = ({ 
-    title, 
-    data, 
-    icon: Icon, 
+  const LeaderboardSection = ({
+    title,
+    data,
+    icon: Icon,
     gradientType,
-    bgPattern 
-  }: { 
+    bgPattern
+  }: {
     title: string;
     data: any[];
     icon: any;
     gradientType: string;
     bgPattern: string;
-  }) => (
+  }) => {
+    // Debug what data is received by LeaderboardSection
+    if (title.includes('Overall') || title.includes('ogólna')) {
+      console.log(`🔍 LEADERBOARD SECTION (${title}):`, {
+        dataLength: data?.length || 0,
+        isArray: Array.isArray(data),
+        first3: data?.slice(0, 3)?.map(p => `${p.displayName}:${p.gamesPlayed}`) || []
+      });
+    }
+
+    return (
     <Card className={`relative overflow-hidden border-2 shadow-2xl transition-all duration-300 hover:shadow-3xl bg-gradient-to-br ${getGradient(gradientType)} p-1`}>
       <div className="bg-card/95 backdrop-blur-sm rounded-lg h-full relative">
         {/* Background Pattern */}
@@ -186,7 +228,28 @@ export default function CreativeLeaderboards({ leaderboards }: CreativeLeaderboa
                         {player.averageScore?.toFixed(1) || '0.0'}
                       </div>
                       <div className="text-xs text-gray-400">
-                        {player.gamesPlayed || 0} {t('fantasy.leaderboards.games')}
+                        {(() => {
+                          const games = player.gamesPlayed || 0;
+                          const translation = t('fantasy.leaderboards.games');
+                          const finalString = `${games} ${translation}`;
+
+                          // Debug for ANY user to see what's happening
+                          if (index < 5) { // Debug first 5 users being rendered
+                            console.log(`🔍 RENDER ${player.displayName} (rank ${index + 1}): gamesPlayed=${player.gamesPlayed}, games=${games}, translation="${translation}"`);
+                            console.log(`🔍 RENDER ${player.displayName}: typeof gamesPlayed=${typeof player.gamesPlayed}, final="${finalString}"`);
+                            console.log(`🔍 RENDER ${player.displayName}: Raw data object:`, player);
+                          }
+
+                          // CRITICAL TEST: Return a hardcoded value to see if the issue is in the template
+                          if (player.displayName === 'BeBoy') {
+                            console.log(`🚨 BEBOY TEST: Should show "TEST 30 GAMES" but template will show: "${finalString}"`);
+                            console.log(`🚨 BEBOY DEEP DEBUG:`, JSON.stringify(player, null, 2));
+                            // Force return the raw value to bypass any template issues
+                            return String(player.gamesPlayed) + " RAW GAMES";
+                          }
+
+                          return finalString;
+                        })()}
                       </div>
                     </div>
                   </div>
@@ -266,6 +329,7 @@ export default function CreativeLeaderboards({ leaderboards }: CreativeLeaderboa
       </div>
     </Card>
   );
+  };
 
   return (
     <div className="space-y-8">
@@ -281,6 +345,11 @@ export default function CreativeLeaderboards({ leaderboards }: CreativeLeaderboa
 
       {/* All Leaderboards Grid - 2 rows of 3 */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {(() => {
+          console.log('🔍 PASSING TO OVERALL LEADERBOARD:', leaderboards.overall?.length || 0, 'entries');
+          console.log('🔍 FIRST 3 ENTRIES:', leaderboards.overall?.slice(0, 3)?.map(u => `${u.displayName}:${u.gamesPlayed}`));
+          return null;
+        })()}
         <LeaderboardSection
           title={t('fantasy.leaderboards.overall')}
           data={leaderboards.overall}

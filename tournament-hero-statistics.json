@@ -1,0 +1,4115 @@
+{
+  "generatedAt": "2025-09-19T03:40:37.953Z",
+  "summary": {
+    "totalHeroesInGame": 127,
+    "totalHeroesPicked": 113,
+    "totalHeroesNeverPicked": 14,
+    "totalPicksAnalyzed": 1195,
+    "totalGamesAnalyzed": 125
+  },
+  "heroStatistics": [
+    {
+      "heroId": 64,
+      "heroName": "Jakiro",
+      "totalPicks": 34,
+      "wins": 10,
+      "losses": 24,
+      "winRate": 29.4,
+      "teams": [
+        "sNjbhJNDTBhhijMMxN7Y",
+        "9Lt1J3HDGPt1aKGtNpdp",
+        "17rPs1frASvF0lK8rxY2",
+        "NFTIoLzXgsqNIbs32IRE",
+        "IadWYbJM0wYNw0vk91QF",
+        "xZ6e8mJfS4s2yOxaea7i",
+        "wbv6nLvNj78S2UKTjzCC",
+        "c9bDJBixghg2ZubJtArw",
+        "sWEfGOW9ZLezKBJhsFGV",
+        "4ZFlfUMnz3H82YekSder",
+        "FvGGo7gOx8nKn8lgWutZ",
+        "vp6meujV7sdOd1ttMCDH",
+        "aKN9a7mPxOLoz1fPFD0S",
+        "H1KNJGXWTOwb8pEsxfRf"
+      ],
+      "teamPickCounts": {
+        "sNjbhJNDTBhhijMMxN7Y": 3,
+        "9Lt1J3HDGPt1aKGtNpdp": 7,
+        "17rPs1frASvF0lK8rxY2": 2,
+        "NFTIoLzXgsqNIbs32IRE": 1,
+        "IadWYbJM0wYNw0vk91QF": 6,
+        "xZ6e8mJfS4s2yOxaea7i": 1,
+        "wbv6nLvNj78S2UKTjzCC": 3,
+        "c9bDJBixghg2ZubJtArw": 1,
+        "sWEfGOW9ZLezKBJhsFGV": 1,
+        "4ZFlfUMnz3H82YekSder": 2,
+        "FvGGo7gOx8nKn8lgWutZ": 3,
+        "vp6meujV7sdOd1ttMCDH": 2,
+        "aKN9a7mPxOLoz1fPFD0S": 1,
+        "H1KNJGXWTOwb8pEsxfRf": 1
+      },
+      "topTeam": "9Lt1J3HDGPt1aKGtNpdp",
+      "topTeamPicks": 7,
+      "teamsCount": 14
+    },
+    {
+      "heroId": 84,
+      "heroName": "Ogre Magi",
+      "totalPicks": 34,
+      "wins": 18,
+      "losses": 16,
+      "winRate": 52.9,
+      "teams": [
+        "wbv6nLvNj78S2UKTjzCC",
+        "YPpnY5CDx9LzN3ZM0723",
+        "kutPIkCyWUTRi0mjLnzJ",
+        "B7tN51jhfyakg9MwRq2T",
+        "1UJX9IGzBBzj4qaLya14",
+        "9Lt1J3HDGPt1aKGtNpdp",
+        "BEHMbh87I6hdndbo0PdP",
+        "IadWYbJM0wYNw0vk91QF",
+        "sWEfGOW9ZLezKBJhsFGV",
+        "sNjbhJNDTBhhijMMxN7Y",
+        "4ZFlfUMnz3H82YekSder",
+        "vp6meujV7sdOd1ttMCDH",
+        "ASkLQqoDGCOPsextQFsl",
+        "FvGGo7gOx8nKn8lgWutZ"
+      ],
+      "teamPickCounts": {
+        "wbv6nLvNj78S2UKTjzCC": 10,
+        "YPpnY5CDx9LzN3ZM0723": 5,
+        "kutPIkCyWUTRi0mjLnzJ": 4,
+        "B7tN51jhfyakg9MwRq2T": 2,
+        "1UJX9IGzBBzj4qaLya14": 2,
+        "9Lt1J3HDGPt1aKGtNpdp": 1,
+        "BEHMbh87I6hdndbo0PdP": 1,
+        "IadWYbJM0wYNw0vk91QF": 1,
+        "sWEfGOW9ZLezKBJhsFGV": 2,
+        "sNjbhJNDTBhhijMMxN7Y": 2,
+        "4ZFlfUMnz3H82YekSder": 1,
+        "vp6meujV7sdOd1ttMCDH": 1,
+        "ASkLQqoDGCOPsextQFsl": 1,
+        "FvGGo7gOx8nKn8lgWutZ": 1
+      },
+      "topTeam": "wbv6nLvNj78S2UKTjzCC",
+      "topTeamPicks": 10,
+      "teamsCount": 14
+    },
+    {
+      "heroId": 85,
+      "heroName": "Undying",
+      "totalPicks": 32,
+      "wins": 21,
+      "losses": 11,
+      "winRate": 65.6,
+      "teams": [
+        "NFTIoLzXgsqNIbs32IRE",
+        "kutPIkCyWUTRi0mjLnzJ",
+        "9Lt1J3HDGPt1aKGtNpdp",
+        "17rPs1frASvF0lK8rxY2",
+        "xExmM3YrkmYd2hjP01zQ",
+        "IadWYbJM0wYNw0vk91QF",
+        "XrMW89HTX4N6gFzQSrK9",
+        "B7tN51jhfyakg9MwRq2T",
+        "c9bDJBixghg2ZubJtArw",
+        "YPpnY5CDx9LzN3ZM0723",
+        "sWEfGOW9ZLezKBJhsFGV",
+        "H1KNJGXWTOwb8pEsxfRf",
+        "aKN9a7mPxOLoz1fPFD0S",
+        "ASkLQqoDGCOPsextQFsl"
+      ],
+      "teamPickCounts": {
+        "NFTIoLzXgsqNIbs32IRE": 3,
+        "kutPIkCyWUTRi0mjLnzJ": 6,
+        "9Lt1J3HDGPt1aKGtNpdp": 5,
+        "17rPs1frASvF0lK8rxY2": 2,
+        "xExmM3YrkmYd2hjP01zQ": 4,
+        "IadWYbJM0wYNw0vk91QF": 1,
+        "XrMW89HTX4N6gFzQSrK9": 1,
+        "B7tN51jhfyakg9MwRq2T": 2,
+        "c9bDJBixghg2ZubJtArw": 2,
+        "YPpnY5CDx9LzN3ZM0723": 1,
+        "sWEfGOW9ZLezKBJhsFGV": 2,
+        "H1KNJGXWTOwb8pEsxfRf": 1,
+        "aKN9a7mPxOLoz1fPFD0S": 1,
+        "ASkLQqoDGCOPsextQFsl": 1
+      },
+      "topTeam": "kutPIkCyWUTRi0mjLnzJ",
+      "topTeamPicks": 6,
+      "teamsCount": 14
+    },
+    {
+      "heroId": 135,
+      "heroName": "Marci",
+      "totalPicks": 32,
+      "wins": 18,
+      "losses": 14,
+      "winRate": 56.3,
+      "teams": [
+        "NFTIoLzXgsqNIbs32IRE",
+        "YPpnY5CDx9LzN3ZM0723",
+        "XrMW89HTX4N6gFzQSrK9",
+        "aKN9a7mPxOLoz1fPFD0S",
+        "17rPs1frASvF0lK8rxY2",
+        "IadWYbJM0wYNw0vk91QF",
+        "yFVMFQqLclFVJxIb9z4D",
+        "1UJX9IGzBBzj4qaLya14",
+        "wbv6nLvNj78S2UKTjzCC",
+        "94FIjqujNxXl6I66piZp",
+        "9Lt1J3HDGPt1aKGtNpdp",
+        "vp6meujV7sdOd1ttMCDH",
+        "oOJjrP0iXQLe7TStAtL2",
+        "c9bDJBixghg2ZubJtArw",
+        "xZ6e8mJfS4s2yOxaea7i",
+        "sNjbhJNDTBhhijMMxN7Y",
+        "uTtgHBN81CYiRx0yY4ip"
+      ],
+      "teamPickCounts": {
+        "NFTIoLzXgsqNIbs32IRE": 3,
+        "YPpnY5CDx9LzN3ZM0723": 1,
+        "XrMW89HTX4N6gFzQSrK9": 1,
+        "aKN9a7mPxOLoz1fPFD0S": 3,
+        "17rPs1frASvF0lK8rxY2": 2,
+        "IadWYbJM0wYNw0vk91QF": 2,
+        "yFVMFQqLclFVJxIb9z4D": 2,
+        "1UJX9IGzBBzj4qaLya14": 2,
+        "wbv6nLvNj78S2UKTjzCC": 4,
+        "94FIjqujNxXl6I66piZp": 1,
+        "9Lt1J3HDGPt1aKGtNpdp": 3,
+        "vp6meujV7sdOd1ttMCDH": 2,
+        "oOJjrP0iXQLe7TStAtL2": 1,
+        "c9bDJBixghg2ZubJtArw": 1,
+        "xZ6e8mJfS4s2yOxaea7i": 1,
+        "sNjbhJNDTBhhijMMxN7Y": 2,
+        "uTtgHBN81CYiRx0yY4ip": 1
+      },
+      "topTeam": "wbv6nLvNj78S2UKTjzCC",
+      "topTeamPicks": 4,
+      "teamsCount": 17
+    },
+    {
+      "heroId": 26,
+      "heroName": "Lion",
+      "totalPicks": 30,
+      "wins": 16,
+      "losses": 14,
+      "winRate": 53.3,
+      "teams": [
+        "NFTIoLzXgsqNIbs32IRE",
+        "wbv6nLvNj78S2UKTjzCC",
+        "aKN9a7mPxOLoz1fPFD0S",
+        "IadWYbJM0wYNw0vk91QF",
+        "1UJX9IGzBBzj4qaLya14",
+        "94FIjqujNxXl6I66piZp",
+        "sNjbhJNDTBhhijMMxN7Y",
+        "H1KNJGXWTOwb8pEsxfRf",
+        "ASkLQqoDGCOPsextQFsl"
+      ],
+      "teamPickCounts": {
+        "NFTIoLzXgsqNIbs32IRE": 1,
+        "wbv6nLvNj78S2UKTjzCC": 9,
+        "aKN9a7mPxOLoz1fPFD0S": 5,
+        "IadWYbJM0wYNw0vk91QF": 5,
+        "1UJX9IGzBBzj4qaLya14": 1,
+        "94FIjqujNxXl6I66piZp": 5,
+        "sNjbhJNDTBhhijMMxN7Y": 1,
+        "H1KNJGXWTOwb8pEsxfRf": 2,
+        "ASkLQqoDGCOPsextQFsl": 1
+      },
+      "topTeam": "wbv6nLvNj78S2UKTjzCC",
+      "topTeamPicks": 9,
+      "teamsCount": 9
+    },
+    {
+      "heroId": 20,
+      "heroName": "Vengeful Spirit",
+      "totalPicks": 29,
+      "wins": 16,
+      "losses": 13,
+      "winRate": 55.2,
+      "teams": [
+        "YPpnY5CDx9LzN3ZM0723",
+        "kutPIkCyWUTRi0mjLnzJ",
+        "c9bDJBixghg2ZubJtArw",
+        "xExmM3YrkmYd2hjP01zQ",
+        "94FIjqujNxXl6I66piZp",
+        "vp6meujV7sdOd1ttMCDH",
+        "sWEfGOW9ZLezKBJhsFGV",
+        "oOJjrP0iXQLe7TStAtL2",
+        "B7tN51jhfyakg9MwRq2T",
+        "NFTIoLzXgsqNIbs32IRE",
+        "uTtgHBN81CYiRx0yY4ip",
+        "sNjbhJNDTBhhijMMxN7Y",
+        "1UJX9IGzBBzj4qaLya14",
+        "yFVMFQqLclFVJxIb9z4D",
+        "ASkLQqoDGCOPsextQFsl"
+      ],
+      "teamPickCounts": {
+        "YPpnY5CDx9LzN3ZM0723": 5,
+        "kutPIkCyWUTRi0mjLnzJ": 4,
+        "c9bDJBixghg2ZubJtArw": 1,
+        "xExmM3YrkmYd2hjP01zQ": 1,
+        "94FIjqujNxXl6I66piZp": 3,
+        "vp6meujV7sdOd1ttMCDH": 2,
+        "sWEfGOW9ZLezKBJhsFGV": 1,
+        "oOJjrP0iXQLe7TStAtL2": 2,
+        "B7tN51jhfyakg9MwRq2T": 1,
+        "NFTIoLzXgsqNIbs32IRE": 1,
+        "uTtgHBN81CYiRx0yY4ip": 3,
+        "sNjbhJNDTBhhijMMxN7Y": 1,
+        "1UJX9IGzBBzj4qaLya14": 2,
+        "yFVMFQqLclFVJxIb9z4D": 1,
+        "ASkLQqoDGCOPsextQFsl": 1
+      },
+      "topTeam": "YPpnY5CDx9LzN3ZM0723",
+      "topTeamPicks": 5,
+      "teamsCount": 15
+    },
+    {
+      "heroId": 2,
+      "heroName": "Axe",
+      "totalPicks": 27,
+      "wins": 13,
+      "losses": 14,
+      "winRate": 48.1,
+      "teams": [
+        "NFTIoLzXgsqNIbs32IRE",
+        "XrMW89HTX4N6gFzQSrK9",
+        "1UJX9IGzBBzj4qaLya14",
+        "ASkLQqoDGCOPsextQFsl",
+        "xExmM3YrkmYd2hjP01zQ",
+        "94FIjqujNxXl6I66piZp",
+        "c9bDJBixghg2ZubJtArw",
+        "IadWYbJM0wYNw0vk91QF",
+        "BEHMbh87I6hdndbo0PdP",
+        "sNjbhJNDTBhhijMMxN7Y",
+        "oOJjrP0iXQLe7TStAtL2",
+        "uTtgHBN81CYiRx0yY4ip",
+        "H1KNJGXWTOwb8pEsxfRf",
+        "vp6meujV7sdOd1ttMCDH",
+        "yFVMFQqLclFVJxIb9z4D",
+        "aKN9a7mPxOLoz1fPFD0S"
+      ],
+      "teamPickCounts": {
+        "NFTIoLzXgsqNIbs32IRE": 2,
+        "XrMW89HTX4N6gFzQSrK9": 3,
+        "1UJX9IGzBBzj4qaLya14": 3,
+        "ASkLQqoDGCOPsextQFsl": 4,
+        "xExmM3YrkmYd2hjP01zQ": 1,
+        "94FIjqujNxXl6I66piZp": 1,
+        "c9bDJBixghg2ZubJtArw": 1,
+        "IadWYbJM0wYNw0vk91QF": 1,
+        "BEHMbh87I6hdndbo0PdP": 1,
+        "sNjbhJNDTBhhijMMxN7Y": 3,
+        "oOJjrP0iXQLe7TStAtL2": 1,
+        "uTtgHBN81CYiRx0yY4ip": 2,
+        "H1KNJGXWTOwb8pEsxfRf": 1,
+        "vp6meujV7sdOd1ttMCDH": 1,
+        "yFVMFQqLclFVJxIb9z4D": 1,
+        "aKN9a7mPxOLoz1fPFD0S": 1
+      },
+      "topTeam": "ASkLQqoDGCOPsextQFsl",
+      "topTeamPicks": 4,
+      "teamsCount": 16
+    },
+    {
+      "heroId": 31,
+      "heroName": "Lich",
+      "totalPicks": 27,
+      "wins": 14,
+      "losses": 13,
+      "winRate": 51.9,
+      "teams": [
+        "XrMW89HTX4N6gFzQSrK9",
+        "1UJX9IGzBBzj4qaLya14",
+        "IadWYbJM0wYNw0vk91QF",
+        "B7tN51jhfyakg9MwRq2T",
+        "yFVMFQqLclFVJxIb9z4D",
+        "uTtgHBN81CYiRx0yY4ip",
+        "FvGGo7gOx8nKn8lgWutZ",
+        "vp6meujV7sdOd1ttMCDH",
+        "xZ6e8mJfS4s2yOxaea7i",
+        "H1KNJGXWTOwb8pEsxfRf",
+        "9Lt1J3HDGPt1aKGtNpdp"
+      ],
+      "teamPickCounts": {
+        "XrMW89HTX4N6gFzQSrK9": 2,
+        "1UJX9IGzBBzj4qaLya14": 2,
+        "IadWYbJM0wYNw0vk91QF": 4,
+        "B7tN51jhfyakg9MwRq2T": 3,
+        "yFVMFQqLclFVJxIb9z4D": 5,
+        "uTtgHBN81CYiRx0yY4ip": 2,
+        "FvGGo7gOx8nKn8lgWutZ": 4,
+        "vp6meujV7sdOd1ttMCDH": 1,
+        "xZ6e8mJfS4s2yOxaea7i": 1,
+        "H1KNJGXWTOwb8pEsxfRf": 2,
+        "9Lt1J3HDGPt1aKGtNpdp": 1
+      },
+      "topTeam": "yFVMFQqLclFVJxIb9z4D",
+      "topTeamPicks": 5,
+      "teamsCount": 11
+    },
+    {
+      "heroId": 39,
+      "heroName": "Queen of Pain",
+      "totalPicks": 27,
+      "wins": 18,
+      "losses": 9,
+      "winRate": 66.7,
+      "teams": [
+        "BEHMbh87I6hdndbo0PdP",
+        "kutPIkCyWUTRi0mjLnzJ",
+        "yFVMFQqLclFVJxIb9z4D",
+        "IadWYbJM0wYNw0vk91QF",
+        "wbv6nLvNj78S2UKTjzCC",
+        "XrMW89HTX4N6gFzQSrK9",
+        "94FIjqujNxXl6I66piZp",
+        "vp6meujV7sdOd1ttMCDH",
+        "sWEfGOW9ZLezKBJhsFGV",
+        "H1KNJGXWTOwb8pEsxfRf",
+        "9Lt1J3HDGPt1aKGtNpdp",
+        "aKN9a7mPxOLoz1fPFD0S",
+        "YPpnY5CDx9LzN3ZM0723",
+        "oOJjrP0iXQLe7TStAtL2",
+        "4ZFlfUMnz3H82YekSder",
+        "uTtgHBN81CYiRx0yY4ip"
+      ],
+      "teamPickCounts": {
+        "BEHMbh87I6hdndbo0PdP": 3,
+        "kutPIkCyWUTRi0mjLnzJ": 4,
+        "yFVMFQqLclFVJxIb9z4D": 2,
+        "IadWYbJM0wYNw0vk91QF": 2,
+        "wbv6nLvNj78S2UKTjzCC": 1,
+        "XrMW89HTX4N6gFzQSrK9": 3,
+        "94FIjqujNxXl6I66piZp": 1,
+        "vp6meujV7sdOd1ttMCDH": 1,
+        "sWEfGOW9ZLezKBJhsFGV": 1,
+        "H1KNJGXWTOwb8pEsxfRf": 1,
+        "9Lt1J3HDGPt1aKGtNpdp": 3,
+        "aKN9a7mPxOLoz1fPFD0S": 1,
+        "YPpnY5CDx9LzN3ZM0723": 1,
+        "oOJjrP0iXQLe7TStAtL2": 1,
+        "4ZFlfUMnz3H82YekSder": 1,
+        "uTtgHBN81CYiRx0yY4ip": 1
+      },
+      "topTeam": "kutPIkCyWUTRi0mjLnzJ",
+      "topTeamPicks": 4,
+      "teamsCount": 16
+    },
+    {
+      "heroId": 75,
+      "heroName": "Silencer",
+      "totalPicks": 26,
+      "wins": 9,
+      "losses": 17,
+      "winRate": 34.6,
+      "teams": [
+        "XrMW89HTX4N6gFzQSrK9",
+        "1UJX9IGzBBzj4qaLya14",
+        "17rPs1frASvF0lK8rxY2",
+        "NFTIoLzXgsqNIbs32IRE",
+        "c9bDJBixghg2ZubJtArw",
+        "aKN9a7mPxOLoz1fPFD0S",
+        "wbv6nLvNj78S2UKTjzCC",
+        "94FIjqujNxXl6I66piZp",
+        "BEHMbh87I6hdndbo0PdP",
+        "oOJjrP0iXQLe7TStAtL2",
+        "H1KNJGXWTOwb8pEsxfRf",
+        "xExmM3YrkmYd2hjP01zQ",
+        "xZ6e8mJfS4s2yOxaea7i"
+      ],
+      "teamPickCounts": {
+        "XrMW89HTX4N6gFzQSrK9": 4,
+        "1UJX9IGzBBzj4qaLya14": 4,
+        "17rPs1frASvF0lK8rxY2": 1,
+        "NFTIoLzXgsqNIbs32IRE": 2,
+        "c9bDJBixghg2ZubJtArw": 2,
+        "aKN9a7mPxOLoz1fPFD0S": 1,
+        "wbv6nLvNj78S2UKTjzCC": 2,
+        "94FIjqujNxXl6I66piZp": 2,
+        "BEHMbh87I6hdndbo0PdP": 1,
+        "oOJjrP0iXQLe7TStAtL2": 2,
+        "H1KNJGXWTOwb8pEsxfRf": 3,
+        "xExmM3YrkmYd2hjP01zQ": 1,
+        "xZ6e8mJfS4s2yOxaea7i": 1
+      },
+      "topTeam": "XrMW89HTX4N6gFzQSrK9",
+      "topTeamPicks": 4,
+      "teamsCount": 13
+    },
+    {
+      "heroId": 27,
+      "heroName": "Shadow Shaman",
+      "totalPicks": 25,
+      "wins": 7,
+      "losses": 18,
+      "winRate": 28,
+      "teams": [
+        "17rPs1frASvF0lK8rxY2",
+        "NFTIoLzXgsqNIbs32IRE",
+        "aKN9a7mPxOLoz1fPFD0S",
+        "XrMW89HTX4N6gFzQSrK9",
+        "94FIjqujNxXl6I66piZp",
+        "4ZFlfUMnz3H82YekSder",
+        "9Lt1J3HDGPt1aKGtNpdp",
+        "BEHMbh87I6hdndbo0PdP",
+        "sWEfGOW9ZLezKBJhsFGV",
+        "oOJjrP0iXQLe7TStAtL2",
+        "H1KNJGXWTOwb8pEsxfRf",
+        "FvGGo7gOx8nKn8lgWutZ",
+        "xZ6e8mJfS4s2yOxaea7i",
+        "YPpnY5CDx9LzN3ZM0723"
+      ],
+      "teamPickCounts": {
+        "17rPs1frASvF0lK8rxY2": 3,
+        "NFTIoLzXgsqNIbs32IRE": 1,
+        "aKN9a7mPxOLoz1fPFD0S": 1,
+        "XrMW89HTX4N6gFzQSrK9": 1,
+        "94FIjqujNxXl6I66piZp": 2,
+        "4ZFlfUMnz3H82YekSder": 2,
+        "9Lt1J3HDGPt1aKGtNpdp": 1,
+        "BEHMbh87I6hdndbo0PdP": 1,
+        "sWEfGOW9ZLezKBJhsFGV": 4,
+        "oOJjrP0iXQLe7TStAtL2": 2,
+        "H1KNJGXWTOwb8pEsxfRf": 1,
+        "FvGGo7gOx8nKn8lgWutZ": 2,
+        "xZ6e8mJfS4s2yOxaea7i": 1,
+        "YPpnY5CDx9LzN3ZM0723": 3
+      },
+      "topTeam": "sWEfGOW9ZLezKBJhsFGV",
+      "topTeamPicks": 4,
+      "teamsCount": 14
+    },
+    {
+      "heroId": 29,
+      "heroName": "Tidehunter",
+      "totalPicks": 25,
+      "wins": 14,
+      "losses": 11,
+      "winRate": 56,
+      "teams": [
+        "BEHMbh87I6hdndbo0PdP",
+        "wbv6nLvNj78S2UKTjzCC",
+        "1UJX9IGzBBzj4qaLya14",
+        "9Lt1J3HDGPt1aKGtNpdp",
+        "17rPs1frASvF0lK8rxY2",
+        "B7tN51jhfyakg9MwRq2T",
+        "xZ6e8mJfS4s2yOxaea7i",
+        "XrMW89HTX4N6gFzQSrK9",
+        "YPpnY5CDx9LzN3ZM0723",
+        "oOJjrP0iXQLe7TStAtL2",
+        "4ZFlfUMnz3H82YekSder",
+        "vp6meujV7sdOd1ttMCDH",
+        "ASkLQqoDGCOPsextQFsl"
+      ],
+      "teamPickCounts": {
+        "BEHMbh87I6hdndbo0PdP": 2,
+        "wbv6nLvNj78S2UKTjzCC": 3,
+        "1UJX9IGzBBzj4qaLya14": 2,
+        "9Lt1J3HDGPt1aKGtNpdp": 5,
+        "17rPs1frASvF0lK8rxY2": 1,
+        "B7tN51jhfyakg9MwRq2T": 2,
+        "xZ6e8mJfS4s2yOxaea7i": 2,
+        "XrMW89HTX4N6gFzQSrK9": 1,
+        "YPpnY5CDx9LzN3ZM0723": 2,
+        "oOJjrP0iXQLe7TStAtL2": 1,
+        "4ZFlfUMnz3H82YekSder": 1,
+        "vp6meujV7sdOd1ttMCDH": 1,
+        "ASkLQqoDGCOPsextQFsl": 2
+      },
+      "topTeam": "9Lt1J3HDGPt1aKGtNpdp",
+      "topTeamPicks": 5,
+      "teamsCount": 13
+    },
+    {
+      "heroId": 70,
+      "heroName": "Ursa",
+      "totalPicks": 25,
+      "wins": 13,
+      "losses": 12,
+      "winRate": 52,
+      "teams": [
+        "1UJX9IGzBBzj4qaLya14",
+        "XrMW89HTX4N6gFzQSrK9",
+        "xZ6e8mJfS4s2yOxaea7i",
+        "yFVMFQqLclFVJxIb9z4D",
+        "94FIjqujNxXl6I66piZp",
+        "BEHMbh87I6hdndbo0PdP",
+        "sWEfGOW9ZLezKBJhsFGV",
+        "17rPs1frASvF0lK8rxY2",
+        "oOJjrP0iXQLe7TStAtL2",
+        "FvGGo7gOx8nKn8lgWutZ",
+        "xExmM3YrkmYd2hjP01zQ",
+        "NFTIoLzXgsqNIbs32IRE",
+        "sNjbhJNDTBhhijMMxN7Y",
+        "9Lt1J3HDGPt1aKGtNpdp",
+        "wbv6nLvNj78S2UKTjzCC",
+        "B7tN51jhfyakg9MwRq2T",
+        "H1KNJGXWTOwb8pEsxfRf"
+      ],
+      "teamPickCounts": {
+        "1UJX9IGzBBzj4qaLya14": 3,
+        "XrMW89HTX4N6gFzQSrK9": 2,
+        "xZ6e8mJfS4s2yOxaea7i": 2,
+        "yFVMFQqLclFVJxIb9z4D": 2,
+        "94FIjqujNxXl6I66piZp": 2,
+        "BEHMbh87I6hdndbo0PdP": 1,
+        "sWEfGOW9ZLezKBJhsFGV": 2,
+        "17rPs1frASvF0lK8rxY2": 1,
+        "oOJjrP0iXQLe7TStAtL2": 2,
+        "FvGGo7gOx8nKn8lgWutZ": 1,
+        "xExmM3YrkmYd2hjP01zQ": 1,
+        "NFTIoLzXgsqNIbs32IRE": 1,
+        "sNjbhJNDTBhhijMMxN7Y": 1,
+        "9Lt1J3HDGPt1aKGtNpdp": 1,
+        "wbv6nLvNj78S2UKTjzCC": 1,
+        "B7tN51jhfyakg9MwRq2T": 1,
+        "H1KNJGXWTOwb8pEsxfRf": 1
+      },
+      "topTeam": "1UJX9IGzBBzj4qaLya14",
+      "topTeamPicks": 3,
+      "teamsCount": 17
+    },
+    {
+      "heroId": 102,
+      "heroName": "Abaddon",
+      "totalPicks": 24,
+      "wins": 15,
+      "losses": 9,
+      "winRate": 62.5,
+      "teams": [
+        "sNjbhJNDTBhhijMMxN7Y",
+        "aKN9a7mPxOLoz1fPFD0S",
+        "17rPs1frASvF0lK8rxY2",
+        "xExmM3YrkmYd2hjP01zQ",
+        "ASkLQqoDGCOPsextQFsl",
+        "c9bDJBixghg2ZubJtArw",
+        "94FIjqujNxXl6I66piZp",
+        null,
+        "BEHMbh87I6hdndbo0PdP",
+        "oOJjrP0iXQLe7TStAtL2",
+        "B7tN51jhfyakg9MwRq2T",
+        "vp6meujV7sdOd1ttMCDH",
+        "XrMW89HTX4N6gFzQSrK9",
+        "yFVMFQqLclFVJxIb9z4D"
+      ],
+      "teamPickCounts": {
+        "sNjbhJNDTBhhijMMxN7Y": 2,
+        "aKN9a7mPxOLoz1fPFD0S": 2,
+        "17rPs1frASvF0lK8rxY2": 4,
+        "xExmM3YrkmYd2hjP01zQ": 1,
+        "ASkLQqoDGCOPsextQFsl": 3,
+        "c9bDJBixghg2ZubJtArw": 2,
+        "94FIjqujNxXl6I66piZp": 2,
+        "null": 1,
+        "BEHMbh87I6hdndbo0PdP": 1,
+        "oOJjrP0iXQLe7TStAtL2": 2,
+        "B7tN51jhfyakg9MwRq2T": 1,
+        "vp6meujV7sdOd1ttMCDH": 1,
+        "XrMW89HTX4N6gFzQSrK9": 1,
+        "yFVMFQqLclFVJxIb9z4D": 1
+      },
+      "topTeam": "17rPs1frASvF0lK8rxY2",
+      "topTeamPicks": 4,
+      "teamsCount": 14
+    },
+    {
+      "heroId": 30,
+      "heroName": "Witch Doctor",
+      "totalPicks": 23,
+      "wins": 12,
+      "losses": 11,
+      "winRate": 52.2,
+      "teams": [
+        "XrMW89HTX4N6gFzQSrK9",
+        "aKN9a7mPxOLoz1fPFD0S",
+        "ASkLQqoDGCOPsextQFsl",
+        "BEHMbh87I6hdndbo0PdP",
+        "c9bDJBixghg2ZubJtArw",
+        "sWEfGOW9ZLezKBJhsFGV",
+        "uTtgHBN81CYiRx0yY4ip",
+        "FvGGo7gOx8nKn8lgWutZ",
+        "oOJjrP0iXQLe7TStAtL2",
+        "B7tN51jhfyakg9MwRq2T"
+      ],
+      "teamPickCounts": {
+        "XrMW89HTX4N6gFzQSrK9": 2,
+        "aKN9a7mPxOLoz1fPFD0S": 3,
+        "ASkLQqoDGCOPsextQFsl": 3,
+        "BEHMbh87I6hdndbo0PdP": 1,
+        "c9bDJBixghg2ZubJtArw": 1,
+        "sWEfGOW9ZLezKBJhsFGV": 1,
+        "uTtgHBN81CYiRx0yY4ip": 4,
+        "FvGGo7gOx8nKn8lgWutZ": 3,
+        "oOJjrP0iXQLe7TStAtL2": 3,
+        "B7tN51jhfyakg9MwRq2T": 2
+      },
+      "topTeam": "uTtgHBN81CYiRx0yY4ip",
+      "topTeamPicks": 4,
+      "teamsCount": 10
+    },
+    {
+      "heroId": 53,
+      "heroName": "Nature's Prophet",
+      "totalPicks": 21,
+      "wins": 10,
+      "losses": 11,
+      "winRate": 47.6,
+      "teams": [
+        "XrMW89HTX4N6gFzQSrK9",
+        "9Lt1J3HDGPt1aKGtNpdp",
+        "c9bDJBixghg2ZubJtArw",
+        "wbv6nLvNj78S2UKTjzCC",
+        "BEHMbh87I6hdndbo0PdP",
+        "94FIjqujNxXl6I66piZp",
+        "sNjbhJNDTBhhijMMxN7Y",
+        "oOJjrP0iXQLe7TStAtL2",
+        "xExmM3YrkmYd2hjP01zQ",
+        "ASkLQqoDGCOPsextQFsl",
+        "sWEfGOW9ZLezKBJhsFGV",
+        "uTtgHBN81CYiRx0yY4ip"
+      ],
+      "teamPickCounts": {
+        "XrMW89HTX4N6gFzQSrK9": 1,
+        "9Lt1J3HDGPt1aKGtNpdp": 4,
+        "c9bDJBixghg2ZubJtArw": 2,
+        "wbv6nLvNj78S2UKTjzCC": 1,
+        "BEHMbh87I6hdndbo0PdP": 2,
+        "94FIjqujNxXl6I66piZp": 1,
+        "sNjbhJNDTBhhijMMxN7Y": 2,
+        "oOJjrP0iXQLe7TStAtL2": 3,
+        "xExmM3YrkmYd2hjP01zQ": 1,
+        "ASkLQqoDGCOPsextQFsl": 2,
+        "sWEfGOW9ZLezKBJhsFGV": 1,
+        "uTtgHBN81CYiRx0yY4ip": 1
+      },
+      "topTeam": "9Lt1J3HDGPt1aKGtNpdp",
+      "topTeamPicks": 4,
+      "teamsCount": 12
+    },
+    {
+      "heroId": 54,
+      "heroName": "Lifestealer",
+      "totalPicks": 21,
+      "wins": 11,
+      "losses": 10,
+      "winRate": 52.4,
+      "teams": [
+        "NFTIoLzXgsqNIbs32IRE",
+        "XrMW89HTX4N6gFzQSrK9",
+        "1UJX9IGzBBzj4qaLya14",
+        "IadWYbJM0wYNw0vk91QF",
+        "kutPIkCyWUTRi0mjLnzJ",
+        "B7tN51jhfyakg9MwRq2T",
+        "BEHMbh87I6hdndbo0PdP",
+        "c9bDJBixghg2ZubJtArw",
+        "xExmM3YrkmYd2hjP01zQ",
+        "vp6meujV7sdOd1ttMCDH",
+        "xZ6e8mJfS4s2yOxaea7i",
+        "94FIjqujNxXl6I66piZp",
+        "H1KNJGXWTOwb8pEsxfRf",
+        "FvGGo7gOx8nKn8lgWutZ",
+        "sNjbhJNDTBhhijMMxN7Y",
+        "sWEfGOW9ZLezKBJhsFGV",
+        "4ZFlfUMnz3H82YekSder"
+      ],
+      "teamPickCounts": {
+        "NFTIoLzXgsqNIbs32IRE": 2,
+        "XrMW89HTX4N6gFzQSrK9": 1,
+        "1UJX9IGzBBzj4qaLya14": 2,
+        "IadWYbJM0wYNw0vk91QF": 1,
+        "kutPIkCyWUTRi0mjLnzJ": 3,
+        "B7tN51jhfyakg9MwRq2T": 1,
+        "BEHMbh87I6hdndbo0PdP": 1,
+        "c9bDJBixghg2ZubJtArw": 1,
+        "xExmM3YrkmYd2hjP01zQ": 1,
+        "vp6meujV7sdOd1ttMCDH": 1,
+        "xZ6e8mJfS4s2yOxaea7i": 1,
+        "94FIjqujNxXl6I66piZp": 1,
+        "H1KNJGXWTOwb8pEsxfRf": 1,
+        "FvGGo7gOx8nKn8lgWutZ": 1,
+        "sNjbhJNDTBhhijMMxN7Y": 1,
+        "sWEfGOW9ZLezKBJhsFGV": 1,
+        "4ZFlfUMnz3H82YekSder": 1
+      },
+      "topTeam": "kutPIkCyWUTRi0mjLnzJ",
+      "topTeamPicks": 3,
+      "teamsCount": 17
+    },
+    {
+      "heroId": 128,
+      "heroName": "Snapfire",
+      "totalPicks": 19,
+      "wins": 13,
+      "losses": 6,
+      "winRate": 68.4,
+      "teams": [
+        "YPpnY5CDx9LzN3ZM0723",
+        "kutPIkCyWUTRi0mjLnzJ",
+        "c9bDJBixghg2ZubJtArw",
+        "4ZFlfUMnz3H82YekSder",
+        "94FIjqujNxXl6I66piZp",
+        "H1KNJGXWTOwb8pEsxfRf",
+        "vp6meujV7sdOd1ttMCDH",
+        "BEHMbh87I6hdndbo0PdP",
+        "yFVMFQqLclFVJxIb9z4D",
+        "17rPs1frASvF0lK8rxY2",
+        "sWEfGOW9ZLezKBJhsFGV"
+      ],
+      "teamPickCounts": {
+        "YPpnY5CDx9LzN3ZM0723": 3,
+        "kutPIkCyWUTRi0mjLnzJ": 4,
+        "c9bDJBixghg2ZubJtArw": 3,
+        "4ZFlfUMnz3H82YekSder": 1,
+        "94FIjqujNxXl6I66piZp": 1,
+        "H1KNJGXWTOwb8pEsxfRf": 1,
+        "vp6meujV7sdOd1ttMCDH": 1,
+        "BEHMbh87I6hdndbo0PdP": 2,
+        "yFVMFQqLclFVJxIb9z4D": 1,
+        "17rPs1frASvF0lK8rxY2": 1,
+        "sWEfGOW9ZLezKBJhsFGV": 1
+      },
+      "topTeam": "kutPIkCyWUTRi0mjLnzJ",
+      "topTeamPicks": 4,
+      "teamsCount": 11
+    },
+    {
+      "heroId": 129,
+      "heroName": "Mars",
+      "totalPicks": 19,
+      "wins": 6,
+      "losses": 13,
+      "winRate": 31.6,
+      "teams": [
+        "aKN9a7mPxOLoz1fPFD0S",
+        "yFVMFQqLclFVJxIb9z4D",
+        "1UJX9IGzBBzj4qaLya14",
+        "BEHMbh87I6hdndbo0PdP",
+        "vp6meujV7sdOd1ttMCDH",
+        "YPpnY5CDx9LzN3ZM0723",
+        "FvGGo7gOx8nKn8lgWutZ",
+        "uTtgHBN81CYiRx0yY4ip",
+        "ASkLQqoDGCOPsextQFsl",
+        "sWEfGOW9ZLezKBJhsFGV",
+        "sNjbhJNDTBhhijMMxN7Y",
+        "4ZFlfUMnz3H82YekSder"
+      ],
+      "teamPickCounts": {
+        "aKN9a7mPxOLoz1fPFD0S": 4,
+        "yFVMFQqLclFVJxIb9z4D": 2,
+        "1UJX9IGzBBzj4qaLya14": 2,
+        "BEHMbh87I6hdndbo0PdP": 1,
+        "vp6meujV7sdOd1ttMCDH": 1,
+        "YPpnY5CDx9LzN3ZM0723": 2,
+        "FvGGo7gOx8nKn8lgWutZ": 2,
+        "uTtgHBN81CYiRx0yY4ip": 1,
+        "ASkLQqoDGCOPsextQFsl": 1,
+        "sWEfGOW9ZLezKBJhsFGV": 1,
+        "sNjbhJNDTBhhijMMxN7Y": 1,
+        "4ZFlfUMnz3H82YekSder": 1
+      },
+      "topTeam": "aKN9a7mPxOLoz1fPFD0S",
+      "topTeamPicks": 4,
+      "teamsCount": 12
+    },
+    {
+      "heroId": 108,
+      "heroName": "Underlord",
+      "totalPicks": 18,
+      "wins": 12,
+      "losses": 6,
+      "winRate": 66.7,
+      "teams": [
+        "yFVMFQqLclFVJxIb9z4D",
+        "BEHMbh87I6hdndbo0PdP",
+        "94FIjqujNxXl6I66piZp",
+        "IadWYbJM0wYNw0vk91QF",
+        "17rPs1frASvF0lK8rxY2",
+        "wbv6nLvNj78S2UKTjzCC",
+        "uTtgHBN81CYiRx0yY4ip",
+        "FvGGo7gOx8nKn8lgWutZ"
+      ],
+      "teamPickCounts": {
+        "yFVMFQqLclFVJxIb9z4D": 5,
+        "BEHMbh87I6hdndbo0PdP": 1,
+        "94FIjqujNxXl6I66piZp": 2,
+        "IadWYbJM0wYNw0vk91QF": 1,
+        "17rPs1frASvF0lK8rxY2": 1,
+        "wbv6nLvNj78S2UKTjzCC": 4,
+        "uTtgHBN81CYiRx0yY4ip": 3,
+        "FvGGo7gOx8nKn8lgWutZ": 1
+      },
+      "topTeam": "yFVMFQqLclFVJxIb9z4D",
+      "topTeamPicks": 5,
+      "teamsCount": 8
+    },
+    {
+      "heroId": 104,
+      "heroName": "Legion Commander",
+      "totalPicks": 17,
+      "wins": 5,
+      "losses": 12,
+      "winRate": 29.4,
+      "teams": [
+        "XrMW89HTX4N6gFzQSrK9",
+        "B7tN51jhfyakg9MwRq2T",
+        "aKN9a7mPxOLoz1fPFD0S",
+        "94FIjqujNxXl6I66piZp",
+        "yFVMFQqLclFVJxIb9z4D",
+        "c9bDJBixghg2ZubJtArw",
+        "vp6meujV7sdOd1ttMCDH",
+        "sWEfGOW9ZLezKBJhsFGV",
+        "H1KNJGXWTOwb8pEsxfRf",
+        "FvGGo7gOx8nKn8lgWutZ"
+      ],
+      "teamPickCounts": {
+        "XrMW89HTX4N6gFzQSrK9": 5,
+        "B7tN51jhfyakg9MwRq2T": 1,
+        "aKN9a7mPxOLoz1fPFD0S": 1,
+        "94FIjqujNxXl6I66piZp": 2,
+        "yFVMFQqLclFVJxIb9z4D": 1,
+        "c9bDJBixghg2ZubJtArw": 1,
+        "vp6meujV7sdOd1ttMCDH": 2,
+        "sWEfGOW9ZLezKBJhsFGV": 1,
+        "H1KNJGXWTOwb8pEsxfRf": 2,
+        "FvGGo7gOx8nKn8lgWutZ": 1
+      },
+      "topTeam": "XrMW89HTX4N6gFzQSrK9",
+      "topTeamPicks": 5,
+      "teamsCount": 10
+    },
+    {
+      "heroId": 94,
+      "heroName": "Medusa",
+      "totalPicks": 16,
+      "wins": 7,
+      "losses": 9,
+      "winRate": 43.8,
+      "teams": [
+        "YPpnY5CDx9LzN3ZM0723",
+        "XrMW89HTX4N6gFzQSrK9",
+        "aKN9a7mPxOLoz1fPFD0S",
+        "yFVMFQqLclFVJxIb9z4D",
+        "NFTIoLzXgsqNIbs32IRE",
+        "4ZFlfUMnz3H82YekSder",
+        "oOJjrP0iXQLe7TStAtL2",
+        "FvGGo7gOx8nKn8lgWutZ",
+        "H1KNJGXWTOwb8pEsxfRf",
+        "ASkLQqoDGCOPsextQFsl",
+        "9Lt1J3HDGPt1aKGtNpdp"
+      ],
+      "teamPickCounts": {
+        "YPpnY5CDx9LzN3ZM0723": 2,
+        "XrMW89HTX4N6gFzQSrK9": 1,
+        "aKN9a7mPxOLoz1fPFD0S": 3,
+        "yFVMFQqLclFVJxIb9z4D": 2,
+        "NFTIoLzXgsqNIbs32IRE": 1,
+        "4ZFlfUMnz3H82YekSder": 1,
+        "oOJjrP0iXQLe7TStAtL2": 2,
+        "FvGGo7gOx8nKn8lgWutZ": 1,
+        "H1KNJGXWTOwb8pEsxfRf": 1,
+        "ASkLQqoDGCOPsextQFsl": 1,
+        "9Lt1J3HDGPt1aKGtNpdp": 1
+      },
+      "topTeam": "aKN9a7mPxOLoz1fPFD0S",
+      "topTeamPicks": 3,
+      "teamsCount": 11
+    },
+    {
+      "heroId": 101,
+      "heroName": "Skywrath Mage",
+      "totalPicks": 16,
+      "wins": 9,
+      "losses": 7,
+      "winRate": 56.3,
+      "teams": [
+        "XrMW89HTX4N6gFzQSrK9",
+        "aKN9a7mPxOLoz1fPFD0S",
+        "B7tN51jhfyakg9MwRq2T",
+        "ASkLQqoDGCOPsextQFsl",
+        "wbv6nLvNj78S2UKTjzCC",
+        "vp6meujV7sdOd1ttMCDH",
+        "FvGGo7gOx8nKn8lgWutZ",
+        "sWEfGOW9ZLezKBJhsFGV"
+      ],
+      "teamPickCounts": {
+        "XrMW89HTX4N6gFzQSrK9": 2,
+        "aKN9a7mPxOLoz1fPFD0S": 2,
+        "B7tN51jhfyakg9MwRq2T": 1,
+        "ASkLQqoDGCOPsextQFsl": 2,
+        "wbv6nLvNj78S2UKTjzCC": 4,
+        "vp6meujV7sdOd1ttMCDH": 1,
+        "FvGGo7gOx8nKn8lgWutZ": 2,
+        "sWEfGOW9ZLezKBJhsFGV": 2
+      },
+      "topTeam": "wbv6nLvNj78S2UKTjzCC",
+      "topTeamPicks": 4,
+      "teamsCount": 8
+    },
+    {
+      "heroId": 11,
+      "heroName": "Shadow Fiend",
+      "totalPicks": 15,
+      "wins": 9,
+      "losses": 6,
+      "winRate": 60,
+      "teams": [
+        "BEHMbh87I6hdndbo0PdP",
+        "wbv6nLvNj78S2UKTjzCC",
+        "aKN9a7mPxOLoz1fPFD0S",
+        "94FIjqujNxXl6I66piZp",
+        "uTtgHBN81CYiRx0yY4ip",
+        "FvGGo7gOx8nKn8lgWutZ",
+        "IadWYbJM0wYNw0vk91QF"
+      ],
+      "teamPickCounts": {
+        "BEHMbh87I6hdndbo0PdP": 3,
+        "wbv6nLvNj78S2UKTjzCC": 5,
+        "aKN9a7mPxOLoz1fPFD0S": 1,
+        "94FIjqujNxXl6I66piZp": 1,
+        "uTtgHBN81CYiRx0yY4ip": 1,
+        "FvGGo7gOx8nKn8lgWutZ": 3,
+        "IadWYbJM0wYNw0vk91QF": 1
+      },
+      "topTeam": "wbv6nLvNj78S2UKTjzCC",
+      "topTeamPicks": 5,
+      "teamsCount": 7
+    },
+    {
+      "heroId": 51,
+      "heroName": "Clockwerk",
+      "totalPicks": 15,
+      "wins": 9,
+      "losses": 6,
+      "winRate": 60,
+      "teams": [
+        "kutPIkCyWUTRi0mjLnzJ",
+        "NFTIoLzXgsqNIbs32IRE",
+        "B7tN51jhfyakg9MwRq2T",
+        "xExmM3YrkmYd2hjP01zQ",
+        "c9bDJBixghg2ZubJtArw",
+        "oOJjrP0iXQLe7TStAtL2",
+        "vp6meujV7sdOd1ttMCDH",
+        "aKN9a7mPxOLoz1fPFD0S"
+      ],
+      "teamPickCounts": {
+        "kutPIkCyWUTRi0mjLnzJ": 3,
+        "NFTIoLzXgsqNIbs32IRE": 1,
+        "B7tN51jhfyakg9MwRq2T": 1,
+        "xExmM3YrkmYd2hjP01zQ": 1,
+        "c9bDJBixghg2ZubJtArw": 2,
+        "oOJjrP0iXQLe7TStAtL2": 5,
+        "vp6meujV7sdOd1ttMCDH": 1,
+        "aKN9a7mPxOLoz1fPFD0S": 1
+      },
+      "topTeam": "oOJjrP0iXQLe7TStAtL2",
+      "topTeamPicks": 5,
+      "teamsCount": 8
+    },
+    {
+      "heroId": 100,
+      "heroName": "Tusk",
+      "totalPicks": 15,
+      "wins": 10,
+      "losses": 5,
+      "winRate": 66.7,
+      "teams": [
+        "NFTIoLzXgsqNIbs32IRE",
+        "BEHMbh87I6hdndbo0PdP",
+        "9Lt1J3HDGPt1aKGtNpdp",
+        "1UJX9IGzBBzj4qaLya14",
+        "sNjbhJNDTBhhijMMxN7Y",
+        "4ZFlfUMnz3H82YekSder"
+      ],
+      "teamPickCounts": {
+        "NFTIoLzXgsqNIbs32IRE": 1,
+        "BEHMbh87I6hdndbo0PdP": 4,
+        "9Lt1J3HDGPt1aKGtNpdp": 6,
+        "1UJX9IGzBBzj4qaLya14": 2,
+        "sNjbhJNDTBhhijMMxN7Y": 1,
+        "4ZFlfUMnz3H82YekSder": 1
+      },
+      "topTeam": "9Lt1J3HDGPt1aKGtNpdp",
+      "topTeamPicks": 6,
+      "teamsCount": 6
+    },
+    {
+      "heroId": 121,
+      "heroName": "Grimstroke",
+      "totalPicks": 15,
+      "wins": 8,
+      "losses": 7,
+      "winRate": 53.3,
+      "teams": [
+        "9Lt1J3HDGPt1aKGtNpdp",
+        "1UJX9IGzBBzj4qaLya14",
+        "xExmM3YrkmYd2hjP01zQ",
+        "yFVMFQqLclFVJxIb9z4D",
+        "ASkLQqoDGCOPsextQFsl",
+        "B7tN51jhfyakg9MwRq2T",
+        "vp6meujV7sdOd1ttMCDH"
+      ],
+      "teamPickCounts": {
+        "9Lt1J3HDGPt1aKGtNpdp": 6,
+        "1UJX9IGzBBzj4qaLya14": 3,
+        "xExmM3YrkmYd2hjP01zQ": 2,
+        "yFVMFQqLclFVJxIb9z4D": 1,
+        "ASkLQqoDGCOPsextQFsl": 1,
+        "B7tN51jhfyakg9MwRq2T": 1,
+        "vp6meujV7sdOd1ttMCDH": 1
+      },
+      "topTeam": "9Lt1J3HDGPt1aKGtNpdp",
+      "topTeamPicks": 6,
+      "teamsCount": 7
+    },
+    {
+      "heroId": 7,
+      "heroName": "Earthshaker",
+      "totalPicks": 14,
+      "wins": 7,
+      "losses": 7,
+      "winRate": 50,
+      "teams": [
+        "1UJX9IGzBBzj4qaLya14",
+        "9Lt1J3HDGPt1aKGtNpdp",
+        "NFTIoLzXgsqNIbs32IRE",
+        "B7tN51jhfyakg9MwRq2T",
+        "94FIjqujNxXl6I66piZp",
+        "XrMW89HTX4N6gFzQSrK9",
+        "FvGGo7gOx8nKn8lgWutZ",
+        "YPpnY5CDx9LzN3ZM0723",
+        "ASkLQqoDGCOPsextQFsl",
+        "wbv6nLvNj78S2UKTjzCC",
+        "sNjbhJNDTBhhijMMxN7Y"
+      ],
+      "teamPickCounts": {
+        "1UJX9IGzBBzj4qaLya14": 1,
+        "9Lt1J3HDGPt1aKGtNpdp": 1,
+        "NFTIoLzXgsqNIbs32IRE": 2,
+        "B7tN51jhfyakg9MwRq2T": 1,
+        "94FIjqujNxXl6I66piZp": 3,
+        "XrMW89HTX4N6gFzQSrK9": 1,
+        "FvGGo7gOx8nKn8lgWutZ": 1,
+        "YPpnY5CDx9LzN3ZM0723": 1,
+        "ASkLQqoDGCOPsextQFsl": 1,
+        "wbv6nLvNj78S2UKTjzCC": 1,
+        "sNjbhJNDTBhhijMMxN7Y": 1
+      },
+      "topTeam": "94FIjqujNxXl6I66piZp",
+      "topTeamPicks": 3,
+      "teamsCount": 11
+    },
+    {
+      "heroId": 96,
+      "heroName": "Centaur Warrunner",
+      "totalPicks": 14,
+      "wins": 8,
+      "losses": 6,
+      "winRate": 57.1,
+      "teams": [
+        "wbv6nLvNj78S2UKTjzCC",
+        "9Lt1J3HDGPt1aKGtNpdp",
+        "1UJX9IGzBBzj4qaLya14",
+        "NFTIoLzXgsqNIbs32IRE",
+        "xExmM3YrkmYd2hjP01zQ",
+        "sNjbhJNDTBhhijMMxN7Y"
+      ],
+      "teamPickCounts": {
+        "wbv6nLvNj78S2UKTjzCC": 1,
+        "9Lt1J3HDGPt1aKGtNpdp": 7,
+        "1UJX9IGzBBzj4qaLya14": 3,
+        "NFTIoLzXgsqNIbs32IRE": 1,
+        "xExmM3YrkmYd2hjP01zQ": 1,
+        "sNjbhJNDTBhhijMMxN7Y": 1
+      },
+      "topTeam": "9Lt1J3HDGPt1aKGtNpdp",
+      "topTeamPicks": 7,
+      "teamsCount": 6
+    },
+    {
+      "heroId": 106,
+      "heroName": "Ember Spirit",
+      "totalPicks": 13,
+      "wins": 3,
+      "losses": 10,
+      "winRate": 23.1,
+      "teams": [
+        "YPpnY5CDx9LzN3ZM0723",
+        "1UJX9IGzBBzj4qaLya14",
+        "aKN9a7mPxOLoz1fPFD0S",
+        "94FIjqujNxXl6I66piZp",
+        "IadWYbJM0wYNw0vk91QF",
+        "c9bDJBixghg2ZubJtArw",
+        "vp6meujV7sdOd1ttMCDH",
+        "xZ6e8mJfS4s2yOxaea7i",
+        "uTtgHBN81CYiRx0yY4ip"
+      ],
+      "teamPickCounts": {
+        "YPpnY5CDx9LzN3ZM0723": 1,
+        "1UJX9IGzBBzj4qaLya14": 2,
+        "aKN9a7mPxOLoz1fPFD0S": 1,
+        "94FIjqujNxXl6I66piZp": 1,
+        "IadWYbJM0wYNw0vk91QF": 1,
+        "c9bDJBixghg2ZubJtArw": 2,
+        "vp6meujV7sdOd1ttMCDH": 2,
+        "xZ6e8mJfS4s2yOxaea7i": 2,
+        "uTtgHBN81CYiRx0yY4ip": 1
+      },
+      "topTeam": "1UJX9IGzBBzj4qaLya14",
+      "topTeamPicks": 2,
+      "teamsCount": 9
+    },
+    {
+      "heroId": 119,
+      "heroName": "Dark Willow",
+      "totalPicks": 13,
+      "wins": 9,
+      "losses": 4,
+      "winRate": 69.2,
+      "teams": [
+        "kutPIkCyWUTRi0mjLnzJ",
+        "aKN9a7mPxOLoz1fPFD0S",
+        "c9bDJBixghg2ZubJtArw",
+        "17rPs1frASvF0lK8rxY2",
+        "oOJjrP0iXQLe7TStAtL2",
+        "vp6meujV7sdOd1ttMCDH"
+      ],
+      "teamPickCounts": {
+        "kutPIkCyWUTRi0mjLnzJ": 3,
+        "aKN9a7mPxOLoz1fPFD0S": 4,
+        "c9bDJBixghg2ZubJtArw": 2,
+        "17rPs1frASvF0lK8rxY2": 2,
+        "oOJjrP0iXQLe7TStAtL2": 1,
+        "vp6meujV7sdOd1ttMCDH": 1
+      },
+      "topTeam": "aKN9a7mPxOLoz1fPFD0S",
+      "topTeamPicks": 4,
+      "teamsCount": 6
+    },
+    {
+      "heroId": 6,
+      "heroName": "Drow Ranger",
+      "totalPicks": 12,
+      "wins": 10,
+      "losses": 2,
+      "winRate": 83.3,
+      "teams": [
+        "ASkLQqoDGCOPsextQFsl",
+        "kutPIkCyWUTRi0mjLnzJ",
+        "yFVMFQqLclFVJxIb9z4D",
+        "oOJjrP0iXQLe7TStAtL2",
+        "vp6meujV7sdOd1ttMCDH",
+        "sNjbhJNDTBhhijMMxN7Y",
+        "B7tN51jhfyakg9MwRq2T"
+      ],
+      "teamPickCounts": {
+        "ASkLQqoDGCOPsextQFsl": 1,
+        "kutPIkCyWUTRi0mjLnzJ": 4,
+        "yFVMFQqLclFVJxIb9z4D": 1,
+        "oOJjrP0iXQLe7TStAtL2": 3,
+        "vp6meujV7sdOd1ttMCDH": 1,
+        "sNjbhJNDTBhhijMMxN7Y": 1,
+        "B7tN51jhfyakg9MwRq2T": 1
+      },
+      "topTeam": "kutPIkCyWUTRi0mjLnzJ",
+      "topTeamPicks": 4,
+      "teamsCount": 7
+    },
+    {
+      "heroId": 13,
+      "heroName": "Puck",
+      "totalPicks": 12,
+      "wins": 6,
+      "losses": 6,
+      "winRate": 50,
+      "teams": [
+        "NFTIoLzXgsqNIbs32IRE",
+        "xExmM3YrkmYd2hjP01zQ",
+        "aKN9a7mPxOLoz1fPFD0S",
+        "94FIjqujNxXl6I66piZp",
+        "kutPIkCyWUTRi0mjLnzJ",
+        "1UJX9IGzBBzj4qaLya14",
+        "uTtgHBN81CYiRx0yY4ip",
+        "YPpnY5CDx9LzN3ZM0723"
+      ],
+      "teamPickCounts": {
+        "NFTIoLzXgsqNIbs32IRE": 1,
+        "xExmM3YrkmYd2hjP01zQ": 1,
+        "aKN9a7mPxOLoz1fPFD0S": 1,
+        "94FIjqujNxXl6I66piZp": 2,
+        "kutPIkCyWUTRi0mjLnzJ": 3,
+        "1UJX9IGzBBzj4qaLya14": 2,
+        "uTtgHBN81CYiRx0yY4ip": 1,
+        "YPpnY5CDx9LzN3ZM0723": 1
+      },
+      "topTeam": "kutPIkCyWUTRi0mjLnzJ",
+      "topTeamPicks": 3,
+      "teamsCount": 8
+    },
+    {
+      "heroId": 14,
+      "heroName": "Pudge",
+      "totalPicks": 12,
+      "wins": 7,
+      "losses": 5,
+      "winRate": 58.3,
+      "teams": [
+        "B7tN51jhfyakg9MwRq2T",
+        "yFVMFQqLclFVJxIb9z4D",
+        "BEHMbh87I6hdndbo0PdP",
+        "ASkLQqoDGCOPsextQFsl",
+        "vp6meujV7sdOd1ttMCDH",
+        "aKN9a7mPxOLoz1fPFD0S",
+        "IadWYbJM0wYNw0vk91QF",
+        "9Lt1J3HDGPt1aKGtNpdp",
+        "4ZFlfUMnz3H82YekSder",
+        "uTtgHBN81CYiRx0yY4ip"
+      ],
+      "teamPickCounts": {
+        "B7tN51jhfyakg9MwRq2T": 1,
+        "yFVMFQqLclFVJxIb9z4D": 1,
+        "BEHMbh87I6hdndbo0PdP": 2,
+        "ASkLQqoDGCOPsextQFsl": 1,
+        "vp6meujV7sdOd1ttMCDH": 1,
+        "aKN9a7mPxOLoz1fPFD0S": 2,
+        "IadWYbJM0wYNw0vk91QF": 1,
+        "9Lt1J3HDGPt1aKGtNpdp": 1,
+        "4ZFlfUMnz3H82YekSder": 1,
+        "uTtgHBN81CYiRx0yY4ip": 1
+      },
+      "topTeam": "BEHMbh87I6hdndbo0PdP",
+      "topTeamPicks": 2,
+      "teamsCount": 10
+    },
+    {
+      "heroId": 15,
+      "heroName": "Razor",
+      "totalPicks": 12,
+      "wins": 4,
+      "losses": 8,
+      "winRate": 33.3,
+      "teams": [
+        "17rPs1frASvF0lK8rxY2",
+        "xExmM3YrkmYd2hjP01zQ",
+        "sWEfGOW9ZLezKBJhsFGV",
+        "XrMW89HTX4N6gFzQSrK9",
+        "9Lt1J3HDGPt1aKGtNpdp",
+        "vp6meujV7sdOd1ttMCDH",
+        "H1KNJGXWTOwb8pEsxfRf"
+      ],
+      "teamPickCounts": {
+        "17rPs1frASvF0lK8rxY2": 1,
+        "xExmM3YrkmYd2hjP01zQ": 2,
+        "sWEfGOW9ZLezKBJhsFGV": 2,
+        "XrMW89HTX4N6gFzQSrK9": 1,
+        "9Lt1J3HDGPt1aKGtNpdp": 3,
+        "vp6meujV7sdOd1ttMCDH": 2,
+        "H1KNJGXWTOwb8pEsxfRf": 1
+      },
+      "topTeam": "9Lt1J3HDGPt1aKGtNpdp",
+      "topTeamPicks": 3,
+      "teamsCount": 7
+    },
+    {
+      "heroId": 52,
+      "heroName": "Leshrac",
+      "totalPicks": 12,
+      "wins": 5,
+      "losses": 7,
+      "winRate": 41.7,
+      "teams": [
+        "NFTIoLzXgsqNIbs32IRE",
+        "aKN9a7mPxOLoz1fPFD0S",
+        "xZ6e8mJfS4s2yOxaea7i",
+        "XrMW89HTX4N6gFzQSrK9",
+        "YPpnY5CDx9LzN3ZM0723",
+        "uTtgHBN81CYiRx0yY4ip",
+        "yFVMFQqLclFVJxIb9z4D",
+        "9Lt1J3HDGPt1aKGtNpdp",
+        "IadWYbJM0wYNw0vk91QF"
+      ],
+      "teamPickCounts": {
+        "NFTIoLzXgsqNIbs32IRE": 2,
+        "aKN9a7mPxOLoz1fPFD0S": 1,
+        "xZ6e8mJfS4s2yOxaea7i": 1,
+        "XrMW89HTX4N6gFzQSrK9": 1,
+        "YPpnY5CDx9LzN3ZM0723": 2,
+        "uTtgHBN81CYiRx0yY4ip": 2,
+        "yFVMFQqLclFVJxIb9z4D": 1,
+        "9Lt1J3HDGPt1aKGtNpdp": 1,
+        "IadWYbJM0wYNw0vk91QF": 1
+      },
+      "topTeam": "NFTIoLzXgsqNIbs32IRE",
+      "topTeamPicks": 2,
+      "teamsCount": 9
+    },
+    {
+      "heroId": 63,
+      "heroName": "Weaver",
+      "totalPicks": 12,
+      "wins": 6,
+      "losses": 6,
+      "winRate": 50,
+      "teams": [
+        "BEHMbh87I6hdndbo0PdP",
+        "XrMW89HTX4N6gFzQSrK9",
+        "xZ6e8mJfS4s2yOxaea7i",
+        "yFVMFQqLclFVJxIb9z4D",
+        "c9bDJBixghg2ZubJtArw",
+        "sWEfGOW9ZLezKBJhsFGV",
+        "uTtgHBN81CYiRx0yY4ip",
+        "oOJjrP0iXQLe7TStAtL2"
+      ],
+      "teamPickCounts": {
+        "BEHMbh87I6hdndbo0PdP": 1,
+        "XrMW89HTX4N6gFzQSrK9": 2,
+        "xZ6e8mJfS4s2yOxaea7i": 2,
+        "yFVMFQqLclFVJxIb9z4D": 1,
+        "c9bDJBixghg2ZubJtArw": 1,
+        "sWEfGOW9ZLezKBJhsFGV": 2,
+        "uTtgHBN81CYiRx0yY4ip": 2,
+        "oOJjrP0iXQLe7TStAtL2": 1
+      },
+      "topTeam": "XrMW89HTX4N6gFzQSrK9",
+      "topTeamPicks": 2,
+      "teamsCount": 8
+    },
+    {
+      "heroId": 68,
+      "heroName": "Ancient Apparition",
+      "totalPicks": 12,
+      "wins": 7,
+      "losses": 5,
+      "winRate": 58.3,
+      "teams": [
+        "17rPs1frASvF0lK8rxY2",
+        "kutPIkCyWUTRi0mjLnzJ",
+        "94FIjqujNxXl6I66piZp",
+        "BEHMbh87I6hdndbo0PdP",
+        "oOJjrP0iXQLe7TStAtL2",
+        "XrMW89HTX4N6gFzQSrK9",
+        "ASkLQqoDGCOPsextQFsl"
+      ],
+      "teamPickCounts": {
+        "17rPs1frASvF0lK8rxY2": 2,
+        "kutPIkCyWUTRi0mjLnzJ": 3,
+        "94FIjqujNxXl6I66piZp": 1,
+        "BEHMbh87I6hdndbo0PdP": 1,
+        "oOJjrP0iXQLe7TStAtL2": 3,
+        "XrMW89HTX4N6gFzQSrK9": 1,
+        "ASkLQqoDGCOPsextQFsl": 1
+      },
+      "topTeam": "kutPIkCyWUTRi0mjLnzJ",
+      "topTeamPicks": 3,
+      "teamsCount": 7
+    },
+    {
+      "heroId": 72,
+      "heroName": "Gyrocopter",
+      "totalPicks": 12,
+      "wins": 7,
+      "losses": 5,
+      "winRate": 58.3,
+      "teams": [
+        "1UJX9IGzBBzj4qaLya14",
+        "9Lt1J3HDGPt1aKGtNpdp",
+        "NFTIoLzXgsqNIbs32IRE",
+        "wbv6nLvNj78S2UKTjzCC",
+        "vp6meujV7sdOd1ttMCDH",
+        "sWEfGOW9ZLezKBJhsFGV",
+        "4ZFlfUMnz3H82YekSder"
+      ],
+      "teamPickCounts": {
+        "1UJX9IGzBBzj4qaLya14": 1,
+        "9Lt1J3HDGPt1aKGtNpdp": 1,
+        "NFTIoLzXgsqNIbs32IRE": 2,
+        "wbv6nLvNj78S2UKTjzCC": 4,
+        "vp6meujV7sdOd1ttMCDH": 1,
+        "sWEfGOW9ZLezKBJhsFGV": 2,
+        "4ZFlfUMnz3H82YekSder": 1
+      },
+      "topTeam": "wbv6nLvNj78S2UKTjzCC",
+      "topTeamPicks": 4,
+      "teamsCount": 7
+    },
+    {
+      "heroId": 74,
+      "heroName": "Invoker",
+      "totalPicks": 12,
+      "wins": 1,
+      "losses": 11,
+      "winRate": 8.3,
+      "teams": [
+        "B7tN51jhfyakg9MwRq2T",
+        "1UJX9IGzBBzj4qaLya14",
+        "xExmM3YrkmYd2hjP01zQ",
+        "sWEfGOW9ZLezKBJhsFGV",
+        "9Lt1J3HDGPt1aKGtNpdp",
+        "IadWYbJM0wYNw0vk91QF"
+      ],
+      "teamPickCounts": {
+        "B7tN51jhfyakg9MwRq2T": 4,
+        "1UJX9IGzBBzj4qaLya14": 3,
+        "xExmM3YrkmYd2hjP01zQ": 2,
+        "sWEfGOW9ZLezKBJhsFGV": 1,
+        "9Lt1J3HDGPt1aKGtNpdp": 1,
+        "IadWYbJM0wYNw0vk91QF": 1
+      },
+      "topTeam": "B7tN51jhfyakg9MwRq2T",
+      "topTeamPicks": 4,
+      "teamsCount": 6
+    },
+    {
+      "heroId": 126,
+      "heroName": "Void Spirit",
+      "totalPicks": 12,
+      "wins": 5,
+      "losses": 7,
+      "winRate": 41.7,
+      "teams": [
+        "XrMW89HTX4N6gFzQSrK9",
+        "c9bDJBixghg2ZubJtArw",
+        "YPpnY5CDx9LzN3ZM0723",
+        "1UJX9IGzBBzj4qaLya14",
+        "oOJjrP0iXQLe7TStAtL2",
+        "4ZFlfUMnz3H82YekSder",
+        "B7tN51jhfyakg9MwRq2T",
+        "aKN9a7mPxOLoz1fPFD0S"
+      ],
+      "teamPickCounts": {
+        "XrMW89HTX4N6gFzQSrK9": 3,
+        "c9bDJBixghg2ZubJtArw": 1,
+        "YPpnY5CDx9LzN3ZM0723": 1,
+        "1UJX9IGzBBzj4qaLya14": 1,
+        "oOJjrP0iXQLe7TStAtL2": 3,
+        "4ZFlfUMnz3H82YekSder": 1,
+        "B7tN51jhfyakg9MwRq2T": 1,
+        "aKN9a7mPxOLoz1fPFD0S": 1
+      },
+      "topTeam": "XrMW89HTX4N6gFzQSrK9",
+      "topTeamPicks": 3,
+      "teamsCount": 8
+    },
+    {
+      "heroId": 1,
+      "heroName": "Anti-Mage",
+      "totalPicks": 11,
+      "wins": 8,
+      "losses": 3,
+      "winRate": 72.7,
+      "teams": [
+        "1UJX9IGzBBzj4qaLya14",
+        "IadWYbJM0wYNw0vk91QF",
+        "9Lt1J3HDGPt1aKGtNpdp",
+        "BEHMbh87I6hdndbo0PdP",
+        "yFVMFQqLclFVJxIb9z4D",
+        "ASkLQqoDGCOPsextQFsl"
+      ],
+      "teamPickCounts": {
+        "1UJX9IGzBBzj4qaLya14": 3,
+        "IadWYbJM0wYNw0vk91QF": 2,
+        "9Lt1J3HDGPt1aKGtNpdp": 2,
+        "BEHMbh87I6hdndbo0PdP": 2,
+        "yFVMFQqLclFVJxIb9z4D": 1,
+        "ASkLQqoDGCOPsextQFsl": 1
+      },
+      "topTeam": "1UJX9IGzBBzj4qaLya14",
+      "topTeamPicks": 3,
+      "teamsCount": 6
+    },
+    {
+      "heroId": 87,
+      "heroName": "Disruptor",
+      "totalPicks": 11,
+      "wins": 4,
+      "losses": 7,
+      "winRate": 36.4,
+      "teams": [
+        "ASkLQqoDGCOPsextQFsl",
+        "NFTIoLzXgsqNIbs32IRE",
+        "aKN9a7mPxOLoz1fPFD0S",
+        "vp6meujV7sdOd1ttMCDH",
+        "B7tN51jhfyakg9MwRq2T",
+        "XrMW89HTX4N6gFzQSrK9",
+        "sNjbhJNDTBhhijMMxN7Y",
+        "wbv6nLvNj78S2UKTjzCC",
+        "17rPs1frASvF0lK8rxY2"
+      ],
+      "teamPickCounts": {
+        "ASkLQqoDGCOPsextQFsl": 1,
+        "NFTIoLzXgsqNIbs32IRE": 2,
+        "aKN9a7mPxOLoz1fPFD0S": 2,
+        "vp6meujV7sdOd1ttMCDH": 1,
+        "B7tN51jhfyakg9MwRq2T": 1,
+        "XrMW89HTX4N6gFzQSrK9": 1,
+        "sNjbhJNDTBhhijMMxN7Y": 1,
+        "wbv6nLvNj78S2UKTjzCC": 1,
+        "17rPs1frASvF0lK8rxY2": 1
+      },
+      "topTeam": "NFTIoLzXgsqNIbs32IRE",
+      "topTeamPicks": 2,
+      "teamsCount": 9
+    },
+    {
+      "heroId": 48,
+      "heroName": "Luna",
+      "totalPicks": 10,
+      "wins": 2,
+      "losses": 8,
+      "winRate": 20,
+      "teams": [
+        "wbv6nLvNj78S2UKTjzCC",
+        "NFTIoLzXgsqNIbs32IRE",
+        "ASkLQqoDGCOPsextQFsl",
+        "aKN9a7mPxOLoz1fPFD0S",
+        "B7tN51jhfyakg9MwRq2T",
+        "yFVMFQqLclFVJxIb9z4D",
+        "IadWYbJM0wYNw0vk91QF",
+        "4ZFlfUMnz3H82YekSder"
+      ],
+      "teamPickCounts": {
+        "wbv6nLvNj78S2UKTjzCC": 1,
+        "NFTIoLzXgsqNIbs32IRE": 2,
+        "ASkLQqoDGCOPsextQFsl": 1,
+        "aKN9a7mPxOLoz1fPFD0S": 1,
+        "B7tN51jhfyakg9MwRq2T": 2,
+        "yFVMFQqLclFVJxIb9z4D": 1,
+        "IadWYbJM0wYNw0vk91QF": 1,
+        "4ZFlfUMnz3H82YekSder": 1
+      },
+      "topTeam": "NFTIoLzXgsqNIbs32IRE",
+      "topTeamPicks": 2,
+      "teamsCount": 8
+    },
+    {
+      "heroId": 60,
+      "heroName": "Night Stalker",
+      "totalPicks": 10,
+      "wins": 4,
+      "losses": 6,
+      "winRate": 40,
+      "teams": [
+        "BEHMbh87I6hdndbo0PdP",
+        "sNjbhJNDTBhhijMMxN7Y",
+        "94FIjqujNxXl6I66piZp",
+        "c9bDJBixghg2ZubJtArw",
+        "yFVMFQqLclFVJxIb9z4D",
+        "YPpnY5CDx9LzN3ZM0723",
+        "vp6meujV7sdOd1ttMCDH",
+        "1UJX9IGzBBzj4qaLya14"
+      ],
+      "teamPickCounts": {
+        "BEHMbh87I6hdndbo0PdP": 2,
+        "sNjbhJNDTBhhijMMxN7Y": 2,
+        "94FIjqujNxXl6I66piZp": 1,
+        "c9bDJBixghg2ZubJtArw": 1,
+        "yFVMFQqLclFVJxIb9z4D": 1,
+        "YPpnY5CDx9LzN3ZM0723": 1,
+        "vp6meujV7sdOd1ttMCDH": 1,
+        "1UJX9IGzBBzj4qaLya14": 1
+      },
+      "topTeam": "BEHMbh87I6hdndbo0PdP",
+      "topTeamPicks": 2,
+      "teamsCount": 8
+    },
+    {
+      "heroId": 65,
+      "heroName": "Batrider",
+      "totalPicks": 10,
+      "wins": 7,
+      "losses": 3,
+      "winRate": 70,
+      "teams": [
+        "9Lt1J3HDGPt1aKGtNpdp",
+        "NFTIoLzXgsqNIbs32IRE",
+        "xZ6e8mJfS4s2yOxaea7i",
+        "aKN9a7mPxOLoz1fPFD0S",
+        "YPpnY5CDx9LzN3ZM0723"
+      ],
+      "teamPickCounts": {
+        "9Lt1J3HDGPt1aKGtNpdp": 2,
+        "NFTIoLzXgsqNIbs32IRE": 3,
+        "xZ6e8mJfS4s2yOxaea7i": 3,
+        "aKN9a7mPxOLoz1fPFD0S": 1,
+        "YPpnY5CDx9LzN3ZM0723": 1
+      },
+      "topTeam": "NFTIoLzXgsqNIbs32IRE",
+      "topTeamPicks": 3,
+      "teamsCount": 5
+    },
+    {
+      "heroId": 67,
+      "heroName": "Spectre",
+      "totalPicks": 10,
+      "wins": 5,
+      "losses": 5,
+      "winRate": 50,
+      "teams": [
+        "sNjbhJNDTBhhijMMxN7Y",
+        "yFVMFQqLclFVJxIb9z4D",
+        "ASkLQqoDGCOPsextQFsl",
+        null,
+        "wbv6nLvNj78S2UKTjzCC",
+        "4ZFlfUMnz3H82YekSder",
+        "oOJjrP0iXQLe7TStAtL2",
+        "aKN9a7mPxOLoz1fPFD0S"
+      ],
+      "teamPickCounts": {
+        "sNjbhJNDTBhhijMMxN7Y": 1,
+        "yFVMFQqLclFVJxIb9z4D": 1,
+        "ASkLQqoDGCOPsextQFsl": 2,
+        "null": 1,
+        "wbv6nLvNj78S2UKTjzCC": 2,
+        "4ZFlfUMnz3H82YekSder": 1,
+        "oOJjrP0iXQLe7TStAtL2": 1,
+        "aKN9a7mPxOLoz1fPFD0S": 1
+      },
+      "topTeam": "ASkLQqoDGCOPsextQFsl",
+      "topTeamPicks": 2,
+      "teamsCount": 8
+    },
+    {
+      "heroId": 97,
+      "heroName": "Magnus",
+      "totalPicks": 10,
+      "wins": 3,
+      "losses": 7,
+      "winRate": 30,
+      "teams": [
+        "YPpnY5CDx9LzN3ZM0723",
+        "NFTIoLzXgsqNIbs32IRE",
+        null,
+        "FvGGo7gOx8nKn8lgWutZ",
+        "xZ6e8mJfS4s2yOxaea7i",
+        "sWEfGOW9ZLezKBJhsFGV",
+        "B7tN51jhfyakg9MwRq2T"
+      ],
+      "teamPickCounts": {
+        "YPpnY5CDx9LzN3ZM0723": 1,
+        "NFTIoLzXgsqNIbs32IRE": 3,
+        "null": 1,
+        "FvGGo7gOx8nKn8lgWutZ": 1,
+        "xZ6e8mJfS4s2yOxaea7i": 1,
+        "sWEfGOW9ZLezKBJhsFGV": 2,
+        "B7tN51jhfyakg9MwRq2T": 1
+      },
+      "topTeam": "NFTIoLzXgsqNIbs32IRE",
+      "topTeamPicks": 3,
+      "teamsCount": 7
+    },
+    {
+      "heroId": 21,
+      "heroName": "Windranger",
+      "totalPicks": 9,
+      "wins": 3,
+      "losses": 6,
+      "winRate": 33.3,
+      "teams": [
+        "xExmM3YrkmYd2hjP01zQ",
+        "4ZFlfUMnz3H82YekSder",
+        null,
+        "vp6meujV7sdOd1ttMCDH",
+        "oOJjrP0iXQLe7TStAtL2",
+        "aKN9a7mPxOLoz1fPFD0S",
+        "17rPs1frASvF0lK8rxY2",
+        "ASkLQqoDGCOPsextQFsl"
+      ],
+      "teamPickCounts": {
+        "xExmM3YrkmYd2hjP01zQ": 2,
+        "4ZFlfUMnz3H82YekSder": 1,
+        "null": 1,
+        "vp6meujV7sdOd1ttMCDH": 1,
+        "oOJjrP0iXQLe7TStAtL2": 1,
+        "aKN9a7mPxOLoz1fPFD0S": 1,
+        "17rPs1frASvF0lK8rxY2": 1,
+        "ASkLQqoDGCOPsextQFsl": 1
+      },
+      "topTeam": "xExmM3YrkmYd2hjP01zQ",
+      "topTeamPicks": 2,
+      "teamsCount": 8
+    },
+    {
+      "heroId": 76,
+      "heroName": "Outworld Destroyer",
+      "totalPicks": 9,
+      "wins": 4,
+      "losses": 5,
+      "winRate": 44.4,
+      "teams": [
+        "BEHMbh87I6hdndbo0PdP",
+        "kutPIkCyWUTRi0mjLnzJ",
+        "B7tN51jhfyakg9MwRq2T",
+        "XrMW89HTX4N6gFzQSrK9",
+        "FvGGo7gOx8nKn8lgWutZ",
+        "H1KNJGXWTOwb8pEsxfRf",
+        "4ZFlfUMnz3H82YekSder"
+      ],
+      "teamPickCounts": {
+        "BEHMbh87I6hdndbo0PdP": 1,
+        "kutPIkCyWUTRi0mjLnzJ": 1,
+        "B7tN51jhfyakg9MwRq2T": 2,
+        "XrMW89HTX4N6gFzQSrK9": 1,
+        "FvGGo7gOx8nKn8lgWutZ": 2,
+        "H1KNJGXWTOwb8pEsxfRf": 1,
+        "4ZFlfUMnz3H82YekSder": 1
+      },
+      "topTeam": "B7tN51jhfyakg9MwRq2T",
+      "topTeamPicks": 2,
+      "teamsCount": 7
+    },
+    {
+      "heroId": 114,
+      "heroName": "Monkey King",
+      "totalPicks": 9,
+      "wins": 7,
+      "losses": 2,
+      "winRate": 77.8,
+      "teams": [
+        "wbv6nLvNj78S2UKTjzCC",
+        "1UJX9IGzBBzj4qaLya14",
+        "ASkLQqoDGCOPsextQFsl",
+        null,
+        "17rPs1frASvF0lK8rxY2",
+        "FvGGo7gOx8nKn8lgWutZ"
+      ],
+      "teamPickCounts": {
+        "wbv6nLvNj78S2UKTjzCC": 1,
+        "1UJX9IGzBBzj4qaLya14": 2,
+        "ASkLQqoDGCOPsextQFsl": 2,
+        "null": 1,
+        "17rPs1frASvF0lK8rxY2": 1,
+        "FvGGo7gOx8nKn8lgWutZ": 2
+      },
+      "topTeam": "1UJX9IGzBBzj4qaLya14",
+      "topTeamPicks": 2,
+      "teamsCount": 6
+    },
+    {
+      "heroId": 120,
+      "heroName": "Pangolier",
+      "totalPicks": 9,
+      "wins": 4,
+      "losses": 5,
+      "winRate": 44.4,
+      "teams": [
+        "XrMW89HTX4N6gFzQSrK9",
+        "1UJX9IGzBBzj4qaLya14",
+        "aKN9a7mPxOLoz1fPFD0S",
+        "17rPs1frASvF0lK8rxY2",
+        "9Lt1J3HDGPt1aKGtNpdp"
+      ],
+      "teamPickCounts": {
+        "XrMW89HTX4N6gFzQSrK9": 2,
+        "1UJX9IGzBBzj4qaLya14": 3,
+        "aKN9a7mPxOLoz1fPFD0S": 1,
+        "17rPs1frASvF0lK8rxY2": 2,
+        "9Lt1J3HDGPt1aKGtNpdp": 1
+      },
+      "topTeam": "1UJX9IGzBBzj4qaLya14",
+      "topTeamPicks": 3,
+      "teamsCount": 5
+    },
+    {
+      "heroId": 16,
+      "heroName": "Sand King",
+      "totalPicks": 8,
+      "wins": 2,
+      "losses": 6,
+      "winRate": 25,
+      "teams": [
+        "XrMW89HTX4N6gFzQSrK9",
+        "yFVMFQqLclFVJxIb9z4D",
+        "1UJX9IGzBBzj4qaLya14",
+        "vp6meujV7sdOd1ttMCDH",
+        "xZ6e8mJfS4s2yOxaea7i",
+        "ASkLQqoDGCOPsextQFsl",
+        "BEHMbh87I6hdndbo0PdP",
+        "aKN9a7mPxOLoz1fPFD0S"
+      ],
+      "teamPickCounts": {
+        "XrMW89HTX4N6gFzQSrK9": 1,
+        "yFVMFQqLclFVJxIb9z4D": 1,
+        "1UJX9IGzBBzj4qaLya14": 1,
+        "vp6meujV7sdOd1ttMCDH": 1,
+        "xZ6e8mJfS4s2yOxaea7i": 1,
+        "ASkLQqoDGCOPsextQFsl": 1,
+        "BEHMbh87I6hdndbo0PdP": 1,
+        "aKN9a7mPxOLoz1fPFD0S": 1
+      },
+      "topTeam": "XrMW89HTX4N6gFzQSrK9",
+      "topTeamPicks": 1,
+      "teamsCount": 8
+    },
+    {
+      "heroId": 35,
+      "heroName": "Sniper",
+      "totalPicks": 8,
+      "wins": 5,
+      "losses": 3,
+      "winRate": 62.5,
+      "teams": [
+        "aKN9a7mPxOLoz1fPFD0S",
+        "B7tN51jhfyakg9MwRq2T",
+        "wbv6nLvNj78S2UKTjzCC",
+        "BEHMbh87I6hdndbo0PdP",
+        "94FIjqujNxXl6I66piZp",
+        "yFVMFQqLclFVJxIb9z4D"
+      ],
+      "teamPickCounts": {
+        "aKN9a7mPxOLoz1fPFD0S": 1,
+        "B7tN51jhfyakg9MwRq2T": 1,
+        "wbv6nLvNj78S2UKTjzCC": 3,
+        "BEHMbh87I6hdndbo0PdP": 1,
+        "94FIjqujNxXl6I66piZp": 1,
+        "yFVMFQqLclFVJxIb9z4D": 1
+      },
+      "topTeam": "wbv6nLvNj78S2UKTjzCC",
+      "topTeamPicks": 3,
+      "teamsCount": 6
+    },
+    {
+      "heroId": 36,
+      "heroName": "Necrophos",
+      "totalPicks": 8,
+      "wins": 4,
+      "losses": 4,
+      "winRate": 50,
+      "teams": [
+        "9Lt1J3HDGPt1aKGtNpdp",
+        "xExmM3YrkmYd2hjP01zQ",
+        "c9bDJBixghg2ZubJtArw",
+        "94FIjqujNxXl6I66piZp",
+        "yFVMFQqLclFVJxIb9z4D",
+        "H1KNJGXWTOwb8pEsxfRf",
+        "NFTIoLzXgsqNIbs32IRE",
+        "B7tN51jhfyakg9MwRq2T"
+      ],
+      "teamPickCounts": {
+        "9Lt1J3HDGPt1aKGtNpdp": 1,
+        "xExmM3YrkmYd2hjP01zQ": 1,
+        "c9bDJBixghg2ZubJtArw": 1,
+        "94FIjqujNxXl6I66piZp": 1,
+        "yFVMFQqLclFVJxIb9z4D": 1,
+        "H1KNJGXWTOwb8pEsxfRf": 1,
+        "NFTIoLzXgsqNIbs32IRE": 1,
+        "B7tN51jhfyakg9MwRq2T": 1
+      },
+      "topTeam": "9Lt1J3HDGPt1aKGtNpdp",
+      "topTeamPicks": 1,
+      "teamsCount": 8
+    },
+    {
+      "heroId": 37,
+      "heroName": "Warlock",
+      "totalPicks": 8,
+      "wins": 4,
+      "losses": 4,
+      "winRate": 50,
+      "teams": [
+        "9Lt1J3HDGPt1aKGtNpdp",
+        "yFVMFQqLclFVJxIb9z4D",
+        "xZ6e8mJfS4s2yOxaea7i",
+        "1UJX9IGzBBzj4qaLya14",
+        "FvGGo7gOx8nKn8lgWutZ",
+        "sWEfGOW9ZLezKBJhsFGV"
+      ],
+      "teamPickCounts": {
+        "9Lt1J3HDGPt1aKGtNpdp": 1,
+        "yFVMFQqLclFVJxIb9z4D": 3,
+        "xZ6e8mJfS4s2yOxaea7i": 1,
+        "1UJX9IGzBBzj4qaLya14": 1,
+        "FvGGo7gOx8nKn8lgWutZ": 1,
+        "sWEfGOW9ZLezKBJhsFGV": 1
+      },
+      "topTeam": "yFVMFQqLclFVJxIb9z4D",
+      "topTeamPicks": 3,
+      "teamsCount": 6
+    },
+    {
+      "heroId": 42,
+      "heroName": "Wraith King",
+      "totalPicks": 8,
+      "wins": 3,
+      "losses": 5,
+      "winRate": 37.5,
+      "teams": [
+        "17rPs1frASvF0lK8rxY2",
+        "wbv6nLvNj78S2UKTjzCC",
+        "H1KNJGXWTOwb8pEsxfRf",
+        "B7tN51jhfyakg9MwRq2T",
+        "1UJX9IGzBBzj4qaLya14",
+        "vp6meujV7sdOd1ttMCDH"
+      ],
+      "teamPickCounts": {
+        "17rPs1frASvF0lK8rxY2": 1,
+        "wbv6nLvNj78S2UKTjzCC": 2,
+        "H1KNJGXWTOwb8pEsxfRf": 2,
+        "B7tN51jhfyakg9MwRq2T": 1,
+        "1UJX9IGzBBzj4qaLya14": 1,
+        "vp6meujV7sdOd1ttMCDH": 1
+      },
+      "topTeam": "wbv6nLvNj78S2UKTjzCC",
+      "topTeamPicks": 2,
+      "teamsCount": 6
+    },
+    {
+      "heroId": 50,
+      "heroName": "Dazzle",
+      "totalPicks": 8,
+      "wins": 5,
+      "losses": 3,
+      "winRate": 62.5,
+      "teams": [
+        "XrMW89HTX4N6gFzQSrK9",
+        "c9bDJBixghg2ZubJtArw",
+        "9Lt1J3HDGPt1aKGtNpdp",
+        "sNjbhJNDTBhhijMMxN7Y",
+        "H1KNJGXWTOwb8pEsxfRf"
+      ],
+      "teamPickCounts": {
+        "XrMW89HTX4N6gFzQSrK9": 1,
+        "c9bDJBixghg2ZubJtArw": 4,
+        "9Lt1J3HDGPt1aKGtNpdp": 1,
+        "sNjbhJNDTBhhijMMxN7Y": 1,
+        "H1KNJGXWTOwb8pEsxfRf": 1
+      },
+      "topTeam": "c9bDJBixghg2ZubJtArw",
+      "topTeamPicks": 4,
+      "teamsCount": 5
+    },
+    {
+      "heroId": 79,
+      "heroName": "Shadow Demon",
+      "totalPicks": 8,
+      "wins": 6,
+      "losses": 2,
+      "winRate": 75,
+      "teams": [
+        "NFTIoLzXgsqNIbs32IRE",
+        "B7tN51jhfyakg9MwRq2T",
+        "yFVMFQqLclFVJxIb9z4D",
+        "BEHMbh87I6hdndbo0PdP",
+        "17rPs1frASvF0lK8rxY2",
+        "ASkLQqoDGCOPsextQFsl"
+      ],
+      "teamPickCounts": {
+        "NFTIoLzXgsqNIbs32IRE": 3,
+        "B7tN51jhfyakg9MwRq2T": 1,
+        "yFVMFQqLclFVJxIb9z4D": 1,
+        "BEHMbh87I6hdndbo0PdP": 1,
+        "17rPs1frASvF0lK8rxY2": 1,
+        "ASkLQqoDGCOPsextQFsl": 1
+      },
+      "topTeam": "NFTIoLzXgsqNIbs32IRE",
+      "topTeamPicks": 3,
+      "teamsCount": 6
+    },
+    {
+      "heroId": 86,
+      "heroName": "Rubick",
+      "totalPicks": 8,
+      "wins": 5,
+      "losses": 3,
+      "winRate": 62.5,
+      "teams": [
+        "XrMW89HTX4N6gFzQSrK9",
+        "BEHMbh87I6hdndbo0PdP",
+        "17rPs1frASvF0lK8rxY2",
+        "yFVMFQqLclFVJxIb9z4D",
+        "uTtgHBN81CYiRx0yY4ip"
+      ],
+      "teamPickCounts": {
+        "XrMW89HTX4N6gFzQSrK9": 3,
+        "BEHMbh87I6hdndbo0PdP": 2,
+        "17rPs1frASvF0lK8rxY2": 1,
+        "yFVMFQqLclFVJxIb9z4D": 1,
+        "uTtgHBN81CYiRx0yY4ip": 1
+      },
+      "topTeam": "XrMW89HTX4N6gFzQSrK9",
+      "topTeamPicks": 3,
+      "teamsCount": 5
+    },
+    {
+      "heroId": 99,
+      "heroName": "Bristleback",
+      "totalPicks": 8,
+      "wins": 7,
+      "losses": 1,
+      "winRate": 87.5,
+      "teams": [
+        "c9bDJBixghg2ZubJtArw",
+        "94FIjqujNxXl6I66piZp",
+        "4ZFlfUMnz3H82YekSder"
+      ],
+      "teamPickCounts": {
+        "c9bDJBixghg2ZubJtArw": 4,
+        "94FIjqujNxXl6I66piZp": 3,
+        "4ZFlfUMnz3H82YekSder": 1
+      },
+      "topTeam": "c9bDJBixghg2ZubJtArw",
+      "topTeamPicks": 4,
+      "teamsCount": 3
+    },
+    {
+      "heroId": 109,
+      "heroName": "Terrorblade",
+      "totalPicks": 8,
+      "wins": 4,
+      "losses": 4,
+      "winRate": 50,
+      "teams": [
+        "17rPs1frASvF0lK8rxY2",
+        "YPpnY5CDx9LzN3ZM0723",
+        "FvGGo7gOx8nKn8lgWutZ"
+      ],
+      "teamPickCounts": {
+        "17rPs1frASvF0lK8rxY2": 4,
+        "YPpnY5CDx9LzN3ZM0723": 3,
+        "FvGGo7gOx8nKn8lgWutZ": 1
+      },
+      "topTeam": "17rPs1frASvF0lK8rxY2",
+      "topTeamPicks": 4,
+      "teamsCount": 3
+    },
+    {
+      "heroId": 12,
+      "heroName": "Phantom Lancer",
+      "totalPicks": 7,
+      "wins": 4,
+      "losses": 3,
+      "winRate": 57.1,
+      "teams": [
+        "1UJX9IGzBBzj4qaLya14",
+        "9Lt1J3HDGPt1aKGtNpdp",
+        "H1KNJGXWTOwb8pEsxfRf",
+        "YPpnY5CDx9LzN3ZM0723"
+      ],
+      "teamPickCounts": {
+        "1UJX9IGzBBzj4qaLya14": 3,
+        "9Lt1J3HDGPt1aKGtNpdp": 2,
+        "H1KNJGXWTOwb8pEsxfRf": 1,
+        "YPpnY5CDx9LzN3ZM0723": 1
+      },
+      "topTeam": "1UJX9IGzBBzj4qaLya14",
+      "topTeamPicks": 3,
+      "teamsCount": 4
+    },
+    {
+      "heroId": 23,
+      "heroName": "Kunkka",
+      "totalPicks": 7,
+      "wins": 3,
+      "losses": 4,
+      "winRate": 42.9,
+      "teams": [
+        "aKN9a7mPxOLoz1fPFD0S",
+        "sWEfGOW9ZLezKBJhsFGV",
+        "IadWYbJM0wYNw0vk91QF"
+      ],
+      "teamPickCounts": {
+        "aKN9a7mPxOLoz1fPFD0S": 3,
+        "sWEfGOW9ZLezKBJhsFGV": 2,
+        "IadWYbJM0wYNw0vk91QF": 2
+      },
+      "topTeam": "aKN9a7mPxOLoz1fPFD0S",
+      "topTeamPicks": 3,
+      "teamsCount": 3
+    },
+    {
+      "heroId": 28,
+      "heroName": "Slardar",
+      "totalPicks": 7,
+      "wins": 3,
+      "losses": 4,
+      "winRate": 42.9,
+      "teams": [
+        "xExmM3YrkmYd2hjP01zQ",
+        "sWEfGOW9ZLezKBJhsFGV",
+        "9Lt1J3HDGPt1aKGtNpdp",
+        "NFTIoLzXgsqNIbs32IRE",
+        "BEHMbh87I6hdndbo0PdP",
+        "H1KNJGXWTOwb8pEsxfRf"
+      ],
+      "teamPickCounts": {
+        "xExmM3YrkmYd2hjP01zQ": 2,
+        "sWEfGOW9ZLezKBJhsFGV": 1,
+        "9Lt1J3HDGPt1aKGtNpdp": 1,
+        "NFTIoLzXgsqNIbs32IRE": 1,
+        "BEHMbh87I6hdndbo0PdP": 1,
+        "H1KNJGXWTOwb8pEsxfRf": 1
+      },
+      "topTeam": "xExmM3YrkmYd2hjP01zQ",
+      "topTeamPicks": 2,
+      "teamsCount": 6
+    },
+    {
+      "heroId": 43,
+      "heroName": "Death Prophet",
+      "totalPicks": 7,
+      "wins": 3,
+      "losses": 4,
+      "winRate": 42.9,
+      "teams": [
+        "9Lt1J3HDGPt1aKGtNpdp",
+        "sNjbhJNDTBhhijMMxN7Y",
+        "oOJjrP0iXQLe7TStAtL2",
+        "IadWYbJM0wYNw0vk91QF",
+        "17rPs1frASvF0lK8rxY2",
+        "H1KNJGXWTOwb8pEsxfRf"
+      ],
+      "teamPickCounts": {
+        "9Lt1J3HDGPt1aKGtNpdp": 2,
+        "sNjbhJNDTBhhijMMxN7Y": 1,
+        "oOJjrP0iXQLe7TStAtL2": 1,
+        "IadWYbJM0wYNw0vk91QF": 1,
+        "17rPs1frASvF0lK8rxY2": 1,
+        "H1KNJGXWTOwb8pEsxfRf": 1
+      },
+      "topTeam": "9Lt1J3HDGPt1aKGtNpdp",
+      "topTeamPicks": 2,
+      "teamsCount": 6
+    },
+    {
+      "heroId": 46,
+      "heroName": "Templar Assassin",
+      "totalPicks": 7,
+      "wins": 5,
+      "losses": 2,
+      "winRate": 71.4,
+      "teams": [
+        "17rPs1frASvF0lK8rxY2",
+        "xExmM3YrkmYd2hjP01zQ",
+        "94FIjqujNxXl6I66piZp",
+        "sWEfGOW9ZLezKBJhsFGV"
+      ],
+      "teamPickCounts": {
+        "17rPs1frASvF0lK8rxY2": 1,
+        "xExmM3YrkmYd2hjP01zQ": 1,
+        "94FIjqujNxXl6I66piZp": 4,
+        "sWEfGOW9ZLezKBJhsFGV": 1
+      },
+      "topTeam": "94FIjqujNxXl6I66piZp",
+      "topTeamPicks": 4,
+      "teamsCount": 4
+    },
+    {
+      "heroId": 98,
+      "heroName": "Timbersaw",
+      "totalPicks": 7,
+      "wins": 2,
+      "losses": 5,
+      "winRate": 28.6,
+      "teams": [
+        "9Lt1J3HDGPt1aKGtNpdp",
+        "FvGGo7gOx8nKn8lgWutZ",
+        "c9bDJBixghg2ZubJtArw",
+        "xZ6e8mJfS4s2yOxaea7i",
+        "sWEfGOW9ZLezKBJhsFGV",
+        "vp6meujV7sdOd1ttMCDH",
+        "4ZFlfUMnz3H82YekSder"
+      ],
+      "teamPickCounts": {
+        "9Lt1J3HDGPt1aKGtNpdp": 1,
+        "FvGGo7gOx8nKn8lgWutZ": 1,
+        "c9bDJBixghg2ZubJtArw": 1,
+        "xZ6e8mJfS4s2yOxaea7i": 1,
+        "sWEfGOW9ZLezKBJhsFGV": 1,
+        "vp6meujV7sdOd1ttMCDH": 1,
+        "4ZFlfUMnz3H82YekSder": 1
+      },
+      "topTeam": "9Lt1J3HDGPt1aKGtNpdp",
+      "topTeamPicks": 1,
+      "teamsCount": 7
+    },
+    {
+      "heroId": 110,
+      "heroName": "Phoenix",
+      "totalPicks": 7,
+      "wins": 4,
+      "losses": 3,
+      "winRate": 57.1,
+      "teams": [
+        "kutPIkCyWUTRi0mjLnzJ",
+        "17rPs1frASvF0lK8rxY2",
+        "yFVMFQqLclFVJxIb9z4D",
+        "H1KNJGXWTOwb8pEsxfRf"
+      ],
+      "teamPickCounts": {
+        "kutPIkCyWUTRi0mjLnzJ": 2,
+        "17rPs1frASvF0lK8rxY2": 2,
+        "yFVMFQqLclFVJxIb9z4D": 2,
+        "H1KNJGXWTOwb8pEsxfRf": 1
+      },
+      "topTeam": "kutPIkCyWUTRi0mjLnzJ",
+      "topTeamPicks": 2,
+      "teamsCount": 4
+    },
+    {
+      "heroId": 8,
+      "heroName": "Juggernaut",
+      "totalPicks": 6,
+      "wins": 3,
+      "losses": 3,
+      "winRate": 50,
+      "teams": [
+        "YPpnY5CDx9LzN3ZM0723",
+        "B7tN51jhfyakg9MwRq2T",
+        "IadWYbJM0wYNw0vk91QF",
+        "sNjbhJNDTBhhijMMxN7Y"
+      ],
+      "teamPickCounts": {
+        "YPpnY5CDx9LzN3ZM0723": 1,
+        "B7tN51jhfyakg9MwRq2T": 1,
+        "IadWYbJM0wYNw0vk91QF": 3,
+        "sNjbhJNDTBhhijMMxN7Y": 1
+      },
+      "topTeam": "IadWYbJM0wYNw0vk91QF",
+      "topTeamPicks": 3,
+      "teamsCount": 4
+    },
+    {
+      "heroId": 38,
+      "heroName": "Beastmaster",
+      "totalPicks": 6,
+      "wins": 3,
+      "losses": 3,
+      "winRate": 50,
+      "teams": [
+        "c9bDJBixghg2ZubJtArw",
+        "17rPs1frASvF0lK8rxY2",
+        "oOJjrP0iXQLe7TStAtL2",
+        "vp6meujV7sdOd1ttMCDH"
+      ],
+      "teamPickCounts": {
+        "c9bDJBixghg2ZubJtArw": 2,
+        "17rPs1frASvF0lK8rxY2": 2,
+        "oOJjrP0iXQLe7TStAtL2": 1,
+        "vp6meujV7sdOd1ttMCDH": 1
+      },
+      "topTeam": "c9bDJBixghg2ZubJtArw",
+      "topTeamPicks": 2,
+      "teamsCount": 4
+    },
+    {
+      "heroId": 45,
+      "heroName": "Pugna",
+      "totalPicks": 6,
+      "wins": 4,
+      "losses": 2,
+      "winRate": 66.7,
+      "teams": [
+        "XrMW89HTX4N6gFzQSrK9",
+        "c9bDJBixghg2ZubJtArw",
+        "oOJjrP0iXQLe7TStAtL2",
+        "NFTIoLzXgsqNIbs32IRE"
+      ],
+      "teamPickCounts": {
+        "XrMW89HTX4N6gFzQSrK9": 1,
+        "c9bDJBixghg2ZubJtArw": 3,
+        "oOJjrP0iXQLe7TStAtL2": 1,
+        "NFTIoLzXgsqNIbs32IRE": 1
+      },
+      "topTeam": "c9bDJBixghg2ZubJtArw",
+      "topTeamPicks": 3,
+      "teamsCount": 4
+    },
+    {
+      "heroId": 69,
+      "heroName": "Doom",
+      "totalPicks": 6,
+      "wins": 2,
+      "losses": 4,
+      "winRate": 33.3,
+      "teams": [
+        "17rPs1frASvF0lK8rxY2",
+        "xZ6e8mJfS4s2yOxaea7i",
+        "wbv6nLvNj78S2UKTjzCC",
+        "vp6meujV7sdOd1ttMCDH",
+        "uTtgHBN81CYiRx0yY4ip"
+      ],
+      "teamPickCounts": {
+        "17rPs1frASvF0lK8rxY2": 2,
+        "xZ6e8mJfS4s2yOxaea7i": 1,
+        "wbv6nLvNj78S2UKTjzCC": 1,
+        "vp6meujV7sdOd1ttMCDH": 1,
+        "uTtgHBN81CYiRx0yY4ip": 1
+      },
+      "topTeam": "17rPs1frASvF0lK8rxY2",
+      "topTeamPicks": 2,
+      "teamsCount": 5
+    },
+    {
+      "heroId": 136,
+      "heroName": "Primal Beast",
+      "totalPicks": 6,
+      "wins": 3,
+      "losses": 3,
+      "winRate": 50,
+      "teams": [
+        "BEHMbh87I6hdndbo0PdP",
+        "XrMW89HTX4N6gFzQSrK9",
+        "17rPs1frASvF0lK8rxY2",
+        "xExmM3YrkmYd2hjP01zQ"
+      ],
+      "teamPickCounts": {
+        "BEHMbh87I6hdndbo0PdP": 2,
+        "XrMW89HTX4N6gFzQSrK9": 1,
+        "17rPs1frASvF0lK8rxY2": 1,
+        "xExmM3YrkmYd2hjP01zQ": 2
+      },
+      "topTeam": "BEHMbh87I6hdndbo0PdP",
+      "topTeamPicks": 2,
+      "teamsCount": 4
+    },
+    {
+      "heroId": 4,
+      "heroName": "Bloodseeker",
+      "totalPicks": 5,
+      "wins": 4,
+      "losses": 1,
+      "winRate": 80,
+      "teams": [
+        "9Lt1J3HDGPt1aKGtNpdp",
+        "yFVMFQqLclFVJxIb9z4D",
+        "c9bDJBixghg2ZubJtArw",
+        "BEHMbh87I6hdndbo0PdP"
+      ],
+      "teamPickCounts": {
+        "9Lt1J3HDGPt1aKGtNpdp": 2,
+        "yFVMFQqLclFVJxIb9z4D": 1,
+        "c9bDJBixghg2ZubJtArw": 1,
+        "BEHMbh87I6hdndbo0PdP": 1
+      },
+      "topTeam": "9Lt1J3HDGPt1aKGtNpdp",
+      "topTeamPicks": 2,
+      "teamsCount": 4
+    },
+    {
+      "heroId": 19,
+      "heroName": "Tiny",
+      "totalPicks": 5,
+      "wins": 4,
+      "losses": 1,
+      "winRate": 80,
+      "teams": [
+        "wbv6nLvNj78S2UKTjzCC",
+        "YPpnY5CDx9LzN3ZM0723",
+        "uTtgHBN81CYiRx0yY4ip",
+        "FvGGo7gOx8nKn8lgWutZ"
+      ],
+      "teamPickCounts": {
+        "wbv6nLvNj78S2UKTjzCC": 2,
+        "YPpnY5CDx9LzN3ZM0723": 1,
+        "uTtgHBN81CYiRx0yY4ip": 1,
+        "FvGGo7gOx8nKn8lgWutZ": 1
+      },
+      "topTeam": "wbv6nLvNj78S2UKTjzCC",
+      "topTeamPicks": 2,
+      "teamsCount": 4
+    },
+    {
+      "heroId": 22,
+      "heroName": "Zeus",
+      "totalPicks": 5,
+      "wins": 0,
+      "losses": 5,
+      "winRate": 0,
+      "teams": [
+        "XrMW89HTX4N6gFzQSrK9",
+        "4ZFlfUMnz3H82YekSder",
+        "oOJjrP0iXQLe7TStAtL2",
+        "YPpnY5CDx9LzN3ZM0723",
+        "xZ6e8mJfS4s2yOxaea7i"
+      ],
+      "teamPickCounts": {
+        "XrMW89HTX4N6gFzQSrK9": 1,
+        "4ZFlfUMnz3H82YekSder": 1,
+        "oOJjrP0iXQLe7TStAtL2": 1,
+        "YPpnY5CDx9LzN3ZM0723": 1,
+        "xZ6e8mJfS4s2yOxaea7i": 1
+      },
+      "topTeam": "XrMW89HTX4N6gFzQSrK9",
+      "topTeamPicks": 1,
+      "teamsCount": 5
+    },
+    {
+      "heroId": 25,
+      "heroName": "Lina",
+      "totalPicks": 5,
+      "wins": 0,
+      "losses": 5,
+      "winRate": 0,
+      "teams": [
+        "XrMW89HTX4N6gFzQSrK9",
+        "sWEfGOW9ZLezKBJhsFGV",
+        "4ZFlfUMnz3H82YekSder",
+        "H1KNJGXWTOwb8pEsxfRf",
+        "sNjbhJNDTBhhijMMxN7Y"
+      ],
+      "teamPickCounts": {
+        "XrMW89HTX4N6gFzQSrK9": 1,
+        "sWEfGOW9ZLezKBJhsFGV": 1,
+        "4ZFlfUMnz3H82YekSder": 1,
+        "H1KNJGXWTOwb8pEsxfRf": 1,
+        "sNjbhJNDTBhhijMMxN7Y": 1
+      },
+      "topTeam": "XrMW89HTX4N6gFzQSrK9",
+      "topTeamPicks": 1,
+      "teamsCount": 5
+    },
+    {
+      "heroId": 32,
+      "heroName": "Riki",
+      "totalPicks": 5,
+      "wins": 0,
+      "losses": 5,
+      "winRate": 0,
+      "teams": [
+        "sNjbhJNDTBhhijMMxN7Y",
+        "xZ6e8mJfS4s2yOxaea7i",
+        "aKN9a7mPxOLoz1fPFD0S",
+        "wbv6nLvNj78S2UKTjzCC"
+      ],
+      "teamPickCounts": {
+        "sNjbhJNDTBhhijMMxN7Y": 1,
+        "xZ6e8mJfS4s2yOxaea7i": 2,
+        "aKN9a7mPxOLoz1fPFD0S": 1,
+        "wbv6nLvNj78S2UKTjzCC": 1
+      },
+      "topTeam": "xZ6e8mJfS4s2yOxaea7i",
+      "topTeamPicks": 2,
+      "teamsCount": 4
+    },
+    {
+      "heroId": 40,
+      "heroName": "Venomancer",
+      "totalPicks": 5,
+      "wins": 4,
+      "losses": 1,
+      "winRate": 80,
+      "teams": [
+        "94FIjqujNxXl6I66piZp",
+        "oOJjrP0iXQLe7TStAtL2",
+        "9Lt1J3HDGPt1aKGtNpdp"
+      ],
+      "teamPickCounts": {
+        "94FIjqujNxXl6I66piZp": 2,
+        "oOJjrP0iXQLe7TStAtL2": 1,
+        "9Lt1J3HDGPt1aKGtNpdp": 2
+      },
+      "topTeam": "94FIjqujNxXl6I66piZp",
+      "topTeamPicks": 2,
+      "teamsCount": 3
+    },
+    {
+      "heroId": 41,
+      "heroName": "Faceless Void",
+      "totalPicks": 5,
+      "wins": 1,
+      "losses": 4,
+      "winRate": 20,
+      "teams": [
+        "yFVMFQqLclFVJxIb9z4D",
+        "sWEfGOW9ZLezKBJhsFGV",
+        "FvGGo7gOx8nKn8lgWutZ",
+        "YPpnY5CDx9LzN3ZM0723",
+        "IadWYbJM0wYNw0vk91QF"
+      ],
+      "teamPickCounts": {
+        "yFVMFQqLclFVJxIb9z4D": 1,
+        "sWEfGOW9ZLezKBJhsFGV": 1,
+        "FvGGo7gOx8nKn8lgWutZ": 1,
+        "YPpnY5CDx9LzN3ZM0723": 1,
+        "IadWYbJM0wYNw0vk91QF": 1
+      },
+      "topTeam": "yFVMFQqLclFVJxIb9z4D",
+      "topTeamPicks": 1,
+      "teamsCount": 5
+    },
+    {
+      "heroId": 47,
+      "heroName": "Viper",
+      "totalPicks": 5,
+      "wins": 3,
+      "losses": 2,
+      "winRate": 60,
+      "teams": [
+        "oOJjrP0iXQLe7TStAtL2",
+        "FvGGo7gOx8nKn8lgWutZ",
+        "aKN9a7mPxOLoz1fPFD0S",
+        "kutPIkCyWUTRi0mjLnzJ"
+      ],
+      "teamPickCounts": {
+        "oOJjrP0iXQLe7TStAtL2": 2,
+        "FvGGo7gOx8nKn8lgWutZ": 1,
+        "aKN9a7mPxOLoz1fPFD0S": 1,
+        "kutPIkCyWUTRi0mjLnzJ": 1
+      },
+      "topTeam": "oOJjrP0iXQLe7TStAtL2",
+      "topTeamPicks": 2,
+      "teamsCount": 4
+    },
+    {
+      "heroId": 55,
+      "heroName": "Dark Seer",
+      "totalPicks": 5,
+      "wins": 2,
+      "losses": 3,
+      "winRate": 40,
+      "teams": [
+        "kutPIkCyWUTRi0mjLnzJ",
+        "wbv6nLvNj78S2UKTjzCC",
+        "xZ6e8mJfS4s2yOxaea7i",
+        "FvGGo7gOx8nKn8lgWutZ",
+        "oOJjrP0iXQLe7TStAtL2"
+      ],
+      "teamPickCounts": {
+        "kutPIkCyWUTRi0mjLnzJ": 1,
+        "wbv6nLvNj78S2UKTjzCC": 1,
+        "xZ6e8mJfS4s2yOxaea7i": 1,
+        "FvGGo7gOx8nKn8lgWutZ": 1,
+        "oOJjrP0iXQLe7TStAtL2": 1
+      },
+      "topTeam": "kutPIkCyWUTRi0mjLnzJ",
+      "topTeamPicks": 1,
+      "teamsCount": 5
+    },
+    {
+      "heroId": 111,
+      "heroName": "Oracle",
+      "totalPicks": 5,
+      "wins": 1,
+      "losses": 4,
+      "winRate": 20,
+      "teams": [
+        "B7tN51jhfyakg9MwRq2T",
+        "yFVMFQqLclFVJxIb9z4D",
+        "94FIjqujNxXl6I66piZp",
+        "ASkLQqoDGCOPsextQFsl"
+      ],
+      "teamPickCounts": {
+        "B7tN51jhfyakg9MwRq2T": 1,
+        "yFVMFQqLclFVJxIb9z4D": 2,
+        "94FIjqujNxXl6I66piZp": 1,
+        "ASkLQqoDGCOPsextQFsl": 1
+      },
+      "topTeam": "yFVMFQqLclFVJxIb9z4D",
+      "topTeamPicks": 2,
+      "teamsCount": 4
+    },
+    {
+      "heroId": 138,
+      "heroName": "Unknown Hero 138",
+      "totalPicks": 5,
+      "wins": 2,
+      "losses": 3,
+      "winRate": 40,
+      "teams": [
+        "aKN9a7mPxOLoz1fPFD0S",
+        "yFVMFQqLclFVJxIb9z4D",
+        "vp6meujV7sdOd1ttMCDH"
+      ],
+      "teamPickCounts": {
+        "aKN9a7mPxOLoz1fPFD0S": 3,
+        "yFVMFQqLclFVJxIb9z4D": 1,
+        "vp6meujV7sdOd1ttMCDH": 1
+      },
+      "topTeam": "aKN9a7mPxOLoz1fPFD0S",
+      "topTeamPicks": 3,
+      "teamsCount": 3
+    },
+    {
+      "heroId": 33,
+      "heroName": "Enigma",
+      "totalPicks": 4,
+      "wins": 1,
+      "losses": 3,
+      "winRate": 25,
+      "teams": [
+        "XrMW89HTX4N6gFzQSrK9",
+        "sNjbhJNDTBhhijMMxN7Y",
+        "4ZFlfUMnz3H82YekSder",
+        "kutPIkCyWUTRi0mjLnzJ"
+      ],
+      "teamPickCounts": {
+        "XrMW89HTX4N6gFzQSrK9": 1,
+        "sNjbhJNDTBhhijMMxN7Y": 1,
+        "4ZFlfUMnz3H82YekSder": 1,
+        "kutPIkCyWUTRi0mjLnzJ": 1
+      },
+      "topTeam": "XrMW89HTX4N6gFzQSrK9",
+      "topTeamPicks": 1,
+      "teamsCount": 4
+    },
+    {
+      "heroId": 49,
+      "heroName": "Dragon Knight",
+      "totalPicks": 4,
+      "wins": 3,
+      "losses": 1,
+      "winRate": 75,
+      "teams": [
+        "NFTIoLzXgsqNIbs32IRE",
+        "kutPIkCyWUTRi0mjLnzJ",
+        "94FIjqujNxXl6I66piZp",
+        "oOJjrP0iXQLe7TStAtL2"
+      ],
+      "teamPickCounts": {
+        "NFTIoLzXgsqNIbs32IRE": 1,
+        "kutPIkCyWUTRi0mjLnzJ": 1,
+        "94FIjqujNxXl6I66piZp": 1,
+        "oOJjrP0iXQLe7TStAtL2": 1
+      },
+      "topTeam": "NFTIoLzXgsqNIbs32IRE",
+      "topTeamPicks": 1,
+      "teamsCount": 4
+    },
+    {
+      "heroId": 71,
+      "heroName": "Spirit Breaker",
+      "totalPicks": 4,
+      "wins": 0,
+      "losses": 4,
+      "winRate": 0,
+      "teams": [
+        "aKN9a7mPxOLoz1fPFD0S",
+        "uTtgHBN81CYiRx0yY4ip",
+        "xExmM3YrkmYd2hjP01zQ",
+        "oOJjrP0iXQLe7TStAtL2"
+      ],
+      "teamPickCounts": {
+        "aKN9a7mPxOLoz1fPFD0S": 1,
+        "uTtgHBN81CYiRx0yY4ip": 1,
+        "xExmM3YrkmYd2hjP01zQ": 1,
+        "oOJjrP0iXQLe7TStAtL2": 1
+      },
+      "topTeam": "aKN9a7mPxOLoz1fPFD0S",
+      "topTeamPicks": 1,
+      "teamsCount": 4
+    },
+    {
+      "heroId": 78,
+      "heroName": "Brewmaster",
+      "totalPicks": 4,
+      "wins": 1,
+      "losses": 3,
+      "winRate": 25,
+      "teams": [
+        "YPpnY5CDx9LzN3ZM0723",
+        "c9bDJBixghg2ZubJtArw",
+        "xZ6e8mJfS4s2yOxaea7i",
+        "sWEfGOW9ZLezKBJhsFGV"
+      ],
+      "teamPickCounts": {
+        "YPpnY5CDx9LzN3ZM0723": 1,
+        "c9bDJBixghg2ZubJtArw": 1,
+        "xZ6e8mJfS4s2yOxaea7i": 1,
+        "sWEfGOW9ZLezKBJhsFGV": 1
+      },
+      "topTeam": "YPpnY5CDx9LzN3ZM0723",
+      "topTeamPicks": 1,
+      "teamsCount": 4
+    },
+    {
+      "heroId": 91,
+      "heroName": "Io",
+      "totalPicks": 4,
+      "wins": 4,
+      "losses": 0,
+      "winRate": 100,
+      "teams": [
+        "c9bDJBixghg2ZubJtArw",
+        "BEHMbh87I6hdndbo0PdP",
+        "NFTIoLzXgsqNIbs32IRE"
+      ],
+      "teamPickCounts": {
+        "c9bDJBixghg2ZubJtArw": 1,
+        "BEHMbh87I6hdndbo0PdP": 1,
+        "NFTIoLzXgsqNIbs32IRE": 2
+      },
+      "topTeam": "NFTIoLzXgsqNIbs32IRE",
+      "topTeamPicks": 2,
+      "teamsCount": 3
+    },
+    {
+      "heroId": 93,
+      "heroName": "Slark",
+      "totalPicks": 4,
+      "wins": 0,
+      "losses": 4,
+      "winRate": 0,
+      "teams": [
+        "yFVMFQqLclFVJxIb9z4D",
+        "uTtgHBN81CYiRx0yY4ip",
+        "XrMW89HTX4N6gFzQSrK9",
+        "9Lt1J3HDGPt1aKGtNpdp"
+      ],
+      "teamPickCounts": {
+        "yFVMFQqLclFVJxIb9z4D": 1,
+        "uTtgHBN81CYiRx0yY4ip": 1,
+        "XrMW89HTX4N6gFzQSrK9": 1,
+        "9Lt1J3HDGPt1aKGtNpdp": 1
+      },
+      "topTeam": "yFVMFQqLclFVJxIb9z4D",
+      "topTeamPicks": 1,
+      "teamsCount": 4
+    },
+    {
+      "heroId": 3,
+      "heroName": "Bane",
+      "totalPicks": 3,
+      "wins": 1,
+      "losses": 2,
+      "winRate": 33.3,
+      "teams": [
+        "NFTIoLzXgsqNIbs32IRE",
+        "yFVMFQqLclFVJxIb9z4D",
+        "aKN9a7mPxOLoz1fPFD0S"
+      ],
+      "teamPickCounts": {
+        "NFTIoLzXgsqNIbs32IRE": 1,
+        "yFVMFQqLclFVJxIb9z4D": 1,
+        "aKN9a7mPxOLoz1fPFD0S": 1
+      },
+      "topTeam": "NFTIoLzXgsqNIbs32IRE",
+      "topTeamPicks": 1,
+      "teamsCount": 3
+    },
+    {
+      "heroId": 5,
+      "heroName": "Crystal Maiden",
+      "totalPicks": 3,
+      "wins": 1,
+      "losses": 2,
+      "winRate": 33.3,
+      "teams": [
+        "wbv6nLvNj78S2UKTjzCC",
+        "B7tN51jhfyakg9MwRq2T",
+        "YPpnY5CDx9LzN3ZM0723"
+      ],
+      "teamPickCounts": {
+        "wbv6nLvNj78S2UKTjzCC": 1,
+        "B7tN51jhfyakg9MwRq2T": 1,
+        "YPpnY5CDx9LzN3ZM0723": 1
+      },
+      "topTeam": "wbv6nLvNj78S2UKTjzCC",
+      "topTeamPicks": 1,
+      "teamsCount": 3
+    },
+    {
+      "heroId": 17,
+      "heroName": "Storm Spirit",
+      "totalPicks": 3,
+      "wins": 0,
+      "losses": 3,
+      "winRate": 0,
+      "teams": [
+        "sWEfGOW9ZLezKBJhsFGV",
+        "uTtgHBN81CYiRx0yY4ip",
+        "FvGGo7gOx8nKn8lgWutZ"
+      ],
+      "teamPickCounts": {
+        "sWEfGOW9ZLezKBJhsFGV": 1,
+        "uTtgHBN81CYiRx0yY4ip": 1,
+        "FvGGo7gOx8nKn8lgWutZ": 1
+      },
+      "topTeam": "sWEfGOW9ZLezKBJhsFGV",
+      "topTeamPicks": 1,
+      "teamsCount": 3
+    },
+    {
+      "heroId": 18,
+      "heroName": "Sven",
+      "totalPicks": 3,
+      "wins": 0,
+      "losses": 3,
+      "winRate": 0,
+      "teams": [
+        "NFTIoLzXgsqNIbs32IRE",
+        "FvGGo7gOx8nKn8lgWutZ",
+        "17rPs1frASvF0lK8rxY2"
+      ],
+      "teamPickCounts": {
+        "NFTIoLzXgsqNIbs32IRE": 1,
+        "FvGGo7gOx8nKn8lgWutZ": 1,
+        "17rPs1frASvF0lK8rxY2": 1
+      },
+      "topTeam": "NFTIoLzXgsqNIbs32IRE",
+      "topTeamPicks": 1,
+      "teamsCount": 3
+    },
+    {
+      "heroId": 77,
+      "heroName": "Lycan",
+      "totalPicks": 3,
+      "wins": 2,
+      "losses": 1,
+      "winRate": 66.7,
+      "teams": [
+        "sNjbhJNDTBhhijMMxN7Y",
+        "kutPIkCyWUTRi0mjLnzJ",
+        "9Lt1J3HDGPt1aKGtNpdp"
+      ],
+      "teamPickCounts": {
+        "sNjbhJNDTBhhijMMxN7Y": 1,
+        "kutPIkCyWUTRi0mjLnzJ": 1,
+        "9Lt1J3HDGPt1aKGtNpdp": 1
+      },
+      "topTeam": "sNjbhJNDTBhhijMMxN7Y",
+      "topTeamPicks": 1,
+      "teamsCount": 3
+    },
+    {
+      "heroId": 81,
+      "heroName": "Chaos Knight",
+      "totalPicks": 3,
+      "wins": 2,
+      "losses": 1,
+      "winRate": 66.7,
+      "teams": [
+        "xZ6e8mJfS4s2yOxaea7i",
+        "H1KNJGXWTOwb8pEsxfRf",
+        "9Lt1J3HDGPt1aKGtNpdp"
+      ],
+      "teamPickCounts": {
+        "xZ6e8mJfS4s2yOxaea7i": 1,
+        "H1KNJGXWTOwb8pEsxfRf": 1,
+        "9Lt1J3HDGPt1aKGtNpdp": 1
+      },
+      "topTeam": "xZ6e8mJfS4s2yOxaea7i",
+      "topTeamPicks": 1,
+      "teamsCount": 3
+    },
+    {
+      "heroId": 88,
+      "heroName": "Nyx Assassin",
+      "totalPicks": 3,
+      "wins": 1,
+      "losses": 2,
+      "winRate": 33.3,
+      "teams": [
+        "ASkLQqoDGCOPsextQFsl",
+        "yFVMFQqLclFVJxIb9z4D",
+        "uTtgHBN81CYiRx0yY4ip"
+      ],
+      "teamPickCounts": {
+        "ASkLQqoDGCOPsextQFsl": 1,
+        "yFVMFQqLclFVJxIb9z4D": 1,
+        "uTtgHBN81CYiRx0yY4ip": 1
+      },
+      "topTeam": "ASkLQqoDGCOPsextQFsl",
+      "topTeamPicks": 1,
+      "teamsCount": 3
+    },
+    {
+      "heroId": 95,
+      "heroName": "Troll Warlord",
+      "totalPicks": 3,
+      "wins": 2,
+      "losses": 1,
+      "winRate": 66.7,
+      "teams": [
+        "YPpnY5CDx9LzN3ZM0723",
+        "wbv6nLvNj78S2UKTjzCC",
+        "NFTIoLzXgsqNIbs32IRE"
+      ],
+      "teamPickCounts": {
+        "YPpnY5CDx9LzN3ZM0723": 1,
+        "wbv6nLvNj78S2UKTjzCC": 1,
+        "NFTIoLzXgsqNIbs32IRE": 1
+      },
+      "topTeam": "YPpnY5CDx9LzN3ZM0723",
+      "topTeamPicks": 1,
+      "teamsCount": 3
+    },
+    {
+      "heroId": 107,
+      "heroName": "Earth Spirit",
+      "totalPicks": 3,
+      "wins": 2,
+      "losses": 1,
+      "winRate": 66.7,
+      "teams": [
+        "1UJX9IGzBBzj4qaLya14",
+        "BEHMbh87I6hdndbo0PdP"
+      ],
+      "teamPickCounts": {
+        "1UJX9IGzBBzj4qaLya14": 2,
+        "BEHMbh87I6hdndbo0PdP": 1
+      },
+      "topTeam": "1UJX9IGzBBzj4qaLya14",
+      "topTeamPicks": 2,
+      "teamsCount": 2
+    },
+    {
+      "heroId": 123,
+      "heroName": "Hoodwink",
+      "totalPicks": 3,
+      "wins": 0,
+      "losses": 3,
+      "winRate": 0,
+      "teams": [
+        "vp6meujV7sdOd1ttMCDH",
+        "xZ6e8mJfS4s2yOxaea7i",
+        "4ZFlfUMnz3H82YekSder"
+      ],
+      "teamPickCounts": {
+        "vp6meujV7sdOd1ttMCDH": 1,
+        "xZ6e8mJfS4s2yOxaea7i": 1,
+        "4ZFlfUMnz3H82YekSder": 1
+      },
+      "topTeam": "vp6meujV7sdOd1ttMCDH",
+      "topTeamPicks": 1,
+      "teamsCount": 3
+    },
+    {
+      "heroId": 137,
+      "heroName": "Muerta",
+      "totalPicks": 3,
+      "wins": 1,
+      "losses": 2,
+      "winRate": 33.3,
+      "teams": [
+        "xExmM3YrkmYd2hjP01zQ",
+        "BEHMbh87I6hdndbo0PdP",
+        "yFVMFQqLclFVJxIb9z4D"
+      ],
+      "teamPickCounts": {
+        "xExmM3YrkmYd2hjP01zQ": 1,
+        "BEHMbh87I6hdndbo0PdP": 1,
+        "yFVMFQqLclFVJxIb9z4D": 1
+      },
+      "topTeam": "xExmM3YrkmYd2hjP01zQ",
+      "topTeamPicks": 1,
+      "teamsCount": 3
+    },
+    {
+      "heroId": 73,
+      "heroName": "Alchemist",
+      "totalPicks": 2,
+      "wins": 0,
+      "losses": 2,
+      "winRate": 0,
+      "teams": [
+        "uTtgHBN81CYiRx0yY4ip",
+        "vp6meujV7sdOd1ttMCDH"
+      ],
+      "teamPickCounts": {
+        "uTtgHBN81CYiRx0yY4ip": 1,
+        "vp6meujV7sdOd1ttMCDH": 1
+      },
+      "topTeam": "uTtgHBN81CYiRx0yY4ip",
+      "topTeamPicks": 1,
+      "teamsCount": 2
+    },
+    {
+      "heroId": 83,
+      "heroName": "Treant Protector",
+      "totalPicks": 2,
+      "wins": 2,
+      "losses": 0,
+      "winRate": 100,
+      "teams": [
+        "yFVMFQqLclFVJxIb9z4D",
+        "kutPIkCyWUTRi0mjLnzJ"
+      ],
+      "teamPickCounts": {
+        "yFVMFQqLclFVJxIb9z4D": 1,
+        "kutPIkCyWUTRi0mjLnzJ": 1
+      },
+      "topTeam": "yFVMFQqLclFVJxIb9z4D",
+      "topTeamPicks": 1,
+      "teamsCount": 2
+    },
+    {
+      "heroId": 90,
+      "heroName": "Keeper of the Light",
+      "totalPicks": 2,
+      "wins": 1,
+      "losses": 1,
+      "winRate": 50,
+      "teams": [
+        "94FIjqujNxXl6I66piZp",
+        "vp6meujV7sdOd1ttMCDH"
+      ],
+      "teamPickCounts": {
+        "94FIjqujNxXl6I66piZp": 1,
+        "vp6meujV7sdOd1ttMCDH": 1
+      },
+      "topTeam": "94FIjqujNxXl6I66piZp",
+      "topTeamPicks": 1,
+      "teamsCount": 2
+    },
+    {
+      "heroId": 131,
+      "heroName": "Dawnbreaker",
+      "totalPicks": 2,
+      "wins": 2,
+      "losses": 0,
+      "winRate": 100,
+      "teams": [
+        "BEHMbh87I6hdndbo0PdP",
+        "yFVMFQqLclFVJxIb9z4D"
+      ],
+      "teamPickCounts": {
+        "BEHMbh87I6hdndbo0PdP": 1,
+        "yFVMFQqLclFVJxIb9z4D": 1
+      },
+      "topTeam": "BEHMbh87I6hdndbo0PdP",
+      "topTeamPicks": 1,
+      "teamsCount": 2
+    },
+    {
+      "heroId": 10,
+      "heroName": "Morphling",
+      "totalPicks": 1,
+      "wins": 0,
+      "losses": 1,
+      "winRate": 0,
+      "teams": [
+        "94FIjqujNxXl6I66piZp"
+      ],
+      "teamPickCounts": {
+        "94FIjqujNxXl6I66piZp": 1
+      },
+      "topTeam": "94FIjqujNxXl6I66piZp",
+      "topTeamPicks": 1,
+      "teamsCount": 1
+    },
+    {
+      "heroId": 56,
+      "heroName": "Clinkz",
+      "totalPicks": 1,
+      "wins": 1,
+      "losses": 0,
+      "winRate": 100,
+      "teams": [
+        "uTtgHBN81CYiRx0yY4ip"
+      ],
+      "teamPickCounts": {
+        "uTtgHBN81CYiRx0yY4ip": 1
+      },
+      "topTeam": "uTtgHBN81CYiRx0yY4ip",
+      "topTeamPicks": 1,
+      "teamsCount": 1
+    },
+    {
+      "heroId": 57,
+      "heroName": "Omniknight",
+      "totalPicks": 1,
+      "wins": 1,
+      "losses": 0,
+      "winRate": 100,
+      "teams": [
+        "BEHMbh87I6hdndbo0PdP"
+      ],
+      "teamPickCounts": {
+        "BEHMbh87I6hdndbo0PdP": 1
+      },
+      "topTeam": "BEHMbh87I6hdndbo0PdP",
+      "topTeamPicks": 1,
+      "teamsCount": 1
+    },
+    {
+      "heroId": 59,
+      "heroName": "Huskar",
+      "totalPicks": 1,
+      "wins": 0,
+      "losses": 1,
+      "winRate": 0,
+      "teams": [
+        "sNjbhJNDTBhhijMMxN7Y"
+      ],
+      "teamPickCounts": {
+        "sNjbhJNDTBhhijMMxN7Y": 1
+      },
+      "topTeam": "sNjbhJNDTBhhijMMxN7Y",
+      "topTeamPicks": 1,
+      "teamsCount": 1
+    },
+    {
+      "heroId": 62,
+      "heroName": "Bounty Hunter",
+      "totalPicks": 1,
+      "wins": 1,
+      "losses": 0,
+      "winRate": 100,
+      "teams": [
+        "IadWYbJM0wYNw0vk91QF"
+      ],
+      "teamPickCounts": {
+        "IadWYbJM0wYNw0vk91QF": 1
+      },
+      "topTeam": "IadWYbJM0wYNw0vk91QF",
+      "topTeamPicks": 1,
+      "teamsCount": 1
+    },
+    {
+      "heroId": 105,
+      "heroName": "Techies",
+      "totalPicks": 1,
+      "wins": 1,
+      "losses": 0,
+      "winRate": 100,
+      "teams": [
+        "ASkLQqoDGCOPsextQFsl"
+      ],
+      "teamPickCounts": {
+        "ASkLQqoDGCOPsextQFsl": 1
+      },
+      "topTeam": "ASkLQqoDGCOPsextQFsl",
+      "topTeamPicks": 1,
+      "teamsCount": 1
+    },
+    {
+      "heroId": 113,
+      "heroName": "Arc Warden",
+      "totalPicks": 1,
+      "wins": 1,
+      "losses": 0,
+      "winRate": 100,
+      "teams": [
+        "BEHMbh87I6hdndbo0PdP"
+      ],
+      "teamPickCounts": {
+        "BEHMbh87I6hdndbo0PdP": 1
+      },
+      "topTeam": "BEHMbh87I6hdndbo0PdP",
+      "topTeamPicks": 1,
+      "teamsCount": 1
+    }
+  ],
+  "neverPickedHeroes": [
+    "Broodmother",
+    "Chen",
+    "Elder Titan",
+    "Enchantress",
+    "Kez",
+    "Lone Druid",
+    "Meepo",
+    "Mirana",
+    "Naga Siren",
+    "Phantom Assassin",
+    "Ringmaster",
+    "Tinker",
+    "Visage",
+    "Winter Wyvern"
+  ],
+  "topLists": {
+    "mostPicked": [
+      {
+        "heroId": 64,
+        "heroName": "Jakiro",
+        "totalPicks": 34,
+        "wins": 10,
+        "losses": 24,
+        "winRate": 29.4,
+        "teams": [
+          "sNjbhJNDTBhhijMMxN7Y",
+          "9Lt1J3HDGPt1aKGtNpdp",
+          "17rPs1frASvF0lK8rxY2",
+          "NFTIoLzXgsqNIbs32IRE",
+          "IadWYbJM0wYNw0vk91QF",
+          "xZ6e8mJfS4s2yOxaea7i",
+          "wbv6nLvNj78S2UKTjzCC",
+          "c9bDJBixghg2ZubJtArw",
+          "sWEfGOW9ZLezKBJhsFGV",
+          "4ZFlfUMnz3H82YekSder",
+          "FvGGo7gOx8nKn8lgWutZ",
+          "vp6meujV7sdOd1ttMCDH",
+          "aKN9a7mPxOLoz1fPFD0S",
+          "H1KNJGXWTOwb8pEsxfRf"
+        ],
+        "teamPickCounts": {
+          "sNjbhJNDTBhhijMMxN7Y": 3,
+          "9Lt1J3HDGPt1aKGtNpdp": 7,
+          "17rPs1frASvF0lK8rxY2": 2,
+          "NFTIoLzXgsqNIbs32IRE": 1,
+          "IadWYbJM0wYNw0vk91QF": 6,
+          "xZ6e8mJfS4s2yOxaea7i": 1,
+          "wbv6nLvNj78S2UKTjzCC": 3,
+          "c9bDJBixghg2ZubJtArw": 1,
+          "sWEfGOW9ZLezKBJhsFGV": 1,
+          "4ZFlfUMnz3H82YekSder": 2,
+          "FvGGo7gOx8nKn8lgWutZ": 3,
+          "vp6meujV7sdOd1ttMCDH": 2,
+          "aKN9a7mPxOLoz1fPFD0S": 1,
+          "H1KNJGXWTOwb8pEsxfRf": 1
+        },
+        "topTeam": "9Lt1J3HDGPt1aKGtNpdp",
+        "topTeamPicks": 7,
+        "teamsCount": 14
+      },
+      {
+        "heroId": 84,
+        "heroName": "Ogre Magi",
+        "totalPicks": 34,
+        "wins": 18,
+        "losses": 16,
+        "winRate": 52.9,
+        "teams": [
+          "wbv6nLvNj78S2UKTjzCC",
+          "YPpnY5CDx9LzN3ZM0723",
+          "kutPIkCyWUTRi0mjLnzJ",
+          "B7tN51jhfyakg9MwRq2T",
+          "1UJX9IGzBBzj4qaLya14",
+          "9Lt1J3HDGPt1aKGtNpdp",
+          "BEHMbh87I6hdndbo0PdP",
+          "IadWYbJM0wYNw0vk91QF",
+          "sWEfGOW9ZLezKBJhsFGV",
+          "sNjbhJNDTBhhijMMxN7Y",
+          "4ZFlfUMnz3H82YekSder",
+          "vp6meujV7sdOd1ttMCDH",
+          "ASkLQqoDGCOPsextQFsl",
+          "FvGGo7gOx8nKn8lgWutZ"
+        ],
+        "teamPickCounts": {
+          "wbv6nLvNj78S2UKTjzCC": 10,
+          "YPpnY5CDx9LzN3ZM0723": 5,
+          "kutPIkCyWUTRi0mjLnzJ": 4,
+          "B7tN51jhfyakg9MwRq2T": 2,
+          "1UJX9IGzBBzj4qaLya14": 2,
+          "9Lt1J3HDGPt1aKGtNpdp": 1,
+          "BEHMbh87I6hdndbo0PdP": 1,
+          "IadWYbJM0wYNw0vk91QF": 1,
+          "sWEfGOW9ZLezKBJhsFGV": 2,
+          "sNjbhJNDTBhhijMMxN7Y": 2,
+          "4ZFlfUMnz3H82YekSder": 1,
+          "vp6meujV7sdOd1ttMCDH": 1,
+          "ASkLQqoDGCOPsextQFsl": 1,
+          "FvGGo7gOx8nKn8lgWutZ": 1
+        },
+        "topTeam": "wbv6nLvNj78S2UKTjzCC",
+        "topTeamPicks": 10,
+        "teamsCount": 14
+      },
+      {
+        "heroId": 85,
+        "heroName": "Undying",
+        "totalPicks": 32,
+        "wins": 21,
+        "losses": 11,
+        "winRate": 65.6,
+        "teams": [
+          "NFTIoLzXgsqNIbs32IRE",
+          "kutPIkCyWUTRi0mjLnzJ",
+          "9Lt1J3HDGPt1aKGtNpdp",
+          "17rPs1frASvF0lK8rxY2",
+          "xExmM3YrkmYd2hjP01zQ",
+          "IadWYbJM0wYNw0vk91QF",
+          "XrMW89HTX4N6gFzQSrK9",
+          "B7tN51jhfyakg9MwRq2T",
+          "c9bDJBixghg2ZubJtArw",
+          "YPpnY5CDx9LzN3ZM0723",
+          "sWEfGOW9ZLezKBJhsFGV",
+          "H1KNJGXWTOwb8pEsxfRf",
+          "aKN9a7mPxOLoz1fPFD0S",
+          "ASkLQqoDGCOPsextQFsl"
+        ],
+        "teamPickCounts": {
+          "NFTIoLzXgsqNIbs32IRE": 3,
+          "kutPIkCyWUTRi0mjLnzJ": 6,
+          "9Lt1J3HDGPt1aKGtNpdp": 5,
+          "17rPs1frASvF0lK8rxY2": 2,
+          "xExmM3YrkmYd2hjP01zQ": 4,
+          "IadWYbJM0wYNw0vk91QF": 1,
+          "XrMW89HTX4N6gFzQSrK9": 1,
+          "B7tN51jhfyakg9MwRq2T": 2,
+          "c9bDJBixghg2ZubJtArw": 2,
+          "YPpnY5CDx9LzN3ZM0723": 1,
+          "sWEfGOW9ZLezKBJhsFGV": 2,
+          "H1KNJGXWTOwb8pEsxfRf": 1,
+          "aKN9a7mPxOLoz1fPFD0S": 1,
+          "ASkLQqoDGCOPsextQFsl": 1
+        },
+        "topTeam": "kutPIkCyWUTRi0mjLnzJ",
+        "topTeamPicks": 6,
+        "teamsCount": 14
+      },
+      {
+        "heroId": 135,
+        "heroName": "Marci",
+        "totalPicks": 32,
+        "wins": 18,
+        "losses": 14,
+        "winRate": 56.3,
+        "teams": [
+          "NFTIoLzXgsqNIbs32IRE",
+          "YPpnY5CDx9LzN3ZM0723",
+          "XrMW89HTX4N6gFzQSrK9",
+          "aKN9a7mPxOLoz1fPFD0S",
+          "17rPs1frASvF0lK8rxY2",
+          "IadWYbJM0wYNw0vk91QF",
+          "yFVMFQqLclFVJxIb9z4D",
+          "1UJX9IGzBBzj4qaLya14",
+          "wbv6nLvNj78S2UKTjzCC",
+          "94FIjqujNxXl6I66piZp",
+          "9Lt1J3HDGPt1aKGtNpdp",
+          "vp6meujV7sdOd1ttMCDH",
+          "oOJjrP0iXQLe7TStAtL2",
+          "c9bDJBixghg2ZubJtArw",
+          "xZ6e8mJfS4s2yOxaea7i",
+          "sNjbhJNDTBhhijMMxN7Y",
+          "uTtgHBN81CYiRx0yY4ip"
+        ],
+        "teamPickCounts": {
+          "NFTIoLzXgsqNIbs32IRE": 3,
+          "YPpnY5CDx9LzN3ZM0723": 1,
+          "XrMW89HTX4N6gFzQSrK9": 1,
+          "aKN9a7mPxOLoz1fPFD0S": 3,
+          "17rPs1frASvF0lK8rxY2": 2,
+          "IadWYbJM0wYNw0vk91QF": 2,
+          "yFVMFQqLclFVJxIb9z4D": 2,
+          "1UJX9IGzBBzj4qaLya14": 2,
+          "wbv6nLvNj78S2UKTjzCC": 4,
+          "94FIjqujNxXl6I66piZp": 1,
+          "9Lt1J3HDGPt1aKGtNpdp": 3,
+          "vp6meujV7sdOd1ttMCDH": 2,
+          "oOJjrP0iXQLe7TStAtL2": 1,
+          "c9bDJBixghg2ZubJtArw": 1,
+          "xZ6e8mJfS4s2yOxaea7i": 1,
+          "sNjbhJNDTBhhijMMxN7Y": 2,
+          "uTtgHBN81CYiRx0yY4ip": 1
+        },
+        "topTeam": "wbv6nLvNj78S2UKTjzCC",
+        "topTeamPicks": 4,
+        "teamsCount": 17
+      },
+      {
+        "heroId": 26,
+        "heroName": "Lion",
+        "totalPicks": 30,
+        "wins": 16,
+        "losses": 14,
+        "winRate": 53.3,
+        "teams": [
+          "NFTIoLzXgsqNIbs32IRE",
+          "wbv6nLvNj78S2UKTjzCC",
+          "aKN9a7mPxOLoz1fPFD0S",
+          "IadWYbJM0wYNw0vk91QF",
+          "1UJX9IGzBBzj4qaLya14",
+          "94FIjqujNxXl6I66piZp",
+          "sNjbhJNDTBhhijMMxN7Y",
+          "H1KNJGXWTOwb8pEsxfRf",
+          "ASkLQqoDGCOPsextQFsl"
+        ],
+        "teamPickCounts": {
+          "NFTIoLzXgsqNIbs32IRE": 1,
+          "wbv6nLvNj78S2UKTjzCC": 9,
+          "aKN9a7mPxOLoz1fPFD0S": 5,
+          "IadWYbJM0wYNw0vk91QF": 5,
+          "1UJX9IGzBBzj4qaLya14": 1,
+          "94FIjqujNxXl6I66piZp": 5,
+          "sNjbhJNDTBhhijMMxN7Y": 1,
+          "H1KNJGXWTOwb8pEsxfRf": 2,
+          "ASkLQqoDGCOPsextQFsl": 1
+        },
+        "topTeam": "wbv6nLvNj78S2UKTjzCC",
+        "topTeamPicks": 9,
+        "teamsCount": 9
+      },
+      {
+        "heroId": 20,
+        "heroName": "Vengeful Spirit",
+        "totalPicks": 29,
+        "wins": 16,
+        "losses": 13,
+        "winRate": 55.2,
+        "teams": [
+          "YPpnY5CDx9LzN3ZM0723",
+          "kutPIkCyWUTRi0mjLnzJ",
+          "c9bDJBixghg2ZubJtArw",
+          "xExmM3YrkmYd2hjP01zQ",
+          "94FIjqujNxXl6I66piZp",
+          "vp6meujV7sdOd1ttMCDH",
+          "sWEfGOW9ZLezKBJhsFGV",
+          "oOJjrP0iXQLe7TStAtL2",
+          "B7tN51jhfyakg9MwRq2T",
+          "NFTIoLzXgsqNIbs32IRE",
+          "uTtgHBN81CYiRx0yY4ip",
+          "sNjbhJNDTBhhijMMxN7Y",
+          "1UJX9IGzBBzj4qaLya14",
+          "yFVMFQqLclFVJxIb9z4D",
+          "ASkLQqoDGCOPsextQFsl"
+        ],
+        "teamPickCounts": {
+          "YPpnY5CDx9LzN3ZM0723": 5,
+          "kutPIkCyWUTRi0mjLnzJ": 4,
+          "c9bDJBixghg2ZubJtArw": 1,
+          "xExmM3YrkmYd2hjP01zQ": 1,
+          "94FIjqujNxXl6I66piZp": 3,
+          "vp6meujV7sdOd1ttMCDH": 2,
+          "sWEfGOW9ZLezKBJhsFGV": 1,
+          "oOJjrP0iXQLe7TStAtL2": 2,
+          "B7tN51jhfyakg9MwRq2T": 1,
+          "NFTIoLzXgsqNIbs32IRE": 1,
+          "uTtgHBN81CYiRx0yY4ip": 3,
+          "sNjbhJNDTBhhijMMxN7Y": 1,
+          "1UJX9IGzBBzj4qaLya14": 2,
+          "yFVMFQqLclFVJxIb9z4D": 1,
+          "ASkLQqoDGCOPsextQFsl": 1
+        },
+        "topTeam": "YPpnY5CDx9LzN3ZM0723",
+        "topTeamPicks": 5,
+        "teamsCount": 15
+      },
+      {
+        "heroId": 2,
+        "heroName": "Axe",
+        "totalPicks": 27,
+        "wins": 13,
+        "losses": 14,
+        "winRate": 48.1,
+        "teams": [
+          "NFTIoLzXgsqNIbs32IRE",
+          "XrMW89HTX4N6gFzQSrK9",
+          "1UJX9IGzBBzj4qaLya14",
+          "ASkLQqoDGCOPsextQFsl",
+          "xExmM3YrkmYd2hjP01zQ",
+          "94FIjqujNxXl6I66piZp",
+          "c9bDJBixghg2ZubJtArw",
+          "IadWYbJM0wYNw0vk91QF",
+          "BEHMbh87I6hdndbo0PdP",
+          "sNjbhJNDTBhhijMMxN7Y",
+          "oOJjrP0iXQLe7TStAtL2",
+          "uTtgHBN81CYiRx0yY4ip",
+          "H1KNJGXWTOwb8pEsxfRf",
+          "vp6meujV7sdOd1ttMCDH",
+          "yFVMFQqLclFVJxIb9z4D",
+          "aKN9a7mPxOLoz1fPFD0S"
+        ],
+        "teamPickCounts": {
+          "NFTIoLzXgsqNIbs32IRE": 2,
+          "XrMW89HTX4N6gFzQSrK9": 3,
+          "1UJX9IGzBBzj4qaLya14": 3,
+          "ASkLQqoDGCOPsextQFsl": 4,
+          "xExmM3YrkmYd2hjP01zQ": 1,
+          "94FIjqujNxXl6I66piZp": 1,
+          "c9bDJBixghg2ZubJtArw": 1,
+          "IadWYbJM0wYNw0vk91QF": 1,
+          "BEHMbh87I6hdndbo0PdP": 1,
+          "sNjbhJNDTBhhijMMxN7Y": 3,
+          "oOJjrP0iXQLe7TStAtL2": 1,
+          "uTtgHBN81CYiRx0yY4ip": 2,
+          "H1KNJGXWTOwb8pEsxfRf": 1,
+          "vp6meujV7sdOd1ttMCDH": 1,
+          "yFVMFQqLclFVJxIb9z4D": 1,
+          "aKN9a7mPxOLoz1fPFD0S": 1
+        },
+        "topTeam": "ASkLQqoDGCOPsextQFsl",
+        "topTeamPicks": 4,
+        "teamsCount": 16
+      },
+      {
+        "heroId": 31,
+        "heroName": "Lich",
+        "totalPicks": 27,
+        "wins": 14,
+        "losses": 13,
+        "winRate": 51.9,
+        "teams": [
+          "XrMW89HTX4N6gFzQSrK9",
+          "1UJX9IGzBBzj4qaLya14",
+          "IadWYbJM0wYNw0vk91QF",
+          "B7tN51jhfyakg9MwRq2T",
+          "yFVMFQqLclFVJxIb9z4D",
+          "uTtgHBN81CYiRx0yY4ip",
+          "FvGGo7gOx8nKn8lgWutZ",
+          "vp6meujV7sdOd1ttMCDH",
+          "xZ6e8mJfS4s2yOxaea7i",
+          "H1KNJGXWTOwb8pEsxfRf",
+          "9Lt1J3HDGPt1aKGtNpdp"
+        ],
+        "teamPickCounts": {
+          "XrMW89HTX4N6gFzQSrK9": 2,
+          "1UJX9IGzBBzj4qaLya14": 2,
+          "IadWYbJM0wYNw0vk91QF": 4,
+          "B7tN51jhfyakg9MwRq2T": 3,
+          "yFVMFQqLclFVJxIb9z4D": 5,
+          "uTtgHBN81CYiRx0yY4ip": 2,
+          "FvGGo7gOx8nKn8lgWutZ": 4,
+          "vp6meujV7sdOd1ttMCDH": 1,
+          "xZ6e8mJfS4s2yOxaea7i": 1,
+          "H1KNJGXWTOwb8pEsxfRf": 2,
+          "9Lt1J3HDGPt1aKGtNpdp": 1
+        },
+        "topTeam": "yFVMFQqLclFVJxIb9z4D",
+        "topTeamPicks": 5,
+        "teamsCount": 11
+      },
+      {
+        "heroId": 39,
+        "heroName": "Queen of Pain",
+        "totalPicks": 27,
+        "wins": 18,
+        "losses": 9,
+        "winRate": 66.7,
+        "teams": [
+          "BEHMbh87I6hdndbo0PdP",
+          "kutPIkCyWUTRi0mjLnzJ",
+          "yFVMFQqLclFVJxIb9z4D",
+          "IadWYbJM0wYNw0vk91QF",
+          "wbv6nLvNj78S2UKTjzCC",
+          "XrMW89HTX4N6gFzQSrK9",
+          "94FIjqujNxXl6I66piZp",
+          "vp6meujV7sdOd1ttMCDH",
+          "sWEfGOW9ZLezKBJhsFGV",
+          "H1KNJGXWTOwb8pEsxfRf",
+          "9Lt1J3HDGPt1aKGtNpdp",
+          "aKN9a7mPxOLoz1fPFD0S",
+          "YPpnY5CDx9LzN3ZM0723",
+          "oOJjrP0iXQLe7TStAtL2",
+          "4ZFlfUMnz3H82YekSder",
+          "uTtgHBN81CYiRx0yY4ip"
+        ],
+        "teamPickCounts": {
+          "BEHMbh87I6hdndbo0PdP": 3,
+          "kutPIkCyWUTRi0mjLnzJ": 4,
+          "yFVMFQqLclFVJxIb9z4D": 2,
+          "IadWYbJM0wYNw0vk91QF": 2,
+          "wbv6nLvNj78S2UKTjzCC": 1,
+          "XrMW89HTX4N6gFzQSrK9": 3,
+          "94FIjqujNxXl6I66piZp": 1,
+          "vp6meujV7sdOd1ttMCDH": 1,
+          "sWEfGOW9ZLezKBJhsFGV": 1,
+          "H1KNJGXWTOwb8pEsxfRf": 1,
+          "9Lt1J3HDGPt1aKGtNpdp": 3,
+          "aKN9a7mPxOLoz1fPFD0S": 1,
+          "YPpnY5CDx9LzN3ZM0723": 1,
+          "oOJjrP0iXQLe7TStAtL2": 1,
+          "4ZFlfUMnz3H82YekSder": 1,
+          "uTtgHBN81CYiRx0yY4ip": 1
+        },
+        "topTeam": "kutPIkCyWUTRi0mjLnzJ",
+        "topTeamPicks": 4,
+        "teamsCount": 16
+      },
+      {
+        "heroId": 75,
+        "heroName": "Silencer",
+        "totalPicks": 26,
+        "wins": 9,
+        "losses": 17,
+        "winRate": 34.6,
+        "teams": [
+          "XrMW89HTX4N6gFzQSrK9",
+          "1UJX9IGzBBzj4qaLya14",
+          "17rPs1frASvF0lK8rxY2",
+          "NFTIoLzXgsqNIbs32IRE",
+          "c9bDJBixghg2ZubJtArw",
+          "aKN9a7mPxOLoz1fPFD0S",
+          "wbv6nLvNj78S2UKTjzCC",
+          "94FIjqujNxXl6I66piZp",
+          "BEHMbh87I6hdndbo0PdP",
+          "oOJjrP0iXQLe7TStAtL2",
+          "H1KNJGXWTOwb8pEsxfRf",
+          "xExmM3YrkmYd2hjP01zQ",
+          "xZ6e8mJfS4s2yOxaea7i"
+        ],
+        "teamPickCounts": {
+          "XrMW89HTX4N6gFzQSrK9": 4,
+          "1UJX9IGzBBzj4qaLya14": 4,
+          "17rPs1frASvF0lK8rxY2": 1,
+          "NFTIoLzXgsqNIbs32IRE": 2,
+          "c9bDJBixghg2ZubJtArw": 2,
+          "aKN9a7mPxOLoz1fPFD0S": 1,
+          "wbv6nLvNj78S2UKTjzCC": 2,
+          "94FIjqujNxXl6I66piZp": 2,
+          "BEHMbh87I6hdndbo0PdP": 1,
+          "oOJjrP0iXQLe7TStAtL2": 2,
+          "H1KNJGXWTOwb8pEsxfRf": 3,
+          "xExmM3YrkmYd2hjP01zQ": 1,
+          "xZ6e8mJfS4s2yOxaea7i": 1
+        },
+        "topTeam": "XrMW89HTX4N6gFzQSrK9",
+        "topTeamPicks": 4,
+        "teamsCount": 13
+      }
+    ],
+    "highestWinRate": [
+      {
+        "heroId": 91,
+        "heroName": "Io",
+        "totalPicks": 4,
+        "wins": 4,
+        "losses": 0,
+        "winRate": 100,
+        "teams": [
+          "c9bDJBixghg2ZubJtArw",
+          "BEHMbh87I6hdndbo0PdP",
+          "NFTIoLzXgsqNIbs32IRE"
+        ],
+        "teamPickCounts": {
+          "c9bDJBixghg2ZubJtArw": 1,
+          "BEHMbh87I6hdndbo0PdP": 1,
+          "NFTIoLzXgsqNIbs32IRE": 2
+        },
+        "topTeam": "NFTIoLzXgsqNIbs32IRE",
+        "topTeamPicks": 2,
+        "teamsCount": 3
+      },
+      {
+        "heroId": 99,
+        "heroName": "Bristleback",
+        "totalPicks": 8,
+        "wins": 7,
+        "losses": 1,
+        "winRate": 87.5,
+        "teams": [
+          "c9bDJBixghg2ZubJtArw",
+          "94FIjqujNxXl6I66piZp",
+          "4ZFlfUMnz3H82YekSder"
+        ],
+        "teamPickCounts": {
+          "c9bDJBixghg2ZubJtArw": 4,
+          "94FIjqujNxXl6I66piZp": 3,
+          "4ZFlfUMnz3H82YekSder": 1
+        },
+        "topTeam": "c9bDJBixghg2ZubJtArw",
+        "topTeamPicks": 4,
+        "teamsCount": 3
+      },
+      {
+        "heroId": 6,
+        "heroName": "Drow Ranger",
+        "totalPicks": 12,
+        "wins": 10,
+        "losses": 2,
+        "winRate": 83.3,
+        "teams": [
+          "ASkLQqoDGCOPsextQFsl",
+          "kutPIkCyWUTRi0mjLnzJ",
+          "yFVMFQqLclFVJxIb9z4D",
+          "oOJjrP0iXQLe7TStAtL2",
+          "vp6meujV7sdOd1ttMCDH",
+          "sNjbhJNDTBhhijMMxN7Y",
+          "B7tN51jhfyakg9MwRq2T"
+        ],
+        "teamPickCounts": {
+          "ASkLQqoDGCOPsextQFsl": 1,
+          "kutPIkCyWUTRi0mjLnzJ": 4,
+          "yFVMFQqLclFVJxIb9z4D": 1,
+          "oOJjrP0iXQLe7TStAtL2": 3,
+          "vp6meujV7sdOd1ttMCDH": 1,
+          "sNjbhJNDTBhhijMMxN7Y": 1,
+          "B7tN51jhfyakg9MwRq2T": 1
+        },
+        "topTeam": "kutPIkCyWUTRi0mjLnzJ",
+        "topTeamPicks": 4,
+        "teamsCount": 7
+      },
+      {
+        "heroId": 4,
+        "heroName": "Bloodseeker",
+        "totalPicks": 5,
+        "wins": 4,
+        "losses": 1,
+        "winRate": 80,
+        "teams": [
+          "9Lt1J3HDGPt1aKGtNpdp",
+          "yFVMFQqLclFVJxIb9z4D",
+          "c9bDJBixghg2ZubJtArw",
+          "BEHMbh87I6hdndbo0PdP"
+        ],
+        "teamPickCounts": {
+          "9Lt1J3HDGPt1aKGtNpdp": 2,
+          "yFVMFQqLclFVJxIb9z4D": 1,
+          "c9bDJBixghg2ZubJtArw": 1,
+          "BEHMbh87I6hdndbo0PdP": 1
+        },
+        "topTeam": "9Lt1J3HDGPt1aKGtNpdp",
+        "topTeamPicks": 2,
+        "teamsCount": 4
+      },
+      {
+        "heroId": 19,
+        "heroName": "Tiny",
+        "totalPicks": 5,
+        "wins": 4,
+        "losses": 1,
+        "winRate": 80,
+        "teams": [
+          "wbv6nLvNj78S2UKTjzCC",
+          "YPpnY5CDx9LzN3ZM0723",
+          "uTtgHBN81CYiRx0yY4ip",
+          "FvGGo7gOx8nKn8lgWutZ"
+        ],
+        "teamPickCounts": {
+          "wbv6nLvNj78S2UKTjzCC": 2,
+          "YPpnY5CDx9LzN3ZM0723": 1,
+          "uTtgHBN81CYiRx0yY4ip": 1,
+          "FvGGo7gOx8nKn8lgWutZ": 1
+        },
+        "topTeam": "wbv6nLvNj78S2UKTjzCC",
+        "topTeamPicks": 2,
+        "teamsCount": 4
+      },
+      {
+        "heroId": 40,
+        "heroName": "Venomancer",
+        "totalPicks": 5,
+        "wins": 4,
+        "losses": 1,
+        "winRate": 80,
+        "teams": [
+          "94FIjqujNxXl6I66piZp",
+          "oOJjrP0iXQLe7TStAtL2",
+          "9Lt1J3HDGPt1aKGtNpdp"
+        ],
+        "teamPickCounts": {
+          "94FIjqujNxXl6I66piZp": 2,
+          "oOJjrP0iXQLe7TStAtL2": 1,
+          "9Lt1J3HDGPt1aKGtNpdp": 2
+        },
+        "topTeam": "94FIjqujNxXl6I66piZp",
+        "topTeamPicks": 2,
+        "teamsCount": 3
+      },
+      {
+        "heroId": 114,
+        "heroName": "Monkey King",
+        "totalPicks": 9,
+        "wins": 7,
+        "losses": 2,
+        "winRate": 77.8,
+        "teams": [
+          "wbv6nLvNj78S2UKTjzCC",
+          "1UJX9IGzBBzj4qaLya14",
+          "ASkLQqoDGCOPsextQFsl",
+          null,
+          "17rPs1frASvF0lK8rxY2",
+          "FvGGo7gOx8nKn8lgWutZ"
+        ],
+        "teamPickCounts": {
+          "wbv6nLvNj78S2UKTjzCC": 1,
+          "1UJX9IGzBBzj4qaLya14": 2,
+          "ASkLQqoDGCOPsextQFsl": 2,
+          "null": 1,
+          "17rPs1frASvF0lK8rxY2": 1,
+          "FvGGo7gOx8nKn8lgWutZ": 2
+        },
+        "topTeam": "1UJX9IGzBBzj4qaLya14",
+        "topTeamPicks": 2,
+        "teamsCount": 6
+      },
+      {
+        "heroId": 79,
+        "heroName": "Shadow Demon",
+        "totalPicks": 8,
+        "wins": 6,
+        "losses": 2,
+        "winRate": 75,
+        "teams": [
+          "NFTIoLzXgsqNIbs32IRE",
+          "B7tN51jhfyakg9MwRq2T",
+          "yFVMFQqLclFVJxIb9z4D",
+          "BEHMbh87I6hdndbo0PdP",
+          "17rPs1frASvF0lK8rxY2",
+          "ASkLQqoDGCOPsextQFsl"
+        ],
+        "teamPickCounts": {
+          "NFTIoLzXgsqNIbs32IRE": 3,
+          "B7tN51jhfyakg9MwRq2T": 1,
+          "yFVMFQqLclFVJxIb9z4D": 1,
+          "BEHMbh87I6hdndbo0PdP": 1,
+          "17rPs1frASvF0lK8rxY2": 1,
+          "ASkLQqoDGCOPsextQFsl": 1
+        },
+        "topTeam": "NFTIoLzXgsqNIbs32IRE",
+        "topTeamPicks": 3,
+        "teamsCount": 6
+      },
+      {
+        "heroId": 49,
+        "heroName": "Dragon Knight",
+        "totalPicks": 4,
+        "wins": 3,
+        "losses": 1,
+        "winRate": 75,
+        "teams": [
+          "NFTIoLzXgsqNIbs32IRE",
+          "kutPIkCyWUTRi0mjLnzJ",
+          "94FIjqujNxXl6I66piZp",
+          "oOJjrP0iXQLe7TStAtL2"
+        ],
+        "teamPickCounts": {
+          "NFTIoLzXgsqNIbs32IRE": 1,
+          "kutPIkCyWUTRi0mjLnzJ": 1,
+          "94FIjqujNxXl6I66piZp": 1,
+          "oOJjrP0iXQLe7TStAtL2": 1
+        },
+        "topTeam": "NFTIoLzXgsqNIbs32IRE",
+        "topTeamPicks": 1,
+        "teamsCount": 4
+      },
+      {
+        "heroId": 1,
+        "heroName": "Anti-Mage",
+        "totalPicks": 11,
+        "wins": 8,
+        "losses": 3,
+        "winRate": 72.7,
+        "teams": [
+          "1UJX9IGzBBzj4qaLya14",
+          "IadWYbJM0wYNw0vk91QF",
+          "9Lt1J3HDGPt1aKGtNpdp",
+          "BEHMbh87I6hdndbo0PdP",
+          "yFVMFQqLclFVJxIb9z4D",
+          "ASkLQqoDGCOPsextQFsl"
+        ],
+        "teamPickCounts": {
+          "1UJX9IGzBBzj4qaLya14": 3,
+          "IadWYbJM0wYNw0vk91QF": 2,
+          "9Lt1J3HDGPt1aKGtNpdp": 2,
+          "BEHMbh87I6hdndbo0PdP": 2,
+          "yFVMFQqLclFVJxIb9z4D": 1,
+          "ASkLQqoDGCOPsextQFsl": 1
+        },
+        "topTeam": "1UJX9IGzBBzj4qaLya14",
+        "topTeamPicks": 3,
+        "teamsCount": 6
+      }
+    ],
+    "lowestWinRate": [
+      {
+        "heroId": 22,
+        "heroName": "Zeus",
+        "totalPicks": 5,
+        "wins": 0,
+        "losses": 5,
+        "winRate": 0,
+        "teams": [
+          "XrMW89HTX4N6gFzQSrK9",
+          "4ZFlfUMnz3H82YekSder",
+          "oOJjrP0iXQLe7TStAtL2",
+          "YPpnY5CDx9LzN3ZM0723",
+          "xZ6e8mJfS4s2yOxaea7i"
+        ],
+        "teamPickCounts": {
+          "XrMW89HTX4N6gFzQSrK9": 1,
+          "4ZFlfUMnz3H82YekSder": 1,
+          "oOJjrP0iXQLe7TStAtL2": 1,
+          "YPpnY5CDx9LzN3ZM0723": 1,
+          "xZ6e8mJfS4s2yOxaea7i": 1
+        },
+        "topTeam": "XrMW89HTX4N6gFzQSrK9",
+        "topTeamPicks": 1,
+        "teamsCount": 5
+      },
+      {
+        "heroId": 25,
+        "heroName": "Lina",
+        "totalPicks": 5,
+        "wins": 0,
+        "losses": 5,
+        "winRate": 0,
+        "teams": [
+          "XrMW89HTX4N6gFzQSrK9",
+          "sWEfGOW9ZLezKBJhsFGV",
+          "4ZFlfUMnz3H82YekSder",
+          "H1KNJGXWTOwb8pEsxfRf",
+          "sNjbhJNDTBhhijMMxN7Y"
+        ],
+        "teamPickCounts": {
+          "XrMW89HTX4N6gFzQSrK9": 1,
+          "sWEfGOW9ZLezKBJhsFGV": 1,
+          "4ZFlfUMnz3H82YekSder": 1,
+          "H1KNJGXWTOwb8pEsxfRf": 1,
+          "sNjbhJNDTBhhijMMxN7Y": 1
+        },
+        "topTeam": "XrMW89HTX4N6gFzQSrK9",
+        "topTeamPicks": 1,
+        "teamsCount": 5
+      },
+      {
+        "heroId": 32,
+        "heroName": "Riki",
+        "totalPicks": 5,
+        "wins": 0,
+        "losses": 5,
+        "winRate": 0,
+        "teams": [
+          "sNjbhJNDTBhhijMMxN7Y",
+          "xZ6e8mJfS4s2yOxaea7i",
+          "aKN9a7mPxOLoz1fPFD0S",
+          "wbv6nLvNj78S2UKTjzCC"
+        ],
+        "teamPickCounts": {
+          "sNjbhJNDTBhhijMMxN7Y": 1,
+          "xZ6e8mJfS4s2yOxaea7i": 2,
+          "aKN9a7mPxOLoz1fPFD0S": 1,
+          "wbv6nLvNj78S2UKTjzCC": 1
+        },
+        "topTeam": "xZ6e8mJfS4s2yOxaea7i",
+        "topTeamPicks": 2,
+        "teamsCount": 4
+      },
+      {
+        "heroId": 71,
+        "heroName": "Spirit Breaker",
+        "totalPicks": 4,
+        "wins": 0,
+        "losses": 4,
+        "winRate": 0,
+        "teams": [
+          "aKN9a7mPxOLoz1fPFD0S",
+          "uTtgHBN81CYiRx0yY4ip",
+          "xExmM3YrkmYd2hjP01zQ",
+          "oOJjrP0iXQLe7TStAtL2"
+        ],
+        "teamPickCounts": {
+          "aKN9a7mPxOLoz1fPFD0S": 1,
+          "uTtgHBN81CYiRx0yY4ip": 1,
+          "xExmM3YrkmYd2hjP01zQ": 1,
+          "oOJjrP0iXQLe7TStAtL2": 1
+        },
+        "topTeam": "aKN9a7mPxOLoz1fPFD0S",
+        "topTeamPicks": 1,
+        "teamsCount": 4
+      },
+      {
+        "heroId": 93,
+        "heroName": "Slark",
+        "totalPicks": 4,
+        "wins": 0,
+        "losses": 4,
+        "winRate": 0,
+        "teams": [
+          "yFVMFQqLclFVJxIb9z4D",
+          "uTtgHBN81CYiRx0yY4ip",
+          "XrMW89HTX4N6gFzQSrK9",
+          "9Lt1J3HDGPt1aKGtNpdp"
+        ],
+        "teamPickCounts": {
+          "yFVMFQqLclFVJxIb9z4D": 1,
+          "uTtgHBN81CYiRx0yY4ip": 1,
+          "XrMW89HTX4N6gFzQSrK9": 1,
+          "9Lt1J3HDGPt1aKGtNpdp": 1
+        },
+        "topTeam": "yFVMFQqLclFVJxIb9z4D",
+        "topTeamPicks": 1,
+        "teamsCount": 4
+      },
+      {
+        "heroId": 17,
+        "heroName": "Storm Spirit",
+        "totalPicks": 3,
+        "wins": 0,
+        "losses": 3,
+        "winRate": 0,
+        "teams": [
+          "sWEfGOW9ZLezKBJhsFGV",
+          "uTtgHBN81CYiRx0yY4ip",
+          "FvGGo7gOx8nKn8lgWutZ"
+        ],
+        "teamPickCounts": {
+          "sWEfGOW9ZLezKBJhsFGV": 1,
+          "uTtgHBN81CYiRx0yY4ip": 1,
+          "FvGGo7gOx8nKn8lgWutZ": 1
+        },
+        "topTeam": "sWEfGOW9ZLezKBJhsFGV",
+        "topTeamPicks": 1,
+        "teamsCount": 3
+      },
+      {
+        "heroId": 18,
+        "heroName": "Sven",
+        "totalPicks": 3,
+        "wins": 0,
+        "losses": 3,
+        "winRate": 0,
+        "teams": [
+          "NFTIoLzXgsqNIbs32IRE",
+          "FvGGo7gOx8nKn8lgWutZ",
+          "17rPs1frASvF0lK8rxY2"
+        ],
+        "teamPickCounts": {
+          "NFTIoLzXgsqNIbs32IRE": 1,
+          "FvGGo7gOx8nKn8lgWutZ": 1,
+          "17rPs1frASvF0lK8rxY2": 1
+        },
+        "topTeam": "NFTIoLzXgsqNIbs32IRE",
+        "topTeamPicks": 1,
+        "teamsCount": 3
+      },
+      {
+        "heroId": 123,
+        "heroName": "Hoodwink",
+        "totalPicks": 3,
+        "wins": 0,
+        "losses": 3,
+        "winRate": 0,
+        "teams": [
+          "vp6meujV7sdOd1ttMCDH",
+          "xZ6e8mJfS4s2yOxaea7i",
+          "4ZFlfUMnz3H82YekSder"
+        ],
+        "teamPickCounts": {
+          "vp6meujV7sdOd1ttMCDH": 1,
+          "xZ6e8mJfS4s2yOxaea7i": 1,
+          "4ZFlfUMnz3H82YekSder": 1
+        },
+        "topTeam": "vp6meujV7sdOd1ttMCDH",
+        "topTeamPicks": 1,
+        "teamsCount": 3
+      },
+      {
+        "heroId": 74,
+        "heroName": "Invoker",
+        "totalPicks": 12,
+        "wins": 1,
+        "losses": 11,
+        "winRate": 8.3,
+        "teams": [
+          "B7tN51jhfyakg9MwRq2T",
+          "1UJX9IGzBBzj4qaLya14",
+          "xExmM3YrkmYd2hjP01zQ",
+          "sWEfGOW9ZLezKBJhsFGV",
+          "9Lt1J3HDGPt1aKGtNpdp",
+          "IadWYbJM0wYNw0vk91QF"
+        ],
+        "teamPickCounts": {
+          "B7tN51jhfyakg9MwRq2T": 4,
+          "1UJX9IGzBBzj4qaLya14": 3,
+          "xExmM3YrkmYd2hjP01zQ": 2,
+          "sWEfGOW9ZLezKBJhsFGV": 1,
+          "9Lt1J3HDGPt1aKGtNpdp": 1,
+          "IadWYbJM0wYNw0vk91QF": 1
+        },
+        "topTeam": "B7tN51jhfyakg9MwRq2T",
+        "topTeamPicks": 4,
+        "teamsCount": 6
+      },
+      {
+        "heroId": 48,
+        "heroName": "Luna",
+        "totalPicks": 10,
+        "wins": 2,
+        "losses": 8,
+        "winRate": 20,
+        "teams": [
+          "wbv6nLvNj78S2UKTjzCC",
+          "NFTIoLzXgsqNIbs32IRE",
+          "ASkLQqoDGCOPsextQFsl",
+          "aKN9a7mPxOLoz1fPFD0S",
+          "B7tN51jhfyakg9MwRq2T",
+          "yFVMFQqLclFVJxIb9z4D",
+          "IadWYbJM0wYNw0vk91QF",
+          "4ZFlfUMnz3H82YekSder"
+        ],
+        "teamPickCounts": {
+          "wbv6nLvNj78S2UKTjzCC": 1,
+          "NFTIoLzXgsqNIbs32IRE": 2,
+          "ASkLQqoDGCOPsextQFsl": 1,
+          "aKN9a7mPxOLoz1fPFD0S": 1,
+          "B7tN51jhfyakg9MwRq2T": 2,
+          "yFVMFQqLclFVJxIb9z4D": 1,
+          "IadWYbJM0wYNw0vk91QF": 1,
+          "4ZFlfUMnz3H82YekSder": 1
+        },
+        "topTeam": "NFTIoLzXgsqNIbs32IRE",
+        "topTeamPicks": 2,
+        "teamsCount": 8
+      }
+    ]
+  }
+}

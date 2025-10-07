@@ -288,7 +288,12 @@ export default function FantasyPage() {
       try {
         console.log('🚀 Starting leaderboard fetch...');
         setLeaderboardsLoading(true);
-        const response = await fetch(`/api/fantasy/leaderboards?t=${Date.now()}`);
+        const response = await fetch(`/api/fantasy/leaderboards?v=2&t=${Date.now()}&cacheBust=${Math.random()}`, {
+          cache: 'no-store',
+          headers: {
+            'Cache-Control': 'no-cache'
+          }
+        });
         console.log('📡 Response received:', response.status, response.ok);
         const data = await response.json();
         console.log('📊 Data received:', data.success, 'Keys:', Object.keys(data));
@@ -297,7 +302,20 @@ export default function FantasyPage() {
           console.log('✅ Setting leaderboards data - FIXED ALGORITHM');
           console.log('📊 Algorithm:', data.algorithm);
           console.log('📅 Generated at:', data.generatedAt);
-          setLeaderboards(data.leaderboards);
+          console.log('🔍 CLIENT SIDE - First user before setting:', data.leaderboards?.overall?.[0]);
+          console.log('🔍 CLIENT SIDE - BeBoy before setting:', data.leaderboards?.overall?.find((u: any) => u.displayName === 'BeBoy'));
+
+          // CRITICAL FIX: Ensure gamesPlayed is properly set for each user
+          const processedLeaderboards = {
+            ...data.leaderboards,
+            overall: data.leaderboards?.overall?.map((user: any) => ({
+              ...user,
+              gamesPlayed: user.gamesPlayed || 0, // Ensure this field exists
+            })) || []
+          };
+
+          console.log('🔍 CLIENT SIDE - BeBoy after processing:', processedLeaderboards.overall?.find((u: any) => u.displayName === 'BeBoy'));
+          setLeaderboards(processedLeaderboards);
         } else {
           console.log('❌ API returned error:', data.message);
           setLeaderboardsError(data.message || 'Failed to load leaderboards. Please run fixed fantasy recalculation first.');
@@ -544,7 +562,18 @@ export default function FantasyPage() {
       ) : null}
       
       {leaderboards && (
-        <CreativeLeaderboards leaderboards={leaderboards} />
+        <>
+          {(() => {
+            console.log('🔍 PARENT COMPONENT - About to pass leaderboards to CreativeLeaderboards:', {
+              hasOverall: !!leaderboards.overall,
+              overallLength: leaderboards.overall?.length || 0,
+              firstUser: leaderboards.overall?.[0] || null,
+              beboyUser: leaderboards.overall?.find((u: any) => u.displayName === 'BeBoy') || null
+            });
+            return null;
+          })()}
+          <CreativeLeaderboards leaderboards={leaderboards} />
+        </>
       )}
       
       {!leaderboards && !leaderboardsLoading && (

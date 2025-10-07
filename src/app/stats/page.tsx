@@ -925,8 +925,8 @@ export default function StatsPage() {
             <StatCard 
               icon={DollarSign} 
               title="Highest Average Team Net Worth" 
-              value={teamStats.length > 0 ? Math.max(...teamStats.map(t => (t as any).highestAvgTeamNetWorth?.value || 0)).toLocaleString() : "TBD"}
-              subtitle={teamStats.length > 0 ? findTeamName(teamStats.find(t => (t as any).highestAvgTeamNetWorth?.value === Math.max(...teamStats.map(t => (t as any).highestAvgTeamNetWorth?.value || 0)))?.teamId || '') : ""}
+              value={teamStats.length > 0 ? Math.max(...teamStats.map(t => (t as any).highestAverageTeamNetWorth?.value || 0)).toLocaleString() : "TBD"}
+              subtitle={teamStats.length > 0 ? findTeamName(teamStats.find(t => (t as any).highestAverageTeamNetWorth?.value === Math.max(...teamStats.map(t => (t as any).highestAverageTeamNetWorth?.value || 0)))?.teamId || '') : ""}
               delay="4000ms"
               gradient
             />

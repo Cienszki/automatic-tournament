@@ -626,11 +626,13 @@ export async function recalculateUserFantasyScoresByRound(): Promise<{
                 const performancesSnap = await performancesRef.get();
                 
                 performancesSnap.docs.forEach(perfDoc => {
-                    const playerId = perfDoc.id;
                     const performance = perfDoc.data();
+                    const playerId = performance.playerId; // Use playerId from data, not document ID
                     const fantasyPoints = performance.fantasyPoints || 0;
-                    
-                    gamesByRound[matchRound][gameId][playerId] = fantasyPoints;
+
+                    if (playerId) { // Only process if playerId exists
+                        gamesByRound[matchRound][gameId][playerId] = fantasyPoints;
+                    }
                 });
                 
                 totalGamesAnalyzed++;

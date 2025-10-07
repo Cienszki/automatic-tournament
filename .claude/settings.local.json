@@ -42,7 +42,9 @@
       "WebFetch(domain:api.opendota.com)",
       "Bash(python:*)",
       "Bash(git commit:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(git push:*)",
+      "Bash(git log:*)"
     ],
     "deny": [],
     "ask": [],

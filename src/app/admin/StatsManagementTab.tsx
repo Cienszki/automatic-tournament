@@ -156,18 +156,35 @@ export function StatsManagementTab() {
   const handleRecalculateFantasyScoresEnhanced = async () => {
     setIsRecalculatingFantasyEnhanced(true);
     setFantasyEnhancedResult(null);
-    
+
     try {
+      // Add timeout to prevent hanging
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 minute timeout
+
       const response = await fetch('/api/admin/recalculateFantasyScoresEnhanced', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({})
+        body: JSON.stringify({}),
+        signal: controller.signal
       });
-      
+
+      clearTimeout(timeoutId);
+
+      // Check if response is actually JSON
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        throw new Error(`Invalid response format. Expected JSON but got: ${contentType}`);
+      }
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
       const data = await response.json();
-      
+
       setFantasyEnhancedResult({
         success: data.success,
         message: data.message,
@@ -175,11 +192,23 @@ export function StatsManagementTab() {
         playersProcessed: data.playersProcessed,
         totalGamesAnalyzed: data.totalGamesAnalyzed
       });
-      
+
     } catch (error) {
+      let errorMessage = 'Unknown error occurred';
+
+      if (error instanceof Error) {
+        if (error.name === 'AbortError') {
+          errorMessage = 'Request timed out after 5 minutes. The operation may still be running in the background.';
+        } else if (error.message.includes('JSON.parse')) {
+          errorMessage = 'Server returned invalid JSON response. Check server logs for details.';
+        } else {
+          errorMessage = error.message;
+        }
+      }
+
       setFantasyEnhancedResult({
         success: false,
-        message: `Error: ${error instanceof Error ? error.message : 'Unknown error occurred'}`
+        message: `Error: ${errorMessage}`
       });
     } finally {
       setIsRecalculatingFantasyEnhanced(false);
@@ -571,23 +600,43 @@ export function StatsManagementTab() {
               </ul>
             </div>
 
-            <Button 
-              onClick={handleRecalculateFantasyScoresEnhanced}
-              disabled={isRecalculatingFantasyEnhanced}
-              className="w-full bg-orange-600 hover:bg-orange-700"
-            >
-              {isRecalculatingFantasyEnhanced ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Processing...
-                </>
-              ) : (
-                <>
-                  <Sparkles className="mr-2 h-4 w-4" />
-                  Enhanced Recalculation
-                </>
-              )}
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                onClick={handleRecalculateFantasyScoresEnhanced}
+                disabled={isRecalculatingFantasyEnhanced}
+                className="flex-1 bg-orange-600 hover:bg-orange-700"
+              >
+                {isRecalculatingFantasyEnhanced ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Processing...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="mr-2 h-4 w-4" />
+                    Full Enhanced
+                  </>
+                )}
+              </Button>
+
+              <Button
+                onClick={handleRecalculateUserFantasy}
+                disabled={isRecalculatingUserFantasy}
+                className="flex-1 bg-orange-500 hover:bg-orange-600"
+              >
+                {isRecalculatingUserFantasy ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Processing...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="mr-2 h-4 w-4" />
+                    Quick Batch
+                  </>
+                )}
+              </Button>
+            </div>
 
             {/* Enhanced Fantasy Result Display */}
             {fantasyEnhancedResult && (
