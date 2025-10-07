@@ -36,7 +36,7 @@ export function StatsPageClient({ data }: StatsPageClientProps) {
 
   const AccordionRowContent = ({ categoryData, isSingleMatchCategory }: { categoryData: { id: string, categoryName: string, icon: string, rankings: CategoryRankingDetail[] }, isSingleMatchCategory: boolean }) => {
     const topEntry = categoryData.rankings[0];
-    const Icon = ICONS[categoryData.icon];
+    const Icon = ICONS[categoryData.icon] as React.ComponentType<{ className?: string }>;
     return (
       <div className={cn(
         "group-data-[state=open]:hidden grid items-center w-full text-sm py-3 px-4",
@@ -47,7 +47,7 @@ export function StatsPageClient({ data }: StatsPageClientProps) {
           "col-span-2",
           isSingleMatchCategory ? "md:col-span-3" : "md:col-span-4"
         )}>
-          <Icon className="h-5 w-5 mr-3 shrink-0 text-accent" />
+          {Icon && <Icon className="h-5 w-5 mr-3 shrink-0 text-accent" />}
           <span className="truncate" title={categoryData.categoryName}>{categoryData.categoryName}</span>
         </div>
         {topEntry ? (
@@ -137,7 +137,7 @@ export function StatsPageClient({ data }: StatsPageClientProps) {
             onValueChange={setOpenAccordionItem}
           >
             {Object.values(singleMatchRecords).map((categoryData) => {
-              const Icon = ICONS[categoryData.icon];
+              const Icon = ICONS[categoryData.icon] as React.ComponentType<{ className?: string }>;
               return (
               <AccordionItem value={categoryData.id} key={categoryData.id} className="border-b last:border-b-0">
                  <Card className="mb-0.5 shadow-none hover:bg-muted/5 transition-colors rounded-md overflow-hidden group">
@@ -149,7 +149,7 @@ export function StatsPageClient({ data }: StatsPageClientProps) {
                           className="text-center mb-4 flex flex-col items-center cursor-pointer"
                           onClick={() => setOpenAccordionItem(openAccordionItem === categoryData.id ? undefined : categoryData.id)}
                         >
-                            <Icon className="h-8 w-8 text-accent mb-1" />
+                            {Icon && <Icon className="h-8 w-8 text-accent mb-1" />}
                             <h3 className="text-xl font-semibold text-primary">{categoryData.categoryName}</h3>
                         </div>
                         {categoryData.rankings.length > 0 ? 
@@ -179,7 +179,7 @@ export function StatsPageClient({ data }: StatsPageClientProps) {
               onValueChange={setOpenAccordionItem}
             >
             {Object.values(playerAverageLeaders).map((categoryData) => {
-              const Icon = ICONS[categoryData.icon];
+              const Icon = ICONS[categoryData.icon] as React.ComponentType<{ className?: string }>;
               return (
                 <AccordionItem value={categoryData.id} key={categoryData.id} className="border-b last:border-b-0">
                     <Card className="mb-0.5 shadow-none hover:bg-muted/5 transition-colors rounded-md overflow-hidden group">
@@ -191,7 +191,7 @@ export function StatsPageClient({ data }: StatsPageClientProps) {
                              className="text-center mb-4 flex flex-col items-center cursor-pointer"
                              onClick={() => setOpenAccordionItem(openAccordionItem === categoryData.id ? undefined : categoryData.id)}
                            >
-                                <Icon className="h-8 w-8 text-accent mb-1" />
+                                {Icon && <Icon className="h-8 w-8 text-accent mb-1" />}
                                 <h3 className="text-xl font-semibold text-primary">{categoryData.categoryName}</h3>
                            </div>
                            {categoryData.rankings.length > 0 ? 

@@ -16,11 +16,12 @@ interface StatCardProps {
 }
 
 function StatCard({ icon: Icon, label, value, description }: StatCardProps) {
+  const IconComponent = Icon as React.ComponentType<{ className?: string }>;
   return (
     <Card className="shadow-md bg-muted/20">
       <CardHeader className="pb-2">
         <CardTitle className="text-lg flex items-center text-accent">
-          <Icon className="h-5 w-5 mr-2" />
+          <IconComponent className="h-5 w-5 mr-2" />
           {label}
         </CardTitle>
       </CardHeader>

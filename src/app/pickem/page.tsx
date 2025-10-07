@@ -292,12 +292,13 @@ const HowToPlay = () => {
 
 const DroppableList = ({ id, title, icon: Icon, teams, getTeamById, requiredCount }: { id: ContainerId; title: string; icon: React.ElementType | null; teams: string[]; getTeamById: (id: string) => Team | undefined; requiredCount: number }) => {
     const { t } = useTranslation();
+    const IconComponent = Icon as React.ComponentType<{ className?: string }> | null;
     
     return (
       <Card className="flex flex-col min-w-[200px] bg-muted/20">
           <CardHeader className="pb-2">
               <CardTitle className="text-base flex justify-between items-center">
-                  <span className="flex items-center">{Icon && <Icon className="h-5 w-5 mr-2 text-primary shrink-0" />}{title}</span>
+                  <span className="flex items-center">{IconComponent && <IconComponent className="h-5 w-5 mr-2 text-primary shrink-0" />}{title}</span>
                   <Badge variant={teams.length > requiredCount ? "destructive" : teams.length === requiredCount ? "secondary" : "outline"} className={cn(teams.length < requiredCount && "bg-muted text-muted-foreground border-transparent")}>
                       {teams.length} / {requiredCount}
                   </Badge>

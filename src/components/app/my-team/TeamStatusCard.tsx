@@ -45,6 +45,7 @@ export function TeamStatusCard({ team }: TeamStatusCardProps) {
   }
 
   const { icon: StatusIcon, className } = getStatusInfo(team.status);
+  const StatusIconComponent = StatusIcon as React.ComponentType<{ className?: string }>;
 
   return (
     <Card className="shadow-lg">
@@ -56,7 +57,7 @@ export function TeamStatusCard({ team }: TeamStatusCardProps) {
       </CardHeader>
       <CardContent className="space-y-4">
         <Badge className={cn("px-3 py-1.5 text-sm w-full justify-center text-white", className)}>
-          <StatusIcon className="mr-2 h-4 w-4" />
+          <StatusIconComponent className="mr-2 h-4 w-4" />
           {team.status}
         </Badge>
         

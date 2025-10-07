@@ -51,7 +51,7 @@ export function RosterCard({ team, upcomingMatches }: RosterCardProps) {
       <CardContent>
         <ul className="space-y-4">
           {sortedPlayers.map((player, index) => {
-            const RoleIcon = roleIcons[player.role] || ListChecks;
+            const RoleIcon = (roleIcons[player.role] || ListChecks) as React.ComponentType<{ className?: string }>;
             // Fallback: use nickname and index if id is missing/duplicate
             const key = player.id || player.nickname || index;
             return (

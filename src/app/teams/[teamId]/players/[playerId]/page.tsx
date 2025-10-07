@@ -377,9 +377,12 @@ const MatchHistoryCard = ({ histItem }: { histItem: PlayerMatchHistoryItem }) =>
   );
 };
 
-const StatDisplayCard = ({ icon: Icon, label, value }: { icon: React.ElementType, label: string, value: string }) => (
-  <Card className="bg-muted/20 p-4 shadow-sm">
-    <div className="flex items-center mb-1"><Icon className="h-5 w-5 mr-2 text-primary" /><CardDescription className="text-sm font-medium">{label}</CardDescription></div>
-    <p className="text-2xl font-bold text-foreground">{value}</p>
-  </Card>
-);
+const StatDisplayCard = ({ icon: Icon, label, value }: { icon: React.ElementType, label: string, value: string }) => {
+  const IconComponent = Icon as React.ComponentType<{ className?: string }>;
+  return (
+    <Card className="bg-muted/20 p-4 shadow-sm">
+      <div className="flex items-center mb-1"><IconComponent className="h-5 w-5 mr-2 text-primary" /><CardDescription className="text-sm font-medium">{label}</CardDescription></div>
+      <p className="text-2xl font-bold text-foreground">{value}</p>
+    </Card>
+  );
+};

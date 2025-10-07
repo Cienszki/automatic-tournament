@@ -596,9 +596,10 @@ interface InfoItemProps {
   value: string | number;
 }
 function InfoItem({ icon: Icon, label, value }: InfoItemProps) {
+  const IconComponent = Icon as React.ComponentType<{ className?: string }>;
   return (
     <div className="flex items-center text-md p-3 bg-muted/20 rounded-md">
-      <Icon className="h-5 w-5 mr-3 text-primary" />
+      <IconComponent className="h-5 w-5 mr-3 text-primary" />
       <span className="font-medium text-muted-foreground">{label}:</span>
       <span className="ml-auto font-semibold text-foreground">{value}</span>
     </div>

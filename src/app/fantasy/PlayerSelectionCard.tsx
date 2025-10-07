@@ -8,14 +8,14 @@ import { roleIcons } from './roleIcons';
 
 const PlayerSelectionCard: React.FC<PlayerSelectionCardProps> = ({ role, playersByRole, selectedLineup, onPlayerSelect }) => {
   const { t } = useTranslation();
-  const RoleIcon = roleIcons[role];
+  const RoleIcon = roleIcons[role] as React.ComponentType<{ className?: string }>;
   const selectedPlayer = selectedLineup[role];
 
   return (
     <Card className="flex flex-col">
       <CardHeader>
         <CardTitle className="flex items-center">
-          <RoleIcon className="mr-2" />
+          {RoleIcon && <RoleIcon className="mr-2" />}
           {t(`players.roles.${role}` as any)}
         </CardTitle>
       </CardHeader>
