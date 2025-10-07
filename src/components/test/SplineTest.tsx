@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import Spline from '@splinetool/react-spline';
+// import Spline from '@splinetool/react-spline';
 
 export default function SplineTest() {
   const [mounted, setMounted] = useState(false);
