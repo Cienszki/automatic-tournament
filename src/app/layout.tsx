@@ -1,12 +1,11 @@
-
 import type { Metadata } from 'next';
 import { Space_Mono } from 'next/font/google';
+import { GeistSans } from 'geist/font/sans';
 import './globals.css';
-import { Navbar } from '@/components/layout/Navbar';
-import { Footer } from '@/components/layout/Footer';
 import { Toaster } from "@/components/ui/toaster";
 import { AuthProvider } from '@/context/AuthContext';
 import { TimeProvider } from '@/context/TimeContext';
+import { TournamentProvider } from '@/context/TournamentContext';
 import { neonBines } from '@/app/fonts';
 
 const spaceMono = Space_Mono({
@@ -16,8 +15,8 @@ const spaceMono = Space_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'Letnia Batalia',
-  description: 'Turniej z limitem MMR',
+  title: 'dota2inhouse.pl - Polskie Turnieje Dota 2',
+  description: 'Platforma dla polskiej społeczności Dota 2 - turnieje, ligi i wydarzenia esportowe',
   icons: {
     icon: '/favicon.png',
   },
@@ -29,19 +28,18 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body className={`${spaceMono.variable} ${neonBines.variable} antialiased font-sans`} suppressHydrationWarning={true}>
+    <html lang="pl" suppressHydrationWarning>
+      <body 
+        className={`${spaceMono.variable} ${neonBines.variable} ${GeistSans.variable} antialiased font-sans`} 
+        suppressHydrationWarning={true}
+      >
         <AuthProvider>
-          <TimeProvider>
-            <div className="flex flex-col min-h-screen bg-background text-foreground">
-              <Navbar />
-              <main className="flex-grow container mx-auto px-4 py-8">
-                {children}
-              </main>
-              <Footer />
-            </div>
-            <Toaster />
-          </TimeProvider>
+          <TournamentProvider>
+            <TimeProvider>
+              {children}
+              <Toaster />
+            </TimeProvider>
+          </TournamentProvider>
         </AuthProvider>
       </body>
     </html>

@@ -1,0 +1,473 @@
+// src/types/tournament.ts
+// Core tournament types for the multi-tournament platform
+
+/**
+ * Tournament type determines the format and features available
+ */
+export type TournamentType = 'mmr-limited' | 'league';
+
+/**
+ * Tournament status for visibility and functionality
+ */
+export type TournamentStatus = 'draft' | 'registration' | 'active' | 'completed' | 'archived';
+
+/**
+ * Tournament visibility in navigation
+ */
+export type TournamentVisibility = 'active' | 'inactive' | 'archived';
+
+/**
+ * Match format options
+ */
+export type MatchFormat = 'bo1' | 'bo2' | 'bo3' | 'bo5' | 'bo7';
+
+/**
+ * Scheduling method for matches
+ */
+export type SchedulingMethod = 'captain-scheduled' | 'admin-scheduled' | 'fixed-schedule';
+
+/**
+ * Fantasy system type
+ */
+export type FantasyType = 'round-based' | 'season-long';
+
+/**
+ * Coach registration mode
+ */
+export type CoachMode = 'disabled' | 'pre-season' | 'per-game' | 'flexible';
+
+/**
+ * Division configuration for league tournaments
+ */
+export interface DivisionConfig {
+  id: string;
+  name: string;
+  tier: number; // 1 = top division (Elite), 2 = second (Challenger), etc.
+  teamsCount?: number;
+  matchday?: string; // e.g., "Thursday 20:00"
+  color?: string; // For UI display
+}
+
+/**
+ * Theme configuration for tournament branding
+ */
+export interface TournamentTheme {
+  primaryColor: string;
+  secondaryColor: string;
+  accentColor: string;
+  backgroundColor: string;
+  backgroundGradient?: string;
+  cardColor: string;
+  textColor: string;
+  mutedTextColor: string;
+  borderColor: string;
+  headerFont: string;
+  bodyFont: string;
+  logoUrl: string;
+  faviconUrl?: string;
+  backgroundImageUrl?: string;
+}
+
+/**
+ * Fantasy scoring configuration
+ */
+export interface FantasyScoringConfig {
+  killPoints: number;
+  deathPoints: number;
+  assistPoints: number;
+  lastHitPoints: number;
+  gpmPoints: number;
+  xpmPoints: number;
+  towerKillPoints: number;
+  roshanKillPoints: number;
+  obsPlacedPoints: number;
+  senPlacedPoints: number;
+  teamWinPoints: number;
+  mvpBonusPoints?: number;
+  // Role-specific multipliers (optional, for MMR tournaments)
+  roleMultipliers?: {
+    carry?: { kills: number; deaths: number; gold: number };
+    mid?: { kills: number; deaths: number; assists: number };
+    offlane?: { kills: number; deaths: number; assists: number };
+    softSupport?: { kills: number; deaths: number; assists: number };
+    hardSupport?: { kills: number; deaths: number; assists: number };
+  };
+}
+
+/**
+ * Fantasy configuration for a tournament
+ */
+export interface FantasyConfig {
+  enabled: boolean;
+  type: FantasyType;
+  rosterSize: number;
+  budget: number; // For season-long: currency units, for round-based: MMR cap
+  maxTransfersPerRound?: number;
+  lockBeforeMatchday: boolean;
+  scoring: FantasyScoringConfig;
+  priceChangePercentage?: number; // How much prices change based on transfers
+}
+
+/**
+ * Pick'em configuration
+ */
+export interface PickemConfig {
+  enabled: boolean;
+  matchPredictions: boolean;
+  standingsPredictions: boolean;
+  playoffBracket: boolean;
+  mvpPredictions: boolean;
+  lockTime: 'before-season' | 'before-round' | 'before-match';
+}
+
+/**
+ * Standin configuration
+ */
+export interface StandinConfig {
+  enabled: boolean;
+  requireRegistration: boolean; // MMR tournaments require pre-registration
+  requireOpponentApproval: boolean; // League tournaments need captain approval
+  adminCanOverride: boolean;
+  maxPerMatch: number;
+  maxPerRound?: number; // Same standin can only play once per round
+  mmrRestrictions: boolean;
+}
+
+/**
+ * Playoff configuration
+ */
+export interface PlayoffConfig {
+  enabled: boolean;
+  format: 'single-elimination' | 'double-elimination';
+  teamsCount: number;
+  wildcardSpots: number;
+  thirdPlaceMatch: boolean;
+  thirdPlaceFormat: MatchFormat;
+  semifinalFormat: MatchFormat;
+  finalFormat: MatchFormat;
+  grandFinalFormat: MatchFormat;
+}
+
+/**
+ * Main tournament configuration
+ */
+export interface TournamentConfig {
+  // Basic info
+  id: string;
+  slug: string; // URL-friendly identifier
+  name: string;
+  shortName?: string;
+  description?: string;
+  organizerId: string;
+  
+  // Type and status
+  type: TournamentType;
+  status: TournamentStatus;
+  visibility: TournamentVisibility;
+  
+  // Dates
+  registrationStartDate?: string;
+  registrationEndDate?: string;
+  startDate: string;
+  endDate?: string;
+  
+  // Dota 2 integration
+  leagueId?: number; // Valve League ID
+  
+  // Team configuration
+  teamSize: number;
+  mmrCap?: number; // Only for mmr-limited tournaments
+  mmrVerificationRequired: boolean;
+  coachMode: CoachMode;
+  
+  // Match configuration
+  defaultMatchFormat: MatchFormat;
+  schedulingMethod: SchedulingMethod;
+  
+  // Division configuration (for leagues)
+  divisions?: DivisionConfig[];
+  roundsPerSeason?: number;
+  promotionRelegationEnabled?: boolean;
+  
+  // Group configuration (for MMR tournaments)
+  groupsCount?: number;
+  teamsPerGroup?: number;
+  
+  // Feature configurations
+  fantasy: FantasyConfig;
+  pickem: PickemConfig;
+  standins: StandinConfig;
+  playoffs: PlayoffConfig;
+  
+  // Branding
+  theme: TournamentTheme;
+  
+  // Metadata
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Tournament summary for listing
+ */
+export interface TournamentSummary {
+  id: string;
+  slug: string;
+  name: string;
+  shortName?: string;
+  type: TournamentType;
+  status: TournamentStatus;
+  visibility: TournamentVisibility;
+  logoUrl: string;
+  primaryColor: string;
+  startDate: string;
+  endDate?: string;
+  teamsCount: number;
+  organizerId: string;
+}
+
+/**
+ * Season configuration for league tournaments
+ */
+export interface SeasonConfig {
+  id: string;
+  tournamentId: string;
+  seasonNumber: number;
+  name: string; // e.g., "Season 1", "Winter 2026"
+  startDate: string;
+  endDate: string;
+  leagueId?: number;
+  divisions: DivisionConfig[];
+  currentRound: number;
+  totalRounds: number;
+  status: 'upcoming' | 'active' | 'playoffs' | 'completed';
+}
+
+/**
+ * Division standings entry
+ */
+export interface DivisionStanding {
+  teamId: string;
+  teamName: string;
+  teamLogoUrl: string;
+  divisionId: string;
+  position: number;
+  matchesPlayed: number;
+  wins: number;
+  draws: number;
+  losses: number;
+  points: number;
+  goalsFor?: number; // Total kills in Dota context
+  goalsAgainst?: number; // Total deaths
+  goalDifference?: number;
+  headToHead: Record<string, 'win' | 'loss' | 'draw' | null>;
+  neustadtlScore: number; // Sonnenborn-Berger tiebreaker
+  form: ('W' | 'D' | 'L')[]; // Last 5 matches
+}
+
+/**
+ * Promotion/Relegation match
+ */
+export interface PromotionMatch {
+  id: string;
+  seasonId: string;
+  round: number;
+  upperDivisionId: string;
+  lowerDivisionId: string;
+  upperDivisionTeamId: string;
+  lowerDivisionTeamId: string;
+  matchId?: string; // Reference to the actual match
+  status: 'pending' | 'scheduled' | 'completed';
+  winnerId?: string;
+  promoted?: boolean; // True if lower team won
+}
+
+/**
+ * Commentator profile
+ */
+export interface Commentator {
+  userId: string;
+  displayName: string;
+  approved: boolean;
+  approvedAt?: string;
+  approvedBy?: string;
+  matchesCast: number;
+  bio?: string;
+  twitchUrl?: string;
+  discordUsername: string;
+}
+
+/**
+ * Commentator match request
+ */
+export interface CommentatorRequest {
+  id: string;
+  commentatorId: string;
+  matchId: string;
+  status: 'pending' | 'approved' | 'rejected';
+  requestedAt: string;
+  respondedAt?: string;
+  respondedBy?: string;
+}
+
+/**
+ * Coach registration
+ */
+export interface Coach {
+  id: string;
+  teamId: string;
+  userId: string;
+  displayName: string;
+  discordUsername: string;
+  registeredAt: string;
+  validFrom?: string; // For per-game registration
+  validUntil?: string;
+  approvedBy?: string;
+}
+
+/**
+ * User achievement/badge
+ */
+export interface Achievement {
+  id: string;
+  userId: string;
+  type: 'tournament-winner' | 'season-champion' | 'mvp' | 'custom';
+  tournamentId: string;
+  seasonId?: string;
+  name: string;
+  description: string;
+  iconUrl?: string;
+  awardedAt: string;
+}
+
+/**
+ * Organizer profile
+ */
+export interface Organizer {
+  id: string;
+  name: string;
+  logoUrl?: string;
+  description?: string;
+  discordUrl?: string;
+  twitchUrl?: string;
+  websiteUrl?: string;
+  createdAt: string;
+}
+
+// Default configurations for quick tournament setup
+export const DEFAULT_MMR_TOURNAMENT_CONFIG: Partial<TournamentConfig> = {
+  type: 'mmr-limited',
+  teamSize: 5,
+  mmrCap: 24000,
+  mmrVerificationRequired: true,
+  coachMode: 'disabled',
+  defaultMatchFormat: 'bo2',
+  schedulingMethod: 'captain-scheduled',
+  fantasy: {
+    enabled: true,
+    type: 'round-based',
+    rosterSize: 5,
+    budget: 24000,
+    lockBeforeMatchday: true,
+    scoring: {
+      killPoints: 2.5,
+      deathPoints: -2.5,
+      assistPoints: 1,
+      lastHitPoints: 0.003,
+      gpmPoints: 0.002,
+      xpmPoints: 0.002,
+      towerKillPoints: 1,
+      roshanKillPoints: 3,
+      obsPlacedPoints: 0.5,
+      senPlacedPoints: 0.25,
+      teamWinPoints: 10,
+    },
+  },
+  pickem: {
+    enabled: true,
+    matchPredictions: true,
+    standingsPredictions: true,
+    playoffBracket: true,
+    mvpPredictions: false,
+    lockTime: 'before-round',
+  },
+  standins: {
+    enabled: true,
+    requireRegistration: true,
+    requireOpponentApproval: false,
+    adminCanOverride: true,
+    maxPerMatch: 2,
+    mmrRestrictions: true,
+  },
+  playoffs: {
+    enabled: true,
+    format: 'double-elimination',
+    teamsCount: 8,
+    wildcardSpots: 2,
+    thirdPlaceMatch: false,
+    thirdPlaceFormat: 'bo3',
+    semifinalFormat: 'bo3',
+    finalFormat: 'bo3',
+    grandFinalFormat: 'bo5',
+  },
+};
+
+export const DEFAULT_LEAGUE_CONFIG: Partial<TournamentConfig> = {
+  type: 'league',
+  teamSize: 5,
+  mmrVerificationRequired: false,
+  coachMode: 'per-game',
+  defaultMatchFormat: 'bo2',
+  schedulingMethod: 'admin-scheduled',
+  promotionRelegationEnabled: true,
+  fantasy: {
+    enabled: true,
+    type: 'season-long',
+    rosterSize: 5,
+    budget: 100,
+    maxTransfersPerRound: 2,
+    lockBeforeMatchday: true,
+    priceChangePercentage: 4,
+    scoring: {
+      killPoints: 0.3,
+      deathPoints: 0,
+      assistPoints: 0.15,
+      lastHitPoints: 0.003,
+      gpmPoints: 0.002,
+      xpmPoints: 0.002,
+      towerKillPoints: 0.75,
+      roshanKillPoints: 0.5,
+      obsPlacedPoints: 0.05,
+      senPlacedPoints: 0.05,
+      teamWinPoints: 4,
+    },
+  },
+  pickem: {
+    enabled: true,
+    matchPredictions: false,
+    standingsPredictions: true,
+    playoffBracket: true,
+    mvpPredictions: false,
+    lockTime: 'before-season',
+  },
+  standins: {
+    enabled: true,
+    requireRegistration: false,
+    requireOpponentApproval: true,
+    adminCanOverride: true,
+    maxPerMatch: 1,
+    maxPerRound: 1,
+    mmrRestrictions: false,
+  },
+  playoffs: {
+    enabled: true,
+    format: 'single-elimination',
+    teamsCount: 4,
+    wildcardSpots: 0,
+    thirdPlaceMatch: false,
+    thirdPlaceFormat: 'bo3',
+    semifinalFormat: 'bo3',
+    finalFormat: 'bo3',
+    grandFinalFormat: 'bo5',
+  },
+};

@@ -1,0 +1,299 @@
+"use client";
+
+import Link from 'next/link';
+import Image from 'next/image';
+import { usePathname } from 'next/navigation';
+import { 
+  LayoutGrid, 
+  Shield, 
+  CalendarDays, 
+  GitFork, 
+  ScrollText, 
+  HelpCircle, 
+  BarChart2, 
+  Crown, 
+  Users, 
+  ClipboardCheck, 
+  Settings,
+  ChevronDown,
+  Layers,
+  Home,
+  Menu
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { useTournament, useTournamentType } from '@/context/TournamentContext';
+import { useIsMobile } from '@/hooks/use-mobile';
+import React from 'react';
+
+interface NavItem {
+  href: string;
+  label: string;
+  icon: React.ElementType;
+  showFor?: 'all' | 'mmr-limited' | 'league';
+}
+
+export function TournamentNavbar() {
+  const pathname = usePathname();
+  const { tournament, getTournamentPath, activeTournaments, archivedTournaments, theme } = useTournament();
+  const { isLeague } = useTournamentType();
+  const isMobile = useIsMobile();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
+  const [hasMounted, setHasMounted] = React.useState(false);
+
+  React.useEffect(() => {
+    setHasMounted(true);
+  }, []);
+
+  if (!tournament) {
+    return null;
+  }
+
+  // Navigation items - some are tournament-type specific
+  const navItems: NavItem[] = [
+    { href: '', label: 'Start', icon: Home, showFor: 'all' },
+    { href: '/my-team', label: 'Moja drużyna', icon: Users, showFor: 'all' },
+    // MMR tournament specific
+    { href: '/groups', label: 'Grupy', icon: LayoutGrid, showFor: 'mmr-limited' },
+    // League specific
+    { href: '/divisions', label: 'Dywizje', icon: Layers, showFor: 'league' },
+    // Common
+    { href: '/teams', label: 'Drużyny', icon: Shield, showFor: 'all' },
+    { href: '/schedule', label: 'Terminarz', icon: CalendarDays, showFor: 'all' },
+    { href: '/playoffs', label: 'Playoffs', icon: GitFork, showFor: 'all' },
+    { href: '/fantasy', label: 'Fantasy', icon: Crown, showFor: 'all' },
+    { href: '/pickem', label: 'Pick\'em', icon: ClipboardCheck, showFor: 'all' },
+    { href: '/stats', label: 'Statystyki', icon: BarChart2, showFor: 'all' },
+    { href: '/rules', label: 'Regulamin', icon: ScrollText, showFor: 'all' },
+    { href: '/faq', label: 'FAQ', icon: HelpCircle, showFor: 'all' },
+    { href: '/admin', label: 'Admin', icon: Settings, showFor: 'all' },
+  ];
+
+  // Filter nav items based on tournament type
+  const filteredNavItems = navItems.filter(item => 
+    item.showFor === 'all' || 
+    (item.showFor === 'league' && isLeague) ||
+    (item.showFor === 'mmr-limited' && !isLeague)
+  );
+
+  const isActive = (href: string) => {
+    const fullPath = getTournamentPath(href);
+    if (href === '') {
+      return pathname === fullPath;
+    }
+    return pathname.startsWith(fullPath);
+  };
+
+  // Other tournaments for the dropdown
+  const otherTournaments = [...activeTournaments, ...archivedTournaments].filter(
+    t => t.slug !== tournament.slug
+  );
+
+  // Logo component with tournament switcher
+  const LogoWithSwitcher = () => (
+    <div className="flex items-center gap-2">
+      <Link href={getTournamentPath('')} className="flex items-center gap-2">
+        {tournament.theme?.logoUrl && (
+          <Image
+            src={tournament.theme.logoUrl}
+            alt={tournament.name}
+            width={40}
+            height={40}
+            className="object-contain"
+          />
+        )}
+        <span 
+          className="text-lg font-bold hidden sm:inline"
+          style={{ color: theme.primaryColor }}
+        >
+          {tournament.shortName || tournament.name}
+        </span>
+      </Link>
+      
+      {otherTournaments.length > 0 && (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="sm" className="h-8 px-2">
+              <ChevronDown className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-56">
+            <DropdownMenuItem asChild>
+              <Link href="/" className="flex items-center gap-2">
+                <Home className="h-4 w-4" />
+                Strona główna
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            {otherTournaments.map(t => (
+              <DropdownMenuItem key={t.id} asChild>
+                <Link href={`/${t.slug}`} className="flex items-center gap-2">
+                  {t.logoUrl && (
+                    <Image
+                      src={t.logoUrl}
+                      alt={t.name}
+                      width={20}
+                      height={20}
+                      className="object-contain"
+                    />
+                  )}
+                  {t.shortName || t.name}
+                  {t.status === 'completed' && (
+                    <span className="text-xs text-muted-foreground ml-auto">(archiwum)</span>
+                  )}
+                </Link>
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
+    </div>
+  );
+
+  // Initial render before hydration
+  if (!hasMounted) {
+    return (
+      <header 
+        className="border-b shadow-sm sticky top-0 z-50"
+        style={{ 
+          backgroundColor: theme.cardColor,
+          borderColor: theme.borderColor,
+        }}
+      >
+        <div className="container mx-auto px-4 flex items-center justify-between h-14">
+          <LogoWithSwitcher />
+          <div className="h-10 w-10" />
+        </div>
+      </header>
+    );
+  }
+
+  // Mobile navigation
+  if (isMobile) {
+    return (
+      <header 
+        className="border-b shadow-sm sticky top-0 z-50"
+        style={{ 
+          backgroundColor: theme.cardColor,
+          borderColor: theme.borderColor,
+        }}
+      >
+        <div className="container mx-auto px-4 flex items-center justify-between h-14">
+          <LogoWithSwitcher />
+          <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
+            <SheetTrigger asChild>
+              <Button variant="ghost" size="icon">
+                <Menu className="h-6 w-6" />
+                <span className="sr-only">Otwórz menu</span>
+              </Button>
+            </SheetTrigger>
+            <SheetContent 
+              side="left" 
+              className="w-[280px] sm:w-[320px] p-0"
+              style={{ backgroundColor: theme.cardColor }}
+            >
+              <SheetHeader className="p-4 border-b" style={{ borderColor: theme.borderColor }}>
+                <SheetTitle className="flex items-center">
+                  <LogoWithSwitcher />
+                </SheetTitle>
+              </SheetHeader>
+              <nav className="flex flex-col space-y-1 p-4">
+                {filteredNavItems.map((item) => {
+                  const active = isActive(item.href);
+                  return (
+                    <Button
+                      key={item.href}
+                      variant="ghost"
+                      asChild
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      className={cn(
+                        "w-full justify-start text-base py-3 px-3",
+                        active && "bg-primary/10"
+                      )}
+                      style={{ color: active ? theme.primaryColor : undefined }}
+                    >
+                      <Link href={getTournamentPath(item.href)} className="flex items-center space-x-3">
+                        <item.icon className="h-5 w-5" />
+                        <span>{item.label}</span>
+                      </Link>
+                    </Button>
+                  );
+                })}
+              </nav>
+            </SheetContent>
+          </Sheet>
+        </div>
+      </header>
+    );
+  }
+
+  // Desktop navigation
+  return (
+    <header 
+      className="border-b shadow-sm sticky top-0 z-50"
+      style={{ 
+        backgroundColor: theme.cardColor,
+        borderColor: theme.borderColor,
+      }}
+    >
+      <div className="container mx-auto px-4 flex items-center h-14">
+        <LogoWithSwitcher />
+        <div className="flex-1 flex justify-center">
+          <nav className="flex items-center space-x-1">
+            {filteredNavItems.slice(0, -1).map((item) => { // Exclude admin for now
+              const active = isActive(item.href);
+              return (
+                <Button
+                  key={item.href}
+                  variant="ghost"
+                  asChild
+                  className={cn(
+                    "relative text-sm font-medium shrink-0 px-3 py-2 transition-all duration-200 group",
+                    "hover:bg-accent/50",
+                    !active && "text-muted-foreground hover:text-foreground"
+                  )}
+                  style={{ color: active ? theme.primaryColor : undefined }}
+                >
+                  <Link href={getTournamentPath(item.href)} className="flex items-center gap-2">
+                    <item.icon className="h-4 w-4" />
+                    <span className="hidden lg:inline">{item.label}</span>
+                    <span 
+                      className={cn(
+                        "absolute bottom-0 left-0 h-0.5 w-full transform transition-transform duration-300 ease-out",
+                        active ? "scale-x-100" : "scale-x-0 group-hover:scale-x-100"
+                      )}
+                      style={{ backgroundColor: theme.primaryColor }}
+                    />
+                  </Link>
+                </Button>
+              );
+            })}
+          </nav>
+        </div>
+        {/* Admin button on the right */}
+        <Button
+          variant="ghost"
+          asChild
+          className={cn(
+            "text-sm font-medium px-3 py-2",
+            !isActive('/admin') && "text-muted-foreground hover:text-foreground"
+          )}
+          style={{ color: isActive('/admin') ? theme.primaryColor : undefined }}
+        >
+          <Link href={getTournamentPath('/admin')} className="flex items-center gap-2">
+            <Settings className="h-4 w-4" />
+            <span className="hidden lg:inline">Admin</span>
+          </Link>
+        </Button>
+      </div>
+    </header>
+  );
+}
