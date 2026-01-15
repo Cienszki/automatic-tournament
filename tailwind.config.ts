@@ -9,17 +9,38 @@ export default {
   ],
   theme: {
 	screens: {
-	  'md': '768px',
-	  'lg': '1024px',
-	  'xl': '1280px',
-	  'fhd': '1600px', // Custom: covers 1600px and up (includes 1920px)
-	  '2k': '2000px',  // Custom: covers 2000px and up (excludes 1920px)
+	  'xs': '475px',     // Large phones
+	  'sm': '640px',     // Small tablets
+	  'md': '768px',     // Tablets
+	  'lg': '1024px',    // Small laptops
+	  'xl': '1280px',    // Desktops
+	  '2xl': '1536px',   // Large desktops
+	  'fhd': '1920px',   // Full HD
+	  '2k': '2560px',    // 2K monitors
 	},
 	extend: {
 	  fontFamily: {
-		sans: ["system-ui", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", "sans-serif"],
-		mono: ["var(--font-space-mono)"],
+		sans: ["var(--font-geist-sans)", "system-ui", "-apple-system", "sans-serif"],
+		mono: ["var(--font-space-mono)", "var(--font-geist-mono)", "ui-monospace", "monospace"],
 		neon: ["var(--font-neon-bines)"],
+		geist: ["var(--font-geist-sans)"],
+		logik: ["Logik", "var(--font-geist-sans)", "sans-serif"],
+		'space-mono': ["Space Mono", "var(--font-geist-mono)", "monospace"],
+		neonderthaw: ["Neonderthaw", "var(--font-geist-sans)", "sans-serif"],
+		'tilt-neon': ["Tilt Neon", "var(--font-geist-sans)", "sans-serif"],
+	  },
+	  fontSize: {
+		// Fluid typography scale
+		'fluid-xs': 'clamp(0.75rem, 0.7rem + 0.25vw, 0.875rem)',
+		'fluid-sm': 'clamp(0.875rem, 0.825rem + 0.25vw, 1rem)',
+		'fluid-base': 'clamp(1rem, 0.95rem + 0.25vw, 1.125rem)',
+		'fluid-lg': 'clamp(1.125rem, 1.05rem + 0.375vw, 1.25rem)',
+		'fluid-xl': 'clamp(1.25rem, 1.15rem + 0.5vw, 1.5rem)',
+		'fluid-2xl': 'clamp(1.5rem, 1.35rem + 0.75vw, 1.875rem)',
+		'fluid-3xl': 'clamp(1.875rem, 1.65rem + 1.125vw, 2.25rem)',
+		'fluid-4xl': 'clamp(2.25rem, 1.9rem + 1.75vw, 3rem)',
+		'fluid-5xl': 'clamp(3rem, 2.4rem + 3vw, 4rem)',
+		'fluid-6xl': 'clamp(3.75rem, 2.85rem + 4.5vw, 5rem)',
 	  },
 		colors: {
 			background: 'hsl(var(--background))',
@@ -55,6 +76,28 @@ export default {
 			border: 'hsl(var(--border))',
 			input: 'hsl(var(--input))',
 			ring: 'hsl(var(--ring))',
+			// PDL-specific colors
+			pdl: {
+				crimson: 'hsl(345, 75%, 31%)',
+				'crimson-light': 'hsl(345, 70%, 39%)',
+				'crimson-dark': 'hsl(345, 75%, 24%)',
+				gold: 'hsl(46, 65%, 52%)',
+				'gold-light': 'hsl(46, 72%, 62%)',
+				'gold-dark': 'hsl(46, 60%, 45%)',
+			},
+			// Letnia-specific colors
+			letnia: {
+				pink: 'hsl(330, 100%, 54%)',
+				cyan: 'hsl(180, 100%, 50%)',
+				green: 'hsl(109, 100%, 54%)',
+				purple: 'hsl(270, 100%, 65%)',
+			},
+			// Division tier colors
+			division: {
+				elite: 'hsl(46, 65%, 52%)',      // Gold
+				challenger: 'hsl(0, 0%, 75%)',   // Silver
+				adept: 'hsl(30, 60%, 50%)',      // Bronze
+			},
 			chart: {
 				'1': 'hsl(var(--chart-1))',
 				'2': 'hsl(var(--chart-2))',

@@ -2,38 +2,13 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { TournamentConfig, TournamentSummary, TournamentTheme } from '@/types/tournament';
+import { PDL_THEME, LETNIA_THEME, getThemeCssVariables, getThemeBySlug } from '@/lib/themes';
+
+// Re-export themes for convenience
+export { PDL_THEME, LETNIA_THEME };
 
 // Default theme (Letnia Batalia style)
-const DEFAULT_THEME: TournamentTheme = {
-  primaryColor: 'hsl(330, 100%, 50%)', // Pink
-  secondaryColor: 'hsl(180, 100%, 50%)', // Cyan
-  accentColor: 'hsl(280, 100%, 60%)', // Purple
-  backgroundColor: 'hsl(240, 20%, 8%)', // Dark
-  backgroundGradient: 'linear-gradient(135deg, hsl(240, 20%, 8%) 0%, hsl(280, 30%, 12%) 100%)',
-  cardColor: 'hsl(240, 15%, 12%)',
-  textColor: 'hsl(0, 0%, 95%)',
-  mutedTextColor: 'hsl(240, 10%, 60%)',
-  borderColor: 'hsl(240, 15%, 20%)',
-  headerFont: 'var(--font-neon-bines)',
-  bodyFont: 'var(--font-space-mono)',
-  logoUrl: '/logo_transparent.webp',
-};
-
-// PDL Theme (Professional Esports)
-export const PDL_THEME: TournamentTheme = {
-  primaryColor: 'hsl(215, 50%, 25%)', // Deep navy blue
-  secondaryColor: 'hsl(45, 80%, 45%)', // Gold
-  accentColor: 'hsl(215, 60%, 40%)', // Lighter blue
-  backgroundColor: 'hsl(220, 25%, 8%)', // Dark blue-ish
-  backgroundGradient: 'linear-gradient(135deg, hsl(220, 25%, 8%) 0%, hsl(220, 30%, 12%) 100%)',
-  cardColor: 'hsl(220, 20%, 12%)',
-  textColor: 'hsl(0, 0%, 95%)',
-  mutedTextColor: 'hsl(220, 10%, 55%)',
-  borderColor: 'hsl(220, 20%, 20%)',
-  headerFont: 'var(--font-geist-sans)', // Will be Logik when available
-  bodyFont: 'var(--font-geist-sans)',
-  logoUrl: '/pdl-logo.png',
-};
+const DEFAULT_THEME: TournamentTheme = LETNIA_THEME;
 
 interface TournamentContextType {
   // Current tournament
@@ -76,12 +51,14 @@ export function TournamentProvider({ children, initialTournamentSlug }: Tourname
   const theme = tournament?.theme || DEFAULT_THEME;
 
   // Filter tournaments by visibility
+  // 'active' visibility means it shows on the main landing page (regardless of status)
   const activeTournaments = tournaments.filter(
-    t => t.visibility === 'active' && (t.status === 'active' || t.status === 'registration')
+    t => t.visibility === 'active'
   );
   
+  // 'archived' visibility means it goes to the dropdown
   const archivedTournaments = tournaments.filter(
-    t => t.visibility === 'archived' || t.status === 'completed'
+    t => t.visibility === 'archived'
   );
 
   // Check if this is the legacy Letnia tournament (uses old data structure)
@@ -110,9 +87,9 @@ export function TournamentProvider({ children, initialTournamentSlug }: Tourname
           shortName: 'Letnia',
           type: 'mmr-limited',
           status: 'completed',
-          visibility: 'archived',
-          logoUrl: '/logo_transparent.webp',
-          primaryColor: 'hsl(330, 100%, 50%)',
+          visibility: 'active',
+          logoUrl: '/logos/letnia/letnia-logo-transparent.png',
+          primaryColor: 'hsl(330, 100%, 54%)',
           startDate: '2025-06-01',
           endDate: '2025-09-30',
           teamsCount: 16,
@@ -126,8 +103,8 @@ export function TournamentProvider({ children, initialTournamentSlug }: Tourname
           type: 'league',
           status: 'registration',
           visibility: 'active',
-          logoUrl: '/pdl-logo.png',
-          primaryColor: 'hsl(215, 50%, 25%)',
+          logoUrl: '/logos/pdl/pdl-s1-logo-transparent.png',
+          primaryColor: 'hsl(345, 75%, 31%)',
           startDate: '2026-02-21',
           teamsCount: 0,
           organizerId: 'pd2ih',

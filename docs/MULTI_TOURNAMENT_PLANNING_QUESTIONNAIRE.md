@@ -723,7 +723,7 @@ Given your requirements (future organizers can pick any name, no development nee
 **However**, if you want premium tournaments to have their own subdomain as a paid feature later, we can support both. 
 
 **Question FQ1.1:** Do you agree with paths as default, with optional subdomain support for premium organizers later?
-Answer: 
+Answer: yes, what's more, we can let premium users use their own domain.
 
 ---
 
@@ -732,23 +732,23 @@ Answer:
 I understand PDL has 3 divisions (Elite, Challenger, Adept) with promotion/relegation. I need to confirm:
 
 **Question FQ2.1:** How many teams per division are expected in Season 1?
-Answer: 
+Answer: i am not sure yet. this should be determined by the tournament organizer before each season. the actual number and names of divisions should also be determined by the admin
 
 **Question FQ2.2:** How does initial division placement work for new teams joining mid-league or in future seasons?
 - [ ] Always start at lowest division
 - [ ] Admin manually assigns based on estimated skill
 - [ ] Qualification tournament
 - [ ] Other: _______________
-Answer: 
+Answer: Admin manually assigns, but lowest by default.
 
-**Question FQ2.3:** Can teams be promoted/relegated mid-season (after each round) or only at season end?
-Answer: 
+**Question FQ2.3:** Can teams be promoted/relegated mid-season (after each round) or only at season end? 
+Answer: after each round (also after final round, which determines the start of next season)
 
 **Question FQ2.4:** If a team abandons the league mid-season, what happens?
 - [ ] Their remaining matches are forfeited (0-2 for opponents)
 - [ ] Their results are removed entirely
 - [ ] Admin decides case-by-case
-Answer: 
+Answer: all of their matches should be forfeited, including previous ones this round.
 
 ---
 
@@ -757,20 +757,20 @@ Answer:
 You mentioned PDL needs a commentator registration and match request system. Let me understand:
 
 **Question FQ3.1:** Can anyone register as a commentator, or do they need admin approval?
-Answer: 
+Answer: need admin approval
 
 **Question FQ3.2:** When a commentator requests to cast a match, does that need:
 - [ ] No approval (first come, first served)
 - [ ] Admin approval
 - [ ] Team captain approval
 - [ ] Both admin and teams
-Answer: 
+Answer: admin approval
 
 **Question FQ3.3:** Should commentators have access to a private observer slot (6th slot in lobby)?
-Answer: 
+Answer: yes, but that is done manually, we dont have a bot that can set up a lobby and invite all the players and commentators yet. maybe we should?
 
 **Question FQ3.4:** Any compensation tracking for commentators (hours worked, matches cast)?
-Answer: 
+Answer: i dont think it;s needed
 
 ---
 
@@ -780,6 +780,7 @@ You want a simpler fantasy system. Looking at other Dota fantasy leagues:
 
 **Valve's Fantasy (TI/Majors):** Points for kills, deaths, assists, CS, GPM, tower kills, Roshan kills, stuns
 **DPC Fantasy (Dota Pro Circuit):** Similar but with role-based scoring
+Answer: dpc fantasy, maybe tweaked a bit to be more fair
 
 For PDL's simpler approach:
 
@@ -787,7 +788,7 @@ For PDL's simpler approach:
 - [ ] **Weekly picks** - Pick 5 players each matchday, get points based on their performance
 - [ ] **Season-long roster** - Draft a team at season start, can make limited transfers
 - [ ] **Match-by-match** - Pick players for specific matches
-Answer: 
+Answer: season long with transfers. we also should think how we handle the budget, how expensive each player is and how do the prices of each player change (for example if in previous round more users transfered some player in/out their price should rise/drop more)
 
 **Question FQ4.2:** For scoring simplicity, would this work?
 ```
@@ -797,10 +798,10 @@ Answer:
 +0.5 points per 1000 Net Worth (at game end)
 +5 bonus for MVP (highest score on winning team)
 ```
-Answer: 
+Answer: i think this is too basic. we should balance it being readable and understandable by users and it being fair.
 
 **Question FQ4.3:** Should there be budget constraints (like Fantasy Premier League) or free picks?
-Answer: 
+Answer: budget
 
 ---
 
@@ -815,7 +816,7 @@ Since PDL is a league format (not group stage → playoffs like Letnia), pick'em
 - [ ] **Playoff bracket** - Pick bracket for final tournament
 - [ ] **Award predictions** - MVP, most kills, etc.
 - [ ] All of the above
-Answer: 
+Answer: Pick final standings for each division before season starts, including results in the final tournament
 
 ---
 
@@ -830,17 +831,17 @@ You mentioned cup emoji for past winners. Let me understand the achievement syst
 - [ ] Top scorer
 - [ ] Perfect attendance
 - [ ] Other: _______________
-Answer: 
+Answer: tournament winner, league season winner, tournament mvp/season mvp
 
 **Question FQ6.2:** Should the organizer be able to define custom achievements?
-Answer: 
+Answer: absolutely! great idea
 
 **Question FQ6.3:** Where should achievements be visible?
 - [ ] Player profile
 - [ ] Team roster page
 - [ ] Fantasy player selection
 - [ ] All of the above
-Answer: 
+Answer: player profile (both tournament player profile and overall platform player profile)
 
 ---
 
@@ -849,10 +850,10 @@ Answer:
 For PDL coaches:
 
 **Question FQ7.1:** You mentioned coaches can be registered "before season starts", "per game", or flexibly. For PDL Season 1, which option?
-Answer: 
+Answer: before a game, but not less than 24h before the game to let enemies know who are they playing against
 
 **Question FQ7.2:** Can one person be both a registered player AND a coach for another team?
-Answer: 
+Answer: yes, there are no requirements for coaches. just not being banned players.
 
 ---
 
@@ -864,10 +865,10 @@ Answer:
 - Migrate Letnia data after PDL launch if needed
 
 Does this approach work for you?
-Answer: 
+Answer: yes
 
 **Question FQ8.2:** For the new structure, I'll use Firebase with collection prefixes (`/tournaments/{tournamentId}/...`) but design the data layer to be database-agnostic for future migration. Okay?
-Answer: 
+Answer: ok, do what you think is best
 
 ---
 
@@ -879,12 +880,12 @@ You mentioned themes will be different per tournament. For the timeline:
 - [ ] Full custom branding/theme for PDL
 - [ ] Basic functional styling (can be polished later)
 - [ ] Just use a placeholder dark theme
-Answer: 
+Answer: full custom theme
 
 **Question FQ9.2:** For the landing page (dota2inhouse.pl), what priority?
 - [ ] Must look polished at PDL launch
 - [ ] Can be basic/functional initially
-Answer: 
+Answer: polished
 
 ---
 
@@ -895,14 +896,14 @@ You said everything needs to be localized, but for now Polish is fine.
 **Question FQ10.1:** For PDL launch, should the interface be:
 - [ ] Polish only (hardcoded, refactor for i18n later)
 - [ ] Full i18n setup from start, but only Polish translations initially
-Answer: 
+Answer: from start
 
 ---
 
 ### FQ11. Match Import & League IDs
 
 **Question FQ11.1:** For PDL Season 1, do you already have a Dota 2 League ID from Valve?
-Answer: 
+Answer: yes, 19206
 
 **Question FQ11.2:** If not, when do you expect to get it?
 Answer: 

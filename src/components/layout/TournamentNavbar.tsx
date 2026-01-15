@@ -59,7 +59,6 @@ export function TournamentNavbar() {
 
   // Navigation items - some are tournament-type specific
   const navItems: NavItem[] = [
-    { href: '', label: 'Start', icon: Home, showFor: 'all' },
     { href: '/my-team', label: 'Moja drużyna', icon: Users, showFor: 'all' },
     // MMR tournament specific
     { href: '/groups', label: 'Grupy', icon: LayoutGrid, showFor: 'mmr-limited' },
@@ -84,6 +83,11 @@ export function TournamentNavbar() {
     (item.showFor === 'mmr-limited' && !isLeague)
   );
 
+  // For desktop navbar, only show specific items
+  const desktopNavItems = filteredNavItems.filter(item => 
+    ['/teams', '/schedule', '/playoffs', '/stats', '/rules'].includes(item.href)
+  );
+
   const isActive = (href: string) => {
     const fullPath = getTournamentPath(href);
     if (href === '') {
@@ -100,28 +104,22 @@ export function TournamentNavbar() {
   // Logo component with tournament switcher
   const LogoWithSwitcher = () => (
     <div className="flex items-center gap-2">
-      <Link href={getTournamentPath('')} className="flex items-center gap-2">
-        {tournament.theme?.logoUrl && (
-          <Image
-            src={tournament.theme.logoUrl}
-            alt={tournament.name}
-            width={40}
-            height={40}
-            className="object-contain"
-          />
-        )}
-        <span 
-          className="text-lg font-bold hidden sm:inline"
-          style={{ color: theme.primaryColor }}
-        >
-          {tournament.shortName || tournament.name}
-        </span>
+      {/* PD2IH Logo link to landing page */}
+      <Link href="/" className="flex items-center">
+        <Image
+          src="/logos/pd2ih/pd2ih-logo.png"
+          alt="PD2IH"
+          width={80}
+          height={80}
+          className="object-contain"
+        />
       </Link>
-      
+
+      {/* Tournament dropdown */}
       {otherTournaments.length > 0 && (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="sm" className="h-8 px-2">
+            <Button variant="ghost" size="sm" className="h-16 px-2">
               <ChevronDown className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
@@ -155,6 +153,17 @@ export function TournamentNavbar() {
           </DropdownMenuContent>
         </DropdownMenu>
       )}
+
+      {/* PDL Inline Logo */}
+      <Link href={getTournamentPath('')} className="flex items-center">
+        <Image
+          src="/logos/pdl/pdl-text.png"
+          alt="PDL"
+          height={80}
+          width={200}
+          className="object-contain"
+        />
+      </Link>
     </div>
   );
 
@@ -248,7 +257,7 @@ export function TournamentNavbar() {
         <LogoWithSwitcher />
         <div className="flex-1 flex justify-center">
           <nav className="flex items-center space-x-1">
-            {filteredNavItems.slice(0, -1).map((item) => { // Exclude admin for now
+            {desktopNavItems.map((item) => {
               const active = isActive(item.href);
               return (
                 <Button

@@ -76,6 +76,150 @@
     "teamsRegistered": "zarejestrowanych drużyn",
     "selectLanguage": "Wybierz język"
   },
+  "pdlHome": {
+    "common": {
+      "viewAll": "Zobacz wszystko",
+      "vs": "vs"
+    },
+    "hero": {
+      "title": "Dołącz do Najlepszej Polskiej Ligi Dota 2",
+      "subtitle": "Graj przeciwko zawodnikom na swoim poziomie i awansuj, by pokonać najlepszych. Pokaż się światu w cotygodniowych meczach.",
+      "ctaRegister": "Zarejestruj Drużynę",
+      "ctaMyTeam": "Moja Drużyna",
+      "ctaDiscord": "Discord",
+      "registrationOpenUntil": "Rejestracja otwarta do {date}",
+      "registrationOpen": "Rejestracja otwarta",
+      "statsTeams": "Drużyny",
+      "statsRound": "Aktualna Runda",
+      "statsMatchday": "Kolejka",
+      "roundValue": "Runda {round}",
+      "matchdayValue": "Kolejka {matchday}"
+    },
+    "nextMatch": {
+      "title": "Następny Mecz",
+      "watchStream": "Zobacz transmisję",
+      "startsIn": "Start za: {time}"
+    },
+    "sections": {
+      "divisions": "Dywizje",
+      "other": "Inne"
+    },
+    "recentResults": {
+      "title": "Ostatnie wyniki",
+      "empty": "Brak wyników do wyświetlenia"
+    },
+    "upcoming": {
+      "title": "Nadchodzące mecze",
+      "empty": "Brak nadchodzących meczów"
+    },
+    "format": {
+      "title": "Format ligi",
+      "season": "Sezon",
+      "series": "Format",
+      "divisions": "Dywizje",
+      "matchday": "Dzień meczowy",
+      "note": "Awans/spadek zależnie od wyników w dywizji."
+    },
+    "social": {
+      "title": "Społeczność",
+      "discord": "Discord",
+      "twitch": "Twitch",
+      "note": "Ogłoszenia i terminy pojawiają się na Discordzie."
+    },
+    "mock": {
+      "yesterday": "Wczoraj",
+      "daysAgo": "{days} dni temu",
+      "wednesdayAt": "Środa {time}",
+      "thursdayAt": "Czwartek {time}",
+      "matchOfWeekLabel": "Mecz tygodnia",
+      "bo3CaptainsMode": "BO3, Captains Mode"
+    }
+  },
+  "letniaHome": {
+    "common": {
+      "viewAll": "Zobacz wszystko",
+      "vs": "vs"
+    },
+    "hero": {
+      "title": "Turniej Dota 2 dla każdego!",
+      "subtitle": "Faza grupowa → Double Elimination Playoffs. Limit MMR 24,000 wyrównuje szanse. Pokaż swoje umiejętności!",
+      "ctaRegister": "Zarejestruj Drużynę",
+      "ctaMyTeam": "Moja Drużyna",
+      "registrationOpen": "Rejestracja otwarta",
+      "statsGroups": "Grupy",
+      "statsTeamsPerGroup": "Drużyn/grupę",
+      "statsMmrCap": "Limit MMR",
+      "statsPlayoffs": "Playoffs"
+    },
+    "nextMatch": {
+      "title": "Wyróżniony Mecz",
+      "watchStream": "Zobacz transmisję",
+      "noMatches": "Brak zaplanowanych meczów"
+    },
+    "sections": {
+      "groups": "Faza Grupowa",
+      "announcements": "Ogłoszenia",
+      "noAnnouncements": "Brak nowych ogłoszeń",
+      "fantasy": "Fantasy",
+      "fantasyRoundBased": "Wybierz graczy przed każdą kolejką!",
+      "fantasySeasonLong": "Zbuduj swój wymarzony skład!",
+      "playFantasy": "Graj w Fantasy",
+      "pickem": "Pick'em",
+      "pickemDescription": "Typuj wyniki meczów i playoff!",
+      "pickNow": "Typuj teraz",
+      "other": "Inne"
+    },
+    "recentResults": {
+      "title": "Ostatnie wyniki",
+      "empty": "Brak wyników do wyświetlenia"
+    },
+    "upcoming": {
+      "title": "Nadchodzące mecze",
+      "empty": "Brak nadchodzących meczów"
+    },
+    "format": {
+      "title": "Format turnieju",
+      "groups": "Grupy",
+      "teamsPerGroup": "Drużyn/grupę",
+      "playoffsTeams": "Do playoffs",
+      "playoffsFormat": "Format",
+      "doubleElimination": "Double Elimination",
+      "singleElimination": "Single Elimination",
+      "note": "2 najlepsze drużyny z każdej grupy + wildcards"
+    },
+    "social": {
+      "title": "Społeczność",
+      "discord": "Dołącz do Discorda",
+      "twitch": "Oglądaj na Twitchu",
+      "note": "Ogłoszenia i terminy pojawiają się na Discordzie."
+    },
+    "quickLinks": {
+      "groups": "Grupy",
+      "groupsDesc": "Tabele grup i nadchodzące mecze",
+      "playoffs": "Playoffs",
+      "playoffsDesc": "Drabinka double elimination",
+      "teams": "Drużyny",
+      "teamsDesc": "Wszystkie zarejestrowane drużyny",
+      "rules": "Regulamin",
+      "rulesDesc": "Zapoznaj się z zasadami",
+      "fantasy": "Fantasy",
+      "fantasyDesc": "Wybierz graczy przed każdą kolejką!",
+      "pickem": "Pick'em",
+      "pickemDesc": "Typuj wyniki meczów!"
+    },
+    "mock": {
+      "yesterday": "Wczoraj",
+      "daysAgo": "{days} dni temu",
+      "wednesdayAt": "Środa {time}",
+      "thursdayAt": "Czwartek {time}",
+      "featuredMatch": "Mecz tygodnia",
+      "bo2CaptainsMode": "BO2, Captains Mode",
+      "groupStage": "Faza grupowa",
+      "groupsLabel": "{count} grup",
+      "teamsPerGroupLabel": "{count} drużyn",
+      "playoffsTeamsLabel": "{count} drużyn"
+    }
+  },
   "tournament": {
     "types": {
       "mmrLimited": "Turniej z limitem MMR",
@@ -429,5 +573,44 @@
     "inMinutes": "za {count} min",
     "inHours": "za {count} godz.",
     "inDays": "za {count} dni"
+  },
+  "pdlRegistration": {
+    "teamRegistration": "Rejestracja Drużyny PDL",
+    "seasonRegistration": "Rejestracja na Sezon 1",
+    "teamDetails": "Dane Drużyny",
+    "teamName": "Nazwa Drużyny",
+    "teamTag": "Tag (2-4 znaki)",
+    "discordUsername": "Discord Kapitana",
+    "teamMotto": "Motto Drużyny",
+    "teamLogo": "Logo Drużyny",
+    "playerDetails": "Gracze",
+    "playerDetailsDesc": "Wszyscy gracze muszą być dostępni na cały sezon",
+    "nickname": "Nick w grze",
+    "role": "Pozycja",
+    "steamProfile": "Link do profilu Steam",
+    "selectRole": "Wybierz pozycję",
+    "roles": {
+      "Carry": "Carry (Pos 1)",
+      "Mid": "Mid (Pos 2)",
+      "Offlane": "Offlane (Pos 3)",
+      "Soft Support": "Soft Support (Pos 4)",
+      "Hard Support": "Hard Support (Pos 5)"
+    },
+    "coach": "Trener",
+    "optional": "opcjonalnie",
+    "coachDesc": "Trener może być dodany minimum 24h przed meczem. Gracz może być trenerem innej drużyny.",
+    "addCoach": "Dodaj trenera do drużyny",
+    "coachNickname": "Nick trenera",
+    "coachSteamProfile": "Steam trenera",
+    "submitRegistration": "Zarejestruj Drużynę",
+    "loginRequired": "Wymagane Logowanie",
+    "loginRequiredDesc": "Musisz być zalogowany, aby zarejestrować drużynę.",
+    "signInWithGoogle": "Zaloguj przez Google",
+    "registrationClosed": "Rejestracja Zamknięta",
+    "closedMessage": "Rejestracja na ten sezon PDL została już zamknięta.",
+    "seasonInProgress": "Sezon jest obecnie w trakcie. Sprawdź mecze i wyniki!",
+    "fantasyStillOpen": "Fantasy League nadal dostępne!",
+    "backToHome": "Powrót na Główną",
+    "viewTeams": "Zobacz Drużyny"
   }
 }

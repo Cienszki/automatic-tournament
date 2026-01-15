@@ -34,11 +34,13 @@
 ### Branding & Design
 
 1. **PDL Color Scheme:** I've used navy blue + gold as placeholders. Is this acceptable or do you have specific colors in mind?
+Answer: use colors from the pdl-s1-logo
 
 2. **Platform Logo (PD2IH):** Do you have a logo for the main organization? I've created a placeholder.
+Answer: we do 
 
 3. **Landing Page Design:** I've implemented a split-screen design (like pkp.pl as you mentioned). Is this the direction you want?
-
+Answer: i can see that the design is not implemented. What i meant is for letnia batalia and Polish dota league to be displayed side by side on the whole page. I am thinking about just making both the logos take up half of the page (right and left) and clicking on either takes you to threir respective subpages. additionally the info and dropdown with previous tournaments being on the bottom of the page.
 ### Fantasy Scoring
 
 4. **DPC Fantasy Scoring for PDL:** I'm using this simplified scoring:
@@ -53,19 +55,23 @@
    - +4 for Team Win
    
    Does this look reasonable, or should we adjust?
+   Answer: we should use somethin role dependent
 
 5. **Fantasy Budget:** Using 100.0 units with players priced 5.0-25.0 based on performance. Prices change ±0.2 per 5% transfer in/out. Okay?
+Answer: ok i guess? we will decide later what would be precisely best
 
 ### Pick'em
 
 6. **PDL Pick'em:** I've implemented pre-season predictions only (division standings + playoff bracket). Is this correct?
+Answer: yes
 
 ### Features
 
 7. **Commentator System:** I've implemented basic commentator registration + match request + admin approval. Need anything more complex?
+Answer:  it's ok, is there a place in admin panel to accept it?
 
 8. **Achievement Badges:** Currently showing on player profiles only. Should they also appear elsewhere?
-
+Answer: wherever the player nickname is displayed
 ---
 
 ## 📋 Implementation Status

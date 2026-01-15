@@ -1,0 +1,69 @@
+/* Letnia Batalia Theme CSS Variables */
+/* Neon Cyberpunk 80s Aesthetic */
+
+:root[data-tournament="letnia"],
+.theme-letnia {
+  /* Primary - Hot pink (neon) */
+  --primary: 330 100% 54%;
+  --primary-foreground: 0 0% 10%;
+  
+  /* Secondary - Cyan */
+  --secondary: 180 100% 50%;
+  --secondary-foreground: 0 0% 10%;
+  
+  /* Accent - Neon green */
+  --accent: 109 100% 54%;
+  --accent-foreground: 0 0% 10%;
+  
+  /* Background - Deep purple/black */
+  --background: 240 20% 5%;
+  --foreground: 0 0% 95%;
+  
+  /* Card */
+  --card: 240 27% 14%;
+  --card-foreground: 0 0% 95%;
+  
+  /* Popover */
+  --popover: 240 25% 8%;
+  --popover-foreground: 0 0% 95%;
+  
+  /* Muted */
+  --muted: 240 20% 15%;
+  --muted-foreground: 0 0% 60%;
+  
+  /* Border */
+  --border: 240 24% 30%;
+  --input: 240 25% 12%;
+  --ring: 330 100% 54%;
+  
+  /* Destructive */
+  --destructive: 0 80% 60%;
+  --destructive-foreground: 0 0% 95%;
+  
+  /* Chart colors - Neon palette */
+  --chart-1: 330 100% 62%; /* Electric Hot Pink */
+  --chart-2: 185 100% 50%; /* Vibrant Cyan */
+  --chart-3: 45 100% 55%;  /* Neon Gold */
+  --chart-4: 270 100% 65%; /* Electric Purple */
+  --chart-5: 130 100% 50%; /* Neon Lime */
+  
+  /* Sidebar */
+  --sidebar-background: 240 40% 4%;
+  --sidebar-foreground: 0 0% 90%;
+  --sidebar-primary: 330 100% 62%;
+  --sidebar-primary-foreground: 0 0% 10%;
+  --sidebar-accent: 185 100% 50%;
+  --sidebar-accent-foreground: 0 0% 10%;
+  --sidebar-border: 240 20% 15%;
+  --sidebar-ring: 330 100% 62%;
+  
+  /* Letnia-specific custom properties */
+  --letnia-pink: 330 100% 54%;
+  --letnia-pink-light: 330 100% 70%;
+  --letnia-pink-dark: 330 82% 44%;
+  --letnia-cyan: 180 100% 50%;
+  --letnia-cyan-light: 160 100% 75%;
+  --letnia-cyan-dark: 181 100% 41%;
+  --letnia-green: 109 100% 54%;
+  --letnia-purple: 270 100% 65%;
+}

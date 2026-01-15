@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import { Space_Mono } from 'next/font/google';
 import { GeistSans } from 'geist/font/sans';
+import { NextIntlClientProvider } from 'next-intl';
+import { getLocale, getMessages } from 'next-intl/server';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 import { AuthProvider } from '@/context/AuthContext';
@@ -22,25 +24,30 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const locale = await getLocale();
+  const messages = await getMessages();
+
   return (
-    <html lang="pl" suppressHydrationWarning>
+    <html lang={locale} suppressHydrationWarning>
       <body 
         className={`${spaceMono.variable} ${neonBines.variable} ${GeistSans.variable} antialiased font-sans`} 
         suppressHydrationWarning={true}
       >
-        <AuthProvider>
-          <TournamentProvider>
-            <TimeProvider>
-              {children}
-              <Toaster />
-            </TimeProvider>
-          </TournamentProvider>
-        </AuthProvider>
+        <NextIntlClientProvider locale={locale} messages={messages}>
+          <AuthProvider>
+            <TournamentProvider>
+              <TimeProvider>
+                {children}
+                <Toaster />
+              </TimeProvider>
+            </TournamentProvider>
+          </AuthProvider>
+        </NextIntlClientProvider>
       </body>
     </html>
   );

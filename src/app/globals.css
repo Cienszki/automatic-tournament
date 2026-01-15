@@ -3,62 +3,119 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Import tournament-specific themes */
+@import '../styles/pdl-theme.css';
+@import '../styles/letnia-theme.css';
+
+/* Custom Fonts */
+@font-face {
+  font-family: 'Logik';
+  src: url('/fonts/logik/logik.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Logik';
+  src: url('/fonts/logik/Logik-ExtendedBold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Space Mono';
+  src: url('/fonts/space-mono/SpaceMono-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Space Mono';
+  src: url('/fonts/space-mono/SpaceMono-Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Neonderthaw';
+  src: url('/fonts/neonderthaw/Neonderthaw-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Tilt Neon';
+  src: url('/fonts/tilt-neon/TiltNeon-Regular-VariableFont_XROT,YROT.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
 body {
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
 }
 
 @layer base {
   :root {
-    /* Miami Neon 80s - Revision based on image inspiration */
-    --background: 250 40% 5%; /* Very Deep Purple/Blue-Black */
+    /* Default theme (Letnia Batalia - Neon 80s) */
+    --background: 240 20% 5%; /* Deep Purple/Blue-Black */
     --foreground: 0 0% 95%; /* Off-White for high contrast */
 
-    --card: 250 30% 10%; /* Dark Purple-Blue, slightly lighter than bg */
+    --card: 240 27% 14%; /* Dark Purple-Blue, slightly lighter than bg */
     --card-foreground: 0 0% 95%; /* Off-White text on cards */
 
-    --popover: 250 25% 8%; /* Darker Popover, consistent with cards */
+    --popover: 240 25% 8%; /* Darker Popover, consistent with cards */
     --popover-foreground: 0 0% 95%;
 
-    --primary: 330 100% 62%; /* Electric Hot Pink */
+    --primary: 330 100% 54%; /* Electric Hot Pink */
     --primary-foreground: 0 0% 10%; /* Dark text for high contrast on bright primary */
 
-    --secondary: 200 80% 45%; /* A medium vibrant blue, less intense than primary/accent, for variety */
-    --secondary-foreground: 0 0% 95%; /* White text on secondary */
+    --secondary: 180 100% 50%; /* Vibrant Cyan */
+    --secondary-foreground: 0 0% 10%; /* Dark text on secondary */
 
-    --muted: 250 20% 15%; /* Muted version of background/card color */
+    --muted: 240 20% 15%; /* Muted version of background/card color */
     --muted-foreground: 0 0% 60%; /* Dimmer text for muted elements */
 
-    --accent: 185 100% 50%; /* Vibrant Cyan/Teal */
+    --accent: 109 100% 54%; /* Neon Green */
     --accent-foreground: 0 0% 10%; /* Dark text for high contrast on bright accent */
 
     --destructive: 0 80% 60%; /* Neon Red */
     --destructive-foreground: 0 0% 95%; /* White text on destructive */
 
-    --border: 250 20% 20%; /* Subtle border, related to cards/inputs */
-    --input: 250 25% 12%; /* Input fields, slightly distinct from card */
-    --ring: 330 100% 62%; /* Ring uses primary color (Electric Hot Pink) */
+    --border: 240 24% 30%; /* Subtle border, related to cards/inputs */
+    --input: 240 25% 12%; /* Input fields, slightly distinct from card */
+    --ring: 330 100% 54%; /* Ring uses primary color (Electric Hot Pink) */
     
-    --radius: 0.5rem; /* Keeping existing radius */
+    --radius: 0.5rem; /* Border radius */
 
-    /* Chart Colors - maintaining a neon palette */
+    /* Chart Colors - Neon palette */
     --chart-1: 330 100% 62%; /* Electric Hot Pink (matches primary) */
     --chart-2: 185 100% 50%; /* Vibrant Cyan/Teal (matches accent) */
-    --chart-3: 45 100% 55%;  /* Neon Gold/Yellow (for sunset/warm glow hint) */
+    --chart-3: 45 100% 55%;  /* Neon Gold/Yellow */
     --chart-4: 270 100% 65%; /* Bright Electric Purple */
     --chart-5: 130 100% 50%; /* Neon Lime Green */
 
     /* Sidebar - consistent with the main theme */
-    --sidebar-background: 250 40% 4%; /* Even darker for sidebar, for depth */
+    --sidebar-background: 240 40% 4%; /* Even darker for sidebar, for depth */
     --sidebar-foreground: 0 0% 90%; /* Slightly dimmer than main fg for subtlety */
     --sidebar-primary: 330 100% 62%; /* Matches main primary */
     --sidebar-primary-foreground: 0 0% 10%; /* Matches main primary-fg */
     --sidebar-accent: 185 100% 50%; /* Matches main accent */
     --sidebar-accent-foreground: 0 0% 10%; /* Matches main accent-fg */
-    --sidebar-border: 250 20% 15%; /* Subtle sidebar border */
+    --sidebar-border: 240 20% 15%; /* Subtle sidebar border */
     --sidebar-ring: 330 100% 62%; /* Matches main ring */
+    
+    /* Theme-specific custom properties (used by components) */
+    --theme-primary: hsl(330, 100%, 54%);
+    --theme-secondary: hsl(180, 100%, 50%);
+    --theme-accent: hsl(109, 100%, 54%);
+    --theme-gold: hsl(46, 65%, 52%);
   }
-
-  /* .dark block removed as theme toggling is disabled */
 }
 
 @layer base {
@@ -77,5 +134,129 @@ body {
   }
   input[type="number"] {
     -moz-appearance: textfield; /* Firefox */
+  }
+}
+
+/* Animation keyframes */
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 5px hsl(var(--primary) / 0.3);
+  }
+  50% {
+    box-shadow: 0 0 20px hsl(var(--primary) / 0.6);
+  }
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes spin-slow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes glow-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+@keyframes slide-diagonal {
+  0% {
+    background-position: 0% 0%;
+  }
+  100% {
+    background-position: 100% 100%;
+  }
+}
+
+@keyframes grid-scroll {
+  0% {
+    transform: translate(0, 0);
+  }
+  100% {
+    transform: translate(50px, 50px);
+  }
+}
+/* Utility classes for animations */
+@layer utilities {
+  .animate-shimmer {
+    animation: shimmer 1.5s infinite;
+    background: linear-gradient(
+      90deg, 
+      transparent 0%, 
+      hsl(var(--foreground) / 0.1) 50%, 
+      transparent 100%
+    );
+    background-size: 200% 100%;
+  }
+
+  .animate-pulse-glow {
+    animation: pulse-glow 2s ease-in-out infinite;
+  }
+
+  .animate-float {
+    animation: float 3s ease-in-out infinite;
+  }
+
+  .animate-spin-slow {
+    animation: spin-slow 8s linear infinite;
+  }
+
+  .animate-glow-pulse {
+    animation: glow-pulse 2s ease-in-out infinite;
+  }
+
+  /* Transition utilities */
+  .transition-theme {
+    transition: background-color 0.3s ease, 
+                border-color 0.3s ease, 
+                color 0.3s ease,
+                box-shadow 0.3s ease;
+  }
+
+  /* Hover glow effects */
+  .hover-glow:hover {
+    box-shadow: 0 0 20px hsl(var(--primary) / 0.3);
+  }
+
+  .hover-glow-accent:hover {
+    box-shadow: 0 0 20px hsl(var(--accent) / 0.3);
+  }
+
+  /* Gradient text */
+  .gradient-text {
+    background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--secondary)));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .gradient-text-gold {
+    background: linear-gradient(135deg, hsl(var(--theme-gold)), hsl(46, 72%, 62%));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
   }
 }

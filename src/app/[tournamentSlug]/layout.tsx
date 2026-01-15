@@ -31,6 +31,23 @@ export default function TournamentLayout({ children }: TournamentLayoutProps) {
     };
   }, [tournamentSlug, setTournamentSlug]);
 
+  // Apply theme data attribute to document for CSS variable switching
+  useEffect(() => {
+    if (tournamentSlug) {
+      // Set data-tournament attribute on html element for theme switching
+      document.documentElement.setAttribute('data-tournament', tournamentSlug);
+      
+      // Also set a class for additional styling hooks
+      document.documentElement.classList.add(`theme-${tournamentSlug}`);
+    }
+    
+    return () => {
+      // Clean up theme attributes on unmount
+      document.documentElement.removeAttribute('data-tournament');
+      document.documentElement.classList.remove(`theme-${tournamentSlug}`);
+    };
+  }, [tournamentSlug]);
+
   // Loading state
   if (isLoading) {
     return (
