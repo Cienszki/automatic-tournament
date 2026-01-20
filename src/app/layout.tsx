@@ -8,7 +8,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { AuthProvider } from '@/context/AuthContext';
 import { TimeProvider } from '@/context/TimeContext';
 import { TournamentProvider } from '@/context/TournamentContext';
-import { neonBines } from '@/app/fonts';
+import { neonBines, logik, logikExtendedBold, logikWideBlack, logikExtended8, logik3, logik4 } from '@/app/fonts';
 
 const spaceMono = Space_Mono({
   variable: '--font-space-mono',
@@ -35,7 +35,7 @@ export default async function RootLayout({
   return (
     <html lang={locale} suppressHydrationWarning>
       <body 
-        className={`${spaceMono.variable} ${neonBines.variable} ${GeistSans.variable} antialiased font-sans`} 
+        className={`${spaceMono.variable} ${neonBines.variable} ${logik.variable} ${logikExtendedBold.variable} ${logikWideBlack.variable} ${logikExtended8.variable} ${logik3.variable} ${logik4.variable} ${GeistSans.variable} antialiased font-sans`} 
         suppressHydrationWarning={true}
       >
         <NextIntlClientProvider locale={locale} messages={messages}>

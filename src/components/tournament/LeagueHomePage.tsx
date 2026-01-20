@@ -9,8 +9,10 @@ import { NextMatchCard } from '@/components/pdl/NextMatchCard';
 import { DivisionTable } from '@/components/pdl/DivisionTable';
 import { QuickLinksSection } from '@/components/pdl/QuickLinksSection';
 import { staggerContainer, fadeInUp } from '@/lib/animations';
-import { ArrowRight, Trophy, ChevronRight } from 'lucide-react';
+import { ArrowRight, Trophy, ChevronRight, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { usePDLData } from '@/hooks/usePDLData';
+import { useAuth } from '@/context/AuthContext';
 
 /**
  * Home page for Professional League tournaments (e.g., PDL)
@@ -18,53 +20,39 @@ import { cn } from '@/lib/utils';
  */
 export function LeagueHomePage() {
   const { tournament, getTournamentPath, theme } = useTournament();
+  const { user } = useAuth();
   const t = useTranslations('pdlHome');
+  const { divisions, nextMatch, loading, error } = usePDLData();
 
   if (!tournament) return null;
 
-  // TODO: Replace with real data from database
-  const MOCK_DATA = {
-    isTeamCaptain: false, // TODO: Get from auth context
-    divisions: [
-      {
-        name: 'Elite',
-        color: '#FFD700',
-        teams: [
-          { position: 1, teamId: '1', teamName: 'Team Alpha', gamesPlayed: 6, points: 12 },
-          { position: 2, teamId: '2', teamName: 'Team Beta', gamesPlayed: 6, points: 10 },
-          { position: 3, teamId: '3', teamName: 'Team Gamma', gamesPlayed: 6, points: 8 },
-          { position: 4, teamId: '4', teamName: 'Team Delta', gamesPlayed: 6, points: 6 },
-          { position: 5, teamId: '5', teamName: 'Team Epsilon', gamesPlayed: 6, points: 4 },
-          { position: 6, teamId: '6', teamName: 'Team Zeta', gamesPlayed: 6, points: 2 },
-        ]
-      },
-      {
-        name: 'Challenger',
-        color: '#C0C0C0',
-        teams: [
-          { position: 1, teamId: '7', teamName: 'Team Eta', gamesPlayed: 6, points: 11 },
-          { position: 2, teamId: '8', teamName: 'Team Theta', gamesPlayed: 6, points: 9 },
-          { position: 3, teamId: '9', teamName: 'Team Iota', gamesPlayed: 6, points: 8 },
-          { position: 4, teamId: '10', teamName: 'Team Kappa', gamesPlayed: 6, points: 7 },
-          { position: 5, teamId: '11', teamName: 'Team Lambda', gamesPlayed: 6, points: 5 },
-          { position: 6, teamId: '12', teamName: 'Team Mu', gamesPlayed: 6, points: 3 },
-        ]
-      },
-      {
-        name: 'Adept',
-        color: '#CD7F32',
-        teams: [
-          { position: 1, teamId: '13', teamName: 'Team Nu', gamesPlayed: 6, points: 10 },
-          { position: 2, teamId: '14', teamName: 'Team Xi', gamesPlayed: 6, points: 9 },
-          { position: 3, teamId: '15', teamName: 'Team Omicron', gamesPlayed: 6, points: 7 },
-          { position: 4, teamId: '16', teamName: 'Team Pi', gamesPlayed: 6, points: 6 },
-          { position: 5, teamId: '17', teamName: 'Team Rho', gamesPlayed: 6, points: 4 },
-          { position: 6, teamId: '18', teamName: 'Team Sigma', gamesPlayed: 6, points: 2 },
-        ]
-      }
-    ]
-  };
+  // TODO: Check if user is team captain
+  const isTeamCaptain = false;
 
+
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-12 w-12 animate-spin text-[#8B1538] mx-auto mb-4" />
+          <p className="text-muted-foreground">Ładowanie danych...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-red-500 mb-2">Błąd ładowania danych</p>
+          <p className="text-sm text-muted-foreground">{error}</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen relative">
@@ -115,12 +103,15 @@ export function LeagueHomePage() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Left 2/3: Hero Section */}
             <div className="lg:col-span-2">
-              <HeroSection isTeamCaptain={MOCK_DATA.isTeamCaptain} />
+              <HeroSection isTeamCaptain={isTeamCaptain} />
             </div>
 
             {/* Right 1/3: Next Match with Twitch */}
             <div>
-              <NextMatchCard channel="polishdota2inhouse" />
+              <NextMatchCard 
+                channel="polishdota2inhouse"
+                nextMatch={nextMatch}
+              />
             </div>
           </div>
         </div>
@@ -147,9 +138,9 @@ export function LeagueHomePage() {
                 animate="visible"
                 className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"
               >
-                {MOCK_DATA.divisions.map((division, index) => (
+                {divisions.map((division, index) => (
                   <motion.div
-                    key={division.name}
+                    key={division.id || division.name}
                     initial={{ opacity: 0, y: 30 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.5, delay: index * 0.1 }}
@@ -167,6 +158,7 @@ export function LeagueHomePage() {
                         divisionName={division.name}
                         divisionColor={division.color}
                         teams={division.teams}
+                        divisionId={division.id}
                       />
                     </div>
                   </motion.div>

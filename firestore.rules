@@ -33,6 +33,150 @@ service cloud.firestore {
     match /playerStats/{docId} { allow read: if true; } // Public read access
     match /teamStats/{docId} { allow read: if true; } // Public read access
 
+    // === NEW MULTI-TOURNAMENT STRUCTURE ===
+    // Tournament documents - public read
+    match /tournaments/{tournamentId} {
+      allow read: if true;
+      allow write: if isAdmin();
+
+      // Teams in tournaments
+      match /teams/{teamId} {
+        allow read: if true;
+        allow write: if request.auth.uid != null;
+        allow delete: if isAdmin();
+
+        // Players in teams
+        match /players/{playerId} {
+          allow read: if true;
+          allow write: if request.auth.uid != null;
+          allow delete: if isAdmin();
+        }
+      }
+
+      // Matches in tournaments
+      match /matches/{matchId} {
+        allow read: if true;
+        allow create, delete: if isAdmin();
+        allow update: if isAdmin(); // Simplified for now, can add captain logic later
+        
+        // Games in matches
+        match /games/{gameId} {
+          allow read: if true;
+          allow write: if isAdmin();
+          
+          // Performances in games
+          match /performances/{playerId} {
+            allow read: if true;
+            allow write: if isAdmin();
+          }
+        }
+      }
+
+      // Divisions in tournaments
+      match /divisions/{divisionId} {
+        allow read: if true;
+        allow write: if isAdmin();
+      }
+
+      // Announcements in tournaments
+      match /announcements/{announcementId} {
+        allow read: if true;
+        allow write: if isAdmin();
+      }
+
+      // Groups in tournaments
+      match /groups/{groupId} {
+        allow read: if true;
+        allow write: if isAdmin();
+      }
+
+      // Standings in tournaments
+      match /standings/{standingId} {
+        allow read: if true;
+        allow write: if isAdmin();
+      }
+
+      // Playoffs in tournaments
+      match /playoffs/{playoffId} {
+        allow read: if true;
+        allow write: if isAdmin();
+      }
+
+      // Fantasy lineups in tournaments
+      match /fantasyLineups/{userId} {
+        allow read: if true;
+        allow write: if request.auth.uid == userId || isAdmin();
+        
+        match /rounds/{roundId} {
+          allow read: if true;
+          allow write: if request.auth.uid == userId || isAdmin();
+        }
+      }
+
+      // Pick'em predictions in tournaments
+      match /pickems/{userId} {
+        allow read: if true;
+        allow write: if request.auth.uid == userId || isAdmin();
+      }
+
+      // Standins in tournaments
+      match /standins/{userId} {
+        allow read: if true;
+        allow create: if request.auth.uid != null && request.auth.uid == userId;
+        allow update: if request.auth.uid == userId || isAdmin();
+        allow delete: if isAdmin();
+      }
+
+      // Standin requests in tournaments
+      match /standinRequests/{requestId} {
+        allow read: if true;
+        allow create: if request.auth.uid != null;
+        allow update, delete: if isAdmin();
+      }
+
+      // Stats collections in tournaments
+      match /stats/players/{playerId} {
+        allow read: if true;
+        allow write: if isAdmin();
+      }
+
+      match /stats/teams/{teamId} {
+        allow read: if true;
+        allow write: if isAdmin();
+      }
+
+      match /stats/heroes/{heroId} {
+        allow read: if true;
+        allow write: if isAdmin();
+      }
+
+      // Player statistics
+      match /playerStats/{playerId} {
+        allow read: if true;
+        allow write: if isAdmin();
+      }
+
+      // Team statistics
+      match /teamStats/{teamId} {
+        allow read: if true;
+        allow write: if isAdmin();
+      }
+
+      // Commentators in tournaments
+      match /commentators/{userId} {
+        allow read: if true;
+        allow write: if isAdmin();
+      }
+
+      // Commentator requests in tournaments
+      match /commentatorRequests/{requestId} {
+        allow read: if true;
+        allow create: if request.auth.uid != null;
+        allow update, delete: if isAdmin();
+      }
+    }
+    // === END MULTI-TOURNAMENT STRUCTURE ===
+
     // --- USER-SPECIFIC WRITE RULES ---
     match /users/{userId} {
       allow read, write: if request.auth.uid == userId || isAdmin();

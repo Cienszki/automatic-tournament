@@ -24,7 +24,7 @@ export function HeroSection({
 
   return (
     <motion.div
-      className="relative overflow-hidden rounded-2xl border border-[#8B1538]/30 bg-gradient-to-br from-[#1a1a1f] via-[#1e1e24] to-[#16161a] shadow-2xl shadow-black/50"
+      className="relative overflow-hidden rounded-2xl border border-[#8B1538]/30 bg-gradient-to-br from-[#1a1a1f] via-[#1e1e24] to-[#16161a] shadow-2xl shadow-black/50 h-full"
       variants={staggerContainer}
       initial="hidden"
       animate="visible"
@@ -90,7 +90,7 @@ export function HeroSection({
           {/* Headline and Promotional Text */}
           <div className="mb-8">
             <motion.h1 
-              className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4 leading-tight"
+              className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4 leading-tight font-logik"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6 }}

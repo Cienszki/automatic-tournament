@@ -2,11 +2,14 @@
 
 import { useTournament, useTournamentType } from '@/context/TournamentContext';
 import { Card, CardContent } from '@/components/ui/card';
-import { MatchListItem } from "@/components/app/MatchListItem";
+import { MatchListItem as LegacyMatchListItem } from "@/components/app/MatchListItem";
+import { MatchCard as PDLMatchCard } from "@/components/pdl/MatchCard";
 import { getAllMatches } from "@/lib/firestore";
 import type { Match } from "@/lib/definitions";
 import { CalendarDays, CalendarClock, History, AlertCircle } from 'lucide-react';
 import { useEffect, useState } from "react";
+import { collection, getDocs, query, where, orderBy } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 /**
  * Schedule page - shows upcoming and past matches
@@ -38,8 +41,46 @@ export default function SchedulePage() {
 
           setUpcomingMatches(upcoming);
           setCompletedMatches(completed);
+        } else if (tournament?.id) {
+          // New tournament structure - load from /tournaments/{id}/matches
+          const matchesRef = collection(db, 'tournaments', tournament.id, 'matches');
+          const matchesSnapshot = await getDocs(matchesRef);
+          
+          const allMatches: Match[] = matchesSnapshot.docs.map(doc => {
+            const data = doc.data();
+            return {
+              id: doc.id,
+              teamA: data.teamA || '',
+              teamB: data.teamB || '',
+              status: data.status || 'scheduled',
+              dateTime: data.scheduledFor || data.dateTime,
+              scheduledFor: data.scheduledFor,
+              completed_at: data.completed_at,
+              scoreA: data.scoreA,
+              scoreB: data.scoreB,
+              round: data.round,
+              matchday: data.matchday,
+              bestOf: data.bestOf || 2,
+            } as Match;
+          });
+
+          // Filter upcoming matches (not completed)
+          const upcoming = allMatches
+            .filter(match => match.status !== 'completed' && match.dateTime)
+            .sort((a, b) => new Date(a.dateTime!).getTime() - new Date(b.dateTime!).getTime());
+
+          // Filter completed matches
+          const completed = allMatches
+            .filter(match => match.status === 'completed')
+            .sort((a, b) => {
+              const dateA = a.completed_at ? new Date(a.completed_at) : new Date(a.dateTime || 0);
+              const dateB = b.completed_at ? new Date(b.completed_at) : new Date(b.dateTime || 0);
+              return dateB.getTime() - dateA.getTime();
+            });
+
+          setUpcomingMatches(upcoming);
+          setCompletedMatches(completed);
         } else {
-          // New tournament structure - would load from /tournaments/{id}/matches
           setUpcomingMatches([]);
           setCompletedMatches([]);
         }
@@ -51,7 +92,7 @@ export default function SchedulePage() {
     };
 
     loadMatches();
-  }, [isLegacyTournament]);
+  }, [isLegacyTournament, tournament?.id]);
 
   if (!tournament) return null;
 
@@ -97,8 +138,12 @@ export default function SchedulePage() {
             </Card>
           ) : (
             <div className="space-y-4">
-              {upcomingMatches.map((match) => (
-                <MatchListItem key={match.id} match={match} />
+              {upcomingMatches.map((match, idx) => (
+                isLeague ? (
+                  <PDLMatchCard key={match.id} match={match} index={idx} />
+                ) : (
+                  <LegacyMatchListItem key={match.id} match={match} />
+                )
               ))}
             </div>
           )}
@@ -122,8 +167,12 @@ export default function SchedulePage() {
             </Card>
           ) : (
             <div className="space-y-4">
-              {completedMatches.slice(0, 10).map((match) => (
-                <MatchListItem key={match.id} match={match} />
+              {completedMatches.slice(0, 10).map((match, idx) => (
+                isLeague ? (
+                  <PDLMatchCard key={match.id} match={match} index={idx} />
+                ) : (
+                  <LegacyMatchListItem key={match.id} match={match} />
+                )
               ))}
             </div>
           )}

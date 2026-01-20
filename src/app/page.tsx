@@ -17,6 +17,7 @@ import Image from 'next/image';
 export default function LandingPage() {
   const { activeTournaments, archivedTournaments, isLoading } = useTournament();
 
+
   // Loading state
   if (isLoading) {
     return <LoadingScreen />;
@@ -198,3 +199,4 @@ function EmptyState() {
     </motion.div>
   );
 }
+// trigger rebuild

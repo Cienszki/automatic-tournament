@@ -60,12 +60,58 @@ export default function PickemPage() {
     async function loadData() {
       setIsLoading(true);
       
-      if (!isLegacyTournament) {
-        setIsLoading(false);
-        return;
+      let teams: Team[] = [];
+      
+      if (isLegacyTournament) {
+        teams = await getAllTeams();
+      } else if (tournament?.id) {
+        // New tournament structure - load from /tournaments/{id}/teams
+        const { collection, getDocs } = await import('firebase/firestore');
+        const { db } = await import('@/lib/firebase');
+        
+        const teamsRef = collection(db, 'tournaments', tournament.id, 'teams');
+        const teamsSnapshot = await getDocs(teamsRef);
+        
+        // Load teams with their players
+        teams = await Promise.all(teamsSnapshot.docs.map(async (teamDoc) => {
+          const teamData = teamDoc.data();
+          const playersRef = collection(db, 'tournaments', tournament.id, 'teams', teamDoc.id, 'players');
+          const playersSnapshot = await getDocs(playersRef);
+          
+          const players = playersSnapshot.docs.map(playerDoc => {
+            const playerData = playerDoc.data();
+            return {
+              id: playerDoc.id,
+              nickname: playerData.nickname || playerData.name || '',
+              mmr: playerData.mmr || 0,
+              role: playerData.role || 'Support',
+              steamId: playerData.steamId || '',
+              steamId32: playerData.steamId32 || '',
+              profileScreenshotUrl: playerData.profileScreenshotUrl || '',
+            };
+          });
+          
+          return {
+            id: teamDoc.id,
+            name: teamData.name || '',
+            tag: teamData.tag || '',
+            logo: teamData.logo || '',
+            logoUrl: teamData.logoUrl || teamData.logo || '',
+            captainId: teamData.captainId || '',
+            divisionId: teamData.divisionId,
+            discordUsername: teamData.discordUsername || '',
+            motto: teamData.motto || '',
+            players,
+            wins: teamData.wins || 0,
+            draws: teamData.draws || 0,
+            losses: teamData.losses || 0,
+            points: teamData.points || 0,
+            status: teamData.status || 'active',
+            createdAt: teamData.createdAt || new Date().toISOString(),
+          } as Team;
+        }));
       }
       
-      const teams = await getAllTeams();
       setAllTeams(teams);
 
       const initialPicks: PicksState = {
@@ -98,7 +144,7 @@ export default function PickemPage() {
       setIsLoading(false);
     }
     loadData();
-  }, [user, isLegacyTournament]);
+  }, [user, isLegacyTournament, tournament?.id]);
 
   const getTeamById = (teamId: string): Team | undefined => allTeams.find(t => t.id === teamId);
 

@@ -23,9 +23,10 @@ interface DivisionTableProps {
   divisionName: string;
   divisionColor: string;
   teams: TeamStanding[];
+  divisionId?: string; // Add divisionId for linking to detail page
 }
 
-export function DivisionTable({ divisionName, divisionColor, teams }: DivisionTableProps) {
+export function DivisionTable({ divisionName, divisionColor, teams, divisionId }: DivisionTableProps) {
   const { getTournamentPath } = useTournament();
 
   return (
@@ -35,12 +36,14 @@ export function DivisionTable({ divisionName, divisionColor, teams }: DivisionTa
         "rounded-xl overflow-hidden",
         "bg-gradient-to-br from-[#1e1e24] to-[#16161a]",
         "border border-[#2a2a32]",
-        "shadow-lg shadow-black/30"
+        "shadow-lg shadow-black/30",
+        "hover:border-[#3a3a42] transition-all duration-300"
       )}
     >
       {/* Header */}
-      <div 
-        className="px-4 py-3 font-bold text-lg border-b border-[#2a2a32] relative overflow-hidden"
+      <Link 
+        href={divisionId ? getTournamentPath(`/divisions/${divisionId}`) : '#'}
+        className="block px-4 py-3 font-bold text-lg border-b border-[#2a2a32] relative overflow-hidden group cursor-pointer"
         style={{ 
           background: `linear-gradient(90deg, ${divisionColor}15 0%, transparent 75%)`,
         }}
@@ -59,8 +62,17 @@ export function DivisionTable({ divisionName, divisionColor, teams }: DivisionTa
             transition={{ duration: 2, repeat: Infinity }}
           />
           {divisionName}
+          {divisionId && (
+            <motion.span
+              className="ml-auto text-xs text-[#808090] opacity-0 group-hover:opacity-100"
+              initial={{ x: -5 }}
+              whileHover={{ x: 0 }}
+            >
+              Zobacz szczegóły →
+            </motion.span>
+          )}
         </span>
-      </div>
+      </Link>
 
       {/* Table */}
       <div className="overflow-x-auto">

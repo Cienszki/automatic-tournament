@@ -19,6 +19,7 @@ import { StandinManagementTab } from './StandinManagementTab';
 import { TournamentStatusTab } from './TournamentStatusTab';
 import { PlayoffManagementTab } from './PlayoffManagementTab';
 import { StatsManagementTab } from './StatsManagementTab';
+import { MockDataTab } from './MockDataTab';
 import { MakeAdminButton } from '@/components/dev/MakeAdminButton';
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -83,7 +84,7 @@ export default function AdminPage() {
             </Card>
 
             <Tabs defaultValue="status">
-                <TabsList className="grid w-full grid-cols-11">
+                <TabsList className="grid w-full grid-cols-12">
                     <TabsTrigger value="status">Status</TabsTrigger>
                     <TabsTrigger value="stage">Stage</TabsTrigger>
                     <TabsTrigger value="standings">Standings</TabsTrigger>
@@ -94,6 +95,7 @@ export default function AdminPage() {
                     <TabsTrigger value="standins">Standins</TabsTrigger>
                     <TabsTrigger value="stats">Stats</TabsTrigger>
                     <TabsTrigger value="announcements">Announcements</TabsTrigger>
+                    <TabsTrigger value="mockdata">Mock Data</TabsTrigger>
                     <TabsTrigger value="advanced">Advanced</TabsTrigger>
                 </TabsList>
                 <TabsContent value="status">
@@ -125,6 +127,9 @@ export default function AdminPage() {
                 </TabsContent>
                 <TabsContent value="announcements">
                     <AnnouncementsTab />
+                </TabsContent>
+                <TabsContent value="mockdata">
+                    <MockDataTab />
                 </TabsContent>
                 <TabsContent value="advanced">
                     <SystemTestTab />

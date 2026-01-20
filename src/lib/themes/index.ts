@@ -2,6 +2,7 @@
 // Theme definitions for all tournaments
 
 import { TournamentTheme } from '@/types/tournament';
+import { FONT_FAMILIES } from './typography';
 
 /**
  * PDL Color Palette
@@ -132,8 +133,8 @@ export const PDL_THEME: TournamentTheme = {
   textColor: `hsl(${PDL_COLORS.textPrimaryHsl})`,
   mutedTextColor: `hsl(${PDL_COLORS.textSecondaryHsl})`,
   borderColor: `hsl(${PDL_COLORS.borderHsl})`,
-  headerFont: 'var(--font-geist-sans)',
-  bodyFont: 'var(--font-geist-sans)',
+  headerFont: FONT_FAMILIES.pdl.heading,
+  bodyFont: FONT_FAMILIES.pdl.body,
   logoUrl: '/logos/pdl/pdl-s1-logo.png',
 };
 

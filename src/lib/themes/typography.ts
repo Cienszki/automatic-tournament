@@ -44,7 +44,7 @@ export const TYPOGRAPHY_SCALE = {
 export const FONT_FAMILIES = {
   // PDL fonts - Professional, clean
   pdl: {
-    heading: 'var(--font-geist-sans)', // Will be Logik when available
+    heading: 'var(--font-logik)',
     body: 'var(--font-geist-sans)',
     mono: 'var(--font-geist-mono)',
   },

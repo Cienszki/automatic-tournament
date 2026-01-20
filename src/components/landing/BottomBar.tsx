@@ -16,7 +16,8 @@ import {
   ExternalLink,
   MessageCircle,
   Play,
-  Globe
+  Globe,
+  Sparkles
 } from 'lucide-react';
 import { fadeInUp, staggerContainer, listItem } from '@/lib/animations';
 
@@ -124,8 +125,8 @@ export function BottomBar({ archivedTournaments }: BottomBarProps) {
       <div className="border-t border-border/20">
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between h-16">
-            {/* Left: Archive Toggle */}
-            <div className="flex items-center gap-4">
+            {/* Left: Archive Toggle & Creator Link */}
+            <div className="flex items-center gap-2">
               {archivedTournaments.length > 0 && (
                 <button
                   onClick={() => setIsArchiveOpen(!isArchiveOpen)}
@@ -146,6 +147,20 @@ export function BottomBar({ archivedTournaments }: BottomBarProps) {
                   )}
                 </button>
               )}
+              
+              <Link
+                href="/creator"
+                className={cn(
+                  "flex items-center gap-2 px-3 py-1.5 rounded-lg",
+                  "text-sm text-primary hover:text-primary/80",
+                  "hover:bg-primary/5 transition-all duration-200",
+                  "border border-primary/20"
+                )}
+              >
+                <Sparkles className="h-4 w-4" />
+                <span className="hidden md:inline font-medium">Stwórz Turniej</span>
+                <span className="md:hidden font-medium">Kreator</span>
+              </Link>
             </div>
 
             {/* Right: Social Links & Branding */}

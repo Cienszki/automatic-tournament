@@ -46,41 +46,76 @@ export default function StatsPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!isLegacyTournament) {
-      setLoading(false);
-      return;
-    }
-
-    // Subscribe to player stats for legacy tournament
-    const unsubscribePlayers = onSnapshot(
-      collection(db, 'player_stats'),
-      (snapshot) => {
-        const stats = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        })) as PlayerStats[];
-        setPlayerStats(stats.sort((a, b) => b.kda - a.kda).slice(0, 10));
-      }
-    );
-
-    // Subscribe to team stats
-    const unsubscribeTeams = onSnapshot(
-      collection(db, 'team_stats'),
-      (snapshot) => {
-        const stats = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        })) as TeamStats[];
-        setTeamStats(stats.sort((a, b) => b.winRate - a.winRate).slice(0, 10));
+    const loadStats = async () => {
+      if (!tournament?.id) {
         setLoading(false);
+        return;
       }
-    );
 
-    return () => {
-      unsubscribePlayers();
-      unsubscribeTeams();
+      if (isLegacyTournament) {
+        // Subscribe to player stats for legacy tournament
+        const unsubscribePlayers = onSnapshot(
+          collection(db, 'player_stats'),
+          (snapshot) => {
+            const stats = snapshot.docs.map(doc => ({
+              id: doc.id,
+              ...doc.data()
+            })) as PlayerStats[];
+            setPlayerStats(stats.sort((a, b) => b.kda - a.kda).slice(0, 10));
+          }
+        );
+
+        // Subscribe to team stats
+        const unsubscribeTeams = onSnapshot(
+          collection(db, 'team_stats'),
+          (snapshot) => {
+            const stats = snapshot.docs.map(doc => ({
+              id: doc.id,
+              ...doc.data()
+            })) as TeamStats[];
+            setTeamStats(stats.sort((a, b) => b.winRate - a.winRate).slice(0, 10));
+            setLoading(false);
+          }
+        );
+
+        return () => {
+          unsubscribePlayers();
+          unsubscribeTeams();
+        };
+      } else {
+        // New tournament structure - load from /tournaments/{id}/playerStats and teamStats
+        const unsubscribePlayers = onSnapshot(
+          collection(db, 'tournaments', tournament.id, 'playerStats'),
+          (snapshot) => {
+            const stats = snapshot.docs.map(doc => ({
+              id: doc.id,
+              ...doc.data()
+            })) as PlayerStats[];
+            setPlayerStats(stats.sort((a, b) => b.kda - a.kda).slice(0, 10));
+          }
+        );
+
+        const unsubscribeTeams = onSnapshot(
+          collection(db, 'tournaments', tournament.id, 'teamStats'),
+          (snapshot) => {
+            const stats = snapshot.docs.map(doc => ({
+              id: doc.id,
+              ...doc.data()
+            })) as TeamStats[];
+            setTeamStats(stats.sort((a, b) => b.winRate - a.winRate).slice(0, 10));
+            setLoading(false);
+          }
+        );
+
+        return () => {
+          unsubscribePlayers();
+          unsubscribeTeams();
+        };
+      }
     };
-  }, [isLegacyTournament]);
+
+    loadStats();
+  }, [isLegacyTournament, tournament?.id]);
 
   if (!tournament) return null;
 
@@ -183,8 +218,8 @@ export default function StatsPage() {
         </Card>
       </div>
 
-      {/* Note for new tournaments */}
-      {!isLegacyTournament && (
+      {/* Note for new tournaments with no data yet */}
+      {!isLegacyTournament && playerStats.length === 0 && teamStats.length === 0 && (
         <Card style={{ backgroundColor: theme.cardColor, borderColor: theme.borderColor }}>
           <CardContent className="py-8 text-center">
             <p className="text-muted-foreground">

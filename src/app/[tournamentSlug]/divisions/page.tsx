@@ -4,7 +4,9 @@ import { useTournament, useTournamentType } from '@/context/TournamentContext';
 import { Card, CardHeader, CardContent, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Layers, Trophy, ArrowUp, ArrowDown, Minus, Calendar, Info } from 'lucide-react';
+import { Layers, Trophy, ArrowUp, ArrowDown, Minus, Calendar, Info, Loader2 } from 'lucide-react';
+import { usePDLData } from '@/hooks/usePDLData';
+import Link from 'next/link';
 
 /**
  * Divisions page - shows division standings (League tournaments only)
@@ -12,6 +14,7 @@ import { Layers, Trophy, ArrowUp, ArrowDown, Minus, Calendar, Info } from 'lucid
 export default function DivisionsPage() {
   const { tournament, theme, getTournamentPath } = useTournament();
   const { isLeague } = useTournamentType();
+  const { divisions: divisionsData, loading, error } = usePDLData();
 
   if (!tournament) return null;
 
@@ -27,23 +30,38 @@ export default function DivisionsPage() {
     );
   }
 
-  const divisions = tournament.divisions || [];
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center gap-3">
+          <Layers className="h-8 w-8" style={{ color: theme.primaryColor }} />
+          <h1 className="text-3xl font-bold">Dywizje</h1>
+        </div>
+        <div className="text-center py-16">
+          <Loader2 className="w-12 h-12 animate-spin mx-auto text-primary" />
+          <p className="text-muted-foreground mt-4">Ładowanie dywizji...</p>
+        </div>
+      </div>
+    );
+  }
 
-  // Mock standings data (in production this would come from Firestore)
-  const mockStandings = divisions.map(division => ({
-    divisionId: division.id,
-    teams: Array.from({ length: 6 }, (_, i) => ({
-      id: `team-${division.id}-${i}`,
-      name: `Drużyna ${i + 1}`,
-      played: 0,
-      wins: 0,
-      draws: 0,
-      losses: 0,
-      points: 0,
-      gameWins: 0,
-      gameLosses: 0,
-    }))
-  }));
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center gap-3">
+          <Layers className="h-8 w-8" style={{ color: theme.primaryColor }} />
+          <h1 className="text-3xl font-bold">Dywizje</h1>
+        </div>
+        <Card style={{ backgroundColor: theme.cardColor, borderColor: theme.borderColor }}>
+          <CardContent className="py-8 text-center text-red-500">
+            <p>Błąd ładowania danych: {error}</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  const divisions = tournament.divisions || [];
 
   return (
     <div className="space-y-8">
@@ -89,10 +107,13 @@ export default function DivisionsPage() {
       </Card>
 
       {/* Division Tables */}
-      {divisions.length > 0 ? (
+      {divisions.length > 0 && divisionsData.length > 0 ? (
         <div className="space-y-8">
-          {divisions.map((division, divIndex) => {
-            const standings = mockStandings.find(s => s.divisionId === division.id)?.teams || [];
+          {divisionsData.map((divisionWithTeams) => {
+            const division = divisions.find(d => d.id === divisionWithTeams.id);
+            if (!division) return null;
+
+            const standings = divisionWithTeams.teams;
             const isElite = division.tier === 1;
             const isLowest = division.tier === Math.max(...divisions.map(d => d.tier));
 
@@ -104,23 +125,27 @@ export default function DivisionsPage() {
                   borderColor: division.color || theme.borderColor,
                   borderWidth: '2px'
                 }}
+                className="hover:shadow-lg transition-shadow"
               >
                 <CardHeader>
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
+                    <Link 
+                      href={getTournamentPath(`/divisions/${division.id}`)}
+                      className="flex items-center gap-3 flex-1 group"
+                    >
                       <div 
-                        className="w-3 h-12 rounded-full"
+                        className="w-3 h-12 rounded-full group-hover:scale-110 transition-transform"
                         style={{ backgroundColor: division.color || theme.primaryColor }}
                       />
                       <div>
-                        <CardTitle className="text-xl" style={{ color: division.color || theme.primaryColor }}>
+                        <CardTitle className="text-xl group-hover:underline" style={{ color: division.color || theme.primaryColor }}>
                           {division.name}
                         </CardTitle>
                         <CardDescription>
                           Tier {division.tier} • Mecze: {division.matchday}
                         </CardDescription>
                       </div>
-                    </div>
+                    </Link>
                     <Badge 
                       variant="outline" 
                       style={{ borderColor: division.color, color: division.color }}
@@ -161,7 +186,7 @@ export default function DivisionsPage() {
                           }
 
                           return (
-                            <TableRow key={team.id} style={rowStyle}>
+                            <TableRow key={team.teamId} style={rowStyle}>
                               <TableCell className="font-medium">
                                 <div className="flex items-center gap-2">
                                   {index + 1}
@@ -170,13 +195,13 @@ export default function DivisionsPage() {
                                   {isPlayoff && index === 0 && <Trophy className="h-4 w-4 text-yellow-500" />}
                                 </div>
                               </TableCell>
-                              <TableCell className="font-medium">{team.name}</TableCell>
-                              <TableCell className="text-center text-muted-foreground">{team.played}</TableCell>
+                              <TableCell className="font-medium">{team.teamName}</TableCell>
+                              <TableCell className="text-center text-muted-foreground">{team.matchesPlayed}</TableCell>
                               <TableCell className="text-center text-green-500">{team.wins}</TableCell>
                               <TableCell className="text-center text-yellow-500">{team.draws}</TableCell>
                               <TableCell className="text-center text-red-500">{team.losses}</TableCell>
                               <TableCell className="text-center text-muted-foreground">
-                                {team.gameWins}-{team.gameLosses}
+                                {team.gamesWon}-{team.gamesLost}
                               </TableCell>
                               <TableCell className="text-center font-bold" style={{ color: theme.primaryColor }}>
                                 {team.points}

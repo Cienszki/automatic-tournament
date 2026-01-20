@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { TournamentConfig, TournamentSummary, TournamentTheme } from '@/types/tournament';
 import { PDL_THEME, LETNIA_THEME, getThemeCssVariables, getThemeBySlug } from '@/lib/themes';
+import { fetchTournaments } from '@/lib/api/tournaments';
 
 // Re-export themes for convenience
 export { PDL_THEME, LETNIA_THEME };
@@ -41,9 +42,40 @@ interface TournamentProviderProps {
 }
 
 export function TournamentProvider({ children, initialTournamentSlug }: TournamentProviderProps) {
+  // Initialize with static tournaments to avoid SSR issues
   const [tournament, setTournament] = useState<TournamentConfig | null>(null);
   const [tournamentSlug, setTournamentSlug] = useState<string | null>(initialTournamentSlug || null);
-  const [tournaments, setTournaments] = useState<TournamentSummary[]>([]);
+  const [tournaments, setTournaments] = useState<TournamentSummary[]>([
+    {
+      id: 'letnia-2025',
+      slug: 'letnia',
+      name: 'Letnia Batalia',
+      shortName: 'Letnia',
+      type: 'mmr-limited',
+      status: 'completed',
+      visibility: 'active',
+      logoUrl: '/logos/letnia/letnia-logo-transparent.png',
+      primaryColor: 'hsl(330, 100%, 54%)',
+      startDate: '2025-06-01',
+      endDate: '2025-09-30',
+      teamsCount: 16,
+      organizerId: 'pd2ih',
+    },
+    {
+      id: 'pdl-s1',
+      slug: 'pdl',
+      name: 'Polish Dota League',
+      shortName: 'PDL',
+      type: 'league',
+      status: 'registration',
+      visibility: 'active',
+      logoUrl: '/logos/pdl/pdl-s1-logo-transparent.png',
+      primaryColor: 'hsl(345, 75%, 31%)',
+      startDate: '2026-02-21',
+      teamsCount: 0,
+      organizerId: 'pd2ih',
+    },
+  ]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -73,45 +105,59 @@ export function TournamentProvider({ children, initialTournamentSlug }: Tourname
 
   // Fetch all tournaments
   const refreshTournaments = useCallback(async () => {
+    // Only fetch on client side
+    if (typeof window === 'undefined') {
+      return;
+    }
+
     try {
       setIsLoading(true);
       setError(null);
 
-      // For now, return static tournament data
-      // TODO: Replace with Firestore fetch
-      const staticTournaments: TournamentSummary[] = [
-        {
-          id: 'letnia-2025',
-          slug: 'letnia',
-          name: 'Letnia Batalia',
-          shortName: 'Letnia',
-          type: 'mmr-limited',
-          status: 'completed',
-          visibility: 'active',
-          logoUrl: '/logos/letnia/letnia-logo-transparent.png',
-          primaryColor: 'hsl(330, 100%, 54%)',
-          startDate: '2025-06-01',
-          endDate: '2025-09-30',
-          teamsCount: 16,
-          organizerId: 'pd2ih',
-        },
-        {
-          id: 'pdl-s1',
-          slug: 'pdl',
-          name: 'Polish Dota League',
-          shortName: 'PDL',
-          type: 'league',
-          status: 'registration',
-          visibility: 'active',
-          logoUrl: '/logos/pdl/pdl-s1-logo-transparent.png',
-          primaryColor: 'hsl(345, 75%, 31%)',
-          startDate: '2026-02-21',
-          teamsCount: 0,
-          organizerId: 'pd2ih',
-        },
-      ];
-
-      setTournaments(staticTournaments);
+      // Fetch tournaments from Firestore
+      const fetchedTournaments = await fetchTournaments();
+      
+      // TEMPORARY: Always use static defaults until Firestore is properly set up
+      // TODO: Remove this once Firestore has correct data
+      const useStaticFallback = true;
+      
+      // If no tournaments in Firestore, use static defaults (for development)
+      if (fetchedTournaments.length === 0 || useStaticFallback) {
+        const staticTournaments: TournamentSummary[] = [
+          {
+            id: 'letnia-2025',
+            slug: 'letnia',
+            name: 'Letnia Batalia',
+            shortName: 'Letnia',
+            type: 'mmr-limited',
+            status: 'completed',
+            visibility: 'active',
+            logoUrl: '/logos/letnia/letnia-logo-transparent.png',
+            primaryColor: 'hsl(330, 100%, 54%)',
+            startDate: '2025-06-01',
+            endDate: '2025-09-30',
+            teamsCount: 16,
+            organizerId: 'pd2ih',
+          },
+          {
+            id: 'pdl-s1',
+            slug: 'pdl',
+            name: 'Polish Dota League',
+            shortName: 'PDL',
+            type: 'league',
+            status: 'registration',
+            visibility: 'active',
+            logoUrl: '/logos/pdl/pdl-s1-logo-transparent.png',
+            primaryColor: 'hsl(345, 75%, 31%)',
+            startDate: '2026-02-21',
+            teamsCount: 0,
+            organizerId: 'pd2ih',
+          },
+        ];
+        setTournaments(staticTournaments);
+      } else {
+        setTournaments(fetchedTournaments);
+      }
     } catch (err) {
       console.error('Error fetching tournaments:', err);
       setError('Failed to load tournaments');

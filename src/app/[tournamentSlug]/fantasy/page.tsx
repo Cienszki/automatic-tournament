@@ -27,7 +27,7 @@ export default function FantasyPage() {
   const [isLocked, setIsLocked] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  // Load data for legacy tournament
+  // Load data
   useEffect(() => {
     const loadData = async () => {
       try {
@@ -44,6 +44,46 @@ export default function FantasyPage() {
             const lineup = await getUserFantasyLineup(user.uid, 'current');
             setUserLineup(lineup);
           }
+        } else if (tournament?.id) {
+          // New tournament structure - load from /tournaments/{id}
+          const { collection, getDocs } = await import('firebase/firestore');
+          const { db } = await import('@/lib/firebase');
+          
+          // Load all teams with their players
+          const teamsRef = collection(db, 'tournaments', tournament.id, 'teams');
+          const teamsSnapshot = await getDocs(teamsRef);
+          
+          const allPlayers: TournamentPlayer[] = [];
+          
+          for (const teamDoc of teamsSnapshot.docs) {
+            const teamData = teamDoc.data();
+            const playersRef = collection(db, 'tournaments', tournament.id, 'teams', teamDoc.id, 'players');
+            const playersSnapshot = await getDocs(playersRef);
+            
+            playersSnapshot.docs.forEach(playerDoc => {
+              const playerData = playerDoc.data();
+              allPlayers.push({
+                id: playerDoc.id,
+                nickname: playerData.nickname || playerData.name || '',
+                steamId: playerData.steamId || '',
+                steamId32: playerData.steamId32 || '',
+                role: playerData.role || 'Support',
+                mmr: playerData.mmr || 0,
+                teamId: teamDoc.id,
+                teamName: teamData.name || '',
+                teamTag: teamData.tag || '',
+                profileScreenshotUrl: playerData.profileScreenshotUrl || '',
+              });
+            });
+          }
+          
+          setPlayers(allPlayers);
+          setIsLocked(false);
+          
+          if (user) {
+            const lineup = await getUserFantasyLineup(user.uid, 'current');
+            setUserLineup(lineup);
+          }
         }
       } catch (error) {
         console.error('Failed to load fantasy data:', error);
@@ -55,7 +95,7 @@ export default function FantasyPage() {
     if (!authLoading) {
       loadData();
     }
-  }, [isLegacyTournament, user, authLoading]);
+  }, [isLegacyTournament, tournament?.id, user, authLoading]);
 
   if (!tournament) return null;
 

@@ -6,12 +6,13 @@ import type { Match } from "@/lib/definitions";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, CheckCircle, Clock, ExternalLink, Shield } from "lucide-react";
+import { Calendar, CheckCircle, Clock, ExternalLink, Shield, Trophy } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { format, isFuture } from "date-fns";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { useTournament } from "@/context/TournamentContext";
 
 interface MatchListItemProps {
   match: Match;
@@ -50,26 +51,41 @@ export function MatchListItem({ match }: MatchListItemProps) {
         <p className="text-sm text-muted-foreground">{isClient ? timeText : "..."}</p>
       </CardHeader>
 
-      <CardContent className="flex-grow py-4 flex flex-col items-center justify-center gap-4">
+      <CardContent className="flex-grow py-6 flex flex-col items-center justify-center gap-4 relative z-10">
         <div className="flex items-center justify-around w-full">
-            <TeamDisplay team={match.teamA} isWinner={winnerId === match.teamA.id} />
+            <TeamDisplay team={match.teamA} isWinner={winnerId === match.teamA.id} theme={theme} />
             
-            <div className="text-center mx-2">
+            <div className="text-center mx-4">
                 {isCompleted ? (
-                    <span className="text-2xl font-bold text-accent px-2 whitespace-nowrap">
+                    <div className="flex flex-col items-center">
+                      {winnerId && (
+                        <Trophy className="h-6 w-6 mb-2 animate-pulse" style={{ color: theme.accentColor }} />
+                      )}
+                      <span className="text-3xl font-bold px-4" style={{ color: theme.primaryColor }}>
                         {match.teamA.score} - {match.teamB.score}
-                    </span>
+                      </span>
+                    </div>
                 ) : (
-                    <span className="text-xl font-bold text-primary">vs</span>
+                    <span className="text-2xl font-bold" style={{ color: theme.accentColor }}>vs</span>
                 )}
             </div>
 
-            <TeamDisplay team={match.teamB} isWinner={winnerId === match.teamB.id} />
+            <TeamDisplay team={match.teamB} isWinner={winnerId === match.teamB.id} theme={theme} />
         </div>
       </CardContent>
 
-      <CardFooter className="flex flex-col gap-3 bg-muted/20 pt-4 pb-4">
-        <Badge variant="outline" className="flex items-center">
+      <CardFooter 
+        className="flex flex-col gap-3 pt-4 pb-4 relative z-10" 
+        style={{ backgroundColor: `${theme.secondaryColor}10` }}
+      >
+        <Badge 
+          variant="outline" 
+          className="flex items-center"
+          style={{ 
+            borderColor: theme.primaryColor,
+            color: theme.primaryColor 
+          }}
+        >
           <Shield className="h-3 w-3 mr-1.5" /> {getStageLabel()}
         </Badge>
         {isCompleted && Array.isArray(match.game_ids) && match.game_ids.length > 0 && (
@@ -80,10 +96,24 @@ export function MatchListItem({ match }: MatchListItemProps) {
                 href={`https://www.opendota.com/matches/${gameId}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 px-2 py-1 rounded bg-background/70 hover:bg-primary/80 text-xs font-medium border border-primary/30 transition-colors"
+                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
+                style={{
+                  backgroundColor: `${theme.primaryColor}20`,
+                  borderColor: theme.primaryColor,
+                  borderWidth: '1px',
+                  color: theme.textPrimary
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = theme.primaryColor;
+                  e.currentTarget.style.color = '#ffffff';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = `${theme.primaryColor}20`;
+                  e.currentTarget.style.color = theme.textPrimary || '';
+                }}
                 title={`View game ${idx + 1} on OpenDota`}
               >
-                <ExternalLink className="w-3 h-3 mr-1" />
+                <ExternalLink className="w-3 h-3" />
                 Game {idx + 1}
               </a>
             ))}
@@ -110,22 +140,38 @@ export function MatchListItem({ match }: MatchListItemProps) {
   );
 }
 
-function TeamDisplay({ team, isWinner }: { team: Match['teamA'], isWinner: boolean }) {
+function TeamDisplay({ team, isWinner, theme }: { team: Match['teamA'], isWinner: boolean, theme: any }) {
     return (
         <Link href={`/teams/${team.id}`} className="flex flex-col items-center space-y-2 group w-[120px]">
-            <Image
-                src={team.logoUrl || `https://placehold.co/64x64.png?text=${team.name.charAt(0)}`}
-                alt={`${team.name} logo`}
-                width={64}
-                height={64}
-                className={cn("rounded-md object-cover border-4 transition-all duration-300", 
-                    isWinner ? "border-primary shadow-lg" : "border-transparent group-hover:border-primary/50"
-                )}
-                unoptimized={team.logoUrl?.endsWith('.gif')}
-            />
-            <span className={cn("font-semibold text-lg text-center w-full truncate",
-                isWinner ? "text-primary" : "text-foreground group-hover:text-primary"
-            )} title={team.name}>
+            <div className="relative">
+              <Image
+                  src={team.logoUrl || `https://placehold.co/64x64.png?text=${team.name.charAt(0)}`}
+                  alt={`${team.name} logo`}
+                  width={64}
+                  height={64}
+                  className={cn(
+                    "rounded-lg object-cover border-2 transition-all duration-300",
+                    isWinner && "scale-110"
+                  )}
+                  style={{
+                    borderColor: isWinner ? theme.accentColor : theme.borderColor
+                  }}
+                  unoptimized={team.logoUrl?.endsWith('.gif')}
+              />
+              {isWinner && (
+                <div 
+                  className="absolute -top-2 -right-2"
+                  style={{ color: theme.accentColor }}
+                >
+                  <Trophy className="h-6 w-6" fill="currentColor" />
+                </div>
+              )}
+            </div>
+            <span 
+              className={cn("font-semibold text-sm text-center w-full truncate transition-colors")}
+              style={{ color: isWinner ? theme.accentColor : theme.textPrimary }}
+              title={team.name}
+            >
               {team.name}
             </span>
         </Link>
