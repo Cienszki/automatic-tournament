@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useTranslations } from 'next-intl';
 import Link from 'next/link';
@@ -9,45 +10,71 @@ import { NextMatchCard } from '@/components/pdl/NextMatchCard';
 import { DivisionTable } from '@/components/pdl/DivisionTable';
 import { QuickLinksSection } from '@/components/pdl/QuickLinksSection';
 import { staggerContainer, fadeInUp } from '@/lib/animations';
-import { ArrowRight, Trophy, ChevronRight, Loader2 } from 'lucide-react';
+import { ArrowRight, Trophy, Link as LinkIcon, Loader2, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { usePDLData } from '@/hooks/usePDLData';
 import { useAuth } from '@/context/AuthContext';
+import { collection, query, where, getDocs } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 /**
  * Home page for Professional League tournaments (e.g., PDL)
- * Complete redesign with WOW factor, better color contrast, and animations
+ * Complete redesign with Ultra Premium "Deep Void" aesthetic
+ * V2: Frameless, "Painted On" Look, Full Width
  */
 export function LeagueHomePage() {
   const { tournament, getTournamentPath, theme } = useTournament();
   const { user } = useAuth();
   const t = useTranslations('pdlHome');
   const { divisions, nextMatch, loading, error } = usePDLData();
+  const [hasTeam, setHasTeam] = useState(false);
+
+  // Check if user has a registered team
+  useEffect(() => {
+    const checkUserTeam = async () => {
+      if (!user?.uid || !tournament?.id) {
+        setHasTeam(false);
+        return;
+      }
+      try {
+        const teamsRef = collection(db, 'tournaments', tournament.id, 'teams');
+        const captainQuery = query(teamsRef, where('captainId', '==', user.uid));
+        const snapshot = await getDocs(captainQuery);
+        setHasTeam(!snapshot.empty);
+      } catch (err) {
+        console.error('Error checking user team:', err);
+        setHasTeam(false);
+      }
+    };
+    checkUserTeam();
+  }, [user?.uid, tournament?.id]);
 
   if (!tournament) return null;
 
-  // TODO: Check if user is team captain
-  const isTeamCaptain = false;
+  // Check if user is team captain (same as hasTeam)
+  const isTeamCaptain = hasTeam;
 
+  // Theme support
+  const primaryColor = theme?.primaryColor || '#8B1538';
 
-  // Show loading state
+  // Loading state
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-[#050508]">
         <div className="text-center">
-          <Loader2 className="h-12 w-12 animate-spin text-[#8B1538] mx-auto mb-4" />
+          <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto mb-4" />
           <p className="text-muted-foreground">Ładowanie danych...</p>
         </div>
       </div>
     );
   }
 
-  // Show error state
+  // Error state
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-[#050508]">
         <div className="text-center">
-          <p className="text-red-500 mb-2">Błąd ładowania danych</p>
+          <p className="text-destructive mb-2 font-bold text-xl">Błąd ładowania danych</p>
           <p className="text-sm text-muted-foreground">{error}</p>
         </div>
       </div>
@@ -55,198 +82,157 @@ export function LeagueHomePage() {
   }
 
   return (
-    <div className="min-h-screen relative">
-      {/* Animated background gradient */}
-      <div className="fixed inset-0 -z-10">
-        <div className="absolute inset-0 bg-gradient-to-b from-[#0d0d0f] via-[#121215] to-[#0d0d0f]" />
-        <motion.div
-          className="absolute inset-0 opacity-30"
+    <div className="relative overflow-hidden text-foreground font-logik selection:bg-primary/30 min-h-screen">
+      {/* Global Atmosphere - Copied from Division Page */}
+      <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+        {/* Vignette */}
+        <div
+          className="absolute inset-0 z-0 pointer-events-none opacity-80"
           style={{
-            background: 'radial-gradient(ellipse at 50% 0%, rgba(139, 21, 56, 0.15) 0%, transparent 50%)',
-          }}
-          animate={{
-            opacity: [0.2, 0.3, 0.2],
-          }}
-          transition={{
-            duration: 8,
-            repeat: Infinity,
-            ease: "easeInOut"
+            background: 'radial-gradient(circle at center, transparent 0%, #000000 100%)',
           }}
         />
-        {/* Floating particles */}
+
+        {/* Very subtle ambient glow */}
+        <div
+          className="absolute top-[-10%] right-[-10%] w-[50vw] h-[50vw] rounded-full opacity-[0.03] blur-[150px]"
+          style={{ background: primaryColor }}
+        />
+
+        {/* Floating particles - subtle dust (kept from original) */}
         {[...Array(20)].map((_, i) => (
           <motion.div
             key={i}
-            className="absolute w-1 h-1 bg-[#8B1538]/30 rounded-full"
+            className="absolute rounded-full bg-white/5"
             style={{
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
+              width: Math.random() * 2 + 1 + 'px',
+              height: Math.random() * 2 + 1 + 'px',
+              left: Math.random() * 100 + '%',
+              top: Math.random() * 100 + '%',
             }}
             animate={{
-              y: [-30, 30, -30],
-              x: [-10, 10, -10],
-              opacity: [0, 0.5, 0],
+              y: [0, -100],
+              opacity: [0, 0.3, 0],
             }}
             transition={{
-              duration: 10 + Math.random() * 10,
+              duration: 10 + Math.random() * 20,
               repeat: Infinity,
-              ease: "easeInOut",
-              delay: Math.random() * 5,
+              ease: "linear",
+              delay: Math.random() * 10,
             }}
           />
         ))}
       </div>
 
-      {/* Hero Section + Next Match */}
-      <section className="relative">
-        <div className="container mx-auto px-4 py-8">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Left 2/3: Hero Section */}
-            <div className="lg:col-span-2">
-              <HeroSection isTeamCaptain={isTeamCaptain} />
-            </div>
 
-            {/* Right 1/3: Next Match with Twitch */}
-            <div>
-              <NextMatchCard 
-                channel="polishdota2inhouse"
-                nextMatch={nextMatch}
-              />
-            </div>
+
+      <div className="relative z-10 w-full max-w-[1920px] mx-auto px-4 sm:px-8 py-8 space-y-16">
+        {/* Hero Section + Next Match */}
+        <section className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-16 items-start">
+          {/* Left: Hero Section (7 cols) */}
+          <div className="lg:col-span-7 xl:col-span-8 h-full">
+            <HeroSection isTeamCaptain={isTeamCaptain} />
           </div>
-        </div>
-      </section>
 
-      {/* Quick Links and Division Tables Section */}
-      <section className="relative py-8">
-        {/* Section background with gradient */}
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#1a1a1f]/50 to-transparent" />
-        
-        <div className="container mx-auto px-4 relative">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Left 1/3: Quick Links */}
-            <div>
-              <QuickLinksSection />
-            </div>
-
-            {/* Right 2/3: Division Tables */}
-            <div className="lg:col-span-2">
-              {/* Division Tables Grid */}
-              <motion.div
-                variants={staggerContainer}
-                initial="hidden"
-                animate="visible"
-                className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"
-              >
-                {divisions.map((division, index) => (
-                  <motion.div
-                    key={division.id || division.name}
-                    initial={{ opacity: 0, y: 30 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.5, delay: index * 0.1 }}
-                    className="relative group"
-                  >
-                    {/* Hover glow effect */}
-                    <motion.div
-                      className="absolute -inset-1 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"
-                      style={{
-                        background: `radial-gradient(circle at center, ${division.color}20 0%, transparent 70%)`,
-                      }}
-                    />
-                    <div className="relative">
-                      <DivisionTable
-                        divisionName={division.name}
-                        divisionColor={division.color}
-                        teams={division.teams}
-                        divisionId={division.id}
-                      />
-                    </div>
-                  </motion.div>
-                ))}
-              </motion.div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-
-
-      {/* Bottom CTA Section */}
-      <section className="relative py-12">
-        <div className="container mx-auto px-4">
-          <motion.div
-            className="relative rounded-2xl overflow-hidden"
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.6, delay: 0.3 }}
-          >
-            {/* Background with gradient */}
-            <div className="absolute inset-0 bg-gradient-to-r from-[#8B1538]/20 via-[#1a1a1f] to-[#8B1538]/20" />
-            <div className="absolute inset-0 bg-[url('/logos/pdl/pdl-pattern.png')] opacity-5" />
-            
-            {/* Animated border */}
-            <motion.div
-              className="absolute inset-0 rounded-2xl"
-              style={{
-                background: 'linear-gradient(90deg, #8B1538, #d4d4d4, #8B1538)',
-                padding: '1px',
-                WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
-                WebkitMaskComposite: 'xor',
-                maskComposite: 'exclude',
-              }}
-              animate={{
-                backgroundPosition: ['0% 50%', '100% 50%', '0% 50%'],
-              }}
-              transition={{
-                duration: 5,
-                repeat: Infinity,
-                ease: "linear"
-              }}
+          {/* Right: Next Match (5 cols) */}
+          <div className="lg:col-span-5 xl:col-span-4 h-full pt-8 lg:pt-0">
+            <NextMatchCard
+              channel="polishdota2inhouse"
+              nextMatch={nextMatch}
             />
+          </div>
+        </section>
 
-            <div className="relative p-8 md:p-12 text-center">
-              <motion.h2 
-                className="text-2xl md:text-3xl font-bold mb-4 text-white"
-                animate={{ 
-                  textShadow: [
-                    '0 0 20px rgba(139, 21, 56, 0)',
-                    '0 0 40px rgba(139, 21, 56, 0.5)',
-                    '0 0 20px rgba(139, 21, 56, 0)',
-                  ]
+        {/* Quick Links and Division Tables Section */}
+        <section className="grid grid-cols-1 xl:grid-cols-12 gap-12 lg:gap-16">
+          {/* Left: Quick Links (2 cols) - Sticky Sidebar */}
+          <div className="xl:col-span-2 hidden xl:block">
+            <div className="sticky top-24 space-y-8">
+              <div>
+                <h3 className="text-xs font-mono uppercase tracking-widest text-white/30 mb-6 pl-1">
+                  Menu
+                </h3>
+                <QuickLinksSection />
+              </div>
+            </div>
+          </div>
+
+          {/* Mobile/Tablet Quick Links (Horizontal) */}
+          <div className="xl:hidden col-span-1">
+            <QuickLinksSection />
+          </div>
+
+          {/* Right: Division Tables (10 cols) */}
+          <div className="xl:col-span-10">
+
+
+            {/* Division Tables Grid */}
+            <motion.div
+              variants={staggerContainer}
+              initial="hidden"
+              animate="visible"
+              className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8 lg:gap-12 scale-85 origin-top-left"
+            >
+              {divisions.map((division, index) => (
+                <motion.div
+                  key={division.id || division.name}
+                  variants={fadeInUp}
+                  className="relative group h-full"
+                >
+                  <DivisionTable
+                    divisionName={division.name}
+                    divisionColor={division.color}
+                    teams={division.teams}
+                    divisionId={division.id}
+                  />
+                </motion.div>
+              ))}
+            </motion.div>
+          </div>
+        </section>
+
+        {/* Bottom CTA Section */}
+        <section className="py-12 lg:py-24">
+          <motion.div
+            className="relative rounded-none overflow-hidden"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.8 }}
+          >
+            <div className="relative text-center max-w-4xl mx-auto">
+              <motion.h2
+                className="text-4xl md:text-6xl lg:text-7xl font-logik-extended-bold mb-8 text-white tracking-tight"
+                style={{
+                  filter: `drop-shadow(0 0 30px ${primaryColor}30)`
                 }}
-                transition={{ duration: 3, repeat: Infinity }}
               >
-                Gotowy na wyzwanie?
+                GOTOWY NA WYZWANIE?
               </motion.h2>
-              <p className="text-[#a0a0a0] mb-8 max-w-2xl mx-auto">
+              <p className="text-white/60 mb-12 text-xl leading-relaxed max-w-2xl mx-auto">
                 Dołącz do Polish Dota League i sprawdź się z najlepszymi graczami w Polsce.
                 Cotygodniowe mecze, profesjonalna organizacja i szansa na awans do najwyższej dywizji!
               </p>
-              <motion.div
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
+
+              <Link
+                href={getTournamentPath(hasTeam ? '/my-team' : '/register')}
+                className={cn(
+                  "inline-flex items-center gap-4 px-12 py-6 font-logik-extended-bold text-xl uppercase tracking-widest",
+                  "bg-white text-black hover:bg-gray-200",
+                  "shadow-[0_0_30px_rgba(255,255,255,0.2)] hover:shadow-[0_0_50px_rgba(255,255,255,0.4)]",
+                  "transition-all duration-300 transform hover:-translate-y-1"
+                )}
+                style={{
+                  clipPath: 'polygon(20px 0, 100% 0, 100% calc(100% - 20px), calc(100% - 20px) 100%, 0 100%, 0 20px)'
+                }}
               >
-                <Link
-                  href={getTournamentPath('/register')}
-                  className={cn(
-                    "inline-flex items-center gap-3 px-8 py-4 rounded-xl font-bold text-lg",
-                    "bg-gradient-to-r from-[#8B1538] via-[#A91D45] to-[#8B1538] text-white",
-                    "shadow-lg shadow-[#8B1538]/40 hover:shadow-xl hover:shadow-[#8B1538]/50",
-                    "transition-all duration-300 relative overflow-hidden group"
-                  )}
-                >
-                  <motion.div
-                    className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700"
-                  />
-                  <Trophy className="h-6 w-6 relative z-10" />
-                  <span className="relative z-10">Zarejestruj swoją drużynę</span>
-                  <ArrowRight className="h-5 w-5 relative z-10" />
-                </Link>
-              </motion.div>
+                <span>{hasTeam ? 'Moja Drużyna' : 'Zarejestruj się'}</span>
+                {hasTeam ? <Users className="h-6 w-6" /> : <ArrowRight className="h-6 w-6" />}
+              </Link>
             </div>
           </motion.div>
-        </div>
-      </section>
+        </section>
+      </div>
     </div>
   );
 }

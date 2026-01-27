@@ -50,7 +50,7 @@
     "playoffs": "Playoff",
     "stats": "Statystyki",
     "pickem": "Pick'em",
-    "fantasy": "Fantasy",
+    "fantasy": "Liga Fantasy",
     "rules": "Zasady",
     "faq": "FAQ",
     "register": "Moja Drużyna",
@@ -82,8 +82,8 @@
       "vs": "vs"
     },
     "hero": {
-      "title": "Dołącz do Najlepszej Polskiej Ligi Dota 2",
-      "subtitle": "Graj przeciwko zawodnikom na swoim poziomie i awansuj, by pokonać najlepszych. Pokaż się światu w cotygodniowych meczach.",
+      "title": "Polska Liga Dota 2",
+      "subtitle": "Rywalizuj z drużynami na swoim poziomie o tytuł najlepszej drużyny w Polsce. Nie masz drużyny? Na Discordzie znajdziesz kompanów do gry! ",
       "ctaRegister": "Zarejestruj Drużynę",
       "ctaMyTeam": "Moja Drużyna",
       "ctaDiscord": "Discord",
@@ -160,7 +160,7 @@
       "groups": "Faza Grupowa",
       "announcements": "Ogłoszenia",
       "noAnnouncements": "Brak nowych ogłoszeń",
-      "fantasy": "Fantasy",
+      "fantasy": "Liga Fantasy",
       "fantasyRoundBased": "Wybierz graczy przed każdą kolejką!",
       "fantasySeasonLong": "Zbuduj swój wymarzony skład!",
       "playFantasy": "Graj w Fantasy",

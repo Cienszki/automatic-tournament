@@ -8,14 +8,40 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import Image from "next/image";
 import Link from "next/link";
-import { motion } from "framer-motion";
-import { 
-  Swords, Shield, Sparkles, HandHelping, Eye, 
+import { motion, useMotionValue, useSpring, useTransform } from "framer-motion";
+import {
+  Swords, Shield, Sparkles, HandHelping, Eye,
   Trophy, Crown, TrendingUp, Users, MapPin, Calendar, Target
 } from "lucide-react";
 import { cn, formatNumber } from "@/lib/utils";
 import { useTranslation } from "@/hooks/useTranslation";
+import { useRef, MouseEvent } from 'react';
 import { useTournament } from "@/context/TournamentContext";
+
+// Division tier colors matching the premium theme
+const DIVISION_TIER_STYLES: Record<string, { gradient: string; glow: string; text: string; lightBorder: string; foil: string }> = {
+  elite: {
+    gradient: 'from-amber-500/20 via-yellow-400/10 to-transparent',
+    glow: 'rgba(255, 215, 0, 0.4)',
+    text: 'text-pdl-gold',
+    lightBorder: 'border-pdl-gold/40',
+    foil: 'bg-gradient-to-tr from-[#FFD700]/20 via-[#FDB931]/10 to-transparent'
+  },
+  challenger: {
+    gradient: 'from-slate-400/20 via-gray-300/10 to-transparent',
+    glow: 'rgba(192, 192, 192, 0.4)',
+    text: 'text-pdl-silver',
+    lightBorder: 'border-pdl-silver/40',
+    foil: 'bg-gradient-to-tr from-[#E0E0E0]/20 via-[#B0B0B0]/10 to-transparent'
+  },
+  adept: {
+    gradient: 'from-orange-700/20 via-amber-600/10 to-transparent',
+    glow: 'rgba(205, 127, 50, 0.4)',
+    text: 'text-pdl-bronze',
+    lightBorder: 'border-pdl-bronze/40',
+    foil: 'bg-gradient-to-tr from-[#CD7F32]/20 via-[#8B4513]/10 to-transparent'
+  }
+};
 
 interface TeamCardProps {
   team: Team;
@@ -61,6 +87,44 @@ export function TeamCard({ team, divisionRanking, nextOpponent, headToHeadRecord
   const { getTournamentPath } = useTournament();
   const players = team.players || [];
 
+  // 3D Tilt Logic
+  const x = useMotionValue(0);
+  const y = useMotionValue(0);
+
+  const mouseX = useSpring(x, { stiffness: 500, damping: 100 });
+  const mouseY = useSpring(y, { stiffness: 500, damping: 100 });
+
+  const rotateX = useTransform(mouseY, [-0.5, 0.5], ["7deg", "-7deg"]);
+  const rotateY = useTransform(mouseX, [-0.5, 0.5], ["-7deg", "7deg"]);
+
+  const onMouseMove = (e: MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const width = rect.width;
+    const height = rect.height;
+
+    const mouseXFromCenter = e.clientX - rect.left - width / 2;
+    const mouseYFromCenter = e.clientY - rect.top - height / 2;
+
+    x.set(mouseXFromCenter / width);
+    y.set(mouseYFromCenter / height);
+  };
+
+  const onMouseLeave = () => {
+    x.set(0);
+    y.set(0);
+  };
+
+  // Determine division style
+  const divisionKey = (team.divisionId || team.division || '').toLowerCase();
+  const validKey = ['elite', 'challenger', 'adept'].includes(divisionKey) ? divisionKey : '';
+  const style = validKey ? DIVISION_TIER_STYLES[validKey] : {
+    gradient: 'from-gray-500/20 via-gray-400/10 to-transparent',
+    glow: 'rgba(128, 128, 128, 0.4)',
+    text: 'text-gray-400',
+    lightBorder: 'border-gray-400/40',
+    foil: 'bg-gradient-to-tr from-gray-500/20 via-gray-400/10 to-transparent'
+  };
+
   // Sort players by role
   const roleOrder = ["Carry", "Mid", "Offlane", "Soft Support", "Hard Support"];
   const sortedPlayers = [...players].sort((a, b) => {
@@ -76,189 +140,154 @@ export function TeamCard({ team, divisionRanking, nextOpponent, headToHeadRecord
       whileHover={{ y: -8 }}
       transition={{ duration: 0.3 }}
     >
-      <Link href={getTournamentPath(`/teams/${team.id}`)}>
-        <Card className={cn(
-          "relative overflow-hidden bg-[#0a0a0f] border-[#8B1538]/30",
-          "hover:border-[#8B1538] transition-all duration-300 group cursor-pointer h-full"
-        )}>
-          {/* Animated background gradient */}
-          <div className="absolute inset-0 bg-gradient-to-br from-[#8B1538]/10 via-transparent to-[#A91D45]/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-          
-          {/* Scan line effect - extended range */}
-          <motion.div
-            className="absolute inset-0 bg-gradient-to-b from-transparent via-[#8B1538]/20 to-transparent h-32 -top-16"
-            animate={{
-              y: ['-100%', '300%'],
-            }}
-            transition={{
-              duration: 3,
-              repeat: Infinity,
-              ease: "linear",
+      <Link href={getTournamentPath(`/teams/${team.id}`)} className="block h-full perspective-1000">
+        <motion.div
+          style={{
+            rotateX,
+            rotateY,
+            transformStyle: "preserve-3d",
+          }}
+          onMouseMove={onMouseMove}
+          onMouseLeave={onMouseLeave}
+          className={cn(
+            "relative overflow-hidden transition-all duration-300 group cursor-pointer h-full rounded-2xl p-6",
+            "border border-none",
+            "hover:bg-black/20 hover:backdrop-blur-md"
+          )}
+        >
+          {/* Noise Texture Overlay */}
+          <div className="absolute inset-0 z-0 opacity-[0.03] pointer-events-none mix-blend-overlay"
+            style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }}
+          />
+
+          {/* Hover Glow Effect */}
+          <div
+            className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 z-0"
+            style={{
+              boxShadow: `inset 0 0 60px ${style.glow}, 0 0 20px -5px ${style.glow}`,
+              border: `1px solid ${style.glow}`
             }}
           />
 
+          {/* Holographic Foil Gradient */}
+          <div className={cn(
+            "absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700 mix-blend-soft-light",
+            style.foil
+          )} />
+
+          {/* Animated Sheen */}
+          <motion.div
+            className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/10 to-transparent -translate-x-full group-hover:animate-shimmer z-10 pointer-events-none"
+          />
+
           {/* Content */}
-          <div className="relative z-10 p-6">
+          <div className="relative z-20 p-6 flex flex-col h-full transform-gpu" style={{ transform: "translateZ(20px)" }}>
+
             {/* Header with logo and name */}
-            <div className="flex items-start gap-4 mb-6">
-              {/* Logo */}
-              <motion.div 
-                className="relative w-20 h-20 rounded-xl overflow-hidden bg-[#1a1a1f] border-2 border-[#8B1538]/50 shrink-0"
-                whileHover={{ scale: 1.05, rotate: 5 }}
-                transition={{ duration: 0.2 }}
+            <div className="flex items-start gap-5 mb-4">
+              {/* Logo - Larger */}
+              <motion.div
+                className={cn(
+                  "relative w-24 h-24 rounded-2xl overflow-hidden bg-black/40 shrink-0",
+                  "border border-white/10 group-hover:border-white/40 transition-colors shadow-xl"
+                )}
+                whileHover={{ scale: 1.05, rotate: 3 }}
+                style={{
+                  // Removed glow
+                }}
               >
                 <Image
-                  src={team.logoUrl || `https://placehold.co/80x80.png?text=${team.name.charAt(0)}`}
+                  src={team.logoUrl || `https://placehold.co/96x96.png?text=${team.name.charAt(0)}`}
                   alt={team.name}
                   fill
                   className="object-cover"
                 />
-                {/* Logo glow on hover */}
-                <div className="absolute inset-0 bg-[#8B1538]/20 opacity-0 group-hover:opacity-100 transition-opacity" />
               </motion.div>
 
               {/* Team info */}
-              <div className="flex-1 min-w-0">
-                <h3 className="text-xl font-logik font-bold text-white mb-1 truncate group-hover:text-[#d4af37] transition-colors">
+              <div className="flex-1 min-w-0 pt-2">
+                <h3 className={cn(
+                  "text-2xl font-logik-extended-bold mb-2 leading-tight drop-shadow-md",
+                  style.text // Always division color
+                )}>
                   {team.name}
                 </h3>
-                <div className="flex items-center gap-2 flex-wrap text-sm text-gray-400">
-                  {/* Division with ranking */}
-                  {team.division && (
-                    <Badge variant="outline" className="border-[#8B1538]/50 text-[#d4af37] text-xs font-logik">
-                      {divisionRanking && `#${divisionRanking} `}{team.division}
-                    </Badge>
-                  )}
-                  {/* Win/Loss Record */}
-                  {(team.wins !== undefined || team.losses !== undefined) && (
-                    <span className="flex items-center gap-1 font-logik">
-                      <Trophy className="h-3 w-3 text-green-400" />
-                      {team.wins || 0}W - {team.losses || 0}L
-                    </span>
-                  )}
-                  {/* Points */}
-                  {team.points !== undefined && (
-                    <span className="flex items-center gap-1 font-logik text-[#d4af37]">
-                      {team.points} pts
-                    </span>
-                  )}
-                </div>
+                {/* Division Badge */}
+                {team.division && (
+                  <Badge variant="outline" className={cn(
+                    "w-fit text-xs px-2 py-0.5 font-logik border-white/10 bg-white/5",
+                    style.text, style.lightBorder // Division colors
+                  )}>
+                    {divisionRanking && <span className="mr-1 opacity-75">#{divisionRanking}</span>}
+                    {team.division}
+                  </Badge>
+                )}
               </div>
             </div>
 
-            {/* Stats section */}
-            <div className="space-y-3 mb-4">
-              {/* Recent form */}
-              {team.recentForm && team.recentForm.length > 0 && (
-                <div className="p-3 rounded-lg bg-[#8B1538]/10 border border-[#8B1538]/20">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-gray-400 font-logik uppercase tracking-wide">Recent Form</span>
-                    <div className="flex gap-1">
-                      {team.recentForm.slice(0, 5).map((result, idx) => (
-                        <div
-                          key={idx}
-                          className={cn(
-                            "w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold",
-                            result === 'W' ? "bg-green-500/20 text-green-400" :
-                            result === 'D' ? "bg-yellow-500/20 text-yellow-400" :
-                            "bg-red-500/20 text-red-400"
-                          )}
-                        >
-                          {result}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              )}
-              
-              {/* Next Match */}
-              {nextOpponent && (
-                <div className="p-3 rounded-lg bg-[#8B1538]/10 border border-[#8B1538]/20">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-gray-400 font-logik uppercase tracking-wide flex items-center gap-1">
-                      <Calendar className="h-3 w-3" />
-                      Next Match
-                    </span>
-                    <span className="text-sm text-white font-logik">vs {nextOpponent.name}</span>
-                  </div>
-                </div>
-              )}
-              
-              {/* Head-to-Head */}
-              {headToHeadRecord && nextOpponent && (
-                <div className="p-3 rounded-lg bg-[#8B1538]/10 border border-[#8B1538]/20">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-gray-400 font-logik uppercase tracking-wide flex items-center gap-1">
-                      <Target className="h-3 w-3" />
-                      H2H vs {nextOpponent.name}
-                    </span>
-                    <span className="text-sm font-logik">
-                      <span className="text-green-400">{headToHeadRecord.wins}W</span>
-                      {headToHeadRecord.draws > 0 && <span className="text-yellow-400"> {headToHeadRecord.draws}D</span>}
-                      <span className="text-red-400"> {headToHeadRecord.losses}L</span>
-                    </span>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Players list */}
-            <div className="space-y-2">
-              {sortedPlayers.slice(0, 5).map((player, idx) => (
-                <motion.div
-                  key={player.id || idx}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: idx * 0.05 }}
-                  className={cn(
-                    "flex items-center justify-between gap-3 p-2 rounded-lg",
-                    "bg-[#1a1a1f]/50 border border-transparent",
-                    "group-hover:border-[#8B1538]/20 transition-all"
-                  )}
-                >
-                  {/* Role icon and name on left */}
-                  <div className="flex items-center gap-2 min-w-0">
-                    <div className={cn("shrink-0", getRoleColor(player.role))}>
+            {/* Body Content - Side by Side */}
+            <div className="flex items-start justify-between gap-4 mt-2 relative">
+              {/* Left Column: Player List */}
+              <div className="flex-1 space-y-1 min-w-0">
+                {sortedPlayers.slice(0, 5).map((player, idx) => (
+                  <div
+                    key={player.id || idx}
+                    className="flex items-center gap-3 p-1 pl-1"
+                  >
+                    <div className="shrink-0 text-white/40">
                       {getRoleIcon(player.role)}
                     </div>
-                    <p className="text-xs text-gray-400 font-logik uppercase tracking-wide whitespace-nowrap">
-                      {player.role}
-                    </p>
-                  </div>
-                  
-                  {/* Player nickname on right in PDL red */}
-                  <div className="text-right">
-                    <p className="text-sm text-[#8B1538] truncate font-medium font-logik-wide-black">
+                    <p className="text-xs text-gray-400 font-logik uppercase tracking-wide truncate">
                       {player.nickname}
                     </p>
                   </div>
-                </motion.div>
-              ))}
+                ))}
 
-              {/* Captain badge */}
-              {team.captainId && (
-                <div className="mt-3 pt-3 border-t border-[#8B1538]/20">
-                  <div className="flex items-center gap-2 text-xs text-gray-400">
-                    <Crown className="h-3 w-3 text-[#d4af37]" />
-                    <span className="font-logik uppercase tracking-wide">Captain</span>
-                    <span className="text-white">
-                      {players.find(p => p.id === team.captainId)?.nickname || 'Unknown'}
-                    </span>
+                {/* Captain badge */}
+                {team.captainId && (
+                  <div className="mt-2 pt-2 border-t border-white/10 w-fit">
+                    <div className="flex items-center gap-2 text-xs text-gray-500">
+                      <Crown className={cn("h-3 w-3", style.text)} />
+                      <span className="font-logik uppercase tracking-wide text-[10px]">Captain</span>
+                      <span className="text-white text-[10px]">
+                        {players.find(p => p.id === team.captainId)?.nickname || 'Unknown'}
+                      </span>
+                    </div>
                   </div>
+                )}
+              </div>
+
+              {/* Right Column: Recent Form (Bottom-right) */}
+              {team.recentForm && team.recentForm.length > 0 && (
+                <div className="flex flex-col items-end gap-1 absolute bottom-0 right-0">
+                  <div className="flex gap-2 h-12 items-end">
+                    {team.recentForm.slice(0, 5).reverse().map((result, idx) => (
+                      <div
+                        key={idx}
+                        className={cn(
+                          "w-2 rounded-full shadow-sm",
+                          result === 'W' ? "bg-green-500 h-full" :
+                            result === 'D' ? "bg-yellow-500 h-8" :
+                              "bg-red-500 h-5"
+                        )}
+                      />
+                    ))}
+                  </div>
+                  <span className="text-[9px] text-gray-500 font-logik uppercase tracking-widest">Form</span>
                 </div>
               )}
             </div>
 
-            {/* Hover indicator */}
-            <motion.div 
-              className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-[#8B1538] to-[#d4af37]"
+            {/* Hover indicator - transformed to bottom glow bar */}
+            <motion.div
+              className={cn("absolute bottom-0 left-0 right-0 h-[3px] opacity-0 group-hover:opacity-100 shadow-[0_-2px_10px_rgba(255,255,255,0.3)]", style.gradient)}
               initial={{ scaleX: 0 }}
               whileHover={{ scaleX: 1 }}
-              transition={{ duration: 0.3 }}
+              transition={{ duration: 0.4, ease: "circOut" }}
+              style={{ background: style.glow }}
             />
           </div>
-        </Card>
+        </motion.div>
       </Link>
     </motion.div>
   );

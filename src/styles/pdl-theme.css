@@ -6,47 +6,52 @@
   /* Primary - Deep crimson/maroon (from logo shield) */
   --primary: 345 75% 31%;
   --primary-foreground: 0 0% 100%;
-  
+
   /* Secondary - Rich gold (from logo accents) */
   --secondary: 46 65% 52%;
   --secondary-foreground: 0 0% 10%;
-  
+
   /* Accent - Gold light */
   --accent: 46 72% 62%;
   --accent-foreground: 0 0% 10%;
-  
-  /* Background - Dark slate */
-  --background: 240 17% 6%;
+
+  /* Background - Abyssal Void (Deepest Black) */
+  --background: 240 10% 1%;
   --foreground: 0 0% 100%;
-  
+
   /* Card */
   --card: 240 15% 10%;
   --card-foreground: 0 0% 100%;
-  
+
   /* Popover */
   --popover: 240 15% 10%;
   --popover-foreground: 0 0% 100%;
-  
+
   /* Muted */
   --muted: 240 15% 15%;
   --muted-foreground: 240 8% 66%;
-  
+
   /* Border */
   --border: 240 16% 20%;
   --input: 240 15% 12%;
   --ring: 345 75% 31%;
-  
+
   /* Destructive */
   --destructive: 0 84% 60%;
   --destructive-foreground: 0 0% 100%;
-  
+
   /* Chart colors - PDL themed */
-  --chart-1: 345 75% 31%; /* Crimson (primary) */
-  --chart-2: 46 65% 52%;  /* Gold (secondary) */
-  --chart-3: 142 71% 45%; /* Success green */
-  --chart-4: 217 91% 60%; /* Info blue */
-  --chart-5: 0 0% 75%;    /* Silver */
-  
+  --chart-1: 345 75% 31%;
+  /* Crimson (primary) */
+  --chart-2: 46 65% 52%;
+  /* Gold (secondary) */
+  --chart-3: 142 71% 45%;
+  /* Success green */
+  --chart-4: 217 91% 60%;
+  /* Info blue */
+  --chart-5: 0 0% 75%;
+  /* Silver */
+
   /* Sidebar */
   --sidebar-background: 240 17% 5%;
   --sidebar-foreground: 0 0% 90%;
@@ -56,7 +61,7 @@
   --sidebar-accent-foreground: 0 0% 10%;
   --sidebar-border: 240 16% 18%;
   --sidebar-ring: 345 75% 31%;
-  
+
   /* PDL-specific custom properties */
   --pdl-crimson: 345 75% 31%;
   --pdl-crimson-light: 345 70% 39%;
@@ -64,12 +69,15 @@
   --pdl-gold: 46 65% 52%;
   --pdl-gold-light: 46 72% 62%;
   --pdl-gold-dark: 46 60% 45%;
-  
+
   /* Division colors */
-  --pdl-division-elite: 46 65% 52%;      /* Gold */
-  --pdl-division-challenger: 0 0% 75%;   /* Silver */
-  --pdl-division-adept: 30 60% 50%;      /* Bronze */
-  
+  --pdl-division-elite: 46 65% 52%;
+  /* Gold */
+  --pdl-division-challenger: 0 0% 75%;
+  /* Silver */
+  --pdl-division-adept: 30 60% 50%;
+  /* Bronze */
+
   /* Status colors */
   --pdl-success: 142 71% 45%;
   --pdl-warning: 45 93% 47%;

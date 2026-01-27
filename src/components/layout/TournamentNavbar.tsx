@@ -3,22 +3,22 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { 
-  LayoutGrid, 
-  Shield, 
-  CalendarDays, 
-  GitFork, 
-  ScrollText, 
-  HelpCircle, 
-  BarChart2, 
-  Crown, 
-  Users, 
-  ClipboardCheck, 
+import {
+  LayoutGrid,
+  Shield,
+  CalendarDays,
+  GitFork,
+  ScrollText,
+  HelpCircle,
+  BarChart2,
+  Crown,
+  Users,
+  ClipboardCheck,
   Settings,
   ChevronDown,
   Layers,
   Home,
-  Menu
+  Menu,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -33,6 +33,8 @@ import {
 import { useTournament, useTournamentType } from '@/context/TournamentContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 import React from 'react';
+
+
 
 interface NavItem {
   href: string;
@@ -77,14 +79,14 @@ export function TournamentNavbar() {
   ];
 
   // Filter nav items based on tournament type
-  const filteredNavItems = navItems.filter(item => 
-    item.showFor === 'all' || 
+  const filteredNavItems = navItems.filter(item =>
+    item.showFor === 'all' ||
     (item.showFor === 'league' && isLeague) ||
     (item.showFor === 'mmr-limited' && !isLeague)
   );
 
   // For desktop navbar, only show specific items
-  const desktopNavItems = filteredNavItems.filter(item => 
+  const desktopNavItems = filteredNavItems.filter(item =>
     ['/teams', '/schedule', '/playoffs', '/stats', '/rules'].includes(item.href)
   );
 
@@ -170,9 +172,9 @@ export function TournamentNavbar() {
   // Initial render before hydration
   if (!hasMounted) {
     return (
-      <header 
+      <header
         className="border-b shadow-sm sticky top-0 z-50"
-        style={{ 
+        style={{
           backgroundColor: theme.cardColor,
           borderColor: theme.borderColor,
         }}
@@ -188,9 +190,9 @@ export function TournamentNavbar() {
   // Mobile navigation
   if (isMobile) {
     return (
-      <header 
+      <header
         className="border-b shadow-sm sticky top-0 z-50"
-        style={{ 
+        style={{
           backgroundColor: theme.cardColor,
           borderColor: theme.borderColor,
         }}
@@ -204,8 +206,8 @@ export function TournamentNavbar() {
                 <span className="sr-only">Otwórz menu</span>
               </Button>
             </SheetTrigger>
-            <SheetContent 
-              side="left" 
+            <SheetContent
+              side="left"
               className="w-[280px] sm:w-[320px] p-0"
               style={{ backgroundColor: theme.cardColor }}
             >
@@ -246,12 +248,8 @@ export function TournamentNavbar() {
 
   // Desktop navigation
   return (
-    <header 
-      className="border-b shadow-sm sticky top-0 z-50"
-      style={{ 
-        backgroundColor: theme.cardColor,
-        borderColor: theme.borderColor,
-      }}
+    <header
+      className="border-b shadow-sm sticky top-0 z-50 bg-background border-border"
     >
       <div className="container mx-auto px-4 flex items-center h-14">
         <LogoWithSwitcher />
@@ -266,15 +264,15 @@ export function TournamentNavbar() {
                   asChild
                   className={cn(
                     "relative text-sm font-medium shrink-0 px-3 py-2 transition-all duration-200 group",
-                    "hover:bg-accent/50",
-                    !active && "text-muted-foreground hover:text-foreground"
+                    "hover:bg-[#cf2648]/10 hover:text-[#cf2648]",
+                    !active && "text-muted-foreground"
                   )}
                   style={{ color: active ? theme.primaryColor : undefined }}
                 >
                   <Link href={getTournamentPath(item.href)} className="flex items-center gap-2">
                     <item.icon className="h-4 w-4" />
                     <span className="hidden lg:inline">{item.label}</span>
-                    <span 
+                    <span
                       className={cn(
                         "absolute bottom-0 left-0 h-0.5 w-full transform transition-transform duration-300 ease-out",
                         active ? "scale-x-100" : "scale-x-0 group-hover:scale-x-100"

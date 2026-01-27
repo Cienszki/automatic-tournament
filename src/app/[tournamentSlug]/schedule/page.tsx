@@ -1,89 +1,68 @@
 "use client";
 
-import { useTournament, useTournamentType } from '@/context/TournamentContext';
-import { Card, CardContent } from '@/components/ui/card';
-import { MatchListItem as LegacyMatchListItem } from "@/components/app/MatchListItem";
-import { MatchCard as PDLMatchCard } from "@/components/pdl/MatchCard";
+import { useTournament } from '@/context/TournamentContext';
 import { getAllMatches } from "@/lib/firestore";
 import type { Match } from "@/lib/definitions";
-import { CalendarDays, CalendarClock, History, AlertCircle } from 'lucide-react';
 import { useEffect, useState } from "react";
-import { collection, getDocs, query, where, orderBy } from 'firebase/firestore';
+import { collection, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { MatchdayCarousel } from '@/components/schedule/MatchdayCarousel';
 
 /**
- * Schedule page - shows upcoming and past matches
+ * Schedule page - Premium redesign with full-width layout
  */
 export default function SchedulePage() {
-  const { tournament, theme, isLegacyTournament } = useTournament();
-  const { isLeague } = useTournamentType();
-  const [upcomingMatches, setUpcomingMatches] = useState<Match[]>([]);
-  const [completedMatches, setCompletedMatches] = useState<Match[]>([]);
+  const { tournament, isLegacyTournament, theme } = useTournament();
+  const [matches, setMatches] = useState<Match[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const loadMatches = async () => {
       try {
+        let fetchedMatches: Match[] = [];
+
         if (isLegacyTournament) {
           const allMatches = await getAllMatches();
-
-          const upcoming = allMatches
-            .filter(match => match.status !== 'completed' && match.dateTime)
-            .sort((a, b) => new Date(a.dateTime!).getTime() - new Date(b.dateTime!).getTime());
-
-          const completed = allMatches
-            .filter(match => match.status === 'completed')
-            .sort((a, b) => {
-                const dateA = a.completed_at ? new Date(a.completed_at) : new Date(a.dateTime || 0);
-                const dateB = b.completed_at ? new Date(b.completed_at) : new Date(b.dateTime || 0);
-                return dateB.getTime() - dateA.getTime();
-            });
-
-          setUpcomingMatches(upcoming);
-          setCompletedMatches(completed);
+          fetchedMatches = allMatches;
         } else if (tournament?.id) {
-          // New tournament structure - load from /tournaments/{id}/matches
           const matchesRef = collection(db, 'tournaments', tournament.id, 'matches');
           const matchesSnapshot = await getDocs(matchesRef);
-          
-          const allMatches: Match[] = matchesSnapshot.docs.map(doc => {
+
+          fetchedMatches = matchesSnapshot.docs.map(doc => {
             const data = doc.data();
+
+            const mapTeam = (teamData: any) => {
+              if (typeof teamData === 'object' && teamData !== null) return teamData;
+              return { id: String(teamData), name: 'TBA', score: 0, logoUrl: '' };
+            };
+
+            const teamAObj = mapTeam(data.teamA);
+            const teamBObj = mapTeam(data.teamB);
+
             return {
               id: doc.id,
-              teamA: data.teamA || '',
-              teamB: data.teamB || '',
+              teamA: teamAObj,
+              teamB: teamBObj,
+              teams: [teamAObj.id, teamBObj.id],
               status: data.status || 'scheduled',
               dateTime: data.scheduledFor || data.dateTime,
-              scheduledFor: data.scheduledFor,
+              scheduled_for: data.scheduled_for || data.scheduledFor || '',
+              defaultMatchTime: data.defaultMatchTime || '',
+              schedulingStatus: data.schedulingStatus || 'unscheduled',
               completed_at: data.completed_at,
               scoreA: data.scoreA,
               scoreB: data.scoreB,
               round: data.round,
               matchday: data.matchday,
+              group_id: data.group_id,
               bestOf: data.bestOf || 2,
-            } as Match;
+            } as unknown as Match;
           });
-
-          // Filter upcoming matches (not completed)
-          const upcoming = allMatches
-            .filter(match => match.status !== 'completed' && match.dateTime)
-            .sort((a, b) => new Date(a.dateTime!).getTime() - new Date(b.dateTime!).getTime());
-
-          // Filter completed matches
-          const completed = allMatches
-            .filter(match => match.status === 'completed')
-            .sort((a, b) => {
-              const dateA = a.completed_at ? new Date(a.completed_at) : new Date(a.dateTime || 0);
-              const dateB = b.completed_at ? new Date(b.completed_at) : new Date(b.dateTime || 0);
-              return dateB.getTime() - dateA.getTime();
-            });
-
-          setUpcomingMatches(upcoming);
-          setCompletedMatches(completed);
-        } else {
-          setUpcomingMatches([]);
-          setCompletedMatches([]);
         }
+
+        const validMatches = fetchedMatches.filter(m => (m.scheduled_for || m.dateTime));
+        setMatches(validMatches);
+
       } catch (error) {
         console.error("Failed to load matches:", error);
       } finally {
@@ -94,89 +73,50 @@ export default function SchedulePage() {
     loadMatches();
   }, [isLegacyTournament, tournament?.id]);
 
-  if (!tournament) return null;
-
   if (loading) {
     return (
-      <div className="space-y-6">
-        <div className="flex items-center gap-3">
-          <CalendarDays className="h-8 w-8" style={{ color: theme.primaryColor }} />
-          <h1 className="text-3xl font-bold">Terminarz</h1>
-        </div>
-        <div className="text-center py-10">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-3"></div>
-          <p className="text-muted-foreground">Ładowanie meczów...</p>
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="relative">
+            <div className="w-20 h-20 border-4 border-pdl-gold/20 rounded-full" />
+            <div className="absolute inset-0 w-20 h-20 border-4 border-pdl-gold border-t-transparent rounded-full animate-spin" />
+          </div>
+          <span className="text-pdl-gold font-logik-extended-bold tracking-widest animate-pulse uppercase text-sm">
+            Loading Schedule
+          </span>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-3">
-        <CalendarDays className="h-8 w-8" style={{ color: theme.primaryColor }} />
-        <h1 className="text-3xl font-bold">Terminarz</h1>
+    <div className="relative text-white overflow-x-hidden min-h-screen">
+      {/* Premium Atmosphere Background */}
+      <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+        {/* Subtle vignette */}
+        <div
+          className="absolute inset-0 z-0 pointer-events-none opacity-60"
+          style={{
+            background: 'radial-gradient(ellipse at center, transparent 0%, transparent 40%, #000000 100%)',
+          }}
+        />
+
+        {/* Ambient glow - top right */}
+        <div
+          className="absolute top-[-20%] right-[-10%] w-[60vw] h-[60vw] rounded-full opacity-[0.04] blur-[200px]"
+          style={{ background: theme?.primaryColor || '#3b82f6' }}
+        />
+
+        {/* Ambient glow - bottom left */}
+        <div
+          className="absolute bottom-[-20%] left-[-10%] w-[40vw] h-[40vw] rounded-full opacity-[0.03] blur-[150px]"
+          style={{ background: '#dc2626' }}
+        />
       </div>
 
-      <div className="grid md:grid-cols-2 gap-8">
-        {/* Upcoming Matches */}
-        <section className="space-y-4">
-          <h2 className="text-xl font-semibold flex items-center gap-2" style={{ color: theme.accentColor }}>
-            <CalendarClock className="h-6 w-6" />
-            Nadchodzące mecze
-          </h2>
-          {upcomingMatches.length === 0 ? (
-            <Card style={{ backgroundColor: theme.cardColor, borderColor: theme.borderColor }}>
-              <CardContent className="p-10 flex flex-col items-center text-center">
-                <AlertCircle className="w-12 h-12 text-muted-foreground mb-4" />
-                <h3 className="text-lg font-semibold mb-2">Brak zaplanowanych meczów</h3>
-                <p className="text-muted-foreground text-sm">
-                  Sprawdź ponownie później.
-                </p>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="space-y-4">
-              {upcomingMatches.map((match, idx) => (
-                isLeague ? (
-                  <PDLMatchCard key={match.id} match={match} index={idx} />
-                ) : (
-                  <LegacyMatchListItem key={match.id} match={match} />
-                )
-              ))}
-            </div>
-          )}
-        </section>
-
-        {/* Completed Matches */}
-        <section className="space-y-4">
-          <h2 className="text-xl font-semibold flex items-center gap-2" style={{ color: theme.accentColor }}>
-            <History className="h-6 w-6" />
-            Ostatnie wyniki
-          </h2>
-          {completedMatches.length === 0 ? (
-            <Card style={{ backgroundColor: theme.cardColor, borderColor: theme.borderColor }}>
-              <CardContent className="p-10 flex flex-col items-center text-center">
-                <AlertCircle className="w-12 h-12 text-muted-foreground mb-4" />
-                <h3 className="text-lg font-semibold mb-2">Brak zakończonych meczów</h3>
-                <p className="text-muted-foreground text-sm">
-                  Wyniki pojawią się tutaj po rozegraniu meczów.
-                </p>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="space-y-4">
-              {completedMatches.slice(0, 10).map((match, idx) => (
-                isLeague ? (
-                  <PDLMatchCard key={match.id} match={match} index={idx} />
-                ) : (
-                  <LegacyMatchListItem key={match.id} match={match} />
-                )
-              ))}
-            </div>
-          )}
-        </section>
+      {/* Main Content */}
+      <div className="relative z-10 max-w-[1800px] mx-auto px-6 lg:px-12 py-8">
+        <MatchdayCarousel matches={matches} />
       </div>
     </div>
   );

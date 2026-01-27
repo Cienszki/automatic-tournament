@@ -1,5 +1,5 @@
 // src/components/pdl/DivisionTable.tsx
-// Compact division standings table with enhanced styling
+// Compact division standings table with enhanced styling (Transparent / Minimal)
 
 'use client';
 
@@ -32,113 +32,88 @@ export function DivisionTable({ divisionName, divisionColor, teams, divisionId }
   return (
     <motion.div
       variants={listItem}
-      className={cn(
-        "rounded-xl overflow-hidden",
-        "bg-gradient-to-br from-[#1e1e24] to-[#16161a]",
-        "border border-[#2a2a32]",
-        "shadow-lg shadow-black/30",
-        "hover:border-[#3a3a42] transition-all duration-300"
-      )}
+      className="rounded-none overflow-hidden"
     >
-      {/* Header */}
-      <Link 
+      {/* Header - Minimal Text with Indicator */}
+      <Link
         href={divisionId ? getTournamentPath(`/divisions/${divisionId}`) : '#'}
-        className="block px-4 py-3 font-bold text-lg border-b border-[#2a2a32] relative overflow-hidden group cursor-pointer"
-        style={{ 
-          background: `linear-gradient(90deg, ${divisionColor}15 0%, transparent 75%)`,
-        }}
+        className="block pb-4 mb-2 relative group cursor-pointer"
       >
-        {/* Animated shimmer effect */}
-        <motion.div
-          className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full"
-          animate={{ translateX: ['100%', '-100%'] }}
-          transition={{ duration: 3, repeat: Infinity, ease: "linear", repeatDelay: 2 }}
-        />
-        <span style={{ color: divisionColor }} className="relative z-10 flex items-center gap-2">
-          <motion.span
-            className="w-2 h-2 rounded-full"
-            style={{ backgroundColor: divisionColor }}
-            animate={{ scale: [1, 1.3, 1], opacity: [0.7, 1, 0.7] }}
-            transition={{ duration: 2, repeat: Infinity }}
-          />
-          {divisionName}
+        <div className="flex items-center gap-3">
+          <motion.h3
+            className="text-2xl font-logik-extended-bold tracking-wide uppercase relative"
+            style={{ color: divisionColor }}
+            animate={{
+              textShadow: [
+                `0 0 10px ${divisionColor}00`,
+                `0 0 20px ${divisionColor}60`,
+                `0 0 10px ${divisionColor}00`
+              ]
+            }}
+            transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+          >
+            {divisionName}
+          </motion.h3>
           {divisionId && (
             <motion.span
-              className="ml-auto text-xs text-[#808090] opacity-0 group-hover:opacity-100"
-              initial={{ x: -5 }}
-              whileHover={{ x: 0 }}
+              className="ml-auto text-xs font-mono uppercase tracking-widest text-white/30 opacity-0 group-hover:opacity-100 transition-opacity"
             >
-              Zobacz szczegóły →
+              Zobacz tabelę
             </motion.span>
           )}
-        </span>
+        </div>
+        {/* Animated underline */}
+        <div className="absolute bottom-0 left-0 w-full h-[1px] bg-white/10 overflow-hidden">
+          <motion.div
+            className="absolute inset-0 w-full h-full"
+            style={{ backgroundColor: divisionColor }}
+            initial={{ x: '-100%' }}
+            whileHover={{ x: '0%' }}
+            transition={{ duration: 0.4, ease: "easeOut" }}
+          />
+        </div>
       </Link>
 
-      {/* Table */}
+      {/* Table - Transparent, just rows */}
       <div className="overflow-x-auto">
-        <table className="w-full">
+        <table className="w-full border-collapse">
           <thead>
-            <tr className="text-xs text-[#606070] border-b border-[#2a2a32]/50">
-              <th className="px-4 py-2 text-left w-12">#</th>
-              <th className="px-4 py-2 text-left">Drużyna</th>
-              <th className="px-4 py-2 text-center w-16">M</th>
-              <th className="px-4 py-2 text-center w-16">PKT</th>
+            <tr className="text-[10px] font-mono uppercase tracking-widest text-white/30">
+              <th className="px-2 py-2 text-left">Drużyna</th>
+              <th className="px-2 py-2 text-center w-12 text-white/50">PKT</th>
             </tr>
           </thead>
           <tbody>
             {teams.map((team, index) => (
               <motion.tr
                 key={team.teamId}
-                initial={{ opacity: 0, x: -20 }}
+                initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: index * 0.05 }}
                 className={cn(
-                  "border-b border-[#2a2a32]/30 last:border-0",
-                  "hover:bg-white/[0.03] transition-colors cursor-pointer group"
+                  "border-b border-white/5 last:border-0",
+                  "hover:bg-white/[0.02] transition-colors cursor-pointer group"
                 )}
               >
-                <td className="px-4 py-2.5">
-                  <span 
-                    className={cn(
-                      "text-sm font-bold",
-                      index === 0 && "text-[#FFD700]",
-                      index === 1 && "text-[#C0C0C0]",
-                      index === 2 && "text-[#CD7F32]",
-                      index > 2 && "text-[#606070]"
-                    )}
-                  >
-                    {team.position}
-                  </span>
-                </td>
-                <td className="px-4 py-2.5">
-                  <Link 
+                <td className="px-2 py-3">
+                  <Link
                     href={getTournamentPath(`/teams/${team.teamId}`)}
-                    className="font-medium text-white/90 group-hover:text-white transition-colors flex items-center gap-2"
+                    className="flex items-center gap-3 font-logik text-lg text-white/80 group-hover:text-white transition-colors"
                   >
                     {team.teamLogo && (
                       <Image
                         src={team.teamLogo}
                         alt={team.teamName}
-                        width={20}
-                        height={20}
-                        className="rounded-sm"
+                        width={24}
+                        height={24}
+                        className="rounded-sm opacity-80 group-hover:opacity-100 transition-opacity"
                       />
                     )}
-                    <span className="truncate">{team.teamName}</span>
-                    <motion.span
-                      className="opacity-0 group-hover:opacity-100 text-[#808090] text-xs"
-                      initial={{ x: -5 }}
-                      whileHover={{ x: 0 }}
-                    >
-                      →
-                    </motion.span>
+                    <span className="truncate tracking-wide">{team.teamName}</span>
                   </Link>
                 </td>
-                <td className="px-4 py-2.5 text-center text-sm text-[#808090]">
-                  {team.gamesPlayed}
-                </td>
-                <td className="px-4 py-2.5 text-center">
-                  <span className="font-bold text-base text-white">
+                <td className="px-2 py-3 text-center">
+                  <span className="font-logik-extended-bold text-xl text-white group-hover:text-primary transition-colors">
                     {team.points}
                   </span>
                 </td>

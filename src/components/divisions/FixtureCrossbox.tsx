@@ -1,18 +1,18 @@
 // src/components/divisions/FixtureCrossbox.tsx
-// Crossbox matrix showing all head-to-head fixtures
+// Premium Interactive Matrix
 
 'use client';
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import Image from 'next/image';
 import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
-import { Calendar } from 'lucide-react';
+import { Calendar, Grid3x3, Info } from 'lucide-react';
 import type { Match } from '@/lib/definitions';
 import { MatchDetailModal } from './MatchDetailModal';
+import { TeamLogo } from './TeamLogo';
 
 interface TeamStanding {
   teamId: string;
@@ -24,6 +24,7 @@ interface FixtureCrossboxProps {
   matches: Match[];
   standings: TeamStanding[];
   divisionColor: string;
+  divisionTier?: number;
   theme: any;
 }
 
@@ -32,21 +33,32 @@ interface MatchResult {
   awayScore: number;
   date: string;
   status: 'scheduled' | 'completed' | 'live';
-  match: Match; // Add the full match object
+  match: Match;
 }
 
 export function FixtureCrossbox({
   matches,
   standings,
   divisionColor,
+  divisionTier,
   theme
 }: FixtureCrossboxProps) {
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  
-  // Build a matrix of match results
+  const [hoveredRow, setHoveredRow] = useState<string | null>(null);
+  const [hoveredCol, setHoveredCol] = useState<string | null>(null);
+
+  const getTierClass = (tier?: number) => {
+    if (tier === 1) return { text: 'text-shine-gold', border: 'border-shine-gold' };
+    if (tier === 2) return { text: 'text-shine-silver', border: 'border-shine-silver' };
+    if (tier === 3) return { text: 'text-shine-bronze', border: 'border-shine-bronze' };
+    return { text: 'pdl-gradient-text', border: '' };
+  };
+
+  const tierStyle = getTierClass(divisionTier);
+
   const getMatchResult = (homeTeamId: string, awayTeamId: string): MatchResult | null => {
-    const match = matches.find(m => 
+    const match = matches.find(m =>
       (m.teamA.id === homeTeamId && m.teamB.id === awayTeamId) ||
       (m.teamA.id === awayTeamId && m.teamB.id === homeTeamId)
     );
@@ -54,19 +66,19 @@ export function FixtureCrossbox({
     if (!match) return null;
 
     const isHomeTeamA = match.teamA.id === homeTeamId;
-    
+
     return {
       homeScore: isHomeTeamA ? match.teamA.score : match.teamB.score,
       awayScore: isHomeTeamA ? match.teamB.score : match.teamA.score,
       date: match.scheduled_for || match.defaultMatchTime || '',
       status: match.status,
-      match: match, // Store the full match object
+      match: match,
     };
   };
 
   const getCellContent = (result: MatchResult | null) => {
     if (!result) {
-      return <span className="text-muted-foreground text-xs">-</span>;
+      return <div className="w-full h-full flex items-center justify-center opacity-10"><div className="w-1 h-1 rounded-full bg-white" /></div>;
     }
 
     const handleClick = () => {
@@ -81,12 +93,12 @@ export function FixtureCrossbox({
       return (
         <button
           onClick={handleClick}
-          className="flex flex-col items-center gap-1 hover:bg-accent/50 rounded p-1 transition-colors w-full"
+          className="w-full h-full flex flex-col items-center justify-center gap-0.5 hover:bg-white/5 transition-colors group relative"
         >
-          <Calendar className="h-3 w-3 text-muted-foreground" />
-          <span className="text-xs text-muted-foreground">
-            {matchDate && !isNaN(matchDate.getTime()) 
-              ? format(matchDate, 'dd MMM', { locale: pl })
+          <Calendar className="h-3 w-3 text-white/30 group-hover:text-white/80 transition-colors" />
+          <span className="text-[9px] text-white/30 font-mono tracking-tighter">
+            {matchDate && !isNaN(matchDate.getTime())
+              ? format(matchDate, 'dd.MM', { locale: pl })
               : 'TBD'}
           </span>
         </button>
@@ -96,230 +108,134 @@ export function FixtureCrossbox({
     // Completed match
     const isWin = result.homeScore > result.awayScore;
     const isDraw = result.homeScore === result.awayScore;
-    const matchDate = result.date ? new Date(result.date) : null;
 
     return (
       <button
         onClick={handleClick}
-        className="flex flex-col items-center gap-1 hover:bg-accent/50 rounded p-1 transition-colors w-full"
+        className="w-full h-full flex items-center justify-center transition-all group relative overflow-hidden"
       >
-        <div className="flex items-center gap-1">
-          <span 
-            className={cn(
-              "text-base font-bold",
-              isWin && "text-green-500",
-              isDraw && "text-yellow-500",
-              !isWin && !isDraw && "text-red-500"
-            )}
-          >
+        <div className={cn(
+          "absolute inset-0 opacity-10 transition-opacity group-hover:opacity-20",
+          isWin ? "bg-emerald-500" : isDraw ? "bg-amber-500" : "bg-rose-500"
+        )} />
+
+        <div className="flex items-baseline gap-0.5 z-10 font-black text-sm tracking-tight">
+          <span className={cn(isWin ? "text-emerald-400" : isDraw ? "text-amber-400" : "text-rose-400")}>
             {result.homeScore}
           </span>
-          <span className="text-muted-foreground text-sm">-</span>
-          <span 
-            className={cn(
-              "text-base font-bold",
-              !isWin && !isDraw && "text-green-500",
-              isDraw && "text-yellow-500",
-              isWin && "text-red-500"
-            )}
-          >
+          <span className="text-white/20 text-[10px]">:</span>
+          <span className={cn(!isWin && !isDraw ? "text-emerald-400" : isDraw ? "text-amber-400" : "text-rose-400")}>
             {result.awayScore}
           </span>
         </div>
-        {matchDate && (
-          <span className="text-[10px] text-muted-foreground">
-            {format(matchDate, 'dd MMM', { locale: pl })}
-          </span>
-        )}
       </button>
     );
   };
 
   return (
-    <Card 
-      style={{ 
-        backgroundColor: theme.cardColor, 
-        borderColor: divisionColor,
-        borderWidth: '2px',
-        height: '600px',
-        boxShadow: `0 4px 20px ${divisionColor}15, 0 0 40px ${divisionColor}08`
-      }}
-      className="overflow-hidden flex flex-col transition-all duration-300 hover:shadow-2xl"
-    >
-      <CardContent className="p-0 flex-1 min-h-0">
-        <div className="h-full overflow-auto">
-          <table className="w-full border-collapse">
-              {/* Header Row */}
-              <thead>
-                <tr>
-                  {/* Top-left corner cell */}
-                  <th 
-                    className="sticky left-0 z-20 w-8 min-w-[2rem] p-1 border-b border-r"
-                    style={{ 
-                      backgroundColor: theme.cardColor,
-                      borderColor: `${divisionColor}40`
-                    }}
-                  >
-                  </th>
-                  {/* Team column headers */}
-                  {standings.map((team) => (
-                    <th
-                      key={`header-${team.teamId}`}
-                      className="w-14 min-w-[3.5rem] p-1 border-b border-r"
-                      style={{ 
-                        backgroundColor: `${divisionColor}08`,
-                        borderColor: `${divisionColor}20`
-                      }}
-                    >
-                      <div className="flex flex-col items-center">
-                        {team.teamLogoUrl ? (
-                          <Image
-                            src={team.teamLogoUrl}
-                            alt={team.teamName}
-                            width={20}
-                            height={20}
-                            className="rounded-sm"
-                          />
-                        ) : (
-                          <div className="w-5 h-5 bg-muted rounded-sm flex items-center justify-center text-[9px] font-bold">
-                            {team.teamName.charAt(0)}
-                          </div>
-                        )}
-                      </div>
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {standings.map((homeTeam, rowIndex) => (
-                  <motion.tr
-                    key={homeTeam.teamId}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: rowIndex * 0.05 }}
-                    className="hover:bg-accent/30 transition-colors"
-                  >
-                    {/* Row header - Home team */}
-                    <td 
-                      className="sticky left-0 z-10 w-8 min-w-[2rem] p-1 border-b border-r"
-                      style={{ 
-                        backgroundColor: theme.cardColor,
-                        borderColor: `${divisionColor}40`
-                      }}
-                    >
-                      <div className="flex items-center justify-center">
-                        {homeTeam.teamLogoUrl ? (
-                          <Image
-                            src={homeTeam.teamLogoUrl}
-                            alt={homeTeam.teamName}
-                            width={20}
-                            height={20}
-                            className="rounded-sm"
-                          />
-                        ) : (
-                          <div className="w-5 h-5 bg-muted rounded-sm flex items-center justify-center text-[9px] font-bold">
-                            {homeTeam.teamName.charAt(0)}
-                          </div>
-                        )}
-                      </div>
-                    </td>
-                    
-                    {/* Match cells */}
-                    {standings.map((awayTeam) => {
-                      const isSameTeam = homeTeam.teamId === awayTeam.teamId;
-                      const result = isSameTeam ? null : getMatchResult(homeTeam.teamId, awayTeam.teamId);
-                      
-                      return (
-                        <motion.td
-                          key={`${homeTeam.teamId}-${awayTeam.teamId}`}
-                          className={cn(
-                            "w-14 min-w-[3.5rem] p-1 text-center border-b border-r cursor-pointer relative group",
-                            isSameTeam && "bg-muted/50"
-                          )}
-                          style={{ 
-                            borderColor: `${divisionColor}15`,
-                            backgroundColor: isSameTeam ? `${divisionColor}05` : undefined
-                          }}
-                          onClick={() => !isSameTeam && handleClick(homeTeam.teamId, awayTeam.teamId)}
-                          whileHover={!isSameTeam ? { 
-                            scale: 1.15, 
-                            zIndex: 10,
-                            boxShadow: '0 8px 30px rgba(0,0,0,0.3)'
-                          } : {}}
-                          whileTap={!isSameTeam ? { scale: 0.95 } : {}}
-                          transition={{ type: "spring", stiffness: 400, damping: 17 }}
-                        >
-                          {isSameTeam ? (
-                            <div className="flex items-center justify-center">
-                              <div 
-                                className="w-5 h-5 rounded-full flex items-center justify-center"
-                                style={{ backgroundColor: `${divisionColor}20` }}
-                              >
-                                <span className="text-[10px] font-bold" style={{ color: divisionColor }}>
-                                  —
-                                </span>
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="relative overflow-hidden h-full flex items-center justify-center">
-                              <div className="absolute inset-0 bg-gradient-to-br from-white/0 via-white/0 to-white/15 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                              <span className="relative z-10 group-hover:scale-110 transition-transform duration-200">
-                                {getCellContent(result)}
-                              </span>
-                            </div>
-                          )}
-                        </motion.td>
-                      );
-                    })}
-                  </motion.tr>
-                ))}
-              </tbody>
-            </table>
+    <div className="rounded-2xl overflow-hidden p-1">
+      <div className="p-4 flex items-center gap-3 mb-1">
+        <Grid3x3 className={cn("w-5 h-5", tierStyle.text)} />
+        <h3 className={cn("text-lg font-logik-extended-bold transition-all", tierStyle.text)}>Macierz Wyników</h3>
+      </div>
 
-            {/* Legend */}
-            <div className="px-3 py-2 border-t bg-card sticky bottom-0" style={{ borderColor: `${divisionColor}20` }}>
-              <div className="flex flex-wrap gap-3 text-[10px] text-muted-foreground">
-                <motion.div className="flex items-center gap-1" whileHover={{ scale: 1.05 }}>
-                  <motion.div 
-                    className="w-3 h-3 rounded bg-green-500/20 border border-green-500" 
-                    animate={{ boxShadow: ['0 0 0px #10b981', '0 0 8px #10b981', '0 0 0px #10b981'] }}
-                    transition={{ duration: 2, repeat: Infinity }}
-                  />
-                  <span>Wygrana (2-0)</span>
-                </motion.div>
-                <motion.div className="flex items-center gap-1" whileHover={{ scale: 1.05 }}>
-                  <motion.div 
-                    className="w-3 h-3 rounded bg-yellow-500/20 border border-yellow-500"
-                    animate={{ boxShadow: ['0 0 0px #eab308', '0 0 8px #eab308', '0 0 0px #eab308'] }}
-                    transition={{ duration: 2, repeat: Infinity, delay: 0.3 }}
-                  />
-                  <span>Remis (1-1)</span>
-                </motion.div>
-                <motion.div className="flex items-center gap-1" whileHover={{ scale: 1.05 }}>
-                  <motion.div 
-                    className="w-3 h-3 rounded bg-red-500/20 border border-red-500"
-                    animate={{ boxShadow: ['0 0 0px #ef4444', '0 0 8px #ef4444', '0 0 0px #ef4444'] }}
-                    transition={{ duration: 2, repeat: Infinity, delay: 0.6 }}
-                  />
-                  <span>Przegrana (0-2)</span>
-                </motion.div>
-                <motion.div className="flex items-center gap-1" whileHover={{ scale: 1.05 }}>
-                  <Calendar className="h-3 w-3" />
-                  <span>Zaplanowany mecz</span>
-                </motion.div>
-                <motion.div 
-                  className="flex items-center gap-1"
-                  animate={{ opacity: [0.6, 1, 0.6] }}
-                  transition={{ duration: 2, repeat: Infinity }}
+      <div className="overflow-auto max-h-[600px] relative custom-scrollbar">
+        <table className="w-full border-collapse">
+          <thead className="sticky top-0 z-30 bg-black/40 backdrop-blur-md">
+            <tr>
+              <th className="sticky left-0 z-40 w-12 h-12 bg-black/40 backdrop-blur-md p-0 border-r border-b border-white/5">
+                <div className="w-full h-full flex items-center justify-center opacity-20">
+                  <Info className="w-3 h-3" />
+                </div>
+              </th>
+              {standings.map((team) => (
+                <th
+                  key={`header-${team.teamId}`}
+                  className={cn(
+                    "w-12 min-w-[3rem] h-12 p-0 transition-colors",
+                    hoveredCol === team.teamId ? "bg-white/5" : ""
+                  )}
+                  onMouseEnter={() => setHoveredCol(team.teamId)}
+                  onMouseLeave={() => setHoveredCol(null)}
                 >
-                  <span>💡 Kliknij na wynik</span>
-                </motion.div>
-              </div>
-            </div>
-        </div>
-      </CardContent>
+                  <div className="flex justify-center items-center h-full">
+                    <TeamLogo
+                      src={team.teamLogoUrl}
+                      name={team.teamName}
+                      size={24}
+                      fallbackClassName="text-[10px] opacity-70"
+                      className="grayscale opacity-50 hover:grayscale-0 hover:opacity-100 transition-all"
+                    />
+                  </div>
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {standings.map((homeTeam) => (
+              <tr
+                key={homeTeam.teamId}
+                className="transition-colors group"
+              >
+                {/* Row header */}
+                <td
+                  className={cn(
+                    "sticky left-0 z-20 w-12 h-12 bg-black/40 backdrop-blur-md p-0 transition-colors border-r border-white/5",
+                    hoveredRow === homeTeam.teamId ? "bg-white/10" : ""
+                  )}
+                  onMouseEnter={() => setHoveredRow(homeTeam.teamId)}
+                  onMouseLeave={() => setHoveredRow(null)}
+                >
+                  <div className="flex justify-center items-center h-full">
+                    <TeamLogo
+                      src={homeTeam.teamLogoUrl}
+                      name={homeTeam.teamName}
+                      size={24}
+                      fallbackClassName="text-[10px] opacity-70"
+                      className="grayscale opacity-50 hover:grayscale-0 hover:opacity-100 transition-all"
+                    />
+                  </div>
+                </td>
 
-      {/* Match Detail Modal */}
+                {/* Cells */}
+                {standings.map((awayTeam) => {
+                  const isSameTeam = homeTeam.teamId === awayTeam.teamId;
+                  const result = isSameTeam ? null : getMatchResult(homeTeam.teamId, awayTeam.teamId);
+                  const isHovered = hoveredRow === homeTeam.teamId || hoveredCol === awayTeam.teamId;
+
+                  return (
+                    <td
+                      key={`${homeTeam.teamId}-${awayTeam.teamId}`}
+                      className={cn(
+                        "w-12 h-12 p-0 text-center relative transition-colors duration-200 border border-white/[0.02]",
+                        isSameTeam ? "bg-white/[0.02]" : "",
+                        isHovered && !isSameTeam ? "bg-white/[0.03]" : ""
+                      )}
+                      onMouseEnter={() => {
+                        setHoveredRow(homeTeam.teamId);
+                        setHoveredCol(awayTeam.teamId);
+                      }}
+                      onMouseLeave={() => {
+                        setHoveredRow(null);
+                        setHoveredCol(null);
+                      }}
+                    >
+                      {isSameTeam ? (
+                        <div className="w-full h-full opacity-[0.03]" style={{
+                          backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 2px, #fff 2px, #fff 4px)'
+                        }} />
+                      ) : (
+                        getCellContent(result)
+                      )}
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
       <MatchDetailModal
         match={selectedMatch}
         isOpen={isModalOpen}
@@ -329,6 +245,6 @@ export function FixtureCrossbox({
         }}
         divisionColor={divisionColor}
       />
-    </Card>
+    </div>
   );
 }

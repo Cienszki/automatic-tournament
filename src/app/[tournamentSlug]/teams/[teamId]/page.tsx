@@ -3,7 +3,7 @@
 import {
   Users, ListChecks, ExternalLink, Medal, Swords, UserCheck, UserX, ShieldQuestion,
   PlayCircle, Sigma, Trophy, Users2, Clock, Percent, Skull, Ratio,
-  Handshake as HandshakeIcon, Award, Shield, MessageSquare, Coins, 
+  Handshake as HandshakeIcon, Award, Shield, MessageSquare, Coins,
   TrendingUp, Target, Zap, Heart, Pickaxe
 } from "lucide-react";
 import { notFound } from "next/navigation";
@@ -28,7 +28,7 @@ import { db } from "@/lib/firebase";
 const getRoleIcon = (role: string, primaryColor: string) => {
   const iconClass = `h-4 w-4 mr-2 shrink-0`;
   const iconStyle = { color: primaryColor };
-  
+
   switch (role) {
     case "Carry":
       return <Swords className={iconClass} style={iconStyle} />;
@@ -101,13 +101,13 @@ export default function TeamPage({ params }: PageProps) {
 
   useEffect(() => {
     if (!teamId || !tournament?.id || tournamentLoading) return;
-    
+
     const fetchData = async () => {
       try {
         // Fetch team data
         const teamRef = doc(db, 'tournaments', tournament.id, 'teams', teamId);
         const teamSnap = await getDoc(teamRef);
-        
+
         if (!teamSnap.exists()) {
           notFound();
           return;
@@ -126,7 +126,7 @@ export default function TeamPage({ params }: PageProps) {
         const matchesQuery = query(matchesRef, where('status', '==', 'completed'));
         const matchesSnap = await getDocs(matchesQuery);
         const allMatchesData = matchesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Match));
-        const teamMatchesFiltered = allMatchesData.filter(m => 
+        const teamMatchesFiltered = allMatchesData.filter(m =>
           m.teams && m.teams.includes(teamId)
         );
 
@@ -169,8 +169,16 @@ export default function TeamPage({ params }: PageProps) {
 
   if (loading || tournamentLoading || !theme) {
     return (
-      <div className="flex justify-center items-center min-h-96">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="relative">
+            <div className="w-20 h-20 border-4 border-pdl-gold/20 rounded-full" />
+            <div className="absolute inset-0 w-20 h-20 border-4 border-pdl-gold border-t-transparent rounded-full animate-spin" />
+          </div>
+          <span className="text-pdl-gold font-logik-extended-bold tracking-widest animate-pulse uppercase text-sm">
+            Ładowanie...
+          </span>
+        </div>
       </div>
     );
   }
@@ -284,578 +292,529 @@ export default function TeamPage({ params }: PageProps) {
   ];
 
   return (
-    <div className="space-y-8">
-      <Card 
-        className={cn(
-          "flex flex-col h-full shadow-none border-0 transition-transform duration-300 hover:scale-105",
-          team.status === 'banned' && "bg-destructive/10 border-destructive/30",
-        )}
-        style={{
-          background: `linear-gradient(to bottom right, ${theme.cardColor}, ${theme.secondaryColor}40, ${theme.primaryColor}30)`,
-          borderColor: theme.borderColor,
-        }}
-      >
-        <CardHeader style={{ backgroundColor: `${theme.cardColor}80` }} className="p-6 md:p-8">
-          <div className="flex flex-col md:flex-row items-center space-y-4 md:space-y-0 md:space-x-6">
-            <Image
-              src={team.logoUrl || `https://placehold.co/128x128.png?text=${team.name.charAt(0)}`}
-              alt={`${team.name} logo`}
-              width={128}
-              height={128}
-              className="rounded-xl border-4 object-cover shadow-md"
-              style={{ borderColor: theme.borderColor }}
-            />
-            <div className="flex-1">
-              <div className="flex items-center space-x-3 mb-2">
-                <CardTitle 
-                  className="text-4xl font-bold"
-                  style={{ 
-                    color: theme.primaryColor,
-                    fontFamily: 'var(--font-logik)'
-                  }}
-                >
-                  {team.name}
-                </CardTitle>
-                <Badge className={cn("text-sm px-3 py-1", getStatusBadgeClasses(team.status))}>
-                  {getStatusIcon(team.status)}
-                  {t(`teamDetail.${team.status}` as any) || team.status}
-                </Badge>
-              </div>
-              <CardDescription className="text-lg mt-1" style={{ color: theme.textSecondary }}>
-                {team.motto ? (
-                  <span className="italic">"{team.motto}"</span>
-                ) : (
-                  <span>{t('teamDetail.detailedProfile')}</span>
-                )}
-              </CardDescription>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="p-6 md:p-8 grid md:grid-cols-2 gap-6">
-          <div className="md:col-span-1 space-y-4">
-            <h3 
-              className="text-xl font-semibold mb-4 flex items-center"
-              style={{ 
-                color: theme.textPrimary,
-                fontFamily: 'var(--font-logik)'
-              }}
-            >
-              <Shield className="h-6 w-6 mr-2" style={{ color: theme.primaryColor }} /> {t('teamDetail.teamSummary')}
-            </h3>
-            <InfoItem icon={ListChecks} label={t('teamDetail.matchesPlayed')} value={team.matchesPlayed ?? 0} theme={theme} />
-            <InfoItem 
-              icon={Swords} 
-              label={t('teamDetail.winsDrawsLosses')} 
-              value={`${team.wins ?? 0}W / ${team.draws ?? 0}D / ${team.losses ?? 0}L`} 
-              theme={theme}
-            />
-            <InfoItem icon={Sigma} label={t('teamDetail.totalMMR')} value={formatNumber(totalMMR)} theme={theme} />
-            {captainDiscord && (
-              <div 
-                className="flex items-center text-md p-3 rounded-md"
-                style={{ backgroundColor: `${theme.cardColor}40` }}
-              >
-                <MessageSquare className="h-5 w-5 mr-3" style={{ color: theme.primaryColor }} />
-                <span className="font-medium" style={{ color: theme.textSecondary }}>{t('teamDetail.captainDiscord')}:</span>
-                <span className="ml-auto font-semibold" style={{ color: theme.textPrimary }}>{captainDiscord}</span>
-                <CopyToClipboard text={captainDiscord} />
-              </div>
-            )}
-          </div>
-          <div className="md:col-span-1 space-y-4">
-            <h3 
-              className="text-xl font-semibold mb-4 flex items-center"
-              style={{ 
-                color: theme.textPrimary,
-                fontFamily: 'var(--font-logik)'
-              }}
-            >
-              <Users className="h-6 w-6 mr-2" style={{ color: theme.primaryColor }} /> {t('teamDetail.playerRoster')}
-            </h3>
-            <div className="space-y-3">
-              {sortedPlayers.map((player) => (
-                <Link 
-                  key={player.id} 
-                  href={`/${tournamentSlug}/teams/${team.id}/players/${player.id}`}
-                  className="flex items-center gap-2 p-2 rounded-md transition-colors group"
-                  style={{ backgroundColor: `${theme.cardColor}20` }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = `${theme.cardColor}40`;
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = `${theme.cardColor}20`;
-                  }}
-                >
-                  {getRoleIcon(player.role, theme.primaryColor)}
-                  <PlayerAvatar player={player} size="small" />
-                  <span className="font-medium text-base" style={{ color: theme.textPrimary }}>{player.nickname}</span>
-                  <span className="ml-2 text-xs" style={{ color: theme.textSecondary }}>{player.role}</span>
-                  <span className="ml-auto text-xs" style={{ color: theme.textSecondary }}>
-                    MMR: {player.mmr ? formatNumber(player.mmr) : 'N/A'}
-                  </span>
-                  <ExternalLink className="h-3 w-3 ml-1" style={{ color: theme.textSecondary }} />
-                </Link>
-              ))}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card 
-          className="shadow-xl text-center transition-colors duration-200 flex flex-col"
-          style={{ 
-            backgroundColor: theme.cardColor,
-            borderColor: theme.borderColor
+    <div className="relative text-white overflow-x-hidden min-h-screen">
+      {/* Premium Atmosphere Background */}
+      <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+        <div
+          className="absolute inset-0 z-0 pointer-events-none opacity-60"
+          style={{
+            background: 'radial-gradient(ellipse at center, transparent 0%, transparent 40%, #000000 100%)',
           }}
+        />
+        <div
+          className="absolute top-[-20%] right-[-10%] w-[60vw] h-[60vw] rounded-full opacity-[0.04] blur-[200px]"
+          style={{ background: theme?.primaryColor || '#8B1538' }}
+        />
+        <div
+          className="absolute bottom-[-20%] left-[-10%] w-[40vw] h-[40vw] rounded-full opacity-[0.03] blur-[150px]"
+          style={{ background: '#dc2626' }}
+        />
+      </div>
+
+      {/* Main Content */}
+      <div className="relative z-10 max-w-[1400px] mx-auto px-6 lg:px-12 py-8 space-y-8">
+        <Card
+          className={cn(
+            "flex flex-col h-full shadow-none border-0 bg-transparent",
+            team.status === 'banned' && "bg-destructive/10 border-destructive/30",
+          )}
         >
-          <CardHeader className="flex flex-row items-center justify-center space-x-3 pb-2">
-            <Users2 className="h-6 w-6" style={{ color: theme.accentColor }} />
-            <CardTitle 
-              className="text-xl" 
-              style={{ 
-                color: theme.primaryColor,
-                fontFamily: 'var(--font-logik)'
-              }}
-            >
-              {t('teamDetail.topHeroes')}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-6 pt-2">
-            {sortedHeroes.length > 0 ? (
-              <div className="flex flex-col md:flex-row justify-around items-end gap-4 md:gap-2 py-4 min-h-[200px] md:min-h-[220px]">
-                {[sortedHeroes[1], sortedHeroes[0], sortedHeroes[2]].map((heroStat, index) => {
-                  if (!heroStat) return <div key={`placeholder-${index}`} className="w-full md:w-1/3 lg:w-1/4"></div>;
-
-                  const podiumOrderIndex = index === 0 ? 1 : (index === 1 ? 0 : 2);
-                  const podiumStyle = podiumColors[podiumOrderIndex];
-                  const heightClasses = [
-                    "h-[90%] md:h-[190px]",
-                    "h-[75%] md:h-[160px]",
-                    "h-[60%] md:h-[130px]",
-                  ];
-                  const currentHeight = heightClasses[podiumOrderIndex];
-                  const HeroIcon = heroIconMap[heroStat.name] || heroIconMap['Default'];
-
-                  return (
-                    <div
-                      key={heroStat.name}
-                      className={cn(
-                        "w-full md:w-1/3 lg:w-1/4 flex flex-col items-center justify-end p-3 md:p-4 rounded-t-lg border-2 border-b-0",
-                        currentHeight,
-                        "transition-all duration-300 ease-out transform hover:scale-105"
-                      )}
-                      style={{
-                        borderColor: podiumStyle.border,
-                        backgroundColor: podiumStyle.bg,
-                      }}
-                    >
-                      <HeroIcon className="h-6 w-6 md:h-8 md:w-8 mb-1 md:mb-2" style={{ color: podiumStyle.text }} />
-                      <p className="font-bold text-sm md:text-base text-center" style={{ color: podiumStyle.text }}>
-                        {heroStat.name}
-                      </p>
-                      <p className="text-xs md:text-sm text-center opacity-80" style={{ color: podiumStyle.text }}>
-                        {heroStat.gamesPlayed} {heroStat.gamesPlayed !== 1 ? t('teamDetail.games') : t('teamDetail.game')}
-                      </p>
-                    </div>
-                  );
-                })}
+          <CardHeader className="p-6 md:p-8 bg-transparent">
+            <div className="flex flex-col md:flex-row items-center space-y-4 md:space-y-0 md:space-x-6">
+              <Image
+                src={team.logoUrl || `https://placehold.co/128x128.png?text=${team.name.charAt(0)}`}
+                alt={`${team.name} logo`}
+                width={128}
+                height={128}
+                className="rounded-xl border-4 object-cover shadow-md"
+                style={{ borderColor: theme.borderColor }}
+              />
+              <div className="flex-1">
+                <div className="flex items-center space-x-3 mb-2">
+                  <CardTitle
+                    className="text-4xl font-bold"
+                    style={{
+                      color: theme.primaryColor,
+                      fontFamily: 'var(--font-logik)'
+                    }}
+                  >
+                    {team.name}
+                  </CardTitle>
+                  <Badge className={cn("text-sm px-3 py-1", getStatusBadgeClasses(team.status))}>
+                    {getStatusIcon(team.status)}
+                    {t(`teamDetail.${team.status}` as any) || team.status}
+                  </Badge>
+                </div>
+                <CardDescription className="text-lg mt-1" style={{ color: theme.textSecondary }}>
+                  {team.motto ? (
+                    <span className="italic">"{team.motto}"</span>
+                  ) : (
+                    <span>{t('teamDetail.detailedProfile')}</span>
+                  )}
+                </CardDescription>
               </div>
-            ) : (
-              <p style={{ color: theme.textSecondary }} className="text-center">{t('teamDetail.noHeroStats')}</p>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card 
-          className="shadow-xl text-center transition-colors duration-200 flex flex-col"
-          style={{ 
-            backgroundColor: theme.cardColor,
-            borderColor: theme.borderColor
-          }}
-        >
-          <CardHeader className="flex flex-row items-center justify-center space-x-3 pb-2">
-            <Clock className="h-6 w-6" style={{ color: theme.accentColor }} />
-            <CardTitle 
-              className="text-xl" 
-              style={{ 
-                color: theme.primaryColor,
-                fontFamily: 'var(--font-logik)'
-              }}
-            >
-              {t('teamDetail.avgMatchDuration')}
-            </CardTitle>
+            </div>
           </CardHeader>
-          <CardContent className="flex flex-col items-center justify-center flex-grow p-6">
-            <div className="relative w-40 h-40 md:w-48 md:h-48 mb-4">
-              <svg viewBox="0 0 100 100" className="w-full h-full">
-                <circle cx="50" cy="50" r="45" stroke={theme.borderColor} strokeWidth="3" fill={theme.cardColor} />
-                {Array.from({ length: 12 }).map((_, i) => (
-                  <line
-                    key={`hour-marker-${i}`}
-                    x1="50"
-                    y1="10"
-                    x2="50"
-                    y2="15"
-                    stroke={theme.textSecondary}
-                    strokeWidth="2"
-                    transform={`rotate(${i * 30} 50 50)`}
-                  />
+          <CardContent className="p-6 md:p-8 grid md:grid-cols-2 gap-6">
+            <div className="md:col-span-1 space-y-4">
+              <InfoItem icon={ListChecks} label={t('teamDetail.matchesPlayed')} value={team.matchesPlayed ?? 0} theme={theme} />
+              <InfoItem
+                icon={Swords}
+                label={t('teamDetail.winsDrawsLosses')}
+                value={`${team.wins ?? 0}W / ${team.draws ?? 0}D / ${team.losses ?? 0}L`}
+                theme={theme}
+              />
+              {captainDiscord && (
+                <div
+                  className="flex items-center text-md p-3 rounded-md"
+                  style={{ backgroundColor: `${theme.cardColor}40` }}
+                >
+                  <MessageSquare className="h-5 w-5 mr-3" style={{ color: theme.primaryColor }} />
+                  <span className="font-medium" style={{ color: theme.textSecondary }}>{t('teamDetail.captainDiscord')}:</span>
+                  <span className="ml-auto font-semibold" style={{ color: theme.textPrimary }}>{captainDiscord}</span>
+                  <CopyToClipboard text={captainDiscord} />
+                </div>
+              )}
+            </div>
+            <div className="md:col-span-1 space-y-4">
+              <div className="space-y-3">
+                {sortedPlayers.map((player) => (
+                  <Link
+                    key={player.id}
+                    href={`/${tournamentSlug}/teams/${team.id}/players/${player.id}`}
+                    className="flex items-center gap-2 p-2 rounded-md transition-colors group"
+                    style={{ backgroundColor: `${theme.cardColor}20` }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = `${theme.cardColor}40`;
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = `${theme.cardColor}20`;
+                    }}
+                  >
+                    {getRoleIcon(player.role, theme.primaryColor)}
+                    <PlayerAvatar player={player} size="small" />
+                    <span className="font-medium text-base" style={{ color: theme.textPrimary }}>{player.nickname}</span>
+                    <span className="ml-2 text-xs" style={{ color: theme.textSecondary }}>{player.role}</span>
+                    <ExternalLink className="h-3 w-3 ml-auto" style={{ color: theme.textSecondary }} />
+                  </Link>
                 ))}
-                <line
-                  x1="50"
-                  y1="50"
-                  x2="50"
-                  y2="20"
-                  stroke={theme.primaryColor}
-                  strokeWidth="3"
-                  strokeLinecap="round"
-                  style={{ transformOrigin: '50% 50%', transform: `rotate(${minuteHandAngle}deg)` }}
-                />
-                <circle cx="50" cy="50" r="3" fill={theme.primaryColor} />
-              </svg>
+              </div>
             </div>
-            <p className="text-2xl font-bold" style={{ color: theme.textPrimary }}>
-              {avgMatchDurationMinutes} {t('teamDetail.min')}
-            </p>
           </CardContent>
         </Card>
 
-        {performanceStats.map((stat) => (
-          <Card 
-            key={stat.label} 
-            className="shadow-xl text-center transition-colors duration-200 flex flex-col"
-            style={{ 
-              backgroundColor: theme.cardColor,
-              borderColor: theme.borderColor
-            }}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <Card
+            className="text-center flex flex-col bg-transparent border-0 shadow-none"
           >
             <CardHeader className="flex flex-row items-center justify-center space-x-3 pb-2">
-              <stat.icon className="h-6 w-6" style={{ color: theme.accentColor }} />
-              <CardTitle 
-                className="text-xl" 
-                style={{ 
+              <Users2 className="h-6 w-6 text-white/50" />
+              <CardTitle
+                className="text-xl"
+                style={{
                   color: theme.primaryColor,
                   fontFamily: 'var(--font-logik)'
                 }}
               >
-                {stat.label}
+                {t('teamDetail.topHeroes')}
               </CardTitle>
             </CardHeader>
-            <CardContent className="flex flex-col items-center justify-center flex-grow p-6">
-              {stat.type === 'progress' && typeof stat.rawValue === 'number' && typeof stat.maxValue === 'number' && stat.maxValue > 0 ? (
-                <>
-                  <p className="text-3xl font-bold mb-2" style={{ color: theme.textPrimary }}>{stat.value}</p>
-                  <Progress
-                    value={
-                      stat.label === "Avg. Deaths / Game"
-                        ? Math.min(100, Math.max(0, (stat.maxValue / (stat.rawValue || 1)) * 100))
-                        : Math.min(100, Math.max(0, (stat.rawValue / stat.maxValue) * 100))
-                    }
-                    className="w-3/4 h-2.5"
-                    aria-label={`${stat.label} progress`}
-                  />
-                  <p className="text-xs mt-1" style={{ color: theme.textSecondary }}>
-                    {t('teamDetail.leagueAvg')}: {stat.leagueAvg} | {t('teamDetail.best')}: {stat.bestValue}
-                  </p>
-                  {stat.rank && <p className="text-xs mt-2" style={{ color: theme.textSecondary }}>{t('teamDetail.rank')}: {stat.rank}</p>}
-                </>
+            <CardContent className="p-6 pt-2">
+              {sortedHeroes.length > 0 ? (
+                <div className="flex flex-col md:flex-row justify-around items-end gap-4 md:gap-2 py-4 min-h-[200px] md:min-h-[220px]">
+                  {[sortedHeroes[1], sortedHeroes[0], sortedHeroes[2]].map((heroStat, index) => {
+                    if (!heroStat) return <div key={`placeholder-${index}`} className="w-full md:w-1/3 lg:w-1/4"></div>;
+
+                    const podiumOrderIndex = index === 0 ? 1 : (index === 1 ? 0 : 2);
+                    const podiumStyle = podiumColors[podiumOrderIndex];
+                    const heightClasses = [
+                      "h-[90%] md:h-[190px]",
+                      "h-[75%] md:h-[160px]",
+                      "h-[60%] md:h-[130px]",
+                    ];
+                    const currentHeight = heightClasses[podiumOrderIndex];
+                    const HeroIcon = heroIconMap[heroStat.name] || heroIconMap['Default'];
+
+                    return (
+                      <div
+                        key={heroStat.name}
+                        className={cn(
+                          "w-full md:w-1/3 lg:w-1/4 flex flex-col items-center justify-end p-3 md:p-4 rounded-t-lg border-2 border-b-0",
+                          currentHeight,
+                          "transition-all duration-300 ease-out"
+                        )}
+                        style={{
+                          borderColor: podiumStyle.border,
+                          backgroundColor: podiumStyle.bg,
+                        }}
+                      >
+                        <HeroIcon className="h-6 w-6 md:h-8 md:w-8 mb-1 md:mb-2" style={{ color: podiumStyle.text }} />
+                        <p className="font-bold text-sm md:text-base text-center" style={{ color: podiumStyle.text }}>
+                          {heroStat.name}
+                        </p>
+                        <p className="text-xs md:text-sm text-center opacity-80" style={{ color: podiumStyle.text }}>
+                          {heroStat.gamesPlayed} {heroStat.gamesPlayed !== 1 ? t('teamDetail.games') : t('teamDetail.game')}
+                        </p>
+                      </div>
+                    );
+                  })}
+                </div>
               ) : (
-                <p className="text-4xl font-bold pt-4" style={{ color: theme.textPrimary }}>{stat.value}</p>
+                <p style={{ color: theme.textSecondary }} className="text-center">{t('teamDetail.noHeroStats')}</p>
               )}
             </CardContent>
           </Card>
-        ))}
-      </div>
 
-      {/* Additional Performance Statistics */}
-      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
-        {/* GPM Card */}
-        <Card 
-          className="shadow-xl text-center transition-colors duration-200 flex flex-col"
-          style={{ 
-            backgroundColor: theme.cardColor,
-            borderColor: theme.borderColor
-          }}
-        >
-          <CardHeader className="flex flex-row items-center justify-center space-x-3 pb-2">
-            <Coins className="h-6 w-6" style={{ color: theme.accentColor }} />
-            <CardTitle 
-              className="text-lg" 
-              style={{ 
-                color: theme.primaryColor,
-                fontFamily: 'var(--font-logik)'
-              }}
-            >
-              {t('teamDetail.avgGPM')}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col items-center justify-center flex-grow p-4">
-            <p className="text-3xl font-bold" style={{ color: theme.textPrimary }}>
-              {team.averageGpm?.toFixed(0) ?? 'N/A'}
-            </p>
-            <p className="text-xs mt-1" style={{ color: theme.textSecondary }}>{t('teamDetail.goldPerMinute')}</p>
-          </CardContent>
-        </Card>
-
-        {/* XPM Card */}
-        <Card 
-          className="shadow-xl text-center transition-colors duration-200 flex flex-col"
-          style={{ 
-            backgroundColor: theme.cardColor,
-            borderColor: theme.borderColor
-          }}
-        >
-          <CardHeader className="flex flex-row items-center justify-center space-x-3 pb-2">
-            <TrendingUp className="h-6 w-6" style={{ color: theme.accentColor }} />
-            <CardTitle 
-              className="text-lg" 
-              style={{ 
-                color: theme.primaryColor,
-                fontFamily: 'var(--font-logik)'
-              }}
-            >
-              {t('teamDetail.avgXPM')}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col items-center justify-center flex-grow p-4">
-            <p className="text-3xl font-bold" style={{ color: theme.textPrimary }}>
-              {team.averageXpm?.toFixed(0) ?? 'N/A'}
-            </p>
-            <p className="text-xs mt-1" style={{ color: theme.textSecondary }}>{t('teamDetail.experiencePerMinute')}</p>
-          </CardContent>
-        </Card>
-
-        {/* Last Hits Card */}
-        <Card 
-          className="shadow-xl text-center transition-colors duration-200 flex flex-col"
-          style={{ 
-            backgroundColor: theme.cardColor,
-            borderColor: theme.borderColor
-          }}
-        >
-          <CardHeader className="flex flex-row items-center justify-center space-x-3 pb-2">
-            <Pickaxe className="h-6 w-6" style={{ color: theme.accentColor }} />
-            <CardTitle 
-              className="text-lg" 
-              style={{ 
-                color: theme.primaryColor,
-                fontFamily: 'var(--font-logik)'
-              }}
-            >
-              {t('teamDetail.avgLastHits')}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col items-center justify-center flex-grow p-4">
-            <p className="text-3xl font-bold" style={{ color: theme.textPrimary }}>
-              {team.averageLastHits?.toFixed(0) ?? 'N/A'}
-            </p>
-            <p className="text-xs mt-1" style={{ color: theme.textSecondary }}>{t('teamDetail.creepKills')}</p>
-          </CardContent>
-        </Card>
-
-        {/* Net Worth Card */}
-        <Card 
-          className="shadow-xl text-center transition-colors duration-200 flex flex-col"
-          style={{ 
-            backgroundColor: theme.cardColor,
-            borderColor: theme.borderColor
-          }}
-        >
-          <CardHeader className="flex flex-row items-center justify-center space-x-3 pb-2">
-            <Trophy className="h-6 w-6" style={{ color: theme.accentColor }} />
-            <CardTitle 
-              className="text-lg" 
-              style={{ 
-                color: theme.primaryColor,
-                fontFamily: 'var(--font-logik)'
-              }}
-            >
-              {t('teamDetail.avgNetWorth')}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col items-center justify-center flex-grow p-4">
-            <p className="text-3xl font-bold" style={{ color: theme.textPrimary }}>
-              {team.averageNetWorth ? formatNumber(team.averageNetWorth) : 'N/A'}
-            </p>
-            <p className="text-xs mt-1" style={{ color: theme.textSecondary }}>{t('teamDetail.totalGoldValue')}</p>
-          </CardContent>
-        </Card>
-
-        {/* Hero Damage Card */}
-        <Card 
-          className="shadow-xl text-center transition-colors duration-200 flex flex-col"
-          style={{ 
-            backgroundColor: theme.cardColor,
-            borderColor: theme.borderColor
-          }}
-        >
-          <CardHeader className="flex flex-row items-center justify-center space-x-3 pb-2">
-            <Target className="h-6 w-6" style={{ color: theme.accentColor }} />
-            <CardTitle 
-              className="text-lg" 
-              style={{ 
-                color: theme.primaryColor,
-                fontFamily: 'var(--font-logik)'
-              }}
-            >
-              {t('teamDetail.avgHeroDamage')}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col items-center justify-center flex-grow p-4">
-            <p className="text-3xl font-bold" style={{ color: theme.textPrimary }}>
-              {team.averageHeroDamage ? formatNumber(team.averageHeroDamage) : 'N/A'}
-            </p>
-            <p className="text-xs mt-1" style={{ color: theme.textSecondary }}>{t('teamDetail.damageToHeroes')}</p>
-          </CardContent>
-        </Card>
-
-        {/* Tower Damage Card */}
-        <Card 
-          className="shadow-xl text-center transition-colors duration-200 flex flex-col"
-          style={{ 
-            backgroundColor: theme.cardColor,
-            borderColor: theme.borderColor
-          }}
-        >
-          <CardHeader className="flex flex-row items-center justify-center space-x-3 pb-2">
-            <Zap className="h-6 w-6" style={{ color: theme.accentColor }} />
-            <CardTitle 
-              className="text-lg" 
-              style={{ 
-                color: theme.primaryColor,
-                fontFamily: 'var(--font-logik)'
-              }}
-            >
-              {t('teamDetail.avgTowerDamage')}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col items-center justify-center flex-grow p-4">
-            <p className="text-3xl font-bold" style={{ color: theme.textPrimary }}>
-              {team.averageTowerDamage ? formatNumber(team.averageTowerDamage) : 'N/A'}
-            </p>
-            <p className="text-xs mt-1" style={{ color: theme.textSecondary }}>{t('teamDetail.damageToBuildings')}</p>
-          </CardContent>
-        </Card>
-
-        {/* Hero Healing Card */}
-        <Card 
-          className="shadow-xl text-center transition-colors duration-200 flex flex-col"
-          style={{ 
-            backgroundColor: theme.cardColor,
-            borderColor: theme.borderColor
-          }}
-        >
-          <CardHeader className="flex flex-row items-center justify-center space-x-3 pb-2">
-            <Heart className="h-6 w-6" style={{ color: theme.accentColor }} />
-            <CardTitle 
-              className="text-lg" 
-              style={{ 
-                color: theme.primaryColor,
-                fontFamily: 'var(--font-logik)'
-              }}
-            >
-              {t('teamDetail.avgHealing')}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col items-center justify-center flex-grow p-4">
-            <p className="text-3xl font-bold" style={{ color: theme.textPrimary }}>
-              {team.averageHeroHealing ? formatNumber(team.averageHeroHealing) : 'N/A'}
-            </p>
-            <p className="text-xs mt-1" style={{ color: theme.textSecondary }}>{t('teamDetail.heroHealingDone')}</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      <Card 
-        className="shadow-xl"
-        style={{ 
-          backgroundColor: theme.cardColor,
-          borderColor: theme.borderColor
-        }}
-      >
-        <CardHeader>
-          <CardTitle 
-            className="text-2xl font-semibold" 
-            style={{ 
-              color: theme.primaryColor,
-              fontFamily: 'var(--font-logik)'
-            }}
+          <Card
+            className="text-center flex flex-col bg-transparent border-0 shadow-none"
           >
-            {t('teamDetail.matchHistory')}
-          </CardTitle>
-          <CardDescription style={{ color: theme.textSecondary }}>
-            Results of all matches played by {team.name}.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {teamMatches.length > 0 ? (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead style={{ color: theme.textSecondary }}>{t('teamDetail.opponent')}</TableHead>
-                  <TableHead style={{ color: theme.textSecondary }}>{t('teamDetail.result')}</TableHead>
-                  <TableHead style={{ color: theme.textSecondary }}>{t('teamDetail.score')}</TableHead>
-                  <TableHead style={{ color: theme.textSecondary }}>{t('teamDetail.date')}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {teamMatches.map((match: Match) => {
-                  const opponent = match.teamA.id === team.id ? match.teamB : match.teamA;
-                  const teamAScore = match.teamA.score ?? 0;
-                  const teamBScore = match.teamB.score ?? 0;
-                  
-                  let isWin = false;
-                  let isDraw = false;
-                  let resultText = '';
-                  
-                  if (teamAScore === teamBScore) {
-                    isDraw = true;
-                    resultText = t('teamDetail.draw') || 'Draw';
-                  } else if (match.teamA.id === team.id) {
-                    isWin = teamAScore > teamBScore;
-                    resultText = isWin ? t('teamDetail.win') : t('teamDetail.loss');
-                  } else {
-                    isWin = teamBScore > teamAScore;
-                    resultText = isWin ? t('teamDetail.win') : t('teamDetail.loss');
-                  }
-                  
-                  const scoreText = `${teamAScore} - ${teamBScore}`;
-                  const date = match.dateTime ? new Date(match.dateTime) : new Date(match.defaultMatchTime);
-                  
-                  return (
-                    <TableRow key={match.id}>
-                      <TableCell>
-                        <Link 
-                          href={`/${tournamentSlug}/teams/${opponent.id}`} 
-                          className="hover:underline font-medium"
-                          style={{ color: theme.textPrimary }}
+            <CardHeader className="flex flex-row items-center justify-center space-x-3 pb-2">
+              <Clock className="h-6 w-6 text-white/50" />
+              <CardTitle
+                className="text-xl"
+                style={{
+                  color: theme.primaryColor,
+                  fontFamily: 'var(--font-logik)'
+                }}
+              >
+                {t('teamDetail.avgMatchDuration')}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-col items-center justify-center flex-grow p-6">
+              <div className="relative w-40 h-40 md:w-48 md:h-48 mb-4">
+                <svg viewBox="0 0 100 100" className="w-full h-full">
+                  <circle cx="50" cy="50" r="45" stroke={theme.borderColor} strokeWidth="3" fill={theme.cardColor} />
+                  {Array.from({ length: 12 }).map((_, i) => (
+                    <line
+                      key={`hour-marker-${i}`}
+                      x1="50"
+                      y1="10"
+                      x2="50"
+                      y2="15"
+                      stroke={theme.textSecondary}
+                      strokeWidth="2"
+                      transform={`rotate(${i * 30} 50 50)`}
+                    />
+                  ))}
+                  <line
+                    x1="50"
+                    y1="50"
+                    x2="50"
+                    y2="20"
+                    stroke={theme.primaryColor}
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                    style={{ transformOrigin: '50% 50%', transform: `rotate(${minuteHandAngle}deg)` }}
+                  />
+                  <circle cx="50" cy="50" r="3" fill={theme.primaryColor} />
+                </svg>
+              </div>
+              <p className="text-2xl font-bold" style={{ color: theme.textPrimary }}>
+                {avgMatchDurationMinutes} {t('teamDetail.min')}
+              </p>
+            </CardContent>
+          </Card>
+
+          {performanceStats.map((stat) => (
+            <Card
+              key={stat.label}
+              className="text-center flex flex-col bg-transparent border-0 shadow-none"
+            >
+              <CardHeader className="flex flex-row items-center justify-center space-x-3 pb-2">
+                <stat.icon className="h-6 w-6 text-white/50" />
+                <CardTitle
+                  className="text-xl"
+                  style={{
+                    color: theme.primaryColor,
+                    fontFamily: 'var(--font-logik)'
+                  }}
+                >
+                  {stat.label}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="flex flex-col items-center justify-center flex-grow p-6">
+                {stat.type === 'progress' && typeof stat.rawValue === 'number' && typeof stat.maxValue === 'number' && stat.maxValue > 0 ? (
+                  <>
+                    <p className="text-3xl font-bold mb-2" style={{ color: theme.textPrimary }}>{stat.value}</p>
+                    <Progress
+                      value={
+                        stat.label === "Avg. Deaths / Game"
+                          ? Math.min(100, Math.max(0, (stat.maxValue / (stat.rawValue || 1)) * 100))
+                          : Math.min(100, Math.max(0, (stat.rawValue / stat.maxValue) * 100))
+                      }
+                      className="w-3/4 h-2.5"
+                      aria-label={`${stat.label} progress`}
+                    />
+                    <p className="text-xs mt-1 font-logik" style={{ color: theme.textSecondary }}>
+                      {t('teamDetail.leagueAvg')}: {stat.leagueAvg} | {t('teamDetail.best')}: {stat.bestValue}
+                    </p>
+                    {stat.rank && <p className="text-xs mt-2 font-logik" style={{ color: theme.textSecondary }}>{t('teamDetail.rank')}: {stat.rank}</p>}
+                  </>
+                ) : (
+                  <p className="text-4xl font-bold pt-4" style={{ color: theme.textPrimary }}>{stat.value}</p>
+                )}
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+        {/* Additional Performance Statistics */}
+        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
+          {/* GPM Card */}
+          <Card
+            className="text-center flex flex-col bg-transparent border-0 shadow-none"
+          >
+            <CardHeader className="flex flex-row items-center justify-center space-x-3 pb-2">
+              <Coins className="h-6 w-6 text-white/50" />
+              <CardTitle
+                className="text-lg"
+                style={{
+                  color: theme.primaryColor,
+                  fontFamily: 'var(--font-logik)'
+                }}
+              >
+                {t('teamDetail.avgGPM')}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-col items-center justify-center flex-grow p-4">
+              <p className="text-3xl font-bold" style={{ color: theme.textPrimary }}>
+                {team.averageGpm?.toFixed(0) ?? 'N/A'}
+              </p>
+              <p className="text-xs mt-1" style={{ color: theme.textSecondary }}>{t('teamDetail.goldPerMinute')}</p>
+            </CardContent>
+          </Card>
+
+          {/* XPM Card */}
+          <Card
+            className="text-center flex flex-col bg-transparent border-0 shadow-none"
+          >
+            <CardHeader className="flex flex-row items-center justify-center space-x-3 pb-2">
+              <TrendingUp className="h-6 w-6 text-white/50" />
+              <CardTitle
+                className="text-lg"
+                style={{
+                  color: theme.primaryColor,
+                  fontFamily: 'var(--font-logik)'
+                }}
+              >
+                {t('teamDetail.avgXPM')}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-col items-center justify-center flex-grow p-4">
+              <p className="text-3xl font-bold" style={{ color: theme.textPrimary }}>
+                {team.averageXpm?.toFixed(0) ?? 'N/A'}
+              </p>
+              <p className="text-xs mt-1" style={{ color: theme.textSecondary }}>{t('teamDetail.experiencePerMinute')}</p>
+            </CardContent>
+          </Card>
+
+          {/* Last Hits Card */}
+          <Card
+            className="text-center flex flex-col bg-transparent border-0 shadow-none"
+          >
+            <CardHeader className="flex flex-row items-center justify-center space-x-3 pb-2">
+              <Pickaxe className="h-6 w-6 text-white/50" />
+              <CardTitle
+                className="text-lg"
+                style={{
+                  color: theme.primaryColor,
+                  fontFamily: 'var(--font-logik)'
+                }}
+              >
+                {t('teamDetail.avgLastHits')}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-col items-center justify-center flex-grow p-4">
+              <p className="text-3xl font-bold" style={{ color: theme.textPrimary }}>
+                {team.averageLastHits?.toFixed(0) ?? 'N/A'}
+              </p>
+              <p className="text-xs mt-1" style={{ color: theme.textSecondary }}>{t('teamDetail.creepKills')}</p>
+            </CardContent>
+          </Card>
+
+          {/* Net Worth Card */}
+          <Card
+            className="text-center flex flex-col bg-transparent border-0 shadow-none"
+          >
+            <CardHeader className="flex flex-row items-center justify-center space-x-3 pb-2">
+              <Trophy className="h-6 w-6 text-white/50" />
+              <CardTitle
+                className="text-lg"
+                style={{
+                  color: theme.primaryColor,
+                  fontFamily: 'var(--font-logik)'
+                }}
+              >
+                {t('teamDetail.avgNetWorth')}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-col items-center justify-center flex-grow p-4">
+              <p className="text-3xl font-bold" style={{ color: theme.textPrimary }}>
+                {team.averageNetWorth ? formatNumber(team.averageNetWorth) : 'N/A'}
+              </p>
+              <p className="text-xs mt-1" style={{ color: theme.textSecondary }}>{t('teamDetail.totalGoldValue')}</p>
+            </CardContent>
+          </Card>
+
+          {/* Hero Damage Card */}
+          <Card
+            className="text-center flex flex-col bg-transparent border-0 shadow-none"
+          >
+            <CardHeader className="flex flex-row items-center justify-center space-x-3 pb-2">
+              <Target className="h-6 w-6 text-white/50" />
+              <CardTitle
+                className="text-lg"
+                style={{
+                  color: theme.primaryColor,
+                  fontFamily: 'var(--font-logik)'
+                }}
+              >
+                {t('teamDetail.avgHeroDamage')}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-col items-center justify-center flex-grow p-4">
+              <p className="text-3xl font-bold" style={{ color: theme.textPrimary }}>
+                {team.averageHeroDamage ? formatNumber(team.averageHeroDamage) : 'N/A'}
+              </p>
+              <p className="text-xs mt-1" style={{ color: theme.textSecondary }}>{t('teamDetail.damageToHeroes')}</p>
+            </CardContent>
+          </Card>
+
+          {/* Tower Damage Card */}
+          <Card
+            className="text-center flex flex-col bg-transparent border-0 shadow-none"
+          >
+            <CardHeader className="flex flex-row items-center justify-center space-x-3 pb-2">
+              <Zap className="h-6 w-6 text-white/50" />
+              <CardTitle
+                className="text-lg"
+                style={{
+                  color: theme.primaryColor,
+                  fontFamily: 'var(--font-logik)'
+                }}
+              >
+                {t('teamDetail.avgTowerDamage')}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-col items-center justify-center flex-grow p-4">
+              <p className="text-3xl font-bold" style={{ color: theme.textPrimary }}>
+                {team.averageTowerDamage ? formatNumber(team.averageTowerDamage) : 'N/A'}
+              </p>
+              <p className="text-xs mt-1" style={{ color: theme.textSecondary }}>{t('teamDetail.damageToBuildings')}</p>
+            </CardContent>
+          </Card>
+
+          {/* Hero Healing Card */}
+          <Card
+            className="text-center flex flex-col bg-transparent border-0 shadow-none"
+          >
+            <CardHeader className="flex flex-row items-center justify-center space-x-3 pb-2">
+              <Heart className="h-6 w-6 text-white/50" />
+              <CardTitle
+                className="text-lg"
+                style={{
+                  color: theme.primaryColor,
+                  fontFamily: 'var(--font-logik)'
+                }}
+              >
+                {t('teamDetail.avgHealing')}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-col items-center justify-center flex-grow p-4">
+              <p className="text-3xl font-bold" style={{ color: theme.textPrimary }}>
+                {team.averageHeroHealing ? formatNumber(team.averageHeroHealing) : 'N/A'}
+              </p>
+              <p className="text-xs mt-1" style={{ color: theme.textSecondary }}>{t('teamDetail.heroHealingDone')}</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        <Card
+          className="bg-transparent border-0 shadow-none"
+        >
+          <CardHeader>
+            <CardTitle
+              className="text-2xl font-semibold"
+              style={{
+                color: theme.primaryColor,
+                fontFamily: 'var(--font-logik)'
+              }}
+            >
+              {t('teamDetail.matchHistory')}
+            </CardTitle>
+            <CardDescription style={{ color: theme.textSecondary }}>
+              Results of all matches played by {team.name}.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {teamMatches.length > 0 ? (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead style={{ color: theme.textSecondary }}>{t('teamDetail.opponent')}</TableHead>
+                    <TableHead style={{ color: theme.textSecondary }}>{t('teamDetail.result')}</TableHead>
+                    <TableHead style={{ color: theme.textSecondary }}>{t('teamDetail.score')}</TableHead>
+                    <TableHead style={{ color: theme.textSecondary }}>{t('teamDetail.date')}</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {teamMatches.map((match: Match) => {
+                    const opponent = match.teamA.id === team.id ? match.teamB : match.teamA;
+                    const teamAScore = match.teamA.score ?? 0;
+                    const teamBScore = match.teamB.score ?? 0;
+
+                    let isWin = false;
+                    let isDraw = false;
+                    let resultText = '';
+
+                    if (teamAScore === teamBScore) {
+                      isDraw = true;
+                      resultText = t('teamDetail.draw') || 'Draw';
+                    } else if (match.teamA.id === team.id) {
+                      isWin = teamAScore > teamBScore;
+                      resultText = isWin ? t('teamDetail.win') : t('teamDetail.loss');
+                    } else {
+                      isWin = teamBScore > teamAScore;
+                      resultText = isWin ? t('teamDetail.win') : t('teamDetail.loss');
+                    }
+
+                    const scoreText = `${teamAScore} - ${teamBScore}`;
+                    const date = match.dateTime ? new Date(match.dateTime) : new Date(match.defaultMatchTime);
+
+                    return (
+                      <TableRow key={match.id}>
+                        <TableCell>
+                          <Link
+                            href={`/${tournamentSlug}/teams/${opponent.id}`}
+                            className="hover:underline font-medium"
+                            style={{ color: theme.textPrimary }}
+                          >
+                            {opponent.name}
+                          </Link>
+                        </TableCell>
+                        <TableCell
+                          className="font-semibold"
+                          style={{
+                            color: isDraw ? '#f59e0b' : (isWin ? '#10b981' : '#ef4444')
+                          }}
                         >
-                          {opponent.name}
-                        </Link>
-                      </TableCell>
-                      <TableCell 
-                        className="font-semibold"
-                        style={{ 
-                          color: isDraw ? '#f59e0b' : (isWin ? '#10b981' : '#ef4444')
-                        }}
-                      >
-                        {resultText}
-                      </TableCell>
-                      <TableCell style={{ color: theme.textPrimary }}>{scoreText}</TableCell>
-                      <TableCell style={{ color: theme.textSecondary }}>{date.toLocaleDateString()}</TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          ) : (
-            <p className="text-center py-4" style={{ color: theme.textSecondary }}>
-              {t('teamDetail.noMatchHistory')}
-            </p>
-          )}
-        </CardContent>
-      </Card>
+                          {resultText}
+                        </TableCell>
+                        <TableCell style={{ color: theme.textPrimary }}>{scoreText}</TableCell>
+                        <TableCell style={{ color: theme.textSecondary }}>{date.toLocaleDateString()}</TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            ) : (
+              <p className="text-center py-4" style={{ color: theme.textSecondary }}>
+                {t('teamDetail.noMatchHistory')}
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
@@ -875,7 +834,7 @@ interface InfoItemProps {
 function InfoItem({ icon: Icon, label, value, theme }: InfoItemProps) {
   const IconComponent = Icon as React.ComponentType<{ className?: string; style?: React.CSSProperties }>;
   return (
-    <div 
+    <div
       className="flex items-center text-md p-3 rounded-md"
       style={{ backgroundColor: `${theme.cardColor}40` }}
     >

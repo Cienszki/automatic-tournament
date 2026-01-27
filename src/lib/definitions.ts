@@ -3,58 +3,58 @@
 // ... (other definitions remain the same)
 
 export interface PlayerPerformanceInGame {
-    playerId: string;
-    teamId: string;
-    heroId: number;
-    kills: number;
-    deaths: number;
-    assists: number;
-    gpm: number;
-    xpm: number;
-    lastHits: number;
-    denies: number;
-    netWorth: number;
-    heroDamage: number;
-    towerDamage: number;
-    obsPlaced: number;
-    senPlaced: number;
-    courierKills: number;
-    firstBloodClaimed: boolean;
-    observerKills: number;
-    sentryKills: number;
-    highestKillStreak: number;
-    buybackCount: number;
-    heroHealing: number;
-    fantasyPoints: number;
-    
-    // Multikill data
-    multiKills: { [key: string]: number }; // Object with 2, 3, 4, 5 kill counts
-    doubleKills: number;
-    tripleKills: number;
-    ultraKills: number;
-    rampages: number;
-    
-    // Additional stats
-    roshanKills: number;
-    towerKills: number;
-    neutralKills: number;
-    laneKills: number;
-    heroKills: number;
-    totalGold: number;
-    goldSpent: number;
-    runesPickedUp: number;
-    campsStacked: number;
+  playerId: string;
+  teamId: string;
+  heroId: number;
+  kills: number;
+  deaths: number;
+  assists: number;
+  gpm: number;
+  xpm: number;
+  lastHits: number;
+  denies: number;
+  netWorth: number;
+  heroDamage: number;
+  towerDamage: number;
+  obsPlaced: number;
+  senPlaced: number;
+  courierKills: number;
+  firstBloodClaimed: boolean;
+  observerKills: number;
+  sentryKills: number;
+  highestKillStreak: number;
+  buybackCount: number;
+  heroHealing: number;
+  fantasyPoints: number;
+
+  // Multikill data
+  multiKills: { [key: string]: number }; // Object with 2, 3, 4, 5 kill counts
+  doubleKills: number;
+  tripleKills: number;
+  ultraKills: number;
+  rampages: number;
+
+  // Additional stats
+  roshanKills: number;
+  towerKills: number;
+  neutralKills: number;
+  laneKills: number;
+  heroKills: number;
+  totalGold: number;
+  goldSpent: number;
+  runesPickedUp: number;
+  campsStacked: number;
 }
 
 export interface Game {
-    id: string; // OpenDota match_id
-    radiant_win: boolean;
-    duration: number;
-    start_time: number;
-    firstBloodTime: number;
-    picksBans?: any[];
-    radiant_team?: { id: string; name: string; };
-    dire_team?: { id: string; name: string; };
+  id: string; // OpenDota match_id
+  radiant_win: boolean;
+  duration: number;
+  start_time: number;
+  firstBloodTime: number;
+  picksBans?: any[];
+  radiant_team?: { id: string; name: string; };
+  dire_team?: { id: string; name: string; };
 }
 
 export interface Match {
@@ -63,22 +63,26 @@ export interface Match {
   teamB: { id: string; name: string; score: number; logoUrl: string; };
   teams: string[];
   status: 'scheduled' | 'completed' | 'live';
-  scheduled_for: string; 
-  defaultMatchTime: string; 
-  dateTime?: string; 
+  scheduled_for: string;
+  defaultMatchTime: string;
+  dateTime?: string;
   group_id?: string;
   playoff_round?: number;
   schedulingStatus: 'unscheduled' | 'proposed' | 'confirmed';
   proposedTime?: string;
-  proposingCaptainId?: string; 
-  proposedById?: string; 
+  proposingCaptainId?: string;
+  proposedById?: string;
   game_ids?: number[]; // This now holds the IDs of the individual games
   completed_at?: string;
   series_format?: 'bo1' | 'bo2' | 'bo3' | 'bo5'; // Series format (BO2 for groups, BO1/BO3/BO5 for playoffs)
   winnerId?: string | null; // Winner of the match, null for draws
   playerPerformances?: PlayerPerformanceInMatch[];
   openDotaMatchUrl?: string;
-  standinInfo?: { 
+  // Schedule properties
+  matchday?: number;
+  round?: number;
+  bestOf?: number;
+  standinInfo?: {
     [teamId: string]: {
       teamId: string;
       unavailablePlayers: string[];
@@ -103,6 +107,20 @@ export interface PlayerPerformanceInMatch {
 export const LEAGUE_ID = 18559;
 export const TEAM_MMR_CAP = 24000;
 export const FANTASY_BUDGET_MMR = 24000;
+
+// Tournament-specific league IDs for multi-tournament support
+export const TOURNAMENT_LEAGUE_IDS: Record<string, number> = {
+  'letnia': 18559,
+  'letnia-2025': 18559,
+  'pdl': 19206,
+  'pdl-s1': 19206,
+};
+
+// Helper to get league ID for a tournament
+export function getLeagueId(tournamentSlug: string): number {
+  return TOURNAMENT_LEAGUE_IDS[tournamentSlug] || LEAGUE_ID;
+}
+
 
 export type TeamStatus = 'pending' | 'verified' | 'rejected' | 'warning' | 'banned' | 'eliminated';
 export const PlayerRoles = ['Carry', 'Mid', 'Offlane', 'Soft Support', 'Hard Support'] as const;
@@ -135,7 +153,7 @@ export interface UserProfile {
 }
 
 export interface Team {
-  id:string;
+  id: string;
   name: string;
   tag: string;
   logoUrl: string;
@@ -148,7 +166,14 @@ export interface Team {
   openDotaTeamId?: number;
   testCaptainEmail?: string;
   testCaptainPassword?: string;
-  
+
+  // Tournament context
+  division?: string;
+  divisionId?: string;
+  points?: number; // Current round points
+  seasonPoints?: number; // Cumulative season points for LAN qualification
+  recentForm?: ('W' | 'L' | 'D')[];
+
   // Team statistics
   matchesPlayed?: number;
   wins?: number;
@@ -195,116 +220,116 @@ export interface Group {
 }
 
 export interface TournamentPlayer extends Player {
-    teamId: string;
-    teamName: string;
-    teamTag: string;
+  teamId: string;
+  teamName: string;
+  teamTag: string;
 }
 
 export interface FantasyLineup {
-    userId: string;
-    displayName?: string;
-    roundId?: string;
-    lineup: Partial<Record<PlayerRole, TournamentPlayer>>;
-    submittedAt?: string;
-    totalFantasyScore?: number;
+  userId: string;
+  displayName?: string;
+  roundId?: string;
+  lineup: Partial<Record<PlayerRole, TournamentPlayer>>;
+  submittedAt?: string;
+  totalFantasyScore?: number;
 }
 
 export interface FantasyData {
-    players: TournamentPlayer[];
-    lineups: FantasyLineup[];
+  players: TournamentPlayer[];
+  lineups: FantasyLineup[];
 }
 
 export interface Pickem {
-    userId: string;
-    predictions: {
-        champion: string[];
-        runnerUp: string[];
-        thirdPlace: string[];
-        fourthPlace: string[];
-        fifthToSixth: string[];
-        seventhToEighth: string[];
-        ninthToTwelfth: string[];
-        thirteenthToSixteenth: string[];
-        pool: string[];
-    };
-    scores: Record<string, number>;
-    lastUpdated: any;
+  userId: string;
+  predictions: {
+    champion: string[];
+    runnerUp: string[];
+    thirdPlace: string[];
+    fourthPlace: string[];
+    fifthToSixth: string[];
+    seventhToEighth: string[];
+    ninthToTwelfth: string[];
+    thirteenthToSixteenth: string[];
+    pool: string[];
+  };
+  scores: Record<string, number>;
+  lastUpdated: any;
 }
 
 export interface PickemPrediction {
-    userId: string;
-    matchId: string;
-    predictedWinnerId: string;
+  userId: string;
+  matchId: string;
+  predictedWinnerId: string;
 }
 
 export interface CategoryDisplayStats {
-    categoryName: string;
-    leader: {
-        playerId: string;
-        playerNickname: string;
-        teamName: string;
-        teamTag: string;
-        value: number;
-    };
-}
-
-export interface CategoryRankingDetail {
-    playerId: string;
-    playerNickname: string;
-    teamName: string;
-    teamTag: string;
-    averageValue: number;
-    matchesPlayed: number;
-}
-
-export interface TournamentHighlightRecord {
-    category: string;
+  categoryName: string;
+  leader: {
     playerId: string;
     playerNickname: string;
     teamName: string;
     teamTag: string;
     value: number;
-    matchId: string;
+  };
+}
+
+export interface CategoryRankingDetail {
+  playerId: string;
+  playerNickname: string;
+  teamName: string;
+  teamTag: string;
+  averageValue: number;
+  matchesPlayed: number;
+}
+
+export interface TournamentHighlightRecord {
+  category: string;
+  playerId: string;
+  playerNickname: string;
+  teamName: string;
+  teamTag: string;
+  value: number;
+  matchId: string;
 }
 
 export interface Announcement {
-    id: string;
-    title: string;
-    content: string;
-    authorId: string;
-    authorName: string;
-    createdAt: Date;
+  id: string;
+  title: string;
+  content: string;
+  authorId: string;
+  authorName: string;
+  createdAt: Date;
 }
 
 export type StandinStatus = 'pending' | 'verified';
 
 export interface Standin {
-    id: string;
-    userId: string;
-    nickname: string;
-    discordUsername: string;
-    mmr: number;
-    profileScreenshotUrl: string;
-    steamProfileUrl: string;
-    steamId?: string;
-    steamId32?: string;
-    roles: string[]; // Array of roles they can play: 'Carry', 'Mid', 'Offlane', 'Soft Support', 'Hard Support'
-    description: string; // Max 300 characters - when available, heroes they play, additional info
-    status: StandinStatus;
-    createdAt: string;
-    verifiedAt?: string;
-    matches?: string[]; // Array of match IDs where they are standing in
+  id: string;
+  userId: string;
+  nickname: string;
+  discordUsername: string;
+  mmr: number;
+  profileScreenshotUrl: string;
+  steamProfileUrl: string;
+  steamId?: string;
+  steamId32?: string;
+  roles: string[]; // Array of roles they can play: 'Carry', 'Mid', 'Offlane', 'Soft Support', 'Hard Support'
+  description: string; // Max 300 characters - when available, heroes they play, additional info
+  status: StandinStatus;
+  createdAt: string;
+  verifiedAt?: string;
+  matches?: string[]; // Array of match IDs where they are standing in
 }
 
 export interface StandinRequest {
-    id: string;
-    matchId: string;
-    teamId: string;
-    captainId: string;
-    unavailablePlayers: string[]; // Player IDs who won't be available
-    requestedStandins: string[]; // Standin IDs requested
-    createdAt: string;
-    status: 'pending' | 'approved' | 'rejected';
+  id: string;
+  matchId: string;
+  teamId: string;
+  captainId: string;
+  unavailablePlayers: string[]; // Player IDs who won't be available
+  requestedStandins: string[]; // Standin IDs requested
+  createdAt: string;
+  status: 'pending' | 'approved' | 'rejected';
 }
 
 // Playoff System Types
@@ -313,54 +338,54 @@ export type PlayoffMatchStatus = 'scheduled' | 'live' | 'completed' | 'bye';
 export type PlayoffBracketType = 'upper' | 'lower' | 'wildcard' | 'final';
 
 export interface PlayoffSlot {
-    id: string;
-    position: number; // Position in bracket (1-8 for upper, 1-8 for lower, etc.)
-    teamId?: string; // null if slot is empty
-    bracketType: PlayoffBracketType;
-    round: number; // Which round this slot belongs to
+  id: string;
+  position: number; // Position in bracket (1-8 for upper, 1-8 for lower, etc.)
+  teamId?: string; // null if slot is empty
+  bracketType: PlayoffBracketType;
+  round: number; // Which round this slot belongs to
 }
 
 export interface PlayoffMatch {
-    id: string;
-    matchId?: string; // Reference to regular Match if created
-    bracketType: PlayoffBracketType;
-    round: number;
-    position: number; // Position within the round
-    teamASlotId?: string; // Reference to playoff slot
-    teamBSlotId?: string; // Reference to playoff slot
-    teamA?: { id: string; name: string; logoUrl?: string; };
-    teamB?: { id: string; name: string; logoUrl?: string; };
-    winnerSlotId?: string; // Where winner advances to
-    loserSlotId?: string; // Where loser goes (for upper bracket)
-    format: PlayoffMatchFormat; // bo1, bo3, bo5
-    status: PlayoffMatchStatus;
-    result?: {
-        winnerId: string;
-        loserId: string;
-        teamAScore: number;
-        teamBScore: number;
-        completedAt: string;
-    };
-    scheduledFor?: string;
-    createdAt: string;
-    updatedAt: string;
+  id: string;
+  matchId?: string; // Reference to regular Match if created
+  bracketType: PlayoffBracketType;
+  round: number;
+  position: number; // Position within the round
+  teamASlotId?: string; // Reference to playoff slot
+  teamBSlotId?: string; // Reference to playoff slot
+  teamA?: { id: string; name: string; logoUrl?: string; };
+  teamB?: { id: string; name: string; logoUrl?: string; };
+  winnerSlotId?: string; // Where winner advances to
+  loserSlotId?: string; // Where loser goes (for upper bracket)
+  format: PlayoffMatchFormat; // bo1, bo3, bo5
+  status: PlayoffMatchStatus;
+  result?: {
+    winnerId: string;
+    loserId: string;
+    teamAScore: number;
+    teamBScore: number;
+    completedAt: string;
+  };
+  scheduledFor?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface PlayoffBracket {
-    id: string;
-    name: string; // e.g., "Upper Bracket", "Lower Bracket", "Wildcards"
-    type: PlayoffBracketType;
-    slots: PlayoffSlot[];
-    matches: PlayoffMatch[];
-    isActive: boolean;
+  id: string;
+  name: string; // e.g., "Upper Bracket", "Lower Bracket", "Wildcards"
+  type: PlayoffBracketType;
+  slots: PlayoffSlot[];
+  matches: PlayoffMatch[];
+  isActive: boolean;
 }
 
 export interface PlayoffData {
-    id: string;
-    name: string; // Tournament name
-    brackets: PlayoffBracket[];
-    wildcardSlots: number; // Number of wildcard spots (default 2)
-    isSetup: boolean; // Whether admin has completed initial setup
-    createdAt: string;
-    updatedAt: string;
+  id: string;
+  name: string; // Tournament name
+  brackets: PlayoffBracket[];
+  wildcardSlots: number; // Number of wildcard spots (default 2)
+  isSetup: boolean; // Whether admin has completed initial setup
+  createdAt: string;
+  updatedAt: string;
 }

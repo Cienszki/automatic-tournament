@@ -18,17 +18,17 @@ interface TournamentContextType {
   theme: TournamentTheme;
   isLoading: boolean;
   error: string | null;
-  
+
   // Available tournaments
   tournaments: TournamentSummary[];
   activeTournaments: TournamentSummary[];
   archivedTournaments: TournamentSummary[];
-  
+
   // Actions
   setTournament: (tournament: TournamentConfig | null) => void;
   setTournamentSlug: (slug: string | null) => void;
   refreshTournaments: () => Promise<void>;
-  
+
   // Helpers
   isLegacyTournament: boolean; // True for Letnia (uses old data structure)
   getTournamentPath: (path: string) => string; // Returns full path with tournament slug
@@ -87,7 +87,7 @@ export function TournamentProvider({ children, initialTournamentSlug }: Tourname
   const activeTournaments = tournaments.filter(
     t => t.visibility === 'active'
   );
-  
+
   // 'archived' visibility means it goes to the dropdown
   const archivedTournaments = tournaments.filter(
     t => t.visibility === 'archived'
@@ -116,11 +116,11 @@ export function TournamentProvider({ children, initialTournamentSlug }: Tourname
 
       // Fetch tournaments from Firestore
       const fetchedTournaments = await fetchTournaments();
-      
+
       // TEMPORARY: Always use static defaults until Firestore is properly set up
       // TODO: Remove this once Firestore has correct data
       const useStaticFallback = true;
-      
+
       // If no tournaments in Firestore, use static defaults (for development)
       if (fetchedTournaments.length === 0 || useStaticFallback) {
         const staticTournaments: TournamentSummary[] = [
@@ -176,14 +176,14 @@ export function TournamentProvider({ children, initialTournamentSlug }: Tourname
     const fetchTournamentConfig = async () => {
       try {
         setIsLoading(true);
-        
+
         // TODO: Replace with Firestore fetch
         // For now, use static config based on slug
-        if (tournamentSlug === 'letnia') {
+        if (tournamentSlug === 'letnia' || tournamentSlug === 'letnia-2025') {
           // Letnia uses legacy structure, minimal config needed
           setTournament({
             id: 'letnia-2025',
-            slug: 'letnia',
+            slug: 'letnia', // Normalize slug
             name: 'Letnia Batalia',
             shortName: 'Letnia',
             description: 'Turniej z limitem MMR dla polskiej społeczności Dota 2',
@@ -253,10 +253,10 @@ export function TournamentProvider({ children, initialTournamentSlug }: Tourname
             createdAt: '2025-05-01T00:00:00Z',
             updatedAt: '2025-09-30T00:00:00Z',
           });
-        } else if (tournamentSlug === 'pdl') {
+        } else if (tournamentSlug === 'pdl' || tournamentSlug === 'pdl-s1') {
           setTournament({
             id: 'pdl-s1',
-            slug: 'pdl',
+            slug: 'pdl', // Normalize slug
             name: 'Polish Dota League',
             shortName: 'PDL',
             description: 'Profesjonalna liga dla najlepszych polskich drużyn Dota 2',
@@ -366,7 +366,7 @@ export function TournamentProvider({ children, initialTournamentSlug }: Tourname
     root.style.setProperty('--tournament-text', theme.textColor);
     root.style.setProperty('--tournament-muted', theme.mutedTextColor);
     root.style.setProperty('--tournament-border', theme.borderColor);
-    
+
     if (theme.backgroundGradient) {
       root.style.setProperty('--tournament-bg-gradient', theme.backgroundGradient);
     }

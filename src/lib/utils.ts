@@ -2,7 +2,7 @@
 import { type ClassValue, clsx } from "clsx"
 import { twMerge } from "tailwind-merge"
 import type { Player, PlayerRole } from "./definitions";
- 
+
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
@@ -35,6 +35,9 @@ export function sortPlayersByRole(players: Player[]): Player[] {
  * @returns A string with the number formatted with commas.
  */
 export function formatNumber(num: number): string {
+  if (num === undefined || num === null || isNaN(num)) {
+    return 'N/A';
+  }
   return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 }
 
@@ -50,5 +53,30 @@ export async function getSteamAvatarUrl(steamProfileUrl: string): Promise<string
     return null;
   } catch {
     return null;
+  }
+}
+
+/**
+ * Formats a date string in Polish locale format (e.g., "15 sty 2026, 18:00")
+ * @param dateString - ISO date string or Date object
+ * @returns Formatted date string in Polish
+ */
+export function formatDatePL(dateString: string | Date): string {
+  try {
+    const date = typeof dateString === 'string' ? new Date(dateString) : dateString;
+
+    if (isNaN(date.getTime())) {
+      return 'Nieprawidłowa data';
+    }
+
+    return date.toLocaleDateString('pl-PL', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  } catch {
+    return 'Nieprawidłowa data';
   }
 }

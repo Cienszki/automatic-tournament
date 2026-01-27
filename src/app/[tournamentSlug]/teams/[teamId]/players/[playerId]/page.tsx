@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { PlayerAvatar } from "@/components/app/PlayerAvatar";
-import { 
+import {
   ArrowLeft, ExternalLink, Trophy, Target, Zap, Coins,
   Shield, Swords, Sparkles, HandHelping, Eye, ListChecks,
   TrendingUp, BarChart3, Star, Skull
@@ -73,7 +73,7 @@ export default function PlayerProfilePage() {
         // Load team data
         const teamRef = doc(db, 'tournaments', tournament.id, 'teams', teamId);
         const teamSnap = await getDoc(teamRef);
-        
+
         if (!teamSnap.exists()) {
           setLoading(false);
           return;
@@ -85,7 +85,7 @@ export default function PlayerProfilePage() {
         // Load player data
         const playerRef = doc(db, 'tournaments', tournament.id, 'teams', teamId, 'players', playerId);
         const playerSnap = await getDoc(playerRef);
-        
+
         if (!playerSnap.exists()) {
           setLoading(false);
           return;
@@ -98,7 +98,7 @@ export default function PlayerProfilePage() {
         const matchesRef = collection(db, 'tournaments', tournament.id, 'matches');
         const matchesSnap = await getDocs(matchesRef);
         const allMatches: Match[] = [];
-        
+
         for (const matchDoc of matchesSnap.docs) {
           const matchData = { id: matchDoc.id, ...matchDoc.data() } as Match;
           allMatches.push(matchData);
@@ -108,7 +108,7 @@ export default function PlayerProfilePage() {
         const teamsRef = collection(db, 'tournaments', tournament.id, 'teams');
         const teamsSnap = await getDocs(teamsRef);
         const teamsData: Team[] = [];
-        
+
         for (const teamDoc of teamsSnap.docs) {
           const teamInfo = { id: teamDoc.id, ...teamDoc.data() } as Team;
           // Load players for MMR calculation
@@ -140,10 +140,10 @@ export default function PlayerProfilePage() {
 
             const opponentTeamId = match.teamA.id === teamId ? match.teamB.id : match.teamA.id;
             const opponentTeamData = match.teamA.id === teamId ? match.teamB : match.teamA;
-            const playerTeamWon = (match.teamA.id === teamId && (match.teamA.score ?? 0) > (match.teamB.score ?? 0)) || 
-                                  (match.teamB.id === teamId && (match.teamB.score ?? 0) > (match.teamA.score ?? 0));
+            const playerTeamWon = (match.teamA.id === teamId && (match.teamA.score ?? 0) > (match.teamB.score ?? 0)) ||
+              (match.teamB.id === teamId && (match.teamB.score ?? 0) > (match.teamA.score ?? 0));
             if (playerTeamWon) wins++;
-            
+
             history.push({
               matchId: match.id,
               opponentTeam: { id: opponentTeamId, name: opponentTeamData.name, logoUrl: opponentTeamData.logoUrl },
@@ -179,8 +179,16 @@ export default function PlayerProfilePage() {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center min-h-96">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2" style={{ borderColor: theme.primaryColor }}></div>
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="relative">
+            <div className="w-20 h-20 border-4 border-pdl-gold/20 rounded-full" />
+            <div className="absolute inset-0 w-20 h-20 border-4 border-pdl-gold border-t-transparent rounded-full animate-spin" />
+          </div>
+          <span className="text-pdl-gold font-logik-extended-bold tracking-widest animate-pulse uppercase text-sm">
+            Ładowanie...
+          </span>
+        </div>
       </div>
     );
   }
@@ -204,276 +212,291 @@ export default function PlayerProfilePage() {
   const leagueAvgMMR = allPlayers.length ? Math.round(allPlayers.reduce((sum, p) => sum + p.mmr, 0) / allPlayers.length) : 0;
 
   return (
-    <div className="space-y-6">
-      {/* Back Button */}
-      <Button variant="ghost" asChild>
-        <Link href={getTournamentPath(`/teams/${teamId}`)}>
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Back to {team.name}
-        </Link>
-      </Button>
+    <div className="relative text-white overflow-x-hidden min-h-screen">
+      {/* Premium Atmosphere Background */}
+      <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+        <div
+          className="absolute inset-0 z-0 pointer-events-none opacity-60"
+          style={{
+            background: 'radial-gradient(ellipse at center, transparent 0%, transparent 40%, #000000 100%)',
+          }}
+        />
+        <div
+          className="absolute top-[-20%] right-[-10%] w-[60vw] h-[60vw] rounded-full opacity-[0.04] blur-[200px]"
+          style={{ background: theme?.primaryColor || '#8B1538' }}
+        />
+        <div
+          className="absolute bottom-[-20%] left-[-10%] w-[40vw] h-[40vw] rounded-full opacity-[0.03] blur-[150px]"
+          style={{ background: '#dc2626' }}
+        />
+      </div>
 
-      {/* Player Header */}
-      <Card 
-        style={{ 
-          backgroundColor: theme.cardColor, 
-          borderColor: theme.borderColor,
-          borderWidth: '2px'
-        }}
-      >
-        <CardHeader style={{ backgroundColor: `${theme.primaryColor}10` }}>
-          <div className="flex flex-col md:flex-row items-center gap-6">
-            <PlayerAvatar player={player} size="large" />
-            <div className="text-center md:text-left flex-1">
-              <CardTitle className="text-4xl mb-2 font-bold" style={{ fontFamily: 'var(--font-logik)', color: theme.primaryColor }}>
-                {player.nickname}
-              </CardTitle>
-              <CardDescription className="text-lg">
-                <Badge 
-                  variant="outline" 
-                  className="mr-2 text-base py-1 px-3"
-                  style={{ borderColor: theme.secondaryColor, color: theme.secondaryColor }}
-                >
-                  {player.role}
-                </Badge>
-                <Link
-                  href={getTournamentPath(`/teams/${teamId}`)}
-                  className="hover:underline font-medium"
-                  style={{ color: theme.accentColor }}
-                >
-                  {team.name}
-                </Link>
-              </CardDescription>
-              <div className="flex flex-wrap gap-2 mt-3 justify-center md:justify-start">
-                {player.steamId && (
-                  <Button variant="outline" size="sm" asChild>
-                    <a
-                      href={`https://steamcommunity.com/profiles/${player.steamId}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      <ExternalLink className="h-4 w-4 mr-2" />
-                      Steam Profile
-                    </a>
-                  </Button>
-                )}
-                {player.openDotaAccountId && (
-                  <Button variant="outline" size="sm" asChild>
-                    <a
-                      href={`https://www.opendota.com/players/${player.openDotaAccountId}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      <ExternalLink className="h-4 w-4 mr-2" />
-                      OpenDota
-                    </a>
-                  </Button>
-                )}
+      {/* Main Content */}
+      <div className="relative z-10 max-w-[1400px] mx-auto px-6 lg:px-12 py-8 space-y-6">
+        {/* Back Button */}
+        <Button variant="ghost" asChild>
+          <Link href={getTournamentPath(`/teams/${teamId}`)}>
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to {team.name}
+          </Link>
+        </Button>
+
+        {/* Player Header */}
+        <Card
+          style={{
+            backgroundColor: theme.cardColor,
+            borderColor: theme.borderColor,
+            borderWidth: '2px'
+          }}
+        >
+          <CardHeader style={{ backgroundColor: `${theme.primaryColor}10` }}>
+            <div className="flex flex-col md:flex-row items-center gap-6">
+              <PlayerAvatar player={player} size="large" />
+              <div className="text-center md:text-left flex-1">
+                <CardTitle className="text-4xl mb-2 font-bold" style={{ fontFamily: 'var(--font-logik)', color: theme.primaryColor }}>
+                  {player.nickname}
+                </CardTitle>
+                <CardDescription className="text-lg">
+                  <Badge
+                    variant="outline"
+                    className="mr-2 text-base py-1 px-3"
+                    style={{ borderColor: theme.secondaryColor, color: theme.secondaryColor }}
+                  >
+                    {player.role}
+                  </Badge>
+                  <Link
+                    href={getTournamentPath(`/teams/${teamId}`)}
+                    className="hover:underline font-medium"
+                    style={{ color: theme.accentColor }}
+                  >
+                    {team.name}
+                  </Link>
+                </CardDescription>
+                <div className="flex flex-wrap gap-2 mt-3 justify-center md:justify-start">
+                  {player.steamId && (
+                    <Button variant="outline" size="sm" asChild>
+                      <a
+                        href={`https://steamcommunity.com/profiles/${player.steamId}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <ExternalLink className="h-4 w-4 mr-2" />
+                        Steam Profile
+                      </a>
+                    </Button>
+                  )}
+                  {player.openDotaAccountId && (
+                    <Button variant="outline" size="sm" asChild>
+                      <a
+                        href={`https://www.opendota.com/players/${player.openDotaAccountId}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <ExternalLink className="h-4 w-4 mr-2" />
+                        OpenDota
+                      </a>
+                    </Button>
+                  )}
+                </div>
               </div>
             </div>
+          </CardHeader>
+        </Card>
+
+        {/* Statistics Grid */}
+        {averageStats && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {/* MMR Card */}
+            <Card
+              className="text-center bg-transparent border-0 shadow-none"
+            >
+              <CardHeader className="flex flex-row items-center justify-center space-x-3 pb-2">
+                <Star className="h-6 w-6 text-white/50" />
+                <CardTitle className="text-xl" style={{ fontFamily: 'var(--font-logik)', color: theme.primaryColor }}>MMR</CardTitle>
+              </CardHeader>
+              <CardContent className="flex flex-col items-center justify-center flex-grow p-6">
+                <p className="text-3xl font-bold mb-2" style={{ color: theme.textPrimary }}>{formatNumber(player.mmr)}</p>
+                <Progress
+                  value={Math.min(100, Math.max(0, (player.mmr / Math.max(leagueAvgMMR * 1.5, 1)) * 100))}
+                  className="w-3/4 h-2.5"
+                  aria-label="MMR progress"
+                />
+                <p className="text-xs mt-1 font-logik" style={{ color: theme.textSecondary }}>
+                  League Avg: {formatNumber(leagueAvgMMR)}
+                </p>
+              </CardContent>
+            </Card>
+
+            {/* KDA Card */}
+            <Card
+              className="text-center bg-transparent border-0 shadow-none"
+            >
+              <CardHeader className="flex flex-row items-center justify-center space-x-3 pb-2">
+                <TrendingUp className="h-6 w-6 text-white/50" />
+                <CardTitle className="text-xl" style={{ fontFamily: 'var(--font-logik)', color: theme.primaryColor }}>KDA Ratio</CardTitle>
+              </CardHeader>
+              <CardContent className="flex flex-col items-center justify-center flex-grow p-6">
+                <p className="text-3xl font-bold" style={{ color: theme.textPrimary }}>{averageStats.kda}</p>
+              </CardContent>
+            </Card>
+
+            {/* Win Rate Card */}
+            <Card
+              className="text-center bg-transparent border-0 shadow-none"
+            >
+              <CardHeader className="flex flex-row items-center justify-center space-x-3 pb-2">
+                <Shield className="h-6 w-6 text-white/50" />
+                <CardTitle className="text-xl" style={{ fontFamily: 'var(--font-logik)', color: theme.primaryColor }}>Win Rate</CardTitle>
+              </CardHeader>
+              <CardContent className="flex flex-col items-center justify-center flex-grow p-6">
+                <p className="text-3xl font-bold" style={{ color: theme.textPrimary }}>{averageStats.winRate}</p>
+              </CardContent>
+            </Card>
+
+            {/* GPM Card */}
+            <Card
+              className="text-center bg-transparent border-0 shadow-none"
+            >
+              <CardHeader className="flex flex-row items-center justify-center space-x-3 pb-2">
+                <Coins className="h-6 w-6 text-white/50" />
+                <CardTitle className="text-xl" style={{ fontFamily: 'var(--font-logik)', color: theme.primaryColor }}>Avg GPM</CardTitle>
+              </CardHeader>
+              <CardContent className="flex flex-col items-center justify-center flex-grow p-6">
+                <p className="text-3xl font-bold" style={{ color: theme.textPrimary }}>{averageStats.gpm}</p>
+              </CardContent>
+            </Card>
+
+            {/* XPM Card */}
+            <Card
+              className="text-center bg-transparent border-0 shadow-none"
+            >
+              <CardHeader className="flex flex-row items-center justify-center space-x-3 pb-2">
+                <Zap className="h-6 w-6 text-white/50" />
+                <CardTitle className="text-xl" style={{ fontFamily: 'var(--font-logik)', color: theme.primaryColor }}>Avg XPM</CardTitle>
+              </CardHeader>
+              <CardContent className="flex flex-col items-center justify-center flex-grow p-6">
+                <p className="text-3xl font-bold" style={{ color: theme.textPrimary }}>{averageStats.xpm}</p>
+              </CardContent>
+            </Card>
+
+            {/* Fantasy Points Card */}
+            <Card
+              className="text-center bg-transparent border-0 shadow-none"
+            >
+              <CardHeader className="flex flex-row items-center justify-center space-x-3 pb-2">
+                <Trophy className="h-6 w-6 text-white/50" />
+                <CardTitle className="text-xl" style={{ fontFamily: 'var(--font-logik)', color: theme.primaryColor }}>Fantasy Points</CardTitle>
+              </CardHeader>
+              <CardContent className="flex flex-col items-center justify-center flex-grow p-6">
+                <p className="text-3xl font-bold" style={{ color: theme.textPrimary }}>{averageStats.fantasyPoints}</p>
+              </CardContent>
+            </Card>
           </div>
-        </CardHeader>
-      </Card>
+        )}
 
-      {/* Statistics Grid */}
-      {averageStats && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {/* MMR Card */}
-          <Card 
-            className="text-center transition-colors duration-200"
-            style={{ backgroundColor: theme.cardColor, borderColor: theme.borderColor }}
-          >
-            <CardHeader className="flex flex-row items-center justify-center space-x-3 pb-2">
-              <Star className="h-6 w-6" style={{ color: theme.accentColor }} />
-              <CardTitle className="text-xl" style={{ fontFamily: 'var(--font-logik)', color: theme.primaryColor }}>MMR</CardTitle>
-            </CardHeader>
-            <CardContent className="flex flex-col items-center justify-center flex-grow p-6">
-              <p className="text-3xl font-bold mb-2" style={{ color: theme.textPrimary }}>{formatNumber(player.mmr)}</p>
-              <Progress
-                value={Math.min(100, Math.max(0, (player.mmr / Math.max(leagueAvgMMR * 1.5, 1)) * 100))}
-                className="w-3/4 h-2.5"
-                aria-label="MMR progress"
-              />
-              <p className="text-xs mt-1" style={{ color: theme.textSecondary }}>
-                League Avg: {formatNumber(leagueAvgMMR)}
-              </p>
-            </CardContent>
-          </Card>
+        {/* Match History */}
+        <Card className="bg-transparent border-0 shadow-none">
+          <CardHeader>
+            <CardTitle className="text-2xl font-semibold" style={{ fontFamily: 'var(--font-logik)', color: theme.primaryColor }}>
+              Recent Match History
+            </CardTitle>
+            <CardDescription style={{ color: theme.textSecondary }}>
+              Performance in recent matches
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {matchHistory.length > 0 ? (
+              <div className="space-y-4">
+                {matchHistory.map(histItem => {
+                  const perf = histItem.playerPerformance;
+                  const HeroIconComponent = heroIconMap[perf.hero] || heroIconMap['Default'];
+                  const heroColorHex = heroColorMap[perf.hero] || FALLBACK_HERO_COLOR;
 
-          {/* KDA Card */}
-          <Card 
-            className="text-center transition-colors duration-200"
-            style={{ backgroundColor: theme.cardColor, borderColor: theme.borderColor }}
-          >
-            <CardHeader className="flex flex-row items-center justify-center space-x-3 pb-2">
-              <TrendingUp className="h-6 w-6" style={{ color: theme.accentColor }} />
-              <CardTitle className="text-xl" style={{ fontFamily: 'var(--font-logik)', color: theme.primaryColor }}>KDA Ratio</CardTitle>
-            </CardHeader>
-            <CardContent className="flex flex-col items-center justify-center flex-grow p-6">
-              <p className="text-3xl font-bold" style={{ color: theme.textPrimary }}>{averageStats.kda}</p>
-            </CardContent>
-          </Card>
-
-          {/* Win Rate Card */}
-          <Card 
-            className="text-center transition-colors duration-200"
-            style={{ backgroundColor: theme.cardColor, borderColor: theme.borderColor }}
-          >
-            <CardHeader className="flex flex-row items-center justify-center space-x-3 pb-2">
-              <Shield className="h-6 w-6" style={{ color: theme.accentColor }} />
-              <CardTitle className="text-xl" style={{ fontFamily: 'var(--font-logik)', color: theme.primaryColor }}>Win Rate</CardTitle>
-            </CardHeader>
-            <CardContent className="flex flex-col items-center justify-center flex-grow p-6">
-              <p className="text-3xl font-bold" style={{ color: theme.textPrimary }}>{averageStats.winRate}</p>
-            </CardContent>
-          </Card>
-
-          {/* GPM Card */}
-          <Card 
-            className="text-center transition-colors duration-200"
-            style={{ backgroundColor: theme.cardColor, borderColor: theme.borderColor }}
-          >
-            <CardHeader className="flex flex-row items-center justify-center space-x-3 pb-2">
-              <Coins className="h-6 w-6" style={{ color: theme.accentColor }} />
-              <CardTitle className="text-xl" style={{ fontFamily: 'var(--font-logik)', color: theme.primaryColor }}>Avg GPM</CardTitle>
-            </CardHeader>
-            <CardContent className="flex flex-col items-center justify-center flex-grow p-6">
-              <p className="text-3xl font-bold" style={{ color: theme.textPrimary }}>{averageStats.gpm}</p>
-            </CardContent>
-          </Card>
-
-          {/* XPM Card */}
-          <Card 
-            className="text-center transition-colors duration-200"
-            style={{ backgroundColor: theme.cardColor, borderColor: theme.borderColor }}
-          >
-            <CardHeader className="flex flex-row items-center justify-center space-x-3 pb-2">
-              <Zap className="h-6 w-6" style={{ color: theme.accentColor }} />
-              <CardTitle className="text-xl" style={{ fontFamily: 'var(--font-logik)', color: theme.primaryColor }}>Avg XPM</CardTitle>
-            </CardHeader>
-            <CardContent className="flex flex-col items-center justify-center flex-grow p-6">
-              <p className="text-3xl font-bold" style={{ color: theme.textPrimary }}>{averageStats.xpm}</p>
-            </CardContent>
-          </Card>
-
-          {/* Fantasy Points Card */}
-          <Card 
-            className="text-center transition-colors duration-200"
-            style={{ backgroundColor: theme.cardColor, borderColor: theme.borderColor }}
-          >
-            <CardHeader className="flex flex-row items-center justify-center space-x-3 pb-2">
-              <Trophy className="h-6 w-6" style={{ color: theme.accentColor }} />
-              <CardTitle className="text-xl" style={{ fontFamily: 'var(--font-logik)', color: theme.primaryColor }}>Fantasy Points</CardTitle>
-            </CardHeader>
-            <CardContent className="flex flex-col items-center justify-center flex-grow p-6">
-              <p className="text-3xl font-bold" style={{ color: theme.textPrimary }}>{averageStats.fantasyPoints}</p>
-            </CardContent>
-          </Card>
-        </div>
-      )}
-
-      {/* Match History */}
-      <Card style={{ backgroundColor: theme.cardColor, borderColor: theme.borderColor }}>
-        <CardHeader>
-          <CardTitle className="text-2xl font-semibold" style={{ fontFamily: 'var(--font-logik)', color: theme.primaryColor }}>
-            Recent Match History
-          </CardTitle>
-          <CardDescription style={{ color: theme.textSecondary }}>
-            Performance in recent matches
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {matchHistory.length > 0 ? (
-            <div className="space-y-4">
-              {matchHistory.map(histItem => {
-                const perf = histItem.playerPerformance;
-                const HeroIconComponent = heroIconMap[perf.hero] || heroIconMap['Default'];
-                const heroColorHex = heroColorMap[perf.hero] || FALLBACK_HERO_COLOR;
-                
-                return (
-                  <Card 
-                    key={histItem.matchId}
-                    className={cn("transition-colors duration-200")}
-                    style={{ 
-                      backgroundColor: theme.cardColor, 
-                      borderColor: theme.borderColor,
-                      borderLeft: `4px solid ${histItem.result === 'Win' ? '#10b981' : '#ef4444'}`
-                    }}
-                  >
-                    <CardHeader className="pb-3">
-                      <div className="flex justify-between items-start">
-                        <CardTitle className="text-lg flex items-center flex-wrap">
-                          <HeroIconComponent color={heroColorHex} className="h-5 w-5 mr-1.5 shrink-0" />
-                          <span style={{ color: heroColorHex, fontFamily: 'var(--font-logik)' }} className="font-semibold">{perf.hero}</span>
-                          <span className="mx-1.5 font-normal" style={{ color: theme.textSecondary }}>vs</span>
-                          <Link 
-                            href={getTournamentPath(`/teams/${histItem.opponentTeam.id}`)} 
-                            className="hover:underline"
-                            style={{ color: theme.accentColor }}
-                          >
-                            {histItem.opponentTeam.name}
-                          </Link>
-                        </CardTitle>
-                        <div className="flex items-center gap-2">
-                          <Badge variant={histItem.result === 'Win' ? 'default' : 'destructive'} className="shrink-0">
-                            {histItem.result}
-                          </Badge>
-                          {histItem.openDotaMatchUrl && (
-                            <Button variant="ghost" size="sm" asChild>
-                              <a href={histItem.openDotaMatchUrl} target="_blank" rel="noopener noreferrer">
-                                <ExternalLink className="h-3 w-3" />
-                              </a>
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-                      <CardDescription className="text-xs mt-1" style={{ color: theme.textSecondary }}>
-                        {histItem.matchDate.toLocaleDateString()}
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="pt-0">
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                        <div className="text-center">
-                          <div className="flex items-center justify-center mb-1">
-                            <Swords className="h-4 w-4 mr-1" style={{ color: theme.accentColor }} />
-                            <span className="font-medium" style={{ color: theme.textSecondary }}>K/D/A</span>
-                          </div>
-                          <div className="font-bold" style={{ color: theme.textPrimary }}>
-                            {perf.kills}/{perf.deaths}/{perf.assists}
+                  return (
+                    <Card
+                      key={histItem.matchId}
+                      className={cn("transition-colors duration-200")}
+                      style={{
+                        backgroundColor: theme.cardColor,
+                        borderColor: theme.borderColor,
+                        borderLeft: `4px solid ${histItem.result === 'Win' ? '#10b981' : '#ef4444'}`
+                      }}
+                    >
+                      <CardHeader className="pb-3">
+                        <div className="flex justify-between items-start">
+                          <CardTitle className="text-lg flex items-center flex-wrap">
+                            <HeroIconComponent color={heroColorHex} className="h-5 w-5 mr-1.5 shrink-0" />
+                            <span style={{ color: heroColorHex, fontFamily: 'var(--font-logik)' }} className="font-semibold">{perf.hero}</span>
+                            <span className="mx-1.5 font-normal" style={{ color: theme.textSecondary }}>vs</span>
+                            <Link
+                              href={getTournamentPath(`/teams/${histItem.opponentTeam.id}`)}
+                              className="hover:underline"
+                              style={{ color: theme.accentColor }}
+                            >
+                              {histItem.opponentTeam.name}
+                            </Link>
+                          </CardTitle>
+                          <div className="flex items-center gap-2">
+                            <Badge variant={histItem.result === 'Win' ? 'default' : 'destructive'} className="shrink-0">
+                              {histItem.result}
+                            </Badge>
+                            {histItem.openDotaMatchUrl && (
+                              <Button variant="ghost" size="sm" asChild>
+                                <a href={histItem.openDotaMatchUrl} target="_blank" rel="noopener noreferrer">
+                                  <ExternalLink className="h-3 w-3" />
+                                </a>
+                              </Button>
+                            )}
                           </div>
                         </div>
-                        <div className="text-center">
-                          <div className="flex items-center justify-center mb-1">
-                            <Coins className="h-4 w-4 mr-1" style={{ color: theme.accentColor }} />
-                            <span className="font-medium" style={{ color: theme.textSecondary }}>GPM</span>
+                        <CardDescription className="text-xs mt-1" style={{ color: theme.textSecondary }}>
+                          {histItem.matchDate.toLocaleDateString()}
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="pt-0">
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                          <div className="text-center">
+                            <div className="flex items-center justify-center mb-1">
+                              <Swords className="h-4 w-4 mr-1" style={{ color: theme.accentColor }} />
+                              <span className="font-medium" style={{ color: theme.textSecondary }}>K/D/A</span>
+                            </div>
+                            <div className="font-bold" style={{ color: theme.textPrimary }}>
+                              {perf.kills}/{perf.deaths}/{perf.assists}
+                            </div>
                           </div>
-                          <div className="font-bold" style={{ color: theme.textPrimary }}>{perf.gpm}</div>
-                        </div>
-                        <div className="text-center">
-                          <div className="flex items-center justify-center mb-1">
-                            <Zap className="h-4 w-4 mr-1" style={{ color: theme.accentColor }} />
-                            <span className="font-medium" style={{ color: theme.textSecondary }}>XPM</span>
+                          <div className="text-center">
+                            <div className="flex items-center justify-center mb-1">
+                              <Coins className="h-4 w-4 mr-1" style={{ color: theme.accentColor }} />
+                              <span className="font-medium" style={{ color: theme.textSecondary }}>GPM</span>
+                            </div>
+                            <div className="font-bold" style={{ color: theme.textPrimary }}>{perf.gpm}</div>
                           </div>
-                          <div className="font-bold" style={{ color: theme.textPrimary }}>{perf.xpm}</div>
-                        </div>
-                        <div className="text-center">
-                          <div className="flex items-center justify-center mb-1">
-                            <Trophy className="h-4 w-4 mr-1" style={{ color: theme.primaryColor }} />
-                            <span className="font-medium" style={{ color: theme.textSecondary }}>Fantasy</span>
+                          <div className="text-center">
+                            <div className="flex items-center justify-center mb-1">
+                              <Zap className="h-4 w-4 mr-1" style={{ color: theme.accentColor }} />
+                              <span className="font-medium" style={{ color: theme.textSecondary }}>XPM</span>
+                            </div>
+                            <div className="font-bold" style={{ color: theme.textPrimary }}>{perf.xpm}</div>
                           </div>
-                          <div className="font-bold" style={{ color: theme.primaryColor }}>{perf.fantasyPoints}</div>
+                          <div className="text-center">
+                            <div className="flex items-center justify-center mb-1">
+                              <Trophy className="h-4 w-4 mr-1" style={{ color: theme.primaryColor }} />
+                              <span className="font-medium" style={{ color: theme.textSecondary }}>Fantasy</span>
+                            </div>
+                            <div className="font-bold" style={{ color: theme.primaryColor }}>{perf.fantasyPoints}</div>
+                          </div>
                         </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
-          ) : (
-            <p className="text-center py-4" style={{ color: theme.textSecondary }}>No match data available yet.</p>
-          )}
-        </CardContent>
-      </Card>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="text-center py-4" style={{ color: theme.textSecondary }}>No match data available yet.</p>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

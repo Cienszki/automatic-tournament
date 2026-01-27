@@ -20,6 +20,8 @@ import { useTranslations } from "next-intl";
 import { PlayerRoles } from "@/lib/definitions";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
+import { collection, query, where, getDocs } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif"];
@@ -72,8 +74,8 @@ const pdlFormSchema = z.object({
 }).refine(data => {
   // If coach is enabled, validate nickname and steam URL
   if (data.coach.hasCoach) {
-    return data.coach.nickname && data.coach.nickname.length >= 2 && 
-           data.coach.steamProfileUrl && data.coach.steamProfileUrl.startsWith('http');
+    return data.coach.nickname && data.coach.nickname.length >= 2 &&
+      data.coach.steamProfileUrl && data.coach.steamProfileUrl.startsWith('http');
   }
   return true;
 }, {
@@ -91,7 +93,7 @@ const RegistrationClosed: React.FC = () => {
       <div className="container mx-auto px-6 py-24">
         <div className="max-w-3xl mx-auto text-center">
           {/* Logo */}
-          <motion.div 
+          <motion.div
             className="relative mb-8"
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
@@ -104,7 +106,7 @@ const RegistrationClosed: React.FC = () => {
           </motion.div>
 
           {/* Main Title */}
-          <motion.h1 
+          <motion.h1
             className="text-5xl font-bold mb-6 text-transparent bg-gradient-to-r from-[#8B1538] to-[#d4d4d4] bg-clip-text"
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
@@ -114,7 +116,7 @@ const RegistrationClosed: React.FC = () => {
           </motion.h1>
 
           {/* Description */}
-          <motion.div 
+          <motion.div
             className="bg-black/30 backdrop-blur-sm rounded-xl p-8 mb-8 border border-[#8B1538]/20 shadow-[0_0_30px_rgba(139,21,56,0.1)]"
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
@@ -133,15 +135,15 @@ const RegistrationClosed: React.FC = () => {
           </motion.div>
 
           {/* Navigation Buttons */}
-          <motion.div 
+          <motion.div
             className="flex flex-col sm:flex-row gap-4 justify-center"
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ duration: 0.6, delay: 0.6 }}
           >
             <Link href={getTournamentPath('/')}>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 size="lg"
                 className="bg-gradient-to-r from-[#8B1538]/20 to-[#d4d4d4]/20 border-[#8B1538] text-[#8B1538] hover:bg-[#8B1538]/10 hover:shadow-[0_0_20px_rgba(139,21,56,0.3)] transition-all duration-300"
               >
@@ -150,8 +152,8 @@ const RegistrationClosed: React.FC = () => {
               </Button>
             </Link>
             <Link href={getTournamentPath('/teams')}>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 size="lg"
                 className="bg-gradient-to-r from-[#d4d4d4]/20 to-[#8B1538]/20 border-[#d4d4d4] text-[#d4d4d4] hover:bg-[#d4d4d4]/10 hover:shadow-[0_0_20px_rgba(212,212,212,0.3)] transition-all duration-300"
               >
@@ -172,16 +174,10 @@ export default function RegisterPage() {
   const t = useTranslations('pdlRegistration');
   const [serverError, setServerError] = React.useState<string | null>(null);
   const [logoPreview, setLogoPreview] = React.useState<string | null>(null);
+  const [checkingTeam, setCheckingTeam] = React.useState(true);
   const router = useRouter();
 
-  // Check if registration is open
-  const isRegistrationOpen = tournament?.status === 'registration';
-
-  // Show registration closed page if not open
-  if (!isRegistrationOpen) {
-    return <RegistrationClosed />;
-  }
-
+  // Initialize form hooks BEFORE any early returns (Rules of Hooks)
   const form = useForm<z.infer<typeof pdlFormSchema>>({
     resolver: zodResolver(pdlFormSchema),
     mode: "onChange",
@@ -203,6 +199,48 @@ export default function RegisterPage() {
 
   const { fields } = useFieldArray({ control: form.control, name: "players" });
   const hasCoach = form.watch("coach.hasCoach");
+
+  // Redirect to my-team if user already has a registered team
+  React.useEffect(() => {
+    const checkExistingTeam = async () => {
+      if (!user?.uid || !tournament?.id) {
+        setCheckingTeam(false);
+        return;
+      }
+
+      try {
+        const teamsRef = collection(db, 'tournaments', tournament.id, 'teams');
+        const captainQuery = query(teamsRef, where('captainId', '==', user.uid));
+        const snapshot = await getDocs(captainQuery);
+
+        if (!snapshot.empty) {
+          // User already has a team, redirect to my-team
+          router.push(getTournamentPath('/my-team'));
+        } else {
+          // User doesn't have a team, stop loading
+          setCheckingTeam(false);
+        }
+      } catch (err) {
+        console.error('Error checking existing team:', err);
+        setCheckingTeam(false);
+      }
+    };
+
+    checkExistingTeam();
+  }, [user?.uid, tournament?.id, router, getTournamentPath]);
+
+  // Check if registration is open
+  const isRegistrationOpen = tournament?.status === 'registration';
+
+  // Show loading while checking if user has a team
+  if (checkingTeam) {
+    return null; // or a loading spinner
+  }
+
+  // Show registration closed page if not open
+  if (!isRegistrationOpen) {
+    return <RegistrationClosed />;
+  }
   const { isSubmitting, isValid } = form.formState;
 
   const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -223,27 +261,104 @@ export default function RegisterPage() {
       return;
     }
     setServerError(null);
-    
+
     try {
-      // TODO: Implement PDL team registration
-      console.log("PDL Team Registration:", values);
-      // For now, just show success
-      router.push(getTournamentPath('/my-team'));
+      // Upload team logo first
+      const { uploadTeamLogo } = await import('@/lib/storage');
+      const logoUrl = await uploadTeamLogo(values.logo!, values.name);
+
+      // Prepare registration data
+      const registrationData = {
+        tournamentId: tournament?.id || 'pdl-s1',
+        name: values.name,
+        tag: values.tag,
+        discordUsername: values.discordUsername,
+        motto: values.motto,
+        logoUrl,
+        captainId: user.uid,
+        players: values.players,
+        coach: values.coach,
+      };
+
+      // Call registration API
+      const response = await fetch('/api/register-pdl-team', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(registrationData),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        // Success - redirect to my team page
+        router.push(getTournamentPath('/my-team'));
+      } else {
+        // Show error message
+        const errorMessage = result.errors
+          ? result.errors.join('. ')
+          : result.message;
+        setServerError(errorMessage || 'Wystąpił błąd podczas rejestracji.');
+      }
     } catch (error) {
+      console.error('Registration error:', error);
       setServerError((error as Error).message || "Wystąpił nieoczekiwany błąd podczas rejestracji.");
     }
   };
 
+
+  const Background = () => (
+    <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+      {/* Vignette */}
+      <div
+        className="absolute inset-0 z-0 pointer-events-none opacity-80"
+        style={{
+          background: 'radial-gradient(circle at center, transparent 0%, #000000 100%)',
+        }}
+      />
+      {/* Ambient glow */}
+      <div
+        className="absolute top-[-10%] right-[-10%] w-[50vw] h-[50vw] rounded-full opacity-[0.03] blur-[150px]"
+        style={{ background: tournament?.theme?.primaryColor || '#8B1538' }}
+      />
+      {/* Particles */}
+      {[...Array(20)].map((_, i) => (
+        <motion.div
+          key={i}
+          className="absolute rounded-full bg-white/5"
+          style={{
+            width: Math.random() * 2 + 1 + 'px',
+            height: Math.random() * 2 + 1 + 'px',
+            left: Math.random() * 100 + '%',
+            top: Math.random() * 100 + '%',
+          }}
+          animate={{
+            y: [0, -100],
+            opacity: [0, 0.3, 0],
+          }}
+          transition={{
+            duration: 10 + Math.random() * 20,
+            repeat: Infinity,
+            ease: "linear",
+            delay: Math.random() * 10,
+          }}
+        />
+      ))}
+    </div>
+  );
+
   if (!user) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#1a1a1f] via-[#1e1e24] to-[#16161a] text-white flex items-center justify-center">
-        <Card className="max-w-md w-full bg-[#1e1e24] border-[#2a2a32]">
+      <div className="relative min-h-screen overflow-hidden font-logik text-white selection:bg-primary/30 flex items-center justify-center">
+        <Background />
+        <Card className="relative z-10 max-w-md w-full bg-black/40 backdrop-blur-xl border-white/10 shadow-2xl">
           <CardHeader className="text-center">
-            <CardTitle className="text-2xl text-white">{t('loginRequired')}</CardTitle>
-            <CardDescription className="text-[#808090]">{t('loginRequiredDesc')}</CardDescription>
+            <CardTitle className="text-3xl text-white font-logik-extended-bold">{t('loginRequired')}</CardTitle>
+            <CardDescription className="text-white/60 font-logik text-base">{t('loginRequiredDesc')}</CardDescription>
           </CardHeader>
           <CardContent>
-            <Button onClick={signInWithGoogle} className="w-full bg-gradient-to-r from-[#8B1538] to-[#A91D45] hover:from-[#A91D45] hover:to-[#8B1538]">
+            <Button onClick={signInWithGoogle} className="w-full bg-[#8B1538] hover:bg-[#A91D45] text-white font-bold py-6 text-lg transition-all duration-300 shadow-[0_0_20px_rgba(139,21,56,0.3)] hover:shadow-[0_0_30px_rgba(139,21,56,0.5)]">
               {t('signInWithGoogle')}
             </Button>
           </CardContent>
@@ -253,110 +368,111 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#1a1a1f] via-[#1e1e24] to-[#16161a] py-12">
-      <div className="container mx-auto px-4 max-w-5xl space-y-8">
+    <div className="relative min-h-screen overflow-hidden font-logik text-white selection:bg-primary/30 py-12">
+      <Background />
+      <div className="relative z-10 container mx-auto px-4 max-w-5xl space-y-12">
         {/* Header */}
         <motion.div
           initial={{ y: -20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ duration: 0.6 }}
+          className="text-center space-y-4"
         >
-          <Card className="bg-gradient-to-br from-[#1e1e24] to-[#16161a] border-[#2a2a32]">
-            <CardHeader className="text-center">
-              <UserPlus className="h-16 w-16 mx-auto text-[#8B1538] mb-4" />
-              <CardTitle className="text-4xl font-bold text-white">{t('teamRegistration')}</CardTitle>
-              <CardDescription className="text-[#a0a0a0] text-lg mt-2">
-                Polish Dota League - {t('seasonRegistration')}
-              </CardDescription>
-            </CardHeader>
-          </Card>
+          <UserPlus className="h-16 w-16 mx-auto text-[#8B1538] mb-4 drop-shadow-[0_0_15px_rgba(139,21,56,0.5)]" />
+          <h1 className="text-4xl md:text-6xl font-logik-extended-bold text-white tracking-tight drop-shadow-lg">
+            {t('teamRegistration')}
+          </h1>
+          <p className="text-white/60 text-lg md:text-xl font-medium max-w-2xl mx-auto">
+            Polish Dota League - {t('seasonRegistration')}
+          </p>
         </motion.div>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-12">
             {/* Team Details */}
             <motion.div
               initial={{ y: 20, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               transition={{ duration: 0.6, delay: 0.1 }}
             >
-              <Card className="bg-[#1e1e24] border-[#2a2a32]">
-                <CardHeader>
-                  <CardTitle className="text-white">{t('teamDetails')}</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="grid md:grid-cols-2 gap-6">
-                    <FormField name="name" control={form.control} render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-white">
-                          {t('teamName')}
-                          <span className="block text-sm font-semibold text-[#8B1538] mt-1">
-                            (Musi być identyczna z nazwą drużyny w grze!)
-                          </span>
-                        </FormLabel>
-                        <FormControl>
-                          <Input {...field} className="bg-[#16161a] border-[#2a2a32] text-white" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )} />
-                    <FormField name="tag" control={form.control} render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-white">{t('teamTag')}</FormLabel>
-                        <FormControl>
-                          <Input {...field} className="bg-[#16161a] border-[#2a2a32] text-white" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )} />
-                    <FormField name="discordUsername" control={form.control} render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-white">{t('discordUsername')}</FormLabel>
-                        <FormControl>
-                          <Input {...field} placeholder="your_discord_name" className="bg-[#16161a] border-[#2a2a32] text-white" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )} />
-                    <FormField name="motto" control={form.control} render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-white">{t('teamMotto')}</FormLabel>
-                        <FormControl>
-                          <Input {...field} className="bg-[#16161a] border-[#2a2a32] text-white" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )} />
-                  </div>
+              <div className="mb-6 flex items-center gap-4">
+                <div className="h-0.5 w-12 bg-[#8B1538]/50" />
+                <h2 className="text-2xl font-logik-extended-bold text-white/90">{t('teamDetails')}</h2>
+                <div className="h-0.5 flex-1 bg-[#8B1538]/20" />
+              </div>
 
-                  <FormField
-                    control={form.control}
-                    name="logo"
-                    render={() => (
-                      <FormItem>
-                        <FormLabel className="text-white">{t('teamLogo')}</FormLabel>
-                        <div className="flex items-center gap-6">
-                          <div className="w-32 h-32 rounded-lg bg-[#16161a] flex items-center justify-center border border-[#2a2a32]">
-                            {logoPreview ? 
-                              <Image src={logoPreview} alt="Logo preview" width={128} height={128} className="object-cover rounded-lg"/> : 
-                              <ImageIcon className="w-16 h-16 text-[#808090]"/>
-                            }
-                          </div>
-                          <div className="flex-1">
-                            <FormControl>
-                              <Input type="file" accept="image/*" onChange={handleLogoChange} className="bg-[#16161a] border-[#2a2a32] text-white" />
-                            </FormControl>
-                            <FormDescription className="mt-2 text-[#808090]">
-                              Maks 5MB. JPG, PNG, WEBP. Zalecane: kwadratowe proporcje.
-                            </FormDescription>
-                            <FormMessage />
-                          </div>
+              <div className="grid md:grid-cols-2 gap-6">
+                <FormField name="name" control={form.control} render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-white/80 font-bold ml-1">
+                      {t('teamName')}
+                    </FormLabel>
+                    <FormControl>
+                      <Input {...field} className="bg-black/30 backdrop-blur-md border-white/10 text-white placeholder:text-white/20 focus:border-[#8B1538] focus:bg-black/50 transition-all duration-300 h-12" />
+                    </FormControl>
+                    <FormDescription className="text-[#8B1538] text-xs font-semibold mt-1 ml-1 opacity-80">
+                      (Musi być identyczna z nazwą drużyny w grze!)
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <FormField name="tag" control={form.control} render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-white/80 font-bold ml-1">{t('teamTag')}</FormLabel>
+                    <FormControl>
+                      <Input {...field} className="bg-black/30 backdrop-blur-md border-white/10 text-white placeholder:text-white/20 focus:border-[#8B1538] focus:bg-black/50 transition-all duration-300 h-12" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <FormField name="discordUsername" control={form.control} render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-white/80 font-bold ml-1">{t('discordUsername')}</FormLabel>
+                    <FormControl>
+                      <Input {...field} placeholder="your_discord_name" className="bg-black/30 backdrop-blur-md border-white/10 text-white placeholder:text-white/20 focus:border-[#8B1538] focus:bg-black/50 transition-all duration-300 h-12" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <FormField name="motto" control={form.control} render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-white/80 font-bold ml-1">{t('teamMotto')}</FormLabel>
+                    <FormControl>
+                      <Input {...field} className="bg-black/30 backdrop-blur-md border-white/10 text-white placeholder:text-white/20 focus:border-[#8B1538] focus:bg-black/50 transition-all duration-300 h-12" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+              </div>
+
+              <div className="mt-6">
+                <FormField
+                  control={form.control}
+                  name="logo"
+                  render={() => (
+                    <FormItem>
+                      <FormLabel className="text-white/80 font-bold ml-1">{t('teamLogo')}</FormLabel>
+                      <div className="flex items-center gap-6 p-4 bg-black/20 backdrop-blur-sm rounded-xl border border-white/5">
+                        <div className="w-32 h-32 rounded-lg bg-black/40 flex items-center justify-center border border-white/10 overflow-hidden shadow-inner">
+                          {logoPreview ?
+                            <Image src={logoPreview} alt="Logo preview" width={128} height={128} className="object-cover w-full h-full" /> :
+                            <ImageIcon className="w-12 h-12 text-white/20" />
+                          }
                         </div>
-                      </FormItem>
-                    )}
-                  />
-                </CardContent>
-              </Card>
+                        <div className="flex-1">
+                          <FormControl>
+                            <Input type="file" accept="image/*" onChange={handleLogoChange} className="bg-transparent border-white/10 file:bg-[#8B1538] file:text-white file:border-0 file:rounded-md file:px-4 file:py-2 file:mr-4 file:font-semibold hover:file:bg-[#A91D45] text-white/80 cursor-pointer" />
+                          </FormControl>
+                          <FormDescription className="mt-2 text-white/40">
+                            Maks 5MB. JPG, PNG, WEBP.
+                          </FormDescription>
+                          <FormMessage />
+                        </div>
+                      </div>
+                    </FormItem>
+                  )}
+                />
+              </div>
             </motion.div>
 
             {/* Players */}
@@ -365,70 +481,68 @@ export default function RegisterPage() {
               animate={{ y: 0, opacity: 1 }}
               transition={{ duration: 0.6, delay: 0.2 }}
             >
-              <Card className="bg-[#1e1e24] border-[#2a2a32]">
-                <CardHeader>
-                  <CardTitle className="text-white">{t('playerDetails')}</CardTitle>
-                  <CardDescription className="text-[#808090]">
-                    {t('playerDetailsDesc')}
-                  </CardDescription>
-                  {form.formState.errors.players && (
-                    <p className="text-sm font-medium text-red-400 mt-2 text-center">
-                      {form.formState.errors.players.message}
-                    </p>
-                  )}
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  {fields.map((field, index) => (
-                    <Card key={field.id} className="p-4 bg-[#16161a] border-[#2a2a32]">
-                      <h4 className="font-bold text-lg text-center mb-4 text-white">
-                        Gracz {index + 1}
-                      </h4>
-                      <div className="space-y-4">
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                          <FormField name={`players.${index}.nickname`} control={form.control} render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-white">{t('nickname')}</FormLabel>
-                              <FormControl>
-                                <Input {...field} className="bg-[#1e1e24] border-[#2a2a32] text-white" />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )} />
-                          <FormField name={`players.${index}.role`} control={form.control} render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-white">{t('role')}</FormLabel>
-                              <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                <FormControl>
-                                  <SelectTrigger className="bg-[#1e1e24] border-[#2a2a32] text-white">
-                                    <SelectValue placeholder={t('selectRole')} />
-                                  </SelectTrigger>
-                                </FormControl>
-                                <SelectContent className="bg-[#1e1e24] border-[#2a2a32]">
-                                  {PlayerRoles.map(role => (
-                                    <SelectItem key={role} value={role} className="text-white hover:bg-[#2a2a32]">
-                                      {t(`roles.${role}`)}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                              <FormMessage />
-                            </FormItem>
-                          )} />
-                          <FormField name={`players.${index}.steamProfileUrl`} control={form.control} render={({ field }) => (
-                            <FormItem className="sm:col-span-2">
-                              <FormLabel className="text-white">{t('steamProfile')}</FormLabel>
-                              <FormControl>
-                                <Input {...field} className="bg-[#1e1e24] border-[#2a2a32] text-white" />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )} />
-                        </div>
-                      </div>
-                    </Card>
-                  ))}
-                </CardContent>
-              </Card>
+              <div className="mb-6 flex items-center gap-4">
+                <div className="h-0.5 w-12 bg-[#8B1538]/50" />
+                <h2 className="text-2xl font-logik-extended-bold text-white/90">{t('playerDetails')}</h2>
+                <div className="h-0.5 flex-1 bg-[#8B1538]/20" />
+              </div>
+              <p className="text-white/50 mb-6 font-logik ml-1">{t('playerDetailsDesc')}</p>
+
+              {form.formState.errors.players && (
+                <p className="text-sm font-medium text-red-400 mb-6 text-center bg-red-500/10 py-2 rounded border border-red-500/20">
+                  {form.formState.errors.players.message}
+                </p>
+              )}
+
+              <div className="space-y-4">
+                {fields.map((field, index) => (
+                  <div key={field.id} className="p-6 bg-black/30 backdrop-blur-md border border-white/5 rounded-xl hover:border-white/10 transition-all duration-300">
+                    <h4 className="font-logik-extended-bold text-lg mb-4 text-white/80 flex items-center gap-2">
+                      <span className="text-[#8B1538]">#{index + 1}</span> Gracz
+                    </h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <FormField name={`players.${index}.nickname`} control={form.control} render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-white/70">{t('nickname')}</FormLabel>
+                          <FormControl>
+                            <Input {...field} className="bg-black/40 border-white/10 text-white focus:border-[#8B1538] transition-all" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )} />
+                      <FormField name={`players.${index}.role`} control={form.control} render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-white/70">{t('role')}</FormLabel>
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                              <SelectTrigger className="bg-black/40 border-white/10 text-white focus:border-[#8B1538] transition-all">
+                                <SelectValue placeholder={t('selectRole')} />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent className="bg-[#1e1e24] border-[#2a2a32] text-white">
+                              {PlayerRoles.map(role => (
+                                <SelectItem key={role} value={role} className="text-white hover:bg-[#2a2a32] focus:bg-[#2a2a32] cursor-pointer">
+                                  {t(`roles.${role}`)}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )} />
+                      <FormField name={`players.${index}.steamProfileUrl`} control={form.control} render={({ field }) => (
+                        <FormItem className="sm:col-span-2">
+                          <FormLabel className="text-white/70">{t('steamProfile')}</FormLabel>
+                          <FormControl>
+                            <Input {...field} className="bg-black/40 border-white/10 text-white focus:border-[#8B1538] transition-all" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )} />
+                    </div>
+                  </div>
+                ))}
+              </div>
             </motion.div>
 
             {/* Coach (Optional) */}
@@ -437,63 +551,62 @@ export default function RegisterPage() {
               animate={{ y: 0, opacity: 1 }}
               transition={{ duration: 0.6, delay: 0.3 }}
             >
-              <Card className="bg-[#1e1e24] border-[#2a2a32]">
-                <CardHeader>
-                  <CardTitle className="text-white flex items-center gap-2">
-                    <UserCheck className="h-5 w-5" />
-                    {t('coach')} ({t('optional')})
-                  </CardTitle>
-                  <CardDescription className="text-[#808090]">
-                    {t('coachDesc')}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <FormField
-                    control={form.control}
-                    name="coach.hasCoach"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                        <FormControl>
-                          <Checkbox checked={field.value} onCheckedChange={field.onChange} />
-                        </FormControl>
-                        <div className="space-y-1 leading-none">
-                          <FormLabel className="text-white">{t('addCoach')}</FormLabel>
-                        </div>
-                      </FormItem>
-                    )}
-                  />
+              <div className="p-6 bg-black/20 backdrop-blur-sm border border-dashed border-white/10 rounded-xl hover:border-white/20 transition-all">
+                <div className="flex items-center gap-3 mb-2">
+                  <UserCheck className="h-5 w-5 text-[#8B1538]" />
+                  <h3 className="text-xl font-logik-extended-bold text-white/90">{t('coach')} <span className="text-white/40 text-sm font-normal">({t('optional')})</span></h3>
+                </div>
+                <p className="text-white/50 mb-6 text-sm">{t('coachDesc')}</p>
 
-                  {hasCoach && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: "auto", opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      className="space-y-4"
-                    >
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <FormField name="coach.nickname" control={form.control} render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-white">{t('coachNickname')}</FormLabel>
-                            <FormControl>
-                              <Input {...field} className="bg-[#16161a] border-[#2a2a32] text-white" />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )} />
-                        <FormField name="coach.steamProfileUrl" control={form.control} render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-white">{t('coachSteamProfile')}</FormLabel>
-                            <FormControl>
-                              <Input {...field} className="bg-[#16161a] border-[#2a2a32] text-white" />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )} />
+                <FormField
+                  control={form.control}
+                  name="coach.hasCoach"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center space-x-3 space-y-0 mb-4">
+                      <FormControl>
+                        <Checkbox
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                          className="border-white/20 data-[state=checked]:bg-[#8B1538] data-[state=checked]:border-[#8B1538]"
+                        />
+                      </FormControl>
+                      <div className="space-y-1 leading-none">
+                        <FormLabel className="text-white/90 cursor-pointer">{t('addCoach')}</FormLabel>
                       </div>
-                    </motion.div>
+                    </FormItem>
                   )}
-                </CardContent>
-              </Card>
+                />
+
+                {hasCoach && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    className="space-y-4 pt-4 border-t border-white/5"
+                  >
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <FormField name="coach.nickname" control={form.control} render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-white/70">{t('coachNickname')}</FormLabel>
+                          <FormControl>
+                            <Input {...field} className="bg-black/40 border-white/10 text-white focus:border-[#8B1538] transition-all" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )} />
+                      <FormField name="coach.steamProfileUrl" control={form.control} render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-white/70">{t('coachSteamProfile')}</FormLabel>
+                          <FormControl>
+                            <Input {...field} className="bg-black/40 border-white/10 text-white focus:border-[#8B1538] transition-all" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )} />
+                    </div>
+                  </motion.div>
+                )}
+              </div>
             </motion.div>
 
             {/* Rules & Submit */}
@@ -501,48 +614,52 @@ export default function RegisterPage() {
               initial={{ y: 20, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               transition={{ duration: 0.6, delay: 0.4 }}
+              className="pb-20"
             >
-              <Card className="bg-[#1e1e24] border-[#2a2a32]">
-                <CardContent className="pt-6">
-                  <FormField
-                    control={form.control}
-                    name="rulesAcknowledged"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border border-[#2a2a32] p-4">
-                        <FormControl>
-                          <Checkbox checked={field.value} onCheckedChange={field.onChange} />
-                        </FormControl>
-                        <div className="space-y-1 leading-none">
-                          <FormLabel className="text-white">
-                            Zgadzam się z <Link href={getTournamentPath('/rules')} target="_blank" rel="noopener noreferrer" className="text-[#8B1538] hover:underline">regulaminem turnieju</Link>.
-                          </FormLabel>
-                          <FormMessage />
-                        </div>
-                      </FormItem>
-                    )}
-                  />
-                  <Button 
-                    type="submit" 
-                    size="lg" 
-                    className="w-full mt-6 bg-gradient-to-r from-[#8B1538] to-[#A91D45] hover:from-[#A91D45] hover:to-[#8B1538] text-white font-bold text-lg"
-                    disabled={isSubmitting || !isValid}
-                  >
-                    {isSubmitting ? (
-                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-                    ) : (
-                      <ShieldPlus className="mr-2 h-5 w-5" />
-                    )}
-                    {t('submitRegistration')}
-                  </Button>
-                  {serverError && (
-                    <p className="text-sm font-medium text-red-400 mt-4 text-center">{serverError}</p>
+              <div className="bg-black/30 backdrop-blur-md rounded-xl p-6 border border-white/5">
+                <FormField
+                  control={form.control}
+                  name="rulesAcknowledged"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center space-x-3 space-y-0 p-4 rounded-lg bg-black/40 border border-white/5 mb-6">
+                      <FormControl>
+                        <Checkbox
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                          className="border-white/20 data-[state=checked]:bg-[#8B1538] data-[state=checked]:border-[#8B1538]"
+                        />
+                      </FormControl>
+                      <div className="space-y-1 leading-none">
+                        <FormLabel className="text-white/90">
+                          Zgadzam się z <Link href={getTournamentPath('/rules')} target="_blank" rel="noopener noreferrer" className="text-[#8B1538] hover:text-[#A91D45] hover:underline font-bold transition-colors">regulaminem turnieju</Link>.
+                        </FormLabel>
+                        <FormMessage />
+                      </div>
+                    </FormItem>
                   )}
-                </CardContent>
-              </Card>
+                />
+                <Button
+                  type="submit"
+                  size="lg"
+                  className="w-full h-14 bg-[#8B1538] hover:bg-[#A91D45] text-white font-logik-extended-bold text-lg shadow-[0_0_20px_rgba(139,21,56,0.2)] hover:shadow-[0_0_40px_rgba(139,21,56,0.5)] transition-all duration-300"
+                  disabled={isSubmitting || !isValid}
+                >
+                  {isSubmitting ? (
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                  ) : (
+                    <ShieldPlus className="mr-3 h-5 w-5" />
+                  )}
+                  {t('submitRegistration')}
+                </Button>
+                {serverError && (
+                  <p className="text-sm font-bold text-red-500 mt-4 text-center">{serverError}</p>
+                )}
+              </div>
             </motion.div>
           </form>
         </Form>
       </div>
     </div>
   );
+
 }
