@@ -4,6 +4,8 @@
 'use client';
 
 import { useState, use, useRef, useEffect } from 'react';
+import { collection, getDocs } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 import { notFound } from 'next/navigation';
 import { useTournament } from '@/context/TournamentContext';
 import { useDivisionData } from '@/hooks/useDivisionData';
@@ -23,6 +25,24 @@ export default function DivisionPage({ params }: { params: Promise<{ tournamentS
   const { tournament, isLoading: isTournamentLoading, getTournamentPath } = useTournament();
   const { divisionInfo, standings, matches, loading: isDivisionLoading, error } = useDivisionData(unwrappedParams.divisionId);
   const [activeTab, setActiveTab] = useState('overview');
+  const [allDivisions, setAllDivisions] = useState<any[]>([]);
+
+  // Load all divisions for navigation
+  useEffect(() => {
+    const loadDivisions = async () => {
+      if (!tournament?.id) return;
+      try {
+        const divisionsRef = collection(db, 'tournaments', tournament.id, 'divisions');
+        const snapshot = await getDocs(divisionsRef);
+        const divs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Array<{ id: string; tier?: number; [key: string]: unknown }>;
+        divs.sort((a, b) => (a.tier || 999) - (b.tier || 999));
+        setAllDivisions(divs);
+      } catch (err) {
+        console.error('Error loading divisions:', err);
+      }
+    };
+    loadDivisions();
+  }, [tournament?.id]);
 
   // Theme check
   const theme = tournament?.theme || {
@@ -59,21 +79,19 @@ export default function DivisionPage({ params }: { params: Promise<{ tournamentS
 
   const totalRounds = (divisionInfo as any).totalRounds || Math.ceil((standings.length > 1 ? standings.length - 1 : 0) * 2);
 
-  // Determine neighbors for navigation
+  // Determine neighbors for navigation using loaded divisions
   // Logic: "Next" (Right Arrow) -> Higher Rank (Lower Tier Number) e.g. Challenger -> Elite
   // "Previous" (Left Arrow) -> Lower Rank (Higher Tier Number) e.g. Elite -> Challenger
-  // Access divisions from tournament config
-  const divisions = tournament?.divisions || [];
-  const currentDivIndex = divisions.findIndex(d => d.id === unwrappedParams.divisionId);
+  const currentDivIndex = allDivisions.findIndex(d => d.id === unwrappedParams.divisionId);
 
-  // Previous (Left): Lower Rank (Higher Index)
-  const prevDivision = currentDivIndex !== -1 && currentDivIndex < divisions.length - 1
-    ? divisions[currentDivIndex + 1]
+  // Previous (Right): Lower Rank (Higher Index in sorted array)
+  const prevDivision = currentDivIndex !== -1 && currentDivIndex < allDivisions.length - 1
+    ? allDivisions[currentDivIndex + 1]
     : null;
 
-  // Next (Right): Higher Rank (Lower Index)
+  // Next (Left): Higher Rank (Lower Index in sorted array)
   const nextDivision = currentDivIndex > 0
-    ? divisions[currentDivIndex - 1]
+    ? allDivisions[currentDivIndex - 1]
     : null;
 
   // Tier styles map
@@ -170,6 +188,8 @@ export default function DivisionPage({ params }: { params: Promise<{ tournamentS
             totalRounds={totalRounds}
             teamsCount={standings.length}
             theme={theme}
+            divisionTheme={divisionInfo.theme}
+            medalUrl={divisionInfo.medalUrl}
           />
 
           {/* Floating Dock Tabs */}
@@ -191,7 +211,7 @@ export default function DivisionPage({ params }: { params: Promise<{ tournamentS
                     <TabsTrigger
                       key={tab.id}
                       value={tab.id}
-                      className="rounded-full px-6 py-2.5 data-[state=active]:bg-white/10 data-[state=active]:text-white text-white/40 hover:text-white/80 transition-all duration-300"
+                      className="rounded-full px-6 py-2.5 data-[state=active]:bg-white/10 data-[state=active]:text-white text-white/40 hover:text-white/80 transition-all duration-300 font-logik"
                     >
                       <div className="flex items-center gap-2">
                         <tab.icon className="w-4 h-4" />
@@ -235,6 +255,7 @@ export default function DivisionPage({ params }: { params: Promise<{ tournamentS
                         divisionColor={divisionColor}
                         divisionTier={divisionInfo.tier}
                         theme={theme}
+                        divisionTheme={divisionInfo.theme}
                       />
                     </div>
                   </div>

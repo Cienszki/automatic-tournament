@@ -207,7 +207,7 @@ function NewTournamentContent() {
               <CurrentStepComponent
                 data={formData[TOURNAMENT_STEPS[currentStep].id]}
                 onChange={handleStepDataChange}
-                allFormData={formData}
+                template={template}
               />
             </motion.div>
           </AnimatePresence>
@@ -261,7 +261,6 @@ function NewTournamentContent() {
                       <Sparkles className="h-4 w-4" />
                       Opublikuj Turniej
                     </>
-                  )}
                   )}
                 </button>
               )}

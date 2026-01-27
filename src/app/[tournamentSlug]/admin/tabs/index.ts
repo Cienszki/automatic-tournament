@@ -1,0 +1,13 @@
+// Export all admin tab components
+export { GeneralTab } from './GeneralTab';
+export { TournamentStructureTab } from './TournamentStructureTab';
+export { DivisionsTab } from './DivisionsTab';
+export { SchedulingTab } from './SchedulingTab';
+export { TeamsTab } from './TeamsTab';
+export { TransfersTab } from './TransfersTab';
+export { StandinsTab } from './StandinsTab';
+export { MatchesTab } from './MatchesTab';
+export { FantasyPickemTab } from './FantasyPickemTab';
+export { NewsTab } from './NewsTab';
+export { StatsTab } from './StatsTab';
+export { RulesTab } from './RulesTab';

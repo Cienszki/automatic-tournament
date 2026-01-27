@@ -1,6 +1,7 @@
 // src/app/api/register-pdl-team/route.ts
 import { NextResponse } from 'next/server';
 import { registerPDLTeam, PDLTeamRegistrationData } from '@/lib/pdl-registration-actions';
+import { getAdminAuth, ensureAdminInitialized } from '@/server/lib/admin';
 
 /**
  * POST /api/register-pdl-team
@@ -22,7 +23,40 @@ import { registerPDLTeam, PDLTeamRegistrationData } from '@/lib/pdl-registration
  */
 export async function POST(req: Request) {
     try {
+        // Verify authentication
+        const authHeader = req.headers.get('Authorization');
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            return NextResponse.json(
+                { success: false, message: 'Unauthorized: Missing authentication token' },
+                { status: 401 }
+            );
+        }
+
+        const token = authHeader.split('Bearer ')[1];
+        let authenticatedUserId: string;
+
+        try {
+            ensureAdminInitialized();
+            const decodedToken = await getAdminAuth().verifyIdToken(token);
+            authenticatedUserId = decodedToken.uid;
+        } catch (authError) {
+            console.error('[API] Token verification failed:', authError);
+            return NextResponse.json(
+                { success: false, message: 'Unauthorized: Invalid authentication token' },
+                { status: 401 }
+            );
+        }
+
         const body = await req.json();
+
+        // Security check: Ensure the captainId matches the authenticated user
+        if (body.captainId !== authenticatedUserId) {
+            console.error(`[API] Security violation: User ${authenticatedUserId} tried to register team with captainId ${body.captainId}`);
+            return NextResponse.json(
+                { success: false, message: 'Unauthorized: You can only register a team for yourself' },
+                { status: 403 }
+            );
+        }
 
         // Extract tournament ID (default to pdl-s1)
         const tournamentId = body.tournamentId || 'pdl-s1';

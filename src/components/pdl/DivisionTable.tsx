@@ -9,6 +9,7 @@ import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import { listItem } from '@/lib/animations';
 import { useTournament } from '@/context/TournamentContext';
+import { getDivisionTheme, getThemeColor, getThemeGradient } from '@/lib/division-themes';
 
 interface TeamStanding {
   position: number;
@@ -24,10 +25,17 @@ interface DivisionTableProps {
   divisionColor: string;
   teams: TeamStanding[];
   divisionId?: string; // Add divisionId for linking to detail page
+  divisionTheme?: string; // Theme ID
+  medalUrl?: string; // Division medal
 }
 
-export function DivisionTable({ divisionName, divisionColor, teams, divisionId }: DivisionTableProps) {
+export function DivisionTable({ divisionName, divisionColor, teams, divisionId, divisionTheme, medalUrl }: DivisionTableProps) {
   const { getTournamentPath } = useTournament();
+  
+  // Get theme if specified, otherwise use color
+  const theme = getDivisionTheme(divisionTheme);
+  const displayColor = theme?.primaryColor || divisionColor;
+  const displayGradient = theme?.gradient || `linear-gradient(135deg, ${divisionColor} 0%, ${divisionColor} 100%)`;
 
   return (
     <motion.div
@@ -40,14 +48,23 @@ export function DivisionTable({ divisionName, divisionColor, teams, divisionId }
         className="block pb-4 mb-2 relative group cursor-pointer"
       >
         <div className="flex items-center gap-3">
+          {/* Medal if available */}
+          {medalUrl && (
+            <img 
+              src={medalUrl} 
+              alt={`${divisionName} medal`}
+              className="h-8 w-8 object-contain"
+            />
+          )}
+          
           <motion.h3
             className="text-2xl font-logik-extended-bold tracking-wide uppercase relative"
-            style={{ color: divisionColor }}
+            style={{ color: displayColor }}
             animate={{
               textShadow: [
-                `0 0 10px ${divisionColor}00`,
-                `0 0 20px ${divisionColor}60`,
-                `0 0 10px ${divisionColor}00`
+                `0 0 10px ${displayColor}00`,
+                `0 0 20px ${displayColor}60`,
+                `0 0 10px ${displayColor}00`
               ]
             }}
             transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
@@ -62,11 +79,11 @@ export function DivisionTable({ divisionName, divisionColor, teams, divisionId }
             </motion.span>
           )}
         </div>
-        {/* Animated underline */}
+        {/* Animated underline with gradient support */}
         <div className="absolute bottom-0 left-0 w-full h-[1px] bg-white/10 overflow-hidden">
           <motion.div
             className="absolute inset-0 w-full h-full"
-            style={{ backgroundColor: divisionColor }}
+            style={{ background: displayGradient }}
             initial={{ x: '-100%' }}
             whileHover={{ x: '0%' }}
             transition={{ duration: 0.4, ease: "easeOut" }}

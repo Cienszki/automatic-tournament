@@ -3,6 +3,9 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { collection, getDocs, query, orderBy } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 import {
   LayoutGrid,
   Shield,
@@ -19,6 +22,7 @@ import {
   Layers,
   Home,
   Menu,
+  Loader2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -32,6 +36,8 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useTournament, useTournamentType } from '@/context/TournamentContext';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useAuth } from '@/context/AuthContext';
+import { checkIfAdmin } from '@/lib/auth';
 import React from 'react';
 
 
@@ -46,14 +52,64 @@ interface NavItem {
 export function TournamentNavbar() {
   const pathname = usePathname();
   const { tournament, getTournamentPath, activeTournaments, archivedTournaments, theme } = useTournament();
+  const [divisions, setDivisions] = useState<any[]>([]);
+
+  // Load divisions from Firestore for league tournaments
+  useEffect(() => {
+    if (!tournament?.id || tournament.type !== 'league') {
+      console.log('[TournamentNavbar] No tournament or not league type');
+      setDivisions([]);
+      return;
+    }
+
+    const loadDivisions = async () => {
+      try {
+        console.log('[TournamentNavbar] Loading divisions for tournament:', tournament.id);
+        const divisionsRef = collection(db, 'tournaments', tournament.id, 'divisions');
+        const snapshot = await getDocs(divisionsRef);
+        console.log('[TournamentNavbar] Found divisions:', snapshot.docs.length);
+        const divisionsData = snapshot.docs.map(doc => {
+          const data = doc.data();
+          console.log('[TournamentNavbar] Division:', doc.id, data);
+          return {
+            id: doc.id,
+            ...data
+          };
+        }) as Array<{ id: string; tier?: number; [key: string]: unknown }>;
+        // Sort by tier on client side
+        divisionsData.sort((a, b) => (a.tier || 999) - (b.tier || 999));
+        console.log('[TournamentNavbar] Setting divisions:', divisionsData);
+        setDivisions(divisionsData);
+      } catch (error) {
+        console.error('[TournamentNavbar] Error loading divisions:', error);
+        setDivisions([]);
+      }
+    };
+
+    loadDivisions();
+  }, [tournament?.id, tournament?.type]);
   const { isLeague } = useTournamentType();
   const isMobile = useIsMobile();
+  const { user } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
   const [hasMounted, setHasMounted] = React.useState(false);
+  const [isAdmin, setIsAdmin] = React.useState(false);
 
   React.useEffect(() => {
     setHasMounted(true);
   }, []);
+
+  React.useEffect(() => {
+    async function verifyAdmin() {
+      if (user) {
+        const adminStatus = await checkIfAdmin(user);
+        setIsAdmin(adminStatus);
+      } else {
+        setIsAdmin(false);
+      }
+    }
+    verifyAdmin();
+  }, [user]);
 
   if (!tournament) {
     return null;
@@ -87,7 +143,7 @@ export function TournamentNavbar() {
 
   // For desktop navbar, only show specific items
   const desktopNavItems = filteredNavItems.filter(item =>
-    ['/teams', '/schedule', '/playoffs', '/stats', '/rules'].includes(item.href)
+    ['/divisions', '/teams', '/schedule', '/playoffs', '/stats', '/rules'].includes(item.href)
   );
 
   const isActive = (href: string) => {
@@ -121,21 +177,28 @@ export function TournamentNavbar() {
       {otherTournaments.length > 0 && (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="sm" className="h-16 px-2">
+            <Button variant="ghost" size="sm" className="h-16 px-2 hover:bg-[#cf2648]/10 hover:text-[#cf2648]">
               <ChevronDown className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="w-56">
-            <DropdownMenuItem asChild>
-              <Link href="/" className="flex items-center gap-2">
+          <DropdownMenuContent align="start" className="w-56 font-logik">
+            <DropdownMenuItem 
+              asChild
+              className="hover:bg-[#cf2648]/10 hover:text-[#cf2648] focus:bg-[#cf2648]/10 focus:text-[#cf2648]"
+            >
+              <Link href="/" className="flex items-center gap-2 cursor-pointer">
                 <Home className="h-4 w-4" />
                 Strona główna
               </Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             {otherTournaments.map(t => (
-              <DropdownMenuItem key={t.id} asChild>
-                <Link href={`/${t.slug}`} className="flex items-center gap-2">
+              <DropdownMenuItem 
+                key={t.id} 
+                asChild
+                className="hover:bg-[#cf2648]/10 hover:text-[#cf2648] focus:bg-[#cf2648]/10 focus:text-[#cf2648]"
+              >
+                <Link href={`/${t.slug}`} className="flex items-center gap-2 cursor-pointer">
                   {t.logoUrl && (
                     <Image
                       src={t.logoUrl}
@@ -173,7 +236,7 @@ export function TournamentNavbar() {
   if (!hasMounted) {
     return (
       <header
-        className="border-b shadow-sm sticky top-0 z-50"
+        className="border-b shadow-sm sticky top-0 z-50 font-logik"
         style={{
           backgroundColor: theme.cardColor,
           borderColor: theme.borderColor,
@@ -191,7 +254,7 @@ export function TournamentNavbar() {
   if (isMobile) {
     return (
       <header
-        className="border-b shadow-sm sticky top-0 z-50"
+        className="border-b shadow-sm sticky top-0 z-50 font-logik"
         style={{
           backgroundColor: theme.cardColor,
           borderColor: theme.borderColor,
@@ -249,13 +312,67 @@ export function TournamentNavbar() {
   // Desktop navigation
   return (
     <header
-      className="border-b shadow-sm sticky top-0 z-50 bg-background border-border"
+      className="border-b shadow-sm sticky top-0 z-50 bg-background border-border font-logik"
     >
       <div className="container mx-auto px-4 flex items-center h-14">
         <LogoWithSwitcher />
         <div className="flex-1 flex justify-center">
           <nav className="flex items-center space-x-1">
             {desktopNavItems.map((item) => {
+              // Special handling for Divisions dropdown
+              if (item.href === '/divisions' && isLeague && tournament.type === 'league') {
+                const active = isActive('/divisions');
+                return (
+                  <DropdownMenu key={item.href}>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        className={cn(
+                          "relative text-sm font-medium shrink-0 px-3 py-2 transition-all duration-200 group",
+                          "hover:bg-[#cf2648]/10 hover:text-[#cf2648]",
+                          "focus-visible:outline-none focus-visible:ring-0",
+                          !active && "text-muted-foreground"
+                        )}
+                        style={{ color: active ? theme.primaryColor : undefined }}
+                      >
+                        <item.icon className="h-4 w-4" />
+                        <span className="hidden lg:inline">{item.label}</span>
+                        <ChevronDown className="h-3 w-3 ml-1" />
+                        <span
+                          className={cn(
+                            "absolute bottom-0 left-0 h-0.5 w-full transform transition-transform duration-300 ease-out",
+                            active ? "scale-x-100" : "scale-x-0 group-hover:scale-x-100"
+                          )}
+                          style={{ backgroundColor: theme.primaryColor }}
+                        />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="center" className="w-48 font-logik">
+                      {divisions.length > 0 ? (
+                        divisions.map(division => (
+                          <DropdownMenuItem 
+                            key={division.id} 
+                            asChild
+                            className="hover:bg-[#cf2648]/10 hover:text-[#cf2648] focus:bg-[#cf2648]/10 focus:text-[#cf2648]"
+                          >
+                            <Link href={getTournamentPath(`/divisions/${division.id}`)} className="flex items-center gap-2 cursor-pointer">
+                              <Layers className="h-4 w-4" />
+                              {division.name}
+                            </Link>
+                          </DropdownMenuItem>
+                        ))
+                      ) : (
+                        <DropdownMenuItem disabled className="text-muted-foreground">
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Ładowanie...
+                        </DropdownMenuItem>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                );
+              }
+              
+              // Regular nav item
               const active = isActive(item.href);
               return (
                 <Button
@@ -285,21 +402,24 @@ export function TournamentNavbar() {
             })}
           </nav>
         </div>
-        {/* Admin button on the right */}
-        <Button
-          variant="ghost"
-          asChild
-          className={cn(
-            "text-sm font-medium px-3 py-2",
-            !isActive('/admin') && "text-muted-foreground hover:text-foreground"
-          )}
-          style={{ color: isActive('/admin') ? theme.primaryColor : undefined }}
-        >
-          <Link href={getTournamentPath('/admin')} className="flex items-center gap-2">
-            <Settings className="h-4 w-4" />
-            <span className="hidden lg:inline">Admin</span>
-          </Link>
-        </Button>
+        {/* Admin button on the right - only shown if user is admin */}
+        {isAdmin && (
+          <Button
+            variant="ghost"
+            asChild
+            className={cn(
+              "text-sm font-medium px-3 py-2",
+              "hover:bg-[#cf2648]/10 hover:text-[#cf2648]",
+              !isActive('/admin') && "text-muted-foreground"
+            )}
+            style={{ color: isActive('/admin') ? theme.primaryColor : undefined }}
+          >
+            <Link href={getTournamentPath('/admin')} className="flex items-center gap-2">
+              <Settings className="h-4 w-4" />
+              <span className="hidden lg:inline">Admin</span>
+            </Link>
+          </Button>
+        )}
       </div>
     </header>
   );

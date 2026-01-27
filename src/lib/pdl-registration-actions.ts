@@ -50,10 +50,13 @@ function validateTeamData(data: PDLTeamRegistrationData): { valid: boolean; erro
     if (!data.name || data.name.length < 3) {
         errors.push('Team name must be at least 3 characters');
     }
+    if (data.name && data.name.length > 20) {
+        errors.push('Team name cannot exceed 20 characters');
+    }
 
     // Team tag
-    if (!data.tag || data.tag.length < 2 || data.tag.length > 4) {
-        errors.push('Team tag must be 2-4 characters');
+    if (!data.tag || data.tag.length < 2 || data.tag.length > 6) {
+        errors.push('Team tag must be 2-6 characters');
     }
 
     // Discord username
@@ -89,8 +92,14 @@ function validateTeamData(data: PDLTeamRegistrationData): { valid: boolean; erro
             errors.push('Must have one player for each role: Carry, Mid, Offlane, Soft Support, Hard Support');
         }
 
-        // Check Steam URLs
+        // Check player nicknames and Steam URLs
         data.players.forEach((player, index) => {
+            if (!player.nickname || player.nickname.length < 2) {
+                errors.push(`Player ${index + 1}: Nickname must be at least 2 characters`);
+            }
+            if (player.nickname && player.nickname.length > 20) {
+                errors.push(`Player ${index + 1} (${player.nickname}): Nickname cannot exceed 20 characters`);
+            }
             if (!player.steamProfileUrl || !player.steamProfileUrl.includes('steamcommunity.com')) {
                 errors.push(`Player ${index + 1} (${player.nickname}): Invalid Steam profile URL`);
             }
@@ -101,6 +110,9 @@ function validateTeamData(data: PDLTeamRegistrationData): { valid: boolean; erro
     if (data.coach?.hasCoach) {
         if (!data.coach.nickname || data.coach.nickname.length < 2) {
             errors.push('Coach nickname is required when adding a coach');
+        }
+        if (data.coach.nickname && data.coach.nickname.length > 20) {
+            errors.push('Coach nickname cannot exceed 20 characters');
         }
         if (!data.coach.steamProfileUrl || !data.coach.steamProfileUrl.includes('steamcommunity.com')) {
             errors.push('Coach Steam profile URL is required');
@@ -114,21 +126,30 @@ function validateTeamData(data: PDLTeamRegistrationData): { valid: boolean; erro
 }
 
 /**
- * Check if team name is already taken in the tournament
+ * Check if team name is already taken in the tournament (case and whitespace insensitive)
  */
 async function isTeamNameTaken(tournamentId: string, teamName: string): Promise<boolean> {
     ensureAdminInitialized();
     const db = getAdminDb();
 
+    // Get all teams and check client-side for case/whitespace insensitive match
     const snapshot = await db
         .collection('tournaments')
         .doc(tournamentId)
         .collection('teams')
-        .where('name', '==', teamName)
-        .limit(1)
         .get();
 
-    return !snapshot.empty;
+    const normalizedInput = teamName.toLowerCase().replace(/\s+/g, '');
+    
+    for (const doc of snapshot.docs) {
+        const existingName = doc.data().name;
+        const normalizedExisting = existingName.toLowerCase().replace(/\s+/g, '');
+        if (normalizedExisting === normalizedInput) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 /**
@@ -147,6 +168,48 @@ async function hasCaptainRegistered(tournamentId: string, captainId: string): Pr
         .get();
 
     return !snapshot.empty;
+}
+
+/**
+ * Check if any players are already registered in other teams in the tournament
+ * Returns array of already registered player nicknames
+ */
+async function checkPlayersAlreadyRegistered(
+    tournamentId: string,
+    steamIds: string[]
+): Promise<string[]> {
+    ensureAdminInitialized();
+    const db = getAdminDb();
+
+    const alreadyRegistered: string[] = [];
+
+    // Get all teams in the tournament
+    const teamsSnapshot = await db
+        .collection('tournaments')
+        .doc(tournamentId)
+        .collection('teams')
+        .get();
+
+    // Check each team's players
+    for (const teamDoc of teamsSnapshot.docs) {
+        const teamId = teamDoc.id;
+        const playersSnapshot = await db
+            .collection('tournaments')
+            .doc(tournamentId)
+            .collection('teams')
+            .doc(teamId)
+            .collection('players')
+            .get();
+
+        for (const playerDoc of playersSnapshot.docs) {
+            const playerData = playerDoc.data();
+            if (steamIds.includes(playerData.steam32Id || playerData.steam64Id)) {
+                alreadyRegistered.push(playerData.nickname);
+            }
+        }
+    }
+
+    return alreadyRegistered;
 }
 
 // ============================================================================
@@ -196,12 +259,22 @@ export async function registerPDLTeam(
         console.log(`[PDL Registration] Processing player Steam profiles...`);
         const processedPlayers = await processPlayerSteamUrls(teamData.players);
 
-        // Step 5: Check for duplicate Steam IDs
+        // Step 5: Check for duplicate Steam IDs within the registration
         const duplicateCheck = checkDuplicateSteamIds(processedPlayers);
         if (duplicateCheck.hasDuplicates) {
             return {
                 success: false,
                 message: `Duplicate Steam profiles detected for: ${duplicateCheck.duplicates.join(', ')}`,
+            };
+        }
+
+        // Step 5.5: Check if any players are already registered in other teams
+        const playerSteamIds = processedPlayers.map(p => p.steamId32 || p.steamId64).filter(Boolean);
+        const alreadyRegisteredPlayers = await checkPlayersAlreadyRegistered(tournamentId, playerSteamIds);
+        if (alreadyRegisteredPlayers.length > 0) {
+            return {
+                success: false,
+                message: `The following players are already registered in other teams: ${alreadyRegisteredPlayers.join(', ')}`,
             };
         }
 
@@ -259,6 +332,8 @@ export async function registerPDLTeam(
                 steamId64: player.steamId64,
                 steamId32: player.steamId32,
                 avatar: player.avatar || null,
+                avatarmedium: player.avatarmedium || null,
+                avatarfull: player.avatarfull || null,
                 personaname: player.personaname || player.nickname,
                 createdAt: FieldValue.serverTimestamp(),
             });

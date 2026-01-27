@@ -183,6 +183,8 @@ export async function processPlayerSteamUrls(
     steamId64: string;
     steamId32: string;
     avatar?: string;
+    avatarmedium?: string;
+    avatarfull?: string;
     personaname?: string;
 }>> {
     const results = [];
@@ -207,6 +209,8 @@ export async function processPlayerSteamUrls(
                 steamId64,
                 steamId32,
                 avatar: profileData?.avatar,
+                avatarmedium: profileData?.avatarmedium,
+                avatarfull: profileData?.avatarfull,
                 personaname: profileData?.personaname,
             });
 

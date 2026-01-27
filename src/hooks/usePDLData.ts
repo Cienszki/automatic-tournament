@@ -28,6 +28,10 @@ interface Division {
   name: string;
   color: string;
   teams: TeamStanding[];
+  theme?: string;
+  medalUrl?: string;
+  tier?: number;
+  matchday?: string;
 }
 
 interface NextMatch {
@@ -60,12 +64,14 @@ export function usePDLData(): UsePDLDataResult {
 
   useEffect(() => {
     if (!tournament?.id) {
+      console.log('[usePDLData] No tournament ID');
       setLoading(false);
       return;
     }
 
     const fetchData = async () => {
       try {
+        console.log('[usePDLData] Fetching data for tournament:', tournament.id);
         setLoading(true);
         setError(null);
 
@@ -73,11 +79,15 @@ export function usePDLData(): UsePDLDataResult {
         const divisionsRef = collection(db, 'tournaments', tournament.id, 'divisions');
         const divisionsSnapshot = await getDocs(divisionsRef);
         
+        console.log('[usePDLData] Found divisions in DB:', divisionsSnapshot.docs.length);
+        
         const divisionsData: Division[] = [];
 
         for (const divisionDoc of divisionsSnapshot.docs) {
           const divisionData = divisionDoc.data();
           const divisionId = divisionDoc.id;
+          
+          console.log('[usePDLData] Processing division:', divisionId, divisionData);
 
           // Get teams in this division
           const teamsRef = collection(db, 'tournaments', tournament.id, 'teams');
@@ -119,7 +129,11 @@ export function usePDLData(): UsePDLDataResult {
           divisionsData.push({
             id: divisionId,
             name: capitalize(divisionData.name || divisionId),
-            color: DIVISION_COLORS[divisionId.toLowerCase()] || '#808080',
+            color: divisionData.color || DIVISION_COLORS[divisionId.toLowerCase()] || '#808080',
+            theme: divisionData.theme,
+            medalUrl: divisionData.medalUrl,
+            tier: divisionData.tier,
+            matchday: divisionData.matchday,
             teams,
           });
         }
@@ -132,6 +146,7 @@ export function usePDLData(): UsePDLDataResult {
           return aIndex - bIndex;
         });
 
+        console.log('[usePDLData] Final divisions data:', divisionsData);
         setDivisions(divisionsData);
 
         // Fetch next scheduled match

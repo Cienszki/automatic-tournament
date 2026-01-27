@@ -17,14 +17,14 @@ export function PDLTeamStats({
 }: PDLTeamStatsProps) {
     const stats = [
         {
-            label: 'Pozycja w Dywizji',
+            label: 'POZYCJA W DYWIZJI',
             value: divisionRank ? `#${divisionRank}` : '-',
             sub: totalTeamsInDivision ? `z ${totalTeamsInDivision} drużyn` : '',
             icon: Trophy,
             color: 'text-pdl-gold',
         },
         {
-            label: 'Win Rate',
+            label: 'WIN RATE',
             value: team.matchesPlayed && team.matchesPlayed > 0
                 ? `${Math.round(((team.wins || 0) / team.matchesPlayed) * 100)}%`
                 : '-',
@@ -33,28 +33,28 @@ export function PDLTeamStats({
             color: 'text-green-400',
         },
         {
-            label: 'Rozegrane Mecze',
+            label: 'ROZEGRANE MECZE',
             value: team.matchesPlayed || 0,
             sub: 'w tym sezonie',
             icon: Target,
             color: 'text-blue-400',
         },
         {
-            label: 'Średnio Zabójstw',
+            label: 'ŚREDNIO ZABÓJSTW',
             value: team.averageKillsPerGame?.toFixed(1) || '-',
             sub: 'na grę',
             icon: Swords,
             color: 'text-red-400',
         },
         {
-            label: 'Średnio Śmierci',
+            label: 'ŚREDNIO ŚMIERCI',
             value: team.averageDeathsPerGame?.toFixed(1) || '-',
             sub: 'na grę',
             icon: Skull,
             color: 'text-gray-400',
         },
         {
-            label: 'Średnio Asyst',
+            label: 'ŚREDNIO ASYST',
             value: team.averageAssistsPerGame?.toFixed(1) || '-',
             sub: 'na grę',
             icon: HandHelping,
@@ -83,7 +83,7 @@ export function PDLTeamStats({
                     >
                         <div className="flex items-center gap-2 mb-3">
                             <stat.icon className={cn('w-4 h-4', stat.color)} />
-                            <span className="text-xs text-white/40 font-logik uppercase tracking-wide truncate">
+                            <span className="text-xs text-white/40 font-logik-extended-bold uppercase tracking-wide truncate">
                                 {stat.label}
                             </span>
                         </div>
@@ -91,7 +91,7 @@ export function PDLTeamStats({
                             {stat.value}
                         </p>
                         {stat.sub && (
-                            <p className="text-xs text-white/40 mt-1">{stat.sub}</p>
+                            <p className="text-xs text-white/40 font-logik mt-1">{stat.sub}</p>
                         )}
                     </div>
                 ))}

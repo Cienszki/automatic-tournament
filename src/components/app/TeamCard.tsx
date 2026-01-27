@@ -117,7 +117,7 @@ export function TeamCard({ team }: TeamCardProps) {
             {team.name}
           </CardTitle>
           {team.motto && (
-            <p className="text-sm italic mt-2 line-clamp-2" style={{ color: theme.textSecondary }}>"{ team.motto}"</p>
+            <p className="text-sm italic mt-2 line-clamp-2 text-muted-foreground">"{team.motto}"</p>
           )}
         </div>
       </CardHeader>
@@ -134,7 +134,7 @@ export function TeamCard({ team }: TeamCardProps) {
               }}
             >
               <Sigma className="h-4 w-4 mr-2 shrink-0" style={{ color: theme.primaryColor }} />
-              <span style={{ color: theme.textPrimary }}>
+              <span style={{ color: theme.textColor }}>
                 {t('teams.totalMMR')}: <strong style={{ color: theme.primaryColor }}>{formatNumber(totalMMR)}</strong>
               </span>
             </div>
@@ -147,7 +147,7 @@ export function TeamCard({ team }: TeamCardProps) {
               }}
             >
               <ListChecks className="h-4 w-4 mr-2 shrink-0" style={{ color: theme.secondaryColor }} />
-              <span style={{ color: theme.textPrimary }}>
+              <span style={{ color: theme.textColor }}>
                 <span style={{ color: '#10b981' }}>{team.wins || 0}W</span> / 
                 <span style={{ color: '#f59e0b' }}>{team.draws || 0}D</span> / 
                 <span style={{ color: '#ef4444' }}>{team.losses || 0}L</span>
@@ -171,9 +171,9 @@ export function TeamCard({ team }: TeamCardProps) {
                         <Link 
                           href={getTournamentPath(`/teams/${team.id}/players/${player.id}`)}
                           className="truncate text-sm transition-all"
-                          style={{ color: theme.textPrimary }}
+                          style={{ color: theme.textColor }}
                           onMouseEnter={(e) => e.currentTarget.style.color = theme.accentColor}
-                          onMouseLeave={(e) => e.currentTarget.style.color = theme.textPrimary || ''}
+                          onMouseLeave={(e) => e.currentTarget.style.color = theme.textColor || ''}
                         >
                           {player.nickname}
                         </Link>
@@ -186,7 +186,7 @@ export function TeamCard({ team }: TeamCardProps) {
                           borderColor: theme.primaryColor 
                         }}
                       >
-                        <p style={{ color: theme.textPrimary }}>MMR: <strong style={{ color: theme.primaryColor }}>{formatNumber(player.mmr)}</strong></p>
+                        <p style={{ color: theme.textColor }}>MMR: <strong style={{ color: theme.primaryColor }}>{formatNumber(player.mmr)}</strong></p>
                       </TooltipContent>
                     </Tooltip>
                   </li>

@@ -59,6 +59,28 @@ body {
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
 }
 
+/* Font utility classes */
+.font-logik {
+  font-family: 'Logik', system-ui, sans-serif;
+}
+
+.font-logik-extended-bold {
+  font-family: 'Logik', system-ui, sans-serif;
+  font-weight: 700;
+}
+
+.font-space-mono {
+  font-family: 'Space Mono', monospace;
+}
+
+.font-neonderthaw {
+  font-family: 'Neonderthaw', cursive;
+}
+
+.font-tilt-neon {
+  font-family: 'Tilt Neon', sans-serif;
+}
+
 @layer base {
   :root {
     /* Deep Void Theme (PDL Style) */

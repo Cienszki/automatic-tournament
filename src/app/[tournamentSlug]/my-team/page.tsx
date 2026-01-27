@@ -462,7 +462,7 @@ export default function MyTeamPage() {
                   >
                     <div className="flex items-center gap-2">
                       <tab.icon className="w-4 h-4" />
-                      <span className="font-semibold hidden sm:inline">{tab.label}</span>
+                      <span className="font-logik-extended-bold hidden sm:inline uppercase tracking-wide">{tab.label}</span>
                     </div>
                   </TabsTrigger>
                 ))}

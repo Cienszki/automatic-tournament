@@ -32,6 +32,8 @@ interface DivisionInfo {
   color: string;
   matchday?: string;
   currentRound?: number;
+  theme?: string;
+  medalUrl?: string;
 }
 
 interface UseDivisionDataResult {
@@ -136,14 +138,18 @@ export function useDivisionData(divisionId: string): UseDivisionDataResult {
         setLoading(true);
         setError(null);
 
-        // Find division config
-        const divConfig = tournament.divisions?.find(d => d.id === divisionId);
+        // Fetch division from database
+        const divisionsRef = collection(db, 'tournaments', tournament.id, 'divisions');
+        const divisionsSnapshot = await getDocs(divisionsRef);
+        const divisionDoc = divisionsSnapshot.docs.find(doc => doc.id === divisionId);
         
-        if (!divConfig) {
+        if (!divisionDoc) {
           setError('Dywizja nie istnieje');
           setLoading(false);
           return;
         }
+
+        const divisionData = divisionDoc.data();
 
         // Get teams in this division
         const teamsRef = collection(db, 'tournaments', tournament.id, 'teams');
@@ -155,7 +161,7 @@ export function useDivisionData(divisionId: string): UseDivisionDataResult {
         const teamsData = teamsSnapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data()
-        }));
+        })) as any[];
 
         // Get all matches for this division
         const matchesRef = collection(db, 'tournaments', tournament.id, 'matches');
@@ -229,11 +235,13 @@ export function useDivisionData(divisionId: string): UseDivisionDataResult {
         setMatches(matchesData);
         setDivisionInfo({
           id: divisionId,
-          name: divConfig.name,
-          tier: divConfig.tier,
-          color: divConfig.color || DIVISION_COLORS[divisionId.toLowerCase()] || '#808080',
-          matchday: divConfig.matchday,
+          name: divisionData.name || divisionId,
+          tier: divisionData.tier || 1,
+          color: divisionData.color || DIVISION_COLORS[divisionId.toLowerCase()] || '#808080',
+          matchday: divisionData.matchday,
           currentRound,
+          theme: divisionData.theme,
+          medalUrl: divisionData.medalUrl,
         });
 
       } catch (err: any) {

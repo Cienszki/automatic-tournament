@@ -61,8 +61,6 @@ export default function DivisionsPage() {
     );
   }
 
-  const divisions = tournament.divisions || [];
-
   return (
     <div className="space-y-8">
       {/* Header */}
@@ -107,15 +105,15 @@ export default function DivisionsPage() {
       </Card>
 
       {/* Division Tables */}
-      {divisions.length > 0 && divisionsData.length > 0 ? (
+      {divisionsData.length > 0 ? (
         <div className="space-y-8">
-          {divisionsData.map((divisionWithTeams) => {
-            const division = divisions.find(d => d.id === divisionWithTeams.id);
-            if (!division) return null;
-
-            const standings = divisionWithTeams.teams;
-            const isElite = division.tier === 1;
-            const isLowest = division.tier === Math.max(...divisions.map(d => d.tier));
+          {divisionsData.map((division) => {
+            const standings = division.teams;
+            
+            // Calculate tier info dynamically from loaded divisions
+            const sortedDivisions = [...divisionsData].sort((a, b) => (a.tier || 999) - (b.tier || 999));
+            const isElite = division.tier === 1 || sortedDivisions[0]?.id === division.id;
+            const isLowest = division.tier === sortedDivisions.length || sortedDivisions[sortedDivisions.length - 1]?.id === division.id;
 
             return (
               <Card 
@@ -142,7 +140,7 @@ export default function DivisionsPage() {
                           {division.name}
                         </CardTitle>
                         <CardDescription>
-                          Tier {division.tier} • Mecze: {division.matchday}
+                          {division.tier && `Tier ${division.tier} • `}{division.matchday || 'Mecze TBD'}
                         </CardDescription>
                       </div>
                     </Link>

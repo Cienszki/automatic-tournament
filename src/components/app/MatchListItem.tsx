@@ -20,6 +20,16 @@ interface MatchListItemProps {
 
 export function MatchListItem({ match }: MatchListItemProps) {
   const [isClient, setIsClient] = useState(false);
+  const { tournament } = useTournament();
+
+  const theme = tournament?.theme || {
+    primaryColor: '#3b82f6',
+    secondaryColor: '#1e40af',
+    accentColor: '#60a5fa',
+    backgroundColor: '#0f172a',
+    cardColor: '#1e293b',
+    textColor: '#f8fafc',
+  };
 
   useEffect(() => {
     // This effect runs only on the client, after hydration
@@ -101,7 +111,7 @@ export function MatchListItem({ match }: MatchListItemProps) {
                   backgroundColor: `${theme.primaryColor}20`,
                   borderColor: theme.primaryColor,
                   borderWidth: '1px',
-                  color: theme.textPrimary
+                  color: theme.textColor
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.backgroundColor = theme.primaryColor;
@@ -109,7 +119,7 @@ export function MatchListItem({ match }: MatchListItemProps) {
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.backgroundColor = `${theme.primaryColor}20`;
-                  e.currentTarget.style.color = theme.textPrimary || '';
+                  e.currentTarget.style.color = theme.textColor || '';
                 }}
                 title={`View game ${idx + 1} on OpenDota`}
               >
@@ -169,7 +179,7 @@ function TeamDisplay({ team, isWinner, theme }: { team: Match['teamA'], isWinner
             </div>
             <span 
               className={cn("font-semibold text-sm text-center w-full truncate transition-colors")}
-              style={{ color: isWinner ? theme.accentColor : theme.textPrimary }}
+              style={{ color: isWinner ? theme.accentColor : theme.textColor }}
               title={team.name}
             >
               {team.name}

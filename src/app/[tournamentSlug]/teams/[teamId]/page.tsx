@@ -81,7 +81,7 @@ interface PageProps {
 
 export default function TeamPage({ params }: PageProps) {
   const { t } = useTranslation();
-  const { tournament, theme, getTournamentPath, loading: tournamentLoading } = useTournament();
+  const { tournament, theme, getTournamentPath, isLoading: tournamentLoading } = useTournament();
   const [team, setTeam] = useState<Team | null>(null);
   const [captainDiscord, setCaptainDiscord] = useState<string | null>(null);
   const [teamMatches, setTeamMatches] = useState<Match[]>([]);
@@ -340,14 +340,14 @@ export default function TeamPage({ params }: PageProps) {
                   >
                     {team.name}
                   </CardTitle>
-                  <Badge className={cn("text-sm px-3 py-1", getStatusBadgeClasses(team.status))}>
+                  <Badge className={cn("text-sm px-3 py-1 font-logik", getStatusBadgeClasses(team.status))}>
                     {getStatusIcon(team.status)}
-                    {t(`teamDetail.${team.status}` as any) || team.status}
+                    {team.status ? (t(`teamDetail.${team.status}` as any) || team.status) : t('teamDetail.pending')}
                   </Badge>
                 </div>
-                <CardDescription className="text-lg mt-1" style={{ color: theme.textSecondary }}>
+                <CardDescription className="text-lg mt-1" style={{ color: theme.mutedTextColor }}>
                   {team.motto ? (
-                    <span className="italic">"{team.motto}"</span>
+                    <span className="italic font-logik">"{team.motto}"</span>
                   ) : (
                     <span>{t('teamDetail.detailedProfile')}</span>
                   )}
@@ -370,8 +370,8 @@ export default function TeamPage({ params }: PageProps) {
                   style={{ backgroundColor: `${theme.cardColor}40` }}
                 >
                   <MessageSquare className="h-5 w-5 mr-3" style={{ color: theme.primaryColor }} />
-                  <span className="font-medium" style={{ color: theme.textSecondary }}>{t('teamDetail.captainDiscord')}:</span>
-                  <span className="ml-auto font-semibold" style={{ color: theme.textPrimary }}>{captainDiscord}</span>
+                  <span className="font-medium font-logik" style={{ color: theme.mutedTextColor }}>{t('teamDetail.captainDiscord')}:</span>
+                  <span className="ml-auto font-semibold font-logik" style={{ color: theme.textColor }}>{captainDiscord}</span>
                   <CopyToClipboard text={captainDiscord} />
                 </div>
               )}
@@ -393,9 +393,9 @@ export default function TeamPage({ params }: PageProps) {
                   >
                     {getRoleIcon(player.role, theme.primaryColor)}
                     <PlayerAvatar player={player} size="small" />
-                    <span className="font-medium text-base" style={{ color: theme.textPrimary }}>{player.nickname}</span>
-                    <span className="ml-2 text-xs" style={{ color: theme.textSecondary }}>{player.role}</span>
-                    <ExternalLink className="h-3 w-3 ml-auto" style={{ color: theme.textSecondary }} />
+                    <span className="font-medium text-base font-logik" style={{ color: theme.textColor }}>{player.nickname}</span>
+                    <span className="ml-2 text-xs font-logik" style={{ color: theme.mutedTextColor }}>{player.role}</span>
+                    <ExternalLink className="h-3 w-3 ml-auto" style={{ color: theme.mutedTextColor }} />
                   </Link>
                 ))}
               </div>
@@ -460,7 +460,7 @@ export default function TeamPage({ params }: PageProps) {
                   })}
                 </div>
               ) : (
-                <p style={{ color: theme.textSecondary }} className="text-center">{t('teamDetail.noHeroStats')}</p>
+                <p style={{ color: theme.mutedTextColor }} className="text-center font-logik">{t('teamDetail.noHeroStats')}</p>
               )}
             </CardContent>
           </Card>
@@ -491,7 +491,7 @@ export default function TeamPage({ params }: PageProps) {
                       y1="10"
                       x2="50"
                       y2="15"
-                      stroke={theme.textSecondary}
+                      stroke={theme.mutedTextColor}
                       strokeWidth="2"
                       transform={`rotate(${i * 30} 50 50)`}
                     />
@@ -509,7 +509,7 @@ export default function TeamPage({ params }: PageProps) {
                   <circle cx="50" cy="50" r="3" fill={theme.primaryColor} />
                 </svg>
               </div>
-              <p className="text-2xl font-bold" style={{ color: theme.textPrimary }}>
+              <p className="text-2xl font-bold font-logik" style={{ color: theme.textColor }}>
                 {avgMatchDurationMinutes} {t('teamDetail.min')}
               </p>
             </CardContent>
@@ -535,7 +535,7 @@ export default function TeamPage({ params }: PageProps) {
               <CardContent className="flex flex-col items-center justify-center flex-grow p-6">
                 {stat.type === 'progress' && typeof stat.rawValue === 'number' && typeof stat.maxValue === 'number' && stat.maxValue > 0 ? (
                   <>
-                    <p className="text-3xl font-bold mb-2" style={{ color: theme.textPrimary }}>{stat.value}</p>
+                    <p className="text-3xl font-bold mb-2 font-logik" style={{ color: theme.textColor }}>{stat.value}</p>
                     <Progress
                       value={
                         stat.label === "Avg. Deaths / Game"
@@ -545,13 +545,13 @@ export default function TeamPage({ params }: PageProps) {
                       className="w-3/4 h-2.5"
                       aria-label={`${stat.label} progress`}
                     />
-                    <p className="text-xs mt-1 font-logik" style={{ color: theme.textSecondary }}>
+                    <p className="text-xs mt-1 font-logik" style={{ color: theme.mutedTextColor }}>
                       {t('teamDetail.leagueAvg')}: {stat.leagueAvg} | {t('teamDetail.best')}: {stat.bestValue}
                     </p>
-                    {stat.rank && <p className="text-xs mt-2 font-logik" style={{ color: theme.textSecondary }}>{t('teamDetail.rank')}: {stat.rank}</p>}
+                    {stat.rank && <p className="text-xs mt-2 font-logik" style={{ color: theme.mutedTextColor }}>{t('teamDetail.rank')}: {stat.rank}</p>}
                   </>
                 ) : (
-                  <p className="text-4xl font-bold pt-4" style={{ color: theme.textPrimary }}>{stat.value}</p>
+                  <p className="text-4xl font-bold pt-4 font-logik" style={{ color: theme.textColor }}>{stat.value}</p>
                 )}
               </CardContent>
             </Card>
@@ -577,10 +577,10 @@ export default function TeamPage({ params }: PageProps) {
               </CardTitle>
             </CardHeader>
             <CardContent className="flex flex-col items-center justify-center flex-grow p-4">
-              <p className="text-3xl font-bold" style={{ color: theme.textPrimary }}>
+              <p className="text-3xl font-bold font-logik" style={{ color: theme.textColor }}>
                 {team.averageGpm?.toFixed(0) ?? 'N/A'}
               </p>
-              <p className="text-xs mt-1" style={{ color: theme.textSecondary }}>{t('teamDetail.goldPerMinute')}</p>
+              <p className="text-xs mt-1" style={{ color: theme.mutedTextColor }}>{t('teamDetail.goldPerMinute')}</p>
             </CardContent>
           </Card>
 
@@ -601,10 +601,10 @@ export default function TeamPage({ params }: PageProps) {
               </CardTitle>
             </CardHeader>
             <CardContent className="flex flex-col items-center justify-center flex-grow p-4">
-              <p className="text-3xl font-bold" style={{ color: theme.textPrimary }}>
+              <p className="text-3xl font-bold font-logik" style={{ color: theme.textColor }}>
                 {team.averageXpm?.toFixed(0) ?? 'N/A'}
               </p>
-              <p className="text-xs mt-1" style={{ color: theme.textSecondary }}>{t('teamDetail.experiencePerMinute')}</p>
+              <p className="text-xs mt-1" style={{ color: theme.mutedTextColor }}>{t('teamDetail.experiencePerMinute')}</p>
             </CardContent>
           </Card>
 
@@ -625,10 +625,10 @@ export default function TeamPage({ params }: PageProps) {
               </CardTitle>
             </CardHeader>
             <CardContent className="flex flex-col items-center justify-center flex-grow p-4">
-              <p className="text-3xl font-bold" style={{ color: theme.textPrimary }}>
+              <p className="text-3xl font-bold font-logik" style={{ color: theme.textColor }}>
                 {team.averageLastHits?.toFixed(0) ?? 'N/A'}
               </p>
-              <p className="text-xs mt-1" style={{ color: theme.textSecondary }}>{t('teamDetail.creepKills')}</p>
+              <p className="text-xs mt-1" style={{ color: theme.mutedTextColor }}>{t('teamDetail.creepKills')}</p>
             </CardContent>
           </Card>
 
@@ -649,10 +649,10 @@ export default function TeamPage({ params }: PageProps) {
               </CardTitle>
             </CardHeader>
             <CardContent className="flex flex-col items-center justify-center flex-grow p-4">
-              <p className="text-3xl font-bold" style={{ color: theme.textPrimary }}>
+              <p className="text-3xl font-bold font-logik" style={{ color: theme.textColor }}>
                 {team.averageNetWorth ? formatNumber(team.averageNetWorth) : 'N/A'}
               </p>
-              <p className="text-xs mt-1" style={{ color: theme.textSecondary }}>{t('teamDetail.totalGoldValue')}</p>
+              <p className="text-xs mt-1" style={{ color: theme.mutedTextColor }}>{t('teamDetail.totalGoldValue')}</p>
             </CardContent>
           </Card>
 
@@ -673,10 +673,10 @@ export default function TeamPage({ params }: PageProps) {
               </CardTitle>
             </CardHeader>
             <CardContent className="flex flex-col items-center justify-center flex-grow p-4">
-              <p className="text-3xl font-bold" style={{ color: theme.textPrimary }}>
+              <p className="text-3xl font-bold font-logik" style={{ color: theme.textColor }}>
                 {team.averageHeroDamage ? formatNumber(team.averageHeroDamage) : 'N/A'}
               </p>
-              <p className="text-xs mt-1" style={{ color: theme.textSecondary }}>{t('teamDetail.damageToHeroes')}</p>
+              <p className="text-xs mt-1" style={{ color: theme.mutedTextColor }}>{t('teamDetail.damageToHeroes')}</p>
             </CardContent>
           </Card>
 
@@ -697,10 +697,10 @@ export default function TeamPage({ params }: PageProps) {
               </CardTitle>
             </CardHeader>
             <CardContent className="flex flex-col items-center justify-center flex-grow p-4">
-              <p className="text-3xl font-bold" style={{ color: theme.textPrimary }}>
+              <p className="text-3xl font-bold font-logik" style={{ color: theme.textColor }}>
                 {team.averageTowerDamage ? formatNumber(team.averageTowerDamage) : 'N/A'}
               </p>
-              <p className="text-xs mt-1" style={{ color: theme.textSecondary }}>{t('teamDetail.damageToBuildings')}</p>
+              <p className="text-xs mt-1" style={{ color: theme.mutedTextColor }}>{t('teamDetail.damageToBuildings')}</p>
             </CardContent>
           </Card>
 
@@ -721,10 +721,10 @@ export default function TeamPage({ params }: PageProps) {
               </CardTitle>
             </CardHeader>
             <CardContent className="flex flex-col items-center justify-center flex-grow p-4">
-              <p className="text-3xl font-bold" style={{ color: theme.textPrimary }}>
+              <p className="text-3xl font-bold font-logik" style={{ color: theme.textColor }}>
                 {team.averageHeroHealing ? formatNumber(team.averageHeroHealing) : 'N/A'}
               </p>
-              <p className="text-xs mt-1" style={{ color: theme.textSecondary }}>{t('teamDetail.heroHealingDone')}</p>
+              <p className="text-xs mt-1" style={{ color: theme.mutedTextColor }}>{t('teamDetail.heroHealingDone')}</p>
             </CardContent>
           </Card>
         </div>
@@ -742,7 +742,7 @@ export default function TeamPage({ params }: PageProps) {
             >
               {t('teamDetail.matchHistory')}
             </CardTitle>
-            <CardDescription style={{ color: theme.textSecondary }}>
+            <CardDescription style={{ color: theme.mutedTextColor }}>
               Results of all matches played by {team.name}.
             </CardDescription>
           </CardHeader>
@@ -751,10 +751,10 @@ export default function TeamPage({ params }: PageProps) {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead style={{ color: theme.textSecondary }}>{t('teamDetail.opponent')}</TableHead>
-                    <TableHead style={{ color: theme.textSecondary }}>{t('teamDetail.result')}</TableHead>
-                    <TableHead style={{ color: theme.textSecondary }}>{t('teamDetail.score')}</TableHead>
-                    <TableHead style={{ color: theme.textSecondary }}>{t('teamDetail.date')}</TableHead>
+                    <TableHead style={{ color: theme.mutedTextColor }}>{t('teamDetail.opponent')}</TableHead>
+                    <TableHead style={{ color: theme.mutedTextColor }}>{t('teamDetail.result')}</TableHead>
+                    <TableHead style={{ color: theme.mutedTextColor }}>{t('teamDetail.score')}</TableHead>
+                    <TableHead style={{ color: theme.mutedTextColor }}>{t('teamDetail.date')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -787,7 +787,7 @@ export default function TeamPage({ params }: PageProps) {
                           <Link
                             href={`/${tournamentSlug}/teams/${opponent.id}`}
                             className="hover:underline font-medium"
-                            style={{ color: theme.textPrimary }}
+                            style={{ color: theme.textColor }}
                           >
                             {opponent.name}
                           </Link>
@@ -800,15 +800,15 @@ export default function TeamPage({ params }: PageProps) {
                         >
                           {resultText}
                         </TableCell>
-                        <TableCell style={{ color: theme.textPrimary }}>{scoreText}</TableCell>
-                        <TableCell style={{ color: theme.textSecondary }}>{date.toLocaleDateString()}</TableCell>
+                        <TableCell style={{ color: theme.textColor }}>{scoreText}</TableCell>
+                        <TableCell style={{ color: theme.mutedTextColor }}>{date.toLocaleDateString()}</TableCell>
                       </TableRow>
                     );
                   })}
                 </TableBody>
               </Table>
             ) : (
-              <p className="text-center py-4" style={{ color: theme.textSecondary }}>
+              <p className="text-center py-4 font-logik" style={{ color: theme.mutedTextColor }}>
                 {t('teamDetail.noMatchHistory')}
               </p>
             )}
@@ -825,8 +825,8 @@ interface InfoItemProps {
   value: string | number;
   theme: {
     primaryColor: string;
-    textPrimary: string;
-    textSecondary: string;
+    textColor: string;
+    mutedTextColor: string;
     cardColor: string;
   };
 }
@@ -839,8 +839,8 @@ function InfoItem({ icon: Icon, label, value, theme }: InfoItemProps) {
       style={{ backgroundColor: `${theme.cardColor}40` }}
     >
       <IconComponent className="h-5 w-5 mr-3" style={{ color: theme.primaryColor }} />
-      <span className="font-medium" style={{ color: theme.textSecondary }}>{label}:</span>
-      <span className="ml-auto font-semibold" style={{ color: theme.textPrimary }}>{value}</span>
+      <span className="font-medium font-logik" style={{ color: theme.mutedTextColor }}>{label}:</span>
+      <span className="ml-auto font-semibold font-logik" style={{ color: theme.textColor }}>{value}</span>
     </div>
   );
 }

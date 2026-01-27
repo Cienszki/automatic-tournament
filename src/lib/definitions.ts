@@ -196,6 +196,11 @@ export interface Team {
     gamesPlayed: number;
   }>;
   captainDiscordUsername?: string;
+  coach?: {
+    id?: string;
+    nickname?: string;
+    discordUsername?: string;
+  };
 }
 
 export interface GroupStanding {

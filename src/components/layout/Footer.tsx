@@ -4,6 +4,7 @@ import { Youtube, LogIn, LogOut } from 'lucide-react';
 import Link from 'next/link';
 import React from 'react';
 import { useAuth } from '../../context/AuthContext';
+import { useTournament } from '../../context/TournamentContext';
 import { Button } from '../ui/button';
 import {
     DropdownMenu,
@@ -40,7 +41,10 @@ const InstagramIcon = (props: React.SVGProps<SVGSVGElement>) => (
 
 export function Footer() {
   const { user, signInWithGoogle, signOut } = useAuth();
+  const { tournament } = useTournament();
   const isDevelopment = process.env.NODE_ENV === 'development';
+  
+  const twitchChannel = tournament?.twitchChannel || 'polishdota2inhouse';
 
   return (
     <footer className="bg-card border-t border-border py-4 text-center">
@@ -57,7 +61,7 @@ export function Footer() {
             <span className="sr-only">Discord</span>
           </a>
           <a
-            href="https://www.twitch.tv/polishdota2inhouse"
+            href={`https://www.twitch.tv/${twitchChannel}`}
             target="_blank"
             rel="noopener noreferrer"
             aria-label="Twitch"

@@ -7,44 +7,49 @@ import { checkIfAdmin } from '@/lib/auth';
 import { Card, CardHeader, CardContent, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 import { 
   Settings, 
-  Users, 
-  CalendarDays, 
-  Trophy, 
-  FileText, 
-  Bell,
   Shield,
   LogIn,
   Loader2,
-  FileCheck,
-  BarChart3,
   Layers,
-  Import
+  CalendarDays,
+  Users,
+  ArrowLeftRight,
+  Gamepad2,
+  Crown,
+  Newspaper,
+  BarChart3,
+  ScrollText,
+  Building2,
 } from 'lucide-react';
 
-// Import existing admin components for legacy tournament
-import { StageManagementTab } from '@/app/admin/StageManagementTab';
-import { StandingsTab } from '@/app/admin/StandingsTab';
-import { MatchManagementTab } from '@/app/admin/MatchManagementTab';
-import { MatchImportTab } from '@/app/admin/MatchImportTab';
-import { TeamVerificationTab } from '@/app/admin/TeamVerificationTab';
-import { AnnouncementsTab } from '@/app/admin/AnnouncementsTab';
-import { StandinManagementTab } from '@/app/admin/StandinManagementTab';
-import { TournamentStatusTab } from '@/app/admin/TournamentStatusTab';
-import { PlayoffManagementTab } from '@/app/admin/PlayoffManagementTab';
-import { StatsManagementTab } from '@/app/admin/StatsManagementTab';
+// Import admin tab components
+import { GeneralTab } from './tabs/GeneralTab';
+import { TournamentStructureTab } from './tabs/TournamentStructureTab';
+import { DivisionsTab } from './tabs/DivisionsTab';
+import { SchedulingTab } from './tabs/SchedulingTab';
+import { TeamsTab } from './tabs/TeamsTab';
+import { TransfersTab } from './tabs/TransfersTab';
+import { StandinsTab } from './tabs/StandinsTab';
+import { MatchesTab } from './tabs/MatchesTab';
+import { FantasyPickemTab } from './tabs/FantasyPickemTab';
+import { NewsTab } from './tabs/NewsTab';
+import { StatsTab } from './tabs/StatsTab';
+import { RulesTab } from './tabs/RulesTab';
 
 /**
- * Admin dashboard - tournament administration
+ * Admin Panel - Tournament Administration
+ * Modern, ultra-clean design matching the rest of the platform
  */
 export default function AdminPage() {
-  const { tournament, getTournamentPath, theme, isLegacyTournament } = useTournament();
+  const { tournament, theme } = useTournament();
   const { isLeague } = useTournamentType();
   const { user, signInWithGoogle } = useAuth();
   const [isAdmin, setIsAdmin] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('general');
 
   useEffect(() => {
     async function verifyAdmin() {
@@ -59,30 +64,42 @@ export default function AdminPage() {
 
   if (!tournament) return null;
 
+  // Loading state
   if (isLoading) {
     return (
-      <div className="flex justify-center items-center h-[calc(100vh-200px)]">
-        <Loader2 className="h-16 w-16 animate-spin" style={{ color: theme.primaryColor }} />
+      <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-12 w-12 animate-spin" style={{ color: theme.primaryColor }} />
+          <p className="text-muted-foreground font-logik">Ładowanie panelu...</p>
+        </div>
       </div>
     );
   }
 
+  // Not logged in
   if (!user) {
     return (
-      <div className="space-y-6">
-        <div className="flex items-center gap-3">
-          <Settings className="h-8 w-8" style={{ color: theme.primaryColor }} />
-          <h1 className="text-3xl font-bold">Panel administracyjny</h1>
-        </div>
-        <Card className="text-center max-w-md mx-auto" style={{ backgroundColor: theme.cardColor, borderColor: theme.borderColor }}>
-          <CardHeader>
-            <Shield className="h-12 w-12 mx-auto mb-4" style={{ color: theme.primaryColor }} />
-            <CardTitle>Wymagane logowanie</CardTitle>
-            <CardDescription>Zaloguj się aby uzyskać dostęp do panelu administracyjnego.</CardDescription>
+      <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center p-4">
+        <Card className="w-full max-w-md border-0 shadow-2xl bg-card/80 backdrop-blur-xl">
+          <CardHeader className="text-center pb-2">
+            <div 
+              className="w-16 h-16 mx-auto mb-4 rounded-2xl flex items-center justify-center"
+              style={{ backgroundColor: `${theme.primaryColor}20` }}
+            >
+              <Shield className="h-8 w-8" style={{ color: theme.primaryColor }} />
+            </div>
+            <CardTitle className="text-2xl font-logik-extended-bold">Panel Administracyjny</CardTitle>
+            <CardDescription className="font-logik">
+              Zaloguj się aby uzyskać dostęp do panelu administracyjnego.
+            </CardDescription>
           </CardHeader>
-          <CardContent>
-            <Button onClick={signInWithGoogle}>
-              <LogIn className="mr-2 h-4 w-4" />
+          <CardContent className="pt-4">
+            <Button 
+              onClick={signInWithGoogle} 
+              className="w-full h-12 font-logik"
+              style={{ backgroundColor: theme.primaryColor }}
+            >
+              <LogIn className="mr-2 h-5 w-5" />
               Zaloguj przez Google
             </Button>
           </CardContent>
@@ -91,21 +108,22 @@ export default function AdminPage() {
     );
   }
 
+  // Not an admin
   if (!isAdmin) {
     return (
-      <div className="space-y-6">
-        <div className="flex items-center gap-3">
-          <Settings className="h-8 w-8" style={{ color: theme.primaryColor }} />
-          <h1 className="text-3xl font-bold">Panel administracyjny</h1>
-        </div>
-        <Card className="text-center max-w-md mx-auto" style={{ backgroundColor: theme.cardColor, borderColor: theme.borderColor }}>
-          <CardHeader>
-            <Shield className="h-12 w-12 mx-auto mb-4 text-red-500" />
-            <CardTitle className="text-red-500">Brak dostępu</CardTitle>
-            <CardDescription>Nie masz uprawnień do przeglądania tej strony.</CardDescription>
+      <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center p-4">
+        <Card className="w-full max-w-md border-0 shadow-2xl bg-card/80 backdrop-blur-xl">
+          <CardHeader className="text-center pb-2">
+            <div className="w-16 h-16 mx-auto mb-4 rounded-2xl flex items-center justify-center bg-red-500/20">
+              <Shield className="h-8 w-8 text-red-500" />
+            </div>
+            <CardTitle className="text-2xl font-logik-extended-bold text-red-500">Brak dostępu</CardTitle>
+            <CardDescription className="font-logik">
+              Nie masz uprawnień do przeglądania tej strony.
+            </CardDescription>
           </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">
+          <CardContent className="pt-4 text-center">
+            <p className="text-sm text-muted-foreground font-logik">
               Skontaktuj się z administratorem platformy aby uzyskać dostęp.
             </p>
           </CardContent>
@@ -114,225 +132,112 @@ export default function AdminPage() {
     );
   }
 
-  // For legacy tournaments, use the existing admin tabs
-  if (isLegacyTournament) {
-    return (
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Shield className="h-8 w-8" style={{ color: theme.primaryColor }} />
-            <h1 className="text-3xl font-bold">Panel administracyjny</h1>
-          </div>
-          <Badge style={{ backgroundColor: theme.primaryColor }}>
-            {tournament.name}
-          </Badge>
+  // Tab configuration
+  const tabs = [
+    { id: 'general', label: 'Ogólne', icon: Settings },
+    { id: 'structure', label: 'Struktura', icon: Building2 },
+    { id: 'divisions', label: 'Dywizje', icon: Layers, showFor: 'league' },
+    { id: 'scheduling', label: 'Terminarz', icon: CalendarDays },
+    { id: 'teams', label: 'Drużyny', icon: Users },
+    { id: 'transfers', label: 'Transfery', icon: ArrowLeftRight, showFor: 'league' },
+    { id: 'standins', label: 'Standiny', icon: Shield },
+    { id: 'matches', label: 'Mecze', icon: Gamepad2 },
+    { id: 'fantasy', label: 'Fantasy', icon: Crown },
+    { id: 'news', label: 'Aktualności', icon: Newspaper },
+    { id: 'stats', label: 'Statystyki', icon: BarChart3 },
+    { id: 'rules', label: 'Regulamin', icon: ScrollText },
+  ];
+
+  // Filter tabs based on tournament type
+  const filteredTabs = tabs.filter(tab => {
+    if (!tab.showFor) return true;
+    if (tab.showFor === 'league' && isLeague) return true;
+    if (tab.showFor === 'mmr-limited' && !isLeague) return true;
+    return false;
+  });
+
+  return (
+    <div className="min-h-[calc(100vh-4rem)] font-logik">
+      {/* Tabs Navigation - Full width, at the very top */}
+      <div className="sticky top-14 z-40 bg-background/95 backdrop-blur-xl border-b border-border/50">
+        <div className="container mx-auto px-4">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="w-full h-auto p-1 bg-transparent flex flex-wrap justify-start gap-1">
+              {filteredTabs.map((tab) => (
+                <TabsTrigger
+                  key={tab.id}
+                  value={tab.id}
+                  className={cn(
+                    "flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all duration-200",
+                    "data-[state=active]:shadow-lg font-logik text-sm",
+                    "hover:bg-muted/50"
+                  )}
+                  style={{
+                    backgroundColor: activeTab === tab.id ? theme.primaryColor : undefined,
+                    color: activeTab === tab.id ? 'white' : undefined,
+                  }}
+                >
+                  <tab.icon className="h-4 w-4" />
+                  <span className="hidden sm:inline">{tab.label}</span>
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
         </div>
+      </div>
 
-        <Tabs defaultValue="status" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5 lg:grid-cols-10">
-            <TabsTrigger value="status">Status</TabsTrigger>
-            <TabsTrigger value="teams">Drużyny</TabsTrigger>
-            <TabsTrigger value="matches">Mecze</TabsTrigger>
-            <TabsTrigger value="import">Import</TabsTrigger>
-            <TabsTrigger value="standings">Tabele</TabsTrigger>
-            <TabsTrigger value="stages">Etapy</TabsTrigger>
-            <TabsTrigger value="playoffs">Playoff</TabsTrigger>
-            <TabsTrigger value="standins">Standins</TabsTrigger>
-            <TabsTrigger value="stats">Statystyki</TabsTrigger>
-            <TabsTrigger value="announcements">Ogłoszenia</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="status">
-            <TournamentStatusTab />
+      {/* Tab Content */}
+      <div className="container mx-auto px-4 py-6">
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsContent value="general" className="mt-0">
+            <GeneralTab />
           </TabsContent>
-          <TabsContent value="teams">
-            <TeamVerificationTab />
+          
+          <TabsContent value="structure" className="mt-0">
+            <TournamentStructureTab />
           </TabsContent>
-          <TabsContent value="matches">
-            <MatchManagementTab />
+          
+          <TabsContent value="divisions" className="mt-0">
+            <DivisionsTab />
           </TabsContent>
-          <TabsContent value="import">
-            <MatchImportTab />
+          
+          <TabsContent value="scheduling" className="mt-0">
+            <SchedulingTab />
           </TabsContent>
-          <TabsContent value="standings">
-            <StandingsTab />
+          
+          <TabsContent value="teams" className="mt-0">
+            <TeamsTab />
           </TabsContent>
-          <TabsContent value="stages">
-            <StageManagementTab />
+          
+          <TabsContent value="transfers" className="mt-0">
+            <TransfersTab />
           </TabsContent>
-          <TabsContent value="playoffs">
-            <PlayoffManagementTab />
+          
+          <TabsContent value="standins" className="mt-0">
+            <StandinsTab />
           </TabsContent>
-          <TabsContent value="standins">
-            <StandinManagementTab />
+          
+          <TabsContent value="matches" className="mt-0">
+            <MatchesTab />
           </TabsContent>
-          <TabsContent value="stats">
-            <StatsManagementTab />
+          
+          <TabsContent value="fantasy" className="mt-0">
+            <FantasyPickemTab />
           </TabsContent>
-          <TabsContent value="announcements">
-            <AnnouncementsTab />
+          
+          <TabsContent value="news" className="mt-0">
+            <NewsTab />
+          </TabsContent>
+          
+          <TabsContent value="stats" className="mt-0">
+            <StatsTab />
+          </TabsContent>
+          
+          <TabsContent value="rules" className="mt-0">
+            <RulesTab />
           </TabsContent>
         </Tabs>
       </div>
-    );
-  }
-
-  // For new tournaments (PDL style)
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Shield className="h-8 w-8" style={{ color: theme.primaryColor }} />
-          <h1 className="text-3xl font-bold">Panel administracyjny</h1>
-        </div>
-        <Badge style={{ backgroundColor: theme.primaryColor }}>
-          {tournament.name}
-        </Badge>
-      </div>
-
-      {/* Tournament Status Card */}
-      <Card style={{ backgroundColor: theme.cardColor, borderColor: theme.borderColor }}>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <FileCheck className="h-5 w-5" />
-            Status turnieju
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 md:grid-cols-4">
-            <div className="p-4 rounded-lg border" style={{ borderColor: theme.borderColor }}>
-              <p className="text-sm text-muted-foreground">Status</p>
-              <p className="text-lg font-bold capitalize">{tournament.status}</p>
-            </div>
-            <div className="p-4 rounded-lg border" style={{ borderColor: theme.borderColor }}>
-              <p className="text-sm text-muted-foreground">Typ</p>
-              <p className="text-lg font-bold">{isLeague ? 'Liga' : 'Turniej MMR'}</p>
-            </div>
-            <div className="p-4 rounded-lg border" style={{ borderColor: theme.borderColor }}>
-              <p className="text-sm text-muted-foreground">League ID</p>
-              <p className="text-lg font-bold">{tournament.leagueId || 'Brak'}</p>
-            </div>
-            <div className="p-4 rounded-lg border" style={{ borderColor: theme.borderColor }}>
-              <p className="text-sm text-muted-foreground">Dywizje</p>
-              <p className="text-lg font-bold">{tournament.divisions?.length || 0}</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Admin Tabs */}
-      <Tabs defaultValue="teams" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3 lg:grid-cols-6">
-          <TabsTrigger value="teams" className="flex items-center gap-2">
-            <Users className="h-4 w-4" />
-            Drużyny
-          </TabsTrigger>
-          <TabsTrigger value="matches" className="flex items-center gap-2">
-            <CalendarDays className="h-4 w-4" />
-            Mecze
-          </TabsTrigger>
-          <TabsTrigger value="divisions" className="flex items-center gap-2">
-            <Layers className="h-4 w-4" />
-            Dywizje
-          </TabsTrigger>
-          <TabsTrigger value="stats" className="flex items-center gap-2">
-            <BarChart3 className="h-4 w-4" />
-            Statystyki
-          </TabsTrigger>
-          <TabsTrigger value="import" className="flex items-center gap-2">
-            <Import className="h-4 w-4" />
-            Import
-          </TabsTrigger>
-          <TabsTrigger value="announcements" className="flex items-center gap-2">
-            <Bell className="h-4 w-4" />
-            Ogłoszenia
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="teams">
-          <Card style={{ backgroundColor: theme.cardColor, borderColor: theme.borderColor }}>
-            <CardHeader>
-              <CardTitle>Zarządzanie drużynami</CardTitle>
-              <CardDescription>Weryfikuj i zarządzaj drużynami zarejestrowanymi w turnieju.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground text-center py-8">
-                Panel zarządzania drużynami dla nowych turniejów będzie dostępny wkrótce.
-              </p>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="matches">
-          <Card style={{ backgroundColor: theme.cardColor, borderColor: theme.borderColor }}>
-            <CardHeader>
-              <CardTitle>Zarządzanie meczami</CardTitle>
-              <CardDescription>Ustalaj terminy meczów i importuj wyniki.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground text-center py-8">
-                Panel zarządzania meczami dla nowych turniejów będzie dostępny wkrótce.
-              </p>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="divisions">
-          <Card style={{ backgroundColor: theme.cardColor, borderColor: theme.borderColor }}>
-            <CardHeader>
-              <CardTitle>Zarządzanie dywizjami</CardTitle>
-              <CardDescription>Konfiguruj dywizje i zarządzaj awansami/spadkami.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground text-center py-8">
-                Panel zarządzania dywizjami będzie dostępny wkrótce.
-              </p>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="stats">
-          <Card style={{ backgroundColor: theme.cardColor, borderColor: theme.borderColor }}>
-            <CardHeader>
-              <CardTitle>Statystyki</CardTitle>
-              <CardDescription>Przeglądaj i przeliczaj statystyki turnieju.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground text-center py-8">
-                Panel statystyk będzie dostępny wkrótce.
-              </p>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="import">
-          <Card style={{ backgroundColor: theme.cardColor, borderColor: theme.borderColor }}>
-            <CardHeader>
-              <CardTitle>Import danych</CardTitle>
-              <CardDescription>Importuj mecze i wyniki z OpenDota API.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground text-center py-8">
-                Panel importu danych będzie dostępny wkrótce.
-              </p>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="announcements">
-          <Card style={{ backgroundColor: theme.cardColor, borderColor: theme.borderColor }}>
-            <CardHeader>
-              <CardTitle>Ogłoszenia</CardTitle>
-              <CardDescription>Publikuj ogłoszenia dla uczestników turnieju.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground text-center py-8">
-                Panel ogłoszeń będzie dostępny wkrótce.
-              </p>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
     </div>
   );
 }

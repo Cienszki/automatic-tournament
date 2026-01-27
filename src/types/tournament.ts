@@ -174,6 +174,9 @@ export interface TournamentConfig {
   // Dota 2 integration
   leagueId?: number; // Valve League ID
   
+  // Social/Streaming
+  twitchChannel?: string; // Twitch channel name for embed and links
+  
   // Team configuration
   teamSize: number;
   mmrCap?: number; // Only for mmr-limited tournaments

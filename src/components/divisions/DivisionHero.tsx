@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Trophy, Calendar, TrendingUp, Layers, Activity } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { MouseEvent } from 'react';
+import { getDivisionTheme } from '@/lib/division-themes';
 
 interface DivisionHeroProps {
     divisionName: string;
@@ -18,6 +19,8 @@ interface DivisionHeroProps {
     totalRounds?: number;
     teamsCount: number;
     theme: any;
+    divisionTheme?: string;
+    medalUrl?: string;
 }
 
 export function DivisionHero({
@@ -28,13 +31,20 @@ export function DivisionHero({
     currentRound,
     totalRounds,
     teamsCount,
-    theme
+    theme,
+    divisionTheme,
+    medalUrl
 }: DivisionHeroProps) {
     const x = useMotionValue(0);
     const y = useMotionValue(0);
 
     const mouseX = useSpring(x, { stiffness: 500, damping: 100 });
     const mouseY = useSpring(y, { stiffness: 500, damping: 100 });
+    
+    // Get theme if specified
+    const themeData = getDivisionTheme(divisionTheme);
+    const displayColor = themeData?.primaryColor || divisionColor;
+    const displayGradient = themeData?.gradient || `linear-gradient(135deg, ${divisionColor} 0%, ${divisionColor} 100%)`;
 
     function handleMouseMove(event: MouseEvent<HTMLDivElement>) {
         const { left, top, width, height } = event.currentTarget.getBoundingClientRect();
@@ -92,43 +102,49 @@ export function DivisionHero({
                     >
                         <div
                             className={cn(
-                                "w-24 h-24 rounded-3xl flex items-center justify-center backdrop-blur-xl shadow-2xl relative overflow-hidden",
-                                "border-2", tierStyle.border
+                                "rounded-3xl flex items-center justify-center backdrop-blur-xl shadow-2xl relative overflow-hidden border-2",
+                                medalUrl ? "w-32 h-32" : "w-24 h-24"
                             )}
                             style={{
-                                boxShadow: `0 20px 50px -10px ${divisionColor}30`
+                                borderColor: displayColor,
+                                boxShadow: `0 20px 50px -10px ${displayColor}30`
                             }}
                         >
-                            <div className={cn("absolute inset-0 opacity-20", tierStyle.bg)} />
-                            <Layers className={cn("w-10 h-10 drop-shadow-md", tierStyle.text)} />
+                            {!medalUrl && <div className={cn("absolute inset-0 opacity-20", tierStyle.bg)} />}
+                            {medalUrl ? (
+                                <img 
+                                    src={medalUrl} 
+                                    alt={`${divisionName} medal`}
+                                    className="w-full h-full object-contain drop-shadow-2xl p-2"
+                                />
+                            ) : (
+                                <Layers className={cn("w-10 h-10 drop-shadow-md", tierStyle.text)} />
+                            )}
                         </div>
 
                         {/* Decorative orbitals */}
-                        <div className={cn("absolute inset-0 rounded-3xl border scale-110 opacity-30 animate-spin-slow pointer-events-none", tierStyle.border)} />
-                        <div className={cn("absolute inset-0 rounded-3xl border scale-125 opacity-10 animate-reverse-spin pointer-events-none", tierStyle.border)} />
+                        <div className="absolute inset-0 rounded-3xl border-2 scale-110 opacity-30 animate-spin-slow pointer-events-none" style={{ borderColor: displayColor }} />
+                        <div className="absolute inset-0 rounded-3xl border-2 scale-125 opacity-10 animate-reverse-spin pointer-events-none" style={{ borderColor: displayColor }} />
                     </motion.div>
 
                     <div className="text-center md:text-left">
                         <motion.h1
-                            className={cn("text-6xl md:text-8xl font-logik-extended-bold tracking-tighter mb-2", tierStyle.text)}
+                            className="text-6xl md:text-8xl font-logik-extended-bold tracking-tighter mb-2"
                             style={{
-                                filter: `drop-shadow(0 0 40px ${divisionColor}30)`
+                                color: displayColor,
+                                filter: `drop-shadow(0 0 40px ${displayColor}30)`
                             }}
                         >
                             {divisionName}
                         </motion.h1>
-                        <div className="flex items-center justify-center md:justify-start gap-4 text-white/50 text-sm font-sans font-medium tracking-wide uppercase">
-                            <span className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/5 border border-white/5 backdrop-blur-md">
-                                <Trophy className={cn("w-3.5 h-3.5", tierStyle.text)} />
-                                {teamsCount} Drużyn
-                            </span>
-                            {matchday && (
+                        {matchday && (
+                            <div className="flex items-center justify-center md:justify-start gap-4 text-white/50 text-sm font-sans font-medium tracking-wide uppercase">
                                 <span className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/5 border border-white/5 backdrop-blur-md">
-                                    <Calendar className={cn("w-3.5 h-3.5", tierStyle.text)} />
+                                    <Calendar className="w-3.5 h-3.5" style={{ color: displayColor }} />
                                     {matchday}
                                 </span>
-                            )}
-                        </div>
+                            </div>
+                        )}
                     </div>
                 </div>
 
@@ -145,8 +161,8 @@ export function DivisionHero({
                                 <motion.div
                                     className="absolute top-0 left-0 h-full rounded-full"
                                     style={{
-                                        background: `linear-gradient(90deg, ${divisionColor}, #fff)`,
-                                        boxShadow: `0 0 20px ${divisionColor}`
+                                        background: displayGradient,
+                                        boxShadow: `0 0 20px ${displayColor}`
                                     }}
                                     initial={{ width: 0 }}
                                     animate={{ width: `${(currentRound / totalRounds) * 100}%` }}

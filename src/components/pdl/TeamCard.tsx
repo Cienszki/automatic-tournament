@@ -11,7 +11,7 @@ import Link from "next/link";
 import { motion, useMotionValue, useSpring, useTransform } from "framer-motion";
 import {
   Swords, Shield, Sparkles, HandHelping, Eye,
-  Trophy, Crown, TrendingUp, Users, MapPin, Calendar, Target
+  Trophy, Crown, TrendingUp, Users, MapPin, Calendar, Target, MessageSquare
 } from "lucide-react";
 import { cn, formatNumber } from "@/lib/utils";
 import { useTranslation } from "@/hooks/useTranslation";
@@ -46,8 +46,6 @@ const DIVISION_TIER_STYLES: Record<string, { gradient: string; glow: string; tex
 interface TeamCardProps {
   team: Team;
   divisionRanking?: number; // e.g., 2 for "#2 in Elite"
-  nextOpponent?: { name: string; id: string; };
-  headToHeadRecord?: { wins: number; losses: number; draws: number; }; // vs next opponent
 }
 
 const getRoleIcon = (role: PlayerRole) => {
@@ -82,7 +80,7 @@ const playerFontClasses = [
   "font-logik-4",              // Player 5 (Hard Support)
 ];
 
-export function TeamCard({ team, divisionRanking, nextOpponent, headToHeadRecord }: TeamCardProps) {
+export function TeamCard({ team, divisionRanking }: TeamCardProps) {
   const { t } = useTranslation();
   const { getTournamentPath } = useTournament();
   const players = team.players || [];
@@ -145,14 +143,24 @@ export function TeamCard({ team, divisionRanking, nextOpponent, headToHeadRecord
           style={{
             rotateX,
             rotateY,
-            transformStyle: "preserve-3d",
           }}
           onMouseMove={onMouseMove}
-          onMouseLeave={onMouseLeave}
+          onMouseEnter={(e) => {
+            if (validKey) {
+              e.currentTarget.style.backgroundColor = `${style.glow}15`;
+            } else {
+              e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.2)';
+            }
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = 'transparent';
+            onMouseLeave();
+          }}
           className={cn(
             "relative overflow-hidden transition-all duration-300 group cursor-pointer h-full rounded-2xl p-6",
             "border border-none",
-            "hover:bg-black/20 hover:backdrop-blur-md"
+            "hover:backdrop-blur-md",
+            "[transform-style:preserve-3d]"
           )}
         >
           {/* Noise Texture Overlay */}
@@ -243,14 +251,14 @@ export function TeamCard({ team, divisionRanking, nextOpponent, headToHeadRecord
                   </div>
                 ))}
 
-                {/* Captain badge */}
-                {team.captainId && (
+                {/* Captain Discord */}
+                {(team.captainDiscordUsername || team.discordUsername) && (
                   <div className="mt-2 pt-2 border-t border-white/10 w-fit">
-                    <div className="flex items-center gap-2 text-xs text-gray-500">
-                      <Crown className={cn("h-3 w-3", style.text)} />
-                      <span className="font-logik uppercase tracking-wide text-[10px]">Captain</span>
-                      <span className="text-white text-[10px]">
-                        {players.find(p => p.id === team.captainId)?.nickname || 'Unknown'}
+                    <div className="flex items-center gap-2 text-xs">
+                      <MessageSquare className={cn("h-3 w-3", style.text)} />
+                      <span className="font-logik uppercase tracking-wide text-[10px] text-gray-400">DISCORD</span>
+                      <span className="text-white text-[10px] font-logik">
+                        {team.captainDiscordUsername || team.discordUsername}
                       </span>
                     </div>
                   </div>
@@ -284,7 +292,6 @@ export function TeamCard({ team, divisionRanking, nextOpponent, headToHeadRecord
               initial={{ scaleX: 0 }}
               whileHover={{ scaleX: 1 }}
               transition={{ duration: 0.4, ease: "circOut" }}
-              style={{ background: style.glow }}
             />
           </div>
         </motion.div>

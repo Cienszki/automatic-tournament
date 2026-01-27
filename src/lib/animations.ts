@@ -702,25 +702,22 @@ export function createFade(
   direction: 'up' | 'down' | 'left' | 'right' = 'up',
   distance: number = 20
 ): Variants {
-  const axis = direction === 'up' || direction === 'down' ? 'y' : 'x';
+  const isVertical = direction === 'up' || direction === 'down';
   const sign = direction === 'up' || direction === 'left' ? 1 : -1;
 
-  return {
-    hidden: { 
-      opacity: 0, 
-      [axis]: distance * sign,
-    },
-    visible: { 
-      opacity: 1, 
-      [axis]: 0,
-      transition: TRANSITIONS.default,
-    },
-    exit: { 
-      opacity: 0, 
-      [axis]: (distance / 2) * -sign,
-      transition: TRANSITIONS.fast,
-    },
-  };
+  if (isVertical) {
+    return {
+      hidden: { opacity: 0, y: distance * sign },
+      visible: { opacity: 1, y: 0, transition: TRANSITIONS.default },
+      exit: { opacity: 0, y: (distance / 2) * -sign, transition: TRANSITIONS.fast },
+    };
+  } else {
+    return {
+      hidden: { opacity: 0, x: distance * sign },
+      visible: { opacity: 1, x: 0, transition: TRANSITIONS.default },
+      exit: { opacity: 0, x: (distance / 2) * -sign, transition: TRANSITIONS.fast },
+    };
+  }
 }
 
 /**

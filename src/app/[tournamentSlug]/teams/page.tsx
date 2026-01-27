@@ -20,40 +20,14 @@ export default function TeamsPage() {
   const [teams, setTeams] = useState<Team[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Generate mock data for team stats
-  const generateMockStats = (teamId: string, teamName: string) => {
-    // Seed random based on team name for consistency
-    const seed = teamName.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-    const random = (min: number, max: number) => {
-      const x = Math.sin(seed + min) * 10000;
-      return Math.floor((x - Math.floor(x)) * (max - min + 1)) + min;
-    };
-
-    const wins = random(3, 10);
-    const losses = random(0, 5);
-    const draws = random(0, 2);
-    const totalMatches = wins + losses + draws;
-    const points = wins * 2 + draws;
-
-    // Generate recent form (last 5 matches)
-    const recentForm: ('W' | 'L' | 'D')[] = [];
-    for (let i = 0; i < Math.min(5, totalMatches); i++) {
-      const r = random(i, i + 100) % 10;
-      recentForm.push(r < 6 ? 'W' : r < 8 ? 'D' : 'L');
-    }
-
-    return { wins, losses, draws, points, recentForm };
-  };
+  // TODO: Load actual match results for team form
+  // This should query matches from current round and calculate real W/L/D records
 
   // Generate division ranking (1-based position in division)
   const generateDivisionRanking = (teamId: string, division: string) => {
     const seed = teamId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
     return (seed % 8) + 1; // Ranks 1-8
   };
-
-  // Mock next opponent data
-  const mockNextOpponents: Record<string, { name: string; id: string }> = {};
-  const mockHeadToHead: Record<string, { wins: number; losses: number; draws: number }> = {};
 
   // Load teams from Firestore
   useEffect(() => {
@@ -98,30 +72,9 @@ export default function TeamsPage() {
             return (a.name || '').localeCompare(b.name || '');
           });
 
-          // Add mock stats to each team
-          teamsData.forEach((team, idx) => {
-            const stats = generateMockStats(team.id, team.name);
-            team.wins = stats.wins;
-            team.losses = stats.losses;
-            team.draws = stats.draws;
-            team.points = stats.points;
-            team.recentForm = stats.recentForm;
-
-            // Set up next opponent (circular: each team plays the next one)
-            const nextIdx = (idx + 1) % teamsData.length;
-            mockNextOpponents[team.id] = {
-              name: teamsData[nextIdx].name,
-              id: teamsData[nextIdx].id
-            };
-
-            // Generate head-to-head vs next opponent
-            const seed = team.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-            const h2hWins = seed % 3;
-            const h2hLosses = (seed + 1) % 3;
-            const h2hDraws = seed % 2;
-            mockHeadToHead[team.id] = { wins: h2hWins, losses: h2hLosses, draws: h2hDraws };
-          });
-
+          // TODO: Load actual standings data (wins, losses, draws, points)
+          // TODO: Load actual recent form from last 5 matches
+          // For now, teams will display without form bars
           setTeams(teamsData);
         }
       } catch (error) {
@@ -227,8 +180,6 @@ export default function TeamsPage() {
                   key={team.id}
                   team={team}
                   divisionRanking={generateDivisionRanking(team.id, team.division || '')}
-                  nextOpponent={mockNextOpponents[team.id]}
-                  headToHeadRecord={mockHeadToHead[team.id]}
                 />
               ) : (
                 <LegacyTeamCard key={team.id} team={team} />

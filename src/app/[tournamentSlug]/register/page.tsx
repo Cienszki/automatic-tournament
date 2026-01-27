@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { UserPlus, ShieldPlus, Image as ImageIcon, MessageCircle, Lock, Home, Users, Gamepad2, UserCheck } from "lucide-react";
+import { UserPlus, ShieldPlus, Image as ImageIcon, MessageCircle, Lock, Home, Users, Gamepad2 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useTournament } from "@/context/TournamentContext";
 import { useTranslations } from "next-intl";
@@ -30,8 +30,9 @@ const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/web
 const pdlFormSchema = z.object({
   name: z.string()
     .min(3, "Nazwa zespołu musi mieć co najmniej 3 znaki.")
+    .max(20, "Nazwa zespołu nie może przekroczyć 20 znaków.")
     .regex(/^[A-Za-zĄąĆćĘęŁłŃńÓóŚśŹźŻż0-9 _\-&]+$/, "Nazwa zespołu może zawierać tylko litery (w tym polskie), cyfry, spacje, myślniki, podkreślenia i znak &."),
-  tag: z.string().min(2, "Tag musi mieć 2-4 znaki.").max(4),
+  tag: z.string().min(2, "Tag musi mieć 2-6 znaków.").max(6, "Tag musi mieć 2-6 znaków."),
   discordUsername: z.string().min(2, "Nick Discord jest wymagany."),
   motto: z.string().min(5, "Motto musi mieć co najmniej 5 znaków."),
   logo: z.custom<File | null>(
@@ -45,15 +46,11 @@ const pdlFormSchema = z.object({
   players: z.array(z.object({
     nickname: z.string()
       .min(2, "Nick jest wymagany.")
+      .max(20, "Nick nie może przekroczyć 20 znaków.")
       .regex(/^[A-Za-zĄąĆćĘęŁłŃńÓóŚśŹźŻż0-9 _\-&]+$/, "Nick może zawierać tylko litery (w tym polskie), cyfry, spacje, myślniki, podkreślenia i znak &."),
     role: z.enum(PlayerRoles),
     steamProfileUrl: z.string().url("Musi być prawidłowym URL profilu Steam."),
   })).min(5, "Musisz zarejestrować dokładnie 5 graczy.").max(5),
-  coach: z.object({
-    hasCoach: z.boolean(),
-    nickname: z.string().optional(),
-    steamProfileUrl: z.string().optional(),
-  }),
   rulesAcknowledged: z.boolean().refine((val) => val === true, {
     message: "Musisz zaakceptować regulamin turnieju.",
   }),
@@ -71,16 +68,6 @@ const pdlFormSchema = z.object({
 }, {
   message: "Musisz mieć gracza na każdej pozycji: Carry, Mid, Offlane, Soft Support, Hard Support.",
   path: ["players"],
-}).refine(data => {
-  // If coach is enabled, validate nickname and steam URL
-  if (data.coach.hasCoach) {
-    return data.coach.nickname && data.coach.nickname.length >= 2 &&
-      data.coach.steamProfileUrl && data.coach.steamProfileUrl.startsWith('http');
-  }
-  return true;
-}, {
-  message: "Jeśli dodajesz trenera, musisz podać nick i link do profilu Steam.",
-  path: ["coach"],
 });
 
 // Registration Closed Component
@@ -188,17 +175,11 @@ export default function RegisterPage() {
       motto: "",
       logo: null,
       players: Array(5).fill({ nickname: "", role: undefined, steamProfileUrl: "" }),
-      coach: {
-        hasCoach: false,
-        nickname: "",
-        steamProfileUrl: "",
-      },
       rulesAcknowledged: false,
     },
   });
 
   const { fields } = useFieldArray({ control: form.control, name: "players" });
-  const hasCoach = form.watch("coach.hasCoach");
 
   // Redirect to my-team if user already has a registered team
   React.useEffect(() => {
@@ -277,14 +258,17 @@ export default function RegisterPage() {
         logoUrl,
         captainId: user.uid,
         players: values.players,
-        coach: values.coach,
       };
 
-      // Call registration API
+      // Get Firebase auth token for API security
+      const token = await user.getIdToken();
+
+      // Call registration API with authentication
       const response = await fetch('/api/register-pdl-team', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify(registrationData),
       });
@@ -461,7 +445,7 @@ export default function RegisterPage() {
                         </div>
                         <div className="flex-1">
                           <FormControl>
-                            <Input type="file" accept="image/*" onChange={handleLogoChange} className="bg-transparent border-white/10 file:bg-[#8B1538] file:text-white file:border-0 file:rounded-md file:px-4 file:py-2 file:mr-4 file:font-semibold hover:file:bg-[#A91D45] text-white/80 cursor-pointer" />
+                            <Input type="file" accept="image/*" onChange={handleLogoChange} className="bg-transparent border-white/10 file:bg-[#8B1538] file:text-white file:border-0 file:rounded-md file:px-4 file:py-1.5 file:mr-4 file:font-semibold hover:file:bg-[#A91D45] text-white/80 cursor-pointer h-10" />
                           </FormControl>
                           <FormDescription className="mt-2 text-white/40">
                             Maks 5MB. JPG, PNG, WEBP.
@@ -542,70 +526,6 @@ export default function RegisterPage() {
                     </div>
                   </div>
                 ))}
-              </div>
-            </motion.div>
-
-            {/* Coach (Optional) */}
-            <motion.div
-              initial={{ y: 20, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              transition={{ duration: 0.6, delay: 0.3 }}
-            >
-              <div className="p-6 bg-black/20 backdrop-blur-sm border border-dashed border-white/10 rounded-xl hover:border-white/20 transition-all">
-                <div className="flex items-center gap-3 mb-2">
-                  <UserCheck className="h-5 w-5 text-[#8B1538]" />
-                  <h3 className="text-xl font-logik-extended-bold text-white/90">{t('coach')} <span className="text-white/40 text-sm font-normal">({t('optional')})</span></h3>
-                </div>
-                <p className="text-white/50 mb-6 text-sm">{t('coachDesc')}</p>
-
-                <FormField
-                  control={form.control}
-                  name="coach.hasCoach"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-row items-center space-x-3 space-y-0 mb-4">
-                      <FormControl>
-                        <Checkbox
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                          className="border-white/20 data-[state=checked]:bg-[#8B1538] data-[state=checked]:border-[#8B1538]"
-                        />
-                      </FormControl>
-                      <div className="space-y-1 leading-none">
-                        <FormLabel className="text-white/90 cursor-pointer">{t('addCoach')}</FormLabel>
-                      </div>
-                    </FormItem>
-                  )}
-                />
-
-                {hasCoach && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: "auto", opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    className="space-y-4 pt-4 border-t border-white/5"
-                  >
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <FormField name="coach.nickname" control={form.control} render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-white/70">{t('coachNickname')}</FormLabel>
-                          <FormControl>
-                            <Input {...field} className="bg-black/40 border-white/10 text-white focus:border-[#8B1538] transition-all" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )} />
-                      <FormField name="coach.steamProfileUrl" control={form.control} render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-white/70">{t('coachSteamProfile')}</FormLabel>
-                          <FormControl>
-                            <Input {...field} className="bg-black/40 border-white/10 text-white focus:border-[#8B1538] transition-all" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )} />
-                    </div>
-                  </motion.div>
-                )}
               </div>
             </motion.div>
 

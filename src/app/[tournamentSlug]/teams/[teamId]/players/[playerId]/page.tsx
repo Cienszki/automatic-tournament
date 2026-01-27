@@ -196,11 +196,11 @@ export default function PlayerProfilePage() {
   if (!player || !team) {
     return (
       <div className="text-center py-16">
-        <h1 className="text-2xl font-bold mb-4" style={{ fontFamily: 'var(--font-logik)', color: theme.textPrimary }}>Player Not Found</h1>
+        <h1 className="text-2xl font-bold mb-4 font-logik" style={{ fontFamily: 'var(--font-logik)', color: theme.textColor }}>Player Not Found</h1>
         <Button asChild>
           <Link href={getTournamentPath(`/teams/${teamId}`)}>
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Team
+            <span className="font-logik">Back to Team</span>
           </Link>
         </Button>
       </div>
@@ -237,7 +237,7 @@ export default function PlayerProfilePage() {
         <Button variant="ghost" asChild>
           <Link href={getTournamentPath(`/teams/${teamId}`)}>
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to {team.name}
+            <span className="font-logik">Back to {team.name}</span>
           </Link>
         </Button>
 
@@ -259,14 +259,14 @@ export default function PlayerProfilePage() {
                 <CardDescription className="text-lg">
                   <Badge
                     variant="outline"
-                    className="mr-2 text-base py-1 px-3"
+                    className="mr-2 text-base py-1 px-3 font-logik"
                     style={{ borderColor: theme.secondaryColor, color: theme.secondaryColor }}
                   >
                     {player.role}
                   </Badge>
                   <Link
                     href={getTournamentPath(`/teams/${teamId}`)}
-                    className="hover:underline font-medium"
+                    className="hover:underline font-medium font-logik"
                     style={{ color: theme.accentColor }}
                   >
                     {team.name}
@@ -281,7 +281,7 @@ export default function PlayerProfilePage() {
                         rel="noopener noreferrer"
                       >
                         <ExternalLink className="h-4 w-4 mr-2" />
-                        Steam Profile
+                        <span className="font-logik">Steam Profile</span>
                       </a>
                     </Button>
                   )}
@@ -293,7 +293,7 @@ export default function PlayerProfilePage() {
                         rel="noopener noreferrer"
                       >
                         <ExternalLink className="h-4 w-4 mr-2" />
-                        OpenDota
+                        <span className="font-logik">OpenDota</span>
                       </a>
                     </Button>
                   )}
@@ -315,13 +315,13 @@ export default function PlayerProfilePage() {
                 <CardTitle className="text-xl" style={{ fontFamily: 'var(--font-logik)', color: theme.primaryColor }}>MMR</CardTitle>
               </CardHeader>
               <CardContent className="flex flex-col items-center justify-center flex-grow p-6">
-                <p className="text-3xl font-bold mb-2" style={{ color: theme.textPrimary }}>{formatNumber(player.mmr)}</p>
+                <p className="text-3xl font-bold mb-2 font-logik" style={{ color: theme.textColor }}>{formatNumber(player.mmr)}</p>
                 <Progress
                   value={Math.min(100, Math.max(0, (player.mmr / Math.max(leagueAvgMMR * 1.5, 1)) * 100))}
                   className="w-3/4 h-2.5"
                   aria-label="MMR progress"
                 />
-                <p className="text-xs mt-1 font-logik" style={{ color: theme.textSecondary }}>
+                <p className="text-xs mt-1 font-logik" style={{ color: theme.mutedTextColor }}>
                   League Avg: {formatNumber(leagueAvgMMR)}
                 </p>
               </CardContent>
@@ -336,7 +336,7 @@ export default function PlayerProfilePage() {
                 <CardTitle className="text-xl" style={{ fontFamily: 'var(--font-logik)', color: theme.primaryColor }}>KDA Ratio</CardTitle>
               </CardHeader>
               <CardContent className="flex flex-col items-center justify-center flex-grow p-6">
-                <p className="text-3xl font-bold" style={{ color: theme.textPrimary }}>{averageStats.kda}</p>
+                <p className="text-3xl font-bold font-logik" style={{ color: theme.textColor }}>{averageStats.kda}</p>
               </CardContent>
             </Card>
 
@@ -349,7 +349,7 @@ export default function PlayerProfilePage() {
                 <CardTitle className="text-xl" style={{ fontFamily: 'var(--font-logik)', color: theme.primaryColor }}>Win Rate</CardTitle>
               </CardHeader>
               <CardContent className="flex flex-col items-center justify-center flex-grow p-6">
-                <p className="text-3xl font-bold" style={{ color: theme.textPrimary }}>{averageStats.winRate}</p>
+                <p className="text-3xl font-bold font-logik" style={{ color: theme.textColor }}>{averageStats.winRate}</p>
               </CardContent>
             </Card>
 
@@ -362,7 +362,7 @@ export default function PlayerProfilePage() {
                 <CardTitle className="text-xl" style={{ fontFamily: 'var(--font-logik)', color: theme.primaryColor }}>Avg GPM</CardTitle>
               </CardHeader>
               <CardContent className="flex flex-col items-center justify-center flex-grow p-6">
-                <p className="text-3xl font-bold" style={{ color: theme.textPrimary }}>{averageStats.gpm}</p>
+                <p className="text-3xl font-bold font-logik" style={{ color: theme.textColor }}>{averageStats.gpm}</p>
               </CardContent>
             </Card>
 
@@ -375,7 +375,7 @@ export default function PlayerProfilePage() {
                 <CardTitle className="text-xl" style={{ fontFamily: 'var(--font-logik)', color: theme.primaryColor }}>Avg XPM</CardTitle>
               </CardHeader>
               <CardContent className="flex flex-col items-center justify-center flex-grow p-6">
-                <p className="text-3xl font-bold" style={{ color: theme.textPrimary }}>{averageStats.xpm}</p>
+                <p className="text-3xl font-bold font-logik" style={{ color: theme.textColor }}>{averageStats.xpm}</p>
               </CardContent>
             </Card>
 
@@ -388,7 +388,7 @@ export default function PlayerProfilePage() {
                 <CardTitle className="text-xl" style={{ fontFamily: 'var(--font-logik)', color: theme.primaryColor }}>Fantasy Points</CardTitle>
               </CardHeader>
               <CardContent className="flex flex-col items-center justify-center flex-grow p-6">
-                <p className="text-3xl font-bold" style={{ color: theme.textPrimary }}>{averageStats.fantasyPoints}</p>
+                <p className="text-3xl font-bold font-logik" style={{ color: theme.textColor }}>{averageStats.fantasyPoints}</p>
               </CardContent>
             </Card>
           </div>
@@ -400,7 +400,7 @@ export default function PlayerProfilePage() {
             <CardTitle className="text-2xl font-semibold" style={{ fontFamily: 'var(--font-logik)', color: theme.primaryColor }}>
               Recent Match History
             </CardTitle>
-            <CardDescription style={{ color: theme.textSecondary }}>
+            <CardDescription style={{ color: theme.mutedTextColor }}>
               Performance in recent matches
             </CardDescription>
           </CardHeader>
@@ -427,7 +427,7 @@ export default function PlayerProfilePage() {
                           <CardTitle className="text-lg flex items-center flex-wrap">
                             <HeroIconComponent color={heroColorHex} className="h-5 w-5 mr-1.5 shrink-0" />
                             <span style={{ color: heroColorHex, fontFamily: 'var(--font-logik)' }} className="font-semibold">{perf.hero}</span>
-                            <span className="mx-1.5 font-normal" style={{ color: theme.textSecondary }}>vs</span>
+                            <span className="mx-1.5 font-normal" style={{ color: theme.mutedTextColor }}>vs</span>
                             <Link
                               href={getTournamentPath(`/teams/${histItem.opponentTeam.id}`)}
                               className="hover:underline"
@@ -449,7 +449,7 @@ export default function PlayerProfilePage() {
                             )}
                           </div>
                         </div>
-                        <CardDescription className="text-xs mt-1" style={{ color: theme.textSecondary }}>
+                        <CardDescription className="text-xs mt-1" style={{ color: theme.mutedTextColor }}>
                           {histItem.matchDate.toLocaleDateString()}
                         </CardDescription>
                       </CardHeader>
@@ -458,32 +458,32 @@ export default function PlayerProfilePage() {
                           <div className="text-center">
                             <div className="flex items-center justify-center mb-1">
                               <Swords className="h-4 w-4 mr-1" style={{ color: theme.accentColor }} />
-                              <span className="font-medium" style={{ color: theme.textSecondary }}>K/D/A</span>
+                              <span className="font-medium font-logik" style={{ color: theme.mutedTextColor }}>K/D/A</span>
                             </div>
-                            <div className="font-bold" style={{ color: theme.textPrimary }}>
+                            <div className="font-bold font-logik" style={{ color: theme.textColor }}>
                               {perf.kills}/{perf.deaths}/{perf.assists}
                             </div>
                           </div>
                           <div className="text-center">
                             <div className="flex items-center justify-center mb-1">
                               <Coins className="h-4 w-4 mr-1" style={{ color: theme.accentColor }} />
-                              <span className="font-medium" style={{ color: theme.textSecondary }}>GPM</span>
+                              <span className="font-medium font-logik" style={{ color: theme.mutedTextColor }}>GPM</span>
                             </div>
-                            <div className="font-bold" style={{ color: theme.textPrimary }}>{perf.gpm}</div>
+                            <div className="font-bold font-logik" style={{ color: theme.textColor }}>{perf.gpm}</div>
                           </div>
                           <div className="text-center">
                             <div className="flex items-center justify-center mb-1">
                               <Zap className="h-4 w-4 mr-1" style={{ color: theme.accentColor }} />
-                              <span className="font-medium" style={{ color: theme.textSecondary }}>XPM</span>
+                              <span className="font-medium font-logik" style={{ color: theme.mutedTextColor }}>XPM</span>
                             </div>
-                            <div className="font-bold" style={{ color: theme.textPrimary }}>{perf.xpm}</div>
+                            <div className="font-bold font-logik" style={{ color: theme.textColor }}>{perf.xpm}</div>
                           </div>
                           <div className="text-center">
                             <div className="flex items-center justify-center mb-1">
                               <Trophy className="h-4 w-4 mr-1" style={{ color: theme.primaryColor }} />
-                              <span className="font-medium" style={{ color: theme.textSecondary }}>Fantasy</span>
+                              <span className="font-medium font-logik" style={{ color: theme.mutedTextColor }}>Fantasy</span>
                             </div>
-                            <div className="font-bold" style={{ color: theme.primaryColor }}>{perf.fantasyPoints}</div>
+                            <div className="font-bold font-logik" style={{ color: theme.primaryColor }}>{perf.fantasyPoints}</div>
                           </div>
                         </div>
                       </CardContent>
@@ -492,7 +492,7 @@ export default function PlayerProfilePage() {
                 })}
               </div>
             ) : (
-              <p className="text-center py-4" style={{ color: theme.textSecondary }}>No match data available yet.</p>
+              <p className="text-center py-4 font-logik" style={{ color: theme.mutedTextColor }}>No match data available yet.</p>
             )}
           </CardContent>
         </Card>

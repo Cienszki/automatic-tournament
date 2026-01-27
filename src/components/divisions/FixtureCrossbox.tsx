@@ -26,6 +26,7 @@ interface FixtureCrossboxProps {
   divisionColor: string;
   divisionTier?: number;
   theme: any;
+  divisionTheme?: string;
 }
 
 interface MatchResult {
@@ -41,7 +42,8 @@ export function FixtureCrossbox({
   standings,
   divisionColor,
   divisionTier,
-  theme
+  theme,
+  divisionTheme
 }: FixtureCrossboxProps) {
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -56,6 +58,9 @@ export function FixtureCrossbox({
   };
 
   const tierStyle = getTierClass(divisionTier);
+  
+  // Get theme color
+  const displayColor = divisionTheme ? require('@/lib/division-themes').getDivisionTheme(divisionTheme)?.primaryColor || divisionColor : divisionColor;
 
   const getMatchResult = (homeTeamId: string, awayTeamId: string): MatchResult | null => {
     const match = matches.find(m =>
@@ -135,8 +140,8 @@ export function FixtureCrossbox({
   return (
     <div className="rounded-2xl overflow-hidden p-1">
       <div className="p-4 flex items-center gap-3 mb-1">
-        <Grid3x3 className={cn("w-5 h-5", tierStyle.text)} />
-        <h3 className={cn("text-lg font-logik-extended-bold transition-all", tierStyle.text)}>Macierz Wyników</h3>
+        <Grid3x3 className="w-5 h-5" style={{ color: displayColor }} />
+        <h3 className="text-lg font-logik-extended-bold transition-all" style={{ color: displayColor }}>Wyniki</h3>
       </div>
 
       <div className="overflow-auto max-h-[600px] relative custom-scrollbar">

@@ -28,8 +28,9 @@ const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/web
 const formSchema = z.object({
   name: z.string()
     .min(3, "Nazwa zespołu musi mieć co najmniej 3 znaki.")
+    .max(20, "Nazwa zespołu nie może przekroczyć 20 znaków.")
     .regex(/^[A-Za-zĄąĆćĘęŁłŃńÓóŚśŹźŻż0-9 _\-&]+$/, "Nazwa zespołu może zawierać tylko litery (w tym polskie), cyfry, spacje, myślniki, podkreślenia i znak &."),
-  tag: z.string().min(2, "Tag musi mieć 2-4 znaki.").max(4),
+  tag: z.string().min(2, "Tag musi mieć 2-6 znaków.").max(6, "Tag musi mieć 2-6 znaków."),
   discordUsername: z.string().min(2, "Nick Discord jest wymagany."),
   motto: z.string().min(5, "Motto musi mieć co najmniej 5 znaków."),
   logo: z.custom<File | null>(
@@ -43,7 +44,8 @@ const formSchema = z.object({
   players: z.array(z.object({
     nickname: z.string()
       .min(2, "Nick jest wymagany.")
-  .regex(/^[A-Za-zĄąĆćĘęŁłŃńÓóŚśŹźŻż0-9 _\-&]+$/, "Nick może zawierać tylko litery (w tym polskie), cyfry, spacje, myślniki, podkreślenia i znak &."),
+      .max(20, "Nick nie może przekroczyć 20 znaków.")
+      .regex(/^[A-Za-zĄąĆćĘęŁłŃńÓóŚśŹźŻż0-9 _\-&]+$/, "Nick może zawierać tylko litery (w tym polskie), cyfry, spacje, myślniki, podkreślenia i znak &."),
     role: z.enum(PlayerRoles),
     mmr: z.coerce.number().min(1000).max(12000),
     steamProfileUrl: z.string().url("Musi być prawidłowym URL profilu Steam."),

@@ -102,6 +102,17 @@ service cloud.firestore {
         allow write: if isAdmin();
       }
 
+      // Rules in tournaments
+      match /rules/{sectionId} {
+        allow read: if true;
+        allow write: if request.auth.uid != null;
+        
+        match /paragraphs/{paragraphId} {
+          allow read: if true;
+          allow write: if request.auth.uid != null;
+        }
+      }
+
       // Fantasy lineups in tournaments
       match /fantasyLineups/{userId} {
         allow read: if true;

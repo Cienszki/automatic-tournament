@@ -1,244 +1,423 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useTournament } from '@/context/TournamentContext';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
 import { 
   ScrollText, 
-  Users, 
-  Trophy, 
-  Clock, 
-  Shield, 
-  Settings, 
-  UserPlus, 
-  Ban, 
-  Heart,
-  FileText,
-  Gamepad2,
-  Calendar,
-  Monitor,
-  Crown,
-  Award,
-  ChevronRight
+  ChevronRight,
+  ChevronLeft,
+  ChevronDown,
+  Loader2,
+  MessageSquare,
+  BookOpen,
+  ExternalLink,
 } from "lucide-react";
 import Link from "next/link";
-import { MMRCalculator } from "@/components/app/rules/MMRCalculator";
-import { useTranslation } from "@/hooks/useTranslation";
+import { motion, AnimatePresence } from "framer-motion";
+import { cn } from "@/lib/utils";
+import { db } from '@/lib/firebase';
+import { collection, getDocs } from 'firebase/firestore';
+
+interface RuleParagraph {
+  id: string;
+  content: string;
+  commentary?: string;
+  order: number;
+}
+
+interface RuleSection {
+  id: string;
+  title: string;
+  order: number;
+  paragraphs: RuleParagraph[];
+}
 
 /**
- * Rules page - tournament rules and regulations
+ * Rules page - Premium styled tournament rules and regulations
  */
 export default function RulesPage() {
-  const { tournament, theme, isLegacyTournament, getTournamentPath } = useTournament();
-  const { t } = useTranslation();
-  const [activeSection, setActiveSection] = useState("general");
+  const { tournament, theme, getTournamentPath } = useTournament();
+  const [sections, setSections] = useState<RuleSection[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [activeSection, setActiveSection] = useState<string | null>(null);
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
 
-  if (!tournament) return null;
+  // Load rules from Firestore
+  useEffect(() => {
+    const loadRules = async () => {
+      if (!tournament?.id) {
+        setLoading(false);
+        return;
+      }
 
-  const sections = [
-    { id: "general", icon: FileText, title: t("rules.sections.general"), group: t("rules.groups.tournamentInfo") },
-    { id: "registration", icon: Users, title: t("rules.sections.registration"), group: t("rules.groups.registrationTeams") },
-    { id: "playerRequirements", icon: UserPlus, title: t("rules.sections.playerRequirements"), group: t("rules.groups.players") },
-    { id: "scheduling", icon: Calendar, title: t("rules.sections.scheduling"), group: t("rules.groups.tournamentInfo") },
-    { id: "matchSettings", icon: Settings, title: t("rules.sections.matchSettings"), group: t("rules.groups.matchRules") },
-    { id: "tournamentStructure", icon: Trophy, title: t("rules.sections.tournamentStructure"), group: t("rules.groups.tournamentInfo") },
-    { id: "standins", icon: Users, title: t("rules.sections.standins"), group: t("rules.groups.players") },
-    { id: "prohibitions", icon: Ban, title: t("rules.sections.prohibitions"), group: t("rules.groups.restrictions") },
-    { id: "conduct", icon: Heart, title: t("rules.sections.conduct"), group: t("rules.groups.matchRules") },
-    { id: "additional", icon: FileText, title: t("rules.sections.additional"), group: t("rules.groups.additionalFeatures") },
-    { id: "digital", icon: Monitor, title: t("rules.sections.digital"), group: t("rules.groups.additionalFeatures") },
-    { id: "fantasy", icon: Crown, title: t("rules.sections.fantasy"), group: t("rules.groups.additionalFeatures") },
-    { id: "pickem", icon: Award, title: t("rules.sections.pickem"), group: t("rules.groups.additionalFeatures") }
-  ];
+      try {
+        const rulesRef = collection(db, 'tournaments', tournament.id, 'rules');
+        const rulesSnapshot = await getDocs(rulesRef);
+        
+        const loadedSections: RuleSection[] = [];
+        
+        for (const sectionDoc of rulesSnapshot.docs) {
+          const sectionData = sectionDoc.data();
+          
+          // Load paragraphs subcollection
+          const paragraphsRef = collection(db, 'tournaments', tournament.id, 'rules', sectionDoc.id, 'paragraphs');
+          const paragraphsSnapshot = await getDocs(paragraphsRef);
+          
+          const paragraphs: RuleParagraph[] = paragraphsSnapshot.docs.map(pDoc => ({
+            id: pDoc.id,
+            content: pDoc.data().content || '',
+            commentary: pDoc.data().commentary || undefined,
+            order: pDoc.data().order || 0,
+          }));
+          
+          paragraphs.sort((a, b) => a.order - b.order);
+          
+          loadedSections.push({
+            id: sectionDoc.id,
+            title: sectionData.title || '',
+            order: sectionData.order || 0,
+            paragraphs,
+          });
+        }
+        
+        loadedSections.sort((a, b) => a.order - b.order);
+        setSections(loadedSections);
+        
+        // Expand all sections by default
+        setExpandedSections(new Set(loadedSections.map(s => s.id)));
+        if (loadedSections.length > 0) {
+          setActiveSection(loadedSections[0].id);
+        }
+      } catch (error) {
+        console.error('[RulesPage] Error loading rules:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadRules();
+  }, [tournament?.id]);
+
+  const toggleSection = (sectionId: string) => {
+    setExpandedSections(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(sectionId)) {
+        newSet.delete(sectionId);
+      } else {
+        newSet.add(sectionId);
+      }
+      return newSet;
+    });
+  };
 
   const scrollToSection = (sectionId: string) => {
     setActiveSection(sectionId);
-    document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth' });
+    if (!expandedSections.has(sectionId)) {
+      setExpandedSections(prev => new Set([...prev, sectionId]));
+    }
+    document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
+  if (!tournament) return null;
+
+  if (loading) {
+    return (
+      <div className="relative text-white overflow-x-hidden min-h-screen">
+        <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+          <div className="absolute inset-0 z-0 pointer-events-none opacity-60"
+            style={{ background: 'radial-gradient(ellipse at center, transparent 0%, transparent 40%, #000000 100%)' }}
+          />
+        </div>
+        <div className="relative z-10 flex items-center justify-center min-h-[60vh]">
+          <div className="text-center">
+            <Loader2 className="w-12 h-12 animate-spin mx-auto mb-4" style={{ color: theme.primaryColor }} />
+            <p className="text-gray-400 font-logik tracking-wider uppercase text-sm">Ładowanie regulaminu...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-8">
-      {/* Header */}
-      <div className="flex items-center gap-3">
-        <ScrollText className="h-8 w-8" style={{ color: theme.primaryColor }} />
-        <h1 className="text-3xl font-bold">Regulamin {tournament.name}</h1>
+    <div className="relative text-white overflow-x-hidden min-h-screen">
+      {/* Premium Atmosphere Background */}
+      <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+        {/* Subtle vignette */}
+        <div
+          className="absolute inset-0 z-0 pointer-events-none opacity-60"
+          style={{
+            background: 'radial-gradient(ellipse at center, transparent 0%, transparent 40%, #000000 100%)',
+          }}
+        />
+
+        {/* Ambient glow - top right */}
+        <div
+          className="absolute top-[-20%] right-[-10%] w-[60vw] h-[60vw] rounded-full opacity-[0.04] blur-[200px]"
+          style={{ background: theme?.primaryColor || '#3b82f6' }}
+        />
+
+        {/* Ambient glow - bottom left */}
+        <div
+          className="absolute bottom-[-20%] left-[-10%] w-[40vw] h-[40vw] rounded-full opacity-[0.03] blur-[150px]"
+          style={{ background: '#dc2626' }}
+        />
       </div>
 
-      {/* Hero Section */}
-      <Card className="shadow-xl text-center relative overflow-hidden h-[200px] md:h-[320px] flex-col justify-center p-6" style={{ borderColor: theme.borderColor }}>
-        <div 
-          className="absolute inset-0 z-0 bg-cover bg-center opacity-80" 
-          style={{ backgroundImage: `url(/backgrounds/rules.png)` }} 
-        />
-      </Card>
+      <div className="relative z-10 max-w-[1600px] mx-auto px-6 lg:px-12 py-8 space-y-12">
+        {/* Header - Premium Hero Style */}
+        <div className="text-center space-y-6 py-12 relative">
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-1/2 h-40 blur-[120px] rounded-full pointer-events-none"
+            style={{ background: `${theme.primaryColor}20` }}
+          />
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        {/* Table of Contents - Sidebar */}
-        <Card className="lg:sticky lg:top-6 h-fit" style={{ backgroundColor: theme.cardColor, borderColor: theme.borderColor }}>
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <ScrollText className="h-5 w-5" />
-              {t("rules.tableOfContents")}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {sections.map((section, index) => {
-              const Icon = section.icon;
-              const isFirstInGroup = index === 0 || section.group !== sections[index - 1].group;
-              
-              return (
-                <div key={section.id}>
-                  {isFirstInGroup && index !== 0 && <Separator className="my-2" />}
-                  {isFirstInGroup && (
-                    <p className="text-xs text-muted-foreground uppercase tracking-wider mb-2 mt-2">
-                      {section.group}
-                    </p>
-                  )}
-                  <Button
-                    variant={activeSection === section.id ? "secondary" : "ghost"}
-                    className="w-full justify-start text-sm"
-                    onClick={() => scrollToSection(section.id)}
-                  >
-                    <Icon className="h-4 w-4 mr-2" />
-                    {section.title}
-                    {activeSection === section.id && (
-                      <ChevronRight className="h-4 w-4 ml-auto" />
-                    )}
-                  </Button>
-                </div>
-              );
-            })}
-          </CardContent>
-        </Card>
+          {/* Icon */}
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            className="relative z-10 inline-flex items-center justify-center w-20 h-20 rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm"
+          >
+            <ScrollText className="w-10 h-10" style={{ color: theme.primaryColor }} />
+          </motion.div>
 
-        {/* Rules Content */}
-        <div className="lg:col-span-3 space-y-8">
-          {/* General Section */}
-          <Card id="general" style={{ backgroundColor: theme.cardColor, borderColor: theme.borderColor }}>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <FileText className="h-5 w-5" style={{ color: theme.primaryColor }} />
-                {t("rules.sections.general")}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="prose prose-invert max-w-none">
-              <p>{t("rules.content.general.description")}</p>
-              <p><strong>{t("rules.content.general.tournamentName")}:</strong> {tournament.name}</p>
-              <p><strong>{t("rules.content.general.status")}:</strong> {tournament.status}</p>
-            </CardContent>
-          </Card>
+          <motion.h1
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.1 }}
+            className="text-5xl md:text-7xl font-logik-wide-black text-transparent bg-clip-text bg-gradient-to-b from-white via-white to-white/50 tracking-tighter uppercase relative z-10 drop-shadow-2xl"
+          >
+            Regulamin
+          </motion.h1>
 
-          {/* Registration Section */}
-          <Card id="registration" style={{ backgroundColor: theme.cardColor, borderColor: theme.borderColor }}>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Users className="h-5 w-5" style={{ color: theme.primaryColor }} />
-                {t("rules.sections.registration")}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="prose prose-invert max-w-none">
-              <p>{t("rules.content.registration.description")}</p>
-              {tournament.type === 'mmr-limited' && (
-                <>
-                  <p><strong>Limit MMR:</strong> {tournament.mmrCap?.toLocaleString('pl-PL')}</p>
-                  <MMRCalculator />
-                </>
-              )}
-            </CardContent>
-          </Card>
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.6, delay: 0.2 }}
+            className="text-gray-400 font-logik text-lg max-w-2xl mx-auto"
+          >
+            Oficjalny regulamin turnieju {tournament.name}
+          </motion.p>
 
-          {/* Tournament Structure */}
-          <Card id="tournamentStructure" style={{ backgroundColor: theme.cardColor, borderColor: theme.borderColor }}>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Trophy className="h-5 w-5" style={{ color: theme.primaryColor }} />
-                {t("rules.sections.tournamentStructure")}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="prose prose-invert max-w-none">
-              {tournament.type === 'mmr-limited' ? (
-                <>
-                  <p>{t("rules.content.tournamentStructure.groupStage")}</p>
-                  <p>{t("rules.content.tournamentStructure.playoffs")}</p>
-                </>
-              ) : (
-                <>
-                  <p>Rozgrywki ligowe w formacie round-robin.</p>
-                  <p>Mecze w formacie BO2 (2 punkty za wygraną, 1 punkt za remis).</p>
-                  <p>Awanse i spadki między dywizjami po każdej kolejce.</p>
-                  <p>Najlepsze drużyny z Elite grają turniej finałowy.</p>
-                </>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Match Settings */}
-          <Card id="matchSettings" style={{ backgroundColor: theme.cardColor, borderColor: theme.borderColor }}>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Settings className="h-5 w-5" style={{ color: theme.primaryColor }} />
-                {t("rules.sections.matchSettings")}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="prose prose-invert max-w-none">
-              <p>{t("rules.content.matchSettings.captainsMode")}</p>
-              <p>{t("rules.content.matchSettings.lobbySettings")}</p>
-            </CardContent>
-          </Card>
-
-          {/* Standins */}
-          <Card id="standins" style={{ backgroundColor: theme.cardColor, borderColor: theme.borderColor }}>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Users className="h-5 w-5" style={{ color: theme.primaryColor }} />
-                {t("rules.sections.standins")}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="prose prose-invert max-w-none">
-              {tournament.type === 'mmr-limited' ? (
-                <p>{t("rules.content.standins.registeredOnly")}</p>
-              ) : (
-                <>
-                  <p>Standin może być dowolny gracz spoza listy zbanowanych.</p>
-                  <p>Wymagana zgoda kapitana drużyny przeciwnej (admin może override'ować odmowę).</p>
-                  <p>Ten sam standin może zagrać tylko raz na kolejkę.</p>
-                </>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Conduct */}
-          <Card id="conduct" style={{ backgroundColor: theme.cardColor, borderColor: theme.borderColor }}>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Heart className="h-5 w-5" style={{ color: theme.primaryColor }} />
-                {t("rules.sections.conduct")}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="prose prose-invert max-w-none">
-              <p>{t("rules.content.conduct.fairPlay")}</p>
-              <p>{t("rules.content.conduct.respect")}</p>
-            </CardContent>
-          </Card>
-
-          {/* Prohibitions */}
-          <Card id="prohibitions" style={{ backgroundColor: theme.cardColor, borderColor: theme.borderColor }}>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Ban className="h-5 w-5" style={{ color: theme.primaryColor }} />
-                {t("rules.sections.prohibitions")}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="prose prose-invert max-w-none">
-              <p>{t("rules.content.prohibitions.cheating")}</p>
-              <p>{t("rules.content.prohibitions.smurfing")}</p>
-            </CardContent>
-          </Card>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.6, delay: 0.3 }}
+            className="flex items-center justify-center gap-4 opacity-60"
+          >
+            <div className="h-[1px] w-16 bg-gradient-to-r from-transparent" style={{ backgroundImage: `linear-gradient(to right, transparent, ${theme.primaryColor})` }} />
+            <div className="w-2 h-2 rotate-45 border" style={{ borderColor: theme.primaryColor }} />
+            <div className="h-[1px] w-16 bg-gradient-to-l from-transparent" style={{ backgroundImage: `linear-gradient(to left, transparent, ${theme.primaryColor})` }} />
+          </motion.div>
         </div>
+
+        {sections.length === 0 ? (
+          /* Empty State */
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm p-16 text-center"
+          >
+            <BookOpen className="w-16 h-16 mx-auto text-white/20 mb-6" />
+            <h2 className="text-2xl font-logik-extended-bold text-white mb-3">
+              Regulamin w przygotowaniu
+            </h2>
+            <p className="text-gray-400 font-logik max-w-md mx-auto">
+              Regulamin turnieju jest aktualnie opracowywany. Wróć wkrótce po aktualizacje.
+            </p>
+          </motion.div>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+            {/* Sidebar - Table of Contents */}
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.5 }}
+              className="lg:col-span-1"
+            >
+              <div className="lg:sticky lg:top-24 space-y-4">
+                <div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm overflow-hidden">
+                  <div className="p-4 border-b border-white/10">
+                    <h3 className="font-logik-extended-bold text-white flex items-center gap-2">
+                      <ScrollText className="w-4 h-4" style={{ color: theme.primaryColor }} />
+                      Spis treści
+                    </h3>
+                  </div>
+                  <div className="p-2">
+                    {sections.map((section, index) => (
+                      <button
+                        key={section.id}
+                        onClick={() => scrollToSection(section.id)}
+                        className={cn(
+                          "w-full text-left px-4 py-3 rounded-xl transition-all duration-200 group",
+                          activeSection === section.id 
+                            ? "bg-white/10 text-white" 
+                            : "text-gray-400 hover:text-white hover:bg-white/5"
+                        )}
+                      >
+                        <div className="flex items-center gap-3">
+                          <span 
+                            className={cn(
+                              "w-6 h-6 rounded-lg flex items-center justify-center text-xs font-logik-extended-bold transition-colors",
+                              activeSection === section.id ? "text-white" : "text-gray-500"
+                            )}
+                            style={activeSection === section.id ? { backgroundColor: `${theme.primaryColor}40` } : {}}
+                          >
+                            {index + 1}
+                          </span>
+                          <span className="font-logik text-sm truncate flex-1">
+                            {section.title.replace(/^\d+\.\s*/, '')}
+                          </span>
+                          <ChevronRight 
+                            className={cn(
+                              "w-4 h-4 transition-transform",
+                              activeSection === section.id ? "opacity-100" : "opacity-0 group-hover:opacity-50"
+                            )} 
+                          />
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Quick Stats */}
+                <div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm p-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="text-center">
+                      <p className="text-2xl font-logik-extended-bold text-white">{sections.length}</p>
+                      <p className="text-xs text-gray-500 font-logik uppercase tracking-wider">Rozdziałów</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-2xl font-logik-extended-bold text-white">
+                        {sections.reduce((sum, s) => sum + s.paragraphs.length, 0)}
+                      </p>
+                      <p className="text-xs text-gray-500 font-logik uppercase tracking-wider">Paragrafów</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Main Content */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.1 }}
+              className="lg:col-span-3 space-y-6"
+            >
+              {sections.map((section, sectionIndex) => (
+                <motion.div
+                  key={section.id}
+                  id={section.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4, delay: sectionIndex * 0.05 }}
+                  className="scroll-mt-24"
+                >
+                  <div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm overflow-hidden">
+                    {/* Section Header */}
+                    <button
+                      onClick={() => toggleSection(section.id)}
+                      className="w-full p-6 flex items-center gap-4 hover:bg-white/5 transition-colors"
+                    >
+                      <div 
+                        className="w-12 h-12 rounded-xl flex items-center justify-center font-logik-extended-bold text-white text-lg"
+                        style={{ backgroundColor: `${theme.primaryColor}30`, color: theme.primaryColor }}
+                      >
+                        {section.order}
+                      </div>
+                      <div className="flex-1 text-left">
+                        <h2 className="text-xl font-logik-extended-bold text-white">
+                          {section.title}
+                        </h2>
+                        <p className="text-sm text-gray-500 font-logik">
+                          {section.paragraphs.length} {section.paragraphs.length === 1 ? 'paragraf' : section.paragraphs.length < 5 ? 'paragrafy' : 'paragrafów'}
+                        </p>
+                      </div>
+                      <ChevronDown
+                        className={cn(
+                          "w-5 h-5 text-gray-400 transition-transform duration-300",
+                          expandedSections.has(section.id) ? "rotate-180" : ""
+                        )}
+                      />
+                    </button>
+
+                    {/* Section Content */}
+                    <AnimatePresence>
+                      {expandedSections.has(section.id) && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: "auto", opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          transition={{ duration: 0.3 }}
+                          className="overflow-hidden"
+                        >
+                          <div className="px-6 pb-6 space-y-4">
+                            {section.paragraphs.map((paragraph, paraIndex) => (
+                              <div
+                                key={paragraph.id}
+                                className="flex gap-4 group"
+                              >
+                                {/* Paragraph Number */}
+                                <div className="shrink-0">
+                                  <span className="text-sm text-gray-500 font-logik tabular-nums">
+                                    {section.order}.{paraIndex + 1}
+                                  </span>
+                                </div>
+
+                                {/* Paragraph Content */}
+                                <div className="flex-1 space-y-2">
+                                  <p className="text-gray-200 font-logik leading-relaxed">
+                                    {paragraph.content}
+                                  </p>
+
+                                  {/* Commentary */}
+                                  {paragraph.commentary && (
+                                    <div 
+                                      className="flex items-start gap-2 p-3 rounded-xl border"
+                                      style={{ 
+                                        backgroundColor: `${theme.primaryColor}10`,
+                                        borderColor: `${theme.primaryColor}30`
+                                      }}
+                                    >
+                                      <MessageSquare 
+                                        className="w-4 h-4 mt-0.5 shrink-0" 
+                                        style={{ color: theme.primaryColor }}
+                                      />
+                                      <p className="text-sm font-logik" style={{ color: theme.primaryColor }}>
+                                        {paragraph.commentary}
+                                      </p>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                </motion.div>
+              ))}
+            </motion.div>
+          </div>
+        )}
+
+        {/* Footer Note */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.5, delay: 0.5 }}
+          className="text-center py-8 border-t border-white/10"
+        >
+          <p className="text-gray-500 font-logik text-sm">
+            Ostatnia aktualizacja regulaminu: {new Date().toLocaleDateString('pl-PL')}
+          </p>
+          <p className="text-gray-600 font-logik text-xs mt-2">
+            W razie pytań dotyczących regulaminu, skontaktuj się z organizatorami turnieju.
+          </p>
+        </motion.div>
       </div>
     </div>
   );

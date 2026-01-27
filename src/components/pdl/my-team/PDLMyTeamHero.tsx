@@ -99,7 +99,7 @@ export function PDLMyTeamHero({
 
                     {/* Motto */}
                     {team.motto && (
-                        <p className="text-white/60 italic text-lg max-w-xl">
+                        <p className="text-white/60 italic text-lg max-w-xl font-logik">
                             "{team.motto}"
                         </p>
                     )}

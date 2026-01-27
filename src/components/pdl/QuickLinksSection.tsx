@@ -29,18 +29,11 @@ export function QuickLinksSection() {
       hoverColor: 'group-hover:text-cyan-400',
     },
     {
-      title: 'O Lidze',
-      icon: <Info className="h-4 w-4" />,
-      href: getTournamentPath('/about'),
-      color: 'text-white/40',
-      hoverColor: 'group-hover:text-white',
-    },
-    {
       title: 'Aktualności',
-      icon: <Info className="h-4 w-4" />,
+      icon: <Sparkles className="h-4 w-4" />,
       href: '/news',
-      color: 'text-white/40',
-      hoverColor: 'group-hover:text-white',
+      color: 'text-amber-400',
+      hoverColor: 'group-hover:text-amber-400',
     },
     {
       title: 'Twitch',
@@ -49,6 +42,13 @@ export function QuickLinksSection() {
       color: 'text-[#9146FF]',
       hoverColor: 'group-hover:text-[#9146FF]',
       isExternal: true
+    },
+    {
+      title: 'O Lidze',
+      icon: <Info className="h-4 w-4" />,
+      href: getTournamentPath('/about'),
+      color: 'text-white/40',
+      hoverColor: 'group-hover:text-white',
     }
   ];
 

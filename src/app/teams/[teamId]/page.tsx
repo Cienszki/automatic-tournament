@@ -282,12 +282,12 @@ function getRankForStat(
                 </CardTitle>
                 <Badge className={cn("text-sm px-3 py-1", getStatusBadgeClasses(team.status))}>
                   {getStatusIcon(team.status)}
-                  {t(`teamDetail.${team.status}` as any) || team.status}
+                  {team.status ? (t(`teamDetail.${team.status}` as any) || team.status) : t('teamDetail.pending')}
                 </Badge>
               </div>
               <CardDescription className="text-lg mt-1">
                 {team.motto ? (
-                  <span className="italic">"{team.motto}"</span>
+                  <span className="italic font-logik">"{team.motto}"</span>
                 ) : (
                   <span className="text-muted-foreground">{t('teamDetail.detailedProfile')}</span>
                 )}

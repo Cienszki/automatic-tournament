@@ -273,11 +273,7 @@ export function TournamentProvider({ children, initialTournamentSlug }: Tourname
             schedulingMethod: 'admin-scheduled',
             promotionRelegationEnabled: true,
             roundsPerSeason: 2, // Full round-robin twice
-            divisions: [
-              { id: 'elite', name: 'Elite', tier: 1, matchday: 'Czwartek 20:00', color: 'hsl(45, 80%, 45%)' },
-              { id: 'challenger', name: 'Challenger', tier: 2, matchday: 'Środa 20:00', color: 'hsl(215, 60%, 50%)' },
-              { id: 'adept', name: 'Adept', tier: 3, matchday: 'Środa 20:00', color: 'hsl(215, 40%, 40%)' },
-            ],
+            divisions: [],
             fantasy: {
               enabled: true,
               type: 'season-long',

@@ -137,7 +137,7 @@ export function LeagueHomePage() {
           {/* Right: Next Match (5 cols) */}
           <div className="lg:col-span-5 xl:col-span-4 h-full pt-8 lg:pt-0">
             <NextMatchCard
-              channel="polishdota2inhouse"
+              channel={tournament.twitchChannel || 'polishdota2inhouse'}
               nextMatch={nextMatch}
             />
           </div>
@@ -184,6 +184,8 @@ export function LeagueHomePage() {
                     divisionColor={division.color}
                     teams={division.teams}
                     divisionId={division.id}
+                    divisionTheme={division.theme}
+                    medalUrl={division.medalUrl}
                   />
                 </motion.div>
               ))}

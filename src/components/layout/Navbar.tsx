@@ -81,12 +81,12 @@ export function Navbar() {
                       variant="ghost"
                       asChild
                       onClick={() => setIsMobileMenuOpen(false)}
-                      className={cn( "w-full justify-start text-base py-3 px-3", { 'text-primary bg-primary/10': isActive }
+                      className={cn( "w-full justify-start text-base py-3 px-3 font-logik", { 'text-primary bg-primary/10': isActive }
                       )}
                     >
                       <Link href={item.href} className="flex items-center space-x-3">
                         <item.icon className="h-5 w-5" />
-                        <span>{item.label}</span>
+                        <span className="font-logik">{item.label}</span>
                       </Link>
                     </Button>
                   );
@@ -115,7 +115,7 @@ export function Navbar() {
                       variant="ghost"
                       asChild
                       className={cn(
-                        "relative text-sm font-medium shrink-0 px-3 py-2 transition-all duration-200 group",
+                        "relative text-sm font-medium shrink-0 px-3 py-2 transition-all duration-200 group font-logik",
                         "hover:bg-accent/50",
                         isActive ? "text-primary" : "text-muted-foreground hover:text-foreground",
                         isMyTeam && isActive && "shadow-sm shadow-secondary/50",
@@ -123,7 +123,7 @@ export function Navbar() {
                     >
                       <Link href={item.href} className="flex items-center gap-2">
                         <item.icon className="h-4 w-4" />
-                        <span className="hidden md:inline">{item.label}</span>
+                        <span className="hidden md:inline font-logik">{item.label}</span>
                         <span className={cn(
                             "absolute bottom-0 left-0 h-0.5 bg-primary w-full transform scale-x-0 transition-transform duration-300 ease-out group-hover:scale-x-100",
                             isActive && "scale-x-100"
