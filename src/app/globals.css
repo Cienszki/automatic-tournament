@@ -1,10 +1,10 @@
+/* Import tournament-specific themes first */
+@import '../styles/pdl-theme.css';
+@import '../styles/letnia-theme.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-/* Import tournament-specific themes */
-@import '../styles/pdl-theme.css';
-@import '../styles/letnia-theme.css';
 
 /* Custom Fonts */
 @font-face {
