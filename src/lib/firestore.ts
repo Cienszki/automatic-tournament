@@ -181,6 +181,8 @@ export async function getAllTeams(): Promise<Team[]> {
     
     const teamsCollection = collection(db, "teams");
     const teamsSnapshot = await getDocs(teamsCollection);
+    
+    // OPTIMIZATION: Fetch all players subcollections in parallel instead of sequentially
     const teams = await Promise.all(teamsSnapshot.docs.map(async (d) => {
         const teamData = d.data();
         const createdAt = teamData.createdAt as Timestamp | undefined;

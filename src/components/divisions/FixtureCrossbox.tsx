@@ -169,7 +169,7 @@ export function FixtureCrossbox({
                       name={team.teamName}
                       size={24}
                       fallbackClassName="text-[10px] opacity-70"
-                      className="grayscale opacity-50 hover:grayscale-0 hover:opacity-100 transition-all"
+                      className="transition-all"
                     />
                   </div>
                 </th>
@@ -197,7 +197,7 @@ export function FixtureCrossbox({
                       name={homeTeam.teamName}
                       size={24}
                       fallbackClassName="text-[10px] opacity-70"
-                      className="grayscale opacity-50 hover:grayscale-0 hover:opacity-100 transition-all"
+                      className="transition-all"
                     />
                   </div>
                 </td>

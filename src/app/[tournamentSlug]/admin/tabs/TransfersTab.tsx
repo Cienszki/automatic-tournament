@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTournament } from '@/context/TournamentContext';
 import { Card, CardHeader, CardContent, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -26,12 +26,16 @@ import {
   Calendar,
   Hash,
 } from 'lucide-react';
+import { doc, updateDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { useToast } from '@/hooks/use-toast';
 
 /**
  * Transfers Tab - Transfer window management, transfer limits per round and season
  */
 export function TransfersTab() {
-  const { tournament, theme } = useTournament();
+  const { tournament, theme, refetchTournament } = useTournament();
+  const { toast } = useToast();
   
   // Settings state
   const [transferWindowOpen, setTransferWindowOpen] = useState(false);
@@ -39,10 +43,52 @@ export function TransfersTab() {
   const [transfersPerSeason, setTransfersPerSeason] = useState(6);
   const [isSaving, setIsSaving] = useState(false);
 
+  // Initialize state from tournament data
+  useEffect(() => {
+    if (tournament) {
+      setTransferWindowOpen(tournament.transferWindowOpen || false);
+      setTransfersPerRound(tournament.maxTransfersPerWindow || 2);
+      setTransfersPerSeason(tournament.maxTransfersPerSeason || 6);
+    }
+  }, [tournament]);
+
   const handleSave = async () => {
+    if (!tournament?.id) {
+      toast({
+        title: 'Błąd',
+        description: 'Nie znaleziono ID turnieju',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setIsSaving(true);
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    setIsSaving(false);
+    try {
+      const tournamentRef = doc(db, 'tournaments', tournament.id);
+      await updateDoc(tournamentRef, {
+        transferWindowOpen: transferWindowOpen,
+        maxTransfersPerWindow: transfersPerRound,
+        maxTransfersPerSeason: transfersPerSeason,
+        updatedAt: new Date().toISOString(),
+      });
+
+      toast({
+        title: 'Zapisano',
+        description: 'Ustawienia transferów zostały zaktualizowane',
+      });
+
+      // Refresh tournament data from Firestore
+      await refetchTournament();
+    } catch (error) {
+      console.error('Error saving transfer settings:', error);
+      toast({
+        title: 'Błąd',
+        description: 'Nie udało się zapisać ustawień. Spróbuj ponownie.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (

@@ -26,7 +26,12 @@ import {
   Users,
   Repeat,
   GitBranch,
+  CheckCircle,
+  AlertCircle,
 } from 'lucide-react';
+import { doc, updateDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { useToast } from '@/hooks/use-toast';
 
 /**
  * Tournament Structure Tab - Configure rounds, matches, playoffs, promotion/relegation
@@ -34,6 +39,7 @@ import {
 export function TournamentStructureTab() {
   const { tournament, theme } = useTournament();
   const { isLeague } = useTournamentType();
+  const { toast } = useToast();
   
   // Form state
   const [roundsCount, setRoundsCount] = useState(tournament?.roundsPerSeason || 2);
@@ -48,10 +54,46 @@ export function TournamentStructureTab() {
   const [isSaving, setIsSaving] = useState(false);
 
   const handleSave = async () => {
+    if (!tournament?.id) {
+      toast({
+        title: "Błąd",
+        description: "Nie znaleziono turnieju",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsSaving(true);
-    // TODO: Implement save functionality
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    setIsSaving(false);
+    try {
+      const tournamentRef = doc(db, 'tournaments', tournament.id);
+      
+      await updateDoc(tournamentRef, {
+        roundsPerSeason: roundsCount,
+        defaultMatchFormat: defaultMatchFormat,
+        promotionRelegationEnabled: hasPromotionRelegation,
+        updatedAt: new Date().toISOString(),
+      });
+
+      toast({
+        title: "Zapisano",
+        description: "Struktura turnieju została zaktualizowana",
+        duration: 3000,
+      });
+
+      // Reload the page to reflect changes
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
+    } catch (error) {
+      console.error('Error saving tournament structure:', error);
+      toast({
+        title: "Błąd zapisu",
+        description: "Nie udało się zapisać zmian. Sprawdź uprawnienia.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -150,29 +192,6 @@ export function TournamentStructureTab() {
                   <SelectItem value="bo3">BO3</SelectItem>
                 </SelectContent>
               </Select>
-            </div>
-          </div>
-
-          {/* Season Overview */}
-          <div className="p-4 rounded-xl border border-border bg-background/50">
-            <p className="text-sm font-logik-extended-bold mb-2">Podsumowanie sezonu</p>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm font-logik">
-              <div>
-                <span className="text-muted-foreground">Rundy:</span>
-                <span className="ml-2 font-bold">{roundsCount}</span>
-              </div>
-              <div>
-                <span className="text-muted-foreground">Kolejki/rundę:</span>
-                <span className="ml-2 font-bold">~{Math.ceil((tournament?.divisions?.length || 3) * 4 / roundsCount)}</span>
-              </div>
-              <div>
-                <span className="text-muted-foreground">Format:</span>
-                <span className="ml-2 font-bold uppercase">{defaultMatchFormat}</span>
-              </div>
-              <div>
-                <span className="text-muted-foreground">Czas trwania:</span>
-                <span className="ml-2 font-bold">~{roundsCount * 4} tyg.</span>
-              </div>
             </div>
           </div>
         </CardContent>

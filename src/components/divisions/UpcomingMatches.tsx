@@ -122,6 +122,7 @@ export function UpcomingMatches({ matches, divisionColor, theme }: UpcomingMatch
                                             width={36}
                                             height={36}
                                             className="rounded-sm"
+                                            unoptimized
                                         />
                                     ) : (
                                         <div className="w-9 h-9 bg-muted rounded-sm flex items-center justify-center text-xs font-bold">
@@ -147,6 +148,7 @@ export function UpcomingMatches({ matches, divisionColor, theme }: UpcomingMatch
                                             width={36}
                                             height={36}
                                             className="rounded-sm"
+                                            unoptimized
                                         />
                                     ) : (
                                         <div className="w-9 h-9 bg-muted rounded-sm flex items-center justify-center text-xs font-bold">

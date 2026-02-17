@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useTournament } from '@/context/TournamentContext';
 import { Card, CardHeader, CardContent, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -20,6 +20,14 @@ import {
   MessageSquare,
   Check,
   Loader2,
+  Bold,
+  Italic,
+  Link2,
+  List,
+  Heading1,
+  Heading2,
+  Image,
+  CornerDownRight,
 } from 'lucide-react';
 import { db } from '@/lib/firebase';
 import { collection, getDocs, doc, setDoc, writeBatch, Timestamp } from 'firebase/firestore';
@@ -36,6 +44,418 @@ interface RuleParagraph {
   content: string;
   commentary?: string;
   order: number;
+  parentId?: string; // For nested sub-paragraphs (e.g., 5.11.1)
+}
+
+// Helper to format markdown text
+const insertMarkdown = (
+  textareaRef: React.RefObject<HTMLTextAreaElement | null>,
+  format: 'bold' | 'italic' | 'link' | 'list' | 'h1' | 'h2' | 'image',
+  value: string,
+  onChange: (newValue: string) => void
+) => {
+  const textarea = textareaRef.current;
+  if (!textarea) return;
+
+  const start = textarea.selectionStart;
+  const end = textarea.selectionEnd;
+  const selectedText = value.substring(start, end);
+
+  let newText = '';
+  let cursorOffset = 0;
+
+  switch (format) {
+    case 'bold':
+      newText = value.substring(0, start) + `**${selectedText || 'tekst'}**` + value.substring(end);
+      cursorOffset = selectedText ? 0 : 7;
+      break;
+    case 'italic':
+      newText = value.substring(0, start) + `*${selectedText || 'tekst'}*` + value.substring(end);
+      cursorOffset = selectedText ? 0 : 6;
+      break;
+    case 'link':
+      newText = value.substring(0, start) + `[${selectedText || 'tekst'}](url)` + value.substring(end);
+      cursorOffset = selectedText ? 0 : 11;
+      break;
+    case 'list':
+      newText = value.substring(0, start) + `\n- ${selectedText || 'element listy'}` + value.substring(end);
+      cursorOffset = selectedText ? 0 : 17;
+      break;
+    case 'h1':
+      newText = value.substring(0, start) + `# ${selectedText || 'Nagłówek'}` + value.substring(end);
+      cursorOffset = selectedText ? 0 : 10;
+      break;
+    case 'h2':
+      newText = value.substring(0, start) + `## ${selectedText || 'Nagłówek'}` + value.substring(end);
+      cursorOffset = selectedText ? 0 : 11;
+      break;
+    case 'image':
+      newText = value.substring(0, start) + `![opis](url-obrazka)` + value.substring(end);
+      cursorOffset = 20;
+      break;
+  }
+
+  onChange(newText);
+  
+  // Set cursor position after state update
+  setTimeout(() => {
+    textarea.focus();
+    const newPos = end + cursorOffset;
+    textarea.setSelectionRange(newPos, newPos);
+  }, 0);
+};
+
+interface SubParagraphProps {
+  paragraph: RuleParagraph;
+  number: string;
+  isEditing: boolean;
+  onStartEdit: () => void;
+  onStopEdit: () => void;
+  onUpdate: (updates: Partial<RuleParagraph>) => void;
+  onDelete: () => void;
+}
+
+interface ParagraphEditorProps {
+  section: RuleSection;
+  paragraph: RuleParagraph;
+  paragraphNumber: string;
+  isEditing: boolean;
+  onStartEdit: () => void;
+  onStopEdit: () => void;
+  onUpdate: (updates: Partial<RuleParagraph>) => void;
+  onDelete: () => void;
+  onAddSubParagraph: () => void;
+  theme: { primaryColor: string };
+  subParagraphs: SubParagraphProps[];
+}
+
+/**
+ * Rich text editor toolbar for paragraph content
+ */
+function EditorToolbar({ 
+  textareaRef, 
+  value, 
+  onChange 
+}: { 
+  textareaRef: React.RefObject<HTMLTextAreaElement | null>; 
+  value: string; 
+  onChange: (value: string) => void;
+}) {
+  return (
+    <div className="flex items-center gap-1 p-2 border border-border border-b-0 rounded-t-lg bg-muted/50">
+      <Button 
+        type="button" 
+        variant="ghost" 
+        size="icon" 
+        className="h-8 w-8"
+        onClick={() => insertMarkdown(textareaRef, 'h1', value, onChange)}
+        title="Nagłówek 1"
+      >
+        <Heading1 className="h-4 w-4" />
+      </Button>
+      <Button 
+        type="button" 
+        variant="ghost" 
+        size="icon" 
+        className="h-8 w-8"
+        onClick={() => insertMarkdown(textareaRef, 'h2', value, onChange)}
+        title="Nagłówek 2"
+      >
+        <Heading2 className="h-4 w-4" />
+      </Button>
+      <div className="w-px h-6 bg-border mx-1" />
+      <Button 
+        type="button" 
+        variant="ghost" 
+        size="icon" 
+        className="h-8 w-8"
+        onClick={() => insertMarkdown(textareaRef, 'bold', value, onChange)}
+        title="Pogrubienie"
+      >
+        <Bold className="h-4 w-4" />
+      </Button>
+      <Button 
+        type="button" 
+        variant="ghost" 
+        size="icon" 
+        className="h-8 w-8"
+        onClick={() => insertMarkdown(textareaRef, 'italic', value, onChange)}
+        title="Kursywa"
+      >
+        <Italic className="h-4 w-4" />
+      </Button>
+      <div className="w-px h-6 bg-border mx-1" />
+      <Button 
+        type="button" 
+        variant="ghost" 
+        size="icon" 
+        className="h-8 w-8"
+        onClick={() => insertMarkdown(textareaRef, 'link', value, onChange)}
+        title="Link"
+      >
+        <Link2 className="h-4 w-4" />
+      </Button>
+      <Button 
+        type="button" 
+        variant="ghost" 
+        size="icon" 
+        className="h-8 w-8"
+        onClick={() => insertMarkdown(textareaRef, 'list', value, onChange)}
+        title="Lista"
+      >
+        <List className="h-4 w-4" />
+      </Button>
+      <Button 
+        type="button" 
+        variant="ghost" 
+        size="icon" 
+        className="h-8 w-8"
+        onClick={() => insertMarkdown(textareaRef, 'image', value, onChange)}
+        title="Obrazek"
+      >
+        <Image className="h-4 w-4" />
+      </Button>
+    </div>
+  );
+}
+
+/**
+ * Single paragraph editor with rich text support
+ */
+function ParagraphEditor({
+  section,
+  paragraph,
+  paragraphNumber,
+  isEditing,
+  onStartEdit,
+  onStopEdit,
+  onUpdate,
+  onDelete,
+  onAddSubParagraph,
+  theme,
+  subParagraphs,
+}: ParagraphEditorProps) {
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  
+  return (
+    <div className="space-y-2">
+      {/* Main paragraph */}
+      <div 
+        className={cn(
+          "p-4 rounded-xl border border-border bg-background/50",
+          paragraph.parentId && "ml-8 border-l-2 border-l-blue-500/30"
+        )}
+      >
+        {isEditing ? (
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label className="font-logik">Treść paragrafu ({paragraphNumber})</Label>
+              <EditorToolbar 
+                textareaRef={textareaRef} 
+                value={paragraph.content} 
+                onChange={(content) => onUpdate({ content })} 
+              />
+              <Textarea
+                ref={textareaRef}
+                value={paragraph.content}
+                onChange={(e) => onUpdate({ content: e.target.value })}
+                className="font-logik resize-none rounded-t-none border-t-0 min-h-[100px]"
+                placeholder="Treść paragrafu... (obsługuje Markdown)"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="font-logik flex items-center gap-2">
+                <MessageSquare className="h-4 w-4" />
+                Komentarz (opcjonalny)
+              </Label>
+              <Textarea
+                value={paragraph.commentary || ''}
+                onChange={(e) => onUpdate({ commentary: e.target.value })}
+                placeholder="Dodatkowe wyjaśnienie lub kontekst..."
+                className="font-logik resize-none text-sm"
+                rows={2}
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onStopEdit}
+                className="font-logik"
+              >
+                Gotowe
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-start gap-4">
+            <span className="text-sm text-muted-foreground font-logik shrink-0 tabular-nums">
+              {paragraphNumber}
+            </span>
+            <div className="flex-1 min-w-0">
+              <p className="font-logik whitespace-pre-wrap">{paragraph.content}</p>
+              {paragraph.commentary && (
+                <div 
+                  className="mt-2 inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-logik"
+                  style={{ 
+                    backgroundColor: `${theme.primaryColor}20`,
+                    color: theme.primaryColor 
+                  }}
+                >
+                  <MessageSquare className="h-3 w-3" />
+                  Ma komentarz
+                </div>
+              )}
+            </div>
+            <div className="flex items-center gap-1 shrink-0">
+              {/* Add sub-paragraph button - only for parent paragraphs */}
+              {!paragraph.parentId && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={onAddSubParagraph}
+                  className="h-8 w-8"
+                  title="Dodaj podparagraf"
+                >
+                  <CornerDownRight className="h-4 w-4" />
+                </Button>
+              )}
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={onStartEdit}
+                className="h-8 w-8"
+              >
+                <Edit2 className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={onDelete}
+                className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-500/10"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Sub-paragraphs */}
+      {subParagraphs.map((subProps) => (
+        <SubParagraphEditor
+          key={subProps.paragraph.id}
+          {...subProps}
+          theme={theme}
+        />
+      ))}
+    </div>
+  );
+}
+
+/**
+ * Sub-paragraph editor (nested paragraphs like 5.11.1)
+ */
+function SubParagraphEditor({
+  paragraph,
+  number,
+  isEditing,
+  onStartEdit,
+  onStopEdit,
+  onUpdate,
+  onDelete,
+  theme,
+}: SubParagraphProps & { theme: { primaryColor: string } }) {
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  
+  return (
+    <div 
+      className="p-4 rounded-xl border border-border bg-background/50 ml-8 border-l-2"
+      style={{ borderLeftColor: `${theme.primaryColor}50` }}
+    >
+      {isEditing ? (
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label className="font-logik">Treść podparagrafu ({number})</Label>
+            <EditorToolbar 
+              textareaRef={textareaRef} 
+              value={paragraph.content} 
+              onChange={(content) => onUpdate({ content })} 
+            />
+            <Textarea
+              ref={textareaRef}
+              value={paragraph.content}
+              onChange={(e) => onUpdate({ content: e.target.value })}
+              className="font-logik resize-none rounded-t-none border-t-0 min-h-[100px]"
+              placeholder="Treść podparagrafu... (obsługuje Markdown)"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label className="font-logik flex items-center gap-2">
+              <MessageSquare className="h-4 w-4" />
+              Komentarz (opcjonalny)
+            </Label>
+            <Textarea
+              value={paragraph.commentary || ''}
+              onChange={(e) => onUpdate({ commentary: e.target.value })}
+              placeholder="Dodatkowe wyjaśnienie lub kontekst..."
+              className="font-logik resize-none text-sm"
+              rows={2}
+            />
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onStopEdit}
+              className="font-logik"
+            >
+              Gotowe
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <div className="flex items-start gap-4">
+          <span className="text-sm text-muted-foreground font-logik shrink-0 tabular-nums">
+            {number}
+          </span>
+          <div className="flex-1 min-w-0">
+            <p className="font-logik whitespace-pre-wrap">{paragraph.content}</p>
+            {paragraph.commentary && (
+              <div 
+                className="mt-2 inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-logik"
+                style={{ 
+                  backgroundColor: `${theme.primaryColor}20`,
+                  color: theme.primaryColor 
+                }}
+              >
+                <MessageSquare className="h-3 w-3" />
+                Ma komentarz
+              </div>
+            )}
+          </div>
+          <div className="flex items-center gap-1 shrink-0">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onStartEdit}
+              className="h-8 w-8"
+            >
+              <Edit2 className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onDelete}
+              className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-500/10"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 /**
@@ -78,6 +498,7 @@ export function RulesTab() {
             content: pDoc.data().content || '',
             commentary: pDoc.data().commentary || undefined,
             order: pDoc.data().order || 0,
+            parentId: pDoc.data().parentId || undefined,
           }));
           
           // Sort paragraphs by order
@@ -164,6 +585,7 @@ export function RulesTab() {
             content: paragraph.content,
             commentary: paragraph.commentary || null,
             order: paragraph.order,
+            parentId: paragraph.parentId || null,
             updatedAt: Timestamp.now(),
           }, { merge: true });
         }
@@ -249,11 +671,49 @@ export function RulesTab() {
       if (s.id === sectionId) {
         return {
           ...s,
-          paragraphs: s.paragraphs.filter(p => p.id !== paragraphId),
+          // Also delete sub-paragraphs when parent is deleted
+          paragraphs: s.paragraphs.filter(p => p.id !== paragraphId && p.parentId !== paragraphId),
         };
       }
       return s;
     }));
+  };
+
+  // Add a sub-paragraph to a parent paragraph
+  const addSubParagraph = (sectionId: string, parentId: string) => {
+    setSections(sections.map(s => {
+      if (s.id === sectionId) {
+        // Find existing sub-paragraphs of this parent
+        const existingSubParagraphs = s.paragraphs.filter(p => p.parentId === parentId);
+        const newOrder = existingSubParagraphs.length + 1;
+        
+        const newParagraph: RuleParagraph = {
+          id: `para-${Date.now()}`,
+          content: 'Nowy podparagraf...',
+          order: newOrder,
+          parentId: parentId,
+        };
+        return { ...s, paragraphs: [...s.paragraphs, newParagraph] };
+      }
+      return s;
+    }));
+  };
+
+  // Helper to get paragraph number (e.g., "5.11" or "5.11.1")
+  const getParagraphNumber = (section: RuleSection, paragraph: RuleParagraph, paraIndex: number): string => {
+    if (!paragraph.parentId) {
+      return `${section.order}.${paraIndex + 1}`;
+    }
+    
+    // Find parent paragraph index
+    const parentParagraphs = section.paragraphs.filter(p => !p.parentId);
+    const parentIndex = parentParagraphs.findIndex(p => p.id === paragraph.parentId);
+    
+    // Find sub-paragraph index
+    const subParagraphs = section.paragraphs.filter(p => p.parentId === paragraph.parentId);
+    const subIndex = subParagraphs.findIndex(p => p.id === paragraph.id);
+    
+    return `${section.order}.${parentIndex + 1}.${subIndex + 1}`;
   };
 
   if (loading) {
@@ -392,85 +852,37 @@ export function RulesTab() {
               </CardHeader>
 
               <CardContent className="space-y-4">
-                {/* Paragraphs */}
-                {section.paragraphs.map((paragraph, paraIndex) => (
-                  <div 
-                    key={paragraph.id}
-                    className="p-4 rounded-xl border border-border bg-background/50"
-                  >
-                    {editingParagraph === paragraph.id ? (
-                      <div className="space-y-4">
-                        <div className="space-y-2">
-                          <Label className="font-logik">Treść paragrafu</Label>
-                          <Textarea
-                            value={paragraph.content}
-                            onChange={(e) => updateParagraph(section.id, paragraph.id, { content: e.target.value })}
-                            className="font-logik resize-none"
-                            rows={3}
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label className="font-logik flex items-center gap-2">
-                            <MessageSquare className="h-4 w-4" />
-                            Komentarz (opcjonalny)
-                          </Label>
-                          <Textarea
-                            value={paragraph.commentary || ''}
-                            onChange={(e) => updateParagraph(section.id, paragraph.id, { commentary: e.target.value })}
-                            placeholder="Dodatkowe wyjaśnienie lub kontekst..."
-                            className="font-logik resize-none text-sm"
-                            rows={2}
-                          />
-                        </div>
-                        <div className="flex justify-end gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setEditingParagraph(null)}
-                            className="font-logik"
-                          >
-                            Gotowe
-                          </Button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="flex items-start gap-4">
-                        <span className="text-sm text-muted-foreground font-logik shrink-0">
-                          {section.order}.{paraIndex + 1}
-                        </span>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-logik">{paragraph.content}</p>
-                          {paragraph.commentary && (
-                            <div className="mt-2 p-2 rounded-lg bg-blue-500/10 border border-blue-500/20">
-                              <p className="text-sm text-blue-400 font-logik flex items-start gap-2">
-                                <MessageSquare className="h-4 w-4 mt-0.5 shrink-0" />
-                                {paragraph.commentary}
-                              </p>
-                            </div>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-1 shrink-0">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => setEditingParagraph(paragraph.id)}
-                            className="h-8 w-8"
-                          >
-                            <Edit2 className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => deleteParagraph(section.id, paragraph.id)}
-                            className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-500/10"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ))}
+                {/* Paragraphs - Render parent paragraphs first, then their children */}
+                {section.paragraphs
+                  .filter(p => !p.parentId) // Only parent paragraphs
+                  .map((paragraph, paraIndex) => {
+                    const subParagraphs = section.paragraphs.filter(p => p.parentId === paragraph.id);
+                    
+                    return (
+                      <ParagraphEditor
+                        key={paragraph.id}
+                        section={section}
+                        paragraph={paragraph}
+                        paragraphNumber={getParagraphNumber(section, paragraph, paraIndex)}
+                        isEditing={editingParagraph === paragraph.id}
+                        onStartEdit={() => setEditingParagraph(paragraph.id)}
+                        onStopEdit={() => setEditingParagraph(null)}
+                        onUpdate={(updates) => updateParagraph(section.id, paragraph.id, updates)}
+                        onDelete={() => deleteParagraph(section.id, paragraph.id)}
+                        onAddSubParagraph={() => addSubParagraph(section.id, paragraph.id)}
+                        theme={theme}
+                        subParagraphs={subParagraphs.map((subPara, subIndex) => ({
+                          paragraph: subPara,
+                          number: getParagraphNumber(section, subPara, subIndex),
+                          isEditing: editingParagraph === subPara.id,
+                          onStartEdit: () => setEditingParagraph(subPara.id),
+                          onStopEdit: () => setEditingParagraph(null),
+                          onUpdate: (updates: Partial<RuleParagraph>) => updateParagraph(section.id, subPara.id, updates),
+                          onDelete: () => deleteParagraph(section.id, subPara.id),
+                        }))}
+                      />
+                    );
+                  })}
 
                 {/* Add Paragraph Button */}
                 <Button

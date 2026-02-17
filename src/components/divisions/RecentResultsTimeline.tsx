@@ -143,6 +143,7 @@ export function RecentResultsTimeline({ matches, divisionColor, theme }: RecentR
                                                         width={32}
                                                         height={32}
                                                         className="rounded-sm"
+                                                        unoptimized
                                                     />
                                                 ) : (
                                                     <div className="w-8 h-8 bg-muted rounded-sm flex items-center justify-center text-xs font-bold">
@@ -192,6 +193,7 @@ export function RecentResultsTimeline({ matches, divisionColor, theme }: RecentR
                                                         width={32}
                                                         height={32}
                                                         className="rounded-sm"
+                                                        unoptimized
                                                     />
                                                 ) : (
                                                     <div className="w-8 h-8 bg-muted rounded-sm flex items-center justify-center text-xs font-bold">

@@ -9,6 +9,10 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
+import { useToast } from '@/hooks/use-toast';
+import { doc, updateDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { CheckCircle, AlertCircle } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -79,12 +83,44 @@ export function NewsTab() {
     published: false,
   });
   const [isSaving, setIsSaving] = useState(false);
+  const { toast } = useToast();
 
   const handleSave = async () => {
+    if (!tournament?.id) {
+      toast({
+        title: 'Błąd',
+        description: 'Nie znaleziono ID turnieju',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setIsSaving(true);
-    // TODO: Implement save functionality
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    setIsSaving(false);
+    try {
+      const tournamentRef = doc(db, 'tournaments', tournament.id);
+      await updateDoc(tournamentRef, {
+        newsPosts: posts,
+        updatedAt: new Date().toISOString(),
+      });
+
+      toast({
+        title: 'Zapisano',
+        description: 'Aktualności zostały zaktualizowane',
+        action: <CheckCircle className="h-5 w-5 text-green-500" />,
+      });
+
+      setTimeout(() => window.location.reload(), 1000);
+    } catch (error) {
+      console.error('Error saving news:', error);
+      toast({
+        title: 'Błąd',
+        description: 'Nie udało się zapisać aktualności',
+        variant: 'destructive',
+        action: <AlertCircle className="h-5 w-5" />,
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleCreatePost = () => {

@@ -63,9 +63,14 @@ export function PDLMyTeamHero({
                     <div className="relative w-32 h-32 lg:w-40 lg:h-40 rounded-2xl border-2 border-white/10 overflow-hidden bg-black/40 backdrop-blur-xl shadow-2xl">
                         <Image
                             src={team.logoUrl || '/placeholder-team.png'}
-                            alt={team.name}
+                            alt=""
                             fill
                             className="object-cover"
+                            unoptimized
+                            onError={(e) => {
+                                const target = e.target as HTMLImageElement;
+                                target.src = '/placeholder-team.png';
+                            }}
                         />
                     </div>
                 </div>

@@ -115,10 +115,6 @@ const RegistrationClosed: React.FC = () => {
             <p className="text-lg text-[#d4d4d4] font-medium mb-4">
               {t('seasonInProgress')}
             </p>
-            <div className="inline-flex items-center gap-2 bg-gradient-to-r from-[#8B1538]/20 to-[#d4d4d4]/20 border border-[#d4d4d4]/30 rounded-lg px-4 py-2">
-              <Gamepad2 className="w-5 h-5 text-[#d4d4d4]" />
-              <span className="text-[#d4d4d4] font-medium">{t('fantasyStillOpen')}</span>
-            </div>
           </motion.div>
 
           {/* Navigation Buttons */}

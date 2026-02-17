@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSteam64IdFromUrl, getOpenDotaAccountIdFromUrl } from '@/lib/server-utils';
 import { getAdminDb, ensureAdminInitialized } from '@/lib/admin';
+import { fetchSteamProfile } from '@/lib/steam-id-utils';
 
 export async function POST(request: NextRequest) {
   try {
@@ -51,10 +52,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Fetch Steam profile data (avatar, persona name, etc.)
+    let profileData;
+    try {
+      profileData = await fetchSteamProfile(steamId64);
+    } catch (error) {
+      console.warn('Could not fetch Steam profile data:', error);
+      // Continue without profile data
+    }
+
     return NextResponse.json({
       steamId64,
       steamId32: steamId32.toString(),
-      isValid: true
+      isValid: true,
+      avatar: profileData?.avatar,
+      avatarmedium: profileData?.avatarmedium,
+      avatarfull: profileData?.avatarfull,
+      personaname: profileData?.personaname,
+      profileurl: profileData?.profileurl,
     });
 
   } catch (error) {

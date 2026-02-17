@@ -4,6 +4,11 @@ import { useState, useEffect } from "react";
 import { useTournament } from '@/context/TournamentContext';
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { 
   ScrollText, 
   ChevronRight,
@@ -13,6 +18,7 @@ import {
   MessageSquare,
   BookOpen,
   ExternalLink,
+  Info,
 } from "lucide-react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
@@ -25,6 +31,7 @@ interface RuleParagraph {
   content: string;
   commentary?: string;
   order: number;
+  parentId?: string; // For nested sub-paragraphs (e.g., 5.11.1)
 }
 
 interface RuleSection {
@@ -70,6 +77,7 @@ export default function RulesPage() {
             content: pDoc.data().content || '',
             commentary: pDoc.data().commentary || undefined,
             order: pDoc.data().order || 0,
+            parentId: pDoc.data().parentId || undefined,
           }));
           
           paragraphs.sort((a, b) => a.order - b.order);
@@ -133,7 +141,7 @@ export default function RulesPage() {
         <div className="relative z-10 flex items-center justify-center min-h-[60vh]">
           <div className="text-center">
             <Loader2 className="w-12 h-12 animate-spin mx-auto mb-4" style={{ color: theme.primaryColor }} />
-            <p className="text-gray-400 font-logik tracking-wider uppercase text-sm">Ładowanie regulaminu...</p>
+            <p className="text-gray-300 font-logik font-medium tracking-wider uppercase text-sm">Ładowanie regulaminu...</p>
           </div>
         </div>
       </div>
@@ -172,16 +180,6 @@ export default function RulesPage() {
             style={{ background: `${theme.primaryColor}20` }}
           />
 
-          {/* Icon */}
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            className="relative z-10 inline-flex items-center justify-center w-20 h-20 rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm"
-          >
-            <ScrollText className="w-10 h-10" style={{ color: theme.primaryColor }} />
-          </motion.div>
-
           <motion.h1
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -191,19 +189,10 @@ export default function RulesPage() {
             Regulamin
           </motion.h1>
 
-          <motion.p
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.6, delay: 0.2 }}
-            className="text-gray-400 font-logik text-lg max-w-2xl mx-auto"
-          >
-            Oficjalny regulamin turnieju {tournament.name}
-          </motion.p>
-
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ duration: 0.6, delay: 0.3 }}
+            transition={{ duration: 0.6, delay: 0.2 }}
             className="flex items-center justify-center gap-4 opacity-60"
           >
             <div className="h-[1px] w-16 bg-gradient-to-r from-transparent" style={{ backgroundImage: `linear-gradient(to right, transparent, ${theme.primaryColor})` }} />
@@ -223,7 +212,7 @@ export default function RulesPage() {
             <h2 className="text-2xl font-logik-extended-bold text-white mb-3">
               Regulamin w przygotowaniu
             </h2>
-            <p className="text-gray-400 font-logik max-w-md mx-auto">
+            <p className="text-gray-300 font-body font-medium max-w-md mx-auto">
               Regulamin turnieju jest aktualnie opracowywany. Wróć wkrótce po aktualizacje.
             </p>
           </motion.div>
@@ -266,7 +255,7 @@ export default function RulesPage() {
                           >
                             {index + 1}
                           </span>
-                          <span className="font-logik text-sm truncate flex-1">
+                          <span className="font-body text-sm truncate flex-1">
                             {section.title.replace(/^\d+\.\s*/, '')}
                           </span>
                           <ChevronRight 
@@ -278,22 +267,6 @@ export default function RulesPage() {
                         </div>
                       </button>
                     ))}
-                  </div>
-                </div>
-
-                {/* Quick Stats */}
-                <div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm p-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="text-center">
-                      <p className="text-2xl font-logik-extended-bold text-white">{sections.length}</p>
-                      <p className="text-xs text-gray-500 font-logik uppercase tracking-wider">Rozdziałów</p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-2xl font-logik-extended-bold text-white">
-                        {sections.reduce((sum, s) => sum + s.paragraphs.length, 0)}
-                      </p>
-                      <p className="text-xs text-gray-500 font-logik uppercase tracking-wider">Paragrafów</p>
-                    </div>
                   </div>
                 </div>
               </div>
@@ -331,9 +304,6 @@ export default function RulesPage() {
                         <h2 className="text-xl font-logik-extended-bold text-white">
                           {section.title}
                         </h2>
-                        <p className="text-sm text-gray-500 font-logik">
-                          {section.paragraphs.length} {section.paragraphs.length === 1 ? 'paragraf' : section.paragraphs.length < 5 ? 'paragrafy' : 'paragrafów'}
-                        </p>
                       </div>
                       <ChevronDown
                         className={cn(
@@ -354,45 +324,125 @@ export default function RulesPage() {
                           className="overflow-hidden"
                         >
                           <div className="px-6 pb-6 space-y-4">
-                            {section.paragraphs.map((paragraph, paraIndex) => (
-                              <div
-                                key={paragraph.id}
-                                className="flex gap-4 group"
-                              >
-                                {/* Paragraph Number */}
-                                <div className="shrink-0">
-                                  <span className="text-sm text-gray-500 font-logik tabular-nums">
-                                    {section.order}.{paraIndex + 1}
-                                  </span>
-                                </div>
+                            {/* Render parent paragraphs and their sub-paragraphs */}
+                            {section.paragraphs
+                              .filter(p => !p.parentId)
+                              .map((paragraph, paraIndex) => {
+                                // Get sub-paragraphs for this parent
+                                const subParagraphs = section.paragraphs.filter(p => p.parentId === paragraph.id);
+                                
+                                return (
+                                  <div key={paragraph.id} className="space-y-3">
+                                    {/* Parent paragraph */}
+                                    <div className="flex gap-4 group">
+                                      {/* Paragraph Number */}
+                                      <div className="shrink-0">
+                                        <span className="text-sm text-gray-400 font-body font-medium tabular-nums">
+                                          {section.order}.{paraIndex + 1}
+                                        </span>
+                                      </div>
 
-                                {/* Paragraph Content */}
-                                <div className="flex-1 space-y-2">
-                                  <p className="text-gray-200 font-logik leading-relaxed">
-                                    {paragraph.content}
-                                  </p>
-
-                                  {/* Commentary */}
-                                  {paragraph.commentary && (
-                                    <div 
-                                      className="flex items-start gap-2 p-3 rounded-xl border"
-                                      style={{ 
-                                        backgroundColor: `${theme.primaryColor}10`,
-                                        borderColor: `${theme.primaryColor}30`
-                                      }}
-                                    >
-                                      <MessageSquare 
-                                        className="w-4 h-4 mt-0.5 shrink-0" 
-                                        style={{ color: theme.primaryColor }}
-                                      />
-                                      <p className="text-sm font-logik" style={{ color: theme.primaryColor }}>
-                                        {paragraph.commentary}
-                                      </p>
+                                      {/* Paragraph Content */}
+                                      <div className="flex-1">
+                                        <div className="flex items-start gap-2">
+                                          <p className="text-gray-200 font-rules-content leading-relaxed flex-1 whitespace-pre-wrap">
+                                            {paragraph.content}
+                                          </p>
+                                          
+                                          {/* Commentary Popup */}
+                                          {paragraph.commentary && (
+                                            <Popover>
+                                              <PopoverTrigger asChild>
+                                                <button
+                                                  className="shrink-0 p-1.5 rounded-full transition-colors hover:bg-white/10"
+                                                  style={{ color: theme.primaryColor }}
+                                                  title="Pokaż komentarz"
+                                                >
+                                                  <Info className="w-4 h-4" />
+                                                </button>
+                                              </PopoverTrigger>
+                                              <PopoverContent 
+                                                className="w-80 p-4"
+                                                style={{ 
+                                                  backgroundColor: `${theme.primaryColor}15`,
+                                                  borderColor: `${theme.primaryColor}40`
+                                                }}
+                                              >
+                                                <div className="flex items-start gap-2">
+                                                  <MessageSquare 
+                                                    className="w-4 h-4 mt-0.5 shrink-0" 
+                                                    style={{ color: theme.primaryColor }}
+                                                  />
+                                                  <p className="text-sm font-rules-content leading-relaxed" style={{ color: theme.primaryColor }}>
+                                                    {paragraph.commentary}
+                                                  </p>
+                                                </div>
+                                              </PopoverContent>
+                                            </Popover>
+                                          )}
+                                        </div>
+                                      </div>
                                     </div>
-                                  )}
-                                </div>
-                              </div>
-                            ))}
+
+                                    {/* Sub-paragraphs */}
+                                    {subParagraphs.map((subParagraph, subIndex) => (
+                                      <div 
+                                        key={subParagraph.id} 
+                                        className="flex gap-4 group ml-8 pl-4 border-l-2"
+                                        style={{ borderLeftColor: `${theme.primaryColor}30` }}
+                                      >
+                                        {/* Sub-paragraph Number */}
+                                        <div className="shrink-0">
+                                          <span className="text-sm text-gray-400 font-body font-medium tabular-nums">
+                                            {section.order}.{paraIndex + 1}.{subIndex + 1}
+                                          </span>
+                                        </div>
+
+                                        {/* Sub-paragraph Content */}
+                                        <div className="flex-1">
+                                          <div className="flex items-start gap-2">
+                                            <p className="text-gray-200 font-rules-content leading-relaxed flex-1 whitespace-pre-wrap">
+                                              {subParagraph.content}
+                                            </p>
+                                            
+                                            {/* Commentary Popup */}
+                                            {subParagraph.commentary && (
+                                              <Popover>
+                                                <PopoverTrigger asChild>
+                                                  <button
+                                                    className="shrink-0 p-1.5 rounded-full transition-colors hover:bg-white/10"
+                                                    style={{ color: theme.primaryColor }}
+                                                    title="Pokaż komentarz"
+                                                  >
+                                                    <Info className="w-4 h-4" />
+                                                  </button>
+                                                </PopoverTrigger>
+                                                <PopoverContent 
+                                                  className="w-80 p-4"
+                                                  style={{ 
+                                                    backgroundColor: `${theme.primaryColor}15`,
+                                                    borderColor: `${theme.primaryColor}40`
+                                                  }}
+                                                >
+                                                  <div className="flex items-start gap-2">
+                                                    <MessageSquare 
+                                                      className="w-4 h-4 mt-0.5 shrink-0" 
+                                                      style={{ color: theme.primaryColor }}
+                                                    />
+                                                    <p className="text-sm font-rules-content leading-relaxed" style={{ color: theme.primaryColor }}>
+                                                      {subParagraph.commentary}
+                                                    </p>
+                                                  </div>
+                                                </PopoverContent>
+                                              </Popover>
+                                            )}
+                                          </div>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                );
+                              })}
                           </div>
                         </motion.div>
                       )}
@@ -411,10 +461,10 @@ export default function RulesPage() {
           transition={{ duration: 0.5, delay: 0.5 }}
           className="text-center py-8 border-t border-white/10"
         >
-          <p className="text-gray-500 font-logik text-sm">
+          <p className="text-gray-400 font-logik-readable font-medium text-sm">
             Ostatnia aktualizacja regulaminu: {new Date().toLocaleDateString('pl-PL')}
           </p>
-          <p className="text-gray-600 font-logik text-xs mt-2">
+          <p className="text-gray-500 font-logik-readable font-medium text-xs mt-2">
             W razie pytań dotyczących regulaminu, skontaktuj się z organizatorami turnieju.
           </p>
         </motion.div>

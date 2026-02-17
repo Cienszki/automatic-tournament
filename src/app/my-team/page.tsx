@@ -3,6 +3,7 @@
 
 import * as React from "react";
 import { useAuth } from "@/context/AuthContext";
+import { useTournament } from "@/context/TournamentContext";
 import { useTranslation } from "@/hooks/useTranslation";
 import { MyTeamHeader } from "@/components/app/my-team/MyTeamHeader";
 import { RosterCard } from "@/components/app/my-team/RosterCard";
@@ -17,9 +18,11 @@ import { getUserTeam } from "@/lib/firestore";
 import { getMatchesForTeam, getAllTeams, getAllStandins } from "@/lib/firestore";
 import type { Team, Match, Standin } from "@/lib/definitions";
 import NoTeamFound from '@/components/app/my-team/NoTeamFound';
+import { organizationConfig } from '@/config/organization';
 
 export default function MyTeamPage() {
   const { user, loading: authLoading, signInWithGoogle } = useAuth();
+  const { tournament } = useTournament();
   const { t } = useTranslation();
   const [team, setTeam] = React.useState<Team | null>(null);
   const [matches, setMatches] = React.useState<Match[]>([]);
@@ -79,7 +82,7 @@ export default function MyTeamPage() {
             <CardTitle className="text-3xl font-bold text-[#0ff0fc] drop-shadow-[0_0_8px_#0ff0fc]">{t("myTeam.welcomeCaptain")}</CardTitle>
             <CardDescription className="text-lg text-[#b86fc6] pt-2">
               {t("myTeam.welcomeDesc")}<br />
-              <span className="block mt-2 text-[#e0d7f7]">{t("myTeam.needTeamOrPlayers")} <a href="https://discord.gg/ZxgmF7Kr4t" target="_blank" rel="noopener noreferrer" className="underline hover:text-[#0ff0fc]">{t("myTeam.discord")}</a> {t("myTeam.findTeamChannel")}</span>
+              <span className="block mt-2 text-[#e0d7f7]">{t("myTeam.needTeamOrPlayers")} <a href={tournament?.discordUrl || organizationConfig.defaults.discord} target="_blank" rel="noopener noreferrer" className="underline hover:text-[#0ff0fc]">{t("myTeam.discord")}</a> {t("myTeam.findTeamChannel")}</span>
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -105,7 +108,7 @@ export default function MyTeamPage() {
             <CardTitle className="text-3xl font-bold text-[#0ff0fc] drop-shadow-[0_0_8px_#0ff0fc]">{t("myTeam.welcomeCaptain")}</CardTitle>
             <CardDescription className="text-lg text-[#b86fc6] pt-2">
               {t("myTeam.readyToJoin")}<br />
-              <span className="block mt-2 text-[#e0d7f7]">{t("myTeam.needTeamOrPlayers")} <a href="https://discord.gg/ZxgmF7Kr4t" target="_blank" rel="noopener noreferrer" className="underline hover:text-[#0ff0fc]">{t("myTeam.discord")}</a> {t("myTeam.findTeamChannel")}</span>
+              <span className="block mt-2 text-[#e0d7f7]">{t("myTeam.needTeamOrPlayers")} <a href={tournament?.discordUrl || organizationConfig.defaults.discord} target="_blank" rel="noopener noreferrer" className="underline hover:text-[#0ff0fc]">{t("myTeam.discord")}</a> {t("myTeam.findTeamChannel")}</span>
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">

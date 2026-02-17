@@ -1,5 +1,13 @@
 export { PDLMyTeamHero } from './PDLMyTeamHero';
 export { PDLRosterCard } from './PDLRosterCard';
-export { PDLUpcomingMatch } from './PDLUpcomingMatch';
+export { PDLUpcomingMatch } from './PDLUpcomingMatchNew';
 export { PDLMatchHistory } from './PDLMatchHistory';
 export { PDLTeamStats } from './PDLTeamStats';
+export { PDLStandinRequestSection } from './PDLStandinRequest';
+export { PDLCoachSection } from './PDLCoachSection';
+export { PDLTransferSection } from './PDLTransferSection';
+export { PDLSeasonProgress } from './PDLSeasonProgress';
+export { PDLMatchRules } from './PDLMatchRules';
+export { PDLCaptainActions } from './PDLCaptainActions';
+export { PDLNotificationCenter } from './PDLNotificationCenter';
+export { PDLPreMatchChecklist } from './PDLPreMatchChecklist';

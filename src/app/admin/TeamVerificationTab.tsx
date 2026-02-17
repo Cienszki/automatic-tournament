@@ -242,7 +242,7 @@ export function TeamVerificationTab() {
                             <AccordionItem key={team.id} value={team.id}>
                                 <AccordionTrigger>
                                     <div className="flex items-center space-x-4 w-full mr-4">
-                                        <Image src={team.logoUrl || '/backgrounds/liga_fantasy.png'} alt={team.name} width={40} height={40} className="rounded-md" />
+                                        <Image src={team.logoUrl || '/backgrounds/liga_fantasy.png'} alt={team.name} width={40} height={40} className="rounded-md" unoptimized />
                                         <div className="flex-grow text-left">
                                             <p className="font-bold text-lg">{team.name} <span className="text-sm text-muted-foreground">({team.tag})</span></p>
                                             <p className="text-sm">Total MMR: {team.players?.reduce((acc, p) => acc + p.mmr, 0) || 'N/A'}</p>

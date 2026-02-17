@@ -53,14 +53,14 @@ export default function AdminPage() {
 
   useEffect(() => {
     async function verifyAdmin() {
-      if (user) {
-        const adminStatus = await checkIfAdmin(user);
+      if (user && tournament?.id) {
+        const adminStatus = await checkIfAdmin(user, tournament.id);
         setIsAdmin(adminStatus);
       }
       setIsLoading(false);
     }
     verifyAdmin();
-  }, [user]);
+  }, [user, tournament?.id]);
 
   if (!tournament) return null;
 

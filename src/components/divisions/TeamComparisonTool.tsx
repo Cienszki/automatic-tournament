@@ -185,7 +185,7 @@ export function TeamComparisonTool({ standings, matches, divisionColor, theme }:
                     <SelectItem key={team.teamId} value={team.teamId}>
                       <div className="flex items-center gap-2">
                         {team.teamLogoUrl && (
-                          <Image src={team.teamLogoUrl} alt={team.teamName} width={20} height={20} className="rounded-sm" />
+                          <Image src={team.teamLogoUrl} alt={team.teamName} width={20} height={20} className="rounded-sm" unoptimized />
                         )}
                         {team.teamName}
                       </div>
@@ -208,7 +208,7 @@ export function TeamComparisonTool({ standings, matches, divisionColor, theme }:
                     <SelectItem key={team.teamId} value={team.teamId}>
                       <div className="flex items-center gap-2">
                         {team.teamLogoUrl && (
-                          <Image src={team.teamLogoUrl} alt={team.teamName} width={20} height={20} className="rounded-sm" />
+                          <Image src={team.teamLogoUrl} alt={team.teamName} width={20} height={20} className="rounded-sm" unoptimized />
                         )}
                         {team.teamName}
                       </div>
@@ -232,6 +232,7 @@ export function TeamComparisonTool({ standings, matches, divisionColor, theme }:
                       width={64}
                       height={64}
                       className="mx-auto mb-3 rounded-sm"
+                      unoptimized
                     />
                   )}
                   <p className="font-bold text-lg">{teamAData.teamName}</p>
@@ -250,6 +251,7 @@ export function TeamComparisonTool({ standings, matches, divisionColor, theme }:
                       width={64}
                       height={64}
                       className="mx-auto mb-3 rounded-sm"
+                      unoptimized
                     />
                   )}
                   <p className="font-bold text-lg">{teamBData.teamName}</p>

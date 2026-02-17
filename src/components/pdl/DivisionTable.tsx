@@ -124,6 +124,7 @@ export function DivisionTable({ divisionName, divisionColor, teams, divisionId, 
                         width={24}
                         height={24}
                         className="rounded-sm opacity-80 group-hover:opacity-100 transition-opacity"
+                        unoptimized
                       />
                     )}
                     <span className="truncate tracking-wide">{team.teamName}</span>

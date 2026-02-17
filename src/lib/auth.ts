@@ -6,9 +6,10 @@ import { type User } from "firebase/auth";
  * This is the secure way to check for admin privileges from the client.
  *
  * @param user The Firebase user object.
+ * @param tournamentId Optional tournament ID to check for tournament-specific admin access
  * @returns A promise that resolves to true if the user is an admin, otherwise false.
  */
-export async function checkIfAdmin(user: User): Promise<boolean> {
+export async function checkIfAdmin(user: User, tournamentId?: string): Promise<boolean> {
   if (!user) return false;
 
   try {
@@ -17,8 +18,10 @@ export async function checkIfAdmin(user: User): Promise<boolean> {
     const response = await fetch('/api/checkAdmin', {
         method: 'POST',
         headers: {
-            'Authorization': `Bearer ${token}`
-        }
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ tournamentId })
     });
 
     if (!response.ok) {

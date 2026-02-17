@@ -173,7 +173,7 @@ export default function PlayoffsPage() {
           {/* Header Glow */}
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[200px] bg-pdl-gold/10 blur-[100px] rounded-full pointer-events-none" />
 
-          <h1 className="text-7xl md:text-9xl font-logik-wide-black text-transparent bg-clip-text bg-gradient-to-b from-white via-gray-100 to-gray-500 tracking-tighter uppercase drop-shadow-[0_10px_40px_rgba(0,0,0,0.5)] relative z-10">
+          <h1 className="text-6xl md:text-7xl 2xl:text-9xl font-logik-wide-black text-transparent bg-clip-text bg-gradient-to-b from-white via-gray-100 to-gray-500 tracking-tighter uppercase drop-shadow-[0_10px_40px_rgba(0,0,0,0.5)] relative z-10">
             Playoffs
           </h1>
 
@@ -204,7 +204,6 @@ export default function PlayoffsPage() {
               </div>
               <div>
                 <h2 className="text-3xl font-logik-extended-bold text-white tracking-tight">LAN Finals Bracket</h2>
-                <p className="text-sm text-gray-400 font-logik">Warsaw, 2024 • Single Elimination</p>
               </div>
             </div>
 

@@ -89,9 +89,9 @@ export function DivisionStandingsTable({
       {/* Header Grid - Transparent */}
       <div className="grid grid-cols-12 gap-4 px-6 py-2 text-[10px] font-logik-extended-bold text-white/20 uppercase tracking-[0.2em] mb-4">
         <div className="col-span-1 text-center">#</div>
-        <div className="col-span-4">Drużyna</div>
+        <div className="col-span-5">Drużyna</div>
         <div className="col-span-1 text-center">M</div>
-        <div className="col-span-3 text-center grid grid-cols-3">
+        <div className="col-span-2 text-center grid grid-cols-3">
           <span>W</span><span>D</span><span>L</span>
         </div>
         <div className="col-span-1 text-center hidden md:block">Pkt</div>
@@ -136,7 +136,7 @@ export function DivisionStandingsTable({
               </div>
 
               {/* Team Info */}
-              <div className="col-span-4">
+              <div className="col-span-5">
                 <Link
                   href={getTournamentPath(`/teams/${team.teamId}`)}
                   className="flex items-center gap-4 group-hover:translate-x-2 transition-transform duration-300"
@@ -145,12 +145,12 @@ export function DivisionStandingsTable({
                     src={team.teamLogoUrl}
                     name={team.teamName}
                     size={40}
-                    className="grayscale group-hover:grayscale-0 transition-all duration-300 opacity-70 group-hover:opacity-100"
+                    className="transition-all duration-300"
                   />
                   <div className="flex flex-col">
                     <span
                       className={cn(
-                        "font-logik-extended-bold font-bold text-base transition-all truncate",
+                        "font-logik-extended-bold font-bold text-base transition-all",
                         isTop3 ? textShineClass : "text-white/70 group-hover:text-white"
                       )}
                     >
@@ -166,7 +166,7 @@ export function DivisionStandingsTable({
               </div>
 
               {/* W/D/L */}
-              <div className="col-span-3 grid grid-cols-3 text-center font-bold text-base font-mono">
+              <div className="col-span-2 grid grid-cols-3 text-center font-bold text-base font-mono">
                 <span className="text-emerald-500/80">{team.wins}</span>
                 <span className="text-amber-500/80">{team.draws}</span>
                 <span className="text-rose-500/50">{team.losses}</span>

@@ -21,12 +21,16 @@ export default function SchedulePage() {
       try {
         let fetchedMatches: Match[] = [];
 
+        console.log('[SchedulePage] Loading matches for tournament:', tournament?.id, 'isLegacy:', isLegacyTournament);
+
         if (isLegacyTournament) {
           const allMatches = await getAllMatches();
           fetchedMatches = allMatches;
         } else if (tournament?.id) {
           const matchesRef = collection(db, 'tournaments', tournament.id, 'matches');
           const matchesSnapshot = await getDocs(matchesRef);
+
+          console.log('[SchedulePage] Fetched', matchesSnapshot.docs.length, 'matches from Firestore');
 
           fetchedMatches = matchesSnapshot.docs.map(doc => {
             const data = doc.data();
@@ -60,7 +64,18 @@ export default function SchedulePage() {
           });
         }
 
+        console.log('[SchedulePage] Total fetched matches:', fetchedMatches.length);
+        console.log('[SchedulePage] Sample match:', fetchedMatches[0]);
+
         const validMatches = fetchedMatches.filter(m => (m.scheduled_for || m.dateTime));
+        
+        console.log('[SchedulePage] Valid matches after filter:', validMatches.length);
+        console.log('[SchedulePage] Matches by matchday:', validMatches.reduce((acc, m) => {
+          const md = m.matchday || 'unknown';
+          acc[md] = (acc[md] || 0) + 1;
+          return acc;
+        }, {} as Record<string | number, number>));
+
         setMatches(validMatches);
 
       } catch (error) {
@@ -115,7 +130,7 @@ export default function SchedulePage() {
       </div>
 
       {/* Main Content */}
-      <div className="relative z-10 max-w-[1800px] mx-auto px-6 lg:px-12 py-8">
+      <div className="relative z-10 max-w-[1800px] mx-auto px-3 sm:px-6 lg:px-12 py-6 sm:py-8">
         <MatchdayCarousel matches={matches} />
       </div>
     </div>

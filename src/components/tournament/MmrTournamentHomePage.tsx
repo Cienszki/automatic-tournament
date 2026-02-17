@@ -13,6 +13,7 @@ import {
   ChevronRight
 } from 'lucide-react';
 import { staggerContainer, fadeInUp } from '@/lib/animations';
+import { organizationConfig } from '@/config/organization';
 import {
   LetniaHeroSection,
   FeaturedMatchCard,
@@ -116,8 +117,8 @@ export function MmrTournamentHomePage() {
 
         {/* Social Links */}
         <LetniaSocialLinksCard
-          discordUrl="https://discord.gg/pd2ih"
-          twitchUrl="https://twitch.tv/pd2ih"
+          discordUrl={tournament.discordUrl || organizationConfig.defaults.discord}
+          twitchUrl={tournament.twitchUrl || organizationConfig.defaults.twitch}
         />
 
         {/* Announcements */}

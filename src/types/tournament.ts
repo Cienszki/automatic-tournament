@@ -63,6 +63,9 @@ export interface TournamentTheme {
   borderColor: string;
   headerFont: string;
   bodyFont: string;
+  textFont?: string; // Additional font option for body text
+  readableFont?: string; // Font for improved readability
+  rulesContentFont?: string; // Font specifically for rules page paragraph content
   logoUrl: string;
   faviconUrl?: string;
   backgroundImageUrl?: string;
@@ -175,7 +178,11 @@ export interface TournamentConfig {
   leagueId?: number; // Valve League ID
   
   // Social/Streaming
-  twitchChannel?: string; // Twitch channel name for embed and links
+  twitchUrl?: string; // Full Twitch URL (e.g., https://www.twitch.tv/pd2ih)
+  discordUrl?: string; // Full Discord invite URL (e.g., https://discord.gg/pd2ih)
+  
+  // Legacy field for backwards compatibility
+  twitchChannel?: string; // @deprecated Use twitchUrl instead
   
   // Team configuration
   teamSize: number;
@@ -190,6 +197,7 @@ export interface TournamentConfig {
   // Division configuration (for leagues)
   divisions?: DivisionConfig[];
   roundsPerSeason?: number;
+  currentRound?: number; // Current round number for tracking progress
   promotionRelegationEnabled?: boolean;
   
   // Group configuration (for MMR tournaments)
@@ -201,6 +209,21 @@ export interface TournamentConfig {
   pickem: PickemConfig;
   standins: StandinConfig;
   playoffs: PlayoffConfig;
+  
+  // Transfer/roster configuration (for leagues)
+  transferWindowOpen?: boolean; // Whether the transfer window is currently open
+  maxTransfersPerWindow?: number; // Max allowed roster changes per transfer window (default: 2)
+  maxTransfersPerSeason?: number; // Max allowed roster changes per entire season (default: 6)
+  
+  // Custom fonts (Google Fonts + Local Fonts integration)
+  customFonts?: Array<{
+    id: string;
+    family: string;
+    type: 'google' | 'local';
+    variants: string[];
+    category: string;
+    path?: string; // For local fonts
+  }>;
   
   // Branding
   theme: TournamentTheme;

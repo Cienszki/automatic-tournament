@@ -38,6 +38,7 @@
   "exclude": [
     "node_modules",
     "scripts",
-    "backup-threejs"
+    "backup-threejs",
+    "_archive"
   ]
 }

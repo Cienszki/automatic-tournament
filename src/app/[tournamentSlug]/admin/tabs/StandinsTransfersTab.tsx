@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTournament } from '@/context/TournamentContext';
 import { Card, CardHeader, CardContent, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -29,6 +29,9 @@ import {
   AlertTriangle,
   MessageSquare,
 } from 'lucide-react';
+import { doc, updateDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { useToast } from '@/hooks/use-toast';
 
 interface StandinRequest {
   id: string;
@@ -46,7 +49,8 @@ interface StandinRequest {
  * Standins & Transfers Tab - Manage transfer limits and standin approval workflow
  */
 export function StandinsTransfersTab() {
-  const { tournament, theme } = useTournament();
+  const { tournament, theme, refetchTournament } = useTournament();
+  const { toast } = useToast();
   
   // Settings state
   const [standinsPerRound, setStandinsPerRound] = useState(1);
@@ -69,10 +73,52 @@ export function StandinsTransfersTab() {
     },
   ]);
 
+  // Initialize state from tournament data
+  useEffect(() => {
+    if (tournament) {
+      setTransferWindowOpen(tournament.transferWindowOpen || false);
+      setStandinsPerRound(tournament.standins?.maxPerRound || 1);
+      setRequireOpponentApproval(tournament.standins?.requireOpponentApproval !== false);
+    }
+  }, [tournament]);
+
   const handleSave = async () => {
+    if (!tournament?.id) {
+      toast({
+        title: 'Błąd',
+        description: 'Nie znaleziono ID turnieju',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setIsSaving(true);
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    setIsSaving(false);
+    try {
+      const tournamentRef = doc(db, 'tournaments', tournament.id);
+      await updateDoc(tournamentRef, {
+        transferWindowOpen: transferWindowOpen,
+        'standins.maxPerRound': standinsPerRound,
+        'standins.requireOpponentApproval': requireOpponentApproval,
+        updatedAt: new Date().toISOString(),
+      });
+
+      toast({
+        title: 'Zapisano',
+        description: 'Ustawienia zastępstw i transferów zostały zaktualizowane',
+      });
+
+      // Refresh tournament data from Firestore
+      await refetchTournament();
+    } catch (error) {
+      console.error('Error saving standin/transfer settings:', error);
+      toast({
+        title: 'Błąd',
+        description: 'Nie udało się zapisać ustawień. Spróbuj ponownie.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const updateRequestStatus = (requestId: string, status: StandinRequest['status']) => {

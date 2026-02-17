@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { fadeInUp, staggerContainer } from '@/lib/animations';
+import { organizationConfig } from '@/config/organization';
 
 /**
  * About PDL page - basic explanation of the tournament
@@ -310,7 +311,7 @@ export default function AboutPage() {
               
               <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
                 <Link
-                  href="https://discord.gg/pd2ih"
+                  href={tournament?.discordUrl || organizationConfig.defaults.discord}
                   target="_blank"
                   rel="noopener noreferrer"
                   className={cn(

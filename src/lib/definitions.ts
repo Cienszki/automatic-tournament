@@ -67,6 +67,7 @@ export interface Match {
   defaultMatchTime: string;
   dateTime?: string;
   group_id?: string;
+  divisionId?: string; // Same as group_id, used for league matches
   playoff_round?: number;
   schedulingStatus: 'unscheduled' | 'proposed' | 'confirmed';
   proposedTime?: string;
@@ -89,6 +90,25 @@ export interface Match {
       standins: string[];
     }
   };
+  // PDL-specific match fields
+  rescheduleRequest?: {
+    requestedBy: string;
+    requestedByName: string;
+    requestedByCaptainId?: string;
+    originalDate: string;
+    proposedDate: string;
+    status: 'pending' | 'approved' | 'rejected';
+    createdAt: string;
+    respondedAt?: string;
+  };
+  coachInfo?: {
+    [teamId: string]: {
+      nickname: string;
+      steamProfileUrl: string;
+      assignedAt: string;
+    };
+  };
+  standinRequests?: PDLStandinRequest[];
 }
 
 export interface PlayerPerformanceInMatch {
@@ -200,6 +220,16 @@ export interface Team {
     id?: string;
     nickname?: string;
     discordUsername?: string;
+    steamProfileUrl?: string;
+  };
+  // PDL-specific team fields
+  previousRoundPlayers?: Player[]; // Snapshot of players used in last completed round (for transfer validation)
+  transferHistory?: PDLTransferRecord[];
+  seasonId?: string;
+  timePenalty?: {
+    minutes: number;
+    reason: string;
+    appliesTo?: string; // Match ID if specific to one match
   };
 }
 
@@ -337,6 +367,79 @@ export interface StandinRequest {
   status: 'pending' | 'approved' | 'rejected';
 }
 
+// ============================================================
+// PDL-specific types for standins, coaches, transfers, reschedules
+// ============================================================
+
+export type PDLStandinRequestStatus =
+  | 'pending'       // Waiting for opponent captain approval
+  | 'approved'      // Opponent captain approved
+  | 'rejected'      // Opponent captain rejected
+  | 'appeal_pending' // Captain appealed to admin
+  | 'appeal_approved' // Admin approved the appeal
+  | 'appeal_rejected'; // Admin rejected the appeal
+
+export interface PDLStandinRequest {
+  id: string;
+  matchId: string;
+  teamId: string;             // Requesting team
+  captainId: string;          // Requesting captain UID
+  replacedPlayerId: string;   // Player ID being replaced
+  replacedPlayerNickname: string;
+  standinNickname: string;    // Standin's recognizable nickname
+  standinSteamProfileUrl: string; // Link to standin's Steam profile
+  status: PDLStandinRequestStatus;
+  createdAt: string;
+  updatedAt: string;
+  // Opponent response
+  respondedBy?: string;       // Opponent captain UID
+  respondedAt?: string;
+  rejectionReason?: string;
+  // Admin appeal
+  appealedAt?: string;
+  appealResolvedBy?: string;  // Admin UID
+  appealResolvedAt?: string;
+  appealAdminNote?: string;
+}
+
+export interface PDLCoachAssignment {
+  id: string;
+  teamId: string;
+  matchId: string;            // Match this coach is assigned to
+  nickname: string;           // Coach's recognizable nickname
+  steamProfileUrl: string;    // Link to coach's Steam profile
+  assignedAt: string;
+  assignedBy: string;         // Captain UID
+}
+
+export interface PDLTransferRecord {
+  id: string;
+  teamId: string;
+  type: 'add' | 'remove';
+  playerNickname: string;
+  playerSteamId: string;
+  playerSteamProfileUrl?: string;
+  playerRole?: PlayerRole;
+  performedAt: string;
+  performedBy: string;        // Captain UID
+  round?: number;             // Which round/transfer window
+  seasonId?: string;
+}
+
+export interface PDLRescheduleRequest {
+  id: string;
+  matchId: string;
+  requestedBy: string;        // Team ID
+  requestedByName: string;    // Team name
+  requestedByCaptainId: string;
+  originalDate: string;
+  proposedDate: string;
+  status: 'pending' | 'approved' | 'rejected';
+  createdAt: string;
+  respondedAt?: string;
+  respondedBy?: string;       // Opponent captain UID
+}
+
 // Playoff System Types
 export type PlayoffMatchFormat = 'bo1' | 'bo3' | 'bo5';
 export type PlayoffMatchStatus = 'scheduled' | 'live' | 'completed' | 'bye';
@@ -393,4 +496,80 @@ export interface PlayoffData {
   isSetup: boolean; // Whether admin has completed initial setup
   createdAt: string;
   updatedAt: string;
+}
+
+// ============================================
+// NOTIFICATION SYSTEM
+// ============================================
+
+export type NotificationType = 
+  | 'standin_approval_required'
+  | 'reschedule_approval_required'
+  | 'admin_message'
+  | 'match_reminder_24h'
+  | 'transfer_window_opened'
+  | 'transfer_window_closing'
+  | 'standin_request_approved'
+  | 'standin_request_denied'
+  | 'reschedule_request_approved'
+  | 'reschedule_request_denied'
+  | 'admin_announcement'
+  | 'promotion_relegation_match';
+
+export type NotificationPriority = 'critical' | 'high' | 'medium' | 'low';
+
+export type NotificationRecipientType = 'team' | 'player' | 'captain';
+
+export interface NotificationMetadata {
+  // Standin-related
+  requestId?: string;
+  standinName?: string;
+  standinSteamId?: string;
+  opponentTeamName?: string;
+  denialReason?: string;
+
+  // Match-related
+  matchId?: string;
+  matchTime?: string;
+  opponentName?: string;
+  checklistComplete?: boolean;
+
+  // Reschedule-related
+  originalDate?: string;
+  proposedDate?: string;
+  newDate?: string;
+  approvedBy?: 'opponent' | 'admin';
+  deniedBy?: 'opponent' | 'admin';
+
+  // Transfer window
+  windowCloses?: string;
+  maxTransfers?: number;
+  remainingTransfers?: number;
+
+  // Promotion/Relegation
+  matchType?: 'promotion' | 'relegation';
+  divisionMovement?: string;
+
+  // Admin message
+  requiresResponse?: boolean;
+  responseDeadline?: string;
+}
+
+export interface Notification {
+  id: string;
+  tournamentId: string;
+  type: NotificationType;
+  priority: NotificationPriority;
+  recipientType: NotificationRecipientType;
+  recipientId: string; // teamId or userId depending on recipientType
+  title: string;
+  message: string;
+  metadata: NotificationMetadata;
+  createdAt: string;
+  expiresAt?: string;
+  read: boolean;
+  dismissed: boolean;
+  actionable: boolean;
+  actionTaken?: boolean;
+  actionTakenAt?: string;
 }

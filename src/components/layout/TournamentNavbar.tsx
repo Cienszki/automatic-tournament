@@ -20,7 +20,6 @@ import {
   Settings,
   ChevronDown,
   Layers,
-  Home,
   Menu,
   Loader2,
 } from 'lucide-react';
@@ -31,7 +30,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useTournament, useTournamentType } from '@/context/TournamentContext';
@@ -51,42 +49,46 @@ interface NavItem {
 
 export function TournamentNavbar() {
   const pathname = usePathname();
-  const { tournament, getTournamentPath, activeTournaments, archivedTournaments, theme } = useTournament();
+  const { tournament, getTournamentPath, theme } = useTournament();
   const [divisions, setDivisions] = useState<any[]>([]);
 
   // Load divisions from Firestore for league tournaments
   useEffect(() => {
     if (!tournament?.id || tournament.type !== 'league') {
-      console.log('[TournamentNavbar] No tournament or not league type');
       setDivisions([]);
       return;
     }
 
+    let isMounted = true;
+
     const loadDivisions = async () => {
       try {
-        console.log('[TournamentNavbar] Loading divisions for tournament:', tournament.id);
         const divisionsRef = collection(db, 'tournaments', tournament.id, 'divisions');
         const snapshot = await getDocs(divisionsRef);
-        console.log('[TournamentNavbar] Found divisions:', snapshot.docs.length);
-        const divisionsData = snapshot.docs.map(doc => {
-          const data = doc.data();
-          console.log('[TournamentNavbar] Division:', doc.id, data);
-          return {
-            id: doc.id,
-            ...data
-          };
-        }) as Array<{ id: string; tier?: number; [key: string]: unknown }>;
+        
+        if (!isMounted) return;
+        
+        const divisionsData = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        })) as Array<{ id: string; tier?: number; [key: string]: unknown }>;
+        
         // Sort by tier on client side
         divisionsData.sort((a, b) => (a.tier || 999) - (b.tier || 999));
-        console.log('[TournamentNavbar] Setting divisions:', divisionsData);
         setDivisions(divisionsData);
       } catch (error) {
-        console.error('[TournamentNavbar] Error loading divisions:', error);
-        setDivisions([]);
+        console.error('Error loading divisions:', error);
+        if (isMounted) {
+          setDivisions([]);
+        }
       }
     };
 
     loadDivisions();
+    
+    return () => {
+      isMounted = false;
+    };
   }, [tournament?.id, tournament?.type]);
   const { isLeague } = useTournamentType();
   const isMobile = useIsMobile();
@@ -101,15 +103,15 @@ export function TournamentNavbar() {
 
   React.useEffect(() => {
     async function verifyAdmin() {
-      if (user) {
-        const adminStatus = await checkIfAdmin(user);
+      if (user && tournament?.id) {
+        const adminStatus = await checkIfAdmin(user, tournament.id);
         setIsAdmin(adminStatus);
       } else {
         setIsAdmin(false);
       }
     }
     verifyAdmin();
-  }, [user]);
+  }, [user, tournament?.id]);
 
   if (!tournament) {
     return null;
@@ -154,12 +156,7 @@ export function TournamentNavbar() {
     return pathname.startsWith(fullPath);
   };
 
-  // Other tournaments for the dropdown
-  const otherTournaments = [...activeTournaments, ...archivedTournaments].filter(
-    t => t.slug !== tournament.slug
-  );
-
-  // Logo component with tournament switcher
+  // Logo component
   const LogoWithSwitcher = () => (
     <div className="flex items-center gap-2">
       {/* PD2IH Logo link to landing page */}
@@ -169,55 +166,10 @@ export function TournamentNavbar() {
           alt="PD2IH"
           width={80}
           height={80}
+          priority
           className="object-contain"
         />
       </Link>
-
-      {/* Tournament dropdown */}
-      {otherTournaments.length > 0 && (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="sm" className="h-16 px-2 hover:bg-[#cf2648]/10 hover:text-[#cf2648]">
-              <ChevronDown className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="w-56 font-logik">
-            <DropdownMenuItem 
-              asChild
-              className="hover:bg-[#cf2648]/10 hover:text-[#cf2648] focus:bg-[#cf2648]/10 focus:text-[#cf2648]"
-            >
-              <Link href="/" className="flex items-center gap-2 cursor-pointer">
-                <Home className="h-4 w-4" />
-                Strona główna
-              </Link>
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            {otherTournaments.map(t => (
-              <DropdownMenuItem 
-                key={t.id} 
-                asChild
-                className="hover:bg-[#cf2648]/10 hover:text-[#cf2648] focus:bg-[#cf2648]/10 focus:text-[#cf2648]"
-              >
-                <Link href={`/${t.slug}`} className="flex items-center gap-2 cursor-pointer">
-                  {t.logoUrl && (
-                    <Image
-                      src={t.logoUrl}
-                      alt={t.name}
-                      width={20}
-                      height={20}
-                      className="object-contain"
-                    />
-                  )}
-                  {t.shortName || t.name}
-                  {t.status === 'completed' && (
-                    <span className="text-xs text-muted-foreground ml-auto">(archiwum)</span>
-                  )}
-                </Link>
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      )}
 
       {/* PDL Inline Logo */}
       <Link href={getTournamentPath('')} className="flex items-center">
@@ -226,6 +178,7 @@ export function TournamentNavbar() {
           alt="PDL"
           height={80}
           width={200}
+          priority
           className="object-contain"
         />
       </Link>

@@ -4,14 +4,17 @@ import { useEffect, useState } from "react";
 import { getHomePageData } from "./getHomePageData";
 import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
 import { useTranslation } from "@/hooks/useTranslation";
+import { useTournament } from "@/context/TournamentContext";
 import Link from "next/link";
 import Image from "next/image";
 import { Megaphone, Flame, BarChart2, Trophy } from "lucide-react";
 import { formatDistanceToNow, format } from "date-fns";
 import { isTwitchLive } from '@/lib/twitch';
+import { organizationConfig } from '@/config/organization';
 
 export function InfoWidgets() {
   const { t } = useTranslation();
+  const { tournament } = useTournament();
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [twitchLive, setTwitchLive] = useState(false);
@@ -86,12 +89,12 @@ export function InfoWidgets() {
               <div className="text-center w-full">
                 <div className="flex items-center justify-center gap-6">
                   <Link href={`/teams/${featuredMatch.teamA.id}`} className="flex flex-col items-center gap-1 group">
-                    <Image src={featuredMatch.teamA.logoUrl} alt={featuredMatch.teamA.name} width={56} height={56} className="rounded-full border-4 border-[#b86fc6] shadow-lg group-hover:scale-110 transition-transform" />
+                    <Image src={featuredMatch.teamA.logoUrl} alt={featuredMatch.teamA.name} width={56} height={56} className="rounded-full border-4 border-[#b86fc6] shadow-lg group-hover:scale-110 transition-transform" unoptimized />
                     <span className="font-semibold group-hover:text-[#b86fc6] text-[#e0d7f7] text-base">{featuredMatch.teamA.name}</span>
                   </Link>
                   <span className="text-3xl font-bold text-[#b86fc6] px-2 drop-shadow-[0_0_4px_#b86fc6]">vs</span>
                   <Link href={`/teams/${featuredMatch.teamB.id}`} className="flex flex-col items-center gap-1 group">
-                    <Image src={featuredMatch.teamB.logoUrl} alt={featuredMatch.teamB.name} width={56} height={56} className="rounded-full border-4 border-[#b86fc6] shadow-lg group-hover:scale-110 transition-transform" />
+                    <Image src={featuredMatch.teamB.logoUrl} alt={featuredMatch.teamB.name} width={56} height={56} className="rounded-full border-4 border-[#b86fc6] shadow-lg group-hover:scale-110 transition-transform" unoptimized />
                     <span className="font-semibold group-hover:text-[#b86fc6] text-[#e0d7f7] text-base">{featuredMatch.teamB.name}</span>
                   </Link>
                 </div>
@@ -114,12 +117,12 @@ export function InfoWidgets() {
                 <div className="flex items-center justify-center gap-6">
                   <Link href={`/teams/${recentResult.teamA.id}`} className="flex flex-col items-center gap-1 group">
                     <span className="font-bold text-2xl text-[#b86fc6] drop-shadow-[0_0_4px_#b86fc6]">{recentResult.teamA.score}</span>
-                    <Image src={recentResult.teamA.logoUrl} alt={recentResult.teamA.name} width={48} height={48} className="rounded-full border-2 border-[#0ff0fc] shadow group-hover:scale-110 transition-transform" />
+                    <Image src={recentResult.teamA.logoUrl} alt={recentResult.teamA.name} width={48} height={48} className="rounded-full border-2 border-[#0ff0fc] shadow group-hover:scale-110 transition-transform" unoptimized />
                   </Link>
                   <span className="text-2xl font-bold text-[#0ff0fc] px-2 drop-shadow-[0_0_4px_#0ff0fc]">-</span>
                   <Link href={`/teams/${recentResult.teamB.id}`} className="flex flex-col items-center gap-1 group">
                     <span className="font-bold text-2xl text-[#b86fc6] drop-shadow-[0_0_4px_#b86fc6]">{recentResult.teamB.score}</span>
-                    <Image src={recentResult.teamB.logoUrl} alt={recentResult.teamB.name} width={48} height={48} className="rounded-full border-2 border-[#0ff0fc] shadow group-hover:scale-110 transition-transform" />
+                    <Image src={recentResult.teamB.logoUrl} alt={recentResult.teamB.name} width={48} height={48} className="rounded-full border-2 border-[#0ff0fc] shadow group-hover:scale-110 transition-transform" unoptimized />
                   </Link>
                 </div>
                 <p className="text-sm text-[#e0d7f7]/80 mt-2 tracking-wide">{recentResult.teamA.name} vs {recentResult.teamB.name}</p>
@@ -174,7 +177,7 @@ export function InfoWidgets() {
         </Card>
         {/* Discord Section */}
         <a
-          href="https://discord.gg/ZxgmF7Kr4t "
+          href={tournament?.discordUrl || organizationConfig.defaults.discord}
           target="_blank"
           rel="noopener noreferrer"
           className="block"
@@ -207,7 +210,7 @@ export function InfoWidgets() {
         </a>
         {/* Twitch Section */}
         <a
-          href="https://www.twitch.tv/polishdota2inhouse"
+          href={tournament?.twitchUrl || (tournament?.twitchChannel ? `https://www.twitch.tv/${tournament.twitchChannel}` : organizationConfig.defaults.twitch)}
           target="_blank"
           rel="noopener noreferrer"
           className="block"

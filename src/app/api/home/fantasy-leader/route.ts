@@ -1,16 +1,19 @@
 import { NextResponse } from 'next/server';
 import { getAdminDb, ensureAdminInitialized } from '@/server/lib/admin';
 
+// Enable route caching for 5 minutes (fantasy leader rarely changes)
+export const revalidate = 300;
+
 export async function GET() {
   try {
     ensureAdminInitialized();
     const db = getAdminDb();
     
-    // Get leaderboards from the fixed algorithm collection (same logic as fantasy leaderboards API)
+    // Get leaderboards from the fixed algorithm collection
     let leaderboardsRef = db.collection('fantasyLeaderboards').doc('current');
     let leaderboardsSnap = await leaderboardsRef.get();
     
-    // If 'current' doesn't exist, try the old 'data' document ID
+    // Fallback to old 'data' document ID
     if (!leaderboardsSnap.exists) {
       leaderboardsRef = db.collection('fantasyLeaderboards').doc('data');
       leaderboardsSnap = await leaderboardsRef.get();
@@ -39,13 +42,18 @@ export async function GET() {
     
     const fantasyLeader = {
       displayName: topPlayer.displayName,
-      totalFantasyScore: topPlayer.averageScore || 0 // Use average score instead of total
+      totalFantasyScore: topPlayer.averageScore || 0
     };
     
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       fantasyLeader
     });
+    
+    // Add cache headers
+    response.headers.set('Cache-Control', 's-maxage=300, stale-while-revalidate=600');
+    
+    return response;
     
   } catch (error: any) {
     console.error('Failed to fetch fantasy leader:', error);

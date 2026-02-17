@@ -30,6 +30,7 @@ export default {
 		'logik-extended-8': ["var(--font-logik-extended-8)", "var(--font-geist-sans)", "sans-serif"],
 		'logik-3': ["var(--font-logik-3)", "var(--font-geist-sans)", "sans-serif"],
 		'logik-4': ["var(--font-logik-4)", "var(--font-geist-sans)", "sans-serif"],
+		'logik-readable': ["var(--font-logik-4)", "var(--font-geist-sans)", "sans-serif"],
 		'space-mono': ["Space Mono", "var(--font-geist-mono)", "monospace"],
 		neonderthaw: ["Neonderthaw", "var(--font-geist-sans)", "sans-serif"],
 		'tilt-neon': ["Tilt Neon", "var(--font-geist-sans)", "sans-serif"],

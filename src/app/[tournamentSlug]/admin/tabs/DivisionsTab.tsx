@@ -132,6 +132,33 @@ export function DivisionsTab() {
             divisionId: teamData.divisionId,
           };
         });
+        
+        // Check for orphaned team assignments (teams assigned to non-existent divisions)
+        const validDivisionIds = new Set(divisions.map(d => d.id));
+        const orphanedTeams = teamsData.filter(
+          t => t.divisionId && !validDivisionIds.has(t.divisionId)
+        );
+        
+        if (orphanedTeams.length > 0) {
+          console.warn(`Found ${orphanedTeams.length} teams with invalid division assignments:`, orphanedTeams);
+          
+          // Automatically unassign orphaned teams
+          const cleanupPromises = orphanedTeams.map(team => {
+            const teamRef = doc(db, 'tournaments', tournament.id, 'teams', team.id);
+            return updateDoc(teamRef, { divisionId: null });
+          });
+          
+          await Promise.all(cleanupPromises);
+          
+          // Update local state
+          teamsData.forEach(team => {
+            if (team.divisionId && !validDivisionIds.has(team.divisionId)) {
+              team.divisionId = undefined;
+            }
+          });
+          
+          alert(`Znaleziono ${orphanedTeams.length} drużyn przypisanych do nieistniejących dywizji. Zostały automatycznie odłączone.`);
+        }
 
         setTeams(teamsData);
 
@@ -215,12 +242,36 @@ export function DivisionsTab() {
   const removeDivision = async (id: string) => {
     if (!tournament?.id) return;
     
+    // Check if there are teams in this division
+    const teamsInDivision = teams.filter(t => t.divisionId === id);
+    
+    if (teamsInDivision.length > 0) {
+      const confirmDelete = confirm(
+        `Ta dywizja zawiera ${teamsInDivision.length} drużyn(y). Czy na pewno chcesz ją usunąć? Drużyny zostaną odłączone od dywizji.`
+      );
+      if (!confirmDelete) return;
+    }
+    
     try {
+      // First, unassign all teams from this division
+      const updatePromises = teamsInDivision.map(team => {
+        const teamRef = doc(db, 'tournaments', tournament.id, 'teams', team.id);
+        return updateDoc(teamRef, { divisionId: null });
+      });
+      await Promise.all(updatePromises);
+      
+      // Update local teams state
+      setTeams(teams.map(t => 
+        t.divisionId === id ? { ...t, divisionId: undefined } : t
+      ));
+      
       // Delete from Firestore
       const divisionRef = doc(db, 'tournaments', tournament.id, 'divisions', id);
       await deleteDoc(divisionRef);
       
       setDivisions(divisions.filter(d => d.id !== id));
+      
+      alert(`Dywizja usunięta. ${teamsInDivision.length} drużyn(y) zostało odłączonych.`);
     } catch (error) {
       console.error('Error removing division:', error);
       alert('Błąd podczas usuwania dywizji');

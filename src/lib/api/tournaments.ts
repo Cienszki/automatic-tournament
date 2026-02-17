@@ -150,6 +150,37 @@ export async function createTournament(data: {
 }
 
 /**
+ * Fetch single tournament config by slug
+ * Used by TournamentContext to load tournament data
+ */
+export async function fetchTournamentBySlug(slug: string): Promise<TournamentConfig | null> {
+  try {
+    const tournamentsRef = collection(db, 'tournaments');
+    const q = query(tournamentsRef, where('slug', '==', slug));
+    const snapshot = await getDocs(q);
+    
+    if (snapshot.empty) {
+      return null;
+    }
+    
+    const doc = snapshot.docs[0];
+    const data = doc.data();
+    
+    // Return the full tournament config
+    return {
+      id: doc.id,
+      ...data,
+      // Ensure Timestamp objects are converted to strings
+      createdAt: data.createdAt?.toDate?.()?.toISOString() || data.createdAt,
+      updatedAt: data.updatedAt?.toDate?.()?.toISOString() || data.updatedAt,
+    } as TournamentConfig;
+  } catch (error) {
+    console.error('Error fetching tournament by slug:', error);
+    return null;
+  }
+}
+
+/**
  * Fetch all tournaments
  * Used by landing page and tournament selector
  */

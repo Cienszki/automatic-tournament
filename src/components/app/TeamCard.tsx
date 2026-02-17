@@ -170,7 +170,7 @@ export function TeamCard({ team }: TeamCardProps) {
                       <TooltipTrigger asChild>
                         <Link 
                           href={getTournamentPath(`/teams/${team.id}/players/${player.id}`)}
-                          className="truncate text-sm transition-all"
+                          className="truncate text-sm transition-all player-nickname"
                           style={{ color: theme.textColor }}
                           onMouseEnter={(e) => e.currentTarget.style.color = theme.accentColor}
                           onMouseLeave={(e) => e.currentTarget.style.color = theme.textColor || ''}

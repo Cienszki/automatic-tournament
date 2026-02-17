@@ -2,9 +2,40 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Helper function to check for admin privileges.
+    // Helper function to check for super admin privileges (global admin)
     function isAdmin() {
       return exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    // Helper function to check if user is a tournament-specific admin
+    function isTournamentAdmin(tournamentId) {
+      return exists(/databases/$(database)/documents/tournaments/$(tournamentId)/admins/$(request.auth.uid));
+    }
+
+    // Helper function to check if user has any admin access (super or tournament-specific)
+    function hasAdminAccess(tournamentId) {
+      return isAdmin() || isTournamentAdmin(tournamentId);
+    }
+
+    // Helper function to check if user is captain of a tournament team
+    function isTournamentTeamCaptain(tournamentId, teamId) {
+      return request.auth.uid != null
+        && get(/databases/$(database)/documents/tournaments/$(tournamentId)/teams/$(teamId)).data.captainId == request.auth.uid;
+    }
+
+    // Helper function to check if user is captain of any team in a tournament match
+    // For updates, uses matchData directly to avoid additional reads
+    function isCaptainOfTournamentMatchUpdate(tournamentId, matchData) {
+      return isTournamentTeamCaptain(tournamentId, matchData.teamA.id) 
+          || isTournamentTeamCaptain(tournamentId, matchData.teamB.id);
+    }
+
+    // Helper function to check if user is captain of any team in a tournament match
+    // For operations that only have matchId, reads the match document
+    function isCaptainOfTournamentMatch(tournamentId, matchId) {
+      let matchData = get(/databases/$(database)/documents/tournaments/$(tournamentId)/matches/$(matchId)).data;
+      return isTournamentTeamCaptain(tournamentId, matchData.teamA.id) 
+          || isTournamentTeamCaptain(tournamentId, matchData.teamB.id);
     }
 
     // Helper function to check if the user is a captain of a specific team.
@@ -39,35 +70,41 @@ service cloud.firestore {
       allow read: if true;
       allow write: if isAdmin();
 
+      // Tournament admins subcollection - only super admins can manage
+      match /admins/{userId} {
+        allow read: if isAdmin();
+        allow write: if isAdmin();
+      }
+
       // Teams in tournaments
       match /teams/{teamId} {
         allow read: if true;
         allow write: if request.auth.uid != null;
-        allow delete: if isAdmin();
+        allow delete: if hasAdminAccess(tournamentId);
 
         // Players in teams
         match /players/{playerId} {
           allow read: if true;
           allow write: if request.auth.uid != null;
-          allow delete: if isAdmin();
+          allow delete: if hasAdminAccess(tournamentId);
         }
       }
 
       // Matches in tournaments
       match /matches/{matchId} {
         allow read: if true;
-        allow create, delete: if isAdmin();
-        allow update: if isAdmin(); // Simplified for now, can add captain logic later
+        allow create, delete: if hasAdminAccess(tournamentId);
+        allow update: if hasAdminAccess(tournamentId) || isCaptainOfTournamentMatchUpdate(tournamentId, resource.data);
         
         // Games in matches
         match /games/{gameId} {
           allow read: if true;
-          allow write: if isAdmin();
+          allow write: if hasAdminAccess(tournamentId);
           
           // Performances in games
           match /performances/{playerId} {
             allow read: if true;
-            allow write: if isAdmin();
+            allow write: if hasAdminAccess(tournamentId);
           }
         }
       }
@@ -75,31 +112,31 @@ service cloud.firestore {
       // Divisions in tournaments
       match /divisions/{divisionId} {
         allow read: if true;
-        allow write: if isAdmin();
+        allow write: if hasAdminAccess(tournamentId);
       }
 
       // Announcements in tournaments
       match /announcements/{announcementId} {
         allow read: if true;
-        allow write: if isAdmin();
+        allow write: if hasAdminAccess(tournamentId);
       }
 
       // Groups in tournaments
       match /groups/{groupId} {
         allow read: if true;
-        allow write: if isAdmin();
+        allow write: if hasAdminAccess(tournamentId);
       }
 
       // Standings in tournaments
       match /standings/{standingId} {
         allow read: if true;
-        allow write: if isAdmin();
+        allow write: if hasAdminAccess(tournamentId);
       }
 
       // Playoffs in tournaments
       match /playoffs/{playoffId} {
         allow read: if true;
-        allow write: if isAdmin();
+        allow write: if hasAdminAccess(tournamentId);
       }
 
       // Rules in tournaments
@@ -116,74 +153,114 @@ service cloud.firestore {
       // Fantasy lineups in tournaments
       match /fantasyLineups/{userId} {
         allow read: if true;
-        allow write: if request.auth.uid == userId || isAdmin();
+        allow write: if request.auth.uid == userId || hasAdminAccess(tournamentId);
         
         match /rounds/{roundId} {
           allow read: if true;
-          allow write: if request.auth.uid == userId || isAdmin();
+          allow write: if request.auth.uid == userId || hasAdminAccess(tournamentId);
         }
       }
 
       // Pick'em predictions in tournaments
       match /pickems/{userId} {
         allow read: if true;
-        allow write: if request.auth.uid == userId || isAdmin();
+        allow write: if request.auth.uid == userId || hasAdminAccess(tournamentId);
       }
 
       // Standins in tournaments
       match /standins/{userId} {
         allow read: if true;
         allow create: if request.auth.uid != null && request.auth.uid == userId;
-        allow update: if request.auth.uid == userId || isAdmin();
-        allow delete: if isAdmin();
+        allow update: if request.auth.uid == userId || hasAdminAccess(tournamentId);
+        allow delete: if hasAdminAccess(tournamentId);
       }
 
       // Standin requests in tournaments
       match /standinRequests/{requestId} {
         allow read: if true;
-        allow create: if request.auth.uid != null;
-        allow update, delete: if isAdmin();
+        allow create: if request.auth.uid != null
+          && request.resource.data.matchId is string
+          && request.resource.data.captainId is string
+          && request.resource.data.captainId == request.auth.uid
+          && isCaptainOfTournamentMatch(tournamentId, request.resource.data.matchId);
+        allow update: if hasAdminAccess(tournamentId) || (
+          request.auth.uid != null
+          && resource.data.matchId is string
+          && isCaptainOfTournamentMatch(tournamentId, resource.data.matchId)
+        );
+        allow delete: if hasAdminAccess(tournamentId);
+      }
+
+      // Scrim slots in tournaments
+      match /scrimSlots/{slotId} {
+        allow read: if true;
+        allow create: if request.auth != null &&
+          request.resource.data.teamId is string &&
+          request.auth.uid == get(/databases/$(database)/documents/tournaments/$(tournamentId)/teams/$(request.resource.data.teamId)).data.captainId;
+        allow update, delete: if hasAdminAccess(tournamentId) || (
+          request.auth != null &&
+          resource.data.teamId is string &&
+          request.auth.uid == get(/databases/$(database)/documents/tournaments/$(tournamentId)/teams/$(resource.data.teamId)).data.captainId
+        );
       }
 
       // Stats collections in tournaments
       match /stats/players/{playerId} {
         allow read: if true;
-        allow write: if isAdmin();
+        allow write: if hasAdminAccess(tournamentId);
       }
 
       match /stats/teams/{teamId} {
         allow read: if true;
-        allow write: if isAdmin();
+        allow write: if hasAdminAccess(tournamentId);
       }
 
       match /stats/heroes/{heroId} {
         allow read: if true;
-        allow write: if isAdmin();
+        allow write: if hasAdminAccess(tournamentId);
       }
 
       // Player statistics
       match /playerStats/{playerId} {
         allow read: if true;
-        allow write: if isAdmin();
+        allow write: if hasAdminAccess(tournamentId);
       }
 
       // Team statistics
       match /teamStats/{teamId} {
         allow read: if true;
-        allow write: if isAdmin();
+        allow write: if hasAdminAccess(tournamentId);
       }
 
       // Commentators in tournaments
       match /commentators/{userId} {
         allow read: if true;
-        allow write: if isAdmin();
+        allow write: if hasAdminAccess(tournamentId);
       }
 
       // Commentator requests in tournaments
       match /commentatorRequests/{requestId} {
         allow read: if true;
         allow create: if request.auth.uid != null;
-        allow update, delete: if isAdmin();
+        allow update, delete: if hasAdminAccess(tournamentId);
+      }
+
+      // Notifications in tournaments
+      match /notifications/{notificationId} {
+        // Anyone authenticated can read notifications
+        // (component will filter by recipientId on the client side)
+        allow read: if request.auth.uid != null;
+        
+        // Only admins and cloud functions can create notifications
+        allow create: if hasAdminAccess(tournamentId);
+        
+        // Users can update notifications (mark as read, dismissed, etc.)
+        // Only allow updating read, dismissed, actionTaken, actionTakenAt fields
+        allow update: if request.auth.uid != null &&
+                       request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read', 'dismissed', 'actionTaken', 'actionTakenAt']);
+        
+        // Only admins can delete notifications
+        allow delete: if hasAdminAccess(tournamentId);
       }
     }
     // === END MULTI-TOURNAMENT STRUCTURE ===

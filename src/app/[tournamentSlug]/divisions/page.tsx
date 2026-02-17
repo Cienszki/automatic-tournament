@@ -125,31 +125,31 @@ export default function DivisionsPage() {
                 }}
                 className="hover:shadow-lg transition-shadow"
               >
-                <CardHeader>
-                  <div className="flex items-center justify-between">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between gap-4">
                     <Link 
                       href={getTournamentPath(`/divisions/${division.id}`)}
-                      className="flex items-center gap-3 flex-1 group"
+                      className="flex items-center gap-3 group"
                     >
                       <div 
-                        className="w-3 h-12 rounded-full group-hover:scale-110 transition-transform"
+                        className="w-3 h-10 rounded-full group-hover:scale-110 transition-transform flex-shrink-0"
                         style={{ backgroundColor: division.color || theme.primaryColor }}
                       />
-                      <div>
-                        <CardTitle className="text-xl group-hover:underline" style={{ color: division.color || theme.primaryColor }}>
-                          {division.name}
-                        </CardTitle>
-                        <CardDescription>
-                          {division.tier && `Tier ${division.tier} • `}{division.matchday || 'Mecze TBD'}
-                        </CardDescription>
-                      </div>
+                      <CardTitle className="text-xl group-hover:underline m-0" style={{ color: division.color || theme.primaryColor }}>
+                        {division.name}
+                      </CardTitle>
                     </Link>
-                    <Badge 
-                      variant="outline" 
-                      style={{ borderColor: division.color, color: division.color }}
-                    >
-                      {standings.length} drużyn
-                    </Badge>
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm text-muted-foreground">
+                        {division.tier && `Tier ${division.tier} • `}{division.matchday || 'Mecze TBD'}
+                      </span>
+                      <Badge 
+                        variant="outline" 
+                        style={{ borderColor: division.color, color: division.color }}
+                      >
+                        {standings.length} drużyn
+                      </Badge>
+                    </div>
                   </div>
                 </CardHeader>
                 <CardContent>

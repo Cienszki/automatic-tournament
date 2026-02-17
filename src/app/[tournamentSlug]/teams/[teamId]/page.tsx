@@ -328,6 +328,7 @@ export default function TeamPage({ params }: PageProps) {
                 height={128}
                 className="rounded-xl border-4 object-cover shadow-md"
                 style={{ borderColor: theme.borderColor }}
+                unoptimized
               />
               <div className="flex-1">
                 <div className="flex items-center space-x-3 mb-2">

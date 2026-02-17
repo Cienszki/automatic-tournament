@@ -169,6 +169,30 @@ export default function PlayerPage({ params }: PageProps) {
   const allPlayers = allTeams.flatMap(t => t.players || []);
   const leagueAvgMMR = allPlayers.length ? Math.round(allPlayers.reduce((sum, p) => sum + p.mmr, 0) / allPlayers.length) : 0;
 
+  const getAccountId = (): string | null => {
+    if (player.openDotaAccountId) return String(player.openDotaAccountId);
+    if (player.steamId32) return String(player.steamId32);
+
+    if (player.steamId && /^\d+$/.test(player.steamId)) {
+      try {
+        const steamId64 = BigInt(player.steamId);
+        const base = 76561197960265728n;
+        if (steamId64 > base) {
+          return String(steamId64 - base);
+        }
+      } catch {
+        return null;
+      }
+    }
+
+    return null;
+  };
+
+  const accountId = getAccountId();
+  const steamProfileHref = player.steamProfileUrl || (player.steamId ? `https://steamcommunity.com/profiles/${player.steamId}` : null);
+  const openDotaHref = accountId ? `https://www.opendota.com/players/${accountId}` : null;
+  const dotabuffHref = accountId ? `https://www.dotabuff.com/players/${accountId}` : null;
+
   return (
     <div className="space-y-8">
       {/* Back to team button */}
@@ -193,20 +217,30 @@ export default function PlayerPage({ params }: PageProps) {
                 <Link href={`/teams/${team.id}`} className="text-accent hover:underline font-medium">{team.name}</Link>
               </CardDescription>
               <div className="flex flex-wrap gap-2 mt-3 justify-center md:justify-start">
-                {player.steamProfileUrl && (
+                {steamProfileHref && (
                   <Button variant="outline" size="sm" asChild>
-                    <Link href={player.steamProfileUrl} target="_blank" rel="noopener noreferrer">
+                    <Link href={steamProfileHref} target="_blank" rel="noopener noreferrer">
                       <ExternalLink className="h-4 w-4 mr-2" />
                       Steam Profile
                     </Link>
                   </Button>
                 )}
-                <Button variant="outline" size="sm" asChild>
-                  <Link href={`https://www.opendota.com/players/${player.steamId}`} target="_blank" rel="noopener noreferrer">
-                    <ExternalLink className="h-4 w-4 mr-2" />
-                    OpenDota
-                  </Link>
-                </Button>
+                {openDotaHref && (
+                  <Button variant="outline" size="sm" asChild>
+                    <Link href={openDotaHref} target="_blank" rel="noopener noreferrer">
+                      <ExternalLink className="h-4 w-4 mr-2" />
+                      OpenDota
+                    </Link>
+                  </Button>
+                )}
+                {dotabuffHref && (
+                  <Button variant="outline" size="sm" asChild>
+                    <Link href={dotabuffHref} target="_blank" rel="noopener noreferrer">
+                      <ExternalLink className="h-4 w-4 mr-2" />
+                      Dotabuff
+                    </Link>
+                  </Button>
+                )}
               </div>
             </div>
           </div>

@@ -83,7 +83,7 @@
     },
     "hero": {
       "title": "Polska Liga Dota 2",
-      "subtitle": "Rywalizuj z drużynami na swoim poziomie o tytuł najlepszej drużyny w Polsce. Nie masz drużyny? Na Discordzie znajdziesz kompanów do gry! ",
+      "subtitle": "Rywalizuj z drużynami na swoim poziomie o tytuł najlepszej drużyny w Polsce. Nie masz drużyny? Na Discordzie znajdziesz kompanów do gry! Zapisy do 13.02",
       "ctaRegister": "Zarejestruj Drużynę",
       "ctaMyTeam": "Moja Drużyna",
       "ctaDiscord": "Discord",
@@ -612,5 +612,106 @@
     "fantasyStillOpen": "Fantasy League nadal dostępne!",
     "backToHome": "Powrót na Główną",
     "viewTeams": "Zobacz Drużyny"
+  },
+  "notifications": {
+    "title": "Centrum Powiadomień",
+    "filters": {
+      "all": "Wszystkie",
+      "unread": "Nieprzeczytane",
+      "urgent": "Pilne"
+    },
+    "empty": "Brak powiadomień",
+    "emptyUnread": "Brak nieprzeczytanych powiadomień",
+    "emptyUrgent": "Brak pilnych powiadomień",
+    "markAllRead": "Oznacz wszystko jako przeczytane",
+    "markAsRead": "Oznacz jako przeczytane",
+    "dismiss": "Odrzuć",
+    "types": {
+      "standin_approval_required": {
+        "title": "Wniosek o standina wymaga zatwierdzenia",
+        "description": "{teamName} prosi o zatwierdzenie standina: {standinName}"
+      },
+      "reschedule_approval_required": {
+        "title": "Prośba o zmianę terminu meczu",
+        "description": "{teamName} prosi o przełożenie meczu"
+      },
+      "admin_message": {
+        "title": "Wiadomość od administratora",
+        "description": "{message}",
+        "requiresResponse": "Wymaga odpowiedzi do {deadline}"
+      },
+      "match_reminder_24h": {
+        "title": "Mecz za 24 godziny",
+        "description": "Twój mecz przeciwko {opponentName} odbędzie się jutro",
+        "checkChecklist": "Sprawdź listę kontrolną"
+      },
+      "transfer_window_opened": {
+        "title": "Okno transferowe otwarte",
+        "description": "Możesz dokonać zmian w składzie drużyny",
+        "maxTransfers": "Maksymalnie {count} transferów"
+      },
+      "transfer_window_closing": {
+        "title": "Okno transferowe zamyka się za 24h",
+        "description": "Ostatnia szansa na zmiany w składzie",
+        "remainingTransfers": "Pozostało transferów: {count}"
+      },
+      "standin_request_approved": {
+        "title": "Wniosek o standina zatwierdzony",
+        "description": "Przeciwnik zatwierdził standina: {standinName}"
+      },
+      "standin_request_denied": {
+        "title": "Wniosek o standina odrzucony",
+        "description": "Przeciwnik odrzucił standina: {standinName}",
+        "reason": "Powód: {reason}"
+      },
+      "reschedule_request_approved": {
+        "title": "Zmiana terminu zatwierdzona",
+        "description": "Twoja prośba o zmianę terminu została zaakceptowana",
+        "newDate": "Nowy termin: {date}",
+        "approvedBy": "Zatwierdzone przez: {by}"
+      },
+      "reschedule_request_denied": {
+        "title": "Zmiana terminu odrzucona",
+        "description": "Twoja prośba o zmianę terminu została odrzucona",
+        "reason": "Powód: {reason}",
+        "deniedBy": "Odrzucone przez: {by}"
+      },
+      "admin_announcement": {
+        "title": "Ogłoszenie administratora",
+        "description": "{message}"
+      },
+      "promotion_relegation_match": {
+        "title": "Mecz barażowy",
+        "titlePromotion": "Mecz o awans",
+        "titleRelegation": "Mecz o utrzymanie",
+        "description": "Zaplanowano mecz barażowy przeciwko {opponentName}",
+        "divisionMovement": "{movement}"
+      }
+    },
+    "actions": {
+      "viewMatch": "Zobacz mecz",
+      "viewMatches": "Zobacz mecze",
+      "manageRoster": "Zarządzaj składem",
+      "checkChecklist": "Sprawdź listę",
+      "respond": "Odpowiedz",
+      "acknowledge": "Potwierdzam"
+    },
+    "priority": {
+      "critical": "Krytyczne",
+      "high": "Wysokie",
+      "medium": "Średnie",
+      "low": "Niskie"
+    },
+    "status": {
+      "unread": "Nieprzeczytane",
+      "read": "Przeczytane",
+      "actionRequired": "Wymaga akcji",
+      "actionTaken": "Akcja wykonana"
+    },
+    "counts": {
+      "urgent": "{count} pilnych",
+      "unread": "{count} nieprzeczytanych",
+      "all": "{count} powiadomień"
+    }
   }
 }

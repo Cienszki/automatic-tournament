@@ -14,6 +14,8 @@ const spaceMono = Space_Mono({
   variable: '--font-space-mono',
   subsets: ['latin'],
   weight: ['400', '700'],
+  display: 'swap', // Performance: prevent FOIT
+  preload: true,
 });
 
 export const metadata: Metadata = {
@@ -34,6 +36,13 @@ export default async function RootLayout({
 
   return (
     <html lang={locale} suppressHydrationWarning>
+      <head>
+        {/* Performance: Preconnect to required origins */}
+        <link rel="preconnect" href="https://firebasestorage.googleapis.com" />
+        <link rel="preconnect" href="https://www.googleapis.com" />
+        <link rel="dns-prefetch" href="https://firestore.googleapis.com" />
+        <link rel="dns-prefetch" href="https://identitytoolkit.googleapis.com" />
+      </head>
       <body 
         className={`${spaceMono.variable} ${neonBines.variable} ${logik.variable} ${logikExtendedBold.variable} ${logikWideBlack.variable} ${logikExtended8.variable} ${logik3.variable} ${logik4.variable} ${GeistSans.variable} antialiased font-sans`} 
         suppressHydrationWarning={true}

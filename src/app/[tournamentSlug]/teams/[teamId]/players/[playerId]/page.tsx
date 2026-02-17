@@ -211,6 +211,30 @@ export default function PlayerProfilePage() {
   const allPlayers = allTeams.flatMap(t => t.players || []);
   const leagueAvgMMR = allPlayers.length ? Math.round(allPlayers.reduce((sum, p) => sum + p.mmr, 0) / allPlayers.length) : 0;
 
+  const getAccountId = (): string | null => {
+    if (player.openDotaAccountId) return String(player.openDotaAccountId);
+    if (player.steamId32) return String(player.steamId32);
+
+    if (player.steamId && /^\d+$/.test(player.steamId)) {
+      try {
+        const steamId64 = BigInt(player.steamId);
+        const base = 76561197960265728n;
+        if (steamId64 > base) {
+          return String(steamId64 - base);
+        }
+      } catch {
+        return null;
+      }
+    }
+
+    return null;
+  };
+
+  const accountId = getAccountId();
+  const steamProfileHref = player.steamProfileUrl || (player.steamId ? `https://steamcommunity.com/profiles/${player.steamId}` : null);
+  const openDotaHref = accountId ? `https://www.opendota.com/players/${accountId}` : null;
+  const dotabuffHref = accountId ? `https://www.dotabuff.com/players/${accountId}` : null;
+
   return (
     <div className="relative text-white overflow-x-hidden min-h-screen">
       {/* Premium Atmosphere Background */}
@@ -273,10 +297,10 @@ export default function PlayerProfilePage() {
                   </Link>
                 </CardDescription>
                 <div className="flex flex-wrap gap-2 mt-3 justify-center md:justify-start">
-                  {player.steamId && (
+                  {steamProfileHref && (
                     <Button variant="outline" size="sm" asChild>
                       <a
-                        href={`https://steamcommunity.com/profiles/${player.steamId}`}
+                        href={steamProfileHref}
                         target="_blank"
                         rel="noopener noreferrer"
                       >
@@ -285,15 +309,27 @@ export default function PlayerProfilePage() {
                       </a>
                     </Button>
                   )}
-                  {player.openDotaAccountId && (
+                  {openDotaHref && (
                     <Button variant="outline" size="sm" asChild>
                       <a
-                        href={`https://www.opendota.com/players/${player.openDotaAccountId}`}
+                        href={openDotaHref}
                         target="_blank"
                         rel="noopener noreferrer"
                       >
                         <ExternalLink className="h-4 w-4 mr-2" />
                         <span className="font-logik">OpenDota</span>
+                      </a>
+                    </Button>
+                  )}
+                  {dotabuffHref && (
+                    <Button variant="outline" size="sm" asChild>
+                      <a
+                        href={dotabuffHref}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <ExternalLink className="h-4 w-4 mr-2" />
+                        <span className="font-logik">Dotabuff</span>
                       </a>
                     </Button>
                   )}

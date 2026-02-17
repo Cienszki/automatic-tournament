@@ -15,6 +15,7 @@ import {
     DropdownMenuTrigger,
   } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { organizationConfig } from '@/config/organization';
 
 
 // SVG Icon Components
@@ -44,14 +45,36 @@ export function Footer() {
   const { tournament } = useTournament();
   const isDevelopment = process.env.NODE_ENV === 'development';
   
-  const twitchChannel = tournament?.twitchChannel || 'polishdota2inhouse';
+  // Extract Twitch channel from URL or use legacy twitchChannel
+  const getTwitchChannel = () => {
+    if (tournament?.twitchUrl) {
+      // Extract channel from URL like https://www.twitch.tv/pd2ih or https://twitch.tv/pd2ih
+      const match = tournament.twitchUrl.match(/twitch\.tv\/([^/?]+)/);
+      return match ? match[1] : 'polishdota2inhouse';
+    }
+    return tournament?.twitchChannel || 'polishdota2inhouse';
+  };
+
+  const getTwitchUrl = () => {
+    if (tournament?.twitchUrl) {
+      return tournament.twitchUrl;
+    }
+    const channel = tournament?.twitchChannel || 'polishdota2inhouse';
+    return `https://www.twitch.tv/${channel}`;
+  };
+
+  const getDiscordUrl = () => {
+    return tournament?.discordUrl || organizationConfig.defaults.discord;
+  };
+
+  const twitchChannel = getTwitchChannel();
 
   return (
     <footer className="bg-card border-t border-border py-4 text-center">
       <div className="container mx-auto px-4">
         <div className="flex justify-center items-center space-x-6">
           <a
-            href="https://discord.gg/ZxgmF7Kr4t"
+            href={getDiscordUrl()}
             target="_blank"
             rel="noopener noreferrer"
             aria-label="Discord"
@@ -61,7 +84,7 @@ export function Footer() {
             <span className="sr-only">Discord</span>
           </a>
           <a
-            href={`https://www.twitch.tv/${twitchChannel}`}
+            href={getTwitchUrl()}
             target="_blank"
             rel="noopener noreferrer"
             aria-label="Twitch"

@@ -46,6 +46,7 @@ export function TeamLogo({
                 height={size}
                 className="object-contain w-full h-full"
                 onError={() => setError(true)}
+                unoptimized
             />
         </div>
     );

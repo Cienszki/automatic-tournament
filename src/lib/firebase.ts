@@ -15,16 +15,14 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-// Debug: log missing environment variables
-if (typeof window !== 'undefined') {
+// Only log errors for missing env vars in development
+if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
   const missingVars = Object.entries(firebaseConfig)
     .filter(([key, value]) => !value)
     .map(([key]) => key);
   
   if (missingVars.length > 0) {
     console.error('Missing Firebase environment variables:', missingVars);
-  } else {
-    console.log('All Firebase environment variables are present');
   }
 }
 
@@ -37,20 +35,14 @@ let functions: Functions;
 try {
     // Only initialize if we're in the browser and have the required config
     if (typeof window !== 'undefined' && firebaseConfig.apiKey) {
-        console.log('Initializing Firebase...');
         app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
         auth = getAuth(app);
         auth.tenantId = null; 
         db = getFirestore(app);
         storage = getStorage(app);
         functions = getFunctions(app);
-        console.log("Firebase initialized successfully");
-        console.log('Firebase apps:', getApps().length);
     } else {
         // Create placeholder objects for server-side rendering
-        console.warn("Firebase not initialized - running in server environment or missing config");
-        console.warn('Window available:', typeof window !== 'undefined');
-        console.warn('API Key available:', !!firebaseConfig.apiKey);
         app = {} as FirebaseApp;
         auth = {} as Auth;
         db = {} as Firestore;
@@ -78,21 +70,8 @@ export function isFirebaseInitialized(): boolean {
     const configValid = !!firebaseConfig.apiKey;
     const appsLength = getApps().length > 0;
     
-    const result = windowAvailable && appExists && dbExists && configValid && appsLength;
-    
-    if (!result) {
-      console.debug('Firebase initialization check failed:', {
-        windowAvailable,
-        appExists,
-        dbExists,
-        configValid,
-        appsLength
-      });
-    }
-    
-    return result;
-  } catch (error) {
-    console.error('Error checking Firebase initialization:', error);
+    return windowAvailable && appExists && dbExists && configValid && appsLength;
+  } catch {
     return false;
   }
 }

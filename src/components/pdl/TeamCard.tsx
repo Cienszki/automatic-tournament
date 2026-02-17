@@ -197,19 +197,32 @@ export function TeamCard({ team, divisionRanking }: TeamCardProps) {
               <motion.div
                 className={cn(
                   "relative w-24 h-24 rounded-2xl overflow-hidden bg-black/40 shrink-0",
-                  "border border-white/10 group-hover:border-white/40 transition-colors shadow-xl"
+                  "border border-white/10 group-hover:border-white/40 transition-colors shadow-xl flex items-center justify-center"
                 )}
                 whileHover={{ scale: 1.05, rotate: 3 }}
-                style={{
-                  // Removed glow
-                }}
               >
-                <Image
-                  src={team.logoUrl || `https://placehold.co/96x96.png?text=${team.name.charAt(0)}`}
-                  alt={team.name}
-                  fill
-                  className="object-cover"
-                />
+                {(team.logoUrl && team.logoUrl.trim() !== '') ? (
+                  <Image
+                    src={team.logoUrl}
+                    alt={team.name}
+                    fill
+                    sizes="96px"
+                    className="object-cover"
+                    unoptimized // Disable optimization for Firebase Storage URLs
+                    onError={(e) => {
+                      console.error(`Failed to load logo for ${team.name}:`, team.logoUrl);
+                      // Hide the image element on error so fallback shows
+                      (e.target as HTMLImageElement).style.display = 'none';
+                    }}
+                  />
+                ) : null}
+                {/* Always render fallback, will be behind image if it loads */}
+                <div 
+                  className={cn("text-4xl font-logik-extended-bold absolute inset-0 flex items-center justify-center", style.text)}
+                  style={{ zIndex: (team.logoUrl && team.logoUrl.trim() !== '') ? -1 : 1 }}
+                >
+                  {team.name.charAt(0)}
+                </div>
               </motion.div>
 
               {/* Team info */}
@@ -245,7 +258,7 @@ export function TeamCard({ team, divisionRanking }: TeamCardProps) {
                     <div className="shrink-0 text-white/40">
                       {getRoleIcon(player.role)}
                     </div>
-                    <p className="text-xs text-gray-400 font-logik uppercase tracking-wide truncate">
+                    <p className="text-xs text-gray-300 player-nickname font-medium uppercase tracking-wide truncate">
                       {player.nickname}
                     </p>
                   </div>
@@ -256,8 +269,8 @@ export function TeamCard({ team, divisionRanking }: TeamCardProps) {
                   <div className="mt-2 pt-2 border-t border-white/10 w-fit">
                     <div className="flex items-center gap-2 text-xs">
                       <MessageSquare className={cn("h-3 w-3", style.text)} />
-                      <span className="font-logik uppercase tracking-wide text-[10px] text-gray-400">DISCORD</span>
-                      <span className="text-white text-[10px] font-logik">
+                      <span className="font-logik-readable font-medium uppercase tracking-wide text-[10px] text-gray-400">DISCORD</span>
+                      <span className="text-white text-[10px] font-logik-readable font-medium">
                         {team.captainDiscordUsername || team.discordUsername}
                       </span>
                     </div>
@@ -281,7 +294,7 @@ export function TeamCard({ team, divisionRanking }: TeamCardProps) {
                       />
                     ))}
                   </div>
-                  <span className="text-[9px] text-gray-500 font-logik uppercase tracking-widest">Form</span>
+                  <span className="text-[9px] text-gray-400 font-logik-readable font-medium uppercase tracking-widest">Form</span>
                 </div>
               )}
             </div>

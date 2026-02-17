@@ -101,7 +101,7 @@ export default function TeamsPage() {
             <div className="w-32 h-32 border-4 border-pdl-gold rounded-full animate-spin-slow" />
           </div>
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-pdl-gold mx-auto mb-3 relative z-10"></div>
-          <p className="text-gray-400 font-logik tracking-wider uppercase text-sm">Ładowanie drużyn...</p>
+          <p className="text-gray-300 font-logik font-medium tracking-wider uppercase text-sm">Ładowanie drużyn...</p>
         </div>
       </div>
     );
@@ -137,7 +137,7 @@ export default function TeamsPage() {
         <div className="text-center space-y-4 py-8 relative">
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-1/3 h-32 bg-pdl-crimson/5 blur-[100px] rounded-full pointer-events-none" />
 
-          <h1 className="text-6xl md:text-7xl font-logik-wide-black text-transparent bg-clip-text bg-gradient-to-b from-white via-white to-white/50 tracking-tighter uppercase relative z-10 drop-shadow-2xl">
+          <h1 className="text-6xl md:text-7xl 2xl:text-9xl font-logik-wide-black text-transparent bg-clip-text bg-gradient-to-b from-white via-white to-white/50 tracking-tighter uppercase relative z-10 drop-shadow-2xl">
             Drużyny
           </h1>
 
@@ -155,7 +155,7 @@ export default function TeamsPage() {
             <div className="relative z-10 space-y-6">
               <Users className="h-12 w-12 mx-auto text-white/20 mb-4" />
               <div className="space-y-2">
-                <p className="text-gray-400 font-logik text-lg">
+                <p className="text-gray-300 font-logik font-medium text-lg">
                   {tournament.status === 'registration'
                     ? 'Brak zarejestrowanych drużyn. Bądź pierwszy!'
                     : 'Brak drużyn w tym turnieju.'}

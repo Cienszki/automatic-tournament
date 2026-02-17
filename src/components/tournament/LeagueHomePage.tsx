@@ -1,21 +1,30 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import dynamic from 'next/dynamic';
 import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { useTournament } from '@/context/TournamentContext';
-import { HeroSection } from '@/components/pdl/HeroSection';
 import { NextMatchCard } from '@/components/pdl/NextMatchCard';
-import { DivisionTable } from '@/components/pdl/DivisionTable';
-import { QuickLinksSection } from '@/components/pdl/QuickLinksSection';
-import { staggerContainer, fadeInUp } from '@/lib/animations';
-import { ArrowRight, Trophy, Link as LinkIcon, Loader2, Users } from 'lucide-react';
+import { ArrowRight, Trophy, Loader2, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { usePDLData } from '@/hooks/usePDLData';
 import { useAuth } from '@/context/AuthContext';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+
+// Dynamic imports for heavy components - reduces initial JS bundle
+const HeroSection = dynamic(() => import('@/components/pdl/HeroSection').then(mod => ({ default: mod.HeroSection })), {
+  loading: () => <div className="h-[600px] animate-pulse bg-white/5 rounded-lg" />,
+});
+
+const DivisionTable = dynamic(() => import('@/components/pdl/DivisionTable').then(mod => ({ default: mod.DivisionTable })), {
+  loading: () => <div className="h-[300px] animate-pulse bg-white/5 rounded-lg" />,
+});
+
+const QuickLinksSection = dynamic(() => import('@/components/pdl/QuickLinksSection').then(mod => ({ default: mod.QuickLinksSection })), {
+  loading: () => <div className="h-[200px] animate-pulse bg-white/5 rounded-lg" />,
+});
 
 /**
  * Home page for Professional League tournaments (e.g., PDL)
@@ -98,56 +107,32 @@ export function LeagueHomePage() {
           className="absolute top-[-10%] right-[-10%] w-[50vw] h-[50vw] rounded-full opacity-[0.03] blur-[150px]"
           style={{ background: primaryColor }}
         />
-
-        {/* Floating particles - subtle dust (kept from original) */}
-        {[...Array(20)].map((_, i) => (
-          <motion.div
-            key={i}
-            className="absolute rounded-full bg-white/5"
-            style={{
-              width: Math.random() * 2 + 1 + 'px',
-              height: Math.random() * 2 + 1 + 'px',
-              left: Math.random() * 100 + '%',
-              top: Math.random() * 100 + '%',
-            }}
-            animate={{
-              y: [0, -100],
-              opacity: [0, 0.3, 0],
-            }}
-            transition={{
-              duration: 10 + Math.random() * 20,
-              repeat: Infinity,
-              ease: "linear",
-              delay: Math.random() * 10,
-            }}
-          />
-        ))}
       </div>
 
 
 
-      <div className="relative z-10 w-full max-w-[1920px] mx-auto px-4 sm:px-8 py-8 space-y-16">
+      <div className="relative z-10 w-full max-w-[1920px] mx-auto px-4 sm:px-8 py-6 space-y-12">
         {/* Hero Section + Next Match */}
-        <section className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-16 items-start">
+        <section className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-12 items-start">
           {/* Left: Hero Section (7 cols) */}
           <div className="lg:col-span-7 xl:col-span-8 h-full">
             <HeroSection isTeamCaptain={isTeamCaptain} />
           </div>
 
           {/* Right: Next Match (5 cols) */}
-          <div className="lg:col-span-5 xl:col-span-4 h-full pt-8 lg:pt-0">
+          <div className="lg:col-span-5 xl:col-span-4 h-full pt-6 lg:pt-0">
             <NextMatchCard
-              channel={tournament.twitchChannel || 'polishdota2inhouse'}
+              channel={tournament.twitchUrl ? tournament.twitchUrl.match(/twitch\.tv\/([^/?]+)/)?.[1] || 'polishdota2inhouse' : tournament.twitchChannel || 'polishdota2inhouse'}
               nextMatch={nextMatch}
             />
           </div>
         </section>
 
         {/* Quick Links and Division Tables Section */}
-        <section className="grid grid-cols-1 xl:grid-cols-12 gap-12 lg:gap-16">
+        <section className="grid grid-cols-1 xl:grid-cols-12 gap-8 lg:gap-12">
           {/* Left: Quick Links (2 cols) - Sticky Sidebar */}
           <div className="xl:col-span-2 hidden xl:block">
-            <div className="sticky top-24 space-y-8">
+            <div className="sticky top-20 space-y-6">
               <div>
                 <h3 className="text-xs font-mono uppercase tracking-widest text-white/30 mb-6 pl-1">
                   Menu
@@ -167,17 +152,11 @@ export function LeagueHomePage() {
 
 
             {/* Division Tables Grid */}
-            <motion.div
-              variants={staggerContainer}
-              initial="hidden"
-              animate="visible"
-              className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8 lg:gap-12 scale-85 origin-top-left"
-            >
-              {divisions.map((division, index) => (
-                <motion.div
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8 lg:gap-12 scale-85 origin-top-left">
+              {divisions.map((division) => (
+                <div
                   key={division.id || division.name}
-                  variants={fadeInUp}
-                  className="relative group h-full"
+                  className="relative group h-full animate-fadeIn"
                 >
                   <DivisionTable
                     divisionName={division.name}
@@ -187,30 +166,24 @@ export function LeagueHomePage() {
                     divisionTheme={division.theme}
                     medalUrl={division.medalUrl}
                   />
-                </motion.div>
+                </div>
               ))}
-            </motion.div>
+            </div>
           </div>
         </section>
 
         {/* Bottom CTA Section */}
         <section className="py-12 lg:py-24">
-          <motion.div
-            className="relative rounded-none overflow-hidden"
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.8 }}
-          >
+          <div className="relative rounded-none overflow-hidden">
             <div className="relative text-center max-w-4xl mx-auto">
-              <motion.h2
+              <h2
                 className="text-4xl md:text-6xl lg:text-7xl font-logik-extended-bold mb-8 text-white tracking-tight"
                 style={{
                   filter: `drop-shadow(0 0 30px ${primaryColor}30)`
                 }}
               >
                 GOTOWY NA WYZWANIE?
-              </motion.h2>
+              </h2>
               <p className="text-white/60 mb-12 text-xl leading-relaxed max-w-2xl mx-auto">
                 Dołącz do Polish Dota League i sprawdź się z najlepszymi graczami w Polsce.
                 Cotygodniowe mecze, profesjonalna organizacja i szansa na awans do najwyższej dywizji!
@@ -232,7 +205,7 @@ export function LeagueHomePage() {
                 {hasTeam ? <Users className="h-6 w-6" /> : <ArrowRight className="h-6 w-6" />}
               </Link>
             </div>
-          </motion.div>
+          </div>
         </section>
       </div>
     </div>

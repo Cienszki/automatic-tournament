@@ -32,6 +32,7 @@ interface DivisionInfo {
   color: string;
   matchday?: string;
   currentRound?: number;
+  totalRounds?: number;
   theme?: string;
   medalUrl?: string;
 }
@@ -225,11 +226,17 @@ export function useDivisionData(divisionId: string): UseDivisionDataResult {
           team.position = index + 1;
         });
 
-        // Calculate current round (highest round number in completed or scheduled matches)
-        const currentRound = matchesData.reduce((max, match) => {
-          const round = (match as any).round || 1;
-          return Math.max(max, round);
-        }, 1);
+        // Calculate actual season progress based on completed matches
+        // Count completed matches to determine actual progress
+        const completedMatches = matchesData.filter(m => m.status === 'completed').length;
+        // Expected total matches: (n teams * (n-1 teams)) / 2 for single round-robin
+        const totalExpectedMatches = teamsData.length > 1 ? (teamsData.length * (teamsData.length - 1)) / 2 : 0;
+        // Calculate progress as a decimal (0-1), then scale to rounds
+        const progressRatio = totalExpectedMatches > 0 ? completedMatches / totalExpectedMatches : 0;
+        // Use totalRounds from division data if available, otherwise calculate from team count
+        // For single round-robin: (n-1) matchdays/rounds for n teams
+        const totalRounds = divisionData.totalRounds || (teamsData.length > 1 ? (teamsData.length - 1) : 1);
+        const currentRound = Math.max(1, Math.ceil(progressRatio * totalRounds));
 
         setStandings(standingsData);
         setMatches(matchesData);
@@ -242,6 +249,7 @@ export function useDivisionData(divisionId: string): UseDivisionDataResult {
           currentRound,
           theme: divisionData.theme,
           medalUrl: divisionData.medalUrl,
+          totalRounds,
         });
 
       } catch (err: any) {

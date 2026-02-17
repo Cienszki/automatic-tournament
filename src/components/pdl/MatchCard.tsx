@@ -172,7 +172,7 @@ export function MatchCard({ match, index = 0 }: MatchCardProps) {
                     <span className="relative text-2xl font-bold text-[#d4af37] font-logik">VS</span>
                   </div>
                 )}
-                <span className="text-xs text-gray-500 font-logik uppercase">
+                <span className="text-xs text-gray-400 font-logik font-medium uppercase">
                   BO{match.bestOf || 2}
                 </span>
               </div>
@@ -262,6 +262,7 @@ function TeamDisplay({ team, isWinner, align }: TeamDisplayProps) {
           alt={team.name}
           fill
           className="object-cover"
+          unoptimized
         />
         {isWinner && (
           <div className="absolute inset-0 bg-[#d4af37]/20" />

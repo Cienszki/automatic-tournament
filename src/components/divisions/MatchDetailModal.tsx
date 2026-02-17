@@ -60,6 +60,7 @@ export function MatchDetailModal({ match, isOpen, onClose, divisionColor }: Matc
                   width={48}
                   height={48}
                   className="rounded-sm"
+                  unoptimized
                 />
               )}
               <div className="flex-1">
@@ -106,6 +107,7 @@ export function MatchDetailModal({ match, isOpen, onClose, divisionColor }: Matc
                   width={48}
                   height={48}
                   className="rounded-sm"
+                  unoptimized
                 />
               )}
             </div>

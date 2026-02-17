@@ -39,8 +39,9 @@ import {
   Loader2,
   AlertCircle,
 } from 'lucide-react';
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, getDocs, doc, updateDoc, writeBatch } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { useToast } from '@/hooks/use-toast';
 
 interface Team {
   id: string;
@@ -59,8 +60,10 @@ interface Team {
  */
 export function TeamsTab() {
   const { tournament, theme } = useTournament();
+  const { toast } = useToast();
   
   const [teams, setTeams] = useState<Team[]>([]);
+  const [originalTeams, setOriginalTeams] = useState<Team[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
@@ -129,6 +132,7 @@ export function TeamsTab() {
         });
 
         setTeams(teamsData);
+        setOriginalTeams(teamsData);
       } catch (err) {
         console.error('Error loading teams:', err);
         setError('Nie udało się załadować drużyn');
@@ -141,9 +145,57 @@ export function TeamsTab() {
   }, [tournament?.id, divisions]);
 
   const handleSave = async () => {
-    setIsSaving(true);
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    setIsSaving(false);
+    if (!tournament?.id) return;
+
+    try {
+      setIsSaving(true);
+      
+      // Find changed teams
+      const changedTeams = teams.filter(team => {
+        const original = originalTeams.find(t => t.id === team.id);
+        return original && original.status !== team.status;
+      });
+
+      if (changedTeams.length === 0) {
+        toast({
+          title: "Brak zmian",
+          description: "Nie wprowadzono żadnych zmian do zapisania.",
+        });
+        setIsSaving(false);
+        return;
+      }
+
+      // Update teams in batch
+      const batch = writeBatch(db);
+      
+      changedTeams.forEach(team => {
+        const teamRef = doc(db, 'tournaments', tournament.id, 'teams', team.id);
+        batch.update(teamRef, { 
+          status: team.status,
+          updatedAt: new Date().toISOString()
+        });
+      });
+
+      await batch.commit();
+
+      // Update original teams to match current state
+      setOriginalTeams([...teams]);
+
+      toast({
+        title: "Zapisano pomyślnie",
+        description: `Zaktualizowano status ${changedTeams.length} drużyn.`,
+        variant: "default",
+      });
+    } catch (err) {
+      console.error('Error saving teams:', err);
+      toast({
+        title: "Błąd zapisu",
+        description: "Nie udało się zapisać zmian. Spróbuj ponownie.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const updateTeamStatus = (teamId: string, status: Team['status']) => {
@@ -186,6 +238,12 @@ export function TeamsTab() {
       return false;
     }
     return true;
+  });
+
+  // Check if there are unsaved changes
+  const hasUnsavedChanges = teams.some(team => {
+    const original = originalTeams.find(t => t.id === team.id);
+    return original && original.status !== team.status;
   });
 
   const getStatusBadge = (status: Team['status']) => {
@@ -258,19 +316,27 @@ export function TeamsTab() {
             Weryfikacja i zarządzanie statusem drużyn ({teams.length} drużyn)
           </p>
         </div>
-        <Button 
-          onClick={handleSave} 
-          disabled={isSaving}
-          className="font-logik"
-          style={{ backgroundColor: theme.primaryColor }}
-        >
-          {isSaving ? (
-            <RotateCcw className="h-4 w-4 mr-2 animate-spin" />
-          ) : (
-            <Save className="h-4 w-4 mr-2" />
+        <div className="flex items-center gap-3">
+          {hasUnsavedChanges && (
+            <span className="text-sm text-yellow-500 font-logik animate-pulse">
+              Niezapisane zmiany
+            </span>
           )}
-          Zapisz zmiany
-        </Button>
+          <Button 
+            onClick={handleSave} 
+            disabled={isSaving || !hasUnsavedChanges}
+            className="font-logik"
+            style={{ backgroundColor: hasUnsavedChanges ? theme.primaryColor : undefined }}
+            variant={hasUnsavedChanges ? "default" : "outline"}
+          >
+            {isSaving ? (
+              <RotateCcw className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <Save className="h-4 w-4 mr-2" />
+            )}
+            Zapisz zmiany
+          </Button>
+        </div>
       </div>
 
       {/* Status Summary */}

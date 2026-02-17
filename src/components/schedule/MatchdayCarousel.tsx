@@ -7,6 +7,8 @@ import { Match } from '@/lib/definitions';
 import { ScheduleMatchCard } from './ScheduleMatchCard';
 import { cn } from '@/lib/utils';
 import { useTournament } from '@/context/TournamentContext';
+import { collection, getDocs } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 
 
@@ -42,10 +44,36 @@ export function MatchdayCarousel({ matches }: MatchdayCarouselProps) {
     const [matchdays, setMatchdays] = useState<{ id: number; matches: Match[] }[]>([]);
     const [currentIndex, setCurrentIndex] = useState(0);
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+    const [divisions, setDivisions] = useState<any[]>([]);
     const dropdownRef = useRef<HTMLDivElement>(null);
+
+    // Load divisions from Firestore subcollection
+    useEffect(() => {
+        const loadDivisions = async () => {
+            if (!tournament?.id) return;
+            
+            try {
+                const divisionsRef = collection(db, 'tournaments', tournament.id, 'divisions');
+                const snapshot = await getDocs(divisionsRef);
+                const divisionsList = snapshot.docs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data()
+                })).sort((a: any, b: any) => (a.tier || 0) - (b.tier || 0));
+                
+                console.log('[MatchdayCarousel] Loaded divisions from Firestore:', divisionsList);
+                setDivisions(divisionsList);
+            } catch (error) {
+                console.error('[MatchdayCarousel] Error loading divisions:', error);
+            }
+        };
+        
+        loadDivisions();
+    }, [tournament?.id]);
 
     // Group matches into matchdays
     useEffect(() => {
+        console.log('[MatchdayCarousel] Received matches:', matches.length);
+        
         if (!matches.length) {
             setMatchdays([]);
             return;
@@ -55,6 +83,7 @@ export function MatchdayCarousel({ matches }: MatchdayCarouselProps) {
 
         matches.forEach(match => {
             const matchday = match.matchday || 1;
+            console.log('[MatchdayCarousel] Match:', match.teamA?.name, 'vs', match.teamB?.name, 'matchday:', matchday, 'scheduled_for:', match.scheduled_for);
             if (!groups[matchday]) groups[matchday] = [];
             groups[matchday].push(match);
         });
@@ -65,6 +94,8 @@ export function MatchdayCarousel({ matches }: MatchdayCarouselProps) {
                 matches: groups[parseInt(key)]
             }))
             .sort((a, b) => a.id - b.id);
+
+        console.log('[MatchdayCarousel] Created matchday list:', matchdayList.map(md => ({ id: md.id, matches: md.matches.length })));
 
         setMatchdays(matchdayList);
 
@@ -78,10 +109,14 @@ export function MatchdayCarousel({ matches }: MatchdayCarouselProps) {
             });
         });
 
+        console.log('[MatchdayCarousel] Active index:', activeIndex, 'today:', today);
+
         if (activeIndex !== -1) {
             setCurrentIndex(activeIndex);
+            console.log('[MatchdayCarousel] Setting currentIndex to active:', activeIndex);
         } else {
             setCurrentIndex(Math.max(0, matchdayList.length - 1));
+            console.log('[MatchdayCarousel] Setting currentIndex to last:', Math.max(0, matchdayList.length - 1));
         }
 
     }, [matches]);
@@ -125,6 +160,7 @@ export function MatchdayCarousel({ matches }: MatchdayCarouselProps) {
     };
 
     if (!matchdays.length) {
+        console.log('[MatchdayCarousel] No matchdays - returning empty state');
         return (
             <div className="flex flex-col items-center justify-center py-32 text-white/20">
                 <Calendar className="w-16 h-16 mb-4 opacity-30" />
@@ -133,33 +169,48 @@ export function MatchdayCarousel({ matches }: MatchdayCarouselProps) {
         );
     }
 
+    console.log('[MatchdayCarousel] Rendering with matchdays:', matchdays.length, 'currentIndex:', currentIndex);
+
     const currentMatchday = matchdays[currentIndex];
+    console.log('[MatchdayCarousel] Current matchday:', currentMatchday?.id, 'matches:', currentMatchday?.matches?.length);
+
     const prevMatchday = currentIndex > 0 ? matchdays[currentIndex - 1] : null;
     const nextMatchday = currentIndex < matchdays.length - 1 ? matchdays[currentIndex + 1] : null;
 
-    // Get divisions from tournament config
-    const divisions = tournament?.divisions || [];
+    console.log('[MatchdayCarousel] Using divisions:', divisions.length, divisions.map((d: any) => d.id));
 
     // Group current matchday matches by division
     const matchesByDivision: { [key: string]: Match[] } = {};
     currentMatchday.matches.forEach(m => {
-        const divId = m.group_id || 'unknown';
+        const divId = m.group_id || m.divisionId || 'unknown';
         if (!matchesByDivision[divId]) matchesByDivision[divId] = [];
         matchesByDivision[divId].push(m);
     });
 
-    // Create columns from tournament divisions or fallback
+    console.log('[MatchdayCarousel] Matches by division:', Object.keys(matchesByDivision).map(k => ({ [k]: matchesByDivision[k].length })));
+
+    // Create columns from loaded divisions or fallback
     const columns = divisions.length > 0
         ? divisions
         : Object.keys(matchesByDivision).sort().map(id => ({ id, name: id, matchday: '', color: '#666', tier: 3 }));
 
+    console.log('[MatchdayCarousel] Columns:', columns.length);
+
     // Count live matches
     const liveCount = currentMatchday.matches.filter(m => m.status === 'live').length;
 
+    const getGridColsClass = (count: number): string => {
+        if (count <= 1) return 'grid-cols-1';
+        if (count === 2) return 'grid-cols-1 md:grid-cols-2';
+        if (count === 3) return 'grid-cols-1 md:grid-cols-2 xl:grid-cols-3';
+        if (count === 4) return 'grid-cols-1 md:grid-cols-2 xl:grid-cols-4';
+        return 'grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4';
+    };
+
     return (
-        <div className="relative w-full py-8">
+        <div className="relative w-full py-6 md:py-8">
             {/* Floating Header with Navigation */}
-            <div className="relative mb-12">
+            <div className="relative mb-8 md:mb-12">
                 {/* Navigation Buttons - Floating on sides */}
                 <div className="absolute left-0 top-1/2 -translate-y-1/2 z-20">
                     <motion.button
@@ -168,7 +219,7 @@ export function MatchdayCarousel({ matches }: MatchdayCarouselProps) {
                         onClick={() => paginate(-1)}
                         disabled={!prevMatchday}
                         className={cn(
-                            "group flex items-center gap-4 px-6 py-4 rounded-2xl transition-all duration-300",
+                            "group flex items-center gap-2 md:gap-4 px-2 md:px-6 py-2 md:py-4 rounded-2xl transition-all duration-300",
                             prevMatchday
                                 ? "text-white/40 hover:text-white cursor-pointer"
                                 : "opacity-0 pointer-events-none"
@@ -191,7 +242,7 @@ export function MatchdayCarousel({ matches }: MatchdayCarouselProps) {
                         onClick={() => paginate(1)}
                         disabled={!nextMatchday}
                         className={cn(
-                            "group flex items-center gap-4 px-6 py-4 rounded-2xl transition-all duration-300",
+                            "group flex items-center gap-2 md:gap-4 px-2 md:px-6 py-2 md:py-4 rounded-2xl transition-all duration-300",
                             nextMatchday
                                 ? "text-white/40 hover:text-white cursor-pointer"
                                 : "opacity-0 pointer-events-none"
@@ -214,14 +265,14 @@ export function MatchdayCarousel({ matches }: MatchdayCarouselProps) {
                         <button
                             onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                             className={cn(
-                                "flex items-center justify-between gap-3 px-8 py-3 rounded-full min-w-[200px]",
+                                "flex items-center justify-between gap-3 px-6 sm:px-8 py-2.5 sm:py-3 rounded-full min-w-[160px] sm:min-w-[200px]",
                                 "bg-black/80 border border-white/10 backdrop-blur-md",
                                 "hover:bg-black hover:border-pdl-gold/30 hover:shadow-[0_0_15px_rgba(255,215,0,0.1)]",
                                 "transition-all duration-300",
                                 isDropdownOpen && "border-pdl-gold/50 bg-black shadow-[0_0_20px_rgba(255,215,0,0.15)]"
                             )}
                         >
-                            <span className="text-sm font-logik-extended-bold text-pdl-gold uppercase tracking-widest">
+                            <span className="text-xs sm:text-sm font-logik-extended-bold text-pdl-gold uppercase tracking-widest">
                                 Round {currentMatchday.id}
                             </span>
                             <ChevronRight
@@ -290,14 +341,15 @@ export function MatchdayCarousel({ matches }: MatchdayCarouselProps) {
                             transition={{ type: "spring", stiffness: 300, damping: 25 }}
                             className="text-center"
                         >
-                            <h1 className="text-5xl md:text-7xl font-logik-extended-bold text-transparent bg-clip-text bg-gradient-to-b from-white via-white/90 to-white/50 uppercase tracking-tight">
-                                Matchday {currentMatchday.id}
+                            <h1 className="text-4xl sm:text-5xl md:text-7xl font-logik-extended-bold text-transparent bg-clip-text bg-gradient-to-b from-white via-white/90 to-white/50 uppercase tracking-tight leading-none">
+                                <span className="block">Matchday</span>
+                                <span className="block">{currentMatchday.id}</span>
                             </h1>
 
                             {/* Decorative line */}
                             <motion.div
                                 initial={{ width: 0 }}
-                                animate={{ width: 200 }}
+                                animate={{ width: 160 }}
                                 className="h-1 mx-auto mt-4 rounded-full bg-gradient-to-r from-transparent via-pdl-gold/50 to-transparent"
                             />
 
@@ -343,15 +395,15 @@ export function MatchdayCarousel({ matches }: MatchdayCarouselProps) {
                         }}
                         className="w-full"
                     >
-                        <div
-                            className="grid gap-8"
-                            style={{
-                                gridTemplateColumns: `repeat(${Math.max(1, columns.length)}, minmax(0, 1fr))`
-                            }}
-                        >
-                            {columns.map((division, divIdx) => {
+                        <div className={cn('grid gap-4 md:gap-6 xl:gap-8', getGridColsClass(columns.length))}>
+                            {columns.map((division: any, divIdx: number) => {
                                 const divisionMatches = matchesByDivision[division.id] || [];
-                                const tierStyle = DIVISION_TIER_STYLES[division.id.toLowerCase()] || DIVISION_TIER_STYLES.adept;
+                                console.log('[MatchdayCarousel] Division:', division.id, division.name, '- Matches found:', divisionMatches.length);
+                                console.log('[MatchdayCarousel] Available division keys:', Object.keys(matchesByDivision));
+                                
+                                // Get style based on tier instead of hard-coded ID
+                                const tierStyleKey = division.tier === 1 ? 'elite' : division.tier === 2 ? 'challenger' : 'adept';
+                                const tierStyle = DIVISION_TIER_STYLES[tierStyleKey] || DIVISION_TIER_STYLES.adept;
 
                                 // Sort: live first, then by time
                                 divisionMatches.sort((a, b) => {
@@ -369,22 +421,22 @@ export function MatchdayCarousel({ matches }: MatchdayCarouselProps) {
                                         className="relative"
                                     >
                                         {/* Division Card - Distinct Column */}
-                                        <div className="relative h-full bg-white/[0.02] border border-white/5 rounded-3xl overflow-hidden group hover:bg-white/[0.04] transition-colors duration-500">
+                                        <div className="relative h-full bg-white/[0.02] border border-white/5 rounded-2xl md:rounded-3xl overflow-hidden group hover:bg-white/[0.04] transition-colors duration-500">
 
                                             {/* Division Header */}
-                                            <div className="relative p-6 pb-4 border-b border-white/5">
-                                                <div className="flex items-center gap-4">
+                                            <div className="relative p-4 md:p-6 pb-3 md:pb-4 border-b border-white/5">
+                                                <div className="flex items-center gap-3 md:gap-4 min-w-0">
                                                     {/* Color indicator */}
                                                     <div
-                                                        className="w-1.5 h-8 rounded-full shrink-0"
+                                                        className="w-1.5 h-7 md:h-8 rounded-full shrink-0"
                                                         style={{
                                                             backgroundColor: tierStyle.bar || division.color || '#666',
                                                             boxShadow: `0 0 15px ${tierStyle.glow}`
                                                         }}
                                                     />
-                                                    <div>
+                                                    <div className="min-w-0">
                                                         <h3 className={cn(
-                                                            "text-2xl font-logik-extended-bold uppercase tracking-wider",
+                                                            "text-lg sm:text-xl md:text-2xl font-logik-extended-bold uppercase tracking-wider truncate",
                                                             tierStyle.text
                                                         )}>
                                                             {division.name}
@@ -394,7 +446,7 @@ export function MatchdayCarousel({ matches }: MatchdayCarouselProps) {
                                             </div>
 
                                             {/* Matches List */}
-                                            <div className="relative px-4 pb-6 space-y-3">
+                                            <div className="relative px-3 sm:px-4 pb-4 sm:pb-6 space-y-2.5 sm:space-y-3">
                                                 {divisionMatches.length > 0 ? (
                                                     divisionMatches.map((match, matchIdx) => (
                                                         <motion.div

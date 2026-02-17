@@ -94,6 +94,7 @@ export function PDLUpcomingMatch({
                         alt={opponent?.name || 'Opponent'}
                         fill
                         className="object-cover"
+                        unoptimized
                     />
                 </div>
 

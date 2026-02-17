@@ -63,7 +63,7 @@ function BracketMatchCard({ match, title, isFinal }: { match: PlayoffMatch; titl
 
     return (
         <div className="space-y-2">
-            <h4 className="text-xs uppercase tracking-widest text-center text-gray-500 font-logik">{title}</h4>
+            <h4 className="text-xs uppercase tracking-widest text-center text-gray-400 font-logik font-medium">{title}</h4>
             <div className={cn(
                 "w-[280px] bg-[#0a0a0f] rounded-xl border overflow-hidden relative group",
                 borderColor, glowing
@@ -115,6 +115,7 @@ function TeamRow({ team, score, isWinner, points }: { team?: { id: string; name:
                         alt={team.name}
                         fill
                         className="object-cover"
+                        unoptimized
                     />
                 </div>
                 <span className={cn(

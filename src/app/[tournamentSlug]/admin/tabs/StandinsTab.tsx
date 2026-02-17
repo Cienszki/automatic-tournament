@@ -7,6 +7,9 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { useToast } from '@/hooks/use-toast';
+import { doc, updateDoc, writeBatch } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 import { cn } from '@/lib/utils';
 import { 
   UserPlus,
@@ -45,7 +48,8 @@ interface StandinAppeal {
  * 4. Appeal appears here for admin to make final decision
  */
 export function StandinsTab() {
-  const { tournament, theme } = useTournament();
+  const { tournament, theme, refetchTournament } = useTournament();
+  const { toast } = useToast();
   
   // Mock appeals data - only shows requests that were denied and then appealed
   const [appeals, setAppeals] = useState<StandinAppeal[]>([
@@ -69,9 +73,48 @@ export function StandinsTab() {
   const [isSaving, setIsSaving] = useState(false);
 
   const handleSave = async () => {
+    if (!tournament?.id) {
+      toast({
+        title: 'Błąd',
+        description: 'Nie znaleziono ID turnieju',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setIsSaving(true);
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    setIsSaving(false);
+    try {
+      const batch = writeBatch(db);
+      
+      // Update appeal statuses and notes
+      appeals.forEach(appeal => {
+        const appealRef = doc(db, 'tournaments', tournament.id, 'standinAppeals', appeal.id);
+        batch.update(appealRef, {
+          status: appeal.status,
+          adminNote: adminNote[appeal.id] || null,
+          reviewedAt: appeal.status !== 'pending' ? new Date().toISOString() : null,
+          updatedAt: new Date().toISOString(),
+        });
+      });
+
+      await batch.commit();
+
+      toast({
+        title: 'Zapisano',
+        description: 'Decyzje dotyczące zastępstw zostały zapisane',
+      });
+
+      await refetchTournament();
+    } catch (error) {
+      console.error('Error saving standin appeals:', error);
+      toast({
+        title: 'Błąd',
+        description: 'Nie udało się zapisać decyzji. Spróbuj ponownie.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const updateAppealStatus = (appealId: string, status: StandinAppeal['status']) => {

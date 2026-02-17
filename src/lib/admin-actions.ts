@@ -11,22 +11,25 @@ export async function getAllTeamsAdmin(): Promise<Team[]> {
     ensureAdminInitialized();
     const db = getAdminDb();
     const teamsSnapshot = await db.collection('teams').get();
-    const teams: Team[] = [];
-    for (const docSnap of teamsSnapshot.docs) {
-        const teamData = docSnap.data();
-        // Fetch players subcollection
-        const playersSnapshot = await db.collection('teams').doc(docSnap.id).collection('players').get();
-        const players = playersSnapshot.docs.map(playerDoc => playerDoc.data() as Player);
-        teams.push({
-            id: docSnap.id,
-            ...teamData,
-            players,
-            createdAt: teamData.createdAt && typeof teamData.createdAt.toDate === 'function'
-                ? teamData.createdAt.toDate().toISOString()
-                : new Date(0).toISOString(),
-        } as Team);
-    }
-    return teams;
+    
+    // OPTIMIZATION: Fetch all players subcollections in parallel
+    const teamsWithPlayers = await Promise.all(
+        teamsSnapshot.docs.map(async (docSnap) => {
+            const teamData = docSnap.data();
+            const playersSnapshot = await db.collection('teams').doc(docSnap.id).collection('players').get();
+            const players = playersSnapshot.docs.map(playerDoc => playerDoc.data() as Player);
+            return {
+                id: docSnap.id,
+                ...teamData,
+                players,
+                createdAt: teamData.createdAt && typeof teamData.createdAt.toDate === 'function'
+                    ? teamData.createdAt.toDate().toISOString()
+                    : new Date(0).toISOString(),
+            } as Team;
+        })
+    );
+    
+    return teamsWithPlayers;
 }
 
 // Admin-side getAllGroups using Admin SDK

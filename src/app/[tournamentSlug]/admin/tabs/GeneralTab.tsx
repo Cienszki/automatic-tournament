@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTournament, useTournamentType } from '@/context/TournamentContext';
+import { useAuth } from '@/context/AuthContext';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Card, CardHeader, CardContent, CardTitle, CardDescription } from '@/components/ui/card';
@@ -19,6 +20,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
+import { FontManagement } from '@/components/admin/FontManagement';
+import type { CustomFont } from '@/components/admin/FontManagement';
 import { 
   Settings,
   Palette,
@@ -31,6 +34,11 @@ import {
   Play,
   Pause,
   Trophy,
+  Shield,
+  UserPlus,
+  Search,
+  X,
+  Loader2,
 } from 'lucide-react';
 
 /**
@@ -40,13 +48,15 @@ import {
 export function GeneralTab() {
   const { tournament, theme } = useTournament();
   const { isLeague } = useTournamentType();
+  const { user } = useAuth();
   
   // Form state - Basic Info
   const [tournamentName, setTournamentName] = useState(tournament?.name || '');
   const [logoUrl, setLogoUrl] = useState(theme?.logoUrl || '');
   const [inlineLogoUrl, setInlineLogoUrl] = useState(''); // Not in theme yet, will be added later
   const [leagueId, setLeagueId] = useState(tournament?.leagueId?.toString() || '');
-  const [twitchChannel, setTwitchChannel] = useState(tournament?.twitchChannel || '');
+  const [twitchUrl, setTwitchUrl] = useState(tournament?.twitchUrl || '');
+  const [discordUrl, setDiscordUrl] = useState(tournament?.discordUrl || '');
   
   // Form state - Type & Status
   const [tournamentType, setTournamentType] = useState<'league' | 'mmr-limited'>(
@@ -61,6 +71,158 @@ export function GeneralTab() {
   const [secondaryColor, setSecondaryColor] = useState(theme.secondaryColor || '#666666');
   const [accentColor, setAccentColor] = useState(theme.accentColor || '#D4AF37');
 
+  // Typography settings
+  const [headerFont, setHeaderFont] = useState(theme.headerFont || 'logik');
+  const [textFont, setTextFont] = useState(theme.textFont || 'logik');
+  const [readableFont, setReadableFont] = useState(theme.readableFont || 'geist');
+  const [rulesContentFont, setRulesContentFont] = useState(theme.rulesContentFont || 'geist');
+  const [customFonts, setCustomFonts] = useState<CustomFont[]>(tournament?.customFonts || []);
+
+  // Admin management state
+  const [searchEmail, setSearchEmail] = useState('');
+  const [searchResult, setSearchResult] = useState<any>(null);
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchError, setSearchError] = useState('');
+  const [tournamentAdmins, setTournamentAdmins] = useState<any[]>([]);
+  const [isLoadingAdmins, setIsLoadingAdmins] = useState(true);
+  const [isAddingAdmin, setIsAddingAdmin] = useState(false);
+
+  // Load tournament admins
+  useEffect(() => {
+    loadTournamentAdmins();
+  }, [tournament?.id]);
+
+  const loadTournamentAdmins = async () => {
+    if (!tournament?.id || !user) return;
+    
+    try {
+      const token = await user.getIdToken();
+      const response = await fetch(`/api/admin/tournament-admins?tournamentId=${tournament.id}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setTournamentAdmins(data.admins || []);
+      }
+    } catch (error) {
+      console.error('Error loading tournament admins:', error);
+    } finally {
+      setIsLoadingAdmins(false);
+    }
+  };
+
+  const handleSearchUser = async () => {
+    if (!searchEmail || !user) return;
+    
+    setIsSearching(true);
+    setSearchError('');
+    setSearchResult(null);
+    
+    try {
+      const token = await user.getIdToken();
+      const response = await fetch('/api/admin/search-user', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ email: searchEmail })
+      });
+      
+      const data = await response.json();
+      
+      if (data.success && data.user) {
+        setSearchResult(data.user);
+      } else {
+        setSearchError(data.error || 'Nie znaleziono użytkownika');
+      }
+    } catch (error) {
+      console.error('Error searching user:', error);
+      setSearchError('Błąd podczas wyszukiwania');
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const handleAddAdmin = async () => {
+    if (!searchResult || !tournament?.id || !user) return;
+    
+    // Check if already admin
+    if (tournamentAdmins.some(admin => admin.uid === searchResult.uid)) {
+      alert('Ten użytkownik jest już administratorem tego turnieju');
+      return;
+    }
+    
+    setIsAddingAdmin(true);
+    
+    try {
+      const token = await user.getIdToken();
+      const response = await fetch('/api/admin/tournament-admins', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ 
+          tournamentId: tournament.id,
+          userId: searchResult.uid 
+        })
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        alert('Administrator został dodany pomyślnie!');
+        setSearchEmail('');
+        setSearchResult(null);
+        loadTournamentAdmins();
+      } else {
+        alert(data.error || 'Błąd podczas dodawania administratora');
+      }
+    } catch (error) {
+      console.error('Error adding admin:', error);
+      alert('Błąd podczas dodawania administratora');
+    } finally {
+      setIsAddingAdmin(false);
+    }
+  };
+
+  const handleRemoveAdmin = async (adminUid: string) => {
+    if (!tournament?.id || !user) return;
+    
+    if (!confirm('Czy na pewno chcesz usunąć tego administratora?')) {
+      return;
+    }
+    
+    try {
+      const token = await user.getIdToken();
+      const response = await fetch(
+        `/api/admin/tournament-admins?tournamentId=${tournament.id}&userId=${adminUid}`,
+        {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        }
+      );
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        alert('Administrator został usunięty');
+        loadTournamentAdmins();
+      } else {
+        alert(data.error || 'Błąd podczas usuwania administratora');
+      }
+    } catch (error) {
+      console.error('Error removing admin:', error);
+      alert('Błąd podczas usuwania administratora');
+    }
+  };
+
   const handleSave = async () => {
     if (!tournament?.id) return;
     
@@ -70,7 +232,8 @@ export function GeneralTab() {
       await updateDoc(tournamentRef, {
         name: tournamentName,
         leagueId: leagueId ? Number(leagueId) : null,
-        twitchChannel: twitchChannel || null,
+        twitchUrl: twitchUrl || null,
+        discordUrl: discordUrl || null,
         type: tournamentType,
         status: status,
         mmrCap: tournamentType === 'mmr-limited' ? mmrLimit : null,
@@ -78,6 +241,11 @@ export function GeneralTab() {
         'theme.primaryColor': primaryColor,
         'theme.secondaryColor': secondaryColor,
         'theme.accentColor': accentColor,
+        'theme.headerFont': headerFont,
+        'theme.textFont': textFont,
+        'theme.readableFont': readableFont,
+        'theme.rulesContentFont': rulesContentFont,
+        customFonts: customFonts,
       });
       
       alert('Zmiany zapisane pomyślnie!');
@@ -161,18 +329,35 @@ export function GeneralTab() {
             </div>
           </div>
 
-          {/* Twitch Channel */}
-          <div className="space-y-2">
-            <Label className="font-logik-extended-bold">Kanał Twitch</Label>
-            <Input
-              value={twitchChannel}
-              onChange={(e) => setTwitchChannel(e.target.value)}
-              placeholder="np. polishdotaleague"
-              className="font-logik"
-            />
-            <p className="text-xs text-muted-foreground font-logik">
-              Nazwa kanału Twitch do embedu na stronie głównej i linku w menu
-            </p>
+          {/* Social Links */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Twitch URL */}
+            <div className="space-y-2">
+              <Label className="font-logik-extended-bold">Link do Twitch</Label>
+              <Input
+                value={twitchUrl}
+                onChange={(e) => setTwitchUrl(e.target.value)}
+                placeholder="https://www.twitch.tv/pd2ih"
+                className="font-logik"
+              />
+              <p className="text-xs text-muted-foreground font-logik">
+                Pełny link do kanału Twitch - zostanie użyty w embedzie, menu i stopce
+              </p>
+            </div>
+
+            {/* Discord URL */}
+            <div className="space-y-2">
+              <Label className="font-logik-extended-bold">Link do Discord</Label>
+              <Input
+                value={discordUrl}
+                onChange={(e) => setDiscordUrl(e.target.value)}
+                placeholder="https://discord.gg/pd2ih"
+                className="font-logik"
+              />
+              <p className="text-xs text-muted-foreground font-logik">
+                Link zaproszenia do serwera Discord - zostanie użyty w menu i stopce
+              </p>
+            </div>
           </div>
 
           {/* Logos */}
@@ -477,10 +662,10 @@ export function GeneralTab() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <div className="space-y-2">
               <Label className="font-logik-extended-bold">Czcionka nagłówków</Label>
-              <Select defaultValue="logik">
+              <Select value={headerFont} onValueChange={setHeaderFont}>
                 <SelectTrigger className="font-logik">
                   <SelectValue />
                 </SelectTrigger>
@@ -488,6 +673,18 @@ export function GeneralTab() {
                   <SelectItem value="logik">Logik Extended Bold</SelectItem>
                   <SelectItem value="geist">Geist Sans</SelectItem>
                   <SelectItem value="inter">Inter</SelectItem>
+                  {customFonts.length > 0 && (
+                    <>
+                      <div className="px-2 py-1.5 text-xs text-muted-foreground font-logik-extended-bold uppercase">
+                        Niestandardowe
+                      </div>
+                      {customFonts.map(font => (
+                        <SelectItem key={font.id} value={font.id}>
+                          {font.family}
+                        </SelectItem>
+                      ))}
+                    </>
+                  )}
                 </SelectContent>
               </Select>
               <p className="text-2xl font-logik-extended-bold mt-2">Przykładowy nagłówek</p>
@@ -495,7 +692,7 @@ export function GeneralTab() {
 
             <div className="space-y-2">
               <Label className="font-logik-extended-bold">Czcionka tekstu</Label>
-              <Select defaultValue="logik">
+              <Select value={textFont} onValueChange={setTextFont}>
                 <SelectTrigger className="font-logik">
                   <SelectValue />
                 </SelectTrigger>
@@ -503,10 +700,231 @@ export function GeneralTab() {
                   <SelectItem value="logik">Logik</SelectItem>
                   <SelectItem value="geist">Geist Sans</SelectItem>
                   <SelectItem value="inter">Inter</SelectItem>
+                  {customFonts.length > 0 && (
+                    <>
+                      <div className="px-2 py-1.5 text-xs text-muted-foreground font-logik-extended-bold uppercase">
+                        Niestandardowe
+                      </div>
+                      {customFonts.map(font => (
+                        <SelectItem key={font.id} value={font.id}>
+                          {font.family}
+                        </SelectItem>
+                      ))}
+                    </>
+                  )}
                 </SelectContent>
               </Select>
               <p className="text-base font-logik mt-2">Przykładowy tekst akapitu z różnymi słowami.</p>
             </div>
+
+            <div className="space-y-2">
+              <Label className="font-logik-extended-bold">Czcionka czytelna</Label>
+              <Select value={readableFont} onValueChange={setReadableFont}>
+                <SelectTrigger className="font-logik">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="geist">Geist Sans (zalecane)</SelectItem>
+                  <SelectItem value="inter">Inter</SelectItem>
+                  <SelectItem value="logik">Logik</SelectItem>
+                  {customFonts.length > 0 && (
+                    <>
+                      <div className="px-2 py-1.5 text-xs text-muted-foreground font-logik-extended-bold uppercase">
+                        Niestandardowe
+                      </div>
+                      {customFonts.map(font => (
+                        <SelectItem key={font.id} value={font.id}>
+                          {font.family}
+                        </SelectItem>
+                      ))}
+                    </>
+                  )}
+                </SelectContent>
+              </Select>
+              <p className="text-base font-logik-readable mt-2">Przykładowy tekst długiego akapitu dla lepszej czytelności treści.</p>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="font-logik-extended-bold">Czcionka treści regulaminu</Label>
+              <Select value={rulesContentFont} onValueChange={setRulesContentFont}>
+                <SelectTrigger className="font-logik">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="geist">Geist Sans (zalecane)</SelectItem>
+                  <SelectItem value="inter">Inter</SelectItem>
+                  <SelectItem value="logik">Logik</SelectItem>
+                  {customFonts.length > 0 && (
+                    <>
+                      <div className="px-2 py-1.5 text-xs text-muted-foreground font-logik-extended-bold uppercase">
+                        Niestandardowe
+                      </div>
+                      {customFonts.map(font => (
+                        <SelectItem key={font.id} value={font.id}>
+                          {font.family}
+                        </SelectItem>
+                      ))}
+                    </>
+                  )}
+                </SelectContent>
+              </Select>
+              <p className="text-base font-logik-readable mt-2">Liga składa się początkowo z 3 dywizji z podziałem na Elite, Challenger, Adept.</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Font Management */}
+      <FontManagement
+        customFonts={customFonts}
+        onAddFont={(font: CustomFont) => setCustomFonts([...customFonts, font])}
+        onRemoveFont={(fontId: string) => setCustomFonts(customFonts.filter(f => f.id !== fontId))}
+        primaryColor={theme.primaryColor}
+      />
+
+      {/* Admin Management */}
+      <Card className="border-0 shadow-lg bg-card/50 backdrop-blur-sm">
+        <CardHeader className="pb-4">
+          <CardTitle className="flex items-center gap-2 font-logik-extended-bold">
+            <Shield className="h-5 w-5" style={{ color: theme.primaryColor }} />
+            Zarządzanie administratorami
+          </CardTitle>
+          <CardDescription className="font-logik">
+            Dodaj lub usuń administratorów turnieju
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* Search for user */}
+          <div className="space-y-4">
+            <Label className="font-logik-extended-bold">Dodaj administratora</Label>
+            <div className="flex gap-2">
+              <Input
+                type="email"
+                placeholder="Wprowadź adres email użytkownika"
+                value={searchEmail}
+                onChange={(e) => setSearchEmail(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleSearchUser()}
+                className="font-logik flex-1"
+              />
+              <Button 
+                onClick={handleSearchUser} 
+                disabled={isSearching || !searchEmail}
+                variant="outline"
+                className="font-logik"
+              >
+                {isSearching ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Search className="h-4 w-4" />
+                )}
+              </Button>
+            </div>
+
+            {/* Search result */}
+            {searchResult && (
+              <div className="p-4 rounded-lg border border-border bg-background/50 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  {searchResult.photoURL && (
+                    <img 
+                      src={searchResult.photoURL} 
+                      alt={searchResult.displayName || searchResult.email}
+                      className="w-10 h-10 rounded-full"
+                    />
+                  )}
+                  <div>
+                    <p className="font-logik-extended-bold">{searchResult.displayName || searchResult.email}</p>
+                    <p className="text-sm text-muted-foreground font-logik">{searchResult.email}</p>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Button 
+                    onClick={handleAddAdmin} 
+                    disabled={isAddingAdmin}
+                    size="sm"
+                    style={{ backgroundColor: theme.primaryColor }}
+                    className="font-logik"
+                  >
+                    {isAddingAdmin ? (
+                      <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                    ) : (
+                      <UserPlus className="h-4 w-4 mr-1" />
+                    )}
+                    Dodaj
+                  </Button>
+                  <Button 
+                    onClick={() => setSearchResult(null)} 
+                    variant="ghost"
+                    size="sm"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* Search error */}
+            {searchError && (
+              <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30">
+                <p className="text-sm text-red-500 font-logik">{searchError}</p>
+              </div>
+            )}
+          </div>
+
+          <Separator />
+
+          {/* Current admins */}
+          <div className="space-y-4">
+            <Label className="font-logik-extended-bold">Obecni administratorzy</Label>
+            
+            {isLoadingAdmins ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin" style={{ color: theme.primaryColor }} />
+              </div>
+            ) : tournamentAdmins.length === 0 ? (
+              <div className="p-4 rounded-lg border border-dashed border-border text-center">
+                <p className="text-sm text-muted-foreground font-logik">
+                  Brak administratorów turnieju. Tylko super administratorzy mają dostęp.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {tournamentAdmins.map((admin) => (
+                  <div 
+                    key={admin.uid}
+                    className="p-4 rounded-lg border border-border bg-background/50 flex items-center justify-between hover:bg-background/80 transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      {admin.photoURL && (
+                        <img 
+                          src={admin.photoURL} 
+                          alt={admin.displayName || admin.email}
+                          className="w-10 h-10 rounded-full"
+                        />
+                      )}
+                      <div>
+                        <p className="font-logik-extended-bold">{admin.displayName || admin.email}</p>
+                        <p className="text-sm text-muted-foreground font-logik">{admin.email}</p>
+                      </div>
+                    </div>
+                    <Button 
+                      onClick={() => handleRemoveAdmin(admin.uid)} 
+                      variant="ghost"
+                      size="sm"
+                      className="text-red-500 hover:text-red-600 hover:bg-red-500/10"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2 p-3 rounded-lg bg-blue-500/10 border border-blue-500/30">
+            <AlertCircle className="h-5 w-5 text-blue-500" />
+            <p className="text-sm text-blue-500 font-logik">
+              Administratorzy turnieju mają pełny dostęp do panelu admina tylko dla tego turnieju.
+            </p>
           </div>
         </CardContent>
       </Card>

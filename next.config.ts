@@ -4,8 +4,27 @@ import createNextIntlPlugin from 'next-intl/plugin';
 const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts');
 
 const nextConfig: NextConfig = {
+    // Exclude archive folder from build
+    typescript: {
+        ignoreBuildErrors: false,
+    },
+    eslint: {
+        ignoreDuringBuilds: false,
+        dirs: ['src'],
+    },
+    pageExtensions: ['tsx', 'ts', 'jsx', 'js'],
+    // Exclude _archive from webpack processing
+    webpack: (config) => {
+        config.watchOptions = {
+            ...config.watchOptions,
+            ignored: ['**/_archive/**', '**/node_modules/**'],
+        };
+        return config;
+    },
     images: {
-        unoptimized: true, // Temporarily disable image optimization to debug
+        // Enable Next.js image optimization for better performance
+        unoptimized: false,
+        formats: ['image/avif', 'image/webp'],
         remotePatterns: [
             {
                 protocol: 'https',

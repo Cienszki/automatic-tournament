@@ -20,6 +20,7 @@ import {
   Sparkles
 } from 'lucide-react';
 import { fadeInUp, staggerContainer, listItem } from '@/lib/animations';
+import { organizationConfig } from '@/config/organization';
 
 // Discord icon component
 function DiscordIcon({ className }: { className?: string }) {
@@ -166,12 +167,12 @@ export function BottomBar({ archivedTournaments }: BottomBarProps) {
             {/* Right: Social Links & Branding */}
             <div className="flex items-center gap-4">
               <SocialLink
-                href="https://discord.gg/pd2ih"
+                href={organizationConfig.social.discord}
                 icon={<DiscordIcon className="h-5 w-5" />}
                 label="Discord"
               />
               <SocialLink
-                href="https://twitch.tv/pd2ih"
+                href={organizationConfig.social.twitch}
                 icon={<TwitchIcon className="h-5 w-5" />}
                 label="Twitch"
               />

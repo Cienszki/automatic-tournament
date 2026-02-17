@@ -77,7 +77,7 @@ export default function DivisionPage({ params }: { params: Promise<{ tournamentS
   const isElite = divisionInfo.tier === 1;
   const isLowest = divisionInfo.tier === (tournament?.divisions?.length || 3);
 
-  const totalRounds = (divisionInfo as any).totalRounds || Math.ceil((standings.length > 1 ? standings.length - 1 : 0) * 2);
+  const totalRounds = divisionInfo.totalRounds || 1;
 
   // Determine neighbors for navigation using loaded divisions
   // Logic: "Next" (Right Arrow) -> Higher Rank (Lower Tier Number) e.g. Challenger -> Elite
@@ -178,7 +178,7 @@ export default function DivisionPage({ params }: { params: Promise<{ tournamentS
 
       {/* Main Content with Slide Transition */}
       <DivisionTransition key={divisionName} divisionTier={divisionInfo.tier}>
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 relative z-10 max-w-[1600px]">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 relative z-10 max-w-[1800px]">
           <DivisionHero
             divisionName={divisionName}
             divisionTier={divisionInfo.tier}

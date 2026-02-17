@@ -1,27 +1,25 @@
 import { NextResponse } from "next/server";
 import { getAdminDb, ensureAdminInitialized } from "@/server/lib/admin";
 
+// Enable route caching for 60 seconds with stale-while-revalidate
+export const revalidate = 60;
+
 export async function GET() {
   try {
     ensureAdminInitialized();
     const db = getAdminDb();
     
-    console.log(`📊 [${new Date().toISOString()}] Fetching fantasy leaderboards from fixed algorithm collections...`);
-    
-    // Get leaderboards from the new collection created by the fixed recalculation
-    // Try both possible document IDs from different recalculation versions
+    // Get leaderboards from the fixed algorithm collection
     let leaderboardsRef = db.collection('fantasyLeaderboards').doc('current');
     let leaderboardsSnap = await leaderboardsRef.get();
     
-    // If 'current' doesn't exist, try the old 'data' document ID
+    // Fallback to old 'data' document ID if 'current' doesn't exist
     if (!leaderboardsSnap.exists) {
-      console.log('Trying alternative document ID: data');
       leaderboardsRef = db.collection('fantasyLeaderboards').doc('data');
       leaderboardsSnap = await leaderboardsRef.get();
     }
     
     if (!leaderboardsSnap.exists) {
-      console.log('⚠️ No leaderboards found - may need to run recalculation first');
       return NextResponse.json({
         success: false,
         message: 'Leaderboards not found. Please run fixed fantasy recalculation first.',
@@ -40,26 +38,10 @@ export async function GET() {
     
     const leaderboardsData = leaderboardsSnap.data();
     
-    console.log(`✅ Retrieved leaderboards: ${leaderboardsData?.overall?.length || 0} overall entries`);
-    console.log('🔍 DEBUG - Generated at:', leaderboardsData?.generatedAt);
-    console.log('🔍 DEBUG - Algorithm:', leaderboardsData?.algorithm);
-    
-    // Debug specific users that should have updated game counts
-    const testUsers = ['BeBoy', 'SZATOŚI CI PRZYSZTOSI FUJARE', 'Maruda', 'AaDeHaDe', 'Pocieszny'];
-    testUsers.forEach(userName => {
-      const user = leaderboardsData?.overall?.find((u: any) => u.displayName === userName);
-      if (user) {
-        console.log(`🔍 DEBUG - ${userName}: ${user.gamesPlayed || 0} games, score: ${user.totalScore}, avg: ${user.averageScore}`);
-      }
-    });
-    
     // Transform the data to match expected frontend format
     const transformedLeaderboards = {
       overall: (leaderboardsData?.overall || []).map((entry: any) => {
         const gamesPlayed = entry.gamesPlayed || entry.playerGames || 0;
-        if (['BeBoy', 'SZATOŚI CI PRZYSZTOSI FUJARE', 'Maruda'].includes(entry.displayName)) {
-          console.log(`🔍 TRANSFORM - ${entry.displayName}: raw=${entry.gamesPlayed}, playerGames=${entry.playerGames}, final=${gamesPlayed}`);
-        }
         return {
           userId: entry.userId,
           displayName: entry.displayName,
@@ -78,23 +60,17 @@ export async function GET() {
         'Hard Support': []
       }
     };
-    
-    // FINAL VALIDATION: Check what we're actually returning
-    const beboyCheck = transformedLeaderboards.overall.find((u: any) => u.displayName === 'BeBoy');
-    console.log('🚨 FINAL API RESPONSE CHECK - BeBoy data:', JSON.stringify(beboyCheck, null, 2));
 
     const response = NextResponse.json({
       success: true,
       leaderboards: transformedLeaderboards,
       generatedAt: leaderboardsData?.generatedAt,
       algorithm: leaderboardsData?.algorithm || 'FIXED - Player-centric scoring with accurate game counting',
-      message: `Fixed leaderboards loaded successfully (${transformedLeaderboards.overall.length} users)`
+      message: `Leaderboards loaded successfully (${transformedLeaderboards.overall.length} users)`
     });
     
-    // Prevent caching to ensure fresh data
-    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
-    response.headers.set('Pragma', 'no-cache');
-    response.headers.set('Expires', '0');
+    // Add cache headers for CDN/edge caching (stale-while-revalidate pattern)
+    response.headers.set('Cache-Control', 's-maxage=60, stale-while-revalidate=300');
     
     return response;
     

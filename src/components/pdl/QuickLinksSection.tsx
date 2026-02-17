@@ -9,9 +9,10 @@ import { TrendingUp, Target, Info, ArrowRight, Sparkles, Tv } from 'lucide-react
 import { cn } from '@/lib/utils';
 import { fadeInUp, staggerContainer } from '@/lib/animations';
 import { useTournament } from '@/context/TournamentContext';
+import { organizationConfig } from '@/config/organization';
 
 export function QuickLinksSection() {
-  const { getTournamentPath } = useTournament();
+  const { getTournamentPath, tournament } = useTournament();
 
   const links = [
     {
@@ -38,7 +39,7 @@ export function QuickLinksSection() {
     {
       title: 'Twitch',
       icon: <Tv className="h-4 w-4" />,
-      href: 'https://www.twitch.tv/polishdota2inhouse',
+      href: tournament?.twitchUrl || (tournament?.twitchChannel ? `https://www.twitch.tv/${tournament.twitchChannel}` : organizationConfig.defaults.twitch),
       color: 'text-[#9146FF]',
       hoverColor: 'group-hover:text-[#9146FF]',
       isExternal: true

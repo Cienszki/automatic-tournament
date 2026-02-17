@@ -58,6 +58,7 @@ export function NextMatchCard({ match, teamId, teams = [], standins = [] }: Next
               width={64}
               height={64}
               className="rounded-full mb-2"
+              unoptimized
             />
             <p className="font-semibold">{match.teamA.name}</p>
           </div>
@@ -69,6 +70,7 @@ export function NextMatchCard({ match, teamId, teams = [], standins = [] }: Next
               width={64}
               height={64}
               className="rounded-full mb-2"
+              unoptimized
             />
             <p className="font-semibold">{opponent.name}</p>
           </div>

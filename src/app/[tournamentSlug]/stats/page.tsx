@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { collection, onSnapshot, doc } from 'firebase/firestore';
+import { collection, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useTournament } from '@/context/TournamentContext';
 import { Card, CardHeader, CardContent, CardTitle } from '@/components/ui/card';
@@ -46,75 +46,70 @@ export default function StatsPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let isMounted = true;
+
     const loadStats = async () => {
       if (!tournament?.id) {
         setLoading(false);
         return;
       }
 
-      if (isLegacyTournament) {
-        // Subscribe to player stats for legacy tournament
-        const unsubscribePlayers = onSnapshot(
-          collection(db, 'player_stats'),
-          (snapshot) => {
-            const stats = snapshot.docs.map(doc => ({
-              id: doc.id,
-              ...doc.data()
-            })) as PlayerStats[];
-            setPlayerStats(stats.sort((a, b) => b.kda - a.kda).slice(0, 10));
-          }
-        );
+      try {
+        if (isLegacyTournament) {
+          // OPTIMIZATION: Use getDocs instead of onSnapshot for stats (rarely change in real-time)
+          const [playerStatsSnapshot, teamStatsSnapshot] = await Promise.all([
+            getDocs(collection(db, 'player_stats')),
+            getDocs(collection(db, 'team_stats'))
+          ]);
 
-        // Subscribe to team stats
-        const unsubscribeTeams = onSnapshot(
-          collection(db, 'team_stats'),
-          (snapshot) => {
-            const stats = snapshot.docs.map(doc => ({
-              id: doc.id,
-              ...doc.data()
-            })) as TeamStats[];
-            setTeamStats(stats.sort((a, b) => b.winRate - a.winRate).slice(0, 10));
-            setLoading(false);
-          }
-        );
+          if (!isMounted) return;
 
-        return () => {
-          unsubscribePlayers();
-          unsubscribeTeams();
-        };
-      } else {
-        // New tournament structure - load from /tournaments/{id}/playerStats and teamStats
-        const unsubscribePlayers = onSnapshot(
-          collection(db, 'tournaments', tournament.id, 'playerStats'),
-          (snapshot) => {
-            const stats = snapshot.docs.map(doc => ({
-              id: doc.id,
-              ...doc.data()
-            })) as PlayerStats[];
-            setPlayerStats(stats.sort((a, b) => b.kda - a.kda).slice(0, 10));
-          }
-        );
+          const playerStatsData = playerStatsSnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+          })) as PlayerStats[];
+          setPlayerStats(playerStatsData.sort((a, b) => b.kda - a.kda).slice(0, 10));
 
-        const unsubscribeTeams = onSnapshot(
-          collection(db, 'tournaments', tournament.id, 'teamStats'),
-          (snapshot) => {
-            const stats = snapshot.docs.map(doc => ({
-              id: doc.id,
-              ...doc.data()
-            })) as TeamStats[];
-            setTeamStats(stats.sort((a, b) => b.winRate - a.winRate).slice(0, 10));
-            setLoading(false);
-          }
-        );
+          const teamStatsData = teamStatsSnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+          })) as TeamStats[];
+          setTeamStats(teamStatsData.sort((a, b) => b.winRate - a.winRate).slice(0, 10));
+        } else {
+          // New tournament structure - load from /tournaments/{id}/playerStats and teamStats
+          const [playerStatsSnapshot, teamStatsSnapshot] = await Promise.all([
+            getDocs(collection(db, 'tournaments', tournament.id, 'playerStats')),
+            getDocs(collection(db, 'tournaments', tournament.id, 'teamStats'))
+          ]);
 
-        return () => {
-          unsubscribePlayers();
-          unsubscribeTeams();
-        };
+          if (!isMounted) return;
+
+          const playerStatsData = playerStatsSnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+          })) as PlayerStats[];
+          setPlayerStats(playerStatsData.sort((a, b) => b.kda - a.kda).slice(0, 10));
+
+          const teamStatsData = teamStatsSnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+          })) as TeamStats[];
+          setTeamStats(teamStatsData.sort((a, b) => b.winRate - a.winRate).slice(0, 10));
+        }
+      } catch (error) {
+        console.error('Error loading stats:', error);
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
 
     loadStats();
+
+    return () => {
+      isMounted = false;
+    };
   }, [isLegacyTournament, tournament?.id]);
 
   if (!tournament) return null;

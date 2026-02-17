@@ -24,6 +24,86 @@
 }
 
 @font-face {
+  font-family: 'Logik 2';
+  src: url('/fonts/logik/logik-2.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Logik 3';
+  src: url('/fonts/logik/logik-3.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Logik 4';
+  src: url('/fonts/logik/logik-4.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Logik 6';
+  src: url('/fonts/logik/logik-6.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Logik Extended 6';
+  src: url('/fonts/logik/logik-extended-6.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Logik Extended 7';
+  src: url('/fonts/logik/logik-extended-7.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Logik Extended 8';
+  src: url('/fonts/logik/logik-extended-8.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Logik Extended 9';
+  src: url('/fonts/logik/logik-extended-9.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Logik Extended Bold';
+  src: url('/fonts/logik/Logik-ExtendedBold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Logik Wide Black';
+  src: url('/fonts/logik/Logik-WideBlack.ttf') format('truetype');
+  font-weight: 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
   font-family: 'Space Mono';
   src: url('/fonts/space-mono/SpaceMono-Regular.ttf') format('truetype');
   font-weight: 400;
@@ -55,6 +135,14 @@
   font-display: swap;
 }
 
+@font-face {
+  font-family: 'Mitchell';
+  src: url('/fonts/mitchell/Mitchell.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
 body {
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
 }
@@ -62,11 +150,49 @@ body {
 /* Font utility classes */
 .font-logik {
   font-family: 'Logik', system-ui, sans-serif;
+  font-weight: 500; /* Increased from 400 for better readability */
+}
+
+.font-logik-2 {
+  font-family: 'Logik 2', system-ui, sans-serif;
+}
+
+.font-logik-3 {
+  font-family: 'Logik 3', system-ui, sans-serif;
+}
+
+.font-logik-4 {
+  font-family: 'Logik 4', system-ui, sans-serif;
+}
+
+.font-logik-6 {
+  font-family: 'Logik 6', system-ui, sans-serif;
+}
+
+.font-logik-extended-6 {
+  font-family: 'Logik Extended 6', system-ui, sans-serif;
+}
+
+.font-logik-extended-7 {
+  font-family: 'Logik Extended 7', system-ui, sans-serif;
+}
+
+.font-logik-extended-8 {
+  font-family: 'Logik Extended 8', system-ui, sans-serif;
+}
+
+.font-logik-extended-9 {
+  font-family: 'Logik Extended 9', system-ui, sans-serif;
 }
 
 .font-logik-extended-bold {
   font-family: 'Logik', system-ui, sans-serif;
   font-weight: 700;
+}
+
+.font-logik-wide-black {
+  font-family: 'Logik Wide Black', system-ui, sans-serif;
+  font-weight: 900;
 }
 
 .font-space-mono {
@@ -75,6 +201,10 @@ body {
 
 .font-neonderthaw {
   font-family: 'Neonderthaw', cursive;
+}
+
+.font-mitchell {
+  font-family: 'Mitchell', cursive;
 }
 
 .font-tilt-neon {
@@ -214,6 +344,17 @@ body {
   }
 }
 
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 @keyframes slide-diagonal {
   0% {
     background-position: 0% 0%;
@@ -259,6 +400,10 @@ body {
 
   .animate-glow-pulse {
     animation: glow-pulse 2s ease-in-out infinite;
+  }
+
+  .animate-fadeIn {
+    animation: fadeIn 0.5s ease-out forwards;
   }
 
   /* Transition utilities */

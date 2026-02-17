@@ -115,10 +115,6 @@ const RegistrationClosed: React.FC = () => {
             <p className="text-lg text-[#00FFFF] font-medium mb-4">
               {t("registration.tournamentPhaseMessage")}
             </p>
-            <div className="inline-flex items-center gap-2 bg-gradient-to-r from-[#FF3E9A]/20 to-[#00FFFF]/20 border border-[#00FFFF]/30 rounded-lg px-4 py-2">
-              <Gamepad2 className="w-5 h-5 text-[#00FFFF]" />
-              <span className="text-[#00FFFF] font-medium">{t("registration.fantasyStillOpen")}</span>
-            </div>
           </div>
 
           {/* Navigation Buttons */}

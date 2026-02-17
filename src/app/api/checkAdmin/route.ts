@@ -20,9 +20,33 @@ export async function POST(request: Request) {
     }
 
     const decodedToken = await getAdminAuth().verifyIdToken(token);
-    const adminDoc = await getAdminDb().collection('admins').doc(decodedToken.uid).get();
     
-    return NextResponse.json({ isAdmin: adminDoc.exists });
+    // Check if user is a super admin (global admin)
+    const superAdminDoc = await getAdminDb().collection('admins').doc(decodedToken.uid).get();
+    const isSuperAdmin = superAdminDoc.exists;
+    
+    // If checking for a specific tournament, also check tournament-specific admin
+    const { tournamentId } = await request.json().catch(() => ({}));
+    let isTournamentAdmin = false;
+    
+    if (tournamentId) {
+      const tournamentAdminDoc = await getAdminDb()
+        .collection('tournaments')
+        .doc(tournamentId)
+        .collection('admins')
+        .doc(decodedToken.uid)
+        .get();
+      
+      isTournamentAdmin = tournamentAdminDoc.exists;
+    }
+    
+    const isAdmin = isSuperAdmin || isTournamentAdmin;
+    
+    return NextResponse.json({ 
+      isAdmin,
+      isSuperAdmin,
+      isTournamentAdmin 
+    });
 
   } catch (error) {
     console.error("Error checking admin status:", error);

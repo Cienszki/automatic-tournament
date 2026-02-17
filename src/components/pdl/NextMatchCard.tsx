@@ -54,16 +54,16 @@ export function NextMatchCard({
     >
       <div className="relative w-full">
         {/* Header - Next Match Info Floating */}
-        <div className="mb-8 flex items-end justify-between border-b border-white/10 pb-4">
+        <div className="mb-6 flex items-end justify-between border-b border-white/10 pb-3">
           <div className="flex flex-col">
-            <h2 className="text-2xl font-logik-extended-bold text-white tracking-wide">
+            <h2 className="text-xl font-logik-extended-bold text-white tracking-wide">
               {t('nextMatch.title')}
             </h2>
           </div>
 
           <div className="text-right hidden sm:block">
-            <div className="text-xl font-logik-extended-bold" style={{ color: '#d32f2f' }}>{nextMatch?.teamA} vs {nextMatch?.teamB}</div>
-            <div className="text-sm text-white/40 font-mono mt-1">{nextMatch?.dateLabel}</div>
+            <div className="text-lg font-logik-extended-bold" style={{ color: '#d32f2f' }}>{nextMatch?.teamA} vs {nextMatch?.teamB}</div>
+            <div className="text-xs text-white/40 font-mono mt-1">{nextMatch?.dateLabel}</div>
           </div>
         </div>
 

@@ -64,56 +64,63 @@ export function usePDLData(): UsePDLDataResult {
 
   useEffect(() => {
     if (!tournament?.id) {
-      console.log('[usePDLData] No tournament ID');
       setLoading(false);
       return;
     }
 
+    let isMounted = true;
+
     const fetchData = async () => {
       try {
-        console.log('[usePDLData] Fetching data for tournament:', tournament.id);
         setLoading(true);
         setError(null);
 
-        // Fetch divisions with standings
+        const teamsRef = collection(db, 'tournaments', tournament.id, 'teams');
         const divisionsRef = collection(db, 'tournaments', tournament.id, 'divisions');
-        const divisionsSnapshot = await getDocs(divisionsRef);
-        
-        console.log('[usePDLData] Found divisions in DB:', divisionsSnapshot.docs.length);
-        
-        const divisionsData: Division[] = [];
+        const matchesRef = collection(db, 'tournaments', tournament.id, 'matches');
 
-        for (const divisionDoc of divisionsSnapshot.docs) {
+        // OPTIMIZATION: Fetch divisions, all teams, and matches in parallel
+        const [divisionsSnapshot, allTeamsSnapshot, matchesSnapshot] = await Promise.all([
+          getDocs(divisionsRef),
+          getDocs(teamsRef),
+          getDocs(query(matchesRef, where('status', '==', 'scheduled')))
+        ]);
+
+        if (!isMounted) return;
+
+        // Create a map of teams by divisionId for O(1) lookup
+        const teamsByDivision = new Map<string, TeamStanding[]>();
+        allTeamsSnapshot.docs.forEach(teamDoc => {
+          const team = teamDoc.data();
+          const divisionId = team.divisionId;
+          if (!divisionId) return;
+
+          const stats = team.stats || {};
+          const teamStanding: TeamStanding = {
+            position: 0,
+            teamId: teamDoc.id,
+            teamName: team.name || teamDoc.id,
+            gamesPlayed: stats.played || 0,
+            matchesPlayed: stats.played || 0,
+            points: calculatePoints(stats),
+            wins: stats.wins || 0,
+            draws: stats.draws || 0,
+            losses: stats.losses || 0,
+            gamesWon: stats.gamesWon || 0,
+            gamesLost: stats.gamesLost || 0,
+          };
+
+          if (!teamsByDivision.has(divisionId)) {
+            teamsByDivision.set(divisionId, []);
+          }
+          teamsByDivision.get(divisionId)!.push(teamStanding);
+        });
+
+        // Build divisions data with pre-fetched teams
+        const divisionsData: Division[] = divisionsSnapshot.docs.map(divisionDoc => {
           const divisionData = divisionDoc.data();
           const divisionId = divisionDoc.id;
-          
-          console.log('[usePDLData] Processing division:', divisionId, divisionData);
-
-          // Get teams in this division
-          const teamsRef = collection(db, 'tournaments', tournament.id, 'teams');
-          const teamsQuery = query(
-            teamsRef,
-            where('divisionId', '==', divisionId)
-          );
-          const teamsSnapshot = await getDocs(teamsQuery);
-
-          const teams: TeamStanding[] = teamsSnapshot.docs.map((teamDoc, index) => {
-            const team = teamDoc.data();
-            const stats = team.stats || {};
-            return {
-              position: index + 1,
-              teamId: teamDoc.id,
-              teamName: team.name || teamDoc.id,
-              gamesPlayed: stats.played || 0,
-              matchesPlayed: stats.played || 0,
-              points: calculatePoints(stats),
-              wins: stats.wins || 0,
-              draws: stats.draws || 0,
-              losses: stats.losses || 0,
-              gamesWon: stats.gamesWon || 0,
-              gamesLost: stats.gamesLost || 0,
-            };
-          });
+          const teams = teamsByDivision.get(divisionId) || [];
 
           // Sort teams by points (descending), then by games played
           teams.sort((a, b) => {
@@ -126,7 +133,7 @@ export function usePDLData(): UsePDLDataResult {
             team.position = index + 1;
           });
 
-          divisionsData.push({
+          return {
             id: divisionId,
             name: capitalize(divisionData.name || divisionId),
             color: divisionData.color || DIVISION_COLORS[divisionId.toLowerCase()] || '#808080',
@@ -135,8 +142,8 @@ export function usePDLData(): UsePDLDataResult {
             tier: divisionData.tier,
             matchday: divisionData.matchday,
             teams,
-          });
-        }
+          };
+        });
 
         // Sort divisions: Elite, Challenger, Adept
         const divisionOrder = ['elite', 'challenger', 'adept'];
@@ -146,21 +153,9 @@ export function usePDLData(): UsePDLDataResult {
           return aIndex - bIndex;
         });
 
-        console.log('[usePDLData] Final divisions data:', divisionsData);
         setDivisions(divisionsData);
 
-        // Fetch next scheduled match
-        // Note: Fetching all scheduled matches to avoid index requirements
-        // Once index is built, this can be optimized with orderBy
-        const matchesRef = collection(db, 'tournaments', tournament.id, 'matches');
-        const nextMatchQuery = query(
-          matchesRef,
-          where('status', '==', 'scheduled')
-        );
-        
-        const matchesSnapshot = await getDocs(nextMatchQuery);
-        
-        // Filter for future matches and sort client-side
+        // Process next match from already-fetched matches
         const now = new Date();
         const futureMatches = matchesSnapshot.docs
           .map(doc => ({
@@ -187,14 +182,22 @@ export function usePDLData(): UsePDLDataResult {
         }
 
       } catch (err: any) {
-        console.error('Error fetching PDL data:', err);
-        setError(err.message || 'Failed to load data');
+        if (isMounted) {
+          console.error('Error fetching PDL data:', err);
+          setError(err.message || 'Failed to load data');
+        }
       } finally {
-        setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
 
     fetchData();
+
+    return () => {
+      isMounted = false;
+    };
   }, [tournament?.id]);
 
   return { divisions, nextMatch, loading, error };

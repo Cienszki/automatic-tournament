@@ -4,7 +4,6 @@ import { useEffect } from 'react';
 import { AlertTriangle, RefreshCw, Home, Bug } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { useTranslation } from '@/hooks/useTranslation';
 
 export default function Error({
   error,
@@ -13,8 +12,6 @@ export default function Error({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
-  const { t } = useTranslation();
-
   useEffect(() => {
     // Log error to console and potentially to error reporting service
     console.error('Application error:', error);
@@ -43,10 +40,10 @@ export default function Error({
             <AlertTriangle className="w-16 h-16 text-red-500" />
           </div>
           <CardTitle className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-            {t('errorPages.error.heading')}
+            Wystąpił błąd
           </CardTitle>
           <CardDescription className="text-gray-600 dark:text-gray-400">
-            {t('errorPages.error.description')}
+            Coś poszło nie tak podczas ładowania strony.
           </CardDescription>
         </CardHeader>
         
@@ -58,7 +55,7 @@ export default function Error({
               size="lg"
             >
               <RefreshCw className="w-4 h-4 mr-2" />
-              {t('errorPages.error.retryButton')}
+              Spróbuj ponownie
             </Button>
             
             <Button 
@@ -67,7 +64,7 @@ export default function Error({
               onClick={() => window.location.href = '/'}
             >
               <Home className="w-4 h-4 mr-2" />
-              {t('errorPages.error.homeButton')}
+              Strona główna
             </Button>
             
             <Button 
@@ -76,7 +73,7 @@ export default function Error({
               onClick={handleReport}
             >
               <Bug className="w-4 h-4 mr-2" />
-              {t('errorPages.error.reportButton')}
+              Zgłoś błąd (dev)
             </Button>
           </div>
           

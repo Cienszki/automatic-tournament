@@ -5,7 +5,7 @@
 
 import { motion, useMotionValue, useSpring, useTransform } from 'framer-motion';
 import { Badge } from '@/components/ui/badge';
-import { Trophy, Calendar, TrendingUp, Layers, Activity } from 'lucide-react';
+import { Trophy, Calendar, TrendingUp, Layers } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { MouseEvent } from 'react';
 import { getDivisionTheme } from '@/lib/division-themes';
@@ -94,9 +94,9 @@ export function DivisionHero({
                 }}
             >
                 {/* Left: Division Identity */}
-                <div className="flex flex-col items-center md:items-start gap-6 transform-gpu" style={{ transform: "translateZ(30px)" }}>
+                <div className="flex flex-col md:flex-row items-center gap-6 transform-gpu" style={{ transform: "translateZ(30px)" }}>
                     <motion.div
-                        className="relative group"
+                        className="relative group shrink-0"
                         whileHover={{ scale: 1.05 }}
                         transition={{ type: "spring", stiffness: 400, damping: 30 }}
                     >
@@ -146,38 +146,6 @@ export function DivisionHero({
                             </div>
                         )}
                     </div>
-                </div>
-
-                {/* Right: Season Pulse & Stats */}
-                <div className="flex flex-col gap-6 md:items-end w-full md:w-auto" style={{ transform: "translateZ(20px)" }}>
-                    {currentRound && totalRounds && (
-                        <div className="p-6 rounded-2xl glass-panel-premium w-full md:w-80 backdrop-blur-2xl border-white/10">
-                            <div className="flex items-center justify-between mb-4">
-                                <span className="text-xs font-bold text-white/40 uppercase tracking-widest">Sezon {currentRound}/{totalRounds}</span>
-                                <Activity className="w-4 h-4 text-emerald-400 animate-pulse" />
-                            </div>
-
-                            <div className="relative h-3 w-full bg-black/40 rounded-full overflow-hidden mb-2 shadow-inner">
-                                <motion.div
-                                    className="absolute top-0 left-0 h-full rounded-full"
-                                    style={{
-                                        background: displayGradient,
-                                        boxShadow: `0 0 20px ${displayColor}`
-                                    }}
-                                    initial={{ width: 0 }}
-                                    animate={{ width: `${(currentRound / totalRounds) * 100}%` }}
-                                    transition={{ duration: 1.5, ease: "circOut" }}
-                                />
-                                {/* Scanline effect on bar */}
-                                <div className="absolute inset-0 bg-white/20 w-1 animate-shimmer opacity-50" />
-                            </div>
-
-                            <div className="flex justify-between text-[10px] text-white/30 font-mono">
-                                <span>START</span>
-                                <span>FINAŁY</span>
-                            </div>
-                        </div>
-                    )}
                 </div>
             </motion.div>
         </motion.div>

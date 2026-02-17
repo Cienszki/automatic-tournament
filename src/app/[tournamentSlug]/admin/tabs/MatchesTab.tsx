@@ -7,6 +7,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { useToast } from '@/hooks/use-toast';
+import { doc, updateDoc, collection, writeBatch, deleteDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 import { 
   Select,
   SelectContent,
@@ -65,7 +68,8 @@ interface Match {
  * Matches Tab - Score editing, game deletion, match import, reschedule
  */
 export function MatchesTab() {
-  const { tournament, theme } = useTournament();
+  const { tournament, theme, refetchTournament } = useTournament();
+  const { toast } = useToast();
   
   const [matches, setMatches] = useState<Match[]>([
     { id: '1', team1: 'Team Liquid', team2: 'OG Esports', score1: 2, score2: 0, status: 'completed', date: '2025-02-20', time: '20:00', division: 'Elite', round: 1, games: 2 },
@@ -81,9 +85,48 @@ export function MatchesTab() {
   const [isSaving, setIsSaving] = useState(false);
 
   const handleSave = async () => {
+    if (!tournament?.id) {
+      toast({
+        title: 'Błąd',
+        description: 'Nie znaleziono ID turnieju',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setIsSaving(true);
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    setIsSaving(false);
+    try {
+      const batch = writeBatch(db);
+      
+      // Update match scores
+      matches.forEach(match => {
+        const matchRef = doc(db, 'tournaments', tournament.id, 'matches', match.id);
+        batch.update(matchRef, {
+          score1: match.score1,
+          score2: match.score2,
+          status: match.status,
+          updatedAt: new Date().toISOString(),
+        });
+      });
+
+      await batch.commit();
+
+      toast({
+        title: 'Zapisano',
+        description: 'Wyniki meczów zostały zaktualizowane',
+      });
+
+      await refetchTournament();
+    } catch (error) {
+      console.error('Error saving matches:', error);
+      toast({
+        title: 'Błąd',
+        description: 'Nie udało się zapisać wyników. Spróbuj ponownie.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleImportMatch = async () => {

@@ -79,10 +79,10 @@ export function ScheduleMatchCard({ match, priority = false, divisionColor = '#6
                         </div>
 
                         {/* Main match content */}
-                        <div className="flex items-center gap-4">
-                            {/* Team A */}
+                        <div className="flex items-center gap-3">
+                            {/* Team A - Fixed width to prevent VS shift */}
                             <div className={cn(
-                                "flex-1 flex items-center gap-3 transition-all",
+                                "flex-1 min-w-0 flex items-center gap-2 transition-all",
                                 teamAWon ? "opacity-100" : isCompleted ? "opacity-50" : "opacity-90"
                             )}>
                                 <div className="relative w-10 h-10 shrink-0">
@@ -92,6 +92,7 @@ export function ScheduleMatchCard({ match, priority = false, divisionColor = '#6
                                             alt={match.teamA.name}
                                             fill
                                             className="object-contain rounded-lg"
+                                            unoptimized
                                         />
                                     ) : (
                                         <div
@@ -101,18 +102,17 @@ export function ScheduleMatchCard({ match, priority = false, divisionColor = '#6
                                             {match.teamA.name.charAt(0)}
                                         </div>
                                     )}
-
                                 </div>
-                                <span className={cn(
-                                    "font-logik-extended-bold text-sm truncate transition-all",
+                                <p className={cn(
+                                    "font-logik-extended-bold text-sm leading-tight line-clamp-2 transition-all",
                                     teamAWon ? "text-white" : isCompleted ? "text-white/50" : "text-white/80 group-hover:text-white"
                                 )}>
                                     {match.teamA.name}
-                                </span>
+                                </p>
                             </div>
 
-                            {/* Score / VS */}
-                            <div className="w-20 flex flex-col items-center justify-center shrink-0">
+                            {/* Score / VS - Fixed width to stay centered */}
+                            <div className="w-16 flex flex-col items-center justify-center shrink-0">
                                 {isCompleted || isLive ? (
                                     <div className="flex items-center gap-2">
                                         <span className={cn(
@@ -139,9 +139,9 @@ export function ScheduleMatchCard({ match, priority = false, divisionColor = '#6
                                 )}
                             </div>
 
-                            {/* Team B */}
+                            {/* Team B - Fixed width to prevent VS shift */}
                             <div className={cn(
-                                "flex-1 flex items-center gap-3 flex-row-reverse transition-all",
+                                "flex-1 min-w-0 flex items-center gap-2 flex-row-reverse transition-all",
                                 teamBWon ? "opacity-100" : isCompleted ? "opacity-50" : "opacity-90"
                             )}>
                                 <div className="relative w-10 h-10 shrink-0">
@@ -151,6 +151,7 @@ export function ScheduleMatchCard({ match, priority = false, divisionColor = '#6
                                             alt={match.teamB.name}
                                             fill
                                             className="object-contain rounded-lg"
+                                            unoptimized
                                         />
                                     ) : (
                                         <div
@@ -160,14 +161,13 @@ export function ScheduleMatchCard({ match, priority = false, divisionColor = '#6
                                             {match.teamB.name.charAt(0)}
                                         </div>
                                     )}
-
                                 </div>
-                                <span className={cn(
-                                    "font-logik-extended-bold text-sm truncate text-right transition-all",
+                                <p className={cn(
+                                    "font-logik-extended-bold text-sm leading-tight line-clamp-2 text-right transition-all",
                                     teamBWon ? "text-white" : isCompleted ? "text-white/50" : "text-white/80 group-hover:text-white"
                                 )}>
                                     {match.teamB.name}
-                                </span>
+                                </p>
                             </div>
                         </div>
                     </div>
@@ -226,7 +226,7 @@ export function ScheduleMatchCard({ match, priority = false, divisionColor = '#6
                             )}>
                                 <div className="relative w-24 h-24">
                                     {match.teamA.logoUrl ? (
-                                        <Image src={match.teamA.logoUrl} alt={match.teamA.name} fill className="object-contain drop-shadow-2xl" />
+                                        <Image src={match.teamA.logoUrl} alt={match.teamA.name} fill className="object-contain drop-shadow-2xl" unoptimized />
                                     ) : (
                                         <div className="w-full h-full rounded-2xl bg-white/5 flex items-center justify-center text-3xl font-bold text-white/30 border border-white/10">
                                             {match.teamA.name.charAt(0)}
@@ -269,7 +269,7 @@ export function ScheduleMatchCard({ match, priority = false, divisionColor = '#6
                             )}>
                                 <div className="relative w-24 h-24">
                                     {match.teamB.logoUrl ? (
-                                        <Image src={match.teamB.logoUrl} alt={match.teamB.name} fill className="object-contain drop-shadow-2xl" />
+                                        <Image src={match.teamB.logoUrl} alt={match.teamB.name} fill className="object-contain drop-shadow-2xl" unoptimized />
                                     ) : (
                                         <div className="w-full h-full rounded-2xl bg-white/5 flex items-center justify-center text-3xl font-bold text-white/30 border border-white/10">
                                             {match.teamB.name.charAt(0)}

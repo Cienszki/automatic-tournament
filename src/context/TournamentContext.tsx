@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { TournamentConfig, TournamentSummary, TournamentTheme } from '@/types/tournament';
 import { PDL_THEME, LETNIA_THEME, getThemeCssVariables, getThemeBySlug } from '@/lib/themes';
-import { fetchTournaments } from '@/lib/api/tournaments';
+import { fetchTournaments, fetchTournamentBySlug } from '@/lib/api/tournaments';
 
 // Re-export themes for convenience
 export { PDL_THEME, LETNIA_THEME };
@@ -28,6 +28,7 @@ interface TournamentContextType {
   setTournament: (tournament: TournamentConfig | null) => void;
   setTournamentSlug: (slug: string | null) => void;
   refreshTournaments: () => Promise<void>;
+  refetchTournament: () => Promise<void>; // Refetch current tournament from Firestore
 
   // Helpers
   isLegacyTournament: boolean; // True for Letnia (uses old data structure)
@@ -114,50 +115,41 @@ export function TournamentProvider({ children, initialTournamentSlug }: Tourname
       setIsLoading(true);
       setError(null);
 
-      // Fetch tournaments from Firestore
-      const fetchedTournaments = await fetchTournaments();
-
-      // TEMPORARY: Always use static defaults until Firestore is properly set up
-      // TODO: Remove this once Firestore has correct data
-      const useStaticFallback = true;
-
-      // If no tournaments in Firestore, use static defaults (for development)
-      if (fetchedTournaments.length === 0 || useStaticFallback) {
-        const staticTournaments: TournamentSummary[] = [
-          {
-            id: 'letnia-2025',
-            slug: 'letnia',
-            name: 'Letnia Batalia',
-            shortName: 'Letnia',
-            type: 'mmr-limited',
-            status: 'completed',
-            visibility: 'active',
-            logoUrl: '/logos/letnia/letnia-logo-transparent.png',
-            primaryColor: 'hsl(330, 100%, 54%)',
-            startDate: '2025-06-01',
-            endDate: '2025-09-30',
-            teamsCount: 16,
-            organizerId: 'pd2ih',
-          },
-          {
-            id: 'pdl-s1',
-            slug: 'pdl',
-            name: 'Polish Dota League',
-            shortName: 'PDL',
-            type: 'league',
-            status: 'registration',
-            visibility: 'active',
-            logoUrl: '/logos/pdl/pdl-s1-logo-transparent.png',
-            primaryColor: 'hsl(345, 75%, 31%)',
-            startDate: '2026-02-21',
-            teamsCount: 0,
-            organizerId: 'pd2ih',
-          },
-        ];
-        setTournaments(staticTournaments);
-      } else {
-        setTournaments(fetchedTournaments);
-      }
+      // Use static tournaments for now - no need to hit Firestore on every page load
+      // This significantly improves initial load performance
+      // TODO: Re-enable Firestore fetching once tournament data is properly set up
+      const staticTournaments: TournamentSummary[] = [
+        {
+          id: 'letnia-2025',
+          slug: 'letnia',
+          name: 'Letnia Batalia',
+          shortName: 'Letnia',
+          type: 'mmr-limited',
+          status: 'completed',
+          visibility: 'active',
+          logoUrl: '/logos/letnia/letnia-logo-transparent.png',
+          primaryColor: 'hsl(330, 100%, 54%)',
+          startDate: '2025-06-01',
+          endDate: '2025-09-30',
+          teamsCount: 16,
+          organizerId: 'pd2ih',
+        },
+        {
+          id: 'pdl-s1',
+          slug: 'pdl',
+          name: 'Polish Dota League',
+          shortName: 'PDL',
+          type: 'league',
+          status: 'registration',
+          visibility: 'active',
+          logoUrl: '/logos/pdl/pdl-s1-logo-transparent.png',
+          primaryColor: 'hsl(345, 75%, 31%)',
+          startDate: '2026-02-21',
+          teamsCount: 0,
+          organizerId: 'pd2ih',
+        },
+      ];
+      setTournaments(staticTournaments);
     } catch (err) {
       console.error('Error fetching tournaments:', err);
       setError('Failed to load tournaments');
@@ -166,25 +158,27 @@ export function TournamentProvider({ children, initialTournamentSlug }: Tourname
     }
   }, []);
 
-  // Fetch current tournament config when slug changes
-  useEffect(() => {
-    if (!tournamentSlug) {
-      setTournament(null);
-      return;
-    }
+  // Function to fetch tournament config
+  const fetchTournamentConfig = useCallback(async (slug: string) => {
+    try {
+      setIsLoading(true);
 
-    const fetchTournamentConfig = async () => {
-      try {
-        setIsLoading(true);
-
-        // TODO: Replace with Firestore fetch
-        // For now, use static config based on slug
-        if (tournamentSlug === 'letnia' || tournamentSlug === 'letnia-2025') {
-          // Letnia uses legacy structure, minimal config needed
-          setTournament({
-            id: 'letnia-2025',
-            slug: 'letnia', // Normalize slug
-            name: 'Letnia Batalia',
+      // Fetch from Firestore
+      const tournamentData = await fetchTournamentBySlug(slug);
+        
+      if (tournamentData) {
+        // Use Firestore data
+        setTournament(tournamentData);
+      } else {
+        // Fallback to static config for legacy tournaments
+        console.warn(`Tournament "${slug}" not found in Firestore, using static config`);
+        
+        if (slug === 'letnia' || slug === 'letnia-2025') {
+            // Letnia uses legacy structure, minimal config needed
+            setTournament({
+              id: 'letnia-2025',
+              slug: 'letnia', // Normalize slug
+              name: 'Letnia Batalia',
             shortName: 'Letnia',
             description: 'Turniej z limitem MMR dla polskiej społeczności Dota 2',
             organizerId: 'pd2ih',
@@ -253,11 +247,11 @@ export function TournamentProvider({ children, initialTournamentSlug }: Tourname
             createdAt: '2025-05-01T00:00:00Z',
             updatedAt: '2025-09-30T00:00:00Z',
           });
-        } else if (tournamentSlug === 'pdl' || tournamentSlug === 'pdl-s1') {
+        } else if (slug === 'pdl' || slug === 'pdl-s1') {
           setTournament({
-            id: 'pdl-s1',
-            slug: 'pdl', // Normalize slug
-            name: 'Polish Dota League',
+              id: 'pdl-s1',
+              slug: 'pdl', // Normalize slug
+              name: 'Polish Dota League',
             shortName: 'PDL',
             description: 'Profesjonalna liga dla najlepszych polskich drużyn Dota 2',
             organizerId: 'pd2ih',
@@ -272,7 +266,7 @@ export function TournamentProvider({ children, initialTournamentSlug }: Tourname
             defaultMatchFormat: 'bo2',
             schedulingMethod: 'admin-scheduled',
             promotionRelegationEnabled: true,
-            roundsPerSeason: 2, // Full round-robin twice
+            roundsPerSeason: 1, // Single round-robin: each team plays every other team once
             divisions: [],
             fantasy: {
               enabled: true,
@@ -332,17 +326,31 @@ export function TournamentProvider({ children, initialTournamentSlug }: Tourname
           setError('Tournament not found');
           setTournament(null);
         }
-      } catch (err) {
-        console.error('Error fetching tournament config:', err);
-        setError('Failed to load tournament');
-        setTournament(null);
-      } finally {
-        setIsLoading(false);
       }
-    };
+    } catch (err) {
+      console.error('Error fetching tournament config:', err);
+      setError('Failed to load tournament');
+      setTournament(null);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
-    fetchTournamentConfig();
-  }, [tournamentSlug]);
+  // Refetch current tournament (for use after admin updates)
+  const refetchTournament = useCallback(async () => {
+    if (!tournamentSlug) return;
+    await fetchTournamentConfig(tournamentSlug);
+  }, [tournamentSlug, fetchTournamentConfig]);
+
+  // Fetch current tournament config when slug changes
+  useEffect(() => {
+    if (!tournamentSlug) {
+      setTournament(null);
+      return;
+    }
+
+    fetchTournamentConfig(tournamentSlug);
+  }, [tournamentSlug, fetchTournamentConfig]);
 
   // Initial load of tournaments list
   useEffect(() => {
@@ -382,6 +390,7 @@ export function TournamentProvider({ children, initialTournamentSlug }: Tourname
         setTournament,
         setTournamentSlug,
         refreshTournaments,
+        refetchTournament,
         isLegacyTournament,
         getTournamentPath,
       }}

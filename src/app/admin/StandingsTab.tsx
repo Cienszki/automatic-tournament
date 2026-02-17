@@ -278,7 +278,7 @@ export function StandingsTab() {
           {match.teamA ? (
             <div className="flex items-center space-x-2">
               {match.teamA.logoUrl && match.teamA.logoUrl.trim() !== '' ? (
-                <Image src={match.teamA.logoUrl} alt={match.teamA.name} width={24} height={24} className="rounded-sm" />
+                <Image src={match.teamA.logoUrl} alt={match.teamA.name} width={24} height={24} className="rounded-sm" unoptimized />
               ) : (
                 <div className="w-6 h-6 bg-muted rounded-sm flex items-center justify-center text-xs font-bold">
                   {match.teamA.name.charAt(0)}
@@ -294,7 +294,7 @@ export function StandingsTab() {
           {match.teamB ? (
             <div className="flex items-center space-x-2">
               {match.teamB.logoUrl && match.teamB.logoUrl.trim() !== '' ? (
-                <Image src={match.teamB.logoUrl} alt={match.teamB.name} width={24} height={24} className="rounded-sm" />
+                <Image src={match.teamB.logoUrl} alt={match.teamB.name} width={24} height={24} className="rounded-sm" unoptimized />
               ) : (
                 <div className="w-6 h-6 bg-muted rounded-sm flex items-center justify-center text-xs font-bold">
                   {match.teamB.name.charAt(0)}

@@ -5,6 +5,8 @@ import { useEffect } from 'react';
 import { useTournament } from '@/context/TournamentContext';
 import { TournamentNavbar } from '@/components/layout/TournamentNavbar';
 import { Footer } from '@/components/layout/Footer';
+import { DynamicFontLoader } from '@/components/DynamicFontLoader';
+import { ThemeFontApplier } from '@/components/ThemeFontApplier';
 
 interface TournamentLayoutProps {
   children: React.ReactNode;
@@ -91,6 +93,8 @@ export default function TournamentLayout({ children }: TournamentLayoutProps) {
         background: theme.backgroundGradient || theme.backgroundColor,
       }}
     >
+      <DynamicFontLoader />
+      <ThemeFontApplier />
       <TournamentNavbar />
       <main className="flex-grow container mx-auto px-4 py-8">
         {children}

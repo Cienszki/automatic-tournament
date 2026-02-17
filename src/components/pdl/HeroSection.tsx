@@ -11,6 +11,7 @@ import { Users, Trophy } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { fadeInUp, staggerContainer } from '@/lib/animations';
 import { useTournament } from '@/context/TournamentContext';
+import { organizationConfig } from '@/config/organization';
 
 interface HeroSectionProps {
   isTeamCaptain?: boolean;
@@ -20,11 +21,11 @@ export function HeroSection({
   isTeamCaptain = false
 }: HeroSectionProps) {
   const t = useTranslations('pdlHome');
-  const { getTournamentPath } = useTournament();
+  const { getTournamentPath, tournament } = useTournament();
 
   return (
     <motion.div
-      className="relative h-full min-h-[600px] flex items-center"
+      className="relative h-full min-h-[400px] lg:min-h-[500px] 2xl:min-h-[700px] flex items-center"
       variants={staggerContainer}
       initial="hidden"
       animate="visible"
@@ -32,9 +33,9 @@ export function HeroSection({
       <div className="relative z-10 w-full max-w-4xl">
         <motion.div variants={fadeInUp}>
           {/* Headline and Promotional Text */}
-          <div className="mb-8">
+          <div className="mb-6">
             <motion.h1
-              className="text-4xl md:text-6xl lg:text-7xl font-logik-extended-bold mb-6 leading-[0.9] tracking-tight"
+              className="text-3xl md:text-5xl lg:text-6xl font-logik-extended-bold mb-4 leading-[0.9] tracking-tight"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8 }}
@@ -46,7 +47,7 @@ export function HeroSection({
 
             {/* Promotional text */}
             <motion.p
-              className="text-lg md:text-xl text-white/60 leading-relaxed max-w-lg font-medium border-l-4 border-[#8B1538] pl-6 ml-1"
+              className="text-base md:text-lg text-white/60 leading-relaxed max-w-lg font-medium border-l-4 border-[#8B1538] pl-6 ml-1"
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.8, delay: 0.2 }}
@@ -57,7 +58,7 @@ export function HeroSection({
 
           {/* CTA Buttons - Freestanding */}
           <motion.div
-            className="flex flex-col sm:flex-row gap-6 mt-12"
+            className="flex flex-col sm:flex-row gap-4 mt-8"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.4 }}
@@ -70,7 +71,7 @@ export function HeroSection({
               <Link
                 href={getTournamentPath(isTeamCaptain ? '/my-team' : '/register')}
                 className={cn(
-                  "inline-flex items-center justify-center gap-4 px-10 py-5 rounded-none font-logik-extended-bold text-xl uppercase tracking-widest",
+                  "inline-flex items-center justify-center gap-3 px-8 py-4 rounded-none font-logik-extended-bold text-lg uppercase tracking-widest",
                   "bg-[#8B1538] text-white",
                   "hover:bg-[#a01840]",
                   "transition-all duration-300 relative overflow-hidden group clip-path-slant"
@@ -86,12 +87,12 @@ export function HeroSection({
 
                 {isTeamCaptain ? (
                   <>
-                    <Trophy className="h-6 w-6 relative z-10" />
+                    <Trophy className="h-5 w-5 relative z-10" />
                     <span className="relative z-10">{t('hero.ctaMyTeam')}</span>
                   </>
                 ) : (
                   <>
-                    <Users className="h-6 w-6 relative z-10" />
+                    <Users className="h-5 w-5 relative z-10" />
                     <span className="relative z-10">{t('hero.ctaRegister')}</span>
                   </>
                 )}
@@ -104,11 +105,11 @@ export function HeroSection({
               whileTap={{ scale: 0.98 }}
             >
               <Link
-                href="https://discord.gg/pd2ih"
+                href={tournament?.discordUrl || organizationConfig.defaults.discord}
                 target="_blank"
                 rel="noopener noreferrer"
                 className={cn(
-                  "inline-flex items-center justify-center gap-4 px-10 py-5 font-logik-extended-bold text-xl uppercase tracking-widest",
+                  "inline-flex items-center justify-center gap-3 px-8 py-4 font-logik-extended-bold text-lg uppercase tracking-widest",
                   "bg-transparent text-white border border-white/10",
                   "hover:border-[#5865F2] hover:text-[#5865F2] hover:bg-[#5865F2]/5",
                   "transition-all duration-300 relative overflow-hidden group"
@@ -120,9 +121,10 @@ export function HeroSection({
                 <Image
                   src="/logos/pd2ih/dc-icon.png"
                   alt="Discord"
-                  width={24}
-                  height={24}
-                  className="relative z-10 w-6 h-6 object-contain opacity-60 group-hover:opacity-100 transition-opacity"
+                  width={20}
+                  height={20}
+                  priority
+                  className="relative z-10 w-5 h-5 object-contain opacity-60 group-hover:opacity-100 transition-opacity"
                 />
                 <span className="relative z-10">{t('hero.ctaDiscord')}</span>
               </Link>

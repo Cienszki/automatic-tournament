@@ -26,7 +26,7 @@ export function SeasonPointsTable({ teams }: SeasonPointsTableProps) {
                         </div>
                         <h2 className="text-3xl font-logik-extended-bold text-white tracking-tight">Season Standings</h2>
                     </div>
-                    <p className="text-sm text-gray-400 font-logik ml-1">Top 4 qualify for LAN Finals</p>
+                    <p className="text-sm text-gray-300 font-logik font-medium ml-1">Top 4 qualify for LAN Finals</p>
                 </div>
             </div>
 
@@ -37,7 +37,7 @@ export function SeasonPointsTable({ teams }: SeasonPointsTableProps) {
                 />
 
                 {/* Header */}
-                <div className="relative z-10 grid grid-cols-12 gap-4 p-4 border-b border-white/5 text-xs font-logik uppercase tracking-wider text-gray-500 bg-white/[0.02]">
+                <div className="relative z-10 grid grid-cols-12 gap-4 p-4 border-b border-white/5 text-xs font-logik font-medium uppercase tracking-wider text-gray-400 bg-white/[0.02]">
                     <div className="col-span-1 text-center">#</div>
                     <div className="col-span-8">Team</div>
                     <div className="col-span-3 text-right">Points</div>
@@ -82,6 +82,7 @@ export function SeasonPointsTable({ teams }: SeasonPointsTableProps) {
                                             alt={team.name}
                                             fill
                                             className="object-cover"
+                                            unoptimized
                                         />
                                     </div>
                                     <div>
@@ -102,14 +103,14 @@ export function SeasonPointsTable({ teams }: SeasonPointsTableProps) {
                                     )}>
                                         {team.seasonPoints || 0}
                                     </span>
-                                    <span className="text-[10px] text-gray-600 font-logik uppercase ml-1">PTS</span>
+                                    <span className="text-[10px] text-gray-400 font-logik font-medium uppercase ml-1">PTS</span>
                                 </div>
                             </motion.div>
                         );
                     })}
 
                     {sortedTeams.length === 0 && (
-                        <div className="p-12 text-center text-gray-500 font-logik flex flex-col items-center gap-2">
+                        <div className="p-12 text-center text-gray-400 font-logik font-medium flex flex-col items-center gap-2">
                             <Trophy className="w-8 h-8 opacity-20" />
                             <p>No season points recorded yet.</p>
                         </div>
