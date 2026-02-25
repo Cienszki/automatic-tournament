@@ -108,7 +108,7 @@ export function StandinsTab() {
           const teamAName = teamsMap.get(match.teamA?.id || '')?.name || 'Team A';
           const teamBName = teamsMap.get(match.teamB?.id || '')?.name || 'Team B';
           matchName = `${teamAName} vs ${teamBName}`;
-          matchDate = match.scheduled_for ? format(new Date(match.scheduled_for), 'dd.MM.yyyy HH:mm') : '';
+          matchDate = match.scheduledFor ? format(new Date(match.scheduledFor), 'dd.MM.yyyy HH:mm') : '';
           
           // Determine opponent
           if (match.teamA?.id === data.teamId) {

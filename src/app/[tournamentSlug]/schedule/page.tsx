@@ -46,9 +46,7 @@ export default function SchedulePage() {
               teamB: teamBObj,
               teams: [teamAObj.id, teamBObj.id],
               status: data.status || 'scheduled',
-              dateTime: data.scheduledFor || data.dateTime,
-              scheduled_for: data.scheduled_for || data.scheduledFor || '',
-              defaultMatchTime: data.defaultMatchTime || '',
+              scheduledFor: data.scheduledFor || data.scheduled_for || '',
               schedulingStatus: data.schedulingStatus || 'unscheduled',
               completed_at: data.completed_at,
               scoreA: data.scoreA,
@@ -61,7 +59,7 @@ export default function SchedulePage() {
           });
         }
 
-        const validMatches = fetchedMatches.filter(m => (m.scheduled_for || m.dateTime));
+        const validMatches = fetchedMatches.filter(m => m.scheduledFor);
 
         setMatches(validMatches);
 

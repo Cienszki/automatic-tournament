@@ -37,9 +37,8 @@ export function MatchListItem({ match }: MatchListItemProps) {
   }, []);
 
   const isCompleted = match.status === 'completed';
-  const hasOfficialTime = !!match.dateTime;
   
-  const displayDate = hasOfficialTime ? new Date(match.dateTime!) : new Date(match.defaultMatchTime);
+  const displayDate = new Date(match.scheduledFor || 0);
   
   // Format dates and times safely, only rendering the dynamic time part on the client
   const dateText = format(displayDate, "EEEE, MMMM d");
@@ -140,7 +139,7 @@ export function MatchListItem({ match }: MatchListItemProps) {
                     </TooltipTrigger>
                     <TooltipContent>
                         <p>This match has not been scheduled by the captains yet.</p>
-                        <p className="text-xs text-muted-foreground">Scheduling Deadline: {format(new Date(match.scheduled_for), "PPP HH:mm")}</p>
+                        <p className="text-xs text-muted-foreground">Scheduling Deadline: {format(new Date(match.scheduledFor), "PPP HH:mm")}</p>
                     </TooltipContent>
                 </Tooltip>
             </TooltipProvider>

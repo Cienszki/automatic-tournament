@@ -24,8 +24,8 @@ export function RecentResultsTimeline({ matches, divisionColor, theme }: RecentR
     const recentMatches = matches
         .filter(m => m.status === 'completed')
         .sort((a, b) => {
-            const dateA = a.scheduled_for ? new Date(a.scheduled_for).getTime() : 0;
-            const dateB = b.scheduled_for ? new Date(b.scheduled_for).getTime() : 0;
+            const dateA = a.scheduledFor ? new Date(a.scheduledFor).getTime() : 0;
+            const dateB = b.scheduledFor ? new Date(b.scheduledFor).getTime() : 0;
             return dateB - dateA;
         })
         .slice(0, 10);
@@ -87,7 +87,7 @@ export function RecentResultsTimeline({ matches, divisionColor, theme }: RecentR
                         {recentMatches.map((match, index) => {
                             const teamAWon = match.teamA.score > match.teamB.score;
                             const isDraw = match.teamA.score === match.teamB.score;
-                            const matchDate = match.scheduled_for ? new Date(match.scheduled_for) : null;
+                            const matchDate = match.scheduledFor ? new Date(match.scheduledFor) : null;
 
                             return (
                                 <motion.div

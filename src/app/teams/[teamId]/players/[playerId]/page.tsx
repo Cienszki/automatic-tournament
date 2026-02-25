@@ -123,7 +123,7 @@ export default function PlayerPage({ params }: PageProps) {
               opponentTeam: { id: opponentTeamData.id, name: opponentTeamData.name, logoUrl: opponentTeamData.logoUrl },
               playerPerformance: performance,
               result: playerTeamWon ? 'Win' : 'Loss',
-              matchDate: new Date(match.dateTime || match.defaultMatchTime),
+              matchDate: new Date(match.scheduledFor || ''),
               openDotaMatchUrl: match.openDotaMatchUrl
             });
           }

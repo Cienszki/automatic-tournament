@@ -562,7 +562,7 @@ function getRankForStat(
                                 (match.teamB.id === team.id && (match.teamB.score ?? 0) > (match.teamA.score ?? 0));
                   const resultText = isWin ? t('teamDetail.win') : t('teamDetail.loss');
                   const scoreText = `${match.teamA.score} - ${match.teamB.score}`;
-                  const date = match.dateTime ? new Date(match.dateTime) : new Date(match.defaultMatchTime);
+                  const date = new Date(match.scheduledFor || '');
                   return (
                     <TableRow key={match.id}>
                       <TableCell>

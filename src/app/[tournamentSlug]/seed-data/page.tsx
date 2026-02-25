@@ -148,9 +148,7 @@ export default function SeedDataPage() {
                             round: 1,
                             group_id: divisionId,    // For MatchdayCarousel
                             divisionId: divisionId,  // For useDivisionData hook
-                            scheduled_for: matchdayDate.toISOString(),
                             scheduledFor: matchdayDate.toISOString(),
-                            dateTime: matchdayDate.toISOString(),
                             status: isLive ? 'live' : (isCompleted ? 'completed' : 'scheduled'),
                             bestOf: 2,
                             series_format: 'bo2',

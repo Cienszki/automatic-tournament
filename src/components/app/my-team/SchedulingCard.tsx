@@ -44,15 +44,14 @@ export function SchedulingCard({ match, teamId, captainId, teams = [], standins 
   const opponent = optimisticMatch.teamA.id === teamId ? optimisticMatch.teamB : optimisticMatch.teamA;
   const isProposer = optimisticMatch.proposedById === teamId;
   
-  const deadline = new Date(optimisticMatch.scheduled_for || 0);
+  const deadline = new Date(optimisticMatch.scheduledFor || 0);
   const now = simulatedTime || new Date();
   const isDeadlinePassed = now > deadline;
 
-  const officialTime = optimisticMatch.dateTime ? new Date(optimisticMatch.dateTime) : null;
-  const defaultTime = new Date(optimisticMatch.defaultMatchTime || 0);
+  const officialTime = optimisticMatch.scheduledFor ? new Date(optimisticMatch.scheduledFor) : null;
   const proposedTime = optimisticMatch.proposedTime ? new Date(optimisticMatch.proposedTime) : null;
 
-  const [selectedDate, setSelectedDate] = React.useState<Date | undefined>(proposedTime || defaultTime || new Date());
+  const [selectedDate, setSelectedDate] = React.useState<Date | undefined>(proposedTime || officialTime || new Date());
   const [hour, setHour] = React.useState<string>(proposedTime ? format(proposedTime, "HH") : "18");
   const [minute, setMinute] = React.useState<string>(proposedTime ? format(proposedTime, "mm") : "00");
 
@@ -124,7 +123,7 @@ export function SchedulingCard({ match, teamId, captainId, teams = [], standins 
     const optimisticUpdate: Partial<Match> = {
       schedulingStatus: 'confirmed',
       status: 'scheduled',
-      dateTime: optimisticMatch.proposedTime,
+      scheduledFor: optimisticMatch.proposedTime,
       proposedTime: undefined,
       proposingCaptainId: undefined,
       proposedById: undefined,

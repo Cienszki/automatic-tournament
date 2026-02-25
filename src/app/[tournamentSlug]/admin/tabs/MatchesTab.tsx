@@ -151,7 +151,7 @@ export function MatchesTab() {
 
       // Load matches
       const matchesRef = collection(db, 'tournaments', tournament.id, 'matches');
-      const q = query(matchesRef, orderBy('dateTime', 'desc'));
+      const q = query(matchesRef, orderBy('scheduledFor', 'desc'));
       const matchesSnapshot = await getDocs(q);
 
       const loadedMatches: MatchWithTeamNames[] = matchesSnapshot.docs.map(doc => {
@@ -748,8 +748,8 @@ export function MatchesTab() {
                       <div className="rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm font-logik">
                         <span className="text-white/50 text-xs mr-2">Mecz:</span>
                         <span className="font-medium">{forceImportContextMatch.teamAName} vs {forceImportContextMatch.teamBName}</span>
-                        {forceImportContextMatch.dateTime && (
-                          <span className="text-white/40 ml-2 text-xs">({formatDate(forceImportContextMatch.dateTime)})</span>
+                        {forceImportContextMatch.scheduledFor && (
+                          <span className="text-white/40 ml-2 text-xs">({formatDate(forceImportContextMatch.scheduledFor)})</span>
                         )}
                       </div>
                     ) : (
@@ -763,7 +763,7 @@ export function MatchesTab() {
                             {matches.map(m => (
                               <SelectItem key={m.id} value={m.id}>
                                 {m.teamAName} vs {m.teamBName}
-                                {m.dateTime ? ` (${formatDate(m.dateTime)})` : ''}
+                                {m.scheduledFor ? ` (${formatDate(m.scheduledFor)})` : ''}
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -1003,9 +1003,9 @@ export function MatchesTab() {
                     <TableCell>
                       <div className="flex items-center gap-2 text-sm font-logik">
                         <Calendar className="h-4 w-4 text-muted-foreground" />
-                        {formatDate(match.dateTime || match.scheduled_for)}
+                        {formatDate(match.scheduledFor)}
                         <Clock className="h-4 w-4 text-muted-foreground ml-2" />
-                        {formatTime(match.dateTime || match.scheduled_for)}
+                        {formatTime(match.scheduledFor)}
                       </div>
                     </TableCell>
                     <TableCell>

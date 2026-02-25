@@ -32,11 +32,7 @@ export function MatchCard({ match, index = 0 }: MatchCardProps) {
   }, []);
 
   const isCompleted = match.status === 'completed';
-  const hasOfficialTime = !!match.dateTime;
-  
-  const displayDate = hasOfficialTime 
-    ? new Date(match.dateTime!) 
-    : new Date(match.defaultMatchTime);
+  const displayDate = match.scheduledFor ? new Date(match.scheduledFor) : new Date();
   
   const dateText = format(displayDate, "EEE, MMM d");
   const timeText = isClient ? format(displayDate, "HH:mm") : "--:--";

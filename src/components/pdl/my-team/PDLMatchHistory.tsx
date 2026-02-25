@@ -88,7 +88,7 @@ export function PDLMatchHistory({
                             };
 
                             const config = resultConfig[result];
-                            const matchDate = match.completed_at || match.dateTime || match.scheduled_for;
+                            const matchDate = match.completed_at || match.scheduledFor;
 
                             return (
                                 <tr

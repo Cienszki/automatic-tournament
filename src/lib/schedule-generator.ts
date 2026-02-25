@@ -70,9 +70,7 @@ export interface GeneratedMatch {
   group_id: string;
   round: number;
   matchday: number;
-  scheduled_for: string;
   scheduledFor: string;
-  dateTime: string;
   status: 'scheduled';
   series_format: 'bo2';
   bestOf: 2;
@@ -302,9 +300,7 @@ export function generateDivisionSchedule(config: DivisionScheduleConfig): Genera
         group_id: divisionId,
         round: pairing.round,
         matchday: globalMatchdayIndex,
-        scheduled_for: matchDate.toISOString(),
         scheduledFor: matchDate.toISOString(),
-        dateTime: matchDate.toISOString(),
         status: 'scheduled',
         series_format: 'bo2',
         bestOf: 2,
@@ -356,9 +352,7 @@ export function convertMatchdaysToMatches(matchdays: Matchday[]): GeneratedMatch
         group_id: matchday.divisionId,
         round: matchday.round,
         matchday: matchday.matchdayNumber,
-        scheduled_for: matchDate.toISOString(),
         scheduledFor: matchDate.toISOString(),
-        dateTime: matchDate.toISOString(),
         status: 'scheduled',
         series_format: 'bo2',
         bestOf: 2,

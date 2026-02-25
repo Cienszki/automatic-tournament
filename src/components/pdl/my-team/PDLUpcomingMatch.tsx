@@ -35,7 +35,7 @@ export function PDLUpcomingMatch({
     const opponent = isTeamA ? match.teamB : match.teamA;
     const opponentTeam = teams.find(t => t.id === opponent?.id);
 
-    const scheduledDate = match.scheduled_for || match.dateTime || match.defaultMatchTime;
+    const scheduledDate = match.scheduledFor;
     const formattedDate = scheduledDate ? formatDatePL(scheduledDate) : 'Do ustalenia';
 
     // Reschedule request status

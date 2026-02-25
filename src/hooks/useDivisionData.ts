@@ -97,8 +97,8 @@ function calculateForm(teamId: string, matches: Match[]): ('W' | 'D' | 'L')[] {
       (m.teamA.id === teamId || m.teamB.id === teamId)
     )
     .sort((a, b) => {
-      const dateA = new Date(a.completed_at || a.scheduled_for || 0).getTime();
-      const dateB = new Date(b.completed_at || b.scheduled_for || 0).getTime();
+      const dateA = new Date(a.completed_at || a.scheduledFor || 0).getTime();
+      const dateB = new Date(b.completed_at || b.scheduledFor || 0).getTime();
       return dateA - dateB;
     })
     .slice(-5);
@@ -179,8 +179,7 @@ export function useDivisionData(divisionId: string): UseDivisionDataResult {
             teamB: data.teamB || { id: '', name: '', score: 0, logoUrl: '' },
             teams: data.teams || [],
             status: data.status || 'scheduled',
-            scheduled_for: data.scheduled_for || '',
-            defaultMatchTime: data.defaultMatchTime || '',
+            scheduledFor: data.scheduledFor || data.scheduled_for || '',
             schedulingStatus: data.schedulingStatus || 'unscheduled',
             series_format: data.series_format || 'bo2',
             winnerId: data.winnerId || null,

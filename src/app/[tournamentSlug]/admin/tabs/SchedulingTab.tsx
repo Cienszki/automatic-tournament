@@ -419,7 +419,7 @@ export function SchedulingTab() {
             tournamentId: tournament.id,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
-            schedulingStatus: 'admin-scheduled',
+            schedulingStatus: 'confirmed',
             schedulingMethod: 'admin-scheduled',
             format: match.series_format,
             result: null,

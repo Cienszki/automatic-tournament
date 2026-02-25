@@ -76,7 +76,7 @@ export function MatchHistoryTable({ matches, teamId, teams = [], standins = [] }
                     {resultText}
                   </TableCell>
                   <TableCell>{scoreText}</TableCell>
-                  <TableCell>{match.dateTime ? new Date(match.dateTime).toLocaleDateString() : t("teams.tbd")}</TableCell>
+                  <TableCell>{match.scheduledFor ? new Date(match.scheduledFor).toLocaleDateString() : t("teams.tbd")}</TableCell>
                   <TableCell>
                     <StandinInfoDisplay 
                       match={match}

@@ -191,7 +191,7 @@ export default function MyTeamPage() {
     // Check for upcoming matches without coach (24h warning)
     const nextMatch = upcomingMatches[0];
     if (nextMatch && !nextMatch.coachInfo?.[team?.id || '']) {
-      const matchDate = new Date(nextMatch.scheduled_for || nextMatch.dateTime || '');
+      const matchDate = new Date(nextMatch.scheduledFor || '');
       const hoursUntilMatch = (matchDate.getTime() - Date.now()) / (1000 * 60 * 60);
       if (hoursUntilMatch < 24 && hoursUntilMatch > 0) {
         actions.push({
@@ -200,7 +200,7 @@ export default function MyTeamPage() {
           title: 'Brak coacha na najbliższy mecz',
           description: 'Musisz zarejestrować coacha minimum 24h przed meczem',
           urgent: true,
-          dueDate: nextMatch.scheduled_for || nextMatch.dateTime,
+          dueDate: nextMatch.scheduledFor,
           action: {
             label: 'Dodaj coacha',
             onClick: () => setActiveTab('matches')
@@ -566,7 +566,7 @@ export default function MyTeamPage() {
       const matchSnap = await getDoc(matchRef);
       const matchData = matchSnap.data();
 
-      const originalDate = String(matchData?.scheduled_for || matchData?.dateTime || '');
+      const originalDate = String(matchData?.scheduledFor || matchData?.scheduled_for || '');
       if (!originalDate || !isWithinThreeDays(originalDate, proposedDate)) {
         console.warn('[MyTeam] Date validation failed', { originalDate, proposedDate });
         toast({
@@ -626,7 +626,7 @@ export default function MyTeamPage() {
       const matchSnap = await getDoc(matchRef);
       const matchData = matchSnap.data();
 
-      const originalDate = String(matchData?.rescheduleRequest?.originalDate || matchData?.scheduled_for || matchData?.dateTime || '');
+      const originalDate = String(matchData?.rescheduleRequest?.originalDate || matchData?.scheduledFor || matchData?.scheduled_for || '');
       const proposedDate = String(matchData?.rescheduleRequest?.proposedDate || '');
       if (!originalDate || !proposedDate || !isWithinThreeDays(originalDate, proposedDate)) {
         toast({
@@ -638,8 +638,7 @@ export default function MyTeamPage() {
       }
 
       await updateDoc(matchRef, {
-        scheduled_for: proposedDate,
-        dateTime: proposedDate,
+        scheduledFor: proposedDate,
         'rescheduleRequest.status': 'approved',
         'rescheduleRequest.respondedAt': new Date().toISOString(),
       });
@@ -1158,8 +1157,8 @@ export default function MyTeamPage() {
   const upcomingMatches = matches
     .filter(m => m.status !== 'completed')
     .sort((a, b) => {
-      const dateA = new Date(a.scheduled_for || a.dateTime || '').getTime();
-      const dateB = new Date(b.scheduled_for || b.dateTime || '').getTime();
+      const dateA = new Date(a.scheduledFor || '').getTime();
+      const dateB = new Date(b.scheduledFor || '').getTime();
       return dateA - dateB; // Earliest first
     });
   const isCaptain = team?.captainId === user.uid;
@@ -1404,7 +1403,7 @@ export default function MyTeamPage() {
                           standinRequests={getStandinRequestsForMatch(match.id)}
                           opponentStandinRequests={getOpponentStandinRequestsForMatch(match.id)}
                           myCoachInfo={getCoachInfoForMatch(match)}
-                          nextMatchDate={match.scheduled_for || match.dateTime}
+                          nextMatchDate={match.scheduledFor}
                           timePenalty={team?.timePenalty?.appliesTo === match.id || !team?.timePenalty?.appliesTo 
                             ? team?.timePenalty 
                             : undefined}

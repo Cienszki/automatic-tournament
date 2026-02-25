@@ -22,10 +22,10 @@ interface UpcomingMatchesProps {
 export function UpcomingMatches({ matches, divisionColor, theme }: UpcomingMatchesProps) {
     // Get upcoming matches (scheduled, not completed)
     const upcomingMatches = matches
-        .filter(m => m.status === 'scheduled' && m.scheduled_for)
+        .filter(m => m.status === 'scheduled' && m.scheduledFor)
         .sort((a, b) => {
-            const dateA = new Date(a.scheduled_for!).getTime();
-            const dateB = new Date(b.scheduled_for!).getTime();
+            const dateA = new Date(a.scheduledFor!).getTime();
+            const dateB = new Date(b.scheduledFor!).getTime();
             return dateA - dateB;
         })
         .slice(0, 5);
@@ -75,7 +75,7 @@ export function UpcomingMatches({ matches, divisionColor, theme }: UpcomingMatch
             </CardHeader>
             <CardContent className="space-y-3">
                 {upcomingMatches.map((match, index) => {
-                    const matchDate = new Date(match.scheduled_for!);
+                    const matchDate = new Date(match.scheduledFor!);
                     const isNextMatch = index === 0;
 
                     return (

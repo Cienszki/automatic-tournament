@@ -859,8 +859,7 @@ export async function getPlayoffDataWithResults(): Promise<PlayoffData | null> {
                         game_results: data.game_results || [],
                         teamA: data.teamA,
                         teamB: data.teamB,
-                        dateTime: data.dateTime,
-                        defaultMatchTime: data.defaultMatchTime
+                        scheduledFor: data.scheduledFor || data.scheduled_for || data.dateTime
                     });
                 }
             });
@@ -926,8 +925,7 @@ export async function getPlayoffDataWithResults(): Promise<PlayoffData | null> {
                         game_results: liveData.game_results,
                         teamA: teamA,
                         teamB: teamB,
-                        dateTime: liveData.dateTime,
-                        defaultMatchTime: liveData.defaultMatchTime
+                        scheduledFor: liveData.scheduledFor
                     };
                 }
                 return match;

@@ -48,7 +48,7 @@ export async function proposeMatchTime(token: string, matchId: string, proposedD
         const decodedToken = await verifyUser(token);
         const { matchRef, match, userTeamId } = await getMatchAndVerifyCaptain(matchId, decodedToken.uid);
 
-        const deadline = (match.scheduled_for as Timestamp).toDate();
+        const deadline = (match.scheduledFor as unknown as Timestamp).toDate();
         if (proposedDate > deadline) {
             return { success: false, message: 'Proposed time cannot be after the deadline.' };
         }
@@ -81,7 +81,7 @@ export async function acceptMatchTime(token: string, matchId: string) {
             throw new Error('You cannot accept your own proposal.');
         }
 
-        const deadline = (match.scheduled_for as Timestamp).toDate();
+        const deadline = (match.scheduledFor as unknown as Timestamp).toDate();
         const proposedTime = (match.proposedTime as Timestamp).toDate();
         if (proposedTime > deadline) {
             return { success: false, message: 'Cannot accept a time that is after the deadline.' };
@@ -90,7 +90,7 @@ export async function acceptMatchTime(token: string, matchId: string) {
         await matchRef.update({
             schedulingStatus: 'confirmed',
             status: 'scheduled',
-            dateTime: match.proposedTime,
+            scheduledFor: match.proposedTime,
             proposedTime: null,
             proposingCaptainId: null,
             proposedById: null

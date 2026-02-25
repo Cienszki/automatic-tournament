@@ -59,15 +59,9 @@ export async function getAllMatchesAdmin(): Promise<Match[]> {
             id: doc.id, 
             ...data,
             // Convert Timestamps to ISO strings for client compatibility
-            scheduled_for: data.scheduled_for && typeof data.scheduled_for.toDate === 'function'
-                ? data.scheduled_for.toDate().toISOString()
-                : data.scheduled_for,
-            defaultMatchTime: data.defaultMatchTime && typeof data.defaultMatchTime.toDate === 'function'
-                ? data.defaultMatchTime.toDate().toISOString()
-                : data.defaultMatchTime,
-            dateTime: data.dateTime && typeof data.dateTime.toDate === 'function'
-                ? data.dateTime.toDate().toISOString()
-                : data.dateTime,
+            scheduledFor: data.scheduledFor && typeof data.scheduledFor.toDate === 'function'
+                ? data.scheduledFor.toDate().toISOString()
+                : (data.scheduledFor || data.scheduled_for || null),
             proposedTime: data.proposedTime && typeof data.proposedTime.toDate === 'function'
                 ? data.proposedTime.toDate().toISOString()
                 : data.proposedTime,
@@ -366,7 +360,7 @@ export async function generateMatchesForGroup(token: string, groupId: string, de
         
         const teamsMap = new Map(allTeams.map(t => [t.id, t]));
 
-        const existingTimes = new Set(allExistingMatches.map(m => new Date(m.defaultMatchTime).getTime()));
+        const existingTimes = new Set(allExistingMatches.map(m => new Date(m.scheduledFor).getTime()));
         const existingMatchPairsInGroup = new Set(
             allExistingMatches
                 .filter(m => m.group_id === groupId)
@@ -456,7 +450,7 @@ export async function generateMatchesForGroup(token: string, groupId: string, de
                     // Only check conflicts within the same group
                     if (match.group_id !== group.id) return false;
                     
-                    const matchTime = new Date(match.defaultMatchTime).getTime();
+                    const matchTime = new Date(match.scheduledFor).getTime();
                     return Math.abs(matchTime - timeKey) < 60000; // Within 1 minute tolerance
                 });
                 
@@ -548,8 +542,7 @@ export async function generateMatchesForGroup(token: string, groupId: string, de
                 teamB: { id: matchPair.teamB.id, name: matchPair.teamB.name, score: 0, logoUrl: matchPair.teamB.logoUrl },
                 teams: [matchPair.teamA.id, matchPair.teamB.id],
                 status: 'pending',
-                scheduled_for: Timestamp.fromDate(time),
-                defaultMatchTime: time.toISOString(),
+                scheduledFor: time.toISOString(),
                 group_id: group.id,
                 schedulingStatus: 'unscheduled',
                 series_format: 'bo2', // Group stage matches are always BO2

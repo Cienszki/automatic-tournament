@@ -25,7 +25,7 @@ export default function SchedulePage() {
         // We will pass ALL matches to the carousel for now.
 
         // Exclude invalid
-        const validMatches = allMatches.filter(m => (m.scheduled_for || m.dateTime));
+        const validMatches = allMatches.filter(m => m.scheduledFor);
 
         setMatches(validMatches);
       } catch (error) {

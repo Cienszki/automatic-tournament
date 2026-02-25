@@ -59,11 +59,9 @@ export function ScheduleMatchCard({ match, priority = false, divisionColor = '#6
     const { tournament } = useTournament();
     const matchDate = match.completed_at
         ? new Date(match.completed_at)
-        : match.scheduled_for
-            ? new Date(match.scheduled_for)
-            : match.dateTime
-                ? new Date(match.dateTime)
-                : null;
+        : match.scheduledFor
+            ? new Date(match.scheduledFor)
+            : null;
     const isCompleted = match.status === 'completed';
     const isLive = match.status === 'live';
 

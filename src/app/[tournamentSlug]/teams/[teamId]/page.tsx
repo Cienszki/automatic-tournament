@@ -769,7 +769,7 @@ export default function TeamPage({ params }: PageProps) {
                     }
 
                     const scoreText = `${teamAScore} - ${teamBScore}`;
-                    const date = match.dateTime ? new Date(match.dateTime) : new Date(match.defaultMatchTime);
+                    const date = new Date(match.scheduledFor || '');
 
                     return (
                       <TableRow key={match.id}>

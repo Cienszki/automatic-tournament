@@ -61,7 +61,7 @@ export function StandinRequestModal({ team, trigger }: StandinRequestModalProps)
       // Filter to upcoming matches or matches that could still need standins
       const upcomingMatches = teamMatches.filter(match => 
         match.status !== 'completed' || 
-        new Date(match.dateTime || match.defaultMatchTime) > new Date()
+        new Date(match.scheduledFor) > new Date()
       );
       
       setMatches(upcomingMatches);
@@ -258,7 +258,7 @@ export function StandinRequestModal({ team, trigger }: StandinRequestModalProps)
               <div className="space-y-3">
                 {matches.map((match) => {
                   const opponent = match.teamA.id === team.id ? match.teamB : match.teamA;
-                  const matchDate = new Date(match.dateTime || match.defaultMatchTime);
+                  const matchDate = new Date(match.scheduledFor);
                   
                   return (
                     <Card 

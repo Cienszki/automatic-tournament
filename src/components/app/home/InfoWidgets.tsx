@@ -98,7 +98,7 @@ export function InfoWidgets() {
                     <span className="font-semibold group-hover:text-[#b86fc6] text-[#e0d7f7] text-base">{featuredMatch.teamB.name}</span>
                   </Link>
                 </div>
-                <p className="text-sm text-[#0ff0fc] mt-4 tracking-wide drop-shadow-[0_0_4px_#0ff0fc]">{format(new Date(featuredMatch.dateTime!), "MMM d, HH:mm")}</p>
+                <p className="text-sm text-[#0ff0fc] mt-4 tracking-wide drop-shadow-[0_0_4px_#0ff0fc]">{format(new Date(featuredMatch.scheduledFor!), "MMM d, HH:mm")}</p>
               </div>
             ) : <p className="text-[#e0d7f7]/70">{t('home.noUpcomingMatches')}</p>}
           </CardContent>

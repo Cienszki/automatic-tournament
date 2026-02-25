@@ -63,9 +63,7 @@ export interface Match {
   teamB: { id: string; name: string; score: number; logoUrl: string; };
   teams: string[];
   status: 'scheduled' | 'completed' | 'live';
-  scheduled_for: string;
-  defaultMatchTime: string;
-  dateTime?: string;
+  scheduledFor: string;
   group_id?: string;
   divisionId?: string; // Same as group_id, used for league matches
   playoff_round?: number;

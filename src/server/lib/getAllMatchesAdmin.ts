@@ -17,9 +17,7 @@ export async function getAllMatchesAdmin(): Promise<Match[]> {
     return {
       id: d.id,
       ...data,
-      scheduled_for: toISOStringIfTimestamp(data.scheduled_for),
-      defaultMatchTime: toISOStringIfTimestamp(data.defaultMatchTime),
-      dateTime: toISOStringIfTimestamp(data.dateTime),
+      scheduledFor: toISOStringIfTimestamp(data.scheduledFor || data.scheduled_for),
       proposedTime: toISOStringIfTimestamp(data.proposedTime),
       completed_at: toISOStringIfTimestamp(data.completed_at),
     } as Match;

@@ -110,8 +110,8 @@ export function MatchDetailModal({ match, isOpen, onClose, divisionColor }: Matc
 
   const matchDate = match.completed_at
     ? new Date(match.completed_at)
-    : match.scheduled_for
-      ? new Date(match.scheduled_for)
+    : match.scheduledFor
+      ? new Date(match.scheduledFor)
       : null;
 
   const isCompleted = match.status === 'completed';

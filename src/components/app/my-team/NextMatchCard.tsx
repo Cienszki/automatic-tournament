@@ -76,8 +76,8 @@ export function NextMatchCard({ match, teamId, teams = [], standins = [] }: Next
           </div>
         </div>
         <p className="text-lg font-semibold text-accent">
-          {match.dateTime || match.defaultMatchTime
-            ? format(new Date(match.dateTime || match.defaultMatchTime), "PPP 'at' HH:mm")
+          {match.scheduledFor
+            ? format(new Date(match.scheduledFor), "PPP 'at' HH:mm")
             : t("teams.tbd")}
         </p>
         <p className="text-sm text-muted-foreground mt-1">

@@ -75,7 +75,7 @@ export function FixtureCrossbox({
     return {
       homeScore: isHomeTeamA ? match.teamA.score : match.teamB.score,
       awayScore: isHomeTeamA ? match.teamB.score : match.teamA.score,
-      date: match.scheduled_for || match.defaultMatchTime || '',
+      date: match.scheduledFor || '',
       status: match.status,
       match: match,
     };

@@ -86,7 +86,7 @@ export function MatchdayCarousel({ matches }: MatchdayCarouselProps) {
         for (const r of sortedRounds) {
             const roundMatches = matches.filter(m => (m.round || 1) === r);
             const hasUpcoming = roundMatches.some(m => {
-                const d = m.scheduled_for ? new Date(m.scheduled_for) : (m.dateTime ? new Date(m.dateTime) : null);
+                const d = m.scheduledFor ? new Date(m.scheduledFor) : null;
                 return d && d >= today;
             });
             if (hasUpcoming) {
@@ -126,7 +126,7 @@ export function MatchdayCarousel({ matches }: MatchdayCarouselProps) {
         today.setHours(0, 0, 0, 0);
         const activeIndex = matchdayList.findIndex(md =>
             md.matches.some(m => {
-                const d = m.scheduled_for ? new Date(m.scheduled_for) : (m.dateTime ? new Date(m.dateTime) : null);
+                const d = m.scheduledFor ? new Date(m.scheduledFor) : null;
                 return d && d >= today;
             })
         );
