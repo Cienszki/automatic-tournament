@@ -212,11 +212,12 @@ function calculateTournamentStats(
     totalRampages: countMultiKills(performances, 5),
     totalUltraKills: countMultiKills(performances, 4),
     totalTripleKills: countMultiKills(performances, 3),
-    totalFirstBloods: games.filter(game => game.firstBloodTime && game.firstBloodTime > 0).length,
+    totalDoubleKills: countMultiKills(performances, 2),
     fastestFirstBlood: findFastestFirstBlood(games, performances) || defaultFirstBlood,
     // Heroes & Meta
     mostPickedHero: (() => { const h = findMostPickedHero(performances) || defaultHero; return { ...h, pickCount: round1(h.pickCount) }; })(),
     mostBannedHero: (() => { const h = findMostBannedHero(games) || defaultHero; return { ...h, banCount: round1(h.banCount) }; })(),
+    mostContestedHero: { heroName: 'Unknown', contestCount: 0 },
     highestWinRateHero: (() => { const h = findHighestWinRateHero(performances, games) || defaultHero; return { ...h, winRate: round1(h.winRate) }; })(),
     totalUniqueHeroesPicked: new Set(performances.map(p => p.heroId).filter(Boolean)).size,
     mostVersatilePlayer: findMostVersatilePlayer(performances) || defaultPlayer,
@@ -245,10 +246,17 @@ function calculateTournamentStats(
     totalHealing: 0,
     totalBuybacks: 0,
     totalCreepsKilled: 0,
+    totalDenies: performances.reduce((sum, perf) => sum + (perf.denies || 0), 0),
+    totalTowerKills: 0,
+    totalTowerDamage: 0,
+    totalCourierKills: 0,
+    totalNeutralKills: 0,
+    totalLaneKills: 0,
+    totalWardsPlaced: 0,
+    totalRunesPickedUp: 0,
     // totalCouriersKilled: removed from display
     totalFantasyPoints: 0,
     mostPlayedRoleHero: 'Unknown',
-    totalDenies: performances.reduce((sum, perf) => sum + (perf.denies || 0), 0),
     
     lastUpdated: new Date().toISOString()
   };

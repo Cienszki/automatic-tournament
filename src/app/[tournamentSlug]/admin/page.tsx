@@ -8,11 +8,11 @@ import { Card, CardHeader, CardContent, CardTitle, CardDescription } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { LoadingScreen } from '@/components/ui/LoadingScreen';
 import { 
   Settings, 
   Shield,
   LogIn,
-  Loader2,
   Layers,
   CalendarDays,
   Users,
@@ -23,6 +23,7 @@ import {
   BarChart3,
   ScrollText,
   Building2,
+  Trophy,
 } from 'lucide-react';
 
 // Import admin tab components
@@ -38,6 +39,7 @@ import { FantasyPickemTab } from './tabs/FantasyPickemTab';
 import { NewsTab } from './tabs/NewsTab';
 import { StatsTab } from './tabs/StatsTab';
 import { RulesTab } from './tabs/RulesTab';
+import { PlayoffsTab } from './tabs/PlayoffsTab';
 
 /**
  * Admin Panel - Tournament Administration
@@ -66,14 +68,7 @@ export default function AdminPage() {
 
   // Loading state
   if (isLoading) {
-    return (
-      <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 className="h-12 w-12 animate-spin" style={{ color: theme.primaryColor }} />
-          <p className="text-muted-foreground font-logik">Ładowanie panelu...</p>
-        </div>
-      </div>
-    );
+    return <LoadingScreen />;
   }
 
   // Not logged in
@@ -143,6 +138,7 @@ export default function AdminPage() {
     { id: 'standins', label: 'Standiny', icon: Shield },
     { id: 'matches', label: 'Mecze', icon: Gamepad2 },
     { id: 'fantasy', label: 'Fantasy', icon: Crown },
+    { id: 'playoffs', label: 'Playoffs', icon: Trophy, showFor: 'league' },
     { id: 'news', label: 'Aktualności', icon: Newspaper },
     { id: 'stats', label: 'Statystyki', icon: BarChart3 },
     { id: 'rules', label: 'Regulamin', icon: ScrollText },
@@ -223,6 +219,10 @@ export default function AdminPage() {
           
           <TabsContent value="fantasy" className="mt-0">
             <FantasyPickemTab />
+          </TabsContent>
+          
+          <TabsContent value="playoffs" className="mt-0">
+            <PlayoffsTab />
           </TabsContent>
           
           <TabsContent value="news" className="mt-0">

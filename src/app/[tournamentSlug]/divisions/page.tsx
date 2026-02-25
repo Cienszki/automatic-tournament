@@ -4,7 +4,8 @@ import { useTournament, useTournamentType } from '@/context/TournamentContext';
 import { Card, CardHeader, CardContent, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Layers, Trophy, ArrowUp, ArrowDown, Minus, Calendar, Info, Loader2 } from 'lucide-react';
+import { Layers, Trophy, ArrowUp, ArrowDown, Minus, Calendar, Info } from 'lucide-react';
+import { LoadingScreen } from '@/components/ui/LoadingScreen';
 import { usePDLData } from '@/hooks/usePDLData';
 import Link from 'next/link';
 
@@ -31,18 +32,7 @@ export default function DivisionsPage() {
   }
 
   if (loading) {
-    return (
-      <div className="space-y-6">
-        <div className="flex items-center gap-3">
-          <Layers className="h-8 w-8" style={{ color: theme.primaryColor }} />
-          <h1 className="text-3xl font-bold">Dywizje</h1>
-        </div>
-        <div className="text-center py-16">
-          <Loader2 className="w-12 h-12 animate-spin mx-auto text-primary" />
-          <p className="text-muted-foreground mt-4">Ładowanie dywizji...</p>
-        </div>
-      </div>
-    );
+    return <LoadingScreen />;
   }
 
   if (error) {

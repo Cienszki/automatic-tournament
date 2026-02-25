@@ -12,6 +12,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import type { Team, Match, Player, PDLStandinRequest as PDLStandinRequestType } from "@/lib/definitions";
 import { collection, doc, getDoc, getDocs, setDoc, query, where, updateDoc, addDoc, deleteDoc, deleteField, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { LoadingScreen } from '@/components/ui/LoadingScreen';
 
 // Legacy components (for Letnia)
 import { MyTeamHeader } from "@/components/app/my-team/MyTeamHeader";
@@ -560,28 +561,10 @@ export default function MyTeamPage() {
       return;
     }
 
-    console.log('[MyTeam] handleRequestReschedule called', { 
-      matchId, 
-      proposedDate, 
-      tournamentId: tournament.id,
-      teamId: team.id,
-      teamCaptainId: team.captainId,
-      userId: user?.uid
-    });
-
     try {
       const matchRef = doc(db, 'tournaments', tournament.id, 'matches', matchId);
-      console.log('[MyTeam] Fetching match data...');
       const matchSnap = await getDoc(matchRef);
       const matchData = matchSnap.data();
-      
-      console.log('[MyTeam] Match data:', {
-        exists: matchSnap.exists(),
-        teamAId: matchData?.teamA?.id,
-        teamBId: matchData?.teamB?.id,
-        scheduledFor: matchData?.scheduled_for,
-        dateTime: matchData?.dateTime
-      });
 
       const originalDate = String(matchData?.scheduled_for || matchData?.dateTime || '');
       if (!originalDate || !isWithinThreeDays(originalDate, proposedDate)) {
@@ -594,7 +577,6 @@ export default function MyTeamPage() {
         return;
       }
 
-      console.log('[MyTeam] Attempting to update match with reschedule request...');
       await updateDoc(matchRef, {
         rescheduleRequest: {
           requestedBy: team.id,
@@ -607,7 +589,6 @@ export default function MyTeamPage() {
         }
       });
 
-      console.log('[MyTeam] Reschedule request created successfully');
       toast({
         title: 'Wniosek wysłany',
         description: 'Wniosek o zmianę terminu został wysłany do przeciwnika.',
@@ -636,22 +617,17 @@ export default function MyTeamPage() {
   };
 
   const handleApproveReschedule = async (matchId: string) => {
-    console.log('[MyTeam] handleApproveReschedule called', { matchId, tournamentId: tournament?.id });
     if (!tournament?.id) {
-      console.warn('[MyTeam] No tournament ID');
       return;
     }
 
     try {
       const matchRef = doc(db, 'tournaments', tournament.id, 'matches', matchId);
-      console.log('[MyTeam] Fetching match data...');
       const matchSnap = await getDoc(matchRef);
       const matchData = matchSnap.data();
-      console.log('[MyTeam] Match data:', matchData);
 
       const originalDate = String(matchData?.rescheduleRequest?.originalDate || matchData?.scheduled_for || matchData?.dateTime || '');
       const proposedDate = String(matchData?.rescheduleRequest?.proposedDate || '');
-      console.log('[MyTeam] Date validation:', { originalDate, proposedDate, isWithin3Days: isWithinThreeDays(originalDate, proposedDate) });
       if (!originalDate || !proposedDate || !isWithinThreeDays(originalDate, proposedDate)) {
         toast({
           title: 'Nie można zatwierdzić',
@@ -661,15 +637,12 @@ export default function MyTeamPage() {
         return;
       }
 
-      console.log('[MyTeam] Updating match document...');
       await updateDoc(matchRef, {
         scheduled_for: proposedDate,
         dateTime: proposedDate,
         'rescheduleRequest.status': 'approved',
         'rescheduleRequest.respondedAt': new Date().toISOString(),
       });
-      console.log('[MyTeam] Match document updated successfully');
-
       toast({
         title: 'Zmiana terminu zatwierdzona',
         description: 'Mecz został przełożony na nowy termin.',
@@ -845,14 +818,23 @@ export default function MyTeamPage() {
 
   const handleCancelStandinRequest = async (requestId: string) => {
     if (!tournament?.id) return;
-    const reqRef = doc(db, 'tournaments', tournament.id, 'standinRequests', requestId);
-    await deleteDoc(reqRef);
-    await refreshStandinRequests();
+    try {
+      const reqRef = doc(db, 'tournaments', tournament.id, 'standinRequests', requestId);
+      await deleteDoc(reqRef);
+      await refreshStandinRequests();
 
-    toast({
-      title: 'Prośba anulowana',
-      description: 'Prośba o standina została anulowana.',
-    });
+      toast({
+        title: 'Prośba anulowana',
+        description: 'Prośba o standina została anulowana.',
+      });
+    } catch (error) {
+      console.error('Error cancelling standin request:', error);
+      toast({
+        title: 'Błąd',
+        description: 'Nie udało się anulować prośby o standina. Spróbuj ponownie.',
+        variant: 'destructive',
+      });
+    }
   };
 
   // ─── Coach handlers ───
@@ -996,17 +978,7 @@ export default function MyTeamPage() {
   // =========================================================================
   if (isLegacyTournament) {
     if (authLoading || loading) {
-      return (
-        <div className="space-y-6">
-          <div className="flex items-center gap-3">
-            <Users className="h-8 w-8" style={{ color: theme.primaryColor }} />
-            <h1 className="text-3xl font-bold">Moja drużyna</h1>
-          </div>
-          <div className="flex justify-center items-center h-[calc(100vh-200px)]">
-            <Loader2 className="h-16 w-16 animate-spin" style={{ color: theme.primaryColor }} />
-          </div>
-        </div>
-      );
+      return <LoadingScreen />;
     }
 
     if (!user) {

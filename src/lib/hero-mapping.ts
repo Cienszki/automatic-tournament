@@ -82,8 +82,9 @@ export function findMostPickedHero(performances: any[]): { heroId: number; heroN
   const heroCounts: Record<number, number> = {};
   
   performances.forEach(perf => {
-    if (perf.heroId) {
-      heroCounts[perf.heroId] = (heroCounts[perf.heroId] || 0) + 1;
+    const id = perf.heroId || perf.hero_id;
+    if (id) {
+      heroCounts[id] = (heroCounts[id] || 0) + 1;
     }
   });
   

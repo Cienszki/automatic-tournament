@@ -5022,5 +5022,15 @@
     "day_vision": 1800,
     "night_vision": 800,
     "localized_name": "Kez"
+  },
+  "155": {
+    "id": 155,
+    "name": "npc_dota_hero_largo",
+    "localized_name": "Largo",
+    "primary_attr": "str",
+    "attack_type": "Melee",
+    "roles": [],
+    "img": "",
+    "icon": ""
   }
 }

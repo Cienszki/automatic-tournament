@@ -85,6 +85,8 @@ export function SchedulingTab() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [createdMatches, setCreatedMatches] = useState<any[]>([]);
   const [isLoadingMatches, setIsLoadingMatches] = useState(false);
+  const [rescheduleRequests, setRescheduleRequests] = useState<any[]>([]);
+  const [isLoadingReschedules, setIsLoadingReschedules] = useState(false);
   
   // New matchday form state
   const [newMatchday, setNewMatchday] = useState({
@@ -197,6 +199,24 @@ export function SchedulingTab() {
         
         console.log('[SchedulingTab] Loaded matches:', matches.length);
         setCreatedMatches(matches);
+        
+        // Extract reschedule requests from matches
+        const requests = matches
+          .filter((m: any) => m.rescheduleRequest)
+          .map((m: any) => ({
+            matchId: m.id,
+            teamAName: m.teamA?.name || 'Team A',
+            teamBName: m.teamB?.name || 'Team B',
+            divisionId: m.divisionId || m.group_id,
+            round: m.round,
+            matchday: m.matchday,
+            originalDate: m.rescheduleRequest.originalDate,
+            proposedDate: m.rescheduleRequest.proposedDate,
+            requestedBy: m.rescheduleRequest.requestedBy,
+            requestedByName: m.rescheduleRequest.requestedByName,
+            status: m.rescheduleRequest.status,
+          }));
+        setRescheduleRequests(requests);
       } catch (error) {
         console.error('Error loading matches:', error);
       } finally {
@@ -648,49 +668,6 @@ export function SchedulingTab() {
         </div>
       </div>
 
-      {/* Quick Info */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="border-0 shadow-lg bg-card/50 backdrop-blur-sm">
-          <CardContent className="py-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-yellow-500/20">
-                <CalendarDays className="h-5 w-5 text-yellow-500" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground font-logik">Elite</p>
-                <p className="font-logik-extended-bold">Czwartki 20:00</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="border-0 shadow-lg bg-card/50 backdrop-blur-sm">
-          <CardContent className="py-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-gray-500/20">
-                <CalendarDays className="h-5 w-5 text-gray-400" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground font-logik">Challenger</p>
-                <p className="font-logik-extended-bold">Środy 20:00</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="border-0 shadow-lg bg-card/50 backdrop-blur-sm">
-          <CardContent className="py-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-orange-500/20">
-                <CalendarDays className="h-5 w-5 text-orange-500" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground font-logik">Adept</p>
-                <p className="font-logik-extended-bold">Środy 20:00</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
       {/* Schedule Generation Section */}
       <Card className="border-0 shadow-xl bg-gradient-to-br from-primary/10 to-primary/5 backdrop-blur-sm border-2 border-primary/20">
         <CardHeader className="pb-4">
@@ -1095,6 +1072,79 @@ export function SchedulingTab() {
               </Select>
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Reschedule Requests Overview */}
+      <Card className="border-0 shadow-lg bg-card/50 backdrop-blur-sm">
+        <CardHeader className="pb-4">
+          <CardTitle className="flex items-center gap-2 font-logik-extended-bold">
+            <CalendarDays className="h-5 w-5" style={{ color: theme.primaryColor }} />
+            Prośby o zmianę terminu
+          </CardTitle>
+          <CardDescription className="font-logik">
+            Przegląd wszystkich wniosków o przełożenie meczów
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {rescheduleRequests.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground font-logik">
+              <CalendarDays className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <p>Brak próśb o zmianę terminu</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {rescheduleRequests.map((req, idx) => {
+                const isPending = req.status === 'pending';
+                const isApproved = req.status === 'approved';
+                const isRejected = req.status === 'rejected';
+                
+                return (
+                  <div 
+                    key={idx}
+                    className={cn(
+                      "p-4 rounded-lg border transition-colors",
+                      isPending && "border-yellow-500/30 bg-yellow-500/5",
+                      isApproved && "border-green-500/30 bg-green-500/5",
+                      isRejected && "border-red-500/30 bg-red-500/5"
+                    )}
+                  >
+                    <div className="flex items-start justify-between mb-2">
+                      <div className="flex-1">
+                        <p className="font-logik-extended-bold">{req.teamAName} vs {req.teamBName}</p>
+                        <p className="text-sm text-muted-foreground font-logik">
+                          Runda {req.round} • Dzień meczowy {req.matchday}
+                        </p>
+                      </div>
+                      <Badge 
+                        className={cn(
+                          "font-logik",
+                          isPending && "bg-yellow-500/20 text-yellow-400 border-yellow-500/30",
+                          isApproved && "bg-green-500/20 text-green-400 border-green-500/30",
+                          isRejected && "bg-red-500/20 text-red-400 border-red-500/30"
+                        )}
+                      >
+                        {isPending && '⏳ Oczekuje'}
+                        {isApproved && '✓ Zatwierdzony'}
+                        {isRejected && '✗ Odrzucony'}
+                      </Badge>
+                    </div>
+                    <div className="mt-2 space-y-1 text-sm font-logik">
+                      <p className="text-muted-foreground">
+                        <span className="font-logik-extended-bold">Wnioskodawca:</span> {req.requestedByName}
+                      </p>
+                      <p className="text-muted-foreground">
+                        <span className="font-logik-extended-bold">Oryginalny termin:</span> {req.originalDate ? new Date(req.originalDate).toLocaleString('pl-PL') : '-'}
+                      </p>
+                      <p className="text-muted-foreground">
+                        <span className="font-logik-extended-bold">Proponowany termin:</span> {req.proposedDate ? new Date(req.proposedDate).toLocaleString('pl-PL') : '-'}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </CardContent>
       </Card>
 

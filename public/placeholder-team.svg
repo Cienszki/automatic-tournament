@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <rect width="64" height="64" rx="8" fill="#1a1a2e"/>
+  <path d="M32 10 L52 18 L52 34 C52 44 43 52 32 56 C21 52 12 44 12 34 L12 18 Z"
+        fill="#2a2a4a" stroke="#ffffff18" stroke-width="1.5"/>
+  <path d="M32 18 L44 23 L44 34 C44 40 39 45 32 48 C25 45 20 40 20 34 L20 23 Z"
+        fill="#ffffff08"/>
+  <text x="32" y="38" text-anchor="middle" font-family="system-ui,sans-serif"
+        font-size="14" font-weight="700" fill="#ffffff30">?</text>
+</svg>

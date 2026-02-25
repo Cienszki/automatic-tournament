@@ -18,6 +18,7 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 import { formatNumber, cn } from "@/lib/utils";
+import { LoadingScreen } from "@/components/ui/LoadingScreen";
 import { heroIconMap, heroColorMap, FALLBACK_HERO_COLOR } from "@/lib/hero-data";
 import type { Team, Player, PlayerRole, Match, PlayerPerformanceInMatch } from "@/lib/definitions";
 
@@ -62,71 +63,39 @@ export default function PlayerProfilePage() {
     fantasyPoints: number;
     winRate: string;
   } | null>(null);
-  const [allTeams, setAllTeams] = useState<Team[]>([]);
+  const [leagueAvgMMR, setLeagueAvgMMR] = useState<number>(0);
   const [loading, setLoading] = useState(true);
 
+  // Effect 1 — critical path: player, team, match history.
+  // Calls setLoading(false) as soon as these are ready so the page renders immediately.
   useEffect(() => {
     if (!tournament?.id || !teamId || !playerId) return;
 
-    const loadPlayerData = async () => {
+    const loadCoreData = async () => {
       try {
-        // Load team data
-        const teamRef = doc(db, 'tournaments', tournament.id, 'teams', teamId);
-        const teamSnap = await getDoc(teamRef);
+        const [teamSnap, playerSnap, matchesSnap] = await Promise.all([
+          getDoc(doc(db, 'tournaments', tournament.id, 'teams', teamId)),
+          getDoc(doc(db, 'tournaments', tournament.id, 'teams', teamId, 'players', playerId)),
+          getDocs(query(
+            collection(db, 'tournaments', tournament.id, 'matches'),
+            where('status', '==', 'completed')
+          )),
+        ]);
 
-        if (!teamSnap.exists()) {
-          setLoading(false);
-          return;
-        }
+        if (!teamSnap.exists() || !playerSnap.exists()) return;
 
-        const teamData = { id: teamSnap.id, ...teamSnap.data() } as Team;
-        setTeam(teamData);
+        setTeam({ id: teamSnap.id, ...teamSnap.data() } as Team);
+        setPlayer({ id: playerSnap.id, ...playerSnap.data() } as Player);
 
-        // Load player data
-        const playerRef = doc(db, 'tournaments', tournament.id, 'teams', teamId, 'players', playerId);
-        const playerSnap = await getDoc(playerRef);
+        const allMatches: Match[] = matchesSnap.docs.map(d => ({ id: d.id, ...d.data() } as Match));
 
-        if (!playerSnap.exists()) {
-          setLoading(false);
-          return;
-        }
-
-        const playerData = { id: playerSnap.id, ...playerSnap.data() } as Player;
-        setPlayer(playerData);
-
-        // Load all matches and teams
-        const matchesRef = collection(db, 'tournaments', tournament.id, 'matches');
-        const matchesSnap = await getDocs(matchesRef);
-        const allMatches: Match[] = [];
-
-        for (const matchDoc of matchesSnap.docs) {
-          const matchData = { id: matchDoc.id, ...matchDoc.data() } as Match;
-          allMatches.push(matchData);
-        }
-
-        // Load all teams for league comparison
-        const teamsRef = collection(db, 'tournaments', tournament.id, 'teams');
-        const teamsSnap = await getDocs(teamsRef);
-        const teamsData: Team[] = [];
-
-        for (const teamDoc of teamsSnap.docs) {
-          const teamInfo = { id: teamDoc.id, ...teamDoc.data() } as Team;
-          // Load players for MMR calculation
-          const playersRef = collection(db, 'tournaments', tournament.id, 'teams', teamDoc.id, 'players');
-          const playersSnap = await getDocs(playersRef);
-          teamInfo.players = playersSnap.docs.map(p => ({ id: p.id, ...p.data() } as Player));
-          teamsData.push(teamInfo);
-        }
-        setAllTeams(teamsData);
-
-        // Process match history
         const history: PlayerMatchHistoryItem[] = [];
         let totalKills = 0, totalDeaths = 0, totalAssists = 0;
         let totalGpm = 0, totalXpm = 0, totalFantasyPoints = 0;
         let matchesPlayed = 0, wins = 0;
 
         for (const match of allMatches) {
-          if (match.status !== 'completed' || !match.teams?.includes(teamId) || !match.playerPerformances) continue;
+          if (!match.teams?.includes(teamId) || !match.playerPerformances) continue;
 
           const performance = match.playerPerformances.find(p => p.playerId === playerId);
           if (performance) {
@@ -140,7 +109,8 @@ export default function PlayerProfilePage() {
 
             const opponentTeamId = match.teamA.id === teamId ? match.teamB.id : match.teamA.id;
             const opponentTeamData = match.teamA.id === teamId ? match.teamB : match.teamA;
-            const playerTeamWon = (match.teamA.id === teamId && (match.teamA.score ?? 0) > (match.teamB.score ?? 0)) ||
+            const playerTeamWon =
+              (match.teamA.id === teamId && (match.teamA.score ?? 0) > (match.teamB.score ?? 0)) ||
               (match.teamB.id === teamId && (match.teamB.score ?? 0) > (match.teamA.score ?? 0));
             if (playerTeamWon) wins++;
 
@@ -150,47 +120,60 @@ export default function PlayerProfilePage() {
               playerPerformance: performance,
               result: playerTeamWon ? 'Win' : 'Loss',
               matchDate: new Date(match.dateTime || match.defaultMatchTime),
-              openDotaMatchUrl: match.openDotaMatchUrl
+              openDotaMatchUrl: match.openDotaMatchUrl,
             });
           }
         }
 
-        const stats = {
+        history.sort((a, b) => b.matchDate.getTime() - a.matchDate.getTime());
+        setMatchHistory(history.slice(0, 5));
+        setAverageStats({
           kda: matchesPlayed > 0 ? ((totalKills + totalAssists) / Math.max(1, totalDeaths)).toFixed(2) : "0.00",
           gpm: matchesPlayed > 0 ? Math.round(totalGpm / matchesPlayed) : 0,
           xpm: matchesPlayed > 0 ? Math.round(totalXpm / matchesPlayed) : 0,
           fantasyPoints: matchesPlayed > 0 ? parseFloat((totalFantasyPoints / matchesPlayed).toFixed(1)) : 0,
           winRate: matchesPlayed > 0 ? `${((wins / matchesPlayed) * 100).toFixed(1)}%` : "0.0%",
-        };
-
-        history.sort((a, b) => b.matchDate.getTime() - a.matchDate.getTime());
-
-        setMatchHistory(history.slice(0, 5));
-        setAverageStats(stats);
+        });
       } catch (error) {
-        console.error("Error loading player:", error);
+        console.error("Error loading player core data:", error);
       } finally {
+        // Page renders now — league avg MMR loads separately below
         setLoading(false);
       }
     };
 
-    loadPlayerData();
+    loadCoreData();
   }, [tournament?.id, teamId, playerId]);
 
+  // Effect 2 — background: league avg MMR (N parallel team-player fetches).
+  // Does NOT block the page render; MMR progress bar simply fills in once ready.
+  useEffect(() => {
+    if (!tournament?.id) return;
+
+    const loadLeagueAvgMMR = async () => {
+      try {
+        const teamsSnap = await getDocs(collection(db, 'tournaments', tournament.id, 'teams'));
+        const playerSnaps = await Promise.all(
+          teamsSnap.docs.map(t =>
+            getDocs(collection(db, 'tournaments', tournament.id, 'teams', t.id, 'players'))
+          )
+        );
+        const allMMRs = playerSnaps.flatMap(snap =>
+          snap.docs.map(d => (d.data().mmr as number) || 0)
+        );
+        if (allMMRs.length) {
+          setLeagueAvgMMR(Math.round(allMMRs.reduce((sum, v) => sum + v, 0) / allMMRs.length));
+        }
+      } catch (error) {
+        console.error("Error loading league avg MMR:", error);
+      }
+    };
+
+    loadLeagueAvgMMR();
+  }, [tournament?.id]);
+
   if (loading) {
-    return (
-      <div className="min-h-[60vh] flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <div className="relative">
-            <div className="w-20 h-20 border-4 border-pdl-gold/20 rounded-full" />
-            <div className="absolute inset-0 w-20 h-20 border-4 border-pdl-gold border-t-transparent rounded-full animate-spin" />
-          </div>
-          <span className="text-pdl-gold font-logik-extended-bold tracking-widest animate-pulse uppercase text-sm">
-            Ładowanie...
-          </span>
-        </div>
-      </div>
-    );
+    return <LoadingScreen />;
   }
 
   if (!player || !team) {
@@ -206,10 +189,6 @@ export default function PlayerProfilePage() {
       </div>
     );
   }
-
-  // Calculate league averages for comparison
-  const allPlayers = allTeams.flatMap(t => t.players || []);
-  const leagueAvgMMR = allPlayers.length ? Math.round(allPlayers.reduce((sum, p) => sum + p.mmr, 0) / allPlayers.length) : 0;
 
   const getAccountId = (): string | null => {
     if (player.openDotaAccountId) return String(player.openDotaAccountId);

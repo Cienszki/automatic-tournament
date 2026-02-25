@@ -5,10 +5,13 @@ import { recalculateAllStats } from '@/lib/stats-service-simple';
 
 export async function POST(request: NextRequest) {
   try {
-    console.log('Starting manual stats recalculation...');
+    const body = await request.json().catch(() => ({}));
+    const tournamentId: string | undefined = body.tournamentId;
+
+    console.log(`Starting manual stats recalculation${tournamentId ? ` for tournament ${tournamentId}` : ''}...`);
     
     // Recalculate all statistics
-    await recalculateAllStats();
+    await recalculateAllStats(tournamentId);
     
     console.log('Stats recalculation completed successfully');
     

@@ -7,17 +7,23 @@ import { useEffect, useState } from "react";
 import { Team, PlayoffMatch } from "@/lib/definitions";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { Trophy, Loader2 } from "lucide-react";
+import { Trophy, Lock } from "lucide-react";
+import { LoadingScreen } from '@/components/ui/LoadingScreen';
+import { useTranslations } from "next-intl";
 
 export default function PlayoffsPage() {
   const { tournament } = useTournament();
+  const t = useTranslations('pdlPlayoffs');
   const [teams, setTeams] = useState<Team[]>([]);
   const [matches, setMatches] = useState<PlayoffMatch[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function fetchData() {
-      if (!tournament?.id) return;
+      if (!tournament?.id || tournament.playoffs?.enabled === false) {
+        setLoading(false);
+        return;
+      }
 
       try {
         setLoading(true);
@@ -31,15 +37,26 @@ export default function PlayoffsPage() {
           teamsMap.set(doc.id, { id: doc.id, ...doc.data(), seasonPoints: 0, wins: 0, draws: 0, losses: 0 } as Team);
         });
 
-        // 2. Fetch all Regular Season Matches to calculate points dynamically
+        // 2. Fetch all matches and filter client-side by Elite division (avoids needing a composite index)
         const matchesRef = collection(db, "tournaments", tournament.id, "matches");
         const matchesSnap = await getDocs(matchesRef);
 
+        // Track which teams played in the Elite division
+        const eliteTeamIds = new Set<string>();
+
         matchesSnap.docs.forEach(doc => {
           const m = doc.data();
+          // Only count matches that belong to the Elite division
+          if (m.divisionId !== 'elite') return;
+
+          const teamAId = m.teamA?.id;
+          const teamBId = m.teamB?.id;
+
+          // Collect Elite team IDs
+          if (teamAId) eliteTeamIds.add(teamAId);
+          if (teamBId) eliteTeamIds.add(teamBId);
+
           if (m.status === 'completed') {
-            const teamAId = m.teamA?.id;
-            const teamBId = m.teamB?.id;
             const scoreA = m.teamA?.score || 0;
             const scoreB = m.teamB?.score || 0;
 
@@ -75,60 +92,18 @@ export default function PlayoffsPage() {
           }
         });
 
-        setTeams(Array.from(teamsMap.values()));
+        // Only include Elite division teams in the standings table
+        const eliteTeams = Array.from(teamsMap.values()).filter(t => eliteTeamIds.has(t.id));
+        setTeams(eliteTeams);
 
-        // 3. Fetch Playoff Matches 
-        const playoffMatchesRef = collection(db, "tournaments", tournament.id, "playoff_matches");
-        const playoffMatchesSnap = await getDocs(playoffMatchesRef);
-
-        let playoffData = playoffMatchesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as PlayoffMatch));
-
-        // If no official playoff matches, GENERATE PREDICTED BRACKET from Top 4 Teams
-        if (playoffData.length === 0) {
-          const sortedTeams = Array.from(teamsMap.values())
-            .sort((a, b) => (b.seasonPoints || 0) - (a.seasonPoints || 0));
-
-          const top4 = sortedTeams.slice(0, 4);
-          const getTeam = (idx: number) => top4[idx] ? { id: top4[idx].id, name: top4[idx].name, logoUrl: top4[idx].logoUrl } : { id: `tbd-${idx}`, name: 'TBD' };
-
-          playoffData = [
-            {
-              id: 'projected-semi-1',
-              bracketType: 'final',
-              round: 1,
-              position: 1,
-              teamA: getTeam(0), // Rank 1 vs
-              teamB: getTeam(3), // Rank 4
-              format: 'bo3',
-              status: 'scheduled',
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString()
-            },
-            {
-              id: 'projected-semi-2',
-              bracketType: 'final',
-              round: 1,
-              position: 2,
-              teamA: getTeam(1), // Rank 2 vs
-              teamB: getTeam(2), // Rank 3
-              format: 'bo3',
-              status: 'scheduled',
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString()
-            },
-            {
-              id: 'projected-final',
-              bracketType: 'final',
-              round: 2,
-              position: 1,
-              teamA: { id: 'winner-1', name: 'TBD' },
-              teamB: { id: 'winner-2', name: 'TBD' },
-              format: 'bo5',
-              status: 'scheduled',
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString()
-            }
-          ];
+        // 3. Fetch Playoff Matches (gracefully falls back if collection doesn't exist or rules block it)
+        let playoffData: PlayoffMatch[] = [];
+        try {
+          const playoffMatchesRef = collection(db, "tournaments", tournament.id, "playoff_matches");
+          const playoffMatchesSnap = await getDocs(playoffMatchesRef);
+          playoffData = playoffMatchesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as PlayoffMatch));
+        } catch {
+          // Collection not accessible yet — fall through to generated bracket below
         }
 
         setMatches(playoffData);
@@ -145,9 +120,48 @@ export default function PlayoffsPage() {
   }, [tournament?.id]);
 
   if (loading) {
+    return <LoadingScreen />;
+  }
+
+  if (tournament?.playoffs?.enabled === false) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="h-8 w-8 text-pdl-gold animate-spin" />
+      <div className="w-full relative overflow-hidden text-white pt-8 min-h-screen">
+        {/* Background */}
+        <div className="fixed inset-0 pointer-events-none z-0">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,#000000_100%)] opacity-80" />
+          <div className="absolute top-[-10%] right-[-10%] w-[40%] h-[40%] bg-pdl-gold/5 blur-[120px] rounded-full mix-blend-screen" />
+          <div className="absolute bottom-[-10%] left-[-10%] w-[40%] h-[40%] bg-pdl-crimson/5 blur-[120px] rounded-full mix-blend-screen" />
+        </div>
+
+        <div className="relative z-10 max-w-[1800px] mx-auto px-6 lg:px-12 py-12">
+          <div className="text-center space-y-6 mb-16 relative">
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[200px] bg-pdl-gold/10 blur-[100px] rounded-full pointer-events-none" />
+            <h1 className="text-6xl md:text-7xl 2xl:text-9xl font-logik-wide-black text-transparent bg-clip-text bg-gradient-to-b from-white via-gray-100 to-gray-500 tracking-tighter uppercase drop-shadow-[0_10px_40px_rgba(0,0,0,0.5)] relative z-10">
+              {t('title')}
+            </h1>
+            <div className="flex items-center justify-center gap-6 opacity-80 relative z-10">
+              <div className="h-[1px] w-24 bg-gradient-to-r from-transparent via-pdl-gold to-transparent" />
+              <div className="flex items-center gap-2 text-pdl-gold tracking-widest uppercase font-logik text-sm">
+                <Trophy className="w-4 h-4" />
+                <span>{t('roadToWarsaw')}</span>
+                <Trophy className="w-4 h-4" />
+              </div>
+              <div className="h-[1px] w-24 bg-gradient-to-r from-transparent via-pdl-gold to-transparent" />
+            </div>
+          </div>
+
+          <div className="flex flex-col items-center justify-center gap-6 py-24">
+            <div className="p-6 rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm">
+              <Lock className="h-16 w-16 text-pdl-gold/60 mx-auto" />
+            </div>
+            <div className="text-center space-y-3 max-w-lg">
+              <h2 className="text-2xl font-logik-extended-bold text-white">{t('notActiveTitle')}</h2>
+              <p className="text-muted-foreground font-logik">
+                {t('notActiveDesc')}
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -174,7 +188,7 @@ export default function PlayoffsPage() {
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[200px] bg-pdl-gold/10 blur-[100px] rounded-full pointer-events-none" />
 
           <h1 className="text-6xl md:text-7xl 2xl:text-9xl font-logik-wide-black text-transparent bg-clip-text bg-gradient-to-b from-white via-gray-100 to-gray-500 tracking-tighter uppercase drop-shadow-[0_10px_40px_rgba(0,0,0,0.5)] relative z-10">
-            Playoffs
+            {t('title')}
           </h1>
 
           {/* Decorative Separator */}
@@ -182,7 +196,7 @@ export default function PlayoffsPage() {
             <div className="h-[1px] w-24 bg-gradient-to-r from-transparent via-pdl-gold to-transparent" />
             <div className="flex items-center gap-2 text-pdl-gold tracking-widest uppercase font-logik text-sm">
               <Trophy className="w-4 h-4" />
-              <span>Road to Warsaw</span>
+              <span>{t('roadToWarsaw')}</span>
               <Trophy className="w-4 h-4" />
             </div>
             <div className="h-[1px] w-24 bg-gradient-to-r from-transparent via-pdl-gold to-transparent" />
@@ -203,7 +217,7 @@ export default function PlayoffsPage() {
                 <Trophy className="h-6 w-6 text-pdl-gold" />
               </div>
               <div>
-                <h2 className="text-3xl font-logik-extended-bold text-white tracking-tight">LAN Finals Bracket</h2>
+                <h2 className="text-3xl font-logik-extended-bold text-white tracking-tight">{t('lanFinalsBracket')}</h2>
               </div>
             </div>
 

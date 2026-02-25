@@ -1,15 +1,17 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTournament } from '@/context/TournamentContext';
+import { useAuth } from '@/context/AuthContext';
 import { Card, CardHeader, CardContent, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { doc, updateDoc, collection, writeBatch, deleteDoc } from 'firebase/firestore';
+import { doc, updateDoc, collection, writeBatch, deleteDoc, getDocs, query, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import type { Match } from '@/lib/definitions';
 import { 
   Select,
   SelectContent,
@@ -39,6 +41,7 @@ import {
   Gamepad2,
   Save,
   RotateCcw,
+  RefreshCw,
   Search,
   Edit2,
   Trash2,
@@ -48,20 +51,18 @@ import {
   Clock,
   ExternalLink,
   FileDown,
+  Loader2,
+  CheckCircle2,
+  AlertCircle,
+  Wrench,
+  Eye,
+  Flag,
+  Layers,
 } from 'lucide-react';
 
-interface Match {
-  id: string;
-  team1: string;
-  team2: string;
-  score1: number;
-  score2: number;
-  status: 'scheduled' | 'live' | 'completed' | 'postponed';
-  date: string;
-  time: string;
-  division: string;
-  round: number;
-  games: number;
+interface MatchWithTeamNames extends Match {
+  teamAName: string;
+  teamBName: string;
 }
 
 /**
@@ -69,20 +70,112 @@ interface Match {
  */
 export function MatchesTab() {
   const { tournament, theme, refetchTournament } = useTournament();
+  const { user } = useAuth();
   const { toast } = useToast();
   
-  const [matches, setMatches] = useState<Match[]>([
-    { id: '1', team1: 'Team Liquid', team2: 'OG Esports', score1: 2, score2: 0, status: 'completed', date: '2025-02-20', time: '20:00', division: 'Elite', round: 1, games: 2 },
-    { id: '2', team1: 'Nowi Challengers', team2: 'Test Team', score1: 0, score2: 0, status: 'scheduled', date: '2025-02-27', time: '20:00', division: 'Challenger', round: 1, games: 0 },
-  ]);
-  
+  const [matches, setMatches] = useState<MatchWithTeamNames[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [matchIdToImport, setMatchIdToImport] = useState('');
   const [isImporting, setIsImporting] = useState(false);
   const [showImportDialog, setShowImportDialog] = useState(false);
-  const [editingMatch, setEditingMatch] = useState<Match | null>(null);
+  const [editingMatch, setEditingMatch] = useState<MatchWithTeamNames | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [matchToDelete, setMatchToDelete] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncResult, setSyncResult] = useState<{ success: boolean; message: string } | null>(null);
+
+  // Force Import state
+  const [showForceImportDialog, setShowForceImportDialog] = useState(false);
+  const [forceImportGameId, setForceImportGameId] = useState('');
+  const [forceImportPreview, setForceImportPreview] = useState<{
+    matchId: number; startTime: number; duration: number;
+    radiantLobbyName: string | null; direLobbyName: string | null;
+    radiantScore: number; direScore: number;
+    isParsed: boolean; alreadyProcessed: boolean;
+  } | null>(null);
+  const [forceImportPreviewError, setForceImportPreviewError] = useState('');
+  const [isPreviewing, setIsPreviewing] = useState(false);
+  const [forceImportMatchId, setForceImportMatchId] = useState('');
+  const [forceImportRadiantTeamId, setForceImportRadiantTeamId] = useState('');
+  const [forceImportDireTeamId, setForceImportDireTeamId] = useState('');
+  const [isForceImporting, setIsForceImporting] = useState(false);
+  const [teams, setTeams] = useState<{ id: string; name: string }[]>([]); // all tournament teams for selects
+  // When opened from a per-row button this holds the match so we can pre-fill and restrict team selects
+  const [forceImportContextMatch, setForceImportContextMatch] = useState<MatchWithTeamNames | null>(null);
+
+  // Forfeit / Walkover state
+  const [showForfeitDialog, setShowForfeitDialog] = useState(false);
+  const [forfeitMatch, setForfeitMatch] = useState<MatchWithTeamNames | null>(null);
+  const [forfeitingTeam, setForfeitingTeam] = useState<'teamA' | 'teamB'>('teamA');
+  const [forfeitScope, setForfeitScope] = useState<'series' | 'games'>('series');
+  const [forfeitedGames, setForfeitedGames] = useState<number[]>([]);
+  const [forfeitReason, setForfeitReason] = useState('');
+  const [isForfeitSaving, setIsForfeitSaving] = useState(false);
+
+  // Games management dialog state
+  const [showGamesDialog, setShowGamesDialog] = useState(false);
+  const [gamesDialogMatch, setGamesDialogMatch] = useState<MatchWithTeamNames | null>(null);
+  const [isDeletingGame, setIsDeletingGame] = useState(false);
+  const [deletingGameId, setDeletingGameId] = useState<number | null>(null);
+  const [confirmDeleteGameId, setConfirmDeleteGameId] = useState<number | null>(null);
+
+  // Load matches from Firestore
+  useEffect(() => {
+    loadMatches();
+  }, [tournament?.id]);
+
+  const loadMatches = async () => {
+    if (!tournament?.id) {
+      setLoading(false);
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      // Load teams first to get team names
+      const teamsRef = collection(db, 'tournaments', tournament.id, 'teams');
+      const teamsSnapshot = await getDocs(teamsRef);
+      const teamsMap = new Map<string, string>();
+      
+      teamsSnapshot.docs.forEach(doc => {
+        teamsMap.set(doc.id, doc.data().name || doc.id);
+      });
+
+      // Also expose teams list for force import selects
+      setTeams(teamsSnapshot.docs.map(doc => ({ id: doc.id, name: doc.data().name || doc.id })));
+
+      // Load matches
+      const matchesRef = collection(db, 'tournaments', tournament.id, 'matches');
+      const q = query(matchesRef, orderBy('dateTime', 'desc'));
+      const matchesSnapshot = await getDocs(q);
+
+      const loadedMatches: MatchWithTeamNames[] = matchesSnapshot.docs.map(doc => {
+        const data = doc.data() as Match;
+        return {
+          ...data,
+          id: doc.id,
+          teamAName: teamsMap.get(data.teamA?.id || '') || data.teamA?.name || 'Unknown Team',
+          teamBName: teamsMap.get(data.teamB?.id || '') || data.teamB?.name || 'Unknown Team',
+        };
+      });
+
+      setMatches(loadedMatches);
+    } catch (error) {
+      console.error('Error loading matches:', error);
+      toast({
+        title: 'Błąd',
+        description: 'Nie udało się załadować meczów',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSave = async () => {
     if (!tournament?.id) {
@@ -102,8 +195,8 @@ export function MatchesTab() {
       matches.forEach(match => {
         const matchRef = doc(db, 'tournaments', tournament.id, 'matches', match.id);
         batch.update(matchRef, {
-          score1: match.score1,
-          score2: match.score2,
+          'teamA.score': match.teamA.score,
+          'teamB.score': match.teamB.score,
           status: match.status,
           updatedAt: new Date().toISOString(),
         });
@@ -117,6 +210,7 @@ export function MatchesTab() {
       });
 
       await refetchTournament();
+      await loadMatches();
     } catch (error) {
       console.error('Error saving matches:', error);
       toast({
@@ -126,6 +220,151 @@ export function MatchesTab() {
       });
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handlePreviewForceImport = async () => {
+    if (!tournament?.id || !user || !forceImportGameId.trim()) return;
+
+    setIsPreviewing(true);
+    setForceImportPreview(null);
+    setForceImportPreviewError('');
+
+    // Extract numeric ID if full URL pasted
+    const rawId = forceImportGameId.trim();
+    const numericId = rawId.replace(/.*\/matches\//, '').replace(/[^0-9]/g, '');
+
+    try {
+      const token = await user.getIdToken();
+      const res = await fetch('/api/admin/pdl/preview-game', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tournamentId: tournament.id, openDotaGameId: Number(numericId) }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setForceImportPreview(data.preview);
+        // If only one side has a wrong name, pre-fill the correct match
+        // (admin will adjust as needed)
+      } else {
+        setForceImportPreviewError(data.error || 'Nie udało się pobrać danych gry.');
+      }
+    } catch {
+      setForceImportPreviewError('Błąd połączenia z serwerem.');
+    } finally {
+      setIsPreviewing(false);
+    }
+  };
+
+  const handleForceImport = async () => {
+    if (!tournament?.id || !user || !forceImportPreview) return;
+    if (!forceImportMatchId || !forceImportRadiantTeamId || !forceImportDireTeamId) {
+      toast({ title: 'Uzupełnij wszystkie pola', variant: 'destructive' });
+      return;
+    }
+    if (forceImportRadiantTeamId === forceImportDireTeamId) {
+      toast({ title: 'Radiant i Dire nie mogą być tą samą drużyną', variant: 'destructive' });
+      return;
+    }
+
+    setIsForceImporting(true);
+    try {
+      const token = await user.getIdToken();
+      const res = await fetch('/api/admin/pdl/force-import-game', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tournamentId: tournament.id,
+          openDotaGameId: forceImportPreview.matchId,
+          tournamentMatchId: forceImportMatchId,
+          radiantTeamId: forceImportRadiantTeamId,
+          direTeamId: forceImportDireTeamId,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast({ title: 'Import zakończony', description: data.message });
+        setShowForceImportDialog(false);
+        resetForceImportDialog();
+        await loadMatches();
+      } else {
+        toast({ title: 'Błąd importu', description: data.message || data.error, variant: 'destructive' });
+      }
+    } catch {
+      toast({ title: 'Błąd połączenia z serwerem', variant: 'destructive' });
+    } finally {
+      setIsForceImporting(false);
+    }
+  };
+
+  const resetForceImportDialog = () => {
+    setForceImportGameId('');
+    setForceImportPreview(null);
+    setForceImportPreviewError('');
+    setForceImportMatchId('');
+    setForceImportRadiantTeamId('');
+    setForceImportDireTeamId('');
+    setForceImportContextMatch(null);
+  };
+
+  /** Open the force-import dialog pre-filled for a specific match row. */
+  const openForceImportForMatch = (match: MatchWithTeamNames) => {
+    resetForceImportDialog();
+    setForceImportContextMatch(match);
+    setForceImportMatchId(match.id);
+    // Pre-populate sides: teamA = Radiant, teamB = Dire (admin can swap via the selects)
+    const teamAId = match.teamA?.id || '';
+    const teamBId = match.teamB?.id || '';
+    setForceImportRadiantTeamId(teamAId);
+    setForceImportDireTeamId(teamBId);
+    setShowForceImportDialog(true);
+  };
+
+  const handleSyncMatches = async () => {
+    if (!tournament?.id || !user) return;
+
+    setIsSyncing(true);
+    setSyncResult(null);
+
+    try {
+      const token = await user.getIdToken();
+      const response = await fetch('/api/admin/pdl/sync-matches', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ tournamentId: tournament.id }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setSyncResult({ success: true, message: data.message || 'Synchronizacja zakończona pomyślnie.' });
+        toast({
+          title: 'Synchronizacja zakończona',
+          description: `Zaimportowano: ${data.importedCount ?? 0}, Pominięto: ${data.skippedCount ?? 0}, Nieprzeparsowane: ${data.unparsedCount ?? 0}`,
+        });
+        // Reload matches to show new data
+        await loadMatches();
+      } else {
+        setSyncResult({ success: false, message: data.error || 'Synchronizacja nie powiodła się.' });
+        toast({
+          title: 'Błąd synchronizacji',
+          description: data.error || 'Nie udało się zsynchronizować meczów.',
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
+      console.error('Error syncing matches:', error);
+      setSyncResult({ success: false, message: 'Błąd połączenia z serwerem.' });
+      toast({
+        title: 'Błąd',
+        description: 'Nie udało się połączyć z serwerem synchronizacji.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSyncing(false);
     }
   };
 
@@ -139,20 +378,165 @@ export function MatchesTab() {
     setMatchIdToImport('');
   };
 
-  const updateMatchScore = (matchId: string, team: 'team1' | 'team2', score: number) => {
-    setMatches(matches.map(m => 
-      m.id === matchId ? { ...m, [team === 'team1' ? 'score1' : 'score2']: score } : m
-    ));
+  const updateMatchScore = (matchId: string, team: 'teamA' | 'teamB', score: number) => {
+    setMatches(matches.map(m => {
+      if (m.id === matchId) {
+        return {
+          ...m,
+          [team]: {
+            ...m[team],
+            score: Math.max(0, Math.min(3, score)) // Clamp between 0-3
+          }
+        };
+      }
+      return m;
+    }));
   };
 
-  const deleteMatch = (matchId: string) => {
-    setMatches(matches.filter(m => m.id !== matchId));
+  const confirmDeleteMatch = (matchId: string) => {
+    setMatchToDelete(matchId);
+    setShowDeleteDialog(true);
+  };
+
+  const deleteMatch = async () => {
+    if (!matchToDelete || !tournament?.id) return;
+
+    setIsDeleting(true);
+    try {
+      const matchRef = doc(db, 'tournaments', tournament.id, 'matches', matchToDelete);
+      await deleteDoc(matchRef);
+
+      toast({
+        title: 'Usunięto',
+        description: 'Mecz został usunięty',
+      });
+
+      await loadMatches();
+      setShowDeleteDialog(false);
+      setMatchToDelete(null);
+    } catch (error) {
+      console.error('Error deleting match:', error);
+      toast({
+        title: 'Błąd',
+        description: 'Nie udało się usunąć meczu',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const openGamesDialog = (match: MatchWithTeamNames) => {
+    setGamesDialogMatch(match);
+    setConfirmDeleteGameId(null);
+    setShowGamesDialog(true);
+  };
+
+  const handleDeleteGame = async (gameId: number) => {
+    if (!gamesDialogMatch || !user || !tournament?.id) return;
+    setIsDeletingGame(true);
+    setDeletingGameId(gameId);
+    try {
+      const token = await user.getIdToken();
+      const resp = await fetch('/api/admin/pdl/delete-game', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          tournamentId: tournament.id,
+          matchId: gamesDialogMatch.id,
+          gameId,
+        }),
+      });
+      const data = await resp.json();
+      if (data.success) {
+        toast({ title: 'Gra usunięta', description: data.message });
+        setConfirmDeleteGameId(null);
+        // Refresh the match list and update the dialog's match reference
+        await loadMatches();
+        // Update the dialog's match to reflect removed game_id
+        setGamesDialogMatch(prev =>
+          prev
+            ? { ...prev, game_ids: (prev.game_ids ?? []).filter(id => id !== gameId) }
+            : prev,
+        );
+      } else {
+        toast({ title: 'Błąd', description: data.error || 'Nie udało się usunąć gry', variant: 'destructive' });
+      }
+    } catch {
+      toast({ title: 'Błąd', description: 'Nie udało się połączyć z serwerem', variant: 'destructive' });
+    } finally {
+      setIsDeletingGame(false);
+      setDeletingGameId(null);
+    }
+  };
+
+  const openForfeitDialog = (match: MatchWithTeamNames) => {
+    setForfeitMatch(match);
+    setForfeitingTeam('teamA');
+    setForfeitScope('series');
+    setForfeitedGames([]);
+    setForfeitReason('');
+    setShowForfeitDialog(true);
+  };
+
+  const toggleForfeitGame = (gameNum: number) => {
+    setForfeitedGames(prev =>
+      prev.includes(gameNum) ? prev.filter(g => g !== gameNum) : [...prev, gameNum]
+    );
+  };
+
+  const handleForfeit = async () => {
+    if (!forfeitMatch || !user || !tournament?.id) return;
+    setIsForfeitSaving(true);
+    try {
+      const token = await user.getIdToken();
+      const gameNumbers = forfeitScope === 'series' ? [] : forfeitedGames;
+      const resp = await fetch('/api/admin/pdl/forfeit-match', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          tournamentId: tournament.id,
+          matchId: forfeitMatch.id,
+          forfeitingTeam,
+          forfeitedGameNumbers: gameNumbers,
+          reason: forfeitReason,
+          adminUserId: user.uid,
+        }),
+      });
+      const data = await resp.json();
+      if (data.success) {
+        toast({ title: 'Walkover zapisany', description: data.message });
+        setShowForfeitDialog(false);
+        setForfeitMatch(null);
+        await loadMatches();
+      } else {
+        toast({
+          title: 'Błąd',
+          description: data.error || 'Nie udało się zapisać walkovera',
+          variant: 'destructive',
+        });
+      }
+    } catch {
+      toast({
+        title: 'Błąd',
+        description: 'Nie udało się połączyć z serwerem',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsForfeitSaving(false);
+    }
   };
 
   const filteredMatches = matches.filter(match => {
     if (searchQuery && 
-        !match.team1.toLowerCase().includes(searchQuery.toLowerCase()) &&
-        !match.team2.toLowerCase().includes(searchQuery.toLowerCase())) {
+        !match.teamAName.toLowerCase().includes(searchQuery.toLowerCase()) &&
+        !match.teamBName.toLowerCase().includes(searchQuery.toLowerCase())) {
       return false;
     }
     if (statusFilter !== 'all' && match.status !== statusFilter) {
@@ -169,13 +553,76 @@ export function MatchesTab() {
         return <Badge className="bg-red-500/20 text-red-500 border-red-500/30 font-logik animate-pulse">LIVE</Badge>;
       case 'scheduled':
         return <Badge className="bg-blue-500/20 text-blue-500 border-blue-500/30 font-logik">Zaplanowany</Badge>;
-      case 'postponed':
-        return <Badge className="bg-yellow-500/20 text-yellow-500 border-yellow-500/30 font-logik">Przełożony</Badge>;
+      default:
+        return <Badge className="bg-gray-500/20 text-gray-500 border-gray-500/30 font-logik">{status}</Badge>;
     }
   };
 
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return '-';
+    try {
+      return new Date(dateString).toLocaleDateString('pl-PL', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+      });
+    } catch {
+      return dateString;
+    }
+  };
+
+  const formatTime = (dateString?: string) => {
+    if (!dateString) return '-';
+    try {
+      return new Date(dateString).toLocaleTimeString('pl-PL', {
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+    } catch {
+      return '-';
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-center py-20">
+          <div className="flex flex-col items-center gap-4">
+            <Loader2 className="h-12 w-12 animate-spin" style={{ color: theme.primaryColor }} />
+            <p className="text-muted-foreground font-logik">Ładowanie meczów...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
+      {/* Sync Result Banner */}
+      {syncResult && (
+        <div className={cn(
+          'flex items-center gap-3 rounded-lg border p-4 font-logik',
+          syncResult.success
+            ? 'bg-green-500/10 border-green-500/30 text-green-400'
+            : 'bg-red-500/10 border-red-500/30 text-red-400'
+        )}>
+          {syncResult.success ? (
+            <CheckCircle2 className="h-5 w-5 flex-shrink-0" />
+          ) : (
+            <AlertCircle className="h-5 w-5 flex-shrink-0" />
+          )}
+          <p className="text-sm flex-1">{syncResult.message}</p>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 w-6 p-0 text-current hover:bg-white/10"
+            onClick={() => setSyncResult(null)}
+          >
+            ×
+          </Button>
+        </div>
+      )}
+
       {/* Page Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -185,6 +632,206 @@ export function MatchesTab() {
           </p>
         </div>
         <div className="flex items-center gap-3">
+          <Button
+            variant="outline"
+            className="font-logik"
+            onClick={handleSyncMatches}
+            disabled={isSyncing}
+          >
+            {isSyncing ? (
+              <>
+                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                Synchronizuję...
+              </>
+            ) : (
+              <>
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Synchronizuj mecze
+              </>
+            )}
+          </Button>
+
+          {/* Force Import Dialog – triggered from per-row buttons */}
+          <Dialog open={showForceImportDialog} onOpenChange={(open) => {
+            setShowForceImportDialog(open);
+            if (!open) resetForceImportDialog();
+          }}>
+            <DialogContent className="max-w-lg">
+              <DialogHeader>
+                <DialogTitle className="font-logik-extended-bold">Force Import Gry</DialogTitle>
+                <DialogDescription className="font-logik">
+                  Użyj gdy kapitan podał błędną nazwę drużyny w lobby i gra nie została automatycznie wykryta.
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="space-y-5 py-2">
+                {/* Step 1: Game ID */}
+                <div className="space-y-2">
+                  <Label className="font-logik text-sm font-medium">Krok 1: ID gry z OpenDota</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="np. 8423006415 lub URL"
+                      value={forceImportGameId}
+                      onChange={(e) => { setForceImportGameId(e.target.value); setForceImportPreview(null); setForceImportPreviewError(''); }}
+                      className="font-logik flex-1"
+                    />
+                    <Button
+                      variant="outline"
+                      onClick={handlePreviewForceImport}
+                      disabled={isPreviewing || !forceImportGameId.trim()}
+                      className="font-logik shrink-0"
+                    >
+                      {isPreviewing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Eye className="h-4 w-4 mr-1" />}
+                      Podgląd
+                    </Button>
+                  </div>
+                  {forceImportPreviewError && (
+                    <p className="text-xs text-red-400 flex items-center gap-1">
+                      <AlertCircle className="h-3 w-3" /> {forceImportPreviewError}
+                    </p>
+                  )}
+                </div>
+
+                {/* Preview card */}
+                {forceImportPreview && (
+                  <div className="rounded-lg border border-orange-500/30 bg-orange-500/5 p-4 space-y-2 text-sm font-logik">
+                    <div className="flex items-center justify-between">
+                      <span className="text-white/60">Match ID</span>
+                      <a
+                        href={`https://opendota.com/matches/${forceImportPreview.matchId}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-orange-400 hover:underline flex items-center gap-1"
+                      >
+                        {forceImportPreview.matchId}
+                        <ExternalLink className="h-3 w-3" />
+                      </a>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-white/60">Radiant (lobby)</span>
+                      <span className={cn('font-medium', forceImportPreview.radiantLobbyName ? 'text-white' : 'text-red-400')}>
+                        {forceImportPreview.radiantLobbyName || '(brak nazwy)'}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-white/60">Dire (lobby)</span>
+                      <span className={cn('font-medium', forceImportPreview.direLobbyName ? 'text-white' : 'text-red-400')}>
+                        {forceImportPreview.direLobbyName || '(brak nazwy)'}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-white/60">Wynik</span>
+                      <span className="text-white">{forceImportPreview.radiantScore} – {forceImportPreview.direScore}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-white/60">Czas</span>
+                      <span className="text-white">{Math.round(forceImportPreview.duration / 60)} min</span>
+                    </div>
+                    <div className="flex gap-2">
+                      <Badge className={cn('text-xs', forceImportPreview.isParsed ? 'bg-green-500/20 text-green-400 border-green-500/30' : 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30')}>
+                        {forceImportPreview.isParsed ? 'Sparsowana' : 'Niesparsowana'}
+                      </Badge>
+                      {forceImportPreview.alreadyProcessed && (
+                        <Badge className="text-xs bg-blue-500/20 text-blue-400 border-blue-500/30">Już przetworzona</Badge>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Step 2: Assignment (only shown after preview) */}
+                {forceImportPreview && (
+                  <div className="space-y-3">
+                    <Label className="font-logik text-sm font-medium">Krok 2: Przypisz do meczu turniejowego</Label>
+
+                    {/* Match selector — hidden when opened from a row (match already pre-set) */}
+                    {forceImportContextMatch ? (
+                      <div className="rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm font-logik">
+                        <span className="text-white/50 text-xs mr-2">Mecz:</span>
+                        <span className="font-medium">{forceImportContextMatch.teamAName} vs {forceImportContextMatch.teamBName}</span>
+                        {forceImportContextMatch.dateTime && (
+                          <span className="text-white/40 ml-2 text-xs">({formatDate(forceImportContextMatch.dateTime)})</span>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="space-y-1">
+                        <Label className="font-logik text-xs text-white/60">Mecz turniejowy</Label>
+                        <Select value={forceImportMatchId} onValueChange={setForceImportMatchId}>
+                          <SelectTrigger className="font-logik">
+                            <SelectValue placeholder="Wybierz mecz..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {matches.map(m => (
+                              <SelectItem key={m.id} value={m.id}>
+                                {m.teamAName} vs {m.teamBName}
+                                {m.dateTime ? ` (${formatDate(m.dateTime)})` : ''}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+
+                    {/* Radiant / Dire — restricted to the 2 match teams when opened from a row */}
+                    {(() => {
+                      const teamOptions = forceImportContextMatch
+                        ? [
+                            { id: forceImportContextMatch.teamA?.id || '', name: forceImportContextMatch.teamAName },
+                            { id: forceImportContextMatch.teamB?.id || '', name: forceImportContextMatch.teamBName },
+                          ].filter(t => t.id)
+                        : teams;
+                      return (
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="space-y-1">
+                            <Label className="font-logik text-xs text-white/60">Radiant = drużyna turniejowa</Label>
+                            <Select value={forceImportRadiantTeamId} onValueChange={setForceImportRadiantTeamId}>
+                              <SelectTrigger className="font-logik">
+                                <SelectValue placeholder="Radiant..." />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {teamOptions.map(t => (
+                                  <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="font-logik text-xs text-white/60">Dire = drużyna turniejowa</Label>
+                            <Select value={forceImportDireTeamId} onValueChange={setForceImportDireTeamId}>
+                              <SelectTrigger className="font-logik">
+                                <SelectValue placeholder="Dire..." />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {teamOptions.map(t => (
+                                  <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                )}
+              </div>
+
+              <DialogFooter>
+                <Button variant="outline" onClick={() => { setShowForceImportDialog(false); resetForceImportDialog(); }} className="font-logik">
+                  Anuluj
+                </Button>
+                <Button
+                  onClick={handleForceImport}
+                  disabled={isForceImporting || !forceImportPreview || !forceImportMatchId || !forceImportRadiantTeamId || !forceImportDireTeamId}
+                  className="font-logik bg-orange-600 hover:bg-orange-700 text-white"
+                >
+                  {isForceImporting ? (
+                    <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Importuję...</>
+                  ) : (
+                    <><Wrench className="h-4 w-4 mr-2" />Force Import</>
+                  )}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
           <Dialog open={showImportDialog} onOpenChange={setShowImportDialog}>
             <DialogTrigger asChild>
               <Button variant="outline" className="font-logik">
@@ -319,11 +966,11 @@ export function MatchesTab() {
                     <TableCell>
                       <div className="flex items-center gap-3">
                         <div className="text-right">
-                          <p className="font-logik-extended-bold">{match.team1}</p>
+                          <p className="font-logik-extended-bold">{match.teamAName}</p>
                         </div>
                         <span className="text-muted-foreground font-logik">vs</span>
                         <div className="text-left">
-                          <p className="font-logik-extended-bold">{match.team2}</p>
+                          <p className="font-logik-extended-bold">{match.teamBName}</p>
                         </div>
                       </div>
                     </TableCell>
@@ -333,8 +980,8 @@ export function MatchesTab() {
                           type="number"
                           min="0"
                           max="3"
-                          value={match.score1}
-                          onChange={(e) => updateMatchScore(match.id, 'team1', Number(e.target.value))}
+                          value={match.teamA?.score || 0}
+                          onChange={(e) => updateMatchScore(match.id, 'teamA', Number(e.target.value))}
                           className="w-12 text-center font-logik-extended-bold h-8"
                         />
                         <span className="text-muted-foreground">:</span>
@@ -342,37 +989,71 @@ export function MatchesTab() {
                           type="number"
                           min="0"
                           max="3"
-                          value={match.score2}
-                          onChange={(e) => updateMatchScore(match.id, 'team2', Number(e.target.value))}
+                          value={match.teamB?.score || 0}
+                          onChange={(e) => updateMatchScore(match.id, 'teamB', Number(e.target.value))}
                           className="w-12 text-center font-logik-extended-bold h-8"
                         />
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Badge variant="outline" className="font-logik">{match.division}</Badge>
+                      <Badge variant="outline" className="font-logik">
+                        {match.divisionId || match.group_id || 'N/A'}
+                      </Badge>
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2 text-sm font-logik">
                         <Calendar className="h-4 w-4 text-muted-foreground" />
-                        {match.date}
+                        {formatDate(match.dateTime || match.scheduled_for)}
                         <Clock className="h-4 w-4 text-muted-foreground ml-2" />
-                        {match.time}
+                        {formatTime(match.dateTime || match.scheduled_for)}
                       </div>
                     </TableCell>
-                    <TableCell>{getStatusBadge(match.status)}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1 flex-wrap">
+                        {getStatusBadge(match.status)}
+                        {match.forfeit && (
+                          <Badge className="bg-orange-500/20 text-orange-500 border-orange-500/30 font-logik text-xs">
+                            W/O
+                          </Badge>
+                        )}
+                      </div>
+                    </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1">
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          <Edit2 className="h-4 w-4" />
+                        {match.game_ids && match.game_ids.length > 0 && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-blue-500 hover:text-blue-600 hover:bg-blue-500/10"
+                            title={`Zarządzaj grami (${match.game_ids.length})`}
+                            onClick={() => openGamesDialog(match)}
+                          >
+                            <Layers className="h-4 w-4" />
+                          </Button>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-orange-400 hover:text-orange-500 hover:bg-orange-500/10"
+                          title="Force import gry"
+                          onClick={() => openForceImportForMatch(match)}
+                        >
+                          <Wrench className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          <ExternalLink className="h-4 w-4" />
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-orange-500 hover:text-orange-600 hover:bg-orange-500/10"
+                          title="Walkover / Forfeit"
+                          onClick={() => openForfeitDialog(match)}
+                        >
+                          <Flag className="h-4 w-4" />
                         </Button>
                         <Button 
                           variant="ghost" 
                           size="icon" 
                           className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-500/10"
-                          onClick={() => deleteMatch(match.id)}
+                          onClick={() => confirmDeleteMatch(match.id)}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -385,6 +1066,300 @@ export function MatchesTab() {
           </Table>
         </CardContent>
       </Card>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="font-logik-extended-bold">Usuń mecz</DialogTitle>
+            <DialogDescription className="font-logik">
+              Czy na pewno chcesz usunąć ten mecz? Tej operacji nie można cofnąć.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setShowDeleteDialog(false)}
+              className="font-logik"
+              disabled={isDeleting}
+            >
+              Anuluj
+            </Button>
+            <Button 
+              onClick={deleteMatch} 
+              disabled={isDeleting}
+              className="font-logik bg-red-500 hover:bg-red-600"
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Usuwanie...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Usuń
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Games Management Dialog */}
+      <Dialog open={showGamesDialog} onOpenChange={setShowGamesDialog}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="font-logik-extended-bold flex items-center gap-2">
+              <Layers className="h-5 w-5 text-blue-500" />
+              Gry w meczu
+            </DialogTitle>
+            <DialogDescription className="font-logik">
+              {gamesDialogMatch
+                ? `${gamesDialogMatch.teamAName} vs ${gamesDialogMatch.teamBName}`
+                : ''}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-2 py-2">
+            {gamesDialogMatch?.game_ids && gamesDialogMatch.game_ids.length > 0 ? (
+              gamesDialogMatch.game_ids.map((gameId, idx) => (
+                <div
+                  key={gameId}
+                  className="flex items-center justify-between rounded-md border bg-card px-4 py-3"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs text-muted-foreground font-logik w-14">Gra {idx + 1}</span>
+                    <span className="font-mono text-sm font-logik-extended-bold">{gameId}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      title="Otwórz w OpenDota"
+                      onClick={() =>
+                        window.open(`https://www.opendota.com/matches/${gameId}`, '_blank')
+                      }
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                    </Button>
+
+                    {confirmDeleteGameId === gameId ? (
+                      <div className="flex items-center gap-1">
+                        <span className="text-xs text-red-500 font-logik">Na pewno?</span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 px-2 text-red-500 hover:bg-red-500/10 font-logik"
+                          disabled={isDeletingGame && deletingGameId === gameId}
+                          onClick={() => handleDeleteGame(gameId)}
+                        >
+                          {isDeletingGame && deletingGameId === gameId ? (
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                          ) : (
+                            'Usuń'
+                          )}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 px-2 font-logik"
+                          disabled={isDeletingGame}
+                          onClick={() => setConfirmDeleteGameId(null)}
+                        >
+                          Anuluj
+                        </Button>
+                      </div>
+                    ) : (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-500/10"
+                        title="Usuń grę z meczu"
+                        disabled={isDeletingGame}
+                        onClick={() => setConfirmDeleteGameId(gameId)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              ))
+            ) : (
+              <p className="text-center py-4 text-muted-foreground font-logik text-sm">
+                Brak zaimportowanych gier
+              </p>
+            )}
+
+            <p className="text-xs text-muted-foreground font-logik pt-2">
+              Po usunięciu gry możesz ją ponownie zaimportować przez &quot;Force Import&quot;.
+            </p>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowGamesDialog(false)}
+              className="font-logik"
+            >
+              Zamknij
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Forfeit / Walkover Dialog */}
+      <Dialog open={showForfeitDialog} onOpenChange={setShowForfeitDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="font-logik-extended-bold flex items-center gap-2">
+              <Flag className="h-5 w-5 text-orange-500" />
+              Walkover / Forfeit
+            </DialogTitle>
+            <DialogDescription className="font-logik">
+              {forfeitMatch
+                ? `${forfeitMatch.teamAName} vs ${forfeitMatch.teamBName}`
+                : ''}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            {/* Who forfeits */}
+            <div className="space-y-2">
+              <Label className="font-logik text-sm font-medium">Która drużyna poddaje?</Label>
+              <div className="flex gap-2">
+                <Button
+                  variant={forfeitingTeam === 'teamA' ? 'default' : 'outline'}
+                  className={cn('flex-1 font-logik', forfeitingTeam === 'teamA' && 'text-white')}
+                  style={forfeitingTeam === 'teamA' ? { backgroundColor: theme.primaryColor } : {}}
+                  onClick={() => setForfeitingTeam('teamA')}
+                >
+                  {forfeitMatch?.teamAName}
+                </Button>
+                <Button
+                  variant={forfeitingTeam === 'teamB' ? 'default' : 'outline'}
+                  className={cn('flex-1 font-logik', forfeitingTeam === 'teamB' && 'text-white')}
+                  style={forfeitingTeam === 'teamB' ? { backgroundColor: theme.primaryColor } : {}}
+                  onClick={() => setForfeitingTeam('teamB')}
+                >
+                  {forfeitMatch?.teamBName}
+                </Button>
+              </div>
+            </div>
+
+            {/* Scope */}
+            <div className="space-y-2">
+              <Label className="font-logik text-sm font-medium">Zakres forfeita</Label>
+              <div className="flex gap-2">
+                <Button
+                  variant={forfeitScope === 'series' ? 'default' : 'outline'}
+                  className={cn('flex-1 font-logik', forfeitScope === 'series' && 'text-white')}
+                  style={forfeitScope === 'series' ? { backgroundColor: theme.primaryColor } : {}}
+                  onClick={() => { setForfeitScope('series'); setForfeitedGames([]); }}
+                >
+                  Całe spotkanie (0-2)
+                </Button>
+                <Button
+                  variant={forfeitScope === 'games' ? 'default' : 'outline'}
+                  className={cn('flex-1 font-logik', forfeitScope === 'games' && 'text-white')}
+                  style={forfeitScope === 'games' ? { backgroundColor: theme.primaryColor } : {}}
+                  onClick={() => setForfeitScope('games')}
+                >
+                  Wybrane gry
+                </Button>
+              </div>
+            </div>
+
+            {/* Game selection (only when scope = games) */}
+            {forfeitScope === 'games' && (
+              <div className="space-y-2">
+                <Label className="font-logik text-sm font-medium">Które gry?</Label>
+                <div className="flex gap-2">
+                  {[1, 2].map(n => (
+                    <Button
+                      key={n}
+                      variant={forfeitedGames.includes(n) ? 'default' : 'outline'}
+                      className={cn('flex-1 font-logik', forfeitedGames.includes(n) && 'text-white')}
+                      style={forfeitedGames.includes(n) ? { backgroundColor: theme.primaryColor } : {}}
+                      onClick={() => toggleForfeitGame(n)}
+                    >
+                      Gra {n}
+                    </Button>
+                  ))}
+                </div>
+                {forfeitedGames.length === 0 && (
+                  <p className="text-xs text-orange-500 font-logik">Wybierz przynajmniej jedną grę</p>
+                )}
+              </div>
+            )}
+
+            {/* Reason */}
+            <div className="space-y-2">
+              <Label htmlFor="forfeit-reason" className="font-logik text-sm font-medium">
+                Powód (opcjonalnie)
+              </Label>
+              <Input
+                id="forfeit-reason"
+                placeholder="np. niestawienie się, brak graczy..."
+                value={forfeitReason}
+                onChange={e => setForfeitReason(e.target.value)}
+                className="font-logik"
+              />
+            </div>
+
+            {/* Summary */}
+            <div className="rounded-md bg-orange-500/10 border border-orange-500/20 p-3 text-sm font-logik text-orange-700 dark:text-orange-400">
+              {forfeitScope === 'series' ? (
+                <>
+                  <strong>{forfeitingTeam === 'teamA' ? forfeitMatch?.teamAName : forfeitMatch?.teamBName}</strong>{' '}
+                  poddaje całe spotkanie. Wynik:{' '}
+                  {forfeitingTeam === 'teamA' ? '0:2' : '2:0'} — mecz zakończony.
+                </>
+              ) : forfeitedGames.length > 0 ? (
+                <>
+                  <strong>{forfeitingTeam === 'teamA' ? forfeitMatch?.teamAName : forfeitMatch?.teamBName}</strong>{' '}
+                  poddaje {forfeitedGames.map(g => `Grę ${g}`).join(' i ')}.
+                  Wynik serii zostanie przeliczony automatycznie.
+                </>
+              ) : (
+                'Wybierz przynajmniej jedną grę.'
+              )}
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowForfeitDialog(false)}
+              className="font-logik"
+              disabled={isForfeitSaving}
+            >
+              Anuluj
+            </Button>
+            <Button
+              onClick={handleForfeit}
+              disabled={
+                isForfeitSaving ||
+                (forfeitScope === 'games' && forfeitedGames.length === 0)
+              }
+              className="font-logik bg-orange-500 hover:bg-orange-600 text-white"
+            >
+              {isForfeitSaving ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Zapisuję...
+                </>
+              ) : (
+                <>
+                  <Flag className="h-4 w-4 mr-2" />
+                  Zapisz walkover
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Quick Actions */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

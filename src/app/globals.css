@@ -355,6 +355,15 @@ body {
   }
 }
 
+@keyframes loading-sweep {
+  0% {
+    transform: translateX(-100%);
+  }
+  60%, 100% {
+    transform: translateX(200%);
+  }
+}
+
 @keyframes slide-diagonal {
   0% {
     background-position: 0% 0%;
@@ -404,6 +413,10 @@ body {
 
   .animate-fadeIn {
     animation: fadeIn 0.5s ease-out forwards;
+  }
+
+  .loading-sweep {
+    animation: loading-sweep 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   }
 
   /* Transition utilities */

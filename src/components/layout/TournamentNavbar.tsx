@@ -145,7 +145,7 @@ export function TournamentNavbar() {
 
   // For desktop navbar, only show specific items
   const desktopNavItems = filteredNavItems.filter(item =>
-    ['/divisions', '/teams', '/schedule', '/playoffs', '/stats', '/rules'].includes(item.href)
+    ['/divisions', '/teams', '/schedule', '/playoffs', '/stats', '/news', '/rules'].includes(item.href)
   );
 
   const isActive = (href: string) => {

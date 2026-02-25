@@ -6,9 +6,10 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
-import { Crown, Loader2, Lock, Trophy, Users, TrendingUp, Target } from 'lucide-react';
+import { Crown, Lock, Trophy, Users, TrendingUp, Target } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { LoadingScreen } from '@/components/ui/LoadingScreen';
 import { getAllTournamentPlayers, getUserFantasyLineup, saveUserFantasyLineup, getTournamentStatus } from '@/lib/firestore';
 import type { TournamentPlayer, FantasyLineup } from '@/lib/definitions';
 import { PlayerRoles, FANTASY_BUDGET_MMR } from '@/lib/definitions';
@@ -104,18 +105,7 @@ export default function FantasyPage() {
   const budget = tournament.fantasy?.budget || FANTASY_BUDGET_MMR;
 
   if (loading || authLoading) {
-    return (
-      <div className="space-y-6">
-        <div className="flex items-center gap-3">
-          <Crown className="h-8 w-8" style={{ color: theme.secondaryColor }} />
-          <h1 className="text-3xl font-bold">Fantasy League</h1>
-        </div>
-        <div className="text-center py-16">
-          <Loader2 className="w-12 h-12 animate-spin mx-auto text-primary" />
-          <p className="text-muted-foreground mt-4">Ładowanie fantasy...</p>
-        </div>
-      </div>
-    );
+    return <LoadingScreen />;
   }
 
   if (!fantasyEnabled) {

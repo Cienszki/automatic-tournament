@@ -1,9 +1,13 @@
 "use client";
 
 import Link from 'next/link';
+import { useState, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import { motion } from 'framer-motion';
 import { useTournament } from '@/context/TournamentContext';
+import { useAuth } from '@/context/AuthContext';
+import { collection, getDocs, query, where } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 import { Card, CardHeader, CardContent, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { 
@@ -31,6 +35,26 @@ import {
 export function MmrTournamentHomePage() {
   const { tournament, getTournamentPath, theme, isLegacyTournament } = useTournament();
   const t = useTranslations('letniaHome');
+  const { user } = useAuth();
+  const [isTeamCaptain, setIsTeamCaptain] = useState(false);
+
+  // Check if the signed-in user is a captain of any team in this tournament
+  useEffect(() => {
+    const checkCaptain = async () => {
+      if (!user || !tournament?.id) { setIsTeamCaptain(false); return; }
+      try {
+        const teamsRef = isLegacyTournament
+          ? collection(db, 'teams')
+          : collection(db, 'tournaments', tournament.id, 'teams');
+        const q = query(teamsRef, where('captainId', '==', user.uid));
+        const snap = await getDocs(q);
+        setIsTeamCaptain(!snap.empty);
+      } catch {
+        setIsTeamCaptain(false);
+      }
+    };
+    checkCaptain();
+  }, [user, tournament?.id, isLegacyTournament]);
 
   if (!tournament) return null;
 
@@ -68,7 +92,7 @@ export function MmrTournamentHomePage() {
             teamsPerGroup={tournament.teamsPerGroup || 4}
             mmrCap={tournament.mmrCap || 24000}
             playoffsTeams={tournament.playoffs?.teamsCount || 8}
-            isTeamCaptain={false} // TODO: Check from auth context
+            isTeamCaptain={isTeamCaptain}
           />
         </motion.div>
 

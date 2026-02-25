@@ -115,41 +115,13 @@ export function TournamentProvider({ children, initialTournamentSlug }: Tourname
       setIsLoading(true);
       setError(null);
 
-      // Use static tournaments for now - no need to hit Firestore on every page load
-      // This significantly improves initial load performance
-      // TODO: Re-enable Firestore fetching once tournament data is properly set up
-      const staticTournaments: TournamentSummary[] = [
-        {
-          id: 'letnia-2025',
-          slug: 'letnia',
-          name: 'Letnia Batalia',
-          shortName: 'Letnia',
-          type: 'mmr-limited',
-          status: 'completed',
-          visibility: 'active',
-          logoUrl: '/logos/letnia/letnia-logo-transparent.png',
-          primaryColor: 'hsl(330, 100%, 54%)',
-          startDate: '2025-06-01',
-          endDate: '2025-09-30',
-          teamsCount: 16,
-          organizerId: 'pd2ih',
-        },
-        {
-          id: 'pdl-s1',
-          slug: 'pdl',
-          name: 'Polish Dota League',
-          shortName: 'PDL',
-          type: 'league',
-          status: 'registration',
-          visibility: 'active',
-          logoUrl: '/logos/pdl/pdl-s1-logo-transparent.png',
-          primaryColor: 'hsl(345, 75%, 31%)',
-          startDate: '2026-02-21',
-          teamsCount: 0,
-          organizerId: 'pd2ih',
-        },
-      ];
-      setTournaments(staticTournaments);
+      // Fetch live tournament list from Firestore so status/visibility changes
+      // made in the admin panel are reflected immediately without a code deploy.
+      // Falls back to the static initial state if Firestore returns nothing.
+      const fetched = await fetchTournaments();
+      if (fetched.length > 0) {
+        setTournaments(fetched);
+      }
     } catch (err) {
       console.error('Error fetching tournaments:', err);
       setError('Failed to load tournaments');

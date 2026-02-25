@@ -1,8 +1,8 @@
-// @ts-nocheck
 import { NextRequest, NextResponse } from 'next/server';
 import { ensureAdminInitialized, getAdminDb } from '../../../../../server/lib/admin';
+import type { QueryDocumentSnapshot } from 'firebase-admin/firestore';
 
-function csvEscape(value: any): string {
+function csvEscape(value: unknown): string {
   if (value === null || value === undefined) return '';
   const s = String(value);
   const needsQuoting = s.includes(',') || s.includes('"') || s.includes('\n') || s.includes('\r');
@@ -10,7 +10,7 @@ function csvEscape(value: any): string {
   return needsQuoting ? `"${escaped}"` : escaped;
 }
 
-function toCsv(rows: any[][]): string {
+function toCsv(rows: unknown[][]): string {
   return rows.map(row => row.map(csvEscape).join(',')).join('\n');
 }
 
@@ -19,22 +19,29 @@ export async function GET(req: NextRequest) {
     ensureAdminInitialized();
     const db = getAdminDb();
 
-    // Fetch all pickems, teams, and user profiles in parallel
-    const [pickemsSnap, teamsSnap, usersSnap] = await Promise.all([
+    const usersSnap = await db.collection('userProfiles').get().catch(() => null);
+
+    // Fetch pickems and teams in parallel
+    const [pickemsSnap, teamsSnap] = await Promise.all([
       db.collection('pickems').get(),
       db.collection('teams').get(),
-      db.collection('userProfiles').get().catch(() => ({ docs: [] }))
     ]);
 
-    const teams = new Map<string, any>();
-    teamsSnap.docs.forEach(doc => teams.set(doc.id, { id: doc.id, ...doc.data() }));
+    const teams = new Map<string, Record<string, unknown>>();
+    teamsSnap.docs.forEach((doc: QueryDocumentSnapshot) =>
+      teams.set(doc.id, { id: doc.id, ...doc.data() })
+    );
 
-    const users = new Map<string, any>();
-    usersSnap.docs.forEach(doc => users.set(doc.id, { id: doc.id, ...doc.data() }));
+    const users = new Map<string, Record<string, unknown>>();
+    if (usersSnap) {
+      usersSnap.docs.forEach((doc: QueryDocumentSnapshot) =>
+        users.set(doc.id, { id: doc.id, ...doc.data() })
+      );
+    }
 
     // Helper to map teamId -> display name
-    const teamName = (id: string) => {
-      const t = teams.get(id);
+    const teamName = (id: string): string => {
+      const t = teams.get(id) as Record<string, string> | undefined;
       return t?.name || t?.teamName || t?.tag || id || '';
     };
 
@@ -56,18 +63,17 @@ export async function GET(req: NextRequest) {
       'pool_list'
     ];
 
-    const rows: any[][] = [headers];
+    const rows: unknown[][] = [headers];
 
-    pickemsSnap.docs.forEach(doc => {
-      const data: any = { userId: doc.id, ...doc.data() };
-      const preds = data.predictions || {};
-      const scores = data.scores || {};
-      const profile = users.get(data.userId) || users.get(doc.id) || {};
+    pickemsSnap.docs.forEach((doc: QueryDocumentSnapshot) => {
+      const data: Record<string, unknown> = { userId: doc.id, ...doc.data() };
+      const preds = (data['predictions'] as Record<string, string[]>) || {};
+      const profile = (users.get(data['userId'] as string) || users.get(doc.id) || {}) as Record<string, unknown>;
 
       // Normalize arrays per category
-      const one = (arr?: string[]) => (Array.isArray(arr) && arr.length > 0 ? teamName(arr[0]) : '');
-      const two = (arr?: string[]) => [0,1].map(i => (Array.isArray(arr) && arr[i] ? teamName(arr[i]) : ''));
-      const four = (arr?: string[]) => [0,1,2,3].map(i => (Array.isArray(arr) && arr[i] ? teamName(arr[i]) : ''));
+      const one = (arr?: string[]): string => (Array.isArray(arr) && arr.length > 0 ? teamName(arr[0]) : '');
+      const two = (arr?: string[]): string[] => [0, 1].map(i => (Array.isArray(arr) && arr[i] ? teamName(arr[i]) : ''));
+      const four = (arr?: string[]): string[] => [0, 1, 2, 3].map(i => (Array.isArray(arr) && arr[i] ? teamName(arr[i]) : ''));
 
       const champion = one(preds.champion);
       const runnerUp = one(preds.runnerUp);
@@ -80,12 +86,17 @@ export async function GET(req: NextRequest) {
       const poolArr: string[] = Array.isArray(preds.pool) ? preds.pool : [];
       const poolNames = poolArr.map(teamName);
 
-      const submittedAt = (data.lastUpdated && (data.lastUpdated.toDate ? data.lastUpdated.toDate() : new Date(data.lastUpdated))) || '';
+      const lastUpdatedRaw = data['lastUpdated'] as { toDate?: () => Date } | string | undefined;
+      const submittedAt = lastUpdatedRaw
+        ? (typeof (lastUpdatedRaw as { toDate?: () => Date }).toDate === 'function'
+            ? (lastUpdatedRaw as { toDate: () => Date }).toDate()
+            : new Date(lastUpdatedRaw as string))
+        : '';
 
       rows.push([
-        data.userId || doc.id,
-        profile.displayName || profile.name || '',
-        profile.discordUsername || '',
+        data['userId'] || doc.id,
+        (profile.displayName as string) || (profile.name as string) || '',
+        (profile.discordUsername as string) || '',
         submittedAt ? new Date(submittedAt).toISOString() : '',
         champion,
         runnerUp,

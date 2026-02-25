@@ -25,37 +25,49 @@ interface TeamStatRecord {
 interface CalculatedPlayerStats {
   playerId: string;
   playerName: string;
+  teamName?: string;
   
-  // Combat Excellence
+  // Fields matching PlayerStatsData in the stats page
+  mostKillsSingleGame: PlayerStatRecord;
+  mostAssistsSingleGame: PlayerStatRecord;
+  highestGPMSingleGame: PlayerStatRecord;
+  highestXPMSingleGame: PlayerStatRecord;
+  mostLastHitsSingleGame: PlayerStatRecord;
+  mostHeroDamageSingleGame: PlayerStatRecord;
+  mostTowerDamageSingleGame: PlayerStatRecord;
+  mostWardsSingleGame: PlayerStatRecord;
+  bestFantasyScoreSingleGame: PlayerStatRecord;
+  highestKillStreak: PlayerStatRecord;
+  mostCourierKillsSingleGame: PlayerStatRecord;
+  mostRunesSingleGame: PlayerStatRecord;
+  mostNeutralKillsSingleGame: PlayerStatRecord;
+  mostObserverKillsSingleGame: PlayerStatRecord;
+  mostLaneKillsSingleGame: PlayerStatRecord;
+  highestNetWorthSingleGame: PlayerStatRecord;
+  mostGoldSpentSingleGame: PlayerStatRecord;
+  mostCampsStackedTotal: PlayerStatRecord;
+  mostTowerKillsSingleGame: PlayerStatRecord;
+  mostSentryPlacedSingleGame: PlayerStatRecord;
+
+  // Legacy / extra computed fields (kept for backward compat)
   mostKillsSingleMatch: PlayerStatRecord;
   highestKDASingleMatch: PlayerStatRecord;
   longestKillStreak: PlayerStatRecord;
   mostHeroDamageSingleMatch: PlayerStatRecord;
   highestGPMSingleMatch: PlayerStatRecord;
   highestXPMSingleMatch: PlayerStatRecord;
-  mostAssistsSingleGame: PlayerStatRecord;
-  
-  // Economic & Farming
   highestLastHitsSingleGame: PlayerStatRecord;
-  highestNetWorthSingleGame: PlayerStatRecord;
-  bestCSPerMinute: PlayerStatRecord;
-  mostLastHitsSingleGame: PlayerStatRecord;
   highestNetWorthLead: PlayerStatRecord;
   mostDenies: PlayerStatRecord;
   mostGoldEarned: PlayerStatRecord;
   highestXPM: PlayerStatRecord;
-  
-  // Vision & Support
   mostObserverWards: PlayerStatRecord;
   mostWardsKilled: PlayerStatRecord;
   mostWardsPlaced: PlayerStatRecord;
   mostWardsDestroyed: PlayerStatRecord;
-  
-  // Combat Records
   mostHealingDone: PlayerStatRecord;
   uniqueHeroesPlayed: PlayerStatRecord;
   bestFantasyScore: PlayerStatRecord;
-  highestKillStreak: PlayerStatRecord;
   mostTripleKills: PlayerStatRecord;
   mostUltraKills: PlayerStatRecord;
   mostGodlikeStreaks: PlayerStatRecord;
@@ -65,8 +77,7 @@ interface CalculatedPlayerStats {
   mostFirstBloods: PlayerStatRecord;
   gamesWithZeroDeaths: PlayerStatRecord;
   mostTowerDamage: PlayerStatRecord;
-  
-  // Versatility
+  bestCSPerMinute: PlayerStatRecord;
   versatilityScore: PlayerStatRecord;
   heroSpamScore: PlayerStatRecord;
 }
@@ -74,39 +85,35 @@ interface CalculatedPlayerStats {
 interface CalculatedTeamStats {
   teamId: string;
   teamName: string;
-  
-  // Game Duration
-  shortestGameWon: TeamStatRecord;
-  longestGameWon: TeamStatRecord;
-  averageMatchDuration: TeamStatRecord;
-  
-  // Combat Performance
-  averageKills: TeamStatRecord;
-  overallAssistsPerKill: TeamStatRecord;
-  mostFirstBloods: TeamStatRecord;
-  mostKillsSingleGame: TeamStatRecord;
-  fewestKillsSingleGame: TeamStatRecord;
-  fewestKillsPerWin: TeamStatRecord;
-  
-  // Infrastructure
-  highestTowerDamage: TeamStatRecord;
-  
-  // Advanced Team Stats
-  mostDominantVictory: TeamStatRecord;
-  teamVersatility: TeamStatRecord;
-  fastestFirstBlood: TeamStatRecord;
-  highestAverageTeamNetWorth: TeamStatRecord;
-  mostBuybacksUsed: TeamStatRecord;
-  bestLateGameTeam: TeamStatRecord;
-  mostWardsPerGame: TeamStatRecord;
-  highestTowerDamagePerMinute: TeamStatRecord;
+
+  // All fields matching TeamStatsData in the stats page
+  mostKillsSingleMatch: TeamStatRecord;
+  fewestDeathsSingleMatch: TeamStatRecord;
+  mostWardsSingleMatch: TeamStatRecord;
+  fewestUniqueHeroes: TeamStatRecord;       // total unique heroes (for 'min' comparison)
+  mostUniqueHeroes: TeamStatRecord;         // total unique heroes (for 'max' comparison)
+  mostRoshanKills: TeamStatRecord;
+  highestAvgGPM: TeamStatRecord;
+  mostCampsStackedSingleGame: TeamStatRecord;
+  mostDeniesSingleMatch: TeamStatRecord;
+  bestKDRatio: TeamStatRecord;
+  mostCourierKillsSingleMatch: TeamStatRecord;
+  highestCombinedNetWorth: TeamStatRecord;
+  mostLastHitsSingleMatch: TeamStatRecord;
+  mostNeutralKillsSingleMatch: TeamStatRecord;
+  mostLaneKillsSingleMatch: TeamStatRecord;
+  mostRunesSingleMatch: TeamStatRecord;
+  mostDewardsSingleMatch: TeamStatRecord;
+  assistsPerKill: TeamStatRecord;           // total assists / total kills
+  shortestGame: TeamStatRecord;             // duration of shortest game (seconds)
+  longestGame: TeamStatRecord;              // duration of longest game (seconds)
 }
 
 /**
  * Main function to calculate all comprehensive tournament statistics
  */
-export async function calculateAllComprehensiveStats(): Promise<void> {
-  console.log('🔄 Starting comprehensive tournament stats calculation...');
+export async function calculateAllComprehensiveStats(tournamentId?: string): Promise<void> {
+  console.log(`🔄 Starting comprehensive tournament stats calculation${tournamentId ? ` for ${tournamentId}` : ''}...`);
   
   try {
     ensureAdminInitialized();
@@ -114,7 +121,7 @@ export async function calculateAllComprehensiveStats(): Promise<void> {
     
     // Step 1: Fetch all data from Firestore
     console.log('📊 Fetching data from Firestore...');
-    const { games, performances, teams, matches } = await fetchAllGameData(db);
+    const { games, performances, teams, matches, standinLookup } = await fetchAllGameData(db, tournamentId);
     
     console.log(`✅ Data fetched: ${games.length} games, ${performances.length} performances, ${teams.length} teams, ${matches.length} matches`);
     
@@ -138,7 +145,7 @@ export async function calculateAllComprehensiveStats(): Promise<void> {
     
     // Step 3: Calculate Player Stats
     console.log('👤 Calculating player statistics...');
-    const playerStats = calculateComprehensivePlayerStats(performances, teams, games);
+    const playerStats = calculateComprehensivePlayerStats(performances, teams, games, standinLookup);
     
     // Step 4: Calculate Team Stats
     console.log('👥 Calculating team statistics...');
@@ -146,7 +153,7 @@ export async function calculateAllComprehensiveStats(): Promise<void> {
     
     // Step 5: Save to Firestore using embedded records pattern
     console.log('💾 Saving statistics to Firestore...');
-    await saveComprehensiveStats(db, tournamentStats, playerStats, teamStats);
+    await saveComprehensiveStats(db, tournamentStats, playerStats, teamStats, tournamentId);
     
     console.log('✅ Comprehensive tournament stats calculation completed successfully!');
     
@@ -159,15 +166,91 @@ export async function calculateAllComprehensiveStats(): Promise<void> {
 /**
  * Fetch all game data from Firestore
  */
-async function fetchAllGameData(db: any) {
+async function fetchAllGameData(db: any, tournamentId?: string) {
+  // Use tournament-scoped paths for new tournaments; fall back to legacy top-level for Letnia
+  const matchesRef = tournamentId
+    ? db.collection('tournaments').doc(tournamentId).collection('matches')
+    : db.collection('matches');
+  const teamsRef = tournamentId
+    ? db.collection('tournaments').doc(tournamentId).collection('teams')
+    : db.collection('teams');
+
   const [matchesSnapshot, teamsSnapshot] = await Promise.all([
-    db.collection('matches').get(),
-    db.collection('teams').get()
+    matchesRef.get(),
+    teamsRef.get(),
   ]);
   
   const matches = matchesSnapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
-  const teams = teamsSnapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
-  
+  const teamsRaw = teamsSnapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
+
+  // Fetch players subcollection for each team in parallel so player names are available
+  const teamsWithPlayers = await Promise.all(
+    teamsRaw.map(async (team: any) => {
+      // Skip if players are already embedded (e.g. pre-populated test data)
+      if (team.players && team.players.length > 0) return team;
+      try {
+        const playersSnap = await teamsRef.doc(team.id).collection('players').get();
+        const players = playersSnap.docs.map((d: any) => ({ id: d.id, ...d.data() }));
+        return { ...team, players };
+      } catch {
+        return team; // subcollection not present — keep team as-is
+      }
+    })
+  );
+  const teams = teamsWithPlayers;
+
+  // Build a steamId32 → nickname lookup from standin registrations
+  // This resolves "unknown_XXXXXX" player IDs (standins not in the registered roster)
+  const standinLookup = new Map<string, string>(); // unknown_<steamId32> → nickname
+
+  // Helper used by both sources below
+  function extractSteamId32FromUrl(url: string): string | null {
+    if (!url) return null;
+    // /profiles/<steamId64>  (17-digit number)
+    const m = url.match(/\/profiles\/(\d{17})/);
+    if (!m) return null;
+    try {
+      return (BigInt(m[1]) - BigInt('76561197960265728')).toString();
+    } catch { return null; }
+  }
+
+  function indexStandin(nickname: string, steamId32raw: string | undefined, steamId64raw: string | undefined, profileUrl: string | undefined) {
+    const sid32 =
+      steamId32raw ||
+      (steamId64raw ? extractSteamId32FromUrl(`/profiles/${steamId64raw}`) : null) ||
+      extractSteamId32FromUrl(profileUrl ?? '');
+    if (sid32 && nickname) {
+      standinLookup.set(`unknown_${sid32}`, nickname);
+    }
+  }
+
+  try {
+    // Source 1 — registered standins collection (Letnia: top-level; PDL: tournament-scoped)
+    const standinsRef = tournamentId
+      ? db.collection('tournaments').doc(tournamentId).collection('standins')
+      : db.collection('standins');
+    const standinsSnap = await standinsRef.get();
+    standinsSnap.docs.forEach((d: any) => {
+      const s = d.data();
+      indexStandin(s.nickname || s.name, s.steamId32, s.steamId, s.steamProfileUrl);
+    });
+  } catch { /* standin collection may not exist */ }
+
+  // Source 2 — PDL standin requests embedded in match documents (PDL system)
+  // Each req has standinNickname + standinSteamProfileUrl
+  for (const match of matches) {
+    const reqs: any[] = match.standinRequests ?? [];
+    for (const req of reqs) {
+      if (!req.standinNickname) continue;
+      const sid32 = extractSteamId32FromUrl(req.standinSteamProfileUrl ?? '');
+      if (sid32) {
+        standinLookup.set(`unknown_${sid32}`, req.standinNickname);
+      }
+    }
+  }
+
+  console.log(`[StandinLookup] Built ${standinLookup.size} entries:`, Array.from(standinLookup.entries()).map(([k, v]) => `${k} → ${v}`).join(', ') || '(empty)');
+
   // Get all games and performances
   const allGames: any[] = [];
   const allPerformances: any[] = [];
@@ -181,7 +264,7 @@ async function fetchAllGameData(db: any) {
       continue;
     }
     
-    const gamesSnapshot = await db.collection('matches').doc(match.id).collection('games').get();
+    const gamesSnapshot = await matchesRef.doc(match.id).collection('games').get();
     const games = gamesSnapshot.docs.map((doc: any) => ({ 
       id: doc.id, 
       matchId: match.id,
@@ -190,6 +273,12 @@ async function fetchAllGameData(db: any) {
     }));
     
     for (const game of games) {
+      // Skip forfeited games — they have no real performance data
+      if (game.is_forfeit) {
+        console.log(`Skipping forfeit game ${game.id} in match ${match.id}`);
+        continue;
+      }
+
       // Skip games with invalid IDs (accept both string and number)
       if (!game.id || (typeof game.id !== 'string' && typeof game.id !== 'number')) {
         console.warn(`Skipping game with invalid ID in match ${match.id}:`, game);
@@ -201,7 +290,7 @@ async function fetchAllGameData(db: any) {
       
       allGames.push(game);
       
-      const performancesSnapshot = await db.collection('matches')
+      const performancesSnapshot = await matchesRef
         .doc(match.id)
         .collection('games')
         .doc(gameIdStr)
@@ -226,7 +315,7 @@ async function fetchAllGameData(db: any) {
     }
   }
   
-  return { games: allGames, performances: allPerformances, teams, matches };
+  return { games: allGames, performances: allPerformances, teams, matches, standinLookup };
 }
 
 /**
@@ -271,6 +360,7 @@ async function calculateComprehensiveTournamentStats(
   const totalRampages = safeSum(performances.map(p => countPlayerMultiKills(p, 5)));
   const totalUltraKills = safeSum(performances.map(p => countPlayerMultiKills(p, 4)));
   const totalTripleKills = safeSum(performances.map(p => countPlayerMultiKills(p, 3)));
+  const totalDoubleKills = safeSum(performances.map(p => countPlayerMultiKills(p, 2)));
   
   // Hero analysis
   const heroStats = analyzeHeroStatistics(performances);
@@ -302,9 +392,10 @@ async function calculateComprehensiveTournamentStats(
     bloodiestMatch: findBloodiestMatch(games, performances),
     mostPeacefulMatch: findMostPeacefulMatch(games, performances),
     totalRampages,
-    totalUltraKills: totalUltraKills,
+    totalUltraKills,
     totalTripleKills,
-    totalFirstBloods: countTotalFirstBloods(performances),
+    totalDoubleKills,
+    mostContestedHero: findMostContestedHero(games, performances),
     fastestFirstBlood: findFastestFirstBlood(games, performances),
     
     // Heroes & Meta
@@ -317,7 +408,7 @@ async function calculateComprehensiveTournamentStats(
     
     // Economy
     totalGoldGenerated: Math.round(totalGoldGenerated),
-    totalGoldSpent: safeSum(performances.map(p => p.gold_spent || 0)),
+    totalGoldSpent: safeSum(performances.map(p => p.goldSpent || p.gold_spent || 0)),
     richestPlayer: findRichestPlayer(performances),
     mostEfficientFarmer: findMostEfficientFarmer(performances),
     totalHandOfMidasBuilt: 0, // Needs item data
@@ -331,8 +422,8 @@ async function calculateComprehensiveTournamentStats(
     // totalWardsDestroyed: removed from display
     tournamentWardMaster: findWardMaster(performances),
     bestWardHunter: findBestWardHunter(performances),
-    totalCampsStacked: safeSum(performances.map(p => p.camps_stacked || 0)),
-    totalRunesCollected: safeSum(performances.map(p => p.runes_picked_up || 0)),
+    totalCampsStacked: safeSum(performances.map(p => p.campsStacked || p.camps_stacked || 0)),
+    totalRunesCollected: safeSum(performances.map(p => p.runesPickedUp || p.runes_picked_up || 0)),
     
     // Special fields for stats page compatibility
     totalRoshanKills: safeSum(performances.map(p => p.roshanKills || p.roshans_killed || p.roshan_kills || 0)),
@@ -340,6 +431,13 @@ async function calculateComprehensiveTournamentStats(
     totalBuybacks: safeSum(performances.map(p => p.buybackCount || p.buyback_count || 0)),
     totalCreepsKilled: totalLastHits,
     totalDenies,
+    totalTowerKills: safeSum(performances.map(p => p.towerKills || p.tower_kills || 0)),
+    totalTowerDamage: safeSum(performances.map(p => p.towerDamage || p.tower_damage || 0)),
+    totalCourierKills: safeSum(performances.map(p => p.courierKills || p.courier_kills || 0)),
+    totalNeutralKills: safeSum(performances.map(p => p.neutralKills || p.neutral_kills || 0)),
+    totalLaneKills: safeSum(performances.map(p => p.laneKills || p.lane_kills || 0)),
+    totalWardsPlaced: totalObserverWardsPlaced, // observer wards only; sentry wards are separate
+    totalRunesPickedUp: safeSum(performances.map(p => p.runesPickedUp || p.runes_picked_up || 0)),
     // totalCouriersKilled: removed from display
     totalFantasyPoints: calculateTotalFantasyPoints(performances),
     
@@ -356,16 +454,40 @@ async function calculateComprehensiveTournamentStats(
 function calculateComprehensivePlayerStats(
   performances: any[], 
   teams: any[], 
-  games: any[]
+  games: any[],
+  standinLookup?: Map<string, string>   // unknown_<steamId32> → nickname
 ): CalculatedPlayerStats[] {
   const playerStatsMap = new Map<string, CalculatedPlayerStats>();
+
+  // Build player name + team name lookup from players in team subcollections (now populated above)
+  const playersLookup = new Map<string, { name: string; teamName: string }>();
+  teams.forEach((team: any) => {
+    if (team.players && Array.isArray(team.players)) {
+      team.players.forEach((player: any) => {
+        if (player.id) {
+          const entry = {
+            name: player.nickname || player.name || `Player ${player.id}`,
+            teamName: team.name || '',
+          };
+          // Index by Firestore player doc ID
+          playersLookup.set(player.id, entry);
+          // Also index by steamId32 so unknown_ IDs can be resolved
+          if (player.steamId32) {
+            playersLookup.set(`unknown_${player.steamId32}`, entry);
+          }
+          if (player.openDotaAccountId) {
+            playersLookup.set(`unknown_${player.openDotaAccountId}`, entry);
+          }
+        }
+      });
+    }
+  });
   
-  // Group performances by player
+  // Group performances by player (use playerId from Firestore; fall back to account_id for legacy data)
   const playerPerformances = new Map<string, any[]>();
   performances.forEach(perf => {
-    if (!perf.account_id) return;
-    
-    const playerId = perf.account_id.toString();
+    const playerId = perf.playerId || perf.account_id?.toString();
+    if (!playerId) return;
     if (!playerPerformances.has(playerId)) {
       playerPerformances.set(playerId, []);
     }
@@ -376,55 +498,70 @@ function calculateComprehensivePlayerStats(
   playerPerformances.forEach((playerPerfs, playerId) => {
     if (playerPerfs.length === 0) return;
     
-    const playerName = findPlayerName(playerId, performances, teams) || `Player ${playerId}`;
+    const playerInfo = playersLookup.get(playerId);
+    // Fallback chain: registered player → standin → findPlayerName → raw ID
+    const standinName = standinLookup?.get(playerId);
+    const playerName = playerInfo?.name || standinName || findPlayerName(playerId, performances, teams) || playerId;
+    const teamName = playerInfo?.teamName || '';
     
     const stats: CalculatedPlayerStats = {
       playerId,
       playerName,
+      teamName,
       
-      // Combat Excellence
-      mostKillsSingleMatch: findMaxPlayerStat(playerPerfs, 'kills'),
-      highestKDASingleMatch: findHighestKDA(playerPerfs),
-      longestKillStreak: findMaxPlayerStat(playerPerfs, 'max_kill_streak'),
-      mostHeroDamageSingleMatch: findMaxPlayerStat(playerPerfs, 'hero_damage'),
-      highestGPMSingleMatch: findMaxPlayerStat(playerPerfs, 'gold_per_min'),
-      highestXPMSingleMatch: findMaxPlayerStat(playerPerfs, 'xp_per_min'),
-      mostAssistsSingleGame: findMaxPlayerStat(playerPerfs, 'assists'),
-      
-      // Economic & Farming
-      highestLastHitsSingleGame: findMaxPlayerStat(playerPerfs, 'last_hits'),
-      highestNetWorthSingleGame: findMaxPlayerStat(playerPerfs, 'net_worth'),
-      bestCSPerMinute: calculateBestCSPerMinute(playerPerfs),
-      mostLastHitsSingleGame: findMaxPlayerStat(playerPerfs, 'last_hits'),
-      highestNetWorthLead: findMaxPlayerStat(playerPerfs, 'net_worth'), // Simplified
-      mostDenies: findMaxPlayerStat(playerPerfs, 'denies'),
-      mostGoldEarned: findMaxPlayerStat(playerPerfs, 'total_gold'),
-      highestXPM: findMaxPlayerStat(playerPerfs, 'xp_per_min'),
-      
-      // Vision & Support
-      mostObserverWards: findMaxPlayerStat(playerPerfs, 'obs_placed'),
-      mostWardsKilled: findMaxPlayerStat(playerPerfs, 'observer_kills', 'sentry_kills'),
-      mostWardsPlaced: findMaxPlayerStat(playerPerfs, 'obs_placed', 'sen_placed'),
-      mostWardsDestroyed: findMaxPlayerStat(playerPerfs, 'observer_kills', 'sentry_kills'),
-      
-      // Combat Records
-      mostHealingDone: findMaxPlayerStat(playerPerfs, 'hero_healing'),
-      uniqueHeroesPlayed: { value: new Set(playerPerfs.map(p => p.hero_id)).size, matchId: '', heroName: '' },
-      bestFantasyScore: findMaxPlayerStat(playerPerfs, 'fantasy_points'),
-      highestKillStreak: findMaxPlayerStat(playerPerfs, 'max_kill_streak'),
-      mostTripleKills: findMaxMultiKillsStat(playerPerfs, 3),
-      mostUltraKills: findMaxMultiKillsStat(playerPerfs, 4),
-      mostGodlikeStreaks: findMaxMultiKillsStat(playerPerfs, 5),
-      bestKDAAverage: calculateAverageKDA(playerPerfs),
-      highestDamagePerMinute: calculateDamagePerMinute(playerPerfs),
-      highestAverageKills: calculateAverageKills(playerPerfs),
-      mostFirstBloods: countPlayerFirstBloods(playerPerfs),
-      gamesWithZeroDeaths: countZeroDeathGames(playerPerfs),
-      mostTowerDamage: findMaxPlayerStat(playerPerfs, 'tower_damage'),
-      
-      // Versatility
-      versatilityScore: calculateVersatilityScore(playerPerfs),
-      heroSpamScore: calculateHeroSpamScore(playerPerfs)
+      // ── Primary fields matching PlayerStatsData in the stats page ──────────
+      mostKillsSingleGame:       findMaxPlayerStat(playerPerfs, 'kills'),
+      mostAssistsSingleGame:     findMaxPlayerStat(playerPerfs, 'assists'),
+      highestGPMSingleGame:      findMaxPlayerStat(playerPerfs, 'gpm'),
+      highestXPMSingleGame:      findMaxPlayerStat(playerPerfs, 'xpm'),
+      mostLastHitsSingleGame:    findMaxPlayerStat(playerPerfs, 'lastHits'),
+      mostHeroDamageSingleGame:  findMaxPlayerStat(playerPerfs, 'heroDamage'),
+      mostTowerDamageSingleGame: findMaxPlayerStat(playerPerfs, 'towerDamage'),
+      mostWardsSingleGame:       findMaxPlayerStat(playerPerfs, 'obsPlaced', 'senPlaced'),
+      bestFantasyScoreSingleGame: findMaxPlayerStat(playerPerfs, 'fantasyPoints'),
+      highestKillStreak:         findMaxPlayerStat(playerPerfs, 'highestKillStreak'),
+      mostCourierKillsSingleGame: findMaxPlayerStat(playerPerfs, 'courierKills'),
+      mostRunesSingleGame:       findMaxPlayerStat(playerPerfs, 'runesPickedUp'),
+      mostNeutralKillsSingleGame: findMaxPlayerStat(playerPerfs, 'neutralKills'),
+      mostObserverKillsSingleGame: findMaxPlayerStat(playerPerfs, 'observerKills'),
+      mostLaneKillsSingleGame:   findMaxPlayerStat(playerPerfs, 'laneKills'),
+      highestNetWorthSingleGame: findMaxPlayerStat(playerPerfs, 'netWorth'),
+      mostGoldSpentSingleGame:   findMaxPlayerStat(playerPerfs, 'goldSpent'),
+      mostCampsStackedTotal:     findMaxPlayerStat(playerPerfs, 'campsStacked'),
+      mostTowerKillsSingleGame:  findMaxPlayerStat(playerPerfs, 'towerKills'),
+      mostSentryPlacedSingleGame: findMaxPlayerStat(playerPerfs, 'senPlaced'),
+
+      // ── Legacy / extra fields ───────────────────────────────────────────────
+      mostKillsSingleMatch:      findMaxPlayerStat(playerPerfs, 'kills'),
+      highestKDASingleMatch:     findHighestKDA(playerPerfs),
+      longestKillStreak:         findMaxPlayerStat(playerPerfs, 'highestKillStreak'),
+      mostHeroDamageSingleMatch: findMaxPlayerStat(playerPerfs, 'heroDamage'),
+      highestGPMSingleMatch:     findMaxPlayerStat(playerPerfs, 'gpm'),
+      highestXPMSingleMatch:     findMaxPlayerStat(playerPerfs, 'xpm'),
+      highestLastHitsSingleGame: findMaxPlayerStat(playerPerfs, 'lastHits'),
+      highestNetWorthLead:       findMaxPlayerStat(playerPerfs, 'netWorth'),
+      bestCSPerMinute:           calculateBestCSPerMinute(playerPerfs),
+      mostDenies:                findMaxPlayerStat(playerPerfs, 'denies'),
+      mostGoldEarned:            findMaxPlayerStat(playerPerfs, 'totalGold'),
+      highestXPM:                findMaxPlayerStat(playerPerfs, 'xpm'),
+      mostObserverWards:         findMaxPlayerStat(playerPerfs, 'obsPlaced'),
+      mostWardsKilled:           findMaxPlayerStat(playerPerfs, 'observerKills', 'sentryKills'),
+      mostWardsPlaced:           findMaxPlayerStat(playerPerfs, 'obsPlaced', 'senPlaced'),
+      mostWardsDestroyed:        findMaxPlayerStat(playerPerfs, 'observerKills', 'sentryKills'),
+      mostHealingDone:           findMaxPlayerStat(playerPerfs, 'heroHealing'),
+      uniqueHeroesPlayed:        { value: new Set(playerPerfs.map((p: any) => p.heroId || p.hero_id)).size, matchId: '', heroName: '' },
+      bestFantasyScore:          findMaxPlayerStat(playerPerfs, 'fantasyPoints'),
+      mostTripleKills:           findMaxMultiKillsStat(playerPerfs, 3),
+      mostUltraKills:            findMaxMultiKillsStat(playerPerfs, 4),
+      mostGodlikeStreaks:        findMaxMultiKillsStat(playerPerfs, 5),
+      bestKDAAverage:            calculateAverageKDA(playerPerfs),
+      highestDamagePerMinute:    calculateDamagePerMinute(playerPerfs),
+      highestAverageKills:       calculateAverageKills(playerPerfs),
+      mostFirstBloods:           countPlayerFirstBloods(playerPerfs),
+      gamesWithZeroDeaths:       countZeroDeathGames(playerPerfs),
+      mostTowerDamage:           findMaxPlayerStat(playerPerfs, 'towerDamage'),
+      versatilityScore:          calculateVersatilityScore(playerPerfs),
+      heroSpamScore:             calculateHeroSpamScore(playerPerfs),
     };
     
     playerStatsMap.set(playerId, stats);
@@ -443,59 +580,179 @@ function calculateComprehensiveTeamStats(
   matches: any[]
 ): CalculatedTeamStats[] {
   const teamStatsMap = new Map<string, CalculatedTeamStats>();
-  
+
+  // Build a gameId → game doc lookup for opponent resolution
+  const gameMap = new Map<string, any>();
+  games.forEach(g => gameMap.set(g.id?.toString(), g));
+
+  function getOpponent(gameId: string, teamId: string): string {
+    const game = gameMap.get(gameId);
+    if (!game) return '';
+    if (game.radiant_team?.id === teamId || game.radiant_team?.id == teamId) return game.dire_team?.name || '';
+    return game.radiant_team?.name || '';
+  }
+
+  // Group team performances by gameId → returns array of per-game aggregates
+  function perGameAggregates(teamPerfs: any[], teamId: string) {
+    const byGame = new Map<string, { matchId: string; gameId: string; perfs: any[] }>();
+    teamPerfs.forEach(perf => {
+      const gid = perf.gameId?.toString();
+      if (!gid) return;
+      if (!byGame.has(gid)) byGame.set(gid, { matchId: perf.matchId || '', gameId: gid, perfs: [] });
+      byGame.get(gid)!.perfs.push(perf);
+    });
+    return Array.from(byGame.values()).map(entry => ({
+      matchId: entry.matchId,
+      gameId: entry.gameId,
+      opponent: getOpponent(entry.gameId, teamId),
+      perfs: entry.perfs,
+    }));
+  }
+
+  // Max sum of given fields across single games
+  function maxSumStat(teamPerfs: any[], teamId: string, ...fields: string[]): TeamStatRecord {
+    const games = perGameAggregates(teamPerfs, teamId);
+    if (games.length === 0) return { value: 0, matchId: '', opponent: '' };
+    let best = { value: -Infinity, matchId: '', opponent: '' };
+    games.forEach(g => {
+      const value = fields.reduce((s, f) => s + g.perfs.reduce((ps: number, p: any) => ps + (p[f] || 0), 0), 0);
+      if (value > best.value) best = { value, matchId: g.matchId, opponent: g.opponent };
+    });
+    return best.value === -Infinity ? { value: 0, matchId: '', opponent: '' } : best;
+  }
+
+  // Total sum of given fields across all performances
+  function totalStat(teamPerfs: any[], ...fields: string[]): TeamStatRecord {
+    const value = fields.reduce((s, f) => s + teamPerfs.reduce((ps: number, p: any) => ps + (p[f] || 0), 0), 0);
+    return { value, matchId: '', opponent: '' };
+  }
+
+  // Min sum of given fields across single games
+  function minSumStat(teamPerfs: any[], teamId: string, ...fields: string[]): TeamStatRecord {
+    const games = perGameAggregates(teamPerfs, teamId);
+    if (games.length === 0) return { value: 0, matchId: '', opponent: '' };
+    let best = { value: Infinity, matchId: '', opponent: '' };
+    games.forEach(g => {
+      const value = fields.reduce((s, f) => s + g.perfs.reduce((ps: number, p: any) => ps + (p[f] || 0), 0), 0);
+      if (value < best.value) best = { value, matchId: g.matchId, opponent: g.opponent };
+    });
+    return best.value === Infinity ? { value: 0, matchId: '', opponent: '' } : best;
+  }
+
   teams.forEach(team => {
-    // Find games where this team participated
-    const teamGames = games.filter(game => 
-      game.radiant_team?.id == team.id || game.dire_team?.id == team.id
-    );
-    
-    const teamPerformances = performances.filter(perf => 
+    const teamPerformances = performances.filter(perf =>
       perf.teamId === team.id || perf.team_id === team.id
     );
-    
-    // Skip teams that have no games AND no performances
-    if (teamGames.length === 0 && teamPerformances.length === 0) {
-      console.log(`[TeamStats] Skipping team ${team.name} - no games or performances found`);
+
+    if (teamPerformances.length === 0) {
+      console.log(`[TeamStats] Skipping team ${team.name} - no performances found`);
       return;
     }
-    
-    console.log(`[TeamStats] Processing team ${team.name}: ${teamGames.length} games, ${teamPerformances.length} performances`);
-    
+
+    console.log(`[TeamStats] Processing team ${team.name}: ${teamPerformances.length} performances`);
+
+    const gameAggs = perGameAggregates(teamPerformances, team.id);
+
+    // Best K/D ratio in a single game
+    const bestKDRatio = (() => {
+      let best = { value: -Infinity, matchId: '', opponent: '' };
+      gameAggs.forEach(g => {
+        const kills = g.perfs.reduce((s: number, p: any) => s + (p.kills || 0), 0);
+        const deaths = g.perfs.reduce((s: number, p: any) => s + (p.deaths || 0), 0);
+        const ratio = deaths > 0 ? kills / deaths : kills;
+        if (ratio > best.value) best = { value: Math.round(ratio * 100) / 100, matchId: g.matchId, opponent: g.opponent };
+      });
+      return best.value === -Infinity ? { value: 0, matchId: '', opponent: '' } : best;
+    })();
+
+    // Highest average GPM in a single game
+    const highestAvgGPM = (() => {
+      let best = { value: -Infinity, matchId: '', opponent: '' };
+      gameAggs.forEach(g => {
+        const avg = g.perfs.length > 0
+          ? g.perfs.reduce((s: number, p: any) => s + (p.gpm || p.gold_per_min || 0), 0) / g.perfs.length
+          : 0;
+        if (avg > best.value) best = { value: Math.round(avg), matchId: g.matchId, opponent: g.opponent };
+      });
+      return best.value === -Infinity ? { value: 0, matchId: '', opponent: '' } : best;
+    })();
+
+    // Total unique heroes across all games (team variety stat)
+    const uniqueHeroCount = new Set(
+      teamPerformances.map((p: any) => p.heroId || p.hero_id).filter(Boolean)
+    ).size;
+    const mostUniqueHeroes: TeamStatRecord = { value: uniqueHeroCount, matchId: '', opponent: '' };
+    const fewestUniqueHeroes: TeamStatRecord = { value: uniqueHeroCount, matchId: '', opponent: '' };
+
+    // Total roshan kills across all games this team played
+    const mostRoshanKills: TeamStatRecord = (() => {
+      let total = 0;
+      gameAggs.forEach(g => {
+        const game = gameMap.get(g.gameId);
+        total += game?.roshanKills ?? game?.roshan_kills ?? 0;
+      });
+      return { value: total, matchId: '', opponent: '' };
+    })();
+
+    // Longest game this team played
+    const longestGame = (() => {
+      let best = { value: -Infinity, matchId: '', opponent: '' };
+      gameAggs.forEach(g => {
+        const game = gameMap.get(g.gameId);
+        const duration = game?.duration || 0;
+        if (duration > best.value) best = { value: duration, matchId: g.matchId, opponent: g.opponent };
+      });
+      return best.value === -Infinity ? { value: 0, matchId: '', opponent: '' } : best;
+    })();
+
+    // Shortest game this team played (excluding zero-duration)
+    const shortestGame = (() => {
+      let best = { value: Infinity, matchId: '', opponent: '' };
+      gameAggs.forEach(g => {
+        const game = gameMap.get(g.gameId);
+        const duration = game?.duration || 0;
+        if (duration > 0 && duration < best.value) best = { value: duration, matchId: g.matchId, opponent: g.opponent };
+      });
+      return best.value === Infinity ? { value: 0, matchId: '', opponent: '' } : best;
+    })();
+
+    // Assists per kill ratio (total assists / total kills across all games)
+    const assistsPerKill = (() => {
+      const totalAssists = teamPerformances.reduce((s: number, p: any) => s + (p.assists || 0), 0);
+      const totalKills = teamPerformances.reduce((s: number, p: any) => s + (p.kills || 0), 0);
+      const ratio = totalKills > 0 ? totalAssists / totalKills : 0;
+      return { value: Math.round(ratio * 100) / 100, matchId: '', opponent: '' };
+    })();
+
     const stats: CalculatedTeamStats = {
       teamId: team.id,
       teamName: team.name || `Team ${team.id}`,
-      
-      // Game Duration
-      shortestGameWon: findShortestTeamWin(teamGames, team.id),
-      longestGameWon: findLongestTeamWin(teamGames, team.id),
-      averageMatchDuration: calculateAverageTeamDuration(teamGames),
-      
-      // Combat Performance
-      averageKills: calculateAverageTeamKills(teamPerformances),
-      overallAssistsPerKill: calculateOverallAssistsPerKill(teamPerformances),
-      mostFirstBloods: countTeamFirstBloods(teamPerformances),
-      mostKillsSingleGame: findMaxTeamKillsInGame(teamPerformances),
-      fewestKillsSingleGame: findMinTeamKillsInGame(teamPerformances),
-      fewestKillsPerWin: calculateFewestKillsPerWin(teamGames, teamPerformances, team.id),
-      
-      // Infrastructure
-      highestTowerDamage: findMaxTeamTowerDamage(teamPerformances),
-      
-      // Advanced Team Stats
-      mostDominantVictory: calculateMostDominantVictory(teamGames, performances, team.id),
-      teamVersatility: calculateTeamVersatility(teamPerformances),
-      fastestFirstBlood: findFastestTeamFirstBlood(teamPerformances, teamGames),
-      highestAverageTeamNetWorth: calculateAverageTeamNetWorth(teamPerformances),
-      mostBuybacksUsed: findMostBuybacksUsed(teamPerformances),
-      bestLateGameTeam: calculateBestLateGameTeam(teamGames, team.id),
-      mostWardsPerGame: calculateMostWardsPerGame(teamPerformances),
-      highestTowerDamagePerMinute: calculateTowerDamagePerMinute(teamPerformances, teamGames)
+
+      mostKillsSingleMatch:       maxSumStat(teamPerformances, team.id, 'kills'),
+      fewestDeathsSingleMatch:    minSumStat(teamPerformances, team.id, 'deaths'),
+      mostWardsSingleMatch:       maxSumStat(teamPerformances, team.id, 'obsPlaced', 'senPlaced'),
+      fewestUniqueHeroes,
+      mostUniqueHeroes,
+      mostRoshanKills,
+      highestAvgGPM,
+      mostCampsStackedSingleGame: maxSumStat(teamPerformances, team.id, 'campsStacked'),
+      mostDeniesSingleMatch:      maxSumStat(teamPerformances, team.id, 'denies'),
+      bestKDRatio,
+      mostCourierKillsSingleMatch: totalStat(teamPerformances, 'courierKills'),
+      highestCombinedNetWorth:    maxSumStat(teamPerformances, team.id, 'netWorth'),
+      mostLastHitsSingleMatch:    maxSumStat(teamPerformances, team.id, 'lastHits'),
+      mostNeutralKillsSingleMatch: maxSumStat(teamPerformances, team.id, 'neutralKills'),
+      mostLaneKillsSingleMatch:   maxSumStat(teamPerformances, team.id, 'laneKills'),
+      mostRunesSingleMatch:       totalStat(teamPerformances, 'runesPickedUp'),
+      mostDewardsSingleMatch:     totalStat(teamPerformances, 'observerKills', 'sentryKills'),
+      assistsPerKill,
+      shortestGame,
+      longestGame,
     };
-    
+
     teamStatsMap.set(team.id, stats);
   });
-  
+
   return Array.from(teamStatsMap.values());
 }
 
@@ -506,25 +763,51 @@ async function saveComprehensiveStats(
   db: any, 
   tournamentStats: TournamentStats, 
   playerStats: CalculatedPlayerStats[], 
-  teamStats: CalculatedTeamStats[]
+  teamStats: CalculatedTeamStats[],
+  tournamentId?: string
 ): Promise<void> {
   const batch = db.batch();
   
-  // Save tournament stats
-  const tournamentRef = db.collection('tournamentStats').doc('tournament-stats');
-  batch.set(tournamentRef, tournamentStats);
-  
-  // Save player stats
-  playerStats.forEach(stats => {
-    const playerRef = db.collection('playerStats').doc(stats.playerId);
-    batch.set(playerRef, { ...stats, lastUpdated: new Date().toISOString() });
-  });
-  
-  // Save team stats
-  teamStats.forEach(stats => {
-    const teamRef = db.collection('teamStats').doc(stats.teamId);
-    batch.set(teamRef, { ...stats, lastUpdated: new Date().toISOString() });
-  });
+  if (tournamentId) {
+    // New tournament-scoped paths: tournaments/{tournamentId}/...
+    const tournamentBase = db.collection('tournaments').doc(tournamentId);
+
+    // Tournament overview doc
+    batch.set(tournamentBase.collection('stats').doc('tournament-stats'), tournamentStats);
+
+    // Per-player docs
+    playerStats.forEach((stats: CalculatedPlayerStats) => {
+      batch.set(
+        tournamentBase.collection('playerStats').doc(stats.playerId),
+        { ...stats, lastUpdated: new Date().toISOString() }
+      );
+    });
+
+    // Per-team docs
+    teamStats.forEach((stats: CalculatedTeamStats) => {
+      batch.set(
+        tournamentBase.collection('teamStats').doc(stats.teamId),
+        { ...stats, lastUpdated: new Date().toISOString() }
+      );
+    });
+  } else {
+    // Legacy (Letnia) — flat top-level collections
+    batch.set(db.collection('tournamentStats').doc('tournament-stats'), tournamentStats);
+
+    playerStats.forEach((stats: CalculatedPlayerStats) => {
+      batch.set(
+        db.collection('playerStats').doc(stats.playerId),
+        { ...stats, lastUpdated: new Date().toISOString() }
+      );
+    });
+
+    teamStats.forEach((stats: CalculatedTeamStats) => {
+      batch.set(
+        db.collection('teamStats').doc(stats.teamId),
+        { ...stats, lastUpdated: new Date().toISOString() }
+      );
+    });
+  }
   
   await batch.commit();
   console.log(`✅ Saved: Tournament stats + ${playerStats.length} player stats + ${teamStats.length} team stats`);
@@ -538,13 +821,25 @@ function findMaxPlayerStat(performances: any[], field1: string, field2?: string)
   // Map field names from snake_case to camelCase for Firestore compatibility
   const fieldMap: Record<string, string> = {
     'obs_placed': 'obsPlaced',
-    'sen_placed': 'senPlaced', 
+    'sen_placed': 'senPlaced',
     'hero_damage': 'heroDamage',
     'tower_damage': 'towerDamage',
     'gold_per_min': 'gpm',
     'xp_per_min': 'xpm',
     'last_hits': 'lastHits',
-    'net_worth': 'netWorth'
+    'net_worth': 'netWorth',
+    'fantasy_points': 'fantasyPoints',
+    'max_kill_streak': 'highestKillStreak',
+    'observer_kills': 'observerKills',
+    'sentry_kills': 'sentryKills',
+    'hero_healing': 'heroHealing',
+    'total_gold': 'totalGold',
+    'tower_kills': 'towerKills',
+    'neutral_kills': 'neutralKills',
+    'lane_kills': 'laneKills',
+    'gold_spent': 'goldSpent',
+    'courier_kills': 'courierKills',
+    'runes_picked_up': 'runesPickedUp',
   };
   
   const actualField1 = (field1 && fieldMap[field1]) || field1;
@@ -586,7 +881,7 @@ function findHighestKDA(performances: any[]): PlayerStatRecord {
   return {
     value: Math.round(kda * 100) / 100,
     matchId: maxPerf.matchId || '',
-    heroName: getHeroName(maxPerf.hero_id) || 'Unknown'
+    heroName: getHeroName(maxPerf.heroId || maxPerf.hero_id) || 'Unknown'
   };
 }
 
@@ -620,7 +915,7 @@ function findMaxMultiKillsStat(performances: any[], killType: number): PlayerSta
   return {
     value: countPlayerMultiKills(maxPerf, killType),
     matchId: maxPerf.matchId || '',
-    heroName: getHeroName(maxPerf.hero_id) || 'Unknown'
+    heroName: getHeroName(maxPerf.heroId || maxPerf.hero_id) || 'Unknown'
   };
 }
 
@@ -1306,6 +1601,41 @@ function findMostPeacefulMatch(games: any[], performances: any[]) {
   };
 }
 
+function findMostContestedHero(games: any[], performances: any[]): { heroName: string; contestCount: number } {
+  const counts = new Map<number, number>();
+
+  // Picks
+  performances.forEach(p => {
+    const id = p.heroId || p.hero_id;
+    if (id) counts.set(id, (counts.get(id) || 0) + 1);
+  });
+
+  // Bans
+  games.forEach(game => {
+    const sources = [
+      ...(game.picksBans     || []),
+      ...(game.picks_bans    || []),
+      ...(game.draft_timings || []),
+      ...(game.match?.picksBans  || []),
+      ...(game.match?.picks_bans || []),
+    ];
+    sources.forEach((entry: any) => {
+      const isBan = entry.is_pick === false || entry.pick === false;
+      if (isBan && entry.hero_id) {
+        counts.set(entry.hero_id, (counts.get(entry.hero_id) || 0) + 1);
+      }
+    });
+  });
+
+  if (counts.size === 0) return { heroName: 'Unknown', contestCount: 0 };
+
+  const [heroId, contestCount] = Array.from(counts.entries()).reduce((max, cur) =>
+    cur[1] > max[1] ? cur : max
+  );
+
+  return { heroName: getHeroName(heroId) || `Hero ${heroId}`, contestCount };
+}
+
 function countTotalFirstBloods(performances: any[]): number {
   return performances.filter(perf => perf.firstblood_claimed).length;
 }
@@ -1538,18 +1868,27 @@ function calculateTotalFantasyPoints(performances: any[]): number {
 }
 
 /**
- * Find the most banned hero using draft data
+ * Find the most banned hero using draft data.
+ * Checks all known field variants: game-level picksBans/picks_bans/draft_timings
+ * and parent match-level picksBans/picks_bans (stored on game.match).
  */
 function findMostBannedHero(games: any[]) {
   const banCounts = new Map<number, number>();
-  
+
   games.forEach(game => {
-    // Check both draft_timings and picksBans for bans (is_pick: false or pick: false)
-    const draftData = game.draft_timings || game.picksBans || [];
-    const bans = draftData.filter((dt: any) => dt.pick === false || dt.is_pick === false);
-    bans.forEach((ban: any) => {
-      if (ban.hero_id) {
-        banCounts.set(ban.hero_id, (banCounts.get(ban.hero_id) || 0) + 1);
+    // Collect draft data from the game doc itself and from the parent match doc
+    const sources: any[] = [
+      ...(game.picksBans       || []),
+      ...(game.picks_bans      || []),
+      ...(game.draft_timings   || []),
+      ...(game.match?.picksBans  || []),
+      ...(game.match?.picks_bans || []),
+    ];
+
+    sources.forEach((entry: any) => {
+      const isBan = entry.is_pick === false || entry.pick === false;
+      if (isBan && entry.hero_id) {
+        banCounts.set(entry.hero_id, (banCounts.get(entry.hero_id) || 0) + 1);
       }
     });
   });
@@ -1681,14 +2020,15 @@ function getRoleName(roleId: number): string {
 // Utility functions
 
 function findPlayerName(playerId: string, performances: any[], teams: any[]): string | null {
-  // Try to find player name from performances or teams
-  const perf = performances.find(p => p.account_id?.toString() === playerId);
-  if (perf?.player_name) return perf.player_name;
-  
-  // Fallback to searching in teams
+  // Try to find player name from embedded players in teams
   for (const team of teams) {
-    // This would need to be implemented based on your team/player structure
+    if (team.players && Array.isArray(team.players)) {
+      const player = team.players.find((p: any) => p.id === playerId);
+      if (player?.nickname || player?.name) return player.nickname || player.name;
+    }
   }
-  
+  // Try to find player name from performances
+  const perf = performances.find(p => (p.playerId || p.account_id?.toString()) === playerId);
+  if (perf?.playerName) return perf.playerName;
   return null;
 }

@@ -22,6 +22,7 @@ import { cn } from "@/lib/utils";
 import { formatNumber } from "@/lib/utils";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useTranslation } from "@/hooks/useTranslation";
+import { LoadingScreen } from "@/components/ui/LoadingScreen";
 
 interface PageProps {
   params: Promise<{
@@ -156,7 +157,7 @@ export default function PlayerPage({ params }: PageProps) {
   }, [teamId, playerId]);
 
   if (loading) {
-    return <div className="flex justify-center items-center min-h-96">{t('common.loading')}</div>;
+    return <LoadingScreen />;
   }
 
   if (!data) {

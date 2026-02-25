@@ -16,6 +16,7 @@ import { cn } from '@/lib/utils';
 import Image from 'next/image';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { LoadingScreen } from '@/components/ui/LoadingScreen';
 import { DiscordUsernameModal } from '@/components/app/DiscordUsernameModal';
 
 type ContainerId = 'champion' | 'runnerUp' | 'thirdPlace' | 'fourthPlace' | 'fifthToSixth' | 'seventhToEighth' | 'ninthToTwelfth' | 'thirteenthToSixteenth' | 'pool';
@@ -255,17 +256,7 @@ export default function PickemPage() {
   }
 
   if (isLoading) {
-    return (
-      <div className="space-y-6">
-        <div className="flex items-center gap-3">
-          <Target className="h-8 w-8" style={{ color: theme.secondaryColor }} />
-          <h1 className="text-3xl font-bold">Pick'em</h1>
-        </div>
-        <div className="flex justify-center items-center h-64">
-          <Loader2 className="h-16 w-16 animate-spin text-primary" />
-        </div>
-      </div>
-    );
+    return <LoadingScreen />;
   }
 
   if (!user) {

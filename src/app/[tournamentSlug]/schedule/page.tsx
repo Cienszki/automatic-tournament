@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { MatchdayCarousel } from '@/components/schedule/MatchdayCarousel';
+import { LoadingScreen } from '@/components/ui/LoadingScreen';
 
 /**
  * Schedule page - Premium redesign with full-width layout
@@ -21,16 +22,12 @@ export default function SchedulePage() {
       try {
         let fetchedMatches: Match[] = [];
 
-        console.log('[SchedulePage] Loading matches for tournament:', tournament?.id, 'isLegacy:', isLegacyTournament);
-
         if (isLegacyTournament) {
           const allMatches = await getAllMatches();
           fetchedMatches = allMatches;
         } else if (tournament?.id) {
           const matchesRef = collection(db, 'tournaments', tournament.id, 'matches');
           const matchesSnapshot = await getDocs(matchesRef);
-
-          console.log('[SchedulePage] Fetched', matchesSnapshot.docs.length, 'matches from Firestore');
 
           fetchedMatches = matchesSnapshot.docs.map(doc => {
             const data = doc.data();
@@ -64,17 +61,7 @@ export default function SchedulePage() {
           });
         }
 
-        console.log('[SchedulePage] Total fetched matches:', fetchedMatches.length);
-        console.log('[SchedulePage] Sample match:', fetchedMatches[0]);
-
         const validMatches = fetchedMatches.filter(m => (m.scheduled_for || m.dateTime));
-        
-        console.log('[SchedulePage] Valid matches after filter:', validMatches.length);
-        console.log('[SchedulePage] Matches by matchday:', validMatches.reduce((acc, m) => {
-          const md = m.matchday || 'unknown';
-          acc[md] = (acc[md] || 0) + 1;
-          return acc;
-        }, {} as Record<string | number, number>));
 
         setMatches(validMatches);
 
@@ -89,19 +76,7 @@ export default function SchedulePage() {
   }, [isLegacyTournament, tournament?.id]);
 
   if (loading) {
-    return (
-      <div className="min-h-[60vh] flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <div className="relative">
-            <div className="w-20 h-20 border-4 border-pdl-gold/20 rounded-full" />
-            <div className="absolute inset-0 w-20 h-20 border-4 border-pdl-gold border-t-transparent rounded-full animate-spin" />
-          </div>
-          <span className="text-pdl-gold font-logik-extended-bold tracking-widest animate-pulse uppercase text-sm">
-            Loading Schedule
-          </span>
-        </div>
-      </div>
-    );
+    return <LoadingScreen />;
   }
 
   return (

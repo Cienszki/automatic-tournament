@@ -1,7 +1,11 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { registerTeam } from "@/lib/actions";
+import { checkRateLimit, LIMIT_REGISTRATION } from '@/lib/rate-limit';
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
+  const rateLimitRes = checkRateLimit(req, 'register-team', LIMIT_REGISTRATION);
+  if (rateLimitRes) return rateLimitRes;
+
   try {
     const data = await req.json();
     const result = await registerTeam(data);

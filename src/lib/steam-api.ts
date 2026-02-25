@@ -38,13 +38,11 @@ export async function fetchSteamLeagueMatches(
   startAtMatchId?: number,
   apiKey?: string
 ): Promise<SteamMatchBasic[]> {
-  // Try different environment variable names for server/client environments
-  const STEAM_API_KEY = apiKey || 
-    process.env.NEXT_PUBLIC_STEAM_API_KEY || 
-    process.env.STEAM_API_KEY;
+  // Server-only: uses STEAM_API_KEY (not NEXT_PUBLIC_ - must not be in client bundle)
+  const STEAM_API_KEY = apiKey || process.env.STEAM_API_KEY;
   
   if (!STEAM_API_KEY) {
-    throw new Error('Missing STEAM_API_KEY or NEXT_PUBLIC_STEAM_API_KEY in environment variables');
+    throw new Error('Missing STEAM_API_KEY environment variable');
   }
 
   const url = 'https://api.steampowered.com/IDOTA2Match_570/GetMatchHistory/v1/';

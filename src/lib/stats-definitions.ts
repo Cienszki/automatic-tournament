@@ -23,7 +23,8 @@ export interface TournamentStats {
   totalRampages: number;
   totalUltraKills: number;
   totalTripleKills: number;
-  totalFirstBloods: number;
+  totalDoubleKills: number;
+  mostContestedHero: { heroName: string; contestCount: number };
   fastestFirstBlood: { matchId: string; time: number; player: string; team: string; };
   
   // Heroes & Meta
@@ -61,7 +62,13 @@ export interface TournamentStats {
   totalBuybacks: number;
   totalCreepsKilled: number;
   totalDenies: number;
-  // totalCouriersKilled: removed from display
+  totalTowerKills: number;
+  totalTowerDamage: number;
+  totalCourierKills: number;
+  totalNeutralKills: number;
+  totalLaneKills: number;
+  totalWardsPlaced: number;
+  totalRunesPickedUp: number;
   totalFantasyPoints: number;
   mostPlayedRoleHero: string;
   

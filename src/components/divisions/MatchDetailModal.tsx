@@ -1,18 +1,49 @@
 // src/components/divisions/MatchDetailModal.tsx
-// Detailed head-to-head match view modal
+// Detailed head-to-head match view modal — dark premium style
 
 'use client';
 
+import { useState, useEffect, useCallback } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Badge } from '@/components/ui/badge';
-import { Card, CardContent } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import Image from 'next/image';
-import { Calendar, MapPin, Trophy, Swords, Users, TrendingUp, ExternalLink } from 'lucide-react';
+import { Calendar, Trophy, ExternalLink, Loader2, Shield, Sword, Users } from 'lucide-react';
 import type { Match } from '@/lib/definitions';
 import { cn } from '@/lib/utils';
+import { collection, getDocs } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { useTournament } from '@/context/TournamentContext';
+import { getHeroName } from '@/lib/hero-mapping';
+
+interface Performance {
+    playerId: string;
+    teamId: string;
+    heroId: number;
+    kills: number;
+    deaths: number;
+    assists: number;
+    gpm: number;
+    xpm: number;
+    fantasyPoints?: number;
+}
+
+interface GameDetail {
+    id: string;
+    radiant_win: boolean;
+    duration: number;
+    start_time: number;
+    radiant_team: { id: string; name: string };
+    dire_team: { id: string; name: string };
+    is_forfeit?: boolean;
+    performances: Performance[];
+}
+
+function formatDuration(seconds: number): string {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m}:${s.toString().padStart(2, '0')}`;
+}
 
 interface MatchDetailModalProps {
   match: Match | null;
@@ -22,331 +53,359 @@ interface MatchDetailModalProps {
 }
 
 export function MatchDetailModal({ match, isOpen, onClose, divisionColor }: MatchDetailModalProps) {
+  const { tournament } = useTournament();
+
+  const [gamesData, setGamesData] = useState<GameDetail[]>([]);
+  const [gamesLoading, setGamesLoading] = useState(false);
+  const [gamesLoaded, setGamesLoaded] = useState(false);
+
+  const loadGames = useCallback(async () => {
+    if (!tournament?.id || !match?.id || gamesLoaded) return;
+    setGamesLoading(true);
+    try {
+      const gamesRef = collection(db, 'tournaments', tournament.id, 'matches', match.id, 'games');
+      const gamesSnap = await getDocs(gamesRef);
+      const gameDetails: GameDetail[] = await Promise.all(
+        gamesSnap.docs.map(async (gameDoc) => {
+          const game = gameDoc.data();
+          const perfsRef = collection(
+            db, 'tournaments', tournament.id, 'matches', match.id, 'games', gameDoc.id, 'performances'
+          );
+          const perfsSnap = await getDocs(perfsRef);
+          return {
+            id: gameDoc.id,
+            radiant_win: game.radiant_win,
+            duration: game.duration || 0,
+            start_time: game.start_time || 0,
+            radiant_team: game.radiant_team || { id: '', name: '?' },
+            dire_team: game.dire_team || { id: '', name: '?' },
+            is_forfeit: game.is_forfeit || false,
+            performances: perfsSnap.docs.map(d => d.data() as Performance),
+          };
+        })
+      );
+      gameDetails.sort((a, b) => (a.start_time || 0) - (b.start_time || 0));
+      setGamesData(gameDetails);
+      setGamesLoaded(true);
+    } catch (e) {
+      console.error('Failed to load game details', e);
+    } finally {
+      setGamesLoading(false);
+    }
+  }, [tournament?.id, match?.id, gamesLoaded]);
+
+  // Reset when match changes
+  useEffect(() => {
+    setGamesData([]);
+    setGamesLoaded(false);
+  }, [match?.id]);
+
+  useEffect(() => {
+    if (isOpen && match?.status === 'completed') {
+      loadGames();
+    }
+  }, [isOpen, match?.status, loadGames]);
+
   if (!match) return null;
 
-  const matchDate = match.completed_at || match.scheduled_for;
+  const matchDate = match.completed_at
+    ? new Date(match.completed_at)
+    : match.scheduled_for
+      ? new Date(match.scheduled_for)
+      : null;
+
   const isCompleted = match.status === 'completed';
   const isLive = match.status === 'live';
-  
-  // Calculate winner
-  const teamAWon = match.teamA.score > match.teamB.score;
-  const teamBWon = match.teamB.score > match.teamA.score;
-  const isDraw = match.teamA.score === match.teamB.score;
+
+  const teamAWon = isCompleted && match.teamA.score > match.teamB.score;
+  const teamBWon = isCompleted && match.teamB.score > match.teamA.score;
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Swords className="h-5 w-5" style={{ color: divisionColor }} />
-            Szczegóły meczu
-          </DialogTitle>
+      <DialogContent className="sm:max-w-[720px] bg-[#0c0c14]/95 backdrop-blur-xl border-white/10 p-0 overflow-hidden shadow-2xl">
+        <DialogHeader className="sr-only">
+          <DialogTitle>Szczegóły meczu</DialogTitle>
         </DialogHeader>
 
-        {/* Match Header */}
-        <div className="space-y-4">
-          {/* Teams and Score */}
-          <div className="flex items-center justify-between gap-4">
-            {/* Team A */}
-            <div className={cn(
-              "flex-1 flex items-center gap-3 p-4 rounded-lg border-2 transition-colors",
-              isCompleted && teamAWon && "bg-green-500/10 border-green-500/50",
-              isCompleted && !teamAWon && !isDraw && "opacity-60"
-            )}>
-              {match.teamA.logoUrl && (
-                <Image
-                  src={match.teamA.logoUrl}
-                  alt={match.teamA.name}
-                  width={48}
-                  height={48}
-                  className="rounded-sm"
-                  unoptimized
-                />
-              )}
-              <div className="flex-1">
-                <p className="font-bold text-lg">{match.teamA.name}</p>
-                {teamAWon && <Badge className="mt-1 bg-green-500">Zwycięzca</Badge>}
-              </div>
-              <div className="text-4xl font-bold" style={{ color: divisionColor }}>
-                {match.teamA.score}
-              </div>
-            </div>
+        <div className="relative w-full max-h-[85vh] overflow-y-auto">
+          <div className="absolute top-0 left-0 right-0 h-32 bg-gradient-to-b from-white/5 to-transparent pointer-events-none" />
 
-            {/* VS / Score separator */}
-            <div className="flex flex-col items-center gap-1">
-              <div className="text-muted-foreground font-bold text-sm">VS</div>
-              {isLive && (
-                <Badge variant="destructive" className="animate-pulse">
-                  NA ŻYWO
-                </Badge>
-              )}
-              {!isCompleted && !isLive && (
-                <Badge variant="outline">
-                  Zaplanowany
-                </Badge>
+          <div className="relative p-8 md:p-10">
+            {/* Status badge */}
+            <div className="flex justify-center mb-8">
+              {isLive ? (
+                <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-red-500/20 border border-red-500/30">
+                  <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                  <span className="text-sm font-bold text-red-400 uppercase tracking-wider">Na żywo</span>
+                </div>
+              ) : isCompleted ? (
+                <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-pdl-gold/10 border border-pdl-gold/30">
+                  <Trophy className="w-4 h-4 text-pdl-gold" />
+                  <span className="text-sm font-bold text-pdl-gold uppercase tracking-wider">Ukończony</span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10">
+                  <Calendar className="w-4 h-4 text-white/50" />
+                  <span className="text-sm font-mono text-white/50">
+                    {matchDate ? format(matchDate, 'dd MMMM yyyy, HH:mm', { locale: pl }) : 'TBD'}
+                  </span>
+                </div>
               )}
             </div>
 
-            {/* Team B */}
-            <div className={cn(
-              "flex-1 flex items-center gap-3 p-4 rounded-lg border-2 transition-colors flex-row-reverse",
-              isCompleted && teamBWon && "bg-green-500/10 border-green-500/50",
-              isCompleted && !teamBWon && !isDraw && "opacity-60"
-            )}>
-              <div className="text-4xl font-bold" style={{ color: divisionColor }}>
-                {match.teamB.score}
-              </div>
-              <div className="flex-1 text-right">
-                <p className="font-bold text-lg">{match.teamB.name}</p>
-                {teamBWon && <Badge className="mt-1 bg-green-500">Zwycięzca</Badge>}
-              </div>
-              {match.teamB.logoUrl && (
-                <Image
-                  src={match.teamB.logoUrl}
-                  alt={match.teamB.name}
-                  width={48}
-                  height={48}
-                  className="rounded-sm"
-                  unoptimized
-                />
-              )}
-            </div>
-          </div>
-
-          {/* Match Info */}
-          <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
-            {matchDate && (
-              <div className="flex items-center gap-2">
-                <Calendar className="h-4 w-4" />
-                <span>{format(new Date(matchDate), 'dd MMMM yyyy, HH:mm', { locale: pl })}</span>
-              </div>
-            )}
-            <div className="flex items-center gap-2">
-              <Trophy className="h-4 w-4" />
-              <span>Format: {match.series_format?.toUpperCase() || 'BO2'}</span>
-            </div>
-            {match.openDotaMatchUrl && (
-              <a 
-                href={match.openDotaMatchUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-2 hover:text-primary transition-colors"
-              >
-                <ExternalLink className="h-4 w-4" />
-                <span>Zobacz na OpenDota</span>
-              </a>
-            )}
-          </div>
-        </div>
-
-        {isCompleted ? (
-          <Tabs defaultValue="overview" className="mt-6">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="overview">Podsumowanie</TabsTrigger>
-              <TabsTrigger value="games">Gry ({match.game_ids?.length || 0})</TabsTrigger>
-              <TabsTrigger value="performances">Występy graczy</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="overview" className="space-y-4">
-              {/* Match Summary */}
-              <Card>
-                <CardContent className="pt-6 space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-sm text-muted-foreground mb-2">Wynik końcowy</p>
-                      <p className="text-2xl font-bold">
-                        {match.teamA.score} - {match.teamB.score}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground mb-2">Zwycięzca</p>
-                      <p className="text-lg font-semibold">
-                        {isDraw ? 'Remis' : teamAWon ? match.teamA.name : match.teamB.name}
-                      </p>
-                    </div>
-                  </div>
-
-                  {match.playerPerformances && match.playerPerformances.length > 0 && (
-                    <div className="pt-4 border-t">
-                      <p className="text-sm font-semibold mb-2">Najlepsi gracze</p>
-                      <div className="grid grid-cols-2 gap-4">
-                        {match.playerPerformances
-                          .sort((a, b) => b.fantasyPoints - a.fantasyPoints)
-                          .slice(0, 4)
-                          .map((perf, i) => (
-                            <div key={i} className="flex items-center gap-2 text-sm">
-                              <Badge variant="outline" className="w-8 text-center">
-                                {i + 1}
-                              </Badge>
-                              <span className="flex-1 truncate">{perf.playerId}</span>
-                              <span className="font-bold">{perf.fantasyPoints.toFixed(1)} FP</span>
-                            </div>
-                          ))}
-                      </div>
+            {/* Teams + Score */}
+            <div className="flex items-center justify-between gap-8">
+              {/* Team A */}
+              <div className={cn('flex-1 flex flex-col items-center gap-4 transition-opacity', teamBWon ? 'opacity-40' : '')}>
+                <div className="relative w-24 h-24">
+                  {match.teamA.logoUrl ? (
+                    <Image src={match.teamA.logoUrl} alt={match.teamA.name} fill className="object-contain drop-shadow-2xl" unoptimized />
+                  ) : (
+                    <div className="w-full h-full rounded-2xl bg-white/5 flex items-center justify-center text-3xl font-bold text-white/30 border border-white/10">
+                      {match.teamA.name.charAt(0)}
                     </div>
                   )}
-                </CardContent>
-              </Card>
+                  {teamAWon && (
+                    <div className="absolute -top-2 -right-2 w-8 h-8 rounded-full bg-pdl-gold flex items-center justify-center shadow-lg">
+                      <Trophy className="w-4 h-4 text-black" />
+                    </div>
+                  )}
+                </div>
+                <h3 className={cn('text-xl font-logik-extended-bold text-center uppercase tracking-wide', teamAWon ? 'text-pdl-gold' : 'text-white')}>
+                  {match.teamA.name}
+                </h3>
+              </div>
 
-              {/* Standin Info */}
-              {match.standinInfo && Object.keys(match.standinInfo).length > 0 && (
-                <Card>
-                  <CardContent className="pt-6">
-                    <p className="text-sm font-semibold mb-3 flex items-center gap-2">
-                      <Users className="h-4 w-4" />
+              {/* Score */}
+              <div className="flex flex-col items-center gap-3 shrink-0">
+                <div className="text-5xl font-logik-extended-bold flex items-center gap-4">
+                  <span className={teamAWon ? 'text-pdl-gold' : 'text-white/50'}>
+                    {isCompleted || isLive ? match.teamA.score : '-'}
+                  </span>
+                  <span className="text-white/20">:</span>
+                  <span className={teamBWon ? 'text-pdl-gold' : 'text-white/50'}>
+                    {isCompleted || isLive ? match.teamB.score : '-'}
+                  </span>
+                </div>
+                <div className="text-sm font-mono tracking-widest uppercase" style={{ color: divisionColor ? `${divisionColor}99` : undefined }}>
+                  {match.bestOf
+                    ? `Best of ${match.bestOf}`
+                    : match.series_format
+                      ? `Best of ${match.series_format.replace(/\D/g, '')}`
+                      : 'Best of 2'}
+                </div>
+                {matchDate && (
+                  <div className="text-xs text-white/30 font-mono">
+                    {format(matchDate, 'dd MMM yyyy', { locale: pl })}
+                  </div>
+                )}
+              </div>
+
+              {/* Team B */}
+              <div className={cn('flex-1 flex flex-col items-center gap-4 transition-opacity', teamAWon ? 'opacity-40' : '')}>
+                <div className="relative w-24 h-24">
+                  {match.teamB.logoUrl ? (
+                    <Image src={match.teamB.logoUrl} alt={match.teamB.name} fill className="object-contain drop-shadow-2xl" unoptimized />
+                  ) : (
+                    <div className="w-full h-full rounded-2xl bg-white/5 flex items-center justify-center text-3xl font-bold text-white/30 border border-white/10">
+                      {match.teamB.name.charAt(0)}
+                    </div>
+                  )}
+                  {teamBWon && (
+                    <div className="absolute -top-2 -right-2 w-8 h-8 rounded-full bg-pdl-gold flex items-center justify-center shadow-lg">
+                      <Trophy className="w-4 h-4 text-black" />
+                    </div>
+                  )}
+                </div>
+                <h3 className={cn('text-xl font-logik-extended-bold text-center uppercase tracking-wide', teamBWon ? 'text-pdl-gold' : 'text-white')}>
+                  {match.teamB.name}
+                </h3>
+              </div>
+            </div>
+
+            {/* Divider */}
+            <div className="w-full h-px bg-gradient-to-r from-transparent via-white/10 to-transparent my-8" />
+
+            {/* Game breakdown */}
+            {isCompleted && (
+              <>
+                {gamesLoading && (
+                  <div className="flex items-center justify-center py-10 gap-3 text-white/30">
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    <span className="text-sm font-mono">Ładowanie statystyk…</span>
+                  </div>
+                )}
+
+                {!gamesLoading && gamesData.length > 0 && (
+                  <div className="space-y-6">
+                    {gamesData.map((game, idx) => {
+                      const winnerTeamId = game.radiant_win ? game.radiant_team.id : game.dire_team.id;
+                      const teamAWonGame = winnerTeamId === match.teamA.id;
+
+                      const sortPerfs = (arr: Performance[]) =>
+                        [...arr].sort((a, b) => (b.kills + b.assists) - (a.kills + a.assists));
+
+                      const leftPerfs = sortPerfs(game.performances.filter(p => p.teamId === match.teamA.id));
+                      const rightPerfs = sortPerfs(game.performances.filter(p => p.teamId === match.teamB.id));
+
+                      return (
+                        <div key={game.id} className="rounded-xl border border-white/10 overflow-hidden bg-white/[0.02]">
+                          {/* Game header */}
+                          <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-white/[0.03]">
+                            <div className="flex items-center gap-3 flex-wrap">
+                              <span className="text-xs font-logik-extended-bold text-white/50 uppercase tracking-widest">
+                                Gra {idx + 1}
+                              </span>
+                              {game.is_forfeit ? (
+                                <span className="text-xs px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-400 border border-orange-500/30">
+                                  Walkover
+                                </span>
+                              ) : (
+                                <span className="text-xs px-2 py-0.5 rounded-full bg-white/5 text-white/40 font-mono border border-white/10">
+                                  {formatDuration(game.duration)}
+                                </span>
+                              )}
+                              <span className={cn('text-xs font-logik-extended-bold', teamAWonGame ? 'text-pdl-gold' : 'text-white/40')}>
+                                {teamAWonGame ? `★ ${match.teamA.name}` : match.teamA.name}
+                              </span>
+                              <span className="text-white/20 text-xs">vs</span>
+                              <span className={cn('text-xs font-logik-extended-bold', !teamAWonGame ? 'text-pdl-gold' : 'text-white/40')}>
+                                {!teamAWonGame ? `★ ${match.teamB.name}` : match.teamB.name}
+                              </span>
+                            </div>
+                            <a
+                              href={`https://www.opendota.com/matches/${game.id}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-1.5 text-xs text-white/30 hover:text-white/60 transition-colors shrink-0 ml-3"
+                            >
+                              OpenDota
+                              <ExternalLink className="w-3 h-3" />
+                            </a>
+                          </div>
+
+                          {/* Players grid */}
+                          {!game.is_forfeit && (leftPerfs.length > 0 || rightPerfs.length > 0) && (
+                            <div className="grid grid-cols-2 divide-x divide-white/10">
+                              {/* Team A */}
+                              <div className={cn('p-3', !teamAWonGame && 'opacity-60')}>
+                                <div className="flex items-center gap-1.5 mb-2">
+                                  <Shield className="w-3 h-3 text-white/30" />
+                                  <span className="text-xs font-logik-extended-bold text-white/60 uppercase tracking-wide truncate">
+                                    {match.teamA.name}
+                                  </span>
+                                  {teamAWonGame && <span className="ml-auto text-pdl-gold text-xs shrink-0">✓ Win</span>}
+                                </div>
+                                <div className="space-y-1">
+                                  {leftPerfs.slice(0, 5).map((p, i) => (
+                                    <div key={i} className="flex items-center justify-between gap-2 text-xs">
+                                      <span className="text-white/70 truncate" title={getHeroName(p.heroId)}>{getHeroName(p.heroId)}</span>
+                                      <span className="font-mono shrink-0 flex items-center gap-1.5">
+                                        <span>
+                                          <span className="text-green-400/80">{p.kills}</span>
+                                          <span className="text-white/20">/</span>
+                                          <span className="text-red-400/80">{p.deaths}</span>
+                                          <span className="text-white/20">/</span>
+                                          <span className="text-blue-400/80">{p.assists}</span>
+                                        </span>
+                                        {p.gpm > 0 && (
+                                          <span className="text-[10px]">
+                                            <span className="text-yellow-400/60">{p.gpm}</span>
+                                            <span className="text-white/15">g</span>
+                                          </span>
+                                        )}
+                                      </span>
+                                    </div>
+                                  ))}
+                                  {leftPerfs.length === 0 && <p className="text-xs text-white/20 italic">Brak danych</p>}
+                                </div>
+                              </div>
+
+                              {/* Team B */}
+                              <div className={cn('p-3', teamAWonGame && 'opacity-60')}>
+                                <div className="flex items-center gap-1.5 mb-2">
+                                  <Sword className="w-3 h-3 text-white/30" />
+                                  <span className="text-xs font-logik-extended-bold text-white/60 uppercase tracking-wide truncate">
+                                    {match.teamB.name}
+                                  </span>
+                                  {!teamAWonGame && <span className="ml-auto text-pdl-gold text-xs shrink-0">✓ Win</span>}
+                                </div>
+                                <div className="space-y-1">
+                                  {rightPerfs.slice(0, 5).map((p, i) => (
+                                    <div key={i} className="flex items-center justify-between gap-2 text-xs">
+                                      <span className="text-white/70 truncate" title={getHeroName(p.heroId)}>{getHeroName(p.heroId)}</span>
+                                      <span className="font-mono shrink-0 flex items-center gap-1.5">
+                                        <span>
+                                          <span className="text-green-400/80">{p.kills}</span>
+                                          <span className="text-white/20">/</span>
+                                          <span className="text-red-400/80">{p.deaths}</span>
+                                          <span className="text-white/20">/</span>
+                                          <span className="text-blue-400/80">{p.assists}</span>
+                                        </span>
+                                        {p.gpm > 0 && (
+                                          <span className="text-[10px]">
+                                            <span className="text-yellow-400/60">{p.gpm}</span>
+                                            <span className="text-white/15">g</span>
+                                          </span>
+                                        )}
+                                      </span>
+                                    </div>
+                                  ))}
+                                  {rightPerfs.length === 0 && <p className="text-xs text-white/20 italic">Brak danych</p>}
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {!gamesLoading && gamesData.length === 0 && (
+                  <p className="text-center text-white/20 text-sm flex items-center justify-center gap-2 py-4">
+                    <Trophy className="w-4 h-4" />
+                    Brak zaimportowanych gier
+                  </p>
+                )}
+
+                {/* Standin info */}
+                {match.standinInfo && Object.keys(match.standinInfo).length > 0 && (
+                  <div className="mt-6 rounded-xl border border-white/10 bg-white/[0.02] p-4">
+                    <p className="text-xs font-logik-extended-bold text-white/40 uppercase tracking-widest mb-3 flex items-center gap-2">
+                      <Users className="w-3 h-3" />
                       Zastępstwa
                     </p>
-                    <div className="space-y-2 text-sm">
+                    <div className="space-y-2 text-xs text-white/50">
                       {Object.entries(match.standinInfo).map(([teamId, info]) => (
                         <div key={teamId}>
-                          <p className="font-medium">
+                          <p className="font-bold text-white/70">
                             {teamId === match.teamA.id ? match.teamA.name : match.teamB.name}
                           </p>
-                          <p className="text-muted-foreground">
-                            Niedostępni: {info.unavailablePlayers.join(', ')}
-                          </p>
-                          <p className="text-muted-foreground">
-                            Zastępstwa: {info.standins.join(', ')}
-                          </p>
+                          <p>Niedostępni: {info.unavailablePlayers.join(', ')}</p>
+                          <p>Zastępstwa: {info.standins.join(', ')}</p>
                         </div>
                       ))}
                     </div>
-                  </CardContent>
-                </Card>
-              )}
-            </TabsContent>
-
-            <TabsContent value="games" className="space-y-4">
-              {match.game_ids && match.game_ids.length > 0 ? (
-                <div className="space-y-3">
-                  {match.game_ids.map((gameId, index) => (
-                    <Card key={gameId}>
-                      <CardContent className="pt-6">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="font-semibold">Gra {index + 1}</p>
-                            <p className="text-sm text-muted-foreground">Match ID: {gameId}</p>
-                          </div>
-                          <a
-                            href={`https://www.opendota.com/matches/${gameId}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-sm text-primary hover:underline flex items-center gap-1"
-                          >
-                            OpenDota
-                            <ExternalLink className="h-3 w-3" />
-                          </a>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-center text-muted-foreground py-8">
-                  Brak dostępnych informacji o grach
-                </p>
-              )}
-            </TabsContent>
-
-            <TabsContent value="performances" className="space-y-4">
-              {match.playerPerformances && match.playerPerformances.length > 0 ? (
-                <div className="space-y-6">
-                  {/* Team A Players */}
-                  <div>
-                    <p className="font-semibold mb-3">{match.teamA.name}</p>
-                    <div className="space-y-2">
-                      {match.playerPerformances
-                        .filter(p => p.teamId === match.teamA.id)
-                        .map((perf, i) => (
-                          <Card key={i}>
-                            <CardContent className="py-3">
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                  <div className="text-sm">
-                                    <p className="font-medium">{perf.playerId}</p>
-                                    <p className="text-muted-foreground">{perf.hero}</p>
-                                  </div>
-                                </div>
-                                <div className="flex items-center gap-4 text-sm">
-                                  <div className="text-center">
-                                    <p className="text-muted-foreground text-xs">K/D/A</p>
-                                    <p className="font-semibold">{perf.kills}/{perf.deaths}/{perf.assists}</p>
-                                  </div>
-                                  <div className="text-center">
-                                    <p className="text-muted-foreground text-xs">GPM/XPM</p>
-                                    <p className="font-semibold">{perf.gpm}/{perf.xpm}</p>
-                                  </div>
-                                  <div className="text-center">
-                                    <p className="text-muted-foreground text-xs">FP</p>
-                                    <p className="font-bold" style={{ color: divisionColor }}>
-                                      {perf.fantasyPoints.toFixed(1)}
-                                    </p>
-                                  </div>
-                                </div>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        ))}
-                    </div>
                   </div>
+                )}
+              </>
+            )}
 
-                  {/* Team B Players */}
-                  <div>
-                    <p className="font-semibold mb-3">{match.teamB.name}</p>
-                    <div className="space-y-2">
-                      {match.playerPerformances
-                        .filter(p => p.teamId === match.teamB.id)
-                        .map((perf, i) => (
-                          <Card key={i}>
-                            <CardContent className="py-3">
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                  <div className="text-sm">
-                                    <p className="font-medium">{perf.playerId}</p>
-                                    <p className="text-muted-foreground">{perf.hero}</p>
-                                  </div>
-                                </div>
-                                <div className="flex items-center gap-4 text-sm">
-                                  <div className="text-center">
-                                    <p className="text-muted-foreground text-xs">K/D/A</p>
-                                    <p className="font-semibold">{perf.kills}/{perf.deaths}/{perf.assists}</p>
-                                  </div>
-                                  <div className="text-center">
-                                    <p className="text-muted-foreground text-xs">GPM/XPM</p>
-                                    <p className="font-semibold">{perf.gpm}/{perf.xpm}</p>
-                                  </div>
-                                  <div className="text-center">
-                                    <p className="text-muted-foreground text-xs">FP</p>
-                                    <p className="font-bold" style={{ color: divisionColor }}>
-                                      {perf.fantasyPoints.toFixed(1)}
-                                    </p>
-                                  </div>
-                                </div>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        ))}
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <p className="text-center text-muted-foreground py-8">
-                  Brak dostępnych statystyk graczy
+            {/* Upcoming */}
+            {!isCompleted && !isLive && matchDate && (
+              <div className="text-center space-y-1">
+                <p className="text-white/30 text-xs font-mono uppercase tracking-widest">Planowany termin</p>
+                <p className="text-white/70 font-logik-extended-bold text-lg">
+                  {format(matchDate, 'dd MMMM yyyy', { locale: pl })}
                 </p>
-              )}
-            </TabsContent>
-          </Tabs>
-        ) : (
-          <Card className="mt-6">
-            <CardContent className="py-8 text-center">
-              <Calendar className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-              <p className="text-lg font-semibold mb-2">Mecz zaplanowany</p>
-              <p className="text-muted-foreground">
-                Statystyki będą dostępne po zakończeniu meczu
-              </p>
-            </CardContent>
-          </Card>
-        )}
+                <p className="font-mono text-2xl" style={{ color: divisionColor || '#e5b44d' }}>
+                  {format(matchDate, 'HH:mm')}
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
       </DialogContent>
     </Dialog>
   );

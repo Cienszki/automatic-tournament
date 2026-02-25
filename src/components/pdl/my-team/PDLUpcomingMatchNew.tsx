@@ -108,7 +108,7 @@ export function PDLUpcomingMatch({
   // Reschedule request status
   const rescheduleRequest = match.rescheduleRequest;
   const hasActiveRequest = rescheduleRequest && rescheduleRequest.status === 'pending';
-  const isRequestFromUs = hasActiveRequest && rescheduleRequest.requestedBy === myTeamId;
+  const isRequestFromUs = rescheduleRequest && rescheduleRequest.requestedBy === myTeamId;
   const isRequestFromOpponent = hasActiveRequest && rescheduleRequest.requestedBy !== myTeamId;
 
   // Calculate allowed date range (±3 days from ORIGINAL scheduled date)
@@ -126,28 +126,12 @@ export function PDLUpcomingMatch({
   const hasPendingItems = hasActiveRequest || myPendingStandins > 0 || opponentPendingStandins > 0;
 
   const handleSubmitReschedule = async () => {
-    console.log('[PDLUpcomingMatch] handleSubmitReschedule called', { 
-      matchId: match.id, 
-      selectedDate, 
-      hasHandler: !!onRequestReschedule,
-      isCaptain 
-    });
-    
-    if (!selectedDate) {
-      console.warn('[PDLUpcomingMatch] No selectedDate');
-      return;
-    }
-    
-    if (!onRequestReschedule) {
-      console.warn('[PDLUpcomingMatch] No onRequestReschedule handler provided');
-      return;
-    }
+    if (!selectedDate) return;
+    if (!onRequestReschedule) return;
     
     setLoading(true);
     try {
-      console.log('[PDLUpcomingMatch] Calling onRequestReschedule with', { matchId: match.id, selectedDate });
       await onRequestReschedule(match.id, selectedDate);
-      console.log('[PDLUpcomingMatch] onRequestReschedule completed successfully');
       setShowReschedule(false);
       setSelectedDate('');
     } catch (error) {
@@ -158,16 +142,10 @@ export function PDLUpcomingMatch({
   };
 
   const handleApproveReschedule = async () => {
-    console.log('[PDLUpcomingMatch] handleApproveReschedule called', { matchId: match.id, hasHandler: !!onApproveReschedule });
-    if (!onApproveReschedule) {
-      console.warn('[PDLUpcomingMatch] No onApproveReschedule handler');
-      return;
-    }
+    if (!onApproveReschedule) return;
     setLoading(true);
     try {
-      console.log('[PDLUpcomingMatch] Calling onApproveReschedule...');
       await onApproveReschedule(match.id);
-      console.log('[PDLUpcomingMatch] onApproveReschedule completed');
     } catch (error) {
       console.error('[PDLUpcomingMatch] Error in handleApproveReschedule:', error);
     } finally {
@@ -176,16 +154,10 @@ export function PDLUpcomingMatch({
   };
 
   const handleRejectReschedule = async () => {
-    console.log('[PDLUpcomingMatch] handleRejectReschedule called', { matchId: match.id, hasHandler: !!onRejectReschedule });
-    if (!onRejectReschedule) {
-      console.warn('[PDLUpcomingMatch] No onRejectReschedule handler');
-      return;
-    }
+    if (!onRejectReschedule) return;
     setLoading(true);
     try {
-      console.log('[PDLUpcomingMatch] Calling onRejectReschedule...');
       await onRejectReschedule(match.id);
-      console.log('[PDLUpcomingMatch] onRejectReschedule completed');
     } catch (error) {
       console.error('[PDLUpcomingMatch] Error in handleRejectReschedule:', error);
     } finally {
@@ -203,7 +175,7 @@ export function PDLUpcomingMatch({
         {/* Opponent logo */}
         <div className="relative w-14 h-14 rounded-lg overflow-hidden border border-white/10 bg-black/40 flex-shrink-0">
           <Image
-            src={opponentTeam?.logoUrl || opponent?.logoUrl || '/placeholder-team.png'}
+            src={opponentTeam?.logoUrl || opponent?.logoUrl || '/placeholder-team.svg'}
             alt={opponent?.name || 'Opponent'}
             fill
             className="object-cover"
@@ -273,7 +245,11 @@ export function PDLUpcomingMatch({
                   completed: standinRequests.length === 0 || standinRequests.every(r => r.status === 'approved' || r.status === 'appeal_approved'),
                   required: standinRequests.length > 0,
                   icon: UserPlus,
-                  warning: standinRequests.some(r => r.status === 'pending') ? 'Czekasz na odpowiedź przeciwnika' : undefined,
+                  warning: standinRequests.some(r => r.status === 'pending') 
+                    ? 'Czekasz na odpowiedź przeciwnika' 
+                    : standinRequests.some(r => r.status === 'appeal_pending')
+                    ? 'Oczekiwanie na decyzję admina'
+                    : undefined,
                 },
                 {
                   id: 'coach',
@@ -343,15 +319,39 @@ export function PDLUpcomingMatch({
 
             {/* Outgoing reschedule request */}
             {isRequestFromUs && (
-              <div className="rounded-lg border border-blue-500/30 bg-blue-500/10 p-4 space-y-3">
+              <div className={cn(
+                "rounded-lg border p-4 space-y-3",
+                rescheduleRequest?.status === 'approved' 
+                  ? "border-green-500/30 bg-green-500/10" 
+                  : rescheduleRequest?.status === 'rejected'
+                  ? "border-red-500/30 bg-red-500/10"
+                  : "border-blue-500/30 bg-blue-500/10"
+              )}>
                 <div className="flex items-start gap-2">
-                  <Clock className="w-4 h-4 text-blue-400 flex-shrink-0 mt-0.5" />
-                  <p className="text-sm text-blue-200">
-                    Czekasz na odpowiedź przeciwnika na propozycję zmiany terminu:&nbsp;
-                    <span className="font-logik-extended-bold">
-                      {rescheduleRequest?.proposedDate ? formatDatePL(rescheduleRequest.proposedDate) : '-'}
-                    </span>
-                  </p>
+                  {rescheduleRequest?.status === 'approved' ? (
+                    <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" />
+                  ) : rescheduleRequest?.status === 'rejected' ? (
+                    <XCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
+                  ) : (
+                    <Clock className="w-4 h-4 text-blue-400 flex-shrink-0 mt-0.5" />
+                  )}
+                  <div>
+                    <p className={cn(
+                      "text-sm font-logik-extended-bold",
+                      rescheduleRequest?.status === 'approved' 
+                        ? "text-green-400" 
+                        : rescheduleRequest?.status === 'rejected'
+                        ? "text-red-400"
+                        : "text-blue-200"
+                    )}>
+                      {rescheduleRequest?.status === 'approved' && 'Zmiana terminu zatwierdzona'}
+                      {rescheduleRequest?.status === 'rejected' && 'Zmiana terminu odrzucona'}
+                      {rescheduleRequest?.status === 'pending' && 'Czekasz na odpowiedź przeciwnika'}
+                    </p>
+                    <p className="text-xs text-white/60 mt-1">
+                      Proponowana data: <span className="font-logik-extended-bold">{rescheduleRequest?.proposedDate ? formatDatePL(rescheduleRequest.proposedDate) : '-'}</span>
+                    </p>
+                  </div>
                 </div>
                 <Button
                   size="sm"
@@ -366,7 +366,7 @@ export function PDLUpcomingMatch({
                   disabled={loading}
                 >
                   {loading ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <XCircle className="w-4 h-4 mr-1" />}
-                  Anuluj prośbę
+                  {rescheduleRequest?.status === 'pending' ? 'Anuluj prośbę' : 'Usuń wniosek'}
                 </Button>
               </div>
             )}
@@ -481,7 +481,7 @@ export function PDLUpcomingMatch({
           <PDLMatchRules
             leagueId={19206}
             leagueName="POLISH DOTA LEAGUE"
-            isGame1Host={isTeamA}
+            isGame1Host={true}
             hostTeamName={match.teamA?.name}
             opponentTeamName={match.teamB?.name}
             timePenalty={timePenalty}

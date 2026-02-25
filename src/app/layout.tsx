@@ -19,10 +19,32 @@ const spaceMono = Space_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'dota2inhouse.pl - Polskie Turnieje Dota 2',
+  metadataBase: new URL('https://dota2inhouse.pl'),
+  title: {
+    default: 'dota2inhouse.pl - Polskie Turnieje Dota 2',
+    template: '%s | dota2inhouse.pl',
+  },
   description: 'Platforma dla polskiej społeczności Dota 2 - turnieje, ligi i wydarzenia esportowe',
-  icons: {
-    icon: '/favicon.png',
+  openGraph: {
+    type: 'website',
+    siteName: 'dota2inhouse.pl',
+    title: 'dota2inhouse.pl - Polskie Turnieje Dota 2',
+    description: 'Platforma dla polskiej społeczności Dota 2 - turnieje, ligi i wydarzenia esportowe',
+    url: 'https://dota2inhouse.pl',
+    images: [
+      {
+        url: '/logos/pd2ih/pd2ih-logo.png',
+        width: 512,
+        height: 512,
+        alt: 'PD2IH – Polish Dota 2 Inhouse',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary',
+    title: 'dota2inhouse.pl - Polskie Turnieje Dota 2',
+    description: 'Platforma dla polskiej społeczności Dota 2 - turnieje, ligi i wydarzenia esportowe',
+    images: ['/logos/pd2ih/pd2ih-logo.png'],
   },
 };
 

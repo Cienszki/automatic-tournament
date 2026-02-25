@@ -5,15 +5,21 @@ import { Trophy } from "lucide-react";
 import { PlayoffMatch } from "@/lib/definitions";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
+import { useTranslations } from "next-intl";
 
 interface PlayoffBracketProps {
     matches: PlayoffMatch[];
 }
 
 export function PlayoffBracket({ matches }: PlayoffBracketProps) {
+    const t = useTranslations('pdlPlayoffs');
     // Filter matches by round (assuming 2 rounds: semis -> final)
     const semiFinals = matches.filter(m => m.round === 1).sort((a, b) => a.position - b.position);
     const grandFinal = matches.find(m => m.round === 2);
+
+    // Always show 2 semi-final slots, filling with TBA placeholders if not yet set by admin
+    const semi1 = semiFinals.find(m => m.position === 1) ?? null;
+    const semi2 = semiFinals.find(m => m.position === 2) ?? null;
 
     return (
         <div className="w-full h-full flex items-center justify-center p-4">
@@ -21,9 +27,8 @@ export function PlayoffBracket({ matches }: PlayoffBracketProps) {
 
                 {/* Semi Finals Column */}
                 <div className="flex flex-col gap-16 relative z-10">
-                    {semiFinals.map((match, idx) => (
-                        <BracketMatchCard key={match.id} match={match} title={`Semifinal ${idx + 1}`} />
-                    ))}
+                    <BracketMatchCard key="semi-1" match={semi1} title={t('semifinal1')} />
+                    <BracketMatchCard key="semi-2" match={semi2} title={t('semifinal2')} />
                 </div>
 
                 {/* Connectors Layer */}
@@ -41,13 +46,7 @@ export function PlayoffBracket({ matches }: PlayoffBracketProps) {
                 <div className="flex flex-col justify-center relative z-10 pl-16">
                     <div className="relative">
                         <Trophy className="absolute -top-12 left-1/2 -translate-x-1/2 w-8 h-8 text-pdl-gold animate-pulse" />
-                        {grandFinal ? (
-                            <BracketMatchCard match={grandFinal} title="Grand Final" isFinal />
-                        ) : (
-                            <div className="w-[280px] h-[100px] flex items-center justify-center border border-dashed border-white/10 rounded-xl text-gray-600 font-logik-extended-bold">
-                                TBD
-                            </div>
-                        )}
+                        <BracketMatchCard match={grandFinal ?? null} title={t('grandFinal')} isFinal />
                     </div>
                 </div>
 
@@ -56,8 +55,7 @@ export function PlayoffBracket({ matches }: PlayoffBracketProps) {
     );
 }
 
-function BracketMatchCard({ match, title, isFinal }: { match: PlayoffMatch; title: string; isFinal?: boolean }) {
-    const isCompleted = match.status === 'completed';
+function BracketMatchCard({ match, title, isFinal }: { match: PlayoffMatch | null; title: string; isFinal?: boolean }) {
     const borderColor = isFinal ? "border-pdl-gold/30" : "border-white/10";
     const glowing = isFinal ? "shadow-[0_0_30px_rgba(255,215,0,0.1)]" : "";
 
@@ -75,20 +73,20 @@ function BracketMatchCard({ match, title, isFinal }: { match: PlayoffMatch; titl
                 <div className="relative z-10 divide-y divide-white/5">
                     {/* Team A */}
                     <TeamRow
-                        team={match.teamA}
-                        score={match.result?.teamAScore}
-                        isWinner={match.result?.winnerId === match.teamA?.id}
+                        team={match?.teamA}
+                        score={match?.result?.teamAScore}
+                        isWinner={match?.result?.winnerId === match?.teamA?.id}
                     />
                     {/* Team B */}
                     <TeamRow
-                        team={match.teamB}
-                        score={match.result?.teamBScore}
-                        isWinner={match.result?.winnerId === match.teamB?.id}
+                        team={match?.teamB}
+                        score={match?.result?.teamBScore}
+                        isWinner={match?.result?.winnerId === match?.teamB?.id}
                     />
                 </div>
 
                 {/* Status indicator */}
-                {match.status === 'live' && (
+                {match?.status === 'live' && (
                     <div className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full animate-pulse" />
                 )}
             </div>
@@ -97,9 +95,10 @@ function BracketMatchCard({ match, title, isFinal }: { match: PlayoffMatch; titl
 }
 
 function TeamRow({ team, score, isWinner, points }: { team?: { id: string; name: string; logoUrl?: string }; score?: number; isWinner?: boolean; points?: number }) {
+    const t = useTranslations('pdlPlayoffs');
     if (!team) return (
         <div className="h-12 flex items-center px-4 md:px-6 bg-black/20 text-gray-600 font-logik item-center justify-center italic text-sm">
-            TBD
+            {t('tbd')}
         </div>
     );
 

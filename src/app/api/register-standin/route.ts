@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAdminDb, ensureAdminInitialized } from '@/lib/admin';
+import { checkRateLimit, LIMIT_REGISTRATION } from '@/lib/rate-limit';
 
 export async function POST(req: NextRequest) {
+  const rateLimitRes = checkRateLimit(req, 'register-standin', LIMIT_REGISTRATION);
+  if (rateLimitRes) return rateLimitRes;
+
   try {
     ensureAdminInitialized();
     const db = getAdminDb();

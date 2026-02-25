@@ -2,8 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSteam64IdFromUrl, getOpenDotaAccountIdFromUrl } from '@/lib/server-utils';
 import { getAdminDb, ensureAdminInitialized } from '@/lib/admin';
 import { fetchSteamProfile } from '@/lib/steam-id-utils';
+import { checkRateLimit, LIMIT_STEAM_VALIDATE } from '@/lib/rate-limit';
 
 export async function POST(request: NextRequest) {
+  const rateLimitRes = checkRateLimit(request, 'validate-steam', LIMIT_STEAM_VALIDATE);
+  if (rateLimitRes) return rateLimitRes;
+
   try {
     const { steamProfileUrl } = await request.json();
 

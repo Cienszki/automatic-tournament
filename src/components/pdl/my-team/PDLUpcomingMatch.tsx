@@ -90,7 +90,7 @@ export function PDLUpcomingMatch({
                 {/* Opponent logo */}
                 <div className="relative w-16 h-16 rounded-lg overflow-hidden border border-white/10 bg-black/40 flex-shrink-0">
                     <Image
-                        src={opponentTeam?.logoUrl || opponent?.logoUrl || '/placeholder-team.png'}
+                        src={opponentTeam?.logoUrl || opponent?.logoUrl || '/placeholder-team.svg'}
                         alt={opponent?.name || 'Opponent'}
                         fill
                         className="object-cover"

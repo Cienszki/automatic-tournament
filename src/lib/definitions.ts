@@ -109,6 +109,15 @@ export interface Match {
     };
   };
   standinRequests?: PDLStandinRequest[];
+  // Forfeit/walkover metadata
+  forfeit?: {
+    forfeitingTeam: 'teamA' | 'teamB'; // which team forfeited
+    scope: 'series' | 'games';          // entire series or specific games
+    forfeitedGameNumbers?: number[];    // [1], [2], or [1,2] for game-level
+    reason?: string;
+    issuedAt: string;   // ISO date string
+    issuedBy: string;   // admin userId
+  };
 }
 
 export interface PlayerPerformanceInMatch {

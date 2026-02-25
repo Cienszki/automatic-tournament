@@ -7,6 +7,7 @@ import { getAllGroups, getAllTeams } from "@/lib/firestore";
 import type { Group, GroupStanding } from "@/lib/definitions";
 import { LayoutGrid, AlertTriangle } from 'lucide-react';
 import { useState, useEffect } from "react";
+import { LoadingScreen } from '@/components/ui/LoadingScreen';
 
 // Hydrate groups with team data
 async function getHydratedGroupsData(): Promise<Group[]> {
@@ -102,18 +103,7 @@ export default function GroupsPage() {
   }
 
   if (loading) {
-    return (
-      <div className="space-y-6">
-        <div className="flex items-center gap-3">
-          <LayoutGrid className="h-8 w-8" style={{ color: theme.primaryColor }} />
-          <h1 className="text-3xl font-bold">Faza grupowa</h1>
-        </div>
-        <div className="text-center py-10">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-3"></div>
-          <p className="text-muted-foreground">Ładowanie grup...</p>
-        </div>
-      </div>
-    );
+    return <LoadingScreen />;
   }
 
   const sortedGroups = [...groups].sort((a, b) => a.name.localeCompare(b.name));

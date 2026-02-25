@@ -53,24 +53,29 @@ export function PlayoffProvider({ children }: { children: React.ReactNode }) {
                     getPlayoffStatus()
                 ]);
             } catch (firebaseError) {
-                console.warn('Firebase error, using test data:', firebaseError);
-                
-                // Fallback to test data for development
+                // In development: fall back to local test data so the bracket UI
+                // can be worked on without a live Firebase connection.
+                // In production: surface the real error so it doesn't go unnoticed.
+                if (process.env.NODE_ENV !== 'development') {
+                    throw firebaseError;
+                }
+
+                console.warn('[PlayoffContext] Firebase error, falling back to test data (dev only):', firebaseError);
+
                 try {
                     const response = await fetch('/test-playoff-data.json');
                     if (response.ok) {
                         const testData = await response.json();
                         data = testData as PlayoffData;
-                        
-                        // Calculate test status
+
                         const totalMatches = testData.brackets.reduce((sum: number, bracket: any) => sum + bracket.matches.length, 0);
-                        const completedMatches = testData.brackets.reduce((sum: number, bracket: any) => 
+                        const completedMatches = testData.brackets.reduce((sum: number, bracket: any) =>
                             sum + bracket.matches.filter((m: any) => m.status === 'completed').length, 0
                         );
-                        const liveMatches = testData.brackets.reduce((sum: number, bracket: any) => 
+                        const liveMatches = testData.brackets.reduce((sum: number, bracket: any) =>
                             sum + bracket.matches.filter((m: any) => m.status === 'live').length, 0
                         );
-                        
+
                         status = {
                             totalMatches,
                             completedMatches,

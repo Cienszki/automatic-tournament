@@ -3,6 +3,27 @@ import createNextIntlPlugin from 'next-intl/plugin';
 
 const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts');
 
+// ─── Build-time environment variable validation ────────────────────────────────
+// NEXT_PUBLIC_* vars are baked into the client bundle at build time.
+// If any are missing the app will silently break, so we fail the build loudly.
+const REQUIRED_ENV_VARS = [
+  'NEXT_PUBLIC_FIREBASE_API_KEY',
+  'NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN',
+  'NEXT_PUBLIC_FIREBASE_PROJECT_ID',
+  'NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET',
+  'NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID',
+  'NEXT_PUBLIC_FIREBASE_APP_ID',
+];
+
+const missingVars = REQUIRED_ENV_VARS.filter((v) => !process.env[v]);
+if (missingVars.length > 0) {
+  throw new Error(
+    `\n\nMissing required environment variables:\n` +
+    missingVars.map((v) => `  ✗ ${v}`).join('\n') +
+    `\n\nCreate a .env.local file based on .env.local.example.\n`
+  );
+}
+
 const nextConfig: NextConfig = {
     // Exclude archive folder from build
     typescript: {
@@ -28,14 +49,6 @@ const nextConfig: NextConfig = {
         remotePatterns: [
             {
                 protocol: 'https',
-                hostname: 'via.placeholder.com',
-            },
-            {
-                protocol: 'https',
-                hostname: 'placehold.co',
-            },
-            {
-                protocol: 'https',
                 hostname: 'steamcdn-a.akamaihd.net',
             },
             {
@@ -58,6 +71,8 @@ const nextConfig: NextConfig = {
     },
     async redirects() {
         return [
+            // Legacy admin redirect
+            { source: '/admin', destination: '/letnia/admin', permanent: true },
             // Legacy URL redirects to Letnia tournament
             { source: '/teams', destination: '/letnia/teams', permanent: true },
             { source: '/groups', destination: '/letnia/groups', permanent: true },

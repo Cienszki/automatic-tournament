@@ -1,7 +1,8 @@
 // src/app/api/register-pdl-team/route.ts
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { registerPDLTeam, PDLTeamRegistrationData } from '@/lib/pdl-registration-actions';
 import { getAdminAuth, ensureAdminInitialized } from '@/server/lib/admin';
+import { checkRateLimit, LIMIT_REGISTRATION } from '@/lib/rate-limit';
 
 /**
  * POST /api/register-pdl-team
@@ -21,7 +22,10 @@ import { getAdminAuth, ensureAdminInitialized } from '@/server/lib/admin';
  *   "coach": {...}
  * }
  */
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
+    const rateLimitRes = checkRateLimit(req, 'register-pdl-team', LIMIT_REGISTRATION);
+    if (rateLimitRes) return rateLimitRes;
+
     try {
         // Verify authentication
         const authHeader = req.headers.get('Authorization');

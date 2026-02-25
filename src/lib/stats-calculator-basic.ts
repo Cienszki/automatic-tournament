@@ -107,11 +107,13 @@ export async function calculateBasicTournamentStats(
     totalRampages: countMultiKills(performances, 5),
     totalUltraKills: countMultiKills(performances, 4),
     totalTripleKills: countMultiKills(performances, 3),
+    totalDoubleKills: countMultiKills(performances, 2),
     fastestFirstBlood: findFastestFirstBlood(games, performances),
     
     // Heroes & Meta
     mostPickedHero: findMostPickedHero(performances),
     mostBannedHero: findMostBannedHero(games),
+    mostContestedHero: { heroName: 'Unknown', contestCount: 0 },
     highestWinRateHero: findHighestWinRateHero(performances, games),
     mostVersatilePlayer: findMostVersatilePlayer(performances),
     
@@ -137,6 +139,13 @@ export async function calculateBasicTournamentStats(
     totalBuybacks: performances.reduce((sum, perf) => sum + (perf.buybackCount || 0), 0),
     totalCreepsKilled: performances.reduce((sum, perf) => sum + (perf.lastHits || 0), 0),
     totalDenies: performances.reduce((sum, perf) => sum + (perf.denies || 0), 0),
+    totalTowerKills: 0,
+    totalTowerDamage: 0,
+    totalCourierKills: 0,
+    totalNeutralKills: 0,
+    totalLaneKills: 0,
+    totalWardsPlaced: 0,
+    totalRunesPickedUp: 0,
     // totalCouriersKilled: removed from display
     totalFantasyPoints: performances.reduce((sum, perf) => sum + (perf.fantasyPoints || 0), 0),
     mostPlayedRoleHero: 'Unknown',

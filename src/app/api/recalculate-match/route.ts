@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { recalculateMatchScoresAdmin } from '@/lib/admin-match-actions-server';
+import { checkRateLimit, LIMIT_MATCH_IMPORT } from '@/lib/rate-limit';
 
 export async function POST(request: NextRequest) {
+  const rateLimitRes = checkRateLimit(request, 'recalculate-match', LIMIT_MATCH_IMPORT);
+  if (rateLimitRes) return rateLimitRes;
+
   try {
     const { matchId } = await request.json();
     

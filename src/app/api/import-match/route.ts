@@ -1,13 +1,17 @@
 import { FieldValue } from "firebase-admin/firestore";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getAllTeamsAdmin, getAllTournamentPlayersAdmin } from "../../../../server/lib/getAllAdmin";
 import { getAdminDb } from "@/lib/admin";
 import { transformMatchData, fetchOpenDotaMatch, isMatchParsed, requestOpenDotaMatchParse } from "@/lib/opendota";
 import { addUnparsedMatchAdmin } from "@/lib/unparsed-matches-admin";
 import { recalculateMatchScoresAdmin } from "@/lib/admin-match-actions-server";
 import { updateStatsAfterMatchChange } from "@/lib/stats-service-simple";
+import { checkRateLimit, LIMIT_MATCH_IMPORT } from "@/lib/rate-limit";
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
+  const rateLimitRes = checkRateLimit(req, 'import-match', LIMIT_MATCH_IMPORT);
+  if (rateLimitRes) return rateLimitRes;
+
   try {
     const body = await req.json();
     const { openDotaData, openDotaMatchId, radiantTeam, direTeam, matchId } = body;

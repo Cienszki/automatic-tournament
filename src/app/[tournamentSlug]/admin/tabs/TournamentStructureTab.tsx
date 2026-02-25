@@ -44,7 +44,7 @@ export function TournamentStructureTab() {
   // Form state
   const [roundsCount, setRoundsCount] = useState(tournament?.roundsPerSeason || 2);
   const [matchesPerTeamPerRound, setMatchesPerTeamPerRound] = useState(1);
-  const [hasPlayoffs, setHasPlayoffs] = useState(true);
+  const [hasPlayoffs, setHasPlayoffs] = useState<boolean>(tournament?.playoffs?.enabled ?? true);
   const [hasPromotionRelegation, setHasPromotionRelegation] = useState<boolean>(tournament?.promotionRelegationEnabled ?? true);
   const [teamsPromoted, setTeamsPromoted] = useState(1);
   const [teamsRelegated, setTeamsRelegated] = useState(1);
@@ -71,6 +71,7 @@ export function TournamentStructureTab() {
         roundsPerSeason: roundsCount,
         defaultMatchFormat: defaultMatchFormat,
         promotionRelegationEnabled: hasPromotionRelegation,
+        'playoffs.enabled': hasPlayoffs,
         updatedAt: new Date().toISOString(),
       });
 

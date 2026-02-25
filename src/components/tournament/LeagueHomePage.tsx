@@ -6,12 +6,13 @@ import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { useTournament } from '@/context/TournamentContext';
 import { NextMatchCard } from '@/components/pdl/NextMatchCard';
-import { ArrowRight, Trophy, Loader2, Users } from 'lucide-react';
+import { ArrowRight, Trophy, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { usePDLData } from '@/hooks/usePDLData';
 import { useAuth } from '@/context/AuthContext';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { LoadingScreen } from '@/components/ui/LoadingScreen';
 
 // Dynamic imports for heavy components - reduces initial JS bundle
 const HeroSection = dynamic(() => import('@/components/pdl/HeroSection').then(mod => ({ default: mod.HeroSection })), {
@@ -68,14 +69,7 @@ export function LeagueHomePage() {
 
   // Loading state
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-[#050508]">
-        <div className="text-center">
-          <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto mb-4" />
-          <p className="text-muted-foreground">Ładowanie danych...</p>
-        </div>
-      </div>
-    );
+    return <LoadingScreen />;
   }
 
   // Error state

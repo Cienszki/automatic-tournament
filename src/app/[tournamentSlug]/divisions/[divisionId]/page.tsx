@@ -19,6 +19,7 @@ import { Button } from '@/components/ui/button';
 import { ArrowLeft, ArrowRight, Trophy, Calendar, TrendingUp, GitCompare, BarChart3 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
+import { LoadingScreen } from '@/components/ui/LoadingScreen';
 
 export default function DivisionPage({ params }: { params: Promise<{ tournamentSlug: string; divisionId: string }> }) {
   const unwrappedParams = use(params);
@@ -55,11 +56,7 @@ export default function DivisionPage({ params }: { params: Promise<{ tournamentS
   };
 
   if (isTournamentLoading || isDivisionLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-[#050508]">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-      </div>
-    );
+    return <LoadingScreen />;
   }
 
   if (error) {

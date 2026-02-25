@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useTournament } from '@/context/TournamentContext';
+import { LoadingScreen } from '@/components/ui/LoadingScreen';
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,7 +15,6 @@ import {
   ChevronRight,
   ChevronLeft,
   ChevronDown,
-  Loader2,
   MessageSquare,
   BookOpen,
   ExternalLink,
@@ -131,21 +131,7 @@ export default function RulesPage() {
   if (!tournament) return null;
 
   if (loading) {
-    return (
-      <div className="relative text-white overflow-x-hidden min-h-screen">
-        <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
-          <div className="absolute inset-0 z-0 pointer-events-none opacity-60"
-            style={{ background: 'radial-gradient(ellipse at center, transparent 0%, transparent 40%, #000000 100%)' }}
-          />
-        </div>
-        <div className="relative z-10 flex items-center justify-center min-h-[60vh]">
-          <div className="text-center">
-            <Loader2 className="w-12 h-12 animate-spin mx-auto mb-4" style={{ color: theme.primaryColor }} />
-            <p className="text-gray-300 font-logik font-medium tracking-wider uppercase text-sm">Ładowanie regulaminu...</p>
-          </div>
-        </div>
-      </div>
-    );
+    return <LoadingScreen />;
   }
 
   return (

@@ -89,11 +89,11 @@ export async function extractSteamIdFromUrl(
  * Resolve a custom Steam URL to Steam64 ID using Steam Web API
  */
 async function resolveSteamCustomUrl(customUrl: string): Promise<string> {
-    // Check for environment variable - use the same one as server-utils.ts for consistency
-    const apiKey = process.env.NEXT_PUBLIC_STEAM_API_KEY || process.env.STEAM_API_KEY;
+    // Server-only: uses STEAM_API_KEY (must not be exposed to client bundle)
+    const apiKey = process.env.STEAM_API_KEY;
 
     if (!apiKey) {
-        throw new Error('NEXT_PUBLIC_STEAM_API_KEY not configured - cannot resolve custom Steam URLs');
+        throw new Error('STEAM_API_KEY not configured - cannot resolve custom Steam URLs');
     }
 
     // Use v1 endpoint with url_type=1 as in server-utils.ts - this is more reliable
@@ -126,7 +126,7 @@ export async function fetchSteamProfile(steam64: string): Promise<{
     avatarfull: string;
     profileurl: string;
 }> {
-    const apiKey = process.env.STEAM_API_KEY || process.env.NEXT_PUBLIC_STEAM_API_KEY;
+    const apiKey = process.env.STEAM_API_KEY;
 
     if (!apiKey) {
         console.warn('STEAM_API_KEY not configured - returning basic profile data');
@@ -139,7 +139,7 @@ export async function fetchSteamProfile(steam64: string): Promise<{
         };
     }
 
-    const url = `http://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key=${apiKey}&steamids=${steam64}`;
+    const url = `https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key=${apiKey}&steamids=${steam64}`;
 
     try {
         const response = await fetch(url);

@@ -32,7 +32,7 @@ export function QuickLinksSection() {
     {
       title: 'Aktualności',
       icon: <Sparkles className="h-4 w-4" />,
-      href: '/news',
+      href: getTournamentPath('/news'),
       color: 'text-amber-400',
       hoverColor: 'group-hover:text-amber-400',
     },

@@ -10,6 +10,7 @@ import type { Team } from "@/lib/definitions";
 import { useEffect, useState } from "react";
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { LoadingScreen } from '@/components/ui/LoadingScreen';
 
 /**
  * Teams page - lists all teams registered in the tournament
@@ -18,15 +19,35 @@ export default function TeamsPage() {
   const { tournament, theme, isLegacyTournament, getTournamentPath } = useTournament();
   const { isLeague } = useTournamentType();
   const [teams, setTeams] = useState<Team[]>([]);
+  const [divisionRankings, setDivisionRankings] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
 
-  // TODO: Load actual match results for team form
-  // This should query matches from current round and calculate real W/L/D records
-
-  // Generate division ranking (1-based position in division)
-  const generateDivisionRanking = (teamId: string, division: string) => {
-    const seed = teamId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-    return (seed % 8) + 1; // Ranks 1-8
+  // Compute real 1-based position within each division group from team stats.
+  // Sort key: points (W*2+D) desc → name asc as a deterministic tie-break.
+  const computeDivisionRankings = (allTeams: Team[]): Record<string, number> => {
+    const rankings: Record<string, number> = {};
+    const byDivision: Record<string, Team[]> = {};
+    allTeams.forEach(t => {
+      const div = t.divisionId || 'none';
+      if (!byDivision[div]) byDivision[div] = [];
+      byDivision[div].push(t);
+    });
+    Object.values(byDivision).forEach(divTeams => {
+      const getPoints = (t: Team): number => {
+        const stats = (t as any).stats;
+        if (stats?.points !== undefined) return stats.points as number;
+        const w: number = stats?.wins ?? (t as any).wins ?? 0;
+        const d: number = stats?.draws ?? (t as any).draws ?? 0;
+        return w * 2 + d;
+      };
+      [...divTeams]
+        .sort((a, b) => {
+          const diff = getPoints(b) - getPoints(a);
+          return diff !== 0 ? diff : (a.name || '').localeCompare(b.name || '');
+        })
+        .forEach((t, idx) => { rankings[t.id] = idx + 1; });
+    });
+    return rankings;
   };
 
   // Load teams from Firestore
@@ -37,6 +58,7 @@ export default function TeamsPage() {
           // Legacy Letnia data - use existing Firestore structure
           const teamsData = await getAllTeams();
           setTeams(teamsData);
+          setDivisionRankings(computeDivisionRankings(teamsData));
         } else if (tournament?.id) {
           // New tournament structure - load from /tournaments/{id}/teams with players
           const teamsRef = collection(db, 'tournaments', tournament.id, 'teams');
@@ -72,10 +94,8 @@ export default function TeamsPage() {
             return (a.name || '').localeCompare(b.name || '');
           });
 
-          // TODO: Load actual standings data (wins, losses, draws, points)
-          // TODO: Load actual recent form from last 5 matches
-          // For now, teams will display without form bars
           setTeams(teamsData);
+          setDivisionRankings(computeDivisionRankings(teamsData));
         }
       } catch (error) {
         console.error("Failed to load teams:", error);
@@ -90,21 +110,7 @@ export default function TeamsPage() {
   if (!tournament) return null;
 
   if (loading) {
-    return (
-      <div className="space-y-6">
-        <div className="flex items-center gap-3">
-          <Users className="h-8 w-8 text-pdl-gold" />
-          <h1 className="text-3xl font-logik-extended-bold text-white">Drużyny</h1>
-        </div>
-        <div className="text-center py-20 relative">
-          <div className="absolute inset-0 flex items-center justify-center opacity-10">
-            <div className="w-32 h-32 border-4 border-pdl-gold rounded-full animate-spin-slow" />
-          </div>
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-pdl-gold mx-auto mb-3 relative z-10"></div>
-          <p className="text-gray-300 font-logik font-medium tracking-wider uppercase text-sm">Ładowanie drużyn...</p>
-        </div>
-      </div>
-    );
+    return <LoadingScreen />;
   }
 
   return (
@@ -179,7 +185,7 @@ export default function TeamsPage() {
                 <PDLTeamCard
                   key={team.id}
                   team={team}
-                  divisionRanking={generateDivisionRanking(team.id, team.division || '')}
+                  divisionRanking={divisionRankings[team.id]}
                 />
               ) : (
                 <LegacyTeamCard key={team.id} team={team} />

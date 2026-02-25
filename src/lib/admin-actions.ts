@@ -917,6 +917,151 @@ export async function saveExternalGameResultsAdmin(ourMatchId: string, game: any
 }
 
 // --- ADMIN SYNC FUNCTIONS ---
+
+/**
+ * Extract steamId32 from a Steam profile URL synchronously (no API call).
+ * Only works for direct /profiles/{steam64id} URLs. Returns null for vanity URLs.
+ */
+function parseSteamId32FromUrl(url: string): number | null {
+    const profileMatch = url.match(/steamcommunity\.com\/profiles\/(\d+)/);
+    if (profileMatch) {
+        try {
+            return Number(BigInt(profileMatch[1]) - 76561197960265728n);
+        } catch {
+            return null;
+        }
+    }
+    return null;
+}
+
+/**
+ * Resolve steamId32 from a Steam profile URL.
+ * Tries fast synchronous parse first; falls back to Steam API for vanity URLs.
+ */
+async function resolveSteamId32FromUrl(url: string): Promise<number | null> {
+    const fast = parseSteamId32FromUrl(url);
+    if (fast !== null) return fast;
+    try {
+        const { getOpenDotaAccountIdFromUrl } = await import('./server-utils');
+        return await getOpenDotaAccountIdFromUrl(url);
+    } catch {
+        return null;
+    }
+}
+
+/**
+ * Identify tournament teams from an OpenDota match by matching player Steam IDs.
+ *
+ * This is a fallback for when name-based matching fails (e.g. a team was renamed
+ * mid-season). It also accounts for approved standin players: the standin's
+ * steamId32 is resolved from the Steam profile URL stored in the PDLStandinRequest.
+ *
+ * A team is considered identified when at least MIN_MATCHES (3) out of the 5
+ * players on a side match that team's registered roster (including standins).
+ */
+async function identifyTeamsByPlayerIds(
+    openDotaMatch: any,
+    teams: any[],
+    allMatches: Match[]
+): Promise<{ radiantTeam: any; direTeam: any; existingMatch: Match } | null> {
+    const MIN_MATCHES = 3;
+
+    // Split players by side using Dota slot convention (0-127 = radiant, 128+ = dire)
+    const radiantAccountIds = new Set<string>(
+        (openDotaMatch.players ?? [])
+            .filter((p: any) => p.player_slot < 128 && p.account_id != null)
+            .map((p: any) => String(p.account_id))
+    );
+    const direAccountIds = new Set<string>(
+        (openDotaMatch.players ?? [])
+            .filter((p: any) => p.player_slot >= 128 && p.account_id != null)
+            .map((p: any) => String(p.account_id))
+    );
+
+    if (radiantAccountIds.size === 0 && direAccountIds.size === 0) {
+        console.log('[TeamIdentify] No player account IDs in match data — cannot use player fallback');
+        return null;
+    }
+
+    // Build a steamId32 → teamId lookup from registered team rosters
+    const playerToTeam = new Map<string, string>();
+    for (const team of teams) {
+        for (const player of (team.players ?? [])) {
+            const sid = player.steamId32 ?? player.openDotaAccountId;
+            if (sid != null) playerToTeam.set(String(sid), team.id);
+        }
+    }
+
+    // Build a teamId → Set<steamId32> map for approved standins.
+    // Standin Steam IDs come from PDLStandinRequest.standinSteamProfileUrl stored
+    // inside each match document's standinRequests array.
+    const standinsByTeam = new Map<string, Set<string>>();
+    const approvedStandinRequests = allMatches
+        .flatMap(m => m.standinRequests ?? [])
+        .filter(r => r.status === 'approved' || r.status === 'appeal_approved');
+
+    await Promise.all(
+        approvedStandinRequests.map(async (req) => {
+            if (!req.standinSteamProfileUrl) return;
+            const steamId32 = await resolveSteamId32FromUrl(req.standinSteamProfileUrl).catch(() => null);
+            if (steamId32 === null) return;
+            if (!standinsByTeam.has(req.teamId)) standinsByTeam.set(req.teamId, new Set());
+            standinsByTeam.get(req.teamId)!.add(String(steamId32));
+        })
+    );
+
+    // Score how many players on a given side belong to a given team
+    const scoreTeam = (teamId: string, accountIds: Set<string>): number => {
+        let score = 0;
+        for (const accountId of accountIds) {
+            if (playerToTeam.get(accountId) === teamId) score++;
+            else if (standinsByTeam.get(teamId)?.has(accountId)) score++;
+        }
+        return score;
+    };
+
+    let bestRadiantTeam: any = null;
+    let bestRadiantScore = 0;
+    let bestDireTeam: any = null;
+    let bestDireScore = 0;
+
+    for (const team of teams) {
+        if (radiantAccountIds.size > 0) {
+            const score = scoreTeam(team.id, radiantAccountIds);
+            if (score > bestRadiantScore) { bestRadiantScore = score; bestRadiantTeam = team; }
+        }
+        if (direAccountIds.size > 0) {
+            const score = scoreTeam(team.id, direAccountIds);
+            if (score > bestDireScore) { bestDireScore = score; bestDireTeam = team; }
+        }
+    }
+
+    if (!bestRadiantTeam || bestRadiantScore < MIN_MATCHES) {
+        console.log(`[TeamIdentify] Could not identify radiant team — best score: ${bestRadiantScore}/${radiantAccountIds.size}`);
+        return null;
+    }
+    if (!bestDireTeam || bestDireScore < MIN_MATCHES) {
+        console.log(`[TeamIdentify] Could not identify dire team — best score: ${bestDireScore}/${direAccountIds.size}`);
+        return null;
+    }
+    if (bestRadiantTeam.id === bestDireTeam.id) {
+        console.log(`[TeamIdentify] Both sides resolved to the same team (${bestRadiantTeam.name}) — invalid`);
+        return null;
+    }
+
+    console.log(`[TeamIdentify] Player-based identification: Radiant=${bestRadiantTeam.name} (${bestRadiantScore}/5), Dire=${bestDireTeam.name} (${bestDireScore}/5)`);
+
+    const existingMatch = allMatches.find(
+        m => m.teams?.includes(bestRadiantTeam.id) && m.teams?.includes(bestDireTeam.id)
+    );
+    if (!existingMatch) {
+        console.log(`[TeamIdentify] No tournament match document found between ${bestRadiantTeam.name} and ${bestDireTeam.name}`);
+        return null;
+    }
+
+    return { radiantTeam: bestRadiantTeam, direTeam: bestDireTeam, existingMatch };
+}
+
 export async function syncLeagueMatchesAdmin() {
     try {
         console.log(`Starting match sync using Steam API match list...`);
@@ -1029,14 +1174,25 @@ export async function syncLeagueMatchesAdmin() {
                                 console.log(`Created new external match ${matchId} for ${radiantTeam.name} vs ${direTeam.name}`);
                             }
                         } else {
-                            // Fallback - try the original save method (will likely skip if no match document exists)
-                            const { saveGameResultsUnifiedSafe } = await import('./unified-game-save');
-                            const saveResult = await saveGameResultsUnifiedSafe(String(matchId), game, performances, {
-                                logPrefix: '[SyncMatches-Fallback]'
-                            });
-                            if (!saveResult.success) {
-                                console.log(`Skipped fallback game ${game.id}: ${saveResult.errors?.join(', ')}`);
-                                return { success: true, message: `Game ${matchId} skipped (${saveResult.errors?.[0] || 'validation failed'}).`, skipped: true };
+                            // Name-based matching failed — team may have been renamed mid-season.
+                            // Fall back to player Steam ID-based identification (accounts for standins too).
+                            console.log(`[SyncMatches] Name lookup failed for "${openDotaMatch.radiant_name}" vs "${openDotaMatch.dire_name}". Trying player-based identification...`);
+                            const allMatchesForFallback = await getAllMatchesAdmin();
+                            const playerIdentified = await identifyTeamsByPlayerIds(openDotaMatch, teams, allMatchesForFallback);
+                            if (playerIdentified) {
+                                const { radiantTeam: pRadiant, direTeam: pDire, existingMatch: pMatch } = playerIdentified;
+                                const { saveGameResultsUnifiedSafe } = await import('./unified-game-save');
+                                const saveResult = await saveGameResultsUnifiedSafe(pMatch.id, game, performances, {
+                                    logPrefix: '[SyncMatches-PlayerFallback]'
+                                });
+                                if (!saveResult.success) {
+                                    console.log(`Skipped player-identified game ${game.id} for match ${pMatch.id}: ${saveResult.errors?.join(', ')}`);
+                                    return { success: true, message: `Game ${matchId} skipped (${saveResult.errors?.[0] || 'validation failed'}).`, skipped: true };
+                                }
+                                console.log(`[SyncMatches] Saved game ${game.id} to match ${pMatch.id} via player-based identification (${pRadiant.name} vs ${pDire.name})`);
+                            } else {
+                                console.log(`[SyncMatches] Player-based identification also failed for game ${matchId}. Skipping.`);
+                                return { success: true, message: `Game ${matchId} skipped (teams could not be identified by name or players).`, skipped: true };
                             }
                         }
                         
@@ -1224,14 +1380,25 @@ export async function importManualMatchesAdmin(matchIds: number[]) {
                                 console.log(`Created new external match ${matchId} for ${radiantTeam.name} vs ${direTeam.name}`);
                             }
                         } else {
-                            // Fallback - try the original save method (will likely skip if no match document exists)
-                            const { saveGameResultsUnifiedSafe } = await import('./unified-game-save');
-                            const saveResult = await saveGameResultsUnifiedSafe(String(matchId), game, performances, {
-                                logPrefix: '[SyncMatches-Fallback]'
-                            });
-                            if (!saveResult.success) {
-                                console.log(`Skipped fallback game ${game.id}: ${saveResult.errors?.join(', ')}`);
-                                return { success: true, message: `Game ${matchId} skipped (${saveResult.errors?.[0] || 'validation failed'}).`, skipped: true };
+                            // Name-based matching failed — team may have been renamed mid-season.
+                            // Fall back to player Steam ID-based identification (accounts for standins too).
+                            console.log(`[ManualImport] Name lookup failed for "${openDotaMatch.radiant_name}" vs "${openDotaMatch.dire_name}". Trying player-based identification...`);
+                            const allMatchesForFallback = await getAllMatchesAdmin();
+                            const playerIdentified = await identifyTeamsByPlayerIds(openDotaMatch, teams, allMatchesForFallback);
+                            if (playerIdentified) {
+                                const { radiantTeam: pRadiant, direTeam: pDire, existingMatch: pMatch } = playerIdentified;
+                                const { saveGameResultsUnifiedSafe } = await import('./unified-game-save');
+                                const saveResult = await saveGameResultsUnifiedSafe(pMatch.id, game, performances, {
+                                    logPrefix: '[ManualImport-PlayerFallback]'
+                                });
+                                if (!saveResult.success) {
+                                    console.log(`Skipped player-identified game ${game.id} for match ${pMatch.id}: ${saveResult.errors?.join(', ')}`);
+                                    return { success: true, message: `Game ${matchId} skipped (${saveResult.errors?.[0] || 'validation failed'}).`, skipped: true };
+                                }
+                                console.log(`[ManualImport] Saved game ${game.id} to match ${pMatch.id} via player-based identification (${pRadiant.name} vs ${pDire.name})`);
+                            } else {
+                                console.log(`[ManualImport] Player-based identification also failed for game ${matchId}. Skipping.`);
+                                return { success: true, message: `Game ${matchId} skipped (teams could not be identified by name or players).`, skipped: true };
                             }
                         }
                         

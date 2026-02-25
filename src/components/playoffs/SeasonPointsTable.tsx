@@ -5,12 +5,14 @@ import { Trophy, Medal, Star } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
 import { Team } from "@/lib/definitions";
+import { useTranslations } from "next-intl";
 
 interface SeasonPointsTableProps {
     teams: Team[];
 }
 
 export function SeasonPointsTable({ teams }: SeasonPointsTableProps) {
+    const t = useTranslations('pdlPlayoffs');
     // Sort by seasonPoints descending
     const sortedTeams = [...teams]
         .filter(t => (t.seasonPoints || 0) > 0)
@@ -24,9 +26,9 @@ export function SeasonPointsTable({ teams }: SeasonPointsTableProps) {
                         <div className="p-2 rounded-lg bg-pdl-gold/10 border border-pdl-gold/20">
                             <Trophy className="h-6 w-6 text-pdl-gold" />
                         </div>
-                        <h2 className="text-3xl font-logik-extended-bold text-white tracking-tight">Season Standings</h2>
+                        <h2 className="text-3xl font-logik-extended-bold text-white tracking-tight">{t('seasonStandings')}</h2>
                     </div>
-                    <p className="text-sm text-gray-300 font-logik font-medium ml-1">Top 4 qualify for LAN Finals</p>
+                    <p className="text-sm text-gray-300 font-logik font-medium ml-1">{t('qualifyNote')}</p>
                 </div>
             </div>
 
@@ -38,9 +40,9 @@ export function SeasonPointsTable({ teams }: SeasonPointsTableProps) {
 
                 {/* Header */}
                 <div className="relative z-10 grid grid-cols-12 gap-4 p-4 border-b border-white/5 text-xs font-logik font-medium uppercase tracking-wider text-gray-400 bg-white/[0.02]">
-                    <div className="col-span-1 text-center">#</div>
-                    <div className="col-span-8">Team</div>
-                    <div className="col-span-3 text-right">Points</div>
+                    <div className="col-span-1 text-center">{t('colRank')}</div>
+                    <div className="col-span-8">{t('colTeam')}</div>
+                    <div className="col-span-3 text-right">{t('colPoints')}</div>
                 </div>
 
                 {/* Rows */}
@@ -112,7 +114,7 @@ export function SeasonPointsTable({ teams }: SeasonPointsTableProps) {
                     {sortedTeams.length === 0 && (
                         <div className="p-12 text-center text-gray-400 font-logik font-medium flex flex-col items-center gap-2">
                             <Trophy className="w-8 h-8 opacity-20" />
-                            <p>No season points recorded yet.</p>
+                            <p>{t('noPointsYet')}</p>
                         </div>
                     )}
                 </div>

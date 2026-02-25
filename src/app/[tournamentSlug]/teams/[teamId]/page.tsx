@@ -23,6 +23,7 @@ import { useEffect, useState } from "react";
 import { useTournament } from "@/context/TournamentContext";
 import { collection, doc, getDoc, getDocs, query, where } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { LoadingScreen } from "@/components/ui/LoadingScreen";
 
 // Role icon utility (copied from TeamCard)
 const getRoleIcon = (role: string, primaryColor: string) => {
@@ -153,7 +154,7 @@ export default function TeamPage({ params }: PageProps) {
               setCaptainDiscord(userData?.discordUsername || null);
             }
           } catch (error) {
-            console.log('Could not fetch captain profile (permissions):', error);
+            console.warn('Could not fetch captain profile (permissions):', error);
             setCaptainDiscord(null);
           }
         }
@@ -168,19 +169,7 @@ export default function TeamPage({ params }: PageProps) {
   }, [teamId, tournament, tournamentLoading]);
 
   if (loading || tournamentLoading || !theme) {
-    return (
-      <div className="min-h-[60vh] flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <div className="relative">
-            <div className="w-20 h-20 border-4 border-pdl-gold/20 rounded-full" />
-            <div className="absolute inset-0 w-20 h-20 border-4 border-pdl-gold border-t-transparent rounded-full animate-spin" />
-          </div>
-          <span className="text-pdl-gold font-logik-extended-bold tracking-widest animate-pulse uppercase text-sm">
-            Ładowanie...
-          </span>
-        </div>
-      </div>
-    );
+    return <LoadingScreen />;
   }
 
   if (!team) {

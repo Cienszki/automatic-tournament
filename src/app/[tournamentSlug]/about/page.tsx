@@ -25,9 +25,30 @@ import { organizationConfig } from '@/config/organization';
  * About PDL page - basic explanation of the tournament
  */
 export default function AboutPage() {
-  const { tournament, getTournamentPath } = useTournament();
+  const { tournament, getTournamentPath, theme } = useTournament();
 
   if (!tournament) return null;
+
+  const logoUrl = tournament.theme?.logoUrl || '/logos/pdl/pdl-s1-logo.png';
+
+  // Derive format table from tournament config
+  const matchFmt = (tournament.defaultMatchFormat ?? 'bo2').toUpperCase();
+  const divisionCount = tournament.divisions?.length ?? 3;
+  const format = tournament.type === 'league'
+    ? [
+        { label: 'Format meczów', value: `${matchFmt} (liga), BO3 (playoff)` },
+        { label: 'Liczba dywizji', value: String(divisionCount) },
+        { label: 'Drużyn w dywizji', value: '6-8' },
+        { label: 'Czas trwania sezonu', value: '~4 miesiące' },
+        { label: 'Dzień meczowy', value: 'Środa/Czwartek 20:00' },
+      ]
+    : [
+        { label: 'Format meczów', value: `${matchFmt} (faza grupowa), BO3 (playoff)` },
+        { label: 'Liczba grup', value: String(tournament.groupsCount ?? 4) },
+        { label: 'Drużyn w grupie', value: String(tournament.teamsPerGroup ?? 4) },
+        { label: 'Limit MMR', value: (tournament.mmrCap ?? 24000).toLocaleString('pl-PL') },
+        { label: 'Awans do playoffów', value: `${tournament.playoffs?.teamsCount ?? 8} drużyn` },
+      ];
 
   const features = [
     {
@@ -68,13 +89,7 @@ export default function AboutPage() {
     }
   ];
 
-  const format = [
-    { label: 'Format meczów', value: 'BO2 (liga), BO3 (playoff)' },
-    { label: 'Liczba dywizji', value: '3' },
-    { label: 'Drużyn w dywizji', value: '6-8' },
-    { label: 'Czas trwania sezonu', value: '~4 miesiące' },
-    { label: 'Dzień meczowy', value: 'Środa/Czwartek 20:00' }
-  ];
+  // format is computed above from tournament config
 
   return (
     <div className="min-h-screen relative">
@@ -105,24 +120,23 @@ export default function AboutPage() {
               transition={{ duration: 0.5, delay: 0.2 }}
             >
               <Image
-                src="/logos/pdl/pdl-s1-logo.png"
-                alt="Polish Dota League"
+                src={logoUrl}
+                alt={tournament.name}
                 width={200}
                 height={200}
                 className="mx-auto"
+                unoptimized
               />
             </motion.div>
             
             <h1 className="text-4xl md:text-5xl font-bold mb-6">
               <span className="bg-gradient-to-r from-white via-[#d4d4d4] to-[#8B1538] bg-clip-text text-transparent">
-                Czym jest Polish Dota League?
+                  Czym jest {tournament.shortName || tournament.name}?
               </span>
             </h1>
             
             <p className="text-lg md:text-xl text-[#a0a0a0] leading-relaxed mb-8">
-              Polish Dota League (PDL) to profesjonalna liga Dota 2 dla polskich drużyn. 
-              Niezależnie od poziomu umiejętności, każda drużyna może znaleźć swoje miejsce 
-              w jednej z trzech dywizji i walczyć o awans do samego szczytu.
+              {tournament.description || 'Turniej organizowany przez polską społeczność Dota 2.'}
             </p>
 
             <motion.div

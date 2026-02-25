@@ -1,19 +1,21 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTournament } from '@/context/TournamentContext';
+import { useAuth } from '@/context/AuthContext';
 import { Card, CardHeader, CardContent, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { doc, updateDoc, writeBatch } from 'firebase/firestore';
+import { doc, updateDoc, collection, query, where, getDocs, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { cn } from '@/lib/utils';
+import type { PDLStandinRequest, Team, Match } from '@/lib/definitions';
+import { format } from 'date-fns';
 import { 
   UserPlus,
-  Save,
   RotateCcw,
   Clock,
   CheckCircle2,
@@ -21,21 +23,16 @@ import {
   MessageSquare,
   AlertTriangle,
   Gavel,
+  Loader2,
+  ExternalLink,
+  Undo2,
 } from 'lucide-react';
 
-interface StandinAppeal {
-  id: string;
+interface EnrichedAppeal extends PDLStandinRequest {
   teamName: string;
-  standinName: string;
-  originalPlayer: string;
   matchName: string;
   matchDate: string;
-  reason: string;
-  denialReason: string;
-  status: 'pending' | 'approved' | 'denied';
-  requestedAt: string;
-  deniedBy: string;
-  appealedAt: string;
+  opponentTeamName?: string;
 }
 
 /**
@@ -49,107 +46,290 @@ interface StandinAppeal {
  */
 export function StandinsTab() {
   const { tournament, theme, refetchTournament } = useTournament();
+  const { user } = useAuth();
   const { toast } = useToast();
   
-  // Mock appeals data - only shows requests that were denied and then appealed
-  const [appeals, setAppeals] = useState<StandinAppeal[]>([
-    {
-      id: '1',
-      teamName: 'Team Liquid',
-      standinName: 'miracle-',
-      originalPlayer: 'matu',
-      matchName: 'TL vs OG',
-      matchDate: '2025-02-25',
-      reason: 'Choroba gracza',
-      denialReason: 'Standin jest zbyt silny',
-      status: 'pending',
-      requestedAt: '2025-02-23 14:30',
-      deniedBy: 'OG Captain',
-      appealedAt: '2025-02-23 16:45',
-    },
-  ]);
-  
+  const [pendingAppeals, setPendingAppeals] = useState<EnrichedAppeal[]>([]);
+  const [resolvedAppeals, setResolvedAppeals] = useState<EnrichedAppeal[]>([]);
+  const [allRequests, setAllRequests] = useState<EnrichedAppeal[]>([]);
+  const [loading, setLoading] = useState(true);
   const [adminNote, setAdminNote] = useState<Record<string, string>>({});
-  const [isSaving, setIsSaving] = useState(false);
+  const [processingId, setProcessingId] = useState<string | null>(null);
 
-  const handleSave = async () => {
-    if (!tournament?.id) {
-      toast({
-        title: 'Błąd',
-        description: 'Nie znaleziono ID turnieju',
-        variant: 'destructive',
-      });
-      return;
-    }
+  // Fetch standin appeals from Firestore
+  useEffect(() => {
+    if (!tournament?.id) return;
+    loadAppeals();
+  }, [tournament?.id]);
 
-    setIsSaving(true);
+  const loadAppeals = async () => {
+    if (!tournament?.id) return;
+    
+    setLoading(true);
     try {
-      const batch = writeBatch(db);
+      const standinRequestsRef = collection(db, 'tournaments', tournament.id, 'standinRequests');
       
-      // Update appeal statuses and notes
-      appeals.forEach(appeal => {
-        const appealRef = doc(db, 'tournaments', tournament.id, 'standinAppeals', appeal.id);
-        batch.update(appealRef, {
-          status: appeal.status,
-          adminNote: adminNote[appeal.id] || null,
-          reviewedAt: appeal.status !== 'pending' ? new Date().toISOString() : null,
-          updatedAt: new Date().toISOString(),
-        });
+      // Fetch pending appeals
+      const pendingQuery = query(standinRequestsRef, where('status', '==', 'appeal_pending'));
+      const pendingSnap = await getDocs(pendingQuery);
+      
+      // Fetch resolved appeals (last 20)
+      const resolvedQuery = query(
+        standinRequestsRef, 
+        where('status', 'in', ['appeal_approved', 'appeal_rejected'])
+      );
+      const resolvedSnap = await getDocs(resolvedQuery);
+
+      // Enrich data with team and match info
+      const teamsRef = collection(db, 'tournaments', tournament.id, 'teams');
+      const teamsSnap = await getDocs(teamsRef);
+      const teamsMap = new Map<string, Team>();
+      teamsSnap.forEach(doc => {
+        teamsMap.set(doc.id, { id: doc.id, ...doc.data() } as Team);
       });
 
-      await batch.commit();
-
-      toast({
-        title: 'Zapisano',
-        description: 'Decyzje dotyczące zastępstw zostały zapisane',
+      const matchesRef = collection(db, 'tournaments', tournament.id, 'matches');
+      const matchesSnap = await getDocs(matchesRef);
+      const matchesMap = new Map<string, Match>();
+      matchesSnap.forEach(doc => {
+        matchesMap.set(doc.id, { id: doc.id, ...doc.data() } as Match);
       });
 
-      await refetchTournament();
+      const enrichAppeal = (docSnap: any): EnrichedAppeal => {
+        const data = docSnap.data() as PDLStandinRequest;
+        const team = teamsMap.get(data.teamId);
+        const match = matchesMap.get(data.matchId);
+        
+        let matchName = 'Nieznany mecz';
+        let matchDate = '';
+        let opponentTeamName = '';
+        
+        if (match) {
+          const teamAName = teamsMap.get(match.teamA?.id || '')?.name || 'Team A';
+          const teamBName = teamsMap.get(match.teamB?.id || '')?.name || 'Team B';
+          matchName = `${teamAName} vs ${teamBName}`;
+          matchDate = match.scheduled_for ? format(new Date(match.scheduled_for), 'dd.MM.yyyy HH:mm') : '';
+          
+          // Determine opponent
+          if (match.teamA?.id === data.teamId) {
+            opponentTeamName = teamBName;
+          } else {
+            opponentTeamName = teamAName;
+          }
+        }
+
+        return {
+          ...data,
+          id: docSnap.id,
+          teamName: team?.name || 'Nieznana drużyna',
+          matchName,
+          matchDate,
+          opponentTeamName,
+        };
+      };
+
+      const pending = pendingSnap.docs.map(enrichAppeal);
+      const resolved = resolvedSnap.docs
+        .map(enrichAppeal)
+        .sort((a, b) => new Date(b.appealResolvedAt || b.updatedAt).getTime() - new Date(a.appealResolvedAt || a.updatedAt).getTime())
+        .slice(0, 20);
+
+      // Fetch ALL standin requests for overview
+      const allRequestsSnap = await getDocs(standinRequestsRef);
+      const all = allRequestsSnap.docs
+        .map(enrichAppeal)
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+      setPendingAppeals(pending);
+      setResolvedAppeals(resolved);
+      setAllRequests(all);
     } catch (error) {
-      console.error('Error saving standin appeals:', error);
+      console.error('Error loading standin appeals:', error);
       toast({
         title: 'Błąd',
-        description: 'Nie udało się zapisać decyzji. Spróbuj ponownie.',
+        description: 'Nie udało się załadować odwołań',
         variant: 'destructive',
       });
     } finally {
-      setIsSaving(false);
+      setLoading(false);
     }
   };
 
-  const updateAppealStatus = (appealId: string, status: StandinAppeal['status']) => {
-    setAppeals(appeals.map(a => 
-      a.id === appealId ? { ...a, status } : a
-    ));
+  const handleApproveAppeal = async (appealId: string) => {
+    if (!tournament?.id || !user?.uid) return;
+
+    setProcessingId(appealId);
+    try {
+      const requestRef = doc(db, 'tournaments', tournament.id, 'standinRequests', appealId);
+      await updateDoc(requestRef, {
+        status: 'appeal_approved',
+        appealResolvedBy: user.uid,
+        appealResolvedAt: new Date().toISOString(),
+        appealAdminNote: adminNote[appealId] || null,
+        updatedAt: new Date().toISOString(),
+      });
+
+      toast({
+        title: 'Zatwierdzone',
+        description: 'Odwołanie zostało zatwierdzone. Standin może teraz grać w meczu.',
+      });
+
+      await loadAppeals();
+      setAdminNote(prev => {
+        const newNote = { ...prev };
+        delete newNote[appealId];
+        return newNote;
+      });
+    } catch (error) {
+      console.error('Error approving appeal:', error);
+      toast({
+        title: 'Błąd',
+        description: 'Nie udało się zatwierdzić odwołania',
+        variant: 'destructive',
+      });
+    } finally {
+      setProcessingId(null);
+    }
   };
 
-  const getStatusBadge = (status: StandinAppeal['status']) => {
+  const handleRejectAppeal = async (appealId: string) => {
+    if (!tournament?.id || !user?.uid) return;
+
+    setProcessingId(appealId);
+    try {
+      const requestRef = doc(db, 'tournaments', tournament.id, 'standinRequests', appealId);
+      await updateDoc(requestRef, {
+        status: 'appeal_rejected',
+        appealResolvedBy: user.uid,
+        appealResolvedAt: new Date().toISOString(),
+        appealAdminNote: adminNote[appealId] || null,
+        updatedAt: new Date().toISOString(),
+      });
+
+      toast({
+        title: 'Odrzucone',
+        description: 'Odwołanie zostało odrzucone. Odmowa kapitana jest ostateczna.',
+      });
+
+      await loadAppeals();
+      setAdminNote(prev => {
+        const newNote = { ...prev };
+        delete newNote[appealId];
+        return newNote;
+      });
+    } catch (error) {
+      console.error('Error rejecting appeal:', error);
+      toast({
+        title: 'Błąd',
+        description: 'Nie udało się odrzucić odwołania',
+        variant: 'destructive',
+      });
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
+  const handleUndoResolution = async (appealId: string) => {
+    if (!tournament?.id) return;
+
+    setProcessingId(appealId);
+    try {
+      const requestRef = doc(db, 'tournaments', tournament.id, 'standinRequests', appealId);
+      
+      // Get current data to preserve the admin note
+      const requestSnap = await getDoc(requestRef);
+      if (!requestSnap.exists()) {
+        throw new Error('Request not found');
+      }
+      
+      const currentData = requestSnap.data() as PDLStandinRequest;
+      
+      // Revert to appeal_pending and preserve the note for admin reference
+      await updateDoc(requestRef, {
+        status: 'appeal_pending',
+        appealResolvedBy: null,
+        appealResolvedAt: null,
+        // Keep appealAdminNote so admin can see their previous note
+        updatedAt: new Date().toISOString(),
+      });
+
+      // Restore the note to the input field
+      if (currentData.appealAdminNote) {
+        setAdminNote(prev => ({
+          ...prev,
+          [appealId]: currentData.appealAdminNote || ''
+        }));
+      }
+
+      toast({
+        title: 'Cofnięto',
+        description: 'Decyzja została cofnięta. Odwołanie wróciło do oczekujących.',
+      });
+
+      await loadAppeals();
+    } catch (error) {
+      console.error('Error undoing resolution:', error);
+      toast({
+        title: 'Błąd',
+        description: 'Nie udało się cofnąć decyzji',
+        variant: 'destructive',
+      });
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
+  const getStatusBadge = (status: PDLStandinRequest['status']) => {
     switch (status) {
-      case 'approved':
+      case 'appeal_approved':
         return (
           <Badge className="bg-green-500/20 text-green-500 border-green-500/30 font-logik">
             <CheckCircle2 className="h-3 w-3 mr-1" />
-            Zatwierdzony
+            Admin zatwierdził
           </Badge>
         );
-      case 'pending':
+      case 'appeal_pending':
         return (
           <Badge className="bg-amber-500/20 text-amber-500 border-amber-500/30 font-logik">
             <Gavel className="h-3 w-3 mr-1" />
-            Oczekuje na decyzję
+            Oczekuje na decyzję admina
           </Badge>
         );
-      case 'denied':
+      case 'appeal_rejected':
         return (
           <Badge className="bg-red-500/20 text-red-500 border-red-500/30 font-logik">
             <XCircle className="h-3 w-3 mr-1" />
-            Odrzucony
+            Admin odrzucił
+          </Badge>
+        );
+      case 'rejected':
+        return (
+          <Badge className="bg-red-500/20 text-red-500 border-red-500/30 font-logik">
+            <XCircle className="h-3 w-3 mr-1" />
+            Odrzucone przez kapitana
+          </Badge>
+        );
+      default:
+        return (
+          <Badge variant="outline" className="font-logik">
+            {status}
           </Badge>
         );
     }
   };
 
-  const pendingCount = appeals.filter(a => a.status === 'pending').length;
+  if (loading) {
+    return (
+      <div className="min-h-[400px] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-12 w-12 animate-spin" style={{ color: theme.primaryColor }} />
+          <p className="text-muted-foreground font-logik">Ładowanie odwołań...</p>
+        </div>
+      </div>
+    );
+  }
+
+  const pendingCount = pendingAppeals.length;
 
   return (
     <div className="space-y-6">
@@ -161,19 +341,6 @@ export function StandinsTab() {
             Rozpatrywanie odwołań od odrzuconych próśb o zastępstwo
           </p>
         </div>
-        <Button 
-          onClick={handleSave} 
-          disabled={isSaving}
-          className="font-logik"
-          style={{ backgroundColor: theme.primaryColor }}
-        >
-          {isSaving ? (
-            <RotateCcw className="h-4 w-4 mr-2 animate-spin" />
-          ) : (
-            <Save className="h-4 w-4 mr-2" />
-          )}
-          Zapisz zmiany
-        </Button>
       </div>
 
       {/* Info Banner */}
@@ -215,7 +382,7 @@ export function StandinsTab() {
           </div>
         </CardHeader>
         <CardContent>
-          {appeals.length === 0 ? (
+          {pendingAppeals.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground font-logik">
               <UserPlus className="h-12 w-12 mx-auto mb-4 opacity-50" />
               <p className="text-lg font-logik-extended-bold mb-2">Brak odwołań</p>
@@ -223,14 +390,12 @@ export function StandinsTab() {
             </div>
           ) : (
             <div className="space-y-4">
-              {appeals.map(appeal => (
+              {pendingAppeals.map(appeal => (
                 <div 
                   key={appeal.id}
                   className={cn(
                     "p-5 rounded-xl border transition-colors",
-                    appeal.status === 'pending' 
-                      ? "border-amber-500/30 bg-amber-500/5" 
-                      : "border-border"
+                    "border-amber-500/30 bg-amber-500/5"
                   )}
                 >
                   {/* Header */}
@@ -245,7 +410,7 @@ export function StandinsTab() {
                       <div>
                         <p className="font-logik-extended-bold text-lg">{appeal.teamName}</p>
                         <p className="text-sm text-muted-foreground font-logik">
-                          Mecz: {appeal.matchName} ({appeal.matchDate})
+                          Mecz: {appeal.matchName} {appeal.matchDate && `(${appeal.matchDate})`}
                         </p>
                       </div>
                     </div>
@@ -259,74 +424,162 @@ export function StandinsTab() {
                       <span className="text-sm text-muted-foreground font-logik">Standin:</span>
                     </div>
                     <p className="font-logik">
-                      <span className="font-logik-extended-bold">{appeal.standinName}</span>
+                      <span className="font-logik-extended-bold">{appeal.standinNickname}</span>
                       <span className="text-muted-foreground"> za </span>
-                      <span className="font-logik-extended-bold">{appeal.originalPlayer}</span>
+                      <span className="font-logik-extended-bold">{appeal.replacedPlayerNickname}</span>
                     </p>
+                    {appeal.standinSteamProfileUrl && (
+                      <a 
+                        href={appeal.standinSteamProfileUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1 mt-2"
+                      >
+                        <ExternalLink className="h-3 w-3" />
+                        Profil Steam standina
+                      </a>
+                    )}
                   </div>
 
                   {/* Reason & Denial */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                    <div className="p-3 rounded-lg bg-blue-500/10 border border-blue-500/20">
-                      <p className="text-xs text-blue-400 font-logik mb-1 flex items-center gap-1">
-                        <MessageSquare className="h-3 w-3" />
-                        Powód prośby o standina
-                      </p>
-                      <p className="text-sm font-logik">"{appeal.reason}"</p>
-                    </div>
-                    <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20">
+                  {appeal.rejectionReason && (
+                    <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 mb-4">
                       <p className="text-xs text-red-400 font-logik mb-1 flex items-center gap-1">
                         <XCircle className="h-3 w-3" />
-                        Powód odrzucenia przez {appeal.deniedBy}
+                        Powód odrzucenia przez {appeal.opponentTeamName || 'kapitana przeciwnika'}
                       </p>
-                      <p className="text-sm font-logik">"{appeal.denialReason}"</p>
+                      <p className="text-sm font-logik">"{appeal.rejectionReason}"</p>
                     </div>
-                  </div>
+                  )}
 
                   {/* Timeline */}
-                  <div className="flex items-center gap-4 text-xs text-muted-foreground font-logik mb-4">
+                  <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground font-logik mb-4">
                     <span className="flex items-center gap-1">
                       <Clock className="h-3 w-3" />
-                      Zgłoszono: {appeal.requestedAt}
+                      Zgłoszono: {format(new Date(appeal.createdAt), 'dd.MM.yyyy HH:mm')}
                     </span>
-                    <span>→</span>
-                    <span>Odrzucono przez kapitana</span>
-                    <span>→</span>
-                    <span>Odwołano: {appeal.appealedAt}</span>
+                    {appeal.respondedAt && (
+                      <>
+                        <span>→</span>
+                        <span>Odrzucono: {format(new Date(appeal.respondedAt), 'dd.MM.yyyy HH:mm')}</span>
+                      </>
+                    )}
+                    {appeal.appealedAt && (
+                      <>
+                        <span>→</span>
+                        <span>Odwołano: {format(new Date(appeal.appealedAt), 'dd.MM.yyyy HH:mm')}</span>
+                      </>
+                    )}
                   </div>
 
                   {/* Admin Note & Actions */}
-                  {appeal.status === 'pending' && (
-                    <div className="space-y-4 pt-4 border-t border-border">
-                      <div className="space-y-2">
-                        <Label className="font-logik text-sm">Notatka admina (opcjonalna)</Label>
-                        <Textarea
-                          value={adminNote[appeal.id] || ''}
-                          onChange={(e) => setAdminNote({ ...adminNote, [appeal.id]: e.target.value })}
-                          placeholder="Uzasadnienie decyzji..."
-                          className="font-logik resize-none text-sm"
-                          rows={2}
-                        />
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <Button
-                          onClick={() => updateAppealStatus(appeal.id, 'approved')}
-                          className="font-logik bg-green-500 hover:bg-green-600"
-                        >
+                  <div className="space-y-4 pt-4 border-t border-border">
+                    <div className="space-y-2">
+                      <Label className="font-logik text-sm">Notatka admina (opcjonalna)</Label>
+                      <Textarea
+                        value={adminNote[appeal.id] || ''}
+                        onChange={(e) => setAdminNote({ ...adminNote, [appeal.id]: e.target.value })}
+                        placeholder="Uzasadnienie decyzji..."
+                        className="font-logik resize-none text-sm"
+                        rows={2}
+                        disabled={processingId === appeal.id}
+                      />
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <Button
+                        onClick={() => handleApproveAppeal(appeal.id)}
+                        disabled={processingId === appeal.id}
+                        className="font-logik bg-green-500 hover:bg-green-600"
+                      >
+                        {processingId === appeal.id ? (
+                          <RotateCcw className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
                           <CheckCircle2 className="h-4 w-4 mr-2" />
-                          Zatwierdź standina
-                        </Button>
-                        <Button
-                          variant="outline"
-                          onClick={() => updateAppealStatus(appeal.id, 'denied')}
-                          className="font-logik text-red-500 border-red-500/30 hover:bg-red-500/10"
-                        >
-                          <XCircle className="h-4 w-4 mr-2" />
-                          Podtrzymaj odmowę
-                        </Button>
-                      </div>
+                        )}
+                        Zatwierdź standina
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={() => handleRejectAppeal(appeal.id)}
+                        disabled={processingId === appeal.id}
+                        className="font-logik text-red-500 border-red-500/30 hover:bg-red-500/10"
+                      >
+                        <XCircle className="h-4 w-4 mr-2" />
+                        Podtrzymaj odmowę
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* All Standin Requests Overview */}
+      <Card className="border-0 shadow-lg bg-card/50 backdrop-blur-sm">
+        <CardHeader className="pb-4">
+          <CardTitle className="flex items-center gap-2 font-logik-extended-bold">
+            <UserPlus className="h-5 w-5" style={{ color: theme.primaryColor }} />
+            Wszystkie prośby o standinów
+          </CardTitle>
+          <CardDescription className="font-logik">
+            Przegląd wszystkich próśb o zastępców w turnieju (dla kontroli)
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {allRequests.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground font-logik">
+              <UserPlus className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <p>Brak próśb o zastępców</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {allRequests.map(request => (
+                <div 
+                  key={request.id}
+                  className="p-4 rounded-lg border border-border hover:bg-muted/30 transition-colors"
+                >
+                  <div className="flex items-start justify-between mb-2">
+                    <div className="flex-1">
+                      <p className="font-logik-extended-bold">{request.teamName}</p>
+                      <p className="text-sm text-muted-foreground font-logik">
+                        {request.standinNickname} za {request.replacedPlayerNickname} • {request.matchName}
+                      </p>
+                      {request.matchDate && (
+                        <p className="text-xs text-muted-foreground font-logik mt-1">
+                          📅 {request.matchDate}
+                        </p>
+                      )}
+                    </div>
+                    {getStatusBadge(request.status)}
+                  </div>
+                  {request.rejectionReason && request.status === 'rejected' && (
+                    <div className="mt-2 p-2 rounded bg-red-500/10 text-sm font-logik">
+                      <p className="text-xs text-muted-foreground mb-1">Powód odrzucenia przez {request.opponentTeamName}:</p>
+                      <p className="text-red-400">{request.rejectionReason}</p>
                     </div>
                   )}
+                  {request.appealAdminNote && (
+                    <div className="mt-2 p-2 rounded bg-muted/50 text-sm font-logik">
+                      <p className="text-xs text-muted-foreground mb-1">Notatka admina:</p>
+                      <p>{request.appealAdminNote}</p>
+                    </div>
+                  )}
+                  <p className="text-xs text-muted-foreground font-logik mt-2">
+                    Utworzono: {format(new Date(request.createdAt), 'dd.MM.yyyy HH:mm')}
+                    {request.standinSteamProfileUrl && (
+                      <a 
+                        href={request.standinSteamProfileUrl} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="ml-3 inline-flex items-center text-blue-400 hover:text-blue-300"
+                      >
+                        <ExternalLink className="h-3 w-3 mr-1" />
+                        Profil Steam
+                      </a>
+                    )}
+                  </p>
                 </div>
               ))}
             </div>
@@ -343,10 +596,56 @@ export function StandinsTab() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-center py-8 text-muted-foreground font-logik">
-            <p>Brak historycznych odwołań</p>
-            <p className="text-sm mt-2">Rozpatrzone odwołania pojawią się tutaj</p>
-          </div>
+          {resolvedAppeals.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground font-logik">
+              <p>Brak historycznych odwołań</p>
+              <p className="text-sm mt-2">Rozpatrzone odwołania pojawią się tutaj</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {resolvedAppeals.map(appeal => (
+                <div 
+                  key={appeal.id}
+                  className="p-4 rounded-lg border border-border hover:bg-muted/30 transition-colors"
+                >
+                  <div className="flex items-start justify-between mb-2">
+                    <div className="flex-1">
+                      <p className="font-logik-extended-bold">{appeal.teamName}</p>
+                      <p className="text-sm text-muted-foreground font-logik">
+                        {appeal.standinNickname} za {appeal.replacedPlayerNickname} • {appeal.matchName}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {getStatusBadge(appeal.status)}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleUndoResolution(appeal.id)}
+                        disabled={processingId === appeal.id}
+                        className="font-logik text-xs"
+                        title="Cofnij decyzję"
+                      >
+                        {processingId === appeal.id ? (
+                          <RotateCcw className="h-3 w-3 animate-spin" />
+                        ) : (
+                          <Undo2 className="h-3 w-3" />
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                  {appeal.appealAdminNote && (
+                    <div className="mt-2 p-2 rounded bg-muted/50 text-sm font-logik">
+                      <p className="text-xs text-muted-foreground mb-1">Notatka admina:</p>
+                      <p>{appeal.appealAdminNote}</p>
+                    </div>
+                  )}
+                  <p className="text-xs text-muted-foreground font-logik mt-2">
+                    Rozpatrzone: {appeal.appealResolvedAt ? format(new Date(appeal.appealResolvedAt), 'dd.MM.yyyy HH:mm') : 'Nieznana data'}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

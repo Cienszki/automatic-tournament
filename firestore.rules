@@ -79,14 +79,14 @@ service cloud.firestore {
       // Teams in tournaments
       match /teams/{teamId} {
         allow read: if true;
-        allow write: if request.auth.uid != null;
+        allow create: if request.auth.uid != null; // Any logged-in user can register a new team
+        allow update: if hasAdminAccess(tournamentId) || isTournamentTeamCaptain(tournamentId, teamId); // Only admin or the team's captain can update
         allow delete: if hasAdminAccess(tournamentId);
 
         // Players in teams
         match /players/{playerId} {
           allow read: if true;
-          allow write: if request.auth.uid != null;
-          allow delete: if hasAdminAccess(tournamentId);
+          allow write: if hasAdminAccess(tournamentId) || isTournamentTeamCaptain(tournamentId, teamId);
         }
       }
 
@@ -107,6 +107,22 @@ service cloud.firestore {
             allow write: if hasAdminAccess(tournamentId);
           }
         }
+      }
+
+      // Stats in tournaments - public read, admin write
+      match /stats/{docId} {
+        allow read: if true;
+        allow write: if hasAdminAccess(tournamentId);
+      }
+
+      match /playerStats/{docId} {
+        allow read: if true;
+        allow write: if hasAdminAccess(tournamentId);
+      }
+
+      match /teamStats/{docId} {
+        allow read: if true;
+        allow write: if hasAdminAccess(tournamentId);
       }
 
       // Divisions in tournaments
@@ -139,14 +155,20 @@ service cloud.firestore {
         allow write: if hasAdminAccess(tournamentId);
       }
 
+      // Playoff matches in tournaments
+      match /playoff_matches/{matchId} {
+        allow read: if true;
+        allow write: if hasAdminAccess(tournamentId);
+      }
+
       // Rules in tournaments
       match /rules/{sectionId} {
         allow read: if true;
-        allow write: if request.auth.uid != null;
+        allow write: if hasAdminAccess(tournamentId);
         
         match /paragraphs/{paragraphId} {
           allow read: if true;
-          allow write: if request.auth.uid != null;
+          allow write: if hasAdminAccess(tournamentId);
         }
       }
 
@@ -188,7 +210,10 @@ service cloud.firestore {
           && resource.data.matchId is string
           && isCaptainOfTournamentMatch(tournamentId, resource.data.matchId)
         );
-        allow delete: if hasAdminAccess(tournamentId);
+        allow delete: if hasAdminAccess(tournamentId) || (
+          request.auth.uid != null
+          && resource.data.captainId == request.auth.uid
+        );
       }
 
       // Scrim slots in tournaments
@@ -216,18 +241,6 @@ service cloud.firestore {
       }
 
       match /stats/heroes/{heroId} {
-        allow read: if true;
-        allow write: if hasAdminAccess(tournamentId);
-      }
-
-      // Player statistics
-      match /playerStats/{playerId} {
-        allow read: if true;
-        allow write: if hasAdminAccess(tournamentId);
-      }
-
-      // Team statistics
-      match /teamStats/{teamId} {
         allow read: if true;
         allow write: if hasAdminAccess(tournamentId);
       }
@@ -309,15 +322,14 @@ service cloud.firestore {
 
 
     // --- COMPLEX RULES ---
+    // Legacy Letnia teams (archived/read-only) - only admins can write
     match /teams/{teamId} {
       allow read: if true;
-      allow write: if request.auth.uid != null;
-      allow delete: if isAdmin();
+      allow write: if isAdmin();
 
       match /players/{playerId} {
         allow read: if true;
-        allow write: if request.auth.uid != null;
-        allow delete: if isAdmin();
+        allow write: if isAdmin();
       }
     }
 

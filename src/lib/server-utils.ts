@@ -4,16 +4,16 @@
 /**
  * Resolves a Steam vanity URL to a Steam64 ID using the official Steam Web API.
  * This is the most reliable method for resolving custom URLs.
- * REQUIRES a NEXT_PUBLIC_STEAM_API_KEY environment variable to be set.
+ * REQUIRES a STEAM_API_KEY environment variable to be set (server-only, not NEXT_PUBLIC_).
  * 
  * @param vanityName The custom part of the vanity URL (e.g., "Rhasnethtzent").
  * @returns A promise that resolves to the user's 64-bit Steam ID as a string.
  * @throws An error if the API key is missing or the vanity name cannot be resolved.
  */
 async function resolveSteamVanityURL(vanityName: string): Promise<string> {
-    const apiKey = process.env.NEXT_PUBLIC_STEAM_API_KEY;
+    const apiKey = process.env.STEAM_API_KEY;
     if (!apiKey) {
-        throw new Error("NEXT_PUBLIC_STEAM_API_KEY environment variable is not set. This is required to resolve vanity URLs.");
+        throw new Error("STEAM_API_KEY environment variable is not set. This is required to resolve vanity URLs.");
     }
 
     const url = `https://api.steampowered.com/ISteamUser/ResolveVanityURL/v1/?key=${apiKey}&vanityurl=${vanityName}&url_type=1`;
@@ -66,9 +66,9 @@ export async function getSteam64IdFromUrl(url: string): Promise<string> {
  * @throws An error if the summary cannot be fetched.
  */
 export async function getSteamPlayerSummary(steamId: string): Promise<any> {
-    const apiKey = process.env.NEXT_PUBLIC_STEAM_API_KEY;
+    const apiKey = process.env.STEAM_API_KEY;
     if (!apiKey) {
-        throw new Error("NEXT_PUBLIC_STEAM_API_KEY environment variable is not set.");
+        throw new Error("STEAM_API_KEY environment variable is not set.");
     }
 
     const url = `https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v2/?key=${apiKey}&steamids=${steamId}`;

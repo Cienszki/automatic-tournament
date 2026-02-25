@@ -2,11 +2,13 @@
 
 import React, { useState, useEffect } from 'react';
 import { useTournament } from '@/context/TournamentContext';
+import { useAuth } from '@/context/AuthContext';
 import { Card, CardHeader, CardContent, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { useToast } from '@/hooks/use-toast';
 import { 
   Select,
   SelectContent,
@@ -22,6 +24,7 @@ import {
   GripVertical,
   Save,
   RotateCcw,
+  RefreshCw,
   Users,
   Palette,
   ChevronUp,
@@ -60,6 +63,8 @@ interface Team {
  */
 export function DivisionsTab() {
   const { tournament, theme } = useTournament();
+  const { user } = useAuth();
+  const { toast } = useToast();
   
   // Initialize empty divisions - will load from database
   const [divisions, setDivisions] = useState<Division[]>([]);
@@ -68,26 +73,20 @@ export function DivisionsTab() {
   const [isLoadingDivisions, setIsLoadingDivisions] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isRecalculatingStandings, setIsRecalculatingStandings] = useState(false);
 
   // Fetch divisions from database
   useEffect(() => {
     const loadDivisions = async () => {
-      if (!tournament?.id) {
-        console.log('[DivisionsTab] No tournament ID');
-        return;
-      }
+      if (!tournament?.id) return;
 
       try {
-        console.log('[DivisionsTab] Loading divisions for tournament:', tournament.id);
         setIsLoadingDivisions(true);
         const divisionsRef = collection(db, 'tournaments', tournament.id, 'divisions');
         const divisionsSnapshot = await getDocs(divisionsRef);
 
-        console.log('[DivisionsTab] Found divisions:', divisionsSnapshot.docs.length);
-
         const divisionsData: Division[] = divisionsSnapshot.docs.map((divDoc) => {
           const divData = divDoc.data();
-          console.log('[DivisionsTab] Division:', divDoc.id, divData);
           return {
             id: divDoc.id,
             name: divData.name || divDoc.id,
@@ -101,7 +100,6 @@ export function DivisionsTab() {
 
         // Sort by tier
         divisionsData.sort((a, b) => a.tier - b.tier);
-        console.log('[DivisionsTab] Setting divisions:', divisionsData);
         setDivisions(divisionsData);
       } catch (err) {
         console.error('Error loading divisions:', err);
@@ -764,6 +762,54 @@ export function DivisionsTab() {
           </CardContent>
         </Card>
       )}
+
+      {/* Recalculate Division Standings */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <RefreshCw className="h-4 w-4" style={{ color: theme.primaryColor }} />
+            Przelicz tabele dywizji
+          </CardTitle>
+          <CardDescription>
+            Przeliczy punkty, zwycięstwa, remisy i porażki dla wszystkich drużyn na podstawie
+            aktualnie zakończonych meczów. Bezpieczne do wielokrotnego uruchomienia.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button
+            onClick={async () => {
+              if (!tournament?.id || !user) return;
+              setIsRecalculatingStandings(true);
+              try {
+                const token = await user.getIdToken();
+                const res = await fetch('/api/admin/pdl/recalculate-standings', {
+                  method: 'POST',
+                  headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ tournamentId: tournament.id }),
+                });
+                const data = await res.json();
+                if (data.success) {
+                  toast({ title: 'Tabele zaktualizowane', description: data.message });
+                } else {
+                  toast({ title: 'Błąd', description: data.message || data.error || 'Nieznany błąd', variant: 'destructive' });
+                }
+              } catch {
+                toast({ title: 'Błąd połączenia z serwerem', variant: 'destructive' });
+              } finally {
+                setIsRecalculatingStandings(false);
+              }
+            }}
+            disabled={isRecalculatingStandings}
+            variant="outline"
+          >
+            {isRecalculatingStandings ? (
+              <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Przeliczanie...</>
+            ) : (
+              <><RefreshCw className="h-4 w-4 mr-2" /> Przelicz tabele dywizji</>
+            )}
+          </Button>
+        </CardContent>
+      </Card>
     </div>
   );
 }

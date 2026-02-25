@@ -7,14 +7,14 @@ import { recalculateBasicTournamentStats } from '@/lib/stats-calculator-basic';
 /**
  * Recalculate all tournament statistics using comprehensive calculator
  */
-export async function recalculateAllStats(): Promise<void> {
-  console.log('🚀 Starting comprehensive stats recalculation...');
+export async function recalculateAllStats(tournamentId?: string): Promise<void> {
+  console.log(`🚀 Starting comprehensive stats recalculation${tournamentId ? ` for ${tournamentId}` : ''}...`);
   
   try {
     // Import and use the comprehensive stats calculator
     console.log('📊 Using comprehensive stats calculator...');
     const { calculateAllComprehensiveStats } = await import('./comprehensive-stats-calculator');
-    await calculateAllComprehensiveStats();
+    await calculateAllComprehensiveStats(tournamentId);
     
     console.log('✅ Comprehensive stats recalculation completed successfully!');
   } catch (error) {
@@ -34,12 +34,12 @@ export async function recalculateAllStats(): Promise<void> {
 /**
  * Update stats after a match is imported or deleted
  */
-export async function updateStatsAfterMatchChange(matchId: string): Promise<void> {
+export async function updateStatsAfterMatchChange(matchId: string, tournamentId?: string): Promise<void> {
   console.log(`Updating stats after match change: ${matchId}`);
   
   try {
     // For now, recalculate all stats when any match changes
-    await recalculateAllStats();
+    await recalculateAllStats(tournamentId);
   } catch (error) {
     console.error('Error updating stats after match change:', error);
     throw error;

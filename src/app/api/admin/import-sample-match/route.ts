@@ -19,7 +19,8 @@ export async function POST(request: NextRequest) {
         
         if (result.success) {
             // After successful import, update team statistics
-            const statsResponse = await fetch('http://localhost:3000/api/admin/update-team-stats', {
+            const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+            const statsResponse = await fetch(`${baseUrl}/api/admin/update-team-stats`, {
                 method: 'POST'
             });
             const statsResult = await statsResponse.json();

@@ -85,40 +85,22 @@ const getMatchIdFromCode = (matchCode: string): string | null => {
 
 // Helper functions to resolve team names and progression
 // Simple logging cache to avoid spam
-const loggedCalls = new Set<string>();
-
 const resolveTeamFromMatch = (matchId: string, allBrackets: PlayoffBracket[], isWinner: boolean, teamsMap?: Map<string, any>): string | null => {
-  const logKey = `${matchId}-${isWinner}`;
-  if (!loggedCalls.has(logKey)) {
-    console.log('resolveTeamFromMatch called:', { matchId, isWinner, bracketsCount: allBrackets.length });
-    loggedCalls.add(logKey);
-  }
-  
   for (const bracket of allBrackets) {
     const match = bracket.matches.find(m => m.id === matchId);
     if (match) {
-      console.log(`Found match ${matchId}:`, {
-        hasResult: !!match.result,
-        result: match.result,
-        teamA: match.teamA,
-        teamB: match.teamB
-      });
-      
       if (match.result) {
         const winnerId = match.result.winnerId;
         const loserId = winnerId === match.teamA?.id ? match.teamB?.id : match.teamA?.id;
         const targetTeamId = isWinner ? winnerId : loserId;
         
-        console.log('Using result:', { winnerId, loserId, targetTeamId, isWinner });
-        
         if (targetTeamId && teamsMap?.has(targetTeamId)) {
           const teamName = teamsMap.get(targetTeamId)?.name;
-          console.log('Found team in teamsMap:', teamName);
           return teamName || null;
         }
         
         if (targetTeamId) {
-          console.log(`Team ${targetTeamId} not found in teamsMap. Available teams:`, Array.from(teamsMap?.keys() || []));
+          // Team not found in teamsMap
         }
         
         return targetTeamId ? `Team ${targetTeamId}` : null;
@@ -127,7 +109,6 @@ const resolveTeamFromMatch = (matchId: string, allBrackets: PlayoffBracket[], is
       // Don't use scheduled team data for progression - wait for match completion
     }
   }
-  console.log(`Match ${matchId} not found or no team data available`);
   return null;
 };
 
@@ -149,23 +130,14 @@ const getResolvedTeamName = (
   teamsMap?: Map<string, any>,
   t?: (key: string) => string
 ): string => {
-  const logKey = `resolve-${description}-${isTeamA}`;
-  const shouldLog = !loggedCalls.has(logKey);
-  if (shouldLog) {
-    console.log('getResolvedTeamName called:', { description, isTeamA });
-    loggedCalls.add(logKey);
-  }
-  
   const team = isTeamA ? match.teamA : match.teamB;
   
   // If we have the actual team data, use it
   if (team?.name && !team.name.includes('Winner') && !team.name.includes('Wildcard')) {
-    if (shouldLog) console.log('Using team name directly:', team.name);
     return team.name;
   }
   if (team?.id && teamsMap?.has(team.id)) {
     const teamName = teamsMap.get(team.id)?.name || `Team ${team.id}`;
-    if (shouldLog) console.log('Using team from teamsMap:', teamName);
     return teamName;
   }
   
@@ -175,11 +147,8 @@ const getResolvedTeamName = (
   const matchWinnerPattern = /meczu (U\d+[A-Z]|L\d+[A-Z]|WC[A-Z])/i; // Updated to include WCA/WCB
   const wildcardPattern = /(WC[A-Z])\b/i; // Match WCA or WCB anywhere in the text
   
-  if (shouldLog) console.log('Testing patterns against:', description);
-  
   let matchResult = description.match(winnerPattern);
   if (matchResult) {
-    if (shouldLog) console.log('Matched winnerPattern:', matchResult);
     const matchCode = matchResult[1];
     const matchId = getMatchIdFromCode(matchCode);
     if (matchId) {
@@ -190,7 +159,6 @@ const getResolvedTeamName = (
   
   matchResult = description.match(loserPattern);
   if (matchResult) {
-    if (shouldLog) console.log('Matched loserPattern:', matchResult);
     const matchCode = matchResult[1];
     const matchId = getMatchIdFromCode(matchCode);
     if (matchId) {
@@ -202,7 +170,6 @@ const getResolvedTeamName = (
   // Handle "Zwycięzca meczu U1A" or "Zwycięzca WCA" pattern
   matchResult = description.match(matchWinnerPattern);
   if (matchResult) {
-    if (shouldLog) console.log('Matched matchWinnerPattern:', matchResult);
     const matchCode = matchResult[1];
     const matchId = getMatchIdFromCode(matchCode);
     if (matchId) {
@@ -214,7 +181,6 @@ const getResolvedTeamName = (
   // Handle wildcard patterns - match WCA or WCB anywhere in the text
   matchResult = description.match(wildcardPattern);
   if (matchResult) {
-    if (shouldLog) console.log('Matched wildcardPattern:', matchResult);
     const matchCode = matchResult[1];
     const matchId = getMatchIdFromCode(matchCode);
     if (matchId) {
@@ -222,8 +188,6 @@ const getResolvedTeamName = (
       if (resolvedName) return resolvedName;
     }
   }
-  
-  if (shouldLog) console.log('No patterns matched, returning description:', description);
   
   // If the description contains placeholder text, use translated versions with match codes
   if (t) {

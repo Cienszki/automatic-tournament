@@ -7,6 +7,7 @@ import { TournamentNavbar } from '@/components/layout/TournamentNavbar';
 import { Footer } from '@/components/layout/Footer';
 import { DynamicFontLoader } from '@/components/DynamicFontLoader';
 import { ThemeFontApplier } from '@/components/ThemeFontApplier';
+import { LoadingScreen } from '@/components/ui/LoadingScreen';
 
 interface TournamentLayoutProps {
   children: React.ReactNode;
@@ -50,18 +51,32 @@ export default function TournamentLayout({ children }: TournamentLayoutProps) {
     };
   }, [tournamentSlug]);
 
+  // Update browser tab title and favicon when tournament data loads
+  useEffect(() => {
+    if (!tournament) return;
+
+    document.title = `${tournament.name} | dota2inhouse.pl`;
+
+    const faviconUrl = theme?.faviconUrl ?? '/icon.png';
+    // Next.js App Router renders icon links with rel containing "icon"
+    let link = document.querySelector<HTMLLinkElement>('link[rel*="icon"]:not([rel*="apple"])');
+    if (!link) {
+      link = document.createElement('link');
+      link.rel = 'icon';
+      document.head.appendChild(link);
+    }
+    link.href = faviconUrl;
+
+    return () => {
+      document.title = 'dota2inhouse.pl - Polskie Turnieje Dota 2';
+      const defaultLink = document.querySelector<HTMLLinkElement>('link[rel*="icon"]:not([rel*="apple"])');
+      if (defaultLink) defaultLink.href = '/icon.png';
+    };
+  }, [tournament, theme?.faviconUrl]);
+
   // Loading state
   if (isLoading) {
-    return (
-      <div className="flex flex-col min-h-screen bg-background text-foreground">
-        <div className="flex-grow flex items-center justify-center">
-          <div className="animate-pulse flex flex-col items-center gap-4">
-            <div className="h-12 w-12 bg-primary/20 rounded-full" />
-            <div className="h-3 w-24 bg-muted rounded" />
-          </div>
-        </div>
-      </div>
-    );
+    return <LoadingScreen />;
   }
 
   // Error state

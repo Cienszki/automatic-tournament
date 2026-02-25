@@ -28,6 +28,7 @@ import type { Icon as LucideIconType } from "lucide-react";
 import { notFound } from "next/navigation";
 import { cn, sortPlayersByRole, formatNumber } from "@/lib/utils";
 import { Progress } from "@/components/ui/progress";
+import { LoadingScreen } from "@/components/ui/LoadingScreen";
 import { heroIconMap } from "@/lib/hero-data";
 import { getTeamById, getAllMatches, getAllTeams } from "@/lib/firestore";
 import type { Team, Player, Match, TeamStatus } from "@/lib/definitions";
@@ -143,11 +144,7 @@ export default function TeamPage({ params }: PageProps) {
   }, [teamId]);
 
   if (loading) {
-    return (
-      <div className="flex justify-center items-center min-h-96">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
-    );
+    return <LoadingScreen />;
   }
 
   if (!team) {

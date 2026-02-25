@@ -69,13 +69,13 @@ interface PDLStandinRequestProps {
   isOpponentView?: boolean;
 }
 
-const statusConfig: Record<PDLStandinRequestStatus, { label: string; className: string }> = {
-  pending: { label: 'Oczekuje na zgodę', className: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' },
-  approved: { label: 'Zatwierdzony', className: 'bg-green-500/20 text-green-400 border-green-500/30' },
-  rejected: { label: 'Odrzucony', className: 'bg-red-500/20 text-red-400 border-red-500/30' },
-  appeal_pending: { label: 'Odwołanie u admina', className: 'bg-purple-500/20 text-purple-400 border-purple-500/30' },
-  appeal_approved: { label: 'Admin zatwierdził', className: 'bg-green-500/20 text-green-400 border-green-500/30' },
-  appeal_rejected: { label: 'Admin odrzucił', className: 'bg-red-500/20 text-red-400 border-red-500/30' },
+const statusConfig: Record<PDLStandinRequestStatus, { label: string; className: string; canPlay?: boolean; cannotPlay?: boolean; icon?: any }> = {
+  pending: { label: 'Oczekuje na zgodę', className: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30', canPlay: false },
+  approved: { label: 'Zatwierdzony - może grać!', className: 'bg-green-500/20 text-green-400 border-green-500/30', canPlay: true, icon: CheckCircle },
+  rejected: { label: 'Odrzucony - nie może grać', className: 'bg-red-500/20 text-red-400 border-red-500/30', canPlay: false, cannotPlay: true },
+  appeal_pending: { label: 'Odwołanie u admina', className: 'bg-purple-500/20 text-purple-400 border-purple-500/30', canPlay: false },
+  appeal_approved: { label: 'Admin zatwierdził - może grać!', className: 'bg-green-500/20 text-green-400 border-green-500/30', canPlay: true, icon: CheckCircle },
+  appeal_rejected: { label: 'Admin odrzucił - nie może grać', className: 'bg-red-500/20 text-red-400 border-red-500/30', canPlay: false, cannotPlay: true },
 };
 
 export function PDLStandinRequestSection({
@@ -185,9 +185,64 @@ export function PDLStandinRequestSection({
                 key={request.id}
                 className={cn(
                   'rounded-lg border p-4 space-y-3',
-                  isResolved ? 'border-white/5 bg-white/[0.01]' : 'border-white/10 bg-white/[0.03]'
+                  config.canPlay 
+                    ? 'border-green-500/30 bg-green-500/5' 
+                    : config.cannotPlay 
+                    ? 'border-red-500/30 bg-red-500/5'
+                    : isResolved 
+                    ? 'border-white/5 bg-white/[0.01]' 
+                    : 'border-white/10 bg-white/[0.03]'
                 )}
               >
+                {/* Success banner for approved standins */}
+                {config.canPlay && (
+                  <div className="rounded-md bg-green-500/20 border border-green-500/40 p-3 flex items-start gap-3">
+                    <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-logik-extended-bold text-green-400">
+                        ✓ Ten standin może grać w meczu
+                      </p>
+                      <p className="text-xs text-green-400/80 mt-1">
+                        {request.status === 'approved' 
+                          ? 'Zatwierdzony przez kapitana przeciwnika'
+                          : 'Zatwierdzony przez administrację po odwołaniu'}
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Warning banner for rejected standins */}
+                {config.cannotPlay && (
+                  <div className="rounded-md bg-red-500/20 border border-red-500/40 p-3 flex items-start gap-3">
+                    <XCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-logik-extended-bold text-red-400">
+                        ✗ Ten standin NIE może grać w meczu
+                      </p>
+                      <p className="text-xs text-red-400/80 mt-1">
+                        {request.status === 'rejected' 
+                          ? 'Odrzucony przez kapitana przeciwnika. Możesz złożyć odwołanie do admina.'
+                          : 'Odwołanie zostało odrzucone przez administrację.'}
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Info banner for appeal pending */}
+                {request.status === 'appeal_pending' && (
+                  <div className="rounded-md bg-purple-500/20 border border-purple-500/40 p-3 flex items-start gap-3">
+                    <Gavel className="w-5 h-5 text-purple-400 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-logik-extended-bold text-purple-400">
+                        ⏳ Oczekiwanie na decyzję administracji
+                      </p>
+                      <p className="text-xs text-purple-400/80 mt-1">
+                        Twoje odwołanie zostało przekazane do admina. Standin będzie mógł grać tylko jeśli admin je zatwierdzi.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
                 <div className="flex items-start justify-between gap-3">
                   <div className="space-y-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
@@ -210,7 +265,8 @@ export function PDLStandinRequestSection({
                     </p>
                   </div>
 
-                  <Badge className={cn('flex-shrink-0 text-xs font-logik', config.className)}>
+                  <Badge className={cn('flex-shrink-0 text-xs font-logik flex items-center gap-1', config.className)}>
+                    {config.icon && <config.icon className="w-3 h-3" />}
                     {config.label}
                   </Badge>
                 </div>
@@ -305,8 +361,8 @@ export function PDLStandinRequestSection({
                   </Button>
                 )}
 
-                {/* Cancel button for pending requests (own team only) */}
-                {!isOpponentView && request.status === 'pending' && onCancelRequest && (
+                {/* Cancel button allows captain to remove request at any status */}
+                {!isOpponentView && onCancelRequest && (
                   <Button
                     size="sm"
                     variant="outline"
