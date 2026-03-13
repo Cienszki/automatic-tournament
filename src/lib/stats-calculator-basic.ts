@@ -113,7 +113,7 @@ export async function calculateBasicTournamentStats(
     
     // Heroes & Meta
     mostPickedHero: findMostPickedHero(performances),
-    mostBannedHero: findMostBannedHero(games),
+    mostBannedHero: findMostBannedHero(games.map(g => ({ picksBans: g.picks_bans }))),
     mostContestedHero: { heroName: 'Unknown', contestCount: 0 },
     highestWinRateHero: findHighestWinRateHero(performances, games),
     mostVersatilePlayer: findMostVersatilePlayer(performances),
