@@ -24,6 +24,8 @@ interface PDLPlayer {
     id: string;
     nickname: string;
     steamId32: string;
+    /** steamId64 — present on new-architecture pointer-only subcollection docs */
+    steamId?: string;
     role?: string;
 }
 
@@ -54,6 +56,23 @@ interface SyncResult {
 /**
  * Get all teams for a PDL tournament
  */
+/**
+ * Derive a Steam32 string from a Steam64 string.
+ * Returns the input unchanged if it is already ≤10 digits (already Steam32).
+ * Returns null if conversion fails.
+ */
+function deriveSteam32FromSteam64(steam64: string): string | null {
+    if (!steam64) return null;
+    // Already looks like a Steam32 ID (≤10 digits) — keep as-is
+    if (steam64.length <= 10 && /^\d+$/.test(steam64)) return steam64;
+    try {
+        const result = String(BigInt(steam64) - 76561197960265728n);
+        return result.length > 0 ? result : null;
+    } catch {
+        return null;
+    }
+}
+
 export async function getPDLTeamsAdmin(tournamentId: string): Promise<PDLTeam[]> {
     ensureAdminInitialized();
     const db = getAdminDb();
@@ -69,12 +88,63 @@ export async function getPDLTeamsAdmin(tournamentId: string): Promise<PDLTeam[]>
     for (const teamDoc of teamsSnapshot.docs) {
         const teamData = teamDoc.data();
 
-        // Get players subcollection
-        const playersSnapshot = await teamDoc.ref.collection('players').get();
-        const players: PDLPlayer[] = playersSnapshot.docs.map(p => ({
-            id: p.id,
-            ...p.data() as Omit<PDLPlayer, 'id'>
-        }));
+        // Prefer the embedded roster map (new architecture) — it has nickname + steamId32.
+        // Fall back to reading the player subcollection for legacy teams without a roster map.
+        const rosterMap = teamData.roster as Record<string, { nickname: string; role?: string; steamId32: string; steamId?: string }> | undefined;
+
+        let players: PDLPlayer[];
+        if (rosterMap && Object.keys(rosterMap).length > 0) {
+            // Build PDLPlayer array from roster map keyed by steamId64.
+            // Derive steamId32 from the map key (steamId64) when the stored value is
+            // missing or accidentally contains a Steam64 ID (>10 digits) — a data-entry
+            // mistake that would silently break the player-based team-identification fallback.
+            players = Object.entries(rosterMap).map(([steamId64, info]) => {
+                let steamId32 = info.steamId32 || '';
+                if (!steamId32 || steamId32.length > 10) {
+                    const derived = deriveSteam32FromSteam64(steamId32 || steamId64);
+                    if (derived) {
+                        if (steamId32.length > 10) {
+                            console.warn(`[getPDLTeamsAdmin] roster entry for ${steamId64} had steamId32="${steamId32}" (looks like Steam64) — derived correct value "${derived}"`);
+                        }
+                        steamId32 = derived;
+                    }
+                }
+                return {
+                    id: steamId64,
+                    nickname: info.nickname || '',
+                    steamId32,
+                    steamId: steamId64,
+                    role: info.role,
+                };
+            });
+        } else {
+            // Legacy fallback: read player subcollection.
+            // For new pointer-only docs, `p.data()` has { steamId, steamId32, role }.
+            // If steamId32 is missing or wrong, derive it from the doc ID (= steamId64)
+            // or the steamId field so the player-based team-identification fallback works.
+            const playersSnapshot = await teamDoc.ref.collection('players').get();
+            players = playersSnapshot.docs.map(p => {
+                const data = p.data();
+                let steamId32: string = data.steamId32 || '';
+                if (!steamId32 || steamId32.length > 10) {
+                    // Try steamId field first (stored as Steam64), then fall back to doc ID
+                    const steam64Source = data.steamId || data.steamId64 || (p.id.length >= 17 ? p.id : '');
+                    const derived = deriveSteam32FromSteam64(steamId32 || steam64Source);
+                    if (derived) {
+                        if (steamId32.length > 10) {
+                            console.warn(`[getPDLTeamsAdmin] player doc ${p.id} had steamId32="${steamId32}" (looks like Steam64) — derived correct value "${derived}"`);
+                        }
+                        steamId32 = derived;
+                    }
+                }
+                return {
+                    id: p.id,
+                    nickname: '',  // Not stored in pointer-only docs; resolved later via global profiles
+                    ...data as Omit<PDLPlayer, 'id' | 'nickname'>,
+                    steamId32,  // Override with the normalised value
+                };
+            });
+        }
 
         teams.push({
             id: teamDoc.id,
@@ -153,6 +223,147 @@ export async function markPDLGameAsProcessedAdmin(
         .set({
             processedAt: FieldValue.serverTimestamp(),
         });
+}
+
+// ============================================================================
+// SKIPPED GAMES
+// ============================================================================
+
+export interface SkippedGame {
+    gameId: string;
+    reason: string;
+    skippedAt: string; // ISO timestamp
+    skippedBy: string; // 'system' or admin UID
+}
+
+/**
+ * Mark a game as skipped (writes to both skippedGames and processedGames so
+ * the sync won't try to re-import it).
+ *
+ * If the game was already imported into a match, it will also be removed from
+ * that match (game doc + performances deleted, game_ids updated, scores
+ * recalculated).
+ */
+export async function markPDLGameAsSkippedAdmin(
+    tournamentId: string,
+    gameId: string,
+    reason: string,
+    skippedBy: string = 'system'
+): Promise<void> {
+    ensureAdminInitialized();
+    const db = getAdminDb();
+
+    const tournamentRef = db.collection('tournaments').doc(tournamentId);
+    const batch = db.batch();
+
+    batch.set(
+        tournamentRef.collection('skippedGames').doc(gameId),
+        {
+            gameId,
+            reason,
+            skippedAt: FieldValue.serverTimestamp(),
+            skippedBy,
+        }
+    );
+
+    batch.set(
+        tournamentRef.collection('processedGames').doc(gameId),
+        { processedAt: FieldValue.serverTimestamp() },
+        { merge: true }
+    );
+
+    // Also remove from the unparsed queue so the game isn't retried
+    batch.delete(tournamentRef.collection('unparsedMatches').doc(gameId));
+
+    await batch.commit();
+
+    // If the game was already imported into a match, remove it.
+    // Search all matches for this game ID in their game_ids array.
+    const numericGameId = Number(gameId);
+    const matchesSnap = await tournamentRef
+        .collection('matches')
+        .where('game_ids', 'array-contains', numericGameId)
+        .get();
+
+    for (const matchDoc of matchesSnap.docs) {
+        console.log(`[PDL] Skipped game ${gameId} was already imported in match ${matchDoc.id} — removing it`);
+
+        const matchRef = matchDoc.ref;
+        const gameRef = matchRef.collection('games').doc(gameId);
+
+        // Delete game document and its performances subcollection
+        const gameSnap = await gameRef.get();
+        if (gameSnap.exists) {
+            const perfsSnap = await gameRef.collection('performances').get();
+            const deleteBatch = db.batch();
+            perfsSnap.docs.forEach(d => deleteBatch.delete(d.ref));
+            deleteBatch.delete(gameRef);
+            await deleteBatch.commit();
+        }
+
+        // Remove gameId from match.game_ids array
+        await matchRef.update({
+            game_ids: FieldValue.arrayRemove(numericGameId),
+        });
+
+        // Recalculate scores — or reset if no games remain
+        const remainingGames = await matchRef.collection('games').get();
+        if (remainingGames.empty) {
+            await matchRef.update({
+                'teamA.score': 0,
+                'teamB.score': 0,
+                status: 'scheduled',
+                winnerId: null,
+                completedAt: null,
+            });
+        } else {
+            await updatePDLMatchScoresAdmin(tournamentId, matchDoc.id);
+        }
+
+        console.log(`[PDL] ✅ Game ${gameId} removed from match ${matchDoc.id}`);
+    }
+}
+
+/**
+ * Get all skipped games for a tournament, newest first.
+ */
+export async function getPDLSkippedGamesAdmin(tournamentId: string): Promise<SkippedGame[]> {
+    ensureAdminInitialized();
+    const db = getAdminDb();
+
+    const snapshot = await db
+        .collection('tournaments')
+        .doc(tournamentId)
+        .collection('skippedGames')
+        .orderBy('skippedAt', 'desc')
+        .get();
+
+    return snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+            gameId: doc.id,
+            reason: data.reason ?? '',
+            skippedAt: data.skippedAt?.toDate?.()?.toISOString() ?? new Date().toISOString(),
+            skippedBy: data.skippedBy ?? 'system',
+        };
+    });
+}
+
+/**
+ * Remove a game from the skipped list and also clear it from processedGames
+ * so the next auto-sync will re-import it automatically.
+ */
+export async function removePDLSkippedGameAdmin(tournamentId: string, gameId: string): Promise<void> {
+    ensureAdminInitialized();
+    const db = getAdminDb();
+
+    const tournamentRef = db.collection('tournaments').doc(tournamentId);
+    const batch = db.batch();
+
+    batch.delete(tournamentRef.collection('skippedGames').doc(gameId));
+    batch.delete(tournamentRef.collection('processedGames').doc(gameId));
+
+    await batch.commit();
 }
 
 /**
@@ -499,12 +710,148 @@ async function updatePDLDivisionStandingsAdmin(tournamentId: string, divisionId:
         const allResults = formMap.get(teamDoc.id) ?? [];
         const recentForm = allResults.slice(-5); // keep only the last 5 results
 
-        batch.update(teamDoc.ref, { stats: teamStats, recentForm });
+        // Compute PDL points: 2 per win, 1 per draw
+        const points = teamStats.wins * 2 + teamStats.draws;
+
+        batch.update(teamDoc.ref, {
+            stats: teamStats,
+            recentForm,
+            // Also write flat fields so they match the Team interface used by the UI
+            wins: teamStats.wins,
+            draws: teamStats.draws,
+            losses: teamStats.losses,
+            matchesPlayed: teamStats.played,
+            points,
+            seasonPoints: points, // For PDL S1, season points = round points (single round-robin)
+        });
     }
 
     await batch.commit();
 
     console.log(`[PDL] ✅ Standings updated for division ${divisionId}: ${teamsSnapshot.size} teams, ${matchesSnapshot.size} completed matches`);
+}
+
+// ============================================================================
+// TEAM IDENTIFICATION FALLBACK (by player Steam IDs)
+// ============================================================================
+
+/**
+ * When name-based matching fails (e.g. team used a different in-game name),
+ * try to identify teams by cross-referencing player Steam32 account IDs
+ * from the OpenDota match with the registered PDL team rosters.
+ *
+ * Requires at least MIN_MATCHES players from a side to match a team.
+ */
+function identifyPDLTeamsByPlayerIds(
+    openDotaMatch: any,
+    teams: PDLTeam[]
+): { radiantTeam: PDLTeam; direTeam: PDLTeam } | null {
+    const MIN_MATCHES = 3;
+
+    const radiantAccountIds = new Set<string>(
+        (openDotaMatch.players ?? [])
+            .filter((p: any) => p.player_slot < 128 && p.account_id != null)
+            .map((p: any) => String(p.account_id))
+    );
+    const direAccountIds = new Set<string>(
+        (openDotaMatch.players ?? [])
+            .filter((p: any) => p.player_slot >= 128 && p.account_id != null)
+            .map((p: any) => String(p.account_id))
+    );
+
+    if (radiantAccountIds.size === 0 && direAccountIds.size === 0) {
+        console.log('[PDL-TeamIdentify] No player account IDs in match data — cannot use player fallback');
+        return null;
+    }
+
+    // Build steamId32 → teamId lookup
+    const playerToTeam = new Map<string, string>();
+    for (const team of teams) {
+        for (const player of (team.players ?? [])) {
+            if (player.steamId32 != null && player.steamId32 !== '') {
+                playerToTeam.set(String(player.steamId32), team.id);
+            }
+        }
+    }
+
+    const scoreTeam = (teamId: string, accountIds: Set<string>): number => {
+        let score = 0;
+        for (const accountId of accountIds) {
+            if (playerToTeam.get(accountId) === teamId) score++;
+        }
+        return score;
+    };
+
+    let bestRadiantTeam: PDLTeam | null = null;
+    let bestRadiantScore = 0;
+    let bestDireTeam: PDLTeam | null = null;
+    let bestDireScore = 0;
+
+    for (const team of teams) {
+        const rScore = scoreTeam(team.id, radiantAccountIds);
+        if (rScore > bestRadiantScore) { bestRadiantScore = rScore; bestRadiantTeam = team; }
+        const dScore = scoreTeam(team.id, direAccountIds);
+        if (dScore > bestDireScore) { bestDireScore = dScore; bestDireTeam = team; }
+    }
+
+    if (!bestRadiantTeam || bestRadiantScore < MIN_MATCHES) {
+        console.log(`[PDL-TeamIdentify] Could not identify radiant — best: ${bestRadiantScore}/${radiantAccountIds.size}`);
+        return null;
+    }
+    if (!bestDireTeam || bestDireScore < MIN_MATCHES) {
+        console.log(`[PDL-TeamIdentify] Could not identify dire — best: ${bestDireScore}/${direAccountIds.size}`);
+        return null;
+    }
+    if (bestRadiantTeam.id === bestDireTeam.id) {
+        console.log(`[PDL-TeamIdentify] Both sides resolved to the same team (${bestRadiantTeam.name}) — invalid`);
+        return null;
+    }
+
+    console.log(`[PDL-TeamIdentify] ✅ Radiant=${bestRadiantTeam.name} (${bestRadiantScore}/5), Dire=${bestDireTeam.name} (${bestDireScore}/5)`);
+    return { radiantTeam: bestRadiantTeam, direTeam: bestDireTeam };
+}
+
+// ============================================================================
+// MATCH SELECTION HELPER
+// ============================================================================
+
+/**
+ * Among all scheduled matches between two teams, pick the one that most
+ * needs a new game:
+ *  1. Prefer status === 'scheduled' over 'completed'
+ *  2. Among candidates with the same status, prefer fewest game_ids (least
+ *     filled), so games always land in the current round instead of a
+ *     previous (already-full) round.
+ */
+function findBestAvailableMatch(
+    allMatches: PDLMatch[],
+    radiantTeamId: string,
+    direTeamId: string,
+): PDLMatch | null {
+    const candidates = allMatches.filter(
+        m => m.teams?.includes(radiantTeamId) && m.teams?.includes(direTeamId)
+    );
+
+    if (candidates.length === 0) return null;
+    if (candidates.length === 1) return candidates[0];
+
+    // Prefer scheduled matches
+    const scheduled = candidates.filter(m => m.status === 'scheduled');
+    const pool = scheduled.length > 0 ? scheduled : candidates;
+
+    // Among the pool, prefer fewest existing game_ids (least filled match)
+    pool.sort((a, b) => (a.game_ids?.length ?? 0) - (b.game_ids?.length ?? 0));
+    const best = pool[0];
+
+    if (candidates.length > 1) {
+        console.log(
+            `[PDL-MatchSelect] ${candidates.length} candidate matches for ` +
+            `${radiantTeamId} vs ${direTeamId}. Chose ${best.id} ` +
+            `(status=${best.status}, games=${best.game_ids?.length ?? 0})`
+        );
+    }
+
+    return best;
 }
 
 // ============================================================================
@@ -541,9 +888,13 @@ export async function syncPDLMatchesAdmin(tournamentId: string = 'pdl-s1'): Prom
         // Filter for new matches
         const newMatchIds = steamMatchIds.filter(id => !processedGameIds.has(String(id)));
 
-        // Also get unparsed matches for retry
+        // Also get unparsed matches for retry — but only those that haven't
+        // since been manually skipped / processed (e.g. admin added to ignored list
+        // while the game was still in the unparsed queue).
         const unparsedMatches = await getPDLUnparsedMatchesAdmin(tournamentId);
-        const unparsedMatchIds = unparsedMatches.map(um => parseInt(um.openDotaMatchId));
+        const unparsedMatchIds = unparsedMatches
+            .map(um => parseInt(um.openDotaMatchId))
+            .filter(id => !processedGameIds.has(String(id)));
 
         const allMatchIdsToProcess = [...new Set([...newMatchIds, ...unparsedMatchIds])];
 
@@ -604,7 +955,7 @@ export async function syncPDLMatchesAdmin(tournamentId: string = 'pdl-s1'): Prom
                 const totalKills: number = (openDotaMatch.radiant_score ?? 0) + (openDotaMatch.dire_score ?? 0);
                 if (gameDuration < 300 || totalKills === 0) {
                     console.log(`[PDL] Skipping match ${matchId} — detected as remake (duration: ${gameDuration}s, kills: ${totalKills})`);
-                    await markPDLGameAsProcessedAdmin(tournamentId, String(matchId));
+                    await markPDLGameAsSkippedAdmin(tournamentId, String(matchId), `Remake (${gameDuration}s, ${totalKills} kills)`);
                     skippedCount++;
                     continue;
                 }
@@ -617,21 +968,38 @@ export async function syncPDLMatchesAdmin(tournamentId: string = 'pdl-s1'): Prom
                     t.name.trim().toLowerCase() === openDotaMatch.dire_name?.trim().toLowerCase()
                 );
 
-                if (!radiantTeam || !direTeam) {
-                    console.log(`[PDL] Teams not found: ${openDotaMatch.radiant_name} vs ${openDotaMatch.dire_name} - likely scrim`);
-                    await markPDLGameAsProcessedAdmin(tournamentId, String(matchId));
-                    skippedCount++;
-                    continue;
+                let resolvedRadiantTeam = radiantTeam;
+                let resolvedDireTeam = direTeam;
+
+                if (!resolvedRadiantTeam || !resolvedDireTeam) {
+                    // Name-based matching failed (e.g. team used a different in-game name like "Poland" instead of "Team Poland").
+                    // Try to identify teams by cross-referencing player Steam32 IDs.
+                    console.log(`[PDL] Name lookup failed for "${openDotaMatch.radiant_name}" vs "${openDotaMatch.dire_name}". Trying player-based identification...`);
+                    const playerIdentified = identifyPDLTeamsByPlayerIds(openDotaMatch, teams);
+                    if (playerIdentified) {
+                        resolvedRadiantTeam = playerIdentified.radiantTeam;
+                        resolvedDireTeam = playerIdentified.direTeam;
+                        console.log(`[PDL] Player-based ID succeeded: ${resolvedRadiantTeam.name} vs ${resolvedDireTeam.name}`);
+                    } else {
+                        console.log(`[PDL] Player-based identification also failed for ${openDotaMatch.radiant_name} vs ${openDotaMatch.dire_name} — likely a scrim`);
+                        const radiantLabel = openDotaMatch.radiant_name || 'Unknown';
+                        const direLabel = openDotaMatch.dire_name || 'Unknown';
+                        await markPDLGameAsSkippedAdmin(tournamentId, String(matchId), `Team not identified: ${radiantLabel} vs ${direLabel} (likely scrim)`);
+                        skippedCount++;
+                        continue;
+                    }
                 }
 
-                // Find the scheduled match between these teams
-                const existingMatch = allMatches.find(m =>
-                    m.teams?.includes(radiantTeam.id) && m.teams?.includes(direTeam.id)
+                // Find the best available match between these teams
+                const existingMatch = findBestAvailableMatch(
+                    allMatches,
+                    resolvedRadiantTeam!.id,
+                    resolvedDireTeam!.id,
                 );
 
                 if (!existingMatch) {
-                    console.log(`[PDL] No scheduled match found for ${radiantTeam.name} vs ${direTeam.name}`);
-                    await markPDLGameAsProcessedAdmin(tournamentId, String(matchId));
+                    console.log(`[PDL] No scheduled match found for ${resolvedRadiantTeam.name} vs ${resolvedDireTeam.name}`);
+                    await markPDLGameAsSkippedAdmin(tournamentId, String(matchId), `No scheduled match: ${resolvedRadiantTeam.name} vs ${resolvedDireTeam.name}`);
                     skippedCount++;
                     continue;
                 }
@@ -648,8 +1016,8 @@ export async function syncPDLMatchesAdmin(tournamentId: string = 'pdl-s1'): Prom
                 const updatedPerformances = performances.map((perf: any) => ({
                     ...perf,
                     fantasyPoints: calculatePDLFantasyPoints(perf,
-                        (perf.teamId === radiantTeam.id && openDotaMatch.radiant_win) ||
-                        (perf.teamId === direTeam.id && !openDotaMatch.radiant_win)
+                        (perf.teamId === resolvedRadiantTeam!.id && openDotaMatch.radiant_win) ||
+                        (perf.teamId === resolvedDireTeam!.id && !openDotaMatch.radiant_win)
                     ),
                 }));
 
@@ -667,6 +1035,22 @@ export async function syncPDLMatchesAdmin(tournamentId: string = 'pdl-s1'): Prom
                     // Remove from unparsed queue if it was a retry
                     if (isRetry) {
                         await removePDLUnparsedMatchAdmin(tournamentId, String(matchId));
+                    }
+
+                    // Update in-memory match data so findBestAvailableMatch
+                    // picks the correct match for subsequent games from the
+                    // same team pair (e.g. different rounds).
+                    const memMatch = allMatches.find(m => m.id === existingMatch.id);
+                    if (memMatch) {
+                        const numericId = parseInt(game.id);
+                        if (!memMatch.game_ids) memMatch.game_ids = [];
+                        if (!memMatch.game_ids.includes(numericId)) {
+                            memMatch.game_ids.push(numericId);
+                        }
+                        // Mark as completed when match reaches 2 games (BO2)
+                        if (memMatch.game_ids.length >= 2) {
+                            memMatch.status = 'completed';
+                        }
                     }
 
                     importedCount++;
@@ -925,30 +1309,43 @@ export async function importPDLManualMatchesAdmin(
             const totalKills: number = (openDotaMatch.radiant_score ?? 0) + (openDotaMatch.dire_score ?? 0);
             if (gameDuration < 300 || totalKills === 0) {
                 console.log(`[PDL] Skipping match ${matchId} — detected as remake (duration: ${gameDuration}s, kills: ${totalKills})`);
-                await markPDLGameAsProcessedAdmin(tournamentId, String(matchId));
+                await markPDLGameAsSkippedAdmin(tournamentId, String(matchId), `Remake (${gameDuration}s, ${totalKills} kills)`);
                 skippedCount++;
                 continue;
             }
 
-            const radiantTeam = teams.find(t =>
+            let radiantTeam = teams.find(t =>
                 t.name.trim().toLowerCase() === openDotaMatch.radiant_name?.trim().toLowerCase()
             );
-            const direTeam = teams.find(t =>
+            let direTeam = teams.find(t =>
                 t.name.trim().toLowerCase() === openDotaMatch.dire_name?.trim().toLowerCase()
             );
 
             if (!radiantTeam || !direTeam) {
-                await markPDLGameAsProcessedAdmin(tournamentId, String(matchId));
-                skippedCount++;
-                continue;
+                // Name-based matching failed — try player-based identification
+                console.log(`[PDL] Name lookup failed for "${openDotaMatch.radiant_name}" vs "${openDotaMatch.dire_name}". Trying player-based identification...`);
+                const playerIdentified = identifyPDLTeamsByPlayerIds(openDotaMatch, teams);
+                if (playerIdentified) {
+                    radiantTeam = playerIdentified.radiantTeam;
+                    direTeam = playerIdentified.direTeam;
+                    console.log(`[PDL] Player-based ID succeeded: ${radiantTeam.name} vs ${direTeam.name}`);
+                } else {
+                    const rcLabel = openDotaMatch.radiant_name || 'Unknown';
+                    const dcLabel = openDotaMatch.dire_name || 'Unknown';
+                    await markPDLGameAsSkippedAdmin(tournamentId, String(matchId), `Team not identified: ${rcLabel} vs ${dcLabel}`);
+                    skippedCount++;
+                    continue;
+                }
             }
 
-            const existingMatch = allMatches.find(m =>
-                m.teams?.includes(radiantTeam.id) && m.teams?.includes(direTeam.id)
+            const existingMatch = findBestAvailableMatch(
+                allMatches,
+                radiantTeam.id,
+                direTeam.id,
             );
 
             if (!existingMatch) {
-                await markPDLGameAsProcessedAdmin(tournamentId, String(matchId));
+                await markPDLGameAsSkippedAdmin(tournamentId, String(matchId), `No scheduled match: ${radiantTeam.name} vs ${direTeam.name}`);
                 skippedCount++;
                 continue;
             }
@@ -977,6 +1374,22 @@ export async function importPDLManualMatchesAdmin(
 
             if (saveResult.success) {
                 await markPDLGameAsProcessedAdmin(tournamentId, String(matchId));
+
+                // Update in-memory match data so findBestAvailableMatch
+                // picks the correct match for subsequent games from the
+                // same team pair (e.g. different rounds).
+                const memMatch = allMatches.find(m => m.id === existingMatch.id);
+                if (memMatch) {
+                    const numericId = parseInt(game.id);
+                    if (!memMatch.game_ids) memMatch.game_ids = [];
+                    if (!memMatch.game_ids.includes(numericId)) {
+                        memMatch.game_ids.push(numericId);
+                    }
+                    if (memMatch.game_ids.length >= 2) {
+                        memMatch.status = 'completed';
+                    }
+                }
+
                 importedCount++;
             } else {
                 failedCount++;
@@ -1226,6 +1639,129 @@ export async function forfeitPDLMatchAdmin(
         success: true,
         message: `${gameLabel} forfeit recorded – score updated to ${teamAWins}:${teamBWins}`,
     };
+}
+
+// ============================================================================
+// REVERT FORFEIT
+// ============================================================================
+
+/**
+ * Reverts a previously recorded forfeit for a PDL match.
+ *
+ * Full-series walkover: clears scores, status → 'scheduled', removes forfeit field.
+ * Game-level forfeit:   deletes synthetic forfit_game* documents, recalculates
+ *                       the series score from the remaining real games, and clears
+ *                       the forfeit field from the match document.
+ *
+ * In both cases, division standings are recalculated afterwards.
+ */
+export async function revertPDLForfeitAdmin(
+    tournamentId: string,
+    matchId: string,
+): Promise<{ success: boolean; message: string }> {
+    ensureAdminInitialized();
+    const db = getAdminDb();
+
+    const matchRef = db
+        .collection('tournaments')
+        .doc(tournamentId)
+        .collection('matches')
+        .doc(matchId);
+
+    const matchDoc = await matchRef.get();
+    if (!matchDoc.exists) {
+        return { success: false, message: 'Match not found' };
+    }
+
+    const matchData = matchDoc.data()!;
+
+    if (!matchData.forfeit) {
+        return { success: false, message: 'This match has no forfeit to revert' };
+    }
+
+    const forfeitMeta = matchData.forfeit as {
+        scope: 'series' | 'games';
+        forfeitedGameNumbers?: number[];
+    };
+    const teamAId: string = matchData.teams?.[0] || matchData.teamA?.id;
+    const teamBId: string = matchData.teams?.[1] || matchData.teamB?.id;
+
+    const gamesRef = matchRef.collection('games');
+
+    if (forfeitMeta.scope === 'series') {
+        // Full walkover — reset to scheduled state with 0-0 score
+        await matchRef.update({
+            'teamA.score': 0,
+            'teamB.score': 0,
+            status: 'scheduled',
+            forfeit: FieldValue.delete(),
+            winnerId: FieldValue.delete(),
+            completedAt: FieldValue.delete(),
+        });
+
+        console.log(`[PDL Revert Forfeit] Match ${matchId}: full-series forfeit reverted → scheduled`);
+
+    } else {
+        // Game-level forfeit — delete synthetic forfeit_game* docs
+        const numGames: number[] = forfeitMeta.forfeitedGameNumbers ?? [1, 2];
+        const batch = db.batch();
+        for (const gameNum of numGames) {
+            batch.delete(gamesRef.doc(`forfeit_game${gameNum}`));
+        }
+        await batch.commit();
+
+        // Recalculate series score from real (non-synthetic) games remaining
+        const allGamesSnap = await gamesRef.get();
+        const realGames = allGamesSnap.docs
+            .filter(d => !d.id.startsWith('forfeit_'))
+            .map(d => d.data());
+
+        let teamAWins = 0;
+        let teamBWins = 0;
+        realGames.forEach(game => {
+            const radiantId = game.radiant_team?.id;
+            const direId    = game.dire_team?.id;
+            if (game.radiant_win) {
+                if (radiantId === teamAId) teamAWins++;
+                else if (radiantId === teamBId) teamBWins++;
+            } else {
+                if (direId === teamAId) teamAWins++;
+                else if (direId === teamBId) teamBWins++;
+            }
+        });
+
+        const isComplete = realGames.length >= 2;
+        let winnerId: string | undefined;
+        if (teamAWins > teamBWins) winnerId = teamAId;
+        else if (teamBWins > teamAWins) winnerId = teamBId;
+
+        const updateData: Record<string, unknown> = {
+            'teamA.score': teamAWins,
+            'teamB.score': teamBWins,
+            forfeit: FieldValue.delete(),
+        };
+
+        if (isComplete) {
+            updateData.status     = 'completed';
+            updateData.winnerId   = winnerId ?? FieldValue.delete();
+            updateData.completedAt = FieldValue.serverTimestamp();
+        } else {
+            updateData.status     = 'scheduled';
+            updateData.winnerId   = FieldValue.delete();
+            updateData.completedAt = FieldValue.delete();
+        }
+
+        await matchRef.update(updateData);
+
+        console.log(`[PDL Revert Forfeit] Match ${matchId}: game-level forfeit reverted. New score: ${teamAWins}-${teamBWins}`);
+    }
+
+    // Recalculate division standings
+    if (matchData.divisionId) {
+        await updatePDLDivisionStandingsAdmin(tournamentId, matchData.divisionId);
+    }
+
+    return { success: true, message: 'Forfeit reverted successfully' };
 }
 
 // ============================================================================

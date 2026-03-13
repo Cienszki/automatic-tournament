@@ -20,6 +20,7 @@ import {
   UserPlus,
   GraduationCap,
   Settings,
+  RefreshCw,
 } from 'lucide-react';
 import { cn, formatDatePL } from '@/lib/utils';
 import type { Match, Team, Player, PDLStandinRequest as PDLStandinRequestType } from '@/lib/definitions';
@@ -67,6 +68,12 @@ interface PDLUpcomingMatchProps {
   onRemoveCoach?: (matchId: string) => Promise<void>;
   /** Standin requests from the opponent for this match (that we need to approve) */
   opponentStandinRequests?: PDLStandinRequestType[];
+  /** All standin requests in the tournament — used to compute approval history in the opponent view */
+  allTournamentRequests?: PDLStandinRequestType[];
+  /** Maps match IDs to readable labels for standin history display */
+  matchNameMap?: Record<string, string>;
+  /** Refreshes data for this specific match only */
+  onRefreshMatch?: () => Promise<void>;
 }
 
 export function PDLUpcomingMatch({
@@ -91,11 +98,25 @@ export function PDLUpcomingMatch({
   onSetCoach,
   onRemoveCoach,
   opponentStandinRequests = [],
+  allTournamentRequests,
+  matchNameMap,
+  onRefreshMatch,
 }: PDLUpcomingMatchProps) {
   const [expanded, setExpanded] = useState(false);
   const [showReschedule, setShowReschedule] = useState(false);
   const [selectedDate, setSelectedDate] = useState('');
   const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const handleRefreshMatch = async () => {
+    if (!onRefreshMatch || refreshing) return;
+    setRefreshing(true);
+    try {
+      await onRefreshMatch();
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   // Get opponent info
   const isTeamA = match.teamA?.id === myTeamId;
@@ -111,14 +132,18 @@ export function PDLUpcomingMatch({
   const isRequestFromUs = rescheduleRequest && rescheduleRequest.requestedBy === myTeamId;
   const isRequestFromOpponent = hasActiveRequest && rescheduleRequest.requestedBy !== myTeamId;
 
-  // Calculate allowed date range (±3 days from ORIGINAL scheduled date)
-  // Use originalDate from reschedule request if it exists, otherwise use current scheduled_for
+  // Calculate allowed date range (±3 days from the ORIGINAL scheduled date).
+  // The anchor is always the very first match date so captains cannot chain multiple
+  // reschedules to drift further than 3 days from the admin-set schedule.
+  // Once a rescheduleRequest exists, its originalDate stores that first date permanently.
   const originalDate = rescheduleRequest?.originalDate || scheduledDate;
   const originalDateObj = originalDate ? new Date(originalDate) : new Date();
   const minDate = new Date(originalDateObj);
   minDate.setDate(minDate.getDate() - 3);
+  minDate.setHours(0, 0, 0, 0); // Start of day in local time
   const maxDate = new Date(originalDateObj);
   maxDate.setDate(maxDate.getDate() + 3);
+  maxDate.setHours(23, 59, 0, 0); // End of day in local time
 
   // Count pending items
   const myPendingStandins = standinRequests.filter(r => r.status === 'pending' || r.status === 'rejected').length;
@@ -223,8 +248,8 @@ export function PDLUpcomingMatch({
       {/* Expanded content */}
       {expanded && (
         <div className="border-t border-white/5 p-5 space-y-6">
-          {/* ─── Pre-Match Checklist ─── */}
-          {isCaptain && scheduledDate && (
+          {/* ─── Pre-Match Checklist (hidden for completed matches) ─── */}
+          {isCaptain && scheduledDate && match.status !== 'completed' && (
             <PDLPreMatchChecklist
               matchId={match.id}
               matchDate={scheduledDate}
@@ -351,23 +376,52 @@ export function PDLUpcomingMatch({
                     <p className="text-xs text-white/60 mt-1">
                       Proponowana data: <span className="font-logik-extended-bold">{rescheduleRequest?.proposedDate ? formatDatePL(rescheduleRequest.proposedDate) : '-'}</span>
                     </p>
+                    {rescheduleRequest?.status === 'approved' && (
+                      <p className="text-xs text-green-300/70 mt-1.5">
+                        Termin meczu został zmieniony. Zapis pozostaje w historii meczu. Jeśli potrzebujesz kolejnej zmiany — złóż nowy wniosek.
+                      </p>
+                    )}
                   </div>
                 </div>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="border-red-500/30 text-red-400 hover:bg-red-500/10"
-                  onClick={() => {
-                    if (onCancelReschedule && !loading) {
-                      setLoading(true);
-                      onCancelReschedule(match.id).finally(() => setLoading(false));
-                    }
-                  }}
-                  disabled={loading}
-                >
-                  {loading ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <XCircle className="w-4 h-4 mr-1" />}
-                  {rescheduleRequest?.status === 'pending' ? 'Anuluj prośbę' : 'Usuń wniosek'}
-                </Button>
+
+                {/* Cancel button — only available while the request is still PENDING.
+                    Approved reschedules are immutable records: the match has been moved
+                    and the entry must remain visible to both teams and admins.
+                    Rejected requests can be dismissed to clean up the UI. */}
+                {rescheduleRequest?.status === 'pending' && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="border-red-500/30 text-red-400 hover:bg-red-500/10"
+                    onClick={() => {
+                      if (onCancelReschedule && !loading) {
+                        setLoading(true);
+                        onCancelReschedule(match.id).finally(() => setLoading(false));
+                      }
+                    }}
+                    disabled={loading}
+                  >
+                    {loading ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <XCircle className="w-4 h-4 mr-1" />}
+                    Anuluj prośbę
+                  </Button>
+                )}
+                {rescheduleRequest?.status === 'rejected' && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="border-white/10 text-white/40 hover:bg-white/5"
+                    onClick={() => {
+                      if (onCancelReschedule && !loading) {
+                        setLoading(true);
+                        onCancelReschedule(match.id).finally(() => setLoading(false));
+                      }
+                    }}
+                    disabled={loading}
+                  >
+                    {loading ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <XCircle className="w-4 h-4 mr-1" />}
+                    Usuń odrzucony wniosek
+                  </Button>
+                )}
               </div>
             )}
 
@@ -383,8 +437,8 @@ export function PDLUpcomingMatch({
                     type="datetime-local"
                     value={selectedDate}
                     onChange={(e) => setSelectedDate(e.target.value)}
-                    min={minDate.toISOString().slice(0, 16)}
-                    max={maxDate.toISOString().slice(0, 16)}
+                    min={`${minDate.getFullYear()}-${String(minDate.getMonth()+1).padStart(2,'0')}-${String(minDate.getDate()).padStart(2,'0')}T00:00`}
+                    max={`${maxDate.getFullYear()}-${String(maxDate.getMonth()+1).padStart(2,'0')}-${String(maxDate.getDate()).padStart(2,'0')}T23:59`}
                     className="bg-white/5 border-white/10 text-white"
                   />
                   <div className="flex gap-2">
@@ -473,19 +527,33 @@ export function PDLUpcomingMatch({
                 onRejectRequest={onRejectStandinRequest}
                 onAppealRequest={async () => {}}
                 isOpponentView={true}
+                allTournamentRequests={allTournamentRequests}
+                matchNameMap={matchNameMap}
               />
             </div>
           )}
 
           {/* ─── Lobby instructions ─── */}
           <PDLMatchRules
-            leagueId={19206}
-            leagueName="POLISH DOTA LEAGUE"
             isGame1Host={true}
             hostTeamName={match.teamA?.name}
             opponentTeamName={match.teamB?.name}
             timePenalty={timePenalty}
           />
+
+          {/* ─── Refresh button ─── */}
+          {onRefreshMatch && (
+            <div className="flex justify-end pt-2 border-t border-white/5">
+              <button
+                onClick={handleRefreshMatch}
+                disabled={refreshing}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-white/40 hover:text-white/70 hover:bg-white/5 border border-transparent hover:border-white/10 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
+                {refreshing ? 'Odświeżanie...' : 'Odśwież dane meczu'}
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>

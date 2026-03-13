@@ -21,6 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { useEffect } from 'react';
 import {
   UserPlus,
   CheckCircle,
@@ -67,6 +68,18 @@ interface PDLStandinRequestProps {
   onCancelRequest?: (requestId: string) => Promise<void>;
   /** Whether we are the opponent approving (true) or the requesting team (false) */
   isOpponentView?: boolean;
+  /**
+   * When true, the match has already been completed so new standin requests
+   * cannot be submitted — only existing ones can be approved / rejected.
+   */
+  isMatchCompleted?: boolean;
+  /**
+   * All standin requests in the tournament — used to show approval history for
+   * a standin replacing the same absent player across different matches.
+   */
+  allTournamentRequests?: PDLStandinRequestType[];
+  /** Maps match IDs to readable labels (e.g. "TeamA vs TeamB") for history display */
+  matchNameMap?: Record<string, string>;
 }
 
 const statusConfig: Record<PDLStandinRequestStatus, { label: string; className: string; canPlay?: boolean; cannotPlay?: boolean; icon?: any }> = {
@@ -77,6 +90,20 @@ const statusConfig: Record<PDLStandinRequestStatus, { label: string; className: 
   appeal_approved: { label: 'Admin zatwierdził - może grać!', className: 'bg-green-500/20 text-green-400 border-green-500/30', canPlay: true, icon: CheckCircle },
   appeal_rejected: { label: 'Admin odrzucił - nie może grać', className: 'bg-red-500/20 text-red-400 border-red-500/30', canPlay: false, cannotPlay: true },
 };
+
+/**
+ * Extracts steamId32 purely from a direct /profiles/STEAMID64/ URL (no API call).
+ * Returns null for vanity /id/name/ URLs — those need async resolution.
+ */
+function extractSteamId32FromDirectUrl(url: string): string | null {
+  const m = url.match(/\/profiles\/(\d{15,})/);
+  if (!m) return null;
+  try {
+    return String(BigInt(m[1]) - 76561197960265728n);
+  } catch {
+    return null;
+  }
+}
 
 export function PDLStandinRequestSection({
   matchId,
@@ -90,6 +117,8 @@ export function PDLStandinRequestSection({
   onAppealRequest,
   onCancelRequest,
   isOpponentView = false,
+  allTournamentRequests,
+  matchNameMap,
 }: PDLStandinRequestProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isAppealOpen, setIsAppealOpen] = useState(false);
@@ -98,6 +127,8 @@ export function PDLStandinRequestSection({
   const [loading, setLoading] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
   const [showRejectInput, setShowRejectInput] = useState<string | null>(null);
+  // Resolved steamId32 for standin requests that use vanity Steam URLs
+  const [resolvedSteamId32s, setResolvedSteamId32s] = useState<Record<string, string>>({});
 
   // Form state
   const [selectedPlayerId, setSelectedPlayerId] = useState('');
@@ -105,6 +136,35 @@ export function PDLStandinRequestSection({
   const [standinSteamUrl, setStandinSteamUrl] = useState('');
 
   const matchRequests = existingRequests.filter(r => r.matchId === matchId);
+
+  // For each opponent pending request, resolve its steamId32 via API if it's a vanity URL
+  useEffect(() => {
+    if (!isOpponentView) return;
+    const pending = matchRequests.filter(r => r.status === 'pending');
+    for (const req of pending) {
+      if (resolvedSteamId32s[req.id]) continue; // already resolved
+      const fromUrl = extractSteamId32FromDirectUrl(req.standinSteamProfileUrl);
+      if (fromUrl) {
+        // Direct URL — no API call needed, populate instantly
+        setResolvedSteamId32s(prev => ({ ...prev, [req.id]: fromUrl }));
+      } else if (req.standinSteamProfileUrl) {
+        // Vanity URL — resolve via validate-steam endpoint
+        fetch('/api/validate-steam', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ steamProfileUrl: req.standinSteamProfileUrl }),
+        })
+          .then(r => r.json())
+          .then(data => {
+            if (data.steamId32) {
+              setResolvedSteamId32s(prev => ({ ...prev, [req.id]: data.steamId32 }));
+            }
+          })
+          .catch(() => { /* silently ignore — links just won't show */ });
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [matchRequests, isOpponentView]);
 
   const handleSubmit = async () => {
     if (!selectedPlayerId || !standinNickname.trim() || !standinSteamUrl.trim()) return;
@@ -292,61 +352,157 @@ export function PDLStandinRequestSection({
                 )}
 
                 {/* Opponent captain actions */}
-                {canApproveReject && (
-                  <div className="flex flex-col gap-2">
-                    {showRejectInput === request.id ? (
-                      <div className="space-y-2">
-                        <Input
-                          placeholder="Powód odrzucenia (opcjonalnie)"
-                          value={rejectReason}
-                          onChange={(e) => setRejectReason(e.target.value)}
-                          className="bg-white/5 border-white/10 text-white text-sm"
-                        />
+                {canApproveReject && (() => {
+                  const steamId32 = resolvedSteamId32s[request.id] || null;
+                  const openDotaUrl = steamId32 ? `https://www.opendota.com/players/${steamId32}` : null;
+                  const dotabuffUrl = steamId32 ? `https://www.dotabuff.com/players/${steamId32}` : null;
+
+                  // History: previous approvals of this standin replacing the same absent player
+                  const previousApprovals = (allTournamentRequests || []).filter(r =>
+                    r.standinSteamProfileUrl === request.standinSteamProfileUrl &&
+                    r.replacedPlayerId === request.replacedPlayerId &&
+                    r.matchId !== request.matchId &&
+                    (r.status === 'approved' || r.status === 'appeal_approved')
+                  );
+
+                  return (
+                    <div className="space-y-3">
+                      {/* Info panel: profile links + history */}
+                      <div className="rounded-lg border border-white/10 bg-white/[0.02] p-3 space-y-3">
+                        {/* External profile links */}
+                        <div className="space-y-2">
+                          <p className="text-[10px] font-logik-extended-bold text-white/40 uppercase tracking-widest">
+                            Sprawdź gracza
+                          </p>
+                          <div className="flex flex-wrap gap-2">
+                            <a
+                              href={request.standinSteamProfileUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md bg-[#1b2838] text-[#c7d5e0] hover:bg-[#2a475e] border border-white/10 transition-colors"
+                            >
+                              <ExternalLink className="w-3 h-3" />
+                              Steam
+                            </a>
+                            {openDotaUrl ? (
+                              <a
+                                href={openDotaUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md bg-[#4a90d9]/10 text-[#4a90d9] hover:bg-[#4a90d9]/20 border border-[#4a90d9]/30 transition-colors"
+                              >
+                                <ExternalLink className="w-3 h-3" />
+                                OpenDota
+                              </a>
+                            ) : (
+                              <span className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md bg-white/[0.03] text-white/20 border border-white/5">
+                                <Loader2 className="w-3 h-3 animate-spin" />
+                                OpenDota
+                              </span>
+                            )}
+                            {dotabuffUrl ? (
+                              <a
+                                href={dotabuffUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md bg-[#bf4b0b]/10 text-[#e87040] hover:bg-[#bf4b0b]/20 border border-[#bf4b0b]/30 transition-colors"
+                              >
+                                <ExternalLink className="w-3 h-3" />
+                                Dotabuff
+                              </a>
+                            ) : (
+                              <span className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md bg-white/[0.03] text-white/20 border border-white/5">
+                                <Loader2 className="w-3 h-3 animate-spin" />
+                                Dotabuff
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Approval history for this standin replacing the same player */}
+                        <div className="space-y-1.5">
+                          <p className="text-[10px] font-logik-extended-bold text-white/40 uppercase tracking-widest">
+                            Historia za {request.replacedPlayerNickname}
+                          </p>
+                          {previousApprovals.length === 0 ? (
+                            <p className="text-xs text-white/30">
+                              Brak wcześniejszych zatwierdzeń
+                            </p>
+                          ) : (
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-1.5">
+                                <CheckCircle className="w-3.5 h-3.5 text-green-400 flex-shrink-0" />
+                                <p className="text-xs text-green-400 font-logik-extended-bold">
+                                  Zatwierdzony {previousApprovals.length}× za tego gracza
+                                </p>
+                              </div>
+                              <ul className="ml-5 space-y-0.5">
+                                {previousApprovals.map(prev => (
+                                  <li key={prev.id} className="text-xs text-white/40">
+                                    • {matchNameMap?.[prev.matchId] ?? `Mecz ${prev.matchId.substring(0, 8)}…`}
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Approve / Reject buttons */}
+                      {showRejectInput === request.id ? (
+                        <div className="space-y-2">
+                          <Input
+                            placeholder="Powód odrzucenia (opcjonalnie)"
+                            value={rejectReason}
+                            onChange={(e) => setRejectReason(e.target.value)}
+                            className="bg-white/5 border-white/10 text-white text-sm"
+                          />
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => handleReject(request.id)}
+                              disabled={loading}
+                            >
+                              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <XCircle className="w-4 h-4 mr-1" />}
+                              Potwierdź odrzucenie
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => { setShowRejectInput(null); setRejectReason(''); }}
+                              className="text-white/60"
+                            >
+                              Anuluj
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
                         <div className="flex gap-2">
                           <Button
                             size="sm"
-                            variant="destructive"
-                            onClick={() => handleReject(request.id)}
+                            className="bg-green-600 hover:bg-green-700 text-white"
+                            onClick={() => handleApprove(request.id)}
                             disabled={loading}
                           >
-                            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <XCircle className="w-4 h-4 mr-1" />}
-                            Potwierdź odrzucenie
+                            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4 mr-1" />}
+                            Zatwierdź
                           </Button>
                           <Button
                             size="sm"
-                            variant="ghost"
-                            onClick={() => { setShowRejectInput(null); setRejectReason(''); }}
-                            className="text-white/60"
+                            variant="outline"
+                            className="border-red-500/30 text-red-400 hover:bg-red-500/10"
+                            onClick={() => setShowRejectInput(request.id)}
+                            disabled={loading}
                           >
-                            Anuluj
+                            <XCircle className="w-4 h-4 mr-1" />
+                            Odrzuć
                           </Button>
                         </div>
-                      </div>
-                    ) : (
-                      <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          className="bg-green-600 hover:bg-green-700 text-white"
-                          onClick={() => handleApprove(request.id)}
-                          disabled={loading}
-                        >
-                          {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4 mr-1" />}
-                          Zatwierdź
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="border-red-500/30 text-red-400 hover:bg-red-500/10"
-                          onClick={() => setShowRejectInput(request.id)}
-                          disabled={loading}
-                        >
-                          <XCircle className="w-4 h-4 mr-1" />
-                          Odrzuć
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                )}
+                      )}
+                    </div>
+                  );
+                })()}
 
                 {/* Appeal button for rejected requests */}
                 {canAppeal && (

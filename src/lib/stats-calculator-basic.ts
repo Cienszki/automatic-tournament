@@ -2,15 +2,16 @@
 import { writeBatch, doc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { TournamentStats } from '@/lib/stats-definitions';
+import type { GameData, PerformanceData, TeamData } from '@/lib/stats-types';
 import { findMostPickedHero, findMostBannedHero } from './hero-mapping';
 
 // Re-export hero-mapping functions for compatibility
 export { findMostPickedHero, findMostBannedHero } from './hero-mapping';
 
 export async function calculateBasicTournamentStats(
-  games: any[],
-  teams: any[],
-  performances: any[]
+  games: GameData[],
+  teams: TeamData[],
+  performances: PerformanceData[]
 ): Promise<TournamentStats> {
   
   // Default values for missing data
@@ -157,7 +158,7 @@ export async function calculateBasicTournamentStats(
 }
 
 // Helper functions with simplified implementations
-function findLongestMatch(games: any[]): { matchId: string; duration: number; teamA: string; teamB: string; } {
+function findLongestMatch(games: GameData[]): { matchId: string; duration: number; teamA: string; teamB: string; } {
   if (games.length === 0) return { matchId: '', duration: 0, teamA: '', teamB: '' };
   
   const longest = games.reduce((max, current) => 
@@ -172,7 +173,7 @@ function findLongestMatch(games: any[]): { matchId: string; duration: number; te
   };
 }
 
-function findShortestMatch(games: any[]): { matchId: string; duration: number; teamA: string; teamB: string; } {
+function findShortestMatch(games: GameData[]): { matchId: string; duration: number; teamA: string; teamB: string; } {
   if (games.length === 0) return { matchId: '', duration: 0, teamA: '', teamB: '' };
   
   const shortest = games.reduce((min, current) => 
@@ -187,13 +188,13 @@ function findShortestMatch(games: any[]): { matchId: string; duration: number; t
   };
 }
 
-function findBusiestDay(games: any[]): { date: string; count: number; } {
+function findBusiestDay(games: GameData[]): { date: string; count: number; } {
   if (games.length === 0) return { date: '', count: 0 };
   
   const dayCount: Record<string, number> = {};
   
   games.forEach(game => {
-    const date = new Date(game.start_time * 1000 || Date.now()).toISOString().split('T')[0];
+    const date = new Date((game.start_time ?? 0) * 1000 || Date.now()).toISOString().split('T')[0];
     dayCount[date] = (dayCount[date] || 0) + 1;
   });
   
@@ -204,7 +205,7 @@ function findBusiestDay(games: any[]): { date: string; count: number; } {
   return busiestDay;
 }
 
-export function findBloodiestMatch(games: any[], performances: any[]) {
+export function findBloodiestMatch(games: GameData[], performances: PerformanceData[]) {
   if (games.length === 0) return { matchId: '', totalKills: 0, teamA: '', teamB: '' };
   
   const matchKills: Record<string, number> = {};
@@ -227,7 +228,7 @@ export function findBloodiestMatch(games: any[], performances: any[]) {
   };
 }
 
-export function findMostPeacefulMatch(games: any[], performances: any[]) {
+export function findMostPeacefulMatch(games: GameData[], performances: PerformanceData[]) {
   if (games.length === 0) return { matchId: '', totalKills: 0, teamA: '', teamB: '' };
   
   const matchKills: Record<string, number> = {};
@@ -250,7 +251,7 @@ export function findMostPeacefulMatch(games: any[], performances: any[]) {
   };
 }
 
-export function countMultiKills(performances: any[], killType: number): number {
+export function countMultiKills(performances: PerformanceData[], killType: number): number {
   return performances.reduce((total, perf) => {
     switch (killType) {
       case 2: return total + (perf.doubleKills || 0);
@@ -262,17 +263,17 @@ export function countMultiKills(performances: any[], killType: number): number {
   }, 0);
 }
 
-export function findFastestFirstBlood(games: any[], performances: any[]) {
+export function findFastestFirstBlood(games: GameData[], performances: PerformanceData[]) {
   return { matchId: '', time: 0, player: '', team: '' };
 }
 
 // Removed: findMostPickedHero and findMostBannedHero are now imported from hero-mapping.ts
 
-export function findHighestWinRateHero(performances: any[], games: any[]) {
+export function findHighestWinRateHero(performances: PerformanceData[], games: GameData[]) {
   return { heroId: 0, heroName: 'Unknown', winRate: 0, gamesPlayed: 0 };
 }
 
-export function findMostVersatilePlayer(performances: any[]) {
+export function findMostVersatilePlayer(performances: PerformanceData[]) {
   const playerHeroes: Record<string, Set<number>> = {};
   
   performances.forEach(perf => {
@@ -296,7 +297,7 @@ export function findMostVersatilePlayer(performances: any[]) {
   };
 }
 
-export function findRichestPlayer(performances: any[]) {
+export function findRichestPlayer(performances: PerformanceData[]) {
   if (performances.length === 0) return { playerId: '', playerName: 'Unknown', netWorth: 0, matchId: '' };
   
   const richest = performances.reduce((max, current) => 
@@ -311,7 +312,7 @@ export function findRichestPlayer(performances: any[]) {
   };
 }
 
-export function findMostEfficientFarmer(performances: any[]) {
+export function findMostEfficientFarmer(performances: PerformanceData[]) {
   if (performances.length === 0) return { playerId: '', playerName: 'Unknown', averageGPM: 0 };
   
   const playerGPM: Record<string, number[]> = {};
@@ -336,7 +337,7 @@ export function findMostEfficientFarmer(performances: any[]) {
   };
 }
 
-function findFastestScalingPlayer(performances: any[]) {
+function findFastestScalingPlayer(performances: PerformanceData[]) {
   if (performances.length === 0) return { playerId: '', playerName: 'Unknown', averageXPM: 0 };
   
   const playerXPM: Record<string, number[]> = {};
@@ -361,7 +362,7 @@ function findFastestScalingPlayer(performances: any[]) {
   };
 }
 
-function findWardMaster(performances: any[]) {
+function findWardMaster(performances: PerformanceData[]) {
   if (performances.length === 0) return { playerId: '', playerName: 'Unknown', wardsPlaced: 0 };
   
   const playerWards: Record<string, number> = {};
@@ -383,7 +384,7 @@ function findWardMaster(performances: any[]) {
   };
 }
 
-function findBestWardHunter(performances: any[]) {
+function findBestWardHunter(performances: PerformanceData[]) {
   if (performances.length === 0) return { playerId: '', playerName: 'Unknown', wardsKilled: 0 };
   
   const playerWardsKilled: Record<string, number> = {};
@@ -415,15 +416,15 @@ export async function recalculateBasicTournamentStats(): Promise<void> {
     
     // Fetch teams
     const teamsSnapshot = await getDocs(collection(db, 'teams'));
-    const teams = teamsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const teams = teamsSnapshot.docs.map(d => ({ id: d.id, ...d.data() } as unknown as TeamData));
     
     // Fetch all games from all matches
     const gamesSnapshot = await getDocs(collectionGroup(db, 'games'));
-    const games = gamesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const games = gamesSnapshot.docs.map(d => ({ id: d.id, ...d.data() } as unknown as GameData));
     
     // Fetch all performances from all games
     const performancesSnapshot = await getDocs(collectionGroup(db, 'performances'));
-    const performances = performancesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const performances = performancesSnapshot.docs.map(d => ({ id: d.id, ...d.data() } as unknown as PerformanceData));
     
     console.log(`Fetched ${teams.length} teams, ${games.length} games, ${performances.length} performances`);
     

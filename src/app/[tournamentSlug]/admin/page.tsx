@@ -24,6 +24,7 @@ import {
   ScrollText,
   Building2,
   Trophy,
+  Bot,
 } from 'lucide-react';
 
 // Import admin tab components
@@ -40,6 +41,7 @@ import { NewsTab } from './tabs/NewsTab';
 import { StatsTab } from './tabs/StatsTab';
 import { RulesTab } from './tabs/RulesTab';
 import { PlayoffsTab } from './tabs/PlayoffsTab';
+import { BotTab } from './tabs/BotTab';
 
 /**
  * Admin Panel - Tournament Administration
@@ -142,6 +144,7 @@ export default function AdminPage() {
     { id: 'news', label: 'Aktualności', icon: Newspaper },
     { id: 'stats', label: 'Statystyki', icon: BarChart3 },
     { id: 'rules', label: 'Regulamin', icon: ScrollText },
+    { id: 'bot', label: 'Bot', icon: Bot },
   ];
 
   // Filter tabs based on tournament type
@@ -235,6 +238,10 @@ export default function AdminPage() {
           
           <TabsContent value="rules" className="mt-0">
             <RulesTab />
+          </TabsContent>
+
+          <TabsContent value="bot" className="mt-0">
+            <BotTab />
           </TabsContent>
         </Tabs>
       </div>

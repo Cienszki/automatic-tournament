@@ -46,7 +46,7 @@ import {
  * Tournament name, logos, type, MMR limits, colors, fonts, status, league ID
  */
 export function GeneralTab() {
-  const { tournament, theme } = useTournament();
+  const { tournament, theme, refetchTournament } = useTournament();
   const { isLeague } = useTournamentType();
   const { user } = useAuth();
   
@@ -57,6 +57,17 @@ export function GeneralTab() {
   const [leagueId, setLeagueId] = useState(tournament?.leagueId?.toString() || '');
   const [twitchUrl, setTwitchUrl] = useState(tournament?.twitchUrl || '');
   const [discordUrl, setDiscordUrl] = useState(tournament?.discordUrl || '');
+  const [youtubeUrl, setYoutubeUrl] = useState(tournament?.youtubeUrl || '');
+  const [instagramUrl, setInstagramUrl] = useState(tournament?.instagramUrl || '');
+  const [tiktokUrl, setTiktokUrl] = useState(tournament?.tiktokUrl || '');
+
+  // Lobby settings
+  const [lobbyGameMode, setLobbyGameMode] = useState(tournament?.lobbySettings?.gameMode || 'Captains Mode');
+  const [lobbyServer, setLobbyServer] = useState(tournament?.lobbySettings?.server || 'EU West');
+  const [lobbyVisibility, setLobbyVisibility] = useState(tournament?.lobbySettings?.visibility || 'Publiczna');
+  const [lobbyDotatvDelay, setLobbyDotatvDelay] = useState(tournament?.lobbySettings?.dotatvDelayMinutes ?? 5);
+  const [lobbyLatePenaltyGame, setLobbyLatePenaltyGame] = useState(tournament?.lobbySettings?.latePenaltyGameMinutes ?? 15);
+  const [lobbyLatePenaltySeries, setLobbyLatePenaltySeries] = useState(tournament?.lobbySettings?.latePenaltySeriesMinutes ?? 30);
   
   // Form state - Type & Status
   const [tournamentType, setTournamentType] = useState<'league' | 'mmr-limited'>(
@@ -234,6 +245,17 @@ export function GeneralTab() {
         leagueId: leagueId ? Number(leagueId) : null,
         twitchUrl: twitchUrl || null,
         discordUrl: discordUrl || null,
+        youtubeUrl: youtubeUrl || null,
+        instagramUrl: instagramUrl || null,
+        tiktokUrl: tiktokUrl || null,
+        lobbySettings: {
+          gameMode: lobbyGameMode || 'Captains Mode',
+          server: lobbyServer || 'EU West',
+          visibility: lobbyVisibility || 'Publiczna',
+          dotatvDelayMinutes: Number(lobbyDotatvDelay) || 5,
+          latePenaltyGameMinutes: Number(lobbyLatePenaltyGame) || 15,
+          latePenaltySeriesMinutes: Number(lobbyLatePenaltySeries) || 30,
+        },
         type: tournamentType,
         status: status,
         mmrCap: tournamentType === 'mmr-limited' ? mmrLimit : null,
@@ -248,6 +270,7 @@ export function GeneralTab() {
         customFonts: customFonts,
       });
       
+      await refetchTournament();
       alert('Zmiany zapisane pomyślnie!');
     } catch (error) {
       console.error('Error saving tournament settings:', error);
@@ -360,6 +383,51 @@ export function GeneralTab() {
             </div>
           </div>
 
+          {/* Additional Social Links */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* YouTube URL */}
+            <div className="space-y-2">
+              <Label className="font-logik-extended-bold">Link do YouTube</Label>
+              <Input
+                value={youtubeUrl}
+                onChange={(e) => setYoutubeUrl(e.target.value)}
+                placeholder="https://www.youtube.com/@kanał"
+                className="font-logik"
+              />
+              <p className="text-xs text-muted-foreground font-logik">
+                Ikona pojawi się w stopce. Pozostaw puste, aby ukryć.
+              </p>
+            </div>
+
+            {/* Instagram URL */}
+            <div className="space-y-2">
+              <Label className="font-logik-extended-bold">Link do Instagram</Label>
+              <Input
+                value={instagramUrl}
+                onChange={(e) => setInstagramUrl(e.target.value)}
+                placeholder="https://www.instagram.com/profil"
+                className="font-logik"
+              />
+              <p className="text-xs text-muted-foreground font-logik">
+                Ikona pojawi się w stopce. Pozostaw puste, aby ukryć.
+              </p>
+            </div>
+
+            {/* TikTok URL */}
+            <div className="space-y-2">
+              <Label className="font-logik-extended-bold">Link do TikTok</Label>
+              <Input
+                value={tiktokUrl}
+                onChange={(e) => setTiktokUrl(e.target.value)}
+                placeholder="https://www.tiktok.com/@profil"
+                className="font-logik"
+              />
+              <p className="text-xs text-muted-foreground font-logik">
+                Ikona pojawi się w stopce. Pozostaw puste, aby ukryć.
+              </p>
+            </div>
+          </div>
+
           {/* Logos */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Main Logo */}
@@ -414,6 +482,84 @@ export function GeneralTab() {
               <p className="text-xs text-muted-foreground font-logik">
                 Małe logo w navbarze, kliknięcie = powrót na stronę główną
               </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Lobby Settings */}
+      <Card className="border-0 shadow-lg bg-card/50 backdrop-blur-sm">
+        <CardHeader className="pb-4">
+          <CardTitle className="flex items-center gap-2 font-logik-extended-bold">
+            <Shield className="h-5 w-5" style={{ color: theme.primaryColor }} />
+            Ustawienia Lobby
+          </CardTitle>
+          <CardDescription className="font-logik">
+            Parametry widoczne graczom w panelu kapitana przy tworzeniu lobby
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="space-y-2">
+              <Label className="font-logik-extended-bold">Tryb Gry</Label>
+              <Input
+                value={lobbyGameMode}
+                onChange={(e) => setLobbyGameMode(e.target.value)}
+                placeholder="Captains Mode"
+                className="font-logik"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="font-logik-extended-bold">Serwer</Label>
+              <Input
+                value={lobbyServer}
+                onChange={(e) => setLobbyServer(e.target.value)}
+                placeholder="EU West"
+                className="font-logik"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="font-logik-extended-bold">Widoczność</Label>
+              <Input
+                value={lobbyVisibility}
+                onChange={(e) => setLobbyVisibility(e.target.value)}
+                placeholder="Publiczna"
+                className="font-logik"
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="space-y-2">
+              <Label className="font-logik-extended-bold">Opóźnienie DotaTV (minuty)</Label>
+              <Input
+                type="number"
+                min={0}
+                value={lobbyDotatvDelay}
+                onChange={(e) => setLobbyDotatvDelay(Number(e.target.value))}
+                className="font-logik"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="font-logik-extended-bold">Kara za spóźnienie – gra (min)</Label>
+              <Input
+                type="number"
+                min={0}
+                value={lobbyLatePenaltyGame}
+                onChange={(e) => setLobbyLatePenaltyGame(Number(e.target.value))}
+                className="font-logik"
+              />
+              <p className="text-xs text-muted-foreground font-logik">Spóźnienie, po którym oddawana jest gra</p>
+            </div>
+            <div className="space-y-2">
+              <Label className="font-logik-extended-bold">Kara za spóźnienie – seria (min)</Label>
+              <Input
+                type="number"
+                min={0}
+                value={lobbyLatePenaltySeries}
+                onChange={(e) => setLobbyLatePenaltySeries(Number(e.target.value))}
+                className="font-logik"
+              />
+              <p className="text-xs text-muted-foreground font-logik">Spóźnienie, po którym oddawana jest cała seria</p>
             </div>
           </div>
         </CardContent>

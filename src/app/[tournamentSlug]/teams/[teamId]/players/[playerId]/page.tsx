@@ -2,8 +2,10 @@
 
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { collection, doc, getDoc, getDocs, query, where } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { fetchGlobalPlayerProfile } from "@/hooks/useGlobalPlayerProfile";
 import { useTournament } from "@/context/TournamentContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -53,9 +55,11 @@ export default function PlayerProfilePage() {
   const teamId = params.teamId as string;
   const playerId = params.playerId as string;
   const { tournament, theme, getTournamentPath } = useTournament();
+  const t = useTranslations('playerProfile');
   const [player, setPlayer] = useState<Player | null>(null);
   const [team, setTeam] = useState<Team | null>(null);
   const [matchHistory, setMatchHistory] = useState<PlayerMatchHistoryItem[]>([]);
+  const [showAllMatches, setShowAllMatches] = useState(false);
   const [averageStats, setAverageStats] = useState<{
     kda: string;
     gpm: number;
@@ -82,10 +86,37 @@ export default function PlayerProfilePage() {
           )),
         ]);
 
-        if (!teamSnap.exists() || !playerSnap.exists()) return;
+        if (!teamSnap.exists()) return;
 
         setTeam({ id: teamSnap.id, ...teamSnap.data() } as Team);
-        setPlayer({ id: playerSnap.id, ...playerSnap.data() } as Player);
+
+        // Primary: load player from team subcollection
+        // Fallback: if player doc doesn't exist (e.g. transferred out), try global
+        // /players/{steamId} collection keyed by steamId64
+        if (playerSnap.exists()) {
+          setPlayer({ id: playerSnap.id, ...playerSnap.data() } as Player);
+        } else {
+          // playerId might be a steamId64 or an old auto-generated ID.
+          // Try looking up the global profile by the playerId (which may be steamId64).
+          const globalProfile = await fetchGlobalPlayerProfile(playerId);
+          if (globalProfile) {
+            setPlayer({
+              id: playerId,
+              nickname: globalProfile.nickname,
+              role: '' as any,
+              steamId: globalProfile.steamId,
+              steamId32: globalProfile.steamId32,
+              steamProfileUrl: globalProfile.steamProfileUrl,
+              avatar: globalProfile.avatar,
+              avatarmedium: globalProfile.avatarmedium,
+              avatarfull: globalProfile.avatarfull,
+              mmr: 0,
+            } as Player);
+          } else {
+            // Player truly not found
+            return;
+          }
+        }
 
         const allMatches: Match[] = matchesSnap.docs.map(d => ({ id: d.id, ...d.data() } as Match));
 
@@ -126,7 +157,7 @@ export default function PlayerProfilePage() {
         }
 
         history.sort((a, b) => b.matchDate.getTime() - a.matchDate.getTime());
-        setMatchHistory(history.slice(0, 5));
+        setMatchHistory(history);
         setAverageStats({
           kda: matchesPlayed > 0 ? ((totalKills + totalAssists) / Math.max(1, totalDeaths)).toFixed(2) : "0.00",
           gpm: matchesPlayed > 0 ? Math.round(totalGpm / matchesPlayed) : 0,
@@ -179,11 +210,11 @@ export default function PlayerProfilePage() {
   if (!player || !team) {
     return (
       <div className="text-center py-16">
-        <h1 className="text-2xl font-bold mb-4 font-logik" style={{ fontFamily: 'var(--font-logik)', color: theme.textColor }}>Player Not Found</h1>
+        <h1 className="text-2xl font-bold mb-4 font-logik" style={{ fontFamily: 'var(--font-logik)', color: theme.textColor }}>{t('notFound')}</h1>
         <Button asChild>
           <Link href={getTournamentPath(`/teams/${teamId}`)}>
             <ArrowLeft className="mr-2 h-4 w-4" />
-            <span className="font-logik">Back to Team</span>
+            <span className="font-logik">{t('backToTeam', { teamName: '' })}</span>
           </Link>
         </Button>
       </div>
@@ -240,7 +271,7 @@ export default function PlayerProfilePage() {
         <Button variant="ghost" asChild>
           <Link href={getTournamentPath(`/teams/${teamId}`)}>
             <ArrowLeft className="mr-2 h-4 w-4" />
-            <span className="font-logik">Back to {team.name}</span>
+            <span className="font-logik">{t('backToTeam', { teamName: team.name })}</span>
           </Link>
         </Button>
 
@@ -284,7 +315,7 @@ export default function PlayerProfilePage() {
                         rel="noopener noreferrer"
                       >
                         <ExternalLink className="h-4 w-4 mr-2" />
-                        <span className="font-logik">Steam Profile</span>
+                        <span className="font-logik">{t('steamProfile')}</span>
                       </a>
                     </Button>
                   )}
@@ -327,7 +358,7 @@ export default function PlayerProfilePage() {
             >
               <CardHeader className="flex flex-row items-center justify-center space-x-3 pb-2">
                 <Star className="h-6 w-6 text-white/50" />
-                <CardTitle className="text-xl" style={{ fontFamily: 'var(--font-logik)', color: theme.primaryColor }}>MMR</CardTitle>
+                <CardTitle className="text-xl" style={{ fontFamily: 'var(--font-logik)', color: theme.primaryColor }}>{t('mmr')}</CardTitle>
               </CardHeader>
               <CardContent className="flex flex-col items-center justify-center flex-grow p-6">
                 <p className="text-3xl font-bold mb-2 font-logik" style={{ color: theme.textColor }}>{formatNumber(player.mmr)}</p>
@@ -337,7 +368,7 @@ export default function PlayerProfilePage() {
                   aria-label="MMR progress"
                 />
                 <p className="text-xs mt-1 font-logik" style={{ color: theme.mutedTextColor }}>
-                  League Avg: {formatNumber(leagueAvgMMR)}
+                  {t('leagueAvg', { value: formatNumber(leagueAvgMMR) })}
                 </p>
               </CardContent>
             </Card>
@@ -348,7 +379,7 @@ export default function PlayerProfilePage() {
             >
               <CardHeader className="flex flex-row items-center justify-center space-x-3 pb-2">
                 <TrendingUp className="h-6 w-6 text-white/50" />
-                <CardTitle className="text-xl" style={{ fontFamily: 'var(--font-logik)', color: theme.primaryColor }}>KDA Ratio</CardTitle>
+                <CardTitle className="text-xl" style={{ fontFamily: 'var(--font-logik)', color: theme.primaryColor }}>{t('kdaRatio')}</CardTitle>
               </CardHeader>
               <CardContent className="flex flex-col items-center justify-center flex-grow p-6">
                 <p className="text-3xl font-bold font-logik" style={{ color: theme.textColor }}>{averageStats.kda}</p>
@@ -361,7 +392,7 @@ export default function PlayerProfilePage() {
             >
               <CardHeader className="flex flex-row items-center justify-center space-x-3 pb-2">
                 <Shield className="h-6 w-6 text-white/50" />
-                <CardTitle className="text-xl" style={{ fontFamily: 'var(--font-logik)', color: theme.primaryColor }}>Win Rate</CardTitle>
+                <CardTitle className="text-xl" style={{ fontFamily: 'var(--font-logik)', color: theme.primaryColor }}>{t('winRate')}</CardTitle>
               </CardHeader>
               <CardContent className="flex flex-col items-center justify-center flex-grow p-6">
                 <p className="text-3xl font-bold font-logik" style={{ color: theme.textColor }}>{averageStats.winRate}</p>
@@ -374,7 +405,7 @@ export default function PlayerProfilePage() {
             >
               <CardHeader className="flex flex-row items-center justify-center space-x-3 pb-2">
                 <Coins className="h-6 w-6 text-white/50" />
-                <CardTitle className="text-xl" style={{ fontFamily: 'var(--font-logik)', color: theme.primaryColor }}>Avg GPM</CardTitle>
+                <CardTitle className="text-xl" style={{ fontFamily: 'var(--font-logik)', color: theme.primaryColor }}>{t('avgGpm')}</CardTitle>
               </CardHeader>
               <CardContent className="flex flex-col items-center justify-center flex-grow p-6">
                 <p className="text-3xl font-bold font-logik" style={{ color: theme.textColor }}>{averageStats.gpm}</p>
@@ -387,7 +418,7 @@ export default function PlayerProfilePage() {
             >
               <CardHeader className="flex flex-row items-center justify-center space-x-3 pb-2">
                 <Zap className="h-6 w-6 text-white/50" />
-                <CardTitle className="text-xl" style={{ fontFamily: 'var(--font-logik)', color: theme.primaryColor }}>Avg XPM</CardTitle>
+                <CardTitle className="text-xl" style={{ fontFamily: 'var(--font-logik)', color: theme.primaryColor }}>{t('avgXpm')}</CardTitle>
               </CardHeader>
               <CardContent className="flex flex-col items-center justify-center flex-grow p-6">
                 <p className="text-3xl font-bold font-logik" style={{ color: theme.textColor }}>{averageStats.xpm}</p>
@@ -400,7 +431,7 @@ export default function PlayerProfilePage() {
             >
               <CardHeader className="flex flex-row items-center justify-center space-x-3 pb-2">
                 <Trophy className="h-6 w-6 text-white/50" />
-                <CardTitle className="text-xl" style={{ fontFamily: 'var(--font-logik)', color: theme.primaryColor }}>Fantasy Points</CardTitle>
+                <CardTitle className="text-xl" style={{ fontFamily: 'var(--font-logik)', color: theme.primaryColor }}>{t('fantasyPoints')}</CardTitle>
               </CardHeader>
               <CardContent className="flex flex-col items-center justify-center flex-grow p-6">
                 <p className="text-3xl font-bold font-logik" style={{ color: theme.textColor }}>{averageStats.fantasyPoints}</p>
@@ -413,16 +444,16 @@ export default function PlayerProfilePage() {
         <Card className="bg-transparent border-0 shadow-none">
           <CardHeader>
             <CardTitle className="text-2xl font-semibold" style={{ fontFamily: 'var(--font-logik)', color: theme.primaryColor }}>
-              Recent Match History
+              {t('matchHistory')}
             </CardTitle>
             <CardDescription style={{ color: theme.mutedTextColor }}>
-              Performance in recent matches
+              {t('matchHistoryDesc')}
             </CardDescription>
           </CardHeader>
           <CardContent>
             {matchHistory.length > 0 ? (
               <div className="space-y-4">
-                {matchHistory.map(histItem => {
+                {(showAllMatches ? matchHistory : matchHistory.slice(0, 5)).map(histItem => {
                   const perf = histItem.playerPerformance;
                   const HeroIconComponent = heroIconMap[perf.hero] || heroIconMap['Default'];
                   const heroColorHex = heroColorMap[perf.hero] || FALLBACK_HERO_COLOR;
@@ -442,7 +473,7 @@ export default function PlayerProfilePage() {
                           <CardTitle className="text-lg flex items-center flex-wrap">
                             <HeroIconComponent color={heroColorHex} className="h-5 w-5 mr-1.5 shrink-0" />
                             <span style={{ color: heroColorHex, fontFamily: 'var(--font-logik)' }} className="font-semibold">{perf.hero}</span>
-                            <span className="mx-1.5 font-normal" style={{ color: theme.mutedTextColor }}>vs</span>
+                            <span className="mx-1.5 font-normal" style={{ color: theme.mutedTextColor }}>{t('vs')}</span>
                             <Link
                               href={getTournamentPath(`/teams/${histItem.opponentTeam.id}`)}
                               className="hover:underline"
@@ -453,7 +484,7 @@ export default function PlayerProfilePage() {
                           </CardTitle>
                           <div className="flex items-center gap-2">
                             <Badge variant={histItem.result === 'Win' ? 'default' : 'destructive'} className="shrink-0">
-                              {histItem.result}
+                              {histItem.result === 'Win' ? t('win') : t('loss')}
                             </Badge>
                             {histItem.openDotaMatchUrl && (
                               <Button variant="ghost" size="sm" asChild>
@@ -473,7 +504,7 @@ export default function PlayerProfilePage() {
                           <div className="text-center">
                             <div className="flex items-center justify-center mb-1">
                               <Swords className="h-4 w-4 mr-1" style={{ color: theme.accentColor }} />
-                              <span className="font-medium font-logik" style={{ color: theme.mutedTextColor }}>K/D/A</span>
+                              <span className="font-medium font-logik" style={{ color: theme.mutedTextColor }}>{t('kda')}</span>
                             </div>
                             <div className="font-bold font-logik" style={{ color: theme.textColor }}>
                               {perf.kills}/{perf.deaths}/{perf.assists}
@@ -482,21 +513,21 @@ export default function PlayerProfilePage() {
                           <div className="text-center">
                             <div className="flex items-center justify-center mb-1">
                               <Coins className="h-4 w-4 mr-1" style={{ color: theme.accentColor }} />
-                              <span className="font-medium font-logik" style={{ color: theme.mutedTextColor }}>GPM</span>
+                              <span className="font-medium font-logik" style={{ color: theme.mutedTextColor }}>{t('gpm')}</span>
                             </div>
                             <div className="font-bold font-logik" style={{ color: theme.textColor }}>{perf.gpm}</div>
                           </div>
                           <div className="text-center">
                             <div className="flex items-center justify-center mb-1">
                               <Zap className="h-4 w-4 mr-1" style={{ color: theme.accentColor }} />
-                              <span className="font-medium font-logik" style={{ color: theme.mutedTextColor }}>XPM</span>
+                              <span className="font-medium font-logik" style={{ color: theme.mutedTextColor }}>{t('xpm')}</span>
                             </div>
                             <div className="font-bold font-logik" style={{ color: theme.textColor }}>{perf.xpm}</div>
                           </div>
                           <div className="text-center">
                             <div className="flex items-center justify-center mb-1">
                               <Trophy className="h-4 w-4 mr-1" style={{ color: theme.primaryColor }} />
-                              <span className="font-medium font-logik" style={{ color: theme.mutedTextColor }}>Fantasy</span>
+                              <span className="font-medium font-logik" style={{ color: theme.mutedTextColor }}>{t('fantasy')}</span>
                             </div>
                             <div className="font-bold font-logik" style={{ color: theme.primaryColor }}>{perf.fantasyPoints}</div>
                           </div>
@@ -505,9 +536,26 @@ export default function PlayerProfilePage() {
                     </Card>
                   );
                 })}
+
+                {/* Show all / show less toggle */}
+                {matchHistory.length > 5 && (
+                  <div className="text-center pt-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowAllMatches(!showAllMatches)}
+                      className="font-logik"
+                      style={{ color: theme.accentColor }}
+                    >
+                      {showAllMatches
+                        ? t('showRecent')
+                        : t('showAll', { count: matchHistory.length })}
+                    </Button>
+                  </div>
+                )}
               </div>
             ) : (
-              <p className="text-center py-4 font-logik" style={{ color: theme.mutedTextColor }}>No match data available yet.</p>
+              <p className="text-center py-4 font-logik" style={{ color: theme.mutedTextColor }}>{t('noMatchData')}</p>
             )}
           </CardContent>
         </Card>

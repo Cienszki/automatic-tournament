@@ -18,7 +18,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import Image from "next/image";
 import Link from "next/link";
 import { CopyToClipboard } from "@/components/app/CopyToClipboard";
-import { useTranslation } from "@/hooks/useTranslation";
+import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { useTournament } from "@/context/TournamentContext";
 import { collection, doc, getDoc, getDocs, query, where } from "firebase/firestore";
@@ -81,7 +81,7 @@ interface PageProps {
 }
 
 export default function TeamPage({ params }: PageProps) {
-  const { t } = useTranslation();
+  const t = useTranslations('teamDetail');
   const { tournament, theme, getTournamentPath, isLoading: tournamentLoading } = useTournament();
   const [team, setTeam] = useState<Team | null>(null);
   const [captainDiscord, setCaptainDiscord] = useState<string | null>(null);
@@ -116,11 +116,9 @@ export default function TeamPage({ params }: PageProps) {
 
         const teamData = { id: teamSnap.id, ...teamSnap.data() } as Team;
 
-        // Fetch players subcollection
-        const playersRef = collection(db, 'tournaments', tournament.id, 'teams', teamId, 'players');
-        const playersSnap = await getDocs(playersRef);
-        const playersData = playersSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Player));
-        teamData.players = playersData;
+        // Load team players: prefers roster map, falls back to subcollection for legacy teams
+        const { loadTeamPlayersForDisplay } = await import('@/lib/team-players-loader');
+        teamData.players = await loadTeamPlayersForDisplay(teamId, tournament.id, teamSnap.data()) as unknown as Player[];
 
         // Fetch all matches for this team
         const matchesRef = collection(db, 'tournaments', tournament.id, 'matches');
@@ -227,7 +225,7 @@ export default function TeamPage({ params }: PageProps) {
 
   const performanceStats = [
     {
-      label: t('teamDetail.avgKillsPerGame'),
+      label: t('avgKillsPerGame'),
       value: team.averageKillsPerGame?.toFixed(1) ?? 'N/A',
       icon: Swords,
       type: 'progress',
@@ -240,7 +238,7 @@ export default function TeamPage({ params }: PageProps) {
       sortOrder: 'desc' as 'desc' | 'asc',
     },
     {
-      label: t('teamDetail.avgDeathsPerGame'),
+      label: t('avgDeathsPerGame'),
       value: team.averageDeathsPerGame?.toFixed(1) ?? 'N/A',
       icon: Skull,
       type: 'progress',
@@ -253,7 +251,7 @@ export default function TeamPage({ params }: PageProps) {
       sortOrder: 'asc' as 'desc' | 'asc',
     },
     {
-      label: t('teamDetail.avgAssistsPerGame'),
+      label: t('avgAssistsPerGame'),
       value: team.averageAssistsPerGame?.toFixed(1) ?? 'N/A',
       icon: HandshakeIcon,
       type: 'progress',
@@ -266,7 +264,7 @@ export default function TeamPage({ params }: PageProps) {
       sortOrder: 'desc' as 'desc' | 'asc',
     },
     {
-      label: t('teamDetail.avgFantasyPoints'),
+      label: t('avgFantasyPoints'),
       value: team.averageFantasyPoints?.toFixed(1) ?? 'N/A',
       icon: Award,
       type: 'progress',
@@ -332,14 +330,14 @@ export default function TeamPage({ params }: PageProps) {
                   </CardTitle>
                   <Badge className={cn("text-sm px-3 py-1 font-logik", getStatusBadgeClasses(team.status))}>
                     {getStatusIcon(team.status)}
-                    {team.status ? (t(`teamDetail.${team.status}` as any) || team.status) : t('teamDetail.pending')}
+                    {team.status ? t(team.status as Parameters<typeof t>[0]) : t('pending')}
                   </Badge>
                 </div>
                 <CardDescription className="text-lg mt-1" style={{ color: theme.mutedTextColor }}>
                   {team.motto ? (
                     <span className="italic font-logik">"{team.motto}"</span>
                   ) : (
-                    <span>{t('teamDetail.detailedProfile')}</span>
+                    <span>{t('detailedProfile')}</span>
                   )}
                 </CardDescription>
               </div>
@@ -347,10 +345,10 @@ export default function TeamPage({ params }: PageProps) {
           </CardHeader>
           <CardContent className="p-6 md:p-8 grid md:grid-cols-2 gap-6">
             <div className="md:col-span-1 space-y-4">
-              <InfoItem icon={ListChecks} label={t('teamDetail.matchesPlayed')} value={team.matchesPlayed ?? 0} theme={theme} />
+              <InfoItem icon={ListChecks} label={t('matchesPlayed')} value={team.matchesPlayed ?? 0} theme={theme} />
               <InfoItem
                 icon={Swords}
-                label={t('teamDetail.winsDrawsLosses')}
+                label={t('winsDrawsLosses')}
                 value={`${team.wins ?? 0}W / ${team.draws ?? 0}D / ${team.losses ?? 0}L`}
                 theme={theme}
               />
@@ -360,7 +358,7 @@ export default function TeamPage({ params }: PageProps) {
                   style={{ backgroundColor: `${theme.cardColor}40` }}
                 >
                   <MessageSquare className="h-5 w-5 mr-3" style={{ color: theme.primaryColor }} />
-                  <span className="font-medium font-logik" style={{ color: theme.mutedTextColor }}>{t('teamDetail.captainDiscord')}:</span>
+                  <span className="font-medium font-logik" style={{ color: theme.mutedTextColor }}>{t('captainDiscord')}:</span>
                   <span className="ml-auto font-semibold font-logik" style={{ color: theme.textColor }}>{captainDiscord}</span>
                   <CopyToClipboard text={captainDiscord} />
                 </div>
@@ -406,7 +404,7 @@ export default function TeamPage({ params }: PageProps) {
                   fontFamily: 'var(--font-logik)'
                 }}
               >
-                {t('teamDetail.topHeroes')}
+                {t('topHeroes')}
               </CardTitle>
             </CardHeader>
             <CardContent className="p-6 pt-2">
@@ -443,14 +441,14 @@ export default function TeamPage({ params }: PageProps) {
                           {heroStat.name}
                         </p>
                         <p className="text-xs md:text-sm text-center opacity-80" style={{ color: podiumStyle.text }}>
-                          {heroStat.gamesPlayed} {heroStat.gamesPlayed !== 1 ? t('teamDetail.games') : t('teamDetail.game')}
+                          {heroStat.gamesPlayed} {heroStat.gamesPlayed !== 1 ? t('games') : t('game')}
                         </p>
                       </div>
                     );
                   })}
                 </div>
               ) : (
-                <p style={{ color: theme.mutedTextColor }} className="text-center font-logik">{t('teamDetail.noHeroStats')}</p>
+                <p style={{ color: theme.mutedTextColor }} className="text-center font-logik">{t('noHeroStats')}</p>
               )}
             </CardContent>
           </Card>
@@ -467,7 +465,7 @@ export default function TeamPage({ params }: PageProps) {
                   fontFamily: 'var(--font-logik)'
                 }}
               >
-                {t('teamDetail.avgMatchDuration')}
+                {t('avgMatchDuration')}
               </CardTitle>
             </CardHeader>
             <CardContent className="flex flex-col items-center justify-center flex-grow p-6">
@@ -500,7 +498,7 @@ export default function TeamPage({ params }: PageProps) {
                 </svg>
               </div>
               <p className="text-2xl font-bold font-logik" style={{ color: theme.textColor }}>
-                {avgMatchDurationMinutes} {t('teamDetail.min')}
+                {avgMatchDurationMinutes} {t('min')}
               </p>
             </CardContent>
           </Card>
@@ -536,9 +534,9 @@ export default function TeamPage({ params }: PageProps) {
                       aria-label={`${stat.label} progress`}
                     />
                     <p className="text-xs mt-1 font-logik" style={{ color: theme.mutedTextColor }}>
-                      {t('teamDetail.leagueAvg')}: {stat.leagueAvg} | {t('teamDetail.best')}: {stat.bestValue}
+                      {t('leagueAvg')}: {stat.leagueAvg} | {t('best')}: {stat.bestValue}
                     </p>
-                    {stat.rank && <p className="text-xs mt-2 font-logik" style={{ color: theme.mutedTextColor }}>{t('teamDetail.rank')}: {stat.rank}</p>}
+                    {stat.rank && <p className="text-xs mt-2 font-logik" style={{ color: theme.mutedTextColor }}>{t('rank')}: {stat.rank}</p>}
                   </>
                 ) : (
                   <p className="text-4xl font-bold pt-4 font-logik" style={{ color: theme.textColor }}>{stat.value}</p>
@@ -563,14 +561,14 @@ export default function TeamPage({ params }: PageProps) {
                   fontFamily: 'var(--font-logik)'
                 }}
               >
-                {t('teamDetail.avgGPM')}
+                {t('avgGPM')}
               </CardTitle>
             </CardHeader>
             <CardContent className="flex flex-col items-center justify-center flex-grow p-4">
               <p className="text-3xl font-bold font-logik" style={{ color: theme.textColor }}>
                 {team.averageGpm?.toFixed(0) ?? 'N/A'}
               </p>
-              <p className="text-xs mt-1" style={{ color: theme.mutedTextColor }}>{t('teamDetail.goldPerMinute')}</p>
+              <p className="text-xs mt-1" style={{ color: theme.mutedTextColor }}>{t('goldPerMinute')}</p>
             </CardContent>
           </Card>
 
@@ -587,14 +585,14 @@ export default function TeamPage({ params }: PageProps) {
                   fontFamily: 'var(--font-logik)'
                 }}
               >
-                {t('teamDetail.avgXPM')}
+                {t('avgXPM')}
               </CardTitle>
             </CardHeader>
             <CardContent className="flex flex-col items-center justify-center flex-grow p-4">
               <p className="text-3xl font-bold font-logik" style={{ color: theme.textColor }}>
                 {team.averageXpm?.toFixed(0) ?? 'N/A'}
               </p>
-              <p className="text-xs mt-1" style={{ color: theme.mutedTextColor }}>{t('teamDetail.experiencePerMinute')}</p>
+              <p className="text-xs mt-1" style={{ color: theme.mutedTextColor }}>{t('experiencePerMinute')}</p>
             </CardContent>
           </Card>
 
@@ -611,14 +609,14 @@ export default function TeamPage({ params }: PageProps) {
                   fontFamily: 'var(--font-logik)'
                 }}
               >
-                {t('teamDetail.avgLastHits')}
+                {t('avgLastHits')}
               </CardTitle>
             </CardHeader>
             <CardContent className="flex flex-col items-center justify-center flex-grow p-4">
               <p className="text-3xl font-bold font-logik" style={{ color: theme.textColor }}>
                 {team.averageLastHits?.toFixed(0) ?? 'N/A'}
               </p>
-              <p className="text-xs mt-1" style={{ color: theme.mutedTextColor }}>{t('teamDetail.creepKills')}</p>
+              <p className="text-xs mt-1" style={{ color: theme.mutedTextColor }}>{t('creepKills')}</p>
             </CardContent>
           </Card>
 
@@ -635,14 +633,14 @@ export default function TeamPage({ params }: PageProps) {
                   fontFamily: 'var(--font-logik)'
                 }}
               >
-                {t('teamDetail.avgNetWorth')}
+                {t('avgNetWorth')}
               </CardTitle>
             </CardHeader>
             <CardContent className="flex flex-col items-center justify-center flex-grow p-4">
               <p className="text-3xl font-bold font-logik" style={{ color: theme.textColor }}>
                 {team.averageNetWorth ? formatNumber(team.averageNetWorth) : 'N/A'}
               </p>
-              <p className="text-xs mt-1" style={{ color: theme.mutedTextColor }}>{t('teamDetail.totalGoldValue')}</p>
+              <p className="text-xs mt-1" style={{ color: theme.mutedTextColor }}>{t('totalGoldValue')}</p>
             </CardContent>
           </Card>
 
@@ -659,14 +657,14 @@ export default function TeamPage({ params }: PageProps) {
                   fontFamily: 'var(--font-logik)'
                 }}
               >
-                {t('teamDetail.avgHeroDamage')}
+                {t('avgHeroDamage')}
               </CardTitle>
             </CardHeader>
             <CardContent className="flex flex-col items-center justify-center flex-grow p-4">
               <p className="text-3xl font-bold font-logik" style={{ color: theme.textColor }}>
                 {team.averageHeroDamage ? formatNumber(team.averageHeroDamage) : 'N/A'}
               </p>
-              <p className="text-xs mt-1" style={{ color: theme.mutedTextColor }}>{t('teamDetail.damageToHeroes')}</p>
+              <p className="text-xs mt-1" style={{ color: theme.mutedTextColor }}>{t('damageToHeroes')}</p>
             </CardContent>
           </Card>
 
@@ -683,14 +681,14 @@ export default function TeamPage({ params }: PageProps) {
                   fontFamily: 'var(--font-logik)'
                 }}
               >
-                {t('teamDetail.avgTowerDamage')}
+                {t('avgTowerDamage')}
               </CardTitle>
             </CardHeader>
             <CardContent className="flex flex-col items-center justify-center flex-grow p-4">
               <p className="text-3xl font-bold font-logik" style={{ color: theme.textColor }}>
                 {team.averageTowerDamage ? formatNumber(team.averageTowerDamage) : 'N/A'}
               </p>
-              <p className="text-xs mt-1" style={{ color: theme.mutedTextColor }}>{t('teamDetail.damageToBuildings')}</p>
+              <p className="text-xs mt-1" style={{ color: theme.mutedTextColor }}>{t('damageToBuildings')}</p>
             </CardContent>
           </Card>
 
@@ -707,14 +705,14 @@ export default function TeamPage({ params }: PageProps) {
                   fontFamily: 'var(--font-logik)'
                 }}
               >
-                {t('teamDetail.avgHealing')}
+                {t('avgHealing')}
               </CardTitle>
             </CardHeader>
             <CardContent className="flex flex-col items-center justify-center flex-grow p-4">
               <p className="text-3xl font-bold font-logik" style={{ color: theme.textColor }}>
                 {team.averageHeroHealing ? formatNumber(team.averageHeroHealing) : 'N/A'}
               </p>
-              <p className="text-xs mt-1" style={{ color: theme.mutedTextColor }}>{t('teamDetail.heroHealingDone')}</p>
+              <p className="text-xs mt-1" style={{ color: theme.mutedTextColor }}>{t('heroHealingDone')}</p>
             </CardContent>
           </Card>
         </div>
@@ -730,10 +728,10 @@ export default function TeamPage({ params }: PageProps) {
                 fontFamily: 'var(--font-logik)'
               }}
             >
-              {t('teamDetail.matchHistory')}
+              {t('matchHistory')}
             </CardTitle>
             <CardDescription style={{ color: theme.mutedTextColor }}>
-              Results of all matches played by {team.name}.
+              {t('matchHistoryDesc', { teamName: team.name })}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -741,10 +739,10 @@ export default function TeamPage({ params }: PageProps) {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead style={{ color: theme.mutedTextColor }}>{t('teamDetail.opponent')}</TableHead>
-                    <TableHead style={{ color: theme.mutedTextColor }}>{t('teamDetail.result')}</TableHead>
-                    <TableHead style={{ color: theme.mutedTextColor }}>{t('teamDetail.score')}</TableHead>
-                    <TableHead style={{ color: theme.mutedTextColor }}>{t('teamDetail.date')}</TableHead>
+                    <TableHead style={{ color: theme.mutedTextColor }}>{t('opponent')}</TableHead>
+                    <TableHead style={{ color: theme.mutedTextColor }}>{t('result')}</TableHead>
+                    <TableHead style={{ color: theme.mutedTextColor }}>{t('score')}</TableHead>
+                    <TableHead style={{ color: theme.mutedTextColor }}>{t('date')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -759,13 +757,13 @@ export default function TeamPage({ params }: PageProps) {
 
                     if (teamAScore === teamBScore) {
                       isDraw = true;
-                      resultText = t('teamDetail.draw') || 'Draw';
+                      resultText = t('draw') || 'Draw';
                     } else if (match.teamA.id === team.id) {
                       isWin = teamAScore > teamBScore;
-                      resultText = isWin ? t('teamDetail.win') : t('teamDetail.loss');
+                      resultText = isWin ? t('win') : t('loss');
                     } else {
                       isWin = teamBScore > teamAScore;
-                      resultText = isWin ? t('teamDetail.win') : t('teamDetail.loss');
+                      resultText = isWin ? t('win') : t('loss');
                     }
 
                     const scoreText = `${teamAScore} - ${teamBScore}`;
@@ -799,7 +797,7 @@ export default function TeamPage({ params }: PageProps) {
               </Table>
             ) : (
               <p className="text-center py-4 font-logik" style={{ color: theme.mutedTextColor }}>
-                {t('teamDetail.noMatchHistory')}
+                {t('noMatchHistory')}
               </p>
             )}
           </CardContent>

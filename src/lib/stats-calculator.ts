@@ -7,6 +7,7 @@ import {
   MetaStats,
   StatRecord 
 } from './stats-definitions';
+import type { GameData, PerformanceData, TeamData, PlayerData } from './stats-types';
 import { getAllTournamentPlayers, getAllTeams } from './firestore';
 // Temporarily commented out to fix client-side bundling issue
 // import { getAdminDb, ensureAdminInitialized } from '../../server/lib/admin';
@@ -104,8 +105,8 @@ export async function recalculateAllTournamentStats(): Promise<void> {
     const matches = matchesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     
     // Get all games from all matches
-    const allGames: any[] = [];
-    const allGamePerformances: any[] = [];
+    const allGames: GameData[] = [];
+    const allGamePerformances: PerformanceData[] = [];
     
     for (const match of matches) {
       const gamesSnapshot = await db.collection('matches').doc(match.id).collection('games').get();
@@ -180,10 +181,10 @@ export async function recalculateAllTournamentStats(): Promise<void> {
 
 // Calculate tournament-wide statistics
 function calculateTournamentStats(
-  games: any[], 
-  performances: any[], 
-  teams: any[], 
-  players: any[]
+  games: GameData[], 
+  performances: PerformanceData[], 
+  teams: TeamData[], 
+  players: PlayerData[]
 ): TournamentStats {
   const round1 = (v: number) => Math.round(v * 10) / 10;
   const defaultRecord = { matchId: '', duration: 0, teamA: '', teamB: '' };
@@ -265,10 +266,10 @@ function calculateTournamentStats(
 
 // Calculate individual player statistics
 function calculateAllPlayerStats(
-  games: any[], 
-  performances: any[], 
-  teams: any[], 
-  players: any[]
+  games: GameData[], 
+  performances: PerformanceData[], 
+  teams: TeamData[], 
+  players: PlayerData[]
 ): PlayerStats[] {
   
   const playerStats: PlayerStats[] = [];
@@ -320,12 +321,12 @@ function calculateAllPlayerStats(
       fastestLevel6: { 
         ...findMinStat(playerPerformances, 'level6Time'), 
         heroName: findMinStat(playerPerformances, 'level6Time').heroName || '',
-        time: (findMinStat(playerPerformances, 'level6Time') as any).time || 0
+        time: findMinStat(playerPerformances, 'level6Time').value || 0
       },
       fastestLevel18: { 
         ...findMinStat(playerPerformances, 'level18Time'), 
         heroName: findMinStat(playerPerformances, 'level18Time').heroName || '',
-        time: (findMinStat(playerPerformances, 'level18Time') as any).time || 0
+        time: findMinStat(playerPerformances, 'level18Time').value || 0
       },
   mostLastHitsSingleMatch: { ...findMaxStat(playerPerformances, 'lastHits'), heroName: findMaxStat(playerPerformances, 'lastHits').heroName || '' },
   highestLastHitEfficiency: { ...findMaxStat(playerPerformances, 'lastHitEfficiency'), heroName: findMaxStat(playerPerformances, 'lastHitEfficiency').heroName || '' },
@@ -381,10 +382,10 @@ function calculateAllPlayerStats(
 
 // Calculate team statistics
 function calculateAllTeamStats(
-  games: any[], 
-  performances: any[], 
-  teams: any[], 
-  players: any[]
+  games: GameData[], 
+  performances: PerformanceData[], 
+  teams: TeamData[], 
+  players: PlayerData[]
 ): TeamStats[] {
   
   const teamStats: TeamStats[] = [];
@@ -475,10 +476,10 @@ function calculateAllTeamStats(
 
 // Calculate meta statistics
 function calculateMetaStats(
-  games: any[], 
-  performances: any[], 
-  teams: any[], 
-  players: any[]
+  games: GameData[], 
+  performances: PerformanceData[], 
+  teams: TeamData[], 
+  players: PlayerData[]
 ): MetaStats {
   
   const stats: MetaStats = {
@@ -501,32 +502,39 @@ function calculateMetaStats(
 }
 
 // Helper functions for statistical calculations
-function findMaxStat(performances: any[], statField: string): StatRecord {
+function findMaxStat(performances: PerformanceData[], statField: keyof PerformanceData): StatRecord {
   if (performances.length === 0) {
     return { value: 0, matchId: '', heroName: '', timestamp: new Date().toISOString() };
   }
   
-  const maxPerf = performances.reduce((max, current) => 
-    (current[statField] || 0) > (max[statField] || 0) ? current : max
-  );
+  const maxPerf = performances.reduce((max, current) => {
+    const currentVal = Number(current[statField] ?? 0);
+    const maxVal = Number(max[statField] ?? 0);
+    return currentVal > maxVal ? current : max;
+  });
   
   return {
-    value: maxPerf[statField] || 0,
+    value: Number(maxPerf[statField] ?? 0),
     matchId: maxPerf.matchId || '',
     heroName: maxPerf.heroName || '',
     timestamp: new Date().toISOString()
   };
 }
 
-function findMinStat(performances: any[], statField: string): StatRecord {
-  const validPerfs = performances.filter(p => p[statField] && p[statField] > 0);
+function findMinStat(performances: PerformanceData[], statField: keyof PerformanceData): StatRecord {
+  const validPerfs = performances.filter(p => {
+    const val = p[statField];
+    return val !== undefined && val !== null && Number(val) > 0;
+  });
   if (validPerfs.length === 0) {
     return { value: 0, matchId: '', heroName: '', timestamp: new Date().toISOString() };
   }
   
-  const minPerf = validPerfs.reduce((min, current) => 
-    (current[statField] || Infinity) < (min[statField] || Infinity) ? current : min
-  );
+  const minPerf = validPerfs.reduce((min, current) => {
+    const currentVal = Number(current[statField] ?? Infinity);
+    const minVal = Number(min[statField] ?? Infinity);
+    return currentVal < minVal ? current : min;
+  });
   
   return {
     value: minPerf[statField] || 0,
@@ -539,7 +547,7 @@ function findMinStat(performances: any[], statField: string): StatRecord {
 // ... Additional helper functions would be implemented here
 // (Due to length constraints, I'm showing the structure)
 
-function findLongestMatch(games: any[]): { matchId: string; duration: number; teamA: string; teamB: string; } {
+function findLongestMatch(games: GameData[]): { matchId: string; duration: number; teamA: string; teamB: string; } {
   if (games.length === 0) return { matchId: '', duration: 0, teamA: '', teamB: '' };
   
   const longest = games.reduce((max, current) => 
@@ -554,7 +562,7 @@ function findLongestMatch(games: any[]): { matchId: string; duration: number; te
   };
 }
 
-function findShortestMatch(games: any[]): { matchId: string; duration: number; teamA: string; teamB: string; } {
+function findShortestMatch(games: GameData[]): { matchId: string; duration: number; teamA: string; teamB: string; } {
   if (games.length === 0) return { matchId: '', duration: 0, teamA: '', teamB: '' };
   
   const shortest = games.reduce((min, current) => 
@@ -569,7 +577,7 @@ function findShortestMatch(games: any[]): { matchId: string; duration: number; t
   };
 }
 
-function findBusiestDay(games: any[]): { date: string; count: number; } {
+function findBusiestDay(games: GameData[]): { date: string; count: number; } {
   if (games.length === 0) return { date: '', count: 0 };
   
   const dayCount: Record<string, number> = {};
@@ -587,7 +595,7 @@ function findBusiestDay(games: any[]): { date: string; count: number; } {
 }
 
 // Helper function to find the performance with the highest KDA ratio
-function findHighestKDA(performances: any[]): StatRecord {
+function findHighestKDA(performances: PerformanceData[]): StatRecord {
   if (performances.length === 0) {
     return { value: 0, matchId: '', heroName: '', timestamp: new Date().toISOString() };
   }

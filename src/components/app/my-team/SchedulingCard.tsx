@@ -261,7 +261,7 @@ export function SchedulingCard({ match, teamId, captainId, teams = [], standins 
           {officialTime ? (
             <p className="text-lg font-bold text-primary">{format(officialTime, "PPPP 'at' HH:mm")}</p>
           ) : (
-            <p className="text-muted-foreground italic">{t("teams.notYetScheduled")} {format(defaultTime, "PPP 'at' HH:mm")}</p>
+            <p className="text-muted-foreground italic">{t("teams.notYetScheduled")}</p>
           )}
         </div>
 

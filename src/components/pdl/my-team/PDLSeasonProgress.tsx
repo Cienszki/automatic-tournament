@@ -12,10 +12,10 @@ interface PDLSeasonProgressProps {
   currentRound?: number;
   totalRounds?: number;
   points?: number;
-  seasonPoints?: number;
   wins?: number;
   draws?: number;
   losses?: number;
+  recentForm?: ('W' | 'D' | 'L')[];
   playoffQualified?: boolean;
   promotionZone?: boolean;
   relegationZone?: boolean;
@@ -30,10 +30,10 @@ export function PDLSeasonProgress({
   currentRound = 0,
   totalRounds = 8,
   points = 0,
-  seasonPoints = 0,
   wins = 0,
   draws = 0,
   losses = 0,
+  recentForm = [],
   playoffQualified = false,
   promotionZone = false,
   relegationZone = false,
@@ -124,23 +124,31 @@ export function PDLSeasonProgress({
           </div>
         </div>
 
-        {/* Points Card */}
+        {/* Points & Form Card */}
         <div className="rounded-xl border border-white/10 bg-white/[0.02] p-5 space-y-3">
           <p className="text-xs text-white/40 uppercase tracking-wider font-logik">Punkty</p>
-          <div className="flex items-baseline gap-3">
-            <div>
-              <p className="text-xs text-white/40 font-logik mb-1">Runda</p>
-              <p className="text-3xl font-logik-wide-black text-pdl-gold">
-                {points}
-              </p>
-            </div>
-            <div className="h-8 w-px bg-white/10" />
-            <div>
-              <p className="text-xs text-white/40 font-logik mb-1">Sezon</p>
-              <p className="text-3xl font-logik-wide-black text-white">
-                {seasonPoints}
-              </p>
-            </div>
+          <p className="text-4xl font-logik-wide-black text-pdl-gold">{points}</p>
+          <div className="space-y-1.5">
+            <p className="text-xs text-white/40 font-logik uppercase tracking-wider">Ostatnia forma</p>
+            {recentForm.length > 0 ? (
+              <div className="flex items-center gap-1.5">
+                {recentForm.slice(-5).map((result, i) => (
+                  <span
+                    key={i}
+                    className={cn(
+                      'inline-flex items-center justify-center w-7 h-7 rounded-md text-xs font-logik-extended-bold',
+                      result === 'W' && 'bg-green-500/20 text-green-400',
+                      result === 'D' && 'bg-yellow-500/20 text-yellow-400',
+                      result === 'L' && 'bg-red-500/20 text-red-400',
+                    )}
+                  >
+                    {result}
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-white/20 font-logik italic">Brak rozegranych meczów</p>
+            )}
           </div>
         </div>
 

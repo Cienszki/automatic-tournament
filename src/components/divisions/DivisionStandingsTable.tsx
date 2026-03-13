@@ -161,8 +161,8 @@ export function DivisionStandingsTable({
               </div>
 
               {/* Matches Played */}
-              <div className="col-span-1 text-center font-mono text-white/40">
-                {team.matchesPlayed}
+              <div className="col-span-1 text-center text-white/40">
+                <span>{team.matchesPlayed}</span>
               </div>
 
               {/* W/D/L */}

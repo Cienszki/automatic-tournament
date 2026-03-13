@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { doc, updateDoc, collection, query, where, getDocs, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { approveStandinAppeal, rejectStandinAppeal, undoStandinAppealResolution } from '@/lib/standin-actions';
 import { cn } from '@/lib/utils';
 import type { PDLStandinRequest, Team, Match } from '@/lib/definitions';
 import { format } from 'date-fns';
@@ -160,14 +161,8 @@ export function StandinsTab() {
 
     setProcessingId(appealId);
     try {
-      const requestRef = doc(db, 'tournaments', tournament.id, 'standinRequests', appealId);
-      await updateDoc(requestRef, {
-        status: 'appeal_approved',
-        appealResolvedBy: user.uid,
-        appealResolvedAt: new Date().toISOString(),
-        appealAdminNote: adminNote[appealId] || null,
-        updatedAt: new Date().toISOString(),
-      });
+      const result = await approveStandinAppeal(tournament.id, appealId, user.uid, adminNote[appealId]);
+      if (!result.success) throw new Error(result.error);
 
       toast({
         title: 'Zatwierdzone',
@@ -197,14 +192,8 @@ export function StandinsTab() {
 
     setProcessingId(appealId);
     try {
-      const requestRef = doc(db, 'tournaments', tournament.id, 'standinRequests', appealId);
-      await updateDoc(requestRef, {
-        status: 'appeal_rejected',
-        appealResolvedBy: user.uid,
-        appealResolvedAt: new Date().toISOString(),
-        appealAdminNote: adminNote[appealId] || null,
-        updatedAt: new Date().toISOString(),
-      });
+      const result = await rejectStandinAppeal(tournament.id, appealId, user.uid, adminNote[appealId]);
+      if (!result.success) throw new Error(result.error);
 
       toast({
         title: 'Odrzucone',
@@ -234,31 +223,12 @@ export function StandinsTab() {
 
     setProcessingId(appealId);
     try {
-      const requestRef = doc(db, 'tournaments', tournament.id, 'standinRequests', appealId);
-      
-      // Get current data to preserve the admin note
-      const requestSnap = await getDoc(requestRef);
-      if (!requestSnap.exists()) {
-        throw new Error('Request not found');
-      }
-      
-      const currentData = requestSnap.data() as PDLStandinRequest;
-      
-      // Revert to appeal_pending and preserve the note for admin reference
-      await updateDoc(requestRef, {
-        status: 'appeal_pending',
-        appealResolvedBy: null,
-        appealResolvedAt: null,
-        // Keep appealAdminNote so admin can see their previous note
-        updatedAt: new Date().toISOString(),
-      });
+      const result = await undoStandinAppealResolution(tournament.id, appealId);
+      if (!result.success) throw new Error(result.error);
 
-      // Restore the note to the input field
-      if (currentData.appealAdminNote) {
-        setAdminNote(prev => ({
-          ...prev,
-          [appealId]: currentData.appealAdminNote || ''
-        }));
+      // Restore the previous admin note to the input field
+      if (result.previousNote) {
+        setAdminNote(prev => ({ ...prev, [appealId]: result.previousNote! }));
       }
 
       toast({

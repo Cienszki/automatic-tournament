@@ -67,6 +67,8 @@ interface EditablePlayer {
   steamProfileUrl: string;
   steamId: string;
   steamId32?: string;
+  /** Steam display name from Steam API (personaname) */
+  personaname?: string;
   avatar?: string;
   avatarmedium?: string;
   avatarfull?: string;
@@ -109,8 +111,12 @@ export function PDLTransferSection({
         nickname: p.nickname,
         role: p.role,
         steamProfileUrl: p.steamProfileUrl || '',
-        steamId: p.steamId || '',
+        // Registration-created player docs store the steamId64 value in the
+        // 'steamId64' field, while transfer-created docs store it in 'steamId'.
+        // Coalesce both so we never lose the Steam ID when editing.
+        steamId: p.steamId || (p as unknown as Record<string, string>).steamId64 || '',
         steamId32: p.steamId32 || '',
+        personaname: p.personaname,
         avatar: p.avatar,
         avatarmedium: p.avatarmedium,
         avatarfull: p.avatarfull,
@@ -199,9 +205,11 @@ export function PDLTransferSection({
         id: `new-${Date.now()}`,
         nickname: newNickname.trim(),
         role: newRole as PlayerRole,
-        steamProfileUrl: newSteamUrl.trim(),
+        // Use canonical profileurl from Steam API when available; fall back to what the user typed.
+        steamProfileUrl: data.profileurl || newSteamUrl.trim(),
         steamId: data.steamId64 || '',
         steamId32: data.steamId32 || '',
+        personaname: data.personaname,
         avatar: data.avatar,
         avatarmedium: data.avatarmedium,
         avatarfull: data.avatarfull,
@@ -249,6 +257,9 @@ export function PDLTransferSection({
                   ...p,
                   steamId: data.steamId64 || p.steamId,
                   steamId32: data.steamId32 || p.steamId32,
+                  // Update to canonical Steam URL when available
+                  steamProfileUrl: data.profileurl || p.steamProfileUrl,
+                  personaname: data.personaname ?? p.personaname,
                   avatar: data.avatar,
                   avatarmedium: data.avatarmedium,
                   avatarfull: data.avatarfull,
@@ -308,6 +319,7 @@ export function PDLTransferSection({
           steamProfileUrl: p.steamProfileUrl,
           steamId: p.steamId,
           steamId32: p.steamId32 || '',
+          personaname: p.personaname,
           avatar: p.avatar,
           avatarmedium: p.avatarmedium,
           avatarfull: p.avatarfull,

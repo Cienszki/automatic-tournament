@@ -6,7 +6,7 @@ import { Users } from 'lucide-react';
 import { TeamCard as LegacyTeamCard } from "@/components/app/TeamCard";
 import { TeamCard as PDLTeamCard } from "@/components/pdl/TeamCard";
 import { getAllTeams } from "@/lib/firestore";
-import type { Team } from "@/lib/definitions";
+import type { Team, Player } from "@/lib/definitions";
 import { useEffect, useState } from "react";
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -64,18 +64,34 @@ export default function TeamsPage() {
           const teamsRef = collection(db, 'tournaments', tournament.id, 'teams');
           const teamsSnapshot = await getDocs(teamsRef);
 
-          // Load each team with its players subcollection
+          // Load each team with its players
           const teamsData: Team[] = await Promise.all(
             teamsSnapshot.docs.map(async (teamDoc) => {
               const teamData = teamDoc.data();
 
-              // Load players for this team
-              const playersRef = collection(db, 'tournaments', tournament.id, 'teams', teamDoc.id, 'players');
-              const playersSnapshot = await getDocs(playersRef);
-              const players = playersSnapshot.docs.map(playerDoc => ({
-                id: playerDoc.id,
-                ...playerDoc.data()
-              }));
+              // Prefer the embedded roster map (new architecture) — has nickname, avatar, role.
+              // Fall back to player subcollection for legacy teams without a roster map.
+              const rosterMap = teamData.roster as Record<string, { nickname: string; role: string; steamId32: string; avatar?: string }> | undefined;
+
+              let players: Player[];
+              if (rosterMap && Object.keys(rosterMap).length > 0) {
+                players = Object.entries(rosterMap).map(([steamId64, info]) => ({
+                  id: steamId64,
+                  steamId: steamId64,
+                  steamId32: info.steamId32,
+                  nickname: info.nickname,
+                  role: info.role,
+                  avatar: info.avatar || '',
+                } as unknown as Player));
+              } else {
+                // Legacy fallback: read from player subcollection
+                const playersRef = collection(db, 'tournaments', tournament.id, 'teams', teamDoc.id, 'players');
+                const playersSnapshot = await getDocs(playersRef);
+                players = playersSnapshot.docs.map(playerDoc => ({
+                  id: playerDoc.id,
+                  ...playerDoc.data()
+                })) as unknown as Player[];
+              }
 
               return {
                 id: teamDoc.id,

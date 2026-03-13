@@ -78,7 +78,7 @@ export function getAllHeroData(): Record<string, HeroData> {
  * @param performances - Array of player performances
  * @returns Object with hero info and pick count
  */
-export function findMostPickedHero(performances: any[]): { heroId: number; heroName: string; pickCount: number } {
+export function findMostPickedHero(performances: Array<{ heroId?: number; hero_id?: number }>): { heroId: number; heroName: string; pickCount: number } {
   const heroCounts: Record<number, number> = {};
   
   performances.forEach(perf => {
@@ -105,12 +105,12 @@ export function findMostPickedHero(performances: any[]): { heroId: number; heroN
  * @param games - Array of games with picks/bans
  * @returns Object with hero info and ban count
  */
-export function findMostBannedHero(games: any[]): { heroId: number; heroName: string; banCount: number } {
+export function findMostBannedHero(games: Array<{ picksBans?: Array<{ is_pick: boolean; hero_id: number }> }>): { heroId: number; heroName: string; banCount: number } {
   const heroBans: Record<number, number> = {};
   
   games.forEach(game => {
     if (game.picksBans) {
-      game.picksBans.forEach((pick: any) => {
+      game.picksBans.forEach((pick) => {
         if (!pick.is_pick && pick.hero_id) {
           heroBans[pick.hero_id] = (heroBans[pick.hero_id] || 0) + 1;
         }

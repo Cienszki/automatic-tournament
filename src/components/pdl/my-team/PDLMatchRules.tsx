@@ -2,6 +2,7 @@
 
 import { Info, Shield, Clock, Globe, Eye, Users, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useTournament } from '@/context/TournamentContext';
 
 interface PDLMatchRulesProps {
   leagueId?: number;
@@ -16,13 +17,25 @@ interface PDLMatchRulesProps {
 }
 
 export function PDLMatchRules({
-  leagueId = 19206,
-  leagueName = 'POLISH DOTA LEAGUE',
+  leagueId,
+  leagueName,
   isGame1Host,
   hostTeamName,
   opponentTeamName,
   timePenalty,
 }: PDLMatchRulesProps) {
+  const { tournament } = useTournament();
+  const displayLeagueName = leagueName ?? tournament?.name?.toUpperCase() ?? 'POLISH DOTA LEAGUE';
+  const displayLeagueId = leagueId ?? tournament?.leagueId ?? 19206;
+
+  const lobby = tournament?.lobbySettings;
+  const displayGameMode = lobby?.gameMode || 'Captains Mode';
+  const displayServer = lobby?.server || 'EU West';
+  const displayVisibility = lobby?.visibility || 'Publiczna';
+  const displayDotatvDelay = lobby?.dotatvDelayMinutes ?? 5;
+  const displayLatePenaltyGame = lobby?.latePenaltyGameMinutes ?? 15;
+  const displayLatePenaltySeries = lobby?.latePenaltySeriesMinutes ?? 30;
+
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2">
@@ -96,7 +109,7 @@ export function PDLMatchRules({
             </div>
             <div>
               <p className="text-white/40">Tryb Gry</p>
-              <p className="text-white font-logik-extended-bold">Captains Mode</p>
+              <p className="text-white font-logik-extended-bold">{displayGameMode}</p>
             </div>
           </div>
 
@@ -106,7 +119,7 @@ export function PDLMatchRules({
             </div>
             <div>
               <p className="text-white/40">Serwer</p>
-              <p className="text-white font-logik-extended-bold">EU West</p>
+              <p className="text-white font-logik-extended-bold">{displayServer}</p>
             </div>
           </div>
 
@@ -116,7 +129,7 @@ export function PDLMatchRules({
             </div>
             <div>
               <p className="text-white/40">Widoczność</p>
-              <p className="text-white font-logik-extended-bold">Publiczna</p>
+              <p className="text-white font-logik-extended-bold">{displayVisibility}</p>
             </div>
           </div>
 
@@ -126,7 +139,7 @@ export function PDLMatchRules({
             </div>
             <div>
               <p className="text-white/40">Liga</p>
-              <p className="text-white font-logik-extended-bold">{leagueName}</p>
+              <p className="text-white font-logik-extended-bold">{displayLeagueName}</p>
             </div>
           </div>
 
@@ -136,7 +149,7 @@ export function PDLMatchRules({
             </div>
             <div>
               <p className="text-white/40">Opóźnienie DotaTV</p>
-              <p className="text-white font-logik-extended-bold">5 minut</p>
+              <p className="text-white font-logik-extended-bold">{displayDotatvDelay} {displayDotatvDelay === 1 ? 'minuta' : 'minut'}</p>
             </div>
           </div>
         </div>
@@ -151,8 +164,8 @@ export function PDLMatchRules({
             <ul className="list-disc list-inside space-y-0.5 text-yellow-200/70">
               <li>Coin Toss decyduje o priorytecie wyboru w grze 1</li>
               <li>Przegrany pierwszego coin tossa ma priorytet w grze 2</li>
-              <li>Spóźnienie 15 min = walkower za grę</li>
-              <li>Spóźnienie 30 min = walkower za serię (0-2)</li>
+              <li>Spóźnienie {displayLatePenaltyGame} min = walkower za grę</li>
+              <li>Spóźnienie {displayLatePenaltySeries} min = walkower za serię (0-2)</li>
             </ul>
           </div>
         </div>

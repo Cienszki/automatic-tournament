@@ -176,10 +176,23 @@ export interface TournamentConfig {
   
   // Dota 2 integration
   leagueId?: number; // Valve League ID
-  
+
+  // Lobby / match rules configuration
+  lobbySettings?: {
+    gameMode?: string;           // e.g. "Captains Mode"
+    server?: string;             // e.g. "EU West"
+    visibility?: string;         // e.g. "Publiczna"
+    dotatvDelayMinutes?: number; // e.g. 5
+    latePenaltyGameMinutes?: number;   // forfeit one game, default 15
+    latePenaltySeriesMinutes?: number; // forfeit series, default 30
+  };
+
   // Social/Streaming
   twitchUrl?: string; // Full Twitch URL (e.g., https://www.twitch.tv/pd2ih)
   discordUrl?: string; // Full Discord invite URL (e.g., https://discord.gg/pd2ih)
+  youtubeUrl?: string; // Full YouTube channel URL
+  instagramUrl?: string; // Full Instagram profile URL
+  tiktokUrl?: string; // Full TikTok profile URL
   
   // Legacy field for backwards compatibility
   twitchChannel?: string; // @deprecated Use twitchUrl instead
@@ -376,6 +389,9 @@ export interface Organizer {
   description?: string;
   discordUrl?: string;
   twitchUrl?: string;
+  youtubeUrl?: string;
+  instagramUrl?: string;
+  tiktokUrl?: string;
   websiteUrl?: string;
   createdAt: string;
 }

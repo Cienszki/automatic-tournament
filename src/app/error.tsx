@@ -4,6 +4,8 @@ import { useEffect } from 'react';
 import { AlertTriangle, RefreshCw, Home, Bug } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { useTranslations } from 'next-intl';
+import { reportError } from '@/lib/error-reporting';
 
 export default function Error({
   error,
@@ -12,24 +14,18 @@ export default function Error({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const t = useTranslations('errorPages.error');
+
   useEffect(() => {
-    // Log error to console and potentially to error reporting service
-    console.error('Application error:', error);
+    reportError(error, { source: 'error-boundary-page' });
   }, [error]);
 
   const handleReport = () => {
-    // In a real app, this would send error details to an error tracking service
-    const errorDetails = {
-      message: error.message,
-      stack: error.stack,
-      digest: error.digest,
-      timestamp: new Date().toISOString(),
-      userAgent: navigator.userAgent,
+    reportError(error, {
+      source: 'user-report',
       url: window.location.href,
-    };
-    
-    console.log('Error report:', errorDetails);
-    // TODO: Send to error tracking service like Sentry
+      userAgent: navigator.userAgent,
+    });
   };
 
   return (
@@ -40,10 +36,10 @@ export default function Error({
             <AlertTriangle className="w-16 h-16 text-red-500" />
           </div>
           <CardTitle className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-            Wystąpił błąd
+            {t('heading')}
           </CardTitle>
           <CardDescription className="text-gray-600 dark:text-gray-400">
-            Coś poszło nie tak podczas ładowania strony.
+            {t('description')}
           </CardDescription>
         </CardHeader>
         
@@ -55,7 +51,7 @@ export default function Error({
               size="lg"
             >
               <RefreshCw className="w-4 h-4 mr-2" />
-              Spróbuj ponownie
+              {t('tryAgain')}
             </Button>
             
             <Button 
@@ -64,7 +60,7 @@ export default function Error({
               onClick={() => window.location.href = '/'}
             >
               <Home className="w-4 h-4 mr-2" />
-              Strona główna
+              {t('homePage')}
             </Button>
             
             <Button 
@@ -73,7 +69,7 @@ export default function Error({
               onClick={handleReport}
             >
               <Bug className="w-4 h-4 mr-2" />
-              Zgłoś błąd (dev)
+              {t('reportBug')}
             </Button>
           </div>
           
@@ -81,7 +77,7 @@ export default function Error({
             <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
               <details className="text-left">
                 <summary className="text-sm text-gray-500 cursor-pointer hover:text-gray-700">
-                  Szczegóły błędu (dev)
+                  {t('errorDetails')}
                 </summary>
                 <pre className="mt-2 text-xs text-red-600 dark:text-red-400 bg-gray-100 dark:bg-gray-800 p-2 rounded overflow-auto max-h-32">
                   {error.message}

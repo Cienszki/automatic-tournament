@@ -4,10 +4,10 @@ import Link from 'next/link';
 import { Home, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { useTranslation } from '@/hooks/useTranslation';
+import { useTranslations } from 'next-intl';
 
 export default function NotFound() {
-  const { t } = useTranslation();
+  const t = useTranslations('errorPages.notFound');
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 px-4">
@@ -17,10 +17,10 @@ export default function NotFound() {
             404
           </div>
           <CardTitle className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-            {t('errorPages.notFound.heading')}
+            {t('heading')}
           </CardTitle>
           <CardDescription className="text-gray-600 dark:text-gray-400">
-            {t('errorPages.notFound.description')}
+            {t('description')}
           </CardDescription>
         </CardHeader>
         
@@ -29,34 +29,34 @@ export default function NotFound() {
             <Link href="/">
               <Button className="w-full" size="lg">
                 <Home className="w-4 h-4 mr-2" />
-                {t('errorPages.notFound.homeButton')}
+                {t('homeButton')}
               </Button>
             </Link>
             
             <Link href="/teams">
               <Button variant="outline" className="w-full">
                 <Search className="w-4 h-4 mr-2" />
-                Przeglądaj zespoły
+                {t('browseTeams')}
               </Button>
             </Link>
           </div>
           
           <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
             <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
-              {t('errorPages.notFound.searchSuggestion')}
+              {t('searchSuggestion')}
             </p>
             <div className="grid grid-cols-2 gap-2 text-sm">
               <Link href="/schedule" className="text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300">
-                Harmonogram
+                {t('schedule')}
               </Link>
               <Link href="/groups" className="text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300">
-                Grupy
+                {t('groups')}
               </Link>
               <Link href="/stats" className="text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300">
-                Statystyki
+                {t('stats')}
               </Link>
               <Link href="/rules" className="text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300">
-                Zasady
+                {t('rules')}
               </Link>
             </div>
           </div>

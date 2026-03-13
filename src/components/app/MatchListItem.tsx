@@ -128,22 +128,6 @@ export function MatchListItem({ match }: MatchListItemProps) {
             ))}
           </div>
         )}
-        {!isCompleted && !hasOfficialTime && (
-            <TooltipProvider>
-                <Tooltip>
-                    <TooltipTrigger asChild>
-                        <Badge variant="destructive" className="flex items-center cursor-help">
-                            <Clock className="h-3 w-3 mr-1.5 animate-pulse" />
-                            Default Time
-                        </Badge>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                        <p>This match has not been scheduled by the captains yet.</p>
-                        <p className="text-xs text-muted-foreground">Scheduling Deadline: {format(new Date(match.scheduledFor), "PPP HH:mm")}</p>
-                    </TooltipContent>
-                </Tooltip>
-            </TooltipProvider>
-        )}
       </CardFooter>
     </Card>
   );

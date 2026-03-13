@@ -56,24 +56,23 @@ export default function FantasyPage() {
           
           const allPlayers: TournamentPlayer[] = [];
           
+          const { loadTeamPlayersForDisplay } = await import('@/lib/team-players-loader');
           for (const teamDoc of teamsSnapshot.docs) {
             const teamData = teamDoc.data();
-            const playersRef = collection(db, 'tournaments', tournament.id, 'teams', teamDoc.id, 'players');
-            const playersSnapshot = await getDocs(playersRef);
+            const players = await loadTeamPlayersForDisplay(teamDoc.id, tournament.id, teamData as Record<string, unknown>);
             
-            playersSnapshot.docs.forEach(playerDoc => {
-              const playerData = playerDoc.data();
+            players.forEach(p => {
               allPlayers.push({
-                id: playerDoc.id,
-                nickname: playerData.nickname || playerData.name || '',
-                steamId: playerData.steamId || '',
-                steamId32: playerData.steamId32 || '',
-                role: playerData.role || 'Support',
-                mmr: playerData.mmr || 0,
+                id: p.id,
+                nickname: p.nickname || '',
+                steamId: p.steamId || '',
+                steamId32: p.steamId32 || '',
+                role: (p.role as import('@/lib/definitions').PlayerRole) || 'Support',
+                mmr: p.mmr || 0,
                 teamId: teamDoc.id,
                 teamName: teamData.name || '',
                 teamTag: teamData.tag || '',
-                profileScreenshotUrl: playerData.profileScreenshotUrl || '',
+                profileScreenshotUrl: '',
               });
             });
           }

@@ -4,13 +4,13 @@ export async function getHomePageData() {
   // Announcements
   const latestAnnouncements = await getAnnouncements();
 
-  // Featured match: next upcoming match (by dateTime)
+  // Featured match: next upcoming match (by scheduledFor)
   const allMatches = await getAllMatches();
   const now = new Date();
-  const upcomingMatches = allMatches.filter(m => m.dateTime && new Date(m.dateTime) > now);
+  const upcomingMatches = allMatches.filter(m => m.scheduledFor && new Date(m.scheduledFor) > now);
   let featuredMatch = null;
   if (upcomingMatches.length > 0) {
-    featuredMatch = upcomingMatches.sort((a, b) => new Date(a.dateTime!).getTime() - new Date(b.dateTime!).getTime())[0];
+    featuredMatch = upcomingMatches.sort((a, b) => new Date(a.scheduledFor).getTime() - new Date(b.scheduledFor).getTime())[0];
   }
 
   // Recent result: most recently completed match

@@ -8,6 +8,7 @@ import { Footer } from '@/components/layout/Footer';
 import { DynamicFontLoader } from '@/components/DynamicFontLoader';
 import { ThemeFontApplier } from '@/components/ThemeFontApplier';
 import { LoadingScreen } from '@/components/ui/LoadingScreen';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 interface TournamentLayoutProps {
   children: React.ReactNode;
@@ -112,7 +113,9 @@ export default function TournamentLayout({ children }: TournamentLayoutProps) {
       <ThemeFontApplier />
       <TournamentNavbar />
       <main className="flex-grow container mx-auto px-4 py-8">
-        {children}
+        <ErrorBoundary section="tournament">
+          {children}
+        </ErrorBoundary>
       </main>
       <Footer />
     </div>

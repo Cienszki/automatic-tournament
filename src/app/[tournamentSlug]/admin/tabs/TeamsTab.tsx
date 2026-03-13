@@ -95,15 +95,12 @@ export function TeamsTab() {
           teamsSnapshot.docs.map(async (teamDoc) => {
             const teamData = teamDoc.data();
 
-            // Load players for this team
-            const playersRef = collection(db, 'tournaments', tournament.id, 'teams', teamDoc.id, 'players');
-            const playersSnapshot = await getDocs(playersRef);
-            const players = playersSnapshot.docs.map(playerDoc => ({
-              id: playerDoc.id,
-              ...playerDoc.data()
-            }));
+            // Load players: prefers roster map (has nickname), falls back to subcollection
+            const { loadTeamPlayersForDisplay } = await import('@/lib/team-players-loader');
+            const players = await loadTeamPlayersForDisplay(teamDoc.id, tournament.id, teamData as Record<string, unknown>);
 
-            // Find captain name from players
+            // Find captain name from players (captainId is Firebase Auth UID, not steamId — so
+            // this lookup may not match; the captainName display is best-effort only)
             const captain = players.find((p: { id: string; nickname?: string }) => p.id === teamData.captainId);
             
             // Get division name from tournament divisions

@@ -58,11 +58,19 @@ import {
   Eye,
   Flag,
   Layers,
+  Ban,
 } from 'lucide-react';
 
 interface MatchWithTeamNames extends Match {
   teamAName: string;
   teamBName: string;
+}
+
+interface SkippedGame {
+  gameId: string;
+  reason: string;
+  skippedAt: string;
+  skippedBy: string;
 }
 
 /**
@@ -87,6 +95,7 @@ export function MatchesTab() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [isPostSyncRecalculating, setIsPostSyncRecalculating] = useState(false);
 
   // Force Import state
   const [showForceImportDialog, setShowForceImportDialog] = useState(false);
@@ -107,6 +116,11 @@ export function MatchesTab() {
   // When opened from a per-row button this holds the match so we can pre-fill and restrict team selects
   const [forceImportContextMatch, setForceImportContextMatch] = useState<MatchWithTeamNames | null>(null);
 
+  // Revert forfeit state
+  const [showRevertForfeitDialog, setShowRevertForfeitDialog] = useState(false);
+  const [revertForfeitMatch, setRevertForfeitMatch] = useState<MatchWithTeamNames | null>(null);
+  const [isRevertingForfeit, setIsRevertingForfeit] = useState(false);
+
   // Forfeit / Walkover state
   const [showForfeitDialog, setShowForfeitDialog] = useState(false);
   const [forfeitMatch, setForfeitMatch] = useState<MatchWithTeamNames | null>(null);
@@ -123,10 +137,98 @@ export function MatchesTab() {
   const [deletingGameId, setDeletingGameId] = useState<number | null>(null);
   const [confirmDeleteGameId, setConfirmDeleteGameId] = useState<number | null>(null);
 
-  // Load matches from Firestore
+  // Skipped games state
+  const [skippedGames, setSkippedGames] = useState<SkippedGame[]>([]);
+  const [loadingSkipped, setLoadingSkipped] = useState(true);
+  const [showAddSkippedDialog, setShowAddSkippedDialog] = useState(false);
+  const [newSkippedGameId, setNewSkippedGameId] = useState('');
+  const [newSkippedReason, setNewSkippedReason] = useState('');
+  const [isAddingSkipped, setIsAddingSkipped] = useState(false);
+  const [removingSkippedId, setRemovingSkippedId] = useState<string | null>(null);
+
+  // Load matches and skipped games from Firestore
   useEffect(() => {
     loadMatches();
+    loadSkippedGames();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tournament?.id]);
+
+  const loadSkippedGames = async () => {
+    if (!tournament?.id || !user) {
+      setLoadingSkipped(false);
+      return;
+    }
+    try {
+      setLoadingSkipped(true);
+      const token = await user.getIdToken();
+      const res = await fetch(`/api/admin/pdl/skipped-games?tournamentId=${tournament.id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (data.success) {
+        setSkippedGames(data.games);
+      }
+    } catch (error) {
+      console.error('Error loading skipped games:', error);
+    } finally {
+      setLoadingSkipped(false);
+    }
+  };
+
+  const handleAddSkippedGame = async () => {
+    if (!tournament?.id || !user || !newSkippedGameId.trim()) return;
+    setIsAddingSkipped(true);
+    try {
+      const token = await user.getIdToken();
+      const res = await fetch('/api/admin/pdl/skipped-games', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tournamentId: tournament.id,
+          gameId: newSkippedGameId.trim(),
+          reason: newSkippedReason.trim() || 'Manually skipped by admin',
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast({ title: 'Gra oznaczona jako pominięta', description: `ID: ${data.gameId}` });
+        setShowAddSkippedDialog(false);
+        setNewSkippedGameId('');
+        setNewSkippedReason('');
+        await loadSkippedGames();
+      } else {
+        toast({ title: 'Błąd', description: data.error || 'Nie udało się pominąć gry', variant: 'destructive' });
+      }
+    } catch {
+      toast({ title: 'Błąd połączenia z serwerem', variant: 'destructive' });
+    } finally {
+      setIsAddingSkipped(false);
+    }
+  };
+
+  const handleRemoveSkippedGame = async (gameId: string) => {
+    if (!tournament?.id || !user) return;
+    setRemovingSkippedId(gameId);
+    try {
+      const token = await user.getIdToken();
+      const res = await fetch('/api/admin/pdl/skipped-games', {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tournamentId: tournament.id, gameId }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast({ title: 'Usunięto z listy pominiętych' });
+        await loadSkippedGames();
+      } else {
+        toast({ title: 'Błąd', description: data.error || 'Nie udało się usunąć', variant: 'destructive' });
+      }
+    } catch {
+      toast({ title: 'Błąd połączenia z serwerem', variant: 'destructive' });
+    } finally {
+      setRemovingSkippedId(null);
+    }
+  };
 
   const loadMatches = async () => {
     if (!tournament?.id) {
@@ -287,6 +389,8 @@ export function MatchesTab() {
         setShowForceImportDialog(false);
         resetForceImportDialog();
         await loadMatches();
+        // Automatically recalculate standings and stats after force-import
+        await runPostSyncRecalculation(token);
       } else {
         toast({ title: 'Błąd importu', description: data.message || data.error, variant: 'destructive' });
       }
@@ -320,6 +424,57 @@ export function MatchesTab() {
     setShowForceImportDialog(true);
   };
 
+  /**
+   * After a successful match sync or force-import, automatically recalculate
+   * division standings and player/team statistics.
+   */
+  const runPostSyncRecalculation = async (token: string) => {
+    if (!tournament?.id) return;
+    setIsPostSyncRecalculating(true);
+    try {
+      // 1. Recalculate division standings
+      const standingsRes = await fetch('/api/admin/pdl/recalculate-standings', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tournamentId: tournament.id }),
+      });
+      const standingsData = await standingsRes.json();
+      if (!standingsData.success) {
+        console.warn('[Post-sync] Standings recalculation failed:', standingsData.error);
+      }
+
+      // 2. Recalculate player/team stats
+      const statsRes = await fetch('/api/stats/recalculate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tournamentId: tournament.id }),
+      });
+      const statsData = await statsRes.json();
+      if (!statsData.success) {
+        console.warn('[Post-sync] Stats recalculation failed:', statsData.message);
+      }
+
+      if (standingsData.success && statsData.success) {
+        toast({ title: 'Tabele i statystyki zaktualizowane', description: 'Tabele podziałów i statystyki zostały automatycznie przeliczone.' });
+      } else {
+        toast({
+          title: 'Częściowa aktualizacja',
+          description: 'Synchronizacja zakończona, ale przeliczanie tabel/statystyk nie powiodło się w pełni. Sprawdź zakładkę Statystyki lub Podziały.',
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
+      console.error('[Post-sync] Recalculation error:', error);
+      toast({
+        title: 'Błąd przeliczania',
+        description: 'Mecze zostały zsynchronizowane, ale nie udało się automatycznie przeliczyć tabel i statystyk.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsPostSyncRecalculating(false);
+    }
+  };
+
   const handleSyncMatches = async () => {
     if (!tournament?.id || !user) return;
 
@@ -347,6 +502,10 @@ export function MatchesTab() {
         });
         // Reload matches to show new data
         await loadMatches();
+        // Automatically recalculate standings and stats
+        if ((data.importedCount ?? 0) > 0) {
+          await runPostSyncRecalculation(token);
+        }
       } else {
         setSyncResult({ success: false, message: data.error || 'Synchronizacja nie powiodła się.' });
         toast({
@@ -470,6 +629,45 @@ export function MatchesTab() {
     } finally {
       setIsDeletingGame(false);
       setDeletingGameId(null);
+    }
+  };
+
+  const openRevertForfeitDialog = (match: MatchWithTeamNames) => {
+    setRevertForfeitMatch(match);
+    setShowRevertForfeitDialog(true);
+  };
+
+  const handleRevertForfeit = async () => {
+    if (!revertForfeitMatch || !user || !tournament?.id) return;
+    setIsRevertingForfeit(true);
+    try {
+      const token = await user.getIdToken();
+      const resp = await fetch('/api/admin/pdl/revert-forfeit', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          tournamentId: tournament.id,
+          matchId: revertForfeitMatch.id,
+        }),
+      });
+      const data = await resp.json();
+      if (data.success) {
+        toast({ title: 'Forfeit cofnięty', description: data.message });
+        setShowRevertForfeitDialog(false);
+        setRevertForfeitMatch(null);
+        await loadMatches();
+        const freshToken = await user.getIdToken();
+        await runPostSyncRecalculation(freshToken);
+      } else {
+        toast({ title: 'Błąd', description: data.error || data.message || 'Nie udało się cofnąć forfeita', variant: 'destructive' });
+      }
+    } catch {
+      toast({ title: 'Błąd połączenia z serwerem', variant: 'destructive' });
+    } finally {
+      setIsRevertingForfeit(false);
     }
   };
 
@@ -636,12 +834,17 @@ export function MatchesTab() {
             variant="outline"
             className="font-logik"
             onClick={handleSyncMatches}
-            disabled={isSyncing}
+            disabled={isSyncing || isPostSyncRecalculating}
           >
             {isSyncing ? (
               <>
                 <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
                 Synchronizuję...
+              </>
+            ) : isPostSyncRecalculating ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Przeliczam tabele i statystyki...
               </>
             ) : (
               <>
@@ -1040,15 +1243,27 @@ export function MatchesTab() {
                         >
                           <Wrench className="h-4 w-4" />
                         </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-orange-500 hover:text-orange-600 hover:bg-orange-500/10"
-                          title="Walkover / Forfeit"
-                          onClick={() => openForfeitDialog(match)}
-                        >
-                          <Flag className="h-4 w-4" />
-                        </Button>
+                        {match.forfeit ? (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-yellow-500 hover:text-yellow-600 hover:bg-yellow-500/10"
+                            title="Cofnij forfeit / walkover"
+                            onClick={() => openRevertForfeitDialog(match)}
+                          >
+                            <RotateCcw className="h-4 w-4" />
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-orange-500 hover:text-orange-600 hover:bg-orange-500/10"
+                            title="Walkover / Forfeit"
+                            onClick={() => openForfeitDialog(match)}
+                          >
+                            <Flag className="h-4 w-4" />
+                          </Button>
+                        )}
                         <Button 
                           variant="ghost" 
                           size="icon" 
@@ -1361,6 +1576,67 @@ export function MatchesTab() {
         </DialogContent>
       </Dialog>
 
+      {/* Revert Forfeit Confirmation Dialog */}
+      <Dialog open={showRevertForfeitDialog} onOpenChange={(open) => {
+        setShowRevertForfeitDialog(open);
+        if (!open) setRevertForfeitMatch(null);
+      }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="font-logik-extended-bold flex items-center gap-2">
+              <RotateCcw className="h-5 w-5 text-yellow-500" />
+              Cofnij forfeit / walkover
+            </DialogTitle>
+            <DialogDescription className="font-logik">
+              {revertForfeitMatch
+                ? `${revertForfeitMatch.teamAName} vs ${revertForfeitMatch.teamBName}`
+                : ''}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="rounded-md bg-yellow-500/10 border border-yellow-500/20 p-3 text-sm font-logik text-yellow-700 dark:text-yellow-400 space-y-1">
+            {revertForfeitMatch?.forfeit && (
+              <>
+                {(revertForfeitMatch.forfeit as { scope: string }).scope === 'series' ? (
+                  <p>Anuluje walkover całej serii. Wynik zostanie zresetowany do <strong>0:0</strong>, a mecz wróci do statusu <strong>Zaplanowany</strong>.</p>
+                ) : (
+                  <p>Usuwa syntetyczne gry forfeit. Wynik zostanie przeliczony na podstawie rzeczywiście rozegranych gier.</p>
+                )}
+                <p className="text-xs opacity-70 mt-1">Tabele podziałów zostaną automatycznie przeliczone.</p>
+              </>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowRevertForfeitDialog(false)}
+              className="font-logik"
+              disabled={isRevertingForfeit}
+            >
+              Anuluj
+            </Button>
+            <Button
+              onClick={handleRevertForfeit}
+              disabled={isRevertingForfeit}
+              className="font-logik bg-yellow-600 hover:bg-yellow-700 text-white"
+            >
+              {isRevertingForfeit ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Cofam...
+                </>
+              ) : (
+                <>
+                  <RotateCcw className="h-4 w-4 mr-2" />
+                  Cofnij forfeit
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Quick Actions */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card className="border-0 shadow-lg bg-card/50 backdrop-blur-sm">
@@ -1388,6 +1664,209 @@ export function MatchesTab() {
           </CardContent>
         </Card>
       </div>
+
+      {/* ------------------------------------------------------------------ */}
+      {/* Skipped Games                                                        */}
+      {/* ------------------------------------------------------------------ */}
+      <Card className="border-0 shadow-lg bg-card/50 backdrop-blur-sm overflow-hidden">
+        <CardHeader className="pb-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2 font-logik-extended-bold">
+                <Ban className="h-5 w-5 text-yellow-500" />
+                Pominięte gry
+              </CardTitle>
+              <CardDescription className="font-logik mt-1">
+                Gry rozegrane w lidze, które nie są wliczane do żadnego meczu turniejowego.
+                Pominięcia automatyczne (skrymy, remakey) oraz ręczne dodane przez admina.
+              </CardDescription>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="font-logik shrink-0"
+              onClick={() => setShowAddSkippedDialog(true)}
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Dodaj ręcznie
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent className="p-0">
+          {loadingSkipped ? (
+            <div className="flex items-center justify-center py-10">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : skippedGames.length === 0 ? (
+            <div className="text-center py-10 text-muted-foreground font-logik">
+              <Ban className="mx-auto h-10 w-10 mb-3 opacity-30" />
+              <p className="text-sm">Brak pominiętych gier</p>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="font-logik-extended-bold">ID gry (OpenDota)</TableHead>
+                  <TableHead className="font-logik-extended-bold">Powód pominięcia</TableHead>
+                  <TableHead className="font-logik-extended-bold">Pominięto przez</TableHead>
+                  <TableHead className="font-logik-extended-bold">Data</TableHead>
+                  <TableHead className="font-logik-extended-bold w-24">Akcje</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {skippedGames.map(sg => (
+                  <TableRow key={sg.gameId} className="hover:bg-background/50">
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-sm font-logik-extended-bold">
+                          {sg.gameId}
+                        </span>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                          title="Otwórz w OpenDota"
+                          onClick={() =>
+                            window.open(`https://www.opendota.com/matches/${sg.gameId}`, '_blank')
+                          }
+                        >
+                          <ExternalLink className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <span className="font-logik text-sm text-muted-foreground">
+                        {sg.reason || '—'}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <span className={cn(
+                        'font-logik text-xs px-2 py-0.5 rounded-full border',
+                        sg.skippedBy === 'system'
+                          ? 'bg-blue-500/10 text-blue-400 border-blue-500/20'
+                          : 'bg-orange-500/10 text-orange-400 border-orange-500/20',
+                      )}>
+                        {sg.skippedBy === 'system' ? 'System' : 'Admin'}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <span className="font-logik text-sm text-muted-foreground">
+                        {sg.skippedAt
+                          ? new Date(sg.skippedAt).toLocaleDateString('pl-PL', {
+                              day: '2-digit',
+                              month: '2-digit',
+                              year: 'numeric',
+                            })
+                          : '—'}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-500/10"
+                        title="Usuń z listy pominiętych"
+                        disabled={removingSkippedId === sg.gameId}
+                        onClick={() => handleRemoveSkippedGame(sg.gameId)}
+                      >
+                        {removingSkippedId === sg.gameId ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Trash2 className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Add Skipped Game Dialog */}
+      <Dialog
+        open={showAddSkippedDialog}
+        onOpenChange={(open) => {
+          setShowAddSkippedDialog(open);
+          if (!open) {
+            setNewSkippedGameId('');
+            setNewSkippedReason('');
+          }
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="font-logik-extended-bold flex items-center gap-2">
+              <Ban className="h-5 w-5 text-yellow-500" />
+              Pomiń grę ręcznie
+            </DialogTitle>
+            <DialogDescription className="font-logik">
+              Oznacz grę jako pominiętą — nie będzie wliczana do wyników żadnego meczu
+              i nie zostanie zaimportowana podczas synchronizacji.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="skip-game-id" className="font-logik text-sm font-medium">
+                ID gry (OpenDota) <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="skip-game-id"
+                placeholder="np. 8423006415 lub URL OpenDota"
+                value={newSkippedGameId}
+                onChange={(e) => setNewSkippedGameId(e.target.value)}
+                className="font-logik"
+              />
+              <p className="text-xs text-muted-foreground font-logik">
+                Możesz wkleić pełny URL, np.{' '}
+                <span className="font-mono">https://www.opendota.com/matches/1234567</span>
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="skip-reason" className="font-logik text-sm font-medium">
+                Powód (opcjonalnie)
+              </Label>
+              <Input
+                id="skip-reason"
+                placeholder="np. gra treningowa, remakeo, błędne lobby..."
+                value={newSkippedReason}
+                onChange={(e) => setNewSkippedReason(e.target.value)}
+                className="font-logik"
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowAddSkippedDialog(false)}
+              className="font-logik"
+              disabled={isAddingSkipped}
+            >
+              Anuluj
+            </Button>
+            <Button
+              onClick={handleAddSkippedGame}
+              disabled={isAddingSkipped || !newSkippedGameId.trim()}
+              className="font-logik bg-yellow-600 hover:bg-yellow-700 text-white"
+            >
+              {isAddingSkipped ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Zapisuję...
+                </>
+              ) : (
+                <>
+                  <Ban className="h-4 w-4 mr-2" />
+                  Pomiń grę
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

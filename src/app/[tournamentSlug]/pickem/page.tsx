@@ -73,24 +73,21 @@ export default function PickemPage() {
         const teamsRef = collection(db, 'tournaments', tournament.id, 'teams');
         const teamsSnapshot = await getDocs(teamsRef);
         
+        const { loadTeamPlayersForDisplay } = await import('@/lib/team-players-loader');
         // Load teams with their players
         teams = await Promise.all(teamsSnapshot.docs.map(async (teamDoc) => {
           const teamData = teamDoc.data();
-          const playersRef = collection(db, 'tournaments', tournament.id, 'teams', teamDoc.id, 'players');
-          const playersSnapshot = await getDocs(playersRef);
+          const loadedPlayers = await loadTeamPlayersForDisplay(teamDoc.id, tournament.id, teamData as Record<string, unknown>);
           
-          const players = playersSnapshot.docs.map(playerDoc => {
-            const playerData = playerDoc.data();
-            return {
-              id: playerDoc.id,
-              nickname: playerData.nickname || playerData.name || '',
-              mmr: playerData.mmr || 0,
-              role: playerData.role || 'Support',
-              steamId: playerData.steamId || '',
-              steamId32: playerData.steamId32 || '',
-              profileScreenshotUrl: playerData.profileScreenshotUrl || '',
-            };
-          });
+          const players = loadedPlayers.map(p => ({
+            id: p.id,
+            nickname: p.nickname || '',
+            mmr: p.mmr || 0,
+            role: p.role || 'Support',
+            steamId: p.steamId || '',
+            steamId32: p.steamId32 || '',
+            profileScreenshotUrl: '',
+          }));
           
           return {
             id: teamDoc.id,

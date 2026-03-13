@@ -588,10 +588,17 @@ export function transformMatchData(
     
     const fantasyPoints = calculateFantasyPoints(p, player, isRadiant);
     
-    console.log(`Player ${player?.id || p.account_id} (${isRadiant ? 'Radiant' : 'Dire'}): ${fantasyPoints.toFixed(2)} fantasy points`);
+    // Derive steamId64 from account_id — this is the canonical player identifier
+    // used as both the performance doc ID and the playerId field.
+    const steamId64 = p.account_id
+      ? String(BigInt(p.account_id) + 76561197960265728n)
+      : `unknown_${p.account_id}`;
+
+    console.log(`Player ${player?.steamId || steamId64} (${isRadiant ? 'Radiant' : 'Dire'}): ${fantasyPoints.toFixed(2)} fantasy points`);
     
     return {
-      playerId: player?.id || `unknown_${p.account_id}`,
+      playerId: player?.steamId || player?.steamId64 || steamId64,
+      steamId:  player?.steamId || player?.steamId64 || steamId64,
       teamId: isRadiant ? radiantTeam.id : direTeam.id,
       heroId: p.hero_id,
       kills: p.kills || 0,

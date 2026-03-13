@@ -183,11 +183,45 @@ async function fetchAllGameData(db: any, tournamentId?: string) {
   const matches = matchesSnapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
   const teamsRaw = teamsSnapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
 
-  // Fetch players subcollection for each team in parallel so player names are available
+  // Fetch players for each team in parallel so player names are available.
+  // New architecture: player names come from the team doc's embedded `roster` map.
+  // Legacy/fallback: read the player subcollection (which may have nickname).
   const teamsWithPlayers = await Promise.all(
     teamsRaw.map(async (team: any) => {
       // Skip if players are already embedded (e.g. pre-populated test data)
       if (team.players && team.players.length > 0) return team;
+
+      // Build player list from embedded roster map (new architecture)
+      const rosterMap: Record<string, { nickname: string; role: string; steamId32: string }> =
+        team.roster || {};
+      const rosterPlayers = Object.entries(rosterMap).map(([steamId, info]) => ({
+        id: steamId, // use steamId64 as the player id
+        steamId,
+        steamId64: steamId,
+        steamId32: info.steamId32,
+        nickname: info.nickname,
+        role: info.role,
+      }));
+
+      if (rosterPlayers.length > 0) {
+        // Enrich with any additional fields from the subcollection (e.g. mmr)
+        try {
+          const playersSnap = await teamsRef.doc(team.id).collection('players').get();
+          const subMap = new Map(
+            playersSnap.docs.map((d: any) => [d.id, { id: d.id, ...d.data() }])
+          );
+          const enriched = rosterPlayers.map((rp: any) => ({
+            ...((subMap.get(rp.steamId) as any) || {}),
+            // roster values (nickname, role) take priority over pointer-only subcollection
+            ...rp,
+          }));
+          return { ...team, players: enriched };
+        } catch {
+          return { ...team, players: rosterPlayers };
+        }
+      }
+
+      // Fallback: legacy subcollection with full player data
       try {
         const playersSnap = await teamsRef.doc(team.id).collection('players').get();
         const players = playersSnap.docs.map((d: any) => ({ id: d.id, ...d.data() }));
@@ -200,8 +234,8 @@ async function fetchAllGameData(db: any, tournamentId?: string) {
   const teams = teamsWithPlayers;
 
   // Build a steamId32 → nickname lookup from standin registrations
-  // This resolves "unknown_XXXXXX" player IDs (standins not in the registered roster)
-  const standinLookup = new Map<string, string>(); // unknown_<steamId32> → nickname
+  // This resolves both "unknown_XXXXXX" player IDs (legacy) and Steam64 player IDs (new format)
+  const standinLookup = new Map<string, string>(); // unknown_<steamId32> | steamId64 → nickname
 
   // Helper used by both sources below
   function extractSteamId32FromUrl(url: string): string | null {
@@ -220,7 +254,34 @@ async function fetchAllGameData(db: any, tournamentId?: string) {
       (steamId64raw ? extractSteamId32FromUrl(`/profiles/${steamId64raw}`) : null) ||
       extractSteamId32FromUrl(profileUrl ?? '');
     if (sid32 && nickname) {
+      // Legacy key: unknown_<steamId32>
       standinLookup.set(`unknown_${sid32}`, nickname);
+      // New key: steamId64 — performance docs written after March 2026 use steamId64 as playerId
+      try {
+        const steam64 = String(BigInt(sid32) + 76561197960265728n);
+        standinLookup.set(steam64, nickname);
+      } catch { /* ignore */ }
+    }
+    // Also index by raw steamId64 if provided directly (no conversion needed)
+    if (steamId64raw && nickname) {
+      standinLookup.set(String(steamId64raw), nickname);
+    }
+  }
+
+  // Source 0 — approvedStandins map written directly to each match document.
+  // This is the primary source for PDL: zero extra reads (matches already in memory).
+  for (const match of matches) {
+    const approvedStandins = (match as any).approvedStandins;
+    if (!approvedStandins || typeof approvedStandins !== 'object') continue;
+    for (const entry of Object.values(approvedStandins) as any[]) {
+      if (entry?.steamId32 && entry?.nickname) {
+        standinLookup.set(`unknown_${entry.steamId32}`, entry.nickname);
+        // Also index by steamId64
+        try {
+          const steam64 = String(BigInt(entry.steamId32) + 76561197960265728n);
+          standinLookup.set(steam64, entry.nickname);
+        } catch { /* ignore */ }
+      }
     }
   }
 
@@ -236,7 +297,7 @@ async function fetchAllGameData(db: any, tournamentId?: string) {
     });
   } catch { /* standin collection may not exist */ }
 
-  // Source 2 — PDL standin requests embedded in match documents (PDL system)
+  // Source 2 — PDL standin requests embedded in match documents (legacy path, usually empty for PDL)
   // Each req has standinNickname + standinSteamProfileUrl
   for (const match of matches) {
     const reqs: any[] = match.standinRequests ?? [];
@@ -247,6 +308,27 @@ async function fetchAllGameData(db: any, tournamentId?: string) {
         standinLookup.set(`unknown_${sid32}`, req.standinNickname);
       }
     }
+  }
+
+  // Source 3 — PDL standin requests stored in tournaments/{tournamentId}/standinRequests subcollection.
+  // This is where PDL actually writes approved standin requests.
+  if (tournamentId) {
+    try {
+      const pdlStandinReqsSnap = await db
+        .collection('tournaments')
+        .doc(tournamentId)
+        .collection('standinRequests')
+        .get();
+      pdlStandinReqsSnap.docs.forEach((d: any) => {
+        const req = d.data();
+        if (!['approved', 'appeal_approved'].includes(req.status ?? '')) return;
+        if (!req.standinNickname) return;
+        const sid32 = extractSteamId32FromUrl(req.standinSteamProfileUrl ?? '');
+        if (sid32) {
+          standinLookup.set(`unknown_${sid32}`, req.standinNickname);
+        }
+      });
+    } catch { /* subcollection may not exist yet */ }
   }
 
   console.log(`[StandinLookup] Built ${standinLookup.size} entries:`, Array.from(standinLookup.entries()).map(([k, v]) => `${k} → ${v}`).join(', ') || '(empty)');
@@ -469,8 +551,13 @@ function calculateComprehensivePlayerStats(
             name: player.nickname || player.name || `Player ${player.id}`,
             teamName: team.name || '',
           };
-          // Index by Firestore player doc ID
+          // Index by Firestore player doc ID (legacy: random UUID; new: steamId64)
           playersLookup.set(player.id, entry);
+          // Index by steamId64 — primary key for performances created after March 2026
+          const steamId64 = player.steamId || player.steamId64;
+          if (steamId64) {
+            playersLookup.set(steamId64, entry);
+          }
           // Also index by steamId32 so unknown_ IDs can be resolved
           if (player.steamId32) {
             playersLookup.set(`unknown_${player.steamId32}`, entry);

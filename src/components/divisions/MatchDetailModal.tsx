@@ -8,41 +8,57 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import Image from 'next/image';
-import { Calendar, Trophy, ExternalLink, Loader2, Shield, Sword, Users } from 'lucide-react';
+import { Calendar, Trophy, ExternalLink, Loader2, Shield, Sword, Users, ArrowRightLeft, Swords, Sparkles, HandHelping, Eye } from 'lucide-react';
 import type { Match } from '@/lib/definitions';
 import { cn } from '@/lib/utils';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useTournament } from '@/context/TournamentContext';
+import { loadTeamPlayersForDisplay } from '@/lib/team-players-loader';
 import { getHeroName } from '@/lib/hero-mapping';
+import { getMatchPlayersData, MatchPlayerData } from '@/lib/match-players-action';
 
 interface Performance {
-    playerId: string;
-    teamId: string;
-    heroId: number;
-    kills: number;
-    deaths: number;
-    assists: number;
-    gpm: number;
-    xpm: number;
-    fantasyPoints?: number;
+  playerId: string;
+  teamId: string;
+  heroId: number;
+  kills: number;
+  deaths: number;
+  assists: number;
+  gpm: number;
+  xpm: number;
+  fantasyPoints?: number;
 }
 
 interface GameDetail {
-    id: string;
-    radiant_win: boolean;
-    duration: number;
-    start_time: number;
-    radiant_team: { id: string; name: string };
-    dire_team: { id: string; name: string };
-    is_forfeit?: boolean;
-    performances: Performance[];
+  id: string;
+  radiant_win: boolean;
+  duration: number;
+  start_time: number;
+  radiant_team: { id: string; name: string };
+  dire_team: { id: string; name: string };
+  is_forfeit?: boolean;
+  performances: Performance[];
+}
+
+const ROLE_ORDER = ['Carry', 'Mid', 'Offlane', 'Soft Support', 'Hard Support'];
+
+function getRoleIcon(role: string) {
+  const cls = 'w-3.5 h-3.5 shrink-0';
+  switch (role) {
+    case 'Carry': return <Swords className={cls} />;
+    case 'Mid': return <Sparkles className={cls} />;
+    case 'Offlane': return <Shield className={cls} />;
+    case 'Soft Support': return <HandHelping className={cls} />;
+    case 'Hard Support': return <Eye className={cls} />;
+    default: return null;
+  }
 }
 
 function formatDuration(seconds: number): string {
-    const m = Math.floor(seconds / 60);
-    const s = seconds % 60;
-    return `${m}:${s.toString().padStart(2, '0')}`;
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
 interface MatchDetailModalProps {
@@ -58,6 +74,12 @@ export function MatchDetailModal({ match, isOpen, onClose, divisionColor }: Matc
   const [gamesData, setGamesData] = useState<GameDetail[]>([]);
   const [gamesLoading, setGamesLoading] = useState(false);
   const [gamesLoaded, setGamesLoaded] = useState(false);
+  const [matchPlayers, setMatchPlayers] = useState<Record<string, MatchPlayerData>>({});
+
+  type SimplePlayer = { id: string; nickname: string; role: string };
+  const [teamAPlayers, setTeamAPlayers] = useState<SimplePlayer[]>([]);
+  const [teamBPlayers, setTeamBPlayers] = useState<SimplePlayer[]>([]);
+  const [playersLoaded, setPlayersLoaded] = useState(false);
 
   const loadGames = useCallback(async () => {
     if (!tournament?.id || !match?.id || gamesLoaded) return;
@@ -86,6 +108,13 @@ export function MatchDetailModal({ match, isOpen, onClose, divisionColor }: Matc
       );
       gameDetails.sort((a, b) => (a.start_time || 0) - (b.start_time || 0));
       setGamesData(gameDetails);
+
+      // Fetch match players metadata for naming and coloring
+      if (match.teamA?.id && match.teamB?.id) {
+        const playersData = await getMatchPlayersData(match.id, match.teamA.id, match.teamB.id, tournament?.id);
+        setMatchPlayers(playersData);
+      }
+
       setGamesLoaded(true);
     } catch (e) {
       console.error('Failed to load game details', e);
@@ -98,13 +127,49 @@ export function MatchDetailModal({ match, isOpen, onClose, divisionColor }: Matc
   useEffect(() => {
     setGamesData([]);
     setGamesLoaded(false);
+    setMatchPlayers({});
+    setTeamAPlayers([]);
+    setTeamBPlayers([]);
+    setPlayersLoaded(false);
   }, [match?.id]);
+
+  const loadTeamPlayers = useCallback(async () => {
+    if (!tournament?.id || !match?.teamA?.id || !match?.teamB?.id || playersLoaded) return;
+    try {
+      const fetchPlayers = async (teamId: string): Promise<SimplePlayer[]> => {
+        const players = await loadTeamPlayersForDisplay(teamId, tournament.id);
+        return players
+          .map(p => ({ id: p.id, nickname: p.nickname || '?', role: p.role || '' }))
+          .sort((a, b) => {
+            const ai = ROLE_ORDER.indexOf(a.role);
+            const bi = ROLE_ORDER.indexOf(b.role);
+            return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+          });
+      };
+      const [aPl, bPl] = await Promise.all([
+        fetchPlayers(match.teamA.id),
+        fetchPlayers(match.teamB.id),
+      ]);
+      setTeamAPlayers(aPl);
+      setTeamBPlayers(bPl);
+      setPlayersLoaded(true);
+    } catch (e) {
+      console.error('Failed to load team players', e);
+    }
+  }, [tournament?.id, match?.teamA?.id, match?.teamB?.id, playersLoaded]);
 
   useEffect(() => {
     if (isOpen && match?.status === 'completed') {
       loadGames();
     }
-  }, [isOpen, match?.status, loadGames]);
+    // For upcoming/live matches, load match players metadata and team rosters
+    if (isOpen && match?.status !== 'completed' && match?.teamA?.id && match?.teamB?.id && tournament?.id) {
+      getMatchPlayersData(match.id, match.teamA.id, match.teamB.id, tournament.id)
+        .then(setMatchPlayers)
+        .catch(() => {});
+      loadTeamPlayers();
+    }
+  }, [isOpen, match?.status, loadGames, loadTeamPlayers]);
 
   if (!match) return null;
 
@@ -120,9 +185,49 @@ export function MatchDetailModal({ match, isOpen, onClose, divisionColor }: Matc
   const teamAWon = isCompleted && match.teamA.score > match.teamB.score;
   const teamBWon = isCompleted && match.teamB.score > match.teamA.score;
 
+  // Render a single team's roster with inline standin info
+  const renderTeamRoster = (players: { id: string; nickname: string; role: string }[], teamId: string) => {
+    if (players.length === 0) {
+      return <p className="text-xs text-white/20 italic">Brak danych</p>;
+    }
+    return (
+      <div className="space-y-2">
+        {players.map((player) => {
+          const standinEntry = match.approvedStandins
+            ? Object.values(match.approvedStandins).find(
+                e => e.teamId === teamId && e.replacedPlayerId === player.id
+              )
+            : null;
+          return (
+            <div key={player.id} className="flex items-center gap-2.5 text-xs">
+              <span className="shrink-0 text-white/30">
+                {getRoleIcon(player.role)}
+              </span>
+              {standinEntry ? (
+                <>
+                  <span className="text-yellow-400 font-medium uppercase tracking-wide truncate">
+                    {player.nickname}
+                  </span>
+                  <span className="text-white/25 shrink-0">→</span>
+                  <span className="text-blue-400 font-medium uppercase tracking-wide truncate">
+                    {standinEntry.nickname}
+                  </span>
+                </>
+              ) : (
+                <span className="text-gray-300 font-medium uppercase tracking-wide truncate">
+                  {player.nickname}
+                </span>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[720px] bg-[#0c0c14]/95 backdrop-blur-xl border-white/10 p-0 overflow-hidden shadow-2xl">
+      <DialogContent className="sm:max-w-[1100px] bg-[#0c0c14]/95 backdrop-blur-xl border-white/10 p-0 overflow-hidden shadow-2xl">
         <DialogHeader className="sr-only">
           <DialogTitle>Szczegóły meczu</DialogTitle>
         </DialogHeader>
@@ -297,26 +402,49 @@ export function MatchDetailModal({ match, isOpen, onClose, divisionColor }: Matc
                                   {teamAWonGame && <span className="ml-auto text-pdl-gold text-xs shrink-0">✓ Win</span>}
                                 </div>
                                 <div className="space-y-1">
-                                  {leftPerfs.slice(0, 5).map((p, i) => (
-                                    <div key={i} className="flex items-center justify-between gap-2 text-xs">
-                                      <span className="text-white/70 truncate" title={getHeroName(p.heroId)}>{getHeroName(p.heroId)}</span>
-                                      <span className="font-mono shrink-0 flex items-center gap-1.5">
-                                        <span>
-                                          <span className="text-green-400/80">{p.kills}</span>
-                                          <span className="text-white/20">/</span>
-                                          <span className="text-red-400/80">{p.deaths}</span>
-                                          <span className="text-white/20">/</span>
-                                          <span className="text-blue-400/80">{p.assists}</span>
-                                        </span>
-                                        {p.gpm > 0 && (
-                                          <span className="text-[10px]">
-                                            <span className="text-yellow-400/60">{p.gpm}</span>
-                                            <span className="text-white/15">g</span>
+                                  {leftPerfs.slice(0, 5).map((p, i) => {
+                                    const playerData = matchPlayers[p.playerId];
+                                    const playerName = playerData?.nickname || `Nieznany (ID: ${p.playerId})`;
+                                    let nameColor = 'text-red-400';
+                                    if (playerData?.role === 'registered') nameColor = 'text-green-400';
+                                    if (playerData?.role === 'standin') nameColor = 'text-blue-400';
+
+                                    return (
+                                      <div key={i} className="flex items-center justify-between gap-2 text-xs">
+                                        <div className="flex flex-col min-w-0 flex-1">
+                                          <span className={cn("truncate font-medium", nameColor)} title={playerName}>
+                                            {playerName}
                                           </span>
-                                        )}
-                                      </span>
-                                    </div>
-                                  ))}
+                                          {playerData?.role === 'standin' && playerData.replacedPlayerNickname && (
+                                            <span className="text-blue-400/50 truncate text-[10px]" title={`Za: ${playerData.replacedPlayerNickname}`}>
+                                              za {playerData.replacedPlayerNickname}
+                                            </span>
+                                          )}
+                                          <span className="text-white/40 truncate text-[10px]" title={getHeroName(p.heroId)}>
+                                            {getHeroName(p.heroId)}
+                                          </span>
+                                        </div>
+                                        <span className="font-mono shrink-0 flex flex-col items-end gap-0.5">
+                                          <span>
+                                            <span className="text-green-400/80">{p.kills}</span>
+                                            <span className="text-white/20">/</span>
+                                            <span className="text-red-400/80">{p.deaths}</span>
+                                            <span className="text-white/20">/</span>
+                                            <span className="text-blue-400/80">{p.assists}</span>
+                                          </span>
+                                          {p.gpm > 0 && (
+                                            <span className="text-[10px]">
+                                              <span className="text-yellow-400/60">{p.gpm}</span>
+                                              <span className="text-white/15">g</span>
+                                              <span className="mx-1 text-white/10">|</span>
+                                              <span className="text-blue-400/60">{p.xpm}</span>
+                                              <span className="text-white/15">x</span>
+                                            </span>
+                                          )}
+                                        </span>
+                                      </div>
+                                    );
+                                  })}
                                   {leftPerfs.length === 0 && <p className="text-xs text-white/20 italic">Brak danych</p>}
                                 </div>
                               </div>
@@ -331,26 +459,49 @@ export function MatchDetailModal({ match, isOpen, onClose, divisionColor }: Matc
                                   {!teamAWonGame && <span className="ml-auto text-pdl-gold text-xs shrink-0">✓ Win</span>}
                                 </div>
                                 <div className="space-y-1">
-                                  {rightPerfs.slice(0, 5).map((p, i) => (
-                                    <div key={i} className="flex items-center justify-between gap-2 text-xs">
-                                      <span className="text-white/70 truncate" title={getHeroName(p.heroId)}>{getHeroName(p.heroId)}</span>
-                                      <span className="font-mono shrink-0 flex items-center gap-1.5">
-                                        <span>
-                                          <span className="text-green-400/80">{p.kills}</span>
-                                          <span className="text-white/20">/</span>
-                                          <span className="text-red-400/80">{p.deaths}</span>
-                                          <span className="text-white/20">/</span>
-                                          <span className="text-blue-400/80">{p.assists}</span>
-                                        </span>
-                                        {p.gpm > 0 && (
-                                          <span className="text-[10px]">
-                                            <span className="text-yellow-400/60">{p.gpm}</span>
-                                            <span className="text-white/15">g</span>
+                                  {rightPerfs.slice(0, 5).map((p, i) => {
+                                    const playerData = matchPlayers[p.playerId];
+                                    const playerName = playerData?.nickname || `Nieznany (ID: ${p.playerId})`;
+                                    let nameColor = 'text-red-400';
+                                    if (playerData?.role === 'registered') nameColor = 'text-green-400';
+                                    if (playerData?.role === 'standin') nameColor = 'text-blue-400';
+
+                                    return (
+                                      <div key={i} className="flex items-center justify-between gap-2 text-xs">
+                                        <div className="flex flex-col min-w-0 flex-1">
+                                          <span className={cn("truncate font-medium", nameColor)} title={playerName}>
+                                            {playerName}
                                           </span>
-                                        )}
-                                      </span>
-                                    </div>
-                                  ))}
+                                          {playerData?.role === 'standin' && playerData.replacedPlayerNickname && (
+                                            <span className="text-blue-400/50 truncate text-[10px]" title={`Za: ${playerData.replacedPlayerNickname}`}>
+                                              za {playerData.replacedPlayerNickname}
+                                            </span>
+                                          )}
+                                          <span className="text-white/40 truncate text-[10px]" title={getHeroName(p.heroId)}>
+                                            {getHeroName(p.heroId)}
+                                          </span>
+                                        </div>
+                                        <span className="font-mono shrink-0 flex flex-col items-end gap-0.5">
+                                          <span>
+                                            <span className="text-green-400/80">{p.kills}</span>
+                                            <span className="text-white/20">/</span>
+                                            <span className="text-red-400/80">{p.deaths}</span>
+                                            <span className="text-white/20">/</span>
+                                            <span className="text-blue-400/80">{p.assists}</span>
+                                          </span>
+                                          {p.gpm > 0 && (
+                                            <span className="text-[10px]">
+                                              <span className="text-yellow-400/60">{p.gpm}</span>
+                                              <span className="text-white/15">g</span>
+                                              <span className="mx-1 text-white/10">|</span>
+                                              <span className="text-blue-400/60">{p.xpm}</span>
+                                              <span className="text-white/15">x</span>
+                                            </span>
+                                          )}
+                                        </span>
+                                      </div>
+                                    );
+                                  })}
                                   {rightPerfs.length === 0 && <p className="text-xs text-white/20 italic">Brak danych</p>}
                                 </div>
                               </div>
@@ -369,8 +520,31 @@ export function MatchDetailModal({ match, isOpen, onClose, divisionColor }: Matc
                   </p>
                 )}
 
-                {/* Standin info */}
-                {match.standinInfo && Object.keys(match.standinInfo).length > 0 && (
+                {/* Approved standin info (new PDL format) */}
+                {match.approvedStandins && Object.keys(match.approvedStandins).length > 0 && (
+                  <div className="mt-6 rounded-xl border border-blue-500/20 bg-blue-500/5 p-4">
+                    <p className="text-xs font-logik-extended-bold text-blue-400/70 uppercase tracking-widest mb-3 flex items-center gap-2">
+                      <ArrowRightLeft className="w-3 h-3" />
+                      Zastępstwa
+                    </p>
+                    <div className="space-y-2">
+                      {Object.values(match.approvedStandins).map((entry, i) => {
+                        const teamName = entry.teamId === match.teamA.id ? match.teamA.name : match.teamB.name;
+                        return (
+                          <div key={i} className="flex items-center gap-2 text-xs">
+                            <span className="text-white/30 shrink-0">{teamName}:</span>
+                            <span className="text-blue-400 font-medium">{entry.nickname}</span>
+                            <span className="text-white/20">za</span>
+                            <span className="text-white/50">{entry.replacedPlayerNickname}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Legacy Letnia standin info */}
+                {!match.approvedStandins && match.standinInfo && Object.keys(match.standinInfo).length > 0 && (
                   <div className="mt-6 rounded-xl border border-white/10 bg-white/[0.02] p-4">
                     <p className="text-xs font-logik-extended-bold text-white/40 uppercase tracking-widest mb-3 flex items-center gap-2">
                       <Users className="w-3 h-3" />
@@ -392,16 +566,41 @@ export function MatchDetailModal({ match, isOpen, onClose, divisionColor }: Matc
               </>
             )}
 
-            {/* Upcoming */}
-            {!isCompleted && !isLive && matchDate && (
-              <div className="text-center space-y-1">
-                <p className="text-white/30 text-xs font-mono uppercase tracking-widest">Planowany termin</p>
-                <p className="text-white/70 font-logik-extended-bold text-lg">
-                  {format(matchDate, 'dd MMMM yyyy', { locale: pl })}
-                </p>
-                <p className="font-mono text-2xl" style={{ color: divisionColor || '#e5b44d' }}>
-                  {format(matchDate, 'HH:mm')}
-                </p>
+            {/* Upcoming / Live — team rosters */}
+            {!isCompleted && (
+              <div className="space-y-6">
+                {/* Date — only for upcoming (not live) */}
+                {matchDate && !isLive && (
+                  <div className="text-center space-y-1">
+                    <p className="text-white/30 text-xs font-mono uppercase tracking-widest">Planowany termin</p>
+                    <p className="text-white/70 font-logik-extended-bold text-lg">
+                      {format(matchDate, 'dd MMMM yyyy', { locale: pl })}
+                    </p>
+                    <p className="font-mono text-2xl" style={{ color: divisionColor || '#e5b44d' }}>
+                      {format(matchDate, 'HH:mm')}
+                    </p>
+                  </div>
+                )}
+
+                {/* Team rosters with inline standin info */}
+                {(teamAPlayers.length > 0 || teamBPlayers.length > 0) && (
+                  <div className="grid grid-cols-2 divide-x divide-white/10 rounded-xl border border-white/10 overflow-hidden bg-white/[0.02]">
+                    {/* Team A */}
+                    <div className="p-4">
+                      <p className="text-[11px] font-logik-extended-bold text-white/40 uppercase tracking-widest mb-3">
+                        {match.teamA.name}
+                      </p>
+                      {renderTeamRoster(teamAPlayers, match.teamA.id)}
+                    </div>
+                    {/* Team B */}
+                    <div className="p-4">
+                      <p className="text-[11px] font-logik-extended-bold text-white/40 uppercase tracking-widest mb-3">
+                        {match.teamB.name}
+                      </p>
+                      {renderTeamRoster(teamBPlayers, match.teamB.id)}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>

@@ -1,23 +1,28 @@
 'use client';
 
-import Link from 'next/link';
+import { useState } from 'react';
 import { History, ExternalLink } from 'lucide-react';
 import { cn, formatDatePL } from '@/lib/utils';
 import type { Match, Team } from '@/lib/definitions';
+import { MatchDetailModal } from '@/components/divisions/MatchDetailModal';
 
 interface PDLMatchHistoryProps {
     matches: Match[];
     myTeamId: string;
     teams?: Team[];
     tournamentSlug: string;
+    divisionColor?: string;
 }
 
 export function PDLMatchHistory({
     matches,
     myTeamId,
-    teams = [],
-    tournamentSlug,
+    teams: _teams = [],
+    tournamentSlug: _tournamentSlug,
+    divisionColor = '#c9a227',
 }: PDLMatchHistoryProps) {
+    const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
+
     // Filter completed matches only
     const completedMatches = matches.filter(m => m.status === 'completed');
 
@@ -43,6 +48,7 @@ export function PDLMatchHistory({
     }
 
     return (
+        <>
         <div className="space-y-6">
             {/* Header */}
             <div className="flex items-center gap-3">
@@ -93,7 +99,8 @@ export function PDLMatchHistory({
                             return (
                                 <tr
                                     key={match.id}
-                                    className="hover:bg-white/[0.02] transition-colors"
+                                    onClick={() => setSelectedMatch(match)}
+                                    className="hover:bg-white/[0.02] transition-colors cursor-pointer"
                                 >
                                     <td className="px-4 py-3">
                                         <span className="font-logik-extended-bold text-white">
@@ -118,12 +125,12 @@ export function PDLMatchHistory({
                                         {matchDate ? formatDatePL(matchDate) : '-'}
                                     </td>
                                     <td className="px-4 py-3 text-right">
-                                        <Link
-                                            href={`/${tournamentSlug}/matches/${match.id}`}
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); setSelectedMatch(match); }}
                                             className="inline-flex items-center justify-center w-8 h-8 rounded-lg hover:bg-white/10 text-white/40 hover:text-white transition-colors"
                                         >
                                             <ExternalLink className="w-4 h-4" />
-                                        </Link>
+                                        </button>
                                     </td>
                                 </tr>
                             );
@@ -132,5 +139,12 @@ export function PDLMatchHistory({
                 </table>
             </div>
         </div>
+        <MatchDetailModal
+            match={selectedMatch}
+            isOpen={selectedMatch !== null}
+            onClose={() => setSelectedMatch(null)}
+            divisionColor={divisionColor}
+        />
+        </>
     );
 }

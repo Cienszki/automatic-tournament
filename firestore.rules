@@ -30,6 +30,17 @@ service cloud.firestore {
           || isTournamentTeamCaptain(tournamentId, matchData.teamB.id);
     }
 
+    // Captains cannot erase an already-approved reschedule request.
+    // They may submit a new reschedule (which replaces the field with a pending object),
+    // but silently deleting an approved entry to hide match-history is forbidden.
+    // Returns true (allows operation) in every case EXCEPT:
+    //   - the new document no longer contains 'rescheduleRequest'
+    //   AND the existing document's reschedule had status == 'approved'.
+    function captainRescheduleUpdateIsAllowed(existingData, newData) {
+      return newData.keys().hasAll(['rescheduleRequest'])
+        || existingData.get('rescheduleRequest', {}).get('status', '') != 'approved';
+    }
+
     // Helper function to check if user is captain of any team in a tournament match
     // For operations that only have matchId, reads the match document
     function isCaptainOfTournamentMatch(tournamentId, matchId) {
@@ -59,7 +70,10 @@ service cloud.firestore {
     match /configs/{docId} { allow read: if true; }
     match /tournament/{docId} { allow read: if true; }
     match /fantasyLineups/{userId} { allow read: if true; }
-    match /players/{playerId} { allow read: if true; }
+    match /players/{playerId} {
+      allow read: if true;
+      allow write: if isAdmin(); // Global player profiles — admin managed via server actions
+    }
     match /tournamentStats/{docId} { allow read: if true; } // Public read access
     match /playerStats/{docId} { allow read: if true; } // Public read access
     match /teamStats/{docId} { allow read: if true; } // Public read access
@@ -94,7 +108,9 @@ service cloud.firestore {
       match /matches/{matchId} {
         allow read: if true;
         allow create, delete: if hasAdminAccess(tournamentId);
-        allow update: if hasAdminAccess(tournamentId) || isCaptainOfTournamentMatchUpdate(tournamentId, resource.data);
+        allow update: if hasAdminAccess(tournamentId)
+          || (isCaptainOfTournamentMatchUpdate(tournamentId, resource.data)
+              && captainRescheduleUpdateIsAllowed(resource.data, request.resource.data));
         
         // Games in matches
         match /games/{gameId} {
@@ -362,6 +378,41 @@ service cloud.firestore {
     match /playoffs/{docId} {
       allow read: if true;
       allow write: if isAdmin();
+    }
+
+    // ─── Bot System Collections ─────────────────────────────────────────
+    // These collections are managed exclusively by the Admin SDK (server-side).
+    // No client (including admins) should write directly to these collections.
+    // Reads are allowed for admins so the BotTab UI can display status.
+
+    // Bot account pool — managed by Admin SDK only
+    match /botAccounts/{botId} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    // Bot command queues — written by server, read by admin UI
+    match /botCommands/{botId}/queue/{commandId} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    // Bot events — written by bot-worker via Admin SDK, processed by orchestrator
+    match /botEvents/{eventId} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    // Lobby sessions — managed by orchestrator and bot-agent
+    match /botLobbySessions/{sessionId} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    // Sync tasks — created after games finish, processed by orchestrator
+    match /botSyncTasks/{taskId} {
+      allow read: if isAdmin();
+      allow write: if false;
     }
     
     // Global deny-all rule for any unmatched documents

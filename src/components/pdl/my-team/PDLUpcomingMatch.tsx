@@ -48,8 +48,10 @@ export function PDLUpcomingMatch({
     const scheduledDateObj = scheduledDate ? new Date(scheduledDate) : new Date();
     const minDate = new Date(scheduledDateObj);
     minDate.setDate(minDate.getDate() - 3);
+    minDate.setHours(0, 0, 0, 0);
     const maxDate = new Date(scheduledDateObj);
     maxDate.setDate(maxDate.getDate() + 3);
+    maxDate.setHours(23, 59, 0, 0);
 
     const handleSubmitReschedule = async () => {
         if (!selectedDate || !onRequestReschedule) return;
@@ -204,8 +206,8 @@ export function PDLUpcomingMatch({
                             <input
                                 type="datetime-local"
                                 className="w-full rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-white text-sm"
-                                min={minDate.toISOString().slice(0, 16)}
-                                max={maxDate.toISOString().slice(0, 16)}
+                                min={`${minDate.getFullYear()}-${String(minDate.getMonth()+1).padStart(2,'0')}-${String(minDate.getDate()).padStart(2,'0')}T00:00`}
+                                max={`${maxDate.getFullYear()}-${String(maxDate.getMonth()+1).padStart(2,'0')}-${String(maxDate.getDate()).padStart(2,'0')}T23:59`}
                                 value={selectedDate}
                                 onChange={(e) => setSelectedDate(e.target.value)}
                             />

@@ -203,7 +203,10 @@ async function checkPlayersAlreadyRegistered(
 
         for (const playerDoc of playersSnapshot.docs) {
             const playerData = playerDoc.data();
-            if (steamIds.includes(playerData.steam32Id || playerData.steam64Id)) {
+            // Coalesce field name variants: registration writes steamId32/steamId64,
+            // transfers write steamId (=steamId64). Check all variants.
+            const docSteamId = playerData.steamId32 || playerData.steamId64 || playerData.steamId || '';
+            if (docSteamId && steamIds.includes(docSteamId)) {
                 alreadyRegistered.push(playerData.nickname);
             }
         }
@@ -302,7 +305,19 @@ export async function registerPDLTeam(
 
         const teamId = teamRef.id;
 
-        // Prepare team document
+        // Prepare team document — includes embedded roster for single-doc reads
+        const roster: Record<string, { nickname: string; role: string; steamId32: string; avatar?: string }> = {};
+        processedPlayers.forEach((player) => {
+            if (player.steamId64) {
+                roster[player.steamId64] = {
+                    nickname: player.nickname,
+                    role: player.role,
+                    steamId32: player.steamId32,
+                    avatar: player.avatar || '',
+                };
+            }
+        });
+
         const teamDoc = {
             name: teamData.name,
             tag: teamData.tag,
@@ -312,6 +327,11 @@ export async function registerPDLTeam(
             motto: teamData.motto,
             status: 'pending' as const,
             divisionId: null, // Assigned by admin later
+            /**
+             * Quick-read roster: { [steamId64]: { nickname, role, steamId32 } }
+             * Used to display team rosters without reading the player subcollection.
+             */
+            roster,
             createdAt: FieldValue.serverTimestamp(),
             updatedAt: FieldValue.serverTimestamp(),
         };
@@ -322,41 +342,60 @@ export async function registerPDLTeam(
         // Save team document
         batch.set(teamRef, teamDoc);
 
-        // Save player documents
+        // Save player pointer documents (pointer-only — full data is in /players/{steamId64})
         processedPlayers.forEach((player) => {
-            const playerRef = teamRef.collection('players').doc();
+            const playerRef = teamRef.collection('players').doc(player.steamId64);
             batch.set(playerRef, {
-                nickname: player.nickname,
-                role: player.role,
-                steamProfileUrl: player.steamProfileUrl,
-                steamId64: player.steamId64,
+                steamId: player.steamId64,
                 steamId32: player.steamId32,
-                avatar: player.avatar || null,
-                avatarmedium: player.avatarmedium || null,
-                avatarfull: player.avatarfull || null,
-                personaname: player.personaname || player.nickname,
-                createdAt: FieldValue.serverTimestamp(),
+                role: player.role,
             });
         });
 
-        // Save coach document if provided
+        // Save coach pointer document if provided
         if (processedCoach) {
-            const coachRef = teamRef.collection('players').doc('coach');
+            const coachRef = teamRef.collection('players').doc(processedCoach.steamId64 || 'coach');
             batch.set(coachRef, {
-                nickname: processedCoach.nickname,
-                role: 'Coach' as const,
-                steamProfileUrl: processedCoach.steamProfileUrl,
-                steamId64: processedCoach.steamId64,
+                steamId: processedCoach.steamId64,
                 steamId32: processedCoach.steamId32,
-                avatar: processedCoach.avatar || null,
-                personaname: processedCoach.personaname || processedCoach.nickname,
+                role: 'Coach' as const,
                 isCoach: true,
-                createdAt: FieldValue.serverTimestamp(),
             });
         }
 
         // Commit batch
         await batch.commit();
+
+        // ── Upsert global player profiles ──
+        // This ensures every registered player has a record in /players/{steamId64}
+        // with their currentTeam pointer set.
+        try {
+            const { batchUpsertGlobalPlayerProfiles } = await import('./player-profiles');
+            await batchUpsertGlobalPlayerProfiles(
+                processedPlayers
+                    .filter(p => p.steamId64)
+                    .map(p => ({
+                        steamId: p.steamId64,
+                        steamId32: p.steamId32,
+                        nickname: p.nickname,
+                        steamProfileUrl: p.steamProfileUrl,
+                        avatar: p.avatar,
+                        avatarmedium: p.avatarmedium,
+                        avatarfull: p.avatarfull,
+                        currentTeam: {
+                            tournamentId,
+                            teamId,
+                            teamName: teamData.name,
+                            teamTag: teamData.tag,
+                            role: p.role,
+                        },
+                    }))
+            );
+            console.log(`[PDL Registration] Global player profiles upserted for ${processedPlayers.length} players`);
+        } catch (profileError) {
+            // Non-fatal: registration succeeded, global profiles can be created later via migration
+            console.warn('[PDL Registration] Failed to upsert global player profiles:', profileError);
+        }
 
         console.log(`[PDL Registration] ✅ Team "${teamData.name}" registered successfully with ID: ${teamId}`);
 

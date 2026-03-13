@@ -3,7 +3,14 @@
 // ... (other definitions remain the same)
 
 export interface PlayerPerformanceInGame {
+  /**
+   * For data imported after March 2026: this is the player's steamId64.
+   * For legacy data: this is the Firestore player-subcollection doc ID.
+   * Use `steamId` field (= steamId64) for new code.
+   */
   playerId: string;
+  /** Steam 64-bit ID — same as playerId for data imported after the architecture change. */
+  steamId?: string;
   teamId: string;
   heroId: number;
   kills: number;
@@ -107,6 +114,21 @@ export interface Match {
     };
   };
   standinRequests?: PDLStandinRequest[];
+  // PDL approved standins — denormalized copy written into the match document
+  // whenever a standin request reaches 'approved' or 'appeal_approved' status.
+  // Keyed by standinRequest ID so individual entries can be removed cleanly.
+  approvedStandins?: {
+    [requestId: string]: {
+      steamId32: string;
+      nickname: string;
+      replacedPlayerId: string;
+      replacedPlayerNickname: string;
+      teamId: string;
+      approvedAt: string;
+      /** Standin's own player doc ID (may be from a different team than the match teams). */
+      playerDocId?: string;
+    };
+  };
   // Forfeit/walkover metadata
   forfeit?: {
     forfeitingTeam: 'teamA' | 'teamB'; // which team forfeited
@@ -158,11 +180,16 @@ export interface Player {
   nickname: string;
   mmr: number;
   role: PlayerRole;
+  /** Steam 64-bit ID. Written to both `steamId` and `steamId64` fields in Firestore. */
   steamId: string;
+  /** Alias for `steamId` — some documents written during registration use this field name. */
+  steamId64?: string;
   steamId32: string;
   steamProfileUrl?: string;
   openDotaAccountId?: number;
   profileScreenshotUrl: string;
+  /** Steam display name (personaname from Steam API). */
+  personaname?: string;
   avatar?: string;
   avatarmedium?: string;
   avatarfull?: string;
@@ -190,6 +217,11 @@ export interface Team {
   status: TeamStatus;
   createdAt: string;
   players: Player[];
+  /**
+   * Embedded roster keyed by steamId64 for quick single-doc reads.
+   * `{ [steamId64]: { nickname, role, steamId32, avatar? } }`
+   */
+  roster?: Record<string, { nickname: string; role: PlayerRole; steamId32: string; avatar?: string }>;
   openDotaTeamId?: number;
   testCaptainEmail?: string;
   testCaptainPassword?: string;

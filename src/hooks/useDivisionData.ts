@@ -185,6 +185,7 @@ export function useDivisionData(divisionId: string): UseDivisionDataResult {
             winnerId: data.winnerId || null,
             completed_at: data.completed_at,
             game_ids: data.game_ids || [],
+            approvedStandins: data.approvedStandins,
           } as Match;
         });
 

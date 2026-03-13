@@ -55,6 +55,8 @@ export default function SchedulePage() {
               matchday: data.matchday,
               group_id: data.group_id,
               bestOf: data.bestOf || 2,
+              series_format: data.series_format,
+              approvedStandins: data.approvedStandins,
             } as unknown as Match;
           });
         }

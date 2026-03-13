@@ -26,49 +26,51 @@ import { db } from '@/lib/firebase';
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif"];
 
-// PDL Registration Schema - No MMR requirements, optional coach
-const pdlFormSchema = z.object({
-  name: z.string()
-    .min(3, "Nazwa zespołu musi mieć co najmniej 3 znaki.")
-    .max(20, "Nazwa zespołu nie może przekroczyć 20 znaków.")
-    .regex(/^[A-Za-zĄąĆćĘęŁłŃńÓóŚśŹźŻż0-9 _\-&]+$/, "Nazwa zespołu może zawierać tylko litery (w tym polskie), cyfry, spacje, myślniki, podkreślenia i znak &."),
-  tag: z.string().min(2, "Tag musi mieć 2-6 znaków.").max(6, "Tag musi mieć 2-6 znaków."),
-  discordUsername: z.string().min(2, "Nick Discord jest wymagany."),
-  motto: z.string().min(5, "Motto musi mieć co najmniej 5 znaków."),
-  logo: z.custom<File | null>(
-    (file) => file instanceof File, "Logo jest wymagane."
-  ).refine(
-    (file) => !!file && file.size <= MAX_FILE_SIZE, `Maksymalny rozmiar pliku to 5MB.`
-  ).refine(
-    (file) => !!file && ACCEPTED_IMAGE_TYPES.includes(file.type),
-    "Obsługiwane są tylko formaty .jpg, .jpeg, .png, .webp i .gif."
-  ),
-  players: z.array(z.object({
-    nickname: z.string()
-      .min(2, "Nick jest wymagany.")
-      .max(20, "Nick nie może przekroczyć 20 znaków.")
-      .regex(/^[A-Za-zĄąĆćĘęŁłŃńÓóŚśŹźŻż0-9 _\-&]+$/, "Nick może zawierać tylko litery (w tym polskie), cyfry, spacje, myślniki, podkreślenia i znak &."),
-    role: z.enum(PlayerRoles),
-    steamProfileUrl: z.string().url("Musi być prawidłowym URL profilu Steam."),
-  })).min(5, "Musisz zarejestrować dokładnie 5 graczy.").max(5),
-  rulesAcknowledged: z.boolean().refine((val) => val === true, {
-    message: "Musisz zaakceptować regulamin turnieju.",
-  }),
-}).refine(data => {
-  const roles = data.players.map(player => player.role);
-  const uniqueRoles = new Set(roles);
-  return uniqueRoles.size === roles.length;
-}, {
-  message: "Każdy gracz musi mieć unikalną rolę. Nie można duplikować ról.",
-  path: ["players"],
-}).refine(data => {
-  const roles = data.players.map(player => player.role);
-  const playerRoles = new Set(roles);
-  return PlayerRoles.every(role => playerRoles.has(role));
-}, {
-  message: "Musisz mieć gracza na każdej pozycji: Carry, Mid, Offlane, Soft Support, Hard Support.",
-  path: ["players"],
-});
+// PDL Registration Schema - Factory function accepting translations
+function createPdlFormSchema(v: (key: string) => string) {
+  return z.object({
+    name: z.string()
+      .min(3, v('teamNameMin'))
+      .max(20, v('teamNameMax'))
+      .regex(/^[A-Za-zĄąĆćĘęŁłŃńÓóŚśŹźŻż0-9 _\-&]+$/, v('teamNameFormat')),
+    tag: z.string().min(2, v('tagLength')).max(6, v('tagLength')),
+    discordUsername: z.string().min(2, v('discordRequired')),
+    motto: z.string().min(5, v('mottoMin')),
+    logo: z.custom<File | null>(
+      (file) => file instanceof File, v('logoRequired')
+    ).refine(
+      (file) => !!file && file.size <= MAX_FILE_SIZE, v('logoMaxSize')
+    ).refine(
+      (file) => !!file && ACCEPTED_IMAGE_TYPES.includes(file.type),
+      v('logoFormat')
+    ),
+    players: z.array(z.object({
+      nickname: z.string()
+        .min(2, v('nicknameMin'))
+        .max(20, v('nicknameMax'))
+        .regex(/^[A-Za-zĄąĆćĘęŁłŃńÓóŚśŹźŻż0-9 _\-&]+$/, v('nicknameFormat')),
+      role: z.enum(PlayerRoles),
+      steamProfileUrl: z.string().url(v('steamUrl')),
+    })).min(5, v('playersCount')).max(5),
+    rulesAcknowledged: z.boolean().refine((val) => val === true, {
+      message: v('rulesRequired'),
+    }),
+  }).refine(data => {
+    const roles = data.players.map(player => player.role);
+    const uniqueRoles = new Set(roles);
+    return uniqueRoles.size === roles.length;
+  }, {
+    message: v('uniqueRoles'),
+    path: ["players"],
+  }).refine(data => {
+    const roles = data.players.map(player => player.role);
+    const playerRoles = new Set(roles);
+    return PlayerRoles.every(role => playerRoles.has(role));
+  }, {
+    message: v('allRoles'),
+    path: ["players"],
+  });
+}
 
 // Registration Closed Component
 const RegistrationClosed: React.FC = () => {
@@ -160,8 +162,15 @@ export default function RegisterPage() {
   const [checkingTeam, setCheckingTeam] = React.useState(true);
   const router = useRouter();
 
+  // Create schema with i18n validation messages
+  const pdlFormSchema = React.useMemo(
+    () => createPdlFormSchema((key: string) => t(`validation.${key}` as Parameters<typeof t>[0])),
+    [t]
+  );
+  type PdlFormValues = z.infer<typeof pdlFormSchema>;
+
   // Initialize form hooks BEFORE any early returns (Rules of Hooks)
-  const form = useForm<z.infer<typeof pdlFormSchema>>({
+  const form = useForm<PdlFormValues>({
     resolver: zodResolver(pdlFormSchema),
     mode: "onChange",
     defaultValues: {
@@ -232,7 +241,7 @@ export default function RegisterPage() {
     }
   };
 
-  const onSubmit = async (values: z.infer<typeof pdlFormSchema>) => {
+  const onSubmit = async (values: PdlFormValues) => {
     if (!user) {
       setServerError("Musisz być zalogowany, aby zarejestrować drużynę.");
       return;
