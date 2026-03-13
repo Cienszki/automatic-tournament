@@ -293,7 +293,7 @@ function calculateAllPlayerStats(
         const maxStatCache = new Map();
         const getCachedMaxStat = (field: string) => {
           if (!maxStatCache.has(field)) {
-            maxStatCache.set(field, findMaxStat(playerPerformances, field));
+            maxStatCache.set(field, findMaxStat(playerPerformances, field as keyof PerformanceData));
           }
           return maxStatCache.get(field);
         };
@@ -537,7 +537,7 @@ function findMinStat(performances: PerformanceData[], statField: keyof Performan
   });
   
   return {
-    value: minPerf[statField] || 0,
+    value: Number(minPerf[statField] ?? 0),
     matchId: minPerf.matchId || '',
     heroName: minPerf.heroName || '',
     timestamp: new Date().toISOString()
@@ -583,7 +583,7 @@ function findBusiestDay(games: GameData[]): { date: string; count: number; } {
   const dayCount: Record<string, number> = {};
   
   games.forEach(game => {
-    const date = new Date(game.start_time * 1000 || Date.now()).toISOString().split('T')[0];
+    const date = new Date((game.start_time ?? 0) * 1000 || Date.now()).toISOString().split('T')[0];
     dayCount[date] = (dayCount[date] || 0) + 1;
   });
   
