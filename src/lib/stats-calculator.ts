@@ -217,7 +217,7 @@ function calculateTournamentStats(
     fastestFirstBlood: findFastestFirstBlood(games, performances) || defaultFirstBlood,
     // Heroes & Meta
     mostPickedHero: (() => { const h = findMostPickedHero(performances) || defaultHero; return { ...h, pickCount: round1(h.pickCount) }; })(),
-    mostBannedHero: (() => { const h = findMostBannedHero(games) || defaultHero; return { ...h, banCount: round1(h.banCount) }; })(),
+    mostBannedHero: (() => { const h = findMostBannedHero(games.map(g => ({ picksBans: g.picks_bans }))) || defaultHero; return { ...h, banCount: round1(h.banCount) }; })(),
     mostContestedHero: { heroName: 'Unknown', contestCount: 0 },
     highestWinRateHero: (() => { const h = findHighestWinRateHero(performances, games) || defaultHero; return { ...h, winRate: round1(h.winRate) }; })(),
     totalUniqueHeroesPicked: new Set(performances.map(p => p.heroId).filter(Boolean)).size,
