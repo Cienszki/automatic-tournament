@@ -387,7 +387,7 @@ export async function registerPDLTeam(
                             teamId,
                             teamName: teamData.name,
                             teamTag: teamData.tag,
-                            role: p.role,
+                            role: p.role as PlayerRole,
                         },
                     }))
             );
