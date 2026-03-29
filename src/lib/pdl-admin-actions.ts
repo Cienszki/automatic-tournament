@@ -1005,11 +1005,17 @@ export async function syncPDLMatchesAdmin(tournamentId: string = 'pdl-s1'): Prom
                 }
 
                 // Transform match data with PDL fantasy scoring
-                const { game, performances } = transformMatchData(
+                const { gameData: game, performances } = transformMatchData(
                     openDotaMatch,
                     teams as any[],
                     players as any[],
-                    false
+                    {
+                        isManualImport: false,
+                        manualTeamMapping: {
+                            radiant: { id: resolvedRadiantTeam!.id, name: resolvedRadiantTeam!.name },
+                            dire: { id: resolvedDireTeam!.id, name: resolvedDireTeam!.name },
+                        },
+                    }
                 );
 
                 // Recalculate fantasy points using PDL scoring
@@ -1350,11 +1356,17 @@ export async function importPDLManualMatchesAdmin(
                 continue;
             }
 
-            const { game, performances } = transformMatchData(
+            const { gameData: game, performances } = transformMatchData(
                 openDotaMatch,
                 teams as any[],
                 players as any[],
-                false
+                {
+                    isManualImport: false,
+                    manualTeamMapping: {
+                        radiant: { id: radiantTeam.id, name: radiantTeam.name },
+                        dire: { id: direTeam.id, name: direTeam.name },
+                    },
+                }
             );
 
             const updatedPerformances = performances.map((perf: any) => ({

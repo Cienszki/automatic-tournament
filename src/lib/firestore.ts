@@ -457,17 +457,21 @@ export async function updateUserProfile(userId: string, data: Partial<UserProfil
     await setDoc(userRef, data, { merge: true });
 }
 
-export async function getUserFantasyLineup(userId: string, roundId: string): Promise<any | null> {
+export async function getUserFantasyLineup(userId: string, roundId: string, tournamentId?: string): Promise<any | null> {
     if (!roundId) return null;
-    const lineupRef = doc(db, "fantasyLineups", userId, "rounds", roundId);
+    const lineupRef = tournamentId
+        ? doc(db, "tournaments", tournamentId, "fantasyLineups", userId, "rounds", roundId)
+        : doc(db, "fantasyLineups", userId, "rounds", roundId);
     const lineupSnap = await getDoc(lineupRef);
     if (!lineupSnap.exists()) return null;
     return lineupSnap.data();
 }
 
-export async function getFantasyLeaderboard(): Promise<any[]> {
+export async function getFantasyLeaderboard(tournamentId?: string): Promise<any[]> {
     try {
-        const leaderboardCol = collection(db, "fantasyLineups");
+        const leaderboardCol = tournamentId
+            ? collection(db, "tournaments", tournamentId, "fantasyLineups")
+            : collection(db, "fantasyLineups");
         
         // First try to get documents with ordering, if that fails, get all documents
         let snapshot;
@@ -479,21 +483,28 @@ export async function getFantasyLeaderboard(): Promise<any[]> {
             snapshot = await getDocs(leaderboardCol);
         }
         
-        // Get the current tournament status to know which round to display lineups for
-        const statusDoc = await getDoc(doc(db, "tournament", "status"));
-        const currentRoundId = statusDoc.exists() ? (statusDoc.data()?.roundId || statusDoc.data()?.current || 'initial') : 'initial';
-        
-        console.log('Fantasy leaderboard loading lineups for round:', currentRoundId);
+        // Get the current round ID
+        let currentRoundId = 'initial';
+        if (tournamentId) {
+            // For new tournaments, look for the current fantasy round
+            const roundsRef = collection(db, "tournaments", tournamentId, "fantasyRounds");
+            const roundsSnap = await getDocs(roundsRef);
+            const currentRound = roundsSnap.docs.find(d => d.data().isCurrent);
+            currentRoundId = currentRound?.id || 'current';
+        } else {
+            const statusDoc = await getDoc(doc(db, "tournament", "status"));
+            currentRoundId = statusDoc.exists() ? (statusDoc.data()?.roundId || statusDoc.data()?.current || 'initial') : 'initial';
+        }
         
         // Fetch the lineup data for each user for the current round only
+        const basePath = tournamentId ? `tournaments/${tournamentId}/fantasyLineups` : 'fantasyLineups';
         const leaderboardWithLineups = await Promise.all(
             snapshot.docs.map(async (userDoc) => {
-                const userId = userDoc.id;
+                const docUserId = userDoc.id;
                 const userData = userDoc.data();
                 
                 try {
-                    // Get the lineup for the current round exactly as stored
-                    const lineupRef = doc(db, "fantasyLineups", userId, "rounds", currentRoundId);
+                    const lineupRef = doc(db, basePath, docUserId, "rounds", currentRoundId);
                     const lineupSnap = await getDoc(lineupRef);
                     
                     const lineupData = lineupSnap.exists() ? lineupSnap.data()?.lineup || {} : {};
@@ -507,16 +518,16 @@ export async function getFantasyLeaderboard(): Promise<any[]> {
                     });
                     
                     return {
-                        userId,
+                        userId: docUserId,
                         displayName: userData.discordUsername || userData.displayName || "Anonymous",
                         totalFantasyScore: userData.totalFantasyScore || 0,
                         ...userData,
                         lineup: validatedLineup
                     };
                 } catch (error) {
-                    console.warn(`Could not load lineup for user ${userId}:`, error);
+                    console.warn(`Could not load lineup for user ${docUserId}:`, error);
                     return {
-                        userId,
+                        userId: docUserId,
                         displayName: userData.discordUsername || userData.displayName || "Anonymous",
                         totalFantasyScore: userData.totalFantasyScore || 0,
                         ...userData,
@@ -526,7 +537,6 @@ export async function getFantasyLeaderboard(): Promise<any[]> {
             })
         );
         
-        // Sort manually if orderBy failed
         return leaderboardWithLineups.sort((a, b) => (b.totalFantasyScore || 0) - (a.totalFantasyScore || 0));
     } catch (error) {
         console.warn("Could not load fantasy leaderboard, returning empty array:", error);
@@ -534,12 +544,14 @@ export async function getFantasyLeaderboard(): Promise<any[]> {
     }
 }
 
-export async function saveUserFantasyLineup(userId: string, lineup: Record<PlayerRole, TournamentPlayer>, roundId: string, displayName: string): Promise<void> {
+export async function saveUserFantasyLineup(userId: string, lineup: Record<PlayerRole, TournamentPlayer>, roundId: string, displayName: string, tournamentId?: string): Promise<void> {
     if (!roundId) {
         throw new Error("A valid roundId must be provided to save a fantasy lineup.");
     }
     
-    const userFantasyDocRef = doc(db, "fantasyLineups", userId);
+    const userFantasyDocRef = tournamentId
+        ? doc(db, "tournaments", tournamentId, "fantasyLineups", userId)
+        : doc(db, "fantasyLineups", userId);
     const lineupRef = doc(userFantasyDocRef, "rounds", roundId);
 
     const batch = writeBatch(db);

@@ -42,6 +42,28 @@ export type BotAccountStatus =
   | 'offline';       // Bot process is not running
 
 /**
+ * A Steam account whitelisted to join any lobby for this tournament
+ * without being auto-kicked as unauthorized. Intended for commentators,
+ * observers, and admins who need lobby access but are not match players.
+ */
+export interface LobbyWhitelistEntry {
+  /** Steam32 account ID (used for lobby enforcement matching) */
+  steamId32: string;
+  /** Steam64 account ID */
+  steamId64: string;
+  /** Steam persona/display name at the time of adding */
+  displayName: string;
+  /** Small Steam avatar URL */
+  avatarUrl?: string;
+  /** Optional admin note, e.g. "main commentator", "tournament admin" */
+  note?: string;
+  /** ISO timestamp when the entry was added */
+  addedAt: string;
+  /** Firebase UID of the admin who added this entry */
+  addedBy: string;
+}
+
+/**
  * Per-tournament bot configuration set by tournament admins
  */
 export interface TournamentBotConfig {
@@ -102,6 +124,13 @@ export interface TournamentBotConfig {
 
   /** Whether the lobby password is visible to match players on the website */
   passwordVisibleToPlayers: boolean;
+
+  /**
+   * Steam accounts that are always allowed to join lobby without being kicked.
+   * Used for commentators, observers, and tournament admins.
+   * Per-tournament — managed separately by tournament admins.
+   */
+  whitelist: LobbyWhitelistEntry[];
 
   updatedAt: string;
   updatedBy: string;
@@ -400,6 +429,7 @@ export const DEFAULT_TOURNAMENT_BOT_CONFIG: TournamentBotConfig = {
   lobbyOpenTimeoutMinutes: 30,
   readyCheckTimeoutMinutes: 10,
   passwordVisibleToPlayers: true,
+  whitelist: [],
   updatedAt: '',
   updatedBy: '',
 };

@@ -104,15 +104,39 @@ export default function TournamentLayout({ children }: TournamentLayoutProps) {
 
   return (
     <div 
-      className="flex flex-col min-h-screen text-foreground"
+      className="flex flex-col min-h-screen text-foreground relative"
       style={{
         background: theme.backgroundGradient || theme.backgroundColor,
       }}
     >
+      {/* Background image — rendered at layout level so it persists across
+          client-side navigations and is only fetched once per session */}
+      {theme.backgroundImageUrl && (
+        <>
+          <div
+            className="fixed inset-0 bg-no-repeat pointer-events-none z-0"
+            style={{
+              backgroundImage: `url(${theme.backgroundImageUrl})`,
+              backgroundSize: theme.backgroundSize || 'cover',
+              backgroundPosition: theme.backgroundPosition || 'center center',
+              filter: theme.backgroundBlur ? `blur(${theme.backgroundBlur}px)` : undefined,
+            }}
+            aria-hidden="true"
+          />
+          <div
+            className="fixed inset-0 pointer-events-none z-0"
+            style={{
+              backgroundColor: theme.backgroundOverlayColor || 'rgba(0,0,0,0.7)',
+              opacity: (theme.backgroundOverlayOpacity ?? 90) / 100,
+            }}
+            aria-hidden="true"
+          />
+        </>
+      )}
       <DynamicFontLoader />
       <ThemeFontApplier />
       <TournamentNavbar />
-      <main className="flex-grow container mx-auto px-4 py-8">
+      <main className="flex-grow container mx-auto px-4 py-8 relative z-10">
         <ErrorBoundary section="tournament">
           {children}
         </ErrorBoundary>

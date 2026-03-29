@@ -1,6 +1,5 @@
 "use client";
 
-import { motion } from "framer-motion";
 import { Trophy } from "lucide-react";
 import { PlayoffMatch } from "@/lib/definitions";
 import { cn } from "@/lib/utils";
@@ -11,93 +10,114 @@ interface PlayoffBracketProps {
     matches: PlayoffMatch[];
 }
 
+/** Group matches by round and return them sorted by position within each round. */
+function groupByRound(matches: PlayoffMatch[]): Map<number, PlayoffMatch[]> {
+    const byRound = new Map<number, PlayoffMatch[]>();
+    for (const m of matches) {
+        const round = m.round ?? 1;
+        if (!byRound.has(round)) byRound.set(round, []);
+        byRound.get(round)!.push(m);
+    }
+    // Sort each round's matches by position
+    byRound.forEach(arr => arr.sort((a, b) => a.position - b.position));
+    return byRound;
+}
+
+function getRoundLabel(round: number, totalRounds: number, t: ReturnType<typeof useTranslations>): string {
+    if (round === totalRounds) return t('grandFinal');
+    const remaining = totalRounds - round;
+    if (remaining === 1) return t('semifinal') ?? 'Półfinał';
+    if (remaining === 2) return t('quarterfinal') ?? 'Ćwierćfinał';
+    return `Runda ${round}`;
+}
+
 export function PlayoffBracket({ matches }: PlayoffBracketProps) {
     const t = useTranslations('pdlPlayoffs');
-    // Filter matches by round (assuming 2 rounds: semis -> final)
-    const semiFinals = matches.filter(m => m.round === 1).sort((a, b) => a.position - b.position);
-    const grandFinal = matches.find(m => m.round === 2);
+    const byRound = groupByRound(matches);
 
-    // Always show 2 semi-final slots, filling with TBA placeholders if not yet set by admin
-    const semi1 = semiFinals.find(m => m.position === 1) ?? null;
-    const semi2 = semiFinals.find(m => m.position === 2) ?? null;
+    if (byRound.size === 0) {
+        return (
+            <div className="w-full h-full flex items-center justify-center p-8 text-gray-500 font-logik">
+                {t('tbd')}
+            </div>
+        );
+    }
+
+    const rounds = Array.from(byRound.keys()).sort((a, b) => a - b);
+    const totalRounds = rounds.length;
 
     return (
-        <div className="w-full h-full flex items-center justify-center p-4">
+        <div className="w-full h-full flex items-center justify-center p-4 overflow-x-auto">
             <div className="flex items-center gap-12 relative">
+                {rounds.map((round, roundIdx) => {
+                    const roundMatches = byRound.get(round) || [];
+                    const isFinal = round === rounds[rounds.length - 1];
+                    const roundLabel = getRoundLabel(round, totalRounds, t);
 
-                {/* Semi Finals Column */}
-                <div className="flex flex-col gap-16 relative z-10">
-                    <BracketMatchCard key="semi-1" match={semi1} title={t('semifinal1')} />
-                    <BracketMatchCard key="semi-2" match={semi2} title={t('semifinal2')} />
-                </div>
+                    // Calculate vertical gap — increases with each round so connectors align
+                    const gapClass = roundIdx === 0 ? 'gap-6' : roundIdx === 1 ? 'gap-16' : 'gap-32';
 
-                {/* Connectors Layer */}
-                <div className="absolute inset-0 pointer-events-none">
-                    {/* SVG connectors would go here - simplified with CSS borders for now */}
-                    {/* Top Semi to Middle */}
-                    <div className="absolute top-[25%] left-[280px] w-12 h-[25%] border-r-2 border-t-2 border-white/10 rounded-tr-xl" />
-                    {/* Bottom Semi to Middle */}
-                    <div className="absolute bottom-[25%] left-[280px] w-12 h-[25%] border-r-2 border-b-2 border-white/10 rounded-br-xl" />
-                    {/* Middle to Final */}
-                    <div className="absolute top-1/2 left-[326px] w-8 h-[2px] bg-white/10" />
-                </div>
-
-                {/* Grand Final Column */}
-                <div className="flex flex-col justify-center relative z-10 pl-16">
-                    <div className="relative">
-                        <Trophy className="absolute -top-12 left-1/2 -translate-x-1/2 w-8 h-8 text-pdl-gold animate-pulse" />
-                        <BracketMatchCard match={grandFinal ?? null} title={t('grandFinal')} isFinal />
-                    </div>
-                </div>
-
+                    return (
+                        <div key={round} className="flex flex-col items-center relative z-10">
+                            <h3 className="text-xs uppercase tracking-widest text-gray-500 font-logik font-medium mb-4">
+                                {roundLabel}
+                            </h3>
+                            <div className={cn("flex flex-col justify-center", gapClass)}>
+                                {roundMatches.map((match, matchIdx) => (
+                                    <div key={match.id || `${round}-${matchIdx}`} className="relative">
+                                        {isFinal && (
+                                            <Trophy className="absolute -top-10 left-1/2 -translate-x-1/2 w-7 h-7 text-pdl-gold animate-pulse" />
+                                        )}
+                                        <BracketMatchCard match={match} isFinal={isFinal} />
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    );
+                })}
             </div>
         </div>
     );
 }
 
-function BracketMatchCard({ match, title, isFinal }: { match: PlayoffMatch | null; title: string; isFinal?: boolean }) {
+function BracketMatchCard({ match, isFinal }: { match: PlayoffMatch | null; isFinal?: boolean }) {
     const borderColor = isFinal ? "border-pdl-gold/30" : "border-white/10";
     const glowing = isFinal ? "shadow-[0_0_30px_rgba(255,215,0,0.1)]" : "";
 
     return (
-        <div className="space-y-2">
-            <h4 className="text-xs uppercase tracking-widest text-center text-gray-400 font-logik font-medium">{title}</h4>
-            <div className={cn(
-                "w-[280px] bg-[#0a0a0f] rounded-xl border overflow-hidden relative group",
-                borderColor, glowing
-            )}>
-                {/* Glass overlay */}
-                <div className="absolute inset-0 bg-white/5 backdrop-blur-sm opacity-50" />
-
-                {/* Teams */}
-                <div className="relative z-10 divide-y divide-white/5">
-                    {/* Team A */}
-                    <TeamRow
-                        team={match?.teamA}
-                        score={match?.result?.teamAScore}
-                        isWinner={match?.result?.winnerId === match?.teamA?.id}
-                    />
-                    {/* Team B */}
-                    <TeamRow
-                        team={match?.teamB}
-                        score={match?.result?.teamBScore}
-                        isWinner={match?.result?.winnerId === match?.teamB?.id}
-                    />
-                </div>
-
-                {/* Status indicator */}
-                {match?.status === 'live' && (
-                    <div className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full animate-pulse" />
-                )}
+        <div className={cn(
+            "w-[260px] bg-[#0a0a0f] rounded-xl border overflow-hidden relative group",
+            borderColor, glowing
+        )}>
+            <div className="absolute inset-0 bg-white/5 backdrop-blur-sm opacity-50" />
+            <div className="relative z-10 divide-y divide-white/5">
+                <TeamRow
+                    team={match?.teamA}
+                    score={match?.result?.teamAScore}
+                    isWinner={match?.result?.winnerId === match?.teamA?.id}
+                />
+                <TeamRow
+                    team={match?.teamB}
+                    score={match?.result?.teamBScore}
+                    isWinner={match?.result?.winnerId === match?.teamB?.id}
+                />
             </div>
+            {match?.status === 'live' && (
+                <div className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+            )}
+            {match?.format && (
+                <div className="absolute bottom-1 right-2 text-[10px] text-gray-600 uppercase font-logik">
+                    {match.format}
+                </div>
+            )}
         </div>
     );
 }
 
-function TeamRow({ team, score, isWinner, points }: { team?: { id: string; name: string; logoUrl?: string }; score?: number; isWinner?: boolean; points?: number }) {
+function TeamRow({ team, score, isWinner }: { team?: { id: string; name: string; logoUrl?: string }; score?: number; isWinner?: boolean }) {
     const t = useTranslations('pdlPlayoffs');
     if (!team) return (
-        <div className="h-12 flex items-center px-4 md:px-6 bg-black/20 text-gray-600 font-logik item-center justify-center italic text-sm">
+        <div className="h-12 flex items-center px-4 md:px-6 bg-black/20 text-gray-600 font-logik items-center justify-center italic text-sm">
             {t('tbd')}
         </div>
     );
@@ -128,7 +148,7 @@ function TeamRow({ team, score, isWinner, points }: { team?: { id: string; name:
                 "font-logik-wide font-bold text-lg",
                 isWinner ? "text-white" : "text-gray-500"
             )}>
-                {score ?? points ?? '-'}
+                {score ?? '-'}
             </span>
         </div>
     );

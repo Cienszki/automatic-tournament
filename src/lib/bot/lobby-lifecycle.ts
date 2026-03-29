@@ -10,6 +10,7 @@ import type {
   TournamentBotConfig,
   LobbyTeamAssignment,
   LobbyEnforcementConfig,
+  LobbyWhitelistEntry,
 } from '@/types/lobby-bot';
 
 // ─── Lobby Player Slot Info (from Dota 2 GC) ───────────────────────────────
@@ -306,9 +307,13 @@ export interface EnforcementAction {
 
 /**
  * Get all Steam32 IDs that are authorized to be in this lobby.
- * Includes both teams' players and coaches.
+ * Includes both teams' players, coaches, and any tournament-level whitelist entries
+ * (commentators, observers, admins).
  */
-export function getAllAuthorizedSteamIds(session: LobbySession): Set<string> {
+export function getAllAuthorizedSteamIds(
+  session: LobbySession,
+  whitelist: LobbyWhitelistEntry[] = []
+): Set<string> {
   const authorized = new Set<string>();
 
   for (const player of session.radiantTeam.expectedPlayers) {
@@ -323,6 +328,11 @@ export function getAllAuthorizedSteamIds(session: LobbySession): Set<string> {
   }
   if (session.direTeam.coachSteamId32) {
     authorized.add(session.direTeam.coachSteamId32);
+  }
+
+  // Tournament-level whitelist: commentators, observers, admins
+  for (const entry of whitelist) {
+    authorized.add(entry.steamId32);
   }
 
   return authorized;
@@ -375,7 +385,8 @@ function getPlayerNickname(session: LobbySession, steamId32: string): string {
 export function evaluateEnforcement(
   session: LobbySession,
   players: LobbySlotInfo[],
-  config: LobbyEnforcementConfig
+  config: LobbyEnforcementConfig,
+  whitelist: LobbyWhitelistEntry[] = []
 ): EnforcementAction {
   const action: EnforcementAction = {
     kickPlayers: [],
@@ -384,7 +395,7 @@ export function evaluateEnforcement(
     updatedWrongSlotWarnings: { ...(session.wrongSlotWarnings || {}) },
   };
 
-  const authorized = getAllAuthorizedSteamIds(session);
+  const authorized = getAllAuthorizedSteamIds(session, whitelist);
   const now = Date.now();
 
   for (const player of players) {

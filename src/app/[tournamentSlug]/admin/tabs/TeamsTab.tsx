@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { useTournament } from '@/context/TournamentContext';
+import { useTournament, useTournamentType } from '@/context/TournamentContext';
 import { Card, CardHeader, CardContent, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -36,12 +36,23 @@ import {
   Shield,
   MoreHorizontal,
   ChevronDown,
+  ChevronRight,
   Loader2,
   AlertCircle,
+  ExternalLink,
+  ImageIcon,
 } from 'lucide-react';
 import { collection, getDocs, doc, updateDoc, writeBatch } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
+import type { DisplayPlayer } from '@/lib/team-players-loader';
+
+interface TeamPlayer {
+  nickname: string;
+  role: string;
+  mmr?: number;
+  profileScreenshotUrl?: string;
+}
 
 interface Team {
   id: string;
@@ -49,9 +60,11 @@ interface Team {
   tag: string;
   divisionId: string;
   divisionName: string;
-  status: 'pending' | 'verified' | 'eliminated';
+  status: 'pending' | 'verified' | 'rejected' | 'eliminated';
   playersCount: number;
   captainName: string;
+  totalMmr?: number;
+  players?: TeamPlayer[];
 }
 
 /**
@@ -60,6 +73,7 @@ interface Team {
  */
 export function TeamsTab() {
   const { tournament, theme } = useTournament();
+  const { isMmrLimited } = useTournamentType();
   const { toast } = useToast();
   
   const [teams, setTeams] = useState<Team[]>([]);
@@ -72,6 +86,7 @@ export function TeamsTab() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [divisionFilter, setDivisionFilter] = useState<string>('all');
   const [isSaving, setIsSaving] = useState(false);
+  const [expandedTeamId, setExpandedTeamId] = useState<string | null>(null);
 
   const divisions = tournament?.divisions || [];
 
@@ -106,6 +121,20 @@ export function TeamsTab() {
             // Get division name from tournament divisions
             const division = divisions.find(d => d.id === teamData.divisionId);
 
+            // For MMR tournaments, extract player MMR data
+            const teamPlayers: TeamPlayer[] | undefined = isMmrLimited
+              ? players.map((p: DisplayPlayer) => ({
+                  nickname: p.nickname,
+                  role: p.role,
+                  mmr: p.mmr,
+                  profileScreenshotUrl: p.profileScreenshotUrl,
+                }))
+              : undefined;
+
+            const totalMmr = isMmrLimited
+              ? players.reduce((sum: number, p: DisplayPlayer) => sum + (p.mmr || 0), 0)
+              : undefined;
+
             return {
               id: teamDoc.id,
               name: teamData.name || teamDoc.id,
@@ -115,6 +144,8 @@ export function TeamsTab() {
               status: teamData.status || 'pending',
               playersCount: players.length,
               captainName: (captain as { nickname?: string })?.nickname || 'Brak kapitana',
+              totalMmr,
+              players: teamPlayers,
             };
           })
         );
@@ -259,6 +290,13 @@ export function TeamsTab() {
             Oczekuje
           </Badge>
         );
+      case 'rejected':
+        return (
+          <Badge className="bg-orange-500/20 text-orange-500 border-orange-500/30 font-logik">
+            <XCircle className="h-3 w-3 mr-1" />
+            Odrzucona
+          </Badge>
+        );
       case 'eliminated':
         return (
           <Badge className="bg-red-500/20 text-red-500 border-red-500/30 font-logik">
@@ -273,6 +311,7 @@ export function TeamsTab() {
     all: teams.length,
     pending: teams.filter(t => t.status === 'pending').length,
     verified: teams.filter(t => t.status === 'verified').length,
+    rejected: teams.filter(t => t.status === 'rejected').length,
     eliminated: teams.filter(t => t.status === 'eliminated').length,
   };
 
@@ -337,7 +376,7 @@ export function TeamsTab() {
       </div>
 
       {/* Status Summary */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <button
           onClick={() => setStatusFilter('all')}
           className={cn(
@@ -369,6 +408,16 @@ export function TeamsTab() {
           <p className="text-sm text-muted-foreground font-logik">Zweryfikowane</p>
         </button>
         <button
+          onClick={() => setStatusFilter('rejected')}
+          className={cn(
+            "p-4 rounded-xl border-2 transition-all duration-200",
+            statusFilter === 'rejected' ? "border-orange-500 bg-orange-500/10" : "border-border hover:border-orange-500/50"
+          )}
+        >
+          <p className="text-2xl font-logik-extended-bold text-orange-500">{statusCounts.rejected}</p>
+          <p className="text-sm text-muted-foreground font-logik">Odrzucone</p>
+        </button>
+        <button
           onClick={() => setStatusFilter('eliminated')}
           className={cn(
             "p-4 rounded-xl border-2 transition-all duration-200",
@@ -393,17 +442,19 @@ export function TeamsTab() {
                 className="pl-10 font-logik"
               />
             </div>
-            <Select value={divisionFilter} onValueChange={setDivisionFilter}>
-              <SelectTrigger className="w-full md:w-48 font-logik">
-                <SelectValue placeholder="Dywizja" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Wszystkie dywizje</SelectItem>
-                {divisions.map(d => (
-                  <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {!isMmrLimited && (
+              <Select value={divisionFilter} onValueChange={setDivisionFilter}>
+                <SelectTrigger className="w-full md:w-48 font-logik">
+                  <SelectValue placeholder="Dywizja" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Wszystkie dywizje</SelectItem>
+                  {divisions.map(d => (
+                    <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -425,6 +476,15 @@ export function TeamsTab() {
                 >
                   <CheckCircle2 className="h-4 w-4 mr-2" />
                   Zweryfikuj
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => bulkUpdateStatus('rejected')}
+                  className="font-logik text-orange-500 border-orange-500/30 hover:bg-orange-500/10"
+                >
+                  <XCircle className="h-4 w-4 mr-2" />
+                  Odrzuć
                 </Button>
                 <Button 
                   variant="outline" 
@@ -460,8 +520,13 @@ export function TeamsTab() {
                   onCheckedChange={toggleAllSelection}
                 />
               </TableHead>
+              {isMmrLimited && <TableHead className="w-8" />}
               <TableHead className="font-logik-extended-bold">Drużyna</TableHead>
-              <TableHead className="font-logik-extended-bold">Dywizja</TableHead>
+              {isMmrLimited ? (
+                <TableHead className="font-logik-extended-bold">MMR</TableHead>
+              ) : (
+                <TableHead className="font-logik-extended-bold">Dywizja</TableHead>
+              )}
               <TableHead className="font-logik-extended-bold">Kapitan</TableHead>
               <TableHead className="font-logik-extended-bold">Gracze</TableHead>
               <TableHead className="font-logik-extended-bold">Status</TableHead>
@@ -471,52 +536,123 @@ export function TeamsTab() {
           <TableBody>
             {filteredTeams.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground font-logik">
+                <TableCell colSpan={isMmrLimited ? 8 : 7} className="text-center py-8 text-muted-foreground font-logik">
                   Brak drużyn spełniających kryteria
                 </TableCell>
               </TableRow>
             ) : (
               filteredTeams.map(team => (
-                <TableRow key={team.id} className="hover:bg-background/50">
-                  <TableCell>
-                    <Checkbox 
-                      checked={selectedTeams.includes(team.id)}
-                      onCheckedChange={() => toggleTeamSelection(team.id)}
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center font-logik-extended-bold">
-                        {team.tag}
+                <React.Fragment key={team.id}>
+                  <TableRow className="hover:bg-background/50">
+                    <TableCell>
+                      <Checkbox 
+                        checked={selectedTeams.includes(team.id)}
+                        onCheckedChange={() => toggleTeamSelection(team.id)}
+                      />
+                    </TableCell>
+                    {isMmrLimited && (
+                      <TableCell className="px-1">
+                        <button
+                          onClick={() => setExpandedTeamId(expandedTeamId === team.id ? null : team.id)}
+                          className="p-1 rounded hover:bg-muted transition-colors"
+                        >
+                          {expandedTeamId === team.id ? (
+                            <ChevronDown className="h-4 w-4" />
+                          ) : (
+                            <ChevronRight className="h-4 w-4" />
+                          )}
+                        </button>
+                      </TableCell>
+                    )}
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center font-logik-extended-bold">
+                          {team.tag}
+                        </div>
+                        <div>
+                          <p className="font-logik-extended-bold">{team.name}</p>
+                          <p className="text-sm text-muted-foreground font-logik">[{team.tag}]</p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="font-logik-extended-bold">{team.name}</p>
-                        <p className="text-sm text-muted-foreground font-logik">[{team.tag}]</p>
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="outline" className="font-logik">{team.divisionName}</Badge>
-                  </TableCell>
-                  <TableCell className="font-logik">{team.captainName}</TableCell>
-                  <TableCell className="font-logik">{team.playersCount}/5</TableCell>
-                  <TableCell>{getStatusBadge(team.status)}</TableCell>
-                  <TableCell>
-                    <Select 
-                      value={team.status} 
-                      onValueChange={(v) => updateTeamStatus(team.id, v as Team['status'])}
-                    >
-                      <SelectTrigger className="w-full font-logik h-8">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="pending">Oczekuje</SelectItem>
-                        <SelectItem value="verified">Zweryfikowana</SelectItem>
-                        <SelectItem value="eliminated">Wyeliminowana</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </TableCell>
-                </TableRow>
+                    </TableCell>
+                    {isMmrLimited ? (
+                      <TableCell>
+                        <span className="font-logik-extended-bold">{(team.totalMmr || 0).toLocaleString()}</span>
+                        {tournament?.mmrCap && (
+                          <span className={cn(
+                            "text-sm ml-1",
+                            (team.totalMmr || 0) > tournament.mmrCap ? "text-red-400" : "text-muted-foreground"
+                          )}>
+                            / {tournament.mmrCap.toLocaleString()}
+                          </span>
+                        )}
+                      </TableCell>
+                    ) : (
+                      <TableCell>
+                        <Badge variant="outline" className="font-logik">{team.divisionName}</Badge>
+                      </TableCell>
+                    )}
+                    <TableCell className="font-logik">{team.captainName}</TableCell>
+                    <TableCell className="font-logik">{team.playersCount}/5</TableCell>
+                    <TableCell>{getStatusBadge(team.status)}</TableCell>
+                    <TableCell>
+                      <Select 
+                        value={team.status} 
+                        onValueChange={(v) => updateTeamStatus(team.id, v as Team['status'])}
+                      >
+                        <SelectTrigger className="w-full font-logik h-8">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="pending">Oczekuje</SelectItem>
+                          <SelectItem value="verified">Zweryfikowana</SelectItem>
+                          <SelectItem value="rejected">Odrzucona</SelectItem>
+                          <SelectItem value="eliminated">Wyeliminowana</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </TableCell>
+                  </TableRow>
+                  {/* Expandable player detail rows for MMR tournaments */}
+                  {isMmrLimited && expandedTeamId === team.id && team.players && (
+                    <TableRow className="bg-muted/30">
+                      <TableCell colSpan={8} className="p-0">
+                        <div className="px-6 py-3 space-y-1">
+                          <p className="text-xs font-logik-extended-bold text-muted-foreground uppercase tracking-wider mb-2">
+                            Weryfikacja MMR graczy
+                          </p>
+                          {team.players.map((player, idx) => (
+                            <div key={idx} className="flex items-center gap-4 py-1.5 px-3 rounded-md hover:bg-muted/50">
+                              <span className="text-sm font-logik w-32 truncate">{player.nickname}</span>
+                              <Badge variant="outline" className="font-logik text-xs w-24 justify-center">
+                                {player.role}
+                              </Badge>
+                              <span className="text-sm font-logik-extended-bold w-20 text-right">
+                                {(player.mmr || 0).toLocaleString()}
+                              </span>
+                              {player.profileScreenshotUrl ? (
+                                <a
+                                  href={player.profileScreenshotUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="flex items-center gap-1 text-xs font-logik hover:underline"
+                                  style={{ color: theme.primaryColor }}
+                                >
+                                  <ImageIcon className="h-3 w-3" />
+                                  Screenshot
+                                  <ExternalLink className="h-3 w-3" />
+                                </a>
+                              ) : (
+                                <span className="text-xs text-muted-foreground font-logik">
+                                  Brak screenshota
+                                </span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </React.Fragment>
               ))
             )}
           </TableBody>

@@ -61,6 +61,7 @@ import type {
   DotaLobbyVisibility,
   DotaPauseSetting,
   LobbySession,
+  LobbyWhitelistEntry,
 } from '@/types/lobby-bot';
 import type { TournamentTheme, TournamentConfig } from '@/types/tournament';
 import {
@@ -137,6 +138,15 @@ export function BotTab(): React.ReactElement {
   const [testMatchId, setTestMatchId] = useState('');
   const [isForcing, setIsForcing] = useState(false);
   const [forceResult, setForceResult] = useState<{ ok: boolean; message: string } | null>(null);
+
+  // Whitelist state
+  const [whitelist, setWhitelist] = useState<LobbyWhitelistEntry[]>([]);
+  const [isLoadingWhitelist, setIsLoadingWhitelist] = useState(false);
+  const [newWhitelistUrl, setNewWhitelistUrl] = useState('');
+  const [newWhitelistNote, setNewWhitelistNote] = useState('');
+  const [isAddingWhitelist, setIsAddingWhitelist] = useState(false);
+  const [whitelistError, setWhitelistError] = useState<string | null>(null);
+  const [removingWhitelistId, setRemovingWhitelistId] = useState<string | null>(null);
   const [isOrchestrating, setIsOrchestrating] = useState(false);
   const [orchestrateResult, setOrchestrateResult] = useState<{ ok: boolean; message: string } | null>(null);
 
@@ -398,6 +408,81 @@ export function BotTab(): React.ReactElement {
     }
   }, [user]);
 
+  // ─── Whitelist handlers ───────────────────────────────────────────
+
+  const loadWhitelist = useCallback(async (): Promise<void> => {
+    if (!tournament?.id || !user) return;
+    setIsLoadingWhitelist(true);
+    try {
+      const token = await user.getIdToken();
+      const res = await fetch(`/api/admin/bot/whitelist?tournamentId=${tournament.id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json() as { whitelist: LobbyWhitelistEntry[] };
+        setWhitelist(data.whitelist ?? []);
+      }
+    } catch (error) {
+      console.error('Failed to load whitelist:', error);
+    } finally {
+      setIsLoadingWhitelist(false);
+    }
+  }, [tournament?.id, user]);
+
+  useEffect(() => {
+    if (activeTab === 'settings') {
+      loadWhitelist();
+    }
+  }, [activeTab, loadWhitelist]);
+
+  const handleAddToWhitelist = useCallback(async (): Promise<void> => {
+    if (!tournament?.id || !user || !newWhitelistUrl.trim()) return;
+    setIsAddingWhitelist(true);
+    setWhitelistError(null);
+    try {
+      const token = await user.getIdToken();
+      const res = await fetch('/api/admin/bot/whitelist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          tournamentId: tournament.id,
+          steamProfileUrl: newWhitelistUrl.trim(),
+          note: newWhitelistNote.trim() || undefined,
+        }),
+      });
+      const data = await res.json() as { entry?: LobbyWhitelistEntry; error?: string };
+      if (res.ok && data.entry) {
+        setWhitelist((prev) => [...prev, data.entry!]);
+        setNewWhitelistUrl('');
+        setNewWhitelistNote('');
+      } else {
+        setWhitelistError(data.error ?? `Błąd ${res.status}`);
+      }
+    } catch {
+      setWhitelistError('Błąd połączenia z serwerem.');
+    } finally {
+      setIsAddingWhitelist(false);
+    }
+  }, [tournament?.id, user, newWhitelistUrl, newWhitelistNote]);
+
+  const handleRemoveFromWhitelist = useCallback(async (steamId32: string): Promise<void> => {
+    if (!tournament?.id || !user) return;
+    setRemovingWhitelistId(steamId32);
+    try {
+      const token = await user.getIdToken();
+      await fetch('/api/admin/bot/whitelist', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ tournamentId: tournament.id, steamId32 }),
+      });
+      setWhitelist((prev) => prev.filter((e) => e.steamId32 !== steamId32));
+    } catch (error) {
+      console.error('Failed to remove from whitelist:', error);
+    } finally {
+      setRemovingWhitelistId(null);
+    }
+  }, [tournament?.id, user]);
+
   // ─── Update helpers ───────────────────────────────────────────────
 
   const updateLobby = <K extends keyof TournamentBotConfig['lobby']>(
@@ -569,6 +654,17 @@ export function BotTab(): React.ReactElement {
           saveStatus={saveStatus}
           theme={theme}
           tournament={tournament}
+          whitelist={whitelist}
+          isLoadingWhitelist={isLoadingWhitelist}
+          newWhitelistUrl={newWhitelistUrl}
+          setNewWhitelistUrl={setNewWhitelistUrl}
+          newWhitelistNote={newWhitelistNote}
+          setNewWhitelistNote={setNewWhitelistNote}
+          isAddingWhitelist={isAddingWhitelist}
+          whitelistError={whitelistError}
+          onAddToWhitelist={handleAddToWhitelist}
+          removingWhitelistId={removingWhitelistId}
+          onRemoveFromWhitelist={handleRemoveFromWhitelist}
         />
       ) : activeTab === 'monitor' ? (
         <MonitorView
@@ -652,6 +748,18 @@ interface SettingsViewProps {
   saveStatus: 'idle' | 'success' | 'error';
   theme: TournamentTheme;
   tournament: TournamentConfig | null;
+  // Whitelist
+  whitelist: LobbyWhitelistEntry[];
+  isLoadingWhitelist: boolean;
+  newWhitelistUrl: string;
+  setNewWhitelistUrl: (v: string) => void;
+  newWhitelistNote: string;
+  setNewWhitelistNote: (v: string) => void;
+  isAddingWhitelist: boolean;
+  whitelistError: string | null;
+  onAddToWhitelist: () => Promise<void>;
+  removingWhitelistId: string | null;
+  onRemoveFromWhitelist: (steamId32: string) => Promise<void>;
 }
 
 function SettingsView({
@@ -674,6 +782,17 @@ function SettingsView({
   isSaving,
   saveStatus,
   theme,
+  whitelist,
+  isLoadingWhitelist,
+  newWhitelistUrl,
+  setNewWhitelistUrl,
+  newWhitelistNote,
+  setNewWhitelistNote,
+  isAddingWhitelist,
+  whitelistError,
+  onAddToWhitelist,
+  removingWhitelistId,
+  onRemoveFromWhitelist,
 }: SettingsViewProps): React.ReactElement {
   return (
     <div className="space-y-6">
@@ -1382,6 +1501,119 @@ function SettingsView({
           </Card>
         </>
       )}
+
+      {/* Lobby Whitelist — always visible regardless of bot enabled state */}
+      <Card className="border-0 shadow-lg bg-card/80 backdrop-blur-xl">
+        <CardHeader className="pb-3">
+          <div className="flex items-center gap-2">
+            <Users className="h-5 w-5" style={{ color: theme.primaryColor }} />
+            <CardTitle className="text-lg">Whitelist lobby</CardTitle>
+          </div>
+          <CardDescription>
+            Konta Steam, które zawsze mogą dołączyć do lobby bez bycia wykopanymi — np. komentatorzy, obserwatorzy, administratorzy.
+            Dodaj link do profilu Steam, a system pobierze dane konta automatycznie.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Add entry form */}
+          <div className="space-y-2">
+            <div className="flex gap-2">
+              <Input
+                placeholder="https://steamcommunity.com/id/nazwagracza lub /profiles/76561198..."
+                value={newWhitelistUrl}
+                onChange={(e) => setNewWhitelistUrl(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !isAddingWhitelist) {
+                    void onAddToWhitelist();
+                  }
+                }}
+                className="flex-1"
+              />
+              <Input
+                placeholder="Notatka (opcjonalnie)"
+                value={newWhitelistNote}
+                onChange={(e) => setNewWhitelistNote(e.target.value)}
+                className="w-48"
+              />
+              <Button
+                onClick={onAddToWhitelist}
+                disabled={isAddingWhitelist || !newWhitelistUrl.trim()}
+                style={{ backgroundColor: theme.primaryColor }}
+              >
+                {isAddingWhitelist ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Plus className="h-4 w-4" />
+                )}
+              </Button>
+            </div>
+            {whitelistError && (
+              <p className="text-sm text-red-500 flex items-center gap-1">
+                <AlertCircle className="h-4 w-4 shrink-0" />
+                {whitelistError}
+              </p>
+            )}
+          </div>
+
+          <Separator />
+
+          {/* Whitelist entries */}
+          {isLoadingWhitelist ? (
+            <div className="flex items-center gap-2 text-muted-foreground text-sm py-2">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Ładowanie...
+            </div>
+          ) : whitelist.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-2">
+              Brak kont na whiteliście. Dodaj link do profilu Steam powyżej.
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {whitelist.map((entry) => (
+                <div
+                  key={entry.steamId32}
+                  className="flex items-center gap-3 p-2 rounded-lg bg-muted/40"
+                >
+                  {entry.avatarUrl && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={entry.avatarUrl}
+                      alt={entry.displayName}
+                      className="w-8 h-8 rounded"
+                    />
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-sm truncate">{entry.displayName}</span>
+                      {entry.note && (
+                        <Badge variant="secondary" className="text-xs shrink-0">
+                          {entry.note}
+                        </Badge>
+                      )}
+                    </div>
+                    <span className="text-xs text-muted-foreground">
+                      Steam32: {entry.steamId32}
+                    </span>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50 shrink-0"
+                    disabled={removingWhitelistId === entry.steamId32}
+                    onClick={() => void onRemoveFromWhitelist(entry.steamId32)}
+                  >
+                    {removingWhitelistId === entry.steamId32 ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Trash2 className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Save Button */}
       <div className="flex items-center gap-3">

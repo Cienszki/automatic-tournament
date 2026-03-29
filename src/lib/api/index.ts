@@ -6,3 +6,5 @@ export { tournamentRefs, userRef, usersCollection, superAdminRef, tournamentsCol
 export { getTournamentTeams, getTeamById, updateTeam, getTeamByCaptain } from './teams';
 export { getTournamentMatches, getMatchById, updateMatch, getTeamCompletedMatches } from './matches';
 export { fetchTournaments, fetchTournamentBySlug, createTournament, updateTournamentStatus, isSlugAvailable } from './tournaments';
+export { getGroups, getGroupById, saveGroup, deleteGroup, assignTeamToGroup, calculateGroupStandings } from './groups';
+export type { GroupDoc, TeamForStandings, MatchForStandings } from './groups';

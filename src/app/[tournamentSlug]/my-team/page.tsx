@@ -32,6 +32,8 @@ import { PDLMyTeamHero, PDLRosterCard, PDLMatchHistory, PDLTeamStats, PDLSeasonP
 import { PDLUpcomingMatch } from "@/components/pdl/my-team/PDLUpcomingMatchNew";
 import { PDLTransferSection } from "@/components/pdl/my-team/PDLTransferSection";
 import { upsertGlobalPlayerProfilesAction, clearPlayerCurrentTeamsAction } from "@/lib/player-profile-actions";
+import { useTournamentType } from '@/context/TournamentContext';
+import { MmrMyTeamPage } from '@/components/tournament/mmr/MmrMyTeamPage';
 
 interface ScrimSlot {
   id: string;
@@ -96,6 +98,7 @@ const isWithinThreeDays = (referenceIso: string, proposedIso: string): boolean =
  */
 export default function MyTeamPage() {
   const { tournament, theme, isLegacyTournament, getTournamentPath } = useTournament();
+  const { isMmrLimited } = useTournamentType();
   const { user, loading: authLoading, signInWithGoogle } = useAuth();
   const { t } = useTranslation();
   const { toast } = useToast();
@@ -1237,6 +1240,20 @@ export default function MyTeamPage() {
         {team && <PlayerAnalyticsTable team={team} />}
         {matches.length > 0 && <MatchHistoryTable matches={matches} teamId={team?.id || ""} />}
       </div>
+    );
+  }
+
+  // =========================================================================
+  // MMR-LIMITED TOURNAMENT UI (Generic)
+  // =========================================================================
+  if (isMmrLimited) {
+    return (
+      <MmrMyTeamPage
+        team={team}
+        hasTeam={hasTeam}
+        matches={matches}
+        loading={loading}
+      />
     );
   }
 

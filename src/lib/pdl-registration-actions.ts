@@ -21,12 +21,15 @@ export interface PDLTeamRegistrationData {
         nickname: string;
         role: PlayerRole;
         steamProfileUrl: string;
+        mmr?: number;
+        profileScreenshotUrl?: string;
     }>;
     coach?: {
         hasCoach: boolean;
         nickname?: string;
         steamProfileUrl?: string;
     };
+    mmrCap?: number;
 }
 
 export interface RegistrationResult {
@@ -306,14 +309,17 @@ export async function registerPDLTeam(
         const teamId = teamRef.id;
 
         // Prepare team document — includes embedded roster for single-doc reads
-        const roster: Record<string, { nickname: string; role: string; steamId32: string; avatar?: string }> = {};
-        processedPlayers.forEach((player) => {
+        const roster: Record<string, { nickname: string; role: string; steamId32: string; avatar?: string; mmr?: number; profileScreenshotUrl?: string }> = {};
+        processedPlayers.forEach((player, index) => {
             if (player.steamId64) {
+                const originalPlayer = teamData.players[index];
                 roster[player.steamId64] = {
                     nickname: player.nickname,
                     role: player.role,
                     steamId32: player.steamId32,
                     avatar: player.avatar || '',
+                    ...(originalPlayer?.mmr != null ? { mmr: originalPlayer.mmr } : {}),
+                    ...(originalPlayer?.profileScreenshotUrl ? { profileScreenshotUrl: originalPlayer.profileScreenshotUrl } : {}),
                 };
             }
         });
@@ -328,10 +334,11 @@ export async function registerPDLTeam(
             status: 'pending' as const,
             divisionId: null, // Assigned by admin later
             /**
-             * Quick-read roster: { [steamId64]: { nickname, role, steamId32 } }
+             * Quick-read roster: { [steamId64]: { nickname, role, steamId32, mmr?, profileScreenshotUrl? } }
              * Used to display team rosters without reading the player subcollection.
              */
             roster,
+            ...(teamData.mmrCap != null ? { mmrCap: teamData.mmrCap } : {}),
             createdAt: FieldValue.serverTimestamp(),
             updatedAt: FieldValue.serverTimestamp(),
         };
@@ -343,12 +350,15 @@ export async function registerPDLTeam(
         batch.set(teamRef, teamDoc);
 
         // Save player pointer documents (pointer-only — full data is in /players/{steamId64})
-        processedPlayers.forEach((player) => {
+        processedPlayers.forEach((player, index) => {
             const playerRef = teamRef.collection('players').doc(player.steamId64);
+            const originalPlayer = teamData.players[index];
             batch.set(playerRef, {
                 steamId: player.steamId64,
                 steamId32: player.steamId32,
                 role: player.role,
+                ...(originalPlayer?.mmr != null ? { mmr: originalPlayer.mmr } : {}),
+                ...(originalPlayer?.profileScreenshotUrl ? { profileScreenshotUrl: originalPlayer.profileScreenshotUrl } : {}),
             });
         });
 

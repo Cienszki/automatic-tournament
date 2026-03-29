@@ -15,7 +15,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { UserPlus, ShieldPlus, Image as ImageIcon, MessageCircle, Lock, Home, Users, Gamepad2 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
-import { useTournament } from "@/context/TournamentContext";
+import { useTournament, useTournamentType } from "@/context/TournamentContext";
 import { useTranslations } from "next-intl";
 import { PlayerRoles } from "@/lib/definitions";
 import { cn } from "@/lib/utils";
@@ -72,31 +72,111 @@ function createPdlFormSchema(v: (key: string) => string) {
   });
 }
 
+// MMR Tournament Registration Schema — adds per-player MMR + screenshot
+function createMmrFormSchema(v: (key: string) => string, mmrCap: number) {
+  return z.object({
+    name: z.string()
+      .min(3, v('teamNameMin'))
+      .max(20, v('teamNameMax'))
+      .regex(/^[A-Za-zĄąĆćĘęŁłŃńÓóŚśŹźŻż0-9 _\-&]+$/, v('teamNameFormat')),
+    tag: z.string().min(2, v('tagLength')).max(6, v('tagLength')),
+    discordUsername: z.string().min(2, v('discordRequired')),
+    motto: z.string().min(5, v('mottoMin')),
+    logo: z.custom<File | null>(
+      (file) => file instanceof File, v('logoRequired')
+    ).refine(
+      (file) => !!file && file.size <= MAX_FILE_SIZE, v('logoMaxSize')
+    ).refine(
+      (file) => !!file && ACCEPTED_IMAGE_TYPES.includes(file.type),
+      v('logoFormat')
+    ),
+    players: z.array(z.object({
+      nickname: z.string()
+        .min(2, v('nicknameMin'))
+        .max(20, v('nicknameMax'))
+        .regex(/^[A-Za-zĄąĆćĘęŁłŃńÓóŚśŹźŻż0-9 _\-&]+$/, v('nicknameFormat')),
+      role: z.enum(PlayerRoles),
+      steamProfileUrl: z.string().url(v('steamUrl')),
+      mmr: z.coerce.number().int().min(0, 'MMR musi być >= 0').max(15000, 'Maksymalny MMR to 15000'),
+      profileScreenshot: z.custom<File | null>(
+        (file) => file instanceof File, 'Screenshot MMR jest wymagany'
+      ).refine(
+        (file) => !!file && file.size <= MAX_FILE_SIZE, 'Maksymalny rozmiar pliku to 5MB'
+      ).refine(
+        (file) => !!file && ACCEPTED_IMAGE_TYPES.includes(file.type), 'Dozwolone formaty: JPG, PNG, WEBP'
+      ),
+    })).min(5, v('playersCount')).max(5),
+    rulesAcknowledged: z.boolean().refine((val) => val === true, {
+      message: v('rulesRequired'),
+    }),
+  }).refine(data => {
+    const roles = data.players.map(player => player.role);
+    const uniqueRoles = new Set(roles);
+    return uniqueRoles.size === roles.length;
+  }, {
+    message: v('uniqueRoles'),
+    path: ["players"],
+  }).refine(data => {
+    const roles = data.players.map(player => player.role);
+    const playerRoles = new Set(roles);
+    return PlayerRoles.every(role => playerRoles.has(role));
+  }, {
+    message: v('allRoles'),
+    path: ["players"],
+  }).refine(data => {
+    const totalMmr = data.players.reduce((sum, p) => sum + (p.mmr || 0), 0);
+    return totalMmr <= mmrCap;
+  }, {
+    message: `Łączny MMR drużyny nie może przekraczać ${mmrCap}`,
+    path: ["players"],
+  });
+}
+
 // Registration Closed Component
 const RegistrationClosed: React.FC = () => {
   const t = useTranslations('pdlRegistration');
-  const { getTournamentPath } = useTournament();
+  const { getTournamentPath, theme } = useTournament();
+  const primaryColor = theme?.primaryColor || '#8B1538';
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#1a1a1f] via-[#1e1e24] to-[#16161a] text-white">
-      <div className="container mx-auto px-6 py-24">
+    <div className="relative min-h-screen overflow-hidden text-white">
+      {/* Background */}
+      <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+        <div
+          className="absolute inset-0 opacity-60"
+          style={{ background: 'radial-gradient(circle at center, transparent 0%, #000000 100%)' }}
+        />
+        <div
+          className="absolute top-[-10%] right-[-10%] w-[50vw] h-[50vw] rounded-full opacity-[0.06] blur-[150px]"
+          style={{ background: primaryColor }}
+        />
+      </div>
+
+      <div className="relative z-10 container mx-auto px-6 py-24">
         <div className="max-w-3xl mx-auto text-center">
-          {/* Logo */}
+          {/* Icon */}
           <motion.div
             className="relative mb-8"
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ duration: 0.6 }}
           >
-            <div className="absolute inset-0 bg-[#8B1538] blur-2xl opacity-20 rounded-full"></div>
+            <div
+              className="absolute inset-0 blur-2xl opacity-20 rounded-full"
+              style={{ background: primaryColor }}
+            />
             <div className="relative">
-              <Lock className="w-24 h-24 mx-auto text-[#8B1538] drop-shadow-[0_0_15px_rgba(139,21,56,0.7)]" />
+              <Lock
+                className="w-24 h-24 mx-auto"
+                style={{ color: primaryColor, filter: `drop-shadow(0 0 15px ${primaryColor}B0)` }}
+              />
             </div>
           </motion.div>
 
           {/* Main Title */}
           <motion.h1
-            className="text-5xl font-bold mb-6 text-transparent bg-gradient-to-r from-[#8B1538] to-[#d4d4d4] bg-clip-text"
+            className="text-5xl font-logik-wide-black mb-6 text-transparent bg-clip-text"
+            style={{ backgroundImage: `linear-gradient(to right, ${primaryColor}, #d4d4d4)` }}
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ duration: 0.6, delay: 0.2 }}
@@ -106,7 +186,8 @@ const RegistrationClosed: React.FC = () => {
 
           {/* Description */}
           <motion.div
-            className="bg-black/30 backdrop-blur-sm rounded-xl p-8 mb-8 border border-[#8B1538]/20 shadow-[0_0_30px_rgba(139,21,56,0.1)]"
+            className="bg-black/30 backdrop-blur-sm rounded-xl p-8 mb-8"
+            style={{ border: `1px solid ${primaryColor}30`, boxShadow: `0 0 30px ${primaryColor}18` }}
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ duration: 0.6, delay: 0.4 }}
@@ -114,7 +195,7 @@ const RegistrationClosed: React.FC = () => {
             <p className="text-xl mb-4 text-gray-200">
               {t('closedMessage')}
             </p>
-            <p className="text-lg text-[#d4d4d4] font-medium mb-4">
+            <p className="text-lg text-white/70 font-medium mb-4">
               {t('seasonInProgress')}
             </p>
           </motion.div>
@@ -130,7 +211,12 @@ const RegistrationClosed: React.FC = () => {
               <Button
                 variant="outline"
                 size="lg"
-                className="bg-gradient-to-r from-[#8B1538]/20 to-[#d4d4d4]/20 border-[#8B1538] text-[#8B1538] hover:bg-[#8B1538]/10 hover:shadow-[0_0_20px_rgba(139,21,56,0.3)] transition-all duration-300"
+                className="transition-all duration-300"
+                style={{
+                  background: `linear-gradient(to right, ${primaryColor}33, #d4d4d430)`,
+                  borderColor: primaryColor,
+                  color: primaryColor,
+                }}
               >
                 <Home className="w-5 h-5 mr-2" />
                 {t('backToHome')}
@@ -140,7 +226,7 @@ const RegistrationClosed: React.FC = () => {
               <Button
                 variant="outline"
                 size="lg"
-                className="bg-gradient-to-r from-[#d4d4d4]/20 to-[#8B1538]/20 border-[#d4d4d4] text-[#d4d4d4] hover:bg-[#d4d4d4]/10 hover:shadow-[0_0_20px_rgba(212,212,212,0.3)] transition-all duration-300"
+                className="border-white/30 text-white/80 hover:bg-white/10 transition-all duration-300"
               >
                 <Users className="w-5 h-5 mr-2" />
                 {t('viewTeams')}
@@ -153,19 +239,59 @@ const RegistrationClosed: React.FC = () => {
   );
 };
 
+// MMR Summary component for MMR-limited tournaments
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function MmrSummary({ form, mmrCap }: { form: { watch: (name: string) => any }; mmrCap: number }) {
+  const players = form.watch('players') as Array<{ mmr?: number }> | undefined;
+  const totalMmr = (players || []).reduce((sum: number, p: { mmr?: number }) => sum + (Number(p?.mmr) || 0), 0);
+  const isOverCap = totalMmr > mmrCap;
+
+  return (
+    <motion.div
+      initial={{ y: 20, opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      transition={{ duration: 0.6, delay: 0.3 }}
+    >
+      <div className={cn(
+        "p-4 rounded-xl border text-center",
+        isOverCap
+          ? "border-red-500/30 bg-red-500/10"
+          : "border-green-500/30 bg-green-500/10"
+      )}>
+        <p className="font-logik-extended-bold text-lg">
+          Łączny MMR: <span className={isOverCap ? "text-red-400" : "text-green-400"}>
+            {totalMmr.toLocaleString()}
+          </span>
+          {' / '}
+          <span className="text-white/60">{mmrCap.toLocaleString()}</span>
+        </p>
+        {isOverCap && (
+          <p className="text-red-400 text-sm mt-1">
+            Przekroczono limit MMR o {(totalMmr - mmrCap).toLocaleString()} punktów
+          </p>
+        )}
+      </div>
+    </motion.div>
+  );
+}
+
 export default function RegisterPage() {
   const { user, signInWithGoogle } = useAuth();
   const { tournament, getTournamentPath } = useTournament();
+  const { isMmrLimited } = useTournamentType();
   const t = useTranslations('pdlRegistration');
   const [serverError, setServerError] = React.useState<string | null>(null);
   const [logoPreview, setLogoPreview] = React.useState<string | null>(null);
   const [checkingTeam, setCheckingTeam] = React.useState(true);
   const router = useRouter();
 
-  // Create schema with i18n validation messages
+  // Create schema with i18n validation messages — picks the right schema based on tournament type
+  const mmrCap = tournament?.mmrCap || 24000;
   const pdlFormSchema = React.useMemo(
-    () => createPdlFormSchema((key: string) => t(`validation.${key}` as Parameters<typeof t>[0])),
-    [t]
+    () => isMmrLimited
+      ? createMmrFormSchema((key: string) => t(`validation.${key}` as Parameters<typeof t>[0]), mmrCap)
+      : createPdlFormSchema((key: string) => t(`validation.${key}` as Parameters<typeof t>[0])),
+    [t, isMmrLimited, mmrCap]
   );
   type PdlFormValues = z.infer<typeof pdlFormSchema>;
 
@@ -179,7 +305,11 @@ export default function RegisterPage() {
       discordUsername: "",
       motto: "",
       logo: null,
-      players: Array(5).fill({ nickname: "", role: undefined, steamProfileUrl: "" }),
+      players: Array(5).fill(
+        isMmrLimited
+          ? { nickname: "", role: undefined, steamProfileUrl: "", mmr: 0, profileScreenshot: null }
+          : { nickname: "", role: undefined, steamProfileUrl: "" }
+      ),
       rulesAcknowledged: false,
     },
   });
@@ -228,6 +358,7 @@ export default function RegisterPage() {
     return <RegistrationClosed />;
   }
   const { isSubmitting, isValid } = form.formState;
+  const primaryColor = tournament?.theme?.primaryColor || '#8B1538';
 
   const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] || null;
@@ -250,8 +381,39 @@ export default function RegisterPage() {
 
     try {
       // Upload team logo first
-      const { uploadTeamLogo } = await import('@/lib/storage');
+      const { uploadTeamLogo, uploadScreenshot } = await import('@/lib/storage');
       const logoUrl = await uploadTeamLogo(values.logo!, values.name);
+
+      // For MMR tournaments, upload profile screenshots and attach MMR values
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let playersData: any = values.players;
+      if (isMmrLimited) {
+        const mmrPlayers = values.players as Array<{
+          nickname: string;
+          role: string;
+          steamProfileUrl: string;
+          mmr: number;
+          profileScreenshot: File | null;
+        }>;
+        playersData = await Promise.all(
+          mmrPlayers.map(async (player) => {
+            let profileScreenshotUrl: string | undefined;
+            if (player.profileScreenshot) {
+              profileScreenshotUrl = await uploadScreenshot(
+                player.profileScreenshot,
+                `${values.name}-${player.nickname}`
+              );
+            }
+            return {
+              nickname: player.nickname,
+              role: player.role,
+              steamProfileUrl: player.steamProfileUrl,
+              mmr: player.mmr,
+              ...(profileScreenshotUrl ? { profileScreenshotUrl } : {}),
+            };
+          })
+        );
+      }
 
       // Prepare registration data
       const registrationData = {
@@ -262,7 +424,8 @@ export default function RegisterPage() {
         motto: values.motto,
         logoUrl,
         captainId: user.uid,
-        players: values.players,
+        players: playersData,
+        ...(isMmrLimited ? { mmrCap } : {}),
       };
 
       // Get Firebase auth token for API security
@@ -347,7 +510,7 @@ export default function RegisterPage() {
             <CardDescription className="text-white/60 font-logik text-base">{t('loginRequiredDesc')}</CardDescription>
           </CardHeader>
           <CardContent>
-            <Button onClick={signInWithGoogle} className="w-full bg-[#8B1538] hover:bg-[#A91D45] text-white font-bold py-6 text-lg transition-all duration-300 shadow-[0_0_20px_rgba(139,21,56,0.3)] hover:shadow-[0_0_30px_rgba(139,21,56,0.5)]">
+              <Button onClick={signInWithGoogle} className="w-full text-white font-bold py-6 text-lg transition-all duration-300" style={{ backgroundColor: tournament?.theme?.primaryColor || '#8B1538', boxShadow: `0 0 20px ${tournament?.theme?.primaryColor || '#8B1538'}4D` }}>
               {t('signInWithGoogle')}
             </Button>
           </CardContent>
@@ -357,7 +520,10 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="relative min-h-screen overflow-hidden font-logik text-white selection:bg-primary/30 py-12">
+    <div
+      className="relative min-h-screen overflow-hidden font-logik text-white selection:bg-primary/30 py-12"
+      style={{ '--reg-primary': primaryColor } as React.CSSProperties}
+    >
       <Background />
       <div className="relative z-10 container mx-auto px-4 max-w-5xl space-y-12">
         {/* Header */}
@@ -367,12 +533,15 @@ export default function RegisterPage() {
           transition={{ duration: 0.6 }}
           className="text-center space-y-4"
         >
-          <UserPlus className="h-16 w-16 mx-auto text-[#8B1538] mb-4 drop-shadow-[0_0_15px_rgba(139,21,56,0.5)]" />
+          <UserPlus
+            className="h-16 w-16 mx-auto mb-4"
+            style={{ color: tournament?.theme?.primaryColor || '#8B1538', filter: `drop-shadow(0 0 15px ${tournament?.theme?.primaryColor || '#8B1538'}80)` }}
+          />
           <h1 className="text-4xl md:text-6xl font-logik-extended-bold text-white tracking-tight drop-shadow-lg">
             {t('teamRegistration')}
           </h1>
           <p className="text-white/60 text-lg md:text-xl font-medium max-w-2xl mx-auto">
-            Polish Dota League - {t('seasonRegistration')}
+            {tournament?.name} — {t('seasonRegistration')}
           </p>
         </motion.div>
 
@@ -385,9 +554,9 @@ export default function RegisterPage() {
               transition={{ duration: 0.6, delay: 0.1 }}
             >
               <div className="mb-6 flex items-center gap-4">
-                <div className="h-0.5 w-12 bg-[#8B1538]/50" />
+                <div className="h-0.5 w-12" style={{ background: `${tournament?.theme?.primaryColor || '#8B1538'}80` }} />
                 <h2 className="text-2xl font-logik-extended-bold text-white/90">{t('teamDetails')}</h2>
-                <div className="h-0.5 flex-1 bg-[#8B1538]/20" />
+                <div className="h-0.5 flex-1" style={{ background: `${tournament?.theme?.primaryColor || '#8B1538'}33` }} />
               </div>
 
               <div className="grid md:grid-cols-2 gap-6">
@@ -397,9 +566,9 @@ export default function RegisterPage() {
                       {t('teamName')}
                     </FormLabel>
                     <FormControl>
-                      <Input {...field} className="bg-black/30 backdrop-blur-md border-white/10 text-white placeholder:text-white/20 focus:border-[#8B1538] focus:bg-black/50 transition-all duration-300 h-12" />
+                      <Input {...field} className="bg-black/30 backdrop-blur-md border-white/10 text-white placeholder:text-white/20 focus:bg-black/50 transition-all duration-300 h-12" style={{ '--tw-ring-color': 'transparent' } as React.CSSProperties} />
                     </FormControl>
-                    <FormDescription className="text-[#8B1538] text-xs font-semibold mt-1 ml-1 opacity-80">
+                    <FormDescription className="text-xs font-semibold mt-1 ml-1 opacity-80" style={{ color: tournament?.theme?.primaryColor || '#8B1538' }}>
                       (Musi być identyczna z nazwą drużyny w grze!)
                     </FormDescription>
                     <FormMessage />
@@ -450,7 +619,7 @@ export default function RegisterPage() {
                         </div>
                         <div className="flex-1">
                           <FormControl>
-                            <Input type="file" accept="image/*" onChange={handleLogoChange} className="bg-transparent border-white/10 file:bg-[#8B1538] file:text-white file:border-0 file:rounded-md file:px-4 file:py-1.5 file:mr-4 file:font-semibold hover:file:bg-[#A91D45] text-white/80 cursor-pointer h-10" />
+                            <Input type="file" accept="image/*" onChange={handleLogoChange} className="bg-transparent border-white/10 file:bg-[var(--reg-primary)] file:text-white file:border-0 file:rounded-md file:px-4 file:py-1.5 file:mr-4 file:font-semibold text-white/80 cursor-pointer h-10" />
                           </FormControl>
                           <FormDescription className="mt-2 text-white/40">
                             Maks 5MB. JPG, PNG, WEBP.
@@ -471,9 +640,9 @@ export default function RegisterPage() {
               transition={{ duration: 0.6, delay: 0.2 }}
             >
               <div className="mb-6 flex items-center gap-4">
-                <div className="h-0.5 w-12 bg-[#8B1538]/50" />
+                <div className="h-0.5 w-12" style={{ background: `${primaryColor}80` }} />
                 <h2 className="text-2xl font-logik-extended-bold text-white/90">{t('playerDetails')}</h2>
-                <div className="h-0.5 flex-1 bg-[#8B1538]/20" />
+                <div className="h-0.5 flex-1" style={{ background: `${primaryColor}33` }} />
               </div>
               <p className="text-white/50 mb-6 font-logik ml-1">{t('playerDetailsDesc')}</p>
 
@@ -487,14 +656,14 @@ export default function RegisterPage() {
                 {fields.map((field, index) => (
                   <div key={field.id} className="p-6 bg-black/30 backdrop-blur-md border border-white/5 rounded-xl hover:border-white/10 transition-all duration-300">
                     <h4 className="font-logik-extended-bold text-lg mb-4 text-white/80 flex items-center gap-2">
-                      <span className="text-[#8B1538]">#{index + 1}</span> Gracz
+                      <span style={{ color: primaryColor }}>#{index + 1}</span> Gracz
                     </h4>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <FormField name={`players.${index}.nickname`} control={form.control} render={({ field }) => (
                         <FormItem>
                           <FormLabel className="text-white/70">{t('nickname')}</FormLabel>
                           <FormControl>
-                            <Input {...field} className="bg-black/40 border-white/10 text-white focus:border-[#8B1538] transition-all" />
+                            <Input {...field} className="bg-black/40 border-white/10 text-white focus:border-[var(--reg-primary)] transition-all" />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -504,7 +673,7 @@ export default function RegisterPage() {
                           <FormLabel className="text-white/70">{t('role')}</FormLabel>
                           <Select onValueChange={field.onChange} defaultValue={field.value}>
                             <FormControl>
-                              <SelectTrigger className="bg-black/40 border-white/10 text-white focus:border-[#8B1538] transition-all">
+                              <SelectTrigger className="bg-black/40 border-white/10 text-white focus:border-[var(--reg-primary)] transition-all">
                                 <SelectValue placeholder={t('selectRole')} />
                               </SelectTrigger>
                             </FormControl>
@@ -523,16 +692,62 @@ export default function RegisterPage() {
                         <FormItem className="sm:col-span-2">
                           <FormLabel className="text-white/70">{t('steamProfile')}</FormLabel>
                           <FormControl>
-                            <Input {...field} className="bg-black/40 border-white/10 text-white focus:border-[#8B1538] transition-all" />
+                            <Input {...field} className="bg-black/40 border-white/10 text-white focus:border-[var(--reg-primary)] transition-all" />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
                       )} />
+
+                      {/* MMR fields — only for MMR-limited tournaments */}
+                      {isMmrLimited && (
+                        <>
+                          <FormField name={`players.${index}.mmr`} control={form.control} render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-white/70">MMR</FormLabel>
+                              <FormControl>
+                                <Input
+                                  {...field}
+                                  type="number"
+                                  min={0}
+                                  max={15000}
+                                  className="bg-black/40 border-white/10 text-white focus:border-[var(--reg-primary)] transition-all"
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )} />
+                          <FormField name={`players.${index}.profileScreenshot`} control={form.control} render={() => (
+                            <FormItem>
+                              <FormLabel className="text-white/70">Screenshot MMR</FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="file"
+                                  accept="image/*"
+                                  onChange={(e) => {
+                                    const file = e.target.files?.[0] || null;
+                                    form.setValue(`players.${index}.profileScreenshot` as `players.${number}.profileScreenshot`, file, { shouldValidate: true });
+                                  }}
+                                  className="bg-transparent border-white/10 file:bg-[var(--reg-primary)] file:text-white file:border-0 file:rounded-md file:px-3 file:py-1 file:mr-3 file:font-semibold text-white/80 cursor-pointer"
+                                />
+                              </FormControl>
+                              <FormDescription className="text-white/40 text-xs">
+                                Screenshot profilu z widocznym MMR (maks 5MB)
+                              </FormDescription>
+                              <FormMessage />
+                            </FormItem>
+                          )} />
+                        </>
+                      )}
                     </div>
                   </div>
                 ))}
               </div>
             </motion.div>
+
+            {/* MMR Summary (MMR tournaments only) */}
+            {isMmrLimited && (
+              <MmrSummary form={form} mmrCap={mmrCap} />
+            )}
 
             {/* Rules & Submit */}
             <motion.div
@@ -551,12 +766,12 @@ export default function RegisterPage() {
                         <Checkbox
                           checked={field.value}
                           onCheckedChange={field.onChange}
-                          className="border-white/20 data-[state=checked]:bg-[#8B1538] data-[state=checked]:border-[#8B1538]"
+                          className="border-white/20 data-[state=checked]:bg-[var(--reg-primary)] data-[state=checked]:border-[var(--reg-primary)]"
                         />
                       </FormControl>
                       <div className="space-y-1 leading-none">
                         <FormLabel className="text-white/90">
-                          Zgadzam się z <Link href={getTournamentPath('/rules')} target="_blank" rel="noopener noreferrer" className="text-[#8B1538] hover:text-[#A91D45] hover:underline font-bold transition-colors">regulaminem turnieju</Link>.
+                          Zgadzam się z <Link href={getTournamentPath('/rules')} target="_blank" rel="noopener noreferrer" className="hover:underline font-bold transition-colors" style={{ color: primaryColor }}>regulaminem turnieju</Link>.
                         </FormLabel>
                         <FormMessage />
                       </div>
@@ -566,7 +781,8 @@ export default function RegisterPage() {
                 <Button
                   type="submit"
                   size="lg"
-                  className="w-full h-14 bg-[#8B1538] hover:bg-[#A91D45] text-white font-logik-extended-bold text-lg shadow-[0_0_20px_rgba(139,21,56,0.2)] hover:shadow-[0_0_40px_rgba(139,21,56,0.5)] transition-all duration-300"
+                  className="w-full h-14 text-white font-logik-extended-bold text-lg transition-all duration-300"
+                  style={{ backgroundColor: primaryColor, boxShadow: `0 0 20px ${primaryColor}33` }}
                   disabled={isSubmitting || !isValid}
                 >
                   {isSubmitting ? (

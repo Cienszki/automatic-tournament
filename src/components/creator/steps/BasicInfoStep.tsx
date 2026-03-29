@@ -125,7 +125,6 @@ export function BasicInfoStep({ data, onChange, template }: BasicInfoStepProps) 
                 placeholder="pdl"
                 className="w-full px-4 py-2 rounded-lg bg-background border border-border focus:border-primary focus:outline-none transition-colors font-mono text-sm"
                 maxLength={50}
-                pattern="[a-z0-9-]+"
               />
               <p className="text-xs text-muted-foreground mt-1">
                 URL: dota2inhouse.pl/<span className="text-primary">{formData.slug || 'slug'}</span>

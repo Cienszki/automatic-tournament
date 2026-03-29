@@ -208,6 +208,7 @@ function NewTournamentContent() {
                 data={formData[TOURNAMENT_STEPS[currentStep].id]}
                 onChange={handleStepDataChange}
                 template={template}
+                allData={formData}
               />
             </motion.div>
           </AnimatePresence>

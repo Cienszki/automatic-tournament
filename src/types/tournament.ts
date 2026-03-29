@@ -69,6 +69,21 @@ export interface TournamentTheme {
   logoUrl: string;
   faviconUrl?: string;
   backgroundImageUrl?: string;
+  // Extended theming options
+  backgroundOverlayColor?: string; // Overlay color on top of background image (e.g., 'rgba(0,0,0,0.7)')
+  backgroundOverlayOpacity?: number; // 0-100 opacity for background image
+  backgroundBlur?: number; // px blur applied to background image
+  backgroundPosition?: string; // CSS background-position (e.g., 'center top')
+  backgroundSize?: string; // CSS background-size (e.g., 'cover', 'contain')
+  navbarStyle?: 'solid' | 'transparent' | 'blur'; // Navbar visual style
+  navbarColor?: string; // Custom navbar background color
+  cardOpacity?: number; // 0-100 opacity for card backgrounds
+  cardBlur?: number; // Backdrop blur for cards (glassmorphism)
+  cardBorderRadius?: string; // Border radius for cards (e.g., '0.75rem')
+  glowColor?: string; // Glow/accent highlight color for interactive elements
+  headingColor?: string; // Custom color for headings (defaults to textColor)
+  linkColor?: string; // Custom color for links (defaults to primaryColor)
+  themeStyle?: 'dark' | 'light' | 'auto'; // Overall dark/light mode
 }
 
 /**
@@ -137,12 +152,27 @@ export interface StandinConfig {
 }
 
 /**
+ * Group configuration for MMR-limited tournaments
+ * Groups are manually created/named and teams are manually assigned by admin
+ */
+export interface GroupConfig {
+  id: string;
+  name: string; // e.g. "Group A", "Group B"
+  teams: string[]; // Team IDs assigned to this group
+  teamsToUpperBracket: number; // How many teams advance to UB
+  teamsToLowerBracket: number; // How many teams advance to LB
+  wildcardSpots: number; // How many teams go to wildcard bracket
+}
+
+/**
  * Playoff configuration
  */
 export interface PlayoffConfig {
   enabled: boolean;
   format: 'single-elimination' | 'double-elimination';
   teamsCount: number;
+  upperBracketTeams?: number; // Teams starting in upper bracket (for double elimination)
+  lowerBracketTeams?: number; // Teams starting in lower bracket (for double elimination)
   wildcardSpots: number;
   thirdPlaceMatch: boolean;
   thirdPlaceFormat: MatchFormat;
@@ -213,9 +243,10 @@ export interface TournamentConfig {
   currentRound?: number; // Current round number for tracking progress
   promotionRelegationEnabled?: boolean;
   
-  // Group configuration (for MMR tournaments)
+  // Group stage configuration (for MMR tournaments)
   groupsCount?: number;
   teamsPerGroup?: number;
+  groupMatchFormat?: MatchFormat; // Match format for group stage (bo1, bo2, bo3...)
   
   // Feature configurations
   fantasy: FantasyConfig;
@@ -405,6 +436,7 @@ export const DEFAULT_MMR_TOURNAMENT_CONFIG: Partial<TournamentConfig> = {
   coachMode: 'disabled',
   defaultMatchFormat: 'bo2',
   schedulingMethod: 'captain-scheduled',
+  groupMatchFormat: 'bo2',
   fantasy: {
     enabled: true,
     type: 'round-based',

@@ -26,10 +26,9 @@ export async function createTournament(data: {
   template: string;
 }): Promise<string> {
   const { basicInfo, branding, structure, template } = data;
+  const isMmrLimited = structure.type === 'mmr-limited';
 
   // Build tournament configuration
-  // Using 'any' temporarily as this feature is still in development
-  // TODO: Align with TournamentConfig interface when creator is fully implemented
   const tournamentConfig: Record<string, any> = {
     slug: basicInfo.slug,
     name: basicInfo.name,
@@ -38,44 +37,48 @@ export async function createTournament(data: {
     organizerId: 'pd2ih', // TODO: Get from current user
     
     type: structure.type,
-    status: 'draft', // Start as draft
-    visibility: 'inactive', // Hidden until organizer publishes
+    status: 'draft',
+    visibility: 'inactive',
     
-    startDate: basicInfo.tournamentStart,
-    endDate: basicInfo.tournamentEnd || undefined,
+    startDate: basicInfo.tournamentStart || null,
+    endDate: basicInfo.tournamentEnd || null,
     
-    leagueId: undefined, // Can be set later
+    leagueId: null,
     
     registration: {
       enabled: true,
       startDate: basicInfo.registrationStart,
       endDate: basicInfo.registrationEnd,
       requireApproval: false,
-      maxTeams: structure.teamsCount,
+      maxTeams: structure.maxTeams ?? null,
     },
     
-    teams: {
-      minPlayers: 5,
-      maxPlayers: 5,
-      allowSubstitutes: true,
-      maxSubstitutes: 2,
-      requireCoach: false,
-      mmrCap: structure.mmrCap || null,
-      mmrVerification: structure.type === 'mmr-limited',
-    },
+    // Team configuration
+    teamSize: 5,
+    mmrCap: isMmrLimited ? (structure.mmrCap || 24000) : null,
+    mmrVerificationRequired: isMmrLimited,
+    coachMode: isMmrLimited ? 'disabled' : 'per-game',
     
-    matches: {
-      defaultFormat: 'bo3',
-      schedulingMethod: structure.type === 'mmr-limited' ? 'captain-scheduled' : 'admin-scheduled',
-      lateArrivalGracePeriod: 15,
-      forfeitTime: 30,
-    },
+    // Match configuration
+    defaultMatchFormat: isMmrLimited ? (structure.groupMatchFormat || 'bo2') : 'bo2',
+    schedulingMethod: isMmrLimited ? 'captain-scheduled' : 'admin-scheduled',
+    
+    // Group stage configuration (MMR tournaments)
+    ...(isMmrLimited ? {
+      groupMatchFormat: structure.groupMatchFormat || 'bo2',
+    } : {}),
+
+    // Division configuration (league tournaments)
+    ...(!isMmrLimited ? {
+      promotionRelegationEnabled: true,
+      roundsPerSeason: 2,
+    } : {}),
     
     fantasy: {
       enabled: structure.enableFantasy,
-      type: structure.type === 'mmr-limited' ? 'round-based' : 'season-long',
+      type: isMmrLimited ? 'round-based' : 'season-long',
       rosterSize: 5,
-      budget: structure.type === 'mmr-limited' ? structure.mmrCap : 100,
+      budget: isMmrLimited ? (structure.mmrCap || 24000) : 100,
       lockBeforeMatchday: true,
       scoring: {
         killPoints: 3,
@@ -98,44 +101,62 @@ export async function createTournament(data: {
       standingsPredictions: true,
       playoffBracket: true,
       mvpPredictions: false,
-      lockTime: 'before-season',
+      lockTime: isMmrLimited ? 'before-round' : 'before-season',
     },
     
     standins: {
       enabled: structure.enableStandins,
-      requireRegistration: false,
-      requireOpponentApproval: structure.type === 'league',
+      requireRegistration: isMmrLimited,
+      requireOpponentApproval: !isMmrLimited,
       adminCanOverride: true,
       maxPerMatch: 1,
       maxPerRound: 1,
-      mmrRestrictions: structure.type === 'mmr-limited',
+      mmrRestrictions: isMmrLimited,
     },
     
     playoffs: {
       enabled: true,
-      format: 'double-elimination',
-      teamsCount: 4,
+      format: structure.playoffFormat || 'double-elimination',
+      teamsCount: structure.teamsCount || 8,
+      upperBracketTeams: null, // Set by admin after group stage
+      lowerBracketTeams: null,
       wildcardSpots: 0,
       thirdPlaceMatch: false,
       thirdPlaceFormat: 'bo3',
-      semifinalFormat: 'bo3',
-      finalFormat: 'bo3',
-      grandFinalFormat: 'bo5',
+      semifinalFormat: structure.playoffSemifinalFormat || 'bo3',
+      finalFormat: structure.playoffFinalFormat || 'bo3',
+      grandFinalFormat: structure.playoffGrandFinalFormat || 'bo5',
     },
     
     theme: {
       primaryColor: branding.primaryColor,
       secondaryColor: branding.secondaryColor,
-      accentColor: branding.primaryColor, // Use primary as accent for now
-      backgroundColor: 'hsl(240 17% 6%)',
-      backgroundGradient: `linear-gradient(135deg, hsl(240 17% 6%) 0%, hsl(240 15% 10%) 100%)`,
-      cardColor: 'hsl(240 15% 10%)',
-      textColor: 'hsl(0 0% 100%)',
+      accentColor: branding.accentColor || branding.primaryColor,
+      backgroundColor: branding.backgroundColor || 'hsl(240 17% 6%)',
+      backgroundGradient: `linear-gradient(135deg, ${branding.backgroundColor || 'hsl(240 17% 6%)'} 0%, hsl(240 15% 10%) 100%)`,
+      cardColor: branding.cardColor || 'hsl(240 15% 10%)',
+      textColor: branding.textColor || 'hsl(0 0% 100%)',
       mutedTextColor: 'hsl(240 8% 66%)',
-      borderColor: 'hsl(240 16% 20%)',
+      borderColor: branding.borderColor || 'hsl(240 16% 20%)',
       headerFont: `var(--font-${branding.headerFont})`,
       bodyFont: `var(--font-${branding.bodyFont})`,
       logoUrl: branding.logoUrl || null,
+      faviconUrl: branding.faviconUrl || null,
+      backgroundImageUrl: branding.backgroundImageUrl || null,
+      // Extended theming
+      backgroundOverlayColor: branding.backgroundOverlayColor || null,
+      backgroundOverlayOpacity: branding.backgroundOverlayOpacity ?? 90,
+      backgroundBlur: branding.backgroundBlur ?? 0,
+      backgroundPosition: branding.backgroundPosition || 'center center',
+      backgroundSize: branding.backgroundSize || 'cover',
+      navbarStyle: branding.navbarStyle || 'blur',
+      navbarColor: branding.navbarColor || null,
+      cardOpacity: branding.cardOpacity ?? 100,
+      cardBlur: branding.cardBlur ?? 0,
+      cardBorderRadius: branding.cardBorderRadius || '0.75rem',
+      glowColor: branding.glowColor || null,
+      headingColor: branding.headingColor || null,
+      themeStyle: branding.themeStyle || 'dark',
     },
     
     createdAt: serverTimestamp() as any,

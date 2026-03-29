@@ -58,6 +58,13 @@ export function tournamentRefs(tournamentId: string) {
     division: (divisionId: string): DocumentReference =>
       doc(db, 'tournaments', tournamentId, 'divisions', divisionId),
 
+    // ── Groups (MMR tournaments) ───────────────────────
+    /** tournaments/{id}/groups */
+    groups: (): CollectionReference => collection(db, 'tournaments', tournamentId, 'groups'),
+    /** tournaments/{id}/groups/{groupId} */
+    group: (groupId: string): DocumentReference =>
+      doc(db, 'tournaments', tournamentId, 'groups', groupId),
+
     // ── Announcements ──────────────────────────────────
     /** tournaments/{id}/announcements */
     announcements: (): CollectionReference =>

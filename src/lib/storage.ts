@@ -27,3 +27,39 @@ export const uploadStandinScreenshot = async (file: File, standinId: string) => 
     const downloadURL = await getDownloadURL(storageRef);
     return downloadURL;
 };
+
+export const uploadTournamentLogo = async (file: File, tournamentSlug: string) => {
+    const fileExtension = file.name.split('.').pop();
+    const fileName = `${tournamentSlug}-logo-${uuidv4()}.${fileExtension}`;
+    const storageRef = ref(storage, `tournament-assets/${tournamentSlug}/${fileName}`);
+    await uploadBytes(storageRef, file);
+    return getDownloadURL(storageRef);
+};
+
+export const uploadTournamentBackground = async (file: File, tournamentSlug: string) => {
+    const fileExtension = file.name.split('.').pop();
+    const fileName = `${tournamentSlug}-bg-${uuidv4()}.${fileExtension}`;
+    const storageRef = ref(storage, `tournament-assets/${tournamentSlug}/${fileName}`);
+    await uploadBytes(storageRef, file);
+    return getDownloadURL(storageRef);
+};
+
+export const uploadTournamentFavicon = async (file: File, tournamentSlug: string) => {
+    const fileExtension = file.name.split('.').pop();
+    const fileName = `${tournamentSlug}-favicon-${uuidv4()}.${fileExtension}`;
+    const storageRef = ref(storage, `tournament-assets/${tournamentSlug}/${fileName}`);
+    await uploadBytes(storageRef, file);
+    return getDownloadURL(storageRef);
+};
+
+export const uploadTournamentFont = async (file: File, tournamentSlug: string) => {
+    const fileExtension = file.name.split('.').pop()?.toLowerCase();
+    if (!['ttf', 'otf', 'woff', 'woff2'].includes(fileExtension || '')) {
+        throw new Error('Only TTF, OTF, WOFF, and WOFF2 fonts are supported');
+    }
+    const fontName = file.name.replace(/\.[^.]+$/, '').replace(/\s+/g, '-').toLowerCase();
+    const fileName = `${fontName}-${uuidv4()}.${fileExtension}`;
+    const storageRef = ref(storage, `tournament-assets/${tournamentSlug}/fonts/${fileName}`);
+    await uploadBytes(storageRef, file, { contentType: `font/${fileExtension}` });
+    return getDownloadURL(storageRef);
+};

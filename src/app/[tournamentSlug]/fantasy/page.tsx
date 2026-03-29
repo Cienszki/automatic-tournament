@@ -47,8 +47,25 @@ export default function FantasyPage() {
           }
         } else if (tournament?.id) {
           // New tournament structure - load from /tournaments/{id}
-          const { collection, getDocs } = await import('firebase/firestore');
+          const { collection, getDocs, doc, getDoc } = await import('firebase/firestore');
           const { db } = await import('@/lib/firebase');
+          
+          // Determine current fantasy round
+          let currentRoundId = 'current';
+          try {
+            const roundsRef = collection(db, 'tournaments', tournament.id, 'fantasyRounds');
+            const roundsSnap = await getDocs(roundsRef);
+            const currentRound = roundsSnap.docs.find(d => d.data().isCurrent);
+            if (currentRound) {
+              currentRoundId = currentRound.id;
+              const lockDeadline = currentRound.data().lockDeadline;
+              if (lockDeadline && new Date(lockDeadline) < new Date()) {
+                setIsLocked(true);
+              }
+            }
+          } catch {
+            // fantasyRounds collection may not exist yet
+          }
           
           // Load all teams with their players
           const teamsRef = collection(db, 'tournaments', tournament.id, 'teams');
@@ -78,10 +95,9 @@ export default function FantasyPage() {
           }
           
           setPlayers(allPlayers);
-          setIsLocked(false);
           
           if (user) {
-            const lineup = await getUserFantasyLineup(user.uid, 'current');
+            const lineup = await getUserFantasyLineup(user.uid, currentRoundId, tournament.id);
             setUserLineup(lineup);
           }
         }

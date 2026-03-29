@@ -29,9 +29,10 @@ export interface DisplayPlayer {
   avatarfull: string;
   steamProfileUrl: string;
   mmr?: number;
+  profileScreenshotUrl?: string;
 }
 
-type RosterMap = Record<string, { nickname: string; role: string; steamId32: string; avatar?: string }>;
+type RosterMap = Record<string, { nickname: string; role: string; steamId32: string; avatar?: string; mmr?: number; profileScreenshotUrl?: string }>;
 
 /**
  * Build DisplayPlayer array directly from a team doc's data object.
@@ -52,6 +53,8 @@ export function buildPlayersFromRosterMap(teamDocData: Record<string, unknown>):
     avatarmedium: '',
     avatarfull: '',
     steamProfileUrl: '',
+    mmr: info.mmr,
+    profileScreenshotUrl: info.profileScreenshotUrl,
   }));
 }
 
@@ -95,6 +98,7 @@ export async function loadTeamPlayersForDisplay(
       avatarfull: (data.avatarfull as string) || '',
       steamProfileUrl: (data.steamProfileUrl as string) || '',
       mmr: (data.mmr as number) || 0,
+      profileScreenshotUrl: (data.profileScreenshotUrl as string) || undefined,
     };
   });
 }

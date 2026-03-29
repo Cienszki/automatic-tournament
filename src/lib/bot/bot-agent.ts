@@ -734,7 +734,8 @@ async function handlePlayerJoinedEnforcement(
   const botConfig = await getTournamentBotConfig(session.tournamentId);
   if (!botConfig?.enforcement?.autoKickUnauthorized) return;
 
-  const authorized = getAllAuthorizedSteamIds(session);
+  const whitelist = botConfig.whitelist ?? [];
+  const authorized = getAllAuthorizedSteamIds(session, whitelist);
 
   if (!authorized.has(event.steamId32)) {
     // Unauthorized player — kick immediately
@@ -766,6 +767,7 @@ async function handleLobbyStateEnforcement(
 
   const botConfig = await getTournamentBotConfig(session.tournamentId);
   const enforcementConfig = botConfig?.enforcement ?? DEFAULT_ENFORCEMENT_CONFIG;
+  const whitelist = botConfig?.whitelist ?? [];
 
   // Convert event players to LobbySlotInfo format
   const players = event.players.map((p) => ({
@@ -774,7 +776,7 @@ async function handleLobbyStateEnforcement(
     teamSide: p.teamSide,
   }));
 
-  const actions = evaluateEnforcement(session, players, enforcementConfig);
+  const actions = evaluateEnforcement(session, players, enforcementConfig, whitelist);
 
   // Execute kicks
   for (const kick of actions.kickPlayers) {

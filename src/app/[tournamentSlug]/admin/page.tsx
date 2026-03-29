@@ -14,6 +14,7 @@ import {
   Shield,
   LogIn,
   Layers,
+  LayoutGrid,
   CalendarDays,
   Users,
   ArrowLeftRight,
@@ -31,6 +32,7 @@ import {
 import { GeneralTab } from './tabs/GeneralTab';
 import { TournamentStructureTab } from './tabs/TournamentStructureTab';
 import { DivisionsTab } from './tabs/DivisionsTab';
+import { GroupsTab } from './tabs/GroupsTab';
 import { SchedulingTab } from './tabs/SchedulingTab';
 import { TeamsTab } from './tabs/TeamsTab';
 import { TransfersTab } from './tabs/TransfersTab';
@@ -134,13 +136,14 @@ export default function AdminPage() {
     { id: 'general', label: 'Ogólne', icon: Settings },
     { id: 'structure', label: 'Struktura', icon: Building2 },
     { id: 'divisions', label: 'Dywizje', icon: Layers, showFor: 'league' },
+    { id: 'groups', label: 'Grupy', icon: LayoutGrid, showFor: 'mmr-limited' },
     { id: 'scheduling', label: 'Terminarz', icon: CalendarDays },
     { id: 'teams', label: 'Drużyny', icon: Users },
     { id: 'transfers', label: 'Transfery', icon: ArrowLeftRight, showFor: 'league' },
     { id: 'standins', label: 'Standiny', icon: Shield },
     { id: 'matches', label: 'Mecze', icon: Gamepad2 },
     { id: 'fantasy', label: 'Fantasy', icon: Crown },
-    { id: 'playoffs', label: 'Playoffs', icon: Trophy, showFor: 'league' },
+    { id: 'playoffs', label: 'Playoffs', icon: Trophy },
     { id: 'news', label: 'Aktualności', icon: Newspaper },
     { id: 'stats', label: 'Statystyki', icon: BarChart3 },
     { id: 'rules', label: 'Regulamin', icon: ScrollText },
@@ -198,6 +201,10 @@ export default function AdminPage() {
           
           <TabsContent value="divisions" className="mt-0">
             <DivisionsTab />
+          </TabsContent>
+
+          <TabsContent value="groups" className="mt-0">
+            <GroupsTab />
           </TabsContent>
           
           <TabsContent value="scheduling" className="mt-0">

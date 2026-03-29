@@ -20,11 +20,14 @@ import {
   Search,
   Trash2,
   Eye,
+  Upload,
+  Loader2,
 } from 'lucide-react';
 import { 
   getAllGoogleFonts,
   type GoogleFont 
 } from '@/lib/google-fonts';
+import { uploadTournamentFont } from '@/lib/storage';
 
 // Local fonts from public/fonts directory
 const LOCAL_FONTS: CustomFont[] = [
@@ -164,19 +167,56 @@ interface FontManagementProps {
   onAddFont: (font: CustomFont) => void;
   onRemoveFont: (fontId: string) => void;
   primaryColor: string;
+  tournamentSlug?: string;
 }
 
 export function FontManagement({ 
   customFonts, 
   onAddFont, 
   onRemoveFont,
-  primaryColor 
+  primaryColor,
+  tournamentSlug,
 }: FontManagementProps) {
   const [showBrowser, setShowBrowser] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [previewFont, setPreviewFont] = useState<CustomFont | null>(null);
   const [loadedFonts, setLoadedFonts] = useState<Set<string>>(new Set());
   const attemptedLoads = useRef<Set<string>>(new Set());
+  const [uploadingFont, setUploadingFont] = useState(false);
+  const [uploadFontError, setUploadFontError] = useState<string | null>(null);
+  const fontUploadRef = useRef<HTMLInputElement>(null);
+
+  const handleFontUpload = async (file: File) => {
+    if (!tournamentSlug) {
+      setUploadFontError('Brak sluga turnieju - nie można przesłać czcionki');
+      return;
+    }
+    setUploadingFont(true);
+    setUploadFontError(null);
+    try {
+      const url = await uploadTournamentFont(file, tournamentSlug);
+      const fontFamily = file.name.replace(/\.[^.]+$/, '').replace(/[-_]/g, ' ');
+      const id = `uploaded-${Date.now()}`;
+      // Inject @font-face so the font previews correctly
+      const style = document.createElement('style');
+      style.textContent = `@font-face { font-family: '${fontFamily}'; src: url('${url}'); }`;
+      document.head.appendChild(style);
+      onAddFont({
+        id,
+        family: fontFamily,
+        type: 'local',
+        variants: ['400'],
+        category: 'custom',
+        path: url,
+      });
+      setLoadedFonts(prev => new Set([...prev, fontFamily]));
+    } catch (err) {
+      setUploadFontError(err instanceof Error ? err.message : 'Błąd podczas przesyłania czcionki');
+    } finally {
+      setUploadingFont(false);
+      if (fontUploadRef.current) fontUploadRef.current.value = '';
+    }
+  };
 
   // Helper function to load a Google Font
   const loadGoogleFont = useCallback((fontFamily: string) => {
@@ -333,13 +373,40 @@ export function FontManagement({
               Dodaj niestandardowe czcionki lokalne lub z Google Fonts
             </CardDescription>
           </div>
-          <Dialog open={showBrowser} onOpenChange={setShowBrowser}>
-            <DialogTrigger asChild>
-              <Button className="font-logik" style={{ backgroundColor: primaryColor }}>
-                <Plus className="h-4 w-4 mr-2" />
-                Dodaj czcionkę
+          <div className="flex gap-2">
+            {/* Hidden file input for font upload */}
+            <input
+              ref={fontUploadRef}
+              type="file"
+              accept=".ttf,.otf,.woff,.woff2"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) handleFontUpload(file);
+              }}
+            />
+            {tournamentSlug && (
+              <Button
+                variant="outline"
+                className="font-logik"
+                disabled={uploadingFont}
+                onClick={() => fontUploadRef.current?.click()}
+              >
+                {uploadingFont ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Upload className="h-4 w-4 mr-2" />
+                )}
+                Prześlij TTF
               </Button>
-            </DialogTrigger>
+            )}
+            <Dialog open={showBrowser} onOpenChange={setShowBrowser}>
+              <DialogTrigger asChild>
+                <Button className="font-logik" style={{ backgroundColor: primaryColor }}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Dodaj czcionkę
+                </Button>
+              </DialogTrigger>
             <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle className="font-logik-extended-bold">
@@ -495,10 +562,16 @@ export function FontManagement({
               </div>
             </DialogContent>
           </Dialog>
+          </div>
         </div>
       </CardHeader>
 
       <CardContent className="space-y-4">
+        {uploadFontError && (
+          <div className="text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-lg px-3 py-2 font-logik">
+            {uploadFontError}
+          </div>
+        )}
         {customFonts.length === 0 ? (
           <div className="text-center py-8 px-4 border border-dashed border-border rounded-xl">
             <Type className="h-12 w-12 mx-auto text-muted-foreground mb-3" />

@@ -2,6 +2,7 @@
 export { GeneralTab } from './GeneralTab';
 export { TournamentStructureTab } from './TournamentStructureTab';
 export { DivisionsTab } from './DivisionsTab';
+export { GroupsTab } from './GroupsTab';
 export { SchedulingTab } from './SchedulingTab';
 export { TeamsTab } from './TeamsTab';
 export { TransfersTab } from './TransfersTab';

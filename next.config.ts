@@ -71,6 +71,9 @@ const nextConfig: NextConfig = {
     },
     async redirects() {
         return [
+            // Creator shorthand
+            { source: '/create', destination: '/creator', permanent: false },
+            { source: '/create/new', destination: '/creator/new', permanent: false },
             // Legacy admin redirect
             { source: '/admin', destination: '/letnia/admin', permanent: true },
             // Legacy URL redirects to Letnia tournament

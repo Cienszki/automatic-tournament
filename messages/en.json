@@ -220,6 +220,84 @@
       "playoffsTeamsLabel": "{count} teams"
     }
   },
+  "mmrHome": {
+    "common": {
+      "viewAll": "View all",
+      "vs": "vs"
+    },
+    "hero": {
+      "title": "Dota 2 Tournament",
+      "subtitle": "Group Stage → Playoffs. {mmrCap}k MMR cap levels the playing field. Show your skills!",
+      "ctaRegister": "Register Team",
+      "ctaMyTeam": "My Team",
+      "registrationOpen": "Registration open",
+      "statsGroups": "Groups",
+      "statsTeamsPerGroup": "Teams/group",
+      "statsMmrCap": "MMR Cap",
+      "statsPlayoffs": "Playoffs"
+    },
+    "nextMatch": {
+      "title": "Featured Match",
+      "watchStream": "Watch stream",
+      "noMatches": "No scheduled matches"
+    },
+    "sections": {
+      "groups": "Group Stage",
+      "announcements": "Announcements",
+      "noAnnouncements": "No new announcements",
+      "fantasy": "Fantasy",
+      "fantasyRoundBased": "Pick players before each round!",
+      "fantasySeasonLong": "Build your dream roster!",
+      "playFantasy": "Play Fantasy",
+      "pickem": "Pick'em",
+      "pickemDescription": "Predict match and playoff results!",
+      "pickNow": "Predict now"
+    },
+    "recentResults": {
+      "title": "Recent results",
+      "empty": "No results to display"
+    },
+    "upcoming": {
+      "title": "Upcoming matches",
+      "empty": "No upcoming matches"
+    },
+    "format": {
+      "title": "Tournament format",
+      "groups": "Groups",
+      "teamsPerGroup": "Teams/group",
+      "playoffsTeams": "To playoffs",
+      "playoffsFormat": "Format",
+      "doubleElimination": "Double Elimination",
+      "singleElimination": "Single Elimination",
+      "note": "Top teams from each group advance to playoffs"
+    },
+    "social": {
+      "title": "Community",
+      "discord": "Join Discord",
+      "twitch": "Watch on Twitch",
+      "note": "Announcements and schedules appear on Discord."
+    },
+    "quickLinks": {
+      "groups": "Groups",
+      "groupsDesc": "Group tables and upcoming matches",
+      "playoffs": "Playoffs",
+      "playoffsDesc": "Elimination bracket",
+      "teams": "Teams",
+      "teamsDesc": "All registered teams",
+      "rules": "Rules",
+      "rulesDesc": "Read the rulebook",
+      "fantasy": "Fantasy",
+      "fantasyDesc": "Pick players before each round!",
+      "pickem": "Pick'em",
+      "pickemDesc": "Predict match results!"
+    },
+    "mock": {
+      "groupStage": "Group Stage",
+      "groupsLabel": "{count} groups",
+      "teamsPerGroupLabel": "{count} teams",
+      "playoffsTeamsLabel": "{count} teams"
+    }
+  },
   "tournament": {
     "types": {
       "mmrLimited": "MMR Limited Tournament",
@@ -814,6 +892,8 @@
     "lanFinalsBracket": "LAN Finals Bracket",
     "semifinal1": "Semifinal 1",
     "semifinal2": "Semifinal 2",
+    "semifinal": "Semifinal",
+    "quarterfinal": "Quarterfinal",
     "grandFinal": "Grand Final",
     "tbd": "TBD"
   },

@@ -1,312 +1,311 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTournament } from '@/context/TournamentContext';
 import { Card, CardHeader, CardContent, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
-import { cn } from '@/lib/utils';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { 
   Trophy,
   Target,
-  Save,
-  RotateCcw,
   RefreshCw,
   CheckCircle2,
   Clock,
   AlertTriangle,
   Loader2,
   Sparkles,
+  Plus,
+  Trash2,
+  Star,
 } from 'lucide-react';
+import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, serverTimestamp } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { useToast } from '@/hooks/use-toast';
+
+interface FantasyRound {
+  id: string;
+  name: string;
+  lockDeadline: string;
+  isCurrent: boolean;
+  createdAt?: string;
+}
 
 /**
- * Fantasy & Pick'em Tab - Refresh/recalculate fantasy scores
+ * Fantasy & Pick'em Tab - Round management and recalculation
  */
 export function FantasyPickemTab() {
   const { tournament, theme } = useTournament();
+  const { toast } = useToast();
   
-  const [isRecalculatingFantasy, setIsRecalculatingFantasy] = useState(false);
-  const [isRecalculatingPickem, setIsRecalculatingPickem] = useState(false);
-  const [fantasyProgress, setFantasyProgress] = useState(0);
-  const [pickemProgress, setPickemProgress] = useState(0);
-  const [lastFantasyUpdate, setLastFantasyUpdate] = useState('2025-02-24 15:30');
-  const [lastPickemUpdate, setLastPickemUpdate] = useState('2025-02-24 15:30');
+  const [rounds, setRounds] = useState<FantasyRound[]>([]);
+  const [loadingRounds, setLoadingRounds] = useState(true);
+  const [newRoundName, setNewRoundName] = useState('');
+  const [newRoundDeadline, setNewRoundDeadline] = useState('');
+  const [isSavingRound, setIsSavingRound] = useState(false);
+  const [deletingRoundId, setDeletingRoundId] = useState<string | null>(null);
 
-  const handleRecalculateFantasy = async () => {
-    setIsRecalculatingFantasy(true);
-    setFantasyProgress(0);
-    
-    // Simulate progress
-    for (let i = 0; i <= 100; i += 10) {
-      await new Promise(resolve => setTimeout(resolve, 300));
-      setFantasyProgress(i);
+  // Load fantasy rounds
+  useEffect(() => {
+    const loadRounds = async () => {
+      if (!tournament?.id) return;
+      try {
+        const roundsRef = collection(db, 'tournaments', tournament.id, 'fantasyRounds');
+        const snap = await getDocs(roundsRef);
+        const loaded = snap.docs.map(d => ({
+          id: d.id,
+          ...d.data(),
+        })) as FantasyRound[];
+        loaded.sort((a, b) => (a.createdAt || '').localeCompare(b.createdAt || ''));
+        setRounds(loaded);
+      } catch {
+        // Collection may not exist
+        setRounds([]);
+      } finally {
+        setLoadingRounds(false);
+      }
+    };
+    loadRounds();
+  }, [tournament?.id]);
+
+  const handleCreateRound = async () => {
+    if (!tournament?.id || !newRoundName.trim()) return;
+    setIsSavingRound(true);
+    try {
+      const roundsRef = collection(db, 'tournaments', tournament.id, 'fantasyRounds');
+      const isFirstRound = rounds.length === 0;
+      const docRef = await addDoc(roundsRef, {
+        name: newRoundName.trim(),
+        lockDeadline: newRoundDeadline || null,
+        isCurrent: isFirstRound,
+        createdAt: new Date().toISOString(),
+      });
+      setRounds(prev => [...prev, {
+        id: docRef.id,
+        name: newRoundName.trim(),
+        lockDeadline: newRoundDeadline || '',
+        isCurrent: isFirstRound,
+        createdAt: new Date().toISOString(),
+      }]);
+      setNewRoundName('');
+      setNewRoundDeadline('');
+      toast({ title: 'Runda utworzona', description: `Runda "${newRoundName.trim()}" została dodana.` });
+    } catch (error) {
+      console.error('Error creating round:', error);
+      toast({ title: 'Błąd', description: 'Nie udało się utworzyć rundy.', variant: 'destructive' });
+    } finally {
+      setIsSavingRound(false);
     }
-    
-    setIsRecalculatingFantasy(false);
-    setLastFantasyUpdate(new Date().toLocaleString('pl-PL'));
   };
 
-  const handleRecalculatePickem = async () => {
-    setIsRecalculatingPickem(true);
-    setPickemProgress(0);
-    
-    // Simulate progress
-    for (let i = 0; i <= 100; i += 10) {
-      await new Promise(resolve => setTimeout(resolve, 200));
-      setPickemProgress(i);
+  const handleSetCurrent = async (roundId: string) => {
+    if (!tournament?.id) return;
+    try {
+      // Unset all, then set the targeted one
+      for (const round of rounds) {
+        if (round.isCurrent) {
+          await updateDoc(doc(db, 'tournaments', tournament.id, 'fantasyRounds', round.id), { isCurrent: false });
+        }
+      }
+      await updateDoc(doc(db, 'tournaments', tournament.id, 'fantasyRounds', roundId), { isCurrent: true });
+      setRounds(prev => prev.map(r => ({ ...r, isCurrent: r.id === roundId })));
+      toast({ title: 'Runda aktywna', description: 'Zmieniono aktywną rundę fantasy.' });
+    } catch (error) {
+      console.error('Error setting current round:', error);
+      toast({ title: 'Błąd', description: 'Nie udało się zmienić aktywnej rundy.', variant: 'destructive' });
     }
-    
-    setIsRecalculatingPickem(false);
-    setLastPickemUpdate(new Date().toLocaleString('pl-PL'));
   };
+
+  const handleDeleteRound = async (roundId: string) => {
+    if (!tournament?.id) return;
+    setDeletingRoundId(roundId);
+    try {
+      await deleteDoc(doc(db, 'tournaments', tournament.id, 'fantasyRounds', roundId));
+      setRounds(prev => prev.filter(r => r.id !== roundId));
+      toast({ title: 'Runda usunięta' });
+    } catch (error) {
+      console.error('Error deleting round:', error);
+      toast({ title: 'Błąd', description: 'Nie udało się usunąć rundy.', variant: 'destructive' });
+    } finally {
+      setDeletingRoundId(null);
+    }
+  };
+
+  const fantasyEnabled = tournament?.fantasy?.enabled;
+  const pickemEnabled = tournament?.pickem?.enabled;
 
   return (
     <div className="space-y-6">
       {/* Page Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-logik-extended-bold">Fantasy & Pick'em</h2>
-          <p className="text-muted-foreground font-logik">
-            Zarządzanie punktacją fantasy i predykcjami
-          </p>
-        </div>
+      <div>
+        <h2 className="text-2xl font-bold">Fantasy & Pick'em</h2>
+        <p className="text-muted-foreground">
+          Zarządzanie rundami fantasy i predykcjami
+        </p>
       </div>
 
-      {/* Quick Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card className="border-0 shadow-lg bg-card/50 backdrop-blur-sm">
-          <CardContent className="py-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg" style={{ backgroundColor: `${theme.primaryColor}20` }}>
-                <Trophy className="h-5 w-5" style={{ color: theme.primaryColor }} />
-              </div>
-              <div>
-                <p className="text-2xl font-logik-extended-bold">128</p>
-                <p className="text-sm text-muted-foreground font-logik">Graczy fantasy</p>
+      {/* Fantasy Rounds Management */}
+      {fantasyEnabled && (
+        <Card style={{ backgroundColor: theme.cardColor, borderColor: theme.borderColor }}>
+          <CardHeader className="pb-4">
+            <CardTitle className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5" style={{ color: theme.primaryColor }} />
+              Rundy Fantasy
+            </CardTitle>
+            <CardDescription>
+              Zarządzaj rundami fantasy. Gracze mogą ustawiać skład do momentu deadline'u aktywnej rundy.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Create new round */}
+            <div className="p-4 rounded-xl border border-border space-y-4">
+              <p className="font-semibold text-sm">Nowa runda</p>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-1">
+                  <Label htmlFor="roundName">Nazwa rundy</Label>
+                  <Input
+                    id="roundName"
+                    value={newRoundName}
+                    onChange={e => setNewRoundName(e.target.value)}
+                    placeholder="np. Faza grupowa kolejka 1"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="roundDeadline">Deadline (opcjonalnie)</Label>
+                  <Input
+                    id="roundDeadline"
+                    type="datetime-local"
+                    value={newRoundDeadline}
+                    onChange={e => setNewRoundDeadline(e.target.value)}
+                  />
+                </div>
+                <div className="flex items-end">
+                  <Button
+                    onClick={handleCreateRound}
+                    disabled={isSavingRound || !newRoundName.trim()}
+                    style={{ backgroundColor: theme.primaryColor }}
+                  >
+                    {isSavingRound ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <Plus className="h-4 w-4 mr-2" />
+                    )}
+                    Dodaj rundę
+                  </Button>
+                </div>
               </div>
             </div>
-          </CardContent>
-        </Card>
-        <Card className="border-0 shadow-lg bg-card/50 backdrop-blur-sm">
-          <CardContent className="py-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-blue-500/20">
-                <Target className="h-5 w-5 text-blue-500" />
-              </div>
-              <div>
-                <p className="text-2xl font-logik-extended-bold">256</p>
-                <p className="text-sm text-muted-foreground font-logik">Predykcji pick'em</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="border-0 shadow-lg bg-card/50 backdrop-blur-sm">
-          <CardContent className="py-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-green-500/20">
-                <CheckCircle2 className="h-5 w-5 text-green-500" />
-              </div>
-              <div>
-                <p className="text-2xl font-logik-extended-bold">42</p>
-                <p className="text-sm text-muted-foreground font-logik">Mecze rozliczone</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="border-0 shadow-lg bg-card/50 backdrop-blur-sm">
-          <CardContent className="py-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-amber-500/20">
-                <Clock className="h-5 w-5 text-amber-500" />
-              </div>
-              <div>
-                <p className="text-2xl font-logik-extended-bold">8</p>
-                <p className="text-sm text-muted-foreground font-logik">Oczekujących</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
 
-      {/* Fantasy Recalculation */}
-      <Card className="border-0 shadow-lg bg-card/50 backdrop-blur-sm">
+            {/* Existing rounds */}
+            {loadingRounds ? (
+              <div className="text-center py-6 text-muted-foreground">
+                <Loader2 className="h-5 w-5 animate-spin mx-auto mb-2" />
+                Ładowanie rund...
+              </div>
+            ) : rounds.length === 0 ? (
+              <div className="text-center py-6 text-muted-foreground">
+                <Clock className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                <p>Brak rund fantasy. Utwórz pierwszą rundę powyżej.</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {rounds.map(round => {
+                  const isLocked = round.lockDeadline && new Date(round.lockDeadline) < new Date();
+                  return (
+                    <div
+                      key={round.id}
+                      className="flex items-center justify-between p-4 rounded-xl border"
+                      style={{
+                        borderColor: round.isCurrent ? theme.primaryColor : 'var(--border)',
+                        backgroundColor: round.isCurrent ? `${theme.primaryColor}08` : undefined,
+                      }}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <p className="font-semibold">{round.name}</p>
+                            {round.isCurrent && (
+                              <Badge style={{ backgroundColor: theme.primaryColor }}>
+                                <Star className="h-3 w-3 mr-1" />
+                                Aktywna
+                              </Badge>
+                            )}
+                            {isLocked && (
+                              <Badge variant="outline" className="text-amber-500 border-amber-500/30">
+                                <Clock className="h-3 w-3 mr-1" />
+                                Zablokowana
+                              </Badge>
+                            )}
+                          </div>
+                          {round.lockDeadline && (
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Deadline: {new Date(round.lockDeadline).toLocaleString('pl-PL')}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {!round.isCurrent && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleSetCurrent(round.id)}
+                          >
+                            Ustaw jako aktywną
+                          </Button>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-destructive hover:text-destructive"
+                          onClick={() => handleDeleteRound(round.id)}
+                          disabled={deletingRoundId === round.id}
+                        >
+                          {deletingRoundId === round.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Fantasy disabled info */}
+      {!fantasyEnabled && (
+        <Card style={{ backgroundColor: theme.cardColor, borderColor: theme.borderColor }}>
+          <CardContent className="py-8 text-center text-muted-foreground">
+            <Sparkles className="h-8 w-8 mx-auto mb-2 opacity-50" />
+            <p>Fantasy jest wyłączone w tym turnieju.</p>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Pick'em section */}
+      <Card style={{ backgroundColor: theme.cardColor, borderColor: theme.borderColor }}>
         <CardHeader className="pb-4">
-          <CardTitle className="flex items-center gap-2 font-logik-extended-bold">
-            <Sparkles className="h-5 w-5" style={{ color: theme.primaryColor }} />
-            Fantasy League
-          </CardTitle>
-          <CardDescription className="font-logik">
-            Przeliczanie punktów fantasy na podstawie statystyk meczowych
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="flex items-center justify-between p-4 rounded-xl border border-border">
-            <div>
-              <p className="font-logik-extended-bold">Status punktacji</p>
-              <p className="text-sm text-muted-foreground font-logik">
-                Ostatnia aktualizacja: {lastFantasyUpdate}
-              </p>
-            </div>
-            <Badge className="bg-green-500/20 text-green-500 border-green-500/30 font-logik">
-              <CheckCircle2 className="h-3 w-3 mr-1" />
-              Aktualna
-            </Badge>
-          </div>
-
-          {isRecalculatingFantasy && (
-            <div className="space-y-2">
-              <div className="flex items-center justify-between text-sm font-logik">
-                <span className="text-muted-foreground">Przeliczanie punktów...</span>
-                <span>{fantasyProgress}%</span>
-              </div>
-              <Progress value={fantasyProgress} className="h-2" />
-            </div>
-          )}
-
-          <div className="flex items-center gap-3">
-            <Button
-              onClick={handleRecalculateFantasy}
-              disabled={isRecalculatingFantasy}
-              className="font-logik"
-              style={{ backgroundColor: theme.primaryColor }}
-            >
-              {isRecalculatingFantasy ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Przeliczanie...
-                </>
-              ) : (
-                <>
-                  <RefreshCw className="h-4 w-4 mr-2" />
-                  Przelicz punkty fantasy
-                </>
-              )}
-            </Button>
-            <p className="text-sm text-muted-foreground font-logik">
-              Przelicza wszystkie punkty fantasy dla wszystkich użytkowników
-            </p>
-          </div>
-
-          <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30">
-            <div className="flex items-start gap-2">
-              <AlertTriangle className="h-5 w-5 text-amber-500 mt-0.5" />
-              <div>
-                <p className="font-logik-extended-bold text-amber-500">Uwaga</p>
-                <p className="text-sm text-amber-500/80 font-logik">
-                  Przeliczanie punktów może zająć kilka minut w zależności od liczby użytkowników i meczów.
-                  Nie zamykaj tej strony podczas procesu.
-                </p>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Pick'em Recalculation */}
-      <Card className="border-0 shadow-lg bg-card/50 backdrop-blur-sm">
-        <CardHeader className="pb-4">
-          <CardTitle className="flex items-center gap-2 font-logik-extended-bold">
+          <CardTitle className="flex items-center gap-2">
             <Target className="h-5 w-5" style={{ color: theme.primaryColor }} />
             Pick'em Predictions
           </CardTitle>
-          <CardDescription className="font-logik">
-            Rozliczanie predykcji użytkowników
+          <CardDescription>
+            {pickemEnabled ? 'Status predykcji użytkowników' : 'Pick\'em jest wyłączony w tym turnieju.'}
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="flex items-center justify-between p-4 rounded-xl border border-border">
-            <div>
-              <p className="font-logik-extended-bold">Status predykcji</p>
-              <p className="text-sm text-muted-foreground font-logik">
-                Ostatnia aktualizacja: {lastPickemUpdate}
-              </p>
+        {pickemEnabled && (
+          <CardContent>
+            <div className="text-center py-6 text-muted-foreground">
+              <p>Predykcje zostaną rozliczone automatycznie po zakończeniu meczów.</p>
             </div>
-            <Badge className="bg-green-500/20 text-green-500 border-green-500/30 font-logik">
-              <CheckCircle2 className="h-3 w-3 mr-1" />
-              Aktualne
-            </Badge>
-          </div>
-
-          {isRecalculatingPickem && (
-            <div className="space-y-2">
-              <div className="flex items-center justify-between text-sm font-logik">
-                <span className="text-muted-foreground">Rozliczanie predykcji...</span>
-                <span>{pickemProgress}%</span>
-              </div>
-              <Progress value={pickemProgress} className="h-2" />
-            </div>
-          )}
-
-          <div className="flex items-center gap-3">
-            <Button
-              onClick={handleRecalculatePickem}
-              disabled={isRecalculatingPickem}
-              variant="outline"
-              className="font-logik"
-            >
-              {isRecalculatingPickem ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Rozliczanie...
-                </>
-              ) : (
-                <>
-                  <RefreshCw className="h-4 w-4 mr-2" />
-                  Przelicz pick'em
-                </>
-              )}
-            </Button>
-            <p className="text-sm text-muted-foreground font-logik">
-              Rozlicza wszystkie predykcje na podstawie wyników meczów
-            </p>
-          </div>
-
-          {/* Pick'em Types */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t border-border">
-            <div className="p-4 rounded-xl border border-border">
-              <p className="font-logik-extended-bold mb-2">Predykcje meczowe</p>
-              <div className="flex items-center gap-2">
-                <Badge variant="outline" className="font-logik">128 rozliczonych</Badge>
-                <Badge className="bg-amber-500/20 text-amber-500 border-amber-500/30 font-logik">16 oczekuje</Badge>
-              </div>
-            </div>
-            <div className="p-4 rounded-xl border border-border">
-              <p className="font-logik-extended-bold mb-2">Predykcje tabelowe</p>
-              <div className="flex items-center gap-2">
-                <Badge variant="outline" className="font-logik">3 dywizje</Badge>
-                <Badge className="bg-blue-500/20 text-blue-500 border-blue-500/30 font-logik">W trakcie</Badge>
-              </div>
-            </div>
-            <div className="p-4 rounded-xl border border-border">
-              <p className="font-logik-extended-bold mb-2">Bracket playoff</p>
-              <div className="flex items-center gap-2">
-                <Badge variant="outline" className="font-logik">Nie rozpoczęty</Badge>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Scoring Settings */}
-      <Card className="border-0 shadow-lg bg-card/50 backdrop-blur-sm">
-        <CardHeader className="pb-4">
-          <CardTitle className="flex items-center gap-2 font-logik-extended-bold">
-            <Trophy className="h-5 w-5" style={{ color: theme.primaryColor }} />
-            Ustawienia punktacji
-          </CardTitle>
-          <CardDescription className="font-logik">
-            Konfiguracja systemu punktowego
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="text-center py-8 text-muted-foreground font-logik">
-            <p>Konfiguracja punktacji dostępna w ustawieniach turnieju.</p>
-            <Button variant="link" className="font-logik mt-2" style={{ color: theme.primaryColor }}>
-              Przejdź do ustawień →
-            </Button>
-          </div>
-        </CardContent>
+          </CardContent>
+        )}
       </Card>
     </div>
   );

@@ -1,25 +1,11 @@
 "use client";
 
-import { useTournament, useTournamentType } from '@/context/TournamentContext';
-import { LeagueHomePage } from '@/components/tournament/LeagueHomePage';
-import { MmrTournamentHomePage } from '@/components/tournament/MmrTournamentHomePage';
+import { TournamentHomePage } from '@/components/tournament/MmrTournamentHomePage';
 
 /**
- * Tournament home page
- * Renders different content based on tournament type
+ * Tournament home page — unified for all tournament types.
+ * Conditional sections are rendered inside TournamentHomePage based on tournament type.
  */
-export default function TournamentHomePage() {
-  const { tournament } = useTournament();
-  const { isLeague } = useTournamentType();
-
-  if (!tournament) {
-    return null;
-  }
-
-  // Render appropriate home page based on tournament type
-  if (isLeague) {
-    return <LeagueHomePage />;
-  }
-
-  return <MmrTournamentHomePage />;
+export default function TournamentHomePageRoute() {
+  return <TournamentHomePage />;
 }

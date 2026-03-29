@@ -1,15 +1,18 @@
 "use client";
 
 import { useTournament, useTournamentType } from '@/context/TournamentContext';
-import { Card, CardContent } from '@/components/ui/card';
 import { GroupTable } from "@/components/app/GroupTable";
 import { getAllGroups, getAllTeams } from "@/lib/firestore";
+import { getGroups, calculateGroupStandings } from "@/lib/api/groups";
+import type { TeamForStandings, MatchForStandings } from "@/lib/api/groups";
+import { collection, getDocs } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 import type { Group, GroupStanding } from "@/lib/definitions";
-import { LayoutGrid, AlertTriangle } from 'lucide-react';
+import { AlertTriangle } from 'lucide-react';
 import { useState, useEffect } from "react";
 import { LoadingScreen } from '@/components/ui/LoadingScreen';
 
-// Hydrate groups with team data
+// Hydrate groups with team data (legacy)
 async function getHydratedGroupsData(): Promise<Group[]> {
   const [groups, teams] = await Promise.all([
     getAllGroups(),
@@ -75,9 +78,21 @@ export default function GroupsPage() {
         if (isLegacyTournament) {
           const data = await getHydratedGroupsData();
           setGroups(data);
-        } else {
-          // New tournament structure - would load from /tournaments/{id}/groups
-          setGroups([]);
+        } else if (tournament?.id) {
+          const [groupDocs, teamsSnap, matchesSnap] = await Promise.all([
+            getGroups(tournament.id),
+            getDocs(collection(db, 'tournaments', tournament.id, 'teams')),
+            getDocs(collection(db, 'tournaments', tournament.id, 'matches')),
+          ]);
+
+          const teams: TeamForStandings[] = teamsSnap.docs.map(doc => ({
+            id: doc.id,
+            ...(doc.data() as Omit<TeamForStandings, 'id'>),
+          }));
+
+          const matches = matchesSnap.docs.map(doc => doc.data() as MatchForStandings);
+
+          setGroups(calculateGroupStandings(groupDocs, teams, matches));
         }
       } catch (error) {
         console.error("Failed to load groups:", error);
@@ -86,7 +101,7 @@ export default function GroupsPage() {
       }
     }
     loadGroups();
-  }, [isLegacyTournament]);
+  }, [isLegacyTournament, tournament?.id]);
 
   if (!tournament) return null;
 
@@ -109,31 +124,77 @@ export default function GroupsPage() {
   const sortedGroups = [...groups].sort((a, b) => a.name.localeCompare(b.name));
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-3">
-        <LayoutGrid className="h-8 w-8" style={{ color: theme.primaryColor }} />
-        <h1 className="text-3xl font-bold">Faza grupowa</h1>
+    <div className="relative text-white overflow-x-hidden min-h-screen">
+      {/* Premium Atmosphere Background */}
+      <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+        {/* Subtle vignette */}
+        <div
+          className="absolute inset-0 z-0 pointer-events-none opacity-60"
+          style={{
+            background: 'radial-gradient(ellipse at center, transparent 0%, transparent 40%, #000000 100%)',
+          }}
+        />
+        {/* Ambient glow - top right */}
+        <div
+          className="absolute top-[-20%] right-[-10%] w-[60vw] h-[60vw] rounded-full opacity-[0.04] blur-[200px]"
+          style={{ background: theme?.primaryColor || '#3b82f6' }}
+        />
+        {/* Ambient glow - bottom left */}
+        <div
+          className="absolute bottom-[-20%] left-[-10%] w-[40vw] h-[40vw] rounded-full opacity-[0.03] blur-[150px]"
+          style={{ background: theme?.secondaryColor || '#6366f1' }}
+        />
       </div>
 
-      {/* Groups */}
-      {sortedGroups.length === 0 ? (
-        <Card style={{ backgroundColor: theme.cardColor, borderColor: theme.borderColor }}>
-          <CardContent className="p-6 flex flex-col items-center justify-center text-center">
-            <AlertTriangle className="w-16 h-16 text-yellow-500 mb-4" />
-            <h2 className="text-2xl font-semibold mb-2">Grupy nie zostały jeszcze utworzone</h2>
-            <p className="text-muted-foreground">
-              Sprawdź ponownie po zakończeniu rejestracji.
-            </p>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="grid gap-6 md:grid-cols-2">
-          {sortedGroups.map((group) => (
-            <GroupTable key={group.id} group={group} />
-          ))}
+      <div className="relative z-10 max-w-[1800px] mx-auto px-6 lg:px-12 py-8 space-y-12">
+        {/* Header */}
+        <div className="text-center space-y-4 py-8 relative">
+          <div
+            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-1/3 h-32 blur-[100px] rounded-full pointer-events-none opacity-5"
+            style={{ background: theme.primaryColor }}
+          />
+          <h1 className="text-6xl md:text-7xl 2xl:text-9xl font-logik-wide-black text-transparent bg-clip-text bg-gradient-to-b from-white via-white to-white/50 tracking-tighter uppercase relative z-10 drop-shadow-2xl">
+            Faza grupowa
+          </h1>
+          <div className="flex items-center justify-center gap-4 opacity-60">
+            <div
+              className="h-[1px] w-12"
+              style={{ background: `linear-gradient(to right, transparent, ${theme.primaryColor})` }}
+            />
+            <div
+              className="w-2 h-2 rotate-45 border"
+              style={{ borderColor: theme.primaryColor }}
+            />
+            <div
+              className="h-[1px] w-12"
+              style={{ background: `linear-gradient(to left, transparent, ${theme.primaryColor})` }}
+            />
+          </div>
         </div>
-      )}
+
+        {/* Groups */}
+        {sortedGroups.length === 0 ? (
+          <div className="rounded-2xl border border-white/5 bg-white/5 backdrop-blur-sm p-12 text-center relative overflow-hidden group">
+            <div
+              className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+              style={{ background: `linear-gradient(135deg, ${theme.primaryColor}08, transparent, transparent)` }}
+            />
+            <div className="relative z-10 space-y-4">
+              <AlertTriangle className="w-16 h-16 mx-auto mb-2 text-yellow-400/60" />
+              <h2 className="text-2xl font-logik-extended-bold text-white">Grupy nie zostały jeszcze utworzone</h2>
+              <p className="text-white/50 font-logik">
+                Sprawdź ponownie po zakończeniu rejestracji.
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="grid gap-6 md:grid-cols-2">
+            {sortedGroups.map((group) => (
+              <GroupTable key={group.id} group={group} />
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

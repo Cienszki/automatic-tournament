@@ -22,6 +22,11 @@ import {
 import { cn } from '@/lib/utils';
 import { FontManagement } from '@/components/admin/FontManagement';
 import type { CustomFont } from '@/components/admin/FontManagement';
+import {
+  uploadTournamentLogo,
+  uploadTournamentBackground,
+  uploadTournamentFavicon,
+} from '@/lib/storage';
 import { 
   Settings,
   Palette,
@@ -39,6 +44,10 @@ import {
   Search,
   X,
   Loader2,
+  Upload,
+  Eye,
+  Sliders,
+  Image as ImageIcon,
 } from 'lucide-react';
 
 /**
@@ -77,10 +86,41 @@ export function GeneralTab() {
   const [status, setStatus] = useState<string>(tournament?.status || 'registration');
   const [isSaving, setIsSaving] = useState(false);
 
-  // Color settings (placeholders)
+  // Color settings
   const [primaryColor, setPrimaryColor] = useState(theme.primaryColor);
   const [secondaryColor, setSecondaryColor] = useState(theme.secondaryColor || '#666666');
   const [accentColor, setAccentColor] = useState(theme.accentColor || '#D4AF37');
+  const [glowColor, setGlowColor] = useState(theme.glowColor || '');
+  const [headingColor, setHeadingColor] = useState(theme.headingColor || '');
+  const [backgroundColor, setBackgroundColor] = useState(theme.backgroundColor || 'hsl(240 17% 6%)');
+  const [cardColor, setCardColor] = useState(theme.cardColor || '');
+  const [textColor, setTextColor] = useState(theme.textColor || '');
+  const [borderColor, setBorderColor] = useState(theme.borderColor || '');
+
+  // Asset URLs
+  const [backgroundImageUrl, setBackgroundImageUrl] = useState(theme.backgroundImageUrl || '');
+  const [faviconUrl, setFaviconUrl] = useState(theme.faviconUrl || '');
+
+  // Background tuning
+  const [backgroundOverlayColor, setBackgroundOverlayColor] = useState(theme.backgroundOverlayColor || 'rgba(0,0,0,0.7)');
+  const [backgroundOverlayOpacity, setBackgroundOverlayOpacity] = useState(theme.backgroundOverlayOpacity ?? 90);
+  const [backgroundBlur, setBackgroundBlur] = useState(theme.backgroundBlur ?? 0);
+  const [backgroundPosition, setBackgroundPosition] = useState(theme.backgroundPosition || 'center center');
+  const [backgroundSize, setBackgroundSize] = useState(theme.backgroundSize || 'cover');
+
+  // Card / Navbar style
+  const [cardOpacity, setCardOpacity] = useState(theme.cardOpacity ?? 100);
+  const [cardBlurVal, setCardBlurVal] = useState(theme.cardBlur ?? 0);
+  const [cardBorderRadius, setCardBorderRadius] = useState(theme.cardBorderRadius || '0.75rem');
+  const [navbarStyle, setNavbarStyle] = useState<string>(theme.navbarStyle || 'blur');
+  const [navbarColor, setNavbarColor] = useState(theme.navbarColor || '');
+  const [themeStyle, setThemeStyle] = useState<string>(theme.themeStyle || 'dark');
+
+  // Upload state
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [uploadingBg, setUploadingBg] = useState(false);
+  const [uploadingFavicon, setUploadingFavicon] = useState(false);
+  const [showAdvancedTheme, setShowAdvancedTheme] = useState(false);
 
   // Typography settings
   const [headerFont, setHeaderFont] = useState(theme.headerFont || 'logik');
@@ -263,6 +303,25 @@ export function GeneralTab() {
         'theme.primaryColor': primaryColor,
         'theme.secondaryColor': secondaryColor,
         'theme.accentColor': accentColor,
+        'theme.glowColor': glowColor || null,
+        'theme.headingColor': headingColor || null,
+        'theme.backgroundColor': backgroundColor || 'hsl(240 17% 6%)',
+        'theme.cardColor': cardColor || 'hsl(240 15% 10%)',
+        'theme.textColor': textColor || 'hsl(0 0% 100%)',
+        'theme.borderColor': borderColor || 'hsl(240 16% 20%)',
+        'theme.backgroundImageUrl': backgroundImageUrl || null,
+        'theme.faviconUrl': faviconUrl || null,
+        'theme.backgroundOverlayColor': backgroundOverlayColor || null,
+        'theme.backgroundOverlayOpacity': backgroundOverlayOpacity,
+        'theme.backgroundBlur': backgroundBlur,
+        'theme.backgroundPosition': backgroundPosition,
+        'theme.backgroundSize': backgroundSize,
+        'theme.cardOpacity': cardOpacity,
+        'theme.cardBlur': cardBlurVal,
+        'theme.cardBorderRadius': cardBorderRadius,
+        'theme.navbarStyle': navbarStyle,
+        'theme.navbarColor': navbarColor || null,
+        'theme.themeStyle': themeStyle,
         'theme.headerFont': headerFont,
         'theme.textFont': textFont,
         'theme.readableFont': readableFont,
@@ -443,13 +502,48 @@ export function GeneralTab() {
                     <Palette className="h-6 w-6 text-muted-foreground" />
                   </div>
                 )}
-                <div className="flex-1">
+                <div className="flex-1 space-y-2">
                   <Input
                     value={logoUrl}
                     onChange={(e) => setLogoUrl(e.target.value)}
                     placeholder="URL logo..."
                     className="font-logik"
                   />
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={uploadingLogo}
+                      onClick={() => {
+                        const input = document.createElement('input');
+                        input.type = 'file';
+                        input.accept = 'image/png,image/svg+xml,image/webp,image/jpeg';
+                        input.onchange = async (e) => {
+                          const file = (e.target as HTMLInputElement).files?.[0];
+                          if (!file || !tournament?.slug) return;
+                          setUploadingLogo(true);
+                          try {
+                            const url = await uploadTournamentLogo(file, tournament.slug);
+                            setLogoUrl(url);
+                          } catch (err) {
+                            console.error('Logo upload failed:', err);
+                          } finally {
+                            setUploadingLogo(false);
+                          }
+                        };
+                        input.click();
+                      }}
+                      className="font-logik"
+                    >
+                      {uploadingLogo ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Upload className="h-4 w-4 mr-1" />}
+                      Prześlij plik
+                    </Button>
+                    {logoUrl && (
+                      <Button variant="ghost" size="sm" onClick={() => setLogoUrl('')} className="text-destructive">
+                        <X className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </div>
               <p className="text-xs text-muted-foreground font-logik">
@@ -481,6 +575,130 @@ export function GeneralTab() {
               </div>
               <p className="text-xs text-muted-foreground font-logik">
                 Małe logo w navbarze, kliknięcie = powrót na stronę główną
+              </p>
+            </div>
+          </div>
+
+          {/* Background Image & Favicon */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Background Image */}
+            <div className="space-y-2">
+              <Label className="font-logik-extended-bold">Obraz Tła</Label>
+              <div className="flex items-start gap-3">
+                {backgroundImageUrl ? (
+                  <div className="w-24 h-16 rounded-lg border-2 border-border overflow-hidden bg-muted">
+                    <img src={backgroundImageUrl} alt="Background" className="w-full h-full object-cover" />
+                  </div>
+                ) : (
+                  <div className="w-24 h-16 rounded-lg border-2 border-dashed border-border flex items-center justify-center bg-muted/50">
+                    <ImageIcon className="h-6 w-6 text-muted-foreground" />
+                  </div>
+                )}
+                <div className="flex-1 space-y-2">
+                  <Input
+                    value={backgroundImageUrl}
+                    onChange={(e) => setBackgroundImageUrl(e.target.value)}
+                    placeholder="URL obrazu tła..."
+                    className="font-logik"
+                  />
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={uploadingBg}
+                      onClick={() => {
+                        const input = document.createElement('input');
+                        input.type = 'file';
+                        input.accept = 'image/png,image/jpeg,image/webp';
+                        input.onchange = async (e) => {
+                          const file = (e.target as HTMLInputElement).files?.[0];
+                          if (!file || !tournament?.slug) return;
+                          setUploadingBg(true);
+                          try {
+                            const url = await uploadTournamentBackground(file, tournament.slug);
+                            setBackgroundImageUrl(url);
+                          } catch (err) {
+                            console.error('Background upload failed:', err);
+                          } finally {
+                            setUploadingBg(false);
+                          }
+                        };
+                        input.click();
+                      }}
+                      className="font-logik"
+                    >
+                      {uploadingBg ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Upload className="h-4 w-4 mr-1" />}
+                      Prześlij
+                    </Button>
+                    {backgroundImageUrl && (
+                      <Button variant="ghost" size="sm" onClick={() => setBackgroundImageUrl('')} className="text-destructive">
+                        <X className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Favicon */}
+            <div className="space-y-2">
+              <Label className="font-logik-extended-bold">Favicon</Label>
+              <div className="flex items-start gap-3">
+                {faviconUrl ? (
+                  <div className="w-10 h-10 rounded-lg border-2 border-border overflow-hidden bg-muted">
+                    <img src={faviconUrl} alt="Favicon" className="w-full h-full object-contain" />
+                  </div>
+                ) : (
+                  <div className="w-10 h-10 rounded-lg border-2 border-dashed border-border flex items-center justify-center bg-muted/50">
+                    <ImageIcon className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                )}
+                <div className="flex-1 space-y-2">
+                  <Input
+                    value={faviconUrl}
+                    onChange={(e) => setFaviconUrl(e.target.value)}
+                    placeholder="URL favicon..."
+                    className="font-logik"
+                  />
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={uploadingFavicon}
+                      onClick={() => {
+                        const input = document.createElement('input');
+                        input.type = 'file';
+                        input.accept = 'image/png,image/x-icon,image/svg+xml';
+                        input.onchange = async (e) => {
+                          const file = (e.target as HTMLInputElement).files?.[0];
+                          if (!file || !tournament?.slug) return;
+                          setUploadingFavicon(true);
+                          try {
+                            const url = await uploadTournamentFavicon(file, tournament.slug);
+                            setFaviconUrl(url);
+                          } catch (err) {
+                            console.error('Favicon upload failed:', err);
+                          } finally {
+                            setUploadingFavicon(false);
+                          }
+                        };
+                        input.click();
+                      }}
+                      className="font-logik"
+                    >
+                      {uploadingFavicon ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Upload className="h-4 w-4 mr-1" />}
+                      Prześlij
+                    </Button>
+                    {faviconUrl && (
+                      <Button variant="ghost" size="sm" onClick={() => setFaviconUrl('')} className="text-destructive">
+                        <X className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground font-logik">
+                Ikona w karcie przeglądarki. 32x32 lub 64x64 px.
               </p>
             </div>
           </div>
@@ -720,9 +938,11 @@ export function GeneralTab() {
             <div className="space-y-2">
               <Label className="font-logik-extended-bold">Kolor główny</Label>
               <div className="flex items-center gap-3">
-                <div 
+                <input
+                  type="color"
+                  value={primaryColor}
+                  onChange={(e) => setPrimaryColor(e.target.value)}
                   className="w-12 h-12 rounded-xl border-2 border-border cursor-pointer hover:scale-105 transition-transform"
-                  style={{ backgroundColor: primaryColor }}
                 />
                 <Input
                   type="text"
@@ -738,9 +958,11 @@ export function GeneralTab() {
             <div className="space-y-2">
               <Label className="font-logik-extended-bold">Kolor drugorzędny</Label>
               <div className="flex items-center gap-3">
-                <div 
+                <input
+                  type="color"
+                  value={secondaryColor}
+                  onChange={(e) => setSecondaryColor(e.target.value)}
                   className="w-12 h-12 rounded-xl border-2 border-border cursor-pointer hover:scale-105 transition-transform"
-                  style={{ backgroundColor: secondaryColor }}
                 />
                 <Input
                   type="text"
@@ -756,9 +978,11 @@ export function GeneralTab() {
             <div className="space-y-2">
               <Label className="font-logik-extended-bold">Kolor akcentowy</Label>
               <div className="flex items-center gap-3">
-                <div 
+                <input
+                  type="color"
+                  value={accentColor}
+                  onChange={(e) => setAccentColor(e.target.value)}
                   className="w-12 h-12 rounded-xl border-2 border-border cursor-pointer hover:scale-105 transition-transform"
-                  style={{ backgroundColor: accentColor }}
                 />
                 <Input
                   type="text"
@@ -766,6 +990,46 @@ export function GeneralTab() {
                   onChange={(e) => setAccentColor(e.target.value)}
                   className="font-mono text-sm"
                   placeholder="#D4AF37"
+                />
+              </div>
+            </div>
+
+            {/* Glow Color */}
+            <div className="space-y-2">
+              <Label className="font-logik-extended-bold">Kolor glow / highlight</Label>
+              <div className="flex items-center gap-3">
+                <input
+                  type="color"
+                  value={glowColor || '#000000'}
+                  onChange={(e) => setGlowColor(e.target.value)}
+                  className="w-12 h-12 rounded-xl border-2 border-border cursor-pointer hover:scale-105 transition-transform"
+                />
+                <Input
+                  type="text"
+                  value={glowColor}
+                  onChange={(e) => setGlowColor(e.target.value)}
+                  className="font-mono text-sm"
+                  placeholder="Opcjonalne"
+                />
+              </div>
+            </div>
+
+            {/* Heading Color */}
+            <div className="space-y-2">
+              <Label className="font-logik-extended-bold">Kolor nagłówków</Label>
+              <div className="flex items-center gap-3">
+                <input
+                  type="color"
+                  value={headingColor || '#ffffff'}
+                  onChange={(e) => setHeadingColor(e.target.value)}
+                  className="w-12 h-12 rounded-xl border-2 border-border cursor-pointer hover:scale-105 transition-transform"
+                />
+                <Input
+                  type="text"
+                  value={headingColor}
+                  onChange={(e) => setHeadingColor(e.target.value)}
+                  className="font-mono text-sm"
+                  placeholder="Domyślny (kolor tekstu)"
                 />
               </div>
             </div>
@@ -794,6 +1058,264 @@ export function GeneralTab() {
             </p>
           </div>
         </CardContent>
+      </Card>
+
+      {/* Background Tuning */}
+      {backgroundImageUrl && (
+        <Card className="border-0 shadow-lg bg-card/50 backdrop-blur-sm">
+          <CardHeader className="pb-4">
+            <CardTitle className="flex items-center gap-2 font-logik-extended-bold">
+              <Eye className="h-5 w-5" style={{ color: theme.primaryColor }} />
+              Ustawienia Tła
+            </CardTitle>
+            <CardDescription className="font-logik">
+              Dostosowanie widoczności i stylu obrazu tła
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <Label className="font-logik-extended-bold">
+                  Przezroczystość nakładki ({backgroundOverlayOpacity}%)
+                </Label>
+                <input
+                  type="range"
+                  min={0}
+                  max={100}
+                  value={backgroundOverlayOpacity}
+                  onChange={(e) => setBackgroundOverlayOpacity(Number(e.target.value))}
+                  className="w-full accent-primary"
+                />
+                <p className="text-xs text-muted-foreground font-logik">
+                  Wyższe = ciemniejsze tło, lepiej czytelny tekst
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="font-logik-extended-bold">
+                  Rozmycie tła ({backgroundBlur}px)
+                </Label>
+                <input
+                  type="range"
+                  min={0}
+                  max={20}
+                  value={backgroundBlur}
+                  onChange={(e) => setBackgroundBlur(Number(e.target.value))}
+                  className="w-full accent-primary"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label className="font-logik-extended-bold">Pozycja tła</Label>
+                <Select value={backgroundPosition} onValueChange={setBackgroundPosition}>
+                  <SelectTrigger className="font-logik">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="center center">Środek</SelectItem>
+                    <SelectItem value="center top">Góra</SelectItem>
+                    <SelectItem value="center bottom">Dół</SelectItem>
+                    <SelectItem value="left center">Lewo</SelectItem>
+                    <SelectItem value="right center">Prawo</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="font-logik-extended-bold">Rozmiar tła</Label>
+                <Select value={backgroundSize} onValueChange={setBackgroundSize}>
+                  <SelectTrigger className="font-logik">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="cover">Wypełnij (cover)</SelectItem>
+                    <SelectItem value="contain">Dopasuj (contain)</SelectItem>
+                    <SelectItem value="auto">Oryginał (auto)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="font-logik-extended-bold">Kolor nakładki</Label>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="color"
+                    value={backgroundOverlayColor?.startsWith('rgba') ? '#000000' : (backgroundOverlayColor || '#000000')}
+                    onChange={(e) => setBackgroundOverlayColor(e.target.value)}
+                    className="w-12 h-12 rounded-xl border-2 border-border cursor-pointer"
+                  />
+                  <Input
+                    type="text"
+                    value={backgroundOverlayColor}
+                    onChange={(e) => setBackgroundOverlayColor(e.target.value)}
+                    className="font-mono text-sm"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Live mini-preview */}
+            <div className="relative overflow-hidden rounded-lg h-32 border border-border">
+              <div
+                className="absolute inset-0 bg-no-repeat"
+                style={{
+                  backgroundImage: `url(${backgroundImageUrl})`,
+                  backgroundSize: backgroundSize,
+                  backgroundPosition: backgroundPosition,
+                  filter: backgroundBlur ? `blur(${backgroundBlur}px)` : undefined,
+                }}
+              />
+              <div
+                className="absolute inset-0"
+                style={{
+                  backgroundColor: backgroundOverlayColor,
+                  opacity: backgroundOverlayOpacity / 100,
+                }}
+              />
+              <div className="relative z-10 flex items-center justify-center h-full">
+                <p className="text-white text-sm font-medium drop-shadow-lg">Podgląd tła</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Advanced Theme Options */}
+      <Card className="border-0 shadow-lg bg-card/50 backdrop-blur-sm">
+        <CardHeader className="pb-4">
+          <button
+            onClick={() => setShowAdvancedTheme(!showAdvancedTheme)}
+            className="w-full flex items-center justify-between"
+          >
+            <CardTitle className="flex items-center gap-2 font-logik-extended-bold">
+              <Sliders className="h-5 w-5" style={{ color: theme.primaryColor }} />
+              Zaawansowane ustawienia motywu
+            </CardTitle>
+            <span className="text-xs text-muted-foreground font-logik">
+              {showAdvancedTheme ? 'Zwiń' : 'Rozwiń'}
+            </span>
+          </button>
+        </CardHeader>
+        {showAdvancedTheme && (
+          <CardContent className="space-y-6">
+            {/* Surface Colors */}
+            <div>
+              <Label className="font-logik-extended-bold text-base mb-4 block">Kolory powierzchni</Label>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {([
+                  [backgroundColor, setBackgroundColor, 'Kolor tła strony'] as const,
+                  [cardColor, setCardColor, 'Kolor kart'] as const,
+                  [textColor, setTextColor, 'Kolor tekstu'] as const,
+                  [borderColor, setBorderColor, 'Kolor obramowań'] as const,
+                  [navbarColor, setNavbarColor, 'Kolor nawigacji'] as const,
+                ]).map(([val, setter, label], i) => (
+                  <div key={i} className="space-y-2">
+                    <Label className="font-logik-extended-bold">{label}</Label>
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="color"
+                        value={(val as string)?.startsWith('hsl') ? '#0d0e1a' : ((val as string) || '#000000')}
+                        onChange={(e) => (setter as (v: string) => void)(e.target.value)}
+                        className="w-12 h-10 rounded-lg border-2 border-border cursor-pointer"
+                      />
+                      <Input
+                        type="text"
+                        value={val as string}
+                        onChange={(e) => (setter as (v: string) => void)(e.target.value)}
+                        placeholder="Domyślny"
+                        className="font-mono text-sm"
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* Card Style */}
+            <div>
+              <Label className="font-logik-extended-bold text-base mb-4 block">Styl kart</Label>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="space-y-2">
+                  <Label className="font-logik-extended-bold">
+                    Przezroczystość ({cardOpacity}%)
+                  </Label>
+                  <input
+                    type="range"
+                    min={0}
+                    max={100}
+                    value={cardOpacity}
+                    onChange={(e) => setCardOpacity(Number(e.target.value))}
+                    className="w-full accent-primary"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="font-logik-extended-bold">
+                    Rozmycie ({cardBlurVal}px)
+                  </Label>
+                  <input
+                    type="range"
+                    min={0}
+                    max={20}
+                    value={cardBlurVal}
+                    onChange={(e) => setCardBlurVal(Number(e.target.value))}
+                    className="w-full accent-primary"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="font-logik-extended-bold">Zaokrąglenie</Label>
+                  <Select value={cardBorderRadius} onValueChange={setCardBorderRadius}>
+                    <SelectTrigger className="font-logik">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="0">Kwadratowe</SelectItem>
+                      <SelectItem value="0.375rem">Delikatne</SelectItem>
+                      <SelectItem value="0.75rem">Standardowe</SelectItem>
+                      <SelectItem value="1rem">Duże</SelectItem>
+                      <SelectItem value="1.5rem">Bardzo duże</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* Navbar & Theme Mode */}
+            <div>
+              <Label className="font-logik-extended-bold text-base mb-4 block">Nawigacja i motyw</Label>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <Label className="font-logik-extended-bold">Styl nawigacji</Label>
+                  <Select value={navbarStyle} onValueChange={setNavbarStyle}>
+                    <SelectTrigger className="font-logik">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="solid">Solidny (nieprzezroczysty)</SelectItem>
+                      <SelectItem value="transparent">Przezroczysty</SelectItem>
+                      <SelectItem value="blur">Rozmycie (glassmorphism)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label className="font-logik-extended-bold">Motyw</Label>
+                  <Select value={themeStyle} onValueChange={setThemeStyle}>
+                    <SelectTrigger className="font-logik">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="dark">Ciemny</SelectItem>
+                      <SelectItem value="light">Jasny</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        )}
       </Card>
 
       {/* Typography */}
@@ -926,6 +1448,7 @@ export function GeneralTab() {
         onAddFont={(font: CustomFont) => setCustomFonts([...customFonts, font])}
         onRemoveFont={(fontId: string) => setCustomFonts(customFonts.filter(f => f.id !== fontId))}
         primaryColor={theme.primaryColor}
+        tournamentSlug={tournament?.slug}
       />
 
       {/* Admin Management */}
