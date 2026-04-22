@@ -9,13 +9,16 @@ import {
   GraduationCap,
   CheckCircle,
   ChevronRight,
-  Clock
+  Clock,
+  Clock3,
+  XCircle
 } from 'lucide-react';
 import { cn, formatDatePL } from '@/lib/utils';
+import { useTournament } from '@/context/TournamentContext';
 
 interface ActionItem {
   id: string;
-  type: 'reschedule_request' | 'standin_approval' | 'match_upcoming' | 'coach_deadline' | 'transfer_window';
+  type: 'reschedule_request' | 'standin_approval' | 'match_upcoming' | 'coach_deadline' | 'transfer_window' | 'team_pending' | 'team_rejected';
   title: string;
   description: string;
   urgent?: boolean;
@@ -32,6 +35,7 @@ interface PDLCaptainActionsProps {
 }
 
 export function PDLCaptainActions({ isCaptain, actions }: PDLCaptainActionsProps) {
+  const { theme } = useTournament();
   const [collapsed, setCollapsed] = useState(false);
 
   if (!isCaptain || actions.length === 0) return null;
@@ -46,6 +50,8 @@ export function PDLCaptainActions({ isCaptain, actions }: PDLCaptainActionsProps
       case 'coach_deadline': return GraduationCap;
       case 'match_upcoming': return Clock;
       case 'transfer_window': return CheckCircle;
+      case 'team_pending': return Clock3;
+      case 'team_rejected': return XCircle;
       default: return AlertCircle;
     }
   };
@@ -62,11 +68,11 @@ export function PDLCaptainActions({ isCaptain, actions }: PDLCaptainActionsProps
             <AlertCircle className="w-5 h-5 text-pdl-crimson" />
           </div>
           <div className="text-left">
-            <h3 className="text-xl font-logik-extended-bold text-white tracking-wide uppercase">
+            <h3 className="text-xl font-logik-extended-bold tracking-wide uppercase" style={{ color: theme.sectionHeaderColor || '#ffffff', fontFamily: theme.headerFont ? `var(${theme.headerFont})` : undefined }}>
               Akcje do wykonania
             </h3>
             {actions.length > 0 && (
-              <p className="text-xs text-white/40 font-logik">
+              <p className="text-xs font-logik" style={{ color: theme.secondaryTextColor || 'rgba(255,255,255,0.4)' }}>
                 {urgentActions.length > 0 && (
                   <span className="text-pdl-crimson">{urgentActions.length} pilnych</span>
                 )}
@@ -99,7 +105,7 @@ export function PDLCaptainActions({ isCaptain, actions }: PDLCaptainActionsProps
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-2">
-                      <p className="text-sm font-logik-extended-bold text-white">
+                      <p className="text-sm font-logik-extended-bold text-red-300">
                         {action.title}
                       </p>
                       {action.dueDate && (
@@ -108,7 +114,7 @@ export function PDLCaptainActions({ isCaptain, actions }: PDLCaptainActionsProps
                         </span>
                       )}
                     </div>
-                    <p className="text-xs text-white/60 font-logik mt-1">
+                    <p className="text-xs font-logik mt-1" style={{ color: theme.secondaryTextColor || 'rgba(255,255,255,0.6)' }}>
                       {action.description}
                     </p>
                   </div>
@@ -140,16 +146,16 @@ export function PDLCaptainActions({ isCaptain, actions }: PDLCaptainActionsProps
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-2">
-                      <p className="text-sm font-logik-extended-bold text-white">
+                      <p className="text-sm font-logik-extended-bold" style={{ color: theme.sectionHeaderColor || '#ffffff' }}>
                         {action.title}
                       </p>
                       {action.dueDate && (
-                        <span className="text-xs text-white/40 font-logik flex-shrink-0">
+                        <span className="text-xs font-logik flex-shrink-0" style={{ color: theme.secondaryTextColor || 'rgba(255,255,255,0.4)' }}>
                           {formatDatePL(action.dueDate)}
                         </span>
                       )}
                     </div>
-                    <p className="text-xs text-white/60 font-logik mt-1">
+                    <p className="text-xs font-logik mt-1" style={{ color: theme.secondaryTextColor || 'rgba(255,255,255,0.6)' }}>
                       {action.description}
                     </p>
                   </div>

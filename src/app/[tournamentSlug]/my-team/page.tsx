@@ -1,14 +1,14 @@
 "use client";
 
 import * as React from "react";
-import { useTournament } from '@/context/TournamentContext';
+import { useTournament, useTournamentType } from '@/context/TournamentContext';
 import { useAuth } from "@/context/AuthContext";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Users, Calendar, BarChart3, LogIn, UserPlus, ArrowRightLeft, Clock3, Copy, Check, Trash2, RefreshCw } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from "@/components/ui/dialog";
+import { Loader2, Users, Calendar, BarChart3, LogIn, UserPlus, ArrowRightLeft, Clock3, Copy, Check, Trash2, RefreshCw, X } from "lucide-react";
+import { motion } from "framer-motion";
 import type { Team, Match, Player, PDLStandinRequest as PDLStandinRequestType } from "@/lib/definitions";
 import { collection, doc, getDoc, getDocs, setDoc, query, where, updateDoc, addDoc, deleteDoc, deleteField, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -28,12 +28,11 @@ import type { Standin } from "@/lib/definitions";
 import NoTeamFound from '@/components/app/my-team/NoTeamFound';
 
 // PDL components
-import { PDLMyTeamHero, PDLRosterCard, PDLMatchHistory, PDLTeamStats, PDLSeasonProgress, PDLCaptainActions, PDLNotificationCenter, PDLPreMatchChecklist } from "@/components/pdl/my-team";
+import { PDLMyTeamHero, PDLMatchHistory, PDLCaptainActions } from "@/components/pdl/my-team";
 import { PDLUpcomingMatch } from "@/components/pdl/my-team/PDLUpcomingMatchNew";
 import { PDLTransferSection } from "@/components/pdl/my-team/PDLTransferSection";
 import { upsertGlobalPlayerProfilesAction, clearPlayerCurrentTeamsAction } from "@/lib/player-profile-actions";
-import { useTournamentType } from '@/context/TournamentContext';
-import { MmrMyTeamPage } from '@/components/tournament/mmr/MmrMyTeamPage';
+
 
 interface ScrimSlot {
   id: string;
@@ -76,7 +75,14 @@ const normalizePDLStandinRequest = (raw: Record<string, unknown>, id: string): P
   };
 };
 
-const isWithinThreeDays = (referenceIso: string, proposedIso: string): boolean => {
+const isWithinRescheduleDays = (
+  referenceIso: string,
+  proposedIso: string,
+  rangeDays: number | null | undefined,
+): boolean => {
+  // null / undefined = unlimited range
+  if (rangeDays === null || rangeDays === undefined) return true;
+
   const referenceDate = new Date(referenceIso);
   const proposedDate = new Date(proposedIso);
 
@@ -85,18 +91,25 @@ const isWithinThreeDays = (referenceIso: string, proposedIso: string): boolean =
   }
 
   // Compare by calendar day (local time) to avoid timezone edge-case rejections.
-  // "Within 3 days" means any time on the 3rd day before or after — not a strict 72h window.
   const refDay = new Date(referenceDate.getFullYear(), referenceDate.getMonth(), referenceDate.getDate());
   const propDay = new Date(proposedDate.getFullYear(), proposedDate.getMonth(), proposedDate.getDate());
 
   const diffDays = Math.round((propDay.getTime() - refDay.getTime()) / (1000 * 60 * 60 * 24));
-  return Math.abs(diffDays) <= 3;
+  return Math.abs(diffDays) <= rangeDays;
+};
+
+const isBeforeFinalDeadline = (proposedIso: string, finalDate: string | null | undefined): boolean => {
+  if (!finalDate) return true;
+  const proposed = new Date(proposedIso);
+  const deadline = new Date(finalDate);
+  deadline.setHours(23, 59, 59, 999);
+  return proposed <= deadline;
 };
 
 /**
- * My Team page - team registration and management
+ * My Team view - team registration and management.
  */
-export default function MyTeamPage() {
+function MyTeamView() {
   const { tournament, theme, isLegacyTournament, getTournamentPath } = useTournament();
   const { isMmrLimited } = useTournamentType();
   const { user, loading: authLoading, signInWithGoogle } = useAuth();
@@ -110,7 +123,9 @@ export default function MyTeamPage() {
   const [standins, setStandins] = React.useState<Standin[]>([]);
   const [hasTeam, setHasTeam] = React.useState(false);
   const [loading, setLoading] = React.useState(true);
-  const [activeTab, setActiveTab] = React.useState('overview');
+  const [managementModalOpen, setManagementModalOpen] = React.useState(false);
+  const [matchesModalOpen, setMatchesModalOpen] = React.useState(false);
+  const [availabilityModalOpen, setAvailabilityModalOpen] = React.useState(false);
 
   // PDL-specific state
   const [divisionInfo, setDivisionInfo] = React.useState<{
@@ -149,7 +164,7 @@ export default function MyTeamPage() {
     
     const actions: Array<{
       id: string;
-      type: 'reschedule_request' | 'standin_approval' | 'match_upcoming' | 'coach_deadline' | 'transfer_window';
+      type: 'reschedule_request' | 'standin_approval' | 'match_upcoming' | 'coach_deadline' | 'transfer_window' | 'team_pending' | 'team_rejected';
       title: string;
       description: string;
       urgent?: boolean;
@@ -159,6 +174,25 @@ export default function MyTeamPage() {
 
     const isCaptain = team.captainId === user?.uid;
     if (!isCaptain) return actions;
+
+    // Team status notifications (highest priority)
+    if (team.status === 'pending') {
+      actions.push({
+        id: 'team-pending',
+        type: 'team_pending',
+        title: 'Drużyna oczekuje na weryfikację',
+        description: 'Administrator musi zweryfikować Twoją drużynę przed startem rozgrywek',
+        urgent: false,
+      });
+    } else if (team.status === 'rejected') {
+      actions.push({
+        id: 'team-rejected',
+        type: 'team_rejected',
+        title: 'Drużyna odrzucona',
+        description: 'Zgłoszenie zostało odrzucone — skontaktuj się z administratorem turnieju',
+        urgent: true,
+      });
+    }
 
     const upcomingMatches = matches.filter(m => m.status !== 'completed');
 
@@ -174,7 +208,7 @@ export default function MyTeamPage() {
           urgent: true,
           action: {
             label: 'Przejdź do meczu',
-            onClick: () => setActiveTab('matches')
+            onClick: () => setMatchesModalOpen(true)
           }
         });
       }
@@ -193,7 +227,7 @@ export default function MyTeamPage() {
         urgent: true,
         action: {
           label: 'Sprawdź wnioski',
-          onClick: () => setActiveTab('matches')
+          onClick: () => setMatchesModalOpen(true)
         }
       });
     }
@@ -213,7 +247,7 @@ export default function MyTeamPage() {
           dueDate: nextMatch.scheduledFor,
           action: {
             label: 'Dodaj coacha',
-            onClick: () => setActiveTab('matches')
+            onClick: () => setMatchesModalOpen(true)
           }
         });
       }
@@ -230,13 +264,13 @@ export default function MyTeamPage() {
         description: 'Możesz zarządzać składem drużyny',
         action: {
           label: 'Zarządzaj składem',
-          onClick: () => setActiveTab('squad')
+          onClick: () => setManagementModalOpen(true)
         }
       });
     }
 
     return actions;
-  }, [isLegacyTournament, team, matches, standinRequests, user?.uid, tournament?.status, tournament?.transferWindowOpen, activeTab]);
+  }, [isLegacyTournament, team, matches, standinRequests, user?.uid, tournament?.status, tournament?.transferWindowOpen]);
 
   const mapScrimSlot = React.useCallback((slotDoc: { id: string; data: () => Record<string, unknown> }): ScrimSlot => {
     const data = slotDoc.data();
@@ -331,6 +365,9 @@ export default function MyTeamPage() {
               avatarmedium: '',
               avatarfull: '',
               steamProfileUrl: '',
+              mmr: (info as any).mmr,
+              smurfAccounts: (info as any).smurfAccounts,
+              profileScreenshotUrl: (info as any).profileScreenshotUrl,
             } as unknown as Player));
           } else {
             // Legacy fallback: read from player subcollection (teams without roster map)
@@ -623,11 +660,22 @@ export default function MyTeamPage() {
       const matchData = matchSnap.data();
 
       const originalDate = String(matchData?.scheduledFor || matchData?.scheduled_for || '');
-      if (!originalDate || !isWithinThreeDays(originalDate, proposedDate)) {
-        console.warn('[MyTeam] Date validation failed', { originalDate, proposedDate });
+      const rangeDays = tournament?.rescheduleRangeDays !== undefined ? tournament.rescheduleRangeDays : 3;
+      const finalDate = tournament?.rescheduleFinalDate ?? null;
+
+      // If there is no admin-set date we skip the range check (unlimited for unscheduled matches)
+      const hasScheduledDate = !!originalDate;
+      const rangeOk = !hasScheduledDate || isWithinRescheduleDays(originalDate, proposedDate, rangeDays);
+      const deadlineOk = isBeforeFinalDeadline(proposedDate, finalDate);
+
+      if (!rangeOk || !deadlineOk) {
+        console.warn('[MyTeam] Date validation failed', { originalDate, proposedDate, rangeDays, finalDate });
+        const rangeLabel = rangeDays === null ? 'nieograniczony' : `±${rangeDays} dni`;
         toast({
           title: 'Nieprawidłowa data',
-          description: 'Zmiana terminu jest dozwolona tylko w zakresie ±3 dni od daty meczu.',
+          description: !rangeOk
+            ? `Zmiana terminu jest dozwolona tylko w zakresie ${rangeLabel} od daty meczu.`
+            : `Proponowana data (${proposedDate.slice(0, 10)}) przekracza ostateczny termin realizacji meczów (${finalDate}).`,
           variant: 'destructive',
         });
         return;
@@ -684,10 +732,20 @@ export default function MyTeamPage() {
 
       const originalDate = String(matchData?.rescheduleRequest?.originalDate || matchData?.scheduledFor || matchData?.scheduled_for || '');
       const proposedDate = String(matchData?.rescheduleRequest?.proposedDate || '');
-      if (!originalDate || !proposedDate || !isWithinThreeDays(originalDate, proposedDate)) {
+      const rangeDays = tournament?.rescheduleRangeDays !== undefined ? tournament.rescheduleRangeDays : 3;
+      const finalDate = tournament?.rescheduleFinalDate ?? null;
+
+      const hasScheduledDate = !!originalDate;
+      const rangeOk = !hasScheduledDate || isWithinRescheduleDays(originalDate, proposedDate, rangeDays);
+      const deadlineOk = isBeforeFinalDeadline(proposedDate, finalDate);
+
+      if (!proposedDate || !rangeOk || !deadlineOk) {
+        const rangeLabel = rangeDays === null ? 'nieograniczony' : `±${rangeDays} dni`;
         toast({
           title: 'Nie można zatwierdzić',
-          description: 'Proponowany termin wykracza poza zakres ±3 dni od pierwotnej daty meczu.',
+          description: !rangeOk
+            ? `Proponowany termin wykracza poza zakres ${rangeLabel} od pierwotnej daty meczu.`
+            : `Proponowana data (${proposedDate.slice(0, 10)}) przekracza ostateczny termin realizacji meczów (${finalDate}).`,
           variant: 'destructive',
         });
         return;
@@ -910,6 +968,7 @@ export default function MyTeamPage() {
     replacedPlayerNickname: string;
     standinNickname: string;
     standinSteamProfileUrl: string;
+    standinMmr?: number;
   }) => {
     if (!tournament?.id || !team) return;
 
@@ -930,6 +989,7 @@ export default function MyTeamPage() {
       replacedPlayerNickname: data.replacedPlayerNickname,
       standinNickname: data.standinNickname,
       standinSteamProfileUrl: data.standinSteamProfileUrl,
+      ...(data.standinMmr !== undefined ? { standinMmr: data.standinMmr } : {}),
       status: 'pending' as const,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -1047,17 +1107,78 @@ export default function MyTeamPage() {
     let logoUrl = typeof data.teamLogo === 'string' ? data.teamLogo : team.logoUrl;
     // TODO: If data.teamLogo is a File, upload to Firebase Storage and get URL
 
-    // Build the embedded roster map { [steamId64]: { nickname, role, steamId32, avatar } }
-    const roster: Record<string, { nickname: string; role: string; steamId32: string; avatar?: string }> = {};
+    // Helper: resolve smurf Steam IDs (numeric profile = direct derive, vanity = API call)
+    const resolveSmurfAccounts = async (
+      smurfs: { steamProfileUrl: string; steamId64?: string; steamId32?: string }[]
+    ): Promise<{ steamProfileUrl: string; steamId64: string; steamId32: string }[]> => {
+      return Promise.all(smurfs.map(async (smurf) => {
+        // Already resolved — keep as-is
+        if (smurf.steamId64 && smurf.steamId32) {
+          return { steamProfileUrl: smurf.steamProfileUrl, steamId64: smurf.steamId64, steamId32: smurf.steamId32 };
+        }
+        // Numeric profile URL — derive directly
+        const numericMatch = smurf.steamProfileUrl?.match(/\/profiles\/(\d{17,})/);
+        if (numericMatch) {
+          try {
+            const id64 = numericMatch[1];
+            const id32 = String(BigInt(id64) - 76561197960265728n);
+            return { steamProfileUrl: smurf.steamProfileUrl, steamId64: id64, steamId32: id32 };
+          } catch { /* fall through */ }
+        }
+        // Vanity URL — call /api/validate-steam
+        try {
+          const res = await fetch('/api/validate-steam', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ profileUrl: smurf.steamProfileUrl }),
+          });
+          if (res.ok) {
+            const apiData = await res.json();
+            return { steamProfileUrl: smurf.steamProfileUrl, steamId64: apiData.steamId64 || '', steamId32: apiData.steamId32 || '' };
+          }
+        } catch { /* fall through */ }
+        return { steamProfileUrl: smurf.steamProfileUrl, steamId64: '', steamId32: '' };
+      }));
+    };
+
+    // Resolve all smurf URLs in parallel before building the roster map
+    const resolvedSmurfsMap = new Map<string, { steamProfileUrl: string; steamId64: string; steamId32: string }[]>();
+    await Promise.all(data.players.map(async (player) => {
+      const steamId64 = player.steamId || '';
+      if (!steamId64) return;
+      const rawSmurfs = (player as any).smurfAccounts as { steamProfileUrl: string; steamId64?: string; steamId32?: string }[] | undefined;
+      if (!rawSmurfs?.length) return;
+      const resolved = await resolveSmurfAccounts(rawSmurfs);
+      resolvedSmurfsMap.set(steamId64, resolved);
+    }));
+
+    // Build the embedded roster map { [steamId64]: { nickname, role, steamId32, avatar, avatarmedium, avatarfull, mmr?, smurfAccounts?, profileScreenshotUrl? } }
+    const roster: Record<string, { nickname: string; role: string; steamId32: string; avatar?: string; avatarmedium?: string; avatarfull?: string; mmr?: number; smurfAccounts?: { steamProfileUrl: string; steamId64: string; steamId32: string }[]; profileScreenshotUrl?: string }> = {};
     for (const player of data.players) {
       const steamId64 = player.steamId || '';
       if (steamId64) {
+        const resolvedSmurfs = resolvedSmurfsMap.get(steamId64);
         roster[steamId64] = {
           nickname: player.nickname,
           role: player.role,
           steamId32: player.steamId32 || '',
           avatar: player.avatar || '',
+          avatarmedium: player.avatarmedium || '',
+          avatarfull: player.avatarfull || '',
+          ...((player as any).mmr != null ? { mmr: (player as any).mmr } : {}),
+          ...(resolvedSmurfs?.length ? { smurfAccounts: resolvedSmurfs } : {}),
+          ...((player as any).profileScreenshotUrl ? { profileScreenshotUrl: (player as any).profileScreenshotUrl } : {}),
         };
+      }
+    }
+
+    // For MMR-limited tournaments, reset team status to 'pending' if new players were added
+    const pendingFields: Record<string, unknown> = {};
+    if (isMmrLimited) {
+      const currentRosterIds = new Set(Object.keys(team.roster || {}));
+      const hasNewPlayers = data.players.some(p => p.steamId && !currentRosterIds.has(p.steamId));
+      if (hasNewPlayers) {
+        pendingFields.status = 'pending';
       }
     }
 
@@ -1067,6 +1188,7 @@ export default function MyTeamPage() {
       logoUrl,
       captainDiscordUsername: data.captainDiscord,
       roster,
+      ...pendingFields,
     });
 
     // Sync player pointer subcollection (pointer-only: steamId, steamId32, role)
@@ -1178,6 +1300,36 @@ export default function MyTeamPage() {
       // Non-fatal: roster save succeeded, global profiles can be synced later
       console.warn('[handleSaveRoster] Failed to sync global player profiles:', profileError);
     }
+
+    // ── Fetch most-played heroes from OpenDota for new players (non-blocking) ──
+    if (addedSteamIds.length > 0) {
+      (async () => {
+        try {
+          for (const steamId64 of addedSteamIds) {
+            let steamId32 = '';
+            try { steamId32 = String(BigInt(steamId64) - 76561197960265728n); } catch { continue; }
+            const res = await fetch('/api/player-heroes', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ accountId: steamId32 }),
+            });
+            if (res.ok) {
+              const { data: heroData } = await res.json();
+              if (heroData) {
+                const teamSnap2 = await getDoc(teamRef);
+                const currentRoster = teamSnap2.data()?.roster || {};
+                if (currentRoster[steamId64]) {
+                  currentRoster[steamId64] = { ...currentRoster[steamId64], mostPlayedHeroes: heroData };
+                  await updateDoc(teamRef, { roster: currentRoster });
+                }
+              }
+            }
+          }
+        } catch (e) {
+          console.warn('[handleSaveRoster] Failed to fetch most-played heroes:', e);
+        }
+      })();
+    }
   };
 
   if (!tournament) return null;
@@ -1240,20 +1392,6 @@ export default function MyTeamPage() {
         {team && <PlayerAnalyticsTable team={team} />}
         {matches.length > 0 && <MatchHistoryTable matches={matches} teamId={team?.id || ""} />}
       </div>
-    );
-  }
-
-  // =========================================================================
-  // MMR-LIMITED TOURNAMENT UI (Generic)
-  // =========================================================================
-  if (isMmrLimited) {
-    return (
-      <MmrMyTeamPage
-        team={team}
-        hasTeam={hasTeam}
-        matches={matches}
-        loading={loading}
-      />
     );
   }
 
@@ -1468,11 +1606,14 @@ export default function MyTeamPage() {
   const hasCommonWindow = (slot: ScrimSlot, mySlots: ScrimSlot[]): boolean => {
     const slotStart = new Date(slot.startAt).getTime();
     const slotEnd = new Date(slot.endAt).getTime();
+    const ONE_HOUR = 60 * 60 * 1000;
 
     return mySlots.some((mySlot) => {
       const myStart = new Date(mySlot.startAt).getTime();
       const myEnd = new Date(mySlot.endAt).getTime();
-      return slotStart < myEnd && myStart < slotEnd;
+      const overlapStart = Math.max(slotStart, myStart);
+      const overlapEnd = Math.min(slotEnd, myEnd);
+      return (overlapEnd - overlapStart) >= ONE_HOUR;
     });
   };
 
@@ -1521,385 +1662,432 @@ export default function MyTeamPage() {
           />
         )}
 
-        {/* Tabbed Navigation */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
-          <div className="flex justify-center">
-            <motion.div
-              initial={{ y: -20, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              className="glass-panel-premium px-2 py-1.5 rounded-full inline-flex shadow-2xl backdrop-blur-xl border border-white/5"
+        {/* Captain Actions */}
+        <PDLCaptainActions
+          isCaptain={isCaptain}
+          actions={captainActions}
+        />
+
+        {/* 3 Big Action Buttons */}
+        <motion.div
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ duration: 0.4, delay: 0.15 }}
+          className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-8"
+        >
+          {/* Management Button */}
+          <button
+            onClick={() => setManagementModalOpen(true)}
+            className="group relative rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-xl p-6 text-left transition-all duration-300 hover:border-white/20 hover:bg-white/[0.06] hover:scale-[1.02]"
+          >
+            <div className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" style={{ background: `radial-gradient(circle at center, ${theme?.primaryColor || '#8B1538'}15, transparent 70%)` }} />
+            <div className="relative z-10 flex flex-col items-center gap-3">
+              <h3
+                className="text-lg uppercase tracking-[0.15em]"
+                style={{
+                  color: 'var(--tournament-heading)',
+                  fontFamily: theme?.headerFont ? `var(${theme.headerFont})` : undefined,
+                }}
+              >
+                Zarządzanie
+              </h3>
+              <p
+                className="text-sm leading-relaxed font-medium text-center"
+                style={{ color: 'var(--tournament-secondary-text)' }}
+              >
+                Zarządzaj informacjami o drużynie i składem
+              </p>
+            </div>
+          </button>
+
+          {/* Matches Button */}
+          <button
+            onClick={() => setMatchesModalOpen(true)}
+            className="group relative rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-xl p-6 text-left transition-all duration-300 hover:border-white/20 hover:bg-white/[0.06] hover:scale-[1.02]"
+          >
+            <div className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" style={{ background: `radial-gradient(circle at center, ${theme?.primaryColor || '#8B1538'}15, transparent 70%)` }} />
+            <div className="relative z-10 flex flex-col items-center gap-3">
+              <h3
+                className="text-lg uppercase tracking-[0.15em]"
+                style={{
+                  color: 'var(--tournament-heading)',
+                  fontFamily: theme?.headerFont ? `var(${theme.headerFont})` : undefined,
+                }}
+              >
+                Mecze
+              </h3>
+              <p
+                className="text-sm leading-relaxed font-medium text-center"
+                style={{ color: 'var(--tournament-secondary-text)' }}
+              >
+                Umów termin meczu i zgłoś standina
+              </p>
+            </div>
+          </button>
+
+          {/* Availability Button */}
+          <button
+            onClick={() => setAvailabilityModalOpen(true)}
+            className="group relative rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-xl p-6 text-left transition-all duration-300 hover:border-white/20 hover:bg-white/[0.06] hover:scale-[1.02]"
+          >
+            <div className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" style={{ background: `radial-gradient(circle at center, ${theme?.primaryColor || '#8B1538'}15, transparent 70%)` }} />
+            <div className="relative z-10 flex flex-col items-center gap-3">
+              <h3
+                className="text-lg uppercase tracking-[0.15em]"
+                style={{
+                  color: 'var(--tournament-heading)',
+                  fontFamily: theme?.headerFont ? `var(${theme.headerFont})` : undefined,
+                }}
+              >
+                Dostępność
+              </h3>
+              <p
+                className="text-sm leading-relaxed font-medium text-center"
+                style={{ color: 'var(--tournament-secondary-text)' }}
+              >
+                Wpisz swoją dostępność i sprawdź innych
+              </p>
+            </div>
+          </button>
+        </motion.div>
+      </div>
+
+      {/* ═══════════════════════════════════════════════════════════
+          Management Modal (Squad/Transfer content)
+         ═══════════════════════════════════════════════════════════ */}
+      <Dialog open={managementModalOpen} onOpenChange={setManagementModalOpen}>
+        <DialogContent hideClose className="max-w-4xl max-h-[85vh] overflow-y-auto border text-white bg-black/20 backdrop-blur-2xl backdrop-saturate-150 custom-scrollbar" style={{ borderColor: 'var(--tournament-border, rgba(255,255,255,0.1))' }}>
+          <div className="flex items-center gap-3">
+            <DialogTitle
+              className="text-xl uppercase tracking-[0.15em]"
+              style={{
+                color: 'var(--tournament-heading)',
+                fontFamily: theme?.headerFont ? `var(${theme.headerFont})` : undefined,
+              }}
             >
-              <TabsList className="bg-transparent border-0 h-auto p-0 gap-1">
-                {[
-                  { id: 'overview', label: 'Przegląd', icon: Users },
-                  { id: 'matches', label: 'Mecze', icon: Calendar },
-                  { id: 'scrims', label: 'Scrimy', icon: Clock3 },
-                  { id: 'squad', label: 'Skład', icon: ArrowRightLeft },
-                  { id: 'stats', label: 'Statystyki', icon: BarChart3 },
-                ].map((tab) => (
-                  <TabsTrigger
-                    key={tab.id}
-                    value={tab.id}
-                    className="rounded-full px-6 py-2.5 data-[state=active]:bg-white/10 data-[state=active]:text-white text-white/40 hover:text-white/80 transition-all duration-300"
-                  >
-                    <div className="flex items-center gap-2">
-                      <tab.icon className="w-4 h-4" />
-                      <span className="font-logik-extended-bold hidden sm:inline uppercase tracking-wide">{tab.label}</span>
-                    </div>
-                  </TabsTrigger>
-                ))}
-              </TabsList>
-            </motion.div>
+              Zarządzanie drużyną
+            </DialogTitle>
+            <DialogClose className="ml-auto p-2 rounded-lg border border-white/10 bg-white/5 text-white/40 hover:text-white/80 hover:bg-white/10 hover:border-white/20 transition-all">
+              <X className="w-4 h-4" />
+            </DialogClose>
           </div>
+          {team && isTransferWindowOpen ? (
+            <PDLTransferSection
+              team={team}
+              isCaptain={isCaptain}
+              isTransferWindowOpen={isTransferWindowOpen}
+              isSeasonActive={isSeasonActive}
+              previousRoundPlayers={previousRoundPlayers}
+              maxTransfers={maxTransfers}
+              autoEdit
+              isMmrLimited={isMmrLimited}
+              mmrCap={tournament?.mmrCap}
+              onSaveRoster={handleSaveRoster}
+            />
+          ) : (
+            <div className="rounded-xl border p-8 text-center space-y-3" style={{ borderColor: 'var(--tournament-border, rgba(255,255,255,0.1))', backgroundColor: 'rgba(255,255,255,0.02)' }}>
+              <p
+                className="text-lg font-medium"
+                style={{ color: 'var(--tournament-secondary-text)' }}
+              >
+                Okno transferowe jest zamknięte
+              </p>
+              <p
+                className="text-sm"
+                style={{ color: 'var(--tournament-muted, rgba(255,255,255,0.4))' }}
+              >
+                Nie możesz w tej chwili wprowadzać zmian w składzie. Poczekaj na otwarcie okna transferowego.
+              </p>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={activeTab}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.2 }}
-            >
-              {/* Overview Tab */}
-              <TabsContent value="overview" className="m-0 space-y-8">
-                {/* Notification Center */}
-                {tournament.id && team?.id && (
-                  <PDLNotificationCenter
-                    tournamentId={tournament.id}
-                    recipientId={team.id}
-                    recipientType="captain"
-                    onActionClick={(notification) => {
-                      // Navigate to appropriate tab based on notification type
-                      if (notification.metadata.matchId) {
-                        setActiveTab('matches');
-                      } else if (notification.type === 'transfer_window_opened' || notification.type === 'transfer_window_closing') {
-                        setActiveTab('squad');
-                      }
-                    }}
-                  />
-                )}
-
-                {/* Captain Actions */}
-                <PDLCaptainActions
-                  isCaptain={isCaptain}
-                  actions={captainActions}
-                />
-                
-                {/* Season Progress */}
-                {team && (() => {
-                    // Prefer flat fields written by recalc; fall back to team.stats sub-object
-                    const s = (team as any).stats || {};
-                    const tw = team.wins ?? s.wins ?? 0;
-                    const td = team.draws ?? s.draws ?? 0;
-                    const tl = team.losses ?? s.losses ?? 0;
-                    const pts = team.points ?? (tw * 2 + td);
-                    return (
-                      <PDLSeasonProgress
-                        divisionName={divisionInfo?.name}
-                        divisionTier={divisionInfo?.tier}
-                        divisionColor={divisionInfo?.color}
-                        currentPosition={currentPosition}
-                        totalTeams={sortedDivisionTeams.length}
-                        currentRound={divisionInfo?.currentRound ?? tournament.currentRound ?? 0}
-                        totalRounds={divisionInfo?.totalRounds ?? tournament.roundsPerSeason ?? 0}
-                        points={pts}
-                        wins={tw}
-                        draws={td}
-                        losses={tl}
-                        recentForm={team.recentForm}
-                        playoffQualified={playoffQualified}
-                        promotionZone={promotionZone}
-                        relegationZone={relegationZone}
-                      />
-                    );
-                  })()}
-                {team && <PDLRosterCard team={team} captainId={team.captainId} />}
-              </TabsContent>
-
-              {/* Matches Tab */}
-              <TabsContent value="matches" className="m-0 space-y-8">
-                {/* Upcoming Matches */}
-                <div className="space-y-6">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-white/5 border border-white/10">
-                      <Calendar className="w-5 h-5 text-pdl-gold" />
-                    </div>
-                    <h2 className="text-xl font-logik-extended-bold text-white tracking-wide uppercase">
-                      Nadchodzące Mecze
-                    </h2>
-                    <button
-                      onClick={refreshMatches}
-                      disabled={refreshingMatches}
-                      title="Odśwież mecze"
-                      className="ml-auto p-2 rounded-lg border border-white/10 bg-white/5 text-white/40 hover:text-white/80 hover:bg-white/10 hover:border-white/20 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-                    >
-                      <RefreshCw className={`w-4 h-4 ${refreshingMatches ? 'animate-spin' : ''}`} />
-                    </button>
-                  </div>
-
-                  {upcomingMatches.length === 0 ? (
-                    <div className="rounded-xl border border-white/5 bg-white/[0.02] p-8 text-center">
-                      <p className="text-white/40 font-logik">Brak zaplanowanych meczów</p>
-                    </div>
-                  ) : (
-                    <div className="grid gap-4">
-                      {upcomingMatches.map((match) => (
-                        <PDLUpcomingMatch
-                          key={match.id}
-                          match={match}
-                          myTeamId={team?.id || ''}
-                          isCaptain={isCaptain}
-                          myTeamPlayers={team?.players || []}
-                          teams={teams}
-                          standinRequests={getStandinRequestsForMatch(match.id)}
-                          opponentStandinRequests={getOpponentStandinRequestsForMatch(match.id)}
-                          allTournamentRequests={allTournamentStandinRequests}
-                          matchNameMap={matchNameMap}
-                          myCoachInfo={getCoachInfoForMatch(match)}
-                          nextMatchDate={match.scheduledFor}
-                          timePenalty={team?.timePenalty?.appliesTo === match.id || !team?.timePenalty?.appliesTo 
-                            ? team?.timePenalty 
-                            : undefined}
-                          onRequestReschedule={handleRequestReschedule}
-                          onApproveReschedule={handleApproveReschedule}
-                          onRejectReschedule={handleRejectReschedule}
-                          onCancelReschedule={handleCancelReschedule}
-                          onSubmitStandinRequest={handleSubmitStandinRequest}
-                          onApproveStandinRequest={handleApproveStandinRequest}
-                          onRejectStandinRequest={handleRejectStandinRequest}
-                          onAppealStandinRequest={handleAppealStandinRequest}
-                          onCancelStandinRequest={handleCancelStandinRequest}
-                          onSetCoach={handleSetCoach}
-                          onRemoveCoach={handleRemoveCoach}
-                          onRefreshMatch={() => refreshSingleMatch(match.id)}
-                        />
-                      ))}
-                    </div>
-                  )}
+      {/* ═══════════════════════════════════════════════════════════
+          Matches Modal
+         ═══════════════════════════════════════════════════════════ */}
+      <Dialog open={matchesModalOpen} onOpenChange={setMatchesModalOpen}>
+        <DialogContent hideClose className="max-w-4xl max-h-[85vh] overflow-y-auto border text-white bg-black/20 backdrop-blur-2xl backdrop-saturate-150 custom-scrollbar" style={{ borderColor: 'var(--tournament-border, rgba(255,255,255,0.1))' }}>
+          <DialogTitle className="sr-only">Mecze</DialogTitle>
+          <div className="space-y-8">
+            {/* Upcoming Matches */}
+            <div className="space-y-6">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-white/5 border border-white/10">
+                  <Calendar className="w-5 h-5 text-pdl-gold" />
                 </div>
+                <h2
+                  className="text-xl uppercase tracking-[0.15em]"
+                  style={{
+                    color: 'var(--tournament-heading)',
+                    fontFamily: theme?.headerFont ? `var(${theme.headerFont})` : undefined,
+                  }}
+                >
+                  Nadchodzące Mecze
+                </h2>
+                <button
+                  onClick={refreshMatches}
+                  disabled={refreshingMatches}
+                  title="Odśwież mecze"
+                  className="ml-auto p-2 rounded-lg border border-white/10 bg-white/5 text-white/40 hover:text-white/80 hover:bg-white/10 hover:border-white/20 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <RefreshCw className={`w-4 h-4 ${refreshingMatches ? 'animate-spin' : ''}`} />
+                </button>
+                <DialogClose className="p-2 rounded-lg border border-white/10 bg-white/5 text-white/40 hover:text-white/80 hover:bg-white/10 hover:border-white/20 transition-all">
+                  <X className="w-4 h-4" />
+                </DialogClose>
+              </div>
 
-                {/* Match History */}
-                <PDLMatchHistory
-                  matches={matches}
-                  myTeamId={team?.id || ''}
-                  teams={teams}
-                  tournamentSlug={tournament.slug || 'pdl'}
-                />
-              </TabsContent>
+              {upcomingMatches.length === 0 ? (
+                <div className="rounded-xl border border-white/5 bg-white/[0.02] p-8 text-center">
+                  <p className="font-logik" style={{ color: theme.secondaryTextColor || 'rgba(255,255,255,0.4)' }}>Brak zaplanowanych meczów</p>
+                </div>
+              ) : (
+                <div className="grid gap-4">
+                  {upcomingMatches.map((match) => (
+                    <PDLUpcomingMatch
+                      key={match.id}
+                      match={match}
+                      myTeamId={team?.id || ''}
+                      isCaptain={isCaptain}
+                      myTeamPlayers={team?.players || []}
+                      teams={teams}
+                      standinRequests={getStandinRequestsForMatch(match.id)}
+                      opponentStandinRequests={getOpponentStandinRequestsForMatch(match.id)}
+                      allTournamentRequests={allTournamentStandinRequests}
+                      matchNameMap={matchNameMap}
+                      myCoachInfo={getCoachInfoForMatch(match)}
+                      nextMatchDate={match.scheduledFor}
+                      timePenalty={team?.timePenalty?.appliesTo === match.id || !team?.timePenalty?.appliesTo 
+                        ? team?.timePenalty 
+                        : undefined}
+                      onRequestReschedule={handleRequestReschedule}
+                      onApproveReschedule={handleApproveReschedule}
+                      onRejectReschedule={handleRejectReschedule}
+                      onCancelReschedule={handleCancelReschedule}
+                      onSubmitStandinRequest={handleSubmitStandinRequest}
+                      onApproveStandinRequest={handleApproveStandinRequest}
+                      onRejectStandinRequest={handleRejectStandinRequest}
+                      onAppealStandinRequest={handleAppealStandinRequest}
+                      onCancelStandinRequest={handleCancelStandinRequest}
+                      onSetCoach={isMmrLimited ? undefined : handleSetCoach}
+                      onRemoveCoach={isMmrLimited ? undefined : handleRemoveCoach}
+                      onRefreshMatch={() => refreshSingleMatch(match.id)}
+                      isMmrLimited={isMmrLimited}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
 
-              {/* Scrims Tab */}
-              <TabsContent value="scrims" className="m-0 space-y-8">
-                <div className="space-y-6">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-white/5 border border-white/10">
-                      <Clock3 className="w-5 h-5 text-pdl-gold" />
-                    </div>
-                    <h2 className="text-xl font-logik-extended-bold text-white tracking-wide uppercase">
-                      Tablica Scrimów
-                    </h2>
+            {/* Match History */}
+            <PDLMatchHistory
+              matches={matches}
+              myTeamId={team?.id || ''}
+              teams={teams}
+              tournamentSlug={tournament.slug || 'pdl'}
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ═══════════════════════════════════════════════════════════
+          Availability Modal (formerly Scrims)
+         ═══════════════════════════════════════════════════════════ */}
+      <Dialog open={availabilityModalOpen} onOpenChange={setAvailabilityModalOpen}>
+        <DialogContent hideClose className="max-w-6xl max-h-[90vh] overflow-y-auto border text-white bg-black/20 backdrop-blur-2xl backdrop-saturate-150 custom-scrollbar" style={{ borderColor: 'var(--tournament-border, rgba(255,255,255,0.1))' }}>
+          <div className="flex items-center gap-3">
+            <DialogTitle
+              className="text-xl uppercase tracking-[0.15em]"
+              style={{
+                color: 'var(--tournament-heading)',
+                fontFamily: theme?.headerFont ? `var(${theme.headerFont})` : undefined,
+              }}
+            >
+              Tablica dostępności
+            </DialogTitle>
+            <DialogClose className="ml-auto p-2 rounded-lg border border-white/10 bg-white/5 text-white/40 hover:text-white/80 hover:bg-white/10 hover:border-white/20 transition-all">
+              <X className="w-4 h-4" />
+            </DialogClose>
+          </div>
+          <div className="space-y-6">
+            {isCaptain && (
+              <div className="rounded-xl border border-white/10 bg-white/[0.02] p-5 space-y-4">
+                <p className="text-sm font-logik uppercase tracking-wide" style={{ color: theme.primaryTextColor || 'rgba(255,255,255,0.7)' }}>
+                  Dodaj swoje okno dostępności
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-xs uppercase tracking-wide" style={{ color: theme.primaryTextColor || 'rgba(255,255,255,0.5)' }}>Data</label>
+                    <input
+                      type="date"
+                      value={slotStartDate}
+                      onChange={(event) => setSlotStartDate(event.target.value)}
+                      className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white"
+                    />
                   </div>
+                  <div className="space-y-1">
+                    <label className="text-xs uppercase tracking-wide" style={{ color: theme.primaryTextColor || 'rgba(255,255,255,0.5)' }}>Godzina startu (24h)</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <select
+                        value={slotStartHour}
+                        onChange={(event) => setSlotStartHour(event.target.value)}
+                        className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white"
+                      >
+                        {hourOptions.map((hourValue) => (
+                          <option key={`start-h-${hourValue}`} value={hourValue}>{hourValue}</option>
+                        ))}
+                      </select>
+                      <select
+                        value={slotStartMinute}
+                        onChange={(event) => setSlotStartMinute(event.target.value)}
+                        className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white"
+                      >
+                        {minuteOptions.map((minuteValue) => (
+                          <option key={`start-m-${minuteValue}`} value={minuteValue}>{minuteValue}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs uppercase tracking-wide" style={{ color: theme.primaryTextColor || 'rgba(255,255,255,0.5)' }}>Godzina końca (24h)</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <select
+                        value={slotEndHour}
+                        onChange={(event) => setSlotEndHour(event.target.value)}
+                        className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white"
+                      >
+                        {hourOptions.map((hourValue) => (
+                          <option key={`end-h-${hourValue}`} value={hourValue}>{hourValue}</option>
+                        ))}
+                      </select>
+                      <select
+                        value={slotEndMinute}
+                        onChange={(event) => setSlotEndMinute(event.target.value)}
+                        className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white"
+                      >
+                        {minuteOptions.map((minuteValue) => (
+                          <option key={`end-m-${minuteValue}`} value={minuteValue}>{minuteValue}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs uppercase tracking-wide" style={{ color: theme.primaryTextColor || 'rgba(255,255,255,0.5)' }}>Format</label>
+                    <select
+                      value={slotBoFormat}
+                      onChange={(event) => setSlotBoFormat(event.target.value === 'bo1' ? 'bo1' : 'bo2')}
+                      className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white"
+                    >
+                      <option value="bo2">BO2</option>
+                      <option value="bo1">BO1</option>
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs uppercase tracking-wide" style={{ color: theme.primaryTextColor || 'rgba(255,255,255,0.5)' }}>Notatka (opcjonalnie)</label>
+                    <input
+                      type="text"
+                      value={slotNotes}
+                      onChange={(event) => setSlotNotes(event.target.value)}
+                      placeholder=""
+                      className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white"
+                    />
+                  </div>
+                </div>
+                <Button
+                  onClick={handleCreateScrimSlot}
+                  disabled={isSavingSlot || !slotStartDate}
+                  className="bg-pdl-crimson hover:bg-pdl-crimson/80 text-white font-logik-extended-bold"
+                >
+                  {isSavingSlot ? 'Dodawanie...' : 'Dodaj slot'}
+                </Button>
+              </div>
+            )}
 
-                  {isCaptain && (
-                    <div className="rounded-xl border border-white/10 bg-white/[0.02] p-5 space-y-4">
-                      <p className="text-sm text-white/70 font-logik uppercase tracking-wide">
-                        Dodaj swoje okno dostępności
-                      </p>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <div className="space-y-1">
-                          <label className="text-xs text-white/50 uppercase tracking-wide">Data</label>
-                          <input
-                            type="date"
-                            value={slotStartDate}
-                            onChange={(event) => setSlotStartDate(event.target.value)}
-                            className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white"
-                          />
-                        </div>
-                        <div className="space-y-1">
-                          <label className="text-xs text-white/50 uppercase tracking-wide">Godzina startu (24h)</label>
-                          <div className="grid grid-cols-2 gap-2">
-                            <select
-                              value={slotStartHour}
-                              onChange={(event) => setSlotStartHour(event.target.value)}
-                              className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white"
-                            >
-                              {hourOptions.map((hourValue) => (
-                                <option key={`start-h-${hourValue}`} value={hourValue}>{hourValue}</option>
-                              ))}
-                            </select>
-                            <select
-                              value={slotStartMinute}
-                              onChange={(event) => setSlotStartMinute(event.target.value)}
-                              className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white"
-                            >
-                              {minuteOptions.map((minuteValue) => (
-                                <option key={`start-m-${minuteValue}`} value={minuteValue}>{minuteValue}</option>
-                              ))}
-                            </select>
-                          </div>
-                        </div>
-                        <div className="space-y-1">
-                          <label className="text-xs text-white/50 uppercase tracking-wide">Godzina końca (24h)</label>
-                          <div className="grid grid-cols-2 gap-2">
-                            <select
-                              value={slotEndHour}
-                              onChange={(event) => setSlotEndHour(event.target.value)}
-                              className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white"
-                            >
-                              {hourOptions.map((hourValue) => (
-                                <option key={`end-h-${hourValue}`} value={hourValue}>{hourValue}</option>
-                              ))}
-                            </select>
-                            <select
-                              value={slotEndMinute}
-                              onChange={(event) => setSlotEndMinute(event.target.value)}
-                              className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white"
-                            >
-                              {minuteOptions.map((minuteValue) => (
-                                <option key={`end-m-${minuteValue}`} value={minuteValue}>{minuteValue}</option>
-                              ))}
-                            </select>
-                          </div>
-                        </div>
-                        <div className="space-y-1">
-                          <label className="text-xs text-white/50 uppercase tracking-wide">Format</label>
-                          <select
-                            value={slotBoFormat}
-                            onChange={(event) => setSlotBoFormat(event.target.value === 'bo1' ? 'bo1' : 'bo2')}
-                            className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white"
-                          >
-                            <option value="bo2">BO2</option>
-                            <option value="bo1">BO1</option>
-                          </select>
-                        </div>
-                        <div className="space-y-1">
-                          <label className="text-xs text-white/50 uppercase tracking-wide">Notatka (opcjonalnie)</label>
-                          <input
-                            type="text"
-                            value={slotNotes}
-                            onChange={(event) => setSlotNotes(event.target.value)}
-                            placeholder="np. tylko od razu po oficjalnym meczu"
-                            className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white"
-                          />
-                        </div>
+            <div className="rounded-xl border border-white/10 bg-white/[0.02] p-5 space-y-3">
+              <p className="text-sm font-logik uppercase tracking-wide" style={{ color: theme.primaryTextColor || 'rgba(255,255,255,0.7)' }}>Twoje aktywne sloty</p>
+              {myActiveScrimSlots.length === 0 ? (
+                <p className="text-sm font-logik" style={{ color: theme.secondaryTextColor || 'rgba(255,255,255,0.4)' }}>Brak aktywnych slotów.</p>
+              ) : (
+                <div className="space-y-2">
+                  {myActiveScrimSlots.map((slot) => (
+                    <div key={slot.id} className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 rounded-lg border border-white/10 bg-black/20 p-3">
+                      <div className="space-y-1">
+                        <p className="text-white font-logik-extended-bold">{slot.teamName}</p>
+                        <p className="text-xs text-white/60 font-logik">
+                          {formatSlotDate(slot.startAt)} → {formatSlotDate(slot.endAt)} • {slot.boFormat.toUpperCase()}
+                        </p>
+                        {slot.notes && <p className="text-xs text-white/50">{slot.notes}</p>}
                       </div>
                       <Button
-                        onClick={handleCreateScrimSlot}
-                        disabled={isSavingSlot || !slotStartDate}
-                        className="bg-pdl-crimson hover:bg-pdl-crimson/80 text-white font-logik-extended-bold"
+                        variant="outline"
+                        onClick={() => handleDeleteScrimSlot(slot.id)}
+                        className="border-white/10 bg-white/[0.02] hover:bg-red-500/20 hover:border-red-500/40"
                       >
-                        {isSavingSlot ? 'Dodawanie...' : 'Dodaj slot'}
+                        <Trash2 className="w-4 h-4 mr-2" />
+                        Usuń
                       </Button>
                     </div>
-                  )}
+                  ))}
+                </div>
+              )}
+            </div>
 
-                  <div className="rounded-xl border border-white/10 bg-white/[0.02] p-5 space-y-3">
-                    <p className="text-sm text-white/70 font-logik uppercase tracking-wide">Twoje aktywne sloty</p>
-                    {myActiveScrimSlots.length === 0 ? (
-                      <p className="text-white/40 text-sm font-logik">Brak aktywnych slotów.</p>
-                    ) : (
-                      <div className="space-y-2">
-                        {myActiveScrimSlots.map((slot) => (
-                          <div key={slot.id} className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 rounded-lg border border-white/10 bg-black/20 p-3">
-                            <div className="space-y-1">
-                              <p className="text-white font-logik-extended-bold">{slot.teamName}</p>
-                              <p className="text-xs text-white/60 font-logik">
-                                {formatSlotDate(slot.startAt)} → {formatSlotDate(slot.endAt)} • {slot.boFormat.toUpperCase()}
-                              </p>
-                              {slot.notes && <p className="text-xs text-white/50">{slot.notes}</p>}
-                            </div>
+            <div className="rounded-xl border border-white/10 bg-white/[0.02] p-5 space-y-3">
+              <p className="text-sm font-logik uppercase tracking-wide" style={{ color: theme.primaryTextColor || 'rgba(255,255,255,0.7)' }}>Sloty innych drużyn</p>
+              {availableScrimSlots.length === 0 ? (
+                <p className="text-sm font-logik" style={{ color: theme.secondaryTextColor || 'rgba(255,255,255,0.4)' }}>Brak aktywnych ogłoszeń.</p>
+              ) : (
+                <div className="space-y-3">
+                  {availableScrimSlots.map((slot) => {
+                    const overlap = hasCommonWindow(slot, myActiveScrimSlots);
+                    const isCopied = copiedDiscord === slot.captainDiscord;
+
+                    return (
+                      <div key={slot.id} className={`rounded-lg border p-4 space-y-2 ${overlap ? 'border-emerald-500/40 bg-emerald-500/[0.08]' : 'border-white/10 bg-black/20'}`}>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="text-white font-logik-extended-bold">{slot.teamName}</p>
+                          {overlap && (
+                            <span className="rounded-full border border-emerald-500/40 bg-emerald-500/15 px-2 py-0.5 text-xs text-emerald-300 font-logik-extended-bold uppercase tracking-wide">
+                              Wspólne okno
+                            </span>
+                          )}
+                          <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-xs text-white/70 uppercase">
+                            {slot.boFormat.toUpperCase()}
+                          </span>
+                        </div>
+                        <p className="text-sm text-white/70 font-logik">
+                          {formatSlotDate(slot.startAt)} → {formatSlotDate(slot.endAt)}
+                        </p>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="text-sm text-white/80 font-logik">Discord: {slot.captainDiscord || 'brak'}</span>
+                          {slot.captainDiscord && (
                             <Button
                               variant="outline"
-                              onClick={() => handleDeleteScrimSlot(slot.id)}
-                              className="border-white/10 bg-white/[0.02] hover:bg-red-500/20 hover:border-red-500/40"
+                              size="sm"
+                              onClick={() => handleCopyDiscord(slot.captainDiscord)}
+                              className="border-white/10 bg-white/[0.02] hover:bg-white/10"
                             >
-                              <Trash2 className="w-4 h-4 mr-2" />
-                              Usuń
+                              {isCopied ? <Check className="w-4 h-4 mr-1.5" /> : <Copy className="w-4 h-4 mr-1.5" />}
+                              Skopiuj @nick
                             </Button>
-                          </div>
-                        ))}
+                          )}
+                        </div>
+                        {slot.notes && <p className="text-xs text-white/50">{slot.notes}</p>}
                       </div>
-                    )}
-                  </div>
-
-                  <div className="rounded-xl border border-white/10 bg-white/[0.02] p-5 space-y-3">
-                    <p className="text-sm text-white/70 font-logik uppercase tracking-wide">Dostępne sloty innych kapitanów</p>
-                    {availableScrimSlots.length === 0 ? (
-                      <p className="text-white/40 text-sm font-logik">Brak aktywnych ogłoszeń scrimowych.</p>
-                    ) : (
-                      <div className="space-y-3">
-                        {availableScrimSlots.map((slot) => {
-                          const overlap = hasCommonWindow(slot, myActiveScrimSlots);
-                          const isCopied = copiedDiscord === slot.captainDiscord;
-
-                          return (
-                            <div key={slot.id} className="rounded-lg border border-white/10 bg-black/20 p-4 space-y-2">
-                              <div className="flex flex-wrap items-center gap-2">
-                                <p className="text-white font-logik-extended-bold">{slot.teamName}</p>
-                                {overlap && (
-                                  <span className="rounded-full border border-emerald-500/40 bg-emerald-500/15 px-2 py-0.5 text-xs text-emerald-300 font-logik-extended-bold uppercase tracking-wide">
-                                    Wspólne okno
-                                  </span>
-                                )}
-                                <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-xs text-white/70 uppercase">
-                                  {slot.boFormat.toUpperCase()}
-                                </span>
-                              </div>
-                              <p className="text-sm text-white/70 font-logik">
-                                {formatSlotDate(slot.startAt)} → {formatSlotDate(slot.endAt)}
-                              </p>
-                              <div className="flex flex-wrap items-center gap-2">
-                                <span className="text-sm text-white/80 font-logik">Discord: {slot.captainDiscord || 'brak'}</span>
-                                {slot.captainDiscord && (
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => handleCopyDiscord(slot.captainDiscord)}
-                                    className="border-white/10 bg-white/[0.02] hover:bg-white/10"
-                                  >
-                                    {isCopied ? <Check className="w-4 h-4 mr-1.5" /> : <Copy className="w-4 h-4 mr-1.5" />}
-                                    Skopiuj @nick
-                                  </Button>
-                                )}
-                              </div>
-                              {slot.notes && <p className="text-xs text-white/50">{slot.notes}</p>}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
+                    );
+                  })}
                 </div>
-              </TabsContent>
-
-              {/* Squad Management Tab */}
-              <TabsContent value="squad" className="m-0">
-                {team && (
-                  <PDLTransferSection
-                    team={team}
-                    isCaptain={isCaptain}
-                    isTransferWindowOpen={isTransferWindowOpen}
-                    isSeasonActive={isSeasonActive}
-                    previousRoundPlayers={previousRoundPlayers}
-                    maxTransfers={maxTransfers}
-                    onSaveRoster={handleSaveRoster}
-                  />
-                )}
-              </TabsContent>
-
-              {/* Stats Tab */}
-              <TabsContent value="stats" className="m-0">
-                {team && (
-                  <PDLTeamStats
-                    team={team}
-                    divisionRank={undefined}
-                    totalTeamsInDivision={teams.length}
-                  />
-                )}
-              </TabsContent>
-            </motion.div>
-          </AnimatePresence>
-        </Tabs>
-      </div>
+              )}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
+}
+
+/** Next.js page wrapper. */
+export default function MyTeamPage() {
+  return <MyTeamView />;
 }

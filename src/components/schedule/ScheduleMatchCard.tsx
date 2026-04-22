@@ -9,6 +9,7 @@ import { Match } from '@/lib/definitions';
 import { cn } from '@/lib/utils';
 import { Clock, Trophy, Zap, Calendar } from 'lucide-react';
 import { MatchDetailModal } from '@/components/divisions/MatchDetailModal';
+import { useTournament } from '@/context/TournamentContext';
 
 interface ScheduleMatchCardProps {
     match: Match;
@@ -29,6 +30,7 @@ export function ScheduleMatchCard({ match, priority = false, divisionColor = '#6
     const teamBWon = isCompleted && match.teamB.score > match.teamA.score;
     const isDraw = isCompleted && match.teamA.score === match.teamB.score;
 
+    const { theme } = useTournament();
     const [modalOpen, setModalOpen] = useState(false);
 
     return (
@@ -49,9 +51,12 @@ export function ScheduleMatchCard({ match, priority = false, divisionColor = '#6
                     <div className="absolute inset-0 bg-gradient-to-r from-red-500/5 to-transparent animate-pulse pointer-events-none" />
                 )}
 
-                <div className="relative p-4">
-                    {/* Top row: Time/Status */}
-                    <div className="flex items-center justify-between mb-4">
+                <div className="relative p-3">
+                    {/* Top row: Time/Status — dimmed until hover (except live) */}
+                    <div className={cn(
+                        "flex items-center justify-between mb-2 transition-opacity duration-300",
+                        !isLive && "opacity-40 group-hover:opacity-100",
+                    )}>
                         <div className="flex items-center gap-2">
                             {isLive ? (
                                 <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-red-500/20 border border-red-500/30">
@@ -59,9 +64,9 @@ export function ScheduleMatchCard({ match, priority = false, divisionColor = '#6
                                     <span className="text-xs font-bold text-red-400 uppercase tracking-wider">Live</span>
                                 </div>
                             ) : (
-                                <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-white/5">
-                                    <Calendar className="w-3 h-3 text-white/40" />
-                                    <span className="text-xs font-mono text-white/40">
+                                <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-white/[0.04] border border-white/10">
+                                    <Calendar className="w-3 h-3" style={{ color: theme.secondaryTextColor || 'rgba(255,255,255,0.4)' }} />
+                                    <span className="text-xs font-mono uppercase tracking-wider" style={{ color: theme.secondaryTextColor || 'rgba(255,255,255,0.4)' }}>
                                         {matchDate ? format(matchDate, 'EEEE d. MMM.', { locale: pl }) : 'TBD'}
                                     </span>
                                 </div>
@@ -69,7 +74,7 @@ export function ScheduleMatchCard({ match, priority = false, divisionColor = '#6
                         </div>
 
                         {/* Time badge */}
-                        <div className="flex items-center gap-1.5 text-white/30">
+                        <div className="flex items-center gap-1.5" style={{ color: theme.secondaryTextColor || 'rgba(255,255,255,0.3)' }}>
                             <Clock className="w-3 h-3" />
                             <span className="text-xs font-mono">
                                 {matchDate ? format(matchDate, 'HH:mm') : '--:--'}
@@ -96,45 +101,42 @@ export function ScheduleMatchCard({ match, priority = false, divisionColor = '#6
                                 ) : (
                                     <div
                                         className="w-full h-full rounded-lg flex items-center justify-center text-sm font-bold border border-white/10"
-                                        style={{ backgroundColor: `${divisionColor}20` }}
+                                        style={{ backgroundColor: `${divisionColor}20`, color: theme.primaryTextColor || '#ffffff' }}
                                     >
                                         {match.teamA.name.charAt(0)}
                                     </div>
                                 )}
                             </div>
-                            <p className={cn(
-                                "font-logik-extended-bold text-sm leading-tight line-clamp-2 transition-all",
-                                teamAWon ? "text-white" : isCompleted ? "text-white/50" : "text-white/80 group-hover:text-white"
-                            )}>
+                            <p
+                                className="font-logik-extended-bold text-xs leading-tight line-clamp-2 break-words transition-all"
+                                style={{ color: teamAWon ? (theme.primaryTextColor || '#ffffff') : isCompleted ? (theme.secondaryTextColor || 'rgba(255,255,255,0.5)') : (theme.primaryTextColor || 'rgba(255,255,255,0.8)'), fontFamily: theme.headerFont ? `var(${theme.headerFont})` : undefined }}
+                            >
                                 {match.teamA.name}
                             </p>
                         </div>
 
-                        {/* Score / VS */}
-                        <div className="w-16 flex flex-col items-center justify-center shrink-0">
+                        {/* Score / Format */}
+                        <div className="w-12 flex items-center justify-center shrink-0">
                             {isCompleted || isLive ? (
                                 <div className="flex items-center gap-2">
-                                    <span className={cn(
-                                        "text-2xl font-logik-extended-bold tabular-nums",
-                                        teamAWon ? "text-pdl-gold" : isDraw ? "text-amber-400" : "text-white/50"
-                                    )}>
+                                    <span
+                                        className="text-2xl font-logik-extended-bold tabular-nums"
+                                        style={{ color: teamAWon ? (theme.primaryColor || '#d4af37') : isDraw ? (theme.primaryColor || '#d4af37') : (theme.secondaryTextColor || 'rgba(255,255,255,0.5)') }}
+                                    >
                                         {match.teamA.score}
                                     </span>
-                                    <span className="text-white/20 text-lg">:</span>
-                                    <span className={cn(
-                                        "text-2xl font-logik-extended-bold tabular-nums",
-                                        teamBWon ? "text-pdl-gold" : isDraw ? "text-amber-400" : "text-white/50"
-                                    )}>
+                                    <span className="text-lg" style={{ color: theme.secondaryTextColor || 'rgba(255,255,255,0.2)' }}>:</span>
+                                    <span
+                                        className="text-2xl font-logik-extended-bold tabular-nums"
+                                        style={{ color: teamBWon ? (theme.primaryColor || '#d4af37') : isDraw ? (theme.primaryColor || '#d4af37') : (theme.secondaryTextColor || 'rgba(255,255,255,0.5)') }}
+                                    >
                                         {match.teamB.score}
                                     </span>
                                 </div>
                             ) : (
-                                <div className="flex flex-col items-center">
-                                    <span className="text-lg font-bold text-white/20">VS</span>
-                                    <span className="text-[10px] text-white/30 font-mono mt-1">
-                                        BO{match.bestOf || 2}
-                                    </span>
-                                </div>
+                                <span className="text-xs font-bold font-mono tracking-wider opacity-40 group-hover:opacity-100 transition-opacity duration-300" style={{ color: theme.secondaryTextColor || 'rgba(255,255,255,0.35)' }}>
+                                    BO{match.bestOf || 2}
+                                </span>
                             )}
                         </div>
 
@@ -155,16 +157,16 @@ export function ScheduleMatchCard({ match, priority = false, divisionColor = '#6
                                 ) : (
                                     <div
                                         className="w-full h-full rounded-lg flex items-center justify-center text-sm font-bold border border-white/10"
-                                        style={{ backgroundColor: `${divisionColor}20` }}
+                                        style={{ backgroundColor: `${divisionColor}20`, color: theme.primaryTextColor || '#ffffff' }}
                                     >
                                         {match.teamB.name.charAt(0)}
                                     </div>
                                 )}
                             </div>
-                            <p className={cn(
-                                "font-logik-extended-bold text-sm leading-tight line-clamp-2 text-right transition-all",
-                                teamBWon ? "text-white" : isCompleted ? "text-white/50" : "text-white/80 group-hover:text-white"
-                            )}>
+                            <p
+                                className="font-logik-extended-bold text-xs leading-tight line-clamp-2 break-words text-right transition-all"
+                                style={{ color: teamBWon ? (theme.primaryTextColor || '#ffffff') : isCompleted ? (theme.secondaryTextColor || 'rgba(255,255,255,0.5)') : (theme.primaryTextColor || 'rgba(255,255,255,0.8)'), fontFamily: theme.headerFont ? `var(${theme.headerFont})` : undefined }}
+                            >
                                 {match.teamB.name}
                             </p>
                         </div>

@@ -155,7 +155,7 @@ export default function RulesPage() {
         {/* Ambient glow - bottom left */}
         <div
           className="absolute bottom-[-20%] left-[-10%] w-[40vw] h-[40vw] rounded-full opacity-[0.03] blur-[150px]"
-          style={{ background: '#dc2626' }}
+          style={{ background: theme?.secondaryColor || '#dc2626' }}
         />
       </div>
 
@@ -170,7 +170,8 @@ export default function RulesPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.1 }}
-            className="text-5xl md:text-7xl font-logik-wide-black text-transparent bg-clip-text bg-gradient-to-b from-white via-white to-white/50 tracking-tighter uppercase relative z-10 drop-shadow-2xl"
+            className="text-5xl md:text-7xl font-logik-wide-black tracking-tighter uppercase relative z-10 drop-shadow-2xl"
+            style={{ color: theme.titleColor || 'white', fontFamily: theme.headerFont ? `var(${theme.headerFont})` : undefined }}
           >
             Regulamin
           </motion.h1>
@@ -194,11 +195,11 @@ export default function RulesPage() {
             animate={{ opacity: 1, y: 0 }}
             className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm p-16 text-center"
           >
-            <BookOpen className="w-16 h-16 mx-auto text-white/20 mb-6" />
-            <h2 className="text-2xl font-logik-extended-bold text-white mb-3">
+            <BookOpen className="w-16 h-16 mx-auto mb-6" style={{ color: theme.secondaryTextColor || 'rgba(255,255,255,0.2)' }} />
+            <h2 className="text-2xl font-logik-extended-bold mb-3" style={{ color: theme.headingColor || theme.primaryTextColor || 'white', fontFamily: theme.headerFont ? `var(${theme.headerFont})` : undefined }}>
               Regulamin w przygotowaniu
             </h2>
-            <p className="text-gray-300 font-body font-medium max-w-md mx-auto">
+            <p className="font-body font-medium max-w-md mx-auto" style={{ color: theme.secondaryTextColor || '#d1d5db' }}>
               Regulamin turnieju jest aktualnie opracowywany. Wróć wkrótce po aktualizacje.
             </p>
           </motion.div>
@@ -214,7 +215,7 @@ export default function RulesPage() {
               <div className="lg:sticky lg:top-24 space-y-4">
                 <div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm overflow-hidden">
                   <div className="p-4 border-b border-white/10">
-                    <h3 className="font-logik-extended-bold text-white flex items-center gap-2">
+                    <h3 className="font-logik-extended-bold flex items-center gap-2" style={{ color: theme.headingColor || theme.primaryTextColor || 'white', fontFamily: theme.headerFont ? `var(${theme.headerFont})` : undefined }}>
                       <ScrollText className="w-4 h-4" style={{ color: theme.primaryColor }} />
                       Spis treści
                     </h3>
@@ -227,17 +228,19 @@ export default function RulesPage() {
                         className={cn(
                           "w-full text-left px-4 py-3 rounded-xl transition-all duration-200 group",
                           activeSection === section.id 
-                            ? "bg-white/10 text-white" 
-                            : "text-gray-400 hover:text-white hover:bg-white/5"
+                            ? "bg-white/10" 
+                            : "hover:bg-white/5"
                         )}
+                        style={{ color: activeSection === section.id ? (theme.primaryTextColor || 'white') : (theme.secondaryTextColor || '#9ca3af') }}
                       >
                         <div className="flex items-center gap-3">
                           <span 
                             className={cn(
-                              "w-6 h-6 rounded-lg flex items-center justify-center text-xs font-logik-extended-bold transition-colors",
-                              activeSection === section.id ? "text-white" : "text-gray-500"
+                              "w-6 h-6 rounded-lg flex items-center justify-center text-xs font-logik-extended-bold transition-colors"
                             )}
-                            style={activeSection === section.id ? { backgroundColor: `${theme.primaryColor}40` } : {}}
+                            style={activeSection === section.id 
+                              ? { backgroundColor: `${theme.primaryColor}40`, color: theme.primaryColor } 
+                              : { color: theme.secondaryTextColor || '#6b7280' }}
                           >
                             {index + 1}
                           </span>
@@ -287,7 +290,7 @@ export default function RulesPage() {
                         {section.order}
                       </div>
                       <div className="flex-1 text-left">
-                        <h2 className="text-xl font-logik-extended-bold text-white">
+                        <h2 className="text-xl font-logik-extended-bold" style={{ color: theme.headingColor || theme.primaryTextColor || 'white', fontFamily: theme.headerFont ? `var(${theme.headerFont})` : undefined }}>
                           {section.title}
                         </h2>
                       </div>
@@ -323,7 +326,7 @@ export default function RulesPage() {
                                     <div className="flex gap-4 group">
                                       {/* Paragraph Number */}
                                       <div className="shrink-0">
-                                        <span className="text-sm text-gray-400 font-body font-medium tabular-nums">
+                                        <span className="text-sm font-body font-medium tabular-nums" style={{ color: theme.secondaryTextColor || '#9ca3af' }}>
                                           {section.order}.{paraIndex + 1}
                                         </span>
                                       </div>
@@ -331,7 +334,7 @@ export default function RulesPage() {
                                       {/* Paragraph Content */}
                                       <div className="flex-1">
                                         <div className="flex items-start gap-2">
-                                          <p className="text-gray-200 font-rules-content leading-relaxed flex-1 whitespace-pre-wrap">
+                                          <p className="font-rules-content leading-relaxed flex-1 whitespace-pre-wrap" style={{ color: theme.primaryTextColor || '#e5e7eb' }}>
                                             {paragraph.content}
                                           </p>
                                           
@@ -379,7 +382,7 @@ export default function RulesPage() {
                                       >
                                         {/* Sub-paragraph Number */}
                                         <div className="shrink-0">
-                                          <span className="text-sm text-gray-400 font-body font-medium tabular-nums">
+                                          <span className="text-sm font-body font-medium tabular-nums" style={{ color: theme.secondaryTextColor || '#9ca3af' }}>
                                             {section.order}.{paraIndex + 1}.{subIndex + 1}
                                           </span>
                                         </div>
@@ -387,7 +390,7 @@ export default function RulesPage() {
                                         {/* Sub-paragraph Content */}
                                         <div className="flex-1">
                                           <div className="flex items-start gap-2">
-                                            <p className="text-gray-200 font-rules-content leading-relaxed flex-1 whitespace-pre-wrap">
+                                            <p className="font-rules-content leading-relaxed flex-1 whitespace-pre-wrap" style={{ color: theme.primaryTextColor || '#e5e7eb' }}>
                                               {subParagraph.content}
                                             </p>
                                             
@@ -447,10 +450,10 @@ export default function RulesPage() {
           transition={{ duration: 0.5, delay: 0.5 }}
           className="text-center py-8 border-t border-white/10"
         >
-          <p className="text-gray-400 font-logik-readable font-medium text-sm">
+          <p className="font-logik-readable font-medium text-sm" style={{ color: theme.secondaryTextColor || '#9ca3af' }}>
             Ostatnia aktualizacja regulaminu: {new Date().toLocaleDateString('pl-PL')}
           </p>
-          <p className="text-gray-500 font-logik-readable font-medium text-xs mt-2">
+          <p className="font-logik-readable font-medium text-xs mt-2" style={{ color: theme.secondaryTextColor || '#6b7280' }}>
             W razie pytań dotyczących regulaminu, skontaktuj się z organizatorami turnieju.
           </p>
         </motion.div>

@@ -3,6 +3,7 @@
 import { TrendingUp, Target, Trophy, Swords, Skull, HandHelping, BarChart3 } from 'lucide-react';
 import type { Team } from '@/lib/definitions';
 import { cn } from '@/lib/utils';
+import { useTournament } from '@/context/TournamentContext';
 
 interface PDLTeamStatsProps {
     team: Team;
@@ -15,6 +16,7 @@ export function PDLTeamStats({
     divisionRank,
     totalTeamsInDivision,
 }: PDLTeamStatsProps) {
+    const { theme } = useTournament();
     const stats = [
         {
             label: 'POZYCJA W DYWIZJI',
@@ -69,7 +71,7 @@ export function PDLTeamStats({
                 <div className="p-2 rounded-lg bg-white/5 border border-white/10">
                     <BarChart3 className="w-5 h-5 text-pdl-gold" />
                 </div>
-                <h2 className="text-xl font-logik-extended-bold text-white tracking-wide uppercase">
+                <h2 className="text-xl font-logik-extended-bold tracking-wide uppercase" style={{ color: theme.sectionHeaderColor || '#ffffff' }}>
                     Statystyki Drużyny
                 </h2>
             </div>
@@ -83,7 +85,7 @@ export function PDLTeamStats({
                     >
                         <div className="flex items-center gap-2 mb-3">
                             <stat.icon className={cn('w-4 h-4', stat.color)} />
-                            <span className="text-xs text-white/40 font-logik-extended-bold uppercase tracking-wide truncate">
+                            <span className="text-xs font-logik-extended-bold uppercase tracking-wide truncate" style={{ color: theme.primaryTextColor || 'rgba(255,255,255,0.4)' }}>
                                 {stat.label}
                             </span>
                         </div>
@@ -91,7 +93,7 @@ export function PDLTeamStats({
                             {stat.value}
                         </p>
                         {stat.sub && (
-                            <p className="text-xs text-white/40 font-logik mt-1">{stat.sub}</p>
+                            <p className="text-xs font-logik mt-1" style={{ color: theme.secondaryTextColor || 'rgba(255,255,255,0.4)' }}>{stat.sub}</p>
                         )}
                     </div>
                 ))}

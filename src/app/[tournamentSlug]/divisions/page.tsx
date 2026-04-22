@@ -1,8 +1,9 @@
 "use client";
 
-import { useTournament, useTournamentType } from '@/context/TournamentContext';
+import { useTournament } from '@/context/TournamentContext';
 import { Card, CardHeader, CardContent, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Badge } from '@/components/ui/badge';
 import { Layers, Trophy, ArrowUp, ArrowDown, Minus, Calendar, Info } from 'lucide-react';
 import { LoadingScreen } from '@/components/ui/LoadingScreen';
@@ -14,22 +15,9 @@ import Link from 'next/link';
  */
 export default function DivisionsPage() {
   const { tournament, theme, getTournamentPath } = useTournament();
-  const { isLeague } = useTournamentType();
   const { divisions: divisionsData, loading, error } = usePDLData();
 
   if (!tournament) return null;
-
-  // This page is only for league tournaments
-  if (!isLeague) {
-    return (
-      <div className="text-center py-16">
-        <h1 className="text-2xl font-bold mb-4">Strona niedostępna</h1>
-        <p className="text-muted-foreground">
-          Ten turniej nie posiada systemu dywizji.
-        </p>
-      </div>
-    );
-  }
 
   if (loading) {
     return <LoadingScreen />;
@@ -62,7 +50,7 @@ export default function DivisionsPage() {
       {/* Legend */}
       <Card style={{ backgroundColor: theme.cardColor, borderColor: theme.borderColor }}>
         <CardContent className="py-4">
-          <div className="flex flex-wrap gap-6 text-sm">
+          <div className="flex flex-wrap gap-6 text-sm" style={{ color: theme?.primaryTextColor || 'white' }}>
             <div className="flex items-center gap-2">
               <div className="w-4 h-4 bg-green-500/20 border border-green-500 rounded" />
               <span>Strefa awansu</span>
@@ -82,12 +70,12 @@ export default function DivisionsPage() {
       {/* Format Info */}
       <Card style={{ backgroundColor: theme.cardColor, borderColor: theme.borderColor }}>
         <CardHeader className="pb-3">
-          <CardTitle className="text-lg flex items-center gap-2">
+          <CardTitle className="text-lg flex items-center gap-2" style={{ color: theme?.headingColor || theme?.primaryTextColor || 'white' }}>
             <Info className="h-5 w-5" />
             Format rozgrywek
           </CardTitle>
         </CardHeader>
-        <CardContent className="text-sm text-muted-foreground space-y-2">
+        <CardContent className="text-sm space-y-2" style={{ color: theme?.secondaryTextColor || 'rgba(255,255,255,0.6)' }}>
           <p><strong>Format meczu:</strong> BO2 (Best of Two)</p>
           <p><strong>Punktacja:</strong> Wygrana 2-0 = 2 pkt, Remis 1-1 = 1 pkt, Przegrana 0-2 = 0 pkt</p>
           <p><strong>Awanse/Spadki:</strong> Po każdej kolejce, mecze barażowe BO3</p>
@@ -130,7 +118,7 @@ export default function DivisionsPage() {
                       </CardTitle>
                     </Link>
                     <div className="flex items-center gap-3">
-                      <span className="text-sm text-muted-foreground">
+                      <span className="text-sm" style={{ color: theme?.secondaryTextColor || 'rgba(255,255,255,0.5)' }}>
                         {division.tier && `Tier ${division.tier} • `}{division.matchday || 'Mecze TBD'}
                       </span>
                       <Badge 
@@ -183,16 +171,25 @@ export default function DivisionsPage() {
                                   {isPlayoff && index === 0 && <Trophy className="h-4 w-4 text-yellow-500" />}
                                 </div>
                               </TableCell>
-                              <TableCell className="font-medium">{team.teamName}</TableCell>
-                              <TableCell className="text-center text-muted-foreground">{team.matchesPlayed}</TableCell>
+                              <TableCell className="font-medium" style={{ color: theme?.primaryTextColor || 'white' }}>{team.teamName}</TableCell>
+                              <TableCell className="text-center" style={{ color: theme?.secondaryTextColor || 'rgba(255,255,255,0.6)' }}>{team.matchesPlayed}</TableCell>
                               <TableCell className="text-center text-green-500">{team.wins}</TableCell>
                               <TableCell className="text-center text-yellow-500">{team.draws}</TableCell>
                               <TableCell className="text-center text-red-500">{team.losses}</TableCell>
-                              <TableCell className="text-center text-muted-foreground">
+                              <TableCell className="text-center" style={{ color: theme?.secondaryTextColor || 'rgba(255,255,255,0.6)' }}>
                                 {team.gamesWon}-{team.gamesLost}
                               </TableCell>
                               <TableCell className="text-center font-bold" style={{ color: theme.primaryColor }}>
-                                {team.points}
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <span className="cursor-default">{team.points}</span>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      <p>Neustadtl: {(team.neustadtlScore ?? 0).toFixed(2)}</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
                               </TableCell>
                             </TableRow>
                           );
@@ -200,7 +197,7 @@ export default function DivisionsPage() {
                       </TableBody>
                     </Table>
                   ) : (
-                    <p className="text-muted-foreground text-center py-8">
+                    <p className="text-center py-8" style={{ color: theme?.secondaryTextColor || 'rgba(255,255,255,0.5)' }}>
                       Tabela zostanie uzupełniona po rozpoczęciu sezonu.
                     </p>
                   )}
@@ -213,8 +210,8 @@ export default function DivisionsPage() {
         <Card style={{ backgroundColor: theme.cardColor, borderColor: theme.borderColor }}>
           <CardContent className="py-16 text-center">
             <Layers className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold mb-2">Dywizje niedostępne</h3>
-            <p className="text-muted-foreground">
+            <h3 className="text-lg font-semibold mb-2" style={{ color: theme?.headingColor || theme?.primaryTextColor || 'white' }}>Dywizje niedostępne</h3>
+            <p style={{ color: theme?.secondaryTextColor || 'rgba(255,255,255,0.5)' }}>
               Dywizje zostaną ogłoszone przed rozpoczęciem sezonu.
             </p>
           </CardContent>

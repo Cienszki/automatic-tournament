@@ -7,8 +7,11 @@ import { Match } from '@/lib/definitions';
 import { ScheduleMatchCard } from './ScheduleMatchCard';
 import { cn } from '@/lib/utils';
 import { useTournament } from '@/context/TournamentContext';
+import { useTranslations } from 'next-intl';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+
+import { ChronologicalCarousel } from './ChronologicalCarousel';
 
 interface MatchdayCarouselProps {
     matches: Match[];
@@ -37,7 +40,7 @@ const DIVISION_TIER_STYLES: Record<string, { gradient: string; glow: string; tex
 };
 
 export function MatchdayCarousel({ matches }: MatchdayCarouselProps) {
-    const { tournament } = useTournament();
+    const { tournament, theme } = useTournament();
     const [direction, setDirection] = useState(0);
     // Matchdays within the currently selected round
     const [matchdays, setMatchdays] = useState<{ id: number; matches: Match[] }[]>([]);
@@ -169,7 +172,7 @@ export function MatchdayCarousel({ matches }: MatchdayCarouselProps) {
 
     if (!matchdays.length) {
         return (
-            <div className="flex flex-col items-center justify-center py-32 text-white/20">
+            <div className="flex flex-col items-center justify-center py-32" style={{ color: theme?.secondaryTextColor || 'rgba(255,255,255,0.2)' }}>
                 <Calendar className="w-16 h-16 mb-4 opacity-30" />
                 <span className="text-xl font-logik-extended-bold tracking-widest uppercase">Brak zaplanowanych meczów</span>
             </div>
@@ -201,9 +204,9 @@ export function MatchdayCarousel({ matches }: MatchdayCarouselProps) {
     };
 
     return (
-        <div className="relative w-full py-6 md:py-8">
+        <div className="relative w-full py-2 md:py-3">
             {/* Floating Header with Navigation */}
-            <div className="relative mb-8 md:mb-12">
+            <div className="relative mb-4 md:mb-6">
                 {/* Navigation Buttons - Floating on sides */}
                 <div className="absolute left-0 top-1/2 -translate-y-1/2 z-20">
                     <motion.button
@@ -218,10 +221,10 @@ export function MatchdayCarousel({ matches }: MatchdayCarouselProps) {
                                 : "opacity-0 pointer-events-none"
                         )}
                     >
-                        <ChevronLeft className="w-6 h-6 text-white/40 group-hover:text-white transition-colors" />
+                        <ChevronLeft className="w-6 h-6 transition-colors" style={{ color: theme?.secondaryTextColor || 'rgba(255,255,255,0.4)' }} />
                         <div className="text-left hidden md:block">
-                            <div className="text-[10px] text-white/20 uppercase tracking-widest font-mono">Poprzednia</div>
-                            <div className="text-lg font-logik-extended-bold text-white/50 group-hover:text-white transition-colors">
+                            <div className="text-[10px] uppercase tracking-widest font-mono" style={{ color: theme?.secondaryTextColor || 'rgba(255,255,255,0.2)' }}>Poprzednia</div>
+                            <div className="text-lg font-logik-extended-bold transition-colors" style={{ color: theme?.primaryTextColor || 'rgba(255,255,255,0.5)' }}>
                                 Kolejka {prevMatchday?.id}
                             </div>
                         </div>
@@ -242,12 +245,12 @@ export function MatchdayCarousel({ matches }: MatchdayCarouselProps) {
                         )}
                     >
                         <div className="text-right hidden md:block">
-                            <div className="text-[10px] text-white/20 uppercase tracking-widest font-mono">Następna</div>
-                            <div className="text-lg font-logik-extended-bold text-white/50 group-hover:text-white transition-colors">
+                            <div className="text-[10px] uppercase tracking-widest font-mono" style={{ color: theme?.secondaryTextColor || 'rgba(255,255,255,0.2)' }}>Następna</div>
+                            <div className="text-lg font-logik-extended-bold transition-colors" style={{ color: theme?.primaryTextColor || 'rgba(255,255,255,0.5)' }}>
                                 Kolejka {nextMatchday?.id}
                             </div>
                         </div>
-                        <ChevronRight className="w-6 h-6 text-white/40 group-hover:text-white transition-colors" />
+                        <ChevronRight className="w-6 h-6 transition-colors" style={{ color: theme?.secondaryTextColor || 'rgba(255,255,255,0.4)' }} />
                     </motion.button>
                 </div>
 
@@ -265,14 +268,15 @@ export function MatchdayCarousel({ matches }: MatchdayCarouselProps) {
                                     isRoundDropdownOpen && "border-pdl-gold/50 bg-black shadow-[0_0_20px_rgba(255,215,0,0.15)]"
                                 )}
                             >
-                                <span className="text-xs sm:text-sm font-logik-extended-bold text-pdl-gold uppercase tracking-widest">
+                                <span className="text-xs sm:text-sm font-logik-extended-bold uppercase tracking-widest" style={{ color: theme?.primaryColor || '#d4af37' }}>
                                     Runda {selectedRound}
                                 </span>
                                 <ChevronRight
                                     className={cn(
-                                        "w-4 h-4 text-pdl-gold/60 transition-all duration-300",
-                                        isRoundDropdownOpen ? "rotate-90 text-pdl-gold" : "rotate-0"
+                                        "w-4 h-4 transition-all duration-300",
+                                        isRoundDropdownOpen ? "rotate-90" : "rotate-0"
                                     )}
+                                    style={{ color: theme?.primaryColor || '#d4af37' }}
                                 />
                             </button>
 
@@ -298,8 +302,9 @@ export function MatchdayCarousel({ matches }: MatchdayCarouselProps) {
                                                         className={cn(
                                                             "w-full flex items-center justify-between px-6 py-2.5 text-left transition-all duration-200",
                                                             "hover:bg-white/5",
-                                                            isSelected ? "text-pdl-gold bg-pdl-gold/5" : "text-white/60 hover:text-white"
+                                                            isSelected ? "bg-pdl-gold/5" : ""
                                                         )}
+                                                        style={{ color: isSelected ? (theme?.primaryColor || '#d4af37') : (theme?.secondaryTextColor || 'rgba(255,255,255,0.6)') }}
                                                     >
                                                         <span className={cn(
                                                             "text-xs font-logik uppercase tracking-wider",
@@ -311,7 +316,8 @@ export function MatchdayCarousel({ matches }: MatchdayCarouselProps) {
                                                             <motion.div
                                                                 initial={{ scale: 0 }}
                                                                 animate={{ scale: 1 }}
-                                                                className="w-1.5 h-1.5 rounded-full bg-pdl-gold"
+                                                                className="w-1.5 h-1.5 rounded-full"
+                                                                style={{ backgroundColor: theme?.primaryColor || '#d4af37' }}
                                                             />
                                                         )}
                                                     </button>
@@ -333,7 +339,8 @@ export function MatchdayCarousel({ matches }: MatchdayCarouselProps) {
                             transition={{ type: "spring", stiffness: 300, damping: 25 }}
                             className="text-center"
                         >
-                            <h1 className="text-4xl sm:text-5xl md:text-7xl font-logik-extended-bold text-transparent bg-clip-text bg-gradient-to-b from-white via-white/90 to-white/50 uppercase tracking-tight leading-none whitespace-nowrap">
+                            <h1 className="text-3xl sm:text-4xl md:text-5xl font-logik-extended-bold uppercase tracking-tight leading-none whitespace-nowrap"
+                                style={{ color: theme?.titleColor || 'white', fontFamily: theme?.headerFont ? `var(${theme.headerFont})` : undefined }}>
                                 Kolejka {currentMatchday.id}
                             </h1>
 
@@ -341,13 +348,14 @@ export function MatchdayCarousel({ matches }: MatchdayCarouselProps) {
                             <motion.div
                                 initial={{ width: 0 }}
                                 animate={{ width: 160 }}
-                                className="h-1 mx-auto mt-4 rounded-full bg-gradient-to-r from-transparent via-pdl-gold/50 to-transparent"
+                                className="h-1 mx-auto mt-2 rounded-full"
+                                style={{ background: `linear-gradient(to right, transparent, ${theme?.primaryColor || '#d4af37'}80, transparent)` }}
                             />
                         </motion.div>
                     </AnimatePresence>
 
                     {/* Matchday indicator dots */}
-                    <div className="flex items-center gap-2 mt-6">
+                    <div className="flex items-center gap-2 mt-3">
                         {matchdays.map((md, idx) => (
                             <button
                                 key={md.id}
@@ -358,9 +366,13 @@ export function MatchdayCarousel({ matches }: MatchdayCarouselProps) {
                                 className={cn(
                                     "transition-all duration-300",
                                     idx === currentIndex
-                                        ? "w-8 h-2 rounded-full bg-red-600 shadow-[0_0_10px_rgba(220,38,38,0.5)]"
+                                        ? "w-8 h-2 rounded-full"
                                         : "w-2 h-2 rounded-full bg-white/20 hover:bg-white/40"
                                 )}
+                                style={idx === currentIndex ? {
+                                    backgroundColor: theme?.primaryColor || '#dc2626',
+                                    boxShadow: `0 0 10px ${theme?.primaryColor || 'rgba(220,38,38,0.5)'}80`
+                                } : undefined}
                             />
                         ))}
                     </div>
@@ -449,7 +461,7 @@ export function MatchdayCarousel({ matches }: MatchdayCarouselProps) {
                                                         </motion.div>
                                                     ))
                                                 ) : (
-                                                    <div className="h-24 flex items-center justify-center text-white/10 font-mono text-xs uppercase tracking-widest border border-white/5 border-dashed rounded-xl">
+                                                    <div className="h-24 flex items-center justify-center font-mono text-xs uppercase tracking-widest border border-white/5 border-dashed rounded-xl" style={{ color: theme?.secondaryTextColor || 'rgba(255,255,255,0.1)' }}>
                                                         Brak meczów w tej kolejce
                                                     </div>
                                                 )}
@@ -465,3 +477,63 @@ export function MatchdayCarousel({ matches }: MatchdayCarouselProps) {
         </div>
     );
 }
+
+// ─── SchedulePageLayout ───────────────────────────────────────────────────────
+// Full page body: hero (tournament name + giant title + line) + MatchdayCarousel.
+// Used by both the /schedule page and the home page View 3 snap-scroll section.
+
+export interface SchedulePageLayoutProps {
+  matches: Match[];
+}
+
+export function SchedulePageLayout({ matches }: SchedulePageLayoutProps): React.ReactElement {
+  const { tournament, theme } = useTournament();
+  const t = useTranslations('nav');
+
+  const pc = theme.primaryColor;
+
+  return (
+    <div className="max-w-[1800px] mx-auto px-2 sm:px-3 lg:px-4 py-4 sm:py-6 space-y-4 md:space-y-6">
+
+      {/* Tournament name header */}
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, ease: 'easeOut' }}
+        className="text-center"
+      >
+        <p
+          className="text-xs md:text-sm uppercase tracking-[0.3em]"
+          style={{ color: theme.secondaryTextColor || 'rgba(255,255,255,0.35)' }}
+        >
+          {tournament?.name}
+        </p>
+        <motion.div
+          initial={{ width: 0 }}
+          animate={{ width: 80 }}
+          transition={{ duration: 0.6, delay: 0.2 }}
+          className="h-px mx-auto mt-2 rounded-full"
+          style={{ background: `linear-gradient(to right, transparent, ${pc}80, transparent)` }}
+        />
+      </motion.div>
+
+      {/* Carousel or empty state */}
+      {matches.length > 0 ? (
+        tournament?.type === 'league' ? (
+          <MatchdayCarousel matches={matches} />
+        ) : (
+          <ChronologicalCarousel matches={matches} />
+        )
+      ) : (
+        <div className="flex items-center justify-center py-20">
+          <p
+            className="font-logik text-lg"
+            style={{ color: 'var(--tournament-heading)', fontFamily: theme?.headerFont ? `var(${theme.headerFont})` : undefined }}
+          >Terminarz pojawi się po zaplanowaniu meczy.</p>
+        </div>
+      )}
+
+    </div>
+  );
+}
+

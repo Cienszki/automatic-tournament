@@ -49,6 +49,19 @@ export interface DivisionConfig {
 }
 
 /**
+ * Navbar sponsor section configuration
+ */
+export interface NavbarSponsorConfig {
+  enabled: boolean;
+  sponsorName?: string;       // Text label on slide 1 (e.g. "Sponsor1")
+  sponsorImageUrl?: string;   // Image shown on slide 1
+  sponsorUrl?: string;        // URL to open when the section is clicked
+  secondaryText?: string;     // Text shown on slide 2
+  intervalMs?: number;        // Milliseconds between slide transitions (default: 5000)
+  widthPx?: number;           // Fixed pixel width of the sponsor container (default: 200)
+}
+
+/**
  * Theme configuration for tournament branding
  */
 export interface TournamentTheme {
@@ -67,6 +80,8 @@ export interface TournamentTheme {
   readableFont?: string; // Font for improved readability
   rulesContentFont?: string; // Font specifically for rules page paragraph content
   logoUrl: string;
+  inlineLogoUrl?: string | null;
+  organizerLogoUrl?: string | null; // Tournament organizer / brand logo (shown on diplomas etc.)
   faviconUrl?: string;
   backgroundImageUrl?: string;
   // Extended theming options
@@ -77,6 +92,10 @@ export interface TournamentTheme {
   backgroundSize?: string; // CSS background-size (e.g., 'cover', 'contain')
   navbarStyle?: 'solid' | 'transparent' | 'blur'; // Navbar visual style
   navbarColor?: string; // Custom navbar background color
+  navbarOpacity?: number; // 0-100 opacity for navbar background (100 = fully opaque)
+  navbarBlur?: number; // Backdrop blur amount in px for navbar (only active when navbarStyle='blur')
+  navbarTextColor?: string; // Custom text color for navbar links
+  navbarFont?: string; // Font key for navbar (overrides global header font)
   cardOpacity?: number; // 0-100 opacity for card backgrounds
   cardBlur?: number; // Backdrop blur for cards (glassmorphism)
   cardBorderRadius?: string; // Border radius for cards (e.g., '0.75rem')
@@ -84,6 +103,11 @@ export interface TournamentTheme {
   headingColor?: string; // Custom color for headings (defaults to textColor)
   linkColor?: string; // Custom color for links (defaults to primaryColor)
   themeStyle?: 'dark' | 'light' | 'auto'; // Overall dark/light mode
+  // Text hierarchy colors (for my-team page and general content)
+  titleColor?: string; // Main title / team name color (e.g. "Test1")
+  sectionHeaderColor?: string; // Section header text color (e.g. "Postęp Sezonu")
+  primaryTextColor?: string; // Primary label text color (e.g. "Punkty", "Dywizja")
+  secondaryTextColor?: string; // Secondary / muted text color (e.g. "0 rund pozostało")
 }
 
 /**
@@ -169,6 +193,8 @@ export interface GroupConfig {
  */
 export interface PlayoffConfig {
   enabled: boolean;
+  /** When true the playoffs section/navbar button is visible to all users. */
+  playoffsVisible?: boolean;
   format: 'single-elimination' | 'double-elimination';
   teamsCount: number;
   upperBracketTeams?: number; // Teams starting in upper bracket (for double elimination)
@@ -189,8 +215,13 @@ export interface TournamentConfig {
   id: string;
   slug: string; // URL-friendly identifier
   name: string;
+  heroTitle?: string; // Custom title for the main page hero section (falls back to name)
   shortName?: string;
   description?: string;
+  promotionalImageUrl?: string; // Uploadable promotional image shown on the home page hero view
+  heroLayout?: 'logo-promo' | 'three-images'; // Which layout to use for VIEW 1 on the home page
+  heroLeftImageUrl?: string; // Left side image for the 'three-images' hero layout
+  heroRightImageUrl?: string; // Right side image for the 'three-images' hero layout
   organizerId: string;
   
   // Type and status
@@ -209,12 +240,14 @@ export interface TournamentConfig {
 
   // Lobby / match rules configuration
   lobbySettings?: {
+    leagueName?: string;         // e.g. "PDL Season 1" — used as lobby name prefix
     gameMode?: string;           // e.g. "Captains Mode"
     server?: string;             // e.g. "EU West"
     visibility?: string;         // e.g. "Publiczna"
     dotatvDelayMinutes?: number; // e.g. 5
     latePenaltyGameMinutes?: number;   // forfeit one game, default 15
     latePenaltySeriesMinutes?: number; // forfeit series, default 30
+    botLobbyEnabled?: boolean;   // when true, bot creates lobby automatically (instead of captain)
   };
 
   // Social/Streaming
@@ -236,6 +269,8 @@ export interface TournamentConfig {
   // Match configuration
   defaultMatchFormat: MatchFormat;
   schedulingMethod: SchedulingMethod;
+  rescheduleRangeDays?: number | null; // max days captains can shift a match date (null = unlimited, default: 3)
+  rescheduleFinalDate?: string;        // hard cutoff ISO date after which no reschedule requests are allowed
   
   // Division configuration (for leagues)
   divisions?: DivisionConfig[];
@@ -271,6 +306,9 @@ export interface TournamentConfig {
   
   // Branding
   theme: TournamentTheme;
+
+  // Navbar sponsor section
+  navbarSponsor?: NavbarSponsorConfig;
   
   // Metadata
   createdAt: string;

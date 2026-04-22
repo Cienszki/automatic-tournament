@@ -87,6 +87,15 @@ export function SchedulingTab() {
   const [isLoadingMatches, setIsLoadingMatches] = useState(false);
   const [rescheduleRequests, setRescheduleRequests] = useState<any[]>([]);
   const [isLoadingReschedules, setIsLoadingReschedules] = useState(false);
+
+  // Reschedule range settings
+  const [rescheduleRangeDays, setRescheduleRangeDays] = useState<string>(
+    tournament?.rescheduleRangeDays === null ? '' : String(tournament?.rescheduleRangeDays ?? 3)
+  );
+  const [rescheduleFinalDate, setRescheduleFinalDate] = useState<string>(
+    tournament?.rescheduleFinalDate ?? ''
+  );
+  const [isSavingRescheduleSettings, setIsSavingRescheduleSettings] = useState(false);
   
   // New matchday form state
   const [newMatchday, setNewMatchday] = useState({
@@ -362,7 +371,8 @@ export function SchedulingTab() {
       return;
     }
 
-    // Validate that all matchdays have dates/times assigned
+    // Validate that all matchdays have dates/times assigned (only for league tournaments)
+    const isLeague = tournament?.type === 'league';
     const missingDates = generatedStructures.some(struct =>
       struct.matchdays.some(md => {
         const divisionDates = matchdayDates[struct.divisionId];
@@ -372,7 +382,7 @@ export function SchedulingTab() {
       })
     );
 
-    if (missingDates) {
+    if (isLeague && missingDates) {
       toast({
         title: 'Błąd',
         description: 'Przypisz daty i godziny do wszystkich dni meczowych przed finalizacją',
@@ -392,21 +402,21 @@ export function SchedulingTab() {
 
       // Convert structures with dates to matches
       for (const structure of generatedStructures) {
-        const divisionDates = matchdayDates[structure.divisionId];
+        const divisionDates = matchdayDates[structure.divisionId] || {};
         
         console.log(`[SchedulingTab] Processing division ${structure.divisionId}:`, structure);
         
-        // Assign dates to matchdays
+        // Assign dates to matchdays (dates may be empty for MMR-limited tournaments)
         const matchdaysWithDates = structure.matchdays.map(md => ({
           ...md,
-          date: divisionDates[md.matchdayNumber].date,
-          time: divisionDates[md.matchdayNumber].time,
+          date: divisionDates[md.matchdayNumber]?.date || '',
+          time: divisionDates[md.matchdayNumber]?.time || '',
         }));
 
         console.log(`[SchedulingTab] Matchdays with dates:`, matchdaysWithDates);
 
-        // Convert to match objects
-        const matches = convertMatchdaysToMatches(matchdaysWithDates);
+        // Convert to match objects (allow empty dates for non-league tournaments)
+        const matches = convertMatchdaysToMatches(matchdaysWithDates, !isLeague);
 
         console.log(`[SchedulingTab] Generated ${matches.length} matches for division ${structure.divisionId}`);
 
@@ -419,8 +429,8 @@ export function SchedulingTab() {
             tournamentId: tournament.id,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
-            schedulingStatus: 'confirmed',
-            schedulingMethod: 'admin-scheduled',
+            schedulingStatus: match.scheduledFor ? 'confirmed' : 'unscheduled',
+            schedulingMethod: match.scheduledFor ? 'admin-scheduled' : 'captain-scheduled',
             format: match.series_format,
             result: null,
             winner: null,
@@ -1071,6 +1081,94 @@ export function SchedulingTab() {
                 </SelectContent>
               </Select>
             </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Reschedule Settings */}
+      <Card className="border-0 shadow-lg bg-card/50 backdrop-blur-sm">
+        <CardHeader className="pb-4">
+          <CardTitle className="flex items-center gap-2 font-logik-extended-bold">
+            <Clock className="h-5 w-5" style={{ color: theme.primaryColor }} />
+            Ustawienia zmiany terminu
+          </CardTitle>
+          <CardDescription className="font-logik">
+            Konfiguracja zakresu dat, w jakim kapitanowie mogą wnioskować o zmianę terminu meczu
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            {/* Reschedule range days */}
+            <div className="space-y-2">
+              <Label className="font-logik-extended-bold">Zakres ±dni</Label>
+              <p className="text-xs text-muted-foreground font-logik">
+                Maksymalna liczba dni, o jaką kapitan może przesunąć termin meczu (pozostaw puste = bez ograniczenia).
+              </p>
+              <Input
+                type="number"
+                min={1}
+                placeholder="3"
+                value={rescheduleRangeDays}
+                onChange={(e) => setRescheduleRangeDays(e.target.value)}
+                className="font-logik w-40"
+              />
+            </div>
+
+            {/* Final reschedule deadline */}
+            <div className="space-y-2">
+              <Label className="font-logik-extended-bold">Ostateczny termin składania wniosków</Label>
+              <p className="text-xs text-muted-foreground font-logik">
+                Po tej dacie żadne wnioski o zmianę terminu nie będą przyjmowane (pozostaw puste = brak ograniczenia).
+              </p>
+              <Input
+                type="date"
+                value={rescheduleFinalDate}
+                onChange={(e) => setRescheduleFinalDate(e.target.value)}
+                className="font-logik w-52"
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-end pt-2 border-t border-border">
+            <Button
+              onClick={async () => {
+                if (!tournament?.id) return;
+                setIsSavingRescheduleSettings(true);
+                try {
+                  const rangeDays = rescheduleRangeDays.trim() === '' ? null : Number(rescheduleRangeDays);
+                  const finalDate = rescheduleFinalDate.trim() === '' ? null : rescheduleFinalDate;
+                  await updateDoc(doc(db, 'tournaments', tournament.id), {
+                    rescheduleRangeDays: rangeDays,
+                    ...(finalDate !== null ? { rescheduleFinalDate: finalDate } : { rescheduleFinalDate: null }),
+                    updatedAt: new Date().toISOString(),
+                  });
+                  toast({
+                    title: 'Zapisano',
+                    description: 'Ustawienia zmiany terminu zostały zaktualizowane.',
+                    action: <CheckCircle className="h-5 w-5 text-green-500" />,
+                  });
+                } catch (err) {
+                  console.error(err);
+                  toast({
+                    title: 'Błąd',
+                    description: 'Nie udało się zapisać ustawień.',
+                    variant: 'destructive',
+                    action: <AlertCircle className="h-5 w-5" />,
+                  });
+                } finally {
+                  setIsSavingRescheduleSettings(false);
+                }
+              }}
+              disabled={isSavingRescheduleSettings}
+              className="font-logik"
+              style={{ backgroundColor: theme.primaryColor }}
+            >
+              {isSavingRescheduleSettings ? (
+                <><RotateCcw className="h-4 w-4 mr-2 animate-spin" />Zapisywanie...</>
+              ) : (
+                <><Save className="h-4 w-4 mr-2" />Zapisz ustawienia</>
+              )}
+            </Button>
           </div>
         </CardContent>
       </Card>

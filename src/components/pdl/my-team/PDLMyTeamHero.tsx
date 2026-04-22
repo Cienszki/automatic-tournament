@@ -2,9 +2,10 @@
 
 import Image from 'next/image';
 import { Badge } from '@/components/ui/badge';
-import { Trophy, Users, Star, Shield } from 'lucide-react';
+import { Trophy, Users, Star, Shield, Clock, XCircle, AlertTriangle, Ban, Swords } from 'lucide-react';
 import type { Team } from '@/lib/definitions';
 import { cn } from '@/lib/utils';
+import { useTournament } from '@/context/TournamentContext';
 
 interface PDLMyTeamHeroProps {
     team: Team;
@@ -44,6 +45,7 @@ export function PDLMyTeamHero({
         losses: team.losses || 0,
         points: team.points || 0,
     };
+    const { theme } = useTournament();
 
     return (
         <div className="relative mb-12">
@@ -91,30 +93,62 @@ export function PDLMyTeamHero({
                     )}
 
                     {/* Team Name */}
-                    <h1 className="text-4xl lg:text-6xl font-logik-wide-black text-transparent bg-clip-text bg-gradient-to-b from-white via-white to-white/60 tracking-tight uppercase">
-                        {team.name}
-                    </h1>
+                    {theme.titleColor ? (
+                        <h1
+                            className="text-4xl lg:text-6xl font-logik-wide-black tracking-tight uppercase"
+                            style={{ color: theme.titleColor, fontFamily: theme.headerFont ? `var(${theme.headerFont})` : undefined }}
+                        >
+                            {team.name}
+                        </h1>
+                    ) : (
+                        <h1
+                            className="text-4xl lg:text-6xl font-logik-wide-black text-transparent bg-clip-text bg-gradient-to-b from-white via-white to-white/60 tracking-tight uppercase"
+                            style={{ fontFamily: theme.headerFont ? `var(${theme.headerFont})` : undefined }}
+                        >
+                            {team.name}
+                        </h1>
+                    )}
 
                     {/* Tag */}
                     {team.tag && (
-                        <p className="text-lg text-white/40 font-logik tracking-widest uppercase">
+                        <p className="text-lg font-logik tracking-widest uppercase" style={{ color: theme.secondaryTextColor || 'rgba(255,255,255,0.4)', fontFamily: theme.bodyFont ? `var(${theme.bodyFont})` : undefined }}>
                             [{team.tag}]
                         </p>
                     )}
 
                     {/* Motto */}
                     {team.motto && (
-                        <p className="text-white/60 italic text-lg max-w-xl font-logik">
+                        <p className="italic text-lg max-w-xl font-logik" style={{ color: theme.secondaryTextColor || 'rgba(255,255,255,0.6)', fontFamily: theme.bodyFont ? `var(${theme.bodyFont})` : undefined }}>
                             "{team.motto}"
                         </p>
                     )}
 
+                    {/* Team Status Badge */}
+                    {team.status && team.status !== 'verified' && (() => {
+                        const statusConfig: Record<string, { label: string; icon: React.ElementType; className: string }> = {
+                            pending: { label: 'Oczekuje na weryfikację', icon: Clock, className: 'bg-yellow-500/10 border border-yellow-500/30 text-yellow-400' },
+                            rejected: { label: 'Drużyna odrzucona', icon: XCircle, className: 'bg-red-500/10 border border-red-500/30 text-red-400' },
+                            warning: { label: 'Ostrzeżenie', icon: AlertTriangle, className: 'bg-orange-500/10 border border-orange-500/30 text-orange-400' },
+                            banned: { label: 'Zbanowana', icon: Ban, className: 'bg-red-900/20 border border-red-900/30 text-red-600' },
+                            eliminated: { label: 'Wyeliminowana', icon: Swords, className: 'bg-white/5 border border-white/10 text-white/30' },
+                        };
+                        const cfg = statusConfig[team.status];
+                        if (!cfg) return null;
+                        const Icon = cfg.icon;
+                        return (
+                            <div className={cn('inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-logik-extended-bold uppercase tracking-widest', cfg.className)}>
+                                <Icon className="w-4 h-4" />
+                                {cfg.label}
+                            </div>
+                        );
+                    })()}
+
                     {/* Season Record */}
                     <div className="flex flex-wrap justify-center lg:justify-start gap-6 pt-4">
-                        <div className="flex items-center gap-2 text-white/80">
-                            <Trophy className="w-5 h-5 text-pdl-gold" />
-                            <span className="font-logik-extended-bold text-2xl">{record.points}</span>
-                            <span className="text-white/40 text-sm uppercase tracking-wide">pkt</span>
+                        <div className="flex items-center gap-2">
+                            <Trophy className="w-5 h-5" style={{ color: theme.primaryColor || '#d4af37' }} />
+                            <span className="font-logik-extended-bold text-2xl" style={{ color: theme.sectionHeaderColor || 'rgba(255,255,255,0.8)', fontFamily: theme.headerFont ? `var(${theme.headerFont})` : undefined }}>{record.points}</span>
+                            <span className="text-sm uppercase tracking-wide font-logik" style={{ color: theme.secondaryTextColor || 'rgba(255,255,255,0.4)', fontFamily: theme.bodyFont ? `var(${theme.bodyFont})` : undefined }}>pkt</span>
                         </div>
                         <div className="flex items-center gap-3 text-sm font-logik">
                             <span className="text-green-400">{record.wins}W</span>

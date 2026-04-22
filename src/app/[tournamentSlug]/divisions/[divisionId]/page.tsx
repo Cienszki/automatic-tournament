@@ -23,7 +23,7 @@ import { LoadingScreen } from '@/components/ui/LoadingScreen';
 
 export default function DivisionPage({ params }: { params: Promise<{ tournamentSlug: string; divisionId: string }> }) {
   const unwrappedParams = use(params);
-  const { tournament, isLoading: isTournamentLoading, getTournamentPath } = useTournament();
+  const { tournament, theme, isLoading: isTournamentLoading, getTournamentPath } = useTournament();
   const { divisionInfo, standings, matches, loading: isDivisionLoading, error } = useDivisionData(unwrappedParams.divisionId);
   const [activeTab, setActiveTab] = useState('overview');
   const [allDivisions, setAllDivisions] = useState<any[]>([]);
@@ -44,16 +44,6 @@ export default function DivisionPage({ params }: { params: Promise<{ tournamentS
     };
     loadDivisions();
   }, [tournament?.id]);
-
-  // Theme check
-  const theme = tournament?.theme || {
-    primaryColor: '#3b82f6',
-    secondaryColor: '#1e40af',
-    accentColor: '#60a5fa',
-    backgroundColor: '#0f172a',
-    cardColor: '#1e293b',
-    textColor: '#f8fafc',
-  };
 
   if (isTournamentLoading || isDivisionLoading) {
     return <LoadingScreen />;
@@ -131,7 +121,7 @@ export default function DivisionPage({ params }: { params: Promise<{ tournamentS
             <ArrowLeft className="w-10 h-10 text-white" />
           </motion.div>
           <div className="hidden group-hover:block relative z-10 text-left">
-            <span className="text-xs text-white/50 uppercase tracking-widest font-mono block mb-1">Wyższa Dywizja</span>
+            <span className="text-xs uppercase tracking-widest font-mono block mb-1" style={{ color: theme?.secondaryTextColor || 'rgba(255,255,255,0.5)' }}>Wyższa Dywizja</span>
             <span
               className={cn(
                 "text-4xl font-logik-extended-bold tracking-wide transition-all",
@@ -159,7 +149,7 @@ export default function DivisionPage({ params }: { params: Promise<{ tournamentS
             <ArrowRight className="w-10 h-10 text-white" />
           </motion.div>
           <div className="hidden group-hover:block relative z-10 text-right">
-            <span className="text-xs text-white/50 uppercase tracking-widest font-mono block mb-1">Niższa Dywizja</span>
+            <span className="text-xs uppercase tracking-widest font-mono block mb-1" style={{ color: theme?.secondaryTextColor || 'rgba(255,255,255,0.5)' }}>Niższa Dywizja</span>
             <span
               className={cn(
                 "text-4xl font-logik-extended-bold tracking-wide transition-all",
@@ -208,7 +198,8 @@ export default function DivisionPage({ params }: { params: Promise<{ tournamentS
                     <TabsTrigger
                       key={tab.id}
                       value={tab.id}
-                      className="rounded-full px-6 py-2.5 data-[state=active]:bg-white/10 data-[state=active]:text-white text-white/40 hover:text-white/80 transition-all duration-300 font-logik"
+                      className="rounded-full px-6 py-2.5 data-[state=active]:bg-white/10 hover:text-white/80 transition-all duration-300 font-logik"
+                      style={{ color: activeTab === tab.id ? (theme?.primaryTextColor || 'white') : (theme?.secondaryTextColor || 'rgba(255,255,255,0.4)') }}
                     >
                       <div className="flex items-center gap-2">
                         <tab.icon className="w-4 h-4" />
@@ -277,7 +268,7 @@ export default function DivisionPage({ params }: { params: Promise<{ tournamentS
                   <div className="flex items-center justify-center min-h-[300px] rounded-2xl border border-white/5 bg-white/[0.02]">
                     <div className="text-center">
                       <BarChart3 className="w-12 h-12 text-white/10 mx-auto mb-4" />
-                      <p className="text-white/30 font-mono">Panel statystyk dostępny wkrótce</p>
+                      <p className="font-mono" style={{ color: theme?.secondaryTextColor || 'rgba(255,255,255,0.3)' }}>Panel statystyk dostępny wkrótce</p>
                     </div>
                   </div>
                 </TabsContent>
@@ -286,7 +277,7 @@ export default function DivisionPage({ params }: { params: Promise<{ tournamentS
                   <div className="flex items-center justify-center min-h-[300px] rounded-2xl border border-white/5 bg-white/[0.02]">
                     <div className="text-center">
                       <GitCompare className="w-12 h-12 text-white/10 mx-auto mb-4" />
-                      <p className="text-white/30 font-mono">Panel porównania drużyn dostępny wkrótce</p>
+                      <p className="font-mono" style={{ color: theme?.secondaryTextColor || 'rgba(255,255,255,0.3)' }}>Panel porównania drużyn dostępny wkrótce</p>
                     </div>
                   </div>
                 </TabsContent>

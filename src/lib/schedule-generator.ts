@@ -319,19 +319,22 @@ export function generateDivisionSchedule(config: DivisionScheduleConfig): Genera
  * @param matchdays Array of matchdays with dates and times assigned
  * @returns Array of match objects ready for Firestore
  */
-export function convertMatchdaysToMatches(matchdays: Matchday[]): GeneratedMatch[] {
+export function convertMatchdaysToMatches(matchdays: Matchday[], allowEmptyDates: boolean = false): GeneratedMatch[] {
   const matches: GeneratedMatch[] = [];
 
   matchdays.forEach(matchday => {
-    // Skip matchdays without date/time assigned
-    if (!matchday.date || !matchday.time) {
+    // Skip matchdays without date/time assigned (unless explicitly allowed)
+    if (!allowEmptyDates && (!matchday.date || !matchday.time)) {
       return;
     }
 
-    // Parse date and time
-    const [hours, minutes] = matchday.time.split(':').map(Number);
-    const matchDate = new Date(matchday.date);
-    matchDate.setHours(hours, minutes, 0, 0);
+    let scheduledFor = '';
+    if (matchday.date && matchday.time) {
+      const [hours, minutes] = matchday.time.split(':').map(Number);
+      const matchDate = new Date(matchday.date);
+      matchDate.setHours(hours, minutes, 0, 0);
+      scheduledFor = matchDate.toISOString();
+    }
 
     matchday.pairings.forEach(pairing => {
       matches.push({
@@ -352,8 +355,8 @@ export function convertMatchdaysToMatches(matchdays: Matchday[]): GeneratedMatch
         group_id: matchday.divisionId,
         round: matchday.round,
         matchday: matchday.matchdayNumber,
-        scheduledFor: matchDate.toISOString(),
-        status: 'scheduled',
+        scheduledFor,
+        status: scheduledFor ? 'scheduled' : 'scheduled',
         series_format: 'bo2',
         bestOf: 2,
         winnerId: null,

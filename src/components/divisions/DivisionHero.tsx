@@ -138,7 +138,7 @@ export function DivisionHero({
                             {divisionName}
                         </motion.h1>
                         {matchday && (
-                            <div className="flex items-center justify-center md:justify-start gap-4 text-white/50 text-sm font-sans font-medium tracking-wide uppercase">
+                            <div className="flex items-center justify-center md:justify-start gap-4 text-sm font-sans font-medium tracking-wide uppercase" style={{ color: theme?.secondaryTextColor || 'rgba(255,255,255,0.5)' }}>
                                 <span className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/5 border border-white/5 backdrop-blur-md">
                                     <Calendar className="w-3.5 h-3.5" style={{ color: displayColor }} />
                                     {matchday}

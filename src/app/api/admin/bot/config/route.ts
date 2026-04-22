@@ -99,11 +99,12 @@ export async function POST(req: Request): Promise<Response> {
     const db = getAdminDb();
 
     // Verify the user is an admin for this tournament
-    const adminDoc = await db.collection('admins').doc(tournamentId).get();
-    const adminData = adminDoc.data();
-    const superAdminDoc = await db.collection('superAdmins').doc(uid).get();
+    const [superAdminDoc, tournamentAdminDoc] = await Promise.all([
+      db.collection('admins').doc(uid).get(),
+      db.collection('tournaments').doc(tournamentId).collection('admins').doc(uid).get(),
+    ]);
 
-    if (!superAdminDoc.exists && (!adminData || !adminData[uid])) {
+    if (!superAdminDoc.exists && !tournamentAdminDoc.exists) {
       return NextResponse.json({ error: 'Not an admin for this tournament' }, { status: 403 });
     }
 

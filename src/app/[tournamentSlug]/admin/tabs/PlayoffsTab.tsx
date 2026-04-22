@@ -1,206 +1,110 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { useTournament, useTournamentType } from '@/context/TournamentContext';
+import { useTournament } from '@/context/TournamentContext';
 import { Card, CardHeader, CardContent, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Trophy, Save, RotateCcw, Loader2, RefreshCw } from 'lucide-react';
-import { collection, getDocs, doc, setDoc, getDoc } from 'firebase/firestore';
+import { Trophy, Save, RotateCcw, Loader2, RefreshCw, Settings2 } from 'lucide-react';
+import { collection, getDocs, doc, setDoc, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
+import { Switch } from '@/components/ui/switch';
+import { generateBracket } from '@/lib/playoff-bracket-generator';
 import type { Team, PlayoffMatch, PlayoffMatchFormat } from '@/lib/definitions';
+import type { BracketConfig } from '@/lib/playoff-bracket-generator';
 
-interface BracketSlot {
-  matchId: string;
-  label: string;
-  round: number;
-  position: number;
-  bracketType: 'upper' | 'lower' | 'final';
-  format: PlayoffMatchFormat;
+// ─── Admin bracket slot with editing state ─────────────────────────────
+
+interface AdminSlot {
+  match: PlayoffMatch;
   teamAId: string;
   teamBId: string;
+  deadline: string;
+  format: PlayoffMatchFormat;
+}
+
+/** Check if a match is in the first editable round for its bracket type. */
+function isFirstRound(match: PlayoffMatch, allMatches: PlayoffMatch[]): boolean {
+  const sameBracket = allMatches.filter(m => m.bracketType === match.bracketType);
+  const minRound = Math.min(...sameBracket.map(m => m.round));
+  return match.round === minRound;
 }
 
 /**
- * Generate upper bracket slots for single-elimination.
- * n teams → n-1 matches across ceil(log2(n)) rounds.
- */
-function generateSingleEliminationSlots(teamsCount: number, config: { semifinalFormat: string; finalFormat: string; grandFinalFormat: string }): BracketSlot[] {
-  const rounds = Math.ceil(Math.log2(teamsCount));
-  const slots: BracketSlot[] = [];
-  let matchesInRound = Math.floor(teamsCount / 2);
-
-  for (let r = 1; r <= rounds; r++) {
-    const isGrandFinal = r === rounds;
-    const isSemifinal = r === rounds - 1;
-    const format = isGrandFinal
-      ? (config.grandFinalFormat as PlayoffMatchFormat) || 'bo5'
-      : isSemifinal
-        ? (config.semifinalFormat as PlayoffMatchFormat) || 'bo3'
-        : (config.finalFormat as PlayoffMatchFormat) || 'bo3';
-
-    for (let p = 1; p <= matchesInRound; p++) {
-      const roundLabel = isGrandFinal
-        ? 'Finał'
-        : isSemifinal
-          ? `Półfinał ${p}`
-          : `Runda ${r} — Mecz ${p}`;
-
-      slots.push({
-        matchId: `ub-r${r}-p${p}`,
-        label: roundLabel,
-        round: r,
-        position: p,
-        bracketType: isGrandFinal ? 'final' : 'upper',
-        format,
-        teamAId: '',
-        teamBId: '',
-      });
-    }
-    matchesInRound = Math.floor(matchesInRound / 2);
-  }
-  return slots;
-}
-
-/**
- * Generate upper + lower bracket slots for double-elimination.
- * Upper bracket: standard single-elim among upper-seeded teams.
- * Lower bracket: first round receives losers + lower-seeded teams.
- * Grand final: UB winner vs LB winner.
- */
-function generateDoubleEliminationSlots(
-  ubTeams: number,
-  lbTeams: number,
-  config: { semifinalFormat: string; finalFormat: string; grandFinalFormat: string },
-): BracketSlot[] {
-  const slots: BracketSlot[] = [];
-
-  // Upper bracket
-  const ubRounds = Math.ceil(Math.log2(ubTeams));
-  let ubMatchesInRound = Math.floor(ubTeams / 2);
-  for (let r = 1; r <= ubRounds; r++) {
-    for (let p = 1; p <= ubMatchesInRound; p++) {
-      const isFinal = r === ubRounds;
-      const isSemi = r === ubRounds - 1;
-      const format = isFinal
-        ? (config.finalFormat as PlayoffMatchFormat) || 'bo3'
-        : isSemi
-          ? (config.semifinalFormat as PlayoffMatchFormat) || 'bo3'
-          : 'bo3';
-      slots.push({
-        matchId: `ub-r${r}-p${p}`,
-        label: isFinal ? 'UB Finał' : isSemi ? `UB Półfinał ${p}` : `UB Runda ${r} — Mecz ${p}`,
-        round: r,
-        position: p,
-        bracketType: 'upper',
-        format,
-        teamAId: '',
-        teamBId: '',
-      });
-    }
-    ubMatchesInRound = Math.floor(ubMatchesInRound / 2);
-  }
-
-  // Lower bracket — simplified: number of LB rounds ≈ 2 * (ubRounds - 1)
-  // In first LB round, losers from UB R1 face the seeded LB teams.
-  const lbFirstRoundMatches = Math.max(Math.floor((ubTeams / 2 + lbTeams) / 2), 1);
-  const lbRounds = Math.max(Math.ceil(Math.log2(lbFirstRoundMatches)) + 1, 1);
-  let lbMatchesInRound = lbFirstRoundMatches;
-
-  for (let r = 1; r <= lbRounds; r++) {
-    const isFinal = r === lbRounds;
-    for (let p = 1; p <= lbMatchesInRound; p++) {
-      slots.push({
-        matchId: `lb-r${r}-p${p}`,
-        label: isFinal ? 'LB Finał' : `LB Runda ${r} — Mecz ${p}`,
-        round: r,
-        position: p,
-        bracketType: 'lower',
-        format: 'bo3',
-        teamAId: '',
-        teamBId: '',
-      });
-    }
-    lbMatchesInRound = Math.max(Math.ceil(lbMatchesInRound / 2), 1);
-    if (lbMatchesInRound === 0) break;
-  }
-
-  // Grand final
-  slots.push({
-    matchId: 'grand-final',
-    label: 'Wielki Finał',
-    round: 1,
-    position: 1,
-    bracketType: 'final',
-    format: (config.grandFinalFormat as PlayoffMatchFormat) || 'bo5',
-    teamAId: '',
-    teamBId: '',
-  });
-
-  return slots;
-}
-
-/**
- * PlayoffsTab — Generic Admin bracket seeding.
- * Reads playoff config from the tournament and generates the correct
- * number of bracket slots. Admin manually assigns teams to first-round slots.
+ * PlayoffsTab — Admin bracket setup and team seeding.
+ *
+ * 1. Admin selects format (single/double elimination).
+ * 2. Admin sets UB/LB team counts.
+ * 3. Bracket is generated and displayed visually.
+ * 4. Admin assigns teams to first-round slots and sets deadlines.
+ * 5. Admin saves to Firestore.
  */
 export function PlayoffsTab() {
-  const { tournament, theme } = useTournament();
-  const { isLeague } = useTournamentType();
+  const { tournament, theme, refetchTournament } = useTournament();
   const { toast } = useToast();
-
-  const [teams, setTeams] = useState<Team[]>([]);
-  const [isSaving, setIsSaving] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const [slots, setSlots] = useState<BracketSlot[]>([]);
 
   const playoffConfig = tournament?.playoffs;
 
-  // Generate bracket structure from tournament config
-  const templateSlots = useMemo<BracketSlot[]>(() => {
-    if (!playoffConfig?.enabled) return [];
-    const cfg = {
-      semifinalFormat: playoffConfig.semifinalFormat || 'bo3',
-      finalFormat: playoffConfig.finalFormat || 'bo3',
-      grandFinalFormat: playoffConfig.grandFinalFormat || 'bo5',
+  const [teams, setTeams] = useState<Team[]>([]);
+  const [slots, setSlots] = useState<AdminSlot[]>([]);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isTogglingVisibility, setIsTogglingVisibility] = useState(false);
+
+  // Bracket config (editable by admin before generation)
+  const [bracketFormat, setBracketFormat] = useState<'single-elimination' | 'double-elimination'>(
+    playoffConfig?.format || 'double-elimination',
+  );
+  const [ubTeamsCount, setUbTeamsCount] = useState(playoffConfig?.upperBracketTeams || playoffConfig?.teamsCount || 8);
+  const [lbTeamsCount, setLbTeamsCount] = useState(playoffConfig?.lowerBracketTeams || 0);
+  const [defaultMatchFormat, setDefaultMatchFormat] = useState<PlayoffMatchFormat>('bo3');
+  const [sfFormat, setSfFormat] = useState<PlayoffMatchFormat>((playoffConfig?.semifinalFormat as PlayoffMatchFormat) || 'bo3');
+  const [fFormat, setFFormat] = useState<PlayoffMatchFormat>((playoffConfig?.finalFormat as PlayoffMatchFormat) || 'bo3');
+  const [gfFormat, setGfFormat] = useState<PlayoffMatchFormat>((playoffConfig?.grandFinalFormat as PlayoffMatchFormat) || 'bo5');
+
+  // Generate bracket template from current config
+  const generateTemplate = useCallback((): PlayoffMatch[] => {
+    const config: BracketConfig = {
+      format: bracketFormat,
+      upperBracketTeams: ubTeamsCount,
+      lowerBracketTeams: lbTeamsCount,
+      defaultFormat: defaultMatchFormat,
+      semifinalFormat: sfFormat,
+      finalFormat: fFormat,
+      grandFinalFormat: gfFormat,
     };
+    return generateBracket(config);
+  }, [bracketFormat, ubTeamsCount, lbTeamsCount, defaultMatchFormat, sfFormat, fFormat, gfFormat]);
 
-    if (playoffConfig.format === 'double-elimination') {
-      const ubTeams = playoffConfig.upperBracketTeams || Math.ceil(playoffConfig.teamsCount / 2) || 4;
-      const lbTeams = playoffConfig.lowerBracketTeams || Math.floor(playoffConfig.teamsCount / 2) || 4;
-      return generateDoubleEliminationSlots(ubTeams, lbTeams, cfg);
-    }
-    return generateSingleEliminationSlots(playoffConfig.teamsCount || 4, cfg);
-  }, [playoffConfig]);
-
-  // Load teams + existing bracket data
+  // Load teams and existing bracket data
   useEffect(() => {
     async function load() {
       if (!tournament?.id) return;
       setIsLoading(true);
       try {
+        // Load teams
         const teamsSnap = await getDocs(collection(db, 'tournaments', tournament.id, 'teams'));
-        setTeams(teamsSnap.docs.map((d) => ({ id: d.id, ...d.data() } as Team)));
+        setTeams(teamsSnap.docs.map(d => ({ id: d.id, ...d.data() } as Team)));
 
-        // Load saved playoff_matches and merge into template
+        // Load saved playoff_matches
         const pmSnap = await getDocs(collection(db, 'tournaments', tournament.id, 'playoff_matches'));
-        const saved = new Map<string, PlayoffMatch>();
-        pmSnap.docs.forEach((d) => saved.set(d.id, { id: d.id, ...d.data() } as PlayoffMatch));
+        const savedMap = new Map<string, PlayoffMatch>();
+        pmSnap.docs.forEach(d => savedMap.set(d.id, { id: d.id, ...d.data() } as PlayoffMatch));
 
-        const merged = templateSlots.map((s) => {
-          const existing = saved.get(s.matchId);
-          if (existing) {
-            return {
-              ...s,
-              teamAId: existing.teamA?.id || '',
-              teamBId: existing.teamB?.id || '',
-              format: existing.format || s.format,
-            };
-          }
-          return s;
+        // Generate template and merge with saved data
+        const template = generateTemplate();
+        const merged: AdminSlot[] = template.map(m => {
+          const saved = savedMap.get(m.id);
+          return {
+            match: saved ? { ...m, ...saved, id: m.id } : m,
+            teamAId: saved?.teamA?.id || '',
+            teamBId: saved?.teamB?.id || '',
+            deadline: saved?.deadline || '',
+            format: saved?.format || m.format,
+          };
         });
         setSlots(merged);
       } catch (err) {
@@ -210,63 +114,63 @@ export function PlayoffsTab() {
       }
     }
     load();
-  }, [tournament?.id, templateSlots]);
+  }, [tournament?.id, generateTemplate]);
 
-  const setSlotTeam = useCallback(
-    (matchId: string, side: 'A' | 'B', teamId: string) => {
-      setSlots((prev) =>
-        prev.map((s) =>
-          s.matchId === matchId
-            ? side === 'A'
-              ? { ...s, teamAId: teamId }
-              : { ...s, teamBId: teamId }
-            : s,
-        ),
-      );
-    },
-    [],
-  );
+  // ── Slot editing callbacks ──────────────────────────────────────────
 
-  const getTeamById = (id: string) => teams.find((t) => t.id === id);
+  const updateSlot = useCallback((matchId: string, updates: Partial<AdminSlot>) => {
+    setSlots(prev =>
+      prev.map(s => (s.match.id === matchId ? { ...s, ...updates } : s)),
+    );
+  }, []);
+
+  const getTeamById = (id: string): Team | undefined => teams.find(t => t.id === id);
+
+  // ── Save to Firestore ───────────────────────────────────────────────
 
   const handleSave = async () => {
     if (!tournament?.id) return;
     setIsSaving(true);
     try {
       const now = new Date().toISOString();
+
       for (const slot of slots) {
         const teamA = slot.teamAId ? getTeamById(slot.teamAId) : undefined;
         const teamB = slot.teamBId ? getTeamById(slot.teamBId) : undefined;
+
         const pmDoc: PlayoffMatch = {
-          id: slot.matchId,
-          bracketType: slot.bracketType,
-          round: slot.round,
-          position: slot.position,
-          teamA: teamA ? { id: teamA.id, name: teamA.name, logoUrl: teamA.logoUrl || '' } : undefined,
-          teamB: teamB ? { id: teamB.id, name: teamB.name, logoUrl: teamB.logoUrl || '' } : undefined,
+          ...slot.match,
+          teamA: teamA ? { id: teamA.id, name: teamA.name, logoUrl: teamA.logoUrl || '' } : slot.match.teamA,
+          teamB: teamB ? { id: teamB.id, name: teamB.name, logoUrl: teamB.logoUrl || '' } : slot.match.teamB,
           format: slot.format,
-          status: 'scheduled',
-          createdAt: now,
+          deadline: slot.deadline || undefined,
           updatedAt: now,
         };
 
         // Preserve existing result if present
-        const existingSnap = await getDoc(
-          doc(db, 'tournaments', tournament.id, 'playoff_matches', slot.matchId),
-        );
+        const existingSnap = await getDoc(doc(db, 'tournaments', tournament.id, 'playoff_matches', slot.match.id));
         if (existingSnap.exists()) {
           const old = existingSnap.data();
           if (old.result) {
-            (pmDoc as unknown as Record<string, unknown>).result = old.result;
+            pmDoc.result = old.result as PlayoffMatch['result'];
             pmDoc.status = 'completed';
           }
         }
 
-        await setDoc(
-          doc(db, 'tournaments', tournament.id, 'playoff_matches', slot.matchId),
-          pmDoc,
-        );
+        await setDoc(doc(db, 'tournaments', tournament.id, 'playoff_matches', slot.match.id), pmDoc);
       }
+
+      // Also update tournament config with latest bracket settings
+      await updateDoc(doc(db, 'tournaments', tournament.id), {
+        'playoffs.format': bracketFormat,
+        'playoffs.upperBracketTeams': ubTeamsCount,
+        'playoffs.lowerBracketTeams': lbTeamsCount,
+        'playoffs.teamsCount': ubTeamsCount + lbTeamsCount,
+        'playoffs.semifinalFormat': sfFormat,
+        'playoffs.finalFormat': fFormat,
+        'playoffs.grandFinalFormat': gfFormat,
+      });
+
       toast({ title: 'Zapisano', description: 'Drabinka playoff została zaktualizowana.' });
     } catch (err) {
       console.error('Error saving playoff bracket:', err);
@@ -276,20 +180,51 @@ export function PlayoffsTab() {
     }
   };
 
-  // Regenerate bracket from config (discard existing seeding)
+  // ── Toggle visibility ───────────────────────────────────────────────
+
+  const handleToggleVisibility = async () => {
+    if (!tournament?.id) return;
+    setIsTogglingVisibility(true);
+    const newValue = !tournament.playoffs?.playoffsVisible;
+    try {
+      await updateDoc(doc(db, 'tournaments', tournament.id), { 'playoffs.playoffsVisible': newValue });
+      await refetchTournament?.();
+      toast({
+        title: newValue ? 'Playoffs widoczne' : 'Playoffs ukryte',
+        description: newValue
+          ? 'Drabinka jest teraz widoczna dla wszystkich użytkowników.'
+          : 'Drabinka jest ukryta przed użytkownikami.',
+      });
+    } catch (err) {
+      console.error('Error toggling playoffs visibility:', err);
+      toast({ title: 'Błąd', description: 'Nie udało się zmienić widoczności.', variant: 'destructive' });
+    } finally {
+      setIsTogglingVisibility(false);
+    }
+  };
+
+  // ── Regenerate bracket ──────────────────────────────────────────────
+
   const handleRegenerate = () => {
     if (!confirm('Czy na pewno chcesz zregenerować drabinkę? Obecne przypisania drużyn zostaną utracone.')) return;
-    setSlots(templateSlots);
+    const template = generateTemplate();
+    setSlots(template.map(m => ({
+      match: m,
+      teamAId: '',
+      teamBId: '',
+      deadline: '',
+      format: m.format,
+    })));
   };
+
+  // ── Disabled state ──────────────────────────────────────────────────
 
   if (!playoffConfig?.enabled) {
     return (
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-2xl font-logik-extended-bold">Playoffs</h2>
-            <p className="text-muted-foreground font-logik">Zarządzanie drabinką playoff</p>
-          </div>
+        <div>
+          <h2 className="text-2xl font-logik-extended-bold">Playoffs</h2>
+          <p className="text-muted-foreground font-logik">Zarządzanie drabinką playoff</p>
         </div>
         <Card className="border-0 shadow-lg bg-card/50 backdrop-blur-sm">
           <CardContent className="pt-6 text-center py-16 space-y-3">
@@ -304,103 +239,37 @@ export function PlayoffsTab() {
     );
   }
 
-  // Group slots by bracket type then round for rendering
-  const upperSlots = slots.filter((s) => s.bracketType === 'upper');
-  const lowerSlots = slots.filter((s) => s.bracketType === 'lower');
-  const finalSlots = slots.filter((s) => s.bracketType === 'final');
+  // ── Group slots for rendering ───────────────────────────────────────
 
-  const groupByRound = (arr: BracketSlot[]) => {
-    const map = new Map<number, BracketSlot[]>();
-    arr.forEach((s) => {
-      const list = map.get(s.round) || [];
+  const upperSlots = slots.filter(s => s.match.bracketType === 'upper');
+  const lowerSlots = slots.filter(s => s.match.bracketType === 'lower');
+  const finalSlots = slots.filter(s => s.match.bracketType === 'final');
+  const allMatches = slots.map(s => s.match);
+
+  const groupByRound = (arr: AdminSlot[]): [number, AdminSlot[]][] => {
+    const map = new Map<number, AdminSlot[]>();
+    arr.forEach(s => {
+      const list = map.get(s.match.round) || [];
       list.push(s);
-      map.set(s.round, list);
+      map.set(s.match.round, list);
     });
     return Array.from(map.entries()).sort(([a], [b]) => a - b);
   };
 
-  const renderSlotCard = (slot: BracketSlot) => {
-    // Only first-round slots or the grand final get team selectors
-    const isFirstUpperRound = slot.bracketType === 'upper' && slot.round === 1;
-    const isFirstLowerRound = slot.bracketType === 'lower' && slot.round === 1;
-    const isFinal = slot.bracketType === 'final';
-    const isEditable = isFirstUpperRound || isFirstLowerRound;
+  const isVisible = !!tournament?.playoffs?.playoffsVisible;
 
-    return (
-      <Card key={slot.matchId} className="border-0 shadow-lg bg-card/50 backdrop-blur-sm">
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 font-logik-extended-bold text-base">
-            <Trophy className="h-4 w-4" style={{ color: isFinal ? '#EAB308' : theme.primaryColor }} />
-            {slot.label}
-          </CardTitle>
-          <CardDescription className="font-logik text-xs">
-            {slot.format.toUpperCase()} • {slot.bracketType === 'upper' ? 'Upper Bracket' : slot.bracketType === 'lower' ? 'Lower Bracket' : 'Grand Final'}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {/* Team A */}
-          <div className="space-y-1">
-            <Label className="font-logik-extended-bold text-xs">
-              {isEditable ? 'Drużyna A (górny seed)' : 'Drużyna A'}
-            </Label>
-            {isEditable ? (
-              <Select value={slot.teamAId} onValueChange={(v) => setSlotTeam(slot.matchId, 'A', v)}>
-                <SelectTrigger className="font-logik">
-                  <SelectValue placeholder="— TBA —" />
-                </SelectTrigger>
-                <SelectContent>
-                  {teams.map((t) => (
-                    <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            ) : (
-              <div className="h-10 rounded-md border border-dashed border-border flex items-center justify-center text-muted-foreground font-logik text-sm">
-                {slot.teamAId ? getTeamById(slot.teamAId)?.name || slot.teamAId : 'Wyłoniony z poprzedniej rundy'}
-              </div>
-            )}
-          </div>
-
-          <div className="text-center text-xs uppercase tracking-widest text-muted-foreground font-logik">vs</div>
-
-          {/* Team B */}
-          <div className="space-y-1">
-            <Label className="font-logik-extended-bold text-xs">
-              {isEditable ? 'Drużyna B (dolny seed)' : 'Drużyna B'}
-            </Label>
-            {isEditable ? (
-              <Select value={slot.teamBId} onValueChange={(v) => setSlotTeam(slot.matchId, 'B', v)}>
-                <SelectTrigger className="font-logik">
-                  <SelectValue placeholder="— TBA —" />
-                </SelectTrigger>
-                <SelectContent>
-                  {teams.map((t) => (
-                    <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            ) : (
-              <div className="h-10 rounded-md border border-dashed border-border flex items-center justify-center text-muted-foreground font-logik text-sm">
-                {slot.teamBId ? getTeamById(slot.teamBId)?.name || slot.teamBId : 'Wyłoniony z poprzedniej rundy'}
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-    );
-  };
+  // ── Render ──────────────────────────────────────────────────────────
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <h2 className="text-2xl font-logik-extended-bold">Playoffs — Obsadzanie drabinki</h2>
           <p className="text-muted-foreground font-logik">
-            {playoffConfig.format === 'double-elimination'
+            {bracketFormat === 'double-elimination'
               ? 'Double Elimination — przypisz drużyny do pierwszych rund UB i LB.'
               : 'Single Elimination — przypisz drużyny do pierwszej rundy.'}
-            {' '}Kolejne rundy wypełniane automatycznie po wynikach.
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -414,16 +283,100 @@ export function PlayoffsTab() {
             className="font-logik"
             style={{ backgroundColor: theme.primaryColor }}
           >
-            {isSaving ? (
-              <RotateCcw className="h-4 w-4 mr-2 animate-spin" />
-            ) : (
-              <Save className="h-4 w-4 mr-2" />
-            )}
+            {isSaving ? <RotateCcw className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
             Zapisz drabinkę
           </Button>
         </div>
       </div>
 
+      {/* Bracket configuration */}
+      <Card className="border-0 shadow-lg bg-card/50 backdrop-blur-sm">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 font-logik-extended-bold text-base">
+            <Settings2 className="h-4 w-4" style={{ color: theme.primaryColor }} />
+            Konfiguracja drabinki
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+            {/* Format */}
+            <div className="space-y-1">
+              <Label className="font-logik-extended-bold text-xs">Format</Label>
+              <Select value={bracketFormat} onValueChange={(v: 'single-elimination' | 'double-elimination') => setBracketFormat(v)}>
+                <SelectTrigger className="font-logik"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="single-elimination">Single Elimination</SelectItem>
+                  <SelectItem value="double-elimination">Double Elimination</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* UB teams */}
+            <div className="space-y-1">
+              <Label className="font-logik-extended-bold text-xs">Drużyny w Upper Bracket</Label>
+              <Input
+                type="number"
+                min={2}
+                max={64}
+                value={ubTeamsCount}
+                onChange={e => setUbTeamsCount(Math.max(2, parseInt(e.target.value) || 2))}
+                className="font-logik"
+              />
+            </div>
+
+            {/* LB teams (only for double elimination) */}
+            {bracketFormat === 'double-elimination' && (
+              <div className="space-y-1">
+                <Label className="font-logik-extended-bold text-xs">Drużyny w Lower Bracket</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  max={32}
+                  value={lbTeamsCount}
+                  onChange={e => setLbTeamsCount(Math.max(0, parseInt(e.target.value) || 0))}
+                  className="font-logik"
+                />
+              </div>
+            )}
+
+            {/* Grand Final format */}
+            <div className="space-y-1">
+              <Label className="font-logik-extended-bold text-xs">Format Wielkiego Finału</Label>
+              <Select value={gfFormat} onValueChange={(v: PlayoffMatchFormat) => setGfFormat(v)}>
+                <SelectTrigger className="font-logik"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="bo1">BO1</SelectItem>
+                  <SelectItem value="bo3">BO3</SelectItem>
+                  <SelectItem value="bo5">BO5</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Visibility toggle */}
+      <Card className="border-0 shadow-lg bg-card/50 backdrop-blur-sm">
+        <CardContent className="pt-6">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="font-logik-extended-bold text-sm">Widoczność playoffs</p>
+              <p className="text-xs text-muted-foreground font-logik mt-0.5">
+                {isVisible
+                  ? 'Drabinka playoffs jest widoczna dla wszystkich użytkowników.'
+                  : 'Drabinka playoffs jest ukryta. Włącz aby pokazać ją użytkownikom.'}
+              </p>
+            </div>
+            <Switch
+              checked={isVisible}
+              onCheckedChange={handleToggleVisibility}
+              disabled={isTogglingVisibility}
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Bracket display */}
       {isLoading ? (
         <div className="flex items-center justify-center py-20">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -432,45 +385,199 @@ export function PlayoffsTab() {
         <div className="space-y-8">
           {/* Upper Bracket */}
           {upperSlots.length > 0 && (
-            <div className="space-y-4">
-              <h3 className="text-lg font-logik-extended-bold">Upper Bracket</h3>
-              {groupByRound(upperSlots).map(([round, roundSlots]) => (
-                <div key={`ub-r${round}`} className="space-y-2">
-                  <p className="text-sm font-logik text-muted-foreground">Runda {round}</p>
-                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                    {roundSlots.map(renderSlotCard)}
-                  </div>
-                </div>
-              ))}
-            </div>
+            <BracketSection
+              title="Upper Bracket"
+              titleColor={theme.primaryColor}
+              slots={upperSlots}
+              teams={teams}
+              allMatches={allMatches}
+              onUpdateSlot={updateSlot}
+              groupByRound={groupByRound}
+            />
           )}
 
           {/* Lower Bracket */}
           {lowerSlots.length > 0 && (
-            <div className="space-y-4">
-              <h3 className="text-lg font-logik-extended-bold">Lower Bracket</h3>
-              {groupByRound(lowerSlots).map(([round, roundSlots]) => (
-                <div key={`lb-r${round}`} className="space-y-2">
-                  <p className="text-sm font-logik text-muted-foreground">Runda {round}</p>
-                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                    {roundSlots.map(renderSlotCard)}
-                  </div>
-                </div>
-              ))}
-            </div>
+            <BracketSection
+              title="Lower Bracket"
+              titleColor="#ef4444"
+              slots={lowerSlots}
+              teams={teams}
+              allMatches={allMatches}
+              onUpdateSlot={updateSlot}
+              groupByRound={groupByRound}
+            />
           )}
 
           {/* Grand Final */}
           {finalSlots.length > 0 && (
-            <div className="space-y-4">
-              <h3 className="text-lg font-logik-extended-bold text-yellow-500">Grand Final</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {finalSlots.map(renderSlotCard)}
-              </div>
-            </div>
+            <BracketSection
+              title="Grand Final"
+              titleColor="#eab308"
+              slots={finalSlots}
+              teams={teams}
+              allMatches={allMatches}
+              onUpdateSlot={updateSlot}
+              groupByRound={groupByRound}
+            />
           )}
         </div>
       )}
     </div>
+  );
+}
+
+// ─── Section sub-component ─────────────────────────────────────────────
+
+function BracketSection({
+  title,
+  titleColor,
+  slots,
+  teams,
+  allMatches,
+  onUpdateSlot,
+  groupByRound,
+}: {
+  title: string;
+  titleColor: string;
+  slots: AdminSlot[];
+  teams: Team[];
+  allMatches: PlayoffMatch[];
+  onUpdateSlot: (matchId: string, updates: Partial<AdminSlot>) => void;
+  groupByRound: (arr: AdminSlot[]) => [number, AdminSlot[]][];
+}) {
+  return (
+    <div className="space-y-4">
+      <h3 className="text-lg font-logik-extended-bold" style={{ color: titleColor }}>
+        {title}
+      </h3>
+      {groupByRound(slots).map(([round, roundSlots]) => (
+        <div key={`r${round}`} className="space-y-2">
+          <p className="text-sm font-logik text-muted-foreground">
+            Runda {round}
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            {roundSlots.map(slot => (
+              <AdminSlotCard
+                key={slot.match.id}
+                slot={slot}
+                teams={teams}
+                allMatches={allMatches}
+                onUpdate={onUpdateSlot}
+                titleColor={titleColor}
+              />
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ─── Individual slot card ──────────────────────────────────────────────
+
+function AdminSlotCard({
+  slot,
+  teams,
+  allMatches,
+  onUpdate,
+  titleColor,
+}: {
+  slot: AdminSlot;
+  teams: Team[];
+  allMatches: PlayoffMatch[];
+  onUpdate: (matchId: string, updates: Partial<AdminSlot>) => void;
+  titleColor: string;
+}) {
+  const { match } = slot;
+  const editable = isFirstRound(match, allMatches);
+  const isFinal = match.bracketType === 'final';
+  const getTeamName = (id: string): string => teams.find(t => t.id === id)?.name || id || 'TBD';
+
+  return (
+    <Card className="border-0 shadow-lg bg-card/50 backdrop-blur-sm">
+      <CardHeader className="pb-2">
+        <CardTitle className="flex items-center gap-2 font-logik-extended-bold text-sm">
+          <Trophy className="h-3.5 w-3.5" style={{ color: isFinal ? '#EAB308' : titleColor }} />
+          <span className="font-mono text-xs px-1.5 py-0.5 rounded bg-muted">{match.code || match.id}</span>
+          <span className="text-muted-foreground font-logik text-xs ml-auto">{match.format.toUpperCase()}</span>
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3 pt-0">
+        {/* Team A */}
+        <div className="space-y-1">
+          <Label className="font-logik-extended-bold text-xs">Drużyna A</Label>
+          {editable ? (
+            <Select value={slot.teamAId} onValueChange={v => onUpdate(match.id, { teamAId: v })}>
+              <SelectTrigger className="font-logik text-sm h-9">
+                <SelectValue placeholder="— Wybierz —" />
+              </SelectTrigger>
+              <SelectContent>
+                {teams.map(t => (
+                  <SelectItem key={t.id} value={t.id}>
+                    {t.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          ) : (
+            <div className="h-9 rounded-md border border-dashed border-border flex items-center justify-center text-muted-foreground font-logik text-xs">
+              {match.teamA?.name || 'Wyłoniony z poprzedniej rundy'}
+            </div>
+          )}
+        </div>
+
+        <div className="text-center text-xs uppercase tracking-widest text-muted-foreground font-logik">vs</div>
+
+        {/* Team B */}
+        <div className="space-y-1">
+          <Label className="font-logik-extended-bold text-xs">Drużyna B</Label>
+          {editable ? (
+            <Select value={slot.teamBId} onValueChange={v => onUpdate(match.id, { teamBId: v })}>
+              <SelectTrigger className="font-logik text-sm h-9">
+                <SelectValue placeholder="— Wybierz —" />
+              </SelectTrigger>
+              <SelectContent>
+                {teams.map(t => (
+                  <SelectItem key={t.id} value={t.id}>
+                    {t.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          ) : (
+            <div className="h-9 rounded-md border border-dashed border-border flex items-center justify-center text-muted-foreground font-logik text-xs">
+              {match.teamB?.name || 'Wyłoniony z poprzedniej rundy'}
+            </div>
+          )}
+        </div>
+
+        {/* Deadline */}
+        <div className="space-y-1">
+          <Label className="font-logik-extended-bold text-xs">Deadline</Label>
+          <Input
+            type="datetime-local"
+            value={slot.deadline ? slot.deadline.slice(0, 16) : ''}
+            onChange={e => onUpdate(match.id, { deadline: e.target.value ? new Date(e.target.value).toISOString() : '' })}
+            className="font-logik text-xs h-9"
+          />
+        </div>
+
+        {/* Format override */}
+        <div className="space-y-1">
+          <Label className="font-logik-extended-bold text-xs">Format meczu</Label>
+          <Select value={slot.format} onValueChange={(v: PlayoffMatchFormat) => onUpdate(match.id, { format: v })}>
+            <SelectTrigger className="font-logik text-xs h-9">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="bo1">BO1</SelectItem>
+              <SelectItem value="bo3">BO3</SelectItem>
+              <SelectItem value="bo5">BO5</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </CardContent>
+    </Card>
   );
 }

@@ -495,10 +495,40 @@ export async function savePDLGameResultsAdmin(
     // Save game data
     batch.set(gameRef, game);
 
-    // Save player performances
+    // Save player performances + write denormalized game history per player
     performances.forEach(performance => {
         const perfRef = gameRef.collection('performances').doc(performance.playerId);
         batch.set(perfRef, performance);
+
+        // Write compact game history entry — only for identified players (steamId64 = 17-digit number)
+        const steamId64 = performance.steamId || performance.playerId;
+        if (/^\d{17}$/.test(String(steamId64))) {
+            const isRadiant = performance.teamId === game.radiant_team?.id;
+            const won = isRadiant ? game.radiant_win : !game.radiant_win;
+            const enemyTeam = isRadiant ? game.dire_team : game.radiant_team;
+
+            const historyRef = db
+                .collection('tournaments').doc(tournamentId)
+                .collection('playerGameHistory').doc(String(steamId64))
+                .collection('games').doc(String(game.id));
+
+            batch.set(historyRef, {
+                gameId: String(game.id),
+                matchId,
+                heroId: performance.heroId ?? 0,
+                kills: performance.kills ?? 0,
+                deaths: performance.deaths ?? 0,
+                assists: performance.assists ?? 0,
+                won,
+                teamId: performance.teamId ?? '',
+                enemyTeamId: enemyTeam?.id ?? '',
+                enemyTeamName: enemyTeam?.name ?? '',
+                gpm: performance.gpm ?? 0,
+                xpm: performance.xpm ?? 0,
+                fantasyPoints: performance.fantasyPoints ?? 0,
+                gameDuration: game.duration ?? 0,
+            });
+        }
     });
 
     await batch.commit();

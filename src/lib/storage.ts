@@ -36,6 +36,22 @@ export const uploadTournamentLogo = async (file: File, tournamentSlug: string) =
     return getDownloadURL(storageRef);
 };
 
+export const uploadTournamentInlineLogo = async (file: File, tournamentSlug: string) => {
+    const fileExtension = file.name.split('.').pop();
+    const fileName = `${tournamentSlug}-inline-logo-${uuidv4()}.${fileExtension}`;
+    const storageRef = ref(storage, `tournament-assets/${tournamentSlug}/${fileName}`);
+    await uploadBytes(storageRef, file);
+    return getDownloadURL(storageRef);
+};
+
+export const uploadTournamentOrganizerLogo = async (file: File, tournamentSlug: string) => {
+    const fileExtension = file.name.split('.').pop();
+    const fileName = `${tournamentSlug}-organizer-logo-${uuidv4()}.${fileExtension}`;
+    const storageRef = ref(storage, `tournament-assets/${tournamentSlug}/${fileName}`);
+    await uploadBytes(storageRef, file);
+    return getDownloadURL(storageRef);
+};
+
 export const uploadTournamentBackground = async (file: File, tournamentSlug: string) => {
     const fileExtension = file.name.split('.').pop();
     const fileName = `${tournamentSlug}-bg-${uuidv4()}.${fileExtension}`;
@@ -47,6 +63,38 @@ export const uploadTournamentBackground = async (file: File, tournamentSlug: str
 export const uploadTournamentFavicon = async (file: File, tournamentSlug: string) => {
     const fileExtension = file.name.split('.').pop();
     const fileName = `${tournamentSlug}-favicon-${uuidv4()}.${fileExtension}`;
+    const storageRef = ref(storage, `tournament-assets/${tournamentSlug}/${fileName}`);
+    await uploadBytes(storageRef, file);
+    return getDownloadURL(storageRef);
+};
+
+export const uploadTournamentPromotionalImage = async (file: File, tournamentSlug: string) => {
+    const fileExtension = file.name.split('.').pop();
+    const fileName = `${tournamentSlug}-promo-${uuidv4()}.${fileExtension}`;
+    const storageRef = ref(storage, `tournament-assets/${tournamentSlug}/${fileName}`);
+    await uploadBytes(storageRef, file);
+    return getDownloadURL(storageRef);
+};
+
+export const uploadTournamentHeroLeftImage = async (file: File, tournamentSlug: string) => {
+    const fileExtension = file.name.split('.').pop();
+    const fileName = `${tournamentSlug}-hero-left-${uuidv4()}.${fileExtension}`;
+    const storageRef = ref(storage, `tournament-assets/${tournamentSlug}/${fileName}`);
+    await uploadBytes(storageRef, file);
+    return getDownloadURL(storageRef);
+};
+
+export const uploadTournamentHeroRightImage = async (file: File, tournamentSlug: string) => {
+    const fileExtension = file.name.split('.').pop();
+    const fileName = `${tournamentSlug}-hero-right-${uuidv4()}.${fileExtension}`;
+    const storageRef = ref(storage, `tournament-assets/${tournamentSlug}/${fileName}`);
+    await uploadBytes(storageRef, file);
+    return getDownloadURL(storageRef);
+};
+
+export const uploadTournamentSponsorImage = async (file: File, tournamentSlug: string) => {
+    const fileExtension = file.name.split('.').pop();
+    const fileName = `${tournamentSlug}-sponsor-${uuidv4()}.${fileExtension}`;
     const storageRef = ref(storage, `tournament-assets/${tournamentSlug}/${fileName}`);
     await uploadBytes(storageRef, file);
     return getDownloadURL(storageRef);

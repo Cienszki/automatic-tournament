@@ -5,6 +5,8 @@ import { PlayoffMatch } from "@/lib/definitions";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
 import { useTranslations } from "next-intl";
+import { useTournament } from "@/context/TournamentContext";
+import { TournamentTheme } from "@/types/tournament";
 
 interface PlayoffBracketProps {
     matches: PlayoffMatch[];
@@ -33,6 +35,7 @@ function getRoundLabel(round: number, totalRounds: number, t: ReturnType<typeof 
 
 export function PlayoffBracket({ matches }: PlayoffBracketProps) {
     const t = useTranslations('pdlPlayoffs');
+    const { theme } = useTournament();
     const byRound = groupByRound(matches);
 
     if (byRound.size === 0) {
@@ -59,16 +62,16 @@ export function PlayoffBracket({ matches }: PlayoffBracketProps) {
 
                     return (
                         <div key={round} className="flex flex-col items-center relative z-10">
-                            <h3 className="text-xs uppercase tracking-widest text-gray-500 font-logik font-medium mb-4">
+                            <h3 className="text-xs uppercase tracking-widest font-logik font-medium mb-4" style={{ color: theme?.secondaryTextColor || '#6b7280' }}>
                                 {roundLabel}
                             </h3>
                             <div className={cn("flex flex-col justify-center", gapClass)}>
                                 {roundMatches.map((match, matchIdx) => (
                                     <div key={match.id || `${round}-${matchIdx}`} className="relative">
                                         {isFinal && (
-                                            <Trophy className="absolute -top-10 left-1/2 -translate-x-1/2 w-7 h-7 text-pdl-gold animate-pulse" />
+                                            <Trophy className="absolute -top-10 left-1/2 -translate-x-1/2 w-7 h-7 animate-pulse" style={{ color: theme?.primaryColor || '#d4af37' }} />
                                         )}
-                                        <BracketMatchCard match={match} isFinal={isFinal} />
+                                        <BracketMatchCard match={match} isFinal={isFinal} theme={theme} />
                                     </div>
                                 ))}
                             </div>
@@ -80,33 +83,35 @@ export function PlayoffBracket({ matches }: PlayoffBracketProps) {
     );
 }
 
-function BracketMatchCard({ match, isFinal }: { match: PlayoffMatch | null; isFinal?: boolean }) {
-    const borderColor = isFinal ? "border-pdl-gold/30" : "border-white/10";
-    const glowing = isFinal ? "shadow-[0_0_30px_rgba(255,215,0,0.1)]" : "";
-
+function BracketMatchCard({ match, isFinal, theme }: { match: PlayoffMatch | null; isFinal?: boolean; theme: TournamentTheme }) {
     return (
-        <div className={cn(
-            "w-[260px] bg-[#0a0a0f] rounded-xl border overflow-hidden relative group",
-            borderColor, glowing
-        )}>
+        <div
+            className={cn("w-[260px] bg-[#0a0a0f] rounded-xl border overflow-hidden relative group", !isFinal && "border-white/10")}
+            style={isFinal ? {
+                borderColor: `${theme?.primaryColor || '#d4af37'}4d`,
+                boxShadow: `0 0 30px ${theme?.primaryColor || '#FFD700'}1a`
+            } : undefined}
+        >
             <div className="absolute inset-0 bg-white/5 backdrop-blur-sm opacity-50" />
             <div className="relative z-10 divide-y divide-white/5">
                 <TeamRow
                     team={match?.teamA}
                     score={match?.result?.teamAScore}
                     isWinner={match?.result?.winnerId === match?.teamA?.id}
+                    theme={theme}
                 />
                 <TeamRow
                     team={match?.teamB}
                     score={match?.result?.teamBScore}
                     isWinner={match?.result?.winnerId === match?.teamB?.id}
+                    theme={theme}
                 />
             </div>
             {match?.status === 'live' && (
                 <div className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full animate-pulse" />
             )}
             {match?.format && (
-                <div className="absolute bottom-1 right-2 text-[10px] text-gray-600 uppercase font-logik">
+                <div className="absolute bottom-1 right-2 text-[10px] uppercase font-logik" style={{ color: theme?.secondaryTextColor || '#4b5563' }}>
                     {match.format}
                 </div>
             )}
@@ -114,19 +119,19 @@ function BracketMatchCard({ match, isFinal }: { match: PlayoffMatch | null; isFi
     );
 }
 
-function TeamRow({ team, score, isWinner }: { team?: { id: string; name: string; logoUrl?: string }; score?: number; isWinner?: boolean }) {
+function TeamRow({ team, score, isWinner, theme }: { team?: { id: string; name: string; logoUrl?: string }; score?: number; isWinner?: boolean; theme: TournamentTheme }) {
     const t = useTranslations('pdlPlayoffs');
     if (!team) return (
-        <div className="h-12 flex items-center px-4 md:px-6 bg-black/20 text-gray-600 font-logik items-center justify-center italic text-sm">
+        <div className="h-12 flex items-center px-4 md:px-6 bg-black/20 font-logik items-center justify-center italic text-sm" style={{ color: theme?.secondaryTextColor || '#4b5563' }}>
             {t('tbd')}
         </div>
     );
 
     return (
-        <div className={cn(
-            "h-14 flex items-center justify-between px-4 transition-colors",
-            isWinner ? "bg-gradient-to-r from-pdl-gold/10 to-transparent" : "bg-transparent"
-        )}>
+        <div
+            className="h-14 flex items-center justify-between px-4 transition-colors"
+            style={isWinner ? { background: `linear-gradient(to right, ${theme?.primaryColor || '#d4af37'}1a, transparent)` } : undefined}
+        >
             <div className="flex items-center gap-3">
                 <div className="relative w-8 h-8 rounded bg-black/40 overflow-hidden shrink-0">
                     <Image
@@ -137,17 +142,17 @@ function TeamRow({ team, score, isWinner }: { team?: { id: string; name: string;
                         unoptimized
                     />
                 </div>
-                <span className={cn(
-                    "font-logik-extended-bold text-sm truncate max-w-[140px] uppercase tracking-tight",
-                    isWinner ? "text-pdl-gold" : "text-gray-300"
-                )}>
+                <span
+                    className="font-logik-extended-bold text-sm truncate max-w-[140px] uppercase tracking-tight"
+                    style={{ color: isWinner ? (theme?.primaryColor || '#d4af37') : (theme?.secondaryTextColor || '#d1d5db'), fontFamily: theme?.headerFont ? `var(${theme.headerFont})` : undefined }}
+                >
                     {team.name}
                 </span>
             </div>
-            <span className={cn(
-                "font-logik-wide font-bold text-lg",
-                isWinner ? "text-white" : "text-gray-500"
-            )}>
+            <span
+                className="font-logik-wide font-bold text-lg"
+                style={{ color: isWinner ? (theme?.primaryTextColor || '#ffffff') : (theme?.secondaryTextColor || '#6b7280') }}
+            >
                 {score ?? '-'}
             </span>
         </div>

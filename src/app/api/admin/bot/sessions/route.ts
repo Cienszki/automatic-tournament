@@ -123,11 +123,12 @@ export async function POST(req: Request): Promise<Response> {
     const db = getAdminDb();
 
     // Verify admin permissions
-    const adminDoc = await db.collection('admins').doc(tournamentId).get();
-    const adminData = adminDoc.data();
-    const superAdminDoc = await db.collection('superAdmins').doc(uid).get();
+    const [superAdminDoc, tournamentAdminDoc] = await Promise.all([
+      db.collection('admins').doc(uid).get(),
+      db.collection('tournaments').doc(tournamentId).collection('admins').doc(uid).get(),
+    ]);
 
-    if (!superAdminDoc.exists && (!adminData || !adminData[uid])) {
+    if (!superAdminDoc.exists && !tournamentAdminDoc.exists) {
       return NextResponse.json({ error: 'Not an admin for this tournament' }, { status: 403 });
     }
 
@@ -141,7 +142,10 @@ export async function POST(req: Request): Promise<Response> {
       .doc(matchId)
       .get();
     const matchData = matchDoc.data();
-    const matchName = matchData?.name || `Game ${gameNumber}`;
+    const tournamentDoc = await db.collection('tournaments').doc(tournamentId).get();
+    const lobbyPrefix = tournamentDoc.data()?.lobbySettings?.leagueName || tournamentDoc.data()?.name || 'Tournament';
+    const rawName = matchData?.name || `Game ${gameNumber}`;
+    const matchName = rawName.startsWith(lobbyPrefix) ? rawName : `${lobbyPrefix} - ${rawName}`;
     const seriesFormat = matchData?.series_format || 'bo2';
 
     const session = await scheduleLobbyForMatch(tournamentId, matchId, matchName, seriesFormat);

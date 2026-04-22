@@ -21,7 +21,8 @@ export function HeroSection({
   isTeamCaptain = false
 }: HeroSectionProps) {
   const t = useTranslations('pdlHome');
-  const { getTournamentPath, tournament } = useTournament();
+  const { getTournamentPath, tournament, theme } = useTournament();
+  const primaryColor = theme?.primaryColor || '#8B1538';
 
   return (
     <motion.div
@@ -40,19 +41,22 @@ export function HeroSection({
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8 }}
             >
-              <span className="text-white drop-shadow-[0_0_30px_rgba(255,255,255,0.1)]">
-                {t('hero.title')}
+              <span
+                className="drop-shadow-[0_0_30px_rgba(255,255,255,0.1)] text-[var(--tournament-title)]"
+              >
+                {tournament?.heroTitle || tournament?.name || t('hero.title')}
               </span>
             </motion.h1>
 
             {/* Promotional text */}
             <motion.p
-              className="text-base md:text-lg text-white/60 leading-relaxed max-w-lg font-medium border-l-4 border-[#8B1538] pl-6 ml-1"
+              className="text-base md:text-lg leading-relaxed max-w-lg font-medium border-l-4 pl-6 ml-1"
+              style={{ borderColor: primaryColor, color: theme?.secondaryTextColor || theme?.mutedTextColor || 'rgba(255,255,255,0.6)' }}
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.8, delay: 0.2 }}
             >
-              {t('hero.subtitle')}
+              {tournament?.description || t('hero.subtitle')}
             </motion.p>
           </div>
 
@@ -70,13 +74,9 @@ export function HeroSection({
             >
               <Link
                 href={getTournamentPath(isTeamCaptain ? '/my-team' : '/register')}
-                className={cn(
-                  "inline-flex items-center justify-center gap-3 px-8 py-4 rounded-none font-logik-extended-bold text-lg uppercase tracking-widest",
-                  "bg-[#8B1538] text-white",
-                  "hover:bg-[#a01840]",
-                  "transition-all duration-300 relative overflow-hidden group clip-path-slant"
-                )}
+                className="inline-flex items-center justify-center gap-3 px-8 py-4 rounded-none font-logik-extended-bold text-lg uppercase tracking-widest text-white transition-all duration-300 relative overflow-hidden group"
                 style={{
+                  backgroundColor: primaryColor,
                   clipPath: 'polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px)'
                 }}
               >
@@ -108,12 +108,7 @@ export function HeroSection({
                 href={tournament?.discordUrl || organizationConfig.defaults.discord}
                 target="_blank"
                 rel="noopener noreferrer"
-                className={cn(
-                  "inline-flex items-center justify-center gap-3 px-8 py-4 font-logik-extended-bold text-lg uppercase tracking-widest",
-                  "bg-transparent text-white border border-white/10",
-                  "hover:border-[#5865F2] hover:text-[#5865F2] hover:bg-[#5865F2]/5",
-                  "transition-all duration-300 relative overflow-hidden group"
-                )}
+                className="inline-flex items-center justify-center gap-3 px-8 py-4 font-logik-extended-bold text-lg uppercase tracking-widest bg-transparent text-[#5865F2] border border-[#5865F2]/40 hover:border-[#5865F2] hover:bg-[#5865F2]/10 transition-all duration-300 relative overflow-hidden group"
                 style={{
                   clipPath: 'polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px)'
                 }}
@@ -124,7 +119,7 @@ export function HeroSection({
                   width={20}
                   height={20}
                   priority
-                  className="relative z-10 w-5 h-5 object-contain opacity-60 group-hover:opacity-100 transition-opacity"
+                  className="relative z-10 w-5 h-5 object-contain"
                 />
                 <span className="relative z-10">{t('hero.ctaDiscord')}</span>
               </Link>

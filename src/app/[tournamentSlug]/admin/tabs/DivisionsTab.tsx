@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { useTournament } from '@/context/TournamentContext';
+import { useTournament, useTournamentType } from '@/context/TournamentContext';
 import { useAuth } from '@/context/AuthContext';
 import { Card, CardHeader, CardContent, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -63,6 +63,7 @@ interface Team {
  */
 export function DivisionsTab() {
   const { tournament, theme } = useTournament();
+  const { isMmrLimited } = useTournamentType();
   const { user } = useAuth();
   const { toast } = useToast();
   
@@ -155,7 +156,7 @@ export function DivisionsTab() {
             }
           });
           
-          alert(`Znaleziono ${orphanedTeams.length} drużyn przypisanych do nieistniejących dywizji. Zostały automatycznie odłączone.`);
+          alert(`Znaleziono ${orphanedTeams.length} drużyn przypisanych do nieistniejących ${isMmrLimited ? 'grup' : 'dywizji'}. Zostały automatycznie odłączone.`);
         }
 
         setTeams(teamsData);
@@ -197,10 +198,10 @@ export function DivisionsTab() {
         }, { merge: true });
       }
       
-      alert('Dywizje zapisane pomyślnie!');
+      alert(`${isMmrLimited ? 'Grupy' : 'Dywizje'} zapisane pomyślnie!`);
     } catch (error) {
       console.error('Error saving divisions:', error);
-      alert('Błąd podczas zapisywania dywizji');
+      alert(`Błąd podczas zapisywania ${isMmrLimited ? 'grup' : 'dywizji'}`);
     } finally {
       setIsSaving(false);
     }
@@ -212,7 +213,7 @@ export function DivisionsTab() {
     const newDivisionId = `division-${Date.now()}`;
     const newDivision: Division = {
       id: newDivisionId,
-      name: `Dywizja ${divisions.length + 1}`,
+      name: `${isMmrLimited ? 'Grupa' : 'Dywizja'} ${divisions.length + 1}`,
       tier: divisions.length + 1,
       color: '#666666',
       teamsCount: 0,
@@ -233,7 +234,7 @@ export function DivisionsTab() {
       setEditingId(newDivision.id);
     } catch (error) {
       console.error('Error adding division:', error);
-      alert('Błąd podczas dodawania dywizji');
+      alert(`Błąd podczas dodawania ${isMmrLimited ? 'grupy' : 'dywizji'}`);
     }
   };
 
@@ -245,7 +246,7 @@ export function DivisionsTab() {
     
     if (teamsInDivision.length > 0) {
       const confirmDelete = confirm(
-        `Ta dywizja zawiera ${teamsInDivision.length} drużyn(y). Czy na pewno chcesz ją usunąć? Drużyny zostaną odłączone od dywizji.`
+        `Ta ${isMmrLimited ? 'grupa' : 'dywizja'} zawiera ${teamsInDivision.length} drużyn(y). Czy na pewno chcesz ją usunąć? Drużyny zostaną odłączone od ${isMmrLimited ? 'grupy' : 'dywizji'}.`
       );
       if (!confirmDelete) return;
     }
@@ -269,10 +270,10 @@ export function DivisionsTab() {
       
       setDivisions(divisions.filter(d => d.id !== id));
       
-      alert(`Dywizja usunięta. ${teamsInDivision.length} drużyn(y) zostało odłączonych.`);
+      alert(`${isMmrLimited ? 'Grupa' : 'Dywizja'} usunięta. ${teamsInDivision.length} drużyn(y) zostało odłączonych.`);
     } catch (error) {
       console.error('Error removing division:', error);
-      alert('Błąd podczas usuwania dywizji');
+      alert(`Błąd podczas usuwania ${isMmrLimited ? 'grupy' : 'dywizji'}`);
     }
   };
 
@@ -291,7 +292,7 @@ export function DivisionsTab() {
       ));
     } catch (error) {
       console.error('Error updating division:', error);
-      alert('Błąd podczas aktualizacji dywizji');
+      alert(`Błąd podczas aktualizacji ${isMmrLimited ? 'grupy' : 'dywizji'}`);
     }
   };
 
@@ -386,9 +387,9 @@ export function DivisionsTab() {
       {/* Page Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-logik-extended-bold">Zarządzanie dywizjami</h2>
+          <h2 className="text-2xl font-logik-extended-bold">Zarządzanie {isMmrLimited ? 'grupami' : 'dywizjami'}</h2>
           <p className="text-muted-foreground font-logik">
-            Tworzenie, edycja i organizacja dywizji
+            Tworzenie, edycja i organizacja {isMmrLimited ? 'grup' : 'dywizji'}
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -398,7 +399,7 @@ export function DivisionsTab() {
             className="font-logik"
           >
             <Plus className="h-4 w-4 mr-2" />
-            Dodaj dywizję
+            Dodaj {isMmrLimited ? 'grupę' : 'dywizję'}
           </Button>
           <Button 
             onClick={handleSave} 
@@ -422,20 +423,20 @@ export function DivisionsTab() {
           <Card className="border-0 shadow-lg bg-card/50 backdrop-blur-sm">
             <CardContent className="py-12 text-center">
               <Loader2 className="h-12 w-12 mx-auto text-primary animate-spin mb-4" />
-              <p className="text-lg font-logik-extended-bold mb-2">Ładowanie dywizji...</p>
+              <p className="text-lg font-logik-extended-bold mb-2">Ładowanie {isMmrLimited ? 'grup' : 'dywizji'}...</p>
             </CardContent>
           </Card>
         ) : divisions.length === 0 ? (
           <Card className="border-0 shadow-lg bg-card/50 backdrop-blur-sm">
             <CardContent className="py-12 text-center">
               <Layers className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-              <p className="text-lg font-logik-extended-bold mb-2">Brak dywizji</p>
+              <p className="text-lg font-logik-extended-bold mb-2">Brak {isMmrLimited ? 'grup' : 'dywizji'}</p>
               <p className="text-muted-foreground font-logik mb-4">
-                Dodaj pierwszą dywizję aby rozpocząć konfigurację ligi
+                Dodaj pierwszą {isMmrLimited ? 'grupę' : 'dywizję'} aby rozpocząć konfigurację
               </p>
               <Button onClick={addDivision} className="font-logik">
                 <Plus className="h-4 w-4 mr-2" />
-                Dodaj dywizję
+                Dodaj {isMmrLimited ? 'grupę' : 'dywizję'}
               </Button>
             </CardContent>
           </Card>
@@ -490,7 +491,7 @@ export function DivisionsTab() {
                           value={division.name}
                           onChange={(e) => updateDivision(division.id, { name: e.target.value })}
                           className="font-logik max-w-[300px]"
-                          placeholder="Nazwa dywizji"
+                          placeholder={isMmrLimited ? 'Nazwa grupy' : 'Nazwa dywizji'}
                           autoFocus
                         />
                         
@@ -633,7 +634,7 @@ export function DivisionsTab() {
               Przypisywanie drużyn
             </CardTitle>
             <CardDescription className="font-logik">
-              Przypisz drużyny do dywizji
+              Przypisz drużyny do {isMmrLimited ? 'grup' : 'dywizji'}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -716,7 +717,7 @@ export function DivisionsTab() {
 
                         {divisionTeams.length === 0 ? (
                           <div className="py-6 text-center text-sm text-muted-foreground font-logik">
-                            Brak drużyn w tej dywizji
+                            Brak drużyn w tej {isMmrLimited ? 'grupie' : 'dywizji'}
                           </div>
                         ) : (
                           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -768,7 +769,7 @@ export function DivisionsTab() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
             <RefreshCw className="h-4 w-4" style={{ color: theme.primaryColor }} />
-            Przelicz tabele dywizji
+            Przelicz tabele {isMmrLimited ? 'grup' : 'dywizji'}
           </CardTitle>
           <CardDescription>
             Przeliczy punkty, zwycięstwa, remisy i porażki dla wszystkich drużyn na podstawie
@@ -805,7 +806,7 @@ export function DivisionsTab() {
             {isRecalculatingStandings ? (
               <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Przeliczanie...</>
             ) : (
-              <><RefreshCw className="h-4 w-4 mr-2" /> Przelicz tabele dywizji</>
+              <><RefreshCw className="h-4 w-4 mr-2" /> Przelicz tabele {isMmrLimited ? 'grup' : 'dywizji'}</>
             )}
           </Button>
         </CardContent>

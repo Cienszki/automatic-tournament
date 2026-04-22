@@ -6,6 +6,7 @@ import { Swords, Sparkles, Shield, HandHelping, Eye, Crown, Users } from 'lucide
 import type { Team, Player, PlayerRole } from '@/lib/definitions';
 import { sortPlayersByRole } from '@/lib/utils';
 import { cn } from '@/lib/utils';
+import { useTournament } from '@/context/TournamentContext';
 
 interface PDLRosterCardProps {
     team: Team;
@@ -21,6 +22,7 @@ const roleConfig: Record<PlayerRole, { icon: React.ElementType; color: string }>
 };
 
 export function PDLRosterCard({ team, captainId }: PDLRosterCardProps) {
+    const { theme } = useTournament();
     const sortedPlayers = sortPlayersByRole(team.players || []);
 
     return (
@@ -28,9 +30,9 @@ export function PDLRosterCard({ team, captainId }: PDLRosterCardProps) {
             {/* Header */}
             <div className="flex items-center gap-3">
                 <div className="p-2 rounded-lg bg-white/5 border border-white/10">
-                    <Users className="w-5 h-5 text-pdl-gold" />
+                    <Users className="w-5 h-5" style={{ color: theme.primaryColor || '#d4af37' }} />
                 </div>
-                <h2 className="text-xl font-logik-extended-bold text-white tracking-wide uppercase">
+                <h2 className="text-xl font-logik-extended-bold tracking-wide uppercase" style={{ color: theme.sectionHeaderColor || '#ffffff', fontFamily: theme.headerFont ? `var(${theme.headerFont})` : undefined }}>
                     Skład Drużyny
                 </h2>
             </div>
@@ -64,7 +66,7 @@ export function PDLRosterCard({ team, captainId }: PDLRosterCardProps) {
                             </div>
 
                             {/* Nickname */}
-                            <p className="text-center font-logik-extended-bold text-white text-sm truncate">
+                            <p className="text-center font-logik-extended-bold text-sm truncate" style={{ color: theme.sectionHeaderColor || '#ffffff', fontFamily: theme.headerFont ? `var(${theme.headerFont})` : undefined }}>
                                 {player.nickname}
                             </p>
 
@@ -83,9 +85,9 @@ export function PDLRosterCard({ team, captainId }: PDLRosterCardProps) {
             {/* Coach section if exists */}
             {team.coach && (
                 <div className="pt-4 border-t border-white/5">
-                    <div className="flex items-center gap-3 text-white/60">
-                        <span className="text-sm font-logik uppercase tracking-wide">Coach:</span>
-                        <span className="text-white font-logik-extended-bold">{team.coach.nickname || 'TBA'}</span>
+                    <div className="flex items-center gap-3">
+                        <span className="text-sm font-logik uppercase tracking-wide" style={{ color: theme.primaryTextColor || 'rgba(255,255,255,0.6)', fontFamily: theme.bodyFont ? `var(${theme.bodyFont})` : undefined }}>Coach:</span>
+                        <span className="font-logik-extended-bold" style={{ color: theme.sectionHeaderColor || '#ffffff', fontFamily: theme.headerFont ? `var(${theme.headerFont})` : undefined }}>{team.coach.nickname || 'TBA'}</span>
                     </div>
                 </div>
             )}

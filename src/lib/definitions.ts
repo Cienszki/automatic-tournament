@@ -127,6 +127,8 @@ export interface Match {
       approvedAt: string;
       /** Standin's own player doc ID (may be from a different team than the match teams). */
       playerDocId?: string;
+      /** Standin's MMR (copied from the standin request at approval time). */
+      standinMmr?: number;
     };
   };
   // Forfeit/walkover metadata
@@ -193,6 +195,13 @@ export interface Player {
   avatar?: string;
   avatarmedium?: string;
   avatarfull?: string;
+  smurfAccounts?: { steamProfileUrl: string; steamId64?: string; steamId32?: string }[];
+  /** Most played heroes fetched from OpenDota — top 5 overall and top 5 last 6 months */
+  mostPlayedHeroes?: {
+    overall: { heroId: number; games: number; win: number }[];
+    recent: { heroId: number; games: number; win: number }[];
+    lastUpdated?: string;
+  };
 }
 
 export interface UserProfile {
@@ -427,6 +436,7 @@ export interface PDLStandinRequest {
   replacedPlayerNickname: string;
   standinNickname: string;    // Standin's recognizable nickname
   standinSteamProfileUrl: string; // Link to standin's Steam profile
+  standinMmr?: number;        // Standin's declared MMR (required for MMR-limited tournaments)
   status: PDLStandinRequestStatus;
   createdAt: string;
   updatedAt: string;
@@ -498,12 +508,17 @@ export interface PlayoffMatch {
   bracketType: PlayoffBracketType;
   round: number;
   position: number; // Position within the round
+  code?: string; // Abbreviated match code, e.g. "U2C", "L1A", "GF"
   teamASlotId?: string; // Reference to playoff slot
   teamBSlotId?: string; // Reference to playoff slot
   teamA?: { id: string; name: string; logoUrl?: string; };
   teamB?: { id: string; name: string; logoUrl?: string; };
   winnerSlotId?: string; // Where winner advances to
   loserSlotId?: string; // Where loser goes (for upper bracket)
+  nextWinnerMatchId?: string; // Match ID where winner advances
+  nextWinnerSlot?: 'teamA' | 'teamB'; // Which slot the winner fills
+  nextLoserMatchId?: string; // Match ID where loser drops (UB only)
+  nextLoserSlot?: 'teamA' | 'teamB'; // Which slot the loser fills
   format: PlayoffMatchFormat; // bo1, bo3, bo5
   status: PlayoffMatchStatus;
   result?: {
@@ -513,6 +528,7 @@ export interface PlayoffMatch {
     teamBScore: number;
     completedAt: string;
   };
+  deadline?: string; // ISO date — deadline for match to be played
   scheduledFor?: string;
   createdAt: string;
   updatedAt: string;

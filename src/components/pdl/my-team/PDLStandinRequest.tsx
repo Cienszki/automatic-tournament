@@ -57,6 +57,7 @@ interface PDLStandinRequestProps {
     replacedPlayerNickname: string;
     standinNickname: string;
     standinSteamProfileUrl: string;
+    standinMmr?: number;
   }) => Promise<void>;
   /** Called when opponent captain approves a standin request */
   onApproveRequest: (requestId: string) => Promise<void>;
@@ -73,10 +74,12 @@ interface PDLStandinRequestProps {
    * cannot be submitted — only existing ones can be approved / rejected.
    */
   isMatchCompleted?: boolean;
+  /** When true, shows an MMR input field for standin proposals */
+  isMmrLimited?: boolean;
   /**
    * All standin requests in the tournament — used to show approval history for
    * a standin replacing the same absent player across different matches.
-   */
+   */  
   allTournamentRequests?: PDLStandinRequestType[];
   /** Maps match IDs to readable labels (e.g. "TeamA vs TeamB") for history display */
   matchNameMap?: Record<string, string>;
@@ -119,6 +122,7 @@ export function PDLStandinRequestSection({
   isOpponentView = false,
   allTournamentRequests,
   matchNameMap,
+  isMmrLimited = false,
 }: PDLStandinRequestProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isAppealOpen, setIsAppealOpen] = useState(false);
@@ -134,6 +138,7 @@ export function PDLStandinRequestSection({
   const [selectedPlayerId, setSelectedPlayerId] = useState('');
   const [standinNickname, setStandinNickname] = useState('');
   const [standinSteamUrl, setStandinSteamUrl] = useState('');
+  const [standinMmr, setStandinMmr] = useState('');
 
   const matchRequests = existingRequests.filter(r => r.matchId === matchId);
 
@@ -168,6 +173,7 @@ export function PDLStandinRequestSection({
 
   const handleSubmit = async () => {
     if (!selectedPlayerId || !standinNickname.trim() || !standinSteamUrl.trim()) return;
+    if (isMmrLimited && !standinMmr.trim()) return;
 
     const player = players.find(p => p.id === selectedPlayerId);
     if (!player) return;
@@ -180,11 +186,13 @@ export function PDLStandinRequestSection({
         replacedPlayerNickname: player.nickname,
         standinNickname: standinNickname.trim(),
         standinSteamProfileUrl: standinSteamUrl.trim(),
+        standinMmr: standinMmr.trim() ? Number(standinMmr.trim()) : undefined,
       });
       setIsOpen(false);
       setSelectedPlayerId('');
       setStandinNickname('');
       setStandinSteamUrl('');
+      setStandinMmr('');
     } finally {
       setLoading(false);
     }
@@ -323,6 +331,11 @@ export function PDLStandinRequestSection({
                     <p className="text-sm text-white/40">
                       Za: <span className="text-white/60">{request.replacedPlayerNickname}</span>
                     </p>
+                    {request.standinMmr !== undefined && (
+                      <p className="text-sm text-white/40">
+                        MMR: <span className="text-white/60 font-logik-extended-bold">{request.standinMmr.toLocaleString()}</span>
+                      </p>
+                    )}
                   </div>
 
                   <Badge className={cn('flex-shrink-0 text-xs font-logik flex items-center gap-1', config.className)}>
@@ -604,6 +617,21 @@ export function PDLStandinRequestSection({
                   className="bg-white/5 border-white/10 text-white"
                 />
               </div>
+
+              {isMmrLimited && (
+                <div className="space-y-2">
+                  <Label className="text-white/80 text-sm">MMR standina</Label>
+                  <Input
+                    type="number"
+                    placeholder="np. 4500"
+                    value={standinMmr}
+                    onChange={(e) => setStandinMmr(e.target.value)}
+                    className="bg-white/5 border-white/10 text-white"
+                    min={0}
+                    max={20000}
+                  />
+                </div>
+              )}
             </div>
 
             <DialogFooter>
@@ -616,7 +644,7 @@ export function PDLStandinRequestSection({
               </Button>
               <Button
                 onClick={handleSubmit}
-                disabled={!selectedPlayerId || !standinNickname.trim() || !standinSteamUrl.trim() || loading}
+                disabled={!selectedPlayerId || !standinNickname.trim() || !standinSteamUrl.trim() || (isMmrLimited && !standinMmr.trim()) || loading}
                 className="bg-pdl-crimson hover:bg-pdl-crimson/80 text-white font-logik-extended-bold"
               >
                 {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <UserPlus className="w-4 h-4 mr-2" />}

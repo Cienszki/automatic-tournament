@@ -32,7 +32,6 @@ import {
 import { GeneralTab } from './tabs/GeneralTab';
 import { TournamentStructureTab } from './tabs/TournamentStructureTab';
 import { DivisionsTab } from './tabs/DivisionsTab';
-import { GroupsTab } from './tabs/GroupsTab';
 import { SchedulingTab } from './tabs/SchedulingTab';
 import { TeamsTab } from './tabs/TeamsTab';
 import { TransfersTab } from './tabs/TransfersTab';
@@ -51,7 +50,7 @@ import { BotTab } from './tabs/BotTab';
  */
 export default function AdminPage() {
   const { tournament, theme } = useTournament();
-  const { isLeague } = useTournamentType();
+  const { isLeague, isMmrLimited } = useTournamentType();
   const { user, signInWithGoogle } = useAuth();
   const [isAdmin, setIsAdmin] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -135,8 +134,7 @@ export default function AdminPage() {
   const tabs = [
     { id: 'general', label: 'Ogólne', icon: Settings },
     { id: 'structure', label: 'Struktura', icon: Building2 },
-    { id: 'divisions', label: 'Dywizje', icon: Layers, showFor: 'league' },
-    { id: 'groups', label: 'Grupy', icon: LayoutGrid, showFor: 'mmr-limited' },
+    { id: 'divisions', label: isLeague ? 'Dywizje' : 'Grupy', icon: isLeague ? Layers : LayoutGrid },
     { id: 'scheduling', label: 'Terminarz', icon: CalendarDays },
     { id: 'teams', label: 'Drużyny', icon: Users },
     { id: 'transfers', label: 'Transfery', icon: ArrowLeftRight, showFor: 'league' },
@@ -201,10 +199,6 @@ export default function AdminPage() {
           
           <TabsContent value="divisions" className="mt-0">
             <DivisionsTab />
-          </TabsContent>
-
-          <TabsContent value="groups" className="mt-0">
-            <GroupsTab />
           </TabsContent>
           
           <TabsContent value="scheduling" className="mt-0">

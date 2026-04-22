@@ -53,8 +53,9 @@ export function GroupStandingsPreview({
         </h3>
         <Link 
           href={getTournamentPath('/groups')}
-          className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
+          className="text-xs text-[var(--tournament-secondary-text)] hover:text-[var(--tournament-title)] transition-colors flex items-center gap-1"
         >
+          <span>Zobacz tabelę</span>
           <ChevronRight className="h-3 w-3" />
         </Link>
       </div>
@@ -63,7 +64,7 @@ export function GroupStandingsPreview({
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="text-xs text-muted-foreground border-b border-border/20">
+            <tr className="text-xs text-[var(--tournament-secondary-text)] border-b border-border/20">
               <th className="text-left px-3 py-2 w-8">#</th>
               <th className="text-left px-3 py-2">Drużyna</th>
               <th className="text-center px-2 py-2 w-10">M</th>

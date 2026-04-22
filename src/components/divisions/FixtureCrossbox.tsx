@@ -101,7 +101,7 @@ export function FixtureCrossbox({
           className="w-full h-full flex flex-col items-center justify-center gap-0.5 hover:bg-white/5 transition-colors group relative"
         >
           <Calendar className="h-3 w-3 text-white/30 group-hover:text-white/80 transition-colors" />
-          <span className="text-[9px] text-white/30 font-mono tracking-tighter">
+          <span className="text-[9px] font-mono tracking-tighter" style={{ color: theme?.secondaryTextColor || 'rgba(255,255,255,0.3)' }}>
             {matchDate && !isNaN(matchDate.getTime())
               ? format(matchDate, 'dd.MM', { locale: pl })
               : 'TBD'}
@@ -138,10 +138,10 @@ export function FixtureCrossbox({
   };
 
   return (
-    <div className="rounded-2xl overflow-hidden p-1">
+    <div className="rounded-2xl overflow-hidden border border-white/[0.08] bg-gradient-to-b from-white/[0.03] to-transparent backdrop-blur-xl">
       <div className="p-4 flex items-center gap-3 mb-1">
         <Grid3x3 className="w-5 h-5" style={{ color: displayColor }} />
-        <h3 className="text-lg font-logik-extended-bold transition-all" style={{ color: displayColor }}>Wyniki</h3>
+        <h3 className="text-lg font-logik-extended-bold transition-all" style={{ color: theme?.headingColor || theme?.primaryTextColor || displayColor }}>Wyniki</h3>
       </div>
 
       <div className="overflow-auto max-h-[600px] relative custom-scrollbar">

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useLayoutEffect, ReactNode, useCallback } from 'react';
 import { TournamentConfig, TournamentSummary, TournamentTheme } from '@/types/tournament';
 import { PDL_THEME, LETNIA_THEME, getThemeCssVariables, getThemeBySlug } from '@/lib/themes';
 import { fetchTournaments, fetchTournamentBySlug } from '@/lib/api/tournaments';
@@ -10,6 +10,25 @@ export { PDL_THEME, LETNIA_THEME };
 
 // Default theme (Letnia Batalia style)
 const DEFAULT_THEME: TournamentTheme = LETNIA_THEME;
+
+// --- Theme cache helpers (sessionStorage) ---
+// Pre-applying the cached theme during loading prevents the LoadingScreen
+// from briefly showing the wrong (default) theme colors on refresh.
+function getCachedTheme(slug: string): TournamentTheme | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = sessionStorage.getItem(`theme-cache-${slug}`);
+    if (raw) return JSON.parse(raw) as TournamentTheme;
+  } catch { /* ignore parse errors */ }
+  return null;
+}
+
+function setCachedTheme(slug: string, theme: TournamentTheme): void {
+  if (typeof window === 'undefined') return;
+  try {
+    sessionStorage.setItem(`theme-cache-${slug}`, JSON.stringify(theme));
+  } catch { /* ignore quota errors */ }
+}
 
 interface TournamentContextType {
   // Current tournament
@@ -78,10 +97,26 @@ export function TournamentProvider({ children, initialTournamentSlug }: Tourname
     },
   ]);
   const [isLoading, setIsLoading] = useState(true);
+  // Separate flag for the tournament-list fetch so it never races against
+  // the per-tournament config fetch (which controls the LoadingScreen).
+  const [isListLoading, setIsListLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Derive theme from tournament config or use default
-  const theme = tournament?.theme || DEFAULT_THEME;
+  // Holds the cached theme for the current slug so the LoadingScreen shows
+  // the correct tournament colors while the Firestore fetch is in progress.
+  // Lazy initializer reads from sessionStorage synchronously so the first
+  // useLayoutEffect fires with the correct theme — preventing the dark flash
+  // that would otherwise occur when DEFAULT_THEME briefly overwrites the
+  // inline script's CSS variables during React hydration.
+  const [pendingTheme, setPendingTheme] = useState<TournamentTheme | null>(() => {
+    if (typeof window === 'undefined') return null;
+    const slug = window.location.pathname.split('/')[1];
+    if (!slug) return null;
+    return getCachedTheme(slug);
+  });
+
+  // Derive theme from tournament config, pending cached theme, or use default
+  const theme = tournament?.theme || pendingTheme || DEFAULT_THEME;
 
   // Filter tournaments by visibility
   // 'active' visibility means it shows on the main landing page (regardless of status)
@@ -112,8 +147,7 @@ export function TournamentProvider({ children, initialTournamentSlug }: Tourname
     }
 
     try {
-      setIsLoading(true);
-      setError(null);
+      setIsListLoading(true);
 
       // Fetch live tournament list from Firestore so status/visibility changes
       // made in the admin panel are reflected immediately without a code deploy.
@@ -124,14 +158,20 @@ export function TournamentProvider({ children, initialTournamentSlug }: Tourname
       }
     } catch (err) {
       console.error('Error fetching tournaments:', err);
-      setError('Failed to load tournaments');
     } finally {
-      setIsLoading(false);
+      setIsListLoading(false);
     }
   }, []);
 
   // Function to fetch tournament config
   const fetchTournamentConfig = useCallback(async (slug: string) => {
+    // Pre-apply cached theme so the LoadingScreen shows correct colors
+    // while the async Firestore fetch is in progress.
+    const cached = getCachedTheme(slug);
+    if (cached) {
+      setPendingTheme(cached);
+    }
+
     try {
       setIsLoading(true);
 
@@ -141,6 +181,11 @@ export function TournamentProvider({ children, initialTournamentSlug }: Tourname
       if (tournamentData) {
         // Use Firestore data
         setTournament(tournamentData);
+        // Persist the fresh theme so future page loads / refreshes get it immediately
+        if (tournamentData.theme) {
+          setCachedTheme(slug, tournamentData.theme);
+        }
+        setPendingTheme(null);
       } else {
         // Fallback to static config for legacy tournaments
         console.warn(`Tournament "${slug}" not found in Firestore, using static config`);
@@ -297,12 +342,14 @@ export function TournamentProvider({ children, initialTournamentSlug }: Tourname
         } else {
           setError('Tournament not found');
           setTournament(null);
+          setPendingTheme(null);
         }
       }
     } catch (err) {
       console.error('Error fetching tournament config:', err);
       setError('Failed to load tournament');
       setTournament(null);
+      setPendingTheme(null);
     } finally {
       setIsLoading(false);
     }
@@ -329,8 +376,11 @@ export function TournamentProvider({ children, initialTournamentSlug }: Tourname
     refreshTournaments();
   }, [refreshTournaments]);
 
-  // Apply theme CSS variables when theme changes
-  useEffect(() => {
+  // Apply theme CSS variables when theme changes.
+  // useLayoutEffect runs synchronously after DOM mutations but BEFORE the browser
+  // paints, so CSS variables are always up-to-date by the time the user sees any
+  // pixels — eliminating the brief "wrong-colour" flash on first load / refresh.
+  useLayoutEffect(() => {
     if (typeof document === 'undefined') return;
 
     const root = document.documentElement;
@@ -342,6 +392,14 @@ export function TournamentProvider({ children, initialTournamentSlug }: Tourname
     root.style.setProperty('--tournament-text', theme.textColor);
     root.style.setProperty('--tournament-muted', theme.mutedTextColor);
     root.style.setProperty('--tournament-border', theme.borderColor);
+
+    // Text hierarchy colors — admin-configurable, fall back to base theme values
+    root.style.setProperty('--tournament-heading', theme.headingColor || theme.textColor || '#ffffff');
+    root.style.setProperty('--tournament-title', theme.titleColor || theme.textColor || '#ffffff');
+    root.style.setProperty('--tournament-section-header', theme.sectionHeaderColor || theme.textColor || '#ffffff');
+    root.style.setProperty('--tournament-primary-text', theme.primaryTextColor || theme.textColor || '#ffffff');
+    root.style.setProperty('--tournament-secondary-text', theme.secondaryTextColor || theme.mutedTextColor || 'rgba(255,255,255,0.6)');
+    root.style.setProperty('--tournament-glow', theme.glowColor || theme.primaryColor);
 
     if (theme.backgroundGradient) {
       root.style.setProperty('--tournament-bg-gradient', theme.backgroundGradient);

@@ -59,6 +59,15 @@ export default async function RootLayout({
   return (
     <html lang={locale} suppressHydrationWarning>
       <head>
+        {/* Blocking inline script: reads the cached tournament theme from
+            sessionStorage and applies CSS variables BEFORE the browser paints
+            anything. This prevents the flash of the default dark background on
+            repeat visits / refreshes (same technique used by next-themes). */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var s=window.location.pathname.split('/')[1];if(!s)return;var r=sessionStorage.getItem('theme-cache-'+s);if(!r)return;var t=JSON.parse(r);var e=document.documentElement;var st=e.style;if(t.primaryColor)st.setProperty('--tournament-primary',t.primaryColor);if(t.secondaryColor)st.setProperty('--tournament-secondary',t.secondaryColor);if(t.accentColor)st.setProperty('--tournament-accent',t.accentColor);if(t.backgroundColor){st.setProperty('--tournament-background',t.backgroundColor);}if(t.backgroundGradient)st.setProperty('--tournament-bg-gradient',t.backgroundGradient);if(t.cardColor)st.setProperty('--tournament-card',t.cardColor);if(t.textColor)st.setProperty('--tournament-text',t.textColor);if(t.mutedTextColor)st.setProperty('--tournament-muted',t.mutedTextColor);if(t.borderColor)st.setProperty('--tournament-border',t.borderColor);e.setAttribute('data-tournament',s);e.classList.add('theme-'+s);}catch(e){}})();`,
+          }}
+        />
         {/* Performance: Preconnect to required origins */}
         <link rel="preconnect" href="https://firebasestorage.googleapis.com" />
         <link rel="preconnect" href="https://www.googleapis.com" />

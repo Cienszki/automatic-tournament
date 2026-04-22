@@ -1,16 +1,14 @@
 // src/components/pdl/NextMatchCard.tsx
-// Card displaying the next match info and embedded Twitch stream side by side
+// Card displaying the next match info
 
 'use client';
 
 import { motion } from 'framer-motion';
 import { useTranslations } from 'next-intl';
-import { useState, useEffect } from 'react';
-import { Tv, ExternalLink, Radio, Calendar, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { fadeInUp } from '@/lib/animations';
-import Link from 'next/link';
 import Image from 'next/image';
+import { useTournament } from '@/context/TournamentContext';
 
 interface NextMatch {
   id: string;
@@ -23,26 +21,17 @@ interface NextMatch {
 }
 
 interface NextMatchCardProps {
-  channel: string;
   nextMatch?: NextMatch | null;
   className?: string;
 }
 
 export function NextMatchCard({
-  channel,
   nextMatch,
   className
 }: NextMatchCardProps) {
   const t = useTranslations('pdlHome');
-  const [isLoaded, setIsLoaded] = useState(false);
-  const [parentDomain, setParentDomain] = useState('localhost');
-
-  useEffect(() => {
-    // Get the parent domain for Twitch embed
-    if (typeof window !== 'undefined') {
-      setParentDomain(window.location.hostname);
-    }
-  }, []);
+  const { theme, tournament } = useTournament();
+  const primaryColor = theme?.primaryColor || '#8B1538';
 
   return (
     <motion.div
@@ -53,39 +42,48 @@ export function NextMatchCard({
       )}
     >
       <div className="relative w-full">
-        {/* Header - Next Match Info Floating */}
+        {/* Header */}
         <div className="mb-6 flex items-end justify-between border-b border-white/10 pb-3">
-          <div className="flex flex-col">
-            <h2 className="text-xl font-logik-extended-bold text-white tracking-wide">
-              {t('nextMatch.title')}
-            </h2>
-          </div>
-
-          <div className="text-right hidden sm:block">
-            <div className="text-lg font-logik-extended-bold" style={{ color: '#d32f2f' }}>{nextMatch?.teamA} vs {nextMatch?.teamB}</div>
-            <div className="text-xs text-white/40 font-mono mt-1">{nextMatch?.dateLabel}</div>
-          </div>
+          <h2 className="text-xl font-logik-extended-bold text-white tracking-wide">
+            {nextMatch ? t('nextMatch.title') : 'Wyróżniony Mecz'}
+          </h2>
+          {nextMatch && (
+            <div className="text-right hidden sm:block">
+              <div
+                className="text-lg font-logik-extended-bold"
+                style={{ color: primaryColor }}
+              >
+                {nextMatch.teamA} vs {nextMatch.teamB}
+              </div>
+              <div className="text-xs text-white/40 font-mono mt-1">{nextMatch.dateLabel}</div>
+            </div>
+          )}
         </div>
 
-        {/* Floating Player Frame - Offline/Logo Mode (No Background/Border) */}
+        {/* Logo area */}
         <div className="relative w-full group" style={{ paddingBottom: '56.25%' }}>
-          {/* Default Offline State - PDL Logo */}
           <div className="absolute inset-0 flex items-center justify-center">
-            <Image
-              src="/logos/pdl/pdl-s1-logo-transparent.png"
-              alt="PDL Logo"
-              fill
-              priority
-              className="object-contain scale-110"
-              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-            />
+            {theme?.logoUrl ? (
+              <Image
+                src={theme.logoUrl}
+                alt={tournament?.name || ''}
+                fill
+                priority
+                className="object-contain scale-110"
+                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+              />
+            ) : (
+              <div
+                className="w-32 h-32 rounded-full blur-3xl opacity-30"
+                style={{ background: primaryColor }}
+              />
+            )}
           </div>
-
-          {/* Glitch Overlay on Hover (Subtle) - Kept but made very subtle for interaction feedback */}
-          <div className="absolute inset-0 bg-gradient-to-t from-[#8B1538]/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+          <div
+            className="absolute inset-0 bg-gradient-to-t to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
+            style={{ backgroundImage: `linear-gradient(to top, ${primaryColor}15, transparent)` }}
+          />
         </div>
-
-
       </div>
     </motion.div>
   );

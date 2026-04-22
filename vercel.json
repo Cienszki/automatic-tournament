@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/admin/bot/orchestrate",
+      "schedule": "*/2 * * * *"
+    }
+  ]
+}

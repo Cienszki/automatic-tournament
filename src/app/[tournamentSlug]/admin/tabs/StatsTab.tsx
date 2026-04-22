@@ -46,6 +46,7 @@ export function StatsTab() {
     mostPickedHero: null,
   });
   const [isRecalculating, setIsRecalculating] = useState(false);
+  const [isRefreshingHeroes, setIsRefreshingHeroes] = useState(false);
   const [progress, setProgress] = useState(0);
   const [lastResult, setLastResult] = useState<{ success: boolean; message: string } | null>(null);
 
@@ -118,6 +119,30 @@ export function StatsTab() {
 
   const pc = theme.primaryColor;
 
+  // ── Refresh most-played heroes for all players ──
+  const handleRefreshHeroes = async () => {
+    if (!tournament?.id) return;
+    setIsRefreshingHeroes(true);
+    try {
+      const response = await fetch('/api/player-heroes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tournamentId: tournament.id, refreshAll: true }),
+      });
+      const result = await response.json();
+      if (result.success) {
+        toast({ title: 'Sukces', description: result.message });
+      } else {
+        throw new Error(result.error || 'Nieznany błąd');
+      }
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : 'Nie udało się odświeżyć bohaterów';
+      toast({ title: 'Błąd', description: msg, variant: 'destructive' });
+    } finally {
+      setIsRefreshingHeroes(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -128,18 +153,32 @@ export function StatsTab() {
             Przeliczanie i podgląd statystyk turnieju
           </p>
         </div>
-        <Button
-          onClick={handleRecalculate}
-          disabled={isRecalculating}
-          className="font-logik"
-          style={{ backgroundColor: pc }}
-        >
-          {isRecalculating ? (
-            <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Przeliczanie...</>
-          ) : (
-            <><RefreshCw className="h-4 w-4 mr-2" />Przelicz statystyki</>
-          )}
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            onClick={handleRefreshHeroes}
+            disabled={isRefreshingHeroes}
+            variant="outline"
+            className="font-logik"
+          >
+            {isRefreshingHeroes ? (
+              <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Odświeżanie...</>
+            ) : (
+              <><Users className="h-4 w-4 mr-2" />Odśwież bohaterów</>
+            )}
+          </Button>
+          <Button
+            onClick={handleRecalculate}
+            disabled={isRecalculating}
+            className="font-logik"
+            style={{ backgroundColor: pc }}
+          >
+            {isRecalculating ? (
+              <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Przeliczanie...</>
+            ) : (
+              <><RefreshCw className="h-4 w-4 mr-2" />Przelicz statystyki</>
+            )}
+          </Button>
+        </div>
       </div>
 
       {/* Progress */}

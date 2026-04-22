@@ -1,11 +1,16 @@
 "use client";
 
-import { TournamentHomePage } from '@/components/tournament/MmrTournamentHomePage';
+import { Suspense } from 'react';
+import { TournamentHomePage } from '@/components/tournament/FullScreenHomePage';
 
 /**
  * Tournament home page — unified for all tournament types.
- * Conditional sections are rendered inside TournamentHomePage based on tournament type.
+ * Full-screen snap-scrolling layout with 5 views.
  */
 export default function TournamentHomePageRoute() {
-  return <TournamentHomePage />;
+  return (
+    <Suspense>
+      <TournamentHomePage />
+    </Suspense>
+  );
 }

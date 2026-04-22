@@ -6,7 +6,7 @@ import { useTranslations } from "next-intl";
 import { collection, doc, getDoc, getDocs, query, where } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { fetchGlobalPlayerProfile } from "@/hooks/useGlobalPlayerProfile";
-import { useTournament } from "@/context/TournamentContext";
+import { useTournament, useTournamentType } from "@/context/TournamentContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -47,7 +47,7 @@ interface PlayerMatchHistoryItem {
   playerPerformance: PlayerPerformanceInMatch;
   result: 'Win' | 'Loss';
   matchDate: Date;
-  openDotaMatchUrl?: string;
+  dotabuffUrl?: string;
 }
 
 export default function PlayerProfilePage() {
@@ -55,6 +55,7 @@ export default function PlayerProfilePage() {
   const teamId = params.teamId as string;
   const playerId = params.playerId as string;
   const { tournament, theme, getTournamentPath } = useTournament();
+  const { isMmrLimited } = useTournamentType();
   const t = useTranslations('playerProfile');
   const [player, setPlayer] = useState<Player | null>(null);
   const [team, setTeam] = useState<Team | null>(null);
@@ -151,7 +152,7 @@ export default function PlayerProfilePage() {
               playerPerformance: performance,
               result: playerTeamWon ? 'Win' : 'Loss',
               matchDate: new Date(match.scheduledFor || ''),
-              openDotaMatchUrl: match.openDotaMatchUrl,
+              dotabuffUrl: match.game_ids?.[0] ? `https://www.dotabuff.com/matches/${match.game_ids[0]}` : undefined,
             });
           }
         }
@@ -287,7 +288,7 @@ export default function PlayerProfilePage() {
             <div className="flex flex-col md:flex-row items-center gap-6">
               <PlayerAvatar player={player} size="large" />
               <div className="text-center md:text-left flex-1">
-                <CardTitle className="text-4xl mb-2 font-bold" style={{ fontFamily: 'var(--font-logik)', color: theme.primaryColor }}>
+                <CardTitle className="text-4xl mb-2 font-bold" style={{ fontFamily: 'var(--font-logik)', color: theme.titleColor || theme.primaryColor }}>
                   {player.nickname}
                 </CardTitle>
                 <CardDescription className="text-lg">
@@ -344,6 +345,44 @@ export default function PlayerProfilePage() {
                     </Button>
                   )}
                 </div>
+                {isMmrLimited && !!player.smurfAccounts?.length && (
+                  <div className="mt-3">
+                    <p className="text-sm font-logik mb-2" style={{ color: theme.secondaryTextColor || theme.mutedTextColor }}>Konta smurf</p>
+                    <div className="flex flex-wrap gap-2 justify-center md:justify-start">
+                      {player.smurfAccounts.map((smurf, idx) => {
+                        const steamId64Match = smurf.steamProfileUrl.match(/\/profiles\/(\d+)/);
+                        const steamId64 = steamId64Match?.[1];
+                        const xid32 = steamId64 ? String(BigInt(steamId64) - BigInt('76561197960265728')) : null;
+                        return (
+                          <div key={idx} className="flex items-center gap-1 flex-wrap">
+                            <Button variant="outline" size="sm" asChild>
+                              <a href={smurf.steamProfileUrl} target="_blank" rel="noopener noreferrer">
+                                <ExternalLink className="h-4 w-4 mr-2" />
+                                <span className="font-logik">Smurf {idx + 1}</span>
+                              </a>
+                            </Button>
+                            {xid32 && (
+                              <>
+                                <Button variant="outline" size="sm" asChild>
+                                  <a href={`https://www.opendota.com/players/${xid32}`} target="_blank" rel="noopener noreferrer">
+                                    <ExternalLink className="h-4 w-4 mr-2" />
+                                    <span className="font-logik">OpenDota</span>
+                                  </a>
+                                </Button>
+                                <Button variant="outline" size="sm" asChild>
+                                  <a href={`https://www.dotabuff.com/players/${xid32}`} target="_blank" rel="noopener noreferrer">
+                                    <ExternalLink className="h-4 w-4 mr-2" />
+                                    <span className="font-logik">Dotabuff</span>
+                                  </a>
+                                </Button>
+                              </>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </CardHeader>
@@ -358,16 +397,16 @@ export default function PlayerProfilePage() {
             >
               <CardHeader className="flex flex-row items-center justify-center space-x-3 pb-2">
                 <Star className="h-6 w-6 text-white/50" />
-                <CardTitle className="text-xl" style={{ fontFamily: 'var(--font-logik)', color: theme.primaryColor }}>{t('mmr')}</CardTitle>
+                <CardTitle className="text-xl" style={{ fontFamily: 'var(--font-logik)', color: theme.headingColor || theme.primaryColor }}>{t('mmr')}</CardTitle>
               </CardHeader>
               <CardContent className="flex flex-col items-center justify-center flex-grow p-6">
-                <p className="text-3xl font-bold mb-2 font-logik" style={{ color: theme.textColor }}>{formatNumber(player.mmr)}</p>
+                <p className="text-3xl font-bold mb-2 font-logik" style={{ color: theme.primaryTextColor || theme.textColor }}>{formatNumber(player.mmr)}</p>
                 <Progress
                   value={Math.min(100, Math.max(0, (player.mmr / Math.max(leagueAvgMMR * 1.5, 1)) * 100))}
                   className="w-3/4 h-2.5"
                   aria-label="MMR progress"
                 />
-                <p className="text-xs mt-1 font-logik" style={{ color: theme.mutedTextColor }}>
+                <p className="text-xs mt-1 font-logik" style={{ color: theme.secondaryTextColor || theme.mutedTextColor }}>
                   {t('leagueAvg', { value: formatNumber(leagueAvgMMR) })}
                 </p>
               </CardContent>
@@ -379,10 +418,10 @@ export default function PlayerProfilePage() {
             >
               <CardHeader className="flex flex-row items-center justify-center space-x-3 pb-2">
                 <TrendingUp className="h-6 w-6 text-white/50" />
-                <CardTitle className="text-xl" style={{ fontFamily: 'var(--font-logik)', color: theme.primaryColor }}>{t('kdaRatio')}</CardTitle>
+                <CardTitle className="text-xl" style={{ fontFamily: 'var(--font-logik)', color: theme.headingColor || theme.primaryColor }}>{t('kdaRatio')}</CardTitle>
               </CardHeader>
               <CardContent className="flex flex-col items-center justify-center flex-grow p-6">
-                <p className="text-3xl font-bold font-logik" style={{ color: theme.textColor }}>{averageStats.kda}</p>
+                <p className="text-3xl font-bold font-logik" style={{ color: theme.primaryTextColor || theme.textColor }}>{averageStats.kda}</p>
               </CardContent>
             </Card>
 
@@ -392,10 +431,10 @@ export default function PlayerProfilePage() {
             >
               <CardHeader className="flex flex-row items-center justify-center space-x-3 pb-2">
                 <Shield className="h-6 w-6 text-white/50" />
-                <CardTitle className="text-xl" style={{ fontFamily: 'var(--font-logik)', color: theme.primaryColor }}>{t('winRate')}</CardTitle>
+                <CardTitle className="text-xl" style={{ fontFamily: 'var(--font-logik)', color: theme.headingColor || theme.primaryColor }}>{t('winRate')}</CardTitle>
               </CardHeader>
               <CardContent className="flex flex-col items-center justify-center flex-grow p-6">
-                <p className="text-3xl font-bold font-logik" style={{ color: theme.textColor }}>{averageStats.winRate}</p>
+                <p className="text-3xl font-bold font-logik" style={{ color: theme.primaryTextColor || theme.textColor }}>{averageStats.winRate}</p>
               </CardContent>
             </Card>
 
@@ -405,10 +444,10 @@ export default function PlayerProfilePage() {
             >
               <CardHeader className="flex flex-row items-center justify-center space-x-3 pb-2">
                 <Coins className="h-6 w-6 text-white/50" />
-                <CardTitle className="text-xl" style={{ fontFamily: 'var(--font-logik)', color: theme.primaryColor }}>{t('avgGpm')}</CardTitle>
+                <CardTitle className="text-xl" style={{ fontFamily: 'var(--font-logik)', color: theme.headingColor || theme.primaryColor }}>{t('avgGpm')}</CardTitle>
               </CardHeader>
               <CardContent className="flex flex-col items-center justify-center flex-grow p-6">
-                <p className="text-3xl font-bold font-logik" style={{ color: theme.textColor }}>{averageStats.gpm}</p>
+                <p className="text-3xl font-bold font-logik" style={{ color: theme.primaryTextColor || theme.textColor }}>{averageStats.gpm}</p>
               </CardContent>
             </Card>
 
@@ -418,10 +457,10 @@ export default function PlayerProfilePage() {
             >
               <CardHeader className="flex flex-row items-center justify-center space-x-3 pb-2">
                 <Zap className="h-6 w-6 text-white/50" />
-                <CardTitle className="text-xl" style={{ fontFamily: 'var(--font-logik)', color: theme.primaryColor }}>{t('avgXpm')}</CardTitle>
+                <CardTitle className="text-xl" style={{ fontFamily: 'var(--font-logik)', color: theme.headingColor || theme.primaryColor }}>{t('avgXpm')}</CardTitle>
               </CardHeader>
               <CardContent className="flex flex-col items-center justify-center flex-grow p-6">
-                <p className="text-3xl font-bold font-logik" style={{ color: theme.textColor }}>{averageStats.xpm}</p>
+                <p className="text-3xl font-bold font-logik" style={{ color: theme.primaryTextColor || theme.textColor }}>{averageStats.xpm}</p>
               </CardContent>
             </Card>
 
@@ -431,7 +470,7 @@ export default function PlayerProfilePage() {
             >
               <CardHeader className="flex flex-row items-center justify-center space-x-3 pb-2">
                 <Trophy className="h-6 w-6 text-white/50" />
-                <CardTitle className="text-xl" style={{ fontFamily: 'var(--font-logik)', color: theme.primaryColor }}>{t('fantasyPoints')}</CardTitle>
+                <CardTitle className="text-xl" style={{ fontFamily: 'var(--font-logik)', color: theme.headingColor || theme.primaryColor }}>{t('fantasyPoints')}</CardTitle>
               </CardHeader>
               <CardContent className="flex flex-col items-center justify-center flex-grow p-6">
                 <p className="text-3xl font-bold font-logik" style={{ color: theme.textColor }}>{averageStats.fantasyPoints}</p>
@@ -443,10 +482,10 @@ export default function PlayerProfilePage() {
         {/* Match History */}
         <Card className="bg-transparent border-0 shadow-none">
           <CardHeader>
-            <CardTitle className="text-2xl font-semibold" style={{ fontFamily: 'var(--font-logik)', color: theme.primaryColor }}>
+            <CardTitle className="text-2xl font-semibold" style={{ fontFamily: 'var(--font-logik)', color: theme.headingColor || theme.sectionHeaderColor || theme.primaryColor }}>
               {t('matchHistory')}
             </CardTitle>
-            <CardDescription style={{ color: theme.mutedTextColor }}>
+            <CardDescription style={{ color: theme.secondaryTextColor || theme.mutedTextColor }}>
               {t('matchHistoryDesc')}
             </CardDescription>
           </CardHeader>
@@ -473,7 +512,7 @@ export default function PlayerProfilePage() {
                           <CardTitle className="text-lg flex items-center flex-wrap">
                             <HeroIconComponent color={heroColorHex} className="h-5 w-5 mr-1.5 shrink-0" />
                             <span style={{ color: heroColorHex, fontFamily: 'var(--font-logik)' }} className="font-semibold">{perf.hero}</span>
-                            <span className="mx-1.5 font-normal" style={{ color: theme.mutedTextColor }}>{t('vs')}</span>
+                            <span className="mx-1.5 font-normal" style={{ color: theme.secondaryTextColor || theme.mutedTextColor }}>{t('vs')}</span>
                             <Link
                               href={getTournamentPath(`/teams/${histItem.opponentTeam.id}`)}
                               className="hover:underline"
@@ -486,16 +525,16 @@ export default function PlayerProfilePage() {
                             <Badge variant={histItem.result === 'Win' ? 'default' : 'destructive'} className="shrink-0">
                               {histItem.result === 'Win' ? t('win') : t('loss')}
                             </Badge>
-                            {histItem.openDotaMatchUrl && (
+                          {histItem.dotabuffUrl && (
                               <Button variant="ghost" size="sm" asChild>
-                                <a href={histItem.openDotaMatchUrl} target="_blank" rel="noopener noreferrer">
+                                <a href={histItem.dotabuffUrl} target="_blank" rel="noopener noreferrer">
                                   <ExternalLink className="h-3 w-3" />
                                 </a>
                               </Button>
                             )}
                           </div>
                         </div>
-                        <CardDescription className="text-xs mt-1" style={{ color: theme.mutedTextColor }}>
+                        <CardDescription className="text-xs mt-1" style={{ color: theme.secondaryTextColor || theme.mutedTextColor }}>
                           {histItem.matchDate.toLocaleDateString()}
                         </CardDescription>
                       </CardHeader>
@@ -504,30 +543,30 @@ export default function PlayerProfilePage() {
                           <div className="text-center">
                             <div className="flex items-center justify-center mb-1">
                               <Swords className="h-4 w-4 mr-1" style={{ color: theme.accentColor }} />
-                              <span className="font-medium font-logik" style={{ color: theme.mutedTextColor }}>{t('kda')}</span>
+                              <span className="font-medium font-logik" style={{ color: theme.secondaryTextColor || theme.mutedTextColor }}>{t('kda')}</span>
                             </div>
-                            <div className="font-bold font-logik" style={{ color: theme.textColor }}>
+                            <div className="font-bold font-logik" style={{ color: theme.primaryTextColor || theme.textColor }}>
                               {perf.kills}/{perf.deaths}/{perf.assists}
                             </div>
                           </div>
                           <div className="text-center">
                             <div className="flex items-center justify-center mb-1">
                               <Coins className="h-4 w-4 mr-1" style={{ color: theme.accentColor }} />
-                              <span className="font-medium font-logik" style={{ color: theme.mutedTextColor }}>{t('gpm')}</span>
+                              <span className="font-medium font-logik" style={{ color: theme.secondaryTextColor || theme.mutedTextColor }}>{t('gpm')}</span>
                             </div>
-                            <div className="font-bold font-logik" style={{ color: theme.textColor }}>{perf.gpm}</div>
+                            <div className="font-bold font-logik" style={{ color: theme.primaryTextColor || theme.textColor }}>{perf.gpm}</div>
                           </div>
                           <div className="text-center">
                             <div className="flex items-center justify-center mb-1">
                               <Zap className="h-4 w-4 mr-1" style={{ color: theme.accentColor }} />
-                              <span className="font-medium font-logik" style={{ color: theme.mutedTextColor }}>{t('xpm')}</span>
+                              <span className="font-medium font-logik" style={{ color: theme.secondaryTextColor || theme.mutedTextColor }}>{t('xpm')}</span>
                             </div>
-                            <div className="font-bold font-logik" style={{ color: theme.textColor }}>{perf.xpm}</div>
+                            <div className="font-bold font-logik" style={{ color: theme.primaryTextColor || theme.textColor }}>{perf.xpm}</div>
                           </div>
                           <div className="text-center">
                             <div className="flex items-center justify-center mb-1">
                               <Trophy className="h-4 w-4 mr-1" style={{ color: theme.primaryColor }} />
-                              <span className="font-medium font-logik" style={{ color: theme.mutedTextColor }}>{t('fantasy')}</span>
+                              <span className="font-medium font-logik" style={{ color: theme.secondaryTextColor || theme.mutedTextColor }}>{t('fantasy')}</span>
                             </div>
                             <div className="font-bold font-logik" style={{ color: theme.primaryColor }}>{perf.fantasyPoints}</div>
                           </div>
@@ -555,7 +594,7 @@ export default function PlayerProfilePage() {
                 )}
               </div>
             ) : (
-              <p className="text-center py-4 font-logik" style={{ color: theme.mutedTextColor }}>{t('noMatchData')}</p>
+              <p className="text-center py-4 font-logik" style={{ color: theme.secondaryTextColor || theme.mutedTextColor }}>{t('noMatchData')}</p>
             )}
           </CardContent>
         </Card>

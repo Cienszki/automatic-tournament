@@ -1,6 +1,6 @@
 'use client';
 
-import { Info, Shield, Clock, Globe, Eye, Users, AlertTriangle } from 'lucide-react';
+import { Info, Shield, Clock, Globe, Eye, Users, AlertTriangle, Bot } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTournament } from '@/context/TournamentContext';
 
@@ -69,29 +69,46 @@ export function PDLMatchRules({
       {hostTeamName && opponentTeamName && (
         <div className="rounded-lg border border-white/10 bg-white/[0.02] p-4 space-y-3">
           <div className="flex items-start gap-2">
-            <Users className="w-4 h-4 text-white/40 mt-0.5 flex-shrink-0" />
-            <div className="space-y-2 text-xs font-logik">
-              <p className="text-white/70">
-                <span className="font-logik-extended-bold text-white">Gra 1:</span>{' '}
-                Lobby tworzy kapitan{' '}
-                <span className={cn(
-                  'font-logik-extended-bold',
-                  isGame1Host ? 'text-pdl-gold' : 'text-white/90'
-                )}>
-                  {isGame1Host ? hostTeamName : opponentTeamName}
-                </span>
-              </p>
-              <p className="text-white/70">
-                <span className="font-logik-extended-bold text-white">Gra 2:</span>{' '}
-                Lobby tworzy kapitan{' '}
-                <span className={cn(
-                  'font-logik-extended-bold',
-                  !isGame1Host ? 'text-pdl-gold' : 'text-white/90'
-                )}>
-                  {!isGame1Host ? hostTeamName : opponentTeamName}
-                </span>
-              </p>
-            </div>
+            {lobby?.botLobbyEnabled ? (
+              <>
+                <Bot className="w-4 h-4 text-white/40 mt-0.5 flex-shrink-0" />
+                <div className="space-y-2 text-xs font-logik">
+                  <p className="text-white/70">
+                    <span className="font-logik-extended-bold text-white">Gra 1 &amp; 2:</span>{' '}
+                    Lobby zostanie stworzone automatycznie przez bota przed meczem.
+                  </p>
+                  <p className="text-white/50">
+                    Dołącz do lobby w wyznaczonym czasie – bot wyśle zaproszenia na Steam.
+                  </p>
+                </div>
+              </>
+            ) : (
+              <>
+                <Users className="w-4 h-4 text-white/40 mt-0.5 flex-shrink-0" />
+                <div className="space-y-2 text-xs font-logik">
+                  <p className="text-white/70">
+                    <span className="font-logik-extended-bold text-white">Gra 1:</span>{' '}
+                    Lobby tworzy kapitan{' '}
+                    <span className={cn(
+                      'font-logik-extended-bold',
+                      isGame1Host ? 'text-pdl-gold' : 'text-white/90'
+                    )}>
+                      {isGame1Host ? hostTeamName : opponentTeamName}
+                    </span>
+                  </p>
+                  <p className="text-white/70">
+                    <span className="font-logik-extended-bold text-white">Gra 2:</span>{' '}
+                    Lobby tworzy kapitan{' '}
+                    <span className={cn(
+                      'font-logik-extended-bold',
+                      !isGame1Host ? 'text-pdl-gold' : 'text-white/90'
+                    )}>
+                      {!isGame1Host ? hostTeamName : opponentTeamName}
+                    </span>
+                  </p>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}

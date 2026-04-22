@@ -3,7 +3,7 @@
 
 import { getAdminDb, ensureAdminInitialized } from '../server/lib/admin';
 import { FieldValue } from 'firebase-admin/firestore';
-import { processPlayerSteamUrls, checkDuplicateSteamIds } from './steam-id-utils';
+import { processPlayerSteamUrls, checkDuplicateSteamIds, extractSteamIdFromUrl } from './steam-id-utils';
 import { PlayerRole } from './definitions';
 
 // ============================================================================
@@ -23,6 +23,7 @@ export interface PDLTeamRegistrationData {
         steamProfileUrl: string;
         mmr?: number;
         profileScreenshotUrl?: string;
+        smurfAccounts?: { steamProfileUrl: string }[];
     }>;
     coach?: {
         hasCoach: boolean;
@@ -280,8 +281,26 @@ export async function registerPDLTeam(
         if (alreadyRegisteredPlayers.length > 0) {
             return {
                 success: false,
-                message: `The following players are already registered in other teams: ${alreadyRegisteredPlayers.join(', ')}`,
+                message: `Następujący gracze są już zarejestrowani w innych drużynach: ${alreadyRegisteredPlayers.join(', ')}`,
             };
+        }
+
+        // Step 5.7: Resolve smurf account Steam IDs server-side
+        console.log(`[PDL Registration] Resolving smurf account Steam IDs...`);
+        const resolvedSmurfsPerPlayer: Array<Array<{ steamProfileUrl: string; steamId64: string; steamId32: string }>> = [];
+        for (const originalPlayer of teamData.players) {
+            const resolvedSmurfs: { steamProfileUrl: string; steamId64: string; steamId32: string }[] = [];
+            for (const smurf of originalPlayer.smurfAccounts || []) {
+                if (!smurf.steamProfileUrl) continue;
+                try {
+                    const { steamId64, steamId32 } = await extractSteamIdFromUrl(smurf.steamProfileUrl);
+                    resolvedSmurfs.push({ steamProfileUrl: smurf.steamProfileUrl, steamId64, steamId32 });
+                } catch (e) {
+                    console.warn(`[PDL Registration] Could not resolve smurf URL: ${smurf.steamProfileUrl}`, e);
+                    resolvedSmurfs.push({ steamProfileUrl: smurf.steamProfileUrl, steamId64: '', steamId32: '' });
+                }
+            }
+            resolvedSmurfsPerPlayer.push(resolvedSmurfs);
         }
 
         // Step 6: Process coach if provided
@@ -309,17 +328,21 @@ export async function registerPDLTeam(
         const teamId = teamRef.id;
 
         // Prepare team document — includes embedded roster for single-doc reads
-        const roster: Record<string, { nickname: string; role: string; steamId32: string; avatar?: string; mmr?: number; profileScreenshotUrl?: string }> = {};
+        const roster: Record<string, { nickname: string; role: string; steamId32: string; avatar?: string; avatarmedium?: string; avatarfull?: string; mmr?: number; profileScreenshotUrl?: string; smurfAccounts?: { steamProfileUrl: string; steamId64: string; steamId32: string }[] }> = {};
         processedPlayers.forEach((player, index) => {
             if (player.steamId64) {
                 const originalPlayer = teamData.players[index];
+                const resolvedSmurfs = resolvedSmurfsPerPlayer[index];
                 roster[player.steamId64] = {
                     nickname: player.nickname,
                     role: player.role,
                     steamId32: player.steamId32,
                     avatar: player.avatar || '',
+                    avatarmedium: player.avatarmedium || '',
+                    avatarfull: player.avatarfull || '',
                     ...(originalPlayer?.mmr != null ? { mmr: originalPlayer.mmr } : {}),
                     ...(originalPlayer?.profileScreenshotUrl ? { profileScreenshotUrl: originalPlayer.profileScreenshotUrl } : {}),
+                    ...(resolvedSmurfs?.length ? { smurfAccounts: resolvedSmurfs } : {}),
                 };
             }
         });
@@ -353,12 +376,14 @@ export async function registerPDLTeam(
         processedPlayers.forEach((player, index) => {
             const playerRef = teamRef.collection('players').doc(player.steamId64);
             const originalPlayer = teamData.players[index];
+            const resolvedSmurfs = resolvedSmurfsPerPlayer[index];
             batch.set(playerRef, {
                 steamId: player.steamId64,
                 steamId32: player.steamId32,
                 role: player.role,
                 ...(originalPlayer?.mmr != null ? { mmr: originalPlayer.mmr } : {}),
                 ...(originalPlayer?.profileScreenshotUrl ? { profileScreenshotUrl: originalPlayer.profileScreenshotUrl } : {}),
+                ...(resolvedSmurfs?.length ? { smurfAccounts: resolvedSmurfs } : {}),
             });
         });
 
@@ -408,6 +433,46 @@ export async function registerPDLTeam(
         }
 
         console.log(`[PDL Registration] ✅ Team "${teamData.name}" registered successfully with ID: ${teamId}`);
+
+        // ── Fetch most-played heroes from OpenDota (non-blocking) ──
+        // This runs after the main registration is committed so it doesn't slow down
+        // or block the user. Errors are non-fatal.
+        try {
+            console.log(`[PDL Registration] Fetching most-played heroes from OpenDota...`);
+            const updatedRoster = { ...roster };
+            let heroFetchCount = 0;
+            for (const player of processedPlayers) {
+                if (!player.steamId64 || !player.steamId32) continue;
+                try {
+                    if (heroFetchCount > 0) await new Promise(r => setTimeout(r, 2100)); // OpenDota rate limit
+                    const [overallRes, recentRes] = await Promise.all([
+                        fetch(`https://api.opendota.com/api/players/${player.steamId32}/heroes`),
+                        fetch(`https://api.opendota.com/api/players/${player.steamId32}/heroes?date=180`),
+                    ]);
+                    if (overallRes.ok && recentRes.ok) {
+                        const overallData = await overallRes.json();
+                        const recentData = await recentRes.json();
+                        const heroData = {
+                            overall: overallData.sort((a: any, b: any) => b.games - a.games).slice(0, 5).filter((h: any) => h.games > 0).map((h: any) => ({ heroId: parseInt(h.hero_id), games: h.games, win: h.win })),
+                            recent: recentData.sort((a: any, b: any) => b.games - a.games).slice(0, 5).filter((h: any) => h.games > 0).map((h: any) => ({ heroId: parseInt(h.hero_id), games: h.games, win: h.win })),
+                            lastUpdated: new Date().toISOString(),
+                        };
+                        if (updatedRoster[player.steamId64]) {
+                            updatedRoster[player.steamId64] = { ...updatedRoster[player.steamId64], mostPlayedHeroes: heroData } as any;
+                        }
+                        heroFetchCount++;
+                    }
+                } catch (e) {
+                    console.warn(`[PDL Registration] Could not fetch heroes for ${player.steamId32}:`, e);
+                }
+            }
+            if (heroFetchCount > 0) {
+                await db.collection('tournaments').doc(tournamentId).collection('teams').doc(teamId).update({ roster: updatedRoster });
+                console.log(`[PDL Registration] Most-played heroes saved for ${heroFetchCount} players`);
+            }
+        } catch (heroError) {
+            console.warn('[PDL Registration] Failed to fetch most-played heroes (non-fatal):', heroError);
+        }
 
         return {
             success: true,

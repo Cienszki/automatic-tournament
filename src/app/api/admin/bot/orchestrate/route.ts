@@ -33,16 +33,29 @@ interface OrchestrateResult {
  */
 export async function POST(req: Request): Promise<Response> {
   try {
-    // Verify admin auth
+    // Verify admin auth — accept either a Firebase ID token or the CRON_SECRET
+    // (Vercel Cron adds "Authorization: Bearer {CRON_SECRET}" automatically)
     const authHeader = req.headers.get('authorization');
     if (!authHeader?.startsWith('Bearer ')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const token = authHeader.split('Bearer ')[1];
-    try {
-      await getAdminAuth().verifyIdToken(token);
-    } catch {
+    const cronSecret = process.env.CRON_SECRET;
+
+    let authorized = false;
+    if (cronSecret && token === cronSecret) {
+      authorized = true;
+    } else {
+      try {
+        await getAdminAuth().verifyIdToken(token);
+        authorized = true;
+      } catch {
+        // Not a valid Firebase token
+      }
+    }
+
+    if (!authorized) {
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
     }
 
@@ -218,7 +231,9 @@ async function scheduleUpcomingMatches(
 
     // Schedule a new lobby session
     const { scheduleLobbyForMatch } = await import('@/lib/bot/bot-config-actions');
-    const matchName = `${match.teamA?.name || 'TBA'} vs ${match.teamB?.name || 'TBA'}`;
+    const tournamentDoc = await db.collection('tournaments').doc(tournamentId).get();
+    const lobbyPrefix = tournamentDoc.data()?.lobbySettings?.leagueName || tournamentDoc.data()?.name || 'Tournament';
+    const matchName = `${lobbyPrefix} - ${match.teamA?.name || 'TBA'} vs ${match.teamB?.name || 'TBA'}`;
     const seriesFormat = match.series_format || 'bo2';
     await scheduleLobbyForMatch(tournamentId, matchDoc.id, matchName, seriesFormat);
     scheduled++;
@@ -376,6 +391,12 @@ async function enforceSessionTimeouts(
 
   for (const sessionDoc of snapshot.docs) {
     const session = sessionDoc.data() as LobbySession;
+
+    // Skip sessions where players voted to wait for late opponents
+    if (session.lateWaitUntil && new Date(session.lateWaitUntil).getTime() > now) {
+      continue;
+    }
+
     const cfg = await getBotConfig(session.tournamentId);
 
     // ── Helper: send chat + leave, then cancel ──────────────────────────────

@@ -9,6 +9,7 @@ import { Trophy, ArrowUp, ArrowDown, TrendingUp, Medal } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTournament } from '@/context/TournamentContext';
 import { TeamLogo } from './TeamLogo';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface TeamStanding {
   position: number;
@@ -37,39 +38,35 @@ interface DivisionStandingsTableProps {
   theme: any;
 }
 
-// Sparkline Component
-function FormSparkline({ form, color }: { form: ('W' | 'D' | 'L')[], color: string }) {
-  if (!form || form.length === 0) return <div className="h-8 w-24 bg-white/5 rounded opacity-20" />;
-
-  const points = form.map((r, i) => {
-    const val = r === 'W' ? 10 : r === 'D' ? 5 : 0;
-    return `${i * 20},${10 - val}`; // Scale width by 20px per point
-  }).join(' ');
-
-  return (
-    <div className="relative h-8 w-24 flex items-center">
-      <svg className="w-full h-full overflow-visible" preserveAspectRatio="none">
-        <polyline
-          points={points}
-          fill="none"
-          stroke={color}
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          className="drop-shadow-lg"
-        />
-        {form.map((r, i) => (
-          <circle
-            key={i}
-            cx={i * 20}
-            cy={10 - (r === 'W' ? 10 : r === 'D' ? 5 : 0)}
-            r="2"
-            fill={r === 'W' ? '#10b981' : r === 'D' ? '#fbbf24' : '#ef4444'}
-            stroke="#1a1a1a"
-            strokeWidth="1"
-          />
+// Form bars: last 10 matches, recent on the right. W=tall green, D=medium yellow, L=short red
+function FormBars({ form }: { form: ('W' | 'D' | 'L')[] }) {
+  const recent = (form ?? []).slice(-10);
+  if (recent.length === 0) {
+    return (
+      <div className="flex items-end gap-[3px]">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <div key={i} className="w-[5px] h-3 rounded-[2px] bg-white/5" />
         ))}
-      </svg>
+      </div>
+    );
+  }
+  return (
+    <div className="flex items-end gap-[3px]">
+      {recent.map((r, i) => {
+        const isW = r === 'W';
+        const isD = r === 'D';
+        return (
+          <div
+            key={i}
+            className="w-[5px] rounded-[2px] transition-all"
+            style={{
+              height: isW ? '20px' : isD ? '13px' : '7px',
+              backgroundColor: isW ? '#10b981' : isD ? '#f59e0b' : '#ef4444',
+              opacity: 0.75,
+            }}
+          />
+        );
+      })}
     </div>
   );
 }
@@ -85,9 +82,9 @@ export function DivisionStandingsTable({
   const { getTournamentPath } = useTournament();
 
   return (
-    <div className="space-y-4">
-      {/* Header Grid - Transparent */}
-      <div className="grid grid-cols-12 gap-4 px-6 py-2 text-[10px] font-logik-extended-bold text-white/20 uppercase tracking-[0.2em] mb-4">
+    <div className="rounded-xl overflow-hidden border border-white/[0.09] bg-gradient-to-b from-white/[0.04] via-black/15 to-black/25 backdrop-blur-xl">
+      {/* Header Grid */}
+      <div className="grid grid-cols-12 gap-4 px-4 py-2 text-[10px] font-logik-extended-bold uppercase tracking-[0.2em]" style={{ color: theme?.secondaryTextColor || 'rgba(255,255,255,0.2)' }}>
         <div className="col-span-1 text-center">#</div>
         <div className="col-span-5">Drużyna</div>
         <div className="col-span-1 text-center">M</div>
@@ -98,7 +95,7 @@ export function DivisionStandingsTable({
         <div className="col-span-2 text-right hidden lg:block">Forma</div>
       </div>
 
-      <div className="space-y-2">
+      <div className="divide-y divide-white/[0.04]">
         {standings.map((team, index) => {
           const isPlayoff = isElite && index < 4;
           const isPromotion = !isElite && index === 0;
@@ -116,7 +113,7 @@ export function DivisionStandingsTable({
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: index * 0.05 }}
-              whileHover={{ x: 10, backgroundColor: 'rgba(255,255,255,0.03)' }}
+              whileHover={{ x: 10, backgroundColor: 'rgba(255,255,255,0.05)' }}
               className="group relative grid grid-cols-12 gap-4 items-center px-6 py-3 rounded-r-xl border-l-2 transition-all duration-300"
               style={{
                 borderLeftColor: isTop3
@@ -151,8 +148,9 @@ export function DivisionStandingsTable({
                     <span
                       className={cn(
                         "font-logik-extended-bold font-bold text-base transition-all",
-                        isTop3 ? textShineClass : "text-white/70 group-hover:text-white"
+                        isTop3 ? textShineClass : ""
                       )}
+                      style={!isTop3 ? { color: theme?.primaryTextColor || 'rgba(255,255,255,0.7)' } : undefined}
                     >
                       {team.teamName}
                     </span>
@@ -161,7 +159,7 @@ export function DivisionStandingsTable({
               </div>
 
               {/* Matches Played */}
-              <div className="col-span-1 text-center text-white/40">
+              <div className="col-span-1 text-center" style={{ color: theme?.secondaryTextColor || 'rgba(255,255,255,0.4)' }}>
                 <span>{team.matchesPlayed}</span>
               </div>
 
@@ -174,22 +172,31 @@ export function DivisionStandingsTable({
 
               {/* Points (Highlight) */}
               <div className="col-span-1 text-center hidden md:flex justify-center">
-                <span
-                  className={cn(
-                    "font-bold text-xl",
-                    isTop3 ? "text-white" : "text-white/50"
-                  )}
-                  style={{
-                    textShadow: isTop3 ? `0 0 10px ${divisionColor}` : 'none'
-                  }}
-                >
-                  {team.points}
-                </span>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span
+                        className={cn(
+                          "font-bold text-xl cursor-default",
+                        )}
+                        style={{
+                          color: isTop3 ? (theme?.primaryTextColor || 'white') : (theme?.secondaryTextColor || 'rgba(255,255,255,0.5)'),
+                          textShadow: isTop3 ? `0 0 10px ${divisionColor}` : 'none'
+                        }}
+                      >
+                        {team.points}
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Neustadtl: {team.neustadtlScore.toFixed(2)}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
               </div>
 
               {/* Form Viz */}
               <div className="col-span-2 hidden lg:flex justify-end pr-2 opacity-50 group-hover:opacity-100 transition-opacity">
-                <FormSparkline form={team.form || []} color={isTop3 ? (index === 0 ? '#d4af37' : index === 1 ? '#c0c0c0' : '#cd7f32') : divisionColor} />
+                <FormBars form={team.form || []} />
               </div>
             </motion.div>
           );

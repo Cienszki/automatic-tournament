@@ -42,6 +42,8 @@ export interface ApprovedStandinEntry {
    * ID still resolve to the correct nickname.
    */
   playerDocId?: string;
+  /** Standin's MMR — copied from the standin request at approval time. */
+  standinMmr?: number;
 }
 
 export interface StandinActionResult {
@@ -142,10 +144,13 @@ export async function approveStandinRequest(
       teamId: req.teamId,
       approvedAt: now,
       ...(playerDocId ? { playerDocId } : {}),
+      ...(req.standinMmr != null ? { standinMmr: req.standinMmr } : {}),
     };
 
     await Promise.all([
-      reqRef.update({ status: 'approved', respondedAt: now, updatedAt: now }),
+      // Also write steamId32 to the standinRequest doc so Source 3 of the standinLookup
+      // can resolve nicknames without parsing the profile URL.
+      reqRef.update({ status: 'approved', respondedAt: now, updatedAt: now, standinSteamId32: steamId32 }),
       matchRef(tournamentId, req.matchId).update({
         [`approvedStandins.${requestId}`]: entry,
       }),
@@ -295,6 +300,7 @@ export async function approveStandinAppeal(
       teamId: req.teamId,
       approvedAt: now,
       ...(playerDocId ? { playerDocId } : {}),
+      ...(req.standinMmr != null ? { standinMmr: req.standinMmr } : {}),
     };
 
     await Promise.all([

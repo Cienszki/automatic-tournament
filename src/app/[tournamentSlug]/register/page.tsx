@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { UserPlus, ShieldPlus, Image as ImageIcon, MessageCircle, Lock, Home, Users, Gamepad2 } from "lucide-react";
+import { UserPlus, ShieldPlus, Image as ImageIcon, MessageCircle, Lock, Home, Users, Gamepad2, Plus, X } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useTournament, useTournamentType } from "@/context/TournamentContext";
 import { useTranslations } from "next-intl";
@@ -316,6 +316,21 @@ export default function RegisterPage() {
 
   const { fields } = useFieldArray({ control: form.control, name: "players" });
 
+  // Smurf accounts per player — managed outside react-hook-form due to nested array complexity
+  const [smurfAccounts, setSmurfAccounts] = React.useState<string[][]>(() => Array(5).fill(null).map(() => []));
+
+  const addSmurf = (playerIndex: number) => {
+    setSmurfAccounts(prev => prev.map((arr, i) => i === playerIndex ? [...arr, ''] : arr));
+  };
+
+  const removeSmurf = (playerIndex: number, smurfIndex: number) => {
+    setSmurfAccounts(prev => prev.map((arr, i) => i === playerIndex ? arr.filter((_, j) => j !== smurfIndex) : arr));
+  };
+
+  const updateSmurf = (playerIndex: number, smurfIndex: number, value: string) => {
+    setSmurfAccounts(prev => prev.map((arr, i) => i === playerIndex ? arr.map((v, j) => j === smurfIndex ? value : v) : arr));
+  };
+
   // Redirect to my-team if user already has a registered team
   React.useEffect(() => {
     const checkExistingTeam = async () => {
@@ -396,7 +411,7 @@ export default function RegisterPage() {
           profileScreenshot: File | null;
         }>;
         playersData = await Promise.all(
-          mmrPlayers.map(async (player) => {
+          mmrPlayers.map(async (player, idx) => {
             let profileScreenshotUrl: string | undefined;
             if (player.profileScreenshot) {
               profileScreenshotUrl = await uploadScreenshot(
@@ -404,12 +419,17 @@ export default function RegisterPage() {
                 `${values.name}-${player.nickname}`
               );
             }
+            const filteredSmurfs = smurfAccounts[idx]
+              .map(url => url.trim())
+              .filter(url => url.length > 0)
+              .map(url => ({ steamProfileUrl: url }));
             return {
               nickname: player.nickname,
               role: player.role,
               steamProfileUrl: player.steamProfileUrl,
               mmr: player.mmr,
               ...(profileScreenshotUrl ? { profileScreenshotUrl } : {}),
+              ...(filteredSmurfs.length > 0 ? { smurfAccounts: filteredSmurfs } : {}),
             };
           })
         );
@@ -444,8 +464,8 @@ export default function RegisterPage() {
       const result = await response.json();
 
       if (result.success) {
-        // Success - redirect to my team page
-        router.push(getTournamentPath('/my-team'));
+        // Success - redirect to my team view on main page
+        router.push(getTournamentPath('') + '?view=my-team');
       } else {
         // Show error message
         const errorMessage = result.errors
@@ -533,16 +553,26 @@ export default function RegisterPage() {
           transition={{ duration: 0.6 }}
           className="text-center space-y-4"
         >
-          <UserPlus
-            className="h-16 w-16 mx-auto mb-4"
-            style={{ color: tournament?.theme?.primaryColor || '#8B1538', filter: `drop-shadow(0 0 15px ${tournament?.theme?.primaryColor || '#8B1538'}80)` }}
-          />
+          {tournament?.theme?.logoUrl ? (
+            <div className="flex justify-center">
+              <Image
+                src={tournament.theme.logoUrl}
+                alt={tournament.name}
+                width={600}
+                height={600}
+                className="object-contain drop-shadow-lg"
+                style={{ filter: 'drop-shadow(0 0 20px rgba(255,255,255,0.15))' }}
+              />
+            </div>
+          ) : (
+            <UserPlus
+              className="h-16 w-16 mx-auto"
+              style={{ color: tournament?.theme?.primaryColor || '#8B1538', filter: `drop-shadow(0 0 15px ${tournament?.theme?.primaryColor || '#8B1538'}80)` }}
+            />
+          )}
           <h1 className="text-4xl md:text-6xl font-logik-extended-bold text-white tracking-tight drop-shadow-lg">
             {t('teamRegistration')}
           </h1>
-          <p className="text-white/60 text-lg md:text-xl font-medium max-w-2xl mx-auto">
-            {tournament?.name} — {t('seasonRegistration')}
-          </p>
         </motion.div>
 
         <Form {...form}>
@@ -665,6 +695,11 @@ export default function RegisterPage() {
                           <FormControl>
                             <Input {...field} className="bg-black/40 border-white/10 text-white focus:border-[var(--reg-primary)] transition-all" />
                           </FormControl>
+                          {isMmrLimited && (
+                            <FormDescription className="text-white/40 text-xs">
+                              {t('nicknameHint')}
+                            </FormDescription>
+                          )}
                           <FormMessage />
                         </FormItem>
                       )} />
@@ -685,6 +720,11 @@ export default function RegisterPage() {
                               ))}
                             </SelectContent>
                           </Select>
+                          {isMmrLimited && (
+                            <FormDescription className="text-white/40 text-xs">
+                              {t('roleHint')}
+                            </FormDescription>
+                          )}
                           <FormMessage />
                         </FormItem>
                       )} />
@@ -697,6 +737,43 @@ export default function RegisterPage() {
                           <FormMessage />
                         </FormItem>
                       )} />
+
+                      {/* Smurf accounts — only for MMR-limited tournaments */}
+                      {isMmrLimited && (
+                        <div className="sm:col-span-2">
+                          <p className="text-white/70 text-sm mb-1 font-medium">
+                            {t('smurfAccountsLabel')}
+                          </p>
+                          <p className="text-white/40 text-xs mb-2">{t('smurfAccountsDesc')}</p>
+                          <div className="space-y-2">
+                            {smurfAccounts[index].map((smurfUrl, sIdx) => (
+                              <div key={sIdx} className="flex gap-2 items-center">
+                                <Input
+                                  value={smurfUrl}
+                                  onChange={(e) => updateSmurf(index, sIdx, e.target.value)}
+                                  placeholder="https://steamcommunity.com/profiles/..."
+                                  className="bg-black/40 border-white/10 text-white focus:border-[var(--reg-primary)] transition-all flex-1"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => removeSmurf(index, sIdx)}
+                                  className="p-2 rounded-md text-white/40 hover:text-red-400 hover:bg-red-500/10 transition-all"
+                                >
+                                  <X className="h-4 w-4" />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => addSmurf(index)}
+                            className="mt-2 flex items-center gap-2 text-sm px-3 py-1.5 rounded-md border border-white/10 text-white/60 hover:text-white hover:border-[var(--reg-primary)] hover:bg-[var(--reg-primary)]/10 transition-all"
+                          >
+                            <Plus className="h-3.5 w-3.5" />
+                            {t('addSmurfAccount')}
+                          </button>
+                        </div>
+                      )}
 
                       {/* MMR fields — only for MMR-limited tournaments */}
                       {isMmrLimited && (
@@ -731,7 +808,7 @@ export default function RegisterPage() {
                                 />
                               </FormControl>
                               <FormDescription className="text-white/40 text-xs">
-                                Screenshot profilu z widocznym MMR (maks 5MB)
+                                {t('screenshotDesc')}
                               </FormDescription>
                               <FormMessage />
                             </FormItem>

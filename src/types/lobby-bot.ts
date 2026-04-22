@@ -85,6 +85,9 @@ export interface TournamentBotConfig {
   /** Lobby enforcement & security */
   enforcement: LobbyEnforcementConfig;
 
+  /** Late player detection & forfeit voting */
+  lateArrival: LateArrivalPolicyConfig;
+
   /** How many minutes before scheduled time the bot creates the lobby */
   lobbyCreationLeadMinutes: number;
 
@@ -118,6 +121,13 @@ export interface TournamentBotConfig {
    * treating it as a stuck state and cancelling. Default: 10 minutes.
    */
   readyCheckTimeoutMinutes: number;
+
+  /**
+   * Per-bot message overrides keyed by bot account ID.
+   * Merged on top of chatMessages at runtime — you only need to provide fields
+   * you want to override for that specific bot's "personality".
+   */
+  perBotMessages?: Record<string, Partial<LobbyChatConfig>>;
 
   /** @deprecated Use lobbyOpenTimeoutMinutes. Kept for backward compatibility. */
   lobbyTimeoutMinutes?: number;
@@ -156,8 +166,6 @@ export interface LobbySettings {
   allowSpectators: boolean;
   /** Enable penalty for pausing (pause limit) */
   pauseSetting: DotaPauseSetting;
-  /** Series type: 0 = no series, 1 = BO3, 2 = BO5 */
-  seriesType: number;
   /** League ID to associate the lobby with (for ticket/DotaTV) */
   leagueId?: number;
   /** Lobby password (auto-generated per match if not set) */
@@ -174,20 +182,40 @@ export interface ReadyCheckConfig {
   unreadyCommands: string[];
   /** Whether only captains can declare ready, or any team member */
   captainOnly: boolean;
-  /** Timeout in minutes before auto-forfeit after lobby creation */
-  timeoutMinutes: number;
+}
+
+/**
+ * A custom bot command: when any lobby player types `trigger`, the bot replies with `response`.
+ */
+export interface CustomBotCommand {
+  /** The exact trigger string (e.g. "!rules"). Case-insensitive match. */
+  trigger: string;
+  /** The message the bot posts in lobby chat as a response. */
+  response: string;
 }
 
 /**
  * Chat messages configuration
  */
 export interface LobbyChatConfig {
-  /** Welcome message posted when lobby is created */
+  /**
+   * Welcome message posted when an eligible player joins the lobby.
+   * The bot always prepends the player's name from the database:
+   *   "{PlayerName}: {welcomeMessage}"
+   * Supports {player_name} placeholder.
+   */
   welcomeMessage: string;
-  /** Template for team slot assignment message.
-   *  Supports placeholders: {radiant_team}, {dire_team} */
-  teamAssignmentMessage: string;
-  /** Message posted when both teams are ready */
+  /**
+   * Sent when one team types !r but not all their players are in the correct slots.
+   * Placeholders: {player_name} (player who typed !r), {team_name}, {missing} (comma-separated list)
+   */
+  teamNotReadyMessage: string;
+  /**
+   * Sent in chat when one team marks ready and is waiting for the other.
+   * Placeholders: {player_name}, {team_name}
+   */
+  teamReadyMessage: string;
+  /** Message posted when both teams are ready. Placeholders: {player_name}, {team_name} */
   allReadyMessage: string;
   /** Message posted when requirements are not met */
   requirementsNotMetPrefix: string;
@@ -195,6 +223,8 @@ export interface LobbyChatConfig {
   rulesReminder?: string;
   /** Message posted when match starts */
   matchStartMessage?: string;
+  /** Admin-defined custom chat commands the bot handles in lobby chat */
+  customCommands: CustomBotCommand[];
 }
 
 /**
@@ -205,22 +235,61 @@ export interface PostMatchConfig {
   syncDelayMinutes: number;
   /** Whether to auto-trigger match sync after the game */
   autoSyncEnabled: boolean;
-  /** Post a summary message in lobby chat after game */
-  postGameSummary: boolean;
 }
 
 /**
- * Lobby enforcement configuration — auto-kick, cooldowns, etc.
+ * Late player detection & forfeit voting configuration.
+ * When a team is late, the bot asks the opposing team to vote:
+ * forfeit the game/series OR wait 10 more minutes.
+ * Only votes from the opposing team players are counted.
+ */
+export interface LateArrivalPolicyConfig {
+  /** Enable the late player detection system */
+  enabled: boolean;
+  /** Minutes after the scheduled match start before asking about game 1 forfeit */
+  game1ForfeitMinutes: number;
+  /** Minutes after the scheduled match start before asking about series forfeit */
+  seriesForfeitMinutes: number;
+  /** Commands opposing team can type to vote for waiting 10 more minutes */
+  waitCommands: string[];
+  /** Commands opposing team can type to vote for forfeit */
+  forfeitCommands: string[];
+  /** Seconds the voting window lasts (default 60) */
+  votingWindowSeconds: number;
+  /** How many of 5 opposing players must vote forfeit to trigger it (default 3) */
+  requiredVotesForForfeit: number;
+  /**
+   * Announcement sent when a team is absent at the game-1 forfeit threshold.
+   * Placeholders: {late_team}, {present_team}, {minutes}, {wait_cmd}, {forfeit_cmd}, {window}, {required}
+   */
+  lateGame1AnnouncementTemplate: string;
+  /**
+   * Announcement sent when a team is still absent at the series forfeit threshold.
+   * Placeholders: {late_team}, {present_team}, {minutes}, {wait_cmd}, {forfeit_cmd}, {window}, {required}
+   */
+  lateSeriesAnnouncementTemplate: string;
+  /** Wait vote result message. Placeholders: {present_team}, {extra} */
+  waitResultTemplate: string;
+  /** Game 1 forfeit result message. Placeholders: {winner_team}, {loser_team} */
+  forfeitGame1Template: string;
+  /** Series forfeit result message. Placeholders: {winner_team}, {loser_team} */
+  forfeitSeriesTemplate: string;
+  /** Message when vote window closes without quorum. Placeholders: {votes}, {required}, {present_team} */
+  noVoteResultTemplate: string;
+  /**
+   * Minutes after the previous game ended before the late timer for the next
+   * game begins. Gives teams a break between games to reconnect/prepare.
+   * Default: 15
+   */
+  interGameBreakMinutes: number;
+}
+
+/**
+ * Lobby enforcement configuration
  */
 export interface LobbyEnforcementConfig {
   /** Kick players from team/spectator slots who are not registered for the match */
   autoKickUnauthorized: boolean;
-  /** Kick registered players who are sitting in the wrong team's slot, then re-invite them */
-  autoKickWrongSlot: boolean;
-  /** Seconds to wait after warning a wrong-slot player before kicking them */
-  wrongSlotGracePeriodSeconds: number;
-  /** Cooldown in seconds between !ready/!unready commands per player */
-  readyCooldownSeconds: number;
 }
 
 // ─── Dota 2 Enums ───────────────────────────────────────────────────────────
@@ -307,10 +376,49 @@ export interface LobbySession {
   /** Running series score: { radiantTeamId: wins, direTeamId: wins } */
   seriesScore: Record<string, number>;
 
+  /**
+   * Dota 2 series_type value for the lobby creation call.
+   * Computed from seriesFormat: bo1→0 (none), bo2/bo3→1 (BO3), bo5→2 (BO5).
+   * Stored per-session so game-2+ lobbies carry the same format.
+   */
+  lobbySeriesType?: number;
+  /**
+   * Current Radiant team wins to pre-populate in the lobby for game 2+.
+   * Maps to the Dota 2 GC field `radiant_series_wins`.
+   */
+  lobbyRadiantWins?: number;
+  /**
+   * Current Dire team wins to pre-populate in the lobby for game 2+.
+   * Maps to the Dota 2 GC field `dire_series_wins`.
+   */
+  lobbyDireWins?: number;
+
   /** Dota 2 match IDs for completed games in this session */
   completedGameIds: number[];
   /** Which team won each completed game (parallel array with completedGameIds) */
   completedGameWinners: Array<'radiant' | 'dire'>;
+
+  /** ISO timestamp of the scheduled match start (used by late arrival timer) */
+  scheduledMatchTime?: string;
+
+  /**
+   * ISO timestamp until which the orchestrator should NOT time out this session.
+   * Set when players vote to wait for late opponents; cleared after the extra
+   * wait window expires (or a forfeit/game-start occurs).
+   */
+  lateWaitUntil?: string;
+
+  /**
+   * Games that were resolved via forfeit (no Dota 2 match ID).
+   * Stored alongside completedGameIds for series score tracking.
+   */
+  forfeitedGames?: Array<{
+    gameNumber: number;
+    /** Which team's side was forfeited */
+    forfeitedTeam: 'radiant' | 'dire';
+    /** Which side was awarded the win */
+    winnerTeam: 'radiant' | 'dire';
+  }>;
 
   /** Timestamps for lifecycle tracking */
   createdAt: string;
@@ -383,36 +491,59 @@ export const DEFAULT_LOBBY_SETTINGS: LobbySettings = {
   dotaTvDelay: 120,
   allowSpectators: true,
   pauseSetting: 'limited',
-  seriesType: 0,
 };
 
 export const DEFAULT_READY_CHECK_CONFIG: ReadyCheckConfig = {
   readyCommands: ['!ready', '!r'],
   unreadyCommands: ['!unready', '!ur'],
   captainOnly: false,
-  timeoutMinutes: 30,
+};
+
+export const DEFAULT_LATE_ARRIVAL_CONFIG: LateArrivalPolicyConfig = {
+  enabled: false,
+  game1ForfeitMinutes: 15,
+  seriesForfeitMinutes: 30,
+  interGameBreakMinutes: 15,
+  waitCommands: ['!wait', '!w'],
+  forfeitCommands: ['!forfeit', '!ff'],
+  votingWindowSeconds: 60,
+  requiredVotesForForfeit: 3,
+  lateGame1AnnouncementTemplate:
+    '{late_team} nie pojawiła się po {minutes} min. {present_team}: ' +
+    'wpisz {forfeit_cmd} żeby oddać grę 1 / {wait_cmd} żeby czekać 10 min. ' +
+    'Potrzeba {required}/5 głosów. Głosowanie trwa {window}s.',
+  lateSeriesAnnouncementTemplate:
+    '{late_team} nie pojawiła się po {minutes} min. {present_team}: ' +
+    'wpisz {forfeit_cmd} żeby oddać całą serię / {wait_cmd} żeby czekać 10 min. ' +
+    'Potrzeba {required}/5 głosów. Głosowanie trwa {window}s.',
+  waitResultTemplate:
+    'Wynik głosowania: {present_team} zagłosowała za czekaniem 10 minut.',
+  forfeitGame1Template:
+    'Wynik głosowania: Gra 1 oddana na rzecz {winner_team}! ({loser_team} otrzymuje porażkę.) Admin powiadomiony.',
+  forfeitSeriesTemplate:
+    'Wynik głosowania: Seria oddana na rzecz {winner_team}! ({loser_team} otrzymuje walkower.) Admin powiadomiony.',
+  noVoteResultTemplate:
+    'Niewystarczająca liczba głosów ({votes}/{required}). Kontynuuję oczekiwanie...',
 };
 
 export const DEFAULT_CHAT_CONFIG: LobbyChatConfig = {
-  welcomeMessage: 'Welcome to the match lobby! Please join your assigned team slots.',
-  teamAssignmentMessage: 'RADIANT: {radiant_team} | DIRE: {dire_team}',
+  welcomeMessage: 'Welcome to the match lobby! Please take your team slots.',
+  teamNotReadyMessage: '{player_name}: Not all {team_name} players are in the correct slots yet. Missing: {missing}',
+  teamReadyMessage: '{team_name} is ready! Waiting for the other team...',
   allReadyMessage: 'Both teams are ready! Checking requirements...',
   requirementsNotMetPrefix: 'Cannot start - issues found:',
   rulesReminder: '',
   matchStartMessage: 'All requirements met! Starting the match. Good luck & have fun!',
+  customCommands: [],
 };
 
 export const DEFAULT_POST_MATCH_CONFIG: PostMatchConfig = {
   syncDelayMinutes: 5,
   autoSyncEnabled: true,
-  postGameSummary: true,
 };
 
 export const DEFAULT_ENFORCEMENT_CONFIG: LobbyEnforcementConfig = {
   autoKickUnauthorized: true,
-  autoKickWrongSlot: true,
-  wrongSlotGracePeriodSeconds: 30,
-  readyCooldownSeconds: 5,
 };
 
 export const DEFAULT_TOURNAMENT_BOT_CONFIG: TournamentBotConfig = {
@@ -422,6 +553,7 @@ export const DEFAULT_TOURNAMENT_BOT_CONFIG: TournamentBotConfig = {
   chatMessages: DEFAULT_CHAT_CONFIG,
   postMatch: DEFAULT_POST_MATCH_CONFIG,
   enforcement: DEFAULT_ENFORCEMENT_CONFIG,
+  lateArrival: DEFAULT_LATE_ARRIVAL_CONFIG,
   lobbyCreationLeadMinutes: 10,
   pendingSessionTimeoutMinutes: 20,
   botAssignedTimeoutMinutes: 5,

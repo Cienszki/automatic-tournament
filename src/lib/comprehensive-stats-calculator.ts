@@ -306,6 +306,11 @@ async function fetchAllGameData(db: any, tournamentId?: string) {
       const sid32 = extractSteamId32FromUrl(req.standinSteamProfileUrl ?? '');
       if (sid32) {
         standinLookup.set(`unknown_${sid32}`, req.standinNickname);
+        // Also index by steamId64 so new-format performances (post-March 2026) are resolved
+        try {
+          const steam64 = String(BigInt(sid32) + 76561197960265728n);
+          standinLookup.set(steam64, req.standinNickname);
+        } catch { /* ignore malformed sid32 */ }
       }
     }
   }
@@ -323,9 +328,15 @@ async function fetchAllGameData(db: any, tournamentId?: string) {
         const req = d.data();
         if (!['approved', 'appeal_approved'].includes(req.status ?? '')) return;
         if (!req.standinNickname) return;
-        const sid32 = extractSteamId32FromUrl(req.standinSteamProfileUrl ?? '');
+        // Prefer direct steamId32 field (stored at approval time); fall back to extracting from URL
+        const sid32 = req.standinSteamId32 || extractSteamId32FromUrl(req.standinSteamProfileUrl ?? '');
         if (sid32) {
           standinLookup.set(`unknown_${sid32}`, req.standinNickname);
+          // Also index by steamId64 so new-format performances (post-March 2026) are resolved
+          try {
+            const steam64 = String(BigInt(sid32) + 76561197960265728n);
+            standinLookup.set(steam64, req.standinNickname);
+          } catch { /* ignore malformed sid32 */ }
         }
       });
     } catch { /* subcollection may not exist yet */ }
@@ -556,11 +567,19 @@ function calculateComprehensivePlayerStats(
           // Index by steamId64 — primary key for performances created after March 2026
           const steamId64 = player.steamId || player.steamId64;
           if (steamId64) {
-            playersLookup.set(steamId64, entry);
+            playersLookup.set(String(steamId64), entry);
           }
           // Also index by steamId32 so unknown_ IDs can be resolved
           if (player.steamId32) {
             playersLookup.set(`unknown_${player.steamId32}`, entry);
+            // Derive steamId64 from steamId32 as a fallback for when the steamId field
+            // is missing or stored as a JavaScript number (losing precision for large values)
+            if (!steamId64) {
+              try {
+                const derived64 = String(BigInt(player.steamId32) + 76561197960265728n);
+                playersLookup.set(derived64, entry);
+              } catch { /* ignore malformed steamId32 */ }
+            }
           }
           if (player.openDotaAccountId) {
             playersLookup.set(`unknown_${player.openDotaAccountId}`, entry);
@@ -588,6 +607,16 @@ function calculateComprehensivePlayerStats(
     const playerInfo = playersLookup.get(playerId);
     // Fallback chain: registered player → standin → findPlayerName → raw ID
     const standinName = standinLookup?.get(playerId);
+
+    // Skip players who are neither registered (in a team) nor an approved standin.
+    // Their performances are not counted for tournament records — we display the best
+    // result among known participants only.
+    const isKnownPlayer = !!playerInfo || !!standinName;
+    if (!isKnownPlayer) {
+      console.warn(`[Stats] Skipping unregistered player ${playerId} — not found in registered players or approved standins`);
+      return;
+    }
+
     const playerName = playerInfo?.name || standinName || findPlayerName(playerId, performances, teams) || playerId;
     const teamName = playerInfo?.teamName || '';
     

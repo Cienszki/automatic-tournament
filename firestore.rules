@@ -291,6 +291,17 @@ service cloud.firestore {
         // Only admins can delete notifications
         allow delete: if hasAdminAccess(tournamentId);
       }
+
+      // Player game history — denormalized per-player game records for fast profile display
+      match /playerGameHistory/{steamId64} {
+        allow read: if true;
+        allow write: if hasAdminAccess(tournamentId);
+
+        match /games/{gameId} {
+          allow read: if true;
+          allow write: if hasAdminAccess(tournamentId);
+        }
+      }
     }
     // === END MULTI-TOURNAMENT STRUCTURE ===
 

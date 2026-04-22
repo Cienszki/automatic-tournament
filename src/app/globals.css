@@ -274,6 +274,17 @@ body {
     @apply bg-background text-foreground;
   }
 
+  /* When a tournament theme is active, use its background colour / gradient.
+     The inline blocking <script> in layout.tsx sets --tournament-background and
+     --tournament-bg-gradient from sessionStorage BEFORE the browser paints,
+     so these vars are always ready on repeat visits / refreshes. */
+  html[data-tournament] {
+    background: var(--tournament-bg-gradient, var(--tournament-background, hsl(var(--background))));
+  }
+  html[data-tournament] body {
+    background: transparent;
+  }
+
   /* Hide number input arrows */
   input[type="number"]::-webkit-inner-spin-button,
   input[type="number"]::-webkit-outer-spin-button {
@@ -417,6 +428,25 @@ body {
 
   .loading-sweep {
     animation: loading-sweep 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  /* Custom scrollbar */
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: var(--tournament-primary, rgba(255,255,255,0.2));
+    border-radius: 9999px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: var(--tournament-heading, rgba(255,255,255,0.4));
   }
 
   /* Transition utilities */

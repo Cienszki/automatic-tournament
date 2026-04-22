@@ -2,6 +2,7 @@
 
 import { Trophy, TrendingUp, Target, Award, Medal } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useTournament } from '@/context/TournamentContext';
 
 interface PDLSeasonProgressProps {
   divisionName?: string;
@@ -38,6 +39,7 @@ export function PDLSeasonProgress({
   promotionZone = false,
   relegationZone = false,
 }: PDLSeasonProgressProps) {
+  const { theme } = useTournament();
   const matchesPlayed = wins + draws + losses;
   const roundProgress = totalRounds > 0 ? (currentRound / totalRounds) * 100 : 0;
 
@@ -59,7 +61,10 @@ export function PDLSeasonProgress({
         <div className="p-2 rounded-lg bg-white/5 border border-white/10">
           <Award className="w-5 h-5 text-pdl-gold" />
         </div>
-        <h3 className="text-xl font-logik-extended-bold text-white tracking-wide uppercase">
+        <h3
+          className="text-xl font-logik-extended-bold tracking-wide uppercase"
+          style={{ color: theme.sectionHeaderColor || '#ffffff', fontFamily: theme.headerFont ? `var(${theme.headerFont})` : undefined }}
+        >
           Postęp Sezonu
         </h3>
       </div>
@@ -68,20 +73,18 @@ export function PDLSeasonProgress({
         {/* Division Card */}
         <div className="rounded-xl border border-white/10 bg-white/[0.02] p-5 space-y-3">
           <div className="flex items-center justify-between">
-            <p className="text-xs text-white/40 uppercase tracking-wider font-logik">Dywizja</p>
+            <p className="text-xs uppercase tracking-wider font-logik" style={{ color: theme.primaryTextColor || 'rgba(255,255,255,0.4)' }}>Dywizja</p>
             <div 
               className="w-3 h-3 rounded-full"
               style={{ backgroundColor: divisionColor }}
             />
           </div>
-          <p className="text-2xl font-logik-wide-black text-white">
-            {divisionName}
-          </p>
+          <p className="text-2xl font-logik-wide-black" style={{ color: theme.sectionHeaderColor || '#ffffff', fontFamily: theme.headerFont ? `var(${theme.headerFont})` : undefined }}>{divisionName}</p>
           {currentPosition && totalTeams && (
             <div className="flex items-center gap-2">
-              <Medal className="w-4 h-4 text-pdl-gold" />
-              <p className="text-sm text-white/60 font-logik">
-                Pozycja: <span className="text-white font-logik-extended-bold">{currentPosition}</span> / {totalTeams}
+              <Medal className="w-4 h-4" style={{ color: theme.primaryColor || '#d4af37' }} />
+              <p className="text-sm font-logik" style={{ color: theme.primaryTextColor || 'rgba(255,255,255,0.6)', fontFamily: theme.bodyFont ? `var(${theme.bodyFont})` : undefined }}>
+                Pozycja: <span className="font-logik-extended-bold" style={{ color: theme.sectionHeaderColor || '#ffffff' }}>{currentPosition}</span> / {totalTeams}
               </p>
             </div>
           )}
@@ -100,12 +103,12 @@ export function PDLSeasonProgress({
 
         {/* Round Progress Card */}
         <div className="rounded-xl border border-white/10 bg-white/[0.02] p-5 space-y-3">
-          <p className="text-xs text-white/40 uppercase tracking-wider font-logik">Postęp Rundy</p>
+          <p className="text-xs uppercase tracking-wider font-logik" style={{ color: theme.primaryTextColor || 'rgba(255,255,255,0.4)' }}>Postęp Rundy</p>
           <div className="flex items-baseline gap-2">
-            <p className="text-2xl font-logik-wide-black text-white">
+            <p className="text-2xl font-logik-wide-black" style={{ color: theme.sectionHeaderColor || '#ffffff', fontFamily: theme.headerFont ? `var(${theme.headerFont})` : undefined }}>
               Runda {currentRound}
             </p>
-            <p className="text-sm text-white/40 font-logik">
+            <p className="text-sm font-logik" style={{ color: theme.secondaryTextColor || 'rgba(255,255,255,0.4)' }}>
               / {totalRounds}
             </p>
           </div>
@@ -118,7 +121,7 @@ export function PDLSeasonProgress({
                 style={{ width: `${roundProgress}%` }}
               />
             </div>
-            <p className="text-xs text-white/40 font-logik">
+            <p className="text-xs font-logik" style={{ color: theme.secondaryTextColor || 'rgba(255,255,255,0.4)' }}>
               {totalRounds - currentRound} {totalRounds - currentRound === 1 ? 'runda' : 'rund'} pozostało
             </p>
           </div>
@@ -126,10 +129,10 @@ export function PDLSeasonProgress({
 
         {/* Points & Form Card */}
         <div className="rounded-xl border border-white/10 bg-white/[0.02] p-5 space-y-3">
-          <p className="text-xs text-white/40 uppercase tracking-wider font-logik">Punkty</p>
-          <p className="text-4xl font-logik-wide-black text-pdl-gold">{points}</p>
+          <p className="text-xs uppercase tracking-wider font-logik" style={{ color: theme.primaryTextColor || 'rgba(255,255,255,0.4)' }}>Punkty</p>
+          <p className="text-4xl font-logik-wide-black" style={{ color: theme.sectionHeaderColor || '#d4af37', fontFamily: theme.headerFont ? `var(${theme.headerFont})` : undefined }}>{points}</p>
           <div className="space-y-1.5">
-            <p className="text-xs text-white/40 font-logik uppercase tracking-wider">Ostatnia forma</p>
+            <p className="text-xs font-logik uppercase tracking-wider" style={{ color: theme.primaryTextColor || 'rgba(255,255,255,0.4)' }}>Ostatnia forma</p>
             {recentForm.length > 0 ? (
               <div className="flex items-center gap-1.5">
                 {recentForm.slice(-5).map((result, i) => (
@@ -147,32 +150,32 @@ export function PDLSeasonProgress({
                 ))}
               </div>
             ) : (
-              <p className="text-xs text-white/20 font-logik italic">Brak rozegranych meczów</p>
+              <p className="text-xs font-logik italic" style={{ color: theme.secondaryTextColor || 'rgba(255,255,255,0.2)' }}>Brak rozegranych meczów</p>
             )}
           </div>
         </div>
 
         {/* Record Card */}
         <div className="rounded-xl border border-white/10 bg-white/[0.02] p-5 space-y-3">
-          <p className="text-xs text-white/40 uppercase tracking-wider font-logik">Bilans</p>
+          <p className="text-xs uppercase tracking-wider font-logik" style={{ color: theme.primaryTextColor || 'rgba(255,255,255,0.4)' }}>Bilans</p>
           <div className="flex items-center gap-4">
             <div className="text-center">
               <p className="text-2xl font-logik-wide-black text-green-400">{wins}</p>
-              <p className="text-xs text-white/40 font-logik uppercase">Wygrane</p>
+              <p className="text-xs font-logik uppercase" style={{ color: theme.secondaryTextColor || 'rgba(255,255,255,0.4)' }}>Wygrane</p>
             </div>
             <div className="h-8 w-px bg-white/10" />
             <div className="text-center">
               <p className="text-2xl font-logik-wide-black text-yellow-400">{draws}</p>
-              <p className="text-xs text-white/40 font-logik uppercase">Remisy</p>
+              <p className="text-xs font-logik uppercase" style={{ color: theme.secondaryTextColor || 'rgba(255,255,255,0.4)' }}>Remisy</p>
             </div>
             <div className="h-8 w-px bg-white/10" />
             <div className="text-center">
               <p className="text-2xl font-logik-wide-black text-red-400">{losses}</p>
-              <p className="text-xs text-white/40 font-logik uppercase">Porażki</p>
+              <p className="text-xs font-logik uppercase" style={{ color: theme.secondaryTextColor || 'rgba(255,255,255,0.4)' }}>Porażki</p>
             </div>
           </div>
-          <p className="text-xs text-white/40 font-logik">
-            Rozegrane mecze: <span className="text-white font-logik-extended-bold">{matchesPlayed}</span>
+          <p className="text-xs font-logik" style={{ color: theme.secondaryTextColor || 'rgba(255,255,255,0.4)' }}>
+            Rozegrane mecze: <span className="font-logik-extended-bold" style={{ color: theme.sectionHeaderColor || '#ffffff' }}>{matchesPlayed}</span>
           </p>
         </div>
       </div>

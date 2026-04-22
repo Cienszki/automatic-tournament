@@ -23,6 +23,7 @@ interface TeamStanding {
   neustadtlScore: number;
   points: number;
   form?: ('W' | 'D' | 'L')[];
+  headToHead: Record<string, 'win' | 'loss' | 'draw'>;
 }
 
 interface DivisionInfo {
@@ -209,16 +210,55 @@ export function useDivisionData(divisionId: string): UseDivisionDataResult {
             neustadtlScore: neustadtl,
             points: calculatePoints(stats),
             form: form,
+            headToHead: {},
           };
         });
 
-        // Sort standings by points (desc), then by neustadtl (desc), then by games won-lost diff
+        // Build head-to-head results from completed matches
+        const h2hWins = new Map<string, Map<string, number>>();
+        standingsData.forEach(t => h2hWins.set(t.teamId, new Map()));
+
+        matchesData.forEach(match => {
+          if (match.status !== 'completed') return;
+          const aId = match.teamA.id;
+          const bId = match.teamB.id;
+          const aScore = match.teamA.score ?? 0;
+          const bScore = match.teamB.score ?? 0;
+          if (!aId || !bId) return;
+          if (!h2hWins.has(aId) || !h2hWins.has(bId)) return;
+          if (aScore > bScore) {
+            h2hWins.get(aId)!.set(bId, (h2hWins.get(aId)!.get(bId) ?? 0) + 1);
+          } else if (bScore > aScore) {
+            h2hWins.get(bId)!.set(aId, (h2hWins.get(bId)!.get(aId) ?? 0) + 1);
+          }
+        });
+
+        standingsData.forEach(t => {
+          standingsData.forEach(opp => {
+            if (opp.teamId === t.teamId) return;
+            const w = h2hWins.get(t.teamId)!.get(opp.teamId) ?? 0;
+            const l = h2hWins.get(opp.teamId)!.get(t.teamId) ?? 0;
+            if (w > l) t.headToHead[opp.teamId] = 'win';
+            else if (l > w) t.headToHead[opp.teamId] = 'loss';
+            else if (w > 0 || l > 0) t.headToHead[opp.teamId] = 'draw';
+          });
+        });
+
+        // Sort: points DESC → head-to-head → neustadtl DESC → game diff → name
         standingsData.sort((a, b) => {
           if (b.points !== a.points) return b.points - a.points;
+          // Head-to-head among tied teams
+          const tiedIds = standingsData.filter(s => s.points === a.points).map(s => s.teamId);
+          if (tiedIds.length > 1) {
+            const aWins = tiedIds.reduce((sum, id) => id !== a.teamId && a.headToHead[id] === 'win' ? sum + 1 : sum, 0);
+            const bWins = tiedIds.reduce((sum, id) => id !== b.teamId && b.headToHead[id] === 'win' ? sum + 1 : sum, 0);
+            if (aWins !== bWins) return bWins - aWins;
+          }
           if (b.neustadtlScore !== a.neustadtlScore) return b.neustadtlScore - a.neustadtlScore;
           const aDiff = a.gamesWon - a.gamesLost;
           const bDiff = b.gamesWon - b.gamesLost;
-          return bDiff - aDiff;
+          if (bDiff !== aDiff) return bDiff - aDiff;
+          return a.teamName.localeCompare(b.teamName);
         });
 
         // Update positions

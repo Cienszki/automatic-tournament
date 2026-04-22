@@ -41,10 +41,21 @@ import {
   AlertCircle,
   ExternalLink,
   ImageIcon,
+  Trash2,
 } from 'lucide-react';
-import { collection, getDocs, doc, updateDoc, writeBatch } from 'firebase/firestore';
+import { collection, getDocs, doc, updateDoc, writeBatch, deleteDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import type { DisplayPlayer } from '@/lib/team-players-loader';
 
 interface TeamPlayer {
@@ -52,6 +63,9 @@ interface TeamPlayer {
   role: string;
   mmr?: number;
   profileScreenshotUrl?: string;
+  steamProfileUrl?: string;
+  steamId32?: string;
+  smurfAccounts?: { steamProfileUrl: string }[];
 }
 
 interface Team {
@@ -62,8 +76,9 @@ interface Team {
   divisionName: string;
   status: 'pending' | 'verified' | 'rejected' | 'eliminated';
   playersCount: number;
-  captainName: string;
+  captainDiscord: string;
   totalMmr?: number;
+  logoUrl?: string;
   players?: TeamPlayer[];
 }
 
@@ -87,6 +102,11 @@ export function TeamsTab() {
   const [divisionFilter, setDivisionFilter] = useState<string>('all');
   const [isSaving, setIsSaving] = useState(false);
   const [expandedTeamId, setExpandedTeamId] = useState<string | null>(null);
+  const [deleteConfirmTeam, setDeleteConfirmTeam] = useState<Team | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  // Resolved steamId32 values for smurf accounts with vanity URLs
+  // keyed by the smurf's steamProfileUrl
+  const [resolvedSmurfIds, setResolvedSmurfIds] = useState<Record<string, string>>({});
 
   const divisions = tournament?.divisions || [];
 
@@ -114,10 +134,6 @@ export function TeamsTab() {
             const { loadTeamPlayersForDisplay } = await import('@/lib/team-players-loader');
             const players = await loadTeamPlayersForDisplay(teamDoc.id, tournament.id, teamData as Record<string, unknown>);
 
-            // Find captain name from players (captainId is Firebase Auth UID, not steamId — so
-            // this lookup may not match; the captainName display is best-effort only)
-            const captain = players.find((p: { id: string; nickname?: string }) => p.id === teamData.captainId);
-            
             // Get division name from tournament divisions
             const division = divisions.find(d => d.id === teamData.divisionId);
 
@@ -128,6 +144,9 @@ export function TeamsTab() {
                   role: p.role,
                   mmr: p.mmr,
                   profileScreenshotUrl: p.profileScreenshotUrl,
+                  steamProfileUrl: p.steamProfileUrl,
+                  steamId32: p.steamId32,
+                  smurfAccounts: p.smurfAccounts,
                 }))
               : undefined;
 
@@ -143,8 +162,9 @@ export function TeamsTab() {
               divisionName: division?.name || teamData.divisionId || 'Brak',
               status: teamData.status || 'pending',
               playersCount: players.length,
-              captainName: (captain as { nickname?: string })?.nickname || 'Brak kapitana',
+              captainDiscord: (teamData.captainDiscordUsername as string) || '—',
               totalMmr,
+              logoUrl: (teamData.logoUrl as string | undefined) || undefined,
               players: teamPlayers,
             };
           })
@@ -170,7 +190,56 @@ export function TeamsTab() {
     };
 
     loadTeams();
-  }, [tournament?.id, divisions]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tournament?.id]);
+
+  // Resolve vanity Steam URLs for smurf accounts of the expanded team
+  useEffect(() => {
+    if (!expandedTeamId) return;
+    const expandedTeam = teams.find(t => t.id === expandedTeamId);
+    if (!expandedTeam?.players) return;
+
+    const urlsToResolve: string[] = [];
+    for (const player of expandedTeam.players) {
+      for (const smurf of player.smurfAccounts || []) {
+        const url = smurf.steamProfileUrl;
+        if (!url) continue;
+        // Already resolved or a numeric URL (no resolution needed)
+        if (resolvedSmurfIds[url] !== undefined) continue;
+        if (/\/profiles\/\d{17,}/.test(url)) continue;
+        urlsToResolve.push(url);
+      }
+    }
+    if (urlsToResolve.length === 0) return;
+
+    // Mark as "in-progress" so we don't re-trigger on re-renders
+    setResolvedSmurfIds(prev => {
+      const next = { ...prev };
+      for (const url of urlsToResolve) next[url] = '';
+      return next;
+    });
+
+    (async () => {
+      const resolved: Record<string, string> = {};
+      await Promise.allSettled(
+        urlsToResolve.map(async (url) => {
+          try {
+            const res = await fetch('/api/validate-steam', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ profileUrl: url }),
+            });
+            if (res.ok) {
+              const data = await res.json();
+              resolved[url] = data.steamId64 || '';
+            }
+          } catch { /* ignore */ }
+        })
+      );
+      setResolvedSmurfIds(prev => ({ ...prev, ...resolved }));
+    })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [expandedTeamId, teams]);
 
   const handleSave = async () => {
     if (!tournament?.id) return;
@@ -252,6 +321,30 @@ export function TeamsTab() {
       setSelectedTeams([]);
     } else {
       setSelectedTeams(filteredTeams.map(t => t.id));
+    }
+  };
+
+  const handleDeleteTeam = async () => {
+    if (!deleteConfirmTeam || !tournament?.id) return;
+    try {
+      setIsDeleting(true);
+      // Delete players subcollection docs first
+      const playersRef = collection(db, 'tournaments', tournament.id, 'teams', deleteConfirmTeam.id, 'players');
+      const playersSnap = await getDocs(playersRef);
+      const batch = writeBatch(db);
+      playersSnap.docs.forEach(d => batch.delete(d.ref));
+      batch.delete(doc(db, 'tournaments', tournament.id, 'teams', deleteConfirmTeam.id));
+      await batch.commit();
+      setTeams(prev => prev.filter(t => t.id !== deleteConfirmTeam.id));
+      setOriginalTeams(prev => prev.filter(t => t.id !== deleteConfirmTeam.id));
+      setSelectedTeams(prev => prev.filter(id => id !== deleteConfirmTeam.id));
+      toast({ title: 'Drużyna usunięta', description: `"${deleteConfirmTeam.name}" została usunięta.` });
+    } catch (err) {
+      console.error('Error deleting team:', err);
+      toast({ title: 'Błąd', description: 'Nie udało się usunąć drużyny.', variant: 'destructive' });
+    } finally {
+      setIsDeleting(false);
+      setDeleteConfirmTeam(null);
     }
   };
 
@@ -566,9 +659,19 @@ export function TeamsTab() {
                     )}
                     <TableCell>
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center font-logik-extended-bold">
-                          {team.tag}
-                        </div>
+                        {team.logoUrl ? (
+                          <img
+                            src={team.logoUrl}
+                            alt={team.tag}
+                            width={40}
+                            height={40}
+                            className="w-10 h-10 rounded-lg object-cover"
+                          />
+                        ) : (
+                          <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center font-logik-extended-bold text-xs">
+                            {team.tag}
+                          </div>
+                        )}
                         <div>
                           <p className="font-logik-extended-bold">{team.name}</p>
                           <p className="text-sm text-muted-foreground font-logik">[{team.tag}]</p>
@@ -592,62 +695,189 @@ export function TeamsTab() {
                         <Badge variant="outline" className="font-logik">{team.divisionName}</Badge>
                       </TableCell>
                     )}
-                    <TableCell className="font-logik">{team.captainName}</TableCell>
+                    <TableCell className="font-logik text-sm">{team.captainDiscord}</TableCell>
                     <TableCell className="font-logik">{team.playersCount}/5</TableCell>
                     <TableCell>{getStatusBadge(team.status)}</TableCell>
                     <TableCell>
-                      <Select 
-                        value={team.status} 
-                        onValueChange={(v) => updateTeamStatus(team.id, v as Team['status'])}
-                      >
-                        <SelectTrigger className="w-full font-logik h-8">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="pending">Oczekuje</SelectItem>
-                          <SelectItem value="verified">Zweryfikowana</SelectItem>
-                          <SelectItem value="rejected">Odrzucona</SelectItem>
-                          <SelectItem value="eliminated">Wyeliminowana</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <div className="flex items-center gap-2">
+                        <Select 
+                          value={team.status} 
+                          onValueChange={(v) => updateTeamStatus(team.id, v as Team['status'])}
+                        >
+                          <SelectTrigger className="flex-1 font-logik h-8">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="pending">Oczekuje</SelectItem>
+                            <SelectItem value="verified">Zweryfikowana</SelectItem>
+                            <SelectItem value="rejected">Odrzucona</SelectItem>
+                            <SelectItem value="eliminated">Wyeliminowana</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-muted-foreground hover:text-red-500 hover:bg-red-500/10 flex-shrink-0"
+                          onClick={() => setDeleteConfirmTeam(team)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                   {/* Expandable player detail rows for MMR tournaments */}
                   {isMmrLimited && expandedTeamId === team.id && team.players && (
                     <TableRow className="bg-muted/30">
                       <TableCell colSpan={8} className="p-0">
-                        <div className="px-6 py-3 space-y-1">
-                          <p className="text-xs font-logik-extended-bold text-muted-foreground uppercase tracking-wider mb-2">
-                            Weryfikacja MMR graczy
+                        <div className="px-6 py-4 space-y-4">
+                          <p className="text-xs font-logik-extended-bold text-muted-foreground uppercase tracking-wider">
+                            Weryfikacja graczy
                           </p>
-                          {team.players.map((player, idx) => (
-                            <div key={idx} className="flex items-center gap-4 py-1.5 px-3 rounded-md hover:bg-muted/50">
-                              <span className="text-sm font-logik w-32 truncate">{player.nickname}</span>
-                              <Badge variant="outline" className="font-logik text-xs w-24 justify-center">
-                                {player.role}
-                              </Badge>
-                              <span className="text-sm font-logik-extended-bold w-20 text-right">
-                                {(player.mmr || 0).toLocaleString()}
-                              </span>
-                              {player.profileScreenshotUrl ? (
-                                <a
-                                  href={player.profileScreenshotUrl}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="flex items-center gap-1 text-xs font-logik hover:underline"
-                                  style={{ color: theme.primaryColor }}
-                                >
-                                  <ImageIcon className="h-3 w-3" />
-                                  Screenshot
-                                  <ExternalLink className="h-3 w-3" />
-                                </a>
-                              ) : (
-                                <span className="text-xs text-muted-foreground font-logik">
-                                  Brak screenshota
-                                </span>
-                              )}
-                            </div>
-                          ))}
+                          {team.players.map((player, idx) => {
+                            const accountId = player.steamId32 || '';
+                            const dotabuffUrl = accountId ? `https://www.dotabuff.com/players/${accountId}` : null;
+                            const opendotaUrl = accountId ? `https://www.opendota.com/players/${accountId}` : null;
+                            return (
+                              <div key={idx} className="rounded-lg border border-border/50 bg-background/40 p-4">
+                                {/* Player header */}
+                                <div className="flex items-center gap-3 mb-3">
+                                  <Badge variant="outline" className="font-logik text-xs w-28 justify-center">{player.role}</Badge>
+                                  <span className="font-logik-extended-bold">{player.nickname}</span>
+                                  <span className="font-logik-extended-bold text-sm" style={{ color: theme.primaryColor }}>
+                                    {(player.mmr || 0).toLocaleString()} MMR
+                                  </span>
+                                </div>
+                                {/* Links row */}
+                                <div className="flex flex-wrap gap-3 text-xs mb-3">
+                                  {player.steamProfileUrl && (
+                                    <a
+                                      href={player.steamProfileUrl}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="flex items-center gap-1 font-logik text-blue-400 hover:text-blue-300 hover:underline"
+                                    >
+                                      <ExternalLink className="h-3 w-3" />
+                                      Steam
+                                    </a>
+                                  )}
+                                  {dotabuffUrl && (
+                                    <a
+                                      href={dotabuffUrl}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="flex items-center gap-1 font-logik text-orange-400 hover:text-orange-300 hover:underline"
+                                    >
+                                      <ExternalLink className="h-3 w-3" />
+                                      Dotabuff
+                                    </a>
+                                  )}
+                                  {opendotaUrl && (
+                                    <a
+                                      href={opendotaUrl}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="flex items-center gap-1 font-logik text-green-400 hover:text-green-300 hover:underline"
+                                    >
+                                      <ExternalLink className="h-3 w-3" />
+                                      OpenDota
+                                    </a>
+                                  )}
+                                  {player.profileScreenshotUrl ? (
+                                    <a
+                                      href={player.profileScreenshotUrl}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="flex items-center gap-1 font-logik hover:underline"
+                                      style={{ color: theme.primaryColor }}
+                                    >
+                                      <ImageIcon className="h-3 w-3" />
+                                      Screenshot MMR
+                                      <ExternalLink className="h-3 w-3" />
+                                    </a>
+                                  ) : (
+                                    <span className="flex items-center gap-1 text-xs text-red-400 font-logik">
+                                      <AlertCircle className="h-3 w-3" />
+                                      Brak screenshota MMR
+                                    </span>
+                                  )}
+                                </div>
+                                {/* Smurf accounts */}
+                                {player.smurfAccounts && player.smurfAccounts.length > 0 && (
+                                  <div className="mt-2 pt-2 border-t border-border/40">
+                                    <p className="text-xs font-logik-extended-bold text-muted-foreground mb-2">
+                                      Konta smerf ({player.smurfAccounts.length})
+                                    </p>
+                                    <div className="space-y-1.5">
+                                      {player.smurfAccounts.map((smurf, sIdx) => {
+                                        // Derive steamId64 — prefer direct numeric URL, then resolved vanity
+                                        const numericMatch = smurf.steamProfileUrl.match(/\/profiles\/(\d{17,})/);
+                                        const steamId64 = numericMatch
+                                          ? numericMatch[1]
+                                          : (resolvedSmurfIds[smurf.steamProfileUrl] || '');
+                                        let smurfDotabuff: string | null = null;
+                                        let smurfOpendota: string | null = null;
+                                        if (steamId64) {
+                                          try {
+                                            const smurfAccountId = (BigInt(steamId64) - BigInt('76561197960265728')).toString();
+                                            smurfDotabuff = `https://www.dotabuff.com/players/${smurfAccountId}`;
+                                            smurfOpendota = `https://www.opendota.com/players/${smurfAccountId}`;
+                                          } catch { /* ignore */ }
+                                        }
+                                        const isPending = !numericMatch && resolvedSmurfIds[smurf.steamProfileUrl] === '';
+                                        return (
+                                          <div key={sIdx} className="flex flex-wrap gap-3 text-xs pl-2">
+                                            <span className="text-muted-foreground font-logik">#{sIdx + 1}</span>
+                                            <a
+                                              href={smurf.steamProfileUrl}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              className="flex items-center gap-1 font-logik text-blue-400 hover:text-blue-300 hover:underline"
+                                            >
+                                              <ExternalLink className="h-3 w-3" />
+                                              Steam
+                                            </a>
+                                            {smurfDotabuff && (
+                                              <a
+                                                href={smurfDotabuff}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="flex items-center gap-1 font-logik text-orange-400 hover:text-orange-300 hover:underline"
+                                              >
+                                                <ExternalLink className="h-3 w-3" />
+                                                Dotabuff
+                                              </a>
+                                            )}
+                                            {smurfOpendota && (
+                                              <a
+                                                href={smurfOpendota}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="flex items-center gap-1 font-logik text-green-400 hover:text-green-300 hover:underline"
+                                              >
+                                                <ExternalLink className="h-3 w-3" />
+                                                OpenDota
+                                              </a>
+                                            )}
+                                            {!smurfDotabuff && !isPending && (
+                                              <span className="text-xs text-muted-foreground font-logik">
+                                                (nie można rozwiązać URL)
+                                              </span>
+                                            )}
+                                            {isPending && (
+                                              <span className="text-xs text-muted-foreground font-logik flex items-center gap-1">
+                                                <Loader2 className="h-3 w-3 animate-spin" />
+                                                Rozwiązywanie...
+                                              </span>
+                                            )}
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
                         </div>
                       </TableCell>
                     </TableRow>
@@ -658,6 +888,30 @@ export function TeamsTab() {
           </TableBody>
         </Table>
       </Card>
+
+      {/* Delete confirmation dialog */}
+      <AlertDialog open={!!deleteConfirmTeam} onOpenChange={(open) => { if (!open) setDeleteConfirmTeam(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Usuń drużynę</AlertDialogTitle>
+            <AlertDialogDescription>
+              Czy na pewno chcesz usunąć drużynę <strong>{deleteConfirmTeam?.name}</strong>?
+              Ta operacja jest nieodwracalna — wszystkie dane drużyny i graczy zostaną usunięte.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Anuluj</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteTeam}
+              disabled={isDeleting}
+              className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+            >
+              {isDeleting ? <RotateCcw className="h-4 w-4 mr-2 animate-spin" /> : <Trash2 className="h-4 w-4 mr-2" />}
+              Usuń drużynę
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -6,7 +6,7 @@ import type { Match } from "@/lib/definitions";
 import { useEffect, useState } from "react";
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { MatchdayCarousel } from '@/components/schedule/MatchdayCarousel';
+import { SchedulePageLayout } from '@/components/schedule/MatchdayCarousel';
 import { LoadingScreen } from '@/components/ui/LoadingScreen';
 
 /**
@@ -104,9 +104,8 @@ export default function SchedulePage() {
         />
       </div>
 
-      {/* Main Content */}
-      <div className="relative z-10 max-w-[1800px] mx-auto px-3 sm:px-6 lg:px-12 py-6 sm:py-8">
-        <MatchdayCarousel matches={matches} />
+      <div className="relative z-10">
+        <SchedulePageLayout matches={matches} />
       </div>
     </div>
   );

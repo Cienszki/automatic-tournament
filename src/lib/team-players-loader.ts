@@ -30,9 +30,10 @@ export interface DisplayPlayer {
   steamProfileUrl: string;
   mmr?: number;
   profileScreenshotUrl?: string;
+  smurfAccounts?: { steamProfileUrl: string }[];
 }
 
-type RosterMap = Record<string, { nickname: string; role: string; steamId32: string; avatar?: string; mmr?: number; profileScreenshotUrl?: string }>;
+type RosterMap = Record<string, { nickname: string; role: string; steamId32: string; avatar?: string; mmr?: number; profileScreenshotUrl?: string; smurfAccounts?: { steamProfileUrl: string }[] }>;
 
 /**
  * Build DisplayPlayer array directly from a team doc's data object.
@@ -52,9 +53,10 @@ export function buildPlayersFromRosterMap(teamDocData: Record<string, unknown>):
     avatar: info.avatar || '',
     avatarmedium: '',
     avatarfull: '',
-    steamProfileUrl: '',
+    steamProfileUrl: `https://steamcommunity.com/profiles/${steamId64}`,
     mmr: info.mmr,
     profileScreenshotUrl: info.profileScreenshotUrl,
+    smurfAccounts: info.smurfAccounts,
   }));
 }
 
@@ -80,7 +82,34 @@ export async function loadTeamPlayersForDisplay(
 
   // Prefer roster map (new architecture — has nickname + avatar + role)
   const fromRoster = buildPlayersFromRosterMap(docData);
-  if (fromRoster) return fromRoster;
+  if (fromRoster) {
+    // If any player is missing smurfAccounts in the roster map, read the player
+    // subcollection to recover them (e.g. teams whose roster was saved before
+    // smurfAccounts were included in the roster map write path).
+    const missingSmurfs = fromRoster.some(p => !p.smurfAccounts?.length);
+    if (missingSmurfs) {
+      try {
+        const playersRef = collection(db, 'tournaments', tournamentId, 'teams', teamId, 'players');
+        const subSnap = await getDocs(playersRef);
+        const smurfMap: Record<string, { steamProfileUrl: string }[]> = {};
+        for (const d of subSnap.docs) {
+          const data = d.data() as Record<string, unknown>;
+          const smurfs = data.smurfAccounts as { steamProfileUrl: string }[] | undefined;
+          if (smurfs?.length) smurfMap[d.id] = smurfs;
+        }
+        if (Object.keys(smurfMap).length > 0) {
+          return fromRoster.map(p =>
+            !p.smurfAccounts?.length && smurfMap[p.steamId]
+              ? { ...p, smurfAccounts: smurfMap[p.steamId] }
+              : p
+          );
+        }
+      } catch {
+        // Non-fatal: return the roster as-is without smurfs
+      }
+    }
+    return fromRoster;
+  }
 
   // Legacy fallback: read from the player subcollection
   const playersRef = collection(db, 'tournaments', tournamentId, 'teams', teamId, 'players');
@@ -99,6 +128,7 @@ export async function loadTeamPlayersForDisplay(
       steamProfileUrl: (data.steamProfileUrl as string) || '',
       mmr: (data.mmr as number) || 0,
       profileScreenshotUrl: (data.profileScreenshotUrl as string) || undefined,
+      smurfAccounts: (data.smurfAccounts as { steamProfileUrl: string }[]) || undefined,
     };
   });
 }

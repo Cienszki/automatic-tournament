@@ -82,7 +82,7 @@ const playerFontClasses = [
 
 export function TeamCard({ team, divisionRanking }: TeamCardProps) {
   const { t } = useTranslation();
-  const { getTournamentPath } = useTournament();
+  const { getTournamentPath, theme } = useTournament();
   const players = team.players || [];
 
   // 3D Tilt Logic
@@ -218,8 +218,8 @@ export function TeamCard({ team, divisionRanking }: TeamCardProps) {
                 ) : null}
                 {/* Always render fallback, will be behind image if it loads */}
                 <div 
-                  className={cn("text-4xl font-logik-extended-bold absolute inset-0 flex items-center justify-center", style.text)}
-                  style={{ zIndex: (team.logoUrl && team.logoUrl.trim() !== '') ? -1 : 1 }}
+                  className="text-4xl font-logik-extended-bold absolute inset-0 flex items-center justify-center"
+                  style={{ color: theme.titleColor || theme.textColor || '#ffffff', fontFamily: theme.headerFont ? `var(${theme.headerFont})` : undefined, zIndex: (team.logoUrl && team.logoUrl.trim() !== '') ? -1 : 1 }}
                 >
                   {team.name.charAt(0)}
                 </div>
@@ -227,10 +227,10 @@ export function TeamCard({ team, divisionRanking }: TeamCardProps) {
 
               {/* Team info */}
               <div className="flex-1 min-w-0 pt-2">
-                <h3 className={cn(
-                  "text-2xl font-logik-extended-bold mb-2 leading-tight drop-shadow-md",
-                  style.text // Always division color
-                )}>
+                <h3
+                  className="text-2xl font-logik-extended-bold mb-2 leading-tight drop-shadow-md"
+                  style={{ color: theme.titleColor || theme.textColor || '#ffffff', fontFamily: theme.headerFont ? `var(${theme.headerFont})` : undefined }}
+                >
                   {team.name}
                 </h3>
                 {/* Division Badge */}
@@ -255,10 +255,13 @@ export function TeamCard({ team, divisionRanking }: TeamCardProps) {
                     key={player.id || idx}
                     className="flex items-center gap-3 p-1 pl-1"
                   >
-                    <div className="shrink-0 text-white/40">
+                    <div className="shrink-0" style={{ color: theme.secondaryTextColor || theme.mutedTextColor || 'rgba(255,255,255,0.4)' }}>
                       {getRoleIcon(player.role)}
                     </div>
-                    <p className="text-xs text-gray-300 player-nickname font-medium uppercase tracking-wide truncate">
+                    <p
+                      className="text-xs player-nickname font-medium uppercase tracking-wide truncate"
+                      style={{ color: theme.primaryTextColor || theme.textColor || '#ffffff', fontFamily: theme.headerFont ? `var(${theme.headerFont})` : undefined }}
+                    >
                       {player.nickname}
                     </p>
                   </div>
@@ -266,11 +269,11 @@ export function TeamCard({ team, divisionRanking }: TeamCardProps) {
 
                 {/* Captain Discord */}
                 {(team.captainDiscordUsername || team.discordUsername) && (
-                  <div className="mt-2 pt-2 border-t border-white/10 w-fit">
+                  <div className="mt-2 pt-2 border-t border-[var(--tournament-border,rgba(255,255,255,0.1))] w-fit">
                     <div className="flex items-center gap-2 text-xs">
-                      <MessageSquare className={cn("h-3 w-3", style.text)} />
-                      <span className="font-logik-readable font-medium uppercase tracking-wide text-[10px] text-gray-400">DISCORD</span>
-                      <span className="text-white text-[10px] font-logik-readable font-medium">
+                      <MessageSquare className="h-3 w-3" style={{ color: theme.secondaryTextColor || theme.mutedTextColor || 'rgba(255,255,255,0.4)' }} />
+                      <span className="font-logik-readable font-medium uppercase tracking-wide text-[10px]" style={{ color: theme.secondaryTextColor || theme.mutedTextColor || 'rgba(255,255,255,0.4)', fontFamily: theme.bodyFont ? `var(${theme.bodyFont})` : undefined }}>DISCORD</span>
+                      <span className="text-[10px] font-logik-readable font-medium" style={{ color: theme.secondaryTextColor || theme.mutedTextColor || 'rgba(255,255,255,0.6)', fontFamily: theme.bodyFont ? `var(${theme.bodyFont})` : undefined }}>
                         {team.captainDiscordUsername || team.discordUsername}
                       </span>
                     </div>
@@ -294,7 +297,7 @@ export function TeamCard({ team, divisionRanking }: TeamCardProps) {
                       />
                     ))}
                   </div>
-                  <span className="text-[9px] text-gray-400 font-logik-readable font-medium uppercase tracking-widest">Form</span>
+                  <span className="text-[9px] font-logik-readable font-medium uppercase tracking-widest" style={{ color: theme.secondaryTextColor || theme.mutedTextColor || 'rgba(255,255,255,0.4)', fontFamily: theme.bodyFont ? `var(${theme.bodyFont})` : undefined }}>Form</span>
                 </div>
               )}
             </div>

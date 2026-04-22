@@ -9,7 +9,9 @@ import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import { listItem } from '@/lib/animations';
 import { useTournament } from '@/context/TournamentContext';
+import { useHomeNavigation } from '@/context/HomeNavigationContext';
 import { getDivisionTheme, getThemeColor, getThemeGradient } from '@/lib/division-themes';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface TeamStanding {
   position: number;
@@ -18,6 +20,7 @@ interface TeamStanding {
   teamLogo?: string;
   gamesPlayed: number;
   points: number;
+  neustadtlScore?: number;
 }
 
 interface DivisionTableProps {
@@ -31,11 +34,20 @@ interface DivisionTableProps {
 
 export function DivisionTable({ divisionName, divisionColor, teams, divisionId, divisionTheme, medalUrl }: DivisionTableProps) {
   const { getTournamentPath } = useTournament();
+  const { goToGroup, isHomeActive } = useHomeNavigation();
   
   // Get theme if specified, otherwise use color
   const theme = getDivisionTheme(divisionTheme);
   const displayColor = theme?.primaryColor || divisionColor;
   const displayGradient = theme?.gradient || `linear-gradient(135deg, ${divisionColor} 0%, ${divisionColor} 100%)`;
+
+  const handleHeaderClick = () => {
+    if (!divisionId) return;
+    if (isHomeActive()) {
+      goToGroup(divisionId);
+    }
+    // when not on homepage it's just a visual table, the Link fallback handles it
+  };
 
   return (
     <motion.div
@@ -43,63 +55,106 @@ export function DivisionTable({ divisionName, divisionColor, teams, divisionId, 
       className="rounded-none overflow-hidden"
     >
       {/* Header - Minimal Text with Indicator */}
-      <Link
-        href={divisionId ? getTournamentPath(`/divisions/${divisionId}`) : '#'}
-        className="block pb-4 mb-2 relative group cursor-pointer"
-      >
-        <div className="flex items-center gap-3">
-          {/* Medal if available */}
-          {medalUrl && (
-            <img 
-              src={medalUrl} 
-              alt={`${divisionName} medal`}
-              className="h-8 w-8 object-contain"
-            />
-          )}
-          
-          <motion.h3
-            className="text-2xl font-logik-extended-bold tracking-wide uppercase relative"
-            style={{ color: displayColor }}
-            animate={{
-              textShadow: [
-                `0 0 10px ${displayColor}00`,
-                `0 0 20px ${displayColor}60`,
-                `0 0 10px ${displayColor}00`
-              ]
-            }}
-            transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-          >
-            {divisionName}
-          </motion.h3>
-          {divisionId && (
+      {divisionId && isHomeActive() ? (
+        <button
+          onClick={handleHeaderClick}
+          className="block w-full text-left pb-4 mb-2 relative group cursor-pointer"
+        >
+          <div className="flex items-center gap-3">
+            {/* Medal if available */}
+            {medalUrl && (
+              <img 
+                src={medalUrl} 
+                alt={`${divisionName} medal`}
+                className="h-8 w-8 object-contain"
+              />
+            )}
+            
+            <motion.h3
+              className="text-2xl font-logik-extended-bold tracking-wide uppercase relative"
+              style={{ color: displayColor }}
+              animate={{
+                textShadow: [
+                  `0 0 10px ${displayColor}00`,
+                  `0 0 20px ${displayColor}60`,
+                  `0 0 10px ${displayColor}00`
+                ]
+              }}
+              transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+            >
+              {divisionName}
+            </motion.h3>
             <motion.span
-              className="ml-auto text-xs font-mono uppercase tracking-widest text-white/30 opacity-0 group-hover:opacity-100 transition-opacity"
+              className="ml-auto text-xs font-mono uppercase tracking-widest text-[var(--tournament-secondary-text)] opacity-0 group-hover:opacity-100 transition-opacity"
             >
               Zobacz tabelę
             </motion.span>
-          )}
-        </div>
-        {/* Animated underline with gradient support */}
-        <div className="absolute bottom-0 left-0 w-full h-[1px] bg-white/10 overflow-hidden">
-          <motion.div
-            className="absolute inset-0 w-full h-full"
-            style={{ background: displayGradient }}
-            initial={{ x: '-100%' }}
-            whileHover={{ x: '0%' }}
-            transition={{ duration: 0.4, ease: "easeOut" }}
-          />
-        </div>
-      </Link>
+          </div>
+          {/* Animated underline with gradient support */}
+          <div className="absolute bottom-0 left-0 w-full h-[1px] bg-white/10 overflow-hidden">
+            <motion.div
+              className="absolute inset-0 w-full h-full"
+              style={{ background: displayGradient }}
+              initial={{ x: '-100%' }}
+              whileHover={{ x: '0%' }}
+              transition={{ duration: 0.4, ease: "easeOut" }}
+            />
+          </div>
+        </button>
+      ) : (
+        <Link
+          href={divisionId ? getTournamentPath(`/divisions/${divisionId}`) : '#'}
+          className="block pb-4 mb-2 relative group cursor-pointer"
+        >
+          <div className="flex items-center gap-3">
+            {/* Medal if available */}
+            {medalUrl && (
+              <img 
+                src={medalUrl} 
+                alt={`${divisionName} medal`}
+                className="h-8 w-8 object-contain"
+              />
+            )}
+            
+            <motion.h3
+              className="text-2xl font-logik-extended-bold tracking-wide uppercase relative"
+              style={{ color: displayColor }}
+              animate={{
+                textShadow: [
+                  `0 0 10px ${displayColor}00`,
+                  `0 0 20px ${displayColor}60`,
+                  `0 0 10px ${displayColor}00`
+                ]
+              }}
+              transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+            >
+              {divisionName}
+            </motion.h3>
+            {divisionId && (
+              <motion.span
+                className="ml-auto text-xs font-mono uppercase tracking-widest text-[var(--tournament-secondary-text)] opacity-0 group-hover:opacity-100 transition-opacity"
+              >
+                Zobacz tabelę
+              </motion.span>
+            )}
+          </div>
+          {/* Animated underline with gradient support */}
+          <div className="absolute bottom-0 left-0 w-full h-[1px] bg-white/10 overflow-hidden">
+            <motion.div
+              className="absolute inset-0 w-full h-full"
+              style={{ background: displayGradient }}
+              initial={{ x: '-100%' }}
+              whileHover={{ x: '0%' }}
+              transition={{ duration: 0.4, ease: "easeOut" }}
+            />
+          </div>
+        </Link>
+      )}
 
       {/* Table - Transparent, just rows */}
       <div className="overflow-x-auto">
         <table className="w-full border-collapse">
-          <thead>
-            <tr className="text-[10px] font-mono uppercase tracking-widest text-white/30">
-              <th className="px-2 py-2 text-left">Drużyna</th>
-              <th className="px-2 py-2 text-center w-12 text-white/50">PKT</th>
-            </tr>
-          </thead>
+          <thead></thead>
           <tbody>
             {teams.map((team, index) => (
               <motion.tr
@@ -115,7 +170,7 @@ export function DivisionTable({ divisionName, divisionColor, teams, divisionId, 
                 <td className="px-2 py-3">
                   <Link
                     href={getTournamentPath(`/teams/${team.teamId}`)}
-                    className="flex items-center gap-3 font-logik text-lg text-white/80 group-hover:text-white transition-colors"
+                    className="flex items-center gap-3 font-logik text-lg text-[var(--tournament-primary-text)] group-hover:text-[var(--tournament-title)] transition-colors"
                   >
                     {team.teamLogo && (
                       <Image
@@ -131,9 +186,24 @@ export function DivisionTable({ divisionName, divisionColor, teams, divisionId, 
                   </Link>
                 </td>
                 <td className="px-2 py-3 text-center">
-                  <span className="font-logik-extended-bold text-xl text-white group-hover:text-primary transition-colors">
-                    {team.points}
-                  </span>
+                  {team.neustadtlScore !== undefined ? (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span className="font-logik-extended-bold text-xl text-[var(--tournament-title)] group-hover:text-primary transition-colors cursor-default">
+                            {team.points}
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Neustadtl: {team.neustadtlScore.toFixed(2)}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  ) : (
+                    <span className="font-logik-extended-bold text-xl text-[var(--tournament-title)] group-hover:text-primary transition-colors">
+                      {team.points}
+                    </span>
+                  )}
                 </td>
               </motion.tr>
             ))}

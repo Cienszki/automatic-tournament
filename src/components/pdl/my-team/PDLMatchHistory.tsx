@@ -5,6 +5,7 @@ import { History, ExternalLink } from 'lucide-react';
 import { cn, formatDatePL } from '@/lib/utils';
 import type { Match, Team } from '@/lib/definitions';
 import { MatchDetailModal } from '@/components/divisions/MatchDetailModal';
+import { useTournament } from '@/context/TournamentContext';
 
 interface PDLMatchHistoryProps {
     matches: Match[];
@@ -21,6 +22,7 @@ export function PDLMatchHistory({
     tournamentSlug: _tournamentSlug,
     divisionColor = '#c9a227',
 }: PDLMatchHistoryProps) {
+    const { theme } = useTournament();
     const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
 
     // Filter completed matches only
@@ -33,13 +35,19 @@ export function PDLMatchHistory({
                     <div className="p-2 rounded-lg bg-white/5 border border-white/10">
                         <History className="w-5 h-5 text-pdl-gold" />
                     </div>
-                    <h2 className="text-xl font-logik-extended-bold text-white tracking-wide uppercase">
+                    <h2
+                        className="text-xl uppercase tracking-[0.15em]"
+                        style={{
+                            color: 'var(--tournament-heading)',
+                            fontFamily: theme?.headerFont ? `var(${theme.headerFont})` : undefined,
+                        }}
+                    >
                         Historia Meczów
                     </h2>
                 </div>
 
                 <div className="rounded-xl border border-white/5 bg-white/[0.02] p-8 text-center">
-                    <p className="text-white/40 font-logik">
+                    <p className="font-logik" style={{ color: theme.secondaryTextColor || 'rgba(255,255,255,0.4)' }}>
                         Brak rozegranych meczów
                     </p>
                 </div>
@@ -55,10 +63,16 @@ export function PDLMatchHistory({
                 <div className="p-2 rounded-lg bg-white/5 border border-white/10">
                     <History className="w-5 h-5 text-pdl-gold" />
                 </div>
-                <h2 className="text-xl font-logik-extended-bold text-white tracking-wide uppercase">
+                <h2
+                    className="text-xl uppercase tracking-[0.15em]"
+                    style={{
+                        color: 'var(--tournament-heading)',
+                        fontFamily: theme?.headerFont ? `var(${theme.headerFont})` : undefined,
+                    }}
+                >
                     Historia Meczów
                 </h2>
-                <span className="ml-auto text-sm text-white/40 font-logik">
+                <span className="ml-auto text-sm font-logik" style={{ color: theme.secondaryTextColor || 'rgba(255,255,255,0.4)' }}>
                     {completedMatches.length} {completedMatches.length === 1 ? 'mecz' : 'meczów'}
                 </span>
             </div>
@@ -67,7 +81,7 @@ export function PDLMatchHistory({
             <div className="rounded-xl border border-white/5 bg-white/[0.02] overflow-hidden">
                 <table className="w-full">
                     <thead>
-                        <tr className="border-b border-white/5 text-sm text-white/40 font-logik uppercase tracking-wide">
+                        <tr className="border-b border-white/5 text-sm font-logik uppercase tracking-wide" style={{ color: theme.primaryTextColor || 'rgba(255,255,255,0.4)' }}>
                             <th className="px-4 py-3 text-left">Przeciwnik</th>
                             <th className="px-4 py-3 text-center">Wynik</th>
                             <th className="px-4 py-3 text-center hidden sm:table-cell">Rezultat</th>
@@ -121,7 +135,7 @@ export function PDLMatchHistory({
                                             {config.label}
                                         </span>
                                     </td>
-                                    <td className="px-4 py-3 text-right text-sm text-white/60 hidden md:table-cell">
+                                    <td className="px-4 py-3 text-right text-sm hidden md:table-cell" style={{ color: theme.secondaryTextColor || 'rgba(255,255,255,0.6)' }}>
                                         {matchDate ? formatDatePL(matchDate) : '-'}
                                     </td>
                                     <td className="px-4 py-3 text-right">

@@ -419,6 +419,11 @@ export async function scheduleLobbyForMatch(
     seriesFmt === 'bo3' ? 3 :
     seriesFmt === 'bo5' ? 5 : 1;
 
+  // Compute Dota 2 lobby series_type: bo1→0 (none), bo2/bo3→1 (BO3), bo5→2 (BO5)
+  const lobbySeriesType =
+    seriesFmt === 'bo5' ? 2 :
+    seriesFmt === 'bo1' ? 0 : 1;
+
   // Generate a random lobby password
   const password = generateLobbyPassword();
 
@@ -445,6 +450,9 @@ export async function scheduleLobbyForMatch(
     },
     completedGameIds: [],
     completedGameWinners: [],
+    lobbySeriesType,
+    lobbyRadiantWins: 0,
+    lobbyDireWins: 0,
     createdAt: new Date().toISOString(),
   };
 
@@ -476,6 +484,23 @@ export async function scheduleNextGameInSeries(
 
   const password = generateLobbyPassword();
 
+  // Compute scheduledMatchTime for the next game based on inter-game break:
+  // Give teams <interGameBreakMinutes> after the previous game ended before
+  // the late-arrival timer starts measuring for game N+1.
+  const interGameBreakMinutes =
+    botConfig?.lateArrival?.interGameBreakMinutes ?? 15;
+  const scheduledMatchTime =
+    previousSession.gameEndedAt
+      ? new Date(
+          new Date(previousSession.gameEndedAt).getTime() +
+            interGameBreakMinutes * 60_000
+        ).toISOString()
+      : previousSession.scheduledMatchTime; // fallback: keep original if no endedAt yet
+
+  // Radiant/Dire wins to pre-populate in the lobby for game 2+ (shows score in Dota UI)
+  const lobbyRadiantWins = previousSession.seriesScore[assignments.radiant.teamId] ?? 0;
+  const lobbyDireWins = previousSession.seriesScore[assignments.dire.teamId] ?? 0;
+
   const session: Omit<LobbySession, 'id'> = {
     matchId,
     tournamentId,
@@ -496,6 +521,13 @@ export async function scheduleNextGameInSeries(
     seriesScore: { ...previousSession.seriesScore },
     completedGameIds: [...previousSession.completedGameIds],
     completedGameWinners: [...previousSession.completedGameWinners],
+    forfeitedGames: previousSession.forfeitedGames
+      ? [...previousSession.forfeitedGames]
+      : undefined,
+    scheduledMatchTime,
+    lobbySeriesType: previousSession.lobbySeriesType,
+    lobbyRadiantWins,
+    lobbyDireWins,
     createdAt: new Date().toISOString(),
   };
 

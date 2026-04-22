@@ -87,8 +87,28 @@ export type BotEvent =
   | LobbyStateUpdateEvent
   | GameStartedEvent
   | GameEndedEvent
+  | ForfeitDeclaredEvent
+  | WaitVotePassedEvent
   | BotErrorEvent
   | BotHeartbeatEvent;
+
+export interface ForfeitDeclaredEvent {
+  type: 'forfeit_declared';
+  sessionId: string;
+  forfeitType: 'game1' | 'series';
+  forfeitedTeam: 'radiant' | 'dire';
+  forfeitedTeamName: string;
+  winnerTeamName: string;
+  timestamp: string;
+}
+
+export interface WaitVotePassedEvent {
+  type: 'wait_vote_passed';
+  sessionId: string;
+  /** ISO timestamp until which the orchestrator should not time out the session */
+  waitUntil: string;
+  timestamp: string;
+}
 
 export interface LobbyCreatedEvent {
   type: 'lobby_created';
@@ -129,6 +149,11 @@ export interface ChatMessageEvent {
   steamId32: string;
   playerName: string;
   message: string;
+  /** Current lobby player state at the moment the message was sent (from bot-worker's live snapshot) */
+  currentPlayers?: Array<{
+    steamId32: string;
+    teamSide: 'radiant' | 'dire' | 'spectator' | 'unassigned';
+  }>;
   timestamp: string;
 }
 
@@ -365,6 +390,22 @@ async function handleBotEvent(eventDoc: BotEventDocument): Promise<void> {
       break;
     }
 
+    case 'wait_vote_passed': {
+      // Players voted to wait for the late team — extend the orchestrator timeout
+      await updateLobbySession(event.sessionId, {
+        lateWaitUntil: event.waitUntil,
+      });
+      break;
+    }
+
+    case 'forfeit_declared': {
+      const forfeitSession = await getLobbySession(event.sessionId);
+      if (forfeitSession) {
+        await handleForfeitDeclared(forfeitSession, event, eventDoc.botAccountId);
+      }
+      break;
+    }
+
     case 'bot_error': {
       await updateLobbySession(event.sessionId, {
         state: 'error',
@@ -394,6 +435,32 @@ async function handleBotEvent(eventDoc: BotEventDocument): Promise<void> {
 }
 
 /**
+ * Resolve the effective chat message config for a specific bot account,
+ * merging per-bot personality overrides on top of the tournament defaults.
+ */
+function getEffectiveChatMessages(
+  botConfig: TournamentBotConfig,
+  botAccountId: string
+): TournamentBotConfig['chatMessages'] {
+  const overrides = botConfig.perBotMessages?.[botAccountId];
+  if (!overrides) return botConfig.chatMessages;
+  return { ...botConfig.chatMessages, ...overrides };
+}
+
+/**
+ * Replace known placeholders in a message string.
+ */
+function applyPlaceholders(
+  message: string,
+  ctx: { player_name?: string; team_name?: string; missing?: string }
+): string {
+  return message
+    .replace(/\{player_name\}/g, ctx.player_name ?? '')
+    .replace(/\{team_name\}/g, ctx.team_name ?? '')
+    .replace(/\{missing\}/g, ctx.missing ?? '');
+}
+
+/**
  * Handle a chat message in the context of ready check
  */
 async function handleChatForReadyCheck(
@@ -403,12 +470,9 @@ async function handleChatForReadyCheck(
   const { getTournamentBotConfig, updateLobbySession } = await import(
     './bot-config-actions'
   );
-  const {
-    isReadyCommand,
-    isUnreadyCommand,
-    identifyPlayerTeam,
-    isReadyCommandAllowed,
-  } = await import('./lobby-lifecycle');
+  const { isReadyCommand, isUnreadyCommand, identifyPlayerTeam } = await import(
+    './lobby-lifecycle'
+  );
 
   const botConfig = await getTournamentBotConfig(session.tournamentId);
   if (!botConfig) return;
@@ -417,23 +481,55 @@ async function handleChatForReadyCheck(
   if (!team) return; // Not a recognized player
 
   const readyConfig = botConfig.readyCheck;
-  const cooldownSeconds = botConfig.enforcement?.readyCooldownSeconds ?? 5;
+  const chatMessages = getEffectiveChatMessages(botConfig, session.botAccountId);
 
-  // Check cooldown before processing ready/unready commands
   const isReady = isReadyCommand(event.message, readyConfig.readyCommands);
   const isUnready = isUnreadyCommand(event.message, readyConfig.unreadyCommands);
 
   if (!isReady && !isUnready) return;
 
-  if (!isReadyCommandAllowed(session, event.steamId32, cooldownSeconds)) {
-    // Silently ignore — player is spamming
-    return;
-  }
+  // Resolve the player's nickname for {player_name} placeholder
+  const expectedPlayers = [
+    ...session.radiantTeam.expectedPlayers,
+    ...session.direTeam.expectedPlayers,
+  ];
+  const playerRecord = expectedPlayers.find((p) => p.steamId32 === event.steamId32);
+  const playerName = playerRecord?.nickname ?? event.playerName;
+  const teamAssignment = team === 'radiant' ? session.radiantTeam : session.direTeam;
+  const teamName = teamAssignment.teamName;
 
   if (isReady) {
+    // ── Slot validation ─────────────────────────────────────────────────────
+    // Check that all expected players from this team are seated on the correct side.
+    // Uses the live snapshot included in the event by the bot-worker.
+    if (event.currentPlayers) {
+      const expectedSteamIds = teamAssignment.expectedPlayers.map((p) => p.steamId32);
+      const playersOnCorrectSide = new Set(
+        event.currentPlayers
+          .filter((p) => p.teamSide === team)
+          .map((p) => p.steamId32)
+      );
+
+      const missingPlayers = teamAssignment.expectedPlayers.filter(
+        (p) => !playersOnCorrectSide.has(p.steamId32)
+      );
+
+      if (missingPlayers.length > 0 || expectedSteamIds.length > playersOnCorrectSide.size) {
+        const missingNames = missingPlayers.map((p) => p.nickname).join(', ');
+        const notReadyMsg = applyPlaceholders(
+          chatMessages.teamNotReadyMessage,
+          { player_name: playerName, team_name: teamName, missing: missingNames }
+        );
+        await sendBotCommand(session.botAccountId, {
+          type: 'send_chat',
+          sessionId: session.id,
+          message: notReadyMsg,
+        });
+        return; // Do not mark the team as ready
+      }
+    }
+
     const updatedReadyState = { ...session.readyState };
-    const updatedCooldowns = { ...(session.readyCooldowns || {}) };
-    updatedCooldowns[event.steamId32] = new Date().toISOString();
 
     if (team === 'radiant') {
       updatedReadyState.radiantReady = true;
@@ -443,38 +539,28 @@ async function handleChatForReadyCheck(
       updatedReadyState.direReadyBy = event.steamId32;
     }
 
-    const bothReady =
-      updatedReadyState.radiantReady && updatedReadyState.direReady;
+    const bothReady = updatedReadyState.radiantReady && updatedReadyState.direReady;
 
     await updateLobbySession(session.id, {
       readyState: updatedReadyState,
-      readyCooldowns: updatedCooldowns,
       state: bothReady ? 'ready_check' : session.state,
     });
 
     if (bothReady) {
-      // Both teams ready — notify bot to validate and start
       await sendBotCommand(session.botAccountId, {
         type: 'send_chat',
         sessionId: session.id,
-        message: botConfig.chatMessages.allReadyMessage,
+        message: applyPlaceholders(chatMessages.allReadyMessage, { player_name: playerName, team_name: teamName }),
       });
     } else {
-      // Notify that one team is ready
-      const teamName =
-        team === 'radiant'
-          ? session.radiantTeam.teamName
-          : session.direTeam.teamName;
       await sendBotCommand(session.botAccountId, {
         type: 'send_chat',
         sessionId: session.id,
-        message: `${teamName} is ready! Waiting for the other team...`,
+        message: applyPlaceholders(chatMessages.teamReadyMessage, { player_name: playerName, team_name: teamName }),
       });
     }
   } else if (isUnready) {
     const updatedReadyState = { ...session.readyState };
-    const updatedCooldowns = { ...(session.readyCooldowns || {}) };
-    updatedCooldowns[event.steamId32] = new Date().toISOString();
 
     if (team === 'radiant') {
       updatedReadyState.radiantReady = false;
@@ -486,7 +572,6 @@ async function handleChatForReadyCheck(
 
     await updateLobbySession(session.id, {
       readyState: updatedReadyState,
-      readyCooldowns: updatedCooldowns,
       state: 'lobby_open',
     });
   }
@@ -577,34 +662,15 @@ async function handleGameEnded(
   });
   await updateBotAccountStatus(botAccountId, 'post_game', undefined, undefined);
 
-  // ── 3. Update match document with the game result ─────
+  // ── 3. Declare match reference — used in series completion block below ──────
+  // Match data (game_ids, scores) is written by the pendingSync pipeline;
+  // we do NOT manually write intermediate per-game data here.
   const db = getAdminDb();
   const matchRef = db
     .collection('tournaments')
     .doc(session.tournamentId)
     .collection('matches')
     .doc(session.matchId);
-
-  // Append game ID to match.game_ids and update team scores
-  const matchSnap = await matchRef.get();
-  if (matchSnap.exists) {
-    const matchData = matchSnap.data();
-    const existingGameIds: number[] = matchData?.game_ids || [];
-    const teamAId: string = matchData?.teamA?.id;
-    const teamBId: string = matchData?.teamB?.id;
-
-    const matchUpdates: Record<string, unknown> = {
-      game_ids: [...existingGameIds, event.dotaMatchId],
-    };
-
-    // Sync teamA/teamB scores from the series score
-    if (teamAId && teamBId) {
-      matchUpdates['teamA.score'] = updatedScore[teamAId] || 0;
-      matchUpdates['teamB.score'] = updatedScore[teamBId] || 0;
-    }
-
-    await matchRef.update(matchUpdates);
-  }
 
   // Build a virtual updated session for series calculation
   const updatedSession: LobbySession = {
@@ -720,7 +786,7 @@ async function handleGameEnded(
 // ─── Enforcement Handlers ───────────────────────────────────────────────────
 
 /**
- * Handle a player_joined event: immediately kick unauthorized players.
+ * Handle a player_joined event: kick unauthorized players, welcome eligible ones.
  * This runs on every join so unauthorized players are ejected fast.
  */
 async function handlePlayerJoinedEnforcement(
@@ -728,16 +794,15 @@ async function handlePlayerJoinedEnforcement(
   event: PlayerJoinedEvent,
   botAccountId: string
 ): Promise<void> {
-  const { getTournamentBotConfig, updateLobbySession } = await import('./bot-config-actions');
+  const { getTournamentBotConfig } = await import('./bot-config-actions');
   const { getAllAuthorizedSteamIds } = await import('./lobby-lifecycle');
 
   const botConfig = await getTournamentBotConfig(session.tournamentId);
-  if (!botConfig?.enforcement?.autoKickUnauthorized) return;
-
-  const whitelist = botConfig.whitelist ?? [];
+  const whitelist = botConfig?.whitelist ?? [];
   const authorized = getAllAuthorizedSteamIds(session, whitelist);
 
   if (!authorized.has(event.steamId32)) {
+    if (!botConfig?.enforcement?.autoKickUnauthorized) return;
     // Unauthorized player — kick immediately
     await sendBotCommand(botAccountId, {
       type: 'kick_player',
@@ -749,7 +814,29 @@ async function handlePlayerJoinedEnforcement(
       sessionId: session.id,
       message: `Player (Steam32: ${event.steamId32}) is not registered for this match and has been removed.`,
     });
+    return;
   }
+
+  // Eligible player joined — look up their display name and send welcome message
+  const effectiveChat = getEffectiveChatMessages(botConfig, botAccountId);
+  const welcomeTemplate = effectiveChat.welcomeMessage;
+  if (!welcomeTemplate) return;
+
+  // Find name from expected players (registered or approved standin)
+  const allExpected = [
+    ...session.radiantTeam.expectedPlayers,
+    ...session.direTeam.expectedPlayers,
+  ];
+  const playerRecord = allExpected.find((p) => p.steamId32 === event.steamId32);
+  const playerName = playerRecord?.nickname ?? `Steam32:${event.steamId32}`;
+
+  // Apply {player_name} placeholder; prefix name for a personal welcome
+  const welcomeMsg = applyPlaceholders(welcomeTemplate, { player_name: playerName });
+  await sendBotCommand(botAccountId, {
+    type: 'send_chat',
+    sessionId: session.id,
+    message: `${playerName}: ${welcomeMsg}`,
+  });
 }
 
 /**
@@ -778,8 +865,9 @@ async function handleLobbyStateEnforcement(
 
   const actions = evaluateEnforcement(session, players, enforcementConfig, whitelist);
 
-  // Execute kicks
+  // Execute kicks for unauthorized players only (wrong-slot is informational, not a kick)
   for (const kick of actions.kickPlayers) {
+    if (kick.reason !== 'not_registered') continue;
     await sendBotCommand(botAccountId, {
       type: 'kick_player',
       sessionId: session.id,
@@ -787,31 +875,168 @@ async function handleLobbyStateEnforcement(
     });
   }
 
-  // Execute reinvites (for wrong-slot kicks)
-  if (actions.reinvitePlayers.length > 0) {
-    await sendBotCommand(botAccountId, {
-      type: 'invite_players',
-      sessionId: session.id,
-      steamIds: actions.reinvitePlayers,
-    });
+  // When both teams have said !ready, check slot cohesion and inform players
+  if (session.state === 'ready_check') {
+    await validateAndAnnounceSlots(session, players, botAccountId);
   }
 
-  // Send chat messages
-  for (const msg of actions.chatMessages) {
-    await sendBotCommand(botAccountId, {
-      type: 'send_chat',
-      sessionId: session.id,
-      message: msg,
-    });
+  // Note: wrong-slot reinvites and warnings are intentionally omitted — sides are
+  // interchangeable (coin toss decides radiant/dire), so only same-team cohesion matters.
+}
+
+/**
+ * Send an informational slot-cohesion message when both teams have declared ready.
+ * Teams A and B can sit on either side (Radiant or Dire), but each team's players
+ * must all be on the SAME side. If they're split, let them know.
+ */
+async function validateAndAnnounceSlots(
+  session: LobbySession,
+  players: Array<{ steamId32: string; teamSide: 'radiant' | 'dire' | 'spectator' | 'unassigned' }>,
+  botAccountId: string
+): Promise<void> {
+  const teams: Array<{ assignment: Set<string>; name: string }> = [
+    {
+      assignment: new Set(session.radiantTeam.expectedPlayers.map((p) => p.steamId32)),
+      name: session.radiantTeam.teamName,
+    },
+    {
+      assignment: new Set(session.direTeam.expectedPlayers.map((p) => p.steamId32)),
+      name: session.direTeam.teamName,
+    },
+  ];
+
+  const splitTeams: string[] = [];
+
+  for (const { assignment, name } of teams) {
+    const seated = players.filter(
+      (p) =>
+        assignment.has(p.steamId32) &&
+        (p.teamSide === 'radiant' || p.teamSide === 'dire')
+    );
+    const onRadiant = seated.filter((p) => p.teamSide === 'radiant').length;
+    const onDire = seated.filter((p) => p.teamSide === 'dire').length;
+    if (onRadiant > 0 && onDire > 0) {
+      splitTeams.push(name);
+    }
   }
 
-  // Persist updated wrong-slot warnings
-  if (
-    JSON.stringify(actions.updatedWrongSlotWarnings) !==
-    JSON.stringify(session.wrongSlotWarnings || {})
-  ) {
+  if (splitTeams.length > 0) {
+    for (const teamName of splitTeams) {
+      await sendBotCommand(botAccountId, {
+        type: 'send_chat',
+        sessionId: session.id,
+        message: `[BOT] ${teamName}: your players are split across Radiant and Dire slots. Please sit together on one side before the game starts.`,
+      });
+    }
+  }
+}
+
+/**
+ * Handle a forfeit_declared event from the bot-worker.
+ *
+ * game1 forfeit  → award +1 to the winner, record in forfeitedGames,
+ *                  schedule the next game, close current lobby.
+ * series forfeit → mark match as completed with the winner, close lobby.
+ */
+async function handleForfeitDeclared(
+  session: LobbySession,
+  event: ForfeitDeclaredEvent,
+  botAccountId: string
+): Promise<void> {
+  const {
+    updateLobbySession,
+    updateBotAccountStatus,
+    scheduleNextGameInSeries,
+  } = await import('./bot-config-actions');
+  const { getNextGameNumber } = await import('./lobby-lifecycle');
+  const { getAdminDb } = await import('@/server/lib/admin');
+
+  // Derive winner side and team ID from the forfeited side
+  const winnerSide: 'radiant' | 'dire' =
+    event.forfeitedTeam === 'radiant' ? 'dire' : 'radiant';
+  const winnerTeamId =
+    winnerSide === 'radiant'
+      ? session.radiantTeam.teamId
+      : session.direTeam.teamId;
+
+  // Update series score in the session
+  const updatedScore = { ...session.seriesScore };
+  updatedScore[winnerTeamId] = (updatedScore[winnerTeamId] || 0) + 1;
+
+  const newForfeitEntry = {
+    gameNumber: session.currentGameNumber,
+    forfeitedTeam: event.forfeitedTeam,
+    winnerTeam: winnerSide,
+  };
+  const updatedForfeitedGames = [
+    ...(session.forfeitedGames ?? []),
+    newForfeitEntry,
+  ];
+
+  if (event.forfeitType === 'game1') {
+    // Close current session, schedule next game
     await updateLobbySession(session.id, {
-      wrongSlotWarnings: actions.updatedWrongSlotWarnings,
+      state: 'completed',
+      completedAt: new Date().toISOString(),
+      seriesScore: updatedScore,
+      forfeitedGames: updatedForfeitedGames,
     });
+    await updateBotAccountStatus(botAccountId, 'idle', undefined, undefined);
+
+    await sendBotCommand(botAccountId, {
+      type: 'leave_lobby',
+      sessionId: session.id,
+    } as BotCommand);
+
+    const virtualSession: LobbySession = {
+      ...session,
+      seriesScore: updatedScore,
+      forfeitedGames: updatedForfeitedGames,
+    };
+
+    const nextGame = getNextGameNumber(virtualSession);
+    if (nextGame !== null) {
+      const result = await scheduleNextGameInSeries(virtualSession, nextGame);
+      if (!result.success) {
+        console.error(
+          `[BotAgent] Failed to schedule Game ${nextGame} after forfeit for match ${session.matchId}: ${result.error}`
+        );
+      } else {
+        console.log(
+          `[BotAgent] Scheduled Game ${nextGame} after Game 1 forfeit for match ${session.matchId} (session: ${result.sessionId})`
+        );
+      }
+    }
+  } else {
+    // Series forfeit — finalize everything
+    await updateLobbySession(session.id, {
+      state: 'completed',
+      completedAt: new Date().toISOString(),
+      seriesScore: updatedScore,
+      forfeitedGames: updatedForfeitedGames,
+    });
+    await updateBotAccountStatus(botAccountId, 'idle', undefined, undefined);
+
+    const db = getAdminDb();
+    await db
+      .collection('tournaments')
+      .doc(session.tournamentId)
+      .collection('matches')
+      .doc(session.matchId)
+      .update({
+        status: 'completed',
+        winnerId: winnerTeamId,
+        completed_at: new Date().toISOString(),
+        forfeit: true,
+      });
+
+    await sendBotCommand(botAccountId, {
+      type: 'leave_lobby',
+      sessionId: session.id,
+    } as BotCommand);
+
+    console.log(
+      `[BotAgent] Series forfeited: ${event.winnerTeamName} wins match ${session.matchId}`
+    );
   }
 }

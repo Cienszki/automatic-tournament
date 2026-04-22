@@ -1,107 +1,18 @@
 "use client";
 
 import { useTournament, useTournamentType } from '@/context/TournamentContext';
-import { GroupTable } from "@/components/app/GroupTable";
-import { getAllGroups, getAllTeams } from "@/lib/firestore";
-import { getGroups, calculateGroupStandings } from "@/lib/api/groups";
-import type { TeamForStandings, MatchForStandings } from "@/lib/api/groups";
-import { collection, getDocs } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
-import type { Group, GroupStanding } from "@/lib/definitions";
+import { usePDLData } from '@/hooks/usePDLData';
+import { DivisionTable } from '@/components/pdl/DivisionTable';
 import { AlertTriangle } from 'lucide-react';
-import { useState, useEffect } from "react";
 import { LoadingScreen } from '@/components/ui/LoadingScreen';
-
-// Hydrate groups with team data (legacy)
-async function getHydratedGroupsData(): Promise<Group[]> {
-  const [groups, teams] = await Promise.all([
-    getAllGroups(),
-    getAllTeams()
-  ]);
-
-  const teamsMap = new Map(teams.map(team => [team.id, team]));
-
-  const hydratedGroups = groups.map(group => {
-    const hydratedStandings: { [teamId: string]: GroupStanding } = {};
-    
-    for (const teamId in group.standings) {
-      const team = teamsMap.get(teamId);
-      if (team) {
-        const standing = group.standings[teamId];
-        hydratedStandings[teamId] = {
-          ...standing,
-          draws: standing.draws || 0,
-          teamName: team.name,
-          teamLogoUrl: team.logoUrl || '',
-          totalMMR: team.players.reduce((sum, p) => sum + p.mmr, 0)
-        };
-      }
-    }
-    
-    // Calculate Neustadtl score
-    Object.values(hydratedStandings).forEach(standing => {
-      let neustadtl = 0;
-      if (standing.headToHead) {
-        Object.entries(standing.headToHead).forEach(([opponentId, result]) => {
-           const opponentPoints = hydratedStandings[opponentId]?.points || 0;
-           if (result === 'win') {
-             neustadtl += opponentPoints;
-           } else if (result === 'draw') {
-             neustadtl += opponentPoints * 0.5;
-           }
-        });
-      }
-      standing.neustadtlScore = neustadtl;
-    });
-
-    return {
-      ...group,
-      standings: hydratedStandings,
-    };
-  });
-
-  return hydratedGroups;
-}
 
 /**
  * Groups page - shows group stage standings (MMR tournaments only)
  */
 export default function GroupsPage() {
-  const { tournament, theme, isLegacyTournament } = useTournament();
+  const { tournament, theme } = useTournament();
   const { isMmrLimited } = useTournamentType();
-  const [groups, setGroups] = useState<Group[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    async function loadGroups() {
-      try {
-        if (isLegacyTournament) {
-          const data = await getHydratedGroupsData();
-          setGroups(data);
-        } else if (tournament?.id) {
-          const [groupDocs, teamsSnap, matchesSnap] = await Promise.all([
-            getGroups(tournament.id),
-            getDocs(collection(db, 'tournaments', tournament.id, 'teams')),
-            getDocs(collection(db, 'tournaments', tournament.id, 'matches')),
-          ]);
-
-          const teams: TeamForStandings[] = teamsSnap.docs.map(doc => ({
-            id: doc.id,
-            ...(doc.data() as Omit<TeamForStandings, 'id'>),
-          }));
-
-          const matches = matchesSnap.docs.map(doc => doc.data() as MatchForStandings);
-
-          setGroups(calculateGroupStandings(groupDocs, teams, matches));
-        }
-      } catch (error) {
-        console.error("Failed to load groups:", error);
-      } finally {
-        setLoading(false);
-      }
-    }
-    loadGroups();
-  }, [isLegacyTournament, tournament?.id]);
+  const { divisions, loading } = usePDLData();
 
   if (!tournament) return null;
 
@@ -121,7 +32,7 @@ export default function GroupsPage() {
     return <LoadingScreen />;
   }
 
-  const sortedGroups = [...groups].sort((a, b) => a.name.localeCompare(b.name));
+  const sortedDivisions = [...divisions].sort((a, b) => a.name.localeCompare(b.name));
 
   return (
     <div className="relative text-white overflow-x-hidden min-h-screen">
@@ -173,7 +84,7 @@ export default function GroupsPage() {
         </div>
 
         {/* Groups */}
-        {sortedGroups.length === 0 ? (
+        {sortedDivisions.length === 0 ? (
           <div className="rounded-2xl border border-white/5 bg-white/5 backdrop-blur-sm p-12 text-center relative overflow-hidden group">
             <div
               className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
@@ -189,8 +100,16 @@ export default function GroupsPage() {
           </div>
         ) : (
           <div className="grid gap-6 md:grid-cols-2">
-            {sortedGroups.map((group) => (
-              <GroupTable key={group.id} group={group} />
+            {sortedDivisions.map((division) => (
+              <DivisionTable
+                key={division.id}
+                divisionName={division.name}
+                divisionColor={division.color}
+                teams={division.teams}
+                divisionId={division.id}
+                divisionTheme={division.theme}
+                medalUrl={division.medalUrl}
+              />
             ))}
           </div>
         )}

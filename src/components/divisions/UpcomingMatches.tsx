@@ -34,7 +34,7 @@ export function UpcomingMatches({ matches, divisionColor, theme }: UpcomingMatch
         return (
             <Card
                 style={{
-                    background: 'linear-gradient(145deg, rgba(20, 20, 25, 0.95), rgba(30, 15, 20, 0.95))',
+                    background: theme?.cardColor || 'rgba(20, 20, 25, 0.95)',
                     backdropFilter: 'blur(10px)',
                     borderColor: `${divisionColor}30`,
                     borderWidth: '1px',
@@ -43,11 +43,11 @@ export function UpcomingMatches({ matches, divisionColor, theme }: UpcomingMatch
                 <CardHeader>
                     <div className="flex items-center gap-3">
                         <div className="w-1 h-8 rounded-full" style={{ backgroundColor: divisionColor }} />
-                        <CardTitle className="text-xl">Nadchodzące mecze</CardTitle>
+                        <CardTitle className="text-xl" style={{ color: theme?.headingColor || theme?.primaryTextColor || 'white' }}>Nadchodzące mecze</CardTitle>
                     </div>
                 </CardHeader>
                 <CardContent>
-                    <p className="text-center text-muted-foreground py-8">
+                    <p className="text-center py-8" style={{ color: theme?.secondaryTextColor || 'rgba(255,255,255,0.5)' }}>
                         Brak zaplanowanych meczów
                     </p>
                 </CardContent>
@@ -58,7 +58,7 @@ export function UpcomingMatches({ matches, divisionColor, theme }: UpcomingMatch
     return (
         <Card
             style={{
-                background: 'linear-gradient(145deg, rgba(20, 20, 25, 0.95), rgba(30, 15, 20, 0.95))',
+                background: theme?.cardColor || 'rgba(20, 20, 25, 0.95)',
                 backdropFilter: 'blur(10px)',
                 borderColor: `${divisionColor}30`,
                 borderWidth: '1px',
@@ -67,9 +67,9 @@ export function UpcomingMatches({ matches, divisionColor, theme }: UpcomingMatch
             <CardHeader>
                 <div className="flex items-center gap-3">
                     <div className="w-1 h-8 rounded-full" style={{ backgroundColor: divisionColor }} />
-                    <CardTitle className="text-xl">Nadchodzące mecze</CardTitle>
+                    <CardTitle className="text-xl" style={{ color: theme?.headingColor || theme?.primaryTextColor || 'white' }}>Nadchodzące mecze</CardTitle>
                 </div>
-                <p className="text-sm text-muted-foreground mt-2">
+                <p className="text-sm mt-2" style={{ color: theme?.secondaryTextColor || 'rgba(255,255,255,0.5)' }}>
                     Najbliższe {upcomingMatches.length} spotkań
                 </p>
             </CardHeader>
@@ -129,7 +129,7 @@ export function UpcomingMatches({ matches, divisionColor, theme }: UpcomingMatch
                                             {match.teamA.name.charAt(0)}
                                         </div>
                                     )}
-                                    <span className="font-logik-extended-bold font-semibold text-sm truncate">{match.teamA.name}</span>
+                                    <span className="font-logik-extended-bold font-semibold text-sm truncate" style={{ color: theme?.primaryTextColor || 'white' }}>{match.teamA.name}</span>
                                 </div>
 
                                 {/* VS */}
@@ -140,7 +140,7 @@ export function UpcomingMatches({ matches, divisionColor, theme }: UpcomingMatch
 
                                 {/* Team B */}
                                 <div className="flex items-center gap-3 flex-1 justify-end">
-                                    <span className="font-logik-extended-bold font-semibold text-sm truncate">{match.teamB.name}</span>
+                                    <span className="font-logik-extended-bold font-semibold text-sm truncate" style={{ color: theme?.primaryTextColor || 'white' }}>{match.teamB.name}</span>
                                     {match.teamB.logoUrl ? (
                                         <Image
                                             src={match.teamB.logoUrl}
@@ -159,7 +159,7 @@ export function UpcomingMatches({ matches, divisionColor, theme }: UpcomingMatch
                             </div>
 
                             {/* Match info */}
-                            <div className="flex items-center gap-4 mt-3 text-xs text-muted-foreground">
+                            <div className="flex items-center gap-4 mt-3 text-xs" style={{ color: theme?.secondaryTextColor || 'rgba(255,255,255,0.5)' }}>
                                 <div className="flex items-center gap-1.5">
                                     <Calendar className="w-3.5 h-3.5" />
                                     <span>{format(matchDate, 'dd MMM yyyy', { locale: pl })}</span>

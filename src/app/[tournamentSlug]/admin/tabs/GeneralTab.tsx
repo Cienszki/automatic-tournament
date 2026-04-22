@@ -24,8 +24,14 @@ import { FontManagement } from '@/components/admin/FontManagement';
 import type { CustomFont } from '@/components/admin/FontManagement';
 import {
   uploadTournamentLogo,
+  uploadTournamentInlineLogo,
+  uploadTournamentOrganizerLogo,
   uploadTournamentBackground,
   uploadTournamentFavicon,
+  uploadTournamentPromotionalImage,
+  uploadTournamentSponsorImage,
+  uploadTournamentHeroLeftImage,
+  uploadTournamentHeroRightImage,
 } from '@/lib/storage';
 import { 
   Settings,
@@ -61,8 +67,11 @@ export function GeneralTab() {
   
   // Form state - Basic Info
   const [tournamentName, setTournamentName] = useState(tournament?.name || '');
+  const [heroTitle, setHeroTitle] = useState(tournament?.heroTitle || '');
+  const [description, setDescription] = useState(tournament?.description || '');
   const [logoUrl, setLogoUrl] = useState(theme?.logoUrl || '');
-  const [inlineLogoUrl, setInlineLogoUrl] = useState(''); // Not in theme yet, will be added later
+  const [inlineLogoUrl, setInlineLogoUrl] = useState(theme?.inlineLogoUrl || '');
+  const [organizerLogoUrl, setOrganizerLogoUrl] = useState(theme?.organizerLogoUrl || '');
   const [leagueId, setLeagueId] = useState(tournament?.leagueId?.toString() || '');
   const [twitchUrl, setTwitchUrl] = useState(tournament?.twitchUrl || '');
   const [discordUrl, setDiscordUrl] = useState(tournament?.discordUrl || '');
@@ -71,6 +80,7 @@ export function GeneralTab() {
   const [tiktokUrl, setTiktokUrl] = useState(tournament?.tiktokUrl || '');
 
   // Lobby settings
+  const [lobbyLeagueName, setLobbyLeagueName] = useState(tournament?.lobbySettings?.leagueName || '');
   const [lobbyGameMode, setLobbyGameMode] = useState(tournament?.lobbySettings?.gameMode || 'Captains Mode');
   const [lobbyServer, setLobbyServer] = useState(tournament?.lobbySettings?.server || 'EU West');
   const [lobbyVisibility, setLobbyVisibility] = useState(tournament?.lobbySettings?.visibility || 'Publiczna');
@@ -97,6 +107,12 @@ export function GeneralTab() {
   const [textColor, setTextColor] = useState(theme.textColor || '');
   const [borderColor, setBorderColor] = useState(theme.borderColor || '');
 
+  // Text hierarchy colors
+  const [titleColor, setTitleColor] = useState(theme.titleColor || '');
+  const [sectionHeaderColor, setSectionHeaderColor] = useState(theme.sectionHeaderColor || '');
+  const [primaryTextColor, setPrimaryTextColor] = useState(theme.primaryTextColor || '');
+  const [secondaryTextColor, setSecondaryTextColor] = useState(theme.secondaryTextColor || '');
+
   // Asset URLs
   const [backgroundImageUrl, setBackgroundImageUrl] = useState(theme.backgroundImageUrl || '');
   const [faviconUrl, setFaviconUrl] = useState(theme.faviconUrl || '');
@@ -114,12 +130,40 @@ export function GeneralTab() {
   const [cardBorderRadius, setCardBorderRadius] = useState(theme.cardBorderRadius || '0.75rem');
   const [navbarStyle, setNavbarStyle] = useState<string>(theme.navbarStyle || 'blur');
   const [navbarColor, setNavbarColor] = useState(theme.navbarColor || '');
+  const [navbarOpacity, setNavbarOpacity] = useState(theme.navbarOpacity ?? 100);
+  const [navbarBlur, setNavbarBlur] = useState(theme.navbarBlur ?? 12);
+  const [navbarTextColor, setNavbarTextColor] = useState(theme.navbarTextColor || '');
+  const [navbarFont, setNavbarFont] = useState(theme.navbarFont || 'default');
   const [themeStyle, setThemeStyle] = useState<string>(theme.themeStyle || 'dark');
+
+  // Sponsor section state
+  const [sponsorEnabled, setSponsorEnabled] = useState(tournament?.navbarSponsor?.enabled ?? false);
+  const [sponsorName, setSponsorName] = useState(tournament?.navbarSponsor?.sponsorName || '');
+  const [sponsorImageUrl, setSponsorImageUrl] = useState(tournament?.navbarSponsor?.sponsorImageUrl || '');
+  const [sponsorUrl, setSponsorUrl] = useState(tournament?.navbarSponsor?.sponsorUrl || '');
+  const [sponsorSecondaryText, setSponsorSecondaryText] = useState(tournament?.navbarSponsor?.secondaryText || '');
+  const [sponsorIntervalMs, setSponsorIntervalMs] = useState(tournament?.navbarSponsor?.intervalMs ?? 5000);
+  const [sponsorWidthPx, setSponsorWidthPx] = useState(tournament?.navbarSponsor?.widthPx ?? 200);
+  const [uploadingSponsotImage, setUploadingSponsorImage] = useState(false);
+
+  // Upload state
+  // Promotional image
+  const [promotionalImageUrl, setPromotionalImageUrl] = useState(tournament?.promotionalImageUrl || '');
+
+  // Hero layout
+  const [heroLayout, setHeroLayout] = useState<'logo-promo' | 'three-images'>(tournament?.heroLayout ?? 'logo-promo');
+  const [heroLeftImageUrl, setHeroLeftImageUrl] = useState(tournament?.heroLeftImageUrl || '');
+  const [heroRightImageUrl, setHeroRightImageUrl] = useState(tournament?.heroRightImageUrl || '');
 
   // Upload state
   const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [uploadingInlineLogo, setUploadingInlineLogo] = useState(false);
+  const [uploadingOrganizerLogo, setUploadingOrganizerLogo] = useState(false);
   const [uploadingBg, setUploadingBg] = useState(false);
   const [uploadingFavicon, setUploadingFavicon] = useState(false);
+  const [uploadingPromo, setUploadingPromo] = useState(false);
+  const [uploadingHeroLeft, setUploadingHeroLeft] = useState(false);
+  const [uploadingHeroRight, setUploadingHeroRight] = useState(false);
   const [showAdvancedTheme, setShowAdvancedTheme] = useState(false);
 
   // Typography settings
@@ -282,6 +326,12 @@ export function GeneralTab() {
       const tournamentRef = doc(db, 'tournaments', tournament.id);
       await updateDoc(tournamentRef, {
         name: tournamentName,
+        heroTitle: heroTitle || null,
+        description: description || null,
+        promotionalImageUrl: promotionalImageUrl || null,
+        heroLayout: heroLayout,
+        heroLeftImageUrl: heroLeftImageUrl || null,
+        heroRightImageUrl: heroRightImageUrl || null,
         leagueId: leagueId ? Number(leagueId) : null,
         twitchUrl: twitchUrl || null,
         discordUrl: discordUrl || null,
@@ -289,6 +339,7 @@ export function GeneralTab() {
         instagramUrl: instagramUrl || null,
         tiktokUrl: tiktokUrl || null,
         lobbySettings: {
+          leagueName: lobbyLeagueName || null,
           gameMode: lobbyGameMode || 'Captains Mode',
           server: lobbyServer || 'EU West',
           visibility: lobbyVisibility || 'Publiczna',
@@ -300,11 +351,17 @@ export function GeneralTab() {
         status: status,
         mmrCap: tournamentType === 'mmr-limited' ? mmrLimit : null,
         'theme.logoUrl': logoUrl || null,
+        'theme.inlineLogoUrl': inlineLogoUrl || null,
+        'theme.organizerLogoUrl': organizerLogoUrl || null,
         'theme.primaryColor': primaryColor,
         'theme.secondaryColor': secondaryColor,
         'theme.accentColor': accentColor,
         'theme.glowColor': glowColor || null,
         'theme.headingColor': headingColor || null,
+        'theme.titleColor': titleColor || null,
+        'theme.sectionHeaderColor': sectionHeaderColor || null,
+        'theme.primaryTextColor': primaryTextColor || null,
+        'theme.secondaryTextColor': secondaryTextColor || null,
         'theme.backgroundColor': backgroundColor || 'hsl(240 17% 6%)',
         'theme.cardColor': cardColor || 'hsl(240 15% 10%)',
         'theme.textColor': textColor || 'hsl(0 0% 100%)',
@@ -321,12 +378,25 @@ export function GeneralTab() {
         'theme.cardBorderRadius': cardBorderRadius,
         'theme.navbarStyle': navbarStyle,
         'theme.navbarColor': navbarColor || null,
+        'theme.navbarOpacity': navbarOpacity,
+        'theme.navbarBlur': navbarBlur,
+        'theme.navbarTextColor': navbarTextColor || null,
+        'theme.navbarFont': navbarFont === 'default' ? null : navbarFont,
         'theme.themeStyle': themeStyle,
         'theme.headerFont': headerFont,
         'theme.textFont': textFont,
         'theme.readableFont': readableFont,
         'theme.rulesContentFont': rulesContentFont,
         customFonts: customFonts,
+        navbarSponsor: {
+          enabled: sponsorEnabled,
+          sponsorName: sponsorName || null,
+          sponsorImageUrl: sponsorImageUrl || null,
+          sponsorUrl: sponsorUrl || null,
+          secondaryText: sponsorSecondaryText || null,
+          intervalMs: sponsorIntervalMs,
+          widthPx: sponsorWidthPx,
+        },
       });
       
       await refetchTournament();
@@ -409,6 +479,35 @@ export function GeneralTab() {
                 ID ligi z DotaTV do importu meczów
               </p>
             </div>
+          </div>
+
+          {/* Hero Title */}
+          <div className="space-y-2">
+            <Label className="font-logik-extended-bold">Tytuł na stronie głównej</Label>
+            <Input
+              value={heroTitle}
+              onChange={(e) => setHeroTitle(e.target.value)}
+              placeholder={tournamentName || 'np. Polish Dota League Season 1'}
+              className="font-logik"
+            />
+            <p className="text-xs text-muted-foreground font-logik">
+              Duży nagłówek wyświetlany na stronie głównej turnieju. Jeśli puste, używana jest nazwa turnieju.
+            </p>
+          </div>
+
+          {/* Hero Description */}
+          <div className="space-y-2">
+            <Label className="font-logik-extended-bold">Opis turnieju (tekst hero)</Label>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="np. Turniej z limitem MMR 22000 na drużynę. Wyrównane szanse zapewniają świetną rywalizację."
+              rows={3}
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-logik ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 resize-none"
+            />
+            <p className="text-xs text-muted-foreground font-logik">
+              Wyświetlany pod nazwą turnieju na stronie głównej. Zostaw puste, aby ukryć.
+            </p>
           </div>
 
           {/* Social Links */}
@@ -564,19 +663,377 @@ export function GeneralTab() {
                     <Type className="h-4 w-4 text-muted-foreground" />
                   </div>
                 )}
-                <div className="flex-1">
+                <div className="flex-1 space-y-2">
                   <Input
                     value={inlineLogoUrl}
                     onChange={(e) => setInlineLogoUrl(e.target.value)}
                     placeholder="URL logo nawigacyjnego..."
                     className="font-logik"
                   />
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={uploadingInlineLogo}
+                      onClick={() => {
+                        const input = document.createElement('input');
+                        input.type = 'file';
+                        input.accept = 'image/png,image/svg+xml,image/webp,image/jpeg';
+                        input.onchange = async (e) => {
+                          const file = (e.target as HTMLInputElement).files?.[0];
+                          if (!file || !tournament?.slug) return;
+                          setUploadingInlineLogo(true);
+                          try {
+                            const url = await uploadTournamentInlineLogo(file, tournament.slug);
+                            setInlineLogoUrl(url);
+                          } catch (err) {
+                            console.error('Inline logo upload failed:', err);
+                          } finally {
+                            setUploadingInlineLogo(false);
+                          }
+                        };
+                        input.click();
+                      }}
+                      className="font-logik"
+                    >
+                      {uploadingInlineLogo ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Upload className="h-4 w-4 mr-1" />}
+                      Prześlij plik
+                    </Button>
+                    {inlineLogoUrl && (
+                      <Button variant="ghost" size="sm" onClick={() => setInlineLogoUrl('')} className="text-destructive">
+                        <X className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </div>
               <p className="text-xs text-muted-foreground font-logik">
                 Małe logo w navbarze, kliknięcie = powrót na stronę główną
               </p>
             </div>
+          </div>
+
+          {/* Organizer Logo */}
+          <div className="space-y-2">
+            <Label className="font-logik-extended-bold">Logo organizatora turnieju</Label>
+            <div className="flex items-center gap-3">
+              {organizerLogoUrl ? (
+                <div className="h-12 px-3 rounded-xl border-2 border-border overflow-hidden bg-muted flex items-center">
+                  <img src={organizerLogoUrl} alt="Organizer Logo" className="h-8 object-contain" />
+                </div>
+              ) : (
+                <div className="h-12 w-16 rounded-xl border-2 border-dashed border-border flex items-center justify-center bg-muted/50">
+                  <Shield className="h-5 w-5 text-muted-foreground" />
+                </div>
+              )}
+              <div className="flex-1 space-y-2">
+                <Input
+                  value={organizerLogoUrl}
+                  onChange={(e) => setOrganizerLogoUrl(e.target.value)}
+                  placeholder="URL logo organizatora..."
+                  className="font-logik"
+                />
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={uploadingOrganizerLogo}
+                    onClick={() => {
+                      const input = document.createElement('input');
+                      input.type = 'file';
+                      input.accept = 'image/png,image/svg+xml,image/webp,image/jpeg';
+                      input.onchange = async (e) => {
+                        const file = (e.target as HTMLInputElement).files?.[0];
+                        if (!file || !tournament?.slug) return;
+                        setUploadingOrganizerLogo(true);
+                        try {
+                          const url = await uploadTournamentOrganizerLogo(file, tournament.slug);
+                          setOrganizerLogoUrl(url);
+                        } catch (err) {
+                          console.error('Organizer logo upload failed:', err);
+                        } finally {
+                          setUploadingOrganizerLogo(false);
+                        }
+                      };
+                      input.click();
+                    }}
+                    className="font-logik"
+                  >
+                    {uploadingOrganizerLogo ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Upload className="h-4 w-4 mr-1" />}
+                    Prześlij plik
+                  </Button>
+                  {organizerLogoUrl && (
+                    <Button variant="ghost" size="sm" onClick={() => setOrganizerLogoUrl('')} className="text-destructive">
+                      <X className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground font-logik">
+              Logo wyświetlane na dyplomach zamiast domyślnego logo PD2IH.
+            </p>
+          </div>
+
+          {/* Promotional Image */}
+          <div className="space-y-2">
+            <Label className="font-logik-extended-bold">Obraz promocyjny</Label>
+            <div className="flex items-center gap-3">
+              {promotionalImageUrl ? (
+                <div className="h-20 w-32 rounded-xl border-2 border-border overflow-hidden bg-muted">
+                  <img src={promotionalImageUrl} alt="Promotional" className="w-full h-full object-cover" />
+                </div>
+              ) : (
+                <div className="h-20 w-32 rounded-xl border-2 border-dashed border-border flex items-center justify-center bg-muted/50">
+                  <ImageIcon className="h-6 w-6 text-muted-foreground" />
+                </div>
+              )}
+              <div className="flex-1 space-y-2">
+                <Input
+                  value={promotionalImageUrl}
+                  onChange={(e) => setPromotionalImageUrl(e.target.value)}
+                  placeholder="URL obrazu promocyjnego..."
+                  className="font-logik"
+                />
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={uploadingPromo}
+                    onClick={() => {
+                      const input = document.createElement('input');
+                      input.type = 'file';
+                      input.accept = 'image/png,image/webp,image/jpeg';
+                      input.onchange = async (e) => {
+                        const file = (e.target as HTMLInputElement).files?.[0];
+                        if (!file || !tournament?.slug) return;
+                        setUploadingPromo(true);
+                        try {
+                          const url = await uploadTournamentPromotionalImage(file, tournament.slug);
+                          setPromotionalImageUrl(url);
+                        } catch (err) {
+                          console.error('Promotional image upload failed:', err);
+                        } finally {
+                          setUploadingPromo(false);
+                        }
+                      };
+                      input.click();
+                    }}
+                    className="font-logik"
+                  >
+                    {uploadingPromo ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Upload className="h-4 w-4 mr-1" />}
+                    Prześlij plik
+                  </Button>
+                  {promotionalImageUrl && (
+                    <Button variant="ghost" size="sm" onClick={() => setPromotionalImageUrl('')} className="text-destructive">
+                      <X className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground font-logik">
+              Obraz wyświetlany na stronie głównej turnieju obok logo. Najlepiej w proporcjach 16:9 lub 3:2.
+            </p>
+          </div>
+
+          {/* Hero Layout Selector */}
+          <div className="space-y-4">
+            <div>
+              <Label className="font-logik-extended-bold">Układ strony głównej (VIEW 1)</Label>
+              <p className="text-xs text-muted-foreground font-logik mt-1">
+                Wybierz jak wygląda pierwsza sekcja strony głównej turnieju.
+              </p>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* Logo + Promo option */}
+              <button
+                type="button"
+                onClick={() => setHeroLayout('logo-promo')}
+                className={cn(
+                  'relative rounded-xl border-2 p-4 text-left transition-all duration-200',
+                  heroLayout === 'logo-promo'
+                    ? 'border-[var(--tournament-primary)] bg-[var(--tournament-primary)]/10'
+                    : 'border-border hover:border-border/80 bg-muted/30',
+                )}
+              >
+                {/* Mini preview */}
+                <div className="mb-3 h-16 rounded-lg bg-black/40 border border-white/10 flex items-center justify-center gap-2 px-3 overflow-hidden">
+                  <div className="flex-1 flex items-center justify-center">
+                    <div className="w-10 h-10 rounded bg-white/20 flex items-center justify-center">
+                      <ImageIcon className="w-4 h-4 text-white/50" />
+                    </div>
+                  </div>
+                  <div className="flex-1 flex items-center justify-center">
+                    <div className="w-16 h-9 rounded bg-white/10" />
+                  </div>
+                </div>
+                <p className="font-logik-extended-bold text-sm">Logo + Obraz promocyjny</p>
+                <p className="text-xs text-muted-foreground font-logik mt-0.5">Logo turnieju po lewej, obraz promocyjny po prawej.</p>
+                {heroLayout === 'logo-promo' && (
+                  <CheckCircle2 className="absolute top-3 right-3 h-4 w-4" style={{ color: 'var(--tournament-primary)' }} />
+                )}
+              </button>
+
+              {/* Three images option */}
+              <button
+                type="button"
+                onClick={() => setHeroLayout('three-images')}
+                className={cn(
+                  'relative rounded-xl border-2 p-4 text-left transition-all duration-200',
+                  heroLayout === 'three-images'
+                    ? 'border-[var(--tournament-primary)] bg-[var(--tournament-primary)]/10'
+                    : 'border-border hover:border-border/80 bg-muted/30',
+                )}
+              >
+                {/* Mini preview */}
+                <div className="mb-3 h-16 rounded-lg bg-black/40 border border-white/10 flex items-center justify-center gap-1 overflow-hidden">
+                  <div className="w-[30%] h-full bg-white/10 rounded-l-md" />
+                  <div className="flex-1 flex items-center justify-center">
+                    <div className="w-10 h-10 rounded bg-white/20 flex items-center justify-center">
+                      <ImageIcon className="w-4 h-4 text-white/50" />
+                    </div>
+                  </div>
+                  <div className="w-[30%] h-full bg-white/10 rounded-r-md" />
+                </div>
+                <p className="font-logik-extended-bold text-sm">3 obrazy (krawędź do krawędzi)</p>
+                <p className="text-xs text-muted-foreground font-logik mt-0.5">Obraz lewy + logo w środku + obraz prawy, bez marginesów.</p>
+                {heroLayout === 'three-images' && (
+                  <CheckCircle2 className="absolute top-3 right-3 h-4 w-4" style={{ color: 'var(--tournament-primary)' }} />
+                )}
+              </button>
+            </div>
+
+            {/* Three-images upload fields — only shown when that layout is selected */}
+            {heroLayout === 'three-images' && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
+
+                {/* Left image */}
+                <div className="space-y-2">
+                  <Label className="font-logik-extended-bold">Obraz lewy</Label>
+                  <div className="flex items-center gap-3">
+                    {heroLeftImageUrl ? (
+                      <div className="h-20 w-32 rounded-xl border-2 border-border overflow-hidden bg-muted flex-shrink-0">
+                        <img src={heroLeftImageUrl} alt="Hero left" className="w-full h-full object-cover" />
+                      </div>
+                    ) : (
+                      <div className="h-20 w-32 rounded-xl border-2 border-dashed border-border flex items-center justify-center bg-muted/50 flex-shrink-0">
+                        <ImageIcon className="h-6 w-6 text-muted-foreground" />
+                      </div>
+                    )}
+                    <div className="flex-1 space-y-2">
+                      <Input
+                        value={heroLeftImageUrl}
+                        onChange={(e) => setHeroLeftImageUrl(e.target.value)}
+                        placeholder="URL lewego obrazu..."
+                        className="font-logik"
+                      />
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={uploadingHeroLeft}
+                          onClick={() => {
+                            const input = document.createElement('input');
+                            input.type = 'file';
+                            input.accept = 'image/png,image/webp,image/jpeg';
+                            input.onchange = async (e) => {
+                              const file = (e.target as HTMLInputElement).files?.[0];
+                              if (!file || !tournament?.slug) return;
+                              setUploadingHeroLeft(true);
+                              try {
+                                const url = await uploadTournamentHeroLeftImage(file, tournament.slug);
+                                setHeroLeftImageUrl(url);
+                              } catch (err) {
+                                console.error('Hero left image upload failed:', err);
+                              } finally {
+                                setUploadingHeroLeft(false);
+                              }
+                            };
+                            input.click();
+                          }}
+                          className="font-logik"
+                        >
+                          {uploadingHeroLeft ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Upload className="h-4 w-4 mr-1" />}
+                          Prześlij plik
+                        </Button>
+                        {heroLeftImageUrl && (
+                          <Button variant="ghost" size="sm" onClick={() => setHeroLeftImageUrl('')} className="text-destructive">
+                            <X className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground font-logik">
+                    Wyrównany do lewej krawędzi ekranu. Zalecany format portretowy lub kwadratowy.
+                  </p>
+                </div>
+
+                {/* Right image */}
+                <div className="space-y-2">
+                  <Label className="font-logik-extended-bold">Obraz prawy</Label>
+                  <div className="flex items-center gap-3">
+                    {heroRightImageUrl ? (
+                      <div className="h-20 w-32 rounded-xl border-2 border-border overflow-hidden bg-muted flex-shrink-0">
+                        <img src={heroRightImageUrl} alt="Hero right" className="w-full h-full object-cover" />
+                      </div>
+                    ) : (
+                      <div className="h-20 w-32 rounded-xl border-2 border-dashed border-border flex items-center justify-center bg-muted/50 flex-shrink-0">
+                        <ImageIcon className="h-6 w-6 text-muted-foreground" />
+                      </div>
+                    )}
+                    <div className="flex-1 space-y-2">
+                      <Input
+                        value={heroRightImageUrl}
+                        onChange={(e) => setHeroRightImageUrl(e.target.value)}
+                        placeholder="URL prawego obrazu..."
+                        className="font-logik"
+                      />
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={uploadingHeroRight}
+                          onClick={() => {
+                            const input = document.createElement('input');
+                            input.type = 'file';
+                            input.accept = 'image/png,image/webp,image/jpeg';
+                            input.onchange = async (e) => {
+                              const file = (e.target as HTMLInputElement).files?.[0];
+                              if (!file || !tournament?.slug) return;
+                              setUploadingHeroRight(true);
+                              try {
+                                const url = await uploadTournamentHeroRightImage(file, tournament.slug);
+                                setHeroRightImageUrl(url);
+                              } catch (err) {
+                                console.error('Hero right image upload failed:', err);
+                              } finally {
+                                setUploadingHeroRight(false);
+                              }
+                            };
+                            input.click();
+                          }}
+                          className="font-logik"
+                        >
+                          {uploadingHeroRight ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Upload className="h-4 w-4 mr-1" />}
+                          Prześlij plik
+                        </Button>
+                        {heroRightImageUrl && (
+                          <Button variant="ghost" size="sm" onClick={() => setHeroRightImageUrl('')} className="text-destructive">
+                            <X className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground font-logik">
+                    Wyrównany do prawej krawędzi ekranu. Zalecany format portretowy lub kwadratowy.
+                  </p>
+                </div>
+
+              </div>
+            )}
           </div>
 
           {/* Background Image & Favicon */}
@@ -717,6 +1174,18 @@ export function GeneralTab() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
+          <div className="space-y-2">
+            <Label className="font-logik-extended-bold">Nazwa Ligi (w lobby)</Label>
+            <Input
+              value={lobbyLeagueName}
+              onChange={(e) => setLobbyLeagueName(e.target.value)}
+              placeholder={tournamentName || 'np. PDL Season 1'}
+              className="font-logik"
+            />
+            <p className="text-xs text-muted-foreground font-logik">
+              Prefiks nazwy lobby zamiast nazwy turnieju, np. &quot;PDL S1 - Team A vs Team B&quot;
+            </p>
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="space-y-2">
               <Label className="font-logik-extended-bold">Tryb Gry</Label>
@@ -1016,7 +1485,7 @@ export function GeneralTab() {
 
             {/* Heading Color */}
             <div className="space-y-2">
-              <Label className="font-logik-extended-bold">Kolor nagłówków</Label>
+              <Label className="font-logik-extended-bold">Kolor nagłówków (domyślny fallback dla h1/h2)</Label>
               <div className="flex items-center gap-3">
                 <input
                   type="color"
@@ -1056,6 +1525,138 @@ export function GeneralTab() {
             <p className="text-sm text-amber-500 font-logik">
               Zmiany kolorów wymagają przeładowania strony aby zostały w pełni zastosowane.
             </p>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Text Hierarchy Colors */}
+      <Card className="border-0 shadow-lg bg-card/50 backdrop-blur-sm">
+        <CardHeader className="pb-4">
+          <CardTitle className="flex items-center gap-2 font-logik-extended-bold">
+            <Palette className="h-5 w-5" style={{ color: theme.primaryColor }} />
+            Kolory hierarchii tekstu
+          </CardTitle>
+          <CardDescription className="font-logik">
+            Dostosowanie kolorów tekstu na stronie głównej, tabeli i stronie „Mój zespół“
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* Live preview */}
+          <div className="p-4 rounded-xl border border-border bg-background/50 space-y-2">
+            <p className="text-sm text-muted-foreground font-logik mb-3">Podgląd — strona główna</p>
+            <p className="text-2xl font-logik-extended-bold" style={{ color: headingColor || theme.textColor || '#ffffff' }}>GOTOWY NA WYZWANIE?</p>
+            <p className="text-sm font-logik mb-1" style={{ color: secondaryTextColor || theme.mutedTextColor || 'rgba(255,255,255,0.6)' }}>Opis turnieju / Turniej z limitem MMR</p>
+            <p className="text-xs font-mono uppercase tracking-widest mt-2" style={{ color: sectionHeaderColor || theme.textColor || '#ffffff' }}>— Następny Mecz / Nazwa grupy</p>
+            <p className="text-base font-logik" style={{ color: primaryTextColor || theme.textColor || 'rgba(255,255,255,0.8)' }}>Nazwa Drużyny</p>
+            <p className="text-xl font-logik-extended-bold" style={{ color: titleColor || theme.textColor || '#ffffff' }}>PKT: 6</p>
+            <hr className="border-border/50 my-2" />
+            <p className="text-xs text-muted-foreground font-logik mb-1">Strona „Mój zespół":</p>
+            <p className="text-xl font-logik-extended-bold" style={{ color: titleColor || '#ffffff' }}>Nazwa Zespołu</p>
+            <p className="text-base font-logik-extended-bold" style={{ color: sectionHeaderColor || '#ffffff' }}>Postęp Sezonu</p>
+            <p className="text-xs uppercase tracking-wider font-logik" style={{ color: primaryTextColor || 'rgba(255,255,255,0.4)' }}>Punkty / Dywizja / Postęp Rundy / Bilans</p>
+            <p className="text-xs font-logik" style={{ color: secondaryTextColor || 'rgba(255,255,255,0.4)' }}>0 rund pozostało · Wygrane · Remisy · Porażki</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Title Color */}
+            <div className="space-y-2">
+              <Label className="font-logik-extended-bold">Kolor h1 — „Turniej z limitem MMR" / tytuł strony</Label>
+              <div className="flex items-center gap-3">
+                <input
+                  type="color"
+                  value={titleColor || '#ffffff'}
+                  onChange={(e) => setTitleColor(e.target.value)}
+                  className="w-12 h-12 rounded-xl border-2 border-border cursor-pointer hover:scale-105 transition-transform"
+                />
+                <Input
+                  type="text"
+                  value={titleColor}
+                  onChange={(e) => setTitleColor(e.target.value)}
+                  className="font-mono text-sm"
+                  placeholder="Domyślny (biały)"
+                />
+              </div>
+            </div>
+
+            {/* Heading Color — h2 CTA */}
+            <div className="space-y-2">
+              <Label className="font-logik-extended-bold">Kolor h2 — „GOTOWY NA WYZWANIE?“ / nagłówki</Label>
+              <div className="flex items-center gap-3">
+                <input
+                  type="color"
+                  value={headingColor || '#ffffff'}
+                  onChange={(e) => setHeadingColor(e.target.value)}
+                  className="w-12 h-12 rounded-xl border-2 border-border cursor-pointer hover:scale-105 transition-transform"
+                />
+                <Input
+                  type="text"
+                  value={headingColor}
+                  onChange={(e) => setHeadingColor(e.target.value)}
+                  className="font-mono text-sm"
+                  placeholder="Domyślny (kolor tekstu)"
+                />
+              </div>
+            </div>
+
+            {/* Section Header Color */}
+            <div className="space-y-2">
+              <Label className="font-logik-extended-bold">Kolor nagłówków sekcji — „Następny Mecz“, nazwy grup</Label>
+              <div className="flex items-center gap-3">
+                <input
+                  type="color"
+                  value={sectionHeaderColor || '#ffffff'}
+                  onChange={(e) => setSectionHeaderColor(e.target.value)}
+                  className="w-12 h-12 rounded-xl border-2 border-border cursor-pointer hover:scale-105 transition-transform"
+                />
+                <Input
+                  type="text"
+                  value={sectionHeaderColor}
+                  onChange={(e) => setSectionHeaderColor(e.target.value)}
+                  className="font-mono text-sm"
+                  placeholder="Domyślny (biały)"
+                />
+              </div>
+            </div>
+
+            {/* Primary Text Color */}
+            <div className="space-y-2">
+              <Label className="font-logik-extended-bold">Kolor tekstu głównego (etykiety kart)</Label>
+              <div className="flex items-center gap-3">
+                <input
+                  type="color"
+                  value={primaryTextColor || '#ffffff'}
+                  onChange={(e) => setPrimaryTextColor(e.target.value)}
+                  className="w-12 h-12 rounded-xl border-2 border-border cursor-pointer hover:scale-105 transition-transform"
+                />
+                <Input
+                  type="text"
+                  value={primaryTextColor}
+                  onChange={(e) => setPrimaryTextColor(e.target.value)}
+                  className="font-mono text-sm"
+                  placeholder="Domyślny (biały/40%)"
+                />
+              </div>
+            </div>
+
+            {/* Secondary Text Color */}
+            <div className="space-y-2">
+              <Label className="font-logik-extended-bold">Kolor tekstu drugorzędnego (opis turnieju, podtytuły)</Label>
+              <div className="flex items-center gap-3">
+                <input
+                  type="color"
+                  value={secondaryTextColor || '#ffffff'}
+                  onChange={(e) => setSecondaryTextColor(e.target.value)}
+                  className="w-12 h-12 rounded-xl border-2 border-border cursor-pointer hover:scale-105 transition-transform"
+                />
+                <Input
+                  type="text"
+                  value={secondaryTextColor}
+                  onChange={(e) => setSecondaryTextColor(e.target.value)}
+                  className="font-mono text-sm"
+                  placeholder="Domyślny (biały/40%)"
+                />
+              </div>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -1313,6 +1914,91 @@ export function GeneralTab() {
                   </Select>
                 </div>
               </div>
+
+              {/* Navbar opacity, blur, text color, font */}
+              <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <Label className="font-logik-extended-bold">
+                    Przezroczystość nawigacji ({navbarOpacity}%)
+                  </Label>
+                  <input
+                    type="range"
+                    min={0}
+                    max={100}
+                    value={navbarOpacity}
+                    onChange={(e) => setNavbarOpacity(Number(e.target.value))}
+                    className="w-full accent-primary"
+                  />
+                  <p className="text-xs text-muted-foreground font-logik">
+                    0% = pełna przezroczystość, 100% = solidny. Domyślnie: Blur=80%, Solidny=100%, Przezroczysty=0%
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className={`font-logik-extended-bold${navbarStyle !== 'blur' ? ' opacity-40' : ''}`}>
+                    Rozmycie nawigacji ({navbarBlur}px)
+                  </Label>
+                  <input
+                    type="range"
+                    min={0}
+                    max={40}
+                    value={navbarBlur}
+                    onChange={(e) => setNavbarBlur(Number(e.target.value))}
+                    disabled={navbarStyle !== 'blur'}
+                    className="w-full accent-primary disabled:opacity-40"
+                  />
+                  <p className="text-xs text-muted-foreground font-logik">
+                    Aktywne tylko gdy styl to &quot;Rozmycie&quot;. 0 = brak, 12 = domyślne.
+                  </p>
+                </div>
+              </div>
+
+              {/* Navbar text color + font — second row */}
+              <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <Label className="font-logik-extended-bold">Kolor tekstu nawigacji</Label>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="color"
+                      value={navbarTextColor || '#ffffff'}
+                      onChange={(e) => setNavbarTextColor(e.target.value)}
+                      className="w-12 h-10 rounded-lg border-2 border-border cursor-pointer"
+                    />
+                    <Input
+                      type="text"
+                      value={navbarTextColor}
+                      onChange={(e) => setNavbarTextColor(e.target.value)}
+                      placeholder="Domyślny"
+                      className="font-mono text-sm"
+                    />
+                    {navbarTextColor && (
+                      <Button variant="ghost" size="sm" onClick={() => setNavbarTextColor('')} className="text-destructive shrink-0">
+                        <X className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="font-logik-extended-bold">Czcionka nawigacji</Label>
+                  <Select value={navbarFont} onValueChange={setNavbarFont}>
+                    <SelectTrigger className="font-logik">
+                      <SelectValue placeholder="Domyślna (jak nagłówek)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="default">Domyślna (jak nagłówek)</SelectItem>
+                      <SelectItem value="logik">Logik</SelectItem>
+                      <SelectItem value="geist">Geist Sans</SelectItem>
+                      <SelectItem value="inter">Inter</SelectItem>
+                      {customFonts.length > 0 && customFonts.map(font => (
+                        <SelectItem key={font.id} value={font.id}>
+                          {font.family}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
             </div>
           </CardContent>
         )}
@@ -1450,6 +2136,175 @@ export function GeneralTab() {
         primaryColor={theme.primaryColor}
         tournamentSlug={tournament?.slug}
       />
+
+      {/* Navbar Sponsor Section */}
+      <Card className="border-0 shadow-lg bg-card/50 backdrop-blur-sm">
+        <CardHeader className="pb-4">
+          <CardTitle className="flex items-center gap-2 font-logik-extended-bold">
+            <ImageIcon className="h-5 w-5" style={{ color: theme.primaryColor }} />
+            Sekcja sponsora w navbarze
+          </CardTitle>
+          <CardDescription className="font-logik">
+            Wyświetlaj naprzemiennie baner sponsora i tekst w prawej części paska nawigacji.
+            Stały kolor i czcionka są dziedziczone z ustawień nawigacji.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* Enable toggle */}
+          <div className="flex items-center gap-3">
+            <Switch
+              checked={sponsorEnabled}
+              onCheckedChange={setSponsorEnabled}
+              id="sponsor-enabled"
+            />
+            <Label htmlFor="sponsor-enabled" className="font-logik-extended-bold cursor-pointer">
+              {sponsorEnabled ? 'Sekcja włączona' : 'Sekcja wyłączona'}
+            </Label>
+          </div>
+
+          {sponsorEnabled && (
+            <>
+              <Separator />
+
+              {/* Width & interval */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <Label className="font-logik-extended-bold">Szerokość sekcji ({sponsorWidthPx}px)</Label>
+                  <input
+                    type="range"
+                    min={120}
+                    max={400}
+                    step={10}
+                    value={sponsorWidthPx}
+                    onChange={(e) => setSponsorWidthPx(Number(e.target.value))}
+                    className="w-full accent-primary"
+                  />
+                  <p className="text-xs text-muted-foreground font-logik">Stała szerokość kontenera sponsora w navbarze</p>
+                </div>
+                <div className="space-y-2">
+                  <Label className="font-logik-extended-bold">Czas przełączania ({(sponsorIntervalMs / 1000).toFixed(1)}s)</Label>
+                  <input
+                    type="range"
+                    min={2000}
+                    max={30000}
+                    step={500}
+                    value={sponsorIntervalMs}
+                    onChange={(e) => setSponsorIntervalMs(Number(e.target.value))}
+                    className="w-full accent-primary"
+                  />
+                  <p className="text-xs text-muted-foreground font-logik">Co ile sekund slajd się zmienia</p>
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* Slide 1: sponsor name + image */}
+              <div className="space-y-4">
+                <Label className="font-logik-extended-bold text-base block">Slajd 1 – Sponsor</Label>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label className="font-logik-extended-bold">Tekst sponsora</Label>
+                    <Input
+                      value={sponsorName}
+                      onChange={(e) => setSponsorName(e.target.value)}
+                      placeholder="np. Sponsor1"
+                      className="font-logik"
+                    />
+                  </div>
+                  <div className="space-y-2 md:col-span-2">
+                    <Label className="font-logik-extended-bold">Link sponsora (URL)</Label>
+                    <Input
+                      value={sponsorUrl}
+                      onChange={(e) => setSponsorUrl(e.target.value)}
+                      placeholder="https://sponsor.example.com"
+                      className="font-mono text-sm"
+                      type="url"
+                    />
+                    <p className="text-xs text-muted-foreground font-logik">Cała sekcja stanie się klikalnym linkiem otwieranym w nowej karcie. Zostaw puste, jeśli sekcja nie ma być klikalna.</p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="font-logik-extended-bold">Obraz sponsora</Label>
+                    <div className="flex items-center gap-3">
+                      <label className="flex-1">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (!file || !tournament?.slug) return;
+                            setUploadingSponsorImage(true);
+                            try {
+                              const url = await uploadTournamentSponsorImage(file, tournament.slug);
+                              setSponsorImageUrl(url);
+                            } catch (err) {
+                              console.error('Error uploading sponsor image:', err);
+                              alert('Błąd podczas przesyłania obrazu');
+                            } finally {
+                              setUploadingSponsorImage(false);
+                            }
+                          }}
+                        />
+                        <Button
+                          variant="outline"
+                          className="w-full font-logik cursor-pointer"
+                          asChild
+                          disabled={uploadingSponsotImage}
+                        >
+                          <span>
+                            {uploadingSponsotImage ? (
+                              <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Przesyłanie...</>
+                            ) : (
+                              <><Upload className="h-4 w-4 mr-2" />Prześlij obraz</>
+                            )}
+                          </span>
+                        </Button>
+                      </label>
+                      {sponsorImageUrl && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setSponsorImageUrl('')}
+                          className="text-destructive shrink-0"
+                          title="Usuń obraz"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                    {sponsorImageUrl && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={sponsorImageUrl} alt="Podgląd" className="h-10 w-auto object-contain mt-1 rounded" />
+                    )}
+                    <Input
+                      value={sponsorImageUrl}
+                      onChange={(e) => setSponsorImageUrl(e.target.value)}
+                      placeholder="lub wklej URL obrazu"
+                      className="font-mono text-xs"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* Slide 2: secondary text */}
+              <div className="space-y-2">
+                <Label className="font-logik-extended-bold text-base block">Slajd 2 – Tekst promocyjny</Label>
+                <Input
+                  value={sponsorSecondaryText}
+                  onChange={(e) => setSponsorSecondaryText(e.target.value)}
+                  placeholder="np. Dołącz do PDL Season 2!"
+                  className="font-logik"
+                />
+                <p className="text-xs text-muted-foreground font-logik">
+                  Tekst jest wyświetlany na pełną szerokość kontenera. Kolor i czcionka dziedziczone z ustawień nawigacji.
+                </p>
+              </div>
+            </>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Admin Management */}
       <Card className="border-0 shadow-lg bg-card/50 backdrop-blur-sm">

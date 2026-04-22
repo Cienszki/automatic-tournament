@@ -21,6 +21,8 @@ interface TeamStanding {
   losses: number;
   gamesWon: number;
   gamesLost: number;
+  neustadtlScore: number;
+  headToHead: Record<string, 'win' | 'loss' | 'draw'>;
 }
 
 interface Division {
@@ -80,10 +82,11 @@ export function usePDLData(): UsePDLDataResult {
         const matchesRef = collection(db, 'tournaments', tournament.id, 'matches');
 
         // OPTIMIZATION: Fetch divisions, all teams, and matches in parallel
-        const [divisionsSnapshot, allTeamsSnapshot, matchesSnapshot] = await Promise.all([
+        const [divisionsSnapshot, allTeamsSnapshot, scheduledMatchesSnapshot, completedMatchesSnapshot] = await Promise.all([
           getDocs(divisionsRef),
           getDocs(teamsRef),
-          getDocs(query(matchesRef, where('status', '==', 'scheduled')))
+          getDocs(query(matchesRef, where('status', '==', 'scheduled'))),
+          getDocs(query(matchesRef, where('status', '==', 'completed'))),
         ]);
 
         if (!isMounted) return;
@@ -108,6 +111,8 @@ export function usePDLData(): UsePDLDataResult {
             losses: stats.losses || 0,
             gamesWon: stats.gamesWon || 0,
             gamesLost: stats.gamesLost || 0,
+            neustadtlScore: 0,
+            headToHead: {},
           };
 
           if (!teamsByDivision.has(divisionId)) {
@@ -116,16 +121,80 @@ export function usePDLData(): UsePDLDataResult {
           teamsByDivision.get(divisionId)!.push(teamStanding);
         });
 
+        // Group completed matches by divisionId for neustadtl/headToHead computation
+        const completedMatchesByDivision = new Map<string, any[]>();
+        completedMatchesSnapshot.docs.forEach(doc => {
+          const data = doc.data();
+          const divId = data.divisionId;
+          if (!divId) return;
+          if (!completedMatchesByDivision.has(divId)) completedMatchesByDivision.set(divId, []);
+          completedMatchesByDivision.get(divId)!.push(data);
+        });
+
         // Build divisions data with pre-fetched teams
         const divisionsData: Division[] = divisionsSnapshot.docs.map(divisionDoc => {
           const divisionData = divisionDoc.data();
           const divisionId = divisionDoc.id;
           const teams = teamsByDivision.get(divisionId) || [];
+          const divisionMatches = completedMatchesByDivision.get(divisionId) || [];
 
-          // Sort teams by points (descending), then by games played
+          // Compute neustadtl and head-to-head from completed matches
+          const pointsMap = new Map(teams.map(t => [t.teamId, t.points]));
+          // Track h2h win counts: teamId -> opponentId -> wins
+          const h2hWins = new Map<string, Map<string, number>>();
+          teams.forEach(t => h2hWins.set(t.teamId, new Map()));
+
+          for (const match of divisionMatches) {
+            const aId: string = match.teamA?.id || match.teams?.[0];
+            const bId: string = match.teamB?.id || match.teams?.[1];
+            const aScore: number = match.teamA?.score ?? 0;
+            const bScore: number = match.teamB?.score ?? 0;
+            if (!aId || !bId) continue;
+
+            const teamA = teams.find(t => t.teamId === aId);
+            const teamB = teams.find(t => t.teamId === bId);
+            if (!teamA || !teamB) continue;
+
+            const aPoints = pointsMap.get(aId) ?? 0;
+            const bPoints = pointsMap.get(bId) ?? 0;
+
+            if (aScore > bScore) {
+              teamA.neustadtlScore += bPoints;
+              h2hWins.get(aId)!.set(bId, (h2hWins.get(aId)!.get(bId) ?? 0) + 1);
+            } else if (bScore > aScore) {
+              teamB.neustadtlScore += aPoints;
+              h2hWins.get(bId)!.set(aId, (h2hWins.get(bId)!.get(aId) ?? 0) + 1);
+            } else {
+              teamA.neustadtlScore += bPoints * 0.5;
+              teamB.neustadtlScore += aPoints * 0.5;
+            }
+          }
+
+          // Convert win counts to win/loss/draw headToHead entries
+          teams.forEach(t => {
+            const wins = h2hWins.get(t.teamId)!;
+            teams.forEach(opp => {
+              if (opp.teamId === t.teamId) return;
+              const w = wins.get(opp.teamId) ?? 0;
+              const l = h2hWins.get(opp.teamId)!.get(t.teamId) ?? 0;
+              if (w > l) t.headToHead[opp.teamId] = 'win';
+              else if (l > w) t.headToHead[opp.teamId] = 'loss';
+              else if (w > 0 || l > 0) t.headToHead[opp.teamId] = 'draw';
+            });
+          });
+
+          // Sort: points DESC → head-to-head → neustadtl DESC → name ASC
           teams.sort((a, b) => {
             if (b.points !== a.points) return b.points - a.points;
-            return b.gamesPlayed - a.gamesPlayed;
+            // Head-to-head among tied teams
+            const tiedIds = teams.filter(s => s.points === a.points).map(s => s.teamId);
+            if (tiedIds.length > 1) {
+              const aWins = tiedIds.reduce((sum, id) => id !== a.teamId && a.headToHead[id] === 'win' ? sum + 1 : sum, 0);
+              const bWins = tiedIds.reduce((sum, id) => id !== b.teamId && b.headToHead[id] === 'win' ? sum + 1 : sum, 0);
+              if (aWins !== bWins) return bWins - aWins;
+            }
+            if (b.neustadtlScore !== a.neustadtlScore) return b.neustadtlScore - a.neustadtlScore;
+            return a.teamName.localeCompare(b.teamName);
           });
 
           // Update positions
@@ -155,9 +224,9 @@ export function usePDLData(): UsePDLDataResult {
 
         setDivisions(divisionsData);
 
-        // Process next match from already-fetched matches
+        // Process next match from already-fetched scheduled matches
         const now = new Date();
-        const futureMatches = matchesSnapshot.docs
+        const futureMatches = scheduledMatchesSnapshot.docs
           .map(doc => ({
             id: doc.id,
             data: doc.data(),

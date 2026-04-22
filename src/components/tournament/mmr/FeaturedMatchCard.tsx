@@ -30,8 +30,8 @@ export function MmrFeaturedMatchCard({
       <div className="relative w-full">
         {/* Header row — match info or tournament title */}
         <div className="mb-6 flex items-end justify-between border-b border-white/10 pb-3">
-          <h2 className="text-xl font-logik-extended-bold text-white tracking-wide">
-            {hasMatch ? 'Następny Mecz' : 'Wyróżniony Mecz'}
+          <h2 className="text-xl font-logik-extended-bold text-[var(--tournament-section-header)] tracking-wide">
+            Następny Mecz
           </h2>
           {hasMatch && (
             <div className="text-right hidden sm:block">
@@ -42,7 +42,7 @@ export function MmrFeaturedMatchCard({
                 {team1} vs {team2}
               </div>
               {(matchLabel || date) && (
-                <div className="text-xs text-white/40 font-mono mt-1">
+                <div className="text-xs text-[var(--tournament-muted)] font-mono mt-1">
                   {matchLabel}{matchLabel && date ? ' · ' : ''}{date}
                 </div>
               )}

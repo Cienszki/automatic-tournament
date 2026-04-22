@@ -1,5 +1,5 @@
 // src/components/pdl/QuickLinksSection.tsx
-// Quick links to Fantasy, Pick'em, and About
+// Quick links — data-driven, same as MmrQuickLinksSection but with PDL-specific pages
 
 'use client';
 
@@ -9,7 +9,6 @@ import { TrendingUp, Target, Info, ArrowRight, Sparkles, Tv } from 'lucide-react
 import { cn } from '@/lib/utils';
 import { fadeInUp, staggerContainer } from '@/lib/animations';
 import { useTournament } from '@/context/TournamentContext';
-import { organizationConfig } from '@/config/organization';
 
 export function QuickLinksSection() {
   const { getTournamentPath, tournament } = useTournament();
@@ -21,6 +20,7 @@ export function QuickLinksSection() {
       href: getTournamentPath('/fantasy'),
       color: 'text-purple-400',
       hoverColor: 'group-hover:text-purple-400',
+      show: !!tournament?.fantasy?.enabled,
     },
     {
       title: "Pick'em",
@@ -28,6 +28,7 @@ export function QuickLinksSection() {
       href: getTournamentPath('/pickem'),
       color: 'text-cyan-400',
       hoverColor: 'group-hover:text-cyan-400',
+      show: !!tournament?.pickem?.enabled,
     },
     {
       title: 'Aktualności',
@@ -35,14 +36,16 @@ export function QuickLinksSection() {
       href: getTournamentPath('/news'),
       color: 'text-amber-400',
       hoverColor: 'group-hover:text-amber-400',
+      show: true,
     },
     {
       title: 'Twitch',
       icon: <Tv className="h-4 w-4" />,
-      href: tournament?.twitchUrl || (tournament?.twitchChannel ? `https://www.twitch.tv/${tournament.twitchChannel}` : organizationConfig.defaults.twitch),
+      href: tournament?.twitchUrl || (tournament?.twitchChannel ? `https://www.twitch.tv/${tournament.twitchChannel}` : ''),
       color: 'text-[#9146FF]',
       hoverColor: 'group-hover:text-[#9146FF]',
-      isExternal: true
+      isExternal: true,
+      show: !!(tournament?.twitchUrl || tournament?.twitchChannel),
     },
     {
       title: 'O Lidze',
@@ -50,8 +53,9 @@ export function QuickLinksSection() {
       href: getTournamentPath('/about'),
       color: 'text-white/40',
       hoverColor: 'group-hover:text-white',
+      show: true,
     }
-  ];
+  ].filter(l => l.show);
 
   return (
     <motion.div
@@ -60,7 +64,7 @@ export function QuickLinksSection() {
       animate="visible"
       className="flex flex-col items-start space-y-2"
     >
-      {links.map((link, index) => (
+      {links.map((link) => (
         <motion.div
           key={link.title}
           variants={fadeInUp}
@@ -69,7 +73,7 @@ export function QuickLinksSection() {
           <Link
             href={link.href}
             className="block w-full"
-            {...((link as any).isExternal ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+            {...(link.isExternal ? { target: "_blank", rel: "noopener noreferrer" } : {})}
           >
             <motion.div
               whileHover={{ x: 5 }}

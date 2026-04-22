@@ -344,6 +344,7 @@
     "browseDescription": "Browse all teams participating in the tournament.",
     "noTeamsRegistered": "No teams have been registered yet.",
     "viewProfile": "View profile",
+    "notVerified": "Not verified",
     "status": {
       "pending": "Pending",
       "verified": "Verified",
@@ -821,7 +822,7 @@
     "inDays": "in {count} days"
   },
   "pdlRegistration": {
-    "teamRegistration": "PDL Team Registration",
+    "teamRegistration": "Team Registration",
     "seasonRegistration": "Season 1 Registration",
     "teamDetails": "Team Details",
     "teamName": "Team Name",
@@ -832,9 +833,15 @@
     "playerDetails": "Players",
     "playerDetailsDesc": "All players must be available for the entire season",
     "nickname": "In-game Nickname",
+    "nicknameHint": "The account must have public Dota 2 match history and be updated on Dotabuff",
     "role": "Position",
+    "roleHint": "For informational purposes only",
     "steamProfile": "Steam Profile Link",
     "selectRole": "Select Position",
+    "smurfAccountsLabel": "Smurf accounts",
+    "smurfAccountsDesc": "You must list all additional accounts on which the player has played at least 10 matches in the last 3 months",
+    "addSmurfAccount": "Add smurf account",
+    "screenshotDesc": "Screenshot of profile showing nickname, MMR, and the most recent match with date [max. 5MB]",
     "validation": {
       "teamNameMin": "Team name must be at least 3 characters.",
       "teamNameMax": "Team name cannot exceed 20 characters.",
@@ -895,7 +902,11 @@
     "semifinal": "Semifinal",
     "quarterfinal": "Quarterfinal",
     "grandFinal": "Grand Final",
-    "tbd": "TBD"
+    "tbd": "TBD",
+    "upperBracket": "Upper Bracket",
+    "lowerBracket": "Lower Bracket",
+    "bracketWinner": "winner",
+    "bracketLoser": "loser"
   },
   "teamDetail": {
     "topHeroes": "Most Played Heroes",

@@ -43,6 +43,9 @@ export async function createTournament(data: {
     startDate: basicInfo.tournamentStart || null,
     endDate: basicInfo.tournamentEnd || null,
     
+    discordUrl: basicInfo.discordUrl || null,
+    twitchUrl: basicInfo.twitchUrl || null,
+    
     leagueId: null,
     
     registration: {

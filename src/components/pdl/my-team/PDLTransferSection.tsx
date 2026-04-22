@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import Image from 'next/image';
+import { useTournament } from '@/context/TournamentContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -50,6 +51,12 @@ interface PDLTransferSectionProps {
   previousRoundPlayers: Player[];
   /** Max allowed roster changes per transfer window */
   maxTransfers: number;
+  /** When true, immediately enter editing mode on mount */
+  autoEdit?: boolean;
+  /** True for MMR-limited tournaments — shows extra MMR/screenshot/smurf fields */
+  isMmrLimited?: boolean;
+  /** Team MMR cap (only relevant when isMmrLimited is true) */
+  mmrCap?: number;
   /** Called when captain saves all roster changes */
   onSaveRoster: (data: {
     players: Player[];
@@ -74,6 +81,12 @@ interface EditablePlayer {
   avatarfull?: string;
   isNew?: boolean;
   isRemoved?: boolean;
+  /** Player MMR (only used in MMR-limited tournaments) */
+  mmr?: number;
+  /** URL to the MMR verification screenshot */
+  profileScreenshotUrl?: string;
+  /** Declared smurf accounts */
+  smurfAccounts?: { steamProfileUrl: string; steamId64?: string; steamId32?: string }[];
 }
 
 export function PDLTransferSection({
@@ -83,10 +96,14 @@ export function PDLTransferSection({
   isSeasonActive,
   previousRoundPlayers,
   maxTransfers,
+  autoEdit,
+  isMmrLimited,
+  mmrCap,
   onSaveRoster,
 }: PDLTransferSectionProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
+  const { theme } = useTournament();
   const [showAddPlayer, setShowAddPlayer] = useState(false);
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
 
@@ -102,6 +119,10 @@ export function PDLTransferSection({
   const [newNickname, setNewNickname] = useState('');
   const [newRole, setNewRole] = useState<PlayerRole | ''>('');
   const [newSteamUrl, setNewSteamUrl] = useState('');
+  // MMR-limited extra fields for new player
+  const [newMmr, setNewMmr] = useState('');
+  const [newProfileScreenshotUrl, setNewProfileScreenshotUrl] = useState('');
+  const [newSmurfUrls, setNewSmurfUrls] = useState<string[]>(['']);
 
   // Initialize editing state from current team
   const startEditing = useCallback(() => {
@@ -120,6 +141,9 @@ export function PDLTransferSection({
         avatar: p.avatar,
         avatarmedium: p.avatarmedium,
         avatarfull: p.avatarfull,
+        mmr: (p as any).mmr,
+        profileScreenshotUrl: (p as any).profileScreenshotUrl,
+        smurfAccounts: (p as any).smurfAccounts,
       }))
     );
     setEditTeamName(team.name);
@@ -129,6 +153,14 @@ export function PDLTransferSection({
     setEditLogoFile(null);
     setIsEditing(true);
   }, [team]);
+
+  // Auto-enter editing mode when requested
+  useEffect(() => {
+    if (autoEdit && isCaptain && !isEditing) {
+      startEditing();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoEdit]);
 
   // Count how many SteamIDs changed compared to previous round
   const transfersUsed = useMemo(() => {
@@ -184,6 +216,19 @@ export function PDLTransferSection({
 
   const handleAddPlayer = async () => {
     if (!newNickname.trim() || !newRole || !newSteamUrl.trim()) return;
+    if (isMmrLimited && !newMmr.trim()) return;
+
+    // MMR cap check — adding this player must not push the team over the cap
+    if (isMmrLimited && mmrCap) {
+      const currentTotal = editPlayers
+        .filter(p => !p.isRemoved)
+        .reduce((sum, p) => sum + (p.mmr || 0), 0);
+      const incoming = parseInt(newMmr, 10) || 0;
+      if (currentTotal + incoming > mmrCap) {
+        alert(`Dodanie tego gracza (${incoming} MMR) przekroczy limit MMR drużyny (${mmrCap}). Obecny skład: ${currentTotal} MMR.`);
+        return;
+      }
+    }
 
     setLoading(true);
     try {
@@ -201,6 +246,11 @@ export function PDLTransferSection({
         return;
       }
 
+      const smurfAccounts = newSmurfUrls
+        .map(u => u.trim())
+        .filter(u => u.length > 0)
+        .map(u => ({ steamProfileUrl: u }));
+
       const newPlayer: EditablePlayer = {
         id: `new-${Date.now()}`,
         nickname: newNickname.trim(),
@@ -214,12 +264,18 @@ export function PDLTransferSection({
         avatarmedium: data.avatarmedium,
         avatarfull: data.avatarfull,
         isNew: true,
+        mmr: isMmrLimited ? (parseInt(newMmr, 10) || undefined) : undefined,
+        profileScreenshotUrl: isMmrLimited && newProfileScreenshotUrl.trim() ? newProfileScreenshotUrl.trim() : undefined,
+        smurfAccounts: smurfAccounts.length > 0 ? smurfAccounts : undefined,
       };
 
       setEditPlayers(prev => [...prev, newPlayer]);
       setNewNickname('');
       setNewRole('');
       setNewSteamUrl('');
+      setNewMmr('');
+      setNewProfileScreenshotUrl('');
+      setNewSmurfUrls(['']);
       setShowAddPlayer(false);
     } catch (error) {
       console.error('Error adding player:', error);
@@ -323,8 +379,9 @@ export function PDLTransferSection({
           avatar: p.avatar,
           avatarmedium: p.avatarmedium,
           avatarfull: p.avatarfull,
-          mmr: 0,
-          profileScreenshotUrl: '',
+          mmr: p.mmr ?? 0,
+          profileScreenshotUrl: p.profileScreenshotUrl || '',
+          smurfAccounts: p.smurfAccounts,
         })) as Player[];
 
       await onSaveRoster({
@@ -347,35 +404,12 @@ export function PDLTransferSection({
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="p-2 rounded-lg bg-white/5 border border-white/10">
-            <ArrowLeftRight className="w-5 h-5 text-pdl-gold" />
-          </div>
-          <div>
-            <h2 className="text-xl font-logik-extended-bold text-white tracking-wide uppercase">
-              Zarządzanie Składem
-            </h2>
-            {isSeasonActive && (
-              <p className="text-xs text-white/40 font-logik mt-0.5">
-                Transfery: {transfersUsed}/{maxTransfers} wykorzystane
-              </p>
-            )}
-          </div>
-        </div>
-
-        {isCaptain && !isEditing && (
-          <Button
-            onClick={startEditing}
-            className="bg-pdl-crimson hover:bg-pdl-crimson/80 text-white font-logik-extended-bold"
-            size="sm"
-          >
-            <Pencil className="w-4 h-4 mr-2" />
-            {isTransferWindowOpen ? 'Edytuj skład' : 'Edytuj dane drużyny'}
-          </Button>
-        )}
-      </div>
+      {/* Transfer counter — only show when editing and season is active */}
+      {isSeasonActive && isEditing && (
+        <p className="text-xs font-logik" style={{ color: 'var(--tournament-secondary-text)' }}>
+          Transfery: {transfersUsed}/{maxTransfers} wykorzystane
+        </p>
+      )}
 
       {/* Info about transfer window */}
       {isCaptain && !isEditing && (
@@ -383,10 +417,10 @@ export function PDLTransferSection({
           <div className="rounded-lg border border-green-500/30 bg-green-500/10 p-4 flex items-start gap-3">
             <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" />
             <div>
-              <p className="text-sm text-green-200 font-logik-extended-bold">
+              <p className="text-sm font-logik-extended-bold" style={{ color: theme.sectionHeaderColor || '#bbf7d0' }}>
                 Okno transferowe jest otwarte
               </p>
-              <p className="text-xs text-green-200/60 mt-1">
+              <p className="text-xs mt-1" style={{ color: theme.secondaryTextColor || 'rgba(187,247,208,0.6)' }}>
                 {isSeasonActive
                   ? `Możesz dokonać maksymalnie ${maxTransfers} zmian w składzie (porównanie z ostatnią zakończoną rundą). Zmiany nicków i ról nie liczą się jako transfery.`
                   : 'Sezon jeszcze nie rozpoczył się — możesz dowolnie modyfikować skład bez ograniczeń.'}
@@ -397,10 +431,10 @@ export function PDLTransferSection({
           <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/10 p-4 flex items-start gap-3">
             <Lock className="w-5 h-5 text-yellow-400 flex-shrink-0 mt-0.5" />
             <div>
-              <p className="text-sm text-yellow-200 font-logik-extended-bold">
+              <p className="text-sm font-logik-extended-bold" style={{ color: theme.sectionHeaderColor || '#fef9c3' }}>
                 Okno transferowe zamknięte
               </p>
-              <p className="text-xs text-yellow-200/60 mt-1">
+              <p className="text-xs mt-1" style={{ color: theme.secondaryTextColor || 'rgba(254,249,195,0.6)' }}>
                 Możesz edytować dane drużyny (nazwa, tag, logo, Discord), ale nie możesz modyfikować składu zawodników.
               </p>
             </div>
@@ -440,13 +474,19 @@ export function PDLTransferSection({
 
           {/* Team info edit */}
           <div className="rounded-xl border border-white/5 bg-white/[0.02] p-5 space-y-4">
-            <h3 className="text-sm font-logik-extended-bold text-white/60 uppercase tracking-wide">
+            <h3
+              className="text-base uppercase tracking-[0.15em]"
+              style={{
+                color: 'var(--tournament-heading)',
+                fontFamily: theme?.headerFont ? `var(${theme.headerFont})` : undefined,
+              }}
+            >
               Dane Drużyny
             </h3>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label className="text-white/80 text-sm">Nazwa drużyny</Label>
+                <Label className="text-sm" style={{ color: 'var(--tournament-secondary-text)' }}>Nazwa drużyny</Label>
                 <Input
                   value={editTeamName}
                   onChange={(e) => setEditTeamName(e.target.value)}
@@ -455,7 +495,7 @@ export function PDLTransferSection({
               </div>
 
               <div className="space-y-2">
-                <Label className="text-white/80 text-sm">Tag (max 5 znaków)</Label>
+                <Label className="text-sm" style={{ color: 'var(--tournament-secondary-text)' }}>Tag (max 5 znaków)</Label>
                 <Input
                   value={editTeamTag}
                   onChange={(e) => setEditTeamTag(e.target.value.slice(0, 5))}
@@ -465,7 +505,7 @@ export function PDLTransferSection({
               </div>
 
               <div className="space-y-2">
-                <Label className="text-white/80 text-sm">Discord kapitana</Label>
+                <Label className="text-sm" style={{ color: 'var(--tournament-secondary-text)' }}>Discord kapitana</Label>
                 <Input
                   value={editCaptainDiscord}
                   onChange={(e) => setEditCaptainDiscord(e.target.value)}
@@ -474,7 +514,7 @@ export function PDLTransferSection({
               </div>
 
               <div className="space-y-2">
-                <Label className="text-white/80 text-sm">Logo drużyny</Label>
+                <Label className="text-sm" style={{ color: 'var(--tournament-secondary-text)' }}>Logo drużyny</Label>
                 <div className="flex items-center gap-3">
                   <div className="relative w-10 h-10 rounded-lg border border-white/10 overflow-hidden bg-black/40 flex-shrink-0">
                     <Image
@@ -505,7 +545,13 @@ export function PDLTransferSection({
           {/* Player list */}
           <div className="rounded-xl border border-white/5 bg-white/[0.02] p-5 space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-logik-extended-bold text-white/60 uppercase tracking-wide">
+              <h3
+                className="text-base uppercase tracking-[0.15em]"
+                style={{
+                  color: 'var(--tournament-heading)',
+                  fontFamily: theme?.headerFont ? `var(${theme.headerFont})` : undefined,
+                }}
+              >
                 Gracze ({activePlayerCount}/5)
               </h3>
               {!isTransferWindowOpen && (
@@ -533,12 +579,12 @@ export function PDLTransferSection({
                 <div
                   key={player.id}
                   className={cn(
-                    'rounded-lg border p-3 flex flex-col sm:flex-row gap-3 transition-all',
+                    'py-2 flex flex-col sm:flex-row gap-2 items-stretch transition-all border-b last:border-b-0',
                     player.isRemoved
-                      ? 'border-red-500/20 bg-red-500/5 opacity-50'
+                      ? 'border-red-500/20 opacity-50'
                       : player.isNew
-                      ? 'border-green-500/20 bg-green-500/5'
-                      : 'border-white/5 bg-white/[0.02]'
+                      ? 'border-green-500/20'
+                      : 'border-white/5'
                   )}
                 >
                   {player.isRemoved ? (
@@ -560,12 +606,12 @@ export function PDLTransferSection({
                     </div>
                   ) : (
                     <>
-                      <div className="flex-1 grid grid-cols-1 sm:grid-cols-3 gap-2">
+                      <div className="flex-1 grid grid-cols-1 sm:grid-cols-3 gap-2 items-center">
                         <Input
                           value={player.nickname}
                           onChange={(e) => handlePlayerFieldChange(player.id, 'nickname', e.target.value)}
                           placeholder="Nick"
-                          className="bg-white/5 border-white/10 text-white text-sm"
+                          className="bg-white/5 border-white/10 text-white text-sm h-9"
                           disabled={!isTransferWindowOpen}
                         />
                         <Select
@@ -573,7 +619,7 @@ export function PDLTransferSection({
                           onValueChange={(val) => handlePlayerFieldChange(player.id, 'role', val)}
                           disabled={!isTransferWindowOpen}
                         >
-                          <SelectTrigger className="bg-white/5 border-white/10 text-white text-sm">
+                          <SelectTrigger className="bg-white/5 border-white/10 text-white text-sm h-9">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent className="bg-[#1a1a1a] border-white/10">
@@ -584,7 +630,7 @@ export function PDLTransferSection({
                             ))}
                           </SelectContent>
                         </Select>
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 items-center">
                           <Input
                             value={player.steamProfileUrl}
                             onChange={(e) => {
@@ -596,7 +642,7 @@ export function PDLTransferSection({
                               }
                             }}
                             placeholder="Link do Steam"
-                            className="bg-white/5 border-white/10 text-white text-sm flex-1"
+                            className="bg-white/5 border-white/10 text-white text-sm flex-1 h-9"
                             disabled={!isTransferWindowOpen}
                           />
                           <Button
@@ -604,7 +650,7 @@ export function PDLTransferSection({
                             variant="ghost"
                             onClick={() => handleRefreshPlayerSteam(player.id)}
                             disabled={loading || !player.steamProfileUrl || !isTransferWindowOpen}
-                            className="text-pdl-gold/60 hover:text-pdl-gold hover:bg-pdl-gold/10 h-10 w-10 p-0 flex-shrink-0"
+                            className="text-pdl-gold/60 hover:text-pdl-gold hover:bg-pdl-gold/10 h-9 w-9 p-0 flex-shrink-0"
                             title="Odśwież dane Steam (avatar, ID)"
                           >
                             <RefreshCw className={cn("w-4 h-4", loading && "animate-spin")} />
@@ -616,7 +662,7 @@ export function PDLTransferSection({
                         variant="ghost"
                         onClick={() => handleRemovePlayer(player.id)}
                         disabled={!isTransferWindowOpen}
-                        className="text-red-400/60 hover:text-red-400 hover:bg-red-500/10 h-8 w-8 p-0 flex-shrink-0"
+                        className="text-red-400/60 hover:text-red-400 hover:bg-red-500/10 h-9 w-9 p-0 flex-shrink-0 self-center"
                       >
                         <X className="w-4 h-4" />
                       </Button>
@@ -656,11 +702,71 @@ export function PDLTransferSection({
                       className="bg-white/5 border-white/10 text-white text-sm"
                     />
                   </div>
+                  {/* Extra fields for MMR-limited tournaments */}
+                  {isMmrLimited && (
+                    <div className="space-y-2 pt-1 border-t border-white/10">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <div className="space-y-1">
+                          <label className="text-xs text-white/50">MMR gracza *</label>
+                          <Input
+                            type="number"
+                            min={0}
+                            value={newMmr}
+                            onChange={(e) => setNewMmr(e.target.value)}
+                            placeholder="np. 4500"
+                            className="bg-white/5 border-white/10 text-white text-sm"
+                          />
+                          {mmrCap && newMmr && (() => {
+                            const currentTotal = editPlayers.filter(p => !p.isRemoved).reduce((s, p) => s + (p.mmr || 0), 0);
+                            const incoming = parseInt(newMmr, 10) || 0;
+                            return currentTotal + incoming > mmrCap ? (
+                              <p className="text-xs text-red-400 flex items-center gap-1">
+                                <AlertTriangle className="w-3 h-3" />
+                                Przekroczy limit MMR ({currentTotal + incoming}/{mmrCap})
+                              </p>
+                            ) : null;
+                          })()}
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-xs text-white/50">URL screenshotu MMR</label>
+                          <Input
+                            value={newProfileScreenshotUrl}
+                            onChange={(e) => setNewProfileScreenshotUrl(e.target.value)}
+                            placeholder="Imgur / Gyazo link"
+                            className="bg-white/5 border-white/10 text-white text-sm"
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-xs text-white/50">Konta smurf (opcjonalnie)</label>
+                        {newSmurfUrls.map((url, i) => (
+                          <div key={i} className="flex gap-2">
+                            <Input
+                              value={url}
+                              onChange={(e) => setNewSmurfUrls(prev => prev.map((u, idx) => idx === i ? e.target.value : u))}
+                              placeholder="Link do profilu Steam smurfa"
+                              className="bg-white/5 border-white/10 text-white text-sm flex-1"
+                            />
+                            {newSmurfUrls.length > 1 && (
+                              <Button size="sm" variant="ghost" className="text-white/40 px-2" onClick={() => setNewSmurfUrls(prev => prev.filter((_, idx) => idx !== i))}>
+                                <X className="w-3 h-3" />
+                              </Button>
+                            )}
+                          </div>
+                        ))}
+                        {newSmurfUrls.length < 3 && (
+                          <Button size="sm" variant="ghost" className="text-white/40 text-xs" onClick={() => setNewSmurfUrls(prev => [...prev, ''])}>
+                            + Dodaj smurf
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  )}
                   <div className="flex gap-2">
                     <Button
                       size="sm"
                       onClick={handleAddPlayer}
-                      disabled={!newNickname.trim() || !newRole || !newSteamUrl.trim()}
+                      disabled={!newNickname.trim() || !newRole || !newSteamUrl.trim() || (isMmrLimited ? !newMmr.trim() : false)}
                       className="bg-green-600 hover:bg-green-700 text-white"
                     >
                       <UserPlus className="w-4 h-4 mr-1" />
@@ -669,7 +775,7 @@ export function PDLTransferSection({
                     <Button
                       size="sm"
                       variant="ghost"
-                      onClick={() => setShowAddPlayer(false)}
+                      onClick={() => { setShowAddPlayer(false); setNewMmr(''); setNewProfileScreenshotUrl(''); setNewSmurfUrls(['']); }}
                       className="text-white/60"
                     >
                       Anuluj
@@ -710,12 +816,18 @@ export function PDLTransferSection({
 
           {/* Confirm dialog */}
           <Dialog open={confirmDialogOpen} onOpenChange={setConfirmDialogOpen}>
-            <DialogContent className="bg-[#0a0a0a] border-white/10 text-white max-w-md">
+            <DialogContent className="border text-white max-w-md bg-black/40 backdrop-blur-2xl backdrop-saturate-150" style={{ borderColor: 'var(--tournament-border, rgba(255,255,255,0.1))' }}>
               <DialogHeader>
-                <DialogTitle className="font-logik-extended-bold text-white">
+                <DialogTitle
+                  className="uppercase tracking-[0.15em]"
+                  style={{
+                    color: 'var(--tournament-heading)',
+                    fontFamily: theme?.headerFont ? `var(${theme.headerFont})` : undefined,
+                  }}
+                >
                   Potwierdź zmiany
                 </DialogTitle>
-                <DialogDescription className="text-white/60">
+                <DialogDescription style={{ color: 'var(--tournament-secondary-text)' }}>
                   Przejrzyj podsumowanie zmian przed zapisem.
                 </DialogDescription>
               </DialogHeader>
@@ -740,6 +852,37 @@ export function PDLTransferSection({
                   </div>
                 )}
 
+                {/* MMR total for MMR-limited tournaments */}
+                {isMmrLimited && (() => {
+                  const totalMmr = editPlayers.filter(p => !p.isRemoved).reduce((s, p) => s + (p.mmr || 0), 0);
+                  const overCap = mmrCap != null && totalMmr > mmrCap;
+                  return (
+                    <div className={`rounded-lg border p-3 ${overCap ? 'border-red-500/30 bg-red-500/10' : 'border-white/10 bg-white/[0.03]'}`}>
+                      <p className="text-sm text-white/80 flex items-center gap-2">
+                        Łączne MMR składu:
+                        <span className="font-logik-extended-bold">{totalMmr}</span>
+                        {mmrCap != null && <span className="text-white/40">/ {mmrCap}</span>}
+                        {overCap && (
+                          <span className="text-red-400 flex items-center gap-1">
+                            <AlertTriangle className="w-3 h-3" />
+                            Przekroczony limit!
+                          </span>
+                        )}
+                      </p>
+                    </div>
+                  );
+                })()}
+
+                {/* Admin verification warning when new players added in MMR-limited tournament */}
+                {isMmrLimited && editPlayers.some(p => p.isNew && !p.isRemoved) && (
+                  <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/10 p-3 flex items-start gap-2">
+                    <AlertTriangle className="w-4 h-4 text-yellow-400 shrink-0 mt-0.5" />
+                    <p className="text-sm text-yellow-200">
+                      Nowi gracze wymagają weryfikacji przez administratora. Po zapisaniu status drużyny zostanie ustawiony na <strong>oczekujący</strong> do momentu zatwierdzenia przez admina.
+                    </p>
+                  </div>
+                )}
+
                 <div className="text-sm text-white/80">
                   Skład ({activePlayerCount} graczy):
                   <ul className="mt-2 space-y-1">
@@ -748,6 +891,7 @@ export function PDLTransferSection({
                         {p.isNew && <span className="text-xs text-green-400">[NOWY]</span>}
                         <span>{p.nickname}</span>
                         <span className="text-white/40">({p.role})</span>
+                        {isMmrLimited && p.mmr != null && <span className="text-white/30 text-xs">({p.mmr} MMR)</span>}
                       </li>
                     ))}
                   </ul>

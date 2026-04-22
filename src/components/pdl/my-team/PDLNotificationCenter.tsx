@@ -21,6 +21,7 @@ import {
 import { cn, formatDatePL } from '@/lib/utils';
 import { useTranslation } from '@/hooks/useTranslation';
 import type { Notification, NotificationType } from '@/lib/definitions';
+import { useTournament } from '@/context/TournamentContext';
 import {
   getNotifications,
   markNotificationAsRead,
@@ -42,6 +43,7 @@ export function PDLNotificationCenter({
   onActionClick,
 }: PDLNotificationCenterProps) {
   const { t } = useTranslation();
+  const { theme } = useTournament();
   const [expanded, setExpanded] = useState(true);
   const [filter, setFilter] = useState<'all' | 'unread' | 'urgent'>('all');
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -186,11 +188,11 @@ export function PDLNotificationCenter({
             )}
           </div>
           <div className="text-left">
-            <h3 className="text-xl font-logik-extended-bold text-white tracking-wide uppercase">
+            <h3 className="text-xl font-logik-extended-bold tracking-wide uppercase" style={{ color: theme.sectionHeaderColor || '#ffffff' }}>
               {t('notifications.title')}
             </h3>
             {(unreadCount > 0 || urgentCount > 0) && (
-              <p className="text-xs text-white/40 font-logik">
+              <p className="text-xs font-logik" style={{ color: theme.secondaryTextColor || 'rgba(255,255,255,0.4)' }}>
                 {urgentCount > 0 && (
                   <span className="text-pdl-crimson">
                     {`${urgentCount} ${urgentCount === 1 ? 'pilne' : 'pilnych'}`}

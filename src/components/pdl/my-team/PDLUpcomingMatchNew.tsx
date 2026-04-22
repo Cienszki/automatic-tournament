@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Image from 'next/image';
+import { useTournament } from '@/context/TournamentContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -58,6 +59,7 @@ interface PDLUpcomingMatchProps {
     replacedPlayerNickname: string;
     standinNickname: string;
     standinSteamProfileUrl: string;
+    standinMmr?: number;
   }) => Promise<void>;
   onApproveStandinRequest?: (requestId: string) => Promise<void>;
   onRejectStandinRequest?: (requestId: string, reason?: string) => Promise<void>;
@@ -74,6 +76,8 @@ interface PDLUpcomingMatchProps {
   matchNameMap?: Record<string, string>;
   /** Refreshes data for this specific match only */
   onRefreshMatch?: () => Promise<void>;
+  /** When true, standin forms require declaring the standin's MMR */
+  isMmrLimited?: boolean;
 }
 
 export function PDLUpcomingMatch({
@@ -101,7 +105,9 @@ export function PDLUpcomingMatch({
   allTournamentRequests,
   matchNameMap,
   onRefreshMatch,
+  isMmrLimited = false,
 }: PDLUpcomingMatchProps) {
+  const { theme, tournament } = useTournament();
   const [expanded, setExpanded] = useState(false);
   const [showReschedule, setShowReschedule] = useState(false);
   const [selectedDate, setSelectedDate] = useState('');
@@ -132,18 +138,36 @@ export function PDLUpcomingMatch({
   const isRequestFromUs = rescheduleRequest && rescheduleRequest.requestedBy === myTeamId;
   const isRequestFromOpponent = hasActiveRequest && rescheduleRequest.requestedBy !== myTeamId;
 
-  // Calculate allowed date range (±3 days from the ORIGINAL scheduled date).
-  // The anchor is always the very first match date so captains cannot chain multiple
-  // reschedules to drift further than 3 days from the admin-set schedule.
-  // Once a rescheduleRequest exists, its originalDate stores that first date permanently.
+  // Calculate allowed date range for reschedule requests.
+  // - If the match has no admin-set date yet, skip all date restrictions.
+  // - Otherwise, use tournament.rescheduleRangeDays (null = unlimited, default 3).
+  // - The anchor is always the original scheduled date so captains can't chain
+  //   reschedules to drift further than the configured range.
+  const rescheduleRangeDays = tournament?.rescheduleRangeDays !== undefined ? tournament.rescheduleRangeDays : 3;
+  const rescheduleFinalDate = tournament?.rescheduleFinalDate;
   const originalDate = rescheduleRequest?.originalDate || scheduledDate;
   const originalDateObj = originalDate ? new Date(originalDate) : new Date();
-  const minDate = new Date(originalDateObj);
-  minDate.setDate(minDate.getDate() - 3);
-  minDate.setHours(0, 0, 0, 0); // Start of day in local time
-  const maxDate = new Date(originalDateObj);
-  maxDate.setDate(maxDate.getDate() + 3);
-  maxDate.setHours(23, 59, 0, 0); // End of day in local time
+
+  let minDate: Date | null = null;
+  let maxDate: Date | null = null;
+
+  if (scheduledDate && rescheduleRangeDays !== null) {
+    minDate = new Date(originalDateObj);
+    minDate.setDate(minDate.getDate() - rescheduleRangeDays);
+    minDate.setHours(0, 0, 0, 0);
+    maxDate = new Date(originalDateObj);
+    maxDate.setDate(maxDate.getDate() + rescheduleRangeDays);
+    maxDate.setHours(23, 59, 0, 0);
+  }
+
+  // Apply final deadline constraint regardless of range setting
+  if (rescheduleFinalDate) {
+    const finalDeadline = new Date(rescheduleFinalDate);
+    finalDeadline.setHours(23, 59, 0, 0);
+    if (!maxDate || finalDeadline < maxDate) {
+      maxDate = finalDeadline;
+    }
+  }
 
   // Count pending items
   const myPendingStandins = standinRequests.filter(r => r.status === 'pending' || r.status === 'rejected').length;
@@ -210,7 +234,7 @@ export function PDLUpcomingMatch({
 
         {/* Match info */}
         <div className="flex-1 min-w-0">
-          <p className="text-xs text-white/40 uppercase tracking-wider font-logik mb-1">
+          <p className="text-xs uppercase tracking-wider font-logik mb-1" style={{ color: theme.primaryTextColor || 'rgba(255,255,255,0.4)' }}>
             Kolejka {match.matchday || match.round || '?'}
             {match.bestOf && <span className="ml-2">• BO{match.bestOf}</span>}
           </p>
@@ -231,6 +255,10 @@ export function PDLUpcomingMatch({
           {match.status === 'completed' ? (
             <div className="px-3 py-1.5 rounded-full bg-green-500/20 text-green-400 text-xs font-logik uppercase">
               Zakończony
+            </div>
+          ) : !scheduledDate ? (
+            <div className="px-3 py-1.5 rounded-full bg-orange-500/20 text-orange-400 text-xs font-logik uppercase">
+              Do ustalenia
             </div>
           ) : (
             <div className="px-3 py-1.5 rounded-full bg-pdl-gold/20 text-pdl-gold text-xs font-logik uppercase">
@@ -299,7 +327,7 @@ export function PDLUpcomingMatch({
 
           {/* ─── Reschedule section ─── */}
           <div className="space-y-3">
-            <h4 className="text-xs font-logik-extended-bold text-white/40 uppercase tracking-wide flex items-center gap-2">
+            <h4 className="text-xs font-logik-extended-bold uppercase tracking-wide flex items-center gap-2" style={{ color: theme.primaryTextColor || 'rgba(255,255,255,0.4)' }}>
               <CalendarRange className="w-4 h-4" />
               Termin meczu
             </h4>
@@ -425,20 +453,24 @@ export function PDLUpcomingMatch({
               </div>
             )}
 
-            {/* Reschedule button (always allow if captain, even if there's a pending request) */}
-            {isCaptain && match.status !== 'completed' && (
+            {/* Reschedule button — hidden while a decision on an active request is pending */}
+            {isCaptain && match.status !== 'completed' && !hasActiveRequest && (
               showReschedule ? (
                 <div className="rounded-lg border border-white/10 bg-white/[0.02] p-4 space-y-3">
                   <p className="text-xs text-white/60 font-logik">
-                    Nowy termin musi mieścić się w zakresie ±3 dni od domyślnej daty.
-                    Wymaga zgody kapitana przeciwnej drużyny.
+                    {!scheduledDate
+                      ? `Mecz nie ma jeszcze ustalonego terminu. Podaj preferowany termin.${rescheduleFinalDate ? ` Ostateczny termin składania propozycji: ${formatDatePL(rescheduleFinalDate)}.` : ''} Wymaga zgody kapitana przeciwnej drużyny.`
+                      : rescheduleRangeDays === null
+                      ? `Nowy termin nie jest ograniczony zakresem dat.${rescheduleFinalDate ? ` Ostateczny termin składania propozycji: ${formatDatePL(rescheduleFinalDate)}.` : ''} Wymaga zgody kapitana przeciwnej drużyny.`
+                      : `Nowy termin musi mieścić się w zakresie ±${rescheduleRangeDays} dni od domyślnej daty.${rescheduleFinalDate ? ` Ostateczny termin składania propozycji: ${formatDatePL(rescheduleFinalDate)}.` : ''} Wymaga zgody kapitana przeciwnej drużyny.`
+                    }
                   </p>
                   <Input
                     type="datetime-local"
                     value={selectedDate}
                     onChange={(e) => setSelectedDate(e.target.value)}
-                    min={`${minDate.getFullYear()}-${String(minDate.getMonth()+1).padStart(2,'0')}-${String(minDate.getDate()).padStart(2,'0')}T00:00`}
-                    max={`${maxDate.getFullYear()}-${String(maxDate.getMonth()+1).padStart(2,'0')}-${String(maxDate.getDate()).padStart(2,'0')}T23:59`}
+                    min={minDate ? `${minDate.getFullYear()}-${String(minDate.getMonth()+1).padStart(2,'0')}-${String(minDate.getDate()).padStart(2,'0')}T00:00` : undefined}
+                    max={maxDate ? `${maxDate.getFullYear()}-${String(maxDate.getMonth()+1).padStart(2,'0')}-${String(maxDate.getDate()).padStart(2,'0')}T23:59` : undefined}
                     className="bg-white/5 border-white/10 text-white"
                   />
                   <div className="flex gap-2">
@@ -469,7 +501,7 @@ export function PDLUpcomingMatch({
                   onClick={() => setShowReschedule(true)}
                 >
                   <CalendarRange className="w-4 h-4 mr-2" />
-                  Zmień termin
+                  {scheduledDate ? 'Zmień termin' : 'Ustal termin'}
                 </Button>
               )
             )}
@@ -489,9 +521,9 @@ export function PDLUpcomingMatch({
           {/* ─── My team's standin requests ─── */}
           {onSubmitStandinRequest && onApproveStandinRequest && onRejectStandinRequest && onAppealStandinRequest && (
             <div className="space-y-3">
-              <h4 className="text-xs font-logik-extended-bold text-white/40 uppercase tracking-wide flex items-center gap-2">
+              <h4 className="text-xs font-logik-extended-bold uppercase tracking-wide flex items-center gap-2" style={{ color: theme.primaryTextColor || 'rgba(255,255,255,0.4)' }}>
                 <UserPlus className="w-4 h-4" />
-                Moje standiny
+                Standiny
               </h4>
               <PDLStandinRequestSection
                 matchId={match.id}
@@ -505,6 +537,7 @@ export function PDLUpcomingMatch({
                 onAppealRequest={onAppealStandinRequest}
                 onCancelRequest={onCancelStandinRequest}
                 isOpponentView={false}
+                isMmrLimited={isMmrLimited}
               />
             </div>
           )}
@@ -512,7 +545,7 @@ export function PDLUpcomingMatch({
           {/* ─── Opponent standin requests (for me to approve) ─── */}
           {opponentStandinRequests.length > 0 && onApproveStandinRequest && onRejectStandinRequest && (
             <div className="space-y-3">
-              <h4 className="text-xs font-logik-extended-bold text-white/40 uppercase tracking-wide flex items-center gap-2">
+              <h4 className="text-xs font-logik-extended-bold uppercase tracking-wide flex items-center gap-2" style={{ color: theme.primaryTextColor || 'rgba(255,255,255,0.4)' }}>
                 <Swords className="w-4 h-4" />
                 Standiny przeciwnika (do zatwierdzenia)
               </h4>

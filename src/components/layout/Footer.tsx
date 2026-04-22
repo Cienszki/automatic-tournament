@@ -52,28 +52,17 @@ export function Footer() {
   const isDevelopment = process.env.NODE_ENV === 'development';
   
   // Extract Twitch channel from URL or use legacy twitchChannel
-  const getTwitchChannel = () => {
-    if (tournament?.twitchUrl) {
-      // Extract channel from URL like https://www.twitch.tv/pd2ih or https://twitch.tv/pd2ih
-      const match = tournament.twitchUrl.match(/twitch\.tv\/([^/?]+)/);
-      return match ? match[1] : 'polishdota2inhouse';
-    }
-    return tournament?.twitchChannel || 'polishdota2inhouse';
-  };
-
-  const getTwitchUrl = () => {
-    if (tournament?.twitchUrl) {
-      return tournament.twitchUrl;
-    }
-    const channel = tournament?.twitchChannel || 'polishdota2inhouse';
-    return `https://www.twitch.tv/${channel}`;
+  const getTwitchUrl = (): string | null => {
+    if (tournament?.twitchUrl) return tournament.twitchUrl;
+    if (tournament?.twitchChannel) return `https://www.twitch.tv/${tournament.twitchChannel}`;
+    return null;
   };
 
   const getDiscordUrl = () => {
     return tournament?.discordUrl || organizationConfig.defaults.discord;
   };
 
-  const twitchChannel = getTwitchChannel();
+  const twitchUrl = getTwitchUrl();
   const youtubeUrl = tournament?.youtubeUrl || null;
   const instagramUrl = tournament?.instagramUrl || null;
   const tiktokUrl = tournament?.tiktokUrl || null;
@@ -94,9 +83,9 @@ export function Footer() {
               <span className="sr-only">Discord</span>
             </a>
           )}
-          {getTwitchUrl() && (
+          {twitchUrl && (
             <a
-              href={getTwitchUrl()}
+              href={twitchUrl}
               target="_blank"
               rel="noopener noreferrer"
               aria-label="Twitch"

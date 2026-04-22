@@ -344,6 +344,7 @@
     "browseDescription": "Przeglądaj wszystkie drużyny uczestniczące w turnieju.",
     "noTeamsRegistered": "Żadne drużyny nie zostały jeszcze zarejestrowane.",
     "viewProfile": "Zobacz profil",
+    "notVerified": "Niezweryfikowana",
     "status": {
       "pending": "Oczekująca",
       "verified": "Zweryfikowana",
@@ -821,7 +822,7 @@
     "inDays": "za {count} dni"
   },
   "pdlRegistration": {
-    "teamRegistration": "Rejestracja Drużyny PDL",
+    "teamRegistration": "Rejestracja drużyny",
     "seasonRegistration": "Rejestracja na Sezon 1",
     "teamDetails": "Dane Drużyny",
     "teamName": "Nazwa Drużyny",
@@ -832,9 +833,15 @@
     "playerDetails": "Gracze",
     "playerDetailsDesc": "Wszyscy gracze mają obowiązek używać podczas meczów nazwy gracza łatwo rozpoznawalnej jako ta podana przy rejestracji.",
     "nickname": "Nick w grze",
+    "nicknameHint": "Konto musi mieć ustawioną publiczną historię meczy w Dota 2 i zaktualizowaną na Dotabuff",
     "role": "Pozycja",
+    "roleHint": "Tylko informacyjnie",
     "steamProfile": "Link do profilu Steam",
     "selectRole": "Wybierz pozycję",
+    "smurfAccountsLabel": "Konta smerf",
+    "smurfAccountsDesc": "Wymagane jest podanie wszystkich dodatkowych kont, na których dany gracz zagrał minimum 10 meczy w ciągu ostatnich 3 miesięcy",
+    "addSmurfAccount": "Dodaj smerf konto",
+    "screenshotDesc": "Screenshot profilu z widocznym nickiem, MMR, oraz ostatnim zagranym meczem z datą [max. 5MB]",
     "validation": {
       "teamNameMin": "Nazwa zespołu musi mieć co najmniej 3 znaki.",
       "teamNameMax": "Nazwa zespołu nie może przekroczyć 20 znaków.",
@@ -996,7 +1003,11 @@
     "semifinal": "Półfinał",
     "quarterfinal": "Ćwierćfinał",
     "grandFinal": "Wielki Finał",
-    "tbd": "TBD"
+    "tbd": "TBD",
+    "upperBracket": "Upper Bracket",
+    "lowerBracket": "Lower Bracket",
+    "bracketWinner": "zwycięzca",
+    "bracketLoser": "przegrany"
   },
   "teamDetail": {
     "topHeroes": "Najczęściej Grani Bohaterowie",
