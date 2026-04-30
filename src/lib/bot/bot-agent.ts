@@ -830,6 +830,7 @@ async function handlePlayerJoinedEnforcement(
   }
 
   // Eligible player joined — look up their display name and send welcome message
+  if (!botConfig) return;
   const effectiveChat = getEffectiveChatMessages(botConfig, botAccountId);
   const welcomeTemplate = effectiveChat.welcomeMessage;
   if (!welcomeTemplate) return;
