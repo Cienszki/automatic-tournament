@@ -39,6 +39,7 @@
     "node_modules",
     "scripts",
     "backup-threejs",
-    "_archive"
+    "_archive",
+    "bot-worker"
   ]
 }
