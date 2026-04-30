@@ -116,7 +116,6 @@ export function LeagueHomePage() {
           {/* Right: Next Match (5 cols) */}
           <div className="lg:col-span-5 xl:col-span-4 h-full pt-6 lg:pt-0">
             <NextMatchCard
-              channel={tournament.twitchUrl ? tournament.twitchUrl.match(/twitch\.tv\/([^/?]+)/)?.[1] || 'polishdota2inhouse' : tournament.twitchChannel || 'polishdota2inhouse'}
               nextMatch={nextMatch}
             />
           </div>
