@@ -581,7 +581,7 @@ export function TournamentHomePage() {
                     <img
                       src={logoUrl}
                       alt={tournament.name}
-                      className="max-h-[48vh] 2k:max-h-[36vh] max-w-[42vw] sm:max-w-[32vw] lg:max-w-[28vw] w-auto object-contain pointer-events-auto"
+                      className="max-h-[72vh] 2k:max-h-[54vh] max-w-[63vw] sm:max-w-[48vw] lg:max-w-[42vw] w-auto object-contain pointer-events-auto"
                     />
                   ) : (
                     <h1

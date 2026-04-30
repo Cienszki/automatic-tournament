@@ -32,6 +32,7 @@ export type BotCommand =
   | KickPlayerCommand
   | StartGameCommand
   | LeaveLobbyCommand
+  | SetTeamsCommand
   | ShutdownCommand;
 
 export interface CreateLobbyCommand {
@@ -69,6 +70,17 @@ export interface StartGameCommand {
 export interface LeaveLobbyCommand {
   type: 'leave_lobby';
   sessionId: string;
+}
+
+export interface SetTeamsCommand {
+  type: 'set_teams';
+  sessionId: string;
+  /** Radiant team Steam32 IDs */
+  teamA: string[];
+  /** Dire team Steam32 IDs */
+  teamB: string[];
+  /** Additional Steam32 IDs allowed in lobby (commentators, observers) */
+  whitelist?: string[];
 }
 
 export interface ShutdownCommand {

@@ -1,7 +1,7 @@
 import { FieldValue } from "firebase-admin/firestore";
 import { NextRequest, NextResponse } from "next/server";
 import { getAllTeamsAdmin, getAllTournamentPlayersAdmin } from "../../../../server/lib/getAllAdmin";
-import { getAdminDb } from "@/lib/admin";
+import { getAdminDb, getAdminAuth, ensureAdminInitialized } from "@/lib/admin";
 import { transformMatchData, fetchOpenDotaMatch, isMatchParsed, requestOpenDotaMatchParse } from "@/lib/opendota";
 import { addUnparsedMatchAdmin } from "@/lib/unparsed-matches-admin";
 import { recalculateMatchScoresAdmin } from "@/lib/admin-match-actions-server";
@@ -11,6 +11,22 @@ import { checkRateLimit, LIMIT_MATCH_IMPORT } from "@/lib/rate-limit";
 export async function POST(req: NextRequest) {
   const rateLimitRes = checkRateLimit(req, 'import-match', LIMIT_MATCH_IMPORT);
   if (rateLimitRes) return rateLimitRes;
+
+  // Require admin authentication
+  const authHeader = req.headers.get('Authorization');
+  if (!authHeader?.startsWith('Bearer ')) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+  try {
+    ensureAdminInitialized();
+    const decodedToken = await getAdminAuth().verifyIdToken(authHeader.split('Bearer ')[1]);
+    const adminDoc = await getAdminDb().collection('admins').doc(decodedToken.uid).get();
+    if (!adminDoc.exists) {
+      return NextResponse.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
+    }
+  } catch {
+    return NextResponse.json({ error: 'Unauthorized: Invalid token' }, { status: 401 });
+  }
 
   try {
     const body = await req.json();

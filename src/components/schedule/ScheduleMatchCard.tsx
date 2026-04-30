@@ -40,10 +40,10 @@ export function ScheduleMatchCard({ match, priority = false, divisionColor = '#6
                 whileTap={{ scale: 0.98 }}
                 onClick={() => setModalOpen(true)}
                 className={cn(
-                    "group relative w-full overflow-hidden rounded-xl border border-transparent transition-all duration-300 cursor-pointer",
+                    "group relative w-full overflow-hidden rounded-xl border transition-all duration-300 cursor-pointer backdrop-blur-md",
                     isLive
                         ? "bg-gradient-to-r from-red-500/10 via-red-500/5 to-transparent border-red-500/30 shadow-[0_0_30px_rgba(239,68,68,0.1)]"
-                        : "hover:bg-white/[0.04]"
+                        : "bg-white/10 border-white/15 shadow-sm hover:bg-white/[0.16] hover:border-white/25 hover:shadow-md"
                 )}
             >
                 {/* Live pulse effect */}

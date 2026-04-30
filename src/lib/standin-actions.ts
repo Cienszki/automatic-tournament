@@ -246,6 +246,19 @@ export async function cancelStandinRequest(
       }).catch(() => { /* match may not have the field yet */ }),
     ]);
 
+    // If the standin was active, sync the lobby session to remove them and restore the original player
+    if (req.status === 'approved' || req.status === 'appeal_approved') {
+      try {
+        const { syncLobbySessionStandins } = await import('./bot/bot-config-actions');
+        const synced = await syncLobbySessionStandins(tournamentId, req.matchId);
+        if (synced > 0) {
+          console.log(`[standin-actions] Removed standin from ${synced} active lobby session(s) after cancel`);
+        }
+      } catch (syncErr) {
+        console.warn('[standin-actions] Failed to sync lobby sessions after standin cancel:', syncErr);
+      }
+    }
+
     return { success: true };
   } catch (e) {
     console.error('[standin-actions] cancelStandinRequest error', e);

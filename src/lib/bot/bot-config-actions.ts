@@ -128,11 +128,11 @@ export async function deleteBotAccount(
 }
 
 /**
- * Enable or disable a bot account, or update its display name / notes
+ * Enable or disable a bot account, or update its display name / notes / username
  */
 export async function updateBotAccount(
   botAccountId: string,
-  updates: Partial<Pick<BotAccount, 'enabled' | 'displayName' | 'notes'>>
+  updates: Partial<Pick<BotAccount, 'enabled' | 'displayName' | 'notes' | 'username'>>
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const db = getAdminDb();
@@ -555,6 +555,14 @@ export async function syncLobbySessionStandins(
   const assignments = await buildLobbyTeamAssignments(tournamentId, matchId);
   if (!assignments) return 0;
 
+  // Get tournament whitelist (commentators, observers, admins)
+  const botConfig = await getTournamentBotConfig(tournamentId);
+  const whitelistIds = (botConfig?.whitelist ?? []).map((e: { steamId32: string }) => e.steamId32);
+
+  const newRadiantIds = assignments.radiant.expectedPlayers.map((p) => p.steamId32);
+  const newDireIds = assignments.dire.expectedPlayers.map((p) => p.steamId32);
+  const newAllIds = new Set([...newRadiantIds, ...newDireIds]);
+
   // Find all active (non-terminal) sessions for this match
   const allSessions = await getLobbySessionsForMatch(matchId);
   const activeSessions = allSessions.filter(
@@ -562,15 +570,79 @@ export async function syncLobbySessionStandins(
   );
 
   let updated = 0;
+  const db = getAdminDb();
+
   for (const session of activeSessions) {
+    // Diff to find which Steam32 IDs were added or removed
+    const oldAllIds = new Set([
+      ...session.radiantTeam.expectedPlayers.map((p) => p.steamId32),
+      ...session.direTeam.expectedPlayers.map((p) => p.steamId32),
+    ]);
+    const newlyAddedIds = [...newAllIds].filter((id) => !oldAllIds.has(id));
+    const removedIds = [...oldAllIds].filter((id) => !newAllIds.has(id));
+
+    // 1. Update Firestore session with new team assignments
     await updateLobbySession(session.id, {
       radiantTeam: assignments.radiant,
       direTeam: assignments.dire,
     });
-    updated++;
 
+    // 2. Push bot commands (only when a bot is actually assigned to this session)
+    if (session.botAccountId) {
+      const queueRef = db
+        .collection('botCommands')
+        .doc(session.botAccountId)
+        .collection('queue');
+      const now = new Date().toISOString();
+
+      // Always sync the in-memory allow list so joins/kicks are handled correctly
+      await queueRef.add({
+        botAccountId: session.botAccountId,
+        command: {
+          type: 'set_teams',
+          sessionId: session.id,
+          teamA: newRadiantIds,
+          teamB: newDireIds,
+          whitelist: whitelistIds,
+        },
+        status: 'pending',
+        createdAt: now,
+      });
+
+      // Invite newly added standin(s) when the lobby is still accepting players
+      const canInvite = ['lobby_open', 'ready_check', 'requirements_met'].includes(session.state);
+      if (canInvite && newlyAddedIds.length > 0) {
+        await queueRef.add({
+          botAccountId: session.botAccountId,
+          command: {
+            type: 'invite_players',
+            sessionId: session.id,
+            steamIds: newlyAddedIds,
+          },
+          status: 'pending',
+          createdAt: now,
+        });
+      }
+
+      // Proactively kick removed players (best-effort; they may not be in the lobby)
+      for (const removedId of removedIds) {
+        await queueRef.add({
+          botAccountId: session.botAccountId,
+          command: {
+            type: 'kick_player',
+            sessionId: session.id,
+            steamId32: removedId,
+          },
+          status: 'pending',
+          createdAt: now,
+        });
+      }
+    }
+
+    updated++;
     console.log(
-      `[BotConfig] Synced standins for session ${session.id} (match: ${matchId}, game: ${session.currentGameNumber})`
+      `[BotConfig] Synced standins for session ${session.id} (match: ${matchId}, game: ${session.currentGameNumber}): ` +
+      `added=[${newlyAddedIds.join(',')}] removed=[${removedIds.join(',')}]`
     );
   }
 

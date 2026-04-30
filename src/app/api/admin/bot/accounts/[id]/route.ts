@@ -31,6 +31,7 @@ export async function PATCH(
       enabled?: boolean;
       displayName?: string;
       notes?: string;
+      username?: string;
       password?: string;
     };
 
@@ -38,6 +39,7 @@ export async function PATCH(
     if (body.enabled !== undefined) updates.enabled = body.enabled;
     if (body.displayName !== undefined) updates.displayName = body.displayName.trim();
     if (body.notes !== undefined) updates.notes = body.notes;
+    if (body.username?.trim()) updates.username = body.username.trim();
 
     // If a new password is provided, re-encode it
     if (body.password?.trim()) {

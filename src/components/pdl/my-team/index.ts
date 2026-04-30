@@ -1,4 +1,5 @@
 export { PDLMyTeamHero } from './PDLMyTeamHero';
+export { RegistrationStatusBanner } from './RegistrationStatusBanner';
 export { PDLRosterCard } from './PDLRosterCard';
 export { PDLUpcomingMatch } from './PDLUpcomingMatchNew';
 export { PDLMatchHistory } from './PDLMatchHistory';

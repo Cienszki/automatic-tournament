@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import { Badge } from '@/components/ui/badge';
-import { Trophy, Users, Star, Shield, Clock, XCircle, AlertTriangle, Ban, Swords } from 'lucide-react';
+import { Trophy, Users, Star, Shield, Clock, CheckCircle, XCircle, AlertTriangle, Ban, Swords } from 'lucide-react';
 import type { Team } from '@/lib/definitions';
 import { cn } from '@/lib/utils';
 import { useTournament } from '@/context/TournamentContext';
@@ -124,19 +124,27 @@ export function PDLMyTeamHero({
                     )}
 
                     {/* Team Status Badge */}
-                    {team.status && team.status !== 'verified' && (() => {
-                        const statusConfig: Record<string, { label: string; icon: React.ElementType; className: string }> = {
-                            pending: { label: 'Oczekuje na weryfikację', icon: Clock, className: 'bg-yellow-500/10 border border-yellow-500/30 text-yellow-400' },
-                            rejected: { label: 'Drużyna odrzucona', icon: XCircle, className: 'bg-red-500/10 border border-red-500/30 text-red-400' },
-                            warning: { label: 'Ostrzeżenie', icon: AlertTriangle, className: 'bg-orange-500/10 border border-orange-500/30 text-orange-400' },
-                            banned: { label: 'Zbanowana', icon: Ban, className: 'bg-red-900/20 border border-red-900/30 text-red-600' },
-                            eliminated: { label: 'Wyeliminowana', icon: Swords, className: 'bg-white/5 border border-white/10 text-white/30' },
+                    {team.status && (() => {
+                        const statusConfig: Record<string, { label: string; icon: React.ElementType }> = {
+                            pending: { label: 'Oczekuje na weryfikację', icon: Clock },
+                            verified: { label: 'Drużyna zweryfikowana', icon: CheckCircle },
+                            rejected: { label: 'Drużyna odrzucona', icon: XCircle },
+                            warning: { label: 'Ostrzeżenie', icon: AlertTriangle },
+                            banned: { label: 'Zbanowana', icon: Ban },
+                            eliminated: { label: 'Wyeliminowana', icon: Swords },
                         };
                         const cfg = statusConfig[team.status];
                         if (!cfg) return null;
                         const Icon = cfg.icon;
+                        const isRejected = team.status === 'rejected';
                         return (
-                            <div className={cn('inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-logik-extended-bold uppercase tracking-widest', cfg.className)}>
+                            <div
+                                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-logik-extended-bold uppercase tracking-widest bg-white/[0.04] border border-white/10"
+                                style={isRejected
+                                    ? { color: 'rgb(248 113 113)', borderColor: 'rgba(239,68,68,0.3)', backgroundColor: 'rgba(239,68,68,0.1)' }
+                                    : { color: 'var(--tournament-section-header)', fontFamily: theme.headerFont ? `var(${theme.headerFont})` : undefined }
+                                }
+                            >
                                 <Icon className="w-4 h-4" />
                                 {cfg.label}
                             </div>

@@ -11,7 +11,8 @@ import Link from "next/link";
 import { motion, useMotionValue, useSpring, useTransform } from "framer-motion";
 import {
   Swords, Shield, Sparkles, HandHelping, Eye,
-  Trophy, Crown, TrendingUp, Users, MapPin, Calendar, Target, MessageSquare
+  Trophy, Crown, TrendingUp, Users, MapPin, Calendar, Target, MessageSquare,
+  Clock, XCircle, AlertTriangle, Ban
 } from "lucide-react";
 import { cn, formatNumber } from "@/lib/utils";
 import { useTranslation } from "@/hooks/useTranslation";
@@ -309,6 +310,28 @@ export function TeamCard({ team, divisionRanking }: TeamCardProps) {
               whileHover={{ scaleX: 1 }}
               transition={{ duration: 0.4, ease: "circOut" }}
             />
+
+            {/* Registration Status Badge (non-verified teams only) */}
+            {team.status && team.status !== 'verified' && team.status !== 'eliminated' && (() => {
+              const statusMap: Record<string, { icon: React.ElementType; label: string; className: string }> = {
+                pending:  { icon: Clock,          label: 'Oczekuje',    className: 'border-yellow-500/40 bg-yellow-500/10 text-yellow-400' },
+                rejected: { icon: XCircle,        label: 'Odrzucona',   className: 'border-red-500/40 bg-red-500/10 text-red-400' },
+                warning:  { icon: AlertTriangle,  label: 'Ostrzeżenie', className: 'border-orange-500/40 bg-orange-500/10 text-orange-400' },
+                banned:   { icon: Ban,            label: 'Zbanowana',   className: 'border-red-800/40 bg-red-800/10 text-red-600' },
+              };
+              const cfg = statusMap[team.status];
+              if (!cfg) return null;
+              const Icon = cfg.icon;
+              return (
+                <div className={cn(
+                  'absolute top-3 right-3 z-30 inline-flex items-center gap-1.5 px-2 py-1 rounded-md border text-[10px] font-logik-extended-bold uppercase tracking-wider',
+                  cfg.className
+                )}>
+                  <Icon className="w-3 h-3" />
+                  {cfg.label}
+                </div>
+              );
+            })()}
           </div>
         </motion.div>
       </Link>

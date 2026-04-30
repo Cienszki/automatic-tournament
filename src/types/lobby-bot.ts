@@ -170,6 +170,15 @@ export interface LobbySettings {
   leagueId?: number;
   /** Lobby password (auto-generated per match if not set) */
   password?: string;
+  /**
+   * Selection priority rules (DOTASelectionPriorityRules proto enum).
+   * 1 = Automatic (default) — coin toss: GC shows "START PICK/SIDE SELECTION", captains
+   *     choose side/pick-order in their Dota 2 client. Bot fires a second
+   *     launchPracticeLobby() automatically once both teams have chosen.
+   * 0 = Manual — no coin toss: GC uses lobby settings directly, shows "START GAME".
+   *     Single launchPracticeLobby() call is enough; no player interaction needed.
+   */
+  selectionPriorityRules?: number;
 }
 
 /**
@@ -250,7 +259,7 @@ export interface LateArrivalPolicyConfig {
   game1ForfeitMinutes: number;
   /** Minutes after the scheduled match start before asking about series forfeit */
   seriesForfeitMinutes: number;
-  /** Commands opposing team can type to vote for waiting 10 more minutes */
+  /** Commands opposing team can type to vote for waiting more minutes (see waitExtensionMinutes) */
   waitCommands: string[];
   /** Commands opposing team can type to vote for forfeit */
   forfeitCommands: string[];
@@ -258,6 +267,8 @@ export interface LateArrivalPolicyConfig {
   votingWindowSeconds: number;
   /** How many of 5 opposing players must vote forfeit to trigger it (default 3) */
   requiredVotesForForfeit: number;
+  /** Minutes added when the present team votes to wait instead of forfeiting (default 10) */
+  waitExtensionMinutes: number;
   /**
    * Announcement sent when a team is absent at the game-1 forfeit threshold.
    * Placeholders: {late_team}, {present_team}, {minutes}, {wait_cmd}, {forfeit_cmd}, {window}, {required}
@@ -485,12 +496,13 @@ export interface LobbyExpectedPlayer {
 export const DEFAULT_LOBBY_SETTINGS: LobbySettings = {
   gameMode: 'captains_mode',
   serverRegion: 'europe_west',
-  visibility: 'unlisted',
+  visibility: 'public',
   cheatsEnabled: false,
   fillWithBots: false,
   dotaTvDelay: 120,
   allowSpectators: true,
   pauseSetting: 'limited',
+  selectionPriorityRules: 1, // Automatic by default — coin toss (START PICK/SIDE SELECTION)
 };
 
 export const DEFAULT_READY_CHECK_CONFIG: ReadyCheckConfig = {
@@ -503,6 +515,7 @@ export const DEFAULT_LATE_ARRIVAL_CONFIG: LateArrivalPolicyConfig = {
   enabled: false,
   game1ForfeitMinutes: 15,
   seriesForfeitMinutes: 30,
+  waitExtensionMinutes: 10,
   interGameBreakMinutes: 15,
   waitCommands: ['!wait', '!w'],
   forfeitCommands: ['!forfeit', '!ff'],

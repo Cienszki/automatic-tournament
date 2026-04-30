@@ -28,7 +28,7 @@ import type { Standin } from "@/lib/definitions";
 import NoTeamFound from '@/components/app/my-team/NoTeamFound';
 
 // PDL components
-import { PDLMyTeamHero, PDLMatchHistory, PDLCaptainActions } from "@/components/pdl/my-team";
+import { PDLMyTeamHero, PDLMatchHistory, PDLCaptainActions, RegistrationStatusBanner } from "@/components/pdl/my-team";
 import { PDLUpcomingMatch } from "@/components/pdl/my-team/PDLUpcomingMatchNew";
 import { PDLTransferSection } from "@/components/pdl/my-team/PDLTransferSection";
 import { upsertGlobalPlayerProfilesAction, clearPlayerCurrentTeamsAction } from "@/lib/player-profile-actions";
@@ -531,6 +531,21 @@ function MyTeamView() {
       }
     }
   }, [user, authLoading, isLegacyTournament, tournament?.id]);
+
+  // Real-time listener: keep team.status (and other fields) in sync with Firestore
+  React.useEffect(() => {
+    if (!team?.id || !tournament?.id || isLegacyTournament) return;
+
+    const teamDocRef = doc(db, 'tournaments', tournament.id, 'teams', team.id);
+    const unsubscribe = onSnapshot(teamDocRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const updated = snapshot.data();
+        setTeam(prev => prev ? { ...prev, status: updated.status as Team['status'] } : prev);
+      }
+    });
+
+    return () => unsubscribe();
+  }, [team?.id, tournament?.id, isLegacyTournament]);
 
   const handleCreateScrimSlot = async () => {
     if (!tournament?.id || !team || !isCaptain) return;
@@ -1660,6 +1675,13 @@ function MyTeamView() {
             divisionTier={divisionInfo?.tier}
             divisionColor={divisionInfo?.color}
           />
+        )}
+
+        {/* Registration Status Banner — visible to all team members */}
+        {team?.status && (
+          <div className="mb-6">
+            <RegistrationStatusBanner status={team.status} />
+          </div>
         )}
 
         {/* Captain Actions */}

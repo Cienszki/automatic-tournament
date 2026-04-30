@@ -248,6 +248,7 @@ export interface TournamentConfig {
     latePenaltyGameMinutes?: number;   // forfeit one game, default 15
     latePenaltySeriesMinutes?: number; // forfeit series, default 30
     botLobbyEnabled?: boolean;   // when true, bot creates lobby automatically (instead of captain)
+    selectionPriorityRules?: number; // 1=Automatic (coin toss), 0=Manual (no coin toss)
   };
 
   // Social/Streaming

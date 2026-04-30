@@ -54,6 +54,7 @@ import {
   Power,
   EyeOff,
   ChevronDown,
+  Pencil,
 } from 'lucide-react';
 import type {
   TournamentBotConfig,
@@ -136,6 +137,13 @@ export function BotTab(): React.ReactElement {
   const [addAccountError, setAddAccountError] = useState<string | null>(null);
   const [togglingAccountId, setTogglingAccountId] = useState<string | null>(null);
   const [deletingAccountId, setDeletingAccountId] = useState<string | null>(null);
+  const [editingAccount, setEditingAccount] = useState<SafeBotAccount | null>(null);
+  const [editDisplayName, setEditDisplayName] = useState('');
+  const [editUsername, setEditUsername] = useState('');
+  const [editPassword, setEditPassword] = useState('');
+  const [showEditPassword, setShowEditPassword] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
 
   // Manual test controls
   const [testMatchId, setTestMatchId] = useState('');
@@ -331,6 +339,53 @@ export function BotTab(): React.ReactElement {
       setTogglingAccountId(null);
     }
   }, [user]);
+
+  const handleOpenEditDialog = useCallback((account: SafeBotAccount): void => {
+    setEditingAccount(account);
+    setEditDisplayName(account.displayName);
+    setEditUsername(account.username);
+    setEditPassword('');
+    setShowEditPassword(false);
+    setEditError(null);
+  }, []);
+
+  const handleEditBotAccount = useCallback(async (): Promise<void> => {
+    if (!user || !editingAccount) return;
+    setIsEditing(true);
+    setEditError(null);
+    try {
+      const token = await user.getIdToken();
+      const body: Record<string, string> = {
+        displayName: editDisplayName.trim(),
+        username: editUsername.trim(),
+      };
+      if (editPassword.trim()) {
+        body.password = editPassword.trim();
+      }
+      const res = await fetch(`/api/admin/bot/accounts/${editingAccount.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(body),
+      });
+      if (res.ok) {
+        setBotAccounts((prev) =>
+          prev.map((a) =>
+            a.id === editingAccount.id
+              ? { ...a, displayName: editDisplayName.trim(), username: editUsername.trim() }
+              : a
+          )
+        );
+        setEditingAccount(null);
+      } else {
+        const data = await res.json() as { error?: string };
+        setEditError(data.error ?? `Błąd serwera: ${res.status}`);
+      }
+    } catch {
+      setEditError('Błąd połączenia z serwerem.');
+    } finally {
+      setIsEditing(false);
+    }
+  }, [user, editingAccount, editDisplayName, editUsername, editPassword]);
 
   const handleForceCreateSession = useCallback(async (): Promise<void> => {
     if (!user || !tournament?.id || !testMatchId.trim()) return;
@@ -831,6 +886,20 @@ export function BotTab(): React.ReactElement {
           onToggle={handleToggleBotAccount}
           deletingId={deletingAccountId}
           onDelete={handleDeleteBotAccount}
+          editingAccount={editingAccount}
+          onOpenEdit={handleOpenEditDialog}
+          onCloseEdit={() => { setEditingAccount(null); setEditError(null); }}
+          editDisplayName={editDisplayName}
+          setEditDisplayName={setEditDisplayName}
+          editUsername={editUsername}
+          setEditUsername={setEditUsername}
+          editPassword={editPassword}
+          setEditPassword={setEditPassword}
+          showEditPassword={showEditPassword}
+          setShowEditPassword={setShowEditPassword}
+          isEditing={isEditing}
+          editError={editError}
+          onEdit={handleEditBotAccount}
           theme={theme}
         />
       )}
@@ -1099,6 +1168,27 @@ function SettingsView({
                       <SelectItem value="300">5 minut</SelectItem>
                     </SelectContent>
                   </Select>
+                </div>
+
+                {/* Coin Toss / Selection Priority */}
+                <div className="space-y-2">
+                  <Label>Rzut monetą (wybór strony)</Label>
+                  <Select
+                    value={String(config.lobby.selectionPriorityRules ?? 1)}
+                    onValueChange={(v) => updateLobby('selectionPriorityRules', parseInt(v))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="1">Rzut monetą — gracze wybierają stronę / kolejność (domyślnie)</SelectItem>
+                      <SelectItem value="0">Manualne — strony przypisane z góry (bez rzutu monetą)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    Rzut monetą (wartość 1): bot uruchamia mecz dwuetapowo — najpierw gracze wybierają stronę / kolejność w kliencie Dota 2, potem mecz startuje automatycznie.
+                    Manualne (wartość 0): bot uruchamia mecz bezpośrednio, bez wyboru strony.
+                  </p>
                 </div>
 
                 {/* League ID */}
@@ -1731,6 +1821,21 @@ function SettingsView({
                     <p className="text-xs text-muted-foreground">
                       Po ilu minutach bot pyta o forfeit całej serii.
                       Placeholder ogłoszenia: <code className="font-mono">{'{minutes}'}</code>
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Przedłużenie po głosowaniu &quot;czekaj&quot; (minuty)</Label>
+                    <Input
+                      type="number"
+                      min={1}
+                      max={60}
+                      value={config.lateArrival?.waitExtensionMinutes ?? 10}
+                      onChange={(e) => updateLate('waitExtensionMinutes', parseInt(e.target.value) || 10)}
+                      className="max-w-[100px]"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      O ile minut przedłużyć oczekiwanie, gdy drużyna zagłosuje za czekaniem zamiast forfeit.
+                      Placeholder wiadomości: <code className="font-mono">{'{extra}'}</code>
                     </p>
                   </div>
                 </div>
@@ -2401,6 +2506,21 @@ interface AccountsViewProps {
   onToggle: (id: string, enabled: boolean) => Promise<void>;
   deletingId: string | null;
   onDelete: (id: string) => Promise<void>;
+  // Edit
+  editingAccount: SafeBotAccount | null;
+  onOpenEdit: (account: SafeBotAccount) => void;
+  onCloseEdit: () => void;
+  editDisplayName: string;
+  setEditDisplayName: (v: string) => void;
+  editUsername: string;
+  setEditUsername: (v: string) => void;
+  editPassword: string;
+  setEditPassword: (v: string) => void;
+  showEditPassword: boolean;
+  setShowEditPassword: (v: boolean) => void;
+  isEditing: boolean;
+  editError: string | null;
+  onEdit: () => Promise<void>;
   theme: TournamentTheme;
 }
 
@@ -2425,9 +2545,24 @@ function AccountsView({
   onToggle,
   deletingId,
   onDelete,
+  editingAccount,
+  onOpenEdit,
+  onCloseEdit,
+  editDisplayName,
+  setEditDisplayName,
+  editUsername,
+  setEditUsername,
+  editPassword,
+  setEditPassword,
+  showEditPassword,
+  setShowEditPassword,
+  isEditing,
+  editError,
+  onEdit,
   theme,
 }: AccountsViewProps): React.ReactElement {
   const canAdd = newUsername.trim() && newPassword.trim() && newDisplayName.trim();
+  const canEdit = editDisplayName.trim() && editUsername.trim();
 
   return (
     <div className="space-y-6">
@@ -2540,6 +2675,17 @@ function AccountsView({
 
                     {/* Actions */}
                     <div className="flex items-center gap-2 shrink-0">
+                      {/* Edit */}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={isBusy}
+                        onClick={() => onOpenEdit(account)}
+                        title="Edytuj konto"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+
                       {/* Enable/disable toggle */}
                       <Button
                         variant="outline"
@@ -2671,6 +2817,98 @@ function AccountsView({
                 <>
                   <Plus className="h-4 w-4 mr-2" />
                   Dodaj konto
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit account dialog */}
+      <Dialog open={!!editingAccount} onOpenChange={(open) => { if (!open) onCloseEdit(); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edytuj konto bota</DialogTitle>
+            <DialogDescription>
+              Zmień nazwę wyświetlaną lub dane logowania. Pozostaw pole hasła puste, aby
+              zachować obecne hasło.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label>Nazwa wyświetlana</Label>
+              <Input
+                value={editDisplayName}
+                onChange={(e) => setEditDisplayName(e.target.value)}
+                placeholder="np. Bot #1"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Login Steam</Label>
+              <Input
+                value={editUsername}
+                onChange={(e) => setEditUsername(e.target.value)}
+                placeholder="nazwa_konta_steam"
+                autoComplete="off"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Nowe hasło Steam <span className="text-muted-foreground font-normal">(opcjonalne)</span></Label>
+              <div className="relative">
+                <Input
+                  type={showEditPassword ? 'text' : 'password'}
+                  value={editPassword}
+                  onChange={(e) => setEditPassword(e.target.value)}
+                  placeholder="Pozostaw puste, aby nie zmieniać"
+                  autoComplete="new-password"
+                  onKeyDown={(e) => e.key === 'Enter' && canEdit && onEdit()}
+                  className="pr-10"
+                />
+                <button
+                  type="button"
+                  className="absolute inset-y-0 right-3 flex items-center text-muted-foreground hover:text-foreground"
+                  onClick={() => setShowEditPassword(!showEditPassword)}
+                >
+                  {showEditPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {editError && (
+            <div className="flex items-center gap-2 rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              {editError}
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={onCloseEdit}
+              disabled={isEditing}
+            >
+              Anuluj
+            </Button>
+            <Button
+              onClick={onEdit}
+              disabled={isEditing || !canEdit}
+              style={{ backgroundColor: theme.primaryColor }}
+            >
+              {isEditing ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Zapisywanie...
+                </>
+              ) : (
+                <>
+                  <Pencil className="h-4 w-4 mr-2" />
+                  Zapisz zmiany
                 </>
               )}
             </Button>

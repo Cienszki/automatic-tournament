@@ -71,15 +71,43 @@ export function PDLMatchRules({
           <div className="flex items-start gap-2">
             {lobby?.botLobbyEnabled ? (
               <>
-                <Bot className="w-4 h-4 text-white/40 mt-0.5 flex-shrink-0" />
-                <div className="space-y-2 text-xs font-logik">
-                  <p className="text-white/70">
-                    <span className="font-logik-extended-bold text-white">Gra 1 &amp; 2:</span>{' '}
-                    Lobby zostanie stworzone automatycznie przez bota przed meczem.
+                <Bot className="w-4 h-4 text-pdl-gold mt-0.5 flex-shrink-0" />
+                <div className="space-y-3 text-xs font-logik">
+                  <p className="text-white font-logik-extended-bold">
+                    Lobby zarządzane automatycznie przez bota
                   </p>
-                  <p className="text-white/50">
-                    Dołącz do lobby w wyznaczonym czasie – bot wyśle zaproszenia na Steam.
-                  </p>
+                  <ol className="space-y-2 text-white/70 list-none">
+                    <li className="flex gap-2">
+                      <span className="text-pdl-gold font-logik-extended-bold flex-shrink-0">1.</span>
+                      Bot wyśle zaproszenia na Steam przed meczem. Zaakceptuj zaproszenie i dołącz do lobby.
+                    </li>
+                    <li className="flex gap-2">
+                      <span className="text-pdl-gold font-logik-extended-bold flex-shrink-0">2.</span>
+                      W lobby wybierz swoją zarejestrowaną drużynę z listy rozwijanej.
+                    </li>
+                    <li className="flex gap-2">
+                      <span className="text-pdl-gold font-logik-extended-bold flex-shrink-0">3.</span>
+                      Zajmij slot gracza po właściwej stronie. Wszyscy 5 zawodników musi siedzieć w slotach (nie w widowni).
+                    </li>
+                    <li className="flex gap-2">
+                      <span className="text-pdl-gold font-logik-extended-bold flex-shrink-0">4.</span>
+                      Gdy drużyna jest gotowa, kapitan wpisuje{' '}
+                      <span className="font-logik-extended-bold text-white bg-white/10 px-1 rounded">!r</span>{' '}
+                      na czacie lobby.
+                    </li>
+                    {(lobby?.selectionPriorityRules === undefined || lobby.selectionPriorityRules === 1) && (
+                      <li className="flex gap-2">
+                        <span className="text-pdl-gold font-logik-extended-bold flex-shrink-0">5.</span>
+                        Po gotowości obu drużyn nastąpi{' '}
+                        <span className="text-white font-logik-extended-bold">rzut monetą</span>{' '}
+                        — wybierz stronę lub kolejność pickowania w interfejsie Doty 2.
+                      </li>
+                    )}
+                    <li className="flex gap-2">
+                      <span className="text-pdl-gold font-logik-extended-bold flex-shrink-0">{(lobby?.selectionPriorityRules === undefined || lobby.selectionPriorityRules === 1) ? '6.' : '5.'}</span>
+                      Gra uruchomi się automatycznie po dokonaniu wyborów przez obie drużyny.
+                    </li>
+                  </ol>
                 </div>
               </>
             ) : (

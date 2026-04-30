@@ -227,9 +227,13 @@ export default function StandinsPage() {
       };
 
       // Submit to server-side API route
+      const token = await user.getIdToken();
       const response = await fetch('/api/register-standin', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
         body: JSON.stringify(standinData)
       });
       if (!response.ok) {

@@ -1012,22 +1012,30 @@ function ExpandedTeamCard({ team, onClose }: ExpandedCardProps) {
                       {team.division}
                     </span>
                   )}
-                  {team.status && team.status !== 'verified' && (
-                    <span className={cn(
-                      'text-xs uppercase tracking-widest font-logik px-2 py-0.5 rounded-full border',
-                      team.status === 'pending' && 'bg-yellow-500/10 border-yellow-500/30 text-yellow-400',
-                      team.status === 'rejected' && 'bg-red-500/10 border-red-500/30 text-red-400',
-                      team.status === 'eliminated' && 'bg-white/5 border-white/10 text-white/30',
-                      team.status === 'warning' && 'bg-orange-500/10 border-orange-500/30 text-orange-400',
-                      team.status === 'banned' && 'bg-red-900/20 border-red-900/30 text-red-600',
-                    )}>
-                      {team.status === 'pending' && 'Oczekuje'}
-                      {team.status === 'rejected' && 'Odrzucona'}
-                      {team.status === 'eliminated' && 'Wyeliminowana'}
-                      {team.status === 'warning' && 'Ostrzeżenie'}
-                      {team.status === 'banned' && 'Zbanowana'}
-                    </span>
-                  )}
+                  {team.status && (() => {
+                    const statusLabels: Record<string, string> = {
+                      pending: 'Oczekuje',
+                      verified: 'Zweryfikowana',
+                      rejected: 'Odrzucona',
+                      eliminated: 'Wyeliminowana',
+                      warning: 'Ostrzeżenie',
+                      banned: 'Zbanowana',
+                    };
+                    const label = statusLabels[team.status];
+                    if (!label) return null;
+                    const isRejected = team.status === 'rejected';
+                    return (
+                      <span
+                        className="text-xs uppercase tracking-widest font-logik-extended-bold px-2 py-0.5 rounded-full border bg-white/[0.04] border-white/10"
+                        style={isRejected
+                          ? { color: 'rgb(248 113 113)', borderColor: 'rgba(239,68,68,0.3)', backgroundColor: 'rgba(239,68,68,0.1)' }
+                          : { color: 'var(--tournament-section-header)', fontFamily: theme?.headerFont ? `var(${theme.headerFont})` : undefined }
+                        }
+                      >
+                        {label}
+                      </span>
+                    );
+                  })()}
                 </div>
               </div>
             </div>

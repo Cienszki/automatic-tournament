@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
+import DOMPurify from 'dompurify';
 import { useTournament } from '@/context/TournamentContext';
 import { Card, CardHeader, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -258,7 +259,7 @@ export default function NewsPage() {
                         <div className="pt-4 border-t border-white/10 mt-4">
                           <div 
                             className="prose prose-invert prose-lg max-w-none font-logik text-gray-300 leading-relaxed"
-                            dangerouslySetInnerHTML={{ __html: formatContent(post.content) }}
+                            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(formatContent(post.content)) }}
                             style={{
                               '--tw-prose-links': theme.primaryColor,
                             } as React.CSSProperties}
