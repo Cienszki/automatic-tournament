@@ -186,7 +186,7 @@ export function MatchDetailModal({ match, isOpen, onClose, divisionColor }: Matc
   const teamBWon = isCompleted && match.teamB.score > match.teamA.score;
 
   // Render a single team's roster with inline standin info
-  const renderTeamRoster = (players: { id: string; nickname: string; role: string }[], teamId: string) => {
+  const renderTeamRoster = (players: { id: string; nickname: string; role: string; mmr?: number }[], teamId: string) => {
     if (players.length === 0) {
       return <p className="text-xs text-white/20 italic">Brak danych</p>;
     }
