@@ -28,7 +28,7 @@ export function PlayerAvatar({ player, size = 'medium', className }: PlayerAvata
   }
 
   const avatarSrc = size === 'large' ? player.avatarfull : player.avatarmedium || player.avatar;
-  const fallbackText = (player.nickname ?? player.name ?? '??').substring(0, 2);
+  const fallbackText = (player.nickname ?? (player as unknown as { name?: string }).name ?? '??').substring(0, 2);
 
   return (
     <Avatar className={cn(sizeMap[size], className)}>
