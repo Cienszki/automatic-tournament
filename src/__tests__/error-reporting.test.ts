@@ -10,7 +10,7 @@ describe('error-reporting', () => {
 
   beforeEach(() => {
     mockProvider = vi.fn();
-    configureErrorReporting(mockProvider);
+    configureErrorReporting(mockProvider as Parameters<typeof configureErrorReporting>[0]);
   });
 
   describe('reportError', () => {

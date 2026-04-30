@@ -301,6 +301,10 @@ export interface LateArrivalPolicyConfig {
 export interface LobbyEnforcementConfig {
   /** Kick players from team/spectator slots who are not registered for the match */
   autoKickUnauthorized: boolean;
+  /** Kick players who are in the wrong team slot after the grace period */
+  autoKickWrongSlot: boolean;
+  /** Seconds to wait before kicking a player who is in the wrong slot */
+  wrongSlotGracePeriodSeconds: number;
 }
 
 // ─── Dota 2 Enums ───────────────────────────────────────────────────────────
@@ -557,6 +561,8 @@ export const DEFAULT_POST_MATCH_CONFIG: PostMatchConfig = {
 
 export const DEFAULT_ENFORCEMENT_CONFIG: LobbyEnforcementConfig = {
   autoKickUnauthorized: true,
+  autoKickWrongSlot: false,
+  wrongSlotGracePeriodSeconds: 30,
 };
 
 export const DEFAULT_TOURNAMENT_BOT_CONFIG: TournamentBotConfig = {
