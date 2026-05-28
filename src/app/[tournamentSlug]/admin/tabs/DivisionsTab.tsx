@@ -34,12 +34,16 @@ import {
   X,
   Loader2,
   ArrowRight,
+  CalendarDays,
+  Zap,
 } from 'lucide-react';
 import { collection, getDocs, doc, updateDoc, setDoc, deleteDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { generateGroupMatches } from '@/lib/api/groups';
 import { getAllDivisionThemes, getDivisionTheme, type DivisionTheme } from '@/lib/division-themes';
 import { uploadBytes, ref as storageRef, getDownloadURL } from 'firebase/storage';
 import { storage } from '@/lib/firebase';
+import type { GroupHighlight } from '@/lib/definitions';
 
 interface Division {
   id: string;
@@ -49,6 +53,7 @@ interface Division {
   teamsCount: number;
   medalUrl?: string;
   theme?: string;
+  highlights?: GroupHighlight[];
 }
 
 interface Team {
@@ -75,6 +80,8 @@ export function DivisionsTab() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isRecalculatingStandings, setIsRecalculatingStandings] = useState(false);
+  const [matchDeadline, setMatchDeadline] = useState('2026-07-04');
+  const [generatingGroupId, setGeneratingGroupId] = useState<string | null>(null);
 
   // Fetch divisions from database
   useEffect(() => {
@@ -96,6 +103,7 @@ export function DivisionsTab() {
             teamsCount: 0, // Will be updated when teams load
             medalUrl: divData.medalUrl,
             theme: divData.theme,
+            highlights: divData.highlights || [],
           };
         });
 
@@ -195,6 +203,7 @@ export function DivisionsTab() {
           color: division.color,
           medalUrl: division.medalUrl || null,
           theme: division.theme || null,
+          highlights: division.highlights || [],
         }, { merge: true });
       }
       
@@ -228,6 +237,7 @@ export function DivisionsTab() {
         color: newDivision.color,
         medalUrl: null,
         theme: null,
+        highlights: [],
       });
       
       setDivisions([...divisions, newDivision]);
@@ -562,6 +572,76 @@ export function DivisionsTab() {
                             />
                           )}
                         </div>
+
+                        {/* Row Highlights */}
+                        <div className="space-y-2">
+                          <Label className="font-logik text-sm block">Podświetlenia wierszy tabeli:</Label>
+                          {(division.highlights || []).map((h, i) => (
+                            <div key={i} className="flex items-center gap-2 flex-wrap">
+                              <input
+                                type="color"
+                                value={h.color}
+                                onChange={(e) => {
+                                  const next = [...(division.highlights || [])];
+                                  next[i] = { ...h, color: e.target.value };
+                                  updateDivision(division.id, { highlights: next });
+                                }}
+                                className="w-10 h-8 p-0.5 rounded cursor-pointer border border-border bg-transparent"
+                              />
+                              <Input
+                                type="number"
+                                value={h.count}
+                                min={1}
+                                onChange={(e) => {
+                                  const next = [...(division.highlights || [])];
+                                  next[i] = { ...h, count: Math.max(1, parseInt(e.target.value) || 1) };
+                                  updateDivision(division.id, { highlights: next });
+                                }}
+                                className="w-16 h-8 text-center font-logik"
+                              />
+                              <span className="text-sm text-muted-foreground font-logik">drużyn od</span>
+                              <Select
+                                value={h.from}
+                                onValueChange={(value: 'top' | 'bottom') => {
+                                  const next = [...(division.highlights || [])];
+                                  next[i] = { ...h, from: value };
+                                  updateDivision(division.id, { highlights: next });
+                                }}
+                              >
+                                <SelectTrigger className="w-[110px] h-8 font-logik text-xs">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="top">góry</SelectItem>
+                                  <SelectItem value="bottom">dołu</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-500/10"
+                                onClick={() => {
+                                  const next = (division.highlights || []).filter((_, j) => j !== i);
+                                  updateDivision(division.id, { highlights: next });
+                                }}
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          ))}
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-8 font-logik"
+                            onClick={() => {
+                              const next = [...(division.highlights || []), { color: '#10b981', count: 1, from: 'top' as const }];
+                              updateDivision(division.id, { highlights: next });
+                            }}
+                          >
+                            <Plus className="h-4 w-4 mr-2" />
+                            Dodaj podświetlenie
+                          </Button>
+                        </div>
                         
                         <Button
                           variant="ghost"
@@ -760,6 +840,81 @@ export function DivisionsTab() {
                 </div>
               </div>
             )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Generate Group Matches (MMR-limited only) */}
+      {isMmrLimited && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Zap className="h-4 w-4" style={{ color: theme.primaryColor }} />
+              Generuj mecze grupowe
+            </CardTitle>
+            <CardDescription>
+              Tworzy wszystkie mecze round-robin dla każdej grupy. Mecze powstają bez ustalonego
+              terminu — kapitanowie sami umawiają termin przed podanym deadlinem.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center gap-3">
+              <CalendarDays className="h-4 w-4 text-muted-foreground shrink-0" />
+              <Label htmlFor="match-deadline" className="shrink-0">Deadline (ostateczna data):</Label>
+              <Input
+                id="match-deadline"
+                type="date"
+                value={matchDeadline}
+                onChange={(e) => setMatchDeadline(e.target.value)}
+                className="w-40"
+              />
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {divisions.map((group) => (
+                <Button
+                  key={group.id}
+                  variant="outline"
+                  disabled={generatingGroupId !== null || !matchDeadline}
+                  onClick={async () => {
+                    if (!tournament?.id || !matchDeadline) return;
+                    setGeneratingGroupId(group.id);
+                    try {
+                      const result = await generateGroupMatches(
+                        tournament.id,
+                        group.id,
+                        new Date(matchDeadline),
+                      );
+                      if (result.created === 0 && result.skipped === 0) {
+                        toast({
+                          title: 'Brak drużyn w grupie',
+                          description: `Przypisz co najmniej 2 drużyny do grupy "${group.name}" przed generowaniem meczów.`,
+                          variant: 'destructive',
+                        });
+                      } else {
+                        toast({
+                          title: `Mecze grupy "${group.name}" wygenerowane`,
+                          description: `Utworzono: ${result.created}, pominięto (istniały): ${result.skipped}.`,
+                        });
+                      }
+                    } catch (err) {
+                      toast({
+                        title: 'Błąd generowania meczów',
+                        description: err instanceof Error ? err.message : 'Nieznany błąd',
+                        variant: 'destructive',
+                      });
+                    } finally {
+                      setGeneratingGroupId(null);
+                    }
+                  }}
+                >
+                  {generatingGroupId === group.id ? (
+                    <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Generuję...</>
+                  ) : (
+                    <><Zap className="h-4 w-4 mr-2" /> Generuj mecze: {group.name}</>
+                  )}
+                </Button>
+              ))}
+            </div>
           </CardContent>
         </Card>
       )}

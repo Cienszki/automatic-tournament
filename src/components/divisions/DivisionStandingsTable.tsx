@@ -4,12 +4,14 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Trophy, ArrowUp, ArrowDown, TrendingUp, Medal } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTournament } from '@/context/TournamentContext';
+import { useHomeNavigation } from '@/context/HomeNavigationContext';
 import { TeamLogo } from './TeamLogo';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import type { GroupHighlight } from '@/lib/definitions';
 
 interface TeamStanding {
   position: number;
@@ -36,6 +38,33 @@ interface DivisionStandingsTableProps {
   isElite: boolean;
   isLowest: boolean;
   theme: any;
+  highlights?: GroupHighlight[];
+}
+
+function computeRowHighlightColor(
+  position: number,
+  totalTeams: number,
+  highlights: GroupHighlight[]
+): string | null {
+  let topOffset = 0;
+  let bottomOffset = 0;
+
+  for (const h of highlights) {
+    if (h.from === 'top') {
+      if (position > topOffset && position <= topOffset + h.count) {
+        return h.color;
+      }
+      topOffset += h.count;
+    } else {
+      const start = totalTeams - bottomOffset - h.count + 1;
+      const end = totalTeams - bottomOffset;
+      if (position >= start && position <= end) {
+        return h.color;
+      }
+      bottomOffset += h.count;
+    }
+  }
+  return null;
 }
 
 // Form bars: last 10 matches, recent on the right. W=tall green, D=medium yellow, L=short red
@@ -77,14 +106,17 @@ export function DivisionStandingsTable({
   divisionName,
   isElite,
   isLowest,
-  theme
+  theme,
+  highlights = [],
 }: DivisionStandingsTableProps) {
   const { getTournamentPath } = useTournament();
+  const { isHomeActive, goToTeam } = useHomeNavigation();
+  const router = useRouter();
 
   return (
-    <div className="rounded-xl overflow-hidden border border-white/[0.09] bg-gradient-to-b from-white/[0.04] via-black/15 to-black/25 backdrop-blur-xl">
+    <div className="rounded-xl overflow-hidden border border-white/[0.06] bg-white/[0.04] backdrop-blur-sm">
       {/* Header Grid */}
-      <div className="grid grid-cols-12 gap-4 px-4 py-2 text-[10px] font-logik-extended-bold uppercase tracking-[0.2em]" style={{ color: theme?.secondaryTextColor || 'rgba(255,255,255,0.2)' }}>
+      <div className="grid grid-cols-12 gap-4 px-4 py-2 text-[10px] font-logik-extended-bold uppercase tracking-[0.2em]" style={{ color: 'var(--tournament-secondary-text)' }}>
         <div className="col-span-1 text-center">#</div>
         <div className="col-span-5">Drużyna</div>
         <div className="col-span-1 text-center">M</div>
@@ -97,15 +129,7 @@ export function DivisionStandingsTable({
 
       <div className="divide-y divide-white/[0.04]">
         {standings.map((team, index) => {
-          const isPlayoff = isElite && index < 4;
-          const isPromotion = !isElite && index === 0;
-          const isRelegation = !isLowest && index === standings.length - 1;
-          const isTop3 = index < 3;
-
-          let textShineClass = "";
-          if (index === 0) { textShineClass = "text-shine-gold"; }
-          else if (index === 1) { textShineClass = "text-shine-silver"; }
-          else if (index === 2) { textShineClass = "text-shine-bronze"; }
+          const highlightColor = computeRowHighlightColor(team.position, standings.length, highlights);
 
           return (
             <motion.div
@@ -113,53 +137,51 @@ export function DivisionStandingsTable({
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: index * 0.05 }}
-              whileHover={{ x: 10, backgroundColor: 'rgba(255,255,255,0.05)' }}
-              className="group relative grid grid-cols-12 gap-4 items-center px-6 py-3 rounded-r-xl border-l-2 transition-all duration-300"
+              className="group relative grid grid-cols-12 gap-4 items-center px-6 py-2.5 rounded-r-xl border-l-[3px]"
               style={{
-                borderLeftColor: isTop3
-                  ? (index === 0 ? '#FFD700' : index === 1 ? '#C0C0C0' : '#CD7F32')
-                  : (isPlayoff ? divisionColor : isPromotion ? '#10b981' : isRelegation ? '#ef4444' : 'rgba(255,255,255,0.05)'),
-                background: isTop3 ? 'linear-gradient(90deg, rgba(255,255,255,0.03), transparent)' : 'transparent'
+                borderLeftColor: highlightColor || 'rgba(255,255,255,0.08)',
+                background: highlightColor
+                  ? `linear-gradient(90deg, ${highlightColor}09, transparent)`
+                  : 'transparent',
               }}
             >
               {/* Floating Rank Number */}
               <div className="col-span-1 flex justify-center">
-                <span className={cn(
-                  "font-mono font-bold text-lg",
-                  isTop3 ? textShineClass : "text-white/20"
-                )}>
+                <span className="font-mono font-bold text-lg text-white/20">
                   {team.position < 10 ? `0${team.position}` : team.position}
                 </span>
               </div>
 
               {/* Team Info */}
               <div className="col-span-5">
-                <Link
-                  href={getTournamentPath(`/teams/${team.teamId}`)}
-                  className="flex items-center gap-4 group-hover:translate-x-2 transition-transform duration-300"
+                <button
+                  onClick={() => {
+                    if (isHomeActive()) {
+                      goToTeam(team.teamId);
+                    } else {
+                      router.push(getTournamentPath(`/?view=teams&team=${team.teamId}`));
+                    }
+                  }}
+                  className="flex items-center gap-4 text-left"
                 >
                   <TeamLogo
                     src={team.teamLogoUrl}
                     name={team.teamName}
                     size={40}
-                    className="transition-all duration-300"
                   />
                   <div className="flex flex-col">
                     <span
-                      className={cn(
-                        "font-logik-extended-bold font-bold text-base transition-all",
-                        isTop3 ? textShineClass : ""
-                      )}
-                      style={!isTop3 ? { color: theme?.primaryTextColor || 'rgba(255,255,255,0.7)' } : undefined}
+                      className="font-logik-extended-bold font-bold text-base"
+                      style={{ color: 'var(--tournament-primary-text)' }}
                     >
                       {team.teamName}
                     </span>
                   </div>
-                </Link>
+                </button>
               </div>
 
               {/* Matches Played */}
-              <div className="col-span-1 text-center" style={{ color: theme?.secondaryTextColor || 'rgba(255,255,255,0.4)' }}>
+              <div className="col-span-1 text-center" style={{ color: 'var(--tournament-secondary-text)' }}>
                 <span>{team.matchesPlayed}</span>
               </div>
 
@@ -176,12 +198,9 @@ export function DivisionStandingsTable({
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <span
-                        className={cn(
-                          "font-bold text-xl cursor-default",
-                        )}
+                        className="font-bold text-xl cursor-default"
                         style={{
-                          color: isTop3 ? (theme?.primaryTextColor || 'white') : (theme?.secondaryTextColor || 'rgba(255,255,255,0.5)'),
-                          textShadow: isTop3 ? `0 0 10px ${divisionColor}` : 'none'
+                          color: index < 2 ? 'var(--tournament-primary-text)' : 'var(--tournament-secondary-text)',
                         }}
                       >
                         {team.points}
@@ -195,7 +214,7 @@ export function DivisionStandingsTable({
               </div>
 
               {/* Form Viz */}
-              <div className="col-span-2 hidden lg:flex justify-end pr-2 opacity-50 group-hover:opacity-100 transition-opacity">
+              <div className="col-span-2 hidden lg:flex justify-end pr-2 opacity-50">
                 <FormBars form={team.form || []} />
               </div>
             </motion.div>

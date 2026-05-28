@@ -21,8 +21,20 @@ import { MmrQuickLinksSection } from '@/components/tournament/mmr/QuickLinksSect
 import { DivisionTable } from '@/components/pdl/DivisionTable';
 
 // Sorting helper for group standings
+// Rulebook order: points → head-to-head → Neustadtl → lower totalMMR (lower = better tiebreak)
 const sortGroupStandings = (standings: GroupStanding[]): GroupStanding[] =>
-  [...standings].sort((a, b) => b.points - a.points || b.neustadtlScore - a.neustadtlScore);
+  [...standings].sort((a, b) => {
+    if (b.points !== a.points) return b.points - a.points;
+    // Head-to-head among tied teams
+    const tiedIds = standings.filter(s => s.points === a.points).map(s => s.teamId);
+    if (tiedIds.length > 1) {
+      const aWins = tiedIds.reduce((sum, id) => id !== a.teamId && a.headToHead?.[id] === 'win' ? sum + 1 : sum, 0);
+      const bWins = tiedIds.reduce((sum, id) => id !== b.teamId && b.headToHead?.[id] === 'win' ? sum + 1 : sum, 0);
+      if (aWins !== bWins) return bWins - aWins;
+    }
+    if (b.neustadtlScore !== a.neustadtlScore) return b.neustadtlScore - a.neustadtlScore;
+    return (a.totalMMR || 0) - (b.totalMMR || 0);
+  });
 
 // Compact group standings table (frameless, matching DivisionTable style)
 function CompactGroupTable({ group }: { group: Group }) {

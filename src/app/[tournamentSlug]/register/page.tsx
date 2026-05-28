@@ -463,6 +463,15 @@ export default function RegisterPage() {
 
       const result = await response.json();
 
+      if (response.status === 429) {
+        const retryMin = result.retryAfter ? Math.ceil(result.retryAfter / 60) : null;
+        const retryMsg = retryMin
+          ? ` Spróbuj ponownie za ${retryMin} min.`
+          : '';
+        setServerError((result.error || 'Zbyt wiele prób rejestracji.') + retryMsg);
+        return;
+      }
+
       if (result.success) {
         // Success - redirect to my team view on main page
         router.push(getTournamentPath('') + '?view=my-team');
@@ -470,7 +479,7 @@ export default function RegisterPage() {
         // Show error message
         const errorMessage = result.errors
           ? result.errors.join('. ')
-          : result.message;
+          : result.message || result.error;
         setServerError(errorMessage || 'Wystąpił błąd podczas rejestracji.');
       }
     } catch (error) {
@@ -555,12 +564,11 @@ export default function RegisterPage() {
         >
           {tournament?.theme?.logoUrl ? (
             <div className="flex justify-center">
-              <Image
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
                 src={tournament.theme.logoUrl}
                 alt={tournament.name}
-                width={600}
-                height={600}
-                className="object-contain drop-shadow-lg"
+                className="max-h-48 w-auto object-contain drop-shadow-lg"
                 style={{ filter: 'drop-shadow(0 0 20px rgba(255,255,255,0.15))' }}
               />
             </div>
@@ -652,7 +660,7 @@ export default function RegisterPage() {
                             <Input type="file" accept="image/*" onChange={handleLogoChange} className="bg-transparent border-white/10 file:bg-[var(--reg-primary)] file:text-white file:border-0 file:rounded-md file:px-4 file:py-1.5 file:mr-4 file:font-semibold text-white/80 cursor-pointer h-10" />
                           </FormControl>
                           <FormDescription className="mt-2 text-white/40">
-                            Maks 5MB. JPG, PNG, WEBP.
+                            Maks 5MB. JPG, PNG, WEBP. Logo wyświetlane będzie w formacie 250×250 — zalecamy wyższą rozdzielczość.
                           </FormDescription>
                           <FormMessage />
                         </div>
@@ -876,6 +884,19 @@ export default function RegisterPage() {
             </motion.div>
           </form>
         </Form>
+      </div>
+
+      {/* Privacy link */}
+      <div className="text-center pt-8 pb-4 flex items-center justify-center gap-4">
+        <div className="h-px w-12 rounded-full" style={{ background: `linear-gradient(to right, transparent, ${primaryColor}50)` }} />
+        <Link
+          href={getTournamentPath('/privacy')}
+          className="text-xs tracking-widest uppercase transition-opacity opacity-50 hover:opacity-100"
+          style={{ color: 'rgba(255,255,255,0.35)' }}
+        >
+          Polityka Prywatności
+        </Link>
+        <div className="h-px w-12 rounded-full" style={{ background: `linear-gradient(to left, transparent, ${primaryColor}50)` }} />
       </div>
     </div>
   );

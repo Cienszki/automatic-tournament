@@ -49,16 +49,29 @@ export interface DivisionConfig {
 }
 
 /**
+ * A single slide in the navbar sponsor section
+ */
+export interface NavbarSponsorSlide {
+  id: string;            // unique id for React keys / upload paths
+  type: 'text' | 'image';
+  content: string;       // text string OR image URL
+  altText?: string;      // alt text for image slides
+}
+
+/**
  * Navbar sponsor section configuration
  */
 export interface NavbarSponsorConfig {
   enabled: boolean;
-  sponsorName?: string;       // Text label on slide 1 (e.g. "Sponsor1")
-  sponsorImageUrl?: string;   // Image shown on slide 1
-  sponsorUrl?: string;        // URL to open when the section is clicked
-  secondaryText?: string;     // Text shown on slide 2
-  intervalMs?: number;        // Milliseconds between slide transitions (default: 5000)
-  widthPx?: number;           // Fixed pixel width of the sponsor container (default: 200)
+  slides?: NavbarSponsorSlide[];  // Dynamic slides to cycle through
+  url?: string;                   // Optional click URL for the whole section
+  intervalMs?: number;            // Milliseconds between slide transitions (default: 5000)
+  widthPx?: number;               // Fixed pixel width of the sponsor container (default: 200)
+  // Legacy fields kept for backward compatibility (not used in new admin UI)
+  sponsorName?: string;
+  sponsorImageUrl?: string;
+  sponsorUrl?: string;
+  secondaryText?: string;
 }
 
 /**
@@ -257,6 +270,7 @@ export interface TournamentConfig {
   youtubeUrl?: string; // Full YouTube channel URL
   instagramUrl?: string; // Full Instagram profile URL
   tiktokUrl?: string; // Full TikTok profile URL
+  trailerUrl?: string; // YouTube trailer/promo video URL (shown as button on homepage)
   
   // Legacy field for backwards compatibility
   twitchChannel?: string; // @deprecated Use twitchUrl instead

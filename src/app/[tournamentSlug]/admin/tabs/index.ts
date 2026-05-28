@@ -12,3 +12,4 @@ export { FantasyPickemTab } from './FantasyPickemTab';
 export { NewsTab } from './NewsTab';
 export { StatsTab } from './StatsTab';
 export { RulesTab } from './RulesTab';
+export { PrizesTab } from './PrizesTab';

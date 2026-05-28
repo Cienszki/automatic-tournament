@@ -15,7 +15,19 @@ export async function recalculateAllStats(tournamentId?: string): Promise<void> 
     console.log('📊 Using comprehensive stats calculator...');
     const { calculateAllComprehensiveStats } = await import('./comprehensive-stats-calculator');
     await calculateAllComprehensiveStats(tournamentId);
-    
+
+    // Recalculate performance rankings (requires a concrete tournamentId)
+    if (tournamentId) {
+      try {
+        const { recalculatePerformanceRankings } = await import('./performance-rankings-calculator');
+        await recalculatePerformanceRankings(tournamentId);
+        console.log('✅ Performance rankings recalculation completed successfully!');
+      } catch (rankingsError) {
+        // Non-fatal — log but don't fail the whole stats recalculation
+        console.error('⚠️ Performance rankings recalculation failed (non-fatal):', rankingsError);
+      }
+    }
+
     console.log('✅ Comprehensive stats recalculation completed successfully!');
   } catch (error) {
     console.error('❌ Error during comprehensive stats recalculation:', error);

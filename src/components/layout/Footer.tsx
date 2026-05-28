@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { Youtube, LogIn, LogOut } from 'lucide-react';
 import Link from 'next/link';
@@ -79,7 +79,7 @@ export function Footer() {
               aria-label="Discord"
               className="text-muted-foreground hover:text-primary transition-colors"
             >
-              <DiscordIcon className="h-6 w-6" />
+              <DiscordIcon className="h-5 w-5" />
               <span className="sr-only">Discord</span>
             </a>
           )}
@@ -91,7 +91,7 @@ export function Footer() {
               aria-label="Twitch"
               className="text-muted-foreground hover:text-primary transition-colors"
             >
-              <TwitchIcon className="h-6 w-6" />
+              <TwitchIcon className="h-5 w-5" />
               <span className="sr-only">Twitch</span>
             </a>
           )}
@@ -103,7 +103,7 @@ export function Footer() {
               aria-label="Instagram"
               className="text-muted-foreground hover:text-primary transition-colors"
             >
-              <InstagramIcon className="h-6 w-6" />
+              <InstagramIcon className="h-5 w-5" />
               <span className="sr-only">Instagram</span>
             </a>
           )}
@@ -115,7 +115,7 @@ export function Footer() {
               aria-label="YouTube"
               className="text-muted-foreground hover:text-primary transition-colors"
             >
-              <Youtube className="h-6 w-6" />
+              <Youtube className="h-5 w-5" />
               <span className="sr-only">YouTube</span>
             </a>
           )}
@@ -127,7 +127,7 @@ export function Footer() {
               aria-label="TikTok"
               className="text-muted-foreground hover:text-primary transition-colors"
             >
-              <TikTokIcon className="h-6 w-6" />
+              <TikTokIcon className="h-5 w-5" />
               <span className="sr-only">TikTok</span>
             </a>
           )}

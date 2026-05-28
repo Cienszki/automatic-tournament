@@ -43,10 +43,13 @@ export function SchedulingCard({ match, teamId, captainId, teams = [], standins 
 
   const opponent = optimisticMatch.teamA.id === teamId ? optimisticMatch.teamB : optimisticMatch.teamA;
   const isProposer = optimisticMatch.proposedById === teamId;
-  
-  const deadline = new Date(optimisticMatch.scheduledFor || 0);
+
+  // Prefer match.deadline (set when admin generates group matches without a fixed time),
+  // fall back to scheduledFor for legacy matches where admin pre-set the match time as deadline.
+  const deadlineSource = optimisticMatch.deadline || optimisticMatch.scheduledFor || '';
+  const deadline: Date | null = deadlineSource ? new Date(deadlineSource) : null;
   const now = simulatedTime || new Date();
-  const isDeadlinePassed = now > deadline;
+  const isDeadlinePassed = deadline ? now > deadline : false;
 
   const officialTime = optimisticMatch.scheduledFor ? new Date(optimisticMatch.scheduledFor) : null;
   const proposedTime = optimisticMatch.proposedTime ? new Date(optimisticMatch.proposedTime) : null;
@@ -66,7 +69,7 @@ export function SchedulingCard({ match, teamId, captainId, teams = [], standins 
     return newDate;
   }, [selectedDate, hour, minute]);
   
-  const isComposedDateInvalid = composedDate ? isAfter(composedDate, deadline) : false;
+  const isComposedDateInvalid = composedDate && deadline ? isAfter(composedDate, deadline) : false;
 
   const handleAction = async (
     action: (token: string, matchId: string, ...args: any[]) => Promise<any>,
@@ -116,7 +119,7 @@ export function SchedulingCard({ match, teamId, captainId, teams = [], standins 
 
   const handleAccept = () => {
     if (!optimisticMatch.proposedTime) return;
-     if (isAfter(new Date(optimisticMatch.proposedTime), deadline)) {
+    if (deadline && isAfter(new Date(optimisticMatch.proposedTime), deadline)) {
         toast({ title: t("teams.invalidTime"), description: t("teams.cannotAcceptPastDeadline"), variant: "destructive"});
         return;
     }
@@ -153,14 +156,14 @@ export function SchedulingCard({ match, teamId, captainId, teams = [], standins 
     handleAction(cancelProposal, optimisticUpdate);
   };
   
-  const isUrgent = now.getTime() > deadline.getTime() - 48 * 60 * 60 * 1000 && !isDeadlinePassed;
+  const isUrgent = deadline ? now.getTime() > deadline.getTime() - 48 * 60 * 60 * 1000 && !isDeadlinePassed : false;
 
   return (
     <Card className="shadow-lg">
       <CardHeader>
         <CardTitle>{t("teams.scheduleVs")} {opponent.name}</CardTitle>
         <CardDescription>
-          {t("teams.roundDeadline")}: {format(deadline, "PPP 'at' HH:mm")}
+          {t("teams.roundDeadline")}: {deadline ? format(deadline, "PPP 'at' HH:mm") : '-'}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -281,7 +284,7 @@ export function SchedulingCard({ match, teamId, captainId, teams = [], standins 
                             mode="single" 
                             selected={selectedDate} 
                             onSelect={setSelectedDate} 
-                            disabled={(date) => isAfter(date, deadline)}
+                            disabled={(date) => deadline != null && isAfter(date, deadline)}
                             initialFocus
                         />
                         <div className="p-4 border-t border-border">
@@ -321,11 +324,11 @@ export function SchedulingCard({ match, teamId, captainId, teams = [], standins 
                   <div className="text-center p-4 border rounded-md">
                     <p className="font-semibold">{opponent.name} {t("teams.proposedNewTime")}</p>
                     <p className="text-lg font-bold text-primary my-2">{format(proposedTime, "PPPP 'at' HH:mm")}</p>
-                     {isAfter(proposedTime, deadline) && (
+                     {deadline != null && isAfter(proposedTime, deadline) && (
                          <p className="text-sm text-destructive my-2">{t("teams.proposalInvalid")}</p>
                      )}
                     <div className="flex justify-center gap-2 mt-4">
-                       <Button onClick={handleAccept} variant="secondary" className="bg-green-500 hover:bg-green-600" disabled={isSubmitting || isAfter(proposedTime, deadline)}>
+                       <Button onClick={handleAccept} variant="secondary" className="bg-green-500 hover:bg-green-600" disabled={isSubmitting || (deadline != null && isAfter(proposedTime, deadline))}>
                             {isSubmitting ? <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div> : <Check className="mr-2 h-4 w-4"/>}
                             {t("teams.accept")}
                         </Button>

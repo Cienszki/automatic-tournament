@@ -180,7 +180,7 @@ export default function DivisionPage({ params }: { params: Promise<{ tournamentS
           />
 
           {/* Floating Dock Tabs */}
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-12">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-12 mt-10">
             <div className="sticky top-4 z-40 flex justify-center mb-10 pointer-events-none">
               <motion.div
                 initial={{ y: -50, opacity: 0 }}
@@ -233,6 +233,7 @@ export default function DivisionPage({ params }: { params: Promise<{ tournamentS
                         isElite={isElite}
                         isLowest={isLowest}
                         theme={theme}
+                        highlights={divisionInfo.highlights}
                       />
                     </div>
                     <div className="xl:col-span-1 space-y-8">

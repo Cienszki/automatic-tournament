@@ -23,6 +23,7 @@ interface TeamStanding {
   gamesLost: number;
   neustadtlScore: number;
   headToHead: Record<string, 'win' | 'loss' | 'draw'>;
+  totalMMR: number;
 }
 
 interface Division {
@@ -113,6 +114,7 @@ export function usePDLData(): UsePDLDataResult {
             gamesLost: stats.gamesLost || 0,
             neustadtlScore: 0,
             headToHead: {},
+            totalMMR: team.totalMMR || (Array.isArray(team.players) ? (team.players as Array<{mmr?: number}>).reduce((s: number, p) => s + (p.mmr || 0), 0) : 0),
           };
 
           if (!teamsByDivision.has(divisionId)) {
@@ -183,7 +185,7 @@ export function usePDLData(): UsePDLDataResult {
             });
           });
 
-          // Sort: points DESC → head-to-head → neustadtl DESC → name ASC
+          // Sort: points DESC → head-to-head → neustadtl DESC → lower totalMMR ASC
           teams.sort((a, b) => {
             if (b.points !== a.points) return b.points - a.points;
             // Head-to-head among tied teams
@@ -194,7 +196,8 @@ export function usePDLData(): UsePDLDataResult {
               if (aWins !== bWins) return bWins - aWins;
             }
             if (b.neustadtlScore !== a.neustadtlScore) return b.neustadtlScore - a.neustadtlScore;
-            return a.teamName.localeCompare(b.teamName);
+            // Lower total MMR wins the tiebreak
+            return a.totalMMR - b.totalMMR;
           });
 
           // Update positions

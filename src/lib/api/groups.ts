@@ -7,6 +7,9 @@ import {
   setDoc,
   updateDoc,
   deleteDoc,
+  addDoc,
+  query,
+  where,
 } from 'firebase/firestore';
 import { tournamentRefs } from './paths';
 import type { Group, GroupStanding } from '@/lib/definitions';
@@ -185,4 +188,92 @@ export function calculateGroupStandings(
 
     return { id: gd.id, name: gd.name, standings };
   });
+}
+
+/** Result returned by generateGroupMatches */
+export interface GenerateGroupMatchesResult {
+  created: number;
+  skipped: number;
+}
+
+/**
+ * Generate all round-robin matches for a group.
+ * Matches are created with schedulingStatus='unscheduled' so captains
+ * can propose their own times up to the deadline.
+ *
+ * @param tournamentId - Tournament ID
+ * @param groupId      - Group ID to generate matches for
+ * @param deadline     - Match deadline; used as the default scheduledFor time
+ */
+export async function generateGroupMatches(
+  tournamentId: string,
+  groupId: string,
+  deadline: Date,
+): Promise<GenerateGroupMatchesResult> {
+  const refs = tournamentRefs(tournamentId);
+
+  // Fetch all teams in this group
+  // DivisionsTab stores the group/division assignment in 'divisionId'
+  const teamsSnap = await getDocs(query(refs.teams(), where('divisionId', '==', groupId)));
+  const teams = teamsSnap.docs.map((d) => {
+    const td = d.data();
+    return {
+      id: d.id,
+      name: td.name as string,
+      tag: (td.tag as string) || '',
+      logoUrl: (td.logoUrl as string) || '',
+    };
+  });
+
+  if (teams.length < 2) {
+    return { created: 0, skipped: 0 };
+  }
+
+  // Fetch existing matches for this group to skip already-created pairs
+  const existingSnap = await getDocs(query(refs.matches(), where('group_id', '==', groupId)));
+  const existingPairs = new Set(
+    existingSnap.docs.map((d) => {
+      const md = d.data();
+      return (md.teams as string[]).slice().sort().join('-');
+    }),
+  );
+
+  // Set deadline time to 23:59:59 on the provided day
+  const deadlineEnd = new Date(deadline);
+  deadlineEnd.setHours(23, 59, 59, 0);
+
+  let created = 0;
+  let skipped = 0;
+
+  // Generate all round-robin pairs
+  for (let i = 0; i < teams.length; i++) {
+    for (let j = i + 1; j < teams.length; j++) {
+      const teamA = teams[i];
+      const teamB = teams[j];
+      const pairKey = [teamA.id, teamB.id].sort().join('-');
+
+      if (existingPairs.has(pairKey)) {
+        skipped++;
+        continue;
+      }
+
+      await addDoc(refs.matches(), {
+        teamA: { id: teamA.id, name: teamA.name, score: 0, logoUrl: teamA.logoUrl },
+        teamB: { id: teamB.id, name: teamB.name, score: 0, logoUrl: teamB.logoUrl },
+        teams: [teamA.id, teamB.id],
+        status: 'pending',
+        scheduledFor: '',
+        deadline: deadlineEnd.toISOString(),
+        group_id: groupId,
+        schedulingStatus: 'unscheduled',
+        series_format: 'bo2',
+        bestOf: 2,
+        winnerId: null,
+        completed_at: null,
+      });
+      created++;
+    }
+  }
+
+  return { created, skipped };
 }

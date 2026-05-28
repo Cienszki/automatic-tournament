@@ -10,6 +10,6 @@ import { redirect } from 'next/navigation';
  * using TournamentHalf and BottomBar from @/components/landing.
  */
 export default function LandingPage() {
-  redirect('/pdl');
+  redirect('/wiosenna');
 }
 

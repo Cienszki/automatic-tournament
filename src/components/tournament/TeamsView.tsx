@@ -764,6 +764,10 @@ function ExpandedTeamCard({ team, onClose }: ExpandedCardProps) {
 
   const sortedPlayers = useMemo(() => sortPlayersByRole(team.players || []), [team.players]);
   const captainDiscord = team.captainDiscordUsername || team.discordUsername;
+  const totalMMR = useMemo(
+    () => (team.players || []).reduce((s, p) => s + (Number(p.mmr) || 0), 0),
+    [team.players],
+  );
 
   // Fetch upcoming + game history for this team
   useEffect(() => {
@@ -879,9 +883,8 @@ function ExpandedTeamCard({ team, onClose }: ExpandedCardProps) {
 
   return (
     <motion.div
-      initial={{ opacity: 0, x: -40 }}
+      initial={false}
       animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: -40 }}
       transition={{ duration: 0.35, ease: [0.76, 0, 0.24, 1] }}
       className="h-full w-full flex flex-col rounded-2xl border border-none bg-black/25 backdrop-blur-xl overflow-hidden relative"
       style={{ willChange: 'backdrop-filter, transform' }}
@@ -1106,10 +1109,22 @@ function ExpandedTeamCard({ team, onClose }: ExpandedCardProps) {
                   </div>
                 )}
 
-                {/* Captain Discord */}
-                {captainDiscord && (
-                  <div className="mt-3 pt-3 border-t border-white/[0.06]">
-                    <DiscordCopyButton discord={captainDiscord} />
+                {/* Captain Discord + Total MMR */}
+                {(captainDiscord || totalMMR > 0) && (
+                  <div className="mt-3 pt-3 border-t border-white/[0.06] flex items-center gap-2">
+                    {captainDiscord && (
+                      <div className="flex-1 min-w-0">
+                        <DiscordCopyButton discord={captainDiscord} />
+                      </div>
+                    )}
+                    {totalMMR > 0 && (
+                      <span
+                        className="text-xs font-mono shrink-0"
+                        style={{ color: theme?.secondaryTextColor || 'rgba(255,255,255,0.5)' }}
+                      >
+                        Σ&nbsp;{totalMMR.toLocaleString()}
+                      </span>
+                    )}
                   </div>
                 )}
 
@@ -1270,12 +1285,23 @@ function ExpandedTeamCard({ team, onClose }: ExpandedCardProps) {
 interface TeamsViewProps {
   teams: Team[];
   divisionRankings?: Record<string, number>;
+  highlightedTeamId?: string | null;
+  onTeamHighlightConsumed?: () => void;
 }
 
-export function TeamsView({ teams }: TeamsViewProps) {
+export function TeamsView({ teams, highlightedTeamId, onTeamHighlightConsumed }: TeamsViewProps) {
   const { tournament, theme } = useTournament();
   const [expandedTeamId, setExpandedTeamId] = useState<string | null>(null);
   const primaryColor = theme?.primaryColor || '#8B1538';
+
+  // Auto-expand a team when navigated from standings
+  useEffect(() => {
+    if (highlightedTeamId) {
+      setExpandedTeamId(highlightedTeamId);
+      onTeamHighlightConsumed?.();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [highlightedTeamId]);
 
   const hasExpanded = expandedTeamId !== null;
   const expandedTeam = useMemo(
@@ -1362,7 +1388,7 @@ export function TeamsView({ teams }: TeamsViewProps) {
       {/* Section header */}
       <div className="text-center mb-3 shrink-0">
         <h2
-          className="text-3xl md:text-4xl font-bold uppercase tracking-tight"
+          className="text-4xl md:text-6xl font-logik-extended-bold uppercase tracking-tight"
           style={{
             color: theme?.titleColor || 'white',
             fontFamily: theme?.headerFont ? `var(${theme.headerFont})` : undefined,
@@ -1380,21 +1406,30 @@ export function TeamsView({ teams }: TeamsViewProps) {
       {/* Main content area */}
       <div className="flex-1 flex gap-4 min-h-0 overflow-hidden pr-10">
         {/* Expanded card — left half */}
-        <AnimatePresence mode="wait">
-          {hasExpanded && expandedTeam && (
-            <motion.div
-              key={expandedTeamId ?? 'expanded-panel'}
-              initial={{ width: 0, opacity: 0 }}
-              animate={{ width: '50%', opacity: 1 }}
-              exit={{ width: 0, opacity: 0 }}
-              transition={{ duration: 0.4, ease: [0.76, 0, 0.24, 1] }}
-              className="h-full shrink-0 relative overflow-hidden will-change-transform"
-              style={{ isolation: 'isolate' }}
-            >
-              <ExpandedTeamCard team={expandedTeam} onClose={handleClose} />
-            </motion.div>
-          )}
-        </AnimatePresence>
+        <motion.div
+          initial={false}
+          animate={{ width: hasExpanded ? '50%' : '0%' }}
+          transition={{ duration: 0.4, ease: [0.76, 0, 0.24, 1] }}
+          className="h-full shrink-0 relative overflow-hidden will-change-transform"
+          style={{ isolation: 'isolate' }}
+        >
+          <div className="absolute inset-0 overflow-hidden">
+            <AnimatePresence>
+              {hasExpanded && expandedTeam && (
+                <motion.div
+                  key={expandedTeamId}
+                  initial={{ x: '100%' }}
+                  animate={{ x: 0 }}
+                  exit={{ x: '-100%' }}
+                  transition={{ duration: 0.32, ease: [0.76, 0, 0.24, 1] }}
+                  className="absolute inset-0"
+                >
+                  <ExpandedTeamCard team={expandedTeam} onClose={handleClose} />
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </motion.div>
 
         {/* Grid of collapsed cards — full width or right half */}
         <div ref={gridWrapperRef} className="flex-1 min-w-0 h-full overflow-hidden">

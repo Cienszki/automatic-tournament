@@ -144,7 +144,8 @@ export function PDLUpcomingMatch({
   // - The anchor is always the original scheduled date so captains can't chain
   //   reschedules to drift further than the configured range.
   const rescheduleRangeDays = tournament?.rescheduleRangeDays !== undefined ? tournament.rescheduleRangeDays : 3;
-  const rescheduleFinalDate = tournament?.rescheduleFinalDate;
+  // Per-match deadline takes precedence over the global tournament rescheduleFinalDate
+  const rescheduleFinalDate = match.deadline || tournament?.rescheduleFinalDate;
   const originalDate = rescheduleRequest?.originalDate || scheduledDate;
   const originalDateObj = originalDate ? new Date(originalDate) : new Date();
 

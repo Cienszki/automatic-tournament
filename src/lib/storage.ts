@@ -92,6 +92,14 @@ export const uploadTournamentHeroRightImage = async (file: File, tournamentSlug:
     return getDownloadURL(storageRef);
 };
 
+export const uploadTournamentPrizesImage = async (file: File, tournamentSlug: string) => {
+    const fileExtension = file.name.split('.').pop();
+    const fileName = `${tournamentSlug}-prizes-${uuidv4()}.${fileExtension}`;
+    const storageRef = ref(storage, `tournament-assets/${tournamentSlug}/${fileName}`);
+    await uploadBytes(storageRef, file);
+    return getDownloadURL(storageRef);
+};
+
 export const uploadTournamentSponsorImage = async (file: File, tournamentSlug: string) => {
     const fileExtension = file.name.split('.').pop();
     const fileName = `${tournamentSlug}-sponsor-${uuidv4()}.${fileExtension}`;

@@ -19,16 +19,6 @@ type StatusConfig = {
 };
 
 const STATUS_CONFIG: Partial<Record<TeamStatus, StatusConfig>> = {
-  pending: {
-    icon: Clock,
-    title: 'Oczekuje na weryfikację',
-    description:
-      'Zgłoszenie zostało wysłane i czeka na akceptację administratora turnieju. Nie ma potrzeby kontaktować się przez Discord — zostaniesz powiadomiony o decyzji.',
-    borderClass: 'border-yellow-500/30',
-    bgClass: 'bg-yellow-500/8',
-    iconClass: 'text-yellow-400',
-    dotClass: 'bg-yellow-400',
-  },
   rejected: {
     icon: XCircle,
     title: 'Drużyna odrzucona',

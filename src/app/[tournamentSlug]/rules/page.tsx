@@ -6,20 +6,13 @@ import { LoadingScreen } from '@/components/ui/LoadingScreen';
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { 
   ScrollText, 
   ChevronRight,
   ChevronLeft,
   ChevronDown,
   MessageSquare,
   BookOpen,
-  ExternalLink,
-  Info,
-} from "lucide-react";
+  ExternalLink,  Info,} from "lucide-react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -50,6 +43,15 @@ export default function RulesPage() {
   const [loading, setLoading] = useState(true);
   const [activeSection, setActiveSection] = useState<string | null>(null);
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
+  const [openCommentaries, setOpenCommentaries] = useState<Set<string>>(new Set());
+
+  const toggleCommentary = (id: string) => {
+    setOpenCommentaries(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) { next.delete(id); } else { next.add(id); }
+      return next;
+    });
+  };
 
   // Load rules from Firestore
   useEffect(() => {
@@ -159,9 +161,64 @@ export default function RulesPage() {
         />
       </div>
 
-      <div className="relative z-10 max-w-[1600px] mx-auto px-6 lg:px-12 py-8 space-y-12">
+      {/* Fixed TOC Sidebar - always visible, scales with sections */}
+      {sections.length > 0 && (
+        <motion.aside
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.5 }}
+          className="hidden lg:flex fixed left-0 z-20 flex-col"
+          style={{ top: '3.5rem', width: '16rem', height: 'calc(100vh - 3.5rem)' }}
+        >
+          <div className="flex flex-col h-full border-r border-white/10 bg-black/20 backdrop-blur-md">
+            <div className="p-4 border-b border-white/10 shrink-0">
+              <h3 className="font-logik-extended-bold flex items-center gap-2" style={{ color: theme.headingColor || theme.primaryTextColor || 'white', fontFamily: theme.headerFont ? `var(${theme.headerFont})` : undefined }}>
+                <ScrollText className="w-4 h-4" style={{ color: theme.primaryColor }} />
+                Spis treści
+              </h3>
+            </div>
+            <div className="flex flex-col flex-1 min-h-0 px-2 py-1 overflow-hidden">
+              {sections.map((section, index) => (
+                <button
+                  key={section.id}
+                  onClick={() => scrollToSection(section.id)}
+                  className={cn(
+                    "w-full text-left px-3 rounded-xl transition-all duration-200 group flex-1 flex items-center min-h-0",
+                    activeSection === section.id ? "bg-white/10" : "hover:bg-white/5"
+                  )}
+                  style={{ color: activeSection === section.id ? (theme.primaryTextColor || 'white') : (theme.secondaryTextColor || '#9ca3af') }}
+                >
+                  <div className="flex items-center gap-2 w-full">
+                    <span
+                      className="w-5 h-5 rounded-md flex items-center justify-center text-xs font-logik-extended-bold transition-colors shrink-0"
+                      style={activeSection === section.id
+                        ? { backgroundColor: `${theme.primaryColor}40`, color: theme.primaryColor }
+                        : { color: theme.secondaryTextColor || '#6b7280' }}
+                    >
+                      {index + 1}
+                    </span>
+                    <span className="font-body text-xs leading-tight line-clamp-2 flex-1 text-left">
+                      {section.title.replace(/^\d+\.\s*/, '')}
+                    </span>
+                    <ChevronRight
+                      className={cn(
+                        "w-3 h-3 transition-transform shrink-0",
+                        activeSection === section.id ? "opacity-100" : "opacity-0 group-hover:opacity-50"
+                      )}
+                    />
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        </motion.aside>
+      )}
+
+      {/* Main scrollable content - offset by TOC width on large screens */}
+      <div className={cn("relative z-10", sections.length > 0 ? "lg:pl-64" : "")}>
+        <div className="px-6 lg:px-10 py-8 space-y-8">
         {/* Header - Premium Hero Style */}
-        <div className="text-center space-y-6 py-12 relative">
+        <div className="text-center space-y-6 py-8 relative">
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-1/2 h-40 blur-[120px] rounded-full pointer-events-none"
             style={{ background: `${theme.primaryColor}20` }}
           />
@@ -204,69 +261,11 @@ export default function RulesPage() {
             </p>
           </motion.div>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-            {/* Sidebar - Table of Contents */}
-            <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.5 }}
-              className="lg:col-span-1"
-            >
-              <div className="lg:sticky lg:top-24 space-y-4">
-                <div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm overflow-hidden">
-                  <div className="p-4 border-b border-white/10">
-                    <h3 className="font-logik-extended-bold flex items-center gap-2" style={{ color: theme.headingColor || theme.primaryTextColor || 'white', fontFamily: theme.headerFont ? `var(${theme.headerFont})` : undefined }}>
-                      <ScrollText className="w-4 h-4" style={{ color: theme.primaryColor }} />
-                      Spis treści
-                    </h3>
-                  </div>
-                  <div className="p-2">
-                    {sections.map((section, index) => (
-                      <button
-                        key={section.id}
-                        onClick={() => scrollToSection(section.id)}
-                        className={cn(
-                          "w-full text-left px-4 py-3 rounded-xl transition-all duration-200 group",
-                          activeSection === section.id 
-                            ? "bg-white/10" 
-                            : "hover:bg-white/5"
-                        )}
-                        style={{ color: activeSection === section.id ? (theme.primaryTextColor || 'white') : (theme.secondaryTextColor || '#9ca3af') }}
-                      >
-                        <div className="flex items-center gap-3">
-                          <span 
-                            className={cn(
-                              "w-6 h-6 rounded-lg flex items-center justify-center text-xs font-logik-extended-bold transition-colors"
-                            )}
-                            style={activeSection === section.id 
-                              ? { backgroundColor: `${theme.primaryColor}40`, color: theme.primaryColor } 
-                              : { color: theme.secondaryTextColor || '#6b7280' }}
-                          >
-                            {index + 1}
-                          </span>
-                          <span className="font-body text-sm truncate flex-1">
-                            {section.title.replace(/^\d+\.\s*/, '')}
-                          </span>
-                          <ChevronRight 
-                            className={cn(
-                              "w-4 h-4 transition-transform",
-                              activeSection === section.id ? "opacity-100" : "opacity-0 group-hover:opacity-50"
-                            )} 
-                          />
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-
-            {/* Main Content */}
-            <motion.div
+          <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.1 }}
-              className="lg:col-span-3 space-y-6"
+              className="space-y-6"
             >
               {sections.map((section, sectionIndex) => (
                 <motion.div
@@ -331,43 +330,35 @@ export default function RulesPage() {
                                         </span>
                                       </div>
 
-                                      {/* Paragraph Content */}
-                                      <div className="flex-1">
-                                        <div className="flex items-start gap-2">
+                                    {/* Paragraph Content + right margin note */}
+                                      <div className="flex gap-4 flex-1 items-start">
+                                        {/* Text + inline info button */}
+                                        <div className="flex-1 min-w-0 flex items-start gap-1.5">
                                           <p className="font-rules-content leading-relaxed flex-1 whitespace-pre-wrap" style={{ color: theme.primaryTextColor || '#e5e7eb' }}>
                                             {paragraph.content}
                                           </p>
-                                          
-                                          {/* Commentary Popup */}
                                           {paragraph.commentary && (
-                                            <Popover>
-                                              <PopoverTrigger asChild>
-                                                <button
-                                                  className="shrink-0 p-1.5 rounded-full transition-colors hover:bg-white/10"
-                                                  style={{ color: theme.primaryColor }}
-                                                  title="Pokaż komentarz"
-                                                >
-                                                  <Info className="w-4 h-4" />
-                                                </button>
-                                              </PopoverTrigger>
-                                              <PopoverContent 
-                                                className="w-80 p-4"
-                                                style={{ 
-                                                  backgroundColor: `${theme.primaryColor}15`,
-                                                  borderColor: `${theme.primaryColor}40`
-                                                }}
-                                              >
-                                                <div className="flex items-start gap-2">
-                                                  <MessageSquare 
-                                                    className="w-4 h-4 mt-0.5 shrink-0" 
-                                                    style={{ color: theme.primaryColor }}
-                                                  />
-                                                  <p className="text-sm font-rules-content leading-relaxed" style={{ color: theme.primaryColor }}>
-                                                    {paragraph.commentary}
-                                                  </p>
-                                                </div>
-                                              </PopoverContent>
-                                            </Popover>
+                                            <button
+                                              onClick={() => toggleCommentary(paragraph.id)}
+                                              className="shrink-0 p-1 rounded-full hover:bg-white/10 transition-colors mt-0.5"
+                                              style={{ color: openCommentaries.has(paragraph.id) ? theme.primaryColor : (theme.secondaryTextColor || '#6b7280') }}
+                                              title="Pokaż komentarz"
+                                            >
+                                              <Info className="w-3.5 h-3.5" />
+                                            </button>
+                                          )}
+                                        </div>
+                                        {/* Right margin: commentary note */}
+                                        <div className="w-52 shrink-0">
+                                          {paragraph.commentary && openCommentaries.has(paragraph.id) && (
+                                            <div className="rounded-lg p-2.5 border" style={{ borderColor: `${theme.primaryColor}35`, backgroundColor: `${theme.primaryColor}0d` }}>
+                                              <div className="flex items-start gap-1.5">
+                                                <MessageSquare className="w-3 h-3 mt-0.5 shrink-0" style={{ color: theme.primaryColor }} />
+                                                <p className="text-xs font-rules-content leading-relaxed" style={{ color: theme.primaryColor }}>
+                                                  {paragraph.commentary}
+                                                </p>
+                                              </div>
+                                            </div>
                                           )}
                                         </div>
                                       </div>
@@ -387,43 +378,35 @@ export default function RulesPage() {
                                           </span>
                                         </div>
 
-                                        {/* Sub-paragraph Content */}
-                                        <div className="flex-1">
-                                          <div className="flex items-start gap-2">
+                                        {/* Sub-paragraph Content + right margin note */}
+                                        <div className="flex gap-4 flex-1 items-start">
+                                          {/* Text + inline info button */}
+                                          <div className="flex-1 min-w-0 flex items-start gap-1.5">
                                             <p className="font-rules-content leading-relaxed flex-1 whitespace-pre-wrap" style={{ color: theme.primaryTextColor || '#e5e7eb' }}>
                                               {subParagraph.content}
                                             </p>
-                                            
-                                            {/* Commentary Popup */}
                                             {subParagraph.commentary && (
-                                              <Popover>
-                                                <PopoverTrigger asChild>
-                                                  <button
-                                                    className="shrink-0 p-1.5 rounded-full transition-colors hover:bg-white/10"
-                                                    style={{ color: theme.primaryColor }}
-                                                    title="Pokaż komentarz"
-                                                  >
-                                                    <Info className="w-4 h-4" />
-                                                  </button>
-                                                </PopoverTrigger>
-                                                <PopoverContent 
-                                                  className="w-80 p-4"
-                                                  style={{ 
-                                                    backgroundColor: `${theme.primaryColor}15`,
-                                                    borderColor: `${theme.primaryColor}40`
-                                                  }}
-                                                >
-                                                  <div className="flex items-start gap-2">
-                                                    <MessageSquare 
-                                                      className="w-4 h-4 mt-0.5 shrink-0" 
-                                                      style={{ color: theme.primaryColor }}
-                                                    />
-                                                    <p className="text-sm font-rules-content leading-relaxed" style={{ color: theme.primaryColor }}>
-                                                      {subParagraph.commentary}
-                                                    </p>
-                                                  </div>
-                                                </PopoverContent>
-                                              </Popover>
+                                              <button
+                                                onClick={() => toggleCommentary(subParagraph.id)}
+                                                className="shrink-0 p-1 rounded-full hover:bg-white/10 transition-colors mt-0.5"
+                                                style={{ color: openCommentaries.has(subParagraph.id) ? theme.primaryColor : (theme.secondaryTextColor || '#6b7280') }}
+                                                title="Pokaż komentarz"
+                                              >
+                                                <Info className="w-3.5 h-3.5" />
+                                              </button>
+                                            )}
+                                          </div>
+                                          {/* Right margin: commentary note */}
+                                          <div className="w-52 shrink-0">
+                                            {subParagraph.commentary && openCommentaries.has(subParagraph.id) && (
+                                              <div className="rounded-lg p-2.5 border" style={{ borderColor: `${theme.primaryColor}35`, backgroundColor: `${theme.primaryColor}0d` }}>
+                                                <div className="flex items-start gap-1.5">
+                                                  <MessageSquare className="w-3 h-3 mt-0.5 shrink-0" style={{ color: theme.primaryColor }} />
+                                                  <p className="text-xs font-rules-content leading-relaxed" style={{ color: theme.primaryColor }}>
+                                                    {subParagraph.commentary}
+                                                  </p>
+                                                </div>
+                                              </div>
                                             )}
                                           </div>
                                         </div>
@@ -440,7 +423,6 @@ export default function RulesPage() {
                 </motion.div>
               ))}
             </motion.div>
-          </div>
         )}
 
         {/* Footer Note */}
@@ -456,7 +438,19 @@ export default function RulesPage() {
           <p className="font-logik-readable font-medium text-xs mt-2" style={{ color: theme.secondaryTextColor || '#6b7280' }}>
             W razie pytań dotyczących regulaminu, skontaktuj się z organizatorami turnieju.
           </p>
+          <div className="flex items-center justify-center gap-4 mt-4">
+            <div className="h-px w-12" style={{ backgroundImage: 'linear-gradient(to right, transparent, var(--tournament-secondary-text, #9ca3af))' }} />
+            <Link
+              href={getTournamentPath('/privacy')}
+              className="text-xs transition-opacity opacity-60 hover:opacity-100"
+              style={{ color: 'var(--tournament-secondary-text, #9ca3af)' }}
+            >
+              Polityka Prywatności
+            </Link>
+            <div className="h-px w-12" style={{ backgroundImage: 'linear-gradient(to left, transparent, var(--tournament-secondary-text, #9ca3af))' }} />
+          </div>
         </motion.div>
+        </div>
       </div>
     </div>
   );

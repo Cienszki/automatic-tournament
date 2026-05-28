@@ -1,0 +1,23 @@
+# .railwayignore
+# Exclude everything except bot-worker from the Railway build context
+# (Railway reads this from the repo root)
+
+# Exclude the Next.js app and scripts — only bot-worker is needed
+src/
+public/
+scripts/
+docs/
+messages/
+server/
+_archive/
+*.py
+*.mjs
+*.js
+!bot-worker/
+
+# Keep bot-worker contents
+!bot-worker/Dockerfile
+!bot-worker/package.json
+!bot-worker/package-lock.json
+!bot-worker/tsconfig.json
+!bot-worker/src/

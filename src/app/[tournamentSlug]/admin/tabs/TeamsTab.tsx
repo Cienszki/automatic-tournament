@@ -42,6 +42,7 @@ import {
   ExternalLink,
   ImageIcon,
   Trash2,
+  RefreshCw,
 } from 'lucide-react';
 import { collection, getDocs, doc, updateDoc, writeBatch, deleteDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -104,11 +105,45 @@ export function TeamsTab() {
   const [expandedTeamId, setExpandedTeamId] = useState<string | null>(null);
   const [deleteConfirmTeam, setDeleteConfirmTeam] = useState<Team | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isSyncingAvatars, setIsSyncingAvatars] = useState(false);
   // Resolved steamId32 values for smurf accounts with vanity URLs
   // keyed by the smurf's steamProfileUrl
   const [resolvedSmurfIds, setResolvedSmurfIds] = useState<Record<string, string>>({});
 
   const divisions = tournament?.divisions || [];
+
+  const handleSyncSteamAvatars = async () => {
+    if (!tournament?.id) return;
+    setIsSyncingAvatars(true);
+    try {
+      const res = await fetch('/api/admin/sync-steam-avatars', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tournamentId: tournament.id }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast({
+          title: 'Avatary zaktualizowane',
+          description: data.message,
+        });
+      } else {
+        toast({
+          title: 'Błąd synchronizacji',
+          description: data.error || 'Nie udało się zaktualizować avatarów.',
+          variant: 'destructive',
+        });
+      }
+    } catch (err) {
+      toast({
+        title: 'Błąd',
+        description: (err as Error).message,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSyncingAvatars(false);
+    }
+  };
 
   // Fetch teams from database
   useEffect(() => {
@@ -446,6 +481,20 @@ export function TeamsTab() {
           </p>
         </div>
         <div className="flex items-center gap-3">
+          <Button
+            variant="outline"
+            onClick={handleSyncSteamAvatars}
+            disabled={isSyncingAvatars}
+            className="font-logik"
+            title="Pobiera aktualne avatary i nazwy profili Steam dla wszystkich graczy"
+          >
+            {isSyncingAvatars ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <RefreshCw className="h-4 w-4 mr-2" />
+            )}
+            Odśwież avatary Steam
+          </Button>
           {hasUnsavedChanges && (
             <span className="text-sm text-yellow-500 font-logik animate-pulse">
               Niezapisane zmiany

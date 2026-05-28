@@ -118,7 +118,7 @@ export function InlineDivisionView({ divisionId, onBack }: InlineDivisionViewPro
       </div>
 
       {/* Content: standings + fixture crossbox side by side */}
-      <div className="flex-1 min-h-0 overflow-y-auto px-4 sm:px-8 lg:px-16 pb-4">
+      <div className="flex-1 min-h-0 overflow-y-auto px-4 sm:px-8 lg:px-16 pb-4 pt-5">
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
           <DivisionStandingsTable
             standings={standings}
@@ -129,6 +129,7 @@ export function InlineDivisionView({ divisionId, onBack }: InlineDivisionViewPro
             isElite={isElite}
             isLowest={isLowest}
             theme={theme}
+            highlights={divisionInfo.highlights}
           />
           <FixtureCrossbox
             matches={matches}

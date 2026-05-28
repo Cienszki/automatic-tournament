@@ -18,6 +18,20 @@ async function verifyUser(token: string) {
     }
 }
 
+/**
+ * Resolves the deadline Date for a match.
+ * New matches store it in `deadline` (ISO string); legacy matches used `scheduledFor` (Timestamp).
+ */
+function resolveMatchDeadline(match: FirebaseFirestore.DocumentData): Date | null {
+    if (match.deadline && typeof match.deadline === 'string') {
+        return new Date(match.deadline);
+    }
+    if (match.scheduledFor) {
+        return (match.scheduledFor as unknown as Timestamp).toDate();
+    }
+    return null;
+}
+
 async function getMatchAndVerifyCaptain(matchId: string, uid: string) {
     const matchRef = getAdminDb().collection('matches').doc(matchId);
     const matchSnap = await matchRef.get();
@@ -48,8 +62,8 @@ export async function proposeMatchTime(token: string, matchId: string, proposedD
         const decodedToken = await verifyUser(token);
         const { matchRef, match, userTeamId } = await getMatchAndVerifyCaptain(matchId, decodedToken.uid);
 
-        const deadline = (match.scheduledFor as unknown as Timestamp).toDate();
-        if (proposedDate > deadline) {
+        const deadline = resolveMatchDeadline(match);
+        if (deadline && proposedDate > deadline) {
             return { success: false, message: 'Proposed time cannot be after the deadline.' };
         }
 
@@ -81,9 +95,9 @@ export async function acceptMatchTime(token: string, matchId: string) {
             throw new Error('You cannot accept your own proposal.');
         }
 
-        const deadline = (match.scheduledFor as unknown as Timestamp).toDate();
+        const deadline = resolveMatchDeadline(match);
         const proposedTime = (match.proposedTime as Timestamp).toDate();
-        if (proposedTime > deadline) {
+        if (deadline && proposedTime > deadline) {
             return { success: false, message: 'Cannot accept a time that is after the deadline.' };
         }
 

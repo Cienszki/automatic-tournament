@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { 
-  AlertCircle, 
+  CircleAlert,
   Calendar, 
   UserPlus, 
   GraduationCap,
@@ -52,7 +52,7 @@ export function PDLCaptainActions({ isCaptain, actions }: PDLCaptainActionsProps
       case 'transfer_window': return CheckCircle;
       case 'team_pending': return Clock3;
       case 'team_rejected': return XCircle;
-      default: return AlertCircle;
+      default: return CircleAlert;
     }
   };
 
@@ -64,22 +64,10 @@ export function PDLCaptainActions({ isCaptain, actions }: PDLCaptainActionsProps
         className="w-full flex items-center justify-between group"
       >
         <div className="flex items-center gap-3">
-          <div className="p-2 rounded-lg bg-pdl-crimson/20 border border-pdl-crimson/30">
-            <AlertCircle className="w-5 h-5 text-pdl-crimson" />
-          </div>
           <div className="text-left">
             <h3 className="text-xl font-logik-extended-bold tracking-wide uppercase" style={{ color: theme.sectionHeaderColor || '#ffffff', fontFamily: theme.headerFont ? `var(${theme.headerFont})` : undefined }}>
-              Akcje do wykonania
+              Powiadomienia
             </h3>
-            {actions.length > 0 && (
-              <p className="text-xs font-logik" style={{ color: theme.secondaryTextColor || 'rgba(255,255,255,0.4)' }}>
-                {urgentActions.length > 0 && (
-                  <span className="text-pdl-crimson">{urgentActions.length} pilnych</span>
-                )}
-                {urgentActions.length > 0 && normalActions.length > 0 && ' • '}
-                {normalActions.length > 0 && `${normalActions.length} do wykonania`}
-              </p>
-            )}
           </div>
         </div>
         <ChevronRight className={cn(
@@ -100,8 +88,8 @@ export function PDLCaptainActions({ isCaptain, actions }: PDLCaptainActionsProps
                 className="rounded-xl border border-red-500/30 bg-red-500/10 p-4 space-y-3"
               >
                 <div className="flex items-start gap-3">
-                  <div className="p-2 rounded-lg bg-red-500/20 border border-red-500/30 flex-shrink-0">
-                    <Icon className="w-4 h-4 text-red-400" />
+                  <div className="p-2 rounded-lg flex-shrink-0" style={{ backgroundColor: `${theme.primaryColor || '#8B1538'}20`, border: `1px solid ${theme.primaryColor || '#8B1538'}40` }}>
+                    <Icon className="w-4 h-4" style={{ color: theme.primaryColor || '#8B1538' }} />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-2">
@@ -114,7 +102,7 @@ export function PDLCaptainActions({ isCaptain, actions }: PDLCaptainActionsProps
                         </span>
                       )}
                     </div>
-                    <p className="text-xs font-logik mt-1" style={{ color: theme.secondaryTextColor || 'rgba(255,255,255,0.6)' }}>
+                    <p className="text-sm leading-relaxed font-medium mt-1" style={{ color: 'var(--tournament-secondary-text)' }}>
                       {action.description}
                     </p>
                   </div>
@@ -123,7 +111,8 @@ export function PDLCaptainActions({ isCaptain, actions }: PDLCaptainActionsProps
                   <Button
                     size="sm"
                     onClick={action.action.onClick}
-                    className="w-full bg-red-600 hover:bg-red-700 text-white font-logik-extended-bold"
+                    className="w-full text-white font-logik-extended-bold"
+                    style={{ backgroundColor: theme.primaryColor || '#8B1538' }}
                   >
                     {action.action.label}
                   </Button>
@@ -141,8 +130,8 @@ export function PDLCaptainActions({ isCaptain, actions }: PDLCaptainActionsProps
                 className="rounded-xl border border-white/10 bg-white/[0.02] p-4 space-y-3"
               >
                 <div className="flex items-start gap-3">
-                  <div className="p-2 rounded-lg bg-white/5 border border-white/10 flex-shrink-0">
-                    <Icon className="w-4 h-4 text-white/40" />
+                  <div className="p-2 rounded-lg flex-shrink-0" style={{ backgroundColor: `${theme.primaryColor || '#8B1538'}20`, border: `1px solid ${theme.primaryColor || '#8B1538'}40` }}>
+                    <Icon className="w-4 h-4" style={{ color: theme.primaryColor || '#8B1538' }} />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-2">
@@ -155,7 +144,7 @@ export function PDLCaptainActions({ isCaptain, actions }: PDLCaptainActionsProps
                         </span>
                       )}
                     </div>
-                    <p className="text-xs font-logik mt-1" style={{ color: theme.secondaryTextColor || 'rgba(255,255,255,0.6)' }}>
+                    <p className="text-sm leading-relaxed font-medium mt-1" style={{ color: 'var(--tournament-secondary-text)' }}>
                       {action.description}
                     </p>
                   </div>

@@ -13,6 +13,7 @@ import { Calendar, Grid3x3, Info } from 'lucide-react';
 import type { Match } from '@/lib/definitions';
 import { MatchDetailModal } from './MatchDetailModal';
 import { TeamLogo } from './TeamLogo';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface TeamStanding {
   teamId: string;
@@ -35,6 +36,13 @@ interface MatchResult {
   date: string;
   status: 'scheduled' | 'completed' | 'live';
   match: Match;
+}
+
+function getTeamAbbr(name: string): string {
+  const words = name.trim().split(/\s+/);
+  if (words.length >= 3) return words.slice(0, 3).map(w => w[0]).join('').toUpperCase();
+  if (words.length === 2) return (words[0].slice(0, 2) + words[1][0]).toUpperCase();
+  return name.slice(0, 3).toUpperCase();
 }
 
 export function FixtureCrossbox({
@@ -61,6 +69,12 @@ export function FixtureCrossbox({
   
   // Get theme color
   const displayColor = divisionTheme ? require('@/lib/division-themes').getDivisionTheme(divisionTheme)?.primaryColor || divisionColor : divisionColor;
+
+  // Adaptive cell size based on team count (for 8-10 teams the matrix needs to be more compact)
+  const teamCount = standings.length;
+  const cellSize = teamCount >= 9 ? 56 : teamCount >= 7 ? 64 : 72;
+  const cellClass = teamCount >= 9 ? 'w-14 h-14' : teamCount >= 7 ? 'w-16 h-16' : 'w-[72px] h-[72px]';
+  const logoSize = teamCount >= 7 ? 32 : 36;
 
   const getMatchResult = (homeTeamId: string, awayTeamId: string): MatchResult | null => {
     const match = matches.find(m =>
@@ -101,7 +115,7 @@ export function FixtureCrossbox({
           className="w-full h-full flex flex-col items-center justify-center gap-0.5 hover:bg-white/5 transition-colors group relative"
         >
           <Calendar className="h-3 w-3 text-white/30 group-hover:text-white/80 transition-colors" />
-          <span className="text-[9px] font-mono tracking-tighter" style={{ color: theme?.secondaryTextColor || 'rgba(255,255,255,0.3)' }}>
+          <span className="text-[9px] font-mono tracking-tighter" style={{ color: 'var(--tournament-secondary-text)' }}>
             {matchDate && !isNaN(matchDate.getTime())
               ? format(matchDate, 'dd.MM', { locale: pl })
               : 'TBD'}
@@ -138,17 +152,17 @@ export function FixtureCrossbox({
   };
 
   return (
-    <div className="rounded-2xl overflow-hidden border border-white/[0.08] bg-gradient-to-b from-white/[0.03] to-transparent backdrop-blur-xl">
-      <div className="p-4 flex items-center gap-3 mb-1">
-        <Grid3x3 className="w-5 h-5" style={{ color: displayColor }} />
-        <h3 className="text-lg font-logik-extended-bold transition-all" style={{ color: theme?.headingColor || theme?.primaryTextColor || displayColor }}>Wyniki</h3>
-      </div>
+    <TooltipProvider delayDuration={200}>
+    <div className="rounded-2xl overflow-hidden bg-white/[0.04] backdrop-blur-sm" style={{ border: `1px solid ${displayColor}20` }}>
 
-      <div className="overflow-auto max-h-[600px] relative custom-scrollbar">
+      <div className="overflow-auto max-h-[800px] relative custom-scrollbar">
         <table className="w-full border-collapse">
-          <thead className="sticky top-0 z-30 bg-black/40 backdrop-blur-md">
+          <thead className="sticky top-0 z-30 backdrop-blur-md">
             <tr>
-              <th className="sticky left-0 z-40 w-12 h-12 bg-black/40 backdrop-blur-md p-0 border-r border-b border-white/5">
+              <th className={cn(
+                    "sticky left-0 z-40 backdrop-blur-md p-0 border-r border-b border-white/5",
+                    cellClass
+                  )}>
                 <div className="w-full h-full flex items-center justify-center opacity-20">
                   <Info className="w-3 h-3" />
                 </div>
@@ -157,21 +171,26 @@ export function FixtureCrossbox({
                 <th
                   key={`header-${team.teamId}`}
                   className={cn(
-                    "w-12 min-w-[3rem] h-12 p-0 transition-colors",
-                    hoveredCol === team.teamId ? "bg-white/5" : ""
+                    "p-0",
+                    cellClass
                   )}
-                  onMouseEnter={() => setHoveredCol(team.teamId)}
-                  onMouseLeave={() => setHoveredCol(null)}
                 >
-                  <div className="flex justify-center items-center h-full">
-                    <TeamLogo
-                      src={team.teamLogoUrl}
-                      name={team.teamName}
-                      size={24}
-                      fallbackClassName="text-[10px] opacity-70"
-                      className="transition-all"
-                    />
-                  </div>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="flex justify-center items-center h-full cursor-default">
+                        <TeamLogo
+                          src={team.teamLogoUrl}
+                          name={team.teamName}
+                          size={logoSize}
+                          fallbackClassName="text-[10px] opacity-70"
+                          className={cn("transition-[filter,transform] duration-100", hoveredCol === team.teamId ? "brightness-150 scale-110" : "")}
+                        />
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom">
+                      <p className="text-xs font-medium">{team.teamName}</p>
+                    </TooltipContent>
+                  </Tooltip>
                 </th>
               ))}
             </tr>
@@ -180,50 +199,48 @@ export function FixtureCrossbox({
             {standings.map((homeTeam) => (
               <tr
                 key={homeTeam.teamId}
-                className="transition-colors group"
               >
                 {/* Row header */}
                 <td
-                  className={cn(
-                    "sticky left-0 z-20 w-12 h-12 bg-black/40 backdrop-blur-md p-0 transition-colors border-r border-white/5",
-                    hoveredRow === homeTeam.teamId ? "bg-white/10" : ""
-                  )}
-                  onMouseEnter={() => setHoveredRow(homeTeam.teamId)}
-                  onMouseLeave={() => setHoveredRow(null)}
+                  className="sticky left-0 z-20 backdrop-blur-md border-r border-white/5 w-14 p-0"
+
                 >
-                  <div className="flex justify-center items-center h-full">
-                    <TeamLogo
-                      src={homeTeam.teamLogoUrl}
-                      name={homeTeam.teamName}
-                      size={24}
-                      fallbackClassName="text-[10px] opacity-70"
-                      className="transition-all"
-                    />
-                  </div>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="flex flex-col items-center justify-center gap-0.5 py-1.5 px-1 cursor-default">
+                        <TeamLogo
+                          src={homeTeam.teamLogoUrl}
+                          name={homeTeam.teamName}
+                          size={logoSize}
+                          fallbackClassName="text-[10px] opacity-70"
+                          className={cn("transition-[filter,transform] duration-100", hoveredRow === homeTeam.teamId ? "brightness-150 scale-110" : "")}
+                        />
+                        <span className="text-[7px] font-mono uppercase tracking-wider leading-none opacity-40">
+                          {getTeamAbbr(homeTeam.teamName)}
+                        </span>
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent side="right">
+                      <p className="text-xs font-medium">{homeTeam.teamName}</p>
+                    </TooltipContent>
+                  </Tooltip>
                 </td>
 
                 {/* Cells */}
                 {standings.map((awayTeam) => {
                   const isSameTeam = homeTeam.teamId === awayTeam.teamId;
                   const result = isSameTeam ? null : getMatchResult(homeTeam.teamId, awayTeam.teamId);
-                  const isHovered = hoveredRow === homeTeam.teamId || hoveredCol === awayTeam.teamId;
 
                   return (
                     <td
                       key={`${homeTeam.teamId}-${awayTeam.teamId}`}
                       className={cn(
-                        "w-12 h-12 p-0 text-center relative transition-colors duration-200 border border-white/[0.02]",
-                        isSameTeam ? "bg-white/[0.02]" : "",
-                        isHovered && !isSameTeam ? "bg-white/[0.03]" : ""
+                        "p-0 text-center relative border border-white/[0.02]",
+                        cellClass,
+                        isSameTeam ? "bg-white/[0.02]" : ""
                       )}
-                      onMouseEnter={() => {
-                        setHoveredRow(homeTeam.teamId);
-                        setHoveredCol(awayTeam.teamId);
-                      }}
-                      onMouseLeave={() => {
-                        setHoveredRow(null);
-                        setHoveredCol(null);
-                      }}
+                      onMouseEnter={() => { setHoveredRow(homeTeam.teamId); setHoveredCol(awayTeam.teamId); }}
+                      onMouseLeave={() => { setHoveredRow(null); setHoveredCol(null); }}
                     >
                       {isSameTeam ? (
                         <div className="w-full h-full opacity-[0.03]" style={{
@@ -251,5 +268,6 @@ export function FixtureCrossbox({
         divisionColor={divisionColor}
       />
     </div>
+    </TooltipProvider>
   );
 }

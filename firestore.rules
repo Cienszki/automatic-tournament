@@ -141,6 +141,11 @@ service cloud.firestore {
         allow write: if hasAdminAccess(tournamentId);
       }
 
+      match /performanceRankings/{docId} {
+        allow read: if true;
+        allow write: if hasAdminAccess(tournamentId);
+      }
+
       // Divisions in tournaments
       match /divisions/{divisionId} {
         allow read: if true;
@@ -272,6 +277,12 @@ service cloud.firestore {
         allow read: if true;
         allow create: if request.auth.uid != null;
         allow update, delete: if hasAdminAccess(tournamentId);
+      }
+
+      // Prizes in tournaments - public read, admin write
+      match /prizes/{prizeId} {
+        allow read: if true;
+        allow write: if hasAdminAccess(tournamentId);
       }
 
       // Notifications in tournaments

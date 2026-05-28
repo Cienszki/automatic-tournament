@@ -262,10 +262,6 @@ function MyTeamView() {
         type: 'transfer_window',
         title: 'Okno transferowe otwarte',
         description: 'Możesz zarządzać składem drużyny',
-        action: {
-          label: 'Zarządzaj składem',
-          onClick: () => setManagementModalOpen(true)
-        }
       });
     }
 
@@ -676,7 +672,9 @@ function MyTeamView() {
 
       const originalDate = String(matchData?.scheduledFor || matchData?.scheduled_for || '');
       const rangeDays = tournament?.rescheduleRangeDays !== undefined ? tournament.rescheduleRangeDays : 3;
-      const finalDate = tournament?.rescheduleFinalDate ?? null;
+      // Per-match deadline takes precedence over the global tournament rescheduleFinalDate (mirrors UI logic)
+      const finalDate = matchData?.deadline || tournament?.rescheduleFinalDate || null;
+      const finalDateDisplay = finalDate ? finalDate.slice(0, 10) : '';
 
       // If there is no admin-set date we skip the range check (unlimited for unscheduled matches)
       const hasScheduledDate = !!originalDate;
@@ -690,7 +688,7 @@ function MyTeamView() {
           title: 'Nieprawidłowa data',
           description: !rangeOk
             ? `Zmiana terminu jest dozwolona tylko w zakresie ${rangeLabel} od daty meczu.`
-            : `Proponowana data (${proposedDate.slice(0, 10)}) przekracza ostateczny termin realizacji meczów (${finalDate}).`,
+            : `Proponowana data (${proposedDate.slice(0, 10)}) przekracza ostateczny termin realizacji meczów (${finalDateDisplay}).`,
           variant: 'destructive',
         });
         return;
@@ -748,7 +746,9 @@ function MyTeamView() {
       const originalDate = String(matchData?.rescheduleRequest?.originalDate || matchData?.scheduledFor || matchData?.scheduled_for || '');
       const proposedDate = String(matchData?.rescheduleRequest?.proposedDate || '');
       const rangeDays = tournament?.rescheduleRangeDays !== undefined ? tournament.rescheduleRangeDays : 3;
-      const finalDate = tournament?.rescheduleFinalDate ?? null;
+      // Per-match deadline takes precedence over the global tournament rescheduleFinalDate (mirrors UI logic)
+      const finalDate = matchData?.deadline || tournament?.rescheduleFinalDate || null;
+      const finalDateDisplay = finalDate ? finalDate.slice(0, 10) : '';
 
       const hasScheduledDate = !!originalDate;
       const rangeOk = !hasScheduledDate || isWithinRescheduleDays(originalDate, proposedDate, rangeDays);
@@ -760,7 +760,7 @@ function MyTeamView() {
           title: 'Nie można zatwierdzić',
           description: !rangeOk
             ? `Proponowany termin wykracza poza zakres ${rangeLabel} od pierwotnej daty meczu.`
-            : `Proponowana data (${proposedDate.slice(0, 10)}) przekracza ostateczny termin realizacji meczów (${finalDate}).`,
+            : `Proponowana data (${proposedDate.slice(0, 10)}) przekracza ostateczny termin realizacji meczów (${finalDateDisplay}).`,
           variant: 'destructive',
         });
         return;
@@ -1187,15 +1187,20 @@ function MyTeamView() {
       }
     }
 
-    // For MMR-limited tournaments, reset team status to 'pending' if new players were added
+    // For MMR-limited tournaments, reset team status to 'pending' if roster changed (add or remove)
     const pendingFields: Record<string, unknown> = {};
     if (isMmrLimited) {
       const currentRosterIds = new Set(Object.keys(team.roster || {}));
-      const hasNewPlayers = data.players.some(p => p.steamId && !currentRosterIds.has(p.steamId));
-      if (hasNewPlayers) {
+      const newPlayerIds = new Set(data.players.map(p => p.steamId).filter(Boolean));
+      const hasRosterChange =
+        data.players.some(p => p.steamId && !currentRosterIds.has(p.steamId)) ||
+        [...currentRosterIds].some(id => !newPlayerIds.has(id));
+      if (hasRosterChange) {
         pendingFields.status = 'pending';
       }
     }
+
+    const totalMMR = data.players.reduce((s, p) => s + (p.mmr || 0), 0);
 
     await updateDoc(teamRef, {
       name: data.teamName,
@@ -1203,6 +1208,7 @@ function MyTeamView() {
       logoUrl,
       captainDiscordUsername: data.captainDiscord,
       roster,
+      totalMMR,
       ...pendingFields,
     });
 
@@ -1671,8 +1677,6 @@ function MyTeamView() {
         {team && (
           <PDLMyTeamHero
             team={team}
-            divisionName={divisionInfo?.name}
-            divisionTier={divisionInfo?.tier}
             divisionColor={divisionInfo?.color}
           />
         )}
@@ -1793,7 +1797,7 @@ function MyTeamView() {
               <X className="w-4 h-4" />
             </DialogClose>
           </div>
-          {team && isTransferWindowOpen ? (
+          {team && (isTransferWindowOpen || isCaptain) ? (
             <PDLTransferSection
               team={team}
               isCaptain={isCaptain}

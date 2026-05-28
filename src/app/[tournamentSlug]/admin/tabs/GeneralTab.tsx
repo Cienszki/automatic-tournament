@@ -22,6 +22,7 @@ import {
 import { cn } from '@/lib/utils';
 import { FontManagement } from '@/components/admin/FontManagement';
 import type { CustomFont } from '@/components/admin/FontManagement';
+import type { NavbarSponsorSlide } from '@/types/tournament';
 import {
   uploadTournamentLogo,
   uploadTournamentInlineLogo,
@@ -54,6 +55,7 @@ import {
   Eye,
   Sliders,
   Image as ImageIcon,
+  Plus,
 } from 'lucide-react';
 
 /**
@@ -138,13 +140,14 @@ export function GeneralTab() {
 
   // Sponsor section state
   const [sponsorEnabled, setSponsorEnabled] = useState(tournament?.navbarSponsor?.enabled ?? false);
-  const [sponsorName, setSponsorName] = useState(tournament?.navbarSponsor?.sponsorName || '');
-  const [sponsorImageUrl, setSponsorImageUrl] = useState(tournament?.navbarSponsor?.sponsorImageUrl || '');
-  const [sponsorUrl, setSponsorUrl] = useState(tournament?.navbarSponsor?.sponsorUrl || '');
-  const [sponsorSecondaryText, setSponsorSecondaryText] = useState(tournament?.navbarSponsor?.secondaryText || '');
+  const [sponsorSlides, setSponsorSlides] = useState<NavbarSponsorSlide[]>(tournament?.navbarSponsor?.slides || []);
+  const [sponsorGlobalUrl, setSponsorGlobalUrl] = useState(tournament?.navbarSponsor?.url || '');
   const [sponsorIntervalMs, setSponsorIntervalMs] = useState(tournament?.navbarSponsor?.intervalMs ?? 5000);
   const [sponsorWidthPx, setSponsorWidthPx] = useState(tournament?.navbarSponsor?.widthPx ?? 200);
-  const [uploadingSponsotImage, setUploadingSponsorImage] = useState(false);
+  const [uploadingSlideImages, setUploadingSlideImages] = useState<Record<string, boolean>>({});
+
+  // Social media
+  const [trailerUrl, setTrailerUrl] = useState(tournament?.trailerUrl || '');
 
   // Upload state
   // Promotional image
@@ -181,6 +184,83 @@ export function GeneralTab() {
   const [tournamentAdmins, setTournamentAdmins] = useState<any[]>([]);
   const [isLoadingAdmins, setIsLoadingAdmins] = useState(true);
   const [isAddingAdmin, setIsAddingAdmin] = useState(false);
+  // Tracks whether the form has been populated with real tournament data
+  const [isFormReady, setIsFormReady] = useState(false);
+
+  // Reinitialize form state when tournament changes (prevents stale data from
+  // a previously-loaded tournament being written back on save)
+  useEffect(() => {
+    if (!tournament) return;
+    setTournamentName(tournament.name || '');
+    setHeroTitle(tournament.heroTitle || '');
+    setDescription(tournament.description || '');
+    setLeagueId(tournament.leagueId?.toString() || '');
+    setTwitchUrl(tournament.twitchUrl || '');
+    setDiscordUrl(tournament.discordUrl || '');
+    setYoutubeUrl(tournament.youtubeUrl || '');
+    setInstagramUrl(tournament.instagramUrl || '');
+    setTiktokUrl(tournament.tiktokUrl || '');
+    setLobbyLeagueName(tournament.lobbySettings?.leagueName || '');
+    setLobbyGameMode(tournament.lobbySettings?.gameMode || 'Captains Mode');
+    setLobbyServer(tournament.lobbySettings?.server || 'EU West');
+    setLobbyVisibility(tournament.lobbySettings?.visibility || 'Publiczna');
+    setLobbyDotatvDelay(tournament.lobbySettings?.dotatvDelayMinutes ?? 5);
+    setLobbyLatePenaltyGame(tournament.lobbySettings?.latePenaltyGameMinutes ?? 15);
+    setLobbyLatePenaltySeries(tournament.lobbySettings?.latePenaltySeriesMinutes ?? 30);
+    setTournamentType(tournament.type === 'league' ? 'league' : 'mmr-limited');
+    setMmrLimit(tournament.mmrCap || 24000);
+    setStatus(tournament.status || 'registration');
+    setSponsorEnabled(tournament.navbarSponsor?.enabled ?? false);
+    setSponsorSlides(tournament.navbarSponsor?.slides || []);
+    setSponsorGlobalUrl(tournament.navbarSponsor?.url || '');
+    setSponsorIntervalMs(tournament.navbarSponsor?.intervalMs ?? 5000);
+    setSponsorWidthPx(tournament.navbarSponsor?.widthPx ?? 200);
+    setTrailerUrl(tournament.trailerUrl || '');
+    setPromotionalImageUrl(tournament.promotionalImageUrl || '');
+    setHeroLayout(tournament.heroLayout ?? 'logo-promo');
+    setHeroLeftImageUrl(tournament.heroLeftImageUrl || '');
+    setHeroRightImageUrl(tournament.heroRightImageUrl || '');
+    setCustomFonts(tournament.customFonts || []);
+    // Theme fields
+    setLogoUrl(tournament.theme?.logoUrl || '');
+    setInlineLogoUrl(tournament.theme?.inlineLogoUrl || '');
+    setOrganizerLogoUrl(tournament.theme?.organizerLogoUrl || '');
+    setPrimaryColor(tournament.theme?.primaryColor || '#cc0000');
+    setSecondaryColor(tournament.theme?.secondaryColor || '#666666');
+    setAccentColor(tournament.theme?.accentColor || '#D4AF37');
+    setGlowColor(tournament.theme?.glowColor || '');
+    setHeadingColor(tournament.theme?.headingColor || '');
+    setBackgroundColor(tournament.theme?.backgroundColor || 'hsl(240 17% 6%)');
+    setCardColor(tournament.theme?.cardColor || '');
+    setTextColor(tournament.theme?.textColor || '');
+    setBorderColor(tournament.theme?.borderColor || '');
+    setTitleColor(tournament.theme?.titleColor || '');
+    setSectionHeaderColor(tournament.theme?.sectionHeaderColor || '');
+    setPrimaryTextColor(tournament.theme?.primaryTextColor || '');
+    setSecondaryTextColor(tournament.theme?.secondaryTextColor || '');
+    setBackgroundImageUrl(tournament.theme?.backgroundImageUrl || '');
+    setFaviconUrl(tournament.theme?.faviconUrl || '');
+    setBackgroundOverlayColor(tournament.theme?.backgroundOverlayColor || 'rgba(0,0,0,0.7)');
+    setBackgroundOverlayOpacity(tournament.theme?.backgroundOverlayOpacity ?? 90);
+    setBackgroundBlur(tournament.theme?.backgroundBlur ?? 0);
+    setBackgroundPosition(tournament.theme?.backgroundPosition || 'center center');
+    setBackgroundSize(tournament.theme?.backgroundSize || 'cover');
+    setCardOpacity(tournament.theme?.cardOpacity ?? 100);
+    setCardBlurVal(tournament.theme?.cardBlur ?? 0);
+    setCardBorderRadius(tournament.theme?.cardBorderRadius || '0.75rem');
+    setNavbarStyle(tournament.theme?.navbarStyle || 'blur');
+    setNavbarColor(tournament.theme?.navbarColor || '');
+    setNavbarOpacity(tournament.theme?.navbarOpacity ?? 100);
+    setNavbarBlur(tournament.theme?.navbarBlur ?? 12);
+    setNavbarTextColor(tournament.theme?.navbarTextColor || '');
+    setNavbarFont(tournament.theme?.navbarFont || 'default');
+    setThemeStyle(tournament.theme?.themeStyle || 'dark');
+    setHeaderFont(tournament.theme?.headerFont || 'logik');
+    setTextFont(tournament.theme?.textFont || 'logik');
+    setReadableFont(tournament.theme?.readableFont || 'geist');
+    setRulesContentFont(tournament.theme?.rulesContentFont || 'geist');
+    setIsFormReady(true);
+  }, [tournament?.id]);
 
   // Load tournament admins
   useEffect(() => {
@@ -338,6 +418,7 @@ export function GeneralTab() {
         youtubeUrl: youtubeUrl || null,
         instagramUrl: instagramUrl || null,
         tiktokUrl: tiktokUrl || null,
+        trailerUrl: trailerUrl || null,
         lobbySettings: {
           leagueName: lobbyLeagueName || null,
           gameMode: lobbyGameMode || 'Captains Mode',
@@ -390,10 +471,8 @@ export function GeneralTab() {
         customFonts: customFonts,
         navbarSponsor: {
           enabled: sponsorEnabled,
-          sponsorName: sponsorName || null,
-          sponsorImageUrl: sponsorImageUrl || null,
-          sponsorUrl: sponsorUrl || null,
-          secondaryText: sponsorSecondaryText || null,
+          slides: sponsorSlides,
+          url: sponsorGlobalUrl || null,
           intervalMs: sponsorIntervalMs,
           widthPx: sponsorWidthPx,
         },
@@ -429,7 +508,7 @@ export function GeneralTab() {
         </div>
         <Button 
           onClick={handleSave} 
-          disabled={isSaving}
+          disabled={isSaving || !isFormReady}
           className="font-logik"
           style={{ backgroundColor: theme.primaryColor }}
         >
@@ -582,6 +661,21 @@ export function GeneralTab() {
               />
               <p className="text-xs text-muted-foreground font-logik">
                 Ikona pojawi się w stopce. Pozostaw puste, aby ukryć.
+              </p>
+            </div>
+
+            {/* Trailer URL */}
+            <div className="space-y-2">
+              <Label className="font-logik-extended-bold">Link do zwiastuna (YouTube)</Label>
+              <Input
+                value={trailerUrl}
+                onChange={(e) => setTrailerUrl(e.target.value)}
+                placeholder="https://www.youtube.com/watch?v=..."
+                className="font-logik"
+                type="url"
+              />
+              <p className="text-xs text-muted-foreground font-logik">
+                Wyświetlany jako przycisk &ldquo;Zwiastun&rdquo; na stronie głównej turnieju. Pozostaw puste, aby ukryć.
               </p>
             </div>
           </div>
@@ -2145,8 +2239,8 @@ export function GeneralTab() {
             Sekcja sponsora w navbarze
           </CardTitle>
           <CardDescription className="font-logik">
-            Wyświetlaj naprzemiennie baner sponsora i tekst w prawej części paska nawigacji.
-            Stały kolor i czcionka są dziedziczone z ustawień nawigacji.
+            Wyświetlaj naprzemiennie slajdy z tekstem lub obrazami w prawej części paska nawigacji.
+            Kolor i czcionka dziedziczone są z ustawień nawigacji.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -2196,110 +2290,166 @@ export function GeneralTab() {
                 </div>
               </div>
 
-              <Separator />
-
-              {/* Slide 1: sponsor name + image */}
-              <div className="space-y-4">
-                <Label className="font-logik-extended-bold text-base block">Slajd 1 – Sponsor</Label>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <Label className="font-logik-extended-bold">Tekst sponsora</Label>
-                    <Input
-                      value={sponsorName}
-                      onChange={(e) => setSponsorName(e.target.value)}
-                      placeholder="np. Sponsor1"
-                      className="font-logik"
-                    />
-                  </div>
-                  <div className="space-y-2 md:col-span-2">
-                    <Label className="font-logik-extended-bold">Link sponsora (URL)</Label>
-                    <Input
-                      value={sponsorUrl}
-                      onChange={(e) => setSponsorUrl(e.target.value)}
-                      placeholder="https://sponsor.example.com"
-                      className="font-mono text-sm"
-                      type="url"
-                    />
-                    <p className="text-xs text-muted-foreground font-logik">Cała sekcja stanie się klikalnym linkiem otwieranym w nowej karcie. Zostaw puste, jeśli sekcja nie ma być klikalna.</p>
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="font-logik-extended-bold">Obraz sponsora</Label>
-                    <div className="flex items-center gap-3">
-                      <label className="flex-1">
-                        <input
-                          type="file"
-                          accept="image/*"
-                          className="hidden"
-                          onChange={async (e) => {
-                            const file = e.target.files?.[0];
-                            if (!file || !tournament?.slug) return;
-                            setUploadingSponsorImage(true);
-                            try {
-                              const url = await uploadTournamentSponsorImage(file, tournament.slug);
-                              setSponsorImageUrl(url);
-                            } catch (err) {
-                              console.error('Error uploading sponsor image:', err);
-                              alert('Błąd podczas przesyłania obrazu');
-                            } finally {
-                              setUploadingSponsorImage(false);
-                            }
-                          }}
-                        />
-                        <Button
-                          variant="outline"
-                          className="w-full font-logik cursor-pointer"
-                          asChild
-                          disabled={uploadingSponsotImage}
-                        >
-                          <span>
-                            {uploadingSponsotImage ? (
-                              <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Przesyłanie...</>
-                            ) : (
-                              <><Upload className="h-4 w-4 mr-2" />Prześlij obraz</>
-                            )}
-                          </span>
-                        </Button>
-                      </label>
-                      {sponsorImageUrl && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setSponsorImageUrl('')}
-                          className="text-destructive shrink-0"
-                          title="Usuń obraz"
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </div>
-                    {sponsorImageUrl && (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={sponsorImageUrl} alt="Podgląd" className="h-10 w-auto object-contain mt-1 rounded" />
-                    )}
-                    <Input
-                      value={sponsorImageUrl}
-                      onChange={(e) => setSponsorImageUrl(e.target.value)}
-                      placeholder="lub wklej URL obrazu"
-                      className="font-mono text-xs"
-                    />
-                  </div>
-                </div>
+              {/* Global URL */}
+              <div className="space-y-2">
+                <Label className="font-logik-extended-bold">Link całej sekcji (opcjonalny)</Label>
+                <Input
+                  value={sponsorGlobalUrl}
+                  onChange={(e) => setSponsorGlobalUrl(e.target.value)}
+                  placeholder="https://sponsor.example.com"
+                  className="font-mono text-sm"
+                  type="url"
+                />
+                <p className="text-xs text-muted-foreground font-logik">
+                  Cała sekcja stanie się klikalnym linkiem. Zostaw puste, jeśli sekcja nie ma być klikalna.
+                </p>
               </div>
 
               <Separator />
 
-              {/* Slide 2: secondary text */}
-              <div className="space-y-2">
-                <Label className="font-logik-extended-bold text-base block">Slajd 2 – Tekst promocyjny</Label>
-                <Input
-                  value={sponsorSecondaryText}
-                  onChange={(e) => setSponsorSecondaryText(e.target.value)}
-                  placeholder="np. Dołącz do PDL Season 2!"
-                  className="font-logik"
-                />
-                <p className="text-xs text-muted-foreground font-logik">
-                  Tekst jest wyświetlany na pełną szerokość kontenera. Kolor i czcionka dziedziczone z ustawień nawigacji.
-                </p>
+              {/* Slides list */}
+              <div className="space-y-3">
+                <Label className="font-logik-extended-bold text-base block">Slajdy</Label>
+                {sponsorSlides.length === 0 && (
+                  <p className="text-sm text-muted-foreground font-logik">Brak slajdów. Dodaj pierwszy slajd poniżej.</p>
+                )}
+                {sponsorSlides.map((slide, index) => (
+                  <div key={slide.id} className="flex items-start gap-3 p-4 rounded-xl border border-border bg-background/40">
+                    {/* Index */}
+                    <span className="text-xs text-muted-foreground font-logik-extended-bold pt-2.5 w-5 text-right shrink-0">{index + 1}.</span>
+
+                    {/* Type selector */}
+                    <Select
+                      value={slide.type}
+                      onValueChange={(v) =>
+                        setSponsorSlides(prev =>
+                          prev.map(s => s.id === slide.id ? { ...s, type: v as 'text' | 'image', content: '' } : s)
+                        )
+                      }
+                    >
+                      <SelectTrigger className="w-28 shrink-0 font-logik">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="text" className="font-logik">Tekst</SelectItem>
+                        <SelectItem value="image" className="font-logik">Obraz</SelectItem>
+                      </SelectContent>
+                    </Select>
+
+                    {/* Content */}
+                    <div className="flex-1 space-y-2">
+                      {slide.type === 'text' ? (
+                        <Input
+                          value={slide.content}
+                          onChange={(e) =>
+                            setSponsorSlides(prev =>
+                              prev.map(s => s.id === slide.id ? { ...s, content: e.target.value } : s)
+                            )
+                          }
+                          placeholder="np. Partner oficjalny: Sponsor1"
+                          className="font-logik"
+                        />
+                      ) : (
+                        <>
+                          <div className="flex items-center gap-2">
+                            <label className="flex-1">
+                              <input
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                onChange={async (e) => {
+                                  const file = e.target.files?.[0];
+                                  if (!file || !tournament?.slug) return;
+                                  setUploadingSlideImages(prev => ({ ...prev, [slide.id]: true }));
+                                  try {
+                                    const url = await uploadTournamentSponsorImage(file, tournament.slug);
+                                    setSponsorSlides(prev =>
+                                      prev.map(s => s.id === slide.id ? { ...s, content: url } : s)
+                                    );
+                                  } catch (err) {
+                                    console.error('Error uploading slide image:', err);
+                                    alert('Błąd podczas przesyłania obrazu');
+                                  } finally {
+                                    setUploadingSlideImages(prev => ({ ...prev, [slide.id]: false }));
+                                  }
+                                }}
+                              />
+                              <Button
+                                variant="outline"
+                                className="w-full font-logik cursor-pointer"
+                                asChild
+                                disabled={uploadingSlideImages[slide.id]}
+                              >
+                                <span>
+                                  {uploadingSlideImages[slide.id] ? (
+                                    <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Przesyłanie...</>
+                                  ) : (
+                                    <><Upload className="h-4 w-4 mr-2" />Prześlij obraz</>
+                                  )}
+                                </span>
+                              </Button>
+                            </label>
+                            {slide.content && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() =>
+                                  setSponsorSlides(prev =>
+                                    prev.map(s => s.id === slide.id ? { ...s, content: '' } : s)
+                                  )
+                                }
+                                className="text-destructive shrink-0"
+                                title="Usuń obraz"
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </div>
+                          {slide.content && (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={slide.content} alt="Podgląd" className="h-10 w-auto object-contain rounded" />
+                          )}
+                          <Input
+                            value={slide.content}
+                            onChange={(e) =>
+                              setSponsorSlides(prev =>
+                                prev.map(s => s.id === slide.id ? { ...s, content: e.target.value } : s)
+                              )
+                            }
+                            placeholder="lub wklej URL obrazu"
+                            className="font-mono text-xs"
+                          />
+                        </>
+                      )}
+                    </div>
+
+                    {/* Delete slide */}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setSponsorSlides(prev => prev.filter(s => s.id !== slide.id))}
+                      className="text-destructive shrink-0 mt-0.5"
+                      title="Usuń slajd"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+
+                {/* Add slide button */}
+                <Button
+                  variant="outline"
+                  onClick={() =>
+                    setSponsorSlides(prev => [
+                      ...prev,
+                      { id: crypto.randomUUID(), type: 'text', content: '' },
+                    ])
+                  }
+                  className="w-full font-logik"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Dodaj slajd
+                </Button>
               </div>
             </>
           )}

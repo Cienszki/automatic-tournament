@@ -82,6 +82,7 @@ export function MatchesTab() {
   const { toast } = useToast();
   
   const [matches, setMatches] = useState<MatchWithTeamNames[]>([]);
+  const [divisionsMap, setDivisionsMap] = useState<Map<string, string>>(new Map());
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -93,6 +94,8 @@ export function MatchesTab() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [matchToDelete, setMatchToDelete] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteAllDialog, setShowDeleteAllDialog] = useState(false);
+  const [isDeletingAll, setIsDeletingAll] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState<{ success: boolean; message: string } | null>(null);
   const [isPostSyncRecalculating, setIsPostSyncRecalculating] = useState(false);
@@ -247,6 +250,15 @@ export function MatchesTab() {
       teamsSnapshot.docs.forEach(doc => {
         teamsMap.set(doc.id, doc.data().name || doc.id);
       });
+
+      // Load divisions/groups to resolve names
+      const divisionsRef = collection(db, 'tournaments', tournament.id, 'divisions');
+      const divisionsSnapshot = await getDocs(divisionsRef);
+      const newDivisionsMap = new Map<string, string>();
+      divisionsSnapshot.docs.forEach(divDoc => {
+        newDivisionsMap.set(divDoc.id, divDoc.data().name || divDoc.id);
+      });
+      setDivisionsMap(newDivisionsMap);
 
       // Also expose teams list for force import selects
       setTeams(teamsSnapshot.docs.map(doc => ({ id: doc.id, name: doc.data().name || doc.id })));
@@ -582,6 +594,26 @@ export function MatchesTab() {
       });
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  const deleteAllMatches = async () => {
+    if (!tournament?.id) return;
+    setIsDeletingAll(true);
+    try {
+      const matchesRef = collection(db, 'tournaments', tournament.id, 'matches');
+      const snapshot = await getDocs(matchesRef);
+      const batch = writeBatch(db);
+      snapshot.docs.forEach(d => batch.delete(d.ref));
+      await batch.commit();
+      toast({ title: 'Usunięto wszystkie mecze', description: `Usunięto ${snapshot.size} meczów.` });
+      await loadMatches();
+      setShowDeleteAllDialog(false);
+    } catch (error) {
+      console.error('Error deleting all matches:', error);
+      toast({ title: 'Błąd', description: 'Nie udało się usunąć meczów.', variant: 'destructive' });
+    } finally {
+      setIsDeletingAll(false);
     }
   };
 
@@ -1136,13 +1168,27 @@ export function MatchesTab() {
       {/* Matches List */}
       <Card className="border-0 shadow-lg bg-card/50 backdrop-blur-sm overflow-hidden">
         <CardHeader className="pb-4">
-          <CardTitle className="flex items-center gap-2 font-logik-extended-bold">
-            <Gamepad2 className="h-5 w-5" style={{ color: theme.primaryColor }} />
-            Lista meczów
-          </CardTitle>
-          <CardDescription className="font-logik">
-            {filteredMatches.length} meczów
-          </CardDescription>
+          <div className="flex items-start justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2 font-logik-extended-bold">
+                <Gamepad2 className="h-5 w-5" style={{ color: theme.primaryColor }} />
+                Lista meczów
+              </CardTitle>
+              <CardDescription className="font-logik">
+                {filteredMatches.length} meczów
+              </CardDescription>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="font-logik text-red-500 border-red-500/30 hover:bg-red-500/10 hover:text-red-400"
+              onClick={() => setShowDeleteAllDialog(true)}
+              disabled={matches.length === 0}
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Usuń wszystkie mecze
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="p-0">
           <Table>
@@ -1200,15 +1246,32 @@ export function MatchesTab() {
                     </TableCell>
                     <TableCell>
                       <Badge variant="outline" className="font-logik">
-                        {match.divisionId || match.group_id || 'N/A'}
+                        {(() => {
+                          const rawId = match.divisionId || match.group_id;
+                          if (!rawId) return 'N/A';
+                          return divisionsMap.get(rawId) || rawId;
+                        })()}
                       </Badge>
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2 text-sm font-logik">
-                        <Calendar className="h-4 w-4 text-muted-foreground" />
-                        {formatDate(match.scheduledFor)}
-                        <Clock className="h-4 w-4 text-muted-foreground ml-2" />
-                        {formatTime(match.scheduledFor)}
+                        {match.schedulingStatus === 'unscheduled' ? (
+                          <>
+                            <Flag className="h-4 w-4 text-amber-500" />
+                            <span className="text-amber-500">
+                              {match.deadline
+                                ? `Deadline: ${formatDate(match.deadline)}`
+                                : 'Do ustalenia'}
+                            </span>
+                          </>
+                        ) : (
+                          <>
+                            <Calendar className="h-4 w-4 text-muted-foreground" />
+                            {formatDate(match.scheduledFor)}
+                            <Clock className="h-4 w-4 text-muted-foreground ml-2" />
+                            {formatTime(match.scheduledFor)}
+                          </>
+                        )}
                       </div>
                     </TableCell>
                     <TableCell>
@@ -1281,6 +1344,40 @@ export function MatchesTab() {
           </Table>
         </CardContent>
       </Card>
+
+      {/* Delete All Confirmation Dialog */}
+      <Dialog open={showDeleteAllDialog} onOpenChange={setShowDeleteAllDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="font-logik-extended-bold text-red-500">Usuń wszystkie mecze</DialogTitle>
+            <DialogDescription className="font-logik">
+              Czy na pewno chcesz usunąć <strong>wszystkie {matches.length} mecze</strong> w tym turnieju?
+              Tej operacji nie można cofnąć.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowDeleteAllDialog(false)}
+              className="font-logik"
+              disabled={isDeletingAll}
+            >
+              Anuluj
+            </Button>
+            <Button
+              onClick={deleteAllMatches}
+              disabled={isDeletingAll}
+              className="font-logik bg-red-500 hover:bg-red-600"
+            >
+              {isDeletingAll ? (
+                <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Usuwanie...</>
+              ) : (
+                <><Trash2 className="h-4 w-4 mr-2" />Usuń wszystkie ({matches.length})</>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>

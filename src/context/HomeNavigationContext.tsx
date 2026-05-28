@@ -15,6 +15,12 @@ interface HomeNavigationContextValue {
   setSelectedGroupId: (id: string | null) => void;
   /** Scroll to section 1 (groups) and show a specific group/division inline. */
   goToGroup: (id: string) => void;
+  /** The team ID to highlight/expand in the Teams section, or null. */
+  highlightedTeamId: string | null;
+  /** Directly set the highlighted team ID without scrolling. */
+  setHighlightedTeamId: (id: string | null) => void;
+  /** Scroll to section 3 (teams) and expand a specific team card. */
+  goToTeam: (id: string) => void;
 }
 
 const HomeNavigationContext = createContext<HomeNavigationContextValue>({
@@ -24,11 +30,15 @@ const HomeNavigationContext = createContext<HomeNavigationContextValue>({
   selectedGroupId: null,
   setSelectedGroupId: () => {},
   goToGroup: () => {},
+  highlightedTeamId: null,
+  setHighlightedTeamId: () => {},
+  goToTeam: () => {},
 });
 
 export function HomeNavigationProvider({ children }: { children: React.ReactNode }) {
   const goToSectionRef = useRef<((index: number) => void) | null>(null);
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
+  const [highlightedTeamId, setHighlightedTeamId] = useState<string | null>(null);
 
   const registerGoToSection = useCallback((fn: ((index: number) => void) | null) => {
     goToSectionRef.current = fn;
@@ -45,8 +55,13 @@ export function HomeNavigationProvider({ children }: { children: React.ReactNode
     goToSectionRef.current?.(1);
   }, []);
 
+  const goToTeam = useCallback((id: string) => {
+    setHighlightedTeamId(id);
+    goToSectionRef.current?.(3);
+  }, []);
+
   return (
-    <HomeNavigationContext.Provider value={{ registerGoToSection, goToHomeSection, isHomeActive, selectedGroupId, setSelectedGroupId, goToGroup }}>
+    <HomeNavigationContext.Provider value={{ registerGoToSection, goToHomeSection, isHomeActive, selectedGroupId, setSelectedGroupId, goToGroup, highlightedTeamId, setHighlightedTeamId, goToTeam }}>
       {children}
     </HomeNavigationContext.Provider>
   );
@@ -60,6 +75,7 @@ export const HOME_VIEW_TO_SECTION: Record<string, number> = {
   playoffs: 1, // playoffs replaces groups/divisions in section 1
   schedule: 2,
   teams: 3,
-  stats: 4,
-  'my-team': 5,
+  rankings: 4,
+  stats: 5,
+  'my-team': 6,
 };

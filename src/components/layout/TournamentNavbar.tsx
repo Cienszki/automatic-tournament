@@ -21,6 +21,8 @@ import {
   Layers,
   Menu,
   Loader2,
+  Gift,
+  Trophy,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -40,13 +42,18 @@ import { useHomeNavigation, HOME_VIEW_TO_SECTION } from '@/context/HomeNavigatio
 import React from 'react';
 
 // ------------------------------------------------------------------
-// NavbarSponsor: cycles between two slides with a fade transition
+// NavbarSponsor: cycles through configurable slides with fade transitions
 // ------------------------------------------------------------------
+interface NavbarSponsorSlide {
+  id: string;
+  type: 'text' | 'image';
+  content: string;   // text string OR image URL
+  altText?: string;  // alt text for image slides
+}
+
 interface NavbarSponsorProps {
-  sponsorName?: string;
-  sponsorImageUrl?: string;
-  sponsorUrl?: string;
-  secondaryText?: string;
+  slides: NavbarSponsorSlide[];
+  url?: string;
   intervalMs: number;
   widthPx: number;
   fontFamily?: string;
@@ -54,72 +61,60 @@ interface NavbarSponsorProps {
 }
 
 function NavbarSponsor({
-  sponsorName,
-  sponsorImageUrl,
-  sponsorUrl,
-  secondaryText,
+  slides,
+  url,
   intervalMs,
   widthPx,
   fontFamily,
   color,
 }: NavbarSponsorProps) {
-  const [activeSlide, setActiveSlide] = React.useState(0);
+  const [activeIdx, setActiveIdx] = React.useState(0);
   const [visible, setVisible] = React.useState(true);
 
   React.useEffect(() => {
+    if (slides.length <= 1) return;
     const timer = setInterval(() => {
-      // Fade out, switch, fade in
       setVisible(false);
       setTimeout(() => {
-        setActiveSlide(prev => (prev === 0 ? 1 : 0));
+        setActiveIdx(prev => (prev + 1) % slides.length);
         setVisible(true);
       }, 300);
     }, intervalMs);
     return () => clearInterval(timer);
-  }, [intervalMs]);
+  }, [intervalMs, slides.length]);
 
-  const textStyle: React.CSSProperties = {
-    fontFamily,
-    color,
-    fontSize: '0.75rem',
-    lineHeight: '1.2',
-  };
+  if (slides.length === 0) return null;
+
+  const current = slides[activeIdx % slides.length];
 
   const inner = (
     <div
-      className="flex items-center justify-center w-full px-2 transition-opacity duration-300"
+      className="flex items-center justify-center w-full h-full px-1.5 transition-opacity duration-300"
       style={{ opacity: visible ? 1 : 0 }}
     >
-      {activeSlide === 0 ? (
-        /* Slide 1: sponsor name + image */
-        <div className="flex items-center gap-2 w-full justify-center">
-          {sponsorName && (
-            <span className="break-words text-center leading-tight" style={textStyle}>
-              {sponsorName}
-            </span>
-          )}
-          {sponsorImageUrl && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={sponsorImageUrl}
-              alt={sponsorName || 'Sponsor'}
-              className="h-9 w-auto max-w-[80px] object-contain shrink-0"
-            />
-          )}
-        </div>
+      {current.type === 'image' ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={current.content}
+          alt={current.altText || 'Sponsor'}
+          className="w-auto max-w-full object-contain"
+          style={{ height: '100%', maxHeight: '100%', padding: '3px 0' }}
+        />
       ) : (
-        /* Slide 2: secondary text */
-        <span className="break-words text-center leading-tight w-full" style={textStyle}>
-          {secondaryText}
+        <span
+          className="text-sm font-medium break-words text-center leading-tight w-full"
+          style={{ fontFamily, color }}
+        >
+          {current.content}
         </span>
       )}
     </div>
   );
 
-  if (sponsorUrl) {
+  if (url) {
     return (
       <a
-        href={sponsorUrl}
+        href={url}
         target="_blank"
         rel="noopener noreferrer"
         className="flex items-center justify-center overflow-hidden shrink-0 hover:opacity-80 transition-opacity"
@@ -204,7 +199,14 @@ export function TournamentNavbar() {
   const [hasMounted, setHasMounted] = React.useState(false);
   const [isAdmin, setIsAdmin] = React.useState(false);
   const [hasTeam, setHasTeam] = React.useState(false);
+  const [organizerLogoError, setOrganizerLogoError] = React.useState(false);
+  const [inlineLogoError, setInlineLogoError] = React.useState(false);
   const { goToHomeSection, isHomeActive, goToGroup } = useHomeNavigation();
+
+  // Reset inline logo error whenever the URL changes (e.g. after Firestore loads the real theme)
+  React.useEffect(() => {
+    setInlineLogoError(false);
+  }, [theme.inlineLogoUrl]);
 
   React.useEffect(() => {
     setHasMounted(true);
@@ -257,6 +259,7 @@ export function TournamentNavbar() {
     { href: '/pickem', label: 'Pick\'em', icon: ClipboardCheck, showFor: 'all' },
     { href: '/stats', label: 'Statystyki', icon: BarChart2, showFor: 'all' },
     { href: '/rules', label: 'Regulamin', icon: ScrollText, showFor: 'all' },
+    { href: '/prizes', label: 'Nagrody', icon: Gift, showFor: 'all' },
     { href: '/faq', label: 'FAQ', icon: HelpCircle, showFor: 'all' },
     { href: '/admin', label: 'Admin', icon: Settings, showFor: 'all' },
   ];
@@ -364,12 +367,13 @@ export function TournamentNavbar() {
       {/* PD2IH / organizer Logo link to landing page */}
       <Link href="/" className="self-stretch flex items-center">
         <Image
-          src={theme?.organizerLogoUrl || '/logos/pd2ih/pd2ih-logo.png'}
+          src={(!organizerLogoError && theme?.organizerLogoUrl) || '/logos/pd2ih/pd2ih-logo.png'}
           alt="PD2IH"
           width={40}
           height={40}
           priority
           unoptimized
+          onError={() => setOrganizerLogoError(true)}
           className="h-10 w-auto max-w-[80px] object-contain"
         />
       </Link>
@@ -385,14 +389,19 @@ export function TournamentNavbar() {
         }}
         className="flex items-center self-stretch px-1 cursor-pointer"
       >
-        <Image
-          src={theme.inlineLogoUrl || '/logos/pdl/pdl-text.png'}
-          alt={tournament?.name || 'Tournament'}
-          height={80}
-          width={200}
-          priority
-          className="object-contain"
-        />
+        {theme.inlineLogoUrl && !inlineLogoError ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={theme.inlineLogoUrl}
+            alt={tournament?.name || 'Tournament'}
+            onError={() => setInlineLogoError(true)}
+            className="h-10 w-auto max-w-[180px] object-contain"
+          />
+        ) : (
+          <span className="font-bold text-sm" style={{ fontFamily: navbarFontFamily, color: navTextColor }}>
+            {tournament?.name || 'Tournament'}
+          </span>
+        )}
       </button>
     </div>
   );
@@ -499,6 +508,17 @@ export function TournamentNavbar() {
                 {/* Stats */}
                 <Button
                   variant="ghost"
+                  onClick={() => { handleViewNavigation('rankings'); setIsMobileMenuOpen(false); }}
+                  className="w-full justify-start text-base py-3 px-3"
+                  style={{ color: navTextColor }}
+                >
+                  <Trophy className="h-5 w-5 mr-3" />
+                  <span>Rankingi</span>
+                </Button>
+
+                {/* Stats */}
+                <Button
+                  variant="ghost"
                   onClick={() => { handleViewNavigation('stats'); setIsMobileMenuOpen(false); }}
                   className="w-full justify-start text-base py-3 px-3"
                   style={{ color: navTextColor }}
@@ -522,7 +542,7 @@ export function TournamentNavbar() {
 
                 {/* Remaining page links */}
                 {filteredNavItems
-                  .filter(item => !['/divisions', '/groups', '/teams', '/schedule', '/playoffs', '/stats', '/my-team'].includes(item.href))
+                  .filter(item => !['/divisions', '/groups', '/teams', '/schedule', '/playoffs', '/rankings', '/stats', '/my-team'].includes(item.href))
                   .map((item) => {
                     const active = isActive(item.href);
                     return (
@@ -751,7 +771,40 @@ export function TournamentNavbar() {
               );
             })()}
 
-            {/* ── Stats ─────────────────────────────────────────── */}
+            {/* ── Rankings ──────────────────────────────────────── */}
+            {(() => {
+              const active = isActive('/rankings');
+              return (
+                <button
+                  key="rankings"
+                  onClick={() => handleViewNavigation('rankings')}
+                  onAuxClick={(e) => { if (e.button === 1) { e.preventDefault(); window.open(`${getTournamentPath('')}?view=rankings`, '_blank'); } }}
+                  className={cn(
+                    "relative text-sm font-medium shrink-0 px-3 py-2 transition-all duration-200 group flex items-center gap-2",
+                    "hover:bg-[var(--nav-hover-bg)] hover:text-[var(--nav-hover-text)]",
+                    "focus-visible:outline-none focus-visible:ring-0",
+                    !active && "text-muted-foreground",
+                  )}
+                  style={{
+                    color: active ? theme.primaryColor : navTextColor,
+                    '--nav-hover-bg': getColorWithOpacity(theme.primaryColor, 10),
+                    '--nav-hover-text': theme.primaryColor,
+                  } as React.CSSProperties}
+                >
+                  <Trophy className="h-4 w-4" />
+                  <span className="hidden lg:inline">Rankingi</span>
+                  <span
+                    className={cn(
+                      "absolute bottom-2 left-0 h-0.5 w-full transform transition-transform duration-300 ease-out",
+                      active ? "scale-x-100" : "scale-x-0 group-hover:scale-x-100",
+                    )}
+                    style={{ backgroundColor: theme.primaryColor }}
+                  />
+                </button>
+              );
+            })()}
+
+            {/* ── Stats ─────────────────────────────────────────────── */}
             {(() => {
               const active = isActive('/stats');
               return (
@@ -817,6 +870,38 @@ export function TournamentNavbar() {
               );
             })()}
 
+            {/* ── Prizes — full-page link ───────────────────────── */}
+            {(() => {
+              const active = isActive('/prizes');
+              return (
+                <a
+                  key="prizes"
+                  href={getTournamentPath('/prizes')}
+                  className={cn(
+                    "relative text-sm font-medium shrink-0 px-3 py-2 transition-all duration-200 group flex items-center gap-2",
+                    "hover:bg-[var(--nav-hover-bg)] hover:text-[var(--nav-hover-text)]",
+                    "focus-visible:outline-none focus-visible:ring-0",
+                    !active && "text-muted-foreground",
+                  )}
+                  style={{
+                    color: active ? theme.primaryColor : navTextColor,
+                    '--nav-hover-bg': getColorWithOpacity(theme.primaryColor, 10),
+                    '--nav-hover-text': theme.primaryColor,
+                  } as React.CSSProperties}
+                >
+                  <Gift className="h-4 w-4" />
+                  <span className="hidden lg:inline">Nagrody</span>
+                  <span
+                    className={cn(
+                      "absolute bottom-2 left-0 h-0.5 w-full transform transition-transform duration-300 ease-out",
+                      active ? "scale-x-100" : "scale-x-0 group-hover:scale-x-100",
+                    )}
+                    style={{ backgroundColor: theme.primaryColor }}
+                  />
+                </a>
+              );
+            })()}
+
           </nav>
         </div>
         {/* Admin button on the right - only shown if user is admin */}
@@ -838,18 +923,35 @@ export function TournamentNavbar() {
           </Button>
         )}
         {/* Navbar sponsor section - shown to all users when enabled */}
-        {tournament.navbarSponsor?.enabled && (
-          <NavbarSponsor
-            sponsorName={tournament.navbarSponsor.sponsorName}
-            sponsorImageUrl={tournament.navbarSponsor.sponsorImageUrl}
-            sponsorUrl={tournament.navbarSponsor.sponsorUrl}
-            secondaryText={tournament.navbarSponsor.secondaryText}
-            intervalMs={tournament.navbarSponsor.intervalMs ?? 5000}
-            widthPx={tournament.navbarSponsor.widthPx ?? 200}
-            fontFamily={navbarFontFamily}
-            color={navTextColor}
-          />
-        )}
+        {tournament.navbarSponsor?.enabled && (() => {
+          const cfg = tournament.navbarSponsor!;
+          // Support new slides array; fall back to legacy fields for old data
+          const slides: NavbarSponsorSlide[] = cfg.slides?.length
+            ? cfg.slides
+            : [
+                ...(cfg.sponsorImageUrl || cfg.sponsorName ? [{
+                  id: 'legacy-1',
+                  type: (cfg.sponsorImageUrl ? 'image' : 'text') as 'text' | 'image',
+                  content: cfg.sponsorImageUrl || cfg.sponsorName || '',
+                  altText: cfg.sponsorName,
+                }] : []),
+                ...(cfg.secondaryText ? [{
+                  id: 'legacy-2',
+                  type: 'text' as const,
+                  content: cfg.secondaryText,
+                }] : []),
+              ];
+          return (
+            <NavbarSponsor
+              slides={slides}
+              url={cfg.url || cfg.sponsorUrl || undefined}
+              intervalMs={cfg.intervalMs ?? 5000}
+              widthPx={cfg.widthPx ?? 200}
+              fontFamily={navbarFontFamily}
+              color={navTextColor}
+            />
+          );
+        })()}
       </div>
     </header>
   );

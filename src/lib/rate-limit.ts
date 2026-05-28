@@ -88,11 +88,11 @@ export function checkRateLimit(
 
 // ─── Pre-configured limiters ─────────────────────────────────────────────────
 
-/** 5 requests per hour — for team/standin registration */
+/** 10 requests per hour — for team/standin registration */
 export const LIMIT_REGISTRATION: RateLimitOptions = {
-  limit: 5,
+  limit: 10,
   windowMs: 60 * 60 * 1000,
-  message: 'Registration limit reached. You can submit up to 5 times per hour.',
+  message: 'Registration limit reached. You can submit up to 10 times per hour.',
 };
 
 /** 20 requests per minute — for match import (admin-only, but still protect from runaway calls) */

@@ -23,6 +23,7 @@ import { InlineDivisionView } from '@/components/divisions/InlineDivisionView';
 import { MatchdayCarousel } from '@/components/schedule/MatchdayCarousel';
 import { ChronologicalCarousel } from '@/components/schedule/ChronologicalCarousel';
 import { TeamsView } from '@/components/tournament/TeamsView';
+import { RankingsView } from '@/components/tournament/RankingsView';
 import { PlayoffBracket } from '@/components/playoffs/PlayoffBracket';
 import { SeasonPointsTable } from '@/components/playoffs/SeasonPointsTable';
 
@@ -87,7 +88,7 @@ const HeroTikTokIcon = (props: React.SVGProps<SVGSVGElement>) => (
 
 // ─── Section labels for dot navigation ───────────────────────────────
 
-const BASE_SECTION_LABELS = ['Start', 'Tabele', 'Terminarz', 'Drużyny', 'Statystyki'];
+const BASE_SECTION_LABELS = ['Start', 'Tabele', 'Terminarz', 'Drużyny', 'Rankingi', 'Statystyki'];
 
 // ─── Dot Navigation with arrow controls ─────────────────────────────
 
@@ -225,7 +226,7 @@ export function TournamentHomePage() {
   const [teamStats, setTeamStats] = useState<TeamStatsData[]>([]);
 
   const primaryColor = theme?.primaryColor || '#8B1538';
-  const TOTAL_SECTIONS = hasTeam ? 6 : 5;
+  const TOTAL_SECTIONS = hasTeam ? 7 : 6;
   const sectionLabels = useMemo(() =>
     hasTeam ? [...BASE_SECTION_LABELS, 'Moja drużyna'] : BASE_SECTION_LABELS,
     [hasTeam],
@@ -241,7 +242,7 @@ export function TournamentHomePage() {
   } = useSnapScroll({ totalSections: TOTAL_SECTIONS, cooldown: 150, transitionDuration: 300 });
 
   // ── Register with HomeNavigationContext so navbar can scroll here ───
-  const { registerGoToSection, selectedGroupId, setSelectedGroupId } = useHomeNavigation();
+  const { registerGoToSection, selectedGroupId, setSelectedGroupId, highlightedTeamId, setHighlightedTeamId } = useHomeNavigation();
   const searchParams = useSearchParams();
 
   // Use a ref so the stable wrapper always calls the latest goToSection
@@ -258,14 +259,16 @@ export function TournamentHomePage() {
     return () => { registerGoToSection(null); };
   }, [stableGoToSection, registerGoToSection]);
 
-  // Handle ?view=<key> and optional ?group=<id> search params — used when navigating from another page
+  // Handle ?view=<key>, optional ?group=<id>, and optional ?team=<id> search params
   useEffect(() => {
     const view = searchParams.get('view');
     const group = searchParams.get('group');
+    const team = searchParams.get('team');
     if (view && HOME_VIEW_TO_SECTION[view] !== undefined) {
       const timer = setTimeout(() => {
         stableGoToSection(HOME_VIEW_TO_SECTION[view]);
         if (group) setSelectedGroupId(group);
+        if (view === 'teams' && team) setHighlightedTeamId(team);
       }, 120);
       return () => clearTimeout(timer);
     }
@@ -604,7 +607,7 @@ export function TournamentHomePage() {
                     transition={{ duration: 0.7 }}
                   >
                     <h2
-                      className="text-2xl sm:text-3xl uppercase tracking-[0.15em] font-logik-extended-bold mb-2"
+                      className="text-3xl sm:text-4xl uppercase tracking-[0.15em] font-logik-extended-bold mb-2"
                       style={{
                         color: 'var(--tournament-heading)',
                         fontFamily: theme?.headerFont ? `var(${theme.headerFont})` : undefined,
@@ -613,7 +616,7 @@ export function TournamentHomePage() {
                       {tournament?.heroTitle || (isMmrLimited ? t('hero.mmrTitle') : t('hero.leagueTitle'))}
                     </h2>
                     <p
-                      className="text-sm sm:text-base lg:text-lg leading-relaxed font-medium border-l-2 pl-4"
+                      className="text-sm sm:text-base lg:text-xl leading-relaxed font-medium border-l-2 pl-4"
                       style={{ borderColor: primaryColor, color: 'var(--tournament-secondary-text)' }}
                     >
                       {tournament?.description || t('hero.subtitle')}
@@ -627,7 +630,7 @@ export function TournamentHomePage() {
                   >
                     {hasTeam ? (
                       <button
-                        onClick={() => goToSection(5)}
+                        onClick={() => goToSection(HOME_VIEW_TO_SECTION['my-team'])}
                         className="inline-flex items-center justify-center gap-3 px-8 py-3.5 font-logik-extended-bold text-sm uppercase tracking-widest text-white transition-all duration-300 relative overflow-hidden group whitespace-nowrap"
                         style={{
                           backgroundColor: primaryColor,
@@ -671,6 +674,20 @@ export function TournamentHomePage() {
                       />
                       <span className="relative z-10">{t('hero.ctaDiscord')}</span>
                     </Link>
+                    {tournament?.trailerUrl && (
+                      <Link
+                        href={tournament.trailerUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center justify-center gap-3 px-8 py-3.5 font-logik-extended-bold text-sm uppercase tracking-widest bg-transparent text-[#FF0000] border border-[#FF0000]/50 hover:border-[#FF0000] hover:bg-[#FF0000]/10 transition-all duration-300 whitespace-nowrap"
+                        style={{
+                          clipPath: 'polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px)',
+                        }}
+                      >
+                        <Youtube className="h-4 w-4 relative z-10" />
+                        <span className="relative z-10">{t('hero.ctaTrailer')}</span>
+                      </Link>
+                    )}
                   </motion.div>
                 </div>
                 {(tournament?.discordUrl || tournament?.twitchUrl || tournament?.youtubeUrl || tournament?.instagramUrl || tournament?.tiktokUrl) && (
@@ -678,31 +695,31 @@ export function TournamentHomePage() {
                     {tournament?.discordUrl && (
                       <a href={tournament.discordUrl} target="_blank" rel="noopener noreferrer" aria-label="Discord"
                          className="transition-opacity hover:opacity-100 opacity-60" style={{ color: 'var(--tournament-secondary-text)' }}>
-                        <HeroDiscordIcon className="h-5 w-5" /><span className="sr-only">Discord</span>
+                        <HeroDiscordIcon className="h-7 w-7" /><span className="sr-only">Discord</span>
                       </a>
                     )}
                     {tournament?.twitchUrl && (
                       <a href={tournament.twitchUrl} target="_blank" rel="noopener noreferrer" aria-label="Twitch"
                          className="transition-opacity hover:opacity-100 opacity-60" style={{ color: 'var(--tournament-secondary-text)' }}>
-                        <HeroTwitchIcon className="h-5 w-5" /><span className="sr-only">Twitch</span>
+                        <HeroTwitchIcon className="h-7 w-7" /><span className="sr-only">Twitch</span>
                       </a>
                     )}
                     {tournament?.youtubeUrl && (
                       <a href={tournament.youtubeUrl} target="_blank" rel="noopener noreferrer" aria-label="YouTube"
                          className="transition-opacity hover:opacity-100 opacity-60" style={{ color: 'var(--tournament-secondary-text)' }}>
-                        <Youtube className="h-5 w-5" /><span className="sr-only">YouTube</span>
+                        <Youtube className="h-7 w-7" /><span className="sr-only">YouTube</span>
                       </a>
                     )}
                     {tournament?.instagramUrl && (
                       <a href={tournament.instagramUrl} target="_blank" rel="noopener noreferrer" aria-label="Instagram"
                          className="transition-opacity hover:opacity-100 opacity-60" style={{ color: 'var(--tournament-secondary-text)' }}>
-                        <HeroInstagramIcon className="h-5 w-5" /><span className="sr-only">Instagram</span>
+                        <HeroInstagramIcon className="h-7 w-7" /><span className="sr-only">Instagram</span>
                       </a>
                     )}
                     {tournament?.tiktokUrl && (
                       <a href={tournament.tiktokUrl} target="_blank" rel="noopener noreferrer" aria-label="TikTok"
                          className="transition-opacity hover:opacity-100 opacity-60" style={{ color: 'var(--tournament-secondary-text)' }}>
-                        <HeroTikTokIcon className="h-5 w-5" /><span className="sr-only">TikTok</span>
+                        <HeroTikTokIcon className="h-7 w-7" /><span className="sr-only">TikTok</span>
                       </a>
                     )}
                   </div>
@@ -760,7 +777,7 @@ export function TournamentHomePage() {
                   transition={{ duration: 0.7 }}
                 >
                   <h2
-                    className="text-2xl sm:text-3xl uppercase tracking-[0.15em] font-logik-extended-bold mb-2"
+                    className="text-3xl sm:text-4xl uppercase tracking-[0.15em] font-logik-extended-bold mb-2"
                     style={{
                       color: 'var(--tournament-heading)',
                       fontFamily: theme?.headerFont ? `var(${theme.headerFont})` : undefined,
@@ -770,7 +787,7 @@ export function TournamentHomePage() {
                   </h2>
 
                   <p
-                    className="text-sm sm:text-base lg:text-lg leading-relaxed font-medium border-l-2 pl-4"
+                    className="text-sm sm:text-base lg:text-xl leading-relaxed font-medium border-l-2 pl-4"
                     style={{
                       borderColor: primaryColor,
                       color: 'var(--tournament-secondary-text)',
@@ -834,6 +851,20 @@ export function TournamentHomePage() {
                     />
                     <span className="relative z-10">{t('hero.ctaDiscord')}</span>
                   </Link>
+                  {tournament?.trailerUrl && (
+                    <Link
+                      href={tournament.trailerUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center justify-center gap-3 px-8 py-3.5 font-logik-extended-bold text-sm uppercase tracking-widest bg-transparent text-[#FF0000] border border-[#FF0000]/50 hover:border-[#FF0000] hover:bg-[#FF0000]/10 transition-all duration-300 whitespace-nowrap"
+                      style={{
+                        clipPath: 'polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px)',
+                      }}
+                    >
+                      <Youtube className="h-4 w-4 relative z-10" />
+                      <span className="relative z-10">{t('hero.ctaTrailer')}</span>
+                    </Link>
+                  )}
                 </motion.div>
                 </div>
 
@@ -843,35 +874,35 @@ export function TournamentHomePage() {
                     {tournament?.discordUrl && (
                       <a href={tournament.discordUrl} target="_blank" rel="noopener noreferrer" aria-label="Discord"
                          className="transition-opacity hover:opacity-100 opacity-60" style={{ color: 'var(--tournament-secondary-text)' }}>
-                        <HeroDiscordIcon className="h-5 w-5" />
+                        <HeroDiscordIcon className="h-7 w-7" />
                         <span className="sr-only">Discord</span>
                       </a>
                     )}
                     {tournament?.twitchUrl && (
                       <a href={tournament.twitchUrl} target="_blank" rel="noopener noreferrer" aria-label="Twitch"
                          className="transition-opacity hover:opacity-100 opacity-60" style={{ color: 'var(--tournament-secondary-text)' }}>
-                        <HeroTwitchIcon className="h-5 w-5" />
+                        <HeroTwitchIcon className="h-7 w-7" />
                         <span className="sr-only">Twitch</span>
                       </a>
                     )}
                     {tournament?.youtubeUrl && (
                       <a href={tournament.youtubeUrl} target="_blank" rel="noopener noreferrer" aria-label="YouTube"
                          className="transition-opacity hover:opacity-100 opacity-60" style={{ color: 'var(--tournament-secondary-text)' }}>
-                        <Youtube className="h-5 w-5" />
+                        <Youtube className="h-7 w-7" />
                         <span className="sr-only">YouTube</span>
                       </a>
                     )}
                     {tournament?.instagramUrl && (
                       <a href={tournament.instagramUrl} target="_blank" rel="noopener noreferrer" aria-label="Instagram"
                          className="transition-opacity hover:opacity-100 opacity-60" style={{ color: 'var(--tournament-secondary-text)' }}>
-                        <HeroInstagramIcon className="h-5 w-5" />
+                        <HeroInstagramIcon className="h-7 w-7" />
                         <span className="sr-only">Instagram</span>
                       </a>
                     )}
                     {tournament?.tiktokUrl && (
                       <a href={tournament.tiktokUrl} target="_blank" rel="noopener noreferrer" aria-label="TikTok"
                          className="transition-opacity hover:opacity-100 opacity-60" style={{ color: 'var(--tournament-secondary-text)' }}>
-                        <HeroTikTokIcon className="h-5 w-5" />
+                        <HeroTikTokIcon className="h-7 w-7" />
                         <span className="sr-only">TikTok</span>
                       </a>
                     )}
@@ -944,7 +975,12 @@ export function TournamentHomePage() {
 
                 <div className="flex-1 overflow-y-auto min-h-0">
                   {showDivisions && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
+                    <div className={cn(
+                      'grid gap-8',
+                      divisions.length === 1 && 'grid-cols-1 max-w-lg mx-auto',
+                      divisions.length === 2 && 'grid-cols-1 md:grid-cols-2 max-w-4xl mx-auto',
+                      divisions.length >= 3 && 'grid-cols-1 md:grid-cols-2 xl:grid-cols-3',
+                    )}>
                       {divisions.map((division) => (
                         <DivisionTable
                           key={division.id || division.name}
@@ -1002,13 +1038,20 @@ export function TournamentHomePage() {
             VIEW 4: Teams
            ═══════════════════════════════════════════════════════════ */}
         <FullScreenSection isActive={currentSection === 3}>
-          <TeamsView teams={teams} divisionRankings={divisionRankings} />
+          <TeamsView teams={teams} divisionRankings={divisionRankings} highlightedTeamId={highlightedTeamId} onTeamHighlightConsumed={() => setHighlightedTeamId(null)} />
         </FullScreenSection>
 
         {/* ═══════════════════════════════════════════════════════════
-            VIEW 5: Stats
+            VIEW 5: Rankings
            ═══════════════════════════════════════════════════════════ */}
         <FullScreenSection isActive={currentSection === 4}>
+          <RankingsView />
+        </FullScreenSection>
+
+        {/* ═══════════════════════════════════════════════════════════
+            VIEW 6: Stats
+           ═══════════════════════════════════════════════════════════ */}
+        <FullScreenSection isActive={currentSection === 5}>
           <div className="h-full w-full overflow-y-auto text-white">
             <StatsPageLayout
               tournamentStats={tournamentStats}
@@ -1019,10 +1062,10 @@ export function TournamentHomePage() {
         </FullScreenSection>
 
         {/* ═══════════════════════════════════════════════════════════
-            VIEW 6: My Team (captains only)
+            VIEW 7: My Team (captains only)
            ═══════════════════════════════════════════════════════════ */}
         {hasTeam && (
-          <FullScreenSection isActive={currentSection === 5}>
+          <FullScreenSection isActive={currentSection === 6}>
             {/* Override the standalone page styles: hide fixed background, remove min-h-screen */}
             <div className="h-full w-full overflow-y-auto text-white
               [&>div]:!min-h-0 [&>div]:!h-full

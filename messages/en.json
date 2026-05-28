@@ -57,7 +57,9 @@
     "admin": "Admin Panel",
     "standins": "Standins",
     "switchTournament": "Switch tournament",
-    "backToHome": "Platform home"
+    "backToHome": "Platform home",
+    "prizes": "Prizes",
+    "privacy": "Privacy"
   },
   "landing": {
     "title": "Polish Dota 2 Inhouse",
@@ -87,6 +89,7 @@
       "ctaRegister": "Register a Team",
       "ctaMyTeam": "My Team",
       "ctaDiscord": "Join Discord",
+      "ctaTrailer": "Watch Trailer",
       "registrationOpenUntil": "Registration open until {date}",
       "registrationOpen": "Registration open",
       "statsTeams": "Teams",
@@ -657,6 +660,7 @@
     "commentators": "Commentators",
     "approveCommentator": "Approve commentator",
     "assignMatch": "Assign match",
+    "prizes": "Prizes",
     "bot": {
       "title": "Lobby Bot",
       "settings": "Settings",
@@ -1007,5 +1011,32 @@
       "stats": "Statistics",
       "rules": "Rules"
     }
+  },
+  "prizes": {
+    "title": "Prizes",
+    "subtitle": "Prizes awaiting the best players of this tournament",
+    "noPrizes": "Prizes will be announced soon",
+    "noPrizesDesc": "The tournament administrator will announce prizes before the competition begins.",
+    "category": "Category",
+    "prize": "Prize",
+    "description": "Prize description",
+    "addPrize": "Add prize",
+    "editPrize": "Edit prize",
+    "deletePrize": "Delete prize",
+    "deleteConfirm": "Are you sure you want to delete this prize?",
+    "saveSuccess": "Prize saved successfully",
+    "deleteSuccess": "Prize deleted successfully",
+    "categoryPlaceholder": "e.g. 1st place, Fantasy winner",
+    "prizePlaceholder": "e.g. Steam gift card $50",
+    "descriptionPlaceholder": "Additional details about the prize...",
+    "orderLabel": "Display order",
+    "visibleLabel": "Visible to participants",
+    "noPrizesAdmin": "No prizes configured",
+    "noPrizesAdminDesc": "Add the first prize by clicking the button above."
+  },
+  "privacy": {
+    "title": "Privacy Policy",
+    "lastUpdated": "Last updated",
+    "backToTournament": "Back to tournament"
   }
 }

@@ -57,7 +57,9 @@
     "admin": "Panel Admina",
     "standins": "Rezerwowi",
     "switchTournament": "Zmień turniej",
-    "backToHome": "Strona główna platformy"
+    "backToHome": "Strona główna platformy",
+    "prizes": "Nagrody",
+    "privacy": "Prywatność"
   },
   "landing": {
     "title": "Polish Dota 2 Inhouse",
@@ -87,6 +89,7 @@
       "ctaRegister": "Zarejestruj Drużynę",
       "ctaMyTeam": "Moja Drużyna",
       "ctaDiscord": "Discord",
+      "ctaTrailer": "Zwiastun",
       "registrationOpenUntil": "Rejestracja otwarta do {date}",
       "registrationOpen": "Rejestracja otwarta",
       "statsTeams": "Drużyny",
@@ -657,6 +660,7 @@
     "commentators": "Komentatorzy",
     "approveCommentator": "Zatwierdź komentatora",
     "assignMatch": "Przypisz mecz",
+    "prizes": "Nagrody",
     "bot": {
       "title": "Bot Lobby",
       "settings": "Ustawienia",
@@ -1108,5 +1112,32 @@
       "stats": "Statystyki",
       "rules": "Zasady"
     }
+  },
+  "prizes": {
+    "title": "Nagrody",
+    "subtitle": "Oto nagrody czekające na najlepszych zawodników tego turnieju",
+    "noPrizes": "Nagrody zostaną ogłoszone wkrótce",
+    "noPrizesDesc": "Administrator turnieju ogłosi nagrody przed rozpoczęciem zawodów.",
+    "category": "Kategoria",
+    "prize": "Nagroda",
+    "description": "Opis nagrody",
+    "addPrize": "Dodaj nagrodę",
+    "editPrize": "Edytuj nagrodę",
+    "deletePrize": "Usuń nagrodę",
+    "deleteConfirm": "Czy na pewno chcesz usunąć tę nagrodę?",
+    "saveSuccess": "Nagroda została zapisana",
+    "deleteSuccess": "Nagroda została usunięta",
+    "categoryPlaceholder": "np. 1. miejsce, Zwycięzca Fantasy",
+    "prizePlaceholder": "np. Karta podarunkowa Steam 200 zł",
+    "descriptionPlaceholder": "Dodatkowe informacje o nagrodzie...",
+    "orderLabel": "Kolejność wyświetlania",
+    "visibleLabel": "Widoczna dla uczestników",
+    "noPrizesAdmin": "Brak skonfigurowanych nagród",
+    "noPrizesAdminDesc": "Dodaj pierwszą nagrodę klikając przycisk powyżej."
+  },
+  "privacy": {
+    "title": "Polityka Prywatności",
+    "lastUpdated": "Ostatnia aktualizacja",
+    "backToTournament": "Powrót do turnieju"
   }
 }

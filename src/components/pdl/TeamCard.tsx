@@ -47,6 +47,7 @@ const DIVISION_TIER_STYLES: Record<string, { gradient: string; glow: string; tex
 interface TeamCardProps {
   team: Team;
   divisionRanking?: number; // e.g., 2 for "#2 in Elite"
+  isHighlighted?: boolean;
 }
 
 const getRoleIcon = (role: PlayerRole) => {
@@ -81,7 +82,7 @@ const playerFontClasses = [
   "font-logik-4",              // Player 5 (Hard Support)
 ];
 
-export function TeamCard({ team, divisionRanking }: TeamCardProps) {
+export function TeamCard({ team, divisionRanking, isHighlighted }: TeamCardProps) {
   const { t } = useTranslation();
   const { getTournamentPath, theme } = useTournament();
   const players = team.players || [];
@@ -168,6 +169,17 @@ export function TeamCard({ team, divisionRanking }: TeamCardProps) {
           <div className="absolute inset-0 z-0 opacity-[0.03] pointer-events-none mix-blend-overlay"
             style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }}
           />
+
+          {/* Persistent highlight glow when navigated from standings */}
+          {isHighlighted && (
+            <div
+              className="absolute inset-0 pointer-events-none z-0 rounded-2xl"
+              style={{
+                boxShadow: `inset 0 0 60px ${style.glow}, 0 0 30px -5px ${style.glow}`,
+                border: `1px solid ${style.glow}`,
+              }}
+            />
+          )}
 
           {/* Hover Glow Effect */}
           <div

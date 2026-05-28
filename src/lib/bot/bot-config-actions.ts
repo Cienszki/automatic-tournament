@@ -328,7 +328,19 @@ export async function buildLobbyTeamAssignments(
     teamId: string
   ): import('@/types/lobby-bot').LobbyExpectedPlayer[] {
     const teamStandins = standinsByTeam[teamId] || {};
-    return team.players.map((player) => {
+
+    // Support both players array (PDL) and roster map (wiosenna/MMR tournaments).
+    // roster is keyed by steamId64; each entry has { steamId32, nickname, role, ... }.
+    const players: { id: string; steamId32: string; nickname: string }[] =
+      team.players?.length
+        ? team.players.map((p) => ({ id: p.id, steamId32: p.steamId32, nickname: p.nickname }))
+        : Object.entries(team.roster ?? {}).map(([steamId64, p]) => ({
+            id: steamId64,
+            steamId32: p.steamId32,
+            nickname: p.nickname,
+          }));
+
+    return players.map((player) => {
       const standin = teamStandins[player.id];
       if (standin) {
         return {

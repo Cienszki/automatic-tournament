@@ -47,6 +47,7 @@ export function StatsTab() {
   });
   const [isRecalculating, setIsRecalculating] = useState(false);
   const [isRefreshingHeroes, setIsRefreshingHeroes] = useState(false);
+  const [isRecalculatingRankings, setIsRecalculatingRankings] = useState(false);
   const [progress, setProgress] = useState(0);
   const [lastResult, setLastResult] = useState<{ success: boolean; message: string } | null>(null);
 
@@ -117,6 +118,30 @@ export function StatsTab() {
     }
   };
 
+  // ── Recalculate performance rankings ──
+  const handleRecalculateRankings = async () => {
+    if (!tournament?.id) return;
+    setIsRecalculatingRankings(true);
+    try {
+      const response = await fetch('/api/rankings/recalculate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tournamentId: tournament.id }),
+      });
+      const result = await response.json();
+      if (result.success) {
+        toast({ title: 'Sukces', description: 'Rankingi zosta\u0142y przeliczone.' });
+      } else {
+        throw new Error(result.error || 'Nieznany b\u0142\u0105d');
+      }
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : 'Nie uda\u0142o si\u0119 przeliczy\u0107 ranking\u00f3w';
+      toast({ title: 'B\u0142\u0105d', description: msg, variant: 'destructive' });
+    } finally {
+      setIsRecalculatingRankings(false);
+    }
+  };
+
   const pc = theme.primaryColor;
 
   // ── Refresh most-played heroes for all players ──
@@ -154,6 +179,18 @@ export function StatsTab() {
           </p>
         </div>
         <div className="flex gap-2">
+          <Button
+            onClick={handleRecalculateRankings}
+            disabled={isRecalculatingRankings || isLegacyTournament}
+            variant="outline"
+            className="font-logik"
+          >
+            {isRecalculatingRankings ? (
+              <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Przeliczanie...</>
+            ) : (
+              <><Trophy className="h-4 w-4 mr-2" />Przelicz rankingi</>
+            )}
+          </Button>
           <Button
             onClick={handleRefreshHeroes}
             disabled={isRefreshingHeroes}

@@ -1,0 +1,16 @@
+# railway.toml — Railway service configuration for bot-worker
+# https://docs.railway.app/reference/config-as-code
+
+[build]
+# Build from the bot-worker subdirectory
+builder = "dockerfile"
+dockerfilePath = "bot-worker/Dockerfile"
+
+[deploy]
+# Run the compiled manager (spawns one worker process per enabled bot account)
+startCommand = "node dist/manager.js"
+healthcheckPath = ""
+restartPolicyType = "always"
+restartPolicyMaxRetries = 10
+
+# No inbound HTTP port needed — this is a pure worker process

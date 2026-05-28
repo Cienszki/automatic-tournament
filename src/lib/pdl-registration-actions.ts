@@ -347,6 +347,8 @@ export async function registerPDLTeam(
             }
         });
 
+        const totalMMR = Object.values(roster).reduce((s, p) => s + (p.mmr || 0), 0);
+
         const teamDoc = {
             name: teamData.name,
             tag: teamData.tag,
@@ -356,6 +358,7 @@ export async function registerPDLTeam(
             motto: teamData.motto,
             status: 'pending' as const,
             divisionId: null, // Assigned by admin later
+            totalMMR,
             /**
              * Quick-read roster: { [steamId64]: { nickname, role, steamId32, mmr?, profileScreenshotUrl? } }
              * Used to display team rosters without reading the player subcollection.

@@ -7,6 +7,7 @@ import { TeamCard as PDLTeamCard } from "@/components/pdl/TeamCard";
 import { getAllTeams } from "@/lib/firestore";
 import type { Team, Player } from "@/lib/definitions";
 import { useEffect, useState } from "react";
+import { useSearchParams } from 'next/navigation';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { LoadingScreen } from '@/components/ui/LoadingScreen';
@@ -19,6 +20,8 @@ export default function TeamsPage() {
   const [teams, setTeams] = useState<Team[]>([]);
   const [divisionRankings, setDivisionRankings] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
+  const searchParams = useSearchParams();
+  const highlightedTeamId = searchParams.get('team');
 
   // Compute real 1-based position within each division group from team stats.
   // Sort key: points (W*2+D) desc → name asc as a deterministic tie-break.
@@ -127,6 +130,16 @@ export default function TeamsPage() {
     loadTeams();
   }, [isLegacyTournament, tournament?.id]);
 
+  // Scroll to highlighted team after teams load
+  useEffect(() => {
+    if (!loading && highlightedTeamId) {
+      const el = document.getElementById(`team-card-${highlightedTeamId}`);
+      if (el) {
+        setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
+      }
+    }
+  }, [loading, highlightedTeamId]);
+
   if (!tournament) return null;
 
   if (loading) {
@@ -207,11 +220,13 @@ export default function TeamsPage() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {teams.map((team) => (
-              <PDLTeamCard
-                key={team.id}
-                team={team}
-                divisionRanking={divisionRankings[team.id]}
-              />
+              <div key={team.id} id={`team-card-${team.id}`}>
+                <PDLTeamCard
+                  team={team}
+                  divisionRanking={divisionRankings[team.id]}
+                  isHighlighted={team.id === highlightedTeamId}
+                />
+              </div>
             ))}
           </div>
         )}

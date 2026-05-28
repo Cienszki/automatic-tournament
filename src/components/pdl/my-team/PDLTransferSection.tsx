@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import { useTournament } from '@/context/TournamentContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { uploadScreenshot } from '@/lib/storage';
 import {
   Dialog,
   DialogContent,
@@ -121,8 +122,20 @@ export function PDLTransferSection({
   const [newSteamUrl, setNewSteamUrl] = useState('');
   // MMR-limited extra fields for new player
   const [newMmr, setNewMmr] = useState('');
-  const [newProfileScreenshotUrl, setNewProfileScreenshotUrl] = useState('');
+  const [newProfileScreenshotFile, setNewProfileScreenshotFile] = useState<File | null>(null);
+  const [newProfileScreenshotPreview, setNewProfileScreenshotPreview] = useState<string | null>(null);
+  const screenshotInputRef = useRef<HTMLInputElement>(null);
   const [newSmurfUrls, setNewSmurfUrls] = useState<string[]>(['']);
+
+  // Edit player dialog state
+  const [editPlayerDialogOpen, setEditPlayerDialogOpen] = useState(false);
+  const [editingPlayerId, setEditingPlayerId] = useState<string | null>(null);
+  const [editDialogNickname, setEditDialogNickname] = useState('');
+  const [editDialogSmurfs, setEditDialogSmurfs] = useState<string[]>(['']);
+  const [editDialogMmr, setEditDialogMmr] = useState('');
+  const [editDialogScreenshotFile, setEditDialogScreenshotFile] = useState<File | null>(null);
+  const [editDialogScreenshotPreview, setEditDialogScreenshotPreview] = useState<string | null>(null);
+  const editScreenshotInputRef = useRef<HTMLInputElement>(null);
 
   // Initialize editing state from current team
   const startEditing = useCallback(() => {
@@ -214,6 +227,86 @@ export function PDLTransferSection({
     );
   };
 
+  const handleOpenEditPlayer = (playerId: string) => {
+    const player = editPlayers.find(p => p.id === playerId);
+    if (!player) return;
+    setEditingPlayerId(playerId);
+    setEditDialogNickname(player.nickname);
+    setEditDialogSmurfs(
+      player.smurfAccounts && player.smurfAccounts.length > 0
+        ? player.smurfAccounts.map(s => s.steamProfileUrl)
+        : ['']
+    );
+    setEditDialogMmr(player.mmr?.toString() ?? '');
+    setEditDialogScreenshotFile(null);
+    setEditDialogScreenshotPreview(player.profileScreenshotUrl ?? null);
+    setEditPlayerDialogOpen(true);
+  };
+
+  const handleEditPlayerDialogSave = async () => {
+    if (!editingPlayerId) return;
+    setLoading(true);
+    try {
+      let screenshotUrl: string | undefined;
+      if (isMmrLimited && editDialogScreenshotFile) {
+        screenshotUrl = await uploadScreenshot(editDialogScreenshotFile, team.id);
+      }
+      const smurfs = editDialogSmurfs
+        .map(u => u.trim())
+        .filter(u => u.length > 0)
+        .map(u => ({ steamProfileUrl: u }));
+
+      // Compute updated list first so we can use it for the Firestore save
+      const updatedPlayers = editPlayers.map(p => {
+        if (p.id !== editingPlayerId) return p;
+        return {
+          ...p,
+          nickname: editDialogNickname.trim() || p.nickname,
+          smurfAccounts: smurfs.length > 0 ? smurfs : undefined,
+          ...(isMmrLimited
+            ? {
+                mmr: editDialogMmr ? (parseInt(editDialogMmr, 10) || p.mmr) : p.mmr,
+                ...(screenshotUrl ? { profileScreenshotUrl: screenshotUrl } : {}),
+              }
+            : {}),
+        };
+      });
+
+      setEditPlayers(updatedPlayers);
+      setEditPlayerDialogOpen(false);
+      setEditingPlayerId(null);
+
+      // Persist immediately to Firestore (same mapping as handleConfirmSave)
+      const activePlayers = updatedPlayers
+        .filter(p => !p.isRemoved)
+        .map(p => ({
+          id: p.id.startsWith('new-') ? '' : p.id,
+          nickname: p.nickname,
+          role: p.role,
+          steamProfileUrl: p.steamProfileUrl,
+          steamId: p.steamId,
+          steamId32: p.steamId32 || '',
+          personaname: p.personaname,
+          avatar: p.avatar,
+          avatarmedium: p.avatarmedium,
+          avatarfull: p.avatarfull,
+          mmr: p.mmr ?? 0,
+          profileScreenshotUrl: p.profileScreenshotUrl || '',
+          smurfAccounts: p.smurfAccounts,
+        })) as Player[];
+
+      await onSaveRoster({
+        players: activePlayers,
+        teamName: editTeamName.trim(),
+        teamTag: editTeamTag.trim(),
+        teamLogo: editLogoFile || team.logoUrl,
+        captainDiscord: editCaptainDiscord.trim(),
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleAddPlayer = async () => {
     if (!newNickname.trim() || !newRole || !newSteamUrl.trim()) return;
     if (isMmrLimited && !newMmr.trim()) return;
@@ -251,6 +344,11 @@ export function PDLTransferSection({
         .filter(u => u.length > 0)
         .map(u => ({ steamProfileUrl: u }));
 
+      let screenshotUrl: string | undefined;
+      if (isMmrLimited && newProfileScreenshotFile) {
+        screenshotUrl = await uploadScreenshot(newProfileScreenshotFile, team.id);
+      }
+
       const newPlayer: EditablePlayer = {
         id: `new-${Date.now()}`,
         nickname: newNickname.trim(),
@@ -265,7 +363,7 @@ export function PDLTransferSection({
         avatarfull: data.avatarfull,
         isNew: true,
         mmr: isMmrLimited ? (parseInt(newMmr, 10) || undefined) : undefined,
-        profileScreenshotUrl: isMmrLimited && newProfileScreenshotUrl.trim() ? newProfileScreenshotUrl.trim() : undefined,
+        profileScreenshotUrl: screenshotUrl,
         smurfAccounts: smurfAccounts.length > 0 ? smurfAccounts : undefined,
       };
 
@@ -274,7 +372,8 @@ export function PDLTransferSection({
       setNewRole('');
       setNewSteamUrl('');
       setNewMmr('');
-      setNewProfileScreenshotUrl('');
+      setNewProfileScreenshotFile(null);
+      setNewProfileScreenshotPreview(null);
       setNewSmurfUrls(['']);
       setShowAddPlayer(false);
     } catch (error) {
@@ -435,7 +534,7 @@ export function PDLTransferSection({
                 Okno transferowe zamknięte
               </p>
               <p className="text-xs mt-1" style={{ color: theme.secondaryTextColor || 'rgba(254,249,195,0.6)' }}>
-                Możesz edytować dane drużyny (nazwa, tag, logo, Discord), ale nie możesz modyfikować składu zawodników.
+                Możesz edytować dane drużyny (nazwa, tag, logo, Discord) i role graczy, ale nie możesz modyfikować składu zawodników.
               </p>
             </div>
           </div>
@@ -604,6 +703,52 @@ export function PDLTransferSection({
                         Przywróć
                       </Button>
                     </div>
+                  ) : isMmrLimited ? (
+                    <div className="flex items-center gap-3 flex-1">
+                      {player.avatar && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={player.avatar} alt={player.nickname} className="w-8 h-8 rounded-full object-cover flex-shrink-0" />
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <span className="text-sm text-white font-medium truncate block">{player.nickname}</span>
+                        {player.mmr != null && (
+                          <span className="text-xs text-white/40">{player.mmr} MMR</span>
+                        )}
+                      </div>
+                      <Select
+                        value={player.role}
+                        onValueChange={(val) => handlePlayerFieldChange(player.id, 'role', val)}
+                      >
+                        <SelectTrigger className="bg-white/5 border-white/10 text-white text-sm h-9 w-36 flex-shrink-0">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="bg-[#1a1a1a] border-white/10">
+                          {PlayerRoles.map((role) => (
+                            <SelectItem key={role} value={role} className="text-white text-sm">
+                              {role}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => handleOpenEditPlayer(player.id)}
+                        className="text-blue-400/60 hover:text-blue-400 hover:bg-blue-500/10 h-9 w-9 p-0 flex-shrink-0"
+                        title="Edytuj gracza (nick, MMR, smurfy)"
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => handleRemovePlayer(player.id)}
+                        disabled={!isTransferWindowOpen}
+                        className="text-red-400/60 hover:text-red-400 hover:bg-red-500/10 h-9 w-9 p-0 flex-shrink-0"
+                      >
+                        <X className="w-4 h-4" />
+                      </Button>
+                    </div>
                   ) : (
                     <>
                       <div className="flex-1 grid grid-cols-1 sm:grid-cols-3 gap-2 items-center">
@@ -617,7 +762,6 @@ export function PDLTransferSection({
                         <Select
                           value={player.role}
                           onValueChange={(val) => handlePlayerFieldChange(player.id, 'role', val)}
-                          disabled={!isTransferWindowOpen}
                         >
                           <SelectTrigger className="bg-white/5 border-white/10 text-white text-sm h-9">
                             <SelectValue />
@@ -657,6 +801,15 @@ export function PDLTransferSection({
                           </Button>
                         </div>
                       </div>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => handleOpenEditPlayer(player.id)}
+                        className="text-blue-400/60 hover:text-blue-400 hover:bg-blue-500/10 h-9 w-9 p-0 flex-shrink-0 self-center"
+                        title="Edytuj smurfy gracza"
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </Button>
                       <Button
                         size="sm"
                         variant="ghost"
@@ -728,13 +881,41 @@ export function PDLTransferSection({
                           })()}
                         </div>
                         <div className="space-y-1">
-                          <label className="text-xs text-white/50">URL screenshotu MMR</label>
-                          <Input
-                            value={newProfileScreenshotUrl}
-                            onChange={(e) => setNewProfileScreenshotUrl(e.target.value)}
-                            placeholder="Imgur / Gyazo link"
-                            className="bg-white/5 border-white/10 text-white text-sm"
-                          />
+                          <label className="text-xs text-white/50">Screenshot profilu *</label>
+                          <div
+                            className="relative border border-dashed border-white/20 rounded-md bg-white/5 hover:bg-white/10 transition-colors cursor-pointer text-center p-2"
+                            onClick={() => screenshotInputRef.current?.click()}
+                          >
+                            {newProfileScreenshotPreview ? (
+                              <img
+                                src={newProfileScreenshotPreview}
+                                alt="Screenshot preview"
+                                className="max-h-24 mx-auto rounded object-contain"
+                              />
+                            ) : (
+                              <div className="flex flex-col items-center gap-1 py-1">
+                                <Upload className="w-4 h-4 text-white/40" />
+                                <span className="text-xs text-white/40">Kliknij aby wgrać</span>
+                              </div>
+                            )}
+                            <input
+                              ref={screenshotInputRef}
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0] ?? null;
+                                setNewProfileScreenshotFile(file);
+                                if (file) {
+                                  const reader = new FileReader();
+                                  reader.onload = () => setNewProfileScreenshotPreview(reader.result as string);
+                                  reader.readAsDataURL(file);
+                                } else {
+                                  setNewProfileScreenshotPreview(null);
+                                }
+                              }}
+                            />
+                          </div>
                         </div>
                       </div>
                       <div className="space-y-1">
@@ -766,7 +947,7 @@ export function PDLTransferSection({
                     <Button
                       size="sm"
                       onClick={handleAddPlayer}
-                      disabled={!newNickname.trim() || !newRole || !newSteamUrl.trim() || (isMmrLimited ? !newMmr.trim() : false)}
+                      disabled={!newNickname.trim() || !newRole || !newSteamUrl.trim() || (isMmrLimited ? (!newMmr.trim() || !newProfileScreenshotFile) : false)}
                       className="bg-green-600 hover:bg-green-700 text-white"
                     >
                       <UserPlus className="w-4 h-4 mr-1" />
@@ -775,7 +956,7 @@ export function PDLTransferSection({
                     <Button
                       size="sm"
                       variant="ghost"
-                      onClick={() => { setShowAddPlayer(false); setNewMmr(''); setNewProfileScreenshotUrl(''); setNewSmurfUrls(['']); }}
+                      onClick={() => { setShowAddPlayer(false); setNewMmr(''); setNewProfileScreenshotFile(null); setNewProfileScreenshotPreview(null); setNewSmurfUrls(['']); }}
                       className="text-white/60"
                     >
                       Anuluj
@@ -913,6 +1094,148 @@ export function PDLTransferSection({
                 >
                   {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
                   Potwierdź i zapisz
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {/* Edit player dialog */}
+          <Dialog open={editPlayerDialogOpen} onOpenChange={setEditPlayerDialogOpen}>
+            <DialogContent className="border text-white max-w-md bg-black/40 backdrop-blur-2xl backdrop-saturate-150" style={{ borderColor: 'var(--tournament-border, rgba(255,255,255,0.1))' }}>
+              <DialogHeader>
+                <DialogTitle
+                  className="uppercase tracking-[0.15em]"
+                  style={{
+                    color: 'var(--tournament-heading)',
+                    fontFamily: theme?.headerFont ? `var(${theme.headerFont})` : undefined,
+                  }}
+                >
+                  Edytuj gracza
+                </DialogTitle>
+                <DialogDescription style={{ color: 'var(--tournament-secondary-text)' }}>
+                  Zmień dane gracza bez usuwania i ponownego dodawania.
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="space-y-4">
+                {/* Nickname */}
+                <div className="space-y-1">
+                  <Label className="text-sm" style={{ color: 'var(--tournament-secondary-text)' }}>Nick gracza</Label>
+                  <Input
+                    value={editDialogNickname}
+                    onChange={(e) => setEditDialogNickname(e.target.value)}
+                    placeholder="Nick"
+                    className="bg-white/5 border-white/10 text-white"
+                  />
+                </div>
+
+                {/* MMR + Screenshot — only for MMR-limited tournaments */}
+                {isMmrLimited && (
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <Label className="text-sm" style={{ color: 'var(--tournament-secondary-text)' }}>MMR</Label>
+                      <Input
+                        type="number"
+                        min={0}
+                        value={editDialogMmr}
+                        onChange={(e) => setEditDialogMmr(e.target.value)}
+                        placeholder="np. 4500"
+                        className="bg-white/5 border-white/10 text-white"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-sm" style={{ color: 'var(--tournament-secondary-text)' }}>Screenshot MMR</Label>
+                      <div
+                        className="relative border border-dashed border-white/20 rounded-md bg-white/5 hover:bg-white/10 transition-colors cursor-pointer text-center p-2"
+                        onClick={() => editScreenshotInputRef.current?.click()}
+                      >
+                        {editDialogScreenshotPreview ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={editDialogScreenshotPreview}
+                            alt="Screenshot"
+                            className="max-h-16 mx-auto rounded object-contain"
+                          />
+                        ) : (
+                          <div className="flex flex-col items-center gap-1 py-1">
+                            <Upload className="w-4 h-4 text-white/40" />
+                            <span className="text-xs text-white/40">Zmień screenshot</span>
+                          </div>
+                        )}
+                        <input
+                          ref={editScreenshotInputRef}
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0] ?? null;
+                            setEditDialogScreenshotFile(file);
+                            if (file) {
+                              const reader = new FileReader();
+                              reader.onload = () => setEditDialogScreenshotPreview(reader.result as string);
+                              reader.readAsDataURL(file);
+                            }
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Smurf accounts */}
+                <div className="space-y-1">
+                  <Label className="text-sm" style={{ color: 'var(--tournament-secondary-text)' }}>
+                    Konta smurf
+                    <span className="ml-1 text-white/30 font-normal">(opcjonalnie)</span>
+                  </Label>
+                  <div className="space-y-2">
+                    {editDialogSmurfs.map((url, i) => (
+                      <div key={i} className="flex gap-2">
+                        <Input
+                          value={url}
+                          onChange={(e) => setEditDialogSmurfs(prev => prev.map((u, idx) => idx === i ? e.target.value : u))}
+                          placeholder="https://steamcommunity.com/profiles/..."
+                          className="bg-white/5 border-white/10 text-white text-sm flex-1"
+                        />
+                        {editDialogSmurfs.length > 1 && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="text-white/40 hover:text-red-400 px-2"
+                            onClick={() => setEditDialogSmurfs(prev => prev.filter((_, idx) => idx !== i))}
+                          >
+                            <X className="w-3 h-3" />
+                          </Button>
+                        )}
+                      </div>
+                    ))}
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="text-white/40 text-xs hover:text-white/60"
+                      onClick={() => setEditDialogSmurfs(prev => [...prev, ''])}
+                    >
+                      + Dodaj smurf
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              <DialogFooter>
+                <Button
+                  variant="ghost"
+                  onClick={() => { setEditPlayerDialogOpen(false); setEditingPlayerId(null); }}
+                  className="text-white/60"
+                >
+                  Anuluj
+                </Button>
+                <Button
+                  onClick={handleEditPlayerDialogSave}
+                  disabled={loading || !editDialogNickname.trim()}
+                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                >
+                  {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
+                  Zapisz zmiany
                 </Button>
               </DialogFooter>
             </DialogContent>

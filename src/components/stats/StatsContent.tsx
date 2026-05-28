@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTournament } from '@/context/TournamentContext';
 import { useTranslations } from 'next-intl';
+import Link from 'next/link';
 import {
   Trophy,
   Target,
@@ -206,15 +207,15 @@ export function StatCard({ icon: Icon, title, value, subtitle, color }: StatCard
         className="absolute left-0 top-0 bottom-0 w-[3px]"
         style={{ backgroundColor: color, boxShadow: `0 0 12px ${color}60` }}
       />
-      <div className="pl-4 pr-3 pt-3 pb-3">
-        <p className="text-[10px] uppercase tracking-widest leading-tight mb-2" style={{ color: theme.secondaryTextColor || 'rgba(255,255,255,0.3)' }}>
+      <div className="pl-5 pr-4 pt-4 pb-4">
+        <p className="text-xs uppercase tracking-widest leading-tight mb-2" style={{ color: theme.secondaryTextColor || 'rgba(255,255,255,0.3)' }}>
           {title}
         </p>
-        <p className="text-base font-logik-extended-bold leading-snug break-words" style={{ color, fontFamily: theme.headerFont ? `var(${theme.headerFont})` : undefined }}>
+        <p className="text-xl font-logik-extended-bold leading-snug break-words" style={{ color, fontFamily: theme.headerFont ? `var(${theme.headerFont})` : undefined }}>
           {value}
         </p>
         {subtitle && (
-          <p className="text-[11px] mt-1.5 break-words" style={{ color: theme.secondaryTextColor || 'rgba(255,255,255,0.4)' }}>
+          <p className="text-xs mt-2 break-words" style={{ color: theme.secondaryTextColor || 'rgba(255,255,255,0.4)' }}>
             {subtitle}
           </p>
         )}
@@ -343,7 +344,7 @@ export function StatsContent({ tournamentStats, playerStats, teamStats, scrollab
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, delay: 0.1 }}
-        className="flex items-center justify-center gap-2 flex-wrap flex-shrink-0 mb-4"
+        className="flex items-center justify-center gap-2 flex-wrap flex-shrink-0 mb-8"
       >
         {TABS.map(({ id, label }) => {
           const isActive = activeTab === id;
@@ -352,7 +353,7 @@ export function StatsContent({ tournamentStats, playerStats, teamStats, scrollab
               key={id}
               onClick={() => setActiveTab(id)}
               className={cn(
-                'px-5 py-2.5 rounded-full text-xs uppercase tracking-widest transition-all duration-300',
+                'px-7 py-3 rounded-full text-sm uppercase tracking-widest transition-all duration-300',
                 isActive
                   ? 'text-black font-bold shadow-lg'
                   : 'bg-white/[0.04] border border-white/10 hover:bg-white/[0.08] hover:border-white/20 hover:text-white',
@@ -487,7 +488,7 @@ export interface StatsPageLayoutProps {
 }
 
 export function StatsPageLayout({ tournamentStats, playerStats, teamStats }: StatsPageLayoutProps): React.ReactElement | null {
-  const { tournament, theme } = useTournament();
+  const { tournament, theme, getTournamentPath } = useTournament();
   const t = useTranslations('stats');
 
   if (!tournament) return null;
@@ -496,7 +497,7 @@ export function StatsPageLayout({ tournamentStats, playerStats, teamStats }: Sta
   const ts = tournamentStats;
 
   return (
-    <div className="max-w-[1600px] mx-auto px-3 sm:px-6 lg:px-12 py-8 sm:py-12 space-y-10 md:space-y-14">
+    <div className="max-w-[1600px] mx-auto px-3 sm:px-6 lg:px-12 py-5 sm:py-8 space-y-6 md:space-y-10">
 
       {/* Hero */}
       <motion.div
@@ -512,7 +513,7 @@ export function StatsPageLayout({ tournamentStats, playerStats, teamStats }: Sta
           {tournament.name}
         </p>
         <h1
-          className="text-5xl sm:text-7xl md:text-[9rem] font-logik-extended-bold uppercase tracking-tight leading-none"
+          className="text-4xl md:text-6xl font-logik-extended-bold uppercase tracking-tight leading-none"
           style={{ color: theme.titleColor || 'white', fontFamily: theme.headerFont ? `var(${theme.headerFont})` : undefined }}
         >
           {t('title')}
@@ -543,6 +544,19 @@ export function StatsPageLayout({ tournamentStats, playerStats, teamStats }: Sta
         playerStats={playerStats}
         teamStats={teamStats}
       />
+
+      {/* Privacy link */}
+      <div className="text-center pt-8 pb-4 flex items-center justify-center gap-4">
+        <div className="h-px w-12 rounded-full" style={{ background: `linear-gradient(to right, transparent, ${pc}50)` }} />
+        <Link
+          href={getTournamentPath('/privacy')}
+          className="text-xs tracking-widest uppercase transition-opacity opacity-50 hover:opacity-100"
+          style={{ color: theme.secondaryTextColor || 'rgba(255,255,255,0.35)' }}
+        >
+          Polityka Prywatności
+        </Link>
+        <div className="h-px w-12 rounded-full" style={{ background: `linear-gradient(to left, transparent, ${pc}50)` }} />
+      </div>
 
     </div>
   );

@@ -143,6 +143,29 @@ export async function fetchSteamProfile(steam64: string): Promise<{
 
     try {
         const response = await fetch(url);
+
+        if (response.status === 403) {
+            console.error('[fetchSteamProfile] Steam API key is invalid or revoked (403 Forbidden). Update STEAM_API_KEY in environment variables.');
+            return {
+                personaname: 'Unknown',
+                avatar: '',
+                avatarmedium: '',
+                avatarfull: '',
+                profileurl: `https://steamcommunity.com/profiles/${steam64}`,
+            };
+        }
+
+        if (!response.ok) {
+            console.error(`[fetchSteamProfile] Steam API returned HTTP ${response.status} for steamId ${steam64}`);
+            return {
+                personaname: 'Unknown',
+                avatar: '',
+                avatarmedium: '',
+                avatarfull: '',
+                profileurl: `https://steamcommunity.com/profiles/${steam64}`,
+            };
+        }
+
         const data = await response.json();
 
         if (data.response?.players?.[0]) {
@@ -155,10 +178,17 @@ export async function fetchSteamProfile(steam64: string): Promise<{
                 profileurl: player.profileurl || `https://steamcommunity.com/profiles/${steam64}`,
             };
         } else {
-            throw new Error('Profile not found or is private');
+            console.warn(`[fetchSteamProfile] No player data returned for steamId ${steam64} — profile may be private or deleted`);
+            return {
+                personaname: 'Unknown',
+                avatar: '',
+                avatarmedium: '',
+                avatarfull: '',
+                profileurl: `https://steamcommunity.com/profiles/${steam64}`,
+            };
         }
     } catch (error) {
-        console.error('Error fetching Steam profile:', error);
+        console.error('[fetchSteamProfile] Unexpected error fetching Steam profile:', error);
         // Return fallback data instead of throwing
         return {
             personaname: 'Unknown',

@@ -78,6 +78,7 @@ export interface Match {
   proposedTime?: string;
   proposingCaptainId?: string;
   proposedById?: string;
+  deadline?: string; // ISO date — deadline by which the match must be played
   game_ids?: number[]; // This now holds the IDs of the individual games
   completed_at?: string;
   series_format?: 'bo1' | 'bo2' | 'bo3' | 'bo5'; // Series format (BO2 for groups, BO1/BO3/BO5 for playoffs)
@@ -296,10 +297,17 @@ export interface GroupStanding {
   totalMMR: number;
 }
 
+export interface GroupHighlight {
+  color: string;
+  count: number;
+  from: 'top' | 'bottom';
+}
+
 export interface Group {
   id: string;
   name: string;
   standings: { [teamId: string]: GroupStanding };
+  highlights?: GroupHighlight[];
 }
 
 export interface TournamentPlayer extends Player {

@@ -200,27 +200,27 @@ export function MatchDetailModal({ match, isOpen, onClose, divisionColor }: Matc
             : null;
           return (
             <div key={player.id} className="flex items-center gap-2.5 text-xs">
-              <span className="shrink-0 text-white/30">
+              <span className="shrink-0" style={{ color: 'var(--tournament-primary-text)' }}>
                 {getRoleIcon(player.role)}
               </span>
               {standinEntry ? (
                 <>
-                  <span className="text-yellow-400 font-medium uppercase tracking-wide truncate">
+                  <span className="font-medium uppercase tracking-wide truncate" style={{ color: 'var(--tournament-primary-text)' }}>
                     {player.nickname}
                   </span>
-                  {player.mmr ? <span className="text-white/25 shrink-0">({player.mmr})</span> : null}
+                  {player.mmr ? <span className="shrink-0 opacity-40" style={{ color: 'var(--tournament-primary-text)' }}>({player.mmr})</span> : null}
                   <span className="text-white/25 shrink-0">→</span>
-                  <span className="text-blue-400 font-medium uppercase tracking-wide truncate">
+                  <span className="font-medium uppercase tracking-wide truncate" style={{ color: 'var(--tournament-heading)' }}>
                     {standinEntry.nickname}
                   </span>
-                  {standinEntry.standinMmr ? <span className="text-blue-400/40 shrink-0">({standinEntry.standinMmr})</span> : null}
+                  {standinEntry.standinMmr ? <span className="shrink-0 opacity-40" style={{ color: 'var(--tournament-heading)' }}>({standinEntry.standinMmr})</span> : null}
                 </>
               ) : (
                 <>
-                  <span className="text-gray-300 font-medium uppercase tracking-wide truncate">
+                  <span className="font-medium uppercase tracking-wide truncate" style={{ color: 'var(--tournament-primary-text)' }}>
                     {player.nickname}
                   </span>
-                  {player.mmr ? <span className="text-white/25 shrink-0">({player.mmr})</span> : null}
+                  {player.mmr ? <span className="shrink-0 opacity-40" style={{ color: 'var(--tournament-primary-text)' }}>({player.mmr})</span> : null}
                 </>
               )}
             </div>
@@ -232,7 +232,10 @@ export function MatchDetailModal({ match, isOpen, onClose, divisionColor }: Matc
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[1100px] backdrop-blur-xl border border-white/10 p-0 overflow-hidden shadow-2xl" style={{ backgroundColor: 'rgba(0, 0, 0, 0.25)' }}>
+      <DialogContent
+        className="sm:max-w-[1100px] backdrop-blur-xl border border-white/10 p-0 overflow-hidden shadow-2xl"
+        style={{ backgroundColor: 'rgba(0, 0, 0, 0.25)' }}
+      >
         <DialogHeader className="sr-only">
           <DialogTitle>Szczegóły meczu</DialogTitle>
         </DialogHeader>
@@ -265,18 +268,24 @@ export function MatchDetailModal({ match, isOpen, onClose, divisionColor }: Matc
                     })()
                   : null;
                 return (
+                  <div className="flex flex-col items-center gap-1.5">
+                    <span className="text-[10px] uppercase tracking-widest opacity-50" style={{ color: 'var(--tournament-primary-text)' }}>
+                      Dodaj do kalendarza Google
+                    </span>
                   <a
                     href={calendarUrl ?? undefined}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-white/[0.04] border border-white/10 hover:bg-white/[0.08] hover:border-white/20 transition-all duration-300 cursor-pointer"
-                    title="Dodaj do Google Calendar"
+                    style={{ borderColor: 'var(--tournament-primary-text)' }}
+                    title="Add to Google Calendar"
                   >
-                    <Calendar className="w-4 h-4" style={{ color: theme?.secondaryTextColor || 'rgba(255,255,255,0.4)' }} />
-                    <span className="text-xs uppercase tracking-widest" style={{ color: theme?.secondaryTextColor || 'rgba(255,255,255,0.4)' }}>
+                    <Calendar className="w-4 h-4" style={{ color: 'var(--tournament-primary-text)' }} />
+                    <span className="text-xs uppercase tracking-widest" style={{ color: 'var(--tournament-primary-text)' }}>
                       {matchDate ? format(matchDate, 'dd MMMM yyyy, HH:mm', { locale: pl }) : 'TBD'}
                     </span>
                   </a>
+                  </div>
                 );
               })()}
             </div>
@@ -299,7 +308,7 @@ export function MatchDetailModal({ match, isOpen, onClose, divisionColor }: Matc
                     </div>
                   )}
                 </div>
-                <h3 className="text-xl font-logik-extended-bold text-center uppercase tracking-wide" style={{ color: teamAWon ? divisionColor : (theme?.primaryTextColor || 'white'), fontFamily: theme?.headerFont ? `var(${theme.headerFont})` : undefined }}>
+                <h3 className="text-xl font-logik-extended-bold text-center uppercase tracking-wide" style={{ color: teamAWon ? divisionColor : 'var(--tournament-section-header)', fontFamily: theme?.headerFont ? `var(${theme.headerFont})` : undefined }}>
                   {match.teamA.name}
                 </h3>
               </div>
@@ -315,7 +324,7 @@ export function MatchDetailModal({ match, isOpen, onClose, divisionColor }: Matc
                     {isCompleted || isLive ? match.teamB.score : '-'}
                   </span>
                 </div>
-                <div className="text-sm font-mono tracking-widest uppercase" style={{ color: divisionColor ? `${divisionColor}99` : undefined }}>
+                <div className="text-sm font-mono tracking-widest uppercase" style={{ color: 'var(--tournament-heading)' }}>
                   {match.bestOf
                     ? `Best of ${match.bestOf}`
                     : match.series_format
@@ -341,7 +350,7 @@ export function MatchDetailModal({ match, isOpen, onClose, divisionColor }: Matc
                     </div>
                   )}
                 </div>
-                <h3 className="text-xl font-logik-extended-bold text-center uppercase tracking-wide" style={{ color: teamBWon ? divisionColor : (theme?.primaryTextColor || 'white'), fontFamily: theme?.headerFont ? `var(${theme.headerFont})` : undefined }}>
+                <h3 className="text-xl font-logik-extended-bold text-center uppercase tracking-wide" style={{ color: teamBWon ? divisionColor : 'var(--tournament-section-header)', fontFamily: theme?.headerFont ? `var(${theme.headerFont})` : undefined }}>
                   {match.teamB.name}
                 </h3>
               </div>
@@ -415,7 +424,7 @@ export function MatchDetailModal({ match, isOpen, onClose, divisionColor }: Matc
                               <div className={cn('p-3', !teamAWonGame && 'opacity-60')}>
                                 <div className="flex items-center gap-1.5 mb-2">
                                   <Shield className="w-3 h-3 text-white/30" />
-                                  <span className="text-xs font-logik-extended-bold text-white/60 uppercase tracking-wide truncate">
+                                  <span className="text-xs font-logik-extended-bold uppercase tracking-wide truncate" style={{ color: 'var(--tournament-section-header)' }}>
                                     {match.teamA.name}
                                   </span>
                                   {teamAWonGame && <span className="ml-auto text-xs shrink-0" style={{ color: divisionColor }}>✓ Win</span>}
@@ -472,7 +481,7 @@ export function MatchDetailModal({ match, isOpen, onClose, divisionColor }: Matc
                               <div className={cn('p-3', teamAWonGame && 'opacity-60')}>
                                 <div className="flex items-center gap-1.5 mb-2">
                                   <Sword className="w-3 h-3 text-white/30" />
-                                  <span className="text-xs font-logik-extended-bold text-white/60 uppercase tracking-wide truncate">
+                                  <span className="text-xs font-logik-extended-bold uppercase tracking-wide truncate" style={{ color: 'var(--tournament-section-header)' }}>
                                     {match.teamB.name}
                                   </span>
                                   {!teamAWonGame && <span className="ml-auto text-xs shrink-0" style={{ color: divisionColor }}>✓ Win</span>}
@@ -593,14 +602,14 @@ export function MatchDetailModal({ match, isOpen, onClose, divisionColor }: Matc
                   <div className="grid grid-cols-2 divide-x divide-white/10 rounded-xl border border-white/10 overflow-hidden bg-white/[0.02]">
                     {/* Team A */}
                     <div className="p-4">
-                      <p className="text-[11px] font-logik-extended-bold text-white/40 uppercase tracking-widest mb-3">
+                      <p className="text-[11px] font-logik-extended-bold uppercase tracking-widest mb-3" style={{ color: 'var(--tournament-section-header)' }}>
                         {match.teamA.name}
                       </p>
                       {renderTeamRoster(teamAPlayers, match.teamA.id)}
                     </div>
                     {/* Team B */}
                     <div className="p-4">
-                      <p className="text-[11px] font-logik-extended-bold text-white/40 uppercase tracking-widest mb-3">
+                      <p className="text-[11px] font-logik-extended-bold uppercase tracking-widest mb-3" style={{ color: 'var(--tournament-section-header)' }}>
                         {match.teamB.name}
                       </p>
                       {renderTeamRoster(teamBPlayers, match.teamB.id)}

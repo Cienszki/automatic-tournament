@@ -48,6 +48,7 @@ export default function SchedulePage() {
               status: data.status || 'scheduled',
               scheduledFor: data.scheduledFor || data.scheduled_for || '',
               schedulingStatus: data.schedulingStatus || 'unscheduled',
+              deadline: data.deadline,
               completed_at: data.completed_at,
               scoreA: data.scoreA,
               scoreB: data.scoreB,
@@ -61,7 +62,9 @@ export default function SchedulePage() {
           });
         }
 
-        const validMatches = fetchedMatches.filter(m => m.scheduledFor);
+        const validMatches = fetchedMatches.filter(
+          m => m.scheduledFor && m.schedulingStatus !== 'unscheduled',
+        );
 
         setMatches(validMatches);
 

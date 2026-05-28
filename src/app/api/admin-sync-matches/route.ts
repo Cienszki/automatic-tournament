@@ -23,6 +23,21 @@ export async function POST(req: NextRequest) {
     // Import the sync function only on server side
     const { syncLeagueMatchesAdmin } = await import('@/lib/admin-actions');
     const result = await syncLeagueMatchesAdmin();
+
+    // After a successful sync that imported new matches, refresh performance rankings.
+    // The caller may pass tournamentId in the request body to enable this.
+    const body = await req.json().catch(() => ({}));
+    const tournamentId = body?.tournamentId as string | undefined;
+    if (result.success && result.importedCount > 0 && tournamentId) {
+      try {
+        const { recalculatePerformanceRankings } = await import('@/lib/performance-rankings-calculator');
+        await recalculatePerformanceRankings(tournamentId);
+        console.log('[admin-sync-matches] Performance rankings refreshed after sync');
+      } catch (rankingsErr) {
+        console.error('[admin-sync-matches] Rankings refresh failed (non-fatal):', rankingsErr);
+      }
+    }
+
     return NextResponse.json(result);
   } catch (error: unknown) {
     console.error('API sync error:', error);

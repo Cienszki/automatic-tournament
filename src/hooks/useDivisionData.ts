@@ -7,7 +7,7 @@ import { useState, useEffect } from 'react';
 import { collection, getDocs, query, where, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useTournament } from '@/context/TournamentContext';
-import type { Match } from '@/lib/definitions';
+import type { Match, GroupHighlight } from '@/lib/definitions';
 
 interface TeamStanding {
   position: number;
@@ -22,6 +22,7 @@ interface TeamStanding {
   gamesLost: number;
   neustadtlScore: number;
   points: number;
+  totalMMR: number;
   form?: ('W' | 'D' | 'L')[];
   headToHead: Record<string, 'win' | 'loss' | 'draw'>;
 }
@@ -36,6 +37,7 @@ interface DivisionInfo {
   totalRounds?: number;
   theme?: string;
   medalUrl?: string;
+  highlights?: GroupHighlight[];
 }
 
 interface UseDivisionDataResult {
@@ -209,6 +211,7 @@ export function useDivisionData(divisionId: string): UseDivisionDataResult {
             gamesLost: stats.gamesLost || 0,
             neustadtlScore: neustadtl,
             points: calculatePoints(stats),
+            totalMMR: team.totalMMR || (Array.isArray(team.players) ? (team.players as Array<{mmr?: number}>).reduce((s: number, p) => s + (p.mmr || 0), 0) : 0),
             form: form,
             headToHead: {},
           };
@@ -244,7 +247,7 @@ export function useDivisionData(divisionId: string): UseDivisionDataResult {
           });
         });
 
-        // Sort: points DESC → head-to-head → neustadtl DESC → game diff → name
+        // Sort: points DESC → head-to-head → neustadtl DESC → lower totalMMR ASC
         standingsData.sort((a, b) => {
           if (b.points !== a.points) return b.points - a.points;
           // Head-to-head among tied teams
@@ -255,10 +258,8 @@ export function useDivisionData(divisionId: string): UseDivisionDataResult {
             if (aWins !== bWins) return bWins - aWins;
           }
           if (b.neustadtlScore !== a.neustadtlScore) return b.neustadtlScore - a.neustadtlScore;
-          const aDiff = a.gamesWon - a.gamesLost;
-          const bDiff = b.gamesWon - b.gamesLost;
-          if (bDiff !== aDiff) return bDiff - aDiff;
-          return a.teamName.localeCompare(b.teamName);
+          // Lower total MMR wins the tiebreak
+          return a.totalMMR - b.totalMMR;
         });
 
         // Update positions
@@ -290,6 +291,7 @@ export function useDivisionData(divisionId: string): UseDivisionDataResult {
           theme: divisionData.theme,
           medalUrl: divisionData.medalUrl,
           totalRounds,
+          highlights: divisionData.highlights || [],
         });
 
       } catch (err: any) {
