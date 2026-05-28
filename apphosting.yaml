@@ -1,0 +1,10 @@
+runConfig:
+  cpu: 1
+  memoryMiB: 1024
+  maxInstances: 10
+  concurrency: 80
+  minInstances: 0
+
+env:
+  - variable: CRON_SECRET
+    secret: CRON_SECRET
