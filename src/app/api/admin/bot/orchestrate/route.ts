@@ -163,6 +163,15 @@ export async function POST(req: Request): Promise<Response> {
 }
 
 /**
+ * GET /api/admin/bot/orchestrate
+ * Called by Vercel Cron (which only supports GET). Delegates to POST logic.
+ */
+export async function GET(req: Request): Promise<Response> {
+  // Vercel Cron sends Authorization: Bearer {CRON_SECRET}
+  return POST(req);
+}
+
+/**
  * Schedules lobby sessions for matches happening within the lead time window.
  * Returns the number of new sessions scheduled.
  */
@@ -192,7 +201,7 @@ async function scheduleUpcomingMatches(
     .collection('tournaments')
     .doc(tournamentId)
     .collection('matches')
-    .where('status', 'in', ['scheduled', 'upcoming'])
+    .where('status', 'in', ['scheduled', 'upcoming', 'pending'])
     .get();
 
   let scheduled = 0;
