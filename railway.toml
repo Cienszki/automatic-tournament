@@ -2,9 +2,11 @@
 # https://docs.railway.app/reference/config-as-code
 
 [build]
-# Build from the bot-worker subdirectory
+# Use bot-worker/ as the root so Railway only scans its own package-lock.json
+# (which has no Next.js dependency and therefore no CVEs)
 builder = "dockerfile"
-dockerfilePath = "bot-worker/Dockerfile"
+dockerfilePath = "Dockerfile"
+rootDirectory = "bot-worker"
 
 [deploy]
 # Run the compiled manager (spawns one worker process per enabled bot account)
