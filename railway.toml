@@ -4,6 +4,7 @@
 [build]
 builder = "dockerfile"
 dockerfilePath = "bot-worker/Dockerfile"
+rootDirectory = "bot-worker"
 
 [deploy]
 # Run the compiled manager (spawns one worker process per enabled bot account)
