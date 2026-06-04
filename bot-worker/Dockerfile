@@ -9,20 +9,23 @@ COPY package.json ./
 RUN npm install --production --no-audit --no-fund
 
 # steam-resources needs protobufjs@4.x (ProtoBuf.newBuilder API).
-# npm hoists protobufjs@7 (for firebase-admin) to root, so steam-resources gets the wrong version.
-# Fix: install protobufjs@4 in a clean temp dir (pure registry package, no GitHub deps,
-# --ignore-scripts safe) then place it inside steam's node_modules so Node.js resolution
-# finds v4 before the root v7. Also nest bytebuffer@4 inside protobufjs so it gets its
-# required version rather than steam's bytebuffer@5.
+# Install v4 in a clean temp dir (--ignore-scripts avoids the svn prepare script),
+# then nest it inside steam/node_modules/steam-resources/ so require('protobufjs')
+# from steam-resources finds v4 before the root v7 (used by firebase-admin).
 RUN mkdir -p /tmp/pbjs4 && \
     cd /tmp/pbjs4 && \
     echo '{}' > package.json && \
     npm install --no-package-lock --no-audit --no-fund --ignore-scripts "protobufjs@>=4.1.3 <5" && \
-    mkdir -p /app/node_modules/steam/node_modules/protobufjs/node_modules && \
-    cp -r /tmp/pbjs4/node_modules/protobufjs/. /app/node_modules/steam/node_modules/protobufjs/ && \
-    cp -r /tmp/pbjs4/node_modules/bytebuffer /app/node_modules/steam/node_modules/protobufjs/node_modules/bytebuffer && \
-    (cp -r /tmp/pbjs4/node_modules/long /app/node_modules/steam/node_modules/protobufjs/node_modules/long 2>/dev/null || true) && \
+    mkdir -p /app/node_modules/steam/node_modules/steam-resources/node_modules && \
+    cp -r /tmp/pbjs4/node_modules/protobufjs /app/node_modules/steam/node_modules/steam-resources/node_modules/protobufjs && \
+    cp -r /tmp/pbjs4/node_modules/bytebuffer /app/node_modules/steam/node_modules/steam-resources/node_modules/bytebuffer && \
+    (cp -r /tmp/pbjs4/node_modules/long /app/node_modules/steam/node_modules/steam-resources/node_modules/long 2>/dev/null || true) && \
     rm -rf /tmp/pbjs4
+
+# dota2 requires 'steam-resources' directly but npm only installs it bundled inside 'steam'.
+# Copy the now-fixed steam-resources (with protobufjs@4 nested) to root node_modules
+# so dota2 can resolve it and gets the correct protobufjs version.
+RUN cp -r /app/node_modules/steam/node_modules/steam-resources /app/node_modules/steam-resources
 
 # Copy compiled code
 COPY dist/ ./dist/
