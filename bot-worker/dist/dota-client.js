@@ -112,6 +112,7 @@ class DotaClient extends events_1.EventEmitter {
                 // Set status to Online and launch Dota 2
                 this.steam.setPersona(steam_user_1.default.EPersonaState.Online);
                 this.steam.gamesPlayed([570]); // Dota 2 App ID
+                this.dota2.launch(); // Initiate GC handshake (required by node-dota2)
             });
             this.dota2.on('ready', () => {
                 logger_js_1.logger.info('Dota 2: GC connection established');
