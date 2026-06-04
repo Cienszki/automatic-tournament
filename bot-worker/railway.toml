@@ -1,0 +1,8 @@
+[build]
+# Tell Railway to use the Dockerfile in this folder
+dockerfilePath = "Dockerfile"
+
+[deploy]
+# Railway will auto-restart on crash — no PM2 needed
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10
