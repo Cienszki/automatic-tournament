@@ -15,22 +15,24 @@ RUN mkdir -p /tmp/pbjs4 && \
     echo '{}' > package.json && \
     npm install --no-package-lock --no-audit --no-fund --ignore-scripts "protobufjs@>=4.1.3 <5"
 
-# dota2 requires 'steam-resources' at root but npm bundles it inside steam/node_modules/.
-# Copy it to root and make it fully self-contained by nesting all its deps inside it:
-#   - csv-parse (bundled with steam, not accessible from root)
-#   - bytebuffer@5 (steam-resources dep, bundled with steam)
-#   - long (bundled with steam)
-#   - protobufjs@4 (must shadow root's v7 which removed .newBuilder())
-#     - protobufjs@4 itself needs bytebuffer@4, nested inside it so v5 above doesn't collide
+# Both 'steam' (via steam/node_modules/steam-resources) and 'dota2' (via root steam-resources)
+# require steam-resources, which needs protobufjs@4. We must fix both locations.
+#
+# Fix 1: steam/node_modules/steam-resources — nest protobufjs@4 inside it so
+#   steam-resources' require('protobufjs') finds v4 before walking up to root v7.
+RUN mkdir -p /app/node_modules/steam/node_modules/steam-resources/node_modules && \
+    cp -r /tmp/pbjs4/node_modules/protobufjs /app/node_modules/steam/node_modules/steam-resources/node_modules/protobufjs && \
+    mkdir -p /app/node_modules/steam/node_modules/steam-resources/node_modules/protobufjs/node_modules && \
+    cp -r /tmp/pbjs4/node_modules/bytebuffer /app/node_modules/steam/node_modules/steam-resources/node_modules/protobufjs/node_modules/bytebuffer && \
+    (cp -r /tmp/pbjs4/node_modules/long /app/node_modules/steam/node_modules/steam-resources/node_modules/protobufjs/node_modules/long 2>/dev/null || true)
+
+# Fix 2: copy the now-fixed steam/node_modules/steam-resources to root so dota2 can find it.
+#   Also nest csv-parse + bytebuffer@5 + long inside it (bundled with steam, not at root).
 RUN cp -r /app/node_modules/steam/node_modules/steam-resources /app/node_modules/steam-resources && \
     mkdir -p /app/node_modules/steam-resources/node_modules && \
     cp -r /app/node_modules/steam/node_modules/csv-parse  /app/node_modules/steam-resources/node_modules/csv-parse && \
     cp -r /app/node_modules/steam/node_modules/bytebuffer /app/node_modules/steam-resources/node_modules/bytebuffer && \
     cp -r /app/node_modules/steam/node_modules/long       /app/node_modules/steam-resources/node_modules/long && \
-    cp -r /tmp/pbjs4/node_modules/protobufjs              /app/node_modules/steam-resources/node_modules/protobufjs && \
-    mkdir -p /app/node_modules/steam-resources/node_modules/protobufjs/node_modules && \
-    cp -r /tmp/pbjs4/node_modules/bytebuffer /app/node_modules/steam-resources/node_modules/protobufjs/node_modules/bytebuffer && \
-    (cp -r /tmp/pbjs4/node_modules/long /app/node_modules/steam-resources/node_modules/protobufjs/node_modules/long 2>/dev/null || true) && \
     rm -rf /tmp/pbjs4
 
 # Copy compiled code
