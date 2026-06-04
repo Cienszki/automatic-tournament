@@ -9,10 +9,20 @@ COPY package.json ./
 RUN npm install --production --no-audit --no-fund
 
 # steam-resources needs protobufjs@4.x (ProtoBuf.newBuilder API).
-# npm hoists protobufjs@7 for firebase-admin, so install v4 nested inside steam
-# so Node.js module resolution finds it before the root v7.
-RUN cd /app/node_modules/steam && \
-    npm install --no-package-lock --no-audit --no-fund --no-save "protobufjs@>=4.1.3 <5"
+# npm hoists protobufjs@7 (for firebase-admin) to root, so steam-resources gets the wrong version.
+# Fix: install protobufjs@4 in a clean temp dir (pure registry package, no GitHub deps,
+# --ignore-scripts safe) then place it inside steam's node_modules so Node.js resolution
+# finds v4 before the root v7. Also nest bytebuffer@4 inside protobufjs so it gets its
+# required version rather than steam's bytebuffer@5.
+RUN mkdir -p /tmp/pbjs4 && \
+    cd /tmp/pbjs4 && \
+    echo '{}' > package.json && \
+    npm install --no-package-lock --no-audit --no-fund --ignore-scripts "protobufjs@>=4.1.3 <5" && \
+    mkdir -p /app/node_modules/steam/node_modules/protobufjs/node_modules && \
+    cp -r /tmp/pbjs4/node_modules/protobufjs/. /app/node_modules/steam/node_modules/protobufjs/ && \
+    cp -r /tmp/pbjs4/node_modules/bytebuffer /app/node_modules/steam/node_modules/protobufjs/node_modules/bytebuffer && \
+    (cp -r /tmp/pbjs4/node_modules/long /app/node_modules/steam/node_modules/protobufjs/node_modules/long 2>/dev/null || true) && \
+    rm -rf /tmp/pbjs4
 
 # Copy compiled code
 COPY dist/ ./dist/
