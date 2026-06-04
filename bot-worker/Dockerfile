@@ -2,8 +2,8 @@ FROM node:20-slim
 
 WORKDIR /app
 
-# Install dependencies first (layer-cached unless package.json changes)
-COPY package.json ./
+# Install dependencies first (layer-cached unless package.json/shrinkwrap changes)
+COPY package.json npm-shrinkwrap.json ./
 RUN npm install --production --no-audit --no-fund
 
 # Copy compiled code
