@@ -2,9 +2,14 @@ FROM node:20-slim
 
 WORKDIR /app
 
-# Install dependencies first (layer-cached unless package.json/shrinkwrap changes)
-COPY package.json npm-shrinkwrap.json ./
+COPY package.json ./
 RUN npm install --production --no-audit --no-fund
+
+# steam bundles steam-resources which needs protobufjs@4.x (ProtoBuf.newBuilder API).
+# npm@10 hoists protobufjs@7 for firebase-admin, so we manually install v4 nested
+# inside steam so Node.js module resolution finds it before the root v7.
+RUN cd /app/node_modules/steam && \
+    npm install --no-package-lock --no-audit --no-fund --no-save "protobufjs@>=4.1.3 <5"
 
 # Copy compiled code
 COPY dist/ ./dist/
