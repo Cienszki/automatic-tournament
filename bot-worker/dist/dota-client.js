@@ -57,7 +57,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.DotaClient = void 0;
-const steam_user_1 = __importDefault(require("steam-user"));
+const Steam = require("steam");
+const SteamTotp = require("steam-totp");
 const Dota2 = __importStar(require("dota2"));
 const events_1 = require("events");
 const logger_js_1 = require("./logger.js");
@@ -78,7 +79,8 @@ const SLOT = {
  */
 class DotaClient extends events_1.EventEmitter {
     config;
-    steam;
+    steamClient;
+    steamUser;
     dota2;
     _connected = false;
     _inDota = false;
@@ -86,8 +88,11 @@ class DotaClient extends events_1.EventEmitter {
     constructor(config) {
         super();
         this.config = config;
-        this.steam = new steam_user_1.default();
-        this.dota2 = new Dota2.Dota2Client(this.steam, true, true);
+        // dota2@7 requires the OLD steam package's SteamClient (not steam-user).
+        // It creates steam.SteamUser(steamClient) internally and calls steamClient.send().
+        this.steamClient = new Steam.SteamClient();
+        this.steamUser = new Steam.SteamUser(this.steamClient);
+        this.dota2 = new Dota2.Dota2Client(this.steamClient, false, false);
         this.setupEventHandlers();
     }
     get isConnected() {
@@ -97,30 +102,36 @@ class DotaClient extends events_1.EventEmitter {
     async connect() {
         return new Promise((resolve, reject) => {
             const timeout = setTimeout(() => {
-                reject(new Error('Connection timeout (60s)'));
-            }, 60000);
-            this.steam.logOn({
-                accountName: this.config.username,
-                password: this.config.password,
-                ...(this.config.steamGuardSharedSecret
-                    ? { twoFactorCode: this.config.steamGuardSharedSecret }
-                    : {}),
+                reject(new Error('Connection timeout (90s)'));
+            }, 90000);
+            this.steamClient.connect();
+            this.steamClient.once('connected', () => {
+                logger_js_1.logger.info('Steam: TCP connected, logging on...');
+                const logOnDetails = {
+                    account_name: this.config.username,
+                    password: this.config.password,
+                };
+                if (this.config.steamGuardSharedSecret) {
+                    logOnDetails.two_factor_code = SteamTotp.generateAuthCode(this.config.steamGuardSharedSecret);
+                }
+                this.steamUser.logOn(logOnDetails);
             });
-            this.steam.on('loggedOn', () => {
+            this.steamUser.once('loggedOn', () => {
                 logger_js_1.logger.info('Steam: Logged in successfully');
                 this._connected = true;
-                // Set status to Online and launch Dota 2
-                this.steam.setPersona(steam_user_1.default.EPersonaState.Online);
-                this.steam.gamesPlayed([570]); // Dota 2 App ID
-                this.dota2.launch(); // Initiate GC handshake (required by node-dota2)
+                this.steamUser.setPersonaState(Steam.EPersonaState.Online);
+                // dota2.launch() calls steamUser.gamesPlayed() on the OLD steam SteamUser,
+                // which correctly uses steamClient.send() to notify Steam we are playing Dota 2,
+                // then begins sending ClientHello messages to the GC every 6s.
+                this.dota2.launch();
             });
-            this.dota2.on('ready', () => {
+            this.dota2.once('ready', () => {
                 logger_js_1.logger.info('Dota 2: GC connection established');
                 this._inDota = true;
                 clearTimeout(timeout);
                 resolve();
             });
-            this.steam.on('error', (err) => {
+            this.steamClient.once('error', (err) => {
                 logger_js_1.logger.error('Steam: Connection error', err);
                 this._connected = false;
                 clearTimeout(timeout);
@@ -138,7 +149,7 @@ class DotaClient extends events_1.EventEmitter {
             }
         }
         this.dota2.exit();
-        this.steam.logOff();
+        this.steamClient.disconnect();
         this._connected = false;
         this._inDota = false;
         logger_js_1.logger.info('Disconnected from Steam/Dota 2');
@@ -309,14 +320,14 @@ class DotaClient extends events_1.EventEmitter {
             this.emit('lobbyCleared');
         });
         // Steam disconnection
-        this.steam.on('disconnected', (_eresult, msg) => {
-            logger_js_1.logger.warn(`Steam disconnected: ${msg}`);
+        this.steamClient.on('error', (_eresult) => {
+            logger_js_1.logger.warn(`Steam connection error/disconnected`);
             this._connected = false;
             this._inDota = false;
-            this.emit('disconnected', msg);
+            this.emit('disconnected', 'error');
         });
-        // Steam reconnection
-        this.steam.on('loggedOn', () => {
+        // Steam reconnection after loggedOn fires again
+        this.steamUser.on('loggedOn', () => {
             if (!this._connected) {
                 logger_js_1.logger.info('Steam: Reconnected');
                 this._connected = true;
