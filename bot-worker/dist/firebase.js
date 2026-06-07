@@ -11,9 +11,10 @@ const firestore_1 = require("firebase-admin/firestore");
 const dotenv_1 = __importDefault(require("dotenv"));
 dotenv_1.default.config();
 let app;
+let db;
 function initFirebase() {
-    if (app)
-        return (0, firestore_1.getFirestore)(app);
+    if (db)
+        return db;
     const base64 = process.env.FIREBASE_SERVICE_ACCOUNT_BASE64;
     if (!base64) {
         throw new Error('FIREBASE_SERVICE_ACCOUNT_BASE64 is not set');
@@ -23,5 +24,10 @@ function initFirebase() {
     app =
         existing ||
             (0, app_1.initializeApp)({ credential: (0, app_1.cert)(serviceAccount) }, 'bot-worker');
-    return (0, firestore_1.getFirestore)(app);
+    db = (0, firestore_1.getFirestore)(app);
+    // Omit undefined fields instead of rejecting the whole document (e.g. a heartbeat
+    // with no current session sets currentSessionId: undefined). settings() must run
+    // exactly once before any Firestore operation — the cached `db` guard ensures that.
+    db.settings({ ignoreUndefinedProperties: true });
+    return db;
 }

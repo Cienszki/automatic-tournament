@@ -147,6 +147,7 @@ class CommandHandler {
                     fillWithBots: settings.fillWithBots ?? false,
                     allowSpectators: settings.allowSpectators ?? true,
                     pauseSetting: settings.pauseSetting ?? 1,
+                    selectionPriorityRules: settings.selectionPriorityRules,
                 });
                 // Emit lobby_created event with the real Dota lobby id (if available yet).
                 await this.emitEvent({

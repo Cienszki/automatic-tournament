@@ -5,7 +5,7 @@
 import { NextResponse } from 'next/server';
 import { getAdminDb, getAdminAuth } from '@/server/lib/admin';
 import { assignBotsToSessions, healthCheckBots } from '@/lib/bot/bot-pool-manager';
-import { processUnhandledBotEvents, driveActiveSessions } from '@/lib/bot/bot-agent';
+import { processUnhandledBotEvents, driveActiveSessions, processLateArrival } from '@/lib/bot/bot-agent';
 import type { Match } from '@/lib/definitions';
 import type { TournamentBotConfig, LobbySession } from '@/types/lobby-bot';
 
@@ -150,6 +150,14 @@ export async function POST(req: Request): Promise<Response> {
       result.errors.push(`Drive sessions: ${msg}`);
     }
 
+    // Step 5c: Late-arrival forfeit/wait voting (opt-in per tournament)
+    try {
+      await processLateArrival();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Unknown error';
+      result.errors.push(`Late arrival: ${msg}`);
+    }
+
     // Step 6: Enforce lobby timeouts — cancel sessions that have been open too long
     try {
       const timedOut = await enforceSessionTimeouts(db);
@@ -258,7 +266,7 @@ async function scheduleUpcomingMatches(
     const lobbyPrefix = tournamentDoc.data()?.lobbySettings?.leagueName || tournamentDoc.data()?.name || 'Tournament';
     const matchName = `${lobbyPrefix} - ${match.teamA?.name || 'TBA'} vs ${match.teamB?.name || 'TBA'}`;
     const seriesFormat = match.series_format || 'bo2';
-    await scheduleLobbyForMatch(tournamentId, matchDoc.id, matchName, seriesFormat);
+    await scheduleLobbyForMatch(tournamentId, matchDoc.id, matchName, seriesFormat, match.scheduledFor);
     scheduled++;
   }
 

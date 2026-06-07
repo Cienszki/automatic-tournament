@@ -400,7 +400,8 @@ export async function scheduleLobbyForMatch(
   tournamentId: string,
   matchId: string,
   matchName: string,
-  seriesFormat: string
+  seriesFormat: string,
+  scheduledMatchTime?: string
 ): Promise<{ success: boolean; sessionId?: string; error?: string }> {
   // Check if session already exists for this match
   const existing = await getLobbySessionsForMatch(matchId);
@@ -465,6 +466,7 @@ export async function scheduleLobbyForMatch(
     lobbySeriesType,
     lobbyRadiantWins: 0,
     lobbyDireWins: 0,
+    scheduledMatchTime,
     createdAt: new Date().toISOString(),
   };
 

@@ -230,6 +230,9 @@ class DotaClient extends events_1.EventEmitter {
     _inDota = false;
     _currentLobby = null;
     _allowedPlayers = null;
+    _selectionPriorityRules = null; // 0=Manual, 1=Automatic (coin toss)
+    _awaitingCoinToss = false;      // true between the 1st and 2nd launchPracticeLobby
+    _coinTossTimer = null;
     constructor(config) {
         super();
         this.config = config;
@@ -325,6 +328,11 @@ class DotaClient extends events_1.EventEmitter {
             if (options.leagueId) {
                 lobbyOptions.leagueid = options.leagueId;
             }
+            // Selection priority: Automatic(1) = coin toss (side/pick selection), Manual(0) = none.
+            if (options.selectionPriorityRules !== undefined && options.selectionPriorityRules !== null) {
+                lobbyOptions.selection_priority_rules = options.selectionPriorityRules;
+                this._selectionPriorityRules = options.selectionPriorityRules;
+            }
             this.dota2.createPracticeLobby(lobbyOptions, (err, body) => {
                 clearTimeout(timeout);
                 if (err) {
@@ -370,6 +378,36 @@ class DotaClient extends events_1.EventEmitter {
     async startGame() {
         if (!this.isConnected)
             throw new Error('Not connected to Dota 2 GC');
+        // First launch. With Automatic selection priority this opens the coin toss
+        // (side / pick-order selection); the game only actually starts after a SECOND
+        // launch, which we fire automatically once both teams have chosen (see
+        // _maybeFinishCoinToss, driven by practiceLobbyUpdate). With Manual priority a
+        // single launch starts the game directly.
+        await this._launchPracticeLobby();
+        const rules = this._selectionPriorityRules ?? (this._currentLobby ? Number(this._currentLobby.selection_priority_rules) : 0);
+        const automatic = Number(rules) === 1;
+        if (automatic) {
+            this._awaitingCoinToss = true;
+            logger_js_1.logger.info('Coin toss opened — waiting for both teams to pick side/order, then will relaunch to start');
+            // Safety net: if we somehow miss the "both chose" update, relaunch anyway
+            // after 90s so an official match can't hang forever at side selection.
+            if (this._coinTossTimer)
+                clearTimeout(this._coinTossTimer);
+            this._coinTossTimer = setTimeout(() => {
+                if (this._awaitingCoinToss) {
+                    this._awaitingCoinToss = false;
+                    logger_js_1.logger.warn('Coin toss timeout (90s) — firing fallback second launch');
+                    this.dota2.launchPracticeLobby((err) => {
+                        if (err)
+                            logger_js_1.logger.error('Fallback second launch failed', err);
+                    });
+                }
+            }, 90000);
+        }
+        return { coinToss: automatic };
+    }
+    /** Fire a single launchPracticeLobby and resolve when the GC ack's it. */
+    _launchPracticeLobby() {
         return new Promise((resolve, reject) => {
             const timeout = setTimeout(() => {
                 reject(new Error('Game start timeout (30s)'));
@@ -377,17 +415,53 @@ class DotaClient extends events_1.EventEmitter {
             this.dota2.launchPracticeLobby((err) => {
                 clearTimeout(timeout);
                 if (err) {
-                    logger_js_1.logger.error('Failed to start game', err);
+                    logger_js_1.logger.error('Failed to launch lobby', err);
                     reject(err);
                 }
                 else {
-                    logger_js_1.logger.info('Game launch initiated (coin toss)');
+                    logger_js_1.logger.info('launchPracticeLobby sent');
                     resolve();
                 }
             });
         });
     }
+    /**
+     * When awaiting a coin toss, watch the lobby for both teams' selection choices.
+     * Once the priority AND non-priority teams have each chosen (choice != Invalid),
+     * fire the second launch to actually start the game.
+     */
+    _maybeFinishCoinToss(lobby) {
+        if (!this._awaitingCoinToss || !lobby)
+            return;
+        const state = Number(lobby.state);
+        // Game already moved into setup/run — stop waiting, don't double-launch.
+        if (state === 1 || state === 2 || state === 6) {
+            this._clearCoinToss();
+            return;
+        }
+        const prio = Number(lobby.series_current_priority_team_choice ?? 0);
+        const nonPrio = Number(lobby.series_current_non_priority_team_choice ?? 0);
+        // DOTASelectionPriorityChoice_Invalid = 0. Both non-zero → both teams chose.
+        if (prio !== 0 && nonPrio !== 0) {
+            this._clearCoinToss();
+            logger_js_1.logger.info('Coin toss complete (both teams chose) — firing second launch to start the game');
+            this.dota2.launchPracticeLobby((err) => {
+                if (err)
+                    logger_js_1.logger.error('Second launch (post coin toss) failed', err);
+                else
+                    logger_js_1.logger.info('Game starting after coin toss');
+            });
+        }
+    }
+    _clearCoinToss() {
+        this._awaitingCoinToss = false;
+        if (this._coinTossTimer) {
+            clearTimeout(this._coinTossTimer);
+            this._coinTossTimer = null;
+        }
+    }
     async leaveLobby() {
+        this._clearCoinToss();
         if (!this.isConnected)
             return;
         return new Promise((resolve) => {
@@ -512,6 +586,9 @@ class DotaClient extends events_1.EventEmitter {
         // Lobby state updates
         this.dota2.on('practiceLobbyUpdate', (lobby) => {
             this._currentLobby = lobby;
+            // Coin toss: if we're between the two launches, check whether both teams
+            // have chosen yet and fire the second launch when they have.
+            this._maybeFinishCoinToss(lobby);
             const players = this.getCurrentLobbyPlayers();
             const teamNames = this.getLobbyTeamNames();
             this.emit('lobbyUpdate', {

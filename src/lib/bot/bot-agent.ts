@@ -16,6 +16,7 @@ import type {
   LobbySettings,
   LobbySession,
   TournamentBotConfig,
+  LateArrivalPolicyConfig,
 } from '@/types/lobby-bot';
 import { DOTA_GAME_MODE_IDS, DOTA_SERVER_REGION_IDS } from '@/types/lobby-bot';
 
@@ -48,6 +49,8 @@ export interface LobbyCreateSettings {
   fillWithBots: boolean;
   allowSpectators: boolean;
   pauseSetting: number;
+  /** DOTASelectionPriorityRules: 0=Manual (no coin toss), 1=Automatic (coin toss) */
+  selectionPriorityRules?: number;
 }
 
 export interface CreateLobbyCommand {
@@ -447,6 +450,8 @@ function toLobbyCreateSettings(
     fillWithBots: lobby.fillWithBots ?? false,
     allowSpectators: lobby.allowSpectators ?? true,
     pauseSetting: pauseMap[lobby.pauseSetting] ?? 1,
+    // Default to Automatic (coin toss) for official matches.
+    selectionPriorityRules: lobby.selectionPriorityRules ?? 1,
   };
 }
 
@@ -483,6 +488,203 @@ async function inviteRosterAndWelcome(
     sessionId: session.id,
     message: `[BOT] ${session.lobbyName} — invites sent. Take your team's slots, then type ${readyCmd} once your whole team is seated.`,
   });
+}
+
+// ─── Late-arrival forfeit / wait voting ─────────────────────────────────────
+
+/**
+ * Per-cycle late-arrival handling for active, not-yet-started sessions.
+ *  - Opens a forfeit/wait vote when one team is short past the configured threshold.
+ *  - Tallies a vote once its window has closed. A forfeit only happens on an explicit
+ *    quorum from the PRESENT team; otherwise a wait extension is granted. This can
+ *    never auto-forfeit a team that is actually in the lobby.
+ * Opt-in: does nothing unless `lateArrival.enabled` is true for the tournament.
+ */
+export async function processLateArrival(): Promise<number> {
+  const { getAdminDb } = await import('@/server/lib/admin');
+  const { getTournamentBotConfig } = await import('./bot-config-actions');
+  const db = getAdminDb();
+
+  const snap = await db
+    .collection('botLobbySessions')
+    .where('state', 'in', ['lobby_open', 'ready_check'])
+    .get();
+  if (snap.empty) return 0;
+
+  let actions = 0;
+  const now = Date.now();
+
+  for (const doc of snap.docs) {
+    const session = { id: doc.id, ...doc.data() } as LobbySession;
+    try {
+      const policy = (await getTournamentBotConfig(session.tournamentId))?.lateArrival;
+      if (!policy?.enabled) continue;
+      if (session.startGameSentAt) continue; // game already launching
+
+      // Resolve an open vote whose window has closed.
+      if (session.lateVote) {
+        if (now >= new Date(session.lateVote.closesAt).getTime()) {
+          await resolveLateVote(session, policy);
+          actions++;
+        }
+        continue; // one vote at a time per session
+      }
+
+      // Otherwise, consider opening a new vote.
+      if (!session.scheduledMatchTime) continue;
+      if (session.lateWaitUntil && new Date(session.lateWaitUntil).getTime() > now) continue;
+
+      const elapsedMin = (now - new Date(session.scheduledMatchTime).getTime()) / 60000;
+      let kind: 'game1' | 'series' | null = null;
+      if (elapsedMin >= policy.seriesForfeitMinutes) kind = 'series';
+      else if (elapsedMin >= policy.game1ForfeitMinutes) kind = 'game1';
+      if (!kind) continue;
+
+      const presence = computeTeamPresence(session);
+      const radiantShort = presence.radiant < 5;
+      const direShort = presence.dire < 5;
+      // Need exactly one short side, with the other present enough to reach quorum.
+      let lateSide: 'radiant' | 'dire' | null = null;
+      if (radiantShort && !direShort && presence.dire >= policy.requiredVotesForForfeit) lateSide = 'radiant';
+      else if (direShort && !radiantShort && presence.radiant >= policy.requiredVotesForForfeit) lateSide = 'dire';
+      if (!lateSide) continue;
+
+      await openLateVote(session, policy, kind, lateSide);
+      actions++;
+    } catch (err) {
+      console.error(`[BotAgent] Late-arrival processing failed for session ${session.id}:`, err);
+    }
+  }
+  return actions;
+}
+
+/** Count how many of each team's expected players are currently in the lobby. */
+function computeTeamPresence(session: LobbySession): { radiant: number; dire: number } {
+  const present = new Set((session.lastLobbyPlayers ?? []).map((p) => p.steamId32));
+  return {
+    radiant: session.radiantTeam.expectedPlayers.filter((p) => present.has(p.steamId32)).length,
+    dire: session.direTeam.expectedPlayers.filter((p) => present.has(p.steamId32)).length,
+  };
+}
+
+async function openLateVote(
+  session: LobbySession,
+  policy: LateArrivalPolicyConfig,
+  kind: 'game1' | 'series',
+  lateSide: 'radiant' | 'dire'
+): Promise<void> {
+  const { updateLobbySession } = await import('./bot-config-actions');
+  const now = Date.now();
+  const closesAt = new Date(now + (policy.votingWindowSeconds || 60) * 1000).toISOString();
+
+  const lateTeamName = lateSide === 'radiant' ? session.radiantTeam.teamName : session.direTeam.teamName;
+  const presentTeamName = lateSide === 'radiant' ? session.direTeam.teamName : session.radiantTeam.teamName;
+  const tmpl = kind === 'series' ? policy.lateSeriesAnnouncementTemplate : policy.lateGame1AnnouncementTemplate;
+  const minutes = kind === 'series' ? policy.seriesForfeitMinutes : policy.game1ForfeitMinutes;
+
+  await updateLobbySession(session.id, {
+    lateVote: { kind, lateSide, openedAt: new Date(now).toISOString(), closesAt, votes: {} },
+  });
+  await sendBotCommand(session.botAccountId, {
+    type: 'send_chat',
+    sessionId: session.id,
+    message: `[BOT] ${applyLatePlaceholders(tmpl, {
+      late_team: lateTeamName,
+      present_team: presentTeamName,
+      minutes: String(minutes),
+      wait_cmd: policy.waitCommands[0] ?? '!wait',
+      forfeit_cmd: policy.forfeitCommands[0] ?? '!forfeit',
+      window: String(policy.votingWindowSeconds || 60),
+      required: String(policy.requiredVotesForForfeit),
+    })}`,
+  });
+}
+
+async function resolveLateVote(
+  session: LobbySession,
+  policy: LateArrivalPolicyConfig
+): Promise<void> {
+  const { updateLobbySession } = await import('./bot-config-actions');
+  const vote = session.lateVote!;
+  const tally = Object.values(vote.votes);
+  const forfeitVotes = tally.filter((v) => v === 'forfeit').length;
+
+  const lateTeamName = vote.lateSide === 'radiant' ? session.radiantTeam.teamName : session.direTeam.teamName;
+  const winnerSide: 'radiant' | 'dire' = vote.lateSide === 'radiant' ? 'dire' : 'radiant';
+  const winnerTeamName = winnerSide === 'radiant' ? session.radiantTeam.teamName : session.direTeam.teamName;
+
+  if (forfeitVotes >= policy.requiredVotesForForfeit) {
+    // Quorum reached → reuse the existing forfeit handler (schedules next game / finalizes).
+    await updateLobbySession(session.id, { lateVote: undefined });
+    const msgTmpl = vote.kind === 'series' ? policy.forfeitSeriesTemplate : policy.forfeitGame1Template;
+    await sendBotCommand(session.botAccountId, {
+      type: 'send_chat',
+      sessionId: session.id,
+      message: `[BOT] ${applyLatePlaceholders(msgTmpl, { winner_team: winnerTeamName, loser_team: lateTeamName })}`,
+    });
+    await handleForfeitDeclared(
+      { ...session, lateVote: undefined },
+      {
+        type: 'forfeit_declared',
+        sessionId: session.id,
+        forfeitType: vote.kind,
+        forfeitedTeam: vote.lateSide,
+        forfeitedTeamName: lateTeamName,
+        winnerTeamName,
+        timestamp: new Date().toISOString(),
+      },
+      session.botAccountId
+    );
+  } else {
+    // No forfeit quorum → grant a wait extension (safe default; never forfeits).
+    const waitUntil = new Date(Date.now() + (policy.waitExtensionMinutes || 10) * 60000).toISOString();
+    await updateLobbySession(session.id, { lateVote: undefined, lateWaitUntil: waitUntil });
+    const tmpl = tally.length === 0 ? policy.noVoteResultTemplate : policy.waitResultTemplate;
+    await sendBotCommand(session.botAccountId, {
+      type: 'send_chat',
+      sessionId: session.id,
+      message: `[BOT] ${applyLatePlaceholders(tmpl, {
+        present_team: winnerTeamName,
+        extra: String(policy.waitExtensionMinutes || 10),
+        votes: String(forfeitVotes),
+        required: String(policy.requiredVotesForForfeit),
+      })}`,
+    });
+  }
+}
+
+async function handleLateVoteChat(
+  session: LobbySession,
+  event: ChatMessageEvent
+): Promise<void> {
+  const vote = session.lateVote;
+  if (!vote) return;
+  if (Date.now() >= new Date(vote.closesAt).getTime()) return;
+
+  const { getTournamentBotConfig, updateLobbySession } = await import('./bot-config-actions');
+  const { identifyPlayerTeam } = await import('./lobby-lifecycle');
+  const policy = (await getTournamentBotConfig(session.tournamentId))?.lateArrival;
+  if (!policy) return;
+
+  // Only the PRESENT (non-late) team may vote.
+  const voterTeam = identifyPlayerTeam(session, event.steamId32);
+  if (!voterTeam || voterTeam === vote.lateSide) return;
+
+  const msg = event.message.trim().toLowerCase();
+  const isForfeit = policy.forfeitCommands.some((c) => c.toLowerCase() === msg);
+  const isWait = policy.waitCommands.some((c) => c.toLowerCase() === msg);
+  if (!isForfeit && !isWait) return;
+
+  const votes: Record<string, 'forfeit' | 'wait'> = {
+    ...vote.votes,
+    [event.steamId32]: isForfeit ? 'forfeit' : 'wait',
+  };
+  await updateLobbySession(session.id, { lateVote: { ...vote, votes } });
+}
+
+/** Replace {placeholder} tokens; unknown tokens are left intact. */
+function applyLatePlaceholders(tmpl: string, ctx: Record<string, string>): string {
+  return tmpl.replace(/\{(\w+)\}/g, (_m, k) => (ctx[k] !== undefined ? ctx[k] : `{${k}}`));
 }
 
 /**
@@ -534,10 +736,15 @@ async function handleBotEvent(eventDoc: BotEventDocument): Promise<void> {
     }
 
     case 'chat_message': {
-      // Delegate to ready check handler
       const session = await getLobbySession(event.sessionId);
-      if (session && session.state === 'lobby_open') {
-        await handleChatForReadyCheck(session, event);
+      if (session) {
+        if (session.state === 'lobby_open') {
+          await handleChatForReadyCheck(session, event);
+        }
+        // Late-arrival forfeit/wait votes are accepted whenever a vote is open.
+        if (session.lateVote) {
+          await handleLateVoteChat(session, event);
+        }
       }
       break;
     }
@@ -1037,6 +1244,11 @@ async function handleLobbyStateEnforcement(
     steamId32: p.steamId32,
     teamSide: p.teamSide,
   }));
+
+  // Persist current occupancy so the late-arrival timer can see who's present.
+  await updateLobbySession(session.id, {
+    lastLobbyPlayers: players.map((p) => ({ steamId32: p.steamId32, teamSide: p.teamSide })),
+  });
 
   const actions = evaluateEnforcement(session, players, enforcementConfig, whitelist);
 

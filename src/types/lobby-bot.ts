@@ -416,6 +416,23 @@ export interface LobbySession {
   /** ISO timestamp of the scheduled match start (used by late arrival timer) */
   scheduledMatchTime?: string;
 
+  /** Latest known lobby occupancy (persisted from lobby_state_update) — used for late detection */
+  lastLobbyPlayers?: Array<{
+    steamId32: string;
+    teamSide: 'radiant' | 'dire' | 'spectator' | 'unassigned';
+  }>;
+
+  /** An in-progress late-arrival forfeit/wait vote, if one is open */
+  lateVote?: {
+    kind: 'game1' | 'series';
+    /** Which side is late/short (the side being voted on) */
+    lateSide: 'radiant' | 'dire';
+    openedAt: string;
+    closesAt: string;
+    /** steamId32 → their vote */
+    votes: Record<string, 'forfeit' | 'wait'>;
+  };
+
   /**
    * ISO timestamp until which the orchestrator should NOT time out this session.
    * Set when players vote to wait for late opponents; cleared after the extra
