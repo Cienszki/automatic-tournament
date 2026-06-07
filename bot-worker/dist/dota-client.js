@@ -227,12 +227,12 @@ class DotaClient extends events_1.EventEmitter {
     steamShim;  // shim making steam-user look like old steam.SteamClient for dota2
     dota2;
     _connected = false;
-    _inDota = false;
-    _currentLobby = null;
-    _allowedPlayers = null;
-    _selectionPriorityRules = null; // 0=Manual, 1=Automatic (coin toss)
-    _awaitingCoinToss = false;      // true between the 1st and 2nd launchPracticeLobby
-    _coinTossTimer = null;
+_inDota = false;
+_currentLobby = null;
+_allowedPlayers = null;
+_selectionPriorityRules = null; // 0=Manual, 1=Automatic (coin toss)
+_awaitingCoinToss = false;      // true between the 1st and 2nd launchPracticeLobby
+_coinTossTimer = null;
     constructor(config) {
         super();
         this.config = config;
@@ -318,7 +318,9 @@ class DotaClient extends events_1.EventEmitter {
                 game_mode: options.gameMode,
                 server_region: options.serverRegion,
                 visibility: options.visibility,
-                dota_tv_delay: Math.floor(options.dotaTvDelay / 30), // Convert seconds to Dota TV delay enum
+                // LobbyDotaTVDelay enum: 10s=0, 120s=1, 300s=2, 900s=3 (NOT seconds/30 — that
+                // gives 4 for 120s and the GC rejects the whole create with an enum error).
+                dota_tv_delay: options.dotaTvDelay <= 10 ? 0 : options.dotaTvDelay <= 120 ? 1 : options.dotaTvDelay <= 300 ? 2 : 3,
                 series_type: options.seriesType,
                 allow_cheats: options.cheatsEnabled,
                 fill_with_bots: options.fillWithBots,
