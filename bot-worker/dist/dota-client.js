@@ -57,11 +57,93 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.DotaClient = void 0;
-const Steam = require("steam");
+const steam_user_1 = __importDefault(require("steam-user"));
 const SteamTotp = require("steam-totp");
 const Dota2 = __importStar(require("dota2"));
 const events_1 = require("events");
 const logger_js_1 = require("./logger.js");
+
+/**
+ * Creates a shim that makes steam-user look like an old steam.SteamClient
+ * so that dota2@7 (which requires the old steam API) works with steam-user.
+ *
+ * dota2@7 needs from steamClient:
+ *   - steamClient.steamID (string) — set after login
+ *   - steamClient.send({msg, proto}, body) — send messages to Steam
+ *   - steamClient.on('message', handler) — receive messages from Steam
+ *
+ * steam-user exposes:
+ *   - steamUser.steamID.toString() — Steam64 ID
+ *   - steamUser.sendToGC(appid, msgType, protoHeader, payload) — send GC msg
+ *   - steamUser.on('receivedFromGC', (appid, msgType, payload) => ...) — receive GC msg
+ *
+ * The dota2 SteamGameCoordinator wraps steamClient and:
+ *   - On send: packs payload into CMsgGCClient and calls steamClient.send({msg: ClientToGC}, packed)
+ *   - On receive: listens for steamClient 'message' events with msg==ClientFromGC and unpacks CMsgGCClient
+ * But steam-user already handles the CMsgGCClient layer internally — it unpacks it and exposes
+ * (msgType, payload) directly via receivedFromGC. So the shim must:
+ *   - When dota2 calls shim.send({msg:ClientToGC}, cmsgGCClientBuffer):
+ *       decode CMsgGCClient from buffer → extract msgType+payload → call steamUser.sendToGC
+ *   - When steamUser emits receivedFromGC(appid, msgType, payload):
+ *       re-pack into CMsgGCClient buffer → emit 'message' on shim with header {msg:ClientFromGC}
+ */
+function createSteamClientShim(steamUserInstance) {
+    const shim = new events_1.EventEmitter();
+    const PROTO_MASK = 0x80000000;
+    // EMsg values from old steam package
+    const EMsg_ClientToGC = 4157;
+    const EMsg_ClientFromGC = 4228;
+    // steam-resources is available through the dota2/steam dependency chain
+    const steamResources = require('steam-resources');
+    const schema = steamResources.Internal;
+
+    // steamID property — dota2 reads this to build proto headers
+    Object.defineProperty(shim, 'steamID', {
+        get: () => steamUserInstance.steamID ? steamUserInstance.steamID.toString() : null,
+        enumerable: true,
+    });
+
+    // send() — called by SteamGameCoordinator when dota2 sends a GC message.
+    // The body is a CMsgGCClient-encoded buffer.
+    shim.send = function(header, body) {
+        if (header.msg === EMsg_ClientToGC) {
+            try {
+                // steam-resources CMsgGCClient has: appid, msgtype, payload
+                const gcMsg = schema.CMsgGCClient.decode(body);
+                const rawMsgType = gcMsg.msgtype >>> 0;
+                const isProto = !!(rawMsgType & PROTO_MASK);
+                const cleanMsgType = rawMsgType & ~PROTO_MASK;
+                const protoHeader = isProto ? {} : null;
+                steamUserInstance.sendToGC(gcMsg.appid, cleanMsgType, protoHeader, gcMsg.payload || Buffer.alloc(0));
+            } catch (e) {
+                logger_js_1.logger.error('Shim: failed to forward send to GC', e);
+            }
+        }
+        // Other EMsg types (ClientGamesPlayed etc.) are ignored —
+        // steam-user handles those via gamesPlayed() which we call separately.
+    };
+
+    // Forward GC messages from steam-user to dota2's SteamGameCoordinator.
+    // steam-user already unpacked CMsgGCClient; we need to re-pack it so
+    // SteamGameCoordinator's 'message' handler can decode it again.
+    steamUserInstance.on('receivedFromGC', (appid, msgType, payload) => {
+        try {
+            const isProto = !!(msgType & PROTO_MASK); // steam-user strips the mask already, but keep safe
+            const packedMsgType = isProto ? (msgType | PROTO_MASK) >>> 0 : msgType >>> 0;
+            const gcClientBuf = new schema.CMsgGCClient({
+                appid: appid,
+                msgtype: packedMsgType,
+                payload: payload,
+            }).toBuffer();
+            const header = { msg: EMsg_ClientFromGC, proto: { routing_appid: appid } };
+            shim.emit('message', header, gcClientBuf);
+        } catch (e) {
+            logger_js_1.logger.error('Shim: failed to forward receivedFromGC', e);
+        }
+    });
+
+    return shim;
+}
 // Dota 2 GC enums (from node-dota2)
 const { EServerRegion, DOTA_GameMode, DOTALobbyVisibility, schema, } = Dota2;
 /** Lobby slot mapping */
@@ -79,8 +161,8 @@ const SLOT = {
  */
 class DotaClient extends events_1.EventEmitter {
     config;
-    steamClient;
-    steamUser;
+    steam;      // steam-user instance (handles actual Steam connection)
+    steamShim;  // shim making steam-user look like old steam.SteamClient for dota2
     dota2;
     _connected = false;
     _inDota = false;
@@ -88,11 +170,10 @@ class DotaClient extends events_1.EventEmitter {
     constructor(config) {
         super();
         this.config = config;
-        // dota2@7 requires the OLD steam package's SteamClient (not steam-user).
-        // It creates steam.SteamUser(steamClient) internally and calls steamClient.send().
-        this.steamClient = new Steam.SteamClient();
-        this.steamUser = new Steam.SteamUser(this.steamClient);
-        this.dota2 = new Dota2.Dota2Client(this.steamClient, false, false);
+        this.steam = new steam_user_1.default();
+        // Create the compatibility shim, then pass it to dota2 as the "steamClient"
+        this.steamShim = createSteamClientShim(this.steam);
+        this.dota2 = new Dota2.Dota2Client(this.steamShim, false, false);
         this.setupEventHandlers();
     }
     get isConnected() {
@@ -104,25 +185,24 @@ class DotaClient extends events_1.EventEmitter {
             const timeout = setTimeout(() => {
                 reject(new Error('Connection timeout (90s)'));
             }, 90000);
-            this.steamClient.connect();
-            this.steamClient.once('connected', () => {
-                logger_js_1.logger.info('Steam: TCP connected, logging on...');
-                const logOnDetails = {
-                    account_name: this.config.username,
-                    password: this.config.password,
-                };
-                if (this.config.steamGuardSharedSecret) {
-                    logOnDetails.two_factor_code = SteamTotp.generateAuthCode(this.config.steamGuardSharedSecret);
-                }
-                this.steamUser.logOn(logOnDetails);
-            });
-            this.steamUser.once('loggedOn', () => {
+            const logOnOptions = {
+                accountName: this.config.username,
+                password: this.config.password,
+            };
+            if (this.config.steamGuardSharedSecret) {
+                logOnOptions.twoFactorCode = SteamTotp.generateAuthCode(this.config.steamGuardSharedSecret);
+            }
+            this.steam.logOn(logOnOptions);
+            this.steam.once('loggedOn', () => {
                 logger_js_1.logger.info('Steam: Logged in successfully');
                 this._connected = true;
-                this.steamUser.setPersonaState(Steam.EPersonaState.Online);
-                // dota2.launch() calls steamUser.gamesPlayed() on the OLD steam SteamUser,
-                // which correctly uses steamClient.send() to notify Steam we are playing Dota 2,
-                // then begins sending ClientHello messages to the GC every 6s.
+                this.steam.setPersona(steam_user_1.default.EPersonaState.Online);
+                // Tell Steam we are playing Dota 2 (app 570).
+                // steam-user handles this directly (no old-steam .send() needed).
+                this.steam.gamesPlayed([570]);
+                // dota2.launch() starts sending ClientHello to GC via the shim.
+                // The shim forwards these via steamUser.sendToGC() and routes
+                // receivedFromGC() back as 'message' events that dota2 can decode.
                 this.dota2.launch();
             });
             this.dota2.once('ready', () => {
@@ -131,7 +211,7 @@ class DotaClient extends events_1.EventEmitter {
                 clearTimeout(timeout);
                 resolve();
             });
-            this.steamClient.once('error', (err) => {
+            this.steam.once('error', (err) => {
                 logger_js_1.logger.error('Steam: Connection error', err);
                 this._connected = false;
                 clearTimeout(timeout);
@@ -149,7 +229,7 @@ class DotaClient extends events_1.EventEmitter {
             }
         }
         this.dota2.exit();
-        this.steamClient.disconnect();
+        this.steam.logOff();
         this._connected = false;
         this._inDota = false;
         logger_js_1.logger.info('Disconnected from Steam/Dota 2');
@@ -320,14 +400,14 @@ class DotaClient extends events_1.EventEmitter {
             this.emit('lobbyCleared');
         });
         // Steam disconnection
-        this.steamClient.on('error', (_eresult) => {
+        this.steam.on('error', (_eresult) => {
             logger_js_1.logger.warn(`Steam connection error/disconnected`);
             this._connected = false;
             this._inDota = false;
             this.emit('disconnected', 'error');
         });
         // Steam reconnection after loggedOn fires again
-        this.steamUser.on('loggedOn', () => {
+        this.steam.on('loggedOn', () => {
             if (!this._connected) {
                 logger_js_1.logger.info('Steam: Reconnected');
                 this._connected = true;
