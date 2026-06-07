@@ -105,16 +105,34 @@ function createSteamClientShim(steamUserInstance) {
 
     // send() — called by SteamGameCoordinator when dota2 sends a GC message.
     // The body is a CMsgGCClient-encoded buffer.
+    // IMPORTANT: CMsgGCClient.payload = [MsgGCHdrProtoBuf bytes (8+N)][actual body]
+    // steam-user.sendToGC() also prepends its own header, so we must STRIP the old
+    // header from gcMsg.payload before calling sendToGC to avoid double-headers.
     shim.send = function(header, body) {
         if (header.msg === EMsg_ClientToGC) {
             try {
-                // steam-resources CMsgGCClient has: appid, msgtype, payload
+                // steam-resources CMsgGCClient has: appid, msgtype, payload (ByteBuffer)
                 const gcMsg = schema.CMsgGCClient.decode(body);
                 const rawMsgType = gcMsg.msgtype >>> 0;
                 const isProto = !!(rawMsgType & PROTO_MASK);
                 const cleanMsgType = rawMsgType & ~PROTO_MASK;
-                const protoHeader = isProto ? {} : null;
-                steamUserInstance.sendToGC(gcMsg.appid, cleanMsgType, protoHeader, gcMsg.payload || Buffer.alloc(0));
+                // Convert ByteBuffer payload to Node.js Buffer
+                // payload = [MsgGCHdrProtoBuf: 4 bytes msgType | 4 bytes headerLen | headerLen bytes proto][body]
+                const payloadBuf = (gcMsg.payload && gcMsg.payload.toBuffer)
+                    ? gcMsg.payload.toBuffer()
+                    : Buffer.from(gcMsg.payload || []);
+                let actualBody;
+                if (isProto && payloadBuf.length >= 8) {
+                    // MsgGCHdrProtoBuf: [4 bytes msgType|MASK LE][4 bytes headerLen LE][headerLen bytes][body]
+                    const headerLen = payloadBuf.readInt32LE(4);
+                    actualBody = payloadBuf.slice(8 + Math.max(0, headerLen));
+                } else if (!isProto && payloadBuf.length >= 18) {
+                    // MsgGCHdr is fixed 18 bytes
+                    actualBody = payloadBuf.slice(18);
+                } else {
+                    actualBody = payloadBuf.length > 0 ? payloadBuf : Buffer.alloc(0);
+                }
+                steamUserInstance.sendToGC(gcMsg.appid, cleanMsgType, isProto ? {} : null, actualBody);
             } catch (e) {
                 logger_js_1.logger.error('Shim: failed to forward send to GC', e);
             }
@@ -124,19 +142,27 @@ function createSteamClientShim(steamUserInstance) {
     };
 
     // Forward GC messages from steam-user to dota2's SteamGameCoordinator.
-    // steam-user already unpacked CMsgGCClient; we need to re-pack it so
-    // SteamGameCoordinator's 'message' handler can decode it again.
+    // steam-user already stripped the CMsgGCClient wrapper AND the MsgGCHdrProtoBuf
+    // header, so `payload` here is just the raw message body.
+    // We must RE-ADD the 8-byte MsgGCHdrProtoBuf header before wrapping in CMsgGCClient,
+    // because SteamGameCoordinator.decode() calls MsgGCHdrProtoBuf.decode(CMsgGCClient.payload)
+    // which advances the ByteBuffer offset by 8, so the subsequent toBuffer() call
+    // returns just the body — which dota2 handlers then decode directly.
     steamUserInstance.on('receivedFromGC', (appid, msgType, payload) => {
         try {
-            const isProto = !!(msgType & PROTO_MASK); // steam-user strips the mask already, but keep safe
-            const packedMsgType = isProto ? (msgType | PROTO_MASK) >>> 0 : msgType >>> 0;
+            // steam-user always strips PROTO_MASK before emitting receivedFromGC
+            const msgTypeWithMask = (msgType | PROTO_MASK) >>> 0;
+            // Reconstruct MsgGCHdrProtoBuf: [4 bytes msgType|MASK LE][4 bytes headerLen=0 LE]
+            const hdr = Buffer.alloc(8);
+            hdr.writeUInt32LE(msgTypeWithMask, 0);
+            hdr.writeInt32LE(0, 4); // empty CMsgProtoBufHeader (0 bytes)
+            const fullPayload = Buffer.concat([hdr, payload]);
             const gcClientBuf = new schema.CMsgGCClient({
-                appid: appid,
-                msgtype: packedMsgType,
-                payload: payload,
+                appid,
+                msgtype: msgTypeWithMask,
+                payload: fullPayload,
             }).toBuffer();
-            const header = { msg: EMsg_ClientFromGC, proto: { routing_appid: appid } };
-            shim.emit('message', header, gcClientBuf);
+            shim.emit('message', { msg: EMsg_ClientFromGC }, gcClientBuf);
         } catch (e) {
             logger_js_1.logger.error('Shim: failed to forward receivedFromGC', e);
         }
