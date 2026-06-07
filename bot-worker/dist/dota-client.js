@@ -309,9 +309,27 @@ _coinTossTimer = null;
         if (!this.isConnected)
             throw new Error('Not connected to Dota 2 GC');
         return new Promise((resolve, reject) => {
-            const timeout = setTimeout(() => {
-                reject(new Error('Lobby creation timeout (30s)'));
-            }, 30000);
+            let settled = false;
+            const finish = (err) => {
+                if (settled)
+                    return;
+                settled = true;
+                clearTimeout(timeout);
+                this.dota2.removeListener('practiceLobbyUpdate', onUpdate);
+                if (err) {
+                    logger_js_1.logger.error('Failed to create lobby', err);
+                    reject(err);
+                }
+                else {
+                    logger_js_1.logger.info(`Lobby created successfully (id ${this.getCurrentLobbyId() || 'pending'})`);
+                    resolve();
+                }
+            };
+            // node-dota2's createPracticeLobby callback is unreliable — it often never fires
+            // even though the lobby IS created. The authoritative signal that the lobby exists
+            // is its cache arriving via practiceLobbyUpdate, so resolve on that.
+            const onUpdate = () => finish(null);
+            const timeout = setTimeout(() => finish(new Error('Lobby creation timeout (30s)')), 30000);
             const lobbyOptions = {
                 game_name: options.name,
                 pass_key: options.password,
@@ -335,16 +353,10 @@ _coinTossTimer = null;
                 lobbyOptions.selection_priority_rules = options.selectionPriorityRules;
                 this._selectionPriorityRules = options.selectionPriorityRules;
             }
-            this.dota2.createPracticeLobby(lobbyOptions, (err, body) => {
-                clearTimeout(timeout);
-                if (err) {
-                    logger_js_1.logger.error('Failed to create lobby', err);
-                    reject(err);
-                }
-                else {
-                    logger_js_1.logger.info('Lobby created successfully');
-                    resolve();
-                }
+            this.dota2.once('practiceLobbyUpdate', onUpdate);
+            this.dota2.createPracticeLobby(lobbyOptions, (err) => {
+                // Explicit error → fail. Success here is fine too, but onUpdate usually wins first.
+                finish(err || null);
             });
         });
     }
@@ -467,12 +479,22 @@ _coinTossTimer = null;
         if (!this.isConnected)
             return;
         return new Promise((resolve) => {
-            this.dota2.leavePracticeLobby((err) => {
-                if (err) {
-                    logger_js_1.logger.warn('Error leaving lobby (non-fatal)', err);
-                }
+            let done = false;
+            const finish = () => {
+                if (done)
+                    return;
+                done = true;
                 this._currentLobby = null;
                 resolve();
+            };
+            // leavePracticeLobby's callback may never fire if we're not actually in a lobby —
+            // don't hang the command queue; resolve after a short timeout regardless.
+            const t = setTimeout(finish, 8000);
+            this.dota2.leavePracticeLobby((err) => {
+                if (err)
+                    logger_js_1.logger.warn('Error leaving lobby (non-fatal)', err);
+                clearTimeout(t);
+                finish();
             });
         });
     }
