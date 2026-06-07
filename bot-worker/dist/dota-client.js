@@ -90,12 +90,29 @@ const logger_js_1 = require("./logger.js");
 function createSteamClientShim(steamUserInstance) {
     const shim = new events_1.EventEmitter();
     const PROTO_MASK = 0x80000000;
-    // EMsg values from old steam package
-    const EMsg_ClientToGC = 4157;
-    const EMsg_ClientFromGC = 4228;
-    // steam-resources is available through the dota2/steam dependency chain
-    const steamResources = require('steam-resources');
-    const schema = steamResources.Internal;
+    // EMsg.ClientToGC / EMsg.ClientFromGC MUST come from the SAME `steam` package
+    // node-dota2 uses — not hardcoded legacy constants. This build of `steam` uses
+    // 5452/5453; the old hardcoded 4157/4228 silently dropped every GC message in BOTH
+    // directions (send check failed; receive handler key mismatched), so the GC handshake
+    // could never complete.
+    const steamEMsg = require('steam').EMsg;
+    const EMsg_ClientToGC = steamEMsg.ClientToGC;
+    const EMsg_ClientFromGC = steamEMsg.ClientFromGC;
+    // Use the SAME schema node-dota2's SteamGameCoordinator uses to DECODE these buffers:
+    // require('steam').Internal. node-dota2 bundles steam-resources 1.2.0, but
+    // require('steam-resources') here resolves to a DIFFERENT version (1.2.2) at the repo
+    // root. Encoding CMsgGCClient with one version and decoding it with another can make
+    // node-dota2 silently drop every GC reply (mis-read appid → early `return`). Sharing
+    // one schema guarantees the encode→decode round-trip is symmetric.
+    let schema;
+    try {
+        schema = require('steam').Internal;
+        if (!schema || !schema.CMsgGCClient) {
+            throw new Error('steam.Internal.CMsgGCClient unavailable');
+        }
+    } catch (e) {
+        schema = require('steam-resources').Internal;
+    }
 
     // steamID property — dota2 reads this to build proto headers
     Object.defineProperty(shim, 'steamID', {
@@ -132,6 +149,9 @@ function createSteamClientShim(steamUserInstance) {
                 } else {
                     actualBody = payloadBuf.length > 0 ? payloadBuf : Buffer.alloc(0);
                 }
+                if (process.env.GC_DEBUG === '1') {
+                    logger_js_1.logger.info(`[GC→] send appid=${gcMsg.appid} msgType=${cleanMsgType} proto=${isProto} bodyLen=${actualBody.length}`);
+                }
                 steamUserInstance.sendToGC(gcMsg.appid, cleanMsgType, isProto ? {} : null, actualBody);
             } catch (e) {
                 logger_js_1.logger.error('Shim: failed to forward send to GC', e);
@@ -150,6 +170,22 @@ function createSteamClientShim(steamUserInstance) {
     // returns just the body — which dota2 handlers then decode directly.
     steamUserInstance.on('receivedFromGC', (appid, msgType, payload) => {
         try {
+            if (process.env.GC_DEBUG === '1') {
+                logger_js_1.logger.info(`[GC←] recv appid=${appid} msgType=${msgType} payloadLen=${payload ? payload.length : 0}`);
+                // Decode connection-status pushes so we can see exactly what the GC says
+                // about our session (HAVE_SESSION / NO_SESSION / queued / ...).
+                try {
+                    const baseMsg = Dota2.schema.EGCBaseClientMsg;
+                    if (baseMsg && msgType === baseMsg.k_EMsgGCClientConnectionStatus) {
+                        const cs = Dota2.schema.CMsgConnectionStatus.decode(payload);
+                        const name = Object.keys(Dota2.schema.GCConnectionStatus)
+                            .find((k) => Dota2.schema.GCConnectionStatus[k] === cs.status);
+                        logger_js_1.logger.info(`[GC←] connection status = ${cs.status} (${name})`);
+                    }
+                } catch (probeErr) {
+                    logger_js_1.logger.warn('[GC←] status probe decode failed: ' + (probeErr && probeErr.message));
+                }
+            }
             // steam-user always strips PROTO_MASK before emitting receivedFromGC
             const msgTypeWithMask = (msgType | PROTO_MASK) >>> 0;
             // Reconstruct MsgGCHdrProtoBuf: [4 bytes msgType|MASK LE][4 bytes headerLen=0 LE]
@@ -193,13 +229,18 @@ class DotaClient extends events_1.EventEmitter {
     _connected = false;
     _inDota = false;
     _currentLobby = null;
+    _allowedPlayers = null;
     constructor(config) {
         super();
         this.config = config;
         this.steam = new steam_user_1.default();
         // Create the compatibility shim, then pass it to dota2 as the "steamClient"
         this.steamShim = createSteamClientShim(this.steam);
-        this.dota2 = new Dota2.Dota2Client(this.steamShim, false, false);
+        // GC_DEBUG=1 enables node-dota2's own silly-level logging ("Sending ClientHello",
+        // "Dota2 fromGC: <name>", "Received client welcome") — invaluable for diagnosing
+        // GC handshake failures. Off by default so production logs stay clean.
+        const gcDebug = process.env.GC_DEBUG === '1';
+        this.dota2 = new Dota2.Dota2Client(this.steamShim, gcDebug, gcDebug);
         this.setupEventHandlers();
     }
     get isConnected() {
@@ -368,17 +409,79 @@ class DotaClient extends events_1.EventEmitter {
         const lobby = this._currentLobby;
         const members = (lobby.all_members || lobby.members || []);
         return members.map((member) => {
-            const accountId = Number(member.id || member.account_id || 0);
+            // CSODOTALobbyMember.id is the Steam64 ID (fixed64) — convert to Steam32.
+            const steamId32 = this.memberSteamId32(member);
             const slot = Number(member.slot ?? member.team_slot ?? -1);
-            const team = this.slotToTeam(slot);
+            // Prefer the explicit GC team field; fall back to slot ranges.
+            const team = (member.team !== undefined && member.team !== null)
+                ? this.gcTeamToSide(Number(member.team))
+                : this.slotToTeam(slot);
             return {
-                accountId,
-                steamId32: String(accountId),
+                accountId: Number(steamId32) || 0,
+                steamId32,
                 slot,
                 team,
                 heroId: member.hero_id ? Number(member.hero_id) : undefined,
             };
         });
+    }
+    /** Convert a lobby member's Steam64 id to a Steam32 account id string. */
+    memberSteamId32(member) {
+        if (member.account_id !== undefined && member.account_id !== null)
+            return String(member.account_id >>> 0);
+        const raw = member.id;
+        if (raw === undefined || raw === null)
+            return '0';
+        try {
+            const id64 = BigInt(raw.toString());
+            const acct = id64 - BigInt('76561197960265728');
+            return acct > 0n ? acct.toString() : '0';
+        }
+        catch {
+            return '0';
+        }
+    }
+    /** Map a DOTA_GC_TEAM value to our team-side string. */
+    gcTeamToSide(gcTeam) {
+        // GOOD_GUYS=0, BAD_GUYS=1, BROADCASTER=2, SPECTATOR=3, PLAYER_POOL=4
+        switch (gcTeam) {
+            case 0: return 'radiant';
+            case 1: return 'dire';
+            case 2:
+            case 3: return 'spectator';
+            default: return 'unassigned';
+        }
+    }
+    /** Current Dota 2 lobby id as a string, or undefined if not in a lobby. */
+    getCurrentLobbyId() {
+        const lobby = this._currentLobby;
+        if (!lobby || lobby.lobby_id === undefined || lobby.lobby_id === null)
+            return undefined;
+        return this.longToString(lobby.lobby_id);
+    }
+    /** Safely stringify a protobuf Long / number / string id. */
+    longToString(v) {
+        if (v === undefined || v === null)
+            return undefined;
+        try {
+            return v.toString();
+        }
+        catch {
+            return undefined;
+        }
+    }
+    /**
+     * Record the rosters/whitelist the orchestrator considers authorized.
+     * Enforcement (kicks) is driven by the orchestrator, so this is stored for
+     * reference only — but it lets the 'set_teams' command succeed cleanly.
+     */
+    setAllowedPlayers(teamA, teamB, whitelist) {
+        this._allowedPlayers = {
+            teamA: teamA || [],
+            teamB: teamB || [],
+            whitelist: whitelist || [],
+        };
+        logger_js_1.logger.debug(`Allowed players updated: ${(teamA || []).length}+${(teamB || []).length} players, ${(whitelist || []).length} whitelisted`);
     }
     /**
      * Get team names from current lobby
@@ -394,6 +497,18 @@ class DotaClient extends events_1.EventEmitter {
     }
     // ─── Private Helpers ────────────────────────────────────────────────
     setupEventHandlers() {
+        // Diagnostics: surface GC messages node-dota2 received but had no handler for,
+        // and GC hello timeouts (ClientHello sent, no ClientWelcome yet). These are the
+        // two key signals when the GC handshake never completes.
+        this.dota2.on('unhandled', (kMsg, name) => {
+            // The GC routinely pushes messages node-dota2 has no handler for (event points,
+            // extra caches, ...). Harmless — only surface them under GC_DEBUG to avoid noise.
+            if (process.env.GC_DEBUG === '1')
+                logger_js_1.logger.warn(`GC unhandled message: ${kMsg} (${name})`);
+        });
+        this.dota2.on('hellotimeout', () => {
+            logger_js_1.logger.warn('GC hello timeout — ClientHello sent but no ClientWelcome from the Game Coordinator');
+        });
         // Lobby state updates
         this.dota2.on('practiceLobbyUpdate', (lobby) => {
             this._currentLobby = lobby;
@@ -403,6 +518,10 @@ class DotaClient extends events_1.EventEmitter {
                 players,
                 radiantTeamName: teamNames.radiant,
                 direTeamName: teamNames.dire,
+                lobbyId: this.getCurrentLobbyId(),
+                state: (lobby.state !== undefined && lobby.state !== null) ? Number(lobby.state) : undefined,
+                matchId: this.longToString(lobby.match_id),
+                matchOutcome: (lobby.match_outcome !== undefined && lobby.match_outcome !== null) ? Number(lobby.match_outcome) : 0,
             });
         });
         // Chat messages in lobby

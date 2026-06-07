@@ -13,17 +13,19 @@ class CommandHandler {
     botAccountId;
     dotaClient;
     pollIntervalMs;
+    eventBridge;
     isProcessing = false;
     pollInterval = null;
     /** Commands older than this (ms) are skipped and marked as expired */
     static MAX_COMMAND_AGE_MS = 5 * 60 * 1000; // 5 minutes
     /** Warn if queue has more than this many pending commands */
     static QUEUE_SIZE_WARNING = 20;
-    constructor(db, botAccountId, dotaClient, pollIntervalMs = 2000) {
+    constructor(db, botAccountId, dotaClient, pollIntervalMs = 2000, eventBridge = null) {
         this.db = db;
         this.botAccountId = botAccountId;
         this.dotaClient = dotaClient;
         this.pollIntervalMs = pollIntervalMs;
+        this.eventBridge = eventBridge;
     }
     /**
      * Start polling for commands
@@ -118,28 +120,39 @@ class CommandHandler {
      * Execute a single command on the Dota 2 client
      */
     async executeCommand(command) {
+        // Keep the EventBridge's session in sync. Without this, EventBridge.currentSessionId
+        // stays null and every lobby/player/chat/game event is silently dropped. Any command
+        // carrying a (new) sessionId tells the worker which session it's now serving — robust
+        // even if the worker restarts mid-session and sees a non-create_lobby command first.
+        if (this.eventBridge &&
+            command.sessionId &&
+            command.sessionId !== this.eventBridge.currentSessionId) {
+            this.eventBridge.setSessionId(command.sessionId);
+        }
         switch (command.type) {
             case 'create_lobby': {
                 const settings = command.settings;
                 await this.dotaClient.createLobby({
                     name: command.lobbyName,
                     password: command.lobbyPassword,
-                    gameMode: settings.gameMode || 2,
-                    serverRegion: settings.serverRegion || 8,
-                    visibility: settings.visibility || 2,
-                    dotaTvDelay: settings.dotaTvDelay || 120,
-                    seriesType: settings.seriesType || 0,
+                    // Use ?? (not ||) so legitimate 0 values survive: visibility public=0,
+                    // pauseSetting unlimited=0 would otherwise be coerced to a wrong default.
+                    gameMode: settings.gameMode ?? 2,
+                    serverRegion: settings.serverRegion ?? 8,
+                    visibility: settings.visibility ?? 2,
+                    dotaTvDelay: settings.dotaTvDelay ?? 120,
+                    seriesType: settings.seriesType ?? 0,
                     leagueId: settings.leagueId,
-                    cheatsEnabled: settings.cheatsEnabled || false,
-                    fillWithBots: settings.fillWithBots || false,
+                    cheatsEnabled: settings.cheatsEnabled ?? false,
+                    fillWithBots: settings.fillWithBots ?? false,
                     allowSpectators: settings.allowSpectators ?? true,
-                    pauseSetting: settings.pauseSetting || 1,
+                    pauseSetting: settings.pauseSetting ?? 1,
                 });
-                // Emit lobby_created event
+                // Emit lobby_created event with the real Dota lobby id (if available yet).
                 await this.emitEvent({
                     type: 'lobby_created',
                     sessionId: command.sessionId,
-                    dotaLobbyId: 'pending', // Will be updated by lobby update event
+                    dotaLobbyId: this.dotaClient.getCurrentLobbyId() || 'pending',
                     timestamp: new Date().toISOString(),
                 });
                 return { lobbyCreated: true };
@@ -163,7 +176,16 @@ class CommandHandler {
             }
             case 'leave_lobby': {
                 await this.dotaClient.leaveLobby();
+                if (this.eventBridge)
+                    this.eventBridge.clearSession();
                 return { left: true };
+            }
+            case 'set_teams': {
+                // Records the authorized rosters/whitelist on the client. Enforcement (kicks)
+                // is orchestrator-driven, so this just keeps the worker's view in sync and
+                // acknowledges the command instead of failing as "unknown".
+                this.dotaClient.setAllowedPlayers(command.teamA, command.teamB, command.whitelist);
+                return { teamsSet: true };
             }
             case 'shutdown': {
                 logger_js_1.logger.info('Shutdown command received');

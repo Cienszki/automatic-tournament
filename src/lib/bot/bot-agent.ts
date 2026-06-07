@@ -16,11 +16,8 @@ import type {
   LobbySettings,
   LobbySession,
   TournamentBotConfig,
-  DotaGameMode,
-  DotaServerRegion,
-  DOTA_GAME_MODE_IDS,
-  DOTA_SERVER_REGION_IDS,
 } from '@/types/lobby-bot';
+import { DOTA_GAME_MODE_IDS, DOTA_SERVER_REGION_IDS } from '@/types/lobby-bot';
 
 // ─── Bot Worker Commands ────────────────────────────────────────────────────
 // Commands sent from the orchestrator (Next.js API) to the bot-worker process
@@ -35,12 +32,30 @@ export type BotCommand =
   | SetTeamsCommand
   | ShutdownCommand;
 
+/**
+ * Numeric Dota 2 GC lobby settings as sent to the bot-worker's createLobby().
+ * Distinct from LobbySettings (admin-facing string enums) — the worker speaks raw
+ * GC enum numbers, so the orchestrator maps strings → numbers before dispatching.
+ */
+export interface LobbyCreateSettings {
+  gameMode: number;
+  serverRegion: number;
+  visibility: number;
+  dotaTvDelay: number;
+  seriesType: number;
+  leagueId?: number;
+  cheatsEnabled: boolean;
+  fillWithBots: boolean;
+  allowSpectators: boolean;
+  pauseSetting: number;
+}
+
 export interface CreateLobbyCommand {
   type: 'create_lobby';
   sessionId: string;
   lobbyName: string;
   lobbyPassword: string;
-  settings: LobbySettings;
+  settings: LobbyCreateSettings;
 }
 
 export interface InvitePlayersCommand {
@@ -329,6 +344,147 @@ export async function processUnhandledBotEvents(): Promise<number> {
   return processedCount;
 }
 
+// ─── Session Driver (active lobby lifecycle) ────────────────────────────────
+
+/**
+ * Drive active sessions forward each orchestrator cycle:
+ *  - `bot_assigned`  → send `create_lobby`, advance to `lobby_creating`
+ *  - `ready_check` (both teams ready, not yet launched) → send `start_game` once
+ *
+ * The `lobby_created` → invite + welcome step is event-driven (see handleBotEvent),
+ * firing as soon as the worker reports the lobby exists.
+ */
+export async function driveActiveSessions(): Promise<{ created: number; started: number }> {
+  const { getAdminDb } = await import('@/server/lib/admin');
+  const { getTournamentBotConfig, updateLobbySession } = await import('./bot-config-actions');
+  const db = getAdminDb();
+
+  let created = 0;
+  let started = 0;
+
+  // 1. bot_assigned → create the Dota 2 lobby
+  const assignedSnap = await db
+    .collection('botLobbySessions')
+    .where('state', '==', 'bot_assigned')
+    .get();
+
+  for (const doc of assignedSnap.docs) {
+    const session = { id: doc.id, ...doc.data() } as LobbySession;
+    if (!session.botAccountId) continue;
+    try {
+      const botConfig = await getTournamentBotConfig(session.tournamentId);
+      if (!botConfig) continue;
+      const settings = toLobbyCreateSettings(botConfig.lobby, session);
+      await sendBotCommand(session.botAccountId, {
+        type: 'create_lobby',
+        sessionId: session.id,
+        lobbyName: session.lobbyName,
+        lobbyPassword: session.lobbyPassword,
+        settings,
+      });
+      await updateLobbySession(session.id, { state: 'lobby_creating' });
+      created++;
+    } catch (err) {
+      console.error(`[BotAgent] Failed to dispatch create_lobby for session ${session.id}:`, err);
+    }
+  }
+
+  // 2. ready_check (both teams ready) → launch the game, exactly once
+  const readySnap = await db
+    .collection('botLobbySessions')
+    .where('state', '==', 'ready_check')
+    .get();
+
+  for (const doc of readySnap.docs) {
+    const session = { id: doc.id, ...doc.data() } as LobbySession;
+    if (session.startGameSentAt) continue; // already launched
+    if (!session.botAccountId) continue;
+    if (!session.readyState?.radiantReady || !session.readyState?.direReady) continue;
+    try {
+      const botConfig = await getTournamentBotConfig(session.tournamentId);
+      const startMsg = botConfig?.chatMessages?.matchStartMessage;
+      if (startMsg) {
+        await sendBotCommand(session.botAccountId, {
+          type: 'send_chat',
+          sessionId: session.id,
+          message: startMsg,
+        });
+      }
+      await sendBotCommand(session.botAccountId, {
+        type: 'start_game',
+        sessionId: session.id,
+      });
+      // Mark launched but keep state `ready_check` so the ready-check timeout still
+      // applies as a safety net until the game_started event moves us to `in_game`.
+      await updateLobbySession(session.id, { startGameSentAt: new Date().toISOString() });
+      started++;
+    } catch (err) {
+      console.error(`[BotAgent] Failed to dispatch start_game for session ${session.id}:`, err);
+    }
+  }
+
+  return { created, started };
+}
+
+/**
+ * Map admin-facing string lobby settings → the numeric GC enums the worker expects.
+ * series_type comes from the session (carried across games of a series).
+ */
+function toLobbyCreateSettings(
+  lobby: LobbySettings,
+  session: LobbySession
+): LobbyCreateSettings {
+  const visMap: Record<string, number> = { public: 0, friends_only: 1, unlisted: 2 };
+  const pauseMap: Record<string, number> = { unlimited: 0, limited: 1, disabled: 2 };
+  return {
+    gameMode: DOTA_GAME_MODE_IDS[lobby.gameMode] ?? 2,
+    serverRegion: DOTA_SERVER_REGION_IDS[lobby.serverRegion] ?? 8,
+    visibility: visMap[lobby.visibility] ?? 2,
+    dotaTvDelay: lobby.dotaTvDelay ?? 120,
+    seriesType: session.lobbySeriesType ?? 0,
+    leagueId: lobby.leagueId,
+    cheatsEnabled: lobby.cheatsEnabled ?? false,
+    fillWithBots: lobby.fillWithBots ?? false,
+    allowSpectators: lobby.allowSpectators ?? true,
+    pauseSetting: pauseMap[lobby.pauseSetting] ?? 1,
+  };
+}
+
+/**
+ * Invite everyone authorized for a session (both rosters, coaches, whitelist) and
+ * post a short instruction message. Called once when the lobby is created.
+ */
+async function inviteRosterAndWelcome(
+  session: LobbySession,
+  botAccountId: string
+): Promise<void> {
+  const { getTournamentBotConfig } = await import('./bot-config-actions');
+  const botConfig = await getTournamentBotConfig(session.tournamentId);
+
+  const steamIds = new Set<string>();
+  for (const p of session.radiantTeam.expectedPlayers) steamIds.add(p.steamId32);
+  for (const p of session.direTeam.expectedPlayers) steamIds.add(p.steamId32);
+  if (session.radiantTeam.coachSteamId32) steamIds.add(session.radiantTeam.coachSteamId32);
+  if (session.direTeam.coachSteamId32) steamIds.add(session.direTeam.coachSteamId32);
+  for (const w of botConfig?.whitelist ?? []) steamIds.add(w.steamId32);
+
+  const ids = [...steamIds].filter((id) => id && id !== '0');
+  if (ids.length > 0) {
+    await sendBotCommand(botAccountId, {
+      type: 'invite_players',
+      sessionId: session.id,
+      steamIds: ids,
+    });
+  }
+
+  const readyCmd = botConfig?.readyCheck?.readyCommands?.[0] ?? '!ready';
+  await sendBotCommand(botAccountId, {
+    type: 'send_chat',
+    sessionId: session.id,
+    message: `[BOT] ${session.lobbyName} — invites sent. Take your team's slots, then type ${readyCmd} once your whole team is seated.`,
+  });
+}
+
 /**
  * Handle a single bot event and update the corresponding lobby session
  */
@@ -350,6 +506,12 @@ async function handleBotEvent(eventDoc: BotEventDocument): Promise<void> {
         undefined,
         undefined
       );
+      // Now that the lobby exists, invite the full roster (+ coaches + whitelist)
+      // and post instructions on how to ready up.
+      const createdSession = await getLobbySession(event.sessionId);
+      if (createdSession) {
+        await inviteRosterAndWelcome(createdSession, eventDoc.botAccountId);
+      }
       break;
     }
 

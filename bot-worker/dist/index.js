@@ -76,11 +76,11 @@ async function main() {
     // Initialize command handler and event bridge
     const pollInterval = parseInt(process.env.POLL_INTERVAL_MS || '2000', 10);
     const heartbeatInterval = parseInt(process.env.HEARTBEAT_INTERVAL_MS || '30000', 10);
-    const commandHandler = new command_handler_js_1.CommandHandler(db, botAccountId, dotaClient, pollInterval);
     const eventBridge = new event_emitter_js_1.EventBridge(db, botAccountId, dotaClient, heartbeatInterval);
-    // Start processing
-    commandHandler.start();
+    const commandHandler = new command_handler_js_1.CommandHandler(db, botAccountId, dotaClient, pollInterval, eventBridge);
+    // Start processing (bridge first so it's listening before any command runs)
     eventBridge.start();
+    commandHandler.start();
     logger_js_1.logger.info('Bot worker is running and waiting for commands...');
     // Graceful shutdown
     const shutdown = async (signal) => {

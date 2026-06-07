@@ -5,13 +5,15 @@
 import { NextResponse } from 'next/server';
 import { getAdminDb, getAdminAuth } from '@/server/lib/admin';
 import { assignBotsToSessions, healthCheckBots } from '@/lib/bot/bot-pool-manager';
-import { processUnhandledBotEvents } from '@/lib/bot/bot-agent';
+import { processUnhandledBotEvents, driveActiveSessions } from '@/lib/bot/bot-agent';
 import type { Match } from '@/lib/definitions';
 import type { TournamentBotConfig, LobbySession } from '@/types/lobby-bot';
 
 interface OrchestrateResult {
   lobbiesScheduled: number;
   botsAssigned: number;
+  lobbiesCreated: number;
+  gamesStarted: number;
   eventsProcessed: number;
   syncTasksExecuted: number;
   healthChecks: number;
@@ -65,6 +67,8 @@ export async function POST(req: Request): Promise<Response> {
     const result: OrchestrateResult = {
       lobbiesScheduled: 0,
       botsAssigned: 0,
+      lobbiesCreated: 0,
+      gamesStarted: 0,
       eventsProcessed: 0,
       syncTasksExecuted: 0,
       healthChecks: 0,
@@ -134,6 +138,16 @@ export async function POST(req: Request): Promise<Response> {
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Unknown error';
       result.errors.push(`Process events: ${msg}`);
+    }
+
+    // Step 5b: Drive active sessions forward (create lobbies, launch ready games)
+    try {
+      const drive = await driveActiveSessions();
+      result.lobbiesCreated = drive.created;
+      result.gamesStarted = drive.started;
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Unknown error';
+      result.errors.push(`Drive sessions: ${msg}`);
     }
 
     // Step 6: Enforce lobby timeouts — cancel sessions that have been open too long

@@ -17,6 +17,7 @@ class EventBridge {
     currentSessionId = null;
     previousPlayers = new Map();
     gameDetected = false;
+    gameEndEmitted = false;
     constructor(db, botAccountId, dotaClient, heartbeatIntervalMs = 30000) {
         this.db = db;
         this.botAccountId = botAccountId;
@@ -77,6 +78,7 @@ class EventBridge {
         this.currentSessionId = sessionId;
         this.previousPlayers.clear();
         this.gameDetected = false;
+        this.gameEndEmitted = false;
     }
     /**
      * Clear the current session (when session is complete)
@@ -85,6 +87,7 @@ class EventBridge {
         this.currentSessionId = null;
         this.previousPlayers.clear();
         this.gameDetected = false;
+        this.gameEndEmitted = false;
     }
     // ─── Event Handlers ────────────────────────────────────────────────
     async handleLobbyUpdate(data) {
@@ -145,52 +148,64 @@ class EventBridge {
             direTeamName: data.direTeamName,
             timestamp: new Date().toISOString(),
         });
+        // ── Game start / end detection from the lobby state machine ──
+        // CSODOTALobby.State: UI=0, SERVERSETUP=1, RUN=2, POSTGAME=3, READYUP=4, NOTREADY=5, SERVERASSIGN=6
+        const state = data.state;
+        if (state !== undefined && state !== null) {
+            const inProgress = state === 1 || state === 2 || state === 6;
+            if (!this.gameDetected && inProgress) {
+                this.gameDetected = true;
+                await this.emitEvent({
+                    type: 'game_started',
+                    sessionId: this.currentSessionId,
+                    dotaMatchId: Number(data.matchId) || 0,
+                    timestamp: new Date().toISOString(),
+                });
+            }
+            // POSTGAME(3) with a decisive outcome → game ended.
+            // EMatchOutcome: RadVictory=2, DireVictory=3.
+            if (!this.gameEndEmitted && state === 3 && (data.matchOutcome === 2 || data.matchOutcome === 3)) {
+                this.gameEndEmitted = true;
+                await this.emitEvent({
+                    type: 'game_ended',
+                    sessionId: this.currentSessionId,
+                    dotaMatchId: Number(data.matchId) || 0,
+                    radiantWin: data.matchOutcome === 2,
+                    duration: 0,
+                    timestamp: new Date().toISOString(),
+                });
+            }
+        }
     }
     async handleChatMessage(msg) {
         if (!this.currentSessionId)
             return;
+        // Include a live snapshot of lobby slots so the orchestrator can validate
+        // that a team's players are all seated on the correct side before accepting !ready.
+        const currentPlayers = this.dotaClient.getCurrentLobbyPlayers().map((p) => ({
+            steamId32: p.steamId32,
+            teamSide: p.team,
+        }));
         await this.emitEvent({
             type: 'chat_message',
             sessionId: this.currentSessionId,
             steamId32: msg.steamId32,
             playerName: msg.playerName,
             message: msg.message,
+            currentPlayers,
             timestamp: new Date().toISOString(),
         });
     }
     async handleLobbyCleared() {
+        // Game end is detected authoritatively from the POSTGAME lobby state + match_outcome
+        // (see handleLobbyUpdate). We intentionally do NOT emit a synthetic game_ended here,
+        // since we'd have no real match id or winner — emitting fake data corrupts series scoring.
         if (!this.currentSessionId)
             return;
-        // If game was detected, this likely means the game ended
-        if (this.gameDetected) {
-            await this.emitEvent({
-                type: 'game_ended',
-                sessionId: this.currentSessionId,
-                dotaMatchId: 0, // Will be resolved from lobby data
-                radiantWin: false, // Will be resolved from match data
-                duration: 0,
-                timestamp: new Date().toISOString(),
-            });
-        }
     }
-    async handleSourceTVData(data) {
-        if (!this.currentSessionId)
-            return;
-        // SourceTV data comes in when a game is live.
-        // Structure varies, but presence of data indicates a game is running
-        const tvData = data;
-        if (!this.gameDetected && tvData) {
-            this.gameDetected = true;
-            const matchId = tvData.match_id || tvData.matchid;
-            if (matchId) {
-                await this.emitEvent({
-                    type: 'game_started',
-                    sessionId: this.currentSessionId,
-                    dotaMatchId: Number(matchId),
-                    timestamp: new Date().toISOString(),
-                });
-            }
-        }
+    async handleSourceTVData() {
+        // Game start is detected from the lobby state machine (handleLobbyUpdate), which is
+        // more reliable than SourceTV data. This handler is kept as a no-op hook.
     }
     // ─── Heartbeat ─────────────────────────────────────────────────────
     async sendHeartbeat() {

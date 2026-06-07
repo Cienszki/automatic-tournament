@@ -438,6 +438,8 @@ export interface LobbySession {
   /** Timestamps for lifecycle tracking */
   createdAt: string;
   lobbyCreatedAt?: string;
+  /** Set once start_game has been dispatched for this session (prevents double-launch) */
+  startGameSentAt?: string;
   gameStartedAt?: string;
   gameEndedAt?: string;
   syncTriggeredAt?: string;
