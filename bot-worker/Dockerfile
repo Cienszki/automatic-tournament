@@ -8,6 +8,13 @@ WORKDIR /app
 COPY package.json ./
 RUN npm install --production --no-audit --no-fund
 
+# The install above nests steam-resources under 'steam' (pinned #v1.2.0, which LACKS
+# CSODOTALobbyMember / CSODOTALobby.all_members) but places NONE at root — where node-dota2's
+# require('steam-resources') resolves (it walks up from dota2/). Explicitly install the
+# up-to-date steam-resources (HEAD = 1.2.2, which HAS the lobby member types) at root, so
+# decoding a lobby keeps all_members and getCurrentLobbyPlayers() works.
+RUN npm install --no-audit --no-fund --no-save github:seishun/node-steam-resources
+
 # steam-resources needs protobufjs@4.x. Install it in a temp dir with --ignore-scripts
 # (avoids the svn prepare script that fetches protobuf definitions).
 RUN mkdir -p /tmp/pbjs4 && \
@@ -26,12 +33,9 @@ RUN mkdir -p /app/node_modules/steam/node_modules/steam-resources/node_modules &
     cp -r /tmp/pbjs4/node_modules/bytebuffer /app/node_modules/steam/node_modules/steam-resources/node_modules/protobufjs/node_modules/bytebuffer && \
     (cp -r /tmp/pbjs4/node_modules/long /app/node_modules/steam/node_modules/steam-resources/node_modules/protobufjs/node_modules/long 2>/dev/null || true)
 
-# Fix 2: node-dota2 does require('steam-resources') and resolves to the ROOT package, which
-#   npm installs at 1.2.2 — the version whose Dota schema INCLUDES CSODOTALobbyMember /
-#   CSODOTALobby.all_members. steam's bundled 1.2.0 LACKS them, so decoding a lobby silently
-#   drops every member (getCurrentLobbyPlayers() returns []). So DON'T overwrite root with
-#   1.2.0; instead make the existing root 1.2.2 load with protobufjs@4 (a hoisted protobufjs@7
-#   from steam-user would otherwise break it), exactly like Fix 1 does for steam's copy.
+# Fix 2: make the root steam-resources (installed above, 1.2.2 with CSODOTALobbyMember) load
+#   with protobufjs@4 — a hoisted protobufjs@7 from steam-user would otherwise break it,
+#   exactly like Fix 1 does for steam's copy.
 RUN mkdir -p /app/node_modules/steam-resources/node_modules && \
     rm -rf /app/node_modules/steam-resources/node_modules/protobufjs && \
     cp -r /tmp/pbjs4/node_modules/protobufjs /app/node_modules/steam-resources/node_modules/protobufjs && \
