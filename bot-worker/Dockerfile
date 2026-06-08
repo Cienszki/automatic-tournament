@@ -1,19 +1,13 @@
 FROM node:20-slim
 
-# git is required for npm to install GitHub-sourced dependencies (steam-resources)
+# git is required for npm to install GitHub-sourced deps (steam-resources) AND for the
+# proto fetch below. ca-certificates for HTTPS.
 RUN apt-get update && apt-get install -y --no-install-recommends git ca-certificates && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
 COPY package.json ./
 RUN npm install --production --no-audit --no-fund
-
-# The install above nests steam-resources under 'steam' (pinned #v1.2.0, which LACKS
-# CSODOTALobbyMember / CSODOTALobby.all_members) but places NONE at root — where node-dota2's
-# require('steam-resources') resolves (it walks up from dota2/). Explicitly install the
-# up-to-date steam-resources (HEAD = 1.2.2, which HAS the lobby member types) at root, so
-# decoding a lobby keeps all_members and getCurrentLobbyPlayers() works.
-RUN npm install --no-audit --no-fund --no-save github:seishun/node-steam-resources
 
 # steam-resources needs protobufjs@4.x. Install it in a temp dir with --ignore-scripts
 # (avoids the svn prepare script that fetches protobuf definitions).
@@ -33,20 +27,29 @@ RUN mkdir -p /app/node_modules/steam/node_modules/steam-resources/node_modules &
     cp -r /tmp/pbjs4/node_modules/bytebuffer /app/node_modules/steam/node_modules/steam-resources/node_modules/protobufjs/node_modules/bytebuffer && \
     (cp -r /tmp/pbjs4/node_modules/long /app/node_modules/steam/node_modules/steam-resources/node_modules/protobufjs/node_modules/long 2>/dev/null || true)
 
-# Fix 2: make the root steam-resources (installed above, 1.2.2 with CSODOTALobbyMember) load
-#   with protobufjs@4 — a hoisted protobufjs@7 from steam-user would otherwise break it,
-#   exactly like Fix 1 does for steam's copy.
-RUN mkdir -p /app/node_modules/steam-resources/node_modules && \
-    rm -rf /app/node_modules/steam-resources/node_modules/protobufjs && \
-    cp -r /tmp/pbjs4/node_modules/protobufjs /app/node_modules/steam-resources/node_modules/protobufjs && \
-    mkdir -p /app/node_modules/steam-resources/node_modules/protobufjs/node_modules && \
-    cp -r /tmp/pbjs4/node_modules/bytebuffer /app/node_modules/steam-resources/node_modules/protobufjs/node_modules/bytebuffer && \
-    (cp -r /tmp/pbjs4/node_modules/long /app/node_modules/steam-resources/node_modules/protobufjs/node_modules/long 2>/dev/null || true) && \
+# Fix 2: npm does not place steam-resources at root, but node-dota2 does require('steam-resources')
+#   and resolves there. Copy steam's (now protobufjs@4-patched) steam-resources to root so dota2
+#   can load it. Also nest csv-parse + bytebuffer + long (bundled with steam, not at root).
+RUN cp -r /app/node_modules/steam/node_modules/steam-resources /app/node_modules/steam-resources && \
+    mkdir -p /app/node_modules/steam-resources/node_modules && \
+    cp -r /app/node_modules/steam/node_modules/csv-parse  /app/node_modules/steam-resources/node_modules/csv-parse && \
+    cp -r /app/node_modules/steam/node_modules/bytebuffer /app/node_modules/steam-resources/node_modules/bytebuffer && \
+    cp -r /app/node_modules/steam/node_modules/long       /app/node_modules/steam-resources/node_modules/long && \
     rm -rf /tmp/pbjs4
 
-# Build-time assertion: fail the build (Railway then keeps the previous working deploy) if the
-# Dota schema is the old one missing lobby members, so we never silently ship the parsing bug.
-RUN node -e "const D=require('/app/node_modules/steam-resources').GC.Dota.Internal; if(!D||!D.CSODOTALobbyMember){console.error('FATAL: root steam-resources Dota schema lacks CSODOTALobbyMember');process.exit(1);} console.log('OK: CSODOTALobbyMember present in root steam-resources');"
+# Fix 3 (member parsing): steam's bundled protobufs are an OLD snapshot whose Dota lobby proto
+#   lacks CSODOTALobbyMember / CSODOTALobby.all_members, so getCurrentLobbyPlayers() decoded
+#   empty. steam-resources' own `prepare` refreshes them via `svn checkout` from GitHub, but
+#   GitHub removed SVN support. Fetch the SAME source (SteamDatabase/Protobufs) with git and
+#   replace the stale protobufs/ — the loader (protos.csv + protobuf_gen) is kept from the base.
+RUN git clone --depth 1 https://github.com/SteamDatabase/Protobufs /tmp/sdb && \
+    rm -rf /app/node_modules/steam-resources/protobufs && \
+    cp -r /tmp/sdb /app/node_modules/steam-resources/protobufs && \
+    rm -rf /app/node_modules/steam-resources/protobufs/.git /tmp/sdb
+
+# Build-time assertion: load the schema the way node-dota2 does and fail the build (Railway then
+# keeps the previous working deploy) if lobby members are missing — never silently ship the bug.
+RUN node -e "const D=require('/app/node_modules/steam-resources').GC.Dota.Internal; if(!D||!D.CSODOTALobbyMember){console.error('FATAL: steam-resources Dota schema lacks CSODOTALobbyMember');process.exit(1);} console.log('OK: CSODOTALobbyMember present in root steam-resources');"
 
 # Copy compiled code
 COPY dist/ ./dist/
