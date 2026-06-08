@@ -326,6 +326,9 @@ _coinTossTimer = null;
                     // Join the lobby chat channel now so later send_chat commands work
                     // (sendMessage fails with "channel you have not joined" otherwise).
                     this._joinLobbyChat();
+                    // The host bot is auto-seated into a team slot on create; move it to the
+                    // unassigned player pool so all 10 team slots stay free for real players.
+                    this._moveSelfToPlayerPool();
                     resolve();
                 }
             };
@@ -410,6 +413,17 @@ _coinTossTimer = null;
         }
         catch (e) {
             logger_js_1.logger.warn('Failed to join lobby chat channel', e);
+        }
+    }
+    /** Move the host bot out of its auto-assigned team slot into the unassigned player pool. */
+    _moveSelfToPlayerPool() {
+        try {
+            // joinPracticeLobbyTeam(slot, team) acts on self; team 4 = DOTA_GC_TEAM_PLAYER_POOL.
+            this.dota2.joinPracticeLobbyTeam(1, 4);
+            logger_js_1.logger.info('Moved host bot to the unassigned player pool');
+        }
+        catch (e) {
+            logger_js_1.logger.warn('Failed to move bot to player pool', e);
         }
     }
     async kickPlayer(steamId32) {
