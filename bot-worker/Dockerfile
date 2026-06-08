@@ -26,14 +26,23 @@ RUN mkdir -p /app/node_modules/steam/node_modules/steam-resources/node_modules &
     cp -r /tmp/pbjs4/node_modules/bytebuffer /app/node_modules/steam/node_modules/steam-resources/node_modules/protobufjs/node_modules/bytebuffer && \
     (cp -r /tmp/pbjs4/node_modules/long /app/node_modules/steam/node_modules/steam-resources/node_modules/protobufjs/node_modules/long 2>/dev/null || true)
 
-# Fix 2: copy the now-fixed steam/node_modules/steam-resources to root so dota2 can find it.
-#   Also nest csv-parse + bytebuffer@5 + long inside it (bundled with steam, not at root).
-RUN cp -r /app/node_modules/steam/node_modules/steam-resources /app/node_modules/steam-resources && \
-    mkdir -p /app/node_modules/steam-resources/node_modules && \
-    cp -r /app/node_modules/steam/node_modules/csv-parse  /app/node_modules/steam-resources/node_modules/csv-parse && \
-    cp -r /app/node_modules/steam/node_modules/bytebuffer /app/node_modules/steam-resources/node_modules/bytebuffer && \
-    cp -r /app/node_modules/steam/node_modules/long       /app/node_modules/steam-resources/node_modules/long && \
+# Fix 2: node-dota2 does require('steam-resources') and resolves to the ROOT package, which
+#   npm installs at 1.2.2 — the version whose Dota schema INCLUDES CSODOTALobbyMember /
+#   CSODOTALobby.all_members. steam's bundled 1.2.0 LACKS them, so decoding a lobby silently
+#   drops every member (getCurrentLobbyPlayers() returns []). So DON'T overwrite root with
+#   1.2.0; instead make the existing root 1.2.2 load with protobufjs@4 (a hoisted protobufjs@7
+#   from steam-user would otherwise break it), exactly like Fix 1 does for steam's copy.
+RUN mkdir -p /app/node_modules/steam-resources/node_modules && \
+    rm -rf /app/node_modules/steam-resources/node_modules/protobufjs && \
+    cp -r /tmp/pbjs4/node_modules/protobufjs /app/node_modules/steam-resources/node_modules/protobufjs && \
+    mkdir -p /app/node_modules/steam-resources/node_modules/protobufjs/node_modules && \
+    cp -r /tmp/pbjs4/node_modules/bytebuffer /app/node_modules/steam-resources/node_modules/protobufjs/node_modules/bytebuffer && \
+    (cp -r /tmp/pbjs4/node_modules/long /app/node_modules/steam-resources/node_modules/protobufjs/node_modules/long 2>/dev/null || true) && \
     rm -rf /tmp/pbjs4
+
+# Build-time assertion: fail the build (Railway then keeps the previous working deploy) if the
+# Dota schema is the old one missing lobby members, so we never silently ship the parsing bug.
+RUN node -e "const D=require('/app/node_modules/steam-resources').GC.Dota.Internal; if(!D||!D.CSODOTALobbyMember){console.error('FATAL: root steam-resources Dota schema lacks CSODOTALobbyMember');process.exit(1);} console.log('OK: CSODOTALobbyMember present in root steam-resources');"
 
 # Copy compiled code
 COPY dist/ ./dist/

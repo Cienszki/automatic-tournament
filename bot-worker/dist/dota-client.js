@@ -233,6 +233,7 @@ _allowedPlayers = null;
 _selectionPriorityRules = null; // 0=Manual, 1=Automatic (coin toss)
 _awaitingCoinToss = false;      // true between the 1st and 2nd launchPracticeLobby
 _coinTossTimer = null;
+    _lobbyChatChannel = null; // "Lobby_<id>" once joined, for sending lobby chat
     constructor(config) {
         super();
         this.config = config;
@@ -322,6 +323,9 @@ _coinTossTimer = null;
                 }
                 else {
                     logger_js_1.logger.info(`Lobby created successfully (id ${this.getCurrentLobbyId() || 'pending'})`);
+                    // Join the lobby chat channel now so later send_chat commands work
+                    // (sendMessage fails with "channel you have not joined" otherwise).
+                    this._joinLobbyChat();
                     resolve();
                 }
             };
@@ -379,8 +383,34 @@ _coinTossTimer = null;
     async sendChatMessage(message) {
         if (!this.isConnected)
             throw new Error('Not connected to Dota 2 GC');
-        this.dota2.sendMessage(message, /* channel */ undefined, /* channel_type */ 1);
+        // Make sure we've joined the lobby chat channel, then send to it by name+type.
+        // DOTAChannelType_Lobby = 3. sendMessage requires the exact joined channel_name.
+        if (!this._lobbyChatChannel)
+            this._joinLobbyChat();
+        if (this._lobbyChatChannel) {
+            this.dota2.sendMessage(message, this._lobbyChatChannel, 3);
+        }
+        else {
+            this.dota2.sendMessage(message, undefined, 1);
+        }
         logger_js_1.logger.debug(`Chat: ${message}`);
+    }
+    /** Join the current lobby's chat channel so we can post messages in it. */
+    _joinLobbyChat() {
+        const lobbyId = this.getCurrentLobbyId();
+        if (!lobbyId)
+            return;
+        const channel = 'Lobby_' + lobbyId;
+        if (this._lobbyChatChannel === channel)
+            return;
+        try {
+            this.dota2.joinChat(channel, 3); // DOTAChannelType_Lobby
+            this._lobbyChatChannel = channel;
+            logger_js_1.logger.info('Joining lobby chat channel ' + channel);
+        }
+        catch (e) {
+            logger_js_1.logger.warn('Failed to join lobby chat channel', e);
+        }
     }
     async kickPlayer(steamId32) {
         if (!this.isConnected)
@@ -476,6 +506,7 @@ _coinTossTimer = null;
     }
     async leaveLobby() {
         this._clearCoinToss();
+        this._lobbyChatChannel = null;
         if (!this.isConnected)
             return;
         return new Promise((resolve) => {
