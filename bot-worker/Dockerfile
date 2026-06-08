@@ -1,7 +1,6 @@
 FROM node:20-slim
 
-# git is required for npm to install GitHub-sourced deps (steam-resources) AND for the
-# proto fetch below. ca-certificates for HTTPS.
+# git is required for npm to install GitHub-sourced dependencies (steam-resources)
 RUN apt-get update && apt-get install -y --no-install-recommends git ca-certificates && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -37,19 +36,18 @@ RUN cp -r /app/node_modules/steam/node_modules/steam-resources /app/node_modules
     cp -r /app/node_modules/steam/node_modules/long       /app/node_modules/steam-resources/node_modules/long && \
     rm -rf /tmp/pbjs4
 
-# Fix 3 (member parsing): steam's bundled protobufs are an OLD snapshot whose Dota lobby proto
-#   lacks CSODOTALobbyMember / CSODOTALobby.all_members, so getCurrentLobbyPlayers() decoded
-#   empty. steam-resources' own `prepare` refreshes them via `svn checkout` from GitHub, but
-#   GitHub removed SVN support. Fetch the SAME source (SteamDatabase/Protobufs) with git and
-#   replace the stale protobufs/ — the loader (protos.csv + protobuf_gen) is kept from the base.
-RUN git clone --depth 1 https://github.com/SteamDatabase/Protobufs /tmp/sdb && \
-    rm -rf /app/node_modules/steam-resources/protobufs && \
-    cp -r /tmp/sdb /app/node_modules/steam-resources/protobufs && \
-    rm -rf /app/node_modules/steam-resources/protobufs/.git /tmp/sdb
+# Fix 3 (member parsing): steam's 1.2.0 CSODOTALobby has no member list, so lobby.all_members
+#   decoded empty and getCurrentLobbyPlayers() always returned []. We CANNOT swap in newer
+#   protobufs wholesale — they drop DOTAGameVersion, which node-dota2's createPracticeLobby
+#   needs (it would throw "Cannot read ... GAME_VERSION_STABLE"). Instead inject a minimal,
+#   import-free CSODOTALobbyMember + `all_members = 120` (an unused field) into 1.2.0's own lobby
+#   proto. getCurrentLobbyPlayers only reads id/team/slot. Validated locally; the assertion below
+#   guards it. Idempotent.
+RUN node -e "const fs=require('fs');const p='/app/node_modules/steam-resources/protobufs/dota2/dota_gcmessages_common_match_management.proto';let s=fs.readFileSync(p,'utf8');if(!s.includes('message CSODOTALobbyMember')){s=s.replace('message CSODOTALobby {','message CSODOTALobbyMember { optional fixed64 id = 1; optional uint32 team = 3; optional uint32 slot = 7; } message CSODOTALobby { repeated .CSODOTALobbyMember all_members = 120;');fs.writeFileSync(p,s);console.log('Patched CSODOTALobby with all_members');}else{console.log('CSODOTALobbyMember already present');}"
 
 # Build-time assertion: load the schema the way node-dota2 does and fail the build (Railway then
-# keeps the previous working deploy) if lobby members are missing — never silently ship the bug.
-RUN node -e "const D=require('/app/node_modules/steam-resources').GC.Dota.Internal; if(!D||!D.CSODOTALobbyMember){console.error('FATAL: steam-resources Dota schema lacks CSODOTALobbyMember');process.exit(1);} console.log('OK: CSODOTALobbyMember present in root steam-resources');"
+# keeps the previous working deploy) if the lobby member type or the game-version enum is missing.
+RUN node -e "const D=require('/app/node_modules/steam-resources').GC.Dota.Internal; if(!D||!D.CSODOTALobbyMember){console.error('FATAL: CSODOTALobbyMember missing');process.exit(1);} if(!D.DOTAGameVersion||D.DOTAGameVersion.GAME_VERSION_STABLE===undefined){console.error('FATAL: DOTAGameVersion.GAME_VERSION_STABLE missing (createLobby would break)');process.exit(1);} console.log('OK: CSODOTALobbyMember + DOTAGameVersion both present');"
 
 # Copy compiled code
 COPY dist/ ./dist/
