@@ -327,13 +327,21 @@ export async function processUnhandledBotEvents(): Promise<number> {
     .collection('botEvents')
     .where('processed', '==', false)
     .orderBy('createdAt', 'asc')
-    .limit(50)
+    .limit(200)
     .get();
 
   let processedCount = 0;
 
   for (const doc of snapshot.docs) {
     const eventDoc = { id: doc.id, ...doc.data() } as BotEventDocument;
+
+    // Defensive: heartbeats must never sit in the processable queue — the worker writes
+    // liveness to botAccounts directly. Delete any that slip in (e.g. an old/stale worker)
+    // so they can never accumulate and starve lobby lifecycle events (create/invite/ready).
+    if (eventDoc.event?.type === 'heartbeat') {
+      await doc.ref.delete();
+      continue;
+    }
 
     try {
       await handleBotEvent(eventDoc);
@@ -456,8 +464,11 @@ function toLobbyCreateSettings(
 }
 
 /**
- * Invite everyone authorized for a session (both rosters, coaches, whitelist) and
- * post a short instruction message. Called once when the lobby is created.
+ * Invite only the players REGISTERED for this match — both teams' rosters (incl. approved
+ * standins) and coaches — and post a short instruction message. Called once when the lobby
+ * is created. The tournament whitelist (commentators/observers/admins) is deliberately NOT
+ * invited; it only exempts those people from being auto-kicked if they join on their own
+ * (see getAllAuthorizedSteamIds).
  */
 async function inviteRosterAndWelcome(
   session: LobbySession,
@@ -471,7 +482,6 @@ async function inviteRosterAndWelcome(
   for (const p of session.direTeam.expectedPlayers) steamIds.add(p.steamId32);
   if (session.radiantTeam.coachSteamId32) steamIds.add(session.radiantTeam.coachSteamId32);
   if (session.direTeam.coachSteamId32) steamIds.add(session.direTeam.coachSteamId32);
-  for (const w of botConfig?.whitelist ?? []) steamIds.add(w.steamId32);
 
   const ids = [...steamIds].filter((id) => id && id !== '0');
   if (ids.length > 0) {
@@ -708,8 +718,8 @@ async function handleBotEvent(eventDoc: BotEventDocument): Promise<void> {
         undefined,
         undefined
       );
-      // Now that the lobby exists, invite the full roster (+ coaches + whitelist)
-      // and post instructions on how to ready up.
+      // Now that the lobby exists, invite the registered roster (+ coaches; NOT the
+      // whitelist) and post instructions on how to ready up.
       const createdSession = await getLobbySession(event.sessionId);
       if (createdSession) {
         await inviteRosterAndWelcome(createdSession, eventDoc.botAccountId);

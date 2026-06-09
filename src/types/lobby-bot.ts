@@ -618,21 +618,23 @@ export const DOTA_GAME_MODE_IDS: Record<DotaGameMode, number> = {
 };
 
 /** Mapping of server region names to Dota 2 server cluster IDs */
+// Values are the Dota 2 GC EServerRegion enum (authoritative — from node-dota2 ServerRegion).
+// europe_west = EUROPE (3); Stockholm (8) is Europe East. The old table was misnumbered.
 export const DOTA_SERVER_REGION_IDS: Record<DotaServerRegion, number> = {
-  us_west: 1,
-  us_east: 2,
-  europe_west: 8,
-  europe_east: 14,
-  russia: 3,
-  southeast_asia: 6,
-  south_america: 7,
-  australia: 9,
-  dubai: 15,
-  chile: 13,
-  peru: 10,
-  india: 5,
-  japan: 11,
-  south_africa: 12,
+  us_west: 1,        // USWEST
+  us_east: 2,        // USEAST
+  europe_west: 3,    // EUROPE
+  europe_east: 8,    // STOCKHOLM
+  russia: 8,         // STOCKHOLM (serves Russia; no distinct enum value)
+  southeast_asia: 5, // SINGAPORE
+  south_america: 10, // BRAZIL
+  australia: 7,      // AUSTRALIA
+  dubai: 6,          // DUBAI
+  chile: 14,         // CHILE
+  peru: 15,          // PERU
+  india: 16,         // INDIA
+  japan: 19,         // JAPAN
+  south_africa: 11,  // SOUTHAFRICA
 };
 
 /** Human-readable labels for game modes */
