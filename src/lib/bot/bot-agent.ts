@@ -707,6 +707,19 @@ async function handleBotEvent(eventDoc: BotEventDocument): Promise<void> {
 
   switch (event.type) {
     case 'lobby_created': {
+      // Guard: if the session was cancelled while the bot was trying to connect
+      // (e.g. Steam was briefly down, the stuck-bot timeout fired), the lobby was
+      // created just as the session was being cancelled. Leave it immediately rather
+      // than reactivating a dead session.
+      const lobbyCreatedSession = await getLobbySession(event.sessionId);
+      if (!lobbyCreatedSession || ['cancelled', 'completed', 'error'].includes(lobbyCreatedSession.state)) {
+        await sendBotCommand(eventDoc.botAccountId, {
+          type: 'leave_lobby',
+          sessionId: event.sessionId,
+        } as BotCommand);
+        console.warn(`[BotAgent] lobby_created for session ${event.sessionId} in terminal state (${lobbyCreatedSession?.state ?? 'not found'}) — leaving lobby`);
+        break;
+      }
       await updateLobbySession(event.sessionId, {
         state: 'lobby_open',
         dotaLobbyId: event.dotaLobbyId,
@@ -720,9 +733,8 @@ async function handleBotEvent(eventDoc: BotEventDocument): Promise<void> {
       );
       // Now that the lobby exists, invite the registered roster (+ coaches; NOT the
       // whitelist) and post instructions on how to ready up.
-      const createdSession = await getLobbySession(event.sessionId);
-      if (createdSession) {
-        await inviteRosterAndWelcome(createdSession, eventDoc.botAccountId);
+      if (lobbyCreatedSession) {
+        await inviteRosterAndWelcome(lobbyCreatedSession, eventDoc.botAccountId);
       }
       break;
     }
