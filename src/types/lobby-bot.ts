@@ -455,6 +455,8 @@ export interface LobbySession {
   /** Timestamps for lifecycle tracking */
   createdAt: string;
   lobbyCreatedAt?: string;
+  /** Set when both teams have declared !ready (used as clock for the ready_check timeout) */
+  readyCheckStartedAt?: string;
   /** Set once start_game has been dispatched for this session (prevents double-launch) */
   startGameSentAt?: string;
   gameStartedAt?: string;

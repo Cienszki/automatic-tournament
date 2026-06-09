@@ -7,7 +7,7 @@ import { useTranslation } from "@/hooks/useTranslation";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from "@/components/ui/dialog";
-import { Loader2, Users, Calendar, BarChart3, LogIn, UserPlus, ArrowRightLeft, Clock3, Copy, Check, Trash2, RefreshCw, X } from "lucide-react";
+import { Loader2, Users, Calendar, BarChart3, LogIn, UserPlus, ArrowRightLeft, Clock3, Copy, Check, Trash2, RefreshCw, X, ChevronLeft, ChevronRight } from "lucide-react";
 import { motion } from "framer-motion";
 import type { Team, Match, Player, PDLStandinRequest as PDLStandinRequestType } from "@/lib/definitions";
 import { collection, doc, getDoc, getDocs, setDoc, query, where, updateDoc, addDoc, deleteDoc, deleteField, onSnapshot } from 'firebase/firestore';
@@ -60,8 +60,13 @@ const normalizePDLStandinRequest = (raw: Record<string, unknown>, id: string): P
     captainId,
     replacedPlayerId: String(raw.replacedPlayerId || ''),
     replacedPlayerNickname: String(raw.replacedPlayerNickname || ''),
+    replacedPlayerMmr: raw.replacedPlayerMmr !== undefined ? Number(raw.replacedPlayerMmr) : undefined,
     standinNickname: String(raw.standinNickname || ''),
     standinSteamProfileUrl: String(raw.standinSteamProfileUrl || ''),
+    standinMmr: raw.standinMmr !== undefined ? Number(raw.standinMmr) : undefined,
+    standinSmurfAccounts: Array.isArray(raw.standinSmurfAccounts)
+      ? (raw.standinSmurfAccounts as { steamProfileUrl: string }[])
+      : undefined,
     status: (raw.status as PDLStandinRequestType['status']) || 'pending',
     createdAt: String(raw.createdAt || ''),
     updatedAt: String(raw.updatedAt || raw.createdAt || ''),
@@ -106,6 +111,47 @@ const isBeforeFinalDeadline = (proposedIso: string, finalDate: string | null | u
   return proposed <= deadline;
 };
 
+const HOUR_HEIGHT = 42; // pixels per hour in the week calendar
+const CAL_START = 14;   // first displayed hour (14:00)
+const CAL_END = 24;     // last displayed hour (24:00)
+const CAL_HOURS = CAL_END - CAL_START; // 10
+
+function normalize24hTimeInput(value: string): string {
+  const digits = value.replace(/\D/g, '').slice(0, 4);
+  if (digits.length <= 2) return digits;
+  return `${digits.slice(0, 2)}:${digits.slice(2)}`;
+}
+
+function computeSlotLayout(slots: ScrimSlot[]): Map<string, { colIndex: number; totalCols: number }> {
+  if (slots.length === 0) return new Map();
+  const sorted = [...slots].sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime());
+  const colEndTimes: number[] = [];
+  const assignments = new Map<string, number>();
+  for (const slot of sorted) {
+    const startMs = new Date(slot.startAt).getTime();
+    const endMs = new Date(slot.endAt).getTime();
+    let assigned = -1;
+    for (let i = 0; i < colEndTimes.length; i++) {
+      if (colEndTimes[i] <= startMs) {
+        assigned = i;
+        colEndTimes[i] = endMs;
+        break;
+      }
+    }
+    if (assigned === -1) {
+      assigned = colEndTimes.length;
+      colEndTimes.push(endMs);
+    }
+    assignments.set(slot.id, assigned);
+  }
+  const totalCols = colEndTimes.length;
+  const result = new Map<string, { colIndex: number; totalCols: number }>();
+  for (const [id, col] of assignments) {
+    result.set(id, { colIndex: col, totalCols });
+  }
+  return result;
+}
+
 /**
  * My Team view - team registration and management.
  */
@@ -141,14 +187,23 @@ function MyTeamView() {
   const [allTournamentStandinRequests, setAllTournamentStandinRequests] = React.useState<PDLStandinRequestType[]>([]);
   const [scrimSlots, setScrimSlots] = React.useState<ScrimSlot[]>([]);
   const [slotStartDate, setSlotStartDate] = React.useState('');
-  const [slotStartHour, setSlotStartHour] = React.useState('20');
-  const [slotStartMinute, setSlotStartMinute] = React.useState('00');
-  const [slotEndHour, setSlotEndHour] = React.useState('22');
-  const [slotEndMinute, setSlotEndMinute] = React.useState('00');
+  const [slotStartTime, setSlotStartTime] = React.useState('20:00');
+  const [slotEndTime, setSlotEndTime] = React.useState('22:00');
   const [slotBoFormat, setSlotBoFormat] = React.useState<'bo1' | 'bo2'>('bo2');
   const [slotNotes, setSlotNotes] = React.useState('');
   const [isSavingSlot, setIsSavingSlot] = React.useState(false);
   const [copiedDiscord, setCopiedDiscord] = React.useState<string | null>(null);
+  const [calendarWeekStart, setCalendarWeekStart] = React.useState<Date>(() => {
+    const today = new Date();
+    const dow = today.getDay();
+    const diff = dow === 0 ? -6 : 1 - dow;
+    const monday = new Date(today);
+    monday.setDate(today.getDate() + diff);
+    monday.setHours(0, 0, 0, 0);
+    return monday;
+  });
+  const [hoveredSlotId, setHoveredSlotId] = React.useState<string | null>(null);
+  const [tooltipPos, setTooltipPos] = React.useState({ x: 0, y: 0 });
   const [refreshingMatches, setRefreshingMatches] = React.useState(false);
   const [adminAnnouncements, setAdminAnnouncements] = React.useState<Array<{
     id: string;
@@ -559,15 +614,24 @@ function MyTeamView() {
     const year = Number.parseInt(yearText, 10);
     const month = Number.parseInt(monthText, 10);
     const day = Number.parseInt(dayText, 10);
-    const startHour = Number.parseInt(slotStartHour, 10);
-    const startMinute = Number.parseInt(slotStartMinute, 10);
-    const endHour = Number.parseInt(slotEndHour, 10);
-    const endMinute = Number.parseInt(slotEndMinute, 10);
+    const [startHourText, startMinuteText] = slotStartTime.split(':');
+    const [endHourText, endMinuteText] = slotEndTime.split(':');
+    const startHour = Number.parseInt(startHourText, 10);
+    const startMinute = Number.parseInt(startMinuteText, 10);
+    const endHour = Number.parseInt(endHourText, 10);
+    const endMinute = Number.parseInt(endMinuteText, 10);
 
     const start = new Date(year, month - 1, day, startHour, startMinute, 0, 0);
     const end = new Date(year, month - 1, day, endHour, endMinute, 0, 0);
 
-    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+    if (
+      Number.isNaN(start.getTime()) ||
+      Number.isNaN(end.getTime()) ||
+      Number.isNaN(startHour) ||
+      Number.isNaN(startMinute) ||
+      Number.isNaN(endHour) ||
+      Number.isNaN(endMinute)
+    ) {
       toast({
         title: 'Nieprawidłowa data lub godzina',
         description: 'Sprawdź wybrane wartości i spróbuj ponownie.',
@@ -768,9 +832,17 @@ function MyTeamView() {
 
       // Update BOTH scheduledFor and scheduled_for so every view on the site
       // reflects the new time (some admin / scheduling views read the snake_case field).
+      // Also update schedulingStatus and status so the admin MatchesTab correctly
+      // shows the confirmed time instead of the pending-deadline view.
+      // proposedDate comes from a datetime-local input (browser local time, no
+      // timezone offset). Convert to UTC ISO before storing so the orchestrator
+      // on Google Cloud (UTC) reads the correct time.
+      const scheduledForUtc = new Date(proposedDate).toISOString();
       await updateDoc(matchRef, {
-        scheduledFor: proposedDate,
-        scheduled_for: proposedDate,
+        scheduledFor: scheduledForUtc,
+        scheduled_for: scheduledForUtc,
+        schedulingStatus: 'confirmed',
+        status: 'scheduled',
         'rescheduleRequest.status': 'approved',
         'rescheduleRequest.respondedAt': new Date().toISOString(),
       });
@@ -981,9 +1053,11 @@ function MyTeamView() {
     matchId: string;
     replacedPlayerId: string;
     replacedPlayerNickname: string;
+    replacedPlayerMmr?: number;
     standinNickname: string;
     standinSteamProfileUrl: string;
     standinMmr?: number;
+    standinSmurfAccounts?: { steamProfileUrl: string }[];
   }) => {
     if (!tournament?.id || !team) return;
 
@@ -1002,9 +1076,11 @@ function MyTeamView() {
       opponentTeamId: opponentId || '',
       replacedPlayerId: data.replacedPlayerId,
       replacedPlayerNickname: data.replacedPlayerNickname,
+      ...(data.replacedPlayerMmr !== undefined ? { replacedPlayerMmr: data.replacedPlayerMmr } : {}),
       standinNickname: data.standinNickname,
       standinSteamProfileUrl: data.standinSteamProfileUrl,
       ...(data.standinMmr !== undefined ? { standinMmr: data.standinMmr } : {}),
+      ...(data.standinSmurfAccounts?.length ? { standinSmurfAccounts: data.standinSmurfAccounts } : {}),
       status: 'pending' as const,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -1353,6 +1429,13 @@ function MyTeamView() {
     }
   };
 
+  const weekDays = React.useMemo(() =>
+    Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(calendarWeekStart);
+      d.setDate(calendarWeekStart.getDate() + i);
+      return d;
+    }), [calendarWeekStart]);
+
   if (!tournament) return null;
 
   // =========================================================================
@@ -1604,9 +1687,6 @@ function MyTeamView() {
   const promotionZone = !isEliteDivision && currentPosition === 1;
   const relegationZone = currentPosition === sortedDivisionTeams.length && sortedDivisionTeams.length > 0;
 
-  const hourOptions = Array.from({ length: 24 }, (_, index) => String(index).padStart(2, '0'));
-  const minuteOptions = ['00', '15', '30', '45'];
-
   const now = Date.now();
   const activeScrimSlots = scrimSlots
     .filter(slot => {
@@ -1637,6 +1717,8 @@ function MyTeamView() {
       return (overlapEnd - overlapStart) >= ONE_HOUR;
     });
   };
+
+  const hoveredSlot = activeScrimSlots.find(s => s.id === hoveredSlotId) ?? null;
 
   const formatSlotDate = (isoDate: string): string => {
     const parsed = new Date(isoDate);
@@ -1921,7 +2003,7 @@ function MyTeamView() {
           Availability Modal (formerly Scrims)
          ═══════════════════════════════════════════════════════════ */}
       <Dialog open={availabilityModalOpen} onOpenChange={setAvailabilityModalOpen}>
-        <DialogContent hideClose className="max-w-6xl max-h-[90vh] overflow-y-auto border text-white bg-black/20 backdrop-blur-2xl backdrop-saturate-150 custom-scrollbar" style={{ borderColor: 'var(--tournament-border, rgba(255,255,255,0.1))' }}>
+        <DialogContent hideClose className="w-[98vw] max-w-[1920px] min-h-[88vh] max-h-[94vh] overflow-y-auto border text-white bg-black/20 backdrop-blur-2xl backdrop-saturate-150 custom-scrollbar" style={{ borderColor: 'var(--tournament-border, rgba(255,255,255,0.1))' }}>
           <div className="flex items-center gap-3">
             <DialogTitle
               className="text-xl uppercase tracking-[0.15em]"
@@ -1942,170 +2024,274 @@ function MyTeamView() {
                 <p className="text-sm font-logik uppercase tracking-wide" style={{ color: theme.primaryTextColor || 'rgba(255,255,255,0.7)' }}>
                   Dodaj swoje okno dostępności
                 </p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div className="space-y-1">
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-12 gap-3">
+                  <div className="space-y-1 xl:col-span-2">
                     <label className="text-xs uppercase tracking-wide" style={{ color: theme.primaryTextColor || 'rgba(255,255,255,0.5)' }}>Data</label>
                     <input
                       type="date"
                       value={slotStartDate}
                       onChange={(event) => setSlotStartDate(event.target.value)}
-                      className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white"
+                      className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-1.5 text-sm text-white"
                     />
                   </div>
-                  <div className="space-y-1">
+                  <div className="space-y-1 xl:col-span-2">
                     <label className="text-xs uppercase tracking-wide" style={{ color: theme.primaryTextColor || 'rgba(255,255,255,0.5)' }}>Godzina startu (24h)</label>
-                    <div className="grid grid-cols-2 gap-2">
-                      <select
-                        value={slotStartHour}
-                        onChange={(event) => setSlotStartHour(event.target.value)}
-                        className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white"
-                      >
-                        {hourOptions.map((hourValue) => (
-                          <option key={`start-h-${hourValue}`} value={hourValue}>{hourValue}</option>
-                        ))}
-                      </select>
-                      <select
-                        value={slotStartMinute}
-                        onChange={(event) => setSlotStartMinute(event.target.value)}
-                        className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white"
-                      >
-                        {minuteOptions.map((minuteValue) => (
-                          <option key={`start-m-${minuteValue}`} value={minuteValue}>{minuteValue}</option>
-                        ))}
-                      </select>
-                    </div>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      placeholder="HH:mm"
+                      pattern="^([01]\d|2[0-3]):([0-5]\d)$"
+                      value={slotStartTime}
+                      onChange={(event) => setSlotStartTime(normalize24hTimeInput(event.target.value))}
+                      className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-1.5 text-sm text-white"
+                    />
                   </div>
-                  <div className="space-y-1">
+                  <div className="space-y-1 xl:col-span-2">
                     <label className="text-xs uppercase tracking-wide" style={{ color: theme.primaryTextColor || 'rgba(255,255,255,0.5)' }}>Godzina końca (24h)</label>
-                    <div className="grid grid-cols-2 gap-2">
-                      <select
-                        value={slotEndHour}
-                        onChange={(event) => setSlotEndHour(event.target.value)}
-                        className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white"
-                      >
-                        {hourOptions.map((hourValue) => (
-                          <option key={`end-h-${hourValue}`} value={hourValue}>{hourValue}</option>
-                        ))}
-                      </select>
-                      <select
-                        value={slotEndMinute}
-                        onChange={(event) => setSlotEndMinute(event.target.value)}
-                        className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white"
-                      >
-                        {minuteOptions.map((minuteValue) => (
-                          <option key={`end-m-${minuteValue}`} value={minuteValue}>{minuteValue}</option>
-                        ))}
-                      </select>
-                    </div>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      placeholder="HH:mm"
+                      pattern="^([01]\d|2[0-3]):([0-5]\d)$"
+                      value={slotEndTime}
+                      onChange={(event) => setSlotEndTime(normalize24hTimeInput(event.target.value))}
+                      className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-1.5 text-sm text-white"
+                    />
                   </div>
-                  <div className="space-y-1">
+                  <div className="space-y-1 xl:col-span-1">
                     <label className="text-xs uppercase tracking-wide" style={{ color: theme.primaryTextColor || 'rgba(255,255,255,0.5)' }}>Format</label>
                     <select
                       value={slotBoFormat}
                       onChange={(event) => setSlotBoFormat(event.target.value === 'bo1' ? 'bo1' : 'bo2')}
-                      className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white"
+                      className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-1.5 text-sm text-white"
                     >
                       <option value="bo2">BO2</option>
                       <option value="bo1">BO1</option>
                     </select>
                   </div>
-                  <div className="space-y-1">
+                  <div className="space-y-1 xl:col-span-4">
                     <label className="text-xs uppercase tracking-wide" style={{ color: theme.primaryTextColor || 'rgba(255,255,255,0.5)' }}>Notatka (opcjonalnie)</label>
                     <input
                       type="text"
                       value={slotNotes}
                       onChange={(event) => setSlotNotes(event.target.value)}
                       placeholder=""
-                      className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white"
+                      className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-1.5 text-sm text-white"
                     />
                   </div>
+                  <div className="space-y-1 xl:col-span-1">
+                    <span className="block text-xs uppercase tracking-wide select-none opacity-0">Akcja</span>
+                    <Button
+                      onClick={handleCreateScrimSlot}
+                      disabled={isSavingSlot || !slotStartDate || !slotStartTime || !slotEndTime}
+                      className="w-full bg-pdl-crimson hover:bg-pdl-crimson/80 text-white font-logik-extended-bold"
+                    >
+                      {isSavingSlot ? 'Dodawanie...' : 'Dodaj slot'}
+                    </Button>
+                  </div>
                 </div>
-                <Button
-                  onClick={handleCreateScrimSlot}
-                  disabled={isSavingSlot || !slotStartDate}
-                  className="bg-pdl-crimson hover:bg-pdl-crimson/80 text-white font-logik-extended-bold"
-                >
-                  {isSavingSlot ? 'Dodawanie...' : 'Dodaj slot'}
-                </Button>
               </div>
             )}
 
-            <div className="rounded-xl border border-white/10 bg-white/[0.02] p-5 space-y-3">
-              <p className="text-sm font-logik uppercase tracking-wide" style={{ color: theme.primaryTextColor || 'rgba(255,255,255,0.7)' }}>Twoje aktywne sloty</p>
-              {myActiveScrimSlots.length === 0 ? (
-                <p className="text-sm font-logik" style={{ color: theme.secondaryTextColor || 'rgba(255,255,255,0.4)' }}>Brak aktywnych slotów.</p>
-              ) : (
-                <div className="space-y-2">
-                  {myActiveScrimSlots.map((slot) => (
-                    <div key={slot.id} className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 rounded-lg border border-white/10 bg-black/20 p-3">
-                      <div className="space-y-1">
-                        <p className="text-white font-logik-extended-bold">{slot.teamName}</p>
-                        <p className="text-xs text-white/60 font-logik">
-                          {formatSlotDate(slot.startAt)} → {formatSlotDate(slot.endAt)} • {slot.boFormat.toUpperCase()}
-                        </p>
-                        {slot.notes && <p className="text-xs text-white/50">{slot.notes}</p>}
-                      </div>
-                      <Button
-                        variant="outline"
-                        onClick={() => handleDeleteScrimSlot(slot.id)}
-                        className="border-white/10 bg-white/[0.02] hover:bg-red-500/20 hover:border-red-500/40"
-                      >
-                        <Trash2 className="w-4 h-4 mr-2" />
-                        Usuń
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <div className="rounded-xl border border-white/10 bg-white/[0.02] p-5 space-y-3">
-              <p className="text-sm font-logik uppercase tracking-wide" style={{ color: theme.primaryTextColor || 'rgba(255,255,255,0.7)' }}>Sloty innych drużyn</p>
-              {availableScrimSlots.length === 0 ? (
-                <p className="text-sm font-logik" style={{ color: theme.secondaryTextColor || 'rgba(255,255,255,0.4)' }}>Brak aktywnych ogłoszeń.</p>
-              ) : (
-                <div className="space-y-3">
-                  {availableScrimSlots.map((slot) => {
-                    const overlap = hasCommonWindow(slot, myActiveScrimSlots);
-                    const isCopied = copiedDiscord === slot.captainDiscord;
-
+            {/* ─── Week Calendar ─── */}
+            <div className="rounded-xl border border-white/10 bg-white/[0.02] overflow-hidden">
+              {/* Navigation header */}
+              <div className="flex items-center px-3 py-2.5 border-b border-white/10">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const d = new Date(calendarWeekStart);
+                    d.setDate(d.getDate() - 7);
+                    setCalendarWeekStart(new Date(d));
+                  }}
+                  className="p-1.5 rounded-lg hover:bg-white/10 text-white/40 hover:text-white/80 transition-colors shrink-0"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                <div className="flex flex-1 min-w-0 mx-1">
+                  <div className="w-10 shrink-0" />
+                  {weekDays.map((day, i) => {
+                    const isToday = day.toDateString() === new Date().toDateString();
                     return (
-                      <div key={slot.id} className={`rounded-lg border p-4 space-y-2 ${overlap ? 'border-emerald-500/40 bg-emerald-500/[0.08]' : 'border-white/10 bg-black/20'}`}>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <p className="text-white font-logik-extended-bold">{slot.teamName}</p>
-                          {overlap && (
-                            <span className="rounded-full border border-emerald-500/40 bg-emerald-500/15 px-2 py-0.5 text-xs text-emerald-300 font-logik-extended-bold uppercase tracking-wide">
-                              Wspólne okno
-                            </span>
-                          )}
-                          <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-xs text-white/70 uppercase">
-                            {slot.boFormat.toUpperCase()}
-                          </span>
-                        </div>
-                        <p className="text-sm text-white/70 font-logik">
-                          {formatSlotDate(slot.startAt)} → {formatSlotDate(slot.endAt)}
+                      <div key={i} className="flex-1 text-center select-none">
+                        <p className="text-[10px] uppercase tracking-widest text-white/30">
+                          {['Pon', 'Wt', 'Śr', 'Czw', 'Pt', 'Sob', 'Niedz'][i]}
                         </p>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="text-sm text-white/80 font-logik">Discord: {slot.captainDiscord || 'brak'}</span>
-                          {slot.captainDiscord && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleCopyDiscord(slot.captainDiscord)}
-                              className="border-white/10 bg-white/[0.02] hover:bg-white/10"
-                            >
-                              {isCopied ? <Check className="w-4 h-4 mr-1.5" /> : <Copy className="w-4 h-4 mr-1.5" />}
-                              Skopiuj @nick
-                            </Button>
-                          )}
-                        </div>
-                        {slot.notes && <p className="text-xs text-white/50">{slot.notes}</p>}
+                        <p className={`text-sm font-logik-extended-bold ${isToday ? 'text-pdl-crimson' : 'text-white/60'}`}>
+                          {day.getDate()}
+                        </p>
                       </div>
                     );
                   })}
                 </div>
-              )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const d = new Date(calendarWeekStart);
+                    d.setDate(d.getDate() + 7);
+                    setCalendarWeekStart(new Date(d));
+                  }}
+                  className="p-1.5 rounded-lg hover:bg-white/10 text-white/40 hover:text-white/80 transition-colors shrink-0"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Calendar body */}
+              <div className="flex">
+                {/* Hour labels */}
+                <div className="w-10 shrink-0 relative" style={{ height: `${HOUR_HEIGHT * CAL_HOURS}px` }}>
+                  {[14, 16, 18, 20, 22].map(hr => (
+                    <div
+                      key={hr}
+                      className="absolute right-1 text-[9px] text-white/55 -translate-y-2"
+                      style={{ top: `${(hr - CAL_START) * HOUR_HEIGHT}px` }}
+                    >
+                      {hr}:00
+                    </div>
+                  ))}
+                  <div
+                    className="absolute right-1 text-[9px] text-white/55"
+                    style={{ top: `${CAL_HOURS * HOUR_HEIGHT - 11}px` }}
+                  >
+                    00:00
+                  </div>
+                </div>
+
+                {/* Day columns */}
+                {weekDays.map((day, dayIdx) => {
+                  const daySlots = activeScrimSlots.filter(s => {
+                    const d = new Date(s.startAt);
+                    return d.getFullYear() === day.getFullYear() &&
+                           d.getMonth() === day.getMonth() &&
+                           d.getDate() === day.getDate();
+                  });
+                  const layout = computeSlotLayout(daySlots);
+                  const isToday = day.toDateString() === new Date().toDateString();
+                  const nowDate = new Date();
+                  const nowFrac = nowDate.getHours() + nowDate.getMinutes() / 60;
+                  const showLine = isToday && nowFrac >= CAL_START && nowFrac <= CAL_END;
+
+                  return (
+                    <div
+                      key={dayIdx}
+                      className="flex-1 relative border-l border-white/[0.06]"
+                      style={{ height: `${HOUR_HEIGHT * CAL_HOURS}px` }}
+                    >
+                      {/* Grid lines: stronger every 2h, subtle every 1h */}
+                      {Array.from({ length: CAL_HOURS + 1 }, (_, i) => (
+                        <div
+                          key={`g${i}`}
+                          className={`absolute inset-x-0 border-t ${i % 2 === 0 ? 'border-white/10' : 'border-white/[0.04]'}`}
+                          style={{ top: `${i * HOUR_HEIGHT}px` }}
+                        />
+                      ))}
+                      {/* Current time indicator */}
+                      {showLine && (
+                        <div
+                          className="absolute inset-x-0 z-10 flex items-center pointer-events-none"
+                          style={{ top: `${(nowFrac - CAL_START) * HOUR_HEIGHT}px` }}
+                        >
+                          <div className="w-1.5 h-1.5 rounded-full bg-red-500 -ml-0.5 shrink-0" />
+                          <div className="flex-1 h-px bg-red-500/70" />
+                        </div>
+                      )}
+                      {/* Slot tiles */}
+                      {daySlots.map(slot => {
+                        const lyt = layout.get(slot.id);
+                        if (!lyt) return null;
+                        const { colIndex, totalCols } = lyt;
+                        const sd = new Date(slot.startAt);
+                        const ed = new Date(slot.endAt);
+                        const startFrac = sd.getHours() + sd.getMinutes() / 60;
+                        // handle midnight wrap (e.g. ends at 01:00 next day)
+                        const rawEndFrac = ed.getHours() + ed.getMinutes() / 60;
+                        const endFrac = rawEndFrac < startFrac ? CAL_END : rawEndFrac;
+                        // clamp to display range; if fully outside → show as 1h at boundary
+                        let displayStart: number;
+                        let displayEnd: number;
+                        if (endFrac <= CAL_START) {
+                          displayStart = CAL_START;
+                          displayEnd = CAL_START + 1;
+                        } else if (startFrac >= CAL_END) {
+                          displayStart = CAL_END - 1;
+                          displayEnd = CAL_END;
+                        } else {
+                          displayStart = Math.max(startFrac, CAL_START);
+                          displayEnd = Math.min(endFrac, CAL_END);
+                        }
+                        const top = (displayStart - CAL_START) * HOUR_HEIGHT;
+                        const height = Math.max((displayEnd - displayStart) * HOUR_HEIGHT, 16);
+                        const isMySlot = slot.teamId === team?.id;
+                        const commonWindow = !isMySlot && hasCommonWindow(slot, myActiveScrimSlots);
+                        const fmtH = (d: Date) => `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+                        const tileTone = isMySlot
+                          ? 'border-pdl-crimson/45 bg-pdl-crimson/15 hover:bg-pdl-crimson/22'
+                          : commonWindow
+                            ? 'border-emerald-400/45 bg-emerald-500/12 hover:bg-emerald-500/18'
+                            : 'border-white/15 bg-white/[0.04] hover:bg-white/[0.08]';
+                        const boTone = isMySlot
+                          ? 'border-pdl-crimson/45 text-pdl-crimson'
+                          : commonWindow
+                            ? 'border-emerald-400/45 text-emerald-300'
+                            : 'border-white/20 text-white/80';
+                        return (
+                          <div
+                            key={slot.id}
+                            className={`group absolute rounded-md border cursor-pointer z-[2] flex flex-col overflow-hidden transition-colors duration-150 ${tileTone}`}
+                            style={{
+                              top: `${top}px`,
+                              height: `${height}px`,
+                              left: `calc(${(colIndex / totalCols) * 100}% + 2px)`,
+                              width: `calc(${(1 / totalCols) * 100}% - 4px)`,
+                            }}
+                            onClick={() => { if (!isMySlot) handleCopyDiscord(slot.captainDiscord); }}
+                          >
+                            <div className="absolute inset-x-0 top-0 h-px bg-white/25" />
+                            <div className="flex flex-col gap-1 px-2 py-1.5">
+                              <span className="text-[9px] font-logik-extended-bold uppercase tracking-wide text-white truncate">
+                                {slot.teamName}
+                              </span>
+                            </div>
+                            <div className="flex flex-col flex-1 px-2 pb-6 min-h-0 overflow-hidden">
+                              <span className="text-[9px] text-white/85 font-logik leading-tight truncate">
+                                {fmtH(sd)} - {fmtH(ed)}
+                              </span>
+                              {slot.notes && (
+                                <span className="text-[8px] text-white/65 leading-tight mt-1 truncate opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+                                  {slot.notes}
+                                </span>
+                              )}
+                            </div>
+                            <div className="absolute bottom-1 left-1">
+                              <span className={`inline-flex w-fit rounded border px-1.5 py-px text-[8px] font-logik-extended-bold uppercase tracking-wide ${boTone}`}>
+                                {slot.boFormat.toUpperCase()}
+                              </span>
+                            </div>
+                            <div className="absolute bottom-1 right-1">
+                              {isMySlot ? (
+                                <button
+                                  type="button"
+                                  onClick={(e) => { e.stopPropagation(); handleDeleteScrimSlot(slot.id); }}
+                                  className="p-1 rounded-md border border-white/20 bg-white/5 text-white/70 hover:text-red-300 hover:border-red-300/45 hover:bg-white/10 transition-colors"
+                                >
+                                  <X className="w-3.5 h-3.5" />
+                                </button>
+                              ) : (
+                                <span className="flex items-center justify-center p-1 rounded-md border border-white/20 bg-white/5 group-hover:border-white/35 group-hover:bg-white/10 transition-colors">
+                                  <Copy className="w-3.5 h-3.5 text-white/75" />
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
+
           </div>
         </DialogContent>
       </Dialog>

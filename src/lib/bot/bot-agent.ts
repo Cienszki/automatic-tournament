@@ -935,6 +935,7 @@ async function handleChatForReadyCheck(
     await updateLobbySession(session.id, {
       readyState: updatedReadyState,
       state: bothReady ? 'ready_check' : session.state,
+      ...(bothReady ? { readyCheckStartedAt: new Date().toISOString() } : {}),
     });
 
     if (bothReady) {

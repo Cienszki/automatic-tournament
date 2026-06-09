@@ -104,7 +104,9 @@ export async function acceptMatchTime(token: string, matchId: string) {
         await matchRef.update({
             schedulingStatus: 'confirmed',
             status: 'scheduled',
-            scheduledFor: match.proposedTime,
+            // Store as UTC ISO string (consistent with the reschedule-approval path)
+            // so the orchestrator's new Date(match.scheduledFor) works correctly.
+            scheduledFor: proposedTime.toISOString(),
             proposedTime: null,
             proposingCaptainId: null,
             proposedById: null

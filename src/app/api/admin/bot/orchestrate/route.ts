@@ -285,7 +285,7 @@ async function executePendingSyncTasks(
   const tasksSnapshot = await db
     .collection('botSyncTasks')
     .where('status', '==', 'pending')
-    .where('scheduledAt', '<=', now)
+    .where('syncAt', '<=', now)
     .limit(10)
     .get();
 
@@ -555,10 +555,17 @@ async function enforceSessionTimeouts(
 
     // ── 4. READY CHECK STUCK ─────────────────────────────────────────────────
     if (session.state === 'ready_check') {
-      // Clock from when the session last updated into ready_check — approximate
-      // with `createdAt` since we don't store readyCheckStartedAt yet
+      // Clock starts when both teams declared ready (readyCheckStartedAt),
+      // falling back to startGameSentAt then lobbyCreatedAt. createdAt is NOT
+      // used — it's set at session creation (15+ min before lobby opens) and
+      // would cause immediate cancellation.
       const readyCheckTimeoutMin = cfg?.readyCheckTimeoutMinutes ?? 10;
-      const elapsedMin = (now - new Date(session.createdAt).getTime()) / 60000;
+      const clockStart =
+        (session as LobbySession & { readyCheckStartedAt?: string }).readyCheckStartedAt
+        ?? session.startGameSentAt
+        ?? session.lobbyCreatedAt
+        ?? session.createdAt;
+      const elapsedMin = (now - new Date(clockStart).getTime()) / 60000;
       if (elapsedMin >= readyCheckTimeoutMin) {
         await cancelSession(
           `Stuck in ready_check for ${Math.round(elapsedMin)} minutes without the game launching`,
