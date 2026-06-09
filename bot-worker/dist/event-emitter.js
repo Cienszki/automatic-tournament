@@ -210,12 +210,14 @@ class EventBridge {
     // ─── Heartbeat ─────────────────────────────────────────────────────
     async sendHeartbeat() {
         try {
-            await this.emitEvent({
-                type: 'heartbeat',
-                botAccountId: this.botAccountId,
-                status: this.dotaClient.isConnected ? 'connected' : 'disconnected',
-                currentSessionId: this.currentSessionId || undefined,
-                timestamp: new Date().toISOString(),
+            // Heartbeats update botAccounts DIRECTLY — they must NOT go through the botEvents
+            // queue. A 30s-per-bot event stream floods the queue, and the orchestrator
+            // processes events oldest-first with a per-cycle limit, so heartbeats stall the
+            // lobby lifecycle events (create/invite/ready/start) behind them. Only liveness
+            // fields here — never the lifecycle `status`, which is owned by the orchestrator.
+            await this.db.collection('botAccounts').doc(this.botAccountId).update({
+                lastHeartbeat: new Date().toISOString(),
+                connected: !!this.dotaClient.isConnected,
             });
         }
         catch {
