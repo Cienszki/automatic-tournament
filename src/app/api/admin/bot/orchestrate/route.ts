@@ -6,6 +6,7 @@ import { NextResponse } from 'next/server';
 import { getAdminDb, getAdminAuth } from '@/server/lib/admin';
 import { assignBotsToSessions, healthCheckBots } from '@/lib/bot/bot-pool-manager';
 import { processUnhandledBotEvents, driveActiveSessions, processLateArrival } from '@/lib/bot/bot-agent';
+import { forceImportGameAdmin } from '@/lib/pdl-admin-actions';
 import type { Match } from '@/lib/definitions';
 import type { TournamentBotConfig, LobbySession } from '@/types/lobby-bot';
 
@@ -247,7 +248,8 @@ async function scheduleUpcomingMatches(
     if (nextGameNumber > seriesLength) continue; // Series already complete
 
     // Skip if the match already has a winner or is completed (series decided early)
-    if (match.winnerId !== undefined || match.status === 'completed') continue;
+    // Use != null (loose) to treat both null and undefined as "no winner yet"
+    if (match.winnerId != null || match.status === 'completed') continue;
 
     // Check if a lobby session already exists for this match + game number
     const existingSessionSnapshot = await db
@@ -295,52 +297,47 @@ async function executePendingSyncTasks(
     const task = taskDoc.data() as {
       tournamentId: string;
       matchId: string;
-      lobbySessionId: string;
+      sessionId: string;
+      dotaMatchId: number;
       status: string;
     };
 
     try {
-      // Mark as processing
       await taskDoc.ref.update({ status: 'processing', startedAt: new Date().toISOString() });
 
-      // Trigger match sync - call the existing sync API internally
-      // For PDL, we use the match import/sync mechanism
-      const tournamentDoc = await db.collection('tournaments').doc(task.tournamentId).get();
-      const tournamentData = tournamentDoc.data();
+      // Resolve radiant/dire team IDs from the lobby session
+      const sessionDoc = await db.collection('botLobbySessions').doc(task.sessionId).get();
+      if (!sessionDoc.exists) {
+        throw new Error(`Lobby session ${task.sessionId} not found`);
+      }
+      const session = sessionDoc.data() as LobbySession;
+      const radiantTeamId = session.radiantTeam.teamId;
+      const direTeamId = session.direTeam.teamId;
 
-      if (tournamentData?.leagueId) {
-        // For league tournaments, trigger OpenDota sync
-        const matchDoc = await db
-          .collection('tournaments')
-          .doc(task.tournamentId)
-          .collection('matches')
-          .doc(task.matchId)
-          .get();
+      // Attempt the actual OpenDota import via the PDL pipeline
+      // (uses tournaments/{id}/matches/ collection — correct for all tournaments)
+      const result = await forceImportGameAdmin(
+        task.tournamentId,
+        task.dotaMatchId,
+        task.matchId,
+        radiantTeamId,
+        direTeamId
+      );
 
-        if (matchDoc.exists) {
-          // Mark the lobby session as syncing
-          const sessionRef = db.collection('botLobbySessions').doc(task.lobbySessionId);
-          await sessionRef.update({ state: 'syncing', updatedAt: new Date().toISOString() });
-
-          // The actual sync is handled by the existing match import infrastructure
-          // We just flag the match for sync processing
-          await db
-            .collection('tournaments')
-            .doc(task.tournamentId)
-            .collection('matches')
-            .doc(task.matchId)
-            .update({ pendingSync: true, lastSyncRequest: new Date().toISOString() });
-
-          // Mark session completed
-          await sessionRef.update({ state: 'completed', updatedAt: new Date().toISOString() });
-        }
+      if (!result.success && result.message.includes('not yet parsed')) {
+        // OpenDota hasn't finished parsing — retry in 10 minutes
+        const retryAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+        await taskDoc.ref.update({ status: 'pending', syncAt: retryAt, lastRetryAt: now });
+        console.log(`[SyncTasks] Game ${task.dotaMatchId} not yet parsed — scheduled retry at ${retryAt}`);
+        continue;
       }
 
-      // Mark task as completed
-      await taskDoc.ref.update({
-        status: 'completed',
-        completedAt: new Date().toISOString(),
-      });
+      if (!result.success) {
+        throw new Error(result.message);
+      }
+
+      await taskDoc.ref.update({ status: 'completed', completedAt: new Date().toISOString() });
+      console.log(`[SyncTasks] Synced game ${task.dotaMatchId} for match ${task.matchId}: ${result.message}`);
       executed++;
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Unknown error';
