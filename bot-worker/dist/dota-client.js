@@ -633,6 +633,19 @@ _coinTossTimer = null;
             return undefined;
         return this.longToString(lobby.lobby_id);
     }
+    /** The bot's OWN account id (Steam32) once logged in — used so we never kick ourselves. */
+    getSelfSteamId32() {
+        try {
+            const raw = this.steam && this.steam.steamID ? this.steam.steamID.toString() : null;
+            if (!raw)
+                return null;
+            const acct = BigInt(raw) - BigInt('76561197960265728');
+            return acct > 0n ? acct.toString() : null;
+        }
+        catch {
+            return null;
+        }
+    }
     /** Current CSODOTALobby.state as a number, or undefined if not in a lobby. */
     getCurrentLobbyState() {
         const lobby = this._currentLobby;

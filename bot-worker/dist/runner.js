@@ -79,6 +79,7 @@ class Runner {
         const botSnap = await this.db.collection('botAccounts').doc(this.botAccountId).get();
         if (!botSnap.exists) { logger.error(`[Runner] Bot account ${this.botAccountId} not found`); return 1; }
         const bot = botSnap.data();
+        this.botDocSteamId32 = bot.steamId32 || null; // confirmed precisely after login (getSelfSteamId32)
 
         this.botConfig = await this.loadBotConfig(this.session.tournamentId);
         if (!this.botConfig) { logger.error(`[Runner] No bot config for tournament ${this.session.tournamentId}`); return 1; }
@@ -96,7 +97,10 @@ class Runner {
 
         await this.updateBotStatus('connecting');
         await this.dota.connect();
-        logger.info('[Runner] Connected to Steam + Dota 2 GC');
+        // The host bot sits in the lobby's player pool; record its own Steam32 so enforcement
+        // never tries to kick it (the GC ignores kicking the host, but it spams chat otherwise).
+        this.botSteamId32 = this.dota.getSelfSteamId32() || this.botDocSteamId32 || null;
+        logger.info(`[Runner] Connected to Steam + Dota 2 GC (self=${this.botSteamId32 || 'unknown'})`);
 
         this.startHeartbeat();
         this.watchSessionDoc();
@@ -325,10 +329,13 @@ class Runner {
         if (!this.gameStarted && inProgress) {
             this.gameStarted = true;
             const dotaMatchId = Number(data.matchId) || 0;
-            await this.updateSession({ state: 'in_game', gameStartedAt: nowIso() });
+            // Capture which session-team is on which Dota side NOW (post coin toss), so the
+            // game outcome maps to the right team even when they swapped sides.
+            const currentGameSides = this.captureGameSides(players);
+            await this.updateSession({ state: 'in_game', gameStartedAt: nowIso(), currentGameSides });
             await this.updateBotStatus('in_game');
             this.clearTimer('readyTimeout');
-            logger.info(`[Runner] Game ${this.session.currentGameNumber} started (dotaMatchId=${dotaMatchId})`);
+            logger.info(`[Runner] Game ${this.session.currentGameNumber} started (dotaMatchId=${dotaMatchId}) sides=${JSON.stringify(currentGameSides)}`);
         }
 
         // Game end: POSTGAME with a decisive outcome.
@@ -342,7 +349,9 @@ class Runner {
     }
 
     async enforce(players) {
-        const whitelist = this.botConfig.whitelist ?? [];
+        // Authorize the bot's own account (it sits in the player pool) so we never kick/flag it.
+        const whitelist = [...(this.botConfig.whitelist ?? [])];
+        if (this.botSteamId32) whitelist.push({ steamId32: this.botSteamId32 });
         const cfg = this.botConfig.enforcement ?? { autoKickUnauthorized: true, autoKickWrongSlot: false, wrongSlotGracePeriodSeconds: 30 };
         const action = L.evaluateEnforcement(this.session, players, cfg, whitelist);
         for (const kick of action.kickPlayers) {
@@ -401,12 +410,18 @@ class Runner {
         const teamName = teamAssignment.teamName;
 
         if (isReady) {
-            // Validate all of this team's players are seated on a SINGLE side (live snapshot).
+            // Sides are NOT pre-assigned (coin toss decides). A team is ready when ALL its
+            // players are seated TOGETHER on one side — either side is fine, as long as they're
+            // not split. We don't require a specific side per player.
             const live = this.dota.getCurrentLobbyPlayers().map((p) => ({ steamId32: p.steamId32, teamSide: p.team }));
-            const onCorrectSide = new Set(live.filter((p) => p.teamSide === team).map((p) => p.steamId32));
-            const missing = teamAssignment.expectedPlayers.filter((p) => !onCorrectSide.has(p.steamId32));
-            if (missing.length > 0) {
-                const missingNames = missing.map((p) => p.nickname).join(', ');
+            const side = L.teamSeatedSide(teamAssignment, live);
+            if (!side) {
+                const ids = new Set(teamAssignment.expectedPlayers.map((p) => p.steamId32));
+                const seatedIds = new Set(live.filter((p) => ids.has(p.steamId32) && (p.teamSide === 'radiant' || p.teamSide === 'dire')).map((p) => p.steamId32));
+                const notSeated = teamAssignment.expectedPlayers.filter((p) => !seatedIds.has(p.steamId32));
+                const missingNames = notSeated.length > 0
+                    ? notSeated.map((p) => p.nickname).join(', ')
+                    : 'players split across Radiant and Dire — sit together on one side';
                 await this.sendChat(L.applyPlaceholders(chat.teamNotReadyMessage, { player_name: playerName, team_name: teamName, missing: missingNames }));
                 return; // do not mark ready
             }
@@ -415,6 +430,17 @@ class Runner {
             if (team === 'radiant') { readyState.radiantReady = true; readyState.radiantReadyBy = msg.steamId32; }
             else { readyState.direReady = true; readyState.direReadyBy = msg.steamId32; }
             const bothReady = readyState.radiantReady && readyState.direReady;
+
+            // Before launching, the two teams must be on OPPOSITE sides.
+            if (bothReady) {
+                const rSide = L.teamSeatedSide(this.session.radiantTeam, live);
+                const dSide = L.teamSeatedSide(this.session.direTeam, live);
+                if (rSide && dSide && rSide === dSide) {
+                    await this.updateSession({ readyState });
+                    await this.sendChat(`[BOT] Both teams are on the ${rSide.toUpperCase()} side. One team must move to the other side before the match can start.`);
+                    return;
+                }
+            }
 
             await this.updateSession({
                 readyState,
@@ -452,10 +478,33 @@ class Runner {
         }
     }
 
+    /**
+     * Map session-teams to the Dota sides they currently occupy. Returns
+     * { radiant: teamId|null, dire: teamId|null }. Fills a missing side by elimination.
+     */
+    captureGameSides(players) {
+        const rTeam = this.session.radiantTeam, dTeam = this.session.direTeam;
+        const map = { radiant: null, dire: null };
+        const rSide = L.teamSeatedSide(rTeam, players);
+        const dSide = L.teamSeatedSide(dTeam, players);
+        if (rSide) map[rSide] = rTeam.teamId;
+        if (dSide) map[dSide] = dTeam.teamId;
+        if (map.radiant && !map.dire) map.dire = (map.radiant === rTeam.teamId) ? dTeam.teamId : rTeam.teamId;
+        if (map.dire && !map.radiant) map.radiant = (map.dire === rTeam.teamId) ? dTeam.teamId : rTeam.teamId;
+        return map;
+    }
+
     // ─── Series game-end handler ─────────────────────────────────────────────────
     async handleGameEnded(dotaMatchId, radiantWin) {
-        const winnerSide = radiantWin ? 'radiant' : 'dire';
-        const winnerTeamId = radiantWin ? this.session.radiantTeam.teamId : this.session.direTeam.teamId;
+        const dotaWinnerSide = radiantWin ? 'radiant' : 'dire';
+        // Map the Dota-side outcome to a team via the side mapping captured at game start
+        // (teams may sit on either side). Fall back to the session label if unknown.
+        const sides = this.session.currentGameSides;
+        const winnerTeamId = (sides && sides[dotaWinnerSide])
+            ? sides[dotaWinnerSide]
+            : (radiantWin ? this.session.radiantTeam.teamId : this.session.direTeam.teamId);
+        // Record the winner by the SESSION's side label for that team (stable team identity).
+        const winnerSide = (winnerTeamId === this.session.radiantTeam.teamId) ? 'radiant' : 'dire';
 
         const completedGameIds = [...this.session.completedGameIds, dotaMatchId];
         const completedGameWinners = [...this.session.completedGameWinners, winnerSide];
@@ -546,6 +595,7 @@ class Runner {
             scheduledMatchTime,
             lateVote: null,
             lateWaitUntil: null,
+            currentGameSides: null,
         });
 
         await this.createLobbyForCurrentGame();

@@ -172,6 +172,21 @@ function findSplitTeams(session, players) {
     return split;
 }
 
+/**
+ * The single Dota side ('radiant' | 'dire') that ALL of a team's expected players occupy,
+ * or null if not everyone is seated on a team slot yet, or they're split across both sides.
+ * Sides are NOT pre-assigned — a team may sit on either side (the coin toss decides), so this
+ * is how we both gate the ready-check (team must be cohesive) and learn the team→side mapping.
+ */
+function teamSeatedSide(teamAssignment, players) {
+    const ids = new Set(teamAssignment.expectedPlayers.map((p) => p.steamId32));
+    const seated = players.filter((p) => ids.has(p.steamId32) && (p.teamSide === 'radiant' || p.teamSide === 'dire'));
+    if (seated.length < teamAssignment.expectedPlayers.length) return null; // not everyone seated
+    const sides = new Set(seated.map((p) => p.teamSide));
+    if (sides.size !== 1) return null; // split across both sides
+    return [...sides][0];
+}
+
 /** Count how many of each team's expected players are currently seated/in the lobby. */
 function computeTeamPresence(session, lobbyPlayers) {
     const present = new Set((lobbyPlayers ?? session.lastLobbyPlayers ?? []).map((p) => p.steamId32));
@@ -277,6 +292,7 @@ module.exports = {
     isUnreadyCommand,
     evaluateEnforcement,
     findSplitTeams,
+    teamSeatedSide,
     computeTeamPresence,
     calculateSeriesResult,
     getNextGameNumber,

@@ -132,6 +132,8 @@ async function scheduleUpcomingMatches(db, tournamentId, botConfig, tournamentDo
 
         const { fmt, totalGames, lobbySeriesType } = seriesTotals(match.series_format);
         const lobbyName = `${lobbyPrefix} - ${match.teamA?.name || 'TBA'} vs ${match.teamB?.name || 'TBA'}`;
+        // Use the admin-configured fixed password if set, otherwise generate a random one.
+        const fixedPassword = (botConfig.lobby?.password || '').trim();
 
         const session = {
             matchId: matchDoc.id,
@@ -139,7 +141,7 @@ async function scheduleUpcomingMatches(db, tournamentId, botConfig, tournamentDo
             botAccountId: '',
             state: 'pending',
             lobbyName,
-            lobbyPassword: generateLobbyPassword(),
+            lobbyPassword: fixedPassword || generateLobbyPassword(),
             radiantTeam: assignments.radiant,
             direTeam: assignments.dire,
             readyState: { radiantReady: false, direReady: false },
