@@ -124,22 +124,34 @@ async function assignPendingSessions() {
 }
 
 // ─── 3. SPAWN / rediscover ───────────────────────────────────────────────────
+// ensureRunners is the SINGLE place that spawns runners — both for fresh assignments and
+// for respawning after a crash (gated by `notBefore`). onRunnerExit never spawns directly;
+// it only records a backoff. This prevents the double-spawn storm where a setTimeout respawn
+// and this tick both launched a runner for the same bot, causing LogonSessionReplaced churn.
 async function ensureRunners() {
     const snap = await db.collection('botLobbySessions').where('state', 'in', ACTIVE_STATES).get();
+    const now = Date.now();
     for (const doc of snap.docs) {
         const session = doc.data();
         if (!session.botAccountId) continue;
         const existing = runners.get(doc.id);
-        if (existing && existing.child && existing.child.exitCode === null) continue; // already running
+        if (existing) {
+            if (existing.child && existing.child.exitCode === null) continue; // already running
+            if (existing.notBefore && now < existing.notBefore) continue;     // in crash backoff
+        }
         spawnRunner(doc.id, session.botAccountId);
     }
 }
 
 function spawnRunner(sessionId, botAccountId) {
     if (shuttingDown) return;
-    const state = runners.get(sessionId) ?? { child: null, botAccountId, restartCount: 0, lastStart: 0, stopping: false };
+    const state = runners.get(sessionId) ?? { child: null, botAccountId, restartCount: 0, lastStart: 0, stopping: false, notBefore: 0 };
+    // Hard guard: never launch a second runner while one is alive (a bot can host only one
+    // session — a duplicate login triggers LogonSessionReplaced and crash-loops both).
+    if (state.child && state.child.exitCode === null) return;
     state.botAccountId = botAccountId;
     state.lastStart = Date.now();
+    state.notBefore = 0;
     runners.set(sessionId, state);
 
     logger.info(`[Conductor] Spawning runner for session ${sessionId} (bot ${botAccountId})`);
@@ -191,10 +203,11 @@ async function onRunnerExit(sessionId, code, signal) {
         runners.delete(sessionId);
         return;
     }
+    // Schedule a backoff; ensureRunners (the single spawner) will respawn after notBefore.
     const backoffMs = Math.min(2000 * Math.pow(2, state.restartCount), 32000);
     state.restartCount += 1;
-    logger.warn(`[Conductor] Runner for session ${sessionId} crashed (code=${code} signal=${signal}) — respawning in ${backoffMs / 1000}s (attempt ${state.restartCount}/${MAX_RESPAWNS})`);
-    setTimeout(() => spawnRunner(sessionId, state.botAccountId), backoffMs);
+    state.notBefore = Date.now() + backoffMs;
+    logger.warn(`[Conductor] Runner for session ${sessionId} crashed (code=${code} signal=${signal}) — will respawn after ~${Math.round(backoffMs / 1000)}s (attempt ${state.restartCount}/${MAX_RESPAWNS})`);
 }
 
 async function releaseAccount(botAccountId) {
@@ -233,14 +246,18 @@ async function cancelStuckPending() {
 }
 
 // ─── Loops ───────────────────────────────────────────────────────────────────
+let workTickRunning = false;
 async function workTick() {
-    if (shuttingDown) return;
+    if (shuttingDown || workTickRunning) return; // never overlap (avoids racing spawns)
+    workTickRunning = true;
     try {
         await assignPendingSessions();
         await ensureRunners();
         await cancelStuckPending();
     } catch (e) {
         logger.error('[Conductor] work tick error', e);
+    } finally {
+        workTickRunning = false;
     }
 }
 
@@ -252,10 +269,9 @@ async function main() {
     }
     db = initFirebase();
 
-    // Rediscover active sessions immediately (respawn runners that survived a Conductor
-    // restart — they reattach to their live lobbies from the GC cache).
-    await ensureRunners();
-
+    // The first workTick rediscovers active sessions and respawns their runners (which
+    // reattach to live lobbies from the GC cache). Routed through workTick so the overlap
+    // guard applies and we never double-spawn during startup.
     setInterval(() => void workTick(), WORK_TICK_MS);
     setInterval(() => void scheduleLoop(), SCHEDULE_TICK_MS);
     void scheduleLoop();
