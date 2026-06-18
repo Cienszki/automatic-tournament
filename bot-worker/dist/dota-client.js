@@ -483,52 +483,48 @@ _coinTossTimer = null;
     async startGame() {
         if (!this.isConnected)
             throw new Error('Not connected to Dota 2 GC');
-        // First launch. With Automatic selection priority this opens the coin toss
-        // (side / pick-order selection); the game only actually starts after a SECOND
-        // launch, which we fire automatically once both teams have chosen (see
-        // _maybeFinishCoinToss, driven by practiceLobbyUpdate). With Manual priority a
-        // single launch starts the game directly.
-        await this._launchPracticeLobby();
+        // With Automatic selection priority the first launch opens the coin toss (side /
+        // pick-order selection); the game only starts after a SECOND launch, fired once both
+        // teams choose (see _maybeFinishCoinToss, driven by practiceLobbyUpdate). With Manual
+        // priority a single launch starts the game directly.
         const rules = this._selectionPriorityRules ?? (this._currentLobby ? Number(this._currentLobby.selection_priority_rules) : 0);
         const automatic = Number(rules) === 1;
         if (automatic) {
+            // Arm coin-toss handling BEFORE launching. node-dota2's launchPracticeLobby
+            // callback is unreliable (often never fires) — we must NOT await/throw on it,
+            // or we'd tear down the launch even though the GC opened the toss, and never
+            // fire the second launch. The GC still processes the launch; we drive completion
+            // off practiceLobbyUpdate, with a 90s fallback so it can never hang at selection.
             this._awaitingCoinToss = true;
-            logger_js_1.logger.info('Coin toss opened — waiting for both teams to pick side/order, then will relaunch to start');
-            // Safety net: if we somehow miss the "both chose" update, relaunch anyway
-            // after 90s so an official match can't hang forever at side selection.
             if (this._coinTossTimer)
                 clearTimeout(this._coinTossTimer);
             this._coinTossTimer = setTimeout(() => {
                 if (this._awaitingCoinToss) {
                     this._awaitingCoinToss = false;
                     logger_js_1.logger.warn('Coin toss timeout (90s) — firing fallback second launch');
-                    this.dota2.launchPracticeLobby((err) => {
-                        if (err)
-                            logger_js_1.logger.error('Fallback second launch failed', err);
-                    });
+                    this._fireLaunch();
                 }
             }, 90000);
+            logger_js_1.logger.info('Coin toss opened — waiting for both teams to pick side/order, then will relaunch to start');
         }
+        // Fire the (first) launch. Fire-and-forget: never block on the unreliable ack.
+        this._fireLaunch();
         return { coinToss: automatic };
     }
-    /** Fire a single launchPracticeLobby and resolve when the GC ack's it. */
-    _launchPracticeLobby() {
-        return new Promise((resolve, reject) => {
-            const timeout = setTimeout(() => {
-                reject(new Error('Game start timeout (30s)'));
-            }, 30000);
+    /** Send a launchPracticeLobby. Fire-and-forget — the GC ack callback is unreliable. */
+    _fireLaunch() {
+        try {
             this.dota2.launchPracticeLobby((err) => {
-                clearTimeout(timeout);
-                if (err) {
-                    logger_js_1.logger.error('Failed to launch lobby', err);
-                    reject(err);
-                }
-                else {
-                    logger_js_1.logger.info('launchPracticeLobby sent');
-                    resolve();
-                }
+                if (err)
+                    logger_js_1.logger.error('launchPracticeLobby returned an error', err);
+                else
+                    logger_js_1.logger.info('launchPracticeLobby acked');
             });
-        });
+            logger_js_1.logger.info('launchPracticeLobby sent');
+        }
+        catch (e) {
+            logger_js_1.logger.error('Failed to send launchPracticeLobby', e);
+        }
     }
     /**
      * When awaiting a coin toss, watch the lobby for both teams' selection choices.
