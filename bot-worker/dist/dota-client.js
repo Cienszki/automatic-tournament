@@ -233,7 +233,8 @@ _allowedPlayers = null;
 _selectionPriorityRules = null; // 0=Manual, 1=Automatic (coin toss)
 _awaitingCoinToss = false;      // true between the 1st and 2nd launchPracticeLobby
 _coinTossTimer = null;
-    _lobbyChatChannel = null; // "Lobby_<id>" once joined, for sending lobby chat
+    _lobbyChatChannel = null; // "Lobby_<id>" once join is requested, for sending lobby chat
+    _lobbyChatJoined = false;  // true once the GC confirms the join (chatJoined event)
     constructor(config) {
         super();
         this.config = config;
@@ -399,6 +400,11 @@ _coinTossTimer = null;
         // DOTAChannelType_Lobby = 3. sendMessage requires the exact joined channel_name.
         if (!this._lobbyChatChannel)
             this._joinLobbyChat();
+        // node-dota2's joinChat is async; sending before the GC confirms the join silently
+        // fails ("channel you have not joined"). Wait for the chatJoined confirmation first.
+        if (this._lobbyChatChannel && !this._lobbyChatJoined) {
+            await this._awaitLobbyChatJoin();
+        }
         if (this._lobbyChatChannel) {
             this.dota2.sendMessage(message, this._lobbyChatChannel, 3);
         }
@@ -416,6 +422,7 @@ _coinTossTimer = null;
         if (this._lobbyChatChannel === channel)
             return;
         try {
+            this._lobbyChatJoined = false; // wait for the GC's chatJoined confirmation before sending
             this.dota2.joinChat(channel, 3); // DOTAChannelType_Lobby
             this._lobbyChatChannel = channel;
             logger_js_1.logger.info('Joining lobby chat channel ' + channel);
@@ -423,6 +430,20 @@ _coinTossTimer = null;
         catch (e) {
             logger_js_1.logger.warn('Failed to join lobby chat channel', e);
         }
+    }
+    /** Resolve once the lobby chat channel join is confirmed by the GC (or after timeout). */
+    _awaitLobbyChatJoin(timeoutMs = 8000) {
+        if (this._lobbyChatJoined)
+            return Promise.resolve(true);
+        return new Promise((resolve) => {
+            const start = Date.now();
+            const iv = setInterval(() => {
+                if (this._lobbyChatJoined || Date.now() - start > timeoutMs) {
+                    clearInterval(iv);
+                    resolve(this._lobbyChatJoined);
+                }
+            }, 250);
+        });
     }
     /** Move the host bot out of its auto-assigned team slot into the unassigned player pool. */
     _moveSelfToPlayerPool() {
@@ -530,6 +551,7 @@ _coinTossTimer = null;
     async leaveLobby() {
         this._clearCoinToss();
         this._lobbyChatChannel = null;
+        this._lobbyChatJoined = false;
         if (!this.isConnected)
             return;
         return new Promise((resolve) => {
@@ -712,6 +734,14 @@ _coinTossTimer = null;
                 matchId: this.longToString(lobby.match_id),
                 matchOutcome: (lobby.match_outcome !== undefined && lobby.match_outcome !== null) ? Number(lobby.match_outcome) : 0,
             });
+        });
+        // Chat channel join confirmation — gates sendChatMessage so we don't post before
+        // the GC has actually added us to the Lobby_<id> channel.
+        this.dota2.on('chatJoined', (channelData) => {
+            if (channelData && channelData.channel_name && channelData.channel_name === this._lobbyChatChannel) {
+                this._lobbyChatJoined = true;
+                logger_js_1.logger.info('Lobby chat channel joined: ' + channelData.channel_name);
+            }
         });
         // Chat messages in lobby
         this.dota2.on('chatMessage', (_channel, senderName, message, chatData) => {
