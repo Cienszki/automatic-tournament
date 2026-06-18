@@ -1132,6 +1132,19 @@ function SettingsView({
                   </Select>
                 </div>
 
+                {/* Lobby Password */}
+                <div className="space-y-2">
+                  <Label>Hasło lobby (opcjonalne)</Label>
+                  <Input
+                    value={config.lobby.password ?? ''}
+                    onChange={(e) => updateLobby('password', e.target.value)}
+                    placeholder="Puste = losowe hasło dla każdego meczu"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Stałe hasło dla wszystkich lobby tego turnieju. Puste = bot generuje losowe hasło dla każdej sesji.
+                  </p>
+                </div>
+
                 {/* Pause Setting */}
                 <div className="space-y-2">
                   <Label>Pauzy</Label>
