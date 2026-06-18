@@ -38,6 +38,15 @@ const ACCOUNT_COOLDOWN_MS = 2 * 60 * 1000; // space out lobby creates per accoun
 const MAX_RESPAWNS = 5;           // crash respawns before giving up on a session
 const RESPAWN_RESET_MS = 60 * 60 * 1000;
 
+// Result-sync trigger: the post-match OpenDota import + standings recalc lives in the
+// Next.js app (forceImportGameAdmin), so the Conductor drains botSyncTasks by POSTing to
+// the web app's sync-only /orchestrate endpoint on a timer — replacing Cloud Scheduler.
+// GATED: stays OFF unless BOTH env vars are set, so we never trigger the (still-deployed)
+// OLD full /orchestrate before the slimmed version is live (it would fight the Conductor).
+const SYNC_TICK_MS = 5 * 60 * 1000;
+const WEB_SYNC_URL = process.env.WEB_SYNC_URL || '';     // e.g. https://<app>/api/admin/bot/orchestrate
+const CRON_SECRET = process.env.CRON_SECRET || '';
+
 function nowIso() { return new Date().toISOString(); }
 
 /** sessionId → supervised runner state */
@@ -75,6 +84,27 @@ async function scheduleLoop() {
         }
     } catch (e) {
         logger.error('[Conductor] schedule loop error', e);
+    }
+}
+
+// ─── Result-sync trigger (replaces Cloud Scheduler) ──────────────────────────
+async function syncLoop() {
+    if (shuttingDown || !WEB_SYNC_URL || !CRON_SECRET) return;
+    try {
+        const res = await fetch(WEB_SYNC_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${CRON_SECRET}` },
+            body: '{}',
+        });
+        const text = await res.text();
+        if (!res.ok) {
+            logger.warn(`[Conductor] sync trigger HTTP ${res.status}: ${text.slice(0, 200)}`);
+            return;
+        }
+        let executed; try { executed = JSON.parse(text).syncTasksExecuted; } catch { /* ignore */ }
+        if (executed) logger.info(`[Conductor] sync trigger ok — ${executed} task(s) executed`);
+    } catch (e) {
+        logger.warn('[Conductor] sync trigger failed', e);
     }
 }
 
@@ -276,6 +306,15 @@ async function main() {
     setInterval(() => void scheduleLoop(), SCHEDULE_TICK_MS);
     void scheduleLoop();
     void workTick();
+
+    if (WEB_SYNC_URL && CRON_SECRET) {
+        setInterval(() => void syncLoop(), SYNC_TICK_MS);
+        void syncLoop();
+        logger.info(`[Conductor] Result-sync trigger enabled → ${WEB_SYNC_URL} every ${SYNC_TICK_MS / 60000}min`);
+    } else {
+        logger.info('[Conductor] Result-sync trigger DISABLED (set WEB_SYNC_URL + CRON_SECRET to enable)');
+    }
+
     logger.info('[Conductor] Running. Watching for sessions to schedule, assign, and supervise.');
 
     const shutdown = (signal) => {
