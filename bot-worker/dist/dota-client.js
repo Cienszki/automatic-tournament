@@ -63,6 +63,23 @@ const Dota2 = __importStar(require("dota2"));
 const events_1 = require("events");
 const logger_js_1 = require("./logger.js");
 
+// node-dota2's createPracticeLobby filters options through Dota2._lobbyOptions (a key
+// whitelist) before building CMsgPracticeLobbySetDetails. That whitelist OMITS
+// selection_priority_rules, so the field is silently stripped and every lobby is created
+// as Manual — a single launchPracticeLobby then starts the game directly with NO coin toss.
+// The proto itself DOES have the field (CMsgPracticeLobbySetDetails.selection_priority_rules
+// = 46), so we just need it whitelisted. Patch the real dota2 module object that _parseOptions
+// reads. Idempotent; non-fatal if the internal shape ever changes.
+try {
+    const _dota2mod = require('dota2');
+    if (_dota2mod._lobbyOptions && _dota2mod._lobbyOptions.selection_priority_rules === undefined) {
+        _dota2mod._lobbyOptions.selection_priority_rules = 'number';
+        logger_js_1.logger.info('Patched dota2 _lobbyOptions to allow selection_priority_rules (coin toss)');
+    }
+} catch (e) {
+    logger_js_1.logger.warn('Could not patch dota2 _lobbyOptions for selection_priority_rules', e);
+}
+
 /**
  * Creates a shim that makes steam-user look like an old steam.SteamClient
  * so that dota2@7 (which requires the old steam API) works with steam-user.
