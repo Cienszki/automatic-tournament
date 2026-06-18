@@ -212,8 +212,19 @@ class Runner {
                 return;
             }
             // Fresh session, but a STALE lobby (from a previous session/crash) is cached on
-            // this account. Abandon it before creating ours, or we'd manage the wrong lobby.
+            // this account. If it's an IN-GAME lobby (e.g. a session cancelled mid-game), the
+            // bot can't create a new lobby over it — retrying just crash-loops (the create
+            // times out). Route around it: cooldown this bot and bounce the session back to
+            // the pool for a clean bot. A non-game stale lobby we can simply leave + recreate.
             const staleId = this.dota.getCurrentLobbyId();
+            const cachedState = this.dota.getCurrentLobbyState();
+            const inGame = cachedState === LOBBY_STATE.SERVERSETUP || cachedState === LOBBY_STATE.RUN
+                || cachedState === LOBBY_STATE.POSTGAME || cachedState === LOBBY_STATE.SERVERASSIGN;
+            if (inGame) {
+                logger.warn(`[Runner] Bot stuck in a prior in-game lobby ${staleId} (state ${cachedState}) — bouncing session to a clean bot`);
+                await this.bounceToCleanBot(`bot stuck in a prior game (lobby ${staleId})`);
+                return;
+            }
             logger.warn(`[Runner] Leaving stale cached lobby ${staleId} before creating a fresh one`);
             try { await this.dota.leaveLobby(); } catch (e) { logger.warn('[Runner] leave stale lobby failed', e); }
         } else if (ourLobby) {
@@ -773,6 +784,52 @@ class Runner {
         if (chatMsg) await this.sendChat(chatMsg);
         await this.updateSession({ state: 'cancelled', cancelReason: reason, completedAt: nowIso() });
         await this.finishUp(0, 'cancelled', /*alreadyPersisted*/ true);
+    }
+
+    /**
+     * The assigned bot can't host this session (e.g. it's stuck in a previous in-game lobby).
+     * Put the bot on a long cooldown so the pool skips it until its game clears, and bounce the
+     * session back to 'pending' so the Conductor reassigns it to a clean bot. After too many
+     * bounces (no clean bot available), give up and mark the session error.
+     */
+    async bounceToCleanBot(reason) {
+        if (this.finalizing) return;
+        this.finalizing = true;
+        for (const name of Object.keys(this.timers)) this.clearTimer(name);
+        if (this.disconnectTimer) { clearTimeout(this.disconnectTimer); this.disconnectTimer = null; }
+        if (this.sessionUnsub) { try { this.sessionUnsub(); } catch { /* ignore */ } this.sessionUnsub = null; }
+
+        const reassignCount = (this.session.reassignCount || 0) + 1;
+        const MAX_REASSIGNS = 3;
+        try { if (this.dota) await this.dota.leaveLobby(); } catch { /* best-effort */ }
+
+        if (reassignCount > MAX_REASSIGNS) {
+            this.exitCode = 1;
+            try {
+                await this.sessionRef.update({
+                    state: 'error',
+                    error: { message: `Could not place lobby after ${MAX_REASSIGNS} bot reassignments: ${reason}`, code: 'NO_CLEAN_BOT', timestamp: nowIso() },
+                    updatedAt: nowIso(),
+                });
+            } catch { /* ignore */ }
+            logger.error(`[Runner] Session ${this.sessionId} exceeded ${MAX_REASSIGNS} reassignments — marking error`);
+        } else {
+            this.exitCode = 0;
+            // Long cooldown on the stuck bot so the Conductor's pool skips it until its game clears.
+            try {
+                await this.db.collection('botAccounts').doc(this.botAccountId).update({
+                    status: 'idle', busyWithSessionId: null, currentSessionId: null,
+                    cooldownUntil: new Date(now() + 30 * 60000).toISOString(), lastStuckAt: nowIso(), updatedAt: nowIso(),
+                });
+            } catch { /* ignore */ }
+            // Bounce the session back to the pool for a different bot.
+            try {
+                await this.sessionRef.update({ state: 'pending', botAccountId: '', reassignReason: reason, reassignCount, updatedAt: nowIso() });
+            } catch { /* ignore */ }
+            logger.info(`[Runner] Bounced session ${this.sessionId} to pending (reassign ${reassignCount}/${MAX_REASSIGNS}); bot ${this.botAccountId} on 30min cooldown`);
+        }
+        try { if (this.dota) await this.dota.disconnect(); } catch { /* ignore */ }
+        if (this.donePromiseResolve) this.donePromiseResolve();
     }
 
     // ─── Teardown ────────────────────────────────────────────────────────────────

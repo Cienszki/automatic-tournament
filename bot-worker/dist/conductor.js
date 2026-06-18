@@ -218,6 +218,15 @@ async function onRunnerExit(sessionId, code, signal) {
         return;
     }
 
+    // Bounced back to the pool (bot stuck) or reassigned to a different bot — do NOT respawn
+    // on this bot. The runner already set the stuck bot's cooldown; assignPendingSessions will
+    // pick a clean bot. (Don't call releaseAccount: it would shorten the runner's long cooldown.)
+    if (session.state === 'pending' || session.botAccountId !== state.botAccountId) {
+        logger.info(`[Conductor] Session ${sessionId} handed back to the pool (state=${session.state}, bot=${session.botAccountId || '-'}) — not respawning bot ${state.botAccountId}`);
+        runners.delete(sessionId);
+        return;
+    }
+
     // Crash mid-match. Respawn so the runner reattaches to its live lobby.
     if (Date.now() - state.lastStart > RESPAWN_RESET_MS) state.restartCount = 0;
     if (state.restartCount >= MAX_RESPAWNS) {
