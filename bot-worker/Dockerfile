@@ -56,4 +56,4 @@ COPY dist/ ./dist/
 # The only required env var is FIREBASE_SERVICE_ACCOUNT_BASE64.
 # Steam credentials are read from Firestore (botAccounts collection).
 
-CMD ["node", "dist/manager.js"]
+CMD ["node", "dist/conductor.js"]

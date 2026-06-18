@@ -428,14 +428,12 @@ export function BotTab(): React.ReactElement {
         body: JSON.stringify({ tournamentId: tournament.id }),
       });
       const data = await res.json() as {
-        lobbiesScheduled?: number;
-        botsAssigned?: number;
-        eventsProcessed?: number;
+        syncTasksExecuted?: number;
         errors?: string[];
         error?: string;
       };
       if (res.ok) {
-        const msg = `Przypisano botów: ${data.botsAssigned ?? 0}, zaplanowano sesji: ${data.lobbiesScheduled ?? 0}, zdarzeń: ${data.eventsProcessed ?? 0}${data.errors?.length ? ` | Błędy: ${data.errors.join('; ')}` : ''}`;
+        const msg = `Zsynchronizowano meczów: ${data.syncTasksExecuted ?? 0}${data.errors?.length ? ` | Błędy: ${data.errors.join('; ')}` : ''}`;
         setOrchestrateResult({ ok: data.errors?.length === 0, message: msg });
         await loadMonitoringData();
       } else {
@@ -2359,8 +2357,8 @@ function MonitorView({
             <CardTitle className="text-lg">Ręczny test bota</CardTitle>
           </div>
           <CardDescription>
-            Wymuś stworzenie sesji lobby dla konkretnego meczu i uruchom orkiestrator ręcznie.
-            Wymaga: bot włączony w Ustawieniach, konto bota ze statusem <strong>idle</strong>.
+            Wymuś stworzenie sesji lobby dla konkretnego meczu. Conductor (Railway) automatycznie
+            przypisze bota i otworzy lobby. Wymaga: bot włączony w Ustawieniach, konto bota ze statusem <strong>idle</strong>.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -2406,9 +2404,10 @@ function MonitorView({
 
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium">Uruchom orkiestrator</p>
+              <p className="text-sm font-medium">Synchronizuj wyniki meczów</p>
               <p className="text-xs text-muted-foreground">
-                Przypisuje boty do oczekujących sesji i przetwarza zdarzenia. Normalnie wywoływane co kilka minut.
+                Importuje zakończone gry z OpenDota i aktualizuje tabele. Planowanie lobby i przypisywanie
+                botów działa teraz w sposób ciągły na Conductorze (Railway). Normalnie wywoływane co kilka minut.
               </p>
             </div>
             <Button

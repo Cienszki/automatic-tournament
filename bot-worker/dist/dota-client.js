@@ -355,6 +355,15 @@ _coinTossTimer = null;
             if (options.leagueId) {
                 lobbyOptions.leagueid = options.leagueId;
             }
+            // Pre-populate the series score so game 2+ shows e.g. "1 - 0" in the Dota 2
+            // lobby UI. Safe to send 0/0 for game 1. radiant_series_wins / dire_series_wins
+            // map to CSODOTALobby fields the GC honours when series_type != 0.
+            if (options.radiantSeriesWins) {
+                lobbyOptions.radiant_series_wins = options.radiantSeriesWins;
+            }
+            if (options.direSeriesWins) {
+                lobbyOptions.dire_series_wins = options.direSeriesWins;
+            }
             // Selection priority: Automatic(1) = coin toss (side/pick selection), Manual(0) = none.
             if (options.selectionPriorityRules !== undefined && options.selectionPriorityRules !== null) {
                 lobbyOptions.selection_priority_rules = options.selectionPriorityRules;
@@ -601,6 +610,40 @@ _coinTossTimer = null;
         if (!lobby || lobby.lobby_id === undefined || lobby.lobby_id === null)
             return undefined;
         return this.longToString(lobby.lobby_id);
+    }
+    /** Current CSODOTALobby.state as a number, or undefined if not in a lobby. */
+    getCurrentLobbyState() {
+        const lobby = this._currentLobby;
+        if (!lobby || lobby.state === undefined || lobby.state === null)
+            return undefined;
+        return Number(lobby.state);
+    }
+    /** True if we currently hold a lobby — either freshly created or adopted from cache. */
+    hasLobby() {
+        return !!(this._currentLobby || (this.dota2 && this.dota2.Lobby));
+    }
+    /**
+     * Resume managing a lobby that already exists in the GC shared-object cache.
+     * After a runner crash/restart we log back in and node-dota2 repopulates its
+     * lobby cache (dota2.Lobby) from the GC ClientWelcome; its own practiceLobbyUpdate
+     * handler also sets this._currentLobby. This adopts whichever is present and
+     * rejoins the lobby chat channel so we can keep posting. Returns the lobby id, or
+     * null if there is nothing to reattach to.
+     *
+     * Idempotent: safe to call when already attached (it just re-ensures chat).
+     */
+    reattachToCachedLobby() {
+        const cached = this._currentLobby || (this.dota2 && this.dota2.Lobby) || null;
+        if (!cached)
+            return null;
+        this._currentLobby = cached;
+        if (cached.selection_priority_rules !== undefined && cached.selection_priority_rules !== null) {
+            this._selectionPriorityRules = Number(cached.selection_priority_rules);
+        }
+        this._joinLobbyChat();
+        const id = this.getCurrentLobbyId();
+        logger_js_1.logger.info(`Reattached to cached lobby ${id || 'unknown'}`);
+        return id || null;
     }
     /** Safely stringify a protobuf Long / number / string id. */
     longToString(v) {

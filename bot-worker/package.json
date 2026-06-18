@@ -3,9 +3,11 @@
   "version": "1.0.0",
   "private": true,
   "description": "Dota 2 lobby bot worker for the tournament platform",
-  "main": "dist/manager.js",
+  "main": "dist/conductor.js",
   "scripts": {
-    "start": "node dist/manager.js"
+    "start": "node dist/conductor.js",
+    "conductor": "node dist/conductor.js",
+    "runner": "node dist/runner.js"
   },
   "engines": {
     "node": ">=20"
