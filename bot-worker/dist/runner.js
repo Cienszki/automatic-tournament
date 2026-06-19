@@ -64,6 +64,7 @@ class Runner {
         this.lastPlayersJson = ''; // de-dupe lastLobbyPlayers field writes
         this.disconnectTimer = null;
         this.sessionUnsub = null;
+        this.welcomedPlayers = new Set(); // steamId32s already greeted (one welcome per player per lobby)
     }
 
     // ─── Boot ────────────────────────────────────────────────────────────────
@@ -252,6 +253,7 @@ class Runner {
 
         this.gameStarted = false;
         this.gameEndHandledFor = null;
+        this.welcomedPlayers.clear(); // greet players freshly in each game's lobby
         await this.updateSession({
             state: 'lobby_open',
             dotaLobbyId,
@@ -329,8 +331,9 @@ class Runner {
             await this.updateSession({ lastLobbyPlayers: playersForDoc });
         }
 
-        // Enforcement while the lobby is open / in ready-check.
+        // Enforcement + per-join welcome while the lobby is open / in ready-check.
         if (['lobby_open', 'ready_check'].includes(this.session.state)) {
+            await this.welcomeJoinedPlayers(players);
             await this.enforce(players);
         }
 
@@ -378,6 +381,28 @@ class Runner {
             for (const teamName of split) {
                 await this.sendChat(`[BOT] ${teamName}: your players are split across Radiant and Dire slots. Please sit together on one side before the game starts.`);
             }
+        }
+    }
+
+    /**
+     * Greet each expected player by name with the admin-configured welcome message
+     * (config.chatMessages.welcomeMessage, supports {player_name}) the first time they
+     * appear in the lobby. Only roster players + coaches are greeted — never the bot,
+     * empty slots, or soon-to-be-kicked unregistered randoms. One greeting per player
+     * per game lobby (welcomedPlayers is cleared when each new lobby is created).
+     */
+    async welcomeJoinedPlayers(players) {
+        const chat = L.getEffectiveChatMessages(this.botConfig, this.botAccountId);
+        const welcome = chat.welcomeMessage;
+        if (!welcome) return;
+        const authorized = L.getAllAuthorizedSteamIds(this.session); // rosters + coaches (no whitelist greet)
+        for (const p of players) {
+            const id = p.steamId32;
+            if (!id || id === '0' || id === this.botSteamId32) continue;
+            if (this.welcomedPlayers.has(id) || !authorized.has(id)) continue;
+            this.welcomedPlayers.add(id);
+            const name = L.getPlayerNickname(this.session, id);
+            await this.sendChat(L.applyPlaceholders(welcome, { player_name: name, team_name: '', missing: '' }));
         }
     }
 
@@ -551,6 +576,7 @@ class Runner {
         const syncAt = new Date(now() + delayMin * 60000).toISOString();
         try {
             await this.db.collection('botSyncTasks').add({
+                type: 'sync',
                 sessionId: this.sessionId,
                 matchId: this.session.matchId,
                 tournamentId: this.session.tournamentId,
@@ -563,22 +589,42 @@ class Runner {
         } catch (e) { logger.error('[Runner] Failed to schedule match sync', e); }
     }
 
+    /**
+     * Enqueue a per-game forfeit task. The web app drains it and calls forfeitPDLMatchAdmin —
+     * the SAME admin action a human would use — so the bot never writes match scores itself.
+     * gameNumbers are individual games to flag as walkovers (never a whole-series scope).
+     */
+    async scheduleForfeit(forfeitedSide, gameNumbers, reason) {
+        const forfeitingTeamId = forfeitedSide === 'radiant'
+            ? this.session.radiantTeam.teamId : this.session.direTeam.teamId;
+        try {
+            await this.db.collection('botSyncTasks').add({
+                type: 'forfeit',
+                sessionId: this.sessionId,
+                matchId: this.session.matchId,
+                tournamentId: this.session.tournamentId,
+                forfeitingTeamId,
+                forfeitedGameNumbers: gameNumbers,
+                reason: reason || '',
+                syncAt: nowIso(), // forfeits need no OpenDota parse delay
+                status: 'pending',
+                createdAt: nowIso(),
+            });
+            logger.info(`[Runner] Enqueued forfeit task (match ${this.session.matchId}, games [${gameNumbers.join(',')}], team ${forfeitingTeamId})`);
+        } catch (e) { logger.error('[Runner] Failed to enqueue forfeit task', e); }
+    }
+
     async finalizeSeries(result, scoreText) {
         const winnerTeamName = result.winnerId
             ? (result.winnerId === this.session.radiantTeam.teamId ? this.session.radiantTeam.teamName : this.session.direTeam.teamName)
             : null;
 
-        // Finalize the match document (reuses the existing standings/import path downstream).
-        try {
-            const matchUpdates = { status: 'completed', completed_at: nowIso() };
-            if (result.winnerId) matchUpdates.winnerId = result.winnerId;
-            else if (result.isDraw) matchUpdates.winnerId = null;
-            await this.db.collection('tournaments').doc(this.session.tournamentId)
-                .collection('matches').doc(this.session.matchId).update(matchUpdates);
-        } catch (e) { logger.error('[Runner] Failed to finalize match doc', e); }
-
+        // NOTE: the bot does NOT write match scores/winner. Real game results are imported from
+        // OpenDota by the post-game sync (scheduleMatchSync → web-side syncPDLMatchesAdmin), which
+        // marks the match complete and recalculates standings — exactly as the admin's
+        // "Synchronizuj mecze" button does. The bot only announces the result in lobby chat.
         await this.sendChat(result.isDraw ? `Series complete! Draw: ${scoreText}` : `Series decided! ${winnerTeamName} wins ${scoreText}`);
-        logger.info(`[Runner] Series decided for match ${this.session.matchId}: ${scoreText} (winner: ${result.winnerId || 'draw'})`);
+        logger.info(`[Runner] Series decided for match ${this.session.matchId}: ${scoreText} (winner: ${result.winnerId || 'draw'}) — match doc left to the OpenDota sync`);
         await this.finishUp(0, 'completed');
     }
 
@@ -637,12 +683,19 @@ class Runner {
         else if (elapsedMin >= policy.game1ForfeitMinutes) kind = 'game1';
         if (!kind) return;
 
-        const presence = L.computeTeamPresence(this.session);
-        const radiantShort = presence.radiant < 5;
-        const direShort = presence.dire < 5;
+        // Presence from the LIVE lobby (not the possibly-stale lastLobbyPlayers field).
+        const live = (this.dota.getCurrentLobbyPlayers?.() || []).map((p) => ({ steamId32: p.steamId32, teamSide: p.team }));
+        const presence = L.computeTeamPresence(this.session, live);
+        const radiantFull = presence.radiant >= this.session.radiantTeam.expectedPlayers.length;
+        const direFull = presence.dire >= this.session.direTeam.expectedPlayers.length;
+
+        // Only open a forfeit vote when exactly one team is FULLY present and the other is not.
+        // If the present (non-late) team is itself short, do NOT open a vote yet — return and let
+        // the next tick (every LATE_TICK_MS) re-check, effectively waiting until they have everyone
+        // in the lobby. This guarantees we never ask a half-present team to vote out the other.
         let lateSide = null;
-        if (radiantShort && !direShort && presence.dire >= policy.requiredVotesForForfeit) lateSide = 'radiant';
-        else if (direShort && !radiantShort && presence.radiant >= policy.requiredVotesForForfeit) lateSide = 'dire';
+        if (!radiantFull && direFull) lateSide = 'radiant';
+        else if (!direFull && radiantFull) lateSide = 'dire';
         if (!lateSide) return;
 
         await this.openLateVote(policy, kind, lateSide);
@@ -711,27 +764,38 @@ class Runner {
      */
     async handleForfeit(forfeitType, forfeitedSide) {
         const winnerSide = forfeitedSide === 'radiant' ? 'dire' : 'radiant';
-        const winnerTeamId = winnerSide === 'radiant' ? this.session.radiantTeam.teamId : this.session.direTeam.teamId;
-        const seriesScore = { ...this.session.seriesScore };
-        seriesScore[winnerTeamId] = (seriesScore[winnerTeamId] || 0) + 1;
-        const forfeitedGames = [...(this.session.forfeitedGames || []), {
-            gameNumber: this.session.currentGameNumber, forfeitedTeam: forfeitedSide, winnerTeam: winnerSide,
-        }];
 
         if (forfeitType === 'series') {
-            await this.updateSession({ seriesScore, forfeitedGames });
-            try {
-                await this.db.collection('tournaments').doc(this.session.tournamentId)
-                    .collection('matches').doc(this.session.matchId)
-                    .update({ status: 'completed', winnerId: winnerTeamId, completed_at: nowIso(), forfeit: true });
-            } catch (e) { logger.error('[Runner] forfeit match finalize failed', e); }
-            logger.info(`[Runner] Series forfeited — ${winnerSide} wins match ${this.session.matchId}`);
+            // Flag EVERY remaining (unplayed) game as an INDIVIDUAL walkover — never a whole-series
+            // scope. forfeitPDLMatchAdmin (run web-side) records them exactly like a manual admin
+            // game-level forfeit, which marks the match complete + recalculates standings.
+            const remaining = [];
+            const total = this.session.totalGames || this.session.currentGameNumber;
+            for (let g = this.session.currentGameNumber; g <= total; g++) remaining.push(g);
+            const forfeitedGames = [...(this.session.forfeitedGames || []),
+                ...remaining.map((gameNumber) => ({ gameNumber, forfeitedTeam: forfeitedSide, winnerTeam: winnerSide }))];
+            await this.updateSession({ forfeitedGames });
+            await this.scheduleForfeit(forfeitedSide, remaining, 'No-show — series forfeit (late-arrival vote passed)');
+            await this.sendChat('Series forfeited. Match closed.');
+            logger.info(`[Runner] Series forfeited — ${winnerSide} wins match ${this.session.matchId} (games [${remaining.join(',')}])`);
             await this.finishUp(0, 'completed');
             return;
         }
 
-        // game1 forfeit → record, then continue the series (or finalize if it clinched).
-        await this.updateSession({ seriesScore, forfeitedGames });
+        // Single-game forfeit → flag THIS game, then continue the series (or finalize if it clinched).
+        // Mirror handleGameEnded's bookkeeping (incl. a synthetic completedGameIds entry) so the
+        // bot's series-progress math advances/stops correctly for every format.
+        const gameNumber = this.session.currentGameNumber;
+        const winnerTeamId = winnerSide === 'radiant' ? this.session.radiantTeam.teamId : this.session.direTeam.teamId;
+        const completedGameIds = [...this.session.completedGameIds, 0]; // 0 = forfeit (no Dota match)
+        const completedGameWinners = [...this.session.completedGameWinners, winnerSide];
+        const seriesScore = { ...this.session.seriesScore };
+        seriesScore[winnerTeamId] = (seriesScore[winnerTeamId] || 0) + 1;
+        const forfeitedGames = [...(this.session.forfeitedGames || []),
+            { gameNumber, forfeitedTeam: forfeitedSide, winnerTeam: winnerSide }];
+        await this.updateSession({ completedGameIds, completedGameWinners, seriesScore, forfeitedGames });
+        await this.scheduleForfeit(forfeitedSide, [gameNumber], `No-show — Game ${gameNumber} forfeit (late-arrival vote passed)`);
+
         const result = L.calculateSeriesResult(this.session);
         const scoreText = L.formatSeriesScore(this.session);
         if (result.decided) {

@@ -48,15 +48,16 @@ function toLobbyCreateSettings(lobby, session) {
     const pauseMap = { unlimited: 0, limited: 1, disabled: 2 };
     return {
         gameMode: DOTA_GAME_MODE_IDS[lobby.gameMode] ?? 2,
-        serverRegion: DOTA_SERVER_REGION_IDS[lobby.serverRegion] ?? 8,
-        visibility: visMap[lobby.visibility] ?? 2,
+        // Fallbacks when a setting is unset: Europe West (3), Public (0), Unlimited pauses (0).
+        serverRegion: DOTA_SERVER_REGION_IDS[lobby.serverRegion] ?? 3,
+        visibility: visMap[lobby.visibility] ?? 0,
         dotaTvDelay: lobby.dotaTvDelay ?? 120,
         seriesType: session.lobbySeriesType ?? 0,
         leagueId: lobby.leagueId,
         cheatsEnabled: lobby.cheatsEnabled ?? false,
         fillWithBots: lobby.fillWithBots ?? false,
         allowSpectators: lobby.allowSpectators ?? true,
-        pauseSetting: pauseMap[lobby.pauseSetting] ?? 1,
+        pauseSetting: pauseMap[lobby.pauseSetting] ?? 0,
         // Default to Automatic (coin toss) for official matches.
         selectionPriorityRules: lobby.selectionPriorityRules ?? 1,
         // Pre-populate the series score for game 2+ (shows in the Dota 2 lobby UI).
