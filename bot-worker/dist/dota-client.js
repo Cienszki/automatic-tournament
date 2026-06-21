@@ -608,6 +608,7 @@ _coinTossTimer = null;
                 steamId32,
                 slot,
                 team,
+                name: member.name || null,
                 heroId: member.hero_id ? Number(member.hero_id) : undefined,
             };
         });

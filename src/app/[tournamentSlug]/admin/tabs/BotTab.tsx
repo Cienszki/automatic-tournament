@@ -1406,6 +1406,19 @@ function SettingsView({
               </div>
 
               <div className="space-y-2">
+                <Label>Wiadomość przy wyrzuceniu gracza</Label>
+                <Textarea
+                  value={config.chatMessages.unauthorizedKickMessage || ''}
+                  onChange={(e) => updateChat('unauthorizedKickMessage', e.target.value || undefined)}
+                  rows={2}
+                  placeholder="Player {player_name} is not registered for this match and has been removed."
+                />
+                <p className="text-xs text-muted-foreground">
+                  Wysyłana gdy niezarejestrowany gracz zostanie wyrzucony z lobby. Placeholder: <code className="font-mono text-xs">{'{player_name}'}</code> (nick Steam gracza).
+                </p>
+              </div>
+
+              <div className="space-y-2">
                 <Label>Drużyna gotowa (czeka na drugą)</Label>
                 <Textarea
                   value={config.chatMessages.teamReadyMessage}
@@ -2043,6 +2056,7 @@ function SettingsView({
                 placeholder: string;
               }> = [
                 { key: 'welcomeMessage', label: 'Wiadomość powitalna', rows: 2, placeholder: config.chatMessages.welcomeMessage },
+                { key: 'unauthorizedKickMessage', label: 'Wyrzucenie gracza', rows: 2, placeholder: config.chatMessages.unauthorizedKickMessage ?? 'Player {player_name} is not registered for this match and has been removed.' },
                 { key: 'teamReadyMessage', label: 'Drużyna gotowa (czeka na drugą)', rows: 2, placeholder: config.chatMessages.teamReadyMessage },
                 { key: 'teamNotReadyMessage', label: 'Nie wszyscy w slotach', rows: 2, placeholder: config.chatMessages.teamNotReadyMessage },
                 { key: 'allReadyMessage', label: 'Obie drużyny gotowe', rows: 2, placeholder: config.chatMessages.allReadyMessage },

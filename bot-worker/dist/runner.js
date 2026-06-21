@@ -65,6 +65,7 @@ class Runner {
         this.disconnectTimer = null;
         this.sessionUnsub = null;
         this.welcomedPlayers = new Set(); // steamId32s already greeted (one welcome per player per lobby)
+        this.kickedPlayers = new Set();   // steamId32s already kicked this lobby (prevent duplicate kicks + messages)
     }
 
     // ─── Boot ────────────────────────────────────────────────────────────────
@@ -191,7 +192,12 @@ class Runner {
         ]);
         const added = [...newIds].filter((id) => !oldIds.has(id) && id && id !== '0');
         const removed = [...oldIds].filter((id) => !newIds.has(id) && id && id !== '0');
-        for (const id of added) { try { await this.dota.invitePlayer(id); } catch (e) { logger.warn('[Runner] reinvite failed', e); } }
+        for (const id of added) {
+            // Clear the kick memory so enforce() doesn't immediately re-kick a standin
+            // who was in the lobby earlier (before approval) and got kicked as unauthorized.
+            this.kickedPlayers.delete(id);
+            try { await this.dota.invitePlayer(id); } catch (e) { logger.warn('[Runner] reinvite failed', e); }
+        }
         for (const id of removed) { try { await this.dota.kickPlayer(id); } catch (e) { logger.warn('[Runner] kick-removed failed', e); } }
         if (added.length || removed.length) {
             logger.info(`[Runner] Roster synced: +[${added.join(',')}] -[${removed.join(',')}]`);
@@ -254,6 +260,7 @@ class Runner {
         this.gameStarted = false;
         this.gameEndHandledFor = null;
         this.welcomedPlayers.clear(); // greet players freshly in each game's lobby
+        this.kickedPlayers.clear();   // reset per-lobby kick memory
         await this.updateSession({
             state: 'lobby_open',
             dotaLobbyId,
@@ -321,7 +328,7 @@ class Runner {
         if (this.finalizing) return;
         // DotaClient emits players with `.team`; the rest of the runner/logic speaks
         // `.teamSide` (the orchestrator's LobbySlotInfo shape). Normalize once here.
-        const players = (data.players || []).map((p) => ({ steamId32: p.steamId32, slotIndex: p.slot, teamSide: p.team }));
+        const players = (data.players || []).map((p) => ({ steamId32: p.steamId32, slotIndex: p.slot, teamSide: p.team, name: p.name || null }));
 
         // Persist occupancy as a FIELD (state, not a stream) — de-duped to avoid churn.
         const playersForDoc = players.map((p) => ({ steamId32: p.steamId32, teamSide: p.teamSide }));
@@ -370,9 +377,20 @@ class Runner {
         const action = L.evaluateEnforcement(this.session, players, cfg, whitelist);
         for (const kick of action.kickPlayers) {
             if (kick.reason !== 'not_registered') continue;
+            // One kick+message per player per lobby. Without this guard, every lobbyUpdate
+            // event (fired continuously while the player is still being processed by the GC)
+            // produces a duplicate message and a duplicate kick attempt.
+            if (this.kickedPlayers.has(kick.steamId32)) continue;
+            this.kickedPlayers.add(kick.steamId32);
             try {
                 await this.dota.kickPlayer(kick.steamId32);
-                await this.sendChat(`Player (Steam32: ${kick.steamId32}) is not registered for this match and has been removed.`);
+                // Use the player's Steam persona name from the GC lobby data if available;
+                // fall back to the roster nickname, then Steam32 as a last resort.
+                const lobbyPlayer = players.find((p) => p.steamId32 === kick.steamId32);
+                const displayName = lobbyPlayer?.name || L.getPlayerNickname(this.session, kick.steamId32) || `Steam32:${kick.steamId32}`;
+                const chat = L.getEffectiveChatMessages(this.botConfig, this.botAccountId);
+                const tmpl = chat.unauthorizedKickMessage || 'Player {player_name} is not registered for this match and has been removed.';
+                await this.sendChat(L.applyPlaceholders(tmpl, { player_name: displayName, team_name: '', missing: '' }));
             } catch (e) { logger.warn('[Runner] kick failed', e); }
         }
         // Once both teams are ready, nudge any team split across both sides.

@@ -232,6 +232,12 @@ export interface LobbyChatConfig {
   rulesReminder?: string;
   /** Message posted when match starts */
   matchStartMessage?: string;
+  /**
+   * Message posted when an unauthorized player is kicked from the lobby.
+   * Supports {player_name} (Steam persona name) placeholder.
+   * Defaults to a generic message if not set.
+   */
+  unauthorizedKickMessage?: string;
   /** Admin-defined custom chat commands the bot handles in lobby chat */
   customCommands: CustomBotCommand[];
 }
