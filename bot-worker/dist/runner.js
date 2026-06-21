@@ -60,6 +60,7 @@ class Runner {
         this.timers = {};          // named interval/timeout handles
         this.finalizing = false;   // guard against re-entrant finalize/cancel
         this.gameEndHandledFor = null; // dotaMatchId we already processed game-end for (de-dupe POSTGAME spam)
+        this.gameEndHandled = false;   // boolean latch — once set, block any further game-end until next lobby
         this.gameStarted = false;  // current-game in_game latch (reset each game)
         this.lastPlayersJson = ''; // de-dupe lastLobbyPlayers field writes
         this.disconnectTimer = null;
@@ -259,6 +260,7 @@ class Runner {
 
         this.gameStarted = false;
         this.gameEndHandledFor = null;
+        this.gameEndHandled = false;
         this.welcomedPlayers.clear(); // greet players freshly in each game's lobby
         this.kickedPlayers.clear();   // reset per-lobby kick memory
         await this.updateSession({
@@ -362,7 +364,13 @@ class Runner {
         // Game end: POSTGAME with a decisive outcome.
         if (state === LOBBY_STATE.POSTGAME && (data.matchOutcome === OUTCOME.RAD_VICTORY || data.matchOutcome === OUTCOME.DIRE_VICTORY)) {
             const dotaMatchId = Number(data.matchId) || 0;
-            if (this.gameEndHandledFor !== dotaMatchId) {
+            // Two-layer dedup:
+            //  1. dotaMatchId > 0: the first POSTGAME update sometimes arrives before the GC
+            //     has written the match ID — skip it and wait for the update that has a real ID.
+            //  2. gameEndHandled boolean latch: if we already started game-end processing for this
+            //     game (with a zero-or-nonzero ID), ignore any later POSTGAME events even if the
+            //     matchId differs (the GC can deliver the real ID after we've already acted).
+            if (dotaMatchId > 0 && !this.gameEndHandled && this.gameEndHandledFor !== dotaMatchId) {
                 this.gameEndHandledFor = dotaMatchId;
                 await this.handleGameEnded(dotaMatchId, data.matchOutcome === OUTCOME.RAD_VICTORY);
             }
@@ -550,6 +558,7 @@ class Runner {
 
     // ─── Series game-end handler ─────────────────────────────────────────────────
     async handleGameEnded(dotaMatchId, radiantWin) {
+        this.gameEndHandled = true; // block re-entry from any further POSTGAME events for this game
         const dotaWinnerSide = radiantWin ? 'radiant' : 'dire';
         // Map the Dota-side outcome to a team via the side mapping captured at game start
         // (teams may sit on either side). Fall back to the session label if unknown.

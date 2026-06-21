@@ -130,7 +130,11 @@ async function scheduleUpcomingMatches(db, tournamentId, botConfig, tournamentDo
         const assignments = await buildLobbyTeamAssignments(db, tournamentId, matchDoc.id);
         if (!assignments) { logger.warn(`[Scheduling] Could not build assignments for match ${matchDoc.id}`); continue; }
 
-        const { fmt, totalGames, lobbySeriesType } = seriesTotals(match.series_format);
+        // Mirror the fallback used in admin-match-actions-server.ts: group matches default
+        // to BO2, playoff matches to BO3. The plain 'bo1' fallback in seriesTotals() is wrong
+        // for tournaments where series_format is not explicitly stored on the match doc.
+        const resolvedFormat = match.series_format || (match.group_id ? 'bo2' : 'bo3');
+        const { fmt, totalGames, lobbySeriesType } = seriesTotals(resolvedFormat);
         const lobbyName = `${lobbyPrefix} - ${match.teamA?.name || 'TBA'} vs ${match.teamB?.name || 'TBA'}`;
         // Use the admin-configured fixed password if set, otherwise generate a random one.
         const fixedPassword = (botConfig.lobby?.password || '').trim();
