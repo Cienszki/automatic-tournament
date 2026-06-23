@@ -182,7 +182,6 @@ class Runner {
 
     async reconcileRoster(next) {
         const acceptingPlayers = ['lobby_open', 'ready_check'].includes(this.session.state);
-        if (!acceptingPlayers || !this.dota?.isConnected) return;
         const oldIds = new Set([
             ...this.session.radiantTeam.expectedPlayers.map((p) => p.steamId32),
             ...this.session.direTeam.expectedPlayers.map((p) => p.steamId32),
@@ -193,10 +192,15 @@ class Runner {
         ]);
         const added = [...newIds].filter((id) => !oldIds.has(id) && id && id !== '0');
         const removed = [...oldIds].filter((id) => !newIds.has(id) && id && id !== '0');
+
+        // Always clear kickedPlayers for newly-added players regardless of GC connectivity.
+        // A standin approved while the bot is briefly disconnected must NOT be re-kicked when
+        // they rejoin — enforce() checks kickedPlayers BEFORE the authorized-list check.
+        for (const id of added) this.kickedPlayers.delete(id);
+
+        if (!acceptingPlayers || !this.dota?.isConnected) return;
+
         for (const id of added) {
-            // Clear the kick memory so enforce() doesn't immediately re-kick a standin
-            // who was in the lobby earlier (before approval) and got kicked as unauthorized.
-            this.kickedPlayers.delete(id);
             try { await this.dota.invitePlayer(id); } catch (e) { logger.warn('[Runner] reinvite failed', e); }
         }
         for (const id of removed) { try { await this.dota.kickPlayer(id); } catch (e) { logger.warn('[Runner] kick-removed failed', e); } }
@@ -362,14 +366,16 @@ class Runner {
         }
 
         // Game end: POSTGAME with a decisive outcome.
-        if (state === LOBBY_STATE.POSTGAME && (data.matchOutcome === OUTCOME.RAD_VICTORY || data.matchOutcome === OUTCOME.DIRE_VICTORY)) {
+        // Three-layer dedup — any one layer alone is defeatable; together they're airtight:
+        //  1. gameStarted: only true while a game is live; reset in createLobbyForCurrentGame.
+        //     Blocks stale POSTGAME events from game N arriving after game N+1's lobby is created
+        //     (when gameEndHandled and gameEndHandledFor have both been reset to their start values).
+        //  2. dotaMatchId > 0: the first POSTGAME update sometimes arrives before the GC writes
+        //     the match ID — skip it and wait for the update that has a real ID.
+        //  3. gameEndHandled boolean latch: set at the very top of handleGameEnded so any further
+        //     POSTGAME event for the same game is ignored even if the matchId changes between events.
+        if (this.gameStarted && state === LOBBY_STATE.POSTGAME && (data.matchOutcome === OUTCOME.RAD_VICTORY || data.matchOutcome === OUTCOME.DIRE_VICTORY)) {
             const dotaMatchId = Number(data.matchId) || 0;
-            // Two-layer dedup:
-            //  1. dotaMatchId > 0: the first POSTGAME update sometimes arrives before the GC
-            //     has written the match ID — skip it and wait for the update that has a real ID.
-            //  2. gameEndHandled boolean latch: if we already started game-end processing for this
-            //     game (with a zero-or-nonzero ID), ignore any later POSTGAME events even if the
-            //     matchId differs (the GC can deliver the real ID after we've already acted).
             if (dotaMatchId > 0 && !this.gameEndHandled && this.gameEndHandledFor !== dotaMatchId) {
                 this.gameEndHandledFor = dotaMatchId;
                 await this.handleGameEnded(dotaMatchId, data.matchOutcome === OUTCOME.RAD_VICTORY);
