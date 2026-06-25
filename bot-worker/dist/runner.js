@@ -61,6 +61,7 @@ class Runner {
         this.finalizing = false;   // guard against re-entrant finalize/cancel
         this.gameEndHandledFor = null; // dotaMatchId we already processed game-end for (de-dupe POSTGAME spam)
         this.gameEndHandled = false;   // boolean latch — once set, block any further game-end until next lobby
+        this.waitingForMatchId = false; // true while the 30-s matchId poll is running
         this.gameStarted = false;  // current-game in_game latch (reset each game)
         this.lastPlayersJson = ''; // de-dupe lastLobbyPlayers field writes
         this.disconnectTimer = null;
@@ -220,6 +221,13 @@ class Runner {
                 // Mid-series / post-crash resume — adopt our live lobby and keep going.
                 const id = this.dota.reattachToCachedLobby();
                 logger.info(`[Runner] Reattached to existing lobby ${id} (session state=${this.session.state})`);
+                // Restore the in-game latch so a POSTGAME event arriving right after reconnect
+                // (when the game ended while the bot was restarting) triggers handleGameEnded
+                // instead of being silently ignored by the gameStarted === false guard.
+                if (this.session.state === 'in_game') {
+                    this.gameStarted = true;
+                    logger.info('[Runner] Restored gameStarted=true for in_game session resume');
+                }
                 await this.updateBotStatus(this.session.state === 'in_game' ? 'in_game' : 'lobby_active');
                 return;
             }
@@ -265,6 +273,7 @@ class Runner {
         this.gameStarted = false;
         this.gameEndHandledFor = null;
         this.gameEndHandled = false;
+        this.waitingForMatchId = false;
         this.welcomedPlayers.clear(); // greet players freshly in each game's lobby
         this.kickedPlayers.clear();   // reset per-lobby kick memory
         await this.updateSession({
@@ -371,12 +380,36 @@ class Runner {
         //     Blocks stale POSTGAME events from game N arriving after game N+1's lobby is created
         //     (when gameEndHandled and gameEndHandledFor have both been reset to their start values).
         //  2. dotaMatchId > 0: the first POSTGAME update sometimes arrives before the GC writes
-        //     the match ID — skip it and wait for the update that has a real ID.
+        //     the match ID — wait up to 30 s for a real ID before giving up (avoids losing the
+        //     game-end entirely when the lobby closes before the ID arrives).
         //  3. gameEndHandled boolean latch: set at the very top of handleGameEnded so any further
         //     POSTGAME event for the same game is ignored even if the matchId changes between events.
         if (this.gameStarted && state === LOBBY_STATE.POSTGAME && (data.matchOutcome === OUTCOME.RAD_VICTORY || data.matchOutcome === OUTCOME.DIRE_VICTORY)) {
             const dotaMatchId = Number(data.matchId) || 0;
+            const radiantWin = data.matchOutcome === OUTCOME.RAD_VICTORY;
+            if (dotaMatchId === 0 && !this.gameEndHandled && !this.waitingForMatchId) {
+                // GC hasn't written the match ID yet. Poll for up to 30 s so we don't lose the
+                // game-end if the lobby closes before a real ID arrives.
+                this.waitingForMatchId = true;
+                logger.info('[Runner] POSTGAME received but matchId=0 — polling for match ID (up to 30s)');
+                (async () => {
+                    for (let i = 0; i < 30 && !this.gameEndHandled; i++) {
+                        await sleep(1000);
+                        const lobbyData = this.dota.getCurrentLobbyData?.();
+                        const id = lobbyData ? (Number(lobbyData.matchId) || 0) : 0;
+                        if (id > 0 && !this.gameEndHandled && this.gameEndHandledFor !== id) {
+                            this.gameEndHandledFor = id;
+                            this.waitingForMatchId = false;
+                            await this.handleGameEnded(id, radiantWin);
+                            return;
+                        }
+                    }
+                    this.waitingForMatchId = false;
+                    logger.warn('[Runner] Could not obtain matchId after 30 s — game end may be lost');
+                })().catch((e) => { this.waitingForMatchId = false; logger.error('[Runner] matchId poll error', e); });
+            }
             if (dotaMatchId > 0 && !this.gameEndHandled && this.gameEndHandledFor !== dotaMatchId) {
+                this.waitingForMatchId = false;
                 this.gameEndHandledFor = dotaMatchId;
                 await this.handleGameEnded(dotaMatchId, data.matchOutcome === OUTCOME.RAD_VICTORY);
             }
@@ -533,6 +566,84 @@ class Runner {
 
     async launchGame() {
         if (this.session.startGameSentAt) return; // already launched
+
+        // ── Pre-launch sweep ──────────────────────────────────────────────────
+        // Take a live snapshot rather than the potentially-stale lastLobbyPlayers field.
+        const live = this.dota.getCurrentLobbyPlayers().map((p) => ({ steamId32: p.steamId32, teamSide: p.team }));
+
+        // Build the authorized set with the bot's own account whitelisted so it is never kicked.
+        const wl = [...(this.botConfig.whitelist ?? [])];
+        if (this.botSteamId32) wl.push({ steamId32: this.botSteamId32 });
+        const authorized = L.getAllAuthorizedSteamIds(this.session, wl);
+
+        // 1. Kick any unauthorized player sitting in a team or spectator slot.
+        const toKick = live.filter(
+            (p) => p.steamId32 && p.steamId32 !== '0' && !authorized.has(p.steamId32)
+                && (p.teamSide === 'radiant' || p.teamSide === 'dire' || p.teamSide === 'spectator')
+        );
+        if (toKick.length > 0) {
+            logger.warn(`[Runner] Pre-launch: kicking ${toKick.length} unauthorized player(s) before game start`);
+            for (const p of toKick) {
+                if (this.kickedPlayers.has(p.steamId32)) continue; // enforce() may have already issued it
+                this.kickedPlayers.add(p.steamId32);
+                try { await this.dota.kickPlayer(p.steamId32); }
+                catch (e) { logger.warn('[Runner] pre-launch kick failed', e); }
+            }
+            await this.sendChat('[BOT] Unauthorized player(s) removed. Check your slots and type !ready again.');
+            await this.updateBotStatus('lobby_active');
+            await this.updateSession({
+                state: 'lobby_open',
+                readyState: { radiantReady: false, direReady: false },
+                readyCheckStartedAt: null,
+            });
+            return;
+        }
+
+        // 2. Re-verify that both teams have all their players seated together on one side.
+        //    teamSeatedSide returns null when a player is missing from team slots or the team
+        //    is split across both sides.
+        const rSide = L.teamSeatedSide(this.session.radiantTeam, live);
+        const dSide = L.teamSeatedSide(this.session.direTeam, live);
+
+        if (!rSide || !dSide) {
+            const issues = [];
+            for (const team of [this.session.radiantTeam, this.session.direTeam]) {
+                if (L.teamSeatedSide(team, live)) continue;
+                const seatedIds = new Set(
+                    live
+                        .filter((p) => (p.teamSide === 'radiant' || p.teamSide === 'dire')
+                            && team.expectedPlayers.some((e) => e.steamId32 === p.steamId32))
+                        .map((p) => p.steamId32)
+                );
+                const missing = team.expectedPlayers.filter((e) => !seatedIds.has(e.steamId32));
+                issues.push(
+                    missing.length > 0
+                        ? `${team.teamName}: missing ${missing.map((p) => p.nickname).join(', ')}`
+                        : `${team.teamName}: players split across Radiant and Dire — sit together on one side`
+                );
+            }
+            for (const msg of issues) await this.sendChat(`[BOT] ${msg}`);
+            await this.updateBotStatus('lobby_active');
+            await this.updateSession({
+                state: 'lobby_open',
+                readyState: { radiantReady: false, direReady: false },
+                readyCheckStartedAt: null,
+            });
+            return;
+        }
+
+        if (rSide === dSide) {
+            await this.sendChat(`[BOT] Both teams are on the ${rSide.toUpperCase()} side. One team must move to the other side, then type !ready again.`);
+            await this.updateBotStatus('lobby_active');
+            await this.updateSession({
+                state: 'lobby_open',
+                readyState: { radiantReady: false, direReady: false },
+                readyCheckStartedAt: null,
+            });
+            return;
+        }
+
+        // ── All checks passed — launch ────────────────────────────────────────
         await this.updateSession({ startGameSentAt: nowIso() });
         const startMsg = this.botConfig.chatMessages?.matchStartMessage;
         if (startMsg) await this.sendChat(startMsg);
