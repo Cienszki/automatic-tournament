@@ -135,8 +135,10 @@ function evaluateEnforcement(session, players, config, whitelist = []) {
         const inTeamSlot = teamSide === 'radiant' || teamSide === 'dire';
         const isSpectator = teamSide === 'spectator';
         const isUnassigned = teamSide === 'unassigned';
+        const isBroadcaster = teamSide === 'broadcaster';
 
         if (!isAuthorized && config.autoKickUnauthorized) {
+            if (isBroadcaster) continue; // practiceLobbyKick can't remove broadcaster slot — skip silently so kickedPlayers is never set and we retry if they move
             if (inTeamSlot || isSpectator) {
                 action.kickPlayers.push({ steamId32, reason: 'not_registered' });
                 action.chatMessages.push(

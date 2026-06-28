@@ -340,23 +340,32 @@ export async function buildLobbyTeamAssignments(
             nickname: p.nickname,
           }));
 
-    return players.map((player) => {
-      const standin = teamStandins[player.id];
-      if (standin) {
+    return players
+      .filter((player) => {
+        // If this player is being replaced by a standin, keep them only if the standin
+        // has a valid steamId32. If neither the player nor their standin has a steamId32,
+        // drop the entry entirely — an empty steamId32 in expectedPlayers permanently
+        // blocks teamSeatedSide (mirrors the filter in bot-worker/dist/scheduling.js).
+        const standin = teamStandins[player.id];
+        return standin ? !!standin.steamId32 : !!player.steamId32;
+      })
+      .map((player) => {
+        const standin = teamStandins[player.id];
+        if (standin) {
+          return {
+            steamId32: standin.steamId32,
+            nickname: standin.nickname,
+            isStandin: true,
+            replacesPlayerId: player.id,
+            replacesPlayerNickname: player.nickname,
+          };
+        }
         return {
-          steamId32: standin.steamId32,
-          nickname: standin.nickname,
-          isStandin: true,
-          replacesPlayerId: player.id,
-          replacesPlayerNickname: player.nickname,
+          steamId32: player.steamId32,
+          nickname: player.nickname,
+          isStandin: false,
         };
-      }
-      return {
-        steamId32: player.steamId32,
-        nickname: player.nickname,
-        isStandin: false,
-      };
-    });
+      });
   }
 
   // Team A = Radiant, Team B = Dire (default assignment)

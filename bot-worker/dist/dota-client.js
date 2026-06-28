@@ -635,7 +635,7 @@ _coinTossTimer = null;
         switch (gcTeam) {
             case 0: return 'radiant';
             case 1: return 'dire';
-            case 2:
+            case 2: return 'broadcaster'; // caster slot — cannot be kicked via practiceLobbyKick
             case 3: return 'spectator';
             default: return 'unassigned';
         }

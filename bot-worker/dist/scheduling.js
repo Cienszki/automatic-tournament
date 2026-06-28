@@ -64,7 +64,13 @@ async function buildLobbyTeamAssignments(db, tournamentId, matchId) {
             ? team.players.map((p) => ({ id: p.id, steamId32: p.steamId32, nickname: p.nickname }))
             : Object.entries(team.roster || {}).map(([steamId64, p]) => ({ id: steamId64, steamId32: p.steamId32, nickname: p.nickname }));
         return players
-            .filter((p) => p.steamId32)
+            .filter((p) => {
+                // Keep the player if the final entry will have a valid steamId32:
+                // either a standin with a valid steamId32 replaces them, or they have one themselves.
+                // Filtering on p.steamId32 alone would silently drop a player whose standin is valid.
+                const standin = teamStandins[p.id];
+                return standin ? !!standin.steamId32 : !!p.steamId32;
+            })
             .map((player) => {
                 const standin = teamStandins[player.id];
                 if (standin) {
