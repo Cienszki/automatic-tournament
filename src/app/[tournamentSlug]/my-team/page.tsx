@@ -24,6 +24,7 @@ import { TeamStatsGrid } from "@/components/app/my-team/TeamStatsGrid";
 import { PlayerAnalyticsTable } from "@/components/app/my-team/PlayerAnalyticsTable";
 import { getUserTeam, getMatchesForTeam, getAllTeams, getAllStandins } from "@/lib/firestore";
 import { approveStandinRequest, rejectStandinRequest, cancelStandinRequest, appealStandinRequest } from '@/lib/standin-actions';
+import { getTournamentLobbyPassword } from '@/lib/bot/bot-config-actions';
 import type { Standin } from "@/lib/definitions";
 import NoTeamFound from '@/components/app/my-team/NoTeamFound';
 
@@ -67,6 +68,12 @@ const normalizePDLStandinRequest = (raw: Record<string, unknown>, id: string): P
     standinSmurfAccounts: Array.isArray(raw.standinSmurfAccounts)
       ? (raw.standinSmurfAccounts as { steamProfileUrl: string }[])
       : undefined,
+    gameNumbers: Array.isArray(raw.gameNumbers)
+      ? (raw.gameNumbers as unknown[]).map((n) => Number(n)).filter((n) => Number.isFinite(n))
+      : undefined,
+    matchTeamAName: raw.matchTeamAName ? String(raw.matchTeamAName) : undefined,
+    matchTeamBName: raw.matchTeamBName ? String(raw.matchTeamBName) : undefined,
+    matchScheduledFor: raw.matchScheduledFor ? String(raw.matchScheduledFor) : undefined,
     status: (raw.status as PDLStandinRequestType['status']) || 'pending',
     createdAt: String(raw.createdAt || ''),
     updatedAt: String(raw.updatedAt || raw.createdAt || ''),
@@ -203,6 +210,10 @@ function MyTeamView() {
     return monday;
   });
   const [hoveredSlotId, setHoveredSlotId] = React.useState<string | null>(null);
+  const [botSessionMap, setBotSessionMap] = React.useState<Map<string, { lobbyName: string; lobbyPassword: string }>>(new Map());
+  // Fixed lobby password (from bot config) so the lobby card can show join info in advance,
+  // before the bot actually creates the session. Empty when auto-generated per match.
+  const [fixedLobbyPassword, setFixedLobbyPassword] = React.useState('');
   const [tooltipPos, setTooltipPos] = React.useState({ x: 0, y: 0 });
   const [refreshingMatches, setRefreshingMatches] = React.useState(false);
   const [adminAnnouncements, setAdminAnnouncements] = React.useState<Array<{
@@ -287,9 +298,9 @@ function MyTeamView() {
       });
     }
 
-    // Check for upcoming matches without coach (24h warning)
+    // Check for upcoming matches without coach (24h warning) — not applicable in MMR-limited tournaments
     const nextMatch = upcomingMatches[0];
-    if (nextMatch && !nextMatch.coachInfo?.[team?.id || '']) {
+    if (!isMmrLimited && nextMatch && !nextMatch.coachInfo?.[team?.id || '']) {
       const matchDate = new Date(nextMatch.scheduledFor || '');
       const hoursUntilMatch = (matchDate.getTime() - Date.now()) / (1000 * 60 * 60);
       if (hoursUntilMatch < 24 && hoursUntilMatch > 0) {
@@ -441,6 +452,42 @@ function MyTeamView() {
               (m.teams && m.teams.includes(teamDoc.id))
             );
           setMatches(teamMatches);
+
+          // Fetch active bot sessions for upcoming matches so the lobby card can show
+          // the lobby name and password without the player needing to ask.
+          if (tournament?.lobbySettings?.botLobbyEnabled) {
+            // Fixed lobby password (if any) so the card shows join info before the bot runs.
+            try {
+              setFixedLobbyPassword(await getTournamentLobbyPassword(tournament.id));
+            } catch { /* leave empty */ }
+          }
+
+          if (teamMatches.length > 0 && tournament?.lobbySettings?.botLobbyEnabled) {
+            try {
+              const upcomingIds = teamMatches
+                .filter(m => m.status !== 'completed')
+                .map(m => m.id)
+                .slice(0, 10);
+              if (upcomingIds.length > 0) {
+                const sessionsQuery = query(
+                  collection(db, 'botLobbySessions'),
+                  where('matchId', 'in', upcomingIds),
+                  where('tournamentId', '==', tournament.id),
+                );
+                const sessionsSnap = await getDocs(sessionsQuery);
+                const map = new Map<string, { lobbyName: string; lobbyPassword: string }>();
+                sessionsSnap.docs.forEach(d => {
+                  const s = d.data() as { matchId: string; lobbyName?: string; lobbyPassword?: string; state?: string };
+                  if (s.matchId && s.lobbyName && s.state !== 'cancelled') {
+                    map.set(s.matchId, { lobbyName: s.lobbyName, lobbyPassword: s.lobbyPassword ?? '' });
+                  }
+                });
+                setBotSessionMap(map);
+              }
+            } catch {
+              // botLobbySessions may not exist yet — safe to ignore
+            }
+          }
 
           // Fetch all teams for opponent info
           const allTeamsSnap = await getDocs(teamsRef);
@@ -830,13 +877,9 @@ function MyTeamView() {
         return;
       }
 
-      // Update BOTH scheduledFor and scheduled_for so every view on the site
-      // reflects the new time (some admin / scheduling views read the snake_case field).
-      // Also update schedulingStatus and status so the admin MatchesTab correctly
-      // shows the confirmed time instead of the pending-deadline view.
-      // proposedDate comes from a datetime-local input (browser local time, no
-      // timezone offset). Convert to UTC ISO before storing so the orchestrator
-      // on Google Cloud (UTC) reads the correct time.
+      // proposedDate is already a UTC ISO string (the submitting browser converts
+      // to UTC at proposal time). Re-wrap through Date to normalise any legacy
+      // non-UTC values that may still exist in Firestore from before the fix.
       const scheduledForUtc = new Date(proposedDate).toISOString();
       await updateDoc(matchRef, {
         scheduledFor: scheduledForUtc,
@@ -1058,6 +1101,7 @@ function MyTeamView() {
     standinSteamProfileUrl: string;
     standinMmr?: number;
     standinSmurfAccounts?: { steamProfileUrl: string }[];
+    gameNumbers?: number[];
   }) => {
     if (!tournament?.id || !team) return;
 
@@ -1081,6 +1125,11 @@ function MyTeamView() {
       standinSteamProfileUrl: data.standinSteamProfileUrl,
       ...(data.standinMmr !== undefined ? { standinMmr: data.standinMmr } : {}),
       ...(data.standinSmurfAccounts?.length ? { standinSmurfAccounts: data.standinSmurfAccounts } : {}),
+      ...(data.gameNumbers?.length ? { gameNumbers: data.gameNumbers } : {}),
+      // Denormalized match labels so standin history can be rendered as "TeamA vs TeamB — date".
+      ...(match.teamA?.name ? { matchTeamAName: match.teamA.name } : {}),
+      ...(match.teamB?.name ? { matchTeamBName: match.teamB.name } : {}),
+      ...(match.scheduledFor ? { matchScheduledFor: match.scheduledFor } : {}),
       status: 'pending' as const,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -1982,6 +2031,12 @@ function MyTeamView() {
                       onRemoveCoach={isMmrLimited ? undefined : handleRemoveCoach}
                       onRefreshMatch={() => refreshSingleMatch(match.id)}
                       isMmrLimited={isMmrLimited}
+                      botLobbyName={
+                        botSessionMap.get(match.id)?.lobbyName
+                        // Fallback: the deterministic name the bot will use (matches scheduling.js).
+                        ?? `${tournament?.lobbySettings?.leagueName || tournament?.name || 'Tournament'} - ${match.teamA?.name || 'TBA'} vs ${match.teamB?.name || 'TBA'}`
+                      }
+                      botLobbyPassword={botSessionMap.get(match.id)?.lobbyPassword || fixedLobbyPassword}
                     />
                   ))}
                 </div>

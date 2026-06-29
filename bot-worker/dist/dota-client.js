@@ -252,6 +252,7 @@ _awaitingCoinToss = false;      // true between the 1st and 2nd launchPracticeLo
 _coinTossTimer = null;
     _lobbyChatChannel = null; // "Lobby_<id>" once join is requested, for sending lobby chat
     _lobbyChatJoined = false;  // true once the GC confirms the join (chatJoined event)
+    _personaCache = new Map(); // steamId64 → resolved Steam persona name (for kick messages)
     constructor(config) {
         super();
         this.config = config;
@@ -821,6 +822,41 @@ _coinTossTimer = null;
         // Steam64 = accountId + 76561197960265728
         const base = BigInt('76561197960265728');
         return String(base + BigInt(accountId));
+    }
+    /**
+     * Resolve a player's CURRENT Steam persona name from a Steam32 id via the Steam network
+     * (steam-user.getPersonas). Used for human-readable kick messages when the GC lobby member
+     * object doesn't carry a name yet (common right after a player joins). Cached per id, and
+     * never throws — returns null on any failure so callers can fall back to the id.
+     */
+    async getPersonaName(steamId32) {
+        const acct = parseInt(steamId32, 10);
+        if (!acct)
+            return null;
+        const steamId64 = this.steam32ToSteam64(acct);
+        if (this._personaCache.has(steamId64))
+            return this._personaCache.get(steamId64);
+        if (!this._connected)
+            return null;
+        try {
+            const result = await this.steam.getPersonas([steamId64]);
+            const personas = (result && result.personas) ? result.personas : (result || {});
+            let p = personas[steamId64] || personas[String(steamId64)];
+            if (!p) {
+                const vals = Object.values(personas);
+                if (vals.length)
+                    p = vals[0];
+            }
+            const name = p && (p.player_name || p.playerName);
+            const clean = (name && String(name).trim()) ? String(name).trim() : null;
+            if (clean)
+                this._personaCache.set(steamId64, clean);
+            return clean;
+        }
+        catch (e) {
+            logger_js_1.logger.warn('getPersonaName failed for ' + steamId32, e);
+            return null;
+        }
     }
     sleep(ms) {
         return new Promise((resolve) => setTimeout(resolve, ms));

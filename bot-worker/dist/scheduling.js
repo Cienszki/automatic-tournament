@@ -31,12 +31,69 @@ function seriesTotals(seriesFormat) {
     return { fmt, totalGames, lobbySeriesType };
 }
 
+/** Registered roster as raw { id, steamId32, nickname } entries (no standins applied). */
+function buildBasePlayers(team) {
+    return (team.players && team.players.length)
+        ? team.players.map((p) => ({ id: p.id, steamId32: p.steamId32 || '', nickname: p.nickname }))
+        : Object.entries(team.roster || {}).map(([steamId64, p]) => ({ id: steamId64, steamId32: p.steamId32 || '', nickname: p.nickname }));
+}
+
 /**
- * Build Radiant/Dire team assignments (rosters + approved standins) for a match.
- * Supports both the players[] array (PDL) and the roster{} map (MMR tournaments).
- * Returns { radiant, dire } or null if the match/teams can't be read.
+ * Flat list of approved standins for a match, each tagged with the games it covers.
+ * approvedStandins: { reqId: { teamId, replacedPlayerId, steamId32, nickname, gameNumbers? } }
+ * gameNumbers omitted/empty = whole series.
  */
-async function buildLobbyTeamAssignments(db, tournamentId, matchId) {
+function buildStandinAssignments(match) {
+    const approvedStandins = match.approvedStandins || {};
+    return Object.values(approvedStandins).map((req) => ({
+        teamId: req.teamId,
+        replacedPlayerId: req.replacedPlayerId,
+        steamId32: req.steamId32,
+        nickname: req.nickname,
+        gameNumbers: Array.isArray(req.gameNumbers) ? req.gameNumbers : [],
+    }));
+}
+
+/**
+ * Effective LobbyExpectedPlayer[] for one team in one game: the registered roster with any
+ * standin whose game scope covers `gameNumber` swapped in, then filtered to valid steamId32.
+ * A standin with an empty gameNumbers list applies to every game (whole-series, legacy).
+ */
+function buildExpectedPlayersForGame(basePlayers, standinAssignments, teamId, gameNumber) {
+    const teamStandins = {};
+    for (const s of (standinAssignments || [])) {
+        if (s.teamId !== teamId) continue;
+        const covers = !s.gameNumbers || s.gameNumbers.length === 0 || s.gameNumbers.includes(gameNumber);
+        if (!covers) continue;
+        teamStandins[s.replacedPlayerId] = { steamId32: s.steamId32, nickname: s.nickname };
+    }
+    return (basePlayers || [])
+        .filter((p) => {
+            // Keep the player only if the final entry has a valid steamId32: either a standin
+            // covering this game replaces them, or they have one themselves.
+            const standin = teamStandins[p.id];
+            return standin ? !!standin.steamId32 : !!p.steamId32;
+        })
+        .map((player) => {
+            const standin = teamStandins[player.id];
+            if (standin) {
+                return {
+                    steamId32: standin.steamId32, nickname: standin.nickname,
+                    isStandin: true, replacesPlayerId: player.id, replacesPlayerNickname: player.nickname,
+                };
+            }
+            return { steamId32: player.steamId32, nickname: player.nickname, isStandin: false };
+        });
+}
+
+/**
+ * Build Radiant/Dire team assignments (rosters + approved standins) for a match and a
+ * specific game of the series. Supports both the players[] array (PDL) and the roster{} map.
+ * Returns { radiant, dire, match, baseRadiantPlayers, baseDirePlayers, standinAssignments }
+ * or null if the match/teams can't be read. The base rosters + standinAssignments let the
+ * runner recompute the effective roster for any game without re-reading the match doc.
+ */
+async function buildLobbyTeamAssignments(db, tournamentId, matchId, gameNumber = 1) {
     const matchDoc = await db.collection('tournaments').doc(tournamentId).collection('matches').doc(matchId).get();
     if (!matchDoc.exists) return null;
     const match = matchDoc.data();
@@ -50,54 +107,25 @@ async function buildLobbyTeamAssignments(db, tournamentId, matchId) {
     const teamA = teamADoc.data();
     const teamB = teamBDoc.data();
 
-    // approvedStandins: { reqId: { teamId, replacedPlayerId, steamId32, nickname } }
-    const approvedStandins = match.approvedStandins || {};
-    const standinsByTeam = {};
-    for (const req of Object.values(approvedStandins)) {
-        if (!standinsByTeam[req.teamId]) standinsByTeam[req.teamId] = {};
-        standinsByTeam[req.teamId][req.replacedPlayerId] = { steamId32: req.steamId32, nickname: req.nickname };
-    }
-
-    function buildPlayerList(team, teamId) {
-        const teamStandins = standinsByTeam[teamId] || {};
-        const players = (team.players && team.players.length)
-            ? team.players.map((p) => ({ id: p.id, steamId32: p.steamId32, nickname: p.nickname }))
-            : Object.entries(team.roster || {}).map(([steamId64, p]) => ({ id: steamId64, steamId32: p.steamId32, nickname: p.nickname }));
-        return players
-            .filter((p) => {
-                // Keep the player if the final entry will have a valid steamId32:
-                // either a standin with a valid steamId32 replaces them, or they have one themselves.
-                // Filtering on p.steamId32 alone would silently drop a player whose standin is valid.
-                const standin = teamStandins[p.id];
-                return standin ? !!standin.steamId32 : !!p.steamId32;
-            })
-            .map((player) => {
-                const standin = teamStandins[player.id];
-                if (standin) {
-                    return {
-                        steamId32: standin.steamId32, nickname: standin.nickname,
-                        isStandin: true, replacesPlayerId: player.id, replacesPlayerNickname: player.nickname,
-                    };
-                }
-                return { steamId32: player.steamId32, nickname: player.nickname, isStandin: false };
-            });
-    }
+    const baseRadiantPlayers = buildBasePlayers(teamA);
+    const baseDirePlayers = buildBasePlayers(teamB);
+    const standinAssignments = buildStandinAssignments(match);
 
     const radiant = {
         teamId: match.teamA.id, teamName: match.teamA.name,
-        expectedPlayers: buildPlayerList(teamA, match.teamA.id),
+        expectedPlayers: buildExpectedPlayersForGame(baseRadiantPlayers, standinAssignments, match.teamA.id, gameNumber),
         coachNickname: teamA.coach?.nickname,
     };
     const dire = {
         teamId: match.teamB.id, teamName: match.teamB.name,
-        expectedPlayers: buildPlayerList(teamB, match.teamB.id),
+        expectedPlayers: buildExpectedPlayersForGame(baseDirePlayers, standinAssignments, match.teamB.id, gameNumber),
         coachNickname: teamB.coach?.nickname,
     };
     if (match.coachInfo) {
         if (match.coachInfo[match.teamA.id]) radiant.coachNickname = match.coachInfo[match.teamA.id].nickname;
         if (match.coachInfo[match.teamB.id]) dire.coachNickname = match.coachInfo[match.teamB.id].nickname;
     }
-    return { radiant, dire, match };
+    return { radiant, dire, match, baseRadiantPlayers, baseDirePlayers, standinAssignments };
 }
 
 /** Does the match already have a non-terminal session? */
@@ -154,6 +182,12 @@ async function scheduleUpcomingMatches(db, tournamentId, botConfig, tournamentDo
             lobbyPassword: fixedPassword || generateLobbyPassword(),
             radiantTeam: assignments.radiant,
             direTeam: assignments.dire,
+            // Per-game roster source: registered rosters (no standins) + standin scopes.
+            // The runner recomputes radiantTeam/direTeam.expectedPlayers from these for each
+            // game so a standin can be limited to specific games of the series.
+            baseRadiantPlayers: assignments.baseRadiantPlayers,
+            baseDirePlayers: assignments.baseDirePlayers,
+            standinAssignments: assignments.standinAssignments,
             readyState: { radiantReady: false, direReady: false },
             validationErrors: [],
             seriesFormat: fmt,
@@ -180,6 +214,9 @@ async function scheduleUpcomingMatches(db, tournamentId, botConfig, tournamentDo
 module.exports = {
     generateLobbyPassword,
     seriesTotals,
+    buildBasePlayers,
+    buildStandinAssignments,
+    buildExpectedPlayersForGame,
     buildLobbyTeamAssignments,
     hasActiveSession,
     scheduleUpcomingMatches,

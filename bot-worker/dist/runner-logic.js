@@ -128,8 +128,12 @@ function evaluateEnforcement(session, players, config, whitelist = []) {
     const authorized = getAllAuthorizedSteamIds(session, whitelist);
 
     for (const player of players) {
-        const { steamId32, teamSide } = player;
+        const { steamId32, teamSide, name } = player;
         if (!steamId32 || steamId32 === '0') continue; // bot / empty slot
+
+        // Prefer the player's current Steam name (the GC sends it with each lobby member) so
+        // the kick message is meaningful to humans; fall back to the id only if it's missing.
+        const who = (name && String(name).trim()) ? String(name).trim() : `Steam32 ${steamId32}`;
 
         const isAuthorized = authorized.has(steamId32);
         const inTeamSlot = teamSide === 'radiant' || teamSide === 'dire';
@@ -142,7 +146,7 @@ function evaluateEnforcement(session, players, config, whitelist = []) {
             if (inTeamSlot || isSpectator) {
                 action.kickPlayers.push({ steamId32, reason: 'not_registered' });
                 action.chatMessages.push(
-                    `Player (Steam32: ${steamId32}) is not registered for this match and has been removed.`
+                    `Player ${who} is not registered for this match and has been removed.`
                 );
                 continue;
             }

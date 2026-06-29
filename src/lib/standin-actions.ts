@@ -44,6 +44,75 @@ export interface ApprovedStandinEntry {
   playerDocId?: string;
   /** Standin's MMR — copied from the standin request at approval time. */
   standinMmr?: number;
+  /**
+   * Which games of the series this standin plays (1-indexed). Omitted/empty = the whole
+   * series (backward compatible). Consumed by the lobby bot's per-game roster build and
+   * the results UI.
+   */
+  gameNumbers?: number[];
+}
+
+/**
+ * True if two game-scopes overlap. An empty/undefined scope means the whole series, so it
+ * overlaps everything.
+ */
+function gamesOverlap(a?: number[], b?: number[]): boolean {
+  const aAll = !a || a.length === 0;
+  const bAll = !b || b.length === 0;
+  if (aAll || bAll) return true;
+  return a!.some((g) => b!.includes(g));
+}
+
+/**
+ * Returns a human-readable error if approving `req` would clash with an already-approved
+ * standin in an OVERLAPPING game, or null if there's no clash. Two situations are nonsense
+ * and blocked:
+ *   1. another standin already covers the SAME replaced player (the slot is taken), and
+ *   2. this SAME person (steamId32) already covers a DIFFERENT player (one body, one slot).
+ */
+async function findConflictingApprovedStandin(
+  tournamentId: string,
+  matchId: string,
+  requestId: string,
+  req: any,
+  standinSteamId32: string,
+): Promise<string | null> {
+  const snap = await matchRef(tournamentId, matchId).get();
+  if (!snap.exists) return null;
+  const approved = (snap.data() as any)?.approvedStandins || {};
+  for (const [key, value] of Object.entries(approved)) {
+    if (key === requestId) continue; // ignore this same request (re-approval)
+    const e = value as any;
+    if (e.teamId !== req.teamId) continue;
+    if (!gamesOverlap(e.gameNumbers, req.gameNumbers)) continue;
+    if (e.replacedPlayerId === req.replacedPlayerId) {
+      return `Już zatwierdzono standina (${e.nickname || 'inny'}) za tego gracza w nakładających się grach.`;
+    }
+    if (standinSteamId32 && e.steamId32 === standinSteamId32) {
+      return `Ten standin jest już zatwierdzony za innego gracza (${e.replacedPlayerNickname || '—'}) w nakładających się grach.`;
+    }
+  }
+  return null;
+}
+
+/** Build the denormalized approvedStandins entry from a request doc + resolved ids. */
+function buildApprovedStandinEntry(
+  req: any,
+  steamId32: string,
+  playerDocId: string,
+  approvedAt: string,
+): ApprovedStandinEntry {
+  return {
+    steamId32,
+    nickname: req.standinNickname,
+    replacedPlayerId: req.replacedPlayerId,
+    replacedPlayerNickname: req.replacedPlayerNickname,
+    teamId: req.teamId,
+    approvedAt,
+    ...(playerDocId ? { playerDocId } : {}),
+    ...(req.standinMmr != null ? { standinMmr: req.standinMmr } : {}),
+    ...(Array.isArray(req.gameNumbers) && req.gameNumbers.length ? { gameNumbers: req.gameNumbers } : {}),
+  };
 }
 
 export interface StandinActionResult {
@@ -133,19 +202,16 @@ export async function approveStandinRequest(
     const req = reqSnap.data()!;
 
     const { steamId32, steamId64 } = await resolveSteamIds(req.standinSteamProfileUrl);
+
+    const conflict = await findConflictingApprovedStandin(tournamentId, req.matchId, requestId, req, steamId32);
+    if (conflict) {
+      return { success: false, error: conflict };
+    }
+
     const playerDocId = await findPlayerDocIdBySteamId32(tournamentId, steamId32);
     const now = new Date().toISOString();
 
-    const entry: ApprovedStandinEntry = {
-      steamId32,
-      nickname: req.standinNickname,
-      replacedPlayerId: req.replacedPlayerId,
-      replacedPlayerNickname: req.replacedPlayerNickname,
-      teamId: req.teamId,
-      approvedAt: now,
-      ...(playerDocId ? { playerDocId } : {}),
-      ...(req.standinMmr != null ? { standinMmr: req.standinMmr } : {}),
-    };
+    const entry: ApprovedStandinEntry = buildApprovedStandinEntry(req, steamId32, playerDocId, now);
 
     await Promise.all([
       // Also write steamId32 to the standinRequest doc so Source 3 of the standinLookup
@@ -302,19 +368,16 @@ export async function approveStandinAppeal(
     const req = reqSnap.data()!;
 
     const { steamId32, steamId64 } = await resolveSteamIds(req.standinSteamProfileUrl);
+
+    const conflict = await findConflictingApprovedStandin(tournamentId, req.matchId, requestId, req, steamId32);
+    if (conflict) {
+      return { success: false, error: conflict };
+    }
+
     const playerDocId = await findPlayerDocIdBySteamId32(tournamentId, steamId32);
     const now = new Date().toISOString();
 
-    const entry: ApprovedStandinEntry = {
-      steamId32,
-      nickname: req.standinNickname,
-      replacedPlayerId: req.replacedPlayerId,
-      replacedPlayerNickname: req.replacedPlayerNickname,
-      teamId: req.teamId,
-      approvedAt: now,
-      ...(playerDocId ? { playerDocId } : {}),
-      ...(req.standinMmr != null ? { standinMmr: req.standinMmr } : {}),
-    };
+    const entry: ApprovedStandinEntry = buildApprovedStandinEntry(req, steamId32, playerDocId, now);
 
     await Promise.all([
       reqRef.update({

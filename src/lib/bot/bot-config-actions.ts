@@ -8,8 +8,13 @@ import type {
   BotAccount,
   LobbySession,
   LobbySessionState,
-  DEFAULT_TOURNAMENT_BOT_CONFIG,
 } from '@/types/lobby-bot';
+import {
+  buildBasePlayers,
+  buildStandinAssignments,
+  buildExpectedPlayersForGame,
+  type StandinAssignment,
+} from './standin-roster';
 
 // ─── Bot Config CRUD ────────────────────────────────────────────────────────
 
@@ -29,6 +34,23 @@ export async function getTournamentBotConfig(
 
   if (!doc.exists) return null;
   return doc.data() as TournamentBotConfig;
+}
+
+/**
+ * The fixed lobby password a captain may see BEFORE the bot creates the session, so the
+ * lobby card can show join info in advance. Returns '' when no fixed password is configured
+ * (auto-generated per match — unknowable in advance) or when it isn't player-visible.
+ * The bot config doc is admin-only at the Firestore-rules level, so this server action is
+ * the only way the client can obtain it.
+ */
+export async function getTournamentLobbyPassword(tournamentId: string): Promise<string> {
+  try {
+    const cfg = await getTournamentBotConfig(tournamentId);
+    if (!cfg || cfg.passwordVisibleToPlayers === false) return '';
+    return (cfg.lobby?.password || '').trim();
+  } catch {
+    return '';
+  }
 }
 
 /**
@@ -284,10 +306,14 @@ export async function cancelLobbySession(sessionId: string): Promise<void> {
  */
 export async function buildLobbyTeamAssignments(
   tournamentId: string,
-  matchId: string
+  matchId: string,
+  gameNumber = 1
 ): Promise<{
   radiant: import('@/types/lobby-bot').LobbyTeamAssignment;
   dire: import('@/types/lobby-bot').LobbyTeamAssignment;
+  baseRadiantPlayers: { id: string; steamId32: string; nickname: string }[];
+  baseDirePlayers: { id: string; steamId32: string; nickname: string }[];
+  standinAssignments: StandinAssignment[];
 } | null> {
   const db = getAdminDb();
 
@@ -311,94 +337,34 @@ export async function buildLobbyTeamAssignments(
   const teamA = teamADoc.data() as import('@/lib/definitions').Team;
   const teamB = teamBDoc.data() as import('@/lib/definitions').Team;
 
-  // Build approved standins map: replacedPlayerId → standin info
-  const approvedStandins = match.approvedStandins || {};
-  const standinsByTeam: Record<string, Record<string, { steamId32: string; nickname: string }>> = {};
-
-  for (const req of Object.values(approvedStandins)) {
-    if (!standinsByTeam[req.teamId]) standinsByTeam[req.teamId] = {};
-    standinsByTeam[req.teamId][req.replacedPlayerId] = {
-      steamId32: req.steamId32,
-      nickname: req.nickname,
-    };
-  }
-
-  function buildPlayerList(
-    team: import('@/lib/definitions').Team,
-    teamId: string
-  ): import('@/types/lobby-bot').LobbyExpectedPlayer[] {
-    const teamStandins = standinsByTeam[teamId] || {};
-
-    // Support both players array (PDL) and roster map (wiosenna/MMR tournaments).
-    // roster is keyed by steamId64; each entry has { steamId32, nickname, role, ... }.
-    const players: { id: string; steamId32: string; nickname: string }[] =
-      team.players?.length
-        ? team.players.map((p) => ({ id: p.id, steamId32: p.steamId32, nickname: p.nickname }))
-        : Object.entries(team.roster ?? {}).map(([steamId64, p]) => ({
-            id: steamId64,
-            steamId32: p.steamId32,
-            nickname: p.nickname,
-          }));
-
-    return players
-      .filter((player) => {
-        // If this player is being replaced by a standin, keep them only if the standin
-        // has a valid steamId32. If neither the player nor their standin has a steamId32,
-        // drop the entry entirely — an empty steamId32 in expectedPlayers permanently
-        // blocks teamSeatedSide (mirrors the filter in bot-worker/dist/scheduling.js).
-        const standin = teamStandins[player.id];
-        return standin ? !!standin.steamId32 : !!player.steamId32;
-      })
-      .map((player) => {
-        const standin = teamStandins[player.id];
-        if (standin) {
-          return {
-            steamId32: standin.steamId32,
-            nickname: standin.nickname,
-            isStandin: true,
-            replacesPlayerId: player.id,
-            replacesPlayerNickname: player.nickname,
-          };
-        }
-        return {
-          steamId32: player.steamId32,
-          nickname: player.nickname,
-          isStandin: false,
-        };
-      });
-  }
+  const baseRadiantPlayers = buildBasePlayers(teamA);
+  const baseDirePlayers = buildBasePlayers(teamB);
+  const standinAssignments = buildStandinAssignments(match);
 
   // Team A = Radiant, Team B = Dire (default assignment)
   const radiant: import('@/types/lobby-bot').LobbyTeamAssignment = {
     teamId: match.teamA.id,
     teamName: match.teamA.name,
-    expectedPlayers: buildPlayerList(teamA, match.teamA.id),
-    coachSteamId32: teamA.coach?.steamProfileUrl
-      ? undefined // Would need to resolve from coach data
-      : undefined,
+    expectedPlayers: buildExpectedPlayersForGame(baseRadiantPlayers, standinAssignments, match.teamA.id, gameNumber),
+    coachSteamId32: undefined,
     coachNickname: teamA.coach?.nickname,
   };
 
   const dire: import('@/types/lobby-bot').LobbyTeamAssignment = {
     teamId: match.teamB.id,
     teamName: match.teamB.name,
-    expectedPlayers: buildPlayerList(teamB, match.teamB.id),
-    coachSteamId32: teamB.coach?.steamProfileUrl ? undefined : undefined,
+    expectedPlayers: buildExpectedPlayersForGame(baseDirePlayers, standinAssignments, match.teamB.id, gameNumber),
+    coachSteamId32: undefined,
     coachNickname: teamB.coach?.nickname,
   };
 
-  // Resolve coach Steam IDs from coachInfo on match doc
+  // Resolve coach names from coachInfo on match doc
   if (match.coachInfo) {
-    if (match.coachInfo[match.teamA.id]) {
-      radiant.coachNickname = match.coachInfo[match.teamA.id].nickname;
-      // Coach steamId32 would need to be stored; for now use profile URL parsing
-    }
-    if (match.coachInfo[match.teamB.id]) {
-      dire.coachNickname = match.coachInfo[match.teamB.id].nickname;
-    }
+    if (match.coachInfo[match.teamA.id]) radiant.coachNickname = match.coachInfo[match.teamA.id].nickname;
+    if (match.coachInfo[match.teamB.id]) dire.coachNickname = match.coachInfo[match.teamB.id].nickname;
   }
 
-  return { radiant, dire };
+  return { radiant, dire, baseRadiantPlayers, baseDirePlayers, standinAssignments };
 }
 
 /**
@@ -458,6 +424,9 @@ export async function scheduleLobbyForMatch(
     lobbyPassword: password,
     radiantTeam: assignments.radiant,
     direTeam: assignments.dire,
+    baseRadiantPlayers: assignments.baseRadiantPlayers,
+    baseDirePlayers: assignments.baseDirePlayers,
+    standinAssignments: assignments.standinAssignments,
     readyState: {
       radiantReady: false,
       direReady: false,
@@ -493,8 +462,9 @@ export async function scheduleNextGameInSeries(
 ): Promise<{ success: boolean; sessionId?: string; error?: string }> {
   const { matchId, tournamentId, seriesFormat, totalGames } = previousSession;
 
-  // Re-build team assignments (picks up any new standins)
-  const assignments = await buildLobbyTeamAssignments(tournamentId, matchId);
+  // Re-build team assignments for the upcoming game (picks up any new standins, scoped to
+  // the game number so a per-game standin only appears in the games they cover).
+  const assignments = await buildLobbyTeamAssignments(tournamentId, matchId, nextGameNumber);
   if (!assignments) {
     return { success: false, error: 'Could not build team assignments for next game' };
   }
@@ -533,6 +503,9 @@ export async function scheduleNextGameInSeries(
     lobbyPassword: password,
     radiantTeam: assignments.radiant,
     direTeam: assignments.dire,
+    baseRadiantPlayers: assignments.baseRadiantPlayers,
+    baseDirePlayers: assignments.baseDirePlayers,
+    standinAssignments: assignments.standinAssignments,
     readyState: {
       radiantReady: false,
       direReady: false,
@@ -574,17 +547,16 @@ export async function syncLobbySessionStandins(
   tournamentId: string,
   matchId: string
 ): Promise<number> {
-  // Re-build the latest team assignments from match doc + approved standins
+  // Re-build the latest team assignments from match doc + approved standins. The base
+  // rosters and standinAssignments are game-independent; the effective expectedPlayers are
+  // recomputed PER SESSION for that session's current game below.
   const assignments = await buildLobbyTeamAssignments(tournamentId, matchId);
   if (!assignments) return 0;
+  const { baseRadiantPlayers, baseDirePlayers, standinAssignments } = assignments;
 
   // Get tournament whitelist (commentators, observers, admins)
   const botConfig = await getTournamentBotConfig(tournamentId);
   const whitelistIds = (botConfig?.whitelist ?? []).map((e: { steamId32: string }) => e.steamId32);
-
-  const newRadiantIds = assignments.radiant.expectedPlayers.map((p) => p.steamId32);
-  const newDireIds = assignments.dire.expectedPlayers.map((p) => p.steamId32);
-  const newAllIds = new Set([...newRadiantIds, ...newDireIds]);
 
   // Find all active (non-terminal) sessions for this match
   const allSessions = await getLobbySessionsForMatch(matchId);
@@ -596,6 +568,19 @@ export async function syncLobbySessionStandins(
   const db = getAdminDb();
 
   for (const session of activeSessions) {
+    // Effective roster for THIS session's current game — a standin scoped to a later game
+    // must not be added to a game already in progress, and must not retroactively change a
+    // game that's already done.
+    const gameNum = session.currentGameNumber || 1;
+    const radiantExpected = buildExpectedPlayersForGame(baseRadiantPlayers, standinAssignments, assignments.radiant.teamId, gameNum);
+    const direExpected = buildExpectedPlayersForGame(baseDirePlayers, standinAssignments, assignments.dire.teamId, gameNum);
+    const radiantTeam = { ...assignments.radiant, expectedPlayers: radiantExpected };
+    const direTeam = { ...assignments.dire, expectedPlayers: direExpected };
+
+    const newRadiantIds = radiantExpected.map((p) => p.steamId32);
+    const newDireIds = direExpected.map((p) => p.steamId32);
+    const newAllIds = new Set([...newRadiantIds, ...newDireIds]);
+
     // Diff to find which Steam32 IDs were added or removed
     const oldAllIds = new Set([
       ...session.radiantTeam.expectedPlayers.map((p) => p.steamId32),
@@ -604,10 +589,15 @@ export async function syncLobbySessionStandins(
     const newlyAddedIds = [...newAllIds].filter((id) => !oldAllIds.has(id));
     const removedIds = [...oldAllIds].filter((id) => !newAllIds.has(id));
 
-    // 1. Update Firestore session with new team assignments
+    // 1. Update Firestore session: effective roster for this game + the per-game source so
+    //    the runner can recompute future games. The runner's watchSessionDoc/reconcileRoster
+    //    reacts to this update to invite/kick as needed.
     await updateLobbySession(session.id, {
-      radiantTeam: assignments.radiant,
-      direTeam: assignments.dire,
+      radiantTeam,
+      direTeam,
+      baseRadiantPlayers,
+      baseDirePlayers,
+      standinAssignments,
     });
 
     // 2. Push bot commands (only when a bot is actually assigned to this session)

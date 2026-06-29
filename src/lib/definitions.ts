@@ -130,6 +130,11 @@ export interface Match {
       playerDocId?: string;
       /** Standin's MMR (copied from the standin request at approval time). */
       standinMmr?: number;
+      /**
+       * Which games of the series this standin plays (1-indexed). Omitted/empty = the
+       * whole series (backward compatible with series-wide standins).
+       */
+      gameNumbers?: number[];
     };
   };
   // Forfeit/walkover metadata
@@ -141,6 +146,8 @@ export interface Match {
     issuedAt: string;   // ISO date string
     issuedBy: string;   // admin userId
   };
+  /** Set to true when the match was voided due to a team ban. Hidden from schedule views. */
+  isBanForfeit?: boolean;
 }
 
 export interface PlayerPerformanceInMatch {
@@ -442,9 +449,22 @@ export interface PDLStandinRequest {
   captainId: string;          // Requesting captain UID
   replacedPlayerId: string;   // Player ID being replaced
   replacedPlayerNickname: string;
+  replacedPlayerMmr?: number; // Original player's MMR (stored for MMR-limited tournaments)
   standinNickname: string;    // Standin's recognizable nickname
   standinSteamProfileUrl: string; // Link to standin's Steam profile
   standinMmr?: number;        // Standin's declared MMR (required for MMR-limited tournaments)
+  standinSmurfAccounts?: { steamProfileUrl: string }[]; // Standin's smurf accounts
+  /**
+   * Which games of the series this standin plays (1-indexed). Omitted/empty = the whole
+   * series (backward compatible). Two non-overlapping requests for the same replaced
+   * player allow a different standin per game.
+   */
+  gameNumbers?: number[];
+  // Denormalized match labels (copied at request creation) so standin history can be
+  // shown as "TeamA vs TeamB — date" without loading the referenced match.
+  matchTeamAName?: string;
+  matchTeamBName?: string;
+  matchScheduledFor?: string;
   status: PDLStandinRequestStatus;
   createdAt: string;
   updatedAt: string;

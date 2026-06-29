@@ -31,6 +31,8 @@ import {
   Gavel,
   ExternalLink,
   ShieldAlert,
+  Plus,
+  X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Player, PDLStandinRequest as PDLStandinRequestType, PDLStandinRequestStatus } from '@/lib/definitions';
@@ -55,10 +57,19 @@ interface PDLStandinRequestProps {
     matchId: string;
     replacedPlayerId: string;
     replacedPlayerNickname: string;
+    replacedPlayerMmr?: number;
     standinNickname: string;
     standinSteamProfileUrl: string;
     standinMmr?: number;
+    standinSmurfAccounts?: { steamProfileUrl: string }[];
+    /** Games of the series this standin covers; omitted = whole series. */
+    gameNumbers?: number[];
   }) => Promise<void>;
+  /**
+   * Number of games in the series (bo1=1, bo2=2, bo3=3, bo5=5). When > 1 a per-game
+   * selector is shown so a standin can be requested for specific games only.
+   */
+  totalGames?: number;
   /** Called when opponent captain approves a standin request */
   onApproveRequest: (requestId: string) => Promise<void>;
   /** Called when opponent captain rejects a standin request */
@@ -123,6 +134,7 @@ export function PDLStandinRequestSection({
   allTournamentRequests,
   matchNameMap,
   isMmrLimited = false,
+  totalGames = 1,
 }: PDLStandinRequestProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isAppealOpen, setIsAppealOpen] = useState(false);
@@ -139,8 +151,45 @@ export function PDLStandinRequestSection({
   const [standinNickname, setStandinNickname] = useState('');
   const [standinSteamUrl, setStandinSteamUrl] = useState('');
   const [standinMmr, setStandinMmr] = useState('');
+  const [standinSmurfUrls, setStandinSmurfUrls] = useState<string[]>([]);
+  // Per-game scope: which games of the series the standin will play.
+  const allGameNumbers = Array.from({ length: Math.max(1, totalGames) }, (_, i) => i + 1);
 
   const matchRequests = existingRequests.filter(r => r.matchId === matchId);
+
+  // Games already covered by an existing (live) request for a given player, so we can prevent
+  // two standins for the same player and the same game. Empty gameNumbers = whole series.
+  const liveStatuses: PDLStandinRequestStatus[] = ['pending', 'approved', 'appeal_pending', 'appeal_approved'];
+  const gamesTakenFor = (playerId: string): Set<number> => {
+    const taken = new Set<number>();
+    if (!playerId) return taken;
+    for (const r of matchRequests) {
+      if (r.replacedPlayerId !== playerId) continue;
+      if (!liveStatuses.includes(r.status)) continue;
+      const gns = (r.gameNumbers && r.gameNumbers.length) ? r.gameNumbers : allGameNumbers;
+      for (const g of gns) taken.add(g);
+    }
+    return taken;
+  };
+  const gamesTakenForSelectedPlayer = gamesTakenFor(selectedPlayerId);
+
+  // Default selection = all games still available for the selected player.
+  const [selectedGameNumbers, setSelectedGameNumbers] = useState<number[]>(allGameNumbers);
+
+  const [submitError, setSubmitError] = useState('');
+
+  const toggleGameNumber = (g: number) => {
+    if (gamesTakenForSelectedPlayer.has(g)) return; // can't pick a game already covered
+    setSubmitError('');
+    setSelectedGameNumbers(prev =>
+      prev.includes(g) ? prev.filter(x => x !== g) : [...prev, g].sort((a, b) => a - b)
+    );
+  };
+
+  // True if two game-scopes overlap; empty list = whole series (overlaps everything).
+  const gamesOverlap = (a: number[], b: number[]) =>
+    a.length === 0 || b.length === 0 || a.some((g) => b.includes(g));
+  const normalizeUrl = (u: string) => u.trim().toLowerCase().replace(/\/+$/, '');
 
   // For each opponent pending request, resolve its steamId32 via API if it's a vanity URL
   useEffect(() => {
@@ -174,9 +223,31 @@ export function PDLStandinRequestSection({
   const handleSubmit = async () => {
     if (!selectedPlayerId || !standinNickname.trim() || !standinSteamUrl.trim()) return;
     if (isMmrLimited && !standinMmr.trim()) return;
+    if (totalGames > 1 && selectedGameNumbers.length === 0) return;
 
     const player = players.find(p => p.id === selectedPlayerId);
     if (!player) return;
+
+    const filteredSmurfs = standinSmurfUrls.filter(u => u.trim());
+
+    // Only send gameNumbers when it's a proper subset; a full selection = whole series (omit).
+    const sortedGames = [...selectedGameNumbers].sort((a, b) => a - b);
+    const gameNumbers = totalGames > 1 && sortedGames.length < totalGames ? sortedGames : undefined;
+
+    // A single standin can't fill two slots: block proposing this person (same Steam URL) for
+    // a DIFFERENT player in overlapping games. (Server re-checks by resolved steamId32.)
+    const newGames = gameNumbers ?? allGameNumbers;
+    const sameStandinOtherPlayer = matchRequests.find((r) =>
+      liveStatuses.includes(r.status) &&
+      r.replacedPlayerId !== selectedPlayerId &&
+      normalizeUrl(r.standinSteamProfileUrl) === normalizeUrl(standinSteamUrl) &&
+      gamesOverlap((r.gameNumbers && r.gameNumbers.length) ? r.gameNumbers : allGameNumbers, newGames)
+    );
+    if (sameStandinOtherPlayer) {
+      setSubmitError(`Ten standin jest już zgłoszony za innego gracza (${sameStandinOtherPlayer.replacedPlayerNickname}) w tych grach.`);
+      return;
+    }
+    setSubmitError('');
 
     setLoading(true);
     try {
@@ -184,15 +255,20 @@ export function PDLStandinRequestSection({
         matchId,
         replacedPlayerId: selectedPlayerId,
         replacedPlayerNickname: player.nickname,
+        replacedPlayerMmr: isMmrLimited ? player.mmr : undefined,
         standinNickname: standinNickname.trim(),
         standinSteamProfileUrl: standinSteamUrl.trim(),
         standinMmr: standinMmr.trim() ? Number(standinMmr.trim()) : undefined,
+        standinSmurfAccounts: filteredSmurfs.length > 0 ? filteredSmurfs.map(u => ({ steamProfileUrl: u.trim() })) : undefined,
+        gameNumbers,
       });
       setIsOpen(false);
       setSelectedPlayerId('');
       setStandinNickname('');
       setStandinSteamUrl('');
       setStandinMmr('');
+      setStandinSmurfUrls([]);
+      setSelectedGameNumbers(allGameNumbers);
     } finally {
       setLoading(false);
     }
@@ -330,10 +406,20 @@ export function PDLStandinRequestSection({
                     </div>
                     <p className="text-sm text-white/40">
                       Za: <span className="text-white/60">{request.replacedPlayerNickname}</span>
+                      {request.replacedPlayerMmr !== undefined && (
+                        <span className="text-white/40"> ({request.replacedPlayerMmr.toLocaleString()} MMR)</span>
+                      )}
+                    </p>
+                    <p className="text-sm text-white/40">
+                      Gry: <span className="text-white/60">
+                        {request.gameNumbers && request.gameNumbers.length
+                          ? request.gameNumbers.join(', ')
+                          : 'cała seria'}
+                      </span>
                     </p>
                     {request.standinMmr !== undefined && (
                       <p className="text-sm text-white/40">
-                        MMR: <span className="text-white/60 font-logik-extended-bold">{request.standinMmr.toLocaleString()}</span>
+                        MMR standina: <span className="text-white/60 font-logik-extended-bold">{request.standinMmr.toLocaleString()}</span>
                       </p>
                     )}
                   </div>
@@ -432,6 +518,29 @@ export function PDLStandinRequestSection({
                           </div>
                         </div>
 
+                        {/* Smurf accounts */}
+                        {request.standinSmurfAccounts && request.standinSmurfAccounts.length > 0 && (
+                          <div className="space-y-2">
+                            <p className="text-[10px] font-logik-extended-bold text-white/40 uppercase tracking-widest">
+                              Konta smurf standina
+                            </p>
+                            <div className="flex flex-wrap gap-2">
+                              {request.standinSmurfAccounts.map((smurf, idx) => (
+                                <a
+                                  key={idx}
+                                  href={smurf.steamProfileUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md bg-[#1b2838] text-[#c7d5e0] hover:bg-[#2a475e] border border-white/10 transition-colors"
+                                >
+                                  <ExternalLink className="w-3 h-3" />
+                                  Smurf {idx + 1}
+                                </a>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
                         {/* Approval history for this standin replacing the same player */}
                         <div className="space-y-1.5">
                           <p className="text-[10px] font-logik-extended-bold text-white/40 uppercase tracking-widest">
@@ -450,11 +559,27 @@ export function PDLStandinRequestSection({
                                 </p>
                               </div>
                               <ul className="ml-5 space-y-0.5">
-                                {previousApprovals.map(prev => (
-                                  <li key={prev.id} className="text-xs text-white/40">
-                                    • {matchNameMap?.[prev.matchId] ?? `Mecz ${prev.matchId.substring(0, 8)}…`}
-                                  </li>
-                                ))}
+                                {previousApprovals.map(prev => {
+                                  // Prefer labels denormalized on the request itself so history
+                                  // renders "TeamA vs TeamB — date (gry …)" even when the match
+                                  // isn't in the current team's loaded list.
+                                  const teamsLabel = prev.matchTeamAName && prev.matchTeamBName
+                                    ? `${prev.matchTeamAName} vs ${prev.matchTeamBName}`
+                                    : matchNameMap?.[prev.matchId] ?? `Mecz ${prev.matchId.substring(0, 8)}…`;
+                                  const dateLabel = prev.matchScheduledFor
+                                    ? new Date(prev.matchScheduledFor).toLocaleDateString('pl-PL')
+                                    : null;
+                                  const gamesLabel = prev.gameNumbers && prev.gameNumbers.length
+                                    ? `gry ${prev.gameNumbers.join(', ')}`
+                                    : null;
+                                  return (
+                                    <li key={prev.id} className="text-xs text-white/40">
+                                      • {teamsLabel}
+                                      {dateLabel && <span className="text-white/30"> — {dateLabel}</span>}
+                                      {gamesLabel && <span className="text-white/30"> ({gamesLabel})</span>}
+                                    </li>
+                                  );
+                                })}
                               </ul>
                             </div>
                           )}
@@ -584,7 +709,15 @@ export function PDLStandinRequestSection({
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label className="text-white/80 text-sm">Zastępowany gracz</Label>
-                <Select value={selectedPlayerId} onValueChange={setSelectedPlayerId}>
+                <Select
+                  value={selectedPlayerId}
+                  onValueChange={(v) => {
+                    setSelectedPlayerId(v);
+                    setSubmitError('');
+                    const taken = gamesTakenFor(v);
+                    setSelectedGameNumbers(allGameNumbers.filter((g) => !taken.has(g)));
+                  }}
+                >
                   <SelectTrigger className="bg-white/5 border-white/10 text-white">
                     <SelectValue placeholder="Wybierz gracza" />
                   </SelectTrigger>
@@ -597,6 +730,45 @@ export function PDLStandinRequestSection({
                   </SelectContent>
                 </Select>
               </div>
+
+              {totalGames > 1 && (
+                <div className="space-y-2">
+                  <Label className="text-white/80 text-sm">Gry w serii</Label>
+                  <p className="text-white/40 text-xs">
+                    Wybierz, w których grach serii zagra standin. Domyślnie cała seria.
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {allGameNumbers.map((g) => {
+                      const taken = gamesTakenForSelectedPlayer.has(g);
+                      const active = !taken && selectedGameNumbers.includes(g);
+                      return (
+                        <button
+                          key={g}
+                          type="button"
+                          disabled={taken}
+                          onClick={() => toggleGameNumber(g)}
+                          className={cn(
+                            'px-3 py-1.5 rounded-md text-sm border transition-all',
+                            active
+                              ? 'bg-pdl-gold/20 border-pdl-gold/50 text-pdl-gold font-logik-extended-bold'
+                              : taken
+                              ? 'border-white/5 text-white/20 cursor-not-allowed line-through'
+                              : 'border-white/10 text-white/60 hover:text-white hover:border-white/30'
+                          )}
+                          title={taken ? 'Ta gra ma już zgłoszonego standina dla tego gracza' : undefined}
+                        >
+                          Gra {g}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {selectedPlayerId && selectedGameNumbers.length === 0 && (
+                    <p className="text-red-400 text-xs">
+                      Ten gracz ma już zgłoszonych standinów na wszystkie gry serii.
+                    </p>
+                  )}
+                </div>
+              )}
 
               <div className="space-y-2">
                 <Label className="text-white/80 text-sm">Nick standina</Label>
@@ -613,7 +785,7 @@ export function PDLStandinRequestSection({
                 <Input
                   placeholder="https://steamcommunity.com/profiles/..."
                   value={standinSteamUrl}
-                  onChange={(e) => setStandinSteamUrl(e.target.value)}
+                  onChange={(e) => { setStandinSteamUrl(e.target.value); setSubmitError(''); }}
                   className="bg-white/5 border-white/10 text-white"
                 />
               </div>
@@ -632,7 +804,45 @@ export function PDLStandinRequestSection({
                   />
                 </div>
               )}
+
+              {isMmrLimited && (
+                <div className="space-y-2">
+                  <Label className="text-white/80 text-sm">Konta smurf standina</Label>
+                  <p className="text-white/40 text-xs">Opcjonalnie — dodaj konta smurf standina, by przeciwnik mógł je zweryfikować.</p>
+                  <div className="space-y-2">
+                    {standinSmurfUrls.map((url, idx) => (
+                      <div key={idx} className="flex gap-2 items-center">
+                        <Input
+                          value={url}
+                          onChange={(e) => setStandinSmurfUrls(prev => prev.map((v, i) => i === idx ? e.target.value : v))}
+                          placeholder="https://steamcommunity.com/profiles/..."
+                          className="bg-white/5 border-white/10 text-white flex-1"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setStandinSmurfUrls(prev => prev.filter((_, i) => i !== idx))}
+                          className="p-2 rounded-md text-white/40 hover:text-red-400 hover:bg-red-500/10 transition-all"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setStandinSmurfUrls(prev => [...prev, ''])}
+                    className="flex items-center gap-2 text-sm px-3 py-1.5 rounded-md border border-white/10 text-white/60 hover:text-white hover:border-white/30 hover:bg-white/5 transition-all"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    Dodaj konto smurf
+                  </button>
+                </div>
+              )}
             </div>
+
+            {submitError && (
+              <p className="text-red-400 text-xs">{submitError}</p>
+            )}
 
             <DialogFooter>
               <Button
@@ -644,7 +854,7 @@ export function PDLStandinRequestSection({
               </Button>
               <Button
                 onClick={handleSubmit}
-                disabled={!selectedPlayerId || !standinNickname.trim() || !standinSteamUrl.trim() || (isMmrLimited && !standinMmr.trim()) || loading}
+                disabled={!selectedPlayerId || !standinNickname.trim() || !standinSteamUrl.trim() || (isMmrLimited && !standinMmr.trim()) || (totalGames > 1 && selectedGameNumbers.length === 0) || loading}
                 className="bg-pdl-crimson hover:bg-pdl-crimson/80 text-white font-logik-extended-bold"
               >
                 {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <UserPlus className="w-4 h-4 mr-2" />}

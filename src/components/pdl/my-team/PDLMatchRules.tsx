@@ -1,11 +1,11 @@
 'use client';
 
-import { Info, Shield, Clock, Globe, Eye, Users, AlertTriangle, Bot } from 'lucide-react';
+import { Info, Shield, Clock, Globe, Eye, Users, AlertTriangle, Bot, Lock, Search } from 'lucide-react';
+
 import { cn } from '@/lib/utils';
 import { useTournament } from '@/context/TournamentContext';
 
 interface PDLMatchRulesProps {
-  leagueId?: number;
   leagueName?: string;
   isGame1Host?: boolean;
   hostTeamName?: string;
@@ -14,19 +14,23 @@ interface PDLMatchRulesProps {
     minutes: number;
     reason: string;
   };
+  /** Lobby name from the active bot session for this match */
+  botLobbyName?: string;
+  /** Lobby password from the active bot session */
+  botLobbyPassword?: string;
 }
 
 export function PDLMatchRules({
-  leagueId,
   leagueName,
   isGame1Host,
   hostTeamName,
   opponentTeamName,
   timePenalty,
+  botLobbyName,
+  botLobbyPassword,
 }: PDLMatchRulesProps) {
   const { tournament } = useTournament();
   const displayLeagueName = leagueName ?? tournament?.name?.toUpperCase() ?? 'POLISH DOTA LEAGUE';
-  const displayLeagueId = leagueId ?? tournament?.leagueId ?? 19206;
 
   const lobby = tournament?.lobbySettings;
   const displayGameMode = lobby?.gameMode || 'Captains Mode';
@@ -72,14 +76,46 @@ export function PDLMatchRules({
             {lobby?.botLobbyEnabled ? (
               <>
                 <Bot className="w-4 h-4 text-pdl-gold mt-0.5 flex-shrink-0" />
-                <div className="space-y-3 text-xs font-logik">
+                <div className="space-y-3 text-xs font-logik w-full">
                   <p className="text-white font-logik-extended-bold">
                     Lobby zarządzane automatycznie przez bota
                   </p>
+
+                  {/* Lobby name + password — shown once the bot session exists */}
+                  {botLobbyName ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <div className="flex items-center gap-2 rounded-lg bg-white/5 border border-white/10 px-3 py-2">
+                        <Search className="w-3.5 h-3.5 text-pdl-gold flex-shrink-0" />
+                        <div className="min-w-0">
+                          <p className="text-white/40 text-[10px] uppercase tracking-wide">Nazwa lobby</p>
+                          <p className="text-white font-logik-extended-bold truncate">{botLobbyName}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 rounded-lg bg-white/5 border border-white/10 px-3 py-2">
+                        <Lock className="w-3.5 h-3.5 text-pdl-gold flex-shrink-0" />
+                        <div>
+                          <p className="text-white/40 text-[10px] uppercase tracking-wide">Hasło</p>
+                          {botLobbyPassword ? (
+                            <p className="text-white font-logik-extended-bold tracking-widest">{botLobbyPassword}</p>
+                          ) : (
+                            <p className="text-white/40 italic text-[11px]">ustali bot przy starcie lobby</p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-white/40 italic">
+                      Nazwa i hasło lobby pojawią się tutaj, gdy bot otworzy lobby przed meczem.
+                    </p>
+                  )}
+
                   <ol className="space-y-2 text-white/70 list-none">
                     <li className="flex gap-2">
                       <span className="text-pdl-gold font-logik-extended-bold flex-shrink-0">1.</span>
                       Bot wyśle zaproszenia na Steam przed meczem. Zaakceptuj zaproszenie i dołącz do lobby.
+                      Możesz też wejść samodzielnie przez przeglądarkę prywatnych lobby ({botLobbyName ? (
+                        <span className="text-white font-logik-extended-bold">{botLobbyName}</span>
+                      ) : 'nazwa pojawi się powyżej'}).
                     </li>
                     <li className="flex gap-2">
                       <span className="text-pdl-gold font-logik-extended-bold flex-shrink-0">2.</span>
@@ -108,6 +144,14 @@ export function PDLMatchRules({
                       Gra uruchomi się automatycznie po dokonaniu wyborów przez obie drużyny.
                     </li>
                   </ol>
+
+                  {/* Emergency notice */}
+                  <div className="flex items-start gap-2 rounded-lg border border-red-500/20 bg-red-500/5 px-3 py-2 mt-1">
+                    <AlertTriangle className="w-3.5 h-3.5 text-red-400 flex-shrink-0 mt-0.5" />
+                    <p className="text-red-300/80">
+                      Jeśli lobby nie działa lub bot nie reaguje — <span className="font-logik-extended-bold text-red-300">natychmiast powiadom administratora.</span>
+                    </p>
+                  </div>
                 </div>
               </>
             ) : (
@@ -146,7 +190,7 @@ export function PDLMatchRules({
         <p className="text-xs text-white font-logik-extended-bold uppercase tracking-wide">
           Ustawienia Lobby
         </p>
-        
+
         <div className="grid gap-3 text-xs font-logik">
           <div className="flex items-center gap-3">
             <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-white/5 border border-white/10">

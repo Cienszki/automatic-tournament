@@ -367,9 +367,31 @@ export interface LobbySession {
   /** Dota 2 lobby ID (set once lobby is created in-game) */
   dotaLobbyId?: string;
 
-  /** Team assignments */
+  /**
+   * Team assignments. radiantTeam/direTeam.expectedPlayers always holds the EFFECTIVE
+   * roster for the CURRENT game (currentGameNumber) — the registered roster with any
+   * per-game standins applied. The runner recomputes it whenever the game advances or a
+   * standin is approved mid-series.
+   */
   radiantTeam: LobbyTeamAssignment;
   direTeam: LobbyTeamAssignment;
+
+  /**
+   * Per-game roster source. The registered rosters (no standins) plus the list of approved
+   * standins tagged with the games they cover. expectedPlayers above is derived from these
+   * for currentGameNumber. Absent on legacy sessions created before per-game standins — the
+   * runner then keeps using expectedPlayers as-is.
+   */
+  baseRadiantPlayers?: { id: string; steamId32: string; nickname: string }[];
+  baseDirePlayers?: { id: string; steamId32: string; nickname: string }[];
+  standinAssignments?: {
+    teamId: string;
+    replacedPlayerId: string;
+    steamId32: string;
+    nickname: string;
+    /** Games of the series this standin covers (1-indexed); empty = whole series. */
+    gameNumbers: number[];
+  }[];
 
   /** Ready check state */
   readyState: {

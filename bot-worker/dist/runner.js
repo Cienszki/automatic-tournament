@@ -28,6 +28,7 @@ const { initFirebase } = require('./firebase.js');
 const { DotaClient } = require('./dota-client.js');
 const { logger } = require('./logger.js');
 const L = require('./runner-logic.js');
+const { buildExpectedPlayersForGame } = require('./scheduling.js');
 
 // CSODOTALobby.State enum: UI=0, SERVERSETUP=1, RUN=2, POSTGAME=3, READYUP=4, NOTREADY=5, SERVERASSIGN=6
 const LOBBY_STATE = { UI: 0, SERVERSETUP: 1, RUN: 2, POSTGAME: 3, READYUP: 4, NOTREADY: 5, SERVERASSIGN: 6 };
@@ -178,6 +179,11 @@ class Runner {
             // Adopt any externally-updated roster names but never clobber our lifecycle fields.
             this.session.radiantTeam = next.radiantTeam;
             this.session.direTeam = next.direTeam;
+            // Adopt the per-game roster source too, so a standin approved mid-series for a
+            // LATER game is applied when that game's lobby is created (recompute reads these).
+            if (next.baseRadiantPlayers) this.session.baseRadiantPlayers = next.baseRadiantPlayers;
+            if (next.baseDirePlayers) this.session.baseDirePlayers = next.baseDirePlayers;
+            if (next.standinAssignments) this.session.standinAssignments = next.standinAssignments;
         }, (err) => logger.error('[Runner] session watch error', err));
     }
 
@@ -253,11 +259,34 @@ class Runner {
         await this.createLobbyForCurrentGame();
     }
 
+    /**
+     * Recompute radiantTeam/direTeam.expectedPlayers for the CURRENT game from the per-game
+     * roster source (baseRadiantPlayers/baseDirePlayers + standinAssignments), so a standin
+     * limited to specific games only appears in those games. No-op on legacy sessions that
+     * predate the per-game fields (keeps using whatever expectedPlayers they already have).
+     */
+    async recomputeEffectiveRosterForCurrentGame() {
+        const { baseRadiantPlayers, baseDirePlayers, standinAssignments } = this.session;
+        if (!Array.isArray(baseRadiantPlayers) || !Array.isArray(baseDirePlayers)) return;
+        const gameNum = this.session.currentGameNumber || 1;
+        const radiantExpected = buildExpectedPlayersForGame(baseRadiantPlayers, standinAssignments, this.session.radiantTeam.teamId, gameNum);
+        const direExpected = buildExpectedPlayersForGame(baseDirePlayers, standinAssignments, this.session.direTeam.teamId, gameNum);
+        const radiantTeam = { ...this.session.radiantTeam, expectedPlayers: radiantExpected };
+        const direTeam = { ...this.session.direTeam, expectedPlayers: direExpected };
+        this.session.radiantTeam = radiantTeam;
+        this.session.direTeam = direTeam;
+        await this.updateSession({ radiantTeam, direTeam });
+        logger.info(`[Runner] Effective roster for game ${gameNum}: radiant=${radiantExpected.map((p) => p.steamId32).join(',')} dire=${direExpected.map((p) => p.steamId32).join(',')}`);
+    }
+
     async createLobbyForCurrentGame() {
         const gameNum = this.session.currentGameNumber || 1;
         const baseName = (this.session.lobbyName || 'Match').replace(/ - Game \d+$/, '');
         const lobbyName = gameNum > 1 ? `${baseName} - Game ${gameNum}` : baseName;
         const settings = L.toLobbyCreateSettings(this.botConfig.lobby, this.session);
+
+        // Pick the right players for THIS game before inviting / enforcing.
+        await this.recomputeEffectiveRosterForCurrentGame();
 
         await this.updateSession({ state: 'lobby_creating' });
         await this.updateBotStatus('creating_lobby');
@@ -416,6 +445,22 @@ class Runner {
         }
     }
 
+    /**
+     * Best human-readable name for a player, for chat messages: the GC lobby member name if
+     * present, else the roster nickname, else a live Steam persona lookup (the GC name is
+     * frequently empty right after a join), else the Steam32 id as a last resort.
+     */
+    async displayNameFor(steamId32, lobbyName) {
+        if (lobbyName && String(lobbyName).trim()) return String(lobbyName).trim();
+        const roster = L.getPlayerNickname(this.session, steamId32);
+        if (roster) return roster;
+        try {
+            const persona = await this.dota.getPersonaName(steamId32);
+            if (persona) return persona;
+        } catch { /* fall through to id */ }
+        return `Steam32:${steamId32}`;
+    }
+
     async enforce(players) {
         // Authorize the bot's own account (it sits in the player pool) so we never kick/flag it.
         const whitelist = [...(this.botConfig.whitelist ?? [])];
@@ -431,10 +476,11 @@ class Runner {
             this.kickedPlayers.add(kick.steamId32);
             try {
                 await this.dota.kickPlayer(kick.steamId32);
-                // Use the player's Steam persona name from the GC lobby data if available;
-                // fall back to the roster nickname, then Steam32 as a last resort.
+                // Human-readable name: GC lobby member name → roster nickname → live Steam
+                // persona lookup (the GC member name is often empty right after a join) →
+                // Steam32 as a last resort.
                 const lobbyPlayer = players.find((p) => p.steamId32 === kick.steamId32);
-                const displayName = lobbyPlayer?.name || L.getPlayerNickname(this.session, kick.steamId32) || `Steam32:${kick.steamId32}`;
+                const displayName = await this.displayNameFor(kick.steamId32, lobbyPlayer?.name);
                 const chat = L.getEffectiveChatMessages(this.botConfig, this.botAccountId);
                 const tmpl = chat.unauthorizedKickMessage || 'Player {player_name} is not registered for this match and has been removed.';
                 await this.sendChat(L.applyPlaceholders(tmpl, { player_name: displayName, team_name: '', missing: '' }));
@@ -569,7 +615,8 @@ class Runner {
 
         // ── Pre-launch sweep ──────────────────────────────────────────────────
         // Take a live snapshot rather than the potentially-stale lastLobbyPlayers field.
-        const live = this.dota.getCurrentLobbyPlayers().map((p) => ({ steamId32: p.steamId32, teamSide: p.team }));
+        // Keep each member's Steam name so kick messages are meaningful to humans.
+        const live = this.dota.getCurrentLobbyPlayers().map((p) => ({ steamId32: p.steamId32, teamSide: p.team, name: p.name || null }));
 
         // Build the authorized set with the bot's own account whitelisted so it is never kicked.
         const wl = [...(this.botConfig.whitelist ?? [])];
@@ -589,7 +636,8 @@ class Runner {
                 try { await this.dota.kickPlayer(p.steamId32); }
                 catch (e) { logger.warn('[Runner] pre-launch kick failed', e); }
             }
-            await this.sendChat('[BOT] Unauthorized player(s) removed. Check your slots and type !ready again.');
+            const kickedNames = await Promise.all(toKick.map((p) => this.displayNameFor(p.steamId32, p.name)));
+            await this.sendChat(`[BOT] Removed unregistered player(s): ${kickedNames.join(', ')}. Check your slots and type !ready again.`);
             await this.updateBotStatus('lobby_active');
             await this.updateSession({
                 state: 'lobby_open',

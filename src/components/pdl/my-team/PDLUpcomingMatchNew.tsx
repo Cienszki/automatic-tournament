@@ -17,10 +17,7 @@ import {
   ChevronUp,
   Swords,
   ExternalLink,
-  Users,
   UserPlus,
-  GraduationCap,
-  Settings,
   RefreshCw,
 } from 'lucide-react';
 import { cn, formatDatePL } from '@/lib/utils';
@@ -28,7 +25,6 @@ import type { Match, Team, Player, PDLStandinRequest as PDLStandinRequestType } 
 import { PDLStandinRequestSection } from './PDLStandinRequest';
 import { PDLCoachSection } from './PDLCoachSection';
 import { PDLMatchRules } from './PDLMatchRules';
-import { PDLPreMatchChecklist } from './PDLPreMatchChecklist';
 
 interface PDLUpcomingMatchProps {
   match: Match;
@@ -78,6 +74,10 @@ interface PDLUpcomingMatchProps {
   onRefreshMatch?: () => Promise<void>;
   /** When true, standin forms require declaring the standin's MMR */
   isMmrLimited?: boolean;
+  /** Bot lobby name for this match, if the bot has already created the session */
+  botLobbyName?: string;
+  /** Bot lobby password for this match */
+  botLobbyPassword?: string;
 }
 
 export function PDLUpcomingMatch({
@@ -106,13 +106,24 @@ export function PDLUpcomingMatch({
   matchNameMap,
   onRefreshMatch,
   isMmrLimited = false,
+  botLobbyName,
+  botLobbyPassword,
 }: PDLUpcomingMatchProps) {
   const { theme, tournament } = useTournament();
   const [expanded, setExpanded] = useState(false);
   const [showReschedule, setShowReschedule] = useState(false);
   const [selectedDate, setSelectedDate] = useState('');
+  const [selectedTime, setSelectedTime] = useState('');
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+
+  const isValidSelectedTime = /^([01]\d|2[0-3]):([0-5]\d)$/.test(selectedTime);
+
+  const normalizeTimeInput = (value: string): string => {
+    const digits = value.replace(/\D/g, '').slice(0, 4);
+    if (digits.length <= 2) return digits;
+    return `${digits.slice(0, 2)}:${digits.slice(2)}`;
+  };
 
   const handleRefreshMatch = async () => {
     if (!onRefreshMatch || refreshing) return;
@@ -128,6 +139,10 @@ export function PDLUpcomingMatch({
   const isTeamA = match.teamA?.id === myTeamId;
   const opponent = isTeamA ? match.teamB : match.teamA;
   const opponentTeam = teams.find(t => t.id === opponent?.id);
+
+  // Number of games in the series (mirrors the bot's fallback: group→bo2, playoff→bo3).
+  const resolvedSeriesFormat = match.series_format || (match.group_id ? 'bo2' : 'bo3');
+  const totalGamesInSeries = resolvedSeriesFormat === 'bo5' ? 5 : resolvedSeriesFormat === 'bo3' ? 3 : resolvedSeriesFormat === 'bo2' ? 2 : 1;
 
   const scheduledDate = match.scheduledFor;
   const formattedDate = scheduledDate ? formatDatePL(scheduledDate) : 'Do ustalenia';
@@ -176,14 +191,20 @@ export function PDLUpcomingMatch({
   const hasPendingItems = hasActiveRequest || myPendingStandins > 0 || opponentPendingStandins > 0;
 
   const handleSubmitReschedule = async () => {
-    if (!selectedDate) return;
+    if (!selectedDate || !isValidSelectedTime) return;
     if (!onRequestReschedule) return;
-    
+
+    // Convert local datetime to UTC ISO immediately so the stored proposedDate is
+    // timezone-independent. Approval code can then use it directly without re-parsing
+    // through the approver's browser timezone.
+    const proposedDateTimeUtc = new Date(`${selectedDate}T${selectedTime}`).toISOString();
+
     setLoading(true);
     try {
-      await onRequestReschedule(match.id, selectedDate);
+      await onRequestReschedule(match.id, proposedDateTimeUtc);
       setShowReschedule(false);
       setSelectedDate('');
+      setSelectedTime('');
     } catch (error) {
       console.error('[PDLUpcomingMatch] Error in handleSubmitReschedule:', error);
     } finally {
@@ -236,8 +257,8 @@ export function PDLUpcomingMatch({
         {/* Match info */}
         <div className="flex-1 min-w-0">
           <p className="text-xs uppercase tracking-wider font-logik mb-1" style={{ color: theme.primaryTextColor || 'rgba(255,255,255,0.4)' }}>
-            Kolejka {match.matchday || match.round || '?'}
-            {match.bestOf && <span className="ml-2">• BO{match.bestOf}</span>}
+            {!isMmrLimited && <>Kolejka {match.matchday || match.round || '?'}</>}
+            {match.bestOf && <span className={isMmrLimited ? '' : 'ml-2'}>• BO{match.bestOf}</span>}
           </p>
           <p className="text-lg font-logik-extended-bold text-white truncate">
             vs {opponent?.name || 'TBA'}
@@ -277,55 +298,6 @@ export function PDLUpcomingMatch({
       {/* Expanded content */}
       {expanded && (
         <div className="border-t border-white/5 p-5 space-y-6">
-          {/* ─── Pre-Match Checklist (hidden for completed matches) ─── */}
-          {isCaptain && scheduledDate && match.status !== 'completed' && (
-            <PDLPreMatchChecklist
-              matchId={match.id}
-              matchDate={scheduledDate}
-              timePenalty={timePenalty}
-              items={[
-                {
-                  id: 'players',
-                  label: 'Wszyscy gracze potwierdzili dostępność',
-                  completed: myTeamPlayers.length === 5,
-                  required: true,
-                  icon: Users,
-                },
-                {
-                  id: 'standins',
-                  label: standinRequests.length > 0 
-                    ? `Standiny zarejerowani (${standinRequests.filter(r => r.status === 'approved' || r.status === 'appeal_approved').length}/${standinRequests.length})`
-                    : 'Standiny nie są potrzebne',
-                  completed: standinRequests.length === 0 || standinRequests.every(r => r.status === 'approved' || r.status === 'appeal_approved'),
-                  required: standinRequests.length > 0,
-                  icon: UserPlus,
-                  warning: standinRequests.some(r => r.status === 'pending') 
-                    ? 'Czekasz na odpowiedź przeciwnika' 
-                    : standinRequests.some(r => r.status === 'appeal_pending')
-                    ? 'Oczekiwanie na decyzję admina'
-                    : undefined,
-                },
-                {
-                  id: 'coach',
-                  label: myCoachInfo ? `Coach zarejestrowany: ${myCoachInfo.nickname}` : 'Coach nie zarejestrowany',
-                  completed: !!myCoachInfo,
-                  required: false,
-                  icon: GraduationCap,
-                  warning: !myCoachInfo && ((new Date(scheduledDate).getTime() - Date.now()) / (1000 * 60 * 60)) < 24 
-                    ? 'Wymaga rejestracji minimum 24h przed meczem' 
-                    : undefined,
-                },
-                {
-                  id: 'lobby',
-                  label: 'Zasady tworzenia lobby sprawdzone',
-                  completed: false,
-                  required: true,
-                  icon: Settings,
-                },
-              ]}
-            />
-          )}
-
           {/* ─── Reschedule section ─── */}
           <div className="space-y-3">
             <h4 className="text-xs font-logik-extended-bold uppercase tracking-wide flex items-center gap-2" style={{ color: theme.primaryTextColor || 'rgba(255,255,255,0.4)' }}>
@@ -466,19 +438,31 @@ export function PDLUpcomingMatch({
                       : `Nowy termin musi mieścić się w zakresie ±${rescheduleRangeDays} dni od domyślnej daty.${rescheduleFinalDate ? ` Ostateczny termin składania propozycji: ${formatDatePL(rescheduleFinalDate)}.` : ''} Wymaga zgody kapitana przeciwnej drużyny.`
                     }
                   </p>
-                  <Input
-                    type="datetime-local"
-                    value={selectedDate}
-                    onChange={(e) => setSelectedDate(e.target.value)}
-                    min={minDate ? `${minDate.getFullYear()}-${String(minDate.getMonth()+1).padStart(2,'0')}-${String(minDate.getDate()).padStart(2,'0')}T00:00` : undefined}
-                    max={maxDate ? `${maxDate.getFullYear()}-${String(maxDate.getMonth()+1).padStart(2,'0')}-${String(maxDate.getDate()).padStart(2,'0')}T23:59` : undefined}
-                    className="bg-white/5 border-white/10 text-white"
-                  />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <Input
+                      type="date"
+                      lang="pl-PL"
+                      value={selectedDate}
+                      onChange={(e) => setSelectedDate(e.target.value)}
+                      min={minDate ? `${minDate.getFullYear()}-${String(minDate.getMonth()+1).padStart(2,'0')}-${String(minDate.getDate()).padStart(2,'0')}` : undefined}
+                      max={maxDate ? `${maxDate.getFullYear()}-${String(maxDate.getMonth()+1).padStart(2,'0')}-${String(maxDate.getDate()).padStart(2,'0')}` : undefined}
+                      className="bg-white/5 border-white/10 text-white"
+                    />
+                    <Input
+                      type="text"
+                      inputMode="numeric"
+                      pattern="^([01]\\d|2[0-3]):([0-5]\\d)$"
+                      placeholder="HH:mm"
+                      value={selectedTime}
+                      onChange={(e) => setSelectedTime(normalizeTimeInput(e.target.value))}
+                      className="bg-white/5 border-white/10 text-white"
+                    />
+                  </div>
                   <div className="flex gap-2">
                     <Button
                       size="sm"
                       onClick={handleSubmitReschedule}
-                      disabled={!selectedDate || loading}
+                      disabled={!selectedDate || !isValidSelectedTime || loading}
                       className="bg-pdl-crimson hover:bg-pdl-crimson/80 text-white"
                     >
                       {loading ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <CalendarRange className="w-4 h-4 mr-1" />}
@@ -539,6 +523,7 @@ export function PDLUpcomingMatch({
                 onCancelRequest={onCancelStandinRequest}
                 isOpponentView={false}
                 isMmrLimited={isMmrLimited}
+                totalGames={totalGamesInSeries}
               />
             </div>
           )}
@@ -563,6 +548,7 @@ export function PDLUpcomingMatch({
                 isOpponentView={true}
                 allTournamentRequests={allTournamentRequests}
                 matchNameMap={matchNameMap}
+                totalGames={totalGamesInSeries}
               />
             </div>
           )}
@@ -573,6 +559,8 @@ export function PDLUpcomingMatch({
             hostTeamName={match.teamA?.name}
             opponentTeamName={match.teamB?.name}
             timePenalty={timePenalty}
+            botLobbyName={botLobbyName}
+            botLobbyPassword={botLobbyPassword}
           />
 
           {/* ─── Refresh button ─── */}
