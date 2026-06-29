@@ -28,7 +28,7 @@ const { initFirebase } = require('./firebase.js');
 const { DotaClient } = require('./dota-client.js');
 const { logger } = require('./logger.js');
 const L = require('./runner-logic.js');
-const { buildExpectedPlayersForGame } = require('./scheduling.js');
+const { buildExpectedPlayersForGame, buildStandinAssignments } = require('./scheduling.js');
 
 // CSODOTALobby.State enum: UI=0, SERVERSETUP=1, RUN=2, POSTGAME=3, READYUP=4, NOTREADY=5, SERVERASSIGN=6
 const LOBBY_STATE = { UI: 0, SERVERSETUP: 1, RUN: 2, POSTGAME: 3, READYUP: 4, NOTREADY: 5, SERVERASSIGN: 6 };
@@ -67,6 +67,7 @@ class Runner {
         this.lastPlayersJson = ''; // de-dupe lastLobbyPlayers field writes
         this.disconnectTimer = null;
         this.sessionUnsub = null;
+        this.matchUnsub = null;    // onSnapshot of the match doc (approvedStandins = source of truth)
         this.welcomedPlayers = new Set(); // steamId32s already greeted (one welcome per player per lobby)
         this.kickedPlayers = new Set();   // steamId32s already kicked this lobby (prevent duplicate kicks + messages)
     }
@@ -109,6 +110,7 @@ class Runner {
 
         this.startHeartbeat();
         this.watchSessionDoc();
+        this.watchMatchDoc();
 
         // Reattach (after a crash) or create a fresh lobby.
         await this.reattachOrCreate();
@@ -213,6 +215,70 @@ class Runner {
         for (const id of removed) { try { await this.dota.kickPlayer(id); } catch (e) { logger.warn('[Runner] kick-removed failed', e); } }
         if (added.length || removed.length) {
             logger.info(`[Runner] Roster synced: +[${added.join(',')}] -[${removed.join(',')}]`);
+        }
+    }
+
+    /**
+     * Watch the MATCH doc so the lobby roster is always derived from the authoritative
+     * source — match.approvedStandins — rather than depending on the web app's
+     * syncLobbySessionStandins push (which can race or fail when several standins are
+     * approved mid-lobby). This guarantees enforcement (who may stay) and the ready/seated
+     * check (who must be seated) share ONE source of truth: the approved standins for the
+     * CURRENT game.
+     */
+    watchMatchDoc() {
+        if (!this.session?.tournamentId || !this.session?.matchId) return;
+        const ref = this.db.collection('tournaments').doc(this.session.tournamentId)
+            .collection('matches').doc(this.session.matchId);
+        this.matchUnsub = ref.onSnapshot((snap) => {
+            if (!snap.exists || this.finalizing) return;
+            this.recomputeRosterFromMatch(snap.data()).catch((e) => logger.error('[Runner] match recompute', e));
+        }, (err) => logger.error('[Runner] match watch error', err));
+    }
+
+    /**
+     * Recompute the effective per-game roster from the match's approvedStandins and apply it
+     * to the live lobby (invite newly-authorized standins, kick those no longer authorized).
+     * No-op on legacy sessions that predate the per-game roster source.
+     */
+    async recomputeRosterFromMatch(match) {
+        const baseR = this.session.baseRadiantPlayers, baseD = this.session.baseDirePlayers;
+        if (!Array.isArray(baseR) || !Array.isArray(baseD)) return; // can't recompute without base rosters
+        const gameNum = this.session.currentGameNumber || 1;
+        const standinAssignments = buildStandinAssignments(match);
+        const radiantExpected = buildExpectedPlayersForGame(baseR, standinAssignments, this.session.radiantTeam.teamId, gameNum);
+        const direExpected = buildExpectedPlayersForGame(baseD, standinAssignments, this.session.direTeam.teamId, gameNum);
+
+        const oldIds = new Set([
+            ...this.session.radiantTeam.expectedPlayers.map((p) => p.steamId32),
+            ...this.session.direTeam.expectedPlayers.map((p) => p.steamId32),
+        ]);
+        const newIds = new Set([...radiantExpected, ...direExpected].map((p) => p.steamId32));
+        const rosterChanged = oldIds.size !== newIds.size || [...newIds].some((id) => !oldIds.has(id));
+        const assignmentsChanged = JSON.stringify(this.session.standinAssignments || []) !== JSON.stringify(standinAssignments);
+        if (!rosterChanged && !assignmentsChanged) return; // nothing to do (match changed for another reason)
+
+        const added = [...newIds].filter((id) => !oldIds.has(id) && id && id !== '0');
+        const removed = [...oldIds].filter((id) => !newIds.has(id) && id && id !== '0');
+
+        const radiantTeam = { ...this.session.radiantTeam, expectedPlayers: radiantExpected };
+        const direTeam = { ...this.session.direTeam, expectedPlayers: direExpected };
+        this.session.radiantTeam = radiantTeam;
+        this.session.direTeam = direTeam;
+        this.session.standinAssignments = standinAssignments;
+        for (const id of added) this.kickedPlayers.delete(id); // a re-authorized player must not stay kicked
+
+        // Persist so the website + any restart see the corrected roster. (The session-doc
+        // watcher will see this same state and no-op.)
+        await this.updateSession({ radiantTeam, direTeam, standinAssignments });
+
+        const acceptingPlayers = ['lobby_open', 'ready_check'].includes(this.session.state);
+        if (acceptingPlayers && this.dota?.isConnected) {
+            for (const id of added) { try { await this.dota.invitePlayer(id); } catch (e) { logger.warn('[Runner] match-recompute invite failed', e); } }
+            for (const id of removed) { try { await this.dota.kickPlayer(id); } catch (e) { logger.warn('[Runner] match-recompute kick failed', e); } }
+        }
+        if (added.length || removed.length) {
+            logger.info(`[Runner] Roster recomputed from match.approvedStandins: +[${added.join(',')}] -[${removed.join(',')}] (game ${gameNum})`);
         }
     }
 
@@ -1057,6 +1123,7 @@ class Runner {
         for (const name of Object.keys(this.timers)) this.clearTimer(name);
         if (this.disconnectTimer) { clearTimeout(this.disconnectTimer); this.disconnectTimer = null; }
         if (this.sessionUnsub) { try { this.sessionUnsub(); } catch { /* ignore */ } this.sessionUnsub = null; }
+        if (this.matchUnsub) { try { this.matchUnsub(); } catch { /* ignore */ } this.matchUnsub = null; }
 
         const reassignCount = (this.session.reassignCount || 0) + 1;
         const MAX_REASSIGNS = 3;
@@ -1105,6 +1172,7 @@ class Runner {
         for (const name of Object.keys(this.timers)) this.clearTimer(name);
         if (this.disconnectTimer) { clearTimeout(this.disconnectTimer); this.disconnectTimer = null; }
         if (this.sessionUnsub) { try { this.sessionUnsub(); } catch { /* ignore */ } this.sessionUnsub = null; }
+        if (this.matchUnsub) { try { this.matchUnsub(); } catch { /* ignore */ } this.matchUnsub = null; }
 
         if (!alreadyPersisted && state) {
             try { await this.sessionRef.update({ state, completedAt: nowIso(), updatedAt: nowIso() }); } catch { /* ignore */ }
