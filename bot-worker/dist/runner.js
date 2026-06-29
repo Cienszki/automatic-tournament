@@ -452,8 +452,11 @@ class Runner {
      */
     async displayNameFor(steamId32, lobbyName) {
         if (lobbyName && String(lobbyName).trim()) return String(lobbyName).trim();
+        // getPlayerNickname returns the steamId32 itself when the player is NOT on either
+        // roster — which is exactly the unregistered-player case we want to resolve via Steam.
+        // So only treat it as a real name when it differs from the id.
         const roster = L.getPlayerNickname(this.session, steamId32);
-        if (roster) return roster;
+        if (roster && roster !== steamId32) return roster;
         try {
             const persona = await this.dota.getPersonaName(steamId32);
             if (persona) return persona;
