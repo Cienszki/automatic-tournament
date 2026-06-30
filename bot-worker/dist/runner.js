@@ -642,6 +642,18 @@ class Runner {
                 return; // do not mark ready
             }
 
+            // The team's Dota lobby team-name field must be set before they can ready up. The
+            // post-game OpenDota import maps each Dota side to a tournament team by this name, so
+            // launching with a blank team name breaks the result sync. Players set it in the
+            // lobby's team panel before typing ready.
+            const readyCmd = readyCfg.readyCommands[0] ?? '!ready';
+            const lobbyNames = this.dota.getLobbyTeamNames();
+            const sideTeamName = side === 'radiant' ? lobbyNames.radiant : lobbyNames.dire;
+            if (!sideTeamName || !String(sideTeamName).trim()) {
+                await this.sendChat(`[BOT] ${teamName || 'Your team'}: set your team name in the lobby (the team-name field above your slots) before typing ${readyCmd}.`);
+                return; // do not mark ready
+            }
+
             const readyState = { ...this.session.readyState };
             if (team === 'radiant') { readyState.radiantReady = true; readyState.radiantReadyBy = msg.steamId32; }
             else { readyState.direReady = true; readyState.direReadyBy = msg.steamId32; }
@@ -681,6 +693,16 @@ class Runner {
 
     async launchGame() {
         if (this.session.startGameSentAt) return; // already launched
+
+        // Safety net: never launch with an unnamed team. Both Dota lobby team-name fields must
+        // be set (the per-!r gate normally guarantees this, but a player could blank a name after
+        // readying). An empty name breaks the OpenDota team→side mapping on result import.
+        const launchNames = this.dota.getLobbyTeamNames();
+        if (!launchNames.radiant?.trim() || !launchNames.dire?.trim()) {
+            await this.sendChat('[BOT] Both teams must set their team name in the lobby before the match can start. Set it, then ready up again.');
+            await this.updateSession({ readyState: { radiantReady: false, direReady: false }, state: 'lobby_open' });
+            return;
+        }
 
         // ── Pre-launch sweep ──────────────────────────────────────────────────
         // Take a live snapshot rather than the potentially-stale lastLobbyPlayers field.
