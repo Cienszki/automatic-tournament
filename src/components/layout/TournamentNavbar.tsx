@@ -264,12 +264,17 @@ export function TournamentNavbar() {
     { href: '/admin', label: 'Admin', icon: Settings, showFor: 'all' },
   ];
 
-  // Filter nav items based on tournament type
-  const filteredNavItems = navItems.filter(item =>
-    item.showFor === 'all' ||
-    (item.showFor === 'league' && isLeague) ||
-    (item.showFor === 'mmr-limited' && !isLeague)
-  );
+  // Filter nav items based on tournament type and enabled features
+  const filteredNavItems = navItems.filter(item => {
+    if (
+      item.showFor !== 'all' &&
+      !(item.showFor === 'league' && isLeague) &&
+      !(item.showFor === 'mmr-limited' && !isLeague)
+    ) return false;
+    if (item.href === '/fantasy' && !tournament.fantasy?.enabled) return false;
+    if (item.href === '/pickem' && !tournament.pickem?.enabled) return false;
+    return true;
+  });
 
   const isActive = (href: string) => {
     const fullPath = getTournamentPath(href);
@@ -363,7 +368,7 @@ export function TournamentNavbar() {
 
   // Logo component
   const LogoWithSwitcher = () => (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-1 shrink-0">
       {/* PD2IH / organizer Logo link to landing page */}
       <Link href="/" className="self-stretch flex items-center">
         <Image
@@ -374,7 +379,7 @@ export function TournamentNavbar() {
           priority
           unoptimized
           onError={() => setOrganizerLogoError(true)}
-          className="h-10 w-auto max-w-[80px] object-contain"
+          className="h-10 w-auto max-w-[68px] object-contain"
         />
       </Link>
 
@@ -395,7 +400,7 @@ export function TournamentNavbar() {
             src={theme.inlineLogoUrl}
             alt={tournament?.name || 'Tournament'}
             onError={() => setInlineLogoError(true)}
-            className="h-10 w-auto max-w-[180px] object-contain"
+            className="h-10 w-auto max-w-[148px] xl:max-w-[170px] object-contain"
           />
         ) : (
           <span className="font-bold text-sm" style={{ fontFamily: navbarFontFamily, color: navTextColor }}>
@@ -438,8 +443,8 @@ export function TournamentNavbar() {
           <LogoWithSwitcher />
           <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
             <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="self-stretch h-auto w-10 rounded-none">
-                <Menu className="h-6 w-6" />
+              <Button variant="ghost" size="icon" className="self-stretch h-auto w-14 rounded-none">
+                <Menu className="h-7 w-7" />
                 <span className="sr-only">Otwórz menu</span>
               </Button>
             </SheetTrigger>
@@ -454,7 +459,7 @@ export function TournamentNavbar() {
                 </SheetTitle>
               </SheetHeader>
               <nav className="flex flex-col space-y-1 p-4">
-                {/* Groups / Divisions */}
+                {/* Groups / Divisions — mirrors desktop split button */}
                 {(() => {
                   const groupsLabel = isMmrLimited ? 'Grupy' : 'Dywizje';
                   return (
@@ -470,28 +475,6 @@ export function TournamentNavbar() {
                   );
                 })()}
 
-                {/* Teams */}
-                <Button
-                  variant="ghost"
-                  onClick={() => { handleViewNavigation('teams'); setIsMobileMenuOpen(false); }}
-                  className="w-full justify-start text-base py-3 px-3"
-                  style={{ color: navTextColor }}
-                >
-                  <Shield className="h-5 w-5 mr-3" />
-                  <span>Drużyny</span>
-                </Button>
-
-                {/* Schedule */}
-                <Button
-                  variant="ghost"
-                  onClick={() => { handleViewNavigation('schedule'); setIsMobileMenuOpen(false); }}
-                  className="w-full justify-start text-base py-3 px-3"
-                  style={{ color: navTextColor }}
-                >
-                  <CalendarDays className="h-5 w-5 mr-3" />
-                  <span>Terminarz</span>
-                </Button>
-
                 {/* Playoffs — only when started */}
                 {playoffsStarted && (
                   <Button
@@ -505,7 +488,29 @@ export function TournamentNavbar() {
                   </Button>
                 )}
 
-                {/* Stats */}
+                {/* Schedule */}
+                <Button
+                  variant="ghost"
+                  onClick={() => { handleViewNavigation('schedule'); setIsMobileMenuOpen(false); }}
+                  className="w-full justify-start text-base py-3 px-3"
+                  style={{ color: navTextColor }}
+                >
+                  <CalendarDays className="h-5 w-5 mr-3" />
+                  <span>Terminarz</span>
+                </Button>
+
+                {/* Teams */}
+                <Button
+                  variant="ghost"
+                  onClick={() => { handleViewNavigation('teams'); setIsMobileMenuOpen(false); }}
+                  className="w-full justify-start text-base py-3 px-3"
+                  style={{ color: navTextColor }}
+                >
+                  <Shield className="h-5 w-5 mr-3" />
+                  <span>Drużyny</span>
+                </Button>
+
+                {/* Rankings */}
                 <Button
                   variant="ghost"
                   onClick={() => { handleViewNavigation('rankings'); setIsMobileMenuOpen(false); }}
@@ -527,43 +532,62 @@ export function TournamentNavbar() {
                   <span>Statystyki</span>
                 </Button>
 
-                {/* My Team — only for captains */}
-                {hasTeam && (
+                {/* Pick'em */}
+                {tournament.pickem?.enabled && (
                   <Button
                     variant="ghost"
-                    onClick={() => { handleViewNavigation('my-team'); setIsMobileMenuOpen(false); }}
+                    onClick={() => { handleViewNavigation('pickem'); setIsMobileMenuOpen(false); }}
                     className="w-full justify-start text-base py-3 px-3"
                     style={{ color: navTextColor }}
                   >
-                    <Users className="h-5 w-5 mr-3" />
-                    <span>Moja drużyna</span>
+                    <ClipboardCheck className="h-5 w-5 mr-3" />
+                    <span>Pick'em</span>
                   </Button>
                 )}
 
-                {/* Remaining page links */}
-                {filteredNavItems
-                  .filter(item => !['/divisions', '/groups', '/teams', '/schedule', '/playoffs', '/rankings', '/stats', '/my-team'].includes(item.href))
-                  .map((item) => {
-                    const active = isActive(item.href);
-                    return (
-                      <Button
-                        key={item.href}
-                        variant="ghost"
-                        asChild
-                        onClick={() => setIsMobileMenuOpen(false)}
-                        className={cn(
-                          "w-full justify-start text-base py-3 px-3",
-                          active && "bg-primary/10",
-                        )}
-                        style={{ color: active ? theme.primaryColor : navTextColor }}
-                      >
-                        <Link href={getTournamentPath(item.href)} className="flex items-center space-x-3">
-                          <item.icon className="h-5 w-5" />
-                          <span>{item.label}</span>
-                        </Link>
-                      </Button>
-                    );
-                  })}
+                {/* Rules */}
+                <Button
+                  variant="ghost"
+                  asChild
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="w-full justify-start text-base py-3 px-3"
+                  style={{ color: isActive('/rules') ? theme.primaryColor : navTextColor }}
+                >
+                  <Link href={getTournamentPath('/rules')} className="flex items-center">
+                    <ScrollText className="h-5 w-5 mr-3" />
+                    <span>Regulamin</span>
+                  </Link>
+                </Button>
+
+                {/* Prizes */}
+                <Button
+                  variant="ghost"
+                  asChild
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="w-full justify-start text-base py-3 px-3"
+                  style={{ color: isActive('/prizes') ? theme.primaryColor : navTextColor }}
+                >
+                  <Link href={getTournamentPath('/prizes')} className="flex items-center">
+                    <Gift className="h-5 w-5 mr-3" />
+                    <span>Nagrody</span>
+                  </Link>
+                </Button>
+
+                {/* Admin — only for admins */}
+                {isAdmin && (
+                  <Button
+                    variant="ghost"
+                    asChild
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="w-full justify-start text-base py-3 px-3"
+                    style={{ color: isActive('/admin') ? theme.primaryColor : navTextColor }}
+                  >
+                    <Link href={getTournamentPath('/admin')} className="flex items-center">
+                      <Settings className="h-5 w-5 mr-3" />
+                      <span>Admin</span>
+                    </Link>
+                  </Button>
+                )}
               </nav>
             </SheetContent>
           </Sheet>
@@ -581,10 +605,10 @@ export function TournamentNavbar() {
         borderColor: theme.borderColor,
       }}
     >
-      <div className="container mx-auto px-4 flex items-stretch h-14">
+      <div className="container mx-auto px-2 lg:px-3 flex items-stretch h-14">
         <LogoWithSwitcher />
         <div className="flex-1 flex justify-center">
-          <nav className="flex items-stretch space-x-1">
+          <nav className="flex items-stretch space-x-0.5">
 
             {/* ── Groups / Divisions — split button ─────────────── */}
             {(() => {
@@ -837,6 +861,39 @@ export function TournamentNavbar() {
               );
             })()}
 
+            {/* ── Pick'em — snap-scroll section ──────────────── */}
+            {tournament.pickem?.enabled && (() => {
+              const active = isActive('/pickem');
+              return (
+                <button
+                  key="pickem"
+                  onClick={() => handleViewNavigation('pickem')}
+                  onAuxClick={(e) => { if (e.button === 1) { e.preventDefault(); window.open(`${getTournamentPath('')}?view=pickem`, '_blank'); } }}
+                  className={cn(
+                    "relative text-sm font-medium shrink-0 px-3 py-2 transition-all duration-200 group flex items-center gap-2",
+                    "hover:bg-[var(--nav-hover-bg)] hover:text-[var(--nav-hover-text)]",
+                    "focus-visible:outline-none focus-visible:ring-0",
+                    !active && "text-muted-foreground",
+                  )}
+                  style={{
+                    color: active ? theme.primaryColor : navTextColor,
+                    '--nav-hover-bg': getColorWithOpacity(theme.primaryColor, 10),
+                    '--nav-hover-text': theme.primaryColor,
+                  } as React.CSSProperties}
+                >
+                  <ClipboardCheck className="h-4 w-4" />
+                  <span className="hidden lg:inline">Pick'em</span>
+                  <span
+                    className={cn(
+                      "absolute bottom-2 left-0 h-0.5 w-full transform transition-transform duration-300 ease-out",
+                      active ? "scale-x-100" : "scale-x-0 group-hover:scale-x-100",
+                    )}
+                    style={{ backgroundColor: theme.primaryColor }}
+                  />
+                </button>
+              );
+            })()}
+
             {/* ── My Team — only for captains ───────────────────── */}
             {/* ── Rules — full-page link ────────────────────────── */}
             {(() => {
@@ -946,7 +1003,7 @@ export function TournamentNavbar() {
               slides={slides}
               url={cfg.url || cfg.sponsorUrl || undefined}
               intervalMs={cfg.intervalMs ?? 5000}
-              widthPx={cfg.widthPx ?? 200}
+              widthPx={cfg.widthPx ?? 170}
               fontFamily={navbarFontFamily}
               color={navTextColor}
             />

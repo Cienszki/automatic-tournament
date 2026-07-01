@@ -895,9 +895,13 @@ export async function syncPDLMatchesAdmin(tournamentId: string = 'pdl-s1'): Prom
     try {
         console.log(`[PDL] Starting match sync for tournament: ${tournamentId}`);
 
-        // Get league ID for this tournament
-        const leagueId = getLeagueId(tournamentId);
-        console.log(`[PDL] Using league ID: ${leagueId}`);
+        // Get league ID for this tournament — prefer Firestore value (set via admin panel) over hardcoded map
+        ensureAdminInitialized();
+        const db = getAdminDb();
+        const tournamentDoc = await db.collection('tournaments').doc(tournamentId).get();
+        const firestoreLeagueId: number | null = tournamentDoc.exists ? (tournamentDoc.data()?.leagueId ?? null) : null;
+        const leagueId = firestoreLeagueId ?? getLeagueId(tournamentId);
+        console.log(`[PDL] Using league ID: ${leagueId} (source: ${firestoreLeagueId != null ? 'Firestore' : 'hardcoded fallback'})`);
 
         // Fetch all match IDs from Steam API
         const steamMatches = await fetchAllSteamLeagueMatches(leagueId);
@@ -1848,4 +1852,163 @@ export async function recalculateAllPDLDivisionStandingsAdmin(
         : `Successfully updated ${divisionsUpdated} division(s).`;
 
     return { success: errors.length === 0, message, divisionsUpdated };
+}
+
+// ============================================================================
+// BAN TEAM
+// ============================================================================
+
+/**
+ * Permanently bans a team from the tournament.
+ *
+ * - Sets team status to 'banned'
+ * - Converts every completed match into a full-series forfeit (deletes game docs
+ *   + performances so player stats are wiped, adds game IDs to skippedGames so
+ *   they are never re-imported)
+ * - Converts every future/scheduled match into a full-series forfeit walkover
+ * - Marks all affected matches with isBanForfeit: true so the schedule view can
+ *   hide them
+ * - Recalculates division standings for every affected division
+ */
+export async function banTeamAdmin(
+    tournamentId: string,
+    teamId: string,
+    reason: string,
+    adminUserId: string,
+): Promise<{ success: boolean; message: string; matchesProcessed: number }> {
+    ensureAdminInitialized();
+    const db = getAdminDb();
+
+    const tournamentRef = db.collection('tournaments').doc(tournamentId);
+
+    // 1. Verify team exists and update status to 'banned'
+    const teamRef = tournamentRef.collection('teams').doc(teamId);
+    const teamDoc = await teamRef.get();
+    if (!teamDoc.exists) {
+        return { success: false, message: 'Team not found', matchesProcessed: 0 };
+    }
+
+    await teamRef.update({
+        status: 'banned',
+        bannedAt: new Date().toISOString(),
+        bannedBy: adminUserId,
+        banReason: reason,
+    });
+
+    // 2. Fetch all matches involving this team
+    const matchesSnap = await tournamentRef
+        .collection('matches')
+        .where('teams', 'array-contains', teamId)
+        .get();
+
+    if (matchesSnap.empty) {
+        return { success: true, message: 'Team banned. No matches to process.', matchesProcessed: 0 };
+    }
+
+    const affectedDivisions = new Set<string>();
+    const now = new Date().toISOString();
+    let matchesProcessed = 0;
+
+    for (const matchDoc of matchesSnap.docs) {
+        const matchData = matchDoc.data();
+        const matchRef = matchDoc.ref;
+
+        const teamAId: string = matchData.teamA?.id || matchData.teams?.[0];
+        const teamBId: string = matchData.teamB?.id || matchData.teams?.[1];
+        if (!teamAId || !teamBId) continue;
+
+        const forfeitingTeam: 'teamA' | 'teamB' = teamAId === teamId ? 'teamA' : 'teamB';
+        const winnerId = forfeitingTeam === 'teamA' ? teamBId : teamAId;
+
+        if (matchData.divisionId) affectedDivisions.add(matchData.divisionId);
+        if (matchData.group_id) affectedDivisions.add(matchData.group_id);
+
+        // For completed matches: wipe game docs + performances, skip game IDs
+        if (matchData.status === 'completed') {
+            const gamesSnap = await matchRef.collection('games').get();
+            if (!gamesSnap.empty) {
+                const deleteBatch = db.batch();
+                for (const gameDoc of gamesSnap.docs) {
+                    const perfsSnap = await gameDoc.ref.collection('performances').get();
+                    perfsSnap.docs.forEach(d => deleteBatch.delete(d.ref));
+                    deleteBatch.delete(gameDoc.ref);
+                }
+                await deleteBatch.commit();
+            }
+
+            // Register every real game ID as skipped so sync never re-imports them
+            const gameIds: number[] = matchData.game_ids || [];
+            if (gameIds.length > 0) {
+                const skipBatch = db.batch();
+                for (const gameId of gameIds) {
+                    const gameIdStr = String(gameId);
+                    skipBatch.set(tournamentRef.collection('skippedGames').doc(gameIdStr), {
+                        gameId: gameIdStr,
+                        reason: `Team ${teamId} banned — match ${matchDoc.id}: ${reason}`,
+                        skippedAt: FieldValue.serverTimestamp(),
+                        skippedBy: adminUserId,
+                    });
+                    skipBatch.set(
+                        tournamentRef.collection('processedGames').doc(gameIdStr),
+                        { processedAt: FieldValue.serverTimestamp() },
+                        { merge: true },
+                    );
+                    skipBatch.delete(tournamentRef.collection('unparsedMatches').doc(gameIdStr));
+                }
+                await skipBatch.commit();
+            }
+        }
+
+        // Convert match to full-series forfeit by the banned team
+        await matchRef.update({
+            'teamA.score': forfeitingTeam === 'teamA' ? 0 : 2,
+            'teamB.score': forfeitingTeam === 'teamB' ? 0 : 2,
+            status: 'completed',
+            winnerId,
+            completedAt: FieldValue.serverTimestamp(),
+            game_ids: [],
+            isBanForfeit: true,
+            forfeit: {
+                forfeitingTeam,
+                scope: 'series',
+                reason: `Team banned: ${reason}`,
+                issuedAt: now,
+                issuedBy: adminUserId,
+            },
+        });
+
+        matchesProcessed++;
+    }
+
+    // 3. Recalculate standings for every affected division
+    for (const divisionId of affectedDivisions) {
+        try {
+            await updatePDLDivisionStandingsAdmin(tournamentId, divisionId);
+        } catch (err) {
+            console.error(`[Ban Team] Failed to recalculate standings for division ${divisionId}:`, err);
+        }
+    }
+
+    // 4. Recalculate player performance rankings and comprehensive stats so the
+    //    banned team's players are wiped from all stats views automatically.
+    try {
+        const { recalculatePerformanceRankings } = await import('./performance-rankings-calculator');
+        await recalculatePerformanceRankings(tournamentId);
+    } catch (err) {
+        console.error(`[Ban Team] Failed to recalculate performance rankings:`, err);
+    }
+
+    try {
+        const { calculateAllComprehensiveStats } = await import('./comprehensive-stats-calculator');
+        await calculateAllComprehensiveStats(tournamentId);
+    } catch (err) {
+        console.error(`[Ban Team] Failed to recalculate comprehensive stats:`, err);
+    }
+
+    console.log(`[Ban Team] Team ${teamId} banned. Processed ${matchesProcessed} matches across ${affectedDivisions.size} division(s).`);
+    return {
+        success: true,
+        message: `Team banned. Processed ${matchesProcessed} match(es) and recalculated ${affectedDivisions.size} division(s).`,
+        matchesProcessed,
+    };
 }

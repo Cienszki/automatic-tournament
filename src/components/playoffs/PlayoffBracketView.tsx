@@ -296,13 +296,25 @@ export function PlayoffBracket({ matches, view, maxHeight = '65vh' }: PlayoffBra
           {/* Match cards */}
           {positions.map(pm => (
             <div key={pm.match.id} className="absolute z-10" style={{ left: pm.x * xScale, top: pm.y }}>
-              <BracketMatchCard
-                match={pm.match}
-                cardWidth={effectiveCardWidth}
-                teamASourceLabel={!pm.match.teamA ? slotSourceMap.get(`${pm.match.id}:teamA`) : undefined}
-                teamBSourceLabel={!pm.match.teamB ? slotSourceMap.get(`${pm.match.id}:teamB`) : undefined}
-                divisionColor={theme?.primaryColor || '#d4af37'}
-              />
+              {pm.match.status === 'bye' ? (
+                <div
+                  aria-hidden
+                  className="rounded-lg border border-dashed border-white/5"
+                  style={{
+                    width: effectiveCardWidth,
+                    height: CARD_HEIGHT,
+                    backgroundColor: 'transparent',
+                  }}
+                />
+              ) : (
+                <BracketMatchCard
+                  match={pm.match}
+                  cardWidth={effectiveCardWidth}
+                  teamASourceLabel={!pm.match.teamA ? slotSourceMap.get(`${pm.match.id}:teamA`) : undefined}
+                  teamBSourceLabel={!pm.match.teamB ? slotSourceMap.get(`${pm.match.id}:teamB`) : undefined}
+                  divisionColor={theme?.primaryColor || '#d4af37'}
+                />
+              )}
             </div>
           ))}
         </div>

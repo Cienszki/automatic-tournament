@@ -57,7 +57,7 @@ export function PDLUpcomingMatch({
         if (!selectedDate || !onRequestReschedule) return;
         setLoading(true);
         try {
-            await onRequestReschedule(match.id, selectedDate);
+            await onRequestReschedule(match.id, new Date(selectedDate).toISOString());
             setShowReschedule(false);
             setSelectedDate('');
         } finally {

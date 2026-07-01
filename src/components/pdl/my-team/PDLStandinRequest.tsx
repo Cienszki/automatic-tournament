@@ -173,8 +173,8 @@ export function PDLStandinRequestSection({
   };
   const gamesTakenForSelectedPlayer = gamesTakenFor(selectedPlayerId);
 
-  // Default selection = all games still available for the selected player.
-  const [selectedGameNumbers, setSelectedGameNumbers] = useState<number[]>(allGameNumbers);
+  // No games selected by default — captain must explicitly pick which games the standin plays.
+  const [selectedGameNumbers, setSelectedGameNumbers] = useState<number[]>([]);
 
   const [submitError, setSubmitError] = useState('');
 
@@ -268,7 +268,11 @@ export function PDLStandinRequestSection({
       setStandinSteamUrl('');
       setStandinMmr('');
       setStandinSmurfUrls([]);
-      setSelectedGameNumbers(allGameNumbers);
+      setSelectedGameNumbers([]);
+    } catch (e) {
+      // Server-side validation (e.g. standin already plays in this match) rejected it —
+      // keep the dialog open and show why.
+      setSubmitError((e as Error)?.message || 'Nie udało się zgłosić standina.');
     } finally {
       setLoading(false);
     }
@@ -714,8 +718,8 @@ export function PDLStandinRequestSection({
                   onValueChange={(v) => {
                     setSelectedPlayerId(v);
                     setSubmitError('');
-                    const taken = gamesTakenFor(v);
-                    setSelectedGameNumbers(allGameNumbers.filter((g) => !taken.has(g)));
+                    // Start with nothing selected — captain picks the games explicitly.
+                    setSelectedGameNumbers([]);
                   }}
                 >
                   <SelectTrigger className="bg-white/5 border-white/10 text-white">
@@ -735,7 +739,7 @@ export function PDLStandinRequestSection({
                 <div className="space-y-2">
                   <Label className="text-white/80 text-sm">Gry w serii</Label>
                   <p className="text-white/40 text-xs">
-                    Wybierz, w których grach serii zagra standin. Domyślnie cała seria.
+                    Zaznacz, w których grach serii zagra standin.
                   </p>
                   <div className="flex flex-wrap gap-2">
                     {allGameNumbers.map((g) => {
@@ -762,7 +766,7 @@ export function PDLStandinRequestSection({
                       );
                     })}
                   </div>
-                  {selectedPlayerId && selectedGameNumbers.length === 0 && (
+                  {selectedPlayerId && gamesTakenForSelectedPlayer.size >= allGameNumbers.length && (
                     <p className="text-red-400 text-xs">
                       Ten gracz ma już zgłoszonych standinów na wszystkie gry serii.
                     </p>

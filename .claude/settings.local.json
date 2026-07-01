@@ -44,12 +44,44 @@
       "Bash(git commit:*)",
       "Bash(find:*)",
       "Bash(git push:*)",
-      "Bash(git log:*)"
+      "Bash(git log:*)",
+      "Bash(git -C .. status --short bot-worker/dist/)",
+      "Bash(git check-ignore *)",
+      "Bash(gcloud --version)",
+      "Bash(gcloud config *)",
+      "Bash(gcloud scheduler *)",
+      "Bash(firebase --version)",
+      "Bash(firebase projects:list)",
+      "Bash(cp -r node_modules/steam/node_modules/steam-resources ./_srtest)",
+      "Bash(cp -r node_modules/steam-resources/protobufs ./_srtest/protobufs)",
+      "Bash(rm -rf ./_srtest/protobufs/.git)",
+      "Bash(cp -r node_modules/steam-resources/node_modules/protobufjs ./_srtest/node_modules/protobufjs)",
+      "Bash(cp -r node_modules/steam-resources/node_modules/csv-parse ./_srtest/node_modules/csv-parse)",
+      "Bash(echo \"send_chat status: $\\(node dist/_drytest.js status)",
+      "Bash(cd /c/Users/wilqw/Desktop/code/Letnia/automatic-tournament/bot-worker *)",
+      "Read(//c/Users/wilqw/Desktop/code/Letnia/src/lib/bot/**)",
+      "Bash(cd /c/Users/wilqw/Desktop/code/Letnia/_repo-research *)",
+      "Read(//c/Users/wilqw/Desktop/code/Letnia/_repo-research/**)",
+      "Bash(wc -l Dota2SentinelCoordinatorBot/CoordinatorBot.cs Dota2SentinelLobbyBot/Program.cs Dota2Client/Dota2Client.cs Dota2SentinelHost/Jobs/MatchCheckerJob.cs Dota2SentinelHost/Controllers/CoordinatorController.cs)",
+      "Bash(sed -n '1,70p' Dota2SentinelCoordinatorBot/CoordinatorBot.cs)",
+      "Bash(sed -n '1,90p' Dota2SentinelLobbyBot/Program.cs)",
+      "Bash(mkdir \"c:\\\\Users\\\\wilqw\\\\Desktop\\\\code\\\\Letnia\\\\automatic-tournament\\\\src\\\\app\\\\[tournamentSlug]\\\\stats-testing\" 2>&1; echo \"done\")",
+      "Bash(Select-String -Pattern \"newcaptain|captain-change|TeamsTab\")",
+      "Bash(Select-Object -First 30)",
+      "Bash(npx next *)",
+      "PowerShell(Get-Process node,firebase -ErrorAction SilentlyContinue | Select-Object Id,ProcessName,StartTime,@{N='Mins';E={[math]::Round\\(\\(\\(Get-Date\\)-$_.StartTime\\).TotalMinutes,1\\)}} | Format-Table -AutoSize; Write-Output \"--- experiments ---\"; firebase experiments:list 2>&1 | Select-Object -First 20)",
+      "PowerShell('47472','35344','63632' | ForEach-Object { try { Stop-Process -Id $_ -Force -ErrorAction Stop; \"stopped $_\" } catch { \"already gone: $_\" } }; Start-Sleep -Seconds 2; $remaining = Get-CimInstance Win32_Process -Filter \"Name='node.exe'\" | Where-Object { $_.CommandLine -match 'next' }; if \\($remaining\\) { $remaining | ForEach-Object { try { Stop-Process -Id $_.ProcessId -Force; \"stopped child $\\($_.ProcessId\\)\" } catch {} } } else { \"no remaining next processes\" })",
+      "Bash(node dist/_enumerate-grupa-b.js)",
+      "Bash(echo \"=== EXIT $? ===\")",
+      "PowerShell($procs = Get-CimInstance Win32_Process -Filter \"Name='node.exe'\" | Where-Object { $_.CommandLine -match 'next' -and $_.CommandLine -notmatch 'firebase' }; if \\($procs\\) { $procs | ForEach-Object { \"PID $\\($_.ProcessId\\): $\\($_.CommandLine\\)\" } } else { \"no next dev processes running\" })",
+      "Bash(grep -rl \"customCommands\\\\|CustomBotCommand\" bot-worker/dist)",
+      "Bash(grep -rln \"trigger\\\\|ChatMessage\\\\|chatMsg\\\\|onChat\" bot-worker/dist)"
     ],
     "deny": [],
     "ask": [],
     "additionalDirectories": [
-      "C:\\c\\Users\\wilqw\\Desktop\\code\\Letnia"
+      "C:\\c\\Users\\wilqw\\Desktop\\code\\Letnia",
+      "c:\\Users\\wilqw\\Desktop\\code\\Letnia\\automatic-tournament\\src\\app\\[tournamentSlug]"
     ]
   }
 }

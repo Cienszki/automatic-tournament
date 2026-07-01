@@ -21,11 +21,18 @@ interface DiscordUsernameModalProps {
   onClose: () => void;
   onSubmit: (username: string) => Promise<void>;
   isSubmitting: boolean;
+  initialUsername?: string;
 }
 
-export function DiscordUsernameModal({ isOpen, onClose, onSubmit, isSubmitting }: DiscordUsernameModalProps) {
+export function DiscordUsernameModal({ isOpen, onClose, onSubmit, isSubmitting, initialUsername }: DiscordUsernameModalProps) {
   const [username, setUsername] = React.useState("");
   const { t } = useTranslation();
+
+  React.useEffect(() => {
+    if (isOpen) {
+      setUsername((initialUsername || '').trim());
+    }
+  }, [isOpen, initialUsername]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

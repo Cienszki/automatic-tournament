@@ -9,7 +9,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
-import { Calendar, Grid3x3, Info } from 'lucide-react';
+import { Grid3x3, Info } from 'lucide-react';
 import type { Match } from '@/lib/definitions';
 import { MatchDetailModal } from './MatchDetailModal';
 import { TeamLogo } from './TeamLogo';
@@ -34,7 +34,8 @@ interface MatchResult {
   homeScore: number;
   awayScore: number;
   date: string;
-  status: 'scheduled' | 'completed' | 'live';
+  status: 'pending' | 'scheduled' | 'completed' | 'live';
+  schedulingStatus: string;
   match: Match;
 }
 
@@ -91,6 +92,7 @@ export function FixtureCrossbox({
       awayScore: isHomeTeamA ? match.teamB.score : match.teamA.score,
       date: match.scheduledFor || '',
       status: match.status,
+      schedulingStatus: match.schedulingStatus || 'unscheduled',
       match: match,
     };
   };
@@ -100,6 +102,13 @@ export function FixtureCrossbox({
       return <div className="w-full h-full flex items-center justify-center opacity-10"><div className="w-1 h-1 rounded-full bg-white" /></div>;
     }
 
+    const isCompleted = result.status === 'completed' || result.status === 'live';
+
+    // Not yet scheduled — show nothing
+    if (!isCompleted && !result.date) {
+      return <div className="w-full h-full" />;
+    }
+
     const handleClick = () => {
       if (result.match) {
         setSelectedMatch(result.match);
@@ -107,19 +116,23 @@ export function FixtureCrossbox({
       }
     };
 
-    if (result.status === 'scheduled') {
+    // Show scheduled date/time when match has a date but isn't completed yet
+    if (!isCompleted) {
       const matchDate = result.date ? new Date(result.date) : null;
+      const isValidDate = matchDate && !isNaN(matchDate.getTime());
       return (
         <button
           onClick={handleClick}
-          className="w-full h-full flex flex-col items-center justify-center gap-0.5 hover:bg-white/5 transition-colors group relative"
+          className="w-full h-full flex flex-col items-center justify-center gap-0 hover:bg-white/5 transition-colors group relative"
         >
-          <Calendar className="h-3 w-3 text-white/30 group-hover:text-white/80 transition-colors" />
-          <span className="text-[9px] font-mono tracking-tighter" style={{ color: 'var(--tournament-secondary-text)' }}>
-            {matchDate && !isNaN(matchDate.getTime())
-              ? format(matchDate, 'dd.MM', { locale: pl })
-              : 'TBD'}
+          <span className="text-[11px] font-mono font-semibold tracking-tight leading-tight" style={{ color: 'var(--tournament-secondary-text)' }}>
+            {isValidDate ? format(matchDate, 'dd.MM', { locale: pl }) : 'TBD'}
           </span>
+          {isValidDate && (
+            <span className="text-[11px] font-mono font-semibold tracking-tight leading-tight" style={{ color: 'var(--tournament-secondary-text)' }}>
+              {format(matchDate, 'HH:mm', { locale: pl })}
+            </span>
+          )}
         </button>
       );
     }

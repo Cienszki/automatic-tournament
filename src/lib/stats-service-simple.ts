@@ -31,15 +31,7 @@ export async function recalculateAllStats(tournamentId?: string): Promise<void> 
     console.log('✅ Comprehensive stats recalculation completed successfully!');
   } catch (error) {
     console.error('❌ Error during comprehensive stats recalculation:', error);
-    console.error('Falling back to basic stats calculator...');
-    
-    try {
-      await recalculateBasicTournamentStats();
-      console.log('✅ Basic stats recalculation completed successfully');
-    } catch (fallbackError) {
-      console.error('❌ Both comprehensive and basic stats calculations failed:', fallbackError);
-      throw fallbackError;
-    }
+    throw error;
   }
 }
 

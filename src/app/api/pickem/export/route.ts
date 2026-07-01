@@ -18,13 +18,19 @@ export async function GET(req: NextRequest) {
   try {
     ensureAdminInitialized();
     const db = getAdminDb();
+    const tournamentId = req.nextUrl.searchParams.get('tournamentId');
 
-    const usersSnap = await db.collection('userProfiles').get().catch(() => null);
+    if (!tournamentId) {
+      return NextResponse.json(
+        { error: 'Missing tournamentId query param. Example: /api/pickem/export?tournamentId=YOUR_ID' },
+        { status: 400 },
+      );
+    }
 
-    // Fetch pickems and teams in parallel
+    // Fetch tournament-scoped pickems and teams in parallel.
     const [pickemsSnap, teamsSnap] = await Promise.all([
-      db.collection('pickems').get(),
-      db.collection('teams').get(),
+      db.collection('tournaments').doc(tournamentId).collection('pickems').get(),
+      db.collection('tournaments').doc(tournamentId).collection('teams').get(),
     ]);
 
     const teams = new Map<string, Record<string, unknown>>();
@@ -32,12 +38,16 @@ export async function GET(req: NextRequest) {
       teams.set(doc.id, { id: doc.id, ...doc.data() })
     );
 
+    const userIds = Array.from(new Set(pickemsSnap.docs.map((d: QueryDocumentSnapshot) => d.id)));
+    const userSnaps = await Promise.all(
+      userIds.map((uid) => db.collection('userProfiles').doc(uid).get().catch(() => null)),
+    );
     const users = new Map<string, Record<string, unknown>>();
-    if (usersSnap) {
-      usersSnap.docs.forEach((doc: QueryDocumentSnapshot) =>
-        users.set(doc.id, { id: doc.id, ...doc.data() })
-      );
-    }
+    userSnaps.forEach((snap, idx) => {
+      if (snap?.exists) {
+        users.set(userIds[idx], { id: userIds[idx], ...snap.data() });
+      }
+    });
 
     // Helper to map teamId -> display name
     const teamName = (id: string): string => {
@@ -45,46 +55,28 @@ export async function GET(req: NextRequest) {
       return t?.name || t?.teamName || t?.tag || id || '';
     };
 
-    // Column layout for Google Sheets
+    // Row-per-predicted-team format is easiest for manual scoring in Sheets.
     const headers = [
+      'tournamentId',
       'userId',
       'displayName',
       'discordUsername',
       'submittedAt',
-      'champion',
-      'runnerUp',
-      'thirdPlace',
-      'fourthPlace',
-      'fifthToSixth_1', 'fifthToSixth_2',
-      'seventhToEighth_1', 'seventhToEighth_2',
-      'ninthToTwelfth_1', 'ninthToTwelfth_2', 'ninthToTwelfth_3', 'ninthToTwelfth_4',
-      'thirteenthToSixteenth_1', 'thirteenthToSixteenth_2', 'thirteenthToSixteenth_3', 'thirteenthToSixteenth_4',
-      'pool_count',
-      'pool_list'
+      'teamId',
+      'teamName',
+      'bucketId',
+      'predictedScore',
+      'actualScore',
+      'difference_abs',
     ];
 
     const rows: unknown[][] = [headers];
 
     pickemsSnap.docs.forEach((doc: QueryDocumentSnapshot) => {
       const data: Record<string, unknown> = { userId: doc.id, ...doc.data() };
-      const preds = (data['predictions'] as Record<string, string[]>) || {};
+      const baskets = (data['baskets'] as Record<string, string[]>) || {};
+      const scores = (data['scores'] as Record<string, number>) || {};
       const profile = (users.get(data['userId'] as string) || users.get(doc.id) || {}) as Record<string, unknown>;
-
-      // Normalize arrays per category
-      const one = (arr?: string[]): string => (Array.isArray(arr) && arr.length > 0 ? teamName(arr[0]) : '');
-      const two = (arr?: string[]): string[] => [0, 1].map(i => (Array.isArray(arr) && arr[i] ? teamName(arr[i]) : ''));
-      const four = (arr?: string[]): string[] => [0, 1, 2, 3].map(i => (Array.isArray(arr) && arr[i] ? teamName(arr[i]) : ''));
-
-      const champion = one(preds.champion);
-      const runnerUp = one(preds.runnerUp);
-      const thirdPlace = one(preds.thirdPlace);
-      const fourthPlace = one(preds.fourthPlace);
-      const [f56_1, f56_2] = two(preds.fifthToSixth);
-      const [s78_1, s78_2] = two(preds.seventhToEighth);
-      const [n12_1, n12_2, n12_3, n12_4] = four(preds.ninthToTwelfth);
-      const [t16_1, t16_2, t16_3, t16_4] = four(preds.thirteenthToSixteenth);
-      const poolArr: string[] = Array.isArray(preds.pool) ? preds.pool : [];
-      const poolNames = poolArr.map(teamName);
 
       const lastUpdatedRaw = data['lastUpdated'] as { toDate?: () => Date } | string | undefined;
       const submittedAt = lastUpdatedRaw
@@ -93,26 +85,37 @@ export async function GET(req: NextRequest) {
             : new Date(lastUpdatedRaw as string))
         : '';
 
-      rows.push([
-        data['userId'] || doc.id,
-        (profile.displayName as string) || (profile.name as string) || '',
-        (profile.discordUsername as string) || '',
-        submittedAt ? new Date(submittedAt).toISOString() : '',
-        champion,
-        runnerUp,
-        thirdPlace,
-        fourthPlace,
-        f56_1, f56_2,
-        s78_1, s78_2,
-        n12_1, n12_2, n12_3, n12_4,
-        t16_1, t16_2, t16_3, t16_4,
-        poolNames.length,
-        poolNames.join(' | ')
-      ]);
+      const userId = (data['userId'] as string) || doc.id;
+      const displayName = (data['displayName'] as string) || (profile.displayName as string) || (profile.name as string) || '';
+      const discordUsername = (data['discordUsername'] as string) || (profile.discordUsername as string) || '';
+      const submittedAtIso = submittedAt ? new Date(submittedAt).toISOString() : '';
+
+      const emittedTeams = new Set<string>();
+      Object.entries(baskets).forEach(([bucketId, teamIds]) => {
+        if (!Array.isArray(teamIds)) return;
+        teamIds.forEach((teamId) => {
+          if (!teamId || emittedTeams.has(teamId)) return;
+          emittedTeams.add(teamId);
+
+          rows.push([
+            tournamentId,
+            userId,
+            displayName,
+            discordUsername,
+            submittedAtIso,
+            teamId,
+            teamName(teamId),
+            bucketId,
+            scores[teamId] ?? '',
+            '',
+            '',
+          ]);
+        });
+      });
     });
 
     const csv = toCsv(rows);
-    const filename = `pickem_export_${new Date().toISOString().slice(0,10)}.csv`;
+    const filename = `pickem_export_${tournamentId}_${new Date().toISOString().slice(0,10)}.csv`;
 
     return new NextResponse(csv, {
       status: 200,

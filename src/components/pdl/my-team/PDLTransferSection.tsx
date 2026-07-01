@@ -3,6 +3,7 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import { useTournament } from '@/context/TournamentContext';
+import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -105,6 +106,7 @@ export function PDLTransferSection({
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
   const { theme } = useTournament();
+  const { toast } = useToast();
   const [showAddPlayer, setShowAddPlayer] = useState(false);
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
 
@@ -132,6 +134,7 @@ export function PDLTransferSection({
   const [editingPlayerId, setEditingPlayerId] = useState<string | null>(null);
   const [editDialogNickname, setEditDialogNickname] = useState('');
   const [editDialogSmurfs, setEditDialogSmurfs] = useState<string[]>(['']);
+  const [editDialogOriginalSmurfCount, setEditDialogOriginalSmurfCount] = useState(0);
   const [editDialogMmr, setEditDialogMmr] = useState('');
   const [editDialogScreenshotFile, setEditDialogScreenshotFile] = useState<File | null>(null);
   const [editDialogScreenshotPreview, setEditDialogScreenshotPreview] = useState<string | null>(null);
@@ -232,11 +235,11 @@ export function PDLTransferSection({
     if (!player) return;
     setEditingPlayerId(playerId);
     setEditDialogNickname(player.nickname);
-    setEditDialogSmurfs(
-      player.smurfAccounts && player.smurfAccounts.length > 0
-        ? player.smurfAccounts.map(s => s.steamProfileUrl)
-        : ['']
-    );
+    const existingSmurfs = player.smurfAccounts && player.smurfAccounts.length > 0
+      ? player.smurfAccounts.map(s => s.steamProfileUrl)
+      : [];
+    setEditDialogSmurfs(existingSmurfs.length > 0 ? existingSmurfs : ['']);
+    setEditDialogOriginalSmurfCount(existingSmurfs.length);
     setEditDialogMmr(player.mmr?.toString() ?? '');
     setEditDialogScreenshotFile(null);
     setEditDialogScreenshotPreview(player.profileScreenshotUrl ?? null);
@@ -295,13 +298,19 @@ export function PDLTransferSection({
           smurfAccounts: p.smurfAccounts,
         })) as Player[];
 
-      await onSaveRoster({
-        players: activePlayers,
-        teamName: editTeamName.trim(),
-        teamTag: editTeamTag.trim(),
-        teamLogo: editLogoFile || team.logoUrl,
-        captainDiscord: editCaptainDiscord.trim(),
-      });
+      try {
+        await onSaveRoster({
+          players: activePlayers,
+          teamName: editTeamName.trim(),
+          teamTag: editTeamTag.trim(),
+          teamLogo: editLogoFile || team.logoUrl,
+          captainDiscord: editCaptainDiscord.trim(),
+        });
+        toast({ title: 'Zapisano', description: 'Dane gracza zostały zaktualizowane.' });
+      } catch (err) {
+        console.error('Failed to save player data:', err);
+        toast({ title: 'Błąd zapisu', description: 'Nie udało się zapisać zmian. Spróbuj ponownie.', variant: 'destructive' });
+      }
     } finally {
       setLoading(false);
     }
@@ -442,20 +451,30 @@ export function PDLTransferSection({
     }
   };
 
+  // Whether the roster composition changed during THIS edit session (a player
+  // was added or removed). Role, nickname and smurf edits don't set these flags,
+  // so they stay saveable even when the transfer window is closed.
+  const rosterCompositionChanged = useMemo(
+    () => editPlayers.some(p => p.isNew || p.isRemoved),
+    [editPlayers]
+  );
+
   const canSave = useMemo(() => {
     if (activePlayerCount !== 5) return false;
     if (roleErrors.length > 0) return false;
     if (!editTeamName.trim()) return false;
     if (!editTeamTag.trim()) return false;
-    
-    // If transfer window is closed, only allow saving if no player changes were made
-    if (!isTransferWindowOpen && transfersUsed > 0) return false;
-    
+
+    // When the transfer window is closed, block only actual roster changes
+    // (adding/removing players). Role/nick/smurf edits remain allowed even if
+    // the current roster already differs from the previous round.
+    if (!isTransferWindowOpen && rosterCompositionChanged) return false;
+
     // If season is active and transfer window is open, check transfer limits
     if (isSeasonActive && isTransferWindowOpen && transfersUsed > maxTransfers) return false;
-    
+
     return true;
-  }, [activePlayerCount, roleErrors, editTeamName, editTeamTag, isTransferWindowOpen, transfersUsed, isSeasonActive, maxTransfers]);
+  }, [activePlayerCount, roleErrors, editTeamName, editTeamTag, isTransferWindowOpen, rosterCompositionChanged, transfersUsed, isSeasonActive, maxTransfers]);
 
   const handleSave = () => {
     if (!canSave) return;
@@ -534,7 +553,7 @@ export function PDLTransferSection({
                 Okno transferowe zamknięte
               </p>
               <p className="text-xs mt-1" style={{ color: theme.secondaryTextColor || 'rgba(254,249,195,0.6)' }}>
-                Możesz edytować dane drużyny (nazwa, tag, logo, Discord) i role graczy, ale nie możesz modyfikować składu zawodników.
+                Możesz zmienić nick gracza, jego rolę, discord kapitana oraz dodawać konta smurf. Kliknij ikonę ołówka przy graczu, aby edytować nick i smurfy.
               </p>
             </div>
           </div>
@@ -590,6 +609,7 @@ export function PDLTransferSection({
                   value={editTeamName}
                   onChange={(e) => setEditTeamName(e.target.value)}
                   className="bg-white/5 border-white/10 text-white"
+                  disabled={!isTransferWindowOpen}
                 />
               </div>
 
@@ -600,6 +620,7 @@ export function PDLTransferSection({
                   onChange={(e) => setEditTeamTag(e.target.value.slice(0, 5))}
                   className="bg-white/5 border-white/10 text-white"
                   maxLength={5}
+                  disabled={!isTransferWindowOpen}
                 />
               </div>
 
@@ -612,7 +633,7 @@ export function PDLTransferSection({
                 />
               </div>
 
-              <div className="space-y-2">
+              {isTransferWindowOpen && <div className="space-y-2">
                 <Label className="text-sm" style={{ color: 'var(--tournament-secondary-text)' }}>Logo drużyny</Label>
                 <div className="flex items-center gap-3">
                   <div className="relative w-10 h-10 rounded-lg border border-white/10 overflow-hidden bg-black/40 flex-shrink-0">
@@ -637,7 +658,7 @@ export function PDLTransferSection({
                     />
                   </Label>
                 </div>
-              </div>
+              </div>}
             </div>
           </div>
 
@@ -656,7 +677,7 @@ export function PDLTransferSection({
               {!isTransferWindowOpen && (
                 <div className="flex items-center gap-2 text-yellow-400/60">
                   <Lock className="w-3 h-3" />
-                  <span className="text-xs font-logik">Zablokowane</span>
+                  <span className="text-xs font-logik">Transfery zablokowane · smurfy edytowalne</span>
                 </div>
               )}
             </div>
@@ -734,7 +755,7 @@ export function PDLTransferSection({
                         size="sm"
                         variant="ghost"
                         onClick={() => handleOpenEditPlayer(player.id)}
-                        className="text-blue-400/60 hover:text-blue-400 hover:bg-blue-500/10 h-9 w-9 p-0 flex-shrink-0"
+                        className="text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 h-9 w-9 p-0 flex-shrink-0"
                         title="Edytuj gracza (nick, MMR, smurfy)"
                       >
                         <Pencil className="w-4 h-4" />
@@ -805,7 +826,7 @@ export function PDLTransferSection({
                         size="sm"
                         variant="ghost"
                         onClick={() => handleOpenEditPlayer(player.id)}
-                        className="text-blue-400/60 hover:text-blue-400 hover:bg-blue-500/10 h-9 w-9 p-0 flex-shrink-0 self-center"
+                        className="text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 h-9 w-9 p-0 flex-shrink-0 self-center"
                         title="Edytuj smurfy gracza"
                       >
                         <Pencil className="w-4 h-4" />
@@ -1113,7 +1134,9 @@ export function PDLTransferSection({
                   Edytuj gracza
                 </DialogTitle>
                 <DialogDescription style={{ color: 'var(--tournament-secondary-text)' }}>
-                  Zmień dane gracza bez usuwania i ponownego dodawania.
+                  {isTransferWindowOpen
+                    ? 'Zmień dane gracza bez usuwania i ponownego dodawania.'
+                    : 'Okno transferowe zamknięte — możesz zmienić tylko nick i dodawać nowe konta smurf.'}
                 </DialogDescription>
               </DialogHeader>
 
@@ -1129,8 +1152,8 @@ export function PDLTransferSection({
                   />
                 </div>
 
-                {/* MMR + Screenshot — only for MMR-limited tournaments */}
-                {isMmrLimited && (
+                {/* MMR + Screenshot — only for MMR-limited tournaments when transfer window is open */}
+                {isMmrLimited && isTransferWindowOpen && (
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1">
                       <Label className="text-sm" style={{ color: 'var(--tournament-secondary-text)' }}>MMR</Label>
@@ -1189,26 +1212,31 @@ export function PDLTransferSection({
                     <span className="ml-1 text-white/30 font-normal">(opcjonalnie)</span>
                   </Label>
                   <div className="space-y-2">
-                    {editDialogSmurfs.map((url, i) => (
-                      <div key={i} className="flex gap-2">
-                        <Input
-                          value={url}
-                          onChange={(e) => setEditDialogSmurfs(prev => prev.map((u, idx) => idx === i ? e.target.value : u))}
-                          placeholder="https://steamcommunity.com/profiles/..."
-                          className="bg-white/5 border-white/10 text-white text-sm flex-1"
-                        />
-                        {editDialogSmurfs.length > 1 && (
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="text-white/40 hover:text-red-400 px-2"
-                            onClick={() => setEditDialogSmurfs(prev => prev.filter((_, idx) => idx !== i))}
-                          >
-                            <X className="w-3 h-3" />
-                          </Button>
-                        )}
-                      </div>
-                    ))}
+                    {editDialogSmurfs.map((url, i) => {
+                      const isExisting = i < editDialogOriginalSmurfCount;
+                      const locked = !isTransferWindowOpen && isExisting;
+                      return (
+                        <div key={i} className="flex gap-2">
+                          <Input
+                            value={url}
+                            onChange={(e) => setEditDialogSmurfs(prev => prev.map((u, idx) => idx === i ? e.target.value : u))}
+                            placeholder="https://steamcommunity.com/profiles/..."
+                            className="bg-white/5 border-white/10 text-white text-sm flex-1"
+                            disabled={locked}
+                          />
+                          {(isTransferWindowOpen ? editDialogSmurfs.length > 1 : !isExisting) && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="text-white/40 hover:text-red-400 px-2"
+                              onClick={() => setEditDialogSmurfs(prev => prev.filter((_, idx) => idx !== i))}
+                            >
+                              <X className="w-3 h-3" />
+                            </Button>
+                          )}
+                        </div>
+                      );
+                    })}
                     <Button
                       size="sm"
                       variant="ghost"

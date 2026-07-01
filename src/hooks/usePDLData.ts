@@ -104,12 +104,14 @@ export function usePDLData(): UsePDLDataResult {
             position: 0,
             teamId: teamDoc.id,
             teamName: team.name || teamDoc.id,
-            gamesPlayed: stats.played || 0,
-            matchesPlayed: stats.played || 0,
-            points: calculatePoints(stats),
-            wins: stats.wins || 0,
-            draws: stats.draws || 0,
-            losses: stats.losses || 0,
+            // wins/draws/losses/points are computed from match results below (not team.stats)
+            // so MMR-limited tournaments (which don't populate team.stats) work correctly
+            gamesPlayed: 0,
+            matchesPlayed: 0,
+            points: 0,
+            wins: 0,
+            draws: 0,
+            losses: 0,
             gamesWon: stats.gamesWon || 0,
             gamesLost: stats.gamesLost || 0,
             neustadtlScore: 0,
@@ -123,11 +125,12 @@ export function usePDLData(): UsePDLDataResult {
           teamsByDivision.get(divisionId)!.push(teamStanding);
         });
 
-        // Group completed matches by divisionId for neustadtl/headToHead computation
+        // Group completed matches by divisionId (or group_id for MMR-limited tournaments)
+        // MMR-limited tournaments use group_id on match documents; PDL uses divisionId
         const completedMatchesByDivision = new Map<string, any[]>();
         completedMatchesSnapshot.docs.forEach(doc => {
           const data = doc.data();
-          const divId = data.divisionId;
+          const divId = data.divisionId || data.group_id;
           if (!divId) return;
           if (!completedMatchesByDivision.has(divId)) completedMatchesByDivision.set(divId, []);
           completedMatchesByDivision.get(divId)!.push(data);
@@ -140,7 +143,37 @@ export function usePDLData(): UsePDLDataResult {
           const teams = teamsByDivision.get(divisionId) || [];
           const divisionMatches = completedMatchesByDivision.get(divisionId) || [];
 
-          // Compute neustadtl and head-to-head from completed matches
+          // FIRST PASS: compute wins/draws/losses/points from match results.
+          // This works for both PDL (divisionId on matches) and MMR-limited (group_id on matches).
+          for (const match of divisionMatches) {
+            const aId: string = match.teamA?.id || match.teams?.[0];
+            const bId: string = match.teamB?.id || match.teams?.[1];
+            const aScore: number = match.teamA?.score ?? 0;
+            const bScore: number = match.teamB?.score ?? 0;
+            if (!aId || !bId) continue;
+
+            const teamA = teams.find(t => t.teamId === aId);
+            const teamB = teams.find(t => t.teamId === bId);
+            if (!teamA || !teamB) continue;
+
+            teamA.matchesPlayed++;
+            teamB.matchesPlayed++;
+            teamA.gamesPlayed++;
+            teamB.gamesPlayed++;
+
+            if (aScore > bScore) {
+              teamA.wins++; teamA.points += 2;
+              teamB.losses++;
+            } else if (bScore > aScore) {
+              teamB.wins++; teamB.points += 2;
+              teamA.losses++;
+            } else {
+              teamA.draws++; teamA.points++;
+              teamB.draws++; teamB.points++;
+            }
+          }
+
+          // SECOND PASS: compute neustadtl and head-to-head using the final points from above
           const pointsMap = new Map(teams.map(t => [t.teamId, t.points]));
           // Track h2h win counts: teamId -> opponentId -> wins
           const h2hWins = new Map<string, Map<string, number>>();

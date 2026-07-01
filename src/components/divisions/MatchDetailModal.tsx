@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import Image from 'next/image';
-import { Calendar, Trophy, ExternalLink, Loader2, Shield, Sword, Users, ArrowRightLeft, Swords, Sparkles, HandHelping, Eye } from 'lucide-react';
+import { Calendar, Trophy, ExternalLink, Loader2, Shield, Users, ArrowRightLeft, Swords, Sparkles, HandHelping, Eye } from 'lucide-react';
 import type { Match } from '@/lib/definitions';
 import { cn } from '@/lib/utils';
 import { collection, getDocs } from 'firebase/firestore';
@@ -66,6 +66,12 @@ interface MatchDetailModalProps {
   isOpen: boolean;
   onClose: () => void;
   divisionColor: string;
+}
+
+/** "Gra 1, Gra 3, Gra 5" for a per-game standin scope, or null when it covers the whole series. */
+function formatGameNumbers(nums?: number[]): string | null {
+  if (!nums || nums.length === 0) return null;
+  return [...nums].sort((a, b) => a - b).map((n) => `Gra ${n}`).join(', ');
 }
 
 export function MatchDetailModal({ match, isOpen, onClose, divisionColor }: MatchDetailModalProps) {
@@ -161,6 +167,7 @@ export function MatchDetailModal({ match, isOpen, onClose, divisionColor }: Matc
   useEffect(() => {
     if (isOpen && match?.status === 'completed') {
       loadGames();
+      loadTeamPlayers();
     }
     // For upcoming/live matches, load match players metadata and team rosters
     if (isOpen && match?.status !== 'completed' && match?.teamA?.id && match?.teamB?.id && tournament?.id) {
@@ -185,6 +192,12 @@ export function MatchDetailModal({ match, isOpen, onClose, divisionColor }: Matc
   const teamAWon = isCompleted && match.teamA.score > match.teamB.score;
   const teamBWon = isCompleted && match.teamB.score > match.teamA.score;
 
+  // Build nickname → MMR lookup so game results can show MMR (for MMR-limited tournaments)
+  const mmrByNickname: Record<string, number> = {};
+  [...teamAPlayers, ...teamBPlayers].forEach(p => {
+    if (p.nickname && p.mmr) mmrByNickname[p.nickname.toLowerCase()] = p.mmr;
+  });
+
   // Render a single team's roster with inline standin info
   const renderTeamRoster = (players: { id: string; nickname: string; role: string; mmr?: number }[], teamId: string) => {
     if (players.length === 0) {
@@ -193,35 +206,55 @@ export function MatchDetailModal({ match, isOpen, onClose, divisionColor }: Matc
     return (
       <div className="space-y-2">
         {players.map((player) => {
-          const standinEntry = match.approvedStandins
-            ? Object.values(match.approvedStandins).find(
+          // A player may have several standins across the series (a different one per game),
+          // so collect them all rather than just the first.
+          const entries = match.approvedStandins
+            ? Object.values(match.approvedStandins).filter(
                 e => e.teamId === teamId && e.replacedPlayerId === player.id
               )
-            : null;
+            : [];
+          // A single standin with no game scope = whole-series replacement (the common case).
+          const wholeSeries = entries.length === 1 && !formatGameNumbers(entries[0].gameNumbers);
+          const playerName = (
+            <>
+              <span className="font-medium uppercase tracking-wide truncate" style={{ color: 'var(--tournament-primary-text)' }}>
+                {player.nickname}
+              </span>
+              {player.mmr ? <span className="shrink-0 opacity-40" style={{ color: 'var(--tournament-primary-text)' }}>({player.mmr})</span> : null}
+            </>
+          );
           return (
-            <div key={player.id} className="flex items-center gap-2.5 text-xs">
-              <span className="shrink-0" style={{ color: 'var(--tournament-primary-text)' }}>
+            <div key={player.id} className="flex items-start gap-2.5 text-xs">
+              <span className="shrink-0 mt-0.5" style={{ color: 'var(--tournament-primary-text)' }}>
                 {getRoleIcon(player.role)}
               </span>
-              {standinEntry ? (
-                <>
-                  <span className="font-medium uppercase tracking-wide truncate" style={{ color: 'var(--tournament-primary-text)' }}>
-                    {player.nickname}
-                  </span>
-                  {player.mmr ? <span className="shrink-0 opacity-40" style={{ color: 'var(--tournament-primary-text)' }}>({player.mmr})</span> : null}
+              {entries.length === 0 ? (
+                <div className="flex items-center gap-2 min-w-0">{playerName}</div>
+              ) : wholeSeries ? (
+                <div className="flex items-center gap-2 min-w-0">
+                  {playerName}
                   <span className="text-white/25 shrink-0">→</span>
                   <span className="font-medium uppercase tracking-wide truncate" style={{ color: 'var(--tournament-heading)' }}>
-                    {standinEntry.nickname}
+                    {entries[0].nickname}
                   </span>
-                  {standinEntry.standinMmr ? <span className="shrink-0 opacity-40" style={{ color: 'var(--tournament-heading)' }}>({standinEntry.standinMmr})</span> : null}
-                </>
+                  {entries[0].standinMmr ? <span className="shrink-0 opacity-40" style={{ color: 'var(--tournament-heading)' }}>({entries[0].standinMmr})</span> : null}
+                </div>
               ) : (
-                <>
-                  <span className="font-medium uppercase tracking-wide truncate" style={{ color: 'var(--tournament-primary-text)' }}>
-                    {player.nickname}
-                  </span>
-                  {player.mmr ? <span className="shrink-0 opacity-40" style={{ color: 'var(--tournament-primary-text)' }}>({player.mmr})</span> : null}
-                </>
+                // Per-game standins: show the registered player, then each standin with the
+                // games they cover (the player themself plays any games not listed).
+                <div className="flex flex-col gap-0.5 min-w-0">
+                  <div className="flex items-center gap-2 min-w-0">{playerName}</div>
+                  {[...entries]
+                    .sort((a, b) => (a.gameNumbers?.[0] ?? 0) - (b.gameNumbers?.[0] ?? 0))
+                    .map((e, idx) => (
+                      <div key={idx} className="flex items-center gap-1.5 pl-3 min-w-0" style={{ color: 'var(--tournament-heading)' }}>
+                        <span className="shrink-0 text-[10px] uppercase tracking-wide opacity-70">{formatGameNumbers(e.gameNumbers)}</span>
+                        <span className="text-white/20 shrink-0">→</span>
+                        <span className="font-medium uppercase tracking-wide truncate">{e.nickname}</span>
+                        {e.standinMmr ? <span className="shrink-0 opacity-40">({e.standinMmr})</span> : null}
+                      </div>
+                    ))}
+                </div>
               )}
             </div>
           );
@@ -386,7 +419,7 @@ export function MatchDetailModal({ match, isOpen, onClose, divisionColor }: Matc
                           {/* Game header */}
                           <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-white/[0.03]">
                             <div className="flex items-center gap-3 flex-wrap">
-                              <span className="text-xs font-logik-extended-bold text-white/50 uppercase tracking-widest">
+                              <span className="text-xs font-logik-extended-bold uppercase tracking-widest" style={{ color: 'var(--tournament-primary-text)' }}>
                                 Gra {idx + 1}
                               </span>
                               {game.is_forfeit ? (
@@ -394,23 +427,28 @@ export function MatchDetailModal({ match, isOpen, onClose, divisionColor }: Matc
                                   Walkover
                                 </span>
                               ) : (
-                                <span className="text-xs px-2 py-0.5 rounded-full bg-white/5 text-white/40 font-mono border border-white/10">
+                                <span className="text-xs px-2 py-0.5 rounded-full bg-white/5 font-mono border border-white/10" style={{ color: 'var(--tournament-primary-text)' }}>
                                   {formatDuration(game.duration)}
                                 </span>
                               )}
-                              <span className="text-xs font-logik-extended-bold" style={{ color: teamAWonGame ? divisionColor : 'rgba(255,255,255,0.4)' }}>
-                                {teamAWonGame ? `★ ${match.teamA.name}` : match.teamA.name}
-                              </span>
-                              <span className="text-white/20 text-xs">vs</span>
-                              <span className="text-xs font-logik-extended-bold" style={{ color: !teamAWonGame ? divisionColor : 'rgba(255,255,255,0.4)' }}>
-                                {!teamAWonGame ? `★ ${match.teamB.name}` : match.teamB.name}
-                              </span>
+                              {teamAWonGame ? (
+                                <span className="text-xs font-logik-extended-bold" style={{ color: divisionColor }}>★ {match.teamA.name}</span>
+                              ) : (
+                                <span className="text-xs font-logik-extended-bold" style={{ color: 'var(--tournament-primary-text)' }}>{match.teamA.name}</span>
+                              )}
+                              <span className="text-xs" style={{ color: 'var(--tournament-primary-text)' }}>vs</span>
+                              {!teamAWonGame ? (
+                                <span className="text-xs font-logik-extended-bold" style={{ color: divisionColor }}>★ {match.teamB.name}</span>
+                              ) : (
+                                <span className="text-xs font-logik-extended-bold" style={{ color: 'var(--tournament-primary-text)' }}>{match.teamB.name}</span>
+                              )}
                             </div>
                             <a
                               href={`https://www.opendota.com/matches/${game.id}`}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="flex items-center gap-1.5 text-xs text-white/30 hover:text-white/60 transition-colors shrink-0 ml-3"
+                              className="flex items-center gap-1.5 text-xs hover:opacity-70 transition-opacity shrink-0 ml-3"
+                              style={{ color: 'var(--tournament-primary-text)' }}
                             >
                               OpenDota
                               <ExternalLink className="w-3 h-3" />
@@ -423,7 +461,6 @@ export function MatchDetailModal({ match, isOpen, onClose, divisionColor }: Matc
                               {/* Team A */}
                               <div className={cn('p-3', !teamAWonGame && 'opacity-60')}>
                                 <div className="flex items-center gap-1.5 mb-2">
-                                  <Shield className="w-3 h-3 text-white/30" />
                                   <span className="text-xs font-logik-extended-bold uppercase tracking-wide truncate" style={{ color: 'var(--tournament-section-header)' }}>
                                     {match.teamA.name}
                                   </span>
@@ -433,40 +470,36 @@ export function MatchDetailModal({ match, isOpen, onClose, divisionColor }: Matc
                                   {leftPerfs.slice(0, 5).map((p, i) => {
                                     const playerData = matchPlayers[p.playerId];
                                     const playerName = playerData?.nickname || `Nieznany (ID: ${p.playerId})`;
-                                    let nameColor = 'text-red-400';
-                                    if (playerData?.role === 'registered') nameColor = 'text-green-400';
-                                    if (playerData?.role === 'standin') nameColor = 'text-blue-400';
+                                    const isStandin = playerData?.role === 'standin';
+                                    const isUnknown = !playerData || (playerData.role !== 'registered' && playerData.role !== 'standin');
+                                    const nameColor = isStandin ? 'var(--tournament-heading)' : isUnknown ? 'rgba(255,255,255,0.35)' : 'var(--tournament-primary-text)';
+                                    const playerMmr = mmrByNickname[playerName.toLowerCase()];
 
                                     return (
                                       <div key={i} className="flex items-center justify-between gap-2 text-xs">
                                         <div className="flex flex-col min-w-0 flex-1">
-                                          <span className={cn("truncate font-medium", nameColor)} title={playerName}>
-                                            {playerName}
-                                          </span>
-                                          {playerData?.role === 'standin' && playerData.replacedPlayerNickname && (
-                                            <span className="text-blue-400/50 truncate text-[10px]" title={`Za: ${playerData.replacedPlayerNickname}`}>
+                                          <div className="flex items-baseline gap-1 min-w-0">
+                                            <span className="truncate font-medium uppercase tracking-wide" style={{ color: nameColor }} title={playerName}>
+                                              {playerName}
+                                            </span>
+                                            {playerMmr ? <span className="shrink-0 text-[10px] opacity-40" style={{ color: nameColor }}>({playerMmr})</span> : null}
+                                          </div>
+                                          {isStandin && playerData.replacedPlayerNickname && (
+                                            <span className="truncate text-[10px] opacity-50" style={{ color: 'var(--tournament-heading)' }} title={`Za: ${playerData.replacedPlayerNickname}`}>
                                               za {playerData.replacedPlayerNickname}
                                             </span>
                                           )}
-                                          <span className="text-white/40 truncate text-[10px]" title={getHeroName(p.heroId)}>
+                                          <span className="truncate text-[10px] opacity-40" style={{ color: nameColor }} title={getHeroName(p.heroId)}>
                                             {getHeroName(p.heroId)}
                                           </span>
                                         </div>
                                         <span className="font-mono shrink-0 flex flex-col items-end gap-0.5">
-                                          <span>
-                                            <span className="text-green-400/80">{p.kills}</span>
-                                            <span className="text-white/20">/</span>
-                                            <span className="text-red-400/80">{p.deaths}</span>
-                                            <span className="text-white/20">/</span>
-                                            <span className="text-blue-400/80">{p.assists}</span>
+                                          <span style={{ color: 'var(--tournament-primary-text)' }}>
+                                            {p.kills}<span className="opacity-20">/</span>{p.deaths}<span className="opacity-20">/</span>{p.assists}
                                           </span>
                                           {p.gpm > 0 && (
-                                            <span className="text-[10px]">
-                                              <span className="text-yellow-400/60">{p.gpm}</span>
-                                              <span className="text-white/15">g</span>
-                                              <span className="mx-1 text-white/10">|</span>
-                                              <span className="text-blue-400/60">{p.xpm}</span>
-                                              <span className="text-white/15">x</span>
+                                            <span className="text-[10px] opacity-40" style={{ color: nameColor }}>
+                                              {p.gpm}g · {p.xpm}x
                                             </span>
                                           )}
                                         </span>
@@ -480,7 +513,6 @@ export function MatchDetailModal({ match, isOpen, onClose, divisionColor }: Matc
                               {/* Team B */}
                               <div className={cn('p-3', teamAWonGame && 'opacity-60')}>
                                 <div className="flex items-center gap-1.5 mb-2">
-                                  <Sword className="w-3 h-3 text-white/30" />
                                   <span className="text-xs font-logik-extended-bold uppercase tracking-wide truncate" style={{ color: 'var(--tournament-section-header)' }}>
                                     {match.teamB.name}
                                   </span>
@@ -490,40 +522,36 @@ export function MatchDetailModal({ match, isOpen, onClose, divisionColor }: Matc
                                   {rightPerfs.slice(0, 5).map((p, i) => {
                                     const playerData = matchPlayers[p.playerId];
                                     const playerName = playerData?.nickname || `Nieznany (ID: ${p.playerId})`;
-                                    let nameColor = 'text-red-400';
-                                    if (playerData?.role === 'registered') nameColor = 'text-green-400';
-                                    if (playerData?.role === 'standin') nameColor = 'text-blue-400';
+                                    const isStandin = playerData?.role === 'standin';
+                                    const isUnknown = !playerData || (playerData.role !== 'registered' && playerData.role !== 'standin');
+                                    const nameColor = isStandin ? 'var(--tournament-heading)' : isUnknown ? 'rgba(255,255,255,0.35)' : 'var(--tournament-primary-text)';
+                                    const playerMmr = mmrByNickname[playerName.toLowerCase()];
 
                                     return (
                                       <div key={i} className="flex items-center justify-between gap-2 text-xs">
                                         <div className="flex flex-col min-w-0 flex-1">
-                                          <span className={cn("truncate font-medium", nameColor)} title={playerName}>
-                                            {playerName}
-                                          </span>
-                                          {playerData?.role === 'standin' && playerData.replacedPlayerNickname && (
-                                            <span className="text-blue-400/50 truncate text-[10px]" title={`Za: ${playerData.replacedPlayerNickname}`}>
+                                          <div className="flex items-baseline gap-1 min-w-0">
+                                            <span className="truncate font-medium uppercase tracking-wide" style={{ color: nameColor }} title={playerName}>
+                                              {playerName}
+                                            </span>
+                                            {playerMmr ? <span className="shrink-0 text-[10px] opacity-40" style={{ color: nameColor }}>({playerMmr})</span> : null}
+                                          </div>
+                                          {isStandin && playerData.replacedPlayerNickname && (
+                                            <span className="truncate text-[10px] opacity-50" style={{ color: 'var(--tournament-heading)' }} title={`Za: ${playerData.replacedPlayerNickname}`}>
                                               za {playerData.replacedPlayerNickname}
                                             </span>
                                           )}
-                                          <span className="text-white/40 truncate text-[10px]" title={getHeroName(p.heroId)}>
+                                          <span className="truncate text-[10px] opacity-40" style={{ color: nameColor }} title={getHeroName(p.heroId)}>
                                             {getHeroName(p.heroId)}
                                           </span>
                                         </div>
                                         <span className="font-mono shrink-0 flex flex-col items-end gap-0.5">
-                                          <span>
-                                            <span className="text-green-400/80">{p.kills}</span>
-                                            <span className="text-white/20">/</span>
-                                            <span className="text-red-400/80">{p.deaths}</span>
-                                            <span className="text-white/20">/</span>
-                                            <span className="text-blue-400/80">{p.assists}</span>
+                                          <span style={{ color: 'var(--tournament-primary-text)' }}>
+                                            {p.kills}<span className="opacity-20">/</span>{p.deaths}<span className="opacity-20">/</span>{p.assists}
                                           </span>
                                           {p.gpm > 0 && (
-                                            <span className="text-[10px]">
-                                              <span className="text-yellow-400/60">{p.gpm}</span>
-                                              <span className="text-white/15">g</span>
-                                              <span className="mx-1 text-white/10">|</span>
-                                              <span className="text-blue-400/60">{p.xpm}</span>
-                                              <span className="text-white/15">x</span>
+                                            <span className="text-[10px] opacity-40" style={{ color: nameColor }}>
+                                              {p.gpm}g · {p.xpm}x
                                             </span>
                                           )}
                                         </span>
@@ -558,12 +586,14 @@ export function MatchDetailModal({ match, isOpen, onClose, divisionColor }: Matc
                     <div className="space-y-2">
                       {Object.values(match.approvedStandins).map((entry, i) => {
                         const teamName = entry.teamId === match.teamA.id ? match.teamA.name : match.teamB.name;
+                        const games = formatGameNumbers(entry.gameNumbers);
                         return (
                           <div key={i} className="flex items-center gap-2 text-xs">
                             <span className="text-white/30 shrink-0">{teamName}:</span>
                             <span className="text-blue-400 font-medium">{entry.nickname}</span>
                             <span className="text-white/20">za</span>
                             <span className="text-white/50">{entry.replacedPlayerNickname}</span>
+                            <span className="text-white/30">{games ? `(${games})` : '(cała seria)'}</span>
                           </div>
                         );
                       })}

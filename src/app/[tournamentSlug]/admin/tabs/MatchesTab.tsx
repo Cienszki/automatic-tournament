@@ -37,7 +37,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
-import { 
+import {
   Gamepad2,
   Save,
   RotateCcw,
@@ -59,6 +59,7 @@ import {
   Flag,
   Layers,
   Ban,
+  CalendarClock,
 } from 'lucide-react';
 
 interface MatchWithTeamNames extends Match {
@@ -132,6 +133,13 @@ export function MatchesTab() {
   const [forfeitedGames, setForfeitedGames] = useState<number[]>([]);
   const [forfeitReason, setForfeitReason] = useState('');
   const [isForfeitSaving, setIsForfeitSaving] = useState(false);
+
+  // Force schedule state
+  const [showForceScheduleDialog, setShowForceScheduleDialog] = useState(false);
+  const [forceScheduleMatch, setForceScheduleMatch] = useState<MatchWithTeamNames | null>(null);
+  const [forceScheduleDateTime, setForceScheduleDateTime] = useState('');
+  const [forceScheduleReason, setForceScheduleReason] = useState('');
+  const [isForceScheduling, setIsForceScheduling] = useState(false);
 
   // Games management dialog state
   const [showGamesDialog, setShowGamesDialog] = useState(false);
@@ -443,17 +451,26 @@ export function MatchesTab() {
   const runPostSyncRecalculation = async (token: string) => {
     if (!tournament?.id) return;
     setIsPostSyncRecalculating(true);
+    const isLeague = tournament.type === 'league';
     try {
-      // 1. Recalculate division standings
-      const standingsRes = await fetch('/api/admin/pdl/recalculate-standings', {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tournamentId: tournament.id }),
-      });
-      const standingsData = await standingsRes.json();
-      if (!standingsData.success) {
-        console.warn('[Post-sync] Standings recalculation failed:', standingsData.error);
+      // 1a. Recalculate division standings (league/PDL tournaments only)
+      let standingsData: { success: boolean; error?: string } = { success: true };
+      if (isLeague) {
+        const standingsRes = await fetch('/api/admin/pdl/recalculate-standings', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tournamentId: tournament.id }),
+        });
+        standingsData = await standingsRes.json().catch(() => ({ success: false, error: 'Invalid response (timeout?)' }));
+        if (!standingsData.success) {
+          console.warn('[Post-sync] PDL standings recalculation failed:', standingsData.error);
+        }
       }
+
+      // 1b. MMR-limited tournaments calculate group standings on-the-fly from subcollection data.
+      // The legacy /api/admin/recalculateStandings endpoint only knows about the OLD root `groups`
+      // collection (Letnia data) and must NOT be called here — doing so resets and corrupts legacy data.
+      const groupStandingsData: { success: boolean; error?: string } = { success: true };
 
       // 2. Recalculate player/team stats
       const statsRes = await fetch('/api/stats/recalculate', {
@@ -461,17 +478,20 @@ export function MatchesTab() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tournamentId: tournament.id }),
       });
-      const statsData = await statsRes.json();
+      const statsData = await statsRes.json().catch(() => ({ success: false, message: 'Invalid response (timeout?)' }));
       if (!statsData.success) {
         console.warn('[Post-sync] Stats recalculation failed:', statsData.message);
       }
 
-      if (standingsData.success && statsData.success) {
-        toast({ title: 'Tabele i statystyki zaktualizowane', description: 'Tabele podziałów i statystyki zostały automatycznie przeliczone.' });
+      if (standingsData.success && groupStandingsData.success && statsData.success) {
+        toast({ title: 'Tabele i statystyki zaktualizowane', description: 'Tabele i statystyki zostały automatycznie przeliczone.' });
       } else {
+        const failParts: string[] = [];
+        if (!standingsData.success) failParts.push(`Standings: ${standingsData.error || 'unknown'}`);
+        if (!statsData.success) failParts.push(`Stats: ${statsData.message || statsData.error || 'unknown'}`);
         toast({
           title: 'Częściowa aktualizacja',
-          description: 'Synchronizacja zakończona, ale przeliczanie tabel/statystyk nie powiodło się w pełni. Sprawdź zakładkę Statystyki lub Podziały.',
+          description: `Sync OK, recalc failed: ${failParts.join(' | ')}`,
           variant: 'destructive',
         });
       }
@@ -514,10 +534,8 @@ export function MatchesTab() {
         });
         // Reload matches to show new data
         await loadMatches();
-        // Automatically recalculate standings and stats
-        if ((data.importedCount ?? 0) > 0) {
-          await runPostSyncRecalculation(token);
-        }
+        // Always recalculate standings and stats after sync
+        await runPostSyncRecalculation(token);
       } else {
         setSyncResult({ success: false, message: data.error || 'Synchronizacja nie powiodła się.' });
         toast({
@@ -710,6 +728,54 @@ export function MatchesTab() {
     setForfeitedGames([]);
     setForfeitReason('');
     setShowForfeitDialog(true);
+  };
+
+  const openForceScheduleDialog = (match: MatchWithTeamNames) => {
+    setForceScheduleMatch(match);
+    // Pre-fill with existing scheduled time if available, converted to local datetime-local format
+    const existing = match.scheduledFor;
+    if (existing) {
+      const d = new Date(existing);
+      const pad = (n: number) => String(n).padStart(2, '0');
+      const local = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+      setForceScheduleDateTime(local);
+    } else {
+      setForceScheduleDateTime('');
+    }
+    setForceScheduleReason('');
+    setShowForceScheduleDialog(true);
+  };
+
+  const handleForceSchedule = async () => {
+    if (!forceScheduleMatch || !user || !tournament?.id || !forceScheduleDateTime) return;
+    setIsForceScheduling(true);
+    try {
+      const token = await user.getIdToken();
+      const resp = await fetch('/api/admin/pdl/force-schedule-match', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          tournamentId: tournament.id,
+          matchId: forceScheduleMatch.id,
+          scheduledFor: new Date(forceScheduleDateTime).toISOString(),
+          reason: forceScheduleReason,
+          adminUserId: user.uid,
+        }),
+      });
+      const data = await resp.json();
+      if (data.success) {
+        toast({ title: 'Termin ustawiony', description: data.message });
+        setShowForceScheduleDialog(false);
+        setForceScheduleMatch(null);
+        await loadMatches();
+      } else {
+        toast({ title: 'Błąd', description: data.error || 'Nie udało się ustawić terminu', variant: 'destructive' });
+      }
+    } catch {
+      toast({ title: 'Błąd połączenia z serwerem', variant: 'destructive' });
+    } finally {
+      setIsForceScheduling(false);
+    }
   };
 
   const toggleForfeitGame = (gameNum: number) => {
@@ -1255,23 +1321,36 @@ export function MatchesTab() {
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2 text-sm font-logik">
-                        {match.schedulingStatus === 'unscheduled' ? (
-                          <>
-                            <Flag className="h-4 w-4 text-amber-500" />
-                            <span className="text-amber-500">
-                              {match.deadline
-                                ? `Deadline: ${formatDate(match.deadline)}`
-                                : 'Do ustalenia'}
-                            </span>
-                          </>
-                        ) : (
-                          <>
-                            <Calendar className="h-4 w-4 text-muted-foreground" />
-                            {formatDate(match.scheduledFor)}
-                            <Clock className="h-4 w-4 text-muted-foreground ml-2" />
-                            {formatTime(match.scheduledFor)}
-                          </>
-                        )}
+                        {(() => {
+                          const hasConfirmedTime =
+                            match.schedulingStatus === 'confirmed' ||
+                            match.schedulingStatus === 'proposed' ||
+                            match.rescheduleRequest?.status === 'approved' ||
+                            match.status === 'scheduled' ||
+                            match.status === 'completed' ||
+                            match.status === 'live';
+                          if (!hasConfirmedTime) {
+                            return (
+                              <>
+                                <Flag className="h-4 w-4 text-amber-500" />
+                                <span className="text-amber-500">
+                                  {match.deadline
+                                    ? `Deadline: ${formatDate(match.deadline)}`
+                                    : 'Do ustalenia'}
+                                </span>
+                              </>
+                            );
+                          }
+                          const displayTime = (match as Match & { dateTime?: string }).dateTime || match.scheduledFor;
+                          return (
+                            <>
+                              <Calendar className="h-4 w-4 text-muted-foreground" />
+                              {formatDate(displayTime)}
+                              <Clock className="h-4 w-4 text-muted-foreground ml-2" />
+                              {formatTime(displayTime)}
+                            </>
+                          );
+                        })()}
                       </div>
                     </TableCell>
                     <TableCell>
@@ -1306,6 +1385,17 @@ export function MatchesTab() {
                         >
                           <Wrench className="h-4 w-4" />
                         </Button>
+                        {match.status !== 'completed' && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-blue-400 hover:text-blue-500 hover:bg-blue-500/10"
+                            title="Wymuś termin (admin)"
+                            onClick={() => openForceScheduleDialog(match)}
+                          >
+                            <CalendarClock className="h-4 w-4" />
+                          </Button>
+                        )}
                         {match.forfeit ? (
                           <Button
                             variant="ghost"
@@ -1516,6 +1606,87 @@ export function MatchesTab() {
               className="font-logik"
             >
               Zamknij
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Force Schedule Dialog */}
+      <Dialog open={showForceScheduleDialog} onOpenChange={(open) => {
+        setShowForceScheduleDialog(open);
+        if (!open) setForceScheduleMatch(null);
+      }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="font-logik-extended-bold flex items-center gap-2">
+              <CalendarClock className="h-5 w-5 text-blue-400" />
+              Wymuś termin meczu
+            </DialogTitle>
+            <DialogDescription className="font-logik">
+              {forceScheduleMatch
+                ? `${forceScheduleMatch.teamAName} vs ${forceScheduleMatch.teamBName}`
+                : ''}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="force-schedule-dt" className="font-logik text-sm font-medium">
+                Data i godzina <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="force-schedule-dt"
+                type="datetime-local"
+                value={forceScheduleDateTime}
+                onChange={e => setForceScheduleDateTime(e.target.value)}
+                className="font-logik"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="force-schedule-reason" className="font-logik text-sm font-medium">
+                Powód (opcjonalnie)
+              </Label>
+              <Input
+                id="force-schedule-reason"
+                placeholder="np. termin narzucony przez ligę, drużyny niedostępne..."
+                value={forceScheduleReason}
+                onChange={e => setForceScheduleReason(e.target.value)}
+                className="font-logik"
+              />
+            </div>
+
+            <div className="rounded-md bg-blue-500/10 border border-blue-500/20 p-3 text-sm font-logik text-blue-700 dark:text-blue-400">
+              Termin zostanie ustawiony jako potwierdzony i nadpisze wszelkie wcześniejsze propozycje.
+              Drużyny nadal mogą przesunąć mecz standardowym procesem.
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowForceScheduleDialog(false)}
+              className="font-logik"
+              disabled={isForceScheduling}
+            >
+              Anuluj
+            </Button>
+            <Button
+              onClick={handleForceSchedule}
+              disabled={isForceScheduling || !forceScheduleDateTime}
+              className="font-logik bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              {isForceScheduling ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Zapisuję...
+                </>
+              ) : (
+                <>
+                  <CalendarClock className="h-4 w-4 mr-2" />
+                  Ustaw termin
+                </>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

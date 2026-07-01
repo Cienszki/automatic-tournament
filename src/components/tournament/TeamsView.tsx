@@ -18,6 +18,7 @@ import { MatchDetailModal } from '@/components/divisions/MatchDetailModal';
 import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import { usePageSize } from '@/hooks/usePageSize';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface GameHistoryItem {
   gameId: string;
@@ -254,7 +255,7 @@ function CollapsedTeamCard({ team, isSelected, onSelect, compact }: CollapsedCar
 
 // ─── Discord copy button ────────────────────────────────────────────
 
-function DiscordCopyButton({ discord }: { discord: string }) {
+function DiscordCopyButton({ discord, useTournamentVars = false }: { discord: string; useTournamentVars?: boolean }) {
   const { theme } = useTournament();
   const [copied, setCopied] = useState(false);
 
@@ -270,12 +271,12 @@ function DiscordCopyButton({ discord }: { discord: string }) {
       className="flex items-center w-full gap-2 py-1.5 px-2 rounded-lg hover:bg-white/[0.06] transition-colors group/copy"
     >
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"
-        className="w-4 h-4 shrink-0" style={{ color: theme?.textColor || theme?.primaryTextColor || '#ffffff' }}>
+        className="w-4 h-4 shrink-0" style={{ color: useTournamentVars ? 'var(--tournament-primary-text)' : (theme?.textColor || theme?.primaryTextColor || '#ffffff') }}>
         <path d="M20.317 4.492c-1.53-.69-3.17-1.2-4.885-1.49a.075.075 0 0 0-.079.036c-.21.369-.444.85-.608 1.23a18.566 18.566 0 0 0-5.487 0 12.36 12.36 0 0 0-.617-1.23A.077.077 0 0 0 8.562 3c-1.714.29-3.354.8-4.885 1.491a.07.07 0 0 0-.032.027C.533 9.093-.32 13.555.099 17.961a.08.08 0 0 0 .031.055 20.03 20.03 0 0 0 5.993 2.98.078.078 0 0 0 .084-.026c.462-.62.874-1.275 1.226-1.963.021-.04.001-.088-.041-.104a13.2 13.2 0 0 1-1.872-.878.075.075 0 0 1-.008-.125c.126-.093.252-.19.372-.287a.075.075 0 0 1 .078-.01c3.927 1.764 8.18 1.764 12.061 0a.075.075 0 0 1 .079.009c.12.098.245.195.372.288a.075.075 0 0 1-.006.125c-.598.344-1.22.635-1.873.877a.075.075 0 0 0-.041.105c.36.687.772 1.341 1.225 1.962a.077.077 0 0 0 .084.028 19.963 19.963 0 0 0 6.002-2.981.076.076 0 0 0 .032-.054c.5-5.094-.838-9.52-3.549-13.442a.06.06 0 0 0-.031-.028zM8.02 15.278c-1.182 0-2.157-1.069-2.157-2.38 0-1.312.956-2.38 2.157-2.38 1.21 0 2.176 1.077 2.157 2.38 0 1.312-.956 2.38-2.157 2.38zm7.975 0c-1.183 0-2.157-1.069-2.157-2.38 0-1.312.955-2.38 2.157-2.38 1.21 0 2.176 1.077 2.157 2.38 0 1.312-.946 2.38-2.157 2.38z" />
       </svg>
       <span
         className="text-xs font-medium"
-        style={{ color: theme?.primaryTextColor || theme?.textColor || '#ffffff' }}
+        style={{ color: useTournamentVars ? 'var(--tournament-primary-text)' : (theme?.primaryTextColor || theme?.textColor || '#ffffff') }}
       >
         {discord}
       </span>
@@ -283,7 +284,7 @@ function DiscordCopyButton({ discord }: { discord: string }) {
         <Check className="w-3.5 h-3.5 text-green-400 shrink-0" />
       ) : (
         <Copy className="w-3.5 h-3.5 shrink-0 opacity-40 group-hover/copy:opacity-100 transition-opacity"
-          style={{ color: theme?.secondaryTextColor || 'rgba(255,255,255,0.5)' }}
+          style={{ color: useTournamentVars ? 'var(--tournament-secondary-text)' : (theme?.secondaryTextColor || 'rgba(255,255,255,0.5)') }}
         />
       )}
       {copied && (
@@ -301,29 +302,29 @@ interface HeroEntry {
   win: number;
 }
 
-function HeroRow({ hero, theme }: { hero: HeroEntry; theme: any }) {
+function HeroRow({ hero, theme, useTournamentVars = false }: { hero: HeroEntry; theme: any; useTournamentVars?: boolean }) {
   const winRate = hero.games > 0 ? Math.round((hero.win / hero.games) * 100) : 0;
   return (
     <div className="flex items-center gap-2 py-0.5">
-      <span className="text-xs truncate flex-1" style={{ color: theme?.primaryTextColor || '#fff' }}>
+      <span className="text-xs truncate flex-1" style={{ color: useTournamentVars ? 'var(--tournament-primary-text)' : (theme?.primaryTextColor || '#fff') }}>
         {getHeroName(hero.heroId)}
       </span>
-      <span className="text-[11px] font-mono tabular-nums shrink-0" style={{ color: theme?.secondaryTextColor || 'rgba(255,255,255,0.5)' }}>
+      <span className="text-[11px] font-mono tabular-nums shrink-0" style={{ color: useTournamentVars ? 'var(--tournament-secondary-text)' : (theme?.secondaryTextColor || 'rgba(255,255,255,0.5)') }}>
         {hero.games}g
       </span>
       <span className={cn('text-[11px] font-mono tabular-nums shrink-0', winRate >= 55 ? 'text-green-400' : winRate <= 45 ? 'text-red-400' : '')}
-        style={winRate > 45 && winRate < 55 ? { color: theme?.secondaryTextColor || 'rgba(255,255,255,0.5)' } : undefined}>
+        style={winRate > 45 && winRate < 55 ? { color: useTournamentVars ? 'var(--tournament-secondary-text)' : (theme?.secondaryTextColor || 'rgba(255,255,255,0.5)') } : undefined}>
         {winRate}%
       </span>
     </div>
   );
 }
 
-function MostPlayedHeroesSection({ heroes, theme }: { heroes?: { overall: HeroEntry[]; recent: HeroEntry[]; lastUpdated?: string }; theme: any }) {
+function MostPlayedHeroesSection({ heroes, theme, useTournamentVars = false }: { heroes?: { overall: HeroEntry[]; recent: HeroEntry[]; lastUpdated?: string }; theme: any; useTournamentVars?: boolean }) {
   if (!heroes || (!heroes.overall?.length && !heroes.recent?.length)) {
     return (
       <div className="mb-3">
-        <p className="text-[10px] uppercase tracking-widest" style={{ color: theme?.secondaryTextColor || 'rgba(255,255,255,0.4)' }}>
+        <p className="text-[10px] uppercase tracking-widest" style={{ color: useTournamentVars ? 'var(--tournament-secondary-text)' : (theme?.secondaryTextColor || 'rgba(255,255,255,0.4)') }}>
           Brak danych o bohaterach
         </p>
       </div>
@@ -334,21 +335,21 @@ function MostPlayedHeroesSection({ heroes, theme }: { heroes?: { overall: HeroEn
     <div className="mb-3 space-y-3">
       {heroes.overall.length > 0 && (
         <div>
-          <h5 className="text-[10px] uppercase tracking-widest mb-1" style={{ color: theme?.secondaryTextColor || 'rgba(255,255,255,0.5)' }}>
+          <h5 className="text-[10px] uppercase tracking-widest mb-1" style={{ color: useTournamentVars ? 'var(--tournament-section-header)' : (theme?.secondaryTextColor || 'rgba(255,255,255,0.5)') }}>
             Najczęściej grane – ogólne
           </h5>
           <div className="space-y-0.5">
-            {heroes.overall.map(h => <HeroRow key={h.heroId} hero={h} theme={theme} />)}
+            {heroes.overall.map(h => <HeroRow key={h.heroId} hero={h} theme={theme} useTournamentVars={useTournamentVars} />)}
           </div>
         </div>
       )}
       {heroes.recent.length > 0 && (
         <div>
-          <h5 className="text-[10px] uppercase tracking-widest mb-1" style={{ color: theme?.secondaryTextColor || 'rgba(255,255,255,0.5)' }}>
+          <h5 className="text-[10px] uppercase tracking-widest mb-1" style={{ color: useTournamentVars ? 'var(--tournament-section-header)' : (theme?.secondaryTextColor || 'rgba(255,255,255,0.5)') }}>
             Najczęściej grane – ostatnie 6 mies.
           </h5>
           <div className="space-y-0.5">
-            {heroes.recent.map(h => <HeroRow key={h.heroId} hero={h} theme={theme} />)}
+            {heroes.recent.map(h => <HeroRow key={h.heroId} hero={h} theme={theme} useTournamentVars={useTournamentVars} />)}
           </div>
         </div>
       )}
@@ -366,6 +367,7 @@ interface PlayerProfileProps {
 
 function PlayerProfile({ player, team, onBack }: PlayerProfileProps) {
   const { tournament, theme, isLegacyTournament } = useTournament();
+  const isMobile = useIsMobile();
   const [games, setGames] = useState<PlayerGameRecord[]>([]);
   const [loadingGames, setLoadingGames] = useState(true);
   const [currentPage, setCurrentPage] = useState(0);
@@ -511,6 +513,196 @@ function PlayerProfile({ player, team, onBack }: PlayerProfileProps) {
 
   const totalPages = Math.max(1, Math.ceil(games.length / GAMES_PER_PAGE));
   const paginatedGames = games.slice(currentPage * GAMES_PER_PAGE, (currentPage + 1) * GAMES_PER_PAGE);
+
+  if (isMobile) {
+    return (
+      <div className="flex flex-col gap-3" onClick={(e) => e.stopPropagation()}>
+        <button
+          onClick={onBack}
+          className="flex items-center gap-1 text-xs uppercase tracking-widest hover:opacity-80 transition-opacity"
+          style={{ color: 'var(--tournament-secondary-text)' }}
+        >
+          <ChevronLeft className="w-3.5 h-3.5" />
+          Powrót do drużyny
+        </button>
+
+        <div className="rounded-xl border border-white/10 bg-black/30 p-3">
+          <div className="flex items-center gap-3">
+            <div className="relative w-16 h-16 rounded-xl overflow-hidden bg-black/40 shrink-0 border border-white/10">
+              {(player.avatarfull || player.avatarmedium || player.avatar) ? (
+                <Image
+                  src={player.avatarfull || player.avatarmedium || player.avatar || ''}
+                  alt={player.nickname}
+                  fill
+                  sizes="64px"
+                  className="object-cover"
+                  unoptimized
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-lg font-bold" style={{ color: 'var(--tournament-title)' }}>
+                  {player.nickname.charAt(0)}
+                </div>
+              )}
+            </div>
+            <div className="min-w-0 flex-1">
+              <h4
+                className="text-base font-logik-extended-bold uppercase tracking-tight truncate"
+                style={{ color: 'var(--tournament-title)', fontFamily: theme?.headerFont ? `var(${theme.headerFont})` : undefined }}
+              >
+                {player.nickname}
+              </h4>
+              <p className="text-xs" style={{ color: 'var(--tournament-secondary-text)' }}>{team.name}</p>
+            </div>
+            {player.mmr > 0 && (
+              <div className="text-right shrink-0">
+                <p className="text-[10px] uppercase tracking-widest" style={{ color: 'var(--tournament-secondary-text)' }}>MMR</p>
+                <p className="text-sm font-logik-extended-bold" style={{ color: 'var(--tournament-title)' }}>{player.mmr}</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-white/10 bg-black/30 p-3">
+          <p className="text-[10px] uppercase tracking-[0.18em] mb-2" style={{ color: 'var(--tournament-section-header)' }}>
+            Profile
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {steamProfileUrl && (
+              <a href={steamProfileUrl} target="_blank" rel="noopener noreferrer"
+                className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider px-2 py-1 rounded bg-white/[0.05] hover:bg-white/[0.1] transition-colors"
+                style={{ color: 'var(--tournament-primary-text)' }}>
+                <ExternalLink className="w-3 h-3" /> Steam
+              </a>
+            )}
+            {dotabuffUrl && (
+              <a href={dotabuffUrl} target="_blank" rel="noopener noreferrer"
+                className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider px-2 py-1 rounded bg-white/[0.05] hover:bg-white/[0.1] transition-colors"
+                style={{ color: 'var(--tournament-primary-text)' }}>
+                <ExternalLink className="w-3 h-3" /> Dotabuff
+              </a>
+            )}
+            {opendotaUrl && (
+              <a href={opendotaUrl} target="_blank" rel="noopener noreferrer"
+                className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider px-2 py-1 rounded bg-white/[0.05] hover:bg-white/[0.1] transition-colors"
+                style={{ color: 'var(--tournament-primary-text)' }}>
+                <ExternalLink className="w-3 h-3" /> OpenDota
+              </a>
+            )}
+          </div>
+        </div>
+
+        {(smurfAccounts && smurfAccounts.length > 0) && (
+          <div className="rounded-xl border border-white/10 bg-black/30 p-3">
+            <button
+              onClick={() => setSmurfsOpen(!smurfsOpen)}
+              className="flex items-center gap-1.5 text-xs uppercase tracking-widest hover:opacity-80 transition-opacity"
+              style={{ color: 'var(--tournament-heading)' }}
+            >
+              <ChevronDown className={cn('w-3 h-3 transition-transform', smurfsOpen && 'rotate-180')} />
+              Konta dodatkowe ({smurfAccounts.length})
+            </button>
+            {smurfsOpen && (
+              <div className="space-y-1.5 mt-2">
+                {smurfAccounts.map((smurf, idx) => {
+                  const smurfUrl = smurf.steamProfileUrl;
+                  const smurfSteam32 = (smurf as any).steamId32 || (() => {
+                    const id64 = (smurf as any).steamId64 || smurfUrl?.match(/\/profiles\/(\d{17,})/)?.[1] || '';
+                    if (!id64) return '';
+                    try { return String(BigInt(id64) - 76561197960265728n); } catch { return ''; }
+                  })();
+                  const smurfDotabuff = smurfSteam32 ? `https://www.dotabuff.com/players/${smurfSteam32}` : '';
+                  const smurfOpendota = smurfSteam32 ? `https://www.opendota.com/players/${smurfSteam32}` : '';
+                  return (
+                    <div key={idx} className="flex flex-wrap gap-2">
+                      {smurfUrl && <a href={smurfUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-[10px] uppercase tracking-wider px-2 py-0.5 rounded bg-white/[0.04] hover:bg-white/[0.08] transition-colors" style={{ color: 'var(--tournament-primary-text)' }}><ExternalLink className="w-2.5 h-2.5" /> Steam</a>}
+                      {smurfDotabuff && <a href={smurfDotabuff} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-[10px] uppercase tracking-wider px-2 py-0.5 rounded bg-white/[0.04] hover:bg-white/[0.08] transition-colors" style={{ color: 'var(--tournament-primary-text)' }}><ExternalLink className="w-2.5 h-2.5" /> Dotabuff</a>}
+                      {smurfOpendota && <a href={smurfOpendota} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-[10px] uppercase tracking-wider px-2 py-0.5 rounded bg-white/[0.04] hover:bg-white/[0.08] transition-colors" style={{ color: 'var(--tournament-primary-text)' }}><ExternalLink className="w-2.5 h-2.5" /> OpenDota</a>}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {!smurfsOpen && (
+          <div className="rounded-xl border border-white/10 bg-black/30 p-3">
+            <p className="text-[10px] uppercase tracking-[0.18em] mb-2" style={{ color: 'var(--tournament-section-header)' }}>
+              Najczęściej grane
+            </p>
+            {loadingExtra ? (
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 border border-white/20 border-t-white/60 rounded-full animate-spin" />
+                <span className="text-[10px] uppercase tracking-widest" style={{ color: 'var(--tournament-secondary-text)' }}>Ładowanie...</span>
+              </div>
+            ) : (
+              <MostPlayedHeroesSection heroes={mostPlayedHeroes} theme={theme} useTournamentVars />
+            )}
+          </div>
+        )}
+
+        <div className="rounded-xl border border-white/10 bg-black/30 p-3">
+          <p className="text-[10px] uppercase tracking-[0.18em] mb-2" style={{ color: 'var(--tournament-section-header)' }}>
+            Historia gier
+          </p>
+          {loadingGames ? (
+            <div className="flex items-center justify-center py-4">
+              <div className="w-5 h-5 border-2 border-white/20 border-t-white/60 rounded-full animate-spin" />
+            </div>
+          ) : games.length === 0 ? (
+            <p className="text-xs" style={{ color: 'var(--tournament-secondary-text)' }}>Brak rozegranych gier.</p>
+          ) : (
+            <>
+              <div className="space-y-1">
+                {paginatedGames.map((game) => (
+                  <button
+                    key={game.gameId}
+                    onClick={() => handleGameClick(game.matchId)}
+                    disabled={isLegacyTournament || !game.matchId}
+                    className="flex items-center gap-2 w-full py-1.5 px-2 rounded text-xs hover:bg-white/[0.06] transition-colors disabled:cursor-default text-left"
+                  >
+                    <span className="truncate w-20 shrink-0" style={{ color: 'var(--tournament-secondary-text)' }}>
+                      {game.enemyTeamName}
+                    </span>
+                    <span className="shrink-0" style={{ color: 'var(--tournament-primary-text)' }}>
+                      {getHeroName(game.heroId)}
+                    </span>
+                    <span className="shrink-0 font-mono" style={{ color: 'var(--tournament-primary-text)' }}>
+                      {game.kills}/{game.deaths}/{game.assists}
+                    </span>
+                    <span className={cn('shrink-0 font-bold text-[10px] uppercase', game.won ? 'text-green-400' : 'text-red-400')}>
+                      {game.won ? 'W' : 'L'}
+                    </span>
+                  </button>
+                ))}
+              </div>
+
+              {totalPages > 1 && (
+                <div className="flex items-center justify-center gap-3 pt-2 mt-1 border-t border-white/[0.06]">
+                  <button onClick={() => setCurrentPage(p => Math.max(0, p - 1))} disabled={currentPage === 0} className="p-1 rounded hover:bg-white/10 disabled:opacity-30 transition-all">
+                    <ChevronLeft className="w-3.5 h-3.5" style={{ color: 'var(--tournament-heading)' }} />
+                  </button>
+                  <span className="text-[10px] font-mono" style={{ color: 'var(--tournament-secondary-text)' }}>
+                    {currentPage + 1} / {totalPages}
+                  </span>
+                  <button onClick={() => setCurrentPage(p => Math.min(totalPages - 1, p + 1))} disabled={currentPage >= totalPages - 1} className="p-1 rounded hover:bg-white/10 disabled:opacity-30 transition-all">
+                    <ChevronRight className="w-3.5 h-3.5" style={{ color: 'var(--tournament-heading)' }} />
+                  </button>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+
+        <MatchDetailModal
+          match={selectedMatchForModal}
+          isOpen={selectedMatchForModal !== null}
+          onClose={() => setSelectedMatchForModal(null)}
+          divisionColor={theme?.primaryColor || '#666'}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="h-full flex flex-col" onClick={(e) => e.stopPropagation()}>
@@ -751,6 +943,7 @@ interface ExpandedCardProps {
 
 function ExpandedTeamCard({ team, onClose }: ExpandedCardProps) {
   const { theme, tournament } = useTournament();
+  const isMobile = useIsMobile();
   const { style } = getDivisionStyle(team);
   const historyPageSize = usePageSize(72);
   const upcomingPageSize = usePageSize(135);
@@ -886,7 +1079,10 @@ function ExpandedTeamCard({ team, onClose }: ExpandedCardProps) {
       initial={false}
       animate={{ opacity: 1, x: 0 }}
       transition={{ duration: 0.35, ease: [0.76, 0, 0.24, 1] }}
-      className="h-full w-full flex flex-col rounded-2xl border border-none bg-black/25 backdrop-blur-xl overflow-hidden relative"
+      className={cn(
+        'w-full flex flex-col border border-none bg-black/25 backdrop-blur-xl relative',
+        isMobile ? 'h-auto rounded-xl overflow-visible' : 'h-full rounded-2xl overflow-hidden',
+      )}
       style={{ willChange: 'backdrop-filter, transform' }}
       onClick={(e) => e.stopPropagation()}
     >
@@ -929,7 +1125,7 @@ function ExpandedTeamCard({ team, onClose }: ExpandedCardProps) {
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -20 }}
             transition={{ duration: 0.2 }}
-            className="flex-1 p-6 overflow-hidden relative z-20"
+            className={cn('flex-1 relative z-20', isMobile ? 'p-4 overflow-y-auto' : 'p-6 overflow-hidden')}
           >
             <PlayerProfile
               player={selectedPlayer}
@@ -944,112 +1140,406 @@ function ExpandedTeamCard({ team, onClose }: ExpandedCardProps) {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0, x: -20 }}
             transition={{ duration: 0.2 }}
-            className="flex-1 flex flex-col overflow-hidden relative z-20"
+            className={cn('flex-1 flex flex-col relative z-20', isMobile ? 'overflow-y-auto' : 'overflow-hidden')}
           >
-            {/* Header */}
-            <div className="flex items-center gap-6 p-6 pb-4">
-              <div className={cn(
-                'relative w-28 h-28 rounded-2xl overflow-hidden bg-black/40 shrink-0 shadow-xl flex items-center justify-center',
-                'border border-white/10',
-              )}>
-                {team.logoUrl && team.logoUrl.trim() !== '' ? (
-                  <Image
-                    src={team.logoUrl}
-                    alt={team.name}
-                    fill
-                    sizes="112px"
-                    className="object-cover"
-                    unoptimized
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).style.display = 'none';
-                    }}
-                  />
-                ) : null}
-                <div
-                  className="text-4xl font-logik-extended-bold absolute inset-0 flex items-center justify-center"
-                  style={{
-                    color: theme?.titleColor || theme?.textColor || '#ffffff',
-                    fontFamily: theme?.headerFont ? `var(${theme.headerFont})` : undefined,
-                    zIndex: team.logoUrl && team.logoUrl.trim() !== '' ? -1 : 1,
-                  }}
-                >
-                  {team.name.charAt(0)}
-                </div>
-              </div>
-
-              <div className="flex-1 min-w-0">
-                <h3
-                  className="text-4xl font-logik-extended-bold uppercase tracking-tight leading-tight drop-shadow-md"
-                  style={{
-                    color: theme?.titleColor || theme?.textColor || '#ffffff',
-                    fontFamily: theme?.headerFont ? `var(${theme.headerFont})` : undefined,
-                  }}
-                >
-                  {team.name}
-                </h3>
-                {team.tag && (
-                  <p
-                    className="text-lg font-logik-extended-bold uppercase tracking-widest mt-0.5 leading-tight opacity-70"
-                    style={{
-                      color: 'var(--tournament-heading)',
-                      fontFamily: theme?.headerFont ? `var(${theme.headerFont})` : undefined,
-                    }}
-                  >
-                    [{team.tag}]
-                  </p>
-                )}
-                {team.motto && (
-                  <p
-                    className="text-sm italic font-logik mt-1 opacity-60 truncate"
-                    style={{
-                      color: 'var(--tournament-heading)',
-                      fontFamily: theme?.headerFont ? `var(${theme.headerFont})` : undefined,
-                    }}
-                  >
-                    &ldquo;{team.motto}&rdquo;
-                  </p>
-                )}
-                <div className="flex items-center gap-2 mt-1 flex-wrap">
-                  {team.division && (
-                    <span className={cn('text-xs uppercase tracking-widest inline-block font-logik', style.text)}>
-                      {team.division}
-                    </span>
-                  )}
-                  {team.status && (() => {
-                    const statusLabels: Record<string, string> = {
-                      pending: 'Oczekuje',
-                      verified: 'Zweryfikowana',
-                      rejected: 'Odrzucona',
-                      eliminated: 'Wyeliminowana',
-                      warning: 'Ostrzeżenie',
-                      banned: 'Zbanowana',
-                    };
-                    const label = statusLabels[team.status];
-                    if (!label) return null;
-                    const isRejected = team.status === 'rejected';
-                    return (
-                      <span
-                        className="text-xs uppercase tracking-widest font-logik-extended-bold px-2 py-0.5 rounded-full border bg-white/[0.04] border-white/10"
-                        style={isRejected
-                          ? { color: 'rgb(248 113 113)', borderColor: 'rgba(239,68,68,0.3)', backgroundColor: 'rgba(239,68,68,0.1)' }
-                          : { color: 'var(--tournament-section-header)', fontFamily: theme?.headerFont ? `var(${theme.headerFont})` : undefined }
-                        }
+            {isMobile ? (
+              <div className="p-4 pt-3 space-y-3">
+                {/* Team summary */}
+                <div className="rounded-xl border border-white/10 bg-black/30 p-3">
+                  <div className="flex items-start gap-3">
+                    <div className="relative w-20 h-20 rounded-xl overflow-hidden bg-black/40 shrink-0 border border-white/10 flex items-center justify-center">
+                      {team.logoUrl && team.logoUrl.trim() !== '' ? (
+                        <Image
+                          src={team.logoUrl}
+                          alt={team.name}
+                          fill
+                          sizes="80px"
+                          className="object-cover"
+                          unoptimized
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).style.display = 'none';
+                          }}
+                        />
+                      ) : null}
+                      <div
+                        className="text-2xl font-logik-extended-bold absolute inset-0 flex items-center justify-center"
+                        style={{
+                          color: 'var(--tournament-title)',
+                          fontFamily: theme?.headerFont ? `var(${theme.headerFont})` : undefined,
+                          zIndex: team.logoUrl && team.logoUrl.trim() !== '' ? -1 : 1,
+                        }}
                       >
-                        {label}
+                        {team.name.charAt(0)}
+                      </div>
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <h3
+                        className="text-2xl font-logik-extended-bold uppercase tracking-tight leading-tight"
+                        style={{
+                          color: 'var(--tournament-title)',
+                          fontFamily: theme?.headerFont ? `var(${theme.headerFont})` : undefined,
+                        }}
+                      >
+                        {team.name}
+                      </h3>
+                      {team.tag && (
+                        <p
+                          className="text-xs font-logik-extended-bold uppercase tracking-widest mt-1"
+                          style={{
+                            color: 'var(--tournament-heading)',
+                            fontFamily: theme?.headerFont ? `var(${theme.headerFont})` : undefined,
+                          }}
+                        >
+                          [{team.tag}]
+                        </p>
+                      )}
+                      {team.motto && (
+                        <p
+                          className="text-xs italic font-logik mt-1.5 leading-relaxed"
+                          style={{
+                            color: 'var(--tournament-secondary-text)',
+                            fontFamily: theme?.headerFont ? `var(${theme.headerFont})` : undefined,
+                          }}
+                        >
+                          &ldquo;{team.motto}&rdquo;
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 mt-3 flex-wrap">
+                    {team.division && (
+                      <span className={cn('text-[10px] uppercase tracking-widest inline-block font-logik', style.text)}>
+                        {team.division}
                       </span>
-                    );
-                  })()}
+                    )}
+                    {team.status && (() => {
+                      const statusLabels: Record<string, string> = {
+                        pending: 'Oczekuje',
+                        verified: 'Zweryfikowana',
+                        rejected: 'Odrzucona',
+                        eliminated: 'Wyeliminowana',
+                        warning: 'Ostrzeżenie',
+                        banned: 'Zbanowana',
+                      };
+                      const label = statusLabels[team.status];
+                      if (!label) return null;
+                      const isRejected = team.status === 'rejected';
+                      return (
+                        <span
+                          className="text-[10px] uppercase tracking-widest font-logik-extended-bold px-2 py-0.5 rounded-full border bg-white/[0.04] border-white/10"
+                          style={isRejected
+                            ? { color: 'rgb(248 113 113)', borderColor: 'rgba(239,68,68,0.3)', backgroundColor: 'rgba(239,68,68,0.1)' }
+                            : { color: 'var(--tournament-section-header)', fontFamily: theme?.headerFont ? `var(${theme.headerFont})` : undefined }
+                          }
+                        >
+                          {label}
+                        </span>
+                      );
+                    })()}
+                  </div>
+                </div>
+
+                {/* Roster */}
+                <div className="rounded-xl border border-white/10 bg-black/30 p-3">
+                  <p className="text-[10px] uppercase tracking-[0.18em] mb-2" style={{ color: 'var(--tournament-section-header)' }}>
+                    Skład
+                  </p>
+                  {sortedPlayers.length > 0 && (
+                    <div className="space-y-1">
+                      {sortedPlayers.map((player, idx) => (
+                        <button
+                          key={player.id || idx}
+                          onClick={() => setSelectedPlayer(player)}
+                          className="flex items-center w-full gap-2 py-2 px-2 rounded-lg hover:bg-white/[0.06] transition-colors text-left"
+                        >
+                          <div className="shrink-0 w-5 flex justify-center" style={{ color: 'var(--tournament-secondary-text)' }}>
+                            {getRoleIcon(player.role, 'h-3.5 w-3.5')}
+                          </div>
+                          <div className="relative w-8 h-8 rounded-md overflow-hidden bg-black/30 shrink-0 border border-white/10">
+                            {(player.avatar || player.avatarmedium) ? (
+                              <Image
+                                src={player.avatarmedium || player.avatar || ''}
+                                alt={player.nickname}
+                                fill
+                                sizes="32px"
+                                className="object-cover"
+                                unoptimized
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-[11px] font-bold" style={{ color: 'var(--tournament-title)' }}>
+                                {player.nickname.charAt(0)}
+                              </div>
+                            )}
+                          </div>
+                          <span
+                            className="text-xs font-logik-extended-bold uppercase tracking-wide truncate flex-1"
+                            style={{
+                              color: 'var(--tournament-primary-text)',
+                              fontFamily: theme?.headerFont ? `var(${theme.headerFont})` : undefined,
+                            }}
+                          >
+                            {player.nickname}
+                          </span>
+                          {player.mmr != null && Number(player.mmr) > 0 && (
+                            <span className="text-xs font-mono shrink-0 ml-auto pl-2" style={{ color: 'var(--tournament-secondary-text)' }}>
+                              {player.mmr}
+                            </span>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Captain + MMR */}
+                {(captainDiscord || totalMMR > 0) && (
+                  <div className="rounded-xl border border-white/10 bg-black/30 p-3">
+                    <p className="text-[10px] uppercase tracking-[0.18em] mb-2" style={{ color: 'var(--tournament-section-header)' }}>
+                      Kontakt i MMR
+                    </p>
+                    <div className="flex items-center gap-2">
+                      {captainDiscord && (
+                        <div className="flex-1 min-w-0">
+                          <DiscordCopyButton discord={captainDiscord} useTournamentVars />
+                        </div>
+                      )}
+                      {totalMMR > 0 && (
+                        <span className="text-xs font-mono shrink-0" style={{ color: 'var(--tournament-secondary-text)' }}>
+                          Σ {totalMMR.toLocaleString()}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Upcoming matches */}
+                <div className="rounded-xl border border-white/10 bg-black/30 p-3">
+                  <div className="flex items-center gap-1.5 mb-2" style={{ color: 'var(--tournament-section-header)' }}>
+                    <Calendar className="w-3 h-3 shrink-0" />
+                    <span className="text-[10px] uppercase tracking-[0.18em]">Nadchodzące mecze</span>
+                  </div>
+                  {upcomingMatches.length === 0 ? (
+                    <p className="text-xs" style={{ color: 'var(--tournament-secondary-text)' }}>Brak zaplanowanych meczów.</p>
+                  ) : (
+                    <>
+                      {upcomingMatches
+                        .slice(upcomingPage * upcomingPageSize, (upcomingPage + 1) * upcomingPageSize)
+                        .map((match) => {
+                          const opp = match.teamA?.id === team.id ? match.teamB : match.teamA;
+                          if (!opp) return null;
+                          return (
+                            <button
+                              key={match.id}
+                              onClick={(e) => { e.stopPropagation(); setSelectedMatchForModal(matchesById.get(match.id) || null); }}
+                              className="flex items-center gap-2 w-full py-2 px-2 rounded-lg hover:bg-white/[0.07] transition-colors text-left"
+                            >
+                              <div className="w-6 h-6 rounded shrink-0 bg-white/10 overflow-hidden flex items-center justify-center text-[10px]" style={{ color: 'var(--tournament-secondary-text)' }}>
+                                {opp.logoUrl ? (
+                                  <Image src={opp.logoUrl} alt={opp.name} width={24} height={24} className="object-cover" unoptimized />
+                                ) : opp.name.charAt(0)}
+                              </div>
+                              <span className="text-xs font-logik truncate flex-1" style={{ color: 'var(--tournament-primary-text)' }}>
+                                vs {opp.name}
+                              </span>
+                              <span className="text-[10px] font-mono shrink-0" style={{ color: 'var(--tournament-secondary-text)' }}>
+                                {format(new Date(match.scheduledFor), 'dd.MM HH:mm', { locale: pl })}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      {upcomingMatches.length > upcomingPageSize && (
+                        <div className="flex justify-between items-center mt-1">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setUpcomingPage(p => Math.max(0, p - 1)); }}
+                            disabled={upcomingPage === 0}
+                            className="text-[10px] font-mono disabled:opacity-20"
+                            style={{ color: 'var(--tournament-heading)' }}
+                          >← Poprz.</button>
+                          <span className="text-[10px] font-mono" style={{ color: 'var(--tournament-secondary-text)' }}>
+                            {upcomingPage + 1}/{Math.ceil(upcomingMatches.length / upcomingPageSize)}
+                          </span>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setUpcomingPage(p => Math.min(Math.ceil(upcomingMatches.length / upcomingPageSize) - 1, p + 1)); }}
+                            disabled={(upcomingPage + 1) * upcomingPageSize >= upcomingMatches.length}
+                            className="text-[10px] font-mono disabled:opacity-20"
+                            style={{ color: 'var(--tournament-heading)' }}
+                          >Nast. →</button>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+
+                {/* Game history */}
+                <div className="rounded-xl border border-white/10 bg-black/30 p-3">
+                  <div className="flex items-center gap-1.5 mb-2" style={{ color: 'var(--tournament-section-header)' }}>
+                    <Swords className="w-3 h-3 shrink-0" />
+                    <span className="text-[10px] uppercase tracking-[0.18em]">Historia gier</span>
+                  </div>
+                  {gameHistory.length === 0 ? (
+                    <p className="text-xs" style={{ color: 'var(--tournament-secondary-text)' }}>Brak danych o grach.</p>
+                  ) : (
+                    <>
+                      {gameHistory
+                        .slice(historyPage * historyPageSize, (historyPage + 1) * historyPageSize)
+                        .map((game) => {
+                          const dMin = Math.floor(game.durationSeconds / 60);
+                          const dSec = game.durationSeconds % 60;
+                          return (
+                            <button
+                              key={`${game.matchId}-${game.gameId}`}
+                              onClick={(e) => { e.stopPropagation(); setSelectedMatchForModal(matchesById.get(game.matchId) || null); }}
+                              className="flex items-center gap-2 w-full py-2 px-2 rounded-lg hover:bg-white/[0.07] transition-colors text-left"
+                            >
+                              <div className="w-0.5 self-stretch rounded-full shrink-0" style={{ backgroundColor: game.won ? '#10b981' : '#ef4444' }} />
+                              <div className="w-6 h-6 rounded shrink-0 bg-white/10 overflow-hidden flex items-center justify-center text-[10px]" style={{ color: 'var(--tournament-secondary-text)' }}>
+                                {game.opponentTeam.logoUrl ? (
+                                  <Image src={game.opponentTeam.logoUrl} alt={game.opponentTeam.name} width={24} height={24} className="object-cover" unoptimized />
+                                ) : game.opponentTeam.name.charAt(0)}
+                              </div>
+                              <span className="text-xs font-logik truncate flex-1" style={{ color: 'var(--tournament-primary-text)' }}>
+                                vs {game.opponentTeam.name}
+                              </span>
+                              <span className="text-[10px] font-mono shrink-0">
+                                <span style={{ color: game.won ? '#10b981' : '#ef4444' }}>{game.teamKills}</span>
+                                <span style={{ color: 'var(--tournament-secondary-text)' }}>:</span>
+                                <span style={{ color: game.won ? 'rgba(239,68,68,0.5)' : 'rgba(16,185,129,0.5)' }}>{game.opponentKills}</span>
+                              </span>
+                              <span className="text-[10px] font-mono shrink-0" style={{ color: 'var(--tournament-secondary-text)' }}>
+                                {dMin}:{String(dSec).padStart(2, '0')}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      {gameHistory.length > historyPageSize && (
+                        <div className="flex justify-between items-center mt-1">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setHistoryPage(p => Math.max(0, p - 1)); }}
+                            disabled={historyPage === 0}
+                            className="text-[10px] font-mono disabled:opacity-20"
+                            style={{ color: 'var(--tournament-heading)' }}
+                          >← Poprz.</button>
+                          <span className="text-[10px] font-mono" style={{ color: 'var(--tournament-secondary-text)' }}>
+                            {historyPage + 1}/{Math.ceil(gameHistory.length / historyPageSize)}
+                          </span>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setHistoryPage(p => Math.min(Math.ceil(gameHistory.length / historyPageSize) - 1, p + 1)); }}
+                            disabled={(historyPage + 1) * historyPageSize >= gameHistory.length}
+                            className="text-[10px] font-mono disabled:opacity-20"
+                            style={{ color: 'var(--tournament-heading)' }}
+                          >Nast. →</button>
+                        </div>
+                      )}
+                    </>
+                  )}
                 </div>
               </div>
-            </div>
+            ) : (
+              <>
+                {/* Header */}
+                <div className="flex items-center gap-6 p-6 pb-4">
+                  <div className={cn(
+                    'relative w-28 h-28 rounded-2xl overflow-hidden bg-black/40 shrink-0 shadow-xl flex items-center justify-center',
+                    'border border-white/10',
+                  )}>
+                    {team.logoUrl && team.logoUrl.trim() !== '' ? (
+                      <Image
+                        src={team.logoUrl}
+                        alt={team.name}
+                        fill
+                        sizes="112px"
+                        className="object-cover"
+                        unoptimized
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).style.display = 'none';
+                        }}
+                      />
+                    ) : null}
+                    <div
+                      className="text-4xl font-logik-extended-bold absolute inset-0 flex items-center justify-center"
+                      style={{
+                        color: theme?.titleColor || theme?.textColor || '#ffffff',
+                        fontFamily: theme?.headerFont ? `var(${theme.headerFont})` : undefined,
+                        zIndex: team.logoUrl && team.logoUrl.trim() !== '' ? -1 : 1,
+                      }}
+                    >
+                      {team.name.charAt(0)}
+                    </div>
+                  </div>
 
-            {/* Divider */}
-            <div className="mx-6 h-px" style={{ background: `linear-gradient(to right, ${style.glow}60, transparent)` }} />
+                  <div className="flex-1 min-w-0">
+                    <h3
+                      className="text-4xl font-logik-extended-bold uppercase tracking-tight leading-tight drop-shadow-md"
+                      style={{
+                        color: theme?.titleColor || theme?.textColor || '#ffffff',
+                        fontFamily: theme?.headerFont ? `var(${theme.headerFont})` : undefined,
+                      }}
+                    >
+                      {team.name}
+                    </h3>
+                    {team.tag && (
+                      <p
+                        className="text-lg font-logik-extended-bold uppercase tracking-widest mt-0.5 leading-tight opacity-70"
+                        style={{
+                          color: 'var(--tournament-heading)',
+                          fontFamily: theme?.headerFont ? `var(${theme.headerFont})` : undefined,
+                        }}
+                      >
+                        [{team.tag}]
+                      </p>
+                    )}
+                    {team.motto && (
+                      <p
+                        className="text-sm italic font-logik mt-1 opacity-60 truncate"
+                        style={{
+                          color: 'var(--tournament-heading)',
+                          fontFamily: theme?.headerFont ? `var(${theme.headerFont})` : undefined,
+                        }}
+                      >
+                        &ldquo;{team.motto}&rdquo;
+                      </p>
+                    )}
+                    <div className="flex items-center gap-2 mt-1 flex-wrap">
+                      {team.division && (
+                        <span className={cn('text-xs uppercase tracking-widest inline-block font-logik', style.text)}>
+                          {team.division}
+                        </span>
+                      )}
+                      {team.status && (() => {
+                        const statusLabels: Record<string, string> = {
+                          pending: 'Oczekuje',
+                          verified: 'Zweryfikowana',
+                          rejected: 'Odrzucona',
+                          eliminated: 'Wyeliminowana',
+                          warning: 'Ostrzeżenie',
+                          banned: 'Zbanowana',
+                        };
+                        const label = statusLabels[team.status];
+                        if (!label) return null;
+                        const isRejected = team.status === 'rejected';
+                        return (
+                          <span
+                            className="text-xs uppercase tracking-widest font-logik-extended-bold px-2 py-0.5 rounded-full border bg-white/[0.04] border-white/10"
+                            style={isRejected
+                              ? { color: 'rgb(248 113 113)', borderColor: 'rgba(239,68,68,0.3)', backgroundColor: 'rgba(239,68,68,0.1)' }
+                              : { color: 'var(--tournament-section-header)', fontFamily: theme?.headerFont ? `var(${theme.headerFont})` : undefined }
+                            }
+                          >
+                            {label}
+                          </span>
+                        );
+                      })()}
+                    </div>
+                  </div>
+                </div>
 
-            {/* Two-column content */}
-            <div className="flex-1 flex gap-4 p-6 pt-4 min-h-0 overflow-hidden">
-              {/* Left column: Roster + Discord */}
-              <div className="flex-1 flex flex-col min-w-0 overflow-y-auto">
+                {/* Divider */}
+                <div className="mx-6 h-px" style={{ background: `linear-gradient(to right, ${style.glow}60, transparent)` }} />
+
+                {/* Two-column content */}
+                <div className="flex-1 flex gap-4 p-6 pt-4 min-h-0 overflow-hidden">
+                  {/* Left column: Roster + Discord */}
+                  <div className="flex-1 flex flex-col min-w-0 overflow-y-auto">
                 {/* Player rows — no heading, sorted by role */}
                 {sortedPlayers.length > 0 && (
                   <div className="space-y-1">
@@ -1192,7 +1682,7 @@ function ExpandedTeamCard({ team, onClose }: ExpandedCardProps) {
               </div>
 
               {/* Right column: game history */}
-              <div className="flex-1 flex flex-col min-w-0 overflow-y-auto">
+              <div className={cn('flex-1 flex flex-col min-w-0', isMobile ? 'overflow-visible border-t border-white/[0.06] pt-3' : 'overflow-y-auto')}>
                 <div
                   className="flex items-center gap-1.5 mb-1.5 px-1"
                   style={{ color: theme?.secondaryTextColor || 'rgba(255,255,255,0.35)' }}
@@ -1261,7 +1751,9 @@ function ExpandedTeamCard({ team, onClose }: ExpandedCardProps) {
                   </>
                 )}
               </div>
-            </div>
+                </div>
+              </>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
@@ -1291,6 +1783,7 @@ interface TeamsViewProps {
 
 export function TeamsView({ teams, highlightedTeamId, onTeamHighlightConsumed }: TeamsViewProps) {
   const { tournament, theme } = useTournament();
+  const isMobile = useIsMobile();
   const [expandedTeamId, setExpandedTeamId] = useState<string | null>(null);
   const primaryColor = theme?.primaryColor || '#8B1538';
 
@@ -1383,6 +1876,102 @@ export function TeamsView({ teams, highlightedTeamId, onTeamHighlightConsumed }:
     );
   }
 
+  if (isMobile) {
+    return (
+      <div className="h-full w-full flex flex-col px-3 py-3 overflow-hidden">
+        <div className="text-center mb-3 shrink-0">
+          <h2
+            className="text-4xl font-logik-extended-bold uppercase tracking-tight"
+            style={{
+              color: theme?.titleColor || 'white',
+              fontFamily: theme?.headerFont ? `var(${theme.headerFont})` : undefined,
+            }}
+          >
+            Drużyny
+          </h2>
+          <div className="flex items-center justify-center gap-4 mt-1 opacity-60">
+            <div className="h-[1px] w-12" style={{ background: `linear-gradient(to right, transparent, ${primaryColor})` }} />
+            <Users className="w-3 h-3" style={{ color: primaryColor }} />
+            <div className="h-[1px] w-12" style={{ background: `linear-gradient(to left, transparent, ${primaryColor})` }} />
+          </div>
+        </div>
+
+        <div className="flex-1 min-h-0 overflow-y-auto pr-1 space-y-2">
+          {teams.map((team) => {
+            const isExpanded = expandedTeamId === team.id;
+            return (
+              <div
+                key={team.id}
+                className="rounded-xl border border-white/10 bg-black/25 backdrop-blur-sm overflow-hidden"
+              >
+                <button
+                  onClick={() => handleSelectTeam(team.id)}
+                  className="w-full flex items-center gap-3 p-3 text-left"
+                >
+                  <div className="relative w-11 h-11 rounded-lg overflow-hidden bg-black/35 shrink-0 border border-white/10">
+                    {team.logoUrl && team.logoUrl.trim() !== '' ? (
+                      <Image
+                        src={team.logoUrl}
+                        alt={team.name}
+                        fill
+                        sizes="44px"
+                        className="object-cover"
+                        unoptimized
+                      />
+                    ) : (
+                      <div
+                        className="w-full h-full flex items-center justify-center text-sm font-logik-extended-bold"
+                        style={{ color: theme?.titleColor || theme?.textColor || '#ffffff' }}
+                      >
+                        {team.name.charAt(0)}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="min-w-0 flex-1">
+                    <p
+                      className="text-sm font-logik-extended-bold uppercase tracking-wide truncate"
+                      style={{
+                        color: theme?.primaryTextColor || theme?.textColor || '#ffffff',
+                        fontFamily: theme?.headerFont ? `var(${theme.headerFont})` : undefined,
+                      }}
+                    >
+                      {team.name}
+                    </p>
+                    <p className="text-[11px] mt-0.5 uppercase tracking-wider opacity-70" style={{ color: theme?.secondaryTextColor || 'rgba(255,255,255,0.65)' }}>
+                      {team.division || team.tag || 'Drużyna'}
+                    </p>
+                  </div>
+
+                  <ChevronDown
+                    className={cn('w-4 h-4 shrink-0 transition-transform duration-200', isExpanded && 'rotate-180')}
+                    style={{ color: theme?.secondaryTextColor || 'rgba(255,255,255,0.7)' }}
+                  />
+                </button>
+
+                <AnimatePresence initial={false}>
+                  {isExpanded && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
+                      className="overflow-hidden"
+                    >
+                      <div className="p-2 pt-0">
+                        <ExpandedTeamCard team={team} onClose={handleClose} />
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="h-full w-full flex flex-col px-4 sm:px-8 lg:px-12 py-4 overflow-hidden">
       {/* Section header */}
@@ -1404,13 +1993,16 @@ export function TeamsView({ teams, highlightedTeamId, onTeamHighlightConsumed }:
       </div>
 
       {/* Main content area */}
-      <div className="flex-1 flex gap-4 min-h-0 overflow-hidden pr-10">
+      <div className={cn('flex-1 flex gap-4 min-h-0 overflow-hidden', isMobile ? 'pr-0 relative' : 'pr-10')}>
         {/* Expanded card — left half */}
         <motion.div
           initial={false}
-          animate={{ width: hasExpanded ? '50%' : '0%' }}
+          animate={{ width: hasExpanded ? (isMobile ? '100%' : '50%') : '0%' }}
           transition={{ duration: 0.4, ease: [0.76, 0, 0.24, 1] }}
-          className="h-full shrink-0 relative overflow-hidden will-change-transform"
+          className={cn(
+            'h-full shrink-0 relative overflow-hidden will-change-transform',
+            isMobile && 'absolute inset-0 z-30',
+          )}
           style={{ isolation: 'isolate' }}
         >
           <div className="absolute inset-0 overflow-hidden">
@@ -1432,7 +2024,13 @@ export function TeamsView({ teams, highlightedTeamId, onTeamHighlightConsumed }:
         </motion.div>
 
         {/* Grid of collapsed cards — full width or right half */}
-        <div ref={gridWrapperRef} className="flex-1 min-w-0 h-full overflow-hidden">
+        <div
+          ref={gridWrapperRef}
+          className={cn(
+            'flex-1 min-w-0 h-full overflow-hidden',
+            isMobile && hasExpanded && 'pointer-events-none opacity-0',
+          )}
+        >
           <div
             className="grid w-full gap-2"
             style={{

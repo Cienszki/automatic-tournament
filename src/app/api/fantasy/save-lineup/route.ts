@@ -1,13 +1,33 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { saveUserFantasyLineupAdmin, getNextRoundIdAdmin } from '@/lib/admin-actions';
+import { getAdminAuth, ensureAdminInitialized } from '@/lib/admin';
 import { FANTASY_BUDGET_MMR } from '@/lib/definitions';
 
 export async function POST(request: NextRequest) {
     try {
+        // Verify Firebase ID token and extract uid from it — never trust the body's userId
+        const authHeader = request.headers.get('Authorization');
+        if (!authHeader?.startsWith('Bearer ')) {
+            return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+        }
+        let authenticatedUid: string;
+        try {
+            ensureAdminInitialized();
+            const decodedToken = await getAdminAuth().verifyIdToken(authHeader.split('Bearer ')[1]);
+            authenticatedUid = decodedToken.uid;
+        } catch {
+            return NextResponse.json({ success: false, message: 'Unauthorized: Invalid token' }, { status: 401 });
+        }
+
         const body = await request.json();
         const { userId, displayName, lineup } = body;
 
-        console.log('💾 Saving fantasy lineup for user:', userId);
+        // Assert the claimed userId matches the authenticated user
+        if (userId !== authenticatedUid) {
+            return NextResponse.json({ success: false, message: 'Forbidden: userId mismatch' }, { status: 403 });
+        }
+
+        console.log('💾 Saving fantasy lineup for user:', authenticatedUid);
 
         if (!userId || !displayName || !lineup) {
             return NextResponse.json({

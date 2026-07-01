@@ -11,7 +11,8 @@
       "maxInstances": 10,
       "memory": "1GiB",
       "cpu": 1,
-      "concurrency": 80
+      "concurrency": 80,
+      "timeoutSeconds": 540
     },
     "headers": [
       {

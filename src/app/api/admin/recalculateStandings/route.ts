@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAllMatchesAdmin } from '../../../../../server/lib/getAllMatchesAdmin';
 
 // Function to reset all group standings to zero
 async function resetAllGroupStandings(): Promise<{ success: boolean; message: string; resetCount?: number }> {
@@ -153,7 +152,7 @@ async function updateStandingsDirectAdmin(match: any): Promise<{ success: boolea
 export async function POST(request: NextRequest) {
   try {
     console.log('Starting manual recalculation of all group standings...');
-    
+
     // Step 1: Reset all group standings to zero
     console.log('Resetting all group standings to zero...');
     const resetResult = await resetAllGroupStandings();
@@ -164,10 +163,17 @@ export async function POST(request: NextRequest) {
       }, { status: 500 });
     }
     console.log(`Reset complete: ${resetResult.message}`);
-    
-    // Step 2: Get all completed matches and recalculate
-    const allMatches = await getAllMatchesAdmin();
-    const completedMatches = allMatches.filter(match => match.status === 'completed');
+
+    // Step 2: Get all completed group-stage matches from root collection and recalculate
+    // Groups and their matches are stored in root collections (not tournament subcollections)
+    const { getAdminDb, ensureAdminInitialized } = await import('../../../../../server/lib/admin');
+    ensureAdminInitialized();
+    const db = getAdminDb();
+
+    const matchesSnap = await db.collection('matches').get();
+    const completedMatches = matchesSnap.docs
+      .map(d => ({ id: d.id, ...d.data() }))
+      .filter((m: any) => m.status === 'completed');
     
     let updatedCount = 0;
     

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useTournament, useTournamentType } from '@/context/TournamentContext';
+import { useAuth } from '@/context/AuthContext';
 import { Card, CardHeader, CardContent, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,7 +25,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
-import { 
+import {
   Users,
   Save,
   RotateCcw,
@@ -43,6 +44,10 @@ import {
   ImageIcon,
   Trash2,
   RefreshCw,
+  Ban,
+  UserCog,
+  Copy,
+  Check,
 } from 'lucide-react';
 import { collection, getDocs, doc, updateDoc, writeBatch, deleteDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -75,7 +80,7 @@ interface Team {
   tag: string;
   divisionId: string;
   divisionName: string;
-  status: 'pending' | 'verified' | 'rejected' | 'eliminated';
+  status: 'pending' | 'verified' | 'rejected' | 'eliminated' | 'banned';
   playersCount: number;
   captainDiscord: string;
   totalMmr?: number;
@@ -90,13 +95,14 @@ interface Team {
 export function TeamsTab() {
   const { tournament, theme } = useTournament();
   const { isMmrLimited } = useTournamentType();
+  const { user } = useAuth();
   const { toast } = useToast();
-  
+
   const [teams, setTeams] = useState<Team[]>([]);
   const [originalTeams, setOriginalTeams] = useState<Team[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+
   const [selectedTeams, setSelectedTeams] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -106,9 +112,18 @@ export function TeamsTab() {
   const [deleteConfirmTeam, setDeleteConfirmTeam] = useState<Team | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isSyncingAvatars, setIsSyncingAvatars] = useState(false);
+  const [isRefreshingHeroes, setIsRefreshingHeroes] = useState(false);
+  const [banConfirmTeam, setBanConfirmTeam] = useState<Team | null>(null);
+  const [banReason, setBanReason] = useState('');
+  const [isBanning, setIsBanning] = useState(false);
   // Resolved steamId32 values for smurf accounts with vanity URLs
   // keyed by the smurf's steamProfileUrl
   const [resolvedSmurfIds, setResolvedSmurfIds] = useState<Record<string, string>>({});
+  // Captain-change: the team a code is being generated for, the resulting code, and UI flags
+  const [captainChangeTeam, setCaptainChangeTeam] = useState<Team | null>(null);
+  const [captainCode, setCaptainCode] = useState<string | null>(null);
+  const [isGeneratingCode, setIsGeneratingCode] = useState(false);
+  const [codeCopied, setCodeCopied] = useState(false);
 
   const divisions = tournament?.divisions || [];
 
@@ -142,6 +157,39 @@ export function TeamsTab() {
       });
     } finally {
       setIsSyncingAvatars(false);
+    }
+  };
+
+  const handleRefreshHeroes = async () => {
+    if (!tournament?.id) return;
+    setIsRefreshingHeroes(true);
+    try {
+      const res = await fetch('/api/player-heroes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tournamentId: tournament.id, refreshAll: true }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast({
+          title: 'Dane o bohaterach zaktualizowane',
+          description: data.message,
+        });
+      } else {
+        toast({
+          title: 'Błąd pobierania danych',
+          description: data.error || 'Nie udało się pobrać danych o bohaterach.',
+          variant: 'destructive',
+        });
+      }
+    } catch (err) {
+      toast({
+        title: 'Błąd',
+        description: (err as Error).message,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsRefreshingHeroes(false);
     }
   };
 
@@ -383,6 +431,78 @@ export function TeamsTab() {
     }
   };
 
+  const handleBanTeam = async () => {
+    if (!banConfirmTeam || !tournament?.id || !user) return;
+    try {
+      setIsBanning(true);
+      const token = await user.getIdToken();
+      const res = await fetch('/api/admin/ban-team', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          tournamentId: tournament.id,
+          teamId: banConfirmTeam.id,
+          reason: banReason || 'Cheating',
+          adminUserId: user.uid,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setTeams(prev => prev.map(t => t.id === banConfirmTeam.id ? { ...t, status: 'banned' } : t));
+        setOriginalTeams(prev => prev.map(t => t.id === banConfirmTeam.id ? { ...t, status: 'banned' } : t));
+        toast({ title: 'Drużyna zbanowana', description: data.message });
+      } else {
+        toast({ title: 'Błąd', description: data.error || 'Nie udało się zbanować drużyny.', variant: 'destructive' });
+      }
+    } catch (err) {
+      toast({ title: 'Błąd', description: (err as Error).message, variant: 'destructive' });
+    } finally {
+      setIsBanning(false);
+      setBanConfirmTeam(null);
+      setBanReason('');
+    }
+  };
+
+  // Open the captain-change dialog and immediately request a one-time code for the team.
+  const handleOpenCaptainChange = async (team: Team) => {
+    if (!tournament?.id || !user) return;
+    setCaptainChangeTeam(team);
+    setCaptainCode(null);
+    setCodeCopied(false);
+    setIsGeneratingCode(true);
+    try {
+      const token = await user.getIdToken();
+      const res = await fetch('/api/admin/captain-change-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ tournamentId: tournament.id, teamId: team.id }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setCaptainCode(data.code);
+      } else {
+        toast({ title: 'Błąd', description: data.error || 'Nie udało się wygenerować kodu.', variant: 'destructive' });
+        setCaptainChangeTeam(null);
+      }
+    } catch (err) {
+      toast({ title: 'Błąd', description: (err as Error).message, variant: 'destructive' });
+      setCaptainChangeTeam(null);
+    } finally {
+      setIsGeneratingCode(false);
+    }
+  };
+
+  const handleCopyCode = async () => {
+    if (!captainCode) return;
+    try {
+      await navigator.clipboard.writeText(captainCode);
+      setCodeCopied(true);
+      setTimeout(() => setCodeCopied(false), 2000);
+    } catch {
+      toast({ title: 'Nie udało się skopiować', description: 'Skopiuj kod ręcznie.', variant: 'destructive' });
+    }
+  };
+
   const filteredTeams = teams.filter(team => {
     if (searchQuery && !team.name.toLowerCase().includes(searchQuery.toLowerCase())) {
       return false;
@@ -430,6 +550,13 @@ export function TeamsTab() {
           <Badge className="bg-red-500/20 text-red-500 border-red-500/30 font-logik">
             <XCircle className="h-3 w-3 mr-1" />
             Wyeliminowana
+          </Badge>
+        );
+      case 'banned':
+        return (
+          <Badge className="bg-red-900/30 text-red-400 border-red-700/40 font-logik">
+            <Ban className="h-3 w-3 mr-1" />
+            Zbanowana
           </Badge>
         );
     }
@@ -494,6 +621,20 @@ export function TeamsTab() {
               <RefreshCw className="h-4 w-4 mr-2" />
             )}
             Odśwież avatary Steam
+          </Button>
+          <Button
+            variant="outline"
+            onClick={handleRefreshHeroes}
+            disabled={isRefreshingHeroes}
+            className="font-logik"
+            title="Pobiera dane o najczęściej granych bohaterach z OpenDota dla wszystkich graczy (może potrwać kilka minut)"
+          >
+            {isRefreshingHeroes ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <RefreshCw className="h-4 w-4 mr-2" />
+            )}
+            Odśwież bohaterów
           </Button>
           {hasUnsavedChanges && (
             <span className="text-sm text-yellow-500 font-logik animate-pulse">
@@ -749,8 +890,8 @@ export function TeamsTab() {
                     <TableCell>{getStatusBadge(team.status)}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        <Select 
-                          value={team.status} 
+                        <Select
+                          value={team.status}
                           onValueChange={(v) => updateTeamStatus(team.id, v as Team['status'])}
                         >
                           <SelectTrigger className="flex-1 font-logik h-8">
@@ -763,6 +904,25 @@ export function TeamsTab() {
                             <SelectItem value="eliminated">Wyeliminowana</SelectItem>
                           </SelectContent>
                         </Select>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-muted-foreground hover:text-blue-500 hover:bg-blue-500/10 flex-shrink-0"
+                          title="Zmień kapitana"
+                          onClick={() => handleOpenCaptainChange(team)}
+                        >
+                          <UserCog className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-muted-foreground hover:text-orange-500 hover:bg-orange-500/10 flex-shrink-0"
+                          title="Zbanuj drużynę"
+                          onClick={() => { setBanConfirmTeam(team); setBanReason(''); }}
+                          disabled={team.status === 'banned'}
+                        >
+                          <Ban className="h-4 w-4" />
+                        </Button>
                         <Button
                           variant="ghost"
                           size="icon"
@@ -938,6 +1098,52 @@ export function TeamsTab() {
         </Table>
       </Card>
 
+      {/* Ban confirmation dialog */}
+      <AlertDialog open={!!banConfirmTeam} onOpenChange={(open) => { if (!open) { setBanConfirmTeam(null); setBanReason(''); } }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-orange-500">
+              <Ban className="h-5 w-5" />
+              Zbanuj drużynę za oszustwo
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Czy na pewno chcesz zbanować drużynę{' '}
+              <strong>{banConfirmTeam?.name}</strong>?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="px-1 space-y-3 text-sm text-muted-foreground">
+            <p>Ta operacja jest nieodwracalna i spowoduje:</p>
+            <ul className="list-disc list-inside space-y-1">
+              <li>Zmianę statusu drużyny na <strong className="text-foreground">zbanowana</strong></li>
+              <li>Usunięcie danych z wszystkich rozegranych meczów (statystyki graczy)</li>
+              <li>Zamianę wszystkich meczów na walkowery dla przeciwników</li>
+              <li>Ukrycie meczów tej drużyny w widoku harmonogramu</li>
+              <li>Przeliczenie tabeli dla wszystkich dotknętych dywizji</li>
+            </ul>
+          </div>
+          <div className="px-1 pb-2">
+            <label className="text-sm font-medium font-logik block mb-1.5">Powód bana</label>
+            <Input
+              placeholder="np. Korzystanie z cheaterów, smurf kont..."
+              value={banReason}
+              onChange={(e) => setBanReason(e.target.value)}
+              className="font-logik"
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isBanning}>Anuluj</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleBanTeam}
+              disabled={isBanning}
+              className="bg-orange-600 hover:bg-orange-700 focus:ring-orange-600 text-white"
+            >
+              {isBanning ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Ban className="h-4 w-4 mr-2" />}
+              Zbanuj drużynę
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Delete confirmation dialog */}
       <AlertDialog open={!!deleteConfirmTeam} onOpenChange={(open) => { if (!open) setDeleteConfirmTeam(null); }}>
         <AlertDialogContent>
@@ -958,6 +1164,43 @@ export function TeamsTab() {
               {isDeleting ? <RotateCcw className="h-4 w-4 mr-2 animate-spin" /> : <Trash2 className="h-4 w-4 mr-2" />}
               Usuń drużynę
             </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Change captain — generate a one-time code to hand to the new captain */}
+      <AlertDialog open={!!captainChangeTeam} onOpenChange={(open) => { if (!open) { setCaptainChangeTeam(null); setCaptainCode(null); setCodeCopied(false); } }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-blue-500">
+              <UserCog className="h-5 w-5" />
+              Zmień kapitana
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Przekaż poniższy jednorazowy kod nowemu kapitanowi drużyny{' '}
+              <strong>{captainChangeTeam?.name}</strong>. Po wejściu na stronę{' '}
+              <code className="text-foreground">/newcaptain</code>, zalogowaniu się i wpisaniu kodu
+              przejmie on drużynę. Kod działa tylko raz.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="px-1 py-2">
+            {isGeneratingCode ? (
+              <div className="flex items-center justify-center py-6 text-muted-foreground">
+                <Loader2 className="h-5 w-5 animate-spin mr-2" /> Generowanie kodu...
+              </div>
+            ) : captainCode ? (
+              <div className="flex items-center gap-2">
+                <div className="flex-1 text-center text-2xl tracking-[0.3em] font-mono font-bold bg-muted rounded-md py-3 select-all">
+                  {captainCode}
+                </div>
+                <Button variant="outline" size="icon" className="h-12 w-12 flex-shrink-0" onClick={handleCopyCode} title="Kopiuj kod">
+                  {codeCopied ? <Check className="h-5 w-5 text-emerald-500" /> : <Copy className="h-5 w-5" />}
+                </Button>
+              </div>
+            ) : null}
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Zamknij</AlertDialogCancel>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

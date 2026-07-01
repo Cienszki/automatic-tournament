@@ -173,6 +173,12 @@ export interface PickemConfig {
   playoffBracket: boolean;
   mvpPredictions: boolean;
   lockTime: 'before-season' | 'before-round' | 'before-match';
+  // MMR tournaments: number of synthetic BYE entries locked to the lowest placement basket.
+  byeTeamsCount?: number;
+  // Optional tournament-specific instructions shown above the drag-and-drop board.
+  instructionsMarkdown?: string;
+  // Optional absolute deadline after which users cannot submit Pick'em predictions.
+  submissionDeadline?: string;
 }
 
 /**

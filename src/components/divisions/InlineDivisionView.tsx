@@ -11,6 +11,7 @@ import { useDivisionData } from '@/hooks/useDivisionData';
 import { DivisionStandingsTable } from '@/components/divisions/DivisionStandingsTable';
 import { FixtureCrossbox } from '@/components/divisions/FixtureCrossbox';
 import { getDivisionTheme } from '@/lib/division-themes';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface InlineDivisionViewProps {
   divisionId: string;
@@ -19,6 +20,7 @@ interface InlineDivisionViewProps {
 
 export function InlineDivisionView({ divisionId, onBack }: InlineDivisionViewProps) {
   const { theme } = useTournament();
+  const isMobile = useIsMobile();
   const { isMmrLimited } = useTournamentType();
   const { divisionInfo, standings, matches, loading, error } = useDivisionData(divisionId);
 
@@ -46,6 +48,101 @@ export function InlineDivisionView({ divisionId, onBack }: InlineDivisionViewPro
 
   const themeData = getDivisionTheme(divisionInfo.theme);
   const displayColor = themeData?.primaryColor || divisionColor;
+
+  if (isMobile) {
+    return (
+      <motion.div
+        key={divisionId}
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -12 }}
+        transition={{ duration: 0.25 }}
+        className="h-full flex flex-col overflow-hidden"
+      >
+        <div className="flex-shrink-0 relative px-3 pt-3 pb-3 overflow-hidden">
+          <div
+            className="absolute inset-0 pointer-events-none"
+            style={{
+              background: `radial-gradient(ellipse 70% 140% at 20% 50%, ${displayColor}20 0%, transparent 72%)`,
+            }}
+          />
+
+          <button
+            onClick={onBack}
+            className={cn(
+              'inline-flex items-center gap-2 text-[10px] font-mono uppercase tracking-[0.2em]',
+              'transition-all opacity-55 active:opacity-80 mb-3',
+            )}
+            style={{ color: 'var(--tournament-secondary-text)' }}
+          >
+            <ArrowLeft className="w-3 h-3" />
+            Wszystkie {isMmrLimited ? 'grupy' : 'dywizje'}
+          </button>
+
+          <div className="flex items-center gap-3">
+            {divisionInfo.medalUrl && (
+              <img
+                src={divisionInfo.medalUrl}
+                alt={divisionInfo.name}
+                className="w-10 h-10 object-contain shrink-0"
+                style={{ filter: `drop-shadow(0 0 8px ${displayColor}55)` }}
+              />
+            )}
+            <div className="flex flex-col min-w-0">
+              <h2
+                className="text-2xl font-logik-extended-bold uppercase leading-none tracking-wide truncate"
+                style={{
+                  color: displayColor,
+                  textShadow: `0 0 24px ${displayColor}40, 0 2px 12px ${displayColor}30`,
+                }}
+              >
+                {divisionInfo.name}
+              </h2>
+              {divisionInfo.matchday && (
+                <span
+                  className="mt-1.5 text-[10px] font-mono uppercase tracking-[0.2em]"
+                  style={{ color: 'var(--tournament-secondary-text)' }}
+                >
+                  {divisionInfo.matchday}
+                </span>
+              )}
+            </div>
+          </div>
+
+          <div
+            className="absolute bottom-0 left-3 right-0 h-px"
+            style={{ background: `linear-gradient(90deg, ${displayColor}60 0%, transparent 70%)` }}
+          />
+        </div>
+
+        <div className="flex-1 min-h-0 overflow-y-auto px-3 pb-3 pt-3 space-y-3">
+          <div className="rounded-xl border border-white/10 bg-black/25 backdrop-blur-sm p-2">
+            <DivisionStandingsTable
+              standings={standings}
+              divisionColor={displayColor}
+              divisionName={divisionInfo.name}
+              currentRound={divisionInfo.currentRound}
+              matchday={divisionInfo.matchday}
+              isElite={isElite}
+              isLowest={isLowest}
+              theme={theme}
+              highlights={divisionInfo.highlights}
+            />
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/25 backdrop-blur-sm p-2">
+            <FixtureCrossbox
+              matches={matches}
+              standings={standings}
+              divisionColor={divisionColor}
+              divisionTier={divisionInfo.tier}
+              theme={theme}
+              divisionTheme={divisionInfo.theme}
+            />
+          </div>
+        </div>
+      </motion.div>
+    );
+  }
 
   return (
     <motion.div

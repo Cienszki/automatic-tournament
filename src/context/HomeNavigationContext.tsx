@@ -77,5 +77,6 @@ export const HOME_VIEW_TO_SECTION: Record<string, number> = {
   teams: 3,
   rankings: 4,
   stats: 5,
-  'my-team': 6,
+  pickem: 6,
+  'my-team': 7,
 };

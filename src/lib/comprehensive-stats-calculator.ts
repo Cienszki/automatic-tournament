@@ -344,70 +344,60 @@ async function fetchAllGameData(db: any, tournamentId?: string) {
 
   console.log(`[StandinLookup] Built ${standinLookup.size} entries:`, Array.from(standinLookup.entries()).map(([k, v]) => `${k} → ${v}`).join(', ') || '(empty)');
 
-  // Get all games and performances
-  const allGames: any[] = [];
-  const allPerformances: any[] = [];
-  
   console.log(`Processing ${matches.length} matches...`);
-  const completedMatches = matches.filter((m: any) => m.status === 'completed');
+  const completedMatches = matches.filter(
+    (m: any) => m.status === 'completed' && !m.isBanForfeit
+  );
   console.log(`Found ${completedMatches.length} completed matches out of ${matches.length} total`);
-  
-  for (const match of matches) {
-    if (match.status !== 'completed') {
-      continue;
-    }
-    
-    const gamesSnapshot = await matchesRef.doc(match.id).collection('games').get();
-    const games = gamesSnapshot.docs.map((doc: any) => ({ 
-      id: doc.id, 
-      matchId: match.id,
-      match,
-      ...doc.data() 
-    }));
-    
-    for (const game of games) {
-      // Skip forfeited games — they have no real performance data
-      if (game.is_forfeit) {
-        console.log(`Skipping forfeit game ${game.id} in match ${match.id}`);
-        continue;
-      }
 
-      // Skip games with invalid IDs (accept both string and number)
-      if (!game.id || (typeof game.id !== 'string' && typeof game.id !== 'number')) {
-        console.warn(`Skipping game with invalid ID in match ${match.id}:`, game);
-        continue;
-      }
-      
-      // Convert game ID to string for consistent handling
-      const gameIdStr = game.id.toString();
-      
-      allGames.push(game);
-      
-      const performancesSnapshot = await matchesRef
-        .doc(match.id)
-        .collection('games')
-        .doc(gameIdStr)
-        .collection('performances')
-        .get();
-      
-      const performances = performancesSnapshot.docs.map((doc: any) => ({
-        id: doc.id,
-        gameId: gameIdStr,
-        matchId: match.id,
-        duration: game.duration,
-        ...doc.data()
-      }));
-      
-      if (performances.length === 0) {
-        console.warn(`No performances found for game ${gameIdStr} in match ${match.id}`);
-      } else {
-        console.log(`Found ${performances.length} performances for game ${gameIdStr}`);
-      }
-      
-      allPerformances.push(...performances);
-    }
-  }
-  
+  // Fetch all games in parallel (one read per match → N parallel reads)
+  const matchGameResults = await Promise.all(
+    completedMatches.map(async (match: any) => {
+      const gamesSnapshot = await matchesRef.doc(match.id).collection('games').get();
+      const games = gamesSnapshot.docs
+        .map((doc: any) => ({ id: doc.id, matchId: match.id, match, ...doc.data() }))
+        .filter((g: any) => {
+          if (g.is_forfeit) { console.log(`Skipping forfeit game ${g.id} in match ${match.id}`); return false; }
+          if (!g.id || (typeof g.id !== 'string' && typeof g.id !== 'number')) { console.warn(`Skipping game with invalid ID in match ${match.id}:`, g); return false; }
+          return true;
+        });
+      return { match, games };
+    })
+  );
+
+  // Flatten valid games
+  const allGames: any[] = matchGameResults.flatMap(({ games }) => games);
+
+  // Fetch all performances in parallel (one read per game → M parallel reads)
+  const perfResults = await Promise.all(
+    matchGameResults.flatMap(({ match, games }) =>
+      games.map(async (game: any) => {
+        const gameIdStr = game.id.toString();
+        const performancesSnapshot = await matchesRef
+          .doc(match.id)
+          .collection('games')
+          .doc(gameIdStr)
+          .collection('performances')
+          .get();
+        const performances = performancesSnapshot.docs.map((doc: any) => ({
+          id: doc.id,
+          gameId: gameIdStr,
+          matchId: match.id,
+          duration: game.duration,
+          ...doc.data(),
+        }));
+        if (performances.length === 0) {
+          console.warn(`No performances found for game ${gameIdStr} in match ${match.id}`);
+        } else {
+          console.log(`Found ${performances.length} performances for game ${gameIdStr}`);
+        }
+        return performances;
+      })
+    )
+  );
+
+  const allPerformances: any[] = perfResults.flat();
+
   return { games: allGames, performances: allPerformances, teams, matches, standinLookup };
 }
 
@@ -554,6 +544,8 @@ function calculateComprehensivePlayerStats(
 
   // Build player name + team name lookup from players in team subcollections (now populated above)
   const playersLookup = new Map<string, { name: string; teamName: string }>();
+  // Also track each player's registered teamId so we can skip cross-team standin performances.
+  const registeredPlayerTeamId = new Map<string, string>();
   teams.forEach((team: any) => {
     if (team.players && Array.isArray(team.players)) {
       team.players.forEach((player: any) => {
@@ -564,10 +556,12 @@ function calculateComprehensivePlayerStats(
           };
           // Index by Firestore player doc ID (legacy: random UUID; new: steamId64)
           playersLookup.set(player.id, entry);
+          registeredPlayerTeamId.set(player.id, team.id);
           // Index by steamId64 — primary key for performances created after March 2026
           const steamId64 = player.steamId || player.steamId64;
           if (steamId64) {
             playersLookup.set(String(steamId64), entry);
+            registeredPlayerTeamId.set(String(steamId64), team.id);
           }
           // Also index by steamId32 so unknown_ IDs can be resolved
           if (player.steamId32) {
@@ -578,6 +572,7 @@ function calculateComprehensivePlayerStats(
               try {
                 const derived64 = String(BigInt(player.steamId32) + 76561197960265728n);
                 playersLookup.set(derived64, entry);
+                registeredPlayerTeamId.set(derived64, team.id);
               } catch { /* ignore malformed steamId32 */ }
             }
           }
@@ -588,12 +583,15 @@ function calculateComprehensivePlayerStats(
       });
     }
   });
-  
+
   // Group performances by player (use playerId from Firestore; fall back to account_id for legacy data)
   const playerPerformances = new Map<string, any[]>();
   performances.forEach(perf => {
     const playerId = perf.playerId || perf.account_id?.toString();
     if (!playerId) return;
+    // Skip cross-team standin: player is registered on a team but played for a different one
+    const registeredTeamId = registeredPlayerTeamId.get(playerId);
+    if (registeredTeamId && perf.teamId && perf.teamId !== registeredTeamId) return;
     if (!playerPerformances.has(playerId)) {
       playerPerformances.set(playerId, []);
     }
@@ -800,13 +798,14 @@ function calculateComprehensiveTeamStats(
     const mostUniqueHeroes: TeamStatRecord = { value: uniqueHeroCount, matchId: '', opponent: '' };
     const fewestUniqueHeroes: TeamStatRecord = { value: uniqueHeroCount, matchId: '', opponent: '' };
 
-    // Total roshan kills across all games this team played
+    // Total roshan kills across all games this team played.
+    // roshanKills is stored per-player on performance docs, not on the game doc,
+    // so we sum it from the team's own performances (not the opponent's).
     const mostRoshanKills: TeamStatRecord = (() => {
-      let total = 0;
-      gameAggs.forEach(g => {
-        const game = gameMap.get(g.gameId);
-        total += game?.roshanKills ?? game?.roshan_kills ?? 0;
-      });
+      const teamGameIds = new Set(gameAggs.map(g => g.gameId));
+      const total = teamPerformances
+        .filter((p: any) => teamGameIds.has(p.gameId))
+        .reduce((sum: number, p: any) => sum + (p.roshanKills || p.roshans_killed || p.roshan_kills || 0), 0);
       return { value: total, matchId: '', opponent: '' };
     })();
 
@@ -876,56 +875,78 @@ function calculateComprehensiveTeamStats(
  * Save comprehensive stats to Firestore using embedded records pattern
  */
 async function saveComprehensiveStats(
-  db: any, 
-  tournamentStats: TournamentStats, 
-  playerStats: CalculatedPlayerStats[], 
+  db: any,
+  tournamentStats: TournamentStats,
+  playerStats: CalculatedPlayerStats[],
   teamStats: CalculatedTeamStats[],
   tournamentId?: string
 ): Promise<void> {
-  const batch = db.batch();
-  
+  // Helper: delete all docs in a collection using batches of 500
+  async function clearCollection(colRef: any): Promise<void> {
+    const snap = await colRef.get();
+    if (snap.empty) return;
+    const chunks: any[][] = [];
+    for (let i = 0; i < snap.docs.length; i += 400) {
+      chunks.push(snap.docs.slice(i, i + 400));
+    }
+    for (const chunk of chunks) {
+      const delBatch = db.batch();
+      chunk.forEach((d: any) => delBatch.delete(d.ref));
+      await delBatch.commit();
+    }
+  }
+
+  const now = new Date().toISOString();
+
   if (tournamentId) {
-    // New tournament-scoped paths: tournaments/{tournamentId}/...
     const tournamentBase = db.collection('tournaments').doc(tournamentId);
 
-    // Tournament overview doc
-    batch.set(tournamentBase.collection('stats').doc('tournament-stats'), tournamentStats);
+    // Wipe stale per-player and per-team docs so banned-team data doesn't linger
+    await clearCollection(tournamentBase.collection('playerStats'));
+    await clearCollection(tournamentBase.collection('teamStats'));
 
-    // Per-player docs
-    playerStats.forEach((stats: CalculatedPlayerStats) => {
-      batch.set(
-        tournamentBase.collection('playerStats').doc(stats.playerId),
-        { ...stats, lastUpdated: new Date().toISOString() }
-      );
-    });
+    // Write fresh data in batches of 400
+    const writes: [any, any][] = [
+      [tournamentBase.collection('stats').doc('tournament-stats'), tournamentStats],
+      ...playerStats.map((s: CalculatedPlayerStats) => [
+        tournamentBase.collection('playerStats').doc(s.playerId),
+        { ...s, lastUpdated: now },
+      ] as [any, any]),
+      ...teamStats.map((s: CalculatedTeamStats) => [
+        tournamentBase.collection('teamStats').doc(s.teamId),
+        { ...s, lastUpdated: now },
+      ] as [any, any]),
+    ];
 
-    // Per-team docs
-    teamStats.forEach((stats: CalculatedTeamStats) => {
-      batch.set(
-        tournamentBase.collection('teamStats').doc(stats.teamId),
-        { ...stats, lastUpdated: new Date().toISOString() }
-      );
-    });
+    for (let i = 0; i < writes.length; i += 400) {
+      const batch = db.batch();
+      writes.slice(i, i + 400).forEach(([ref, data]) => batch.set(ref, data));
+      await batch.commit();
+    }
   } else {
     // Legacy (Letnia) — flat top-level collections
-    batch.set(db.collection('tournamentStats').doc('tournament-stats'), tournamentStats);
+    await clearCollection(db.collection('playerStats'));
+    await clearCollection(db.collection('teamStats'));
 
-    playerStats.forEach((stats: CalculatedPlayerStats) => {
-      batch.set(
-        db.collection('playerStats').doc(stats.playerId),
-        { ...stats, lastUpdated: new Date().toISOString() }
-      );
-    });
+    const writes: [any, any][] = [
+      [db.collection('tournamentStats').doc('tournament-stats'), tournamentStats],
+      ...playerStats.map((s: CalculatedPlayerStats) => [
+        db.collection('playerStats').doc(s.playerId),
+        { ...s, lastUpdated: now },
+      ] as [any, any]),
+      ...teamStats.map((s: CalculatedTeamStats) => [
+        db.collection('teamStats').doc(s.teamId),
+        { ...s, lastUpdated: now },
+      ] as [any, any]),
+    ];
 
-    teamStats.forEach((stats: CalculatedTeamStats) => {
-      batch.set(
-        db.collection('teamStats').doc(stats.teamId),
-        { ...stats, lastUpdated: new Date().toISOString() }
-      );
-    });
+    for (let i = 0; i < writes.length; i += 400) {
+      const batch = db.batch();
+      writes.slice(i, i + 400).forEach(([ref, data]) => batch.set(ref, data));
+      await batch.commit();
+    }
   }
-  
-  await batch.commit();
+
   console.log(`✅ Saved: Tournament stats + ${playerStats.length} player stats + ${teamStats.length} team stats`);
 }
 

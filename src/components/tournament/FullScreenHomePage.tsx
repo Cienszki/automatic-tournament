@@ -13,6 +13,7 @@ import { useTournament, useTournamentType } from '@/context/TournamentContext';
 import { useAuth } from '@/context/AuthContext';
 import { usePDLData } from '@/hooks/usePDLData';
 import { useSnapScroll } from '@/hooks/useSnapScroll';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { useHomeNavigation, HOME_VIEW_TO_SECTION } from '@/context/HomeNavigationContext';
 import type { Match, Team, Player, PlayoffMatch } from '@/lib/definitions';
 import { organizationConfig } from '@/config/organization';
@@ -58,6 +59,18 @@ const MyTeamPage = dynamic(
   },
 );
 
+const PickemPage = dynamic(
+  () => import('@/app/[tournamentSlug]/pickem/page'),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex items-center justify-center h-full">
+        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2" style={{ borderColor: 'var(--tournament-heading)' }} />
+      </div>
+    ),
+  },
+);
+
 // ─── Social media icon SVGs for hero section ────────────────────────
 
 const HeroDiscordIcon = (props: React.SVGProps<SVGSVGElement>) => (
@@ -88,7 +101,7 @@ const HeroTikTokIcon = (props: React.SVGProps<SVGSVGElement>) => (
 
 // ─── Section labels for dot navigation ───────────────────────────────
 
-const BASE_SECTION_LABELS = ['Start', 'Tabele', 'Terminarz', 'Drużyny', 'Rankingi', 'Statystyki'];
+const BASE_SECTION_LABELS = ['Start', 'Tabele', 'Terminarz', 'Drużyny', 'Rankingi', 'Statystyki', 'Pick\'em'];
 
 // ─── Dot Navigation with arrow controls ─────────────────────────────
 
@@ -169,15 +182,34 @@ function FullScreenSection({
   children,
   isActive,
   className,
+  id,
+  isMobile,
+  allowOverflow,
 }: {
   children: React.ReactNode;
   isActive: boolean;
   className?: string;
+  id?: string;
+  isMobile?: boolean;
+  allowOverflow?: boolean;
 }) {
+  if (isMobile) {
+    return (
+      <div
+        id={id}
+        className={cn('w-full flex-shrink-0 overflow-auto relative', className)}
+        style={{ height: 'calc(100svh - 3.5rem)' }}
+      >
+        {children}
+      </div>
+    );
+  }
   return (
     <div
+      id={id}
       className={cn(
-        'h-[calc(100vh-3.5rem)] w-full flex-shrink-0 overflow-hidden relative',
+        'h-[calc(100vh-3.5rem)] w-full flex-shrink-0 relative',
+        !allowOverflow && 'overflow-hidden',
         className,
       )}
     >
@@ -198,6 +230,7 @@ export { TournamentHomePage as MmrTournamentHomePage };
 export function TournamentHomePage() {
   const { tournament, getTournamentPath, theme, isLegacyTournament } = useTournament();
   const { isLeague, isMmrLimited } = useTournamentType();
+  const isMobile = useIsMobile();
   const { user } = useAuth();
   const t = useTranslations('pdlHome');
 
@@ -226,7 +259,7 @@ export function TournamentHomePage() {
   const [teamStats, setTeamStats] = useState<TeamStatsData[]>([]);
 
   const primaryColor = theme?.primaryColor || '#8B1538';
-  const TOTAL_SECTIONS = hasTeam ? 7 : 6;
+  const TOTAL_SECTIONS = hasTeam ? 8 : 7;
   const sectionLabels = useMemo(() =>
     hasTeam ? [...BASE_SECTION_LABELS, 'Moja drużyna'] : BASE_SECTION_LABELS,
     [hasTeam],
@@ -249,8 +282,17 @@ export function TournamentHomePage() {
   const goToSectionRef = useRef(goToSection);
   useEffect(() => { goToSectionRef.current = goToSection; }, [goToSection]);
 
+  // Use a ref for isMobile so the stable wrapper always has the latest value
+  const isMobileRef = useRef(isMobile);
+  useEffect(() => { isMobileRef.current = isMobile; }, [isMobile]);
+
   const stableGoToSection = useCallback((idx: number) => {
-    goToSectionRef.current(idx);
+    if (isMobileRef.current) {
+      const el = document.getElementById(`home-section-${idx}`);
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else {
+      goToSectionRef.current(idx);
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -351,7 +393,7 @@ export function TournamentHomePage() {
         const teamsData: Team[] = await Promise.all(
           snap.docs.map(async (teamDoc) => {
             const teamData = teamDoc.data();
-            const rosterMap = teamData.roster as Record<string, { nickname: string; role: string; steamId32: string; avatar?: string; mmr?: number }> | undefined;
+            const rosterMap = teamData.roster as Record<string, { nickname: string; role: string; steamId32: string; avatar?: string; mmr?: number; mostPlayedHeroes?: Player['mostPlayedHeroes'] }> | undefined;
             let players: Player[];
             if (rosterMap && Object.keys(rosterMap).length > 0) {
               players = Object.entries(rosterMap).map(([steamId64, info]) => ({
@@ -362,6 +404,7 @@ export function TournamentHomePage() {
                 role: info.role,
                 avatar: info.avatar || '',
                 mmr: info.mmr ?? 0,
+                mostPlayedHeroes: info.mostPlayedHeroes,
               } as unknown as Player));
             } else if (!isLegacyTournament && tournament?.id) {
               const playersRef = collection(db, 'tournaments', tournament.id, 'teams', teamDoc.id, 'players');
@@ -512,31 +555,39 @@ export function TournamentHomePage() {
 
   return (
     <div
-      ref={containerRef}
-      className="relative w-full mt-14 h-[calc(100vh-3.5rem)] overflow-hidden"
+      ref={isMobile ? undefined : containerRef}
+      className={cn(
+        "relative w-full mt-14",
+        isMobile ? "overflow-y-auto" : "h-[calc(100vh-3.5rem)] overflow-hidden",
+      )}
     >
-      {/* Dot navigation with arrow controls */}
-      <DotNavigation
-        totalSections={TOTAL_SECTIONS}
-        currentSection={currentSection}
-        goToSection={goToSection}
-        canGoPrev={currentSection > 0}
-        canGoNext={currentSection < TOTAL_SECTIONS - 1}
-        onPrev={goPrev}
-        onNext={goNext}
-        sectionLabels={sectionLabels}
-      />
+      {/* Dot navigation with arrow controls — desktop only */}
+      {!isMobile && (
+        <DotNavigation
+          totalSections={TOTAL_SECTIONS}
+          currentSection={currentSection}
+          goToSection={goToSection}
+          canGoPrev={currentSection > 0}
+          canGoNext={currentSection < TOTAL_SECTIONS - 1}
+          onPrev={goPrev}
+          onNext={goNext}
+          sectionLabels={sectionLabels}
+        />
+      )}
 
-      {/* Sliding container */}
+      {/* Sliding container — snap-scroll on desktop, normal flow on mobile */}
       <div
-        className="flex flex-col transition-transform ease-[cubic-bezier(0.76,0,0.24,1)] duration-300"
-        style={{ transform: `translateY(calc(${currentSection} * (3.5rem - 100vh)))` }}
+        className={cn(
+          "flex flex-col",
+          !isMobile && "transition-transform ease-[cubic-bezier(0.76,0,0.24,1)] duration-300",
+        )}
+        style={!isMobile ? { transform: `translateY(calc(${currentSection} * (3.5rem - 100vh)))` } : undefined}
       >
 
         {/* ═══════════════════════════════════════════════════════════
             VIEW 1: Hero — two layout variants (admin-selectable)
            ═══════════════════════════════════════════════════════════ */}
-        <FullScreenSection isActive={currentSection === 0}>
+        <FullScreenSection isActive={currentSection === 0} isMobile={isMobile} id="home-section-0">
           {heroLayout === 'three-images' ? (
             /* ── Three-images layout ─────────────────────────────────
                Left image bleeds to the very left edge of the screen,
@@ -598,10 +649,10 @@ export function TournamentHomePage() {
               </div>
 
               {/* Bottom ~35% — hero copy + CTAs + social (same as logo-promo layout) */}
-              <div className="flex-[3] flex flex-col min-h-0 px-6 sm:px-10 lg:px-20 xl:px-32 pt-4">
-                <div className="flex flex-1 items-center gap-0">
+              <div className="flex-[3] flex flex-col min-h-0 px-4 sm:px-10 lg:px-20 xl:px-32 pt-4">
+                <div className="flex flex-col sm:flex-row flex-1 items-start sm:items-center gap-4 sm:gap-0">
                   <motion.div
-                    className="flex-1 flex flex-col justify-center pr-8 lg:pr-16"
+                    className="flex-1 flex flex-col justify-center sm:pr-8 lg:pr-16"
                     initial={{ opacity: 0, y: 16 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.7 }}
@@ -623,7 +674,7 @@ export function TournamentHomePage() {
                     </p>
                   </motion.div>
                   <motion.div
-                    className="flex-1 flex items-center justify-start gap-4 flex-wrap"
+                    className="flex-1 flex items-start sm:items-center justify-start gap-3 flex-wrap"
                     initial={{ opacity: 0, y: 16 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.7, delay: 0.1 }}
@@ -730,10 +781,10 @@ export function TournamentHomePage() {
             /* ── Logo + Promo layout (default) ───────────────────────
                Tournament logo on the left, promotional image on the
                right, hero copy/CTAs below.                            */
-            <div className="h-full w-full flex flex-col px-6 sm:px-10 lg:px-20 xl:px-32 pt-20 pb-10">
+            <div className="h-full w-full flex flex-col px-4 sm:px-10 lg:px-20 xl:px-32 pt-4 sm:pt-20 pb-10">
 
               {/* Top ~65% — Logo (left) + Promo image (right) */}
-              <div className="flex flex-[7] items-center min-h-0 gap-0">
+              <div className="flex flex-col sm:flex-row flex-[7] items-center min-h-0 gap-0">
 
                 {/* Tournament Logo — left half */}
                 <div className="flex-1 flex items-center justify-center min-h-0 h-full py-4">
@@ -741,7 +792,7 @@ export function TournamentHomePage() {
                     <img
                       src={logoUrl}
                       alt={tournament.name}
-                      className="max-h-[48vh] 2k:max-h-[36vh] max-w-full w-auto object-contain"
+                      className="max-h-[30vh] sm:max-h-[48vh] 2k:max-h-[36vh] max-w-full w-auto object-contain"
                     />
                   ) : (
                     <h1
@@ -767,11 +818,11 @@ export function TournamentHomePage() {
 
               {/* Bottom ~35% — text (left col) + buttons (right col) */}
               <div className="flex-[3] flex flex-col min-h-0">
-                <div className="flex flex-1 items-center gap-0">
+                <div className="flex flex-col sm:flex-row flex-1 items-start sm:items-center gap-4 sm:gap-0">
 
                 {/* Left column — subtitle + description */}
                 <motion.div
-                  className="flex-1 flex flex-col justify-center pr-8 lg:pr-16"
+                  className="flex-1 flex flex-col justify-center sm:pr-8 lg:pr-16"
                   initial={{ opacity: 0, y: 16 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.7 }}
@@ -799,14 +850,14 @@ export function TournamentHomePage() {
 
                 {/* Right column — CTA buttons */}
                 <motion.div
-                  className="flex-1 flex items-center justify-start gap-4 flex-wrap"
+                  className="flex-1 flex items-start sm:items-center justify-start gap-3 flex-wrap"
                   initial={{ opacity: 0, y: 16 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.7, delay: 0.1 }}
                 >
                   {hasTeam ? (
                     <button
-                      onClick={() => goToSection(5)}
+                      onClick={() => goToSection(HOME_VIEW_TO_SECTION['my-team'])}
                       className="inline-flex items-center justify-center gap-3 px-8 py-3.5 font-logik-extended-bold text-sm uppercase tracking-widest text-white transition-all duration-300 relative overflow-hidden group whitespace-nowrap"
                       style={{
                         backgroundColor: primaryColor,
@@ -918,7 +969,7 @@ export function TournamentHomePage() {
             VIEW 2: Groups / Divisions Tables  OR  Playoffs Bracket
                     OR individual division view when selectedGroupId set
            ═══════════════════════════════════════════════════════════ */}
-        <FullScreenSection isActive={currentSection === 1}>
+        <FullScreenSection isActive={currentSection === 1} isMobile={isMobile} id="home-section-1">
           {/* Division / Group detail view (both tournament types) */}
           {selectedGroupId ? (
             <InlineDivisionView
@@ -1013,7 +1064,7 @@ export function TournamentHomePage() {
         {/* ═══════════════════════════════════════════════════════════
             VIEW 3: Schedule Carousel
            ═══════════════════════════════════════════════════════════ */}
-        <FullScreenSection isActive={currentSection === 2}>
+        <FullScreenSection isActive={currentSection === 2} isMobile={isMobile} id="home-section-2">
           <div className="h-full w-full overflow-y-auto text-white">
             {matches.length > 0 ? (
               <div className="max-w-[1800px] mx-auto px-3 sm:px-6 lg:px-12 py-3 sm:py-5">
@@ -1037,21 +1088,21 @@ export function TournamentHomePage() {
         {/* ═══════════════════════════════════════════════════════════
             VIEW 4: Teams
            ═══════════════════════════════════════════════════════════ */}
-        <FullScreenSection isActive={currentSection === 3}>
+        <FullScreenSection isActive={currentSection === 3} isMobile={isMobile} id="home-section-3">
           <TeamsView teams={teams} divisionRankings={divisionRankings} highlightedTeamId={highlightedTeamId} onTeamHighlightConsumed={() => setHighlightedTeamId(null)} />
         </FullScreenSection>
 
         {/* ═══════════════════════════════════════════════════════════
             VIEW 5: Rankings
            ═══════════════════════════════════════════════════════════ */}
-        <FullScreenSection isActive={currentSection === 4}>
+        <FullScreenSection isActive={currentSection === 4} isMobile={isMobile} id="home-section-4">
           <RankingsView />
         </FullScreenSection>
 
         {/* ═══════════════════════════════════════════════════════════
             VIEW 6: Stats
            ═══════════════════════════════════════════════════════════ */}
-        <FullScreenSection isActive={currentSection === 5}>
+        <FullScreenSection isActive={currentSection === 5} isMobile={isMobile} id="home-section-5">
           <div className="h-full w-full overflow-y-auto text-white">
             <StatsPageLayout
               tournamentStats={tournamentStats}
@@ -1062,10 +1113,22 @@ export function TournamentHomePage() {
         </FullScreenSection>
 
         {/* ═══════════════════════════════════════════════════════════
-            VIEW 7: My Team (captains only)
+            VIEW 7: Pick'em
+           ═══════════════════════════════════════════════════════════ */}
+        <FullScreenSection isActive={currentSection === 6} isMobile={isMobile} id="home-section-6" allowOverflow>
+          {/* Override standalone page styles to fit snap-scroll section */}
+          <div className="h-full w-full overflow-y-auto text-white
+            [&>div]:!min-h-0 [&>div]:!h-full
+            [&>div>div.fixed]:!hidden">
+            <PickemPage />
+          </div>
+        </FullScreenSection>
+
+        {/* ═══════════════════════════════════════════════════════════
+            VIEW 8: My Team (captains only)
            ═══════════════════════════════════════════════════════════ */}
         {hasTeam && (
-          <FullScreenSection isActive={currentSection === 6}>
+          <FullScreenSection isActive={currentSection === 7} isMobile={isMobile} id="home-section-7">
             {/* Override the standalone page styles: hide fixed background, remove min-h-screen */}
             <div className="h-full w-full overflow-y-auto text-white
               [&>div]:!min-h-0 [&>div]:!h-full

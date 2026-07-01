@@ -63,12 +63,36 @@ function gamesOverlap(a?: number[], b?: number[]): boolean {
   return a!.some((g) => b!.includes(g));
 }
 
+/** Every Steam32 id registered on either team of the match (both players[] and roster{}). */
+async function collectMatchRosterSteamIds(
+  tournamentId: string,
+  match: any,
+): Promise<Set<string>> {
+  const ids = new Set<string>();
+  const db = getAdminDb();
+  const teamIds = [match?.teamA?.id, match?.teamB?.id].filter(Boolean);
+  for (const tid of teamIds) {
+    const tdoc = await db.collection('tournaments').doc(tournamentId).collection('teams').doc(tid).get();
+    if (!tdoc.exists) continue;
+    const t = tdoc.data() as any;
+    if (Array.isArray(t.players)) {
+      for (const p of t.players) if (p?.steamId32) ids.add(String(p.steamId32));
+    }
+    if (t.roster && typeof t.roster === 'object') {
+      for (const r of Object.values(t.roster) as any[]) if (r?.steamId32) ids.add(String(r.steamId32));
+    }
+  }
+  return ids;
+}
+
 /**
- * Returns a human-readable error if approving `req` would clash with an already-approved
- * standin in an OVERLAPPING game, or null if there's no clash. Two situations are nonsense
- * and blocked:
- *   1. another standin already covers the SAME replaced player (the slot is taken), and
- *   2. this SAME person (steamId32) already covers a DIFFERENT player (one body, one slot).
+ * Returns a human-readable error if adding the standin described by `req` (steamId32 +
+ * replacedPlayerId + gameNumbers) would break the "10 distinct players per GAME" rule, or
+ * null if it's fine. Pass `requestId` to ignore that request (re-approval); '' to ignore none.
+ * Blocked situations (all scoped to OVERLAPPING games):
+ *   1. the standin is already a registered roster player of either team in this match,
+ *   2. the same replaced player already has a standin (the slot is taken), and
+ *   3. the same person (steamId32) is already a standin for ANY slot on EITHER team.
  */
 async function findConflictingApprovedStandin(
   tournamentId: string,
@@ -79,17 +103,28 @@ async function findConflictingApprovedStandin(
 ): Promise<string | null> {
   const snap = await matchRef(tournamentId, matchId).get();
   if (!snap.exists) return null;
-  const approved = (snap.data() as any)?.approvedStandins || {};
+  const match = snap.data() as any;
+
+  // 1. A standin can't be someone already playing the match as a registered player.
+  if (standinSteamId32) {
+    const rosterIds = await collectMatchRosterSteamIds(tournamentId, match);
+    if (rosterIds.has(standinSteamId32)) {
+      return 'Ten gracz jest już zawodnikiem jednej z drużyn w tym meczu — nie może być standinem.';
+    }
+  }
+
+  const approved = match?.approvedStandins || {};
   for (const [key, value] of Object.entries(approved)) {
     if (key === requestId) continue; // ignore this same request (re-approval)
     const e = value as any;
-    if (e.teamId !== req.teamId) continue;
     if (!gamesOverlap(e.gameNumbers, req.gameNumbers)) continue;
-    if (e.replacedPlayerId === req.replacedPlayerId) {
-      return `Już zatwierdzono standina (${e.nickname || 'inny'}) za tego gracza w nakładających się grach.`;
-    }
+    // 3. Same person already standing in for some slot (either team) in an overlapping game.
     if (standinSteamId32 && e.steamId32 === standinSteamId32) {
       return `Ten standin jest już zatwierdzony za innego gracza (${e.replacedPlayerNickname || '—'}) w nakładających się grach.`;
+    }
+    // 2. The slot (same team + same replaced player) already has a standin.
+    if (e.teamId === req.teamId && e.replacedPlayerId === req.replacedPlayerId) {
+      return `Już zatwierdzono standina (${e.nickname || 'inny'}) za tego gracza w nakładających się grach.`;
     }
   }
   return null;
@@ -187,6 +222,37 @@ async function findPlayerDocIdBySteamId32(
 }
 
 // ─── Captain actions ─────────────────────────────────────────────────────────
+
+/**
+ * Pre-flight validation run when a captain proposes a standin (before the request is
+ * created), so they get immediate feedback instead of only discovering a clash at approval.
+ * Resolves the standin's Steam id and applies the same "10 distinct players per game" rules
+ * used at approval. Returns success:true when allowed — or when the Steam profile can't be
+ * resolved (the approval step re-checks, so we don't block registration on a transient miss).
+ */
+export async function precheckStandinRequest(
+  tournamentId: string,
+  matchId: string,
+  data: { teamId: string; replacedPlayerId: string; gameNumbers?: number[]; standinSteamProfileUrl: string },
+): Promise<StandinActionResult> {
+  try {
+    const { steamId32 } = await resolveSteamIds(data.standinSteamProfileUrl);
+    if (!steamId32) return { success: true }; // can't resolve → defer to approval-time check
+    const conflict = await findConflictingApprovedStandin(
+      tournamentId,
+      matchId,
+      '',
+      { teamId: data.teamId, replacedPlayerId: data.replacedPlayerId, gameNumbers: data.gameNumbers },
+      steamId32,
+    );
+    if (conflict) return { success: false, error: conflict };
+    return { success: true };
+  } catch (e) {
+    // Never block registration on an unexpected validation error; approval still guards.
+    console.warn('[standin-actions] precheckStandinRequest error', e);
+    return { success: true };
+  }
+}
 
 /**
  * Opponent captain approves a standin request.

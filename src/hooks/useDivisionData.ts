@@ -167,13 +167,15 @@ export function useDivisionData(divisionId: string): UseDivisionDataResult {
           ...doc.data()
         })) as any[];
 
-        // Get all matches for this division
+        // Get all matches for this division.
+        // PDL matches have `divisionId`; MMR-limited matches have `group_id`.
         const matchesRef = collection(db, 'tournaments', tournament.id, 'matches');
-        const matchesQuery = query(
-          matchesRef,
-          where('divisionId', '==', divisionId)
-        );
-        const matchesSnapshot = await getDocs(matchesQuery);
+        const [matchesByDivisionId, matchesByGroupId] = await Promise.all([
+          getDocs(query(matchesRef, where('divisionId', '==', divisionId))),
+          getDocs(query(matchesRef, where('group_id', '==', divisionId))),
+        ]);
+        // Use whichever returned results; prefer divisionId if both somehow have results
+        const matchesSnapshot = matchesByDivisionId.docs.length > 0 ? matchesByDivisionId : matchesByGroupId;
         const matchesData: Match[] = matchesSnapshot.docs.map(doc => {
           const data = doc.data();
           return {
@@ -189,35 +191,63 @@ export function useDivisionData(divisionId: string): UseDivisionDataResult {
             completed_at: data.completed_at,
             game_ids: data.game_ids || [],
             approvedStandins: data.approvedStandins,
+            isBanForfeit: data.isBanForfeit || false,
           } as Match;
         });
 
-        // Calculate standings
-        const standingsData: TeamStanding[] = teamsData.map((team, index) => {
-          const stats = team.stats || {};
-          const form = calculateForm(team.id, matchesData);
-          const neustadtl = calculateNeustadtl(team.id, matchesData, teamsData);
-          
-          return {
-            position: index + 1,
-            teamId: team.id,
-            teamName: team.name || team.id,
-            teamLogoUrl: team.logoUrl,
-            matchesPlayed: stats.played || 0,
-            wins: stats.wins || 0,
-            draws: stats.draws || 0,
-            losses: stats.losses || 0,
-            gamesWon: stats.gamesWon || 0,
-            gamesLost: stats.gamesLost || 0,
-            neustadtlScore: neustadtl,
-            points: calculatePoints(stats),
-            totalMMR: team.totalMMR || (Array.isArray(team.players) ? (team.players as Array<{mmr?: number}>).reduce((s: number, p) => s + (p.mmr || 0), 0) : 0),
-            form: form,
-            headToHead: {},
-          };
+        // Matches involving a banned team are kept for standings calculation
+        // (opponents still get their walkover wins) but excluded from the schedule view.
+        const visibleMatches = matchesData.filter(m => !m.isBanForfeit);
+
+        // Calculate standings: initialise all teams, then accumulate from match results.
+        // We deliberately do NOT use team.stats because that field is only populated for PDL
+        // (via server-side updatePDLDivisionStandingsAdmin). MMR-limited tournaments never
+        // write team.stats, so we always compute from actual completed matches.
+        const standingsData: TeamStanding[] = teamsData.map((team) => ({
+          position: 1,
+          teamId: team.id,
+          teamName: team.name || team.id,
+          teamLogoUrl: team.logoUrl,
+          matchesPlayed: 0,
+          wins: 0,
+          draws: 0,
+          losses: 0,
+          gamesWon: team.stats?.gamesWon || 0,
+          gamesLost: team.stats?.gamesLost || 0,
+          neustadtlScore: 0,
+          points: 0,
+          totalMMR: team.totalMMR || (Array.isArray(team.players) ? (team.players as Array<{mmr?: number}>).reduce((s: number, p) => s + (p.mmr || 0), 0) : 0),
+          form: calculateForm(team.id, matchesData),
+          headToHead: {},
+        }));
+
+        const standingsMap = new Map(standingsData.map(t => [t.teamId, t]));
+
+        // FIRST PASS: accumulate wins/draws/losses/points from completed match results
+        matchesData.forEach(match => {
+          if (match.status !== 'completed') return;
+          const aId = match.teamA.id;
+          const bId = match.teamB.id;
+          const aScore = match.teamA.score ?? 0;
+          const bScore = match.teamB.score ?? 0;
+          if (!aId || !bId) return;
+          const sA = standingsMap.get(aId);
+          const sB = standingsMap.get(bId);
+          if (!sA || !sB) return;
+          sA.matchesPlayed++;
+          sB.matchesPlayed++;
+          if (aScore > bScore) {
+            sA.wins++; sA.points += 2; sB.losses++;
+          } else if (bScore > aScore) {
+            sB.wins++; sB.points += 2; sA.losses++;
+          } else {
+            sA.draws++; sA.points++;
+            sB.draws++; sB.points++;
+          }
         });
 
-        // Build head-to-head results from completed matches
+        // SECOND PASS: compute neustadtl and head-to-head using the final points above
+        const pointsMap = new Map(standingsData.map(t => [t.teamId, t.points]));
         const h2hWins = new Map<string, Map<string, number>>();
         standingsData.forEach(t => h2hWins.set(t.teamId, new Map()));
 
@@ -229,10 +259,20 @@ export function useDivisionData(divisionId: string): UseDivisionDataResult {
           const bScore = match.teamB.score ?? 0;
           if (!aId || !bId) return;
           if (!h2hWins.has(aId) || !h2hWins.has(bId)) return;
+          const aPoints = pointsMap.get(aId) ?? 0;
+          const bPoints = pointsMap.get(bId) ?? 0;
+          const sA = standingsMap.get(aId);
+          const sB = standingsMap.get(bId);
+          if (!sA || !sB) return;
           if (aScore > bScore) {
+            sA.neustadtlScore += bPoints;
             h2hWins.get(aId)!.set(bId, (h2hWins.get(aId)!.get(bId) ?? 0) + 1);
           } else if (bScore > aScore) {
+            sB.neustadtlScore += aPoints;
             h2hWins.get(bId)!.set(aId, (h2hWins.get(bId)!.get(aId) ?? 0) + 1);
+          } else {
+            sA.neustadtlScore += bPoints * 0.5;
+            sB.neustadtlScore += aPoints * 0.5;
           }
         });
 
@@ -280,7 +320,7 @@ export function useDivisionData(divisionId: string): UseDivisionDataResult {
         const currentRound = Math.max(1, Math.ceil(progressRatio * totalRounds));
 
         setStandings(standingsData);
-        setMatches(matchesData);
+        setMatches(visibleMatches);
         setDivisionInfo({
           id: divisionId,
           name: divisionData.name || divisionId,

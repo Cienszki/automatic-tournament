@@ -16,11 +16,14 @@ service firebase.storage {
     }
     match /tournament-assets/{slug}/{allFiles=**} {
       allow read: if true; // Public read — logos/backgrounds displayed on public tournament pages
-      allow write: if request.auth != null; // Authenticated users can upload (admin check in app)
+      allow write: if request.auth != null
+        && firestore.exists(/databases/(default)/documents/admins/$(request.auth.uid));
     }
     match /tournaments/{tournamentId}/divisions/{divisionId}/{fileName} {
       allow read: if true; // Public read for division medals (displayed on public pages)
-      allow write: if request.auth != null; // Authenticated users can upload (admin check done in app)
+      allow write: if request.auth != null
+        && (firestore.exists(/databases/(default)/documents/admins/$(request.auth.uid))
+            || firestore.exists(/databases/(default)/documents/tournaments/$(tournamentId)/admins/$(request.auth.uid)));
     }
     match /{allPaths=**} {
       allow read: if request.auth != null;

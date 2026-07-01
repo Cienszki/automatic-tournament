@@ -726,9 +726,21 @@ _coinTossTimer = null;
         if (!this._currentLobby)
             return { radiant: '', dire: '' };
         const lobby = this._currentLobby;
+        // Custom-lobby team names live in CSODOTALobby.team_details (repeated
+        // CLobbyTeamDetails, each with team_name + team_id). Radiant is team_id 0
+        // (DOTA_GC_TEAM_GOOD_GUYS), Dire is team_id 1 (BAD_GUYS).
+        // NOTE: CSODOTALobby has NO radiant_team_name/team_name_radiant fields
+        // (those belong to spectator/watch messages), so the old lookup was always
+        // empty — making the bot think teams never set a lobby name.
+        const details = Array.isArray(lobby.team_details) ? lobby.team_details : [];
+        const nameForTeam = (teamId, fallbackIdx) => {
+            const byId = details.find((d) => d && Number(d.team_id) === teamId);
+            const d = byId || details[fallbackIdx];
+            return String((d && d.team_name) || '');
+        };
         return {
-            radiant: String(lobby.radiant_team_name || lobby.team_name_radiant || ''),
-            dire: String(lobby.dire_team_name || lobby.team_name_dire || ''),
+            radiant: nameForTeam(0, 0),
+            dire: nameForTeam(1, 1),
         };
     }
     // ─── Private Helpers ────────────────────────────────────────────────

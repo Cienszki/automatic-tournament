@@ -17,24 +17,41 @@ export async function POST(req: NextRequest) {
   if (!authHeader?.startsWith('Bearer ')) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
+
+  let decodedUid: string;
   try {
     ensureAdminInitialized();
     const decodedToken = await getAdminAuth().verifyIdToken(authHeader.split('Bearer ')[1]);
-    const adminDoc = await getAdminDb().collection('admins').doc(decodedToken.uid).get();
-    if (!adminDoc.exists) {
-      return NextResponse.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
-    }
+    decodedUid = decodedToken.uid;
   } catch {
     return NextResponse.json({ error: 'Unauthorized: Invalid token' }, { status: 401 });
   }
 
   try {
     const body = await req.json();
-    const { openDotaData, openDotaMatchId, radiantTeam, direTeam, matchId } = body;
-    
+    const { openDotaData, openDotaMatchId, radiantTeam, direTeam, matchId, tournamentId } = body;
+
     // Check that we have either openDotaData (file mode) or openDotaMatchId (match ID mode)
     if ((!openDotaData && !openDotaMatchId) || !radiantTeam || !direTeam || !matchId) {
       return NextResponse.json({ error: "Missing required fields." }, { status: 400 });
+    }
+
+    // Allow super-admins OR tournament-specific admins (when tournamentId is provided)
+    const db = getAdminDb();
+    const superAdminDoc = await db.collection('admins').doc(decodedUid).get();
+    const isSuperAdmin = superAdminDoc.exists;
+
+    let isTournamentAdmin = false;
+    if (!isSuperAdmin && tournamentId) {
+      const tournamentAdminDoc = await db
+        .collection('tournaments').doc(tournamentId)
+        .collection('admins').doc(decodedUid)
+        .get();
+      isTournamentAdmin = tournamentAdminDoc.exists;
+    }
+
+    if (!isSuperAdmin && !isTournamentAdmin) {
+      return NextResponse.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
     }
 
     let matchData = openDotaData;
@@ -97,7 +114,6 @@ export async function POST(req: NextRequest) {
     // Add parsed status to game data
     (game as any).isParsed = isParsed;
     // Save to Firestore (Admin SDK)
-    const db = getAdminDb();
     const matchRef = db.collection('matches').doc(matchId);
     // 1. Add the new game ID to the main match document
     await matchRef.update({

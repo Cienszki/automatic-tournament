@@ -26,8 +26,117 @@ interface AdminSlot {
   format: PlayoffMatchFormat;
 }
 
+const BYE_TEAM_SENTINEL = '__PLAYOFF_BYE__';
+const BYE_TEAM_LABEL = 'BYE (auto-advance)';
+
+function isByeTeam(team?: { id: string; name: string; logoUrl?: string }): boolean {
+  return !!team?.id?.startsWith(BYE_TEAM_SENTINEL);
+}
+
+function createByeTeam(matchId: string, slot: 'A' | 'B') {
+  return {
+    id: `${BYE_TEAM_SENTINEL}:${matchId}:${slot}`,
+    name: 'BYE',
+    logoUrl: '',
+  };
+}
+
+function setTeamInSlot(
+  matchMap: Map<string, PlayoffMatch>,
+  targetMatchId: string | undefined,
+  targetSlot: 'teamA' | 'teamB' | undefined,
+  team: { id: string; name: string; logoUrl?: string },
+  now: string,
+): boolean {
+  if (!targetMatchId || !targetSlot) return false;
+
+  const nextMatch = matchMap.get(targetMatchId);
+  if (!nextMatch || nextMatch.status === 'completed') return false;
+
+  const current = targetSlot === 'teamA' ? nextMatch.teamA : nextMatch.teamB;
+  if (current?.id === team.id && current?.name === team.name) {
+    return false;
+  }
+
+  if (targetSlot === 'teamA') {
+    nextMatch.teamA = team;
+  } else {
+    nextMatch.teamB = team;
+  }
+  nextMatch.updatedAt = now;
+  return true;
+}
+
+function applyByeAutoAdvancement(matchMap: Map<string, PlayoffMatch>, now: string): void {
+  let changed = true;
+  let guard = 0;
+  const maxIterations = Math.max(matchMap.size * 3, 10);
+
+  while (changed && guard < maxIterations) {
+    changed = false;
+    guard += 1;
+
+    for (const match of matchMap.values()) {
+      if (match.status === 'completed' && !isByeTeam(match.teamA) && !isByeTeam(match.teamB)) {
+        continue;
+      }
+
+      const teamA = match.teamA;
+      const teamB = match.teamB;
+      if (!teamA || !teamB) continue;
+
+      const teamAIsBye = isByeTeam(teamA);
+      const teamBIsBye = isByeTeam(teamB);
+      if (!teamAIsBye && !teamBIsBye) continue;
+
+      const winner = teamAIsBye && !teamBIsBye ? teamB : teamA;
+      const loser = winner.id === teamA.id ? teamB : teamA;
+      const teamAScore = winner.id === teamA.id ? 1 : 0;
+      const teamBScore = winner.id === teamB.id ? 1 : 0;
+
+      const oldStatus = match.status;
+      const oldWinnerId = match.result?.winnerId;
+
+      match.status = 'bye';
+      match.result = {
+        winnerId: winner.id,
+        loserId: loser.id,
+        teamAScore,
+        teamBScore,
+        completedAt: now,
+      };
+      match.updatedAt = now;
+
+      if (oldStatus !== 'bye' || oldWinnerId !== winner.id) {
+        changed = true;
+      }
+
+      const winnerChanged = setTeamInSlot(
+        matchMap,
+        match.nextWinnerMatchId,
+        match.nextWinnerSlot,
+        winner,
+        now,
+      );
+
+      const loserChanged = setTeamInSlot(
+        matchMap,
+        match.nextLoserMatchId,
+        match.nextLoserSlot,
+        loser,
+        now,
+      );
+
+      if (winnerChanged || loserChanged) {
+        changed = true;
+      }
+    }
+  }
+}
+
 /** Check if a match is in the first editable round for its bracket type. */
 function isFirstRound(match: PlayoffMatch, allMatches: PlayoffMatch[]): boolean {
+  if (match.bracketType === 'final') return false;
   const sameBracket = allMatches.filter(m => m.bracketType === match.bracketType);
   const minRound = Math.min(...sameBracket.map(m => m.round));
   return match.round === minRound;
@@ -133,15 +242,24 @@ export function PlayoffsTab() {
     setIsSaving(true);
     try {
       const now = new Date().toISOString();
+      const matchMap = new Map<string, PlayoffMatch>();
 
       for (const slot of slots) {
-        const teamA = slot.teamAId ? getTeamById(slot.teamAId) : undefined;
-        const teamB = slot.teamBId ? getTeamById(slot.teamBId) : undefined;
+        const teamA = slot.teamAId === BYE_TEAM_SENTINEL
+          ? createByeTeam(slot.match.id, 'A')
+          : slot.teamAId
+            ? getTeamById(slot.teamAId)
+            : undefined;
+        const teamB = slot.teamBId === BYE_TEAM_SENTINEL
+          ? createByeTeam(slot.match.id, 'B')
+          : slot.teamBId
+            ? getTeamById(slot.teamBId)
+            : undefined;
 
         const pmDoc: PlayoffMatch = {
           ...slot.match,
-          teamA: teamA ? { id: teamA.id, name: teamA.name, logoUrl: teamA.logoUrl || '' } : slot.match.teamA,
-          teamB: teamB ? { id: teamB.id, name: teamB.name, logoUrl: teamB.logoUrl || '' } : slot.match.teamB,
+          teamA: teamA ? { id: teamA.id, name: teamA.name, logoUrl: teamA.logoUrl || '' } : undefined,
+          teamB: teamB ? { id: teamB.id, name: teamB.name, logoUrl: teamB.logoUrl || '' } : undefined,
           format: slot.format,
           deadline: slot.deadline || undefined,
           updatedAt: now,
@@ -157,7 +275,15 @@ export function PlayoffsTab() {
           }
         }
 
-        await setDoc(doc(db, 'tournaments', tournament.id, 'playoff_matches', slot.match.id), pmDoc);
+        matchMap.set(slot.match.id, pmDoc);
+      }
+
+      applyByeAutoAdvancement(matchMap, now);
+
+      for (const [matchId, pmDoc] of matchMap.entries()) {
+        // Firestore rejects undefined values; stringify/parse strips them recursively.
+        const pmPayload = JSON.parse(JSON.stringify(pmDoc)) as Record<string, unknown>;
+        await setDoc(doc(db, 'tournaments', tournament.id, 'playoff_matches', matchId), pmPayload);
       }
 
       // Also update tournament config with latest bracket settings
@@ -492,7 +618,13 @@ function AdminSlotCard({
   const { match } = slot;
   const editable = isFirstRound(match, allMatches);
   const isFinal = match.bracketType === 'final';
-  const getTeamName = (id: string): string => teams.find(t => t.id === id)?.name || id || 'TBD';
+  const getFeederLabel = (targetMatchId: string, targetSlot: 'teamA' | 'teamB'): string => {
+    const feeder = allMatches.find(
+      m => m.nextWinnerMatchId === targetMatchId && m.nextWinnerSlot === targetSlot,
+    );
+    if (!feeder) return 'Wyłoniony z poprzedniej rundy';
+    return feeder.code ? `Zwycięzca ${feeder.code}` : 'Wyłoniony z poprzedniej rundy';
+  };
 
   return (
     <Card className="border-0 shadow-lg bg-card/50 backdrop-blur-sm">
@@ -513,6 +645,9 @@ function AdminSlotCard({
                 <SelectValue placeholder="— Wybierz —" />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value={BYE_TEAM_SENTINEL} className="text-red-500 font-logik-extended-bold">
+                  {BYE_TEAM_LABEL}
+                </SelectItem>
                 {teams.map(t => (
                   <SelectItem key={t.id} value={t.id}>
                     {t.name}
@@ -522,7 +657,7 @@ function AdminSlotCard({
             </Select>
           ) : (
             <div className="h-9 rounded-md border border-dashed border-border flex items-center justify-center text-muted-foreground font-logik text-xs">
-              {match.teamA?.name || 'Wyłoniony z poprzedniej rundy'}
+              {match.teamA?.name || getFeederLabel(match.id, 'teamA')}
             </div>
           )}
         </div>
@@ -538,6 +673,9 @@ function AdminSlotCard({
                 <SelectValue placeholder="— Wybierz —" />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value={BYE_TEAM_SENTINEL} className="text-red-500 font-logik-extended-bold">
+                  {BYE_TEAM_LABEL}
+                </SelectItem>
                 {teams.map(t => (
                   <SelectItem key={t.id} value={t.id}>
                     {t.name}
@@ -547,7 +685,7 @@ function AdminSlotCard({
             </Select>
           ) : (
             <div className="h-9 rounded-md border border-dashed border-border flex items-center justify-center text-muted-foreground font-logik text-xs">
-              {match.teamB?.name || 'Wyłoniony z poprzedniej rundy'}
+              {match.teamB?.name || getFeederLabel(match.id, 'teamB')}
             </div>
           )}
         </div>

@@ -11,6 +11,7 @@ import { useTournament } from '@/context/TournamentContext';
 import { useHomeNavigation } from '@/context/HomeNavigationContext';
 import { TeamLogo } from './TeamLogo';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { useIsMobile } from '@/hooks/use-mobile';
 import type { GroupHighlight } from '@/lib/definitions';
 
 interface TeamStanding {
@@ -112,6 +113,106 @@ export function DivisionStandingsTable({
   const { getTournamentPath } = useTournament();
   const { isHomeActive, goToTeam } = useHomeNavigation();
   const router = useRouter();
+  const isMobile = useIsMobile();
+
+  if (isMobile) {
+    return (
+      <div className="rounded-xl overflow-hidden border border-white/[0.06] bg-white/[0.04] backdrop-blur-sm">
+        <div className="divide-y divide-white/[0.05]">
+          {standings.map((team, index) => {
+            const highlightColor = computeRowHighlightColor(team.position, standings.length, highlights);
+
+            return (
+              <motion.div
+                key={team.teamId}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.03 }}
+                className="relative px-3 py-2.5 border-l-[3px]"
+                style={{
+                  borderLeftColor: highlightColor || 'rgba(255,255,255,0.12)',
+                  background: highlightColor
+                    ? `linear-gradient(90deg, ${highlightColor}12, transparent)`
+                    : 'transparent',
+                }}
+              >
+                <button
+                  onClick={() => {
+                    if (isHomeActive()) {
+                      goToTeam(team.teamId);
+                    } else {
+                      router.push(getTournamentPath(`/?view=teams&team=${team.teamId}`));
+                    }
+                  }}
+                  className="w-full text-left"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <span className="w-8 shrink-0 text-center font-mono font-bold text-lg text-white/25">
+                      {team.position < 10 ? `0${team.position}` : team.position}
+                    </span>
+
+                    <TeamLogo
+                      src={team.teamLogoUrl}
+                      name={team.teamName}
+                      size={32}
+                    />
+
+                    <div className="min-w-0 flex-1">
+                      <div
+                        className="font-logik-extended-bold text-base leading-tight break-words"
+                        style={{ color: 'var(--tournament-primary-text)' }}
+                      >
+                        {team.teamName}
+                      </div>
+                    </div>
+
+                    <div className="shrink-0 text-right">
+                      <div
+                        className="text-xl font-logik-extended-bold leading-none"
+                        style={{
+                          color: index < 2 ? 'var(--tournament-primary-text)' : 'var(--tournament-heading)',
+                        }}
+                      >
+                        {team.points}
+                      </div>
+                      <div className="text-[9px] uppercase tracking-wider" style={{ color: 'var(--tournament-secondary-text)' }}>
+                        pkt
+                      </div>
+                    </div>
+                  </div>
+                </button>
+
+                <div className="mt-2 flex items-center justify-between pl-[52px] pr-0.5">
+                  <div className="grid grid-cols-4 gap-2 text-center">
+                    <div>
+                      <div className="text-[9px] uppercase tracking-wider" style={{ color: 'var(--tournament-secondary-text)' }}>M</div>
+                      <div className="text-sm font-mono" style={{ color: 'var(--tournament-primary-text)' }}>{team.matchesPlayed}</div>
+                    </div>
+                    <div>
+                      <div className="text-[9px] uppercase tracking-wider" style={{ color: 'var(--tournament-secondary-text)' }}>W</div>
+                      <div className="text-sm font-mono text-emerald-500/90">{team.wins}</div>
+                    </div>
+                    <div>
+                      <div className="text-[9px] uppercase tracking-wider" style={{ color: 'var(--tournament-secondary-text)' }}>D</div>
+                      <div className="text-sm font-mono text-amber-500/90">{team.draws}</div>
+                    </div>
+                    <div>
+                      <div className="text-[9px] uppercase tracking-wider" style={{ color: 'var(--tournament-secondary-text)' }}>L</div>
+                      <div className="text-sm font-mono text-rose-500/70">{team.losses}</div>
+                    </div>
+                  </div>
+
+                  <div className="text-[10px] font-mono" style={{ color: 'var(--tournament-secondary-text)' }}>
+                    N: {team.neustadtlScore.toFixed(2)}
+                  </div>
+                </div>
+              </motion.div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="rounded-xl overflow-hidden border border-white/[0.06] bg-white/[0.04] backdrop-blur-sm">

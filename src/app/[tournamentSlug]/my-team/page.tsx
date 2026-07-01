@@ -23,7 +23,7 @@ import { MatchHistoryTable } from "@/components/app/my-team/MatchHistoryTable";
 import { TeamStatsGrid } from "@/components/app/my-team/TeamStatsGrid";
 import { PlayerAnalyticsTable } from "@/components/app/my-team/PlayerAnalyticsTable";
 import { getUserTeam, getMatchesForTeam, getAllTeams, getAllStandins } from "@/lib/firestore";
-import { approveStandinRequest, rejectStandinRequest, cancelStandinRequest, appealStandinRequest } from '@/lib/standin-actions';
+import { approveStandinRequest, rejectStandinRequest, cancelStandinRequest, appealStandinRequest, precheckStandinRequest } from '@/lib/standin-actions';
 import { getTournamentLobbyPassword } from '@/lib/bot/bot-config-actions';
 import type { Standin } from "@/lib/definitions";
 import NoTeamFound from '@/components/app/my-team/NoTeamFound';
@@ -1109,6 +1109,18 @@ function MyTeamView() {
     const match = matches.find(m => m.id === data.matchId);
     if (!match) return;
     const opponentId = match.teamA?.id === team.id ? match.teamB?.id : match.teamA?.id;
+
+    // Validate before creating: blocks a standin who is already a player in this match or who
+    // would double-book a game. Throwing here surfaces the message in the request dialog.
+    const precheck = await precheckStandinRequest(tournament.id, data.matchId, {
+      teamId: team.id,
+      replacedPlayerId: data.replacedPlayerId,
+      gameNumbers: data.gameNumbers,
+      standinSteamProfileUrl: data.standinSteamProfileUrl,
+    });
+    if (!precheck.success) {
+      throw new Error(precheck.error || 'Nie można zgłosić tego standina.');
+    }
 
     const standinRequestsRef = collection(db, 'tournaments', tournament.id, 'standinRequests');
     await addDoc(standinRequestsRef, {
