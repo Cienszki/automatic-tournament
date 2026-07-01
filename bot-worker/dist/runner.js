@@ -68,6 +68,7 @@ class Runner {
         this.disconnectTimer = null;
         this.sessionUnsub = null;
         this.matchUnsub = null;    // onSnapshot of the match doc (approvedStandins = source of truth)
+        this.configUnsub = null;   // onSnapshot of config/bot (whitelist/enforcement/messages live)
         this.welcomedPlayers = new Set(); // steamId32s already greeted (one welcome per player per lobby)
         this.kickedPlayers = new Set();   // steamId32s already kicked this lobby (prevent duplicate kicks + messages)
     }
@@ -89,6 +90,7 @@ class Runner {
 
         this.botConfig = await this.loadBotConfig(this.session.tournamentId);
         if (!this.botConfig) { logger.error(`[Runner] No bot config for tournament ${this.session.tournamentId}`); return 1; }
+        this.watchBotConfigDoc(); // keep whitelist/enforcement/messages live after the lobby exists
 
         // Steam creds: env overrides (local dev) else the account doc (encryptedPassword is base64).
         const username = process.env.STEAM_USERNAME || bot.username;
@@ -127,6 +129,21 @@ class Runner {
     async loadBotConfig(tournamentId) {
         const doc = await this.db.collection('tournaments').doc(tournamentId).collection('config').doc('bot').get();
         return doc.exists ? doc.data() : null;
+    }
+
+    /**
+     * Keep the bot config live so admin edits after the lobby is created take effect immediately —
+     * most importantly the whitelist (a player whitelisted mid-lobby must stop being kicked), plus
+     * enforcement toggles and chat messages, all of which are read fresh on each use. Lobby-create
+     * settings are only consumed at creation, so a later change to those simply applies next lobby.
+     */
+    watchBotConfigDoc() {
+        if (!this.session?.tournamentId) return;
+        const ref = this.db.collection('tournaments').doc(this.session.tournamentId).collection('config').doc('bot');
+        this.configUnsub = ref.onSnapshot((snap) => {
+            if (!snap.exists || this.finalizing) return;
+            this.botConfig = snap.data();
+        }, (err) => logger.error('[Runner] config watch error', err));
     }
 
     // ─── Session doc helpers ───────────────────────────────────────────────────
@@ -1146,6 +1163,7 @@ class Runner {
         if (this.disconnectTimer) { clearTimeout(this.disconnectTimer); this.disconnectTimer = null; }
         if (this.sessionUnsub) { try { this.sessionUnsub(); } catch { /* ignore */ } this.sessionUnsub = null; }
         if (this.matchUnsub) { try { this.matchUnsub(); } catch { /* ignore */ } this.matchUnsub = null; }
+        if (this.configUnsub) { try { this.configUnsub(); } catch { /* ignore */ } this.configUnsub = null; }
 
         const reassignCount = (this.session.reassignCount || 0) + 1;
         const MAX_REASSIGNS = 3;
@@ -1195,6 +1213,7 @@ class Runner {
         if (this.disconnectTimer) { clearTimeout(this.disconnectTimer); this.disconnectTimer = null; }
         if (this.sessionUnsub) { try { this.sessionUnsub(); } catch { /* ignore */ } this.sessionUnsub = null; }
         if (this.matchUnsub) { try { this.matchUnsub(); } catch { /* ignore */ } this.matchUnsub = null; }
+        if (this.configUnsub) { try { this.configUnsub(); } catch { /* ignore */ } this.configUnsub = null; }
 
         if (!alreadyPersisted && state) {
             try { await this.sessionRef.update({ state, completedAt: nowIso(), updatedAt: nowIso() }); } catch { /* ignore */ }
