@@ -738,11 +738,15 @@ class Runner {
         if (this.botSteamId32) wl.push({ steamId32: this.botSteamId32 });
         const authorized = L.getAllAuthorizedSteamIds(this.session, wl);
 
-        // 1. Kick any unauthorized player sitting in a team or spectator slot.
-        const toKick = live.filter(
+        // 1. Kick any unauthorized player sitting in a team or spectator slot — but ONLY if
+        //    auto-removal is enabled. When the admin unchecks "auto-remove unauthorized", they
+        //    take responsibility for who's in the lobby, so the game may start with unauthorized
+        //    players present (consistent with the open-lobby enforce() path, which also honors it).
+        const autoKick = this.botConfig.enforcement?.autoKickUnauthorized ?? true;
+        const toKick = autoKick ? live.filter(
             (p) => p.steamId32 && p.steamId32 !== '0' && !authorized.has(p.steamId32)
                 && (p.teamSide === 'radiant' || p.teamSide === 'dire' || p.teamSide === 'spectator')
-        );
+        ) : [];
         if (toKick.length > 0) {
             logger.warn(`[Runner] Pre-launch: kicking ${toKick.length} unauthorized player(s) before game start`);
             for (const p of toKick) {
