@@ -548,6 +548,13 @@ class Runner {
     }
 
     async enforce(players) {
+        // Forget anyone who has actually LEFT the lobby, so a kicked player who REJOINS is kicked
+        // again. The kickedPlayers guard exists only to de-dupe the continuous stream of
+        // lobbyUpdate events while the SAME player is still present (kick + GC removal are async);
+        // it must NOT permanently whitelist a rejoiner. Pruning on absence re-arms enforcement.
+        const present = new Set(players.map((p) => p.steamId32));
+        for (const id of this.kickedPlayers) if (!present.has(id)) this.kickedPlayers.delete(id);
+
         // Authorize the bot's own account (it sits in the player pool) so we never kick/flag it.
         const whitelist = [...(this.botConfig.whitelist ?? [])];
         if (this.botSteamId32) whitelist.push({ steamId32: this.botSteamId32 });
