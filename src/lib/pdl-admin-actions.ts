@@ -2,7 +2,7 @@
 // PDL-specific admin actions for tournament-scoped match import
 
 import { getAdminDb, ensureAdminInitialized } from '../server/lib/admin';
-import { FieldValue } from 'firebase-admin/firestore';
+import { FieldValue, Firestore } from 'firebase-admin/firestore';
 import { getLeagueId } from './definitions';
 import { fetchAllSteamLeagueMatches } from './steam-api';
 import { fetchOpenDotaMatch, transformMatchData, isMatchParsed, requestOpenDotaMatchParse } from './opendota';
@@ -299,6 +299,8 @@ export async function markPDLGameAsSkippedAdmin(
             perfsSnap.docs.forEach(d => deleteBatch.delete(d.ref));
             deleteBatch.delete(gameRef);
             await deleteBatch.commit();
+            // Also remove the denormalized per-player history for this game
+            await deletePlayerGameHistoryForGameAdmin(db, tournamentId, gameId, perfsSnap.docs);
         }
 
         // Remove gameId from match.game_ids array
@@ -1463,6 +1465,42 @@ export async function importPDLManualMatchesAdmin(
 // ============================================================================
 
 /**
+ * Remove the denormalized playerGameHistory entries for a game.
+ *
+ * Import (savePDLGameResultsAdmin) writes a per-player history doc at
+ * tournaments/{id}/playerGameHistory/{steamId64}/games/{gameId} for every
+ * identified player. Deleting a game's docs alone leaves those entries behind, so
+ * the game keeps showing in team/player match-history views (TeamsView) that read
+ * playerGameHistory. Call this whenever a game's docs are removed.
+ *
+ * `perfDocs` are the game's performance documents read BEFORE they are deleted —
+ * the same source import used (steamId64 = perf.steamId || perf.playerId, 17 digits).
+ */
+async function deletePlayerGameHistoryForGameAdmin(
+    db: Firestore,
+    tournamentId: string,
+    gameId: string,
+    perfDocs: any[],
+): Promise<void> {
+    const seen = new Set<string>();
+    const batch = db.batch();
+    let count = 0;
+    for (const perfDoc of perfDocs) {
+        const perf = perfDoc.data() as { steamId?: string; playerId?: string };
+        const steamId64 = String(perf.steamId || perf.playerId || perfDoc.id);
+        if (!/^\d{17}$/.test(steamId64) || seen.has(steamId64)) continue;
+        seen.add(steamId64);
+        batch.delete(
+            db.collection('tournaments').doc(tournamentId)
+                .collection('playerGameHistory').doc(steamId64)
+                .collection('games').doc(String(gameId)),
+        );
+        count++;
+    }
+    if (count > 0) await batch.commit();
+}
+
+/**
  * Delete a single game document from a PDL match and reset the processed flag
  * so the game can be force-imported again with corrected team assignments.
  *
@@ -1470,7 +1508,8 @@ export async function importPDLManualMatchesAdmin(
  *  1. Delete the game doc from matches/{matchId}/games/{gameId}
  *  2. Remove gameId from match.game_ids array
  *  3. Remove from processedGames so force-import / auto-sync can pick it up again
- *  4. Recalculate match scores (or reset to scheduled if no games remain)
+ *  4. Remove the denormalized playerGameHistory entries for the game
+ *  5. Recalculate match scores (or reset to scheduled if no games remain)
  */
 export async function deleteGameFromPDLMatchAdmin(
     tournamentId: string,
@@ -1501,6 +1540,8 @@ export async function deleteGameFromPDLMatchAdmin(
         perfsSnap.docs.forEach(d => batch.delete(d.ref));
         batch.delete(gameRef);
         await batch.commit();
+        // Also remove the denormalized per-player history for this game
+        await deletePlayerGameHistoryForGameAdmin(db, tournamentId, gameId, perfsSnap.docs);
     }
 
     // 2. Remove gameId from match.game_ids array
@@ -1979,12 +2020,18 @@ export async function banTeamAdmin(
             const gamesSnap = await matchRef.collection('games').get();
             if (!gamesSnap.empty) {
                 const deleteBatch = db.batch();
+                const perfDocsByGame: { gameId: string; docs: any[] }[] = [];
                 for (const gameDoc of gamesSnap.docs) {
                     const perfsSnap = await gameDoc.ref.collection('performances').get();
                     perfsSnap.docs.forEach(d => deleteBatch.delete(d.ref));
                     deleteBatch.delete(gameDoc.ref);
+                    perfDocsByGame.push({ gameId: gameDoc.id, docs: perfsSnap.docs });
                 }
                 await deleteBatch.commit();
+                // Also remove the denormalized per-player history for each wiped game
+                for (const g of perfDocsByGame) {
+                    await deletePlayerGameHistoryForGameAdmin(db, tournamentId, g.gameId, g.docs);
+                }
             }
 
             // Register every real game ID as skipped so sync never re-imports them
