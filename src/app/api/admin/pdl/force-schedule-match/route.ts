@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { forceSchedulePDLMatchAdmin } from '@/lib/pdl-admin-actions';
 
 /**
  * POST /api/admin/pdl/force-schedule-match
@@ -39,38 +38,18 @@ export async function POST(req: Request) {
             return NextResponse.json({ success: false, error: 'scheduledFor is not a valid date' }, { status: 400 });
         }
 
-        const matchRef = doc(db, 'tournaments', tournamentId, 'matches', matchId);
-        const matchSnap = await getDoc(matchRef);
-        if (!matchSnap.exists()) {
-            return NextResponse.json({ success: false, error: 'Match not found' }, { status: 404 });
-        }
+        const result = await forceSchedulePDLMatchAdmin(
+            tournamentId,
+            matchId,
+            parsed.toISOString(),
+            reason,
+            adminUserId,
+        );
 
-        const matchData = matchSnap.data();
-        if (matchData.status === 'completed') {
-            return NextResponse.json(
-                { success: false, error: 'Cannot force-schedule a completed match' },
-                { status: 400 },
-            );
-        }
-
-        const now = new Date().toISOString();
-        await updateDoc(matchRef, {
-            scheduledFor: parsed.toISOString(),
-            schedulingStatus: 'confirmed',
-            proposedTime: null,
-            proposingCaptainId: null,
-            proposedById: null,
-            rescheduleRequest: null,
-            adminScheduledAt: now,
-            adminScheduledBy: adminUserId,
-            adminScheduleReason: reason || null,
-            updatedAt: now,
-        });
-
-        return NextResponse.json({
-            success: true,
-            message: `Match scheduled for ${parsed.toLocaleString('pl-PL')}`,
-        });
+        return NextResponse.json(
+            { success: result.success, message: result.success ? result.message : undefined, error: result.success ? undefined : result.message },
+            { status: result.success ? 200 : 400 },
+        );
 
     } catch (error: unknown) {
         const message = error instanceof Error ? error.message : 'Force-schedule failed';

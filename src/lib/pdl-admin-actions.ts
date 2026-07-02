@@ -1540,6 +1540,57 @@ export async function deleteGameFromPDLMatchAdmin(
 // ============================================================================
 
 /**
+ * Admin override — set a match's scheduled time regardless of its current
+ * scheduling state. Mirrors the captain "accept proposal" write (schedulingStatus
+ * 'confirmed', status 'scheduled', scheduledFor as a UTC ISO string) and clears any
+ * pending proposal / reschedule request. Teams can still reschedule afterwards.
+ */
+export async function forceSchedulePDLMatchAdmin(
+    tournamentId: string,
+    matchId: string,
+    scheduledForIso: string,
+    reason: string,
+    adminUserId: string,
+): Promise<{ success: boolean; message: string }> {
+    ensureAdminInitialized();
+    const db = getAdminDb();
+
+    const matchRef = db
+        .collection('tournaments')
+        .doc(tournamentId)
+        .collection('matches')
+        .doc(matchId);
+
+    const matchDoc = await matchRef.get();
+    if (!matchDoc.exists) {
+        return { success: false, message: 'Match not found' };
+    }
+    if (matchDoc.data()!.status === 'completed') {
+        return { success: false, message: 'Cannot force-schedule a completed match' };
+    }
+
+    const now = new Date().toISOString();
+    await matchRef.update({
+        schedulingStatus: 'confirmed',
+        status: 'scheduled',
+        scheduledFor: scheduledForIso,
+        proposedTime: null,
+        proposingCaptainId: null,
+        proposedById: null,
+        rescheduleRequest: FieldValue.delete(),
+        adminScheduledAt: now,
+        adminScheduledBy: adminUserId,
+        adminScheduleReason: reason || null,
+        updatedAt: now,
+    });
+
+    return {
+        success: true,
+        message: `Match scheduled for ${new Date(scheduledForIso).toLocaleString('pl-PL')}`,
+    };
+}
+
+/**
  * Record a forfeit for a PDL match.
  *
  * - forfeitedGameNumbers = [] → full series walkover (score 0-2 in BO2)

@@ -191,11 +191,12 @@ export function PDLStandinRequestSection({
     a.length === 0 || b.length === 0 || a.some((g) => b.includes(g));
   const normalizeUrl = (u: string) => u.trim().toLowerCase().replace(/\/+$/, '');
 
-  // For each opponent pending request, resolve its steamId32 via API if it's a vanity URL
+  // Resolve steamId32 (for OpenDota/Dotabuff links) for every request the opponent can
+  // see — not just pending ones — so the links stay available after the standin is approved.
   useEffect(() => {
     if (!isOpponentView) return;
-    const pending = matchRequests.filter(r => r.status === 'pending');
-    for (const req of pending) {
+    for (const req of matchRequests) {
+      if (!req.standinSteamProfileUrl) continue;
       if (resolvedSteamId32s[req.id]) continue; // already resolved
       const fromUrl = extractSteamId32FromDirectUrl(req.standinSteamProfileUrl);
       if (fromUrl) {
@@ -454,8 +455,9 @@ export function PDLStandinRequestSection({
                   </div>
                 )}
 
-                {/* Opponent captain actions */}
-                {canApproveReject && (() => {
+                {/* Opponent captain: profile links + history (always visible), plus
+                    approve/reject controls while the request is still pending. */}
+                {isOpponentView && (() => {
                   const steamId32 = resolvedSteamId32s[request.id] || null;
                   const openDotaUrl = steamId32 ? `https://www.opendota.com/players/${steamId32}` : null;
                   const dotabuffUrl = steamId32 ? `https://www.dotabuff.com/players/${steamId32}` : null;
@@ -590,8 +592,8 @@ export function PDLStandinRequestSection({
                         </div>
                       </div>
 
-                      {/* Approve / Reject buttons */}
-                      {showRejectInput === request.id ? (
+                      {/* Approve / Reject buttons — only while the request is pending */}
+                      {canApproveReject && (showRejectInput === request.id ? (
                         <div className="space-y-2">
                           <Input
                             placeholder="Powód odrzucenia (opcjonalnie)"
@@ -641,7 +643,7 @@ export function PDLStandinRequestSection({
                             Odrzuć
                           </Button>
                         </div>
-                      )}
+                      ))}
                     </div>
                   );
                 })()}
