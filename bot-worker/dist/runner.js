@@ -396,6 +396,7 @@ class Runner {
             startGameSentAt: null,
             readyCheckStartedAt: null,
             timeoutWarningSentAt: null,
+            timeoutHeldNotified: null,
             readyState: { radiantReady: false, direReady: false },
         });
         await this.updateBotStatus('lobby_active');
@@ -1116,6 +1117,23 @@ class Runner {
         }
     }
 
+    /**
+     * True if at least one participant registered for this match (a roster player or an
+     * approved standin — i.e. anyone in either team's effective expectedPlayers) is
+     * currently sitting in the lobby. The bot must never abandon a lobby that still has a
+     * registered player in it (e.g. a team waiting for the opponent, including after a
+     * passed !wait vote). Whitelist/observers/coaches don't count — only match players.
+     */
+    anyRegisteredPlayerPresent() {
+        if (!this.dota?.isConnected) return false;
+        const expectedIds = new Set([
+            ...this.session.radiantTeam.expectedPlayers.map((p) => p.steamId32),
+            ...this.session.direTeam.expectedPlayers.map((p) => p.steamId32),
+        ]);
+        return this.dota.getCurrentLobbyPlayers()
+            .some((p) => p.steamId32 && p.steamId32 !== '0' && expectedIds.has(p.steamId32));
+    }
+
     // ─── Timeouts (runner-local; pending/bot_assigned timeouts belong to the Conductor) ──
     async checkTimeouts() {
         if (this.finalizing) return;
@@ -1130,13 +1148,22 @@ class Runner {
             const closeMin = cfg.lobbyOpenTimeoutMinutes ?? cfg.lobbyTimeoutMinutes ?? 30;
             const warnMin = cfg.lobbyOpenWarningMinutes ?? 15;
             if (elapsedMin >= closeMin) {
+                // Never close while a registered player/standin is still present — they may be
+                // waiting for the other team. Only a truly empty/abandoned lobby times out.
+                if (this.anyRegisteredPlayerPresent()) {
+                    if (!this.session.timeoutHeldNotified) {
+                        await this.sendChat('[BOT] Holding the lobby open — registered players are still here. It will stay up until everyone leaves; contact an admin if you need it cancelled.');
+                        await this.updateSession({ timeoutHeldNotified: nowIso() });
+                    }
+                    return;
+                }
                 await this.cancel(`Lobby no-show: players did not fill within ${Math.round(elapsedMin)} minutes`,
                     `[BOT] Lobby closed — the required players did not join within ${Math.round(closeMin)} minutes. Admin has been notified.`);
                 return;
             }
             if (warnMin > 0 && elapsedMin >= warnMin && !this.session.timeoutWarningSentAt) {
                 const remaining = Math.round(closeMin - elapsedMin);
-                await this.sendChat(`[BOT] Warning: not all players have joined. The lobby will close in ${remaining} minute${remaining !== 1 ? 's' : ''} if the roster is not full.`);
+                await this.sendChat(`[BOT] Warning: not all players have joined. The lobby will close in ${remaining} minute${remaining !== 1 ? 's' : ''} if the roster is not full and the lobby empties.`);
                 await this.updateSession({ timeoutWarningSentAt: nowIso() });
             }
             return;
@@ -1147,6 +1174,8 @@ class Runner {
             const clockStart = this.session.readyCheckStartedAt ?? this.session.startGameSentAt ?? this.session.lobbyCreatedAt ?? this.session.createdAt;
             const elapsedMin = (ts - new Date(clockStart).getTime()) / 60000;
             if (elapsedMin >= readyTimeoutMin) {
+                // Same rule: don't abandon a lobby that still has registered players in it.
+                if (this.anyRegisteredPlayerPresent()) return;
                 await this.cancel(`Stuck in ready_check for ${Math.round(elapsedMin)} minutes without the game launching`,
                     '[BOT] The match did not start after the ready check. Lobby closed. Please contact an admin.');
             }
