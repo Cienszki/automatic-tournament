@@ -117,6 +117,13 @@ class Runner {
         // Reattach (after a crash) or create a fresh lobby.
         await this.reattachOrCreate();
 
+        // reattachOrCreate may finalize synchronously (e.g. the match was already complete on
+        // restart → finishUp releases the bot). In that case donePromiseResolve was never wired
+        // up yet, so we must return NOW — otherwise we'd arm the timers below and await a promise
+        // that never resolves, hanging the process forever (the Conductor never sees the child
+        // exit, so the bot stays pinned in its in-memory busy set → "no available bot accounts").
+        if (this.finalizing) return this.exitCode ?? 0;
+
         // Periodic timers that re-derive from session timestamps (safe across restarts).
         this.timers.timeout = setInterval(() => this.checkTimeouts().catch((e) => logger.error('[Runner] timeout check', e)), TIMEOUT_TICK_MS);
         this.timers.late = setInterval(() => this.tickLateArrival().catch((e) => logger.error('[Runner] late tick', e)), LATE_TICK_MS);
