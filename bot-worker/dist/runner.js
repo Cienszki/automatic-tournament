@@ -303,6 +303,17 @@ class Runner {
     async reattachOrCreate() {
         // Give the GC a moment to deliver a cached lobby SObject (set on ClientWelcome).
         await sleep(REATTACH_SETTLE_MS);
+
+        // Resuming an in_game/post_game session whose match already finished (e.g. the runner
+        // was restarted by a redeploy/crash at or after game end): there is nothing left to run.
+        // Release the bot instead of reattaching-and-waiting-forever, and don't fall through to
+        // the recreate path (which would reopen a lobby for a completed match).
+        if ((this.session.state === 'in_game' || this.session.state === 'post_game') && await this.matchAlreadyComplete()) {
+            logger.warn(`[Runner] Resuming '${this.session.state}' session but match ${this.session.matchId} is already complete — finalizing to release bot ${this.botAccountId}`);
+            await this.finishUp(0, 'completed');
+            return;
+        }
+
         const ourLobby = this.session.dotaLobbyId; // set only once WE created a lobby for this session
 
         if (this.dota.hasLobby()) {
@@ -1179,7 +1190,47 @@ class Runner {
                 await this.cancel(`Stuck in ready_check for ${Math.round(elapsedMin)} minutes without the game launching`,
                     '[BOT] The match did not start after the ready check. Lobby closed. Please contact an admin.');
             }
+            return;
         }
+
+        // In-game watchdog: a game normally ends via the POSTGAME lobby event → handleGameEnded,
+        // which advances/finalizes and releases the bot. If that event is missed (the bot was
+        // down when the game ended, or a stale reattach that never receives a fresh POSTGAME),
+        // the session would otherwise sit in in_game/post_game forever and PIN THE BOT ACCOUNT —
+        // eventually starving the pool so every new match is cancelled ("no bot available").
+        // No real Dota game lasts anywhere near this long, so finalize to free the bot. The bot
+        // never writes match scores (the OpenDota sync does), so ending the session here cannot
+        // corrupt results; an admin can force-import any un-synced game.
+        if (this.session.state === 'in_game' || this.session.state === 'post_game') {
+            // Fast path: if the match is already complete (its games were synced by the
+            // OpenDota pipeline), the game-end event was missed — most often because the runner
+            // was restarted (redeploy/crash) at/after game end and reattached into in_game,
+            // where it waits forever for a POSTGAME that won't re-arrive. Release immediately.
+            if (await this.matchAlreadyComplete()) {
+                logger.warn(`[Runner] Watchdog: match ${this.session.matchId} already complete but session still '${this.session.state}' — finalizing to release bot ${this.botAccountId}`);
+                await this.finishUp(0, 'completed');
+                return;
+            }
+            // Fallback for the rare case where the match never completes: no real Dota game
+            // lasts this long, so free the bot rather than pinning it indefinitely.
+            const startRef = this.session.gameStartedAt || this.session.gameEndedAt || this.session.updatedAt || this.session.createdAt;
+            const elapsedMin = (ts - new Date(startRef).getTime()) / 60000;
+            const maxGameMin = cfg.inGameTimeoutMinutes ?? 180;
+            if (elapsedMin >= maxGameMin) {
+                logger.warn(`[Runner] in_game watchdog: ${Math.round(elapsedMin)}min in '${this.session.state}' with no game-end — finalizing to release bot ${this.botAccountId}`);
+                await this.finishUp(0, 'completed');
+            }
+        }
+    }
+
+    /** True if this session's match doc is already marked completed (games synced). */
+    async matchAlreadyComplete() {
+        if (!this.session?.tournamentId || !this.session?.matchId) return false;
+        try {
+            const snap = await this.db.collection('tournaments').doc(this.session.tournamentId)
+                .collection('matches').doc(this.session.matchId).get();
+            return snap.exists && snap.data().status === 'completed';
+        } catch { return false; }
     }
 
     async cancel(reason, chatMsg) {
