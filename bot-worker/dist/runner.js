@@ -39,6 +39,12 @@ const TERMINAL_STATES = ['completed', 'cancelled', 'error'];
 const HEARTBEAT_MS = 30000;
 const LATE_TICK_MS = 15000;
 const TIMEOUT_TICK_MS = 30000;
+// Fallback game-end detector: while in_game, poll OpenDota for the started match id in case
+// the POSTGAME lobby event is lost (transient GC disconnect at game end, or a POSTGAME that
+// arrives with match_outcome still 0 before the lobby is destroyed). OpenDota only ingests
+// FINISHED matches, so a live game returns 404 and can never false-trigger. 2min keeps the
+// request volume low over a 30-60min game while still recovering the series promptly.
+const RESULT_POLL_MS = 120000;
 // How long to wait after login for the GC to deliver a cached lobby SObject before
 // deciding "no lobby in cache → create a fresh one".
 const REATTACH_SETTLE_MS = 5000;
@@ -64,6 +70,7 @@ class Runner {
         this.gameEndHandled = false;   // boolean latch — once set, block any further game-end until next lobby
         this.waitingForMatchId = false; // true while the 30-s matchId poll is running
         this.gameStarted = false;  // current-game in_game latch (reset each game)
+        this.postgameNoOutcomeLogged = false; // one warn per game when POSTGAME arrives w/ outcome still 0
         this.lastPlayersJson = ''; // de-dupe lastLobbyPlayers field writes
         this.disconnectTimer = null;
         this.sessionUnsub = null;
@@ -127,6 +134,10 @@ class Runner {
         // Periodic timers that re-derive from session timestamps (safe across restarts).
         this.timers.timeout = setInterval(() => this.checkTimeouts().catch((e) => logger.error('[Runner] timeout check', e)), TIMEOUT_TICK_MS);
         this.timers.late = setInterval(() => this.tickLateArrival().catch((e) => logger.error('[Runner] late tick', e)), LATE_TICK_MS);
+        // Fallback game-end poll (self-gates to in_game). Re-armed on every boot, so it also
+        // recovers a session that reattached into in_game after a restart and would otherwise
+        // wait forever for a POSTGAME that won't re-arrive.
+        this.timers.resultPoll = setInterval(() => this.pollExternalGameResult().catch((e) => logger.error('[Runner] result poll', e)), RESULT_POLL_MS);
 
         // Resolve when the session finishes (finalize / cancel sets this.donePromiseResolve).
         await new Promise((resolve) => { this.donePromiseResolve = resolve; });
@@ -404,6 +415,7 @@ class Runner {
         this.gameEndHandledFor = null;
         this.gameEndHandled = false;
         this.waitingForMatchId = false;
+        this.postgameNoOutcomeLogged = false;
         this.welcomedPlayers.clear(); // greet players freshly in each game's lobby
         this.kickedPlayers.clear();   // reset per-lobby kick memory
         await this.updateSession({
@@ -415,6 +427,7 @@ class Runner {
             readyCheckStartedAt: null,
             timeoutWarningSentAt: null,
             timeoutHeldNotified: null,
+            currentGameDotaMatchId: null, // clear the previous game's id before this game starts
             readyState: { radiantReady: false, direReady: false },
         });
         await this.updateBotStatus('lobby_active');
@@ -499,10 +512,30 @@ class Runner {
             // Capture which session-team is on which Dota side NOW (post coin toss), so the
             // game outcome maps to the right team even when they swapped sides.
             const currentGameSides = this.captureGameSides(players);
-            await this.updateSession({ state: 'in_game', gameStartedAt: nowIso(), currentGameSides });
+            // Persist the started match id (may be 0 here; the lobby fills it in shortly, and
+            // the result poll re-reads it live). This is what lets the OpenDota fallback and any
+            // post-restart recovery find the game to check for its result.
+            await this.updateSession({ state: 'in_game', gameStartedAt: nowIso(), currentGameSides, currentGameDotaMatchId: dotaMatchId || null });
             await this.updateBotStatus('in_game');
             this.clearTimer('readyTimeout');
             logger.info(`[Runner] Game ${this.session.currentGameNumber} started (dotaMatchId=${dotaMatchId}) sides=${JSON.stringify(currentGameSides)}`);
+        }
+
+        // Once in-game, backfill the match id as soon as the lobby carries a real one (it is
+        // frequently 0 in the first in-progress update). The result poll needs it.
+        if (this.gameStarted && this.session.state === 'in_game' && !this.session.currentGameDotaMatchId) {
+            const liveMatchId = Number(data.matchId) || 0;
+            if (liveMatchId > 0) await this.updateSession({ currentGameDotaMatchId: liveMatchId });
+        }
+
+        // Diagnostic: a POSTGAME that arrives with a non-decisive outcome is the classic way the
+        // event-based game-end is lost (the lobby can be destroyed before a decisive update). Log
+        // it once so the miss is visible in the runner logs; the OpenDota poll is the recovery.
+        if (this.gameStarted && state === LOBBY_STATE.POSTGAME
+            && data.matchOutcome !== OUTCOME.RAD_VICTORY && data.matchOutcome !== OUTCOME.DIRE_VICTORY
+            && !this.postgameNoOutcomeLogged) {
+            this.postgameNoOutcomeLogged = true;
+            logger.warn(`[Runner] POSTGAME with non-decisive outcome=${data.matchOutcome} (matchId=${Number(data.matchId) || 0}) — awaiting a decisive update or the OpenDota fallback`);
         }
 
         // Game end: POSTGAME with a decisive outcome.
@@ -986,6 +1019,60 @@ class Runner {
         });
 
         await this.createLobbyForCurrentGame();
+    }
+
+    // ─── Fallback game-end detection (OpenDota poll) ─────────────────────────────
+    /**
+     * Fallback for a lost POSTGAME lobby event. The primary game-end signal is the POSTGAME
+     * update in onLobbyUpdate, but that single push can be missed — a transient GC disconnect
+     * at game end, or a POSTGAME whose match_outcome is still 0 when the lobby is destroyed —
+     * which strands the whole series, because the NEXT game's lobby is only ever opened from
+     * handleGameEnded. This polls OpenDota for the started match id and, once it resolves to a
+     * decisive result, drives the SAME handleGameEnded path (advance or finalize). Because the
+     * match id is persisted on the session, this also recovers after a process restart.
+     */
+    async pollExternalGameResult() {
+        if (this.finalizing) return;
+        if (this.session.state !== 'in_game') return; // only while a game is live (post_game already handled)
+        if (this.gameEndHandled) return;              // POSTGAME already won the race
+
+        // Prefer the persisted id; if it wasn't captured yet, read it live from the lobby.
+        let matchId = Number(this.session.currentGameDotaMatchId) || 0;
+        if (!matchId) {
+            const live = this.dota.getCurrentLobbyData?.();
+            matchId = live ? (Number(live.matchId) || 0) : 0;
+            if (matchId) await this.updateSession({ currentGameDotaMatchId: matchId });
+        }
+        if (!matchId) return; // no id yet — nothing to poll
+
+        const result = await this.fetchOpenDotaResult(matchId);
+        if (!result) return; // not finished / not in OpenDota yet / fetch failed — try again next tick
+        // Re-check the latches after the await (a POSTGAME may have landed meanwhile).
+        if (this.gameEndHandled || this.gameEndHandledFor === matchId) return;
+        this.gameEndHandledFor = matchId;
+        this.waitingForMatchId = false;
+        logger.warn(`[Runner] Game-end recovered via OpenDota poll (POSTGAME event was missed) — dotaMatchId=${matchId} radiantWin=${result.radiantWin}`);
+        await this.handleGameEnded(matchId, result.radiantWin);
+    }
+
+    /**
+     * Fetch a match's result from OpenDota. Returns { radiantWin } once the match is finished,
+     * else null (404 while it isn't ingested yet, non-boolean radiant_win, or any network error).
+     * OpenDota only stores FINISHED matches, so a decisive radiant_win is a safe game-over signal.
+     */
+    async fetchOpenDotaResult(matchId) {
+        try {
+            const key = process.env.OPENDOTA_API_KEY;
+            const url = `https://api.opendota.com/api/matches/${matchId}` + (key ? `?api_key=${key}` : '');
+            const res = await fetch(url, { headers: { 'User-Agent': 'dota2-lobby-bot' } });
+            if (!res.ok) return null;
+            const m = await res.json();
+            if (typeof m.radiant_win !== 'boolean') return null; // not resulted yet
+            return { radiantWin: m.radiant_win };
+        } catch (e) {
+            logger.warn(`[Runner] OpenDota result fetch failed for ${matchId}`, e);
+            return null;
+        }
     }
 
     // ─── Late-arrival forfeit / wait voting ─────────────────────────────────────

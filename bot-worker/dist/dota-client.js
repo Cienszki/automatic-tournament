@@ -668,6 +668,23 @@ _coinTossTimer = null;
             return undefined;
         return Number(lobby.state);
     }
+    /**
+     * Snapshot of the cached lobby's live fields (id, state, match id, outcome) WITHOUT waiting
+     * for a fresh practiceLobbyUpdate event. Used by the runner's game-end polls (the matchId==0
+     * retry and the OpenDota fallback) to re-read the started match id straight from the SO cache.
+     * Returns null if not in a lobby. A Dota match id fits well within Number.MAX_SAFE_INTEGER.
+     */
+    getCurrentLobbyData() {
+        const lobby = this._currentLobby;
+        if (!lobby)
+            return null;
+        return {
+            lobbyId: this.getCurrentLobbyId(),
+            state: (lobby.state !== undefined && lobby.state !== null) ? Number(lobby.state) : undefined,
+            matchId: this.longToString(lobby.match_id),
+            matchOutcome: (lobby.match_outcome !== undefined && lobby.match_outcome !== null) ? Number(lobby.match_outcome) : 0,
+        };
+    }
     /** True if we currently hold a lobby — either freshly created or adopted from cache. */
     hasLobby() {
         return !!(this._currentLobby || (this.dota2 && this.dota2.Lobby));
