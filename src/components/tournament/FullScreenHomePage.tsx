@@ -25,7 +25,7 @@ import { MatchdayCarousel } from '@/components/schedule/MatchdayCarousel';
 import { ChronologicalCarousel } from '@/components/schedule/ChronologicalCarousel';
 import { TeamsView } from '@/components/tournament/TeamsView';
 import { RankingsView } from '@/components/tournament/RankingsView';
-import { PlayoffBracket } from '@/components/playoffs/PlayoffBracket';
+import { MirroredPlayoffBracket } from '@/components/playoffs/MirroredPlayoffBracket';
 import { SeasonPointsTable } from '@/components/playoffs/SeasonPointsTable';
 
 // Icons
@@ -275,7 +275,7 @@ export function TournamentHomePage() {
   } = useSnapScroll({ totalSections: TOTAL_SECTIONS, cooldown: 150, transitionDuration: 300 });
 
   // ── Register with HomeNavigationContext so navbar can scroll here ───
-  const { registerGoToSection, selectedGroupId, setSelectedGroupId, highlightedTeamId, setHighlightedTeamId } = useHomeNavigation();
+  const { registerGoToSection, selectedGroupId, setSelectedGroupId, highlightedTeamId, setHighlightedTeamId, section1View, setSection1View } = useHomeNavigation();
   const searchParams = useSearchParams();
 
   // Use a ref so the stable wrapper always calls the latest goToSection
@@ -307,6 +307,7 @@ export function TournamentHomePage() {
     const group = searchParams.get('group');
     const team = searchParams.get('team');
     if (view && HOME_VIEW_TO_SECTION[view] !== undefined) {
+      if (view === 'groups' || view === 'playoffs') setSection1View(view);
       const timer = setTimeout(() => {
         stableGoToSection(HOME_VIEW_TO_SECTION[view]);
         if (group) setSelectedGroupId(group);
@@ -549,8 +550,9 @@ export function TournamentHomePage() {
   const heroLeftImageUrl = tournament.heroLeftImageUrl;
   const heroRightImageUrl = tournament.heroRightImageUrl;
 
-  // Determine if we show playoffs instead of groups in view 2
-  const showPlayoffs = playoffsActive;
+  // Determine if we show playoffs instead of groups in view 2. Playoffs default
+  // once visible, but the user can toggle back to the groups/divisions tables.
+  const showPlayoffs = playoffsActive && section1View === 'playoffs';
   const showDivisions = divisions.length > 0 && !showPlayoffs;
 
   return (
@@ -980,17 +982,21 @@ export function TournamentHomePage() {
           <div className="h-full w-full flex flex-col overflow-y-auto px-4 sm:px-8 lg:px-16 py-8">
             {showPlayoffs ? (
               <>
-                {/* Playoffs view */}
-                <div className="text-center mb-6">
+                {/* Playoffs view — hero header matching the /playoffs page */}
+                <div className="text-center space-y-4 mb-6 relative shrink-0">
+                  <div
+                    className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-1/3 h-24 blur-[100px] rounded-full pointer-events-none"
+                    style={{ background: `${primaryColor}0D` }}
+                  />
                   <h2
-                    className="text-4xl md:text-6xl font-logik-extended-bold uppercase tracking-tight"
-                    style={{ color: 'var(--tournament-heading)' }}
+                    className="text-4xl md:text-5xl 2xl:text-6xl font-logik-wide-black tracking-tighter uppercase relative z-10 drop-shadow-2xl"
+                    style={{ color: theme?.titleColor || 'white' }}
                   >
-                    Playoff
+                    Playoffs
                   </h2>
-                  <div className="flex items-center justify-center gap-4 mt-2 opacity-60">
+                  <div className="flex items-center justify-center gap-4 opacity-60">
                     <div className="h-[1px] w-12" style={{ background: `linear-gradient(to right, transparent, ${primaryColor})` }} />
-                    <Trophy className="w-4 h-4" style={{ color: primaryColor }} />
+                    <div className="w-2 h-2 rotate-45 border" style={{ borderColor: primaryColor }} />
                     <div className="h-[1px] w-12" style={{ background: `linear-gradient(to left, transparent, ${primaryColor})` }} />
                   </div>
                 </div>
@@ -1000,10 +1006,10 @@ export function TournamentHomePage() {
                       <SeasonPointsTable teams={playoffTeams} />
                     </div>
                   )}
-                  <div className={cn('min-h-0 overflow-y-auto', isLeague ? 'xl:col-span-8' : '')}>
-                    <div className="rounded-2xl border border-white/5 bg-black/40 backdrop-blur-xl relative overflow-hidden h-full">
-                      <PlayoffBracket matches={playoffMatches} />
-                    </div>
+                  <div className={cn('min-h-0 h-full', isLeague ? 'xl:col-span-8' : '')}>
+                    {/* Definite height so the bracket can contain-fit: section is
+                        calc(100vh - 3.5rem); subtract the section padding + hero. */}
+                    <MirroredPlayoffBracket matches={playoffMatches} maxHeight="calc(100vh - 16rem)" />
                   </div>
                 </div>
               </>

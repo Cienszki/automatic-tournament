@@ -71,6 +71,17 @@ export function ScheduleMatchCard({ match, priority = false, divisionColor = '#6
                                     </span>
                                 </div>
                             )}
+
+                            {/* Playoff badge — distinguishes playoff matches in both the league
+                                (matchday) and MMR-limited (chronological) schedule views. */}
+                            {match.isPlayoff && (
+                                <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-amber-500/15 border border-amber-500/30">
+                                    <Trophy className="w-3 h-3" style={{ color: theme.primaryColor || '#d4af37' }} />
+                                    <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: theme.primaryColor || '#d4af37' }}>
+                                        Playoffs{match.playoffCode ? ` · ${match.playoffCode}` : ''}
+                                    </span>
+                                </div>
+                            )}
                         </div>
 
                         {/* Time badge */}

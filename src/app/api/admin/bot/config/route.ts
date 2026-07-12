@@ -115,6 +115,12 @@ export async function POST(req: Request): Promise<Response> {
       updatedBy: uid,
     };
 
+    // The whitelist is managed exclusively by /api/admin/bot/whitelist (add/remove). The client's
+    // `config` snapshot is loaded once and is NOT updated when an admin adds/removes a whitelist
+    // entry, so writing it here would re-add entries the admin just deleted. Strip it — with
+    // merge:true the stored whitelist field is left untouched.
+    delete (updatedConfig as { whitelist?: unknown }).whitelist;
+
     await db
       .collection('tournaments')
       .doc(tournamentId)

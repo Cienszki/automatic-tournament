@@ -17,6 +17,15 @@ interface MatchdayCarouselProps {
     matches: Match[];
 }
 
+// Synthetic season-round value for the "Playoffs" bucket. Playoff matches carry `isPlayoff` and
+// have no numeric group round, so they are grouped separately and sorted after all group rounds.
+const PLAYOFFS_ROUND = 9999;
+const roundLabel = (r: number) => (r === PLAYOFFS_ROUND ? 'Playoffs' : `Runda ${r}`);
+const matchesForRound = (matches: Match[], r: number): Match[] =>
+    r === PLAYOFFS_ROUND
+        ? matches.filter(m => m.isPlayoff)
+        : matches.filter(m => !m.isPlayoff && (m.round || 1) === r);
+
 // Division tier colors matching the premium theme
 const DIVISION_TIER_STYLES: Record<string, { gradient: string; glow: string; text: string; bar: string }> = {
     elite: {
@@ -78,8 +87,13 @@ export function MatchdayCarousel({ matches }: MatchdayCarouselProps) {
             return;
         }
         const roundSet = new Set<number>();
-        matches.forEach(m => roundSet.add(m.round || 1));
+        let hasPlayoffs = false;
+        matches.forEach(m => {
+            if (m.isPlayoff) hasPlayoffs = true;
+            else roundSet.add(m.round || 1);
+        });
         const sortedRounds = [...roundSet].sort((a, b) => a - b);
+        if (hasPlayoffs) sortedRounds.push(PLAYOFFS_ROUND);
         setRounds(sortedRounds);
 
         // Auto-select the round containing the nearest upcoming matchday
@@ -87,7 +101,7 @@ export function MatchdayCarousel({ matches }: MatchdayCarouselProps) {
         today.setHours(0, 0, 0, 0);
         let activeRound = sortedRounds[0];
         for (const r of sortedRounds) {
-            const roundMatches = matches.filter(m => (m.round || 1) === r);
+            const roundMatches = matchesForRound(matches, r);
             const hasUpcoming = roundMatches.some(m => {
                 const d = m.scheduledFor ? new Date(m.scheduledFor) : null;
                 return d && d >= today;
@@ -104,7 +118,7 @@ export function MatchdayCarousel({ matches }: MatchdayCarouselProps) {
 
     // Group matches of the selected round into matchdays
     useEffect(() => {
-        const roundMatches = matches.filter(m => (m.round || 1) === selectedRound);
+        const roundMatches = matchesForRound(matches, selectedRound);
         if (!roundMatches.length) {
             setMatchdays([]);
             setCurrentIndex(0);
@@ -113,7 +127,10 @@ export function MatchdayCarousel({ matches }: MatchdayCarouselProps) {
 
         const groups: { [key: number]: Match[] } = {};
         roundMatches.forEach(match => {
-            const matchday = match.matchday || 1;
+            // Group playoff matches by their bracket round; group matches by matchday.
+            const matchday = selectedRound === PLAYOFFS_ROUND
+                ? (match.playoff_round || 1)
+                : (match.matchday || 1);
             if (!groups[matchday]) groups[matchday] = [];
             groups[matchday].push(match);
         });
@@ -183,17 +200,21 @@ export function MatchdayCarousel({ matches }: MatchdayCarouselProps) {
     const prevMatchday = currentIndex > 0 ? matchdays[currentIndex - 1] : null;
     const nextMatchday = currentIndex < matchdays.length - 1 ? matchdays[currentIndex + 1] : null;
 
-    // Group current matchday matches by division
+    // Group current matchday matches by division. Playoff matches have no division, so in the
+    // Playoffs bucket they collapse into a single "Playoffs" column.
+    const isPlayoffView = selectedRound === PLAYOFFS_ROUND;
     const matchesByDivision: { [key: string]: Match[] } = {};
     currentMatchday.matches.forEach(m => {
-        const divId = (m as any).divisionId || m.group_id || 'unknown';
+        const divId = isPlayoffView ? 'playoffs' : ((m as any).divisionId || m.group_id || 'unknown');
         if (!matchesByDivision[divId]) matchesByDivision[divId] = [];
         matchesByDivision[divId].push(m);
     });
 
-    const columns = divisions.length > 0
-        ? divisions
-        : Object.keys(matchesByDivision).sort().map(id => ({ id, name: id, color: '#666', tier: 3 }));
+    const columns = isPlayoffView
+        ? [{ id: 'playoffs', name: 'Playoffs', color: theme?.primaryColor || '#d4af37', tier: 0 }]
+        : divisions.length > 0
+            ? divisions
+            : Object.keys(matchesByDivision).sort().map(id => ({ id, name: id, color: '#666', tier: 3 }));
 
     const getGridColsClass = (count: number): string => {
         if (count <= 1) return 'grid-cols-1';
@@ -269,7 +290,7 @@ export function MatchdayCarousel({ matches }: MatchdayCarouselProps) {
                                 )}
                             >
                                 <span className="text-xs sm:text-sm font-logik-extended-bold uppercase tracking-widest" style={{ color: theme?.primaryColor || '#d4af37' }}>
-                                    Runda {selectedRound}
+                                    {roundLabel(selectedRound)}
                                 </span>
                                 <ChevronRight
                                     className={cn(
@@ -310,7 +331,7 @@ export function MatchdayCarousel({ matches }: MatchdayCarouselProps) {
                                                             "text-xs font-logik uppercase tracking-wider",
                                                             isSelected && "font-logik-extended-bold"
                                                         )}>
-                                                            Runda {r}
+                                                            {roundLabel(r)}
                                                         </span>
                                                         {isSelected && (
                                                             <motion.div
@@ -341,7 +362,7 @@ export function MatchdayCarousel({ matches }: MatchdayCarouselProps) {
                         >
                             <h1 className="text-3xl sm:text-4xl md:text-5xl font-logik-extended-bold uppercase tracking-tight leading-none whitespace-nowrap"
                                 style={{ color: theme?.titleColor || 'white', fontFamily: theme?.headerFont ? `var(${theme.headerFont})` : undefined }}>
-                                Kolejka {currentMatchday.id}
+                                {selectedRound === PLAYOFFS_ROUND ? 'Playoffs' : `Kolejka ${currentMatchday.id}`}
                             </h1>
 
                             {/* Decorative line */}

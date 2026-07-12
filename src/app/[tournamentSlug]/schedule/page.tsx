@@ -58,6 +58,9 @@ export default function SchedulePage() {
               bestOf: data.bestOf || 2,
               series_format: data.series_format,
               approvedStandins: data.approvedStandins,
+              isPlayoff: data.isPlayoff,
+              playoffCode: data.playoffCode,
+              playoff_round: data.playoff_round,
             } as unknown as Match;
           });
         }

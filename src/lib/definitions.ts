@@ -148,6 +148,53 @@ export interface Match {
   };
   /** Set to true when the match was voided due to a team ban. Hidden from schedule views. */
   isBanForfeit?: boolean;
+  /**
+   * True when this Match is a projection of a playoff bracket match (stored in the
+   * `playoff_matches` collection, not `matches`). Consumers that write back to Firestore
+   * (reschedule, coach, standins) must route to `playoff_matches` for these.
+   */
+  isPlayoff?: boolean;
+  /** Playoff bracket short code (e.g. "U2C", "GF"), only set when `isPlayoff` is true. */
+  playoffCode?: string;
+  /**
+   * Transient (never persisted) marker used by the my-team view: true when this playoff match was
+   * read from `playoff_matches` because no mirror exists in `matches` yet. Writes for such a match
+   * must route back to `playoff_matches`. Once a mirror exists it is read from `matches` and this
+   * is absent, so writes route to `matches` like a group match.
+   */
+  isPlayoffOnly?: boolean;
+  /** Admin-issued draft-time penalties for this match (applied per team, per game). */
+  draftPenalties?: DraftPenalty[];
+}
+
+/** Draft-time penalty severity levels — map to the Dota lobby's penalty_level (1..3). */
+export type DraftPenaltyLevel = 1 | 2 | 3;
+
+/**
+ * The three draft-penalty levels and their meaning. `seconds` is how much draft time the penalized
+ * team loses; `level` is the value written to the Dota lobby's penalty_level_radiant/dire field.
+ */
+export const DRAFT_PENALTY_LEVELS: Record<DraftPenaltyLevel, { seconds: number; label: string; description: string }> = {
+  1: { seconds: 30, label: 'Poziom 1 (−30s)', description: 'Kara: −30 sekund czasu na draft' },
+  2: { seconds: 70, label: 'Poziom 2 (−70s)', description: 'Kara: −70 sekund czasu na draft' },
+  3: { seconds: 130, label: 'Poziom 3 (−130s)', description: 'Kara: −130 sekund czasu na draft' },
+};
+
+export interface DraftPenalty {
+  id: string;
+  /** Penalized team. */
+  teamId: string;
+  /** 1-indexed game numbers this penalty applies to. Empty array = the whole series. */
+  games: number[];
+  level: DraftPenaltyLevel;
+  reason?: string;
+  issuedAt: string;
+  issuedBy: string;
+}
+
+/** Does a penalty apply to the given 1-indexed game number? (Empty games = whole series.) */
+export function draftPenaltyAppliesToGame(penalty: DraftPenalty, gameNumber: number): boolean {
+  return !penalty.games || penalty.games.length === 0 || penalty.games.includes(gameNumber);
 }
 
 export interface PlayerPerformanceInMatch {

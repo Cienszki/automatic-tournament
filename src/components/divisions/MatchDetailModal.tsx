@@ -11,6 +11,7 @@ import Image from 'next/image';
 import { Calendar, Trophy, ExternalLink, Loader2, Shield, Users, ArrowRightLeft, Swords, Sparkles, HandHelping, Eye } from 'lucide-react';
 import type { Match } from '@/lib/definitions';
 import { cn } from '@/lib/utils';
+import { DraftPenaltyBanner } from '@/components/penalties/DraftPenaltyBanner';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useTournament } from '@/context/TournamentContext';
@@ -391,6 +392,16 @@ export function MatchDetailModal({ match, isOpen, onClose, divisionColor }: Matc
 
             {/* Divider */}
             <div className="w-full h-px bg-gradient-to-r from-transparent via-white/10 to-transparent my-8" />
+
+            {/* Draft penalties (admin-issued) */}
+            {match.draftPenalties && match.draftPenalties.length > 0 && (
+              <div className="mb-8">
+                <h4 className="text-xs uppercase tracking-widest text-white/40 font-logik-extended-bold mb-2 flex items-center gap-2">
+                  Kary draftu
+                </h4>
+                <DraftPenaltyBanner penalties={match.draftPenalties} teamA={match.teamA} teamB={match.teamB} />
+              </div>
+            )}
 
             {/* Game breakdown */}
             {isCompleted && (

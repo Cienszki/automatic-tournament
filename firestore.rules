@@ -42,10 +42,14 @@ service cloud.firestore {
     }
 
     // Helper function to check if user is captain of any team in a tournament match
-    // For operations that only have matchId, reads the match document
+    // For operations that only have matchId, reads the match document.
+    // Checks BOTH the regular `matches` collection and the `playoff_matches` bracket
+    // collection, since standin requests can target either kind of match.
     function isCaptainOfTournamentMatch(tournamentId, matchId) {
-      let matchData = get(/databases/$(database)/documents/tournaments/$(tournamentId)/matches/$(matchId)).data;
-      return isTournamentTeamCaptain(tournamentId, matchData.teamA.id) 
+      let regularPath = /databases/$(database)/documents/tournaments/$(tournamentId)/matches/$(matchId);
+      let playoffPath = /databases/$(database)/documents/tournaments/$(tournamentId)/playoff_matches/$(matchId);
+      let matchData = exists(regularPath) ? get(regularPath).data : get(playoffPath).data;
+      return isTournamentTeamCaptain(tournamentId, matchData.teamA.id)
           || isTournamentTeamCaptain(tournamentId, matchData.teamB.id);
     }
 
@@ -179,7 +183,12 @@ service cloud.firestore {
       // Playoff matches in tournaments
       match /playoff_matches/{matchId} {
         allow read: if true;
-        allow write: if hasAdminAccess(tournamentId);
+        allow create, delete: if hasAdminAccess(tournamentId);
+        // Captains of either team may update their own playoff match to schedule it,
+        // request/answer reschedules, and set coach info — same as regular matches.
+        allow update: if hasAdminAccess(tournamentId)
+          || (isCaptainOfTournamentMatchUpdate(tournamentId, resource.data)
+              && captainRescheduleUpdateIsAllowed(resource.data, request.resource.data));
       }
 
       // Rules in tournaments

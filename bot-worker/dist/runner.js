@@ -862,7 +862,59 @@ class Runner {
             return;
         }
 
-        // ── All checks passed — launch ────────────────────────────────────────
+        // ── All checks passed — set the series score for THIS game, then launch ───────────────
+        // Teams may swap Radiant/Dire between games, so the lobby's series score must be set from
+        // the side each team ACTUALLY sits on now (rSide = the side session.radiantTeam occupies).
+        // The score is stored per-team in session.seriesScore; map it onto the live sides. This
+        // must happen before startGame()/the coin toss — the GC breaks the lobby otherwise.
+        try {
+            const radiantSideTeam = rSide === 'radiant' ? this.session.radiantTeam : this.session.direTeam;
+            const direSideTeam = rSide === 'radiant' ? this.session.direTeam : this.session.radiantTeam;
+            const rWins = (this.session.seriesScore && this.session.seriesScore[radiantSideTeam.teamId]) || 0;
+            const dWins = (this.session.seriesScore && this.session.seriesScore[direSideTeam.teamId]) || 0;
+
+            // Admin-issued draft penalties — read fresh from the match doc (may be issued after the
+            // session was created), apply for the game about to be played, mapped to each team's
+            // current side. Penalty levels: 1=-30s, 2=-70s, 3=-130s draft time.
+            const PENALTY_SECONDS = { 1: 30, 2: 70, 3: 130 };
+            const gameNumber = (this.session.completedGameIds ? this.session.completedGameIds.length : 0) + 1;
+            let penaltyRadiant = 0, penaltyDire = 0;
+            const announce = [];
+            try {
+                const matchSnap = await this.db.collection('tournaments').doc(this.session.tournamentId)
+                    .collection('matches').doc(this.session.matchId).get();
+                const penalties = (matchSnap.exists && matchSnap.data().draftPenalties) || [];
+                const levelFor = (teamId) => {
+                    let lvl = 0;
+                    for (const p of penalties) {
+                        if (p.teamId !== teamId) continue;
+                        const applies = !p.games || p.games.length === 0 || p.games.includes(gameNumber);
+                        if (applies && Number(p.level) > lvl) lvl = Number(p.level);
+                    }
+                    return lvl;
+                };
+                penaltyRadiant = levelFor(radiantSideTeam.teamId);
+                penaltyDire = levelFor(direSideTeam.teamId);
+                if (penaltyRadiant > 0) announce.push({ name: radiantSideTeam.teamName, sec: PENALTY_SECONDS[penaltyRadiant] || 0 });
+                if (penaltyDire > 0) announce.push({ name: direSideTeam.teamName, sec: PENALTY_SECONDS[penaltyDire] || 0 });
+            }
+            catch (pe) {
+                logger.warn('[Runner] Failed to read draft penalties (continuing without)', pe);
+            }
+
+            if (rWins > 0 || dWins > 0 || penaltyRadiant > 0 || penaltyDire > 0) {
+                await this.dota.updateSeriesScore(rWins, dWins, penaltyRadiant, penaltyDire);
+                logger.info(`[Runner] Lobby set before start: Radiant(${radiantSideTeam.teamName}) ${rWins} [pen ${penaltyRadiant}] - ${dWins} [pen ${penaltyDire}] Dire(${direSideTeam.teamName})`);
+            }
+            for (const a of announce) {
+                await this.sendChat(`[BOT] Drużyna ${a.name} ma karę draftu: -${a.sec}s czasu na draft w tej grze.`);
+            }
+        }
+        catch (e) {
+            logger.warn('[Runner] Failed to set series score / penalties before start (continuing)', e);
+        }
+
+        // ── Launch ────────────────────────────────────────────────────────────
         await this.updateSession({ startGameSentAt: nowIso() });
         const startMsg = this.botConfig.chatMessages?.matchStartMessage;
         if (startMsg) await this.sendChat(startMsg);

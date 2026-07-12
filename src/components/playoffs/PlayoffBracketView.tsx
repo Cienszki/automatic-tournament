@@ -9,6 +9,7 @@ import { useTranslations } from 'next-intl';
 import { BracketMatchCard } from './BracketMatchCard';
 import {
   computeBracketLayout,
+  isByeMatch,
   CARD_WIDTH,
   CONNECTOR_WIDTH,
   CARD_HEIGHT,
@@ -234,8 +235,11 @@ export function PlayoffBracket({ matches, view, maxHeight = '65vh' }: PlayoffBra
         style={{ height: clipHeight > 0 ? clipHeight : undefined, cursor: isDragging ? 'grabbing' : 'grab' }}
         onPointerDown={(e) => {
           if (e.button !== 0) return;
+          // Do NOT capture the pointer on press — capturing here would steal the
+          // subsequent `click` from child cards/buttons, so tapping a match card
+          // could never open its detail modal. We capture only once a real drag
+          // begins (see onPointerMove).
           dragRef.current = { active: true, moved: false, clientX: e.clientX, clientY: e.clientY, hPx: liveHPx, vPx: liveVPx };
-          (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
         }}
         onPointerMove={(e) => {
           if (!dragRef.current.active) return;
@@ -244,6 +248,9 @@ export function PlayoffBracket({ matches, view, maxHeight = '65vh' }: PlayoffBra
           if (!dragRef.current.moved && (Math.abs(dx) > 5 || Math.abs(dy) > 5)) {
             dragRef.current.moved = true;
             setIsDragging(true);
+            // A drag is underway: capture so we keep receiving move/up events even
+            // if the pointer leaves the viewport.
+            (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
           }
           if (dragRef.current.moved) setDragPx({ x: dx, y: dy });
         }}
@@ -260,7 +267,8 @@ export function PlayoffBracket({ matches, view, maxHeight = '65vh' }: PlayoffBra
           }
           setDragPx({ x: 0, y: 0 });
           setIsDragging(false);
-          dragRef.current.moved = false;
+          // Leave `moved` set so the click that follows a drag is suppressed by
+          // onClickCapture; it is reset on the next pointer-down.
         }}
         onPointerCancel={() => {
           dragRef.current.active = false;
@@ -296,7 +304,7 @@ export function PlayoffBracket({ matches, view, maxHeight = '65vh' }: PlayoffBra
           {/* Match cards */}
           {positions.map(pm => (
             <div key={pm.match.id} className="absolute z-10" style={{ left: pm.x * xScale, top: pm.y }}>
-              {pm.match.status === 'bye' ? (
+              {isByeMatch(pm.match) ? (
                 <div
                   aria-hidden
                   className="rounded-lg border border-dashed border-white/5"
@@ -323,6 +331,7 @@ export function PlayoffBracket({ matches, view, maxHeight = '65vh' }: PlayoffBra
         {(canScrollUp || canScrollDown) && (
           <div className="absolute right-2 top-0 bottom-0 flex flex-col items-center justify-center gap-3 z-30 pointer-events-none">
             <motion.button whileHover={{ scale: 1.15, y: -3 }} whileTap={{ scale: 0.9 }}
+              onPointerDown={(e) => e.stopPropagation()}
               onClick={scrollUp} style={{ pointerEvents: 'auto' }}
               className={cn('flex items-center justify-center w-8 h-8 rounded-lg transition-all duration-300',
                 canScrollUp ? 'cursor-pointer' : 'opacity-20 pointer-events-none')}>
@@ -344,6 +353,7 @@ export function PlayoffBracket({ matches, view, maxHeight = '65vh' }: PlayoffBra
             )}
 
             <motion.button whileHover={{ scale: 1.15, y: 3 }} whileTap={{ scale: 0.9 }}
+              onPointerDown={(e) => e.stopPropagation()}
               onClick={scrollDown} style={{ pointerEvents: 'auto' }}
               className={cn('flex items-center justify-center w-8 h-8 rounded-lg transition-all duration-300',
                 canScrollDown ? 'cursor-pointer' : 'opacity-20 pointer-events-none')}>

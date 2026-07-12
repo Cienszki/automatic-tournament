@@ -11,14 +11,15 @@ import {
   ChevronRight,
   Clock,
   Clock3,
-  XCircle
+  XCircle,
+  Gavel
 } from 'lucide-react';
 import { cn, formatDatePL } from '@/lib/utils';
 import { useTournament } from '@/context/TournamentContext';
 
 interface ActionItem {
   id: string;
-  type: 'reschedule_request' | 'standin_approval' | 'match_upcoming' | 'coach_deadline' | 'transfer_window' | 'team_pending' | 'team_rejected';
+  type: 'reschedule_request' | 'standin_approval' | 'match_upcoming' | 'coach_deadline' | 'transfer_window' | 'team_pending' | 'team_rejected' | 'draft_penalty';
   title: string;
   description: string;
   urgent?: boolean;
@@ -52,6 +53,7 @@ export function PDLCaptainActions({ isCaptain, actions }: PDLCaptainActionsProps
       case 'transfer_window': return CheckCircle;
       case 'team_pending': return Clock3;
       case 'team_rejected': return XCircle;
+      case 'draft_penalty': return Gavel;
       default: return CircleAlert;
     }
   };

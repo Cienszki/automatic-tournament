@@ -581,13 +581,30 @@ async function updatePDLMatchScoresAdmin(tournamentId: string, matchId: string):
         }
     });
 
-    // BO2 format: complete after 2 games
-    const isComplete = games.length >= 2;
-    let winnerId = null;
-    if (teamAWins > teamBWins) winnerId = teamAId;
-    else if (teamBWins > teamAWins) winnerId = teamBId;
-    // If tied (1-1), winnerId stays null (draw)
+    // Completion is series-format aware: group matches default to BO2, playoff mirrors carry
+    // their own series_format (bo1/bo3/bo5). A hardcoded BO2 rule would finish a BO3/BO5 playoff
+    // series prematurely.
+    const seriesFormat = matchData.series_format || (matchData.group_id ? 'bo2' : 'bo3');
+    let isComplete = false;
+    let winnerId: string | null = null;
 
+    if (seriesFormat === 'bo1') {
+        isComplete = games.length >= 1;
+        winnerId = teamAWins > teamBWins ? teamAId : teamBId;
+    } else if (seriesFormat === 'bo2') {
+        isComplete = games.length >= 2 || teamAWins >= 2 || teamBWins >= 2;
+        if (teamAWins > teamBWins) winnerId = teamAId;
+        else if (teamBWins > teamAWins) winnerId = teamBId;
+        // Tied (1-1) → winnerId stays null (draw)
+    } else if (seriesFormat === 'bo3') {
+        isComplete = teamAWins >= 2 || teamBWins >= 2;
+        winnerId = teamAWins >= 2 ? teamAId : teamBWins >= 2 ? teamBId : null;
+    } else if (seriesFormat === 'bo5') {
+        isComplete = teamAWins >= 3 || teamBWins >= 3;
+        winnerId = teamAWins >= 3 ? teamAId : teamBWins >= 3 ? teamBId : null;
+    }
+
+    const wasCompleted = matchData.status === 'completed';
     const updateData: any = {
         'teamA.score': teamAWins,
         'teamB.score': teamBWins,
@@ -597,13 +614,32 @@ async function updatePDLMatchScoresAdmin(tournamentId: string, matchId: string):
         updateData.status = 'completed';
         updateData.winnerId = winnerId;
         updateData.completedAt = FieldValue.serverTimestamp();
+    } else if (wasCompleted) {
+        // Series dropped back below its completion threshold (e.g. a game was deleted) —
+        // un-complete it so downstream (standings / playoff bracket) can be reverted.
+        updateData.status = 'scheduled';
+        updateData.winnerId = null;
+        updateData.completedAt = null;
     }
 
     await matchRef.update(updateData);
 
-    // Update division standings if match is complete
+    // Update division standings if match is complete (group matches only; playoff mirrors have
+    // no divisionId, so they never touch group standings).
     if (isComplete && matchData.divisionId) {
         await updatePDLDivisionStandingsAdmin(tournamentId, matchData.divisionId);
+    }
+
+    // Keep the playoff bracket in sync with the mirror result: advance on completion, revert if the
+    // match dropped out of a completed state.
+    if (matchData.playoff_match_id) {
+        try {
+            const { bridgePlayoffResult, revertPlayoffResult } = await import('./playoff-result-bridge');
+            if (isComplete) await bridgePlayoffResult(tournamentId, matchId);
+            else if (wasCompleted) await revertPlayoffResult(tournamentId, matchId);
+        } catch (err) {
+            console.error(`[PDL] Failed to sync playoff bracket for ${matchId}:`, err);
+        }
     }
 
     console.log(`[PDL] Match ${matchId} updated: ${teamAWins}-${teamBWins}, complete: ${isComplete}`);
@@ -1561,6 +1597,7 @@ export async function deleteGameFromPDLMatchAdmin(
     // 4. Recalculate scores — or reset if no games remain
     const remainingGames = await matchRef.collection('games').get();
     if (remainingGames.empty) {
+        const wasCompleted = matchDoc.data()?.status === 'completed';
         await matchRef.update({
             'teamA.score': 0,
             'teamB.score': 0,
@@ -1568,6 +1605,15 @@ export async function deleteGameFromPDLMatchAdmin(
             winnerId: null,
             completedAt: null,
         });
+        // Revert playoff bracket advancement if this was a completed playoff mirror.
+        if (wasCompleted && matchDoc.data()?.playoff_match_id) {
+            try {
+                const { revertPlayoffResult } = await import('./playoff-result-bridge');
+                await revertPlayoffResult(tournamentId, matchId);
+            } catch (err) {
+                console.error(`[PDL] Failed to revert playoff bracket for ${matchId}:`, err);
+            }
+        }
     } else {
         await updatePDLMatchScoresAdmin(tournamentId, matchId);
     }
@@ -1695,6 +1741,17 @@ export async function forfeitPDLMatchAdmin(
         });
 
         console.log(`[PDL Forfeit] Match ${matchId}: full series walkover by ${forfeitingTeam}`);
+
+        // Advance the bracket if this is a mirrored playoff match.
+        if (matchData.playoff_match_id) {
+            try {
+                const { bridgePlayoffResult } = await import('./playoff-result-bridge');
+                await bridgePlayoffResult(tournamentId, matchId);
+            } catch (err) {
+                console.error(`[PDL Forfeit] Failed to bridge playoff result for ${matchId}:`, err);
+            }
+        }
+
         return { success: true, message: `Walkover recorded – ${forfeitingTeam === 'teamA' ? teamAName : teamBName} forfeits the series` };
     }
 
@@ -1773,6 +1830,16 @@ export async function forfeitPDLMatchAdmin(
         await updatePDLDivisionStandingsAdmin(tournamentId, matchData.divisionId);
     }
 
+    // Advance the bracket if this is a mirrored playoff match.
+    if (isComplete && matchData.playoff_match_id) {
+        try {
+            const { bridgePlayoffResult } = await import('./playoff-result-bridge');
+            await bridgePlayoffResult(tournamentId, matchId);
+        } catch (err) {
+            console.error(`[PDL Forfeit] Failed to bridge playoff result for ${matchId}:`, err);
+        }
+    }
+
     return {
         success: true,
         message: `${gameLabel} forfeit recorded – score updated to ${teamAWins}:${teamBWins}`,
@@ -1825,6 +1892,7 @@ export async function revertPDLForfeitAdmin(
     const teamBId: string = matchData.teams?.[1] || matchData.teamB?.id;
 
     const gamesRef = matchRef.collection('games');
+    let nowCompleted = false; // final completion state after the revert (drives bracket sync)
 
     if (forfeitMeta.scope === 'series') {
         // Full walkover — reset to scheduled state with 0-0 score
@@ -1869,6 +1937,7 @@ export async function revertPDLForfeitAdmin(
         });
 
         const isComplete = realGames.length >= 2;
+        nowCompleted = isComplete;
         let winnerId: string | undefined;
         if (teamAWins > teamBWins) winnerId = teamAId;
         else if (teamBWins > teamAWins) winnerId = teamBId;
@@ -1897,6 +1966,18 @@ export async function revertPDLForfeitAdmin(
     // Recalculate division standings
     if (matchData.divisionId) {
         await updatePDLDivisionStandingsAdmin(tournamentId, matchData.divisionId);
+    }
+
+    // Keep the playoff bracket in sync: a game-level revert that is still complete re-advances with
+    // the new winner; anything that ends un-completed reverts the advancement.
+    if (matchData.playoff_match_id) {
+        try {
+            const { bridgePlayoffResult, revertPlayoffResult } = await import('./playoff-result-bridge');
+            if (nowCompleted) await bridgePlayoffResult(tournamentId, matchId);
+            else await revertPlayoffResult(tournamentId, matchId);
+        } catch (err) {
+            console.error(`[PDL Revert Forfeit] Failed to sync playoff bracket for ${matchId}:`, err);
+        }
     }
 
     return { success: true, message: 'Forfeit reverted successfully' };

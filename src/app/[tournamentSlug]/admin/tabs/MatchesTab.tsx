@@ -11,7 +11,8 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { doc, updateDoc, collection, writeBatch, deleteDoc, getDocs, query, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import type { Match } from '@/lib/definitions';
+import type { Match, DraftPenalty, DraftPenaltyLevel } from '@/lib/definitions';
+import { DRAFT_PENALTY_LEVELS } from '@/lib/definitions';
 import { 
   Select,
   SelectContent,
@@ -60,6 +61,7 @@ import {
   Layers,
   Ban,
   CalendarClock,
+  Gavel,
 } from 'lucide-react';
 
 interface MatchWithTeamNames extends Match {
@@ -140,6 +142,16 @@ export function MatchesTab() {
   const [forceScheduleDateTime, setForceScheduleDateTime] = useState('');
   const [forceScheduleReason, setForceScheduleReason] = useState('');
   const [isForceScheduling, setIsForceScheduling] = useState(false);
+
+  // Draft penalty state
+  const [penaltyMatch, setPenaltyMatch] = useState<MatchWithTeamNames | null>(null);
+  const [penaltyTeamA, setPenaltyTeamA] = useState(false);
+  const [penaltyTeamB, setPenaltyTeamB] = useState(false);
+  const [penaltyScope, setPenaltyScope] = useState<'series' | 'games'>('series');
+  const [penaltyGames, setPenaltyGames] = useState<number[]>([]);
+  const [penaltyLevel, setPenaltyLevel] = useState<DraftPenaltyLevel>(1);
+  const [penaltyReason, setPenaltyReason] = useState('');
+  const [isIssuingPenalty, setIsIssuingPenalty] = useState(false);
 
   // Games management dialog state
   const [showGamesDialog, setShowGamesDialog] = useState(false);
@@ -585,6 +597,83 @@ export function MatchesTab() {
   const confirmDeleteMatch = (matchId: string) => {
     setMatchToDelete(matchId);
     setShowDeleteDialog(true);
+  };
+
+  // ─── Draft penalty handlers ─────────────────────────────────────────────
+  const gamesInMatch = (m: MatchWithTeamNames): number =>
+    m.bestOf || (m.series_format === 'bo5' ? 5 : m.series_format === 'bo3' ? 3 : m.series_format === 'bo2' ? 2 : 1);
+
+  const openPenaltyDialog = (match: MatchWithTeamNames) => {
+    setPenaltyMatch(match);
+    setPenaltyTeamA(false);
+    setPenaltyTeamB(false);
+    setPenaltyScope('series');
+    setPenaltyGames([]);
+    setPenaltyLevel(1);
+    setPenaltyReason('');
+  };
+
+  const togglePenaltyGame = (g: number) => {
+    setPenaltyGames((prev) => (prev.includes(g) ? prev.filter((x) => x !== g) : [...prev, g].sort((a, b) => a - b)));
+  };
+
+  const issuePenalty = async () => {
+    if (!penaltyMatch || !tournament?.id || !user) return;
+    const teamIds: string[] = [];
+    if (penaltyTeamA && penaltyMatch.teamA?.id) teamIds.push(penaltyMatch.teamA.id);
+    if (penaltyTeamB && penaltyMatch.teamB?.id) teamIds.push(penaltyMatch.teamB.id);
+    if (teamIds.length === 0) {
+      toast({ title: 'Wybierz drużynę', description: 'Zaznacz przynajmniej jedną drużynę.', variant: 'destructive' });
+      return;
+    }
+    const games = penaltyScope === 'series' ? [] : [...penaltyGames].sort((a, b) => a - b);
+    if (penaltyScope === 'games' && games.length === 0) {
+      toast({ title: 'Wybierz gry', description: 'Zaznacz gry lub wybierz całą serię.', variant: 'destructive' });
+      return;
+    }
+    setIsIssuingPenalty(true);
+    try {
+      const now = new Date().toISOString();
+      const newPenalties: DraftPenalty[] = teamIds.map((teamId) => ({
+        id: `${teamId}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        teamId,
+        games,
+        level: penaltyLevel,
+        ...(penaltyReason.trim() ? { reason: penaltyReason.trim() } : {}),
+        issuedAt: now,
+        issuedBy: user.uid,
+      }));
+      const updated = [...(penaltyMatch.draftPenalties ?? []), ...newPenalties];
+      await updateDoc(doc(db, 'tournaments', tournament.id, 'matches', penaltyMatch.id), { draftPenalties: updated });
+      setMatches((ms) => ms.map((m) => (m.id === penaltyMatch.id ? { ...m, draftPenalties: updated } : m)));
+      setPenaltyMatch((prev) => (prev ? { ...prev, draftPenalties: updated } : prev));
+      toast({ title: 'Kara nałożona', description: 'Kara draftu została zapisana.' });
+      setPenaltyTeamA(false);
+      setPenaltyTeamB(false);
+      setPenaltyScope('series');
+      setPenaltyGames([]);
+      setPenaltyLevel(1);
+      setPenaltyReason('');
+    } catch (e) {
+      console.error('Failed to issue draft penalty:', e);
+      toast({ title: 'Błąd', description: 'Nie udało się nałożyć kary.', variant: 'destructive' });
+    } finally {
+      setIsIssuingPenalty(false);
+    }
+  };
+
+  const removePenalty = async (penaltyId: string) => {
+    if (!penaltyMatch || !tournament?.id) return;
+    const updated = (penaltyMatch.draftPenalties ?? []).filter((p) => p.id !== penaltyId);
+    try {
+      await updateDoc(doc(db, 'tournaments', tournament.id, 'matches', penaltyMatch.id), { draftPenalties: updated });
+      setMatches((ms) => ms.map((m) => (m.id === penaltyMatch.id ? { ...m, draftPenalties: updated } : m)));
+      setPenaltyMatch((prev) => (prev ? { ...prev, draftPenalties: updated } : prev));
+      toast({ title: 'Kara usunięta' });
+    } catch (e) {
+      console.error('Failed to remove draft penalty:', e);
+      toast({ title: 'Błąd', description: 'Nie udało się usunąć kary.', variant: 'destructive' });
+    }
   };
 
   const deleteMatch = async () => {
@@ -1313,6 +1402,7 @@ export function MatchesTab() {
                     <TableCell>
                       <Badge variant="outline" className="font-logik">
                         {(() => {
+                          if (match.isPlayoff) return match.playoffCode ? `Playoffs · ${match.playoffCode}` : 'Playoffs';
                           const rawId = match.divisionId || match.group_id;
                           if (!rawId) return 'N/A';
                           return divisionsMap.get(rawId) || rawId;
@@ -1417,9 +1507,21 @@ export function MatchesTab() {
                             <Flag className="h-4 w-4" />
                           </Button>
                         )}
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 relative text-purple-400 hover:text-purple-500 hover:bg-purple-500/10"
+                          title="Kara draftu"
+                          onClick={() => openPenaltyDialog(match)}
+                        >
+                          <Gavel className="h-4 w-4" />
+                          {match.draftPenalties && match.draftPenalties.length > 0 && (
+                            <span className="absolute top-0.5 right-0.5 w-2 h-2 rounded-full bg-purple-500" />
+                          )}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
                           className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-500/10"
                           onClick={() => confirmDeleteMatch(match.id)}
                         >
@@ -1839,6 +1941,121 @@ export function MatchesTab() {
                   Zapisz walkover
                 </>
               )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Draft Penalty Dialog */}
+      <Dialog open={!!penaltyMatch} onOpenChange={(open) => { if (!open) setPenaltyMatch(null); }}>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 font-logik-extended-bold">
+              <Gavel className="h-5 w-5 text-purple-400" /> Kara draftu
+            </DialogTitle>
+            <DialogDescription className="font-logik">
+              {penaltyMatch ? `${penaltyMatch.teamAName} vs ${penaltyMatch.teamBName}` : ''}
+              {' — '}kara skróconego czasu na draft, nakładana przez bota w lobby.
+            </DialogDescription>
+          </DialogHeader>
+
+          {penaltyMatch && (
+            <div className="space-y-4">
+              {/* Existing penalties */}
+              {(penaltyMatch.draftPenalties?.length ?? 0) > 0 && (
+                <div className="space-y-2">
+                  <Label className="font-logik-extended-bold text-xs">Aktywne kary</Label>
+                  {penaltyMatch.draftPenalties!.map((p) => {
+                    const teamName = p.teamId === penaltyMatch.teamA?.id ? penaltyMatch.teamAName
+                      : p.teamId === penaltyMatch.teamB?.id ? penaltyMatch.teamBName : p.teamId;
+                    const gamesLabel = !p.games || p.games.length === 0 ? 'cała seria' : `gry ${p.games.join(', ')}`;
+                    return (
+                      <div key={p.id} className="flex items-center justify-between gap-2 rounded-md border border-purple-500/20 bg-purple-500/5 px-3 py-2">
+                        <div className="text-xs font-logik">
+                          <span className="font-logik-extended-bold">{teamName}</span>
+                          {' · '}{DRAFT_PENALTY_LEVELS[p.level].label}{' · '}{gamesLabel}
+                          {p.reason ? <span className="text-muted-foreground"> · {p.reason}</span> : null}
+                        </div>
+                        <Button variant="ghost" size="icon" className="h-6 w-6 text-red-500 hover:bg-red-500/10 shrink-0" onClick={() => removePenalty(p.id)}>
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Team selection */}
+              <div className="space-y-1">
+                <Label className="font-logik-extended-bold text-xs">Drużyna (można obie)</Label>
+                <div className="flex gap-2">
+                  <Button variant={penaltyTeamA ? 'default' : 'outline'} className={cn('flex-1 font-logik', penaltyTeamA && 'text-white')}
+                    style={penaltyTeamA ? { backgroundColor: theme.primaryColor } : {}} onClick={() => setPenaltyTeamA((v) => !v)}>
+                    {penaltyMatch.teamAName}
+                  </Button>
+                  <Button variant={penaltyTeamB ? 'default' : 'outline'} className={cn('flex-1 font-logik', penaltyTeamB && 'text-white')}
+                    style={penaltyTeamB ? { backgroundColor: theme.primaryColor } : {}} onClick={() => setPenaltyTeamB((v) => !v)}>
+                    {penaltyMatch.teamBName}
+                  </Button>
+                </div>
+              </div>
+
+              {/* Scope */}
+              <div className="space-y-1">
+                <Label className="font-logik-extended-bold text-xs">Zakres</Label>
+                <div className="flex gap-2">
+                  <Button variant={penaltyScope === 'series' ? 'default' : 'outline'} className={cn('flex-1 font-logik', penaltyScope === 'series' && 'text-white')}
+                    style={penaltyScope === 'series' ? { backgroundColor: theme.primaryColor } : {}} onClick={() => setPenaltyScope('series')}>
+                    Cała seria
+                  </Button>
+                  <Button variant={penaltyScope === 'games' ? 'default' : 'outline'} className={cn('flex-1 font-logik', penaltyScope === 'games' && 'text-white')}
+                    style={penaltyScope === 'games' ? { backgroundColor: theme.primaryColor } : {}} onClick={() => setPenaltyScope('games')}>
+                    Wybrane gry
+                  </Button>
+                </div>
+                {penaltyScope === 'games' && (
+                  <div className="flex flex-wrap gap-2 pt-2">
+                    {Array.from({ length: gamesInMatch(penaltyMatch) }, (_, i) => i + 1).map((g) => (
+                      <Button key={g} variant={penaltyGames.includes(g) ? 'default' : 'outline'} size="sm"
+                        className={cn('font-logik w-10', penaltyGames.includes(g) && 'text-white')}
+                        style={penaltyGames.includes(g) ? { backgroundColor: theme.primaryColor } : {}}
+                        onClick={() => togglePenaltyGame(g)}>
+                        {g}
+                      </Button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Level */}
+              <div className="space-y-1">
+                <Label className="font-logik-extended-bold text-xs">Poziom kary</Label>
+                <Select value={String(penaltyLevel)} onValueChange={(v) => setPenaltyLevel(Number(v) as DraftPenaltyLevel)}>
+                  <SelectTrigger className="font-logik"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {([1, 2, 3] as DraftPenaltyLevel[]).map((lvl) => (
+                      <SelectItem key={lvl} value={String(lvl)}>
+                        {DRAFT_PENALTY_LEVELS[lvl].label} — {DRAFT_PENALTY_LEVELS[lvl].description}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Reason */}
+              <div className="space-y-1">
+                <Label className="font-logik-extended-bold text-xs">Powód (opcjonalnie)</Label>
+                <Input value={penaltyReason} onChange={(e) => setPenaltyReason(e.target.value)} placeholder="np. spóźnienie, złamanie zasad…" className="font-logik" />
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPenaltyMatch(null)} className="font-logik">Zamknij</Button>
+            <Button onClick={issuePenalty} disabled={isIssuingPenalty || (!penaltyTeamA && !penaltyTeamB)}
+              className="font-logik text-white" style={{ backgroundColor: theme.primaryColor }}>
+              {isIssuingPenalty ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Gavel className="h-4 w-4 mr-2" />}
+              Nałóż karę
             </Button>
           </DialogFooter>
         </DialogContent>

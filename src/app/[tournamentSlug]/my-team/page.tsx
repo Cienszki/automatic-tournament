@@ -9,9 +9,11 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from "@/components/ui/dialog";
 import { Loader2, Users, Calendar, BarChart3, LogIn, UserPlus, ArrowRightLeft, Clock3, Copy, Check, Trash2, RefreshCw, X, ChevronLeft, ChevronRight } from "lucide-react";
 import { motion } from "framer-motion";
-import type { Team, Match, Player, PDLStandinRequest as PDLStandinRequestType } from "@/lib/definitions";
+import type { Team, Match, Player, PlayoffMatch, PDLStandinRequest as PDLStandinRequestType } from "@/lib/definitions";
+import { DRAFT_PENALTY_LEVELS } from "@/lib/definitions";
 import { collection, doc, getDoc, getDocs, setDoc, query, where, updateDoc, addDoc, deleteDoc, deleteField, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { isByeMatch } from '@/lib/playoff-bracket-generator';
 import { LoadingScreen } from '@/components/ui/LoadingScreen';
 
 // Legacy components (for Letnia)
@@ -86,6 +88,112 @@ const normalizePDLStandinRequest = (raw: Record<string, unknown>, id: string): P
     appealAdminNote: raw.appealAdminNote ? String(raw.appealAdminNote) : undefined,
   };
 };
+
+const PLAYOFF_FORMAT_TO_BEST_OF: Record<string, number> = { bo1: 1, bo3: 3, bo5: 5 };
+
+/**
+ * Projects a playoff bracket match (from the `playoff_matches` collection) onto the regular
+ * `Match` shape so it flows through the same my-team scheduling / standin / coach UI as league
+ * matches. Returns null for matches that should not be schedulable by captains: byes, or matches
+ * where either slot is still unresolved (TBA) — there's no opponent to schedule against yet.
+ */
+function playoffMatchToMatch(id: string, raw: PlayoffMatch & Record<string, unknown>): Match | null {
+  if (isByeMatch(raw)) return null;
+  if (!raw.teamA?.id || !raw.teamB?.id) return null;
+
+  const status: Match['status'] = raw.status === 'completed'
+    ? 'completed'
+    : raw.status === 'live'
+      ? 'live'
+      : 'scheduled';
+
+  return {
+    id,
+    teamA: {
+      id: raw.teamA.id,
+      name: raw.teamA.name || 'TBA',
+      score: raw.result?.teamAScore ?? 0,
+      logoUrl: raw.teamA.logoUrl || '',
+    },
+    teamB: {
+      id: raw.teamB.id,
+      name: raw.teamB.name || 'TBA',
+      score: raw.result?.teamBScore ?? 0,
+      logoUrl: raw.teamB.logoUrl || '',
+    },
+    teams: [raw.teamA.id, raw.teamB.id],
+    status,
+    scheduledFor: raw.scheduledFor || '',
+    schedulingStatus: raw.scheduledFor ? 'confirmed' : 'unscheduled',
+    deadline: raw.deadline,
+    series_format: raw.format,
+    bestOf: PLAYOFF_FORMAT_TO_BEST_OF[raw.format] ?? 3,
+    winnerId: raw.result?.winnerId ?? null,
+    // PDL fields written back onto the playoff_matches doc by the scheduling/coach/standin flows.
+    rescheduleRequest: raw.rescheduleRequest as Match['rescheduleRequest'],
+    coachInfo: raw.coachInfo as Match['coachInfo'],
+    approvedStandins: raw.approvedStandins as Match['approvedStandins'],
+    isPlayoff: true,
+    playoffCode: raw.code,
+  } as Match;
+}
+
+/**
+ * Loads every match a team plays in — from BOTH the regular `matches` collection and the
+ * `playoff_matches` bracket collection — mapped to the unified `Match` shape. Centralised so
+ * every refresh site keeps playoff matches visible after an action (otherwise they'd vanish).
+ */
+async function fetchAllTeamMatches(tournamentId: string, teamId: string): Promise<Match[]> {
+  const matchesSnap = await getDocs(collection(db, 'tournaments', tournamentId, 'matches'));
+  const regular = matchesSnap.docs
+    .map(d => ({ id: d.id, ...d.data() } as Match))
+    .filter(m =>
+      m.teamA?.id === teamId ||
+      m.teamB?.id === teamId ||
+      (m.teams && m.teams.includes(teamId))
+    );
+  // Playoff matches are normally mirrored into `matches` (same id) and arrive above. Reading
+  // `playoff_matches` is only a fallback for a match that has no mirror yet (pre-backfill / not
+  // both-teams). Skip any playoff id that already has a mirror to avoid double-listing.
+  const regularIds = new Set(regular.map(m => m.id));
+
+  let playoffFallback: Match[] = [];
+  try {
+    const pmSnap = await getDocs(collection(db, 'tournaments', tournamentId, 'playoff_matches'));
+    playoffFallback = pmSnap.docs
+      .filter(d => !regularIds.has(d.id))
+      .map(d => playoffMatchToMatch(d.id, d.data() as PlayoffMatch & Record<string, unknown>))
+      .filter((m): m is Match => m !== null && (m.teamA?.id === teamId || m.teamB?.id === teamId))
+      .map(m => ({ ...m, isPlayoffOnly: true }));
+  } catch {
+    // playoff_matches may not exist for this tournament yet — regular matches still return.
+    playoffFallback = [];
+  }
+
+  return [...regular, ...playoffFallback];
+}
+
+/**
+ * Loads standin requests for a set of match ids, chunking into batches to stay under
+ * Firestore's `in`-query limit. The old code capped at the first 10 match ids, which silently
+ * dropped requests once a team had many matches — and after playoff matches were appended to the
+ * match list, playoff standin requests (sorted last) always fell past the cap and never loaded.
+ */
+async function fetchStandinRequestsForMatchIds(
+  tournamentId: string,
+  matchIds: string[],
+): Promise<PDLStandinRequestType[]> {
+  if (matchIds.length === 0) return [];
+  const ref = collection(db, 'tournaments', tournamentId, 'standinRequests');
+  const chunks: string[][] = [];
+  for (let i = 0; i < matchIds.length; i += 10) chunks.push(matchIds.slice(i, i + 10));
+  const snaps = await Promise.all(
+    chunks.map(chunk => getDocs(query(ref, where('matchId', 'in', chunk)))),
+  );
+  return snaps.flatMap(snap =>
+    snap.docs.map(d => normalizePDLStandinRequest(d.data() as Record<string, unknown>, d.id)),
+  );
+}
 
 const isWithinRescheduleDays = (
   referenceIso: string,
@@ -230,7 +338,7 @@ function MyTeamView() {
     
     const actions: Array<{
       id: string;
-      type: 'reschedule_request' | 'standin_approval' | 'match_upcoming' | 'coach_deadline' | 'transfer_window' | 'team_pending' | 'team_rejected';
+      type: 'reschedule_request' | 'standin_approval' | 'match_upcoming' | 'coach_deadline' | 'transfer_window' | 'team_pending' | 'team_rejected' | 'draft_penalty';
       title: string;
       description: string;
       urgent?: boolean;
@@ -278,6 +386,26 @@ function MyTeamView() {
           }
         });
       }
+    });
+
+    // Admin-issued draft penalties (own vs opponent get different wording)
+    matches.forEach(match => {
+      (match.draftPenalties ?? []).forEach(p => {
+        const lvl = DRAFT_PENALTY_LEVELS[p.level];
+        const gamesLabel = !p.games || p.games.length === 0 ? 'całą serię' : `gry ${p.games.join(', ')}`;
+        const isMine = p.teamId === team?.id;
+        const opponentName = match.teamA?.id === team?.id ? match.teamB?.name : match.teamA?.name;
+        actions.push({
+          id: `penalty-${match.id}-${p.id}`,
+          type: 'draft_penalty',
+          title: isMine ? 'Twoja drużyna ma karę draftu' : 'Przeciwnik ma karę draftu',
+          description: isMine
+            ? `Kara −${lvl.seconds}s czasu na draft na ${gamesLabel}.${p.reason ? ` Powód: ${p.reason}` : ''}`
+            : `${opponentName || 'Przeciwnik'} otrzymał karę −${lvl.seconds}s na ${gamesLabel}.`,
+          urgent: isMine,
+          action: { label: 'Przejdź do meczu', onClick: () => setMatchesModalOpen(true) },
+        });
+      });
     });
 
     // Check for standin approvals needed
@@ -441,16 +569,10 @@ function MyTeamView() {
           setTeam(teamData);
           setHasTeam(true);
 
-          // Fetch matches for this team
+          // Fetch matches for this team — regular league matches AND playoff bracket matches.
           const matchesRef = collection(db, 'tournaments', tournament.id, 'matches');
           const matchesSnap = await getDocs(matchesRef);
-          const teamMatches = matchesSnap.docs
-            .map(d => ({ id: d.id, ...d.data() } as Match))
-            .filter(m =>
-              m.teamA?.id === teamDoc.id ||
-              m.teamB?.id === teamDoc.id ||
-              (m.teams && m.teams.includes(teamDoc.id))
-            );
+          const teamMatches = await fetchAllTeamMatches(tournament.id, teamDoc.id);
           setMatches(teamMatches);
 
           // Fetch active bot sessions for upcoming matches so the lobby card can show
@@ -505,12 +627,8 @@ function MyTeamView() {
           }
 
           if (teamMatches.length > 0) {
-            const matchIds = teamMatches.map(m => m.id).slice(0, 10); // Firestore 'in' limit = 10
             try {
-              const standinReqQuery = query(standinRequestsRef, where('matchId', 'in', matchIds));
-              const standinReqSnap = await getDocs(standinReqQuery);
-              const allRequests = standinReqSnap.docs.map(d => normalizePDLStandinRequest(d.data() as Record<string, unknown>, d.id));
-              setStandinRequests(allRequests);
+              setStandinRequests(await fetchStandinRequestsForMatchIds(tournament.id, teamMatches.map(m => m.id)));
             } catch {
               // Collection may not exist yet
               setStandinRequests([]);
@@ -769,6 +887,14 @@ function MyTeamView() {
     }
   };
 
+  // Route a match write to the correct collection. Mirrored playoff matches live in `matches`
+  // (like group matches); only a playoff match with no mirror yet (`isPlayoffOnly`) writes to
+  // `playoff_matches`.
+  const getMatchDocRef = React.useCallback((matchId: string) => {
+    const isPlayoffOnly = matches.find(m => m.id === matchId)?.isPlayoffOnly;
+    return doc(db, 'tournaments', tournament!.id, isPlayoffOnly ? 'playoff_matches' : 'matches', matchId);
+  }, [matches, tournament?.id]);
+
   // Reschedule handlers for PDL
   const handleRequestReschedule = async (matchId: string, proposedDate: string) => {
     if (!tournament?.id || !team) {
@@ -777,7 +903,7 @@ function MyTeamView() {
     }
 
     try {
-      const matchRef = doc(db, 'tournaments', tournament.id, 'matches', matchId);
+      const matchRef = getMatchDocRef(matchId);
       const matchSnap = await getDoc(matchRef);
       const matchData = matchSnap.data();
 
@@ -823,12 +949,9 @@ function MyTeamView() {
       });
 
       // Refresh matches
-      const matchesRef = collection(db, 'tournaments', tournament.id, 'matches');
-      const matchesSnap = await getDocs(matchesRef);
-      const teamMatches = matchesSnap.docs
-        .map(d => ({ id: d.id, ...d.data() } as Match))
-        .filter(m => m.teamA?.id === team.id || m.teamB?.id === team.id);
-      setMatches(teamMatches);
+      if (team?.id) {
+        setMatches(await fetchAllTeamMatches(tournament.id, team.id));
+      }
     } catch (error) {
       console.error('[MyTeam] Error requesting reschedule:', error);
       console.error('[MyTeam] Error details:', {
@@ -850,7 +973,7 @@ function MyTeamView() {
     }
 
     try {
-      const matchRef = doc(db, 'tournaments', tournament.id, 'matches', matchId);
+      const matchRef = getMatchDocRef(matchId);
       const matchSnap = await getDoc(matchRef);
       const matchData = matchSnap.data();
 
@@ -895,12 +1018,9 @@ function MyTeamView() {
       });
 
       // Refresh
-      const matchesRef = collection(db, 'tournaments', tournament.id, 'matches');
-      const matchesSnap = await getDocs(matchesRef);
-      const teamMatches = matchesSnap.docs
-        .map(d => ({ id: d.id, ...d.data() } as Match))
-        .filter(m => m.teamA?.id === team?.id || m.teamB?.id === team?.id);
-      setMatches(teamMatches);
+      if (team?.id) {
+        setMatches(await fetchAllTeamMatches(tournament.id, team.id));
+      }
     } catch (error) {
       console.error('Error approving reschedule:', error);
       toast({
@@ -915,7 +1035,7 @@ function MyTeamView() {
     if (!tournament?.id) return;
 
     try {
-      const matchRef = doc(db, 'tournaments', tournament.id, 'matches', matchId);
+      const matchRef = getMatchDocRef(matchId);
       await updateDoc(matchRef, {
         'rescheduleRequest.status': 'rejected',
         'rescheduleRequest.respondedAt': new Date().toISOString(),
@@ -927,12 +1047,9 @@ function MyTeamView() {
       });
 
       // Refresh
-      const matchesRef = collection(db, 'tournaments', tournament.id, 'matches');
-      const matchesSnap = await getDocs(matchesRef);
-      const teamMatches = matchesSnap.docs
-        .map(d => ({ id: d.id, ...d.data() } as Match))
-        .filter(m => m.teamA?.id === team?.id || m.teamB?.id === team?.id);
-      setMatches(teamMatches);
+      if (team?.id) {
+        setMatches(await fetchAllTeamMatches(tournament.id, team.id));
+      }
     } catch (error) {
       console.error('Error rejecting reschedule:', error);
       toast({
@@ -947,7 +1064,7 @@ function MyTeamView() {
     if (!tournament?.id) return;
 
     try {
-      const matchRef = doc(db, 'tournaments', tournament.id, 'matches', matchId);
+      const matchRef = getMatchDocRef(matchId);
 
       // Verify server-side that only PENDING requests can be cancelled.
       // Approved reschedules are part of the match history and must never be silently erased.
@@ -973,12 +1090,9 @@ function MyTeamView() {
       });
 
       // Refresh
-      const matchesRef = collection(db, 'tournaments', tournament.id, 'matches');
-      const matchesSnap = await getDocs(matchesRef);
-      const teamMatches = matchesSnap.docs
-        .map(d => ({ id: d.id, ...d.data() } as Match))
-        .filter(m => m.teamA?.id === team?.id || m.teamB?.id === team?.id);
-      setMatches(teamMatches);
+      if (team?.id) {
+        setMatches(await fetchAllTeamMatches(tournament.id, team.id));
+      }
     } catch (error) {
       console.error('Error canceling reschedule:', error);
       toast({
@@ -994,15 +1108,7 @@ function MyTeamView() {
     if (!tournament?.id || !team || refreshingMatches) return;
     setRefreshingMatches(true);
     try {
-      const matchesRef = collection(db, 'tournaments', tournament.id, 'matches');
-      const matchesSnap = await getDocs(matchesRef);
-      const teamMatches = matchesSnap.docs
-        .map(d => ({ id: d.id, ...d.data() } as Match))
-        .filter(m =>
-          m.teamA?.id === team.id ||
-          m.teamB?.id === team.id ||
-          (m.teams && m.teams.includes(team.id))
-        );
+      const teamMatches = await fetchAllTeamMatches(tournament.id, team.id);
       setMatches(teamMatches);
 
       // Also refresh standin requests
@@ -1013,10 +1119,7 @@ function MyTeamView() {
       } catch { setAllTournamentStandinRequests([]); }
       if (teamMatches.length > 0) {
         try {
-          const matchIds = teamMatches.map(m => m.id).slice(0, 10);
-          const standinReqQuery = query(standinRequestsRef, where('matchId', 'in', matchIds));
-          const standinReqSnap = await getDocs(standinReqQuery);
-          setStandinRequests(standinReqSnap.docs.map(d => normalizePDLStandinRequest(d.data() as Record<string, unknown>, d.id)));
+          setStandinRequests(await fetchStandinRequestsForMatchIds(tournament.id, teamMatches.map(m => m.id)));
         } catch { setStandinRequests([]); }
       }
     } catch (error) {
@@ -1040,14 +1143,7 @@ function MyTeamView() {
 
     if (matches.length === 0) return;
     try {
-      const matchIds = matches.map(m => m.id).slice(0, 10);
-      if (matchIds.length === 0) {
-        setStandinRequests([]);
-        return;
-      }
-      const standinReqQuery = query(standinRequestsRef, where('matchId', 'in', matchIds));
-      const standinReqSnap = await getDocs(standinReqQuery);
-      setStandinRequests(standinReqSnap.docs.map(d => normalizePDLStandinRequest(d.data() as Record<string, unknown>, d.id)));
+      setStandinRequests(await fetchStandinRequestsForMatchIds(tournament.id, matches.map(m => m.id)));
     } catch {
       // Collection may not exist yet
       setStandinRequests([]);
@@ -1057,13 +1153,23 @@ function MyTeamView() {
   const refreshSingleMatch = async (matchId: string) => {
     if (!tournament?.id) return;
 
-    // Fetch the single match document
+    // Fetch the single match document — from the collection the match actually lives in. A
+    // mirrored playoff match reads from `matches`; a playoff match with no mirror yet reads from
+    // `playoff_matches` and is mapped to the Match shape.
     try {
-      const matchDocRef = doc(db, 'tournaments', tournament.id, 'matches', matchId);
+      const isPlayoffOnly = matches.find(m => m.id === matchId)?.isPlayoffOnly;
+      const matchDocRef = doc(db, 'tournaments', tournament.id, isPlayoffOnly ? 'playoff_matches' : 'matches', matchId);
       const matchSnap = await getDoc(matchDocRef);
       if (matchSnap.exists()) {
-        const updatedMatch = { id: matchSnap.id, ...matchSnap.data() } as Match;
-        setMatches(prev => prev.map(m => m.id === matchId ? updatedMatch : m));
+        const updatedMatch = isPlayoffOnly
+          ? (() => {
+              const mapped = playoffMatchToMatch(matchSnap.id, matchSnap.data() as PlayoffMatch & Record<string, unknown>);
+              return mapped ? { ...mapped, isPlayoffOnly: true } : null;
+            })()
+          : ({ id: matchSnap.id, ...matchSnap.data() } as Match);
+        if (updatedMatch) {
+          setMatches(prev => prev.map(m => m.id === matchId ? updatedMatch : m));
+        }
       }
     } catch (error) {
       console.error('[refreshSingleMatch] Failed to fetch match:', error);
@@ -1194,7 +1300,7 @@ function MyTeamView() {
   // ─── Coach handlers ───
   const handleSetCoach = async (matchId: string, data: { nickname: string; steamProfileUrl: string }) => {
     if (!tournament?.id || !team) return;
-    const matchRef = doc(db, 'tournaments', tournament.id, 'matches', matchId);
+    const matchRef = getMatchDocRef(matchId);
     await updateDoc(matchRef, {
       [`coachInfo.${team.id}`]: {
         nickname: data.nickname,
@@ -1213,17 +1319,12 @@ function MyTeamView() {
     });
 
     // Refresh matches to reflect updated coach info
-    const matchesRef = collection(db, 'tournaments', tournament.id, 'matches');
-    const matchesSnap = await getDocs(matchesRef);
-    const teamMatches = matchesSnap.docs
-      .map(d => ({ id: d.id, ...d.data() } as Match))
-      .filter(m => m.teamA?.id === team.id || m.teamB?.id === team.id);
-    setMatches(teamMatches);
+    setMatches(await fetchAllTeamMatches(tournament.id, team.id));
   };
 
   const handleRemoveCoach = async (matchId: string) => {
     if (!tournament?.id || !team) return;
-    const matchRef = doc(db, 'tournaments', tournament.id, 'matches', matchId);
+    const matchRef = getMatchDocRef(matchId);
     await updateDoc(matchRef, {
       [`coachInfo.${team.id}`]: null,
     });
@@ -1235,12 +1336,7 @@ function MyTeamView() {
     });
 
     // Refresh matches
-    const matchesRef = collection(db, 'tournaments', tournament.id, 'matches');
-    const matchesSnap = await getDocs(matchesRef);
-    const teamMatches = matchesSnap.docs
-      .map(d => ({ id: d.id, ...d.data() } as Match))
-      .filter(m => m.teamA?.id === team.id || m.teamB?.id === team.id);
-    setMatches(teamMatches);
+    setMatches(await fetchAllTeamMatches(tournament.id, team.id));
   };
 
   // ─── Roster/Transfer handlers ───
@@ -1694,12 +1790,24 @@ function MyTeamView() {
   const maxTransfers = tournament.maxTransfersPerWindow ?? 2;
 
   // Get standin requests grouped by match
+  // Union the per-match set with the full tournament set (deduped by id) so a request always
+  // displays even if the per-match query missed it — e.g. a playoff match whose id fell outside
+  // an earlier `in`-query batch. allTournamentStandinRequests is an uncapped full-collection load.
+  // NOTE: plain const (not useMemo) — this runs after the component's early returns, so a hook
+  // here would violate the rules of hooks (React error #310).
+  const allStandinRequestsDeduped: PDLStandinRequestType[] = (() => {
+    const byId = new Map<string, PDLStandinRequestType>();
+    for (const r of standinRequests) byId.set(r.id, r);
+    for (const r of allTournamentStandinRequests) byId.set(r.id, r);
+    return Array.from(byId.values());
+  })();
+
   const getStandinRequestsForMatch = (matchId: string): PDLStandinRequestType[] => {
-    return standinRequests.filter(r => r.matchId === matchId && r.teamId === team?.id);
+    return allStandinRequestsDeduped.filter(r => r.matchId === matchId && r.teamId === team?.id);
   };
 
   const getOpponentStandinRequestsForMatch = (matchId: string): PDLStandinRequestType[] => {
-    return standinRequests.filter(r => r.matchId === matchId && r.teamId !== team?.id);
+    return allStandinRequestsDeduped.filter(r => r.matchId === matchId && r.teamId !== team?.id);
   };
 
   // Build a matchId → readable label map for standin history display (e.g. "TeamA vs TeamB")

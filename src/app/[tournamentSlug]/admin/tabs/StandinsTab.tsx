@@ -89,10 +89,18 @@ export function StandinsTab() {
         teamsMap.set(doc.id, { id: doc.id, ...doc.data() } as Team);
       });
 
-      const matchesRef = collection(db, 'tournaments', tournament.id, 'matches');
-      const matchesSnap = await getDocs(matchesRef);
+      // Load BOTH regular matches and playoff bracket matches (stored in a separate
+      // collection) so standin requests targeting a playoff match resolve to a real
+      // match name instead of "Nieznany mecz".
       const matchesMap = new Map<string, Match>();
+      const [matchesSnap, playoffSnap] = await Promise.all([
+        getDocs(collection(db, 'tournaments', tournament.id, 'matches')),
+        getDocs(collection(db, 'tournaments', tournament.id, 'playoff_matches')).catch(() => null),
+      ]);
       matchesSnap.forEach(doc => {
+        matchesMap.set(doc.id, { id: doc.id, ...doc.data() } as Match);
+      });
+      playoffSnap?.forEach(doc => {
         matchesMap.set(doc.id, { id: doc.id, ...doc.data() } as Match);
       });
 
@@ -100,23 +108,28 @@ export function StandinsTab() {
         const data = docSnap.data() as PDLStandinRequest;
         const team = teamsMap.get(data.teamId);
         const match = matchesMap.get(data.matchId);
-        
+
         let matchName = 'Nieznany mecz';
         let matchDate = '';
         let opponentTeamName = '';
-        
+
         if (match) {
-          const teamAName = teamsMap.get(match.teamA?.id || '')?.name || 'Team A';
-          const teamBName = teamsMap.get(match.teamB?.id || '')?.name || 'Team B';
+          const teamAName = teamsMap.get(match.teamA?.id || '')?.name || match.teamA?.name || 'Team A';
+          const teamBName = teamsMap.get(match.teamB?.id || '')?.name || match.teamB?.name || 'Team B';
           matchName = `${teamAName} vs ${teamBName}`;
           matchDate = match.scheduledFor ? format(new Date(match.scheduledFor), 'dd.MM.yyyy HH:mm') : '';
-          
+
           // Determine opponent
           if (match.teamA?.id === data.teamId) {
             opponentTeamName = teamBName;
           } else {
             opponentTeamName = teamAName;
           }
+        } else if (data.matchTeamAName || data.matchTeamBName) {
+          // Fallback to the labels denormalized onto the request at creation time,
+          // in case the match doc was regenerated/removed.
+          matchName = `${data.matchTeamAName || 'Team A'} vs ${data.matchTeamBName || 'Team B'}`;
+          matchDate = data.matchScheduledFor ? format(new Date(data.matchScheduledFor), 'dd.MM.yyyy HH:mm') : '';
         }
 
         return {

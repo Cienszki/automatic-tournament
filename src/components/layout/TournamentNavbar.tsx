@@ -201,7 +201,7 @@ export function TournamentNavbar() {
   const [hasTeam, setHasTeam] = React.useState(false);
   const [organizerLogoError, setOrganizerLogoError] = React.useState(false);
   const [inlineLogoError, setInlineLogoError] = React.useState(false);
-  const { goToHomeSection, isHomeActive, goToGroup } = useHomeNavigation();
+  const { goToHomeSection, isHomeActive, goToGroup, setSection1View } = useHomeNavigation();
 
   // Reset inline logo error whenever the URL changes (e.g. after Firestore loads the real theme)
   React.useEffect(() => {
@@ -287,6 +287,10 @@ export function TournamentNavbar() {
   // Navigate to a homepage section, or push to homepage with ?view= param
   const handleViewNavigation = (viewKey: string) => {
     const sectionIndex = HOME_VIEW_TO_SECTION[viewKey] ?? 0;
+    // Groups and Playoffs share section 1 — record which one to display.
+    if (viewKey === 'groups' || viewKey === 'playoffs') {
+      setSection1View(viewKey);
+    }
     if (isHomeActive()) {
       goToHomeSection(sectionIndex);
     } else {

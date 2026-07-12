@@ -52,6 +52,8 @@ export declare class DotaClient extends EventEmitter {
     sendChatMessage(message: string): Promise<void>;
     kickPlayer(steamId32: string): Promise<void>;
     startGame(): Promise<void>;
+    /** Set the lobby series score + per-side draft penalty for the current game (before coin toss). */
+    updateSeriesScore(radiantWins: number, direWins: number, penaltyLevelRadiant?: number, penaltyLevelDire?: number): Promise<void>;
     leaveLobby(): Promise<void>;
     /**
      * Get the current lobby state (players, teams, etc.)

@@ -101,7 +101,7 @@ async function findConflictingApprovedStandin(
   req: any,
   standinSteamId32: string,
 ): Promise<string | null> {
-  const snap = await matchRef(tournamentId, matchId).get();
+  const snap = await (await resolveMatchRef(tournamentId, matchId)).get();
   if (!snap.exists) return null;
   const match = snap.data() as any;
 
@@ -172,6 +172,28 @@ function matchRef(tournamentId: string, matchId: string) {
     .doc(tournamentId)
     .collection('matches')
     .doc(matchId);
+}
+
+/**
+ * Resolves a match document reference across both the regular `matches` collection and the
+ * `playoff_matches` collection (playoff bracket matches live in a separate collection). Prefers
+ * `matches`; falls back to `playoff_matches` when the id only exists there. Returns the `matches`
+ * ref as a default when neither exists so callers still get a usable (possibly missing) ref.
+ */
+async function resolveMatchRef(tournamentId: string, matchId: string) {
+  const primary = matchRef(tournamentId, matchId);
+  const primarySnap = await primary.get();
+  if (primarySnap.exists) return primary;
+
+  const playoff = getAdminDb()
+    .collection('tournaments')
+    .doc(tournamentId)
+    .collection('playoff_matches')
+    .doc(matchId);
+  const playoffSnap = await playoff.get();
+  if (playoffSnap.exists) return playoff;
+
+  return primary;
 }
 
 /** Silently resolves steamId32 and steamId64 from a profile URL. Returns empty strings on failure. */
@@ -279,11 +301,12 @@ export async function approveStandinRequest(
 
     const entry: ApprovedStandinEntry = buildApprovedStandinEntry(req, steamId32, playerDocId, now);
 
+    const mRef = await resolveMatchRef(tournamentId, req.matchId);
     await Promise.all([
       // Also write steamId32 to the standinRequest doc so Source 3 of the standinLookup
       // can resolve nicknames without parsing the profile URL.
       reqRef.update({ status: 'approved', respondedAt: now, updatedAt: now, standinSteamId32: steamId32 }),
-      matchRef(tournamentId, req.matchId).update({
+      mRef.update({
         [`approvedStandins.${requestId}`]: entry,
       }),
     ]);
@@ -338,6 +361,7 @@ export async function rejectStandinRequest(
 
     const now = new Date().toISOString();
 
+    const mRef = await resolveMatchRef(tournamentId, req.matchId);
     await Promise.all([
       reqRef.update({
         status: 'rejected',
@@ -345,7 +369,7 @@ export async function rejectStandinRequest(
         respondedAt: now,
         updatedAt: now,
       }),
-      matchRef(tournamentId, req.matchId).update({
+      mRef.update({
         [`approvedStandins.${requestId}`]: FieldValue.delete(),
       }).catch(() => { /* match may not have the field yet */ }),
     ]);
@@ -371,9 +395,10 @@ export async function cancelStandinRequest(
     if (!reqSnap.exists) return { success: false, error: 'Request not found' };
     const req = reqSnap.data()!;
 
+    const mRef = await resolveMatchRef(tournamentId, req.matchId);
     await Promise.all([
       reqRef.delete(),
-      matchRef(tournamentId, req.matchId).update({
+      mRef.update({
         [`approvedStandins.${requestId}`]: FieldValue.delete(),
       }).catch(() => { /* match may not have the field yet */ }),
     ]);
@@ -445,6 +470,7 @@ export async function approveStandinAppeal(
 
     const entry: ApprovedStandinEntry = buildApprovedStandinEntry(req, steamId32, playerDocId, now);
 
+    const mRef = await resolveMatchRef(tournamentId, req.matchId);
     await Promise.all([
       reqRef.update({
         status: 'appeal_approved',
@@ -453,7 +479,7 @@ export async function approveStandinAppeal(
         appealAdminNote: adminNote || null,
         updatedAt: now,
       }),
-      matchRef(tournamentId, req.matchId).update({
+      mRef.update({
         [`approvedStandins.${requestId}`]: entry,
       }),
     ]);
@@ -507,6 +533,7 @@ export async function rejectStandinAppeal(
 
     const now = new Date().toISOString();
 
+    const mRef = await resolveMatchRef(tournamentId, req.matchId);
     await Promise.all([
       reqRef.update({
         status: 'appeal_rejected',
@@ -515,7 +542,7 @@ export async function rejectStandinAppeal(
         appealAdminNote: adminNote || null,
         updatedAt: now,
       }),
-      matchRef(tournamentId, req.matchId).update({
+      mRef.update({
         [`approvedStandins.${requestId}`]: FieldValue.delete(),
       }).catch(() => { /* match may not have the field yet */ }),
     ]);
@@ -554,7 +581,8 @@ export async function undoStandinAppealResolution(
 
     // If the appeal was previously approved, remove from match doc
     if (currentData.status === 'appeal_approved') {
-      await matchRef(tournamentId, currentData.matchId).update({
+      const mRef = await resolveMatchRef(tournamentId, currentData.matchId);
+      await mRef.update({
         [`approvedStandins.${requestId}`]: FieldValue.delete(),
       }).catch(() => {});
     }

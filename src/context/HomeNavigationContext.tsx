@@ -21,6 +21,10 @@ interface HomeNavigationContextValue {
   setHighlightedTeamId: (id: string | null) => void;
   /** Scroll to section 3 (teams) and expand a specific team card. */
   goToTeam: (id: string) => void;
+  /** Which view section 1 shows when playoffs are visible: the bracket or the tables. */
+  section1View: 'playoffs' | 'groups';
+  /** Set section 1's view (driven by the navbar's Playoffs / Grupy buttons). */
+  setSection1View: (view: 'playoffs' | 'groups') => void;
 }
 
 const HomeNavigationContext = createContext<HomeNavigationContextValue>({
@@ -33,12 +37,15 @@ const HomeNavigationContext = createContext<HomeNavigationContextValue>({
   highlightedTeamId: null,
   setHighlightedTeamId: () => {},
   goToTeam: () => {},
+  section1View: 'playoffs',
+  setSection1View: () => {},
 });
 
 export function HomeNavigationProvider({ children }: { children: React.ReactNode }) {
   const goToSectionRef = useRef<((index: number) => void) | null>(null);
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
   const [highlightedTeamId, setHighlightedTeamId] = useState<string | null>(null);
+  const [section1View, setSection1View] = useState<'playoffs' | 'groups'>('playoffs');
 
   const registerGoToSection = useCallback((fn: ((index: number) => void) | null) => {
     goToSectionRef.current = fn;
@@ -52,6 +59,7 @@ export function HomeNavigationProvider({ children }: { children: React.ReactNode
 
   const goToGroup = useCallback((id: string) => {
     setSelectedGroupId(id);
+    setSection1View('groups');
     goToSectionRef.current?.(1);
   }, []);
 
@@ -61,7 +69,7 @@ export function HomeNavigationProvider({ children }: { children: React.ReactNode
   }, []);
 
   return (
-    <HomeNavigationContext.Provider value={{ registerGoToSection, goToHomeSection, isHomeActive, selectedGroupId, setSelectedGroupId, goToGroup, highlightedTeamId, setHighlightedTeamId, goToTeam }}>
+    <HomeNavigationContext.Provider value={{ registerGoToSection, goToHomeSection, isHomeActive, selectedGroupId, setSelectedGroupId, goToGroup, highlightedTeamId, setHighlightedTeamId, goToTeam, section1View, setSection1View }}>
       {children}
     </HomeNavigationContext.Provider>
   );

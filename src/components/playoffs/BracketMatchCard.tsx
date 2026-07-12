@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import Image from 'next/image';
-import { Clock, Trophy, Zap, Calendar } from 'lucide-react';
+import { Clock, Zap } from 'lucide-react';
 import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -98,7 +98,7 @@ export function BracketMatchCard({ match, divisionColor = '#666', teamASourceLab
           <div
             className="absolute top-1 left-1.5 z-20 flex items-center gap-1.5 px-1.5 py-0.5 rounded"
             style={{
-              backgroundColor: isFinal ? `${theme?.primaryColor || '#d4af37'}30` : 'rgba(255,255,255,0.08)',
+              backgroundColor: 'rgba(255,255,255,0.08)',
               color: isFinal ? (theme?.primaryColor || '#d4af37') : (theme?.secondaryTextColor || '#888'),
             }}
           >
@@ -125,14 +125,6 @@ export function BracketMatchCard({ match, divisionColor = '#666', teamASourceLab
             </div>
           ) : null}
         </div>
-
-        {/* Grand final trophy */}
-        {isFinal && (
-          <Trophy
-            className="absolute -top-0.5 left-1/2 -translate-x-1/2 w-4 h-4 z-20 opacity-60"
-            style={{ color: theme?.primaryColor || '#d4af37' }}
-          />
-        )}
 
         {/* Team rows */}
         <div className="relative z-10 h-full flex flex-col justify-center divide-y divide-white/5 pt-5">

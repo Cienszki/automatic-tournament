@@ -69,6 +69,10 @@ export async function saveTournamentBotConfig(
       updatedBy: adminUserId,
     };
 
+    // The whitelist is owned by the dedicated whitelist API; never let a general config save
+    // overwrite it from a possibly-stale snapshot (merge:true leaves the stored field untouched).
+    delete (updatedConfig as { whitelist?: unknown }).whitelist;
+
     await db
       .collection('tournaments')
       .doc(tournamentId)

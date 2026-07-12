@@ -25,6 +25,7 @@ import type { Match, Team, Player, PDLStandinRequest as PDLStandinRequestType } 
 import { PDLStandinRequestSection } from './PDLStandinRequest';
 import { PDLCoachSection } from './PDLCoachSection';
 import { PDLMatchRules } from './PDLMatchRules';
+import { DraftPenaltyBanner } from '@/components/penalties/DraftPenaltyBanner';
 
 interface PDLUpcomingMatchProps {
   match: Match;
@@ -257,8 +258,10 @@ export function PDLUpcomingMatch({
         {/* Match info */}
         <div className="flex-1 min-w-0">
           <p className="text-xs uppercase tracking-wider font-logik mb-1" style={{ color: theme.primaryTextColor || 'rgba(255,255,255,0.4)' }}>
-            {!isMmrLimited && <>Kolejka {match.matchday || match.round || '?'}</>}
-            {match.bestOf && <span className={isMmrLimited ? '' : 'ml-2'}>• BO{match.bestOf}</span>}
+            {match.isPlayoff
+              ? <>Playoffs{match.playoffCode ? ` · ${match.playoffCode}` : ''}</>
+              : (!isMmrLimited && <>Kolejka {match.matchday || match.round || '?'}</>)}
+            {match.bestOf && <span className={(!isMmrLimited || match.isPlayoff) ? 'ml-2' : ''}>• BO{match.bestOf}</span>}
           </p>
           <p className="text-lg font-logik-extended-bold text-white truncate">
             vs {opponent?.name || 'TBA'}
@@ -298,6 +301,16 @@ export function PDLUpcomingMatch({
       {/* Expanded content */}
       {expanded && (
         <div className="border-t border-white/5 p-5 space-y-6">
+          {/* ─── Draft penalties (admin-issued) ─── */}
+          {match.draftPenalties && match.draftPenalties.length > 0 && (
+            <DraftPenaltyBanner
+              penalties={match.draftPenalties}
+              teamA={match.teamA}
+              teamB={match.teamB}
+              myTeamId={myTeamId}
+            />
+          )}
+
           {/* ─── Reschedule section ─── */}
           <div className="space-y-3">
             <h4 className="text-xs font-logik-extended-bold uppercase tracking-wide flex items-center gap-2" style={{ color: theme.primaryTextColor || 'rgba(255,255,255,0.4)' }}>

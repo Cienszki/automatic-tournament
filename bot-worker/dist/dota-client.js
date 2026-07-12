@@ -76,8 +76,15 @@ try {
         _dota2mod._lobbyOptions.selection_priority_rules = 'number';
         logger_js_1.logger.info('Patched dota2 _lobbyOptions to allow selection_priority_rules (coin toss)');
     }
+    // Same story for the per-side draft-time penalty levels (CSODOTALobby.penalty_level_radiant=43,
+    // penalty_level_dire=44). Whitelist them so configPracticeLobby can set an admin-issued penalty.
+    if (_dota2mod._lobbyOptions && _dota2mod._lobbyOptions.penalty_level_radiant === undefined) {
+        _dota2mod._lobbyOptions.penalty_level_radiant = 'number';
+        _dota2mod._lobbyOptions.penalty_level_dire = 'number';
+        logger_js_1.logger.info('Patched dota2 _lobbyOptions to allow penalty_level_radiant/dire (draft penalty)');
+    }
 } catch (e) {
-    logger_js_1.logger.warn('Could not patch dota2 _lobbyOptions for selection_priority_rules', e);
+    logger_js_1.logger.warn('Could not patch dota2 _lobbyOptions for extra lobby fields', e);
 }
 
 /**
@@ -250,6 +257,7 @@ _allowedPlayers = null;
 _selectionPriorityRules = null; // 0=Manual, 1=Automatic (coin toss)
 _awaitingCoinToss = false;      // true between the 1st and 2nd launchPracticeLobby
 _coinTossTimer = null;
+_lastLobbyOptions = null;       // options used at createPracticeLobby, re-sent on updateSeriesScore
     _lobbyChatChannel = null; // "Lobby_<id>" once join is requested, for sending lobby chat
     _lobbyChatJoined = false;  // true once the GC confirms the join (chatJoined event)
     _personaCache = new Map(); // steamId64 → resolved Steam persona name (for kick messages)
@@ -388,6 +396,9 @@ _coinTossTimer = null;
                 lobbyOptions.selection_priority_rules = options.selectionPriorityRules;
                 this._selectionPriorityRules = options.selectionPriorityRules;
             }
+            // Remember the exact options so updateSeriesScore() can re-send them (a partial
+            // SetDetails can make the GC reset unset lobby fields — resend everything to be safe).
+            this._lastLobbyOptions = { ...lobbyOptions };
             this.dota2.once('practiceLobbyUpdate', onUpdate);
             this.dota2.createPracticeLobby(lobbyOptions, (err) => {
                 // Explicit error → fail. Success here is fine too, but onUpdate usually wins first.
@@ -647,6 +658,44 @@ _coinTossTimer = null;
         if (!lobby || lobby.lobby_id === undefined || lobby.lobby_id === null)
             return undefined;
         return this.longToString(lobby.lobby_id);
+    }
+    /**
+     * Set the lobby's series score (radiant_series_wins / dire_series_wins) for the CURRENT game.
+     * Re-sends the full original lobby options so a partial SetDetails can't make the GC reset other
+     * fields. MUST be called BEFORE startGame()/the coin toss — changing series settings once
+     * selection/launch is under way breaks the lobby.
+     */
+    async updateSeriesScore(radiantWins, direWins, penaltyLevelRadiant = 0, penaltyLevelDire = 0) {
+        if (!this.isConnected)
+            throw new Error('Not connected to Dota 2 GC');
+        const lobby = this._currentLobby;
+        if (!lobby || lobby.lobby_id === undefined || lobby.lobby_id === null) {
+            logger_js_1.logger.warn('updateSeriesScore: no current lobby — skipping');
+            return;
+        }
+        const options = {
+            ...(this._lastLobbyOptions || {}),
+            radiant_series_wins: radiantWins,
+            dire_series_wins: direWins,
+            // Admin-issued draft-time penalty levels (0 = none). Whitelisted in _lobbyOptions above.
+            penalty_level_radiant: penaltyLevelRadiant || 0,
+            penalty_level_dire: penaltyLevelDire || 0,
+        };
+        return new Promise((resolve) => {
+            try {
+                this.dota2.configPracticeLobby(lobby.lobby_id, options, (err) => {
+                    if (err)
+                        logger_js_1.logger.error('configPracticeLobby (series score / penalty) failed', err);
+                    else
+                        logger_js_1.logger.info(`Lobby set: series radiant ${radiantWins} - dire ${direWins}, penalty radiant ${penaltyLevelRadiant || 0} - dire ${penaltyLevelDire || 0}`);
+                    resolve();
+                });
+            }
+            catch (e) {
+                logger_js_1.logger.error('updateSeriesScore threw', e);
+                resolve();
+            }
+        });
     }
     /** The bot's OWN account id (Steam32) once logged in — used so we never kick ourselves. */
     getSelfSteamId32() {

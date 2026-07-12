@@ -12,7 +12,9 @@ import { collection, getDocs, doc, setDoc, getDoc, updateDoc } from 'firebase/fi
 import { db } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { Switch } from '@/components/ui/switch';
-import { generateBracket } from '@/lib/playoff-bracket-generator';
+import { generateBracket, BYE_TEAM_SENTINEL } from '@/lib/playoff-bracket-generator';
+import { applyByeAutoAdvancement } from '@/lib/playoff-advancement';
+import { shouldMirror, buildMirrorCreateData, buildMirrorTeamsPatch } from '@/lib/playoff-mirror';
 import type { Team, PlayoffMatch, PlayoffMatchFormat } from '@/lib/definitions';
 import type { BracketConfig } from '@/lib/playoff-bracket-generator';
 
@@ -26,12 +28,7 @@ interface AdminSlot {
   format: PlayoffMatchFormat;
 }
 
-const BYE_TEAM_SENTINEL = '__PLAYOFF_BYE__';
 const BYE_TEAM_LABEL = 'BYE (auto-advance)';
-
-function isByeTeam(team?: { id: string; name: string; logoUrl?: string }): boolean {
-  return !!team?.id?.startsWith(BYE_TEAM_SENTINEL);
-}
 
 function createByeTeam(matchId: string, slot: 'A' | 'B') {
   return {
@@ -39,99 +36,6 @@ function createByeTeam(matchId: string, slot: 'A' | 'B') {
     name: 'BYE',
     logoUrl: '',
   };
-}
-
-function setTeamInSlot(
-  matchMap: Map<string, PlayoffMatch>,
-  targetMatchId: string | undefined,
-  targetSlot: 'teamA' | 'teamB' | undefined,
-  team: { id: string; name: string; logoUrl?: string },
-  now: string,
-): boolean {
-  if (!targetMatchId || !targetSlot) return false;
-
-  const nextMatch = matchMap.get(targetMatchId);
-  if (!nextMatch || nextMatch.status === 'completed') return false;
-
-  const current = targetSlot === 'teamA' ? nextMatch.teamA : nextMatch.teamB;
-  if (current?.id === team.id && current?.name === team.name) {
-    return false;
-  }
-
-  if (targetSlot === 'teamA') {
-    nextMatch.teamA = team;
-  } else {
-    nextMatch.teamB = team;
-  }
-  nextMatch.updatedAt = now;
-  return true;
-}
-
-function applyByeAutoAdvancement(matchMap: Map<string, PlayoffMatch>, now: string): void {
-  let changed = true;
-  let guard = 0;
-  const maxIterations = Math.max(matchMap.size * 3, 10);
-
-  while (changed && guard < maxIterations) {
-    changed = false;
-    guard += 1;
-
-    for (const match of matchMap.values()) {
-      if (match.status === 'completed' && !isByeTeam(match.teamA) && !isByeTeam(match.teamB)) {
-        continue;
-      }
-
-      const teamA = match.teamA;
-      const teamB = match.teamB;
-      if (!teamA || !teamB) continue;
-
-      const teamAIsBye = isByeTeam(teamA);
-      const teamBIsBye = isByeTeam(teamB);
-      if (!teamAIsBye && !teamBIsBye) continue;
-
-      const winner = teamAIsBye && !teamBIsBye ? teamB : teamA;
-      const loser = winner.id === teamA.id ? teamB : teamA;
-      const teamAScore = winner.id === teamA.id ? 1 : 0;
-      const teamBScore = winner.id === teamB.id ? 1 : 0;
-
-      const oldStatus = match.status;
-      const oldWinnerId = match.result?.winnerId;
-
-      match.status = 'bye';
-      match.result = {
-        winnerId: winner.id,
-        loserId: loser.id,
-        teamAScore,
-        teamBScore,
-        completedAt: now,
-      };
-      match.updatedAt = now;
-
-      if (oldStatus !== 'bye' || oldWinnerId !== winner.id) {
-        changed = true;
-      }
-
-      const winnerChanged = setTeamInSlot(
-        matchMap,
-        match.nextWinnerMatchId,
-        match.nextWinnerSlot,
-        winner,
-        now,
-      );
-
-      const loserChanged = setTeamInSlot(
-        matchMap,
-        match.nextLoserMatchId,
-        match.nextLoserSlot,
-        loser,
-        now,
-      );
-
-      if (winnerChanged || loserChanged) {
-        changed = true;
-      }
-    }
-  }
 }
 
 /** Check if a match is in the first editable round for its bracket type. */
@@ -284,6 +188,20 @@ export function PlayoffsTab() {
         // Firestore rejects undefined values; stringify/parse strips them recursively.
         const pmPayload = JSON.parse(JSON.stringify(pmDoc)) as Record<string, unknown>;
         await setDoc(doc(db, 'tournaments', tournament.id, 'playoff_matches', matchId), pmPayload);
+
+        // Mirror every playable (non-bye, both-teams) playoff match into the `matches`
+        // collection under the SAME id, so the bot/sync/stats/schedule treat it like a group
+        // match. Creating fresh vs. patching an existing mirror is chosen so a captain-agreed
+        // time or an already-synced score is never reset by an admin bracket re-save.
+        const mirrorRef = doc(db, 'tournaments', tournament.id, 'matches', matchId);
+        if (shouldMirror(pmDoc)) {
+          const mirrorSnap = await getDoc(mirrorRef);
+          if (mirrorSnap.exists()) {
+            await setDoc(mirrorRef, buildMirrorTeamsPatch(pmDoc), { merge: true });
+          } else {
+            await setDoc(mirrorRef, buildMirrorCreateData(pmDoc));
+          }
+        }
       }
 
       // Also update tournament config with latest bracket settings
