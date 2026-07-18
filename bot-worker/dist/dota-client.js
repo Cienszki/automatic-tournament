@@ -660,10 +660,14 @@ _lastLobbyOptions = null;       // options used at createPracticeLobby, re-sent 
         return this.longToString(lobby.lobby_id);
     }
     /**
-     * Set the lobby's series score (radiant_series_wins / dire_series_wins) for the CURRENT game.
-     * Re-sends the full original lobby options so a partial SetDetails can't make the GC reset other
-     * fields. MUST be called BEFORE startGame()/the coin toss — changing series settings once
-     * selection/launch is under way breaks the lobby.
+     * Set the lobby's series score (radiant_series_wins / dire_series_wins) + draft penalty for the
+     * CURRENT game. MUST be called BEFORE startGame()/the coin toss.
+     *
+     * IMPORTANT: send ONLY the fields that change. Re-sending the full lobby options here (esp.
+     * selection_priority_rules and series_type) re-initializes the GC's coin-toss/series state, so
+     * the following launchPracticeLobby silently does nothing and the game never starts (this bit
+     * game 2+, which is the first game with a non-zero score). A minimal SetDetails is exactly what
+     * changing the score from the lobby UI does, and the GC keeps the other settings.
      */
     async updateSeriesScore(radiantWins, direWins, penaltyLevelRadiant = 0, penaltyLevelDire = 0) {
         if (!this.isConnected)
@@ -674,7 +678,6 @@ _lastLobbyOptions = null;       // options used at createPracticeLobby, re-sent 
             return;
         }
         const options = {
-            ...(this._lastLobbyOptions || {}),
             radiant_series_wins: radiantWins,
             dire_series_wins: direWins,
             // Admin-issued draft-time penalty levels (0 = none). Whitelisted in _lobbyOptions above.
