@@ -70,6 +70,8 @@ class Runner {
         this.gameEndHandled = false;   // boolean latch — once set, block any further game-end until next lobby
         this.waitingForMatchId = false; // true while the 30-s matchId poll is running
         this.gameStarted = false;  // current-game in_game latch (reset each game)
+        this.pendingRestart = false; // true while a post-abort / !start ready-check is pending a single relaunch (coin toss already done)
+        this.handlingAbort = false;  // re-entrancy guard so a stream of UI-state updates schedules only one abort check
         this.postgameNoOutcomeLogged = false; // one warn per game when POSTGAME arrives w/ outcome still 0
         this.lastPlayersJson = ''; // de-dupe lastLobbyPlayers field writes
         this.disconnectTimer = null;
@@ -412,6 +414,7 @@ class Runner {
         logger.info(`[Runner] Lobby created (${dotaLobbyId}) "${lobbyName}"`);
 
         this.gameStarted = false;
+        this.pendingRestart = false;
         this.gameEndHandledFor = null;
         this.gameEndHandled = false;
         this.waitingForMatchId = false;
@@ -428,6 +431,7 @@ class Runner {
             timeoutWarningSentAt: null,
             timeoutHeldNotified: null,
             currentGameDotaMatchId: null, // clear the previous game's id before this game starts
+            awaitingRestart: false,       // fresh lobby → the next launch is a normal (coin-toss) start
             readyState: { radiantReady: false, direReady: false },
         });
         await this.updateBotStatus('lobby_active');
@@ -515,10 +519,31 @@ class Runner {
             // Persist the started match id (may be 0 here; the lobby fills it in shortly, and
             // the result poll re-reads it live). This is what lets the OpenDota fallback and any
             // post-restart recovery find the game to check for its result.
-            await this.updateSession({ state: 'in_game', gameStartedAt: nowIso(), currentGameSides, currentGameDotaMatchId: dotaMatchId || null });
+            this.pendingRestart = false; // the game is live again; any prior restart intent is satisfied
+            await this.updateSession({ state: 'in_game', gameStartedAt: nowIso(), currentGameSides, currentGameDotaMatchId: dotaMatchId || null, awaitingRestart: false });
             await this.updateBotStatus('in_game');
             this.clearTimer('readyTimeout');
             logger.info(`[Runner] Game ${this.session.currentGameNumber} started (dotaMatchId=${dotaMatchId}) sides=${JSON.stringify(currentGameSides)}`);
+        }
+
+        // Game ABORTED back to the lobby: after the game was live (gameStarted + state 'in_game'),
+        // Dota can dump everyone back into the lobby (a player/caster times out during load). The
+        // lobby returns to UI state with the coin-toss RESULT preserved, so we must NOT re-toss —
+        // just re-verify both teams are ready and fire a single relaunch. Debounce 5s and re-check
+        // the LIVE state so a transient state flip during a normal start can't false-trigger.
+        if (this.gameStarted && this.session.state === 'in_game' && state === LOBBY_STATE.UI && !this.handlingAbort) {
+            this.handlingAbort = true;
+            setTimeout(async () => {
+                try {
+                    const liveState = this.dota.getCurrentLobbyState?.();
+                    if (liveState === LOBBY_STATE.UI && this.session.state === 'in_game' && this.gameStarted) {
+                        logger.warn('[Runner] Game aborted back to the lobby — asking both teams to ready up for a restart');
+                        this.gameStarted = false;
+                        await this.promptReadyAgain({ restart: true });
+                    }
+                } catch (e) { logger.error('[Runner] abort-recovery error', e); }
+                finally { this.handlingAbort = false; }
+            }, 5000);
         }
 
         // Once in-game, backfill the match id as soon as the lobby carries a real one (it is
@@ -665,12 +690,84 @@ class Runner {
     // ─── Chat: ready-check, custom commands, late-vote ───────────────────────────
     async onChatMessage(msg) {
         if (this.finalizing) return;
+        // Manual restart failsafe: an authorized participant can force a fresh ready-check + relaunch
+        // when the bot didn't auto-detect an abort or is otherwise stuck. Works in any live state.
+        if ((msg.message || '').trim().toLowerCase() === '!start') {
+            if (await this.handleStartCommand(msg)) return;
+        }
         // Late-arrival forfeit/wait votes (whenever a vote is open).
         if (this.session.lateVote) await this.handleLateVoteChat(msg);
         // Ready/unready only while waiting in the open lobby.
         if (this.session.state === 'lobby_open') await this.handleReadyCheck(msg);
         // Admin-defined custom commands (e.g. "!rules") — reply any time the lobby is live.
         await this.handleCustomCommands(msg);
+    }
+
+    /**
+     * Handle the !start failsafe. Only recognized match participants (rosters/coaches) or
+     * whitelisted admins may force a start. If a game was already launched (coin toss done) or is
+     * stuck in_game, this restarts with a single relaunch (no re-toss); otherwise it falls back to
+     * a normal coin-toss start. Returns true if the command was accepted+handled.
+     */
+    async handleStartCommand(msg) {
+        const wl = [...(this.botConfig.whitelist ?? [])];
+        const authorized = L.getAllAuthorizedSteamIds(this.session, wl);
+        if (!authorized.has(msg.steamId32)) return false;
+        const restart = this.session.state === 'in_game' || this.gameStarted
+            || this.pendingRestart || !!this.session.awaitingRestart;
+        logger.info(`[Runner] !start from ${msg.steamId32} (restart=${restart}, state=${this.session.state})`);
+        await this.promptReadyAgain({ restart });
+        return true;
+    }
+
+    /**
+     * Reset to an open ready-check and ask BOTH teams to type the ready command again (Polish).
+     * Used by abort-recovery and the !start failsafe. restart:true means the coin toss is already
+     * applied (post-abort / mid-series) so the eventual launch is a single relaunch — no re-toss,
+     * no score change; restart:false means a normal coin-toss start.
+     */
+    async promptReadyAgain({ restart }) {
+        this.pendingRestart = !!restart;
+        this.gameStarted = false;
+        await this.updateSession({
+            state: 'lobby_open',
+            readyState: { radiantReady: false, direReady: false },
+            readyCheckStartedAt: null,
+            startGameSentAt: null,
+            awaitingRestart: !!restart,
+            ...(restart ? { currentGameDotaMatchId: null } : {}),
+        });
+        await this.updateBotStatus('lobby_active');
+        const readyCmd = this.botConfig.readyCheck?.readyCommands?.[0] ?? '!ready';
+        await this.sendChat(`[BOT] No to jeszcze raz... Wszyscy gotowi? Obie drużyny wpiszcie ponownie ${readyCmd}.`);
+    }
+
+    /**
+     * Restart a game that was aborted back to the lobby (or forced via !start). The coin-toss result
+     * is still applied to the lobby, so we do NOT re-run the coin toss and do NOT touch the series
+     * score — a single launchPracticeLobby resumes the game. The ready-check already re-verified both
+     * teams are seated together on opposite sides, so we only guard the team-name (result-sync) field.
+     */
+    async relaunchGame() {
+        if (this.session.startGameSentAt) return; // already relaunched
+        const launchNames = this.dota.getLobbyTeamNames();
+        if (!launchNames.radiant?.trim() || !launchNames.dire?.trim()) {
+            await this.sendChat('[BOT] Both teams must have their team name set before restarting. Set it, then ready up again.');
+            await this.updateSession({ readyState: { radiantReady: false, direReady: false }, state: 'lobby_open' });
+            return;
+        }
+        await this.updateSession({ startGameSentAt: nowIso() });
+        const startMsg = this.botConfig.chatMessages?.matchStartMessage;
+        if (startMsg) await this.sendChat(startMsg);
+        try {
+            await this.dota.relaunchGame();
+            this.pendingRestart = false;
+            await this.updateSession({ awaitingRestart: false });
+            logger.info('[Runner] Relaunched game after abort/!start (single launch, coin toss preserved)');
+        } catch (e) {
+            logger.error('[Runner] relaunchGame failed', e);
+            await this.updateSession({ startGameSentAt: null });
+        }
     }
 
     async handleCustomCommands(msg) {
@@ -755,7 +852,10 @@ class Runner {
             if (bothReady) {
                 await this.sendChat(L.applyPlaceholders(chat.allReadyMessage, { player_name: playerName, team_name: teamName }));
                 await this.updateBotStatus('ready_check');
-                await this.launchGame();
+                // Post-abort / !start relaunch resumes with a single launch (coin toss already done);
+                // a normal first start goes through launchGame (pre-launch sweep + coin toss + score).
+                if (this.pendingRestart || this.session.awaitingRestart) await this.relaunchGame();
+                else await this.launchGame();
             } else {
                 await this.sendChat(L.applyPlaceholders(chat.teamReadyMessage, { player_name: playerName, team_name: teamName }));
             }

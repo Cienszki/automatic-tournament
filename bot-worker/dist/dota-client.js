@@ -573,6 +573,19 @@ _lastLobbyOptions = null;       // options used at createPracticeLobby, re-sent 
             this._coinTossTimer = null;
         }
     }
+    /**
+     * Fire a SINGLE launchPracticeLobby to (re)start the game WITHOUT arming the coin toss. Used to
+     * resume after Dota aborts a game back to the lobby (a player/caster fails to load): the coin-toss
+     * result is already applied to the lobby, so re-tossing would be wrong — one launch restarts it.
+     * Also backs the !start failsafe. Fire-and-forget (the launch ack is unreliable), like _fireLaunch.
+     */
+    async relaunchGame() {
+        if (!this.isConnected)
+            throw new Error('Not connected to Dota 2 GC');
+        this._clearCoinToss(); // ensure no stale coin-toss wait is armed
+        logger_js_1.logger.info('Relaunching game (single launch, coin toss preserved)');
+        this._fireLaunch();
+    }
     async leaveLobby() {
         this._clearCoinToss();
         this._lobbyChatChannel = null;
@@ -660,14 +673,46 @@ _lastLobbyOptions = null;       // options used at createPracticeLobby, re-sent 
         return this.longToString(lobby.lobby_id);
     }
     /**
+     * Rebuild the CMsgPracticeLobbySetDetails option set from the LIVE lobby cache. Used as a
+     * fallback when _lastLobbyOptions is null (e.g. after a crash + reattach, where createLobby
+     * wasn't called in this process). Only copies fields whose JS type matches node-dota2's
+     * _lobbyOptions whitelist so _parseOptions keeps them.
+     */
+    _currentLobbyAsOptions() {
+        const l = this._currentLobby || {};
+        const opts = {};
+        const num = (k) => { if (typeof l[k] === 'number') opts[k] = l[k]; };
+        const str = (k) => { if (typeof l[k] === 'string') opts[k] = l[k]; };
+        const bool = (k) => { if (typeof l[k] === 'boolean') opts[k] = l[k]; };
+        str('game_name');
+        str('pass_key');
+        num('server_region');
+        num('game_mode');
+        num('series_type');
+        num('dota_tv_delay');
+        num('leagueid');
+        num('pause_setting');
+        num('selection_priority_rules');
+        bool('allow_cheats');
+        bool('fill_with_bots');
+        bool('allow_spectating');
+        return opts;
+    }
+    /**
      * Set the lobby's series score (radiant_series_wins / dire_series_wins) + draft penalty for the
      * CURRENT game. MUST be called BEFORE startGame()/the coin toss.
      *
-     * IMPORTANT: send ONLY the fields that change. Re-sending the full lobby options here (esp.
-     * selection_priority_rules and series_type) re-initializes the GC's coin-toss/series state, so
-     * the following launchPracticeLobby silently does nothing and the game never starts (this bit
-     * game 2+, which is the first game with a non-zero score). A minimal SetDetails is exactly what
-     * changing the score from the lobby UI does, and the GC keeps the other settings.
+     * IMPORTANT (verified live 2026-07-23, Cienszki test): the GC applies CMsgPracticeLobbySetDetails
+     * as a REPLACE, not a merge — any settable field we OMIT is reset to its proto default. So a
+     * minimal SetDetails (score only) BLANKS game_name/pass_key and resets series_type +
+     * selection_priority_rules → the lobby name goes empty and the coin toss is lost (the reported
+     * game-2 breakage). Fix: resend the FULL create options (incl. selection_priority_rules) with the
+     * new score/penalty; every re-sent field survives, only the score/penalty change.
+     *
+     * Also: node-dota2's configPracticeLobby ACK callback is UNRELIABLE — it often never fires even
+     * though the GC applied the change. Awaiting it hangs the runner BEFORE startGame() so game 2+
+     * never launches (this — not a coin-toss re-init — was the real stall). So we DON'T await the ack;
+     * we resolve on the GC pushing the updated snapshot back (practiceLobbyUpdate) or a short timeout.
      */
     async updateSeriesScore(radiantWins, direWins, penaltyLevelRadiant = 0, penaltyLevelDire = 0) {
         if (!this.isConnected)
@@ -677,7 +722,11 @@ _lastLobbyOptions = null;       // options used at createPracticeLobby, re-sent 
             logger_js_1.logger.warn('updateSeriesScore: no current lobby — skipping');
             return;
         }
+        const base = (this._lastLobbyOptions && Object.keys(this._lastLobbyOptions).length)
+            ? this._lastLobbyOptions
+            : this._currentLobbyAsOptions();
         const options = {
+            ...base,
             radiant_series_wins: radiantWins,
             dire_series_wins: direWins,
             // Admin-issued draft-time penalty levels (0 = none). Whitelisted in _lobbyOptions above.
@@ -685,18 +734,29 @@ _lastLobbyOptions = null;       // options used at createPracticeLobby, re-sent 
             penalty_level_dire: penaltyLevelDire || 0,
         };
         return new Promise((resolve) => {
+            let settled = false;
+            const finish = (why) => {
+                if (settled)
+                    return;
+                settled = true;
+                this.dota2.removeListener('practiceLobbyUpdate', onUpdate);
+                clearTimeout(timer);
+                logger_js_1.logger.info(`Lobby set: series radiant ${radiantWins} - dire ${direWins}, penalty radiant ${penaltyLevelRadiant || 0} - dire ${penaltyLevelDire || 0} (${why})`);
+                resolve();
+            };
+            const onUpdate = () => finish('lobby update');
+            const timer = setTimeout(() => finish('timeout'), 3000);
+            this.dota2.once('practiceLobbyUpdate', onUpdate);
             try {
+                // Fire-and-forget the ack — only log if it (rarely) comes back with an error.
                 this.dota2.configPracticeLobby(lobby.lobby_id, options, (err) => {
                     if (err)
-                        logger_js_1.logger.error('configPracticeLobby (series score / penalty) failed', err);
-                    else
-                        logger_js_1.logger.info(`Lobby set: series radiant ${radiantWins} - dire ${direWins}, penalty radiant ${penaltyLevelRadiant || 0} - dire ${penaltyLevelDire || 0}`);
-                    resolve();
+                        logger_js_1.logger.error('configPracticeLobby (series score / penalty) ack error', err);
                 });
             }
             catch (e) {
                 logger_js_1.logger.error('updateSeriesScore threw', e);
-                resolve();
+                finish('threw');
             }
         });
     }

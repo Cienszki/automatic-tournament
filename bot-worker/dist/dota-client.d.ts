@@ -52,6 +52,8 @@ export declare class DotaClient extends EventEmitter {
     sendChatMessage(message: string): Promise<void>;
     kickPlayer(steamId32: string): Promise<void>;
     startGame(): Promise<void>;
+    /** Single launch to resume a game aborted back to the lobby (or via !start) — no coin-toss re-roll. */
+    relaunchGame(): Promise<void>;
     /** Set the lobby series score + per-side draft penalty for the current game (before coin toss). */
     updateSeriesScore(radiantWins: number, direWins: number, penaltyLevelRadiant?: number, penaltyLevelDire?: number): Promise<void>;
     leaveLobby(): Promise<void>;
