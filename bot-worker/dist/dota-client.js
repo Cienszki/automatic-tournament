@@ -252,6 +252,7 @@ class DotaClient extends events_1.EventEmitter {
     dota2;
     _connected = false;
 _inDota = false;
+_everReady = false;             // true once the GC has been ready at least once — distinguishes a reconnect from the first connect
 _currentLobby = null;
 _allowedPlayers = null;
 _selectionPriorityRules = null; // 0=Manual, 1=Automatic (coin toss)
@@ -889,6 +890,12 @@ _lastLobbyOptions = null;       // options used at createPracticeLobby, re-sent 
         // Lobby state updates
         this.dota2.on('practiceLobbyUpdate', (lobby) => {
             this._currentLobby = lobby;
+            // After a GC reconnect the chat-channel membership is gone and _lobbyChatChannel was
+            // cleared; the GC may deliver the lobby cache AFTER re-emitting 'ready', so re-join here
+            // (idempotent) as soon as the lobby is back so send/receive chat works again.
+            if (this._everReady && !this._lobbyChatChannel && this.getCurrentLobbyId()) {
+                this._joinLobbyChat();
+            }
             // Coin toss: if we're between the two launches, check whether both teams
             // have chosen yet and fire the second launch when they have.
             this._maybeFinishCoinToss(lobby);
@@ -932,6 +939,32 @@ _lastLobbyOptions = null;       // options used at createPracticeLobby, re-sent 
             this._currentLobby = null;
             this.emit('lobbyCleared');
         });
+        // ── GC session health (the key to surviving a Dota patch / GC restart) ────────────
+        // node-dota2 emits 'unready' when it loses the GC session (ConnectionStatus != HAVE_SESSION)
+        // and keeps re-sending ClientHello until the GC returns, then re-emits 'ready'. We must
+        // track BOTH so isConnected tells the truth and we re-establish chat on recovery. Without
+        // this, a GC-only blip left _inDota stale-true (isConnected reported healthy) while every
+        // send silently failed and no inbound events arrived → the bot looked frozen forever.
+        this.dota2.on('unready', () => {
+            logger_js_1.logger.warn('Dota 2: GC session lost (unready) — node-dota2 is re-trying ClientHello');
+            this._inDota = false;
+            this.emit('gcUnready');
+        });
+        // Persistent 'ready' (connect() uses a separate once() only to resolve the connect promise).
+        // Fires again every time the GC session is regained.
+        this.dota2.on('ready', () => {
+            this._inDota = true;
+            if (this._everReady) {
+                logger_js_1.logger.info('Dota 2: GC session regained (ready) — re-joining lobby chat');
+                // Channel membership is dropped on a GC restart — force a fresh join of Lobby_<id>.
+                this._lobbyChatJoined = false;
+                this._lobbyChatChannel = null;
+                if (this.getCurrentLobbyId())
+                    this._joinLobbyChat();
+                this.emit('gcReconnected');
+            }
+            this._everReady = true;
+        });
         // Steam disconnection
         this.steam.on('error', (_eresult) => {
             logger_js_1.logger.warn(`Steam connection error/disconnected`);
@@ -939,11 +972,20 @@ _lastLobbyOptions = null;       // options used at createPracticeLobby, re-sent 
             this._inDota = false;
             this.emit('disconnected', 'error');
         });
-        // Steam reconnection after loggedOn fires again
+        // Steam reconnection after loggedOn fires again. A full Steam drop tears down the GC session,
+        // so we must RE-LAUNCH the GC handshake (gamesPlayed + dota2.launch) — merely flipping
+        // _connected left the GC dead (dota2.launch was never re-called → 'ready' never re-fired).
         this.steam.on('loggedOn', () => {
             if (!this._connected) {
-                logger_js_1.logger.info('Steam: Reconnected');
+                logger_js_1.logger.info('Steam: Reconnected — re-launching Dota 2 GC handshake');
                 this._connected = true;
+                try {
+                    this.steam.setPersona(steam_user_1.default.EPersonaState.Online);
+                    this.steam.gamesPlayed([570]);
+                    this.dota2.launch();
+                } catch (e) {
+                    logger_js_1.logger.error('Failed to re-launch GC after Steam reconnect', e);
+                }
             }
         });
     }

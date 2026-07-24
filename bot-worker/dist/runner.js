@@ -72,6 +72,8 @@ class Runner {
         this.gameStarted = false;  // current-game in_game latch (reset each game)
         this.pendingRestart = false; // true while a post-abort / !start ready-check is pending a single relaunch (coin toss already done)
         this.handlingAbort = false;  // re-entrancy guard so a stream of UI-state updates schedules only one abort check
+        this.creatingLobby = false;  // true while createLobbyForCurrentGame runs — the stuck-'lobby_creating' watchdog defers to it
+        this._lastReconnectPromptAt = 0; // debounce GC-reconnect ready re-prompts
         this.postgameNoOutcomeLogged = false; // one warn per game when POSTGAME arrives w/ outcome still 0
         this.lastPlayersJson = ''; // de-dupe lastLobbyPlayers field writes
         this.disconnectTimer = null;
@@ -394,6 +396,8 @@ class Runner {
     }
 
     async createLobbyForCurrentGame() {
+        this.creatingLobby = true;
+        try {
         const gameNum = this.session.currentGameNumber || 1;
         const baseName = (this.session.lobbyName || 'Match').replace(/ - Game \d+$/, '');
         const lobbyName = gameNum > 1 ? `${baseName} - Game ${gameNum}` : baseName;
@@ -405,11 +409,12 @@ class Runner {
         await this.updateSession({ state: 'lobby_creating' });
         await this.updateBotStatus('creating_lobby');
 
-        await this.dota.createLobby({
+        const created = await this.createLobbyResilient({
             name: lobbyName,
             password: this.session.lobbyPassword,
             ...settings,
         });
+        if (!created) return; // exhausted retries → triggered a respawn-exit; stop this flow
         const dotaLobbyId = this.dota.getCurrentLobbyId() || 'pending';
         logger.info(`[Runner] Lobby created (${dotaLobbyId}) "${lobbyName}"`);
 
@@ -436,6 +441,45 @@ class Runner {
         });
         await this.updateBotStatus('lobby_active');
         await this.inviteRosterAndWelcome();
+        } finally {
+            this.creatingLobby = false;
+        }
+    }
+
+    /**
+     * Create the lobby with retries. node-dota2's createPracticeLobby can time out (30s) — a
+     * stale-lobby race after the between-games leaveLobby, or Valve's per-account create
+     * rate-limit — and a single failure would strand the whole series at game 1 (there was no
+     * retry). Retry with backoff, leaving any lingering lobby first. If every attempt fails, exit(1)
+     * so the Conductor respawns us with a FRESH GC connection and reattachOrCreate recreates the
+     * current game's lobby. Returns true on success, false if it gave up (and triggered the exit).
+     */
+    async createLobbyResilient(opts) {
+        const attempts = 4;
+        let lastErr;
+        for (let i = 1; i <= attempts && !this.finalizing; i++) {
+            // A lingering lobby (leave not fully propagated) makes createPracticeLobby hang.
+            if (this.dota.getCurrentLobbyId()) {
+                logger.warn(`[Runner] Still in a lobby before create (attempt ${i}/${attempts}) — leaving it first`);
+                try { await this.dota.leaveLobby(); } catch { /* best-effort */ }
+                await sleep(2500);
+            }
+            try {
+                await this.dota.createLobby(opts);
+                if (i > 1) logger.info(`[Runner] Lobby created on attempt ${i}/${attempts}`);
+                return true;
+            } catch (e) {
+                lastErr = e;
+                const backoff = Math.min(15000, 3000 * i);
+                logger.warn(`[Runner] createLobby attempt ${i}/${attempts} failed: ${e?.message || e} — retrying in ${backoff}ms`);
+                await sleep(backoff);
+            }
+        }
+        if (this.finalizing) return false;
+        logger.error(`[Runner] createLobby failed after ${attempts} attempts (${lastErr?.message || lastErr}) — exiting for Conductor respawn; reattach will recreate game ${this.session.currentGameNumber}`);
+        // Non-terminal exit(1): same account respawns → reattachOrCreate → recreate this game.
+        await this.finishUp(1, this.session.state, true);
+        return false;
     }
 
     /** Invite ONLY the registered roster (+coaches; NOT the whitelist) and post instructions. */
@@ -465,6 +509,32 @@ class Runner {
         this.dota.on('chatMessage', (msg) => this.onChatMessage(msg).catch((e) => logger.error('[Runner] chatMessage', e)));
         this.dota.on('lobbyCleared', () => logger.info('[Runner] Lobby cleared/destroyed'));
         this.dota.on('disconnected', () => this.onDisconnected());
+        this.dota.on('gcReconnected', () => this.onGcReconnected().catch((e) => logger.error('[Runner] gcReconnected', e)));
+    }
+
+    /**
+     * The GC session came back after a drop (e.g. a Dota patch restarted the coordinator mid-lobby).
+     * DotaClient has already re-joined lobby chat. If we were still waiting in the lobby (game not
+     * live yet), the coin-toss/ready state may be gone — so re-run the ready-check and ask both
+     * teams to confirm, no admin needed. A blip while a game is actually live (in_game) needs no
+     * action; the abort watchdog handles a real abort.
+     */
+    async onGcReconnected() {
+        if (this.finalizing) return;
+        // Only re-prompt where a lobby definitely exists and players are waiting. In 'lobby_creating'
+        // the create retry/watchdog re-establishes the lobby; in 'in_game' the abort watchdog handles
+        // a real abort — neither should trigger a premature ready-prompt.
+        const preGame = ['lobby_open', 'ready_check'].includes(this.session.state);
+        logger.info(`[Runner] GC reconnected (state=${this.session.state}, re-prompt=${preGame})`);
+        if (!preGame) return;
+        // Guard against reconnect flapping re-prompting every few seconds.
+        if (this._lastReconnectPromptAt && now() - this._lastReconnectPromptAt < 15000) return;
+        this._lastReconnectPromptAt = now();
+        const readyCmd = this.botConfig.readyCheck?.readyCommands?.[0] ?? '!ready';
+        await this.promptReadyAgain({
+            restart: false, // game wasn't live yet — a normal (coin-toss) start is correct
+            message: `Połączenie z Dotą zostało wznowione po przerwie serwera. Obie drużyny wpiszcie ponownie ${readyCmd}, aby wystartować.`,
+        });
     }
 
     onDisconnected() {
@@ -726,7 +796,7 @@ class Runner {
      * applied (post-abort / mid-series) so the eventual launch is a single relaunch — no re-toss,
      * no score change; restart:false means a normal coin-toss start.
      */
-    async promptReadyAgain({ restart }) {
+    async promptReadyAgain({ restart, message } = {}) {
         this.pendingRestart = !!restart;
         this.gameStarted = false;
         await this.updateSession({
@@ -739,7 +809,8 @@ class Runner {
         });
         await this.updateBotStatus('lobby_active');
         const readyCmd = this.botConfig.readyCheck?.readyCommands?.[0] ?? '!ready';
-        await this.sendChat(`[BOT] No to jeszcze raz... Wszyscy gotowi? Obie drużyny wpiszcie ponownie ${readyCmd}.`);
+        const text = message || `No to jeszcze raz... Wszyscy gotowi? Obie drużyny wpiszcie ponownie ${readyCmd}.`;
+        await this.sendChat(`[BOT] ${text}`);
     }
 
     /**
@@ -1153,8 +1224,12 @@ class Runner {
         const winnerName = winnerSide === 'radiant' ? this.session.radiantTeam.teamName : this.session.direTeam.teamName;
         await this.sendChat(`Game ${this.session.currentGameNumber} complete! ${winnerName} wins. Score: ${scoreText}. Opening lobby for Game ${next}...`);
 
-        // Leave the current lobby before recreating for the next game.
+        // Leave the current lobby before recreating for the next game, then let the GC fully
+        // release it. Creating a new lobby while the GC still has us in the old one makes
+        // createPracticeLobby hang (30s timeout) and used to strand the whole series at game 1
+        // (no retry). The settle here + the retry in createLobbyResilient make game N+1 reliable.
         try { await this.dota.leaveLobby(); } catch (e) { logger.warn('[Runner] leave between games failed', e); }
+        await sleep(3000);
 
         // Carry the series score into the next lobby; reset the late-timer baseline to give
         // teams an inter-game break before the next forfeit window opens.
@@ -1435,6 +1510,22 @@ class Runner {
                 if (this.anyRegisteredPlayerPresent()) return;
                 await this.cancel(`Stuck in ready_check for ${Math.round(elapsedMin)} minutes without the game launching`,
                     '[BOT] The match did not start after the ready check. Lobby closed. Please contact an admin.');
+            }
+            return;
+        }
+
+        // Stuck-in-creation watchdog: createLobbyForCurrentGame sets 'lobby_creating' then creates.
+        // If the create threw and its own retries also failed WITHOUT triggering the respawn-exit
+        // (or the process was interrupted mid-create), the session would sit in 'lobby_creating'
+        // forever and pin the bot. If we've been here too long and no create is currently running,
+        // retry it. createLobbyResilient's own exit(1) path handles the give-up case.
+        if (this.session.state === 'lobby_creating') {
+            if (this.creatingLobby) return; // a create is actively running — let it finish
+            const ref = this.session.updatedAt || this.session.gameEndedAt || this.session.lobbyCreatedAt || this.session.createdAt;
+            const elapsedMin = (ts - new Date(ref).getTime()) / 60000;
+            if (elapsedMin >= 3) {
+                logger.warn(`[Runner] Watchdog: stuck in 'lobby_creating' ${Math.round(elapsedMin)}min — retrying create for game ${this.session.currentGameNumber}`);
+                await this.createLobbyForCurrentGame().catch((e) => logger.error('[Runner] watchdog create retry failed', e));
             }
             return;
         }
