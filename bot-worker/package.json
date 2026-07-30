@@ -7,7 +7,8 @@
   "scripts": {
     "start": "node dist/conductor.js",
     "conductor": "node dist/conductor.js",
-    "runner": "node dist/runner.js"
+    "runner": "node dist/runner.js",
+    "setup:local": "node setup-local.js"
   },
   "engines": {
     "node": ">=20"
