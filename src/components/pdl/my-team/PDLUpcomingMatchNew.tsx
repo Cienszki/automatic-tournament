@@ -62,6 +62,7 @@ interface PDLUpcomingMatchProps {
   onRejectStandinRequest?: (requestId: string, reason?: string) => Promise<void>;
   onAppealStandinRequest?: (requestId: string) => Promise<void>;
   onCancelStandinRequest?: (requestId: string) => Promise<void>;
+  onEditStandinGames?: (requestId: string, gameNumbers: number[]) => Promise<void>;
   // Coach handlers
   onSetCoach?: (matchId: string, data: { nickname: string; steamProfileUrl: string }) => Promise<void>;
   onRemoveCoach?: (matchId: string) => Promise<void>;
@@ -100,6 +101,7 @@ export function PDLUpcomingMatch({
   onRejectStandinRequest,
   onAppealStandinRequest,
   onCancelStandinRequest,
+  onEditStandinGames,
   onSetCoach,
   onRemoveCoach,
   opponentStandinRequests = [],
@@ -184,6 +186,14 @@ export function PDLUpcomingMatch({
     if (!maxDate || finalDeadline < maxDate) {
       maxDate = finalDeadline;
     }
+  }
+
+  // Never allow proposing a date in the past. When no range applies (e.g. a playoff match with no
+  // set date yet), the lower bound would otherwise be open — pin it to today.
+  {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (!minDate || minDate < today) minDate = today;
   }
 
   // Count pending items
@@ -534,6 +544,7 @@ export function PDLUpcomingMatch({
                 onRejectRequest={onRejectStandinRequest}
                 onAppealRequest={onAppealStandinRequest}
                 onCancelRequest={onCancelStandinRequest}
+                onEditGames={onEditStandinGames}
                 isOpponentView={false}
                 isMmrLimited={isMmrLimited}
                 totalGames={totalGamesInSeries}

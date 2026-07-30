@@ -13,6 +13,7 @@ import { doc, updateDoc, collection, writeBatch, deleteDoc, getDocs, query, orde
 import { db } from '@/lib/firebase';
 import type { Match, DraftPenalty, DraftPenaltyLevel } from '@/lib/definitions';
 import { DRAFT_PENALTY_LEVELS } from '@/lib/definitions';
+import { syncPlayoffResultFromMirror } from '@/lib/playoff-sync-actions';
 import { 
   Select,
   SelectContent,
@@ -324,19 +325,42 @@ export function MatchesTab() {
     setIsSaving(true);
     try {
       const batch = writeBatch(db);
-      
+
       // Update match scores
       matches.forEach(match => {
         const matchRef = doc(db, 'tournaments', tournament.id, 'matches', match.id);
+        // Derive winnerId from the scores when completed (manual edits otherwise leave it unset,
+        // which the playoff bracket sync needs to advance the winner). Equal scores = draw = null.
+        const completed = match.status === 'completed';
+        const winnerId = completed
+          ? (match.teamA.score > match.teamB.score
+              ? match.teamA.id
+              : match.teamB.score > match.teamA.score
+                ? match.teamB.id
+                : null)
+          : null;
         batch.update(matchRef, {
           'teamA.score': match.teamA.score,
           'teamB.score': match.teamB.score,
           status: match.status,
+          winnerId,
           updatedAt: new Date().toISOString(),
         });
       });
 
       await batch.commit();
+
+      // Keep the playoff bracket in sync for any manually-edited playoff mirrors (the game-sync /
+      // forfeit paths do this automatically, but a hand-edited score saved here does not).
+      const playoffMatches = matches.filter(m => m.isPlayoff || (m as { playoff_match_id?: string }).playoff_match_id);
+      for (const m of playoffMatches) {
+        try {
+          const r = await syncPlayoffResultFromMirror(tournament.id, m.id);
+          if (!r.success && r.error) console.warn(`[MatchesTab] playoff sync ${m.id}:`, r.error);
+        } catch (e) {
+          console.warn(`[MatchesTab] playoff sync failed for ${m.id}`, e);
+        }
+      }
 
       toast({
         title: 'Zapisano',
@@ -1860,12 +1884,12 @@ export function MatchesTab() {
             {forfeitScope === 'games' && (
               <div className="space-y-2">
                 <Label className="font-logik text-sm font-medium">Które gry?</Label>
-                <div className="flex gap-2">
-                  {[1, 2].map(n => (
+                <div className="flex flex-wrap gap-2">
+                  {Array.from({ length: forfeitMatch ? gamesInMatch(forfeitMatch) : 1 }, (_, i) => i + 1).map(n => (
                     <Button
                       key={n}
                       variant={forfeitedGames.includes(n) ? 'default' : 'outline'}
-                      className={cn('flex-1 font-logik', forfeitedGames.includes(n) && 'text-white')}
+                      className={cn('font-logik w-14', forfeitedGames.includes(n) && 'text-white')}
                       style={forfeitedGames.includes(n) ? { backgroundColor: theme.primaryColor } : {}}
                       onClick={() => toggleForfeitGame(n)}
                     >

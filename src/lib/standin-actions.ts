@@ -424,6 +424,57 @@ export async function cancelStandinRequest(
 }
 
 /**
+ * Requesting captain changes which games an existing standin covers — e.g. the standin gets injured
+ * mid-series, so the captain narrows them to the games already played and then files a fresh request
+ * for the remaining games. Editing sends the request BACK to 'pending' (the opponent captain must
+ * re-approve) and removes the now-stale approvedStandins entry (re-added on re-approval), so the bot
+ * drops the standin from upcoming games until the opponent agrees again.
+ */
+export async function editStandinRequestGames(
+  tournamentId: string,
+  requestId: string,
+  gameNumbers: number[],
+): Promise<StandinActionResult> {
+  try {
+    const reqRef = standinReqRef(tournamentId, requestId);
+    const reqSnap = await reqRef.get();
+    if (!reqSnap.exists) return { success: false, error: 'Request not found' };
+    const req = reqSnap.data()!;
+
+    const now = new Date().toISOString();
+    const cleanGames = Array.isArray(gameNumbers)
+      ? [...new Set(gameNumbers.map(Number).filter((n) => Number.isFinite(n) && n > 0))].sort((a, b) => a - b)
+      : [];
+
+    await reqRef.update({
+      gameNumbers: cleanGames,
+      status: 'pending',
+      respondedAt: FieldValue.delete(),
+      rejectionReason: FieldValue.delete(),
+      updatedAt: now,
+    });
+
+    // Drop the stale approved entry — it is re-created (with the new games) on re-approval.
+    await (await resolveMatchRef(tournamentId, req.matchId)).update({
+      [`approvedStandins.${requestId}`]: FieldValue.delete(),
+    }).catch(() => { /* field may not exist yet */ });
+
+    // Remove the standin from any active lobby session until the opponent re-approves.
+    try {
+      const { syncLobbySessionStandins } = await import('./bot/bot-config-actions');
+      await syncLobbySessionStandins(tournamentId, req.matchId);
+    } catch (syncErr) {
+      console.warn('[standin-actions] Failed to sync lobby sessions after standin edit:', syncErr);
+    }
+
+    return { success: true };
+  } catch (e) {
+    console.error('[standin-actions] editStandinRequestGames error', e);
+    return { success: false, error: (e as Error).message };
+  }
+}
+
+/**
  * Requesting captain escalates a rejected request to admin appeal.
  */
 export async function appealStandinRequest(

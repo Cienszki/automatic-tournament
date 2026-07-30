@@ -60,10 +60,11 @@ export function BracketMatchCard({ match, divisionColor = '#666', teamASourceLab
   const hasBothTeams = !!match.teamA && !!match.teamB;
   const canOpenModal = hasBothTeams;
 
-  const deadlineDate = match.deadline ? new Date(match.deadline) : null;
+  // Only show a date/time once the match is actually scheduled (or completed). We deliberately do
+  // NOT fall back to the admin deadline — viewers don't know deadlines exist and it's confusing.
   const scheduledDate = match.scheduledFor ? new Date(match.scheduledFor) : null;
   const completedDate = isCompleted && match.result?.completedAt ? new Date(match.result.completedAt) : null;
-  const displayDate = scheduledDate || deadlineDate || completedDate;
+  const displayDate = scheduledDate || completedDate;
 
   return (
     <>

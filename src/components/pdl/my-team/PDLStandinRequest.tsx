@@ -33,6 +33,7 @@ import {
   ShieldAlert,
   Plus,
   X,
+  Pencil,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Player, PDLStandinRequest as PDLStandinRequestType, PDLStandinRequestStatus } from '@/lib/definitions';
@@ -78,6 +79,11 @@ interface PDLStandinRequestProps {
   onAppealRequest: (requestId: string) => Promise<void>;
   /** Called when captain cancels their own pending request */
   onCancelRequest?: (requestId: string) => Promise<void>;
+  /**
+   * Called when the captain changes which games an existing standin covers (e.g. an injured
+   * standin mid-series). Sends the request back to the opponent for re-approval.
+   */
+  onEditGames?: (requestId: string, gameNumbers: number[]) => Promise<void>;
   /** Whether we are the opponent approving (true) or the requesting team (false) */
   isOpponentView?: boolean;
   /**
@@ -130,6 +136,7 @@ export function PDLStandinRequestSection({
   onRejectRequest,
   onAppealRequest,
   onCancelRequest,
+  onEditGames,
   isOpponentView = false,
   allTournamentRequests,
   matchNameMap,
@@ -145,6 +152,10 @@ export function PDLStandinRequestSection({
   const [showRejectInput, setShowRejectInput] = useState<string | null>(null);
   // Resolved steamId32 for standin requests that use vanity Steam URLs
   const [resolvedSteamId32s, setResolvedSteamId32s] = useState<Record<string, string>>({});
+  // Edit-games state: which request is being edited + the games currently selected.
+  const [editingRequestId, setEditingRequestId] = useState<string | null>(null);
+  const [editGames, setEditGames] = useState<number[]>([]);
+  const [editSaving, setEditSaving] = useState(false);
 
   // Form state
   const [selectedPlayerId, setSelectedPlayerId] = useState('');
@@ -660,6 +671,76 @@ export function PDLStandinRequestSection({
                     Odwołaj się do admina
                   </Button>
                 )}
+
+                {/* Edit games — narrow/adjust which games an existing standin covers (needs
+                    re-approval). Lets a captain react to a standin injured mid-series, then request
+                    a fresh standin for the remaining games. */}
+                {!isOpponentView && onEditGames && totalGames > 1 &&
+                  (request.status === 'approved' || request.status === 'appeal_approved' || request.status === 'pending') && (
+                    editingRequestId === request.id ? (
+                      <div className="w-full space-y-2 rounded-lg border border-pdl-gold/20 bg-pdl-gold/5 p-3">
+                        <p className="text-xs text-white/60">
+                          Zaznacz gry, w których standin faktycznie gra. Zmiana wraca do zatwierdzenia przez przeciwnika.
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          {allGameNumbers.map((g) => {
+                            const active = editGames.includes(g);
+                            return (
+                              <button
+                                key={g}
+                                type="button"
+                                onClick={() => setEditGames(prev => prev.includes(g) ? prev.filter(x => x !== g) : [...prev, g].sort((a, b) => a - b))}
+                                className={cn(
+                                  'px-3 py-1.5 rounded-md text-sm border transition-all',
+                                  active
+                                    ? 'bg-pdl-gold/20 border-pdl-gold/50 text-pdl-gold font-logik-extended-bold'
+                                    : 'border-white/10 text-white/60 hover:text-white hover:border-white/30',
+                                )}
+                              >
+                                Gra {g}
+                              </button>
+                            );
+                          })}
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            disabled={editSaving || editGames.length === 0}
+                            className="bg-pdl-gold/80 hover:bg-pdl-gold text-black"
+                            onClick={async () => {
+                              if (editGames.length === 0) return;
+                              setEditSaving(true);
+                              try {
+                                await onEditGames(request.id, editGames);
+                                setEditingRequestId(null);
+                              } finally {
+                                setEditSaving(false);
+                              }
+                            }}
+                          >
+                            {editSaving ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <CheckCircle className="w-4 h-4 mr-1" />}
+                            Zapisz gry
+                          </Button>
+                          <Button size="sm" variant="ghost" className="text-white/60" onClick={() => setEditingRequestId(null)}>
+                            Anuluj
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="border-pdl-gold/30 text-pdl-gold hover:bg-pdl-gold/10"
+                        onClick={() => {
+                          setEditingRequestId(request.id);
+                          setEditGames((request.gameNumbers && request.gameNumbers.length) ? [...request.gameNumbers] : [...allGameNumbers]);
+                        }}
+                      >
+                        <Pencil className="w-4 h-4 mr-1" />
+                        Edytuj gry
+                      </Button>
+                    )
+                  )}
 
                 {/* Cancel button allows captain to remove request at any status */}
                 {!isOpponentView && onCancelRequest && (

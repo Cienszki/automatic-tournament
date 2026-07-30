@@ -3,6 +3,8 @@
 import { useMemo, useRef, useState, useEffect } from 'react';
 import { useTournament } from '@/context/TournamentContext';
 import { useTranslations } from 'next-intl';
+import { collection, getDocs, query, where } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 import { BracketMatchCard } from './BracketMatchCard';
 import {
   computeMirroredBracketLayout,
@@ -26,13 +28,42 @@ const PAD = 6; // viewport padding kept around the fitted canvas
  * to fit the viewport so both halves stay visible at once.
  */
 export function MirroredPlayoffBracket({ matches, maxHeight = '80vh' }: MirroredPlayoffBracketProps) {
-  const { theme } = useTournament();
+  const { theme, tournament } = useTournament();
   const t = useTranslations('pdlPlayoffs');
 
   const viewportRef = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ w: 0, h: 0 });
 
-  const layout = useMemo(() => computeMirroredBracketLayout(matches), [matches]);
+  // Scheduling (scheduledFor) is captain-driven and written to the `matches` mirror, not the
+  // `playoff_matches` bracket doc — so pull it from the mirror and merge it in, otherwise the
+  // bracket card + its detail modal show "TBD" for a match that is actually scheduled.
+  const [mirrorSchedule, setMirrorSchedule] = useState<Map<string, string>>(new Map());
+  useEffect(() => {
+    if (!tournament?.id) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const snap = await getDocs(query(
+          collection(db, 'tournaments', tournament.id, 'matches'),
+          where('isPlayoff', '==', true),
+        ));
+        const map = new Map<string, string>();
+        snap.docs.forEach(d => {
+          const s = d.data().scheduledFor;
+          if (s) map.set(d.id, s);
+        });
+        if (!cancelled) setMirrorSchedule(map);
+      } catch { /* leave empty — cards fall back to the bracket doc */ }
+    })();
+    return () => { cancelled = true; };
+  }, [tournament?.id]);
+
+  const mergedMatches = useMemo(
+    () => matches.map(m => (!m.scheduledFor && mirrorSchedule.has(m.id) ? { ...m, scheduledFor: mirrorSchedule.get(m.id) } : m)),
+    [matches, mirrorSchedule],
+  );
+
+  const layout = useMemo(() => computeMirroredBracketLayout(mergedMatches), [mergedMatches]);
   const { positions, connectors, columns, totalWidth, totalHeight } = layout;
 
   // Source labels ("U2A Winner" / "L1B Loser") for still-empty slots.

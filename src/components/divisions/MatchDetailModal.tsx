@@ -9,10 +9,10 @@ import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import Image from 'next/image';
 import { Calendar, Trophy, ExternalLink, Loader2, Shield, Users, ArrowRightLeft, Swords, Sparkles, HandHelping, Eye } from 'lucide-react';
-import type { Match } from '@/lib/definitions';
+import type { Match, DraftPenalty } from '@/lib/definitions';
 import { cn } from '@/lib/utils';
 import { DraftPenaltyBanner } from '@/components/penalties/DraftPenaltyBanner';
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useTournament } from '@/context/TournamentContext';
 import { loadTeamPlayersForDisplay } from '@/lib/team-players-loader';
@@ -87,6 +87,31 @@ export function MatchDetailModal({ match, isOpen, onClose, divisionColor }: Matc
   const [teamAPlayers, setTeamAPlayers] = useState<SimplePlayer[]>([]);
   const [teamBPlayers, setTeamBPlayers] = useState<SimplePlayer[]>([]);
   const [playersLoaded, setPlayersLoaded] = useState(false);
+
+  // Draft penalties live on the `matches` doc (the same id as this match / the playoff mirror), but
+  // a match opened from the bracket is built from `playoff_matches` and won't carry them — so fetch
+  // them straight from the authoritative match doc.
+  const [fetchedPenalties, setFetchedPenalties] = useState<DraftPenalty[]>([]);
+  // scheduledFor from the `matches` doc — a playoff match opened from the bracket is built from
+  // `playoff_matches` (no scheduledFor), so fall back to the mirror's schedule for the date.
+  const [fetchedScheduledFor, setFetchedScheduledFor] = useState<string>('');
+  useEffect(() => {
+    if (!isOpen || !tournament?.id || !match?.id) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const snap = await getDoc(doc(db, 'tournaments', tournament.id, 'matches', match.id));
+        if (!cancelled) {
+          setFetchedPenalties((snap.exists() ? (snap.data().draftPenalties as DraftPenalty[]) : []) || []);
+          setFetchedScheduledFor((snap.exists() ? (snap.data().scheduledFor as string) : '') || '');
+        }
+      } catch {
+        if (!cancelled) { setFetchedPenalties([]); setFetchedScheduledFor(''); }
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [isOpen, tournament?.id, match?.id]);
+  const penalties = match?.draftPenalties && match.draftPenalties.length > 0 ? match.draftPenalties : fetchedPenalties;
 
   const loadGames = useCallback(async () => {
     if (!tournament?.id || !match?.id || gamesLoaded) return;
@@ -181,10 +206,11 @@ export function MatchDetailModal({ match, isOpen, onClose, divisionColor }: Matc
 
   if (!match) return null;
 
+  const effectiveScheduledFor = match.scheduledFor || fetchedScheduledFor;
   const matchDate = match.completed_at
     ? new Date(match.completed_at)
-    : match.scheduledFor
-      ? new Date(match.scheduledFor)
+    : effectiveScheduledFor
+      ? new Date(effectiveScheduledFor)
       : null;
 
   const isCompleted = match.status === 'completed';
@@ -394,12 +420,12 @@ export function MatchDetailModal({ match, isOpen, onClose, divisionColor }: Matc
             <div className="w-full h-px bg-gradient-to-r from-transparent via-white/10 to-transparent my-8" />
 
             {/* Draft penalties (admin-issued) */}
-            {match.draftPenalties && match.draftPenalties.length > 0 && (
+            {penalties.length > 0 && (
               <div className="mb-8">
                 <h4 className="text-xs uppercase tracking-widest text-white/40 font-logik-extended-bold mb-2 flex items-center gap-2">
                   Kary draftu
                 </h4>
-                <DraftPenaltyBanner penalties={match.draftPenalties} teamA={match.teamA} teamB={match.teamB} />
+                <DraftPenaltyBanner penalties={penalties} teamA={match.teamA} teamB={match.teamB} />
               </div>
             )}
 

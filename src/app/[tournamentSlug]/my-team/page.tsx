@@ -25,7 +25,7 @@ import { MatchHistoryTable } from "@/components/app/my-team/MatchHistoryTable";
 import { TeamStatsGrid } from "@/components/app/my-team/TeamStatsGrid";
 import { PlayerAnalyticsTable } from "@/components/app/my-team/PlayerAnalyticsTable";
 import { getUserTeam, getMatchesForTeam, getAllTeams, getAllStandins } from "@/lib/firestore";
-import { approveStandinRequest, rejectStandinRequest, cancelStandinRequest, appealStandinRequest, precheckStandinRequest } from '@/lib/standin-actions';
+import { approveStandinRequest, rejectStandinRequest, cancelStandinRequest, appealStandinRequest, precheckStandinRequest, editStandinRequestGames } from '@/lib/standin-actions';
 import { getTournamentLobbyPassword } from '@/lib/bot/bot-config-actions';
 import type { Standin } from "@/lib/definitions";
 import NoTeamFound from '@/components/app/my-team/NoTeamFound';
@@ -1297,6 +1297,17 @@ function MyTeamView() {
     }
   };
 
+  const handleEditStandinGames = async (requestId: string, gameNumbers: number[]) => {
+    if (!tournament?.id) return;
+    const result = await editStandinRequestGames(tournament.id, requestId, gameNumbers);
+    if (result.success) {
+      await refreshStandinRequests();
+      toast({ title: 'Zmieniono gry standina', description: 'Prośba wróciła do ponownego zatwierdzenia przez przeciwnika.' });
+    } else {
+      toast({ title: 'Błąd', description: result.error ?? 'Nie udało się zmienić gier standina.', variant: 'destructive' });
+    }
+  };
+
   // ─── Coach handlers ───
   const handleSetCoach = async (matchId: string, data: { nickname: string; steamProfileUrl: string }) => {
     if (!tournament?.id || !team) return;
@@ -2147,6 +2158,7 @@ function MyTeamView() {
                       onRejectStandinRequest={handleRejectStandinRequest}
                       onAppealStandinRequest={handleAppealStandinRequest}
                       onCancelStandinRequest={handleCancelStandinRequest}
+                      onEditStandinGames={handleEditStandinGames}
                       onSetCoach={isMmrLimited ? undefined : handleSetCoach}
                       onRemoveCoach={isMmrLimited ? undefined : handleRemoveCoach}
                       onRefreshMatch={() => refreshSingleMatch(match.id)}
