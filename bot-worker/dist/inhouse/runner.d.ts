@@ -17,6 +17,9 @@ export declare class InhouseRunner {
     private matchStarted;
     private webhookSecret;
     private siteUrl;
+    /** Bot token + guild for `!link <name>`. Unset degrades to the code flow. */
+    private discordToken;
+    private discordGuildId;
     private countdownTimer;
     private countdownTicks;
     private launching;
@@ -56,6 +59,21 @@ export declare class InhouseRunner {
      */
     private onLobbyCleared;
     private onEndSessionCommand;
+    /**
+     * `!link <discord name>` — resolve the name on the guild and link on the spot.
+     *
+     * Every failure returns a line the player can act on, because this runs in
+     * lobby chat where "something went wrong" is useless. The refusals that
+     * matter:
+     *
+     *   ambiguous  — two people answer to that name. Guessing would attach a
+     *                stranger's history to this Steam account, so it is refused
+     *                and the candidates are shown.
+     *   claimed    — this Steam account already belongs to a different Discord
+     *                profile. Silently reassigning would move someone's whole
+     *                history, so `linkSteamAccount` refuses and so do we.
+     */
+    private linkByDiscordName;
     private clearCountdown;
     private cancelCountdown;
     private startCountdown;

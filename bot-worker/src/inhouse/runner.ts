@@ -29,6 +29,9 @@ import type { LobbyChatMessage, LobbyUpdateData } from '../dota-client';
 import { logger } from '../logger';
 import { InhouseStore } from './core/store';
 import { renewLease, releaseAccount } from './core/lease';
+import { issueLinkCode } from './core/link-codes';
+import { backfillOnLink } from './core/attendance';
+import { findGuildMember } from './discord-lookup';
 import type { InhouseGame } from './core/types';
 import { BanGuard } from './ban-guard';
 import { InhouseSessionLogic } from './session-logic';
@@ -78,6 +81,9 @@ export class InhouseRunner {
   private matchStarted = false;
   private webhookSecret: string | null;
   private siteUrl: string;
+  /** Bot token + guild for `!link <name>`. Unset degrades to the code flow. */
+  private discordToken: string | null;
+  private discordGuildId: string | null;
 
   private countdownTimer: ReturnType<typeof setTimeout> | null = null;
   private countdownTicks: ReturnType<typeof setTimeout>[] = [];
@@ -98,6 +104,8 @@ export class InhouseRunner {
     this.store = new InhouseStore(db);
     this.webhookSecret = process.env.INHOUSE_BOT_WEBHOOK_SECRET || null;
     this.siteUrl = process.env.SITE_URL || process.env.NEXT_PUBLIC_SITE_URL || 'https://dota2inhouse.pl';
+    this.discordToken = process.env.DISCORD_TOKEN || null;
+    this.discordGuildId = process.env.DISCORD_GUILD_ID || null;
   }
 
   // ─── Boot ────────────────────────────────────────────────────────────────
@@ -173,6 +181,10 @@ export class InhouseRunner {
       cancelCountdown: () => this.cancelCountdown(),
       countdownRunning: () => this.countdownTimer !== null,
       isAdmin: (steamId32) => this.store.isAdmin({ steamId32 }),
+      issueLinkCode: (steamId32, playerName) => issueLinkCode(this.store, steamId32, playerName),
+      linkByDiscordName: (steamId32, playerName, query) =>
+        this.linkByDiscordName(steamId32, playerName, query),
+      siteUrl: this.siteUrl,
     });
 
     this.startHeartbeat();
@@ -428,6 +440,80 @@ export class InhouseRunner {
       /* best-effort */
     }
     await this.finishUp(0);
+  }
+
+  // ─── Linking ────────────────────────────────────────────────────────────────
+
+  /**
+   * `!link <discord name>` — resolve the name on the guild and link on the spot.
+   *
+   * Every failure returns a line the player can act on, because this runs in
+   * lobby chat where "something went wrong" is useless. The refusals that
+   * matter:
+   *
+   *   ambiguous  — two people answer to that name. Guessing would attach a
+   *                stranger's history to this Steam account, so it is refused
+   *                and the candidates are shown.
+   *   claimed    — this Steam account already belongs to a different Discord
+   *                profile. Silently reassigning would move someone's whole
+   *                history, so `linkSteamAccount` refuses and so do we.
+   */
+  private async linkByDiscordName(
+    steamId32: string,
+    playerName: string,
+    query: string
+  ): Promise<{ message: string }> {
+    const lookup = await findGuildMember(
+      { token: this.discordToken, guildId: this.discordGuildId },
+      query
+    );
+
+    if (!lookup.ok) {
+      if (lookup.reason === 'ambiguous') {
+        return {
+          message: `${playerName}: kilka osób pasuje do "${query}" (${lookup.candidates.join(', ')}) — podaj dokładniejszy nick.`,
+        };
+      }
+      if (lookup.reason === 'not_found') {
+        return { message: `${playerName}: nie znalazłem nikogo o nicku "${query}" na Discordzie.` };
+      }
+      if (lookup.reason === 'not_configured') {
+        const base = this.siteUrl.replace(/\/+$/, '');
+        return {
+          message: `${playerName}: łączenie po nicku jest niedostępne — wpisz !link i użyj kodu na ${base}/inhouse/link`,
+        };
+      }
+      return { message: `${playerName}: nie udało się sprawdzić Discorda — spróbuj za chwilę.` };
+    }
+
+    const { discordId, displayName } = lookup.match;
+
+    const link = await this.store.linkSteamAccount(discordId, steamId32, 'manual', displayName);
+    if (!link.ok && link.reason === 'claimed_by_other') {
+      return {
+        message: `${playerName}: to konto Steam jest już przypisane do innego profilu Discord.`,
+      };
+    }
+    if (link.alreadyLinked) {
+      return { message: `${playerName}: to konto jest już połączone z ${displayName}.` };
+    }
+
+    // The payoff, and the reason linking is worth doing at all: every inhouse
+    // is on record whether or not the player ever linked, so the history is
+    // waiting for them the moment they do.
+    let found = 0;
+    try {
+      found = (await backfillOnLink(this.store, discordId, steamId32)).gamesFound;
+    } catch (error) {
+      logger.warn(`[InhouseRunner] Backfill failed for ${discordId}/${steamId32}`, error);
+    }
+
+    logger.info(`[InhouseRunner] Linked steam ${steamId32} → discord ${discordId} (${displayName})`);
+    return {
+      message: found
+        ? `${playerName}: połączono z ${displayName} — znaleźliśmy ${found} twoich wcześniejszych gier.`
+        : `${playerName}: połączono z ${displayName}.`,
+    };
   }
 
   // ─── Countdown and launch ───────────────────────────────────────────────────

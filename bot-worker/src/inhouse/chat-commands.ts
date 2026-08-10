@@ -30,6 +30,20 @@ export interface CommandHooks {
   cancelCountdown: () => boolean;
   countdownRunning: () => boolean;
   isAdmin: (steamId32: string) => Promise<boolean>;
+  /** Generate (or re-use) a one-time link code for this Steam ID. */
+  issueLinkCode: (steamId32: string, playerName: string) => Promise<string>;
+  /**
+   * Link this Steam account to whoever answers to `discordQuery` on the guild.
+   * Returns the one-line lobby-chat response; resolution and ambiguity handling
+   * live in the runner so this router stays testable without a network.
+   */
+  linkByDiscordName: (
+    steamId32: string,
+    playerName: string,
+    discordQuery: string
+  ) => Promise<{ message: string }>;
+  /** Public site URL, used in the `!link` fallback instructions. */
+  siteUrl: string;
 }
 
 type Handler = (ctx: CommandContext) => Promise<void>;
@@ -119,7 +133,39 @@ export class LobbyCommandRouter {
     this.add('status', { tier: 'everyone', handler: (c) => this.status(c) });
     this.add('start', { tier: 'everyone', handler: (c) => this.start(c) });
     this.add('cancel', { tier: 'everyone', handler: (c) => this.cancel(c) });
+    this.add('link', { tier: 'everyone', handler: (c) => this.link(c) });
     this.add('help', { tier: 'everyone', handler: (c) => this.help(c) });
+  }
+
+  /**
+   * Connect a Steam account to a Discord one, from inside the lobby.
+   *
+   *   !link cienszki   → resolve the name on the guild and link immediately
+   *   !link            → fall back to a one-time code typed on the website
+   *
+   * The named form is the one that matters. Sending a player to a website to
+   * log in and type a code has three places to lose them, and they are in Dota
+   * precisely because they don't want to be anywhere else. Linking is what
+   * unlocks their history — the backfill reports how many past games it found —
+   * so the flow has to cost one line of chat.
+   *
+   * Deliberately NOT a claim-and-confirm handshake: nobody is DM'd to approve.
+   * Mislinking costs the mislinker their own stats, which is a price the
+   * community owner has explicitly accepted in exchange for the friction.
+   * Ambiguity is the real failure, and that IS refused — see the runner.
+   */
+  private async link(ctx: CommandContext): Promise<void> {
+    if (ctx.rest) {
+      const outcome = await this.hooks.linkByDiscordName(ctx.steamId32, ctx.playerName, ctx.rest);
+      await this.hooks.reply(outcome.message);
+      return;
+    }
+
+    const code = await this.hooks.issueLinkCode(ctx.steamId32, ctx.playerName);
+    const base = this.hooks.siteUrl.replace(/\/+$/, '');
+    await this.hooks.reply(
+      `${ctx.playerName}: wpisz !link <twój nick z Discorda>, albo wejdź na ${base}/inhouse/link i wpisz kod ${code}`
+    );
   }
 
   private async status(ctx: CommandContext): Promise<void> {
@@ -176,7 +222,7 @@ export class LobbyCommandRouter {
   }
 
   private async help(ctx: CommandContext): Promise<void> {
-    await this.hooks.reply('!status !start !cancel !help');
+    await this.hooks.reply('!status !start !cancel !link !help');
   }
 }
 
