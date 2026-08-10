@@ -92,7 +92,22 @@ class LobbyCommandRouter {
         this.add('start', { tier: 'everyone', handler: (c) => this.start(c) });
         this.add('cancel', { tier: 'everyone', handler: (c) => this.cancel(c) });
         this.add('link', { tier: 'everyone', handler: (c) => this.link(c) });
+        this.add('link-info', { tier: 'everyone', handler: (c) => this.linkInfo(c) });
+        this.add('linkinfo', { tier: 'everyone', handler: (c) => this.linkInfo(c) });
         this.add('help', { tier: 'everyone', handler: (c) => this.help(c) });
+    }
+    /**
+     * Who is this Steam account linked to?
+     *
+     * Answers the question that otherwise has no answer from inside Dota: a
+     * player has no way to tell whether their account is connected, or which
+     * profile is collecting their games. Also the natural way to notice a
+     * mislink — since linking takes no confirmation, this is the check that
+     * surfaces one.
+     */
+    async linkInfo(ctx) {
+        const outcome = await this.hooks.linkInfo(ctx.steamId32, ctx.playerName);
+        await this.hooks.reply(outcome.message);
     }
     /**
      * Connect a Steam account to a Discord one, from inside the lobby.
@@ -166,7 +181,7 @@ class LobbyCommandRouter {
             await this.hooks.reply(`Start aborted by ${ctx.playerName}.`);
     }
     async help(ctx) {
-        await this.hooks.reply('!status !start !cancel !link !help');
+        await this.hooks.reply('!status !start !cancel !link !link-info !help');
     }
 }
 exports.LobbyCommandRouter = LobbyCommandRouter;

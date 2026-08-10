@@ -32,6 +32,7 @@ const lease_1 = require("./core/lease");
 const link_codes_1 = require("./core/link-codes");
 const attendance_1 = require("./core/attendance");
 const discord_lookup_1 = require("./discord-lookup");
+const types_1 = require("./core/types");
 const ban_guard_1 = require("./ban-guard");
 const session_logic_1 = require("./session-logic");
 const command_queue_1 = require("./command-queue");
@@ -80,6 +81,8 @@ class InhouseRunner {
     /** Recovers a launch the GC silently ignored — see armLaunchWatchdog. */
     launchWatchdog = null;
     heartbeatTimer = null;
+    /** onSnapshot unsubscribe for the game doc — see watchGameDoc. */
+    gameUnsub = null;
     finalizing = false;
     exitCode = 0;
     donePromiseResolve = null;
@@ -156,9 +159,12 @@ class InhouseRunner {
             isAdmin: (steamId32) => this.store.isAdmin({ steamId32 }),
             issueLinkCode: (steamId32, playerName) => (0, link_codes_1.issueLinkCode)(this.store, steamId32, playerName),
             linkByDiscordName: (steamId32, playerName, query) => this.linkByDiscordName(steamId32, playerName, query),
+            linkInfo: (steamId32, playerName) => this.linkInfo(steamId32, playerName),
             siteUrl: this.siteUrl,
         });
+        await this.claimAccountStatus();
         this.startHeartbeat();
+        this.watchGameDoc();
         await this.reattachOrCreate();
         if (this.finalizing)
             return this.exitCode;
@@ -440,6 +446,36 @@ class InhouseRunner {
                 : `${playerName}: połączono z ${displayName}.`,
         };
     }
+    /**
+     * `!link-info` — which Discord profile owns this Steam account?
+     *
+     * Resolved through findPlayerBySteamId, which matches with array-contains,
+     * so it answers correctly from any of the person's alts rather than only
+     * their primary.
+     */
+    async linkInfo(steamId32, playerName) {
+        let player;
+        try {
+            player = await this.store.findPlayerBySteamId(steamId32);
+        }
+        catch (error) {
+            logger_1.logger.warn(`[InhouseRunner] link-info lookup failed for ${steamId32}`, error);
+            return { message: `${playerName}: nie udało się sprawdzić — spróbuj za chwilę.` };
+        }
+        if (!player) {
+            return {
+                message: `${playerName}: to konto nie jest połączone — wpisz !link <twój nick z Discorda>`,
+            };
+        }
+        const name = player.discordName || player.discordId;
+        const parts = [`połączony z ${name}`];
+        // Only worth saying when there is more than one — the common case is one
+        // account and the extra clause is noise.
+        if (player.steamIds.length > 1)
+            parts.push(`${player.steamIds.length} konta Steam`);
+        parts.push(`${player.gamesPlayed} gier`);
+        return { message: `${playerName}: ${parts.join(' · ')}` };
+    }
     // ─── Countdown and launch ───────────────────────────────────────────────────
     clearCountdown() {
         if (this.countdownTimer)
@@ -541,6 +577,67 @@ class InhouseRunner {
         }
     }
     // ─── Heartbeat / lease ──────────────────────────────────────────────────────
+    /**
+     * Mark the account busy in the field the TOURNAMENT side reads.
+     *
+     * The two systems track busy-ness differently: inhouses use
+     * leasedByGameId + leaseHeartbeatAt, tournaments use
+     * busyWithSessionId + a `status` that must be exactly 'idle' for
+     * assignPendingSessions to consider an account free. A runner that only
+     * renews the lease is invisible to that filter, so the Conductor could hand
+     * this same account to a tournament match mid-inhouse — a duplicate Steam
+     * login that crash-loops both sides.
+     *
+     * The website's leaseAccount already sets 'assigned' before we start, so in
+     * the normal flow this is a no-op; it exists for every other entry point
+     * (manual --bot-id, a respawn after the status was cleared elsewhere).
+     */
+    async claimAccountStatus() {
+        try {
+            await this.db.collection('botAccounts').doc(this.botAccountId).update({
+                status: 'assigned',
+                updatedAt: new Date().toISOString(),
+            });
+        }
+        catch (e) {
+            logger_1.logger.warn(`[InhouseRunner] Could not mark ${this.botAccountId} assigned`, e);
+        }
+    }
+    /**
+     * React to the game being ended from outside this process.
+     *
+     * The host cancelling on the website, an admin force-releasing the bot
+     * account, or the website's stuck-game sweeper all just write a terminal
+     * state to the document — they do not, and should not, need to reach this
+     * process. `end_inhouse_session` covers the same ground but is explicitly
+     * best-effort in the contract, so relying on it alone leaves a runner
+     * holding a live lobby and a leased Steam account indefinitely for a game
+     * everyone else considers over. The tournament runner watches its session
+     * doc for exactly this reason; this is the inhouse equivalent.
+     */
+    watchGameDoc() {
+        this.gameUnsub = this.db
+            .collection('inhouseGames')
+            .doc(this.gameId)
+            .onSnapshot((snap) => {
+            if (!snap.exists || this.finalizing)
+                return;
+            const next = snap.data();
+            if (!(0, types_1.isTerminal)(next.state))
+                return;
+            logger_1.logger.warn(`[InhouseRunner] Game ${this.gameId} was moved to '${next.state}' externally — leaving the lobby`);
+            void (async () => {
+                try {
+                    if (this.dota)
+                        await this.dota.leaveLobby();
+                }
+                catch {
+                    /* best-effort */
+                }
+                await this.finishUp(0);
+            })();
+        }, (err) => logger_1.logger.error(`[InhouseRunner] Game watch failed for ${this.gameId}`, err));
+    }
     startHeartbeat() {
         const beat = async () => {
             try {
@@ -575,6 +672,15 @@ class InhouseRunner {
         this.clearCountdown();
         this.commandQueue?.stop();
         this.sessionLogic?.stop();
+        if (this.gameUnsub) {
+            try {
+                this.gameUnsub();
+            }
+            catch {
+                /* ignore */
+            }
+            this.gameUnsub = null;
+        }
         try {
             await (0, lease_1.releaseAccount)(this.db, this.botAccountId);
         }

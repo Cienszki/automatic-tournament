@@ -27,6 +27,24 @@ dotenv.config();
 const { initFirebase } = require('./firebase.js');
 const { logger } = require('./logger.js');
 const { scheduleUpcomingMatches } = require('./scheduling.js');
+// Inhouse lobbies are supervised the same way tournament ones are, but driven
+// by inhouseGames instead of botLobbySessions. All of that logic lives in the
+// module below (real TypeScript, built from src/) so the footprint in this
+// sourceless file stays to the four additive hooks marked "inhouse".
+// Loaded defensively: this file is the entry point for the tournament system,
+// which ran for months before inhouses existed and must keep running exactly as
+// it did. A bare require here would make any inhouse-side load failure — a file
+// missed by the `dist` gitignore rule, a bad build — a boot crash that takes
+// tournaments down with it. Degrading to no-ops instead means the worst an
+// inhouse problem can do is disable inhouses.
+let spawnInhouseRunnersTick = async () => { };
+let stopInhouseRunners = () => { };
+try {
+    ({ spawnInhouseRunnersTick, stopInhouseRunners } = require('./inhouse/conductor-hook.js'));
+}
+catch (err) {
+    logger.error('[Conductor] Inhouse hook failed to load — inhouse lobbies disabled, tournaments unaffected', err);
+}
 
 const RUNNER_SCRIPT = path.resolve(__dirname, 'runner.js');
 const TERMINAL_STATES = ['completed', 'cancelled', 'error'];
@@ -51,6 +69,8 @@ function nowIso() { return new Date().toISOString(); }
 
 /** sessionId → supervised runner state */
 const runners = new Map();
+/** inhouse: gameId → supervised runner state (separate keyspace, same shape) */
+const inhouseRunners = new Map();
 let shuttingDown = false;
 let db;
 
@@ -293,6 +313,10 @@ async function workTick() {
         await assignPendingSessions();
         await ensureRunners();
         await cancelStuckPending();
+        // inhouse: spawn/rediscover runners for website-created lobbies. Last,
+        // and inside the same try, so a failure here can never prevent the
+        // tournament steps above from having run.
+        await spawnInhouseRunnersTick(db, inhouseRunners, () => shuttingDown);
     } catch (e) {
         logger.error('[Conductor] work tick error', e);
     } finally {
@@ -337,6 +361,9 @@ async function main() {
             state.stopping = true;
             if (state.child && state.child.exitCode === null) state.child.kill('SIGTERM');
         }
+        // inhouse: same treatment — they reattach to their live lobbies on the
+        // next Conductor start rather than being orphaned.
+        stopInhouseRunners(inhouseRunners);
         setTimeout(() => process.exit(0), 5000);
     };
     process.on('SIGINT', () => shutdown('SIGINT'));

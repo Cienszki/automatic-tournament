@@ -28,6 +28,10 @@ export interface CommandHooks {
     linkByDiscordName: (steamId32: string, playerName: string, discordQuery: string) => Promise<{
         message: string;
     }>;
+    /** Report which Discord profile this Steam account belongs to, if any. */
+    linkInfo: (steamId32: string, playerName: string) => Promise<{
+        message: string;
+    }>;
     /** Public site URL, used in the `!link` fallback instructions. */
     siteUrl: string;
 }
@@ -42,6 +46,16 @@ export declare class LobbyCommandRouter {
     private permitted;
     private add;
     private register;
+    /**
+     * Who is this Steam account linked to?
+     *
+     * Answers the question that otherwise has no answer from inside Dota: a
+     * player has no way to tell whether their account is connected, or which
+     * profile is collecting their games. Also the natural way to notice a
+     * mislink — since linking takes no confirmation, this is the check that
+     * surfaces one.
+     */
+    private linkInfo;
     /**
      * Connect a Steam account to a Discord one, from inside the lobby.
      *

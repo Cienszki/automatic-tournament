@@ -42,6 +42,8 @@ export interface CommandHooks {
     playerName: string,
     discordQuery: string
   ) => Promise<{ message: string }>;
+  /** Report which Discord profile this Steam account belongs to, if any. */
+  linkInfo: (steamId32: string, playerName: string) => Promise<{ message: string }>;
   /** Public site URL, used in the `!link` fallback instructions. */
   siteUrl: string;
 }
@@ -134,7 +136,23 @@ export class LobbyCommandRouter {
     this.add('start', { tier: 'everyone', handler: (c) => this.start(c) });
     this.add('cancel', { tier: 'everyone', handler: (c) => this.cancel(c) });
     this.add('link', { tier: 'everyone', handler: (c) => this.link(c) });
+    this.add('link-info', { tier: 'everyone', handler: (c) => this.linkInfo(c) });
+    this.add('linkinfo', { tier: 'everyone', handler: (c) => this.linkInfo(c) });
     this.add('help', { tier: 'everyone', handler: (c) => this.help(c) });
+  }
+
+  /**
+   * Who is this Steam account linked to?
+   *
+   * Answers the question that otherwise has no answer from inside Dota: a
+   * player has no way to tell whether their account is connected, or which
+   * profile is collecting their games. Also the natural way to notice a
+   * mislink — since linking takes no confirmation, this is the check that
+   * surfaces one.
+   */
+  private async linkInfo(ctx: CommandContext): Promise<void> {
+    const outcome = await this.hooks.linkInfo(ctx.steamId32, ctx.playerName);
+    await this.hooks.reply(outcome.message);
   }
 
   /**
@@ -222,7 +240,7 @@ export class LobbyCommandRouter {
   }
 
   private async help(ctx: CommandContext): Promise<void> {
-    await this.hooks.reply('!status !start !cancel !link !help');
+    await this.hooks.reply('!status !start !cancel !link !link-info !help');
   }
 }
 

@@ -26,6 +26,8 @@ export declare class InhouseRunner {
     /** Recovers a launch the GC silently ignored — see armLaunchWatchdog. */
     private launchWatchdog;
     private heartbeatTimer;
+    /** onSnapshot unsubscribe for the game doc — see watchGameDoc. */
+    private gameUnsub;
     private finalizing;
     private exitCode;
     private donePromiseResolve;
@@ -74,6 +76,14 @@ export declare class InhouseRunner {
      *                history, so `linkSteamAccount` refuses and so do we.
      */
     private linkByDiscordName;
+    /**
+     * `!link-info` — which Discord profile owns this Steam account?
+     *
+     * Resolved through findPlayerBySteamId, which matches with array-contains,
+     * so it answers correctly from any of the person's alts rather than only
+     * their primary.
+     */
+    private linkInfo;
     private clearCountdown;
     private cancelCountdown;
     private startCountdown;
@@ -90,6 +100,35 @@ export declare class InhouseRunner {
      */
     private armLaunchWatchdog;
     private unlockAfterFailedLaunch;
+    /**
+     * Mark the account busy in the field the TOURNAMENT side reads.
+     *
+     * The two systems track busy-ness differently: inhouses use
+     * leasedByGameId + leaseHeartbeatAt, tournaments use
+     * busyWithSessionId + a `status` that must be exactly 'idle' for
+     * assignPendingSessions to consider an account free. A runner that only
+     * renews the lease is invisible to that filter, so the Conductor could hand
+     * this same account to a tournament match mid-inhouse — a duplicate Steam
+     * login that crash-loops both sides.
+     *
+     * The website's leaseAccount already sets 'assigned' before we start, so in
+     * the normal flow this is a no-op; it exists for every other entry point
+     * (manual --bot-id, a respawn after the status was cleared elsewhere).
+     */
+    private claimAccountStatus;
+    /**
+     * React to the game being ended from outside this process.
+     *
+     * The host cancelling on the website, an admin force-releasing the bot
+     * account, or the website's stuck-game sweeper all just write a terminal
+     * state to the document — they do not, and should not, need to reach this
+     * process. `end_inhouse_session` covers the same ground but is explicitly
+     * best-effort in the contract, so relying on it alone leaves a runner
+     * holding a live lobby and a leased Steam account indefinitely for a game
+     * everyone else considers over. The tournament runner watches its session
+     * doc for exactly this reason; this is the inhouse equivalent.
+     */
+    private watchGameDoc;
     private startHeartbeat;
     /**
      * Leave the lobby, disconnect, release the account, and resolve run().
