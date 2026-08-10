@@ -212,9 +212,20 @@ class InhouseRunner {
                 await sleep(2_000);
         }
         if (!this.lobbyCreated && !this.finalizing) {
-            logger_1.logger.error(`[InhouseRunner] No create_inhouse_lobby command arrived for game ${this.gameId} within ` +
-                `${CREATE_COMMAND_WAIT_MS}ms — giving up`);
-            await this.finishUp(1);
+            // Ending the process is not enough: the Conductor decides whether to
+            // respawn by re-reading the game, so giving up without a terminal state
+            // spins forever — runner starts, waits the full timeout, releases the
+            // account, gets replaced, repeats. Seen in production burning a
+            // tournament account on an ~80s cycle.
+            //
+            // Which ending depends on whether a lobby ever existed. A game that
+            // already carries a dotaLobbyId had one and lost it — the players closed
+            // it, and `cancelled` is what happened from their point of view. A game
+            // that never had one never got off the ground, which is `failed`.
+            const hadLobby = Boolean(this.game?.dotaLobbyId);
+            logger_1.logger.error(`[InhouseRunner] No lobby for game ${this.gameId} after ${CREATE_COMMAND_WAIT_MS}ms ` +
+                `(${hadLobby ? 'previous lobby is gone from the GC' : 'no create_inhouse_lobby command arrived'}) — giving up`);
+            await this.finishUp(1, hadLobby ? 'cancelled' : 'failed', hadLobby ? 'Lobby zostało zamknięte' : 'Nie udało się utworzyć lobby');
         }
     }
     /** Hooked into CommandQueue — idempotent, so a duplicate/retried command is safe. */
