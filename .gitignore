@@ -78,6 +78,12 @@ web_modules
 .env.test.local
 .env.production.local
 .env.local
+# Backups/variants too: `.env` alone does not match `.env.bak-*`, and these
+# files carry Steam credentials, the Firebase service account and the inhouse
+# webhook secret — one `git add .` away from being published.
+.env.bak*
+.env.*.bak
+.env.backup*
 
 # parcel-bundler cache files
 .cache
