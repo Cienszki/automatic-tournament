@@ -33,7 +33,7 @@ import { issueLinkCode } from './core/link-codes';
 import { backfillOnLink } from './core/attendance';
 import { findGuildMember } from './discord-lookup';
 import { isTerminal } from './core/types';
-import type { InhouseGame } from './core/types';
+import type { GameState, InhouseGame } from './core/types';
 import { BanGuard } from './ban-guard';
 import { InhouseSessionLogic } from './session-logic';
 import { CommandQueue, type InhouseLobbyCommandPayload } from './command-queue';
@@ -51,6 +51,9 @@ const REATTACH_SETTLE_MS = 5_000;
 const CREATE_COMMAND_WAIT_MS = 60_000;
 /** How long after a launch to conclude the GC ignored it, so `!start` can be retried. Generous: a real launch reaches RUN within seconds. */
 const LAUNCH_WATCHDOG_MS = 90_000;
+
+/** Heartbeats (30s each) the GC may report no lobby before we believe it — see reconcileLobby. */
+const LOBBY_MISSES_BEFORE_GONE = 2;
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -93,6 +96,8 @@ export class InhouseRunner {
   private launchWatchdog: ReturnType<typeof setTimeout> | null = null;
 
   private heartbeatTimer: ReturnType<typeof setInterval> | null = null;
+  /** Consecutive heartbeats where the GC had no lobby for us — see reconcileLobby. */
+  private lobbyMisses = 0;
   /** onSnapshot unsubscribe for the game doc — see watchGameDoc. */
   private gameUnsub: (() => void) | null = null;
   private finalizing = false;
@@ -406,8 +411,15 @@ export class InhouseRunner {
 
     const matchId = this.lastKnownMatchId;
     if (!matchId) {
-      logger.info(`[InhouseRunner] Lobby for game ${this.gameId} cleared with no match — nothing to report`);
-      await this.finishUp(0);
+      // Nobody else will ever close this out. The website's ingest cron only
+      // sweeps games that reached a played state, and no match id means no
+      // result is coming, so leaving the state alone leaves the game listed as
+      // open on the site forever — with its Steam account leased to it. The
+      // runner is the only party that knows the lobby is gone, so it has to say so.
+      logger.info(
+        `[InhouseRunner] Lobby for game ${this.gameId} closed before any match started — cancelling the game`
+      );
+      await this.finishUp(0, 'cancelled', 'Lobby zostało zamknięte przed startem meczu');
       return;
     }
 
@@ -734,9 +746,56 @@ export class InhouseRunner {
       } catch (e) {
         logger.warn(`[InhouseRunner] Failed to renew lease on ${this.botAccountId}`, e);
       }
+      this.reconcileLobby();
     };
     this.heartbeatTimer = setInterval(() => void beat(), HEARTBEAT_MS);
     void beat();
+  }
+
+  /**
+   * Notice that our lobby is gone even when no event told us so.
+   *
+   * The lease heartbeat above proves this *process* is alive; it says nothing
+   * about the lobby. Seen in production: a runner sat renewing its lease for
+   * ten minutes with the game still showing `open` on the website and a
+   * tournament account leased to it, long after the lobby had disappeared —
+   * because 'lobbyCleared' never arrived. It is emitted from node-dota2's
+   * `practiceLobbyCleared`, which needs a live GC session to be delivered; lose
+   * the session at the wrong moment and the notification is simply missed, with
+   * nothing to re-deliver it.
+   *
+   * So the heartbeat also reconciles belief against the GC's shared-object
+   * cache, which is authoritative and survives reconnects. Two consecutive
+   * misses rather than one, and only while the GC session is actually up, keeps
+   * an ordinary reconnect blip from tearing down a perfectly good lobby.
+   */
+  private reconcileLobby(): void {
+    if (this.finalizing || !this.lobbyCreated || !this.dota) return;
+    if (!this.dota.isConnected) {
+      this.lobbyMisses = 0; // GC is down; its cache tells us nothing right now.
+      return;
+    }
+    if (this.dota.hasLobby()) {
+      this.lobbyMisses = 0;
+      return;
+    }
+
+    this.lobbyMisses += 1;
+    if (this.lobbyMisses < LOBBY_MISSES_BEFORE_GONE) {
+      logger.warn(
+        `[InhouseRunner] Lobby for game ${this.gameId} is missing from the GC cache ` +
+          `(${this.lobbyMisses}/${LOBBY_MISSES_BEFORE_GONE}) — confirming before ending the game`
+      );
+      return;
+    }
+
+    logger.warn(
+      `[InhouseRunner] Lobby for game ${this.gameId} is gone and no lobbyCleared event arrived — ` +
+        `ending the game so the website and the account pool stop waiting on it`
+    );
+    void this.onLobbyCleared().catch((e) =>
+      logger.error('[InhouseRunner] Reconciled lobby teardown failed', e)
+    );
   }
 
   // ─── Teardown ────────────────────────────────────────────────────────────────
@@ -751,10 +810,35 @@ export class InhouseRunner {
    * the lease is only ever released here on a graceful path. M3 should revisit
    * this once the Conductor can actually respawn with the same account.
    */
-  private async finishUp(exitCode: number): Promise<void> {
+  private async finishUp(
+    exitCode: number,
+    endState?: GameState,
+    endReason?: string
+  ): Promise<void> {
     if (this.finalizing) return;
     this.finalizing = true;
     this.exitCode = exitCode;
+
+    // Before releasing the account, not after. The Conductor decides whether an
+    // exit was a finish or a crash by re-reading the game, so a game that is
+    // still non-terminal when this process dies gets a replacement runner —
+    // which would open a second lobby. Writing the state first closes that gap.
+    // transitionState refuses to overwrite an already-terminal state, so the
+    // website winning the race (or watchGameDoc having fired) is a no-op here.
+    if (endState) {
+      try {
+        await this.store.transitionState(this.gameId, endState, {
+          endedAt: new Date().toISOString(),
+          ...(endReason ? { endReason } : {}),
+        });
+      } catch (e) {
+        logger.error(
+          `[InhouseRunner] Could not mark game ${this.gameId} as ${endState} — the website will ` +
+            `keep showing it as live until its sweeper catches it`,
+          e
+        );
+      }
+    }
 
     if (this.heartbeatTimer) clearInterval(this.heartbeatTimer);
     this.heartbeatTimer = null;

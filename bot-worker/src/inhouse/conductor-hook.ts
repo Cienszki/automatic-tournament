@@ -107,6 +107,16 @@ export async function spawnInhouseRunnersTick(
     // game to `failed`; nothing to run and nothing to fix from here.
     if (!game.botAccountId) continue;
 
+    // The match already happened. `in_progress` is deliberately NOT terminal on
+    // the website's side — its ingest cron treats it as a played state and only
+    // moves the game to `finished` once OpenDota serves the match, which can
+    // take minutes. Without this check the Conductor sees a non-terminal,
+    // account-holding game the instant the runner exits and starts a fresh
+    // runner, which finds no lobby in the GC cache and opens a BRAND NEW lobby
+    // for a game that is already over — re-leasing an account for it too.
+    // A dotaMatchId is the unambiguous marker that a lobby is no longer wanted.
+    if (game.dotaMatchId) continue;
+
     const existing = runners.get(game.id);
     if (existing) {
       if (existing.child && existing.child.exitCode === null) continue; // already running

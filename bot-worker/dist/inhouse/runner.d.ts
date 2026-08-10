@@ -26,6 +26,8 @@ export declare class InhouseRunner {
     /** Recovers a launch the GC silently ignored — see armLaunchWatchdog. */
     private launchWatchdog;
     private heartbeatTimer;
+    /** Consecutive heartbeats where the GC had no lobby for us — see reconcileLobby. */
+    private lobbyMisses;
     /** onSnapshot unsubscribe for the game doc — see watchGameDoc. */
     private gameUnsub;
     private finalizing;
@@ -130,6 +132,24 @@ export declare class InhouseRunner {
      */
     private watchGameDoc;
     private startHeartbeat;
+    /**
+     * Notice that our lobby is gone even when no event told us so.
+     *
+     * The lease heartbeat above proves this *process* is alive; it says nothing
+     * about the lobby. Seen in production: a runner sat renewing its lease for
+     * ten minutes with the game still showing `open` on the website and a
+     * tournament account leased to it, long after the lobby had disappeared —
+     * because 'lobbyCleared' never arrived. It is emitted from node-dota2's
+     * `practiceLobbyCleared`, which needs a live GC session to be delivered; lose
+     * the session at the wrong moment and the notification is simply missed, with
+     * nothing to re-deliver it.
+     *
+     * So the heartbeat also reconciles belief against the GC's shared-object
+     * cache, which is authoritative and survives reconnects. Two consecutive
+     * misses rather than one, and only while the GC session is actually up, keeps
+     * an ordinary reconnect blip from tearing down a perfectly good lobby.
+     */
+    private reconcileLobby;
     /**
      * Leave the lobby, disconnect, release the account, and resolve run().
      *
