@@ -94,7 +94,22 @@ function main() {
         console.log('Fix 3: CSODOTALobbyMember already present');
     }
 
-    // 5) Assertion — load the schema the way node-dota2 does and fail loudly if the lobby
+    // 5) Fix 4 — add `do_player_draft` (field 53) to CMsgPracticeLobbySetDetails. That is the
+    //    GC's name for Immortal Draft; 1.2.0's schema stops at field 49, so the flag is dropped
+    //    on the way out no matter what the website configures. Must stay in step with the
+    //    Dockerfile, or a lobby created locally differs from one created on Railway. Idempotent.
+    const lobbyDetails = path.join(rootSR, 'protobufs', 'dota2', 'dota_gcmessages_client_match_management.proto');
+    let d = fs.readFileSync(lobbyDetails, 'utf8');
+    if (!d.includes('do_player_draft')) {
+        d = d.replace('message CMsgPracticeLobbySetDetails {',
+            'message CMsgPracticeLobbySetDetails { optional bool do_player_draft = 53;');
+        fs.writeFileSync(lobbyDetails, d);
+        console.log('Fix 4: patched CMsgPracticeLobbySetDetails with do_player_draft');
+    } else {
+        console.log('Fix 4: do_player_draft already present');
+    }
+
+    // 6) Assertion — load the schema the way node-dota2 does and fail loudly if the lobby
     //    member type or the game-version enum is missing.
     const D = require(rootSR).GC.Dota.Internal;
     if (!D || !D.CSODOTALobbyMember) {
@@ -105,7 +120,13 @@ function main() {
         console.error('FATAL: DOTAGameVersion.GAME_VERSION_STABLE missing (createLobby would break)');
         process.exit(1);
     }
-    console.log('OK: CSODOTALobbyMember + DOTAGameVersion both present — local node_modules ready.');
+    try {
+        new D.CMsgPracticeLobbySetDetails({ do_player_draft: true });
+    } catch (e) {
+        console.error('FATAL: do_player_draft missing from CMsgPracticeLobbySetDetails (Immortal Draft would be silently dropped)');
+        process.exit(1);
+    }
+    console.log('OK: CSODOTALobbyMember + DOTAGameVersion + do_player_draft present — local node_modules ready.');
     console.log('You can now run:  node dist/diagnose.js --bot-id=<id>   or   node dist/_score-change-test.js --bot-id=<id>');
 }
 
