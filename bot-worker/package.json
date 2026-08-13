@@ -8,6 +8,7 @@
     "start": "node dist/conductor.js",
     "conductor": "node dist/conductor.js",
     "runner": "node dist/runner.js",
+    "discord": "node dist/discord-gateway.js",
     "setup:local": "node setup-local.js",
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit"
@@ -16,8 +17,9 @@
     "node": ">=20"
   },
   "dependencies": {
-    "dotenv": "16.6.1",
+    "discord.js": "^14.27.0",
     "dota2": "7.0.3",
+    "dotenv": "16.6.1",
     "firebase-admin": "12.7.0",
     "steam": "1.4.1",
     "steam-totp": "2.1.2",

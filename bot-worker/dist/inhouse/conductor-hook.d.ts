@@ -27,5 +27,7 @@ export type InhouseRunners = Map<string, InhouseRunnerState>;
  * reason, and accepts the same limitation: counters reset on redeploy.
  */
 export declare function spawnInhouseRunnersTick(db: Firestore, runners: InhouseRunners, isShuttingDown: () => boolean): Promise<void>;
+/** SIGTERM the gateway on a Conductor shutdown, so a redeploy doesn't leave two. */
+export declare function stopDiscordGateway(): void;
 /** SIGTERM every live inhouse child, so a Conductor redeploy doesn't strand them. */
 export declare function stopInhouseRunners(runners: InhouseRunners): void;

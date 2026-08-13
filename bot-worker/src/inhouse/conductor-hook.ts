@@ -28,8 +28,10 @@ import { logger } from '../logger';
 import { ACCOUNT_HOLDING_STATES, isTerminal } from './core/types';
 import type { InhouseGame } from './core/types';
 import { releaseAccount } from './core/lease';
+import { loadGatewayConfig } from '../discord/config';
 
 const INHOUSE_RUNNER_SCRIPT = path.resolve(__dirname, '..', 'inhouse-runner.js');
+const DISCORD_GATEWAY_SCRIPT = path.resolve(__dirname, '..', 'discord-gateway.js');
 
 /** Matches conductor.js's own crash policy so both runner kinds behave alike. */
 const MAX_RESPAWNS = 5;
@@ -136,6 +138,79 @@ export async function spawnInhouseRunnersTick(
   }
 
   await closeOrphanedLobbies(db, runners, busyAccounts, isShuttingDown);
+  ensureDiscordGateway(isShuttingDown);
+}
+
+// ─── Discord gateway ─────────────────────────────────────────────────────────
+//
+// Supervised from the same tick as the runners, for the same reason they are:
+// this is the process that already knows how to fork children, notice they
+// died, and stop them on a redeploy. Doing it here rather than in conductor.js
+// also keeps that sourceless file untouched.
+//
+// Exactly one gateway may run — every connection receives every interaction, so
+// a second process answers every button press twice. The module-level handle is
+// what makes that guarantee: the Conductor is a single process, and a fork only
+// happens when this is empty.
+
+let gateway: ChildProcess | null = null;
+let gatewayRestarts = 0;
+let gatewayLastStart = 0;
+let gatewayNotBefore = 0;
+let gatewayConfigured: boolean | null = null;
+
+function ensureDiscordGateway(isShuttingDown: () => boolean): void {
+  if (isShuttingDown()) return;
+  if (gateway && gateway.exitCode === null) return;
+
+  // Checked once per process: an unconfigured gateway is a normal deployment
+  // (tournaments don't need one), and logging that every 20 seconds is noise.
+  if (gatewayConfigured === null) gatewayConfigured = loadGatewayConfig() !== null;
+  if (!gatewayConfigured) return;
+
+  const now = Date.now();
+  if (gatewayNotBefore && now < gatewayNotBefore) return;
+  if (now - gatewayLastStart > RESPAWN_RESET_MS) gatewayRestarts = 0;
+  if (gatewayRestarts >= MAX_RESPAWNS) return; // crash-looping — stop and leave the logs to say why
+
+  gatewayLastStart = now;
+  gatewayNotBefore = 0;
+
+  logger.info('[Conductor] Starting the Discord gateway');
+  const child = fork(DISCORD_GATEWAY_SCRIPT, [], {
+    env: { ...process.env },
+    cwd: path.resolve(__dirname, '..', '..'),
+    stdio: 'inherit',
+  });
+  gateway = child;
+
+  child.on('error', (err) => logger.error('[Conductor] Discord gateway process error', err));
+  child.on('exit', (code, signal) => {
+    gateway = null;
+    if (isShuttingDown()) return;
+
+    // Exit 0 is the gateway deciding it has nothing to do (no configuration).
+    // Restarting that on a timer would be a loop with no end and no purpose.
+    if (code === 0) {
+      gatewayConfigured = false;
+      logger.info('[Conductor] Discord gateway exited cleanly — not restarting');
+      return;
+    }
+
+    gatewayRestarts += 1;
+    const backoffMs = Math.min(2000 * Math.pow(2, gatewayRestarts), 60_000);
+    gatewayNotBefore = Date.now() + backoffMs;
+    logger.warn(
+      `[Conductor] Discord gateway exited (code=${code} signal=${signal}) — restarting in ` +
+        `~${Math.round(backoffMs / 1000)}s (attempt ${gatewayRestarts}/${MAX_RESPAWNS})`
+    );
+  });
+}
+
+/** SIGTERM the gateway on a Conductor shutdown, so a redeploy doesn't leave two. */
+export function stopDiscordGateway(): void {
+  if (gateway && gateway.exitCode === null) gateway.kill('SIGTERM');
+  gateway = null;
 }
 
 /** How recently a game must have ended for a lobby it left behind to be worth a login. */
@@ -344,4 +419,8 @@ export function stopInhouseRunners(runners: InhouseRunners): void {
     state.stopping = true;
     if (state.child && state.child.exitCode === null) state.child.kill('SIGTERM');
   }
+  // The gateway is supervised from the same tick, so it stops on the same
+  // signal — conductor.js calls this one function and needs to know nothing
+  // about Discord.
+  stopDiscordGateway();
 }
