@@ -32,6 +32,13 @@ export interface SessionLogicDeps {
   sendChatMessage: (message: string) => Promise<void>;
   /** The bot's own Steam32 — every slot/host calculation must exclude this. */
   botSteamId32: string;
+  /**
+   * Fired only when the slot picture actually moved, with the timestamp just
+   * written to `slotSnapshot.updatedAt` and the number of players on a playing
+   * slot. This is the clock the runner's close rules run on (§5a), which is why
+   * it is deliberately NOT fired for a name-only refresh.
+   */
+  onSlotsChanged?: (updatedAt: string, playersSeated: number) => void;
 }
 
 /** How long after a host assignment to announce it in chat — lands after the join-burst of chatter, where it'll actually be read. */
@@ -44,8 +51,10 @@ export class InhouseSessionLogic {
 
   /** Guards against two overlapping member syncs interleaving their writes. */
   private syncing = false;
-  /** Serialized last-written slot snapshot + roster identity, so unchanged states cost nothing. */
-  private lastFingerprint = '';
+  /** Serialized last-written slot picture, so an unchanged one costs nothing — and so `slotSnapshot.updatedAt` never moves without the slots moving. */
+  private lastSlotFingerprint = '';
+  /** Roster identity (who is here, under what name) — changes here touch the game document without rewriting the snapshot. */
+  private lastIdentityFingerprint = '';
   private hostAnnounceTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(game: InhouseGame, deps: SessionLogicDeps) {
@@ -167,25 +176,37 @@ export class InhouseSessionLogic {
       })),
     };
 
-    // The GC re-sends the lobby on every trivial change. Compare first and
-    // write only when the picture a human would see has actually moved.
-    // The fingerprint deliberately covers more than the snapshot: it also
-    // covers membership identity (name, side), so a display name that
-    // resolved late still touches the game document and the website's
-    // roster doesn't go stale — the website re-reads `memberships` only when
-    // the game document itself changes.
-    const fingerprint = JSON.stringify({
-      ...snapshot,
-      roster: present
-        .map((m) => [m.steamId32, m.side, m.displayName ?? '', m.playerName ?? ''].join(''))
-        .sort(),
-    });
+    // The GC re-sends the lobby on every trivial change, so nothing is written
+    // unless something a human would see has actually moved. Two fingerprints,
+    // because two different consumers read two different timestamps and they
+    // must not be conflated (lobby-bot-integration.md §5a):
+    //
+    //   slots    → `slotSnapshot.updatedAt`. The website reads this as "empty
+    //              since" and closes a lobby nobody has been in for five
+    //              minutes. Rewriting the snapshot with unchanged contents —
+    //              on a name refresh, on any periodic touch — resets that clock
+    //              on every pass, and no empty lobby ever closes again. So this
+    //              timestamp moves if and only if the slot picture moved.
+    //   identity → the game document's own `updatedAt`. A display name that
+    //              resolved late, or a spectator arriving, changes nobody's
+    //              slot but does change what the site should render; the site
+    //              re-reads `memberships` only when the game document changes,
+    //              so this still has to be a write.
+    const slotFingerprint = JSON.stringify(snapshot);
+    const identityFingerprint = JSON.stringify(
+      present.map((m) => [m.steamId32, m.side, m.displayName ?? '', m.playerName ?? ''].join(' ')).sort()
+    );
 
-    if (fingerprint !== this.lastFingerprint) {
-      this.lastFingerprint = fingerprint;
-      await this.store.updateGame(this.game.id, {
-        slotSnapshot: { ...snapshot, updatedAt: new Date().toISOString() },
-      });
+    if (slotFingerprint !== this.lastSlotFingerprint) {
+      this.lastSlotFingerprint = slotFingerprint;
+      this.lastIdentityFingerprint = identityFingerprint;
+      const updatedAt = new Date().toISOString();
+      await this.store.updateGame(this.game.id, { slotSnapshot: { ...snapshot, updatedAt } });
+      this.deps.onSlotsChanged?.(updatedAt, slots.inLobby.length);
+    } else if (identityFingerprint !== this.lastIdentityFingerprint) {
+      this.lastIdentityFingerprint = identityFingerprint;
+      // Touches `updatedAt` and nothing else — deliberately not the snapshot.
+      await this.store.updateGame(this.game.id, {});
     }
 
     if (slots.ready && this.game.state === 'open') {

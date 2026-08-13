@@ -26,6 +26,7 @@
 // reason dota-client.js patches itself at module-load time rather than lazily.
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.patchLobbyVisibilityWhitelist = patchLobbyVisibilityWhitelist;
+exports.patchPlayerDraftWhitelist = patchPlayerDraftWhitelist;
 const logger_1 = require("../logger");
 function patchLobbyVisibilityWhitelist() {
     try {
@@ -40,4 +41,43 @@ function patchLobbyVisibilityWhitelist() {
         logger_1.logger.warn('[InhouseRunner] Could not patch dota2 _lobbyOptions for visibility', e);
     }
 }
+/**
+ * Same whitelist, for Immortal Draft — `do_player_draft` (field 53).
+ *
+ * Unlike `visibility`, this one is only safe once the *schema* has the field
+ * too, which is a Dockerfile patch (Fix 4): protobufjs throws
+ * "#do_player_draft is not a field" when a message is built with a field the
+ * schema doesn't know, and createPracticeLobby builds every lobby through this
+ * same message — including tournament lobbies. Whitelisting an unpatched schema
+ * would therefore break lobby creation for the whole bot, not just inhouses.
+ *
+ * So the schema is asked first, by construction, and a failed check leaves the
+ * whitelist alone: Immortal Draft silently degrades to a normal lobby, exactly
+ * as it does today, and nothing else changes.
+ */
+function patchPlayerDraftWhitelist() {
+    try {
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        const dota2mod = require('dota2');
+        if (!dota2mod._lobbyOptions || dota2mod._lobbyOptions.do_player_draft !== undefined)
+            return;
+        const Details = dota2mod.schema?.CMsgPracticeLobbySetDetails;
+        if (!Details)
+            return;
+        try {
+            new Details({ do_player_draft: true });
+        }
+        catch {
+            logger_1.logger.warn('[InhouseRunner] The lobby schema has no do_player_draft field — Immortal Draft will be ' +
+                'ignored and lobbies created normally. The Dockerfile proto patch (Fix 4) did not apply.');
+            return;
+        }
+        dota2mod._lobbyOptions.do_player_draft = 'boolean';
+        logger_1.logger.info('[InhouseRunner] Patched dota2 _lobbyOptions to allow do_player_draft (Immortal Draft)');
+    }
+    catch (e) {
+        logger_1.logger.warn('[InhouseRunner] Could not patch dota2 _lobbyOptions for do_player_draft', e);
+    }
+}
 patchLobbyVisibilityWhitelist();
+patchPlayerDraftWhitelist();

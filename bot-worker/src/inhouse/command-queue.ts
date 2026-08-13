@@ -120,7 +120,13 @@ export class CommandQueue {
 
   private async processOne(cmd: QueuedCommand): Promise<void> {
     const ageMs = Date.now() - Date.parse(cmd.createdAt);
-    if (Number.isFinite(ageMs) && ageMs > MAX_COMMAND_AGE_MS) {
+    // Teardown is exempt from the age limit, and deliberately so: the website
+    // sends `end_inhouse_session` when it writes a lobby off, including when it
+    // does that *because we were down*. Dropping it as stale is dropping it in
+    // precisely the case it was sent for, and the lobby then survives in Dota
+    // with nobody left who thinks they own it. Late is still correct.
+    const perishable = cmd.type !== 'end_inhouse_session';
+    if (perishable && Number.isFinite(ageMs) && ageMs > MAX_COMMAND_AGE_MS) {
       await this.markDone(cmd.ref, 'failed', `Command expired (age ${Math.round(ageMs / 1000)}s)`);
       logger.warn(`[InhouseRunner] Skipped expired command ${cmd.type} (${cmd.id})`);
       return;

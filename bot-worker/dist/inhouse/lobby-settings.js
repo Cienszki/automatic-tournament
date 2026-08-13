@@ -39,5 +39,8 @@ function toInhouseLobbySettings(settings, published) {
         allowSpectators: settings.allowSpectators,
         pauseSetting: settings.pauseSetting,
         selectionPriorityRules: settings.selectionPriorityRules,
+        // Only sent when actually asked for: false and undefined are the same lobby,
+        // and not sending the field keeps a schema that lacks it out of trouble.
+        ...(settings.immortalDraft ? { doPlayerDraft: true } : {}),
     };
 }

@@ -45,9 +45,18 @@ RUN cp -r /app/node_modules/steam/node_modules/steam-resources /app/node_modules
 #   guards it. Idempotent.
 RUN node -e "const fs=require('fs');const p='/app/node_modules/steam-resources/protobufs/dota2/dota_gcmessages_common_match_management.proto';let s=fs.readFileSync(p,'utf8');if(!s.includes('message CSODOTALobbyMember')){s=s.replace('message CSODOTALobby {','message CSODOTALobbyMember { optional fixed64 id = 1; optional uint32 team = 3; optional uint32 slot = 7; } message CSODOTALobby { repeated .CSODOTALobbyMember all_members = 120;');fs.writeFileSync(p,s);console.log('Patched CSODOTALobby with all_members');}else{console.log('CSODOTALobbyMember already present');}"
 
+# Fix 4 (Immortal Draft): CMsgPracticeLobbySetDetails in 1.2.0 stops at field 49, so `do_player_draft`
+#   (field 53) is dropped on the way to the GC no matter what the website configures. Valve's internal
+#   name for Immortal Draft is "player draft" — searching these protos for "immortal" finds nothing.
+#   Adding one optional field is wire-compatible: protobuf skips unknown fields rather than rejecting the
+#   message. Inlined on one line, same as Fix 3, so there are no shell escapes to get wrong. Idempotent.
+RUN node -e "const fs=require('fs');const p='/app/node_modules/steam-resources/protobufs/dota2/dota_gcmessages_client_match_management.proto';let s=fs.readFileSync(p,'utf8');if(!s.includes('do_player_draft')){s=s.replace('message CMsgPracticeLobbySetDetails {','message CMsgPracticeLobbySetDetails { optional bool do_player_draft = 53;');fs.writeFileSync(p,s);console.log('Patched CMsgPracticeLobbySetDetails with do_player_draft');}else{console.log('do_player_draft already present');}"
+
 # Build-time assertion: load the schema the way node-dota2 does and fail the build (Railway then
 # keeps the previous working deploy) if the lobby member type or the game-version enum is missing.
-RUN node -e "const D=require('/app/node_modules/steam-resources').GC.Dota.Internal; if(!D||!D.CSODOTALobbyMember){console.error('FATAL: CSODOTALobbyMember missing');process.exit(1);} if(!D.DOTAGameVersion||D.DOTAGameVersion.GAME_VERSION_STABLE===undefined){console.error('FATAL: DOTAGameVersion.GAME_VERSION_STABLE missing (createLobby would break)');process.exit(1);} console.log('OK: CSODOTALobbyMember + DOTAGameVersion both present');"
+# do_player_draft is asserted by construction — protobufjs throws on a field the schema doesn't have,
+# which is also why proto-patch.ts refuses to whitelist the option unless this passed.
+RUN node -e "const D=require('/app/node_modules/steam-resources').GC.Dota.Internal; if(!D||!D.CSODOTALobbyMember){console.error('FATAL: CSODOTALobbyMember missing');process.exit(1);} if(!D.DOTAGameVersion||D.DOTAGameVersion.GAME_VERSION_STABLE===undefined){console.error('FATAL: DOTAGameVersion.GAME_VERSION_STABLE missing (createLobby would break)');process.exit(1);} try{new D.CMsgPracticeLobbySetDetails({do_player_draft:true});}catch(e){console.error('FATAL: do_player_draft missing from CMsgPracticeLobbySetDetails (Immortal Draft would be silently dropped)');process.exit(1);} console.log('OK: CSODOTALobbyMember + DOTAGameVersion + do_player_draft all present');"
 
 # Copy compiled code
 COPY dist/ ./dist/

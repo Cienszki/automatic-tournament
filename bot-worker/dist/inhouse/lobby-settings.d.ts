@@ -12,6 +12,12 @@ export interface InhouseLobbySettings {
     allowSpectators: boolean;
     pauseSetting: number;
     selectionPriorityRules?: number;
+    /**
+     * Immortal Draft. Named for the GC field (`do_player_draft`) rather than for
+     * the setting, because that is the only name anything downstream answers to —
+     * the whitelist key, the proto field and the Dockerfile patch all use it.
+     */
+    doPlayerDraft?: boolean;
 }
 /**
  * Build the GC-facing lobby settings from a resolved inhouse settings object

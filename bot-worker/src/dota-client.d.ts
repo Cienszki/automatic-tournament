@@ -31,6 +31,8 @@ export interface LobbyCreateOptions {
   pauseSetting: number;
   /** 0=Manual, 1=Automatic (coin toss). Omit to leave GC default. */
   selectionPriorityRules?: number;
+  /** Immortal Draft → the GC's `do_player_draft` (field 53). Requires the Dockerfile proto patch (Fix 4) AND the whitelist patch in proto-patch.ts; without both it is silently dropped. */
+  doPlayerDraft?: boolean;
   radiantSeriesWins?: number;
   direSeriesWins?: number;
 }

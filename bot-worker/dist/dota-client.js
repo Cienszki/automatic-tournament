@@ -397,6 +397,15 @@ _lastLobbyOptions = null;       // options used at createPracticeLobby, re-sent 
                 lobbyOptions.selection_priority_rules = options.selectionPriorityRules;
                 this._selectionPriorityRules = options.selectionPriorityRules;
             }
+            // Immortal Draft. Valve calls it "player draft", which is why the field is
+            // do_player_draft (53) and why searching the protos for "immortal" finds nothing.
+            // Only set when requested: node-dota2 filters options through Dota2._lobbyOptions
+            // (patched in inhouse/proto-patch.js, and only when the schema really has the field),
+            // so on an unpatched build this is dropped rather than throwing. Tournament lobbies
+            // never pass it.
+            if (options.doPlayerDraft) {
+                lobbyOptions.do_player_draft = true;
+            }
             // Remember the exact options so updateSeriesScore() can re-send them (a partial
             // SetDetails can make the GC reset unset lobby fields — resend everything to be safe).
             this._lastLobbyOptions = { ...lobbyOptions };

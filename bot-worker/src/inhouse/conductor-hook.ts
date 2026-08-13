@@ -134,6 +134,78 @@ export async function spawnInhouseRunnersTick(
     spawnInhouseRunner(db, runners, game.id, game.botAccountId, isShuttingDown);
     busyAccounts.add(game.botAccountId);
   }
+
+  await closeOrphanedLobbies(db, runners, busyAccounts, isShuttingDown);
+}
+
+/** How recently a game must have ended for a lobby it left behind to be worth a login. */
+const ORPHAN_LOBBY_MAX_AGE_MS = 24 * 60 * 60_000;
+/** Most-recently-ended games examined per tick. */
+const ORPHAN_SCAN_LIMIT = 25;
+
+/**
+ * Fork a short-lived runner for a lobby whose game is already over.
+ *
+ * The website writes a lobby off when our lease heartbeat goes stale, and can
+ * only do bookkeeping: it marks the game `expired` and hands the Steam account
+ * back, but the Dota lobby carries on existing, still listed in the in-game
+ * browser under a name the site is still showing people
+ * (lobby-bot-integration.md §5a). Its `end_inhouse_session` doesn't rescue it
+ * either — there was no runner alive to receive it. Observed live: games #8 and
+ * #11 were expired by the website with their lobbies still on the accounts.
+ *
+ * The trigger is `dotaLobbyId`, which the runner clears the moment it stops
+ * holding a lobby (see finishUp), NOT the lease — the website releases the
+ * lease when it expires a game, so anything keyed on the lease misses exactly
+ * the case this exists for. A terminal game still carrying a lobby id therefore
+ * means nobody ever closed it.
+ *
+ * `orderBy('endedAt')` alone rather than a state filter: it needs no composite
+ * index, and live games (endedAt null) sort to the far end of a descending
+ * scan, so the window really is "the most recently ended games".
+ */
+async function closeOrphanedLobbies(
+  db: Firestore,
+  runners: InhouseRunners,
+  busyAccounts: Set<string>,
+  isShuttingDown: () => boolean
+): Promise<void> {
+  if (isShuttingDown()) return;
+
+  let games: InhouseGame[];
+  try {
+    const snap = await db
+      .collection('inhouseGames')
+      .orderBy('endedAt', 'desc')
+      .limit(ORPHAN_SCAN_LIMIT)
+      .get();
+    games = snap.docs.map((d) => d.data() as InhouseGame);
+  } catch (error) {
+    logger.error('[Conductor] Failed to scan for orphaned lobbies', error);
+    return;
+  }
+
+  const now = Date.now();
+
+  for (const game of games) {
+    if (!isTerminal(game.state) || !game.dotaLobbyId || !game.botAccountId) continue;
+
+    const endedAt = Date.parse(game.endedAt ?? game.updatedAt);
+    if (!Number.isFinite(endedAt) || now - endedAt > ORPHAN_LOBBY_MAX_AGE_MS) continue;
+
+    // Whoever is on this account now outranks a lobby from a finished game.
+    if (busyAccounts.has(game.botAccountId)) continue;
+
+    const existing = runners.get(game.id);
+    if (existing?.child && existing.child.exitCode === null) continue;
+
+    logger.warn(
+      `[Conductor] Game ${game.id} is '${game.state}' but still holds lobby ${game.dotaLobbyId} — ` +
+        `spawning a runner to close it`
+    );
+    spawnInhouseRunner(db, runners, game.id, game.botAccountId, isShuttingDown);
+    busyAccounts.add(game.botAccountId);
+  }
 }
 
 function spawnInhouseRunner(

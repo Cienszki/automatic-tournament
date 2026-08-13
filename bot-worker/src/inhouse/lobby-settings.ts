@@ -28,6 +28,12 @@ export interface InhouseLobbySettings {
   allowSpectators: boolean;
   pauseSetting: number;
   selectionPriorityRules?: number;
+  /**
+   * Immortal Draft. Named for the GC field (`do_player_draft`) rather than for
+   * the setting, because that is the only name anything downstream answers to —
+   * the whitelist key, the proto field and the Dockerfile patch all use it.
+   */
+  doPlayerDraft?: boolean;
 }
 
 /**
@@ -57,5 +63,8 @@ export function toInhouseLobbySettings(
     allowSpectators: settings.allowSpectators,
     pauseSetting: settings.pauseSetting,
     selectionPriorityRules: settings.selectionPriorityRules,
+    // Only sent when actually asked for: false and undefined are the same lobby,
+    // and not sending the field keeps a schema that lacks it out of trouble.
+    ...(settings.immortalDraft ? { doPlayerDraft: true } : {}),
   };
 }

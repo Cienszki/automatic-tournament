@@ -12,6 +12,16 @@ export declare class InhouseRunner {
     private router;
     private botSteamId32;
     private lobbyCreated;
+    /**
+     * True once this process has genuinely let go of the Dota lobby — left it, or
+     * seen the GC destroy it.
+     *
+     * `dotaLobbyId` on the game document doubles as the Conductor's "a Dota lobby
+     * may still be live" marker (conductor-hook's closeOrphanedLobbies), so it is
+     * cleared on the way out only when this is true. A runner that dies still
+     * holding a lobby must leave the marker standing.
+     */
+    private lobbyReleased;
     /** Tracked ourselves — dota-client.js's 'lobbyCleared' carries no payload, unlike dota2-lobby-bot's own client. */
     private lastKnownMatchId;
     private matchStarted;
@@ -28,6 +38,18 @@ export declare class InhouseRunner {
     private heartbeatTimer;
     /** Consecutive heartbeats where the GC had no lobby for us — see reconcileLobby. */
     private lobbyMisses;
+    /**
+     * When the slot picture last actually changed — the clock both close rules in
+     * checkLobbyLifetime run on.
+     *
+     * Seeded from the persisted `slotSnapshot.updatedAt` rather than from process
+     * start, so a Conductor redeploy doesn't hand every dead lobby another five
+     * minutes; a lobby that has been empty since yesterday is closed on the first
+     * heartbeat after the restart, not five minutes into it.
+     */
+    private lastSlotChangeMs;
+    /** Players on a playing slot as of that change. 0 means the lobby is empty. */
+    private playersSeated;
     /** onSnapshot unsubscribe for the game doc — see watchGameDoc. */
     private gameUnsub;
     private finalizing;
@@ -35,6 +57,23 @@ export declare class InhouseRunner {
     private donePromiseResolve;
     constructor(db: Firestore, gameId: string, botAccountId: string);
     run(): Promise<number>;
+    /**
+     * Destroy a Dota lobby belonging to a game that is already over.
+     *
+     * The website writes a lobby off when our lease heartbeat goes stale, and
+     * sends `end_inhouse_session` best-effort — but if the worker was down, there
+     * was no runner to receive that command, and by the time the Conductor is
+     * back the command has expired. The game document then says `expired` while
+     * the Dota lobby is still sitting in the in-game browser under a name the
+     * website is still showing people. That is the state
+     * docs/lobby-bot-integration.md §5a calls "worse than the one it replaced",
+     * and this process is the only party that can fix it.
+     *
+     * Deliberately one-shot. The account is released and `dotaLobbyId` cleared
+     * whether or not the leave succeeded, because the Conductor rescans every 20
+     * seconds and a cleanup that can retry forever is a Steam login loop.
+     */
+    private closeOrphanedLobby;
     private reattachOrCreate;
     /** Hooked into CommandQueue — idempotent, so a duplicate/retried command is safe. */
     private onCreateLobbyCommand;
@@ -63,6 +102,14 @@ export declare class InhouseRunner {
      */
     private onLobbyCleared;
     private onEndSessionCommand;
+    /**
+     * Leave the Dota lobby, recording whether we actually managed to.
+     *
+     * The distinction is the whole point: "the game is over" and "the lobby is
+     * gone" are different facts, and only the second one makes it safe to stop
+     * tracking the lobby (see `lobbyReleased`).
+     */
+    private releaseLobby;
     /**
      * `!link <discord name>` — resolve the name on the guild and link on the spot.
      *
@@ -150,6 +197,20 @@ export declare class InhouseRunner {
      * an ordinary reconnect blip from tearing down a perfectly good lobby.
      */
     private reconcileLobby;
+    /**
+     * Close a lobby nobody is using — the five-minute rule (§5a).
+     *
+     * Runs off `lastSlotChangeMs`, which moves only when the slot picture really
+     * moves (see session-logic's two fingerprints). That is the whole mechanism:
+     * anything that touches the clock without the lobby actually changing —
+     * a heartbeat, a name refresh — resets it on every pass and no empty lobby
+     * ever closes again.
+     *
+     * Two thresholds, one clock. Empty means nobody on radiant/dire/unassigned:
+     * spectators and the bot are already excluded upstream by PLAYING_SIDES, so a
+     * lobby holding nothing but observers correctly counts as empty here.
+     */
+    private checkLobbyLifetime;
     /**
      * Leave the lobby, disconnect, release the account, and resolve run().
      *

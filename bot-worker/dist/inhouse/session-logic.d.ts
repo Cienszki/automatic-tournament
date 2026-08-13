@@ -9,6 +9,13 @@ export interface SessionLogicDeps {
     sendChatMessage: (message: string) => Promise<void>;
     /** The bot's own Steam32 — every slot/host calculation must exclude this. */
     botSteamId32: string;
+    /**
+     * Fired only when the slot picture actually moved, with the timestamp just
+     * written to `slotSnapshot.updatedAt` and the number of players on a playing
+     * slot. This is the clock the runner's close rules run on (§5a), which is why
+     * it is deliberately NOT fired for a name-only refresh.
+     */
+    onSlotsChanged?: (updatedAt: string, playersSeated: number) => void;
 }
 export declare class InhouseSessionLogic {
     private game;
@@ -16,8 +23,10 @@ export declare class InhouseSessionLogic {
     private readonly deps;
     /** Guards against two overlapping member syncs interleaving their writes. */
     private syncing;
-    /** Serialized last-written slot snapshot + roster identity, so unchanged states cost nothing. */
-    private lastFingerprint;
+    /** Serialized last-written slot picture, so an unchanged one costs nothing — and so `slotSnapshot.updatedAt` never moves without the slots moving. */
+    private lastSlotFingerprint;
+    /** Roster identity (who is here, under what name) — changes here touch the game document without rewriting the snapshot. */
+    private lastIdentityFingerprint;
     private hostAnnounceTimer;
     constructor(game: InhouseGame, deps: SessionLogicDeps);
     get gameId(): string;
