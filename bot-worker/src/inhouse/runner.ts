@@ -1017,6 +1017,24 @@ export class InhouseRunner {
   }
 
   /**
+   * Slots held by someone who pressed Join and hasn't walked in yet.
+   *
+   * `expiresAt` is re-checked here rather than trusting the array to have been
+   * pruned. An empty lobby produces no GC events, so nothing rewrites
+   * `slotSnapshot` at the moment a reservation lapses — left untested, one
+   * stale entry would hold a dead lobby open forever, which is the failure this
+   * whole mechanism exists to prevent.
+   */
+  private heldSlots(now = Date.now()): number {
+    const reserved = this.game?.slotSnapshot?.reserved;
+    if (!reserved?.length) return 0;
+    return reserved.filter((r) => {
+      const until = Date.parse(r.expiresAt ?? '');
+      return Number.isFinite(until) && until > now;
+    }).length;
+  }
+
+  /**
    * Close a lobby nobody is using — the five-minute rule (§5a).
    *
    * Runs off `lastSlotChangeMs`, which moves only when the slot picture really
@@ -1049,6 +1067,16 @@ export class InhouseRunner {
 
     const idleMs = Date.now() - this.lastSlotChangeMs;
     const empty = this.playersSeated === 0;
+
+    // A live reservation holds the lobby open, mirroring the website's own rule
+    // (their sweep.ts `heldSlots`, answering the question our reply asked).
+    // Both clocks are five minutes, so without this they race: someone presses
+    // Join on an empty lobby, the site tells them their slot is held for five
+    // minutes, and we close the lobby underneath them while they load Dota. We
+    // are the side that actually destroys the lobby, so we are the side that
+    // must not.
+    if (empty && this.heldSlots() > 0) return;
+
     if (idleMs < (empty ? EMPTY_LOBBY_CLOSE_MS : SEATED_IDLE_CLOSE_MS)) return;
 
     const minutes = Math.round(idleMs / 60_000);

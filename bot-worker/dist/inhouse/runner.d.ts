@@ -198,6 +198,16 @@ export declare class InhouseRunner {
      */
     private reconcileLobby;
     /**
+     * Slots held by someone who pressed Join and hasn't walked in yet.
+     *
+     * `expiresAt` is re-checked here rather than trusting the array to have been
+     * pruned. An empty lobby produces no GC events, so nothing rewrites
+     * `slotSnapshot` at the moment a reservation lapses — left untested, one
+     * stale entry would hold a dead lobby open forever, which is the failure this
+     * whole mechanism exists to prevent.
+     */
+    private heldSlots;
+    /**
      * Close a lobby nobody is using — the five-minute rule (§5a).
      *
      * Runs off `lastSlotChangeMs`, which moves only when the slot picture really

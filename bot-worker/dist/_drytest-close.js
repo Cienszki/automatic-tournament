@@ -156,6 +156,25 @@ async function closeRules(db) {
   check('state', game.state, 'expired');
   check('endReason', game.endReason, 'Brak aktywności w lobby przez 240 min');
 
+  console.log('\n4b. A live reservation holds an empty lobby open (mirrors the website)');
+  const reservation = (expiresInMs) => ({
+    inLobby: [], radiant: [], dire: [], unassigned: [],
+    committed: 1, slotsOpen: 9,
+    reserved: [{ discordId: 'd1', steamId32: '111', playerName: 'Nocnik', expiresAt: new Date(Date.now() + expiresInMs).toISOString() }],
+    updatedAt: new Date(Date.now() - 6 * MIN).toISOString(),
+  });
+  await seed(db, { slotSnapshot: reservation(3 * MIN) });
+  runner = await makeRunner(db, { idleMs: 6 * MIN, playersSeated: 0 });
+  await runner.checkLobbyLifetime();
+  check('empty past the window but a slot is held', (await readGame(db)).state, 'open');
+  check('lobby not left', runner.dota.calls.left, 0);
+
+  console.log('\n4c. …but a lapsed reservation must not hold it open forever');
+  await seed(db, { slotSnapshot: reservation(-1 * MIN) });
+  runner = await makeRunner(db, { idleMs: 6 * MIN, playersSeated: 0 });
+  await runner.checkLobbyLifetime();
+  check('stale hold ignored', (await readGame(db)).state, 'expired');
+
   console.log('\n5. A start is counting down — an empty-looking lobby must not be closed under it');
   await seed(db);
   runner = await makeRunner(db, { idleMs: 30 * MIN, playersSeated: 0 });
