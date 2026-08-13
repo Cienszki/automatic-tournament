@@ -18,7 +18,8 @@ import type { GatewayConfig } from './config';
 const REQUEST_TIMEOUT_MS = 15_000;
 
 export type CreateResult =
-  | { status: 'ok'; gameId: string }
+  /** Credentials travel with the response so a private lobby's host has something to send their friends. */
+  | { status: 'ok'; gameId: string; lobbyName?: string | null; lobbyPassword?: string | null }
   | { status: 'banned' }
   | { status: 'no_bots' }
   | { status: 'too_many_open'; max: number }

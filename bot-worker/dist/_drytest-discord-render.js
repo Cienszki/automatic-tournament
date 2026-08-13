@@ -74,6 +74,14 @@ ok('region resolved to a name', filling.fields.some((f) => f.value.includes('Eur
 ok('roster listed', filling.fields.some((f) => f.name.startsWith('Gracze') && f.value.includes('Nocnik')));
 check('join button offered', lobbyCardComponents(game()).length, 1);
 
+console.log('\n2b. No join button before the Dota lobby exists');
+// The card is posted the instant the host presses the button, a second or two
+// before the worker has made the lobby. A Dołącz offered in that window told
+// the player "to lobby już nie przyjmuje graczy" about a lobby about to open.
+check('lobby_creating offers nothing to press', lobbyCardComponents(game({ state: 'lobby_creating' })).length, 0);
+check('open offers the button', lobbyCardComponents(game({ state: 'open' })).length, 1);
+check('ready still offers it', lobbyCardComponents(game({ state: 'ready' })).length, 1);
+
 console.log('\n3. Lobby card once the match starts');
 const live = game({ state: 'in_progress' });
 const started = lobbyCardEmbed({ game: live, players: ['a', 'b'], seated: 10, reserved: 0 }).toJSON();

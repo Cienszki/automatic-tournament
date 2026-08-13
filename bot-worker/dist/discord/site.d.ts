@@ -1,7 +1,11 @@
 import type { GatewayConfig } from './config';
-export type CreateResult = {
+export type CreateResult = 
+/** Credentials travel with the response so a private lobby's host has something to send their friends. */
+{
     status: 'ok';
     gameId: string;
+    lobbyName?: string | null;
+    lobbyPassword?: string | null;
 } | {
     status: 'banned';
 } | {

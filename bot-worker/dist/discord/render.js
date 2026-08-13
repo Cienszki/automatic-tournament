@@ -129,13 +129,17 @@ function lobbyCardEmbed(model) {
         .setTimestamp(new Date(game.createdAt));
 }
 /**
- * The join button, and only while joining is possible.
+ * The join button, and only while joining is actually possible.
  *
- * It disappears the moment the match starts rather than failing on press: a
- * button that is there but always says no is worse than no button.
+ * `open` and `ready` only — the same two states the website's join accepts.
+ * A card appears the moment the host presses the button, which is a second or
+ * two before the worker has made the Dota lobby, and a Dołącz offered during
+ * that window answers "to lobby już nie przyjmuje graczy" to a lobby that is
+ * about to open. It also withdraws when the match starts. A button that is
+ * there but always says no is worse than no button.
  */
 function lobbyCardComponents(game) {
-    if (game.state === 'in_progress')
+    if (game.state !== 'open' && game.state !== 'ready')
         return [];
     return [
         new discord_js_1.ActionRowBuilder().addComponents(new discord_js_1.ButtonBuilder()

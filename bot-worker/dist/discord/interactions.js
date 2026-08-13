@@ -106,17 +106,26 @@ class InteractionRouter {
             discordName: displayNameOf(interaction),
             published,
         });
-        const gameUrl = (gameId) => `${this.config.siteUrl}/inhouse/${gameId}`;
         switch (result.status) {
-            case 'ok':
+            case 'ok': {
+                if (published) {
+                    // Nothing to say: the card lands in the channel within a second and
+                    // is a better confirmation than any message. Angle brackets are the
+                    // reason the URL is gone entirely — a link here dragged the site's
+                    // whole preview card into the reply.
+                    await interaction.deleteReply().catch(() => interaction.editReply({ content: 'Gotowe.' }));
+                    return;
+                }
+                // A private lobby gets no card, so this is the only place its host can
+                // learn what to send their friends.
+                const credentials = result.lobbyName && result.lobbyPassword
+                    ? `Nazwa: \`${result.lobbyName}\` · hasło: \`${result.lobbyPassword}\``
+                    : `Nazwa i hasło: <${this.config.siteUrl}/inhouse/${result.gameId}>`;
                 await interaction.editReply({
-                    content: published
-                        ? `Gotowe — lobby otwarte i ogłoszone na kanale. Szczegóły: ${gameUrl(result.gameId)}\n` +
-                            'Bot tworzy je teraz w Docie; karta pojawi się za chwilę.'
-                        : `Gotowe — lobby prywatne, nikt go nie zobaczy. Nazwa i hasło: ${gameUrl(result.gameId)}\n` +
-                            'Wyślij je znajomym, albo zaproś ich przez `Dołącz` na stronie.',
+                    content: `Gotowe — lobby prywatne, nikt inny go nie zobaczy.\n${credentials}`,
                 });
                 return;
+            }
             case 'too_many_open':
                 await interaction.editReply({
                     content: `Są już otwarte ${result.max} lobby — więcej naraz nie otwieramy, bo przy trzech ` +
