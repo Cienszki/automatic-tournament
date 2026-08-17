@@ -52,11 +52,15 @@ export interface CommandHooks {
   /** Public site URL, used in the `!link` fallback instructions. */
   siteUrl: string;
   /**
-   * Everyone the GC currently reports in the lobby, with the names shown in the
-   * Dota lobby UI — not the ones we have stored. `!kick` matches on these
+   * Everyone the GC currently reports in the lobby, under the names shown in
+   * the Dota lobby UI — not the ones we have stored. `!kick` matches on these
    * because they are the only names the person typing can actually see.
+   *
+   * Async because those names are not free: the lobby member objects the GC
+   * sends us carry no name at all (our patched CSODOTALobbyMember has room for
+   * id, team and slot and nothing else), so each one is resolved from Steam.
    */
-  lobbyPlayers: () => LobbyMember[];
+  lobbyPlayers: () => Promise<LobbyMember[]>;
   /** Change the lobby's game mode in place. False when there is no lobby yet. */
   setGameMode: (gameMode: number) => Promise<boolean>;
   /** Remove someone from the lobby entirely. */
@@ -244,7 +248,7 @@ export class LobbyCommandRouter {
       return;
     }
 
-    const match = matchLobbyPlayer(this.hooks.lobbyPlayers(), query);
+    const match = matchLobbyPlayer(await this.hooks.lobbyPlayers(), query);
 
     switch (match.status) {
       case 'none':
@@ -260,11 +264,9 @@ export class LobbyCommandRouter {
         return;
     }
 
-    if (match.player.steamId32 === ctx.steamId32) {
-      await this.hooks.reply('To Ty. Jeśli chcesz wyjść, po prostu opuść lobby.');
-      return;
-    }
-
+    // Kicking yourself is allowed — a host who wants out of their own lobby is a
+    // real thing, and refusing would leave them no way to do it from chat. Only
+    // the bot is off limits, and that is handled by the matcher.
     await this.hooks.kick(match.player.steamId32);
     await this.hooks.reply(`${match.player.name ?? match.player.steamId32} wyrzucony z lobby.`);
   }
@@ -282,9 +284,9 @@ export class LobbyCommandRouter {
       return;
     }
 
-    const seated = this.hooks
-      .lobbyPlayers()
-      .filter((p) => !p.isSelf && (p.team === 'radiant' || p.team === 'dire'));
+    const seated = (await this.hooks.lobbyPlayers()).filter(
+      (p) => !p.isSelf && (p.team === 'radiant' || p.team === 'dire')
+    );
 
     if (!seated.length) {
       await this.hooks.reply('Nikt nie siedzi na slocie Radiant ani Dire.');
@@ -303,7 +305,7 @@ export class LobbyCommandRouter {
 
     await this.hooks.reply(
       moved === seated.length
-        ? `Sloty wyczyszczone — ${moved} graczy wróciło do puli. Rozsiądźcie się od nowa.`
+        ? `Sloty wyczyszczone — ${moved} graczy wróciło do puli. Składy wybierzecie już w grze.`
         : `Zwolniłem ${moved} z ${seated.length} slotów — resztę zrzućcie ręcznie.`
     );
   }

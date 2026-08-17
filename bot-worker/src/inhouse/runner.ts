@@ -37,7 +37,7 @@ import type { GameState, InhouseGame } from './core/types';
 import { BanGuard } from './ban-guard';
 import { InhouseSessionLogic } from './session-logic';
 import { CommandQueue, type InhouseLobbyCommandPayload } from './command-queue';
-import { LobbyCommandRouter, hostLine } from './chat-commands';
+import { LobbyCommandRouter, hostLine, type LobbyMember } from './chat-commands';
 import { toInhouseLobbySettings } from './lobby-settings';
 import { notifyMatchFinished } from './match-webhook';
 
@@ -267,13 +267,7 @@ export class InhouseRunner {
         this.linkByDiscordName(steamId32, playerName, query),
       linkInfo: (steamId32, playerName) => this.linkInfo(steamId32, playerName),
       siteUrl: this.siteUrl,
-      lobbyPlayers: () =>
-        this.dota!.getCurrentLobbyPlayers().map((p) => ({
-          steamId32: p.steamId32,
-          name: p.name,
-          team: p.team,
-          isSelf: p.steamId32 === this.botSteamId32,
-        })),
+      lobbyPlayers: () => this.lobbyMembersWithNames(),
       setGameMode: (mode) => this.dota!.setGameMode(mode),
       kick: (steamId32) => this.dota!.kickPlayer(steamId32),
       kickFromTeam: (steamId32) => this.dota!.kickPlayerFromTeam(steamId32),
@@ -595,6 +589,28 @@ export class InhouseRunner {
     dota.on('gcUnready', () => {
       logger.warn('[InhouseRunner] GC session lost — node-dota2 is retrying');
     });
+  }
+
+  /**
+   * The lobby's occupants under the names they are actually shown by.
+   *
+   * `getCurrentLobbyPlayers().name` is always null in this build and cannot be
+   * anything else: the CSODOTALobbyMember we inject in the Dockerfile carries id,
+   * team and slot, because that patch exists to make the member list decode at
+   * all without swapping in newer protos that break lobby creation. So the names
+   * come from Steam instead — `getPersonaName` is cached per id and returns null
+   * rather than throwing, which is why this can run on every `!kick`.
+   */
+  private async lobbyMembersWithNames(): Promise<LobbyMember[]> {
+    const members = this.dota!.getCurrentLobbyPlayers();
+    return Promise.all(
+      members.map(async (p) => ({
+        steamId32: p.steamId32,
+        name: p.name ?? (await this.dota!.getPersonaName(p.steamId32)),
+        team: p.team,
+        isSelf: p.steamId32 === this.botSteamId32,
+      }))
+    );
   }
 
   private async onChatMessage(msg: LobbyChatMessage): Promise<void> {

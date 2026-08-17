@@ -354,9 +354,9 @@ _lastLobbyOptions = null;       // options used at createPracticeLobby, re-sent 
                     // Join the lobby chat channel now so later send_chat commands work
                     // (sendMessage fails with "channel you have not joined" otherwise).
                     this._joinLobbyChat();
-                    // The host bot is auto-seated into a team slot on create; move it to the
-                    // unassigned player pool so all 10 team slots stay free for real players.
-                    this._moveSelfToPlayerPool();
+                    // The host bot is auto-seated into a team slot on create; park it in the
+                    // broadcaster slot so all 10 playing places stay free for real players.
+                    void this._parkSelfOutOfPlay().catch((e) => logger_js_1.logger.warn('Parking the host bot failed', e));
                     resolve();
                 }
             };
@@ -484,8 +484,52 @@ _lastLobbyOptions = null;       // options used at createPracticeLobby, re-sent 
             }, 250);
         });
     }
-    /** Move the host bot out of its auto-assigned team slot into the unassigned player pool. */
-    _moveSelfToPlayerPool() {
+    /**
+     * Get the host bot out of every slot that can be dealt into a game.
+     *
+     * The GC auto-seats whoever creates the lobby onto a team slot, so this has
+     * to happen on every create. The unassigned player pool used to be the
+     * answer, and for a normal draft it is fine — but under Immortal Draft the
+     * GC picks the ten players from radiant + dire + the pool together, so the
+     * pool is a playing slot with extra steps. A bot parked there is dealt into
+     * the draft and takes a human's place, which is the one thing the lobby
+     * exists to prevent.
+     *
+     * The broadcaster slot sits outside the draft entirely, so that is where the
+     * bot belongs. Being a broadcaster does not affect who leads the lobby —
+     * that is `leader_id`, a separate field — so it can still configure, kick
+     * and launch.
+     *
+     * Falls back to the player pool if the GC refuses (a lobby with spectating
+     * disabled may have no caster slot to take). Being in the pool is bad; being
+     * left on a *team* slot, which is where create leaves us, is worse.
+     */
+    async _parkSelfOutOfPlay() {
+        const self = this.getSelfSteamId32();
+        try {
+            // channel 1 = the first caster slot.
+            this.dota2.joinPracticeLobbyBroadcastChannel(1, (err) => {
+                if (err)
+                    logger_js_1.logger.warn('joinPracticeLobbyBroadcastChannel ack error', err);
+            });
+        }
+        catch (e) {
+            logger_js_1.logger.warn('joinPracticeLobbyBroadcastChannel threw', e);
+        }
+        // Every lobby ack here is unreliable, so believe the snapshot the GC
+        // pushes back rather than the callback.
+        await new Promise((resolve) => {
+            const done = () => { clearTimeout(t); this.dota2.removeListener('practiceLobbyUpdate', done); resolve(); };
+            const t = setTimeout(done, 3000);
+            this.dota2.once('practiceLobbyUpdate', done);
+        });
+        const me = this.getCurrentLobbyPlayers().find((p) => p.steamId32 === self);
+        if (me && me.team === 'broadcaster') {
+            logger_js_1.logger.info('Host bot parked in the broadcaster slot — outside the draft pool');
+            return true;
+        }
+        logger_js_1.logger.warn(`Broadcaster slot not taken (bot is '${me ? me.team : 'unknown'}') — falling back to the unassigned player pool. ` +
+            `Under Immortal Draft the bot can now be dealt into the game.`);
         try {
             // joinPracticeLobbyTeam(slot, team) acts on self; team 4 = DOTA_GC_TEAM_PLAYER_POOL.
             this.dota2.joinPracticeLobbyTeam(1, 4);
@@ -494,6 +538,7 @@ _lastLobbyOptions = null;       // options used at createPracticeLobby, re-sent 
         catch (e) {
             logger_js_1.logger.warn('Failed to move bot to player pool', e);
         }
+        return false;
     }
     async kickPlayer(steamId32) {
         if (!this.isConnected)

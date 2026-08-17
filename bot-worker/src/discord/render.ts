@@ -106,6 +106,11 @@ const STATE_LABELS: Record<string, string> = {
 };
 
 function cardColour(game: InhouseGame, seated: number): number {
+  // Yellow first, and before the "taking players" green: the card appears the
+  // moment the host presses the button, a second or two before the Dota lobby
+  // actually exists. Green there says "come in" to a lobby that isn't ready and
+  // has no Dołącz button yet, which reads as a broken button rather than a wait.
+  if (game.state === 'lobby_creating') return 0xfacc15; // yellow — hold on
   if (game.state === 'in_progress') return 0x8b5cf6; // violet — being played
   if (seated >= LOBBY_CAPACITY) return 0xf59e0b; // amber — full, about to start
   return 0x22c55e; // green — taking players
@@ -145,8 +150,21 @@ export function lobbyCardEmbed(model: CardModel): EmbedBuilder {
         : `Host: **${game.initiatorName || 'Gość'}** · status: ${STATE_LABELS[game.state] ?? game.state}`
     )
     .addFields(fields)
-    .setFooter({ text: live ? 'Karta zniknie po zakończeniu meczu.' : 'Kliknij Dołącz, żeby dostać zaproszenie.' })
+    .setFooter({ text: cardFooter(game) })
     .setTimestamp(new Date(game.createdAt));
+}
+
+/**
+ * The footer has to agree with the buttons, or it invents a bug.
+ *
+ * During `lobby_creating` there is deliberately no Dołącz button yet (see
+ * `lobbyCardComponents`), so telling people to click one is the fastest way to
+ * make a two-second wait look like something broken.
+ */
+function cardFooter(game: InhouseGame): string {
+  if (game.state === 'in_progress') return 'Karta zniknie po zakończeniu meczu.';
+  if (game.state === 'lobby_creating') return 'Tworzę lobby w Docie — przycisk Dołącz pojawi się za chwilę.';
+  return 'Kliknij Dołącz, żeby dostać zaproszenie.';
 }
 
 /**

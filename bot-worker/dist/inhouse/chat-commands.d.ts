@@ -35,11 +35,15 @@ export interface CommandHooks {
     /** Public site URL, used in the `!link` fallback instructions. */
     siteUrl: string;
     /**
-     * Everyone the GC currently reports in the lobby, with the names shown in the
-     * Dota lobby UI — not the ones we have stored. `!kick` matches on these
+     * Everyone the GC currently reports in the lobby, under the names shown in
+     * the Dota lobby UI — not the ones we have stored. `!kick` matches on these
      * because they are the only names the person typing can actually see.
+     *
+     * Async because those names are not free: the lobby member objects the GC
+     * sends us carry no name at all (our patched CSODOTALobbyMember has room for
+     * id, team and slot and nothing else), so each one is resolved from Steam.
      */
-    lobbyPlayers: () => LobbyMember[];
+    lobbyPlayers: () => Promise<LobbyMember[]>;
     /** Change the lobby's game mode in place. False when there is no lobby yet. */
     setGameMode: (gameMode: number) => Promise<boolean>;
     /** Remove someone from the lobby entirely. */

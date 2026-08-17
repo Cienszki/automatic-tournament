@@ -89,6 +89,17 @@ export declare class InhouseRunner {
      */
     private createLobbyResilient;
     private wireDotaEvents;
+    /**
+     * The lobby's occupants under the names they are actually shown by.
+     *
+     * `getCurrentLobbyPlayers().name` is always null in this build and cannot be
+     * anything else: the CSODOTALobbyMember we inject in the Dockerfile carries id,
+     * team and slot, because that patch exists to make the member list decode at
+     * all without swapping in newer protos that break lobby creation. So the names
+     * come from Steam instead — `getPersonaName` is cached per id and returns null
+     * rather than throwing, which is why this can run on every `!kick`.
+     */
+    private lobbyMembersWithNames;
     private onChatMessage;
     private onMatchStarted;
     /**

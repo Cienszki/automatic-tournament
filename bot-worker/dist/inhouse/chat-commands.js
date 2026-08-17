@@ -171,7 +171,7 @@ class LobbyCommandRouter {
             await this.hooks.reply('Użycie: !kick <fragment nicku>');
             return;
         }
-        const match = matchLobbyPlayer(this.hooks.lobbyPlayers(), query);
+        const match = matchLobbyPlayer(await this.hooks.lobbyPlayers(), query);
         switch (match.status) {
             case 'none':
                 await this.hooks.reply(`Nie ma w lobby nikogo pasującego do "${query}".`);
@@ -183,10 +183,9 @@ class LobbyCommandRouter {
                 await this.hooks.reply('Nie wyrzucę bota — to on trzyma lobby.');
                 return;
         }
-        if (match.player.steamId32 === ctx.steamId32) {
-            await this.hooks.reply('To Ty. Jeśli chcesz wyjść, po prostu opuść lobby.');
-            return;
-        }
+        // Kicking yourself is allowed — a host who wants out of their own lobby is a
+        // real thing, and refusing would leave them no way to do it from chat. Only
+        // the bot is off limits, and that is handled by the matcher.
         await this.hooks.kick(match.player.steamId32);
         await this.hooks.reply(`${match.player.name ?? match.player.steamId32} wyrzucony z lobby.`);
     }
@@ -202,9 +201,7 @@ class LobbyCommandRouter {
             await this.hooks.reply('Gra już startuje — !cancel, zanim ruszysz slotami.');
             return;
         }
-        const seated = this.hooks
-            .lobbyPlayers()
-            .filter((p) => !p.isSelf && (p.team === 'radiant' || p.team === 'dire'));
+        const seated = (await this.hooks.lobbyPlayers()).filter((p) => !p.isSelf && (p.team === 'radiant' || p.team === 'dire'));
         if (!seated.length) {
             await this.hooks.reply('Nikt nie siedzi na slocie Radiant ani Dire.');
             return;
@@ -220,7 +217,7 @@ class LobbyCommandRouter {
             }
         }
         await this.hooks.reply(moved === seated.length
-            ? `Sloty wyczyszczone — ${moved} graczy wróciło do puli. Rozsiądźcie się od nowa.`
+            ? `Sloty wyczyszczone — ${moved} graczy wróciło do puli. Składy wybierzecie już w grze.`
             : `Zwolniłem ${moved} z ${seated.length} slotów — resztę zrzućcie ręcznie.`);
     }
     /**
