@@ -37,7 +37,7 @@ import type { GameState, InhouseGame } from './core/types';
 import { BanGuard } from './ban-guard';
 import { InhouseSessionLogic } from './session-logic';
 import { CommandQueue, type InhouseLobbyCommandPayload } from './command-queue';
-import { LobbyCommandRouter } from './chat-commands';
+import { LobbyCommandRouter, hostLine } from './chat-commands';
 import { toInhouseLobbySettings } from './lobby-settings';
 import { notifyMatchFinished } from './match-webhook';
 
@@ -267,6 +267,16 @@ export class InhouseRunner {
         this.linkByDiscordName(steamId32, playerName, query),
       linkInfo: (steamId32, playerName) => this.linkInfo(steamId32, playerName),
       siteUrl: this.siteUrl,
+      lobbyPlayers: () =>
+        this.dota!.getCurrentLobbyPlayers().map((p) => ({
+          steamId32: p.steamId32,
+          name: p.name,
+          team: p.team,
+          isSelf: p.steamId32 === this.botSteamId32,
+        })),
+      setGameMode: (mode) => this.dota!.setGameMode(mode),
+      kick: (steamId32) => this.dota!.kickPlayer(steamId32),
+      kickFromTeam: (steamId32) => this.dota!.kickPlayerFromTeam(steamId32),
     });
 
     await this.claimAccountStatus();
@@ -552,6 +562,15 @@ export class InhouseRunner {
           logger.error('[InhouseRunner] onMatchStarted failed', e)
         );
       }
+      // Launched, then everybody was put back in the lobby — the failed-to-connect
+      // case. The flag is cleared here, synchronously, so a burst of updates can
+      // only ever trigger one recovery.
+      else if (this.matchStarted && data.state === LOBBY_STATE.UI && !this.finalizing) {
+        this.matchStarted = false;
+        void this.onLaunchAborted().catch((e) =>
+          logger.error('[InhouseRunner] onLaunchAborted failed', e)
+        );
+      }
       if (this.sessionLogic) {
         void this.sessionLogic.onLobbyUpdate(data.players).catch((e) =>
           logger.error('[InhouseRunner] onLobbyUpdate failed', e)
@@ -590,6 +609,46 @@ export class InhouseRunner {
     logger.info(`[InhouseRunner] Match ${matchId} started for game ${this.gameId}`);
     await this.sessionLogic!.onMatchStarted(matchId);
     this.game = this.sessionLogic!.current;
+  }
+
+  /**
+   * The game launched and then dropped everyone back into the lobby.
+   *
+   * Dota does this whenever somebody fails to load in: the match is abandoned
+   * before it counts, and the lobby is handed back intact. Nothing else notices.
+   * Left alone the runner would sit in a state that quietly poisons the next
+   * attempt — `matchStarted` latched on, so the retry's real match id would
+   * never be recorded and the aborted one would be reported to the website
+   * instead; the game stuck at `in_progress` and `locked`; and a lobby that is
+   * closed later looking, to `onLobbyCleared`, like a match that was played.
+   *
+   * So all three are unwound. The chat line matters as much as the unwinding:
+   * from inside Dota this looks like the bot died, and somebody has to be told
+   * both that a retry is expected of them and who is allowed to call it.
+   */
+  private async onLaunchAborted(): Promise<void> {
+    this.clearCountdown();
+    this.launching = false;
+    this.lastKnownMatchId = undefined;
+
+    logger.warn(
+      `[InhouseRunner] Game ${this.gameId} returned to the lobby after launching — ` +
+        `treating it as an aborted start and unlocking for a retry`
+    );
+
+    try {
+      await this.store.transitionState(this.gameId, 'ready', { dotaMatchId: null });
+    } catch (error) {
+      logger.warn(`[InhouseRunner] Could not move game ${this.gameId} back out of in_progress`, error);
+    }
+    await this.unlockAfterFailedLaunch();
+
+    await this.dota
+      ?.sendChatMessage(
+        `Mecz nie wystartował — ktoś się nie połączył i wróciliście do lobby. ` +
+          `${this.game ? hostLine(this.game) : ''} Sprawdźcie sloty i !start jeszcze raz.`
+      )
+      .catch(() => undefined);
   }
 
   /**
@@ -840,7 +899,9 @@ export class InhouseRunner {
       this.launching = false;
       await this.unlockAfterFailedLaunch();
       logger.error(`[InhouseRunner] Launch failed for game ${this.gameId}`, error);
-      await this.dota!.sendChatMessage('Could not start the game — try !start again.').catch(() => undefined);
+      await this.dota!.sendChatMessage(
+        `Nie udało się wystartować — spróbujcie !start jeszcze raz. ${this.game ? hostLine(this.game) : ''}`
+      ).catch(() => undefined);
     }
   }
 
@@ -867,7 +928,10 @@ export class InhouseRunner {
       this.launching = false;
       void this.unlockAfterFailedLaunch();
       void this.dota
-        ?.sendChatMessage('The game did not start. Check everyone is on a team slot, then !start again.')
+        ?.sendChatMessage(
+          `Gra nie wystartowała. Sprawdźcie, czy wszyscy siedzą na slotach, i !start jeszcze raz. ` +
+            `${this.game ? hostLine(this.game) : ''}`
+        )
         .catch(() => undefined);
     }, LAUNCH_WATCHDOG_MS);
   }

@@ -34,6 +34,26 @@ export interface CommandHooks {
     }>;
     /** Public site URL, used in the `!link` fallback instructions. */
     siteUrl: string;
+    /**
+     * Everyone the GC currently reports in the lobby, with the names shown in the
+     * Dota lobby UI — not the ones we have stored. `!kick` matches on these
+     * because they are the only names the person typing can actually see.
+     */
+    lobbyPlayers: () => LobbyMember[];
+    /** Change the lobby's game mode in place. False when there is no lobby yet. */
+    setGameMode: (gameMode: number) => Promise<boolean>;
+    /** Remove someone from the lobby entirely. */
+    kick: (steamId32: string) => Promise<void>;
+    /** Move someone out of their team slot into the unassigned pool. */
+    kickFromTeam: (steamId32: string) => Promise<void>;
+}
+/** A lobby occupant as the GC sees them, which is how the players see them too. */
+export interface LobbyMember {
+    steamId32: string;
+    name: string | null;
+    team: 'radiant' | 'dire' | 'spectator' | 'unassigned' | 'broadcaster';
+    /** True for the bot's own account — never a kick target. */
+    isSelf: boolean;
 }
 export declare class LobbyCommandRouter {
     private store;
@@ -46,6 +66,40 @@ export declare class LobbyCommandRouter {
     private permitted;
     private add;
     private register;
+    /**
+     * Who is the host — deliberately open to everyone.
+     *
+     * Half the host-only commands get typed by someone who isn't the host, and
+     * "Only the host can use !kick" is a useless answer if nobody in the lobby
+     * knows who that is. This is also what the failed-launch notice points at.
+     */
+    private host;
+    /**
+     * !ap / !cm / !sd / !cd — swap the mode without remaking the lobby.
+     *
+     * Refused once the game is locked: the mode is baked in at launch, and
+     * changing it under a lobby that is already counting down would either do
+     * nothing or produce a game nobody agreed to.
+     */
+    private setMode;
+    /**
+     * !kick <fragment nicku> — remove someone from the lobby.
+     *
+     * Matches on the names the GC reports, because those are the names on screen;
+     * the names we have stored may be Discord nicknames the kicker has never seen.
+     * A prefix is enough, but it has to be unambiguous — kicking the wrong person
+     * out of a ten-person lobby is not something an "I guessed" can undo, so an
+     * ambiguous fragment lists the candidates and does nothing.
+     */
+    private kick;
+    /**
+     * !slot / !sloty / !slots — empty both team slots in one go.
+     *
+     * The per-player version of this is a right-click in the lobby UI, which is
+     * ten right-clicks when the teams need redoing. Nobody leaves the lobby; they
+     * all land in the unassigned pool and re-seat themselves.
+     */
+    private clearSlots;
     /**
      * Who is this Steam account linked to?
      *
@@ -77,8 +131,35 @@ export declare class LobbyCommandRouter {
     private status;
     private start;
     private cancel;
+    /**
+     * Split by audience rather than alphabetically: lobby chat scrolls, and a
+     * flat list of a dozen commands tells nobody which ones they can actually
+     * use. Sent as two lines so neither is truncated.
+     */
     private help;
 }
+/** `Host: Kowalski. !host powie to jeszcze raz.` — one line, reused by several commands. */
+export declare function hostLine(game: InhouseGame): string;
+export type LobbyMatch = {
+    status: 'ok';
+    player: LobbyMember;
+} | {
+    status: 'none';
+} | {
+    status: 'self';
+} | {
+    status: 'ambiguous';
+    candidates: string[];
+};
+/**
+ * Resolve a typed fragment to exactly one lobby member.
+ *
+ * Three passes, narrowest first: an exact name wins outright (so someone whose
+ * whole name is a prefix of a longer one is still reachable), then prefix, then
+ * substring. Anything matching more than one player at the winning precision is
+ * refused rather than guessed — see `kick`.
+ */
+export declare function matchLobbyPlayer(players: LobbyMember[], query: string): LobbyMatch;
 /** `!status` output: `8/10 — need 2. 1 slot reserved (2:14 left).` */
 export declare function formatStatus(slots: SlotCounts, game: InhouseGame): string;
 export declare function formatCountdown(ms: number): string;

@@ -63,12 +63,16 @@ export type LinkOutcome =
   | { status: 'unrecognised' | 'vanity_not_found' | 'lookup_failed' }
   | { status: 'error' };
 
+export type LinkSource = 'discord_connection' | 'steam_openid' | 'lobby_code' | 'manual';
+
 export interface IdentityState {
   linked: boolean;
   steamIds: string[];
   steamId32: string | null;
   discordName: string | null;
   gamesPlayed: number;
+  /** How the first account was linked — null on older records. */
+  linkSource: LinkSource | null;
 }
 
 export interface LeaderRow {

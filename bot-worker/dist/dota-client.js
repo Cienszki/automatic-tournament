@@ -502,6 +502,22 @@ _lastLobbyOptions = null;       // options used at createPracticeLobby, re-sent 
         this.dota2.practiceLobbyKick(accountId);
         logger_js_1.logger.debug(`Kicked player ${steamId32}`);
     }
+    /**
+     * Take a player out of their team slot without removing them from the lobby —
+     * the GC's KickFromTeam, which is exactly what the lobby UI's right-click
+     * "kick from slot" sends. They land back in the unassigned player pool and can
+     * re-seat themselves; only the seat is given up, not the lobby.
+     */
+    async kickPlayerFromTeam(steamId32) {
+        if (!this.isConnected)
+            throw new Error('Not connected to Dota 2 GC');
+        const accountId = parseInt(steamId32, 10);
+        this.dota2.practiceLobbyKickFromTeam(accountId, (err) => {
+            if (err)
+                logger_js_1.logger.error(`practiceLobbyKickFromTeam(${steamId32}) ack error`, err);
+        });
+        logger_js_1.logger.debug(`Moved player ${steamId32} out of their team slot`);
+    }
     async startGame() {
         if (!this.isConnected)
             throw new Error('Not connected to Dota 2 GC');
@@ -766,6 +782,64 @@ _lastLobbyOptions = null;       // options used at createPracticeLobby, re-sent 
             }
             catch (e) {
                 logger_js_1.logger.error('updateSeriesScore threw', e);
+                finish('threw');
+            }
+        });
+    }
+    /**
+     * Change the lobby's game mode after it has been created (!cm / !ap / !sd / !cd).
+     *
+     * Both hazards documented on updateSeriesScore apply here for the same reasons,
+     * so this deliberately mirrors it rather than sending a tidy one-field message:
+     *
+     *   1. SetDetails is a REPLACE, not a merge. A minimal {game_mode} would blank
+     *      game_name and pass_key and reset series_type + selection_priority_rules —
+     *      i.e. switching to Captains Mode would silently wipe the lobby's name and
+     *      password out from under everyone trying to find it. Resend everything.
+     *   2. configPracticeLobby's ack often never fires even though the GC applied
+     *      the change, so we never await it — we resolve on the updated snapshot
+     *      coming back, or on a short timeout.
+     *
+     * Also updates _lastLobbyOptions, because that is the base a later
+     * updateSeriesScore resends from: leaving the old mode in there would quietly
+     * revert this the next time the series score is written.
+     */
+    async setGameMode(gameMode) {
+        if (!this.isConnected)
+            throw new Error('Not connected to Dota 2 GC');
+        const lobby = this._currentLobby;
+        if (!lobby || lobby.lobby_id === undefined || lobby.lobby_id === null) {
+            logger_js_1.logger.warn('setGameMode: no current lobby — skipping');
+            return false;
+        }
+        const base = (this._lastLobbyOptions && Object.keys(this._lastLobbyOptions).length)
+            ? this._lastLobbyOptions
+            : this._currentLobbyAsOptions();
+        const options = { ...base, game_mode: gameMode };
+        // Keep the resend base in step, or the next series-score write undoes this.
+        this._lastLobbyOptions = { ...options };
+        return new Promise((resolve) => {
+            let settled = false;
+            const finish = (why) => {
+                if (settled)
+                    return;
+                settled = true;
+                this.dota2.removeListener('practiceLobbyUpdate', onUpdate);
+                clearTimeout(timer);
+                logger_js_1.logger.info(`Lobby set: game_mode ${gameMode} (${why})`);
+                resolve(true);
+            };
+            const onUpdate = () => finish('lobby update');
+            const timer = setTimeout(() => finish('timeout'), 3000);
+            this.dota2.once('practiceLobbyUpdate', onUpdate);
+            try {
+                this.dota2.configPracticeLobby(lobby.lobby_id, options, (err) => {
+                    if (err)
+                        logger_js_1.logger.error('configPracticeLobby (game mode) ack error', err);
+                });
+            }
+            catch (e) {
+                logger_js_1.logger.error('setGameMode threw', e);
                 finish('threw');
             }
         });

@@ -80,7 +80,8 @@ export class InteractionRouter {
     if (id === IDS.newPublic) return this.openLobby(interaction, true);
     if (id === IDS.newPrivate) return this.openLobby(interaction, false);
     if (id === IDS.newCancel) return this.cancelNewGame(interaction);
-    if (id === IDS.link) return this.showLinkModal(interaction);
+    if (id === IDS.link) return this.offerLink(interaction);
+    if (id === IDS.linkManual) return this.showLinkModal(interaction);
     if (id === IDS.unlinkConfirm) return this.unlink(interaction);
     if (id.startsWith(IDS.join)) return this.showJoinHelp(interaction, id.slice(IDS.join.length));
     if (id.startsWith(IDS.invite)) return this.requestInvite(interaction, id.slice(IDS.invite.length));
@@ -188,6 +189,83 @@ export class InteractionRouter {
           content: 'Nie udało się otworzyć lobby. Spróbuj jeszcze raz, a jeśli to się powtórzy — daj znać adminom.',
         });
     }
+  }
+
+  /**
+   * "Połącz ze Steam", before it asks for anything.
+   *
+   * Two questions have to be answered before a text box is the right response,
+   * and both used to be skipped:
+   *
+   *   1. **Are they already linked?** Being asked to paste a Steam URL you
+   *      supplied months ago reads as the bot having forgotten you. Check first,
+   *      and if there is a link, say what it is — including *how* it got there,
+   *      since the commonest answer is "you never did this, your Discord Steam
+   *      connection did it for you" and nobody remembers that happening.
+   *   2. **Do they have to type at all?** They usually don't. The website's
+   *      Discord OAuth already asks for the `connections` scope, so anyone with
+   *      Steam connected in their Discord settings is linked by pressing one
+   *      button and approving a consent screen — no profile URL, no copy-paste,
+   *      and their whole match history is backfilled on the way back.
+   *
+   * The gateway cannot read connections itself: `/users/{id}/connections` needs
+   * a *user* token with that scope, and a bot token can never have one. Sending
+   * them through the site's existing flow is the whole of the mechanism.
+   */
+  private async offerLink(interaction: ButtonInteraction | ChatInputCommandInteraction): Promise<void> {
+    await interaction.deferReply(EPHEMERAL);
+
+    const identity = await this.site.identity(interaction.user.id);
+    const oauthUrl = `${this.config.siteUrl}/api/inhouse/auth/discord?next=/inhouse/link`;
+
+    if (identity?.linked) {
+      const count = identity.steamIds.length;
+      const how =
+        identity.linkSource === 'discord_connection'
+          ? ' Zrobiło się to samo — masz Steam podpięty w ustawieniach Discorda.'
+          : '';
+
+      await interaction.editReply({
+        content:
+          `Masz już połączone konto Steam (\`${identity.steamId32 ?? '—'}\`` +
+          `${count > 1 ? `, łącznie ${count}` : ''}).${how}\n` +
+          `Rozegranych gier na koncie: **${identity.gamesPlayed}**.\n` +
+          'Chcesz dopiąć jeszcze jedno konto (smurfa)? Kliknij poniżej. `/unlink` odłącza wszystkie.',
+        components: [
+          new ActionRowBuilder<ButtonBuilder>().addComponents(
+            new ButtonBuilder()
+              .setCustomId(IDS.linkManual)
+              .setLabel('Dodaj kolejne konto')
+              .setEmoji('➕')
+              .setStyle(ButtonStyle.Secondary)
+          ),
+        ],
+      });
+      return;
+    }
+
+    await interaction.editReply({
+      content:
+        '**Połącz konto Steam** — wystarczy raz, a potem zaproszenia przychodzą jednym kliknięciem ' +
+        'i Twoje mecze liczą się do statystyk.\n\n' +
+        '🟦 **Przez Discorda** — jeśli masz Steam podpięty w ustawieniach Discorda, ' +
+        'nie musisz nic wpisywać. Zatwierdzasz zgodę i gotowe, razem z całą Twoją historią meczów.\n' +
+        '⌨️ **Ręcznie** — wklejasz link do swojego profilu Steam.',
+      components: [
+        new ActionRowBuilder<ButtonBuilder>().addComponents(
+          new ButtonBuilder()
+            .setLabel('Połącz przez Discorda')
+            .setEmoji('🟦')
+            .setStyle(ButtonStyle.Link)
+            .setURL(oauthUrl),
+          new ButtonBuilder()
+            .setCustomId(IDS.linkManual)
+            .setLabel('Wklej link do Steam')
+            .setEmoji('⌨️')
+            .setStyle(ButtonStyle.Secondary)
+        ),
+      ],
+    });
   }
 
   private async showLinkModal(interaction: ButtonInteraction | ChatInputCommandInteraction): Promise<void> {
@@ -425,7 +503,7 @@ export class InteractionRouter {
       case 'ih':
         return this.offerVisibility(interaction);
       case 'link':
-        return this.showLinkModal(interaction);
+        return this.offerLink(interaction);
       case 'unlink':
         return this.confirmUnlink(interaction);
       case 'ranking':

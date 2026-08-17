@@ -26,6 +26,28 @@ export declare class InteractionRouter {
     /** Nothing was created, so there is nothing to undo — just clear the prompt. */
     private cancelNewGame;
     private openLobby;
+    /**
+     * "Połącz ze Steam", before it asks for anything.
+     *
+     * Two questions have to be answered before a text box is the right response,
+     * and both used to be skipped:
+     *
+     *   1. **Are they already linked?** Being asked to paste a Steam URL you
+     *      supplied months ago reads as the bot having forgotten you. Check first,
+     *      and if there is a link, say what it is — including *how* it got there,
+     *      since the commonest answer is "you never did this, your Discord Steam
+     *      connection did it for you" and nobody remembers that happening.
+     *   2. **Do they have to type at all?** They usually don't. The website's
+     *      Discord OAuth already asks for the `connections` scope, so anyone with
+     *      Steam connected in their Discord settings is linked by pressing one
+     *      button and approving a consent screen — no profile URL, no copy-paste,
+     *      and their whole match history is backfilled on the way back.
+     *
+     * The gateway cannot read connections itself: `/users/{id}/connections` needs
+     * a *user* token with that scope, and a bot token can never have one. Sending
+     * them through the site's existing flow is the whole of the mechanism.
+     */
+    private offerLink;
     private showLinkModal;
     /**
      * The join help, and the whole point of the Dołącz button.

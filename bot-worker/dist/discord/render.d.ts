@@ -6,6 +6,8 @@ export declare const IDS: {
     readonly newPrivate: "ih:new:private";
     readonly newCancel: "ih:new:cancel";
     readonly link: "ih:link";
+    /** "I'll paste the URL myself" — the only path that may open the modal. */
+    readonly linkManual: "ih:link:manual";
     readonly linkModal: "ih:link:modal";
     readonly linkInput: "ih:link:steam";
     readonly unlinkConfirm: "ih:unlink:confirm";

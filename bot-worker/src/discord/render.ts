@@ -23,6 +23,8 @@ export const IDS = {
   newPrivate: 'ih:new:private',
   newCancel: 'ih:new:cancel',
   link: 'ih:link',
+  /** "I'll paste the URL myself" — the only path that may open the modal. */
+  linkManual: 'ih:link:manual',
   linkModal: 'ih:link:modal',
   linkInput: 'ih:link:steam',
   unlinkConfirm: 'ih:unlink:confirm',

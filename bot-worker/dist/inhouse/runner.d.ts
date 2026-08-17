@@ -92,6 +92,22 @@ export declare class InhouseRunner {
     private onChatMessage;
     private onMatchStarted;
     /**
+     * The game launched and then dropped everyone back into the lobby.
+     *
+     * Dota does this whenever somebody fails to load in: the match is abandoned
+     * before it counts, and the lobby is handed back intact. Nothing else notices.
+     * Left alone the runner would sit in a state that quietly poisons the next
+     * attempt — `matchStarted` latched on, so the retry's real match id would
+     * never be recorded and the aborted one would be reported to the website
+     * instead; the game stuck at `in_progress` and `locked`; and a lobby that is
+     * closed later looking, to `onLobbyCleared`, like a match that was played.
+     *
+     * So all three are unwound. The chat line matters as much as the unwinding:
+     * from inside Dota this looks like the bot died, and somebody has to be told
+     * both that a retry is expected of them and who is allowed to call it.
+     */
+    private onLaunchAborted;
+    /**
      * The GC destroyed the lobby. dota-client.js's 'lobbyCleared' carries no
      * payload (unlike dota2-lobby-bot's own DotaClient), so whether a match was
      * actually played is read from `lastKnownMatchId`, captured from the most

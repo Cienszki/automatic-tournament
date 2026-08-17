@@ -86,6 +86,14 @@ export declare class DotaClient extends EventEmitter {
   invitePlayers(steamId32s: string[]): Promise<void>;
   sendChatMessage(message: string): Promise<void>;
   kickPlayer(steamId32: string): Promise<void>;
+  /** Kick out of a team slot into the unassigned pool — they stay in the lobby. */
+  kickPlayerFromTeam(steamId32: string): Promise<void>;
+  /**
+   * Change the lobby's game mode in place. Resends the full option set (SetDetails
+   * is replace-not-merge — a partial one blanks the name and password) and does not
+   * await the unreliable ack. False when there is no lobby to configure.
+   */
+  setGameMode(gameMode: number): Promise<boolean>;
   startGame(): Promise<{ coinToss: boolean }>;
   /** Single relaunch to resume a game aborted back to the lobby — no coin-toss re-roll. */
   relaunchGame(): Promise<void>;
