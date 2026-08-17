@@ -19,6 +19,16 @@ const discord_js_1 = require("discord.js");
 const logger_1 = require("../logger");
 const render_1 = require("./render");
 const EPHEMERAL = { flags: discord_js_1.MessageFlags.Ephemeral };
+/**
+ * How long a join ephemeral sticks around before tidying itself up.
+ *
+ * The ceiling is Discord's, not ours: an interaction token dies at 15 minutes,
+ * and after that nothing the bot can do will remove the message — only the
+ * person looking at it, by pressing Dismiss on each one. Ten leaves room for the
+ * delete to actually land, and by then the player is either in the lobby or
+ * their reservation has expired.
+ */
+const DISMISS_AFTER_MS = 10 * 60_000;
 class InteractionRouter {
     site;
     config;
@@ -39,6 +49,24 @@ class InteractionRouter {
             logger_1.logger.error('[Discord] Interaction failed', error);
             await this.apologise(interaction);
         }
+    }
+    /**
+     * Clear an ephemeral once it has stopped being useful.
+     *
+     * Ephemerals are invisible to everyone else and never reach channel history,
+     * so this destroys nothing — but they also never expire on their own. One
+     * Dołącz press per evening leaves a stack of stale lobby passwords sitting in
+     * that player's client until they dismiss each one by hand, which is what the
+     * screenshots of six of them were.
+     *
+     * Best-effort by construction: the message may already be dismissed, the token
+     * may have lapsed, or the gateway may have restarted and lost the timer. All
+     * three are fine — the worst case is exactly today's behaviour.
+     */
+    dismissLater(interaction) {
+        setTimeout(() => {
+            void interaction.deleteReply().catch(() => undefined);
+        }, DISMISS_AFTER_MS).unref();
     }
     /** Last resort, so a thrown handler doesn't leave a spinner forever. */
     async apologise(interaction) {
@@ -255,6 +283,9 @@ class InteractionRouter {
      */
     async showJoinHelp(interaction, gameId) {
         await interaction.deferReply(EPHEMERAL);
+        // Scheduled once, up front, so every branch below is covered — including the
+        // "lobby is gone" ones, which are the least worth keeping.
+        this.dismissLater(interaction);
         const info = await this.site.joinInfo(gameId, interaction.user.id, displayNameOf(interaction));
         if (info.status !== 'ok') {
             await interaction.editReply({ content: joinInfoProblem(info.status) });
@@ -299,6 +330,9 @@ class InteractionRouter {
      */
     async requestInvite(interaction, gameId) {
         await interaction.deferUpdate();
+        // Pressing the button restarts the clock on its own token, which is what
+        // keeps a message someone is actively using from vanishing under them.
+        this.dismissLater(interaction);
         const result = await this.site.join(gameId, interaction.user.id, displayNameOf(interaction));
         const held = (expiresAt) => expiresAt ? ` Miejsce trzymam do <t:${Math.floor(Date.parse(expiresAt) / 1000)}:t>.` : '';
         /** The way back to this handler, on every reply that could need it. */

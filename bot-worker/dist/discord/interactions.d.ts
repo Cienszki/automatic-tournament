@@ -6,6 +6,20 @@ export declare class InteractionRouter {
     private config;
     constructor(site: SiteClient, config: GatewayConfig);
     handle(interaction: Interaction): Promise<void>;
+    /**
+     * Clear an ephemeral once it has stopped being useful.
+     *
+     * Ephemerals are invisible to everyone else and never reach channel history,
+     * so this destroys nothing — but they also never expire on their own. One
+     * Dołącz press per evening leaves a stack of stale lobby passwords sitting in
+     * that player's client until they dismiss each one by hand, which is what the
+     * screenshots of six of them were.
+     *
+     * Best-effort by construction: the message may already be dismissed, the token
+     * may have lapsed, or the gateway may have restarted and lost the timer. All
+     * three are fine — the worst case is exactly today's behaviour.
+     */
+    private dismissLater;
     /** Last resort, so a thrown handler doesn't leave a spinner forever. */
     private apologise;
     private onButton;
