@@ -35,6 +35,7 @@ import {
   medalsEmbed,
   posterComponents,
   posterEmbed,
+  rankingComponents,
   rankingEmbed,
   serverRegionLabel,
 } from './render';
@@ -78,6 +79,7 @@ export class InteractionRouter {
     if (id === IDS.newGame) return this.offerVisibility(interaction);
     if (id === IDS.newPublic) return this.openLobby(interaction, true);
     if (id === IDS.newPrivate) return this.openLobby(interaction, false);
+    if (id === IDS.newCancel) return this.cancelNewGame(interaction);
     if (id === IDS.link) return this.showLinkModal(interaction);
     if (id === IDS.unlinkConfirm) return this.unlink(interaction);
     if (id.startsWith(IDS.join)) return this.showJoinHelp(interaction, id.slice(IDS.join.length));
@@ -90,13 +92,20 @@ export class InteractionRouter {
    * Site lobbies publish themselves, because someone opening one from the
    * public board has already decided. In Discord a host may well mean "just us
    * five" — so ask, once, before anything is created.
+   *
+   * The way out matters as much as the two answers. Plenty of people press
+   * "Nowa gra" to see what it does, and without a third button their only exits
+   * are opening a lobby they never wanted — which burns a bot account and one of
+   * the few open-lobby slots — or leaving the prompt hanging. Nothing has been
+   * created at this point, so cancelling really is free.
    */
   private async offerVisibility(interaction: ButtonInteraction | ChatInputCommandInteraction): Promise<void> {
     await interaction.reply({
       content:
         '**Kogo zapraszasz?**\n' +
         '🌍 **Cały serwer** — lobby pojawi się na kanale i na stronie, każdy może dołączyć.\n' +
-        '🔒 **Tylko znajomi** — nikt inny go nie zobaczy, wyślij im nazwę i hasło sam.',
+        '🔒 **Tylko znajomi** — nikt inny go nie zobaczy, wyślij im nazwę i hasło sam.\n\n' +
+        '_Jeszcze nic nie powstało — możesz spokojnie wyjść._',
       components: [
         new ActionRowBuilder<ButtonBuilder>().addComponents(
           new ButtonBuilder()
@@ -108,10 +117,23 @@ export class InteractionRouter {
             .setCustomId(IDS.newPrivate)
             .setLabel('Tylko znajomi')
             .setEmoji('🔒')
+            .setStyle(ButtonStyle.Secondary),
+          new ButtonBuilder()
+            .setCustomId(IDS.newCancel)
+            .setLabel('Jednak się rozmyśliłem')
+            .setEmoji('↩️')
             .setStyle(ButtonStyle.Secondary)
         ),
       ],
       ...EPHEMERAL,
+    });
+  }
+
+  /** Nothing was created, so there is nothing to undo — just clear the prompt. */
+  private async cancelNewGame(interaction: ButtonInteraction): Promise<void> {
+    await interaction.update({
+      content: 'Jasne — nic nie otwieram. Kliknij **Nowa gra**, kiedy będziesz gotowy.',
+      components: [],
     });
   }
 
@@ -237,6 +259,16 @@ export class InteractionRouter {
     await interaction.editReply({ content: lines.join('\n'), components: [row] });
   }
 
+  /**
+   * "Zaproś mnie", and every repeat press of it.
+   *
+   * A Steam invite is fire-and-forget: sent to a client that is closed, or to
+   * someone who was mid-menu, it is gone with nothing to click. So this is
+   * deliberately re-runnable — the reply always keeps a button that calls
+   * straight back here, and the website re-fires the invite for a player who
+   * already holds a slot instead of only re-showing their credentials. One
+   * missed invite must never be the end of the road.
+   */
   private async requestInvite(interaction: ButtonInteraction, gameId: string): Promise<void> {
     await interaction.deferUpdate();
 
@@ -244,19 +276,39 @@ export class InteractionRouter {
     const held = (expiresAt: string | null): string =>
       expiresAt ? ` Miejsce trzymam do <t:${Math.floor(Date.parse(expiresAt) / 1000)}:t>.` : '';
 
+    /** The way back to this handler, on every reply that could need it. */
+    const retry = (label: string): ActionRowBuilder<ButtonBuilder>[] => [
+      new ActionRowBuilder<ButtonBuilder>().addComponents(
+        new ButtonBuilder()
+          .setCustomId(`${IDS.invite}${gameId}`)
+          .setLabel(label)
+          .setEmoji('📨')
+          .setStyle(ButtonStyle.Secondary)
+      ),
+    ];
+
     switch (result.status) {
       case 'reserved':
         await interaction.editReply({
           content:
             `Zaproszenie wysłane — sprawdź Dotę.${held(result.expiresAt)}\n` +
-            `Jeśli nie przyszło, wejdź ręcznie: \`${result.lobbyName ?? '—'}\` / \`${result.password ?? '—'}\`.`,
-          components: [],
+            `Jeśli nie przyszło, wejdź ręcznie: \`${result.lobbyName ?? '—'}\` / \`${result.password ?? '—'}\` ` +
+            'albo kliknij poniżej, a wyślę je jeszcze raz.',
+          components: retry('Wyślij zaproszenie ponownie'),
         });
         return;
       case 'already_reserved':
+        await interaction.editReply({
+          content:
+            `Masz już miejsce w tym lobby — wysłałem zaproszenie jeszcze raz, sprawdź Dotę. ` +
+            '**Dota 2 musi być włączona**, inaczej zaproszenie przepadnie.\n' +
+            `Ręcznie: \`${result.lobbyName ?? '—'}\` / \`${result.password ?? '—'}\``,
+          components: retry('Wyślij jeszcze raz'),
+        });
+        return;
       case 'in_lobby':
         await interaction.editReply({
-          content: `Masz już miejsce w tym lobby. \`${result.lobbyName ?? '—'}\` / \`${result.password ?? '—'}\``,
+          content: `Jesteś już w tym lobby. \`${result.lobbyName ?? '—'}\` / \`${result.password ?? '—'}\``,
           components: [],
         });
         return;
@@ -265,7 +317,7 @@ export class InteractionRouter {
           content:
             `Komplet — jesteś ${result.position}. na liście rezerwowej. ` +
             'Zaproszenie już poszło, więc jeśli ktoś wyjdzie, wchodzisz od ręki.',
-          components: [],
+          components: retry('Wyślij zaproszenie ponownie'),
         });
         return;
       case 'needs_link':
@@ -412,7 +464,10 @@ export class InteractionRouter {
       await interaction.editReply({ content: 'Nie mogę teraz pobrać rankingu. Spróbuj za chwilę.' });
       return;
     }
-    await interaction.editReply({ embeds: [rankingEmbed(ranking)] });
+    await interaction.editReply({
+      embeds: [rankingEmbed(ranking)],
+      components: rankingComponents(this.config.siteUrl),
+    });
   }
 
   /**
@@ -458,7 +513,7 @@ export class InteractionRouter {
     }
     await interaction.reply({ content: 'Wysyłam nowy poster…', ...EPHEMERAL });
     await interaction.channel.send({
-      embeds: [posterEmbed()],
+      embeds: [posterEmbed(this.config.siteUrl)],
       components: posterComponents(this.config.siteUrl),
     });
   }

@@ -31,7 +31,7 @@ export async function ensurePoster(
   const text = channel as TextChannel;
   const ref = db.doc(CONFIG_DOC);
 
-  const embeds = [posterEmbed()];
+  const embeds = [posterEmbed(config.siteUrl)];
   const components = posterComponents(config.siteUrl);
 
   // Adopt the existing poster where there is one. Editing keeps the same

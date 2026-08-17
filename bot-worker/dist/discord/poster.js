@@ -22,7 +22,7 @@ async function ensurePoster(db, client, config) {
     }
     const text = channel;
     const ref = db.doc(CONFIG_DOC);
-    const embeds = [(0, render_1.posterEmbed)()];
+    const embeds = [(0, render_1.posterEmbed)(config.siteUrl)];
     const components = (0, render_1.posterComponents)(config.siteUrl);
     // Adopt the existing poster where there is one. Editing keeps the same
     // message — and therefore its pin and its place in the channel — across

@@ -18,12 +18,14 @@ exports.lobbyCardComponents = lobbyCardComponents;
 exports.posterEmbed = posterEmbed;
 exports.posterComponents = posterComponents;
 exports.rankingEmbed = rankingEmbed;
+exports.rankingComponents = rankingComponents;
 exports.medalsEmbed = medalsEmbed;
 const discord_js_1 = require("discord.js");
 exports.IDS = {
     newGame: 'ih:new',
     newPublic: 'ih:new:public',
     newPrivate: 'ih:new:private',
+    newCancel: 'ih:new:cancel',
     link: 'ih:link',
     linkModal: 'ih:link:modal',
     linkInput: 'ih:link:steam',
@@ -149,29 +151,48 @@ function lobbyCardComponents(game) {
             .setStyle(discord_js_1.ButtonStyle.Success)),
     ];
 }
-/** The permanent message at the top of the channel. */
-function posterEmbed() {
+/**
+ * The permanent message at the top of the channel.
+ *
+ * The artwork and the footer logo are served by the website rather than
+ * uploaded as attachments: the poster is *edited* on every boot to keep its id
+ * (and therefore its pin), and an edit that drops `files` drops the attachment
+ * with it. A URL survives every edit and costs the deploy nothing — which
+ * matters here, because only `dist/` ships to Railway.
+ */
+function posterEmbed(siteUrl) {
     return new discord_js_1.EmbedBuilder()
         .setColor(0x5865f2)
-        .setTitle('Inhouse — graj z nami')
-        .setDescription('Jedno kliknięcie otwiera poprawnie skonfigurowane lobby Dote 2 i pilnuje go od początku do końca.\n\n' +
-        '**➕ Nowa gra** — otwiera lobby. Zapytam, czy ogłosić je całemu serwerowi, czy zagrać tylko ze znajomymi.\n' +
-        '**🔗 Połącz ze Steam** — dzięki temu dostaniesz zaproszenie do lobby jednym kliknięciem, a Twoje mecze trafią do statystyk.\n' +
-        '**✨ Więcej…** — rankingi, medale, historia meczów i profile graczy na stronie.\n\n' +
-        'Komendy działają na każdym kanale: `/ih`, `/link`, `/unlink`, `/ranking`, `/medale`.');
+        .setTitle('Inhouse — lobby dla społeczności')
+        .setURL(siteUrl)
+        .setDescription('**▶️ Nowa gra** — rozpocznij nową poczekalnię, do wyboru publiczna lub prywatna.\n' +
+        '**🔗 Połącz ze Steam** — dzięki temu nie musisz szukać poczekalni, nasz bot sam Cię zaprosi.\n' +
+        '**✨ Pełen panel** — pełna klasyfikacja, medale, historia meczów i profile graczy na stronie.')
+        .addFields({
+        name: 'Komendy',
+        value: '- `/ih` — nowa poczekalnia\n' +
+            '- `/link` — połącz konto Steam\n' +
+            '- `/unlink` — odłącz konta Steam\n' +
+            '- `/ranking` — klasyfikacja\n' +
+            '- `/medale` — Twoje medale\n\n' +
+            'Działają na każdym kanale.',
+        inline: false,
+    })
+        .setImage(`${siteUrl}/ih.png`)
+        .setFooter({ text: 'dota2inhouse.pl', iconURL: `${siteUrl}/pd2ih_logo.png` });
 }
 function posterComponents(siteUrl) {
     return [
         new discord_js_1.ActionRowBuilder().addComponents(new discord_js_1.ButtonBuilder()
             .setCustomId(exports.IDS.newGame)
             .setLabel('Nowa gra')
-            .setEmoji('➕')
+            .setEmoji('▶️')
             .setStyle(discord_js_1.ButtonStyle.Success), new discord_js_1.ButtonBuilder()
             .setCustomId(exports.IDS.link)
             .setLabel('Połącz ze Steam')
             .setEmoji('🔗')
             .setStyle(discord_js_1.ButtonStyle.Primary), new discord_js_1.ButtonBuilder()
-            .setLabel('Więcej… znacznie więcej')
+            .setLabel('Pełen panel')
             .setEmoji('✨')
             .setStyle(discord_js_1.ButtonStyle.Link)
             .setURL(`${siteUrl}/inhouse`)),
@@ -201,6 +222,19 @@ function rankingEmbed(ranking) {
         });
     }
     return embed;
+}
+/**
+ * The five names Discord can fit are the top of a much longer board — the
+ * button is how anyone who is not in the top five finds themselves.
+ */
+function rankingComponents(siteUrl) {
+    return [
+        new discord_js_1.ActionRowBuilder().addComponents(new discord_js_1.ButtonBuilder()
+            .setLabel('więcej na stronie…')
+            .setEmoji('🏆')
+            .setStyle(discord_js_1.ButtonStyle.Link)
+            .setURL(`${siteUrl}/inhouse/leaderboards`)),
+    ];
 }
 function medalsEmbed(displayName, data) {
     const icon = (place) => place === 1 ? '🥇' : place === 2 ? '🥈' : place === 3 ? '🥉' : '🎖️';

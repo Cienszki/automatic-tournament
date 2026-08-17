@@ -15,8 +15,16 @@ export declare class InteractionRouter {
      * Site lobbies publish themselves, because someone opening one from the
      * public board has already decided. In Discord a host may well mean "just us
      * five" — so ask, once, before anything is created.
+     *
+     * The way out matters as much as the two answers. Plenty of people press
+     * "Nowa gra" to see what it does, and without a third button their only exits
+     * are opening a lobby they never wanted — which burns a bot account and one of
+     * the few open-lobby slots — or leaving the prompt hanging. Nothing has been
+     * created at this point, so cancelling really is free.
      */
     private offerVisibility;
+    /** Nothing was created, so there is nothing to undo — just clear the prompt. */
+    private cancelNewGame;
     private openLobby;
     private showLinkModal;
     /**
@@ -29,6 +37,16 @@ export declare class InteractionRouter {
      * that is the single most common reason "the invite never came".
      */
     private showJoinHelp;
+    /**
+     * "Zaproś mnie", and every repeat press of it.
+     *
+     * A Steam invite is fire-and-forget: sent to a client that is closed, or to
+     * someone who was mid-menu, it is gone with nothing to click. So this is
+     * deliberately re-runnable — the reply always keeps a button that calls
+     * straight back here, and the website re-fires the invite for a player who
+     * already holds a slot instead of only re-showing their credentials. One
+     * missed invite must never be the end of the road.
+     */
     private requestInvite;
     private unlink;
     private onModal;

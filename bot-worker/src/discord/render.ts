@@ -21,6 +21,7 @@ export const IDS = {
   newGame: 'ih:new',
   newPublic: 'ih:new:public',
   newPrivate: 'ih:new:private',
+  newCancel: 'ih:new:cancel',
   link: 'ih:link',
   linkModal: 'ih:link:modal',
   linkInput: 'ih:link:steam',
@@ -170,18 +171,38 @@ export function lobbyCardComponents(game: InhouseGame): ActionRowBuilder<ButtonB
   ];
 }
 
-/** The permanent message at the top of the channel. */
-export function posterEmbed(): EmbedBuilder {
+/**
+ * The permanent message at the top of the channel.
+ *
+ * The artwork and the footer logo are served by the website rather than
+ * uploaded as attachments: the poster is *edited* on every boot to keep its id
+ * (and therefore its pin), and an edit that drops `files` drops the attachment
+ * with it. A URL survives every edit and costs the deploy nothing — which
+ * matters here, because only `dist/` ships to Railway.
+ */
+export function posterEmbed(siteUrl: string): EmbedBuilder {
   return new EmbedBuilder()
     .setColor(0x5865f2)
-    .setTitle('Inhouse — graj z nami')
+    .setTitle('Inhouse — lobby dla społeczności')
+    .setURL(siteUrl)
     .setDescription(
-      'Jedno kliknięcie otwiera poprawnie skonfigurowane lobby Dote 2 i pilnuje go od początku do końca.\n\n' +
-        '**➕ Nowa gra** — otwiera lobby. Zapytam, czy ogłosić je całemu serwerowi, czy zagrać tylko ze znajomymi.\n' +
-        '**🔗 Połącz ze Steam** — dzięki temu dostaniesz zaproszenie do lobby jednym kliknięciem, a Twoje mecze trafią do statystyk.\n' +
-        '**✨ Więcej…** — rankingi, medale, historia meczów i profile graczy na stronie.\n\n' +
-        'Komendy działają na każdym kanale: `/ih`, `/link`, `/unlink`, `/ranking`, `/medale`.'
-    );
+      '**▶️ Nowa gra** — rozpocznij nową poczekalnię, do wyboru publiczna lub prywatna.\n' +
+        '**🔗 Połącz ze Steam** — dzięki temu nie musisz szukać poczekalni, nasz bot sam Cię zaprosi.\n' +
+        '**✨ Pełen panel** — pełna klasyfikacja, medale, historia meczów i profile graczy na stronie.'
+    )
+    .addFields({
+      name: 'Komendy',
+      value:
+        '- `/ih` — nowa poczekalnia\n' +
+        '- `/link` — połącz konto Steam\n' +
+        '- `/unlink` — odłącz konta Steam\n' +
+        '- `/ranking` — klasyfikacja\n' +
+        '- `/medale` — Twoje medale\n\n' +
+        'Działają na każdym kanale.',
+      inline: false,
+    })
+    .setImage(`${siteUrl}/ih.png`)
+    .setFooter({ text: 'dota2inhouse.pl', iconURL: `${siteUrl}/pd2ih_logo.png` });
 }
 
 export function posterComponents(siteUrl: string): ActionRowBuilder<ButtonBuilder>[] {
@@ -190,7 +211,7 @@ export function posterComponents(siteUrl: string): ActionRowBuilder<ButtonBuilde
       new ButtonBuilder()
         .setCustomId(IDS.newGame)
         .setLabel('Nowa gra')
-        .setEmoji('➕')
+        .setEmoji('▶️')
         .setStyle(ButtonStyle.Success),
       new ButtonBuilder()
         .setCustomId(IDS.link)
@@ -198,7 +219,7 @@ export function posterComponents(siteUrl: string): ActionRowBuilder<ButtonBuilde
         .setEmoji('🔗')
         .setStyle(ButtonStyle.Primary),
       new ButtonBuilder()
-        .setLabel('Więcej… znacznie więcej')
+        .setLabel('Pełen panel')
         .setEmoji('✨')
         .setStyle(ButtonStyle.Link)
         .setURL(`${siteUrl}/inhouse`)
@@ -239,6 +260,22 @@ export function rankingEmbed(ranking: {
   }
 
   return embed;
+}
+
+/**
+ * The five names Discord can fit are the top of a much longer board — the
+ * button is how anyone who is not in the top five finds themselves.
+ */
+export function rankingComponents(siteUrl: string): ActionRowBuilder<ButtonBuilder>[] {
+  return [
+    new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder()
+        .setLabel('więcej na stronie…')
+        .setEmoji('🏆')
+        .setStyle(ButtonStyle.Link)
+        .setURL(`${siteUrl}/inhouse/leaderboards`)
+    ),
+  ];
 }
 
 export function medalsEmbed(
