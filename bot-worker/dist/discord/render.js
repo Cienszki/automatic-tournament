@@ -37,6 +37,20 @@ exports.IDS = {
     invite: 'ih:invite:',
 };
 const LOBBY_CAPACITY = 10;
+/**
+ * Bump by hand to force Discord to re-fetch the poster artwork.
+ *
+ * Discord serves every embed image through media.discordapp.net and caches the
+ * result against the source URL, effectively permanently — editing the embed
+ * does not make it re-check the origin. So if the URL ever answered with
+ * something that wasn't the image, that wrong answer is what the poster shows
+ * from then on, no matter what the origin returns afterwards. Which is exactly
+ * what happened here: during the domain cutover `/ih.png` was answered by the
+ * old Firebase app with an HTML page (200, text/html), and Discord cached it.
+ *
+ * A new query string is a new cache key, and is the only reliable way out.
+ */
+const POSTER_ART_VERSION = '2';
 /** Only the values an inhouse actually uses get a name; the rest show the raw id. */
 const GAME_MODE_LABELS = {
     1: 'All Pick (classic)',
@@ -200,8 +214,11 @@ function posterEmbed(siteUrl) {
             'Działają na każdym kanale.',
         inline: false,
     })
-        .setImage(`${siteUrl}/ih.png`)
-        .setFooter({ text: 'dota2inhouse.pl', iconURL: `${siteUrl}/pd2ih_logo.png` });
+        .setImage(`${siteUrl}/ih.png?v=${POSTER_ART_VERSION}`)
+        .setFooter({
+        text: 'dota2inhouse.pl',
+        iconURL: `${siteUrl}/pd2ih_logo.png?v=${POSTER_ART_VERSION}`,
+    });
 }
 function posterComponents(siteUrl) {
     return [
