@@ -39,6 +39,16 @@ export interface SessionLogicDeps {
    * it is deliberately NOT fired for a name-only refresh.
    */
   onSlotsChanged?: (updatedAt: string, playersSeated: number) => void;
+  /**
+   * A Steam32 id to the name that account is actually shown under.
+   *
+   * Not optional in spirit: the GC sends us lobby members with no name at all
+   * (the patched CSODOTALobbyMember carries id, team and slot and nothing
+   * else), so without this every membership is written nameless and every
+   * surface that renders the roster — the website's lobby card and the Discord
+   * channel card both read `playerName` — falls back to `Player 84457203`.
+   */
+  resolvePlayerName?: (steamId32: string) => Promise<string | null>;
 }
 
 /** How long after a host assignment to announce it in chat — lands after the join-burst of chatter, where it'll actually be read. */
@@ -104,10 +114,17 @@ export class InhouseSessionLogic {
       for (const player of humans) {
         const isNew = !previousIds.has(player.steamId32);
 
+        // `player.name` is always null in this build — see `resolvePlayerName`.
+        // The lookup behind it is cached per id, so this costs one Steam call
+        // per person per session, not one per lobby update. Resolved before the
+        // ban check so the kick announcement can name who it just removed.
+        const playerName =
+          player.name ?? (await this.deps.resolvePlayerName?.(player.steamId32)) ?? null;
+
         if (isNew) {
           // Ban check before the membership write, so a banned player never
           // lands in the ledger as a participant.
-          if (await this.deps.banGuard.enforce(player.steamId32, player.name)) continue;
+          if (await this.deps.banGuard.enforce(player.steamId32, playerName)) continue;
         }
 
         const owner = isNew ? await this.store.findPlayerBySteamId(player.steamId32) : null;
@@ -116,7 +133,9 @@ export class InhouseSessionLogic {
           steamId32: player.steamId32,
           side: mapSide(player.team),
           slot: player.slot,
-          playerName: player.name ?? null,
+          // Omitted rather than written null when unresolved, so a name we
+          // already have is never blanked by a lookup that happened to fail.
+          ...(playerName ? { playerName } : {}),
           ...(owner ? { discordId: owner.discordId, displayName: owner.discordName ?? undefined } : {}),
         });
 

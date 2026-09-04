@@ -16,6 +16,16 @@ export interface SessionLogicDeps {
      * it is deliberately NOT fired for a name-only refresh.
      */
     onSlotsChanged?: (updatedAt: string, playersSeated: number) => void;
+    /**
+     * A Steam32 id to the name that account is actually shown under.
+     *
+     * Not optional in spirit: the GC sends us lobby members with no name at all
+     * (the patched CSODOTALobbyMember carries id, team and slot and nothing
+     * else), so without this every membership is written nameless and every
+     * surface that renders the roster — the website's lobby card and the Discord
+     * channel card both read `playerName` — falls back to `Player 84457203`.
+     */
+    resolvePlayerName?: (steamId32: string) => Promise<string | null>;
 }
 export declare class InhouseSessionLogic {
     private game;

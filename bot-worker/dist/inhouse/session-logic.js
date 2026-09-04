@@ -76,10 +76,15 @@ class InhouseSessionLogic {
             const currentIds = new Set(humans.map((p) => p.steamId32));
             for (const player of humans) {
                 const isNew = !previousIds.has(player.steamId32);
+                // `player.name` is always null in this build — see `resolvePlayerName`.
+                // The lookup behind it is cached per id, so this costs one Steam call
+                // per person per session, not one per lobby update. Resolved before the
+                // ban check so the kick announcement can name who it just removed.
+                const playerName = player.name ?? (await this.deps.resolvePlayerName?.(player.steamId32)) ?? null;
                 if (isNew) {
                     // Ban check before the membership write, so a banned player never
                     // lands in the ledger as a participant.
-                    if (await this.deps.banGuard.enforce(player.steamId32, player.name))
+                    if (await this.deps.banGuard.enforce(player.steamId32, playerName))
                         continue;
                 }
                 const owner = isNew ? await this.store.findPlayerBySteamId(player.steamId32) : null;
@@ -87,7 +92,9 @@ class InhouseSessionLogic {
                     steamId32: player.steamId32,
                     side: mapSide(player.team),
                     slot: player.slot,
-                    playerName: player.name ?? null,
+                    // Omitted rather than written null when unresolved, so a name we
+                    // already have is never blanked by a lookup that happened to fail.
+                    ...(playerName ? { playerName } : {}),
                     ...(owner ? { discordId: owner.discordId, displayName: owner.discordName ?? undefined } : {}),
                 });
                 if (isNew) {

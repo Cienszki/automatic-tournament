@@ -289,13 +289,19 @@ class LobbyCommandRouter {
                 return;
             }
         }
-        // Players seat themselves — the bot has no fairness rating and no
-        // opinion about who should play with whom.
-        const balanced = slots.radiant.length === 5 && slots.dire.length === 5;
-        if (!wantsForce && !balanced) {
-            await this.hooks.reply(`Teams are ${slots.radiant.length}-${slots.dire.length} ` +
-                `(${slots.unassigned.length} unassigned). Pick your sides, then !start.`);
-            return;
+        // Under Immortal Draft nobody seats themselves: the ten are drawn from the
+        // unassigned pool and the captains draft the sides once the game is up. That
+        // is the normal shape of an inhouse here — usually all ten are in the pool
+        // and both team slots are empty — so demanding 5-5 first refuses to start
+        // the exact lobby the mode is designed around. Only ask for sides when the
+        // players really are the ones choosing them.
+        if (!wantsForce && !ctx.game.settings.immortalDraft) {
+            const balanced = slots.radiant.length === 5 && slots.dire.length === 5;
+            if (!balanced) {
+                await this.hooks.reply(`Składy są ${slots.radiant.length}-${slots.dire.length} ` +
+                    `(${slots.unassigned.length} bez drużyny). Zajmijcie strony, potem !start.`);
+                return;
+            }
         }
         await this.hooks.startCountdown({ force: wantsForce, byName: ctx.playerName });
     }

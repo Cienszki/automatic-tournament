@@ -209,6 +209,7 @@ class InhouseRunner {
             kick: (steamId32) => this.dota.kickPlayer(steamId32),
             sendChatMessage: (message) => this.dota.sendChatMessage(message),
             botSteamId32: this.botSteamId32,
+            resolvePlayerName: (steamId32) => this.dota.getPersonaName(steamId32),
             onSlotsChanged: (updatedAt, playersSeated) => {
                 const at = Date.parse(updatedAt);
                 this.lastSlotChangeMs = Number.isFinite(at) ? at : Date.now();
@@ -775,14 +776,24 @@ class InhouseRunner {
                 this.launching = false;
                 return;
             }
-            // Even a forced start needs somebody on an actual team slot. The GC
+            // For an ordinary lobby, somebody has to be on an actual team slot. The GC
             // silently DISCARDS launchPracticeLobby when radiant and dire are both
             // empty — no error, no ack, no state change — so without this check a
             // force-start from the unassigned player pool looks like it worked while
             // nothing happens. `fillWithBots` does not rescue this: bots fill empty
             // team slots, they don't seat the humans standing in the pool.
-            if (slots.radiant.length === 0 && slots.dire.length === 0) {
-                await this.dota.sendChatMessage('Nobody is on Radiant or Dire — take a team slot (not the unassigned pool), then !start.');
+            //
+            // Immortal Draft is the deliberate exception. Its whole premise is that
+            // the ten stay in the pool and the GC draws the teams at launch, so empty
+            // team slots are the expected state and refusing them would make the mode
+            // unstartable. What still has to be true is that there are people here at
+            // all — an empty lobby is discarded whatever the mode.
+            const drafted = Boolean(this.game?.settings.immortalDraft);
+            const noneSeated = slots.radiant.length === 0 && slots.dire.length === 0;
+            if (drafted ? slots.inLobby.length === 0 : noneSeated) {
+                await this.dota.sendChatMessage(drafted
+                    ? 'Nikogo nie ma w lobby — nie ma czego startować.'
+                    : 'Nikt nie siedzi na Radiant ani Dire — zajmijcie sloty (nie pulę), potem !start.');
                 this.launching = false;
                 return;
             }
