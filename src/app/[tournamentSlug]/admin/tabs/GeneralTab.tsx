@@ -105,6 +105,18 @@ export function GeneralTab() {
   const [mmrLimit, setMmrLimit] = useState(tournament?.mmrCap || 24000);
   const [status, setStatus] = useState<string>(tournament?.status || 'registration');
   const [visibility, setVisibility] = useState<string>(tournament?.visibility || 'active');
+
+  // Dates, slots and shortName were written once by the wizard and then editable
+  // nowhere — the registration window in particular is now load-bearing, so
+  // leaving it uneditable would lock a tournament to whatever the wizard captured.
+  const [shortName, setShortName] = useState(tournament?.shortName || '');
+  const [startDate, setStartDate] = useState(tournament?.startDate || '');
+  const [endDate, setEndDate] = useState(tournament?.endDate || '');
+  const [registrationStartDate, setRegistrationStartDate] = useState(tournament?.registrationStartDate || '');
+  const [registrationEndDate, setRegistrationEndDate] = useState(tournament?.registrationEndDate || '');
+  const [maxTeams, setMaxTeams] = useState<string>(
+    tournament?.maxTeams != null ? String(tournament.maxTeams) : ''
+  );
   const [isSaving, setIsSaving] = useState(false);
 
   // Color settings
@@ -220,6 +232,12 @@ export function GeneralTab() {
     setMmrLimit(tournament.mmrCap || 24000);
     setStatus(tournament.status || 'registration');
     setVisibility(tournament.visibility || 'active');
+    setShortName(tournament.shortName || '');
+    setStartDate(tournament.startDate || '');
+    setEndDate(tournament.endDate || '');
+    setRegistrationStartDate(tournament.registrationStartDate || '');
+    setRegistrationEndDate(tournament.registrationEndDate || '');
+    setMaxTeams(tournament.maxTeams != null ? String(tournament.maxTeams) : '');
     setSponsorEnabled(tournament.navbarSponsor?.enabled ?? false);
     setSponsorSlides(tournament.navbarSponsor?.slides || []);
     setSponsorGlobalUrl(tournament.navbarSponsor?.url || '');
@@ -441,6 +459,12 @@ export function GeneralTab() {
         type: tournamentType,
         status: status,
         visibility: visibility,
+        shortName: shortName || null,
+        startDate: startDate || null,
+        endDate: endDate || null,
+        registrationStartDate: registrationStartDate || null,
+        registrationEndDate: registrationEndDate || null,
+        maxTeams: maxTeams.trim() === '' ? null : Number(maxTeams),
         mmrCap: tournamentType === 'mmr-limited' ? mmrLimit : null,
         'theme.logoUrl': logoUrl || null,
         'theme.inlineLogoUrl': inlineLogoUrl || null,
@@ -1427,6 +1451,67 @@ export function GeneralTab() {
                 <SelectItem value="inactive">Ukryty</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Dates & registration */}
+      <Card className="border-0 shadow-lg bg-card/50 backdrop-blur-sm">
+        <CardHeader className="pb-4">
+          <CardTitle className="flex items-center gap-2 font-logik-extended-bold">
+            <Clock className="h-5 w-5" style={{ color: theme.primaryColor }} />
+            Terminy i rejestracja
+          </CardTitle>
+          <CardDescription className="font-logik">
+            Rejestracja jest otwarta tylko wtedy, gdy status to „Rejestracja otwarta”
+            <em> oraz</em> mieścimy się w poniższym oknie i limicie miejsc. Puste pole = brak
+            ograniczenia.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="grid gap-4 md:grid-cols-2">
+            <div>
+              <Label className="font-logik-extended-bold">Początek turnieju</Label>
+              <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)}
+                className="font-logik mt-1" />
+            </div>
+            <div>
+              <Label className="font-logik-extended-bold">Koniec turnieju</Label>
+              <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)}
+                className="font-logik mt-1" />
+            </div>
+            <div>
+              <Label className="font-logik-extended-bold">Początek rejestracji</Label>
+              <Input type="date" value={registrationStartDate}
+                onChange={(e) => setRegistrationStartDate(e.target.value)}
+                className="font-logik mt-1" />
+            </div>
+            <div>
+              <Label className="font-logik-extended-bold">Koniec rejestracji</Label>
+              <Input type="date" value={registrationEndDate}
+                onChange={(e) => setRegistrationEndDate(e.target.value)}
+                className="font-logik mt-1" />
+              <p className="text-xs text-muted-foreground mt-1 font-logik">
+                Rejestracja działa do końca tego dnia włącznie.
+              </p>
+            </div>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <div>
+              <Label className="font-logik-extended-bold">Limit drużyn</Label>
+              <Input type="number" min={2} value={maxTeams} placeholder="bez limitu"
+                onChange={(e) => setMaxTeams(e.target.value)}
+                className="font-logik mt-1" />
+              <p className="text-xs text-muted-foreground mt-1 font-logik">
+                Po osiągnięciu limitu rejestracja zamyka się sama.
+              </p>
+            </div>
+            <div>
+              <Label className="font-logik-extended-bold">Skrócona nazwa</Label>
+              <Input value={shortName} onChange={(e) => setShortName(e.target.value)}
+                placeholder="np. PDL" className="font-logik mt-1" />
+            </div>
           </div>
         </CardContent>
       </Card>

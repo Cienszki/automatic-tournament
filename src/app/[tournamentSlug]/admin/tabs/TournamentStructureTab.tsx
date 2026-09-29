@@ -49,6 +49,12 @@ export function TournamentStructureTab() {
   const [teamsPromoted, setTeamsPromoted] = useState(1);
   const [teamsRelegated, setTeamsRelegated] = useState(1);
   const [defaultMatchFormat, setDefaultMatchFormat] = useState<string>(tournament?.defaultMatchFormat || 'bo2');
+  // Written once at creation and previously editable nowhere.
+  const [teamSize, setTeamSize] = useState<number>(tournament?.teamSize ?? 5);
+  const [coachMode, setCoachMode] = useState<string>(tournament?.coachMode ?? 'disabled');
+  const [schedulingMethod, setSchedulingMethod] = useState<string>(
+    tournament?.schedulingMethod ?? 'captain-scheduled'
+  );
   const [playoffFormat, setPlayoffFormat] = useState('bo3');
   const [finalsFormat, setFinalsFormat] = useState('bo5');
   const [isSaving, setIsSaving] = useState(false);
@@ -72,6 +78,9 @@ export function TournamentStructureTab() {
         defaultMatchFormat: defaultMatchFormat,
         promotionRelegationEnabled: hasPromotionRelegation,
         'playoffs.enabled': hasPlayoffs,
+        teamSize: teamSize,
+        coachMode: coachMode,
+        schedulingMethod: schedulingMethod,
         updatedAt: new Date().toISOString(),
       });
 
@@ -121,6 +130,63 @@ export function TournamentStructureTab() {
           Zapisz zmiany
         </Button>
       </div>
+
+      {/* Team & scheduling rules — previously creation-only. */}
+      <Card className="border-0 shadow-lg bg-card/50 backdrop-blur-sm">
+        <CardHeader className="pb-4">
+          <CardTitle className="flex items-center gap-2 font-logik-extended-bold">
+            <Users className="h-5 w-5" style={{ color: theme.primaryColor }} />
+            Drużyny i terminy
+          </CardTitle>
+          <CardDescription className="font-logik">
+            Zasady składów i ustalania terminów meczów
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="space-y-2">
+              <Label className="font-logik-extended-bold">Liczba graczy w drużynie</Label>
+              <Input
+                type="number"
+                min={1}
+                max={10}
+                value={teamSize}
+                onChange={(e) => setTeamSize(Number(e.target.value) || 5)}
+                className="font-logik"
+              />
+              <p className="text-xs text-muted-foreground font-logik">
+                Formularz rejestracji nadal wymaga 5 graczy — zmiana tej wartości nie
+                przebudowuje formularza.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="font-logik-extended-bold">Coachowie</Label>
+              <Select value={coachMode} onValueChange={setCoachMode}>
+                <SelectTrigger className="font-logik"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="disabled">Wyłączeni</SelectItem>
+                  <SelectItem value="pre-season">Zgłaszani przed sezonem</SelectItem>
+                  <SelectItem value="per-game">Zgłaszani do każdego meczu</SelectItem>
+                  <SelectItem value="flexible">Elastycznie</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="font-logik-extended-bold">Kto ustala terminy</Label>
+              <Select value={schedulingMethod} onValueChange={setSchedulingMethod}>
+                <SelectTrigger className="font-logik"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="captain-scheduled">Kapitanowie się umawiają</SelectItem>
+                  <SelectItem value="admin-scheduled">Organizator wyznacza</SelectItem>
+                  <SelectItem value="fixed-schedule">Stały terminarz</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Rounds Configuration */}
       <Card className="border-0 shadow-lg bg-card/50 backdrop-blur-sm">
