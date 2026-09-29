@@ -7,10 +7,20 @@
 // when the Firestore write was rejected — with no indication that the problem
 // was permissions rather than their input.
 
-import React, { useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import { Loader2, ShieldAlert, LogIn } from 'lucide-react';
+
+/**
+ * Exposes what the guard already established, so the wizard does not have to
+ * ask the same endpoint again. Super admins bypass slug namespace ownership.
+ */
+const CreatorAccessContext = createContext<{ isSuperAdmin: boolean }>({ isSuperAdmin: false });
+
+export function useCreatorAccess() {
+  return useContext(CreatorAccessContext);
+}
 
 type AccessState =
   | { status: 'loading' }
@@ -101,7 +111,11 @@ export function CreatorAccessGuard({ children }: { children: React.ReactNode }) 
     );
   }
 
-  return <>{children}</>;
+  return (
+    <CreatorAccessContext.Provider value={{ isSuperAdmin: access.isSuperAdmin }}>
+      {children}
+    </CreatorAccessContext.Provider>
+  );
 }
 
 function Shell({

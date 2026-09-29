@@ -16,9 +16,8 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { createTournament, isSlugAvailable } from '@/lib/api/tournaments';
-import { validateSlug, describeSlugProblem } from '@/lib/reserved-slugs';
-import { CreatorAccessGuard } from '@/components/creator/CreatorAccessGuard';
+import { createTournament, checkSlugClaim } from '@/lib/api/tournaments';
+import { CreatorAccessGuard, useCreatorAccess } from '@/components/creator/CreatorAccessGuard';
 import { useAuth } from '@/context/AuthContext';
 
 // Import step components
@@ -49,6 +48,7 @@ function NewTournamentContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { user } = useAuth();
+  const { isSuperAdmin } = useCreatorAccess();
   const template = searchParams.get('template') || 'custom';
 
   const [currentStep, setCurrentStep] = useState(0);
@@ -102,20 +102,14 @@ function NewTournamentContent() {
         return;
       }
 
-      // Reject reserved or malformed slugs. Reserved ones collide with the main
-      // site's routes/assets and would make the tournament unreachable; malformed
-      // ones break routing or silently 404 (the stored value is matched exactly).
-      const slugProblem = validateSlug(basicInfo.slug);
-      if (slugProblem) {
-        setPublishError(describeSlugProblem(slugProblem, basicInfo.slug));
-        setIsPublishing(false);
-        return;
-      }
-
-      // Check if slug is available
-      const slugAvailable = await isSlugAvailable(basicInfo.slug);
-      if (!slugAvailable) {
-        setPublishError(`Slug "${basicInfo.slug}" jest już zajęty. Wybierz inny.`);
+      // One call covers shape, reserved words, uniqueness AND namespace
+      // ownership — a recurring series like `pdl` owns `pdl-*`, so only its
+      // organizer may claim `pdl-s2`.
+      const claim = await checkSlugClaim(basicInfo.slug, user.uid, {
+        isSuperAdmin: isSuperAdmin,
+      });
+      if (!claim.ok) {
+        setPublishError(claim.message ?? 'Tego adresu nie można użyć.');
         setIsPublishing(false);
         return;
       }

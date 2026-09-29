@@ -11,6 +11,7 @@ import { ThemeFontApplier } from '@/components/ThemeFontApplier';
 import { LoadingScreen } from '@/components/ui/LoadingScreen';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { DraftGate } from '@/components/tournament/DraftGate';
+import { TournamentRedirect } from '@/components/tournament/TournamentRedirect';
 
 interface TournamentLayoutProps {
   children: React.ReactNode;
@@ -145,6 +146,7 @@ export default function TournamentLayout({ children }: TournamentLayoutProps) {
 
   return (
     <DraftGate>
+      <TournamentRedirect>
       <DynamicFontLoader />
       <ThemeFontApplier onReady={handleFontsReady} />
       <HomeNavigationProvider>
@@ -206,6 +208,7 @@ export default function TournamentLayout({ children }: TournamentLayoutProps) {
         <LoadingScreen isLeaving={!showLoading} />
       )}
       </HomeNavigationProvider>
+      </TournamentRedirect>
     </DraftGate>
   );
 }

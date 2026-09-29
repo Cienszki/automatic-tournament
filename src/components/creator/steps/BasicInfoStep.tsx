@@ -8,6 +8,15 @@ import { Info, Calendar, Users, Globe } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ChangeableLaterNote } from '@/components/creator/AdvancedSection';
 
+// Lookup rather than a ternary: the previous two-branch version silently
+// labelled every non-MMR template "Liga Profesjonalna", so picking Swiss
+// showed the wrong format on the very next screen.
+const TEMPLATE_LABELS: Record<string, string> = {
+  'mmr-limited': 'Turniej z Limitem MMR',
+  'league': 'Liga Profesjonalna',
+  'swiss': 'Liga Szwajcarska',
+};
+
 interface BasicInfoStepProps {
   data: any;
   onChange: (data: any) => void;
@@ -66,7 +75,7 @@ export function BasicInfoStep({ data, onChange, template }: BasicInfoStepProps) 
           <Info className="h-5 w-5 text-primary shrink-0 mt-0.5" />
           <div className="text-sm">
             <p className="font-medium text-foreground mb-1">
-              Wybrany szablon: {template === 'mmr-limited' ? 'Turniej z Limitem MMR' : 'Liga Profesjonalna'}
+              Wybrany szablon: {TEMPLATE_LABELS[template] ?? 'Własny format'}
             </p>
             <p className="text-muted-foreground">
               Struktura turnieju zostanie skonfigurowana w kolejnych krokach

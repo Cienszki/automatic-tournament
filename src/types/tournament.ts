@@ -336,6 +336,17 @@ export interface TournamentConfig {
    * `/[slug]?preview=<token>`. Rotatable from the admin panel.
    */
   previewToken?: string;
+
+  /**
+   * Send visitors of this tournament to another one — used when a new season
+   * supersedes an old one, so `/pdl` can land on `/pdl-s2`.
+   *
+   * Followed for a single hop only: if the target also has a redirect, it is not
+   * chased. That makes a loop impossible to build by accident.
+   *
+   * Never applied to `/admin`, so an superseded tournament stays manageable.
+   */
+  redirectToSlug?: string | null;
   
   // Dates
   registrationStartDate?: string;

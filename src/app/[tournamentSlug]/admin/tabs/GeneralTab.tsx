@@ -24,6 +24,7 @@ import { FontManagement } from '@/components/admin/FontManagement';
 import type { CustomFont } from '@/components/admin/FontManagement';
 import type { NavbarSponsorSlide, TournamentType } from '@/types/tournament';
 import { TournamentCreatorsManager } from '@/components/admin/TournamentCreatorsManager';
+import { fetchOwnedSlugs } from '@/lib/api/tournaments';
 import {
   uploadTournamentLogo,
   uploadTournamentInlineLogo,
@@ -117,6 +118,9 @@ export function GeneralTab() {
   const [maxTeams, setMaxTeams] = useState<string>(
     tournament?.maxTeams != null ? String(tournament.maxTeams) : ''
   );
+  // Recurring series: point a finished season at its successor.
+  const [redirectToSlug, setRedirectToSlug] = useState<string>(tournament?.redirectToSlug || '');
+  const [ownedSlugs, setOwnedSlugs] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState(false);
 
   // Color settings
@@ -238,6 +242,7 @@ export function GeneralTab() {
     setRegistrationStartDate(tournament.registrationStartDate || '');
     setRegistrationEndDate(tournament.registrationEndDate || '');
     setMaxTeams(tournament.maxTeams != null ? String(tournament.maxTeams) : '');
+    setRedirectToSlug(tournament.redirectToSlug || '');
     setSponsorEnabled(tournament.navbarSponsor?.enabled ?? false);
     setSponsorSlides(tournament.navbarSponsor?.slides || []);
     setSponsorGlobalUrl(tournament.navbarSponsor?.url || '');
@@ -294,6 +299,16 @@ export function GeneralTab() {
   useEffect(() => {
     loadTournamentAdmins();
   }, [tournament?.id]);
+
+  // Other tournaments this organizer owns, for the redirect picker.
+  useEffect(() => {
+    if (!tournament?.organizerId) return;
+    let cancelled = false;
+    fetchOwnedSlugs(tournament.organizerId)
+      .then(slugs => { if (!cancelled) setOwnedSlugs(slugs); })
+      .catch(err => console.error('Error loading owned slugs:', err));
+    return () => { cancelled = true; };
+  }, [tournament?.organizerId]);
 
   const loadTournamentAdmins = async () => {
     if (!tournament?.id || !user) return;
@@ -465,6 +480,7 @@ export function GeneralTab() {
         registrationStartDate: registrationStartDate || null,
         registrationEndDate: registrationEndDate || null,
         maxTeams: maxTeams.trim() === '' ? null : Number(maxTeams),
+        redirectToSlug: redirectToSlug.trim() === '' ? null : redirectToSlug.trim(),
         mmrCap: tournamentType === 'mmr-limited' ? mmrLimit : null,
         'theme.logoUrl': logoUrl || null,
         'theme.inlineLogoUrl': inlineLogoUrl || null,
@@ -1512,6 +1528,36 @@ export function GeneralTab() {
               <Input value={shortName} onChange={(e) => setShortName(e.target.value)}
                 placeholder="np. PDL" className="font-logik mt-1" />
             </div>
+          </div>
+
+          {/* Recurring series: send an old season's visitors to the new one. */}
+          <div className="pt-4 border-t border-border">
+            <Label className="font-logik-extended-bold">Przekierowanie na nowszą edycję</Label>
+            <p className="text-sm text-muted-foreground font-logik mb-3">
+              Gdy ruszy kolejny sezon, możesz przekierować odwiedzających tego turnieju na
+              nowy. Panel administracyjny tego turnieju nadal będzie działał normalnie.
+            </p>
+            <Select
+              value={redirectToSlug === '' ? '__none__' : redirectToSlug}
+              onValueChange={(v) => setRedirectToSlug(v === '__none__' ? '' : v)}
+            >
+              <SelectTrigger className="font-logik max-w-md">
+                <SelectValue placeholder="Bez przekierowania" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">Bez przekierowania</SelectItem>
+                {ownedSlugs
+                  .filter(s => s !== tournament?.slug)
+                  .map(s => (
+                    <SelectItem key={s} value={s}>/{s}</SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
+            {ownedSlugs.filter(s => s !== tournament?.slug).length === 0 && (
+              <p className="text-xs text-muted-foreground mt-1 font-logik">
+                Nie masz jeszcze innych turniejów, na które można przekierować.
+              </p>
+            )}
           </div>
         </CardContent>
       </Card>

@@ -15,6 +15,11 @@ import {
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { validateSlug, describeSlugProblem } from '@/lib/reserved-slugs';
+import {
+  checkNamespaceClaim,
+  describeNamespaceVerdict,
+  type SlugOwner,
+} from '@/lib/slug-namespace';
 import { TournamentConfig, TournamentSummary, TournamentType } from '@/types/tournament';
 
 /**
@@ -450,5 +455,69 @@ export async function isSlugAvailable(slug: string): Promise<boolean> {
   } catch (error) {
     console.error('Error checking slug availability:', error);
     return false;
+  }
+}
+
+export interface SlugClaimResult {
+  ok: boolean;
+  /** Ready-to-display reason when `ok` is false. */
+  message?: string;
+}
+
+/**
+ * Full slug check for the wizard: shape, reserved words, uniqueness, and
+ * namespace ownership for recurring tournaments (`pdl` owns `pdl-*`).
+ *
+ * One call so the wizard cannot check three of the four and let the fourth
+ * through.
+ */
+export async function checkSlugClaim(
+  slug: string,
+  requesterId: string,
+  opts: { isSuperAdmin?: boolean; excludeTournamentId?: string } = {}
+): Promise<SlugClaimResult> {
+  const problem = validateSlug(slug);
+  if (problem) {
+    return { ok: false, message: describeSlugProblem(problem, slug) };
+  }
+
+  try {
+    const snapshot = await getDocs(collection(db, 'tournaments'));
+    const existing: SlugOwner[] = snapshot.docs
+      .filter(d => d.id !== opts.excludeTournamentId)
+      .map(d => ({ slug: d.data().slug, organizerId: d.data().organizerId }))
+      .filter(t => !!t.slug);
+
+    if (existing.some(t => t.slug === slug)) {
+      return { ok: false, message: `Adres "${slug}" jest już zajęty.` };
+    }
+
+    const verdict = checkNamespaceClaim(slug, requesterId, existing, {
+      isSuperAdmin: opts.isSuperAdmin,
+    });
+    const reason = describeNamespaceVerdict(verdict);
+    if (reason) return { ok: false, message: reason };
+
+    return { ok: true };
+  } catch (error) {
+    console.error('Error checking slug claim:', error);
+    // Fail closed: better to block creation than to hand out a slug that
+    // collides with someone else's series.
+    return { ok: false, message: 'Nie udało się sprawdzić dostępności adresu. Spróbuj ponownie.' };
+  }
+}
+
+/** Slugs the given organizer already owns, for the redirect picker. */
+export async function fetchOwnedSlugs(organizerId: string): Promise<string[]> {
+  try {
+    const snapshot = await getDocs(collection(db, 'tournaments'));
+    return snapshot.docs
+      .map(d => d.data())
+      .filter(t => t.slug && t.organizerId === organizerId)
+      .map(t => t.slug as string)
+      .sort();
+  } catch (error) {
+    console.error('Error fetching owned slugs:', error);
+    return [];
   }
 }
