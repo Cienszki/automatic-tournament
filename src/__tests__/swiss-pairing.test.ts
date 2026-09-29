@@ -98,6 +98,23 @@ const strongerWins = (a: string, b: string): [number, number] =>
 // ── sentinel + key helpers ───────────────────────────────────────────────────
 
 describe('swiss bye sentinel', () => {
+  // The sentinel is written as a real Firestore DOCUMENT ID by ensureByeTeam(),
+  // so it must satisfy Firestore's id rules. It was originally '__SWISS_BYE__',
+  // mirroring the playoff sentinel — but Firestore rejects ids matching `__.*__`
+  // as reserved, so every odd-sized field failed at write time. The pure pairing
+  // tests could not catch that; only a real write did.
+  it('is a legal Firestore document id', () => {
+    const id = SWISS_BYE_TEAM_ID;
+    expect(id.length, 'must be 1..1500 bytes').toBeGreaterThan(0);
+    expect(Buffer.byteLength(id, 'utf8')).toBeLessThanOrEqual(1500);
+    expect(id, 'must not contain a forward slash').not.toContain('/');
+    expect(id, 'must not be . or ..').not.toMatch(/^\.{1,2}$/);
+    expect(
+      /^__.*__$/.test(id),
+      'ids matching __.*__ are reserved by Firestore and rejected on write'
+    ).toBe(false);
+  });
+
   it('identifies the sentinel and nothing else', () => {
     expect(isSwissByeTeam(SWISS_BYE_TEAM_ID)).toBe(true);
     expect(isSwissByeTeam('t01')).toBe(false);
@@ -383,6 +400,36 @@ describe('bye handling', () => {
       const thisTeam = isSwissByeTeam(thisBye.teamAId) ? thisBye.teamBId : thisBye.teamAId;
       expect(thisTeam, `round ${r + 1} repeated the bye`).not.toBe(prevTeam);
     }
+  });
+
+  // The bye is free points, so it must go DOWN the table, never to the leader.
+  // The original cost function charged nothing for a bye beyond a repeat
+  // penalty, which made BYE the cheapest partner for whichever team the solver
+  // reached first — the top seed. Only an end-to-end run surfaced it.
+  it('gives the bye to a trailing team, not the table leader', () => {
+    // Five teams, so the field is odd and a bye is actually generated.
+    // Round 1: winA and winB win, lossA and lossB lose, hadBye sat out.
+    const ids = ['winA', 'winB', 'lossA', 'lossB', 'hadBye'];
+    const results: SwissMatchResult[] = [
+      { teamAId: 'winA', teamBId: 'lossA', scoreA: 2, scoreB: 0, round: 1, completed: true },
+      { teamAId: 'winB', teamBId: 'lossB', scoreA: 2, scoreB: 0, round: 1, completed: true },
+      { teamAId: 'hadBye', teamBId: SWISS_BYE_TEAM_ID, scoreA: 2, scoreB: 0, round: 1, completed: true },
+    ];
+    const standings = computeSwissStandings(ids, results, {
+      winA: 5000, winB: 4500, lossA: 4000, lossB: 3500, hadBye: 3000,
+    });
+    const { pairings } = generatePairings(standings, buildSwissHistory(results), {});
+
+    const byePair = pairings.find(p => p.isBye);
+    expect(byePair, 'odd field must produce a bye').toBeTruthy();
+    const real = isSwissByeTeam(byePair!.teamAId) ? byePair!.teamBId : byePair!.teamAId;
+
+    const pointsOf = (id: string) => standings.find(s => s.teamId === id)?.points ?? 0;
+    const maxPoints = Math.max(...ids.map(pointsOf));
+    expect(
+      pointsOf(real),
+      `bye went to "${real}" on ${pointsOf(real)} pts; table leaders have ${maxPoints}`
+    ).toBeLessThan(maxPoints);
   });
 
   it('spreads byes across the field rather than parking them on one team', () => {

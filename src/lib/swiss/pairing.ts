@@ -21,11 +21,18 @@ import type { SwissStandingRow } from '@/types/tournament';
 /**
  * Sentinel opponent used to give a team a bye when the field is odd.
  *
- * Mirrors the convention already used for playoff brackets
- * (`BYE_TEAM_SENTINEL` in src/lib/playoff-bracket-generator.ts) so there is one
- * recognisable shape for "not a real team" across the codebase.
+ * NOT named `__SWISS_BYE__` like the playoff sentinel it otherwise mirrors
+ * (`BYE_TEAM_SENTINEL` in src/lib/playoff-bracket-generator.ts), because this
+ * one is used as an actual Firestore DOCUMENT ID — `ensureByeTeam()` writes a
+ * hidden team document under it. Firestore rejects any document id matching
+ * `__.*__` as reserved, so the double-underscore form fails at write time for
+ * every odd-sized field. The playoff sentinel is only ever a field value, so it
+ * is unaffected.
+ *
+ * Must stay a legal Firestore document id — see the guard in
+ * src/__tests__/swiss-pairing.test.ts.
  */
-export const SWISS_BYE_TEAM_ID = '__SWISS_BYE__';
+export const SWISS_BYE_TEAM_ID = 'swiss-bye';
 
 export function isSwissByeTeam(teamId: string | null | undefined): boolean {
   return teamId === SWISS_BYE_TEAM_ID;
@@ -223,6 +230,15 @@ export interface PairingWeights {
   rematchRecency: number;
   /** Per bye the real team has already received. */
   repeatBye: number;
+  /**
+   * Per point already scored by the team receiving a bye.
+   *
+   * Without this a bye costs nothing, so it is the cheapest possible partner for
+   * whichever team the solver reaches first — the top of the table — and the
+   * leader collects free points. Standard Swiss gives the bye to the LOWEST
+   * ranked eligible team, and this is what pulls it down there.
+   */
+  byeToLeader: number;
   /** Per point of difference in Swiss score. */
   pointsGap: number;
   /** Per 100 MMR of difference in declared seed MMR. */
@@ -235,6 +251,10 @@ export const DEFAULT_PAIRING_WEIGHTS: PairingWeights = {
   rematch: 300,
   rematchRecency: 300,
   repeatBye: 800,
+  // Slightly above pointsGap, so sending the bye one place further down the
+  // table always beats widening a real pairing by the same margin — but well
+  // under repeatBye, which still dominates.
+  byeToLeader: 60,
   // Points dominate MMR by design: score is the Swiss mechanic, declared MMR is
   // only a tiebreaker for choosing among otherwise-equivalent pairings.
   pointsGap: 50,
@@ -403,8 +423,10 @@ function pairCost(
   }
 
   if (isSwissByeMatch(a.teamId, b.teamId)) {
-    const real = isSwissByeTeam(a.teamId) ? b.teamId : a.teamId;
-    cost += weights.repeatBye * (history.byeCount[real] ?? 0);
+    const realRow = isSwissByeTeam(a.teamId) ? b : a;
+    cost += weights.repeatBye * (history.byeCount[realRow.teamId] ?? 0);
+    // Push the bye toward the bottom of the table.
+    cost += weights.byeToLeader * realRow.points;
   } else {
     // Score and MMR proximity only mean something between two real teams.
     cost += weights.pointsGap * Math.abs(a.points - b.points);
