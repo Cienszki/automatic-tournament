@@ -13,6 +13,7 @@ import {
   Timestamp 
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { isReservedSlug } from '@/lib/reserved-slugs';
 import { TournamentConfig, TournamentSummary } from '@/types/tournament';
 
 /**
@@ -27,6 +28,12 @@ export async function createTournament(data: {
 }): Promise<string> {
   const { basicInfo, branding, structure, template } = data;
   const isMmrLimited = structure.type === 'mmr-limited';
+
+  // Guard: never let a reserved slug reach the database, even if a caller
+  // skipped the isSlugAvailable() check.
+  if (isReservedSlug(basicInfo.slug)) {
+    throw new Error(`Slug "${basicInfo.slug}" is reserved and cannot be used.`);
+  }
 
   // Build tournament configuration
   const tournamentConfig: Record<string, any> = {
@@ -269,10 +276,15 @@ export async function updateTournamentStatus(
  */
 export async function isSlugAvailable(slug: string): Promise<boolean> {
   try {
+    // Reserved slugs collide with app routes / static assets — never available.
+    if (isReservedSlug(slug)) {
+      return false;
+    }
+
     const tournamentsRef = collection(db, 'tournaments');
     const q = query(tournamentsRef, where('slug', '==', slug));
     const snapshot = await getDocs(q);
-    
+
     return snapshot.empty;
   } catch (error) {
     console.error('Error checking slug availability:', error);

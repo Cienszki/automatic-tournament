@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { createTournament, isSlugAvailable } from '@/lib/api/tournaments';
+import { isReservedSlug } from '@/lib/reserved-slugs';
 
 // Import step components
 import { BasicInfoStep } from '@/components/creator/steps/BasicInfoStep';
@@ -86,6 +87,13 @@ function NewTournamentContent() {
       const basicInfo = formData.basic || {};
       if (!basicInfo.name || !basicInfo.slug || !basicInfo.organizerName) {
         setPublishError('Wypełnij wszystkie wymagane pola w podstawowych informacjach');
+        setIsPublishing(false);
+        return;
+      }
+
+      // Reject reserved slugs (collide with the main site's routes/assets)
+      if (isReservedSlug(basicInfo.slug)) {
+        setPublishError(`Slug "${basicInfo.slug}" jest zarezerwowany i nie może zostać użyty. Wybierz inny.`);
         setIsPublishing(false);
         return;
       }

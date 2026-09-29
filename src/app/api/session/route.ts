@@ -1,5 +1,8 @@
 
-// src/app/api/auth/session/route.ts
+// src/app/api/session/route.ts
+// NOTE: lives at /api/session (not /api/auth/session) so it does not collide
+// with the community site's reserved /api/auth/* namespace after the
+// dota2inhouse.pl → Vercel cutover. See the domain-cutover instructions.
 import { NextResponse } from 'next/server';
 import { getAdminAuth } from '@/lib/admin';
 import { cookies } from 'next/headers';
@@ -13,7 +16,7 @@ export async function POST(request: NextRequest) {
 
     const adminAuth = getAdminAuth();
     const decodedIdToken = await adminAuth.verifyIdToken(idToken);
-    
+
     // Check if the user is an admin and set a custom claim.
     const userRecord = await adminAuth.getUser(decodedIdToken.uid);
     const isAdmin = userRecord.customClaims?.admin === true;
@@ -26,7 +29,7 @@ export async function POST(request: NextRequest) {
 
     const cookieStore = await cookies();
     cookieStore.set('session', sessionCookie, { maxAge: expiresIn, httpOnly: true, secure: true, path: '/' });
-    
+
     return NextResponse.json({ status: 'success' });
   } catch (error) {
     console.error('Session login error:', error);

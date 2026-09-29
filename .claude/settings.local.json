@@ -75,13 +75,30 @@
       "Bash(echo \"=== EXIT $? ===\")",
       "PowerShell($procs = Get-CimInstance Win32_Process -Filter \"Name='node.exe'\" | Where-Object { $_.CommandLine -match 'next' -and $_.CommandLine -notmatch 'firebase' }; if \\($procs\\) { $procs | ForEach-Object { \"PID $\\($_.ProcessId\\): $\\($_.CommandLine\\)\" } } else { \"no next dev processes running\" })",
       "Bash(grep -rl \"customCommands\\\\|CustomBotCommand\" bot-worker/dist)",
-      "Bash(grep -rln \"trigger\\\\|ChatMessage\\\\|chatMsg\\\\|onChat\" bot-worker/dist)"
+      "Bash(grep -rln \"trigger\\\\|ChatMessage\\\\|chatMsg\\\\|onChat\" bot-worker/dist)",
+      "Bash(ls *.json .env*)",
+      "Bash(ls *.json)",
+      "Bash(rm -rf \"c:\\\\Users\\\\wilqw\\\\Desktop\\\\code\\\\Letnia\\\\automatic-tournament\\\\src\\\\app\\\\[tournamentSlug]\\\\playoffs-2\")",
+      "Bash(rm -rf \"c:\\\\Users\\\\wilqw\\\\Desktop\\\\code\\\\Letnia\\\\automatic-tournament\\\\.next\\\\types\\\\app\\\\[tournamentSlug]\\\\playoffs-2\" && npx tsc --noEmit -p tsconfig.json 2>&1 | head -20)",
+      "Bash(firebase login:list)",
+      "Bash(find \"c:/Users/wilqw\" -maxdepth 6 \\\\\\( -name \"runner-logic.ts\" -o -name \"conductor.ts\" -o -name \"scheduling.ts\" \\\\\\) -not -path \"*/node_modules/*\" 2>/dev/null | head -20; echo \"=== exit search ===\")",
+      "Read(//c/Users/wilqw/**)",
+      "Bash(sed -n '10,60p' handlers/lobbies.js)",
+      "Read(//c/Users/wilqw/Desktop/code/**)",
+      "Bash(cd \"c:/Users/wilqw/Desktop/code/Letnia/automatic-tournament/bot-worker\" && node --check dist/_create-penalty-test.js && echo \"script OK\"; echo \"=== modal deploy status ===\"; tail -4 /tmp/deploy-modal.log 2>/dev/null || cat \"C:\\\\Users\\\\wilqw\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-wilqw-Desktop-code-Letnia-automatic-tournament\\\\04c13a47-c789-42e3-8473-28f2e4b3b903\\\\tasks\\\\bircvcv3b.output\" 2>/dev/null | tail -4)",
+      "Read(//tmp/**)",
+      "Bash(rm -f scripts/inspect-playoff-match.js)",
+      "Bash(firebase deploy *)",
+      "Bash(awk '/message CMsgPracticeLobbySetDetails/{f=1} f{print} f&&/^}/{exit}' node_modules/steam-resources/protobufs/dota2/dota_gcmessages_client_match_management.proto)",
+      "Bash(PYTHONIOENCODING=utf-8 python analyze.py)"
     ],
     "deny": [],
     "ask": [],
     "additionalDirectories": [
       "C:\\c\\Users\\wilqw\\Desktop\\code\\Letnia",
-      "c:\\Users\\wilqw\\Desktop\\code\\Letnia\\automatic-tournament\\src\\app\\[tournamentSlug]"
+      "c:\\Users\\wilqw\\Desktop\\code\\Letnia\\automatic-tournament\\src\\app\\[tournamentSlug]",
+      "c:\\Users\\wilqw\\Desktop\\code\\Letnia\\automatic-tournament\\src\\app\\[tournamentSlug]\\playoffs-2",
+      "c:\\Users\\wilqw\\Desktop\\code\\Letnia\\automatic-tournament\\.next\\types\\app\\[tournamentSlug]\\playoffs-2"
     ]
   }
 }

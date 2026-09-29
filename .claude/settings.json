@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node -e \"const s=require\\('./package.json'\\).scripts; console.log\\(JSON.stringify\\(s,null,2\\)\\)\")",
+      "Bash(npx tsc *)"
+    ],
+    "additionalDirectories": [
+      "c:\\Users\\wilqw\\.claude\\projects\\c--Users-wilqw-Desktop-code-Letnia-automatic-tournament\\memory"
+    ]
+  }
+}

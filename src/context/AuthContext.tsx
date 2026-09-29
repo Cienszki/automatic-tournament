@@ -42,7 +42,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const result = await signInWithPopup(auth, provider);
       if (result && result.user) {
         const idToken = await result.user.getIdToken();
-        await fetch('/api/auth/session', {
+        await fetch('/api/session', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ idToken }),
@@ -67,7 +67,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const signOut = async () => {
     try {
       await firebaseSignOut(auth);
-      await fetch('/api/auth/session', {
+      await fetch('/api/session', {
         method: 'DELETE',
       });
       toast({
