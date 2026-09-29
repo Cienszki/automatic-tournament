@@ -151,11 +151,21 @@ service cloud.firestore {
 
       // Editing was previously super-admin only, which meant a tournament's own
       // admins could not save the General or Structure tabs of their tournament.
-      // `slug` and `organizerId` stay immutable: the slug is baked into every
-      // public URL and every Storage upload path, and ownership is not something
-      // a delegated admin should be able to reassign.
-      allow update: if hasAdminAccess(tournamentId)
-        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['slug', 'organizerId']);
+      //
+      // `slug` is immutable for everyone — it is baked into every public URL and
+      // every Storage upload path, so changing it strands both.
+      //
+      // `organizerId` is immutable for tournament admins, since a delegated admin
+      // should not be able to reassign ownership (and with slug namespaces,
+      // ownership now also decides who may claim `<slug>-*`). Super admins CAN
+      // change it: without that there is no way to hand a series to an organiser,
+      // and legacy tournaments carrying the placeholder 'pd2ih' could never be
+      // given a real owner.
+      allow update: if
+        (isAdmin()
+          && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['slug']))
+        || (isTournamentAdmin(tournamentId)
+          && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['slug', 'organizerId']));
 
       allow delete: if isAdmin();
 
