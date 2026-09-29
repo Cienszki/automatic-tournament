@@ -72,6 +72,60 @@ function createPdlFormSchema(v: (key: string) => string) {
   });
 }
 
+// Swiss Registration Schema — the PDL schema plus ONE team-level average MMR.
+//
+// Swiss deliberately collects no per-player MMR and no screenshots: the number
+// is used only to seed round 1 and to break ties between teams on equal points
+// when pairing later rounds. It is never shown publicly.
+function createSwissFormSchema(v: (key: string) => string) {
+  return z.object({
+    name: z.string()
+      .min(3, v('teamNameMin'))
+      .max(20, v('teamNameMax'))
+      .regex(/^[A-Za-zĄąĆćĘęŁłŃńÓóŚśŹźŻż0-9 _\-&]+$/, v('teamNameFormat')),
+    tag: z.string().min(2, v('tagLength')).max(6, v('tagLength')),
+    discordUsername: z.string().min(2, v('discordRequired')),
+    motto: z.string().min(5, v('mottoMin')),
+    logo: z.custom<File | null>(
+      (file) => file instanceof File, v('logoRequired')
+    ).refine(
+      (file) => !!file && file.size <= MAX_FILE_SIZE, v('logoMaxSize')
+    ).refine(
+      (file) => !!file && ACCEPTED_IMAGE_TYPES.includes(file.type),
+      v('logoFormat')
+    ),
+    seedMmr: z.coerce.number()
+      .int('Podaj liczbę całkowitą')
+      .min(1, 'Podaj średnie MMR drużyny')
+      .max(12000, 'Maksymalne średnie MMR to 12000'),
+    players: z.array(z.object({
+      nickname: z.string()
+        .min(2, v('nicknameMin'))
+        .max(20, v('nicknameMax'))
+        .regex(/^[A-Za-zĄąĆćĘęŁłŃńÓóŚśŹźŻż0-9 _\-&]+$/, v('nicknameFormat')),
+      role: z.enum(PlayerRoles),
+      steamProfileUrl: z.string().url(v('steamUrl')),
+    })).min(5, v('playersCount')).max(5),
+    rulesAcknowledged: z.boolean().refine((val) => val === true, {
+      message: v('rulesRequired'),
+    }),
+  }).refine(data => {
+    const roles = data.players.map(player => player.role);
+    const uniqueRoles = new Set(roles);
+    return uniqueRoles.size === roles.length;
+  }, {
+    message: v('uniqueRoles'),
+    path: ["players"],
+  }).refine(data => {
+    const roles = data.players.map(player => player.role);
+    const playerRoles = new Set(roles);
+    return PlayerRoles.every(role => playerRoles.has(role));
+  }, {
+    message: v('allRoles'),
+    path: ["players"],
+  });
+}
+
 // MMR Tournament Registration Schema — adds per-player MMR + screenshot
 function createMmrFormSchema(v: (key: string) => string, mmrCap: number) {
   return z.object({
@@ -278,7 +332,7 @@ function MmrSummary({ form, mmrCap }: { form: { watch: (name: string) => any }; 
 export default function RegisterPage() {
   const { user, signInWithGoogle } = useAuth();
   const { tournament, getTournamentPath } = useTournament();
-  const { isMmrLimited } = useTournamentType();
+  const { isMmrLimited, isSwiss } = useTournamentType();
   const t = useTranslations('pdlRegistration');
   const [serverError, setServerError] = React.useState<string | null>(null);
   const [logoPreview, setLogoPreview] = React.useState<string | null>(null);
@@ -290,8 +344,10 @@ export default function RegisterPage() {
   const pdlFormSchema = React.useMemo(
     () => isMmrLimited
       ? createMmrFormSchema((key: string) => t(`validation.${key}` as Parameters<typeof t>[0]), mmrCap)
+      : isSwiss
+      ? createSwissFormSchema((key: string) => t(`validation.${key}` as Parameters<typeof t>[0]))
       : createPdlFormSchema((key: string) => t(`validation.${key}` as Parameters<typeof t>[0])),
-    [t, isMmrLimited, mmrCap]
+    [t, isMmrLimited, isSwiss, mmrCap]
   );
   type PdlFormValues = z.infer<typeof pdlFormSchema>;
 
@@ -305,13 +361,14 @@ export default function RegisterPage() {
       discordUsername: "",
       motto: "",
       logo: null,
+      ...(isSwiss ? { seedMmr: undefined } : {}),
       players: Array(5).fill(
         isMmrLimited
           ? { nickname: "", role: undefined, steamProfileUrl: "", mmr: 0, profileScreenshot: null }
           : { nickname: "", role: undefined, steamProfileUrl: "" }
       ),
       rulesAcknowledged: false,
-    },
+    } as never,
   });
 
   const { fields } = useFieldArray({ control: form.control, name: "players" });
@@ -446,6 +503,8 @@ export default function RegisterPage() {
         captainId: user.uid,
         players: playersData,
         ...(isMmrLimited ? { mmrCap } : {}),
+        // Swiss: one self-reported team average, used only for seeding.
+        ...(isSwiss ? { seedMmr: (values as { seedMmr?: number }).seedMmr } : {}),
       };
 
       // Get Firebase auth token for API security
@@ -669,6 +728,49 @@ export default function RegisterPage() {
                   )}
                 />
               </div>
+
+              {/* Swiss seeding: one team-level average MMR.
+                  Being explicit that it is organiser-only and adjustable is the
+                  main deterrent we have against under-reporting, since
+                  seed-adjacent pairing rewards a lower declared number. */}
+              {isSwiss && (
+                <div className="mt-6">
+                  <FormField
+                    control={form.control}
+                    name={'seedMmr' as never}
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-white/80 font-bold ml-1">
+                          Średnie MMR drużyny
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            value={(field.value as number | undefined) ?? ''}
+                            type="number"
+                            min={1}
+                            max={12000}
+                            placeholder="np. 4200"
+                            className="bg-black/30 backdrop-blur-md border-white/10 text-white placeholder:text-white/20 focus:border-[#8B1538] focus:bg-black/50 transition-all duration-300 h-12"
+                          />
+                        </FormControl>
+                        <FormDescription className="mt-2 text-white/40">
+                          Podaj średnie MMR całego składu (suma MMR pięciu graczy podzielona przez 5).
+                          Ta liczba służy wyłącznie do rozstawienia — w pierwszej rundzie zagracie
+                          z drużyną o podobnym poziomie, a w kolejnych decyduje już dorobek punktowy.
+                          <br />
+                          <strong className="text-white/60">
+                            Wartość nie jest nigdzie publicznie widoczna
+                          </strong>{' '}
+                          — widzi ją tylko organizator i może ją skorygować przed startem, jeśli
+                          nie zgadza się z poziomem drużyny.
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              )}
             </motion.div>
 
             {/* Players */}

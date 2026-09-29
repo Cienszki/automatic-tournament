@@ -31,6 +31,11 @@ export interface PDLTeamRegistrationData {
         steamProfileUrl?: string;
     };
     mmrCap?: number;
+    /**
+     * Swiss only — the team's self-reported average MMR, used solely for seeding.
+     * Never exposed publicly; the public surfaces show `seedPosition` instead.
+     */
+    seedMmr?: number;
 }
 
 export interface RegistrationResult {
@@ -108,6 +113,17 @@ function validateTeamData(data: PDLTeamRegistrationData): { valid: boolean; erro
                 errors.push(`Player ${index + 1} (${player.nickname}): Invalid Steam profile URL`);
             }
         });
+    }
+
+    // Swiss seed MMR. Validated server-side because the client zod schema is the
+    // only other gate, and a crafted POST would otherwise set any value — which
+    // would distort round-1 pairings for the whole field.
+    if (data.seedMmr !== undefined) {
+        if (!Number.isFinite(data.seedMmr) || !Number.isInteger(data.seedMmr)) {
+            errors.push('Seed MMR must be a whole number');
+        } else if (data.seedMmr < 1 || data.seedMmr > 12000) {
+            errors.push('Seed MMR must be between 1 and 12000');
+        }
     }
 
     // Coach validation (if enabled)
@@ -347,6 +363,9 @@ export async function registerPDLTeam(
             }
         });
 
+        // Swiss collects no per-player MMR, so this sum would always be 0 and
+        // would make the team look like it had a real zero-MMR roster. Omit it.
+        const isSwissRegistration = teamData.seedMmr != null;
         const totalMMR = Object.values(roster).reduce((s, p) => s + (p.mmr || 0), 0);
 
         const teamDoc = {
@@ -358,7 +377,8 @@ export async function registerPDLTeam(
             motto: teamData.motto,
             status: 'pending' as const,
             divisionId: null, // Assigned by admin later
-            totalMMR,
+            ...(isSwissRegistration ? {} : { totalMMR }),
+            ...(isSwissRegistration ? { seedMmr: teamData.seedMmr } : {}),
             /**
              * Quick-read roster: { [steamId64]: { nickname, role, steamId32, mmr?, profileScreenshotUrl? } }
              * Used to display team rosters without reading the player subcollection.

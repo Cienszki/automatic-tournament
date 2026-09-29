@@ -75,7 +75,17 @@ export async function POST(req: NextRequest) {
             captainId: body.captainId,
             players: body.players,
             coach: body.coach,
+            // Swiss: one self-reported team average used only for seeding.
+            // Range-validated in validateTeamData, since this route is otherwise
+            // the only gate between a crafted POST and the pairing engine.
+            ...(body.seedMmr !== undefined ? { seedMmr: Number(body.seedMmr) } : {}),
         };
+
+        // NOTE: body.mmrCap is deliberately not forwarded. The client has always
+        // sent it and registerPDLTeam has always handled it, but this route never
+        // passed it through, so team.mmrCap has never been written. Nothing reads
+        // that field today, so wiring it up is left as a separate decision rather
+        // than changing MMR-limited behaviour as a side effect of Swiss work.
 
         // Validate required fields
         if (!teamData.name || !teamData.tag || !teamData.captainId || !teamData.logoUrl) {
