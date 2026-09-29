@@ -28,8 +28,12 @@ export const RESERVED_SLUGS: ReadonlySet<string> = new Set([
   // --- This app's own top-level routes ---
   // Every directory in src/app must appear here. A tournament slug matching one
   // of these would be shadowed by the static route and never render.
-  'creator', 'fantasy', 'faq', 'fonts', 'groups', 'my-team', 'pickem',
-  'playoffs', 'register', 'rules', 'schedule', 'standins', 'stats', 'teams',
+  'creator', 'fantasy', 'faq', 'fonts', 'groups', 'my-team', 'organizer',
+  'pickem', 'playoffs', 'register', 'rules', 'schedule', 'standins', 'stats',
+  'teams',
+  // Polish spelling reserved too, so the route can be renamed later without a
+  // tournament already sitting on the new name.
+  'organizator',
 
   // --- Framework + static served at root (both apps are Next.js) ---
   '_next', 'favicon.ico', 'favicon.png', 'icon.png', 'icon1.png', 'icon2.png',

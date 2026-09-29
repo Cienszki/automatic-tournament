@@ -45,6 +45,7 @@ import {
   CheckCircle2,
   AlertCircle,
   Clock,
+  ExternalLink,
   FileClock,
   Archive,
   Play,
@@ -480,7 +481,9 @@ export function GeneralTab() {
         registrationStartDate: registrationStartDate || null,
         registrationEndDate: registrationEndDate || null,
         maxTeams: maxTeams.trim() === '' ? null : Number(maxTeams),
-        redirectToSlug: redirectToSlug.trim() === '' ? null : redirectToSlug.trim(),
+        // redirectToSlug is deliberately NOT written here — it is owned by the
+        // organizer panel. Writing it from two places would let a stale value in
+        // this form silently undo a change made there.
         mmrCap: tournamentType === 'mmr-limited' ? mmrLimit : null,
         'theme.logoUrl': logoUrl || null,
         'theme.inlineLogoUrl': inlineLogoUrl || null,
@@ -1530,34 +1533,31 @@ export function GeneralTab() {
             </div>
           </div>
 
-          {/* Recurring series: send an old season's visitors to the new one. */}
+          {/* Redirects are a decision about a SERIES, not about one tournament,
+              so they are set in the organizer panel where all your tournaments
+              are visible at once. Shown here read-only to explain why the public
+              page may differ from what this tab shows. */}
           <div className="pt-4 border-t border-border">
             <Label className="font-logik-extended-bold">Przekierowanie na nowszą edycję</Label>
-            <p className="text-sm text-muted-foreground font-logik mb-3">
-              Gdy ruszy kolejny sezon, możesz przekierować odwiedzających tego turnieju na
-              nowy. Panel administracyjny tego turnieju nadal będzie działał normalnie.
-            </p>
-            <Select
-              value={redirectToSlug === '' ? '__none__' : redirectToSlug}
-              onValueChange={(v) => setRedirectToSlug(v === '__none__' ? '' : v)}
-            >
-              <SelectTrigger className="font-logik max-w-md">
-                <SelectValue placeholder="Bez przekierowania" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__none__">Bez przekierowania</SelectItem>
-                {ownedSlugs
-                  .filter(s => s !== tournament?.slug)
-                  .map(s => (
-                    <SelectItem key={s} value={s}>/{s}</SelectItem>
-                  ))}
-              </SelectContent>
-            </Select>
-            {ownedSlugs.filter(s => s !== tournament?.slug).length === 0 && (
-              <p className="text-xs text-muted-foreground mt-1 font-logik">
-                Nie masz jeszcze innych turniejów, na które można przekierować.
+            {tournament?.redirectToSlug ? (
+              <p className="text-sm font-logik mt-1">
+                Odwiedzający są przenoszeni na{' '}
+                <span className="font-mono">/{tournament.redirectToSlug}</span>. Panel
+                administracyjny działa normalnie.
+              </p>
+            ) : (
+              <p className="text-sm text-muted-foreground font-logik mt-1">
+                Brak przekierowania.
               </p>
             )}
+            <a
+              href="/organizer"
+              className="inline-flex items-center gap-1.5 text-sm mt-2 hover:underline"
+              style={{ color: theme.primaryColor }}
+            >
+              Zarządzaj przekierowaniami w panelu organizatora
+              <ExternalLink className="h-3.5 w-3.5" />
+            </a>
           </div>
         </CardContent>
       </Card>

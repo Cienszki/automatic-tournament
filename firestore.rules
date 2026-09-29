@@ -49,8 +49,9 @@ service cloud.firestore {
         'kontakt', 'newsy', 'o-nas', 'players', 'polityka-prywatnosci', 'ranking',
         'rekrutacja', 'streamy', 'wesprzyj-nas',
         // This app's own top-level routes
-        'creator', 'fantasy', 'faq', 'fonts', 'groups', 'my-team', 'pickem',
-        'playoffs', 'register', 'rules', 'schedule', 'standins', 'stats', 'teams',
+        'creator', 'fantasy', 'faq', 'fonts', 'groups', 'my-team', 'organizer',
+        'organizator', 'pickem', 'playoffs', 'register', 'rules', 'schedule',
+        'standins', 'stats', 'teams',
         // Framework / static paths
         '_next', 'well-known', 'manifest', 'sw',
         // Public asset folders

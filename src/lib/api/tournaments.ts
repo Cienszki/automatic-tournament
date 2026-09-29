@@ -507,6 +507,69 @@ export async function checkSlugClaim(
   }
 }
 
+export interface OrganizerTournament {
+  id: string;
+  slug: string;
+  name: string;
+  shortName?: string;
+  type?: TournamentType;
+  status?: string;
+  visibility?: string;
+  logoUrl?: string;
+  startDate?: string;
+  organizerId?: string;
+  redirectToSlug?: string | null;
+  /** Number of registered teams, filled in lazily by the organizer page. */
+  teamCount?: number;
+}
+
+/**
+ * Every tournament an organizer owns, for the organizer dashboard.
+ * Super admins see all of them, since they administer the whole platform.
+ */
+export async function fetchOrganizerTournaments(
+  organizerId: string,
+  opts: { isSuperAdmin?: boolean } = {}
+): Promise<OrganizerTournament[]> {
+  try {
+    const snapshot = await getDocs(collection(db, 'tournaments'));
+    return snapshot.docs
+      .map(d => {
+        const t = d.data();
+        return {
+          id: d.id,
+          slug: t.slug,
+          name: t.name ?? d.id,
+          shortName: t.shortName,
+          type: t.type,
+          status: t.status,
+          visibility: t.visibility,
+          logoUrl: t.theme?.logoUrl ?? t.logoUrl,
+          startDate: t.startDate,
+          organizerId: t.organizerId,
+          redirectToSlug: t.redirectToSlug ?? null,
+        } as OrganizerTournament;
+      })
+      .filter(t => !!t.slug)
+      .filter(t => opts.isSuperAdmin || t.organizerId === organizerId)
+      .sort((a, b) => (b.startDate ?? '').localeCompare(a.startDate ?? '') || a.slug.localeCompare(b.slug));
+  } catch (error) {
+    console.error('Error fetching organizer tournaments:', error);
+    return [];
+  }
+}
+
+/** Point one tournament at another, or clear it by passing null. */
+export async function setTournamentRedirect(
+  tournamentId: string,
+  redirectToSlug: string | null
+): Promise<void> {
+  await updateDoc(doc(db, 'tournaments', tournamentId), {
+    redirectToSlug: redirectToSlug || null,
+    updatedAt: serverTimestamp(),
+  });
+}
+
 /** Slugs the given organizer already owns, for the redirect picker. */
 export async function fetchOwnedSlugs(organizerId: string): Promise<string[]> {
   try {
