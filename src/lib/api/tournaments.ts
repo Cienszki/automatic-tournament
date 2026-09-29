@@ -14,12 +14,88 @@ import {
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { isReservedSlug } from '@/lib/reserved-slugs';
-import { TournamentConfig, TournamentSummary } from '@/types/tournament';
+import { TournamentConfig, TournamentSummary, TournamentType } from '@/types/tournament';
 
 /**
  * Create a new tournament
  * Returns the tournament ID
  */
+/**
+ * Type-specific slice of a new tournament's config.
+ *
+ * Kept as an explicit per-type lookup rather than `isMmrLimited ? a : b`. With
+ * only two types a boolean worked, but the "else" branch silently meant
+ * "league" — so adding Swiss to that shape would have handed it
+ * promotion/relegation, a two-round season, and season-long fantasy.
+ */
+function buildTypeSpecificConfig(
+  type: TournamentType,
+  structure: any
+): Record<string, any> {
+  switch (type) {
+    case 'mmr-limited':
+      return {
+        mmrCap: structure.mmrCap || 24000,
+        mmrVerificationRequired: true,
+        coachMode: 'disabled',
+        defaultMatchFormat: structure.groupMatchFormat || 'bo2',
+        schedulingMethod: 'captain-scheduled',
+        groupMatchFormat: structure.groupMatchFormat || 'bo2',
+        fantasyType: 'round-based',
+        fantasyBudget: structure.mmrCap || 24000,
+        pickemLockTime: 'before-round',
+        standinRequireRegistration: true,
+        standinRequireOpponentApproval: false,
+        standinMmrRestrictions: true,
+      };
+
+    case 'league':
+      return {
+        mmrCap: null,
+        mmrVerificationRequired: false,
+        coachMode: 'per-game',
+        defaultMatchFormat: 'bo2',
+        schedulingMethod: 'admin-scheduled',
+        promotionRelegationEnabled: true,
+        roundsPerSeason: 2,
+        fantasyType: 'season-long',
+        fantasyBudget: 100,
+        pickemLockTime: 'before-season',
+        standinRequireRegistration: false,
+        standinRequireOpponentApproval: true,
+        standinMmrRestrictions: false,
+      };
+
+    case 'swiss':
+      return {
+        // No cap and no per-player MMR: a Swiss team self-reports one average,
+        // used only for seeding, so there is nothing to verify against.
+        mmrCap: null,
+        mmrVerificationRequired: false,
+        coachMode: 'disabled',
+        defaultMatchFormat: structure.swissMatchFormat || 'bo2',
+        // The admin picks a scheduling mode per round; this is only the default.
+        schedulingMethod: 'captain-scheduled',
+        swiss: {
+          plannedRounds: structure.swissPlannedRounds ?? null,
+          currentRound: 0,
+          defaultMatchFormat: structure.swissMatchFormat || 'bo2',
+          allowConsecutiveRematch: false,
+          byeTeamId: null,
+          divisionId: null,
+        },
+        // Fantasy prices players by MMR and Pick'em needs a known schedule —
+        // neither exists in Swiss, so both stay off. See plan "Known limitations".
+        fantasyType: 'round-based',
+        fantasyBudget: 100,
+        pickemLockTime: 'before-round',
+        standinRequireRegistration: false,
+        standinRequireOpponentApproval: true,
+        standinMmrRestrictions: false,
+      };
+  }
+}
+
 export async function createTournament(data: {
   basicInfo: any;
   branding: any;
@@ -27,13 +103,16 @@ export async function createTournament(data: {
   template: string;
 }): Promise<string> {
   const { basicInfo, branding, structure, template } = data;
-  const isMmrLimited = structure.type === 'mmr-limited';
+  const type: TournamentType = structure.type;
+  const isSwiss = type === 'swiss';
 
   // Guard: never let a reserved slug reach the database, even if a caller
   // skipped the isSlugAvailable() check.
   if (isReservedSlug(basicInfo.slug)) {
     throw new Error(`Slug "${basicInfo.slug}" is reserved and cannot be used.`);
   }
+
+  const preset = buildTypeSpecificConfig(type, structure);
 
   // Build tournament configuration
   const tournamentConfig: Record<string, any> = {
@@ -55,40 +134,48 @@ export async function createTournament(data: {
     
     leagueId: null,
     
+    // Flat registration fields are the ones TournamentConfig declares and that
+    // the rest of the app can actually read. The nested `registration` object
+    // below is written purely for backward compatibility with
+    // fetchTournaments(), which reads `registration.maxTeams`.
+    registrationStartDate: basicInfo.registrationStart || null,
+    registrationEndDate: basicInfo.registrationEnd || null,
+    maxTeams: structure.maxTeams ?? null,
+
     registration: {
       enabled: true,
-      startDate: basicInfo.registrationStart,
-      endDate: basicInfo.registrationEnd,
+      startDate: basicInfo.registrationStart || null,
+      endDate: basicInfo.registrationEnd || null,
       requireApproval: false,
       maxTeams: structure.maxTeams ?? null,
     },
-    
+
+
     // Team configuration
     teamSize: 5,
-    mmrCap: isMmrLimited ? (structure.mmrCap || 24000) : null,
-    mmrVerificationRequired: isMmrLimited,
-    coachMode: isMmrLimited ? 'disabled' : 'per-game',
-    
-    // Match configuration
-    defaultMatchFormat: isMmrLimited ? (structure.groupMatchFormat || 'bo2') : 'bo2',
-    schedulingMethod: isMmrLimited ? 'captain-scheduled' : 'admin-scheduled',
-    
-    // Group stage configuration (MMR tournaments)
-    ...(isMmrLimited ? {
-      groupMatchFormat: structure.groupMatchFormat || 'bo2',
-    } : {}),
+    mmrCap: preset.mmrCap,
+    mmrVerificationRequired: preset.mmrVerificationRequired,
+    coachMode: preset.coachMode,
 
-    // Division configuration (league tournaments)
-    ...(!isMmrLimited ? {
-      promotionRelegationEnabled: true,
-      roundsPerSeason: 2,
+    // Match configuration
+    defaultMatchFormat: preset.defaultMatchFormat,
+    schedulingMethod: preset.schedulingMethod,
+
+    // Type-specific structure: groupMatchFormat (mmr-limited),
+    // promotionRelegationEnabled + roundsPerSeason (league), swiss (swiss).
+    ...(preset.groupMatchFormat !== undefined ? { groupMatchFormat: preset.groupMatchFormat } : {}),
+    ...(preset.promotionRelegationEnabled !== undefined ? {
+      promotionRelegationEnabled: preset.promotionRelegationEnabled,
+      roundsPerSeason: preset.roundsPerSeason,
     } : {}),
-    
+    ...(preset.swiss !== undefined ? { swiss: preset.swiss } : {}),
+
     fantasy: {
-      enabled: structure.enableFantasy,
-      type: isMmrLimited ? 'round-based' : 'season-long',
+      // Fantasy prices players from per-player MMR, which Swiss does not collect.
+      enabled: isSwiss ? false : structure.enableFantasy,
+      type: preset.fantasyType,
       rosterSize: 5,
-      budget: isMmrLimited ? (structure.mmrCap || 24000) : 100,
+      budget: preset.fantasyBudget,
       lockBeforeMatchday: true,
       scoring: {
         killPoints: 3,
@@ -106,26 +193,29 @@ export async function createTournament(data: {
     },
     
     pickem: {
-      enabled: structure.enablePickem,
+      // Pick'em predicts a known schedule; Swiss round N+1 does not exist until
+      // round N completes, so there is nothing to predict.
+      enabled: isSwiss ? false : structure.enablePickem,
       matchPredictions: true,
       standingsPredictions: true,
       playoffBracket: true,
       mvpPredictions: false,
-      lockTime: isMmrLimited ? 'before-round' : 'before-season',
+      lockTime: preset.pickemLockTime,
     },
-    
+
     standins: {
       enabled: structure.enableStandins,
-      requireRegistration: isMmrLimited,
-      requireOpponentApproval: !isMmrLimited,
+      requireRegistration: preset.standinRequireRegistration,
+      requireOpponentApproval: preset.standinRequireOpponentApproval,
       adminCanOverride: true,
       maxPerMatch: 1,
       maxPerRound: 1,
-      mmrRestrictions: isMmrLimited,
+      mmrRestrictions: preset.standinMmrRestrictions,
     },
-    
+
     playoffs: {
-      enabled: true,
+      // Optional for Swiss — a future organiser may run Swiss with no playoffs.
+      enabled: structure.enablePlayoffs ?? true,
       format: structure.playoffFormat || 'double-elimination',
       teamsCount: structure.teamsCount || 8,
       upperBracketTeams: null, // Set by admin after group stage

@@ -281,7 +281,7 @@ export default function TeamPage({ params }: PageProps) {
   }
 
   const sortedPlayers = sortPlayersByRole(team.players || []);
-  const totalMMR = sortedPlayers.reduce((sum, player) => sum + player.mmr, 0);
+  const totalMMR = sortedPlayers.reduce((sum, player) => sum + (player.mmr ?? 0), 0);
   const sortedHeroes = team.mostPlayedHeroes ? [...team.mostPlayedHeroes].sort((a, b) => b.gamesPlayed - a.gamesPlayed).slice(0, 3) : [];
 
   const avgMatchDurationMinutes = team.averageMatchDurationMinutes || 0;

@@ -112,7 +112,7 @@ export function StandinRequestModal({ team, trigger }: StandinRequestModalProps)
     // Get MMR of available players (not unavailable)
     const availablePlayersMMR = team.players
       .filter(player => !unavailablePlayers.includes(player.id))
-      .reduce((sum, player) => sum + player.mmr, 0);
+      .reduce((sum, player) => sum + (player.mmr ?? 0), 0);
     
     // Add MMR of selected standins
     const standinsMMR = standins
@@ -127,7 +127,7 @@ export function StandinRequestModal({ team, trigger }: StandinRequestModalProps)
     
     const availablePlayersMMR = team.players
       .filter(player => !unavailablePlayers.includes(player.id))
-      .reduce((sum, player) => sum + player.mmr, 0);
+      .reduce((sum, player) => sum + (player.mmr ?? 0), 0);
     
     const maxStandinMMR = TEAM_MMR_CAP - availablePlayersMMR;
     
@@ -321,7 +321,7 @@ export function StandinRequestModal({ team, trigger }: StandinRequestModalProps)
                       <span className="font-medium">{player.nickname}</span>
                       <div className="flex items-center gap-2">
                         <Badge variant="outline">{player.role}</Badge>
-                        <span className="text-sm text-muted-foreground">{formatNumber(player.mmr)} MMR</span>
+                        <span className="text-sm text-muted-foreground">{formatNumber(player.mmr ?? 0)} MMR</span>
                       </div>
                     </div>
                   </Label>

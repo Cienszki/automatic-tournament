@@ -3,8 +3,16 @@
 
 /**
  * Tournament type determines the format and features available
+ *
+ * - 'mmr-limited' — group stage + playoffs, teams capped by summed player MMR
+ * - 'league'      — divisions, round-robin season, promotion/relegation
+ * - 'swiss'       — Swiss-system pairing on score, seeded by self-reported team
+ *                   average MMR, optional cut to playoffs
+ *
+ * When branching on this, always test for the type you mean. A negation such as
+ * `!isLeague` predates the third type and silently treats Swiss as MMR-limited.
  */
-export type TournamentType = 'mmr-limited' | 'league';
+export type TournamentType = 'mmr-limited' | 'league' | 'swiss';
 
 /**
  * Tournament status for visibility and functionality
@@ -208,6 +216,82 @@ export interface GroupConfig {
 }
 
 /**
+ * Swiss-system configuration.
+ *
+ * Swiss rounds are generated one at a time — round N+1's pairings depend on
+ * round N's results — so most of the per-round detail lives on the
+ * `tournaments/{id}/swissRounds/{round}` documents rather than here.
+ */
+export interface SwissConfig {
+  /** Total rounds the admin intends to play. null = open-ended, ended manually. */
+  plannedRounds: number | null;
+  /** Highest round generated so far. 0 = not started. */
+  currentRound: number;
+  /** Default series format for a new round; each round stores its own. */
+  defaultMatchFormat: MatchFormat;
+  /**
+   * When false (the default) a pairing may not repeat the immediately-previous
+   * round's opponent. Always satisfiable for 4+ teams, so this cannot deadlock
+   * the pairing solver; exposed as an escape hatch for tiny or polarised fields.
+   */
+  allowConsecutiveRematch: boolean;
+  /** Team doc id of the virtual BYE opponent, created only for odd fields. */
+  byeTeamId: string | null;
+  /** The single auto-created division that holds the whole Swiss field. */
+  divisionId: string | null;
+}
+
+/**
+ * A single generated Swiss round.
+ * Stored at `tournaments/{tournamentId}/swissRounds/{round}`.
+ */
+export interface SwissRound {
+  round: number;
+  /** 'draft' is a regenerable preview; committing writes the match documents. */
+  status: 'draft' | 'committed' | 'complete';
+  matchFormat: MatchFormat;
+  scheduling: {
+    mode: 'fixed' | 'window' | 'free';
+    fixedAt?: string;
+    windowStart?: string;
+    windowEnd?: string;
+  };
+  pairings: {
+    teamAId: string;
+    teamBId: string;
+    matchId: string;
+    isBye: boolean;
+  }[];
+  /**
+   * Standings frozen at commit time, so "why were we paired with them?" stays
+   * answerable after later results have moved the table.
+   */
+  standingsSnapshot: SwissStandingRow[];
+  generatedAt: string;
+  committedAt?: string;
+}
+
+/**
+ * One row of the Swiss table. Derived from matches, never stored as the source
+ * of truth (except in a round's `standingsSnapshot` audit copy).
+ */
+export interface SwissStandingRow {
+  teamId: string;
+  /** The Swiss score: games won across all completed series. */
+  points: number;
+  gamesWon: number;
+  gamesLost: number;
+  matchWins: number;
+  matchLosses: number;
+  /** Sum of opponents' points — schedule strength. Byes contribute 0. */
+  buchholz: number;
+  opponentIds: string[];
+  byeCount: number;
+  seedMmr?: number;
+  seedPosition?: number;
+}
+
+/**
  * Playoff configuration
  */
 export interface PlayoffConfig {
@@ -251,6 +335,8 @@ export interface TournamentConfig {
   // Dates
   registrationStartDate?: string;
   registrationEndDate?: string;
+  /** Registration slot cap. null/undefined = unlimited. */
+  maxTeams?: number | null;
   startDate: string;
   endDate?: string;
   
@@ -303,7 +389,10 @@ export interface TournamentConfig {
   groupsCount?: number;
   teamsPerGroup?: number;
   groupMatchFormat?: MatchFormat; // Match format for group stage (bo1, bo2, bo3...)
-  
+
+  // Swiss configuration (for swiss tournaments)
+  swiss?: SwissConfig;
+
   // Feature configurations
   fantasy: FantasyConfig;
   pickem: PickemConfig;
@@ -592,6 +681,80 @@ export const DEFAULT_LEAGUE_CONFIG: Partial<TournamentConfig> = {
     maxPerRound: 1,
     mmrRestrictions: false,
   },
+  playoffs: {
+    enabled: true,
+    format: 'single-elimination',
+    teamsCount: 4,
+    wildcardSpots: 0,
+    thirdPlaceMatch: false,
+    thirdPlaceFormat: 'bo3',
+    semifinalFormat: 'bo3',
+    finalFormat: 'bo3',
+    grandFinalFormat: 'bo5',
+  },
+};
+
+export const DEFAULT_SWISS_CONFIG: Partial<TournamentConfig> = {
+  type: 'swiss',
+  teamSize: 5,
+  // No cap, and no per-player MMR is collected — a team self-reports one average
+  // for seeding, so there is nothing to verify against.
+  mmrCap: null as unknown as undefined,
+  mmrVerificationRequired: false,
+  coachMode: 'disabled',
+  defaultMatchFormat: 'bo2',
+  // The admin picks a scheduling mode per round; this is only the default.
+  schedulingMethod: 'captain-scheduled',
+  swiss: {
+    plannedRounds: null,
+    currentRound: 0,
+    defaultMatchFormat: 'bo2',
+    allowConsecutiveRematch: false,
+    byeTeamId: null,
+    divisionId: null,
+  },
+  // Fantasy prices players by MMR, which Swiss does not collect. Pick'em needs a
+  // known schedule, but Swiss round N+1 does not exist until round N completes.
+  // Both stay off; see the plan's "Known limitations".
+  fantasy: {
+    enabled: false,
+    type: 'round-based',
+    rosterSize: 5,
+    budget: 100,
+    lockBeforeMatchday: true,
+    scoring: {
+      killPoints: 3,
+      deathPoints: -3,
+      assistPoints: 1.5,
+      lastHitPoints: 0.015,
+      gpmPoints: 1,
+      xpmPoints: 0,
+      towerKillPoints: 0.75,
+      roshanKillPoints: 0.5,
+      obsPlacedPoints: 0.05,
+      senPlacedPoints: 0.05,
+      teamWinPoints: 4,
+    },
+  },
+  pickem: {
+    enabled: false,
+    matchPredictions: true,
+    standingsPredictions: false,
+    playoffBracket: false,
+    mvpPredictions: false,
+    lockTime: 'before-round',
+  },
+  standins: {
+    enabled: true,
+    requireRegistration: false,
+    requireOpponentApproval: true,
+    adminCanOverride: true,
+    maxPerMatch: 1,
+    maxPerRound: 1,
+    mmrRestrictions: false,
+  },
+  // Optional for Swiss — a future organiser may run Swiss with no playoff stage.
+  // Seeding into the bracket stays fully manual in PlayoffsTab.
   playoffs: {
     enabled: true,
     format: 'single-elimination',

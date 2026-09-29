@@ -29,7 +29,7 @@ const PlayerSelectionCard: React.FC<PlayerSelectionCardProps> = ({ role, players
               <SelectItem key={p.id} value={p.id} disabled={Object.values(selectedLineup).some((sp) => sp?.id === p.id && sp.role !== role)}>
                 <div className="flex justify-between w-full">
                   <span className="truncate" title={`${p.nickname} (${p.teamTag})`}>{p.nickname} ({p.teamTag})</span>
-                  <span className="text-xs text-muted-foreground ml-4 shrink-0">{p.mmr.toLocaleString()} MMR</span>
+                  <span className="text-xs text-muted-foreground ml-4 shrink-0">{(p.mmr ?? 0).toLocaleString()} MMR</span>
                 </div>
               </SelectItem>
             ))}
@@ -41,7 +41,7 @@ const PlayerSelectionCard: React.FC<PlayerSelectionCardProps> = ({ role, players
             <PlayerAvatar player={selectedPlayer} />
             <div className="overflow-hidden">
               <p className="font-semibold truncate" title={selectedPlayer.nickname}>{selectedPlayer.nickname}</p>
-              <p className="text-xs text-muted-foreground">MMR: {selectedPlayer.mmr.toLocaleString()}</p>
+              <p className="text-xs text-muted-foreground">MMR: {(selectedPlayer.mmr ?? 0).toLocaleString()}</p>
             </div>
           </div>
         ) : (

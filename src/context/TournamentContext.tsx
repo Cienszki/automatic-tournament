@@ -445,11 +445,17 @@ export function useTournamentTheme() {
 }
 
 // Helper hook to check tournament type
+//
+// Always branch on a positive flag (isSwiss / isLeague / isMmrLimited), never on
+// a negation. `!isLeague` used to mean "MMR-limited" back when there were only
+// two types; with a third type that reading is wrong, and a negated guard will
+// silently hand Swiss tournaments the MMR-limited behaviour.
 export function useTournamentType() {
   const { tournament } = useTournament();
   return {
     isLeague: tournament?.type === 'league',
     isMmrLimited: tournament?.type === 'mmr-limited',
+    isSwiss: tournament?.type === 'swiss',
     type: tournament?.type,
   };
 }

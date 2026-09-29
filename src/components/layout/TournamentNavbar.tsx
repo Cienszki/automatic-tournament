@@ -34,6 +34,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useTournament, useTournamentType } from '@/context/TournamentContext';
+import type { TournamentType } from '@/types/tournament';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useAuth } from '@/context/AuthContext';
 import { checkIfAdmin } from '@/lib/auth';
@@ -141,7 +142,12 @@ interface NavItem {
   href: string;
   label: string;
   icon: React.ElementType;
-  showFor?: 'all' | 'mmr-limited' | 'league';
+  /**
+   * Which tournament types this item applies to. 'all' shows it everywhere;
+   * otherwise list the types explicitly. Listing types beats a negation, which
+   * would leak MMR-only items into Swiss tournaments.
+   */
+  showFor?: 'all' | TournamentType[];
 }
 
 export function TournamentNavbar() {
@@ -192,7 +198,7 @@ export function TournamentNavbar() {
   // Check if playoffs should be visible — driven by admin toggle on tournament config
   const playoffsStarted = !!(tournament?.playoffs?.enabled && tournament?.playoffs?.playoffsVisible);
 
-  const { isLeague, isMmrLimited } = useTournamentType();
+  const { isMmrLimited } = useTournamentType();
   const isMobile = useIsMobile();
   const { user } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
@@ -229,9 +235,13 @@ export function TournamentNavbar() {
     async function checkCaptain() {
       if (!user || !tournament?.id) { setHasTeam(false); return; }
       try {
-        const teamsRef = tournament.type === 'league'
-          ? collection(db, 'tournaments', tournament.id, 'teams')
-          : collection(db, 'teams');
+        // Only the legacy MMR-limited tournament (Letnia) keeps its teams in the
+        // root `teams` collection. Every other type is tournament-scoped, so this
+        // must test for 'mmr-limited' positively — inverting it on 'league' would
+        // send Swiss lookups to the root collection and my-team would never resolve.
+        const teamsRef = tournament.type === 'mmr-limited'
+          ? collection(db, 'teams')
+          : collection(db, 'tournaments', tournament.id, 'teams');
         const q = query(teamsRef, where('captainId', '==', user.uid));
         const snap = await getDocs(q);
         setHasTeam(!snap.empty);
@@ -267,9 +277,9 @@ export function TournamentNavbar() {
   // Filter nav items based on tournament type and enabled features
   const filteredNavItems = navItems.filter(item => {
     if (
+      item.showFor &&
       item.showFor !== 'all' &&
-      !(item.showFor === 'league' && isLeague) &&
-      !(item.showFor === 'mmr-limited' && !isLeague)
+      !(tournament.type && item.showFor.includes(tournament.type))
     ) return false;
     if (item.href === '/fantasy' && !tournament.fantasy?.enabled) return false;
     if (item.href === '/pickem' && !tournament.pickem?.enabled) return false;

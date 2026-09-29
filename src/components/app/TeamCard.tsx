@@ -60,7 +60,7 @@ export function TeamCard({ team }: TeamCardProps) {
   const { t } = useTranslation();
   const { theme, getTournamentPath } = useTournament();
   const players = team.players || [];
-  const totalMMR = players.reduce((sum, player) => sum + player.mmr, 0);
+  const totalMMR = players.reduce((sum, player) => sum + (player.mmr ?? 0), 0);
 
   // Sort players by role: Carry, Mid, Offlane, Soft Support, Hard Support
   const roleOrder = ["Carry", "Mid", "Offlane", "Soft Support", "Hard Support"];
@@ -186,7 +186,7 @@ export function TeamCard({ team }: TeamCardProps) {
                           borderColor: theme.primaryColor 
                         }}
                       >
-                        <p style={{ color: theme.textColor }}>MMR: <strong style={{ color: theme.primaryColor }}>{formatNumber(player.mmr)}</strong></p>
+                        <p style={{ color: theme.textColor }}>MMR: <strong style={{ color: theme.primaryColor }}>{formatNumber(player.mmr ?? 0)}</strong></p>
                       </TooltipContent>
                     </Tooltip>
                   </li>

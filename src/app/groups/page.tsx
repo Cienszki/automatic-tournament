@@ -29,7 +29,7 @@ async function getHydratedGroupsData(): Promise<Group[]> {
           draws: standing.draws || 0, // Backwards compatibility
           teamName: team.name,
           teamLogoUrl: team.logoUrl || '',
-          totalMMR: team.players.reduce((sum, p) => sum + p.mmr, 0)
+          totalMMR: team.players.reduce((sum, p) => sum + (p.mmr ?? 0), 0)
         };
       }
     }

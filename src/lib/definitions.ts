@@ -235,7 +235,13 @@ export type PlayerRole = typeof PlayerRoles[number];
 export interface Player {
   id: string;
   nickname: string;
-  mmr: number;
+  /**
+   * Self-reported solo MMR. Optional: Swiss tournaments collect a single
+   * team-level average (`Team.seedMmr`) instead of per-player values, so this is
+   * absent there. Guard every read — `0` is also a legitimate value, so prefer
+   * `mmr != null` over truthiness.
+   */
+  mmr?: number;
   role: PlayerRole;
   /** Steam 64-bit ID. Written to both `steamId` and `steamId64` fields in Firestore. */
   steamId: string;
@@ -244,7 +250,8 @@ export interface Player {
   steamId32: string;
   steamProfileUrl?: string;
   openDotaAccountId?: number;
-  profileScreenshotUrl: string;
+  /** MMR proof screenshot. Only collected when a tournament verifies MMR. */
+  profileScreenshotUrl?: string;
   /** Steam display name (personaname from Steam API). */
   personaname?: string;
   avatar?: string;
@@ -289,6 +296,24 @@ export interface Team {
   openDotaTeamId?: number;
   testCaptainEmail?: string;
   testCaptainPassword?: string;
+
+  /**
+   * Swiss seeding only. The team's self-reported average MMR, used to seed round
+   * 1 and to break ties between teams on equal points when pairing later rounds.
+   * Never rendered publicly — the public surfaces show `seedPosition` instead.
+   * Admin-editable before round 1.
+   */
+  seedMmr?: number;
+  /** 1-based rank within the Swiss field by `seedMmr`. This one IS public. */
+  seedPosition?: number;
+
+  /** Denormalized sum of roster MMR. MMR-limited tournaments only. */
+  totalMMR?: number;
+  /** Snapshot of the tournament's MMR cap at registration time. */
+  mmrCap?: number;
+  updatedAt?: string;
+  /** Written by updatePDLDivisionStandingsAdmin — league only. */
+  stats?: Record<string, unknown>;
 
   // Tournament context
   division?: string;

@@ -65,6 +65,16 @@ export function tournamentRefs(tournamentId: string) {
     group: (groupId: string): DocumentReference =>
       doc(db, 'tournaments', tournamentId, 'groups', groupId),
 
+    // ── Swiss rounds (swiss tournaments) ───────────────
+    // One document per generated round. Doc id is the round number as a string,
+    // so rounds sort naturally and a round can be addressed without a query.
+    /** tournaments/{id}/swissRounds */
+    swissRounds: (): CollectionReference =>
+      collection(db, 'tournaments', tournamentId, 'swissRounds'),
+    /** tournaments/{id}/swissRounds/{round} */
+    swissRound: (round: number): DocumentReference =>
+      doc(db, 'tournaments', tournamentId, 'swissRounds', String(round)),
+
     // ── Announcements ──────────────────────────────────
     /** tournaments/{id}/announcements */
     announcements: (): CollectionReference =>

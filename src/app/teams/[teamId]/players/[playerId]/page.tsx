@@ -168,7 +168,7 @@ export default function PlayerPage({ params }: PageProps) {
   
   // Calculate league averages for comparison
   const allPlayers = allTeams.flatMap(t => t.players || []);
-  const leagueAvgMMR = allPlayers.length ? Math.round(allPlayers.reduce((sum, p) => sum + p.mmr, 0) / allPlayers.length) : 0;
+  const leagueAvgMMR = allPlayers.length ? Math.round(allPlayers.reduce((sum, p) => sum + (p.mmr ?? 0), 0) / allPlayers.length) : 0;
 
   const getAccountId = (): string | null => {
     if (player.openDotaAccountId) return String(player.openDotaAccountId);
@@ -257,9 +257,9 @@ export default function PlayerPage({ params }: PageProps) {
             <CardTitle className="text-xl text-primary">MMR</CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col items-center justify-center flex-grow p-6">
-            <p className="text-3xl font-bold text-foreground mb-2">{formatNumber(player.mmr)}</p>
+            <p className="text-3xl font-bold text-foreground mb-2">{formatNumber(player.mmr ?? 0)}</p>
             <Progress
-              value={Math.min(100, Math.max(0, (player.mmr / Math.max(leagueAvgMMR * 1.5, 1)) * 100))}
+              value={Math.min(100, Math.max(0, ((player.mmr ?? 0) / Math.max(leagueAvgMMR * 1.5, 1)) * 100))}
               className="w-3/4 h-2.5"
               aria-label="MMR progress"
             />

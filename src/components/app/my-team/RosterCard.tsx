@@ -60,7 +60,7 @@ export function RosterCard({ team, upcomingMatches }: RosterCardProps) {
                   <PlayerAvatar player={player} />
                   <div>
                     <p className="font-semibold text-foreground">{player.nickname}</p>
-                    <p className="text-sm text-muted-foreground">{player.mmr.toLocaleString()} MMR</p>
+                    <p className="text-sm text-muted-foreground">{(player.mmr ?? 0).toLocaleString()} MMR</p>
                   </div>
                 </div>
                 <RoleIcon className="h-6 w-6 text-muted-foreground" />

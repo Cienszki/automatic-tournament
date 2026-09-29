@@ -373,6 +373,7 @@ export function SchedulingTab() {
 
     // Validate that all matchdays have dates/times assigned (only for league tournaments)
     const isLeague = tournament?.type === 'league';
+    const isMmrLimited = tournament?.type === 'mmr-limited';
     const missingDates = generatedStructures.some(struct =>
       struct.matchdays.some(md => {
         const divisionDates = matchdayDates[struct.divisionId];
@@ -415,8 +416,12 @@ export function SchedulingTab() {
 
         console.log(`[SchedulingTab] Matchdays with dates:`, matchdaysWithDates);
 
-        // Convert to match objects (allow empty dates for non-league tournaments)
-        const matches = convertMatchdaysToMatches(matchdaysWithDates, !isLeague);
+        // Convert to match objects. MMR-limited tournaments let captains negotiate
+        // their own times, so matchdays may be created without dates; league
+        // matchdays must be fully dated. Checked positively so a Swiss tournament
+        // (which schedules per round in SwissTab, not here) can't land in either
+        // branch by accident.
+        const matches = convertMatchdaysToMatches(matchdaysWithDates, isMmrLimited);
 
         console.log(`[SchedulingTab] Generated ${matches.length} matches for division ${structure.divisionId}`);
 

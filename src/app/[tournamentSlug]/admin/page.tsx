@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useTournament, useTournamentType } from '@/context/TournamentContext';
 import { useAuth } from '@/context/AuthContext';
+import type { TournamentType } from '@/types/tournament';
 import { checkIfAdmin } from '@/lib/auth';
 import { Card, CardHeader, CardContent, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -139,7 +140,7 @@ export default function AdminPage() {
     { id: 'divisions', label: isLeague ? 'Dywizje' : 'Grupy', icon: isLeague ? Layers : LayoutGrid },
     { id: 'scheduling', label: 'Terminarz', icon: CalendarDays },
     { id: 'teams', label: 'Drużyny', icon: Users },
-    { id: 'transfers', label: 'Transfery', icon: ArrowLeftRight, showFor: 'league' },
+    { id: 'transfers', label: 'Transfery', icon: ArrowLeftRight, showFor: ['league'] as TournamentType[] },
     { id: 'standins', label: 'Standiny', icon: Shield },
     { id: 'matches', label: 'Mecze', icon: Gamepad2 },
     { id: 'fantasy', label: 'Fantasy', icon: Crown },
@@ -151,12 +152,14 @@ export default function AdminPage() {
     { id: 'bot', label: 'Bot', icon: Bot },
   ];
 
-  // Filter tabs based on tournament type
+  // Filter tabs based on tournament type.
+  //
+  // `showFor` lists the types a tab applies to. This used to read
+  // `showFor === 'mmr-limited' && !isLeague`, which treated "not league" as
+  // "MMR-limited" — a Swiss tournament would have been shown MMR-only tabs.
   const filteredTabs = tabs.filter(tab => {
     if (!tab.showFor) return true;
-    if (tab.showFor === 'league' && isLeague) return true;
-    if (tab.showFor === 'mmr-limited' && !isLeague) return true;
-    return false;
+    return !!tournament?.type && tab.showFor.includes(tournament.type);
   });
 
   return (

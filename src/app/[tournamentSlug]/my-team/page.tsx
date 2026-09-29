@@ -272,7 +272,16 @@ function computeSlotLayout(slots: ScrimSlot[]): Map<string, { colIndex: number; 
  */
 function MyTeamView() {
   const { tournament, theme, isLegacyTournament, getTournamentPath } = useTournament();
-  const { isMmrLimited } = useTournamentType();
+  const { isMmrLimited, isLeague } = useTournamentType();
+  // Drive coach UI off the actual setting rather than the tournament type. Both
+  // mmr-limited and swiss default to coachMode 'disabled'; a `!isMmrLimited`
+  // check would have shown Swiss captains coach controls they must not have.
+  //
+  // Older tournament docs may predate `coachMode`. For those, fall back to the
+  // previous type-based behaviour so no existing league loses its coach UI.
+  const coachEnabled = tournament?.coachMode
+    ? tournament.coachMode !== 'disabled'
+    : isLeague;
   const { user, loading: authLoading, signInWithGoogle } = useAuth();
   const { t } = useTranslation();
   const { toast } = useToast();
@@ -426,9 +435,9 @@ function MyTeamView() {
       });
     }
 
-    // Check for upcoming matches without coach (24h warning) — not applicable in MMR-limited tournaments
+    // Check for upcoming matches without coach (24h warning) — only where coaches are enabled
     const nextMatch = upcomingMatches[0];
-    if (!isMmrLimited && nextMatch && !nextMatch.coachInfo?.[team?.id || '']) {
+    if (coachEnabled && nextMatch && !nextMatch.coachInfo?.[team?.id || '']) {
       const matchDate = new Date(nextMatch.scheduledFor || '');
       const hoursUntilMatch = (matchDate.getTime() - Date.now()) / (1000 * 60 * 60);
       if (hoursUntilMatch < 24 && hoursUntilMatch > 0) {
@@ -2159,8 +2168,8 @@ function MyTeamView() {
                       onAppealStandinRequest={handleAppealStandinRequest}
                       onCancelStandinRequest={handleCancelStandinRequest}
                       onEditStandinGames={handleEditStandinGames}
-                      onSetCoach={isMmrLimited ? undefined : handleSetCoach}
-                      onRemoveCoach={isMmrLimited ? undefined : handleRemoveCoach}
+                      onSetCoach={coachEnabled ? handleSetCoach : undefined}
+                      onRemoveCoach={coachEnabled ? handleRemoveCoach : undefined}
                       onRefreshMatch={() => refreshSingleMatch(match.id)}
                       isMmrLimited={isMmrLimited}
                       botLobbyName={

@@ -553,7 +553,7 @@ function PlayerProfile({ player, team, onBack }: PlayerProfileProps) {
               </h4>
               <p className="text-xs" style={{ color: 'var(--tournament-secondary-text)' }}>{team.name}</p>
             </div>
-            {player.mmr > 0 && (
+            {(player.mmr ?? 0) > 0 && (
               <div className="text-right shrink-0">
                 <p className="text-[10px] uppercase tracking-widest" style={{ color: 'var(--tournament-secondary-text)' }}>MMR</p>
                 <p className="text-sm font-logik-extended-bold" style={{ color: 'var(--tournament-title)' }}>{player.mmr}</p>
@@ -753,7 +753,7 @@ function PlayerProfile({ player, team, onBack }: PlayerProfileProps) {
           </div>
 
           {/* MMR */}
-          {player.mmr > 0 && (
+          {(player.mmr ?? 0) > 0 && (
             <div className="flex items-center gap-2 mb-3">
               <span className="text-xs uppercase tracking-widest"
                 style={{ color: theme?.secondaryTextColor || 'rgba(255,255,255,0.4)' }}>MMR</span>

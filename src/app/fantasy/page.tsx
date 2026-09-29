@@ -179,7 +179,7 @@ export default function FantasyPage() {
     
     // Sort by MMR descending within each role
     Object.keys(grouped).forEach(role => {
-      grouped[role as PlayerRole].sort((a, b) => b.mmr - a.mmr);
+      grouped[role as PlayerRole].sort((a, b) => (b.mmr ?? 0) - (a.mmr ?? 0));
     });
     
     return grouped;

@@ -29,6 +29,20 @@
       ]
     },
     {
+      "collectionGroup": "matches",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "divisionId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "round",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
       "collectionGroup": "teams",
       "queryScope": "COLLECTION",
       "fields": [

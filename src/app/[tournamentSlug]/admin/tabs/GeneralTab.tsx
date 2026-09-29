@@ -22,7 +22,7 @@ import {
 import { cn } from '@/lib/utils';
 import { FontManagement } from '@/components/admin/FontManagement';
 import type { CustomFont } from '@/components/admin/FontManagement';
-import type { NavbarSponsorSlide } from '@/types/tournament';
+import type { NavbarSponsorSlide, TournamentType } from '@/types/tournament';
 import {
   uploadTournamentLogo,
   uploadTournamentInlineLogo,
@@ -91,8 +91,13 @@ export function GeneralTab() {
   const [lobbyLatePenaltySeries, setLobbyLatePenaltySeries] = useState(tournament?.lobbySettings?.latePenaltySeriesMinutes ?? 30);
   
   // Form state - Type & Status
-  const [tournamentType, setTournamentType] = useState<'league' | 'mmr-limited'>(
-    tournament?.type === 'league' ? 'league' : 'mmr-limited'
+  //
+  // Must hold ANY TournamentType verbatim. This used to coerce to
+  // `type === 'league' ? 'league' : 'mmr-limited'`, which meant opening this tab
+  // on a Swiss tournament and pressing Save silently rewrote its type to
+  // 'mmr-limited' and destroyed the config.
+  const [tournamentType, setTournamentType] = useState<TournamentType>(
+    tournament?.type ?? 'mmr-limited'
   );
   const [mmrLimit, setMmrLimit] = useState(tournament?.mmrCap || 24000);
   const [status, setStatus] = useState<string>(tournament?.status || 'registration');
@@ -207,7 +212,7 @@ export function GeneralTab() {
     setLobbyDotatvDelay(tournament.lobbySettings?.dotatvDelayMinutes ?? 5);
     setLobbyLatePenaltyGame(tournament.lobbySettings?.latePenaltyGameMinutes ?? 15);
     setLobbyLatePenaltySeries(tournament.lobbySettings?.latePenaltySeriesMinutes ?? 30);
-    setTournamentType(tournament.type === 'league' ? 'league' : 'mmr-limited');
+    setTournamentType(tournament.type ?? 'mmr-limited');
     setMmrLimit(tournament.mmrCap || 24000);
     setStatus(tournament.status || 'registration');
     setSponsorEnabled(tournament.navbarSponsor?.enabled ?? false);
@@ -1407,7 +1412,7 @@ export function GeneralTab() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <button
               onClick={() => setTournamentType('league')}
               className={cn(
@@ -1457,6 +1462,33 @@ export function GeneralTab() {
               <h3 className="font-logik-extended-bold text-lg">Turniej z limitem MMR</h3>
               <p className="text-sm text-muted-foreground font-logik">
                 Turniej casualowy z ograniczeniem całkowitego MMR drużyny. Faza grupowa + playoffy.
+              </p>
+            </button>
+
+            <button
+              onClick={() => setTournamentType('swiss')}
+              className={cn(
+                "flex flex-col items-start gap-2 p-6 rounded-xl border-2 transition-all duration-200",
+                "hover:scale-[1.02] hover:shadow-md text-left",
+                tournamentType === 'swiss'
+                  ? "border-primary bg-primary/10"
+                  : "border-border hover:border-primary/50"
+              )}
+              style={{
+                borderColor: tournamentType === 'swiss' ? theme.primaryColor : undefined,
+                backgroundColor: tournamentType === 'swiss' ? `${theme.primaryColor}15` : undefined,
+              }}
+            >
+              <div className="flex items-center gap-3">
+                <Badge variant="outline" className="font-logik">Swiss</Badge>
+                {tournamentType === 'swiss' && (
+                  <CheckCircle2 className="h-5 w-5" style={{ color: theme.primaryColor }} />
+                )}
+              </div>
+              <h3 className="font-logik-extended-bold text-lg">Liga szwajcarska</h3>
+              <p className="text-sm text-muted-foreground font-logik">
+                Bez limitu MMR. Drużyny o podobnym dorobku punktowym grają ze sobą, rozstawienie
+                według średniego MMR drużyny. Playoffy opcjonalne.
               </p>
             </button>
           </div>

@@ -400,9 +400,9 @@ export default function PlayerProfilePage() {
                 <CardTitle className="text-xl" style={{ fontFamily: 'var(--font-logik)', color: theme.headingColor || theme.primaryColor }}>{t('mmr')}</CardTitle>
               </CardHeader>
               <CardContent className="flex flex-col items-center justify-center flex-grow p-6">
-                <p className="text-3xl font-bold mb-2 font-logik" style={{ color: theme.primaryTextColor || theme.textColor }}>{formatNumber(player.mmr)}</p>
+                <p className="text-3xl font-bold mb-2 font-logik" style={{ color: theme.primaryTextColor || theme.textColor }}>{formatNumber(player.mmr ?? 0)}</p>
                 <Progress
-                  value={Math.min(100, Math.max(0, (player.mmr / Math.max(leagueAvgMMR * 1.5, 1)) * 100))}
+                  value={Math.min(100, Math.max(0, ((player.mmr ?? 0) / Math.max(leagueAvgMMR * 1.5, 1)) * 100))}
                   className="w-3/4 h-2.5"
                   aria-label="MMR progress"
                 />
