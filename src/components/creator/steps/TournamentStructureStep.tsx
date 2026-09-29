@@ -21,9 +21,18 @@ const MATCH_FORMAT_OPTIONS = [
 
 export function TournamentStructureStep({ data, onChange, template }: TournamentStructureStepProps) {
   const [formData, setFormData] = useState({
-    type: data?.type || (template === 'mmr-limited' ? 'mmr-limited' : template === 'league' ? 'league' : 'mmr-limited'),
+    type: data?.type || (
+      template === 'mmr-limited' ? 'mmr-limited'
+      : template === 'league' ? 'league'
+      : template === 'swiss' ? 'swiss'
+      : 'mmr-limited'
+    ),
     maxTeams: data?.maxTeams ?? null,
     mmrCap: data?.mmrCap || 24000,
+    // Swiss settings
+    swissMatchFormat: data?.swissMatchFormat || 'bo2',
+    swissPlannedRounds: data?.swissPlannedRounds ?? null,
+    enablePlayoffs: data?.enablePlayoffs ?? true,
     // Group stage settings (MMR tournaments)
     groupMatchFormat: data?.groupMatchFormat || 'bo2',
     // Playoff settings
@@ -46,6 +55,7 @@ export function TournamentStructureStep({ data, onChange, template }: Tournament
   };
 
   const isMmrLimited = formData.type === 'mmr-limited';
+  const isSwiss = formData.type === 'swiss';
 
   return (
     <div className="space-y-8">
@@ -74,6 +84,7 @@ export function TournamentStructureStep({ data, onChange, template }: Tournament
           >
             <option value="mmr-limited">Turniej z Limitem MMR</option>
             <option value="league">Liga Profesjonalna</option>
+            <option value="swiss">Liga Szwajcarska</option>
           </select>
         </div>
 
@@ -150,6 +161,60 @@ export function TournamentStructureStep({ data, onChange, template }: Tournament
         </div>
       )}
 
+      {/* Swiss Settings */}
+      {isSwiss && (
+        <div className="space-y-6 p-6 rounded-xl bg-card border border-border">
+          <h3 className="text-lg font-semibold flex items-center gap-2">
+            <LayoutGrid className="h-5 w-5 text-primary" />
+            Ustawienia systemu szwajcarskiego
+          </h3>
+          <p className="text-sm text-muted-foreground -mt-4">
+            Rundy generujesz pojedynczo w panelu admina — parowania kolejnej rundy zależą
+            od wyników poprzedniej. Tutaj ustawiasz tylko wartości domyślne.
+          </p>
+
+          <div>
+            <label className="block text-sm font-medium mb-2">
+              Domyślny format meczów
+            </label>
+            <select
+              value={formData.swissMatchFormat}
+              onChange={(e) => handleChange('swissMatchFormat', e.target.value)}
+              className="w-full px-4 py-2 rounded-lg bg-background border border-border focus:border-primary focus:outline-none transition-colors"
+            >
+              {MATCH_FORMAT_OPTIONS.map(opt => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+            {/* Points are games won, so the format decides a round's weight. */}
+            <p className="text-xs text-muted-foreground mt-1">
+              Punktem jest każda wygrana mapa, więc format decyduje o wadze rundy
+              (BO1 = maks. 1 pkt, BO2/BO3 = 2 pkt, BO5 = 3 pkt). Format możesz zmienić
+              dla każdej rundy osobno.
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-2">
+              Planowana liczba rund <span className="text-muted-foreground font-normal">(opcjonalne)</span>
+            </label>
+            <input
+              type="number"
+              value={formData.swissPlannedRounds ?? ''}
+              onChange={(e) => handleChange('swissPlannedRounds', e.target.value ? parseInt(e.target.value) : null)}
+              min={1}
+              max={20}
+              placeholder="ustalisz po rejestracji"
+              className="w-full px-4 py-2 rounded-lg bg-background border border-border focus:border-primary focus:outline-none transition-colors"
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              Zwykle ustala się ją dopiero, gdy znasz liczbę drużyn. Panel admina podpowie
+              zalecaną wartość (ok. log₂ z liczby drużyn + 1).
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Playoff Settings */}
       <div className="space-y-6 p-6 rounded-xl bg-card border border-border">
         <h3 className="text-lg font-semibold flex items-center gap-2">
@@ -157,6 +222,23 @@ export function TournamentStructureStep({ data, onChange, template }: Tournament
           Playoff
         </h3>
 
+        <label className="flex items-center gap-3 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={formData.enablePlayoffs}
+            onChange={(e) => handleChange('enablePlayoffs', e.target.checked)}
+            className="w-5 h-5 rounded border-border text-primary focus:ring-primary"
+          />
+          <div>
+            <p className="font-medium">Turniej kończy się fazą playoff</p>
+            <p className="text-sm text-muted-foreground">
+              Odznacz, jeśli o zwycięzcy ma decydować sama tabela.
+            </p>
+          </div>
+        </label>
+
+        {formData.enablePlayoffs && (
+        <>
         <div>
           <label className="block text-sm font-medium mb-2">
             Format Playoff
@@ -218,10 +300,13 @@ export function TournamentStructureStep({ data, onChange, template }: Tournament
           </div>
         </div>
 
-        {isMmrLimited && (
+        {(isMmrLimited || isSwiss) && (
           <p className="text-xs text-muted-foreground">
-            Przypisanie drużyn do slotów w playoff odbywa się ręcznie w panelu admina po zakończeniu fazy grupowej.
+            Przypisanie drużyn do slotów w playoff odbywa się ręcznie w panelu admina
+            {isSwiss ? ' po zakończeniu ostatniej rundy.' : ' po zakończeniu fazy grupowej.'}
           </p>
+        )}
+        </>
         )}
       </div>
 

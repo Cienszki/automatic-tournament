@@ -17,6 +17,14 @@ service cloud.firestore {
       return isAdmin() || isTournamentAdmin(tournamentId);
     }
 
+    // Users a super admin has allowed to create tournaments through the wizard.
+    // Kept separate from `admins` so granting "can create a tournament" does not
+    // also grant platform-wide administration.
+    function isTournamentCreator() {
+      return request.auth.uid != null
+        && exists(/databases/$(database)/documents/tournamentCreators/$(request.auth.uid));
+    }
+
     // Helper function to check if user is captain of a tournament team
     function isTournamentTeamCaptain(tournamentId, teamId) {
       return request.auth.uid != null
@@ -86,12 +94,32 @@ service cloud.firestore {
     // Tournament documents - public read
     match /tournaments/{tournamentId} {
       allow read: if true;
-      allow write: if isAdmin();
 
-      // Tournament admins subcollection - only super admins can manage
+      // Creation is open to super admins and to allowlisted tournament creators,
+      // who must stamp themselves as the organizer.
+      allow create: if isAdmin()
+        || (isTournamentCreator() && request.resource.data.organizerId == request.auth.uid);
+
+      // Editing was previously super-admin only, which meant a tournament's own
+      // admins could not save the General or Structure tabs of their tournament.
+      // `slug` and `organizerId` stay immutable: the slug is baked into every
+      // public URL and every Storage upload path, and ownership is not something
+      // a delegated admin should be able to reassign.
+      allow update: if hasAdminAccess(tournamentId)
+        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['slug', 'organizerId']);
+
+      allow delete: if isAdmin();
+
+      // Tournament admins subcollection
       match /admins/{userId} {
-        allow read: if isAdmin();
-        allow write: if isAdmin();
+        allow read: if hasAdminAccess(tournamentId);
+        // A creator bootstraps themselves as the first admin of a tournament they
+        // own; without this the wizard would produce a tournament its own creator
+        // could not administer.
+        allow create: if isAdmin()
+          || (request.auth.uid == userId
+              && get(/databases/$(database)/documents/tournaments/$(tournamentId)).data.organizerId == request.auth.uid);
+        allow update, delete: if hasAdminAccess(tournamentId);
       }
 
       // Teams in tournaments
@@ -336,6 +364,14 @@ service cloud.firestore {
     // --- USER-SPECIFIC WRITE RULES ---
     match /users/{userId} {
       allow read, write: if request.auth.uid == userId || isAdmin();
+    }
+
+    // Allowlist of users permitted to create tournaments through the wizard.
+    // A user may check their own entry (the wizard guard does exactly that);
+    // only super admins may grant or revoke.
+    match /tournamentCreators/{userId} {
+      allow read: if isAdmin() || request.auth.uid == userId;
+      allow write: if isAdmin();
     }
     
     match /pickems/{userId} { // CORRECTED SPELLING

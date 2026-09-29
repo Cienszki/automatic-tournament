@@ -331,6 +331,11 @@ export interface TournamentConfig {
   type: TournamentType;
   status: TournamentStatus;
   visibility: TournamentVisibility;
+  /**
+   * Opaque token unlocking a draft tournament for preview at
+   * `/[slug]?preview=<token>`. Rotatable from the admin panel.
+   */
+  previewToken?: string;
   
   // Dates
   registrationStartDate?: string;

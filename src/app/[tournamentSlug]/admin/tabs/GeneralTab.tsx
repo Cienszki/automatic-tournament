@@ -43,6 +43,8 @@ import {
   CheckCircle2,
   AlertCircle,
   Clock,
+  FileClock,
+  Archive,
   Play,
   Pause,
   Trophy,
@@ -101,6 +103,7 @@ export function GeneralTab() {
   );
   const [mmrLimit, setMmrLimit] = useState(tournament?.mmrCap || 24000);
   const [status, setStatus] = useState<string>(tournament?.status || 'registration');
+  const [visibility, setVisibility] = useState<string>(tournament?.visibility || 'active');
   const [isSaving, setIsSaving] = useState(false);
 
   // Color settings
@@ -215,6 +218,7 @@ export function GeneralTab() {
     setTournamentType(tournament.type ?? 'mmr-limited');
     setMmrLimit(tournament.mmrCap || 24000);
     setStatus(tournament.status || 'registration');
+    setVisibility(tournament.visibility || 'active');
     setSponsorEnabled(tournament.navbarSponsor?.enabled ?? false);
     setSponsorSlides(tournament.navbarSponsor?.slides || []);
     setSponsorGlobalUrl(tournament.navbarSponsor?.url || '');
@@ -435,6 +439,7 @@ export function GeneralTab() {
         },
         type: tournamentType,
         status: status,
+        visibility: visibility,
         mmrCap: tournamentType === 'mmr-limited' ? mmrLimit : null,
         'theme.logoUrl': logoUrl || null,
         'theme.inlineLogoUrl': inlineLogoUrl || null,
@@ -493,12 +498,16 @@ export function GeneralTab() {
     }
   };
 
-  type TournamentStatus = 'registration' | 'active' | 'completed';
-  
-  const statusOptions: { value: TournamentStatus; label: string; icon: typeof Clock; color: string }[] = [
+  // 'draft' and 'archived' were missing, so a wizard-created tournament (which
+  // starts as 'draft') matched no option here and there was no way to move it on.
+  type TournamentStatusOption = 'draft' | 'registration' | 'active' | 'completed' | 'archived';
+
+  const statusOptions: { value: TournamentStatusOption; label: string; icon: typeof Clock; color: string; hint?: string }[] = [
+    { value: 'draft', label: 'Wersja robocza', icon: FileClock, color: 'bg-amber-500', hint: 'Niewidoczny publicznie' },
     { value: 'registration', label: 'Rejestracja otwarta', icon: Clock, color: 'bg-blue-500' },
     { value: 'active', label: 'W trakcie', icon: Play, color: 'bg-green-500' },
     { value: 'completed', label: 'Zakończony', icon: Trophy, color: 'bg-gray-500' },
+    { value: 'archived', label: 'Zarchiwizowany', icon: Archive, color: 'bg-zinc-600', hint: 'Ukryty w rozwijanej liście' },
   ];
 
   return (
@@ -1386,9 +1395,11 @@ export function GeneralTab() {
                 <div className="text-left">
                   <p className="font-logik-extended-bold">{option.label}</p>
                   <p className="text-xs text-muted-foreground font-logik">
+                    {option.value === 'draft' && 'Widoczny tylko dla organizatorów'}
                     {option.value === 'registration' && 'Drużyny mogą się rejestrować'}
                     {option.value === 'active' && 'Mecze są rozgrywane'}
                     {option.value === 'completed' && 'Turniej zakończony'}
+                    {option.value === 'archived' && 'Przeniesiony do archiwum'}
                   </p>
                 </div>
                 {status === option.value && (
@@ -1396,6 +1407,25 @@ export function GeneralTab() {
                 )}
               </button>
             ))}
+          </div>
+
+          {/* Visibility is kept separate from status rather than derived from it:
+              a finished tournament may deliberately stay visible on the landing
+              page, or be moved to the archive dropdown, and those are different
+              decisions from "is it still being played". */}
+          <div className="pt-4 border-t border-border">
+            <Label className="font-logik-extended-bold">Widoczność</Label>
+            <p className="text-sm text-muted-foreground font-logik mb-3">
+              Gdzie turniej pojawia się na stronie głównej platformy
+            </p>
+            <Select value={visibility} onValueChange={setVisibility}>
+              <SelectTrigger className="font-logik max-w-md"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="active">Na stronie głównej</SelectItem>
+                <SelectItem value="archived">W archiwum (rozwijana lista)</SelectItem>
+                <SelectItem value="inactive">Ukryty</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </CardContent>
       </Card>

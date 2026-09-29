@@ -48,6 +48,7 @@ import { RulesTab } from './tabs/RulesTab';
 import { PrizesTab } from './tabs/PrizesTab';
 import { PlayoffsTab } from './tabs/PlayoffsTab';
 import { BotTab } from './tabs/BotTab';
+import { TournamentLaunchCard } from '@/components/admin/TournamentLaunchCard';
 
 /**
  * Admin Panel - Tournament Administration
@@ -203,6 +204,13 @@ export default function AdminPage() {
             </TabsList>
           </Tabs>
         </div>
+      </div>
+
+      {/* Launch card — renders only while the tournament is still a draft.
+          Sits above the tabs because "how do I make this live?" is the single
+          most pressing question after the wizard finishes. */}
+      <div className="container mx-auto px-4 pt-6">
+        <TournamentLaunchCard />
       </div>
 
       {/* Tab Content */}

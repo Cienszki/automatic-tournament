@@ -18,6 +18,8 @@ import {
 import { cn } from '@/lib/utils';
 import { createTournament, isSlugAvailable } from '@/lib/api/tournaments';
 import { isReservedSlug } from '@/lib/reserved-slugs';
+import { CreatorAccessGuard } from '@/components/creator/CreatorAccessGuard';
+import { useAuth } from '@/context/AuthContext';
 
 // Import step components
 import { BasicInfoStep } from '@/components/creator/steps/BasicInfoStep';
@@ -35,15 +37,18 @@ const TOURNAMENT_STEPS = [
 
 export default function NewTournamentPage() {
   return (
-    <Suspense fallback={<LoadingState />}>
-      <NewTournamentContent />
-    </Suspense>
+    <CreatorAccessGuard>
+      <Suspense fallback={<LoadingState />}>
+        <NewTournamentContent />
+      </Suspense>
+    </CreatorAccessGuard>
   );
 }
 
 function NewTournamentContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const { user } = useAuth();
   const template = searchParams.get('template') || 'custom';
 
   const [currentStep, setCurrentStep] = useState(0);
@@ -83,6 +88,12 @@ function NewTournamentContent() {
     setPublishError(null);
 
     try {
+      if (!user) {
+        setPublishError('Musisz być zalogowany, aby utworzyć turniej.');
+        setIsPublishing(false);
+        return;
+      }
+
       // Validate required fields
       const basicInfo = formData.basic || {};
       if (!basicInfo.name || !basicInfo.slug || !basicInfo.organizerName) {
@@ -112,6 +123,7 @@ function NewTournamentContent() {
         branding: formData.branding || {},
         structure: formData.structure || {},
         template,
+        organizerId: user.uid,
       });
 
       console.log('Tournament created:', tournamentId);

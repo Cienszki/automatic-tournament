@@ -2,10 +2,11 @@
 // API functions for tournament CRUD operations
 
 import { 
-  collection, 
-  addDoc, 
-  updateDoc, 
-  doc, 
+  collection,
+  addDoc,
+  updateDoc,
+  setDoc,
+  doc,
   getDocs, 
   query, 
   where,
@@ -101,8 +102,14 @@ export async function createTournament(data: {
   branding: any;
   structure: any;
   template: string;
+  /**
+   * Firebase uid of the creator. Becomes `organizerId` and the tournament's
+   * first admin. Previously hardcoded to 'pd2ih', which meant every tournament
+   * claimed the same owner and firestore.rules could not tell creators apart.
+   */
+  organizerId: string;
 }): Promise<string> {
-  const { basicInfo, branding, structure, template } = data;
+  const { basicInfo, branding, structure, template, organizerId } = data;
   const type: TournamentType = structure.type;
   const isSwiss = type === 'swiss';
 
@@ -120,7 +127,7 @@ export async function createTournament(data: {
     name: basicInfo.name,
     shortName: basicInfo.shortName,
     description: basicInfo.description,
-    organizerId: 'pd2ih', // TODO: Get from current user
+    organizerId,
     
     type: structure.type,
     status: 'draft',
@@ -259,6 +266,10 @@ export async function createTournament(data: {
       themeStyle: branding.themeStyle || 'dark',
     },
     
+    // Opaque token that lets the organizer preview a draft (and share it with
+    // co-organizers) before the tournament is visible to the public.
+    previewToken: generatePreviewToken(),
+
     createdAt: serverTimestamp() as any,
     updatedAt: serverTimestamp() as any,
   };
@@ -267,7 +278,63 @@ export async function createTournament(data: {
   const tournamentsRef = collection(db, 'tournaments');
   const docRef = await addDoc(tournamentsRef, tournamentConfig);
 
+  // ── Post-create bootstrap ────────────────────────────────────────────────
+  // Without these two writes the wizard produces a tournament its creator
+  // cannot administer, whose standings pages render empty.
+  //
+  // Done as best-effort follow-ups rather than a transaction: if one fails the
+  // tournament still exists and is repairable from the admin panel, which is a
+  // better outcome than rolling back a tournament the user just filled in.
+
+  // 1. The creator becomes the tournament's first admin.
+  try {
+    await setDoc(doc(db, 'tournaments', docRef.id, 'admins', organizerId), {
+      role: 'owner',
+      addedAt: serverTimestamp(),
+      addedBy: organizerId,
+    });
+  } catch (err) {
+    console.error('[createTournament] could not grant creator admin access:', err);
+  }
+
+  // 2. An initial group/division, so standings and schedule pages have somewhere
+  //    to put teams instead of rendering empty.
+  try {
+    const initial = initialDivisionFor(type);
+    await setDoc(doc(db, 'tournaments', docRef.id, 'divisions', initial.id), {
+      name: initial.name,
+      tier: 1,
+      color: branding.primaryColor || '#6366f1',
+      ...(isSwiss ? { isSwissField: true } : {}),
+      createdAt: new Date().toISOString(),
+    });
+  } catch (err) {
+    console.error('[createTournament] could not create the initial division:', err);
+  }
+
   return docRef.id;
+}
+
+/** URL-safe random token for draft previews. */
+function generatePreviewToken(): string {
+  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
+    return crypto.randomUUID().replace(/-/g, '');
+  }
+  return Math.random().toString(36).slice(2) + Date.now().toString(36);
+}
+
+/**
+ * The single group/division a brand-new tournament starts with.
+ * Swiss uses one field for every team; the other modes start with one group the
+ * admin renames or adds to.
+ */
+function initialDivisionFor(type: TournamentType): { id: string; name: string } {
+  switch (type) {
+    case 'swiss':    return { id: 'swiss', name: 'Swiss' };
+    case 'league':   return { id: 'dywizja-1', name: 'Dywizja 1' };
+    case 'mmr-limited':
+    default:         return { id: 'grupa-a', name: 'Grupa A' };
+  }
 }
 
 /**

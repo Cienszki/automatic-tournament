@@ -187,10 +187,40 @@ function createMmrFormSchema(v: (key: string) => string, mmrCap: number) {
 }
 
 // Registration Closed Component
-const RegistrationClosed: React.FC = () => {
+//
+// `reason` lets the page say WHY it is closed. "Registration is closed" with no
+// explanation is the kind of thing that generates Discord questions; "opens on
+// 5 October" or "all 16 slots are taken" does not.
+interface RegistrationClosedProps {
+  reason?: 'status' | 'not-open' | 'closed' | 'full';
+  opensAt?: string;
+  closesAt?: string;
+  maxTeams?: number;
+}
+
+const RegistrationClosed: React.FC<RegistrationClosedProps> = ({
+  reason = 'status', opensAt, closesAt, maxTeams,
+}) => {
   const t = useTranslations('pdlRegistration');
   const { getTournamentPath, theme } = useTournament();
   const primaryColor = theme?.primaryColor || '#8B1538';
+
+  const fmt = (iso?: string) => {
+    if (!iso) return null;
+    const d = new Date(iso);
+    return isNaN(d.getTime())
+      ? null
+      : d.toLocaleDateString('pl-PL', { day: 'numeric', month: 'long', year: 'numeric' });
+  };
+
+  const explanation =
+    reason === 'not-open'
+      ? `Rejestracja rusza ${fmt(opensAt) ?? 'wkrótce'}.`
+      : reason === 'closed'
+      ? `Rejestracja zakończyła się ${fmt(closesAt) ?? 'niedawno'}.`
+      : reason === 'full'
+      ? `Wszystkie miejsca zostały zajęte${maxTeams ? ` (limit: ${maxTeams} drużyn)` : ''}.`
+      : null;
 
   return (
     <div className="relative min-h-screen overflow-hidden text-white">
@@ -247,10 +277,10 @@ const RegistrationClosed: React.FC = () => {
             transition={{ duration: 0.6, delay: 0.4 }}
           >
             <p className="text-xl mb-4 text-gray-200">
-              {t('closedMessage')}
+              {explanation ?? t('closedMessage')}
             </p>
             <p className="text-lg text-white/70 font-medium mb-4">
-              {t('seasonInProgress')}
+              {reason === 'status' ? t('seasonInProgress') : t('closedMessage')}
             </p>
           </motion.div>
 
@@ -373,6 +403,32 @@ export default function RegisterPage() {
 
   const { fields } = useFieldArray({ control: form.control, name: "players" });
 
+  // Registered team count, used to enforce maxTeams. Only fetched when a cap is
+  // actually configured, so tournaments without one pay nothing for this.
+  const [registeredTeamCount, setRegisteredTeamCount] = React.useState<number | null>(null);
+  React.useEffect(() => {
+    const cap = tournament?.maxTeams;
+    if (!tournament?.id || cap == null || cap <= 0) {
+      setRegisteredTeamCount(null);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const snap = await getDocs(collection(db, 'tournaments', tournament.id, 'teams'));
+        if (cancelled) return;
+        // The Swiss BYE placeholder is not a registered competitor.
+        const count = snap.docs.filter(d => d.data().isSwissBye !== true).length;
+        setRegisteredTeamCount(count);
+      } catch (err) {
+        console.error('Error counting registered teams:', err);
+        // On failure leave the count unknown rather than blocking registration.
+        if (!cancelled) setRegisteredTeamCount(null);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [tournament?.id, tournament?.maxTeams]);
+
   // Smurf accounts per player — managed outside react-hook-form due to nested array complexity
   const [smurfAccounts, setSmurfAccounts] = React.useState<string[][]>(() => Array(5).fill(null).map(() => []));
 
@@ -417,8 +473,35 @@ export default function RegisterPage() {
     checkExistingTeam();
   }, [user?.uid, tournament?.id, router, getTournamentPath]);
 
-  // Check if registration is open
-  const isRegistrationOpen = tournament?.status === 'registration';
+  // Check if registration is open.
+  //
+  // `status` remains the master switch, but the dates the wizard collects are now
+  // actually honoured. Previously registrationStartDate/registrationEndDate were
+  // written by nobody and read by nobody, so a window could not close on its own
+  // and an organizer had to remember to flip the status by hand.
+  //
+  // Dates are optional: a tournament with none behaves exactly as before.
+  const now = Date.now();
+  const regStart = tournament?.registrationStartDate
+    ? new Date(tournament.registrationStartDate).getTime()
+    : null;
+  const regEnd = tournament?.registrationEndDate
+    ? new Date(tournament.registrationEndDate).getTime()
+    : null;
+
+  const windowNotYetOpen = regStart != null && !isNaN(regStart) && now < regStart;
+  // End date is inclusive of that whole day.
+  const windowClosed =
+    regEnd != null && !isNaN(regEnd) && now > regEnd + 24 * 60 * 60 * 1000 - 1;
+
+  const slotsFull =
+    tournament?.maxTeams != null &&
+    tournament.maxTeams > 0 &&
+    registeredTeamCount != null &&
+    registeredTeamCount >= tournament.maxTeams;
+
+  const isRegistrationOpen =
+    tournament?.status === 'registration' && !windowNotYetOpen && !windowClosed && !slotsFull;
 
   // Show loading while checking if user has a team
   if (checkingTeam) {
@@ -427,7 +510,19 @@ export default function RegisterPage() {
 
   // Show registration closed page if not open
   if (!isRegistrationOpen) {
-    return <RegistrationClosed />;
+    return (
+      <RegistrationClosed
+        reason={
+          slotsFull ? 'full'
+          : windowNotYetOpen ? 'not-open'
+          : windowClosed ? 'closed'
+          : 'status'
+        }
+        opensAt={tournament?.registrationStartDate}
+        closesAt={tournament?.registrationEndDate}
+        maxTeams={tournament?.maxTeams ?? undefined}
+      />
+    );
   }
   const { isSubmitting, isValid } = form.formState;
   const primaryColor = tournament?.theme?.primaryColor || '#8B1538';

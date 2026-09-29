@@ -6,10 +6,21 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
-import { ArrowLeft, Sparkles, Trophy, Users } from 'lucide-react';
+import { ArrowLeft, Sparkles, Trophy, Users, Shuffle } from 'lucide-react';
 import { fadeInUp } from '@/lib/animations';
+import { CreatorAccessGuard } from '@/components/creator/CreatorAccessGuard';
 
+// Guarded here as well as on /creator/new so nobody picks a template and fills
+// in a wizard they are not permitted to finish.
 export default function CreatorPage() {
+  return (
+    <CreatorAccessGuard>
+      <CreatorPageContent />
+    </CreatorAccessGuard>
+  );
+}
+
+function CreatorPageContent() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
       {/* Header */}
@@ -60,7 +71,7 @@ export default function CreatorPage() {
           </div>
 
           {/* Template Selection */}
-          <div className="grid md:grid-cols-2 gap-6 mb-12">
+          <div className="grid md:grid-cols-3 gap-6 mb-12">
             <TemplateCard
               title="Turniej z Limitem MMR"
               description="Turniej dla graczy casual i semi-pro z limitem MMR drużyny"
@@ -89,6 +100,21 @@ export default function CreatorPage() {
               color="from-amber-500/20 to-orange-500/20"
               borderColor="border-amber-500/30"
               href="/creator/new?template=league"
+            />
+
+            <TemplateCard
+              title="Liga Szwajcarska"
+              description="Otwarty turniej bez limitu MMR — pary dobierane według dorobku punktowego"
+              features={[
+                'Bez limitu MMR',
+                'Drużyny o podobnym wyniku grają ze sobą',
+                'Rozstawienie wg średniego MMR drużyny',
+                'Liczba rund ustalana po rejestracji',
+              ]}
+              icon={<Shuffle className="h-8 w-8" />}
+              color="from-violet-500/20 to-fuchsia-500/20"
+              borderColor="border-violet-500/30"
+              href="/creator/new?template=swiss"
             />
           </div>
 
