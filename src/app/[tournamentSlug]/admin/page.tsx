@@ -28,12 +28,14 @@ import {
   Trophy,
   Bot,
   Gift,
+  Shuffle,
 } from 'lucide-react';
 
 // Import admin tab components
 import { GeneralTab } from './tabs/GeneralTab';
 import { TournamentStructureTab } from './tabs/TournamentStructureTab';
 import { DivisionsTab } from './tabs/DivisionsTab';
+import { SwissTab } from './tabs/SwissTab';
 import { SchedulingTab } from './tabs/SchedulingTab';
 import { TeamsTab } from './tabs/TeamsTab';
 import { TransfersTab } from './tabs/TransfersTab';
@@ -53,7 +55,7 @@ import { BotTab } from './tabs/BotTab';
  */
 export default function AdminPage() {
   const { tournament, theme } = useTournament();
-  const { isLeague, isMmrLimited } = useTournamentType();
+  const { isLeague } = useTournamentType();
   const { user, signInWithGoogle } = useAuth();
   const [isAdmin, setIsAdmin] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -137,8 +139,16 @@ export default function AdminPage() {
   const tabs = [
     { id: 'general', label: 'Ogólne', icon: Settings },
     { id: 'structure', label: 'Struktura', icon: Building2 },
-    { id: 'divisions', label: isLeague ? 'Dywizje' : 'Grupy', icon: isLeague ? Layers : LayoutGrid },
-    { id: 'scheduling', label: 'Terminarz', icon: CalendarDays },
+    // Swiss runs its own sequential round workflow, so it replaces the manual
+    // groups/divisions + Terminarz pair rather than sitting alongside them.
+    { id: 'swiss', label: 'Swiss', icon: Shuffle, showFor: ['swiss'] as TournamentType[] },
+    {
+      id: 'divisions',
+      label: isLeague ? 'Dywizje' : 'Grupy',
+      icon: isLeague ? Layers : LayoutGrid,
+      showFor: ['league', 'mmr-limited'] as TournamentType[],
+    },
+    { id: 'scheduling', label: 'Terminarz', icon: CalendarDays, showFor: ['league', 'mmr-limited'] as TournamentType[] },
     { id: 'teams', label: 'Drużyny', icon: Users },
     { id: 'transfers', label: 'Transfery', icon: ArrowLeftRight, showFor: ['league'] as TournamentType[] },
     { id: 'standins', label: 'Standiny', icon: Shield },
@@ -159,7 +169,10 @@ export default function AdminPage() {
   // "MMR-limited" — a Swiss tournament would have been shown MMR-only tabs.
   const filteredTabs = tabs.filter(tab => {
     if (!tab.showFor) return true;
-    return !!tournament?.type && tab.showFor.includes(tournament.type);
+    // Fail open on a tournament doc with no `type`: these tabs were unguarded
+    // before, and hiding them would be worse than showing one too many.
+    if (!tournament?.type) return true;
+    return tab.showFor.includes(tournament.type);
   });
 
   return (
@@ -203,6 +216,10 @@ export default function AdminPage() {
             <TournamentStructureTab />
           </TabsContent>
           
+          <TabsContent value="swiss" className="mt-0">
+            <SwissTab />
+          </TabsContent>
+
           <TabsContent value="divisions" className="mt-0">
             <DivisionsTab />
           </TabsContent>

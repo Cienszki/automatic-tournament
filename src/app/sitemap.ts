@@ -51,6 +51,28 @@ function statusPriority(status: TournamentStatus): number {
   }
 }
 
+/**
+ * Coerce a Firestore Timestamp, an ISO string, or a Date into a Date.
+ * Returns null for anything unusable so the caller can fall back.
+ */
+function toDateOrNull(value: unknown): Date | null {
+  if (!value) return null;
+  if (value instanceof Date) return isNaN(value.getTime()) ? null : value;
+  if (typeof value === 'string') {
+    const d = new Date(value);
+    return isNaN(d.getTime()) ? null : d;
+  }
+  if (typeof value === 'object' && typeof (value as { toDate?: unknown }).toDate === 'function') {
+    try {
+      const d = (value as { toDate: () => Date }).toDate();
+      return isNaN(d.getTime()) ? null : d;
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const entries: MetadataRoute.Sitemap = [
     {
@@ -71,7 +93,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         slug?: string;
         type?: TournamentType;
         status?: TournamentStatus;
-        updatedAt?: { toDate: () => Date };
+        // Written as a Firestore Timestamp by createTournament, but as an ISO
+        // string by several admin tabs. Both shapes occur in live data.
+        updatedAt?: { toDate?: () => Date } | string;
         endDate?: string;
         startDate?: string;
       };
@@ -81,9 +105,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       // Skip tournaments without a slug or in excluded statuses
       if (!slug || !status || EXCLUDED_STATUSES.includes(status)) continue;
 
-      // Determine last-modified date: prefer updatedAt, fall back to endDate or startDate
+      // Determine last-modified date: prefer updatedAt, fall back to endDate or
+      // startDate. `updatedAt` must be probed rather than called directly — a
+      // plain string here used to throw and take the ENTIRE sitemap down to just
+      // the root URL, silently dropping every tournament page from SEO.
       const lastModified =
-        data.updatedAt?.toDate() ??
+        toDateOrNull(data.updatedAt) ??
         (data.endDate ? new Date(data.endDate) : null) ??
         (data.startDate ? new Date(data.startDate) : new Date());
 
