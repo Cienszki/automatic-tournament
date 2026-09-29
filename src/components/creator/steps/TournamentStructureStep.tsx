@@ -5,6 +5,7 @@
 
 import { useEffect, useState } from 'react';
 import { Trophy, Settings, LayoutGrid, GitBranch } from 'lucide-react';
+import { ChangeableLaterNote } from '@/components/creator/AdvancedSection';
 
 interface TournamentStructureStepProps {
   data: any;
@@ -64,6 +65,31 @@ export function TournamentStructureStep({ data, onChange, template }: Tournament
         <p className="text-muted-foreground">
           Skonfiguruj format rozgrywek i dodatkowe funkcje
         </p>
+      </div>
+
+      <ChangeableLaterNote />
+
+      {/* Plain-language explanation of the three formats. The choice drives the
+          most behaviour of anything in the wizard, and "mmr-limited vs league vs
+          swiss" means nothing to someone running their first tournament. */}
+      <div className="rounded-xl border border-border bg-muted/20 p-4 text-sm space-y-2">
+        <p className="font-medium">Który format wybrać?</p>
+        <ul className="space-y-1.5 text-muted-foreground text-xs">
+          <li>
+            <strong className="text-foreground">Limit MMR</strong> — drużyny mieszczą się we
+            wspólnym limicie sumy MMR. Faza grupowa, potem playoff. Dobre, gdy chcesz
+            wyrównać poziom z góry.
+          </li>
+          <li>
+            <strong className="text-foreground">Liga profesjonalna</strong> — sezon z dywizjami,
+            awansami i spadkami. Dobre dla cyklicznych rozgrywek.
+          </li>
+          <li>
+            <strong className="text-foreground">Liga szwajcarska</strong> — bez limitu MMR.
+            Po każdej rundzie drużyny o podobnym dorobku grają ze sobą, więc poziom wyrównuje
+            się sam. Dobre, gdy zgłoszą się drużyny o bardzo różnym poziomie.
+          </li>
+        </ul>
       </div>
 
       {/* Tournament Format */}

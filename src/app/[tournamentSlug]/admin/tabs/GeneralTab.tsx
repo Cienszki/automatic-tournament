@@ -23,6 +23,7 @@ import { cn } from '@/lib/utils';
 import { FontManagement } from '@/components/admin/FontManagement';
 import type { CustomFont } from '@/components/admin/FontManagement';
 import type { NavbarSponsorSlide, TournamentType } from '@/types/tournament';
+import { TournamentCreatorsManager } from '@/components/admin/TournamentCreatorsManager';
 import {
   uploadTournamentLogo,
   uploadTournamentInlineLogo,
@@ -2517,6 +2518,9 @@ export function GeneralTab() {
           )}
         </CardContent>
       </Card>
+
+      {/* Platform-wide creator allowlist — renders only for super admins. */}
+      <TournamentCreatorsManager />
 
       {/* Admin Management */}
       <Card className="border-0 shadow-lg bg-card/50 backdrop-blur-sm">

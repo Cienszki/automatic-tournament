@@ -6,6 +6,7 @@
 import { useEffect, useState } from 'react';
 import { Info, Calendar, Users, Globe } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { ChangeableLaterNote } from '@/components/creator/AdvancedSection';
 
 interface BasicInfoStepProps {
   data: any;
@@ -74,6 +75,8 @@ export function BasicInfoStep({ data, onChange, template }: BasicInfoStepProps) 
         </div>
       )}
 
+      <ChangeableLaterNote except="adres strony (slug)" />
+
       {/* Tournament Identity */}
       <div className="space-y-6 p-6 rounded-xl bg-card border border-border">
         <h3 className="text-lg font-semibold flex items-center gap-2">
@@ -116,7 +119,7 @@ export function BasicInfoStep({ data, onChange, template }: BasicInfoStepProps) 
             <FormField
               label="Slug URL"
               required
-              helperText="Używany w adresie (np. 'pdl')"
+              helperText="Adres strony turnieju (np. 'pdl' → /pdl). Uwaga: tego jednego nie da się później zmienić — trafia do wszystkich linków i adresów plików."
             >
               <input
                 type="text"
