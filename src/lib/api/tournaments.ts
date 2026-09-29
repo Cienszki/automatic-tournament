@@ -14,7 +14,7 @@ import {
   Timestamp 
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { isReservedSlug } from '@/lib/reserved-slugs';
+import { validateSlug, describeSlugProblem } from '@/lib/reserved-slugs';
 import { TournamentConfig, TournamentSummary, TournamentType } from '@/types/tournament';
 
 /**
@@ -113,10 +113,13 @@ export async function createTournament(data: {
   const type: TournamentType = structure.type;
   const isSwiss = type === 'swiss';
 
-  // Guard: never let a reserved slug reach the database, even if a caller
-  // skipped the isSlugAvailable() check.
-  if (isReservedSlug(basicInfo.slug)) {
-    throw new Error(`Slug "${basicInfo.slug}" is reserved and cannot be used.`);
+  // Guard: never let an unusable slug reach the database, even if a caller
+  // skipped the isSlugAvailable() check. Covers reserved names AND malformed
+  // ones — a slug containing '/', '.' or uppercase breaks routing outright, and
+  // fetchTournamentBySlug matches the stored value exactly.
+  const slugProblem = validateSlug(basicInfo.slug);
+  if (slugProblem) {
+    throw new Error(describeSlugProblem(slugProblem, basicInfo.slug));
   }
 
   const preset = buildTypeSpecificConfig(type, structure);
@@ -433,8 +436,9 @@ export async function updateTournamentStatus(
  */
 export async function isSlugAvailable(slug: string): Promise<boolean> {
   try {
-    // Reserved slugs collide with app routes / static assets — never available.
-    if (isReservedSlug(slug)) {
+    // Reserved or malformed slugs are never available, regardless of whether
+    // another tournament has taken them.
+    if (validateSlug(slug)) {
       return false;
     }
 

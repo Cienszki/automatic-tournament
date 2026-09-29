@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { createTournament, isSlugAvailable } from '@/lib/api/tournaments';
-import { isReservedSlug } from '@/lib/reserved-slugs';
+import { validateSlug, describeSlugProblem } from '@/lib/reserved-slugs';
 import { CreatorAccessGuard } from '@/components/creator/CreatorAccessGuard';
 import { useAuth } from '@/context/AuthContext';
 
@@ -102,9 +102,12 @@ function NewTournamentContent() {
         return;
       }
 
-      // Reject reserved slugs (collide with the main site's routes/assets)
-      if (isReservedSlug(basicInfo.slug)) {
-        setPublishError(`Slug "${basicInfo.slug}" jest zarezerwowany i nie może zostać użyty. Wybierz inny.`);
+      // Reject reserved or malformed slugs. Reserved ones collide with the main
+      // site's routes/assets and would make the tournament unreachable; malformed
+      // ones break routing or silently 404 (the stored value is matched exactly).
+      const slugProblem = validateSlug(basicInfo.slug);
+      if (slugProblem) {
+        setPublishError(describeSlugProblem(slugProblem, basicInfo.slug));
         setIsPublishing(false);
         return;
       }

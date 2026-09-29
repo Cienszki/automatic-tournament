@@ -25,6 +25,52 @@ service cloud.firestore {
         && exists(/databases/$(database)/documents/tournamentCreators/$(request.auth.uid));
     }
 
+    // --- Tournament slug safety -------------------------------------------
+    // Tournament pages live at /[tournamentSlug] on the same domain as the main
+    // site, so a slug matching a real route is served by that route instead and
+    // the tournament becomes permanently unreachable.
+    //
+    // Enforced here as well as in the app because a creator could otherwise
+    // bypass the wizard entirely with the client SDK. Keep in sync with
+    // src/lib/reserved-slugs.ts (covered by src/__tests__/reserved-slugs.test.ts).
+
+    // Lowercase alphanumerics and inner hyphens, 2-40 chars. Forbidding '.' and
+    // '/' is what stops a slug from breaking routing outright; forbidding
+    // uppercase stops a tournament stored as "PDL" from 404ing at /pdl, since
+    // fetchTournamentBySlug matches the stored value exactly.
+    function isValidSlugFormat(slug) {
+      return slug is string && slug.matches('^[a-z0-9][a-z0-9-]{0,38}[a-z0-9]$');
+    }
+
+    function isReservedSlug(slug) {
+      return slug in [
+        // Community site routes (dota2inhouse.pl)
+        'admin', 'admin-login', 'api', 'auth', 'basher', 'hall-of-fame', 'inhouse',
+        'kontakt', 'newsy', 'o-nas', 'players', 'polityka-prywatnosci', 'ranking',
+        'rekrutacja', 'streamy', 'wesprzyj-nas',
+        // This app's own top-level routes
+        'creator', 'fantasy', 'faq', 'fonts', 'groups', 'my-team', 'pickem',
+        'playoffs', 'register', 'rules', 'schedule', 'standins', 'stats', 'teams',
+        // Framework / static paths
+        '_next', 'well-known', 'manifest', 'sw',
+        // Public asset folders
+        'images', 'ranks', 'backgrounds', 'icons', 'logos',
+        // Common routes & reserved words (PL + EN)
+        'turnieje', 'turniej', 'login', 'logout', 'signin', 'signout',
+        'rejestracja', 'konto', 'account', 'profil', 'profile', 'ustawienia', 'settings',
+        'news', 'blog', 'pomoc', 'help', 'regulamin', 'terms', 'privacy', 'about',
+        'sponsorzy', 'sponsors', 'partnerzy', 'partners', 'media', 'druzyny',
+        'gracze', 'mecz', 'mecze', 'match', 'matches', 'live', 'search', 'szukaj', 'home',
+        'dashboard', 'panel', 'discord', 'twitch', 'youtube', 'galeria', 'gallery',
+        'sklep', 'shop', 'store', 'download', 'pobierz'
+      ];
+    }
+
+    function hasUsableSlug() {
+      return isValidSlugFormat(request.resource.data.slug)
+        && !isReservedSlug(request.resource.data.slug);
+    }
+
     // Helper function to check if user is captain of a tournament team
     function isTournamentTeamCaptain(tournamentId, teamId) {
       return request.auth.uid != null
@@ -96,9 +142,12 @@ service cloud.firestore {
       allow read: if true;
 
       // Creation is open to super admins and to allowlisted tournament creators,
-      // who must stamp themselves as the organizer.
-      allow create: if isAdmin()
-        || (isTournamentCreator() && request.resource.data.organizerId == request.auth.uid);
+      // who must stamp themselves as the organizer. The slug must be usable in
+      // BOTH cases — a super admin can just as easily strand a tournament behind
+      // a route collision, and the failure is silent.
+      allow create: if hasUsableSlug()
+        && (isAdmin()
+            || (isTournamentCreator() && request.resource.data.organizerId == request.auth.uid));
 
       // Editing was previously super-admin only, which meant a tournament's own
       // admins could not save the General or Structure tabs of their tournament.
