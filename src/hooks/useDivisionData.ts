@@ -8,6 +8,12 @@ import { collection, getDocs, query, where, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useTournament } from '@/context/TournamentContext';
 import type { Match, GroupHighlight } from '@/lib/definitions';
+import {
+  computeSwissStandings,
+  compareForTable,
+  isSwissByeTeam,
+  type SwissMatchResult,
+} from '@/lib/swiss/pairing';
 
 interface TeamStanding {
   position: number;
@@ -25,6 +31,12 @@ interface TeamStanding {
   totalMMR: number;
   form?: ('W' | 'D' | 'L')[];
   headToHead: Record<string, 'win' | 'loss' | 'draw'>;
+  /** Swiss only — schedule strength. Absent for league/MMR tournaments. */
+  buchholz?: number;
+  /** Swiss only — walkovers received from the virtual BYE opponent. */
+  byeCount?: number;
+  /** Swiss only — marks the BYE sentinel row so the UI can grey it out. */
+  isBye?: boolean;
 }
 
 interface DivisionInfo {
@@ -197,7 +209,11 @@ export function useDivisionData(divisionId: string): UseDivisionDataResult {
 
         // Matches involving a banned team are kept for standings calculation
         // (opponents still get their walkover wins) but excluded from the schedule view.
-        const visibleMatches = matchesData.filter(m => !m.isBanForfeit);
+        // Swiss bye walkovers are hidden for the same reason: they count toward
+        // points but there is no game for anyone to watch or reschedule.
+        const visibleMatches = matchesData.filter(
+          m => !m.isBanForfeit && !(m as { isSwissByeMatch?: boolean }).isSwissByeMatch
+        );
 
         // Calculate standings: initialise all teams, then accumulate from match results.
         // We deliberately do NOT use team.stats because that field is only populated for PDL
@@ -287,20 +303,88 @@ export function useDivisionData(divisionId: string): UseDivisionDataResult {
           });
         });
 
-        // Sort: points DESC → head-to-head → neustadtl DESC → lower totalMMR ASC
-        standingsData.sort((a, b) => {
-          if (b.points !== a.points) return b.points - a.points;
-          // Head-to-head among tied teams
-          const tiedIds = standingsData.filter(s => s.points === a.points).map(s => s.teamId);
-          if (tiedIds.length > 1) {
-            const aWins = tiedIds.reduce((sum, id) => id !== a.teamId && a.headToHead[id] === 'win' ? sum + 1 : sum, 0);
-            const bWins = tiedIds.reduce((sum, id) => id !== b.teamId && b.headToHead[id] === 'win' ? sum + 1 : sum, 0);
-            if (aWins !== bWins) return bWins - aWins;
+        // ── Swiss override ────────────────────────────────────────────────
+        // Swiss scores GAMES won, not 2-per-series, and breaks ties on Buchholz
+        // rather than "lower total MMR" (which is meaningless when MMR is a
+        // self-reported seeding figure). Recompute those fields from the Swiss
+        // engine and use its ordering. Everything above — team names, logos,
+        // form, match fetching — is shared; only the numbers differ.
+        if (tournament?.type === 'swiss') {
+          const swissResults: SwissMatchResult[] = matchesData.map(m => ({
+            teamAId: m.teamA.id,
+            teamBId: m.teamB.id,
+            scoreA: m.teamA.score ?? 0,
+            scoreB: m.teamB.score ?? 0,
+            round: m.round ?? 0,
+            completed: m.status === 'completed',
+          }));
+
+          // Include the BYE sentinel as a row when it has actually played, so a
+          // walkover win has a visible explanation in the table.
+          const ids = standingsData.map(t => t.teamId);
+          if (swissResults.some(r => isSwissByeTeam(r.teamAId) || isSwissByeTeam(r.teamBId))) {
+            const byeId = swissResults
+              .flatMap(r => [r.teamAId, r.teamBId])
+              .find(isSwissByeTeam);
+            if (byeId && !ids.includes(byeId)) ids.push(byeId);
           }
-          if (b.neustadtlScore !== a.neustadtlScore) return b.neustadtlScore - a.neustadtlScore;
-          // Lower total MMR wins the tiebreak
-          return a.totalMMR - b.totalMMR;
-        });
+
+          const swissRows = computeSwissStandings(ids, swissResults);
+          const swissById = new Map(swissRows.map(r => [r.teamId, r]));
+
+          // Make sure the BYE sentinel has a display row if it wasn't a team doc.
+          for (const row of swissRows) {
+            if (standingsData.some(s => s.teamId === row.teamId)) continue;
+            standingsData.push({
+              position: standingsData.length + 1,
+              teamId: row.teamId,
+              teamName: 'BYE',
+              matchesPlayed: 0,
+              wins: 0, draws: 0, losses: 0,
+              gamesWon: 0, gamesLost: 0,
+              neustadtlScore: 0, points: 0, totalMMR: 0,
+              headToHead: {},
+            });
+          }
+
+          for (const s of standingsData) {
+            const row = swissById.get(s.teamId);
+            if (!row) continue;
+            s.points = row.points;              // games won
+            s.wins = row.matchWins;
+            s.losses = row.matchLosses;
+            s.matchesPlayed = row.opponentIds.length;
+            s.draws = Math.max(0, s.matchesPlayed - row.matchWins - row.matchLosses);
+            s.gamesWon = row.gamesWon;
+            s.gamesLost = row.gamesLost;
+            s.buchholz = row.buchholz;
+            s.byeCount = row.byeCount;
+            s.neustadtlScore = row.buchholz; // reuse the existing display slot
+            s.isBye = isSwissByeTeam(s.teamId);
+          }
+
+          standingsData.sort((a, b) => {
+            const ra = swissById.get(a.teamId);
+            const rb = swissById.get(b.teamId);
+            if (!ra || !rb) return 0;
+            return compareForTable(ra, rb);
+          });
+        } else {
+          // Sort: points DESC → head-to-head → neustadtl DESC → lower totalMMR ASC
+          standingsData.sort((a, b) => {
+            if (b.points !== a.points) return b.points - a.points;
+            // Head-to-head among tied teams
+            const tiedIds = standingsData.filter(s => s.points === a.points).map(s => s.teamId);
+            if (tiedIds.length > 1) {
+              const aWins = tiedIds.reduce((sum, id) => id !== a.teamId && a.headToHead[id] === 'win' ? sum + 1 : sum, 0);
+              const bWins = tiedIds.reduce((sum, id) => id !== b.teamId && b.headToHead[id] === 'win' ? sum + 1 : sum, 0);
+              if (aWins !== bWins) return bWins - aWins;
+            }
+            if (b.neustadtlScore !== a.neustadtlScore) return b.neustadtlScore - a.neustadtlScore;
+            // Lower total MMR wins the tiebreak
+            return a.totalMMR - b.totalMMR;
+          });
+        }
 
         // Update positions
         standingsData.forEach((team, index) => {

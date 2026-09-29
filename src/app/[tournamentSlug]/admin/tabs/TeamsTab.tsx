@@ -84,6 +84,10 @@ interface Team {
   playersCount: number;
   captainDiscord: string;
   totalMmr?: number;
+  /** Swiss only — self-reported team average MMR, used for seeding. Admin-visible. */
+  seedMmr?: number;
+  /** Swiss only — rank by seedMmr. This one is public. */
+  seedPosition?: number;
   logoUrl?: string;
   players?: TeamPlayer[];
 }
@@ -94,7 +98,7 @@ interface Team {
  */
 export function TeamsTab() {
   const { tournament, theme } = useTournament();
-  const { isMmrLimited } = useTournamentType();
+  const { isMmrLimited, isSwiss } = useTournamentType();
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -247,6 +251,8 @@ export function TeamsTab() {
               playersCount: players.length,
               captainDiscord: (teamData.captainDiscordUsername as string) || '—',
               totalMmr,
+              seedMmr: typeof teamData.seedMmr === 'number' ? teamData.seedMmr : undefined,
+              seedPosition: typeof teamData.seedPosition === 'number' ? teamData.seedPosition : undefined,
               logoUrl: (teamData.logoUrl as string | undefined) || undefined,
               players: teamPlayers,
             };
@@ -807,6 +813,8 @@ export function TeamsTab() {
               <TableHead className="font-logik-extended-bold">Drużyna</TableHead>
               {isMmrLimited ? (
                 <TableHead className="font-logik-extended-bold">MMR</TableHead>
+              ) : isSwiss ? (
+                <TableHead className="font-logik-extended-bold">Średnie MMR</TableHead>
               ) : (
                 <TableHead className="font-logik-extended-bold">Dywizja</TableHead>
               )}
@@ -878,6 +886,21 @@ export function TeamsTab() {
                           )}>
                             / {tournament.mmrCap.toLocaleString()}
                           </span>
+                        )}
+                      </TableCell>
+                    ) : isSwiss ? (
+                      <TableCell>
+                        {/* Self-reported team average, admin-visible only. Edited
+                            in the Swiss tab, where the seed list lives. */}
+                        {team.seedMmr != null ? (
+                          <span className="font-logik-extended-bold">
+                            {team.seedMmr.toLocaleString()}
+                            {team.seedPosition != null && (
+                              <span className="text-sm ml-1.5 text-muted-foreground">#{team.seedPosition}</span>
+                            )}
+                          </span>
+                        ) : (
+                          <span className="text-sm text-amber-500 font-logik">nie podano</span>
                         )}
                       </TableCell>
                     ) : (

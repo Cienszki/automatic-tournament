@@ -85,7 +85,10 @@ export default function TeamsPage() {
                   avatar: info.avatar || '',
                   avatarmedium: info.avatarmedium || '',
                   avatarfull: info.avatarfull || '',
-                  mmr: info.mmr ?? 0,
+                  // Preserve absence rather than coercing to 0 — Swiss collects no
+                  // per-player MMR, and a real 0 should not be indistinguishable
+                  // from "not collected". Display guards treat both as hidden.
+                  mmr: info.mmr,
                   smurfAccounts: (info as any).smurfAccounts,
                   profileScreenshotUrl: (info as any).profileScreenshotUrl,
                   mostPlayedHeroes: (info as any).mostPlayedHeroes,
@@ -108,17 +111,24 @@ export default function TeamsPage() {
             })
           );
 
+          // The Swiss BYE opponent is a real team document so that name and
+          // roster lookups resolve it, but it is not a competitor and must never
+          // appear in the public team list.
+          const visibleTeams = teamsData.filter(
+            t => !(t as { isSwissBye?: boolean }).isSwissBye
+          );
+
           // Sort by division (Elite, Challenger, Adept) then by name
           const divisionOrder: Record<string, number> = { 'elite': 1, 'challenger': 2, 'adept': 3 };
-          teamsData.sort((a, b) => {
+          visibleTeams.sort((a, b) => {
             const aDivOrder = divisionOrder[a.divisionId?.toLowerCase() || ''] || 999;
             const bDivOrder = divisionOrder[b.divisionId?.toLowerCase() || ''] || 999;
             if (aDivOrder !== bDivOrder) return aDivOrder - bDivOrder;
             return (a.name || '').localeCompare(b.name || '');
           });
 
-          setTeams(teamsData);
-          setDivisionRankings(computeDivisionRankings(teamsData));
+          setTeams(visibleTeams);
+          setDivisionRankings(computeDivisionRankings(visibleTeams));
         }
       } catch (error) {
         console.error("Failed to load teams:", error);

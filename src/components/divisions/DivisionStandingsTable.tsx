@@ -28,6 +28,14 @@ interface TeamStanding {
   neustadtlScore: number;
   points: number;
   form?: ('W' | 'D' | 'L')[];
+  /**
+   * Swiss only — schedule strength (sum of opponents' points). When present the
+   * tiebreak readout shows Buchholz instead of Neustadtl; league and MMR
+   * standings never set it, so their display is unchanged.
+   */
+  buchholz?: number;
+  /** Swiss only — marks the virtual BYE opponent so its row reads as inactive. */
+  isBye?: boolean;
 }
 
 interface DivisionStandingsTableProps {
@@ -203,7 +211,9 @@ export function DivisionStandingsTable({
                   </div>
 
                   <div className="text-[10px] font-mono" style={{ color: 'var(--tournament-secondary-text)' }}>
-                    N: {team.neustadtlScore.toFixed(2)}
+                    {team.buchholz != null
+                      ? `B: ${team.buchholz}`
+                      : `N: ${team.neustadtlScore.toFixed(2)}`}
                   </div>
                 </div>
               </motion.div>
@@ -238,7 +248,12 @@ export function DivisionStandingsTable({
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: index * 0.05 }}
-              className="group relative grid grid-cols-12 gap-4 items-center px-6 py-2.5 rounded-r-xl border-l-[3px]"
+              className={cn(
+                'group relative grid grid-cols-12 gap-4 items-center px-6 py-2.5 rounded-r-xl border-l-[3px]',
+                // The BYE sentinel is not a competitor; it exists so a walkover
+                // win has a visible explanation.
+                team.isBye && 'opacity-40 italic'
+              )}
               style={{
                 borderLeftColor: highlightColor || 'rgba(255,255,255,0.08)',
                 background: highlightColor
@@ -308,7 +323,14 @@ export function DivisionStandingsTable({
                       </span>
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p>Neustadtl: {team.neustadtlScore.toFixed(2)}</p>
+                      {team.buchholz != null ? (
+                        <>
+                          <p>Punkty = wygrane mapy</p>
+                          <p>Buchholz (siła terminarza): {team.buchholz}</p>
+                        </>
+                      ) : (
+                        <p>Neustadtl: {team.neustadtlScore.toFixed(2)}</p>
+                      )}
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>

@@ -179,8 +179,12 @@ export default function PlayerProfilePage() {
 
   // Effect 2 — background: league avg MMR (N parallel team-player fetches).
   // Does NOT block the page render; MMR progress bar simply fills in once ready.
+  //
+  // Skipped entirely for Swiss: there is no per-player MMR to average, so this
+  // would fan out a read over every team's players subcollection for nothing.
   useEffect(() => {
     if (!tournament?.id) return;
+    if (tournament.type === 'swiss') return;
 
     const loadLeagueAvgMMR = async () => {
       try {
@@ -391,7 +395,9 @@ export default function PlayerProfilePage() {
         {/* Statistics Grid */}
         {averageStats && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {/* MMR Card */}
+            {/* MMR Card — hidden when the tournament collects no per-player MMR
+                (Swiss uses a single team-level average, admin-visible only). */}
+            {player.mmr != null && (
             <Card
               className="text-center bg-transparent border-0 shadow-none"
             >
@@ -411,6 +417,7 @@ export default function PlayerProfilePage() {
                 </p>
               </CardContent>
             </Card>
+            )}
 
             {/* KDA Card */}
             <Card

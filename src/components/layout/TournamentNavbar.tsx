@@ -198,7 +198,7 @@ export function TournamentNavbar() {
   // Check if playoffs should be visible — driven by admin toggle on tournament config
   const playoffsStarted = !!(tournament?.playoffs?.enabled && tournament?.playoffs?.playoffsVisible);
 
-  const { isMmrLimited } = useTournamentType();
+  const { isMmrLimited, isSwiss } = useTournamentType();
   const isMobile = useIsMobile();
   const { user } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
@@ -475,7 +475,7 @@ export function TournamentNavbar() {
               <nav className="flex flex-col space-y-1 p-4">
                 {/* Groups / Divisions — mirrors desktop split button */}
                 {(() => {
-                  const groupsLabel = isMmrLimited ? 'Grupy' : 'Dywizje';
+                  const groupsLabel = isMmrLimited ? 'Grupy' : isSwiss ? 'Tabela' : 'Dywizje';
                   return (
                     <Button
                       variant="ghost"
@@ -627,7 +627,7 @@ export function TournamentNavbar() {
             {/* ── Groups / Divisions — split button ─────────────── */}
             {(() => {
               const isGroupsActive = isActive('/divisions') || isActive('/groups');
-              const groupsLabel = isMmrLimited ? 'Grupy' : 'Dywizje';
+              const groupsLabel = isMmrLimited ? 'Grupy' : isSwiss ? 'Tabela' : 'Dywizje';
               const textStyle = {
                 color: isGroupsActive ? theme.primaryColor : navTextColor,
                 '--nav-hover-bg': getColorWithOpacity(theme.primaryColor, 10),

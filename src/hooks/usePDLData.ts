@@ -8,6 +8,11 @@ import { collection, getDocs, query, where, orderBy, limit, Timestamp } from 'fi
 import { db } from '@/lib/firebase';
 import { useTournament } from '@/context/TournamentContext';
 import { format } from 'date-fns';
+import {
+  computeSwissStandings,
+  compareForTable,
+  type SwissMatchResult,
+} from '@/lib/swiss/pairing';
 
 interface TeamStanding {
   position: number;
@@ -218,20 +223,61 @@ export function usePDLData(): UsePDLDataResult {
             });
           });
 
-          // Sort: points DESC → head-to-head → neustadtl DESC → lower totalMMR ASC
-          teams.sort((a, b) => {
-            if (b.points !== a.points) return b.points - a.points;
-            // Head-to-head among tied teams
-            const tiedIds = teams.filter(s => s.points === a.points).map(s => s.teamId);
-            if (tiedIds.length > 1) {
-              const aWins = tiedIds.reduce((sum, id) => id !== a.teamId && a.headToHead[id] === 'win' ? sum + 1 : sum, 0);
-              const bWins = tiedIds.reduce((sum, id) => id !== b.teamId && b.headToHead[id] === 'win' ? sum + 1 : sum, 0);
-              if (aWins !== bWins) return bWins - aWins;
+          // ── Swiss override ──────────────────────────────────────────────
+          // Same correction as useDivisionData: Swiss scores GAMES won rather
+          // than 2-per-series, and breaks ties on Buchholz instead of "lower
+          // total MMR" (meaningless when MMR is a self-reported seeding figure).
+          // This hook feeds the home page, so without it the most visible table
+          // in the tournament would show the wrong numbers.
+          if (tournament?.type === 'swiss') {
+            const swissResults: SwissMatchResult[] = divisionMatches.map(m => ({
+              teamAId: m.teamA?.id ?? '',
+              teamBId: m.teamB?.id ?? '',
+              scoreA: m.teamA?.score ?? 0,
+              scoreB: m.teamB?.score ?? 0,
+              round: typeof m.round === 'number' ? m.round : 0,
+              // This collection is already filtered to completed matches.
+              completed: true,
+            }));
+
+            const swissRows = computeSwissStandings(teams.map(t => t.teamId), swissResults);
+            const swissById = new Map(swissRows.map(r => [r.teamId, r]));
+
+            for (const t of teams) {
+              const row = swissById.get(t.teamId);
+              if (!row) continue;
+              t.points = row.points;           // games won
+              t.wins = row.matchWins;
+              t.losses = row.matchLosses;
+              t.matchesPlayed = row.opponentIds.length;
+              t.draws = Math.max(0, t.matchesPlayed - row.matchWins - row.matchLosses);
+              t.gamesWon = row.gamesWon;
+              t.gamesLost = row.gamesLost;
+              t.neustadtlScore = row.buchholz; // reuse the existing display slot
             }
-            if (b.neustadtlScore !== a.neustadtlScore) return b.neustadtlScore - a.neustadtlScore;
-            // Lower total MMR wins the tiebreak
-            return a.totalMMR - b.totalMMR;
-          });
+
+            teams.sort((a, b) => {
+              const ra = swissById.get(a.teamId);
+              const rb = swissById.get(b.teamId);
+              if (!ra || !rb) return 0;
+              return compareForTable(ra, rb);
+            });
+          } else {
+            // Sort: points DESC → head-to-head → neustadtl DESC → lower totalMMR ASC
+            teams.sort((a, b) => {
+              if (b.points !== a.points) return b.points - a.points;
+              // Head-to-head among tied teams
+              const tiedIds = teams.filter(s => s.points === a.points).map(s => s.teamId);
+              if (tiedIds.length > 1) {
+                const aWins = tiedIds.reduce((sum, id) => id !== a.teamId && a.headToHead[id] === 'win' ? sum + 1 : sum, 0);
+                const bWins = tiedIds.reduce((sum, id) => id !== b.teamId && b.headToHead[id] === 'win' ? sum + 1 : sum, 0);
+                if (aWins !== bWins) return bWins - aWins;
+              }
+              if (b.neustadtlScore !== a.neustadtlScore) return b.neustadtlScore - a.neustadtlScore;
+              // Lower total MMR wins the tiebreak
+              return a.totalMMR - b.totalMMR;
+            });
+          }
 
           // Update positions
           teams.forEach((team, index) => {

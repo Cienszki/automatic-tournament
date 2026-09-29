@@ -34,6 +34,7 @@ export default function AboutPage() {
   // Derive format table from tournament config
   const matchFmt = (tournament.defaultMatchFormat ?? 'bo2').toUpperCase();
   const divisionCount = tournament.divisions?.length ?? 3;
+  const swissRounds = tournament.swiss?.plannedRounds;
   const format = tournament.type === 'league'
     ? [
         { label: 'Format meczów', value: `${matchFmt} (liga), BO3 (playoff)` },
@@ -41,6 +42,19 @@ export default function AboutPage() {
         { label: 'Drużyn w dywizji', value: '6-8' },
         { label: 'Czas trwania sezonu', value: '~4 miesiące' },
         { label: 'Dzień meczowy', value: 'Środa/Czwartek 20:00' },
+      ]
+    : tournament.type === 'swiss'
+    ? [
+        // No MMR cap and no per-player MMR in Swiss, so the MMR row would be
+        // misleading. Rounds and the pairing rule are what players need to know.
+        { label: 'System', value: 'Szwajcarski (pary dobierane wg dorobku punktowego)' },
+        { label: 'Format meczów', value: matchFmt },
+        { label: 'Liczba rund', value: swissRounds ? String(swissRounds) : 'ustalana po rejestracji' },
+        { label: 'Punktacja', value: 'Punkt za każdą wygraną mapę' },
+        { label: 'Limit MMR', value: 'Brak' },
+        ...(tournament.playoffs?.enabled
+          ? [{ label: 'Awans do playoffów', value: `${tournament.playoffs?.teamsCount ?? 4} drużyn` }]
+          : []),
       ]
     : [
         { label: 'Format meczów', value: `${matchFmt} (faza grupowa), BO3 (playoff)` },
