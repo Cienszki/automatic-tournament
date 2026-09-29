@@ -20,6 +20,42 @@ export function isByeMatch(match: {
   return match.status === 'bye' || isByeTeam(match.teamA) || isByeTeam(match.teamB);
 }
 
+/**
+ * Bracket size for a given number of qualifying teams — the next power of two.
+ *
+ * An elimination bracket only works on a power of two. `generateSingleElimination`
+ * computes rounds as ceil(log2(n)) and matches per round as ceil(n / 2^r), so a
+ * non-power-of-two produces a malformed shape: 6 teams yields 3 -> 2 -> 1, and
+ * three first-round winners cannot fill two second-round matches.
+ *
+ * Callers should therefore size the bracket with this and leave the spare slots
+ * as byes, rather than passing a raw team count through.
+ */
+export function bracketSizeFor(teamCount: number): number {
+  if (teamCount <= 1) return 1;
+  return Math.pow(2, Math.ceil(Math.log2(teamCount)));
+}
+
+/** How many first-round byes a given qualifier count implies. */
+export function byeCountFor(teamCount: number): number {
+  return Math.max(0, bracketSizeFor(teamCount) - Math.max(0, teamCount));
+}
+
+/** Plain-language summary for admin UI, e.g. "6 teams -> bracket of 8, 2 byes". */
+export function describeBracket(teamCount: number): string {
+  if (teamCount < 2) return 'Za mało drużyn na drabinkę.';
+  const size = bracketSizeFor(teamCount);
+  const byes = byeCountFor(teamCount);
+  const rounds = Math.log2(size);
+  const roundWord = rounds === 1 ? 'runda' : rounds < 5 ? 'rundy' : 'rund';
+  if (byes === 0) {
+    return `${teamCount} drużyn — drabinka na ${size}, ${rounds} ${roundWord}, bez wolnych losów.`;
+  }
+  const byeWord = byes === 1 ? 'drużyna przechodzi' : 'drużyny przechodzą';
+  return `${teamCount} drużyn — drabinka na ${size}, ${rounds} ${roundWord}. ` +
+         `${byes} ${byeWord} pierwszą rundę bez gry (wolny los).`;
+}
+
 export interface BracketConfig {
   format: 'single-elimination' | 'double-elimination';
   upperBracketTeams: number;

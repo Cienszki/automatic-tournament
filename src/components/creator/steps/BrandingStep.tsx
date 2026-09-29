@@ -134,6 +134,7 @@ export function BrandingStep({ data, onChange, template, allData }: BrandingStep
   });
 
   const [uploading, setUploading] = useState({ logo: false, bg: false, favicon: false });
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
 
   useEffect(() => {
@@ -149,6 +150,7 @@ export function BrandingStep({ data, onChange, template, allData }: BrandingStep
     file: File,
   ): Promise<void> => {
     setUploading(prev => ({ ...prev, [type]: true }));
+    setUploadError(null);
     try {
       let url: string;
       if (type === 'logo') {
@@ -162,7 +164,18 @@ export function BrandingStep({ data, onChange, template, allData }: BrandingStep
         handleChange('faviconUrl', url);
       }
     } catch (err) {
+      // Previously this only logged: the spinner stopped, the field stayed
+      // empty, and nothing told the user the upload had been rejected. A
+      // permissions failure looked identical to simply not having picked a file.
       console.error(`Failed to upload ${type}:`, err);
+      const permissionDenied =
+        typeof err === 'object' && err !== null &&
+        String((err as { code?: string }).code ?? '').includes('unauthorized');
+      setUploadError(
+        permissionDenied
+          ? 'Brak uprawnień do wgrywania plików. Skontaktuj się z administratorem platformy.'
+          : 'Nie udało się wgrać pliku. Sprawdź połączenie i spróbuj ponownie.'
+      );
     } finally {
       setUploading(prev => ({ ...prev, [type]: false }));
     }
@@ -183,6 +196,12 @@ export function BrandingStep({ data, onChange, template, allData }: BrandingStep
           <ImageIcon className="h-5 w-5 text-primary" />
           Zasoby Graficzne
         </h3>
+
+        {uploadError && (
+          <p className="text-sm text-destructive rounded-lg border border-destructive/40 bg-destructive/5 px-3 py-2">
+            {uploadError}
+          </p>
+        )}
 
         <div className="grid md:grid-cols-3 gap-6">
           <FileUploadField

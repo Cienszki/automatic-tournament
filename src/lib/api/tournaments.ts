@@ -232,7 +232,7 @@ export async function createTournament(data: {
       // Optional for Swiss — a future organiser may run Swiss with no playoffs.
       enabled: structure.enablePlayoffs ?? true,
       format: structure.playoffFormat || 'double-elimination',
-      teamsCount: structure.teamsCount || 8,
+      teamsCount: structure.playoffTeamsCount ?? structure.teamsCount ?? 8,
       upperBracketTeams: null, // Set by admin after group stage
       lowerBracketTeams: null,
       wildcardSpots: 0,

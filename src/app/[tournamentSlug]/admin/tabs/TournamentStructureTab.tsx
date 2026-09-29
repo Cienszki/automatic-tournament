@@ -32,6 +32,7 @@ import {
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
+import { describeBracket, byeCountFor } from '@/lib/playoff-bracket-generator';
 
 /**
  * Tournament Structure Tab - Configure rounds, matches, playoffs, promotion/relegation
@@ -45,6 +46,7 @@ export function TournamentStructureTab() {
   const [roundsCount, setRoundsCount] = useState(tournament?.roundsPerSeason || 2);
   const [matchesPerTeamPerRound, setMatchesPerTeamPerRound] = useState(1);
   const [hasPlayoffs, setHasPlayoffs] = useState<boolean>(tournament?.playoffs?.enabled ?? true);
+  const [playoffTeams, setPlayoffTeams] = useState<number>(tournament?.playoffs?.teamsCount ?? 8);
   const [hasPromotionRelegation, setHasPromotionRelegation] = useState<boolean>(tournament?.promotionRelegationEnabled ?? true);
   const [teamsPromoted, setTeamsPromoted] = useState(1);
   const [teamsRelegated, setTeamsRelegated] = useState(1);
@@ -78,6 +80,7 @@ export function TournamentStructureTab() {
         defaultMatchFormat: defaultMatchFormat,
         promotionRelegationEnabled: hasPromotionRelegation,
         'playoffs.enabled': hasPlayoffs,
+        'playoffs.teamsCount': playoffTeams,
         teamSize: teamSize,
         coachMode: coachMode,
         schedulingMethod: schedulingMethod,
@@ -291,18 +294,30 @@ export function TournamentStructureTab() {
 
           {hasPlayoffs && (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4 border-t border-border">
-              <div className="space-y-2">
-                <Label className="font-logik-extended-bold">Liczba drużyn</Label>
-                <Select defaultValue="4">
-                  <SelectTrigger className="font-logik">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="4">Top 4</SelectItem>
-                    <SelectItem value="6">Top 6</SelectItem>
-                    <SelectItem value="8">Top 8</SelectItem>
-                  </SelectContent>
-                </Select>
+              <div className="space-y-2 md:col-span-3">
+                <Label className="font-logik-extended-bold">Ile drużyn awansuje do playoff</Label>
+                {/* Previously a decorative <Select defaultValue="4"> with no value,
+                    no handler and nothing written on save — it always displayed
+                    "Top 4" regardless of the stored teamsCount. Now a real input
+                    accepting any number. */}
+                <Input
+                  type="number"
+                  min={2}
+                  max={64}
+                  value={playoffTeams}
+                  onChange={(e) => setPlayoffTeams(Math.max(0, Number(e.target.value) || 0))}
+                  className="font-logik max-w-[160px]"
+                />
+                <p className="text-xs text-muted-foreground font-logik">
+                  {describeBracket(playoffTeams)}
+                </p>
+                {byeCountFor(playoffTeams) > 0 && (
+                  <p className="text-xs text-amber-500 font-logik">
+                    Drabinka zawsze ma rozmiar będący potęgą dwójki, więc puste miejsca
+                    obsadzasz w zakładce „Playoffs” jako wolne losy — najwyżej rozstawione
+                    drużyny przechodzą pierwszą rundę bez gry.
+                  </p>
+                )}
               </div>
 
               <div className="space-y-2">

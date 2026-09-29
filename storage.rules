@@ -16,8 +16,25 @@ service firebase.storage {
     }
     match /tournament-assets/{slug}/{allFiles=**} {
       allow read: if true; // Public read — logos/backgrounds displayed on public tournament pages
-      allow write: if request.auth != null
-        && firestore.exists(/databases/(default)/documents/admins/$(request.auth.uid));
+
+      // Super admins, plus allowlisted tournament creators.
+      //
+      // Creators must be included or the wizard breaks for exactly the people it
+      // exists for: the logo is uploaded during step 2, before the tournament
+      // document exists, so there is no ownership to check against yet — only
+      // the slug the user typed.
+      //
+      // Consequence, accepted: a creator can write assets under ANY slug, not
+      // just their own. `tournamentCreators` is a small, hand-curated allowlist,
+      // so this is a trust boundary rather than an access-control one.
+      //
+      // Residual gap: a tournament admin who is NOT a creator still cannot
+      // upload. Closing that needs a slug -> tournamentId lookup, which Storage
+      // rules cannot express.
+      allow write: if request.auth != null && (
+        firestore.exists(/databases/(default)/documents/admins/$(request.auth.uid))
+        || firestore.exists(/databases/(default)/documents/tournamentCreators/$(request.auth.uid))
+      );
     }
     match /tournaments/{tournamentId}/divisions/{divisionId}/{fileName} {
       allow read: if true; // Public read for division medals (displayed on public pages)

@@ -65,17 +65,19 @@ export function TournamentLaunchCard({ onGoLive }: { onGoLive?: () => void }) {
     { label: 'Adres (slug)', ok: !!tournament.slug },
     { label: 'Data rozpoczęcia', ok: !!tournament.startDate },
     {
-      label: 'Logo',
-      ok: !!tournament.theme?.logoUrl,
-      hint: 'Bez logo strona główna i lista turniejów wyglądają na niedokończone.',
-    },
-    {
       label: 'Format rozgrywek',
       ok: !!tournament.type,
     },
   ];
 
   const optional: CheckItem[] = [
+    // Not a blocker: a tournament runs perfectly well without one, it just looks
+    // plainer on the landing page and in the tournament list.
+    {
+      label: 'Logo',
+      ok: !!tournament.theme?.logoUrl,
+      hint: 'Bez logo turniej wygląda skromniej na liście, ale wszystko działa.',
+    },
     { label: 'Opis turnieju', ok: !!tournament.description },
     {
       label: 'Okno rejestracji',

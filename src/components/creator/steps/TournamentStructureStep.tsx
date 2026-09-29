@@ -6,6 +6,7 @@
 import { useEffect, useState } from 'react';
 import { Trophy, Settings, LayoutGrid, GitBranch } from 'lucide-react';
 import { ChangeableLaterNote } from '@/components/creator/AdvancedSection';
+import { describeBracket, byeCountFor } from '@/lib/playoff-bracket-generator';
 
 interface TournamentStructureStepProps {
   data: any;
@@ -34,6 +35,7 @@ export function TournamentStructureStep({ data, onChange, template }: Tournament
     swissMatchFormat: data?.swissMatchFormat || 'bo2',
     swissPlannedRounds: data?.swissPlannedRounds ?? null,
     enablePlayoffs: data?.enablePlayoffs ?? true,
+    playoffTeamsCount: data?.playoffTeamsCount ?? 8,
     // Group stage settings (MMR tournaments)
     groupMatchFormat: data?.groupMatchFormat || 'bo2',
     // Playoff settings
@@ -265,6 +267,32 @@ export function TournamentStructureStep({ data, onChange, template }: Tournament
 
         {formData.enablePlayoffs && (
         <>
+        <div>
+          <label className="block text-sm font-medium mb-2">
+            Ile drużyn awansuje do playoff
+          </label>
+          <input
+            type="number"
+            value={formData.playoffTeamsCount}
+            onChange={(e) => handleChange('playoffTeamsCount', Math.max(0, parseInt(e.target.value) || 0))}
+            min={2}
+            max={64}
+            className="w-full px-4 py-2 rounded-lg bg-background border border-border focus:border-primary focus:outline-none transition-colors"
+          />
+          {/* An elimination bracket only works on a power of two, so say plainly
+              what the chosen number produces instead of letting the organiser
+              discover a malformed bracket later. */}
+          <p className="text-xs text-muted-foreground mt-1">
+            {describeBracket(formData.playoffTeamsCount)}
+          </p>
+          {byeCountFor(formData.playoffTeamsCount) > 0 && (
+            <p className="text-xs text-amber-500 mt-1">
+              Puste miejsca w drabince obsadzisz jako wolne losy w panelu admina —
+              najwyżej rozstawione drużyny przechodzą pierwszą rundę bez gry.
+            </p>
+          )}
+        </div>
+
         <div>
           <label className="block text-sm font-medium mb-2">
             Format Playoff
