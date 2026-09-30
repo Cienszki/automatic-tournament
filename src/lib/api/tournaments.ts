@@ -83,6 +83,11 @@ function buildTypeSpecificConfig(
         // The admin picks a scheduling mode per round; this is only the default.
         schedulingMethod: 'captain-scheduled',
         swiss: {
+          // Both default ON/off conservatively: seeding on (most organisers want
+          // it), band off (it is an opinionated constraint the organiser should
+          // choose deliberately, ideally after seeing the registered field).
+          useMmrSeeding: structure.swissUseMmrSeeding ?? true,
+          pairingBand: structure.swissPairingBand ?? null,
           plannedRounds: structure.swissPlannedRounds ?? null,
           currentRound: 0,
           defaultMatchFormat: structure.swissMatchFormat || 'bo2',

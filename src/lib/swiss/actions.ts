@@ -297,6 +297,8 @@ export interface GenerateDraftInput {
   matchFormat: MatchFormat;
   scheduling: SwissRound['scheduling'];
   allowConsecutiveRematch?: boolean;
+  /** Organiser's MMR band; null/undefined disables it. */
+  maxMmrGap?: number | null;
   teams: SwissTeam[];
   matches: SwissRoundMatch[];
 }
@@ -313,11 +315,11 @@ export interface GeneratedDraft {
  * hand-edit a draft freely, and only `commitRound` makes it real.
  */
 export async function generateRoundDraft(input: GenerateDraftInput): Promise<GeneratedDraft> {
-  const { tournamentId, round, matchFormat, scheduling, allowConsecutiveRematch } = input;
+  const { tournamentId, round, matchFormat, scheduling, allowConsecutiveRematch, maxMmrGap } = input;
 
   const standings = buildStandings(input.teams, input.matches, false);
   const history = buildSwissHistory(toSwissResults(input.matches));
-  const result = generatePairings(standings, history, { allowConsecutiveRematch });
+  const result = generatePairings(standings, history, { allowConsecutiveRematch, maxMmrGap });
 
   const roundDoc: SwissRound = {
     round,

@@ -72,12 +72,14 @@ function createPdlFormSchema(v: (key: string) => string) {
   });
 }
 
-// Swiss Registration Schema — the PDL schema plus ONE team-level average MMR.
+// Swiss Registration Schema — the PDL schema, optionally plus ONE team-level
+// average MMR.
 //
-// Swiss deliberately collects no per-player MMR and no screenshots: the number
-// is used only to seed round 1 and to break ties between teams on equal points
-// when pairing later rounds. It is never shown publicly.
-function createSwissFormSchema(v: (key: string) => string) {
+// Swiss never collects per-player MMR or screenshots. When seeding is enabled it
+// asks for a single team average, used only to seed round 1 and to break ties
+// between teams on equal points; it is never shown publicly. An organiser who
+// does not want MMR at all turns seeding off and the field disappears entirely.
+function createSwissFormSchema(v: (key: string) => string, useMmrSeeding: boolean) {
   return z.object({
     name: z.string()
       .min(3, v('teamNameMin'))
@@ -94,10 +96,17 @@ function createSwissFormSchema(v: (key: string) => string) {
       (file) => !!file && ACCEPTED_IMAGE_TYPES.includes(file.type),
       v('logoFormat')
     ),
-    seedMmr: z.coerce.number()
-      .int('Podaj liczbę całkowitą')
-      .min(1, 'Podaj średnie MMR drużyny')
-      .max(12000, 'Maksymalne średnie MMR to 12000'),
+    // Asked for only when the organiser enabled MMR seeding. With seeding off
+    // the field is absent entirely rather than optional — an empty box invites
+    // guesses, and a guessed number is worse than none.
+    ...(useMmrSeeding
+      ? {
+          seedMmr: z.coerce.number()
+            .int('Podaj liczbę całkowitą')
+            .min(1, 'Podaj średnie MMR drużyny')
+            .max(12000, 'Maksymalne średnie MMR to 12000'),
+        }
+      : {}),
     players: z.array(z.object({
       nickname: z.string()
         .min(2, v('nicknameMin'))
@@ -363,6 +372,8 @@ export default function RegisterPage() {
   const { user, signInWithGoogle } = useAuth();
   const { tournament, getTournamentPath } = useTournament();
   const { isMmrLimited, isSwiss } = useTournamentType();
+  // Swiss tournaments may run without any MMR at all; default to on for older docs.
+  const swissUsesMmr = isSwiss && (tournament?.swiss?.useMmrSeeding ?? true);
   const t = useTranslations('pdlRegistration');
   const [serverError, setServerError] = React.useState<string | null>(null);
   const [logoPreview, setLogoPreview] = React.useState<string | null>(null);
@@ -375,9 +386,9 @@ export default function RegisterPage() {
     () => isMmrLimited
       ? createMmrFormSchema((key: string) => t(`validation.${key}` as Parameters<typeof t>[0]), mmrCap)
       : isSwiss
-      ? createSwissFormSchema((key: string) => t(`validation.${key}` as Parameters<typeof t>[0]))
+      ? createSwissFormSchema((key: string) => t(`validation.${key}` as Parameters<typeof t>[0]), swissUsesMmr)
       : createPdlFormSchema((key: string) => t(`validation.${key}` as Parameters<typeof t>[0])),
-    [t, isMmrLimited, isSwiss, mmrCap]
+    [t, isMmrLimited, isSwiss, mmrCap, swissUsesMmr]
   );
   type PdlFormValues = z.infer<typeof pdlFormSchema>;
 
@@ -391,7 +402,7 @@ export default function RegisterPage() {
       discordUsername: "",
       motto: "",
       logo: null,
-      ...(isSwiss ? { seedMmr: undefined } : {}),
+      ...(swissUsesMmr ? { seedMmr: undefined } : {}),
       players: Array(5).fill(
         isMmrLimited
           ? { nickname: "", role: undefined, steamProfileUrl: "", mmr: 0, profileScreenshot: null }
@@ -599,7 +610,7 @@ export default function RegisterPage() {
         players: playersData,
         ...(isMmrLimited ? { mmrCap } : {}),
         // Swiss: one self-reported team average, used only for seeding.
-        ...(isSwiss ? { seedMmr: (values as { seedMmr?: number }).seedMmr } : {}),
+        ...(swissUsesMmr ? { seedMmr: (values as { seedMmr?: number }).seedMmr } : {}),
       };
 
       // Get Firebase auth token for API security
@@ -828,7 +839,7 @@ export default function RegisterPage() {
                   Being explicit that it is organiser-only and adjustable is the
                   main deterrent we have against under-reporting, since
                   seed-adjacent pairing rewards a lower declared number. */}
-              {isSwiss && (
+              {swissUsesMmr && (
                 <div className="mt-6">
                   <FormField
                     control={form.control}

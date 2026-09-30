@@ -99,6 +99,8 @@ interface Team {
 export function TeamsTab() {
   const { tournament, theme } = useTournament();
   const { isMmrLimited, isSwiss } = useTournamentType();
+  // A Swiss tournament may collect no MMR at all; then there is no seed to show.
+  const swissUsesMmr = isSwiss && (tournament?.swiss?.useMmrSeeding ?? true);
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -813,7 +815,7 @@ export function TeamsTab() {
               <TableHead className="font-logik-extended-bold">Drużyna</TableHead>
               {isMmrLimited ? (
                 <TableHead className="font-logik-extended-bold">MMR</TableHead>
-              ) : isSwiss ? (
+              ) : swissUsesMmr ? (
                 <TableHead className="font-logik-extended-bold">Średnie MMR</TableHead>
               ) : (
                 <TableHead className="font-logik-extended-bold">Dywizja</TableHead>
@@ -888,7 +890,7 @@ export function TeamsTab() {
                           </span>
                         )}
                       </TableCell>
-                    ) : isSwiss ? (
+                    ) : swissUsesMmr ? (
                       <TableCell>
                         {/* Self-reported team average, admin-visible only. Edited
                             in the Swiss tab, where the seed list lives. */}

@@ -34,6 +34,8 @@ export function TournamentStructureStep({ data, onChange, template }: Tournament
     // Swiss settings
     swissMatchFormat: data?.swissMatchFormat || 'bo2',
     swissPlannedRounds: data?.swissPlannedRounds ?? null,
+    swissUseMmrSeeding: data?.swissUseMmrSeeding ?? true,
+    swissPairingBand: data?.swissPairingBand ?? null,
     enablePlayoffs: data?.enablePlayoffs ?? true,
     playoffTeamsCount: data?.playoffTeamsCount ?? 8,
     // Group stage settings (MMR tournaments)
@@ -220,6 +222,64 @@ export function TournamentStructureStep({ data, onChange, template }: Tournament
               (BO1 = maks. 1 pkt, BO2/BO3 = 2 pkt, BO5 = 3 pkt). Format możesz zmienić
               dla każdej rundy osobno.
             </p>
+          </div>
+
+          {/* Seeding is optional: an organiser running a field of known, evenly
+              matched teams gains nothing from collecting MMR. */}
+          <div className="rounded-lg border border-border bg-background p-4 space-y-3">
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={formData.swissUseMmrSeeding}
+                onChange={(e) => handleChange('swissUseMmrSeeding', e.target.checked)}
+                className="w-5 h-5 mt-0.5 rounded border-border text-primary focus:ring-primary"
+              />
+              <div>
+                <p className="font-medium">Pytaj drużyny o średnie MMR</p>
+                <p className="text-sm text-muted-foreground">
+                  Przy rejestracji kapitan podaje jedną liczbę — średnie MMR składu.
+                  Służy wyłącznie do ustawienia pierwszej rundy (podobne drużyny grają ze sobą)
+                  i do rozstrzygania remisów przy parowaniu kolejnych.
+                </p>
+              </div>
+            </label>
+
+            {!formData.swissUseMmrSeeding && (
+              <p className="text-xs text-muted-foreground pl-8">
+                Bez MMR pierwsza runda zostanie rozlosowana, a kolejne będą dobierane
+                wyłącznie według dorobku punktowego. Formularz rejestracji nie zapyta
+                o MMR, a na stronie nie pojawią się numery rozstawienia.
+              </p>
+            )}
+
+            {formData.swissUseMmrSeeding && (
+              <div className="pl-8 space-y-2">
+                <label className="block text-sm font-medium">
+                  Maksymalna różnica MMR w meczu{' '}
+                  <span className="text-muted-foreground font-normal">(opcjonalne)</span>
+                </label>
+                <input
+                  type="number"
+                  min={250}
+                  max={6000}
+                  step={250}
+                  placeholder="bez limitu"
+                  value={formData.swissPairingBand ?? ''}
+                  onChange={(e) => handleChange('swissPairingBand', e.target.value ? parseInt(e.target.value) : null)}
+                  className="w-48 px-4 py-2 rounded-lg bg-background border border-border focus:border-primary focus:outline-none transition-colors"
+                />
+                <p className="text-xs text-muted-foreground">
+                  System będzie unikał zestawiania drużyn różniących się bardziej niż o tę
+                  wartość. To nie jest sztywny zakaz — drużyna bez żadnego rywala w zakresie
+                  i tak dostanie przeciwnika, a para zostanie oznaczona.
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  <strong>Zostaw puste teraz.</strong> Po zamknięciu rejestracji panel
+                  administracyjny podpowie konkretną wartość na podstawie zgłoszonych drużyn —
+                  wtedy decyzja jest oparta na danych, a nie na zgadywaniu.
+                </p>
+              </div>
+            )}
           </div>
 
           <div>

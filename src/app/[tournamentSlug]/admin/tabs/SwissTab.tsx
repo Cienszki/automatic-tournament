@@ -14,6 +14,8 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTournament } from '@/context/TournamentContext';
+import { doc, updateDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 import { useAuth } from '@/context/AuthContext';
 import { Card, CardHeader, CardContent, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -34,6 +36,7 @@ import {
   SWISS_BYE_TEAM_ID, isSwissByeTeam, recommendedRounds, maxRoundsWithoutRematch,
   type SwissPairing,
 } from '@/lib/swiss/pairing';
+import { adviseBand, type BandAdvice } from '@/lib/swiss/band-advisor';
 import {
   SWISS_DIVISION_ID,
   loadSwissTeams, loadSwissMatches, loadSwissRounds, buildStandings,
@@ -53,7 +56,7 @@ const MATCH_FORMATS: { value: MatchFormat; label: string; maxPoints: number }[] 
 type SchedulingMode = 'fixed' | 'window' | 'free';
 
 export function SwissTab() {
-  const { tournament, theme } = useTournament();
+  const { tournament, theme, refetchTournament } = useTournament();
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -73,11 +76,17 @@ export function SwissTab() {
   const [windowStart, setWindowStart] = useState('');
   const [windowEnd, setWindowEnd] = useState('');
   const [allowRematch, setAllowRematch] = useState(false);
+  // Band: organiser-set, never enforced by the platform. '' means no band.
+  const [bandInput, setBandInput] = useState<string>('');
+  const [savingBand, setSavingBand] = useState(false);
   const [draftPairings, setDraftPairings] = useState<SwissPairing[] | null>(null);
   const [draftWarnings, setDraftWarnings] = useState<string[]>([]);
   const [swapFrom, setSwapFrom] = useState<string | null>(null);
 
   const divisionId = tournament?.swiss?.divisionId ?? SWISS_DIVISION_ID;
+  // Older Swiss docs predate these settings; seeding defaults on, band off.
+  const useMmrSeeding = tournament?.swiss?.useMmrSeeding ?? true;
+  const pairingBand = tournament?.swiss?.pairingBand ?? null;
 
   const reload = useCallback(async () => {
     if (!tournament?.id) return;
@@ -91,6 +100,7 @@ export function SwissTab() {
       setTeams(t);
       setMatches(m);
       setRounds(r);
+      setBandInput(tournament.swiss?.pairingBand != null ? String(tournament.swiss.pairingBand) : '');
 
       // Rehydrate an uncommitted draft from a previous session, otherwise it
       // would exist in Firestore but be invisible here and the admin would have
@@ -174,6 +184,16 @@ export function SwissTab() {
     standings.find(s => s.teamId === id)?.points ?? 0;
   const seedOf = (id: string) => teamsById[id]?.seedMmr;
 
+  /** Band advice recomputed from whoever has actually registered. */
+  const bandAdvice: BandAdvice | null = useMemo(() => {
+    if (!useMmrSeeding) return null;
+    const seeded = field
+      .filter(t => typeof t.seedMmr === 'number' && t.seedMmr > 0)
+      .map(t => ({ teamId: t.id, seedMmr: t.seedMmr as number }));
+    if (seeded.length < 4) return null;
+    return adviseBand(seeded, plannedRounds ?? recommended);
+  }, [field, useMmrSeeding, plannedRounds, recommended]);
+
   const run = async (key: string, fn: () => Promise<void>) => {
     setBusy(key);
     try {
@@ -222,6 +242,24 @@ export function SwissTab() {
       await reload();
     });
 
+  const handleSaveBand = () =>
+    run('band', async () => {
+      if (!tournament?.id) return;
+      const raw = bandInput.trim();
+      const value = raw === '' ? null : Number(raw);
+      if (value != null && (!Number.isFinite(value) || value < 250 || value > 6000)) {
+        throw new Error('Zakres MMR musi mieścić się między 250 a 6000 (albo być pusty).');
+      }
+      await updateDoc(doc(db, 'tournaments', tournament.id), { 'swiss.pairingBand': value });
+      await refetchTournament();
+      toast({
+        title: value == null ? 'Zakres wyłączony' : `Zakres ustawiony na ${value}`,
+        description: value == null
+          ? 'Pary będą dobierane wyłącznie według dorobku punktowego.'
+          : 'Będzie stosowany od następnej generowanej rundy.',
+      });
+    });
+
   const handleGenerate = () =>
     run('generate', async () => {
       if (!tournament?.id) return;
@@ -248,6 +286,7 @@ export function SwissTab() {
           ...(schedulingMode === 'window' ? { windowStart, windowEnd } : {}),
         },
         allowConsecutiveRematch: allowRematch,
+        maxMmrGap: useMmrSeeding ? pairingBand : null,
         teams,
         matches,
       });
@@ -404,7 +443,7 @@ export function SwissTab() {
                 Nieprzypisane: {unassigned.length}
               </Badge>
             )}
-            {missingSeeds.length > 0 && (
+            {useMmrSeeding && missingSeeds.length > 0 && (
               <Badge variant="outline" className="font-logik text-amber-500 border-amber-500/40">
                 Bez średniego MMR: {missingSeeds.length}
               </Badge>
@@ -446,7 +485,146 @@ export function SwissTab() {
         </CardContent>
       </Card>
 
+
+      {/* ── Pairing band ────────────────────────────────────────────────── */}
+      {useMmrSeeding && (
+      <Card className="border-0 shadow-lg bg-card/50 backdrop-blur-sm">
+        <CardHeader className="pb-4">
+          <CardTitle className="flex items-center gap-2 font-logik-extended-bold">
+            <ArrowLeftRight className="h-5 w-5" style={{ color: theme.primaryColor }} />
+            Zakres MMR w parowaniu
+          </CardTitle>
+          <CardDescription className="font-logik">
+            Opcjonalne ograniczenie: system nie zestawi ze sobą drużyn różniących się
+            bardziej niż o podaną wartość. Zostaw puste, żeby nie stosować żadnego limitu.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          {/* The concept is unfamiliar, so explain it rather than assume. */}
+          <div className="rounded-lg border border-border bg-muted/30 p-3 text-sm font-logik space-y-2">
+            <p className="flex items-start gap-2">
+              <Info className="h-4 w-4 shrink-0 mt-0.5" style={{ color: theme.primaryColor }} />
+              <span>
+                <strong>Jak to działa.</strong> Normalnie pary dobierane są wyłącznie według
+                dorobku punktowego — dwie drużyny z tym samym wynikiem grają ze sobą, nawet
+                jeśli dzieli je 3000 MMR. Zakres mówi systemowi, żeby takich par unikał.
+              </span>
+            </p>
+            <p className="pl-6 text-muted-foreground text-xs">
+              To nie jest sztywny zakaz. Jeśli drużyna nie ma <em>żadnego</em> przeciwnika
+              w zakresie (bo jest np. najsilniejsza w stawce), dostanie najbliższego
+              możliwego, a para zostanie oznaczona w podglądzie rundy.
+            </p>
+            <p className="pl-6 text-muted-foreground text-xs">
+              Im węższy zakres, tym wyrównane mecze — ale i częstsze rewanże, bo pula
+              dozwolonych przeciwników maleje. Przy ~1500 różnicy MMR wynik meczu jest
+              w praktyce przesądzony, więc to naturalny punkt odniesienia.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-end gap-3">
+            <div>
+              <Label className="font-logik-extended-bold">Maksymalna różnica MMR</Label>
+              <Input
+                type="number"
+                min={250}
+                max={6000}
+                step={250}
+                placeholder="bez limitu"
+                value={bandInput}
+                onChange={e => setBandInput(e.target.value)}
+                className="font-logik mt-1 w-44"
+              />
+            </div>
+            <Button
+              onClick={handleSaveBand}
+              disabled={busy === 'band'}
+              style={{ backgroundColor: theme.primaryColor }}
+            >
+              {busy === 'band'
+                ? <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                : <Save className="h-4 w-4 mr-2" />}
+              Zapisz zakres
+            </Button>
+            {pairingBand != null && (
+              <Badge variant="outline" className="font-logik">aktywny: {pairingBand}</Badge>
+            )}
+          </div>
+
+          {/* Suggestion computed from the teams that actually registered. */}
+          {bandAdvice && (
+            <div className="rounded-lg border border-border p-3 space-y-3">
+              <p className="text-sm font-logik-extended-bold">
+                Sugestia dla tej stawki
+                {bandAdvice.suggested != null && (
+                  <span className="ml-2 font-mono" style={{ color: theme.primaryColor }}>
+                    {bandAdvice.suggested}
+                  </span>
+                )}
+              </p>
+              <p className="text-xs text-muted-foreground font-logik">{bandAdvice.reason}</p>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs font-logik">
+                  <thead>
+                    <tr className="text-left text-muted-foreground border-b border-border">
+                      <th className="py-1.5 pr-3 font-normal">Zakres</th>
+                      <th className="py-1.5 pr-3 font-normal text-right">Dozwolone pary</th>
+                      <th className="py-1.5 pr-3 font-normal text-right">Usuwa pewniaków</th>
+                      <th className="py-1.5 pr-3 font-normal text-right">Drużyn bez opcji</th>
+                      <th className="py-1.5 pr-3 font-normal"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {bandAdvice.options.map(o => (
+                      <tr key={o.band} className={cn(
+                        'border-b border-border/50',
+                        o.band === bandAdvice.suggested && 'bg-primary/5'
+                      )}>
+                        <td className="py-1.5 pr-3 font-mono">{o.band}</td>
+                        <td className="py-1.5 pr-3 text-right font-mono">
+                          {Math.round(o.pairingsAllowed * 100)}%
+                        </td>
+                        <td className="py-1.5 pr-3 text-right font-mono">
+                          {Math.round(o.stompsRemoved * 100)}%
+                        </td>
+                        <td className="py-1.5 pr-3 text-right font-mono">
+                          {o.isolatedTeams.length}
+                        </td>
+                        <td className="py-1.5 pr-3">
+                          <button
+                            onClick={() => setBandInput(String(o.band))}
+                            className="text-xs hover:underline"
+                            style={{ color: theme.primaryColor }}
+                          >
+                            wybierz
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {bandAdvice.outliers.length > 0 && (
+                <p className="text-xs text-amber-500 font-logik flex items-start gap-2">
+                  <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                  <span>
+                    {bandAdvice.outliers.length === 1 ? 'Jedna drużyna jest' : `${bandAdvice.outliers.length} drużyny są`}
+                    {' '}odizolowane — najbliższy rywal dzieli je o ponad 1500 MMR
+                    ({bandAdvice.outliers.map(o => `${nameOf(o.teamId)} (${o.seedMmr})`).join(', ')}).
+                    Żaden zakres im nie pomoże; zawsze dostaną najbliższego dostępnego przeciwnika.
+                  </span>
+                </p>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+      )}
+
       {/* ── Seeds ───────────────────────────────────────────────────────── */}
+      {useMmrSeeding && (
       <Card className="border-0 shadow-lg bg-card/50 backdrop-blur-sm">
         <CardHeader className="pb-4">
           <CardTitle className="flex items-center gap-2 font-logik-extended-bold">
@@ -508,6 +686,7 @@ export function SwissTab() {
           )}
         </CardContent>
       </Card>
+      )}
 
       {/* ── Open matches blocking the next round ────────────────────────── */}
       {openMatchesInLatestRound.length > 0 && (
@@ -706,18 +885,25 @@ export function SwissTab() {
                         )}>
                         {nameOf(id)}
                         <span className="text-xs text-muted-foreground ml-1.5">
-                          {pointsOf(id)} pkt{seedOf(id) != null && ` · ${seedOf(id)}`}
+                          {pointsOf(id)} pkt{useMmrSeeding && seedOf(id) != null && ` · ${seedOf(id)}`}
                         </span>
                       </button>
                     ))}
                     {!p.isBye && (
                       <span className="text-xs text-muted-foreground ml-auto font-logik">
-                        Δ {gap} pkt{mmrGap != null && ` · Δ ${mmrGap} MMR`}
+                        Δ {gap} pkt{useMmrSeeding && mmrGap != null && ` · Δ ${mmrGap} MMR`}
                       </span>
                     )}
                     {p.isBye && (
                       <Badge variant="outline" className="ml-auto font-logik text-xs">
                         wolny los — walkower
+                      </Badge>
+                    )}
+                    {!p.isBye && useMmrSeeding && pairingBand != null
+                      && mmrGap != null && mmrGap > pairingBand && (
+                      <Badge variant="outline"
+                        className="font-logik text-xs text-amber-500 border-amber-500/40">
+                        poza zakresem
                       </Badge>
                     )}
                   </div>

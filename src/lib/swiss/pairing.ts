@@ -243,6 +243,19 @@ export interface PairingWeights {
   pointsGap: number;
   /** Per 100 MMR of difference in declared seed MMR. */
   mmrGap: number;
+  /**
+   * Flat penalty for pairing two teams further apart than the configured band.
+   *
+   * Deliberately a very large COST rather than a hard filter. A hard filter can
+   * make a round unpairable — an isolated team may have nobody inside its band —
+   * and the solver would then have to fail or fall back. As a cost, the band is
+   * respected whenever it can be, quietly exceeded when it cannot, and the
+   * search remains total.
+   */
+  bandViolation: number;
+  /** Additional cost per 100 MMR beyond the band, so an unavoidable breach is
+   *  as small as possible. */
+  bandExcess: number;
 }
 
 export const DEFAULT_PAIRING_WEIGHTS: PairingWeights = {
@@ -259,6 +272,10 @@ export const DEFAULT_PAIRING_WEIGHTS: PairingWeights = {
   // only a tiebreaker for choosing among otherwise-equivalent pairings.
   pointsGap: 50,
   mmrGap: 1,
+  // Larger than any realistic combination of the other costs, so the band is
+  // only ever broken when there is no alternative.
+  bandViolation: 5000,
+  bandExcess: 20,
 };
 
 export interface PairingOptions {
@@ -274,6 +291,15 @@ export interface PairingOptions {
    */
   windowSize?: number;
   weights?: Partial<PairingWeights>;
+  /**
+   * Maximum MMR difference the organiser wants inside a match. null/undefined
+   * disables the band entirely, which is also the right value when a tournament
+   * collects no MMR at all.
+   *
+   * Not a hard limit: a team with nobody inside its band still gets paired, by
+   * the smallest possible breach. The result reports how often that happened.
+   */
+  maxMmrGap?: number | null;
   /** Safety valve on the branch-and-bound search. */
   maxNodes?: number;
 }
@@ -292,6 +318,12 @@ export interface PairingResult {
   warnings: string[];
   /** True when the no-consecutive-rematch rule had to be relaxed to finish. */
   relaxedConsecutiveRematch: boolean;
+  /**
+   * Pairings that had to exceed the configured band because the team had no
+   * eligible opponent inside it. Normal for isolated teams at the very top or
+   * bottom of the field; worth showing the admin rather than hiding.
+   */
+  bandExceeded: SwissPairing[];
 }
 
 /**
@@ -344,13 +376,13 @@ export function generatePairings(
   }
 
   if (field.length === 0) {
-    return { pairings: [], cost: 0, warnings, relaxedConsecutiveRematch: false };
+    return { pairings: [], cost: 0, warnings, relaxedConsecutiveRematch: false, bandExceeded: [] };
   }
 
   field = field.sort(compareForPairing);
 
   const attempt = (allowConsecutive: boolean) =>
-    searchMatching(field, history, weights, windowSize, maxNodes, allowConsecutive);
+    searchMatching(field, history, weights, windowSize, maxNodes, allowConsecutive, options.maxMmrGap);
 
   const allowConsecutive = options.allowConsecutiveRematch ?? false;
   let solution = attempt(allowConsecutive);
@@ -375,6 +407,7 @@ export function generatePairings(
       cost: Infinity,
       warnings: [...warnings, 'Nie udało się wygenerować parowań dla tej rundy.'],
       relaxedConsecutiveRematch: relaxed,
+      bandExceeded: [],
     };
   }
 
@@ -397,12 +430,44 @@ export function generatePairings(
     }
   }
 
+  // Flag pairings that had to break the band, so the admin can see them rather
+  // than wonder why a mismatch appeared despite the setting.
+  const rowOf = new Map(field.map(r => [r.teamId, r]));
+  const bandExceeded = options.maxMmrGap
+    ? solution.pairings.filter(p => {
+        const a = rowOf.get(p.teamAId), b = rowOf.get(p.teamBId);
+        return a && b && exceedsBand(a, b, options.maxMmrGap);
+      })
+    : [];
+
+  for (const p of bandExceeded) {
+    const a = rowOf.get(p.teamAId)!, b = rowOf.get(p.teamBId)!;
+    warnings.push(
+      `Poza zakresem MMR: ${p.teamAId} vs ${p.teamBId} ` +
+      `(różnica ${Math.abs((a.seedMmr ?? 0) - (b.seedMmr ?? 0))}, limit ${options.maxMmrGap}). ` +
+      `Brak innego przeciwnika w zakresie.`
+    );
+  }
+
   return {
     pairings: solution.pairings,
     cost: solution.cost,
     warnings,
     relaxedConsecutiveRematch: relaxed,
+    bandExceeded,
   };
+}
+
+/** True when this pairing would exceed the configured band. */
+export function exceedsBand(
+  a: SwissStandingRow, b: SwissStandingRow, maxMmrGap?: number | null
+): boolean {
+  if (!maxMmrGap) return false;
+  if (isSwissByeMatch(a.teamId, b.teamId)) return false;
+  const mmrA = a.seedMmr ?? 0;
+  const mmrB = b.seedMmr ?? 0;
+  if (mmrA <= 0 || mmrB <= 0) return false; // no MMR collected — band is meaningless
+  return Math.abs(mmrA - mmrB) > maxMmrGap;
 }
 
 /** Cost of pairing two specific teams. Lower is more desirable. */
@@ -410,7 +475,8 @@ function pairCost(
   a: SwissStandingRow,
   b: SwissStandingRow,
   history: SwissHistory,
-  weights: PairingWeights
+  weights: PairingWeights,
+  maxMmrGap?: number | null
 ): number {
   const key = pairKey(a.teamId, b.teamId);
   let cost = 0;
@@ -433,7 +499,11 @@ function pairCost(
     const mmrA = a.seedMmr ?? 0;
     const mmrB = b.seedMmr ?? 0;
     if (mmrA > 0 && mmrB > 0) {
-      cost += weights.mmrGap * (Math.abs(mmrA - mmrB) / 100);
+      const gap = Math.abs(mmrA - mmrB);
+      cost += weights.mmrGap * (gap / 100);
+      if (maxMmrGap && gap > maxMmrGap) {
+        cost += weights.bandViolation + weights.bandExcess * ((gap - maxMmrGap) / 100);
+      }
     }
   }
 
@@ -454,7 +524,8 @@ function searchMatching(
   weights: PairingWeights,
   windowSize: number,
   maxNodes: number,
-  allowConsecutiveRematch: boolean
+  allowConsecutiveRematch: boolean,
+  maxMmrGap?: number | null
 ): { pairings: SwissPairing[]; cost: number } | null {
   const n = field.length;
   const paired = new Array<boolean>(n).fill(false);
@@ -495,7 +566,7 @@ function searchMatching(
     for (let j = first + 1; j < n && candidates.length < windowSize; j++) {
       if (paired[j]) continue;
       if (isBlocked(first, j)) continue;
-      candidates.push({ j, cost: pairCost(field[first], field[j], history, weights) });
+      candidates.push({ j, cost: pairCost(field[first], field[j], history, weights, maxMmrGap) });
     }
     candidates.sort((x, y) => x.cost - y.cost || x.j - y.j);
 
@@ -504,7 +575,7 @@ function searchMatching(
     if (candidates.length === 0) {
       for (let j = first + 1; j < n; j++) {
         if (paired[j] || isBlocked(first, j)) continue;
-        candidates.push({ j, cost: pairCost(field[first], field[j], history, weights) });
+        candidates.push({ j, cost: pairCost(field[first], field[j], history, weights, maxMmrGap) });
       }
       candidates.sort((x, y) => x.cost - y.cost || x.j - y.j);
     }

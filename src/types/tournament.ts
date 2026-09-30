@@ -223,6 +223,26 @@ export interface GroupConfig {
  * `tournaments/{id}/swissRounds/{round}` documents rather than here.
  */
 export interface SwissConfig {
+  /**
+   * Whether teams report an average MMR at registration, used to seed round 1
+   * and to break ties when pairing later rounds.
+   *
+   * Turning this OFF is a legitimate choice — an organiser running a field of
+   * known, comparable teams gains nothing from it. With it off: the registration
+   * form asks for no MMR, no seed number is shown anywhere, round 1 is paired
+   * arbitrarily (but deterministically), and the band below is ignored.
+   */
+  useMmrSeeding: boolean;
+
+  /**
+   * Maximum MMR difference allowed inside a match. null = no limit.
+   *
+   * Not a hard limit: a team with nobody inside its band is still paired, by the
+   * smallest possible breach, and the round preview flags it. Only meaningful
+   * when `useMmrSeeding` is true.
+   */
+  pairingBand: number | null;
+
   /** Total rounds the admin intends to play. null = open-ended, ended manually. */
   plannedRounds: number | null;
   /** Highest round generated so far. 0 = not started. */
@@ -722,6 +742,8 @@ export const DEFAULT_SWISS_CONFIG: Partial<TournamentConfig> = {
   // The admin picks a scheduling mode per round; this is only the default.
   schedulingMethod: 'captain-scheduled',
   swiss: {
+    useMmrSeeding: true,
+    pairingBand: null,
     plannedRounds: null,
     currentRound: 0,
     defaultMatchFormat: 'bo2',
