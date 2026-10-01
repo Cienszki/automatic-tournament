@@ -12,6 +12,8 @@ import { LoadingScreen } from '@/components/ui/LoadingScreen';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { DraftGate } from '@/components/tournament/DraftGate';
 import { TournamentRedirect } from '@/components/tournament/TournamentRedirect';
+import { HeroMediaGateProvider } from '@/context/HeroMediaGateContext';
+import { heroVideoUrls, HERO_VIDEO_GATE_TIMEOUT_MS } from '@/lib/hero-video';
 
 interface TournamentLayoutProps {
   children: React.ReactNode;
@@ -36,8 +38,28 @@ export default function TournamentLayout({ children }: TournamentLayoutProps) {
   // useCallback prevents ThemeFontApplier's effect from re-running on every render.
   const handleFontsReady = useCallback(() => setFontsReady(true), []);
 
+  // Hero video gate — first reveal of the home page only. The loader holds
+  // until every hero video paints a frame (signalled by HeroVideo with its src)
+  // or the timeout fires. Readiness is recorded per URL and never reset: child
+  // effects run before ours, so a cached video can signal before any reset here
+  // would run, and a URL that was ready once stays ready.
+  const [firstRevealDone, setFirstRevealDone] = useState(false);
+  const [readyHeroSrcs, setReadyHeroSrcs] = useState<ReadonlySet<string>>(() => new Set());
+  const [heroGateTimedOut, setHeroGateTimedOut] = useState<string | null>(null);
+  const gatedHeroSrcs = isHomePage && !firstRevealDone ? heroVideoUrls(tournament) : [];
+  const heroGateKey = gatedHeroSrcs.join('\n');
+  const signalHeroMediaReady = useCallback((src: string) => {
+    setReadyHeroSrcs(prev => (prev.has(src) ? prev : new Set(prev).add(src)));
+  }, []);
+
+  useEffect(() => {
+    if (!heroGateKey) return;
+    const timer = setTimeout(() => setHeroGateTimedOut(heroGateKey), HERO_VIDEO_GATE_TIMEOUT_MS);
+    return () => clearTimeout(timer);
+  }, [heroGateKey]);
+
   // Reset font-ready when navigating to a different tournament.
-  useEffect(() => { setFontsReady(false); }, [tournamentSlug]);
+  useEffect(() => { setFontsReady(false); setFirstRevealDone(false); }, [tournamentSlug]);
 
   useEffect(() => { setMounted(true); }, []);
 
@@ -116,7 +138,9 @@ export default function TournamentLayout({ children }: TournamentLayoutProps) {
     return () => { cancelAnimationFrame(raf1); cancelAnimationFrame(raf2); };
   }, [isLoading, tournament, bgImageReady]);
 
-  const showLoading = isLoading || !tournament || !bgImageReady || !pageReady || !fontsReady;
+  const heroMediaPending = heroGateTimedOut !== heroGateKey
+    && gatedHeroSrcs.some(src => !readyHeroSrcs.has(src));
+  const showLoading = isLoading || !tournament || !bgImageReady || !pageReady || !fontsReady || heroMediaPending;
 
   // Keep LoadingScreen mounted until the fade-out animation finishes.
   // setLoaderVisible(true) runs synchronously when loading restarts so there
@@ -126,6 +150,7 @@ export default function TournamentLayout({ children }: TournamentLayoutProps) {
       setLoaderVisible(true);
       return;
     }
+    setFirstRevealDone(true);
     const timer = setTimeout(() => setLoaderVisible(false), 420);
     return () => clearTimeout(timer);
   }, [showLoading]);
@@ -197,7 +222,9 @@ export default function TournamentLayout({ children }: TournamentLayoutProps) {
             )}
             <main className={isHomePage ? 'relative z-10' : 'flex-grow container mx-auto px-4 py-8 relative z-10'}>
               <ErrorBoundary section="tournament">
-                {children}
+                <HeroMediaGateProvider value={signalHeroMediaReady}>
+                  {children}
+                </HeroMediaGateProvider>
               </ErrorBoundary>
             </main>
             {!isHomePage && <Footer />}

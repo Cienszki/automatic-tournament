@@ -807,3 +807,128 @@ body {
 .text-glow {
   text-shadow: 0 0 20px currentColor;
 }
+/* ─── Hero video ─────────────────────────────────────────────────────────
+   Edge fade + CRT look for <HeroVideo>. Everything here is compositor-cheap
+   on purpose — gradients, opacity and transform only. No `filter` on the
+   video and no SVG displacement "curvature": those re-run per frame and are
+   what makes background video stutter on phones.
+
+   The fade is an eased ramp (smoothstep-ish stops) rather than a straight
+   linear-gradient, which leaves a visible "start line" where the fade begins.
+   Two ramps (x and y) are intersected so all four edges dissolve into
+   whatever is behind — the tournament background image included, which is
+   why this can't be baked into the video file (MP4 has no alpha). */
+/* In @layer components so Tailwind utilities on the element (absolute,
+   inset-0, aspect-video, w-*) win over the position/size set here. */
+@layer components {
+  .hero-video {
+    /* Per-edge fade width; HeroVideo sets one to 0% to leave that edge hard. */
+    --hero-fade-left: 14%;
+    --hero-fade-right: 14%;
+    --hero-fade-top: 16%;
+    --hero-fade-bottom: 16%;
+    position: relative;
+    overflow: hidden;
+    -webkit-mask-image:
+      linear-gradient(to right,
+        transparent 0,
+        rgb(0 0 0 / 0.16) calc(var(--hero-fade-left) * 0.25),
+        rgb(0 0 0 / 0.5) calc(var(--hero-fade-left) * 0.5),
+        rgb(0 0 0 / 0.84) calc(var(--hero-fade-left) * 0.75),
+        #000 var(--hero-fade-left),
+        #000 calc(100% - var(--hero-fade-right)),
+        rgb(0 0 0 / 0.84) calc(100% - var(--hero-fade-right) * 0.75),
+        rgb(0 0 0 / 0.5) calc(100% - var(--hero-fade-right) * 0.5),
+        rgb(0 0 0 / 0.16) calc(100% - var(--hero-fade-right) * 0.25),
+        transparent 100%),
+      linear-gradient(to bottom,
+        transparent 0,
+        rgb(0 0 0 / 0.16) calc(var(--hero-fade-top) * 0.25),
+        rgb(0 0 0 / 0.5) calc(var(--hero-fade-top) * 0.5),
+        rgb(0 0 0 / 0.84) calc(var(--hero-fade-top) * 0.75),
+        #000 var(--hero-fade-top),
+        #000 calc(100% - var(--hero-fade-bottom)),
+        rgb(0 0 0 / 0.84) calc(100% - var(--hero-fade-bottom) * 0.75),
+        rgb(0 0 0 / 0.5) calc(100% - var(--hero-fade-bottom) * 0.5),
+        rgb(0 0 0 / 0.16) calc(100% - var(--hero-fade-bottom) * 0.25),
+        transparent 100%);
+    -webkit-mask-composite: source-in;
+    mask-image:
+      linear-gradient(to right,
+        transparent 0,
+        rgb(0 0 0 / 0.16) calc(var(--hero-fade-left) * 0.25),
+        rgb(0 0 0 / 0.5) calc(var(--hero-fade-left) * 0.5),
+        rgb(0 0 0 / 0.84) calc(var(--hero-fade-left) * 0.75),
+        #000 var(--hero-fade-left),
+        #000 calc(100% - var(--hero-fade-right)),
+        rgb(0 0 0 / 0.84) calc(100% - var(--hero-fade-right) * 0.75),
+        rgb(0 0 0 / 0.5) calc(100% - var(--hero-fade-right) * 0.5),
+        rgb(0 0 0 / 0.16) calc(100% - var(--hero-fade-right) * 0.25),
+        transparent 100%),
+      linear-gradient(to bottom,
+        transparent 0,
+        rgb(0 0 0 / 0.16) calc(var(--hero-fade-top) * 0.25),
+        rgb(0 0 0 / 0.5) calc(var(--hero-fade-top) * 0.5),
+        rgb(0 0 0 / 0.84) calc(var(--hero-fade-top) * 0.75),
+        #000 var(--hero-fade-top),
+        #000 calc(100% - var(--hero-fade-bottom)),
+        rgb(0 0 0 / 0.84) calc(100% - var(--hero-fade-bottom) * 0.75),
+        rgb(0 0 0 / 0.5) calc(100% - var(--hero-fade-bottom) * 0.5),
+        rgb(0 0 0 / 0.16) calc(100% - var(--hero-fade-bottom) * 0.25),
+        transparent 100%);
+    mask-composite: intersect;
+  }
+
+  .hero-video > video,
+  .hero-video > img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  /* CRT layer: scanlines, a faint RGB phosphor stripe and a vignette, breathing
+     slowly; ::after is the rolling refresh bar. */
+  .hero-video__crt {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+      repeating-linear-gradient(to bottom, rgb(0 0 0 / 0.3) 0 1px, transparent 1px 3px),
+      repeating-linear-gradient(to right,
+        rgb(255 0 0 / 0.035) 0 1px,
+        rgb(0 255 0 / 0.025) 1px 2px,
+        rgb(0 0 255 / 0.035) 2px 3px),
+      radial-gradient(ellipse at center, transparent 50%, rgb(0 0 0 / 0.5) 100%);
+    animation: hero-crt-breathe 3.2s ease-in-out infinite alternate;
+  }
+
+  .hero-video__crt::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    height: 30%;
+    background: linear-gradient(to bottom, transparent, rgb(255 255 255 / 0.045), transparent);
+    animation: hero-crt-roll 7s linear infinite;
+  }
+}
+
+@keyframes hero-crt-breathe {
+  from { opacity: 0.82; }
+  to { opacity: 1; }
+}
+
+@keyframes hero-crt-roll {
+  from { transform: translateY(-100%); }
+  to { transform: translateY(340%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-video__crt,
+  .hero-video__crt::after {
+    animation: none;
+  }
+}

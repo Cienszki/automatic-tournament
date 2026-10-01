@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useTournament, useTournamentType } from '@/context/TournamentContext';
 import { useAuth } from '@/context/AuthContext';
 import { doc, updateDoc } from 'firebase/firestore';
@@ -22,7 +22,10 @@ import {
 import { cn } from '@/lib/utils';
 import { FontManagement } from '@/components/admin/FontManagement';
 import type { CustomFont } from '@/components/admin/FontManagement';
-import type { NavbarSponsorSlide, TournamentType } from '@/types/tournament';
+import type { HeroLayout, HeroMediaSlot, HeroSlotMedia, NavbarSponsorSlide, TournamentType } from '@/types/tournament';
+import { HeroPanelsEditor } from '@/components/admin/HeroPanelsEditor';
+import { bunnyVideoIds, cleanHeroMedia } from '@/lib/hero-video';
+import { deleteHeroVideoFromBunny } from '@/lib/hero-video-bunny-client';
 import { TournamentCreatorsManager } from '@/components/admin/TournamentCreatorsManager';
 import { fetchOwnedSlugs } from '@/lib/api/tournaments';
 import {
@@ -31,10 +34,7 @@ import {
   uploadTournamentOrganizerLogo,
   uploadTournamentBackground,
   uploadTournamentFavicon,
-  uploadTournamentPromotionalImage,
   uploadTournamentSponsorImage,
-  uploadTournamentHeroLeftImage,
-  uploadTournamentHeroRightImage,
 } from '@/lib/storage';
 import { 
   Settings,
@@ -180,9 +180,25 @@ export function GeneralTab() {
   const [promotionalImageUrl, setPromotionalImageUrl] = useState(tournament?.promotionalImageUrl || '');
 
   // Hero layout
-  const [heroLayout, setHeroLayout] = useState<'logo-promo' | 'three-images'>(tournament?.heroLayout ?? 'logo-promo');
+  const [heroLayout, setHeroLayout] = useState<HeroLayout>(tournament?.heroLayout ?? 'logo-promo');
   const [heroLeftImageUrl, setHeroLeftImageUrl] = useState(tournament?.heroLeftImageUrl || '');
   const [heroRightImageUrl, setHeroRightImageUrl] = useState(tournament?.heroRightImageUrl || '');
+
+  // Per-panel image/video choice (see HeroPanelsEditor)
+  const [heroMedia, setHeroMedia] = useState<Partial<Record<HeroMediaSlot, HeroSlotMedia>>>(tournament?.heroMedia ?? {});
+  const [heroVideoCrt, setHeroVideoCrt] = useState(tournament?.heroVideoCrt !== false);
+  // Super admins upload hero videos to the platform's Bunny library; everyone
+  // else links to files they host. Uploads made in this session are tracked so
+  // the ones that end up unused can be deleted on save.
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+  const sessionBunnyUploads = useRef(new Set<string>());
+  const getToken = useCallback(() => {
+    if (!user) return Promise.reject(new Error('Nie jesteś zalogowany.'));
+    return user.getIdToken();
+  }, [user]);
+  const handleBunnyVideoUploaded = useCallback((videoId: string) => {
+    sessionBunnyUploads.current.add(videoId);
+  }, []);
 
   // Upload state
   const [uploadingLogo, setUploadingLogo] = useState(false);
@@ -190,9 +206,6 @@ export function GeneralTab() {
   const [uploadingOrganizerLogo, setUploadingOrganizerLogo] = useState(false);
   const [uploadingBg, setUploadingBg] = useState(false);
   const [uploadingFavicon, setUploadingFavicon] = useState(false);
-  const [uploadingPromo, setUploadingPromo] = useState(false);
-  const [uploadingHeroLeft, setUploadingHeroLeft] = useState(false);
-  const [uploadingHeroRight, setUploadingHeroRight] = useState(false);
   const [showAdvancedTheme, setShowAdvancedTheme] = useState(false);
 
   // Typography settings
@@ -254,6 +267,8 @@ export function GeneralTab() {
     setHeroLayout(tournament.heroLayout ?? 'logo-promo');
     setHeroLeftImageUrl(tournament.heroLeftImageUrl || '');
     setHeroRightImageUrl(tournament.heroRightImageUrl || '');
+    setHeroMedia(tournament.heroMedia ?? {});
+    setHeroVideoCrt(tournament.heroVideoCrt !== false);
     setCustomFonts(tournament.customFonts || []);
     // Theme fields
     setLogoUrl(tournament.theme?.logoUrl || '');
@@ -300,6 +315,18 @@ export function GeneralTab() {
   useEffect(() => {
     loadTournamentAdmins();
   }, [tournament?.id]);
+
+  // Only decides which hero video options are shown — the upload API checks again.
+  useEffect(() => {
+    if (!user) { setIsSuperAdmin(false); return; }
+    let cancelled = false;
+    user.getIdToken()
+      .then((token) => fetch('/api/checkAdmin', { method: 'POST', headers: { Authorization: `Bearer ${token}` } }))
+      .then((res) => res.json())
+      .then((data) => { if (!cancelled) setIsSuperAdmin(data.isSuperAdmin === true); })
+      .catch(() => { if (!cancelled) setIsSuperAdmin(false); });
+    return () => { cancelled = true; };
+  }, [user]);
 
   // Other tournaments this organizer owns, for the redirect picker.
   useEffect(() => {
@@ -447,6 +474,7 @@ export function GeneralTab() {
     
     setIsSaving(true);
     try {
+      const savedHeroMedia = cleanHeroMedia(heroMedia);
       const tournamentRef = doc(db, 'tournaments', tournament.id);
       await updateDoc(tournamentRef, {
         name: tournamentName,
@@ -456,6 +484,8 @@ export function GeneralTab() {
         heroLayout: heroLayout,
         heroLeftImageUrl: heroLeftImageUrl || null,
         heroRightImageUrl: heroRightImageUrl || null,
+        heroMedia: savedHeroMedia,
+        heroVideoCrt: heroVideoCrt,
         leagueId: leagueId ? Number(leagueId) : null,
         twitchUrl: twitchUrl || null,
         discordUrl: discordUrl || null,
@@ -531,7 +561,21 @@ export function GeneralTab() {
           widthPx: sponsorWidthPx,
         },
       });
-      
+
+      // Delete Bunny videos nothing points at any more: ones this save replaced
+      // or removed, and ones uploaded this session but never kept. Best effort —
+      // a failure only leaves an orphan in the library, never a broken page.
+      if (isSuperAdmin) {
+        const stillUsed = bunnyVideoIds(savedHeroMedia);
+        const unused = [...bunnyVideoIds(tournament.heroMedia), ...sessionBunnyUploads.current]
+          .filter((id) => !stillUsed.has(id));
+        sessionBunnyUploads.current.clear();
+        Promise.allSettled(unused.map((id) => deleteHeroVideoFromBunny(id, getToken)))
+          .then((results) => results.forEach((r, i) => {
+            if (r.status === 'rejected') console.error(`Failed to delete Bunny video ${unused[i]}:`, r.reason);
+          }));
+      }
+
       await refetchTournament();
       alert('Zmiany zapisane pomyślnie!');
     } catch (error) {
@@ -927,68 +971,6 @@ export function GeneralTab() {
             </p>
           </div>
 
-          {/* Promotional Image */}
-          <div className="space-y-2">
-            <Label className="font-logik-extended-bold">Obraz promocyjny</Label>
-            <div className="flex items-center gap-3">
-              {promotionalImageUrl ? (
-                <div className="h-20 w-32 rounded-xl border-2 border-border overflow-hidden bg-muted">
-                  <img src={promotionalImageUrl} alt="Promotional" className="w-full h-full object-cover" />
-                </div>
-              ) : (
-                <div className="h-20 w-32 rounded-xl border-2 border-dashed border-border flex items-center justify-center bg-muted/50">
-                  <ImageIcon className="h-6 w-6 text-muted-foreground" />
-                </div>
-              )}
-              <div className="flex-1 space-y-2">
-                <Input
-                  value={promotionalImageUrl}
-                  onChange={(e) => setPromotionalImageUrl(e.target.value)}
-                  placeholder="URL obrazu promocyjnego..."
-                  className="font-logik"
-                />
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={uploadingPromo}
-                    onClick={() => {
-                      const input = document.createElement('input');
-                      input.type = 'file';
-                      input.accept = 'image/png,image/webp,image/jpeg';
-                      input.onchange = async (e) => {
-                        const file = (e.target as HTMLInputElement).files?.[0];
-                        if (!file || !tournament?.slug) return;
-                        setUploadingPromo(true);
-                        try {
-                          const url = await uploadTournamentPromotionalImage(file, tournament.slug);
-                          setPromotionalImageUrl(url);
-                        } catch (err) {
-                          console.error('Promotional image upload failed:', err);
-                        } finally {
-                          setUploadingPromo(false);
-                        }
-                      };
-                      input.click();
-                    }}
-                    className="font-logik"
-                  >
-                    {uploadingPromo ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Upload className="h-4 w-4 mr-1" />}
-                    Prześlij plik
-                  </Button>
-                  {promotionalImageUrl && (
-                    <Button variant="ghost" size="sm" onClick={() => setPromotionalImageUrl('')} className="text-destructive">
-                      <X className="h-4 w-4" />
-                    </Button>
-                  )}
-                </div>
-              </div>
-            </div>
-            <p className="text-xs text-muted-foreground font-logik">
-              Obraz wyświetlany na stronie głównej turnieju obok logo. Najlepiej w proporcjach 16:9 lub 3:2.
-            </p>
-          </div>
-
           {/* Hero Layout Selector */}
           <div className="space-y-4">
             <div>
@@ -997,7 +979,7 @@ export function GeneralTab() {
                 Wybierz jak wygląda pierwsza sekcja strony głównej turnieju.
               </p>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               {/* Logo + Promo option */}
               <button
                 type="button"
@@ -1054,137 +1036,57 @@ export function GeneralTab() {
                   <CheckCircle2 className="absolute top-3 right-3 h-4 w-4" style={{ color: 'var(--tournament-primary)' }} />
                 )}
               </button>
+
+              {/* Full-width video option */}
+              <button
+                type="button"
+                onClick={() => setHeroLayout('video')}
+                className={cn(
+                  'relative rounded-xl border-2 p-4 text-left transition-all duration-200',
+                  heroLayout === 'video'
+                    ? 'border-[var(--tournament-primary)] bg-[var(--tournament-primary)]/10'
+                    : 'border-border hover:border-border/80 bg-muted/30',
+                )}
+              >
+                {/* Mini preview */}
+                <div className="mb-3 h-16 rounded-lg bg-black/40 border border-white/10 flex items-center justify-center overflow-hidden relative">
+                  <div
+                    className="absolute inset-0"
+                    style={{ background: 'radial-gradient(ellipse at center, rgba(255,255,255,0.18) 35%, transparent 75%)' }}
+                  />
+                  <div className="w-10 h-10 rounded bg-white/20 flex items-center justify-center relative">
+                    <Play className="w-4 h-4 text-white/60" />
+                  </div>
+                </div>
+                <p className="font-logik-extended-bold text-sm">Wideo (pełna szerokość)</p>
+                <p className="text-xs text-muted-foreground font-logik mt-0.5">Zapętlone wideo za logo, krawędzie przenikają w tło strony.</p>
+                {heroLayout === 'video' && (
+                  <CheckCircle2 className="absolute top-3 right-3 h-4 w-4" style={{ color: 'var(--tournament-primary)' }} />
+                )}
+              </button>
             </div>
 
-            {/* Three-images upload fields — only shown when that layout is selected */}
-            {heroLayout === 'three-images' && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
-
-                {/* Left image */}
-                <div className="space-y-2">
-                  <Label className="font-logik-extended-bold">Obraz lewy</Label>
-                  <div className="flex items-center gap-3">
-                    {heroLeftImageUrl ? (
-                      <div className="h-20 w-32 rounded-xl border-2 border-border overflow-hidden bg-muted flex-shrink-0">
-                        <img src={heroLeftImageUrl} alt="Hero left" className="w-full h-full object-cover" />
-                      </div>
-                    ) : (
-                      <div className="h-20 w-32 rounded-xl border-2 border-dashed border-border flex items-center justify-center bg-muted/50 flex-shrink-0">
-                        <ImageIcon className="h-6 w-6 text-muted-foreground" />
-                      </div>
-                    )}
-                    <div className="flex-1 space-y-2">
-                      <Input
-                        value={heroLeftImageUrl}
-                        onChange={(e) => setHeroLeftImageUrl(e.target.value)}
-                        placeholder="URL lewego obrazu..."
-                        className="font-logik"
-                      />
-                      <div className="flex gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          disabled={uploadingHeroLeft}
-                          onClick={() => {
-                            const input = document.createElement('input');
-                            input.type = 'file';
-                            input.accept = 'image/png,image/webp,image/jpeg';
-                            input.onchange = async (e) => {
-                              const file = (e.target as HTMLInputElement).files?.[0];
-                              if (!file || !tournament?.slug) return;
-                              setUploadingHeroLeft(true);
-                              try {
-                                const url = await uploadTournamentHeroLeftImage(file, tournament.slug);
-                                setHeroLeftImageUrl(url);
-                              } catch (err) {
-                                console.error('Hero left image upload failed:', err);
-                              } finally {
-                                setUploadingHeroLeft(false);
-                              }
-                            };
-                            input.click();
-                          }}
-                          className="font-logik"
-                        >
-                          {uploadingHeroLeft ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Upload className="h-4 w-4 mr-1" />}
-                          Prześlij plik
-                        </Button>
-                        {heroLeftImageUrl && (
-                          <Button variant="ghost" size="sm" onClick={() => setHeroLeftImageUrl('')} className="text-destructive">
-                            <X className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  <p className="text-xs text-muted-foreground font-logik">
-                    Wyrównany do lewej krawędzi ekranu. Zalecany format portretowy lub kwadratowy.
-                  </p>
-                </div>
-
-                {/* Right image */}
-                <div className="space-y-2">
-                  <Label className="font-logik-extended-bold">Obraz prawy</Label>
-                  <div className="flex items-center gap-3">
-                    {heroRightImageUrl ? (
-                      <div className="h-20 w-32 rounded-xl border-2 border-border overflow-hidden bg-muted flex-shrink-0">
-                        <img src={heroRightImageUrl} alt="Hero right" className="w-full h-full object-cover" />
-                      </div>
-                    ) : (
-                      <div className="h-20 w-32 rounded-xl border-2 border-dashed border-border flex items-center justify-center bg-muted/50 flex-shrink-0">
-                        <ImageIcon className="h-6 w-6 text-muted-foreground" />
-                      </div>
-                    )}
-                    <div className="flex-1 space-y-2">
-                      <Input
-                        value={heroRightImageUrl}
-                        onChange={(e) => setHeroRightImageUrl(e.target.value)}
-                        placeholder="URL prawego obrazu..."
-                        className="font-logik"
-                      />
-                      <div className="flex gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          disabled={uploadingHeroRight}
-                          onClick={() => {
-                            const input = document.createElement('input');
-                            input.type = 'file';
-                            input.accept = 'image/png,image/webp,image/jpeg';
-                            input.onchange = async (e) => {
-                              const file = (e.target as HTMLInputElement).files?.[0];
-                              if (!file || !tournament?.slug) return;
-                              setUploadingHeroRight(true);
-                              try {
-                                const url = await uploadTournamentHeroRightImage(file, tournament.slug);
-                                setHeroRightImageUrl(url);
-                              } catch (err) {
-                                console.error('Hero right image upload failed:', err);
-                              } finally {
-                                setUploadingHeroRight(false);
-                              }
-                            };
-                            input.click();
-                          }}
-                          className="font-logik"
-                        >
-                          {uploadingHeroRight ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Upload className="h-4 w-4 mr-1" />}
-                          Prześlij plik
-                        </Button>
-                        {heroRightImageUrl && (
-                          <Button variant="ghost" size="sm" onClick={() => setHeroRightImageUrl('')} className="text-destructive">
-                            <X className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  <p className="text-xs text-muted-foreground font-logik">
-                    Wyrównany do prawej krawędzi ekranu. Zalecany format portretowy lub kwadratowy.
-                  </p>
-                </div>
-
-              </div>
+            {/* Per-panel image / video — panels depend on the layout above */}
+            {tournament?.slug && (
+              <HeroPanelsEditor
+                layout={heroLayout}
+                tournamentSlug={tournament.slug}
+                tournamentName={tournament.name}
+                canUploadToBunny={isSuperAdmin}
+                getToken={getToken}
+                onBunnyVideoUploaded={handleBunnyVideoUploaded}
+                heroMedia={heroMedia}
+                onHeroMediaChange={setHeroMedia}
+                crt={heroVideoCrt}
+                onCrtChange={setHeroVideoCrt}
+                logoUrl={logoUrl}
+                promoImageUrl={promotionalImageUrl}
+                onPromoImageUrlChange={setPromotionalImageUrl}
+                leftImageUrl={heroLeftImageUrl}
+                onLeftImageUrlChange={setHeroLeftImageUrl}
+                rightImageUrl={heroRightImageUrl}
+                onRightImageUrlChange={setHeroRightImageUrl}
+              />
             )}
           </div>
 

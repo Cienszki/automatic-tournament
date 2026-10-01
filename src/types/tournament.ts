@@ -20,6 +20,43 @@ export type TournamentType = 'mmr-limited' | 'league' | 'swiss';
 export type TournamentStatus = 'draft' | 'registration' | 'active' | 'completed' | 'archived';
 
 /**
+ * Layout of the home page hero (VIEW 1): logo + promo slot, full-bleed image
+ * pair around the logo, or a full-width looping video behind the logo.
+ */
+export type HeroLayout = 'logo-promo' | 'three-images' | 'video';
+
+/**
+ * Hero panels that can show a video instead of their image.
+ * - `logo`  — the tournament logo panel; shared by 'logo-promo' (left) and
+ *             'three-images' (centre), just as the logo image is.
+ * - `promo` — right panel of 'logo-promo' (image: promotionalImageUrl).
+ * - `left` / `right` — outer panels of 'three-images' (heroLeft/RightImageUrl).
+ * - `full`  — the 'video' layout's full-width clip; always a video.
+ */
+export type HeroMediaSlot = 'logo' | 'promo' | 'left' | 'right' | 'full';
+
+export interface HeroSlotVideo {
+  /** Direct https URL of an MP4 (H.264) or WebM file. */
+  url: string;
+  /** Smaller rendition for narrow screens (Bunny uploads only). */
+  mobileUrl?: string;
+  /** Still frame shown before the video paints and to reduced-motion / data-saver visitors. */
+  posterUrl?: string;
+  /**
+   * Set when the file lives in the platform's Bunny Stream library (super-admin
+   * upload), so it can be deleted once no longer used. Absent = the organizer
+   * hosts the file and pasted its link.
+   */
+  bunnyVideoId?: string;
+}
+
+export interface HeroSlotMedia {
+  /** Absent = 'image'. The video is kept when switching back, so toggling is lossless. */
+  type?: 'image' | 'video';
+  video?: HeroSlotVideo;
+}
+
+/**
  * Tournament visibility in navigation
  */
 export type TournamentVisibility = 'active' | 'inactive' | 'archived';
@@ -342,9 +379,13 @@ export interface TournamentConfig {
   shortName?: string;
   description?: string;
   promotionalImageUrl?: string; // Uploadable promotional image shown on the home page hero view
-  heroLayout?: 'logo-promo' | 'three-images'; // Which layout to use for VIEW 1 on the home page
+  heroLayout?: HeroLayout; // Which layout to use for VIEW 1 on the home page
   heroLeftImageUrl?: string; // Left side image for the 'three-images' hero layout
   heroRightImageUrl?: string; // Right side image for the 'three-images' hero layout
+  /** Per-panel image/video choice for the hero. See HeroMediaSlot. */
+  heroMedia?: Partial<Record<HeroMediaSlot, HeroSlotMedia>>;
+  /** CRT overlay (scanlines, vignette, flicker) drawn over hero videos. Absent = on. */
+  heroVideoCrt?: boolean;
   organizerId: string;
   
   // Type and status

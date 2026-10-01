@@ -27,6 +27,9 @@ import { TeamsView } from '@/components/tournament/TeamsView';
 import { RankingsView } from '@/components/tournament/RankingsView';
 import { MirroredPlayoffBracket } from '@/components/playoffs/MirroredPlayoffBracket';
 import { SeasonPointsTable } from '@/components/playoffs/SeasonPointsTable';
+import { HeroVideo, type HeroVideoEdge } from '@/components/tournament/HeroVideo';
+import { resolveHeroLayout, slotVideo } from '@/lib/hero-video';
+import type { HeroSlotVideo } from '@/types/tournament';
 
 // Icons
 import {
@@ -101,7 +104,11 @@ const HeroTikTokIcon = (props: React.SVGProps<SVGSVGElement>) => (
 
 // ─── Section labels for dot navigation ───────────────────────────────
 
-const BASE_SECTION_LABELS = ['Start', 'Tabele', 'Terminarz', 'Drużyny', 'Rankingi', 'Statystyki', 'Pick\'em'];
+// 16:9 box for a video in either half of the logo-promo hero: full panel width,
+// capped so its height matches the 48vh (36vh on 2k) the images are allowed.
+const PROMO_PANEL_VIDEO_BOX = 'aspect-video w-[min(100%,calc(48vh*16/9))] 2k:w-[min(100%,calc(36vh*16/9))]';
+
+const BASE_SECTION_LABELS =['Start', 'Tabele', 'Terminarz', 'Drużyny', 'Rankingi', 'Statystyki', 'Pick\'em'];
 
 // ─── Dot Navigation with arrow controls ─────────────────────────────
 
@@ -546,14 +553,212 @@ export function TournamentHomePage() {
 
   const logoUrl = theme?.logoUrl;
   const promoImageUrl = tournament.promotionalImageUrl;
-  const heroLayout = tournament.heroLayout ?? 'logo-promo';
+  const heroLayout = resolveHeroLayout(tournament);
   const heroLeftImageUrl = tournament.heroLeftImageUrl;
   const heroRightImageUrl = tournament.heroRightImageUrl;
+  // Per-panel videos — null when that panel shows its image.
+  const logoVideo = slotVideo(tournament, 'logo');
+  const promoVideo = slotVideo(tournament, 'promo');
+  const leftVideo = slotVideo(tournament, 'left');
+  const rightVideo = slotVideo(tournament, 'right');
+  const fullVideo = slotVideo(tournament, 'full');
+  const heroVideoCrt = tournament.heroVideoCrt !== false;
 
   // Determine if we show playoffs instead of groups in view 2. Playoffs default
   // once visible, but the user can toggle back to the groups/divisions tables.
   const showPlayoffs = playoffsActive && section1View === 'playoffs';
   const showDivisions = divisions.length > 0 && !showPlayoffs;
+
+  // Title/description, CTAs and social links under the hero media — shared by
+  // all three layouts. A render function rather than a nested component so
+  // re-renders don't remount it and replay the framer-motion entrance.
+  const renderHeroCopy = (className?: string) => (
+    <div className={cn('flex-[3] flex flex-col min-h-0', className)}>
+      <div className="flex flex-col sm:flex-row flex-1 items-start sm:items-center gap-4 sm:gap-0">
+
+      {/* Left column — subtitle + description */}
+      <motion.div
+        className="flex-1 flex flex-col justify-center sm:pr-8 lg:pr-16"
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.7 }}
+      >
+        <h2
+          className="text-3xl sm:text-4xl uppercase tracking-[0.15em] font-logik-extended-bold mb-2"
+          style={{
+            color: 'var(--tournament-heading)',
+            fontFamily: theme?.headerFont ? `var(${theme.headerFont})` : undefined,
+          }}
+        >
+          {tournament?.heroTitle || (isMmrLimited ? t('hero.mmrTitle') : t('hero.leagueTitle'))}
+        </h2>
+
+        <p
+          className="text-sm sm:text-base lg:text-xl leading-relaxed font-medium border-l-2 pl-4"
+          style={{
+            borderColor: primaryColor,
+            color: 'var(--tournament-secondary-text)',
+          }}
+        >
+          {tournament?.description || t('hero.subtitle')}
+        </p>
+      </motion.div>
+
+      {/* Right column — CTA buttons */}
+      <motion.div
+        className="flex-1 flex items-start sm:items-center justify-start gap-3 flex-wrap"
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.7, delay: 0.1 }}
+      >
+        {hasTeam ? (
+          <button
+            onClick={() => goToSection(HOME_VIEW_TO_SECTION['my-team'])}
+            className="inline-flex items-center justify-center gap-3 px-8 py-3.5 font-logik-extended-bold text-sm uppercase tracking-widest text-white transition-all duration-300 relative overflow-hidden group whitespace-nowrap"
+            style={{
+              backgroundColor: primaryColor,
+              clipPath: 'polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px)',
+            }}
+          >
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
+            <Trophy className="h-4 w-4 relative z-10" />
+            <span className="relative z-10">{t('hero.ctaMyTeam')}</span>
+          </button>
+        ) : (
+          <Link
+            href={getTournamentPath('/register')}
+            className="inline-flex items-center justify-center gap-3 px-8 py-3.5 font-logik-extended-bold text-sm uppercase tracking-widest text-white transition-all duration-300 relative overflow-hidden group whitespace-nowrap"
+            style={{
+              backgroundColor: primaryColor,
+              clipPath: 'polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px)',
+            }}
+          >
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
+            <Users className="h-4 w-4 relative z-10" />
+            <span className="relative z-10">{t('hero.ctaRegister')}</span>
+          </Link>
+        )}
+
+        <Link
+          href={tournament?.discordUrl || organizationConfig.defaults.discord}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center justify-center gap-3 px-8 py-3.5 font-logik-extended-bold text-sm uppercase tracking-widest bg-transparent text-[#5865F2] border border-[#5865F2]/50 hover:border-[#5865F2] hover:bg-[#5865F2]/10 transition-all duration-300 whitespace-nowrap"
+          style={{
+            clipPath: 'polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px)',
+          }}
+        >
+          <Image
+            src="/logos/pd2ih/dc-icon.png"
+            alt="Discord"
+            width={18}
+            height={18}
+            priority
+            className="relative z-10 w-[18px] h-[18px] object-contain"
+          />
+          <span className="relative z-10">{t('hero.ctaDiscord')}</span>
+        </Link>
+        {tournament?.trailerUrl && (
+          <Link
+            href={tournament.trailerUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center justify-center gap-3 px-8 py-3.5 font-logik-extended-bold text-sm uppercase tracking-widest bg-transparent text-[#FF0000] border border-[#FF0000]/50 hover:border-[#FF0000] hover:bg-[#FF0000]/10 transition-all duration-300 whitespace-nowrap"
+            style={{
+              clipPath: 'polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px)',
+            }}
+          >
+            <Youtube className="h-4 w-4 relative z-10" />
+            <span className="relative z-10">{t('hero.ctaTrailer')}</span>
+          </Link>
+        )}
+      </motion.div>
+      </div>
+
+      {/* Social media links */}
+      {(tournament?.discordUrl || tournament?.twitchUrl || tournament?.youtubeUrl || tournament?.instagramUrl || tournament?.tiktokUrl) && (
+        <div className="flex items-center justify-center gap-6 py-3">
+          {tournament?.discordUrl && (
+            <a href={tournament.discordUrl} target="_blank" rel="noopener noreferrer" aria-label="Discord"
+               className="transition-opacity hover:opacity-100 opacity-60" style={{ color: 'var(--tournament-secondary-text)' }}>
+              <HeroDiscordIcon className="h-7 w-7" />
+              <span className="sr-only">Discord</span>
+            </a>
+          )}
+          {tournament?.twitchUrl && (
+            <a href={tournament.twitchUrl} target="_blank" rel="noopener noreferrer" aria-label="Twitch"
+               className="transition-opacity hover:opacity-100 opacity-60" style={{ color: 'var(--tournament-secondary-text)' }}>
+              <HeroTwitchIcon className="h-7 w-7" />
+              <span className="sr-only">Twitch</span>
+            </a>
+          )}
+          {tournament?.youtubeUrl && (
+            <a href={tournament.youtubeUrl} target="_blank" rel="noopener noreferrer" aria-label="YouTube"
+               className="transition-opacity hover:opacity-100 opacity-60" style={{ color: 'var(--tournament-secondary-text)' }}>
+              <Youtube className="h-7 w-7" />
+              <span className="sr-only">YouTube</span>
+            </a>
+          )}
+          {tournament?.instagramUrl && (
+            <a href={tournament.instagramUrl} target="_blank" rel="noopener noreferrer" aria-label="Instagram"
+               className="transition-opacity hover:opacity-100 opacity-60" style={{ color: 'var(--tournament-secondary-text)' }}>
+              <HeroInstagramIcon className="h-7 w-7" />
+              <span className="sr-only">Instagram</span>
+            </a>
+          )}
+          {tournament?.tiktokUrl && (
+            <a href={tournament.tiktokUrl} target="_blank" rel="noopener noreferrer" aria-label="TikTok"
+               className="transition-opacity hover:opacity-100 opacity-60" style={{ color: 'var(--tournament-secondary-text)' }}>
+              <HeroTikTokIcon className="h-7 w-7" />
+              <span className="sr-only">TikTok</span>
+            </a>
+          )}
+        </div>
+      )}
+    </div>
+  );
+
+  // A panel's video. The panel's image stands in when there is no poster
+  // (reduced-motion / data-saver visitors see it instead of the video) and when
+  // the video can't load at all.
+  const renderPanelVideo = (
+    video: HeroSlotVideo,
+    fallbackPoster: string | undefined,
+    className: string,
+    fade?: readonly HeroVideoEdge[],
+  ) => (
+    <HeroVideo
+      src={video.url}
+      mobileSrc={video.mobileUrl}
+      poster={video.posterUrl || fallbackPoster}
+      fallbackImage={fallbackPoster}
+      crt={heroVideoCrt}
+      fade={fade}
+      className={className}
+    />
+  );
+
+  // Tournament logo (or name, or the logo panel's video) overlaid on full-bleed hero media.
+  const renderOverlayLogo = (extraClassName?: string, video?: HeroSlotVideo | null) => (
+    <div className="absolute inset-0 flex items-center justify-center z-10 pt-14 pb-4 pointer-events-none">
+      {video ? (
+        renderPanelVideo(video, logoUrl, 'aspect-video w-[min(90vw,calc(60vh*16/9))] sm:w-[min(48vw,calc(60vh*16/9))] pointer-events-auto')
+      ) : logoUrl ? (
+        <img
+          src={logoUrl}
+          alt={tournament.name}
+          className={cn('max-h-[72vh] 2k:max-h-[54vh] max-w-[63vw] sm:max-w-[48vw] lg:max-w-[42vw] w-auto object-contain pointer-events-auto', extraClassName)}
+        />
+      ) : (
+        <h1
+          className="text-4xl md:text-6xl font-logik-extended-bold uppercase tracking-tight text-center px-8 pointer-events-auto"
+          style={{ color: 'var(--tournament-title)' }}
+        >
+          {tournament.name}
+        </h1>
+      )}
+    </div>
+  );
 
   return (
     <div
@@ -587,10 +792,22 @@ export function TournamentHomePage() {
       >
 
         {/* ═══════════════════════════════════════════════════════════
-            VIEW 1: Hero — two layout variants (admin-selectable)
+            VIEW 1: Hero — three layout variants (admin-selectable)
            ═══════════════════════════════════════════════════════════ */}
         <FullScreenSection isActive={currentSection === 0} isMobile={isMobile} id="home-section-0">
-          {heroLayout === 'three-images' ? (
+          {heroLayout === 'video' && fullVideo ? (
+            /* ── Video layout ────────────────────────────────────────
+               Full-width looping video behind the centred logo. Its
+               edges fade into the page background (CSS mask), so it has
+               no hard frame against the navbar, sides or copy below.  */
+            <div className="h-full w-full flex flex-col pb-10">
+              <div className="relative flex-[7] min-h-0 w-full">
+                {renderPanelVideo(fullVideo, undefined, 'absolute inset-0')}
+                {renderOverlayLogo('drop-shadow-[0_6px_28px_rgba(0,0,0,0.65)]')}
+              </div>
+              {renderHeroCopy('px-4 sm:px-10 lg:px-20 xl:px-32 pt-4')}
+            </div>
+          ) : heroLayout === 'three-images' ? (
             /* ── Three-images layout ─────────────────────────────────
                Left image bleeds to the very left edge of the screen,
                tournament logo is centred, right image bleeds to the
@@ -603,9 +820,13 @@ export function TournamentHomePage() {
                   The logo is absolutely centred on top of both panels. */}
               <div className="relative flex-[7] min-h-0 w-full overflow-hidden">
 
-                {/* Left image — occupies the left half of the viewport */}
+                {/* Left panel — occupies the left half of the viewport. A video
+                    fades on every edge except the centre seam, so the halves
+                    still meet cleanly like images do. */}
                 <div className="absolute left-0 top-0 w-1/2 h-full overflow-hidden">
-                  {heroLeftImageUrl ? (
+                  {leftVideo ? (
+                    renderPanelVideo(leftVideo, heroLeftImageUrl, 'h-full w-full', ['left', 'top', 'bottom'])
+                  ) : heroLeftImageUrl ? (
                     <img
                       src={heroLeftImageUrl}
                       alt="Hero left"
@@ -616,9 +837,11 @@ export function TournamentHomePage() {
                   )}
                 </div>
 
-                {/* Right image — occupies the right half of the viewport */}
+                {/* Right panel — occupies the right half of the viewport */}
                 <div className="absolute right-0 top-0 w-1/2 h-full overflow-hidden">
-                  {heroRightImageUrl ? (
+                  {rightVideo ? (
+                    renderPanelVideo(rightVideo, heroRightImageUrl, 'h-full w-full', ['right', 'top', 'bottom'])
+                  ) : heroRightImageUrl ? (
                     <img
                       src={heroRightImageUrl}
                       alt="Hero right"
@@ -629,168 +852,32 @@ export function TournamentHomePage() {
                   )}
                 </div>
 
-                {/* Centre — tournament logo, overlaid and centred over both panels.
-                    pt-14 accounts for the navbar height so the logo appears
-                    visually centred in the visible (below-navbar) area. */}
-                <div className="absolute inset-0 flex items-center justify-center z-10 pt-14 pb-4 pointer-events-none">
-                  {logoUrl ? (
-                    <img
-                      src={logoUrl}
-                      alt={tournament.name}
-                      className="max-h-[72vh] 2k:max-h-[54vh] max-w-[63vw] sm:max-w-[48vw] lg:max-w-[42vw] w-auto object-contain pointer-events-auto"
-                    />
-                  ) : (
-                    <h1
-                      className="text-4xl md:text-6xl font-logik-extended-bold uppercase tracking-tight text-center px-8 pointer-events-auto"
-                      style={{ color: 'var(--tournament-title)' }}
-                    >
-                      {tournament.name}
-                    </h1>
-                  )}
-                </div>
+                {/* Centre — tournament logo (or its video), overlaid and centred
+                    over both panels. pt-14 accounts for the navbar height so it
+                    appears visually centred in the visible (below-navbar) area. */}
+                {renderOverlayLogo(undefined, logoVideo)}
               </div>
 
-              {/* Bottom ~35% — hero copy + CTAs + social (same as logo-promo layout) */}
-              <div className="flex-[3] flex flex-col min-h-0 px-4 sm:px-10 lg:px-20 xl:px-32 pt-4">
-                <div className="flex flex-col sm:flex-row flex-1 items-start sm:items-center gap-4 sm:gap-0">
-                  <motion.div
-                    className="flex-1 flex flex-col justify-center sm:pr-8 lg:pr-16"
-                    initial={{ opacity: 0, y: 16 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.7 }}
-                  >
-                    <h2
-                      className="text-3xl sm:text-4xl uppercase tracking-[0.15em] font-logik-extended-bold mb-2"
-                      style={{
-                        color: 'var(--tournament-heading)',
-                        fontFamily: theme?.headerFont ? `var(${theme.headerFont})` : undefined,
-                      }}
-                    >
-                      {tournament?.heroTitle || (isMmrLimited ? t('hero.mmrTitle') : t('hero.leagueTitle'))}
-                    </h2>
-                    <p
-                      className="text-sm sm:text-base lg:text-xl leading-relaxed font-medium border-l-2 pl-4"
-                      style={{ borderColor: primaryColor, color: 'var(--tournament-secondary-text)' }}
-                    >
-                      {tournament?.description || t('hero.subtitle')}
-                    </p>
-                  </motion.div>
-                  <motion.div
-                    className="flex-1 flex items-start sm:items-center justify-start gap-3 flex-wrap"
-                    initial={{ opacity: 0, y: 16 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.7, delay: 0.1 }}
-                  >
-                    {hasTeam ? (
-                      <button
-                        onClick={() => goToSection(HOME_VIEW_TO_SECTION['my-team'])}
-                        className="inline-flex items-center justify-center gap-3 px-8 py-3.5 font-logik-extended-bold text-sm uppercase tracking-widest text-white transition-all duration-300 relative overflow-hidden group whitespace-nowrap"
-                        style={{
-                          backgroundColor: primaryColor,
-                          clipPath: 'polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px)',
-                        }}
-                      >
-                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
-                        <Trophy className="h-4 w-4 relative z-10" />
-                        <span className="relative z-10">{t('hero.ctaMyTeam')}</span>
-                      </button>
-                    ) : (
-                      <Link
-                        href={getTournamentPath('/register')}
-                        className="inline-flex items-center justify-center gap-3 px-8 py-3.5 font-logik-extended-bold text-sm uppercase tracking-widest text-white transition-all duration-300 relative overflow-hidden group whitespace-nowrap"
-                        style={{
-                          backgroundColor: primaryColor,
-                          clipPath: 'polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px)',
-                        }}
-                      >
-                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
-                        <Users className="h-4 w-4 relative z-10" />
-                        <span className="relative z-10">{t('hero.ctaRegister')}</span>
-                      </Link>
-                    )}
-                    <Link
-                      href={tournament?.discordUrl || organizationConfig.defaults.discord}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center justify-center gap-3 px-8 py-3.5 font-logik-extended-bold text-sm uppercase tracking-widest bg-transparent text-[#5865F2] border border-[#5865F2]/50 hover:border-[#5865F2] hover:bg-[#5865F2]/10 transition-all duration-300 whitespace-nowrap"
-                      style={{
-                        clipPath: 'polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px)',
-                      }}
-                    >
-                      <Image
-                        src="/logos/pd2ih/dc-icon.png"
-                        alt="Discord"
-                        width={18}
-                        height={18}
-                        priority
-                        className="relative z-10 w-[18px] h-[18px] object-contain"
-                      />
-                      <span className="relative z-10">{t('hero.ctaDiscord')}</span>
-                    </Link>
-                    {tournament?.trailerUrl && (
-                      <Link
-                        href={tournament.trailerUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center justify-center gap-3 px-8 py-3.5 font-logik-extended-bold text-sm uppercase tracking-widest bg-transparent text-[#FF0000] border border-[#FF0000]/50 hover:border-[#FF0000] hover:bg-[#FF0000]/10 transition-all duration-300 whitespace-nowrap"
-                        style={{
-                          clipPath: 'polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px)',
-                        }}
-                      >
-                        <Youtube className="h-4 w-4 relative z-10" />
-                        <span className="relative z-10">{t('hero.ctaTrailer')}</span>
-                      </Link>
-                    )}
-                  </motion.div>
-                </div>
-                {(tournament?.discordUrl || tournament?.twitchUrl || tournament?.youtubeUrl || tournament?.instagramUrl || tournament?.tiktokUrl) && (
-                  <div className="flex items-center justify-center gap-6 py-3">
-                    {tournament?.discordUrl && (
-                      <a href={tournament.discordUrl} target="_blank" rel="noopener noreferrer" aria-label="Discord"
-                         className="transition-opacity hover:opacity-100 opacity-60" style={{ color: 'var(--tournament-secondary-text)' }}>
-                        <HeroDiscordIcon className="h-7 w-7" /><span className="sr-only">Discord</span>
-                      </a>
-                    )}
-                    {tournament?.twitchUrl && (
-                      <a href={tournament.twitchUrl} target="_blank" rel="noopener noreferrer" aria-label="Twitch"
-                         className="transition-opacity hover:opacity-100 opacity-60" style={{ color: 'var(--tournament-secondary-text)' }}>
-                        <HeroTwitchIcon className="h-7 w-7" /><span className="sr-only">Twitch</span>
-                      </a>
-                    )}
-                    {tournament?.youtubeUrl && (
-                      <a href={tournament.youtubeUrl} target="_blank" rel="noopener noreferrer" aria-label="YouTube"
-                         className="transition-opacity hover:opacity-100 opacity-60" style={{ color: 'var(--tournament-secondary-text)' }}>
-                        <Youtube className="h-7 w-7" /><span className="sr-only">YouTube</span>
-                      </a>
-                    )}
-                    {tournament?.instagramUrl && (
-                      <a href={tournament.instagramUrl} target="_blank" rel="noopener noreferrer" aria-label="Instagram"
-                         className="transition-opacity hover:opacity-100 opacity-60" style={{ color: 'var(--tournament-secondary-text)' }}>
-                        <HeroInstagramIcon className="h-7 w-7" /><span className="sr-only">Instagram</span>
-                      </a>
-                    )}
-                    {tournament?.tiktokUrl && (
-                      <a href={tournament.tiktokUrl} target="_blank" rel="noopener noreferrer" aria-label="TikTok"
-                         className="transition-opacity hover:opacity-100 opacity-60" style={{ color: 'var(--tournament-secondary-text)' }}>
-                        <HeroTikTokIcon className="h-7 w-7" /><span className="sr-only">TikTok</span>
-                      </a>
-                    )}
-                  </div>
-                )}
-              </div>
+              {/* Bottom ~35% — hero copy + CTAs + social */}
+              {renderHeroCopy('px-4 sm:px-10 lg:px-20 xl:px-32 pt-4')}
             </div>
           ) : (
             /* ── Logo + Promo layout (default) ───────────────────────
                Tournament logo on the left, promotional image on the
-               right, hero copy/CTAs below.                            */
+               right (either may be a video), hero copy/CTAs below.
+               Video boxes are sized from width with a fixed 16:9 ratio,
+               capped by the same 48vh the images use, so nothing shifts
+               while a video loads.                                    */
             <div className="h-full w-full flex flex-col px-4 sm:px-10 lg:px-20 xl:px-32 pt-4 sm:pt-20 pb-10">
 
-              {/* Top ~65% — Logo (left) + Promo image (right) */}
+              {/* Top ~65% — Logo (left) + Promo media (right) */}
               <div className="flex flex-col sm:flex-row flex-[7] items-center min-h-0 gap-0">
 
                 {/* Tournament Logo — left half */}
                 <div className="flex-1 flex items-center justify-center min-h-0 h-full py-4">
-                  {logoUrl ? (
+                  {logoVideo ? (
+                    renderPanelVideo(logoVideo, logoUrl, PROMO_PANEL_VIDEO_BOX)
+                  ) : logoUrl ? (
                     <img
                       src={logoUrl}
                       alt={tournament.name}
@@ -806,9 +893,11 @@ export function TournamentHomePage() {
                   )}
                 </div>
 
-                {/* Promotional image — right half */}
+                {/* Promotional media — right half */}
                 <div className="flex-1 flex items-center justify-center min-h-0 h-full py-4">
-                  {promoImageUrl ? (
+                  {promoVideo ? (
+                    renderPanelVideo(promoVideo, promoImageUrl, PROMO_PANEL_VIDEO_BOX)
+                  ) : promoImageUrl ? (
                     <img
                       src={promoImageUrl}
                       alt="Obraz promocyjny"
@@ -818,150 +907,8 @@ export function TournamentHomePage() {
                 </div>
               </div>
 
-              {/* Bottom ~35% — text (left col) + buttons (right col) */}
-              <div className="flex-[3] flex flex-col min-h-0">
-                <div className="flex flex-col sm:flex-row flex-1 items-start sm:items-center gap-4 sm:gap-0">
-
-                {/* Left column — subtitle + description */}
-                <motion.div
-                  className="flex-1 flex flex-col justify-center sm:pr-8 lg:pr-16"
-                  initial={{ opacity: 0, y: 16 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.7 }}
-                >
-                  <h2
-                    className="text-3xl sm:text-4xl uppercase tracking-[0.15em] font-logik-extended-bold mb-2"
-                    style={{
-                      color: 'var(--tournament-heading)',
-                      fontFamily: theme?.headerFont ? `var(${theme.headerFont})` : undefined,
-                    }}
-                  >
-                    {tournament?.heroTitle || (isMmrLimited ? t('hero.mmrTitle') : t('hero.leagueTitle'))}
-                  </h2>
-
-                  <p
-                    className="text-sm sm:text-base lg:text-xl leading-relaxed font-medium border-l-2 pl-4"
-                    style={{
-                      borderColor: primaryColor,
-                      color: 'var(--tournament-secondary-text)',
-                    }}
-                  >
-                    {tournament?.description || t('hero.subtitle')}
-                  </p>
-                </motion.div>
-
-                {/* Right column — CTA buttons */}
-                <motion.div
-                  className="flex-1 flex items-start sm:items-center justify-start gap-3 flex-wrap"
-                  initial={{ opacity: 0, y: 16 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.7, delay: 0.1 }}
-                >
-                  {hasTeam ? (
-                    <button
-                      onClick={() => goToSection(HOME_VIEW_TO_SECTION['my-team'])}
-                      className="inline-flex items-center justify-center gap-3 px-8 py-3.5 font-logik-extended-bold text-sm uppercase tracking-widest text-white transition-all duration-300 relative overflow-hidden group whitespace-nowrap"
-                      style={{
-                        backgroundColor: primaryColor,
-                        clipPath: 'polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px)',
-                      }}
-                    >
-                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
-                      <Trophy className="h-4 w-4 relative z-10" />
-                      <span className="relative z-10">{t('hero.ctaMyTeam')}</span>
-                    </button>
-                  ) : (
-                    <Link
-                      href={getTournamentPath('/register')}
-                      className="inline-flex items-center justify-center gap-3 px-8 py-3.5 font-logik-extended-bold text-sm uppercase tracking-widest text-white transition-all duration-300 relative overflow-hidden group whitespace-nowrap"
-                      style={{
-                        backgroundColor: primaryColor,
-                        clipPath: 'polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px)',
-                      }}
-                    >
-                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
-                      <Users className="h-4 w-4 relative z-10" />
-                      <span className="relative z-10">{t('hero.ctaRegister')}</span>
-                    </Link>
-                  )}
-
-                  <Link
-                    href={tournament?.discordUrl || organizationConfig.defaults.discord}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center justify-center gap-3 px-8 py-3.5 font-logik-extended-bold text-sm uppercase tracking-widest bg-transparent text-[#5865F2] border border-[#5865F2]/50 hover:border-[#5865F2] hover:bg-[#5865F2]/10 transition-all duration-300 whitespace-nowrap"
-                    style={{
-                      clipPath: 'polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px)',
-                    }}
-                  >
-                    <Image
-                      src="/logos/pd2ih/dc-icon.png"
-                      alt="Discord"
-                      width={18}
-                      height={18}
-                      priority
-                      className="relative z-10 w-[18px] h-[18px] object-contain"
-                    />
-                    <span className="relative z-10">{t('hero.ctaDiscord')}</span>
-                  </Link>
-                  {tournament?.trailerUrl && (
-                    <Link
-                      href={tournament.trailerUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center justify-center gap-3 px-8 py-3.5 font-logik-extended-bold text-sm uppercase tracking-widest bg-transparent text-[#FF0000] border border-[#FF0000]/50 hover:border-[#FF0000] hover:bg-[#FF0000]/10 transition-all duration-300 whitespace-nowrap"
-                      style={{
-                        clipPath: 'polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px)',
-                      }}
-                    >
-                      <Youtube className="h-4 w-4 relative z-10" />
-                      <span className="relative z-10">{t('hero.ctaTrailer')}</span>
-                    </Link>
-                  )}
-                </motion.div>
-                </div>
-
-                {/* Social media links */}
-                {(tournament?.discordUrl || tournament?.twitchUrl || tournament?.youtubeUrl || tournament?.instagramUrl || tournament?.tiktokUrl) && (
-                  <div className="flex items-center justify-center gap-6 py-3">
-                    {tournament?.discordUrl && (
-                      <a href={tournament.discordUrl} target="_blank" rel="noopener noreferrer" aria-label="Discord"
-                         className="transition-opacity hover:opacity-100 opacity-60" style={{ color: 'var(--tournament-secondary-text)' }}>
-                        <HeroDiscordIcon className="h-7 w-7" />
-                        <span className="sr-only">Discord</span>
-                      </a>
-                    )}
-                    {tournament?.twitchUrl && (
-                      <a href={tournament.twitchUrl} target="_blank" rel="noopener noreferrer" aria-label="Twitch"
-                         className="transition-opacity hover:opacity-100 opacity-60" style={{ color: 'var(--tournament-secondary-text)' }}>
-                        <HeroTwitchIcon className="h-7 w-7" />
-                        <span className="sr-only">Twitch</span>
-                      </a>
-                    )}
-                    {tournament?.youtubeUrl && (
-                      <a href={tournament.youtubeUrl} target="_blank" rel="noopener noreferrer" aria-label="YouTube"
-                         className="transition-opacity hover:opacity-100 opacity-60" style={{ color: 'var(--tournament-secondary-text)' }}>
-                        <Youtube className="h-7 w-7" />
-                        <span className="sr-only">YouTube</span>
-                      </a>
-                    )}
-                    {tournament?.instagramUrl && (
-                      <a href={tournament.instagramUrl} target="_blank" rel="noopener noreferrer" aria-label="Instagram"
-                         className="transition-opacity hover:opacity-100 opacity-60" style={{ color: 'var(--tournament-secondary-text)' }}>
-                        <HeroInstagramIcon className="h-7 w-7" />
-                        <span className="sr-only">Instagram</span>
-                      </a>
-                    )}
-                    {tournament?.tiktokUrl && (
-                      <a href={tournament.tiktokUrl} target="_blank" rel="noopener noreferrer" aria-label="TikTok"
-                         className="transition-opacity hover:opacity-100 opacity-60" style={{ color: 'var(--tournament-secondary-text)' }}>
-                        <HeroTikTokIcon className="h-7 w-7" />
-                        <span className="sr-only">TikTok</span>
-                      </a>
-                    )}
-                  </div>
-                )}
-              </div>
+              {/* Bottom ~35% — text (left col) + buttons (right col) + social */}
+              {renderHeroCopy()}
 
             </div>
           )}
