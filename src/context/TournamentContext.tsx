@@ -135,6 +135,10 @@ export function TournamentProvider({ children, initialTournamentSlug }: Tourname
   // Helper to build tournament-aware paths
   const getTournamentPath = useCallback((path: string): string => {
     if (!tournamentSlug) return path;
+    // The tournament home is `/slug`, never `/slug/`: the trailing-slash form
+    // gets a 308 to `/slug`, and Next's client-side navigation doesn't survive
+    // that redirect (clicking a link to home 404'd until a hard refresh).
+    if (path === '' || path === '/') return `/${tournamentSlug}`;
     const cleanPath = path.startsWith('/') ? path : `/${path}`;
     return `/${tournamentSlug}${cleanPath}`;
   }, [tournamentSlug]);

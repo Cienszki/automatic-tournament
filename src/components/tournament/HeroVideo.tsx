@@ -86,7 +86,11 @@ export function HeroVideo({ src, mobileSrc, poster, fallbackImage, crt, fade = A
   }, [playSrc]);
 
   return (
-    <div ref={wrapperRef} className={cn('hero-video', className)} style={fadeStyle}>
+    <div
+      ref={wrapperRef}
+      className={cn('hero-video', fade.length === ALL_EDGES.length && 'hero-video--all-edges', className)}
+      style={fadeStyle}
+    >
       {play && !failed ? (
         <video
           ref={videoRef}

@@ -22,6 +22,7 @@ import {
 import { cn } from '@/lib/utils';
 import { FontManagement } from '@/components/admin/FontManagement';
 import type { CustomFont } from '@/components/admin/FontManagement';
+import { OXANIUM_FONT_OPTIONS, BUILT_IN_LOCAL_FONT_IDS } from '@/lib/dynamic-fonts';
 import type { HeroLayout, HeroMediaSlot, HeroSlotMedia, NavbarSponsorSlide, TournamentType } from '@/types/tournament';
 import { HeroPanelsEditor } from '@/components/admin/HeroPanelsEditor';
 import { bunnyVideoIds, cleanHeroMedia } from '@/lib/hero-video';
@@ -214,6 +215,8 @@ export function GeneralTab() {
   const [readableFont, setReadableFont] = useState(theme.readableFont || 'geist');
   const [rulesContentFont, setRulesContentFont] = useState(theme.rulesContentFont || 'geist');
   const [customFonts, setCustomFonts] = useState<CustomFont[]>(tournament?.customFonts || []);
+  // Oxanium is offered as built-in options; hide any that were also added as custom fonts.
+  const selectableCustomFonts = customFonts.filter(font => !BUILT_IN_LOCAL_FONT_IDS.has(font.id));
 
   // Admin management state
   const [searchEmail, setSearchEmail] = useState('');
@@ -2180,7 +2183,10 @@ export function GeneralTab() {
                       <SelectItem value="logik">Logik</SelectItem>
                       <SelectItem value="geist">Geist Sans</SelectItem>
                       <SelectItem value="inter">Inter</SelectItem>
-                      {customFonts.length > 0 && customFonts.map(font => (
+                      {OXANIUM_FONT_OPTIONS.map(option => (
+                        <SelectItem key={option.id} value={option.id}>{option.label}</SelectItem>
+                      ))}
+                      {selectableCustomFonts.length > 0 && selectableCustomFonts.map(font => (
                         <SelectItem key={font.id} value={font.id}>
                           {font.family}
                         </SelectItem>
@@ -2217,12 +2223,15 @@ export function GeneralTab() {
                   <SelectItem value="logik">Logik Extended Bold</SelectItem>
                   <SelectItem value="geist">Geist Sans</SelectItem>
                   <SelectItem value="inter">Inter</SelectItem>
-                  {customFonts.length > 0 && (
+                  {OXANIUM_FONT_OPTIONS.map(option => (
+                    <SelectItem key={option.id} value={option.id}>{option.label}</SelectItem>
+                  ))}
+                  {selectableCustomFonts.length > 0 && (
                     <>
                       <div className="px-2 py-1.5 text-xs text-muted-foreground font-logik-extended-bold uppercase">
                         Niestandardowe
                       </div>
-                      {customFonts.map(font => (
+                      {selectableCustomFonts.map(font => (
                         <SelectItem key={font.id} value={font.id}>
                           {font.family}
                         </SelectItem>
@@ -2244,12 +2253,15 @@ export function GeneralTab() {
                   <SelectItem value="logik">Logik</SelectItem>
                   <SelectItem value="geist">Geist Sans</SelectItem>
                   <SelectItem value="inter">Inter</SelectItem>
-                  {customFonts.length > 0 && (
+                  {OXANIUM_FONT_OPTIONS.map(option => (
+                    <SelectItem key={option.id} value={option.id}>{option.label}</SelectItem>
+                  ))}
+                  {selectableCustomFonts.length > 0 && (
                     <>
                       <div className="px-2 py-1.5 text-xs text-muted-foreground font-logik-extended-bold uppercase">
                         Niestandardowe
                       </div>
-                      {customFonts.map(font => (
+                      {selectableCustomFonts.map(font => (
                         <SelectItem key={font.id} value={font.id}>
                           {font.family}
                         </SelectItem>
@@ -2270,13 +2282,16 @@ export function GeneralTab() {
                 <SelectContent>
                   <SelectItem value="geist">Geist Sans (zalecane)</SelectItem>
                   <SelectItem value="inter">Inter</SelectItem>
+                  {OXANIUM_FONT_OPTIONS.map(option => (
+                    <SelectItem key={option.id} value={option.id}>{option.label}</SelectItem>
+                  ))}
                   <SelectItem value="logik">Logik</SelectItem>
-                  {customFonts.length > 0 && (
+                  {selectableCustomFonts.length > 0 && (
                     <>
                       <div className="px-2 py-1.5 text-xs text-muted-foreground font-logik-extended-bold uppercase">
                         Niestandardowe
                       </div>
-                      {customFonts.map(font => (
+                      {selectableCustomFonts.map(font => (
                         <SelectItem key={font.id} value={font.id}>
                           {font.family}
                         </SelectItem>
@@ -2297,13 +2312,16 @@ export function GeneralTab() {
                 <SelectContent>
                   <SelectItem value="geist">Geist Sans (zalecane)</SelectItem>
                   <SelectItem value="inter">Inter</SelectItem>
+                  {OXANIUM_FONT_OPTIONS.map(option => (
+                    <SelectItem key={option.id} value={option.id}>{option.label}</SelectItem>
+                  ))}
                   <SelectItem value="logik">Logik</SelectItem>
-                  {customFonts.length > 0 && (
+                  {selectableCustomFonts.length > 0 && (
                     <>
                       <div className="px-2 py-1.5 text-xs text-muted-foreground font-logik-extended-bold uppercase">
                         Niestandardowe
                       </div>
-                      {customFonts.map(font => (
+                      {selectableCustomFonts.map(font => (
                         <SelectItem key={font.id} value={font.id}>
                           {font.family}
                         </SelectItem>
@@ -2552,8 +2570,9 @@ export function GeneralTab() {
         </CardContent>
       </Card>
 
-      {/* Platform-wide creator allowlist — renders only for super admins. */}
-      <TournamentCreatorsManager />
+      {/* Platform-wide creator allowlist — super admins only (the component
+          also gates itself, and its API routes require super admin). */}
+      {isSuperAdmin && <TournamentCreatorsManager />}
 
       {/* Admin Management */}
       <Card className="border-0 shadow-lg bg-card/50 backdrop-blur-sm">

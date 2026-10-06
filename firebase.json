@@ -25,6 +25,15 @@
         ]
       },
       {
+        "source": "**/*.@(woff|woff2|ttf|otf)",
+        "headers": [
+          {
+            "key": "Access-Control-Allow-Origin",
+            "value": "*"
+          }
+        ]
+      },
+      {
         "source": "**/*.@(jpg|jpeg|gif|png|webp|avif|svg|ico)",
         "headers": [
           {

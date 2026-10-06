@@ -12,6 +12,7 @@ import { collection, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
 import { ChronologicalCarousel } from './ChronologicalCarousel';
+import { SwissRoundCarousel } from './SwissRoundCarousel';
 
 interface MatchdayCarouselProps {
     matches: Match[];
@@ -542,6 +543,8 @@ export function SchedulePageLayout({ matches }: SchedulePageLayoutProps): React.
       {matches.length > 0 ? (
         tournament?.type === 'league' ? (
           <MatchdayCarousel matches={matches} />
+        ) : tournament?.type === 'swiss' ? (
+          <SwissRoundCarousel matches={matches} />
         ) : (
           <ChronologicalCarousel matches={matches} />
         )

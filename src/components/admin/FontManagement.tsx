@@ -136,6 +136,14 @@ const LOCAL_FONTS: CustomFont[] = [
     path: '/fonts/neonderthaw/Neonderthaw-Regular.ttf',
   },
   {
+    id: 'local-oxanium',
+    family: 'Oxanium',
+    type: 'local',
+    variants: ['200', '300', '400', '500', '600', '700', '800'],
+    category: 'display',
+    path: '/fonts/oxanium',
+  },
+  {
     id: 'local-space-mono',
     family: 'Space Mono',
     type: 'local',

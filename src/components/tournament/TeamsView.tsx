@@ -1973,7 +1973,7 @@ export function TeamsView({ teams, highlightedTeamId, onTeamHighlightConsumed }:
   }
 
   return (
-    <div className="h-full w-full flex flex-col px-4 sm:px-8 lg:px-12 py-4 overflow-hidden">
+    <div className="h-full w-full flex flex-col site-gutter py-4 overflow-hidden">
       {/* Section header */}
       <div className="text-center mb-3 shrink-0">
         <h2

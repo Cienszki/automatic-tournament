@@ -61,13 +61,16 @@ export default function SchedulePage() {
               isPlayoff: data.isPlayoff,
               playoffCode: data.playoffCode,
               playoff_round: data.playoff_round,
+              isSwissByeMatch: data.isSwissByeMatch,
             } as unknown as Match;
           });
         }
 
-        const validMatches = fetchedMatches.filter(
-          m => m.scheduledFor && m.schedulingStatus !== 'unscheduled',
-        );
+        // A Swiss round shows every match, scheduled or not ("TBD"); other
+        // formats list only matches with a confirmed date.
+        const validMatches = tournament?.type === 'swiss'
+          ? fetchedMatches
+          : fetchedMatches.filter(m => m.scheduledFor && m.schedulingStatus !== 'unscheduled');
 
         setMatches(validMatches);
 
@@ -79,7 +82,7 @@ export default function SchedulePage() {
     };
 
     loadMatches();
-  }, [isLegacyTournament, tournament?.id]);
+  }, [isLegacyTournament, tournament?.id, tournament?.type]);
 
   if (loading) {
     return <LoadingScreen />;

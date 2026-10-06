@@ -497,7 +497,7 @@ export function StatsPageLayout({ tournamentStats, playerStats, teamStats }: Sta
   const ts = tournamentStats;
 
   return (
-    <div className="max-w-[1600px] mx-auto px-3 sm:px-6 lg:px-12 py-5 sm:py-8 space-y-6 md:space-y-10">
+    <div className="site-container py-5 sm:py-8 space-y-6 md:space-y-10">
 
       {/* Hero */}
       <motion.div

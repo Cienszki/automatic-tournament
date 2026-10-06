@@ -6,10 +6,13 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Custom Fonts */
+/* Custom Fonts
+   ?v=N busts the browser cache for these year-long immutable files; bump it
+   when the files or their headers change (v=2: CORS header added for the
+   cross-origin load from dota2inhouse.pl). */
 @font-face {
   font-family: 'Logik';
-  src: url('/fonts/logik/logik.ttf') format('truetype');
+  src: url('/fonts/logik/logik.ttf?v=2') format('truetype');
   font-weight: 400;
   font-style: normal;
   font-display: swap;
@@ -17,7 +20,7 @@
 
 @font-face {
   font-family: 'Logik';
-  src: url('/fonts/logik/Logik-ExtendedBold.ttf') format('truetype');
+  src: url('/fonts/logik/Logik-ExtendedBold.ttf?v=2') format('truetype');
   font-weight: 700;
   font-style: normal;
   font-display: swap;
@@ -25,7 +28,7 @@
 
 @font-face {
   font-family: 'Logik 2';
-  src: url('/fonts/logik/logik-2.ttf') format('truetype');
+  src: url('/fonts/logik/logik-2.ttf?v=2') format('truetype');
   font-weight: 400;
   font-style: normal;
   font-display: swap;
@@ -33,7 +36,7 @@
 
 @font-face {
   font-family: 'Logik 3';
-  src: url('/fonts/logik/logik-3.ttf') format('truetype');
+  src: url('/fonts/logik/logik-3.ttf?v=2') format('truetype');
   font-weight: 400;
   font-style: normal;
   font-display: swap;
@@ -41,7 +44,7 @@
 
 @font-face {
   font-family: 'Logik 4';
-  src: url('/fonts/logik/logik-4.ttf') format('truetype');
+  src: url('/fonts/logik/logik-4.ttf?v=2') format('truetype');
   font-weight: 400;
   font-style: normal;
   font-display: swap;
@@ -49,7 +52,7 @@
 
 @font-face {
   font-family: 'Logik 6';
-  src: url('/fonts/logik/logik-6.ttf') format('truetype');
+  src: url('/fonts/logik/logik-6.ttf?v=2') format('truetype');
   font-weight: 400;
   font-style: normal;
   font-display: swap;
@@ -57,7 +60,7 @@
 
 @font-face {
   font-family: 'Logik Extended 6';
-  src: url('/fonts/logik/logik-extended-6.ttf') format('truetype');
+  src: url('/fonts/logik/logik-extended-6.ttf?v=2') format('truetype');
   font-weight: 400;
   font-style: normal;
   font-display: swap;
@@ -65,7 +68,7 @@
 
 @font-face {
   font-family: 'Logik Extended 7';
-  src: url('/fonts/logik/logik-extended-7.ttf') format('truetype');
+  src: url('/fonts/logik/logik-extended-7.ttf?v=2') format('truetype');
   font-weight: 400;
   font-style: normal;
   font-display: swap;
@@ -73,7 +76,7 @@
 
 @font-face {
   font-family: 'Logik Extended 8';
-  src: url('/fonts/logik/logik-extended-8.ttf') format('truetype');
+  src: url('/fonts/logik/logik-extended-8.ttf?v=2') format('truetype');
   font-weight: 400;
   font-style: normal;
   font-display: swap;
@@ -81,7 +84,7 @@
 
 @font-face {
   font-family: 'Logik Extended 9';
-  src: url('/fonts/logik/logik-extended-9.ttf') format('truetype');
+  src: url('/fonts/logik/logik-extended-9.ttf?v=2') format('truetype');
   font-weight: 400;
   font-style: normal;
   font-display: swap;
@@ -89,7 +92,7 @@
 
 @font-face {
   font-family: 'Logik Extended Bold';
-  src: url('/fonts/logik/Logik-ExtendedBold.ttf') format('truetype');
+  src: url('/fonts/logik/Logik-ExtendedBold.ttf?v=2') format('truetype');
   font-weight: 700;
   font-style: normal;
   font-display: swap;
@@ -97,7 +100,7 @@
 
 @font-face {
   font-family: 'Logik Wide Black';
-  src: url('/fonts/logik/Logik-WideBlack.ttf') format('truetype');
+  src: url('/fonts/logik/Logik-WideBlack.ttf?v=2') format('truetype');
   font-weight: 900;
   font-style: normal;
   font-display: swap;
@@ -105,7 +108,7 @@
 
 @font-face {
   font-family: 'Space Mono';
-  src: url('/fonts/space-mono/SpaceMono-Regular.ttf') format('truetype');
+  src: url('/fonts/space-mono/SpaceMono-Regular.ttf?v=2') format('truetype');
   font-weight: 400;
   font-style: normal;
   font-display: swap;
@@ -113,7 +116,7 @@
 
 @font-face {
   font-family: 'Space Mono';
-  src: url('/fonts/space-mono/SpaceMono-Bold.ttf') format('truetype');
+  src: url('/fonts/space-mono/SpaceMono-Bold.ttf?v=2') format('truetype');
   font-weight: 700;
   font-style: normal;
   font-display: swap;
@@ -121,7 +124,7 @@
 
 @font-face {
   font-family: 'Neonderthaw';
-  src: url('/fonts/neonderthaw/Neonderthaw-Regular.ttf') format('truetype');
+  src: url('/fonts/neonderthaw/Neonderthaw-Regular.ttf?v=2') format('truetype');
   font-weight: 400;
   font-style: normal;
   font-display: swap;
@@ -129,7 +132,7 @@
 
 @font-face {
   font-family: 'Tilt Neon';
-  src: url('/fonts/tilt-neon/TiltNeon-Regular-VariableFont_XROT,YROT.ttf') format('truetype');
+  src: url('/fonts/tilt-neon/TiltNeon-Regular-VariableFont_XROT,YROT.ttf?v=2') format('truetype');
   font-weight: 400;
   font-style: normal;
   font-display: swap;
@@ -137,8 +140,123 @@
 
 @font-face {
   font-family: 'Mitchell';
-  src: url('/fonts/mitchell/Mitchell.otf') format('opentype');
+  src: url('/fonts/mitchell/Mitchell.otf?v=2') format('opentype');
   font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Oxanium';
+  src: url('/fonts/oxanium/Oxanium-ExtraLight.ttf?v=2') format('truetype');
+  font-weight: 200;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Oxanium';
+  src: url('/fonts/oxanium/Oxanium-Light.ttf?v=2') format('truetype');
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Oxanium';
+  src: url('/fonts/oxanium/Oxanium-Regular.ttf?v=2') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Oxanium';
+  src: url('/fonts/oxanium/Oxanium-Medium.ttf?v=2') format('truetype');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Oxanium';
+  src: url('/fonts/oxanium/Oxanium-SemiBold.ttf?v=2') format('truetype');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Oxanium';
+  src: url('/fonts/oxanium/Oxanium-Bold.ttf?v=2') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Oxanium';
+  src: url('/fonts/oxanium/Oxanium-ExtraBold.ttf?v=2') format('truetype');
+  font-weight: 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Oxanium pinned to one file each (admin options "Oxanium Light" etc.). The
+   100-900 range makes the file serve every requested weight, so a bold heading
+   keeps this weight instead of the browser faking a heavier one. */
+@font-face {
+  font-family: 'Oxanium ExtraLight';
+  src: url('/fonts/oxanium/Oxanium-ExtraLight.ttf?v=2') format('truetype');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Oxanium Light';
+  src: url('/fonts/oxanium/Oxanium-Light.ttf?v=2') format('truetype');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Oxanium Regular';
+  src: url('/fonts/oxanium/Oxanium-Regular.ttf?v=2') format('truetype');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Oxanium Medium';
+  src: url('/fonts/oxanium/Oxanium-Medium.ttf?v=2') format('truetype');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Oxanium SemiBold';
+  src: url('/fonts/oxanium/Oxanium-SemiBold.ttf?v=2') format('truetype');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Oxanium Bold';
+  src: url('/fonts/oxanium/Oxanium-Bold.ttf?v=2') format('truetype');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Oxanium ExtraBold';
+  src: url('/fonts/oxanium/Oxanium-ExtraBold.ttf?v=2') format('truetype');
+  font-weight: 100 900;
   font-style: normal;
   font-display: swap;
 }
@@ -818,6 +936,33 @@ body {
    Two ramps (x and y) are intersected so all four edges dissolve into
    whatever is behind — the tournament background image included, which is
    why this can't be baked into the video file (MP4 has no alpha). */
+/* Site-wide content column: the navbar and every home-page view use it, so the
+   navbar logo and the content below it share the same left/right edges on every
+   view and screen size. Full-bleed backgrounds and videos stay outside it.
+   In @layer components so a utility on the element (e.g. py-*) still applies. */
+:root {
+  --site-max: 1760px;
+  --site-gutter: 1rem;
+}
+@media (min-width: 640px) { :root { --site-gutter: 1.5rem; } }
+/* No lg step: 1024–1280px is where the navbar labels appear and are tight. */
+@media (min-width: 1280px) { :root { --site-gutter: 3rem; } }
+
+@layer components {
+  .site-container {
+    width: 100%;
+    max-width: var(--site-max);
+    margin-inline: auto;
+    padding-inline: var(--site-gutter);
+  }
+  /* Same content edges as .site-container, but the element itself stays full
+     width — for scroll containers, whose scrollbar should sit at the screen
+     edge rather than at the edge of the content column. */
+  .site-gutter {
+    padding-inline: max(var(--site-gutter), calc((100% - var(--site-max)) / 2 + var(--site-gutter)));
+  }
+}
+
 /* In @layer components so Tailwind utilities on the element (absolute,
    inset-0, aspect-video, w-*) win over the position/size set here. */
 @layer components {
@@ -827,56 +972,51 @@ body {
     --hero-fade-right: 14%;
     --hero-fade-top: 16%;
     --hero-fade-bottom: 16%;
+    /* The ramps live in custom properties so the per-edge overrides above
+       (set inline on this same element) resolve into them. */
+    --hero-mask-x: linear-gradient(to right,
+        transparent 0,
+        rgb(0 0 0 / 0.16) calc(var(--hero-fade-left) * 0.25),
+        rgb(0 0 0 / 0.5) calc(var(--hero-fade-left) * 0.5),
+        rgb(0 0 0 / 0.84) calc(var(--hero-fade-left) * 0.75),
+        #000 var(--hero-fade-left),
+        #000 calc(100% - var(--hero-fade-right)),
+        rgb(0 0 0 / 0.84) calc(100% - var(--hero-fade-right) * 0.75),
+        rgb(0 0 0 / 0.5) calc(100% - var(--hero-fade-right) * 0.5),
+        rgb(0 0 0 / 0.16) calc(100% - var(--hero-fade-right) * 0.25),
+        transparent 100%);
+    --hero-mask-y: linear-gradient(to bottom,
+        transparent 0,
+        rgb(0 0 0 / 0.16) calc(var(--hero-fade-top) * 0.25),
+        rgb(0 0 0 / 0.5) calc(var(--hero-fade-top) * 0.5),
+        rgb(0 0 0 / 0.84) calc(var(--hero-fade-top) * 0.75),
+        #000 var(--hero-fade-top),
+        #000 calc(100% - var(--hero-fade-bottom)),
+        rgb(0 0 0 / 0.84) calc(100% - var(--hero-fade-bottom) * 0.75),
+        rgb(0 0 0 / 0.5) calc(100% - var(--hero-fade-bottom) * 0.5),
+        rgb(0 0 0 / 0.16) calc(100% - var(--hero-fade-bottom) * 0.25),
+        transparent 100%);
+    /* No-op by default; see .hero-video--all-edges. */
+    --hero-mask-corners: linear-gradient(#000, #000);
     position: relative;
     overflow: hidden;
-    -webkit-mask-image:
-      linear-gradient(to right,
-        transparent 0,
-        rgb(0 0 0 / 0.16) calc(var(--hero-fade-left) * 0.25),
-        rgb(0 0 0 / 0.5) calc(var(--hero-fade-left) * 0.5),
-        rgb(0 0 0 / 0.84) calc(var(--hero-fade-left) * 0.75),
-        #000 var(--hero-fade-left),
-        #000 calc(100% - var(--hero-fade-right)),
-        rgb(0 0 0 / 0.84) calc(100% - var(--hero-fade-right) * 0.75),
-        rgb(0 0 0 / 0.5) calc(100% - var(--hero-fade-right) * 0.5),
-        rgb(0 0 0 / 0.16) calc(100% - var(--hero-fade-right) * 0.25),
-        transparent 100%),
-      linear-gradient(to bottom,
-        transparent 0,
-        rgb(0 0 0 / 0.16) calc(var(--hero-fade-top) * 0.25),
-        rgb(0 0 0 / 0.5) calc(var(--hero-fade-top) * 0.5),
-        rgb(0 0 0 / 0.84) calc(var(--hero-fade-top) * 0.75),
-        #000 var(--hero-fade-top),
-        #000 calc(100% - var(--hero-fade-bottom)),
-        rgb(0 0 0 / 0.84) calc(100% - var(--hero-fade-bottom) * 0.75),
-        rgb(0 0 0 / 0.5) calc(100% - var(--hero-fade-bottom) * 0.5),
-        rgb(0 0 0 / 0.16) calc(100% - var(--hero-fade-bottom) * 0.25),
-        transparent 100%);
+    -webkit-mask-image: var(--hero-mask-x), var(--hero-mask-y), var(--hero-mask-corners);
     -webkit-mask-composite: source-in;
-    mask-image:
-      linear-gradient(to right,
-        transparent 0,
-        rgb(0 0 0 / 0.16) calc(var(--hero-fade-left) * 0.25),
-        rgb(0 0 0 / 0.5) calc(var(--hero-fade-left) * 0.5),
-        rgb(0 0 0 / 0.84) calc(var(--hero-fade-left) * 0.75),
-        #000 var(--hero-fade-left),
-        #000 calc(100% - var(--hero-fade-right)),
-        rgb(0 0 0 / 0.84) calc(100% - var(--hero-fade-right) * 0.75),
-        rgb(0 0 0 / 0.5) calc(100% - var(--hero-fade-right) * 0.5),
-        rgb(0 0 0 / 0.16) calc(100% - var(--hero-fade-right) * 0.25),
-        transparent 100%),
-      linear-gradient(to bottom,
-        transparent 0,
-        rgb(0 0 0 / 0.16) calc(var(--hero-fade-top) * 0.25),
-        rgb(0 0 0 / 0.5) calc(var(--hero-fade-top) * 0.5),
-        rgb(0 0 0 / 0.84) calc(var(--hero-fade-top) * 0.75),
-        #000 var(--hero-fade-top),
-        #000 calc(100% - var(--hero-fade-bottom)),
-        rgb(0 0 0 / 0.84) calc(100% - var(--hero-fade-bottom) * 0.75),
-        rgb(0 0 0 / 0.5) calc(100% - var(--hero-fade-bottom) * 0.5),
-        rgb(0 0 0 / 0.16) calc(100% - var(--hero-fade-bottom) * 0.25),
-        transparent 100%);
+    mask-image: var(--hero-mask-x), var(--hero-mask-y), var(--hero-mask-corners);
     mask-composite: intersect;
+  }
+
+  /* Two straight ramps alone still leave a rectangle: the corners are where
+     bright content (light streaks, grid lines) gets cut off last. A box that
+     fades on every side also gets an oval layer reaching zero exactly at the
+     corners (71% ≈ half the diagonal) while staying opaque over the middle. */
+  .hero-video--all-edges {
+    --hero-mask-corners: radial-gradient(ellipse 71% 71% at center,
+        #000 60%,
+        rgb(0 0 0 / 0.84) 70%,
+        rgb(0 0 0 / 0.5) 80%,
+        rgb(0 0 0 / 0.16) 90%,
+        transparent 100%);
   }
 
   .hero-video > video,
@@ -901,6 +1041,17 @@ body {
         rgb(0 255 0 / 0.025) 1px 2px,
         rgb(0 0 255 / 0.035) 2px 3px),
       radial-gradient(ellipse at center, transparent 50%, rgb(0 0 0 / 0.5) 100%);
+    /* Same layers, but the vignette darkens toward the page background rather
+       than pure black, so it doesn't outline the box on a non-black page.
+       Kept as an override so browsers without color-mix() use the line above. */
+    background:
+      repeating-linear-gradient(to bottom, rgb(0 0 0 / 0.3) 0 1px, transparent 1px 3px),
+      repeating-linear-gradient(to right,
+        rgb(255 0 0 / 0.035) 0 1px,
+        rgb(0 255 0 / 0.025) 1px 2px,
+        rgb(0 0 255 / 0.035) 2px 3px),
+      radial-gradient(ellipse at center, transparent 50%,
+        color-mix(in srgb, var(--tournament-background, #000) 50%, transparent) 100%);
     animation: hero-crt-breathe 3.2s ease-in-out infinite alternate;
   }
 

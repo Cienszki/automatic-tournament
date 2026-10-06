@@ -6,6 +6,25 @@
 import { getFontVariableName, getFontClassName } from './google-fonts';
 
 /**
+ * Oxanium (public/fonts/oxanium), offered as built-in options in the admin font
+ * pickers. "Oxanium" is the weight-aware family (each element gets the file for
+ * its own weight — bold headings get Bold); the others pin one file whatever the
+ * element's weight. @font-face rules for every family live in globals.css.
+ */
+export const OXANIUM_FONT_OPTIONS = [
+  { id: 'local-oxanium', label: 'Oxanium (automatyczna grubość)', family: 'Oxanium' },
+  { id: 'local-oxanium-extralight', label: 'Oxanium ExtraLight', family: 'Oxanium ExtraLight' },
+  { id: 'local-oxanium-light', label: 'Oxanium Light', family: 'Oxanium Light' },
+  { id: 'local-oxanium-regular', label: 'Oxanium Regular', family: 'Oxanium Regular' },
+  { id: 'local-oxanium-medium', label: 'Oxanium Medium', family: 'Oxanium Medium' },
+  { id: 'local-oxanium-semibold', label: 'Oxanium SemiBold', family: 'Oxanium SemiBold' },
+  { id: 'local-oxanium-bold', label: 'Oxanium Bold', family: 'Oxanium Bold' },
+  { id: 'local-oxanium-extrabold', label: 'Oxanium ExtraBold', family: 'Oxanium ExtraBold' },
+] as const;
+
+export const BUILT_IN_LOCAL_FONT_IDS: ReadonlySet<string> = new Set(OXANIUM_FONT_OPTIONS.map(option => option.id));
+
+/**
  * Inject CSS for custom fonts into document
  * Creates CSS variables and font-family classes for Tailwind
  */
@@ -72,6 +91,7 @@ export function getFontFamily(
     'local-logik-wide-black': "'Logik Wide Black', sans-serif",
     'local-mitchell': "'Mitchell', cursive",
     'local-neonderthaw': "'Neonderthaw', cursive",
+    ...Object.fromEntries(OXANIUM_FONT_OPTIONS.map(option => [option.id, `'${option.family}', sans-serif`])),
     'local-space-mono': "'Space Mono', monospace",
     'local-tilt-neon': "'Tilt Neon', sans-serif",
   };

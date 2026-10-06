@@ -148,6 +148,8 @@ export interface Match {
   };
   /** Set to true when the match was voided due to a team ban. Hidden from schedule views. */
   isBanForfeit?: boolean;
+  /** Swiss bye: a walkover against the bye sentinel (odd team count). Not a real match. */
+  isSwissByeMatch?: boolean;
   /**
    * True when this Match is a projection of a playoff bracket match (stored in the
    * `playoff_matches` collection, not `matches`). Consumers that write back to Firestore
