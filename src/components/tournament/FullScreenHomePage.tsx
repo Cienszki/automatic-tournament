@@ -14,7 +14,7 @@ import { useAuth } from '@/context/AuthContext';
 import { usePDLData } from '@/hooks/usePDLData';
 import { useSnapScroll } from '@/hooks/useSnapScroll';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { useHomeNavigation, HOME_VIEW_TO_SECTION } from '@/context/HomeNavigationContext';
+import { useHomeNavigation, getHomeSections, getHomeSectionIndex, type HomeSectionKey } from '@/context/HomeNavigationContext';
 import type { Match, Team, Player, PlayoffMatch } from '@/lib/definitions';
 import { organizationConfig } from '@/config/organization';
 
@@ -23,6 +23,7 @@ import { DivisionTable } from '@/components/pdl/DivisionTable';
 import { InlineDivisionView } from '@/components/divisions/InlineDivisionView';
 import { MatchdayCarousel } from '@/components/schedule/MatchdayCarousel';
 import { ChronologicalCarousel } from '@/components/schedule/ChronologicalCarousel';
+import { SwissRoundCarousel } from '@/components/schedule/SwissRoundCarousel';
 import { TeamsView } from '@/components/tournament/TeamsView';
 import { RankingsView } from '@/components/tournament/RankingsView';
 import { MirroredPlayoffBracket } from '@/components/playoffs/MirroredPlayoffBracket';
@@ -41,6 +42,7 @@ import {
 } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
+import { PageAtmosphere } from '@/components/ui/PageAtmosphere';
 
 import {
   StatsPageLayout,
@@ -104,11 +106,24 @@ const HeroTikTokIcon = (props: React.SVGProps<SVGSVGElement>) => (
 
 // ─── Section labels for dot navigation ───────────────────────────────
 
-// 16:9 box for a video in either half of the logo-promo hero: full panel width,
-// capped so its height matches the 48vh (36vh on 2k) the images are allowed.
-const PROMO_PANEL_VIDEO_BOX = 'aspect-video w-[min(100%,calc(48vh*16/9))] 2k:w-[min(100%,calc(36vh*16/9))]';
+// Panel sizes in the logo-promo hero. `cqh` is the media row's height (it is a
+// size container from sm up), so a panel never outgrows the row on short
+// screens; vh keeps it from getting huge on tall ones (less on 2k, where 56vh
+// would be oversized). Videos get an explicit width (16:9 from that height) on
+// their wrapper so the box exists before the file loads; images size naturally.
+const HERO_PANEL_IMAGE_HEIGHT = 'sm:max-h-[min(56vh,100cqh)] 2k:max-h-[min(42vh,100cqh)]';
+const HERO_PANEL_VIDEO_WIDTH = 'w-full sm:w-[calc(min(56vh,100cqh)*16/9)] 2k:w-[calc(min(42vh,100cqh)*16/9)]';
 
-const BASE_SECTION_LABELS =['Start', 'Tabele', 'Terminarz', 'Drużyny', 'Rankingi', 'Statystyki', 'Pick\'em'];
+const SECTION_LABELS: Record<HomeSectionKey, string> = {
+  start: 'Start',
+  groups: 'Tabele',
+  schedule: 'Terminarz',
+  teams: 'Drużyny',
+  rankings: 'Rankingi',
+  stats: 'Statystyki',
+  pickem: 'Pick\'em',
+  'my-team': 'Moja drużyna',
+};
 
 // ─── Dot Navigation with arrow controls ─────────────────────────────
 
@@ -236,7 +251,7 @@ export { TournamentHomePage as MmrTournamentHomePage };
 
 export function TournamentHomePage() {
   const { tournament, getTournamentPath, theme, isLegacyTournament } = useTournament();
-  const { isLeague, isMmrLimited } = useTournamentType();
+  const { isLeague, isMmrLimited, isSwiss } = useTournamentType();
   const isMobile = useIsMobile();
   const { user } = useAuth();
   const t = useTranslations('pdlHome');
@@ -266,10 +281,16 @@ export function TournamentHomePage() {
   const [teamStats, setTeamStats] = useState<TeamStatsData[]>([]);
 
   const primaryColor = theme?.primaryColor || '#8B1538';
-  const TOTAL_SECTIONS = hasTeam ? 8 : 7;
-  const sectionLabels = useMemo(() =>
-    hasTeam ? [...BASE_SECTION_LABELS, 'Moja drużyna'] : BASE_SECTION_LABELS,
-    [hasTeam],
+  // Sections shown for this tournament/user: a disabled Pick'em has no section,
+  // "Moja drużyna" only for captains. Position = index in this list.
+  const pickemEnabled = !!tournament?.pickem?.enabled;
+  const sections = useMemo(() => getHomeSections({ pickemEnabled, hasTeam }), [pickemEnabled, hasTeam]);
+  const sectionIndex = (key: HomeSectionKey) => sections.indexOf(key);
+  const TOTAL_SECTIONS = sections.length;
+  const sectionLabels = useMemo(
+    // Swiss has one standings table — no groups or divisions
+    () => sections.map(key => (key === 'groups' && isSwiss ? 'Tabela' : SECTION_LABELS[key])),
+    [sections, isSwiss],
   );
 
   const {
@@ -313,10 +334,12 @@ export function TournamentHomePage() {
     const view = searchParams.get('view');
     const group = searchParams.get('group');
     const team = searchParams.get('team');
-    if (view && HOME_VIEW_TO_SECTION[view] !== undefined) {
+    // hasTeam is still loading here — "my-team" is always last, so its index is known anyway
+    const viewIndex = view ? getHomeSectionIndex(view, { pickemEnabled }) : undefined;
+    if (view && viewIndex !== undefined) {
       if (view === 'groups' || view === 'playoffs') setSection1View(view);
       const timer = setTimeout(() => {
-        stableGoToSection(HOME_VIEW_TO_SECTION[view]);
+        stableGoToSection(viewIndex);
         if (group) setSelectedGroupId(group);
         if (view === 'teams' && team) setHighlightedTeamId(team);
       }, 120);
@@ -379,15 +402,22 @@ export function TournamentHomePage() {
             bestOf: data.bestOf || 2,
             series_format: data.series_format,
             approvedStandins: data.approvedStandins,
+            deadline: data.deadline,
+            isPlayoff: data.isPlayoff,
+            playoffCode: data.playoffCode,
+            playoff_round: data.playoff_round,
+            isSwissByeMatch: data.isSwissByeMatch,
           } as unknown as Match;
         });
-        setMatches(fetched.filter(m => m.scheduledFor));
+        // A Swiss round shows every match, scheduled or not ("TBD"); other
+        // formats list only matches that have a date.
+        setMatches(tournament.type === 'swiss' ? fetched : fetched.filter(m => m.scheduledFor));
       } catch (err) {
         console.error('Failed to load schedule matches:', err);
       }
     };
     load();
-  }, [tournament?.id, isLegacyTournament]);
+  }, [tournament?.id, tournament?.type, isLegacyTournament]);
 
   // Fetch teams
   useEffect(() => {
@@ -562,23 +592,29 @@ export function TournamentHomePage() {
   const leftVideo = slotVideo(tournament, 'left');
   const rightVideo = slotVideo(tournament, 'right');
   const fullVideo = slotVideo(tournament, 'full');
+  // Without a promo panel the logo centres instead of hugging the left edge.
+  const hasPromoPanel = !!(promoVideo || promoImageUrl);
   const heroVideoCrt = tournament.heroVideoCrt !== false;
 
   // Determine if we show playoffs instead of groups in view 2. Playoffs default
   // once visible, but the user can toggle back to the groups/divisions tables.
   const showPlayoffs = playoffsActive && section1View === 'playoffs';
-  const showDivisions = divisions.length > 0 && !showPlayoffs;
+  // Empty tables (e.g. during registration) would render as bare headers — show the
+  // "tables appear after the start" message until at least one team is placed.
+  const showStandings = !showPlayoffs && divisions.some(d => d.teams.length > 0);
 
   // Title/description, CTAs and social links under the hero media — shared by
   // all three layouts. A render function rather than a nested component so
   // re-renders don't remount it and replay the framer-motion entrance.
   const renderHeroCopy = (className?: string) => (
     <div className={cn('flex-[3] flex flex-col min-h-0', className)}>
-      <div className="flex flex-col sm:flex-row flex-1 items-start sm:items-center gap-4 sm:gap-0">
+      {/* Text pinned to the content's left edge, CTAs to its right edge — the
+          same edges the hero media sit on. Stacked below lg. */}
+      <div className="flex flex-col lg:flex-row flex-1 justify-center lg:justify-between items-start lg:items-center gap-5 lg:gap-10">
 
-      {/* Left column — subtitle + description */}
+      {/* Title + description */}
       <motion.div
-        className="flex-1 flex flex-col justify-center sm:pr-8 lg:pr-16"
+        className="flex flex-col min-w-0 max-w-4xl"
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.7 }}
@@ -604,16 +640,16 @@ export function TournamentHomePage() {
         </p>
       </motion.div>
 
-      {/* Right column — CTA buttons */}
+      {/* CTA buttons */}
       <motion.div
-        className="flex-1 flex items-start sm:items-center justify-start gap-3 flex-wrap"
+        className="flex items-center justify-start lg:justify-end gap-3 flex-wrap"
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.7, delay: 0.1 }}
       >
         {hasTeam ? (
           <button
-            onClick={() => goToSection(HOME_VIEW_TO_SECTION['my-team'])}
+            onClick={() => goToSection(sectionIndex('my-team'))}
             className="inline-flex items-center justify-center gap-3 px-8 py-3.5 font-logik-extended-bold text-sm uppercase tracking-widest text-white transition-all duration-300 relative overflow-hidden group whitespace-nowrap"
             style={{
               backgroundColor: primaryColor,
@@ -768,6 +804,17 @@ export function TournamentHomePage() {
         isMobile ? "overflow-y-auto" : "h-[calc(100vh-3.5rem)] overflow-hidden",
       )}
     >
+      {/* Ambient background (vignette + theme-colour glows). Sits outside the sliding
+          container: its transform would otherwise pin these fixed layers to the container.
+          On desktop the lights drift to a new spot for every view. */}
+      <PageAtmosphere
+        primaryColor={primaryColor}
+        secondaryColor={theme?.secondaryColor}
+        variant={isMobile ? 0 : currentSection}
+        headingGlow={isMobile || currentSection !== 0}
+        light={theme?.themeStyle === 'light'}
+      />
+
       {/* Dot navigation with arrow controls — desktop only */}
       {!isMobile && (
         <DotNavigation
@@ -785,7 +832,7 @@ export function TournamentHomePage() {
       {/* Sliding container — snap-scroll on desktop, normal flow on mobile */}
       <div
         className={cn(
-          "flex flex-col",
+          "relative z-[1] flex flex-col",
           !isMobile && "transition-transform ease-[cubic-bezier(0.76,0,0.24,1)] duration-300",
         )}
         style={!isMobile ? { transform: `translateY(calc(${currentSection} * (3.5rem - 100vh)))` } : undefined}
@@ -805,7 +852,7 @@ export function TournamentHomePage() {
                 {renderPanelVideo(fullVideo, undefined, 'absolute inset-0')}
                 {renderOverlayLogo('drop-shadow-[0_6px_28px_rgba(0,0,0,0.65)]')}
               </div>
-              {renderHeroCopy('px-4 sm:px-10 lg:px-20 xl:px-32 pt-4')}
+              {renderHeroCopy('site-container pt-4')}
             </div>
           ) : heroLayout === 'three-images' ? (
             /* ── Three-images layout ─────────────────────────────────
@@ -859,29 +906,39 @@ export function TournamentHomePage() {
               </div>
 
               {/* Bottom ~35% — hero copy + CTAs + social */}
-              {renderHeroCopy('px-4 sm:px-10 lg:px-20 xl:px-32 pt-4')}
+              {renderHeroCopy('site-container pt-4')}
             </div>
           ) : (
             /* ── Logo + Promo layout (default) ───────────────────────
                Tournament logo on the left, promotional image on the
                right (either may be a video), hero copy/CTAs below.
-               Video boxes are sized from width with a fixed 16:9 ratio,
-               capped by the same 48vh the images use, so nothing shifts
-               while a video loads.                                    */
-            <div className="h-full w-full flex flex-col px-4 sm:px-10 lg:px-20 xl:px-32 pt-4 sm:pt-20 pb-10">
+               The two panels sit on the content column's outer edges —
+               the same edges the copy's text and buttons use — and share
+               the width between them, shrinking together when both don't
+               fit. Height is capped by the viewport (56vh) and by the row
+               itself (100cqh), so short laptop screens don't push the
+               media into the copy. A video's box gets a fixed 16:9 size
+               up front so nothing shifts while it loads.             */
+            <div className="h-full site-container flex flex-col pt-4 sm:pt-8 pb-10">
 
-              {/* Top ~65% — Logo (left) + Promo media (right) */}
-              <div className="flex flex-col sm:flex-row flex-[7] items-center min-h-0 gap-0">
+              {/* Top ~70% — Logo (left) + Promo media (right) */}
+              <div
+                className={cn(
+                  'flex flex-col sm:flex-row flex-[7] items-center min-h-0 gap-6 lg:gap-12 py-4',
+                  'sm:[container-type:size]',
+                  hasPromoPanel ? 'sm:justify-between' : 'sm:justify-center',
+                )}
+              >
 
-                {/* Tournament Logo — left half */}
-                <div className="flex-1 flex items-center justify-center min-h-0 h-full py-4">
+                {/* Tournament Logo — pinned left */}
+                <div className={cn('min-w-0 flex items-center justify-center sm:justify-start', logoVideo && HERO_PANEL_VIDEO_WIDTH)}>
                   {logoVideo ? (
-                    renderPanelVideo(logoVideo, logoUrl, PROMO_PANEL_VIDEO_BOX)
+                    renderPanelVideo(logoVideo, logoUrl, 'aspect-video w-full')
                   ) : logoUrl ? (
                     <img
                       src={logoUrl}
                       alt={tournament.name}
-                      className="max-h-[30vh] sm:max-h-[48vh] 2k:max-h-[36vh] max-w-full w-auto object-contain"
+                      className={cn('max-h-[30vh] max-w-full w-auto object-contain', HERO_PANEL_IMAGE_HEIGHT)}
                     />
                   ) : (
                     <h1
@@ -893,21 +950,23 @@ export function TournamentHomePage() {
                   )}
                 </div>
 
-                {/* Promotional media — right half */}
-                <div className="flex-1 flex items-center justify-center min-h-0 h-full py-4">
-                  {promoVideo ? (
-                    renderPanelVideo(promoVideo, promoImageUrl, PROMO_PANEL_VIDEO_BOX)
-                  ) : promoImageUrl ? (
-                    <img
-                      src={promoImageUrl}
-                      alt="Obraz promocyjny"
-                      className="max-h-[48vh] 2k:max-h-[36vh] max-w-full w-auto object-contain"
-                    />
-                  ) : null}
-                </div>
+                {/* Promotional media — pinned right */}
+                {hasPromoPanel && (
+                  <div className={cn('min-w-0 flex items-center justify-center sm:justify-end', promoVideo && HERO_PANEL_VIDEO_WIDTH)}>
+                    {promoVideo ? (
+                      renderPanelVideo(promoVideo, promoImageUrl, 'aspect-video w-full')
+                    ) : (
+                      <img
+                        src={promoImageUrl}
+                        alt="Obraz promocyjny"
+                        className={cn('max-h-[30vh] max-w-full w-auto object-contain', HERO_PANEL_IMAGE_HEIGHT)}
+                      />
+                    )}
+                  </div>
+                )}
               </div>
 
-              {/* Bottom ~35% — text (left col) + buttons (right col) + social */}
+              {/* Bottom ~30% — text (left edge) + buttons (right edge) + social */}
               {renderHeroCopy()}
 
             </div>
@@ -926,7 +985,7 @@ export function TournamentHomePage() {
               onBack={() => setSelectedGroupId(null)}
             />
           ) : (
-          <div className="h-full w-full flex flex-col overflow-y-auto px-4 sm:px-8 lg:px-16 py-8">
+          <div className="h-full w-full flex flex-col overflow-y-auto site-gutter py-8">
             {showPlayoffs ? (
               <>
                 {/* Playoffs view — hero header matching the /playoffs page */}
@@ -968,7 +1027,7 @@ export function TournamentHomePage() {
                     className="text-4xl md:text-6xl font-logik-extended-bold uppercase tracking-tight"
                     style={{ color: theme?.titleColor || 'white', fontFamily: theme?.headerFont ? `var(${theme.headerFont})` : undefined }}
                   >
-                    {isMmrLimited ? 'Grupy' : 'Dywizje'}
+                    {isSwiss ? 'Tabela' : isMmrLimited ? 'Grupy' : 'Dywizje'}
                   </h2>
                   <div className="flex items-center justify-center gap-4 mt-2 opacity-60">
                     <div className="h-[1px] w-12" style={{ background: `linear-gradient(to right, transparent, ${primaryColor})` }} />
@@ -978,10 +1037,10 @@ export function TournamentHomePage() {
                 </div>
 
                 <div className="flex-1 overflow-y-auto min-h-0">
-                  {showDivisions && (
+                  {showStandings && (
                     <div className={cn(
                       'grid gap-8',
-                      divisions.length === 1 && 'grid-cols-1 max-w-lg mx-auto',
+                      divisions.length === 1 && (isSwiss ? 'grid-cols-1 max-w-3xl mx-auto' : 'grid-cols-1 max-w-lg mx-auto'),
                       divisions.length === 2 && 'grid-cols-1 md:grid-cols-2 max-w-4xl mx-auto',
                       divisions.length >= 3 && 'grid-cols-1 md:grid-cols-2 xl:grid-cols-3',
                     )}>
@@ -994,17 +1053,18 @@ export function TournamentHomePage() {
                           divisionId={division.id}
                           divisionTheme={division.theme}
                           medalUrl={division.medalUrl}
+                          hideHeader={isSwiss}
                         />
                       ))}
                     </div>
                   )}
 
-                  {!showDivisions && (
+                  {!showStandings && (
                     <div className="flex-1 flex items-center justify-center">
                       <p
-                        className="font-logik text-lg"
+                        className="font-logik text-lg text-center"
                         style={{ color: 'var(--tournament-heading)', fontFamily: theme?.headerFont ? `var(${theme.headerFont})` : undefined }}
-                      >Tabele pojawią się po rozpoczęciu turnieju.</p>
+                      >{isSwiss ? 'Tabela pojawi się' : 'Tabele pojawią się'} po rozpoczęciu turnieju.</p>
                     </div>
                   )}
                 </div>
@@ -1020,9 +1080,11 @@ export function TournamentHomePage() {
         <FullScreenSection isActive={currentSection === 2} isMobile={isMobile} id="home-section-2">
           <div className="h-full w-full overflow-y-auto text-white">
             {matches.length > 0 ? (
-              <div className="max-w-[1800px] mx-auto px-3 sm:px-6 lg:px-12 py-3 sm:py-5">
+              <div className="site-container py-3 sm:py-5">
                 {tournament?.type === 'league' ? (
                   <MatchdayCarousel matches={matches} />
+                ) : tournament?.type === 'swiss' ? (
+                  <SwissRoundCarousel matches={matches} />
                 ) : (
                   <ChronologicalCarousel matches={matches} />
                 )}
@@ -1066,22 +1128,24 @@ export function TournamentHomePage() {
         </FullScreenSection>
 
         {/* ═══════════════════════════════════════════════════════════
-            VIEW 7: Pick'em
+            VIEW 7: Pick'em (only when enabled — no "unavailable" placeholder view)
            ═══════════════════════════════════════════════════════════ */}
-        <FullScreenSection isActive={currentSection === 6} isMobile={isMobile} id="home-section-6" allowOverflow>
-          {/* Override standalone page styles to fit snap-scroll section */}
-          <div className="h-full w-full overflow-y-auto text-white
-            [&>div]:!min-h-0 [&>div]:!h-full
-            [&>div>div.fixed]:!hidden">
-            <PickemPage />
-          </div>
-        </FullScreenSection>
+        {pickemEnabled && (
+          <FullScreenSection isActive={currentSection === sectionIndex('pickem')} isMobile={isMobile} id={`home-section-${sectionIndex('pickem')}`} allowOverflow>
+            {/* Override standalone page styles to fit snap-scroll section */}
+            <div className="h-full w-full overflow-y-auto text-white
+              [&>div]:!min-h-0 [&>div]:!h-full
+              [&>div>div.fixed]:!hidden">
+              <PickemPage />
+            </div>
+          </FullScreenSection>
+        )}
 
         {/* ═══════════════════════════════════════════════════════════
-            VIEW 8: My Team (captains only)
+            VIEW 8: My Team (captains only) — always the last section
            ═══════════════════════════════════════════════════════════ */}
         {hasTeam && (
-          <FullScreenSection isActive={currentSection === 7} isMobile={isMobile} id="home-section-7">
+          <FullScreenSection isActive={currentSection === sectionIndex('my-team')} isMobile={isMobile} id={`home-section-${sectionIndex('my-team')}`}>
             {/* Override the standalone page styles: hide fixed background, remove min-h-screen */}
             <div className="h-full w-full overflow-y-auto text-white
               [&>div]:!min-h-0 [&>div]:!h-full

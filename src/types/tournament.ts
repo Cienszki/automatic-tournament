@@ -455,6 +455,7 @@ export interface TournamentConfig {
   schedulingMethod: SchedulingMethod;
   rescheduleRangeDays?: number | null; // max days captains can shift a match date (null = unlimited, default: 3)
   rescheduleFinalDate?: string;        // hard cutoff ISO date after which no reschedule requests are allowed
+  rescheduleEarlierOnly?: boolean;     // captains may only move a match earlier than its scheduled time (default: false)
   
   // Division configuration (for leagues)
   divisions?: DivisionConfig[];

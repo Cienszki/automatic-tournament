@@ -26,6 +26,7 @@ import { PDLStandinRequestSection } from './PDLStandinRequest';
 import { PDLCoachSection } from './PDLCoachSection';
 import { PDLMatchRules } from './PDLMatchRules';
 import { DraftPenaltyBanner } from '@/components/penalties/DraftPenaltyBanner';
+import { isEarlierThanOriginal } from '@/lib/reschedule-rules';
 
 interface PDLUpcomingMatchProps {
   match: Match;
@@ -179,6 +180,16 @@ export function PDLUpcomingMatch({
     maxDate.setHours(23, 59, 0, 0);
   }
 
+  // "Earlier only" (admin setting, per the rulebook): nothing after the original date.
+  // Same day stays selectable — an earlier hour that day is allowed; the exact time is
+  // checked below (proposalNotEarlier).
+  const earlierOnly = !!tournament?.rescheduleEarlierOnly && !!scheduledDate;
+  if (earlierOnly) {
+    const lastDay = new Date(originalDateObj);
+    lastDay.setHours(23, 59, 0, 0);
+    if (!maxDate || lastDay < maxDate) maxDate = lastDay;
+  }
+
   // Apply final deadline constraint regardless of range setting
   if (rescheduleFinalDate) {
     const finalDeadline = new Date(rescheduleFinalDate);
@@ -201,8 +212,11 @@ export function PDLUpcomingMatch({
   const opponentPendingStandins = opponentStandinRequests.filter(r => r.status === 'pending').length;
   const hasPendingItems = hasActiveRequest || myPendingStandins > 0 || opponentPendingStandins > 0;
 
+  const proposalNotEarlier = earlierOnly && !!selectedDate && isValidSelectedTime
+    && !isEarlierThanOriginal(originalDateObj.toISOString(), new Date(`${selectedDate}T${selectedTime}`).toISOString());
+
   const handleSubmitReschedule = async () => {
-    if (!selectedDate || !isValidSelectedTime) return;
+    if (!selectedDate || !isValidSelectedTime || proposalNotEarlier) return;
     if (!onRequestReschedule) return;
 
     // Convert local datetime to UTC ISO immediately so the stored proposedDate is
@@ -460,6 +474,11 @@ export function PDLUpcomingMatch({
                       ? `Nowy termin nie jest ograniczony zakresem dat.${rescheduleFinalDate ? ` Ostateczny termin składania propozycji: ${formatDatePL(rescheduleFinalDate)}.` : ''} Wymaga zgody kapitana przeciwnej drużyny.`
                       : `Nowy termin musi mieścić się w zakresie ±${rescheduleRangeDays} dni od domyślnej daty.${rescheduleFinalDate ? ` Ostateczny termin składania propozycji: ${formatDatePL(rescheduleFinalDate)}.` : ''} Wymaga zgody kapitana przeciwnej drużyny.`
                     }
+                    {earlierOnly && (
+                      <span className="block mt-1 text-amber-300/90">
+                        Mecz można przełożyć wyłącznie na termin wcześniejszy niż {formattedDate}.
+                      </span>
+                    )}
                   </p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <Input
@@ -481,11 +500,16 @@ export function PDLUpcomingMatch({
                       className="bg-white/5 border-white/10 text-white"
                     />
                   </div>
+                  {proposalNotEarlier && (
+                    <p className="text-xs text-red-400 font-logik">
+                      Wybrany termin nie jest wcześniejszy niż obecny termin meczu.
+                    </p>
+                  )}
                   <div className="flex gap-2">
                     <Button
                       size="sm"
                       onClick={handleSubmitReschedule}
-                      disabled={!selectedDate || !isValidSelectedTime || loading}
+                      disabled={!selectedDate || !isValidSelectedTime || proposalNotEarlier || loading}
                       className="bg-pdl-crimson hover:bg-pdl-crimson/80 text-white"
                     >
                       {loading ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <CalendarRange className="w-4 h-4 mr-1" />}

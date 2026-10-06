@@ -39,7 +39,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { useAuth } from '@/context/AuthContext';
 import { checkIfAdmin } from '@/lib/auth';
 import { getFontFamily } from '@/lib/dynamic-fonts';
-import { useHomeNavigation, HOME_VIEW_TO_SECTION } from '@/context/HomeNavigationContext';
+import { useHomeNavigation, getHomeSectionIndex } from '@/context/HomeNavigationContext';
 import React from 'react';
 
 // ------------------------------------------------------------------
@@ -296,7 +296,7 @@ export function TournamentNavbar() {
 
   // Navigate to a homepage section, or push to homepage with ?view= param
   const handleViewNavigation = (viewKey: string) => {
-    const sectionIndex = HOME_VIEW_TO_SECTION[viewKey] ?? 0;
+    const sectionIndex = getHomeSectionIndex(viewKey, { pickemEnabled: !!tournament.pickem?.enabled }) ?? 0;
     // Groups and Playoffs share section 1 — record which one to display.
     if (viewKey === 'groups' || viewKey === 'playoffs') {
       setSection1View(viewKey);
@@ -381,32 +381,40 @@ export function TournamentNavbar() {
   };
 
   // Logo component
+  const organizerLogoUrl = !organizerLogoError ? theme?.organizerLogoUrl : undefined;
   const LogoWithSwitcher = () => (
-    <div className="flex items-center gap-1 shrink-0">
+    <div className="flex items-center gap-1.5 shrink-0">
       {/* PD2IH / organizer Logo link to landing page */}
       <Link href="/" className="self-stretch flex items-center">
         <Image
-          src={(!organizerLogoError && theme?.organizerLogoUrl) || '/logos/pd2ih/pd2ih-logo.png'}
+          src={organizerLogoUrl || '/logos/pd2ih/pd2ih-logo.png'}
           alt="PD2IH"
           width={40}
           height={40}
           priority
           unoptimized
           onError={() => setOrganizerLogoError(true)}
-          className="h-10 w-auto max-w-[68px] object-contain"
+          // The default PD2IH file is 3:2 with the circle centred (it doubles as
+          // the OG image), so crop it to a square here instead of letterboxing.
+          className={organizerLogoUrl
+            ? 'h-10 w-auto max-w-[68px] object-contain'
+            : 'h-10 w-10 object-cover'}
         />
       </Link>
 
-      {/* Tournament Inline Logo */}
-      <button
-        onClick={() => {
+      {/* Tournament Inline Logo — a real link so middle/ctrl-click opens a new tab */}
+      <Link
+        href={getTournamentPath('')}
+        onClick={(e) => {
+          // Plain left-click on the homepage scrolls back to the top section
+          // instead of reloading; modified clicks keep the browser default.
+          if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
           if (isHomeActive()) {
+            e.preventDefault();
             goToHomeSection(0);
-          } else {
-            router.push(getTournamentPath(''));
           }
         }}
-        className="flex items-center self-stretch px-1 cursor-pointer"
+        className="flex items-center self-stretch"
       >
         {theme.inlineLogoUrl && !inlineLogoError ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -414,14 +422,17 @@ export function TournamentNavbar() {
             src={theme.inlineLogoUrl}
             alt={tournament?.name || 'Tournament'}
             onError={() => setInlineLogoError(true)}
-            className="h-10 w-auto max-w-[148px] xl:max-w-[170px] object-contain"
+            // Wide wordmarks are capped by width, not height — these caps are
+            // what decide how big they look. lg is tight because the nav labels
+            // appear there.
+            className="h-10 w-auto max-w-[220px] lg:max-w-[180px] xl:max-w-[240px] 2xl:max-w-[300px] object-contain"
           />
         ) : (
           <span className="font-bold text-sm" style={{ fontFamily: navbarFontFamily, color: navTextColor }}>
             {tournament?.name || 'Tournament'}
           </span>
         )}
-      </button>
+      </Link>
     </div>
   );
 
@@ -435,7 +446,7 @@ export function TournamentNavbar() {
           borderColor: theme.borderColor,
         }}
       >
-        <div className="container mx-auto px-4 flex items-stretch justify-between h-14">
+        <div className="site-container flex items-stretch justify-between h-14">
           <LogoWithSwitcher />
           <div className="h-10 w-10" />
         </div>
@@ -453,7 +464,7 @@ export function TournamentNavbar() {
           borderColor: theme.borderColor,
         }}
       >
-        <div className="container mx-auto px-4 flex items-stretch justify-between h-14">
+        <div className="site-container flex items-stretch justify-between h-14">
           <LogoWithSwitcher />
           <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
             <SheetTrigger asChild>
@@ -619,7 +630,7 @@ export function TournamentNavbar() {
         borderColor: theme.borderColor,
       }}
     >
-      <div className="container mx-auto px-2 lg:px-3 flex items-stretch h-14">
+      <div className="site-container flex items-stretch h-14">
         <LogoWithSwitcher />
         <div className="flex-1 flex justify-center">
           <nav className="flex items-stretch space-x-0.5">
@@ -640,7 +651,8 @@ export function TournamentNavbar() {
                     onClick={() => handleViewNavigation('groups')}
                     onAuxClick={(e) => { if (e.button === 1) { e.preventDefault(); window.open(`${getTournamentPath('')}?view=groups`, '_blank'); } }}
                     className={cn(
-                      "relative text-sm font-medium shrink-0 pl-3 pr-1 py-2 transition-all duration-200 group flex items-center gap-2",
+                      "relative text-sm font-medium shrink-0 pl-3 py-2 transition-all duration-200 group flex items-center gap-2",
+                      isSwiss ? "pr-3" : "pr-1",
                       "hover:text-[var(--nav-hover-text)]",
                       "focus-visible:outline-none focus-visible:ring-0",
                       !isGroupsActive && "text-muted-foreground",
@@ -658,7 +670,8 @@ export function TournamentNavbar() {
                     />
                   </button>
 
-                  {/* Chevron part — opens dropdown */}
+                  {/* Chevron part — opens dropdown. Swiss has a single table, nothing to pick. */}
+                  {!isSwiss && (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <button
@@ -706,6 +719,7 @@ export function TournamentNavbar() {
                       )}
                     </DropdownMenuContent>
                   </DropdownMenu>
+                  )}
                 </div>
               );
             })()}

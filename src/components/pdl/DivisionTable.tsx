@@ -30,9 +30,11 @@ interface DivisionTableProps {
   divisionId?: string; // Add divisionId for linking to detail page
   divisionTheme?: string; // Theme ID
   medalUrl?: string; // Division medal
+  /** Skip the name header — Swiss has a single table titled by the page itself */
+  hideHeader?: boolean;
 }
 
-export function DivisionTable({ divisionName, divisionColor, teams, divisionId, divisionTheme, medalUrl }: DivisionTableProps) {
+export function DivisionTable({ divisionName, divisionColor, teams, divisionId, divisionTheme, medalUrl, hideHeader }: DivisionTableProps) {
   const { getTournamentPath } = useTournament();
   const { goToGroup, isHomeActive } = useHomeNavigation();
   const router = useRouter();
@@ -58,6 +60,7 @@ export function DivisionTable({ divisionName, divisionColor, teams, divisionId, 
       onClick={handleContainerClick}
     >
       {/* Header */}
+      {!hideHeader && (
       <div className="pb-4 mb-2 relative">
         <div className="flex items-center gap-3">
           {/* Medal if available */}
@@ -99,6 +102,7 @@ export function DivisionTable({ divisionName, divisionColor, teams, divisionId, 
           />
         </div>
       </div>
+      )}
 
       {/* Table - Transparent, just rows */}
       <div className="overflow-x-auto">

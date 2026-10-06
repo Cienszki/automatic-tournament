@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import { doc, updateDoc, collection, getDocs, addDoc, writeBatch, deleteDoc, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -95,6 +96,7 @@ export function SchedulingTab() {
   const [rescheduleFinalDate, setRescheduleFinalDate] = useState<string>(
     tournament?.rescheduleFinalDate ?? ''
   );
+  const [rescheduleEarlierOnly, setRescheduleEarlierOnly] = useState<boolean>(!!tournament?.rescheduleEarlierOnly);
   const [isSavingRescheduleSettings, setIsSavingRescheduleSettings] = useState(false);
   
   // New matchday form state
@@ -1134,6 +1136,24 @@ export function SchedulingTab() {
             </div>
           </div>
 
+          {/* Earlier-only rule */}
+          <div className="flex items-start justify-between gap-4 rounded-lg border border-border p-4">
+            <div className="space-y-1">
+              <Label htmlFor="reschedule-earlier-only" className="font-logik-extended-bold">
+                Tylko na wcześniejszy termin
+              </Label>
+              <p className="text-xs text-muted-foreground font-logik">
+                Kapitanowie mogą zaproponować wyłącznie termin wcześniejszy niż zaplanowany (np. gdy regulamin pozwala przełożyć mecz tylko na wcześniej).
+                Działa razem z zakresem ±dni i ostatecznym terminem. Admin nadal może ustawić dowolny termin ręcznie.
+              </p>
+            </div>
+            <Switch
+              id="reschedule-earlier-only"
+              checked={rescheduleEarlierOnly}
+              onCheckedChange={setRescheduleEarlierOnly}
+            />
+          </div>
+
           <div className="flex justify-end pt-2 border-t border-border">
             <Button
               onClick={async () => {
@@ -1145,6 +1165,7 @@ export function SchedulingTab() {
                   await updateDoc(doc(db, 'tournaments', tournament.id), {
                     rescheduleRangeDays: rangeDays,
                     ...(finalDate !== null ? { rescheduleFinalDate: finalDate } : { rescheduleFinalDate: null }),
+                    rescheduleEarlierOnly,
                     updatedAt: new Date().toISOString(),
                   });
                   toast({

@@ -33,6 +33,7 @@ import NoTeamFound from '@/components/app/my-team/NoTeamFound';
 // PDL components
 import { PDLMyTeamHero, PDLMatchHistory, PDLCaptainActions, RegistrationStatusBanner } from "@/components/pdl/my-team";
 import { PDLUpcomingMatch } from "@/components/pdl/my-team/PDLUpcomingMatchNew";
+import { checkRescheduleProposal, type RescheduleViolation } from "@/lib/reschedule-rules";
 import { PDLTransferSection } from "@/components/pdl/my-team/PDLTransferSection";
 import { upsertGlobalPlayerProfilesAction, clearPlayerCurrentTeamsAction } from "@/lib/player-profile-actions";
 
@@ -194,37 +195,6 @@ async function fetchStandinRequestsForMatchIds(
     snap.docs.map(d => normalizePDLStandinRequest(d.data() as Record<string, unknown>, d.id)),
   );
 }
-
-const isWithinRescheduleDays = (
-  referenceIso: string,
-  proposedIso: string,
-  rangeDays: number | null | undefined,
-): boolean => {
-  // null / undefined = unlimited range
-  if (rangeDays === null || rangeDays === undefined) return true;
-
-  const referenceDate = new Date(referenceIso);
-  const proposedDate = new Date(proposedIso);
-
-  if (Number.isNaN(referenceDate.getTime()) || Number.isNaN(proposedDate.getTime())) {
-    return false;
-  }
-
-  // Compare by calendar day (local time) to avoid timezone edge-case rejections.
-  const refDay = new Date(referenceDate.getFullYear(), referenceDate.getMonth(), referenceDate.getDate());
-  const propDay = new Date(proposedDate.getFullYear(), proposedDate.getMonth(), proposedDate.getDate());
-
-  const diffDays = Math.round((propDay.getTime() - refDay.getTime()) / (1000 * 60 * 60 * 24));
-  return Math.abs(diffDays) <= rangeDays;
-};
-
-const isBeforeFinalDeadline = (proposedIso: string, finalDate: string | null | undefined): boolean => {
-  if (!finalDate) return true;
-  const proposed = new Date(proposedIso);
-  const deadline = new Date(finalDate);
-  deadline.setHours(23, 59, 59, 999);
-  return proposed <= deadline;
-};
 
 const HOUR_HEIGHT = 42; // pixels per hour in the week calendar
 const CAL_START = 14;   // first displayed hour (14:00)
@@ -904,6 +874,27 @@ function MyTeamView() {
     return doc(db, 'tournaments', tournament!.id, isPlayoffOnly ? 'playoff_matches' : 'matches', matchId);
   }, [matches, tournament?.id]);
 
+  // Reschedule rules from the admin panel. A per-match deadline takes precedence over the
+  // tournament-wide rescheduleFinalDate (mirrors PDLUpcomingMatch).
+  const getRescheduleSettings = (matchDeadline?: string | null) => ({
+    rangeDays: tournament?.rescheduleRangeDays !== undefined ? tournament.rescheduleRangeDays : 3,
+    finalDate: matchDeadline || tournament?.rescheduleFinalDate || null,
+    earlierOnly: !!tournament?.rescheduleEarlierOnly,
+  });
+
+  const describeRescheduleViolation = (
+    violation: RescheduleViolation,
+    proposedDate: string,
+    settings: ReturnType<typeof getRescheduleSettings>,
+  ): string => {
+    if (violation === 'earlier-only') return 'Zgodnie z regulaminem mecz można przełożyć wyłącznie na termin wcześniejszy niż zaplanowany.';
+    if (violation === 'range') {
+      const rangeLabel = settings.rangeDays === null ? 'nieograniczony' : `±${settings.rangeDays} dni`;
+      return `Zmiana terminu jest dozwolona tylko w zakresie ${rangeLabel} od pierwotnej daty meczu.`;
+    }
+    return `Proponowana data (${proposedDate.slice(0, 10)}) przekracza ostateczny termin realizacji meczów (${settings.finalDate ? settings.finalDate.slice(0, 10) : ''}).`;
+  };
+
   // Reschedule handlers for PDL
   const handleRequestReschedule = async (matchId: string, proposedDate: string) => {
     if (!tournament?.id || !team) {
@@ -917,24 +908,15 @@ function MyTeamView() {
       const matchData = matchSnap.data();
 
       const originalDate = String(matchData?.scheduledFor || matchData?.scheduled_for || '');
-      const rangeDays = tournament?.rescheduleRangeDays !== undefined ? tournament.rescheduleRangeDays : 3;
-      // Per-match deadline takes precedence over the global tournament rescheduleFinalDate (mirrors UI logic)
-      const finalDate = matchData?.deadline || tournament?.rescheduleFinalDate || null;
-      const finalDateDisplay = finalDate ? finalDate.slice(0, 10) : '';
+      const rescheduleSettings = getRescheduleSettings(matchData?.deadline);
 
-      // If there is no admin-set date we skip the range check (unlimited for unscheduled matches)
-      const hasScheduledDate = !!originalDate;
-      const rangeOk = !hasScheduledDate || isWithinRescheduleDays(originalDate, proposedDate, rangeDays);
-      const deadlineOk = isBeforeFinalDeadline(proposedDate, finalDate);
-
-      if (!rangeOk || !deadlineOk) {
-        console.warn('[MyTeam] Date validation failed', { originalDate, proposedDate, rangeDays, finalDate });
-        const rangeLabel = rangeDays === null ? 'nieograniczony' : `±${rangeDays} dni`;
+      // If there is no admin-set date we skip the range/earlier-only checks (unscheduled matches)
+      const violation = checkRescheduleProposal(originalDate, proposedDate, rescheduleSettings);
+      if (violation) {
+        console.warn('[MyTeam] Date validation failed', { originalDate, proposedDate, ...rescheduleSettings });
         toast({
           title: 'Nieprawidłowa data',
-          description: !rangeOk
-            ? `Zmiana terminu jest dozwolona tylko w zakresie ${rangeLabel} od daty meczu.`
-            : `Proponowana data (${proposedDate.slice(0, 10)}) przekracza ostateczny termin realizacji meczów (${finalDateDisplay}).`,
+          description: describeRescheduleViolation(violation, proposedDate, rescheduleSettings),
           variant: 'destructive',
         });
         return;
@@ -988,22 +970,16 @@ function MyTeamView() {
 
       const originalDate = String(matchData?.rescheduleRequest?.originalDate || matchData?.scheduledFor || matchData?.scheduled_for || '');
       const proposedDate = String(matchData?.rescheduleRequest?.proposedDate || '');
-      const rangeDays = tournament?.rescheduleRangeDays !== undefined ? tournament.rescheduleRangeDays : 3;
-      // Per-match deadline takes precedence over the global tournament rescheduleFinalDate (mirrors UI logic)
-      const finalDate = matchData?.deadline || tournament?.rescheduleFinalDate || null;
-      const finalDateDisplay = finalDate ? finalDate.slice(0, 10) : '';
+      const rescheduleSettings = getRescheduleSettings(matchData?.deadline);
 
-      const hasScheduledDate = !!originalDate;
-      const rangeOk = !hasScheduledDate || isWithinRescheduleDays(originalDate, proposedDate, rangeDays);
-      const deadlineOk = isBeforeFinalDeadline(proposedDate, finalDate);
-
-      if (!proposedDate || !rangeOk || !deadlineOk) {
-        const rangeLabel = rangeDays === null ? 'nieograniczony' : `±${rangeDays} dni`;
+      // Re-checked on approval: settings may have changed since the request was sent
+      const violation = proposedDate ? checkRescheduleProposal(originalDate, proposedDate, rescheduleSettings) : 'range';
+      if (violation) {
         toast({
           title: 'Nie można zatwierdzić',
-          description: !rangeOk
-            ? `Proponowany termin wykracza poza zakres ${rangeLabel} od pierwotnej daty meczu.`
-            : `Proponowana data (${proposedDate.slice(0, 10)}) przekracza ostateczny termin realizacji meczów (${finalDateDisplay}).`,
+          description: proposedDate
+            ? describeRescheduleViolation(violation, proposedDate, rescheduleSettings)
+            : 'Wniosek nie zawiera proponowanej daty.',
           variant: 'destructive',
         });
         return;

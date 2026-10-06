@@ -77,14 +77,29 @@ export function HomeNavigationProvider({ children }: { children: React.ReactNode
 
 export const useHomeNavigation = () => useContext(HomeNavigationContext);
 
-/** Maps view key strings to section indices in FullScreenHomePage. */
-export const HOME_VIEW_TO_SECTION: Record<string, number> = {
-  groups: 1,
-  playoffs: 1, // playoffs replaces groups/divisions in section 1
-  schedule: 2,
-  teams: 3,
-  rankings: 4,
-  stats: 5,
-  pickem: 6,
-  'my-team': 7,
-};
+/** All homepage sections in display order; optional ones are dropped by getHomeSections. */
+const HOME_SECTION_ORDER = ['start', 'groups', 'schedule', 'teams', 'rankings', 'stats', 'pickem', 'my-team'] as const;
+export type HomeSectionKey = (typeof HOME_SECTION_ORDER)[number];
+
+export interface HomeSectionOptions {
+  /** tournament.pickem?.enabled — a disabled Pick'em gets no section at all */
+  pickemEnabled: boolean;
+  /** The signed-in user captains a team in this tournament */
+  hasTeam: boolean;
+}
+
+/** Sections FullScreenHomePage renders for this tournament/user, in order (index = section index). */
+export function getHomeSections({ pickemEnabled, hasTeam }: HomeSectionOptions): HomeSectionKey[] {
+  return HOME_SECTION_ORDER.filter(key => (key !== 'pickem' || pickemEnabled) && (key !== 'my-team' || hasTeam));
+}
+
+/**
+ * Section index for a view key (`?view=` values and navbar targets), or undefined when the
+ * section doesn't exist. "playoffs" shares the groups section. Sections before Pick'em never
+ * move, so callers that don't know hasTeam can omit it — "my-team" is always last.
+ */
+export function getHomeSectionIndex(view: string, { pickemEnabled, hasTeam = true }: Pick<HomeSectionOptions, 'pickemEnabled'> & Partial<HomeSectionOptions>): number | undefined {
+  const key = view === 'playoffs' ? 'groups' : view;
+  const index = getHomeSections({ pickemEnabled, hasTeam }).indexOf(key as HomeSectionKey);
+  return index === -1 ? undefined : index;
+}
