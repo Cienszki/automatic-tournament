@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, useLayoutEffect, ReactNode, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useLayoutEffect, ReactNode, useCallback, useRef } from 'react';
 import { TournamentConfig, TournamentSummary, TournamentTheme } from '@/types/tournament';
 import { PDL_THEME, LETNIA_THEME, getThemeCssVariables, getThemeBySlug } from '@/lib/themes';
 import { fetchTournaments, fetchTournamentBySlug } from '@/lib/api/tournaments';
@@ -101,6 +101,9 @@ export function TournamentProvider({ children, initialTournamentSlug }: Tourname
   // the per-tournament config fetch (which controls the LoadingScreen).
   const [isListLoading, setIsListLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Slug of the most recent config request — results for any other slug are stale
+  // (e.g. a fetch that resolves after the user already navigated elsewhere).
+  const latestRequestedSlug = useRef<string | null>(null);
 
   // Holds the cached theme for the current slug so the LoadingScreen shows
   // the correct tournament colors while the Firestore fetch is in progress.
@@ -169,6 +172,7 @@ export function TournamentProvider({ children, initialTournamentSlug }: Tourname
 
   // Function to fetch tournament config
   const fetchTournamentConfig = useCallback(async (slug: string) => {
+    latestRequestedSlug.current = slug;
     // Pre-apply cached theme so the LoadingScreen shows correct colors
     // while the async Firestore fetch is in progress.
     const cached = getCachedTheme(slug);
@@ -178,10 +182,15 @@ export function TournamentProvider({ children, initialTournamentSlug }: Tourname
 
     try {
       setIsLoading(true);
+      // A previous "not found" must not outlive the request that caused it — it used to
+      // stick for the whole visit and turn later navigations into a 404.
+      setError(null);
 
       // Fetch from Firestore
       const tournamentData = await fetchTournamentBySlug(slug);
-        
+      // Navigated on while this was in flight: a late result must not overwrite the current one
+      if (latestRequestedSlug.current !== slug) return;
+
       if (tournamentData) {
         // Use Firestore data
         setTournament(tournamentData);
@@ -350,12 +359,13 @@ export function TournamentProvider({ children, initialTournamentSlug }: Tourname
         }
       }
     } catch (err) {
+      if (latestRequestedSlug.current !== slug) return;
       console.error('Error fetching tournament config:', err);
       setError('Failed to load tournament');
       setTournament(null);
       setPendingTheme(null);
     } finally {
-      setIsLoading(false);
+      if (latestRequestedSlug.current === slug) setIsLoading(false);
     }
   }, []);
 
@@ -368,7 +378,9 @@ export function TournamentProvider({ children, initialTournamentSlug }: Tourname
   // Fetch current tournament config when slug changes
   useEffect(() => {
     if (!tournamentSlug) {
+      latestRequestedSlug.current = null;
       setTournament(null);
+      setError(null);
       return;
     }
 

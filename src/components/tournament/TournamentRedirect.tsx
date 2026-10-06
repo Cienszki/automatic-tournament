@@ -17,7 +17,7 @@
 // slug lookup on every request; not worth that cost until the redirects matter
 // for SEO rather than convenience.
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useTournament } from '@/context/TournamentContext';
 import { Loader2 } from 'lucide-react';
@@ -32,19 +32,33 @@ export function TournamentRedirect({ children }: { children: React.ReactNode }) 
   const isAdminRoute = pathname?.includes('/admin') ?? false;
   const optedOut = searchParams.get('noredirect') === '1';
   const isSelf = !!target && !!tournamentSlug && target === tournamentSlug;
+  const redirectable = !!target && !isAdminRoute && !optedOut && !isSelf;
 
-  const shouldRedirect = !!target && !isAdminRoute && !optedOut && !isSelf;
+  // Whole path segments only: "/pdl" must not match "/pdl-s2". After router.replace the
+  // pathname is already "/pdl-s2" while the context still holds the old "pdl" tournament;
+  // a plain startsWith("/pdl") then re-fired the redirect with the leftover "-s2" and sent
+  // visitors to "/pdl-s2-s2" -> "Tournament not found".
+  const underPath = (slug: string | null | undefined) =>
+    !!slug && !!pathname && (pathname === `/${slug}` || pathname.startsWith(`/${slug}/`));
+  const onOldTournament = underPath(tournamentSlug);
+  // Redirect already issued; the new tournament is still loading into the context.
+  const handingOver = redirectable && underPath(target);
+
+  const shouldRedirect = redirectable && onOldTournament;
+  const redirectedFor = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!shouldRedirect || !target || !tournamentSlug) return;
+    if (!shouldRedirect || !target || !tournamentSlug || !pathname) return;
+    // Fire once per old -> new pair, however often this effect re-runs mid-navigation
+    const key = `${tournamentSlug}->${target}`;
+    if (redirectedFor.current === key) return;
+    redirectedFor.current = key;
     // Preserve the sub-path: /pdl/teams -> /pdl-s2/teams
-    const rest = pathname?.startsWith(`/${tournamentSlug}`)
-      ? pathname.slice(`/${tournamentSlug}`.length)
-      : '';
+    const rest = pathname.slice(`/${tournamentSlug}`.length);
     router.replace(`/${target}${rest}`);
   }, [shouldRedirect, target, tournamentSlug, pathname, router]);
 
-  if (shouldRedirect) {
+  if (shouldRedirect || handingOver) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="flex items-center gap-3 text-muted-foreground">
