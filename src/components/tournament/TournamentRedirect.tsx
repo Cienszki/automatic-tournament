@@ -53,10 +53,11 @@ export function TournamentRedirect({ children }: { children: React.ReactNode }) 
     const key = `${tournamentSlug}->${target}`;
     if (redirectedFor.current === key) return;
     redirectedFor.current = key;
-    // Preserve the sub-path: /pdl/teams -> /pdl-s2/teams
+    // Preserve the sub-path and query: /pdl/teams -> /pdl-s2/teams, /pdl?view=stats -> /pdl-s2?view=stats
     const rest = pathname.slice(`/${tournamentSlug}`.length);
-    router.replace(`/${target}${rest}`);
-  }, [shouldRedirect, target, tournamentSlug, pathname, router]);
+    const query = searchParams.toString();
+    router.replace(`/${target}${rest}${query ? `?${query}` : ''}`);
+  }, [shouldRedirect, target, tournamentSlug, pathname, searchParams, router]);
 
   if (shouldRedirect || handingOver) {
     return (

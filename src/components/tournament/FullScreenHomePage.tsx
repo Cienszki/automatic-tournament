@@ -555,6 +555,7 @@ export function TournamentHomePage() {
 
   // Fetch stats
   useEffect(() => {
+    let cancelled = false; // a late response for a previous tournament must not land here
     const load = async () => {
       if (!tournament?.id) return;
       try {
@@ -569,7 +570,9 @@ export function TournamentHomePage() {
               getDocs(collection(db, 'tournaments', tournament.id, 'playerStats')),
               getDocs(collection(db, 'tournaments', tournament.id, 'teamStats')),
             ]);
-        if (tDoc.exists()) setTournamentStats(tDoc.data() as TournamentStatsData);
+        if (cancelled) return;
+        // No stats doc yet (new tournament) → clear, don't keep whatever was shown before
+        setTournamentStats(tDoc.exists() ? (tDoc.data() as TournamentStatsData) : null);
         setPlayerStats(pSnap.docs.map(d => ({ playerId: d.id, ...d.data() } as PlayerStatsData)));
         setTeamStats(tmSnap.docs.map(d => ({ teamId: d.id, ...d.data() } as TeamStatsData)));
       } catch (err) {
@@ -577,6 +580,7 @@ export function TournamentHomePage() {
       }
     };
     load();
+    return () => { cancelled = true; };
   }, [tournament?.id, isLegacyTournament]);
 
   if (!tournament) return null;

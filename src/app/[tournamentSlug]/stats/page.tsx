@@ -40,9 +40,8 @@ export default function StatsPage(): React.ReactElement | null {
             getDocs(collection(db, 'tournaments', tournament.id, 'playerStats')),
             getDocs(collection(db, 'tournaments', tournament.id, 'teamStats')),
           ]);
-      if (tournamentDoc.exists()) {
-        setTournamentStats(tournamentDoc.data() as TournamentStatsData);
-      }
+      // No stats doc yet (new tournament) → clear, don't keep whatever was shown before
+      setTournamentStats(tournamentDoc.exists() ? (tournamentDoc.data() as TournamentStatsData) : null);
       setPlayerStats(playerSnap.docs.map(d => ({ playerId: d.id, ...d.data() } as PlayerStatsData)));
       setTeamStats(teamSnap.docs.map(d => ({ teamId: d.id, ...d.data() } as TeamStatsData)));
     } catch (err) {

@@ -221,7 +221,11 @@ export default function TournamentLayout({ children }: TournamentLayoutProps) {
               <TournamentNavbar />
             )}
             <main className={isHomePage ? 'relative z-10' : 'flex-grow container mx-auto px-4 py-8 relative z-10'}>
-              <ErrorBoundary section="tournament">
+              {/* Keyed by tournament: Next keeps page components mounted when only the slug
+                  changes (/pdl -> /pdl-s2), so their state (stats, teams, ...) leaked into the
+                  next tournament wherever a loader skips "not found" results. A new tournament
+                  now always starts from a fresh page. */}
+              <ErrorBoundary key={tournament.id} section="tournament">
                 <HeroMediaGateProvider value={signalHeroMediaReady}>
                   {children}
                 </HeroMediaGateProvider>
