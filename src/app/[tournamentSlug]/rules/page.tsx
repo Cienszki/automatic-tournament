@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useTournament } from '@/context/TournamentContext';
 import { LoadingScreen } from '@/components/ui/LoadingScreen';
 import { Badge } from "@/components/ui/badge";
@@ -18,21 +18,9 @@ import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { db } from '@/lib/firebase';
 import { collection, getDocs } from 'firebase/firestore';
-
-interface RuleParagraph {
-  id: string;
-  content: string;
-  commentary?: string;
-  order: number;
-  parentId?: string; // For nested sub-paragraphs (e.g., 5.11.1)
-}
-
-interface RuleSection {
-  id: string;
-  title: string;
-  order: number;
-  paragraphs: RuleParagraph[];
-}
+import { numberRules, ruleAnchorId, type RuleParagraph, type RuleSection } from '@/lib/rules-numbering';
+import { RulesAssistant } from '@/components/rules/RulesAssistant';
+import { RuleText } from '@/components/rules/RuleText';
 
 /**
  * Rules page - Premium styled tournament rules and regulations
@@ -44,6 +32,12 @@ export default function RulesPage() {
   const [activeSection, setActiveSection] = useState<string | null>(null);
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
   const [openCommentaries, setOpenCommentaries] = useState<Set<string>>(new Set());
+  const [highlightedRule, setHighlightedRule] = useState<string | null>(null);
+  const highlightTimer = useRef<ReturnType<typeof setTimeout>>();
+
+  // Same numbering the rules assistant cites, so "§3.2.1" in an answer is the 3.2.1 shown here
+  const numberedRules = useMemo(() => numberRules(sections), [sections]);
+  const refByParagraphId = useMemo(() => new Map(numberedRules.map(r => [r.paragraphId, r.ref])), [numberedRules]);
 
   const toggleCommentary = (id: string) => {
     setOpenCommentaries(prev => {
@@ -129,6 +123,31 @@ export default function RulesPage() {
     }
     document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
+
+  /** Jump to a cited paragraph (from the rules assistant) and briefly highlight it. */
+  const focusRule = (paragraphId: string) => {
+    const section = sections.find(s => s.paragraphs.some(p => p.id === paragraphId));
+    if (!section) return;
+    const wasCollapsed = !expandedSections.has(section.id);
+    if (wasCollapsed) setExpandedSections(prev => new Set([...prev, section.id]));
+    setActiveSection(section.id);
+
+    // Let a collapsed section finish its 300ms expand animation before measuring
+    setTimeout(() => {
+      document.getElementById(ruleAnchorId(paragraphId))?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      setHighlightedRule(paragraphId);
+      clearTimeout(highlightTimer.current);
+      highlightTimer.current = setTimeout(() => setHighlightedRule(null), 2800);
+    }, wasCollapsed ? 350 : 0);
+  };
+
+  useEffect(() => () => clearTimeout(highlightTimer.current), []);
+
+  const linkColor = theme.linkColor || theme.primaryColor;
+
+  const highlightStyle = (paragraphId: string): React.CSSProperties => highlightedRule === paragraphId
+    ? { backgroundColor: `${theme.primaryColor}1a`, boxShadow: `0 0 0 6px ${theme.primaryColor}1a, 0 0 0 7px ${theme.primaryColor}55`, borderRadius: '0.375rem' }
+    : {};
 
   if (!tournament) return null;
 
@@ -245,6 +264,9 @@ export default function RulesPage() {
           </motion.div>
         </div>
 
+        {/* Ask-the-rulebook search bar */}
+        {numberedRules.length > 0 && <RulesAssistant rules={numberedRules} onCitationClick={focusRule} />}
+
         {sections.length === 0 ? (
           /* Empty State */
           <motion.div
@@ -322,21 +344,25 @@ export default function RulesPage() {
                                 return (
                                   <div key={paragraph.id} className="space-y-3">
                                     {/* Parent paragraph */}
-                                    <div className="flex gap-4 group">
+                                    <div
+                                      id={ruleAnchorId(paragraph.id)}
+                                      className="flex gap-4 group scroll-mt-24 transition-[background-color,box-shadow] duration-500"
+                                      style={highlightStyle(paragraph.id)}
+                                    >
                                       {/* Paragraph Number */}
                                       <div className="shrink-0">
                                         <span className="text-sm font-body font-medium tabular-nums" style={{ color: theme.secondaryTextColor || '#9ca3af' }}>
-                                          {section.order}.{paraIndex + 1}
+                                          {refByParagraphId.get(paragraph.id) ?? `${section.order}.${paraIndex + 1}`}
                                         </span>
                                       </div>
 
                                     {/* Paragraph Content + right margin note */}
-                                      <div className="flex gap-4 flex-1 items-start">
+                                      <div className="flex flex-col md:flex-row gap-2 md:gap-4 flex-1 min-w-0 items-start">
                                         {/* Text + inline info button */}
                                         <div className="flex-1 min-w-0 flex items-start gap-1.5">
-                                          <p className="font-rules-content leading-relaxed flex-1 whitespace-pre-wrap" style={{ color: theme.primaryTextColor || '#e5e7eb' }}>
-                                            {paragraph.content}
-                                          </p>
+                                          <div className="font-rules-content leading-relaxed flex-1 min-w-0" style={{ color: theme.primaryTextColor || '#e5e7eb' }}>
+                                            <RuleText content={paragraph.content} linkColor={linkColor} />
+                                          </div>
                                           {paragraph.commentary && (
                                             <button
                                               onClick={() => toggleCommentary(paragraph.id)}
@@ -349,14 +375,14 @@ export default function RulesPage() {
                                           )}
                                         </div>
                                         {/* Right margin: commentary note */}
-                                        <div className="w-52 shrink-0">
+                                        <div className={cn("w-full md:w-52 shrink-0", !(paragraph.commentary && openCommentaries.has(paragraph.id)) && "hidden md:block")}>
                                           {paragraph.commentary && openCommentaries.has(paragraph.id) && (
                                             <div className="rounded-lg p-2.5 border" style={{ borderColor: `${theme.primaryColor}35`, backgroundColor: `${theme.primaryColor}0d` }}>
                                               <div className="flex items-start gap-1.5">
                                                 <MessageSquare className="w-3 h-3 mt-0.5 shrink-0" style={{ color: theme.primaryColor }} />
-                                                <p className="text-xs font-rules-content leading-relaxed" style={{ color: theme.primaryColor }}>
-                                                  {paragraph.commentary}
-                                                </p>
+                                                <div className="text-xs font-rules-content leading-relaxed min-w-0" style={{ color: theme.primaryColor }}>
+                                                  <RuleText content={paragraph.commentary} />
+                                                </div>
                                               </div>
                                             </div>
                                           )}
@@ -366,25 +392,26 @@ export default function RulesPage() {
 
                                     {/* Sub-paragraphs */}
                                     {subParagraphs.map((subParagraph, subIndex) => (
-                                      <div 
-                                        key={subParagraph.id} 
-                                        className="flex gap-4 group ml-8 pl-4 border-l-2"
-                                        style={{ borderLeftColor: `${theme.primaryColor}30` }}
+                                      <div
+                                        key={subParagraph.id}
+                                        id={ruleAnchorId(subParagraph.id)}
+                                        className="flex gap-3 md:gap-4 group ml-4 md:ml-8 pl-3 md:pl-4 border-l-2 scroll-mt-24 transition-[background-color,box-shadow] duration-500"
+                                        style={{ borderLeftColor: `${theme.primaryColor}30`, ...highlightStyle(subParagraph.id) }}
                                       >
                                         {/* Sub-paragraph Number */}
                                         <div className="shrink-0">
                                           <span className="text-sm font-body font-medium tabular-nums" style={{ color: theme.secondaryTextColor || '#9ca3af' }}>
-                                            {section.order}.{paraIndex + 1}.{subIndex + 1}
+                                            {refByParagraphId.get(subParagraph.id) ?? `${section.order}.${paraIndex + 1}.${subIndex + 1}`}
                                           </span>
                                         </div>
 
                                         {/* Sub-paragraph Content + right margin note */}
-                                        <div className="flex gap-4 flex-1 items-start">
+                                        <div className="flex flex-col md:flex-row gap-2 md:gap-4 flex-1 min-w-0 items-start">
                                           {/* Text + inline info button */}
                                           <div className="flex-1 min-w-0 flex items-start gap-1.5">
-                                            <p className="font-rules-content leading-relaxed flex-1 whitespace-pre-wrap" style={{ color: theme.primaryTextColor || '#e5e7eb' }}>
-                                              {subParagraph.content}
-                                            </p>
+                                            <div className="font-rules-content leading-relaxed flex-1 min-w-0" style={{ color: theme.primaryTextColor || '#e5e7eb' }}>
+                                              <RuleText content={subParagraph.content} linkColor={linkColor} />
+                                            </div>
                                             {subParagraph.commentary && (
                                               <button
                                                 onClick={() => toggleCommentary(subParagraph.id)}
@@ -397,14 +424,14 @@ export default function RulesPage() {
                                             )}
                                           </div>
                                           {/* Right margin: commentary note */}
-                                          <div className="w-52 shrink-0">
+                                          <div className={cn("w-full md:w-52 shrink-0", !(subParagraph.commentary && openCommentaries.has(subParagraph.id)) && "hidden md:block")}>
                                             {subParagraph.commentary && openCommentaries.has(subParagraph.id) && (
                                               <div className="rounded-lg p-2.5 border" style={{ borderColor: `${theme.primaryColor}35`, backgroundColor: `${theme.primaryColor}0d` }}>
                                                 <div className="flex items-start gap-1.5">
                                                   <MessageSquare className="w-3 h-3 mt-0.5 shrink-0" style={{ color: theme.primaryColor }} />
-                                                  <p className="text-xs font-rules-content leading-relaxed" style={{ color: theme.primaryColor }}>
-                                                    {subParagraph.commentary}
-                                                  </p>
+                                                  <div className="text-xs font-rules-content leading-relaxed min-w-0" style={{ color: theme.primaryColor }}>
+                                                    <RuleText content={subParagraph.commentary} />
+                                                  </div>
                                                 </div>
                                               </div>
                                             )}
