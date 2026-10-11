@@ -34,6 +34,14 @@ import NoTeamFound from '@/components/app/my-team/NoTeamFound';
 import { PDLMyTeamHero, PDLMatchHistory, PDLCaptainActions, RegistrationStatusBanner } from "@/components/pdl/my-team";
 import { PDLUpcomingMatch } from "@/components/pdl/my-team/PDLUpcomingMatchNew";
 import { checkRescheduleProposal, type RescheduleViolation } from "@/lib/reschedule-rules";
+import {
+  COACH_CHANGE_LOCK_HOURS,
+  isPerMatchCoachMode,
+  isTeamLevelCoachMode,
+  isWithinCoachLock,
+  teamCoachLock,
+} from "@/lib/coach-rules";
+import { PDLTeamCoachCard } from "@/components/pdl/my-team/PDLTeamCoachCard";
 import { PDLTransferSection } from "@/components/pdl/my-team/PDLTransferSection";
 import { upsertGlobalPlayerProfilesAction, clearPlayerCurrentTeamsAction } from "@/lib/player-profile-actions";
 
@@ -249,9 +257,10 @@ function MyTeamView() {
   //
   // Older tournament docs may predate `coachMode`. For those, fall back to the
   // previous type-based behaviour so no existing league loses its coach UI.
-  const coachEnabled = tournament?.coachMode
-    ? tournament.coachMode !== 'disabled'
-    : isLeague;
+  // Per-match coaches ("Zgłaszani do każdego meczu", legacy leagues) vs one team-level coach
+  // ("Elastycznie", "Zgłaszani przed sezonem") — see src/lib/coach-rules.ts.
+  const coachPerMatch = isPerMatchCoachMode(tournament?.coachMode, isLeague);
+  const coachTeamLevel = isTeamLevelCoachMode(tournament?.coachMode);
   const { user, loading: authLoading, signInWithGoogle } = useAuth();
   const { t } = useTranslation();
   const { toast } = useToast();
@@ -405,18 +414,19 @@ function MyTeamView() {
       });
     }
 
-    // Check for upcoming matches without coach (24h warning) — only where coaches are enabled
+    // Per-match coaches only: a coach is optional, but reporting closes 24 h before the match —
+    // remind (24–48 h before) while there's still time, not after the window has closed.
     const nextMatch = upcomingMatches[0];
-    if (coachEnabled && nextMatch && !nextMatch.coachInfo?.[team?.id || '']) {
+    if (coachPerMatch && nextMatch && !nextMatch.coachInfo?.[team?.id || '']) {
       const matchDate = new Date(nextMatch.scheduledFor || '');
       const hoursUntilMatch = (matchDate.getTime() - Date.now()) / (1000 * 60 * 60);
-      if (hoursUntilMatch < 24 && hoursUntilMatch > 0) {
+      if (hoursUntilMatch < 2 * COACH_CHANGE_LOCK_HOURS && hoursUntilMatch >= COACH_CHANGE_LOCK_HOURS) {
         actions.push({
           id: 'coach-deadline',
           type: 'coach_deadline',
-          title: 'Brak coacha na najbliższy mecz',
-          description: 'Musisz zarejestrować coacha minimum 24h przed meczem',
-          urgent: true,
+          title: 'Trener na najbliższy mecz?',
+          description: `Jeśli gracie z trenerem, zgłoś go teraz — zgłoszenia zamykają się ${COACH_CHANGE_LOCK_HOURS} h przed meczem.`,
+          urgent: false,
           dueDate: nextMatch.scheduledFor,
           action: {
             label: 'Dodaj coacha',
@@ -1294,8 +1304,42 @@ function MyTeamView() {
   };
 
   // ─── Coach handlers ───
+  // Team-level coach ("Elastycznie" / "Zgłaszani przed sezonem"): one nickname on the team doc,
+  // kept until changed. The lock is re-checked here, not only in the UI.
+  const getTeamCoachLock = () => teamCoachLock(tournament?.coachMode, {
+    tournamentStatus: tournament?.status,
+    upcomingMatchTimes: matches.filter(m => m.status !== 'completed').map(m => m.scheduledFor),
+  });
+
+  const handleSetTeamCoach = async (nickname: string | null) => {
+    if (!tournament?.id || !team) return;
+    const lock = getTeamCoachLock();
+    if (lock.locked) {
+      toast({ title: 'Nie można zmienić trenera', description: lock.reason ?? undefined, variant: 'destructive' });
+      return;
+    }
+    const coach = nickname ? { nickname, updatedAt: new Date().toISOString() } : null;
+    try {
+      await updateDoc(doc(db, 'tournaments', tournament.id, 'teams', team.id), { coach });
+      setTeam(prev => (prev ? { ...prev, coach: coach ?? undefined } : prev));
+      toast({ title: nickname ? 'Zapisano trenera' : 'Usunięto trenera', description: nickname ? `Trener drużyny: ${nickname}` : undefined });
+    } catch (error) {
+      console.error('[MyTeam] Error saving team coach:', error);
+      toast({ title: 'Błąd', description: 'Nie udało się zapisać trenera.', variant: 'destructive' });
+    }
+  };
+
   const handleSetCoach = async (matchId: string, data: { nickname: string; steamProfileUrl: string }) => {
     if (!tournament?.id || !team) return;
+    // Reporting closes 24 h before the match (rulebook) — enforced, not just a warning
+    if (isWithinCoachLock(matches.find(m => m.id === matchId)?.scheduledFor)) {
+      toast({
+        title: 'Za późno na zgłoszenie trenera',
+        description: `Trenera trzeba zgłosić najpóźniej ${COACH_CHANGE_LOCK_HOURS} h przed meczem.`,
+        variant: 'destructive',
+      });
+      return;
+    }
     const matchRef = getMatchDocRef(matchId);
     await updateDoc(matchRef, {
       [`coachInfo.${team.id}`]: {
@@ -1320,6 +1364,14 @@ function MyTeamView() {
 
   const handleRemoveCoach = async (matchId: string) => {
     if (!tournament?.id || !team) return;
+    if (isWithinCoachLock(matches.find(m => m.id === matchId)?.scheduledFor)) {
+      toast({
+        title: 'Nie można już zmienić trenera',
+        description: `Zmiany trenera zamykają się ${COACH_CHANGE_LOCK_HOURS} h przed meczem.`,
+        variant: 'destructive',
+      });
+      return;
+    }
     const matchRef = getMatchDocRef(matchId);
     await updateDoc(matchRef, {
       [`coachInfo.${team.id}`]: null,
@@ -2023,6 +2075,19 @@ function MyTeamView() {
             </div>
           </button>
         </motion.div>
+
+        {/* Team-level coach ("Elastycznie" / "Zgłaszani przed sezonem") */}
+        {coachTeamLevel && team && (
+          <PDLTeamCoachCard
+            coachNickname={team.coach?.nickname || null}
+            isCaptain={isCaptain}
+            lock={getTeamCoachLock()}
+            ruleSummary={tournament.coachMode === 'pre-season'
+              ? 'Jeden trener dla drużyny. Można go zmieniać tylko przed startem turnieju.'
+              : `Jeden trener dla drużyny, obowiązuje do zmiany. Zmiany są zablokowane ${COACH_CHANGE_LOCK_HOURS} h przed meczem drużyny.`}
+            onSave={handleSetTeamCoach}
+          />
+        )}
       </div>
 
       {/* ═══════════════════════════════════════════════════════════
@@ -2144,8 +2209,8 @@ function MyTeamView() {
                       onAppealStandinRequest={handleAppealStandinRequest}
                       onCancelStandinRequest={handleCancelStandinRequest}
                       onEditStandinGames={handleEditStandinGames}
-                      onSetCoach={coachEnabled ? handleSetCoach : undefined}
-                      onRemoveCoach={coachEnabled ? handleRemoveCoach : undefined}
+                      onSetCoach={coachPerMatch ? handleSetCoach : undefined}
+                      onRemoveCoach={coachPerMatch ? handleRemoveCoach : undefined}
                       onRefreshMatch={() => refreshSingleMatch(match.id)}
                       isMmrLimited={isMmrLimited}
                       botLobbyName={

@@ -33,6 +33,8 @@ import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { describeBracket, byeCountFor } from '@/lib/playoff-bracket-generator';
+import { COACH_MODE_OPTIONS, coachModeOption } from '@/lib/coach-rules';
+import type { CoachMode } from '@/types/tournament';
 
 /**
  * Tournament Structure Tab - Configure rounds, matches, playoffs, promotion/relegation
@@ -168,12 +170,16 @@ export function TournamentStructureTab() {
               <Select value={coachMode} onValueChange={setCoachMode}>
                 <SelectTrigger className="font-logik"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="disabled">Wyłączeni</SelectItem>
-                  <SelectItem value="pre-season">Zgłaszani przed sezonem</SelectItem>
-                  <SelectItem value="per-game">Zgłaszani do każdego meczu</SelectItem>
-                  <SelectItem value="flexible">Elastycznie</SelectItem>
+                  {COACH_MODE_OPTIONS.map(option => (
+                    <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
+              {coachModeOption(coachMode as CoachMode) && (
+                <p className="text-xs text-muted-foreground font-logik leading-relaxed">
+                  {coachModeOption(coachMode as CoachMode)!.description}
+                </p>
+              )}
             </div>
 
             <div className="space-y-2">

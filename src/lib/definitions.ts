@@ -351,6 +351,8 @@ export interface Team {
     nickname?: string;
     discordUsername?: string;
     steamProfileUrl?: string;
+    /** Last change (team-level coach modes, see lib/coach-rules) */
+    updatedAt?: string;
   };
   // PDL-specific team fields
   previousRoundPlayers?: Player[]; // Snapshot of players used in last completed round (for transfer validation)

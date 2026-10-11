@@ -6,8 +6,9 @@ import Image from 'next/image';
 import {
   Users, X, Swords, Sparkles, Shield, HandHelping, Eye,
   Copy, Check, ChevronLeft, ChevronRight, ChevronDown,
-  ExternalLink, Calendar,
+  ExternalLink, Calendar, GraduationCap,
 } from 'lucide-react';
+import { coachesEnabled } from '@/lib/coach-rules';
 import { cn } from '@/lib/utils';
 import { useTournament } from '@/context/TournamentContext';
 import { collection, getDocs, query, where, doc, getDoc } from 'firebase/firestore';
@@ -956,6 +957,10 @@ function ExpandedTeamCard({ team, onClose }: ExpandedCardProps) {
   const [selectedMatchForModal, setSelectedMatchForModal] = useState<Match | null>(null);
 
   const sortedPlayers = useMemo(() => sortPlayersByRole(team.players || []), [team.players]);
+  // Team coach under the roster — only where the tournament uses coaches
+  const coachNickname = coachesEnabled(tournament?.coachMode, tournament?.type === 'league')
+    ? team.coach?.nickname?.trim() || null
+    : null;
   const captainDiscord = team.captainDiscordUsername || team.discordUsername;
   const totalMMR = useMemo(
     () => (team.players || []).reduce((s, p) => s + (Number(p.mmr) || 0), 0),
@@ -1289,6 +1294,22 @@ function ExpandedTeamCard({ team, onClose }: ExpandedCardProps) {
                       ))}
                     </div>
                   )}
+                  {coachNickname && (
+                    <div className="flex items-center w-full gap-2 py-2 px-2 mt-1 border-t border-white/[0.06]">
+                      <div className="shrink-0 w-5 flex justify-center" style={{ color: 'var(--tournament-secondary-text)' }}>
+                        <GraduationCap className="h-3.5 w-3.5" />
+                      </div>
+                      <span className="text-[10px] uppercase tracking-[0.18em] shrink-0" style={{ color: 'var(--tournament-section-header)' }}>
+                        Trener
+                      </span>
+                      <span
+                        className="text-xs font-logik-extended-bold uppercase tracking-wide truncate"
+                        style={{ color: 'var(--tournament-primary-text)', fontFamily: theme?.headerFont ? `var(${theme.headerFont})` : undefined }}
+                      >
+                        {coachNickname}
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Captain + MMR */}
@@ -1596,6 +1617,27 @@ function ExpandedTeamCard({ team, onClose }: ExpandedCardProps) {
                         )}
                       </button>
                     ))}
+                  </div>
+                )}
+
+                {/* Team coach — under the roster */}
+                {coachNickname && (
+                  <div className="flex items-center w-full gap-2 py-1.5 px-2 mt-1 border-t border-white/[0.06]">
+                    <div className="shrink-0 w-5 flex justify-center" style={{ color: theme?.secondaryTextColor || 'rgba(255,255,255,0.4)' }}>
+                      <GraduationCap className="h-3.5 w-3.5" />
+                    </div>
+                    <span className="text-[10px] uppercase tracking-[0.18em] shrink-0" style={{ color: theme?.secondaryTextColor || 'rgba(255,255,255,0.5)' }}>
+                      Trener
+                    </span>
+                    <span
+                      className="text-xs font-logik-extended-bold uppercase tracking-wide truncate"
+                      style={{
+                        color: theme?.primaryTextColor || theme?.textColor || '#ffffff',
+                        fontFamily: theme?.headerFont ? `var(${theme.headerFont})` : undefined,
+                      }}
+                    >
+                      {coachNickname}
+                    </span>
                   </div>
                 )}
 

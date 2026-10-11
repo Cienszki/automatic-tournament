@@ -19,9 +19,9 @@ import {
   ExternalLink,
   Pencil,
   X,
-  Info,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { COACH_CHANGE_LOCK_HOURS, isWithinCoachLock } from '@/lib/coach-rules';
 
 interface CoachInfo {
   nickname: string;
@@ -53,17 +53,11 @@ export function PDLCoachSection({
   const [nickname, setNickname] = useState(currentCoach?.nickname || '');
   const [steamUrl, setSteamUrl] = useState(currentCoach?.steamProfileUrl || '');
 
-  // Check if we're within 24h of the next match
-  const isWithin24h = (() => {
-    if (!nextMatchDate) return false;
-    const matchDate = new Date(nextMatchDate);
-    const now = new Date();
-    const diff = matchDate.getTime() - now.getTime();
-    return diff > 0 && diff < 24 * 60 * 60 * 1000;
-  })();
+  // Reporting closes 24 h before the match (rulebook) — changes are blocked, not just warned about
+  const isLocked = isWithinCoachLock(nextMatchDate);
 
   const handleSubmit = async () => {
-    if (!nickname.trim() || !steamUrl.trim()) return;
+    if (!nickname.trim()) return;
 
     setLoading(true);
     try {
@@ -102,7 +96,7 @@ export function PDLCoachSection({
           </span>
         </div>
 
-        {isCaptain && (
+        {isCaptain && !isLocked && (
           <Dialog open={isOpen} onOpenChange={setIsOpen}>
             <DialogTrigger asChild>
               <Button
@@ -127,20 +121,9 @@ export function PDLCoachSection({
                   {currentCoach ? 'Zmień trenera' : 'Dodaj trenera'}
                 </DialogTitle>
                 <DialogDescription className="text-white/60">
-                  Trener może być obecny podczas draftu. Zmiana obowiązuje od następnego meczu.
+                  Trenera zgłaszasz do tego meczu — najpóźniej {COACH_CHANGE_LOCK_HOURS} h przed jego terminem.
                 </DialogDescription>
               </DialogHeader>
-
-              {/* 24h warning */}
-              {isWithin24h && (
-                <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/10 p-3 flex items-start gap-2">
-                  <Info className="w-4 h-4 text-yellow-400 flex-shrink-0 mt-0.5" />
-                  <p className="text-xs text-yellow-200">
-                    Uwaga: Trener musi być zgłoszony minimum 24h przed meczem.
-                    Do następnego meczu pozostało mniej niż 24h — zmiana będzie obowiązywać dopiero od kolejnego.
-                  </p>
-                </div>
-              )}
 
               <div className="space-y-4">
                 <div className="space-y-2">
@@ -154,7 +137,7 @@ export function PDLCoachSection({
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="text-white/80 text-sm">Profil Steam trenera</Label>
+                  <Label className="text-white/80 text-sm">Profil Steam trenera <span className="text-white/40">(opcjonalnie)</span></Label>
                   <Input
                     placeholder="https://steamcommunity.com/profiles/..."
                     value={steamUrl}
@@ -174,7 +157,7 @@ export function PDLCoachSection({
                 </Button>
                 <Button
                   onClick={handleSubmit}
-                  disabled={!nickname.trim() || !steamUrl.trim() || loading}
+                  disabled={!nickname.trim() || loading}
                   className="bg-pdl-crimson hover:bg-pdl-crimson/80 text-white font-logik-extended-bold"
                 >
                   {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <GraduationCap className="w-4 h-4 mr-2" />}
@@ -197,6 +180,7 @@ export function PDLCoachSection({
               <p className="font-logik-extended-bold text-white text-sm truncate">
                 {currentCoach.nickname}
               </p>
+              {currentCoach.steamProfileUrl && (
               <a
                 href={currentCoach.steamProfileUrl}
                 target="_blank"
@@ -205,10 +189,11 @@ export function PDLCoachSection({
               >
                 Profil Steam <ExternalLink className="w-3 h-3" />
               </a>
+              )}
             </div>
           </div>
 
-          {isCaptain && (
+          {isCaptain && !isLocked && (
             <Button
               size="sm"
               variant="ghost"
@@ -223,9 +208,15 @@ export function PDLCoachSection({
       ) : (
         <div className="rounded-lg border border-dashed border-white/10 bg-white/[0.01] p-3 text-center">
           <p className="text-xs text-white/30 font-logik">
-            {isCaptain ? 'Kliknij "Dodaj" aby zgłosić trenera' : 'Brak przypisanego trenera'}
+            {isCaptain && !isLocked ? 'Opcjonalnie — kliknij "Dodaj", aby zgłosić trenera' : 'Brak zgłoszonego trenera'}
           </p>
         </div>
+      )}
+
+      {isCaptain && isLocked && (
+        <p className="text-xs text-amber-300/90 font-logik">
+          Zgłoszenia trenera na ten mecz są zamknięte ({COACH_CHANGE_LOCK_HOURS} h przed meczem).
+        </p>
       )}
     </div>
   );
