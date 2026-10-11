@@ -48,7 +48,10 @@ import {
   UserCog,
   Copy,
   Check,
+  Pencil,
+  X,
 } from 'lucide-react';
+import { saveSeedMmr, renumberSeeds } from '@/lib/swiss/actions';
 import { collection, getDocs, doc, updateDoc, writeBatch, deleteDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
@@ -74,7 +77,7 @@ interface TeamPlayer {
   smurfAccounts?: { steamProfileUrl: string }[];
 }
 
-interface Team {
+export interface Team {
   id: string;
   name: string;
   tag: string;
@@ -90,6 +93,126 @@ interface Team {
   seedPosition?: number;
   logoUrl?: string;
   players?: TeamPlayer[];
+}
+
+/**
+ * Swiss "Średnie MMR" cell: shows the captain-reported team average with its seed number,
+ * and lets the admin correct it inline (the registration form promises organisers can).
+ * Empty input clears the value.
+ */
+export function SeedMmrCell({
+  team,
+  onSave,
+  accentColor,
+}: {
+  team: Team;
+  onSave: (value: number | null) => Promise<void>;
+  accentColor: string;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const startEditing = () => {
+    setDraft(team.seedMmr != null ? String(team.seedMmr) : '');
+    setError(null);
+    setEditing(true);
+  };
+
+  const save = async () => {
+    const raw = draft.trim();
+    const value = raw === '' ? null : Number(raw);
+    // Same bounds as the registration form / Swiss tab
+    if (value != null && (!Number.isInteger(value) || value < 1 || value > 12000)) {
+      setError('Liczba całkowita 1–12000 (puste = usuń)');
+      return;
+    }
+    if (value === (team.seedMmr ?? null)) {
+      setEditing(false);
+      return;
+    }
+    setSaving(true);
+    try {
+      await onSave(value);
+      setEditing(false);
+    } catch {
+      setError('Nie udało się zapisać');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (editing) {
+    return (
+      <div className="space-y-1">
+        <div className="flex items-center gap-1">
+          <Input
+            type="number"
+            min={1}
+            max={12000}
+            autoFocus
+            value={draft}
+            onChange={(e) => { setDraft(e.target.value); setError(null); }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') { e.preventDefault(); save(); }
+              if (e.key === 'Escape') setEditing(false);
+            }}
+            placeholder="brak"
+            className="h-8 w-24 font-logik"
+            aria-label={`Średnie MMR drużyny ${team.name}`}
+            disabled={saving}
+          />
+          <Button
+            size="icon"
+            className="h-8 w-8"
+            style={{ backgroundColor: accentColor }}
+            onClick={save}
+            disabled={saving}
+            aria-label="Zapisz średnie MMR"
+          >
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+          </Button>
+          <Button
+            size="icon"
+            variant="ghost"
+            className="h-8 w-8"
+            onClick={() => setEditing(false)}
+            disabled={saving}
+            aria-label="Anuluj"
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+        {error && <p className="text-xs text-red-400 font-logik">{error}</p>}
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-1.5 group/seed">
+      {team.seedMmr != null ? (
+        <span className="font-logik-extended-bold">
+          {team.seedMmr.toLocaleString()}
+          {team.seedPosition != null && (
+            <span className="text-sm ml-1.5 text-muted-foreground">#{team.seedPosition}</span>
+          )}
+        </span>
+      ) : (
+        <span className="text-sm text-amber-500 font-logik">nie podano</span>
+      )}
+      <Button
+        size="icon"
+        variant="ghost"
+        className="h-7 w-7 text-muted-foreground opacity-60 group-hover/seed:opacity-100"
+        onClick={startEditing}
+        title="Zmień średnie MMR"
+        aria-label={`Zmień średnie MMR drużyny ${team.name}`}
+      >
+        <Pencil className="h-3.5 w-3.5" />
+      </Button>
+    </div>
+  );
 }
 
 /**
@@ -412,6 +535,38 @@ export function TeamsTab() {
       setSelectedTeams([]);
     } else {
       setSelectedTeams(filteredTeams.map(t => t.id));
+    }
+  };
+
+  // Swiss: admin correction of a team's self-reported average MMR. Saved straight away
+  // (not via "Zapisz zmiany"), then seed numbers are recomputed for the Swiss field.
+  const handleSaveSeedMmr = async (teamId: string, value: number | null) => {
+    if (!tournament?.id) return;
+    try {
+      await saveSeedMmr(tournament.id, teamId, value);
+      await renumberSeeds(tournament.id);
+      // Seed numbers of other teams may have shifted — re-read them
+      const snap = await getDocs(collection(db, 'tournaments', tournament.id, 'teams'));
+      const positions = new Map(snap.docs.map(d => [d.id, d.data().seedPosition]));
+      setTeams(prev => prev.map(t => {
+        const pos = positions.get(t.id);
+        return {
+          ...t,
+          ...(t.id === teamId ? { seedMmr: value ?? undefined } : {}),
+          seedPosition: typeof pos === 'number' ? pos : undefined,
+        };
+      }));
+      const name = teams.find(t => t.id === teamId)?.name ?? 'drużyny';
+      toast({
+        title: 'Zapisano średnie MMR',
+        description: value != null
+          ? `${name}: ${value.toLocaleString()} MMR. Rozstawienie przeliczone.`
+          : `${name}: usunięto średnie MMR.`,
+      });
+    } catch (error) {
+      console.error('[TeamsTab] Error saving seed MMR:', error);
+      toast({ title: 'Błąd', description: 'Nie udało się zapisać średniego MMR.', variant: 'destructive' });
+      throw error;
     }
   };
 
@@ -892,18 +1047,13 @@ export function TeamsTab() {
                       </TableCell>
                     ) : swissUsesMmr ? (
                       <TableCell>
-                        {/* Self-reported team average, admin-visible only. Edited
-                            in the Swiss tab, where the seed list lives. */}
-                        {team.seedMmr != null ? (
-                          <span className="font-logik-extended-bold">
-                            {team.seedMmr.toLocaleString()}
-                            {team.seedPosition != null && (
-                              <span className="text-sm ml-1.5 text-muted-foreground">#{team.seedPosition}</span>
-                            )}
-                          </span>
-                        ) : (
-                          <span className="text-sm text-amber-500 font-logik">nie podano</span>
-                        )}
+                        {/* Self-reported team average, admin-visible only. Editable here and
+                            in the Swiss tab's seed list (same saveSeedMmr + renumberSeeds). */}
+                        <SeedMmrCell
+                          team={team}
+                          onSave={(value) => handleSaveSeedMmr(team.id, value)}
+                          accentColor={theme.primaryColor}
+                        />
                       </TableCell>
                     ) : (
                       <TableCell>
