@@ -19,6 +19,14 @@ import type { TournamentTheme, DivisionConfig } from "@/types/tournament";
 export const SHEET_WIDTH_PX = (297 / 25.4) * 96;
 export const SHEET_HEIGHT_PX = (210 / 25.4) * 96;
 
+/**
+ * Colour with alpha (0x00–0xff, like a hex suffix). color-mix instead of `${color}80`:
+ * theme colours may be hsl(...) strings, where a hex suffix is invalid CSS and silently dropped.
+ */
+function fade(color: string, alpha: number): string {
+  return `color-mix(in srgb, ${color.trim()} ${Math.round((alpha / 255) * 100)}%, transparent)`;
+}
+
 const PRINT_CSS = `
   .diploma-print-portal { display: none; }
   @page { size: A4 landscape; margin: 0; }
@@ -178,7 +186,7 @@ function DiplomaCard({
       {/* Inner frame (inside the sheet, so it survives printing edge-to-edge) */}
       <div
         className="absolute pointer-events-none"
-        style={{ inset: 10, border: `1.5px solid ${secondary}50`, boxShadow: `0 0 0 6px ${bg}, 0 0 0 7.5px ${secondary}30` }}
+        style={{ inset: 10, border: `1.5px solid ${fade(secondary, 0x50)}`, boxShadow: `0 0 0 6px ${bg}, 0 0 0 7.5px ${fade(secondary, 0x30)}` }}
         aria-hidden="true"
       />
 
@@ -197,7 +205,7 @@ function DiplomaCard({
       {/* Subtle radial glow from top */}
       <div
         className="absolute inset-0 pointer-events-none"
-        style={{ background: `radial-gradient(ellipse 80% 40% at 50% -10%, ${primary}15 0%, transparent 70%)` }}
+        style={{ background: `radial-gradient(ellipse 80% 40% at 50% -10%, ${fade(primary, 0x15)} 0%, transparent 70%)` }}
         aria-hidden="true"
       />
 
@@ -212,19 +220,6 @@ function DiplomaCard({
           className="relative z-10 flex flex-col items-center w-full gap-5 text-center"
           style={{ transform: `scale(${fitScale})`, transformOrigin: "center center" }}
         >
-          {/* Logo */}
-          {theme.logoUrl && (
-            <Image
-              src={theme.logoUrl}
-              alt={tournamentName}
-              width={320}
-              height={150}
-              className="object-contain mb-1"
-              style={{ maxHeight: 150, width: "auto", filter: "drop-shadow(0 0 24px rgba(255,255,255,0.15))" }}
-              unoptimized
-            />
-          )}
-
           {/* ── DYPLOM ── */}
           <div>
             <h1
@@ -235,7 +230,7 @@ function DiplomaCard({
                 letterSpacing: "0.4em",
                 marginRight: "-0.4em", // letter-spacing adds trailing space; keep the word centred
                 color: secondary,
-                textShadow: `0 0 40px ${secondary}60, 0 0 80px ${secondary}25`,
+                textShadow: `0 0 40px ${fade(secondary, 0x60)}, 0 0 80px ${fade(secondary, 0x25)}`,
               }}
             >
               Dyplom
@@ -253,7 +248,7 @@ function DiplomaCard({
               fontSize: 52,
               letterSpacing: "0.08em",
               color: text,
-              textShadow: `0 0 30px ${text}20`,
+              textShadow: `0 0 30px ${fade(text, 0x20)}`,
               opacity: isPlaceholder ? 0.3 : 1,
               ...breakText,
             }}
@@ -263,12 +258,12 @@ function DiplomaCard({
 
           {/* ── Team ── */}
           <div style={{ opacity: isPlaceholder ? 0.3 : 1 }}>
-            <p className="text-sm tracking-[0.25em] uppercase" style={{ color: `${text}50` }}>
+            <p className="text-sm tracking-[0.25em] uppercase" style={{ color: `${fade(text, 0x50)}` }}>
               reprezentującego drużynę
             </p>
             <p
               className="mt-1 text-2xl tracking-wide font-semibold"
-              style={{ color: primary, fontFamily: headerFont, textShadow: `0 0 20px ${primary}50`, ...breakText }}
+              style={{ color: primary, fontFamily: headerFont, textShadow: `0 0 20px ${fade(primary, 0x50)}`, ...breakText }}
             >
               {teamName}
             </p>
@@ -277,7 +272,7 @@ function DiplomaCard({
           {/* ── za zajęcie / place ── */}
           <div className="flex flex-col items-center gap-3 mt-1" style={{ opacity: isPlaceholder ? 0.3 : 1 }}>
             {!isCustomPlace && (
-              <p className="text-sm tracking-[0.25em] uppercase" style={{ color: `${text}50` }}>
+              <p className="text-sm tracking-[0.25em] uppercase" style={{ color: `${fade(text, 0x50)}` }}>
                 za zajęcie
               </p>
             )}
@@ -286,9 +281,9 @@ function DiplomaCard({
               className="px-12 py-3 max-w-full"
               style={{
                 clipPath: "polygon(12px 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%,0 12px)",
-                background: `${secondary}12`,
-                outline: `1.5px solid ${secondary}70`,
-                boxShadow: `inset 0 0 30px ${secondary}08, 0 0 30px ${secondary}20`,
+                background: `${fade(secondary, 0x12)}`,
+                outline: `1.5px solid ${fade(secondary, 0x70)}`,
+                boxShadow: `inset 0 0 30px ${fade(secondary, 0x08)}, 0 0 30px ${fade(secondary, 0x20)}`,
               }}
             >
               <span
@@ -298,7 +293,7 @@ function DiplomaCard({
                   fontSize: 32,
                   letterSpacing: "0.25em",
                   color: secondary,
-                  textShadow: `0 0 20px ${secondary}80`,
+                  textShadow: `0 0 20px ${fade(secondary, 0x80)}`,
                   ...breakText,
                 }}
               >
@@ -307,14 +302,26 @@ function DiplomaCard({
             </div>
           </div>
 
-          {/* ── w turnieju ── */}
-          <div className="flex flex-col items-center gap-0.5">
-            <p className="text-sm tracking-[0.25em] uppercase font-normal" style={{ color: `${text}50` }}>
-              w
+          {/* ── w turnieju [logo] — the name only when there's no logo ── */}
+          <div className="flex flex-col items-center gap-2">
+            <p className="text-sm tracking-[0.25em] uppercase font-normal" style={{ color: `${fade(text, 0x50)}` }}>
+              w turnieju
             </p>
-            <p className="text-2xl font-semibold tracking-wide" style={{ color: text, ...breakText }}>
-              {tournamentName}
-            </p>
+            {theme.logoUrl ? (
+              <Image
+                src={theme.logoUrl}
+                alt={tournamentName}
+                width={420}
+                height={130}
+                className="object-contain"
+                style={{ maxHeight: 130, maxWidth: 420, width: "auto", filter: "drop-shadow(0 0 24px rgba(255,255,255,0.15))" }}
+                unoptimized
+              />
+            ) : (
+              <p className="text-2xl font-semibold tracking-wide" style={{ color: text, ...breakText }}>
+                {tournamentName}
+              </p>
+            )}
           </div>
 
           {/* ── Division (league only) ── */}
@@ -324,7 +331,7 @@ function DiplomaCard({
               style={{
                 color: division.color || secondary,
                 fontFamily: headerFont,
-                textShadow: `0 0 20px ${division.color || secondary}60`,
+                textShadow: `0 0 20px ${fade(division.color || secondary, 0x60)}`,
               }}
             >
               Dywizja {division.name}
@@ -334,7 +341,7 @@ function DiplomaCard({
           {/* ── Footer ── */}
           <div
             className="w-full flex justify-between items-end mt-4 pt-6 text-xs tracking-wider uppercase gap-6 text-left"
-            style={{ borderTop: `1px solid ${secondary}20`, color: `${text}40` }}
+            style={{ borderTop: `1px solid ${fade(secondary, 0x20)}`, color: `${fade(text, 0x40)}` }}
           >
             <span className="min-w-0 truncate">{tournamentName}</span>
             <span className="shrink-0">{date}</span>
@@ -342,7 +349,7 @@ function DiplomaCard({
 
               <img src={organizerLogoUrl} alt={organizerName} style={{ height: 22, objectFit: "contain", opacity: 0.7 }} />
             ) : (
-              <span className="min-w-0 truncate" style={{ color: `${secondary}80` }}>{organizerName}</span>
+              <span className="min-w-0 truncate" style={{ color: `${fade(secondary, 0x80)}` }}>{organizerName}</span>
             )}
           </div>
         </div>
@@ -351,7 +358,7 @@ function DiplomaCard({
       {/* Bottom accent bar */}
       <div
         className="absolute bottom-0 left-0 right-0 h-[2px]"
-        style={{ background: `linear-gradient(90deg, transparent 0%, ${secondary}40 50%, transparent 100%)` }}
+        style={{ background: `linear-gradient(90deg, transparent 0%, ${fade(secondary, 0x40)} 50%, transparent 100%)` }}
         aria-hidden="true"
       />
     </div>
@@ -365,11 +372,11 @@ function DiplomaCard({
 function DiamondRule({ color }: { color: string }) {
   return (
     <div className="flex items-center gap-2" style={{ color }}>
-      <div className="h-px w-24" style={{ background: `linear-gradient(to left, ${color}80, transparent)` }} />
-      <span className="text-[10px] tracking-[0.3em] uppercase font-mono" style={{ color: `${color}90` }}>
+      <div className="h-px w-24" style={{ background: `linear-gradient(to left, ${fade(color, 0x80)}, transparent)` }} />
+      <span className="text-[10px] tracking-[0.3em] uppercase font-mono" style={{ color: `${fade(color, 0x90)}` }}>
         dla gracza
       </span>
-      <div className="h-px w-24" style={{ background: `linear-gradient(to right, ${color}80, transparent)` }} />
+      <div className="h-px w-24" style={{ background: `linear-gradient(to right, ${fade(color, 0x80)}, transparent)` }} />
     </div>
   );
 }
