@@ -19,7 +19,7 @@ import { collection, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { getAllTeams } from "@/lib/firestore";
 import { Shield, Printer, Trophy, LogIn } from "lucide-react";
-import { PrintableDiploma } from "@/components/diploma/PrintableDiploma";
+import { PrintableDiploma, type DiplomaOrientation } from "@/components/diploma/PrintableDiploma";
 import { organizationConfig } from "@/config/organization";
 import type { DivisionConfig } from "@/types/tournament";
 
@@ -72,6 +72,11 @@ export default function DiplomaPage() {
   const [selectedPlace, setSelectedPlace] = useState<string>("I. Miejsca");
   const [customTitle, setCustomTitle] = useState<string>("");
   const [selectedDivisionId, setSelectedDivisionId] = useState<string>("");
+  const [orientation, setOrientation] = useState<DiplomaOrientation>("landscape");
+  // Diplomas are often printed long after the tournament and players change nicknames:
+  // the name on the diploma can differ from the roster (null = use the roster nickname).
+  const [playerNameOverride, setPlayerNameOverride] = useState<string | null>(null);
+  const [organizerName, setOrganizerName] = useState<string>(organizationConfig.displayName);
   const [date, setDate] = useState<string>(
     new Date().toLocaleDateString("pl-PL", {
       year: "numeric",
@@ -302,6 +307,7 @@ export default function DiplomaPage() {
               onValueChange={(v) => {
                 setSelectedTeamId(v);
                 setSelectedPlayerId("");
+                setPlayerNameOverride(null);
               }}
             >
               <SelectTrigger>
@@ -323,7 +329,10 @@ export default function DiplomaPage() {
               <Label className="text-xs tracking-widest uppercase text-white/50">Gracz</Label>
               <Select
                 value={selectedPlayerId}
-                onValueChange={setSelectedPlayerId}
+                onValueChange={(v) => {
+                  setSelectedPlayerId(v);
+                  setPlayerNameOverride(null);
+                }}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Wybierz gracza…" />
@@ -336,6 +345,36 @@ export default function DiplomaPage() {
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+          )}
+
+          {/* Name printed on the diploma (editable — nicknames change) */}
+          {selectedPlayer && (
+            <div className="space-y-1.5">
+              <Label className="text-xs tracking-widest uppercase text-white/50">
+                Nick na dyplomie{" "}
+                <span className="normal-case tracking-normal text-white/30 font-normal">
+                  — zmień, jeśli gracz używa już innego nicku
+                </span>
+              </Label>
+              <div className="flex gap-2">
+                <Input
+                  value={playerNameOverride ?? selectedPlayer.nickname}
+                  onChange={(e) => setPlayerNameOverride(e.target.value)}
+                  placeholder={selectedPlayer.nickname}
+                />
+                {playerNameOverride !== null && playerNameOverride !== selectedPlayer.nickname && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="shrink-0 text-xs text-white/50"
+                    onClick={() => setPlayerNameOverride(null)}
+                    title={`Przywróć „${selectedPlayer.nickname}”`}
+                  >
+                    Przywróć
+                  </Button>
+                )}
+              </div>
             </div>
           )}
 
@@ -367,6 +406,42 @@ export default function DiplomaPage() {
             <Input value={date} onChange={(e) => setDate(e.target.value)} />
           </div>
 
+          {/* Organizer name in the footer (next to the organizer logo) */}
+          <div className="space-y-1.5">
+            <Label className="text-xs tracking-widest uppercase text-white/50">
+              Organizator{" "}
+              <span className="normal-case tracking-normal text-white/30 font-normal">
+                — w stopce, obok logo organizatora (puste = samo logo)
+              </span>
+            </Label>
+            <Input value={organizerName} onChange={(e) => setOrganizerName(e.target.value)} />
+          </div>
+
+          {/* Orientation */}
+          <div className="space-y-1.5">
+            <Label className="text-xs tracking-widest uppercase text-white/50">Orientacja (A4)</Label>
+            <div className="grid grid-cols-2 gap-2">
+              {([
+                ["landscape", "Pozioma"],
+                ["portrait", "Pionowa"],
+              ] as const).map(([value, label]) => (
+                <Button
+                  key={value}
+                  type="button"
+                  variant="outline"
+                  onClick={() => setOrientation(value)}
+                  aria-pressed={orientation === value}
+                  className="rounded-none"
+                  style={orientation === value
+                    ? { borderColor: theme.primaryColor, backgroundColor: `color-mix(in srgb, ${theme.primaryColor} 20%, transparent)` }
+                    : undefined}
+                >
+                  {label}
+                </Button>
+              ))}
+            </div>
+          </div>
+
           {/* Print button */}
           <Button
             onClick={() => window.print()}
@@ -378,7 +453,7 @@ export default function DiplomaPage() {
                 : undefined,
               borderRadius: 0,
             }}
-            disabled={!selectedPlayer}
+            disabled={!selectedPlayer || (playerNameOverride !== null && !playerNameOverride.trim())}
           >
             <Printer className="mr-2 h-4 w-4" />
             Drukuj dyplom
@@ -399,15 +474,16 @@ export default function DiplomaPage() {
         <PrintableDiploma
           theme={theme}
           tournamentName={tournamentName}
-          playerName={selectedPlayer?.nickname ?? "Imię Gracza"}
+          playerName={selectedPlayer ? (playerNameOverride ?? selectedPlayer.nickname) : "Imię Gracza"}
           teamName={selectedTeam?.name ?? "Nazwa Drużyny"}
           place={effectivePlace}
           isCustomPlace={isCustom}
           date={date}
-          organizerName={organizationConfig.displayName}
+          organizerName={organizerName}
           organizerLogoUrl={theme?.organizerLogoUrl ?? null}
           division={selectedDivision}
           isPlaceholder={!selectedPlayer}
+          orientation={orientation}
         />
       </div>
     </>

@@ -15,9 +15,13 @@ import { createPortal } from "react-dom";
 import Image from "next/image";
 import type { TournamentTheme, DivisionConfig } from "@/types/tournament";
 
-/** A4 landscape at CSS 96 dpi: 297 mm × 210 mm */
-export const SHEET_WIDTH_PX = (297 / 25.4) * 96;
-export const SHEET_HEIGHT_PX = (210 / 25.4) * 96;
+export type DiplomaOrientation = "landscape" | "portrait";
+
+/** A4 sheet in mm and in CSS px (96 dpi) for the given orientation. */
+export function sheetSize(orientation: DiplomaOrientation) {
+  const [wMm, hMm] = orientation === "portrait" ? [210, 297] : [297, 210];
+  return { wMm, hMm, wPx: (wMm / 25.4) * 96, hPx: (hMm / 25.4) * 96 };
+}
 
 /**
  * Colour with alpha (0x00–0xff, like a hex suffix). color-mix instead of `${color}80`:
@@ -27,21 +31,24 @@ function fade(color: string, alpha: number): string {
   return `color-mix(in srgb, ${color.trim()} ${Math.round((alpha / 255) * 100)}%, transparent)`;
 }
 
-const PRINT_CSS = `
+function printCss(orientation: DiplomaOrientation) {
+  const { wMm, hMm } = sheetSize(orientation);
+  // Printed height is 0.5 mm under the paper: a sheet of exactly the paper height rounds up
+  // (e.g. 210 mm -> 794 px > 793.7 px) and spills a sliver onto a second page.
+  const printH = `${hMm - 0.5}mm`;
+  return `
   .diploma-print-portal { display: none; }
-  @page { size: A4 landscape; margin: 0; }
+  @page { size: A4 ${orientation}; margin: 0; }
   @media print {
-    /* 0.5 mm under the paper height: a sheet of exactly 210 mm rounds to 794 px > 793.7 px
-       and spills a sliver onto a second page. */
     html, body {
       margin: 0 !important; padding: 0 !important;
-      width: 297mm !important; height: 209.5mm !important; min-height: 0 !important;
+      width: ${wMm}mm !important; height: ${printH} !important; min-height: 0 !important;
       overflow: hidden !important; background: #fff !important;
     }
     body > *:not(.diploma-print-portal) { display: none !important; }
     .diploma-print-portal {
       display: block !important;
-      width: 297mm; height: 209.5mm; overflow: hidden;
+      width: ${wMm}mm; height: ${printH}; overflow: hidden;
       break-after: avoid; page-break-after: avoid;
     }
     .diploma-print-portal .diploma-card { height: 100% !important; }
@@ -51,6 +58,7 @@ const PRINT_CSS = `
     }
   }
 `;
+}
 
 export interface DiplomaContentProps {
   theme: TournamentTheme;
@@ -66,6 +74,8 @@ export interface DiplomaContentProps {
   organizerLogoUrl?: string | null;
   division?: DivisionConfig | null;
   isPlaceholder?: boolean;
+  /** A4 landscape (default) or portrait */
+  orientation?: DiplomaOrientation;
 }
 
 /** Preview (scaled to fit the page width) + the print copy. */
@@ -76,6 +86,8 @@ export function PrintableDiploma(props: DiplomaContentProps) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const areaRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
+  const orientation = props.orientation ?? "landscape";
+  const sheet = sheetSize(orientation);
 
   useEffect(() => setMounted(true), []);
 
@@ -84,13 +96,13 @@ export function PrintableDiploma(props: DiplomaContentProps) {
     const wrap = wrapRef.current;
     if (!wrap) return;
     const update = () => {
-      if (wrap.clientWidth > 0) setPreviewScale(wrap.clientWidth / SHEET_WIDTH_PX); // 0 while printing
+      if (wrap.clientWidth > 0) setPreviewScale(wrap.clientWidth / sheet.wPx); // 0 while printing
     };
     update();
     const ro = new ResizeObserver(update);
     ro.observe(wrap);
     return () => ro.disconnect();
-  }, []);
+  }, [sheet.wPx]);
 
   // Content: shrink to fit the sheet when it's taller than the available area.
   // offsetHeight ignores transforms, so this measures the natural size.
@@ -116,16 +128,20 @@ export function PrintableDiploma(props: DiplomaContentProps) {
 
   return (
     <>
-      <style>{PRINT_CSS}</style>
+      <style>{printCss(orientation)}</style>
 
       <div
         ref={wrapRef}
-        className="diploma-preview w-full max-w-[1123px] mx-auto relative"
-        style={{ aspectRatio: "297 / 210", boxShadow: "0 40px 80px rgba(0,0,0,0.6)" }}
+        className="diploma-preview w-full mx-auto relative"
+        style={{
+          aspectRatio: `${sheet.wMm} / ${sheet.hMm}`,
+          maxWidth: orientation === "portrait" ? 720 : 1123,
+          boxShadow: "0 40px 80px rgba(0,0,0,0.6)",
+        }}
       >
         <div
           className="absolute top-0 left-0"
-          style={{ width: SHEET_WIDTH_PX, height: SHEET_HEIGHT_PX, transform: `scale(${previewScale})`, transformOrigin: "top left" }}
+          style={{ width: sheet.wPx, height: sheet.hPx, transform: `scale(${previewScale})`, transformOrigin: "top left" }}
         >
           <DiplomaCard {...props} fitScale={fitScale} areaRef={areaRef} contentRef={contentRef} />
         </div>
@@ -142,7 +158,7 @@ export function PrintableDiploma(props: DiplomaContentProps) {
 }
 
 // ---------------------------------------------------------------------------
-// DiplomaCard — one A4 landscape sheet
+// DiplomaCard — one A4 sheet
 // ---------------------------------------------------------------------------
 
 function DiplomaCard({
@@ -157,6 +173,7 @@ function DiplomaCard({
   organizerLogoUrl = null,
   division = null,
   isPlaceholder = false,
+  orientation = "landscape",
   fitScale,
   areaRef,
   contentRef,
@@ -176,8 +193,8 @@ function DiplomaCard({
     <div
       className="diploma-card relative overflow-hidden"
       style={{
-        width: "297mm",
-        height: "210mm",
+        width: `${sheetSize(orientation).wMm}mm`,
+        height: `${sheetSize(orientation).hMm}mm`,
         background: bg,
         color: text,
         fontFamily: theme.bodyFont ? `var(${theme.bodyFont})` : "inherit",
@@ -209,15 +226,16 @@ function DiplomaCard({
         aria-hidden="true"
       />
 
-      {/* ── Content area: centred, scaled down if it doesn't fit ───────────── */}
+      {/* ── Sheet layout: main text centred in the free space, footer pinned to the bottom ── */}
       <div
-        ref={areaRef}
-        className="absolute inset-0 flex flex-col items-center justify-center"
-        style={{ padding: "44px 88px 40px" }}
+        className="absolute inset-0 flex flex-col"
+        style={{ padding: orientation === "portrait" ? "72px 64px 52px" : "44px 88px 40px" }}
       >
+      {/* Main text — scaled down if it doesn't fit its slot */}
+      <div ref={areaRef} className="flex-1 min-h-0 flex flex-col items-center justify-center">
         <div
           ref={contentRef}
-          className="relative z-10 flex flex-col items-center w-full gap-5 text-center"
+          className={`relative z-10 flex flex-col items-center w-full text-center ${orientation === "portrait" ? "gap-7" : "gap-5"}`}
           style={{ transform: `scale(${fitScale})`, transformOrigin: "center center" }}
         >
           {/* ── DYPLOM ── */}
@@ -337,22 +355,30 @@ function DiplomaCard({
               Dywizja {division.name}
             </p>
           )}
+        </div>
+      </div>
 
-          {/* ── Footer ── */}
+          {/* ── Footer (pinned to the bottom): date left; organiser logo + name right ── */}
           <div
-            className="w-full flex justify-between items-end mt-4 pt-6 text-xs tracking-wider uppercase gap-6 text-left"
+            className="relative z-10 w-full flex justify-between items-center mt-4 pt-5 text-xs tracking-wider uppercase gap-6 text-left shrink-0"
             style={{ borderTop: `1px solid ${fade(secondary, 0x20)}`, color: `${fade(text, 0x40)}` }}
           >
-            <span className="min-w-0 truncate">{tournamentName}</span>
             <span className="shrink-0">{date}</span>
-            {organizerLogoUrl ? (
-
-              <img src={organizerLogoUrl} alt={organizerName} style={{ height: 22, objectFit: "contain", opacity: 0.7 }} />
-            ) : (
-              <span className="min-w-0 truncate" style={{ color: `${fade(secondary, 0x80)}` }}>{organizerName}</span>
+            {(organizerLogoUrl || organizerName.trim()) && (
+              <div className="flex items-center gap-2.5 min-w-0">
+                {organizerLogoUrl && (
+                  <img
+                    src={organizerLogoUrl}
+                    alt=""
+                    style={{ height: 24, maxWidth: 120, objectFit: "contain", opacity: 0.85, flexShrink: 0 }}
+                  />
+                )}
+                {organizerName.trim() && (
+                  <span className="min-w-0 truncate" style={{ color: fade(secondary, 0x99) }}>{organizerName}</span>
+                )}
+              </div>
             )}
           </div>
-        </div>
       </div>
 
       {/* Bottom accent bar */}
