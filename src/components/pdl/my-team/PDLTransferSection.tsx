@@ -37,10 +37,14 @@ import {
   Shield,
   Lock,
   RefreshCw,
+  GraduationCap,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Player, PlayerRole, Team } from '@/lib/definitions';
 import { PlayerRoles } from '@/lib/definitions';
+import type { CoachLock } from '@/lib/coach-rules';
+
+const MAX_COACH_NICKNAME = 32;
 
 interface PDLTransferSectionProps {
   team: Team;
@@ -59,6 +63,19 @@ interface PDLTransferSectionProps {
   isMmrLimited?: boolean;
   /** Team MMR cap (only relevant when isMmrLimited is true) */
   mmrCap?: number;
+  /**
+   * Team-level coach ("Elastycznie" / "Zgłaszani przed sezonem"), managed here with the rest
+   * of the team. Omit when the tournament doesn't use team-level coaches.
+   */
+  coach?: {
+    nickname: string | null;
+    /** Changes blocked (e.g. a match within 24 h) and why */
+    lock: CoachLock;
+    /** One-line rule shown under the field */
+    ruleSummary: string;
+    /** Save a nickname, or null to remove the coach */
+    onSave: (nickname: string | null) => Promise<void>;
+  };
   /** Called when captain saves all roster changes */
   onSaveRoster: (data: {
     players: Player[];
@@ -101,6 +118,7 @@ export function PDLTransferSection({
   autoEdit,
   isMmrLimited,
   mmrCap,
+  coach,
   onSaveRoster,
 }: PDLTransferSectionProps) {
   const [isEditing, setIsEditing] = useState(false);
@@ -115,6 +133,7 @@ export function PDLTransferSection({
   const [editTeamName, setEditTeamName] = useState(team.name);
   const [editTeamTag, setEditTeamTag] = useState(team.tag);
   const [editCaptainDiscord, setEditCaptainDiscord] = useState(team.discordUsername || team.captainDiscordUsername || '');
+  const [editCoach, setEditCoach] = useState(coach?.nickname ?? '');
   const [editLogoFile, setEditLogoFile] = useState<File | null>(null);
   const [editLogoPreview, setEditLogoPreview] = useState(team.logoUrl);
 
@@ -167,8 +186,10 @@ export function PDLTransferSection({
     setEditCaptainDiscord(team.discordUsername || team.captainDiscordUsername || '');
     setEditLogoPreview(team.logoUrl);
     setEditLogoFile(null);
+    setEditCoach(coach?.nickname ?? '');
     setIsEditing(true);
-  }, [team]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [team, coach?.nickname]);
 
   // Auto-enter editing mode when requested
   useEffect(() => {
@@ -459,6 +480,10 @@ export function PDLTransferSection({
     [editPlayers]
   );
 
+  // Coach edited in this session (only when changes aren't locked)
+  const coachChanged = !!coach && !coach.lock.locked
+    && editCoach.trim() !== (coach.nickname ?? '');
+
   const canSave = useMemo(() => {
     if (activePlayerCount !== 5) return false;
     if (roleErrors.length > 0) return false;
@@ -509,6 +534,9 @@ export function PDLTransferSection({
         teamLogo: editLogoFile || team.logoUrl,
         captainDiscord: editCaptainDiscord.trim(),
       });
+      if (coach && coachChanged) {
+        await coach.onSave(editCoach.trim().slice(0, MAX_COACH_NICKNAME) || null);
+      }
 
       setIsEditing(false);
       setConfirmDialogOpen(false);
@@ -995,6 +1023,41 @@ export function PDLTransferSection({
                 </Button>
               )
             )}
+
+            {/* Coach — one per team, managed with the rest of the team */}
+            {coach && (
+              <div className="pt-4 border-t border-white/5 space-y-2">
+                <div className="flex items-center gap-2">
+                  <GraduationCap className="w-4 h-4" style={{ color: 'var(--tournament-secondary-text)' }} />
+                  <span
+                    className="text-sm uppercase tracking-[0.15em]"
+                    style={{ color: 'var(--tournament-heading)', fontFamily: theme?.headerFont ? `var(${theme.headerFont})` : undefined }}
+                  >
+                    Trener
+                  </span>
+                  <span className="text-xs text-white/40">(opcjonalnie)</span>
+                </div>
+                {coach.lock.locked ? (
+                  <div className="space-y-1">
+                    <p className="text-sm text-white">{coach.nickname || <span className="text-white/40">Brak trenera</span>}</p>
+                    <p className="flex items-start gap-1.5 text-xs text-yellow-300/80">
+                      <Lock className="w-3 h-3 mt-0.5 shrink-0" />
+                      {coach.lock.reason}
+                    </p>
+                  </div>
+                ) : (
+                  <Input
+                    value={editCoach}
+                    maxLength={MAX_COACH_NICKNAME}
+                    onChange={(e) => setEditCoach(e.target.value)}
+                    placeholder="Nick trenera (puste = drużyna bez trenera)"
+                    aria-label="Nick trenera"
+                    className="bg-white/5 border-white/10 text-white text-sm max-w-sm"
+                  />
+                )}
+                <p className="text-xs text-white/40">{coach.ruleSummary}</p>
+              </div>
+            )}
           </div>
 
           {/* Action buttons */}
@@ -1043,6 +1106,18 @@ export function PDLTransferSection({
                 {editTeamTag !== team.tag && (
                   <p className="text-sm text-white/80">
                     Tag: <span className="line-through text-white/40">[{team.tag}]</span> → <span className="text-pdl-gold">[{editTeamTag}]</span>
+                  </p>
+                )}
+                {coachChanged && (
+                  <p className="text-sm text-white/80">
+                    Trener:{' '}
+                    {coach?.nickname
+                      ? <span className="line-through text-white/40">{coach.nickname}</span>
+                      : <span className="text-white/40">brak</span>}
+                    {' → '}
+                    {editCoach.trim()
+                      ? <span className="text-pdl-gold">{editCoach.trim()}</span>
+                      : <span className="text-white/60">bez trenera</span>}
                   </p>
                 )}
                 {isSeasonActive && transfersUsed > 0 && (

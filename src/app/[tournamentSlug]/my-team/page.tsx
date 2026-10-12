@@ -41,7 +41,6 @@ import {
   isWithinCoachLock,
   teamCoachLock,
 } from "@/lib/coach-rules";
-import { PDLTeamCoachCard } from "@/components/pdl/my-team/PDLTeamCoachCard";
 import { PDLTransferSection } from "@/components/pdl/my-team/PDLTransferSection";
 import { upsertGlobalPlayerProfilesAction, clearPlayerCurrentTeamsAction } from "@/lib/player-profile-actions";
 
@@ -2075,19 +2074,6 @@ function MyTeamView() {
             </div>
           </button>
         </motion.div>
-
-        {/* Team-level coach ("Elastycznie" / "Zgłaszani przed sezonem") */}
-        {coachTeamLevel && team && (
-          <PDLTeamCoachCard
-            coachNickname={team.coach?.nickname || null}
-            isCaptain={isCaptain}
-            lock={getTeamCoachLock()}
-            ruleSummary={tournament.coachMode === 'pre-season'
-              ? 'Jeden trener dla drużyny. Można go zmieniać tylko przed startem turnieju.'
-              : `Jeden trener dla drużyny, obowiązuje do zmiany. Zmiany są zablokowane ${COACH_CHANGE_LOCK_HOURS} h przed meczem drużyny.`}
-            onSave={handleSetTeamCoach}
-          />
-        )}
       </div>
 
       {/* ═══════════════════════════════════════════════════════════
@@ -2120,6 +2106,15 @@ function MyTeamView() {
               autoEdit
               isMmrLimited={isMmrLimited}
               mmrCap={tournament?.mmrCap}
+              // Team-level coach ("Elastycznie" / "Zgłaszani przed sezonem") is managed with the roster
+              coach={coachTeamLevel ? {
+                nickname: team.coach?.nickname || null,
+                lock: getTeamCoachLock(),
+                ruleSummary: tournament.coachMode === 'pre-season'
+                  ? 'Jeden trener dla drużyny, sam nick. Można go zmieniać tylko przed startem turnieju.'
+                  : `Jeden trener dla drużyny, sam nick — obowiązuje do zmiany. Zmiany są zablokowane ${COACH_CHANGE_LOCK_HOURS} h przed meczem drużyny.`,
+                onSave: handleSetTeamCoach,
+              } : undefined}
               onSaveRoster={handleSaveRoster}
             />
           ) : (
