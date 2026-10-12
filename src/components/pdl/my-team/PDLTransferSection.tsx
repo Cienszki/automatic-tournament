@@ -38,13 +38,47 @@ import {
   Lock,
   RefreshCw,
   GraduationCap,
+  Info,
 } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import type { Player, PlayerRole, Team } from '@/lib/definitions';
 import { PlayerRoles } from '@/lib/definitions';
 import type { CoachLock } from '@/lib/coach-rules';
 
 const MAX_COACH_NICKNAME = 32;
+
+/** (i) next to "Trener": the tournament's coach rules, on hover (desktop) or tap/click. */
+function CoachRulesInfo({ text }: { text: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          aria-label="Zasady dotyczące trenera w tym turnieju"
+          className="inline-flex items-center justify-center w-5 h-5 rounded-full text-white/40 hover:text-white hover:bg-white/10 transition-colors"
+          onMouseEnter={() => setOpen(true)}
+          onMouseLeave={() => setOpen(false)}
+          // Click/tap opens (instead of toggling, so a click after hovering doesn't close it)
+          onClick={(e) => { e.preventDefault(); setOpen(true); }}
+        >
+          <Info className="w-3.5 h-3.5" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent
+        side="top"
+        align="start"
+        className="w-80 max-w-[90vw] text-xs leading-relaxed border-white/10 bg-[#111] text-white/80"
+        onMouseEnter={() => setOpen(true)}
+        onMouseLeave={() => setOpen(false)}
+      >
+        <p className="mb-1 font-semibold text-white">Zasady dotyczące trenera w tym turnieju</p>
+        <p>{text}</p>
+      </PopoverContent>
+    </Popover>
+  );
+}
 
 interface PDLTransferSectionProps {
   team: Team;
@@ -73,6 +107,8 @@ interface PDLTransferSectionProps {
     lock: CoachLock;
     /** One-line rule shown under the field */
     ruleSummary: string;
+    /** Full coach rules of this tournament, shown in the (i) popover */
+    rulesDetails: string;
     /** Save a nickname, or null to remove the coach */
     onSave: (nickname: string | null) => Promise<void>;
   };
@@ -1036,6 +1072,7 @@ export function PDLTransferSection({
                     Trener
                   </span>
                   <span className="text-xs text-white/40">(opcjonalnie)</span>
+                  <CoachRulesInfo text={coach.rulesDetails} />
                 </div>
                 {coach.lock.locked ? (
                   <div className="space-y-1">

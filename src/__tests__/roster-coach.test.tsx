@@ -31,6 +31,7 @@ function setup(coach: { nickname: string | null; locked?: boolean }) {
         nickname: coach.nickname,
         lock: coach.locked ? { locked: true, reason: 'Do meczu zostało mniej niż 24 h' } : { locked: false, reason: null },
         ruleSummary: 'Jeden trener dla drużyny',
+        rulesDetails: 'Kapitan może go zmienić w dowolnym momencie — z wyjątkiem 24 h przed meczem.',
         onSave: onSaveCoach,
       }}
     />,
@@ -67,6 +68,18 @@ describe('coach in the roster editor', () => {
     await saveAndConfirm();
     await waitFor(() => expect(onSaveRoster).toHaveBeenCalled());
     expect(onSaveCoach).not.toHaveBeenCalled();
+  });
+
+  it('explains the tournament coach rules in the (i), on hover and on click', async () => {
+    setup({ nickname: null });
+    const info = screen.getByRole('button', { name: /Zasady dotyczące trenera/ });
+    expect(screen.queryByText(/w dowolnym momencie/)).toBeNull();
+    fireEvent.mouseEnter(info);
+    expect(await screen.findByText(/w dowolnym momencie/)).toBeTruthy();
+    fireEvent.mouseLeave(info);
+    await waitFor(() => expect(screen.queryByText(/w dowolnym momencie/)).toBeNull());
+    fireEvent.click(info);
+    expect(await screen.findByText(/w dowolnym momencie/)).toBeTruthy();
   });
 
   it('is read-only with the reason while locked', () => {

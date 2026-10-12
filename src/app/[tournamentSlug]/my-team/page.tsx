@@ -36,6 +36,7 @@ import { PDLUpcomingMatch } from "@/components/pdl/my-team/PDLUpcomingMatchNew";
 import { checkRescheduleProposal, type RescheduleViolation } from "@/lib/reschedule-rules";
 import {
   COACH_CHANGE_LOCK_HOURS,
+  coachModeOption,
   isPerMatchCoachMode,
   isTeamLevelCoachMode,
   isWithinCoachLock,
@@ -2113,6 +2114,7 @@ function MyTeamView() {
                 ruleSummary: tournament.coachMode === 'pre-season'
                   ? 'Jeden trener dla drużyny, sam nick. Można go zmieniać tylko przed startem turnieju.'
                   : `Jeden trener dla drużyny, sam nick — obowiązuje do zmiany. Zmiany są zablokowane ${COACH_CHANGE_LOCK_HOURS} h przed meczem drużyny.`,
+                rulesDetails: coachModeOption(tournament.coachMode)?.description ?? '',
                 onSave: handleSetTeamCoach,
               } : undefined}
               onSaveRoster={handleSaveRoster}
