@@ -76,6 +76,8 @@ export interface DiplomaContentProps {
   isPlaceholder?: boolean;
   /** A4 landscape (default) or portrait */
   orientation?: DiplomaOrientation;
+  /** White paper: no page fill, dark text, no glows (saves ink; recommended for inkjets) */
+  printOnWhite?: boolean;
 }
 
 /** Preview (scaled to fit the page width) + the print copy. */
@@ -161,6 +163,15 @@ export function PrintableDiploma(props: DiplomaContentProps) {
 // DiplomaCard — one A4 sheet
 // ---------------------------------------------------------------------------
 
+/** Frame/ornaments sit this far in from the paper edge (~9 mm) — inside the area home printers can print. */
+const SAFE_MARGIN_PX = 34;
+
+/** Per-orientation layout: content padding (from the paper edge) and how big the tournament logo may get. */
+const LAYOUT = {
+  landscape: { padding: "70px 112px 58px", gapClass: "gap-4", logoMaxH: 185, logoMaxW: 560 },
+  portrait: { padding: "96px 92px 72px", gapClass: "gap-7", logoMaxH: 280, logoMaxW: 560 },
+} as const;
+
 function DiplomaCard({
   theme,
   tournamentName,
@@ -174,6 +185,7 @@ function DiplomaCard({
   division = null,
   isPlaceholder = false,
   orientation = "landscape",
+  printOnWhite = false,
   fitScale,
   areaRef,
   contentRef,
@@ -182,10 +194,18 @@ function DiplomaCard({
   areaRef?: RefObject<HTMLDivElement>;
   contentRef?: RefObject<HTMLDivElement>;
 }) {
+  const layout = LAYOUT[orientation];
   const primary = theme.primaryColor || "#8B1538";
-  const secondary = theme.secondaryColor || "#D4AF37";
-  const bg = theme.backgroundColor || "#0a0a0f";
-  const text = theme.textColor || "#ffffff";
+  const themeSecondary = theme.secondaryColor || "#D4AF37";
+  // "Białe tło": no page fill, dark text, no glows — only text, ornaments and logos use ink.
+  // Light accents (e.g. gold) are darkened a little so they stay legible on white paper.
+  const pageBg = printOnWhite ? "#ffffff" : theme.backgroundColor || "#0a0a0f";
+  const text = printOnWhite ? "#1a1a1a" : theme.textColor || "#ffffff";
+  const secondary = printOnWhite ? `color-mix(in srgb, ${themeSecondary.trim()} 78%, black)` : themeSecondary;
+  const glow = (css: string) => (printOnWhite ? "none" : css);
+  // Small labels / footer: faint on a dark page, but they need more ink to read on white paper
+  const muted = fade(text, printOnWhite ? 0x99 : 0x50);
+  const footerText = fade(text, printOnWhite ? 0x8c : 0x40);
   const headerFont = theme.headerFont ? `var(${theme.headerFont})` : "inherit";
   const breakText = { overflowWrap: "anywhere" as const };
 
@@ -195,22 +215,37 @@ function DiplomaCard({
       style={{
         width: `${sheetSize(orientation).wMm}mm`,
         height: `${sheetSize(orientation).hMm}mm`,
-        background: bg,
+        background: pageBg,
         color: text,
         fontFamily: theme.bodyFont ? `var(${theme.bodyFont})` : "inherit",
       }}
     >
-      {/* Inner frame (inside the sheet, so it survives printing edge-to-edge) */}
+      {/* Frame — inset from the paper edge so printer margins can't cut it */}
       <div
         className="absolute pointer-events-none"
-        style={{ inset: 10, border: `1.5px solid ${fade(secondary, 0x50)}`, boxShadow: `0 0 0 6px ${bg}, 0 0 0 7.5px ${fade(secondary, 0x30)}` }}
+        style={{
+          inset: SAFE_MARGIN_PX,
+          border: `1.5px solid ${fade(secondary, 0x50)}`,
+          boxShadow: `0 0 0 6px ${pageBg}, 0 0 0 7.5px ${fade(secondary, 0x30)}`,
+        }}
         aria-hidden="true"
       />
 
-      {/* Top accent bar */}
+      {/* Accent lines along the top and bottom of the frame */}
       <div
-        className="absolute top-0 left-0 right-0 h-[3px]"
-        style={{ background: `linear-gradient(90deg, transparent 0%, ${secondary} 30%, ${primary} 50%, ${secondary} 70%, transparent 100%)` }}
+        className="absolute h-[3px] pointer-events-none"
+        style={{
+          top: SAFE_MARGIN_PX - 1, left: SAFE_MARGIN_PX, right: SAFE_MARGIN_PX,
+          background: `linear-gradient(90deg, transparent 0%, ${secondary} 30%, ${primary} 50%, ${secondary} 70%, transparent 100%)`,
+        }}
+        aria-hidden="true"
+      />
+      <div
+        className="absolute h-[2px] pointer-events-none"
+        style={{
+          bottom: SAFE_MARGIN_PX - 1, left: SAFE_MARGIN_PX, right: SAFE_MARGIN_PX,
+          background: `linear-gradient(90deg, transparent 0%, ${fade(secondary, 0x40)} 50%, transparent 100%)`,
+        }}
         aria-hidden="true"
       />
 
@@ -219,174 +254,176 @@ function DiplomaCard({
       <CornerOrnament position="bottom-left" primary={primary} secondary={secondary} />
       <CornerOrnament position="bottom-right" primary={primary} secondary={secondary} />
 
-      {/* Subtle radial glow from top */}
-      <div
-        className="absolute inset-0 pointer-events-none"
-        style={{ background: `radial-gradient(ellipse 80% 40% at 50% -10%, ${fade(primary, 0x15)} 0%, transparent 70%)` }}
-        aria-hidden="true"
-      />
-
-      {/* ── Sheet layout: main text centred in the free space, footer pinned to the bottom ── */}
-      <div
-        className="absolute inset-0 flex flex-col"
-        style={{ padding: orientation === "portrait" ? "72px 64px 52px" : "44px 88px 40px" }}
-      >
-      {/* Main text — scaled down if it doesn't fit its slot */}
-      <div ref={areaRef} className="flex-1 min-h-0 flex flex-col items-center justify-center">
+      {/* Subtle radial glow from top (not on white paper — it would print as a haze) */}
+      {!printOnWhite && (
         <div
-          ref={contentRef}
-          className={`relative z-10 flex flex-col items-center w-full text-center ${orientation === "portrait" ? "gap-7" : "gap-5"}`}
-          style={{ transform: `scale(${fitScale})`, transformOrigin: "center center" }}
-        >
-          {/* ── DYPLOM ── */}
-          <div>
-            <h1
-              className="uppercase leading-none"
-              style={{
-                fontFamily: headerFont,
-                fontSize: 72,
-                letterSpacing: "0.4em",
-                marginRight: "-0.4em", // letter-spacing adds trailing space; keep the word centred
-                color: secondary,
-                textShadow: `0 0 40px ${fade(secondary, 0x60)}, 0 0 80px ${fade(secondary, 0x25)}`,
-              }}
-            >
-              Dyplom
-            </h1>
-            <div className="flex items-center justify-center gap-3 mt-3">
-              <DiamondRule color={secondary} />
-            </div>
-          </div>
+          className="absolute inset-0 pointer-events-none"
+          style={{ background: `radial-gradient(ellipse 80% 40% at 50% -10%, ${fade(primary, 0x15)} 0%, transparent 70%)` }}
+          aria-hidden="true"
+        />
+      )}
 
-          {/* ── Player name ── */}
-          <p
-            className="uppercase leading-tight mt-1"
-            style={{
-              fontFamily: headerFont,
-              fontSize: 52,
-              letterSpacing: "0.08em",
-              color: text,
-              textShadow: `0 0 30px ${fade(text, 0x20)}`,
-              opacity: isPlaceholder ? 0.3 : 1,
-              ...breakText,
-            }}
+      {/* ── Sheet layout: text block, logo centred in the space below it, footer at the bottom ── */}
+      <div className="absolute inset-0 flex flex-col" style={{ padding: layout.padding }}>
+        {/* Main content — scaled down as a whole if it doesn't fit its slot */}
+        <div ref={areaRef} className="flex-1 min-h-0 flex flex-col items-center justify-center">
+          <div
+            ref={contentRef}
+            className="relative z-10 shrink-0 flex flex-col items-center w-full text-center"
+            // min-height 100%: the logo area below takes the remaining space and centres the logo
+            style={{ minHeight: "100%", transform: `scale(${fitScale})`, transformOrigin: "center center" }}
           >
-            {playerName}
-          </p>
+            <div className={`flex flex-col items-center w-full ${layout.gapClass}`}>
+              {/* ── DYPLOM ── */}
+              <div>
+                <h1
+                  className="uppercase leading-none"
+                  style={{
+                    fontFamily: headerFont,
+                    fontSize: 72,
+                    letterSpacing: "0.4em",
+                    marginRight: "-0.4em", // letter-spacing adds trailing space; keep the word centred
+                    color: secondary,
+                    textShadow: glow(`0 0 40px ${fade(secondary, 0x60)}, 0 0 80px ${fade(secondary, 0x25)}`),
+                  }}
+                >
+                  Dyplom
+                </h1>
+                <div className="flex items-center justify-center gap-3 mt-3">
+                  <DiamondRule color={secondary} />
+                </div>
+              </div>
 
-          {/* ── Team ── */}
-          <div style={{ opacity: isPlaceholder ? 0.3 : 1 }}>
-            <p className="text-sm tracking-[0.25em] uppercase" style={{ color: `${fade(text, 0x50)}` }}>
-              reprezentującego drużynę
-            </p>
-            <p
-              className="mt-1 text-2xl tracking-wide font-semibold"
-              style={{ color: primary, fontFamily: headerFont, textShadow: `0 0 20px ${fade(primary, 0x50)}`, ...breakText }}
-            >
-              {teamName}
-            </p>
-          </div>
-
-          {/* ── za zajęcie / place ── */}
-          <div className="flex flex-col items-center gap-3 mt-1" style={{ opacity: isPlaceholder ? 0.3 : 1 }}>
-            {!isCustomPlace && (
-              <p className="text-sm tracking-[0.25em] uppercase" style={{ color: `${fade(text, 0x50)}` }}>
-                za zajęcie
-              </p>
-            )}
-            {/* Place badge — angular clip matching site CTAs */}
-            <div
-              className="px-12 py-3 max-w-full"
-              style={{
-                clipPath: "polygon(12px 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%,0 12px)",
-                background: `${fade(secondary, 0x12)}`,
-                outline: `1.5px solid ${fade(secondary, 0x70)}`,
-                boxShadow: `inset 0 0 30px ${fade(secondary, 0x08)}, 0 0 30px ${fade(secondary, 0x20)}`,
-              }}
-            >
-              <span
-                className="uppercase"
+              {/* ── Player name ── */}
+              <p
+                className="uppercase leading-tight"
                 style={{
                   fontFamily: headerFont,
-                  fontSize: 32,
-                  letterSpacing: "0.25em",
-                  color: secondary,
-                  textShadow: `0 0 20px ${fade(secondary, 0x80)}`,
+                  fontSize: 52,
+                  letterSpacing: "0.08em",
+                  color: text,
+                  textShadow: glow(`0 0 30px ${fade(text, 0x20)}`),
+                  opacity: isPlaceholder ? 0.3 : 1,
                   ...breakText,
                 }}
               >
-                {place}
-              </span>
+                {playerName}
+              </p>
+
+              {/* ── Team ── */}
+              <div style={{ opacity: isPlaceholder ? 0.3 : 1 }}>
+                <p className="text-sm tracking-[0.25em] uppercase" style={{ color: muted }}>
+                  reprezentującego drużynę
+                </p>
+                <p
+                  className="mt-1 text-2xl tracking-wide font-semibold"
+                  style={{ color: primary, fontFamily: headerFont, textShadow: glow(`0 0 20px ${fade(primary, 0x50)}`), ...breakText }}
+                >
+                  {teamName}
+                </p>
+              </div>
+
+              {/* ── za zajęcie / place ── */}
+              <div className="flex flex-col items-center gap-3" style={{ opacity: isPlaceholder ? 0.3 : 1 }}>
+                {!isCustomPlace && (
+                  <p className="text-sm tracking-[0.25em] uppercase" style={{ color: muted }}>
+                    za zajęcie
+                  </p>
+                )}
+                {/* Place badge — angular clip matching site CTAs */}
+                <div
+                  className="px-12 py-3 max-w-full"
+                  style={{
+                    clipPath: "polygon(12px 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%,0 12px)",
+                    background: fade(secondary, 0x12),
+                    outline: `1.5px solid ${fade(secondary, 0x70)}`,
+                    boxShadow: glow(`inset 0 0 30px ${fade(secondary, 0x08)}, 0 0 30px ${fade(secondary, 0x20)}`),
+                  }}
+                >
+                  <span
+                    className="uppercase"
+                    style={{
+                      fontFamily: headerFont,
+                      fontSize: 32,
+                      letterSpacing: "0.25em",
+                      color: secondary,
+                      textShadow: glow(`0 0 20px ${fade(secondary, 0x80)}`),
+                      ...breakText,
+                    }}
+                  >
+                    {place}
+                  </span>
+                </div>
+              </div>
+
+              <p className="text-sm tracking-[0.25em] uppercase font-normal" style={{ color: muted }}>
+                w turnieju
+              </p>
+            </div>
+
+            {/* ── Tournament logo (or name), centred in the space between "w turnieju" and the footer ── */}
+            <div className="flex-1 w-full flex flex-col items-center justify-center gap-3 py-3">
+              {theme.logoUrl ? (
+                <Image
+                  src={theme.logoUrl}
+                  alt={tournamentName}
+                  width={layout.logoMaxW}
+                  height={layout.logoMaxH}
+                  className="object-contain"
+                  style={{
+                    maxHeight: layout.logoMaxH,
+                    maxWidth: layout.logoMaxW,
+                    width: "auto",
+                    height: "auto",
+                    filter: glow("drop-shadow(0 0 24px rgba(255,255,255,0.15))"),
+                  }}
+                  unoptimized
+                />
+              ) : (
+                <p className="text-3xl font-semibold tracking-wide" style={{ color: text, fontFamily: headerFont, ...breakText }}>
+                  {tournamentName}
+                </p>
+              )}
+
+              {/* ── Division (league only) ── */}
+              {division && (
+                <p
+                  className="text-lg font-semibold tracking-[0.2em] uppercase"
+                  style={{
+                    color: division.color || secondary,
+                    fontFamily: headerFont,
+                    textShadow: glow(`0 0 20px ${fade(division.color || secondary, 0x60)}`),
+                  }}
+                >
+                  Dywizja {division.name}
+                </p>
+              )}
             </div>
           </div>
+        </div>
 
-          {/* ── w turnieju [logo] — the name only when there's no logo ── */}
-          <div className="flex flex-col items-center gap-2">
-            <p className="text-sm tracking-[0.25em] uppercase font-normal" style={{ color: `${fade(text, 0x50)}` }}>
-              w turnieju
-            </p>
-            {theme.logoUrl ? (
-              <Image
-                src={theme.logoUrl}
-                alt={tournamentName}
-                width={420}
-                height={130}
-                className="object-contain"
-                style={{ maxHeight: 130, maxWidth: 420, width: "auto", filter: "drop-shadow(0 0 24px rgba(255,255,255,0.15))" }}
-                unoptimized
-              />
-            ) : (
-              <p className="text-2xl font-semibold tracking-wide" style={{ color: text, ...breakText }}>
-                {tournamentName}
-              </p>
-            )}
-          </div>
-
-          {/* ── Division (league only) ── */}
-          {division && (
-            <p
-              className="text-lg font-semibold tracking-[0.2em] uppercase -mt-2"
-              style={{
-                color: division.color || secondary,
-                fontFamily: headerFont,
-                textShadow: `0 0 20px ${fade(division.color || secondary, 0x60)}`,
-              }}
-            >
-              Dywizja {division.name}
-            </p>
+        {/* ── Footer (pinned to the bottom): date left; organiser logo + name right ── */}
+        <div
+          className="relative z-10 w-full flex justify-between items-center mt-4 pt-5 text-xs tracking-wider uppercase gap-6 text-left shrink-0"
+          style={{ borderTop: `1px solid ${fade(secondary, 0x20)}`, color: footerText }}
+        >
+          <span className="shrink-0">{date}</span>
+          {(organizerLogoUrl || organizerName.trim()) && (
+            <div className="flex items-center gap-2.5 min-w-0">
+              {organizerLogoUrl && (
+                <img
+                  src={organizerLogoUrl}
+                  alt=""
+                  style={{ height: 24, maxWidth: 120, objectFit: "contain", opacity: 0.85, flexShrink: 0 }}
+                />
+              )}
+              {organizerName.trim() && (
+                <span className="min-w-0 truncate" style={{ color: printOnWhite ? secondary : fade(secondary, 0x99) }}>{organizerName}</span>
+              )}
+            </div>
           )}
         </div>
       </div>
-
-          {/* ── Footer (pinned to the bottom): date left; organiser logo + name right ── */}
-          <div
-            className="relative z-10 w-full flex justify-between items-center mt-4 pt-5 text-xs tracking-wider uppercase gap-6 text-left shrink-0"
-            style={{ borderTop: `1px solid ${fade(secondary, 0x20)}`, color: `${fade(text, 0x40)}` }}
-          >
-            <span className="shrink-0">{date}</span>
-            {(organizerLogoUrl || organizerName.trim()) && (
-              <div className="flex items-center gap-2.5 min-w-0">
-                {organizerLogoUrl && (
-                  <img
-                    src={organizerLogoUrl}
-                    alt=""
-                    style={{ height: 24, maxWidth: 120, objectFit: "contain", opacity: 0.85, flexShrink: 0 }}
-                  />
-                )}
-                {organizerName.trim() && (
-                  <span className="min-w-0 truncate" style={{ color: fade(secondary, 0x99) }}>{organizerName}</span>
-                )}
-              </div>
-            )}
-          </div>
-      </div>
-
-      {/* Bottom accent bar */}
-      <div
-        className="absolute bottom-0 left-0 right-0 h-[2px]"
-        style={{ background: `linear-gradient(90deg, transparent 0%, ${fade(secondary, 0x40)} 50%, transparent 100%)` }}
-        aria-hidden="true"
-      />
     </div>
   );
 }
@@ -423,10 +460,10 @@ function CornerOrnament({
   const isTop = position.startsWith("top");
   const isLeft = position.endsWith("left");
   const posClass =
-    position === "top-left" ? "top-6 left-6"
-      : position === "top-right" ? "top-6 right-6"
-        : position === "bottom-left" ? "bottom-6 left-6"
-          : "bottom-6 right-6";
+    position === "top-left" ? "top-[46px] left-[46px]"
+      : position === "top-right" ? "top-[46px] right-[46px]"
+        : position === "bottom-left" ? "bottom-[46px] left-[46px]"
+          : "bottom-[46px] right-[46px]";
   const d = isTop
     ? isLeft ? "M 22 2 L 2 2 L 2 22" : "M 6 2 L 26 2 L 26 22"
     : isLeft ? "M 22 26 L 2 26 L 2 6" : "M 6 26 L 26 26 L 26 6";

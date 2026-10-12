@@ -20,6 +20,8 @@ import { db } from "@/lib/firebase";
 import { getAllTeams } from "@/lib/firestore";
 import { Shield, Printer, Trophy, LogIn } from "lucide-react";
 import { PrintableDiploma, type DiplomaOrientation } from "@/components/diploma/PrintableDiploma";
+import { Switch } from "@/components/ui/switch";
+import { InfoPopover } from "@/components/ui/info-popover";
 import { organizationConfig } from "@/config/organization";
 import type { DivisionConfig } from "@/types/tournament";
 
@@ -73,6 +75,7 @@ export default function DiplomaPage() {
   const [customTitle, setCustomTitle] = useState<string>("");
   const [selectedDivisionId, setSelectedDivisionId] = useState<string>("");
   const [orientation, setOrientation] = useState<DiplomaOrientation>("landscape");
+  const [printOnWhite, setPrintOnWhite] = useState(false);
   // Diplomas are often printed long after the tournament and players change nicknames:
   // the name on the diploma can differ from the roster (null = use the roster nickname).
   const [playerNameOverride, setPlayerNameOverride] = useState<string | null>(null);
@@ -442,6 +445,22 @@ export default function DiplomaPage() {
             </div>
           </div>
 
+          {/* White paper (ink saver) */}
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-1.5">
+              <Label htmlFor="diploma-white" className="text-xs tracking-widest uppercase text-white/50 cursor-pointer">
+                Białe tło (oszczędność tuszu)
+              </Label>
+              <InfoPopover label="Kiedy używać białego tła" title="Zalecane przy drukarce atramentowej">
+                Dyplom drukuje się na białej kartce: bez tła w kolorze motywu i bez poświat pod napisami —
+                tusz idzie tylko na tekst, ozdobniki i logo. Duże, ciemne lub kolorowe tło zużywa bardzo dużo
+                tuszu, a drukarki atramentowe często drukują je smugami. Przy drukarce laserowej lub w drukarni
+                możesz zostawić tło z motywu turnieju.
+              </InfoPopover>
+            </div>
+            <Switch id="diploma-white" checked={printOnWhite} onCheckedChange={setPrintOnWhite} />
+          </div>
+
           {/* Print button */}
           <Button
             onClick={() => window.print()}
@@ -484,6 +503,7 @@ export default function DiplomaPage() {
           division={selectedDivision}
           isPlaceholder={!selectedPlayer}
           orientation={orientation}
+          printOnWhite={printOnWhite}
         />
       </div>
     </>
