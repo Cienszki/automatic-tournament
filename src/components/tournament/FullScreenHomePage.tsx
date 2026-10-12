@@ -431,7 +431,7 @@ export function TournamentHomePage() {
         const teamsData: Team[] = await Promise.all(
           snap.docs.map(async (teamDoc) => {
             const teamData = teamDoc.data();
-            const rosterMap = teamData.roster as Record<string, { nickname: string; role: string; steamId32: string; avatar?: string; mmr?: number; mostPlayedHeroes?: Player['mostPlayedHeroes'] }> | undefined;
+            const rosterMap = teamData.roster as Record<string, { nickname: string; role: string; steamId32: string; avatar?: string; avatarmedium?: string; avatarfull?: string; mmr?: number; mostPlayedHeroes?: Player['mostPlayedHeroes'] }> | undefined;
             let players: Player[];
             if (rosterMap && Object.keys(rosterMap).length > 0) {
               players = Object.entries(rosterMap).map(([steamId64, info]) => ({
@@ -441,6 +441,8 @@ export function TournamentHomePage() {
                 nickname: info.nickname,
                 role: info.role,
                 avatar: info.avatar || '',
+                avatarmedium: info.avatarmedium || '',
+                avatarfull: info.avatarfull || '',
                 mmr: info.mmr ?? 0,
                 mostPlayedHeroes: info.mostPlayedHeroes,
               } as unknown as Player));

@@ -19,6 +19,7 @@ import { MatchDetailModal } from '@/components/divisions/MatchDetailModal';
 import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import { usePageSize } from '@/hooks/usePageSize';
+import { steamAvatarUrl } from '@/lib/steam-avatar';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 interface GameHistoryItem {
@@ -530,9 +531,9 @@ function PlayerProfile({ player, team, onBack }: PlayerProfileProps) {
         <div className="rounded-xl border border-white/10 bg-black/30 p-3">
           <div className="flex items-center gap-3">
             <div className="relative w-16 h-16 rounded-xl overflow-hidden bg-black/40 shrink-0 border border-white/10">
-              {(player.avatarfull || player.avatarmedium || player.avatar) ? (
+              {steamAvatarUrl(player, 'full') ? (
                 <Image
-                  src={player.avatarfull || player.avatarmedium || player.avatar || ''}
+                  src={steamAvatarUrl(player, 'full')}
                   alt={player.nickname}
                   fill
                   sizes="64px"
@@ -724,9 +725,9 @@ function PlayerProfile({ player, team, onBack }: PlayerProfileProps) {
           {/* Avatar + Name */}
           <div className="flex items-center gap-4 mb-4">
             <div className="relative w-24 h-24 rounded-xl overflow-hidden bg-black/40 shrink-0 border border-white/10">
-              {(player.avatarfull || player.avatarmedium || player.avatar) ? (
+              {steamAvatarUrl(player, 'full') ? (
                 <Image
-                  src={player.avatarfull || player.avatarmedium || player.avatar || ''}
+                  src={steamAvatarUrl(player, 'full')}
                   alt={player.nickname}
                   fill
                   sizes="96px"
@@ -1261,9 +1262,9 @@ function ExpandedTeamCard({ team, onClose }: ExpandedCardProps) {
                             {getRoleIcon(player.role, 'h-3.5 w-3.5')}
                           </div>
                           <div className="relative w-8 h-8 rounded-md overflow-hidden bg-black/30 shrink-0 border border-white/10">
-                            {(player.avatar || player.avatarmedium) ? (
+                            {steamAvatarUrl(player, 'medium') ? (
                               <Image
-                                src={player.avatarmedium || player.avatar || ''}
+                                src={steamAvatarUrl(player, 'medium')}
                                 alt={player.nickname}
                                 fill
                                 sizes="32px"
@@ -1578,9 +1579,9 @@ function ExpandedTeamCard({ team, onClose }: ExpandedCardProps) {
 
                         {/* Avatar */}
                         <div className="relative w-7 h-7 rounded-md overflow-hidden bg-black/30 shrink-0 border border-white/10">
-                          {(player.avatar || player.avatarmedium) ? (
+                          {steamAvatarUrl(player, 'medium') ? (
                             <Image
-                              src={player.avatarmedium || player.avatar || ''}
+                              src={steamAvatarUrl(player, 'medium')}
                               alt={player.nickname}
                               fill
                               sizes="28px"
