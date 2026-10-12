@@ -19,7 +19,7 @@ import { collection, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { getAllTeams } from "@/lib/firestore";
 import { Shield, Printer, Trophy, LogIn } from "lucide-react";
-import { PrintableDiploma, type DiplomaOrientation } from "@/components/diploma/PrintableDiploma";
+import { PrintableDiploma, diplomaFileName, type DiplomaOrientation } from "@/components/diploma/PrintableDiploma";
 import { Switch } from "@/components/ui/switch";
 import { InfoPopover } from "@/components/ui/info-popover";
 import { organizationConfig } from "@/config/organization";
@@ -178,6 +178,30 @@ export default function DiplomaPage() {
   const selectedPlayer = selectedTeam?.players.find(
     (p) => p.id === selectedPlayerId
   );
+  const printedPlayerName = selectedPlayer ? (playerNameOverride ?? selectedPlayer.nickname) : "";
+
+  // "Save as PDF" suggests document.title as the file name — swap it in while printing
+  // (covers both the button and Ctrl+P), then put the page title back.
+  useEffect(() => {
+    if (!printedPlayerName.trim()) return;
+    const fileName = diplomaFileName(tournament?.name ?? "", printedPlayerName);
+    let saved: string | null = null;
+    const before = () => {
+      if (saved === null) saved = document.title;
+      document.title = fileName;
+    };
+    const after = () => {
+      if (saved !== null) document.title = saved;
+      saved = null;
+    };
+    window.addEventListener("beforeprint", before);
+    window.addEventListener("afterprint", after);
+    return () => {
+      after();
+      window.removeEventListener("beforeprint", before);
+      window.removeEventListener("afterprint", after);
+    };
+  }, [tournament?.name, printedPlayerName]);
 
   if (isLoading) return <LoadingScreen />;
 

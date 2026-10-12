@@ -24,6 +24,16 @@ export function sheetSize(orientation: DiplomaOrientation) {
 }
 
 /**
+ * Default "Save as PDF" name: diploma-[tournament]-[player]. Browsers take it from
+ * document.title (and add ".pdf"), so it's returned without the extension.
+ * Characters Windows/macOS don't allow in file names are dropped.
+ */
+export function diplomaFileName(tournamentName: string, playerName: string) {
+  const clean = (s: string) => s.replace(/[\\/:*?"<>|\u0000-\u001f]+/g, " ").replace(/\s+/g, " ").trim();
+  return ["diploma", clean(tournamentName), clean(playerName)].filter(Boolean).join("-");
+}
+
+/**
  * Colour with alpha (0x00–0xff, like a hex suffix). color-mix instead of `${color}80`:
  * theme colours may be hsl(...) strings, where a hex suffix is invalid CSS and silently dropped.
  */
