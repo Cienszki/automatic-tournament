@@ -50,6 +50,7 @@ import {
   type PlayerStatsData,
   type TeamStatsData,
 } from '@/components/stats/StatsContent';
+import { STATS_REDESIGNS } from '@/components/stats-lab/registry';
 
 // Lazy-loaded My Team view (only rendered for captains)
 const MyTeamPage = dynamic(
@@ -305,6 +306,7 @@ export function TournamentHomePage() {
   // ── Register with HomeNavigationContext so navbar can scroll here ───
   const { registerGoToSection, selectedGroupId, setSelectedGroupId, highlightedTeamId, setHighlightedTeamId, section1View, setSection1View } = useHomeNavigation();
   const searchParams = useSearchParams();
+  const StatsRedesign = STATS_REDESIGNS[Number(searchParams.get('stats')) - 1] ?? null;
 
   // Use a ref so the stable wrapper always calls the latest goToSection
   const goToSectionRef = useRef(goToSection);
@@ -1124,13 +1126,18 @@ export function TournamentHomePage() {
             VIEW 6: Stats
            ═══════════════════════════════════════════════════════════ */}
         <FullScreenSection isActive={currentSection === 5} isMobile={isMobile} id="home-section-5">
-          <div className="h-full w-full overflow-y-auto text-white">
-            <StatsPageLayout
-              tournamentStats={tournamentStats}
-              playerStats={playerStats}
-              teamStats={teamStats}
-            />
-          </div>
+          {StatsRedesign ? (
+            // Prototype preview: /{slug}?stats=1..10 swaps in one of the stats redesigns
+            <StatsRedesign />
+          ) : (
+            <div className="h-full w-full overflow-y-auto text-white">
+              <StatsPageLayout
+                tournamentStats={tournamentStats}
+                playerStats={playerStats}
+                teamStats={teamStats}
+              />
+            </div>
+          )}
         </FullScreenSection>
 
         {/* ═══════════════════════════════════════════════════════════
