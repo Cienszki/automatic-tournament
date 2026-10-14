@@ -8,8 +8,8 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, animate, motion } from 'framer-motion';
 import { fmtClock, fmtPct, metric, type MetricKey } from '@/lib/stats-lab/metrics';
 import { opponentOf, type Model } from '@/lib/stats-lab/derive';
-import { heroName, heroRender } from '@/lib/stats-lab/heroes';
-import { Avatar, C, HeroImg, LabTitle, LabView, TeamLogo, WithModel, mix, useHeaderFont } from '../kit';
+import { heroName } from '@/lib/stats-lab/heroes';
+import { Avatar, C, HeroImg, LabTitle, LabView, TeamLogo, WithModel, mix, useHeaderFont, HeroRender } from '../kit';
 
 interface Fact {
   id: string;
@@ -23,7 +23,7 @@ interface Deck { id: string; question: string; desc: string; fmt: (v: number) =>
 function buildDecks(model: Model): Deck[] {
   const decks: Deck[] = [];
   const q = model.players.filter(p => p.games >= model.minGames);
-  const avgKeys: MetricKey[] = ['fantasy', 'kills', 'assists', 'deaths', 'gpm', 'xpm', 'lastHits', 'hdpm', 'wards'];
+  const avgKeys: MetricKey[] = ['score', 'kills', 'assists', 'deaths', 'gpm', 'xpm', 'lastHits', 'hdpm', 'wards'];
   for (const k of avgKeys) {
     const m = metric(k);
     decks.push({ id: `avg-${k}`, question: `${m.label} — średnio na grę`, desc: m.desc, fmt: v => v.toLocaleString('pl-PL', { maximumFractionDigits: m.avgDigits }),
@@ -72,8 +72,7 @@ function Card({ f, deck, hidden, side, verdict }: { f: Fact; deck: Deck; hidden:
         <div className="absolute inset-0 scale-125 blur-3xl opacity-40 bg-center bg-cover" style={{ backgroundImage: `url(${f.visual.team.logoUrl})` }} />
       )}
       {f.visual.kind === 'hero' && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={heroRender(f.visual.heroId)} alt="" className="absolute bottom-0 left-1/2 -translate-x-1/2 h-[80%] w-auto object-contain opacity-60 pointer-events-none" />
+        <div className="absolute left-[10%] right-[10%] top-[12%] bottom-0 opacity-70"><HeroRender heroId={f.visual.heroId} sizes="40vw" /></div>
       )}
       <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/40 to-black/80" />
       <div className="relative flex flex-col items-center gap-3 text-center">

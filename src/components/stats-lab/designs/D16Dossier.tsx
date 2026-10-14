@@ -9,7 +9,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { fmtClock, metric, type MetricKey } from '@/lib/stats-lab/metrics';
 import { opponentOf, pctRank, type Model, type PlayerX } from '@/lib/stats-lab/derive';
 import { heroName } from '@/lib/stats-lab/heroes';
-import { Avatar, C, HeroImg, LabView, Pager, TeamLogo, Tip, TipBody, WithModel, ink, mix, useFitCount, useHeaderFont, usePages, useSize } from '../kit';
+import { Avatar, C, HeroImg, LabView, Pager, TeamLogo, Tip, TipBody, WithModel, ink, mix, useFitCount, useHeaderFont, usePages, useSize, TeamPicker } from '../kit';
 
 const AXES: Array<{ key: MetricKey; label: string; invert?: boolean }> = [
   { key: 'kda', label: 'Walka' },
@@ -19,7 +19,7 @@ const AXES: Array<{ key: MetricKey; label: string; invert?: boolean }> = [
   { key: 'kp', label: 'Drużyna' },
   { key: 'deaths', label: 'Przeżycie', invert: true },
 ];
-const PB: MetricKey[] = ['kills', 'assists', 'gpm', 'xpm', 'heroDamage', 'lastHits', 'wards', 'fantasy'];
+const PB: MetricKey[] = ['kills', 'assists', 'gpm', 'xpm', 'heroDamage', 'lastHits', 'wards', 'score'];
 const PALETTE = ['var(--tournament-primary)', 'var(--tournament-secondary)', '#7aa2f7', '#9ece6a', '#bb9af7', '#e0af68', 'rgba(150,150,150,0.5)'];
 
 function Radar({ model, p }: { model: Model; p: PlayerX }) {
@@ -64,7 +64,7 @@ function Donut({ p }: { p: PlayerX }) {
   const r = 34; const c = 2 * Math.PI * r; let off = 0;
   return (
     <div className="flex items-center gap-3">
-      <svg width={92} height={92} viewBox="0 0 92 92" className="shrink-0 -rotate-90">
+      <svg width={120} height={120} viewBox="0 0 92 92" className="shrink-0 -rotate-90">
         {segs.map((s, i) => {
           const len = (s.n / p.games) * c; const el = (
             <circle key={i} cx={46} cy={46} r={r} fill="none" stroke={PALETTE[s.id ? i : 6]} strokeWidth={14} strokeDasharray={`${Math.max(0, len - 1.5)} ${c}`} strokeDashoffset={-off} />
@@ -76,8 +76,8 @@ function Donut({ p }: { p: PlayerX }) {
           <Tip key={h.heroId} content={`${heroName(h.heroId)} · ${h.games} gier · ${h.wins}-${h.games - h.wins}`}>
             <div className="flex items-center gap-1.5 min-w-0">
               <span className="w-2 h-2 rounded-full shrink-0" style={{ background: PALETTE[i] }} />
-              <HeroImg heroId={h.heroId} variant="icon" className="w-5 h-5 shrink-0" />
-              <span className="text-[11px] tabular-nums">{h.games}</span>
+              <HeroImg heroId={h.heroId} variant="icon" className="w-7 h-7 shrink-0" />
+              <span className="text-sm font-bold tabular-nums">{h.games}</span>
             </div>
           </Tip>
         ))}
@@ -88,14 +88,19 @@ function Donut({ p }: { p: PlayerX }) {
 
 function Dossier({ model }: { model: Model }) {
   const font = useHeaderFont();
-  const initial = useMemo(() => [...model.players].filter(p => p.games >= model.minGames).sort((a, b) => (b.agg.fantasy.avg ?? 0) - (a.agg.fantasy.avg ?? 0))[0] ?? model.players[0], [model]);
+  const initial = useMemo(() => [...model.players].filter(p => p.games >= model.minGames).sort((a, b) => (b.agg.score.avg ?? 0) - (a.agg.score.avg ?? 0))[0] ?? model.players[0], [model]);
   const [pid, setPid] = useState(initial.id);
   const [teamId, setTeamId] = useState<string | null>(initial.teamId ?? null);
   const p = model.playerById.get(pid) ?? initial;
-  const roster = (teamId ? model.teamById.get(teamId)?.players : []) ?? [];
+  const rosterOf = (tid: string) => model.players
+    .filter(x => x.teamId === tid || x.perfs.some(q => q.tid === tid))
+    .sort((a, b) => Number(!!a.standin) - Number(!!b.standin) || b.perfs.filter(q => q.tid === tid).length - a.perfs.filter(q => q.tid === tid).length);
+  const roster = teamId ? rosterOf(teamId).slice(0, 8) : [];
   const log = useMemo(() => [...p.perfs].reverse(), [p]);
-  const [logRef, rows] = useFitCount<HTMLDivElement>(58, 6, 2);
-  const per = rows * 3;
+  const [logRef, rows] = useFitCount<HTMLDivElement>(96, 8, 2);
+  const [logBoxRef, logBox] = useSize<HTMLDivElement>();
+  const cols = logBox.w > 900 ? 3 : 2;
+  const per = rows * cols;
   const { page, pages, setPage, slice } = usePages(log, per);
 
   const bests = useMemo(() => PB.map(k => {
@@ -107,23 +112,16 @@ function Dossier({ model }: { model: Model }) {
 
   return (
     <>
-      {/* Picker: teams, then the chosen team's roster */}
-      <div className="shrink-0 flex items-center gap-1.5 flex-wrap">
-        {model.teams.map(t => (
-          <Tip key={t.id} content={t.name}>
-            <button type="button" onClick={() => setTeamId(t.id)} className="rounded-lg p-1 transition-all" style={{ background: t.id === teamId ? mix(C.primary, 40) : ink(4), opacity: teamId && t.id !== teamId ? 0.45 : 1 }}>
-              <TeamLogo team={t} size={22} />
-            </button>
-          </Tip>
-        ))}
-      </div>
-      <div className="shrink-0 flex items-center gap-2 mt-2 h-10">
+      {/* Picker: teams, then the chosen team's roster (incl. standins who played for them) */}
+      <TeamPicker className="shrink-0" teams={model.teams} value={teamId} onChange={id => { setTeamId(id); const first = id ? rosterOf(id)[0] : null; if (first) setPid(first.id); }} size={40} />
+      <div className="shrink-0 flex items-center justify-center gap-2 mt-2.5 h-14">
         <AnimatePresence mode="popLayout">
           {roster.map((x, i) => (
             <motion.button key={x.id} type="button" initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ delay: i * 0.03 }}
-              onClick={() => setPid(x.id)} className="flex items-center gap-1.5 rounded-full pl-0.5 pr-3 py-0.5 text-xs transition-all"
-              style={{ background: x.id === pid ? C.primary : ink(5), color: x.id === pid ? '#fff' : C.text }}>
-              <Avatar player={x} size={28} /><span className="max-w-[110px] truncate">{x.name}</span>
+              onClick={() => setPid(x.id)} className="h-full flex items-center gap-2 rounded-full pl-1 pr-4 text-sm font-semibold transition-all"
+              style={{ background: x.id === pid ? C.primary : ink(6), color: x.id === pid ? '#fff' : C.text, boxShadow: x.id === pid ? `0 0 16px ${mix(C.primary, 50)}` : undefined }}>
+              <Avatar player={x} size={46} /><span className="max-w-[140px] truncate">{x.name}</span>
+              {x.standin && <span className="text-[9px] uppercase tracking-widest opacity-70">stand-in</span>}
             </motion.button>
           ))}
         </AnimatePresence>
@@ -145,18 +143,19 @@ function Dossier({ model }: { model: Model }) {
           </div>
 
           {/* Game log */}
-          <div className="flex-1 min-w-0 flex flex-col min-h-0">
-            <div ref={logRef} className="flex-1 min-h-0 grid grid-cols-3 gap-1.5 content-start">
+          <div ref={logBoxRef} className="flex-1 min-w-0 flex flex-col min-h-0">
+            <div ref={logRef} className="flex-1 min-h-0 grid gap-2 content-start" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}>
               {slice.map(x => {
                 const opp = opponentOf(x);
                 return (
                   <Tip key={x.idx} content={<TipBody title={`${heroName(x.heroId)} vs ${opp?.name ?? '?'}`}>{fmtClock(x.game.duration)} · {x.gpm} GPM · {x.lastHits} LH · {(x.heroDamage / 1000).toFixed(1)}k obrażeń · {new Date(x.game.start * 1000).toLocaleDateString('pl-PL')}</TipBody>}>
-                    <div className="relative h-[58px] rounded-lg overflow-hidden text-white" style={{ borderTop: `3px solid ${x.win ? C.win : C.loss}` }}>
-                      <HeroImg heroId={x.heroId} className="absolute inset-0 w-full h-full opacity-70" />
-                      <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/40 to-transparent" />
-                      <div className="relative h-full flex flex-col justify-center px-2">
-                        <span className="text-sm font-bold tabular-nums leading-tight">{x.kills}/{x.deaths}/{x.assists}</span>
-                        <span className="text-[10px] opacity-70 flex items-center gap-1"><TeamLogo team={opp} size={12} />{x.fantasyPoints.toFixed(1)} pkt</span>
+                    <div className="relative h-[96px] rounded-xl overflow-hidden text-white" style={{ background: '#0d0d12', boxShadow: `inset 4px 0 0 ${x.win ? C.win : C.loss}` }}>
+                      <HeroImg heroId={x.heroId} className="absolute inset-y-0 right-0 h-full w-[70%] object-cover opacity-85" />
+                      <div className="absolute inset-0 bg-gradient-to-r from-[#0d0d12] via-[#0d0d12]/75 to-transparent" />
+                      <div className="relative h-full flex flex-col justify-center gap-1 pl-4 pr-2">
+                        <span className="text-2xl font-bold tabular-nums leading-none">{x.kills}/{x.deaths}/{x.assists}</span>
+                        <span className="text-xs opacity-80 flex items-center gap-1.5"><TeamLogo team={opp} size={22} /><span className="truncate">{opp?.name}</span></span>
+                        <span className="text-[11px] opacity-60 tabular-nums">{Number.isFinite(x.score) ? `${x.score.toFixed(1)} pkt · ` : ''}{x.gpm} GPM · {fmtClock(x.game.duration)}</span>
                       </div>
                     </div>
                   </Tip>
@@ -167,15 +166,15 @@ function Dossier({ model }: { model: Model }) {
           </div>
 
           {/* Pool + personal bests */}
-          <div className="w-[270px] shrink-0 hidden lg:flex flex-col gap-3 min-h-0">
+          <div className="w-[300px] shrink-0 hidden lg:flex flex-col gap-4 min-h-0">
             <Donut p={p} />
             <div className="flex-1 min-h-0 flex flex-col gap-1">
               <Tip content="Najlepszy pojedynczy występ gracza i jego miejsce wśród wszystkich występów turnieju"><div className="text-sm font-logik-extended-bold uppercase cursor-help inline-block" style={{ color: C.heading, ...font }}>Rekordy osobiste</div></Tip>
               {bests.map(b => (
                 <Tip key={b.k} content={<TipBody title={b.m.label}>{b.m.desc} · {heroName(b.best.heroId)} vs {opponentOf(b.best)?.name}</TipBody>}>
-                  <div className="flex items-center gap-2 h-7">
-                    <span className="flex-1 text-[11px] truncate" style={{ color: C.muted }}>{b.m.label}</span>
-                    <span className="text-sm font-bold tabular-nums" style={font}>{b.m.fmt(b.v)}</span>
+                  <div className="flex items-center gap-2 h-9">
+                    <span className="flex-1 text-[13px] truncate" style={{ color: C.muted }}>{b.m.label}</span>
+                    <span className="text-lg font-bold tabular-nums" style={font}>{b.m.fmt(b.v)}</span>
                     <span className="w-11 text-center text-[10px] font-bold rounded-full py-0.5" style={b.rank === 1 ? { background: C.secondary, color: '#000' } : b.rank <= 10 ? { background: mix(C.primary, 35) } : { background: ink(6), color: C.muted }}>#{b.rank}</span>
                   </div>
                 </Tip>

@@ -6,7 +6,7 @@
 import React, { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import type { Model, TeamX } from '@/lib/stats-lab/derive';
-import { C, LabTitle, LabView, TeamLogo, Tip, TipBody, WithModel, ink, mix, useHeaderFont, useSize } from '../kit';
+import { C, LabTitle, LabView, TeamLogo, Tip, TipBody, WithModel, ink, mix, useHeaderFont, useSize, TeamPicker } from '../kit';
 
 interface Chart { key: string; label: string; desc: string; per: (t: TeamX) => number; fmt: (v: number) => string; unitLabel: (u: number) => string; aside?: (total: number, model: Model) => string }
 
@@ -79,16 +79,7 @@ function Numbers({ model }: { model: Model }) {
       <div className="flex-1 min-h-0 grid grid-cols-2 lg:grid-cols-4 grid-rows-4 lg:grid-rows-2 gap-2.5 mt-3">
         {CHARTS.map((c, i) => <Tile key={c.key} chart={c} model={model} teams={teams} sel={sel} setSel={setSel} i={i} />)}
       </div>
-      <div className="shrink-0 flex justify-center flex-wrap gap-1.5 mt-3">
-        {teams.map(t => (
-          <Tip key={t.id} content={<TipBody title={t.name}>Kliknij, by zobaczyć udział drużyny</TipBody>}>
-            <button type="button" onClick={() => setSel(x => (x === t.id ? null : t.id))} className="rounded-lg p-1 transition-all"
-              style={{ background: sel === t.id ? mix(C.secondary, 40) : ink(4), opacity: sel && sel !== t.id ? 0.4 : 1 }}>
-              <TeamLogo team={t} size={24} />
-            </button>
-          </Tip>
-        ))}
-      </div>
+      <TeamPicker className="shrink-0 mt-3" teams={teams} value={sel} onChange={setSel} allLabel="Wszyscy" />
     </>
   );
 }

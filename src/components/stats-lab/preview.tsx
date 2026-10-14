@@ -21,13 +21,30 @@ export const REDESIGN_NAMES = [
   'Pokój draftu',
   'Konstelacja',
   'Wojna stron',
-  'Zegar turnieju',
+  'Zegar meczu',
   'Drużyna tygodnia',
   'Dossier gracza',
   'Wyścig',
   'Tabela krzyżowa',
   'Wyżej czy niżej',
   'Turniej w liczbach',
+  'Giełda graczy',
+  'Lista tierów',
+  'Ranking Elo',
+  'Archetypy',
+  'Mapa złota',
+  'Kronika rekordów',
+  'Bingo turnieju',
+  'Momentum',
+  'Słońce bohaterów',
+  'Turniej bohaterów',
+  'Centrum statystyk',
+  'Gazeta turniejowa',
+  'Studio TV',
+  'Mapa statystyk',
+  'Tablica odlotów',
+  'Galeria',
+  'Sezon',
 ] as const;
 
 /**
@@ -63,13 +80,13 @@ export function StatsLabPreview({ n, children }: { n: number; children: React.Re
       <div className="relative z-10 h-full">{children}</div>
 
       {/* Design switcher (preview only) */}
-      <div className="absolute right-2 top-1/2 -translate-y-1/2 z-20 hidden lg:flex flex-col gap-[3px]">
+      <div className="absolute right-1.5 top-1/2 -translate-y-1/2 z-20 hidden lg:grid grid-flow-col gap-[3px]" style={{ gridTemplateRows: 'repeat(19, auto)' }}>
         {REDESIGN_NAMES.map((name, i) => (
           <Link
             key={i}
             href={getTournamentPath(`/stats-redesign-${i + 1}`) + (qs ? `?${qs}` : '')}
             title={name}
-            className="w-[22px] h-[22px] rounded-full flex items-center justify-center text-[9px] font-bold transition-all"
+            className="w-[20px] h-[20px] rounded-full flex items-center justify-center text-[8px] font-bold transition-all"
             style={i + 1 === n
               ? { background: C.primary, color: '#fff', boxShadow: `0 0 12px ${mix(C.primary, 60)}` }
               : { background: ink(8), color: C.muted }}

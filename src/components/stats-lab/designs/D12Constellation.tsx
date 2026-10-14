@@ -8,24 +8,37 @@ import React, { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import type { Model } from '@/lib/stats-lab/derive';
 import { ATTR_COLOR, heroAttr, heroName, type HeroAttr } from '@/lib/stats-lab/heroes';
-import { C, HeroImg, LabTitle, LabView, Seg, Tip, TipBody, WithModel, ink, mix, useHeaderFont, useSize, wrColor } from '../kit';
+import { C, HeroImg, LabTitle, LabView, Seg, TeamPicker, Tip, TipBody, WithModel, ink, mix, useHeaderFont, useSize, wrColor } from '../kit';
 
 type Mode = 'with' | 'vs';
-/** a < b; wins counted for a's side ("with": the duo's wins) */
+/**
+ * Everyone: a < b, wins counted for a's side ("with": the duo's wins).
+ * One team: "with" = the team's own duos; "vs" is directed — a = their hero, b = the opponent's,
+ * wins = the team's wins.
+ */
 interface Pair { a: number; b: number; n: number; wins: number }
 
-function buildPairs(model: Model, mode: Mode): Pair[] {
+function buildPairs(model: Model, mode: Mode, teamId: string | null): Pair[] {
   const map = new Map<string, Pair>();
+  const add = (x: number, y: number, xWon: boolean, directed = false) => {
+    const [a, b, aWon] = directed || x < y ? [x, y, xWon] : [y, x, mode === 'with' ? xWon : !xWon];
+    const k = `${a}${directed ? '>' : '-'}${b}`;
+    const p = map.get(k) ?? { a, b, n: 0, wins: 0 };
+    p.n++; if (aWon) p.wins++;
+    map.set(k, p);
+  };
   for (const g of model.games) {
+    if (teamId && g.radiant !== teamId && g.dire !== teamId) continue;
     const rad = g.perfs.filter(p => p.radiant && p.heroId).map(p => p.heroId);
     const dire = g.perfs.filter(p => !p.radiant && p.heroId).map(p => p.heroId);
-    const add = (x: number, y: number, xWon: boolean) => {
-      const [a, b, aWon] = x < y ? [x, y, xWon] : [y, x, mode === 'with' ? xWon : !xWon];
-      const k = `${a}-${b}`;
-      const p = map.get(k) ?? { a, b, n: 0, wins: 0 };
-      p.n++; if (aWon) p.wins++;
-      map.set(k, p);
-    };
+    if (teamId) {
+      const mineRad = g.radiant === teamId;
+      const mine = mineRad ? rad : dire; const theirs = mineRad ? dire : rad;
+      const won = mineRad === g.radiantWin;
+      if (mode === 'with') { for (let i = 0; i < mine.length; i++) for (let j = i + 1; j < mine.length; j++) add(mine[i], mine[j], won); }
+      else for (const x of mine) for (const y of theirs) add(x, y, won, true);
+      continue;
+    }
     if (mode === 'with') {
       for (const [side, won] of [[rad, g.radiantWin], [dire, !g.radiantWin]] as const)
         for (let i = 0; i < side.length; i++) for (let j = i + 1; j < side.length; j++) add(side[i], side[j], won);
@@ -42,16 +55,22 @@ const ATTR_LABEL: Record<HeroAttr, string> = { str: 'Siła', agi: 'Zręczność'
 function Constellation({ model }: { model: Model }) {
   const font = useHeaderFont();
   const [mode, setMode] = useState<Mode>('with');
+  const teams = useMemo(() => [...model.teams].sort((a, b) => b.games.length - a.games.length), [model]);
   const [hover, setHover] = useState<number | null>(null);
   const [pinned, setPinned] = useState<number | null>(null);
   const [ref, size] = useSize<HTMLDivElement>();
   const focus = hover ?? pinned;
 
-  const all = useMemo(() => buildPairs(model, mode), [model, mode]);
+  const [teamId, setTeamId] = useState<string | null>(null);
+  const team = teamId ? model.teamById.get(teamId) : null;
+  const all = useMemo(() => buildPairs(model, mode, teamId), [model, mode, teamId]);
   const edges = useMemo(() => {
-    const min = mode === 'with' ? 3 : 3;
-    return all.filter(p => p.n >= min).sort((x, y) => y.n - x.n).slice(0, 90);
-  }, [all, mode]);
+    // A single team has few games: show every combination they actually played
+    const sorted = all.filter(p => p.n >= (teamId ? 1 : 3)).sort((x, y) => y.n - x.n);
+    return sorted.slice(0, teamId ? 70 : 90);
+  }, [all, teamId]);
+  // In team mode, which heroes were played by the team (the rest are opponents)
+  const mine = useMemo(() => new Set(teamId ? (team?.heroPicks ?? []).map(h => h.heroId) : []), [teamId, team]);
   const nodes = useMemo(() => {
     const ids = new Set<number>();
     edges.forEach(e => { ids.add(e.a); ids.add(e.b); });
@@ -65,7 +84,7 @@ function Constellation({ model }: { model: Model }) {
     return [id, { x: cx + Math.cos(a) * R, y: cy + Math.sin(a) * R, a }];
   }));
   const maxN = Math.max(1, ...edges.map(e => e.n));
-  const icon = Math.max(16, Math.min(30, (2 * Math.PI * R) / Math.max(1, nodes.length) - 3));
+  const icon = Math.max(18, Math.min(40, (2 * Math.PI * R) / Math.max(1, nodes.length) - 3));
 
   // Partner / matchup list for the focused hero (from all pairs, not just drawn edges)
   const list = useMemo(() => {
@@ -76,7 +95,7 @@ function Constellation({ model }: { model: Model }) {
       return { other, n: p.n, wr: wins / p.n };
     }).filter(x => x.n >= 2).sort((x, y) => y.n - x.n || y.wr - x.wr).slice(0, 9);
   }, [all, focus, mode]);
-  const bestDuos = useMemo(() => [...all].filter(p => p.n >= 4).sort((x, y) => y.wins / y.n - x.wins / x.n || y.n - x.n).slice(0, 7), [all]);
+  const bestDuos = useMemo(() => [...all].filter(p => p.n >= (teamId ? 2 : 4)).sort((x, y) => y.wins / y.n - x.wins / x.n || y.n - x.n).slice(0, 7), [all, teamId]);
 
   // Attribute arcs
   const arcs = ATTR_ORDER.map(attr => {
@@ -92,11 +111,12 @@ function Constellation({ model }: { model: Model }) {
   return (
     <>
       <LabTitle
-        sub={<span>{edges.length} połączeń · {nodes.length} bohaterów</span>}
+        sub={<span>{team ? `${team.name} · ` : ''}{edges.length} połączeń · {nodes.length} bohaterów</span>}
         right={<Seg value={mode} onChange={v => { setMode(v); setPinned(null); }} options={[{ value: 'with', label: 'Razem', tip: 'Bohaterowie grani w tej samej drużynie' }, { value: 'vs', label: 'Przeciw', tip: 'Bohaterowie grani naprzeciw siebie' }]} />}
       >
         Konstelacja
       </LabTitle>
+      <TeamPicker className="shrink-0 mt-3" teams={teams} value={teamId} onChange={id => { setTeamId(id); setPinned(null); }} allLabel="Wszyscy" size={36} />
       <div className="flex-1 min-h-0 flex gap-4 mt-2">
         <div ref={ref} className="relative flex-[1.6] min-w-0 min-h-0" onClick={() => setPinned(null)}>
           {size.w > 0 && (
@@ -124,7 +144,7 @@ function Constellation({ model }: { model: Model }) {
               <Tip key={id} content={heroName(id)}>
                 <button type="button" className="absolute rounded-full overflow-hidden transition-all"
                   onMouseEnter={() => setHover(id)} onMouseLeave={() => setHover(null)} onClick={e => { e.stopPropagation(); setPinned(x => (x === id ? null : id)); }}
-                  style={{ left: p.x - icon / 2, top: p.y - icon / 2, width: icon, height: icon, opacity: dim ? 0.25 : 1, transform: focus === id ? 'scale(1.5)' : undefined, zIndex: focus === id ? 10 : 1, boxShadow: `0 0 0 1.5px ${focus === id ? C.secondary : ATTR_COLOR[heroAttr(id)]}` }}>
+                  style={{ left: p.x - icon / 2, top: p.y - icon / 2, width: icon, height: icon, transform: focus === id ? 'scale(1.5)' : undefined, zIndex: focus === id ? 10 : 1, boxShadow: teamId && mine.has(id) ? `0 0 0 2.5px ${C.secondary}` : `0 0 0 1.5px ${focus === id ? C.secondary : ATTR_COLOR[heroAttr(id)]}`, opacity: dim ? 0.25 : teamId && mode === 'vs' && !mine.has(id) ? 0.7 : 1 }}>
                   <HeroImg heroId={id} variant="icon" title={false} className="w-full h-full" />
                 </button>
               </Tip>
@@ -140,27 +160,27 @@ function Constellation({ model }: { model: Model }) {
 
         <div className="flex-1 min-w-[260px] max-w-[360px] hidden md:flex flex-col gap-2 min-h-0">
           <div className="text-sm font-logik-extended-bold uppercase" style={{ color: C.heading, ...font }}>
-            {focus != null ? heroName(focus) : mode === 'with' ? 'Najlepsze duety' : 'Najbardziej jednostronne'}
+            {focus != null ? heroName(focus) : mode === 'with' ? (team ? 'Ich duety' : 'Najlepsze duety') : (team ? 'Ich pojedynki' : 'Najbardziej jednostronne')}
           </div>
           {focus != null ? list.map(x => (
             <Tip key={x.other} content={`${heroName(focus)} ${mode === 'with' ? '+' : 'vs'} ${heroName(x.other)}: ${x.n} gier, ${Math.round(x.wr * 100)}% wygranych`}>
-              <div className="flex items-center gap-2 h-8">
-                <HeroImg heroId={x.other} className="w-12 h-7 rounded" />
+              <div className="flex items-center gap-2 h-10">
+                <HeroImg heroId={x.other} className="w-16 h-9 rounded-md" />
                 <span className="flex-1 truncate text-xs">{heroName(x.other)}</span>
                 <span className="text-[10px] tabular-nums" style={{ color: C.muted }}>{x.n}g</span>
                 <span className="w-12 text-right text-xs font-bold tabular-nums rounded px-1" style={{ background: mix(wrColor(x.wr), 30) }}>{Math.round(x.wr * 100)}%</span>
               </div>
             </Tip>
-          )) : (mode === 'with' ? bestDuos : [...all].filter(p => p.n >= 4).sort((x, y) => Math.abs(y.wins / y.n - 0.5) - Math.abs(x.wins / x.n - 0.5) || y.n - x.n).slice(0, 7)).map(p => {
+          )) : (mode === 'with' ? bestDuos : [...all].filter(p => p.n >= (teamId ? 2 : 4)).sort((x, y) => Math.abs(y.wins / y.n - 0.5) - Math.abs(x.wins / x.n - 0.5) || y.n - x.n).slice(0, 7)).map(p => {
             const wr = p.wins / p.n;
             const [w, l] = mode === 'with' || wr >= 0.5 ? [p.a, p.b] : [p.b, p.a];
             const wwr = mode === 'with' ? wr : Math.max(wr, 1 - wr);
             return (
               <Tip key={`${p.a}-${p.b}`} content={`${heroName(w)} ${mode === 'with' ? '+' : 'pokonuje'} ${heroName(l)} · ${p.n} gier · ${Math.round(wwr * 100)}%`}>
-                <div className="flex items-center gap-1.5 h-9">
-                  <HeroImg heroId={w} className="w-12 h-7 rounded" />
+                <div className="flex items-center gap-1.5 h-11">
+                  <HeroImg heroId={w} className="w-16 h-9 rounded-md" />
                   <span className="text-xs opacity-50">{mode === 'with' ? '+' : '›'}</span>
-                  <HeroImg heroId={l} className="w-12 h-7 rounded" style={{ filter: mode === 'vs' ? 'grayscale(0.7)' : undefined }} />
+                  <HeroImg heroId={l} className="w-16 h-9 rounded-md" style={{ filter: mode === 'vs' ? 'grayscale(0.7)' : undefined }} />
                   <span className="flex-1" />
                   <span className="text-[10px] tabular-nums" style={{ color: C.muted }}>{p.n}g</span>
                   <span className="w-12 text-right text-xs font-bold tabular-nums rounded px-1" style={{ background: mix(wrColor(wwr), 30) }}>{Math.round(wwr * 100)}%</span>

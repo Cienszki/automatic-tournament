@@ -113,12 +113,12 @@ function Fingerprints({ model }: { model: Model }) {
       <LabTitle sub={<span>{teams.length} drużyn</span>}>Odciski drużyn</LabTitle>
       <div className="flex-1 min-h-0 flex gap-5 mt-3">
         {/* Logo rail */}
-        <div className="w-[132px] shrink-0 hidden md:grid grid-cols-3 content-start gap-1.5" onMouseLeave={() => setHover(null)}>
+        <div className="w-[248px] shrink-0 hidden md:grid grid-cols-4 content-start gap-2" onMouseLeave={() => setHover(null)}>
           {teams.map(t => (
             <Tip key={t.id} side="right" content={<TipBody title={t.name}>{t.wins}-{t.losses} w grach · najedź, by porównać</TipBody>}>
               <button type="button" onClick={() => setSel(t.id)} onMouseEnter={() => setHover(t.id)} className="aspect-square rounded-lg flex items-center justify-center transition-all"
-                style={{ background: t.id === team.id ? mix(C.primary, 35) : ink(4), outline: t.id === hover && t.id !== team.id ? `1px dashed ${C.text}` : 'none' }}>
-                <TeamLogo team={t} size={30} />
+                style={{ background: t.id === team.id ? mix(C.primary, 35) : ink(5), boxShadow: t.id === team.id ? `0 0 0 2px ${C.secondary}, 0 0 16px ${mix(C.secondary, 45)}` : undefined, outline: t.id === hover && t.id !== team.id ? `1px dashed ${C.text}` : 'none' }}>
+                <TeamLogo team={t} size={46} />
               </button>
             </Tip>
           ))}
@@ -130,17 +130,20 @@ function Fingerprints({ model }: { model: Model }) {
         </div>
 
         {/* Identity */}
-        <div className="flex-1 min-w-[300px] max-w-[440px] flex flex-col gap-3 min-h-0">
+        <div className="flex-1 min-w-[340px] max-w-[480px] flex flex-col justify-between gap-3 min-h-0">
           <div>
-            <div className="text-3xl font-logik-extended-bold uppercase leading-none" style={{ color: C.heading, ...font }}>{team.name}</div>
+            <div className="flex items-center gap-3">
+              <TeamLogo team={team} size={56} />
+              <div className="text-3xl font-logik-extended-bold uppercase leading-tight" style={{ color: C.heading, ...font }}>{team.name}</div>
+            </div>
             {ghost && <div className="text-xs mt-1" style={{ color: C.muted }}>porównanie: <b style={{ color: C.text }}>{ghost.name}</b> (przerywana linia)</div>}
           </div>
           <div className="flex gap-4 items-end">
-            <Tip content="Serie: wygrane – remisy – przegrane"><div className="cursor-help"><div className="text-2xl font-logik-extended-bold tabular-nums" style={font}>{team.series.w}-{team.series.d}-{team.series.l}</div><div className="text-[9px] uppercase tracking-widest" style={{ color: C.muted }}>Serie</div></div></Tip>
-            <Tip content="Pojedyncze gry: wygrane – przegrane"><div className="cursor-help"><div className="text-2xl font-logik-extended-bold tabular-nums" style={font}>{team.wins}-{team.losses}</div><div className="text-[9px] uppercase tracking-widest" style={{ color: C.muted }}>Gry</div></div></Tip>
+            <Tip content="Serie: wygrane – remisy – przegrane"><div className="cursor-help"><div className="text-4xl font-logik-extended-bold tabular-nums" style={font}>{team.series.w}-{team.series.d}-{team.series.l}</div><div className="text-[9px] uppercase tracking-widest" style={{ color: C.muted }}>Serie</div></div></Tip>
+            <Tip content="Pojedyncze gry: wygrane – przegrane"><div className="cursor-help"><div className="text-4xl font-logik-extended-bold tabular-nums" style={font}>{team.wins}-{team.losses}</div><div className="text-[9px] uppercase tracking-widest" style={{ color: C.muted }}>Gry</div></div></Tip>
             <Tip content={`Radiant ${team.radiant.wins}/${team.radiant.games} · Dire ${team.dire.wins}/${team.dire.games} wygranych`}>
               <div className="flex-1 cursor-help">
-                <div className="flex h-2 rounded-full overflow-hidden">
+                <div className="flex h-3 rounded-full overflow-hidden">
                   <div style={{ width: `${(team.radiant.games / (team.games.length || 1)) * 100}%`, background: C.radiant, opacity: 0.4 + 0.6 * (team.radiant.games ? team.radiant.wins / team.radiant.games : 0) }} />
                   <div className="flex-1" style={{ background: C.dire, opacity: 0.4 + 0.6 * (team.dire.games ? team.dire.wins / team.dire.games : 0) }} />
                 </div>
@@ -148,46 +151,45 @@ function Fingerprints({ model }: { model: Model }) {
               </div>
             </Tip>
           </div>
-          <Tip content="Wszystkie gry po kolei"><div className="flex gap-0.5 cursor-help">{team.form.map((w, i) => <span key={i} className="flex-1 max-w-[14px] h-4 rounded-sm" style={{ background: w ? C.win : C.loss }} />)}</div></Tip>
+          <Tip content="Wszystkie gry po kolei"><div className="flex gap-0.5 cursor-help">{team.form.map((w, i) => <span key={i} className="flex-1 max-w-[18px] h-6 rounded" style={{ background: w ? C.win : C.loss }} />)}</div></Tip>
           <div className="flex flex-wrap gap-1.5 min-h-[26px]">
-            {tags.map(t => <Tip key={t.key} content={t.desc}><span className="px-2.5 py-1 rounded-full text-[11px] font-semibold cursor-help" style={{ background: mix(C.primary, 22), border: `1px solid ${mix(C.primary, 55)}` }}>{t.name}</span></Tip>)}
+            {tags.map(t => <Tip key={t.key} content={t.desc}><span className="px-3.5 py-1.5 rounded-full text-sm font-semibold cursor-help" style={{ background: mix(C.primary, 22), border: `1px solid ${mix(C.primary, 55)}` }}>{t.name}</span></Tip>)}
           </div>
           {/* Economy share */}
-          <div className="space-y-1.5">
+          <div className="space-y-2.5">
             {[{ label: 'Złoto', total: goldTotal, get: (x: typeof roster[number]) => x.perfs.filter(q => q.tid === team.id).reduce((a, q) => a + q.totalGold, 0), desc: 'Udział w złocie drużyny' },
               { label: 'Zabójstwa', total: killTotal, get: (x: typeof roster[number]) => x.perfs.filter(q => q.tid === team.id).reduce((a, q) => a + q.kills, 0), desc: 'Udział w zabójstwach drużyny' }].map(row => (
               <div key={row.label}>
-                <Tip content={row.desc}><div className="text-[9px] uppercase tracking-widest mb-0.5 cursor-help" style={{ color: C.muted }}>{row.label}</div></Tip>
-                <div className="flex h-5 rounded-md overflow-hidden">
+                <Tip content={row.desc}><div className="text-[10px] uppercase tracking-widest mb-1 cursor-help" style={{ color: C.muted }}>{row.label}</div></Tip>
+                <div className="flex h-8 rounded-lg overflow-hidden">
                   {roster.map((p, i) => {
                     const share = row.get(p) / row.total;
                     return (
                       <Tip key={p.id} content={<TipBody title={p.name}>{fmtPct(share)} — {row.desc.toLowerCase()}</TipBody>}>
-                        <motion.div initial={{ width: 0 }} animate={{ width: `${share * 100}%` }} className="h-full text-[9px] font-bold flex items-center justify-center overflow-hidden text-black/70" style={{ background: palette[i % palette.length] }}>{share > 0.12 ? fmtPct(share) : ''}</motion.div>
+                        <motion.div initial={{ width: 0 }} animate={{ width: `${share * 100}%` }} className="h-full text-[11px] font-bold flex items-center justify-center overflow-hidden text-black/75" style={{ background: palette[i % palette.length] }}>{share > 0.12 ? fmtPct(share) : ''}</motion.div>
                       </Tip>
                     );
                   })}
                 </div>
               </div>
             ))}
-            <div className="flex gap-2 flex-wrap pt-1">
+            <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 pt-1">
               {roster.map((p, i) => (
                 <Tip key={p.id} content={playerTip(p)}>
-                  <span className="flex items-center gap-1 text-[11px]"><span className="w-2 h-2 rounded-full" style={{ background: palette[i % palette.length] }} /><Avatar player={p} size={18} /><span className="max-w-[80px] truncate">{p.name}</span></span>
+                  <span className="flex items-center gap-2 text-sm min-w-0"><span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: palette[i % palette.length] }} /><Avatar player={p} size={30} /><span className="truncate font-semibold">{p.name}</span></span>
                 </Tip>
               ))}
             </div>
           </div>
-          <div className="flex-1" />
           {/* Signature heroes / feared */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <Tip content="Najczęściej wybierani bohaterowie drużyny"><div className="text-[9px] uppercase tracking-widest mb-1 cursor-help" style={{ color: C.muted }}>Ulubieni</div></Tip>
-              <div className="flex gap-1">{team.heroPicks.slice(0, 4).map(h => <Tip key={h.heroId} content={`${heroName(h.heroId)} · ${h.wins}-${h.games - h.wins}`}><span><HeroImg heroId={h.heroId} className="w-12 h-7 rounded" /></span></Tip>)}</div>
+              <Tip content="Najczęściej wybierani bohaterowie drużyny"><div className="text-[10px] uppercase tracking-widest mb-1.5 cursor-help" style={{ color: C.muted }}>Ulubieni</div></Tip>
+              <div className="grid grid-cols-2 gap-1.5">{team.heroPicks.slice(0, 4).map(h => <Tip key={h.heroId} content={`${heroName(h.heroId)} · ${h.wins}-${h.games - h.wins}`}><span className="relative"><HeroImg heroId={h.heroId} className="w-full aspect-video rounded-md" /><span className="absolute bottom-0 inset-x-0 text-center text-[10px] font-bold text-white bg-black/60 rounded-b-md">{h.games}×</span></span></Tip>)}</div>
             </div>
             <div>
-              <Tip content="Bohaterowie najczęściej banowani przeciwko tej drużynie — rywale się ich boją"><div className="text-[9px] uppercase tracking-widest mb-1 cursor-help" style={{ color: C.muted }}>Banowani przeciw nim</div></Tip>
-              <div className="flex gap-1">{team.bansAgainst.slice(0, 4).map(h => <Tip key={h.heroId} content={`${heroName(h.heroId)} · ${h.count}× ban`}><span><HeroImg heroId={h.heroId} className="w-12 h-7 rounded grayscale-[40%]" /></span></Tip>)}</div>
+              <Tip content="Bohaterowie najczęściej banowani przeciwko tej drużynie — rywale się ich boją"><div className="text-[10px] uppercase tracking-widest mb-1.5 cursor-help" style={{ color: C.muted }}>Banowani przeciw nim</div></Tip>
+              <div className="grid grid-cols-2 gap-1.5">{team.bansAgainst.slice(0, 4).map(h => <Tip key={h.heroId} content={`${heroName(h.heroId)} · ${h.count}× ban`}><span className="relative"><HeroImg heroId={h.heroId} className="w-full aspect-video rounded-md grayscale-[40%]" /><span className="absolute bottom-0 inset-x-0 text-center text-[10px] font-bold text-white bg-black/60 rounded-b-md">{h.count}×</span></span></Tip>)}</div>
             </div>
           </div>
         </div>

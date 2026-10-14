@@ -4,6 +4,7 @@
 // sorted arrays to tournaments/{tourId}/performanceRankings/{role}.
 import 'server-only';
 import { getAdminDb, ensureAdminInitialized } from '../../server/lib/admin';
+import { calcPerformanceScore, MIN_SCORED_GAME_MINS, type PerformanceInput } from './performance-score';
 
 // ─── Constants & types ────────────────────────────────────────────────────────
 
@@ -18,36 +19,7 @@ const ROLE_DOC_ID: Record<ValidRole, string> = {
   'Hard Support':  'hard-support',
 };
 
-interface PerfData {
-  kills:             number;
-  deaths:            number;
-  assists:           number;
-  gpm:               number;
-  xpm:               number;
-  lastHits:          number;
-  heroDamage:        number;
-  towerDamage:       number;
-  obsPlaced:         number;
-  senPlaced:         number;
-  observerKills:     number;
-  sentryKills:       number;
-  campsStacked:      number;
-  firstBloodClaimed: boolean;
-  runesPickedUp:     number;
-}
-
-interface ScoreComponents {
-  total:      number;
-  killPts:    number;
-  assistPts:  number;
-  deathPts:   number;
-  farmPts:    number;
-  dmgPts:     number;
-  wardPts:    number;
-  dewardPts:  number;
-  campPts:    number;
-  miscPts:    number;
-}
+type PerfData = PerformanceInput;
 
 export interface RankingEntry {
   name:      string;
@@ -71,72 +43,8 @@ export interface PerformanceRankingsDoc {
   gameCount:  number;
 }
 
-// ─── Scoring formula (v2, mirrors calculate-performance-score.js) ─────────────
-
-function calcScore(
-  role: string,
-  p: PerfData,
-  gameMins: number,
-  avgGameMins: number,
-): ScoreComponents {
-  const zero: ScoreComponents = { total: 0, killPts: 0, assistPts: 0, deathPts: 0, farmPts: 0, dmgPts: 0, wardPts: 0, dewardPts: 0, campPts: 0, miscPts: 0 };
-  if (gameMins <= 0) return zero;
-  // Normalise per-count stats to average game length to remove duration bias
-  const n = (v: number) => v * avgGameMins / gameMins;
-
-  let killPts = 0, assistPts = 0, deathPts = 0, farmPts = 0, dmgPts = 0, wardPts = 0;
-
-  switch (role) {
-    case 'Carry':
-      killPts   = n(p.kills)   * 0.29;
-      assistPts = n(p.assists) * 0.13;
-      deathPts  = n(p.deaths)  * -0.38;
-      farmPts   = Math.max(p.gpm - 300, 0) / 150 + n(p.lastHits) / 150;
-      dmgPts    = n(p.heroDamage) / 14000 + n(p.towerDamage) / 14000;
-      break;
-    case 'Mid':
-      killPts   = n(p.kills)   * 0.38;
-      assistPts = n(p.assists) * 0.12;
-      deathPts  = n(p.deaths)  * -0.34;
-      farmPts   = Math.max(p.xpm - 300, 0) / 144 + n(p.lastHits) / 220;
-      dmgPts    = n(p.heroDamage) / 12000 + n(p.towerDamage) / 12000;
-      break;
-    case 'Offlane':
-      killPts   = n(p.kills)   * 0.43;
-      assistPts = n(p.assists) * 0.23;
-      deathPts  = n(p.deaths)  * -0.30;
-      farmPts   = Math.max(p.gpm - 250, 0) / 175;
-      dmgPts    = n(p.heroDamage) / 9000 + n(p.towerDamage) / 9000;
-      wardPts   = n(p.obsPlaced) * 0.20 + n(p.senPlaced) * 0.20;
-      break;
-    case 'Soft Support':
-      killPts   = n(p.kills)   * 0.35;
-      assistPts = n(p.assists) * 0.20;
-      deathPts  = n(p.deaths)  * -0.25;
-      farmPts   = Math.max(p.gpm - 200, 0) / 130;
-      dmgPts    = n(p.heroDamage) / 13000 + n(p.towerDamage) / 13000;
-      wardPts   = n(p.obsPlaced) * 0.22 + n(p.senPlaced) * 0.15;
-      break;
-    case 'Hard Support':
-      killPts   = n(p.kills)   * 0.23;
-      assistPts = n(p.assists) * 0.20;
-      deathPts  = n(p.deaths)  * -0.21;
-      farmPts   = Math.max(p.gpm - 200, 0) / 200;
-      dmgPts    = n(p.heroDamage) / 11500 + n(p.towerDamage) / 11500;
-      wardPts   = n(p.obsPlaced) * 0.18 + n(p.senPlaced) * 0.12;
-      break;
-    default:
-      return zero;
-  }
-
-  const dewardPts = n(p.observerKills) * 0.25 + n(p.sentryKills) * 0.10;
-  const campPts   = n(p.campsStacked) * 0.20;
-  const miscPts   = (p.firstBloodClaimed ? 0.75 : 0)
-                  + (role === 'Mid' ? n(p.runesPickedUp) * 0.07 : 0);
-
-  const total = killPts + assistPts + deathPts + farmPts + dmgPts + wardPts + dewardPts + campPts + miscPts;
-  return { total, killPts, assistPts, deathPts, farmPts, dmgPts, wardPts, dewardPts, campPts, miscPts };
-}
+// Scoring formula lives in ./performance-score (shared with the stats pages)
+const calcScore = calcPerformanceScore;
 
 // ─── Main export ──────────────────────────────────────────────────────────────
 
@@ -222,7 +130,7 @@ export async function recalculatePerformanceRankings(tournamentId: string): Prom
             const gd = gameDoc.data();
             const gameDurationSec = (gd.duration as number) || 0;
             const gameMins = gameDurationSec / 60;
-            if (gameMins < 5) return []; // skip corrupted / stub games
+            if (gameMins < MIN_SCORED_GAME_MINS) return []; // skip corrupted / stub games
 
             const perfSnap = await adminDb
               .collection('tournaments').doc(tournamentId)

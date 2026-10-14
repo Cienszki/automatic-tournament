@@ -84,10 +84,10 @@ function Sides({ model }: { model: Model }) {
         <StatLine align={align} label="roshany / grę" value={v.rosh.toFixed(2)} desc={`Roshany zabite przez ${name} na grę`} />
         <StatLine align={align} label="wardy / grę" value={v.wards.toFixed(1)} desc={`Wardy postawione przez ${name} na grę`} />
         {heroes.length > 0 && (
-          <div className={`flex gap-1 mt-1 ${radiant ? '' : 'flex-row-reverse'}`}>
+          <div className={`flex gap-2 mt-2 ${radiant ? '' : 'flex-row-reverse'}`}>
             {heroes.map(({ h, diff }) => (
               <Tip key={h.heroId} content={<TipBody title={heroName(h.heroId)}>Radiant {h.radiant.wins}/{h.radiant.picks} · Dire {h.dire.wins}/{h.dire.picks} — {Math.round(Math.abs(diff) * 100)} pkt % lepiej jako {name}</TipBody>}>
-                <span><HeroImg heroId={h.heroId} className="w-12 h-7 rounded" style={{ boxShadow: `0 0 0 1.5px ${color}` }} /></span>
+                <span><HeroImg heroId={h.heroId} className="w-24 h-[54px] rounded-lg" style={{ boxShadow: `0 0 0 2px ${color}` }} /></span>
               </Tip>
             ))}
           </div>
@@ -113,23 +113,20 @@ function Sides({ model }: { model: Model }) {
             <line x1={0} y1={y0} x2={W} y2={y1} stroke="#bfe6ff" strokeOpacity={0.8} strokeWidth={2} />
           </svg>
         )}
-        <Tip content={`Rzeka przesuwa się w stronę słabszej strony: Radiant ${fmtPct(s.R.wr)} · Dire ${fmtPct(s.D.wr)}`}>
-          <div className="absolute left-1/2 -translate-x-1/2 rounded-full px-3 py-1 text-[10px] uppercase tracking-[0.3em] text-white/80 bg-black/50 cursor-help" style={{ top: `calc(${50 + shift}% - 12px)` }}>rzeka</div>
-        </Tip>
         {block(true)}
         {block(false)}
       </div>
 
       {/* Team tug-of-war track */}
-      <div className="shrink-0 mt-3 relative h-[58px]" onMouseLeave={() => setHoverTeam(null)}>
-        <div className="absolute left-0 right-0 top-[27px] h-1.5 rounded-full" style={{ background: `linear-gradient(90deg, ${C.dire}, rgba(255,255,255,0.15), ${C.radiant})` }} />
-        <span className="absolute left-0 top-[38px] text-[9px] uppercase tracking-widest" style={{ color: C.dire }}>lepsi jako Dire</span>
-        <span className="absolute right-0 top-[38px] text-[9px] uppercase tracking-widest" style={{ color: C.radiant }}>lepsi jako Radiant</span>
+      <div className="shrink-0 mt-3 relative h-[96px]" onMouseLeave={() => setHoverTeam(null)}>
+        <div className="absolute left-0 right-0 top-[45px] h-2 rounded-full" style={{ background: `linear-gradient(90deg, ${C.dire}, rgba(255,255,255,0.15), ${C.radiant})` }} />
+        <span className="absolute left-0 bottom-0 text-[10px] uppercase tracking-widest" style={{ color: C.dire }}>lepsi jako Dire</span>
+        <span className="absolute right-0 bottom-0 text-[10px] uppercase tracking-widest" style={{ color: C.radiant }}>lepsi jako Radiant</span>
         {teams.map(({ t, rwr, dwr, diff }, i) => (
           <Tip key={t.id} content={<TipBody title={t.name}>Radiant {t.radiant.wins}/{t.radiant.games} ({fmtPct(rwr)}) · Dire {t.dire.wins}/{t.dire.games} ({fmtPct(dwr)})</TipBody>}>
-            <motion.div className="absolute" initial={{ left: '50%' }} animate={{ left: `calc(${50 + diff * 50}% - 13px)` }} transition={{ type: 'spring', stiffness: 80, damping: 15, delay: i * 0.02 }}
-              style={{ top: i % 2 ? 0 : 30, zIndex: hoverTeam?.id === t.id ? 10 : 1 }} onMouseEnter={() => setHoverTeam(t)}>
-              <TeamLogo team={t} size={26} className="hover:scale-150 transition-transform" />
+            <motion.div className="absolute" initial={{ left: '50%' }} animate={{ left: `calc(${50 + diff * 46}% - 20px)` }} transition={{ type: 'spring', stiffness: 80, damping: 15, delay: i * 0.02 }}
+              style={{ top: i % 2 ? 0 : 52, zIndex: hoverTeam?.id === t.id ? 10 : 1 }} onMouseEnter={() => setHoverTeam(t)}>
+              <TeamLogo team={t} size={40} className="hover:scale-125 transition-transform" />
             </motion.div>
           </Tip>
         ))}

@@ -24,7 +24,7 @@ const pAxis = (k: MetricKey): Axis => {
 };
 const AXES: Record<Kind, Axis[]> = {
   players: [
-    ...(['fantasy', 'kills', 'deaths', 'assists', 'kda', 'kp', 'gpm', 'xpm', 'lastHits', 'lhpm', 'hdpm', 'towerDamage', 'heroHealing', 'wards', 'dewards', 'stacks', 'runes'] as MetricKey[]).map(pAxis),
+    ...(['score', 'kills', 'deaths', 'assists', 'kda', 'kp', 'gpm', 'xpm', 'lastHits', 'lhpm', 'hdpm', 'towerDamage', 'heroHealing', 'wards', 'dewards', 'stacks', 'runes'] as MetricKey[]).map(pAxis),
     { key: 'wr', label: 'Wygrane', short: 'W%', desc: 'Procent wygranych gier', get: (p: PlayerX) => p.wr, fmt: fmtPct },
     { key: 'games', label: 'Gry', short: 'G', desc: 'Rozegrane gry', get: (p: PlayerX) => p.games, fmt: dec(0) },
     { key: 'pool', label: 'Pula bohaterów', short: 'POOL', desc: 'Liczba różnych bohaterów', get: (p: PlayerX) => p.heroes.length, fmt: dec(0) },
@@ -78,14 +78,14 @@ function AxisPicker({ axes, value, onChange, label }: { axes: Axis[]; value: str
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <button type="button" className="rounded-full px-3 py-1 text-[11px] flex items-center gap-1.5" style={{ background: ink(6), border: `1px solid ${ink(12)}` }}>
+        <button type="button" className="rounded-xl px-4 py-2.5 text-sm flex items-center gap-2" style={{ background: ink(6), border: `1px solid ${ink(12)}` }}>
           <span style={{ color: C.muted }}>{label}</span><b>{cur.label}</b><span className="opacity-50">▾</span>
         </button>
       </PopoverTrigger>
-      <PopoverContent className="w-[340px] p-2 grid grid-cols-2 gap-1 border-white/10 bg-[#111] text-white">
+      <PopoverContent className="w-[420px] p-2 grid grid-cols-2 gap-1 border-white/10 bg-[#111] text-white">
         {axes.map(a => (
           <Tip key={a.key} side="left" content={a.desc}>
-            <button type="button" onClick={() => { onChange(a.key); setOpen(false); }} className="text-left text-xs px-2 py-1 rounded-md hover:bg-white/10" style={a.key === value ? { background: C.primary } : undefined}>{a.label}</button>
+            <button type="button" onClick={() => { onChange(a.key); setOpen(false); }} className="w-full text-left text-sm px-3 py-2 rounded-lg hover:bg-white/10" style={a.key === value ? { background: C.primary } : undefined}>{a.label}</button>
           </Tip>
         ))}
       </PopoverContent>
@@ -119,7 +119,7 @@ function Scatter({ ents, kind, ax, ay }: { ents: Entity[]; kind: Kind; ax: Axis;
   const med = (a: number[]) => [...a].sort((p, q) => p - q)[Math.floor(a.length / 2)] ?? 0;
   const mx = med(xs); const my = med(ys);
   const ticks = (lo: number, hi: number) => Array.from({ length: 5 }, (_, i) => lo + ((hi - lo) * i) / 4);
-  const mark = Math.max(16, Math.min(26, 360 / Math.sqrt(Math.max(1, ents.length))));
+  const mark = Math.max(24, Math.min(40, 460 / Math.sqrt(Math.max(1, ents.length))));
   const local = (e: React.PointerEvent) => { const r = ref.current!.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
 
   return (
@@ -176,12 +176,12 @@ function Heatmap({ ents, kind, axes }: { ents: Entity[]; kind: Kind; axes: Axis[
     const a = cols.find(c => c.key === sortKey)!;
     return [...ents].sort((p, q) => (asc ? 1 : -1) * (a.get(p) - a.get(q)));
   }, [ents, cols, sortKey, asc]);
-  const [ref, per] = useFitCount<HTMLDivElement>(28, 2, 4);
+  const [ref, per] = useFitCount<HTMLDivElement>(36, 3, 4);
   const { page, pages, setPage, slice, offset } = usePages(rows, per);
   return (
     <div className="h-full flex flex-col min-h-0">
       <div className="flex items-end gap-1 pb-1 shrink-0" style={{ borderBottom: `1px solid ${ink(10)}` }}>
-        <div className="w-[190px] shrink-0" />
+        <div className="w-[220px] shrink-0" />
         {cols.map(c => (
           <Tip key={c.key} content={<TipBody title={c.label}>{c.desc}{c.low ? ' (mniej = lepiej)' : ''}</TipBody>}>
             <button type="button" onClick={() => (sortKey === c.key ? setAsc(x => !x) : (setSortKey(c.key), setAsc(false)))} className="flex-1 min-w-0 text-[10px] uppercase tracking-wider text-center truncate"
@@ -191,11 +191,11 @@ function Heatmap({ ents, kind, axes }: { ents: Entity[]; kind: Kind; axes: Axis[
       </div>
       <div ref={ref} className="flex-1 min-h-0 flex flex-col gap-[2px] pt-1">
         {slice.map((e, i) => (
-          <div key={idOf(e, kind)} className="h-[28px] shrink-0 flex items-center gap-1">
-            <div className="w-[190px] shrink-0 flex items-center gap-1.5 min-w-0">
+          <div key={idOf(e, kind)} className="h-[36px] shrink-0 flex items-center gap-1">
+            <div className="w-[220px] shrink-0 flex items-center gap-2 min-w-0">
               <span className="w-6 text-right text-[10px] tabular-nums" style={{ color: C.muted }}>{offset + i + 1}</span>
-              <Mark e={e} kind={kind} size={20} />
-              <span className="truncate text-xs font-semibold">{nameOf(e, kind)}</span>
+              <Mark e={e} kind={kind} size={30} />
+              <span className="truncate text-sm font-semibold">{nameOf(e, kind)}</span>
             </div>
             {cols.map(c => {
               const v = c.get(e);
@@ -233,7 +233,7 @@ function Lab({ model }: { model: Model }) {
     <>
       <LabTitle
         sub={<Tip content={kind === 'players' ? `Gracze z co najmniej ${model.minGames} grami` : kind === 'heroes' ? 'Bohaterowie z co najmniej 2 pickami' : 'Drużyny z co najmniej 2 grami'}><span className="cursor-help">{ents.length} punktów</span></Tip>}
-        right={<div className="flex gap-2"><Seg size="sm" value={kind} onChange={setKind} options={[{ value: 'players', label: 'Gracze' }, { value: 'teams', label: 'Drużyny' }, { value: 'heroes', label: 'Bohaterowie' }]} /><Seg size="sm" value={view} onChange={setView} options={[{ value: 'plot', label: 'Wykres' }, { value: 'table', label: 'Tabela' }]} /></div>}
+        right={<div className="flex gap-2"><Seg value={kind} onChange={setKind} options={[{ value: 'players', label: 'Gracze' }, { value: 'teams', label: 'Drużyny' }, { value: 'heroes', label: 'Bohaterowie' }]} /><Seg value={view} onChange={setView} options={[{ value: 'plot', label: 'Wykres' }, { value: 'table', label: 'Tabela' }]} /></div>}
       >
         Laboratorium
       </LabTitle>
@@ -244,7 +244,7 @@ function Lab({ model }: { model: Model }) {
           <span className="w-px h-5 mx-1" style={{ background: ink(15) }} />
           {PRESETS[kind].map(p => (
             <Tip key={p.label} content={p.tip}>
-              <button type="button" onClick={() => setXy(v => ({ ...v, [kind]: { x: p.x, y: p.y } }))} className="rounded-full px-3 py-1 text-[11px] transition"
+              <button type="button" onClick={() => setXy(v => ({ ...v, [kind]: { x: p.x, y: p.y } }))} className="rounded-xl px-4 py-2.5 text-sm font-semibold transition"
                 style={xy[kind].x === p.x && xy[kind].y === p.y ? { background: mix(C.primary, 40), border: `1px solid ${C.primary}` } : { background: ink(4), border: `1px solid ${ink(8)}` }}>{p.label}</button>
             </Tip>
           ))}

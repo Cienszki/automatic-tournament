@@ -9,7 +9,7 @@ import { motion } from 'framer-motion';
 import type { Model } from '@/lib/stats-lab/derive';
 import { heroName } from '@/lib/stats-lab/heroes';
 import { fmtPct } from '@/lib/stats-lab/metrics';
-import { C, HeroImg, LabTitle, LabView, Tip, TipBody, WithModel, ink, mix, useHeaderFont, useSize, wrColor } from '../kit';
+import { C, HeroImg, LabTitle, LabView, Tip, TipBody, WithModel, ink, mix, useFitCount, useHeaderFont, useSize, wrColor } from '../kit';
 
 interface HeroCount { heroId: number; n: number; wins: number }
 interface Slot { i: number; pick: boolean; sideA: boolean; total: number; heroes: HeroCount[] }
@@ -62,11 +62,11 @@ function SlotCell({ s, active, onClick, w }: { s: Slot; active: boolean; onClick
     <Tip content={<TipBody title={`${s.pick ? 'Pick' : 'Ban'} ${s.i + 1}`}>{top ? `Najczęściej: ${heroName(top.heroId)} (${top.n}×)` : ''}</TipBody>}>
       <motion.button type="button" onClick={onClick} whileHover={{ y: s.sideA ? -3 : 3 }}
         className="relative rounded-md overflow-hidden shrink-0"
-        style={{ width: w, height: s.pick ? w * 1.25 : w * 0.8, outline: active ? `2px solid ${C.secondary}` : 'none', outlineOffset: 2, background: ink(6) }}>
+        style={{ width: w, height: s.pick ? w * 1.7 : w * 1.05, outline: active ? `2px solid ${C.secondary}` : 'none', outlineOffset: 2, background: ink(6) }}>
         {top && <HeroImg heroId={top.heroId} title={false} className="absolute inset-0 w-full h-full" style={{ filter: s.pick ? 'none' : 'grayscale(1) brightness(0.55)' }} />}
         {!s.pick && <div className="absolute inset-0" style={{ background: 'repeating-linear-gradient(135deg, transparent 0 6px, rgba(0,0,0,0.45) 6px 8px)' }} />}
         <div className="absolute inset-x-0 bottom-0 h-1" style={{ background: s.pick ? (s.sideA ? C.primary : C.secondary) : 'rgba(255,255,255,0.25)' }} />
-        <span className="absolute top-0 left-0.5 text-[9px] font-bold text-white/80 drop-shadow">{s.i + 1}</span>
+        <span className="absolute top-0.5 left-1 text-[11px] font-bold text-white/90 drop-shadow">{s.i + 1}</span>
       </motion.button>
     </Tip>
   );
@@ -75,23 +75,30 @@ function SlotCell({ s, active, onClick, w }: { s: Slot; active: boolean; onClick
 function HeroRow({ h, max, showWr = true }: { h: HeroCount; max: number; showWr?: boolean }) {
   return (
     <Tip content={<TipBody title={heroName(h.heroId)}>{h.n}×{showWr && h.n ? ` · ${Math.round((h.wins / h.n) * 100)}% wygranych` : ''}</TipBody>}>
-      <div className="flex items-center gap-2 h-7">
-        <HeroImg heroId={h.heroId} className="w-11 h-6 rounded shrink-0" />
-        <div className="flex-1 h-2 rounded-full overflow-hidden" style={{ background: ink(6) }}>
+      <div className="flex items-center gap-3 h-10">
+        <HeroImg heroId={h.heroId} className="w-[68px] h-[38px] rounded-md shrink-0" />
+        <div className="flex-1 h-3 rounded-full overflow-hidden" style={{ background: ink(6) }}>
           <motion.div initial={{ width: 0 }} animate={{ width: `${(h.n / max) * 100}%` }} className="h-full rounded-full" style={{ background: showWr ? wrColor(h.wins / h.n) : C.muted }} />
         </div>
-        <span className="w-6 text-right text-xs tabular-nums font-bold">{h.n}</span>
+        <span className="w-7 text-right text-base tabular-nums font-bold">{h.n}</span>
       </div>
     </Tip>
   );
+}
+
+/** As many hero rows as fit the remaining height */
+function FitRows({ rows, showWr = true }: { rows: HeroCount[]; showWr?: boolean }) {
+  const [ref, n] = useFitCount<HTMLDivElement>(40, 6, 2);
+  const max = rows[0]?.n || 1;
+  return <div ref={ref} className="h-full flex flex-col gap-1.5">{rows.slice(0, n).map(h => <HeroRow key={h.heroId} h={h} max={max} showWr={showWr} />)}</div>;
 }
 
 function Panel({ title, tip, children }: { title: string; tip: string; children: React.ReactNode }) {
   const font = useHeaderFont();
   return (
     <div className="flex-1 min-w-0 rounded-2xl p-3 flex flex-col min-h-0" style={{ background: ink(3), border: `1px solid ${ink(8)}` }}>
-      <Tip content={tip}><div className="text-sm font-logik-extended-bold uppercase tracking-wide cursor-help self-start" style={{ color: C.heading, ...font }}>{title}</div></Tip>
-      <div className="flex-1 min-h-0 mt-2 overflow-hidden">{children}</div>
+      <Tip content={tip}><div className="text-lg font-logik-extended-bold uppercase tracking-wide cursor-help self-start" style={{ color: C.heading, ...font }}>{title}</div></Tip>
+      <div className="flex-1 min-h-0 mt-2 overflow-hidden flex flex-col">{children}</div>
     </div>
   );
 }
@@ -103,7 +110,7 @@ function Draft({ model }: { model: Model }) {
   const [boardRef, board] = useSize<HTMLDivElement>();
   const slot = a.slots[sel];
   if (!a.slots.length) return <div className="flex-1 flex items-center justify-center text-sm" style={{ color: C.muted }}>Brak zapisanych draftów</div>;
-  const cell = Math.max(24, Math.min(54, Math.floor((board.w - 60) / a.slots.length) - 4));
+  const cell = Math.max(24, Math.min(60, Math.floor((board.w - 60) / a.slots.length) - 4));
 
   return (
     <>
@@ -114,7 +121,7 @@ function Draft({ model }: { model: Model }) {
         <div className="flex items-center gap-1 justify-center">
           <Tip content="Drużyna, która zaczyna draft"><span className="w-3 h-3 rounded-full shrink-0 mr-1 cursor-help" style={{ background: C.primary }} /></Tip>
           {a.slots.map(s => (
-            <div key={s.i} className="flex flex-col justify-end shrink-0" style={{ width: cell, height: cell * 1.3 }}>
+            <div key={s.i} className="flex flex-col justify-end shrink-0" style={{ width: cell, height: cell * 1.75 }}>
               {s.sideA && <SlotCell s={s} w={cell} active={s.i === sel} onClick={() => setSel(s.i)} />}
             </div>
           ))}
@@ -123,7 +130,7 @@ function Draft({ model }: { model: Model }) {
         <div className="flex items-center gap-1 justify-center">
           <Tip content="Drużyna, która draftuje druga"><span className="w-3 h-3 rounded-full shrink-0 mr-1 cursor-help" style={{ background: C.secondary }} /></Tip>
           {a.slots.map(s => (
-            <div key={s.i} className="flex flex-col justify-start shrink-0" style={{ width: cell, height: cell * 1.3 }}>
+            <div key={s.i} className="flex flex-col justify-start shrink-0" style={{ width: cell, height: cell * 1.75 }}>
               {!s.sideA && <SlotCell s={s} w={cell} active={s.i === sel} onClick={() => setSel(s.i)} />}
             </div>
           ))}
@@ -132,33 +139,33 @@ function Draft({ model }: { model: Model }) {
 
       <div className="flex-1 min-h-0 flex gap-3 mt-3">
         <Panel title={slot ? `${slot.pick ? 'Pick' : 'Ban'} ${slot.i + 1}` : '–'} tip="Kto ląduje w zaznaczonym miejscu draftu (kliknij inne pole na planszy)">
-          {slot && <div className="grid grid-cols-1 gap-0.5">{slot.heroes.slice(0, 8).map(h => <HeroRow key={h.heroId} h={h} max={slot.heroes[0].n} showWr={slot.pick} />)}</div>}
+          {slot && <FitRows key={slot.i} rows={slot.heroes} showWr={slot.pick} />}
         </Panel>
         <Panel title="Pierwszy pick" tip="Pierwszy wybrany bohater w drafcie i jak radzi sobie drużyna, która go wzięła">
           <div className="flex items-center gap-3 mb-2">
             <Tip content={`Drużyna z pierwszym pickiem wygrała ${Math.round(a.fpWr * 100)}% z ${a.fpGames} gier`}>
-              <div className="relative w-16 h-16 shrink-0 cursor-help">
+              <div className="relative w-20 h-20 shrink-0 cursor-help">
                 <svg viewBox="0 0 36 36" className="w-full h-full -rotate-90">
                   <circle cx="18" cy="18" r="15.9" fill="none" stroke={ink(10)} strokeWidth="4" />
                   <circle cx="18" cy="18" r="15.9" fill="none" stroke={wrColor(a.fpWr)} strokeWidth="4" strokeDasharray={`${a.fpWr * 100} 100`} />
                 </svg>
-                <span className="absolute inset-0 flex items-center justify-center text-sm font-logik-extended-bold" style={font}>{fmtPct(a.fpWr)}</span>
+                <span className="absolute inset-0 flex items-center justify-center text-lg font-logik-extended-bold" style={font}>{fmtPct(a.fpWr)}</span>
               </div>
             </Tip>
             <span className="text-[10px] uppercase tracking-widest leading-tight" style={{ color: C.muted }}>wygrane drużyny<br />z pierwszym pickiem</span>
           </div>
-          <div className="grid gap-0.5">{a.firstPicks.slice(0, 5).map(h => <HeroRow key={h.heroId} h={h} max={a.firstPicks[0].n} />)}</div>
+          <div className="flex-1 min-h-0"><FitRows rows={a.firstPicks} /></div>
         </Panel>
         <Panel title="Kontra" tip="Ostatni pick draftu — bohater wybierany, gdy rywal nie może już odpowiedzieć">
-          <div className="grid gap-0.5">{a.lastPicks.slice(0, 8).map(h => <HeroRow key={h.heroId} h={h} max={a.lastPicks[0].n} />)}</div>
+          <FitRows rows={a.lastPicks} />
         </Panel>
         <Panel title="Priorytet" tip={`Bohaterowie znikający z draftu najwcześniej (średnia pozycja pierwszego pojawienia się, min. ${a.minN} draftów)`}>
-          <div className="grid grid-cols-4 gap-1.5 content-start">
-            {a.priority.slice(0, 16).map((p, i) => (
+          <div className="grid grid-cols-3 gap-2 content-start">
+            {a.priority.slice(0, 12).map((p, i) => (
               <Tip key={p.heroId} content={<TipBody title={`${i + 1}. ${heroName(p.heroId)}`}>średnio znika w ruchu {(p.avg + 1).toFixed(1)} · {p.n} draftów</TipBody>}>
                 <div className="relative rounded-md overflow-hidden">
                   <HeroImg heroId={p.heroId} className="w-full aspect-video" />
-                  <span className="absolute top-0 left-0 px-1 text-[10px] font-bold text-white bg-black/60 rounded-br">{i + 1}</span>
+                  <span className="absolute top-0 left-0 px-1.5 text-xs font-bold text-white bg-black/65 rounded-br">{i + 1}</span>
                 </div>
               </Tip>
             ))}

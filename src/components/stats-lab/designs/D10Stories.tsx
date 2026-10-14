@@ -7,8 +7,8 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { fmtClock } from '@/lib/stats-lab/metrics';
 import { opponentOf, topPerfs, type GameX, type Model, type Perf, type PlayerX, type TeamX } from '@/lib/stats-lab/derive';
-import { heroName, heroRender } from '@/lib/stats-lab/heroes';
-import { Avatar, C, HeroImg, LabView, TeamLogo, Tip, WithModel, mix, useHeaderFont } from '../kit';
+import { heroName } from '@/lib/stats-lab/heroes';
+import { Avatar, C, HeroImg, HeroRender, LabView, TeamLogo, Tip, WithModel, mix, useHeaderFont } from '../kit';
 
 const SLIDE_MS = 6500;
 
@@ -81,8 +81,8 @@ function buildStories(model: Model): Story[] {
   if (stomp) s.push({ id: 'stomp', kicker: 'Największa przewaga złota', big: `${Math.round(Math.abs(stomp.radiantNW - stomp.direNW) / 1000)}k`, title: 'różnicy wartości netto na koniec gry', heroId: mvpOf(stomp)?.heroId, game: stomp, extra: <Versus g={stomp} /> });
 
   const q = model.players.filter(p => p.games >= model.minGames);
-  const mvp = [...q].sort((a, b) => (b.agg.fantasy.avg ?? 0) - (a.agg.fantasy.avg ?? 0))[0];
-  if (mvp) s.push({ id: 'mvp', kicker: 'MVP turnieju', big: (mvp.agg.fantasy.avg ?? 0).toFixed(1), title: mvp.name, sub: `średnio punktów fantasy w ${mvp.games} grach · ${Math.round(mvp.wr * 100)}% wygranych`, heroId: mvp.heroes[0]?.heroId, player: mvp, team: mvp.team });
+  const mvp = [...q].sort((a, b) => (b.agg.score.avg ?? 0) - (a.agg.score.avg ?? 0))[0];
+  if (mvp) s.push({ id: 'mvp', kicker: 'MVP turnieju', big: (mvp.agg.score.avg ?? 0).toFixed(1), title: mvp.name, sub: `średnio punktów występu w ${mvp.games} grach · ${Math.round(mvp.wr * 100)}% wygranych`, heroId: mvp.heroes[0]?.heroId, player: mvp, team: mvp.team });
   const kills = topPerfs(model, 'kills', 1)[0];
   if (kills) s.push({ id: 'kills', kicker: 'Rekord zabójstw', big: `${kills.kills}`, title: kills.player?.name ?? '—', sub: perfLine(kills), heroId: kills.heroId, player: kills.player, team: kills.team });
   const gpm = topPerfs(model, 'gpm', 1)[0];
@@ -118,9 +118,11 @@ const Stage = React.memo(function Stage({ story }: { story: Story }) {
       {story.heroId != null && (
         <>
           <HeroImg heroId={story.heroId} title={false} className="absolute inset-0 w-full h-full scale-110 blur-2xl opacity-60" />
-          <motion.img src={heroRender(story.heroId)} alt={heroName(story.heroId)} draggable={false}
-            className="absolute right-0 bottom-0 h-[115%] w-auto max-w-none object-contain pointer-events-none"
-            initial={{ x: 60, opacity: 0, scale: 1.04 }} animate={{ x: 0, opacity: 1, scale: 1 }} transition={{ duration: 0.9, ease: 'easeOut' }} />
+          {/* Contained in its box (bottom-anchored), so the whole hero incl. the head stays visible */}
+          <motion.div className="absolute right-[2%] top-[6%] bottom-0 w-[52%]"
+            initial={{ x: 60, opacity: 0, scale: 1.04 }} animate={{ x: 0, opacity: 1, scale: 1 }} transition={{ duration: 0.9, ease: 'easeOut' }}>
+            <HeroRender heroId={story.heroId} sizes="50vw" priority />
+          </motion.div>
         </>
       )}
       <div className="absolute inset-0" style={{ background: `linear-gradient(90deg, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.55) 45%, rgba(0,0,0,0) 75%), radial-gradient(ellipse at 0% 100%, ${mix(C.primary, 40)}, transparent 60%)` }} />
@@ -171,13 +173,6 @@ function Stories({ model }: { model: Model }) {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   });
-
-  // Preload the next slide's (large) render
-  useEffect(() => {
-    const next = stories[(i + 1) % stories.length]?.heroId;
-    const src = next != null ? heroRender(next) : undefined;
-    if (src) { const img = new Image(); img.src = src; }
-  }, [i, stories]);
 
   const story = stories[i];
   if (!story) return null;

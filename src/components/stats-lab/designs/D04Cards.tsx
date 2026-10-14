@@ -9,7 +9,7 @@ import { motion, type PanInfo } from 'framer-motion';
 import { metric, type MetricKey } from '@/lib/stats-lab/metrics';
 import { opponentOf, pctRank, topPerfs, type Model, type PlayerX } from '@/lib/stats-lab/derive';
 import { heroName } from '@/lib/stats-lab/heroes';
-import { Avatar, C, HeroImg, LabTitle, LabView, Seg, TeamLogo, Tip, TipBody, WithModel, ink, mix, useHeaderFont, useSize } from '../kit';
+import { Avatar, C, HeroImg, HeroRender, LabTitle, TeamPicker, LabView, Seg, TeamLogo, Tip, TipBody, WithModel, ink, mix, useHeaderFont, useSize } from '../kit';
 
 const ATTRS: Array<{ key: MetricKey; abbr: string; name: string }> = [
   { key: 'kda', abbr: 'WAL', name: 'Walka' },
@@ -32,33 +32,36 @@ interface CardData {
   attrs: Array<{ abbr: string; name: string; key: MetricKey; score: number; raw: number }>;
   tier: typeof TIERS[number];
   records: MetricKey[];
+  /** Below the minimum games — ratings are shown but marked as a small sample */
+  few: boolean;
 }
 
 function buildCards(model: Model): CardData[] {
+  // Percentiles are measured against regulars (>= minGames) so a single lucky game can't top the
+  // scale, but every player who played gets a card.
   const q = model.players.filter(p => p.games >= model.minGames);
-  const fant = q.map(p => p.agg.fantasy.avg ?? 0);
+  const fant = q.map(p => p.agg.score.avg ?? 0);
   const pools = Object.fromEntries(ATTRS.map(a => [a.key, q.map(p => p.agg[a.key].avg ?? 0)]));
-  const recordKeys: MetricKey[] = ['kills', 'assists', 'kda', 'gpm', 'xpm', 'lastHits', 'heroDamage', 'towerDamage', 'wards', 'dewards', 'stacks', 'heroHealing', 'netWorth', 'fantasy'];
+  const recordKeys: MetricKey[] = ['kills', 'assists', 'kda', 'gpm', 'xpm', 'lastHits', 'heroDamage', 'towerDamage', 'wards', 'dewards', 'stacks', 'heroHealing', 'netWorth', 'score'];
   const holders = new Map<string, MetricKey[]>();
   for (const k of recordKeys) {
     const rec = topPerfs(model, k, 1)[0];
     if (rec?.player) holders.set(rec.pid, [...(holders.get(rec.pid) ?? []), k]);
   }
-  return q.map(p => {
-    const ovr = Math.round(45 + 54 * pctRank(fant, p.agg.fantasy.avg ?? 0));
-    return {
-      p, ovr,
-      tier: TIERS.find(t => ovr >= t.min)!,
-      attrs: ATTRS.map(a => ({ ...a, raw: p.agg[a.key].avg ?? 0, score: Math.round(30 + 69 * pctRank(pools[a.key], p.agg[a.key].avg ?? 0)) })),
-      records: holders.get(p.id) ?? [],
-    };
-  }).sort((a, b) => b.ovr - a.ovr || b.p.games - a.p.games);
+  return model.players.map(p => {
+    // Standins without a role have no performance score: rate them on their attributes instead
+    const attrs = ATTRS.map(a => ({ ...a, raw: p.agg[a.key].avg ?? 0, score: Math.round(30 + 69 * pctRank(pools[a.key], p.agg[a.key].avg ?? 0)) }));
+    const ovr = p.agg.score.avg != null
+      ? Math.round(45 + 54 * pctRank(fant, p.agg.score.avg))
+      : Math.round(attrs.reduce((acc, a) => acc + a.score, 0) / attrs.length);
+    return { p, ovr, tier: TIERS.find(t => ovr >= t.min)!, attrs, records: holders.get(p.id) ?? [], few: p.games < model.minGames };
+  }).sort((a, b) => Number(a.few) - Number(b.few) || b.ovr - a.ovr || b.p.games - a.p.games);
 }
 
 function CardFace({ c, w, h, flipped }: { c: CardData; w: number; h: number; flipped: boolean }) {
   const font = useHeaderFont();
   const { p, tier } = c;
-  const best = p.agg.fantasy.best;
+  const best = p.agg.score.best;
   const face: React.CSSProperties = {
     position: 'absolute', inset: 0, backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden', borderRadius: 22, overflow: 'hidden',
     background: `linear-gradient(160deg, ${mix(tier.color, 26)} 0%, transparent 42%), linear-gradient(180deg, #15151c, #0b0b10)`,
@@ -72,7 +75,7 @@ function CardFace({ c, w, h, flipped }: { c: CardData; w: number; h: number; fli
         <div className="absolute -right-10 -top-10 w-48 h-48 rounded-full blur-3xl" style={{ background: mix(tier.color, 25) }} />
         <div className="relative flex px-4 pt-4" style={{ height: h * 0.46 }}>
           <div className="flex flex-col items-center pt-1 w-16 shrink-0">
-            <Tip content={<TipBody title={`Ocena ogólna ${c.ovr}`}>{tier.name} · percentyl średnich punktów fantasy ({(p.agg.fantasy.avg ?? 0).toFixed(1)} na grę)</TipBody>}>
+            <Tip content={<TipBody title={`Ocena ogólna ${c.ovr}`}>{tier.name} · percentyl średnich punktów występu ({(p.agg.score.avg ?? 0).toFixed(1)} na grę)</TipBody>}>
               <span className="font-logik-extended-bold leading-none cursor-help" style={{ fontSize: 38 * s, color: tier.color, ...font }}>{c.ovr}</span>
             </Tip>
             {p.role && <Tip content={p.role}><span className="mt-1 text-xs font-bold tracking-widest opacity-80 cursor-help">POZ {POS[p.role] ?? '–'}</span></Tip>}
@@ -109,45 +112,67 @@ function CardFace({ c, w, h, flipped }: { c: CardData; w: number; h: number; fli
         </div>
         <div className="relative flex justify-center gap-3 pb-3 text-[10px] uppercase tracking-widest opacity-60">
           <span>{p.games} gier</span><span>{Math.round(p.wr * 100)}% W</span>
+          {c.few && <Tip content="Za mało gier, żeby ocena była pewna"><span className="px-1.5 rounded bg-white/15 cursor-help">mało gier</span></Tip>}
         </div>
       </div>
 
       {/* Back */}
-      <div style={{ ...face, transform: 'rotateY(180deg)' }} className="flex flex-col p-4 gap-3">
-        <div className="flex items-center gap-2">
-          <Avatar player={p} size={34} ring={tier.color} />
-          <div className="min-w-0"><div className="font-bold truncate">{p.name}</div><div className="text-[10px] opacity-60 truncate">{p.team?.name}</div></div>
+      <div style={{ ...face, transform: 'rotateY(180deg)' }} className="flex flex-col p-4 gap-3 justify-between">
+        <div className="flex items-center gap-3">
+          <Avatar player={p} size={Math.round(64 * s)} ring={tier.color} />
+          <div className="min-w-0">
+            <div className="font-logik-extended-bold uppercase truncate" style={{ fontSize: 18 * s, ...font }}>{p.name}</div>
+            <div className="flex items-center gap-1.5 text-xs opacity-70"><TeamLogo team={p.team} size={Math.round(20 * s)} /><span className="truncate">{p.team?.name}</span></div>
+          </div>
         </div>
         <div>
-          <div className="text-[9px] uppercase tracking-[0.25em] opacity-50 mb-1">Bohaterowie</div>
+          <div className="text-[10px] uppercase tracking-[0.25em] opacity-50 mb-1.5">Bohaterowie</div>
           <div className="grid grid-cols-3 gap-1.5">
             {p.heroes.slice(0, 3).map(hu => (
               <Tip key={hu.heroId} content={`${heroName(hu.heroId)} · ${hu.wins}-${hu.games - hu.wins}`}>
                 <div className="relative rounded-lg overflow-hidden">
                   <HeroImg heroId={hu.heroId} className="w-full aspect-video" />
-                  <span className="absolute bottom-0 inset-x-0 text-center text-[10px] font-bold bg-black/60">{hu.wins}-{hu.games - hu.wins}</span>
+                  <span className="absolute bottom-0 inset-x-0 text-center text-[11px] font-bold bg-black/65">{hu.wins}-{hu.games - hu.wins}</span>
                 </div>
               </Tip>
             ))}
           </div>
         </div>
+        <Tip content="Średnio na grę">
+          <div className="grid grid-cols-3 gap-1.5 text-center cursor-help">
+            {[
+              ['K/D/A', `${(p.agg.kills.avg ?? 0).toFixed(1)}/${(p.agg.deaths.avg ?? 0).toFixed(1)}/${(p.agg.assists.avg ?? 0).toFixed(1)}`],
+              ['GPM', Math.round(p.agg.gpm.avg ?? 0)],
+              ['XPM', Math.round(p.agg.xpm.avg ?? 0)],
+              ['DMG/min', Math.round(p.agg.hdpm.avg ?? 0)],
+              ['Wardy', (p.agg.wards.avg ?? 0).toFixed(1)],
+              ['Udział', `${Math.round((p.agg.kp.avg ?? 0) * 100)}%`],
+            ].map(([l, v]) => (
+              <div key={l as string} className="rounded-lg py-1.5 bg-white/[0.06]">
+                <div className="font-bold tabular-nums leading-tight" style={{ fontSize: 15 * s }}>{v}</div>
+                <div className="text-[9px] uppercase tracking-widest opacity-55">{l}</div>
+              </div>
+            ))}
+          </div>
+        </Tip>
         {best && (
           <div>
-            <div className="text-[9px] uppercase tracking-[0.25em] opacity-50 mb-1">Najlepsza gra</div>
-            <div className="relative rounded-lg overflow-hidden h-16">
-              <HeroImg heroId={best.heroId} className="absolute inset-0 w-full h-full opacity-60" />
-              <div className="absolute inset-0 bg-gradient-to-r from-black/80 to-transparent" />
+            <div className="text-[10px] uppercase tracking-[0.25em] opacity-50 mb-1.5">Najlepsza gra</div>
+            <div className="relative rounded-xl overflow-hidden" style={{ height: 76 * s, background: '#0d0d12' }}>
+              <HeroImg heroId={best.heroId} title={false} className="absolute inset-0 w-full h-full scale-125 blur-lg opacity-50" />
+              <div className="absolute top-1 bottom-0 right-0 w-1/2"><HeroRender heroId={best.heroId} sizes="160px" /></div>
+              <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/40 to-transparent" />
               <div className="relative h-full flex flex-col justify-center px-3">
-                <span className="font-bold tabular-nums" style={{ fontSize: 18 * s }}>{best.kills}/{best.deaths}/{best.assists}</span>
-                <span className="text-[10px] opacity-70">{best.gpm} GPM · vs {opponentOf(best)?.name}</span>
+                <span className="font-bold tabular-nums" style={{ fontSize: 22 * s }}>{best.kills}/{best.deaths}/{best.assists}</span>
+                <span className="text-[11px] opacity-75">{heroName(best.heroId)} · {best.gpm} GPM · vs {opponentOf(best)?.name}</span>
               </div>
             </div>
           </div>
         )}
         <div>
-          <div className="text-[9px] uppercase tracking-[0.25em] opacity-50 mb-1">Forma</div>
+          <div className="text-[10px] uppercase tracking-[0.25em] opacity-50 mb-1.5">Forma</div>
           <Tip content="Ostatnie gry, od najstarszej do najnowszej">
-            <div className="flex gap-1 cursor-help">{p.perfs.slice(-12).map(x => <span key={x.idx} className="flex-1 h-4 rounded-sm" style={{ background: x.win ? C.win : C.loss }} />)}</div>
+            <div className="flex gap-1 cursor-help">{p.perfs.slice(-12).map(x => <span key={x.idx} className="flex-1 rounded-sm" style={{ height: 14 * s, background: x.win ? C.win : C.loss }} />)}</div>
           </Tip>
         </div>
         {c.records.length > 0 && (
@@ -166,12 +191,13 @@ function Deck({ model }: { model: Model }) {
   const all = useMemo(() => buildCards(model), [model]);
   const [pos, setPos] = useState('all');
   const [team, setTeam] = useState<string | null>(null);
-  const [i, setI] = useState(0);
+  const [i, setI] = useState(2);
   const [flipped, setFlipped] = useState(false);
   const [ref, size] = useSize<HTMLDivElement>();
 
   const cards = useMemo(() => all.filter(c => (pos === 'all' || POS[c.p.role ?? ''] === pos) && (!team || c.p.teamId === team)), [all, pos, team]);
-  useEffect(() => { setI(0); setFlipped(false); }, [pos, team]);
+  // Start on the 3rd card so two cards fan out on each side
+  useEffect(() => { setI(Math.min(2, Math.max(0, cards.length - 1))); setFlipped(false); }, [pos, team, cards.length]);
   const go = (d: number) => { setFlipped(false); setI(x => Math.max(0, Math.min(cards.length - 1, x + d))); };
 
   useEffect(() => {
@@ -187,7 +213,7 @@ function Deck({ model }: { model: Model }) {
   return (
     <>
       <LabTitle
-        sub={<Tip content={`Karty mają gracze z co najmniej ${model.minGames} grami. Oceny to percentyle wśród nich.`}><span className="cursor-help">{cards.length ? `${i + 1} / ${cards.length}` : '0'} kart</span></Tip>}
+        sub={<Tip content={`Oceny to percentyle wśród graczy z co najmniej ${model.minGames} grami; pozostali mają kartę z dopiskiem „mało gier”.`}><span className="cursor-help">{cards.length ? `${i + 1} / ${cards.length}` : '0'} kart</span></Tip>}
         right={<Seg size="sm" value={pos} onChange={setPos} options={[{ value: 'all', label: 'Wszyscy' }, ...Object.entries(POS).map(([role, n]) => ({ value: n, label: n, tip: role }))]} />}
       >
         Karty
@@ -223,16 +249,7 @@ function Deck({ model }: { model: Model }) {
         )}
       </div>
       {/* Team filter */}
-      <div className="shrink-0 flex justify-center flex-wrap gap-1.5 mt-2">
-        {teams.map(t => (
-          <Tip key={t.id} content={t.name}>
-            <button type="button" onClick={() => setTeam(x => (x === t.id ? null : t.id))} className="rounded-lg p-1 transition-all"
-              style={{ background: team === t.id ? mix(C.primary, 40) : ink(4), opacity: team && team !== t.id ? 0.35 : 1 }}>
-              <TeamLogo team={t} size={22} />
-            </button>
-          </Tip>
-        ))}
-      </div>
+      <TeamPicker className="shrink-0 mt-3" teams={teams} value={team} onChange={setTeam} allLabel="Wszyscy" />
     </>
   );
 }

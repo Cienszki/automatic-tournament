@@ -4,9 +4,9 @@
 // show the tournament's totals up to that game and the card shows the game itself. Play replays
 // the whole tournament. "Rozkład" turns the bars into a histogram.
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import type { GameX, Model } from '@/lib/stats-lab/derive';
+import type { GameX, Model, Perf } from '@/lib/stats-lab/derive';
 import { fmtClock } from '@/lib/stats-lab/metrics';
 import { heroName } from '@/lib/stats-lab/heroes';
 import { Avatar, C, HeroImg, LabTitle, LabView, Seg, TeamLogo, Tip, TipBody, WithModel, ink, mix, useHeaderFont, useSize } from '../kit';
@@ -34,58 +34,58 @@ const COUNTERS: Array<{ key: string; label: string; desc: string; get: (g: GameX
 
 const fmtDay = (unix: number) => new Date(unix * 1000).toLocaleDateString('pl-PL', { day: 'numeric', month: 'short' });
 
+function PlayerStrip({ p, mvp }: { p: Perf; mvp: boolean }) {
+  return (
+    <Tip content={<TipBody title={`${p.player?.name ?? 'Gracz spoza składu'}${mvp ? ' · MVP' : ''}`}>{heroName(p.heroId)} · {p.kills}/{p.deaths}/{p.assists} · {p.gpm} GPM · {Math.round(p.heroDamage / 100) / 10}k obrażeń{Number.isFinite(p.score) ? ` · ${p.score.toFixed(2)} pkt` : ''}</TipBody>}>
+      <div className="relative flex-1 min-h-0 rounded-lg overflow-hidden cursor-help"
+        style={{ background: '#0d0d12', boxShadow: mvp ? `0 0 0 2px ${C.secondary}, 0 0 16px ${mix(C.secondary, 55)}` : undefined }}>
+        <HeroImg heroId={p.heroId} className="absolute inset-y-0 right-0 h-full w-[62%] object-cover opacity-80" />
+        <div className="absolute inset-0 bg-gradient-to-r from-[#0d0d12] via-[#0d0d12]/80 to-transparent" />
+        <div className="relative h-full flex items-center gap-2 px-2 text-white">
+          <Avatar player={p.player ?? { name: '?' }} size={40} ring={mvp ? C.secondary : 'rgba(255,255,255,0.25)'} />
+          <div className="min-w-0 flex-1">
+            <div className="text-sm font-bold truncate leading-tight">{p.player?.name ?? '—'}</div>
+            <div className="text-xs tabular-nums opacity-80">{p.kills}/{p.deaths}/{p.assists}</div>
+          </div>
+          {mvp && <span className="absolute top-1 right-1 text-[9px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded" style={{ background: C.secondary, color: '#000' }}>MVP</span>}
+        </div>
+      </div>
+    </Tip>
+  );
+}
+
 function GameCard({ g }: { g: GameX }) {
   const font = useHeaderFont();
-  const side = (radiant: boolean) => {
+  const head = (radiant: boolean) => {
     const team = radiant ? g.radiantTeam : g.direTeam;
     const won = radiant === g.radiantWin;
     return (
-      <div className="flex-1 min-w-0 flex flex-col items-center gap-1" style={{ opacity: won ? 1 : 0.55 }}>
-        <TeamLogo team={team} size={40} />
-        <span className="text-[11px] font-semibold truncate max-w-full">{team?.name}</span>
-        <span className="text-2xl font-logik-extended-bold tabular-nums leading-none" style={{ color: won ? C.win : undefined, ...font }}>{radiant ? g.radiantKills : g.direKills}</span>
+      <div className={`flex-1 min-w-0 flex items-center gap-2 ${radiant ? '' : 'flex-row-reverse text-right'}`} style={{ opacity: won ? 1 : 0.6 }}>
+        <TeamLogo team={team} size={46} />
+        <div className="min-w-0">
+          <div className="text-sm font-bold truncate">{team?.name}</div>
+          <div className="text-2xl font-logik-extended-bold tabular-nums leading-none" style={{ color: won ? C.win : undefined, ...font }}>{radiant ? g.radiantKills : g.direKills}</div>
+        </div>
       </div>
     );
   };
   return (
     <motion.div key={g.idx} initial={{ opacity: 0.4 }} animate={{ opacity: 1 }} className="h-full rounded-2xl p-3 flex flex-col gap-2" style={{ background: ink(4), border: `1px solid ${ink(10)}` }}>
-      <div className="flex justify-between text-[10px] uppercase tracking-widest" style={{ color: C.muted }}><span>Gra {g.idx + 1}</span><span>{fmtDay(g.start)}</span></div>
-      <div className="flex items-start gap-2">{side(true)}<span className="pt-3 text-xs opacity-40">vs</span>{side(false)}</div>
-      <div className="flex justify-center gap-4 text-xs tabular-nums">
-        <Tip content="Długość gry"><span className="cursor-help">{fmtClock(g.duration)}</span></Tip>
-        {g.firstBlood > 0 && <Tip content="Czas pierwszej krwi"><span className="cursor-help" style={{ color: C.loss }}>FB {fmtClock(g.firstBlood)}</span></Tip>}
+      <div className="flex justify-between text-[10px] uppercase tracking-widest" style={{ color: C.muted }}>
+        <span>Gra {g.idx + 1} · {fmtDay(g.start)}</span>
+        <span className="flex gap-3 tabular-nums">
+          <Tip content="Długość gry"><span className="cursor-help">{fmtClock(g.duration)}</span></Tip>
+          {g.firstBlood > 0 && <Tip content="Czas pierwszej krwi"><span className="cursor-help" style={{ color: C.loss }}>FB {fmtClock(g.firstBlood)}</span></Tip>}
+        </span>
       </div>
-      <div className="flex-1 min-h-0 grid grid-cols-2 gap-x-2 overflow-hidden">
+      <div className="flex items-center gap-3">{head(true)}<span className="text-xs opacity-40">vs</span>{head(false)}</div>
+      <div className="flex-1 min-h-0 grid grid-cols-2 gap-x-2">
         {[true, false].map(radiant => (
-          <div key={String(radiant)} className="flex flex-col justify-around min-h-0">
-            {g.perfs.filter(p => p.radiant === radiant).sort((a, b) => b.netWorth - a.netWorth).map(p => (
-              <Tip key={p.idx} content={<TipBody title={p.player?.name ?? 'Gracz'}>{heroName(p.heroId)} · {p.kills}/{p.deaths}/{p.assists} · {p.gpm} GPM</TipBody>}>
-                <div className="flex items-center gap-1 min-w-0">
-                  <HeroImg heroId={p.heroId} variant="icon" className="w-5 h-5 shrink-0" />
-                  <span className="text-[10px] truncate flex-1">{p.player?.name ?? '—'}</span>
-                  <span className="text-[10px] tabular-nums" style={{ color: C.muted }}>{p.kills}/{p.deaths}/{p.assists}</span>
-                </div>
-              </Tip>
-            ))}
+          <div key={String(radiant)} className="flex flex-col gap-1.5 min-h-0">
+            {g.perfs.filter(p => p.radiant === radiant).sort((a, b) => b.netWorth - a.netWorth).map(p => <PlayerStrip key={p.idx} p={p} mvp={p === g.mvp} />)}
           </div>
         ))}
       </div>
-      {g.mvp && (
-        <Tip content={<TipBody title="Gracz meczu (najwięcej punktów fantasy)">{g.mvp.kills}/{g.mvp.deaths}/{g.mvp.assists} · {g.mvp.gpm} GPM</TipBody>}>
-          <div className="relative rounded-xl overflow-hidden h-16 cursor-help">
-            <HeroImg heroId={g.mvp.heroId} className="absolute inset-0 w-full h-full opacity-60" />
-            <div className="absolute inset-0 bg-gradient-to-r from-black/85 to-black/20" />
-            <div className="relative h-full flex items-center gap-2 px-2 text-white">
-              <Avatar player={g.mvp.player} size={32} ring={C.secondary} />
-              <div className="min-w-0">
-                <div className="text-xs font-bold truncate">{g.mvp.player?.name ?? '—'}</div>
-                <div className="text-[10px] opacity-70 truncate">{heroName(g.mvp.heroId)} · {g.mvp.kills}/{g.mvp.deaths}/{g.mvp.assists}</div>
-              </div>
-              <span className="ml-auto text-[9px] uppercase tracking-widest px-1.5 py-0.5 rounded" style={{ background: C.secondary, color: '#000' }}>MVP</span>
-            </div>
-          </div>
-        </Tip>
-      )}
     </motion.div>
   );
 }
@@ -96,7 +96,6 @@ function Pulse({ model }: { model: Model }) {
   const [gk, setGk] = useState<GKey>('duration');
   const [view, setView] = useState<'time' | 'dist'>('time');
   const [cursor, setCursor] = useState(games.length - 1);
-  const [playing, setPlaying] = useState(false);
   const [ref, size] = useSize<HTMLDivElement>();
   const dragging = useRef(false);
   const gm = GMETRICS[gk];
@@ -111,13 +110,6 @@ function Pulse({ model }: { model: Model }) {
   // Prefix sums for the counters
   const prefix = useMemo(() => COUNTERS.map(c => { let s = 0; return games.map(g => (s += c.get(g))); }), [games]);
 
-  useEffect(() => {
-    if (!playing) return;
-    if (cursor >= games.length - 1) setCursor(0);
-    const id = setInterval(() => setCursor(c => { if (c >= games.length - 1) { setPlaying(false); return c; } return c + 1; }), Math.max(20, 6000 / games.length));
-    return () => clearInterval(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [playing]);
 
   const W = size.w; const H = Math.max(60, size.h - 22);
   const bw = W / games.length;
@@ -173,7 +165,7 @@ function Pulse({ model }: { model: Model }) {
             ref={ref}
             className="relative flex-1 min-h-0 select-none touch-none"
             style={{ cursor: view === 'time' ? 'ew-resize' : 'default' }}
-            onPointerDown={e => { if (view !== 'time') return; dragging.current = true; setPlaying(false); (e.target as Element).setPointerCapture?.(e.pointerId); setCursor(idxAt(e.clientX)); }}
+            onPointerDown={e => { if (view !== 'time') return; dragging.current = true; (e.target as Element).setPointerCapture?.(e.pointerId); setCursor(idxAt(e.clientX)); }}
             onPointerMove={e => { if (view === 'time' && (dragging.current || e.pointerType === 'mouse')) setCursor(idxAt(e.clientX)); }}
             onPointerUp={() => { dragging.current = false; }}
           >
@@ -215,8 +207,6 @@ function Pulse({ model }: { model: Model }) {
             )}
           </div>
           <div className="shrink-0 flex items-center gap-3 mt-1">
-            <button type="button" onClick={() => setPlaying(p => !p)} className="rounded-full px-4 py-1.5 text-[11px] uppercase tracking-widest font-bold"
-              style={{ background: playing ? ink(10) : C.primary, color: playing ? C.text : '#fff' }}>{playing ? '❚❚' : '▶'}</button>
             {view === 'dist' && extremes.lo && extremes.hi && (
               <div className="flex gap-4 text-[11px]" style={{ color: C.muted }}>
                 <span>min <b style={{ color: C.text }}>{gm.fmt(extremes.lo.v)}</b></span>
@@ -227,7 +217,7 @@ function Pulse({ model }: { model: Model }) {
             {view === 'time' && <span className="text-[10px] uppercase tracking-widest" style={{ color: C.muted }}>Gra {cursor + 1} z {games.length}</span>}
           </div>
         </div>
-        <div className="w-[280px] shrink-0 hidden md:block">
+        <div className="w-[440px] shrink-0 hidden md:block">
           <GameCard g={view === 'dist' && extremes.hi ? games[gk === 'fb' ? extremes.lo.i : extremes.hi.i] : g} />
         </div>
       </div>

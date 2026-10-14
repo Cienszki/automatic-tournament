@@ -112,6 +112,12 @@ const buildConfig = (phase) => {
                 protocol: 'https',
                 hostname: 'avatars.steamstatic.com',
             },
+            {
+                // Dota 2 hero art (full-body renders are 0.5–1.5 MB; served resized via the optimizer)
+                protocol: 'https',
+                hostname: 'cdn.cloudflare.steamstatic.com',
+                pathname: '/apps/dota2/**',
+            },
         ],
     },
     async redirects() {

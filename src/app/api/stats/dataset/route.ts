@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic';
 const cachedDataset = (tournamentId: string) =>
   unstable_cache(
     () => buildStatsDataset(tournamentId === 'letnia' ? null : tournamentId),
-    ['stats-dataset-v3', tournamentId],
+    ['stats-dataset-v4', tournamentId],
     { revalidate: 600, tags: [`stats-dataset-${tournamentId}`] },
   )();
 

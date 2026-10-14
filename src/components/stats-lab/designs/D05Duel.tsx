@@ -14,7 +14,7 @@ import { Avatar, C, HeroImg, LabTitle, LabView, Pager, Seg, TeamLogo, Tip, TipBo
 type Mode = 'players' | 'teams';
 interface Row { key: string; label: string; desc: string; a: number; b: number; fmt: (v: number) => string; better: 'high' | 'low' }
 
-const P_KEYS: MetricKey[] = ['fantasy', 'kills', 'deaths', 'assists', 'kda', 'kp', 'gpm', 'xpm', 'lastHits', 'hdpm', 'towerDamage', 'heroHealing', 'wards', 'dewards', 'stacks'];
+const P_KEYS: MetricKey[] = ['score', 'kills', 'deaths', 'assists', 'kda', 'kp', 'gpm', 'xpm', 'lastHits', 'hdpm', 'towerDamage', 'heroHealing', 'wards', 'dewards', 'stacks'];
 const SIDE = [C.primary, C.secondary];
 
 function playerRows(a: PlayerX, b: PlayerX): Row[] {
@@ -66,8 +66,8 @@ function Corner({ side, entity, mode, active, onDrop, onActivate }: {
       style={{ background: `radial-gradient(circle at 50% 35%, ${mix(color, over ? 40 : 18)}, transparent 70%)`, border: `1.5px ${active ? 'solid' : 'dashed'} ${mix(color, active || over ? 80 : 30)}` }}
     >
       {mode === 'players'
-        ? <Avatar player={p} size={110} ring={color} />
-        : <TeamLogo team={t} size={110} />}
+        ? <Avatar player={p} size={140} ring={color} />
+        : <TeamLogo team={t} size={140} />}
       <div className="text-center min-w-0 w-full">
         <div className="text-lg font-logik-extended-bold uppercase leading-tight line-clamp-2 break-words" style={{ color, ...font }}>{entity?.name ?? '?'}</div>
         {mode === 'players' && p && <div className="flex items-center justify-center gap-1 text-[11px] mt-0.5" style={{ color: C.muted }}><TeamLogo team={t} size={14} /><span className="truncate">{t?.name}</span></div>}
@@ -81,7 +81,7 @@ function Duel({ model }: { model: Model }) {
   const font = useHeaderFont();
   const [mode, setMode] = useState<Mode>('players');
   const pool = useMemo(() => mode === 'players'
-    ? model.players.filter(p => p.games >= model.minGames).sort((a, b) => (b.agg.fantasy.avg ?? 0) - (a.agg.fantasy.avg ?? 0))
+    ? model.players.filter(p => p.games >= model.minGames).sort((a, b) => (b.agg.score.avg ?? 0) - (a.agg.score.avg ?? 0))
     : [...model.teams].sort((a, b) => b.wr - a.wr || b.games.length - a.games.length), [model, mode]);
   const [pick, setPick] = useState<Record<Mode, [string | null, string | null]>>(() => ({
     players: [pool[0]?.id ?? null, pool[1]?.id ?? null],
@@ -89,7 +89,7 @@ function Duel({ model }: { model: Model }) {
   }));
   const [activeSide, setActiveSide] = useState<0 | 1>(1);
   const [poolRef, poolSize] = useSize<HTMLDivElement>();
-  const per = Math.max(4, Math.floor((poolSize.w || 600) / 44));
+  const per = Math.max(4, Math.floor((poolSize.w || 600) / 58));
   const { page, pages, setPage, slice } = usePages(pool as Array<PlayerX | TeamX>, per);
 
   const get = (id: string | null) => (id ? (mode === 'players' ? model.playerById.get(id) : model.teamById.get(id)) ?? null : null);
@@ -196,7 +196,7 @@ function Duel({ model }: { model: Model }) {
                 <button type="button" draggable onDragStart={e => e.dataTransfer.setData('text/plain', x.id)} onClick={() => set(activeSide, x.id)}
                   className="rounded-full transition-transform hover:scale-110 cursor-grab active:cursor-grabbing shrink-0"
                   style={{ opacity: chosen >= 0 ? 0.35 : 1 }}>
-                  {mode === 'players' ? <Avatar player={x as PlayerX} size={38} ring={chosen >= 0 ? SIDE[chosen] : undefined} /> : <TeamLogo team={x as TeamX} size={38} />}
+                  {mode === 'players' ? <Avatar player={x as PlayerX} size={50} ring={chosen >= 0 ? SIDE[chosen] : undefined} /> : <TeamLogo team={x as TeamX} size={50} />}
                 </button>
               </Tip>
             );

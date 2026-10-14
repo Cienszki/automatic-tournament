@@ -39,10 +39,10 @@ function Medal({ s, size, selected, onClick }: { s: AchievementState; size: numb
           </svg>
           <div className="absolute inset-0 flex flex-col items-center justify-center">
             <span className="font-logik-extended-bold tabular-nums leading-none" style={{ fontSize: size * (value.length > 5 ? 0.13 : value.length > 3 ? 0.17 : 0.24), color: topColor ?? C.muted, ...font }}>{value}</span>
-            <span className="text-[9px] tabular-nums mt-0.5" style={{ color: C.muted }}>{s.unlocks.length || ''}</span>
+            <span className="text-[10px] tabular-nums mt-0.5" style={{ color: C.muted }}>{s.unlocks.length ? `${s.unlocks.length} os.` : ''}</span>
           </div>
         </div>
-        <span className="text-[10px] uppercase tracking-wider text-center leading-tight line-clamp-2" style={{ color: selected ? C.text : C.muted }}>{s.a.name}</span>
+        <span className="text-[11px] font-semibold uppercase tracking-wider text-center leading-tight whitespace-nowrap" style={{ color: selected ? C.text : C.muted }}>{s.a.name}</span>
       </motion.button>
     </Tip>
   );
@@ -118,29 +118,56 @@ function Detail({ model, s, onBack }: { model: Model; s: AchievementState; onBac
 function Collectors({ ranking }: { ranking: ReturnType<typeof collectorRanking> }) {
   const TIER_COLOR = useMetals();
   const font = useHeaderFont();
-  const [ref, per] = useFitCount<HTMLDivElement>(36, 4, 3);
+  const [ref, per] = useFitCount<HTMLDivElement>(58, 6, 3);
   const { page, pages, setPage, slice, offset } = usePages(ranking, per);
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="h-full flex flex-col min-h-0">
       <Tip content={`Punkty: brąz ${TIER_POINTS[0]}, srebro ${TIER_POINTS[1]}, złoto ${TIER_POINTS[2]}`}>
         <div className="text-2xl font-logik-extended-bold uppercase leading-none cursor-help self-start" style={{ color: C.heading, ...font }}>Kolekcjonerzy</div>
       </Tip>
-      <div ref={ref} className="flex-1 min-h-0 flex flex-col gap-1 mt-2">
-        {slice.map((e, i) => (
-          <div key={e.player.id} className="h-[36px] shrink-0 flex items-center gap-2 px-2 rounded-lg" style={{ background: offset + i < 3 ? mix(TIER_COLOR[2 - (offset + i)] ?? C.text, 10) : ink(3) }}>
-            <span className="w-5 text-right text-[11px] tabular-nums" style={{ color: C.muted }}>{offset + i + 1}</span>
-            <Tip content={playerTip(e.player)}><span><Avatar player={e.player} size={24} /></span></Tip>
-            <span className="flex-1 min-w-0 truncate text-xs font-semibold">{e.player.name}</span>
-            <div className="flex gap-0.5">
-              {([2, 1, 0] as Tier[]).map(t => Array.from({ length: e.tiers[t] }, (_, k) => <span key={`${t}-${k}`} className="w-1.5 h-3 rounded-sm" style={{ background: TIER_COLOR[t] }} />))}
+      <div ref={ref} className="flex-1 min-h-0 flex flex-col gap-1.5 mt-3">
+        {slice.map((e, i) => {
+          const podium = offset + i < 3 ? TIER_COLOR[2 - (offset + i)] : null;
+          return (
+            <div key={e.player.id} className="h-[58px] shrink-0 flex items-center gap-3 px-1" style={{ borderBottom: `1px solid ${ink(7)}` }}>
+              <span className="w-7 text-right text-lg font-logik-extended-bold tabular-nums" style={{ color: podium ?? C.muted, ...font }}>{offset + i + 1}</span>
+              <Tip content={playerTip(e.player)}><span><Avatar player={e.player} size={46} ring={podium ?? undefined} /></span></Tip>
+              <div className="flex-1 min-w-0">
+                <div className="truncate text-base font-bold">{e.player.name}</div>
+                <div className="flex gap-[3px] mt-1">
+                  {([2, 1, 0] as Tier[]).map(t => Array.from({ length: e.tiers[t] }, (_, k) => <span key={`${t}-${k}`} className="w-2 h-3.5 rounded-sm" style={{ background: TIER_COLOR[t] }} />))}
+                </div>
+              </div>
+              <span className="w-12 text-right text-2xl font-bold tabular-nums" style={font}>{e.points}</span>
             </div>
-            <span className="w-8 text-right font-bold tabular-nums" style={font}>{e.points}</span>
-          </div>
-        ))}
+          );
+        })}
       </div>
       <Pager className="mt-2" page={page} pages={pages} onChange={setPage} />
     </motion.div>
   );
+}
+
+/**
+ * Organic "trophy constellation": circles packed along a spiral (stretched to the box's aspect),
+ * then scaled to fit. Deterministic, so medals don't jump between renders.
+ */
+function packCircles(radii: number[], w: number, h: number, gap: number) {
+  const aspect = Math.max(0.6, Math.min(2.4, w / Math.max(1, h)));
+  const placed: Array<{ x: number; y: number; r: number }> = [];
+  radii.forEach((r, i) => {
+    if (i === 0) { placed.push({ x: 0, y: 0, r }); return; }
+    for (let t = 0; t < 40000; t++) {
+      const ang = t * 0.09; const dist = t * 0.012;
+      const x = Math.cos(ang) * dist * Math.sqrt(aspect); const y = Math.sin(ang) * dist / Math.sqrt(aspect);
+      if (placed.every(p => Math.hypot(p.x - x, p.y - y) >= p.r + r + gap)) { placed.push({ x, y, r }); return; }
+    }
+    placed.push({ x: 0, y: 0, r });
+  });
+  const minX = Math.min(...placed.map(p => p.x - p.r)); const maxX = Math.max(...placed.map(p => p.x + p.r));
+  const minY = Math.min(...placed.map(p => p.y - p.r)); const maxY = Math.max(...placed.map(p => p.y + p.r));
+  const k = Math.min(w / (maxX - minX), h / (maxY - minY));
+  return placed.map(p => ({ x: (p.x - (minX + maxX) / 2) * k + w / 2, y: (p.y - (minY + maxY) / 2) * k + h / 2, r: p.r * k }));
 }
 
 function Board({ model }: { model: Model }) {
@@ -149,18 +176,35 @@ function Board({ model }: { model: Model }) {
   const [sel, setSel] = useState<string | null>(null);
   const [ref, size] = useSize<HTMLDivElement>();
   const lit = states.reduce((n, s) => n + s.byTier.filter(Boolean).length, 0);
-  const cols = size.w > 0 && size.w < 600 ? 4 : 6; const rows = Math.ceil(states.length / cols);
-  const medal = Math.max(56, Math.min((size.w / cols) - 16, (size.h / rows) - 34, 120));
   const selected = states.find(s => s.a.id === sel);
+
+  // Rarer achievements are drawn bigger: they are the ones worth chasing
+  const order = useMemo(() => {
+    const n = Math.max(1, model.players.length);
+    return states.map(s => ({ s, r: 1 + 0.75 * (1 - Math.min(1, s.unlocks.length / (n * 0.35))) })).sort((a, b) => b.r - a.r);
+  }, [states, model.players.length]);
+  const spots = useMemo(() => (size.w > 0 ? packCircles(order.map(o => o.r), size.w, size.h, 0.16) : []), [order, size.w, size.h]);
 
   return (
     <>
       <LabTitle sub={<Tip content="Ile progów (brąz / srebro / złoto) ktokolwiek już zdobył"><span className="cursor-help">{lit} / {states.length * 3} progów zdobytych</span></Tip>}>Osiągnięcia</LabTitle>
-      <div className="flex-1 min-h-0 flex gap-5 mt-3">
-        <div ref={ref} className="flex-[1.7] min-w-0 min-h-0 grid content-around" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}>
-          {size.w > 0 && states.map(s => <Medal key={s.a.id} s={s} size={medal} selected={s.a.id === sel} onClick={() => setSel(x => (x === s.a.id ? null : s.a.id))} />)}
+      <div className="flex-1 min-h-0 flex gap-6 mt-3">
+        <div ref={ref} className="relative flex-[1.7] min-w-0 min-h-0">
+          {spots.map((p, i) => {
+            const { s } = order[i];
+            const label = 20; // room for the name under the medal
+            const medal = Math.max(44, p.r * 2 - label);
+            return (
+              <motion.div key={s.a.id} className="absolute" style={{ left: p.x - medal / 2, top: p.y - (medal + label) / 2, width: medal }}
+                initial={{ opacity: 0, scale: 0.4 }}
+                animate={{ opacity: 1, scale: 1, y: [0, -5, 0, 4, 0], rotate: [0, (i % 2 ? 1.5 : -1.5), 0] }}
+                transition={{ opacity: { delay: i * 0.03 }, scale: { delay: i * 0.03, type: 'spring', stiffness: 160, damping: 14 }, y: { duration: 5 + (i % 5), repeat: Infinity, ease: 'easeInOut', delay: i * 0.2 }, rotate: { duration: 7 + (i % 3), repeat: Infinity, ease: 'easeInOut' } }}>
+                <Medal s={s} size={medal} selected={s.a.id === sel} onClick={() => setSel(x => (x === s.a.id ? null : s.a.id))} />
+              </motion.div>
+            );
+          })}
         </div>
-        <div className="flex-1 min-w-[300px] max-w-[420px] min-h-0 rounded-2xl p-3 hidden md:block" style={{ background: ink(3), border: `1px solid ${ink(8)}` }}>
+        <div className="flex-1 min-w-[320px] max-w-[440px] min-h-0 hidden md:block">
           <AnimatePresence mode="wait">
             {selected ? <Detail key={selected.a.id} model={model} s={selected} onBack={() => setSel(null)} /> : <Collectors key="col" ranking={ranking} />}
           </AnimatePresence>

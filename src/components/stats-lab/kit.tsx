@@ -4,13 +4,14 @@
 // hover tips, hero/avatar/logo images, segmented controls, pager and a fit-to-height hook.
 // Everything is sized for a fixed home-page view — nothing here scrolls.
 
-import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import * as TooltipPrimitive from '@radix-ui/react-tooltip';
 import { useTournament } from '@/context/TournamentContext';
 import { cn } from '@/lib/utils';
 import { deriveModel, type Model, type PlayerX, type TeamX } from '@/lib/stats-lab/derive';
 import type { StatsDataset } from '@/lib/stats-lab/types';
-import { heroIcon, heroImg, heroName } from '@/lib/stats-lab/heroes';
+import { heroIcon, heroImg, heroName, heroRender } from '@/lib/stats-lab/heroes';
+import NextImage from 'next/image';
 
 // ── Colours (CSS variables → work with hex, hsl() and light themes) ─────
 
@@ -31,6 +32,9 @@ export const C = {
 
 /** `color` at `pct`% opacity */
 export const mix = (color: string, pct: number) => `color-mix(in srgb, ${color} ${pct}%, transparent)`;
+/** A theme colour lifted toward white so it stays readable on the always-dark cards (hero art) */
+export const onDark = (color: string, pct = 60) => `color-mix(in srgb, ${color} ${pct}%, #ffffff)`;
+
 /** Text-coloured tint for surfaces/borders: adapts to dark and light themes */
 export const ink = (pct: number) => mix(C.text, pct);
 
@@ -168,13 +172,15 @@ export function TipBody({ title, children }: { title?: React.ReactNode; children
 export function HeroImg({ heroId, variant = 'portrait', className, style, title = true }: {
   heroId: number; variant?: 'portrait' | 'icon'; className?: string; style?: React.CSSProperties; title?: boolean;
 }) {
-  const src = variant === 'icon' ? heroIcon(heroId) : heroImg(heroId);
+  const proxy = React.useContext(ImgProxyCtx);
+  const raw = variant === 'icon' ? heroIcon(heroId) : heroImg(heroId);
+  const src = raw && proxy ? proxyUrl(raw) : raw;
   const [failed, setFailed] = useState(false);
   if (!src || failed) {
     return <div className={cn('flex items-center justify-center text-[9px] uppercase', className)} style={{ background: ink(8), color: C.muted, ...style }}>{heroName(heroId).slice(0, 3)}</div>;
   }
   // eslint-disable-next-line @next/next/no-img-element
-  return <img src={src} alt={title ? heroName(heroId) : ''} draggable={false} loading="lazy" onError={() => setFailed(true)} className={cn('object-cover select-none', className)} style={style} />;
+  return <img src={src} alt={title ? heroName(heroId) : ''} draggable={false} loading={proxy ? 'eager' : 'lazy'} onError={() => setFailed(true)} className={cn('object-cover select-none', className)} style={style} />;
 }
 
 function initials(name: string) {
@@ -182,13 +188,49 @@ function initials(name: string) {
   return ((parts[0]?.[0] ?? '?') + (parts[1]?.[0] ?? '')).toUpperCase();
 }
 
+const proxyUrl = (src: string) => `/api/stats/img?u=${encodeURIComponent(src)}`;
+
+/**
+ * Inside <ImgProxy> every Avatar / TeamLogo / HeroImg loads through our same-origin proxy and
+ * eagerly — needed when a subtree is captured to PNG (cross-origin images would taint it).
+ */
+const ImgProxyCtx = React.createContext(false);
+export const ImgProxy = ({ children }: { children: React.ReactNode }) => <ImgProxyCtx.Provider value>{children}</ImgProxyCtx.Provider>;
+
+/** First try the original URL; if it fails (flaky storage/CDN), retry once through our proxy */
+function retrySrc(src: string, tries: number, forceProxy = false): string {
+  if (!/^https:\/\//.test(src)) return src;
+  return forceProxy || tries > 0 ? proxyUrl(src) : src;
+}
+
+/** 184px Steam avatar from the small/medium URL (other hosts unchanged) */
+export function fullAvatar(url: string): string {
+  return url.replace(/([0-9a-f]{40})(_medium)?\.jpg$/i, '$1_full.jpg');
+}
+
+/**
+ * Full-body transparent hero render, resized by the Next image optimizer (the originals are
+ * 0.5–1.5 MB PNGs). Fills its positioned parent; anchored to the bottom so heads never clip.
+ */
+export function HeroRender({ heroId, sizes = '400px', className, style, priority }: { heroId: number; sizes?: string; className?: string; style?: React.CSSProperties; priority?: boolean }) {
+  const src = heroRender(heroId);
+  if (!src) return null;
+  return (
+    <NextImage src={src} alt={heroName(heroId)} fill sizes={sizes} priority={priority} draggable={false}
+      className={cn('select-none pointer-events-none', className)} style={{ objectFit: 'contain', objectPosition: 'bottom center', ...style }} />
+  );
+}
+
 export function Avatar({ player, size = 28, className, ring }: { player?: Pick<PlayerX, 'name' | 'avatar'> | null; size?: number; className?: string; ring?: string }) {
-  const [failed, setFailed] = useState(false);
+  const proxy = React.useContext(ImgProxyCtx);
+  const [tries, setTries] = useState(0);
   const style: React.CSSProperties = { width: size, height: size, boxShadow: ring ? `0 0 0 2px ${ring}` : undefined };
   if (!player) return <div className={cn('rounded-full shrink-0', className)} style={{ ...style, background: ink(8) }} />;
-  if (player.avatar && !failed) {
+  if (player.avatar && tries < 2) {
+    // Steam avatars come in 32/64/184 px; anything drawn larger than ~56px gets the 184px one
+    const src = size > 56 ? fullAvatar(player.avatar) : player.avatar;
     // eslint-disable-next-line @next/next/no-img-element
-    return <img src={player.avatar} alt="" draggable={false} loading="lazy" onError={() => setFailed(true)} className={cn('rounded-full object-cover shrink-0 select-none', className)} style={style} />;
+    return <img src={retrySrc(src, tries, proxy)} alt="" draggable={false} loading={proxy ? 'eager' : 'lazy'} onError={() => setTries(t => t + 1)} className={cn('rounded-full object-cover shrink-0 select-none', className)} style={style} />;
   }
   return (
     <div className={cn('rounded-full shrink-0 flex items-center justify-center font-bold select-none', className)}
@@ -199,11 +241,12 @@ export function Avatar({ player, size = 28, className, ring }: { player?: Pick<P
 }
 
 export function TeamLogo({ team, size = 24, className }: { team?: Pick<TeamX, 'name' | 'logoUrl' | 'tag'> | null; size?: number; className?: string }) {
-  const [failed, setFailed] = useState(false);
+  const proxy = React.useContext(ImgProxyCtx);
+  const [tries, setTries] = useState(0);
   const style: React.CSSProperties = { width: size, height: size };
-  if (team?.logoUrl && !failed) {
+  if (team?.logoUrl && tries < 2) {
     // eslint-disable-next-line @next/next/no-img-element
-    return <img src={team.logoUrl} alt={team.name} draggable={false} loading="lazy" onError={() => setFailed(true)} className={cn('object-contain shrink-0 select-none', className)} style={style} />;
+    return <img src={retrySrc(team.logoUrl, tries, proxy)} alt={team.name} draggable={false} loading={proxy ? 'eager' : 'lazy'} onError={() => setTries(t => t + 1)} className={cn('object-contain shrink-0 select-none', className)} style={style} />;
   }
   return (
     <div className={cn('rounded-md shrink-0 flex items-center justify-center font-bold select-none', className)}
@@ -259,35 +302,49 @@ export function Pager({ page, pages, onChange, className }: { page: number; page
   );
 }
 
+/**
+ * A callback ref that also exposes `.current`, backed by state so effects re-run when the element
+ * is replaced (e.g. AnimatePresence swapping keyed content) — a plain useRef would keep observing
+ * the old, unmounted node.
+ */
+export type ElementRef<T> = ((el: T | null) => void) & { current: T | null };
+function useElementRef<T extends HTMLElement>(): [ElementRef<T>, T | null] {
+  const [el, setEl] = useState<T | null>(null);
+  const ref = useMemo(() => {
+    const fn = ((node: T | null) => { fn.current = node; setEl(node); }) as ElementRef<T>;
+    fn.current = null;
+    return fn;
+  }, []);
+  return [ref, el];
+}
+
 /** How many rows of `rowPx` (+ gap) fit in the element's current height */
-export function useFitCount<T extends HTMLElement>(rowPx: number, gapPx = 0, min = 1): [React.RefObject<T>, number] {
-  const ref = useRef<T>(null);
+export function useFitCount<T extends HTMLElement>(rowPx: number, gapPx = 0, min = 1): [ElementRef<T>, number] {
+  const [ref, el] = useElementRef<T>();
   const [n, setN] = useState(min);
   useLayoutEffect(() => {
-    const el = ref.current;
     if (!el) return;
     const calc = () => setN(Math.max(min, Math.floor((el.clientHeight + gapPx) / (rowPx + gapPx))));
     calc();
     const ro = new ResizeObserver(calc);
     ro.observe(el);
     return () => ro.disconnect();
-  }, [rowPx, gapPx, min]);
+  }, [el, rowPx, gapPx, min]);
   return [ref, n];
 }
 
 /** Element size via ResizeObserver */
-export function useSize<T extends HTMLElement>(): [React.RefObject<T>, { w: number; h: number }] {
-  const ref = useRef<T>(null);
+export function useSize<T extends HTMLElement>(): [ElementRef<T>, { w: number; h: number }] {
+  const [ref, el] = useElementRef<T>();
   const [size, setSize] = useState({ w: 0, h: 0 });
   useLayoutEffect(() => {
-    const el = ref.current;
     if (!el) return;
     const calc = () => setSize({ w: el.clientWidth, h: el.clientHeight });
     calc();
     const ro = new ResizeObserver(calc);
     ro.observe(el);
     return () => ro.disconnect();
-  }, []);
+  }, [el]);
   return [ref, size];
 }
 
@@ -311,5 +368,50 @@ export function playerTip(p: PlayerX) {
     <TipBody title={p.name}>
       {p.team?.name ?? (p.standin ? 'Stand-in' : '')}{p.role ? ` · ${p.role}` : ''} · {p.games} gier · {Math.round(p.wr * 100)}% wygranych
     </TipBody>
+  );
+}
+
+/**
+ * Big team-logo picker. Every logo stays fully visible; the chosen one gets a ring, a glow and is
+ * lifted. `allLabel` adds an "everyone" button in front (value null).
+ */
+export function TeamPicker({ teams, value, onChange, size = 44, minSize = 26, rows = 1, allLabel, className, vertical }: {
+  teams: Array<Pick<TeamX, 'id' | 'name' | 'logoUrl' | 'tag'>>;
+  value: string | null;
+  onChange: (id: string | null) => void;
+  /** Largest logo size; shrinks (down to minSize) so everything fits in `rows` rows */
+  size?: number;
+  minSize?: number;
+  rows?: number;
+  allLabel?: string;
+  className?: string;
+  vertical?: boolean;
+}) {
+  const [ref, box] = useSize<HTMLDivElement>();
+  const gap = 8; const pad = 10;
+  const avail = vertical ? box.h : box.w;
+  const slots = Math.ceil((teams.length + (allLabel ? 2 : 0)) / rows);
+  const fit = avail > 0 ? Math.floor((avail - gap * (slots - 1)) / slots) - pad : size;
+  const s = Math.max(minSize, Math.min(size, fit));
+  return (
+    <div ref={ref} className={cn('flex flex-wrap', vertical ? 'flex-col' : 'justify-center', className)} style={{ gap }}>
+      {allLabel && (
+        <button type="button" onClick={() => onChange(null)} className="rounded-xl px-3 text-xs font-bold uppercase tracking-widest transition-all"
+          style={{ height: s + pad, background: value == null ? C.primary : ink(6), color: value == null ? '#fff' : C.text, boxShadow: value == null ? `0 0 16px ${mix(C.primary, 50)}` : undefined }}>
+          {allLabel}
+        </button>
+      )}
+      {teams.map(t => {
+        const on = t.id === value;
+        return (
+          <Tip key={t.id} content={t.name}>
+            <button type="button" onClick={() => onChange(on && allLabel ? null : t.id)} className="rounded-xl p-[5px] transition-all"
+              style={{ background: on ? mix(C.primary, 35) : ink(5), boxShadow: on ? `0 0 0 2px ${C.secondary}, 0 0 18px ${mix(C.secondary, 45)}` : undefined, transform: on ? 'translateY(-2px) scale(1.06)' : undefined }}>
+              <TeamLogo team={t} size={s} />
+            </button>
+          </Tip>
+        );
+      })}
+    </div>
   );
 }

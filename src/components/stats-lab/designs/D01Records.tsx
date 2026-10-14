@@ -9,10 +9,10 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { metric, type MetricKey } from '@/lib/stats-lab/metrics';
 import { opponentOf, topPerfs, type Model, type Perf } from '@/lib/stats-lab/derive';
 import { heroName } from '@/lib/stats-lab/heroes';
-import { Avatar, C, HeroImg, LabTitle, LabView, Seg, TeamLogo, Tip, TipBody, WithModel, ink, mix, useHeaderFont } from '../kit';
+import { Avatar, C, HeroImg, HeroRender, onDark, LabTitle, LabView, Seg, TeamLogo, Tip, TipBody, WithModel, ink, mix, useHeaderFont } from '../kit';
 
 const TABS: Array<{ id: string; label: string; keys: MetricKey[] }> = [
-  { id: 'combat', label: 'Walka', keys: ['kills', 'assists', 'kda', 'streak', 'heroDamage', 'hdpm', 'multi', 'fantasy'] },
+  { id: 'combat', label: 'Walka', keys: ['kills', 'assists', 'kda', 'streak', 'heroDamage', 'hdpm', 'multi', 'score'] },
   { id: 'farm', label: 'Farma', keys: ['gpm', 'xpm', 'lastHits', 'lhpm', 'denies', 'netWorth', 'neutralKills', 'buybacks'] },
   { id: 'vision', label: 'Wizja', keys: ['wards', 'obsPlaced', 'senPlaced', 'dewards', 'runes', 'stacks', 'heroHealing', 'courierKills'] },
   { id: 'obj', label: 'Cele', keys: ['towerDamage', 'towerKills', 'roshanKills', 'rampages'] },
@@ -54,36 +54,41 @@ function Plaque({ model, k, onOpen, index }: { model: Model; k: MetricKey; onOpe
       transition={{ delay: index * 0.04 }}
       whileHover={{ y: -3 }}
       className="group relative rounded-2xl overflow-hidden text-left min-h-0 flex flex-col"
-      style={{ border: `1px solid ${ink(10)}`, background: ink(3) }}
+      style={{ border: `1px solid ${ink(10)}`, background: '#0d0d12' }}
     >
-      {/* Hero art of the record game */}
-      <HeroImg heroId={rec.heroId} className="absolute inset-0 w-full h-full opacity-35 group-hover:opacity-55 group-hover:scale-105 transition-all duration-500" />
-      <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(0,0,0,0.15) 0%, rgba(0,0,0,0.55) 55%, rgba(0,0,0,0.85) 100%)' }} />
+      {/* Hero of the record game: blurred portrait as backdrop, full-body render on the right */}
+      <HeroImg heroId={rec.heroId} title={false} className="absolute inset-0 w-full h-full scale-125 blur-xl opacity-40" />
+      <div className="absolute top-2 bottom-6 right-[-8%] w-[52%] opacity-90 transition-transform duration-500 group-hover:scale-[1.06] origin-bottom">
+        <HeroRender heroId={rec.heroId} sizes="(min-width: 1024px) 22vw, 45vw" />
+      </div>
+      <div className="absolute inset-0" style={{ background: 'linear-gradient(90deg, rgba(8,8,12,0.92) 0%, rgba(8,8,12,0.55) 45%, rgba(8,8,12,0) 75%), linear-gradient(0deg, rgba(8,8,12,0.85) 0%, transparent 45%)' }} />
       <div className="absolute top-0 left-0 right-0 h-px" style={{ background: `linear-gradient(90deg, transparent, ${C.secondary}, transparent)` }} />
 
       <div className="relative flex-1 flex flex-col p-3 min-h-0 text-white">
         <Tip content={<TipBody title={m.label}>{m.desc}{m.parsedOnly ? ' (tylko gry z pełną powtórką)' : ''}</TipBody>}>
-          <span className="self-start text-[10px] uppercase tracking-[0.2em] text-white/70 cursor-help">{m.label}</span>
+          <span className="self-start text-[11px] uppercase tracking-[0.2em] text-white/75 cursor-help">{m.label}</span>
         </Tip>
         <div className="flex-1" />
         <div className="flex items-end gap-2">
-          <span className="text-3xl xl:text-4xl font-logik-extended-bold leading-none tabular-nums" style={{ color: C.secondary, ...font }}>{m.fmt(recV)}</span>
+          <span className="text-4xl xl:text-5xl font-logik-extended-bold leading-none tabular-nums drop-shadow" style={{ color: onDark(C.secondary), ...font }}>{m.fmt(recV)}</span>
           {ties > 1 && (
             <Tip content={`${ties} graczy ma ten sam wynik — rekord należy do pierwszego`}>
-              <span className="mb-1 text-[10px] px-1.5 rounded-full bg-white/15">×{ties}</span>
+              <span className="mb-1 text-[11px] px-1.5 rounded-full bg-white/15">×{ties}</span>
             </Tip>
           )}
         </div>
         <Tip content={<TipBody title={`${rec.player?.name} · ${heroName(rec.heroId)}`}>{opp ? `vs ${opp.name} · ` : ''}{fmtDate(rec.game.start)} · {rec.win ? 'wygrana' : 'przegrana'}</TipBody>}>
-          <div className="mt-1.5 flex items-center gap-1.5 min-w-0">
-            <Avatar player={rec.player} size={20} ring={C.secondary} />
-            <span className="truncate text-xs font-semibold">{rec.player?.name}</span>
-            <TeamLogo team={rec.team} size={14} className="opacity-80" />
+          <div className="mt-2 flex items-center gap-2 min-w-0">
+            <Avatar player={rec.player} size={58} ring={C.secondary} />
+            <div className="min-w-0">
+              <div className="truncate text-lg xl:text-xl font-bold leading-tight">{rec.player?.name}</div>
+              <div className="flex items-center gap-1.5 mt-0.5"><TeamLogo team={rec.team} size={22} /><span className="truncate text-xs text-white/70">{rec.team?.name}</span></div>
+            </div>
           </div>
         </Tip>
 
         {/* Chase bar: challengers at their % of the record */}
-        <div className="relative mt-3 h-5">
+        <div className="relative mt-3 h-10 mx-3">
           <div className="absolute left-0 right-0 top-1/2 h-[3px] -translate-y-1/2 rounded-full bg-white/15" />
           <div className="absolute right-0 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full" style={{ background: C.secondary, boxShadow: `0 0 8px ${C.secondary}` }} />
           {top.slice(1).reverse().map((p, i) => {
@@ -92,7 +97,7 @@ function Plaque({ model, k, onOpen, index }: { model: Model; k: MetricKey; onOpe
             return (
               <Tip key={p.idx} content={<TipBody title={p.player?.name}>{m.fmt(v)} · {recV - v > 0 ? `brakuje ${m.fmt(recV - v)} do rekordu` : 'wyrównany rekord'}</TipBody>}>
                 <span className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 transition-transform hover:scale-125 hover:z-10" style={{ left: `${pct * 100}%`, zIndex: i }}>
-                  <Avatar player={p.player} size={16} ring="rgba(0,0,0,0.6)" />
+                  <Avatar player={p.player} size={36} ring="rgba(0,0,0,0.7)" />
                 </span>
               </Tip>
             );
@@ -118,13 +123,14 @@ function Ladder({ model, k, onClose }: { model: Model; k: MetricKey; onClose: ()
     >
       {rec && (
         <div className="relative w-[34%] hidden md:flex flex-col justify-end p-5 text-white">
-          <HeroImg heroId={rec.heroId} className="absolute inset-0 w-full h-full opacity-50" />
-          <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, transparent 20%, rgba(0,0,0,0.9))' }} />
+          <HeroImg heroId={rec.heroId} title={false} className="absolute inset-0 w-full h-full scale-125 blur-xl opacity-45" />
+          <div className="absolute inset-x-0 top-4 bottom-24"><HeroRender heroId={rec.heroId} sizes="34vw" /></div>
+          <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, transparent 45%, rgba(0,0,0,0.92))' }} />
           <div className="relative">
             <div className="text-[10px] uppercase tracking-[0.25em] text-white/60">{m.label}</div>
-            <div className="text-6xl font-logik-extended-bold leading-none mt-1" style={{ color: C.secondary, ...font }}>{m.fmt(recV)}</div>
+            <div className="text-6xl font-logik-extended-bold leading-none mt-1" style={{ color: onDark(C.secondary), ...font }}>{m.fmt(recV)}</div>
             <div className="mt-3 flex items-center gap-2">
-              <Avatar player={rec.player} size={36} ring={C.secondary} />
+              <Avatar player={rec.player} size={64} ring={C.secondary} />
               <div className="min-w-0">
                 <div className="font-bold truncate">{rec.player?.name}</div>
                 <div className="text-[11px] text-white/60 truncate">{heroName(rec.heroId)} · vs {opponentOf(rec)?.name} · {fmtDate(rec.game.start)}</div>
@@ -146,9 +152,9 @@ function Ladder({ model, k, onClose }: { model: Model; k: MetricKey; onClose: ()
               <div key={p.idx} className="relative flex items-center gap-2 px-2 rounded-lg overflow-hidden text-white min-h-0">
                 <div className="absolute inset-y-0 left-0 rounded-lg" style={{ width: `${(v / recV) * 100}%`, background: i === 0 ? mix(C.secondary, 22) : 'rgba(255,255,255,0.06)' }} />
                 <span className="relative w-5 text-right text-[11px] tabular-nums text-white/50">{i + 1}</span>
-                <HeroImg heroId={p.heroId} variant="icon" className="relative w-6 h-6 rounded" />
-                <Avatar player={p.player} size={22} />
-                <span className="relative flex-1 truncate text-xs font-semibold">{p.player?.name}<span className="font-normal text-white/45"> · {heroName(p.heroId)} vs {opponentOf(p)?.tag || opponentOf(p)?.name}</span></span>
+                <HeroImg heroId={p.heroId} className="relative w-14 h-8 rounded" />
+                <Avatar player={p.player} size={32} />
+                <span className="relative flex-1 truncate text-sm font-semibold">{p.player?.name}<span className="font-normal text-white/45"> · {heroName(p.heroId)} vs {opponentOf(p)?.tag || opponentOf(p)?.name}</span></span>
                 <span className="relative w-1.5 h-4 rounded-sm" style={{ background: p.win ? C.win : C.loss }} />
                 <span className="relative w-14 text-right font-bold tabular-nums" style={{ color: i === 0 ? C.secondary : undefined }}>{m.fmt(v)}</span>
               </div>
@@ -187,7 +193,7 @@ function RecordWall({ model }: { model: Model }) {
             {holders.map(h => (
               <Tip key={h.p.pid} content={<TipBody title={`${h.p.player?.name} — ${h.keys.length} rekord${h.keys.length === 1 ? '' : h.keys.length < 5 ? 'y' : 'ów'}`}>{h.keys.map(k => metric(k).label).join(', ')}</TipBody>}>
                 <div className="relative">
-                  <Avatar player={h.p.player} size={34} ring={mix(C.secondary, 70)} />
+                  <Avatar player={h.p.player} size={46} ring={mix(C.secondary, 70)} />
                   <span className="absolute -bottom-1 -right-1 min-w-[16px] h-4 px-1 rounded-full text-[10px] font-bold flex items-center justify-center text-black" style={{ background: C.secondary }}>{h.keys.length}</span>
                 </div>
               </Tip>

@@ -2,6 +2,7 @@
 // games ↔ performances ↔ players ↔ teams ↔ heroes, plus per-entity aggregates.
 import { PERF_NUM_FIELDS, type DsGame, type DsMatch, type DsPlayer, type DsTeam, type PerfNumField, type StatsDataset } from './types';
 import { METRIC_LIST, metric, type MetricKey } from './metrics';
+import { calcPerformanceScore, MIN_SCORED_GAME_MINS } from '../performance-score';
 
 export type Perf = Record<PerfNumField, number> & {
   idx: number;
@@ -20,6 +21,8 @@ export type Perf = Record<PerfNumField, number> & {
   hdpm: number;
   lhpm: number;
   kp: number;
+  /** Performance score (rankings page formula); NaN when unscored (no role / cross-team standin) */
+  score: number;
 };
 
 export interface GameX extends DsGame {
@@ -175,9 +178,26 @@ export function deriveModel(ds: StatsDataset): Model {
       p.parsed = g.parsed;
       p.teamKills = p.radiant ? g.radiantKills : g.direKills;
       p.kp = p.teamKills > 0 ? Math.min(1, (p.kills + p.assists) / p.teamKills) : 0;
-      if (!g.mvp || p.fantasyPoints > g.mvp.fantasyPoints) g.mvp = p;
       if (g.parsed && p.firstBloodClaimed) g.fbPerf = p;
     }
+  }
+
+  // ── Performance score (needs the player's roster role) ─────────────
+  // Same population and normaliser as performance-rankings-calculator: roster players with a
+  // role, playing for their own team, in games of at least MIN_SCORED_GAME_MINS.
+  const rosterOf = new Map(ds.players.map(p => [p.id, p]));
+  const eligible = perfs.filter(p => {
+    const info = rosterOf.get(p.pid);
+    return !!info?.role && !info.standin && (!info.teamId || info.teamId === p.tid) && p.min >= MIN_SCORED_GAME_MINS;
+  });
+  const avgGameMins = eligible.length ? eligible.reduce((a, p) => a + p.min, 0) / eligible.length : 40;
+  for (const p of perfs) p.score = NaN;
+  for (const p of eligible) {
+    p.score = calcPerformanceScore(rosterOf.get(p.pid)!.role!, { ...p, firstBloodClaimed: p.firstBloodClaimed > 0 }, p.min, avgGameMins).total;
+  }
+  for (const g of games) {
+    for (const p of g.perfs) if (Number.isFinite(p.score) && (!g.mvp || p.score > g.mvp.score)) g.mvp = p;
+    if (!g.mvp) g.mvp = [...g.perfs].sort((a, b) => b.fantasyPoints - a.fantasyPoints)[0];
   }
 
   // ── Players ───────────────────────────────────────────────────────
@@ -198,12 +218,14 @@ export function deriveModel(ds: StatsDataset): Model {
       const pool = m.parsedOnly ? list.filter(p => p.parsed) : list;
       let best: Perf | null = null;
       let total = 0;
+      let n = 0;
       for (const p of pool) {
         const v = m.get(p);
-        total += v;
+        if (!Number.isFinite(v)) continue;
+        total += v; n++;
         if (!best || v > m.get(best)) best = p;
       }
-      agg[m.key] = { avg: pool.length ? total / pool.length : null, total, best, n: pool.length };
+      agg[m.key] = { avg: n ? total / n : null, total, best, n };
     }
     const heroMap = new Map<number, HeroUse>();
     let streak = 0; let bestStreak = 0;
@@ -384,7 +406,7 @@ export function rankPlayers(model: Model, key: MetricKey, mode: RankMode, minGam
 export function topPerfs(model: Model, key: MetricKey, n = 10, all = false): Perf[] {
   const m = metric(key);
   return model.perfs
-    .filter(p => (all || p.player) && (!m.parsedOnly || p.parsed))
+    .filter(p => (all || p.player) && (!m.parsedOnly || p.parsed) && Number.isFinite(m.get(p)))
     .sort((a, b) => m.get(b) - m.get(a) || a.game.start - b.game.start)
     .slice(0, n);
 }

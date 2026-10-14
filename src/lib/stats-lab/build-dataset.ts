@@ -143,13 +143,25 @@ export async function buildStatsDataset(tournamentId: string | null): Promise<St
   });
   gameRefs.sort((a, b) => a.game.start - b.game.start);
 
+  // One person, one id: performances may carry a real steamId64 in `steamId` while `playerId`
+  // is `unknown_<steamId32>` (unmatched at import) or a legacy player-doc id.
+  const canonicalId = (p: FirebaseFirestore.DocumentData, docId: string): string => {
+    const candidates = [p.steamId, p.playerId, docId].map(v => (v == null ? '' : String(v)));
+    for (const c of candidates) if (/^\d{17}$/.test(c)) return c;
+    for (const c of candidates) {
+      const m = c.match(/^unknown_(\d+)$/);
+      if (m) { const sid = sid32To64(m[1]); if (sid) return sid; }
+      if (alias.has(c)) return alias.get(c)!;
+    }
+    return candidates.find(Boolean) || docId;
+  };
+
   const perfSnaps = await Promise.all(gameRefs.map(g => g.ref.collection('performances').get()));
   const perfs: StatsDataset['perfs'] = [];
   perfSnaps.forEach((snap, gi) => {
     for (const d of snap.docs) {
       const p = d.data();
-      const rawId = String(p.playerId || p.steamId || d.id);
-      const row: [number, string, string, ...number[]] = [gi, alias.get(rawId) ?? rawId, p.teamId || ''];
+      const row: [number, string, string, ...number[]] = [gi, canonicalId(p, d.id), p.teamId || ''];
       for (const f of PERF_NUM_FIELDS) {
         const v = p[f];
         row.push(typeof v === 'boolean' ? (v ? 1 : 0) : (typeof v === 'number' && isFinite(v) ? Math.round(v * 100) / 100 : 0));

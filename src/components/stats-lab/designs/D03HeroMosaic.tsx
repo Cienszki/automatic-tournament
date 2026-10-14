@@ -9,7 +9,7 @@ import { getAllHeroData } from '@/lib/hero-mapping';
 import { opponentOf, type HeroX, type Model } from '@/lib/stats-lab/derive';
 import { ATTR_COLOR, heroAttr, heroName, type HeroAttr } from '@/lib/stats-lab/heroes';
 import { fmtPct } from '@/lib/stats-lab/metrics';
-import { Avatar, C, HeroImg, LabTitle, LabView, Seg, TeamLogo, Tip, TipBody, WithModel, ink, mix, playerTip, useHeaderFont, useSize, wrColor } from '../kit';
+import { Avatar, C, HeroImg, HeroRender, LabTitle, LabView, Seg, TeamLogo, Tip, TipBody, WithModel, ink, mix, playerTip, useHeaderFont, useSize, wrColor } from '../kit';
 
 type SortKey = 'contest' | 'picks' | 'bans' | 'wr';
 const SORTS: Array<{ value: SortKey; label: string; tip: string }> = [
@@ -64,17 +64,18 @@ function Ring({ value, label, color, tip }: { value: number; label: string; colo
 function HeroPanel({ model, hero }: { model: Model; hero: HeroX }) {
   const font = useHeaderFont();
   const attr = heroAttr(hero.heroId);
-  const best = [...hero.perfs].filter(p => p.player).sort((a, b) => b.fantasyPoints - a.fantasyPoints)[0];
+  const best = [...hero.perfs].filter(p => p.player && Number.isFinite(p.score)).sort((a, b) => b.score - a.score)[0];
   const banners = useMemo(() => model.teams
     .map(t => ({ t, n: t.bansBy.find(b => b.heroId === hero.heroId)?.count ?? 0 }))
-    .filter(x => x.n > 0).sort((a, b) => b.n - a.n).slice(0, 4), [model, hero.heroId]);
+    .filter(x => x.n > 0).sort((a, b) => b.n - a.n).slice(0, 5), [model, hero.heroId]);
   const rTot = hero.radiant.picks + hero.dire.picks || 1;
 
   return (
     <motion.div key={hero.heroId} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }}
       className="h-full flex flex-col rounded-2xl overflow-hidden" style={{ background: ink(4), border: `1px solid ${ink(10)}` }}>
-      <div className="relative h-[30%] min-h-[110px] shrink-0">
-        <HeroImg heroId={hero.heroId} className="absolute inset-0 w-full h-full" />
+      <div className="relative h-[30%] min-h-[110px] shrink-0 overflow-hidden" style={{ background: '#0d0d12' }}>
+        <HeroImg heroId={hero.heroId} title={false} className="absolute inset-0 w-full h-full scale-125 blur-xl opacity-50" />
+        <div className="absolute top-2 bottom-0 right-0 w-[60%]"><HeroRender heroId={hero.heroId} sizes="240px" /></div>
         <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, transparent 30%, rgba(0,0,0,0.85))' }} />
         <div className="absolute left-0 right-0 bottom-0 p-3 flex items-end justify-between text-white">
           <div>
@@ -113,9 +114,9 @@ function HeroPanel({ model, hero }: { model: Model; hero: HeroX }) {
           </Tip>
         )}
         <div className="flex-1 min-h-0 flex flex-col gap-1 overflow-hidden">
-          {hero.players.slice(0, 5).map(u => (
-            <div key={u.player.id} className="flex items-center gap-2 text-xs">
-              <Tip content={playerTip(u.player)}><span><Avatar player={u.player} size={22} /></span></Tip>
+          {hero.players.slice(0, 4).map(u => (
+            <div key={u.player.id} className="flex items-center gap-2.5 text-sm">
+              <Tip content={playerTip(u.player)}><span><Avatar player={u.player} size={34} /></span></Tip>
               <span className="flex-1 truncate font-semibold">{u.player.name}</span>
               <div className="flex gap-0.5">{Array.from({ length: Math.min(u.games, 8) }, (_, i) => <span key={i} className="w-1.5 h-3 rounded-sm" style={{ background: i < u.wins ? C.win : C.loss }} />)}</div>
               <span className="w-8 text-right tabular-nums" style={{ color: C.muted }}>{u.wins}-{u.games - u.wins}</span>
@@ -123,23 +124,28 @@ function HeroPanel({ model, hero }: { model: Model; hero: HeroX }) {
           ))}
         </div>
         {best && (
-          <Tip content={<TipBody title="Najlepszy występ (punkty fantasy)">{best.kills}/{best.deaths}/{best.assists} · {best.gpm} GPM · vs {opponentOf(best)?.name}</TipBody>}>
+          <Tip content={<TipBody title="Najlepszy występ (punkty występu)">{best.kills}/{best.deaths}/{best.assists} · {best.gpm} GPM · vs {opponentOf(best)?.name}</TipBody>}>
             <div className="flex items-center gap-2 rounded-lg px-2 py-1.5 cursor-help" style={{ background: mix(C.secondary, 12) }}>
-              <Avatar player={best.player} size={22} ring={C.secondary} />
-              <span className="flex-1 truncate text-xs font-semibold">{best.player?.name}</span>
+              <Avatar player={best.player} size={34} ring={C.secondary} />
+              <span className="flex-1 truncate text-sm font-semibold">{best.player?.name}</span>
               <span className="text-xs tabular-nums">{best.kills}/{best.deaths}/{best.assists}</span>
-              <span className="font-bold tabular-nums" style={{ color: C.secondary }}>{best.fantasyPoints.toFixed(1)}</span>
+              <span className="font-bold tabular-nums" style={{ color: C.secondary }}>{best.score.toFixed(2)}</span>
             </div>
           </Tip>
         )}
         {banners.length > 0 && (
-          <div className="flex items-center gap-2">
-            <span className="text-[9px] uppercase tracking-widest" style={{ color: C.muted }}>Banują</span>
-            {banners.map(b => (
-              <Tip key={b.t.id} content={`${b.t.name} — ${b.n}× ban`}>
-                <span className="relative"><TeamLogo team={b.t} size={22} /><span className="absolute -bottom-1 -right-1 text-[9px] font-bold px-1 rounded-full" style={{ background: C.primary, color: '#fff' }}>{b.n}</span></span>
-              </Tip>
-            ))}
+          <div>
+            <Tip content="Drużyny, które najczęściej banują tego bohatera (liczba = ile razy)"><div className="text-[10px] uppercase tracking-widest mb-1.5 cursor-help inline-block" style={{ color: C.muted }}>Banują go</div></Tip>
+            <div className="flex items-center gap-2.5">
+              {banners.map(b => (
+                <Tip key={b.t.id} content={`${b.t.name} — ${b.n}× ban`}>
+                  <span className="relative rounded-xl p-1" style={{ background: ink(5) }}>
+                    <TeamLogo team={b.t} size={44} />
+                    <span className="absolute -bottom-1.5 -right-1.5 min-w-[22px] h-[22px] px-1 rounded-full text-[11px] font-bold flex items-center justify-center" style={{ background: C.primary, color: '#fff' }}>{b.n}</span>
+                  </span>
+                </Tip>
+              ))}
+            </div>
           </div>
         )}
       </div>

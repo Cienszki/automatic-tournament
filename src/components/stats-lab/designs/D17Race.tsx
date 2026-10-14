@@ -6,7 +6,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import type { GameX, Model, PlayerX, TeamX } from '@/lib/stats-lab/derive';
-import { Avatar, C, LabTitle, LabView, Seg, TeamLogo, Tip, WithModel, ink, mix, playerTip, useFitCount, useHeaderFont } from '../kit';
+import { Avatar, C, LabTitle, LabView, Seg, TeamLogo, Tip, WithModel, ink, mix, playerTip, useHeaderFont, useSize } from '../kit';
+
+/** One game per 0.6 s — the whole season plays in about a minute */
+const STEP_MS = 600;
 
 type Kind = 'players' | 'teams';
 interface RaceMetric { key: string; label: string; tip: string; player?: (g: GameX, pid: string) => number; team?: (g: GameX, tid: string) => number; fmt?: (v: number) => string }
@@ -15,7 +18,7 @@ const sumP = (g: GameX, pid: string, f: (p: GameX['perfs'][number]) => number) =
 const sumT = (g: GameX, tid: string, f: (p: GameX['perfs'][number]) => number) => g.perfs.reduce((s, p) => (p.tid === tid ? s + f(p) : s), 0);
 const METRICS: Record<Kind, RaceMetric[]> = {
   players: [
-    { key: 'fantasy', label: 'Punkty fantasy', tip: 'Suma punktów fantasy', player: (g, id) => sumP(g, id, p => p.fantasyPoints), fmt: v => v.toFixed(0) },
+    { key: 'score', label: 'Punkty występu', tip: 'Suma punktów występu', player: (g, id) => sumP(g, id, p => (Number.isFinite(p.score) ? p.score : 0)), fmt: v => v.toFixed(0) },
     { key: 'kills', label: 'Zabójstwa', tip: 'Suma zabójstw', player: (g, id) => sumP(g, id, p => p.kills) },
     { key: 'assists', label: 'Asysty', tip: 'Suma asyst', player: (g, id) => sumP(g, id, p => p.assists) },
     { key: 'gold', label: 'Złoto', tip: 'Całe zarobione złoto', player: (g, id) => sumP(g, id, p => p.totalGold), fmt: v => `${(v / 1000).toFixed(0)}k` },
@@ -33,11 +36,12 @@ const METRICS: Record<Kind, RaceMetric[]> = {
 function Race({ model }: { model: Model }) {
   const font = useHeaderFont();
   const [kind, setKind] = useState<Kind>('players');
-  const [mk, setMk] = useState<Record<Kind, string>>({ players: 'fantasy', teams: 'wins' });
+  const [mk, setMk] = useState<Record<Kind, string>>({ players: 'score', teams: 'wins' });
   const n = model.games.length;
   const [t, setT] = useState(n - 1);
   const [playing, setPlaying] = useState(false);
-  const [ref, K] = useFitCount<HTMLDivElement>(38, 0, 5);
+  const K = 10;
+  const [ref, box] = useSize<HTMLDivElement>();
   const m = METRICS[kind].find(x => x.key === mk[kind])!;
   const fmt = m.fmt ?? ((v: number) => Math.round(v).toLocaleString('pl-PL'));
 
@@ -59,13 +63,13 @@ function Race({ model }: { model: Model }) {
 
   useEffect(() => {
     if (!playing) return;
-    const id = setInterval(() => setT(x => { if (x >= n - 1) { setPlaying(false); return x; } return x + 1; }), Math.max(40, 14000 / n));
+    const id = setInterval(() => setT(x => { if (x >= n - 1) { setPlaying(false); return x; } return x + 1; }), STEP_MS);
     return () => clearInterval(id);
   }, [playing, n]);
 
-  const ranked = [...series].sort((a, b) => b.cum[t] - a.cum[t]).slice(0, K + 1);
+  const ranked = [...series].sort((a, b) => b.cum[t] - a.cum[t]).slice(0, K);
   const max = Math.max(1e-9, ranked[0]?.cum[t] ?? 1);
-  const rowH = 38;
+  const rowH = Math.max(40, Math.floor(box.h / K));
   const g = model.games[t];
   const date = new Date(g.start * 1000).toLocaleDateString('pl-PL', { day: 'numeric', month: 'long' });
   const palette = [C.primary, C.secondary, C.accent, '#7aa2f7', '#9ece6a', '#bb9af7', '#e0af68', '#73daca'];
@@ -92,25 +96,25 @@ function Race({ model }: { model: Model }) {
           <div className="font-logik-extended-bold uppercase leading-none" style={{ fontSize: 'clamp(36px, 8vh, 84px)', color: ink(12), ...font }}>{date}</div>
           <div className="text-xs uppercase tracking-[0.3em] mt-1" style={{ color: ink(30) }}>gra {t + 1} / {n}</div>
         </div>
-        <div ref={ref} className="relative h-full">
+        <div ref={ref} className="relative h-full overflow-hidden">
           {ranked.map((r, i) => {
             const v = r.cum[t];
             const color = colorOf(r.e);
             return (
               <motion.div key={r.id} className="absolute left-0 right-0 flex items-center gap-2" style={{ height: rowH - 6 }}
-                initial={false} animate={{ y: i * rowH, opacity: i < K ? 1 : 0 }} transition={{ type: 'spring', stiffness: 260, damping: 30 }}>
-                <span className="w-6 text-right text-xs tabular-nums font-bold" style={{ color: C.muted }}>{i + 1}</span>
+                initial={false} animate={{ y: i * rowH, opacity: 1 }} transition={{ type: 'spring', stiffness: 260, damping: 30 }}>
+                <span className="w-8 text-right text-xl tabular-nums font-bold" style={{ color: C.muted, ...font }}>{i + 1}</span>
                 <Tip content={kind === 'players' ? playerTip(r.e as PlayerX) : r.e.name}>
-                  <span className="shrink-0">{kind === 'players' ? <Avatar player={r.e as PlayerX} size={28} /> : <TeamLogo team={r.e as TeamX} size={28} />}</span>
+                  <span className="shrink-0">{kind === 'players' ? <Avatar player={r.e as PlayerX} size={Math.min(56, rowH - 10)} /> : <TeamLogo team={r.e as TeamX} size={Math.min(56, rowH - 10)} />}</span>
                 </Tip>
                 <div className="flex-1 min-w-0 h-full relative">
-                  <motion.div className="absolute inset-y-0 left-0 rounded-r-lg flex items-center px-2 overflow-hidden" initial={false}
-                    animate={{ width: `${Math.max(1, (v / max) * 88)}%` }} transition={{ type: 'tween', ease: 'linear', duration: playing ? Math.max(0.04, 14 / n) : 0.4 }}
+                  <motion.div className="absolute inset-y-0 left-0 rounded-r-xl flex items-center px-3 overflow-hidden" initial={false}
+                    animate={{ width: `${Math.max(1, (v / max) * 84)}%` }} transition={{ type: 'tween', ease: 'linear', duration: playing ? STEP_MS / 1000 : 0.4 }}
                     style={{ background: `linear-gradient(90deg, ${mix(color, 45)}, ${color})` }}>
-                    <span className="text-xs font-bold text-white truncate drop-shadow">{r.e.name}</span>
+                    <span className="text-base font-bold text-white truncate drop-shadow">{r.e.name}</span>
                   </motion.div>
-                  <motion.span className="absolute top-1/2 -translate-y-1/2 text-sm font-logik-extended-bold tabular-nums pl-2" initial={false}
-                    animate={{ left: `${Math.max(1, (v / max) * 88)}%` }} transition={{ type: 'tween', ease: 'linear', duration: playing ? Math.max(0.04, 14 / n) : 0.4 }} style={font}>{fmt(v)}</motion.span>
+                  <motion.span className="absolute top-1/2 -translate-y-1/2 text-2xl font-logik-extended-bold tabular-nums pl-3" initial={false}
+                    animate={{ left: `${Math.max(1, (v / max) * 84)}%` }} transition={{ type: 'tween', ease: 'linear', duration: playing ? STEP_MS / 1000 : 0.4 }} style={font}>{fmt(v)}</motion.span>
                 </div>
               </motion.div>
             );
