@@ -103,7 +103,24 @@ export async function buildStatsDataset(tournamentId: string | null): Promise<St
   } catch { /* optional collections */ }
 
   // ── Completed matches → games → performances ─────────────────────────
-  const completed = matchDocs.filter(m => m.status === 'completed' && !m.isBanForfeit && !m.isSwissByeMatch);
+  // Real match docs (auto ids) before legacy playoff docs like "ub-r2-p2", which can hold the
+  // same games — see the dedupe below.
+  const legacyId = (id: string) => id.includes('-');
+  const completedAll = matchDocs
+    .filter(m => m.status === 'completed' && !m.isBanForfeit && !m.isSwissByeMatch)
+    .sort((a, b) => Number(legacyId(a.id)) - Number(legacyId(b.id)));
+  const allGameSnaps = await Promise.all(completedAll.map(m => col('matches').doc(m.id).collection('games').get()));
+  // The same Dota game can sit under two match docs (a playoff match and its legacy copy): count
+  // it once, under the first one, and drop a match whose every game was such a copy.
+  const seenGames = new Set<string>();
+  const keep = completedAll.map((_, i) => {
+    const ids = allGameSnaps[i].docs.map(d => d.id);
+    const fresh = ids.filter(id => !seenGames.has(id));
+    ids.forEach(id => seenGames.add(id));
+    return !ids.length || fresh.length > 0;
+  });
+  const completed = completedAll.filter((_, i) => keep[i]);
+  const gameSnaps = allGameSnaps.filter((_, i) => keep[i]);
   const matches: DsMatch[] = completed.map(m => ({
     id: m.id,
     groupId: m.group_id || m.divisionId || undefined,
@@ -119,10 +136,12 @@ export async function buildStatsDataset(tournamentId: string | null): Promise<St
     completedAt: toMillis(m.completedAt) ?? toMillis(m.completed_at) ?? toMillis(m.scheduledFor),
   }));
 
-  const gameSnaps = await Promise.all(completed.map(m => col('matches').doc(m.id).collection('games').get()));
   const gameRefs: Array<{ game: DsGame; ref: FirebaseFirestore.DocumentReference }> = [];
+  const taken = new Set<string>();
   gameSnaps.forEach((snap, i) => {
     for (const d of snap.docs) {
+      if (taken.has(d.id)) continue;
+      taken.add(d.id);
       const g = d.data();
       if (g.is_forfeit || !g.radiant_team?.id || !g.dire_team?.id) continue;
       gameRefs.push({

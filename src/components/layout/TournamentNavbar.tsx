@@ -22,7 +22,6 @@ import {
   Menu,
   Loader2,
   Gift,
-  Trophy,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -39,7 +38,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { useAuth } from '@/context/AuthContext';
 import { checkIfAdmin } from '@/lib/auth';
 import { getFontFamily } from '@/lib/dynamic-fonts';
-import { useHomeNavigation, getHomeSectionIndex } from '@/context/HomeNavigationContext';
+import { useHomeNavigation, getHomeSectionIndex, STATS_VIEW_KEYS } from '@/context/HomeNavigationContext';
 import React from 'react';
 
 // ------------------------------------------------------------------
@@ -207,7 +206,7 @@ export function TournamentNavbar() {
   const [hasTeam, setHasTeam] = React.useState(false);
   const [organizerLogoError, setOrganizerLogoError] = React.useState(false);
   const [inlineLogoError, setInlineLogoError] = React.useState(false);
-  const { goToHomeSection, isHomeActive, goToGroup, setSection1View } = useHomeNavigation();
+  const { goToHomeSection, isHomeActive, goToGroup, setSection1View, setStatsView } = useHomeNavigation();
 
   // Reset inline logo error whenever the URL changes (e.g. after Firestore loads the real theme)
   React.useEffect(() => {
@@ -301,6 +300,8 @@ export function TournamentNavbar() {
     if (viewKey === 'groups' || viewKey === 'playoffs') {
       setSection1View(viewKey);
     }
+    // Views that live inside the stats section (e.g. rankings) open there
+    if (STATS_VIEW_KEYS[viewKey]) setStatsView(STATS_VIEW_KEYS[viewKey]);
     if (isHomeActive()) {
       goToHomeSection(sectionIndex);
     } else {
@@ -533,17 +534,6 @@ export function TournamentNavbar() {
                 >
                   <Shield className="h-5 w-5 mr-3" />
                   <span>Drużyny</span>
-                </Button>
-
-                {/* Rankings */}
-                <Button
-                  variant="ghost"
-                  onClick={() => { handleViewNavigation('rankings'); setIsMobileMenuOpen(false); }}
-                  className="w-full justify-start text-base py-3 px-3"
-                  style={{ color: navTextColor }}
-                >
-                  <Trophy className="h-5 w-5 mr-3" />
-                  <span>Rankingi</span>
                 </Button>
 
                 {/* Stats */}
@@ -812,39 +802,6 @@ export function TournamentNavbar() {
                 >
                   <Shield className="h-4 w-4" />
                   <span className="hidden lg:inline">Drużyny</span>
-                  <span
-                    className={cn(
-                      "absolute bottom-2 left-0 h-0.5 w-full transform transition-transform duration-300 ease-out",
-                      active ? "scale-x-100" : "scale-x-0 group-hover:scale-x-100",
-                    )}
-                    style={{ backgroundColor: theme.primaryColor }}
-                  />
-                </button>
-              );
-            })()}
-
-            {/* ── Rankings ──────────────────────────────────────── */}
-            {(() => {
-              const active = isActive('/rankings');
-              return (
-                <button
-                  key="rankings"
-                  onClick={() => handleViewNavigation('rankings')}
-                  onAuxClick={(e) => { if (e.button === 1) { e.preventDefault(); window.open(`${getTournamentPath('')}?view=rankings`, '_blank'); } }}
-                  className={cn(
-                    "relative text-sm font-medium shrink-0 px-3 py-2 transition-all duration-200 group flex items-center gap-2",
-                    "hover:bg-[var(--nav-hover-bg)] hover:text-[var(--nav-hover-text)]",
-                    "focus-visible:outline-none focus-visible:ring-0",
-                    !active && "text-muted-foreground",
-                  )}
-                  style={{
-                    color: active ? theme.primaryColor : navTextColor,
-                    '--nav-hover-bg': getColorWithOpacity(theme.primaryColor, 10),
-                    '--nav-hover-text': theme.primaryColor,
-                  } as React.CSSProperties}
-                >
-                  <Trophy className="h-4 w-4" />
-                  <span className="hidden lg:inline">Rankingi</span>
                   <span
                     className={cn(
                       "absolute bottom-2 left-0 h-0.5 w-full transform transition-transform duration-300 ease-out",

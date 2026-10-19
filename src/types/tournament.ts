@@ -308,8 +308,17 @@ export interface SwissRound {
   status: 'draft' | 'committed' | 'complete';
   matchFormat: MatchFormat;
   scheduling: {
+    /**
+     * fixed: the admin sets each match's day and time (after seeing the pairs);
+     * window: captains agree on a time before windowEnd (the deadline); free: captains, no deadline.
+     */
     mode: 'fixed' | 'window' | 'free';
+    /** Legacy (rounds before per-match times): one time for every match of the round */
     fixedAt?: string;
+    /** fixed: ISO start time per pairing, same order as `pairings`; '' = not set yet */
+    times?: string[];
+    /** fixed: captains may move a match earlier, or at most this many hours later (null = no hour limit) */
+    maxHoursLater?: number | null;
     windowStart?: string;
     windowEnd?: string;
   };

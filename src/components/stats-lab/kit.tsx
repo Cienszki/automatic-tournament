@@ -58,26 +58,44 @@ export function useHeaderFont(): React.CSSProperties {
 // ── Data hook (one fetch per tournament per session) ──────────────────
 
 const modelCache = new Map<string, Promise<Model>>();
+/** Models that already arrived — read synchronously so a re-mounted view never flashes a spinner */
+const resolvedModels = new Map<string, Model>();
+
+/** The stats model for a dataset key, fetched once per session (also used by the preloader) */
+export function loadStatsModel(key: string): Promise<Model> {
+  if (!modelCache.has(key)) {
+    modelCache.set(key, fetch(`/api/stats/dataset?tournamentId=${encodeURIComponent(key)}`)
+      .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json() as Promise<StatsDataset>; })
+      .then(deriveModel)
+      .then(m => { resolvedModels.set(key, m); return m; })
+      .catch(e => { modelCache.delete(key); throw e; }));
+  }
+  return modelCache.get(key)!;
+}
+
+/** Dataset key of the current tournament (legacy Letnia reads the root collections) */
+export function useStatsKey(): string | null {
+  const { tournament, isLegacyTournament } = useTournament();
+  return tournament ? (isLegacyTournament ? 'letnia' : tournament.id) : null;
+}
 
 export function useStatsModel(): { model: Model | null; loading: boolean; error: string | null } {
-  const { tournament, isLegacyTournament } = useTournament();
-  const key = tournament ? (isLegacyTournament ? 'letnia' : tournament.id) : null;
-  const [state, setState] = useState<{ model: Model | null; loading: boolean; error: string | null }>({ model: null, loading: true, error: null });
+  const key = useStatsKey();
+  const [state, setState] = useState<{ model: Model | null; loading: boolean; error: string | null }>(() => {
+    const ready = key ? resolvedModels.get(key) : undefined;
+    return ready ? { model: ready, loading: false, error: null } : { model: null, loading: true, error: null };
+  });
 
   useEffect(() => {
     if (!key) return;
+    if (state.model && resolvedModels.get(key) === state.model) return;
     let cancelled = false;
-    if (!modelCache.has(key)) {
-      modelCache.set(key, fetch(`/api/stats/dataset?tournamentId=${encodeURIComponent(key)}`)
-        .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json() as Promise<StatsDataset>; })
-        .then(deriveModel)
-        .catch(e => { modelCache.delete(key); throw e; }));
-    }
-    modelCache.get(key)!.then(
+    loadStatsModel(key).then(
       model => { if (!cancelled) setState({ model, loading: false, error: null }); },
       e => { if (!cancelled) setState({ model: null, loading: false, error: String(e?.message || e) }); },
     );
     return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- state.model only skips a refetch
   }, [key]);
 
   return state;
@@ -116,9 +134,25 @@ export function WithModel({ children }: { children: (m: Model) => React.ReactNod
   return <>{children(model)}</>;
 }
 
+/**
+ * Inside the stats hub the page title lives in the hub's own header, so an embedded view's
+ * LabTitle keeps only its subtitle and controls.
+ */
+export const LabEmbedded = React.createContext(false);
+
 /** Section title in the site's heading style */
 export function LabTitle({ children, sub, className, right }: { children: React.ReactNode; sub?: React.ReactNode; className?: string; right?: React.ReactNode }) {
   const font = useHeaderFont();
+  const embedded = React.useContext(LabEmbedded);
+  if (embedded) {
+    if (!sub && !right) return null;
+    return (
+      <div className={cn('flex items-center justify-between gap-4 shrink-0 min-h-[28px]', className)}>
+        <div className="min-w-0 text-[10px] uppercase tracking-[0.25em]" style={{ color: C.muted }}>{sub}</div>
+        {right}
+      </div>
+    );
+  }
   return (
     <div className={cn('flex items-end justify-between gap-4 shrink-0', className)}>
       <div className="min-w-0">

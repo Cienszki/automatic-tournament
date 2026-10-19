@@ -25,6 +25,10 @@ interface HomeNavigationContextValue {
   section1View: 'playoffs' | 'groups';
   /** Set section 1's view (driven by the navbar's Playoffs / Grupy buttons). */
   setSection1View: (view: 'playoffs' | 'groups') => void;
+  /** A stats-hub view (catalog id) the stats section should open, or null once it has. */
+  statsView: string | null;
+  /** Ask the stats section to open a view; the hub clears it after switching. */
+  setStatsView: (view: string | null) => void;
 }
 
 const HomeNavigationContext = createContext<HomeNavigationContextValue>({
@@ -39,6 +43,8 @@ const HomeNavigationContext = createContext<HomeNavigationContextValue>({
   goToTeam: () => {},
   section1View: 'playoffs',
   setSection1View: () => {},
+  statsView: null,
+  setStatsView: () => {},
 });
 
 export function HomeNavigationProvider({ children }: { children: React.ReactNode }) {
@@ -46,6 +52,7 @@ export function HomeNavigationProvider({ children }: { children: React.ReactNode
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
   const [highlightedTeamId, setHighlightedTeamId] = useState<string | null>(null);
   const [section1View, setSection1View] = useState<'playoffs' | 'groups'>('playoffs');
+  const [statsView, setStatsView] = useState<string | null>(null);
 
   const registerGoToSection = useCallback((fn: ((index: number) => void) | null) => {
     goToSectionRef.current = fn;
@@ -69,7 +76,7 @@ export function HomeNavigationProvider({ children }: { children: React.ReactNode
   }, []);
 
   return (
-    <HomeNavigationContext.Provider value={{ registerGoToSection, goToHomeSection, isHomeActive, selectedGroupId, setSelectedGroupId, goToGroup, highlightedTeamId, setHighlightedTeamId, goToTeam, section1View, setSection1View }}>
+    <HomeNavigationContext.Provider value={{ registerGoToSection, goToHomeSection, isHomeActive, selectedGroupId, setSelectedGroupId, goToGroup, highlightedTeamId, setHighlightedTeamId, goToTeam, section1View, setSection1View, statsView, setStatsView }}>
       {children}
     </HomeNavigationContext.Provider>
   );
@@ -78,7 +85,7 @@ export function HomeNavigationProvider({ children }: { children: React.ReactNode
 export const useHomeNavigation = () => useContext(HomeNavigationContext);
 
 /** All homepage sections in display order; optional ones are dropped by getHomeSections. */
-const HOME_SECTION_ORDER = ['start', 'groups', 'schedule', 'teams', 'rankings', 'stats', 'pickem', 'my-team'] as const;
+const HOME_SECTION_ORDER = ['start', 'groups', 'schedule', 'teams', 'stats', 'pickem', 'my-team'] as const;
 export type HomeSectionKey = (typeof HOME_SECTION_ORDER)[number];
 
 export interface HomeSectionOptions {
@@ -94,12 +101,19 @@ export function getHomeSections({ pickemEnabled, hasTeam }: HomeSectionOptions):
 }
 
 /**
+ * `?view=` keys that open a view inside the stats section rather than a section of their own
+ * (key → stats-hub catalog id). Rankings used to be a section; old links still land on it.
+ */
+export const STATS_VIEW_KEYS: Record<string, string> = { rankings: 'rankingi' };
+
+/**
  * Section index for a view key (`?view=` values and navbar targets), or undefined when the
- * section doesn't exist. "playoffs" shares the groups section. Sections before Pick'em never
- * move, so callers that don't know hasTeam can omit it — "my-team" is always last.
+ * section doesn't exist. "playoffs" shares the groups section, "rankings" lives in stats.
+ * Sections before Pick'em never move, so callers that don't know hasTeam can omit it —
+ * "my-team" is always last.
  */
 export function getHomeSectionIndex(view: string, { pickemEnabled, hasTeam = true }: Pick<HomeSectionOptions, 'pickemEnabled'> & Partial<HomeSectionOptions>): number | undefined {
-  const key = view === 'playoffs' ? 'groups' : view;
+  const key = view === 'playoffs' ? 'groups' : STATS_VIEW_KEYS[view] ? 'stats' : view;
   const index = getHomeSections({ pickemEnabled, hasTeam }).indexOf(key as HomeSectionKey);
   return index === -1 ? undefined : index;
 }

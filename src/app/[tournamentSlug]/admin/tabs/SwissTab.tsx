@@ -41,7 +41,7 @@ import {
   SWISS_DIVISION_ID,
   loadSwissTeams, loadSwissMatches, loadSwissRounds, buildStandings,
   setupSwissField, ensureByeTeam, saveSeedMmr, renumberSeeds,
-  generateRoundDraft, saveDraftPairings, commitRound, reopenRound,
+  generateRoundDraft, saveDraftPairings, saveDraftScheduling, commitRound, reopenRound,
   markRoundComplete, forceMatchResult,
   type SwissTeam, type SwissRoundMatch,
 } from '@/lib/swiss/actions';
@@ -54,6 +54,20 @@ const MATCH_FORMATS: { value: MatchFormat; label: string; maxPoints: number }[] 
 ];
 
 type SchedulingMode = 'fixed' | 'window' | 'free';
+
+/** ISO time → value of a datetime-local input (the admin's local time); '' when unset */
+const toLocalInput = (iso?: string | null) => {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+};
+/** datetime-local value → ISO (UTC); '' stays '' */
+const toIso = (local: string) => (local ? new Date(local).toISOString() : '');
+
+/** Default reschedule limit for admin-scheduled rounds: earlier freely, later by at most this many hours */
+const DEFAULT_MAX_HOURS_LATER = '2';
 
 export function SwissTab() {
   const { tournament, theme, refetchTournament } = useTournament();
@@ -71,8 +85,14 @@ export function SwissTab() {
 
   // Round builder
   const [matchFormat, setMatchFormat] = useState<MatchFormat>('bo2');
-  const [schedulingMode, setSchedulingMode] = useState<SchedulingMode>('window');
-  const [fixedAt, setFixedAt] = useState('');
+  const [schedulingMode, setSchedulingMode] = useState<SchedulingMode>('fixed');
+  // 'fixed' mode: one start time per pairing (datetime-local values, same order as the pairings)
+  const [times, setTimes] = useState<string[]>([]);
+  const [maxHoursLater, setMaxHoursLater] = useState(DEFAULT_MAX_HOURS_LATER);
+  const [selectedPairs, setSelectedPairs] = useState<Set<number>>(new Set());
+  const [bulkAt, setBulkAt] = useState('');
+  // Set by the admin's edits only, so loading a draft doesn't write it straight back
+  const schedulingDirty = React.useRef(false);
   const [windowStart, setWindowStart] = useState('');
   const [windowEnd, setWindowEnd] = useState('');
   const [allowRematch, setAllowRematch] = useState(false);
@@ -112,7 +132,12 @@ export function SwissTab() {
         })));
         setMatchFormat(storedDraft.matchFormat);
         setSchedulingMode(storedDraft.scheduling.mode);
-        setFixedAt(storedDraft.scheduling.fixedAt ?? '');
+        // Older drafts carry one fixedAt for the whole round
+        setTimes(storedDraft.pairings.map((_, i) =>
+          toLocalInput(storedDraft.scheduling.times?.[i] || storedDraft.scheduling.fixedAt)));
+        setMaxHoursLater(storedDraft.scheduling.maxHoursLater === undefined
+          ? DEFAULT_MAX_HOURS_LATER
+          : storedDraft.scheduling.maxHoursLater === null ? '' : String(storedDraft.scheduling.maxHoursLater));
         setWindowStart(storedDraft.scheduling.windowStart ?? '');
         setWindowEnd(storedDraft.scheduling.windowEnd ?? '');
       } else {
@@ -194,6 +219,67 @@ export function SwissTab() {
     return adviseBand(seeded, plannedRounds ?? recommended);
   }, [field, useMmrSeeding, plannedRounds, recommended]);
 
+  /** '' = no hour limit; otherwise whole hours 0–72 */
+  const parsedMaxHoursLater = (): number | null => {
+    const raw = maxHoursLater.trim();
+    if (raw === '') return null;
+    const n = Number(raw);
+    if (!Number.isInteger(n) || n < 0 || n > 72) {
+      throw new Error('Limit przełożenia na później musi być liczbą całkowitą godzin od 0 do 72 (albo pusty).');
+    }
+    return n;
+  };
+
+  /** The round's scheduling as stored on the round doc (times as ISO, aligned with the pairings) */
+  const schedulingPayload = (pairCount: number): SwissRound['scheduling'] => {
+    if (schedulingMode === 'fixed') {
+      return {
+        mode: 'fixed',
+        times: Array.from({ length: pairCount }, (_, i) => toIso(times[i] ?? '')),
+        maxHoursLater: parsedMaxHoursLater(),
+      };
+    }
+    if (schedulingMode === 'window') return { mode: 'window', windowStart, windowEnd };
+    return { mode: 'free' };
+  };
+
+  // Keep the stored draft in step with the times being set (debounced), so a reload keeps them
+  useEffect(() => {
+    if (!schedulingDirty.current || !draftPairings || !tournament?.id) return;
+    const t = setTimeout(() => {
+      let scheduling: SwissRound['scheduling'];
+      try { scheduling = schedulingPayload(draftPairings.length); } catch { return; /* invalid limit — reported on commit */ }
+      schedulingDirty.current = false;
+      saveDraftScheduling(tournament.id, nextRoundNumber, scheduling).catch(err =>
+        console.error('[SwissTab] saving draft times failed', err));
+    }, 700);
+    return () => clearTimeout(t);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [times, maxHoursLater, schedulingMode, windowStart, windowEnd, draftPairings]);
+
+  const setTime = (i: number, value: string) => {
+    schedulingDirty.current = true;
+    setTimes(prev => { const next = [...prev]; next[i] = value; return next; });
+  };
+
+  /** One date and time for every selected pair */
+  const applyBulkTime = () => {
+    if (!bulkAt || selectedPairs.size === 0) return;
+    schedulingDirty.current = true;
+    setTimes(prev => {
+      const next = [...prev];
+      selectedPairs.forEach(i => { next[i] = bulkAt; });
+      return next;
+    });
+    setSelectedPairs(new Set());
+  };
+
+  const togglePair = (i: number) => setSelectedPairs(prev => {
+    const next = new Set(prev);
+    if (next.has(i)) next.delete(i); else next.add(i);
+    return next;
+  });
+
   const run = async (key: string, fn: () => Promise<void>) => {
     setBusy(key);
     try {
@@ -264,9 +350,7 @@ export function SwissTab() {
     run('generate', async () => {
       if (!tournament?.id) return;
 
-      if (schedulingMode === 'fixed' && !fixedAt) {
-        throw new Error('Podaj datę i godzinę dla tej rundy.');
-      }
+      // 'fixed': times are set per pair once the pairs are visible — nothing to check yet
       if (schedulingMode === 'window' && (!windowStart || !windowEnd)) {
         throw new Error('Podaj początek i koniec okna terminowego.');
       }
@@ -276,15 +360,12 @@ export function SwissTab() {
 
       if (field.length % 2 === 1) await ensureByeTeam(tournament.id);
 
+      // Times belong to the slots (1st pair, 2nd pair…), so regenerating keeps them
       const { round, warnings } = await generateRoundDraft({
         tournamentId: tournament.id,
         round: nextRoundNumber,
         matchFormat,
-        scheduling: {
-          mode: schedulingMode,
-          ...(schedulingMode === 'fixed' ? { fixedAt } : {}),
-          ...(schedulingMode === 'window' ? { windowStart, windowEnd } : {}),
-        },
+        scheduling: schedulingPayload(Math.ceil(field.length / 2)),
         allowConsecutiveRematch: allowRematch,
         maxMmrGap: useMmrSeeding ? pairingBand : null,
         teams,
@@ -295,6 +376,7 @@ export function SwissTab() {
         teamAId: p.teamAId, teamBId: p.teamBId, isBye: p.isBye,
       })));
       setDraftWarnings(warnings);
+      setSelectedPairs(new Set());
       await reload();
       toast({ title: `Runda ${round.round} — podgląd gotowy`, description: 'Sprawdź parowania przed zatwierdzeniem.' });
     });
@@ -339,22 +421,28 @@ export function SwissTab() {
   const handleCommit = () =>
     run('commit', async () => {
       if (!tournament?.id || !draftPairings) return;
+      const scheduling = schedulingPayload(draftPairings.length);
+      if (scheduling.mode === 'fixed') {
+        const missing = draftPairings.filter((p, i) => !p.isBye && !scheduling.times?.[i]).length;
+        if (missing) throw new Error(`Ustaw dzień i godzinę każdego meczu — bez terminu: ${missing}.`);
+      }
+      if (scheduling.mode === 'window' && (!windowStart || !windowEnd)) {
+        throw new Error('Podaj początek i koniec okna terminowego.');
+      }
       const res = await commitRound({
         tournamentId: tournament.id,
         round: nextRoundNumber,
         divisionId,
         matchFormat,
-        scheduling: {
-          mode: schedulingMode,
-          ...(schedulingMode === 'fixed' ? { fixedAt } : {}),
-          ...(schedulingMode === 'window' ? { windowStart, windowEnd } : {}),
-        },
+        scheduling,
         pairings: draftPairings,
         teamsById,
         adminUserId: user?.uid ?? 'admin',
       });
       setDraftPairings(null);
       setDraftWarnings([]);
+      setTimes([]);
+      setSelectedPairs(new Set());
       await reload();
       toast({
         title: `Runda ${nextRoundNumber} zatwierdzona`,
@@ -780,25 +868,40 @@ export function SwissTab() {
 
             <div>
               <Label className="font-logik-extended-bold">Terminy</Label>
-              <Select value={schedulingMode} onValueChange={v => setSchedulingMode(v as SchedulingMode)}>
+              <Select value={schedulingMode} onValueChange={v => { schedulingDirty.current = true; setSchedulingMode(v as SchedulingMode); }}>
                 <SelectTrigger className="font-logik mt-1"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="window">Okno terminowe + deadline</SelectItem>
-                  <SelectItem value="fixed">Stała data i godzina</SelectItem>
-                  <SelectItem value="free">Dowolnie (bez deadline)</SelectItem>
+                  <SelectItem value="fixed">Organizator ustala termin każdego meczu</SelectItem>
+                  <SelectItem value="window">Kapitanowie umawiają się w oknie (z deadline)</SelectItem>
+                  <SelectItem value="free">Kapitanowie umawiają się dowolnie (bez deadline)</SelectItem>
                 </SelectContent>
               </Select>
 
               {schedulingMode === 'fixed' && (
-                <Input type="datetime-local" className="mt-2 font-logik"
-                  value={fixedAt} onChange={e => setFixedAt(e.target.value)} />
+                <div className="mt-2 space-y-2">
+                  <p className="text-xs text-muted-foreground font-logik">
+                    Dzień i godzinę ustawisz przy każdej parze po wygenerowaniu podglądu — pojedynczo
+                    albo jednym terminem dla kilku zaznaczonych meczów.
+                  </p>
+                  <label className="flex flex-wrap items-center gap-2 text-sm font-logik">
+                    Kapitanowie mogą przełożyć mecz na dowolny wcześniejszy termin albo najwyżej o
+                    <Input type="number" min={0} max={72} step={1} className="w-20 h-8 font-logik"
+                      value={maxHoursLater}
+                      onChange={e => { schedulingDirty.current = true; setMaxHoursLater(e.target.value); }} />
+                    h później.
+                  </label>
+                  <p className="text-xs text-muted-foreground font-logik">
+                    0 = tylko na wcześniej. Puste = bez limitu godzin (obowiązują wtedy ogólne zasady
+                    przekładania z zakładki terminarza). Zmiana terminu wymaga zgody drugiego kapitana.
+                  </p>
+                </div>
               )}
               {schedulingMode === 'window' && (
                 <div className="grid grid-cols-2 gap-2 mt-2">
                   <Input type="date" className="font-logik" value={windowStart}
-                    onChange={e => setWindowStart(e.target.value)} />
+                    onChange={e => { schedulingDirty.current = true; setWindowStart(e.target.value); }} />
                   <Input type="date" className="font-logik" value={windowEnd}
-                    onChange={e => setWindowEnd(e.target.value)} />
+                    onChange={e => { schedulingDirty.current = true; setWindowEnd(e.target.value); }} />
                 </div>
               )}
               {schedulingMode === 'free' && (
@@ -865,6 +968,30 @@ export function SwissTab() {
                 Kliknij drużynę, a potem drugą, aby zamienić je miejscami.
                 {swapFrom && <> Wybrano: <strong>{nameOf(swapFrom)}</strong> — kliknij drugą drużynę.</>}
               </p>
+              {schedulingMode === 'fixed' && (() => {
+                const realPairs = draftPairings.flatMap((p, i) => (p.isBye ? [] : [i]));
+                const allSelected = realPairs.length > 0 && realPairs.every(i => selectedPairs.has(i));
+                const unset = realPairs.filter(i => !times[i]).length;
+                return (
+                  <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-muted/20 p-3">
+                    <label className="flex items-center gap-2 text-sm font-logik cursor-pointer">
+                      <input type="checkbox" className="w-4 h-4" checked={allSelected}
+                        onChange={() => setSelectedPairs(allSelected ? new Set() : new Set(realPairs))} />
+                      Zaznacz wszystkie
+                    </label>
+                    <span className="text-xs text-muted-foreground font-logik">Zaznaczono: {selectedPairs.size}</span>
+                    <Input type="datetime-local" className="w-[220px] h-9 font-logik" aria-label="Termin dla zaznaczonych"
+                      value={bulkAt} onChange={e => setBulkAt(e.target.value)} />
+                    <Button size="sm" variant="outline" onClick={applyBulkTime}
+                      disabled={!bulkAt || selectedPairs.size === 0}>
+                      Ustaw dla zaznaczonych
+                    </Button>
+                    <span className={cn('ml-auto text-xs font-logik', unset ? 'text-amber-500' : 'text-green-500')}>
+                      {unset ? `Bez terminu: ${unset} z ${realPairs.length}` : 'Wszystkie mecze mają termin'}
+                    </span>
+                  </div>
+                );
+              })()}
               {draftPairings.map((p, i) => {
                 const gap = Math.abs(pointsOf(p.teamAId) - pointsOf(p.teamBId));
                 const mmrA = seedOf(p.teamAId);
@@ -875,6 +1002,11 @@ export function SwissTab() {
                     'flex flex-wrap items-center gap-2 rounded-lg border p-3',
                     p.isBye ? 'border-dashed border-border bg-muted/20' : 'border-border'
                   )}>
+                    {schedulingMode === 'fixed' && (
+                      <input type="checkbox" className="w-4 h-4" disabled={p.isBye}
+                        aria-label={`Zaznacz mecz ${i + 1}`}
+                        checked={!p.isBye && selectedPairs.has(i)} onChange={() => togglePair(i)} />
+                    )}
                     <span className="w-8 text-xs text-muted-foreground font-mono">{i + 1}</span>
                     {[p.teamAId, p.teamBId].map(id => (
                       <button key={id} onClick={() => handleSwap(id)}
@@ -893,6 +1025,11 @@ export function SwissTab() {
                       <span className="text-xs text-muted-foreground ml-auto font-logik">
                         Δ {gap} pkt{useMmrSeeding && mmrGap != null && ` · Δ ${mmrGap} MMR`}
                       </span>
+                    )}
+                    {!p.isBye && schedulingMode === 'fixed' && (
+                      <Input type="datetime-local" aria-label={`Termin meczu ${i + 1}`}
+                        className={cn('w-[220px] h-9 font-logik', !times[i] && 'border-amber-500/60')}
+                        value={times[i] ?? ''} onChange={e => setTime(i, e.target.value)} />
                     )}
                     {p.isBye && (
                       <Badge variant="outline" className="ml-auto font-logik text-xs">

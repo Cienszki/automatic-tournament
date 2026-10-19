@@ -885,11 +885,13 @@ function MyTeamView() {
   }, [matches, tournament?.id]);
 
   // Reschedule rules from the admin panel. A per-match deadline takes precedence over the
-  // tournament-wide rescheduleFinalDate (mirrors PDLUpcomingMatch).
-  const getRescheduleSettings = (matchDeadline?: string | null) => ({
+  // tournament-wide rescheduleFinalDate, and a per-match hours-later limit over "earlier only"
+  // (mirrors PDLUpcomingMatch).
+  const getRescheduleSettings = (matchData?: { deadline?: string | null; rescheduleMaxHoursLater?: number | null }) => ({
     rangeDays: tournament?.rescheduleRangeDays !== undefined ? tournament.rescheduleRangeDays : 3,
-    finalDate: matchDeadline || tournament?.rescheduleFinalDate || null,
+    finalDate: matchData?.deadline || tournament?.rescheduleFinalDate || null,
     earlierOnly: !!tournament?.rescheduleEarlierOnly,
+    maxHoursLater: matchData?.rescheduleMaxHoursLater ?? null,
   });
 
   const describeRescheduleViolation = (
@@ -898,6 +900,7 @@ function MyTeamView() {
     settings: ReturnType<typeof getRescheduleSettings>,
   ): string => {
     if (violation === 'earlier-only') return 'Zgodnie z regulaminem mecz można przełożyć wyłącznie na termin wcześniejszy niż zaplanowany.';
+    if (violation === 'too-late') return `Mecz można przełożyć na dowolny wcześniejszy termin albo najwyżej ${settings.maxHoursLater} h później niż termin ustalony przez organizatora.`;
     if (violation === 'range') {
       const rangeLabel = settings.rangeDays === null ? 'nieograniczony' : `±${settings.rangeDays} dni`;
       return `Zmiana terminu jest dozwolona tylko w zakresie ${rangeLabel} od pierwotnej daty meczu.`;
@@ -917,8 +920,9 @@ function MyTeamView() {
       const matchSnap = await getDoc(matchRef);
       const matchData = matchSnap.data();
 
-      const originalDate = String(matchData?.scheduledFor || matchData?.scheduled_for || '');
-      const rescheduleSettings = getRescheduleSettings(matchData?.deadline);
+      // Anchored to the first scheduled time (kept on earlier requests), so limits can't be chained
+      const originalDate = String(matchData?.rescheduleRequest?.originalDate || matchData?.scheduledFor || matchData?.scheduled_for || '');
+      const rescheduleSettings = getRescheduleSettings(matchData);
 
       // If there is no admin-set date we skip the range/earlier-only checks (unscheduled matches)
       const violation = checkRescheduleProposal(originalDate, proposedDate, rescheduleSettings);
@@ -980,7 +984,7 @@ function MyTeamView() {
 
       const originalDate = String(matchData?.rescheduleRequest?.originalDate || matchData?.scheduledFor || matchData?.scheduled_for || '');
       const proposedDate = String(matchData?.rescheduleRequest?.proposedDate || '');
-      const rescheduleSettings = getRescheduleSettings(matchData?.deadline);
+      const rescheduleSettings = getRescheduleSettings(matchData);
 
       // Re-checked on approval: settings may have changed since the request was sent
       const violation = proposedDate ? checkRescheduleProposal(originalDate, proposedDate, rescheduleSettings) : 'range';

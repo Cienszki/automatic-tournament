@@ -291,7 +291,8 @@ function RankingTable({
 
 interface TooltipState { x: number; y: number; entry: RankingEntry }
 
-export function RankingsView() {
+/** `embedded`: shown inside the stats hub, whose header already carries the title */
+export function RankingsView({ embedded = false }: { embedded?: boolean }) {
   const { theme } = useTournament();
   const isMobile = useIsMobile();
   const { data, loading } = useRankingsData();
@@ -318,7 +319,7 @@ export function RankingsView() {
 
   return (
     <div className="h-full w-full flex flex-col site-gutter py-4 overflow-hidden">
-      <div className="text-center mb-3 shrink-0">
+      {!embedded && <div className="text-center mb-3 shrink-0">
         <h2
           className="text-4xl md:text-6xl font-logik-extended-bold uppercase tracking-tight"
           style={{
@@ -339,7 +340,7 @@ export function RankingsView() {
             style={{ background: `linear-gradient(to left, transparent, ${primaryColor})` }}
           />
         </div>
-      </div>
+      </div>}
 
       {loading ? (
         <div className="flex-1 flex items-center justify-center">

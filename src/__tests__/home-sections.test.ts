@@ -4,10 +4,10 @@ import { getHomeSections, getHomeSectionIndex } from '@/context/HomeNavigationCo
 describe('getHomeSections', () => {
   it('includes optional sections only when they apply', () => {
     expect(getHomeSections({ pickemEnabled: true, hasTeam: true })).toEqual(
-      ['start', 'groups', 'schedule', 'teams', 'rankings', 'stats', 'pickem', 'my-team'],
+      ['start', 'groups', 'schedule', 'teams', 'stats', 'pickem', 'my-team'],
     );
     expect(getHomeSections({ pickemEnabled: false, hasTeam: false })).toEqual(
-      ['start', 'groups', 'schedule', 'teams', 'rankings', 'stats'],
+      ['start', 'groups', 'schedule', 'teams', 'stats'],
     );
   });
 });
@@ -18,13 +18,15 @@ describe('getHomeSectionIndex', () => {
       expect(getHomeSectionIndex('groups', { pickemEnabled })).toBe(1);
       expect(getHomeSectionIndex('playoffs', { pickemEnabled })).toBe(1);
       expect(getHomeSectionIndex('teams', { pickemEnabled })).toBe(3);
-      expect(getHomeSectionIndex('stats', { pickemEnabled })).toBe(5);
+      expect(getHomeSectionIndex('stats', { pickemEnabled })).toBe(4);
+      // Rankings is a view of the stats section now
+      expect(getHomeSectionIndex('rankings', { pickemEnabled })).toBe(4);
     }
   });
 
   it('moves "my team" up when Pick\'em is disabled', () => {
-    expect(getHomeSectionIndex('my-team', { pickemEnabled: true })).toBe(7);
-    expect(getHomeSectionIndex('my-team', { pickemEnabled: false })).toBe(6);
+    expect(getHomeSectionIndex('my-team', { pickemEnabled: true })).toBe(6);
+    expect(getHomeSectionIndex('my-team', { pickemEnabled: false })).toBe(5);
   });
 
   it('has no index for a disabled Pick\'em, unknown views or my-team without a team', () => {

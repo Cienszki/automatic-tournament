@@ -1,18 +1,8 @@
 "use client";
 
-import { RankingsView } from '@/components/tournament/RankingsView';
+import { HomeViewRedirect } from '@/components/tournament/HomeViewRedirect';
 
-/**
- * Standalone Rankings page — performance score leaderboards per role.
- * The RankingsView component handles its own data fetching and renders
- * the same 6 drag-scrollable tables as the home-page inline view.
- */
+/** Rankings are a view of the home page's stats section now; old links land there. */
 export default function RankingsPage() {
-  return (
-    <div className="min-h-screen w-full mt-14">
-      <div className="h-[calc(100vh-3.5rem)] w-full">
-        <RankingsView />
-      </div>
-    </div>
-  );
+  return <HomeViewRedirect view="rankings" />;
 }

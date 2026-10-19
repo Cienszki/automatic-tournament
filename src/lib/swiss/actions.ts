@@ -356,6 +356,22 @@ export async function saveDraftPairings(
   });
 }
 
+/** Persist the per-match times / reschedule limit of a draft (admin edits them in the preview). */
+export async function saveDraftScheduling(
+  tournamentId: string,
+  round: number,
+  scheduling: SwissRound['scheduling'],
+): Promise<void> {
+  await updateDoc(doc(db, 'tournaments', tournamentId, 'swissRounds', String(round)), { scheduling });
+}
+
+/** Start time of pairing `i` under the round's scheduling, or null when captains schedule it. */
+export function pairingStartTime(scheduling: SwissRound['scheduling'], i: number): string | null {
+  if (scheduling.mode !== 'fixed') return null;
+  const t = scheduling.times?.[i] || scheduling.fixedAt;
+  return t ? new Date(t).toISOString() : null;
+}
+
 /**
  * Turn a draft into real matches.
  *
@@ -384,15 +400,14 @@ export async function commitRound(input: {
   const winScore = gamesToWin(matchFormat);
   const bestOf = matchFormat === 'bo2' ? 2 : winScore * 2 - 1;
 
-  const scheduledFor =
-    scheduling.mode === 'fixed' && scheduling.fixedAt ? scheduling.fixedAt : null;
-  const schedulingStatus = scheduledFor ? 'confirmed' : 'unscheduled';
+  const maxHoursLater = scheduling.mode === 'fixed' ? scheduling.maxHoursLater ?? null : null;
 
   const persistedPairings: SwissRound['pairings'] = [];
   let byes = 0;
 
-  for (const p of pairings) {
+  for (const [i, p] of pairings.entries()) {
     const ref = doc(matchesRef);
+    const scheduledFor = pairingStartTime(scheduling, i);
     const teamA = teamsById[p.teamAId];
     const teamB = teamsById[p.teamBId];
 
@@ -455,8 +470,9 @@ export async function commitRound(input: {
         bestOf,
         status: 'scheduled',
         scheduledFor,
-        schedulingStatus,
+        schedulingStatus: scheduledFor ? 'confirmed' : 'unscheduled',
         schedulingMethod: scheduledFor ? 'admin-scheduled' : 'captain-scheduled',
+        ...(scheduledFor && maxHoursLater != null ? { rescheduleMaxHoursLater: maxHoursLater } : {}),
         ...(scheduling.mode === 'window' && scheduling.windowEnd
           ? { deadline: scheduling.windowEnd }
           : {}),

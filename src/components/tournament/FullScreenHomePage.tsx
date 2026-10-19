@@ -7,14 +7,14 @@ import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import { useTranslations } from 'next-intl';
 import { useSearchParams } from 'next/navigation';
-import { collection, getDocs, query, where, doc, getDoc } from 'firebase/firestore';
+import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useTournament, useTournamentType } from '@/context/TournamentContext';
 import { useAuth } from '@/context/AuthContext';
 import { usePDLData } from '@/hooks/usePDLData';
 import { useSnapScroll } from '@/hooks/useSnapScroll';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { useHomeNavigation, getHomeSections, getHomeSectionIndex, type HomeSectionKey } from '@/context/HomeNavigationContext';
+import { useHomeNavigation, getHomeSections, getHomeSectionIndex, STATS_VIEW_KEYS, type HomeSectionKey } from '@/context/HomeNavigationContext';
 import type { Match, Team, Player, PlayoffMatch } from '@/lib/definitions';
 import { organizationConfig } from '@/config/organization';
 
@@ -25,7 +25,6 @@ import { MatchdayCarousel } from '@/components/schedule/MatchdayCarousel';
 import { ChronologicalCarousel } from '@/components/schedule/ChronologicalCarousel';
 import { SwissRoundCarousel } from '@/components/schedule/SwissRoundCarousel';
 import { TeamsView } from '@/components/tournament/TeamsView';
-import { RankingsView } from '@/components/tournament/RankingsView';
 import { MirroredPlayoffBracket } from '@/components/playoffs/MirroredPlayoffBracket';
 import { SeasonPointsTable } from '@/components/playoffs/SeasonPointsTable';
 import { HeroVideo, type HeroVideoEdge } from '@/components/tournament/HeroVideo';
@@ -44,13 +43,8 @@ import {
 import { cn } from '@/lib/utils';
 import { PageAtmosphere } from '@/components/ui/PageAtmosphere';
 
-import {
-  StatsPageLayout,
-  type TournamentStatsData,
-  type PlayerStatsData,
-  type TeamStatsData,
-} from '@/components/stats/StatsContent';
-import { STATS_REDESIGNS } from '@/components/stats-lab/registry';
+// Stats hub: every stats view (rankings, records, games, match prep…) inside one section
+const StatsHub = dynamic(() => import('@/components/stats-hub/StatsHub'), { ssr: false });
 
 // Lazy-loaded My Team view (only rendered for captains)
 const MyTeamPage = dynamic(
@@ -120,7 +114,6 @@ const SECTION_LABELS: Record<HomeSectionKey, string> = {
   groups: 'Tabele',
   schedule: 'Terminarz',
   teams: 'Drużyny',
-  rankings: 'Rankingi',
   stats: 'Statystyki',
   pickem: 'Pick\'em',
   'my-team': 'Moja drużyna',
@@ -276,11 +269,6 @@ export function TournamentHomePage() {
   // Visibility driven by admin toggle on tournament config
   const playoffsActive = !!(tournament?.playoffs?.enabled && tournament?.playoffs?.playoffsVisible);
 
-  // ── Stats data ───
-  const [tournamentStats, setTournamentStats] = useState<TournamentStatsData | null>(null);
-  const [playerStats, setPlayerStats] = useState<PlayerStatsData[]>([]);
-  const [teamStats, setTeamStats] = useState<TeamStatsData[]>([]);
-
   const primaryColor = theme?.primaryColor || '#8B1538';
   // Sections shown for this tournament/user: a disabled Pick'em has no section,
   // "Moja drużyna" only for captains. Position = index in this list.
@@ -304,9 +292,8 @@ export function TournamentHomePage() {
   } = useSnapScroll({ totalSections: TOTAL_SECTIONS, cooldown: 150, transitionDuration: 300 });
 
   // ── Register with HomeNavigationContext so navbar can scroll here ───
-  const { registerGoToSection, selectedGroupId, setSelectedGroupId, highlightedTeamId, setHighlightedTeamId, section1View, setSection1View } = useHomeNavigation();
+  const { registerGoToSection, selectedGroupId, setSelectedGroupId, highlightedTeamId, setHighlightedTeamId, section1View, setSection1View, setStatsView } = useHomeNavigation();
   const searchParams = useSearchParams();
-  const StatsRedesign = STATS_REDESIGNS[Number(searchParams.get('stats')) - 1] ?? null;
 
   // Use a ref so the stable wrapper always calls the latest goToSection
   const goToSectionRef = useRef(goToSection);
@@ -340,6 +327,9 @@ export function TournamentHomePage() {
     const viewIndex = view ? getHomeSectionIndex(view, { pickemEnabled }) : undefined;
     if (view && viewIndex !== undefined) {
       if (view === 'groups' || view === 'playoffs') setSection1View(view);
+      // ?view=rankings (old links) and ?view=stats&sv=<id> open a view inside the stats hub
+      const statsView = STATS_VIEW_KEYS[view] ?? (view === 'stats' ? searchParams.get('sv') : null);
+      if (statsView) setStatsView(statsView);
       const timer = setTimeout(() => {
         stableGoToSection(viewIndex);
         if (group) setSelectedGroupId(group);
@@ -556,36 +546,6 @@ export function TournamentHomePage() {
     };
     load();
   }, [tournament?.id, isLeague]);
-
-  // Fetch stats
-  useEffect(() => {
-    let cancelled = false; // a late response for a previous tournament must not land here
-    const load = async () => {
-      if (!tournament?.id) return;
-      try {
-        const [tDoc, pSnap, tmSnap] = isLegacyTournament
-          ? await Promise.all([
-              getDoc(doc(db, 'tournamentStats', 'tournament-stats')),
-              getDocs(collection(db, 'playerStats')),
-              getDocs(collection(db, 'teamStats')),
-            ])
-          : await Promise.all([
-              getDoc(doc(db, 'tournaments', tournament.id, 'stats', 'tournament-stats')),
-              getDocs(collection(db, 'tournaments', tournament.id, 'playerStats')),
-              getDocs(collection(db, 'tournaments', tournament.id, 'teamStats')),
-            ]);
-        if (cancelled) return;
-        // No stats doc yet (new tournament) → clear, don't keep whatever was shown before
-        setTournamentStats(tDoc.exists() ? (tDoc.data() as TournamentStatsData) : null);
-        setPlayerStats(pSnap.docs.map(d => ({ playerId: d.id, ...d.data() } as PlayerStatsData)));
-        setTeamStats(tmSnap.docs.map(d => ({ teamId: d.id, ...d.data() } as TeamStatsData)));
-      } catch (err) {
-        console.error('Failed to load stats:', err);
-      }
-    };
-    load();
-    return () => { cancelled = true; };
-  }, [tournament?.id, isLegacyTournament]);
 
   if (!tournament) return null;
 
@@ -1116,32 +1076,14 @@ export function TournamentHomePage() {
         </FullScreenSection>
 
         {/* ═══════════════════════════════════════════════════════════
-            VIEW 5: Rankings
+            VIEW 5: Stats (rankings, match prep and the rest are views inside the hub)
            ═══════════════════════════════════════════════════════════ */}
-        <FullScreenSection isActive={currentSection === 4} isMobile={isMobile} id="home-section-4">
-          <RankingsView />
+        <FullScreenSection isActive={currentSection === sectionIndex('stats')} isMobile={isMobile} id={`home-section-${sectionIndex('stats')}`}>
+          <StatsHub active={currentSection === sectionIndex('stats')} />
         </FullScreenSection>
 
         {/* ═══════════════════════════════════════════════════════════
-            VIEW 6: Stats
-           ═══════════════════════════════════════════════════════════ */}
-        <FullScreenSection isActive={currentSection === 5} isMobile={isMobile} id="home-section-5">
-          {StatsRedesign ? (
-            // Prototype preview: /{slug}?stats=1..10 swaps in one of the stats redesigns
-            <StatsRedesign />
-          ) : (
-            <div className="h-full w-full overflow-y-auto text-white">
-              <StatsPageLayout
-                tournamentStats={tournamentStats}
-                playerStats={playerStats}
-                teamStats={teamStats}
-              />
-            </div>
-          )}
-        </FullScreenSection>
-
-        {/* ═══════════════════════════════════════════════════════════
-            VIEW 7: Pick'em (only when enabled — no "unavailable" placeholder view)
+            VIEW 6: Pick'em (only when enabled — no "unavailable" placeholder view)
            ═══════════════════════════════════════════════════════════ */}
         {pickemEnabled && (
           <FullScreenSection isActive={currentSection === sectionIndex('pickem')} isMobile={isMobile} id={`home-section-${sectionIndex('pickem')}`} allowOverflow>
@@ -1155,7 +1097,7 @@ export function TournamentHomePage() {
         )}
 
         {/* ═══════════════════════════════════════════════════════════
-            VIEW 8: My Team (captains only) — always the last section
+            VIEW 7: My Team (captains only) — always the last section
            ═══════════════════════════════════════════════════════════ */}
         {hasTeam && (
           <FullScreenSection isActive={currentSection === sectionIndex('my-team')} isMobile={isMobile} id={`home-section-${sectionIndex('my-team')}`}>

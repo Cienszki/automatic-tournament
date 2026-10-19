@@ -26,7 +26,7 @@ import { PDLStandinRequestSection } from './PDLStandinRequest';
 import { PDLCoachSection } from './PDLCoachSection';
 import { PDLMatchRules } from './PDLMatchRules';
 import { DraftPenaltyBanner } from '@/components/penalties/DraftPenaltyBanner';
-import { isEarlierThanOriginal } from '@/lib/reschedule-rules';
+import { isEarlierThanOriginal, isWithinHoursLater, latestAllowedTime } from '@/lib/reschedule-rules';
 
 interface PDLUpcomingMatchProps {
   match: Match;
@@ -183,7 +183,16 @@ export function PDLUpcomingMatch({
   // "Earlier only" (admin setting, per the rulebook): nothing after the original date.
   // Same day stays selectable — an earlier hour that day is allowed; the exact time is
   // checked below (proposalNotEarlier).
-  const earlierOnly = !!tournament?.rescheduleEarlierOnly && !!scheduledDate;
+  // Per-match limit set by the admin (Swiss rounds): any earlier time, or at most N hours later.
+  // It replaces "earlier only" for this match.
+  const maxHoursLater = scheduledDate && match.rescheduleMaxHoursLater != null ? match.rescheduleMaxHoursLater : null;
+  const latestAllowed = maxHoursLater != null ? latestAllowedTime(originalDateObj.toISOString(), maxHoursLater) : null;
+  if (latestAllowed) {
+    const lastDay = new Date(latestAllowed);
+    lastDay.setHours(23, 59, 0, 0);
+    if (!maxDate || lastDay < maxDate) maxDate = lastDay;
+  }
+  const earlierOnly = !!tournament?.rescheduleEarlierOnly && !!scheduledDate && maxHoursLater == null;
   if (earlierOnly) {
     const lastDay = new Date(originalDateObj);
     lastDay.setHours(23, 59, 0, 0);
@@ -214,9 +223,11 @@ export function PDLUpcomingMatch({
 
   const proposalNotEarlier = earlierOnly && !!selectedDate && isValidSelectedTime
     && !isEarlierThanOriginal(originalDateObj.toISOString(), new Date(`${selectedDate}T${selectedTime}`).toISOString());
+  const proposalTooLate = maxHoursLater != null && !!selectedDate && isValidSelectedTime
+    && !isWithinHoursLater(originalDateObj.toISOString(), new Date(`${selectedDate}T${selectedTime}`).toISOString(), maxHoursLater);
 
   const handleSubmitReschedule = async () => {
-    if (!selectedDate || !isValidSelectedTime || proposalNotEarlier) return;
+    if (!selectedDate || !isValidSelectedTime || proposalNotEarlier || proposalTooLate) return;
     if (!onRequestReschedule) return;
 
     // Convert local datetime to UTC ISO immediately so the stored proposedDate is
@@ -479,6 +490,13 @@ export function PDLUpcomingMatch({
                         Mecz można przełożyć wyłącznie na termin wcześniejszy niż {formattedDate}.
                       </span>
                     )}
+                    {latestAllowed && (
+                      <span className="block mt-1 text-amber-300/90">
+                        {maxHoursLater === 0
+                          ? `Mecz można przełożyć wyłącznie na termin wcześniejszy niż ${formatDatePL(originalDateObj.toISOString())}.`
+                          : `Mecz można przełożyć na dowolny wcześniejszy termin albo najpóźniej na ${formatDatePL(latestAllowed.toISOString())} (maks. ${maxHoursLater} h później).`}
+                      </span>
+                    )}
                   </p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <Input
@@ -500,6 +518,11 @@ export function PDLUpcomingMatch({
                       className="bg-white/5 border-white/10 text-white"
                     />
                   </div>
+                  {proposalTooLate && (
+                    <p className="text-xs text-red-400 font-logik">
+                      Wybrany termin jest późniejszy niż {latestAllowed ? formatDatePL(latestAllowed.toISOString()) : ''}.
+                    </p>
+                  )}
                   {proposalNotEarlier && (
                     <p className="text-xs text-red-400 font-logik">
                       Wybrany termin nie jest wcześniejszy niż obecny termin meczu.
@@ -509,7 +532,7 @@ export function PDLUpcomingMatch({
                     <Button
                       size="sm"
                       onClick={handleSubmitReschedule}
-                      disabled={!selectedDate || !isValidSelectedTime || proposalNotEarlier || loading}
+                      disabled={!selectedDate || !isValidSelectedTime || proposalNotEarlier || proposalTooLate || loading}
                       className="bg-pdl-crimson hover:bg-pdl-crimson/80 text-white"
                     >
                       {loading ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <CalendarRange className="w-4 h-4 mr-1" />}

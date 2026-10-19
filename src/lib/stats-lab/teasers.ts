@@ -69,6 +69,23 @@ export function buildFacts(model: Model): Fact[] {
   if (streak) f.push({ id: 'streak', page: 4, kicker: 'Passa', big: `${streak.bestWinStreak}`, title: streak.name, sub: 'wygranych gier z rzędu', player: streak, team: streak.team, heroId: streak.heroes[0]?.heroId, tone: 'brag' });
   const race = rankPlayers(model, 'score', 'total')[0];
   if (race) f.push({ id: 'race', page: 17, kicker: 'Wyścig sezonu', big: `${Math.round(race.value)}`, title: race.player.name, sub: 'punktów występu łącznie', player: race.player, team: race.player.team, heroId: race.player.heroes[0]?.heroId });
+  // Best hero duo (same team, ≥ 4 games together)
+  const duo = new Map<string, { a: number; b: number; n: number; w: number }>();
+  for (const g of model.games) for (const rad of [true, false]) {
+    const hs = g.perfs.filter(p => p.radiant === rad).map(p => p.heroId).sort((x, y) => x - y);
+    for (let i = 0; i < hs.length; i++) for (let j = i + 1; j < hs.length; j++) {
+      const k = `${hs[i]}-${hs[j]}`; const d = duo.get(k) ?? { a: hs[i], b: hs[j], n: 0, w: 0 };
+      d.n++; if (rad === g.radiantWin) d.w++; duo.set(k, d);
+    }
+  }
+  const bestDuo = [...duo.values()].filter(d => d.n >= 4).sort((x, y) => y.w / y.n - x.w / x.n || y.n - x.n)[0];
+  if (bestDuo) f.push({ id: 'duo', page: 12, kicker: 'Najlepszy duet', big: `${Math.round((bestDuo.w / bestDuo.n) * 100)}%`, title: `${heroName(bestDuo.a)} + ${heroName(bestDuo.b)}`, sub: `wygranych w ${bestDuo.n} wspólnych grach`, heroId: bestDuo.a, tone: 'brag' });
+  // First pick advantage
+  let fpN = 0; let fpW = 0;
+  for (const g of model.games) { const fp = [...g.pb].sort((a, b) => a[3] - b[3]).find(x => x[1]); if (!fp) continue; fpN++; if ((fp[2] === 0) === g.radiantWin) fpW++; }
+  if (fpN) f.push({ id: 'firstpick', page: 11, kicker: 'Pierwszy pick', big: `${Math.round((fpW / fpN) * 100)}%`, title: 'wygranych drużyny z pierwszym pickiem', sub: `${fpN} draftów` });
+  const lit = ach.reduce((n, a) => n + a.byTier.filter(Boolean).length, 0);
+  f.push({ id: 'achlit', page: 8, kicker: 'Osiągnięcia', big: `${lit}/${ach.length * 3}`, title: 'progów zdobytych', sub: 'brąz, srebro i złoto' });
   for (const e of BINGO_EVENTS.filter(x => x.tone === 'roast')) {
     const hits = e.find(model); const h = hits[hits.length - 1];
     if (!h) continue;

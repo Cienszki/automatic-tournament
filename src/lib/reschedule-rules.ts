@@ -1,7 +1,8 @@
 // src/lib/reschedule-rules.ts
 // Validation of captain reschedule requests against the tournament's reschedule settings
-// (Tournament.rescheduleRangeDays / rescheduleFinalDate / rescheduleEarlierOnly). Used when a
-// captain sends a request and again when the opponent approves it.
+// (Tournament.rescheduleRangeDays / rescheduleFinalDate / rescheduleEarlierOnly, and the per-match
+// Match.rescheduleMaxHoursLater). Used when a captain sends a request and again when the opponent
+// approves it.
 
 /** Proposed date within ±rangeDays calendar days of the reference date (null/undefined = unlimited). */
 export function isWithinRescheduleDays(
@@ -39,25 +40,46 @@ export function isEarlierThanOriginal(originalIso: string, proposedIso: string):
   return proposed.getTime() < original.getTime();
 }
 
+/** "At most N hours later" rule: the new time may be any earlier time, or up to `hours` after the original. */
+export function isWithinHoursLater(originalIso: string, proposedIso: string, hours: number): boolean {
+  const original = new Date(originalIso);
+  const proposed = new Date(proposedIso);
+  if (Number.isNaN(original.getTime()) || Number.isNaN(proposed.getTime())) return false;
+  return proposed.getTime() <= original.getTime() + hours * 3_600_000;
+}
+
+/** Latest time a match may be moved to under a per-match "hours later" limit. */
+export function latestAllowedTime(originalIso: string, hours: number): Date {
+  return new Date(new Date(originalIso).getTime() + hours * 3_600_000);
+}
+
 export interface RescheduleSettings {
   rangeDays: number | null | undefined;
   finalDate: string | null | undefined;
   earlierOnly: boolean;
+  /**
+   * Per-match limit set by the admin (Match.rescheduleMaxHoursLater): earlier is always fine,
+   * later by at most this many hours. Overrides `earlierOnly` for that match. null = no limit.
+   */
+  maxHoursLater?: number | null;
 }
 
-export type RescheduleViolation = 'range' | 'deadline' | 'earlier-only';
+export type RescheduleViolation = 'range' | 'deadline' | 'earlier-only' | 'too-late';
 
 /**
- * First rule a proposed date breaks, or null when it's allowed. Range and "earlier only" are
- * anchored to the original scheduled date and skipped when the match has none yet.
+ * First rule a proposed date breaks, or null when it's allowed. Range, "earlier only" and the
+ * hours-later limit are anchored to the original scheduled date and skipped when the match has
+ * none yet.
  */
 export function checkRescheduleProposal(
   originalIso: string,
   proposedIso: string,
-  { rangeDays, finalDate, earlierOnly }: RescheduleSettings,
+  { rangeDays, finalDate, earlierOnly, maxHoursLater }: RescheduleSettings,
 ): RescheduleViolation | null {
   const hasScheduledDate = !!originalIso;
-  if (hasScheduledDate && earlierOnly && !isEarlierThanOriginal(originalIso, proposedIso)) return 'earlier-only';
+  if (hasScheduledDate && maxHoursLater != null) {
+    if (!isWithinHoursLater(originalIso, proposedIso, maxHoursLater)) return 'too-late';
+  } else if (hasScheduledDate && earlierOnly && !isEarlierThanOriginal(originalIso, proposedIso)) return 'earlier-only';
   if (hasScheduledDate && !isWithinRescheduleDays(originalIso, proposedIso, rangeDays)) return 'range';
   if (!isBeforeFinalDeadline(proposedIso, finalDate)) return 'deadline';
   return null;

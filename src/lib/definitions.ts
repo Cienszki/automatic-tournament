@@ -79,6 +79,8 @@ export interface Match {
   proposingCaptainId?: string;
   proposedById?: string;
   deadline?: string; // ISO date — deadline by which the match must be played
+  /** Admin-set (Swiss rounds): captains may move the match to any earlier time, or at most this many hours later */
+  rescheduleMaxHoursLater?: number | null;
   game_ids?: number[]; // This now holds the IDs of the individual games
   completed_at?: string;
   series_format?: 'bo1' | 'bo2' | 'bo3' | 'bo5'; // Series format (BO2 for groups, BO1/BO3/BO5 for playoffs)
