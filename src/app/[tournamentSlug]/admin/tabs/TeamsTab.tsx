@@ -260,9 +260,9 @@ export function TeamsTab() {
     if (!tournament?.id) return;
     setIsSyncingAvatars(true);
     try {
-      const res = await fetch('/api/admin/sync-steam-avatars', {
+      const res = await fetch('/api/manage/sync-steam-avatars', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${await user?.getIdToken()}` },
         body: JSON.stringify({ tournamentId: tournament.id }),
       });
       const data = await res.json();
@@ -295,7 +295,7 @@ export function TeamsTab() {
     try {
       const res = await fetch('/api/player-heroes', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${await user?.getIdToken()}` },
         body: JSON.stringify({ tournamentId: tournament.id, refreshAll: true }),
       });
       const data = await res.json();
@@ -599,7 +599,7 @@ export function TeamsTab() {
     try {
       setIsBanning(true);
       const token = await user.getIdToken();
-      const res = await fetch('/api/admin/ban-team', {
+      const res = await fetch('/api/manage/ban-team', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
@@ -635,7 +635,7 @@ export function TeamsTab() {
     setIsGeneratingCode(true);
     try {
       const token = await user.getIdToken();
-      const res = await fetch('/api/admin/captain-change-code', {
+      const res = await fetch('/api/manage/captain-change-code', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ tournamentId: tournament.id, teamId: team.id }),

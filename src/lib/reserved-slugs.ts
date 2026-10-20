@@ -41,7 +41,7 @@ export const RESERVED_SLUGS: ReadonlySet<string> = new Set([
   'sw.js', 'opengraph-image', 'apple-icon.png',
 
   // --- Public asset folders and root files (both apps) ---
-  'images', 'ranks', 'backgrounds', 'icons', 'logos',
+  'images', 'ranks', 'backgrounds', 'icons', 'logos', 'stats-lab',
   'pd2ih_logo.png', 'ih.png', 'dc_logo.png', 'twitch_logo.png',
   'main_logo2.png', 'placeholder-team.svg', 'logo_transparent.webp',
 

@@ -185,7 +185,7 @@ export function MatchesTab() {
     try {
       setLoadingSkipped(true);
       const token = await user.getIdToken();
-      const res = await fetch(`/api/admin/pdl/skipped-games?tournamentId=${tournament.id}`, {
+      const res = await fetch(`/api/manage/pdl/skipped-games?tournamentId=${tournament.id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
@@ -204,7 +204,7 @@ export function MatchesTab() {
     setIsAddingSkipped(true);
     try {
       const token = await user.getIdToken();
-      const res = await fetch('/api/admin/pdl/skipped-games', {
+      const res = await fetch('/api/manage/pdl/skipped-games', {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -235,7 +235,7 @@ export function MatchesTab() {
     setRemovingSkippedId(gameId);
     try {
       const token = await user.getIdToken();
-      const res = await fetch('/api/admin/pdl/skipped-games', {
+      const res = await fetch('/api/manage/pdl/skipped-games', {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ tournamentId: tournament.id, gameId }),
@@ -394,7 +394,7 @@ export function MatchesTab() {
 
     try {
       const token = await user.getIdToken();
-      const res = await fetch('/api/admin/pdl/preview-game', {
+      const res = await fetch('/api/manage/pdl/preview-game', {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ tournamentId: tournament.id, openDotaGameId: Number(numericId) }),
@@ -428,7 +428,7 @@ export function MatchesTab() {
     setIsForceImporting(true);
     try {
       const token = await user.getIdToken();
-      const res = await fetch('/api/admin/pdl/force-import-game', {
+      const res = await fetch('/api/manage/pdl/force-import-game', {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -492,7 +492,7 @@ export function MatchesTab() {
       // 1a. Recalculate division standings (league/PDL tournaments only)
       let standingsData: { success: boolean; error?: string } = { success: true };
       if (isLeague) {
-        const standingsRes = await fetch('/api/admin/pdl/recalculate-standings', {
+        const standingsRes = await fetch('/api/manage/pdl/recalculate-standings', {
           method: 'POST',
           headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
           body: JSON.stringify({ tournamentId: tournament.id }),
@@ -511,7 +511,7 @@ export function MatchesTab() {
       // 2. Recalculate player/team stats
       const statsRes = await fetch('/api/stats/recalculate', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${await user?.getIdToken()}` },
         body: JSON.stringify({ tournamentId: tournament.id }),
       });
       const statsData = await statsRes.json().catch(() => ({ success: false, message: 'Invalid response (timeout?)' }));
@@ -551,7 +551,7 @@ export function MatchesTab() {
 
     try {
       const token = await user.getIdToken();
-      const response = await fetch('/api/admin/pdl/sync-matches', {
+      const response = await fetch('/api/manage/pdl/sync-matches', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -760,7 +760,7 @@ export function MatchesTab() {
     setDeletingGameId(gameId);
     try {
       const token = await user.getIdToken();
-      const resp = await fetch('/api/admin/pdl/delete-game', {
+      const resp = await fetch('/api/manage/pdl/delete-game', {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
@@ -805,7 +805,7 @@ export function MatchesTab() {
     setIsRevertingForfeit(true);
     try {
       const token = await user.getIdToken();
-      const resp = await fetch('/api/admin/pdl/revert-forfeit', {
+      const resp = await fetch('/api/manage/pdl/revert-forfeit', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -864,7 +864,7 @@ export function MatchesTab() {
     setIsForceScheduling(true);
     try {
       const token = await user.getIdToken();
-      const resp = await fetch('/api/admin/pdl/force-schedule-match', {
+      const resp = await fetch('/api/manage/pdl/force-schedule-match', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
@@ -903,7 +903,7 @@ export function MatchesTab() {
     try {
       const token = await user.getIdToken();
       const gameNumbers = forfeitScope === 'series' ? [] : forfeitedGames;
-      const resp = await fetch('/api/admin/pdl/forfeit-match', {
+      const resp = await fetch('/api/manage/pdl/forfeit-match', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -1,5 +1,6 @@
 // src/app/api/rankings/recalculate/route.ts
 import { NextRequest, NextResponse } from 'next/server';
+import { requireAdmin } from '@/server/lib/require-admin';
 
 export async function POST(req: NextRequest) {
   try {
@@ -12,6 +13,9 @@ export async function POST(req: NextRequest) {
         { status: 400 },
       );
     }
+
+    const caller = await requireAdmin(req, tournamentId);
+    if (caller instanceof NextResponse) return caller;
 
     const { recalculatePerformanceRankings } = await import('@/lib/performance-rankings-calculator');
     await recalculatePerformanceRankings(tournamentId);

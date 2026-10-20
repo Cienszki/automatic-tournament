@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useTournament } from '@/context/TournamentContext';
+import { useAuth } from '@/context/AuthContext';
 import { Card, CardHeader, CardContent, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -36,6 +37,7 @@ interface StatsMeta {
  */
 export function StatsTab() {
   const { tournament, theme, isLegacyTournament } = useTournament();
+  const { user } = useAuth();
   const { toast } = useToast();
 
   const [meta, setMeta] = useState<StatsMeta>({
@@ -93,7 +95,7 @@ export function StatsTab() {
     try {
       const response = await fetch('/api/stats/recalculate', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${await user?.getIdToken()}` },
         body: JSON.stringify(isLegacyTournament ? {} : { tournamentId: tournament?.id }),
       });
 
@@ -125,7 +127,7 @@ export function StatsTab() {
     try {
       const response = await fetch('/api/rankings/recalculate', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${await user?.getIdToken()}` },
         body: JSON.stringify({ tournamentId: tournament.id }),
       });
       const result = await response.json();
@@ -151,7 +153,7 @@ export function StatsTab() {
     try {
       const response = await fetch('/api/player-heroes', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${await user?.getIdToken()}` },
         body: JSON.stringify({ tournamentId: tournament.id, refreshAll: true }),
       });
       const result = await response.json();

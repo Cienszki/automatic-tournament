@@ -16,7 +16,7 @@ export const BUNNY_STATUS = {
 
 export type BunnyEncodeState = 'processing' | 'ready' | 'failed';
 
-/** What GET /api/admin/hero-video returns. */
+/** What GET /api/manage/hero-video returns. */
 export interface HeroVideoStatus {
   state: BunnyEncodeState;
   /** 0–100 while processing. */

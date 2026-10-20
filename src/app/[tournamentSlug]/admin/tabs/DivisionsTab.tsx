@@ -938,7 +938,7 @@ export function DivisionsTab() {
               setIsRecalculatingStandings(true);
               try {
                 const token = await user.getIdToken();
-                const res = await fetch('/api/admin/pdl/recalculate-standings', {
+                const res = await fetch('/api/manage/pdl/recalculate-standings', {
                   method: 'POST',
                   headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
                   body: JSON.stringify({ tournamentId: tournament.id }),

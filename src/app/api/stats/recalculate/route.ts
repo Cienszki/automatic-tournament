@@ -2,11 +2,16 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { recalculateAllStats } from '@/lib/stats-service-simple';
+import { requireAdmin } from '@/server/lib/require-admin';
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json().catch(() => ({}));
     const tournamentId: string | undefined = body.tournamentId;
+
+    // Without a tournament this recalculates the legacy root collections — super admins only
+    const caller = await requireAdmin(request, tournamentId);
+    if (caller instanceof NextResponse) return caller;
 
     console.log(`Starting manual stats recalculation${tournamentId ? ` for tournament ${tournamentId}` : ''}...`);
     

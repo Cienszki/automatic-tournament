@@ -10,7 +10,7 @@ import type { HeroVideoStatus } from '@/lib/bunny-renditions';
 type GetToken = () => Promise<string>;
 
 async function api<T>(getToken: GetToken, init: RequestInit & { query?: string } = {}): Promise<T> {
-  const res = await fetch(`/api/admin/hero-video${init.query ?? ''}`, {
+  const res = await fetch(`/api/manage/hero-video${init.query ?? ''}`, {
     ...init,
     headers: { Authorization: `Bearer ${await getToken()}`, 'Content-Type': 'application/json', ...init.headers },
   });

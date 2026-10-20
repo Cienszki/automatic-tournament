@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ensureAdminInitialized, getAdminDb } from '@/lib/admin';
 import { checkRateLimit, LIMIT_ADMIN_SYNC } from '@/lib/rate-limit';
+import { requireAdmin } from '@/server/lib/require-admin';
 
 interface OpenDotaHeroStat {
   hero_id: string;
@@ -79,6 +80,9 @@ export async function POST(request: NextRequest) {
 
     // ── Refresh all players in tournament (admin action) ──
     if (body.tournamentId && body.refreshAll) {
+      const caller = await requireAdmin(request, String(body.tournamentId));
+      if (caller instanceof NextResponse) return caller;
+
       const rateLimitRes = checkRateLimit(request, 'player-heroes-refresh', LIMIT_ADMIN_SYNC);
       if (rateLimitRes) return rateLimitRes;
 

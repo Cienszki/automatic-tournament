@@ -167,7 +167,7 @@ export function BotTab(): React.ReactElement {
 
     const loadConfig = async (): Promise<void> => {
       try {
-        const res = await fetch(`/api/admin/bot/config?tournamentId=${tournament.id}`, {
+        const res = await fetch(`/api/manage/bot/config?tournamentId=${tournament.id}`, {
           headers: {
             Authorization: `Bearer ${await user?.getIdToken()}`,
           },
@@ -197,7 +197,7 @@ export function BotTab(): React.ReactElement {
 
     try {
       const token = await user.getIdToken();
-      const res = await fetch('/api/admin/bot/config', {
+      const res = await fetch('/api/manage/bot/config', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -229,10 +229,10 @@ export function BotTab(): React.ReactElement {
     try {
       const token = await user.getIdToken();
       const [sessionsRes, poolRes] = await Promise.all([
-        fetch(`/api/admin/bot/sessions?tournamentId=${tournament.id}`, {
+        fetch(`/api/manage/bot/sessions?tournamentId=${tournament.id}`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
-        fetch('/api/admin/bot/pool-status', {
+        fetch('/api/manage/bot/pool-status', {
           headers: { Authorization: `Bearer ${token}` },
         }),
       ]);
@@ -265,7 +265,7 @@ export function BotTab(): React.ReactElement {
     setIsLoadingAccounts(true);
     try {
       const token = await user.getIdToken();
-      const res = await fetch('/api/admin/bot/accounts', {
+      const res = await fetch('/api/manage/bot/accounts', {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
@@ -291,7 +291,7 @@ export function BotTab(): React.ReactElement {
     setAddAccountError(null);
     try {
       const token = await user.getIdToken();
-      const res = await fetch('/api/admin/bot/accounts', {
+      const res = await fetch('/api/manage/bot/accounts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
@@ -325,7 +325,7 @@ export function BotTab(): React.ReactElement {
     setTogglingAccountId(id);
     try {
       const token = await user.getIdToken();
-      await fetch(`/api/admin/bot/accounts/${id}`, {
+      await fetch(`/api/manage/bot/accounts/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ enabled }),
@@ -362,7 +362,7 @@ export function BotTab(): React.ReactElement {
       if (editPassword.trim()) {
         body.password = editPassword.trim();
       }
-      const res = await fetch(`/api/admin/bot/accounts/${editingAccount.id}`, {
+      const res = await fetch(`/api/manage/bot/accounts/${editingAccount.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify(body),
@@ -393,7 +393,7 @@ export function BotTab(): React.ReactElement {
     setForceResult(null);
     try {
       const token = await user.getIdToken();
-      const res = await fetch('/api/admin/bot/sessions', {
+      const res = await fetch('/api/manage/bot/sessions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
@@ -422,7 +422,7 @@ export function BotTab(): React.ReactElement {
     setOrchestrateResult(null);
     try {
       const token = await user.getIdToken();
-      const res = await fetch('/api/admin/bot/orchestrate', {
+      const res = await fetch('/api/manage/bot/orchestrate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ tournamentId: tournament.id }),
@@ -452,7 +452,7 @@ export function BotTab(): React.ReactElement {
     setDeletingAccountId(id);
     try {
       const token = await user.getIdToken();
-      await fetch(`/api/admin/bot/accounts/${id}`, {
+      await fetch(`/api/manage/bot/accounts/${id}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -471,7 +471,7 @@ export function BotTab(): React.ReactElement {
     setIsLoadingWhitelist(true);
     try {
       const token = await user.getIdToken();
-      const res = await fetch(`/api/admin/bot/whitelist?tournamentId=${tournament.id}`, {
+      const res = await fetch(`/api/manage/bot/whitelist?tournamentId=${tournament.id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
@@ -497,7 +497,7 @@ export function BotTab(): React.ReactElement {
     setWhitelistError(null);
     try {
       const token = await user.getIdToken();
-      const res = await fetch('/api/admin/bot/whitelist', {
+      const res = await fetch('/api/manage/bot/whitelist', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
@@ -526,7 +526,7 @@ export function BotTab(): React.ReactElement {
     setRemovingWhitelistId(steamId32);
     try {
       const token = await user.getIdToken();
-      await fetch('/api/admin/bot/whitelist', {
+      await fetch('/api/manage/bot/whitelist', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ tournamentId: tournament.id, steamId32 }),

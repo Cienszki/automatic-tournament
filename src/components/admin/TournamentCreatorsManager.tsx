@@ -77,7 +77,7 @@ export function TournamentCreatorsManager() {
     if (!isSuperAdmin) { setLoading(false); return; }
     setLoading(true);
     try {
-      const res = await authedFetch('/api/admin/tournament-creators');
+      const res = await authedFetch('/api/manage/tournament-creators');
       const data = await res.json();
       setCreators(data.creators ?? []);
     } catch (err) {
@@ -97,7 +97,7 @@ export function TournamentCreatorsManager() {
     setSearchError('');
     setFound(null);
     try {
-      const res = await authedFetch('/api/admin/search-user', {
+      const res = await authedFetch('/api/manage/search-user', {
         method: 'POST',
         body: JSON.stringify({ email: email.trim() }),
       });
@@ -119,7 +119,7 @@ export function TournamentCreatorsManager() {
     }
     setBusy('grant');
     try {
-      const res = await authedFetch('/api/admin/tournament-creators', {
+      const res = await authedFetch('/api/manage/tournament-creators', {
         method: 'POST',
         body: JSON.stringify({ uid: found.uid }),
       });
@@ -146,7 +146,7 @@ export function TournamentCreatorsManager() {
     setBusy(entry.uid);
     try {
       const res = await authedFetch(
-        `/api/admin/tournament-creators?uid=${encodeURIComponent(entry.uid)}`,
+        `/api/manage/tournament-creators?uid=${encodeURIComponent(entry.uid)}`,
         { method: 'DELETE' }
       );
       if (!res.ok) throw new Error('failed');

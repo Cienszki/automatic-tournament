@@ -346,7 +346,7 @@ export function GeneralTab() {
     
     try {
       const token = await user.getIdToken();
-      const response = await fetch(`/api/admin/tournament-admins?tournamentId=${tournament.id}`, {
+      const response = await fetch(`/api/manage/tournament-admins?tournamentId=${tournament.id}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -372,7 +372,7 @@ export function GeneralTab() {
     
     try {
       const token = await user.getIdToken();
-      const response = await fetch('/api/admin/search-user', {
+      const response = await fetch('/api/manage/search-user', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -409,7 +409,7 @@ export function GeneralTab() {
     
     try {
       const token = await user.getIdToken();
-      const response = await fetch('/api/admin/tournament-admins', {
+      const response = await fetch('/api/manage/tournament-admins', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -449,7 +449,7 @@ export function GeneralTab() {
     try {
       const token = await user.getIdToken();
       const response = await fetch(
-        `/api/admin/tournament-admins?tournamentId=${tournament.id}&userId=${adminUid}`,
+        `/api/manage/tournament-admins?tournamentId=${tournament.id}&userId=${adminUid}`,
         {
           method: 'DELETE',
           headers: {

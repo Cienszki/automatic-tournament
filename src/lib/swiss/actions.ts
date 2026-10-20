@@ -377,7 +377,7 @@ export function pairingStartTime(scheduling: SwissRound['scheduling'], i: number
  *
  * Bye matches are written already-completed with a `forfeit` record and
  * `isSwissByeMatch`, in the same batch as everything else. Going through
- * /api/admin/pdl/forfeit-match instead would cost a round trip per bye and would
+ * /api/manage/pdl/forfeit-match instead would cost a round trip per bye and would
  * trigger that route's league-only standings recalculation.
  */
 export async function commitRound(input: {
