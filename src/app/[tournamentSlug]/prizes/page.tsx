@@ -248,6 +248,14 @@ export default function PrizesPage() {
           <div className="flex items-center justify-center py-20">
             <Loader2 className="h-10 w-10 animate-spin" style={{ color: theme.primaryColor }} />
           </div>
+        ) : !tournament.prizesEnabled ? (
+          // Prizes switched off (no navbar link either) — only reachable by a direct link
+          <div className="text-center py-20 px-4">
+            <Trophy className="h-16 w-16 mx-auto mb-4 opacity-20" style={{ color: theme.mutedTextColor }} />
+            <p className="text-lg font-semibold" style={{ color: theme.headingColor }}>
+              W tym turnieju nie ma nagród
+            </p>
+          </div>
         ) : (tournament as any).prizesDisplayMode === 'image' && (tournament as any).prizesImageUrl ? (
           <motion.div
             initial={{ opacity: 0, y: 20 }}

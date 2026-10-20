@@ -212,6 +212,9 @@ export async function createTournament(data: {
       },
     },
     
+    // The organiser switches prizes on in the Nagrody tab once there are any
+    prizesEnabled: false,
+
     pickem: {
       // Pick'em predicts a known schedule; Swiss round N+1 does not exist until
       // round N completes, so there is nothing to predict.

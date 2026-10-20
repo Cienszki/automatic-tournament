@@ -77,7 +77,7 @@ const DEFAULT_FORM: PrizeFormData = {
  * PrizesTab – admin panel for managing tournament prizes
  */
 export function PrizesTab() {
-  const { tournament, theme } = useTournament();
+  const { tournament, theme, refetchTournament } = useTournament();
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -93,6 +93,8 @@ export function PrizesTab() {
   const [imageUrl, setImageUrl] = useState('');
   const [isSavingSettings, setIsSavingSettings] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [isTogglingEnabled, setIsTogglingEnabled] = useState(false);
+  const prizesEnabled = !!tournament?.prizesEnabled;
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -195,6 +197,25 @@ export function PrizesTab() {
     }
   };
 
+  /** Prizes on/off: the prizes page and its navbar link. Saved straight away. */
+  const handleToggleEnabled = async (enabled: boolean) => {
+    if (!tournament?.id) return;
+    setIsTogglingEnabled(true);
+    try {
+      await updateDoc(doc(db, 'tournaments', tournament.id), { prizesEnabled: enabled });
+      await refetchTournament();
+      toast({
+        title: enabled ? 'Nagrody włączone' : 'Nagrody wyłączone',
+        description: enabled ? 'Zakładka Nagrody jest widoczna w menu turnieju.' : 'Zakładka Nagrody zniknęła z menu turnieju.',
+      });
+    } catch (error) {
+      console.error('Error toggling prizes:', error);
+      toast({ title: 'Błąd', description: 'Nie udało się zmienić ustawienia nagród', variant: 'destructive' });
+    } finally {
+      setIsTogglingEnabled(false);
+    }
+  };
+
   const handleSaveSettings = async () => {
     if (!tournament?.id) return;
     setIsSavingSettings(true);
@@ -233,6 +254,36 @@ export function PrizesTab() {
 
   return (
     <div className="space-y-6">
+      {/* On / off */}
+      <Card style={{ backgroundColor: theme.cardColor, borderColor: theme.borderColor }}>
+        <CardContent className="py-5">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <Gift className="h-6 w-6 flex-shrink-0" style={{ color: prizesEnabled ? theme.primaryColor : theme.mutedTextColor }} />
+              <div>
+                <Label htmlFor="prizes-enabled" className="text-base font-semibold" style={{ color: theme.headingColor }}>
+                  Nagrody w turnieju
+                </Label>
+                <p className="text-sm mt-0.5" style={{ color: theme.mutedTextColor }}>
+                  {prizesEnabled
+                    ? 'Włączone — zakładka Nagrody jest widoczna w menu turnieju.'
+                    : 'Wyłączone — zakładka Nagrody jest ukryta. Możesz przygotować nagrody poniżej i włączyć je później.'}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              {isTogglingEnabled && <Loader2 className="h-4 w-4 animate-spin" style={{ color: theme.mutedTextColor }} />}
+              <Switch
+                id="prizes-enabled"
+                checked={prizesEnabled}
+                disabled={isTogglingEnabled}
+                onCheckedChange={handleToggleEnabled}
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Display Mode Settings */}
       <Card style={{ backgroundColor: theme.cardColor, borderColor: theme.borderColor }}>
         <CardHeader>

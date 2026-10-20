@@ -282,6 +282,7 @@ export function TournamentNavbar() {
     ) return false;
     if (item.href === '/fantasy' && !tournament.fantasy?.enabled) return false;
     if (item.href === '/pickem' && !tournament.pickem?.enabled) return false;
+    if (item.href === '/prizes' && !tournament.prizesEnabled) return false;
     return true;
   });
 
@@ -574,19 +575,21 @@ export function TournamentNavbar() {
                   </Link>
                 </Button>
 
-                {/* Prizes */}
-                <Button
-                  variant="ghost"
-                  asChild
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className="w-full justify-start text-base py-3 px-3"
-                  style={{ color: isActive('/prizes') ? theme.primaryColor : navTextColor }}
-                >
-                  <Link href={getTournamentPath('/prizes')} className="flex items-center">
-                    <Gift className="h-5 w-5 mr-3" />
-                    <span>Nagrody</span>
-                  </Link>
-                </Button>
+                {/* Prizes — only when the organiser gives any */}
+                {tournament.prizesEnabled && (
+                  <Button
+                    variant="ghost"
+                    asChild
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="w-full justify-start text-base py-3 px-3"
+                    style={{ color: isActive('/prizes') ? theme.primaryColor : navTextColor }}
+                  >
+                    <Link href={getTournamentPath('/prizes')} className="flex items-center">
+                      <Gift className="h-5 w-5 mr-3" />
+                      <span>Nagrody</span>
+                    </Link>
+                  </Button>
+                )}
 
                 {/* Admin — only for admins */}
                 {isAdmin && (
@@ -912,8 +915,8 @@ export function TournamentNavbar() {
               );
             })()}
 
-            {/* ── Prizes — full-page link ───────────────────────── */}
-            {(() => {
+            {/* ── Prizes — full-page link, only when the organiser gives any ── */}
+            {tournament.prizesEnabled && (() => {
               const active = isActive('/prizes');
               return (
                 <a

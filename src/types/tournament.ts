@@ -526,6 +526,9 @@ export interface TournamentConfig {
 
   // Navbar sponsor section
   navbarSponsor?: NavbarSponsorConfig;
+
+  /** Prizes page and its navbar link (admin: Nagrody tab). Off unless the organiser switches it on. */
+  prizesEnabled?: boolean;
   
   // Metadata
   createdAt: string;
