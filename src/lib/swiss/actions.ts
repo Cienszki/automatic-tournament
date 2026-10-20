@@ -62,6 +62,10 @@ export interface SwissRoundMatch {
   status: string;
   scheduledFor?: string | null;
   isBye: boolean;
+  /** LAN-qualifier format: group, GSL slot / 'tb', and the winner as stored on the match. */
+  stage?: 'A' | 'B' | 'F' | 'P';
+  slot?: string | null;
+  winnerId?: string | null;
 }
 
 /** Games the winner needs, and therefore the walkover score, for a format. */
@@ -128,6 +132,8 @@ export async function loadSwissMatches(
         status: m.status ?? 'scheduled',
         scheduledFor: m.scheduledFor ?? null,
         isBye: isSwissByeTeam(teamAId) || isSwissByeTeam(teamBId),
+        ...(m.lanStage ? { stage: m.lanStage, slot: m.lanSlot ?? undefined } : {}),
+        winnerId: m.winnerId ?? null,
       };
     })
     .sort((a, b) => a.round - b.round);
@@ -352,6 +358,7 @@ export async function saveDraftPairings(
       teamBId: p.teamBId,
       matchId: '',
       isBye: p.isBye,
+      ...(p.stage ? { stage: p.stage, slot: p.slot ?? null } : {}),
     })),
   });
 }
@@ -411,6 +418,8 @@ export async function commitRound(input: {
     const teamA = teamsById[p.teamAId];
     const teamB = teamsById[p.teamBId];
 
+    // LAN-qualifier format: the group and GSL slot travel with the match.
+    const lan = p.stage ? { lanStage: p.stage, lanSlot: p.slot ?? null } : {};
     const side = (id: string, t: SwissTeam | undefined, score: number) => ({
       id,
       name: t?.name ?? (isSwissByeTeam(id) ? 'BYE' : id),
@@ -453,6 +462,7 @@ export async function commitRound(input: {
         },
         // Keeps walkovers out of schedule views, mirroring `isBanForfeit`.
         isSwissByeMatch: true,
+        ...lan,
         createdAt: now,
         updatedAt: now,
       });
@@ -479,6 +489,7 @@ export async function commitRound(input: {
         game_ids: [],
         result: null,
         winner: null,
+        ...lan,
         createdAt: now,
         updatedAt: now,
       });
@@ -489,6 +500,7 @@ export async function commitRound(input: {
       teamBId: p.teamBId,
       matchId: ref.id,
       isBye: p.isBye,
+      ...(p.stage ? { stage: p.stage, slot: p.slot ?? null } : {}),
     });
   }
 

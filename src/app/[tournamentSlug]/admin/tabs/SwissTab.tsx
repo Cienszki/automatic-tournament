@@ -45,6 +45,12 @@ import {
   markRoundComplete, forceMatchResult,
   type SwissTeam, type SwissRoundMatch,
 } from '@/lib/swiss/actions';
+import { derive as deriveLan, plan as planLan } from '@/lib/lan-qualifier/engine';
+import {
+  lanConfig, lanDecisions, toLQMatches, foreignMatches, generateLanDraft,
+  saveSwissFormat, saveGroupA, saveTiebreakDecision,
+} from '@/lib/lan-qualifier/actions';
+import { FormatCard, GroupACard, TiebreakCard, LanStatusCard, lanPairingLabel } from './swiss/LanQualifierCards';
 
 const MATCH_FORMATS: { value: MatchFormat; label: string; maxPoints: number }[] = [
   { value: 'bo1', label: 'BO1', maxPoints: 1 },
@@ -107,6 +113,10 @@ export function SwissTab() {
   // Older Swiss docs predate these settings; seeding defaults on, band off.
   const useMmrSeeding = tournament?.swiss?.useMmrSeeding ?? true;
   const pairingBand = tournament?.swiss?.pairingBand ?? null;
+  // LAN-qualifier format: rounds come from src/lib/lan-qualifier/engine.ts instead of the
+  // map-points pairer; everything else (drafts, times, commit, results, forfeits) is shared.
+  const isLan = tournament?.swiss?.format === 'lan-qualifier';
+  const lq = tournament?.swiss?.lanQualifier ?? null;
 
   const reload = useCallback(async () => {
     if (!tournament?.id) return;
@@ -129,6 +139,7 @@ export function SwissTab() {
       if (storedDraft) {
         setDraftPairings(storedDraft.pairings.map(p => ({
           teamAId: p.teamAId, teamBId: p.teamBId, isBye: p.isBye,
+          ...(p.stage ? { stage: p.stage, slot: p.slot ?? null } : {}),
         })));
         setMatchFormat(storedDraft.matchFormat);
         setSchedulingMode(storedDraft.scheduling.mode);
@@ -172,6 +183,25 @@ export function SwissTab() {
 
   const standings = useMemo(() => buildStandings(teams, matches, true), [teams, matches]);
 
+  const lanCfg = useMemo(() => lanConfig(teams, lq), [teams, lq]);
+  const lqMatches = useMemo(() => toLQMatches(matches), [matches]);
+  const lanDecs = useMemo(() => lanDecisions(lq), [lq]);
+  const lanDerived = useMemo(() => (isLan ? deriveLan(lanCfg, lqMatches, lanDecs) : null), [isLan, lanCfg, lqMatches, lanDecs]);
+  /** Matches from rounds played in the standard format (they must be withdrawn before the switch). */
+  const foreign = useMemo(() => foreignMatches(matches), [matches]);
+  /** Series record of a team inside a stage of the format ('A'/'F': GSL group; 'B'/'P': carried Swiss). */
+  const lanRecordOf = (id: string, stage?: string) => {
+    let w = 0;
+    let l = 0;
+    for (const m of lqMatches) {
+      if (!m.done) continue;
+      const inStage = stage === 'A' || stage === 'F' ? m.stage === stage : m.stage === 'B' || m.stage === 'P';
+      if (!inStage || (m.a !== id && m.b !== id)) continue;
+      if (m.winner === id || (!m.b && m.a === id)) w++; else l++;
+    }
+    return `${w}:${l}`;
+  };
+
   const seedOrder = useMemo(
     () => [...field].sort((a, b) => (b.seedMmr ?? -1) - (a.seedMmr ?? -1) || a.name.localeCompare(b.name)),
     [field]
@@ -198,6 +228,12 @@ export function SwissTab() {
   const nextRoundNumber = draftRound ? draftRound.round : lastRoundNumber + 1;
   const canGenerateNext =
     !draftRound && openMatchesInLatestRound.length === 0 && field.length >= 2;
+
+  /** What the engine says about the next round (shown when it cannot be generated). */
+  const lanNextPlan = useMemo(
+    () => (isLan && !draftRound && field.length >= 6 && foreign.length === 0
+      ? planLan(lanCfg, lqMatches, lanDecs, nextRoundNumber) : null),
+    [isLan, draftRound, field.length, foreign.length, lanCfg, lqMatches, lanDecs, nextRoundNumber]);
 
   const recommended = recommendedRounds(field.length);
   const rematchFreeCeiling = maxRoundsWithoutRematch(field.length);
@@ -346,6 +382,28 @@ export function SwissTab() {
       });
     });
 
+  const handleFormat = (format: 'standard' | 'lan-qualifier') =>
+    run('format', async () => {
+      if (!tournament?.id) return;
+      await saveSwissFormat(tournament.id, format);
+      await refetchTournament();
+      toast({ title: format === 'lan-qualifier' ? 'Format: kwalifikacje LAN' : 'Format: Swiss', description: 'Dotyczy rund generowanych od teraz.' });
+    });
+
+  const handleGroupA = async (ids: string[]) => {
+    if (!tournament?.id) return;
+    await saveGroupA(tournament.id, ids);
+    await refetchTournament();
+    toast({ title: 'Grupa A zapisana' });
+  };
+
+  const handleTiebreak = async (advanced: string[] | null) => {
+    if (!tournament?.id) return;
+    await saveTiebreakDecision(tournament.id, advanced, user?.uid ?? 'admin');
+    await refetchTournament();
+    toast({ title: advanced ? 'Decyzja zapisana' : 'Decyzja cofnięta', description: advanced ? 'Można wygenerować rundę z Finałem.' : undefined });
+  };
+
   const handleGenerate = () =>
     run('generate', async () => {
       if (!tournament?.id) return;
@@ -356,6 +414,36 @@ export function SwissTab() {
       }
       if (schedulingMode === 'window' && windowEnd < windowStart) {
         throw new Error('Koniec okna nie może być przed jego początkiem.');
+      }
+
+      if (isLan) {
+        if (foreign.length) {
+          throw new Error('W turnieju są mecze rozegrane w formacie standardowym — wycofaj te rundy, zanim zaczniesz kwalifikacje LAN.');
+        }
+        if (field.length < 6) throw new Error('Kwalifikacje LAN potrzebują co najmniej 6 drużyn w polu.');
+        setMatchFormat('bo3');
+        const res = await generateLanDraft({
+          tournamentId: tournament.id,
+          round: nextRoundNumber,
+          cfg: lanCfg,
+          matches: lqMatches,
+          decisions: lanDecs,
+          matchFormat: 'bo3',
+          scheduling: schedulingPayload(Math.ceil(field.length / 2)),
+        });
+        if (!res.pairings) {
+          const p = res.plan;
+          throw new Error(
+            p.kind === 'wait' ? p.reason
+              : p.kind === 'decide' ? 'Najpierw zaznacz, kto wygrał dogrywkę o awans (karta „Dogrywka o awans do Finału”).'
+                : 'Kwalifikacje są rozegrane — nie ma kolejnej rundy.');
+        }
+        setDraftPairings(res.pairings);
+        setDraftWarnings([]);
+        setSelectedPairs(new Set());
+        await reload();
+        toast({ title: `Runda ${nextRoundNumber} — podgląd gotowy`, description: 'Sprawdź parowania przed zatwierdzeniem.' });
+        return;
       }
 
       if (field.length % 2 === 1) await ensureByeTeam(tournament.id);
@@ -401,6 +489,18 @@ export function SwissTab() {
     const a = locate(swapFrom);
     const b = locate(teamId);
     if (!a || !b) { setSwapFrom(null); return; }
+    if (isLan) {
+      // Group A and the Final follow fixed rules (winners meet winners…); tie-settling pairs are
+      // fixed by the tied groups. Only Swiss / placement pairs of the same group can be swapped.
+      const pa = next[a.i];
+      const pb = next[b.i];
+      const swappable = (x: SwissPairing) => (x.stage === 'B' || x.stage === 'P') && x.slot !== 'tb';
+      if (pa.stage !== pb.stage || !swappable(pa) || !swappable(pb)) {
+        setSwapFrom(null);
+        toast({ title: 'Nie można zamienić', description: 'W tym formacie zamieniać można tylko drużyny w parach Swissa lub meczów o miejsca (w tej samej grupie).', variant: 'destructive' });
+        return;
+      }
+    }
 
     next[a.i][a.side] = teamId;
     next[b.i][b.side] = swapFrom;
@@ -503,11 +603,14 @@ export function SwissTab() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-logik-extended-bold">Liga szwajcarska</h2>
+        <h2 className="text-2xl font-logik-extended-bold">{isLan ? 'Kwalifikacje LAN (Swiss)' : 'Liga szwajcarska'}</h2>
         <p className="text-sm text-muted-foreground font-logik">
           Rundy generowane są po kolei — parowania rundy N+1 zależą od wyników rundy N.
         </p>
       </div>
+
+      <FormatCard format={isLan ? 'lan-qualifier' : 'standard'} hasRounds={committedRounds.length > 0}
+        busy={busy === 'format'} onSave={handleFormat} primary={theme.primaryColor} />
 
       {/* ── Setup ───────────────────────────────────────────────────────── */}
       <Card className="border-0 shadow-lg bg-card/50 backdrop-blur-sm">
@@ -556,7 +659,7 @@ export function SwissTab() {
 
           {/* Round-count guidance. Swiss stops paying for itself once rounds
               approach N/2, and past N-1 rounds rematches are unavoidable. */}
-          {field.length >= 2 && (
+          {field.length >= 2 && !isLan && (
             <div className="rounded-lg border border-border bg-muted/30 p-3 text-sm font-logik space-y-1">
               <p className="flex items-center gap-2">
                 <Info className="h-4 w-4 shrink-0" style={{ color: theme.primaryColor }} />
@@ -575,7 +678,7 @@ export function SwissTab() {
 
 
       {/* ── Pairing band ────────────────────────────────────────────────── */}
-      {useMmrSeeding && (
+      {useMmrSeeding && !isLan && (
       <Card className="border-0 shadow-lg bg-card/50 backdrop-blur-sm">
         <CardHeader className="pb-4">
           <CardTitle className="flex items-center gap-2 font-logik-extended-bold">
@@ -776,6 +879,15 @@ export function SwissTab() {
       </Card>
       )}
 
+      {isLan && (
+        <GroupACard cfg={lanCfg} field={field} stored={lq?.groupA ?? []}
+          locked={lqMatches.length > 0} run={run} onSave={handleGroupA} primary={theme.primaryColor} />
+      )}
+      {isLan && lanDerived?.tie && (
+        <TiebreakCard derived={lanDerived} field={field} finalStarted={lqMatches.some(m => m.stage === 'F')}
+          run={run} onSave={handleTiebreak} primary={theme.primaryColor} />
+      )}
+
       {/* ── Open matches blocking the next round ────────────────────────── */}
       {openMatchesInLatestRound.length > 0 && (
         <Card className="border-0 shadow-lg bg-amber-500/5 border-l-4 border-l-amber-500">
@@ -840,6 +952,12 @@ export function SwissTab() {
         </CardHeader>
         <CardContent className="space-y-5">
           <div className="grid gap-4 md:grid-cols-2">
+            {isLan ? (
+              <div>
+                <Label className="font-logik-extended-bold">Format meczów</Label>
+                <p className="text-sm font-logik mt-2">BO3 — wszystkie mecze kwalifikacji LAN.</p>
+              </div>
+            ) : (
             <div>
               <Label className="font-logik-extended-bold">Format meczów</Label>
               <Select value={matchFormat} onValueChange={v => setMatchFormat(v as MatchFormat)}>
@@ -865,6 +983,7 @@ export function SwissTab() {
                 </p>
               )}
             </div>
+            )}
 
             <div>
               <Label className="font-logik-extended-bold">Terminy</Label>
@@ -913,6 +1032,7 @@ export function SwissTab() {
             </div>
           </div>
 
+          {!isLan && (
           <label className="flex items-center gap-3 cursor-pointer">
             <input type="checkbox" className="w-4 h-4 rounded border-border"
               checked={allowRematch} onChange={e => setAllowRematch(e.target.checked)} />
@@ -921,6 +1041,7 @@ export function SwissTab() {
               <span className="text-muted-foreground"> — potrzebne tylko przy bardzo małym polu</span>
             </span>
           </label>
+          )}
 
           <div className="flex flex-wrap gap-2">
             <Button onClick={handleGenerate}
@@ -948,6 +1069,22 @@ export function SwissTab() {
               {field.length < 2
                 ? 'Potrzebne są co najmniej 2 drużyny w polu.'
                 : 'Zakończ poprzednią rundę, aby wygenerować następną.'}
+            </p>
+          )}
+
+          {isLan && foreign.length > 0 && (
+            <p className="text-sm text-amber-500 font-logik flex items-start gap-2">
+              <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+              W turnieju są rundy rozegrane w formacie standardowym ({foreign.length} meczów). Wycofaj je w sekcji
+              „Rozegrane rundy”, zanim wygenerujesz rundę 1 kwalifikacji.
+            </p>
+          )}
+          {isLan && canGenerateNext && lanNextPlan && lanNextPlan.kind !== 'pairings' && (
+            <p className="text-sm text-amber-500 font-logik flex items-start gap-2">
+              <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+              {lanNextPlan.kind === 'wait' && lanNextPlan.reason}
+              {lanNextPlan.kind === 'decide' && 'Następna runda czeka na decyzję w sprawie dogrywki o awans (karta wyżej).'}
+              {lanNextPlan.kind === 'done' && 'Kwalifikacje rozegrane — nie ma kolejnej rundy.'}
             </p>
           )}
 
@@ -1008,6 +1145,9 @@ export function SwissTab() {
                         checked={!p.isBye && selectedPairs.has(i)} onChange={() => togglePair(i)} />
                     )}
                     <span className="w-8 text-xs text-muted-foreground font-mono">{i + 1}</span>
+                    {isLan && p.stage && (
+                      <Badge variant="outline" className="font-logik text-xs">{lanPairingLabel(p.stage, p.slot)}</Badge>
+                    )}
                     {[p.teamAId, p.teamBId].map(id => (
                       <button key={id} onClick={() => handleSwap(id)}
                         className={cn(
@@ -1017,11 +1157,11 @@ export function SwissTab() {
                         )}>
                         {nameOf(id)}
                         <span className="text-xs text-muted-foreground ml-1.5">
-                          {pointsOf(id)} pkt{useMmrSeeding && seedOf(id) != null && ` · ${seedOf(id)}`}
+                          {isLan ? `bilans ${lanRecordOf(id, p.stage ?? undefined)}` : `${pointsOf(id)} pkt`}{useMmrSeeding && seedOf(id) != null && ` · ${seedOf(id)}`}
                         </span>
                       </button>
                     ))}
-                    {!p.isBye && (
+                    {!p.isBye && !isLan && (
                       <span className="text-xs text-muted-foreground ml-auto font-logik">
                         Δ {gap} pkt{useMmrSeeding && mmrGap != null && ` · Δ ${mmrGap} MMR`}
                       </span>
@@ -1097,7 +1237,11 @@ export function SwissTab() {
       )}
 
       {/* ── Live table ─────────────────────────────────────────────────── */}
-      {standings.length > 0 && (
+      {isLan && lanDerived && field.length >= 6 && (
+        <LanStatusCard cfg={lanCfg} derived={lanDerived} matches={lqMatches} nextPlan={lanNextPlan}
+          field={field} primary={theme.primaryColor} />
+      )}
+      {!isLan && standings.length > 0 && (
         <Card className="border-0 shadow-lg bg-card/50 backdrop-blur-sm">
           <CardHeader className="pb-4">
             <CardTitle className="font-logik-extended-bold">Tabela</CardTitle>

@@ -308,6 +308,9 @@ export interface SwissPairing {
   teamAId: string;
   teamBId: string;
   isBye: boolean;
+  /** LAN-qualifier format: the group of the match and its GSL slot / 'tb' (tie-settling). */
+  stage?: 'A' | 'B' | 'F' | 'P';
+  slot?: string | null;
 }
 
 export interface PairingResult {

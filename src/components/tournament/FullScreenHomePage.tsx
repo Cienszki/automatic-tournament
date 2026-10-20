@@ -41,6 +41,8 @@ import {
 } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
+// LAN-qualifier Swiss: its Tabela section is the Swiss / Tabela / LAN views (loaded on demand)
+const LanQualifierSection = dynamic(() => import('@/components/format-preview/LanQualifierSection').then(m => m.LanQualifierSection), { ssr: false });
 import { PageAtmosphere } from '@/components/ui/PageAtmosphere';
 
 // Stats hub: every stats view (rankings, records, games, match prep…) inside one section
@@ -246,6 +248,7 @@ export { TournamentHomePage as MmrTournamentHomePage };
 export function TournamentHomePage() {
   const { tournament, getTournamentPath, theme, isLegacyTournament } = useTournament();
   const { isLeague, isMmrLimited, isSwiss } = useTournamentType();
+  const isLanQualifier = isSwiss && tournament?.swiss?.format === 'lan-qualifier';
   const isMobile = useIsMobile();
   const { user } = useAuth();
   const t = useTranslations('pdlHome');
@@ -954,7 +957,10 @@ export function TournamentHomePage() {
             />
           ) : (
           <div className="h-full w-full flex flex-col overflow-y-auto site-gutter py-8">
-            {showPlayoffs ? (
+            {isLanQualifier ? (
+              // Header + views (the LAN bracket is one of them), fitted to the section
+              <div className="flex-1 min-h-0 -mt-4"><LanQualifierSection /></div>
+            ) : showPlayoffs ? (
               <>
                 {/* Playoffs view — hero header matching the /playoffs page */}
                 <div className="text-center space-y-4 mb-6 relative shrink-0">
