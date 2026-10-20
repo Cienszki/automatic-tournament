@@ -354,9 +354,9 @@ _lastLobbyOptions = null;       // options used at createPracticeLobby, re-sent 
                     // Join the lobby chat channel now so later send_chat commands work
                     // (sendMessage fails with "channel you have not joined" otherwise).
                     this._joinLobbyChat();
-                    // The host bot is auto-seated into a team slot on create; park it in the
-                    // broadcaster slot so all 10 playing places stay free for real players.
-                    void this._parkSelfOutOfPlay().catch((e) => logger_js_1.logger.warn('Parking the host bot failed', e));
+                    // The host bot is auto-seated into a team slot on create; move it out so all
+                    // 10 playing places stay free for real players (where to: see _parkSelfOutOfPlay).
+                    void this._parkSelfOutOfPlay({ immortalDraft: !!options.doPlayerDraft }).catch((e) => logger_js_1.logger.warn('Parking the host bot failed', e));
                     resolve();
                 }
             };
@@ -503,9 +503,28 @@ _lastLobbyOptions = null;       // options used at createPracticeLobby, re-sent 
      * Falls back to the player pool if the GC refuses (a lobby with spectating
      * disabled may have no caster slot to take). Being in the pool is bad; being
      * left on a *team* slot, which is where create leaves us, is worse.
+     *
+     * BUT only under Immortal Draft. A broadcaster is part of the match: at launch
+     * every caster has to load in, and the bot has no game client, so it never
+     * does — the load times out and Dota throws the game back to the lobby, every
+     * time. That broke every tournament match after this was introduced (PDL S2,
+     * 2026-10-20: "all players loaded, the bot did not"). Outside Immortal Draft the
+     * pool is never drafted, so the bot goes there, as it did when tournament
+     * matches worked.
      */
-    async _parkSelfOutOfPlay() {
+    async _parkSelfOutOfPlay({ immortalDraft = false } = {}) {
         const self = this.getSelfSteamId32();
+        if (!immortalDraft) {
+            try {
+                // joinPracticeLobbyTeam(slot, team) acts on self; team 4 = DOTA_GC_TEAM_PLAYER_POOL.
+                this.dota2.joinPracticeLobbyTeam(1, 4);
+                logger_js_1.logger.info('Moved host bot to the unassigned player pool (not a caster: casters must load into the game)');
+            }
+            catch (e) {
+                logger_js_1.logger.warn('Failed to move bot to player pool', e);
+            }
+            return false;
+        }
         try {
             // channel 1 = the first caster slot.
             this.dota2.joinPracticeLobbyBroadcastChannel(1, (err) => {
