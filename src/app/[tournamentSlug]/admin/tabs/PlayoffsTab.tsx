@@ -6,6 +6,8 @@ import { Card, CardHeader, CardContent, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
+import { DateTimeInput } from '@/components/ui/date-time-input';
+import { isoToLocalInput } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Trophy, Save, RotateCcw, Loader2, RefreshCw, Settings2 } from 'lucide-react';
 import { collection, getDocs, doc, setDoc, getDoc, updateDoc } from 'firebase/firestore';
@@ -611,10 +613,11 @@ function AdminSlotCard({
         {/* Deadline */}
         <div className="space-y-1">
           <Label className="font-logik-extended-bold text-xs">Deadline</Label>
-          <Input
-            type="datetime-local"
-            value={slot.deadline ? slot.deadline.slice(0, 16) : ''}
-            onChange={e => onUpdate(match.id, { deadline: e.target.value ? new Date(e.target.value).toISOString() : '' })}
+          {/* Stored as UTC ISO; shown and typed in the admin's local time */}
+          <DateTimeInput
+            aria-label="Deadline"
+            value={isoToLocalInput(slot.deadline)}
+            onChange={v => onUpdate(match.id, { deadline: v ? new Date(v).toISOString() : '' })}
             className="font-logik text-xs h-9"
           />
         </div>

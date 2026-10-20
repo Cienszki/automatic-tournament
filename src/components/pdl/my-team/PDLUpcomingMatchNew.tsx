@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { useTournament } from '@/context/TournamentContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { DateInput } from '@/components/ui/date-time-input';
 import {
   Calendar,
   Clock,
@@ -499,11 +500,10 @@ export function PDLUpcomingMatch({
                     )}
                   </p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    <Input
-                      type="date"
-                      lang="pl-PL"
+                    <DateInput
+                      aria-label="Data"
                       value={selectedDate}
-                      onChange={(e) => setSelectedDate(e.target.value)}
+                      onChange={setSelectedDate}
                       min={minDate ? `${minDate.getFullYear()}-${String(minDate.getMonth()+1).padStart(2,'0')}-${String(minDate.getDate()).padStart(2,'0')}` : undefined}
                       max={maxDate ? `${maxDate.getFullYear()}-${String(maxDate.getMonth()+1).padStart(2,'0')}-${String(maxDate.getDate()).padStart(2,'0')}` : undefined}
                       className="bg-white/5 border-white/10 text-white"

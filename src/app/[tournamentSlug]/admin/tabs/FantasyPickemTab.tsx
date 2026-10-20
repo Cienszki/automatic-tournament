@@ -6,6 +6,8 @@ import { Card, CardHeader, CardContent, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { DateTimeInput } from '@/components/ui/date-time-input';
+import { formatDateTimePL, isoToLocalInput } from '@/lib/utils';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { 
@@ -152,7 +154,8 @@ export function FantasyPickemTab() {
     setByeTeamsCount(Math.max(0, Number(tournament?.pickem?.byeTeamsCount ?? 0)));
     setPickemInstructionsMarkdown(tournament?.pickem?.instructionsMarkdown || '');
     const deadlineIso = tournament?.pickem?.submissionDeadline || '';
-    setPickemSubmissionDeadline(deadlineIso ? new Date(deadlineIso).toISOString().slice(0, 16) : '');
+    // Local time, not the ISO's UTC — otherwise every save moved the deadline by the UTC offset
+    setPickemSubmissionDeadline(isoToLocalInput(deadlineIso));
   }, [tournament?.pickem?.byeTeamsCount, tournament?.pickem?.instructionsMarkdown, tournament?.pickem?.submissionDeadline]);
 
   const handleExportPickemCsv = () => {
@@ -239,11 +242,10 @@ export function FantasyPickemTab() {
                 </div>
                 <div className="space-y-1">
                   <Label htmlFor="roundDeadline" style={{ color: secondaryText }}>Deadline (opcjonalnie)</Label>
-                  <Input
+                  <DateTimeInput
                     id="roundDeadline"
-                    type="datetime-local"
                     value={newRoundDeadline}
-                    onChange={e => setNewRoundDeadline(e.target.value)}
+                    onChange={setNewRoundDeadline}
                     className="bg-black/65 border-white/25 text-white"
                   />
                 </div>
@@ -307,7 +309,7 @@ export function FantasyPickemTab() {
                           </div>
                           {round.lockDeadline && (
                             <p className="text-xs mt-1" style={{ color: subtleText }}>
-                              Deadline: {new Date(round.lockDeadline).toLocaleString('pl-PL')}
+                              Deadline: {formatDateTimePL(round.lockDeadline)}
                             </p>
                           )}
                         </div>
@@ -389,11 +391,10 @@ export function FantasyPickemTab() {
 
                   <div className="pt-2 space-y-2">
                     <Label htmlFor="pickemSubmissionDeadline" style={{ color: secondaryText }}>Deadline Pick'em (blokada zapisu)</Label>
-                    <Input
+                    <DateTimeInput
                       id="pickemSubmissionDeadline"
-                      type="datetime-local"
                       value={pickemSubmissionDeadline}
-                      onChange={e => setPickemSubmissionDeadline(e.target.value)}
+                      onChange={setPickemSubmissionDeadline}
                       className="bg-black/65 border-white/25 text-white"
                     />
                     <p className="text-xs" style={{ color: subtleText }}>

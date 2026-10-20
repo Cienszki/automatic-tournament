@@ -6,6 +6,7 @@ import { useAuth } from '@/context/AuthContext';
 import { Card, CardHeader, CardContent, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { DateTimeInput } from '@/components/ui/date-time-input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
@@ -38,7 +39,7 @@ import {
   DialogTrigger,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { cn } from '@/lib/utils';
+import { cn, formatDateTimePL } from '@/lib/utils';
 import {
   Gamepad2,
   Save,
@@ -877,7 +878,8 @@ export function MatchesTab() {
       });
       const data = await resp.json();
       if (data.success) {
-        toast({ title: 'Termin ustawiony', description: data.message });
+        // The server's message formats the time on the server's clock (UTC) — use the admin's own
+        toast({ title: 'Termin ustawiony', description: `Mecz zaplanowany na ${formatDateTimePL(new Date(forceScheduleDateTime))}.` });
         setShowForceScheduleDialog(false);
         setForceScheduleMatch(null);
         await loadMatches();
@@ -1760,11 +1762,10 @@ export function MatchesTab() {
               <Label htmlFor="force-schedule-dt" className="font-logik text-sm font-medium">
                 Data i godzina <span className="text-red-500">*</span>
               </Label>
-              <Input
+              <DateTimeInput
                 id="force-schedule-dt"
-                type="datetime-local"
                 value={forceScheduleDateTime}
-                onChange={e => setForceScheduleDateTime(e.target.value)}
+                onChange={setForceScheduleDateTime}
                 className="font-logik"
               />
             </div>

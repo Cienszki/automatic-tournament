@@ -80,3 +80,32 @@ export function formatDatePL(dateString: string | Date): string {
     return 'Nieprawidłowa data';
   }
 }
+
+/**
+ * "21.10.2026, 18:00" — 24-hour, no seconds. In the browser's time zone, unless `timeZone` is
+ * given: code running on the server (UTC on Vercel) passes 'Europe/Warsaw', or admins would read
+ * UTC times back in toasts and errors.
+ */
+export function formatDateTimePL(value: string | Date, timeZone?: string): string {
+  const date = typeof value === 'string' ? new Date(value) : value;
+  if (isNaN(date.getTime())) return 'Nieprawidłowa data';
+  return date.toLocaleString('pl-PL', {
+    day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+    ...(timeZone ? { timeZone } : {}),
+  });
+}
+
+const pad2 = (n: number) => String(n).padStart(2, '0');
+
+/** ISO time → 'yyyy-mm-ddTHH:mm' in the browser's local time (the DateTimeInput value); '' when unset */
+export function isoToLocalInput(iso?: string | null): string {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '';
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}T${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+}
+
+/** 'yyyy-mm-dd' of a moment in the browser's local time (toISOString() would give the UTC day) */
+export function localDateKey(d: Date): string {
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+}

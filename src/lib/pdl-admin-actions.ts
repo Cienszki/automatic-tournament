@@ -3,6 +3,7 @@
 
 import { getAdminDb, ensureAdminInitialized } from '../server/lib/admin';
 import { FieldValue, Firestore } from 'firebase-admin/firestore';
+import { formatDateTimePL } from './utils';
 import { getLeagueId } from './definitions';
 import { fetchAllSteamLeagueMatches } from './steam-api';
 import { fetchOpenDotaMatch, transformMatchData, isMatchParsed, requestOpenDotaMatchParse } from './opendota';
@@ -1673,7 +1674,8 @@ export async function forceSchedulePDLMatchAdmin(
 
     return {
         success: true,
-        message: `Match scheduled for ${new Date(scheduledForIso).toLocaleString('pl-PL')}`,
+        // Runs on the server (UTC): the admins' time zone, not the server's
+        message: `Mecz zaplanowany na ${formatDateTimePL(scheduledForIso, 'Europe/Warsaw')}.`,
     };
 }
 

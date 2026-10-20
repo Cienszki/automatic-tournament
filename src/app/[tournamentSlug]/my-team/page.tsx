@@ -6,6 +6,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
+import { DateInput } from "@/components/ui/date-time-input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from "@/components/ui/dialog";
 import { Loader2, Users, Calendar, BarChart3, LogIn, UserPlus, ArrowRightLeft, Clock3, Copy, Check, Trash2, RefreshCw, X, ChevronLeft, ChevronRight } from "lucide-react";
 import { motion } from "framer-motion";
@@ -2265,11 +2266,10 @@ function MyTeamView() {
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-12 gap-3">
                   <div className="space-y-1 xl:col-span-2">
                     <label className="text-xs uppercase tracking-wide" style={{ color: theme.primaryTextColor || 'rgba(255,255,255,0.5)' }}>Data</label>
-                    <input
-                      type="date"
+                    <DateInput
                       value={slotStartDate}
-                      onChange={(event) => setSlotStartDate(event.target.value)}
-                      className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-1.5 text-sm text-white"
+                      onChange={setSlotStartDate}
+                      className="h-9 rounded-lg border-white/10 bg-black/30 text-sm text-white"
                     />
                   </div>
                   <div className="space-y-1 xl:col-span-2">

@@ -5,6 +5,7 @@ import { useTournament } from '@/context/TournamentContext';
 import { Card, CardHeader, CardContent, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { DateInput, TimeInput } from '@/components/ui/date-time-input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
@@ -19,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { cn } from '@/lib/utils';
+import { cn, formatDateTimePL, localDateKey } from '@/lib/utils';
 import { 
   CalendarDays,
   Save,
@@ -181,7 +182,7 @@ export function SchedulingTab() {
           const nextWeek = new Date();
           nextWeek.setDate(nextWeek.getDate() + 7);
           config[div.id] = {
-            startDate: nextWeek.toISOString().split('T')[0],
+            startDate: localDateKey(nextWeek),
             matchday: div.matchday || 'Thursday 20:00',
           };
         });
@@ -527,14 +528,15 @@ export function SchedulingTab() {
     if (!structure) return;
 
     const newDates: Record<number, { date: string; time: string }> = {};
-    const start = new Date(startDate);
+    // Local midnight — new Date('yyyy-mm-dd') is UTC midnight, which lands on the previous day after a DST change
+    const start = new Date(`${startDate}T00:00`);
 
     structure.matchdays.forEach((md, index) => {
       const matchDate = new Date(start);
       matchDate.setDate(start.getDate() + (index * weeksInterval * 7));
       
       newDates[md.matchdayNumber] = {
-        date: matchDate.toISOString().split('T')[0],
+        date: localDateKey(matchDate),
         time: matchdayTime,
       };
     });
@@ -853,12 +855,11 @@ export function SchedulingTab() {
                             )}
                           </div>
                           <div className="flex items-center gap-2">
-                            <Input
-                              type="date"
-                              placeholder="Data rozpoczęcia"
+                            <DateInput
+                              aria-label="Data rozpoczęcia"
+                              value=""
                               className="w-40 font-logik text-sm"
-                              onChange={(e) => {
-                                const startDate = e.target.value;
+                              onChange={(startDate) => {
                                 if (startDate) {
                                   autoFillDates(structure.divisionId, startDate, division?.matchday.split(' ')[1] || '20:00');
                                 }
@@ -893,19 +894,17 @@ export function SchedulingTab() {
                                 <div className="flex items-center gap-6 flex-1">
                                   <div className="flex items-center gap-2">
                                     <Label className="text-xs text-muted-foreground font-logik">Data:</Label>
-                                    <Input
-                                      type="date"
+                                    <DateInput
                                       value={mdDate?.date || ''}
-                                      onChange={(e) => updateMatchdayDate(structure.divisionId, matchday.matchdayNumber, 'date', e.target.value)}
+                                      onChange={(v) => updateMatchdayDate(structure.divisionId, matchday.matchdayNumber, 'date', v)}
                                       className="w-40 font-logik"
                                     />
                                   </div>
                                   <div className="flex items-center gap-2">
                                     <Label className="text-xs text-muted-foreground font-logik">Godzina:</Label>
-                                    <Input
-                                      type="time"
+                                    <TimeInput
                                       value={mdDate?.time || '20:00'}
-                                      onChange={(e) => updateMatchdayDate(structure.divisionId, matchday.matchdayNumber, 'time', e.target.value)}
+                                      onChange={(v) => updateMatchdayDate(structure.divisionId, matchday.matchdayNumber, 'time', v)}
                                       className="w-32 font-logik"
                                     />
                                   </div>
@@ -1002,19 +1001,17 @@ export function SchedulingTab() {
               </div>
               <div className="space-y-2">
                 <Label className="font-logik">Data</Label>
-                <Input
-                  type="date"
+                <DateInput
                   value={newMatchday.date}
-                  onChange={(e) => setNewMatchday({ ...newMatchday, date: e.target.value })}
+                  onChange={(v) => setNewMatchday({ ...newMatchday, date: v })}
                   className="font-logik"
                 />
               </div>
               <div className="space-y-2">
                 <Label className="font-logik">Godzina</Label>
-                <Input
-                  type="time"
+                <TimeInput
                   value={newMatchday.time}
-                  onChange={(e) => setNewMatchday({ ...newMatchday, time: e.target.value })}
+                  onChange={(v) => setNewMatchday({ ...newMatchday, time: v })}
                   className="font-logik"
                 />
               </div>
@@ -1127,10 +1124,9 @@ export function SchedulingTab() {
               <p className="text-xs text-muted-foreground font-logik">
                 Po tej dacie żadne wnioski o zmianę terminu nie będą przyjmowane (pozostaw puste = brak ograniczenia).
               </p>
-              <Input
-                type="date"
+              <DateInput
                 value={rescheduleFinalDate}
-                onChange={(e) => setRescheduleFinalDate(e.target.value)}
+                onChange={setRescheduleFinalDate}
                 className="font-logik w-52"
               />
             </div>
@@ -1258,10 +1254,10 @@ export function SchedulingTab() {
                         <span className="font-logik-extended-bold">Wnioskodawca:</span> {req.requestedByName}
                       </p>
                       <p className="text-muted-foreground">
-                        <span className="font-logik-extended-bold">Oryginalny termin:</span> {req.originalDate ? new Date(req.originalDate).toLocaleString('pl-PL') : '-'}
+                        <span className="font-logik-extended-bold">Oryginalny termin:</span> {req.originalDate ? formatDateTimePL(req.originalDate) : '-'}
                       </p>
                       <p className="text-muted-foreground">
-                        <span className="font-logik-extended-bold">Proponowany termin:</span> {req.proposedDate ? new Date(req.proposedDate).toLocaleString('pl-PL') : '-'}
+                        <span className="font-logik-extended-bold">Proponowany termin:</span> {req.proposedDate ? formatDateTimePL(req.proposedDate) : '-'}
                       </p>
                     </div>
                   </div>

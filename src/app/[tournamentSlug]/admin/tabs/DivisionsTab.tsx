@@ -6,6 +6,7 @@ import { useAuth } from '@/context/AuthContext';
 import { Card, CardHeader, CardContent, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { DateInput } from '@/components/ui/date-time-input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
@@ -861,11 +862,10 @@ export function DivisionsTab() {
             <div className="flex items-center gap-3">
               <CalendarDays className="h-4 w-4 text-muted-foreground shrink-0" />
               <Label htmlFor="match-deadline" className="shrink-0">Deadline (ostateczna data):</Label>
-              <Input
+              <DateInput
                 id="match-deadline"
-                type="date"
                 value={matchDeadline}
-                onChange={(e) => setMatchDeadline(e.target.value)}
+                onChange={setMatchDeadline}
                 className="w-40"
               />
             </div>

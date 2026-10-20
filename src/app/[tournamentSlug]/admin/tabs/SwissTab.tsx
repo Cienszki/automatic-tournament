@@ -20,16 +20,17 @@ import { useAuth } from '@/context/AuthContext';
 import { Card, CardHeader, CardContent, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { DateInput, DateTimeInput } from '@/components/ui/date-time-input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
-import { cn } from '@/lib/utils';
+import { cn, formatDateTimePL } from '@/lib/utils';
 import {
   Loader2, Play, RefreshCw, Save, Users, AlertTriangle, CheckCircle2, Lock,
-  Unlock, Shuffle, ArrowLeftRight, Trophy, Info, Gavel,
+  Unlock, Shuffle, ArrowLeftRight, Trophy, Info,
 } from 'lucide-react';
 import type { MatchFormat, SwissRound, SwissStandingRow } from '@/types/tournament';
 import {
@@ -42,7 +43,7 @@ import {
   loadSwissTeams, loadSwissMatches, loadSwissRounds, buildStandings,
   setupSwissField, ensureByeTeam, saveSeedMmr, renumberSeeds,
   generateRoundDraft, saveDraftPairings, saveDraftScheduling, commitRound, reopenRound,
-  markRoundComplete, forceMatchResult,
+  markRoundComplete,
   type SwissTeam, type SwissRoundMatch,
 } from '@/lib/swiss/actions';
 import { derive as deriveLan, plan as planLan } from '@/lib/lan-qualifier/engine';
@@ -571,25 +572,6 @@ export function SwissTab() {
       toast({ title: `Runda ${round} zamknięta`, description: 'Możesz wygenerować następną rundę.' });
     });
 
-  const handleForce = (m: SwissRoundMatch, side: 'teamA' | 'teamB' | 'both') =>
-    run(`force:${m.id}`, async () => {
-      if (!tournament?.id) return;
-      const who = side === 'both' ? 'obie drużyny' : nameOf(side === 'teamA' ? m.teamAId : m.teamBId);
-      if (!window.confirm(`Przyznać walkower? Przegrywa: ${who}.`)) return;
-      await forceMatchResult({
-        tournamentId: tournament.id,
-        matchId: m.id,
-        matchFormat: (latestCommitted?.matchFormat ?? matchFormat),
-        forfeitingTeam: side,
-        teamAId: m.teamAId,
-        teamBId: m.teamBId,
-        reason: 'Mecz nierozegrany w terminie',
-        adminUserId: user?.uid ?? 'admin',
-      });
-      await reload();
-      toast({ title: 'Walkower przyznany' });
-    });
-
   // ── render ─────────────────────────────────────────────────────────────────
 
   if (isLoading) {
@@ -898,32 +880,21 @@ export function SwissTab() {
             </CardTitle>
             <CardDescription className="font-logik">
               Swiss jest sekwencyjny — dopóki te mecze nie mają wyniku, nie da się wygenerować
-              następnej rundy. Jeśli drużyna nie stawiła się w terminie, przyznaj walkower.
+              następnej rundy. Wynik albo walkower ustawisz w zakładce Mecze.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
+            {/* Results and forfeits are set in the Matches tab only — one place for them */}
             {openMatchesInLatestRound.map(m => (
               <div key={m.id} className="flex flex-wrap items-center gap-2 rounded-lg border border-border p-3">
                 <span className="flex-1 font-logik text-sm">
                   {nameOf(m.teamAId)} <span className="text-muted-foreground">vs</span> {nameOf(m.teamBId)}
                   {m.scheduledFor && (
                     <span className="text-muted-foreground text-xs ml-2">
-                      {new Date(m.scheduledFor).toLocaleString('pl-PL')}
+                      {formatDateTimePL(m.scheduledFor)}
                     </span>
                   )}
                 </span>
-                <Button size="sm" variant="outline" disabled={busy === `force:${m.id}`}
-                  onClick={() => handleForce(m, 'teamB')}>
-                  <Gavel className="h-3.5 w-3.5 mr-1.5" /> Wygrywa {nameOf(m.teamAId)}
-                </Button>
-                <Button size="sm" variant="outline" disabled={busy === `force:${m.id}`}
-                  onClick={() => handleForce(m, 'teamA')}>
-                  <Gavel className="h-3.5 w-3.5 mr-1.5" /> Wygrywa {nameOf(m.teamBId)}
-                </Button>
-                <Button size="sm" variant="ghost" className="text-destructive"
-                  disabled={busy === `force:${m.id}`} onClick={() => handleForce(m, 'both')}>
-                  Podwójny walkower
-                </Button>
               </div>
             ))}
             {latestCommitted && (
@@ -1017,10 +988,10 @@ export function SwissTab() {
               )}
               {schedulingMode === 'window' && (
                 <div className="grid grid-cols-2 gap-2 mt-2">
-                  <Input type="date" className="font-logik" value={windowStart}
-                    onChange={e => { schedulingDirty.current = true; setWindowStart(e.target.value); }} />
-                  <Input type="date" className="font-logik" value={windowEnd}
-                    onChange={e => { schedulingDirty.current = true; setWindowEnd(e.target.value); }} />
+                  <DateInput className="font-logik" aria-label="Początek okna" value={windowStart}
+                    onChange={v => { schedulingDirty.current = true; setWindowStart(v); }} />
+                  <DateInput className="font-logik" aria-label="Koniec okna" value={windowEnd}
+                    onChange={v => { schedulingDirty.current = true; setWindowEnd(v); }} />
                 </div>
               )}
               {schedulingMode === 'free' && (
@@ -1117,8 +1088,8 @@ export function SwissTab() {
                       Zaznacz wszystkie
                     </label>
                     <span className="text-xs text-muted-foreground font-logik">Zaznaczono: {selectedPairs.size}</span>
-                    <Input type="datetime-local" className="w-[220px] h-9 font-logik" aria-label="Termin dla zaznaczonych"
-                      value={bulkAt} onChange={e => setBulkAt(e.target.value)} />
+                    <DateTimeInput className="w-[220px] h-9 font-logik" aria-label="Termin dla zaznaczonych"
+                      value={bulkAt} onChange={setBulkAt} />
                     <Button size="sm" variant="outline" onClick={applyBulkTime}
                       disabled={!bulkAt || selectedPairs.size === 0}>
                       Ustaw dla zaznaczonych
@@ -1167,9 +1138,9 @@ export function SwissTab() {
                       </span>
                     )}
                     {!p.isBye && schedulingMode === 'fixed' && (
-                      <Input type="datetime-local" aria-label={`Termin meczu ${i + 1}`}
+                      <DateTimeInput aria-label={`Termin meczu ${i + 1}`}
                         className={cn('w-[220px] h-9 font-logik', !times[i] && 'border-amber-500/60')}
-                        value={times[i] ?? ''} onChange={e => setTime(i, e.target.value)} />
+                        value={times[i] ?? ''} onChange={v => setTime(i, v)} />
                     )}
                     {p.isBye && (
                       <Badge variant="outline" className="ml-auto font-logik text-xs">

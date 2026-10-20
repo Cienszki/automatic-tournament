@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react';
 import { Info, Calendar, Users, Globe } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ChangeableLaterNote } from '@/components/creator/AdvancedSection';
+import { DateInput } from '@/components/ui/date-time-input';
 
 // Lookup rather than a ternary: the previous two-branch version silently
 // labelled every non-MMR template "Liga Profesjonalna", so picking Swiss
@@ -240,11 +241,10 @@ export function BasicInfoStep({ data, onChange, template }: BasicInfoStepProps) 
             label="Początek rejestracji"
             required
           >
-            <input
-              type="date"
+            <DateInput
               value={formData.registrationStart}
-              onChange={(e) => handleChange('registrationStart', e.target.value)}
-              className="w-full px-4 py-2 rounded-lg bg-background border border-border focus:border-primary focus:outline-none transition-colors"
+              onChange={(v) => handleChange('registrationStart', v)}
+              className="rounded-lg bg-background border-border"
             />
           </FormField>
 
@@ -252,11 +252,10 @@ export function BasicInfoStep({ data, onChange, template }: BasicInfoStepProps) 
             label="Koniec rejestracji"
             required
           >
-            <input
-              type="date"
+            <DateInput
               value={formData.registrationEnd}
-              onChange={(e) => handleChange('registrationEnd', e.target.value)}
-              className="w-full px-4 py-2 rounded-lg bg-background border border-border focus:border-primary focus:outline-none transition-colors"
+              onChange={(v) => handleChange('registrationEnd', v)}
+              className="rounded-lg bg-background border-border"
             />
           </FormField>
 
@@ -264,22 +263,20 @@ export function BasicInfoStep({ data, onChange, template }: BasicInfoStepProps) 
             label="Początek turnieju"
             required
           >
-            <input
-              type="date"
+            <DateInput
               value={formData.tournamentStart}
-              onChange={(e) => handleChange('tournamentStart', e.target.value)}
-              className="w-full px-4 py-2 rounded-lg bg-background border border-border focus:border-primary focus:outline-none transition-colors"
+              onChange={(v) => handleChange('tournamentStart', v)}
+              className="rounded-lg bg-background border-border"
             />
           </FormField>
 
           <FormField
             label="Zakończenie turnieju (opcjonalnie)"
           >
-            <input
-              type="date"
+            <DateInput
               value={formData.tournamentEnd}
-              onChange={(e) => handleChange('tournamentEnd', e.target.value)}
-              className="w-full px-4 py-2 rounded-lg bg-background border border-border focus:border-primary focus:outline-none transition-colors"
+              onChange={(v) => handleChange('tournamentEnd', v)}
+              className="rounded-lg bg-background border-border"
             />
           </FormField>
         </div>

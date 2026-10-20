@@ -40,8 +40,9 @@ vi.mock('@/lib/swiss/actions', async importOriginal => {
   };
 });
 
-const WED = '2026-10-21T20:00';
-const THU = '2026-10-22T20:00';
+// Typed the way the admin sees the fields: dd.mm.rrrr and 24-hour gg:mm
+const WED = ['21.10.2026', '20:00'] as const;
+const THU = ['22.10.2026', '20:00'] as const;
 const dayOf = (iso: string) => new Date(iso).getDate();
 
 async function renderTab() {
@@ -50,8 +51,17 @@ async function renderTab() {
   await screen.findByText('Zaznacz wszystkie');
 }
 const rowCheckbox = (n: number) => screen.getByLabelText(`Zaznacz mecz ${n}`);
-const rowTime = (n: number) => screen.getByLabelText(`Termin meczu ${n}`) as HTMLInputElement;
-const bulkTime = () => screen.getByLabelText('Termin dla zaznaczonych');
+/** Types a date and a time into the DateTimeInput labelled `label`. */
+const setAt = (label: string, [date, time]: readonly [string, string]) => {
+  fireEvent.change(screen.getByLabelText(`${label} — data`), { target: { value: date } });
+  fireEvent.change(screen.getByLabelText(`${label} — godzina`), { target: { value: time } });
+};
+const shownAt = (label: string) => [
+  (screen.getByLabelText(`${label} — data`) as HTMLInputElement).value,
+  (screen.getByLabelText(`${label} — godzina`) as HTMLInputElement).value,
+];
+const row = (n: number) => `Termin meczu ${n}`;
+const BULK = 'Termin dla zaznaczonych';
 const applyBulk = () => fireEvent.click(screen.getByRole('button', { name: 'Ustaw dla zaznaczonych' }));
 const commit = async () => {
   await act(async () => { fireEvent.click(screen.getByRole('button', { name: /Zatwierdź rundę 1/ })); });
@@ -65,23 +75,23 @@ describe('Swiss round builder — per-match times', () => {
   it('bulk: three pairs on Wednesday, two on Thursday', async () => {
     await renderTab();
     [1, 2, 3].forEach(n => fireEvent.click(rowCheckbox(n)));
-    fireEvent.change(bulkTime(), { target: { value: WED } });
+    setAt(BULK, WED);
     applyBulk();
     [4, 5].forEach(n => fireEvent.click(rowCheckbox(n)));
-    fireEvent.change(bulkTime(), { target: { value: THU } });
+    setAt(BULK, THU);
     applyBulk();
-    expect([1, 2, 3, 4, 5].map(n => rowTime(n).value)).toEqual([WED, WED, WED, THU, THU]);
+    expect([1, 2, 3, 4, 5].map(n => shownAt(row(n)))).toEqual([WED, WED, WED, THU, THU]);
     const s = await commit();
     expect(s.times!.map(dayOf)).toEqual([21, 21, 21, 22, 22]);
-  });
+  }, 30_000); // the first test also pays for importing the whole tab
 
   it('"Zaznacz wszystkie" for Wednesday, then single rows changed to Thursday', async () => {
     await renderTab();
     fireEvent.click(screen.getByLabelText('Zaznacz wszystkie'));
-    fireEvent.change(bulkTime(), { target: { value: WED } });
+    setAt(BULK, WED);
     applyBulk();
-    fireEvent.change(rowTime(4), { target: { value: THU } });
-    fireEvent.change(rowTime(5), { target: { value: THU } });
+    setAt(row(4), THU);
+    setAt(row(5), THU);
     const s = await commit();
     expect(s.times!.map(dayOf)).toEqual([21, 21, 21, 22, 22]);
   });

@@ -8,6 +8,7 @@ import { db } from '@/lib/firebase';
 import { Card, CardHeader, CardContent, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { DateInput } from '@/components/ui/date-time-input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
@@ -1396,24 +1397,24 @@ export function GeneralTab() {
           <div className="grid gap-4 md:grid-cols-2">
             <div>
               <Label className="font-logik-extended-bold">Początek turnieju</Label>
-              <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)}
+              <DateInput value={startDate} onChange={setStartDate}
                 className="font-logik mt-1" />
             </div>
             <div>
               <Label className="font-logik-extended-bold">Koniec turnieju</Label>
-              <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)}
+              <DateInput value={endDate} onChange={setEndDate}
                 className="font-logik mt-1" />
             </div>
             <div>
               <Label className="font-logik-extended-bold">Początek rejestracji</Label>
-              <Input type="date" value={registrationStartDate}
-                onChange={(e) => setRegistrationStartDate(e.target.value)}
+              <DateInput value={registrationStartDate}
+                onChange={setRegistrationStartDate}
                 className="font-logik mt-1" />
             </div>
             <div>
               <Label className="font-logik-extended-bold">Koniec rejestracji</Label>
-              <Input type="date" value={registrationEndDate}
-                onChange={(e) => setRegistrationEndDate(e.target.value)}
+              <DateInput value={registrationEndDate}
+                onChange={setRegistrationEndDate}
                 className="font-logik mt-1" />
               <p className="text-xs text-muted-foreground mt-1 font-logik">
                 Rejestracja działa do końca tego dnia włącznie.

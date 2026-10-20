@@ -201,6 +201,9 @@ type Layout = ReturnType<typeof layout>;
 
 // ─── Lines ──────────────────────────────────────────────────────────────────
 
+/** A team already certain in a projected (TBD) match — see `known` in model.ts. */
+const isKnown = (m: FPMatch, team: string) => !!m.known?.[m.a === team ? 0 : 1];
+
 const toneColor = (t: Tone) => (t === 'win' ? WIN : t === 'loss' ? LOSS : 'rgba(255,255,255,0.22)');
 
 function Arrow({ x, y, len = 20, color }: { x: number; y: number; len?: number; color: string }) {
@@ -231,7 +234,7 @@ function drawLines(L: Layout, after: number, hoveredMatch: string | null): React
       continue;
     }
     // From the team's row to its row in the next match (that match's middle while it is hidden).
-    const known = !!b.tiebreak || (!!mv.dst && matchState(mv.dst, after) !== 'future');
+    const known = !!b.tiebreak || (!!mv.dst && (matchState(mv.dst, after) !== 'future' || isKnown(mv.dst, mv.team)));
     const y1 = L.teamY(mv.from, mv.team, mv.src);
     const y2 = known ? L.teamY(mv.to, mv.team, mv.dst) : midOf(b);
     svg.push(<path key={key} d={L.route(mv.from, mv.to, a.x + CARD_W, y1, b.x, y2)} fill="none" stroke={toneColor(mv.tone)} strokeWidth={2.5} opacity={0.9} />);
@@ -314,6 +317,8 @@ function MatchCard({ m, sim, after, onOpen }: { m: FPMatch; sim: FormatSim; afte
   const played = st === 'played';
   const aWon = m.sa > m.sb;
   const canOpen = st !== 'future' && !!m.b;
+  // A team already certain in a projected match is drawn like one of a scheduled match: name, no score
+  const rowState = (side: 0 | 1) => (st === 'future' && m.known?.[side] ? 'next' : st);
   return (
     <div
       onClick={() => canOpen && onOpen(m)}
@@ -326,9 +331,9 @@ function MatchCard({ m, sim, after, onOpen }: { m: FPMatch; sim: FormatSim; afte
       )}
       style={{ width: CARD_W, height: CARD_H, backgroundColor: 'rgba(255,255,255,0.05)' }}
     >
-      <TeamLine team={sim.teams[m.a]} score={m.sa} state={st} won={played && (!m.b || aWon)} lost={played && !!m.b && !aWon} />
+      <TeamLine team={sim.teams[m.a]} score={m.sa} state={rowState(0)} won={played && (!m.b || aWon)} lost={played && !!m.b && !aWon} />
       {m.b ? (
-        <TeamLine team={sim.teams[m.b]} score={m.sb} state={st} won={played && !aWon} lost={played && aWon} />
+        <TeamLine team={sim.teams[m.b]} score={m.sb} state={rowState(1)} won={played && !aWon} lost={played && aWon} />
       ) : (
         <div className="flex items-center px-3 font-mono text-[10px] uppercase tracking-wider italic" style={{ height: ROW_H, color: 'var(--tournament-secondary-text, #6b7280)' }}>
           wolny los
