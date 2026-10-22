@@ -36,20 +36,40 @@ export async function getTournamentBotConfig(
   return doc.data() as TournamentBotConfig;
 }
 
+/** What players may know about the lobby bot (the full config is admin-only) */
+export interface PublicBotInfo {
+  enabled: boolean;
+  /** Minutes before the scheduled time the bot opens the lobby */
+  leadMinutes: number;
+  gameMode: string;
+  region: string;
+  /** Fixed lobby password, '' when none is set or it is hidden from players */
+  password: string;
+  /** 1 = coin toss in the lobby (Dota's START PICK/SIDE SELECTION) */
+  selectionPriorityRules: number;
+}
+
 /**
- * The fixed lobby password a captain may see BEFORE the bot creates the session, so the
- * lobby card can show join info in advance. Returns '' when no fixed password is configured
- * (auto-generated per match — unknowable in advance) or when it isn't player-visible.
- * The bot config doc is admin-only at the Firestore-rules level, so this server action is
- * the only way the client can obtain it.
+ * The player-facing part of a tournament's bot config: whether the bot runs lobbies, when it
+ * opens them, and where to find one manually. The fixed lobby password is included only when
+ * the admin made it visible to players ('' when it is auto-generated per match). The config doc
+ * is admin-only at the Firestore-rules level, so this is how the client gets it. Null when the
+ * tournament has no bot config.
  */
-export async function getTournamentLobbyPassword(tournamentId: string): Promise<string> {
+export async function getPublicBotInfo(tournamentId: string): Promise<PublicBotInfo | null> {
   try {
     const cfg = await getTournamentBotConfig(tournamentId);
-    if (!cfg || cfg.passwordVisibleToPlayers === false) return '';
-    return (cfg.lobby?.password || '').trim();
+    if (!cfg) return null;
+    return {
+      enabled: !!cfg.enabled,
+      leadMinutes: cfg.lobbyCreationLeadMinutes ?? 10,
+      gameMode: cfg.lobby?.gameMode ?? 'captains_mode',
+      region: cfg.lobby?.serverRegion ?? 'europe_west',
+      password: cfg.passwordVisibleToPlayers === false ? '' : (cfg.lobby?.password || '').trim(),
+      selectionPriorityRules: cfg.lobby?.selectionPriorityRules ?? 1,
+    };
   } catch {
-    return '';
+    return null;
   }
 }
 

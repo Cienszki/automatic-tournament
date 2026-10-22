@@ -27,7 +27,7 @@ import { TeamStatsGrid } from "@/components/app/my-team/TeamStatsGrid";
 import { PlayerAnalyticsTable } from "@/components/app/my-team/PlayerAnalyticsTable";
 import { getUserTeam, getMatchesForTeam, getAllTeams, getAllStandins } from "@/lib/firestore";
 import { approveStandinRequest, rejectStandinRequest, cancelStandinRequest, appealStandinRequest, precheckStandinRequest, editStandinRequestGames } from '@/lib/standin-actions';
-import { getTournamentLobbyPassword } from '@/lib/bot/bot-config-actions';
+import { getPublicBotInfo } from '@/lib/bot/bot-config-actions';
 import type { Standin } from "@/lib/definitions";
 import NoTeamFound from '@/components/app/my-team/NoTeamFound';
 
@@ -568,14 +568,14 @@ function MyTeamView() {
 
           // Fetch active bot sessions for upcoming matches so the lobby card can show
           // the lobby name and password without the player needing to ask.
-          if (tournament?.lobbySettings?.botLobbyEnabled) {
-            // Fixed lobby password (if any) so the card shows join info before the bot runs.
-            try {
-              setFixedLobbyPassword(await getTournamentLobbyPassword(tournament.id));
-            } catch { /* leave empty */ }
-          }
+          // The admin's bot switch lives in the bot config (tournament.lobbySettings.botLobbyEnabled
+          // is an old flag nothing sets any more); the server action exposes the player-safe part.
+          const botInfo = await getPublicBotInfo(tournament.id).catch(() => null);
+          const botOn = botInfo?.enabled ?? !!tournament?.lobbySettings?.botLobbyEnabled;
+          // Fixed lobby password (if any) so the card shows join info before the bot runs.
+          if (botOn) setFixedLobbyPassword(botInfo?.password ?? '');
 
-          if (teamMatches.length > 0 && tournament?.lobbySettings?.botLobbyEnabled) {
+          if (teamMatches.length > 0 && botOn) {
             try {
               const upcomingIds = teamMatches
                 .filter(m => m.status !== 'completed')

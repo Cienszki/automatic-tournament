@@ -633,6 +633,7 @@ export function PDLUpcomingMatch({
             timePenalty={timePenalty}
             botLobbyName={botLobbyName}
             botLobbyPassword={botLobbyPassword}
+            totalGames={totalGamesInSeries}
           />
 
           {/* ─── Refresh button ─── */}
