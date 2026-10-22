@@ -23,6 +23,7 @@ import {
   DUEL_ATTRS, MAX_STORED_PACKS, PACK_EVERY_MS, RARITIES, RARITY, buildCards, cardsKey, emptyCollection, openPack, refill,
   type Card, type Collection, type PlayerCard, type Pull, type Rarity,
 } from '../cards-data';
+import { count } from '@/lib/plural';
 
 const CARD_RENDER = '320px';
 const RATIO = 0.7;
@@ -115,7 +116,7 @@ function CardFront({ card, w, h, foil, pick, picked }: { card: Card; w: number; 
           </div>
           <div className="relative flex justify-center items-center gap-3 uppercase tracking-widest opacity-75" style={{ fontSize: 9.5 * s, paddingBottom: 10 * s }}>
             <RarityTag r={card.rarity} s={s} />
-            <span>{isP ? `${card.player.games} gier · ${Math.round(card.player.wr * 100)}% W` : `${card.team.wins}–${card.team.losses}`}</span>
+            <span>{isP ? `${count(card.player.games, 'gra', 'gry', 'gier')} · ${Math.round(card.player.wr * 100)}% W` : `${card.team.wins}–${card.team.losses}`}</span>
           </div>
         </div>
       );

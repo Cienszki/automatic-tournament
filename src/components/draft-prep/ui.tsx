@@ -15,6 +15,7 @@ import {
 } from '@/lib/draft-prep/engine';
 import type { DpTeam } from '@/lib/draft-prep/types';
 import { DraftPrepProvider, useDP, type Slot } from './state';
+import { count } from '@/lib/plural';
 
 const STEAM64 = 76561197960265728n;
 export const SRC_COLOR: Record<Source, string> = { T: '#f2c94c', L: '#5cc8ff', P: '#9b8cff' };
@@ -123,7 +124,7 @@ export function Filters() {
     <div className="flex items-center gap-5 text-sm font-bold">
       <div className="flex items-center gap-3">
         {WINDOWS.map(w => (
-          <Tip key={w} content={w === 'patch' ? 'Tylko gry z bieżącego patcha' : w === 'all' ? 'Cała historia' : `Ostatnie ${w === '6m' ? '6' : '3'} miesiące`}>
+          <Tip key={w} content={w === 'patch' ? 'Tylko gry z bieżącego patcha' : w === 'all' ? 'Cała historia' : `Ostatnie ${w === '6m' ? '6 miesięcy' : '3 miesiące'}`}>
             <button type="button" onClick={() => setWindow(w)} className="pb-0.5 border-b-2" style={{ borderColor: window === w ? C.secondary : 'transparent', color: window === w ? C.heading : C.muted }}>{WINDOW_LABEL[w]}</button>
           </Tip>
         ))}
@@ -194,7 +195,7 @@ export function SlotChanger({ side, i, children }: { side: 'us' | 'them'; i: num
           {pending.length > 0 && <div className="text-[10px] uppercase tracking-widest text-white/50 mt-2">Zgłoszeni stand-ini (czekają na akceptację)</div>}
           {pending.map(s => <button key={s.sid32} type="button" onClick={() => put({ key: s.sid32, sid32: s.sid32, sid64: String(BigInt(s.sid32) + STEAM64), name: s.name, role: cur?.role, origin: 'pending', replaces: cur?.name })} className={opt}>{s.name}<span className="text-white/50">{s.games.length ? `gry ${s.games.join(', ')}` : 'cała seria'}</span></button>)}
           {past.length > 0 && <div className="text-[10px] uppercase tracking-widest text-white/50 mt-2">Grali już jako stand-in dla {team?.name}</div>}
-          {past.slice(0, 6).map(x => <button key={x.sid32} type="button" onClick={() => put({ key: x.sid32, sid32: x.sid32, sid64: String(BigInt(x.sid32) + STEAM64), name: x.name, role: cur?.role, origin: 'manual', replaces: cur?.origin === 'roster' ? cur.name : cur?.replaces })} className={opt}>{x.name}<span className="ml-auto text-white/50 text-xs">{x.n} {x.n === 1 ? 'mecz' : 'mecze'}</span></button>)}
+          {past.slice(0, 6).map(x => <button key={x.sid32} type="button" onClick={() => put({ key: x.sid32, sid32: x.sid32, sid64: String(BigInt(x.sid32) + STEAM64), name: x.name, role: cur?.role, origin: 'manual', replaces: cur?.origin === 'roster' ? cur.name : cur?.replaces })} className={opt}>{x.name}<span className="ml-auto text-white/50 text-xs">{count(x.n, 'mecz', 'mecze', 'meczów')}</span></button>)}
           {dp.benchOf(side).length > 0 && <div className="text-[10px] uppercase tracking-widest text-white/50 mt-2">Z rezerwy</div>}
           {dp.benchOf(side).map(b => <button key={b.key} type="button" onClick={() => put({ ...b, role: cur?.role, replaces: cur?.name })} className={opt}><Avatar player={b} size={28} />{b.name}<span className="text-white/50 text-xs">{b.role}</span></button>)}
           <div className="text-[10px] uppercase tracking-widest text-white/50 mt-2">Ktoś inny — wklej link Steam / Dotabuff / OpenDota albo wpisz nick</div>
@@ -259,7 +260,7 @@ export function LineupEditor() {
     <Popover.Root open={open} onOpenChange={setOpen}>
       <Popover.Trigger asChild>
         <button type="button" className="pb-1 border-b-2 text-sm font-bold uppercase tracking-wider whitespace-nowrap" style={{ borderColor: open ? C.secondary : 'transparent', color: C.heading }}>
-          Stand-iny{changed ? ` · ${changed} zmian` : ''}{pending ? ` · ${pending} zgłoszonych` : ''}
+          Stand-iny{changed ? ` · ${count(changed, 'zmiana', 'zmiany', 'zmian')}` : ''}{pending ? ` · ${count(pending, 'zgłoszony', 'zgłoszone', 'zgłoszonych')}` : ''}
         </button>
       </Popover.Trigger>
       <Popover.Portal>
@@ -290,7 +291,7 @@ export function PlayerRow({ side, i, pm, avatar = 60, children, mirror, why }: {
   const s = (side === 'us' ? dp.lineUs : dp.lineThem)[i];
   const h = s ? dp.histories.get(s.key) : undefined;
   if (!s) return null;
-  const meta = h === 'loading' ? 'wczytuję historię…' : h === 'error' ? 'brak danych z OpenDota/STRATZ' : typeof h === 'object' ? (h.rows.length ? `${rankName(h.rankTier) ?? 'bez rangi'} · ${h.rows.length} gier${h.accounts > 1 ? ` · ${h.accounts} konta` : ''}` : 'brak publicznych gier') : '';
+  const meta = h === 'loading' ? 'wczytuję historię…' : h === 'error' ? 'brak danych z OpenDota/STRATZ' : typeof h === 'object' ? (h.rows.length ? `${rankName(h.rankTier) ?? 'bez rangi'} · ${count(h.rows.length, 'gra', 'gry', 'gier')}${h.accounts > 1 ? ` · ${count(h.accounts, 'konto', 'konta', 'kont')}` : ''}` : 'brak publicznych gier') : '';
   return (
     <div className={`flex-1 min-h-0 flex items-center gap-3 border-b ${mirror ? 'flex-row-reverse text-right' : ''}`} style={{ borderColor: RULE }}>
       <span className="font-logik-extended-bold w-6 text-center shrink-0" style={{ color: side === 'us' ? C.radiant : C.dire, fontSize: vh(16, 2.4, 26), ...font }}>{ROLE_SHORT[s.role ?? ''] ?? '?'}</span>

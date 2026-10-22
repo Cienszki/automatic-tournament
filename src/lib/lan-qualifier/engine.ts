@@ -17,6 +17,8 @@
 //   a pair once, four twice, an odd group's best seed sits a round out) until every place is set.
 //   LAN — the tournament's own playoff bracket, seeded by the admin.
 
+import { count } from '@/lib/plural';
+
 export type LQStage = 'A' | 'B' | 'F' | 'P';
 export type GslSlot = 'o1' | 'o2' | 'w' | 'l' | 'd';
 /** Series record [wins, losses]. */
@@ -411,7 +413,7 @@ export function derive(cfg: LQConfig, matches: LQMatch[], decisions: LQDecisions
 export function plan(cfg: LQConfig, matches: LQMatch[], decisions: LQDecisions, round: number): LQPlan {
   const before = matches.filter(m => m.round < round);
   const open = before.filter(m => !m.done);
-  if (open.length) return { kind: 'wait', reason: `Najpierw zakończ rundę ${Math.max(...open.map(m => m.round))} (${open.length} mecz(e) bez wyniku).` };
+  if (open.length) return { kind: 'wait', reason: `Najpierw zakończ rundę ${Math.max(...open.map(m => m.round))} (${count(open.length, 'mecz', 'mecze', 'meczów')} bez wyniku).` };
 
   const d = derive(cfg, before, decisions);
   const { r, finalStart, placementEnd } = d;

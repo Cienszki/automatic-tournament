@@ -10,6 +10,7 @@ import { fmtClock, fmtPct, metric, type MetricKey } from '@/lib/stats-lab/metric
 import { opponentOf, type Model } from '@/lib/stats-lab/derive';
 import { heroName } from '@/lib/stats-lab/heroes';
 import { Avatar, C, HeroImg, LabTitle, LabView, TeamLogo, WithModel, mix, useHeaderFont, HeroRender } from '../kit';
+import { count } from '@/lib/plural';
 
 interface Fact {
   id: string;
@@ -38,7 +39,7 @@ function buildDecks(model: Model): Deck[] {
   const heroes = model.heroes.filter(h => h.contest > 0);
   decks.push({ id: 'h-picks', question: 'Ile razy wybrany', desc: 'Liczba picków bohatera w turnieju', fmt: v => String(v), facts: heroes.map(h => ({ id: String(h.heroId), name: heroName(h.heroId), value: h.picks, visual: { kind: 'hero', heroId: h.heroId } })) });
   decks.push({ id: 'h-bans', question: 'Ile razy zbanowany', desc: 'Liczba banów bohatera w turnieju', fmt: v => String(v), facts: heroes.map(h => ({ id: String(h.heroId), name: heroName(h.heroId), value: h.bans, visual: { kind: 'hero', heroId: h.heroId } })) });
-  decks.push({ id: 'h-wr', question: 'Procent wygranych', desc: 'Bohaterowie z co najmniej 5 grami', fmt: fmtPct, facts: heroes.filter(h => h.picks >= 5).map(h => ({ id: String(h.heroId), name: heroName(h.heroId), sub: `${h.picks} gier`, value: h.wr, visual: { kind: 'hero', heroId: h.heroId } })) });
+  decks.push({ id: 'h-wr', question: 'Procent wygranych', desc: 'Bohaterowie z co najmniej 5 grami', fmt: fmtPct, facts: heroes.filter(h => h.picks >= 5).map(h => ({ id: String(h.heroId), name: heroName(h.heroId), sub: `${count(h.picks, 'gra', 'gry', 'gier')}`, value: h.wr, visual: { kind: 'hero', heroId: h.heroId } })) });
   const teams = model.teams.filter(t => t.games.length >= 2);
   decks.push({ id: 't-kills', question: 'Zabójstwa drużyny na grę', desc: 'Średnia liczba zabójstw drużyny', fmt: v => v.toFixed(1), facts: teams.map(t => ({ id: t.id, name: t.name, value: t.avg.kills, visual: { kind: 'team', team: t } })) });
   decks.push({ id: 't-dur', question: 'Średni czas gry', desc: 'Jak długo trwają gry drużyny', fmt: fmtClock, facts: teams.map(t => ({ id: t.id, name: t.name, value: t.avg.duration, visual: { kind: 'team', team: t } })) });

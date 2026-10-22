@@ -73,6 +73,7 @@ import {
   GAME_MODE_LABELS,
   SERVER_REGION_LABELS,
 } from '@/types/lobby-bot';
+import { count } from '@/lib/plural';
 
 // Safe bot account type — encryptedPassword is never returned from the API
 interface SafeBotAccount {
@@ -1051,7 +1052,7 @@ function SettingsView({
           </div>
           <CardDescription>
             {config.enabled
-              ? 'Bot jest włączony — automatycznie tworzy lobby dla zaplanowanych meczy.'
+              ? 'Bot jest włączony — automatycznie tworzy lobby dla zaplanowanych meczów.'
               : 'Bot jest wyłączony — mecze muszą być tworzone ręcznie przez kapitanów.'}
           </CardDescription>
         </CardHeader>
@@ -2075,7 +2076,7 @@ function SettingsView({
                       <span className="font-medium text-sm">{account.displayName}</span>
                       {hasOverrides && (
                         <Badge variant="secondary" className="text-xs">
-                          {Object.keys(overrides).length} nadpisań
+                          {count(Object.keys(overrides).length, 'nadpisanie', 'nadpisania', 'nadpisań')}
                         </Badge>
                       )}
                     </div>

@@ -28,7 +28,7 @@ export interface StatsPage {
 
 export const PAGES: StatsPage[] = [
   // ── Overview gallery ────────────────────────────────────────────────
-  { id: 'rankingi', title: 'Rankingi', blurb: 'Punkty występu na każdej pozycji i ranking drużyn', group: 'main', icon: Trophy, load: () => import('./pages/Rankings') },
+  { id: 'rankingi', title: 'Rankingi', blurb: 'Punkty fantasy na każdej pozycji i ranking drużyn', group: 'main', icon: Trophy, load: () => import('./pages/Rankings') },
   { id: 'rekordy', title: 'Rekordy', blurb: 'Najlepsze pojedyncze występy i kto ich goni', group: 'main', icon: Medal, load: () => import('@/components/stats-lab/designs/D01Records') },
   { id: 'liderzy', title: 'Liderzy', blurb: 'Podium w każdej statystyce — średnio, łącznie, w jednej grze', group: 'main', icon: Crown, load: () => import('@/components/stats-lab/designs/D02Podium') },
   { id: 'bohaterowie', title: 'Bohaterowie', blurb: 'Kto rządzi draftem: picki, bany i skuteczność', group: 'main', icon: Swords, load: () => import('@/components/stats-lab/designs/D03HeroMosaic') },

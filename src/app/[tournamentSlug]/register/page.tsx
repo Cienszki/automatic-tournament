@@ -22,6 +22,7 @@ import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { count, plural } from '@/lib/plural';
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif"];
@@ -228,7 +229,7 @@ const RegistrationClosed: React.FC<RegistrationClosedProps> = ({
       : reason === 'closed'
       ? `Rejestracja zakończyła się ${fmt(closesAt) ?? 'niedawno'}.`
       : reason === 'full'
-      ? `Wszystkie miejsca zostały zajęte${maxTeams ? ` (limit: ${maxTeams} drużyn)` : ''}.`
+      ? `Wszystkie miejsca zostały zajęte${maxTeams ? ` (limit: ${count(maxTeams, 'drużyna', 'drużyny', 'drużyn')})` : ''}.`
       : null;
 
   return (
@@ -360,7 +361,7 @@ function MmrSummary({ form, mmrCap }: { form: { watch: (name: string) => any }; 
         </p>
         {isOverCap && (
           <p className="text-red-400 text-sm mt-1">
-            Przekroczono limit MMR o {(totalMmr - mmrCap).toLocaleString()} punktów
+            Przekroczono limit MMR o {(totalMmr - mmrCap).toLocaleString()} {plural(totalMmr - mmrCap, 'punkt', 'punkty', 'punktów')}
           </p>
         )}
       </div>

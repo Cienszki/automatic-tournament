@@ -7,6 +7,7 @@ import React, { useMemo, useState } from 'react';
 import type { Model, PlayerX } from '@/lib/stats-lab/derive';
 import { qualified } from '@/lib/stats-lab/season';
 import { Avatar, C, TeamPicker, Tip, mix } from './kit';
+import { count } from '@/lib/plural';
 
 /** Team + player selection, starting on the season's best performer */
 export function usePlayerPick(model: Model) {
@@ -31,7 +32,7 @@ export function PlayerPicker({ pick, size = 56, teamSize = 34, teamRows = 3, col
         {pick.roster.map(p => {
           const on = p.id === pick.player?.id;
           return (
-            <Tip key={p.id} content={`${p.name} · ${p.games} gier`}>
+            <Tip key={p.id} content={`${p.name} · ${count(p.games, 'gra', 'gry', 'gier')}`}>
               <button type="button" onClick={() => pick.setPlayer(p.id)} className="flex flex-col items-center gap-1 rounded-2xl p-1.5 transition-all min-w-0"
                 style={{ background: on ? mix(C.primary, 40) : 'transparent', boxShadow: on ? `0 0 0 2px ${C.secondary}` : undefined }}>
                 <Avatar player={p} size={size} />

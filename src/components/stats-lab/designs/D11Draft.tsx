@@ -10,6 +10,7 @@ import type { Model } from '@/lib/stats-lab/derive';
 import { heroName } from '@/lib/stats-lab/heroes';
 import { fmtPct } from '@/lib/stats-lab/metrics';
 import { C, HeroImg, LabTitle, LabView, Tip, TipBody, WithModel, ink, mix, useFitCount, useHeaderFont, useSize, wrColor } from '../kit';
+import { count, plural } from '@/lib/plural';
 
 interface HeroCount { heroId: number; n: number; wins: number }
 interface Slot { i: number; pick: boolean; sideA: boolean; total: number; heroes: HeroCount[] }
@@ -114,7 +115,7 @@ function Draft({ model }: { model: Model }) {
 
   return (
     <>
-      <LabTitle sub={<span>{a.draftGames} draftów</span>}>Pokój draftu</LabTitle>
+      <LabTitle sub={<span>{count(a.draftGames, 'draft', 'drafty', 'draftów')}</span>}>Pokój draftu</LabTitle>
 
       {/* Draft board: top row = team drafting first, bottom row = second */}
       <div ref={boardRef} className="shrink-0 mt-4 rounded-2xl px-3 py-3" style={{ background: `linear-gradient(180deg, ${mix(C.primary, 10)}, transparent 50%, ${mix(C.secondary, 10)})`, border: `1px solid ${ink(8)}` }}>
@@ -143,7 +144,7 @@ function Draft({ model }: { model: Model }) {
         </Panel>
         <Panel title="Pierwszy pick" tip="Pierwszy wybrany bohater w drafcie i jak radzi sobie drużyna, która go wzięła">
           <div className="flex items-center gap-3 mb-2">
-            <Tip content={`Drużyna z pierwszym pickiem wygrała ${Math.round(a.fpWr * 100)}% z ${a.fpGames} gier`}>
+            <Tip content={`Drużyna z pierwszym pickiem wygrała ${Math.round(a.fpWr * 100)}% z ${a.fpGames} ${plural(a.fpGames, 'gry', 'gier', 'gier')}`}>
               <div className="relative w-20 h-20 shrink-0 cursor-help">
                 <svg viewBox="0 0 36 36" className="w-full h-full -rotate-90">
                   <circle cx="18" cy="18" r="15.9" fill="none" stroke={ink(10)} strokeWidth="4" />
@@ -159,10 +160,10 @@ function Draft({ model }: { model: Model }) {
         <Panel title="Kontra" tip="Ostatni pick draftu — bohater wybierany, gdy rywal nie może już odpowiedzieć">
           <FitRows rows={a.lastPicks} />
         </Panel>
-        <Panel title="Priorytet" tip={`Bohaterowie znikający z draftu najwcześniej (średnia pozycja pierwszego pojawienia się, min. ${a.minN} draftów)`}>
+        <Panel title="Priorytet" tip={`Bohaterowie znikający z draftu najwcześniej (średnia pozycja pierwszego pojawienia się, min. ${count(a.minN, 'draft', 'drafty', 'draftów')})`}>
           <div className="grid grid-cols-3 gap-2 content-start">
             {a.priority.slice(0, 12).map((p, i) => (
-              <Tip key={p.heroId} content={<TipBody title={`${i + 1}. ${heroName(p.heroId)}`}>średnio znika w ruchu {(p.avg + 1).toFixed(1)} · {p.n} draftów</TipBody>}>
+              <Tip key={p.heroId} content={<TipBody title={`${i + 1}. ${heroName(p.heroId)}`}>średnio znika w ruchu {(p.avg + 1).toFixed(1)} · {count(p.n, 'draft', 'drafty', 'draftów')}</TipBody>}>
                 <div className="relative rounded-md overflow-hidden">
                   <HeroImg heroId={p.heroId} className="w-full aspect-video" />
                   <span className="absolute top-0 left-0 px-1.5 text-xs font-bold text-white bg-black/65 rounded-br">{i + 1}</span>

@@ -45,6 +45,7 @@ import { getAllDivisionThemes, getDivisionTheme, type DivisionTheme } from '@/li
 import { uploadBytes, ref as storageRef, getDownloadURL } from 'firebase/storage';
 import { storage } from '@/lib/firebase';
 import type { GroupHighlight } from '@/lib/definitions';
+import { count, plural } from '@/lib/plural';
 
 interface Division {
   id: string;
@@ -165,7 +166,7 @@ export function DivisionsTab() {
             }
           });
           
-          alert(`Znaleziono ${orphanedTeams.length} drużyn przypisanych do nieistniejących ${isMmrLimited ? 'grup' : 'dywizji'}. Zostały automatycznie odłączone.`);
+          alert(`Znaleziono ${orphanedTeams.length} ${plural(orphanedTeams.length, 'drużynę przypisaną', 'drużyny przypisane', 'drużyn przypisanych')} do nieistniejących ${isMmrLimited ? 'grup' : 'dywizji'}. ${orphanedTeams.length === 1 ? 'Została automatycznie odłączona' : 'Zostały automatycznie odłączone'}.`);
         }
 
         setTeams(teamsData);
@@ -257,7 +258,7 @@ export function DivisionsTab() {
     
     if (teamsInDivision.length > 0) {
       const confirmDelete = confirm(
-        `Ta ${isMmrLimited ? 'grupa' : 'dywizja'} zawiera ${teamsInDivision.length} drużyn(y). Czy na pewno chcesz ją usunąć? Drużyny zostaną odłączone od ${isMmrLimited ? 'grupy' : 'dywizji'}.`
+        `Ta ${isMmrLimited ? 'grupa' : 'dywizja'} zawiera ${teamsInDivision.length} ${plural(teamsInDivision.length, 'drużynę', 'drużyny', 'drużyn')}. Czy na pewno chcesz ją usunąć? Drużyny zostaną odłączone od ${isMmrLimited ? 'grupy' : 'dywizji'}.`
       );
       if (!confirmDelete) return;
     }
@@ -281,7 +282,7 @@ export function DivisionsTab() {
       
       setDivisions(divisions.filter(d => d.id !== id));
       
-      alert(`${isMmrLimited ? 'Grupa' : 'Dywizja'} usunięta. ${teamsInDivision.length} drużyn(y) zostało odłączonych.`);
+      alert(`${isMmrLimited ? 'Grupa' : 'Dywizja'} usunięta. ${teamsInDivision.length} ${plural(teamsInDivision.length, 'drużyna została odłączona', 'drużyny zostały odłączone', 'drużyn zostało odłączonych')}.`);
     } catch (error) {
       console.error('Error removing division:', error);
       alert(`Błąd podczas usuwania ${isMmrLimited ? 'grupy' : 'dywizji'}`);
@@ -675,7 +676,7 @@ export function DivisionsTab() {
                       </div>
                     )}
                     <p className="text-sm text-muted-foreground font-logik">
-                      Tier {division.tier} • {division.teamsCount} drużyn
+                      Tier {division.tier} • {count(division.teamsCount, 'drużyna', 'drużyny', 'drużyn')}
                       {division.theme && (
                         <span className="ml-2">• {getDivisionTheme(division.theme)?.displayName}</span>
                       )}
@@ -686,7 +687,7 @@ export function DivisionsTab() {
                   <div className="flex items-center gap-2">
                     <Users className="h-4 w-4 text-muted-foreground" />
                     <Badge variant="outline" className="font-logik">
-                      {division.teamsCount} drużyn
+                      {count(division.teamsCount, 'drużyna', 'drużyny', 'drużyn')}
                     </Badge>
                   </div>
 
@@ -791,7 +792,7 @@ export function DivisionsTab() {
                           <div className="flex-1">
                             <p className="font-logik-extended-bold">{division.name}</p>
                             <p className="text-xs text-muted-foreground font-logik">
-                              {divisionTeams.length} {divisionTeams.length === 1 ? 'drużyna' : 'drużyn'}
+                              {count(divisionTeams.length, 'drużyna', 'drużyny', 'drużyn')}
                             </p>
                           </div>
                         </div>

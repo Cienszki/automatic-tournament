@@ -12,6 +12,8 @@ import { METRICS, fmtClock, fmtPct, type MetricKey } from '@/lib/stats-lab/metri
 import { pctRank, type HeroX, type Model, type PlayerX, type TeamX } from '@/lib/stats-lab/derive';
 import { heroName } from '@/lib/stats-lab/heroes';
 import { Avatar, C, HeroImg, LabTitle, LabView, Pager, Seg, TeamLogo, Tip, TipBody, WithModel, ink, mix, useFitCount, useHeaderFont, usePages, useSize } from '../kit';
+import { count, plural } from '@/lib/plural';
+import { stageLocal } from '@/components/ui/ScaledStage';
 
 type Kind = 'players' | 'teams' | 'heroes';
 type Entity = PlayerX | TeamX | HeroX;
@@ -120,7 +122,8 @@ function Scatter({ ents, kind, ax, ay }: { ents: Entity[]; kind: Kind; ax: Axis;
   const mx = med(xs); const my = med(ys);
   const ticks = (lo: number, hi: number) => Array.from({ length: 5 }, (_, i) => lo + ((hi - lo) * i) / 4);
   const mark = Math.max(24, Math.min(40, 460 / Math.sqrt(Math.max(1, ents.length))));
-  const local = (e: React.PointerEvent) => { const r = ref.current!.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
+  // Layout pixels, also when the stats hub is scaled up on a big screen
+  const local = (e: React.PointerEvent) => stageLocal(ref.current!, e.clientX, e.clientY);
 
   return (
     <div ref={ref} className="relative w-full h-full select-none touch-none"
@@ -153,7 +156,7 @@ function Scatter({ ents, kind, ax, ay }: { ents: Entity[]; kind: Kind; ax: Axis;
       {size.w > 0 && pts.filter(p => p.x >= dx0 && p.x <= dx1 && p.y >= dy0 && p.y <= dy1).map(p => {
         const id = idOf(p.e, kind);
         return (
-          <Tip key={id} content={<TipBody title={nameOf(p.e, kind)}>{ax.label}: {ax.fmt(p.x)} · {ay.label}: {ay.fmt(p.y)}{kind === 'players' ? ` · ${(p.e as PlayerX).games} gier` : ''}</TipBody>}>
+          <Tip key={id} content={<TipBody title={nameOf(p.e, kind)}>{ax.label}: {ax.fmt(p.x)} · {ay.label}: {ay.fmt(p.y)}{kind === 'players' ? ` · ${count((p.e as PlayerX).games, 'gra', 'gry', 'gier')}` : ''}</TipBody>}>
             <motion.div data-pt className="absolute" initial={false} animate={{ left: sx(p.x) - mark / 2, top: sy(p.y) - mark / 2 }} transition={{ type: 'spring', stiffness: 160, damping: 22 }}
               onMouseEnter={() => setHot(id)} onMouseLeave={() => setHot(null)} style={{ zIndex: hot === id ? 20 : 1 }}>
               <div className="transition-transform hover:scale-150"><Mark e={p.e} kind={kind} size={mark} ring={hot === id ? C.secondary : 'rgba(0,0,0,0.5)'} /></div>
@@ -232,7 +235,7 @@ function Lab({ model }: { model: Model }) {
   return (
     <>
       <LabTitle
-        sub={<Tip content={kind === 'players' ? `Gracze z co najmniej ${model.minGames} grami` : kind === 'heroes' ? 'Bohaterowie z co najmniej 2 pickami' : 'Drużyny z co najmniej 2 grami'}><span className="cursor-help">{ents.length} punktów</span></Tip>}
+        sub={<Tip content={kind === 'players' ? `Gracze z co najmniej ${model.minGames} ${plural(model.minGames, 'grą', 'grami', 'grami')}` : kind === 'heroes' ? 'Bohaterowie z co najmniej 2 pickami' : 'Drużyny z co najmniej 2 grami'}><span className="cursor-help">{count(ents.length, 'punkt', 'punkty', 'punktów')}</span></Tip>}
         right={<div className="flex gap-2"><Seg value={kind} onChange={setKind} options={[{ value: 'players', label: 'Gracze' }, { value: 'teams', label: 'Drużyny' }, { value: 'heroes', label: 'Bohaterowie' }]} /><Seg value={view} onChange={setView} options={[{ value: 'plot', label: 'Wykres' }, { value: 'table', label: 'Tabela' }]} /></div>}
       >
         Laboratorium

@@ -53,6 +53,7 @@ import {
 } from '@/lib/rules-editing';
 import { applyMarkdown, type MarkdownFormat } from '@/lib/rules-markdown';
 import { RuleText } from '@/components/rules/RuleText';
+import { count } from '@/lib/plural';
 
 type DragHandleProps = DraggableProvidedDragHandleProps | null | undefined;
 
@@ -833,7 +834,7 @@ export function RulesTab() {
                       </div>
                     )}
                     <CardDescription className="font-logik">
-                      {section.paragraphs.length} paragrafów
+                      {count(section.paragraphs.length, 'paragraf', 'paragrafy', 'paragrafów')}
                     </CardDescription>
                   </div>
 

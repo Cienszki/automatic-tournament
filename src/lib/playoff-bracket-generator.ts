@@ -1,4 +1,5 @@
 import type { PlayoffMatch, PlayoffMatchFormat, PlayoffBracketType } from './definitions';
+import { count, plural } from '@/lib/plural';
 
 /** Sentinel id prefix for the synthetic "BYE" placeholder team (auto-advance). */
 export const BYE_TEAM_SENTINEL = '__PLAYOFF_BYE__';
@@ -47,13 +48,11 @@ export function describeBracket(teamCount: number): string {
   const size = bracketSizeFor(teamCount);
   const byes = byeCountFor(teamCount);
   const rounds = Math.log2(size);
-  const roundWord = rounds === 1 ? 'runda' : rounds < 5 ? 'rundy' : 'rund';
   if (byes === 0) {
-    return `${teamCount} drużyn — drabinka na ${size}, ${rounds} ${roundWord}, bez wolnych losów.`;
+    return `${count(teamCount, 'drużyna', 'drużyny', 'drużyn')} — drabinka na ${size}, ${count(rounds, 'runda', 'rundy', 'rund')}, bez wolnych losów.`;
   }
-  const byeWord = byes === 1 ? 'drużyna przechodzi' : 'drużyny przechodzą';
-  return `${teamCount} drużyn — drabinka na ${size}, ${rounds} ${roundWord}. ` +
-         `${byes} ${byeWord} pierwszą rundę bez gry (wolny los).`;
+  return `${count(teamCount, 'drużyna', 'drużyny', 'drużyn')} — drabinka na ${size}, ${count(rounds, 'runda', 'rundy', 'rund')}. ` +
+         `${byes} ${plural(byes, 'drużyna przechodzi', 'drużyny przechodzą', 'drużyn przechodzi')} pierwszą rundę bez gry (wolny los).`;
 }
 
 export interface BracketConfig {

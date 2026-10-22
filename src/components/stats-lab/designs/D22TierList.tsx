@@ -6,12 +6,14 @@
 // the data is scored, and the list can be downloaded as a PNG.
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
 import { useTournament } from '@/context/TournamentContext';
 import type { HeroX, Model, PlayerX } from '@/lib/stats-lab/derive';
 import { heroName } from '@/lib/stats-lab/heroes';
 import { pctRank } from '@/lib/stats-lab/derive';
 import { Avatar, C, HeroImg, ImgProxy, LabTitle, LabView, Seg, Tip, TipBody, WithModel, ink, mix, playerTip, useHeaderFont, useSize } from '../kit';
+import { useStageScale } from '@/components/ui/ScaledStage';
 
 type Kind = 'heroes' | 'players';
 type Mode = 'data' | 'mine';
@@ -62,7 +64,7 @@ function buildItems(model: Model, kind: Kind, role: string): Item[] {
   return ps.map((p: PlayerX) => ({
     id: p.id, name: p.name, score: p.agg.score.avg!, tier: tierFor(pctRank(scores, p.agg.score.avg!)),
     node: size => <Avatar player={p} size={size} />,
-    tip: <>{playerTip(p)}<div className="text-white/60 mt-0.5">{p.agg.score.avg!.toFixed(2)} pkt występu / grę</div></>,
+    tip: <>{playerTip(p)}<div className="text-white/60 mt-0.5">{p.agg.score.avg!.toFixed(2)} pkt fantasy / grę</div></>,
   }));
 }
 
@@ -162,6 +164,7 @@ function TierList({ model }: { model: Model }) {
 
   // Pointer drag: the item follows the cursor; drop on the tier under it
   const dragRef = useRef(drag); dragRef.current = drag;
+  const stageScale = useStageScale();
   const dragId = drag?.id;
   useEffect(() => {
     if (!dragId) return;
@@ -198,7 +201,7 @@ function TierList({ model }: { model: Model }) {
       <LabTitle
         sub={mode === 'mine'
           ? <Tip content="Ile pozycji leży w tym samym tierze co według danych"><span className="cursor-help">zgodność z danymi: {Math.round(agree * 100)}% · przeciągaj, by zmienić</span></Tip>
-          : <span>{kind === 'heroes' ? 'skuteczność + popularność w drafcie' : 'średnie punkty występu'}</span>}
+          : <span>{kind === 'heroes' ? 'skuteczność + popularność w drafcie' : 'średnie punkty fantasy'}</span>}
         right={
           <div className="flex gap-2 items-center flex-wrap justify-end">
             {kind === 'players' && <Seg value={roleKey} onChange={setRoleKey} options={ROLES.map(r => ({ value: r.value, label: r.label, tip: r.role || undefined }))} />}
@@ -240,10 +243,12 @@ function TierList({ model }: { model: Model }) {
         ))}
       </div>
       {exporting && <ExportSheet rows={rows} kind={kind} title={exportTitle} subtitle={tournament?.name ?? ''} sheetRef={sheetRef} />}
-      {dragged && drag && (
+      {/* Portalled: inside the scaled stats stage `fixed` would resolve against the stage, not the screen */}
+      {dragged && drag && createPortal(
         <div className="fixed z-[9999] pointer-events-none" style={{ left: drag.x, top: drag.y, transform: 'translate(-50%, -50%) scale(1.25) rotate(-4deg)', filter: `drop-shadow(0 12px 22px rgba(0,0,0,0.55)) drop-shadow(0 0 10px ${mix(C.secondary, 60)})` }}>
-          {dragged.node(size)}
-        </div>
+          {dragged.node(size * stageScale)}
+        </div>,
+        document.body,
       )}
     </>
   );

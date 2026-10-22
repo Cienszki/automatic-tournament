@@ -28,6 +28,7 @@ import {
   ExternalLink,
   Undo2,
 } from 'lucide-react';
+import { count } from '@/lib/plural';
 
 interface EnrichedAppeal extends PDLStandinRequest {
   teamName: string;
@@ -354,7 +355,7 @@ export function StandinsTab() {
                 Odwołania do rozpatrzenia
                 {pendingCount > 0 && (
                   <Badge className="ml-2 bg-amber-500 text-black font-logik">
-                    {pendingCount} oczekujących
+                    {count(pendingCount, 'oczekujący', 'oczekujące', 'oczekujących')}
                   </Badge>
                 )}
               </CardTitle>

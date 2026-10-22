@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils';
 import { AlertTriangle, CheckCircle2, Crown, GitBranch, Loader2, Save, Scale, Trophy } from 'lucide-react';
 import type { LQConfig, LQDerived, LQMatch, LQPlan } from '@/lib/lan-qualifier/engine';
 import type { SwissTeam } from '@/lib/swiss/actions';
+import { count, plural } from '@/lib/plural';
 
 type Run = (key: string, fn: () => Promise<void>) => Promise<void>;
 
@@ -103,7 +104,7 @@ export function GroupACard({ cfg, field, stored, locked, run, onSave, primary }:
         </CardTitle>
         <CardDescription className="font-logik">
           Domyślnie 4 drużyny z najwyższym rozstawieniem. Pozostałe {Math.max(0, field.length - 4)} grają Swiss
-          ({cfg.groupB.length >= 2 ? `${Math.max(1, Math.ceil(Math.log2(cfg.groupB.length)))} rundy` : 'za mało drużyn'}).
+          ({cfg.groupB.length >= 2 ? `${count(Math.max(1, Math.ceil(Math.log2(cfg.groupB.length))), 'runda', 'rundy', 'rund')}` : 'za mało drużyn'}).
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -172,7 +173,7 @@ export function TiebreakCard({ derived, field, finalStarted, run, onSave, primar
           <Scale className="h-5 w-5" style={{ color: primary }} /> Dogrywka o awans do Finału
         </CardTitle>
         <CardDescription className="font-logik">
-          {tie.teams.length} drużyny mają bilans {tie.record[0]}:{tie.record[1]}, a do Finału {tie.spots === 1 ? 'awansuje jedna' : `awansują ${tie.spots}`}.
+          {tie.teams.length} {plural(tie.teams.length, 'drużyna ma', 'drużyny mają', 'drużyn ma')} bilans {tie.record[0]}:{tie.record[1]}, a do Finału {tie.spots === 1 ? 'awansuje jedna' : `awansują ${tie.spots}`}.
           Dogrywkę organizujecie poza terminarzem — tutaj zaznacz, kto ją wygrał. Na stronie drużyny widzą ją jako „dogrywka o awans”.
         </CardDescription>
       </CardHeader>
@@ -286,7 +287,7 @@ export function LanStatusCard({ cfg, derived, matches, nextPlan, field, primary 
           </tbody>
         </table>
         <p className="text-xs text-muted-foreground font-logik">
-          Grupa A: {cfg.groupA.map(name).join(', ')} · Swiss: {cfg.groupB.length} drużyn.
+          Grupa A: {cfg.groupA.map(name).join(', ')} · Swiss: {count(cfg.groupB.length, 'drużyna', 'drużyny', 'drużyn')}.
         </p>
       </CardContent>
     </Card>

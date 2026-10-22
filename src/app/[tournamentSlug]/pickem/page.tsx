@@ -21,6 +21,7 @@ import { LoadingScreen } from '@/components/ui/LoadingScreen';
 import { DiscordUsernameModal } from '@/components/app/DiscordUsernameModal';
 import { collection, doc, getDoc, getDocs, serverTimestamp, setDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { CHAMFER_CLIP } from '@/components/ui/chamfer';
 
 type LegacyContainerId =
   | 'champion'
@@ -503,7 +504,7 @@ export default function PickemPage() {
                 style={{
                   backgroundColor: 'var(--tournament-primary, #8B1538)',
                   color: '#ffffff',
-                  clipPath: 'polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px)',
+                  clipPath: CHAMFER_CLIP,
                 }}
               >
                 {t('common.signInWithGoogle')}
@@ -640,7 +641,7 @@ export default function PickemPage() {
                       style={{
                         color: 'var(--tournament-text, #ffffff)',
                         borderColor: 'color-mix(in srgb, var(--tournament-text, #ffffff) 50%, transparent)',
-                        clipPath: 'polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px)',
+                        clipPath: CHAMFER_CLIP,
                       }}
                     >
                       <span className="relative z-10">{t('pickem.resetAllPicks')}</span>
@@ -652,7 +653,7 @@ export default function PickemPage() {
                       className="w-full md:w-auto md:flex-none shrink-0 min-h-[46px] inline-flex items-center justify-center gap-3 px-6 md:px-8 py-3 font-logik-extended-bold text-xs md:text-sm uppercase tracking-wide text-white transition-all duration-300 relative overflow-hidden group whitespace-nowrap"
                       style={{
                         backgroundColor: 'var(--tournament-primary, #8B1538)',
-                        clipPath: 'polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px)',
+                        clipPath: CHAMFER_CLIP,
                       }}
                     >
                       {isSaving ? <Loader2 className="h-4 w-4 animate-spin relative z-10" /> : null}

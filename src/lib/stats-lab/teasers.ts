@@ -6,6 +6,7 @@ import { fmtClock, metric, type MetricKey } from './metrics';
 import { heroName } from './heroes';
 import { BINGO_EVENTS, hitName } from './bingo';
 import { computeAchievements, collectorRanking } from './achievements';
+import { count, plural } from '@/lib/plural';
 
 export interface Fact {
   id: string;
@@ -43,7 +44,7 @@ export function buildFacts(model: Model): Fact[] {
     f.push({ id: `rec-${k}`, page: 1, kicker: `Rekord · ${m.label}`, big: m.fmt(m.get(p)), title: p.player.name, sub: `${heroName(p.heroId)} vs ${opponentOf(p)?.name ?? '?'}`, heroId: p.heroId, player: p.player, team: p.team, tone: 'brag' });
   }
   const mvp = rankPlayers(model, 'score', 'avg')[0];
-  if (mvp) f.push({ id: 'mvp', page: 2, kicker: 'MVP turnieju', big: mvp.value.toFixed(1), title: mvp.player.name, sub: `punktu występu na grę · ${mvp.player.games} gier`, heroId: mvp.player.heroes[0]?.heroId, player: mvp.player, team: mvp.player.team, tone: 'brag' });
+  if (mvp) f.push({ id: 'mvp', page: 2, kicker: 'MVP turnieju', big: mvp.value.toFixed(1), title: mvp.player.name, sub: `punktu fantasy na grę · ${count(mvp.player.games, 'gra', 'gry', 'gier')}`, heroId: mvp.player.heroes[0]?.heroId, player: mvp.player, team: mvp.player.team, tone: 'brag' });
   const hero = model.heroes[0];
   if (hero) f.push({ id: 'hero', page: 3, kicker: 'Bohater turnieju', big: `${hero.contest}×`, title: heroName(hero.heroId), sub: `w drafcie · ${hero.picks} pick · ${hero.bans} ban · ${Math.round(hero.wr * 100)}% wygranych`, heroId: hero.heroId });
   const longest = [...model.games].sort((a, b) => b.duration - a.duration)[0];
@@ -56,7 +57,7 @@ export function buildFacts(model: Model): Fact[] {
   const rosh = parsed.filter(g => sum(g, true, p => p.roshanKills) !== sum(g, false, p => p.roshanKills));
   if (rosh.length) {
     const wr = rosh.filter(g => (sum(g, true, p => p.roshanKills) > sum(g, false, p => p.roshanKills)) === g.radiantWin).length / rosh.length;
-    f.push({ id: 'rosh', page: 28, kicker: 'Co wygrywa mecze', big: `${Math.round(wr * 100)}%`, title: 'wygranych przy przewadze Roshanów', sub: `${rosh.length} gier z różną liczbą Roshanów` });
+    f.push({ id: 'rosh', page: 28, kicker: 'Co wygrywa mecze', big: `${Math.round(wr * 100)}%`, title: 'wygranych przy przewadze Roshanów', sub: `${count(rosh.length, 'gra', 'gry', 'gier')} z różną liczbą Roshanów` });
   }
   const rwr = model.games.filter(g => g.radiantWin).length / Math.max(1, model.games.length);
   f.push({ id: 'side', page: 13, kicker: 'Wojna stron', big: `${Math.round(rwr * 100)}%`, title: 'wygranych strony Radiant', sub: `Dire: ${Math.round((1 - rwr) * 100)}%` });
@@ -68,7 +69,7 @@ export function buildFacts(model: Model): Fact[] {
   const streak = [...model.players].sort((a, b) => b.bestWinStreak - a.bestWinStreak)[0];
   if (streak) f.push({ id: 'streak', page: 4, kicker: 'Passa', big: `${streak.bestWinStreak}`, title: streak.name, sub: 'wygranych gier z rzędu', player: streak, team: streak.team, heroId: streak.heroes[0]?.heroId, tone: 'brag' });
   const race = rankPlayers(model, 'score', 'total')[0];
-  if (race) f.push({ id: 'race', page: 17, kicker: 'Wyścig sezonu', big: `${Math.round(race.value)}`, title: race.player.name, sub: 'punktów występu łącznie', player: race.player, team: race.player.team, heroId: race.player.heroes[0]?.heroId });
+  if (race) f.push({ id: 'race', page: 17, kicker: 'Wyścig sezonu', big: `${Math.round(race.value)}`, title: race.player.name, sub: 'punktów fantasy łącznie', player: race.player, team: race.player.team, heroId: race.player.heroes[0]?.heroId });
   // Best hero duo (same team, ≥ 4 games together)
   const duo = new Map<string, { a: number; b: number; n: number; w: number }>();
   for (const g of model.games) for (const rad of [true, false]) {
@@ -79,11 +80,11 @@ export function buildFacts(model: Model): Fact[] {
     }
   }
   const bestDuo = [...duo.values()].filter(d => d.n >= 4).sort((x, y) => y.w / y.n - x.w / x.n || y.n - x.n)[0];
-  if (bestDuo) f.push({ id: 'duo', page: 12, kicker: 'Najlepszy duet', big: `${Math.round((bestDuo.w / bestDuo.n) * 100)}%`, title: `${heroName(bestDuo.a)} + ${heroName(bestDuo.b)}`, sub: `wygranych w ${bestDuo.n} wspólnych grach`, heroId: bestDuo.a, tone: 'brag' });
+  if (bestDuo) f.push({ id: 'duo', page: 12, kicker: 'Najlepszy duet', big: `${Math.round((bestDuo.w / bestDuo.n) * 100)}%`, title: `${heroName(bestDuo.a)} + ${heroName(bestDuo.b)}`, sub: `wygranych w ${bestDuo.n} ${plural(bestDuo.n, 'wspólnej grze', 'wspólnych grach', 'wspólnych grach')}`, heroId: bestDuo.a, tone: 'brag' });
   // First pick advantage
   let fpN = 0; let fpW = 0;
   for (const g of model.games) { const fp = [...g.pb].sort((a, b) => a[3] - b[3]).find(x => x[1]); if (!fp) continue; fpN++; if ((fp[2] === 0) === g.radiantWin) fpW++; }
-  if (fpN) f.push({ id: 'firstpick', page: 11, kicker: 'Pierwszy pick', big: `${Math.round((fpW / fpN) * 100)}%`, title: 'wygranych drużyny z pierwszym pickiem', sub: `${fpN} draftów` });
+  if (fpN) f.push({ id: 'firstpick', page: 11, kicker: 'Pierwszy pick', big: `${Math.round((fpW / fpN) * 100)}%`, title: 'wygranych drużyny z pierwszym pickiem', sub: `${count(fpN, 'draft', 'drafty', 'draftów')}` });
   const lit = ach.reduce((n, a) => n + a.byTier.filter(Boolean).length, 0);
   f.push({ id: 'achlit', page: 8, kicker: 'Osiągnięcia', big: `${lit}/${ach.length * 3}`, title: 'progów zdobytych', sub: 'brąz, srebro i złoto' });
   for (const e of BINGO_EVENTS.filter(x => x.tone === 'roast')) {

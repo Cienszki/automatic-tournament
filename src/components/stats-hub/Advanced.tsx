@@ -16,6 +16,7 @@ import { profiles, qualified, scored, seasonWeeks } from '@/lib/stats-lab/season
 import { Avatar, C, HeroImg, LabView, TeamLogo, WithModel, ink, mix, onDark, useHeaderFont } from '@/components/stats-lab/kit';
 import { GROUP_LABEL, PAGES, type PageGroup } from './catalog';
 import { useStatsNav } from './nav';
+import { count, plural } from '@/lib/plural';
 
 export interface Finding { visual: React.ReactNode; line: React.ReactNode }
 
@@ -40,7 +41,7 @@ export function findings(model: Model): Record<string, Finding> {
 
   const mvp = rankPlayers(model, 'score', 'avg')[0];
   if (mvp) {
-    out.dossier = { visual: av(mvp.player), line: <><B>{mvp.player.name}</B> — {mvp.value.toFixed(1)} pkt na grę, {mvp.player.games} gier</> };
+    out.dossier = { visual: av(mvp.player), line: <><B>{mvp.player.name}</B> — {mvp.value.toFixed(1)} pkt na grę, {count(mvp.player.games, 'gra', 'gry', 'gier')}</> };
     out.liderzy = { visual: av(mvp.player), line: <>MVP sezonu: <B>{mvp.player.name}</B></> };
   }
   // Form: last three scored games against the season average
@@ -80,12 +81,12 @@ export function findings(model: Model): Record<string, Finding> {
   const weekBest = lastWeek ? scored(lastWeek.perfs).sort((a, b) => b.score - a.score)[0] : undefined;
   if (weekBest?.player) out['druzyna-tygodnia'] = { visual: av(weekBest.player), line: <>Ostatni tydzień: <B>{weekBest.player.name}</B> na {heroName(weekBest.heroId)}</> };
   const fighters = [...model.teams].filter(t => t.games.length >= 2).sort((a, b) => b.avg.kills - a.avg.kills)[0];
-  if (fighters) out.odciski = { visual: lg(fighters), line: <>Najbardziej krwawi: <B>{fighters.name}</B>, {fighters.avg.kills.toFixed(1)} zabójstw na grę</> };
+  if (fighters) out.odciski = { visual: lg(fighters), line: <>Najbardziej krwawi: <B>{fighters.name}</B>, {fighters.avg.kills.toFixed(1)} zabójstwa na grę</> };
   const pool = [...model.teams].sort((a, b) => b.heroPicks.length - a.heroPicks.length)[0];
   if (pool) out.kolekcja = { visual: lg(pool), line: <><B>{pool.name}</B> zagrali już {pool.heroPicks.length} bohaterami</> };
 
   const top = [...model.heroes].sort((a, b) => b.contest - a.contest)[0];
-  if (top) out.bohaterowie = { visual: hero(top.heroId), line: <><B>{heroName(top.heroId)}</B> w {top.contest} draftach</> };
+  if (top) out.bohaterowie = { visual: hero(top.heroId), line: <><B>{heroName(top.heroId)}</B> w {top.contest} {plural(top.contest, 'drafcie', 'draftach', 'draftach')}</> };
   const fp = fact('firstpick');
   if (fp) out.draft = { visual: <span className="text-2xl font-logik-extended-bold" style={{ color: C.heading }}>{fp.big}</span>, line: <>Tyle wygrywa drużyna z <B>pierwszym pickiem</B></> };
   // Hero of the last week: biggest share of drafts in it

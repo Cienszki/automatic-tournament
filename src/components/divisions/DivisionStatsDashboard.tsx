@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { BarChart3, TrendingUp, Clock, Target, Zap, Shield } from 'lucide-react';
 import type { Match } from '@/lib/definitions';
 import Image from 'next/image';
+import { count } from '@/lib/plural';
 
 interface DivisionStatsDashboardProps {
   matches: Match[];
@@ -125,14 +126,14 @@ export function DivisionStatsDashboard({ matches, divisionColor, theme }: Divisi
             <StatCard
               title="Rozstrzygnięcia"
               value={`${decisiveWinRate}%`}
-              subtitle={`${decisiveWins} meczów 2-0`}
+              subtitle={`${count(decisiveWins, 'mecz', 'mecze', 'meczów')} 2-0`}
               icon={<TrendingUp className="h-6 w-6 text-green-500" />}
               color="#22c55e"
             />
             <StatCard
               title="Remisy"
               value={`${drawRate}%`}
-              subtitle={`${draws} meczów 1-1`}
+              subtitle={`${count(draws, 'mecz', 'mecze', 'meczów')} 1-1`}
               icon={<Shield className="h-6 w-6 text-blue-500" />}
               color="#3b82f6"
             />

@@ -3,12 +3,14 @@
 // cards are grouped by record, and a team's last match gets a small arrow saying where it ended
 // ("LAN", "6. miejsce"). Lines appear only for the match card under the pointer: where its two
 // teams came from and where they go (green = won, red = lost), so the chart never turns into
-// spaghetti. The chart is fitted to the screen height; when it is wider than the screen a slider
-// (or wheel / drag) pans it.
+// spaghetti. The chart is fitted to the screen height; when it is wider than the screen it pans
+// (wheel, drag, the edge chevrons or the thin bar) and columns cut by an edge dim to show there is more.
 'use client';
 
 import { createContext, useContext, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
 import Image from 'next/image';
+import { motion } from 'framer-motion';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTournament } from '@/context/TournamentContext';
 import { MatchDetailModal } from '@/components/divisions/MatchDetailModal';
@@ -385,11 +387,25 @@ export function FormatFlow({ sim, after, embedded = false }: { sim: FormatSim; a
     return () => ro.disconnect();
   }, []);
 
-  // Fit the height; the width pans.
-  const scale = size.h > 0 ? Math.min(size.h / L.H, 1.15) : 0;
+  // Fit the height (up to 1.8× on tall screens); the width pans.
+  const scale = size.h > 0 ? Math.min(size.h / L.H, 1.8) : 0;
   const maxPan = Math.max(0, L.W * scale - size.w);
-  const x = maxPan > 0 ? -Math.min(pan, maxPan) : (size.w - L.W * scale) / 2;
+  const cur = Math.min(pan, maxPan);
+  const x = maxPan > 0 ? -cur : (size.w - L.W * scale) / 2;
   const clampPan = (v: number) => Math.max(0, Math.min(maxPan, v));
+  const moreLeft = maxPan > 0 && cur > 1;
+  const moreRight = maxPan > 0 && cur < maxPan - 1;
+
+  // The chevrons glide; wheel, drag and the bar follow the hand directly.
+  const [glide, setGlide] = useState(false);
+  const glideTimer = useRef<number>();
+  const glideTo = (v: number) => {
+    setGlide(true);
+    setPan(clampPan(v));
+    window.clearTimeout(glideTimer.current);
+    glideTimer.current = window.setTimeout(() => setGlide(false), 520);
+  };
+  useEffect(() => () => window.clearTimeout(glideTimer.current), []);
 
   // Wheel pans sideways (the page itself never scrolls).
   useEffect(() => {
@@ -402,6 +418,7 @@ export function FormatFlow({ sim, after, embedded = false }: { sim: FormatSim; a
       if (!delta) return;
       e.preventDefault();
       e.stopPropagation();
+      setGlide(false);
       setPan(p => Math.max(0, Math.min(maxPan, p + delta)));
     };
     el.addEventListener('wheel', onWheel, { passive: false });
@@ -411,7 +428,7 @@ export function FormatFlow({ sim, after, embedded = false }: { sim: FormatSim; a
   // Drag pans; a press that moved more than a few pixels is a drag, not a click on a card.
   const drag = useRef<{ x: number; pan: number; moved: boolean } | null>(null);
   const dragged = useRef(false);
-  const onDown = (e: ReactPointerEvent) => { dragged.current = false; if (maxPan > 0) drag.current = { x: e.clientX, pan: Math.min(pan, maxPan), moved: false }; };
+  const onDown = (e: ReactPointerEvent) => { dragged.current = false; if (maxPan > 0) { setGlide(false); drag.current = { x: e.clientX, pan: cur, moved: false }; } };
   const onMove = (e: ReactPointerEvent) => {
     const d = drag.current;
     if (!d) return;
@@ -423,75 +440,147 @@ export function FormatFlow({ sim, after, embedded = false }: { sim: FormatSim; a
   const [open, setOpen] = useState<FPMatch | null>(null);
   const openMatch = (m: FPMatch) => { if (!dragged.current) setOpen(m); };
 
+  // Columns dim as they reach an edge with more chart behind it: fully on screen = full
+  // opacity, cut by the edge = faint, so the cut column reads as "continues". Done per column
+  // with opacity rather than a CSS mask — a mask on this transformed layer didn't render in
+  // every browser and left coloured slivers on the cut edge.
+  const edgeZone = CARD_W * scale * 1.1;
+  const edgeOpacity = (left: number, width: number) => {
+    const l = x + left * scale, r = l + width * scale;
+    let o = 1;
+    if (moreRight && r > size.w) o = Math.min(o, Math.max(0, (size.w - l) / edgeZone));
+    if (moreLeft && l < 0) o = Math.min(o, Math.max(0, r / edgeZone));
+    return o >= 1 ? 1 : 0.12 + 0.5 * o;
+  };
+  const step = Math.max(240, size.w * 0.6);
+
   return (
     <HoverCtx.Provider value={setHoveredMatch}>
       <div className="h-full flex flex-col">
-        <div
-          ref={viewport}
-          className={cn('relative flex-1 min-h-0 overflow-hidden select-none', maxPan > 0 && 'cursor-grab active:cursor-grabbing')}
-          onPointerDown={onDown}
-          onPointerMove={onMove}
-          onPointerUp={onUp}
-          onPointerCancel={onUp}
-        >
-          {scale > 0 && (
-            <div className="absolute top-0 left-0 origin-top-left" style={{ width: L.W, height: L.H, transform: `translate(${x}px, ${(size.h - L.H * scale) / 2}px) scale(${scale})` }}>
-              <svg className="absolute inset-0 pointer-events-none overflow-visible" width={L.W} height={L.H}>
-                {lines}
-                {L.outcomes.map((o, i) => (
-                  <g key={`out-${i}`} opacity={0.9}><Arrow x={o.x + 8} y={o.y} len={19} color={o.lan ? WIN : 'rgba(255,255,255,0.35)'} /></g>
-                ))}
-              </svg>
+        <div className="relative flex-1 min-h-0">
+          <div
+            ref={viewport}
+            className={cn('absolute inset-0 overflow-hidden select-none', maxPan > 0 && 'cursor-grab active:cursor-grabbing')}
+            onPointerDown={onDown}
+            onPointerMove={onMove}
+            onPointerUp={onUp}
+            onPointerCancel={onUp}
+          >
+            {scale > 0 && (
+              <div className="absolute top-0 left-0 origin-top-left" style={{ width: L.W, height: L.H, transform: `translate(${x}px, ${(size.h - L.H * scale) / 2}px) scale(${scale})`, transition: glide ? 'transform 500ms cubic-bezier(0.22, 1, 0.36, 1)' : undefined }}>
+                <svg className="absolute inset-0 pointer-events-none overflow-visible" width={L.W} height={L.H}>
+                  {lines}
+                  {L.outcomes.map((o, i) => (
+                    <g key={`out-${i}`} opacity={0.9}><Arrow x={o.x + 8} y={o.y} len={19} color={o.lan ? WIN : 'rgba(255,255,255,0.35)'} /></g>
+                  ))}
+                </svg>
 
-              {[...L.buckets.values()].map(b => (
-                <div key={b.id} className="absolute" style={{ left: b.x, top: b.y, width: CARD_W }}>
-                  <div className="flex items-baseline gap-2 font-mono font-bold text-sm leading-none px-0.5" style={{ height: REC_H, color: primary }}>
-                    {b.rec}
-                    {/* The only named step: the tied teams must know a tiebreaker awaits them */}
-                    {b.tiebreak && (
-                      <span className="font-logik-extended-bold text-[11px] uppercase tracking-widest" style={{ color: 'var(--tournament-title, white)' }}>dogrywka o awans</span>
+                {[...L.buckets.values()].map(b => (
+                  <div key={b.id} className="absolute transition-opacity duration-200" style={{ left: b.x, top: b.y, width: CARD_W, opacity: edgeOpacity(b.x, CARD_W) }}>
+                    <div className="flex items-baseline gap-2 font-mono font-bold text-sm leading-none px-0.5" style={{ height: REC_H, color: primary }}>
+                      {b.rec}
+                      {/* The only named step: the tied teams must know a tiebreaker awaits them */}
+                      {b.tiebreak && (
+                        <span className="font-logik-extended-bold text-[11px] uppercase tracking-widest" style={{ color: 'var(--tournament-title, white)' }}>dogrywka o awans</span>
+                      )}
+                    </div>
+                    {b.tiebreak ? (
+                      <TiebreakBox teams={b.tiebreak} sim={sim} after={after} />
+                    ) : (
+                      <div className="flex flex-col" style={{ gap: CARD_GAP }}>
+                        {b.matches.map(m => <MatchCard key={m.id} m={m} sim={sim} after={after} onOpen={openMatch} />)}
+                      </div>
                     )}
                   </div>
-                  {b.tiebreak ? (
-                    <TiebreakBox teams={b.tiebreak} sim={sim} after={after} />
-                  ) : (
-                    <div className="flex flex-col" style={{ gap: CARD_GAP }}>
-                      {b.matches.map(m => <MatchCard key={m.id} m={m} sim={sim} after={after} onOpen={openMatch} />)}
-                    </div>
-                  )}
-                </div>
-              ))}
+                ))}
 
-              {L.outcomes.map((o, i) => (
-                <div
-                  key={`outt-${i}`}
-                  className="absolute font-logik-extended-bold text-[11px] uppercase tracking-widest whitespace-nowrap leading-none"
-                  style={{ left: o.x + 33, top: o.y - 6, color: o.lan ? WIN : 'var(--tournament-secondary-text, #9ca3af)' }}
-                >
-                  {o.text}
-                </div>
-              ))}
-            </div>
-          )}
+                {L.outcomes.map((o, i) => (
+                  <div
+                    key={`outt-${i}`}
+                    className="absolute font-logik-extended-bold text-[11px] uppercase tracking-widest whitespace-nowrap leading-none"
+                    style={{ left: o.x + 33, top: o.y - 6, color: o.lan ? WIN : 'var(--tournament-secondary-text, #9ca3af)', opacity: edgeOpacity(o.x + 33, 90) }}
+                  >
+                    {o.text}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Edge chevrons, only on a side with more chart; they drift outward now and then */}
+          {moreLeft && <EdgeNudge side="left" color={primary} onClick={() => glideTo(cur - step)} />}
+          {moreRight && <EdgeNudge side="right" color={primary} onClick={() => glideTo(cur + step)} />}
         </div>
 
         {maxPan > 0 && (
-          <div className="shrink-0 flex justify-center pt-3">
-            <input
-              type="range"
-              min={0}
-              max={Math.round(maxPan)}
-              value={Math.round(Math.min(pan, maxPan))}
-              onChange={e => setPan(Number(e.target.value))}
-              aria-label="Przesuń schemat"
-              className="w-full max-w-xl h-1 cursor-pointer"
-              style={{ accentColor: primary }}
-            />
-          </div>
+          <PanBar ratio={size.w / (L.W * scale)} pos={cur / maxPan} color={primary}
+            onSeek={f => { setGlide(false); setPan(clampPan(f * maxPan)); }} />
         )}
 
         <MatchDetailModal match={open ? toModalMatch(open, sim, after) : null} isOpen={!!open} onClose={() => setOpen(null)} divisionColor={primary} />
       </div>
     </HoverCtx.Provider>
+  );
+}
+
+/** A quiet chevron on the chart's edge that drifts outward now and then: "there is more this way". */
+function EdgeNudge({ side, color, onClick }: { side: 'left' | 'right'; color: string; onClick: () => void }) {
+  const Icon = side === 'left' ? ChevronLeft : ChevronRight;
+  const dir = side === 'left' ? -1 : 1;
+  return (
+    <motion.button
+      type="button"
+      aria-label={side === 'left' ? 'Przewiń w lewo' : 'Przewiń w prawo'}
+      onClick={onClick}
+      className={cn('absolute top-1/2 z-10 -mt-5 flex h-10 w-10 items-center justify-center rounded-full backdrop-blur-sm hover:!opacity-100', side === 'left' ? 'left-2' : 'right-8')}
+      style={{ color: 'var(--tournament-title, #fff)', background: 'color-mix(in srgb, var(--tournament-background, #0b0b10) 60%, transparent)', border: `1px solid color-mix(in srgb, ${color} 70%, transparent)`, boxShadow: `0 0 14px color-mix(in srgb, ${color} 45%, transparent)` }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 0.65, x: [0, 5 * dir, 0, 0] }}
+      transition={{ opacity: { duration: 0.25 }, x: { duration: 2.4, times: [0, 0.2, 0.4, 1], repeat: Infinity, ease: 'easeInOut' } }}
+    >
+      <Icon className="h-5 w-5" />
+    </motion.button>
+  );
+}
+
+/** A thin scrollbar under the chart: the thumb is the part on screen; press or drag to move. */
+function PanBar({ ratio, pos, color, onSeek }: { ratio: number; pos: number; color: string; onSeek: (f: number) => void }) {
+  const track = useRef<HTMLDivElement>(null);
+  const grab = useRef<number | null>(null);
+  const thumb = Math.max(0.08, Math.min(1, ratio));
+  // Pan fraction for a pointer x, keeping the thumb under the point where it was grabbed
+  const at = (clientX: number) => {
+    const r = track.current!.getBoundingClientRect();
+    const left = (clientX - r.left) / r.width - (grab.current ?? thumb / 2);
+    return thumb >= 1 ? 0 : Math.max(0, Math.min(1, left / (1 - thumb)));
+  };
+  return (
+    <div className="shrink-0 flex justify-center pt-3">
+      <div
+        ref={track}
+        role="scrollbar"
+        aria-orientation="horizontal"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={Math.round(pos * 100)}
+        aria-label="Przesuń schemat"
+        className="group relative w-full max-w-xl py-2 cursor-pointer touch-none"
+        onPointerDown={e => {
+          const r = track.current!.getBoundingClientRect();
+          const f = (e.clientX - r.left) / r.width;
+          const start = pos * (1 - thumb);
+          grab.current = f >= start && f <= start + thumb ? f - start : thumb / 2;
+          e.currentTarget.setPointerCapture(e.pointerId);
+          onSeek(at(e.clientX));
+        }}
+        onPointerMove={e => { if (grab.current !== null) onSeek(at(e.clientX)); }}
+        onPointerUp={() => { grab.current = null; }}
+        onPointerCancel={() => { grab.current = null; }}
+      >
+        <div className="relative h-[3px] rounded-full transition-[height] duration-150 group-hover:h-[5px]" style={{ background: 'color-mix(in srgb, var(--tournament-text, #fff) 12%, transparent)' }}>
+          <div className="absolute inset-y-0 rounded-full" style={{ left: `${pos * (1 - thumb) * 100}%`, width: `${thumb * 100}%`, background: color }} />
+        </div>
+      </div>
+    </div>
   );
 }

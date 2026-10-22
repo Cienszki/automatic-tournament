@@ -66,6 +66,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import type { DisplayPlayer } from '@/lib/team-players-loader';
+import { count, plural } from '@/lib/plural';
 
 interface TeamPlayer {
   nickname: string;
@@ -494,7 +495,7 @@ export function TeamsTab() {
 
       toast({
         title: "Zapisano pomyślnie",
-        description: `Zaktualizowano status ${changedTeams.length} drużyn.`,
+        description: `Zaktualizowano status ${changedTeams.length} ${plural(changedTeams.length, 'drużyny', 'drużyn', 'drużyn')}.`,
         variant: "default",
       });
     } catch (err) {
@@ -767,7 +768,7 @@ export function TeamsTab() {
         <div>
           <h2 className="text-2xl font-logik-extended-bold">Zarządzanie drużynami</h2>
           <p className="text-muted-foreground font-logik">
-            Weryfikacja i zarządzanie statusem drużyn ({teams.length} drużyn)
+            Weryfikacja i zarządzanie statusem drużyn ({count(teams.length, 'drużyna', 'drużyny', 'drużyn')})
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -911,7 +912,7 @@ export function TeamsTab() {
           <CardContent className="py-4">
             <div className="flex items-center justify-between">
               <p className="font-logik">
-                Wybrano <span className="font-logik-extended-bold">{selectedTeams.length}</span> drużyn
+                Wybrano <span className="font-logik-extended-bold">{selectedTeams.length}</span> {plural(selectedTeams.length, 'drużynę', 'drużyny', 'drużyn')}
               </p>
               <div className="flex items-center gap-2">
                 <Button 

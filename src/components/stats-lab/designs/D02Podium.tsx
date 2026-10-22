@@ -10,6 +10,7 @@ import { GROUP_LABEL, metric, type MetricGroup, type MetricKey } from '@/lib/sta
 import { rankPlayers, type Model, type PlayerX, type RankMode, type RankRow } from '@/lib/stats-lab/derive';
 import { heroName } from '@/lib/stats-lab/heroes';
 import { Avatar, C, HeroImg, LabTitle, LabView, Pager, Seg, TeamLogo, Tip, TipBody, WithModel, ink, mix, playerTip, useFitCount, useHeaderFont, useMetals, usePages, useSize } from '../kit';
+import { count } from '@/lib/plural';
 
 const RAIL: MetricKey[] = ['score', 'kills', 'deaths', 'assists', 'kda', 'kp', 'hdpm', 'heroDamage', 'gpm', 'xpm', 'lastHits', 'lhpm', 'denies', 'netWorth', 'wards', 'dewards', 'stacks', 'runes', 'heroHealing', 'towerDamage', 'roshanKills', 'courierKills', 'streak', 'multi'];
 const POS = [
@@ -91,7 +92,7 @@ function Podium({ rows, k, mode }: { rows: RankRow[]; k: MetricKey; mode: RankMo
                 : <Spark player={r.player} k={k} color={color} />}
             </div>
             <div className="w-full mt-2 rounded-t-xl relative overflow-hidden" style={{ height: pedestal, background: `linear-gradient(180deg, ${mix(color, 35)}, ${mix(color, 6)})`, borderTop: `2px solid ${color}` }}>
-              <span className="absolute inset-x-0 top-1.5 text-center text-[11px] uppercase tracking-widest opacity-70">{r.player.games} gier</span>
+              <span className="absolute inset-x-0 top-1.5 text-center text-[11px] uppercase tracking-widest opacity-70">{count(r.player.games, 'gra', 'gry', 'gier')}</span>
             </div>
           </motion.div>
         );
@@ -134,7 +135,7 @@ function Leaders({ model }: { model: Model }) {
               <Tip content="Minimalna liczba rozegranych gier, żeby trafić do rankingu średnich">
                 <div className="flex items-center gap-1 rounded-full px-1 py-0.5" style={{ background: ink(6), border: `1px solid ${ink(10)}` }}>
                   <button type="button" onClick={() => setMinGames(v => Math.max(1, v - 1))} className="w-6 h-6 rounded-full hover:bg-white/10" aria-label="Mniej gier">−</button>
-                  <span className="text-[11px] tabular-nums w-16 text-center whitespace-nowrap">≥{minGames} gier</span>
+                  <span className="text-[11px] tabular-nums w-16 text-center whitespace-nowrap">≥{count(minGames, 'gra', 'gry', 'gier')}</span>
                   <button type="button" onClick={() => setMinGames(v => v + 1)} className="w-6 h-6 rounded-full hover:bg-white/10" aria-label="Więcej gier">+</button>
                 </div>
               </Tip>
@@ -188,7 +189,7 @@ function Leaders({ model }: { model: Model }) {
                     <Tip content={playerTip(r.player)}><span className="relative"><Avatar player={r.player} size={42} /></span></Tip>
                     <div className="relative flex-1 min-w-0">
                       <div className="truncate font-bold text-sm">{r.player.name}</div>
-                      <div className="flex items-center gap-1.5 text-[11px]" style={{ color: C.muted }}><TeamLogo team={r.player.team} size={16} /><span className="truncate">{r.player.team?.name}</span><span>· {r.player.games} gier</span></div>
+                      <div className="flex items-center gap-1.5 text-[11px]" style={{ color: C.muted }}><TeamLogo team={r.player.team} size={16} /><span className="truncate">{r.player.team?.name}</span><span>· {count(r.player.games, 'gra', 'gry', 'gier')}</span></div>
                     </div>
                     <Tip content={above ? `${fmtVal(k, mode, Math.abs(above.value - r.value))} straty do miejsca ${rank - 1} (${above.player.name})` : ''}>
                       <span className="relative w-20 text-right text-xl font-bold tabular-nums cursor-help" style={font}>{fmtVal(k, mode, r.value)}</span>

@@ -45,6 +45,7 @@ import {
 } from "@/lib/coach-rules";
 import { PDLTransferSection } from "@/components/pdl/my-team/PDLTransferSection";
 import { upsertGlobalPlayerProfilesAction, clearPlayerCurrentTeamsAction } from "@/lib/player-profile-actions";
+import { count, plural } from '@/lib/plural';
 
 
 interface ScrimSlot {
@@ -405,7 +406,7 @@ function MyTeamView() {
       actions.push({
         id: 'standin-approvals',
         type: 'standin_approval',
-        title: `${pendingStandinApprovals.length} wniosków o standina`,
+        title: `${count(pendingStandinApprovals.length, 'wniosek', 'wnioski', 'wniosków')} o standina`,
         description: 'Przeciwnik czeka na Twoją odpowiedź',
         urgent: true,
         action: {
@@ -903,7 +904,7 @@ function MyTeamView() {
     if (violation === 'earlier-only') return 'Zgodnie z regulaminem mecz można przełożyć wyłącznie na termin wcześniejszy niż zaplanowany.';
     if (violation === 'too-late') return `Mecz można przełożyć na dowolny wcześniejszy termin albo najwyżej ${settings.maxHoursLater} h później niż termin ustalony przez organizatora.`;
     if (violation === 'range') {
-      const rangeLabel = settings.rangeDays === null ? 'nieograniczony' : `±${settings.rangeDays} dni`;
+      const rangeLabel = settings.rangeDays === null ? 'nieograniczony' : `±${settings.rangeDays} ${plural(settings.rangeDays, 'dzień', 'dni', 'dni')}`;
       return `Zmiana terminu jest dozwolona tylko w zakresie ${rangeLabel} od pierwotnej daty meczu.`;
     }
     return `Proponowana data (${proposedDate.slice(0, 10)}) przekracza ostateczny termin realizacji meczów (${settings.finalDate ? settings.finalDate.slice(0, 10) : ''}).`;

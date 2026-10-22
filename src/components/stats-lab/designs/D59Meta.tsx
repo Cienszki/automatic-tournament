@@ -10,6 +10,7 @@ import type { Model, PlayerX } from '@/lib/stats-lab/derive';
 import { heroName } from '@/lib/stats-lab/heroes';
 import { fmtShort, mondayOf } from '@/lib/stats-lab/season';
 import { Avatar, C, HeroImg, HeroRender, LabTitle, LabView, Tip, TipBody, WithModel, ink, mix, useHeaderFont, wrColor } from '../kit';
+import { count } from '@/lib/plural';
 
 interface WeekStat { key: string; games: number; share: Map<number, number>; picks: Map<number, number>; bans: Map<number, number>; wins: Map<number, number>; players: Map<number, Map<string, PlayerX>> }
 interface Move { id: number; now: number; before: number; d: number }
@@ -88,7 +89,7 @@ function Meta({ model }: { model: Model }) {
 
   return (
     <>
-      <LabTitle sub={<Tip content="Zmiana = udział w drafcie (pick lub ban) w tym tygodniu minus średnia z dwóch poprzednich tygodni, w punktach procentowych"><span className="cursor-help">tydzień od {fmtShort(w.key)} · {w.games} gier</span></Tip>}>Meta tygodnia</LabTitle>
+      <LabTitle sub={<Tip content="Zmiana = udział w drafcie (pick lub ban) w tym tygodniu minus średnia z dwóch poprzednich tygodni, w punktach procentowych"><span className="cursor-help">tydzień od {fmtShort(w.key)} · {count(w.games, 'gra', 'gry', 'gier')}</span></Tip>}>Meta tygodnia</LabTitle>
       <div className="flex-1 min-h-0 flex gap-5 mt-3">
         <div className="w-[30%] shrink-0 flex flex-col gap-1.5 min-h-0">
           <div className="text-[11px] uppercase tracking-[0.35em] font-bold" style={{ color: C.win }}>W górę</div>

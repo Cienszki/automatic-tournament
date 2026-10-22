@@ -59,6 +59,15 @@ const buildConfig = (phase) => {
     // Vercel. Absolute URLs to our own origin bypass it entirely. Harmless while
     // the domain is still ours. See the domain-cutover instructions.
     assetPrefix: isDev ? undefined : FIREBASE_ORIGIN,
+    // Server Actions reject any POST whose Origin differs from the (forwarded)
+    // host. Behind the dota2inhouse.pl → Vercel fallback rewrite the browser's
+    // Origin is dota2inhouse.pl while we see the Firebase host, so EVERY action
+    // failed with the masked "error occurred in the Server Components render".
+    experimental: {
+        serverActions: {
+            allowedOrigins: ['dota2inhouse.pl', 'www.dota2inhouse.pl'],
+        },
+    },
     // Exclude archive folder from build
     typescript: {
         ignoreBuildErrors: false,

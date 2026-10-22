@@ -15,9 +15,10 @@ import { heroName } from '@/lib/stats-lab/heroes';
 import { getHeroData } from '@/lib/hero-mapping';
 import { fmtClock } from '@/lib/stats-lab/metrics';
 import { eloTable } from '@/lib/stats-lab/teasers';
-import { POS_OF, plural, qualified, seededRandom } from '@/lib/stats-lab/season';
+import { POS_OF, qualified, seededRandom } from '@/lib/stats-lab/season';
 import { Avatar, C, HeroImg, LabTitle, LabView, Seg, TeamLogo, Tip, WithModel, ink, mix, useHeaderFont, useStatsKey } from '@/components/stats-lab/kit';
 import { useStatsNav, useStored } from '../nav';
+import { plural } from '@/lib/plural';
 
 const TRIES = 8;
 const GREEN = '#2fbf71';
@@ -69,7 +70,7 @@ function kinds(model: Model) {
       { label: 'Pozycja', tip: 'Zielony: ta sama · żółty: sąsiednia' },
       { label: 'Gry', tip: 'Strzałka: szukany ma więcej / mniej · żółty: różnica do 20%' },
       { label: '% wygr.', tip: 'Procent wygranych · żółty: do 5 p.p. różnicy' },
-      { label: 'Pkt/grę', tip: 'Średnia punktów występu · żółty: do 1 pkt różnicy' },
+      { label: 'Pkt/grę', tip: 'Średnia punktów fantasy · żółty: do 1 pkt różnicy' },
       { label: 'Bohater', tip: 'Najczęściej grany · żółty: jest w trójce ulubionych szukanego' },
     ],
     compare: (g, t) => {
@@ -89,7 +90,7 @@ function kinds(model: Model) {
     },
     hints: t => [
       <>Najczęściej gra <b>{t.heroes[0] ? heroName(t.heroes[0].heroId) : '—'}</b></>,
-      <>Nick zaczyna się na <b>„{t.name.slice(0, 1).toUpperCase()}”</b> i ma {t.name.length} znaków</>,
+      <>Nick zaczyna się na <b>„{t.name.slice(0, 1).toUpperCase()}”</b> i ma {t.name.length} {plural(t.name.length, 'znak', 'znaki', 'znaków')}</>,
     ],
   };
 
@@ -288,7 +289,7 @@ function Puzzle<T>({ kind, target, guesses, onGuess, done, won, endless, onNext,
                 <div className="flex flex-col gap-1.5">
                   {[4, 6].map((at, k) => (
                     <div key={at} className="rounded-xl px-3 py-2 text-sm" style={{ background: wrong >= at ? mix(C.secondary, 14) : ink(4), color: wrong >= at ? C.text : C.muted, border: wrong >= at ? undefined : `1px dashed ${ink(12)}` }}>
-                      {wrong >= at ? <>Podpowiedź {k + 1}: {hints[k]}</> : <>Podpowiedź {k + 1} po {at} pudłach</>}
+                      {wrong >= at ? <>Podpowiedź {k + 1}: {hints[k]}</> : <>Podpowiedź {k + 1} po {at} {plural(at, 'pudle', 'pudłach', 'pudłach')}</>}
                     </div>
                   ))}
                 </div>

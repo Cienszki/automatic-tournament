@@ -10,6 +10,7 @@ import type { Model, Perf, PlayerX } from '@/lib/stats-lab/derive';
 import { heroName } from '@/lib/stats-lab/heroes';
 import { opponentOf } from '@/lib/stats-lab/derive';
 import { Avatar, C, LabTitle, LabView, TeamLogo, Tip, TipBody, WithModel, ink, mix, useHeaderFont, useSize } from '../kit';
+import { count } from '@/lib/plural';
 
 const ALPHA = 0.35;
 interface Candle { perf: Perf; open: number; close: number; high: number; low: number }
@@ -187,8 +188,8 @@ function Market({ model }: { model: Model }) {
             <Avatar player={s.p} size={88} ring={upDown(s.ch1)} />
             <div className="min-w-0">
               <div className="text-3xl font-logik-extended-bold uppercase truncate leading-tight" style={{ color: C.heading, ...font }}>{s.p.name}</div>
-              <div className="flex items-center gap-2 text-sm mt-0.5" style={{ color: C.muted }}><TeamLogo team={s.p.team} size={26} /><span className="truncate">{s.p.team?.name}</span>{s.p.role && <span>· {s.p.role}</span>}<span>· {s.p.games} gier</span></div>
-              <Tip content="Kurs = forma gracza: średnia krocząca punktów występu, aktualizowana po każdej grze">
+              <div className="flex items-center gap-2 text-sm mt-0.5" style={{ color: C.muted }}><TeamLogo team={s.p.team} size={26} /><span className="truncate">{s.p.team?.name}</span>{s.p.role && <span>· {s.p.role}</span>}<span>· {count(s.p.games, 'gra', 'gry', 'gier')}</span></div>
+              <Tip content="Kurs = forma gracza: średnia krocząca punktów fantasy, aktualizowana po każdej grze">
                 <div className="flex items-baseline gap-2 cursor-help">
                   <span className="text-4xl font-logik-extended-bold tabular-nums" style={font}>{s.price.toFixed(2)}</span>
                   <span className="text-lg font-bold tabular-nums" style={{ color: upDown(s.ch1) }}>{pct(s.ch1)}</span>

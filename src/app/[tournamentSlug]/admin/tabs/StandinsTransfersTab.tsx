@@ -32,6 +32,7 @@ import {
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
+import { count } from '@/lib/plural';
 
 interface StandinRequest {
   id: string;
@@ -278,7 +279,7 @@ export function StandinsTransfersTab() {
                 Prośby o zastępstwo
                 {pendingCount > 0 && (
                   <Badge className="ml-2 bg-yellow-500 text-black font-logik">
-                    {pendingCount} oczekujących
+                    {count(pendingCount, 'oczekujący', 'oczekujące', 'oczekujących')}
                   </Badge>
                 )}
               </CardTitle>

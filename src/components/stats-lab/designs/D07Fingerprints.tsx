@@ -10,6 +10,7 @@ import { fmtClock, fmtPct } from '@/lib/stats-lab/metrics';
 import { pctRank, type Model, type TeamX } from '@/lib/stats-lab/derive';
 import { heroName } from '@/lib/stats-lab/heroes';
 import { Avatar, C, HeroImg, LabTitle, LabView, TeamLogo, Tip, TipBody, WithModel, ink, mix, playerTip, useHeaderFont, useSize } from '../kit';
+import { count } from '@/lib/plural';
 
 interface Slice { key: string; label: string; desc: string; get: (t: TeamX) => number; fmt: (v: number) => string; invert?: boolean; color: string }
 
@@ -110,7 +111,7 @@ function Fingerprints({ model }: { model: Model }) {
 
   return (
     <>
-      <LabTitle sub={<span>{teams.length} drużyn</span>}>Odciski drużyn</LabTitle>
+      <LabTitle sub={<span>{count(teams.length, 'drużyna', 'drużyny', 'drużyn')}</span>}>Odciski drużyn</LabTitle>
       <div className="flex-1 min-h-0 flex gap-5 mt-3">
         {/* Logo rail */}
         <div className="w-[248px] shrink-0 hidden md:grid grid-cols-4 content-start gap-2" onMouseLeave={() => setHover(null)}>

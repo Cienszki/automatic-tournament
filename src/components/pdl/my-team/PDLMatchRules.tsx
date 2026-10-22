@@ -4,6 +4,7 @@ import { Info, Shield, Clock, Globe, Eye, Users, AlertTriangle, Bot, Lock, Searc
 
 import { cn } from '@/lib/utils';
 import { useTournament } from '@/context/TournamentContext';
+import { count } from '@/lib/plural';
 
 interface PDLMatchRulesProps {
   leagueName?: string;
@@ -56,7 +57,7 @@ export function PDLMatchRules({
             <AlertTriangle className="w-5 h-5 text-orange-400 flex-shrink-0 mt-0.5" />
             <div className="space-y-1">
               <p className="text-sm font-logik-extended-bold text-orange-300">
-                Kara czasowa: {timePenalty.minutes} minut
+                Kara czasowa: {count(timePenalty.minutes, 'minuta', 'minuty', 'minut')}
               </p>
               <p className="text-xs text-orange-200/70 font-logik">
                 {timePenalty.reason}
@@ -238,7 +239,7 @@ export function PDLMatchRules({
             </div>
             <div>
               <p className="text-white/40">Opóźnienie DotaTV</p>
-              <p className="text-white font-logik-extended-bold">{displayDotatvDelay} {displayDotatvDelay === 1 ? 'minuta' : 'minut'}</p>
+              <p className="text-white font-logik-extended-bold">{count(displayDotatvDelay, 'minuta', 'minuty', 'minut')}</p>
             </div>
           </div>
         </div>

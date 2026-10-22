@@ -12,6 +12,7 @@ import { pl } from 'date-fns/locale';
 import Image from 'next/image';
 import type { Match } from '@/lib/definitions';
 import { cn } from '@/lib/utils';
+import { count, plural } from '@/lib/plural';
 
 interface UpcomingMatchesProps {
     matches: Match[];
@@ -70,7 +71,7 @@ export function UpcomingMatches({ matches, divisionColor, theme }: UpcomingMatch
                     <CardTitle className="text-xl" style={{ color: theme?.headingColor || theme?.primaryTextColor || 'white' }}>Nadchodzące mecze</CardTitle>
                 </div>
                 <p className="text-sm mt-2" style={{ color: theme?.secondaryTextColor || 'rgba(255,255,255,0.5)' }}>
-                    Najbliższe {upcomingMatches.length} spotkań
+                    {plural(upcomingMatches.length, 'Najbliższe', 'Najbliższe', 'Najbliższych')} {count(upcomingMatches.length, 'spotkanie', 'spotkania', 'spotkań')}
                 </p>
             </CardHeader>
             <CardContent className="space-y-3">

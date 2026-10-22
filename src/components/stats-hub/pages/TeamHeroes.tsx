@@ -10,9 +10,10 @@ import { AnimatePresence, motion } from 'framer-motion';
 import type { Model, Perf, TeamX } from '@/lib/stats-lab/derive';
 import { ATTR_COLOR, heroAttr, heroName, type HeroAttr } from '@/lib/stats-lab/heroes';
 import { getAllHeroData } from '@/lib/hero-mapping';
-import { fmtDay, plural } from '@/lib/stats-lab/season';
+import { fmtDay } from '@/lib/stats-lab/season';
 import { Avatar, C, HeroImg, LabTitle, LabView, Seg, TeamLogo, Tip, TipBody, WithModel, ink, mix, useFitCount, useHeaderFont, useSize } from '@/components/stats-lab/kit';
 import { logo, portrait, type Asset } from '../assets';
+import { count, plural } from '@/lib/plural';
 
 const ATTRS: Array<{ a: HeroAttr; label: string }> = [{ a: 'str', label: 'Siła' }, { a: 'agi', label: 'Zręczność' }, { a: 'int', label: 'Inteligencja' }, { a: 'all', label: 'Uniwersalni' }];
 const BAN = '#e5534b';
@@ -59,7 +60,7 @@ function TeamCollection({ model }: { model: Model }) {
 
   return (
     <>
-      <LabTitle sub={<span>{allHeroes.length} bohaterów w grze · iloma zagrała każda drużyna</span>}
+      <LabTitle sub={<span>{count(allHeroes.length, 'bohater', 'bohaterów', 'bohaterów')} w grze · iloma zagrała każda drużyna</span>}
         right={<Seg size="sm" value={mode} onChange={setMode} options={[{ value: 'picks', label: 'Zagrane', tip: 'Bohaterowie, którymi drużyna zagrała' }, { value: 'bans', label: 'Bany', tip: 'Kogo drużyna banuje (czerwona ramka) i kogo banują jej rywale (liczba)' }]} />}>
         Kolekcja bohaterów
       </LabTitle>
@@ -102,7 +103,7 @@ function TeamCollection({ model }: { model: Model }) {
                 <div className="ml-4"><div className="text-4xl font-logik-extended-bold tabular-nums" style={{ color: C.heading, ...font }}>{slots.size}<span className="text-xl" style={{ color: C.muted }}> / {allHeroes.length}</span></div><div className="text-xs uppercase tracking-widest" style={{ color: C.muted }}>{Math.round(pct * 100)}% kolekcji</div></div>
                 <div className="ml-auto flex items-center gap-3">
                   {favourite && (
-                    <Tip content={`${favourite.games} gier · ${favourite.wins} wygranych`}>
+                    <Tip content={`${count(favourite.games, 'gra', 'gry', 'gier')} · ${count(favourite.wins, 'wygrana', 'wygrane', 'wygranych')}`}>
                       <div className="flex items-center gap-2.5 rounded-xl px-3 py-2 cursor-help" style={{ background: ink(5) }}>
                         <HeroImg heroId={favourite.heroId} className="rounded-md" style={{ width: 72, height: 40 }} />
                         <div className="leading-tight"><div className="text-[10px] uppercase tracking-widest" style={{ color: C.muted }}>Ulubiony</div><div className="font-bold" style={{ color: C.heading }}>{heroName(favourite.heroId)}</div></div>
@@ -134,7 +135,7 @@ function TeamCollection({ model }: { model: Model }) {
                     return (
                       <Tip key={id} content={
                         <TipBody title={heroName(id)}>
-                          {s ? `${s.games} ${plural(s.games, 'gra', 'gry', 'gier')} · ${s.wins} wygranych · ${who}` : 'jeszcze nie zagrany'}
+                          {s ? `${s.games} ${plural(s.games, 'gra', 'gry', 'gier')} · ${count(s.wins, 'wygrana', 'wygrane', 'wygranych')} · ${who}` : 'jeszcze nie zagrany'}
                           {(by || against) ? <><br />{by ? `banowany przez drużynę ${by}×` : ''}{by && against ? ' · ' : ''}{against ? `banowany przeciw niej ${against}×` : ''}</> : null}
                         </TipBody>
                       }>

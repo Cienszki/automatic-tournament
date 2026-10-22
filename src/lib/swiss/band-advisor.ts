@@ -13,6 +13,8 @@
 //
 // Pure functions, no Firestore.
 
+import { plural } from '@/lib/plural';
+
 /** A candidate band with the consequences of choosing it. */
 export interface BandOption {
   band: number;
@@ -146,7 +148,7 @@ export function adviseBand(
 
   const reason = suggested
     ? `Przy zakresie ${suggested} większość drużyn (${Math.round(satisfied(suggested) * 100)}%) ` +
-      `ma dość przeciwników na ${rounds} rund. Węższy zakres oznaczałby dużo powtórzonych par.`
+      `ma dość przeciwników na ${rounds} ${plural(rounds, 'rundę', 'rundy', 'rund')}. Węższy zakres oznaczałby dużo powtórzonych par.`
     : 'Pole jest zbyt rozproszone — żaden zakres nie zapewni większości drużyn dość przeciwników.';
 
   return { suggested, reason, options, outliers, fieldSummary };

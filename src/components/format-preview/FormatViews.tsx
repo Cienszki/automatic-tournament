@@ -12,6 +12,7 @@ import { useTournament } from '@/context/TournamentContext';
 import type { PlayoffMatch } from '@/lib/definitions';
 import { FormatFlow } from './FormatFlow';
 import { FinalTable } from './FinalTable';
+import { ScaledStage } from '@/components/ui/ScaledStage';
 import { LanBracket } from './LanBracket';
 import type { FormatSim } from './model';
 
@@ -121,7 +122,8 @@ export function FormatViews({ sim, after, view, setView, playoffMatches, embedde
         <AnimatePresence mode="wait" initial={false}>
           <motion.div key={view} className="h-full" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.2 }}>
             {view === 'swiss' && <FormatFlow sim={sim} after={after} embedded={embedded} />}
-            {view === 'tabela' && <FinalTable sim={sim} after={after} />}
+            {/* The chart and the bracket fit themselves; the table scales up on big screens */}
+            {view === 'tabela' && <ScaledStage baseW={1600} baseH={760}><FinalTable sim={sim} after={after} /></ScaledStage>}
             {view === 'lan' && <LanBracket sim={sim} after={after} real={playoffMatches} />}
           </motion.div>
         </AnimatePresence>

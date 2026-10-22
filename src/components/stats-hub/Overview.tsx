@@ -48,7 +48,6 @@ function Spotlight({ d }: { d: OverviewData }) {
   const Icon = page.icon;
   return (
     <div className="min-h-0 flex flex-col">
-      <ColumnHead>W centrum uwagi</ColumnHead>
       <div className="flex-1 min-h-0 flex max-lg:flex-col gap-4" onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}>
         <div className="lg:w-[300px] xl:w-[330px] shrink-0 flex flex-col max-lg:h-[380px]">
           {MAIN_IDS.map((m, k) => <Chapter key={m} id={m} d={d} index={k} on={k === i} paused={hover} onHover={() => setI(k)} onOpen={() => nav?.go(m)} />)}

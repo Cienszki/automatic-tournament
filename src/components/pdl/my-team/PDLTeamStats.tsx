@@ -4,6 +4,7 @@ import { TrendingUp, Target, Trophy, Swords, Skull, HandHelping, BarChart3 } fro
 import type { Team } from '@/lib/definitions';
 import { cn } from '@/lib/utils';
 import { useTournament } from '@/context/TournamentContext';
+import { plural } from '@/lib/plural';
 
 interface PDLTeamStatsProps {
     team: Team;
@@ -21,7 +22,7 @@ export function PDLTeamStats({
         {
             label: 'POZYCJA W DYWIZJI',
             value: divisionRank ? `#${divisionRank}` : '-',
-            sub: totalTeamsInDivision ? `z ${totalTeamsInDivision} drużyn` : '',
+            sub: totalTeamsInDivision ? `z ${totalTeamsInDivision} ${plural(totalTeamsInDivision, 'drużyny', 'drużyn', 'drużyn')}` : '',
             icon: Trophy,
             color: 'text-pdl-gold',
         },

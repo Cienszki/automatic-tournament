@@ -51,6 +51,7 @@ import {
   AlertDescription,
   AlertTitle,
 } from '@/components/ui/alert';
+import { count } from '@/lib/plural';
 
 interface MatchDay {
   id: string;
@@ -482,7 +483,7 @@ export function SchedulingTab() {
 
       toast({
         title: 'Sukces!',
-        description: `Utworzono ${totalMatches} meczów dla rundy ${selectedRoundForGeneration}`,
+        description: `Utworzono ${count(totalMatches, 'mecz', 'mecze', 'meczów')} dla rundy ${selectedRoundForGeneration}`,
         action: <CheckCircle className="h-5 w-5 text-green-500" />,
       });
 
@@ -613,7 +614,7 @@ export function SchedulingTab() {
 
       toast({
         title: 'Sukces!',
-        description: `Usunięto ${snapshot.docs.length} meczów z rundy ${selectedRoundForGeneration}`,
+        description: `Usunięto ${count(snapshot.docs.length, 'mecz', 'mecze', 'meczów')} z rundy ${selectedRoundForGeneration}`,
         action: <CheckCircle className="h-5 w-5 text-green-500" />,
       });
 
@@ -765,7 +766,7 @@ export function SchedulingTab() {
                               {division.name}
                             </Label>
                             <p className="text-sm text-muted-foreground font-logik">
-                              {teams.length} drużyn • {totalMatches} meczów • {totalMatchdays} dni meczowych
+                              {count(teams.length, 'drużyna', 'drużyny', 'drużyn')} • {count(totalMatches, 'mecz', 'mecze', 'meczów')} • {count(totalMatchdays, 'dzień meczowy', 'dni meczowe', 'dni meczowych')}
                             </p>
                           </div>
                           <Badge variant="outline" className="font-logik">
@@ -909,7 +910,7 @@ export function SchedulingTab() {
                                     />
                                   </div>
                                   <p className="text-sm text-muted-foreground font-logik">
-                                    {matchday.pairings.length} par meczowych
+                                    {count(matchday.pairings.length, 'para meczowa', 'pary meczowe', 'par meczowych')}
                                   </p>
                                 </div>
                               </div>
@@ -961,7 +962,7 @@ export function SchedulingTab() {
                     ) : (
                       <>
                         <Check className="h-5 w-5 mr-2" />
-                        Finalizuj harmonogram ({generatedStructures.reduce((sum, s) => sum + s.matchdays.reduce((msum, m) => msum + m.pairings.length, 0), 0)} meczów)
+                        Finalizuj harmonogram ({count(generatedStructures.reduce((sum, s) => sum + s.matchdays.reduce((msum, m) => msum + m.pairings.length, 0), 0), 'mecz', 'mecze', 'meczów')})
                       </>
                     )}
                   </Button>
@@ -1276,7 +1277,7 @@ export function SchedulingTab() {
             Utworzone mecze
           </CardTitle>
           <CardDescription className="font-logik">
-            {createdMatches.length} meczów w bazie danych
+            {count(createdMatches.length, 'mecz', 'mecze', 'meczów')} w bazie danych
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -1339,7 +1340,7 @@ export function SchedulingTab() {
                           )}
                         </div>
                         <Badge className="font-logik">
-                          {matches.length} {matches.length === 1 ? 'mecz' : 'meczy'}
+                          {count(matches.length, 'mecz', 'mecze', 'meczów')}
                         </Badge>
                       </div>
                       <div className="space-y-2 pl-6">
@@ -1370,7 +1371,7 @@ export function SchedulingTab() {
             Lista dni meczowych (ręczne wpisy)
           </CardTitle>
           <CardDescription className="font-logik">
-            {filteredMatchdays.length} dni meczowych
+            {count(filteredMatchdays.length, 'dzień meczowy', 'dni meczowe', 'dni meczowych')}
           </CardDescription>
         </CardHeader>
         <CardContent>

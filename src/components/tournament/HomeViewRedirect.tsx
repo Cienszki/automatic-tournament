@@ -9,11 +9,12 @@ import { LoadingScreen } from '@/components/ui/LoadingScreen';
  * For old standalone routes whose content now lives in a home-page section: replaces the URL with
  * the home page opened on that section (`?view=…`, see getHomeSectionIndex).
  */
-export function HomeViewRedirect({ view }: { view: string }) {
+export function HomeViewRedirect({ view, params }: { view: string; params?: Record<string, string | undefined> }) {
   const router = useRouter();
   const { getTournamentPath } = useTournament();
+  const extra = new URLSearchParams(Object.entries(params ?? {}).filter((e): e is [string, string] => !!e[1])).toString();
   useEffect(() => {
-    router.replace(`${getTournamentPath('')}?view=${view}`);
-  }, [router, getTournamentPath, view]);
+    router.replace(`${getTournamentPath('')}?view=${view}${extra ? `&${extra}` : ''}`);
+  }, [router, getTournamentPath, view, extra]);
   return <LoadingScreen />;
 }

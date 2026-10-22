@@ -9,6 +9,7 @@ import { Layers, Trophy, ArrowUp, ArrowDown, Minus, Calendar, Info } from 'lucid
 import { LoadingScreen } from '@/components/ui/LoadingScreen';
 import { usePDLData } from '@/hooks/usePDLData';
 import Link from 'next/link';
+import { count } from '@/lib/plural';
 
 /**
  * Divisions page - shows division standings (League tournaments only)
@@ -125,7 +126,7 @@ export default function DivisionsPage() {
                         variant="outline" 
                         style={{ borderColor: division.color, color: division.color }}
                       >
-                        {standings.length} drużyn
+                        {count(standings.length, 'drużyna', 'drużyny', 'drużyn')}
                       </Badge>
                     </div>
                   </div>

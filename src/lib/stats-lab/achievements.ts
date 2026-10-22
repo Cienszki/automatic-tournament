@@ -1,6 +1,7 @@
 // Tiered achievements (bronze / silver / gold) — thresholds tuned on real PDL & Wiosenna data
 // so bronze is roughly a top-10% game, silver top-1%, gold at or beyond the current records.
 import type { Model, Perf, PlayerX } from './derive';
+import { plural } from '../plural';
 
 export type Tier = 0 | 1 | 2;
 export const TIER_NAME = ['Brąz', 'Srebro', 'Złoto'] as const;
@@ -11,7 +12,7 @@ export const TIER_COLOR = ['#c98a55', '#c9d1db', '#f2c94c'] as const;
 export interface Achievement {
   id: string;
   name: string;
-  /** Hover text; `{t}` is replaced with the tier threshold */
+  /** Hover text; `{t}` is replaced with the tier thresholds, `{one|few|many}` with the form agreeing with the last one */
   desc: string;
   /** Single game (perf) or whole tournament (player) */
   scope: 'game' | 'career';
@@ -39,16 +40,16 @@ export const ACHIEVEMENTS: Achievement[] = [
   { id: 'medic', name: 'Medyk', desc: 'Co najmniej {t} wyleczonego zdrowia sojusznikom', scope: 'game', thresholds: [6000, 18000, 40000], value: g(p => p.heroHealing), unit: 'HP' },
   { id: 'rich', name: 'Krezus', desc: 'Wartość netto co najmniej {t} na koniec gry', scope: 'game', thresholds: [30000, 42000, 55000], value: g(p => p.netWorth), unit: 'NW' },
   { id: 'eyes', name: 'Oko na mapie', desc: 'Co najmniej {t} postawionych wardów w jednej grze', scope: 'game', thresholds: [28, 45, 65], value: g(p => p.obsPlaced + p.senPlaced), parsedOnly: true, unit: 'W' },
-  { id: 'hunter', name: 'Łowca wardów', desc: 'Co najmniej {t} zniszczonych wrogich wardów', scope: 'game', thresholds: [9, 15, 22], value: g(p => p.observerKills + p.sentryKills), parsedOnly: true },
+  { id: 'hunter', name: 'Łowca wardów', desc: 'Co najmniej {t} {zniszczony wrogi ward|zniszczone wrogie wardy|zniszczonych wrogich wardów}', scope: 'game', thresholds: [9, 15, 22], value: g(p => p.observerKills + p.sentryKills), parsedOnly: true },
   { id: 'stacker', name: 'Stacker', desc: 'Co najmniej {t} zestackowanych obozów w jednej grze', scope: 'game', thresholds: [5, 10, 18], value: g(p => p.campsStacked), parsedOnly: true },
   { id: 'runes', name: 'Kolekcjoner run', desc: 'Co najmniej {t} podniesionych run w jednej grze', scope: 'game', thresholds: [11, 18, 28], value: g(p => p.runesPickedUp), parsedOnly: true },
-  { id: 'courier', name: 'Poczta nie dojdzie', desc: 'Co najmniej {t} zabitych kurierków w jednej grze', scope: 'game', thresholds: [1, 2, 4], value: g(p => p.courierKills), parsedOnly: true },
-  { id: 'rosh', name: 'Pogromca Roshana', desc: 'Co najmniej {t} Roshanów dobitych w jednej grze', scope: 'game', thresholds: [1, 2, 4], value: g(p => p.roshanKills), parsedOnly: true },
+  { id: 'courier', name: 'Poczta nie dojdzie', desc: 'Co najmniej {t} {zabity kurierek|zabite kurierki|zabitych kurierków} w jednej grze', scope: 'game', thresholds: [1, 2, 4], value: g(p => p.courierKills), parsedOnly: true },
+  { id: 'rosh', name: 'Pogromca Roshana', desc: 'Co najmniej {t} {dobity Roshan|dobite Roshany|dobitych Roshanów} w jednej grze', scope: 'game', thresholds: [1, 2, 4], value: g(p => p.roshanKills), parsedOnly: true },
   { id: 'denier', name: 'Skąpiec', desc: 'Co najmniej {t} denies w jednej grze', scope: 'game', thresholds: [16, 28, 45], value: g(p => p.denies) },
   { id: 'fb', name: 'Pierwsza krew', desc: 'Pierwsza krew zdobyta w co najmniej {t} grach turnieju', scope: 'career', thresholds: [1, 3, 6], value: c(p => p.fbCount) },
   { id: 'winstreak', name: 'Passa', desc: 'Co najmniej {t} wygranych gier z rzędu', scope: 'career', thresholds: [3, 6, 10], value: c(p => p.bestWinStreak) },
   { id: 'pool', name: 'Wszechstronny', desc: 'Co najmniej {t} różnych bohaterów w turnieju', scope: 'career', thresholds: [5, 9, 14], value: c(p => p.heroes.length) },
-  { id: 'veteran', name: 'Weteran', desc: 'Co najmniej {t} rozegranych gier', scope: 'career', thresholds: [6, 14, 24], value: c(p => p.games) },
+  { id: 'veteran', name: 'Weteran', desc: 'Co najmniej {t} {rozegrana gra|rozegrane gry|rozegranych gier}', scope: 'career', thresholds: [6, 14, 24], value: c(p => p.games) },
 ];
 
 export function tierOf(a: Achievement, v: number): Tier | -1 {
@@ -129,5 +130,8 @@ export function fmtThreshold(a: Achievement, tier: Tier): string {
 
 /** Description with the three thresholds filled in, e.g. "Co najmniej 15 / 20 / 26 zabójstw" */
 export function descOf(a: Achievement): string {
-  return a.desc.replace('{t}', ([0, 1, 2] as Tier[]).map(t => fmtThreshold(a, t)).join(' / '));
+  const last = a.thresholds[2];
+  return a.desc
+    .replace('{t}', ([0, 1, 2] as Tier[]).map(t => fmtThreshold(a, t)).join(' / '))
+    .replace(/\{([^|{}]+)\|([^|{}]+)\|([^|{}]+)\}/, (_, one, few, many) => plural(last, one, few, many));
 }

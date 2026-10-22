@@ -8,6 +8,7 @@ import React, { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import type { GameX, Model, TeamX } from '@/lib/stats-lab/derive';
 import { C, LabTitle, LabView, Pager, TeamLogo, Tip, TipBody, WithModel, ink, mix, useFitCount, useHeaderFont, usePages, useSize } from '../kit';
+import { count } from '@/lib/plural';
 
 const K = 32;
 const expect = (a: number, b: number) => 1 / (1 + Math.pow(10, (b - a) / 400));
@@ -63,7 +64,7 @@ function Elo({ model }: { model: Model }) {
 
   return (
     <>
-      <LabTitle sub={<Tip content="Każda drużyna zaczyna z 1500. Wygrana z silniejszym rywalem daje więcej punktów niż z słabszym."><span className="cursor-help">start 1500 · K = 32 · {n} gier</span></Tip>}>Ranking Elo</LabTitle>
+      <LabTitle sub={<Tip content="Każda drużyna zaczyna z 1500. Wygrana z silniejszym rywalem daje więcej punktów niż z słabszym."><span className="cursor-help">start 1500 · K = 32 · {count(n, 'gra', 'gry', 'gier')}</span></Tip>}>Ranking Elo</LabTitle>
       <div className="flex-1 min-h-0 flex gap-5 mt-3">
         <div ref={ref} className="relative flex-[1.6] min-w-0 min-h-0" onMouseLeave={() => setHover(null)}>
           {size.w > 0 && (

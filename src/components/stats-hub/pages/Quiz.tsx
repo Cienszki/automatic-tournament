@@ -19,10 +19,11 @@ import { rankPlayers, topPerfs } from '@/lib/stats-lab/derive';
 import { eloTable } from '@/lib/stats-lab/teasers';
 import { heroName } from '@/lib/stats-lab/heroes';
 import { fmtClock, metric, type MetricKey } from '@/lib/stats-lab/metrics';
-import { plural, qualified } from '@/lib/stats-lab/season';
+import { qualified } from '@/lib/stats-lab/season';
 import { Avatar, C, HeroImg, HeroRender, LabTitle, LabView, TeamLogo, WithModel, ink, mix, onDark, useHeaderFont, useStatsKey } from '@/components/stats-lab/kit';
 import { PAGE_BY_ID } from '../catalog';
 import { useStatsNav, useStored } from '../nav';
+import { count, plural } from '@/lib/plural';
 
 const ROUNDS = 8;
 const GOOD = '#3ddc84';
@@ -70,7 +71,7 @@ function buildQuiz(model: Model, seed: number): Question[] {
       const s = score.find(x => x.player.id === p.id);
       return {
         ask: 'Który to gracz?', level, worth: 4, page: 'dossier', answer: p.id,
-        explain: <><b>{p.name}</b> — {p.games} gier, {Math.round(p.wr * 100)}% wygranych{s ? `, ${s.value.toFixed(1)} pkt występu na grę` : ''}.</>,
+        explain: <><b>{p.name}</b> — {count(p.games, 'gra', 'gry', 'gier')}, {Math.round(p.wr * 100)}% wygranych{s ? `, ${s.value.toFixed(1)} pkt fantasy na grę` : ''}.</>,
         clues: [
           <>{p.games} {plural(p.games, 'gra', 'gry', 'gier')} · {Math.round(p.wr * 100)}% wygranych</>,
           <>najczęściej gra {p.heroes[0] ? H(p.heroes[0].heroId) : '—'}</>,
@@ -85,9 +86,9 @@ function buildQuiz(model: Model, seed: number): Question[] {
       const top = [...h.players].sort((a, b) => b.games - a.games)[0];
       return {
         ask: 'Jaki to bohater?', level, worth: 4, page: 'bohaterowie', answer: String(h.heroId),
-        explain: <>{H(h.heroId)} — {h.picks} picków, {h.bans} banów, {Math.round(h.wr * 100)}% wygranych.</>,
+        explain: <>{H(h.heroId)} — {count(h.picks, 'pick', 'picki', 'picków')}, {count(h.bans, 'ban', 'bany', 'banów')}, {Math.round(h.wr * 100)}% wygranych.</>,
         clues: [
-          <>{h.picks} picków · {h.bans} banów</>,
+          <>{count(h.picks, 'pick', 'picki', 'picków')} · {count(h.bans, 'ban', 'bany', 'banów')}</>,
           <>{Math.round(h.wr * 100)}% wygranych gier</>,
           <>średnio {h.avgK.toFixed(1)} / {h.avgD.toFixed(1)} / {h.avgA.toFixed(1)}</>,
           <>najczęściej grał nim <b>{top?.player.name ?? '—'}</b></>,
@@ -143,9 +144,9 @@ function buildQuiz(model: Model, seed: number): Question[] {
     },
     truth: level => {
       const statements: Array<() => { text: React.ReactNode; truth: boolean; explain: React.ReactNode; page: string } | null> = [
-        () => { const h = pick(tier(heroes, level)); if (!h) return null; const t = h.wr > 0.5; return { text: <>{H(h.heroId)} wygrywa ponad połowę swoich gier.</>, truth: t, explain: <>{heroName(h.heroId)}: {Math.round(h.wr * 100)}% wygranych w {h.picks} grach.</>, page: 'bohaterowie' }; },
+        () => { const h = pick(tier(heroes, level)); if (!h) return null; const t = h.wr > 0.5; return { text: <>{H(h.heroId)} wygrywa ponad połowę swoich gier.</>, truth: t, explain: <>{heroName(h.heroId)}: {Math.round(h.wr * 100)}% wygranych w {h.picks} {plural(h.picks, 'grze', 'grach', 'grach')}.</>, page: 'bohaterowie' }; },
         () => { const t = pick(tier(teams, level)); if (!t) return null; return { text: <><b>{t.name}</b> ma więcej wygranych gier niż porażek.</>, truth: t.wins > t.losses, explain: <>{t.name}: {t.wins}–{t.losses}.</>, page: 'elo' }; },
-        () => { const p = pick(tier(players, level)); if (!p) return null; const n = Math.max(2, Math.round(p.heroes.length + (r() < 0.5 ? -2 : 2))); return { text: <><b>{p.name}</b> zagrał(a) w tym sezonie więcej niż {n} różnymi bohaterami.</>, truth: p.heroes.length > n, explain: <>{p.name}: {p.heroes.length} różnych bohaterów.</>, page: 'dossier' }; },
+        () => { const p = pick(tier(players, level)); if (!p) return null; const n = Math.max(2, Math.round(p.heroes.length + (r() < 0.5 ? -2 : 2))); return { text: <><b>{p.name}</b> — w tym sezonie więcej niż {n} różnych bohaterów.</>, truth: p.heroes.length > n, explain: <>{p.name}: {p.heroes.length} różnych bohaterów.</>, page: 'dossier' }; },
       ];
       const s = pick(statements)(); if (!s) return null;
       return {
@@ -160,7 +161,7 @@ function buildQuiz(model: Model, seed: number): Question[] {
       const asks: Array<() => Question | null> = [
         () => longest ? numeric('Ile trwała najdłuższa gra sezonu?', longest.duration, v => fmtClock(v), [0.7, 0.82, 1.18], 'historie', <>{longest.radiantTeam?.name} vs {longest.direTeam?.name}.</>) : null,
         () => bloody ? numeric('Ile zabójstw padło w najkrwawszej grze?', bloody.kills, v => String(Math.round(v)), [0.72, 0.85, 1.15], 'historie', <>{bloody.radiantTeam?.name} vs {bloody.direTeam?.name}.</>) : null,
-        () => numeric('Ilu różnych bohaterów wybrano w tym sezonie?', model.heroes.filter(h => h.picks > 0).length, v => String(Math.round(v)), [0.75, 0.88, 1.12], 'kolekcja', <>Na {model.games.length} gier.</>),
+        () => numeric('Ilu różnych bohaterów wybrano w tym sezonie?', model.heroes.filter(h => h.picks > 0).length, v => String(Math.round(v)), [0.75, 0.88, 1.12], 'kolekcja', <>Na {model.games.length} {plural(model.games.length, 'grę', 'gry', 'gier')}.</>),
       ];
       return pick(asks)();
       function numeric(ask: string, v: number, fmt: (v: number) => string, mult: number[], page: string, extra: React.ReactNode): Question {

@@ -10,6 +10,7 @@ import { metric, type MetricKey } from '@/lib/stats-lab/metrics';
 import { opponentOf, type Model, type Perf } from '@/lib/stats-lab/derive';
 import { heroName } from '@/lib/stats-lab/heroes';
 import { Avatar, C, HeroImg, HeroRender, LabTitle, LabView, Tip, TipBody, WithModel, ink, mix, useHeaderFont, useSize } from '../kit';
+import { count, plural } from '@/lib/plural';
 
 const KEYS: MetricKey[] = ['kills', 'assists', 'kda', 'streak', 'heroDamage', 'hdpm', 'gpm', 'xpm', 'lastHits', 'netWorth', 'wards', 'dewards', 'stacks', 'heroHealing', 'towerDamage', 'score'];
 interface Break { perf: Perf; value: number; prev: number; heldGames: number }
@@ -64,7 +65,7 @@ function Staircase({ breaks, k }: { breaks: Break[]; k: MetricKey }) {
         return (
           <Tip key={b.perf.idx} content={
             <TipBody title={`${m.fmt(b.value)} — ${b.perf.player?.name}`}>
-              {heroName(b.perf.heroId)} vs {opponentOf(b.perf)?.name ?? '?'} · {fmtDay(b.perf)} · {last ? `trzyma się od ${b.heldGames} gier` : `przetrwał ${b.heldGames} gier`}
+              {heroName(b.perf.heroId)} vs {opponentOf(b.perf)?.name ?? '?'} · {fmtDay(b.perf)} · {last ? `trzyma się od ${b.heldGames} ${plural(b.heldGames, 'gry', 'gier', 'gier')}` : `przetrwał ${b.heldGames} ${plural(b.heldGames, 'grę', 'gry', 'gier')}`}
             </TipBody>}>
             <motion.div className="absolute flex flex-col items-center cursor-help" style={{ left: cx - 60, width: 120, top: y(b.value) - sz - 44 }}
               initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 + i * 0.08 }}>
@@ -95,14 +96,14 @@ function Chronicle({ model }: { model: Model }) {
 
   return (
     <>
-      <LabTitle sub={<span>{m.label} · pobity {Math.max(0, breaks.length - 1)} razy</span>}>Kronika rekordów</LabTitle>
+      <LabTitle sub={<span>{m.label} · pobity {Math.max(0, breaks.length - 1)} {plural(Math.max(0, breaks.length - 1), 'raz', 'razy', 'razy')}</span>}>Kronika rekordów</LabTitle>
       <div className="flex-1 min-h-0 flex gap-5 mt-3">
         {/* Record picker: every tile shows the current holder */}
         <div className="w-[44%] shrink-0 grid grid-cols-4 grid-rows-4 gap-2 min-h-0">
           {KEYS.map(key => {
             const c = all[key]; const h = c.breaks[c.breaks.length - 1]; const active = key === k;
             return (
-              <Tip key={key} content={<TipBody title={c.m.label}>{c.m.desc} · pobity {Math.max(0, c.breaks.length - 1)} razy</TipBody>}>
+              <Tip key={key} content={<TipBody title={c.m.label}>{c.m.desc} · pobity {Math.max(0, c.breaks.length - 1)} {plural(Math.max(0, c.breaks.length - 1), 'raz', 'razy', 'razy')}</TipBody>}>
                 <button type="button" onClick={() => setK(key)} className="relative rounded-xl overflow-hidden text-left min-h-0 transition-all"
                   style={{ background: '#0d0d12', boxShadow: active ? `0 0 0 2px ${C.secondary}, 0 0 18px ${mix(C.secondary, 40)}` : `0 0 0 1px ${ink(10)}` }}>
                   {h && <HeroImg heroId={h.perf.heroId} title={false} className="absolute inset-0 w-full h-full opacity-30" />}
@@ -151,7 +152,7 @@ function Chronicle({ model }: { model: Model }) {
                   <div className="shrink-0 flex items-center gap-2 text-sm cursor-help mt-1" style={{ color: C.muted }}>
                     <span className="uppercase tracking-widest text-[10px]">Najdłużej</span>
                     <Avatar player={longest.perf.player} size={26} />
-                    <b style={{ color: C.text }}>{longest.perf.player?.name}</b> · {m.fmt(longest.value)} · {longest.heldGames} gier
+                    <b style={{ color: C.text }}>{longest.perf.player?.name}</b> · {m.fmt(longest.value)} · {count(longest.heldGames, 'gra', 'gry', 'gier')}
                   </div>
                 </Tip>
               )}

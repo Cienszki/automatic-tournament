@@ -10,6 +10,7 @@ import { fmtClock, metric, type MetricKey } from '@/lib/stats-lab/metrics';
 import { opponentOf, pctRank, type Model, type PlayerX } from '@/lib/stats-lab/derive';
 import { heroName } from '@/lib/stats-lab/heroes';
 import { Avatar, C, HeroImg, LabView, Pager, TeamLogo, Tip, TipBody, WithModel, ink, mix, useFitCount, useHeaderFont, usePages, useSize, TeamPicker } from '../kit';
+import { count } from '@/lib/plural';
 
 const AXES: Array<{ key: MetricKey; label: string; invert?: boolean }> = [
   { key: 'kda', label: 'Walka' },
@@ -73,7 +74,7 @@ function Donut({ p }: { p: PlayerX }) {
       </svg>
       <div className="grid grid-cols-2 gap-x-3 gap-y-1 min-w-0">
         {top.map((h, i) => (
-          <Tip key={h.heroId} content={`${heroName(h.heroId)} · ${h.games} gier · ${h.wins}-${h.games - h.wins}`}>
+          <Tip key={h.heroId} content={`${heroName(h.heroId)} · ${count(h.games, 'gra', 'gry', 'gier')} · ${h.wins}-${h.games - h.wins}`}>
             <div className="flex items-center gap-1.5 min-w-0">
               <span className="w-2 h-2 rounded-full shrink-0" style={{ background: PALETTE[i] }} />
               <HeroImg heroId={h.heroId} variant="icon" className="w-7 h-7 shrink-0" />
@@ -136,7 +137,7 @@ function Dossier({ model }: { model: Model }) {
               <div className="min-w-0">
                 <div className="text-2xl font-logik-extended-bold uppercase leading-tight line-clamp-2 break-words" style={{ color: C.title, ...font }}>{p.name}</div>
                 <div className="flex items-center gap-1.5 mt-1 text-xs" style={{ color: C.muted }}><TeamLogo team={p.team} size={16} /><span className="truncate">{p.team?.name}</span>{p.role && <span>· {p.role}</span>}</div>
-                <div className="mt-1 text-sm font-bold tabular-nums"><span style={{ color: C.win }}>{p.wins}</span><span className="opacity-40"> – </span><span style={{ color: C.loss }}>{p.losses}</span><span className="text-xs font-normal ml-2" style={{ color: C.muted }}>{p.games} gier</span></div>
+                <div className="mt-1 text-sm font-bold tabular-nums"><span style={{ color: C.win }}>{p.wins}</span><span className="opacity-40"> – </span><span style={{ color: C.loss }}>{p.losses}</span><span className="text-xs font-normal ml-2" style={{ color: C.muted }}>{count(p.games, 'gra', 'gry', 'gier')}</span></div>
               </div>
             </div>
             <div className="flex-1 min-h-0 mt-2"><Radar model={model} p={p} /></div>

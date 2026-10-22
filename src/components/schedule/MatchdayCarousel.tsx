@@ -553,7 +553,7 @@ export function SchedulePageLayout({ matches }: SchedulePageLayoutProps): React.
           <p
             className="font-logik text-lg"
             style={{ color: 'var(--tournament-heading)', fontFamily: theme?.headerFont ? `var(${theme.headerFont})` : undefined }}
-          >Terminarz pojawi się po zaplanowaniu meczy.</p>
+          >Terminarz pojawi się po zaplanowaniu meczów.</p>
         </div>
       )}
 

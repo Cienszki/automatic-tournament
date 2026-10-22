@@ -6,6 +6,7 @@ import { cn, formatDatePL } from '@/lib/utils';
 import type { Match, Team } from '@/lib/definitions';
 import { MatchDetailModal } from '@/components/divisions/MatchDetailModal';
 import { useTournament } from '@/context/TournamentContext';
+import { count } from '@/lib/plural';
 
 interface PDLMatchHistoryProps {
     matches: Match[];
@@ -73,7 +74,7 @@ export function PDLMatchHistory({
                     Historia Meczów
                 </h2>
                 <span className="ml-auto text-sm font-logik" style={{ color: theme.secondaryTextColor || 'rgba(255,255,255,0.4)' }}>
-                    {completedMatches.length} {completedMatches.length === 1 ? 'mecz' : 'meczów'}
+                    {count(completedMatches.length, 'mecz', 'mecze', 'meczów')}
                 </span>
             </div>
 

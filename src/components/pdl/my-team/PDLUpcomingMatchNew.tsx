@@ -28,6 +28,7 @@ import { PDLCoachSection } from './PDLCoachSection';
 import { PDLMatchRules } from './PDLMatchRules';
 import { DraftPenaltyBanner } from '@/components/penalties/DraftPenaltyBanner';
 import { isEarlierThanOriginal, isWithinHoursLater, latestAllowedTime } from '@/lib/reschedule-rules';
+import { plural } from '@/lib/plural';
 
 interface PDLUpcomingMatchProps {
   match: Match;
@@ -484,7 +485,7 @@ export function PDLUpcomingMatch({
                       ? `Mecz nie ma jeszcze ustalonego terminu. Podaj preferowany termin.${rescheduleFinalDate ? ` Ostateczny termin składania propozycji: ${formatDatePL(rescheduleFinalDate)}.` : ''} Wymaga zgody kapitana przeciwnej drużyny.`
                       : rescheduleRangeDays === null
                       ? `Nowy termin nie jest ograniczony zakresem dat.${rescheduleFinalDate ? ` Ostateczny termin składania propozycji: ${formatDatePL(rescheduleFinalDate)}.` : ''} Wymaga zgody kapitana przeciwnej drużyny.`
-                      : `Nowy termin musi mieścić się w zakresie ±${rescheduleRangeDays} dni od domyślnej daty.${rescheduleFinalDate ? ` Ostateczny termin składania propozycji: ${formatDatePL(rescheduleFinalDate)}.` : ''} Wymaga zgody kapitana przeciwnej drużyny.`
+                      : `Nowy termin musi mieścić się w zakresie ±${rescheduleRangeDays} ${plural(rescheduleRangeDays, 'dzień', 'dni', 'dni')} od domyślnej daty.${rescheduleFinalDate ? ` Ostateczny termin składania propozycji: ${formatDatePL(rescheduleFinalDate)}.` : ''} Wymaga zgody kapitana przeciwnej drużyny.`
                     }
                     {earlierOnly && (
                       <span className="block mt-1 text-amber-300/90">

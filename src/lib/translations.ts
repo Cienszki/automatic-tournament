@@ -411,10 +411,10 @@ export const translations = {
     tryAgain: "Spróbuj Ponownie",
     
     // Bracket names
-    upperBracket: "Górna Drabinka",
-    lowerBracket: "Dolna Drabinka", 
-    wildcardMatches: "Mecze Wildcard",
-    grandFinal: "Wielki Finał",
+    upperBracket: "Górna drabinka",
+    lowerBracket: "Dolna drabinka", 
+    wildcardMatches: "Mecze wildcard",
+    grandFinal: "Wielki finał",
     
     // Round names
     round: "Runda",
@@ -426,14 +426,14 @@ export const translations = {
     bestOf5: "BO5",
     
     // Team descriptions
-    groupWinner: "1. miejsce Grupa",
-    groupSecond: "2. miejsce Grupa", 
-    groupThird: "3. miejsce Grupa",
+    groupWinner: "1. miejsce grupy",
+    groupSecond: "2. miejsce grupy", 
+    groupThird: "3. miejsce grupy",
     wildcardWinner: "Zwycięzca",
     matchWinner: "Zwycięzca meczu",
     matchLoser: "Przegrany meczu",
-    upperBracketWinner: "Zwycięzca Górnej Drabinki",
-    lowerBracketWinner: "Zwycięzca Dolnej Drabinki",
+    upperBracketWinner: "Zwycięzca górnej drabinki",
+    lowerBracketWinner: "Zwycięzca dolnej drabinki",
     toBeDetermined: "Do ustalenia",
     
     // Group labels  
@@ -1193,7 +1193,7 @@ export const translations = {
       multipleAccounts: "Granie na wielu kontach w turnieju",
       coaching: "Używanie trenerów podczas oficjalnych gier turniejowych łącznie z draftem",
       bugsExploits: "Używanie bugów i exploitów",
-      rankedRules: "Wszystkie zakazy stosowane przez Valve do meczy rankingowych również mają zastosowanie do meczów turniejowych."
+      rankedRules: "Wszystkie zakazy stosowane przez Valve do meczów rankingowych również mają zastosowanie do meczów turniejowych."
     },
 
     // Section 9: Conduct
@@ -1345,7 +1345,7 @@ export const translations = {
       },
       requirements: {
         question: "Jakie są wymagania dla graczy?",
-        answer: "Wszyscy gracze muszą: 1) Posiadać skalibrowane konto Dota 2 (min. 1000 MMR i 250 rozegranych meczy), 2) Grać tylko na koncie użytym do rejestracji, 3) Być członkiem tylko jednej drużyny w turnieju, 4) Mieć aktywne konto Steam bez VAC banów."
+        answer: "Wszyscy gracze muszą: 1) Posiadać skalibrowane konto Dota 2 (min. 1000 MMR i 250 rozegranych meczów), 2) Grać tylko na koncie użytym do rejestracji, 3) Być członkiem tylko jednej drużyny w turnieju, 4) Mieć aktywne konto Steam bez VAC banów."
       },
       mmrVerification: {
         question: "Jak zweryfikować MMR graczy?",

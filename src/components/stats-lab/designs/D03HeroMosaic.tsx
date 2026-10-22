@@ -10,6 +10,7 @@ import { opponentOf, type HeroX, type Model } from '@/lib/stats-lab/derive';
 import { ATTR_COLOR, heroAttr, heroName, type HeroAttr } from '@/lib/stats-lab/heroes';
 import { fmtPct } from '@/lib/stats-lab/metrics';
 import { Avatar, C, HeroImg, HeroRender, LabTitle, LabView, Seg, TeamLogo, Tip, TipBody, WithModel, ink, mix, playerTip, useHeaderFont, useSize, wrColor } from '../kit';
+import { plural } from '@/lib/plural';
 
 type SortKey = 'contest' | 'picks' | 'bans' | 'wr';
 const SORTS: Array<{ value: SortKey; label: string; tip: string }> = [
@@ -91,7 +92,7 @@ function HeroPanel({ model, hero }: { model: Model; hero: HeroX }) {
         <div className="flex justify-around">
           <Ring value={hero.pickRate} label="Pick" color={C.primary} tip={`Wybrany w ${hero.picks} z ${model.games.length} gier`} />
           <Ring value={hero.banRate} label="Ban" color={C.muted} tip={`Zbanowany w ${hero.bans} z ${model.draftGames} gier z zapisanym draftem${hero.firstPhaseBans ? ` · ${hero.firstPhaseBans}× w pierwszej fazie` : ''}`} />
-          <Ring value={hero.wr} label="Win" color={wrColor(hero.wr)} tip={hero.picks ? `${Math.round(hero.wr * 100)}% wygranych w ${hero.picks} grach` : 'Jeszcze nie grany'} />
+          <Ring value={hero.wr} label="Win" color={wrColor(hero.wr)} tip={hero.picks ? `${Math.round(hero.wr * 100)}% wygranych w ${hero.picks} ${plural(hero.picks, 'grze', 'grach', 'grach')}` : 'Jeszcze nie grany'} />
         </div>
         {hero.picks > 0 && (
           <Tip content={`Radiant: ${hero.radiant.wins}/${hero.radiant.picks} wygranych · Dire: ${hero.dire.wins}/${hero.dire.picks} wygranych`}>
@@ -124,7 +125,7 @@ function HeroPanel({ model, hero }: { model: Model; hero: HeroX }) {
           ))}
         </div>
         {best && (
-          <Tip content={<TipBody title="Najlepszy występ (punkty występu)">{best.kills}/{best.deaths}/{best.assists} · {best.gpm} GPM · vs {opponentOf(best)?.name}</TipBody>}>
+          <Tip content={<TipBody title="Najlepszy występ (punkty fantasy)">{best.kills}/{best.deaths}/{best.assists} · {best.gpm} GPM · vs {opponentOf(best)?.name}</TipBody>}>
             <div className="flex items-center gap-2 rounded-lg px-2 py-1.5 cursor-help" style={{ background: mix(C.secondary, 12) }}>
               <Avatar player={best.player} size={34} ring={C.secondary} />
               <span className="flex-1 truncate text-sm font-semibold">{best.player?.name}</span>

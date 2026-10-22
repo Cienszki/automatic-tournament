@@ -29,6 +29,7 @@ import {
 import { collection, getDocs, doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { getGroups, saveGroup, deleteGroup as deleteGroupApi, type GroupDoc } from '@/lib/api/groups';
+import { count, plural } from '@/lib/plural';
 
 interface Team {
   id: string;
@@ -134,7 +135,7 @@ export function GroupsTab() {
     const teamsInGroup = teams.filter((t) => t.groupId === id);
     if (teamsInGroup.length > 0) {
       const ok = confirm(
-        `Ta grupa zawiera ${teamsInGroup.length} drużyn(y). Czy na pewno chcesz ją usunąć? Drużyny zostaną odłączone.`,
+        `Ta grupa zawiera ${teamsInGroup.length} ${plural(teamsInGroup.length, 'drużynę', 'drużyny', 'drużyn')}. Czy na pewno chcesz ją usunąć? Drużyny zostaną odłączone.`,
       );
       if (!ok) return;
     }
@@ -338,7 +339,7 @@ export function GroupsTab() {
                       </div>
                     )}
                     <p className="text-sm text-muted-foreground font-logik">
-                      {getTeamsInGroup(group.id).length} drużyn
+                      {count(getTeamsInGroup(group.id).length, 'drużyna', 'drużyny', 'drużyn')}
                     </p>
                   </div>
 
@@ -346,7 +347,7 @@ export function GroupsTab() {
                   <div className="flex items-center gap-2">
                     <Users className="h-4 w-4 text-muted-foreground" />
                     <Badge variant="outline" className="font-logik">
-                      {getTeamsInGroup(group.id).length} drużyn
+                      {count(getTeamsInGroup(group.id).length, 'drużyna', 'drużyny', 'drużyn')}
                     </Badge>
                   </div>
 
@@ -450,7 +451,7 @@ export function GroupsTab() {
                           <div className="flex-1">
                             <p className="font-logik-extended-bold">{group.name}</p>
                             <p className="text-xs text-muted-foreground font-logik">
-                              {groupTeams.length} {groupTeams.length === 1 ? 'drużyna' : 'drużyn'}
+                              {count(groupTeams.length, 'drużyna', 'drużyny', 'drużyn')}
                             </p>
                           </div>
                         </div>

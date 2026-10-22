@@ -36,13 +36,7 @@ export function qualified(model: Model, min = model.minGames): PlayerX[] {
   return model.players.filter(p => p.agg.score.avg != null && scored(p.perfs).length >= min);
 }
 
-/** Polish plural: 1 gra, 2 gry, 5 gier */
-export function plural(n: number, one: string, few: string, many: string) {
-  const a = Math.abs(n) % 100; const b = a % 10;
-  if (n === 1) return one;
-  if (b >= 2 && b <= 4 && (a < 12 || a > 14)) return few;
-  return many;
-}
+export { plural } from '../plural';
 
 /** Deterministic PRNG (for "daily" puzzles and stable shuffles) */
 export function seededRandom(seed: number) {

@@ -88,7 +88,7 @@ export function ReviewStep({ data, onChange, template, allData }: ReviewStepProp
           {isMmrLimited && (
             <>
               <SummaryItem label="Limit MMR" value={structure.mmrCap ? structure.mmrCap.toLocaleString() : '—'} />
-              <SummaryItem label="Format meczy (grupy)" value={MATCH_FORMAT_LABELS[structure.groupMatchFormat] || '—'} />
+              <SummaryItem label="Format meczów (grupy)" value={MATCH_FORMAT_LABELS[structure.groupMatchFormat] || '—'} />
               <SummaryItem label="Awans do UB z grupy" value={String(structure.teamsToUpperBracketPerGroup || '—')} />
               <SummaryItem label="Awans do LB z grupy" value={String(structure.teamsToLowerBracketPerGroup || '—')} />
             </>

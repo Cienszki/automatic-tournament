@@ -20,6 +20,7 @@ import {
 import { cn } from '@/lib/utils';
 import { fadeInUp, staggerContainer } from '@/lib/animations';
 import { organizationConfig } from '@/config/organization';
+import { count } from '@/lib/plural';
 
 /**
  * About PDL page - basic explanation of the tournament
@@ -53,7 +54,7 @@ export default function AboutPage() {
         { label: 'Punktacja', value: 'Punkt za każdą wygraną mapę' },
         { label: 'Limit MMR', value: 'Brak' },
         ...(tournament.playoffs?.enabled
-          ? [{ label: 'Awans do playoffów', value: `${tournament.playoffs?.teamsCount ?? 4} drużyn` }]
+          ? [{ label: 'Awans do playoffów', value: count(tournament.playoffs?.teamsCount ?? 4, 'drużyna', 'drużyny', 'drużyn') }]
           : []),
       ]
     : [
@@ -61,7 +62,7 @@ export default function AboutPage() {
         { label: 'Liczba grup', value: String(tournament.groupsCount ?? 4) },
         { label: 'Drużyn w grupie', value: String(tournament.teamsPerGroup ?? 4) },
         { label: 'Limit MMR', value: (tournament.mmrCap ?? 24000).toLocaleString('pl-PL') },
-        { label: 'Awans do playoffów', value: `${tournament.playoffs?.teamsCount ?? 8} drużyn` },
+        { label: 'Awans do playoffów', value: count(tournament.playoffs?.teamsCount ?? 8, 'drużyna', 'drużyny', 'drużyn') },
       ];
 
   const features = [

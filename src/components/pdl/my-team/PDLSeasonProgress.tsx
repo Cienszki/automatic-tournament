@@ -3,6 +3,7 @@
 import { Trophy, TrendingUp, Target, Award, Medal } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTournament } from '@/context/TournamentContext';
+import { plural } from '@/lib/plural';
 
 interface PDLSeasonProgressProps {
   divisionName?: string;
@@ -122,7 +123,7 @@ export function PDLSeasonProgress({
               />
             </div>
             <p className="text-xs font-logik" style={{ color: theme.secondaryTextColor || 'rgba(255,255,255,0.4)' }}>
-              {totalRounds - currentRound} {totalRounds - currentRound === 1 ? 'runda' : 'rund'} pozostało
+              {totalRounds - currentRound} {plural(totalRounds - currentRound, 'runda pozostała', 'rundy pozostały', 'rund pozostało')}
             </p>
           </div>
         </div>

@@ -12,6 +12,7 @@ import { cn } from '@/lib/utils';
 import { fadeInUp, staggerContainer } from '@/lib/animations';
 import { useTournament } from '@/context/TournamentContext';
 import { organizationConfig } from '@/config/organization';
+import { CHAMFER_CLIP } from '@/components/ui/chamfer';
 
 interface HeroSectionProps {
   isTeamCaptain?: boolean;
@@ -77,7 +78,7 @@ export function HeroSection({
                 className="inline-flex items-center justify-center gap-3 px-8 py-4 rounded-none font-logik-extended-bold text-lg uppercase tracking-widest text-white transition-all duration-300 relative overflow-hidden group"
                 style={{
                   backgroundColor: primaryColor,
-                  clipPath: 'polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px)'
+                  clipPath: CHAMFER_CLIP
                 }}
               >
                 {/* Shine effect */}
@@ -110,7 +111,7 @@ export function HeroSection({
                 rel="noopener noreferrer"
                 className="inline-flex items-center justify-center gap-3 px-8 py-4 font-logik-extended-bold text-lg uppercase tracking-widest bg-transparent text-[#5865F2] border border-[#5865F2]/40 hover:border-[#5865F2] hover:bg-[#5865F2]/10 transition-all duration-300 relative overflow-hidden group"
                 style={{
-                  clipPath: 'polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px)'
+                  clipPath: CHAMFER_CLIP
                 }}
               >
                 <Image

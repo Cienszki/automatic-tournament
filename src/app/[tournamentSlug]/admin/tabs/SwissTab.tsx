@@ -52,6 +52,7 @@ import {
   saveSwissFormat, saveGroupA, saveTiebreakDecision,
 } from '@/lib/lan-qualifier/actions';
 import { FormatCard, GroupACard, TiebreakCard, LanStatusCard, lanPairingLabel } from './swiss/LanQualifierCards';
+import { count, plural } from '@/lib/plural';
 
 const MATCH_FORMATS: { value: MatchFormat; label: string; maxPoints: number }[] = [
   { value: 'bo1', label: 'BO1', maxPoints: 1 },
@@ -343,7 +344,7 @@ export function SwissTab() {
       await reload();
       toast({
         title: 'Pole Swiss gotowe',
-        description: `Przypisano ${res.assigned} nowych drużyn (łącznie ${res.total}).`,
+        description: `Przypisano ${res.assigned} ${plural(res.assigned, 'nową drużynę', 'nowe drużyny', 'nowych drużyn')} (łącznie ${res.total}).`,
       });
     });
 
@@ -547,7 +548,7 @@ export function SwissTab() {
       await reload();
       toast({
         title: `Runda ${nextRoundNumber} zatwierdzona`,
-        description: `Utworzono ${res.created} meczów${res.byes ? `, w tym ${res.byes} wolny los` : ''}.`,
+        description: `Utworzono ${count(res.created, 'mecz', 'mecze', 'meczów')}${res.byes ? `, w tym ${count(res.byes, 'wolny los', 'wolne losy', 'wolnych losów')}` : ''}.`,
         action: <CheckCircle2 className="h-5 w-5 text-green-500" />,
       });
     });
@@ -561,7 +562,7 @@ export function SwissTab() {
       )) return;
       const res = await reopenRound(tournament.id, round, divisionId);
       await reload();
-      toast({ title: `Runda ${round} wycofana`, description: `Usunięto ${res.deleted} meczów.` });
+      toast({ title: `Runda ${round} wycofana`, description: `Usunięto ${count(res.deleted, 'mecz', 'mecze', 'meczów')}.` });
     });
 
   const handleCloseRound = (round: number) =>
@@ -645,12 +646,12 @@ export function SwissTab() {
             <div className="rounded-lg border border-border bg-muted/30 p-3 text-sm font-logik space-y-1">
               <p className="flex items-center gap-2">
                 <Info className="h-4 w-4 shrink-0" style={{ color: theme.primaryColor }} />
-                Dla {field.length} drużyn zalecane <strong>{recommended}</strong> rund
+                Dla {field.length} {plural(field.length, 'drużyny', 'drużyn', 'drużyn')} zalecana liczba rund: <strong>{recommended}</strong>
                 {plannedRounds != null && <> (zaplanowano {plannedRounds})</>}.
               </p>
               <p className="text-muted-foreground text-xs">
-                Powyżej {rematchFreeCeiling} rund powtórki par są nieuniknione — każda drużyna ma
-                tylko {rematchFreeCeiling} możliwych przeciwników. Przy ~{Math.ceil(field.length / 2)} rundach
+                Powyżej {rematchFreeCeiling} {plural(rematchFreeCeiling, 'rundy', 'rund', 'rund')} powtórki par są nieuniknione — każda drużyna ma
+                tylko {rematchFreeCeiling} możliwych przeciwników. Przy ~{Math.ceil(field.length / 2)} {plural(Math.ceil(field.length / 2), 'rundzie', 'rundach', 'rundach')}
                 turniej zbliża się do systemu każdy z każdym.
               </p>
             </div>
@@ -783,7 +784,7 @@ export function SwissTab() {
                 <p className="text-xs text-amber-500 font-logik flex items-start gap-2">
                   <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
                   <span>
-                    {bandAdvice.outliers.length === 1 ? 'Jedna drużyna jest' : `${bandAdvice.outliers.length} drużyny są`}
+                    {bandAdvice.outliers.length === 1 ? 'Jedna drużyna jest' : `${bandAdvice.outliers.length} ${plural(bandAdvice.outliers.length, 'drużyna jest', 'drużyny są', 'drużyn jest')}`}
                     {' '}odizolowane — najbliższy rywal dzieli je o ponad 1500 MMR
                     ({bandAdvice.outliers.map(o => `${nameOf(o.teamId)} (${o.seedMmr})`).join(', ')}).
                     Żaden zakres im nie pomoże; zawsze dostaną najbliższego dostępnego przeciwnika.
@@ -850,7 +851,7 @@ export function SwissTab() {
                 if (!tournament?.id) return;
                 const n = await renumberSeeds(tournament.id);
                 await reload();
-                toast({ title: 'Rozstawienie przeliczone', description: `${n} drużyn.` });
+                toast({ title: 'Rozstawienie przeliczone', description: `${count(n, 'drużyna', 'drużyny', 'drużyn')}.` });
               })}
               disabled={busy === 'renumber'}
             >
@@ -1046,7 +1047,7 @@ export function SwissTab() {
           {isLan && foreign.length > 0 && (
             <p className="text-sm text-amber-500 font-logik flex items-start gap-2">
               <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
-              W turnieju są rundy rozegrane w formacie standardowym ({foreign.length} meczów). Wycofaj je w sekcji
+              W turnieju są rundy rozegrane w formacie standardowym ({count(foreign.length, 'mecz', 'mecze', 'meczów')}). Wycofaj je w sekcji
               „Rozegrane rundy”, zanim wygenerujesz rundę 1 kwalifikacji.
             </p>
           )}

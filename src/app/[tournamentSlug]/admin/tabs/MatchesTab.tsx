@@ -65,6 +65,7 @@ import {
   CalendarClock,
   Gavel,
 } from 'lucide-react';
+import { count } from '@/lib/plural';
 
 interface MatchWithTeamNames extends Match {
   teamAName: string;
@@ -738,7 +739,7 @@ export function MatchesTab() {
       const batch = writeBatch(db);
       snapshot.docs.forEach(d => batch.delete(d.ref));
       await batch.commit();
-      toast({ title: 'Usunięto wszystkie mecze', description: `Usunięto ${snapshot.size} meczów.` });
+      toast({ title: 'Usunięto wszystkie mecze', description: `Usunięto ${count(snapshot.size, 'mecz', 'mecze', 'meczów')}.` });
       await loadMatches();
       setShowDeleteAllDialog(false);
     } catch (error) {
@@ -1356,7 +1357,7 @@ export function MatchesTab() {
                 Lista meczów
               </CardTitle>
               <CardDescription className="font-logik">
-                {filteredMatches.length} meczów
+                {count(filteredMatches.length, 'mecz', 'mecze', 'meczów')}
               </CardDescription>
             </div>
             <Button

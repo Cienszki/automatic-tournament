@@ -18,7 +18,8 @@ import { Avatar, C, HeroImg, HeroRender, TeamLogo, Tip, TipBody, ink, mix, onDar
 import { ADVANCED, ADVANCED_GROUPS, MATCH_PREP, MATCH_PREP_PATH, PAGES } from './catalog';
 import { useStatsNav, readStore } from './nav';
 import { GALLERY_RENDER_SIZES, type OverviewData } from './overview-data';
-import { buildCards, cardsKey, refill, emptyCollection, type Collection } from './cards-data';
+import { cardsKey, refill, emptyCollection } from './cards-data';
+import { count } from '@/lib/plural';
 
 export const NEXT_MS = 7000;
 export const fmtDate = (unix: number) => new Date(unix * 1000).toLocaleDateString('pl-PL', { day: 'numeric', month: 'short' });
@@ -72,7 +73,7 @@ export function RankingsTeaser({ d }: { d: OverviewData }) {
       {top?.player.heroes[0] && <HeroImg heroId={top.player.heroes[0].heroId} title={false} className="absolute inset-0 w-full h-full scale-125 blur-2xl opacity-40" />}
       <div className="absolute inset-0" style={{ background: 'linear-gradient(0deg, rgba(0,0,0,0.9), rgba(0,0,0,0.45))' }} />
       <div className="relative flex flex-col flex-1 min-h-0">
-        <Kicker>Najlepsi na każdej pozycji · punkty występu na grę</Kicker>
+        <Kicker>Najlepsi na każdej pozycji · punkty fantasy na grę</Kicker>
         <div className="flex-1 min-h-0 flex flex-col justify-center gap-2.5 mt-2">
           {roles.map((r, k) => (
             <motion.div key={r.role} className="flex items-center gap-4 min-w-0" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: k * 0.07 }}>
@@ -140,7 +141,7 @@ export function LeadersTeaser({ d }: { d: OverviewData }) {
       {top?.player.heroes[0] && <HeroImg heroId={top.player.heroes[0].heroId} title={false} className="absolute inset-0 w-full h-full scale-125 blur-2xl opacity-40" />}
       <div className="absolute inset-0" style={{ background: 'linear-gradient(0deg, rgba(0,0,0,0.9), rgba(0,0,0,0.35) 60%, rgba(0,0,0,0.2))' }} />
       <div className="relative flex flex-col flex-1 min-h-0">
-        <Kicker>Punkty występu na grę</Kicker>
+        <Kicker>Punkty fantasy na grę</Kicker>
         <div className="flex-1 min-h-0 flex items-end justify-center gap-3 pt-6">
           {order.map(l => {
             const rank = d.leaders.indexOf(l);
@@ -179,10 +180,10 @@ export function HeroesTeaser({ d }: { d: OverviewData }) {
         <Kicker>Najczęściej w drafcie</Kicker>
         <div className="font-logik-extended-bold tabular-nums leading-[0.9]" style={{ fontSize: 'clamp(54px, 10vh, 112px)', ...font }}>{top.contest}×</div>
         <div className="text-2xl font-bold">{heroName(top.heroId)}</div>
-        <div className="text-sm text-white/70">{top.picks} picków · {top.bans} banów · {Math.round(top.wr * 100)}% wygranych</div>
+        <div className="text-sm text-white/70">{count(top.picks, 'pick', 'picki', 'picków')} · {count(top.bans, 'ban', 'bany', 'banów')} · {Math.round(top.wr * 100)}% wygranych</div>
         <div className="flex gap-2 mt-3">
           {rest.map((h, k) => (
-            <Tip key={h.heroId} content={<TipBody title={heroName(h.heroId)}>{h.picks} picków · {h.bans} banów · {Math.round(h.wr * 100)}% wygranych</TipBody>}>
+            <Tip key={h.heroId} content={<TipBody title={heroName(h.heroId)}>{count(h.picks, 'pick', 'picki', 'picków')} · {count(h.bans, 'ban', 'bany', 'banów')} · {Math.round(h.wr * 100)}% wygranych</TipBody>}>
               <div className="relative rounded-lg overflow-hidden" style={{ width: 84, height: 47 }}>
                 <HeroImg heroId={h.heroId} className="w-full h-full" />
                 <span className="absolute bottom-0 inset-x-0 text-center text-[11px] font-bold bg-black/70">#{k + 2} · {h.contest}×</span>
@@ -360,49 +361,37 @@ export const MiniWordle = () => (
 );
 
 
-/** What the game doors say about this visitor (read from localStorage after mount) */
+/** What the game doors say about this visitor (pack count read from localStorage after mount) */
 export function usePlayStatus(model: Model) {
   const statsKey = useStatsKey();
-  const cards = useMemo(() => buildCards(model), [model]);
-  const [col, setCol] = useState<Collection | null>(null);
-  const [hlBest, setHlBest] = useState(0);
-  const [quizBest, setQuizBest] = useState<number | null>(null);
-  const [dotadleDone, setDotadleDone] = useState<boolean>(false);
+  const [packs, setPacks] = useState(0);
   useEffect(() => {
     if (!statsKey) return;
-    setCol(refill(readStore(cardsKey(statsKey), emptyCollection())));
-    setHlBest(Number(readStore('statslab-hl-best', 0)) || 0);
-    setQuizBest(readStore<{ best?: number }>(`stats-hub:${statsKey}:quiz`, {}).best ?? null);
-    const d = new Date();
-    const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    const g = readStore<Record<string, { day?: string; done?: boolean }>>(`stats-hub:${statsKey}:dotadle`, {}).gracz;
-    setDotadleDone(g?.day === today && !!g.done);
+    setPacks(refill(readStore(cardsKey(statsKey), emptyCollection())).packs);
   }, [statsKey]);
-  const owned = col ? Object.keys(col.owned).filter(id => cards.some(c => c.id === id)).length : 0;
   // A face for the quiz door: someone everyone has played against, blurred
   const mystery = useMemo(() => { const q = qualified(model); return q[Math.floor(seededRandom(q.length * 7919 + 13)() * q.length)]; }, [model]);
   const killsPerGame = model.games.length ? Math.round(model.totals.kills / model.games.length) : 42;
-  return { packs: col?.packs ?? 0, owned, total: cards.length, hlBest, quizBest, dotadleDone, mystery, killsPerGame };
+  return { packs, mystery, killsPerGame };
 }
 export type PlayStatus = ReturnType<typeof usePlayStatus>;
 
-export interface PlayItem { id: string; title: string; hook: string; status: string; visual: React.ReactNode }
+export interface PlayItem { id: string; title: string; hook: string; visual: React.ReactNode }
 
-/** The four games: id, title, hook line, status line and a small visual */
+/** The four games: id, title, hook line and a small visual */
 export function playItems(s: PlayStatus, font: React.CSSProperties): PlayItem[] {
   return [
     {
       id: 'karty', title: 'Karty', visual: <MiniCards />,
       hook: s.packs > 0 ? `${s.packs} ${s.packs === 1 ? 'paczka czeka' : s.packs < 5 ? 'paczki czekają' : 'paczek czeka'} na otwarcie` : 'Paczki kart graczy i drużyn sezonu',
-      status: `Kolekcja ${s.owned} / ${s.total}`,
     },
-    { id: 'dotadle', title: 'Dotadle', visual: <MiniWordle />, hook: 'Gracz, bohater i drużyna dnia', status: s.dotadleDone ? 'Dzisiejszy gracz rozwiązany ✓' : '3 nowe zagadki codziennie' },
+    { id: 'dotadle', title: 'Dotadle', visual: <MiniWordle />, hook: 'Gracz, bohater i drużyna dnia' },
     {
-      id: 'kto-to', title: 'Kto to?', hook: 'Quiz z liczb tego sezonu', status: s.quizBest != null ? `Twój rekord: ${s.quizBest} pkt` : '8 pytań · 3 koła ratunkowe',
+      id: 'kto-to', title: 'Kto to?', hook: 'Quiz z liczb tego sezonu',
       visual: <span className="relative"><Avatar player={s.mystery} size={46} className="blur-[5px] opacity-80" /><span className="absolute inset-0 flex items-center justify-center text-2xl font-logik-extended-bold" style={{ color: '#fff', ...font }}>?</span></span>,
     },
     {
-      id: 'wyzej-nizej', title: 'Wyżej czy niżej', hook: 'Która liczba jest większa?', status: s.hlBest ? `Najlepsza seria: ${s.hlBest}` : 'Graj na serię',
+      id: 'wyzej-nizej', title: 'Wyżej czy niżej', hook: 'Która liczba jest większa?',
       visual: <span className="flex flex-col items-center leading-none font-logik-extended-bold tabular-nums" style={{ color: C.heading, ...font }}><span className="text-lg">{s.killsPerGame}</span><span className="text-[10px] my-0.5 opacity-60">▲▼</span><span className="text-lg" style={{ color: onDark(C.secondary) }}>?</span></span>,
     },
   ];
@@ -479,7 +468,6 @@ export function AdvancedDoor({ className }: { className?: string }) {
       <AdvancedIcons />
       <span className="flex-1 min-w-0">
         <span className="block font-logik-extended-bold uppercase text-[13px] leading-tight" style={{ color: C.heading, ...font }}>Zaawansowane statystyki</span>
-        <span className="block text-[11px] truncate" style={{ color: C.muted }}>{ADVANCED_PAGES.length} widoków: giełda, draft, laboratorium…</span>
       </span>
       <ChevronRight className="w-4 h-4 shrink-0 opacity-50 group-hover:opacity-100 transition-all group-hover:translate-x-0.5" style={{ color: C.heading }} />
     </button>
@@ -495,7 +483,7 @@ export function PlayColumn({ model }: { model: Model }) {
     <div className="min-h-0 flex flex-col">
       <ColumnHead>Zagraj</ColumnHead>
       <div className="flex-1 min-h-0 flex flex-col">
-        {playItems(status, font).map(it => <Door key={it.id} title={it.title} visual={it.visual} hook={it.hook} status={it.status} onClick={() => nav?.go(it.id)} />)}
+        {playItems(status, font).map(it => <Door key={it.id} title={it.title} visual={it.visual} hook={it.hook} onClick={() => nav?.go(it.id)} />)}
       </div>
       <div className="shrink-0 mt-4"><ColumnHead>Dla kapitanów</ColumnHead></div>
       <PrepTile model={model} className="shrink-0" />

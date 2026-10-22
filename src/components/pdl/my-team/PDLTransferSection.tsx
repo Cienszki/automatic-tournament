@@ -44,6 +44,7 @@ import { cn } from '@/lib/utils';
 import type { Player, PlayerRole, Team } from '@/lib/definitions';
 import { PlayerRoles } from '@/lib/definitions';
 import type { CoachLock } from '@/lib/coach-rules';
+import { count, plural } from '@/lib/plural';
 
 const MAX_COACH_NICKNAME = 32;
 
@@ -232,9 +233,9 @@ export function PDLTransferSection({
       roleCounts[p.role] = (roleCounts[p.role] || 0) + 1;
     }
     const errors: string[] = [];
-    for (const [role, count] of Object.entries(roleCounts)) {
-      if (count > 1) {
-        errors.push(`Duplikat roli: ${role} (${count} graczy)`);
+    for (const [role, n] of Object.entries(roleCounts)) {
+      if (n > 1) {
+        errors.push(`Duplikat roli: ${role} (${count(n, 'gracz', 'graczy', 'graczy')})`);
       }
     }
     return errors;
@@ -571,7 +572,7 @@ export function PDLTransferSection({
               </p>
               <p className="text-xs mt-1" style={{ color: theme.secondaryTextColor || 'rgba(187,247,208,0.6)' }}>
                 {isSeasonActive
-                  ? `Możesz dokonać maksymalnie ${maxTransfers} zmian w składzie (porównanie z ostatnią zakończoną rundą). Zmiany nicków i ról nie liczą się jako transfery.`
+                  ? `Możesz dokonać maksymalnie ${maxTransfers} ${plural(maxTransfers, 'zmiany', 'zmian', 'zmian')} w składzie (porównanie z ostatnią zakończoną rundą). Zmiany nicków i ról nie liczą się jako transfery.`
                   : 'Sezon jeszcze nie rozpoczył się — możesz dowolnie modyfikować skład bez ograniczeń.'}
               </p>
             </div>
@@ -1165,7 +1166,7 @@ export function PDLTransferSection({
                 )}
 
                 <div className="text-sm text-white/80">
-                  Skład ({activePlayerCount} graczy):
+                  Skład ({count(activePlayerCount, 'gracz', 'graczy', 'graczy')}):
                   <ul className="mt-2 space-y-1">
                     {editPlayers.filter(p => !p.isRemoved).map(p => (
                       <li key={p.id} className="flex items-center gap-2">

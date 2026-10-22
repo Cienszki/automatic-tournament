@@ -12,6 +12,7 @@ import { pl } from 'date-fns/locale';
 import Image from 'next/image';
 import type { Match } from '@/lib/definitions';
 import { cn } from '@/lib/utils';
+import { plural } from '@/lib/plural';
 
 interface RecentResultsTimelineProps {
     matches: Match[];
@@ -70,7 +71,7 @@ export function RecentResultsTimeline({ matches, divisionColor, theme }: RecentR
                     <CardTitle className="text-xl" style={{ color: theme?.headingColor || theme?.primaryTextColor || 'white' }}>Ostatnie wyniki</CardTitle>
                 </div>
                 <p className="text-sm mt-2" style={{ color: theme?.secondaryTextColor || 'rgba(255,255,255,0.5)' }}>
-                    {recentMatches.length} ostatnich meczów
+                    {recentMatches.length} {plural(recentMatches.length, 'ostatni mecz', 'ostatnie mecze', 'ostatnich meczów')}
                 </p>
             </CardHeader>
             <CardContent>

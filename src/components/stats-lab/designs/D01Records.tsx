@@ -10,6 +10,7 @@ import { metric, type MetricKey } from '@/lib/stats-lab/metrics';
 import { opponentOf, topPerfs, type Model, type Perf } from '@/lib/stats-lab/derive';
 import { heroName } from '@/lib/stats-lab/heroes';
 import { Avatar, C, HeroImg, HeroRender, onDark, LabTitle, LabView, Seg, TeamLogo, Tip, TipBody, WithModel, ink, mix, useHeaderFont } from '../kit';
+import { count } from '@/lib/plural';
 
 const TABS: Array<{ id: string; label: string; keys: MetricKey[] }> = [
   { id: 'combat', label: 'Walka', keys: ['kills', 'assists', 'kda', 'streak', 'heroDamage', 'hdpm', 'multi', 'score'] },
@@ -72,7 +73,7 @@ function Plaque({ model, k, onOpen, index }: { model: Model; k: MetricKey; onOpe
         <div className="flex items-end gap-2">
           <span className="text-4xl xl:text-5xl font-logik-extended-bold leading-none tabular-nums drop-shadow" style={{ color: onDark(C.secondary), ...font }}>{m.fmt(recV)}</span>
           {ties > 1 && (
-            <Tip content={`${ties} graczy ma ten sam wynik — rekord należy do pierwszego`}>
+            <Tip content={`${count(ties, 'gracz', 'graczy', 'graczy')} ma ten sam wynik — rekord należy do pierwszego`}>
               <span className="mb-1 text-[11px] px-1.5 rounded-full bg-white/15">×{ties}</span>
             </Tip>
           )}
@@ -187,7 +188,7 @@ function RecordWall({ model }: { model: Model }) {
   return (
     <>
       <LabTitle
-        sub={`${model.games.length} gier · ${model.players.length} graczy`}
+        sub={`${count(model.games.length, 'gra', 'gry', 'gier')} · ${count(model.players.length, 'gracz', 'graczy', 'graczy')}`}
         right={
           <div className="hidden md:flex items-center gap-2">
             {holders.map(h => (

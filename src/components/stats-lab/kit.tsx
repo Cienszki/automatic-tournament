@@ -12,6 +12,7 @@ import { deriveModel, type Model, type PlayerX, type TeamX } from '@/lib/stats-l
 import type { StatsDataset } from '@/lib/stats-lab/types';
 import { heroIcon, heroImg, heroName, heroRender } from '@/lib/stats-lab/heroes';
 import NextImage from 'next/image';
+import { count } from '@/lib/plural';
 
 // ── Colours (CSS variables → work with hex, hsl() and light themes) ─────
 
@@ -400,7 +401,7 @@ export function WL({ win, className }: { win: boolean; className?: string }) {
 export function playerTip(p: PlayerX) {
   return (
     <TipBody title={p.name}>
-      {p.team?.name ?? (p.standin ? 'Stand-in' : '')}{p.role ? ` · ${p.role}` : ''} · {p.games} gier · {Math.round(p.wr * 100)}% wygranych
+      {p.team?.name ?? (p.standin ? 'Stand-in' : '')}{p.role ? ` · ${p.role}` : ''} · {count(p.games, 'gra', 'gry', 'gier')} · {Math.round(p.wr * 100)}% wygranych
     </TipBody>
   );
 }

@@ -6,6 +6,7 @@ import { Users, Trophy } from 'lucide-react';
 import { fadeInUp, staggerContainer } from '@/lib/animations';
 import { useTournament } from '@/context/TournamentContext';
 import { organizationConfig } from '@/config/organization';
+import { CHAMFER_CLIP } from '@/components/ui/chamfer';
 
 interface HeroSectionProps {
   isTeamCaptain?: boolean;
@@ -82,7 +83,7 @@ export function MmrHeroSection({
                 className="inline-flex items-center justify-center gap-3 px-8 py-4 font-logik-extended-bold text-lg uppercase tracking-widest text-white transition-all duration-300 relative overflow-hidden group"
                 style={{
                   backgroundColor: primaryColor,
-                  clipPath: 'polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px)'
+                  clipPath: CHAMFER_CLIP
                 }}
               >
                 <motion.div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
@@ -102,7 +103,7 @@ export function MmrHeroSection({
                   rel="noopener noreferrer"
                   className="inline-flex items-center justify-center gap-3 px-8 py-4 font-logik-extended-bold text-lg uppercase tracking-widest text-white border border-white/10 hover:border-[#5865F2] hover:text-[#5865F2] hover:bg-[#5865F2]/5 transition-all duration-300"
                   style={{
-                    clipPath: 'polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px)'
+                    clipPath: CHAMFER_CLIP
                   }}
                 >
                   <span>Discord</span>

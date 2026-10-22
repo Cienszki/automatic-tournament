@@ -9,6 +9,7 @@ import { motion } from 'framer-motion';
 import type { Model } from '@/lib/stats-lab/derive';
 import { ATTR_COLOR, heroAttr, heroName, type HeroAttr } from '@/lib/stats-lab/heroes';
 import { C, HeroImg, LabTitle, LabView, Seg, TeamPicker, Tip, TipBody, WithModel, ink, mix, useHeaderFont, useSize, wrColor } from '../kit';
+import { count } from '@/lib/plural';
 
 type Mode = 'with' | 'vs';
 /**
@@ -111,7 +112,7 @@ function Constellation({ model }: { model: Model }) {
   return (
     <>
       <LabTitle
-        sub={<span>{team ? `${team.name} · ` : ''}{edges.length} połączeń · {nodes.length} bohaterów</span>}
+        sub={<span>{team ? `${team.name} · ` : ''}{count(edges.length, 'połączenie', 'połączenia', 'połączeń')} · {count(nodes.length, 'bohater', 'bohaterów', 'bohaterów')}</span>}
         right={<Seg value={mode} onChange={v => { setMode(v); setPinned(null); }} options={[{ value: 'with', label: 'Razem', tip: 'Bohaterowie grani w tej samej drużynie' }, { value: 'vs', label: 'Przeciw', tip: 'Bohaterowie grani naprzeciw siebie' }]} />}
       >
         Konstelacja
@@ -163,7 +164,7 @@ function Constellation({ model }: { model: Model }) {
             {focus != null ? heroName(focus) : mode === 'with' ? (team ? 'Ich duety' : 'Najlepsze duety') : (team ? 'Ich pojedynki' : 'Najbardziej jednostronne')}
           </div>
           {focus != null ? list.map(x => (
-            <Tip key={x.other} content={`${heroName(focus)} ${mode === 'with' ? '+' : 'vs'} ${heroName(x.other)}: ${x.n} gier, ${Math.round(x.wr * 100)}% wygranych`}>
+            <Tip key={x.other} content={`${heroName(focus)} ${mode === 'with' ? '+' : 'vs'} ${heroName(x.other)}: ${count(x.n, 'gra', 'gry', 'gier')}, ${Math.round(x.wr * 100)}% wygranych`}>
               <div className="flex items-center gap-2 h-10">
                 <HeroImg heroId={x.other} className="w-16 h-9 rounded-md" />
                 <span className="flex-1 truncate text-xs">{heroName(x.other)}</span>
@@ -176,7 +177,7 @@ function Constellation({ model }: { model: Model }) {
             const [w, l] = mode === 'with' || wr >= 0.5 ? [p.a, p.b] : [p.b, p.a];
             const wwr = mode === 'with' ? wr : Math.max(wr, 1 - wr);
             return (
-              <Tip key={`${p.a}-${p.b}`} content={`${heroName(w)} ${mode === 'with' ? '+' : 'pokonuje'} ${heroName(l)} · ${p.n} gier · ${Math.round(wwr * 100)}%`}>
+              <Tip key={`${p.a}-${p.b}`} content={`${heroName(w)} ${mode === 'with' ? '+' : 'pokonuje'} ${heroName(l)} · ${count(p.n, 'gra', 'gry', 'gier')} · ${Math.round(wwr * 100)}%`}>
                 <div className="flex items-center gap-1.5 h-11">
                   <HeroImg heroId={w} className="w-16 h-9 rounded-md" />
                   <span className="text-xs opacity-50">{mode === 'with' ? '+' : '›'}</span>

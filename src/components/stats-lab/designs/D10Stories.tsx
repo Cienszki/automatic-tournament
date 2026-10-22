@@ -9,6 +9,7 @@ import { fmtClock } from '@/lib/stats-lab/metrics';
 import { opponentOf, topPerfs, type GameX, type Model, type Perf, type PlayerX, type TeamX } from '@/lib/stats-lab/derive';
 import { heroName } from '@/lib/stats-lab/heroes';
 import { Avatar, C, HeroImg, HeroRender, LabView, TeamLogo, Tip, WithModel, mix, useHeaderFont } from '../kit';
+import { count, plural } from '@/lib/plural';
 
 const SLIDE_MS = 6500;
 
@@ -82,7 +83,7 @@ function buildStories(model: Model): Story[] {
 
   const q = model.players.filter(p => p.games >= model.minGames);
   const mvp = [...q].sort((a, b) => (b.agg.score.avg ?? 0) - (a.agg.score.avg ?? 0))[0];
-  if (mvp) s.push({ id: 'mvp', kicker: 'MVP turnieju', big: (mvp.agg.score.avg ?? 0).toFixed(1), title: mvp.name, sub: `średnio punktów występu w ${mvp.games} grach · ${Math.round(mvp.wr * 100)}% wygranych`, heroId: mvp.heroes[0]?.heroId, player: mvp, team: mvp.team });
+  if (mvp) s.push({ id: 'mvp', kicker: 'MVP turnieju', big: (mvp.agg.score.avg ?? 0).toFixed(1), title: mvp.name, sub: `średnio punktów fantasy w ${mvp.games} ${plural(mvp.games, 'grze', 'grach', 'grach')} · ${Math.round(mvp.wr * 100)}% wygranych`, heroId: mvp.heroes[0]?.heroId, player: mvp, team: mvp.team });
   const kills = topPerfs(model, 'kills', 1)[0];
   if (kills) s.push({ id: 'kills', kicker: 'Rekord zabójstw', big: `${kills.kills}`, title: kills.player?.name ?? '—', sub: perfLine(kills), heroId: kills.heroId, player: kills.player, team: kills.team });
   const gpm = topPerfs(model, 'gpm', 1)[0];
@@ -100,9 +101,9 @@ function buildStories(model: Model): Story[] {
   const hero = model.heroes[0];
   if (hero) s.push({ id: 'hero', kicker: 'Bohater turnieju', big: `${hero.contest}`, title: heroName(hero.heroId), sub: `razy w drafcie · ${hero.picks} pick · ${hero.bans} ban · ${Math.round(hero.wr * 100)}% wygranych`, heroId: hero.heroId });
   const wrHero = [...model.heroes].filter(h => h.picks >= 5).sort((a, b) => b.wr - a.wr)[0];
-  if (wrHero && wrHero !== hero) s.push({ id: 'wrhero', kicker: 'Pewniak', big: `${Math.round(wrHero.wr * 100)}%`, title: heroName(wrHero.heroId), sub: `wygranych w ${wrHero.picks} grach`, heroId: wrHero.heroId });
+  if (wrHero && wrHero !== hero) s.push({ id: 'wrhero', kicker: 'Pewniak', big: `${Math.round(wrHero.wr * 100)}%`, title: heroName(wrHero.heroId), sub: `wygranych w ${wrHero.picks} ${plural(wrHero.picks, 'grze', 'grach', 'grach')}`, heroId: wrHero.heroId });
   const oneTrick = model.players.map(p => ({ p, h: p.heroes[0] })).filter(x => x.h).sort((a, b) => b.h.games - a.h.games)[0];
-  if (oneTrick) s.push({ id: 'otp', kicker: 'Wierność', big: `${oneTrick.h.games}×`, title: oneTrick.p.name, sub: `na ${heroName(oneTrick.h.heroId)} · ${oneTrick.h.wins} wygranych`, heroId: oneTrick.h.heroId, player: oneTrick.p, team: oneTrick.p.team });
+  if (oneTrick) s.push({ id: 'otp', kicker: 'Wierność', big: `${oneTrick.h.games}×`, title: oneTrick.p.name, sub: `na ${heroName(oneTrick.h.heroId)} · ${count(oneTrick.h.wins, 'wygrana', 'wygrane', 'wygranych')}`, heroId: oneTrick.h.heroId, player: oneTrick.p, team: oneTrick.p.team });
   const streak = [...model.players].sort((a, b) => b.bestWinStreak - a.bestWinStreak)[0];
   if (streak) s.push({ id: 'streak', kicker: 'Passa', big: `${streak.bestWinStreak}`, title: streak.name, sub: 'wygranych gier z rzędu', heroId: streak.heroes[0]?.heroId, player: streak, team: streak.team });
   const bestTeam = [...model.teams].sort((a, b) => b.wr - a.wr || b.wins - a.wins)[0];

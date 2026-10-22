@@ -12,6 +12,7 @@
 import type { Model } from '@/lib/stats-lab/derive';
 import { getHeroData } from '@/lib/hero-mapping';
 import type { DpHistory, DpMeta } from './types';
+import { count } from '@/lib/plural';
 
 // ── Draft order ─────────────────────────────────────────────────────────────
 
@@ -190,12 +191,12 @@ export function buildProfile(input: PlayerInput, model: Model | null, history: D
   else {
     const top = (Object.entries(share) as Array<[Source, number]>).sort((a, b) => b[1] - a[1])[0];
     why.push(`Najwięcej mówią: ${SOURCE_LABEL[top[0]].toLowerCase()} (${Math.round(top[1] * 100)}% wagi).`);
-    if (tg > 0 && tg < 6) why.push(`Tylko ${tg} gier w turnieju — za mało, by na nich polegać.`);
-    if (tg >= 6) why.push(`${tg} gier w turnieju — wiarygodna próbka.`);
-    if (lg >= 5) why.push(`${lg} gier w lobby ligowych w ostatnich 6 miesiącach.`);
+    if (tg > 0 && tg < 6) why.push(`Tylko ${count(tg, 'gra', 'gry', 'gier')} w turnieju — za mało, by na nich polegać.`);
+    if (tg >= 6) why.push(`${count(tg, 'gra', 'gry', 'gier')} w turnieju — wiarygodna próbka.`);
+    if (lg >= 5) why.push(`${count(lg, 'gra', 'gry', 'gier')} w lobby ligowych w ostatnich 6 miesiącach.`);
     const knownPos = posGames.reduce((a, b) => a + b, 0) >= 15 && !!rolePos;
     if (pg >= 20 && pubRoleFit < 0.5 && !knownPos) why.push(`W publikach gra głównie inne role (${Math.round(pubRoleFit * 100)}% gier pasuje do roli ${input.role ?? '?'}) — publiki ważą mniej.`);
-    else if (pg >= 20) why.push(`${pg} publików w 3 miesiące — aktualna forma i pula.`);
+    else if (pg >= 20) why.push(`${count(pg, 'publik', 'publiki', 'publików')} w 3 miesiące — aktualna forma i pula.`);
     if (pg < 5 && totals.P.all.g > 50) why.push('Ostatnio prawie nie gra publików — starsze gry ważą mniej.');
     const known = posGames.reduce((a, b) => a + b, 0);
     if (known >= 15 && rolePos) {
@@ -478,7 +479,7 @@ export function predictPick(d: DraftInput, v: DraftView, side: 'us' | 'them'): G
   }
   return [...acc.entries()].map(([hero, a]) => {
     const st = a.best?.p.heroes.get(hero);
-    const reason = st ? `${a.best!.p.name}: ${st.cells.T.all.g + st.cells.L.all.g + st.cells.P.all.g} gier, ostatnio ${new Date(st.last * 1000).toLocaleDateString('pl-PL', { day: 'numeric', month: 'short' })}` : `${a.best?.p.name ?? '?'} — pasuje do roli`;
+    const reason = st ? `${a.best!.p.name}: ${count(st.cells.T.all.g + st.cells.L.all.g + st.cells.P.all.g, 'gra', 'gry', 'gier')}, ostatnio ${new Date(st.last * 1000).toLocaleDateString('pl-PL', { day: 'numeric', month: 'short' })}` : `${a.best?.p.name ?? '?'} — pasuje do roli`;
     return { hero, p: a.p, player: a.best, reason };
   }).sort((x, y) => y.p - x.p);
 }

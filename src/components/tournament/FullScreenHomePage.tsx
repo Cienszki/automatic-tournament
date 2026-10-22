@@ -24,7 +24,6 @@ import { InlineDivisionView } from '@/components/divisions/InlineDivisionView';
 import { MatchdayCarousel } from '@/components/schedule/MatchdayCarousel';
 import { ChronologicalCarousel } from '@/components/schedule/ChronologicalCarousel';
 import { SwissRoundCarousel } from '@/components/schedule/SwissRoundCarousel';
-import { TeamsView } from '@/components/tournament/TeamsView';
 import { MirroredPlayoffBracket } from '@/components/playoffs/MirroredPlayoffBracket';
 import { SeasonPointsTable } from '@/components/playoffs/SeasonPointsTable';
 import { HeroVideo, type HeroVideoEdge } from '@/components/tournament/HeroVideo';
@@ -44,6 +43,12 @@ import { cn } from '@/lib/utils';
 // LAN-qualifier Swiss: its Tabela section is the Swiss / Tabela / LAN views (loaded on demand)
 const LanQualifierSection = dynamic(() => import('@/components/format-preview/LanQualifierSection').then(m => m.LanQualifierSection), { ssr: false });
 import { PageAtmosphere } from '@/components/ui/PageAtmosphere';
+import { ScaledStage } from '@/components/ui/ScaledStage';
+import { CHAMFER_CLIP } from '@/components/ui/chamfer';
+
+// Teams ("Herby": crest wall + team banner) and schedule sections, loaded on demand
+const TeamsSection = dynamic(() => import('@/components/teams-section/TeamsSection'), { ssr: false });
+const ScheduleSection = dynamic(() => import('@/components/schedule/ScheduleSection'), { ssr: false });
 
 // Stats hub: every stats view (rankings, records, games, match prep…) inside one section
 const StatsHub = dynamic(() => import('@/components/stats-hub/StatsHub'), { ssr: false });
@@ -105,11 +110,17 @@ const HeroTikTokIcon = (props: React.SVGProps<SVGSVGElement>) => (
 
 // Panel sizes in the logo-promo hero. `cqh` is the media row's height (it is a
 // size container from sm up), so a panel never outgrows the row on short
-// screens; vh keeps it from getting huge on tall ones (less on 2k, where 56vh
-// would be oversized). Videos get an explicit width (16:9 from that height) on
-// their wrapper so the box exists before the file loads; images size naturally.
-const HERO_PANEL_IMAGE_HEIGHT = 'sm:max-h-[min(56vh,100cqh)] 2k:max-h-[min(42vh,100cqh)]';
-const HERO_PANEL_VIDEO_WIDTH = 'w-full sm:w-[calc(min(56vh,100cqh)*16/9)] 2k:w-[calc(min(42vh,100cqh)*16/9)]';
+// screens; 56 stage-vh keeps it from getting huge on tall ones. Big screens are
+// handled by the hero's ScaledStage (the FHD composition scaled up), so these use
+// the stage's viewport units, not vh. Videos get an explicit width (16:9 from that
+// height) on their wrapper so the box exists before the file loads; images size naturally.
+const HERO_PANEL_IMAGE_HEIGHT = 'sm:max-h-[min(calc(var(--svh,1vh)*56),100cqh)]';
+const HERO_PANEL_VIDEO_WIDTH = 'w-full sm:w-[calc(min(calc(var(--svh,1vh)*56),100cqh)*16/9)]';
+
+/** ScaledStage on desktop; plain flow on mobile, where the section scrolls naturally */
+function MaybeStage({ on, children }: { on: boolean; children: React.ReactNode }) {
+  return on ? <ScaledStage>{children}</ScaledStage> : <>{children}</>;
+}
 
 const SECTION_LABELS: Record<HomeSectionKey, string> = {
   start: 'Start',
@@ -258,13 +269,13 @@ export function TournamentHomePage() {
 
   // ── Divisions data (both tournament types via usePDLData) ───
   const { divisions, loading: pdlLoading } = usePDLData();
+  const scheduleGroups = useMemo(() => divisions.map(d => ({ id: d.id, name: d.name, color: d.color, tier: d.tier })), [divisions]);
 
   // ── Schedule data ───
   const [matches, setMatches] = useState<Match[]>([]);
 
   // ── Teams data ───
   const [teams, setTeams] = useState<Team[]>([]);
-  const [divisionRankings, setDivisionRankings] = useState<Record<string, number>>({});
 
   // ── Playoffs data ───
   const [playoffMatches, setPlayoffMatches] = useState<PlayoffMatch[]>([]);
@@ -296,6 +307,14 @@ export function TournamentHomePage() {
 
   // ── Register with HomeNavigationContext so navbar can scroll here ───
   const { registerGoToSection, selectedGroupId, setSelectedGroupId, highlightedTeamId, setHighlightedTeamId, section1View, setSection1View, setStatsView } = useHomeNavigation();
+  const consumeTeamHighlight = useCallback(() => setHighlightedTeamId(null), [setHighlightedTeamId]);
+  // A team asked for from elsewhere (standings → ?view=teams&team=…) opens selected in the teams section
+  const [teamFocus, setTeamFocus] = useState<string | null>(null);
+  useEffect(() => {
+    if (!highlightedTeamId) return;
+    setTeamFocus(highlightedTeamId);
+    consumeTeamHighlight();
+  }, [highlightedTeamId, consumeTeamHighlight]);
   const searchParams = useSearchParams();
 
   // Use a ref so the stable wrapper always calls the latest goToSection
@@ -402,6 +421,13 @@ export function TournamentHomePage() {
             playoffCode: data.playoffCode,
             playoff_round: data.playoff_round,
             isSwissByeMatch: data.isSwissByeMatch,
+            isBanForfeit: data.isBanForfeit,
+            divisionId: data.divisionId,
+            winnerId: data.winnerId,
+            stage: data.lanStage,
+            slot: data.lanSlot,
+            rescheduleRequest: data.rescheduleRequest,
+            forfeit: data.forfeit,
           } as unknown as Match;
         });
         // A Swiss round shows every match, scheduled or not ("TBD"); other
@@ -459,31 +485,6 @@ export function TournamentHomePage() {
           return (a.name || '').localeCompare(b.name || '');
         });
         setTeams(teamsData);
-        // Compute rankings
-        const rankings: Record<string, number> = {};
-        const byDiv: Record<string, Team[]> = {};
-        teamsData.forEach(tm => {
-          const d = tm.divisionId || 'none';
-          if (!byDiv[d]) byDiv[d] = [];
-          byDiv[d].push(tm);
-        });
-        Object.values(byDiv).forEach(divTeams => {
-          const getP = (tm: Team): number => {
-            const anyTm = tm as unknown as Record<string, unknown>;
-            const s = anyTm.stats as { points?: number; wins?: number; draws?: number } | undefined;
-            if (s?.points !== undefined) return s.points;
-            const w = s?.wins ?? anyTm.wins ?? 0;
-            const d = s?.draws ?? anyTm.draws ?? 0;
-            return (w as number) * 2 + (d as number);
-          };
-          [...divTeams]
-            .sort((a, b) => {
-              const diff = getP(b) - getP(a);
-              return diff !== 0 ? diff : (a.name || '').localeCompare(b.name || '');
-            })
-            .forEach((tm, idx) => { rankings[tm.id] = idx + 1; });
-        });
-        setDivisionRankings(rankings);
       } catch (err) {
         console.error('Failed to load teams:', err);
       }
@@ -624,7 +625,7 @@ export function TournamentHomePage() {
             className="inline-flex items-center justify-center gap-3 px-8 py-3.5 font-logik-extended-bold text-sm uppercase tracking-widest text-white transition-all duration-300 relative overflow-hidden group whitespace-nowrap"
             style={{
               backgroundColor: primaryColor,
-              clipPath: 'polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px)',
+              clipPath: CHAMFER_CLIP,
             }}
           >
             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
@@ -637,7 +638,7 @@ export function TournamentHomePage() {
             className="inline-flex items-center justify-center gap-3 px-8 py-3.5 font-logik-extended-bold text-sm uppercase tracking-widest text-white transition-all duration-300 relative overflow-hidden group whitespace-nowrap"
             style={{
               backgroundColor: primaryColor,
-              clipPath: 'polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px)',
+              clipPath: CHAMFER_CLIP,
             }}
           >
             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
@@ -652,7 +653,7 @@ export function TournamentHomePage() {
           rel="noopener noreferrer"
           className="inline-flex items-center justify-center gap-3 px-8 py-3.5 font-logik-extended-bold text-sm uppercase tracking-widest bg-transparent text-[#5865F2] border border-[#5865F2]/50 hover:border-[#5865F2] hover:bg-[#5865F2]/10 transition-all duration-300 whitespace-nowrap"
           style={{
-            clipPath: 'polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px)',
+            clipPath: CHAMFER_CLIP,
           }}
         >
           <Image
@@ -672,7 +673,7 @@ export function TournamentHomePage() {
             rel="noopener noreferrer"
             className="inline-flex items-center justify-center gap-3 px-8 py-3.5 font-logik-extended-bold text-sm uppercase tracking-widest bg-transparent text-[#FF0000] border border-[#FF0000]/50 hover:border-[#FF0000] hover:bg-[#FF0000]/10 transition-all duration-300 whitespace-nowrap"
             style={{
-              clipPath: 'polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px)',
+              clipPath: CHAMFER_CLIP,
             }}
           >
             <Youtube className="h-4 w-4 relative z-10" />
@@ -749,12 +750,12 @@ export function TournamentHomePage() {
   const renderOverlayLogo = (extraClassName?: string, video?: HeroSlotVideo | null) => (
     <div className="absolute inset-0 flex items-center justify-center z-10 pt-14 pb-4 pointer-events-none">
       {video ? (
-        renderPanelVideo(video, logoUrl, 'aspect-video w-[min(90vw,calc(60vh*16/9))] sm:w-[min(48vw,calc(60vh*16/9))] pointer-events-auto')
+        renderPanelVideo(video, logoUrl, 'aspect-video w-[min(90vw,calc(60vh*16/9))] sm:w-[min(calc(var(--svw,1vw)*48),calc(var(--svh,1vh)*60*16/9))] pointer-events-auto')
       ) : logoUrl ? (
         <img
           src={logoUrl}
           alt={tournament.name}
-          className={cn('max-h-[72vh] 2k:max-h-[54vh] max-w-[63vw] sm:max-w-[48vw] lg:max-w-[42vw] w-auto object-contain pointer-events-auto', extraClassName)}
+          className={cn('max-h-[calc(var(--svh,1vh)*72)] max-w-[63vw] sm:max-w-[calc(var(--svw,1vw)*48)] lg:max-w-[calc(var(--svw,1vw)*42)] w-auto object-contain pointer-events-auto', extraClassName)}
         />
       ) : (
         <h1
@@ -813,6 +814,8 @@ export function TournamentHomePage() {
             VIEW 1: Hero — three layout variants (admin-selectable)
            ═══════════════════════════════════════════════════════════ */}
         <FullScreenSection isActive={currentSection === 0} isMobile={isMobile} id="home-section-0">
+          {/* Desktop: the FHD composition scaled up on bigger screens (see ScaledStage) */}
+          <MaybeStage on={!isMobile}>
           {heroLayout === 'video' && fullVideo ? (
             /* ── Video layout ────────────────────────────────────────
                Full-width looping video behind the centred logo. Its
@@ -942,6 +945,7 @@ export function TournamentHomePage() {
 
             </div>
           )}
+          </MaybeStage>
         </FullScreenSection>
 
         {/* ═══════════════════════════════════════════════════════════
@@ -956,7 +960,8 @@ export function TournamentHomePage() {
               onBack={() => setSelectedGroupId(null)}
             />
           ) : (
-          <div className="h-full w-full flex flex-col overflow-y-auto site-gutter py-8">
+          // The LAN-qualifier chart uses the whole width (a plain gutter, not the site's max width)
+          <div className={cn('h-full w-full flex flex-col overflow-y-auto py-8', isLanQualifier ? 'px-[var(--site-gutter)]' : 'site-gutter')}>
             {isLanQualifier ? (
               // Header + views (the LAN bracket is one of them), fitted to the section
               <div className="flex-1 min-h-0 -mt-4"><LanQualifierSection /></div>
@@ -1052,33 +1057,14 @@ export function TournamentHomePage() {
             VIEW 3: Schedule Carousel
            ═══════════════════════════════════════════════════════════ */}
         <FullScreenSection isActive={currentSection === 2} isMobile={isMobile} id="home-section-2">
-          <div className="h-full w-full overflow-y-auto text-white">
-            {matches.length > 0 ? (
-              <div className="site-container py-3 sm:py-5">
-                {tournament?.type === 'league' ? (
-                  <MatchdayCarousel matches={matches} />
-                ) : tournament?.type === 'swiss' ? (
-                  <SwissRoundCarousel matches={matches} />
-                ) : (
-                  <ChronologicalCarousel matches={matches} />
-                )}
-              </div>
-            ) : (
-              <div className="flex items-center justify-center h-full">
-                <p
-                  className="font-logik text-lg"
-                  style={{ color: 'var(--tournament-heading)', fontFamily: theme?.headerFont ? `var(${theme.headerFont})` : undefined }}
-                >Terminarz pojawi się po zaplanowaniu meczy.</p>
-              </div>
-            )}
-          </div>
+          <ScheduleSection matches={matches} groups={scheduleGroups} />
         </FullScreenSection>
 
         {/* ═══════════════════════════════════════════════════════════
             VIEW 4: Teams
            ═══════════════════════════════════════════════════════════ */}
         <FullScreenSection isActive={currentSection === 3} isMobile={isMobile} id="home-section-3">
-          <TeamsView teams={teams} divisionRankings={divisionRankings} highlightedTeamId={highlightedTeamId} onTeamHighlightConsumed={() => setHighlightedTeamId(null)} />
+          <TeamsSection key={teamFocus ?? ''} teams={teams} initialTeamId={teamFocus} />
         </FullScreenSection>
 
         {/* ═══════════════════════════════════════════════════════════

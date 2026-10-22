@@ -15,6 +15,7 @@ import { useTournament } from '@/context/TournamentContext';
 import { useHomeNavigation } from '@/context/HomeNavigationContext';
 import { cn } from '@/lib/utils';
 import { LabEmbedded, loadStatsModel, useStatsKey } from '@/components/stats-lab/kit';
+import { ScaledStage } from '@/components/ui/ScaledStage';
 import { ADVANCED, ADVANCED_GROUPS, GROUP_LABEL, MATCH_PREP, OVERVIEW, PAGES, PAGE_BY_ID, type PageGroup, type StatsPage } from './catalog';
 import { StatsNavCtx, type StatsNav } from './nav';
 import { baseAssets, lowDataMode, warmer } from './assets';
@@ -269,7 +270,9 @@ export default function StatsHub({ active }: { active?: boolean }) {
 
   return (
     <StatsNavCtx.Provider value={nav}>
-      <div ref={ref} className="relative h-full w-full flex flex-col overflow-hidden">
+      <div ref={ref} className="relative h-full w-full overflow-hidden">
+        {/* Laid out for full HD (~1920×900) and scaled up on bigger screens, like the teams section */}
+        <ScaledStage className="flex flex-col">
         <HubHeader view={view} go={go} back={back} />
         <div className="relative flex-1 min-h-0">
           <AnimatePresence mode="wait" initial={false}>
@@ -286,6 +289,7 @@ export default function StatsHub({ active }: { active?: boolean }) {
             </motion.div>
           </AnimatePresence>
         </div>
+        </ScaledStage>
       </div>
     </StatsNavCtx.Provider>
   );

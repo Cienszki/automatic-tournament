@@ -18,7 +18,7 @@ const sumP = (g: GameX, pid: string, f: (p: GameX['perfs'][number]) => number) =
 const sumT = (g: GameX, tid: string, f: (p: GameX['perfs'][number]) => number) => g.perfs.reduce((s, p) => (p.tid === tid ? s + f(p) : s), 0);
 const METRICS: Record<Kind, RaceMetric[]> = {
   players: [
-    { key: 'score', label: 'Punkty występu', tip: 'Suma punktów występu', player: (g, id) => sumP(g, id, p => (Number.isFinite(p.score) ? p.score : 0)), fmt: v => v.toFixed(0) },
+    { key: 'score', label: 'Punkty fantasy', tip: 'Suma punktów fantasy', player: (g, id) => sumP(g, id, p => (Number.isFinite(p.score) ? p.score : 0)), fmt: v => v.toFixed(0) },
     { key: 'kills', label: 'Zabójstwa', tip: 'Suma zabójstw', player: (g, id) => sumP(g, id, p => p.kills) },
     { key: 'assists', label: 'Asysty', tip: 'Suma asyst', player: (g, id) => sumP(g, id, p => p.assists) },
     { key: 'gold', label: 'Złoto', tip: 'Całe zarobione złoto', player: (g, id) => sumP(g, id, p => p.totalGold), fmt: v => `${(v / 1000).toFixed(0)}k` },

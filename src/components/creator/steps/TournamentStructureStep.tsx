@@ -454,7 +454,7 @@ export function TournamentStructureStep({ data, onChange, template }: Tournament
             />
             <div>
               <p className="font-medium">Pick'em</p>
-              <p className="text-sm text-muted-foreground">System typowania wyników meczy</p>
+              <p className="text-sm text-muted-foreground">System typowania wyników meczów</p>
             </div>
           </label>
 

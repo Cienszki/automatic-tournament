@@ -9,6 +9,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import type { Model, Perf, PlayerX, TeamX } from '@/lib/stats-lab/derive';
 import { heroName } from '@/lib/stats-lab/heroes';
 import { Avatar, C, HeroImg, LabTitle, LabView, TeamLogo, Tip, TipBody, WithModel, ink, mix, useHeaderFont, useSize, HeroRender, useFitCount } from '../kit';
+import { count } from '@/lib/plural';
 
 // Lane spots in the playable area of the 7.41 minimap (Radiant bottom-left, Dire top-right)
 const ROLES = [
@@ -84,7 +85,7 @@ function TeamOfWeek({ model }: { model: Model }) {
 
   return (
     <>
-      <LabTitle sub={<span>{all ? 'cały turniej' : `${fmtShort(weeks[wi][0])} – ${fmtShort(new Date(new Date(weeks[wi][0] + 'T12:00:00Z').getTime() + 6 * 864e5).toISOString().slice(0, 10))}`} · {games} gier</span>}>
+      <LabTitle sub={<span>{all ? 'cały turniej' : `${fmtShort(weeks[wi][0])} – ${fmtShort(new Date(new Date(weeks[wi][0] + 'T12:00:00Z').getTime() + 6 * 864e5).toISOString().slice(0, 10))}`} · {count(games, 'gra', 'gry', 'gier')}</span>}>
         {all ? 'Drużyna turnieju' : 'Drużyna tygodnia'}
       </LabTitle>
       <div className="flex-1 min-h-0 flex gap-5 mt-3">
@@ -101,7 +102,7 @@ function TeamOfWeek({ model }: { model: Model }) {
                     style={{ left: `${r.x}%`, top: `${r.y}%` }}
                     initial={{ opacity: 0, scale: 0.6 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.6 }} transition={{ delay: i * 0.05, type: 'spring', stiffness: 260, damping: 22 }}>
                     {e ? (
-                      <Tip content={<TipBody title={`${e.p.name} · poz. ${r.pos}`}>{e.perfs.length} gier · średnio {e.avg.toFixed(1)} pkt · najlepiej {heroName(e.best.heroId)} {e.best.kills}/{e.best.deaths}/{e.best.assists}</TipBody>}>
+                      <Tip content={<TipBody title={`${e.p.name} · poz. ${r.pos}`}>{count(e.perfs.length, 'gra', 'gry', 'gier')} · średnio {e.avg.toFixed(1)} pkt · najlepiej {heroName(e.best.heroId)} {e.best.kills}/{e.best.deaths}/{e.best.assists}</TipBody>}>
                         <button type="button" onClick={() => setFocusRole(r.role)} className="flex flex-col items-center">
                           <div className="relative">
                             <Avatar player={e.p} size={av} ring={focusRole === r.role ? C.secondary : 'rgba(255,255,255,0.7)'} />
@@ -125,7 +126,7 @@ function TeamOfWeek({ model }: { model: Model }) {
         {/* Side: MVP, best team, bench */}
         <div className="flex-1 min-w-[280px] max-w-[400px] hidden md:flex flex-col gap-3 min-h-0">
           {mvp && (
-            <Tip content={<TipBody title="Najwyższa średnia punktów występu">{mvp.perfs.length} gier · {mvp.avg.toFixed(1)} pkt · najlepsza gra {mvp.best.score.toFixed(2)}</TipBody>}>
+            <Tip content={<TipBody title="Najwyższa średnia punktów fantasy">{count(mvp.perfs.length, 'gra', 'gry', 'gier')} · {mvp.avg.toFixed(1)} pkt · najlepsza gra {mvp.best.score.toFixed(2)}</TipBody>}>
               <div className="relative rounded-2xl overflow-hidden h-28 cursor-help">
                 <HeroImg heroId={mvp.best.heroId} title={false} className="absolute inset-0 w-full h-full scale-125 blur-xl opacity-60" />
                 <div className="absolute top-1 bottom-0 right-2 w-[45%]"><HeroRender heroId={mvp.best.heroId} sizes="200px" /></div>
@@ -159,7 +160,7 @@ function TeamOfWeek({ model }: { model: Model }) {
                 <div key={e.p.id} className="flex items-center gap-3 h-12 rounded-xl px-2.5" style={{ background: ink(4) }}>
                   <span className="w-5 text-sm font-bold tabular-nums" style={{ color: C.muted }}>{i + 2}</span>
                   <Avatar player={e.p} size={38} />
-                  <div className="flex-1 min-w-0"><div className="truncate text-sm font-bold">{e.p.name}</div><div className="truncate text-[11px]" style={{ color: C.muted }}>{e.p.team?.name} · {e.perfs.length} gier</div></div>
+                  <div className="flex-1 min-w-0"><div className="truncate text-sm font-bold">{e.p.name}</div><div className="truncate text-[11px]" style={{ color: C.muted }}>{e.p.team?.name} · {count(e.perfs.length, 'gra', 'gry', 'gier')}</div></div>
                   <HeroImg heroId={e.best.heroId} className="w-12 h-7 rounded" />
                   <span className="w-12 text-right text-lg font-bold tabular-nums">{e.avg.toFixed(1)}</span>
                 </div>
@@ -180,11 +181,11 @@ function TeamOfWeek({ model }: { model: Model }) {
             const n = new Set(list.map(p => p.game.idx)).size;
             const on = i === wi;
             return (
-              <Tip key={k} content={`Tydzień od ${fmtShort(k)} · ${n} gier`}>
+              <Tip key={k} content={`Tydzień od ${fmtShort(k)} · ${count(n, 'gra', 'gry', 'gier')}`}>
                 <button type="button" onClick={() => setWi(i)} className="flex-1 min-w-0 rounded-xl py-1.5 flex flex-col items-center justify-center transition-all"
                   style={on ? { background: C.secondary, color: '#000', boxShadow: `0 0 16px ${mix(C.secondary, 50)}` } : { background: ink(5) }}>
                   <span className="text-[11px] font-bold whitespace-nowrap">{fmtShort(k)}</span>
-                  <span className="text-[10px] tabular-nums" style={{ opacity: 0.7 }}>{n} gier</span>
+                  <span className="text-[10px] tabular-nums" style={{ opacity: 0.7 }}>{count(n, 'gra', 'gry', 'gier')}</span>
                 </button>
               </Tip>
             );

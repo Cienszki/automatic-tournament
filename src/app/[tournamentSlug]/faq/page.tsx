@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { useTranslation } from "@/hooks/useTranslation";
 import { translations } from "@/lib/translations";
+import { count, plural } from '@/lib/plural';
 
 /**
  * FAQ page - frequently asked questions
@@ -115,7 +116,7 @@ export default function FaqPage() {
       <div className="flex items-center gap-3">
         <HelpCircle className="h-8 w-8" style={{ color: theme.primaryColor }} />
         <h1 className="text-3xl font-bold">FAQ</h1>
-        <Badge variant="outline">{totalQuestions} pytań</Badge>
+        <Badge variant="outline">{count(totalQuestions, 'pytanie', 'pytania', 'pytań')}</Badge>
       </div>
 
       {/* Search and Filter */}
@@ -167,7 +168,7 @@ export default function FaqPage() {
       {/* Results info */}
       {(searchQuery || selectedCategory) && (
         <p className="text-sm text-muted-foreground">
-          Znaleziono {filteredQuestions} z {totalQuestions} pytań
+          Znaleziono {filteredQuestions} z {totalQuestions} {plural(totalQuestions, 'pytania', 'pytań', 'pytań')}
         </p>
       )}
 
