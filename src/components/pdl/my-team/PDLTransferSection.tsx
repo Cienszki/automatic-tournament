@@ -709,7 +709,7 @@ export function PDLTransferSection({
               {!isTransferWindowOpen && (
                 <div className="flex items-center gap-2 text-yellow-400/60">
                   <Lock className="w-3 h-3" />
-                  <span className="text-xs font-logik">Transfery zablokowane · smurfy edytowalne</span>
+                  <span className="text-xs font-logik">Transfery zablokowane · nicki i smurfy edytowalne</span>
                 </div>
               )}
             </div>
@@ -808,9 +808,9 @@ export function PDLTransferSection({
                         <Input
                           value={player.nickname}
                           onChange={(e) => handlePlayerFieldChange(player.id, 'nickname', e.target.value)}
-                          placeholder="Nick"
+                          placeholder="Nick w lidze"
+                          title="Nick, pod którym gracz występuje w lidze — może różnić się od nicku na Steamie. Można go zmienić także przy zamkniętym oknie transferowym."
                           className="bg-white/5 border-white/10 text-white text-sm h-9"
-                          disabled={!isTransferWindowOpen}
                         />
                         <Select
                           value={player.role}
@@ -859,7 +859,7 @@ export function PDLTransferSection({
                         variant="ghost"
                         onClick={() => handleOpenEditPlayer(player.id)}
                         className="text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 h-9 w-9 p-0 flex-shrink-0 self-center"
-                        title="Edytuj smurfy gracza"
+                        title="Edytuj gracza (nick, smurfy)"
                       >
                         <Pencil className="w-4 h-4" />
                       </Button>

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Info, Shield, Clock, Globe, Eye, Users, AlertTriangle, Bot, Lock, Search, Swords, Send } from 'lucide-react';
+import { Info, Users, AlertTriangle, Bot, Lock, Search, Swords, Send } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 import { useTournament } from '@/context/TournamentContext';
@@ -35,9 +35,9 @@ const LANG_KEY = 'pdl:dota-client-lang';
 // Game modes and server regions are not translated in the Polish client — one set of names
 const MODE_LABEL: Record<string, string> = { all_pick: 'All Pick', captains_mode: 'Captains Mode', captains_draft: 'Captains Draft', random_draft: 'Random Draft', single_draft: 'Single Draft', all_random: 'All Random', turbo: 'Turbo' };
 const REGION_LABEL: Record<string, string> = { us_west: 'US West', us_east: 'US East', europe_west: 'Europe West', europe_east: 'Europe East', russia: 'Russia', southeast_asia: 'SE Asia', south_america: 'South America', australia: 'Australia', dubai: 'Dubai', chile: 'Chile', peru: 'Peru', india: 'India', japan: 'Japan', south_africa: 'South Africa' };
-const MENU: Record<ClientLang, { play: string; lobbies: string; browse: string; region: string; mode: string; join: string; password: string }> = {
-  en: { play: 'PLAY DOTA', lobbies: 'Custom Lobbies', browse: 'Browse', region: 'Server region', mode: 'Game mode', join: 'Double-click the lobby', password: 'Password' },
-  pl: { play: 'GRAJ W DOTA 2', lobbies: 'Prywatne poczekalnie', browse: 'Przeglądaj', region: 'Region', mode: 'Tryb gry', join: 'Kliknij poczekalnię', password: 'Hasło' },
+const MENU: Record<ClientLang, { play: string; lobbies: string; browse: string; region: string; mode: string; password: string }> = {
+  en: { play: 'PLAY DOTA', lobbies: 'Custom Lobbies', browse: 'Browse', region: 'Server region', mode: 'Game mode', password: 'Password' },
+  pl: { play: 'GRAJ W DOTA 2', lobbies: 'Prywatne poczekalnie', browse: 'Przeglądaj', region: 'Region', mode: 'Tryb gry', password: 'Hasło' },
 };
 
 function useClientLang(): [ClientLang, (l: ClientLang) => void] {
@@ -71,7 +71,6 @@ const K = ({ children }: { children: React.ReactNode }) => (
 );
 
 export function PDLMatchRules({
-  leagueName,
   isGame1Host,
   hostTeamName,
   opponentTeamName,
@@ -81,7 +80,6 @@ export function PDLMatchRules({
   totalGames,
 }: PDLMatchRulesProps) {
   const { tournament } = useTournament();
-  const displayLeagueName = leagueName ?? tournament?.name?.toUpperCase() ?? 'POLISH DOTA LEAGUE';
 
   const lobby = tournament?.lobbySettings;
   const [bot, setBot] = useState<PublicBotInfo | null>(null);
@@ -98,11 +96,8 @@ export function PDLMatchRules({
   const modeLabel = bot ? (MODE_LABEL[bot.gameMode] ?? bot.gameMode) : (lobby?.gameMode || 'Captains Mode');
   const regionLabel = bot ? (REGION_LABEL[bot.region] ?? bot.region) : (lobby?.server || 'EU West');
   const password = botLobbyPassword || bot?.password || '';
-  const coinToss = (bot?.selectionPriorityRules ?? lobby?.selectionPriorityRules ?? 1) === 1;
   const games = Math.max(1, totalGames ?? 3);
 
-  const displayVisibility = lobby?.visibility || 'Publiczna';
-  const displayDotatvDelay = lobby?.dotatvDelayMinutes ?? 5;
   const displayLatePenaltyGame = lobby?.latePenaltyGameMinutes ?? 15;
   const displayLatePenaltySeries = lobby?.latePenaltySeriesMinutes ?? 30;
   const m = MENU[lang];
@@ -196,7 +191,7 @@ export function PDLMatchRules({
                       <Step n={2}><K>{m.lobbies}</K></Step>
                       <Step n={3}><K>{m.browse}</K></Step>
                       <Step n={4}>{m.region}: <K>{regionLabel}</K>, {m.mode.toLowerCase()}: <K>{modeLabel}</K></Step>
-                      <Step n={5}>{m.join}{botLobbyName ? <> <K>{botLobbyName}</K></> : ' z nazwą podaną powyżej'}</Step>
+                      <Step n={5}>Otwórz poczekalnię{botLobbyName ? <> <K>{botLobbyName}</K></> : ' z nazwą podaną powyżej'}</Step>
                       <Step n={6}>{m.password}: {password ? <K>{password}</K> : <span className="italic text-white/40">podane powyżej</span>}</Step>
                     </ol>
                   </div>
@@ -205,14 +200,8 @@ export function PDLMatchRules({
                   <ol className="space-y-2 text-white/70 list-none">
                     <Step n={1}>Wybierz swoją zarejestrowaną drużynę z listy rozwijanej.</Step>
                     <Step n={2}>Zajmij slot gracza po właściwej stronie. Wszystkich 5 zawodników musi siedzieć w slotach (nie w widowni).</Step>
-                    <Step n={3}>Gdy drużyna jest gotowa, kapitan wpisuje <K>!r</K> na czacie lobby.</Step>
-                    {coinToss && (
-                      <Step n={4}>
-                        Po gotowości obu drużyn: w grach nieparzystych <span className="text-white font-logik-extended-bold">rzut monetą</span> —
-                        wybierz stronę lub kolejność pickowania w interfejsie Doty 2; w parzystych priorytet ma przegrany poprzedniego rzutu.
-                      </Step>
-                    )}
-                    <Step n={coinToss ? 5 : 4}>Gra uruchomi się automatycznie po dokonaniu wyborów przez obie drużyny.</Step>
+                    <Step n={3}>Gdy drużyna jest gotowa, wpisz <K>!r</K> na czacie.</Step>
+                    <Step n={4}>Gra uruchomi się automatycznie po dokonaniu wyborów przez obie drużyny.</Step>
                   </ol>
 
                   {/* Emergency notice */}
@@ -254,33 +243,6 @@ export function PDLMatchRules({
           </div>
         </div>
       )}
-
-      {/* Lobby Settings */}
-      <div className="rounded-lg border border-white/10 bg-white/[0.02] p-4 space-y-3">
-        <p className="text-xs text-white font-logik-extended-bold uppercase tracking-wide">
-          Ustawienia lobby
-        </p>
-
-        <div className="grid gap-3 text-xs font-logik">
-          {[
-            { icon: Shield, k: 'Tryb gry', v: modeLabel },
-            { icon: Globe, k: 'Serwer', v: regionLabel },
-            { icon: Eye, k: 'Widoczność', v: displayVisibility },
-            { icon: Shield, k: 'Liga', v: displayLeagueName },
-            { icon: Clock, k: 'Opóźnienie DotaTV', v: count(displayDotatvDelay, 'minuta', 'minuty', 'minut') },
-          ].map(({ icon: Icon, k, v }) => (
-            <div key={k} className="flex items-center gap-3">
-              <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-white/5 border border-white/10">
-                <Icon className="w-4 h-4 text-white/40" />
-              </div>
-              <div>
-                <p className="text-white/40">{k}</p>
-                <p className="text-white font-logik-extended-bold">{v}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
 
       {/* Pick priority, game by game */}
       <div className="rounded-lg border border-white/10 bg-white/[0.02] p-4 space-y-2">

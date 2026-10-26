@@ -1526,6 +1526,9 @@ function MyTeamView() {
         steamId: steamId64,
         steamId32,
         role: player.role,
+        // older player docs carry their own nickname and some readers prefer it — keep it in step
+        // with the roster so a nick changed by the captain shows everywhere
+        nickname: player.nickname,
         updatedAt: new Date().toISOString(),
       }, { merge: true });
     }
