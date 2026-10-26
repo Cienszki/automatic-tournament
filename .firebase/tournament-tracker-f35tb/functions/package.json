@@ -40,6 +40,7 @@
     "framer-motion": "^12.26.1",
     "geist": "^1.5.1",
     "genkit": "^1.8.0",
+    "html-to-image": "^1.11.13",
     "lucide-react": "^0.475.0",
     "next": "15.5.18",
     "next-intl": "^4.7.0",
