@@ -73,7 +73,7 @@ export function heroTables(d: DpHeroData | null): HeroTables | null {
 export const ROLES = ['Carry', 'Mid', 'Offlane', 'Soft Support', 'Hard Support'] as const;
 export const ROLE_SHORT: Record<string, string> = { Carry: '1', Mid: '2', Offlane: '3', 'Soft Support': '4', 'Hard Support': '5' };
 /** One way to name a position everywhere on the prep pages: community slang plus the number */
-export const ROLE_LABEL: Record<string, string> = { Carry: 'Carry (1)', Mid: 'Mid (2)', Offlane: 'Offlane (3)', 'Soft Support': 'Support (4)', 'Hard Support': 'Support (5)' };
+export const ROLE_LABEL: Record<string, string> = { Carry: 'Carry (1)', Mid: 'Mid (2)', Offlane: 'Offlane (3)', 'Soft Support': 'Soft support (4)', 'Hard Support': 'Hard support (5)' };
 export const roleLabel = (role?: string) => (role ? ROLE_LABEL[role] ?? role : 'pozycja nieznana');
 
 /** 0..1 — how well a hero suits a position, from its Dota roles and from who plays it in the league */
@@ -213,10 +213,12 @@ export function buildProfile(input: PlayerInput, model: Model | null, history: D
     add(r[4] === 1 ? 'L' : 'P', r[2], r[3] === 1, r[1], r[5], r[6] ?? 0);
   }
 
-  // How much each source counts: reliability × role consistency × saturating evidence
+  // How much each source counts: reliability × role consistency × saturating evidence. Tournament
+  // games fill up slowly: 3 of them (≈4.5 weighted) are ~27% of their full weight, 6 ≈ 47%, 10 ≈ 66% —
+  // so a handful of tournament games can't outweigh hundreds of games at the same position elsewhere
   const pubRoleFit = pubW ? pubFitW / pubW : 0.5;
   const rawShare: Record<Source, number> = {
-    T: RELIABILITY.T * (1 - Math.exp(-evidence.T / 4)),
+    T: RELIABILITY.T * (1 - Math.exp(-evidence.T / 14)),
     L: RELIABILITY.L * (1 - Math.exp(-evidence.L / 6)),
     P: RELIABILITY.P * (0.35 + 0.65 * pubRoleFit) * (1 - Math.exp(-evidence.P / 12)),
   };
@@ -235,13 +237,17 @@ export function buildProfile(input: PlayerInput, model: Model | null, history: D
   if (!tg && !totals.L.all.g && !totals.P.all.g) why.push('Brak danych — przewidywania opierają się na roli i mecie.');
   else {
     const top = (Object.entries(share) as Array<[Source, number]>).sort((a, b) => b[1] - a[1])[0];
-    why.push(`Najwięcej mówią: ${SOURCE_LABEL[top[0]].toLowerCase()} (${Math.round(top[1] * 100)}% wagi).`);
-    if (tg > 0 && tg < 6) why.push(`Tylko ${count(tg, 'gra', 'gry', 'gier')} w turnieju — za mało, by na nich polegać.`);
+    // a few tournament games on top only means there is little else — say that, not "they say the most"
+    if (top[0] === 'T' && tg < 6) why.push(`Danych jest mało: ${count(tg, 'gra', 'gry', 'gier')} w turnieju i niewiele poza nim — przewidywania są orientacyjne.`);
+    else {
+      why.push(`Najwięcej mówią: ${SOURCE_LABEL[top[0]].toLowerCase()} (${Math.round(top[1] * 100)}% wagi).`);
+      if (tg > 0 && tg < 6) why.push(`Tylko ${count(tg, 'gra', 'gry', 'gier')} w turnieju — ważą na razie ${Math.round(share.T * 100)}%.`);
+    }
     if (tg >= 6) why.push(`${count(tg, 'gra', 'gry', 'gier')} w turnieju — wiarygodna próbka.`);
     if (lg >= 5) why.push(`${count(lg, 'gra', 'gry', 'gier')} w innych meczach ligowych w ostatnich 6 miesiącach.`);
     const knownPos = posGames.reduce((a, b) => a + b, 0) >= 15 && !!rolePos;
     if (pg >= 20 && pubRoleFit < 0.5 && !knownPos) why.push(`W rankedach gra głównie inne role (${Math.round(pubRoleFit * 100)}% gier pasuje do roli ${input.role ?? '?'}) — rankedy ważą mniej.`);
-    else if (pg >= 20) why.push(`${count(pg, 'ranked', 'rankedy', 'rankedów')} w 3 miesiące — aktualna forma i pula.`);
+    else if (pg >= 20) why.push(`${count(pg, 'ranked', 'rankedy', 'rankedów')} w ostatnich 3 miesiącach.`);
     if (pg < 5 && totals.P.all.g > 50) why.push('Ostatnio prawie nie gra rankedów — starsze gry ważą mniej.');
     const known = posGames.reduce((a, b) => a + b, 0);
     if (known >= 15 && rolePos) {

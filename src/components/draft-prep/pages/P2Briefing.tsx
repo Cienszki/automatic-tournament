@@ -12,13 +12,14 @@ import { ArrowRight, ChevronDown, ChevronRight } from 'lucide-react';
 import { Avatar, C, HeroImg, Tip, TipBody, ink, useHeaderFont } from '@/components/stats-lab/kit';
 import { heroName } from '@/lib/stats-lab/heroes';
 import { count } from '@/lib/plural';
-import { SOURCES, SOURCE_LABEL, WINDOWS, WINDOW_LABEL, predictOrder, roleLabel, suggestBan, viewOf, type PlayerModel, type Window } from '@/lib/draft-prep/engine';
+import { SOURCES, SOURCE_LABEL, WINDOWS, WINDOW_LABEL, predictOrder, suggestBan, viewOf, type PlayerModel, type Window } from '@/lib/draft-prep/engine';
+import { RoleTag } from '../role';
 import { useDP } from '../state';
 import { DataChip, Filters, Label, LoadBanner, MatchBar, PlayerRow, PlayerTip, PrepFrame, RULE, ShareBar, dotabuff, vh } from '../ui';
 import { PlanBoard, Workbench, textBtn } from '../workbench';
 import { Intro, useIntro } from '../guide';
 import { TeamDrafts } from '../drafts';
-import { useCheatSheet } from '../sheet';
+import { SheetLines, useCheatSheet } from '../sheet';
 import { OrderChart } from '../order-chart';
 import { MobilePrep } from '../mobile';
 
@@ -40,6 +41,9 @@ function StepLineups() {
     </div>
   );
 }
+
+/** Fewer games than this on a hero don't make it "his" hero — a 1-game 100% says nothing */
+const MIN_HERO_GAMES = 3;
 
 /** One opponent: pool per period, when they pick, and the bans that take their heroes away */
 function RivalPlayers() {
@@ -73,7 +77,7 @@ function RivalPlayers() {
           <PlayerTip key={x.p.key} pm={x}>
             <button type="button" onClick={() => setI(k)} className="flex-1 min-h-0 flex items-center gap-3 border-b text-left" style={{ borderColor: RULE, boxShadow: k === i ? `inset 4px 0 0 ${C.dire}` : undefined, paddingLeft: k === i ? 12 : 0, opacity: k === i ? 1 : 0.6 }}>
               <Avatar player={{ name: x.p.name, avatar: dp.lineThem[k]?.avatar }} size={56} />
-              <span className="min-w-0"><span className="block font-bold truncate" style={{ color: C.heading, fontSize: vh(14, 2, 20) }}>{x.p.name}</span><span className="flex items-center gap-2" style={{ color: C.muted, fontSize: vh(11, 1.4, 14) }}>{roleLabel(x.p.role)}<DataChip pm={x} short /></span></span>
+              <span className="min-w-0 flex-1 flex items-center gap-2.5"><span className="min-w-0 font-bold truncate" style={{ color: C.heading, fontSize: vh(14, 2, 20) }}>{x.p.name}</span><span className="shrink-0 flex items-center gap-2" style={{ color: C.muted, fontSize: vh(11, 1.4, 14) }}><RoleTag role={x.p.role} label={false} /><DataChip pm={x} short /></span></span>
             </button>
           </PlayerTip>
         ))}
@@ -85,12 +89,11 @@ function RivalPlayers() {
             <Avatar player={{ name: pm.p.name, avatar: dp.lineThem[i]?.avatar }} size={104} ring={C.dire} />
             <div className="relative min-w-0 flex-1">
               <a href={dotabuff(pm.p.sid32)} target="_blank" rel="noopener noreferrer" className="block font-logik-extended-bold uppercase truncate hover:underline" style={{ color: C.heading, fontSize: vh(26, 4.4, 52), ...font }}>{pm.p.name}</a>
-              <div style={{ color: C.text, fontSize: vh(13, 1.8, 18) }}>
-                {roleLabel(pm.p.role)}
+              <div className="flex items-center gap-1" style={{ color: C.text, fontSize: vh(13, 1.8, 18) }}>
+                <RoleTag role={pm.p.role} />
                 {slot ? (known ? ` · zwykle ${slot.k + 1}. pick drużyny (${Math.round(slot.p0 * 100)}%)` : ` · pewnie ${slot.k + 1}. pick drużyny — typowo dla ligi, ich draftów jeszcze nie ma`) : ''}
               </div>
               <div className="my-2 flex items-center gap-4"><DataChip pm={pm} /><span className="w-[40%]"><ShareBar pm={pm} height={6} /></span></div>
-              <div className="line-clamp-2 max-w-[80%]" style={{ color: C.muted, fontSize: vh(11, 1.45, 15) }}>{pm.p.why.join(' ')}</div>
             </div>
           </div>
           </PlayerTip>
@@ -141,7 +144,7 @@ function RivalPlayers() {
               <div className="flex-1 min-h-0 flex flex-col justify-center gap-1 border-b cursor-help" style={{ borderColor: RULE }}>
                 <HeroImg heroId={s.hero} className="rounded-sm h-[58%] aspect-video w-auto" style={{ boxShadow: k === 0 ? `0 0 0 2px ${C.loss}` : undefined }} />
                 <span className="font-bold truncate" style={{ color: C.heading, fontSize: vh(13, 1.8, 18) }}>{heroName(s.hero)}</span>
-                <span className="truncate" style={{ color: C.muted, fontSize: vh(10, 1.35, 13) }}>{g ? `${count(g, 'gra', 'gry', 'gier')} · ${Math.round((w / g) * 100)}% wygranych` : 'pasuje do jego roli i mety'}</span>
+                <span className="truncate" style={{ color: C.muted, fontSize: vh(10, 1.35, 13) }}>{g >= MIN_HERO_GAMES ? `${count(g, 'gra', 'gry', 'gier')} · ${Math.round((w / g) * 100)}% wygranych` : g ? 'prawie nim nie gra · pasuje do roli i mety' : 'pasuje do jego roli i mety'}</span>
               </div>
             </Tip>
           );
@@ -195,9 +198,9 @@ function StepCheatSheet() {
       <div className="flex flex-col min-h-0">
         <Label>Do wklejenia na Discorda · oba warianty</Label>
         <div className="flex-1 min-h-0 overflow-y-auto py-2 border-t border-b flex flex-col gap-1" style={{ borderColor: RULE, fontSize: vh(11, 1.45, 15), color: C.text }}>
-          {sheet.lines.map((l, k) => <div key={k} className={l ? '' : 'h-2'} style={l.startsWith('**') ? { color: C.heading, fontWeight: 700 } : undefined}>{l.replace(/\*\*/g, '').replace(/_\((.*)\)_/, '($1)')}</div>)}
+          <SheetLines lines={sheet.lines} />
         </div>
-        <button type="button" onClick={() => { navigator.clipboard?.writeText(sheet.lines.join('\n')).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); }); }}
+        <button type="button" onClick={() => { navigator.clipboard?.writeText(sheet.text).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); }); }}
           className="shrink-0 mt-3 py-3 font-bold uppercase tracking-[0.3em] text-white" style={{ background: C.primary, fontSize: vh(12, 1.6, 15) }}>{copied ? 'Skopiowano' : 'Kopiuj'}</button>
       </div>
     </div>

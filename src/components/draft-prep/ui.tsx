@@ -16,6 +16,7 @@ import {
 } from '@/lib/draft-prep/engine';
 import type { DpTeam } from '@/lib/draft-prep/types';
 import { DraftPrepProvider, useDP, type Slot } from './state';
+import { RoleTag } from './role';
 import { count } from '@/lib/plural';
 
 const STEAM64 = 76561197960265728n;
@@ -229,7 +230,7 @@ export function OwnerPicker({ hero, side, children }: { hero: number; side: 'us'
           {owner && players.map((pm, i) => (
             <button key={pm.p.key} type="button" onClick={() => { dp.setAssign(hero, pm.p.key); setOpen(false); }} className="flex items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-white/10"
               style={dp.input && dp.input.assign[hero] === pm.p.key ? { background: 'rgba(255,255,255,0.12)' } : undefined}>
-              <Avatar player={line[i]} size={26} /><span className="truncate">{pm.p.name}</span><span className="ml-auto text-xs text-white/50">{roleLabel(pm.p.role)}</span>
+              <Avatar player={line[i]} size={26} /><span className="truncate">{pm.p.name}</span><span className="ml-auto text-xs text-white/50"><RoleTag role={pm.p.role} /></span>
             </button>
           ))}
         </Popover.Content>
@@ -321,7 +322,7 @@ export function PlayerRow({ side, i, pm, avatar = 60, children, mirror, why }: {
         <div className="flex items-baseline gap-2 min-w-0">
           <a href={dotabuff(s.sid32)} target="_blank" rel="noopener noreferrer" className="truncate font-bold hover:underline" style={{ color: C.heading, fontSize: vh(15, 2.1, 22) }}>{displayName(s, h)}</a>
         </div>
-        <div className="truncate" style={{ color: s.origin !== 'roster' ? C.secondary : C.muted, fontSize: vh(11, 1.4, 14) }}>{roleLabel(s.role)} · {s.origin !== 'roster' ? `${ORIGIN_LABEL[s.origin]}${s.replaces ? ` za ${s.replaces}` : ''} · ` : ''}{meta}</div>
+        <div className="truncate" style={{ color: s.origin !== 'roster' ? C.secondary : C.muted, fontSize: vh(11, 1.4, 14) }}><span className="inline-flex align-[-0.15em]"><RoleTag role={s.role} /></span> · {s.origin !== 'roster' ? `${ORIGIN_LABEL[s.origin]}${s.replaces ? ` za ${s.replaces}` : ''} · ` : ''}{meta}</div>
         {pm && why && !loading && (
           <div className={`mt-1.5 flex items-center gap-3 min-w-0 ${mirror ? 'flex-row-reverse' : ''}`}>
             <DataChip pm={pm} />

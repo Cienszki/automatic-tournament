@@ -9,7 +9,8 @@ import * as Popover from '@radix-ui/react-popover';
 import { ChevronDown, ChevronUp, Plus, Search, X } from 'lucide-react';
 import { Avatar, C, HeroImg, ink } from '@/components/stats-lab/kit';
 import { heroName } from '@/lib/stats-lab/heroes';
-import { predictOrder, roleLabel } from '@/lib/draft-prep/engine';
+import { predictOrder } from '@/lib/draft-prep/engine';
+import { RoleTag } from './role';
 import { useDP } from './state';
 import { DataChip, PlayerTip, RULE, dotabuff, vh } from './ui';
 import { topHeroes } from './sheet';
@@ -80,7 +81,7 @@ export function OrderChart({ side }: { side: 'us' | 'them' }) {
                 <Avatar player={{ name: pm.p.name, avatar: slot?.avatar }} size={44} />
                 <span className="min-w-0">
                   <a href={dotabuff(pm.p.sid32)} target="_blank" rel="noopener noreferrer" className="block truncate font-bold hover:underline" style={{ color: C.heading, fontSize: vh(13, 1.9, 19) }}>{pm.p.name}</a>
-                  <span className="flex items-center gap-2 text-xs" style={{ color: C.muted }}>{roleLabel(pm.p.role)}<DataChip pm={pm} short /></span>
+                  <span className="flex items-center gap-2 text-xs" style={{ color: C.muted }}><RoleTag role={pm.p.role} /><DataChip pm={pm} short /></span>
                 </span>
               </span>
             </PlayerTip>

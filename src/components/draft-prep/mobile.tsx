@@ -8,10 +8,11 @@ import React, { useState } from 'react';
 import { Avatar, C, HeroImg, TeamLogo, ink, useHeaderFont } from '@/components/stats-lab/kit';
 import { heroName } from '@/lib/stats-lab/heroes';
 import { count } from '@/lib/plural';
-import { SOURCES, roleLabel } from '@/lib/draft-prep/engine';
+import { SOURCES } from '@/lib/draft-prep/engine';
+import { RoleTag } from './role';
 import { useDP } from './state';
 import { DataChip, LoadBanner, RULE } from './ui';
-import { useCheatSheet } from './sheet';
+import { SheetLines, useCheatSheet } from './sheet';
 
 function TeamPick({ side }: { side: 'us' | 'them' }) {
   const dp = useDP(); const font = useHeaderFont();
@@ -44,7 +45,7 @@ function Rivals() {
               <Avatar player={{ name: pm.p.name, avatar: dp.lineThem.find(s => s.key === pm.p.key)?.avatar }} size={40} />
               <span className="min-w-0 flex-1">
                 <span className="block font-bold truncate" style={{ color: C.heading }}>{pm.p.name}</span>
-                <span className="flex items-center gap-2 text-xs" style={{ color: C.muted }}>{roleLabel(pm.p.role)}<DataChip pm={pm} /></span>
+                <span className="flex items-center gap-2 text-xs" style={{ color: C.muted }}><RoleTag role={pm.p.role} /><DataChip pm={pm} /></span>
               </span>
             </div>
             <div className="mt-2 grid grid-cols-5 gap-1.5">
@@ -74,8 +75,8 @@ function Sheet() {
   if (!sheet) return null;
   return (
     <div className="flex flex-col gap-1 text-sm" style={{ color: C.text }}>
-      {sheet.lines.map((l, k) => <div key={k} className={l ? '' : 'h-2'} style={l.startsWith('**') ? { color: C.heading, fontWeight: 700 } : undefined}>{l.replace(/\*\*/g, '').replace(/_\((.*)\)_/, '($1)')}</div>)}
-      <button type="button" onClick={() => { navigator.clipboard?.writeText(sheet.lines.join('\n')).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); }); }}
+      <SheetLines lines={sheet.lines} />
+      <button type="button" onClick={() => { navigator.clipboard?.writeText(sheet.text).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); }); }}
         className="mt-3 py-3 font-bold uppercase tracking-[0.3em] text-white" style={{ background: C.primary }}>{copied ? 'Skopiowano' : 'Kopiuj na Discorda'}</button>
     </div>
   );
