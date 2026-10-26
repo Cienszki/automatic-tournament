@@ -95,7 +95,15 @@ interface BotSyncTask {
   forfeitedGameNumbers?: number[];
   reason?: string;
   status: string;
+  // set by the first sync attempt; starts the give-up window
+  firstAttemptAt?: string;
 }
+
+// How often an unimported game is retried, and how long before its task is given up.
+// Counted from the first attempt (not createdAt) so a backlog left by a dead trigger still
+// gets a full window once the trigger works again.
+const SYNC_RETRY_MS = 10 * 60 * 1000;
+const SYNC_GIVE_UP_MS = 24 * 60 * 60 * 1000;
 
 /**
  * Drains pending botSyncTasks written by the Lobby Runner and runs the EXACT SAME admin
@@ -107,6 +115,8 @@ interface BotSyncTask {
  *    tournament: syncPDLMatchesAdmin (imports new games from the league + recalcs standings)
  *    then recalculateAllStats. A game still unparsed by OpenDota leaves its task pending for a
  *    +10min retry, so the final game of a series is eventually imported with no further trigger.
+ *    After 24h of retries the task is marked failed — a game that never reaches the league
+ *    (remake, cancelled session) would otherwise re-run the whole sync every 10min forever.
  *
  * Returns the number of tasks completed this run.
  */
@@ -181,9 +191,18 @@ async function executePendingSyncTasks(
         await taskDoc.ref.update({ status: 'completed', completedAt: new Date().toISOString() });
         executed++;
       } else {
+        const firstAttemptAt = task.firstAttemptAt ?? now;
+        if (Date.now() - new Date(firstAttemptAt).getTime() >= SYNC_GIVE_UP_MS) {
+          const error = ok
+            ? 'Game was not imported within 24h of retries (not in the league, or never parsed)'
+            : 'Sync kept failing for 24h';
+          await taskDoc.ref.update({ status: 'failed', error, failedAt: now, lastRetryAt: now });
+          console.warn(`[SyncTasks] Giving up on game ${task.dotaMatchId} for match ${task.matchId}: ${error}`);
+          continue;
+        }
         // Not imported yet (OpenDota still parsing) or the sync errored — retry shortly.
-        const retryAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
-        await taskDoc.ref.update({ status: 'pending', syncAt: retryAt, lastRetryAt: now });
+        const retryAt = new Date(Date.now() + SYNC_RETRY_MS).toISOString();
+        await taskDoc.ref.update({ status: 'pending', syncAt: retryAt, lastRetryAt: now, firstAttemptAt });
         console.log(`[SyncTasks] Game ${task.dotaMatchId} for match ${task.matchId} not imported yet — retry at ${retryAt}`);
       }
     } catch (err: unknown) {

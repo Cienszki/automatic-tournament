@@ -62,7 +62,7 @@ const RESPAWN_RESET_MS = 60 * 60 * 1000;
 // GATED: stays OFF unless BOTH env vars are set, so we never trigger the (still-deployed)
 // OLD full /orchestrate before the slimmed version is live (it would fight the Conductor).
 const SYNC_TICK_MS = 5 * 60 * 1000;
-const WEB_SYNC_URL = process.env.WEB_SYNC_URL || '';     // e.g. https://<app>/api/admin/bot/orchestrate
+const WEB_SYNC_URL = process.env.WEB_SYNC_URL || '';     // https://tournament-tracker-f35tb.web.app/api/manage/bot/orchestrate (/api/admin* is 410/401 since 2026-10-20)
 const CRON_SECRET = process.env.CRON_SECRET || '';
 
 function nowIso() { return new Date().toISOString(); }
