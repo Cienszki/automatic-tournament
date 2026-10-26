@@ -143,9 +143,11 @@ export async function POST(req: Request): Promise<Response> {
       .get();
     const matchData = matchDoc.data();
     const tournamentDoc = await db.collection('tournaments').doc(tournamentId).get();
-    const lobbyPrefix = tournamentDoc.data()?.lobbySettings?.leagueName || tournamentDoc.data()?.name || 'Tournament';
-    const rawName = matchData?.name || `Game ${gameNumber}`;
-    const matchName = rawName.startsWith(lobbyPrefix) ? rawName : `${lobbyPrefix} - ${rawName}`;
+    const tournamentName = tournamentDoc.data()?.lobbySettings?.leagueName || tournamentDoc.data()?.name || 'Tournament';
+    const teamsCol = db.collection('tournaments').doc(tournamentId).collection('teams');
+    const [teamA, teamB] = await Promise.all([matchData?.teamA?.id, matchData?.teamB?.id].map(id => (id ? teamsCol.doc(id).get().then(d => d.data()) : null)));
+    const { lobbyNameFor } = await import('@/lib/bot/lobby-name');
+    const matchName = lobbyNameFor(tournamentName, { tag: teamA?.tag, name: teamA?.name ?? matchData?.teamA?.name }, { tag: teamB?.tag, name: teamB?.name ?? matchData?.teamB?.name });
     const seriesFormat = matchData?.series_format || 'bo2';
 
     const session = await scheduleLobbyForMatch(tournamentId, matchId, matchName, seriesFormat);

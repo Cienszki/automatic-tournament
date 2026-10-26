@@ -112,12 +112,12 @@ async function buildLobbyTeamAssignments(db, tournamentId, matchId, gameNumber =
     const standinAssignments = buildStandinAssignments(match);
 
     const radiant = {
-        teamId: match.teamA.id, teamName: match.teamA.name,
+        teamId: match.teamA.id, teamName: match.teamA.name, teamTag: teamA.tag || null,
         expectedPlayers: buildExpectedPlayersForGame(baseRadiantPlayers, standinAssignments, match.teamA.id, gameNumber),
         coachNickname: teamA.coach?.nickname,
     };
     const dire = {
-        teamId: match.teamB.id, teamName: match.teamB.name,
+        teamId: match.teamB.id, teamName: match.teamB.name, teamTag: teamB.tag || null,
         expectedPlayers: buildExpectedPlayersForGame(baseDirePlayers, standinAssignments, match.teamB.id, gameNumber),
         coachNickname: teamB.coach?.nickname,
     };
@@ -169,7 +169,9 @@ async function scheduleUpcomingMatches(db, tournamentId, botConfig, tournamentDo
         // for tournaments where series_format is not explicitly stored on the match doc.
         const resolvedFormat = match.series_format || (match.group_id ? 'bo2' : 'bo3');
         const { fmt, totalGames, lobbySeriesType } = seriesTotals(resolvedFormat);
-        const lobbyName = `${lobbyPrefix} - ${match.teamA?.name || 'TBA'} vs ${match.teamB?.name || 'TBA'}`;
+        // Tags first: the Dota lobby browser cuts long names (same rule as src/lib/bot/lobby-name.ts)
+        const shortName = (tag, name) => (tag || '').trim() || (name || '').trim() || 'TBA';
+        const lobbyName = `${shortName(assignments.radiant.teamTag, match.teamA?.name)} vs ${shortName(assignments.dire.teamTag, match.teamB?.name)} - ${lobbyPrefix}`;
         // Use the admin-configured fixed password if set, otherwise generate a random one.
         const fixedPassword = (botConfig.lobby?.password || '').trim();
 
