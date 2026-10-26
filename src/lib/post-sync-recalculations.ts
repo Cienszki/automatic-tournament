@@ -3,6 +3,7 @@
 
 import { getAdminDb, ensureAdminInitialized } from '../../server/lib/admin';
 import { getAllMatchesAdmin } from './admin-actions';
+import { countsForStandings } from './match-flags';
 
 /**
  * Recalculate all group standings from scratch
@@ -44,7 +45,7 @@ export async function recalculateGroupStandingsAdmin(): Promise<{ success: boole
 
     // Step 2: Recalculate from all completed matches
     const allMatches = await getAllMatchesAdmin();
-    const completedMatches = allMatches.filter(match => match.status === 'completed');
+    const completedMatches = allMatches.filter(match => match.status === 'completed' && countsForStandings(match));
     
     let matchesProcessed = 0;
     

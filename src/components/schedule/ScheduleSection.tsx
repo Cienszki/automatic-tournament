@@ -18,6 +18,8 @@ import { useFitText } from '@/components/teams-section/fit';
 import { swissRoundsFor } from '@/lib/lan-qualifier/engine';
 import type { Match } from '@/lib/definitions';
 import { count, plural } from '@/lib/plural';
+import { useOpenMatchPrep } from '@/components/draft-prep/open';
+import { extraTag } from '@/lib/match-flags';
 import {
   buildUnits, dayColumns, ddmm, divisionColumns, fromNow, initialUnit, isDone, isLive, nowAndNext, swissColumns, weekdayShort,
   type Column, type Group, type SMatch, type Unit,
@@ -52,6 +54,7 @@ function Title() {
 /** One line under the title: what is being played right now, else the next match and when */
 function NowLine({ live, next, open }: { live: SMatch[]; next: SMatch | null; open: (m: SMatch) => void }) {
   const font = useHeaderFont();
+  const openPrep = useOpenMatchPrep();
   if (!live.length && !next) return <div className="h-6 shrink-0" />;
   const vs = (m: SMatch, score: boolean) => (
     <button type="button" onClick={() => open(m)} className="inline-flex items-center gap-2 font-bold hover:underline underline-offset-4">
@@ -80,6 +83,9 @@ function NowLine({ live, next, open }: { live: SMatch[]; next: SMatch | null; op
           <span className="tabular-nums" style={{ color: C.muted }}>
             {weekdayShort(new Date(next.scheduledFor))} {ddmm(new Date(next.scheduledFor))}, {hhmm(new Date(next.scheduledFor))} · <span style={{ color: C.heading }}>{fromNow(next.scheduledFor)}</span>
           </span>
+          <Tip content="Narzędzie dla kapitanów: rywale, bany, symulacja draftu i ściąga">
+            <button type="button" onClick={() => openPrep({ pair: [next.teamA.id, next.teamB.id] })} className="text-[11px] font-bold uppercase tracking-[0.15em] hover:underline underline-offset-4 whitespace-nowrap" style={{ color: C.secondary }}>Przygotuj draft ›</button>
+          </Tip>
         </>
       )}
     </div>
@@ -195,12 +201,15 @@ function MatchRow({ m, tag, rec, showDay, open }: { m: SMatch; tag?: string; rec
   const soon = !done && !live && !!d && d.getTime() - Date.now() < DAY_MS && d.getTime() > Date.now() - 3 * 3600e3;
   const pending = m.rescheduleRequest?.status === 'pending';
   const walkover = !!m.forfeit;
+  // tiebreaker / showmatch / rematch, or "Powtórzony" on a match that was replayed
+  const extra = extraTag(m);
+  const replayed = !!m.replacedByMatchId;
   const fmt = m.series_format?.toUpperCase() ?? (m.bestOf ? `BO${m.bestOf}` : null);
   const bar = live ? C.loss : soon ? C.primary : done ? ink(22) : ink(10);
   return (
     <button type="button" onClick={() => open(m)}
       className="group w-full h-[58px] flex items-stretch gap-3 text-left transition-colors hover:bg-[color-mix(in_srgb,var(--tournament-text,#fff)_5%,transparent)]"
-      style={{ borderBottom: `1px solid ${ink(8)}` }}>
+      style={{ borderBottom: `1px solid ${ink(8)}`, opacity: replayed ? 0.5 : undefined }}>
       <span className={cn('w-[3px] my-2 shrink-0 rounded-full', live && 'animate-pulse')} style={{ background: bar }} />
       {/* When */}
       <span className="w-[66px] shrink-0 flex flex-col justify-center leading-tight">
@@ -220,9 +229,10 @@ function MatchRow({ m, tag, rec, showDay, open }: { m: SMatch; tag?: string; rec
       </span>
       {/* Who */}
       <span className="flex-1 min-w-0 flex flex-col justify-center pr-2">
-        {(tag || pending || walkover) && (
+        {(tag || pending || walkover || extra) && (
           <span className="flex items-center justify-center gap-2 text-[9px] uppercase tracking-[0.2em] leading-none mb-1 whitespace-nowrap">
             {tag && <span style={{ color: C.muted }}>{tag}</span>}
+            {extra && <span style={{ color: replayed ? C.muted : C.secondary }}>{extra}</span>}
             {walkover && <span style={{ color: C.loss }}>Walkower</span>}
             {pending && <span style={{ color: '#e0a03c' }}>Zmiana terminu</span>}
           </span>
@@ -374,7 +384,7 @@ export default function ScheduleSection({ matches, groups }: { matches: SMatch[]
                   {unit?.pending ? (
                     <div className="h-full min-h-[200px] flex flex-col items-center justify-center gap-2 text-center">
                       <span className="font-logik-extended-bold uppercase text-2xl" style={{ color: C.heading, ...font }}>Pary jeszcze nieznane</span>
-                      <span className="text-sm" style={{ color: C.muted }}>Runda {unit.pending + 1} zostanie rozlosowana po zakończeniu rundy {unit.pending}.</span>
+                      <span className="text-sm" style={{ color: C.muted }}>Runda {unit.pending + 1} zostanie ustalona po zakończeniu rundy {unit.pending}.</span>
                     </div>
                   ) : (
                   <AnimatePresence mode="wait" initial={false} custom={dir}>

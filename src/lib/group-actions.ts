@@ -5,6 +5,7 @@ import { collection, getDocs, doc, runTransaction, query, where } from 'firebase
 import { db } from './firebase';
 import type { Match, Group, GroupStanding } from './definitions';
 import { revalidatePath } from 'next/cache';
+import { countsForStandings } from './match-flags';
 
 /**
  * Updates the group standings based on the result of a single match.
@@ -15,6 +16,7 @@ import { revalidatePath } from 'next/cache';
  * @param match The completed match object.
  */
 export async function updateStandingsAfterGame(match: Match): Promise<{ success: boolean; message: string }> {
+  if (!countsForStandings(match)) return { success: true, message: 'Extra match — standings unchanged.' };
   const { teams, winnerId } = match;
   if (teams.length !== 2) {
     return { success: false, message: 'Match must have exactly two teams.' };

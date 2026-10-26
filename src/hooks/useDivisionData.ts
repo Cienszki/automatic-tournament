@@ -8,6 +8,7 @@ import { collection, getDocs, query, where, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useTournament } from '@/context/TournamentContext';
 import type { Match, GroupHighlight } from '@/lib/definitions';
+import { countsForStandings } from '@/lib/match-flags';
 import {
   computeSwissStandings,
   compareForTable,
@@ -204,8 +205,14 @@ export function useDivisionData(divisionId: string): UseDivisionDataResult {
             game_ids: data.game_ids || [],
             approvedStandins: data.approvedStandins,
             isBanForfeit: data.isBanForfeit || false,
+            extra: data.extra,
+            replacesMatchId: data.replacesMatchId,
+            replacedByMatchId: data.replacedByMatchId,
           } as Match;
         });
+        // The table counts only matches that count (no tiebreaks / showmatches, no replayed
+        // originals — their rematch counts instead); the schedule shows them all
+        const tableMatches = matchesData.filter(countsForStandings);
 
         // Matches involving a banned team are kept for standings calculation
         // (opponents still get their walkover wins) but excluded from the schedule view.
@@ -233,14 +240,14 @@ export function useDivisionData(divisionId: string): UseDivisionDataResult {
           neustadtlScore: 0,
           points: 0,
           totalMMR: team.totalMMR || (Array.isArray(team.players) ? (team.players as Array<{mmr?: number}>).reduce((s: number, p) => s + (p.mmr || 0), 0) : 0),
-          form: calculateForm(team.id, matchesData),
+          form: calculateForm(team.id, tableMatches),
           headToHead: {},
         }));
 
         const standingsMap = new Map(standingsData.map(t => [t.teamId, t]));
 
         // FIRST PASS: accumulate wins/draws/losses/points from completed match results
-        matchesData.forEach(match => {
+        tableMatches.forEach(match => {
           if (match.status !== 'completed') return;
           const aId = match.teamA.id;
           const bId = match.teamB.id;
@@ -267,7 +274,7 @@ export function useDivisionData(divisionId: string): UseDivisionDataResult {
         const h2hWins = new Map<string, Map<string, number>>();
         standingsData.forEach(t => h2hWins.set(t.teamId, new Map()));
 
-        matchesData.forEach(match => {
+        tableMatches.forEach(match => {
           if (match.status !== 'completed') return;
           const aId = match.teamA.id;
           const bId = match.teamB.id;
@@ -310,7 +317,7 @@ export function useDivisionData(divisionId: string): UseDivisionDataResult {
         // engine and use its ordering. Everything above — team names, logos,
         // form, match fetching — is shared; only the numbers differ.
         if (tournament?.type === 'swiss') {
-          const swissResults: SwissMatchResult[] = matchesData.map(m => ({
+          const swissResults: SwissMatchResult[] = tableMatches.map(m => ({
             teamAId: m.teamA.id,
             teamBId: m.teamB.id,
             scoreA: m.teamA.score ?? 0,
@@ -393,7 +400,7 @@ export function useDivisionData(divisionId: string): UseDivisionDataResult {
 
         // Calculate actual season progress based on completed matches
         // Count completed matches to determine actual progress
-        const completedMatches = matchesData.filter(m => m.status === 'completed').length;
+        const completedMatches = tableMatches.filter(m => m.status === 'completed').length;
         // Expected total matches: (n teams * (n-1 teams)) / 2 for single round-robin
         const totalExpectedMatches = teamsData.length > 1 ? (teamsData.length * (teamsData.length - 1)) / 2 : 0;
         // Calculate progress as a decimal (0-1), then scale to rounds

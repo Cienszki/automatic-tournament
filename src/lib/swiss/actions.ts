@@ -25,6 +25,7 @@ import {
   where,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { countsForStandings } from '@/lib/match-flags';
 import type { MatchFormat, SwissRound, SwissStandingRow } from '@/types/tournament';
 import {
   SWISS_BYE_TEAM_ID,
@@ -118,6 +119,9 @@ export async function loadSwissMatches(
   const snap = await getDocs(q);
 
   return snap.docs
+    // tiebreaks / showmatches and replayed originals never count in Swiss records or pairings;
+    // a rematch carries the original's round and slot, so it stands in for it (src/lib/match-flags.ts)
+    .filter(d => countsForStandings(d.data()))
     .map(d => {
       const m = d.data();
       const teamAId = m.teamA?.id ?? '';

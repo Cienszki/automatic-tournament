@@ -5,6 +5,7 @@
 import 'server-only';
 import { getAdminDb, ensureAdminInitialized } from '../../server/lib/admin';
 import { calcPerformanceScore, MIN_SCORED_GAME_MINS, type PerformanceInput } from './performance-score';
+import { countsForStats } from './match-flags';
 
 // ─── Constants & types ────────────────────────────────────────────────────────
 
@@ -118,7 +119,7 @@ export async function recalculatePerformanceRankings(tournamentId: string): Prom
 
   const matchEntryGroups = await Promise.all(
     matchesSnap.docs
-      .filter((matchDoc) => !matchDoc.data().isBanForfeit)
+      .filter((matchDoc) => !matchDoc.data().isBanForfeit && countsForStats(matchDoc.data()))
       .map(async (matchDoc) => {
         const gamesSnap = await adminDb
           .collection('tournaments').doc(tournamentId)

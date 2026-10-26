@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { countsForStandings } from '@/lib/match-flags';
 
 // Function to reset all group standings to zero
 async function resetAllGroupStandings(): Promise<{ success: boolean; message: string; resetCount?: number }> {
@@ -173,7 +174,7 @@ export async function POST(request: NextRequest) {
     const matchesSnap = await db.collection('matches').get();
     const completedMatches = matchesSnap.docs
       .map(d => ({ id: d.id, ...d.data() }))
-      .filter((m: any) => m.status === 'completed');
+      .filter((m: any) => m.status === 'completed' && countsForStandings(m));
     
     let updatedCount = 0;
     

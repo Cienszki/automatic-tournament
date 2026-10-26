@@ -169,6 +169,25 @@ export interface Match {
   isPlayoffOnly?: boolean;
   /** Admin-issued draft-time penalties for this match (applied per team, per game). */
   draftPenalties?: DraftPenalty[];
+  /**
+   * A match the admin added outside the planned schedule (see src/lib/match-flags.ts). Tiebreaks,
+   * showmatches and other extras show everywhere and count in player stats, but never in standings,
+   * Swiss records or pairings; a rematch (`kind: 'rematch'`) takes the replaced match's place fully.
+   */
+  extra?: ExtraMatchInfo;
+  /** Rematch: the match this one replays */
+  replacesMatchId?: string;
+  /** Set on a match that was replayed: still shown, but counts nowhere — the rematch counts instead */
+  replacedByMatchId?: string;
+}
+
+export type ExtraMatchKind = 'tiebreak' | 'rematch' | 'showmatch' | 'other';
+export interface ExtraMatchInfo {
+  kind: ExtraMatchKind;
+  /** Optional admin note shown with the match ("Tiebreaker o 4. miejsce") */
+  note?: string;
+  createdAt: string;
+  createdBy: string;
 }
 
 /** Draft-time penalty severity levels — map to the Dota lobby's penalty_level (1..3). */

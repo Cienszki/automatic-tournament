@@ -4,6 +4,7 @@
 import { getAdminDb, ensureAdminInitialized } from '../../server/lib/admin';
 import { TournamentStats } from './stats-definitions';
 import { getHeroName, findMostPickedHero } from './hero-mapping';
+import { countsForStats } from './match-flags';
 
 // Interfaces matching the stats page expectations
 interface PlayerStatRecord {
@@ -346,7 +347,7 @@ async function fetchAllGameData(db: any, tournamentId?: string) {
 
   console.log(`Processing ${matches.length} matches...`);
   const completedMatches = matches.filter(
-    (m: any) => m.status === 'completed' && !m.isBanForfeit
+    (m: any) => m.status === 'completed' && !m.isBanForfeit && countsForStats(m) // a replayed original: its rematch counts
   );
   console.log(`Found ${completedMatches.length} completed matches out of ${matches.length} total`);
 

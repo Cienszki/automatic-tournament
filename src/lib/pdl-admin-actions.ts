@@ -8,6 +8,7 @@ import { getLeagueId } from './definitions';
 import { fetchAllSteamLeagueMatches } from './steam-api';
 import { fetchOpenDotaMatch, transformMatchData, isMatchParsed, requestOpenDotaMatchParse } from './opendota';
 import { calculatePDLFantasyPoints } from './pdl-fantasy-scoring';
+import { countsForStandings } from './match-flags';
 
 // ============================================================================
 // TYPES
@@ -698,8 +699,11 @@ async function updatePDLDivisionStandingsAdmin(tournamentId: string, divisionId:
         });
     }
 
+    // Tiebreaks / showmatches and replayed originals don't count in the table (src/lib/match-flags.ts)
+    const countedDocs = matchesSnapshot.docs.filter(d => countsForStandings(d.data()));
+
     // Process each completed match
-    for (const matchDoc of matchesSnapshot.docs) {
+    for (const matchDoc of countedDocs) {
         const match = matchDoc.data();
 
         const teamAId: string = match.teamA?.id || match.teams?.[0];
@@ -736,7 +740,7 @@ async function updatePDLDivisionStandingsAdmin(tournamentId: string, divisionId:
     }
 
     // Compute recent form (last 5 results) per team — sort matches chronologically
-    const sortedMatches = matchesSnapshot.docs
+    const sortedMatches = countedDocs
         .map(d => d.data())
         .sort((a, b) => {
             const tA = a.completedAt?.toMillis?.() ?? (typeof a.completedAt === 'number' ? a.completedAt : 0);
@@ -897,8 +901,9 @@ function findBestAvailableMatch(
     radiantTeamId: string,
     direTeamId: string,
 ): PDLMatch | null {
+    // A replayed original never takes new games: its rematch does
     const candidates = allMatches.filter(
-        m => m.teams?.includes(radiantTeamId) && m.teams?.includes(direTeamId)
+        m => m.teams?.includes(radiantTeamId) && m.teams?.includes(direTeamId) && !(m as { replacedByMatchId?: string }).replacedByMatchId
     );
 
     if (candidates.length === 0) return null;

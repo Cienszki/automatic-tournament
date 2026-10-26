@@ -9,6 +9,7 @@
 
 import type { Match } from '@/lib/definitions';
 import type { TournamentType } from '@/types/tournament';
+import { countsForStandings } from '@/lib/match-flags';
 
 /** Fields the schedule reads that the base Match type does not declare */
 export type SMatch = Match & {
@@ -146,11 +147,14 @@ function dayUnits(list: SMatch[]): Unit[] {
 }
 
 /** The unit to open on: the first with something live or still to play (dated today or later, or
- *  undated); if everything is over, the last one. */
+ *  undated); if nothing is coming up, the latest one that has matches — never an empty placeholder
+ *  for a Swiss round that isn't paired yet (that would open on "Runda 6" after round 1). */
 export function initialUnit(units: Unit[], now = Date.now()): number {
   const today = dayStart(now);
   const i = units.findIndex(u => u.matches.some(m => isLive(m) || (!isDone(m) && (!m.scheduledFor || time(m.scheduledFor) >= today))));
-  return i !== -1 ? i : Math.max(0, units.length - 1);
+  if (i !== -1) return i;
+  for (let k = units.length - 1; k >= 0; k--) if (units[k].matches.length) return k;
+  return 0;
 }
 
 // ── Columns of a unit ──────────────────────────────────────────────────
@@ -211,7 +215,8 @@ function result(m: SMatch, id: string): boolean | null {
 export function swissColumns(unit: Unit, all: SMatch[]): Column[] {
   if (unit.key === 'lan') return [{ key: 'lan', matches: unit.matches, tags: playoffTags(unit.matches) }];
   const round = Number(unit.key.slice(1));
-  const before = all.filter(m => !m.isPlayoff && (m.round || m.matchday || 1) < round);
+  // records come from matches that count (no tiebreaks / showmatches, no replayed originals)
+  const before = all.filter(m => !m.isPlayoff && countsForStandings(m) && (m.round || m.matchday || 1) < round);
   const draws = all.some(m => isDone(m) && !m.isSwissByeMatch && !m.winnerId && m.teamA.score === m.teamB.score);
   const recOf = (id: string): Rec => {
     const r: Rec = { w: 0, d: 0, l: 0 };

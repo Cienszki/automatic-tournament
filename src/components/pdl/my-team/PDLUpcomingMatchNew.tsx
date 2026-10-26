@@ -20,12 +20,15 @@ import {
   ExternalLink,
   UserPlus,
   RefreshCw,
+  ClipboardList,
 } from 'lucide-react';
 import { cn, formatDatePL } from '@/lib/utils';
 import type { Match, Team, Player, PDLStandinRequest as PDLStandinRequestType } from '@/lib/definitions';
 import { PDLStandinRequestSection } from './PDLStandinRequest';
 import { PDLCoachSection } from './PDLCoachSection';
 import { PDLMatchRules } from './PDLMatchRules';
+import { useOpenMatchPrep } from '@/components/draft-prep/open';
+import { extraTag } from '@/lib/match-flags';
 import { DraftPenaltyBanner } from '@/components/penalties/DraftPenaltyBanner';
 import { isEarlierThanOriginal, isWithinHoursLater, latestAllowedTime } from '@/lib/reschedule-rules';
 import { plural } from '@/lib/plural';
@@ -117,6 +120,7 @@ export function PDLUpcomingMatch({
 }: PDLUpcomingMatchProps) {
   const { theme, tournament } = useTournament();
   const [expanded, setExpanded] = useState(false);
+  const openPrep = useOpenMatchPrep();
   const [showReschedule, setShowReschedule] = useState(false);
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedTime, setSelectedTime] = useState('');
@@ -299,6 +303,7 @@ export function PDLUpcomingMatch({
               ? <>Playoffs{match.playoffCode ? ` · ${match.playoffCode}` : ''}</>
               : (!isMmrLimited && <>Kolejka {match.matchday || match.round || '?'}</>)}
             {match.bestOf && <span className={(!isMmrLimited || match.isPlayoff) ? 'ml-2' : ''}>• BO{match.bestOf}</span>}
+            {extraTag(match) && <span className="ml-2 text-amber-400">• {extraTag(match)}</span>}
           </p>
           <p className="text-lg font-logik-extended-bold text-white truncate">
             vs {opponent?.name || 'TBA'}
@@ -334,6 +339,21 @@ export function PDLUpcomingMatch({
           )}
         </div>
       </button>
+
+      {/* ─── Draft preparation (captains' tool, opened on this match) ─── */}
+      {match.status !== 'completed' && opponent?.id && (
+        <div className="px-5 pb-4 -mt-1">
+          <button
+            type="button"
+            onClick={() => openPrep({ us: myTeamId, them: opponent.id })}
+            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-logik uppercase tracking-wide border border-white/10 hover:border-white/25 hover:bg-white/5 transition-colors"
+            style={{ color: theme.primaryTextColor || 'rgba(255,255,255,0.7)' }}
+          >
+            <ClipboardList className="w-3.5 h-3.5" />
+            Przygotuj draft na ten mecz
+          </button>
+        </div>
+      )}
 
       {/* Expanded content */}
       {expanded && (

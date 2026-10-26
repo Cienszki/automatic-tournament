@@ -1,7 +1,9 @@
 // Admin version of group standings update using Firebase Admin SDK
 import type { Match } from './definitions';
+import { countsForStandings } from './match-flags';
 
 export async function updateStandingsAfterGameAdmin(match: Match): Promise<{ success: boolean; message: string }> {
+  if (!countsForStandings(match)) return { success: true, message: 'Extra match — standings unchanged.' };
   try {
     const { getAdminDb, ensureAdminInitialized } = await import('../../server/lib/admin');
     ensureAdminInitialized();

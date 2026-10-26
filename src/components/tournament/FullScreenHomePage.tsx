@@ -428,6 +428,9 @@ export function TournamentHomePage() {
             slot: data.lanSlot,
             rescheduleRequest: data.rescheduleRequest,
             forfeit: data.forfeit,
+            extra: data.extra,
+            replacesMatchId: data.replacesMatchId,
+            replacedByMatchId: data.replacedByMatchId,
           } as unknown as Match;
         });
         // A Swiss round shows every match, scheduled or not ("TBD"); other

@@ -66,6 +66,8 @@ import {
   Gavel,
 } from 'lucide-react';
 import { count } from '@/lib/plural';
+import { extraTag } from '@/lib/match-flags';
+import { ExtraMatchDialog } from './ExtraMatchDialog';
 
 interface MatchWithTeamNames extends Match {
   teamAName: string;
@@ -707,8 +709,19 @@ export function MatchesTab() {
 
     setIsDeleting(true);
     try {
-      const matchRef = doc(db, 'tournaments', tournament.id, 'matches', matchToDelete);
-      await deleteDoc(matchRef);
+      // An extra match goes through the server: a rematch must also restore the match it replaced
+      if (matches.find(m => m.id === matchToDelete)?.extra) {
+        const res = await fetch('/api/manage/extra-match', {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${await user?.getIdToken()}` },
+          body: JSON.stringify({ tournamentId: tournament.id, matchId: matchToDelete }),
+        });
+        const j = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(j.error || `HTTP ${res.status}`);
+      } else {
+        const matchRef = doc(db, 'tournaments', tournament.id, 'matches', matchToDelete);
+        await deleteDoc(matchRef);
+      }
 
       toast({
         title: 'Usunięto',
@@ -722,7 +735,7 @@ export function MatchesTab() {
       console.error('Error deleting match:', error);
       toast({
         title: 'Błąd',
-        description: 'Nie udało się usunąć meczu',
+        description: error instanceof Error && error.message ? error.message : 'Nie udało się usunąć meczu',
         variant: 'destructive',
       });
     } finally {
@@ -1044,6 +1057,17 @@ export function MatchesTab() {
           </p>
         </div>
         <div className="flex items-center gap-3">
+          {tournament?.id && (
+            <ExtraMatchDialog
+              tournamentId={tournament.id}
+              tournamentType={tournament.type}
+              defaultFormat={tournament.swiss?.defaultMatchFormat}
+              matches={matches}
+              teams={teams}
+              divisions={divisionsMap}
+              onDone={loadMatches}
+            />
+          )}
           <Button
             variant="outline"
             className="font-logik"
@@ -1403,6 +1427,11 @@ export function MatchesTab() {
                         <div className="text-left">
                           <p className="font-logik-extended-bold">{match.teamBName}</p>
                         </div>
+                        {extraTag(match) && (
+                          <Badge variant="outline" className={cn('font-logik text-[10px] whitespace-nowrap', match.replacedByMatchId ? 'border-white/20 text-muted-foreground' : 'border-amber-500/40 text-amber-400')}>
+                            {extraTag(match)}
+                          </Badge>
+                        )}
                       </div>
                     </TableCell>
                     <TableCell>

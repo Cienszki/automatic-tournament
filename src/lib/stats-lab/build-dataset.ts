@@ -1,5 +1,6 @@
 import 'server-only';
 import { getAdminDb, ensureAdminInitialized } from '@/server/lib/admin';
+import { countsForStats } from '@/lib/match-flags';
 import { PERF_NUM_FIELDS, type DsGame, type DsGroup, type DsMatch, type DsPlayer, type DsTeam, type StatsDataset } from './types';
 
 const STEAM64_OFFSET = 76561197960265728n;
@@ -107,7 +108,7 @@ export async function buildStatsDataset(tournamentId: string | null): Promise<St
   // same games — see the dedupe below.
   const legacyId = (id: string) => id.includes('-');
   const completedAll = matchDocs
-    .filter(m => m.status === 'completed' && !m.isBanForfeit && !m.isSwissByeMatch)
+    .filter(m => m.status === 'completed' && !m.isBanForfeit && !m.isSwissByeMatch && countsForStats(m)) // a replayed original: its rematch counts
     .sort((a, b) => Number(legacyId(a.id)) - Number(legacyId(b.id)));
   const allGameSnaps = await Promise.all(completedAll.map(m => col('matches').doc(m.id).collection('games').get()));
   // The same Dota game can sit under two match docs (a playoff match and its legacy copy): count
