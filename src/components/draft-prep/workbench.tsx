@@ -9,7 +9,8 @@ import { Avatar, C, HeroImg, Tip, TipBody, useHeaderFont } from '@/components/st
 import { heroName } from '@/lib/stats-lab/heroes';
 import { evaluate, isUs, planDraft, predictBan, predictPick, suggestBan, suggestPick, type PlanStep } from '@/lib/draft-prep/engine';
 import { useDP, useDraftView } from './state';
-import { DraftStrip, GuessRow, HeroGrid, Label, RULE, SuggestionRow, WinBar, useRewind, vh } from './ui';
+import { DraftStrip, GuessRow, HeroGrid, Label, RULE, SuggestionRow, WinBar, useRewind, useThinData, vh } from './ui';
+import { CmExplainer } from './guide';
 
 export function useStepInfo() {
   const dp = useDP(); const v = useDraftView(); const d = dp.input;
@@ -54,7 +55,9 @@ export function Workbench() {
   const font = useHeaderFont();
   const { dp, step, done, ours, pick, sugg, guess, ev } = useStepInfo();
   const rewind = useRewind();
+  const thin = useThinData();
   const top = sugg.slice(0, 8); const tg = guess.slice(0, 8);
+  const range: [number, number] = top.length ? [Math.min(...top.map(s => s.score)), top[0].score] : [0, 0];
   const sugMap = new Map(top.map((s, k) => [s.hero, k])); const gMap = new Map(tg.map(g => [g.hero, g.p]));
   return (
     <div className="flex flex-col min-h-0 h-full">
@@ -63,8 +66,9 @@ export function Workbench() {
         <span className="font-logik-extended-bold uppercase whitespace-nowrap" style={{ color: done ? C.heading : ours ? C.radiant : C.dire, fontSize: vh(18, 2.8, 32), ...font }}>
           {done ? 'Draft gotowy' : `${step + 1}. ${pick ? 'pick' : 'ban'} · ${ours ? 'my' : 'oni'}`}
         </span>
-        {ev && <div className="flex-1"><WinBar pUs={ev.pUs} height={8} /></div>}
+        {ev && <div className="flex-1"><WinBar pUs={ev.pUs} height={8} note={thin ? 'szacowana szansa · mało danych, traktuj orientacyjnie' : 'szacowana szansa'} /></div>}
         <span className="flex gap-4 pb-1" style={{ color: C.muted }}>
+          <CmExplainer />
           <button type="button" onClick={dp.undo} className={textBtn}>Cofnij</button>
           <button type="button" onClick={dp.reset} className={textBtn}>Od nowa</button>
         </span>
@@ -73,7 +77,7 @@ export function Workbench() {
         <div className="flex flex-col min-h-0">
           <Label color={ours ? (pick ? C.win : C.loss) : C.dire}>{done ? 'Składy' : ours ? (pick ? 'Proponujemy wybrać' : 'Proponujemy zbanować') : (pick ? 'Prawdopodobnie wybiorą' : 'Prawdopodobnie zbanują')}</Label>
           {done ? <FinalLineups /> : ours
-            ? top.map((s, k) => <SuggestionRow key={s.hero} s={s} rank={k} ban={!pick} onPick={dp.pushHero} />)
+            ? top.map((s, k) => <SuggestionRow key={s.hero} s={s} rank={k} ban={!pick} range={range} onPick={dp.pushHero} />)
             : tg.map((g, k) => <GuessRow key={g.hero} g={g} rank={k} onPick={dp.pushHero} />)}
         </div>
         <HeroGrid tile={96} onPick={dp.pushHero} mark={h => {
@@ -94,37 +98,44 @@ export function PlanBoard() {
   const dp = useDP(); const d = dp.input;
   const plan = useMemo(() => (d ? planDraft({ ...d, steps: d.steps.map(() => null) }) : []), [d]);
   if (!d) return null;
+  const owner = (st: PlanStep) => (st.player ? ` · ${st.player.p.name}` : '');
   const phases: Array<{ pick: boolean; steps: PlanStep[] }> = [];
   for (const st of plan) { const last = phases[phases.length - 1]; if (last && last.pick === st.pick) last.steps.push(st); else phases.push({ pick: st.pick, steps: [st] }); }
   // three columns: each ban phase with the picks that follow it
   const cols: Array<typeof phases> = [];
   phases.forEach(ph => { if (!ph.pick || !cols.length) cols.push([ph]); else cols[cols.length - 1].push(ph); });
   const row = (st: PlanStep) => (
-    <Tip key={st.i} content={<TipBody title={`${st.i + 1}. ${st.pick ? 'pick' : 'ban'} — ${st.us ? 'my' : 'oni'}`}>{st.reason}{st.p != null ? ` · ${Math.round(st.p * 100)}%` : ''}</TipBody>}>
+    <Tip key={st.i} content={<TipBody title={`${st.i + 1}. ${st.pick ? 'pick' : 'ban'} — ${st.us ? 'my' : 'oni'}`}>{st.reason}{st.p != null ? ` · ${Math.round(st.p * 100)}%` : ''}{!st.pick && st.player && st.when != null ? `. ${Math.round(st.when * 100)}% szans, że ${st.player.p.name} wybiera przed naszym kolejnym banem — potem byłoby za późno.` : ''}</TipBody>}>
       <div className="flex-1 min-h-0 max-h-[80px] flex items-center gap-3 border-b cursor-help" style={{ borderColor: RULE, boxShadow: `inset 3px 0 0 ${st.us ? C.radiant : C.dire}`, paddingLeft: 10 }}>
         <span className="w-5 shrink-0 tabular-nums" style={{ color: C.muted, fontSize: vh(10, 1.3, 13) }}>{st.i + 1}</span>
         <HeroImg heroId={st.hero} className="rounded-sm shrink-0" style={{ height: 'min(76%, 56px)', aspectRatio: '16 / 9', width: 'auto', filter: st.pick ? undefined : 'grayscale(0.7)' }} />
         <span className="min-w-0 flex-1">
           <span className="block font-bold truncate" style={{ color: C.heading, fontSize: vh(13, 1.8, 18), textDecoration: st.pick ? undefined : 'line-through' }}>{heroName(st.hero)}</span>
           <span className="block truncate" style={{ color: st.us ? C.radiant : C.dire, fontSize: vh(10, 1.4, 14) }}>
-            {st.pick ? `${st.us ? 'my' : 'oni'}${st.player ? ` · ${st.player.p.name}` : ''}` : `${st.us ? 'banujemy' : 'banują'}${st.player ? ` · przeciw: ${st.player.p.name}` : ''}${st.when != null ? ` · ${Math.round(st.when * 100)}% że wybiera przed naszym kolejnym banem` : ''}`}
+            {st.pick ? `${st.us ? 'my' : 'oni'}${owner(st)}` : `${st.us ? 'banujemy' : 'banują'}${st.player ? ` · przeciw: ${st.player.p.name}` : ''}`}
           </span>
         </span>
       </div>
     </Tip>
   );
   return (
-    <div className="flex-1 min-h-0 grid grid-cols-3 gap-8">
-      {cols.map((col, ci) => (
-        <div key={ci} className="flex flex-col min-h-0">
-          {col.map((ph, pi) => (
-            <React.Fragment key={pi}>
-              <div className={pi ? 'pt-3' : ''}><Label color={ph.pick ? C.heading : C.loss}>{ph.pick ? 'Picki' : 'Bany'} {ph.steps[0].i + 1}–{ph.steps[ph.steps.length - 1].i + 1}</Label></div>
-              {ph.steps.map(row)}
-            </React.Fragment>
-          ))}
-        </div>
-      ))}
+    <div className="flex-1 min-h-0 flex flex-col">
+      <div className="shrink-0 pb-2 flex items-center gap-3" style={{ fontSize: vh(12, 1.6, 16) }}>
+        <span className="font-bold uppercase tracking-wider" style={{ color: dp.usFirst ? C.radiant : C.dire }}>Wariant: {dp.usFirst ? 'zaczynamy my' : 'zaczynają oni'}</span>
+        <span style={{ color: C.muted }}>— drugi wariant zobaczysz, przełączając „Zaczynamy my / Zaczynają oni” u góry. Ściąga zawiera oba.</span>
+      </div>
+      <div className="flex-1 min-h-0 grid grid-cols-3 gap-8">
+        {cols.map((col, ci) => (
+          <div key={ci} className="flex flex-col min-h-0">
+            {col.map((ph, pi) => (
+              <React.Fragment key={pi}>
+                <div className={pi ? 'pt-3' : ''}><Label color={ph.pick ? C.heading : C.loss}>{ph.pick ? 'Picki' : 'Bany'} {ph.steps[0].i + 1}–{ph.steps[ph.steps.length - 1].i + 1}</Label></div>
+                {ph.steps.map(row)}
+              </React.Fragment>
+            ))}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

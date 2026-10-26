@@ -4,7 +4,7 @@ import 'server-only';
 // matchups from OpenDota. Everything is compacted before it is cached or sent to the browser.
 
 import { getAdminDb, ensureAdminInitialized } from '@/server/lib/admin';
-import type { DpContext, DpHistory, DpMatchRow, DpMeta, DpPastStandin, DpStandin, DpTeam } from './types';
+import type { DpContext, DpHeroData, DpHistory, DpMatchRow, DpMeta, DpPastStandin, DpStandin, DpTeam } from './types';
 
 const OD = 'https://api.opendota.com/api';
 const STEAM64_OFFSET = 76561197960265728n;
@@ -256,6 +256,86 @@ export async function buildMeta(): Promise<DpMeta> {
 export async function heroMatchups(hero: number): Promise<Array<[number, number, number]>> {
   const list = await odJson<Array<{ hero_id: number; games_played: number; wins: number }>>(`/heroes/${hero}/matchups`);
   return list.map(x => [x.hero_id, x.games_played, x.wins]);
+}
+
+// ── Hero data from STRATZ: positions and matchups, kept in Firestore ────────
+// Fetched by an admin (on tournament creation, and from the admin panel) in a few short steps so
+// no single request runs long; read by everyone through /api/draft-prep/heroes.
+
+const heroDoc = () => getAdminDb().collection('draftPrepData').doc('heroes');
+const HERO_BATCH = 30;
+const round2 = (x: number) => Math.round(x * 100) / 100;
+
+async function stratzQuery(query: string): Promise<any> {
+  const token = process.env.STRATZ_API_KEY;
+  if (!token) throw new Error('Brak STRATZ_API_KEY');
+  await stratzSlot();
+  const res = await fetch('https://api.stratz.com/graphql', {
+    method: 'POST', cache: 'no-store',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', 'User-Agent': 'STRATZ_API' },
+    body: JSON.stringify({ query }),
+  });
+  if (!res.ok) throw new Error(`STRATZ: ${res.status}`);
+  return res.json();
+}
+
+/** When the stored hero data was completed (null = never) */
+export async function heroDataUpdatedAt(): Promise<string | null> {
+  ensureAdminInitialized();
+  return ((await heroDoc().get()).data()?.updatedAt as string | undefined) ?? null;
+}
+
+/**
+ * One step of the refresh. Step 0 stores games per position and the hero list; step k ≥ 1 the
+ * matchups of the k-th batch of heroes. Returns the number of steps, and whether this was the last.
+ */
+export async function refreshHeroData(step: number): Promise<{ steps: number; done: boolean }> {
+  ensureAdminInitialized();
+  const doc = heroDoc();
+  if (step === 0) {
+    const j = await stratzQuery('{ heroStats { stats(groupByPosition: true) { heroId position matchCount } } }');
+    const rows: any[] = j?.data?.heroStats?.stats ?? [];
+    const pos: Record<string, number[]> = {};
+    for (const r of rows) {
+      const i = Number(String(r.position ?? '').replace('POSITION_', '')) - 1;
+      if (i < 0 || i > 4 || !r.heroId) continue;
+      (pos[r.heroId] ??= [0, 0, 0, 0, 0])[i] += r.matchCount ?? 0;
+    }
+    const heroes = Object.keys(pos).map(Number).sort((a, b) => a - b);
+    if (!heroes.length) throw new Error('STRATZ nie zwrócił danych o pozycjach');
+    await doc.set({ pos, heroes, startedAt: new Date().toISOString() }, { merge: true });
+    return { steps: 1 + Math.ceil(heroes.length / HERO_BATCH), done: false };
+  }
+  const heroes: number[] = (await doc.get()).data()?.heroes ?? [];
+  const steps = 1 + Math.ceil(heroes.length / HERO_BATCH);
+  const batch = getAdminDb().batch();
+  for (const h of heroes.slice((step - 1) * HERO_BATCH, step * HERO_BATCH)) {
+    const j = await stratzQuery(`{ heroStats { heroVsHeroMatchup(heroId: ${h}, take: 200) { advantage { vs { heroId2 synergy matchCount } with { heroId2 synergy } } } } }`);
+    const adv = j?.data?.heroStats?.heroVsHeroMatchup?.advantage?.[0];
+    if (!adv?.vs) continue;
+    const withMap = new Map<number, number>((adv.with ?? []).map((x: any) => [x.heroId2, x.synergy ?? 0]));
+    // Firestore can't store nested arrays: one compact "hero:vs:with:games" list per hero
+    const rows = (adv.vs as any[]).map(x => [x.heroId2, round2(x.synergy ?? 0), round2(withMap.get(x.heroId2) ?? 0), x.matchCount ?? 0].join(':')).join(',');
+    batch.set(doc.collection('matchups').doc(String(h)), { rows });
+  }
+  await batch.commit();
+  const done = step >= steps - 1;
+  if (done) await doc.set({ updatedAt: new Date().toISOString() }, { merge: true });
+  return { steps, done };
+}
+
+/** Everything stored, for the browser */
+export async function loadHeroData(): Promise<DpHeroData> {
+  ensureAdminInitialized();
+  const doc = heroDoc();
+  const [main, mus] = await Promise.all([doc.get(), doc.collection('matchups').get()]);
+  const d = main.data();
+  if (!d?.updatedAt) return { updatedAt: null, pos: {}, mu: {} };
+  const mu: DpHeroData['mu'] = {};
+  for (const m of mus.docs) {
+    mu[m.id] = String(m.data().rows || '').split(',').filter(Boolean).map(r => r.split(':').map(Number) as [number, number, number, number]);
+  }
+  return { updatedAt: d.updatedAt, pos: d.pos ?? {}, mu };
 }
 
 /** Name search for manually added standins */

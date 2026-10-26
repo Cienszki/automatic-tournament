@@ -54,7 +54,7 @@ function Spotlight({ d }: { d: OverviewData }) {
         </div>
         <div role="button" tabIndex={0} onClick={() => nav?.go(id)} onKeyDown={e => { if (e.key === 'Enter') nav?.go(id); }}
           className="relative flex-1 min-w-0 max-lg:h-[360px] text-left rounded-2xl overflow-hidden cursor-pointer"
-          style={{ boxShadow: `0 0 0 2px ${onDark(C.secondary)}, 0 20px 50px rgba(0,0,0,0.45)` }}>
+          style={{ boxShadow: '0 20px 50px rgba(0,0,0,0.45)' }}>
           <TeaserFrame id={id} d={d} className="absolute inset-0">
             <div className="relative mt-5 flex items-center gap-3">
               <span className="px-4 py-2 rounded-full text-xs font-bold uppercase tracking-widest flex items-center gap-1.5" style={{ background: C.primary, boxShadow: `0 0 18px ${mix(C.primary, 50)}` }}>
@@ -63,6 +63,8 @@ function Spotlight({ d }: { d: OverviewData }) {
               <span className="text-xs text-white/60 truncate">{page.blurb}</span>
             </div>
           </TeaserFrame>
+          {/* the frame is drawn inside the card: an outer ring got cut along the top by the clipping view */}
+          <span aria-hidden className="pointer-events-none absolute inset-0 rounded-2xl z-10" style={{ boxShadow: `inset 0 0 0 2px ${onDark(C.secondary)}` }} />
         </div>
       </div>
     </div>

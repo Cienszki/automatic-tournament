@@ -10,6 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { doc, getDoc, collection, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { cn } from '@/lib/utils';
+import { MatchPrepDataCard } from './MatchPrepDataCard';
 import {
   BarChart3,
   RefreshCw,
@@ -338,6 +339,8 @@ export function StatsTab() {
           </div>
         </CardContent>
       </Card>
+
+      <MatchPrepDataCard />
     </div>
   );
 }

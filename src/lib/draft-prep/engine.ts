@@ -11,7 +11,7 @@
 
 import type { Model } from '@/lib/stats-lab/derive';
 import { getHeroData } from '@/lib/hero-mapping';
-import type { DpHistory, DpMeta } from './types';
+import type { DpHeroData, DpHistory, DpMeta } from './types';
 import { count } from '@/lib/plural';
 
 // ── Draft order ─────────────────────────────────────────────────────────────
@@ -28,19 +28,56 @@ export interface DraftStep { pick: boolean; first: boolean }
  */
 const CM_ORDER = 'bAbAbBbBbAbBbB' + 'PAPB' + 'bAbAbB' + 'PBPAPAPBPBPA' + 'bAbBbAbB' + 'PAPB';
 
+/** The draft as phases ("7 banów", "2 picki", …) for the explainer */
+export function draftPhases(order: DraftStep[]): Array<{ pick: boolean; from: number; to: number; seq: boolean[] }> {
+  const out: Array<{ pick: boolean; from: number; to: number; seq: boolean[] }> = [];
+  order.forEach((st, i) => {
+    const last = out[out.length - 1];
+    if (last && last.pick === st.pick) { last.to = i; last.seq.push(st.first); } else out.push({ pick: st.pick, from: i, to: i, seq: [st.first] });
+  });
+  return out;
+}
+
 export function draftOrder(): DraftStep[] {
   const out: DraftStep[] = [];
   for (let i = 0; i < CM_ORDER.length; i += 2) out.push({ pick: CM_ORDER[i] === 'P', first: CM_ORDER[i + 1] === 'A' });
   return out;
 }
 
+// ── Hero tables (STRATZ, refreshed about once a month) ─────────────────────
+
+export interface HeroTables {
+  /** hero → share of its games at positions 1-5 */
+  pos: Map<number, number[]>;
+  /** vs.get(h).get(e): win-rate shift of h when facing e (0.05 = +5 pp) */
+  vs: Map<number, Map<number, number>>;
+  /** with.get(h).get(a): win-rate shift of h when on a team with a */
+  with: Map<number, Map<number, number>>;
+}
+
+export function heroTables(d: DpHeroData | null): HeroTables | null {
+  if (!d?.updatedAt) return null;
+  const pos = new Map<number, number[]>();
+  for (const [h, games] of Object.entries(d.pos)) { const t = games.reduce((a, b) => a + b, 0); if (t) pos.set(Number(h), games.map(g => g / t)); }
+  const vs = new Map<number, Map<number, number>>(); const wt = new Map<number, Map<number, number>>();
+  for (const [h, rows] of Object.entries(d.mu)) {
+    const a = new Map<number, number>(); const b = new Map<number, number>();
+    for (const [e, v, w, n] of rows) { if (n >= 30) a.set(e, Math.max(-0.15, Math.min(0.15, v / 100))); b.set(e, Math.max(-0.15, Math.min(0.15, w / 100))); }
+    vs.set(Number(h), a); wt.set(Number(h), b);
+  }
+  return { pos, vs, with: wt };
+}
+
 // ── Roles ───────────────────────────────────────────────────────────────────
 
 export const ROLES = ['Carry', 'Mid', 'Offlane', 'Soft Support', 'Hard Support'] as const;
 export const ROLE_SHORT: Record<string, string> = { Carry: '1', Mid: '2', Offlane: '3', 'Soft Support': '4', 'Hard Support': '5' };
+/** One way to name a position everywhere on the prep pages: community slang plus the number */
+export const ROLE_LABEL: Record<string, string> = { Carry: 'Carry (1)', Mid: 'Mid (2)', Offlane: 'Offlane (3)', 'Soft Support': 'Support (4)', 'Hard Support': 'Support (5)' };
+export const roleLabel = (role?: string) => (role ? ROLE_LABEL[role] ?? role : 'pozycja nieznana');
 
 /** 0..1 — how well a hero suits a position, from its Dota roles and from who plays it in the league */
-export function makeRoleFit(model: Model | null) {
+export function makeRoleFit(model: Model | null, ht?: HeroTables | null) {
   const played = new Map<number, Map<string, number>>();
   for (const p of model?.perfs ?? []) {
     const role = p.player?.role; if (!role || !p.heroId) continue;
@@ -54,7 +91,10 @@ export function makeRoleFit(model: Model | null) {
     const has = (r: string) => roles.includes(r);
     const sup = has('Support');
     let base: number;
-    if (role === 'Carry') base = has('Carry') ? 1 : sup ? 0.08 : 0.3;
+    const shares = ht?.pos.get(hero); const ri = ROLES.indexOf(role as typeof ROLES[number]);
+    // where the hero is really played (STRATZ, all brackets): a 40% position is a full fit, 5% hardly any
+    if (shares && ri >= 0) base = Math.min(1, shares[ri] * 2.5);
+    else if (role === 'Carry') base = has('Carry') ? 1 : sup ? 0.08 : 0.3;
     else if (role === 'Mid') base = (has('Nuker') || has('Carry') || has('Escape')) && !(sup && !has('Nuker')) ? 0.85 : sup ? 0.25 : 0.5;
     else if (role === 'Offlane') base = has('Initiator') || has('Durable') ? 0.9 : has('Carry') ? 0.45 : sup ? 0.3 : 0.5;
     else base = sup ? 1 : has('Disabler') ? 0.55 : 0.15;
@@ -77,10 +117,12 @@ export type Source = 'T' | 'L' | 'P';
 export type Window = 'all' | '6m' | '3m' | 'patch';
 export const SOURCES: Source[] = ['T', 'L', 'P'];
 export const WINDOWS: Window[] = ['all', '6m', '3m', 'patch'];
-export const SOURCE_LABEL: Record<Source, string> = { T: 'Turniej', L: 'Ligi / lobby', P: 'Publiki' };
+export const SOURCE_LABEL: Record<Source, string> = { T: 'Ten turniej', L: 'Inne mecze ligowe', P: 'Rankedy' };
 export const WINDOW_LABEL: Record<Window, string> = { all: 'Całość', '6m': '6 mies.', '3m': '3 mies.', patch: 'Patch' };
 
 const RELIABILITY: Record<Source, number> = { T: 1, L: 0.75, P: 0.32 };
+/** Effective games at which a player's own win rate on a hero weighs as much as the prior */
+const STRENGTH_K = 15;
 const HALF_LIFE_DAYS = 90;
 
 export interface Cell { g: number; w: number }
@@ -89,6 +131,8 @@ export interface HeroStat {
   cells: Record<Source, Record<Window, Cell>>;
   /** Evidence-weighted games / wins over all sources (relevance applied) */
   wg: number; ww: number;
+  /** Effective games / wins behind the win rate: recency, patch, position and source reliability applied, NOT normalised */
+  ng: number; nw: number;
   last: number;
   /** Lane roles seen in parsed public / lobby games: [safe, mid, off, jungle] */
   lanes: [number, number, number, number];
@@ -130,7 +174,7 @@ export function buildProfile(input: PlayerInput, model: Model | null, history: D
   const totals = emptyCells();
   const evidence: Record<Source, number> = { T: 0, L: 0, P: 0 };
   let pubFitW = 0; let pubW = 0;
-  const stat = (h: number) => { let s = heroes.get(h); if (!s) { s = { hero: h, cells: emptyCells(), wg: 0, ww: 0, last: 0, lanes: [0, 0, 0, 0], slots: [], pos: [0, 0, 0, 0, 0] }; heroes.set(h, s); } return s; };
+  const stat = (h: number) => { let s = heroes.get(h); if (!s) { s = { hero: h, cells: emptyCells(), wg: 0, ww: 0, ng: 0, nw: 0, last: 0, lanes: [0, 0, 0, 0], slots: [], pos: [0, 0, 0, 0, 0] }; heroes.set(h, s); } return s; };
   const rolePos = input.role ? ROLES.indexOf(input.role as typeof ROLES[number]) + 1 : 0;
   const posGames: [number, number, number, number, number] = [0, 0, 0, 0, 0];
   const raw: Array<{ s: Source; hero: number; win: boolean; t: number; w: number }> = [];
@@ -183,6 +227,7 @@ export function buildProfile(input: PlayerInput, model: Model | null, history: D
     const st = heroes.get(x.hero)!;
     const k = evidence[x.s] ? (share[x.s] / evidence[x.s]) * 20 : 0; // normalise so a source's games sum to share×20
     st.wg += x.w * k; if (x.win) st.ww += x.w * k;
+    const n = x.w * RELIABILITY[x.s]; st.ng += n; if (x.win) st.nw += n;
   }
 
   const why: string[] = [];
@@ -193,11 +238,11 @@ export function buildProfile(input: PlayerInput, model: Model | null, history: D
     why.push(`Najwięcej mówią: ${SOURCE_LABEL[top[0]].toLowerCase()} (${Math.round(top[1] * 100)}% wagi).`);
     if (tg > 0 && tg < 6) why.push(`Tylko ${count(tg, 'gra', 'gry', 'gier')} w turnieju — za mało, by na nich polegać.`);
     if (tg >= 6) why.push(`${count(tg, 'gra', 'gry', 'gier')} w turnieju — wiarygodna próbka.`);
-    if (lg >= 5) why.push(`${count(lg, 'gra', 'gry', 'gier')} w lobby ligowych w ostatnich 6 miesiącach.`);
+    if (lg >= 5) why.push(`${count(lg, 'gra', 'gry', 'gier')} w innych meczach ligowych w ostatnich 6 miesiącach.`);
     const knownPos = posGames.reduce((a, b) => a + b, 0) >= 15 && !!rolePos;
-    if (pg >= 20 && pubRoleFit < 0.5 && !knownPos) why.push(`W publikach gra głównie inne role (${Math.round(pubRoleFit * 100)}% gier pasuje do roli ${input.role ?? '?'}) — publiki ważą mniej.`);
-    else if (pg >= 20) why.push(`${count(pg, 'publik', 'publiki', 'publików')} w 3 miesiące — aktualna forma i pula.`);
-    if (pg < 5 && totals.P.all.g > 50) why.push('Ostatnio prawie nie gra publików — starsze gry ważą mniej.');
+    if (pg >= 20 && pubRoleFit < 0.5 && !knownPos) why.push(`W rankedach gra głównie inne role (${Math.round(pubRoleFit * 100)}% gier pasuje do roli ${input.role ?? '?'}) — rankedy ważą mniej.`);
+    else if (pg >= 20) why.push(`${count(pg, 'ranked', 'rankedy', 'rankedów')} w 3 miesiące — aktualna forma i pula.`);
+    if (pg < 5 && totals.P.all.g > 50) why.push('Ostatnio prawie nie gra rankedów — starsze gry ważą mniej.');
     const known = posGames.reduce((a, b) => a + b, 0);
     if (known >= 15 && rolePos) {
       const main = posGames.indexOf(Math.max(...posGames)) + 1;
@@ -206,6 +251,17 @@ export function buildProfile(input: PlayerInput, model: Model | null, history: D
     }
   }
   return { ...input, heroes, share, evidence, totals, pubRoleFit, posGames, why, rankTier: history?.rankTier };
+}
+
+/** How much there is to go on for a player — shown next to every prediction about them */
+export type DataLevel = 'none' | 'low' | 'ok' | 'good';
+export const DATA_LABEL: Record<DataLevel, string> = { none: 'brak danych', low: 'mało danych', ok: 'dane: średnio', good: 'dużo danych' };
+export function dataLevel(p: Profile): DataLevel {
+  const t = p.totals;
+  if (!t.T.all.g && !t.L.all.g && !t.P.all.g) return 'none';
+  if (t.T.all.g >= 6 || t.L['6m'].g >= 15 || t.P['3m'].g >= 60) return 'good';
+  if (t.T.all.g < 3 && t.L['6m'].g < 5 && t.P['3m'].g < 15) return 'low';
+  return 'ok';
 }
 
 // ── Hero meta ───────────────────────────────────────────────────────────────
@@ -243,7 +299,9 @@ export function playerModel(p: Profile, metaRows: Map<number, HeroMetaRow>, fit:
   const prior = new Map<number, number>();
   let ps = 0;
   for (const id of all) { const v = fit(id, p.role) ** 2 * (0.3 + (metaRows.get(id)?.hiShare ?? 0.05)); prior.set(id, v); ps += v; }
-  const lambda = 0.08 + 0.55 * Math.exp(-totalW / 8);
+  // a player we know nothing about is read fully from role and meta (not 63% of it), and is
+  // assumed average on every hero rather than weak — unknown is not the same as harmless
+  const lambda = totalW ? 0.08 + 0.55 * Math.exp(-totalW / 8) : 1;
   const like = new Map<number, number>();
   for (const id of all) {
     const own = totalW ? (p.heroes.get(id)?.wg ?? 0) / totalW : 0;
@@ -251,11 +309,43 @@ export function playerModel(p: Profile, metaRows: Map<number, HeroMetaRow>, fit:
   }
   const strength = (h: number) => {
     const s = p.heroes.get(h); const m = metaRows.get(h)?.wr ?? 0.5;
-    const k = 5;
-    return s ? (s.ww + k * m) / (s.wg + k) : m - 0.02; // unknown hero: slightly below meta
+    // a hero they haven't played lately starts well below its meta win rate: being strong in the
+    // meta doesn't make a player good on it (games from years ago barely count — recency weighting)
+    const prior = totalW ? m - 0.06 : m;
+    // their own record counts by the games really behind it (about 15 effective games to weigh as
+    // much as the prior), so a few lucky recent wins can't outweigh counters and synergy
+    return s && s.ng > 0 ? (s.nw + STRENGTH_K * prior) / (s.ng + STRENGTH_K) : prior;
   };
   const comfort = (h: number) => 1 - Math.exp(-(p.heroes.get(h)?.wg ?? 0) / 2.5);
   return { p, like, strength, comfort };
+}
+
+/**
+ * The captain knows better: heroes a player won't play (out) and heroes they will (add). Out heroes
+ * get no chance and a poor strength (never suggested for that player); added ones join the top.
+ */
+export function applyEdits(pm: PlayerModel, out: number[] = [], add: number[] = []): PlayerModel {
+  if (!out.length && !add.length) return pm;
+  const like = new Map(pm.like);
+  const top = Math.max(0, ...like.values());
+  for (const h of out) like.set(h, 0);
+  for (const h of add) if (!out.includes(h)) like.set(h, Math.max(like.get(h) ?? 0, top * 0.9));
+  const sum = [...like.values()].reduce((a, b) => a + b, 0) || 1;
+  for (const [h, v] of like) like.set(h, v / sum);
+  const outSet = new Set(out);
+  return { ...pm, like, strength: h => (outSet.has(h) ? 0.3 : pm.strength(h)), comfort: h => (outSet.has(h) ? 0 : add.includes(h) ? Math.max(0.8, pm.comfort(h)) : pm.comfort(h)) };
+}
+
+/** 0..1 — how well a hero fits THIS player's position, from the positions they played it at */
+export function playerFit(pm: PlayerModel, h: number, fit: RoleFit): number {
+  const g = fit(h, pm.p.role);
+  const rolePos = pm.p.role ? ROLES.indexOf(pm.p.role as typeof ROLES[number]) + 1 : 0;
+  const st = pm.p.heroes.get(h);
+  const known = st ? st.pos.reduce((a, b) => a + b, 0) : 0;
+  if (!known || !rolePos) return g;
+  const own = st!.pos[rolePos - 1] / known;
+  const w = known / (known + 4);
+  return (1 - w) * g + w * Math.min(1, own * 1.5);
 }
 
 // ── Team tendencies from tournament drafts ─────────────────────────────────
@@ -268,6 +358,8 @@ export interface TeamHabits {
   games: number;
   /** The team's own drafts behind each pick slot (the rest is the league's typical order) */
   slotGames: number[];
+  /** Pick order set by the captain: player key → the team's pick number (0-4) */
+  fixed?: Map<string, number>;
 }
 
 export function teamHabits(model: Model | null, teamId: string | null): TeamHabits {
@@ -326,8 +418,14 @@ export function tournamentPairs(model: Model | null) {
 }
 
 /** Win-rate shift of hero h when facing hero e (positive = h is good into e) */
-export function counterShift(h: number, e: number, mu: MatchupTable, pairs: ReturnType<typeof tournamentPairs>): { v: number; n: number } {
+export function counterShift(h: number, e: number, mu: MatchupTable, pairs: ReturnType<typeof tournamentPairs>, ht?: HeroTables | null): { v: number; n: number } {
   let num = 0; let den = 0;
+  const sv = ht?.vs.get(h)?.get(e) ?? (ht?.vs.get(e)?.get(h) != null ? -ht.vs.get(e)!.get(h)! : undefined);
+  if (sv != null) {
+    const t = pairs.vs.get(`${h}|${e}`);
+    if (t && t[0] >= 2) { const w = Math.min(0.5, t[0] / 10); return { v: (1 - w) * sv + w * ((t[1] + 1) / (t[0] + 2) - 0.5), n: 1000 + t[0] }; }
+    return { v: sv, n: 1000 };
+  }
   const od = mu.get(e)?.get(h); // e's record vs h
   if (od && od[0] >= 15) { const wrH = 1 - od[1] / od[0]; const w = Math.min(1, od[0] / 80); num += (wrH - 0.5) * w; den += w; }
   const od2 = mu.get(h)?.get(e); // h's record vs e
@@ -335,6 +433,15 @@ export function counterShift(h: number, e: number, mu: MatchupTable, pairs: Retu
   const t = pairs.vs.get(`${h}|${e}`);
   if (t && t[0] >= 2) { const w = Math.min(0.6, t[0] / 10); num += ((t[1] + 1) / (t[0] + 2) - 0.5) * w; den += w; }
   return { v: den ? num / den : 0, n: (od?.[0] ?? 0) + (od2?.[0] ?? 0) + (t?.[0] ?? 0) };
+}
+
+/** Win-rate shift of h when on the same team as a (STRATZ, plus this tournament's games) */
+export function synergyShift(h: number, a: number, pairs: ReturnType<typeof tournamentPairs>, ht?: HeroTables | null): number {
+  const s = ht?.with.get(h)?.get(a) ?? ht?.with.get(a)?.get(h);
+  const t = pairs.tog.get(`${h}|${a}`);
+  const tv = t && t[0] >= 2 ? (t[1] + 1) / (t[0] + 2) - 0.5 : null;
+  if (s != null && tv != null) { const w = Math.min(0.4, t![0] / 10); return (1 - w) * s + w * tv; }
+  return s ?? tv ?? 0;
 }
 
 // ── Draft state ─────────────────────────────────────────────────────────────
@@ -353,6 +460,8 @@ export interface DraftInput {
   meta: Map<number, HeroMetaRow>;
   mu: MatchupTable;
   pairs: ReturnType<typeof tournamentPairs>;
+  /** STRATZ hero tables (null until an admin has fetched them once) */
+  ht: HeroTables | null;
   fit: RoleFit;
   /** Elo of us and them (1500 when unknown) */
   elo: [number, number];
@@ -435,7 +544,10 @@ const banStepsOf = (d: Pick<DraftInput, 'order' | 'usFirst'>, side: 'us' | 'them
 
 /** Sinkhorn balancing of players × pick slots (k = the team's pick number 0-4) */
 function balance(free: PlayerModel[], ks: number[], habits: TeamHabits): Map<string, number[]> {
-  const w = free.map(pm => ks.map(k => (habits.slotRole[Math.min(4, k)]?.[pm.p.role ?? ''] ?? 0.5) + 0.15));
+  const w = free.map(pm => {
+    const f = habits.fixed?.get(pm.p.key);
+    return ks.map(k => (f != null ? (k === f ? 1 : 0.001) : (habits.slotRole[Math.min(4, k)]?.[pm.p.role ?? ''] ?? 0.5) + 0.15));
+  });
   const colTarget = ks.length ? free.length / ks.length : 0;
   for (let it = 0; it < 40 && ks.length; it++) {
     for (const row of w) { const t = row.reduce((x, y) => x + y, 0) || 1; for (let j = 0; j < row.length; j++) row[j] /= t; }
@@ -516,20 +628,40 @@ function banTiming(d: DraftInput, v: DraftView, banner: 'us' | 'them'): Map<stri
   return out;
 }
 
+/**
+ * How many of a side's bans so far were aimed at each player of the other side (the player most
+ * likely to want that hero). A captain spreads bans: a player's pool can't be banned out, so every
+ * further ban at the same player is worth less.
+ */
+function aimedCounts(d: DraftInput, banner: 'us' | 'them'): Map<string, number> {
+  const targets = (banner === 'us' ? d.them : d.us).players;
+  const out = new Map<string, number>();
+  d.order.forEach((st, i) => {
+    const h = d.steps[i];
+    if (h == null || st.pick || isUs(d, i) !== (banner === 'us')) return;
+    let who: string | undefined; let wv = 0;
+    for (const pm of targets) { const t = (pm.like.get(h) ?? 0) * Math.max(0, pm.strength(h) - 0.4); if (t > wv) { wv = t; who = pm.p.key; } }
+    if (who) out.set(who, (out.get(who) ?? 0) + 1);
+  });
+  return out;
+}
+const SPREAD = 0.55;
+
 /** What a side is likely to ban: its own habits plus the biggest threats from the other side */
 export function predictBan(d: DraftInput, v: DraftView, side: 'us' | 'them'): Guess[] {
   const habits = side === 'them' ? d.habitsThem : d.habitsUs;
   const targets = side === 'them' ? v.freeUs : v.freeThem;
   const totalBans = [...habits.bans.values()].reduce((a, b) => a + b, 0);
   const timing = banTiming(d, v, side);
+  const aimed = aimedCounts(d, side);
   const out: Guess[] = [];
   for (const h of d.meta.keys()) {
     if (v.taken.has(h)) continue;
     const habit = totalBans ? (habits.bans.get(h) ?? 0) / totalBans : 0;
     let threat = 0; let who: PlayerModel | undefined; let wv = 0;
-    for (const pm of targets) { const t = (pm.like.get(h) ?? 0) * Math.max(0, pm.strength(h) - 0.4) * 4 * (timing.get(pm.p.key)?.w ?? 1); threat += t; if (t > wv) { wv = t; who = pm; } }
-    const p = 0.45 * habit * Math.min(1, habits.games / 4) + threat + 0.02 * (d.meta.get(h)?.contest ?? 0);
-    out.push({ hero: h, p, player: who, reason: habit ? `banują go ${habits.bans.get(h)}× w turnieju` : who ? `groźny w rękach: ${who.p.name}` : 'meta' });
+    for (const pm of targets) { const t = (pm.like.get(h) ?? 0) * Math.max(0, pm.strength(h) - 0.4) * 4 * (timing.get(pm.p.key)?.w ?? 1) * Math.pow(SPREAD, aimed.get(pm.p.key) ?? 0); threat += t; if (t > wv) { wv = t; who = pm; } }
+    const p = 0.45 * habit * Math.min(1, habits.games / 4) + threat + 0.008 * (d.meta.get(h)?.contest ?? 0);
+    out.push({ hero: h, p, player: who, reason: habit ? `banują go ${habits.bans.get(h)}× w turnieju` : who ? `groźny w rękach gracza ${who.p.name}` : 'mocny w obecnej mecie' });
   }
   const s = out.reduce((a, x) => a + x.p, 0) || 1;
   return out.map(x => ({ ...x, p: x.p / s })).sort((a, b) => b.p - a.p);
@@ -540,11 +672,12 @@ export function predictBan(d: DraftInput, v: DraftView, side: 'us' | 'them'): Gu
  * without a hero — the same rule the plan uses, so both always agree.
  */
 export function predictOrder(habits: TeamHabits, players: PlayerModel[]) {
-  const free = [...players]; const out: Array<{ k: number; pm: PlayerModel; p: number }> = [];
+  const free = [...players]; const out: Array<{ k: number; pm: PlayerModel; p: number; /** chance of exactly this pick number, before anything is known */ p0: number }> = [];
+  const m0 = balance(players, [0, 1, 2, 3, 4], habits);
   for (let k = 0; k < 5 && free.length; k++) {
     const m = balance(free, Array.from({ length: 5 - k }, (_, j) => k + j), habits);
     const best = [...free].sort((a, b) => (m.get(b.p.key)?.[0] ?? 0) - (m.get(a.p.key)?.[0] ?? 0))[0];
-    out.push({ k, pm: best, p: m.get(best.p.key)?.[0] ?? 0 });
+    out.push({ k, pm: best, p: m.get(best.p.key)?.[0] ?? 0, p0: m0.get(best.p.key)?.[k] ?? 0 });
     free.splice(free.indexOf(best), 1);
   }
   return out;
@@ -556,14 +689,25 @@ export interface Part { label: string; v: number }
 export interface Suggestion { hero: number; score: number; player?: PlayerModel; parts: Part[]; /** bans: chance the target picks before our next ban phase */ when?: number }
 
 /** Value of a hero in a player's hands: expected win rate with a small comfort bonus */
-export const handValue = (pm: PlayerModel, h: number, fit: RoleFit) => pm.strength(h) + 0.05 * pm.comfort(h) - 0.12 * (1 - fit(h, pm.p.role));
+export const handValue = (pm: PlayerModel, h: number, fit: RoleFit) => pm.strength(h) + 0.05 * pm.comfort(h) - 0.25 * (1 - playerFit(pm, h, fit));
 
 export function suggestPick(d: DraftInput, v: DraftView): Suggestion[] {
   const k = v.picksUs.length;
   const wDeny = [0.9, 0.7, 0.45, 0.25, 0.1][Math.min(4, k)];
-  const wCounter = [0.6, 0.8, 1.1, 1.3, 1.5][Math.min(4, k)];
+  const wCounter = [1.0, 1.3, 1.6, 1.9, 2.2][Math.min(4, k)];
+  // their remaining picks we can still see coming: the more of them are left, the more they count
+  const wFuture = [0.9, 0.8, 0.6, 0.4, 0.2][Math.min(4, v.picksThem.length)];
   const them = predictPick(d, v, 'them');
   const enemyWant = new Map(them.map(g => [g.hero, g.p]));
+  const likely = them.slice(0, 12); const likelyP = likely.reduce((a, g) => a + g.p, 0) || 1;
+  // what each of our players without a hero will probably end up on: their likeliest available
+  // heroes, weighted by how well each fits their position (captain's edits already applied)
+  const wOurs = [0.8, 0.6, 0.4, 0.2, 0][Math.min(4, k)];
+  const ourFuture = v.freeUs.map(pm => {
+    const hs = [...pm.like.entries()].filter(([x, l]) => l > 0 && !v.taken.has(x)).map(([x, l]) => [x, l * playerFit(pm, x, d.fit)] as [number, number]).sort((a, b) => b[1] - a[1]).slice(0, 10);
+    const t = hs.reduce((a, x) => a + x[1], 0) || 1;
+    return { key: pm.p.key, heroes: hs.map(([x, p]) => [x, p / t] as [number, number]) };
+  });
   const out: Suggestion[] = [];
   for (const h of d.meta.keys()) {
     if (v.taken.has(h)) continue;
@@ -572,18 +716,31 @@ export function suggestPick(d: DraftInput, v: DraftView): Suggestion[] {
     if (!best) continue;
     const parts: Part[] = [];
     parts.push({ label: `${best.p.name} na tym bohaterze`, v: bv - 0.5 });
+    const comfort = best.comfort(h);
+    if (comfort < 0.3) parts.push({ label: `${best.p.name} ostatnio nim nie gra`, v: -0.03 * (1 - comfort / 0.3) });
     if (v.picksThem.length) {
-      const c = v.picksThem.map(e => counterShift(h, e, d.mu, d.pairs).v).reduce((a, b) => a + b, 0) / v.picksThem.length;
+      const c = v.picksThem.map(e => counterShift(h, e, d.mu, d.pairs, d.ht).v).reduce((a, b) => a + b, 0) / v.picksThem.length;
       parts.push({ label: 'kontra na ich picki', v: wCounter * c });
     }
+    if (v.picksThem.length < 5 && likely.length) {
+      const c = likely.reduce((a, g) => a + g.p * counterShift(h, g.hero, d.mu, d.pairs, d.ht).v, 0) / likelyP;
+      parts.push({ label: 'dobry na ich prawdopodobne picki', v: wFuture * c });
+    }
     if (v.picksUs.length) {
-      const syn = v.picksUs.map(a => { const t = d.pairs.tog.get(`${h}|${a}`); return t && t[0] >= 2 ? (t[1] + 1) / (t[0] + 2) - 0.5 : 0; }).reduce((a, b) => a + b, 0) / v.picksUs.length;
-      if (syn) parts.push({ label: 'współpraca z naszymi', v: 0.4 * syn });
+      const syn = v.picksUs.map(a => synergyShift(h, a, d.pairs, d.ht)).reduce((a, b) => a + b, 0) / v.picksUs.length;
+      if (syn) parts.push({ label: 'pasuje do naszych picków', v: 1.0 * syn });
+    }
+    // synergy with what our OTHER players will probably pick (never with the picker's own pool —
+    // that would only reward a player for having several heroes)
+    const others = ourFuture.filter(f => f.key !== best!.p.key && f.heroes.length);
+    if (wOurs && others.length) {
+      const syn = others.reduce((a, f) => a + f.heroes.reduce((s, [x, p]) => s + (x === h ? 0 : p * synergyShift(h, x, d.pairs, d.ht)), 0), 0) / others.length;
+      if (syn) parts.push({ label: 'pasuje do tego, czym pewnie zagramy', v: wOurs * syn });
     }
     const want = enemyWant.get(h) ?? 0;
     if (want > 0.01) parts.push({ label: 'zabiera im bohatera', v: wDeny * Math.min(0.12, want * 0.8) });
     const m = d.meta.get(h);
-    if (m) parts.push({ label: 'meta', v: 0.5 * (m.wr - 0.5) + 0.02 * m.contest });
+    if (m) parts.push({ label: 'meta', v: 0.2 * (m.wr - 0.5) + 0.008 * m.contest });
     if (k <= 1 && fits >= 2) parts.push({ label: 'elastyczny — ukrywa role', v: 0.012 * (fits - 1) });
     const score = parts.reduce((a, p) => a + p.v, 0);
     out.push({ hero: h, score, player: best, parts });
@@ -601,6 +758,7 @@ export function onePerPlayer(list: Suggestion[], n = 5): Suggestion[] {
 export function suggestBan(d: DraftInput, v: DraftView): Suggestion[] {
   const out: Suggestion[] = [];
   const timing = banTiming(d, v, 'us');
+  const aimed = aimedCounts(d, 'us');
   const ourBest = new Map<number, number>();
   for (const h of d.meta.keys()) ourBest.set(h, Math.max(0, ...v.freeUs.map(pm => handValue(pm, h, d.fit))));
   for (const h of d.meta.keys()) {
@@ -611,7 +769,7 @@ export function suggestBan(d: DraftInput, v: DraftView): Suggestion[] {
       const l = pm.like.get(h) ?? 0;
       const conc = Math.max(...pm.like.values()); // one-trick players make bans worth more
       const t0 = l * Math.max(0, pm.strength(h) - 0.42) * (1 + conc * 2) * 3;
-      const t = t0 * (timing.get(pm.p.key)?.w ?? 1);
+      const t = t0 * (timing.get(pm.p.key)?.w ?? 1) * Math.pow(SPREAD, aimed.get(pm.p.key) ?? 0);
       threat += t; if (t > wv) { wv = t; who = pm; raw = t0; }
     }
     if (threat > 0.0005 && who) {
@@ -619,11 +777,17 @@ export function suggestBan(d: DraftInput, v: DraftView): Suggestion[] {
       parts.push({ label: `odbiera: ${who.p.name} — ${Math.round(now * 100)}% że wybiera przed naszymi następnymi banami`, v: threat });
     }
     if (v.picksUs.length) {
-      const danger = v.picksUs.map(a => counterShift(h, a, d.mu, d.pairs).v).reduce((a, b) => a + b, 0) / v.picksUs.length;
-      if (danger > 0) parts.push({ label: 'kontruje nasze picki', v: danger * 1.2 });
+      const danger = v.picksUs.map(a => counterShift(h, a, d.mu, d.pairs, d.ht).v).reduce((a, b) => a + b, 0) / v.picksUs.length;
+      if (danger > 0) parts.push({ label: 'kontruje nasze picki', v: danger * 1.6 });
     }
+    if (v.picksThem.length) {
+      const syn = v.picksThem.map(a => synergyShift(h, a, d.pairs, d.ht)).reduce((a, b) => a + b, 0) / v.picksThem.length;
+      if (syn > 0) parts.push({ label: 'pasuje do ich picków', v: syn * 0.8 });
+    }
+    // a meta hero is only worth a ban if someone on their side would actually play it
+    const plaus = Math.min(1, v.freeThem.reduce((a, pm) => a + (pm.like.get(h) ?? 0), 0) * 8);
     const m = d.meta.get(h);
-    if (m) parts.push({ label: 'siła w mecie', v: 0.35 * Math.max(0, m.wr - 0.5) + 0.015 * m.contest });
+    if (m && plaus > 0.05) parts.push({ label: 'siła w mecie', v: plaus * (0.35 * Math.max(0, m.wr - 0.5) + 0.015 * m.contest) });
     const mine = ourBest.get(h) ?? 0;
     if (mine > 0.56) parts.push({ label: 'chcemy go sami', v: -(mine - 0.56) * 1.5 });
     out.push({ hero: h, score: parts.reduce((a, p) => a + p.v, 0), player: who, parts, when: who ? timing.get(who.p.key)?.now : undefined });
@@ -641,10 +805,11 @@ export function evaluate(d: DraftInput, v: DraftView): Evaluation {
   const sideVal = (picks: number[]) => picks.reduce((a, h) => { const pm = playersByKey.get(v.owner.get(h) ?? ''); return a + (pm ? handValue(pm, h, d.fit) - 0.5 : (d.meta.get(h)?.wr ?? 0.5) - 0.5); }, 0);
   const us = sideVal(v.picksUs); const them = sideVal(v.picksThem);
   let counter = 0; let n = 0;
-  for (const a of v.picksUs) for (const b of v.picksThem) { counter += counterShift(a, b, d.mu, d.pairs).v; n++; }
+  for (const a of v.picksUs) for (const b of v.picksThem) { counter += counterShift(a, b, d.mu, d.pairs, d.ht).v; n++; }
   const c = n ? (counter / n) * Math.min(5, Math.sqrt(n)) : 0;
+  const syn = (picks: number[]) => { let s = 0; let k = 0; for (let i = 0; i < picks.length; i++) for (let j = i + 1; j < picks.length; j++) { s += synergyShift(picks[i], picks[j], d.pairs, d.ht); k++; } return k ? (s / k) * Math.min(3, Math.sqrt(k)) : 0; };
   const base = 1 / (1 + Math.pow(10, (d.elo[1] - d.elo[0]) / 400));
-  const logit = Math.log(base / (1 - base)) + 3.2 * (us - them) + 2.4 * c;
+  const logit = Math.log(base / (1 - base)) + 3.2 * (us - them) + 2.4 * c + 1.6 * (syn(v.picksUs) - syn(v.picksThem));
   return { pUs: 1 / (1 + Math.exp(-logit)), us, them, counter: c, base };
 }
 
@@ -671,8 +836,9 @@ export function planDraft(d: DraftInput): PlanStep[] {
     } else { const g = predictBan(dd, v, 'them')[0]; if (g) st = { i, us, pick, hero: g.hero, player: g.player, reason: g.reason, p: g.p }; }
     if (!st) break;
     out.push(st);
-    const hero = st.hero;
-    dd = { ...dd, steps: dd.steps.map((x, k) => (k === i ? hero : x)) };
+    const hero = st.hero; const owner = st.pick ? st.player?.p.key : undefined;
+    // the player the plan names for a pick IS the one who gets it, so they aren't planned twice
+    dd = { ...dd, steps: dd.steps.map((x, k) => (k === i ? hero : x)), assign: owner && !dd.assign[hero] ? { ...dd.assign, [hero]: owner } : dd.assign };
   }
   return out;
 }

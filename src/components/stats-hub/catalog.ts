@@ -5,7 +5,7 @@
 import type { ComponentType } from 'react';
 import type { LucideIcon } from 'lucide-react';
 import {
-  ArrowUpDown, Award, Ban, ChartCandlestick, ChartNoAxesColumn, CircleHelp, Clapperboard, Crosshair, Crown, Fingerprint,
+  ArrowUpDown, Award, Ban, ChartCandlestick, ChartNoAxesColumn, CircleHelp, Clapperboard, ClipboardList, Crosshair, Crown, Fingerprint,
   Flag, Flame, FlaskConical, Grid3x3, History, Layers, LayoutGrid, ListOrdered, Map as MapIcon, Medal, Sparkles, Swords,
   TrendingUp, Trophy, UserSearch, Users,
 } from 'lucide-react';
@@ -80,7 +80,7 @@ export const ADVANCED = { id: 'zaawansowane', title: 'Zaawansowane', icon: Flask
  * not one of PAGES: it loads its own data per match, so the preloader leaves it alone.
  */
 export const MATCH_PREP = {
-  id: 'przygotowanie', title: 'Przygotowanie do meczu', blurb: 'Nowe narzędzie dla kapitanów', icon: Crosshair,
+  id: 'przygotowanie', title: 'Przygotowanie do meczu', blurb: 'Nowe narzędzie dla kapitanów', icon: ClipboardList,
   load: () => import('@/components/draft-prep/pages/P2Briefing'),
 } as const;
 

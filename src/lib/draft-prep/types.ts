@@ -39,3 +39,16 @@ export interface DpMeta {
   patches: Array<{ name: string; start: number }>;
   heroes: Array<{ id: number; cm: boolean; proPick: number; proWin: number; proBan: number; hiPick: number; hiWin: number; pubPick: number; pubWin: number }>;
 }
+
+/**
+ * Hero data from STRATZ, fetched by an admin (on tournament creation and from the admin panel —
+ * about once a month is plenty): games per position, and per hero pair the win-rate shift when
+ * facing each other and when on the same team.
+ */
+export interface DpHeroData {
+  updatedAt: string | null;
+  /** hero → games at positions 1-5 */
+  pos: Record<string, number[]>;
+  /** hero → [otherHero, vs shift %, with shift %, games against each other] */
+  mu: Record<string, Array<[number, number, number, number]>>;
+}

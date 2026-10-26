@@ -6,7 +6,7 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ChevronRight, Crosshair } from 'lucide-react';
+import { ChevronRight, ClipboardList } from 'lucide-react';
 import { useTournament } from '@/context/TournamentContext';
 import type { Model } from '@/lib/stats-lab/derive';
 import { opponentOf } from '@/lib/stats-lab/derive';
@@ -439,7 +439,7 @@ export function PrepTile({ model, className, style }: { model: Model; className?
       <div className="relative h-full flex flex-col justify-between max-w-[74%]">
         <span className="self-start whitespace-nowrap text-[9px] font-bold uppercase tracking-[0.2em] px-2 py-0.5 rounded" style={{ background: mix(C.secondary, 30), color: onDark(C.secondary, 40) }}>{PREP_COPY.badge}</span>
         <div>
-          <div className="font-logik-extended-bold uppercase text-[15px] leading-tight flex items-center gap-2" style={font}><Crosshair className="w-4 h-4 shrink-0" />{PREP_COPY.title}</div>
+          <div className="font-logik-extended-bold uppercase text-[15px] leading-tight flex items-center gap-2" style={font}><ClipboardList className="w-4 h-4 shrink-0" />{PREP_COPY.title}</div>
           <div className="text-xs text-white/75 mt-1 leading-snug">{PREP_COPY.line}</div>
         </div>
         <span className="text-[11px] font-bold uppercase tracking-widest flex items-center gap-1 group-hover:gap-2 transition-all" style={{ color: onDark(C.secondary) }}>{PREP_COPY.cta} <ChevronRight className="w-3.5 h-3.5" /></span>

@@ -19,6 +19,7 @@ import { cn } from '@/lib/utils';
 import { createTournament, checkSlugClaim } from '@/lib/api/tournaments';
 import { CreatorAccessGuard, useCreatorAccess } from '@/components/creator/CreatorAccessGuard';
 import { useAuth } from '@/context/AuthContext';
+import { refreshHeroDataSteps } from '@/lib/draft-prep/refresh-client';
 
 // Import step components
 import { BasicInfoStep } from '@/components/creator/steps/BasicInfoStep';
@@ -124,6 +125,10 @@ function NewTournamentContent() {
       });
 
       console.log('Tournament created:', tournamentId);
+
+      // Hero data for the match-prep tool (STRATZ); skipped server-side when it is under a week old.
+      // Not awaited: it keeps running in the background while the admin panel opens.
+      user.getIdToken().then(token => refreshHeroDataSteps(token, tournamentId)).catch(err => console.warn('[creator] hero data refresh failed:', err));
 
       // Redirect to tournament admin page (or draft preview)
       router.push(`/${basicInfo.slug}/admin?welcome=true`);

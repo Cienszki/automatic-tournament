@@ -104,7 +104,7 @@ export function getHomeSections({ pickemEnabled, hasTeam }: HomeSectionOptions):
  * `?view=` keys that open a view inside the stats section rather than a section of their own
  * (key → stats-hub catalog id). Rankings used to be a section; old links still land on it.
  */
-export const STATS_VIEW_KEYS: Record<string, string> = { rankings: 'rankingi' };
+export const STATS_VIEW_KEYS: Record<string, string> = { rankings: 'rankingi', prep: 'przygotowanie' };
 
 /**
  * Section index for a view key (`?view=` values and navbar targets), or undefined when the

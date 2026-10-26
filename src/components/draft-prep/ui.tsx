@@ -7,11 +7,12 @@ import React, { useEffect, useMemo, useState } from 'react';
 import * as Popover from '@radix-ui/react-popover';
 import * as TooltipPrimitive from '@radix-ui/react-tooltip';
 import { motion } from 'framer-motion';
+import { Search } from 'lucide-react';
 import { Avatar, C, HeroImg, LabEmbedded, TeamLogo, Tip, TipBody, ink, mix, useHeaderFont, useSize } from '@/components/stats-lab/kit';
 import { ATTR_COLOR, heroAttr, heroName, type HeroAttr } from '@/lib/stats-lab/heroes';
 import {
-  ROLE_SHORT, SOURCES, SOURCE_LABEL, WINDOWS, WINDOW_LABEL, poolRows, rankName,
-  type Guess, type PlayerModel, type Source, type Suggestion,
+  DATA_LABEL, ROLE_SHORT, SOURCES, SOURCE_LABEL, WINDOWS, WINDOW_LABEL, dataLevel, poolRows, rankName, roleLabel,
+  type DataLevel, type Guess, type PlayerModel, type Source, type Suggestion,
 } from '@/lib/draft-prep/engine';
 import type { DpTeam } from '@/lib/draft-prep/types';
 import { DraftPrepProvider, useDP, type Slot } from './state';
@@ -32,7 +33,7 @@ export function PrepFrame({ children }: { children: React.ReactNode }) {
     <DraftPrepProvider>
       <TooltipPrimitive.Provider delayDuration={120} skipDelayDuration={60}>
         {embedded ? (
-          <div className="h-full min-h-0 overflow-hidden flex flex-col site-gutter lg:pr-14 py-3" style={{ color: C.text }}>
+          <div className="h-full min-h-0 max-lg:overflow-y-auto lg:overflow-hidden flex flex-col site-gutter py-3 lg:[padding-right:max(3.5rem,calc((100%_-_var(--site-max))_/_2_+_var(--site-gutter)))]" style={{ color: C.text }}>
             <Gate>{children}</Gate>
           </div>
         ) : (
@@ -68,7 +69,7 @@ export function TeamSelect({ value, onChange, exclude, label, side }: { value: D
         <button type="button" className={`group flex items-center gap-3 text-left ${side === 'them' ? 'flex-row-reverse text-right' : ''}`}>
           <TeamLogo team={value} size={52} />
           <span className="min-w-0">
-            <span className="block text-[10px] uppercase tracking-[0.3em]" style={{ color: C.muted }}>{label} ▾</span>
+            <span className={`flex items-center gap-1.5 whitespace-nowrap text-[11px] font-bold uppercase tracking-[0.15em] ${side === 'them' ? 'justify-end' : ''}`} style={{ color: C.muted }}>{label}<span className="px-1.5 rounded normal-case tracking-normal whitespace-nowrap group-hover:text-white" style={{ background: ink(10), color: C.text }}>zmień ▾</span></span>
             <span className="block font-logik-extended-bold uppercase truncate max-w-[300px] group-hover:underline" style={{ color: side === 'us' ? C.radiant : C.dire, fontSize: vh(18, 2.6, 28), ...font }}>{value?.name ?? '—'}</span>
           </span>
         </button>
@@ -87,8 +88,8 @@ export function TeamSelect({ value, onChange, exclude, label, side }: { value: D
   );
 }
 
-/** Our team · vs · the opponent, the match, and who starts the draft */
-export function MatchBar({ draft = true, children }: { draft?: boolean; children?: React.ReactNode }) {
+/** Our team · vs · the opponent, the match, and who starts the draft (on every step: the plan and the cheat sheet depend on it) */
+export function MatchBar({ children }: { children?: React.ReactNode }) {
   const dp = useDP();
   const when = dp.match?.scheduledFor ? new Date(dp.match.scheduledFor).toLocaleString('pl-PL', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : null;
   return (
@@ -98,42 +99,45 @@ export function MatchBar({ draft = true, children }: { draft?: boolean; children
         <span className="text-xl font-bold" style={{ color: C.muted }}>vs</span>
         <span className="text-[11px] whitespace-nowrap" style={{ color: C.muted }}>{dp.match ? `${when ?? 'termin nieustalony'}${dp.match.bestOf ? ` · Bo${dp.match.bestOf}` : ''}` : 'bez zaplanowanego meczu'}</span>
       </div>
-      <TeamSelect side="them" label={dp.match ? 'Najbliższy rywal' : 'Rywal'} value={dp.them} onChange={dp.setThem} exclude={dp.us?.id} />
+      <div className="flex flex-col items-end">
+        <TeamSelect side="them" label={dp.them && dp.them.id === dp.nextOpp ? 'Najbliższy rywal' : 'Rywal'} value={dp.them} onChange={dp.setThem} exclude={dp.us?.id} />
+        {dp.nextOpp && dp.them?.id !== dp.nextOpp && <button type="button" onClick={() => dp.setThem(dp.nextOpp!)} className="text-[11px] underline underline-offset-2" style={{ color: C.secondary }}>↺ wróć do najbliższego rywala: {dp.teams.find(t => t.id === dp.nextOpp)?.name}</button>}
+      </div>
+      {!dp.loggedIn && <span className="hidden xl:block text-xs max-w-[220px] leading-snug" style={{ color: C.muted }}>Zaloguj się, a narzędzie samo wybierze twoją drużynę i najbliższy mecz.</span>}
       <div className="flex-1" />
       <LineupEditor />
       {children}
-      {draft && (
-        <Tip content="Drużyna rozpoczynająca banuje i wybiera pierwsza">
-          <div className="flex items-center gap-4 text-sm font-bold uppercase tracking-wider">
-            {[true, false].map(v => (
-              <button key={String(v)} type="button" onClick={() => dp.setUsFirst(v)} className="pb-1 border-b-2 transition-colors whitespace-nowrap"
-                style={{ borderColor: dp.usFirst === v ? (v ? C.radiant : C.dire) : 'transparent', color: dp.usFirst === v ? C.heading : C.muted }}>{v ? 'Zaczynamy my' : 'Zaczynają oni'}</button>
-            ))}
-          </div>
-        </Tip>
-      )}
+      <Tip content={<TipBody title="Kto zaczyna draft?">Drużyna, która zaczyna, ma pierwszy ban i pierwszy pick. Ustala się to w poczekalni tuż przed grą, więc przygotuj oba warianty — ściąga zawiera oba.</TipBody>}>
+        <div className="flex items-center gap-4 text-sm font-bold uppercase tracking-wider">
+          {[true, false].map(v => (
+            <button key={String(v)} type="button" onClick={() => dp.setUsFirst(v)} className="pb-1 border-b-2 transition-colors whitespace-nowrap"
+              style={{ borderColor: dp.usFirst === v ? (v ? C.radiant : C.dire) : 'transparent', color: dp.usFirst === v ? C.heading : C.muted }}>{v ? 'Zaczynamy my' : 'Zaczynają oni'}</button>
+          ))}
+        </div>
+      </Tip>
     </div>
   );
 }
 
 // ── Filters ──────────────────────────────────────────────────────────────
 
-export function Filters() {
+export function Filters({ windows = true }: { windows?: boolean }) {
   const { window, setWindow, sources, toggleSource } = useDP();
   return (
     <div className="flex items-center gap-5 text-sm font-bold">
-      <div className="flex items-center gap-3">
+      {windows && <div className="flex items-center gap-3">
         {WINDOWS.map(w => (
           <Tip key={w} content={w === 'patch' ? 'Tylko gry z bieżącego patcha' : w === 'all' ? 'Cała historia' : `Ostatnie ${w === '6m' ? '6 miesięcy' : '3 miesiące'}`}>
             <button type="button" onClick={() => setWindow(w)} className="pb-0.5 border-b-2" style={{ borderColor: window === w ? C.secondary : 'transparent', color: window === w ? C.heading : C.muted }}>{WINDOW_LABEL[w]}</button>
           </Tip>
         ))}
-      </div>
+      </div>}
       <div className="flex items-center gap-3">
+        {!windows && <span className="text-xs font-normal" style={{ color: C.muted }}>Licz gry z:</span>}
         {SOURCES.map(s => {
           const on = sources.includes(s);
           return (
-            <Tip key={s} content={s === 'T' ? 'Gry w tym turnieju (pełny draft)' : s === 'L' ? 'Lobby ligowe i turniejowe (OpenDota + STRATZ), poza tym turniejem' : 'Gry publiczne (ranked / normal), ze zgłoszonymi smurfami'}>
+            <Tip key={s} content={s === 'T' ? 'Gry w tym turnieju (pełny draft)' : s === 'L' ? 'Inne mecze ligowe i turniejowe (OpenDota + STRATZ), poza tym turniejem' : 'Rankedy i zwykłe gry publiczne, razem ze zgłoszonymi smurfami'}>
               <button type="button" onClick={() => toggleSource(s)} className="flex items-center gap-1.5" style={{ color: on ? C.heading : C.muted, opacity: on ? 1 : 0.6 }}>
                 <span className="w-2.5 h-2.5 rounded-full" style={{ background: on ? SRC_COLOR[s] : 'transparent', boxShadow: `inset 0 0 0 2px ${SRC_COLOR[s]}` }} />{SOURCE_LABEL[s]}
               </button>
@@ -197,7 +201,7 @@ export function SlotChanger({ side, i, children }: { side: 'us' | 'them'; i: num
           {past.length > 0 && <div className="text-[10px] uppercase tracking-widest text-white/50 mt-2">Grali już jako stand-in dla {team?.name}</div>}
           {past.slice(0, 6).map(x => <button key={x.sid32} type="button" onClick={() => put({ key: x.sid32, sid32: x.sid32, sid64: String(BigInt(x.sid32) + STEAM64), name: x.name, role: cur?.role, origin: 'manual', replaces: cur?.origin === 'roster' ? cur.name : cur?.replaces })} className={opt}>{x.name}<span className="ml-auto text-white/50 text-xs">{count(x.n, 'mecz', 'mecze', 'meczów')}</span></button>)}
           {dp.benchOf(side).length > 0 && <div className="text-[10px] uppercase tracking-widest text-white/50 mt-2">Z rezerwy</div>}
-          {dp.benchOf(side).map(b => <button key={b.key} type="button" onClick={() => put({ ...b, role: cur?.role, replaces: cur?.name })} className={opt}><Avatar player={b} size={28} />{b.name}<span className="text-white/50 text-xs">{b.role}</span></button>)}
+          {dp.benchOf(side).map(b => <button key={b.key} type="button" onClick={() => put({ ...b, role: cur?.role, replaces: cur?.name })} className={opt}><Avatar player={b} size={28} />{b.name}<span className="text-white/50 text-xs">{roleLabel(b.role)}</span></button>)}
           <div className="text-[10px] uppercase tracking-widest text-white/50 mt-2">Ktoś inny — wklej link Steam / Dotabuff / OpenDota albo wpisz nick</div>
           <input autoFocus value={q} onChange={e => setQ(e.target.value)} onKeyDown={e => e.stopPropagation()} placeholder="https://steamcommunity.com/id/…" className="bg-transparent border-b border-white/25 focus:border-white/60 outline-none px-1 py-1.5 text-sm" />
           {vanity === '' && <div className="text-xs text-red-300 px-2">Nie udało się odczytać tego linku Steam.</div>}
@@ -225,7 +229,7 @@ export function OwnerPicker({ hero, side, children }: { hero: number; side: 'us'
           {owner && players.map((pm, i) => (
             <button key={pm.p.key} type="button" onClick={() => { dp.setAssign(hero, pm.p.key); setOpen(false); }} className="flex items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-white/10"
               style={dp.input && dp.input.assign[hero] === pm.p.key ? { background: 'rgba(255,255,255,0.12)' } : undefined}>
-              <Avatar player={line[i]} size={26} /><span className="truncate">{pm.p.name}</span><span className="ml-auto text-xs text-white/50">{pm.p.role}</span>
+              <Avatar player={line[i]} size={26} /><span className="truncate">{pm.p.name}</span><span className="ml-auto text-xs text-white/50">{roleLabel(pm.p.role)}</span>
             </button>
           ))}
         </Popover.Content>
@@ -237,13 +241,27 @@ export function OwnerPicker({ hero, side, children }: { hero: number; side: 'us'
 /** Thin bar: how much each data source counts for this player */
 export function ShareBar({ pm, height = 4, width }: { pm: PlayerModel; height?: number; width?: number | string }) {
   return (
-    <Tip content={<TipBody title={`Na czym opieramy ${pm.p.name}`}>{SOURCES.map(s => `${SOURCE_LABEL[s]} ${Math.round(pm.p.share[s] * 100)}%`).join(' · ')}<br />{pm.p.why.join(' ')}</TipBody>}>
-      <div className="flex rounded-full overflow-hidden cursor-help" style={{ height, width: width ?? '100%', background: ink(10) }}>
-        {SOURCES.map(s => <span key={s} style={{ width: `${pm.p.share[s] * 100}%`, background: SRC_COLOR[s] }} />)}
-      </div>
-    </Tip>
+    <div className="flex rounded-full overflow-hidden" style={{ height, width: width ?? '100%', background: ink(10) }}>
+      {SOURCES.map(s => <span key={s} style={{ width: `${pm.p.share[s] * 100}%`, background: SRC_COLOR[s] }} />)}
+    </div>
   );
 }
+
+/** The one explanation of a player's data, shown when hovering anywhere on their row */
+export function PlayerTip({ pm, children }: { pm?: PlayerModel; children: React.ReactElement }) {
+  if (!pm) return children;
+  const lvl = dataLevel(pm.p);
+  return (
+    <Tip content={(
+      <TipBody title={`${pm.p.name}: ${DATA_LABEL[lvl]}`}>
+        <span className="block mb-1">{SOURCES.map(s => `${SOURCE_LABEL[s]} ${Math.round(pm.p.share[s] * 100)}%`).join(' · ')}</span>
+        {pm.p.why.join(' ')}{lvl === 'none' || lvl === 'low' ? ' Przewidywania dla tego gracza traktuj orientacyjnie.' : ''}
+      </TipBody>
+    )}>{children}</Tip>
+  );
+}
+
+export const dotabuff = (sid32: string) => `https://www.dotabuff.com/players/${sid32}`;
 
 /** Manually added accounts start as "Gracz 123"; once their history loads, use their Steam name */
 export function displayName(s: Slot, h: unknown): string {
@@ -291,26 +309,30 @@ export function PlayerRow({ side, i, pm, avatar = 60, children, mirror, why }: {
   const s = (side === 'us' ? dp.lineUs : dp.lineThem)[i];
   const h = s ? dp.histories.get(s.key) : undefined;
   if (!s) return null;
-  const meta = h === 'loading' ? 'wczytuję historię…' : h === 'error' ? 'brak danych z OpenDota/STRATZ' : typeof h === 'object' ? (h.rows.length ? `${rankName(h.rankTier) ?? 'bez rangi'} · ${count(h.rows.length, 'gra', 'gry', 'gier')}${h.accounts > 1 ? ` · ${count(h.accounts, 'konto', 'konta', 'kont')}` : ''}` : 'brak publicznych gier') : '';
+  const loading = h === 'loading' || h == null;
+  const meta = loading ? 'wczytuję historię gier…' : h === 'error' ? 'OpenDota / STRATZ nie odpowiada' : typeof h === 'object' ? (h.rows.length ? `${rankName(h.rankTier) ?? 'bez rangi'} · ${count(h.rows.length, 'gra', 'gry', 'gier')}${h.accounts > 1 ? ` · ${count(h.accounts, 'konto', 'konta', 'kont')}` : ''}` : 'brak publicznych gier') : '';
+  const hidden = typeof h === 'object' && !h.rows.length;
   return (
+    <PlayerTip pm={pm}>
     <div className={`flex-1 min-h-0 flex items-center gap-3 border-b ${mirror ? 'flex-row-reverse text-right' : ''}`} style={{ borderColor: RULE }}>
       <span className="font-logik-extended-bold w-6 text-center shrink-0" style={{ color: side === 'us' ? C.radiant : C.dire, fontSize: vh(16, 2.4, 26), ...font }}>{ROLE_SHORT[s.role ?? ''] ?? '?'}</span>
       <Avatar player={s} size={avatar} />
       <div className="min-w-[84px] flex-1 basis-0">
         <div className="flex items-baseline gap-2 min-w-0">
-          <SlotChanger side={side} i={i}>
-            <button type="button" className="truncate font-bold hover:underline" style={{ color: C.heading, fontSize: vh(15, 2.1, 22) }}>{displayName(s, h)}</button>
-          </SlotChanger>
-          <SlotChanger side={side} i={i}>
-            <button type="button" className="shrink-0 font-bold uppercase tracking-wider underline underline-offset-2 opacity-70 hover:opacity-100" style={{ color: C.secondary, fontSize: vh(9, 1.15, 12) }}>zmień</button>
-          </SlotChanger>
+          <a href={dotabuff(s.sid32)} target="_blank" rel="noopener noreferrer" className="truncate font-bold hover:underline" style={{ color: C.heading, fontSize: vh(15, 2.1, 22) }}>{displayName(s, h)}</a>
         </div>
-        <div className="truncate" style={{ color: s.origin !== 'roster' ? C.secondary : C.muted, fontSize: vh(11, 1.4, 14) }}>{s.origin !== 'roster' ? `${ORIGIN_LABEL[s.origin]}${s.replaces ? ` za ${s.replaces}` : ''} · ` : ''}{meta}</div>
-        {pm && <div className={`mt-1 ${mirror ? 'ml-auto' : ''}`} style={{ width: '70%' }}><ShareBar pm={pm} /></div>}
-        {pm && why && <div className="mt-1 line-clamp-2" style={{ color: C.text, fontSize: vh(11, 1.45, 15) }}>{pm.p.why.join(' ')}</div>}
+        <div className="truncate" style={{ color: s.origin !== 'roster' ? C.secondary : C.muted, fontSize: vh(11, 1.4, 14) }}>{roleLabel(s.role)} · {s.origin !== 'roster' ? `${ORIGIN_LABEL[s.origin]}${s.replaces ? ` za ${s.replaces}` : ''} · ` : ''}{meta}</div>
+        {pm && why && !loading && (
+          <div className={`mt-1.5 flex items-center gap-3 min-w-0 ${mirror ? 'flex-row-reverse' : ''}`}>
+            <DataChip pm={pm} />
+            <span className="w-[38%] max-w-[220px] shrink-0"><ShareBar pm={pm} height={5} /></span>
+            {hidden && <span className="min-w-0 truncate" style={{ color: C.muted, fontSize: vh(10, 1.3, 13) }}>Profil prywatny? Gracz musi włączyć w Docie „Expose Public Match Data”.</span>}
+          </div>
+        )}
       </div>
       {children}
     </div>
+    </PlayerTip>
   );
 }
 
@@ -344,47 +366,62 @@ export function PoolList({ pm, limit = 8 }: { pm: PlayerModel; limit?: number })
 
 // ── Heroes grid ─────────────────────────────────────────────────────────────
 
-const ATTRS: Array<{ a: HeroAttr; label: string }> = [{ a: 'str', label: 'Siła' }, { a: 'agi', label: 'Zręczność' }, { a: 'int', label: 'Inteligencja' }, { a: 'all', label: 'Uniwersalni' }];
+const ATTRS: Array<{ a: HeroAttr; label: string; icon: string }> = [
+  { a: 'str', label: 'Siła', icon: 'strength' }, { a: 'agi', label: 'Zręczność', icon: 'agility' },
+  { a: 'int', label: 'Inteligencja', icon: 'intelligence' }, { a: 'all', label: 'Uniwersalni', icon: 'universal' },
+];
+const ATTR_ICON = (name: string) => `https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/icons/hero_${name}.png`;
 
 export interface Mark { color: string; label?: string; strength: number }
 
-/** Every CM hero by attribute, tiles as large as the space allows; `mark` highlights some */
-export function HeroGrid({ onPick, mark, tile: maxTile = 80, search = true, columns }: { onPick: (h: number) => void; mark?: (h: number) => Mark | null; tile?: number; search?: boolean; columns?: boolean }) {
+/**
+ * Every CM hero laid out like the game's hero grid: four attribute columns side by side, portrait
+ * tiles in alphabetical order, as large as the space allows; `mark` highlights some.
+ */
+export function HeroGrid({ onPick, mark, search = true }: { onPick: (h: number) => void; mark?: (h: number) => Mark | null; tile?: number; search?: boolean }) {
   const { input } = useDP();
   const [q, setQ] = useState('');
   const heroes = useMemo(() => [...(input?.meta.keys() ?? [])].sort((a, b) => heroName(a).localeCompare(heroName(b))), [input]);
   const taken = useMemo(() => new Set(input?.steps.filter((x): x is number => x != null)), [input]);
   const [box, size] = useSize<HTMLDivElement>();
   const counts = ATTRS.map(g => heroes.filter(h => heroAttr(h) === g.a).length);
-  const gap = 3;
-  let tile = maxTile;
+  const gap = 3; const colGap = 14; const head = 26;
+  // the most tiles per row that still fit the height: wider tiles first
+  let per = 4; let tileW = 40;
   if (size.w > 0 && size.h > 0) {
-    for (tile = maxTile; tile > 18; tile -= 1) {
-      const colW = columns ? (size.w - 3 * 10) / 4 : size.w - 12;
-      const per = Math.max(1, Math.floor((colW + gap) / (tile + gap)));
-      const rows = counts.map(n => Math.ceil(n / per));
-      const h = columns ? Math.max(...rows) * (tile * 0.56 + gap) + 8 : rows.reduce((a, r) => a + r * (tile * 0.56 + gap), 0) + 8 * 3;
-      if (h <= size.h) break;
+    const colW = (size.w - 3 * colGap) / 4;
+    for (per = 4; per <= 12; per++) {
+      tileW = (colW - (per - 1) * gap) / per;
+      const rows = Math.ceil(Math.max(...counts) / per);
+      if (head + rows * (tileW * 1.33 + gap) <= size.h) break;
     }
   }
   const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
   const match = (h: number) => !q || norm(heroName(h)).includes(norm(q));
   return (
     <div className="flex flex-col gap-2 min-h-0 h-full">
-      {search && <input value={q} onChange={e => setQ(e.target.value)} onKeyDown={e => { e.stopPropagation(); if (e.key === 'Enter') { const f = heroes.find(h => match(h) && !taken.has(h)); if (f != null) { onPick(f); setQ(''); } } }}
-        placeholder="Szukaj bohatera — Enter wybiera" className="shrink-0 bg-transparent border-b outline-none px-1 py-1.5" style={{ borderColor: ink(18), color: C.heading, fontSize: vh(13, 1.7, 16) }} />}
-      <div ref={box} className={columns ? 'flex-1 min-h-0 grid grid-cols-4 gap-[10px]' : 'flex-1 min-h-0 flex flex-col gap-2'}>
+      {search && (
+        <label className="shrink-0 flex items-center gap-2 border-b px-1 py-1.5" style={{ borderColor: ink(25) }}>
+          <Search className="w-4 h-4 shrink-0" style={{ color: C.text }} />
+          <input value={q} onChange={e => setQ(e.target.value)} onKeyDown={e => { e.stopPropagation(); if (e.key === 'Enter') { const f = heroes.find(h => match(h) && !taken.has(h)); if (f != null) { onPick(f); setQ(''); } } }}
+            placeholder="Szukaj bohatera — Enter wybiera" className="flex-1 min-w-0 bg-transparent outline-none" style={{ color: C.heading, fontSize: vh(13, 1.7, 16) }} />
+        </label>
+      )}
+      <div ref={box} className="flex-1 min-h-0 grid grid-cols-4" style={{ columnGap: colGap }}>
         {ATTRS.map(g => (
-          <div key={g.a} className={columns ? 'flex flex-col gap-1.5 min-h-0' : 'flex gap-2'}>
-            <div className={columns ? 'h-[3px] rounded-full shrink-0' : 'w-[3px] rounded-full shrink-0'} style={{ background: ATTR_COLOR[g.a] }} />
-            <div className="flex flex-wrap content-start" style={{ gap }}>
+          <div key={g.a} className="flex flex-col min-h-0">
+            <div className="shrink-0 flex items-center gap-1.5 font-bold uppercase tracking-[0.2em] text-[11px]" style={{ height: head, color: ATTR_COLOR[g.a] }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={ATTR_ICON(g.icon)} alt="" className="w-4 h-4" />{g.label}
+            </div>
+            <div className="grid content-start" style={{ gridTemplateColumns: `repeat(${per}, minmax(0, 1fr))`, gap }}>
               {heroes.filter(h => heroAttr(h) === g.a).map(h => {
                 const t = taken.has(h); const m = !t ? mark?.(h) : null; const hit = match(h);
                 return (
                   <Tip key={h} content={<TipBody title={heroName(h)}>{m?.label ?? (t ? 'już w drafcie' : '')}</TipBody>}>
-                    <motion.button type="button" disabled={t} onClick={() => onPick(h)} className="relative rounded-sm overflow-hidden disabled:cursor-not-allowed" whileHover={t ? undefined : { scale: 1.15, zIndex: 5 }}
-                      style={{ width: tile, height: tile * 0.56, opacity: t ? 0.12 : hit ? 1 : 0.25, boxShadow: m ? `0 0 0 ${1 + Math.round(m.strength * 2)}px ${m.color}` : undefined }}>
-                      <HeroImg heroId={h} className="w-full h-full" />
+                    <motion.button type="button" disabled={t} onClick={() => onPick(h)} className="relative rounded-sm overflow-hidden disabled:cursor-not-allowed" whileHover={t ? undefined : { scale: 1.12, zIndex: 5 }}
+                      style={{ aspectRatio: '3 / 4', opacity: t ? 0.12 : hit ? 1 : 0.2, boxShadow: m ? `0 0 0 ${1 + Math.round(m.strength * 2)}px ${m.color}` : undefined }}>
+                      <HeroImg heroId={h} className="w-full h-full" style={{ objectPosition: '50% 30%' }} />
                       {m && <span className="absolute inset-0" style={{ background: `linear-gradient(0deg, ${mix(m.color, Math.round(20 + m.strength * 40))}, transparent 70%)` }} />}
                     </motion.button>
                   </Tip>
@@ -416,7 +453,7 @@ export function DraftStrip({ size: maxSize = 64, onStepClick }: { size?: number;
           <Tip key={i} content={`${i + 1}. ${st.pick ? 'pick' : 'ban'} — ${us ? 'my' : 'oni'}${h != null ? ` · ${heroName(h)} (kliknij, by cofnąć do tego kroku)` : ''}`}>
             <button type="button" onClick={() => onStepClick?.(i)} className="relative shrink-0 rounded-sm overflow-hidden flex items-center justify-center"
               style={{ width: w, height: w * 0.56, background: mix(us ? C.radiant : C.dire, h != null ? 10 : 22), transform: `translateY(${us ? -5 : 5}px)`, boxShadow: cur ? `0 0 0 2px ${C.secondary}, 0 0 16px ${mix(C.secondary, 60)}` : undefined }}>
-              {h != null ? <HeroImg heroId={h} className="w-full h-full" style={{ filter: st.pick ? undefined : 'grayscale(1) brightness(0.5)' }} /> : <span className="font-bold" style={{ color: C.muted, fontSize: Math.max(9, size * 0.22) }}>{st.pick ? 'P' : 'B'}</span>}
+              {h != null ? <HeroImg heroId={h} className="w-full h-full" style={{ filter: st.pick ? undefined : 'grayscale(1) brightness(0.5)' }} /> : <span className="font-bold tracking-wider" style={{ color: C.muted, fontSize: Math.max(9, size * 0.2) }}>{st.pick ? 'PICK' : 'BAN'}</span>}
               {h != null && !st.pick && <span className="absolute inset-0 flex items-center justify-center font-bold" style={{ color: '#ff5d5d', fontSize: size * 0.4 }}>╳</span>}
             </button>
           </Tip>
@@ -434,12 +471,13 @@ export function useRewind() {
 
 // ── Suggestions / predictions (flat rows that fill their column) ─────────────
 
-export function SuggestionRow({ s, onPick, rank, ban }: { s: Suggestion; onPick?: (h: number) => void; rank: number; ban?: boolean }) {
+export function SuggestionRow({ s, onPick, rank, ban, range }: { s: Suggestion; onPick?: (h: number, owner?: string) => void; rank: number; ban?: boolean; /** lowest and highest score in the list, for the bar */ range: [number, number] }) {
+  const rel = range[1] > range[0] ? 0.15 + 0.85 * ((s.score - range[0]) / (range[1] - range[0])) : 1;
   const top = [...s.parts].sort((a, b) => Math.abs(b.v) - Math.abs(a.v)).slice(0, 2);
   const accent = ban ? C.loss : C.win;
   return (
     <Tip content={<TipBody title={heroName(s.hero)}>{s.parts.map(p => `${p.label}: ${p.v >= 0 ? '+' : ''}${(p.v * 100).toFixed(1)}`).join(' · ')}</TipBody>}>
-      <button type="button" onClick={() => onPick?.(s.hero)} className="flex-1 min-h-0 max-h-[84px] flex items-center gap-3 border-b text-left hover:bg-white/5"
+      <button type="button" onClick={() => onPick?.(s.hero, ban ? undefined : s.player?.p.key)} className="flex-1 min-h-0 max-h-[84px] flex items-center gap-3 border-b text-left hover:bg-white/5"
         style={{ borderColor: RULE, boxShadow: rank === 0 ? `inset 3px 0 0 ${accent}` : undefined, paddingLeft: rank === 0 ? 8 : 0 }}>
         <span className="w-5 text-right tabular-nums shrink-0" style={{ color: C.muted, fontSize: vh(12, 1.5, 15) }}>{rank + 1}</span>
         <HeroImg heroId={s.hero} className="rounded-sm shrink-0 h-[78%] max-h-[58px] aspect-video w-auto" style={{ filter: ban ? 'saturate(0.7)' : undefined }} />
@@ -447,7 +485,7 @@ export function SuggestionRow({ s, onPick, rank, ban }: { s: Suggestion; onPick?
           <span className="block font-bold truncate" style={{ color: C.heading, fontSize: vh(14, 2, 21) }}>{heroName(s.hero)}{s.player && !ban ? <span className="font-normal" style={{ color: C.muted }}> → {s.player.p.name}</span> : null}</span>
           <span className="block truncate" style={{ color: C.muted, fontSize: vh(11, 1.4, 14) }}>{top.map(p => p.label).join(' · ')}</span>
         </span>
-        <span className="font-bold tabular-nums shrink-0" style={{ color: rank === 0 ? accent : C.heading, fontSize: vh(14, 2, 20) }}>{(s.score * 100).toFixed(0)}</span>
+        <span className="w-14 h-1.5 rounded-full overflow-hidden shrink-0" style={{ background: ink(8) }} aria-label="siła propozycji"><span className="block h-full rounded-full" style={{ width: `${Math.round(rel * 100)}%`, background: rank === 0 ? accent : ink(45) }} /></span>
       </button>
     </Tip>
   );
@@ -461,7 +499,7 @@ export function GuessRow({ g, rank, onPick }: { g: Guess; rank: number; onPick?:
         <HeroImg heroId={g.hero} className="rounded-sm shrink-0 h-[78%] max-h-[58px] aspect-video w-auto" />
         <span className="flex-1 min-w-0">
           <span className="block font-bold truncate" style={{ color: C.heading, fontSize: vh(14, 2, 21) }}>{heroName(g.hero)}</span>
-          <span className="block truncate" style={{ color: C.muted, fontSize: vh(11, 1.4, 14) }}>{g.player ? `${g.player.p.name} · ` : ''}{g.reason}</span>
+          <span className="block truncate" style={{ color: C.muted, fontSize: vh(11, 1.4, 14) }}>{g.player && !g.reason.includes(g.player.p.name) ? `${g.player.p.name} · ` : ''}{g.reason}</span>
         </span>
         <span className="font-bold tabular-nums shrink-0" style={{ color: C.heading, fontSize: vh(14, 2, 20) }}>{Math.round(g.p * 100)}%</span>
       </button>
@@ -469,11 +507,11 @@ export function GuessRow({ g, rank, onPick }: { g: Guess; rank: number; onPick?:
   );
 }
 
-export function WinBar({ pUs, height = 12, label = true }: { pUs: number; height?: number; label?: boolean }) {
+export function WinBar({ pUs, height = 12, label = true, note = 'szacowana szansa' }: { pUs: number; height?: number; label?: boolean; note?: string }) {
   const font = useHeaderFont();
   return (
     <div className="w-full">
-      {label && <div className="flex justify-between items-end"><span className="font-logik-extended-bold tabular-nums" style={{ color: C.radiant, fontSize: vh(20, 3, 34), ...font }}>{Math.round(pUs * 100)}%</span><span className="text-[10px] uppercase tracking-[0.3em] pb-1" style={{ color: C.muted }}>szacowana szansa</span><span className="font-logik-extended-bold tabular-nums" style={{ color: C.dire, fontSize: vh(20, 3, 34), ...font }}>{Math.round((1 - pUs) * 100)}%</span></div>}
+      {label && <div className="flex justify-between items-end"><span className="font-logik-extended-bold tabular-nums" style={{ color: C.radiant, fontSize: vh(20, 3, 34), ...font }}>{Math.round(pUs * 100)}%</span><span className="text-[10px] uppercase tracking-[0.3em] pb-1 text-center" style={{ color: C.muted }}>{note}</span><span className="font-logik-extended-bold tabular-nums" style={{ color: C.dire, fontSize: vh(20, 3, 34), ...font }}>{Math.round((1 - pUs) * 100)}%</span></div>}
       <div className="w-full rounded-full overflow-hidden flex" style={{ height, background: C.dire }}><motion.div className="h-full" style={{ background: C.radiant }} animate={{ width: `${pUs * 100}%` }} transition={{ type: 'spring', stiffness: 120, damping: 20 }} /></div>
     </div>
   );
@@ -481,6 +519,37 @@ export function WinBar({ pUs, height = 12, label = true }: { pUs: number; height
 
 export function SourceLegend() {
   return <span className="flex gap-3 text-[11px]" style={{ color: C.muted }}>{SOURCES.map(s => <span key={s} className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{ background: SRC_COLOR[s] }} />{SOURCE_LABEL[s]}</span>)}</span>;
+}
+
+const LEVEL_COLOR: Record<DataLevel, string> = { none: '#ff6b6b', low: '#f2c94c', ok: '#9fb4c8', good: '#5fd38d' };
+
+/** How sure we are about a player — with the full reasoning on hover */
+export function DataChip({ pm, short }: { pm: PlayerModel; short?: boolean }) {
+  const lvl = dataLevel(pm.p);
+  return (
+    <span className="inline-flex items-center gap-1.5 shrink-0 whitespace-nowrap font-bold uppercase tracking-wider" style={{ color: LEVEL_COLOR[lvl], fontSize: vh(9, 1.15, 12) }}>
+      <span className="w-2 h-2 rounded-full" style={{ background: LEVEL_COLOR[lvl] }} />{short ? '' : DATA_LABEL[lvl]}
+    </span>
+  );
+}
+
+/** Too little data on the board to take percentages literally */
+export function useThinData() {
+  const dp = useDP();
+  const all = [...dp.players.us, ...dp.players.them];
+  return all.filter(pm => { const l = dataLevel(pm.p); return l === 'none' || l === 'low'; }).length >= 3;
+}
+
+/** Shown while the ten histories are still coming in */
+export function LoadBanner() {
+  const { progress } = useDP();
+  if (!progress.total || progress.done >= progress.total) return null;
+  return (
+    <div className="shrink-0 flex items-center gap-4 py-2" style={{ color: C.text, fontSize: vh(12, 1.5, 15) }}>
+      <span className="w-48 h-1.5 rounded-full overflow-hidden shrink-0" style={{ background: ink(10) }}><motion.span className="block h-full rounded-full" style={{ background: C.secondary }} animate={{ width: `${(progress.done / progress.total) * 100}%` }} /></span>
+      <span>Wczytuję historię gier graczy: {progress.done} z {progress.total}. Pierwsze otwarcie meczu może potrwać do minuty — potem jest szybko. Do tego czasu przewidywania są niepełne.</span>
+    </div>
+  );
 }
 
 /** Section label used across the pages */
