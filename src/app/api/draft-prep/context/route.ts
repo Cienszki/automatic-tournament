@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic';
 
 // Rosters, upcoming matches and standins change rarely; two minutes keeps standins fresh enough
 const cached = (tournamentId: string) =>
-  unstable_cache(() => buildContext(tournamentId === 'letnia' ? null : tournamentId), ['draft-prep-context-v2', tournamentId], { revalidate: 120 })();
+  unstable_cache(() => buildContext(tournamentId === 'letnia' ? null : tournamentId), ['draft-prep-context-v3', tournamentId], { revalidate: 120 })();
 
 export async function GET(request: Request) {
   const tournamentId = new URL(request.url).searchParams.get('tournamentId');

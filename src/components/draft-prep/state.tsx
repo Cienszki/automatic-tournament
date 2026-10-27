@@ -171,7 +171,9 @@ export function DraftPrepProvider({ children }: { children: React.ReactNode }) {
   const save = useCallback((patch: Partial<Saved>) => setSaved(s => { const n = { ...s, ...patch }; if (tid) writeSaved(tid, n); return n; }), [tid]);
   const choose = useCallback((p: Pick) => { setPick(p); if (tid) writePick(tid, p); }, [tid]);
 
-  const teams = useMemo(() => [...(ctx?.teams ?? [])].sort((a, b) => a.name.localeCompare(b.name)), [ctx]);
+  // Registration order, then name — the same order as the teams section
+  const teams = useMemo(() => [...(ctx?.teams ?? [])].sort((a, b) =>
+    (a.registeredAt ?? Infinity) - (b.registeredAt ?? Infinity) || a.name.localeCompare(b.name, 'pl') || a.id.localeCompare(b.id)), [ctx]);
   const captainTeam = teams.find(t => user && t.captainId === user.uid) ?? null;
   // a match picked outside the tool: our side is the given one, else the captain's team when it plays
   useEffect(() => {

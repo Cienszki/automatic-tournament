@@ -13,7 +13,7 @@ export interface DpPlayer {
 
 export interface DpPastStandin { sid32: string; name: string; /** matches played for this team */ n: number; last?: string }
 
-export interface DpTeam { id: string; name: string; tag?: string; logoUrl?: string; captainId?: string; players: DpPlayer[]; /** Standins who played for the team earlier in the tournament */ pastStandins?: DpPastStandin[] }
+export interface DpTeam { id: string; name: string; tag?: string; logoUrl?: string; captainId?: string; /** ms; the teams section lists teams in registration order */ registeredAt?: number; players: DpPlayer[]; /** Standins who played for the team earlier in the tournament */ pastStandins?: DpPastStandin[] }
 
 export interface DpStandin {
   teamId: string;

@@ -63,31 +63,31 @@ function Gate({ children }: { children: React.ReactNode }) {
 
 const whenOf = (iso?: string) => (iso ? new Date(iso).toLocaleString('pl-PL', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'termin do ustalenia');
 
-/** One side's team list on the start screen; `hint` puts a team first with a note (the next opponent) */
-function TeamColumn({ side, value, onPick, exclude, hint }: { side: 'us' | 'them'; value: DpTeam | null; onPick: (id: string) => void; exclude?: string; hint?: { id: string; note: string } | null }) {
+/** One side's team list on the start screen. Both sides list every team in the same order (the teams
+ *  section's), row for row, so the two lists line up; the team taken by the other side is dimmed. */
+function TeamColumn({ side, value, onPick, taken, notes }: { side: 'us' | 'them'; value: DpTeam | null; onPick: (id: string) => void; taken?: string; notes: Record<string, string> }) {
   const font = useHeaderFont();
   const { teams, elo } = useDP();
   const color = side === 'us' ? C.radiant : C.dire;
-  const list = teams.filter(t => t.id !== exclude);
-  const ordered = hint ? [...list.filter(t => t.id === hint.id), ...list.filter(t => t.id !== hint.id)] : list;
   return (
     <div className="min-w-0 flex flex-col">
-      <div className="flex items-baseline gap-3 pb-2 border-b" style={{ borderColor: RULE }}>
-        <span className="text-[11px] font-bold uppercase tracking-[0.25em]" style={{ color }}>{side === 'us' ? 'Moja drużyna' : 'Rywal'}</span>
-        <span className="font-logik-extended-bold uppercase truncate" style={{ color: value ? C.heading : C.muted, fontSize: vh(16, 2.2, 24), ...font }}>{value?.name ?? (side === 'us' ? 'wybierz' : 'wybierz rywala')}</span>
+      <div className="flex items-baseline gap-3 h-10 border-b-2" style={{ borderColor: color }}>
+        <span className="text-[11px] font-bold uppercase tracking-[0.25em] shrink-0" style={{ color }}>{side === 'us' ? 'Moja drużyna' : 'Rywal'}</span>
+        <span className="font-logik-extended-bold uppercase min-w-0 leading-tight" style={{ color: value ? C.heading : C.muted, fontSize: vh(16, 2.2, 24), ...font }}>{value?.name ?? (side === 'us' ? 'wybierz' : 'wybierz rywala')}</span>
       </div>
-      <div className="grid grid-cols-2 xl:grid-cols-3 gap-x-4 mt-1">
-        {ordered.map(t => {
+      <div className="grid grid-cols-2 xl:grid-cols-3 gap-x-3">
+        {teams.map(t => {
           const on = t.id === value?.id;
-          const note = hint?.id === t.id ? hint.note : null;
+          const off = t.id === taken;
+          const note = notes[t.id];
           return (
-            <button key={t.id} type="button" onClick={() => onPick(t.id)}
-              className="flex items-center gap-2.5 py-2 pl-2 text-left border-b transition-colors hover:bg-[color-mix(in_srgb,var(--tournament-text,#fff)_6%,transparent)]"
-              style={{ borderColor: RULE, boxShadow: on ? `inset 3px 0 0 ${color}` : undefined, background: on ? mix(color, 14) : undefined }}>
+            <button key={t.id} type="button" disabled={off} onClick={() => onPick(t.id)}
+              className="h-[60px] flex items-center gap-2.5 pl-2 pr-1 text-left border-b transition-colors enabled:hover:bg-[color-mix(in_srgb,var(--tournament-text,#fff)_6%,transparent)] disabled:cursor-not-allowed"
+              style={{ borderColor: RULE, boxShadow: on ? `inset 3px 0 0 ${color}` : undefined, background: on ? mix(color, 14) : undefined, opacity: off ? 0.3 : 1 }}>
               <TeamLogo team={t} size={30} />
-              <span className="min-w-0">
-                <span className="block text-sm font-bold leading-tight" style={{ color: on ? C.heading : C.text }}>{t.name}</span>
-                <span className="block text-[10px] uppercase tracking-wider" style={{ color: note ? C.secondary : C.muted }}>{note ?? `Elo ${Math.round(elo.get(t.id) ?? 1500)}`}</span>
+              <span className="min-w-0 flex flex-col justify-center">
+                <span className="text-sm font-bold leading-tight line-clamp-2" style={{ color: on ? C.heading : C.text }}>{t.name}</span>
+                <span className="text-[10px] uppercase tracking-wider whitespace-nowrap" style={{ color: note ? C.secondary : C.muted }}>{off ? 'wybrana obok' : note ?? `Elo ${Math.round(elo.get(t.id) ?? 1500)}`}</span>
               </span>
             </button>
           );
@@ -101,49 +101,51 @@ function TeamColumn({ side, value, onPick, exclude, hint }: { side: 'us' | 'them
 function PrepStart() {
   const dp = useDP();
   const font = useHeaderFont();
-  const name = (id: string) => dp.teams.find(t => t.id === id) ?? null;
+  const byId = (id: string) => dp.teams.find(t => t.id === id) ?? null;
   const mine = dp.captainTeam && dp.captainNext ? {
     us: dp.captainTeam,
-    them: name(dp.captainNext.teamA === dp.captainTeam.id ? dp.captainNext.teamB : dp.captainNext.teamA),
+    them: byId(dp.captainNext.teamA === dp.captainTeam.id ? dp.captainNext.teamB : dp.captainNext.teamA),
     m: dp.captainNext,
   } : null;
-  // once our team is chosen, its next opponent goes first in the other list
+  // our team's next opponent is marked in the other list
   const next = dp.us ? dp.nextOf(dp.us.id) : null;
   const nextOppId = next && dp.us ? (next.teamA === dp.us.id ? next.teamB : next.teamA) : null;
   return (
     <div className="flex-1 min-h-0 flex flex-col items-center justify-center py-4">
-      <div className="w-full max-w-[1100px] flex flex-col gap-6">
-        <div className="text-center">
-          <div className="font-logik-extended-bold uppercase" style={{ color: C.title, fontSize: vh(22, 3.4, 40), ...font }}>Wybierz mecz</div>
-        </div>
+      <div className="w-full max-w-[1180px] flex flex-col gap-6">
+        <div className="text-center font-logik-extended-bold uppercase" style={{ color: C.title, fontSize: vh(22, 3.4, 40), ...font }}>Wybierz mecz</div>
 
+        {/* The captain's own match: the whole row is the button */}
         {mine && mine.them && (
           <button type="button" onClick={() => dp.setPair(mine.us.id, mine.them!.id)}
-            className="group self-center w-full max-w-[760px] flex items-center gap-5 px-5 py-4 text-left transition-colors hover:bg-[color-mix(in_srgb,var(--tournament-text,#fff)_6%,transparent)]"
+            className="self-center w-full max-w-[760px] flex items-center gap-6 px-5 py-3 text-left transition-colors hover:bg-[color-mix(in_srgb,var(--tournament-text,#fff)_6%,transparent)]"
             style={{ borderTop: `1px solid ${RULE}`, borderBottom: `1px solid ${RULE}`, boxShadow: `inset 3px 0 0 ${C.primary}` }}>
             <span className="flex flex-col shrink-0">
               <span className="text-[11px] font-bold uppercase tracking-[0.25em]" style={{ color: C.primary }}>Twój następny mecz</span>
               <span className="text-[12px] tabular-nums" style={{ color: C.muted }}>{whenOf(mine.m.scheduledFor)}{mine.m.bestOf ? ` · Bo${mine.m.bestOf}` : ''}</span>
             </span>
             <span className="flex-1 min-w-0 flex items-center justify-center gap-3">
-              <TeamLogo team={mine.us} size={40} />
-              <span className="font-logik-extended-bold uppercase truncate" style={{ color: C.radiant, fontSize: vh(15, 2, 22), ...font }}>{mine.us.name}</span>
-              <span className="text-sm font-bold" style={{ color: C.muted }}>vs</span>
-              <span className="font-logik-extended-bold uppercase truncate" style={{ color: C.dire, fontSize: vh(15, 2, 22), ...font }}>{mine.them.name}</span>
+              <span className="text-sm font-bold shrink-0" style={{ color: C.muted }}>vs</span>
               <TeamLogo team={mine.them} size={40} />
+              <span className="min-w-0 font-logik-extended-bold uppercase leading-tight" style={{ color: C.dire, fontSize: vh(15, 2, 22), ...font }}>{mine.them.name}</span>
             </span>
-            <span className="shrink-0 text-[12px] font-bold uppercase tracking-[0.15em] group-hover:underline underline-offset-4" style={{ color: C.secondary }}>Przygotuj ›</span>
           </button>
         )}
         {!dp.loggedIn && (
           <p className="text-center text-sm" style={{ color: C.muted }}>Zaloguj się jako kapitan, a twój najbliższy mecz wybierzesz jednym kliknięciem.</p>
         )}
 
-        <div className="grid md:grid-cols-2 gap-x-12 gap-y-6">
-          <TeamColumn side="us" value={dp.us} onPick={dp.setUs}
-            hint={dp.captainTeam ? { id: dp.captainTeam.id, note: 'twoja drużyna · kapitan' } : null} />
-          <TeamColumn side="them" value={dp.them} onPick={dp.setThem} exclude={dp.us?.id}
-            hint={nextOppId ? { id: nextOppId, note: next?.scheduledFor ? `najbliższy rywal · ${new Date(next.scheduledFor).toLocaleDateString('pl-PL', { day: 'numeric', month: 'short' })}` : 'najbliższy rywal' } : null} />
+        {/* Two separate choices, split by a "vs" rule */}
+        <div className="grid md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] gap-y-6">
+          <TeamColumn side="us" value={dp.us} onPick={dp.setUs} taken={dp.them?.id}
+            notes={dp.captainTeam ? { [dp.captainTeam.id]: 'twoja drużyna' } : {}} />
+          <div className="hidden md:flex flex-col items-center px-6">
+            <div className="flex-1 w-px" style={{ background: RULE }} />
+            <span className="py-3 text-sm font-bold uppercase" style={{ color: C.muted }}>vs</span>
+            <div className="flex-1 w-px" style={{ background: RULE }} />
+          </div>
+          <TeamColumn side="them" value={dp.them} onPick={dp.setThem} taken={dp.us?.id}
+            notes={nextOppId ? { [nextOppId]: 'najbliższy rywal' } : {}} />
         </div>
         <p className="text-center text-xs" style={{ color: C.muted }}>{dp.us ? 'Teraz wybierz rywala — narzędzie otworzy się od razu.' : 'Wybierz obie drużyny — narzędzie otworzy się od razu.'}</p>
       </div>

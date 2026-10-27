@@ -77,7 +77,10 @@ export async function buildContext(tournamentId: string | null): Promise<DpConte
         });
       }
     } catch { /* roster only */ }
-    return { id: d.id, name: (t.name || '').trim(), tag: t.tag || undefined, logoUrl: t.logoUrl || undefined, captainId: t.captainId || undefined, players: [...players.values()] };
+    // registration time, so lists follow the teams section order
+    const c = t.createdAt;
+    const registeredAt = typeof c?.toMillis === 'function' ? c.toMillis() : typeof c === 'string' && Number.isFinite(Date.parse(c)) ? Date.parse(c) : undefined;
+    return { id: d.id, name: (t.name || '').trim(), tag: t.tag || undefined, logoUrl: t.logoUrl || undefined, captainId: t.captainId || undefined, registeredAt, players: [...players.values()] };
   }));
 
   // Standin requests that are not decided yet (approved ones are copied into the match doc)
