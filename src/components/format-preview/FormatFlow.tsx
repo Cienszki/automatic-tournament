@@ -295,12 +295,17 @@ function TeamLine({ team, score, state, won, lost }: { team?: FPTeam; score?: nu
   );
 }
 
-/** The schedule's Match shape, so the usual match-details modal can open a preview match. */
+/**
+ * The schedule's Match shape, so the usual match-details modal can open a chart match. A real
+ * tournament's match keeps its real id, so the modal reads its date, games and penalties from the
+ * match document; simulated and projected matches get an id that matches no document.
+ */
 export function toModalMatch(m: FPMatch, sim: FormatSim, after: number): Match {
   const played = matchState(m, after) === 'played';
+  const real = m.state != null && m.state !== 'future';
   const side = (id: string, score: number) => ({ id, name: sim.teams[id].name, score: played ? score : 0, logoUrl: sim.teams[id].logoUrl || '' });
   return {
-    id: `preview-${m.id}`,
+    id: real ? m.id : `preview-${m.id}`,
     teamA: side(m.a, m.sa),
     teamB: side(m.b!, m.sb),
     teams: [m.a, m.b!],
