@@ -23,6 +23,7 @@ import {
   writeBatch,
   query,
   where,
+  deleteField,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { countsForStandings } from '@/lib/match-flags';
@@ -367,13 +368,38 @@ export async function saveDraftPairings(
   });
 }
 
-/** Persist the per-match times / reschedule limit of a draft (admin edits them in the preview). */
+/** Persist the per-match times / latest reschedule time of a draft (admin edits them in the preview). */
 export async function saveDraftScheduling(
   tournamentId: string,
   round: number,
   scheduling: SwissRound['scheduling'],
 ): Promise<void> {
   await updateDoc(doc(db, 'tournaments', tournamentId, 'swissRounds', String(round)), { scheduling });
+}
+
+/**
+ * Set (or clear, with null) the latest time captains may move the matches of a committed round to.
+ * Stored on the round and copied onto every match of the round that isn't finished yet, which is
+ * where the reschedule policy reads it (src/lib/reschedule-rules.ts).
+ */
+export async function setRoundRescheduleLatest(
+  tournamentId: string,
+  round: number,
+  latestIso: string | null,
+): Promise<number> {
+  const roundRef = doc(db, 'tournaments', tournamentId, 'swissRounds', String(round));
+  const snap = await getDocs(query(collection(db, 'tournaments', tournamentId, 'matches'), where('round', '==', round)));
+  const batch = writeBatch(db);
+  batch.update(roundRef, { 'scheduling.rescheduleLatest': latestIso });
+  let n = 0;
+  for (const d of snap.docs) {
+    const m = d.data();
+    if (m.status === 'completed' || m.isSwissByeMatch || m.isPlayoff) continue;
+    batch.update(d.ref, { rescheduleLatest: latestIso ?? deleteField(), updatedAt: new Date().toISOString() });
+    n++;
+  }
+  await batch.commit();
+  return n;
 }
 
 /** Start time of pairing `i` under the round's scheduling, or null when captains schedule it. */
@@ -412,6 +438,7 @@ export async function commitRound(input: {
   const bestOf = matchFormat === 'bo2' ? 2 : winScore * 2 - 1;
 
   const maxHoursLater = scheduling.mode === 'fixed' ? scheduling.maxHoursLater ?? null : null;
+  const rescheduleLatest = scheduling.mode === 'fixed' ? scheduling.rescheduleLatest || null : null;
 
   const persistedPairings: SwissRound['pairings'] = [];
   let byes = 0;
@@ -487,6 +514,7 @@ export async function commitRound(input: {
         schedulingStatus: scheduledFor ? 'confirmed' : 'unscheduled',
         schedulingMethod: scheduledFor ? 'admin-scheduled' : 'captain-scheduled',
         ...(scheduledFor && maxHoursLater != null ? { rescheduleMaxHoursLater: maxHoursLater } : {}),
+        ...(rescheduleLatest ? { rescheduleLatest } : {}),
         ...(scheduling.mode === 'window' && scheduling.windowEnd
           ? { deadline: scheduling.windowEnd }
           : {}),

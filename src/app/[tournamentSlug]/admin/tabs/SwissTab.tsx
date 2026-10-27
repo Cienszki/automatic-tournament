@@ -43,7 +43,7 @@ import {
   loadSwissTeams, loadSwissMatches, loadSwissRounds, buildStandings,
   setupSwissField, ensureByeTeam, saveSeedMmr, renumberSeeds,
   generateRoundDraft, saveDraftPairings, saveDraftScheduling, commitRound, reopenRound,
-  markRoundComplete,
+  markRoundComplete, setRoundRescheduleLatest,
   type SwissTeam, type SwissRoundMatch,
 } from '@/lib/swiss/actions';
 import { derive as deriveLan, plan as planLan } from '@/lib/lan-qualifier/engine';
@@ -74,8 +74,6 @@ const toLocalInput = (iso?: string | null) => {
 /** datetime-local value → ISO (UTC); '' stays '' */
 const toIso = (local: string) => (local ? new Date(local).toISOString() : '');
 
-/** Default reschedule limit for admin-scheduled rounds: earlier freely, later by at most this many hours */
-const DEFAULT_MAX_HOURS_LATER = '2';
 
 export function SwissTab() {
   const { tournament, theme, refetchTournament } = useTournament();
@@ -96,7 +94,10 @@ export function SwissTab() {
   const [schedulingMode, setSchedulingMode] = useState<SchedulingMode>('fixed');
   // 'fixed' mode: one start time per pairing (datetime-local values, same order as the pairings)
   const [times, setTimes] = useState<string[]>([]);
-  const [maxHoursLater, setMaxHoursLater] = useState(DEFAULT_MAX_HOURS_LATER);
+  // 'fixed' mode: the latest time captains may move any match of the round to (datetime-local)
+  const [rescheduleLatest, setRescheduleLatest] = useState('');
+  // Committed rounds: the same limit, edited per round (datetime-local by round number)
+  const [latestDrafts, setLatestDrafts] = useState<Record<number, string>>({});
   const [selectedPairs, setSelectedPairs] = useState<Set<number>>(new Set());
   const [bulkAt, setBulkAt] = useState('');
   // Set by the admin's edits only, so loading a draft doesn't write it straight back
@@ -148,9 +149,7 @@ export function SwissTab() {
         // Older drafts carry one fixedAt for the whole round
         setTimes(storedDraft.pairings.map((_, i) =>
           toLocalInput(storedDraft.scheduling.times?.[i] || storedDraft.scheduling.fixedAt)));
-        setMaxHoursLater(storedDraft.scheduling.maxHoursLater === undefined
-          ? DEFAULT_MAX_HOURS_LATER
-          : storedDraft.scheduling.maxHoursLater === null ? '' : String(storedDraft.scheduling.maxHoursLater));
+        setRescheduleLatest(toLocalInput(storedDraft.scheduling.rescheduleLatest));
         setWindowStart(storedDraft.scheduling.windowStart ?? '');
         setWindowEnd(storedDraft.scheduling.windowEnd ?? '');
       } else {
@@ -257,24 +256,13 @@ export function SwissTab() {
     return adviseBand(seeded, plannedRounds ?? recommended);
   }, [field, useMmrSeeding, plannedRounds, recommended]);
 
-  /** '' = no hour limit; otherwise whole hours 0–72 */
-  const parsedMaxHoursLater = (): number | null => {
-    const raw = maxHoursLater.trim();
-    if (raw === '') return null;
-    const n = Number(raw);
-    if (!Number.isInteger(n) || n < 0 || n > 72) {
-      throw new Error('Limit przełożenia na później musi być liczbą całkowitą godzin od 0 do 72 (albo pusty).');
-    }
-    return n;
-  };
-
   /** The round's scheduling as stored on the round doc (times as ISO, aligned with the pairings) */
   const schedulingPayload = (pairCount: number): SwissRound['scheduling'] => {
     if (schedulingMode === 'fixed') {
       return {
         mode: 'fixed',
         times: Array.from({ length: pairCount }, (_, i) => toIso(times[i] ?? '')),
-        maxHoursLater: parsedMaxHoursLater(),
+        rescheduleLatest: rescheduleLatest ? toIso(rescheduleLatest) : null,
       };
     }
     if (schedulingMode === 'window') return { mode: 'window', windowStart, windowEnd };
@@ -286,14 +274,14 @@ export function SwissTab() {
     if (!schedulingDirty.current || !draftPairings || !tournament?.id) return;
     const t = setTimeout(() => {
       let scheduling: SwissRound['scheduling'];
-      try { scheduling = schedulingPayload(draftPairings.length); } catch { return; /* invalid limit — reported on commit */ }
+      scheduling = schedulingPayload(draftPairings.length);
       schedulingDirty.current = false;
       saveDraftScheduling(tournament.id, nextRoundNumber, scheduling).catch(err =>
         console.error('[SwissTab] saving draft times failed', err));
     }, 700);
     return () => clearTimeout(t);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [times, maxHoursLater, schedulingMode, windowStart, windowEnd, draftPairings]);
+  }, [times, rescheduleLatest, schedulingMode, windowStart, windowEnd, draftPairings]);
 
   const setTime = (i: number, value: string) => {
     schedulingDirty.current = true;
@@ -396,7 +384,7 @@ export function SwissTab() {
     if (!tournament?.id) return;
     await saveGroupA(tournament.id, ids);
     await refetchTournament();
-    toast({ title: 'Grupa A zapisana' });
+    toast({ title: 'Waga Ciężka zapisana' });
   };
 
   const handleTiebreak = async (advanced: string[] | null) => {
@@ -499,7 +487,7 @@ export function SwissTab() {
       const swappable = (x: SwissPairing) => (x.stage === 'B' || x.stage === 'P') && x.slot !== 'tb';
       if (pa.stage !== pb.stage || !swappable(pa) || !swappable(pb)) {
         setSwapFrom(null);
-        toast({ title: 'Nie można zamienić', description: 'W tym formacie zamieniać można tylko drużyny w parach Swissa lub meczów o miejsca (w tej samej grupie).', variant: 'destructive' });
+        toast({ title: 'Nie można zamienić', description: 'W tym formacie zamieniać można tylko drużyny w parach Wagi Piórkowej lub meczów o miejsca (w tej samej grupie).', variant: 'destructive' });
         return;
       }
     }
@@ -527,6 +515,11 @@ export function SwissTab() {
       if (scheduling.mode === 'fixed') {
         const missing = draftPairings.filter((p, i) => !p.isBye && !scheduling.times?.[i]).length;
         if (missing) throw new Error(`Ustaw dzień i godzinę każdego meczu — bez terminu: ${missing}.`);
+        if (!scheduling.rescheduleLatest) throw new Error('Ustaw najpóźniejszy termin, na który kapitanowie mogą przełożyć mecze tej rundy.');
+        const lastStart = Math.max(...(scheduling.times ?? []).filter(Boolean).map(t => new Date(t).getTime()));
+        if (new Date(scheduling.rescheduleLatest).getTime() < lastStart) {
+          throw new Error('Najpóźniejszy termin przełożenia jest wcześniejszy niż termin któregoś meczu tej rundy.');
+        }
       }
       if (scheduling.mode === 'window' && (!windowStart || !windowEnd)) {
         throw new Error('Podaj początek i koniec okna terminowego.');
@@ -550,6 +543,19 @@ export function SwissTab() {
         title: `Runda ${nextRoundNumber} zatwierdzona`,
         description: `Utworzono ${count(res.created, 'mecz', 'mecze', 'meczów')}${res.byes ? `, w tym ${count(res.byes, 'wolny los', 'wolne losy', 'wolnych losów')}` : ''}.`,
         action: <CheckCircle2 className="h-5 w-5 text-green-500" />,
+      });
+    });
+
+  const handleRoundLatest = (r: SwissRound, value: string) =>
+    run(`latest:${r.round}`, async () => {
+      if (!tournament?.id) return;
+      const iso = value ? toIso(value) : null;
+      const n = await setRoundRescheduleLatest(tournament.id, r.round, iso);
+      await reload();
+      setLatestDrafts(d => { const { [r.round]: _, ...rest } = d; return rest; });
+      toast({
+        title: iso ? `Runda ${r.round}: przełożenie najpóźniej do ${formatDateTimePL(iso)}` : `Runda ${r.round}: bez limitu rundy`,
+        description: `Zaktualizowano ${count(n, 'mecz', 'mecze', 'meczów')} bez wyniku.`,
       });
     });
 
@@ -974,16 +980,16 @@ export function SwissTab() {
                     Dzień i godzinę ustawisz przy każdej parze po wygenerowaniu podglądu — pojedynczo
                     albo jednym terminem dla kilku zaznaczonych meczów.
                   </p>
-                  <label className="flex flex-wrap items-center gap-2 text-sm font-logik">
-                    Kapitanowie mogą przełożyć mecz na dowolny wcześniejszy termin albo najwyżej o
-                    <Input type="number" min={0} max={72} step={1} className="w-20 h-8 font-logik"
-                      value={maxHoursLater}
-                      onChange={e => { schedulingDirty.current = true; setMaxHoursLater(e.target.value); }} />
-                    h później.
-                  </label>
+                  <div className="space-y-1">
+                    <Label className="font-logik text-sm">Najpóźniejszy termin przełożenia (cała runda)</Label>
+                    <DateTimeInput className="w-[220px] h-9 font-logik" aria-label="Najpóźniejszy termin przełożenia"
+                      value={rescheduleLatest}
+                      onChange={v => { schedulingDirty.current = true; setRescheduleLatest(v); }} />
+                  </div>
                   <p className="text-xs text-muted-foreground font-logik">
-                    0 = tylko na wcześniej. Puste = bez limitu godzin (obowiązują wtedy ogólne zasady
-                    przekładania z zakładki terminarza). Zmiana terminu wymaga zgody drugiego kapitana.
+                    Kapitanowie mogą przełożyć mecz na dowolny wcześniejszy termin albo na dowolny późniejszy,
+                    ale nie dalej niż ten. Zmiana terminu wymaga zgody drugiego kapitana. Możesz go zmienić
+                    po zatwierdzeniu rundy w sekcji „Rozegrane rundy”.
                   </p>
                 </div>
               )}
@@ -1188,6 +1194,25 @@ export function SwissTab() {
                   <span className="text-sm text-muted-foreground font-logik">
                     {done}/{roundMatches.length} meczów z wynikiem
                   </span>
+                  {r.status !== 'complete' && r.scheduling.mode === 'fixed' && (() => {
+                    const stored = toLocalInput(r.scheduling.rescheduleLatest);
+                    const value = latestDrafts[r.round] ?? stored;
+                    return (
+                      <span className="flex flex-wrap items-center gap-2 text-sm font-logik">
+                        <span className="text-muted-foreground">Przełożenie najpóźniej do</span>
+                        <DateTimeInput className="w-[200px] h-8 font-logik" aria-label={`Najpóźniejszy termin przełożenia, runda ${r.round}`}
+                          value={value} onChange={v => setLatestDrafts(d => ({ ...d, [r.round]: v }))} />
+                        {value !== stored && (
+                          <Button size="sm" variant="outline" disabled={busy === `latest:${r.round}`} onClick={() => handleRoundLatest(r, value)}>
+                            <Save className="h-3.5 w-3.5 mr-1.5" /> Zapisz
+                          </Button>
+                        )}
+                        {!stored && r.scheduling.maxHoursLater != null && (
+                          <span className="text-xs text-muted-foreground">(teraz: dowolnie wcześniej albo maks. {r.scheduling.maxHoursLater} h później)</span>
+                        )}
+                      </span>
+                    );
+                  })()}
                   <div className="ml-auto flex gap-2">
                     {r.status !== 'complete' && done === roundMatches.length && (
                       <Button size="sm" variant="outline" disabled={busy === `close:${r.round}`}

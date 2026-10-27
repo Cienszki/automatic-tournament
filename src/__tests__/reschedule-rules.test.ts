@@ -1,62 +1,80 @@
 import { describe, it, expect } from 'vitest';
-import { checkRescheduleProposal, isEarlierThanOriginal, isWithinRescheduleDays } from '@/lib/reschedule-rules';
+import { checkReschedule, reschedulePolicy, type ReschedulePolicyInput } from '@/lib/reschedule-rules';
 
-const ORIGINAL = '2026-10-14T18:00:00.000Z'; // Wednesday 20:00 in Poland
-const open = { rangeDays: null, finalDate: null, earlierOnly: false };
+const ORIGINAL = '2026-11-04T19:00:00.000Z'; // Wednesday 20:00 in Poland
+const NOW = new Date('2026-10-27T12:00:00.000Z');
+const open = { rescheduleRangeDays: null, rescheduleFinalDate: null, rescheduleEarlierOnly: false };
 
-describe('isEarlierThanOriginal', () => {
-  it('requires a strictly earlier time', () => {
-    expect(isEarlierThanOriginal(ORIGINAL, '2026-10-13T18:00:00.000Z')).toBe(true);
-    expect(isEarlierThanOriginal(ORIGINAL, '2026-10-14T17:59:00.000Z')).toBe(true); // same day, earlier hour
-    expect(isEarlierThanOriginal(ORIGINAL, ORIGINAL)).toBe(false);
-    expect(isEarlierThanOriginal(ORIGINAL, '2026-10-15T18:00:00.000Z')).toBe(false);
-    expect(isEarlierThanOriginal(ORIGINAL, 'garbage')).toBe(false);
-  });
-});
+const check = (proposed: string, input: Partial<ReschedulePolicyInput>) =>
+  checkReschedule(reschedulePolicy({ originalIso: ORIGINAL, now: NOW, ...input }), proposed)?.kind ?? null;
 
-describe('checkRescheduleProposal', () => {
-  it('allows anything when no rules are set', () => {
-    expect(checkRescheduleProposal(ORIGINAL, '2026-11-30T18:00:00.000Z', open)).toBeNull();
+describe('reschedule policy', () => {
+  it('allows any future time when nothing is set', () => {
+    expect(check('2026-12-30T19:00:00.000Z', { tournament: open })).toBeNull();
   });
 
-  it('rejects later dates when "earlier only" is on', () => {
-    const rules = { ...open, earlierOnly: true };
-    expect(checkRescheduleProposal(ORIGINAL, '2026-10-15T18:00:00.000Z', rules)).toBe('earlier-only');
-    expect(checkRescheduleProposal(ORIGINAL, '2026-10-12T18:00:00.000Z', rules)).toBeNull();
+  it('never allows a time in the past', () => {
+    expect(check('2026-10-27T11:00:00.000Z', { tournament: open })).toBe('past');
+    expect(check('2026-10-27T11:00:00.000Z', { tournament: open, match: { rescheduleLatest: '2026-11-08T22:59:00.000Z' } })).toBe('past');
   });
 
-  it('still applies the ±days range to earlier dates', () => {
-    const rules = { ...open, earlierOnly: true, rangeDays: 3 };
-    expect(checkRescheduleProposal(ORIGINAL, '2026-10-12T18:00:00.000Z', rules)).toBeNull();
-    expect(checkRescheduleProposal(ORIGINAL, '2026-10-05T18:00:00.000Z', rules)).toBe('range');
+  it('round latest time: anything earlier (even weeks), nothing after it', () => {
+    const match = { rescheduleLatest: '2026-11-08T22:59:00.000Z' };
+    expect(check('2026-10-28T19:00:00.000Z', { tournament: open, match })).toBeNull(); // a week earlier
+    expect(check('2026-11-07T15:00:00.000Z', { tournament: open, match })).toBeNull(); // later, still before it
+    expect(check('2026-11-08T22:59:00.000Z', { tournament: open, match })).toBeNull(); // exactly the limit
+    expect(check('2026-11-08T23:00:00.000Z', { tournament: open, match })).toBe('round-latest');
   });
 
-  it('allows earlier times and at most N hours later with a per-match limit', () => {
-    const rules = { ...open, maxHoursLater: 2 };
-    expect(checkRescheduleProposal(ORIGINAL, '2026-10-12T18:00:00.000Z', rules)).toBeNull(); // days earlier
-    expect(checkRescheduleProposal(ORIGINAL, '2026-10-14T20:00:00.000Z', rules)).toBeNull(); // exactly +2 h
-    expect(checkRescheduleProposal(ORIGINAL, '2026-10-14T20:01:00.000Z', rules)).toBe('too-late');
-    expect(checkRescheduleProposal(ORIGINAL, '2026-10-15T18:00:00.000Z', rules)).toBe('too-late');
+  it('round latest time wins over the tournament range, "earlier only" and the hours limit', () => {
+    const tournament = { rescheduleRangeDays: 3, rescheduleEarlierOnly: true };
+    const match = { rescheduleLatest: '2026-11-08T22:59:00.000Z', rescheduleMaxHoursLater: 2 };
+    expect(check('2026-10-28T19:00:00.000Z', { tournament, match })).toBeNull();
+    expect(check('2026-11-06T19:00:00.000Z', { tournament, match })).toBeNull();
   });
 
-  it('lets the per-match limit override "earlier only" and still applies the range', () => {
-    const rules = { ...open, earlierOnly: true, rangeDays: 3, maxHoursLater: 3 };
-    expect(checkRescheduleProposal(ORIGINAL, '2026-10-14T20:00:00.000Z', rules)).toBeNull();
-    expect(checkRescheduleProposal(ORIGINAL, '2026-10-05T18:00:00.000Z', rules)).toBe('range');
-    // 0 = earlier (or the same time) only
-    expect(checkRescheduleProposal(ORIGINAL, '2026-10-14T18:30:00.000Z', { ...open, maxHoursLater: 0 })).toBe('too-late');
+  it('the ±3-day default range does not apply to a match with its own hours limit (any earlier time is fine)', () => {
+    const match = { rescheduleMaxHoursLater: 2 };
+    expect(check('2026-10-28T19:00:00.000Z', { tournament: {}, match })).toBeNull(); // 7 days earlier
+    expect(check('2026-11-04T21:00:00.000Z', { tournament: {}, match })).toBeNull(); // exactly +2 h
+    expect(check('2026-11-04T21:01:00.000Z', { tournament: {}, match })).toBe('hours-later');
   });
 
-  it('applies the final deadline', () => {
-    expect(checkRescheduleProposal(ORIGINAL, '2026-10-20T18:00:00.000Z', { ...open, finalDate: '2026-10-18' })).toBe('deadline');
+  it('an hours limit of 0 means strictly earlier', () => {
+    expect(check(ORIGINAL, { tournament: open, match: { rescheduleMaxHoursLater: 0 } })).toBe('earlier-only');
+    expect(check('2026-11-04T18:00:00.000Z', { tournament: open, match: { rescheduleMaxHoursLater: 0 } })).toBeNull();
   });
 
-  it('skips range and "earlier only" when the match has no date yet', () => {
-    expect(checkRescheduleProposal('', '2026-12-01T18:00:00.000Z', { rangeDays: 3, finalDate: null, earlierOnly: true })).toBeNull();
+  it('tournament rules: "earlier only" and the ±days range (3 by default)', () => {
+    expect(check('2026-11-05T19:00:00.000Z', { tournament: { ...open, rescheduleEarlierOnly: true } })).toBe('earlier-only');
+    expect(check('2026-11-02T19:00:00.000Z', { tournament: {} })).toBeNull(); // 2 days earlier, default ±3
+    expect(check('2026-10-31T19:00:00.000Z', { tournament: {} })).toBe('range'); // 4 days earlier
+    expect(check('2026-11-07T21:00:00.000Z', { tournament: {} })).toBeNull(); // last day of the range
+    expect(check('2026-11-08T19:00:00.000Z', { tournament: {} })).toBe('range');
   });
 
-  it('keeps the existing ±days behaviour', () => {
-    expect(isWithinRescheduleDays(ORIGINAL, '2026-10-17T18:00:00.000Z', 3)).toBe(true);
-    expect(isWithinRescheduleDays(ORIGINAL, '2026-10-18T18:00:00.000Z', 3)).toBe(false);
+  it('skips the range and "earlier only" when the match has no date yet', () => {
+    const p = reschedulePolicy({ originalIso: '', now: NOW, tournament: { rescheduleRangeDays: 3, rescheduleEarlierOnly: true } });
+    expect(checkReschedule(p, '2026-12-01T18:00:00.000Z')).toBeNull();
+  });
+
+  it('applies the match deadline and the final date on top of everything', () => {
+    expect(check('2026-11-10T19:00:00.000Z', { tournament: open, match: { deadline: '2026-11-09' } })).toBe('match-deadline');
+    expect(check('2026-11-08T19:00:00.000Z', { tournament: { ...open, rescheduleFinalDate: '2026-11-06' }, match: { rescheduleLatest: '2026-11-08T22:59:00.000Z' } })).toBe('final-date');
+  });
+
+  it('gives the picker its bounds and the captain a summary', () => {
+    const p = reschedulePolicy({ originalIso: ORIGINAL, now: NOW, tournament: open, match: { rescheduleLatest: '2026-11-08T22:59:00.000Z' } });
+    expect(p.earliest.getTime()).toBe(NOW.getTime());
+    expect(p.latest?.toISOString()).toBe('2026-11-08T22:59:00.000Z');
+    expect(p.summary).toHaveLength(1);
+    expect(p.summary[0]).toMatch(/najpóźniej do/);
+    // one sentence for the two-sided range, not two
+    expect(reschedulePolicy({ originalIso: ORIGINAL, now: NOW, tournament: {} }).summary).toHaveLength(1);
+  });
+
+  it('explains every violation in Polish', () => {
+    const p = reschedulePolicy({ originalIso: ORIGINAL, now: NOW, tournament: open, match: { rescheduleLatest: '2026-11-08T22:59:00.000Z' } });
+    expect(checkReschedule(p, '2026-11-09T19:00:00.000Z')?.violation).toMatch(/^Mecze tej rundy można przełożyć najpóźniej na /);
   });
 });

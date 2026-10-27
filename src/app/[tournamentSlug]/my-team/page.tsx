@@ -34,7 +34,7 @@ import NoTeamFound from '@/components/app/my-team/NoTeamFound';
 // PDL components
 import { PDLMyTeamHero, PDLMatchHistory, PDLCaptainActions, RegistrationStatusBanner } from "@/components/pdl/my-team";
 import { PDLUpcomingMatch } from "@/components/pdl/my-team/PDLUpcomingMatchNew";
-import { checkRescheduleProposal, type RescheduleViolation } from "@/lib/reschedule-rules";
+import { checkReschedule, reschedulePolicy } from "@/lib/reschedule-rules";
 import {
   COACH_CHANGE_LOCK_HOURS,
   coachModeOption,
@@ -45,7 +45,7 @@ import {
 } from "@/lib/coach-rules";
 import { PDLTransferSection } from "@/components/pdl/my-team/PDLTransferSection";
 import { upsertGlobalPlayerProfilesAction, clearPlayerCurrentTeamsAction } from "@/lib/player-profile-actions";
-import { count, plural } from '@/lib/plural';
+import { count } from '@/lib/plural';
 
 
 interface ScrimSlot {
@@ -886,29 +886,10 @@ function MyTeamView() {
     return doc(db, 'tournaments', tournament!.id, isPlayoffOnly ? 'playoff_matches' : 'matches', matchId);
   }, [matches, tournament?.id]);
 
-  // Reschedule rules from the admin panel. A per-match deadline takes precedence over the
-  // tournament-wide rescheduleFinalDate, and a per-match hours-later limit over "earlier only"
-  // (mirrors PDLUpcomingMatch).
-  const getRescheduleSettings = (matchData?: { deadline?: string | null; rescheduleMaxHoursLater?: number | null }) => ({
-    rangeDays: tournament?.rescheduleRangeDays !== undefined ? tournament.rescheduleRangeDays : 3,
-    finalDate: matchData?.deadline || tournament?.rescheduleFinalDate || null,
-    earlierOnly: !!tournament?.rescheduleEarlierOnly,
-    maxHoursLater: matchData?.rescheduleMaxHoursLater ?? null,
-  });
-
-  const describeRescheduleViolation = (
-    violation: RescheduleViolation,
-    proposedDate: string,
-    settings: ReturnType<typeof getRescheduleSettings>,
-  ): string => {
-    if (violation === 'earlier-only') return 'Zgodnie z regulaminem mecz można przełożyć wyłącznie na termin wcześniejszy niż zaplanowany.';
-    if (violation === 'too-late') return `Mecz można przełożyć na dowolny wcześniejszy termin albo najwyżej ${settings.maxHoursLater} h później niż termin ustalony przez organizatora.`;
-    if (violation === 'range') {
-      const rangeLabel = settings.rangeDays === null ? 'nieograniczony' : `±${settings.rangeDays} ${plural(settings.rangeDays, 'dzień', 'dni', 'dni')}`;
-      return `Zmiana terminu jest dozwolona tylko w zakresie ${rangeLabel} od pierwotnej daty meczu.`;
-    }
-    return `Proponowana data (${proposedDate.slice(0, 10)}) przekracza ostateczny termin realizacji meczów (${settings.finalDate ? settings.finalDate.slice(0, 10) : ''}).`;
-  };
+  // The same reschedule policy the captain's date picker uses (src/lib/reschedule-rules.ts),
+  // checked again here against the stored match: the settings may have changed since the page loaded.
+  const reschedulePolicyFor = (originalDate: string, matchData?: { deadline?: string | null; rescheduleMaxHoursLater?: number | null; rescheduleLatest?: string | null }) =>
+    reschedulePolicy({ originalIso: originalDate, tournament, match: matchData });
 
   // Reschedule handlers for PDL
   const handleRequestReschedule = async (matchId: string, proposedDate: string) => {
@@ -924,15 +905,12 @@ function MyTeamView() {
 
       // Anchored to the first scheduled time (kept on earlier requests), so limits can't be chained
       const originalDate = String(matchData?.rescheduleRequest?.originalDate || matchData?.scheduledFor || matchData?.scheduled_for || '');
-      const rescheduleSettings = getRescheduleSettings(matchData);
-
-      // If there is no admin-set date we skip the range/earlier-only checks (unscheduled matches)
-      const violation = checkRescheduleProposal(originalDate, proposedDate, rescheduleSettings);
-      if (violation) {
-        console.warn('[MyTeam] Date validation failed', { originalDate, proposedDate, ...rescheduleSettings });
+      const broken = checkReschedule(reschedulePolicyFor(originalDate, matchData), proposedDate);
+      if (broken) {
+        console.warn('[MyTeam] Date validation failed', { originalDate, proposedDate, rule: broken.kind });
         toast({
-          title: 'Nieprawidłowa data',
-          description: describeRescheduleViolation(violation, proposedDate, rescheduleSettings),
+          title: 'Nie można zaproponować tego terminu',
+          description: broken.violation,
           variant: 'destructive',
         });
         return;
@@ -986,16 +964,12 @@ function MyTeamView() {
 
       const originalDate = String(matchData?.rescheduleRequest?.originalDate || matchData?.scheduledFor || matchData?.scheduled_for || '');
       const proposedDate = String(matchData?.rescheduleRequest?.proposedDate || '');
-      const rescheduleSettings = getRescheduleSettings(matchData);
-
-      // Re-checked on approval: settings may have changed since the request was sent
-      const violation = proposedDate ? checkRescheduleProposal(originalDate, proposedDate, rescheduleSettings) : 'range';
-      if (violation) {
+      // Re-checked on approval: settings may have changed (or the time passed) since the request was sent
+      const broken = proposedDate ? checkReschedule(reschedulePolicyFor(originalDate, matchData), proposedDate) : null;
+      if (!proposedDate || broken) {
         toast({
           title: 'Nie można zatwierdzić',
-          description: proposedDate
-            ? describeRescheduleViolation(violation, proposedDate, rescheduleSettings)
-            : 'Wniosek nie zawiera proponowanej daty.',
+          description: broken ? `${broken.violation} Odrzuć wniosek — przeciwnik może zaproponować inny termin.` : 'Wniosek nie zawiera proponowanej daty.',
           variant: 'destructive',
         });
         return;

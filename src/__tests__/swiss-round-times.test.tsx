@@ -14,7 +14,7 @@ const TEAMS = Array.from({ length: 10 }, (_, i) => ({
 }));
 const DRAFT: SwissRound = {
   round: 1, status: 'draft', matchFormat: 'bo2',
-  scheduling: { mode: 'fixed', times: ['', '', '', '', ''], maxHoursLater: 4 },
+  scheduling: { mode: 'fixed', times: ['', '', '', '', ''] },
   pairings: [0, 2, 4, 6, 8].map(k => ({ teamAId: `t${k}`, teamBId: `t${k + 1}`, matchId: '', isBye: false })),
   standingsSnapshot: [], generatedAt: '2026-10-19T20:02:21.118Z',
 };
@@ -63,7 +63,9 @@ const shownAt = (label: string) => [
 const row = (n: number) => `Termin meczu ${n}`;
 const BULK = 'Termin dla zaznaczonych';
 const applyBulk = () => fireEvent.click(screen.getByRole('button', { name: 'Ustaw dla zaznaczonych' }));
-const commit = async () => {
+const LATEST = 'Najpóźniejszy termin przełożenia';
+const commit = async (latest: readonly [string, string] | null = ['25.10.2026', '23:59']) => {
+  if (latest) setAt(LATEST, latest);
   await act(async () => { fireEvent.click(screen.getByRole('button', { name: /Zatwierdź rundę 1/ })); });
   await waitFor(() => expect(commitRound).toHaveBeenCalled());
   return (commitRound.mock.calls[0] as unknown as [{ scheduling: SwissRound['scheduling'] }])[0].scheduling;
@@ -83,6 +85,8 @@ describe('Swiss round builder — per-match times', () => {
     expect([1, 2, 3, 4, 5].map(n => shownAt(row(n)))).toEqual([WED, WED, WED, THU, THU]);
     const s = await commit();
     expect(s.times!.map(dayOf)).toEqual([21, 21, 21, 22, 22]);
+    // the round's latest reschedule time goes along with the times
+    expect(new Date(s.rescheduleLatest!).getDate()).toBe(25);
   }, 30_000); // the first test also pays for importing the whole tab
 
   it('"Zaznacz wszystkie" for Wednesday, then single rows changed to Thursday', async () => {
@@ -94,5 +98,18 @@ describe('Swiss round builder — per-match times', () => {
     setAt(row(5), THU);
     const s = await commit();
     expect(s.times!.map(dayOf)).toEqual([21, 21, 21, 22, 22]);
+  });
+
+  it('will not commit without the latest reschedule time, or with one before a match', async () => {
+    await renderTab();
+    fireEvent.click(screen.getByLabelText('Zaznacz wszystkie'));
+    setAt(BULK, WED);
+    applyBulk();
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: /Zatwierdź rundę 1/ })); });
+    await waitFor(() => expect(toast).toHaveBeenCalledWith(expect.objectContaining({ description: expect.stringMatching(/najpóźniejszy termin/) })));
+    setAt(LATEST, ['20.10.2026', '20:00']);
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: /Zatwierdź rundę 1/ })); });
+    await waitFor(() => expect(toast).toHaveBeenCalledWith(expect.objectContaining({ description: expect.stringMatching(/wcześniejszy niż termin/) })));
+    expect(commitRound).not.toHaveBeenCalled();
   });
 });

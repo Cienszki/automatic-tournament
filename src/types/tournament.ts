@@ -334,8 +334,10 @@ export interface SwissRound {
     fixedAt?: string;
     /** fixed: ISO start time per pairing, same order as `pairings`; '' = not set yet */
     times?: string[];
-    /** fixed: captains may move a match earlier, or at most this many hours later (null = no hour limit) */
+    /** Legacy (older rounds): captains may move a match earlier, or at most this many hours later (null = no hour limit) */
     maxHoursLater?: number | null;
+    /** fixed: ISO — the latest time captains may move any match of the round to (earlier is always fine); copied to each match as `rescheduleLatest` */
+    rescheduleLatest?: string | null;
     windowStart?: string;
     windowEnd?: string;
   };

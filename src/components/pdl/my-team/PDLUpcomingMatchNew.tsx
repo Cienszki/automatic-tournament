@@ -30,8 +30,7 @@ import { PDLMatchRules } from './PDLMatchRules';
 import { useOpenMatchPrep } from '@/components/draft-prep/open';
 import { extraTag } from '@/lib/match-flags';
 import { DraftPenaltyBanner } from '@/components/penalties/DraftPenaltyBanner';
-import { isEarlierThanOriginal, isWithinHoursLater, latestAllowedTime } from '@/lib/reschedule-rules';
-import { plural } from '@/lib/plural';
+import { checkReschedule, reschedulePolicy } from '@/lib/reschedule-rules';
 
 interface PDLUpcomingMatchProps {
   match: Match;
@@ -163,77 +162,27 @@ export function PDLUpcomingMatch({
   const isRequestFromUs = rescheduleRequest && rescheduleRequest.requestedBy === myTeamId;
   const isRequestFromOpponent = hasActiveRequest && rescheduleRequest.requestedBy !== myTeamId;
 
-  // Calculate allowed date range for reschedule requests.
-  // - If the match has no admin-set date yet, skip all date restrictions.
-  // - Otherwise, use tournament.rescheduleRangeDays (null = unlimited, default 3).
-  // - The anchor is always the original scheduled date so captains can't chain
-  //   reschedules to drift further than the configured range.
-  const rescheduleRangeDays = tournament?.rescheduleRangeDays !== undefined ? tournament.rescheduleRangeDays : 3;
-  // Per-match deadline takes precedence over the global tournament rescheduleFinalDate
-  const rescheduleFinalDate = match.deadline || tournament?.rescheduleFinalDate;
+  // Which new times the captain may propose: one policy for the picker bounds, the hint and the
+  // error (and the same one is checked again when the request is sent and when it's approved).
+  // Anchored to the first scheduled time, so captains can't chain reschedules to drift further.
   const originalDate = rescheduleRequest?.originalDate || scheduledDate;
-  const originalDateObj = originalDate ? new Date(originalDate) : new Date();
-
-  let minDate: Date | null = null;
-  let maxDate: Date | null = null;
-
-  if (scheduledDate && rescheduleRangeDays !== null) {
-    minDate = new Date(originalDateObj);
-    minDate.setDate(minDate.getDate() - rescheduleRangeDays);
-    minDate.setHours(0, 0, 0, 0);
-    maxDate = new Date(originalDateObj);
-    maxDate.setDate(maxDate.getDate() + rescheduleRangeDays);
-    maxDate.setHours(23, 59, 0, 0);
-  }
-
-  // "Earlier only" (admin setting, per the rulebook): nothing after the original date.
-  // Same day stays selectable — an earlier hour that day is allowed; the exact time is
-  // checked below (proposalNotEarlier).
-  // Per-match limit set by the admin (Swiss rounds): any earlier time, or at most N hours later.
-  // It replaces "earlier only" for this match.
-  const maxHoursLater = scheduledDate && match.rescheduleMaxHoursLater != null ? match.rescheduleMaxHoursLater : null;
-  const latestAllowed = maxHoursLater != null ? latestAllowedTime(originalDateObj.toISOString(), maxHoursLater) : null;
-  if (latestAllowed) {
-    const lastDay = new Date(latestAllowed);
-    lastDay.setHours(23, 59, 0, 0);
-    if (!maxDate || lastDay < maxDate) maxDate = lastDay;
-  }
-  const earlierOnly = !!tournament?.rescheduleEarlierOnly && !!scheduledDate && maxHoursLater == null;
-  if (earlierOnly) {
-    const lastDay = new Date(originalDateObj);
-    lastDay.setHours(23, 59, 0, 0);
-    if (!maxDate || lastDay < maxDate) maxDate = lastDay;
-  }
-
-  // Apply final deadline constraint regardless of range setting
-  if (rescheduleFinalDate) {
-    const finalDeadline = new Date(rescheduleFinalDate);
-    finalDeadline.setHours(23, 59, 0, 0);
-    if (!maxDate || finalDeadline < maxDate) {
-      maxDate = finalDeadline;
-    }
-  }
-
-  // Never allow proposing a date in the past. When no range applies (e.g. a playoff match with no
-  // set date yet), the lower bound would otherwise be open — pin it to today.
-  {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    if (!minDate || minDate < today) minDate = today;
-  }
+  const policy = reschedulePolicy({ originalIso: originalDate || '', tournament, match });
+  const dayValue = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  // Strict "before X" limits still allow earlier hours on X's day
+  const minDay = dayValue(policy.earliest);
+  const maxDay = policy.latest ? dayValue(policy.latest) : undefined;
+  const windowClosed = !!policy.latest && policy.latest.getTime() <= policy.earliest.getTime();
 
   // Count pending items
   const myPendingStandins = standinRequests.filter(r => r.status === 'pending' || r.status === 'rejected').length;
   const opponentPendingStandins = opponentStandinRequests.filter(r => r.status === 'pending').length;
   const hasPendingItems = hasActiveRequest || myPendingStandins > 0 || opponentPendingStandins > 0;
 
-  const proposalNotEarlier = earlierOnly && !!selectedDate && isValidSelectedTime
-    && !isEarlierThanOriginal(originalDateObj.toISOString(), new Date(`${selectedDate}T${selectedTime}`).toISOString());
-  const proposalTooLate = maxHoursLater != null && !!selectedDate && isValidSelectedTime
-    && !isWithinHoursLater(originalDateObj.toISOString(), new Date(`${selectedDate}T${selectedTime}`).toISOString(), maxHoursLater);
+  const proposedIso = selectedDate && isValidSelectedTime ? new Date(`${selectedDate}T${selectedTime}`).toISOString() : null;
+  const brokenRule = proposedIso ? checkReschedule(policy, proposedIso) : null;
 
   const handleSubmitReschedule = async () => {
-    if (!selectedDate || !isValidSelectedTime || proposalNotEarlier || proposalTooLate) return;
+    if (!selectedDate || !isValidSelectedTime || brokenRule) return;
     if (!onRequestReschedule) return;
 
     // Convert local datetime to UTC ISO immediately so the stored proposedDate is
@@ -500,33 +449,19 @@ export function PDLUpcomingMatch({
             {isCaptain && match.status !== 'completed' && !hasActiveRequest && (
               showReschedule ? (
                 <div className="rounded-lg border border-white/10 bg-white/[0.02] p-4 space-y-3">
-                  <p className="text-xs text-white/60 font-logik">
-                    {!scheduledDate
-                      ? `Mecz nie ma jeszcze ustalonego terminu. Podaj preferowany termin.${rescheduleFinalDate ? ` Ostateczny termin składania propozycji: ${formatDatePL(rescheduleFinalDate)}.` : ''} Wymaga zgody kapitana przeciwnej drużyny.`
-                      : rescheduleRangeDays === null
-                      ? `Nowy termin nie jest ograniczony zakresem dat.${rescheduleFinalDate ? ` Ostateczny termin składania propozycji: ${formatDatePL(rescheduleFinalDate)}.` : ''} Wymaga zgody kapitana przeciwnej drużyny.`
-                      : `Nowy termin musi mieścić się w zakresie ±${rescheduleRangeDays} ${plural(rescheduleRangeDays, 'dzień', 'dni', 'dni')} od domyślnej daty.${rescheduleFinalDate ? ` Ostateczny termin składania propozycji: ${formatDatePL(rescheduleFinalDate)}.` : ''} Wymaga zgody kapitana przeciwnej drużyny.`
-                    }
-                    {earlierOnly && (
-                      <span className="block mt-1 text-amber-300/90">
-                        Mecz można przełożyć wyłącznie na termin wcześniejszy niż {formattedDate}.
-                      </span>
-                    )}
-                    {latestAllowed && (
-                      <span className="block mt-1 text-amber-300/90">
-                        {maxHoursLater === 0
-                          ? `Mecz można przełożyć wyłącznie na termin wcześniejszy niż ${formatDatePL(originalDateObj.toISOString())}.`
-                          : `Mecz można przełożyć na dowolny wcześniejszy termin albo najpóźniej na ${formatDatePL(latestAllowed.toISOString())} (maks. ${maxHoursLater} h później).`}
-                      </span>
-                    )}
-                  </p>
+                  <div className="text-xs text-white/60 font-logik space-y-1">
+                    {!scheduledDate && <p>Mecz nie ma jeszcze ustalonego terminu. Podaj preferowany termin.</p>}
+                    {policy.summary.map(line => <p key={line} className="text-amber-300/90">{line}</p>)}
+                    <p>Nowy termin wymaga zgody kapitana przeciwnej drużyny.</p>
+                    {windowClosed && <p className="text-red-400">Termin przełożenia tego meczu już minął — w razie problemów skontaktuj się z administracją.</p>}
+                  </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <DateInput
                       aria-label="Data"
                       value={selectedDate}
                       onChange={setSelectedDate}
-                      min={minDate ? `${minDate.getFullYear()}-${String(minDate.getMonth()+1).padStart(2,'0')}-${String(minDate.getDate()).padStart(2,'0')}` : undefined}
-                      max={maxDate ? `${maxDate.getFullYear()}-${String(maxDate.getMonth()+1).padStart(2,'0')}-${String(maxDate.getDate()).padStart(2,'0')}` : undefined}
+                      min={minDay}
+                      max={maxDay}
                       className="bg-white/5 border-white/10 text-white"
                     />
                     <Input
@@ -539,21 +474,14 @@ export function PDLUpcomingMatch({
                       className="bg-white/5 border-white/10 text-white"
                     />
                   </div>
-                  {proposalTooLate && (
-                    <p className="text-xs text-red-400 font-logik">
-                      Wybrany termin jest późniejszy niż {latestAllowed ? formatDatePL(latestAllowed.toISOString()) : ''}.
-                    </p>
-                  )}
-                  {proposalNotEarlier && (
-                    <p className="text-xs text-red-400 font-logik">
-                      Wybrany termin nie jest wcześniejszy niż obecny termin meczu.
-                    </p>
+                  {brokenRule && (
+                    <p className="text-xs text-red-400 font-logik">{brokenRule.violation}</p>
                   )}
                   <div className="flex gap-2">
                     <Button
                       size="sm"
                       onClick={handleSubmitReschedule}
-                      disabled={!selectedDate || !isValidSelectedTime || proposalNotEarlier || proposalTooLate || loading}
+                      disabled={!selectedDate || !isValidSelectedTime || !!brokenRule || windowClosed || loading}
                       className="bg-pdl-crimson hover:bg-pdl-crimson/80 text-white"
                     >
                       {loading ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <CalendarRange className="w-4 h-4 mr-1" />}
