@@ -26,11 +26,14 @@ interface MostPlayedHeroes {
   lastUpdated: string;
 }
 
+const OD_KEY = process.env.OPENDOTA_API_KEY;
+const odHeroes = (accountId: string, query = '') =>
+  fetch(`https://api.opendota.com/api/players/${accountId}/heroes${query}${OD_KEY ? `${query ? '&' : '?'}api_key=${OD_KEY}` : ''}`, { cache: 'no-store' });
+/** Pause between players: the free tier allows about 1 request a second, our key much more */
+const PLAYER_DELAY_MS = OD_KEY ? 300 : 2100;
+
 async function fetchMostPlayedHeroes(accountId: string): Promise<MostPlayedHeroes> {
-  const [overallRes, recentRes] = await Promise.all([
-    fetch(`https://api.opendota.com/api/players/${accountId}/heroes`),
-    fetch(`https://api.opendota.com/api/players/${accountId}/heroes?date=180`),
-  ]);
+  const [overallRes, recentRes] = await Promise.all([odHeroes(accountId), odHeroes(accountId, '?date=180')]);
 
   if (!overallRes.ok) throw new Error(`OpenDota API error: ${overallRes.status}`);
   if (!recentRes.ok) throw new Error(`OpenDota API error (recent): ${recentRes.status}`);
@@ -111,8 +114,8 @@ export async function POST(request: NextRequest) {
           if (!accountId) continue;
 
           try {
-            // Delay between players to respect OpenDota rate limits (1 req/sec free tier)
-            if (updatedCount > 0) await new Promise(r => setTimeout(r, 2100));
+            // Delay between players to respect OpenDota rate limits
+            if (updatedCount > 0) await new Promise(r => setTimeout(r, PLAYER_DELAY_MS));
 
             const heroData = await fetchMostPlayedHeroes(accountId);
             updatedRoster[steamId64] = { ...updatedRoster[steamId64], mostPlayedHeroes: heroData };

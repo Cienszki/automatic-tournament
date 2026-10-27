@@ -11,7 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
-import { ClipboardList, Loader2, RefreshCw } from 'lucide-react';
+import { ClipboardList, Loader2, RefreshCw, Users } from 'lucide-react';
 import { refreshHeroDataSteps } from '@/lib/draft-prep/refresh-client';
 
 export function MatchPrepDataCard() {
@@ -62,13 +62,16 @@ export function MatchPrepDataCard() {
   );
 }
 
-/** Admin card: re-check every player's match history (after someone makes their profile public, or when histories look stale) */
-export function PlayerHistoriesCard() {
+/**
+ * Admin card: refresh what we take from OpenDota about the players — the heroes in the teams view
+ * (a snapshot saved on the team) and the game histories in the match-prep tool (cached 6 h).
+ */
+export function PlayerDataCard() {
   const { tournament } = useTournament();
   const { user } = useAuth();
   const { toast } = useToast();
   const [refreshedAt, setRefreshedAt] = useState<string | null | undefined>(undefined);
-  const [busy, setBusy] = useState(false);
+  const [step, setStep] = useState<string | null>(null);
 
   useEffect(() => {
     if (!tournament?.id || !user) return;
@@ -77,46 +80,52 @@ export function PlayerHistoriesCard() {
       .then(r => r.json()).then(j => setRefreshedAt(j?.refreshedAt ?? null)).catch(() => setRefreshedAt(null));
   }, [tournament?.id, user]);
 
+  const post = async (url: string, body: object) => {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${await user!.getIdToken()}` },
+      body: JSON.stringify(body),
+    });
+    const j = await res.json().catch(() => ({}));
+    if (!res.ok || !j.success) throw new Error(j.error || `HTTP ${res.status}`);
+    return j;
+  };
+
   const refresh = async () => {
     if (!tournament?.id || !user) return;
-    setBusy(true);
     try {
-      const res = await fetch('/api/manage/draft-prep-histories', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${await user.getIdToken()}` },
-        body: JSON.stringify({ tournamentId: tournament.id }),
-      });
-      const j = await res.json().catch(() => ({}));
-      if (!res.ok || !j.success) throw new Error(j.error || `HTTP ${res.status}`);
-      setRefreshedAt(j.refreshedAt);
+      setStep('Proszę OpenDota o aktualne dane…');
+      const h = await post('/api/manage/draft-prep-histories', { tournamentId: tournament.id });
+      setRefreshedAt(h.refreshedAt);
+      setStep('Aktualizuję bohaterów w widoku drużyn…');
+      const p = await post('/api/player-heroes', { tournamentId: tournament.id, refreshAll: true });
       toast({
-        title: 'Historie graczy odświeżane',
-        description: `OpenDota przyjęło ${j.queued} z ${j.accounts} kont${j.failed ? ` (${j.failed} nie odpowiedziało — spróbuj ponownie później)` : ''}. Starsze gry pojawią się w ciągu kilku minut do kilku godzin.`,
+        title: 'Dane graczy odświeżone',
+        description: `Bohaterowie: ${p.updatedCount} graczy${p.errorCount ? `, ${p.errorCount} bez odpowiedzi` : ''}. Historie w przygotowaniu do meczu wczytają się na nowo.`,
       });
     } catch (e: any) {
-      toast({ title: 'Nie udało się odświeżyć historii', description: e?.message, variant: 'destructive' });
+      toast({ title: 'Nie udało się odświeżyć danych graczy', description: e?.message, variant: 'destructive' });
     } finally {
-      setBusy(false);
+      setStep(null);
     }
   };
 
   return (
     <Card className="bg-card/50 backdrop-blur-sm">
       <CardHeader className="pb-2">
-        <CardTitle className="text-base font-logik-extended-bold flex items-center gap-2"><ClipboardList className="h-4 w-4" />Przygotowanie do meczu — historie graczy</CardTitle>
+        <CardTitle className="text-base font-logik-extended-bold flex items-center gap-2"><Users className="h-4 w-4" />Dane graczy z OpenDota</CardTitle>
       </CardHeader>
       <CardContent className="space-y-3 font-logik">
         <p className="text-sm text-muted-foreground">
-          Historie gier zawodników (OpenDota + STRATZ) są pobierane, gdy ktoś otworzy mecz z ich udziałem, i odświeżane co 6 godzin.
-          Ten przycisk prosi OpenDota o ponowne pobranie historii wszystkich graczy, smurfów i stand-inów turnieju i czyści naszą pamięć podręczną —
-          przydaje się, gdy ktoś dopiero udostępnił dane meczów („Expose Public Match Data”). Przez 2 godziny potem historie są czytane na nowo co 15 minut.
+          Bohaterowie graczy w widoku drużyn i historie gier w przygotowaniu do meczu. Odśwież, gdy dane wyglądają na nieaktualne
+          albo ktoś dopiero udostępnił swoje mecze — wtedy najlepiej jeszcze raz za godzinę, bo OpenDota potrzebuje chwili.
         </p>
         <div className="flex items-center gap-4 flex-wrap">
           <span className="text-sm">
-            {refreshedAt === undefined ? 'Sprawdzam…' : refreshedAt ? `Ostatnio: ${new Date(refreshedAt).toLocaleString('pl-PL')}` : 'Jeszcze nie odświeżano ręcznie.'}
+            {step ?? (refreshedAt === undefined ? 'Sprawdzam…' : refreshedAt ? `Ostatnio: ${new Date(refreshedAt).toLocaleString('pl-PL')}` : 'Jeszcze nie odświeżano.')}
           </span>
-          <Button variant="outline" onClick={refresh} disabled={busy || !user}>
-            {busy ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Odświeżanie…</> : <><RefreshCw className="h-4 w-4 mr-2" />Odśwież historie graczy</>}
+          <Button variant="outline" onClick={refresh} disabled={step != null || !user}>
+            {step ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Odświeżanie…</> : <><RefreshCw className="h-4 w-4 mr-2" />Odśwież dane graczy</>}
           </Button>
         </div>
       </CardContent>

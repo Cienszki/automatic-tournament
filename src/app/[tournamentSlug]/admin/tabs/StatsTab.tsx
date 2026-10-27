@@ -10,7 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { doc, getDoc, collection, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { cn } from '@/lib/utils';
-import { MatchPrepDataCard, PlayerHistoriesCard } from './MatchPrepDataCard';
+import { MatchPrepDataCard, PlayerDataCard } from './MatchPrepDataCard';
 import {
   BarChart3,
   RefreshCw,
@@ -49,7 +49,6 @@ export function StatsTab() {
     mostPickedHero: null,
   });
   const [isRecalculating, setIsRecalculating] = useState(false);
-  const [isRefreshingHeroes, setIsRefreshingHeroes] = useState(false);
   const [isRecalculatingRankings, setIsRecalculatingRankings] = useState(false);
   const [progress, setProgress] = useState(0);
   const [lastResult, setLastResult] = useState<{ success: boolean; message: string } | null>(null);
@@ -147,30 +146,6 @@ export function StatsTab() {
 
   const pc = theme.primaryColor;
 
-  // ── Refresh most-played heroes for all players ──
-  const handleRefreshHeroes = async () => {
-    if (!tournament?.id) return;
-    setIsRefreshingHeroes(true);
-    try {
-      const response = await fetch('/api/player-heroes', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${await user?.getIdToken()}` },
-        body: JSON.stringify({ tournamentId: tournament.id, refreshAll: true }),
-      });
-      const result = await response.json();
-      if (result.success) {
-        toast({ title: 'Sukces', description: result.message });
-      } else {
-        throw new Error(result.error || 'Nieznany błąd');
-      }
-    } catch (error) {
-      const msg = error instanceof Error ? error.message : 'Nie udało się odświeżyć bohaterów';
-      toast({ title: 'Błąd', description: msg, variant: 'destructive' });
-    } finally {
-      setIsRefreshingHeroes(false);
-    }
-  };
-
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -192,18 +167,6 @@ export function StatsTab() {
               <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Przeliczanie...</>
             ) : (
               <><Trophy className="h-4 w-4 mr-2" />Przelicz rankingi</>
-            )}
-          </Button>
-          <Button
-            onClick={handleRefreshHeroes}
-            disabled={isRefreshingHeroes}
-            variant="outline"
-            className="font-logik"
-          >
-            {isRefreshingHeroes ? (
-              <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Odświeżanie...</>
-            ) : (
-              <><Users className="h-4 w-4 mr-2" />Odśwież bohaterów</>
             )}
           </Button>
           <Button
@@ -340,8 +303,8 @@ export function StatsTab() {
         </CardContent>
       </Card>
 
+      <PlayerDataCard />
       <MatchPrepDataCard />
-      <PlayerHistoriesCard />
     </div>
   );
 }
