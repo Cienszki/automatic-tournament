@@ -18,8 +18,8 @@ import { count, plural } from '@/lib/plural';
 type Run = (key: string, fn: () => Promise<void>) => Promise<void>;
 
 export const LAN_STAGE_LABEL: Record<string, string> = {
-  A: 'Grupa A',
-  B: 'Swiss',
+  A: 'Waga Ciężka',
+  B: 'Waga Piórkowa',
   F: 'Finał',
   P: 'O miejsca',
 };
@@ -27,7 +27,7 @@ const SLOT_LABEL: Record<string, string> = {
   o1: 'otwarcie', o2: 'otwarcie', w: 'zwycięzców', l: 'przegranych', d: 'decydujący', tb: 'dogrywka o miejsce',
 };
 
-/** "Grupa A · zwycięzców" — the admin-facing name of a pairing's slot in the format. */
+/** "Waga Ciężka · zwycięzców" — the admin-facing name of a pairing's slot in the format. */
 export function lanPairingLabel(stage?: string, slot?: string | null): string {
   if (!stage) return '';
   return [LAN_STAGE_LABEL[stage], slot ? SLOT_LABEL[slot] : null].filter(Boolean).join(' · ');
@@ -51,8 +51,8 @@ export function FormatCard({ format, hasRounds, busy, onSave, primary }: {
           <GitBranch className="h-5 w-5" style={{ color: primary }} /> Format
         </CardTitle>
         <CardDescription className="font-logik">
-          Kwalifikacje LAN: 4 najwyżej rozstawione drużyny grają grupę GSL (1–2 → LAN), reszta Swiss;
-          potem Finał (3.–4. z grupy A + dwie najlepsze ze Swissa, 1–2 → LAN) i mecze o miejsca 7+. Wszystko bo3.
+          Kwalifikacje LAN: 4 najwyżej rozstawione drużyny grają Wagę Ciężką (GSL, 1–2 → LAN), reszta Wagę Piórkową (Swiss);
+          potem Finał (3.–4. z Wagi Ciężkiej + dwie najlepsze z Wagi Piórkowej, 1–2 → LAN) i mecze o miejsca 7+. Wszystko bo3.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -61,7 +61,7 @@ export function FormatCard({ format, hasRounds, busy, onSave, primary }: {
             <SelectTrigger className="w-[320px] font-logik"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="standard">Swiss (jedna tabela, punkty za mapy)</SelectItem>
-              <SelectItem value="lan-qualifier">Kwalifikacje LAN (grupa A + Swiss → Finał)</SelectItem>
+              <SelectItem value="lan-qualifier">Kwalifikacje LAN (Waga Ciężka + Waga Piórkowa → Finał)</SelectItem>
             </SelectContent>
           </Select>
           <Button onClick={() => onSave(value)} disabled={busy || value === format} style={{ backgroundColor: primary }}>
@@ -100,17 +100,17 @@ export function GroupACard({ cfg, field, stored, locked, run, onSave, primary }:
     <Card className="border-0 shadow-lg bg-card/50 backdrop-blur-sm">
       <CardHeader className="pb-4">
         <CardTitle className="flex items-center gap-2 font-logik-extended-bold">
-          <Crown className="h-5 w-5" style={{ color: primary }} /> Grupa A (4 drużyny)
+          <Crown className="h-5 w-5" style={{ color: primary }} /> Waga Ciężka (4 drużyny)
         </CardTitle>
         <CardDescription className="font-logik">
-          Domyślnie 4 drużyny z najwyższym rozstawieniem. Pozostałe {Math.max(0, field.length - 4)} grają Swiss
+          Domyślnie 4 drużyny z najwyższym rozstawieniem. Pozostałe {Math.max(0, field.length - 4)} grają w Wadze Piórkowej (Swiss)
           ({cfg.groupB.length >= 2 ? `${count(Math.max(1, Math.ceil(Math.log2(cfg.groupB.length))), 'runda', 'rundy', 'rund')}` : 'za mało drużyn'}).
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
         {field.length < 6 && (
           <p className="text-sm text-amber-500 font-logik flex items-center gap-2">
-            <AlertTriangle className="h-4 w-4" /> Potrzeba co najmniej 6 drużyn (4 w grupie A + 2 w Swissie).
+            <AlertTriangle className="h-4 w-4" /> Potrzeba co najmniej 6 drużyn (4 w Wadze Ciężkiej + 2 w Wadze Piórkowej).
           </p>
         )}
         <div className="grid gap-2 sm:grid-cols-2">
@@ -130,12 +130,12 @@ export function GroupACard({ cfg, field, stored, locked, run, onSave, primary }:
         </div>
         {locked ? (
           <p className="text-xs text-muted-foreground font-logik">
-            Zablokowane — runda 1 jest zatwierdzona. Aby zmienić grupę, wycofaj rundę 1.
+            Zablokowane — runda 1 jest zatwierdzona. Aby zmienić skład Wagi Ciężkiej, wycofaj rundę 1.
           </p>
         ) : (
           <div className="flex flex-wrap items-center gap-3">
             <Button onClick={() => run('groupA', () => onSave(pick))} disabled={!valid || !dirty} style={{ backgroundColor: primary }}>
-              <Save className="h-4 w-4 mr-2" /> Zapisz grupę A
+              <Save className="h-4 w-4 mr-2" /> Zapisz Wagę Ciężką
             </Button>
             {stored.length !== 4 && (
               <span className="text-xs text-muted-foreground font-logik">
@@ -245,7 +245,7 @@ export function LanStatusCard({ cfg, derived, matches, nextPlan, field, primary 
           <Trophy className="h-5 w-5" style={{ color: primary }} /> Przebieg i miejsca
         </CardTitle>
         <CardDescription className="font-logik">
-          Rundy 1–{derived.finalStart - 1}: grupa A i Swiss równolegle · rundy {derived.finalStart}–{derived.placementEnd}: Finał i mecze o miejsca ·
+          Rundy 1–{derived.finalStart - 1}: Waga Ciężka i Waga Piórkowa równolegle · rundy {derived.finalStart}–{derived.placementEnd}: Finał i mecze o miejsca ·
           potem ewentualne dogrywki o miejsca dla drużyn z tym samym bilansem.
         </CardDescription>
       </CardHeader>
@@ -259,8 +259,8 @@ export function LanStatusCard({ cfg, derived, matches, nextPlan, field, primary 
           </p>
         )}
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-          {status('Grupa A', 'A', `LAN: ${name(derived.aPlaces[0])}, ${name(derived.aPlaces[1])}`)}
-          {status('Swiss', 'B', `Do Finału: ${name(derived.b1)}, ${name(derived.b2)}`)}
+          {status('Waga Ciężka', 'A', `LAN: ${name(derived.aPlaces[0])}, ${name(derived.aPlaces[1])}`)}
+          {status('Waga Piórkowa', 'B', `Do Finału: ${name(derived.b1)}, ${name(derived.b2)}`)}
           {status('Finał', 'F', `LAN: ${name(derived.fPlaces[0])}, ${name(derived.fPlaces[1])}`)}
           {status('O miejsca', 'P', derived.restSettled ? 'wszystkie miejsca ustalone' : 'w toku')}
         </div>
@@ -280,14 +280,14 @@ export function LanStatusCard({ cfg, derived, matches, nextPlan, field, primary 
                 <td className={cn('py-1.5 pr-3 w-10 font-mono', p.lan ? 'text-green-500' : 'text-muted-foreground')}>{p.place}.</td>
                 <td className="py-1.5">{name(p.teamId)}</td>
                 <td className="py-1.5 text-right text-xs text-muted-foreground">
-                  {p.place <= 2 ? 'grupa A' : p.place <= 6 ? 'Finał' : 'o miejsca'}
+                  {p.place <= 2 ? 'Waga Ciężka' : p.place <= 6 ? 'Finał' : 'o miejsca'}
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
         <p className="text-xs text-muted-foreground font-logik">
-          Grupa A: {cfg.groupA.map(name).join(', ')} · Swiss: {count(cfg.groupB.length, 'drużyna', 'drużyny', 'drużyn')}.
+          Waga Ciężka: {cfg.groupA.map(name).join(', ')} · Waga Piórkowa: {count(cfg.groupB.length, 'drużyna', 'drużyny', 'drużyn')}.
         </p>
       </CardContent>
     </Card>

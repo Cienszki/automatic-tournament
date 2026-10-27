@@ -59,7 +59,7 @@ export async function saveSwissFormat(tournamentId: string, format: 'standard' |
 }
 
 export async function saveGroupA(tournamentId: string, groupA: string[]): Promise<void> {
-  if (groupA.length !== 4 || new Set(groupA).size !== 4) throw new Error('Grupa A to dokładnie 4 różne drużyny.');
+  if (groupA.length !== 4 || new Set(groupA).size !== 4) throw new Error('Waga Ciężka to dokładnie 4 różne drużyny.');
   await updateDoc(doc(db, 'tournaments', tournamentId), {
     'swiss.lanQualifier.groupA': groupA,
     updatedAt: new Date().toISOString(),

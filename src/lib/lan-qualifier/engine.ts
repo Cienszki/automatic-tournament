@@ -100,8 +100,8 @@ function gslStep(stage: 'A' | 'F', seeds: string[], step: number, ms: LQMatch[],
   const need = (...slots: GslSlot[]) => {
     for (const s of slots) {
       const m = by(s);
-      if (!m || !m.done) return `${stage === 'A' ? 'Grupa A' : 'Finał'}: brak wyniku meczu ${GSL_LABEL[s].toLowerCase()}`;
-      if (!m.winner) return `${stage === 'A' ? 'Grupa A' : 'Finał'}: mecz bez zwycięzcy — ustaw wynik`;
+      if (!m || !m.done) return `${stage === 'A' ? 'Waga Ciężka' : 'Finał'}: brak wyniku meczu ${GSL_LABEL[s].toLowerCase()}`;
+      if (!m.winner) return `${stage === 'A' ? 'Waga Ciężka' : 'Finał'}: mecz bez zwycięzcy — ustaw wynik`;
     }
     return null;
   };
