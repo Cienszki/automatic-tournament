@@ -3,6 +3,7 @@ import 'server-only';
 // upcoming matches, standins) from Firestore, and per-account match histories, hero meta and hero
 // matchups from OpenDota. Everything is compacted before it is cached or sent to the browser.
 
+import { FieldValue } from 'firebase-admin/firestore';
 import { getAdminDb, ensureAdminInitialized } from '@/server/lib/admin';
 import type { DpContext, DpHeroData, DpHistory, DpMatchRow, DpMeta, DpPastStandin, DpStandin, DpTeam } from './types';
 
@@ -180,11 +181,15 @@ async function stratzGames(account: string): Promise<Map<number, StratzGame>> {
   return out;
 }
 
-/** One account's games, compacted: [matchId, start, hero, win, kind, lane, pos] */
+/**
+ * One account's games, compacted: [matchId, start, hero, win, kind, lane, pos]. Throws when
+ * OpenDota's match list can't be read, so the failure is retried instead of being cached as
+ * "no games" (unstable_cache doesn't keep rejected results).
+ */
 export async function accountHistory(account: string): Promise<{ name?: string; avatar?: string; rankTier?: number; rows: DpMatchRow[]; positions?: number }> {
   const fields = ['hero_id', 'start_time', 'radiant_win', 'player_slot', 'lobby_type', 'game_mode', 'lane_role'].map(f => `project=${f}`).join('&');
   const [list, prof, sz] = await Promise.all([
-    odJson<OdMatch[]>(`/players/${account}/matches?${fields}`).catch(() => [] as OdMatch[]),
+    odJson<OdMatch[]>(`/players/${account}/matches?${fields}`),
     odJson<any>(`/players/${account}`).catch(() => null),
     stratzGames(account).catch(() => new Map<number, StratzGame>()),
   ]);
@@ -222,6 +227,71 @@ export async function playerAccounts(tournamentId: string | null, sid64: string)
     }
   }
   return [...accounts].filter(a => /^\d{1,12}$/.test(a));
+}
+
+// ── Manual refresh of player histories ─────────────────────────────────────
+
+/** Every account of a tournament: roster players, their registered smurfs, and standins who played */
+export async function tournamentAccounts(tournamentId: string | null): Promise<string[]> {
+  ensureAdminInitialized();
+  const db = getAdminDb();
+  const base = tournamentId ? db.collection('tournaments').doc(tournamentId) : null;
+  const col = (name: string) => (base ? base.collection(name) : db.collection(name));
+  const [teams, matches] = await Promise.all([col('teams').get(), col('matches').get()]);
+  const out = new Set<string>();
+  const add = (a: unknown) => { const v = a == null ? '' : String(a); if (/^\d{1,12}$/.test(v)) out.add(v); };
+  for (const t of teams.docs) {
+    for (const [sid64, r] of Object.entries<any>(t.data().roster || {})) add(r?.steamId32 || sid64To32(sid64));
+    const ps = await t.ref.collection('players').get().catch(() => null);
+    for (const pd of ps?.docs ?? []) {
+      const p = pd.data();
+      add(p.steamId32 || sid64To32(p.steamId || p.steamId64 || pd.id));
+      for (const sm of Array.isArray(p.smurfAccounts) ? p.smurfAccounts : []) {
+        add(sm?.steamId32 || (sm?.steamId64 ? sid64To32(sm.steamId64) : sm?.steamProfileUrl ? await resolveProfileUrl(sm.steamProfileUrl) : null));
+      }
+    }
+  }
+  for (const m of matches.docs) for (const st of Object.values<any>(m.data().approvedStandins || {})) add(st?.steamId32);
+  return [...out];
+}
+
+/**
+ * Ask OpenDota to re-download each account's history from Steam (its "Refresh" button). OpenDota
+ * queues it: older games show up minutes to hours later, and only for profiles with public data.
+ */
+export async function requestOpenDotaRefresh(accounts: string[]): Promise<{ queued: number; failed: number }> {
+  let queued = 0, failed = 0;
+  const queue = [...accounts];
+  await Promise.all(Array.from({ length: 4 }, async () => {
+    for (let a = queue.shift(); a; a = queue.shift()) {
+      const res = await fetch(odUrl(`/players/${a}/refresh`), { method: 'POST', cache: 'no-store', headers: { 'User-Agent': 'tournament-draft-prep' } }).catch(() => null);
+      if (res?.ok) queued++; else failed++;
+    }
+  }));
+  return { queued, failed };
+}
+
+// The cached histories are keyed by a version kept in Firestore, so one bump empties the cache on
+// every server instance. For a while after a refresh the key also changes every 15 minutes, so
+// games OpenDota adds later still come through.
+const historyDoc = () => getAdminDb().collection('draftPrepData').doc('history');
+export const HISTORY_FRESH_WINDOW_MS = 2 * 3600e3;
+let historyState: { at: number; version: number; refreshedAt: string | null } | null = null;
+
+export async function historyCacheState(): Promise<{ version: number; refreshedAt: string | null }> {
+  if (historyState && Date.now() - historyState.at < 30_000) return historyState;
+  ensureAdminInitialized();
+  const d = (await historyDoc().get().catch(() => null))?.data();
+  historyState = { at: Date.now(), version: Number(d?.version) || 0, refreshedAt: (d?.refreshedAt as string | undefined) ?? null };
+  return historyState;
+}
+
+export async function bumpHistoryVersion(by: string): Promise<string> {
+  ensureAdminInitialized();
+  const refreshedAt = new Date().toISOString();
+  await historyDoc().set({ version: FieldValue.increment(1), refreshedAt, refreshedBy: by }, { merge: true });
+  historyState = null;
+  return refreshedAt;
 }
 
 /** Steam profile link (/profiles/… or /id/vanity) → account id (steamId32) */
