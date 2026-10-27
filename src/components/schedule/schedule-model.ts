@@ -248,6 +248,15 @@ export function nowAndNext(matches: SMatch[], now = Date.now()): { live: SMatch[
 }
 
 /** "za 2 dni", "za 3 godz.", "za 25 min", "teraz" */
+/** A team's next match not played yet: the earliest dated one (from 3 h ago on), else one still without a date */
+export function myNextMatch(matches: SMatch[], teamId: string | null, now = Date.now()): SMatch | null {
+  if (!teamId) return null;
+  const open = matches.filter(m => !m.isSwissByeMatch && !m.isBanForfeit && !m.replacedByMatchId && !isDone(m) && !isLive(m)
+    && (m.teamA?.id === teamId || m.teamB?.id === teamId));
+  const dated = open.filter(m => m.scheduledFor && time(m.scheduledFor) >= now - 3 * 3600e3).sort((a, b) => time(a.scheduledFor) - time(b.scheduledFor));
+  return dated[0] ?? open.find(m => !m.scheduledFor) ?? null;
+}
+
 export function fromNow(iso: string, now = Date.now()): string {
   const diff = time(iso) - now;
   if (diff <= 0) return 'teraz';

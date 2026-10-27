@@ -55,7 +55,100 @@ function Gate({ children }: { children: React.ReactNode }) {
   if (dp.error && !dp.ctx) return <div className="flex-1 flex items-center justify-center text-lg" style={{ color: C.loss }}>{dp.error}</div>;
   if (dp.loading) return <div className="flex-1 flex items-center justify-center"><div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2" style={{ borderColor: C.primary }} /></div>;
   if (!dp.teams.length) return <div className="flex-1 flex items-center justify-center text-lg" style={{ color: C.muted }}>Ten turniej nie ma jeszcze drużyn.</div>;
+  if (!dp.us || !dp.them) return <PrepStart />;
   return <>{children}</>;
+}
+
+// ── Start: choose the match ───────────────────────────────────────────────
+
+const whenOf = (iso?: string) => (iso ? new Date(iso).toLocaleString('pl-PL', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'termin do ustalenia');
+
+/** One side's team list on the start screen; `hint` puts a team first with a note (the next opponent) */
+function TeamColumn({ side, value, onPick, exclude, hint }: { side: 'us' | 'them'; value: DpTeam | null; onPick: (id: string) => void; exclude?: string; hint?: { id: string; note: string } | null }) {
+  const font = useHeaderFont();
+  const { teams, elo } = useDP();
+  const color = side === 'us' ? C.radiant : C.dire;
+  const list = teams.filter(t => t.id !== exclude);
+  const ordered = hint ? [...list.filter(t => t.id === hint.id), ...list.filter(t => t.id !== hint.id)] : list;
+  return (
+    <div className="min-w-0 flex flex-col">
+      <div className="flex items-baseline gap-3 pb-2 border-b" style={{ borderColor: RULE }}>
+        <span className="text-[11px] font-bold uppercase tracking-[0.25em]" style={{ color }}>{side === 'us' ? 'Moja drużyna' : 'Rywal'}</span>
+        <span className="font-logik-extended-bold uppercase truncate" style={{ color: value ? C.heading : C.muted, fontSize: vh(16, 2.2, 24), ...font }}>{value?.name ?? (side === 'us' ? 'wybierz' : 'wybierz rywala')}</span>
+      </div>
+      <div className="grid grid-cols-2 xl:grid-cols-3 gap-x-4 mt-1">
+        {ordered.map(t => {
+          const on = t.id === value?.id;
+          const note = hint?.id === t.id ? hint.note : null;
+          return (
+            <button key={t.id} type="button" onClick={() => onPick(t.id)}
+              className="flex items-center gap-2.5 py-2 pl-2 text-left border-b transition-colors hover:bg-[color-mix(in_srgb,var(--tournament-text,#fff)_6%,transparent)]"
+              style={{ borderColor: RULE, boxShadow: on ? `inset 3px 0 0 ${color}` : undefined, background: on ? mix(color, 14) : undefined }}>
+              <TeamLogo team={t} size={30} />
+              <span className="min-w-0">
+                <span className="block text-sm font-bold leading-tight" style={{ color: on ? C.heading : C.text }}>{t.name}</span>
+                <span className="block text-[10px] uppercase tracking-wider" style={{ color: note ? C.secondary : C.muted }}>{note ?? `Elo ${Math.round(elo.get(t.id) ?? 1500)}`}</span>
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/** Nothing is chosen until the captain says so: their own next match in one click, or any two teams */
+function PrepStart() {
+  const dp = useDP();
+  const font = useHeaderFont();
+  const name = (id: string) => dp.teams.find(t => t.id === id) ?? null;
+  const mine = dp.captainTeam && dp.captainNext ? {
+    us: dp.captainTeam,
+    them: name(dp.captainNext.teamA === dp.captainTeam.id ? dp.captainNext.teamB : dp.captainNext.teamA),
+    m: dp.captainNext,
+  } : null;
+  // once our team is chosen, its next opponent goes first in the other list
+  const next = dp.us ? dp.nextOf(dp.us.id) : null;
+  const nextOppId = next && dp.us ? (next.teamA === dp.us.id ? next.teamB : next.teamA) : null;
+  return (
+    <div className="flex-1 min-h-0 flex flex-col items-center justify-center py-4">
+      <div className="w-full max-w-[1100px] flex flex-col gap-6">
+        <div className="text-center">
+          <div className="font-logik-extended-bold uppercase" style={{ color: C.title, fontSize: vh(22, 3.4, 40), ...font }}>Wybierz mecz</div>
+        </div>
+
+        {mine && mine.them && (
+          <button type="button" onClick={() => dp.setPair(mine.us.id, mine.them!.id)}
+            className="group self-center w-full max-w-[760px] flex items-center gap-5 px-5 py-4 text-left transition-colors hover:bg-[color-mix(in_srgb,var(--tournament-text,#fff)_6%,transparent)]"
+            style={{ borderTop: `1px solid ${RULE}`, borderBottom: `1px solid ${RULE}`, boxShadow: `inset 3px 0 0 ${C.primary}` }}>
+            <span className="flex flex-col shrink-0">
+              <span className="text-[11px] font-bold uppercase tracking-[0.25em]" style={{ color: C.primary }}>Twój następny mecz</span>
+              <span className="text-[12px] tabular-nums" style={{ color: C.muted }}>{whenOf(mine.m.scheduledFor)}{mine.m.bestOf ? ` · Bo${mine.m.bestOf}` : ''}</span>
+            </span>
+            <span className="flex-1 min-w-0 flex items-center justify-center gap-3">
+              <TeamLogo team={mine.us} size={40} />
+              <span className="font-logik-extended-bold uppercase truncate" style={{ color: C.radiant, fontSize: vh(15, 2, 22), ...font }}>{mine.us.name}</span>
+              <span className="text-sm font-bold" style={{ color: C.muted }}>vs</span>
+              <span className="font-logik-extended-bold uppercase truncate" style={{ color: C.dire, fontSize: vh(15, 2, 22), ...font }}>{mine.them.name}</span>
+              <TeamLogo team={mine.them} size={40} />
+            </span>
+            <span className="shrink-0 text-[12px] font-bold uppercase tracking-[0.15em] group-hover:underline underline-offset-4" style={{ color: C.secondary }}>Przygotuj ›</span>
+          </button>
+        )}
+        {!dp.loggedIn && (
+          <p className="text-center text-sm" style={{ color: C.muted }}>Zaloguj się jako kapitan, a twój najbliższy mecz wybierzesz jednym kliknięciem.</p>
+        )}
+
+        <div className="grid md:grid-cols-2 gap-x-12 gap-y-6">
+          <TeamColumn side="us" value={dp.us} onPick={dp.setUs}
+            hint={dp.captainTeam ? { id: dp.captainTeam.id, note: 'twoja drużyna · kapitan' } : null} />
+          <TeamColumn side="them" value={dp.them} onPick={dp.setThem} exclude={dp.us?.id}
+            hint={nextOppId ? { id: nextOppId, note: next?.scheduledFor ? `najbliższy rywal · ${new Date(next.scheduledFor).toLocaleDateString('pl-PL', { day: 'numeric', month: 'short' })}` : 'najbliższy rywal' } : null} />
+        </div>
+        <p className="text-center text-xs" style={{ color: C.muted }}>{dp.us ? 'Teraz wybierz rywala — narzędzie otworzy się od razu.' : 'Wybierz obie drużyny — narzędzie otworzy się od razu.'}</p>
+      </div>
+    </div>
+  );
 }
 
 // ── Team & match selection ────────────────────────────────────────────────
@@ -104,7 +197,13 @@ export function MatchBar({ children }: { children?: React.ReactNode }) {
         <TeamSelect side="them" label={dp.them && dp.them.id === dp.nextOpp ? 'Najbliższy rywal' : 'Rywal'} value={dp.them} onChange={dp.setThem} exclude={dp.us?.id} />
         {dp.nextOpp && dp.them?.id !== dp.nextOpp && <button type="button" onClick={() => dp.setThem(dp.nextOpp!)} className="text-[11px] underline underline-offset-2" style={{ color: C.secondary }}>↺ wróć do najbliższego rywala: {dp.teams.find(t => t.id === dp.nextOpp)?.name}</button>}
       </div>
-      {!dp.loggedIn && <span className="hidden xl:block text-xs max-w-[220px] leading-snug" style={{ color: C.muted }}>Zaloguj się, a narzędzie samo wybierze twoją drużynę i najbliższy mecz.</span>}
+      <div className="flex flex-col gap-1 text-[11px] whitespace-nowrap">
+        <button type="button" onClick={dp.clearPair} className="text-left underline underline-offset-2" style={{ color: C.muted }}>← wybierz inny mecz</button>
+        {dp.captainTeam && dp.captainNext && !(dp.us?.id === dp.captainTeam.id && dp.match?.id === dp.captainNext.id) && (
+          <button type="button" onClick={() => { const n = dp.captainNext!; dp.setPair(dp.captainTeam!.id, n.teamA === dp.captainTeam!.id ? n.teamB : n.teamA); }}
+            className="text-left underline underline-offset-2" style={{ color: C.secondary }}>↺ twój następny mecz</button>
+        )}
+      </div>
       <div className="flex-1" />
       <LineupEditor />
       {children}

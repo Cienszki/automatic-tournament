@@ -1,9 +1,9 @@
 'use client';
 
-// Shared state for the draft-preparation pages: which team is "us" and who the opponent is (the
-// next scheduled opponent by default), both lineups with standins (approved ones applied, pending
-// ones offered, unregistered ones added by hand), the data for all ten players, and the draft.
-// Selections persist in this browser per tournament.
+// Shared state for the draft-preparation pages: which team is "us" and who the opponent is (nothing
+// until chosen — or set by "Przygotuj draft" on a match), both lineups with standins (approved ones
+// applied, pending ones offered, unregistered ones added by hand), the data for all ten players, and
+// the draft. The two teams last for this browser tab only; lineup changes persist per tournament.
 
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { useTournament } from '@/context/TournamentContext';
@@ -45,18 +45,18 @@ function loadHistory(tid: string, slot: Slot): Promise<DpHistory> {
 
 // ── persisted selections ──────────────────────────────────────────────────
 interface Saved {
-  us?: string; them?: string; match?: string; overrides?: Record<string, Record<number, Slot>>;
-  /** Who picked `us` (user id, or "anon"): a choice made before logging in doesn't override the captain's team */
-  usBy?: string;
-  /** `them` counts only for this `us` and while the next match is still this one — else the next opponent wins */
-  themFor?: string; themNext?: string | null;
+  overrides?: Record<string, Record<number, Slot>>;
   /** Set from outside the tool ("Przygotuj draft" on a match): the two teams; ours is the captain's if they play */
   pair?: [string, string];
   /** With `pair`: the side to take as ours (my-team page), else the captain's team if it plays */
   pairUs?: string;
 }
+/** The two teams being prepared — per browser tab, so a match looked at earlier never comes back as the default */
+interface Pick { us?: string; them?: string }
 const readSaved = (tid: string): Saved => { try { return JSON.parse(localStorage.getItem(prepStorageKey(tid)) || '{}'); } catch { return {}; } };
 const writeSaved = (tid: string, s: Saved) => { try { localStorage.setItem(prepStorageKey(tid), JSON.stringify(s)); } catch { /* private mode */ } };
+const readPick = (tid: string): Pick => { try { return JSON.parse(sessionStorage.getItem(prepStorageKey(tid)) || '{}'); } catch { return {}; } };
+const writePick = (tid: string, p: Pick) => { try { sessionStorage.setItem(prepStorageKey(tid), JSON.stringify(p)); } catch { /* private mode */ } };
 
 /** The simulated draft per pairing, so a reload doesn't lose it */
 interface SavedDraft { steps: Array<number | null>; usFirst: boolean; assign: Record<number, string> }
@@ -94,6 +94,12 @@ export interface DraftPrep {
   teams: DpTeam[];
   us: DpTeam | null; them: DpTeam | null;
   setUs: (id: string) => void; setThem: (id: string) => void;
+  /** Pick both teams at once (a match) / forget the pick (back to the start screen) */
+  setPair: (us: string, them: string) => void; clearPair: () => void;
+  /** The team the signed-in user captains, and its next match */
+  captainTeam: DpTeam | null; captainNext: DpUpcoming | null;
+  /** A team's next match (for "their next opponent" hints) */
+  nextOf: (teamId: string) => DpUpcoming | null;
   match: DpUpcoming | null; upcoming: DpUpcoming[];
   myTeamIsCaptain: boolean;
   loggedIn: boolean;
@@ -144,12 +150,14 @@ export function DraftPrepProvider({ children }: { children: React.ReactNode }) {
   const [meta, setMeta] = useState<DpMeta | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState<Saved>({});
+  const [pick, setPick] = useState<Pick>({});
   const [heroData, setHeroData] = useState<DpHeroData | null>(null);
   const [edits, setEdits] = useState<Record<string, TeamEdits>>({});
 
   useEffect(() => {
     if (!tid) return;
     setSaved(readSaved(tid));
+    setPick(readPick(tid));
     const onPreset = () => setSaved(readSaved(tid));
     globalThis.addEventListener(PRESET_EVENT, onPreset); // not `window`: a filter state below is called that
     getJson<DpContext>(`/api/draft-prep/context?tournamentId=${encodeURIComponent(tid)}`).then(setCtx).catch(e => setError(`Nie udało się wczytać drużyn (${e.message})`));
@@ -161,25 +169,25 @@ export function DraftPrepProvider({ children }: { children: React.ReactNode }) {
     return () => globalThis.removeEventListener(PRESET_EVENT, onPreset);
   }, [tid]);
   const save = useCallback((patch: Partial<Saved>) => setSaved(s => { const n = { ...s, ...patch }; if (tid) writeSaved(tid, n); return n; }), [tid]);
+  const choose = useCallback((p: Pick) => { setPick(p); if (tid) writePick(tid, p); }, [tid]);
 
   const teams = useMemo(() => [...(ctx?.teams ?? [])].sort((a, b) => a.name.localeCompare(b.name)), [ctx]);
-  const captainTeam = teams.find(t => user && t.captainId === user.uid);
-  // a match picked outside the tool: our side is the captain's team when it plays
+  const captainTeam = teams.find(t => user && t.captainId === user.uid) ?? null;
+  // a match picked outside the tool: our side is the given one, else the captain's team when it plays
   useEffect(() => {
     if (!saved.pair || !teams.length) return;
     const [a, b] = saved.pair;
     const mine = saved.pairUs && (saved.pairUs === a || saved.pairUs === b) ? saved.pairUs : captainTeam && (captainTeam.id === a || captainTeam.id === b) ? captainTeam.id : a;
-    const nextOf = (ctx?.matches ?? []).filter(m => m.teamA === mine || m.teamB === mine).sort((x, y) => (x.scheduledFor ?? '9').localeCompare(y.scheduledFor ?? '9'))[0];
-    save({ us: mine, usBy: user?.uid ?? 'anon', them: mine === a ? b : a, themFor: mine, themNext: nextOf?.id ?? null, pair: undefined, pairUs: undefined });
+    choose({ us: mine, them: mine === a ? b : a });
+    save({ pair: undefined, pairUs: undefined });
   }, [saved.pair, teams.length, captainTeam?.id]); // eslint-disable-line react-hooks/exhaustive-deps
-  // a team chosen while logged out (or by someone else on this browser) doesn't hide the captain's own
-  const savedUs = saved.us && (!captainTeam || saved.usBy === user?.uid) ? teams.find(t => t.id === saved.us) : undefined;
-  const us = savedUs ?? captainTeam ?? teams[0] ?? null;
-  const upcoming = useMemo(() => (ctx?.matches ?? []).filter(m => us && (m.teamA === us.id || m.teamB === us.id)).sort((a, b) => (a.scheduledFor ?? '9').localeCompare(b.scheduledFor ?? '9')), [ctx, us]);
+  const matchesOf = useCallback((id: string) => (ctx?.matches ?? []).filter(m => m.teamA === id || m.teamB === id)
+    .sort((a, b) => (a.scheduledFor ?? '9').localeCompare(b.scheduledFor ?? '9')), [ctx]);
+  const us = teams.find(t => t.id === pick.us) ?? null;
+  const upcoming = useMemo(() => (us ? matchesOf(us.id) : []), [us, matchesOf]);
   const nextOpp = upcoming[0] ? (upcoming[0].teamA === us?.id ? upcoming[0].teamB : upcoming[0].teamA) : null;
-  // an opponent picked by hand stays only for the same team and the same next match
-  const savedThem = saved.them && saved.them !== us?.id && saved.themFor === us?.id && (saved.themNext ?? null) === (upcoming[0]?.id ?? null) ? teams.find(t => t.id === saved.them) : undefined;
-  const them = savedThem ?? teams.find(t => t.id === nextOpp) ?? teams.find(t => t.id !== us?.id) ?? null;
+  const them = pick.them && pick.them !== us?.id ? teams.find(t => t.id === pick.them) ?? null : null;
+  const captainNext = captainTeam ? matchesOf(captainTeam.id)[0] ?? null : null;
   const match = upcoming.find(m => them && (m.teamA === them.id || m.teamB === them.id)) ?? null;
   const standins = match?.standins ?? [];
 
@@ -299,8 +307,11 @@ export function DraftPrepProvider({ children }: { children: React.ReactNode }) {
 
   const value: DraftPrep = {
     tid, loading: !ctx || !model, error: error ?? modelError, ctx, model, meta, teams, us, them,
-    setUs: id => save({ us: id, usBy: user?.uid ?? 'anon' }),
-    setThem: id => save({ them: id, themFor: us?.id, themNext: upcoming[0]?.id ?? null }),
+    setUs: id => choose({ us: id, them: pick.them === id ? undefined : pick.them }),
+    setThem: id => choose({ ...pick, them: id }),
+    setPair: (u, t) => choose({ us: u, them: t }),
+    clearPair: () => choose({}),
+    captainTeam, captainNext, nextOf: id => matchesOf(id)[0] ?? null,
     match, upcoming, myTeamIsCaptain: !!captainTeam && captainTeam.id === us?.id, loggedIn: !!user,
     progress: { total: slots.length, done: slots.filter(s => { const h = histories.get(s.key); return h != null && h !== 'loading'; }).length },
     lineUs, lineThem, pendingUs: pendingFor(us, lineUs), pendingThem: pendingFor(them, lineThem), setSlot, benchOf,

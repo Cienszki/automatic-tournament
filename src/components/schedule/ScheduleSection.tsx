@@ -21,7 +21,7 @@ import { count, plural } from '@/lib/plural';
 import { useOpenMatchPrep } from '@/components/draft-prep/open';
 import { extraTag } from '@/lib/match-flags';
 import {
-  buildUnits, dayColumns, ddmm, divisionColumns, fromNow, initialUnit, isDone, isLive, nowAndNext, swissColumns, weekdayShort,
+  buildUnits, dayColumns, ddmm, divisionColumns, fromNow, initialUnit, isDone, isLive, myNextMatch, nowAndNext, swissColumns, weekdayShort,
   type Column, type Group, type SMatch, type Unit,
 } from './schedule-model';
 
@@ -51,11 +51,15 @@ function Title() {
   );
 }
 
-/** One line under the title: what is being played right now, else the next match and when */
-function NowLine({ live, next, open }: { live: SMatch[]; next: SMatch | null; open: (m: SMatch) => void }) {
+/** One line under the title: what is being played right now, else the next match and when — for a
+ *  captain, their own team's next match (even before it has a date) */
+function NowLine({ live, next, mine, myTeamId, open }: { live: SMatch[]; next: SMatch | null; mine: SMatch | null; myTeamId: string | null; open: (m: SMatch) => void }) {
   const font = useHeaderFont();
   const openPrep = useOpenMatchPrep();
-  if (!live.length && !next) return <div className="h-6 shrink-0" />;
+  if (!live.length && !next && !mine) return <div className="h-6 shrink-0" />;
+  // Ours on the left
+  const ours = mine && myTeamId ? (mine.teamB.id === myTeamId ? { ...mine, teamA: mine.teamB, teamB: mine.teamA } : mine) : null;
+  const shown = ours ?? next;
   const vs = (m: SMatch, score: boolean) => (
     <button type="button" onClick={() => open(m)} className="inline-flex items-center gap-2 font-bold hover:underline underline-offset-4">
       <TeamLogo team={m.teamA} size={18} />
@@ -76,15 +80,19 @@ function NowLine({ live, next, open }: { live: SMatch[]; next: SMatch | null; op
           {live.slice(0, 2).map((m, i) => <React.Fragment key={m.id}>{i > 0 && <span style={{ color: C.muted }}>·</span>}{vs(m, true)}</React.Fragment>)}
           {live.length > 2 && <span style={{ color: C.muted }}>+{live.length - 2}</span>}
         </>
-      ) : next && (
+      ) : shown && (
         <>
-          <span className="text-[11px] font-bold uppercase tracking-[0.2em]" style={{ color: C.muted }}>Następny mecz</span>
-          {vs(next, false)}
+          <span className="text-[11px] font-bold uppercase tracking-[0.2em]" style={{ color: ours ? C.primary : C.muted }}>{ours ? 'Twój następny mecz' : 'Następny mecz'}</span>
+          {vs(shown, false)}
           <span className="tabular-nums" style={{ color: C.muted }}>
-            {weekdayShort(new Date(next.scheduledFor))} {ddmm(new Date(next.scheduledFor))}, {hhmm(new Date(next.scheduledFor))} · <span style={{ color: C.heading }}>{fromNow(next.scheduledFor)}</span>
+            {shown.scheduledFor ? (
+              <>{weekdayShort(new Date(shown.scheduledFor))} {ddmm(new Date(shown.scheduledFor))}, {hhmm(new Date(shown.scheduledFor))} · <span style={{ color: C.heading }}>{fromNow(shown.scheduledFor)}</span></>
+            ) : (
+              <>termin do ustalenia{shown.deadline ? ` · do ${ddmm(new Date(shown.deadline))}` : ''}</>
+            )}
           </span>
-          <Tip content="Narzędzie dla kapitanów: rywale, bany, symulacja draftu i ściąga">
-            <button type="button" onClick={() => openPrep({ pair: [next.teamA.id, next.teamB.id] })} className="text-[11px] font-bold uppercase tracking-[0.15em] hover:underline underline-offset-4 whitespace-nowrap" style={{ color: C.secondary }}>Przygotuj draft ›</button>
+          <Tip content={ours ? 'Rywale, bany, symulacja draftu i ściąga na ten mecz' : 'Narzędzie dla kapitanów: rywale, bany, symulacja draftu i ściąga'}>
+            <button type="button" onClick={() => openPrep(ours ? { us: ours.teamA.id, them: ours.teamB.id } : { pair: [shown.teamA.id, shown.teamB.id] })} className="text-[11px] font-bold uppercase tracking-[0.15em] hover:underline underline-offset-4 whitespace-nowrap" style={{ color: C.secondary }}>Przygotuj draft ›</button>
           </Tip>
         </>
       )}
@@ -281,7 +289,11 @@ function ColumnView({ col, open, showDay, split = 1 }: { col: Column; open: (m: 
           <span className="absolute left-0 top-0 h-px w-10" style={{ background: accent }} />
         </div>
       </div>}
-      <div className="min-h-0 grid gap-x-10" style={{ gridTemplateColumns: `repeat(${split}, minmax(0, 1fr))` }}>
+      {/* Split in two: filled top to bottom, first column first, so time reads down and then across */}
+      <div className="min-h-0 grid gap-x-10" style={{
+        gridTemplateColumns: `repeat(${split}, minmax(0, 1fr))`,
+        ...(split > 1 ? { gridAutoFlow: 'column', gridTemplateRows: `repeat(${Math.ceil(col.matches.length / split)}, auto)` } : {}),
+      }}>
         {col.matches.map(m => <MatchRow key={m.id} m={m} tag={col.tags?.[m.id]} rec={col.records?.[m.id]} showDay={showDay} open={open} />)}
         {!col.matches.length && <div className="py-4 text-[11px] uppercase tracking-widest" style={{ color: C.muted }}>Brak meczów</div>}
       </div>
@@ -291,7 +303,7 @@ function ColumnView({ col, open, showDay, split = 1 }: { col: Column; open: (m: 
 
 // ── Section ────────────────────────────────────────────────────────────
 
-export default function ScheduleSection({ matches, groups }: { matches: SMatch[]; groups: Group[] }) {
+export default function ScheduleSection({ matches, groups, myTeamId = null }: { matches: SMatch[]; groups: Group[]; myTeamId?: string | null }) {
   const { tournament, theme } = useTournament();
   const font = useHeaderFont();
   const type = tournament?.type;
@@ -341,6 +353,7 @@ export default function ScheduleSection({ matches, groups }: { matches: SMatch[]
   const nextUnit = sel + (calendar ? span : 1) < units.length ? units[sel + (calendar ? span : 1)] : undefined;
 
   const { live, next } = useMemo(() => nowAndNext(matches), [matches]);
+  const mine = useMemo(() => myNextMatch(matches, myTeamId), [matches, myTeamId]);
   const unit = units[Math.min(sel, units.length - 1)];
   const columns: Column[] = !unit ? [] : type === 'league' ? divisionColumns(unit, groups) : type === 'swiss' ? swissColumns(unit, matches) : dayColumns(units, sel, span, groups);
   const cols = Math.max(1, Math.min(columns.length, calendar ? span : 4));
@@ -361,7 +374,7 @@ export default function ScheduleSection({ matches, groups }: { matches: SMatch[]
               </>
             )}
             <Title />
-            <NowLine live={live} next={next} open={setModal} />
+            <NowLine live={live} next={next} mine={mine} myTeamId={myTeamId} open={setModal} />
             {units.length ? (
               <>
                 <div className="mt-3"><Strip units={units} sel={sel} span={calendar ? span : 1} pick={pick} /></div>

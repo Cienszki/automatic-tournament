@@ -266,6 +266,8 @@ export function TournamentHomePage() {
 
   // ── Auth state ───
   const [hasTeam, setHasTeam] = useState(false);
+  // The team the signed-in user captains here (the schedule shows its next match)
+  const [myTeamId, setMyTeamId] = useState<string | null>(null);
 
   // ── Divisions data (both tournament types via usePDLData) ───
   const { divisions, loading: pdlLoading } = usePDLData();
@@ -367,7 +369,7 @@ export function TournamentHomePage() {
   // Check captain status
   useEffect(() => {
     const checkCaptain = async () => {
-      if (!user || !tournament?.id) { setHasTeam(false); return; }
+      if (!user || !tournament?.id) { setHasTeam(false); setMyTeamId(null); return; }
       try {
         const teamsRef = isLegacyTournament
           ? collection(db, 'teams')
@@ -375,8 +377,10 @@ export function TournamentHomePage() {
         const q = query(teamsRef, where('captainId', '==', user.uid));
         const snap = await getDocs(q);
         setHasTeam(!snap.empty);
+        setMyTeamId(snap.docs[0]?.id ?? null);
       } catch {
         setHasTeam(false);
+        setMyTeamId(null);
       }
     };
     checkCaptain();
@@ -1060,7 +1064,7 @@ export function TournamentHomePage() {
             VIEW 3: Schedule Carousel
            ═══════════════════════════════════════════════════════════ */}
         <FullScreenSection isActive={currentSection === 2} isMobile={isMobile} id="home-section-2">
-          <ScheduleSection matches={matches} groups={scheduleGroups} />
+          <ScheduleSection matches={matches} groups={scheduleGroups} myTeamId={myTeamId} />
         </FullScreenSection>
 
         {/* ═══════════════════════════════════════════════════════════
