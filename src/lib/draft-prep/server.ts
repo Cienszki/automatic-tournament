@@ -256,19 +256,25 @@ export async function tournamentAccounts(tournamentId: string | null): Promise<s
 }
 
 /**
- * Ask OpenDota to re-download each account's history from Steam (its "Refresh" button). OpenDota
- * queues it: older games show up minutes to hours later, and only for profiles with public data.
+ * Ask OpenDota to re-download history from Steam (its "Refresh" button) — but ONLY for accounts
+ * OpenDota currently shows nothing for (`fh_unavailable`), i.e. the "just made my data public"
+ * case. Never for accounts it shows games for: if such a player has since turned their match data
+ * private, the re-download makes OpenDota hide ALL their games (this wiped six pdl-s2 players on
+ * 2026-10-28). OpenDota queues it: older games show up minutes to hours later.
  */
-export async function requestOpenDotaRefresh(accounts: string[]): Promise<{ queued: number; failed: number }> {
-  let queued = 0, failed = 0;
+export async function requestOpenDotaRefresh(accounts: string[]): Promise<{ queued: number; skipped: number; failed: number }> {
+  let queued = 0, skipped = 0, failed = 0;
   const queue = [...accounts];
   await Promise.all(Array.from({ length: 4 }, async () => {
     for (let a = queue.shift(); a; a = queue.shift()) {
+      const prof = await odJson<any>(`/players/${a}`).catch(() => null);
+      if (!prof) { failed++; continue; }
+      if (prof.profile && prof.profile.fh_unavailable !== true) { skipped++; continue; }
       const res = await fetch(odUrl(`/players/${a}/refresh`), { method: 'POST', cache: 'no-store', headers: { 'User-Agent': 'tournament-draft-prep' } }).catch(() => null);
       if (res?.ok) queued++; else failed++;
     }
   }));
-  return { queued, failed };
+  return { queued, skipped, failed };
 }
 
 // The cached histories are keyed by a version kept in Firestore, so one bump empties the cache on

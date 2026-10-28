@@ -101,7 +101,7 @@ export function PlayerDataCard() {
       const p = await post('/api/player-heroes', { tournamentId: tournament.id, refreshAll: true });
       toast({
         title: 'Dane graczy odświeżone',
-        description: `Bohaterowie: ${p.updatedCount} graczy${p.errorCount ? `, ${p.errorCount} bez odpowiedzi` : ''}. Historie w przygotowaniu do meczu wczytają się na nowo.`,
+        description: `Bohaterowie: ${p.updatedCount} graczy${p.keptCount ? `, u ${p.keptCount} zostały poprzednie (OpenDota nic dla nich nie pokazuje)` : ''}${p.errorCount ? `, ${p.errorCount} bez odpowiedzi` : ''}. OpenDota pobierze na nowo historie ${h.queued} kont bez danych. Historie w przygotowaniu do meczu wczytają się na nowo.`,
       });
     } catch (e: any) {
       toast({ title: 'Nie udało się odświeżyć danych graczy', description: e?.message, variant: 'destructive' });

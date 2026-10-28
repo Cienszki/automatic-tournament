@@ -1,8 +1,8 @@
 /**
  * Admin API: re-check every player's match history for the match-prep tool.
  *
- * POST { tournamentId } — asks OpenDota to re-download the history of every account in the
- *   tournament (roster players, their smurfs, standins who played), then empties our cache of
+ * POST { tournamentId } — asks OpenDota to re-download the history of the tournament's accounts
+ *   (roster players, their smurfs, standins who played) that it shows no games for, then empties our cache of
  *   histories on every server instance. OpenDota works through its queue: older games appear
  *   minutes to hours later; for two hours our cache re-reads them every 15 minutes.
  * GET ?tournamentId= — when that was last done.
@@ -32,9 +32,9 @@ export async function POST(req: NextRequest) {
     if (caller instanceof NextResponse) return caller;
 
     const accounts = await tournamentAccounts(tournamentId === 'letnia' ? null : tournamentId);
-    const { queued, failed } = await requestOpenDotaRefresh(accounts);
+    const { queued, skipped, failed } = await requestOpenDotaRefresh(accounts);
     const refreshedAt = await bumpHistoryVersion(caller.uid);
-    return NextResponse.json({ success: true, accounts: accounts.length, queued, failed, refreshedAt });
+    return NextResponse.json({ success: true, accounts: accounts.length, queued, skipped, failed, refreshedAt });
   } catch (err: any) {
     console.error('[manage/draft-prep-histories] failed:', err);
     return NextResponse.json({ success: false, error: err?.message || 'failed' }, { status: 502 });

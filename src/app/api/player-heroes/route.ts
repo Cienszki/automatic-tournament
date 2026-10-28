@@ -98,6 +98,7 @@ export async function POST(request: NextRequest) {
 
       let updatedCount = 0;
       let errorCount = 0;
+      let keptCount = 0;
 
       for (const teamDoc of teamsSnap.docs) {
         const teamData = teamDoc.data();
@@ -118,6 +119,10 @@ export async function POST(request: NextRequest) {
             if (updatedCount > 0) await new Promise(r => setTimeout(r, PLAYER_DELAY_MS));
 
             const heroData = await fetchMostPlayedHeroes(accountId);
+            // Never replace heroes we have with nothing: OpenDota shows nothing once a player turns
+            // their match data private, and the old list is still the best we know
+            const prev = (playerInfo as { mostPlayedHeroes?: MostPlayedHeroes }).mostPlayedHeroes;
+            if (!heroData.overall.length && prev?.overall?.length) { keptCount++; continue; }
             updatedRoster[steamId64] = { ...updatedRoster[steamId64], mostPlayedHeroes: heroData };
             rosterChanged = true;
             updatedCount++;
@@ -134,9 +139,10 @@ export async function POST(request: NextRequest) {
 
       return NextResponse.json({
         success: true,
-        message: `Updated heroes for ${updatedCount} players (${errorCount} errors)`,
+        message: `Updated heroes for ${updatedCount} players (${errorCount} errors, ${keptCount} kept: OpenDota shows nothing for them now)`,
         updatedCount,
         errorCount,
+        keptCount,
       });
     }
 
