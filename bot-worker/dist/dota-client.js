@@ -87,6 +87,31 @@ try {
     logger_js_1.logger.warn('Could not patch dota2 _lobbyOptions for extra lobby fields', e);
 }
 
+// node-dota2's _getChannelById does `item.channel_id.equals(id)` over chatChannels, and an
+// entry can land there with a null channel_id (seen right after re-joining a previous
+// lobby's chat on login). From then on every incoming chat message throws inside the GC
+// dispatch — logged only as "Shim: failed to forward receivedFromGC ... reading 'equals'" —
+// so ALL lobby chat (!start, !ready, ...) is silently dropped for the life of the process.
+// Hit 2 of 5 local starts on 2026-10-28. Drop such entries before every lookup; the
+// other chat handlers that walk chatChannels (leave/notEquals) go through this first.
+try {
+    const _dota2mod = require('dota2');
+    const _origGetChannelById = _dota2mod.Dota2Client.prototype._getChannelById;
+    if (_origGetChannelById && !_origGetChannelById._nullSafe) {
+        const nullSafe = function (channelId) {
+            if (Array.isArray(this.chatChannels) && this.chatChannels.some((c) => !c || !c.channel_id)) {
+                logger_js_1.logger.warn('Dropping chat channel entries with no channel_id (would break all lobby chat)');
+                this.chatChannels = this.chatChannels.filter((c) => c && c.channel_id);
+            }
+            return _origGetChannelById.call(this, channelId);
+        };
+        nullSafe._nullSafe = true;
+        _dota2mod.Dota2Client.prototype._getChannelById = nullSafe;
+    }
+} catch (e) {
+    logger_js_1.logger.warn('Could not patch dota2 _getChannelById', e);
+}
+
 /**
  * Creates a shim that makes steam-user look like an old steam.SteamClient
  * so that dota2@7 (which requires the old steam API) works with steam-user.
