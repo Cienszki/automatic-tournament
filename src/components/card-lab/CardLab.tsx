@@ -41,7 +41,7 @@ function FitStage({ children }: { children: React.ReactNode }) {
 }
 
 // ── Saved in this browser: which cards you opened and how many packs are left ──
-interface Saved { ids: string[]; packs: number }
+interface Saved { ids: string[]; packs: number; deck?: string[] }
 const storeKey = (k: string) => `card-lab:${k}:v1`;
 function load(k: string): Saved | null { try { const v = localStorage.getItem(storeKey(k)); return v ? JSON.parse(v) as Saved : null; } catch { return null; } }
 function save(k: string, v: Saved) { try { localStorage.setItem(storeKey(k), JSON.stringify(v)); } catch { /* private mode */ } }
@@ -94,11 +94,14 @@ function Lab({ model }: { model: Model }) {
   // Restore this browser's collection, show the intro once
   useEffect(() => {
     const v = load(key);
-    if (v) { setCollection(v.ids.map(id => byId.get(id)).filter((c): c is GCard => !!c)); setPacks(v.packs); }
+    if (v) {
+      setCollection(v.ids.map(id => byId.get(id)).filter((c): c is GCard => !!c)); setPacks(v.packs);
+      if (v.deck) setDeck(v.deck.map(id => byId.get(id)).filter((c): c is GCard => !!c));
+    }
     try { if (!localStorage.getItem(SEEN_KEY)) setIntro(true); } catch { setIntro(true); }
     setLoaded(true);
   }, [key, byId]);
-  useEffect(() => { if (loaded) save(key, { ids: collection.map(c => c.id), packs }); }, [loaded, key, collection, packs]);
+  useEffect(() => { if (loaded) save(key, { ids: collection.map(c => c.id), packs, deck: deck.map(c => c.id) }); }, [loaded, key, collection, packs, deck]);
   // A deck that is not legal yet is rebuilt from the collection (a legal one is left alone)
   useEffect(() => { setDeck(d => (deckProblem(d, OUTPOSTS_RULE) ? autoDeck(collection, OUTPOSTS_RULE) : d)); }, [collection]);
   const closeIntro = () => { setIntro(false); try { localStorage.setItem(SEEN_KEY, '1'); } catch { /* ignore */ } };
@@ -114,8 +117,9 @@ function Lab({ model }: { model: Model }) {
   );
 
   return (
-    <div className="relative h-full flex flex-col px-16 pt-5 pb-6 gap-5" style={{ color: C.text }}>
-      <div className="flex items-center gap-10 shrink-0">
+    <div className={`relative h-full flex flex-col ${tab === 'gra' ? '' : 'px-16 pt-5 pb-6 gap-5'}`} style={{ color: C.text }}>
+      {/* During a match the whole screen is the board: the game has its own back button and help */}
+      <div className={`flex items-center gap-10 shrink-0 ${tab === 'gra' ? 'hidden' : ''}`}>
         <div className="font-logik-extended-bold uppercase text-[28px] leading-none" style={{ color: C.heading, ...font }}>Karty</div>
         <div className="flex items-center gap-1">
           {TABS.map(t => (
@@ -133,8 +137,8 @@ function Lab({ model }: { model: Model }) {
         {tab === 'album' && <Album cards={cards} collection={collection} setCollection={setCollection} packs={packs} onPackOpened={() => setPacks(p => Math.max(0, p - 1))} />}
         {tab === 'talia' && <DeckBuilder collection={collection} rule={OUTPOSTS_RULE} deck={deck} setDeck={setDeck} onPlay={() => { setMatch(m => m + 1); setTab('gra'); }} />}
         {/* The match stays mounted while you look at the album */}
-        <div className={tab === 'gra' ? 'h-[calc(100%+1.5rem)] -mx-16 -mb-6' : 'hidden'}>
-          {ready ? <OutpostsGame key={match} deck={deck} all={cards} /> : notReady}
+        <div className={tab === 'gra' ? 'h-full' : 'hidden'}>
+          {ready ? <OutpostsGame key={match} deck={deck} all={cards} onBack={() => setTab('talia')} /> : notReady}
         </div>
       </div>
       <AnimatePresence>{intro && <Intro onClose={closeIntro} />}</AnimatePresence>

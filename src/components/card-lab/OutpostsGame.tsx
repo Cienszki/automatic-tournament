@@ -11,7 +11,7 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, LayoutGroup, motion } from 'framer-motion';
-import { ArrowRight, Flag, Home, Moon, Mountain, Plus, ScrollText, Shield, Skull, Sprout, Sun, Swords, Users, Wind, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, CircleHelp, Flag, Home, Moon, Mountain, Plus, ScrollText, Shield, Skull, Sprout, Sun, Swords, Users, Wind, X } from 'lucide-react';
 import { Avatar, C, HeroRender, Tip, mix, onDark, useHeaderFont, useSize } from '@/components/stats-lab/kit';
 import { useFitText } from '@/components/teams-section/fit';
 import { avgOvr, cpuDeck, type DeckRule, type GCard } from '@/lib/card-lab/cards';
@@ -22,6 +22,7 @@ import {
 } from '@/lib/card-lab/outposts';
 import { applyAct, cpuNextAction } from '@/lib/card-lab/outposts-ai';
 import { CardBack, useFitScale } from './ui';
+import { Tour, type TourStep } from '@/components/tour/Tour';
 
 export const OUTPOSTS_RULE: DeckRule = { size: DECK_SIZE, perRole: DECK_PER_ROLE, text: `${DECK_SIZE} kart, co najmniej ${DECK_PER_ROLE} na każdej pozycji, każdy gracz raz` };
 
@@ -53,10 +54,13 @@ function FitLine({ text, max, min, className, style }: { text: string; max: numb
 }
 
 /** Order gem (the turn's currency); `pending` blinks: it would be spent by what is selected */
+const BLINK_MS = 1100;
 function Gem({ on = true, pending, size = 16 }: { on?: boolean; pending?: boolean; size?: number }) {
+  // Every blinking gem shares one clock, so they blink together
+  const anim = pending ? { animation: `karty-blink ${BLINK_MS}ms ease-in-out infinite`, animationDelay: `-${Date.now() % BLINK_MS}ms` } : {};
   return (
-    <motion.span className="inline-block rotate-45 shrink-0 align-middle" animate={pending ? { opacity: [1, 0.25, 1] } : { opacity: 1 }} transition={pending ? { duration: 1.1, repeat: Infinity } : undefined}
-      style={{ width: size, height: size, borderRadius: size * 0.22, background: on ? ACC_L : T.faint, boxShadow: on ? `0 0 ${size * 0.6}px ${mix(ACC, 70)}` : undefined }} />
+    <span className="inline-block rotate-45 shrink-0 align-middle"
+      style={{ width: size, height: size, borderRadius: size * 0.22, background: on ? ACC_L : T.faint, boxShadow: on ? `0 0 ${size * 0.6}px ${mix(ACC, 70)}` : undefined, ...anim }} />
   );
 }
 
@@ -151,24 +155,25 @@ function Figure({ card, m, side, w, layoutId, parts, smoke, bump, selected, tire
 function CardInfo({ card, parts, m, note }: { card: GCard; parts?: Part[]; m: number; note?: string }) {
   const kw = KEYWORD[card.role];
   return (
-    <div className="min-w-[240px] max-w-[300px] text-[12px] leading-snug">
-      <div className="text-[15px] font-bold">{card.name}</div>
-      {card.team && <div style={{ color: T.muted }}>{card.team.name}</div>}
-      {card.series.opp && <div style={{ color: T.muted }}>vs {card.series.opp.name}</div>}
-      <div className="mt-2"><b className="uppercase">{kw.ability}</b> {kw.text}</div>
-      {parts && (
-        <div className="mt-2 grid grid-cols-[1fr_auto] gap-x-4 uppercase tracking-wide">
-          {parts.map((p, i) => (
-            <React.Fragment key={i}>
-              <span>{p.kind === 'card' ? 'Karta' : p.label}</span>
-              <span className="text-right font-bold">{p.kind === 'card' ? p.v : <span style={{ color: signColor(p.v) }}>({p.v > 0 ? '+' : p.v < 0 ? '−' : ''}{Math.abs(p.v)})</span>}</span>
-            </React.Fragment>
-          ))}
-          <span className="col-span-2 h-px my-1" style={{ background: T.faint }} />
-          <span className="font-bold">Siła</span><span className="text-right font-bold" style={{ color: signColor(m) }}>({m})</span>
-        </div>
-      )}
-      {!parts && <div className="mt-2 uppercase tracking-wide font-bold">Siła <span style={{ color: signColor(m) }}>({m})</span></div>}
+    <div className="w-[300px] text-[12px] leading-snug">
+      <div className="flex items-baseline gap-2">
+        <span className="text-[15px] font-bold">{card.name}</span>
+        <span className="truncate" style={{ color: T.muted }}>{card.team?.name}{card.series.opp ? ` vs ${card.series.opp.name}` : ''}</span>
+      </div>
+      {/* The type's special ability — the thing to read */}
+      <div className="mt-2 rounded-xl px-3 py-2" style={{ background: mix(ACC, 22), boxShadow: `inset 0 0 0 1px ${mix(ACC, 55)}` }}>
+        <div className="font-logik-extended-bold uppercase text-[13px] tracking-wide" style={{ color: ACC_L }}>{kw.name}</div>
+        <div className="text-[13px] mt-0.5" style={{ color: T.text }}>{kw.text}</div>
+      </div>
+      <div className="mt-2 flex flex-col gap-0.5">
+        {(parts ?? []).map((p, i) => (
+          <span key={i} className="flex items-baseline gap-1.5">
+            <span className="uppercase tracking-wide" style={{ color: T.muted }}>{p.kind === 'card' ? 'Karta' : p.label}</span>
+            <b style={{ color: p.kind === 'card' ? T.text : signColor(p.v) }}>{p.kind === 'card' ? p.v : `${p.v > 0 ? '+' : '−'}${Math.abs(p.v)}`}</b>
+          </span>
+        ))}
+        <span className="flex items-baseline gap-1.5 mt-1 text-[14px]"><span className="uppercase tracking-wide font-bold">Siła</span><b className="font-logik-extended-bold" style={{ color: T.text }}>{m}</b></span>
+      </div>
       {note && <div className="mt-2" style={{ color: T.muted }}>{note}</div>}
     </div>
   );
@@ -198,7 +203,7 @@ function Pill({ t }: { t: Target }) {
     <motion.span initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
       className="flex items-center gap-2 rounded-full pl-2.5 pr-4 py-1.5 text-[13px] font-bold whitespace-nowrap pointer-events-none"
       style={{ background: TONE[t.tone], color: '#07080b', boxShadow: `0 0 18px ${TONE[t.tone]}66` }}>
-      {t.free ? <><Wind className="w-4 h-4" />Smoke: bez rozkazu ·</> : null}<span>{t.text}</span>
+      {t.free ? <><Wind className="w-4 h-4" />Soft support: bez rozkazu ·</> : null}<span>{t.text}</span>
     </motion.span>
   );
 }
@@ -227,7 +232,7 @@ function unitFigure(u: OUnit, w: number, a: AreaCtx) {
   );
 }
 
-/** The arena background: the minimap, centred on where the objective really is, plus a marker */
+/** The arena background: the minimap, centred on where the objective really is */
 function Arena({ id }: { id: ObjId }) {
   const [ref, box] = useSize<HTMLDivElement>();
   const [x, y] = MAP_AT[id];
@@ -235,11 +240,14 @@ function Arena({ id }: { id: ObjId }) {
   return (
     <div ref={ref} className="absolute inset-0 overflow-hidden pointer-events-none">
       {box.w > 0 && <div className="absolute inset-0" style={{ backgroundImage: 'url(/stats-lab/minimap-741.webp)', backgroundSize: `${D}px ${D}px`, backgroundPosition: `${box.w / 2 - x * D}px ${box.h / 2 - y * D}px`, filter: 'saturate(0.9) brightness(0.62)' }} />}
-      <motion.span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full" style={{ width: 120, height: 120, boxShadow: `0 0 0 2px ${mix('#ffffff', 35)}` }}
-        animate={{ scale: [0.85, 1.05, 0.85], opacity: [0.5, 0.15, 0.5] }} transition={{ duration: 3, repeat: Infinity }} />
       <div className="absolute inset-0" style={{ background: `linear-gradient(90deg, ${T.bg}, transparent 12%, transparent 88%, ${T.bg}), linear-gradient(180deg, ${T.bg}, transparent 10%, transparent 90%, ${T.bg})` }} />
     </div>
   );
+}
+
+/** A free place on an objective (max 3 per side) */
+function Slot({ w, side, tour }: { w: number; side: Side; tour?: boolean }) {
+  return <div data-tour={tour ? 'slots' : undefined} className="shrink-0 rounded-[12px]" style={{ width: w, height: Math.round(w * 1.34), border: `1.5px dashed ${sideColor(side)}33`, background: `${sideColor(side)}08` }} />;
 }
 
 function Objective({ i, a, target, onSend, rowRef, w }: { i: 0 | 1 | 2; a: AreaCtx; target: Target | null; onSend: () => void; rowRef?: React.Ref<HTMLDivElement>; w: number }) {
@@ -259,6 +267,7 @@ function Objective({ i, a, target, onSend, rowRef, w }: { i: 0 | 1 | 2; a: AreaC
       {target?.ok && <div className="absolute inset-0 pointer-events-none" style={{ boxShadow: `inset 0 0 0 2px ${TONE[target.tone]}99`, background: `${TONE[target.tone]}14` }} />}
       <div ref={rowRef} className="relative flex-1 min-h-0 flex justify-center items-end gap-[10px] pb-2">
         <AnimatePresence>{units(1).map(u => unitFigure(u, w, a))}</AnimatePresence>
+        {Array.from({ length: PER_SIDE_AT_OBJECTIVE - units(1).length }, (_, k) => <Slot key={k} w={w} side={1} />)}
       </div>
       <div className="relative text-center px-3 py-1 pointer-events-none">
         <div className="flex items-center justify-center gap-2.5">
@@ -276,6 +285,7 @@ function Objective({ i, a, target, onSend, rowRef, w }: { i: 0 | 1 | 2; a: AreaC
         {auraHere && <AuraFx />}
         {smokeHere && <SmokeFx />}
         <AnimatePresence>{mineHere.map(u => unitFigure(u, w, a))}</AnimatePresence>
+        {Array.from({ length: PER_SIDE_AT_OBJECTIVE - mineHere.length }, (_, k) => <Slot key={k} w={w} side={0} tour={i === 0 && k === 0} />)}
       </div>
       {target && (
         <div className="absolute inset-x-0 bottom-3 flex justify-center z-20 px-3 pointer-events-none">
@@ -294,15 +304,15 @@ function BaseBand({ side, a, target, onSend }: { side: Side; a: AreaCtx; target?
   const smokeHere = side === 0 && units.some(u => u.card.role === 'Soft Support' && !u.moved && !u.fresh) && s.active === 0 && s.phase === 'move' && s.freeRotation;
   const off = target && !target.ok;
   return (
-    <div data-drop={side === 0 ? 'base' : undefined} onClick={() => target?.ok && onSend?.()}
-      className="relative h-[132px] shrink-0 flex items-center gap-3 px-6"
+    <div data-drop={side === 0 ? 'base' : undefined} data-tour={side === 0 ? 'base' : undefined} onClick={() => target?.ok && onSend?.()}
+      className="relative h-[118px] shrink-0 flex items-center gap-3 px-6"
       style={{ background: `linear-gradient(90deg, ${sideColor(side)}${target?.ok ? '33' : '1a'}, transparent 60%)`, filter: off ? 'grayscale(1) brightness(0.45)' : undefined, transition: 'background .2s, filter .2s', cursor: target?.ok ? 'pointer' : undefined }}>
       <div className="absolute inset-x-0 h-px" style={{ ...line, background: `linear-gradient(90deg, ${sideColor(side)}66, transparent 70%)` }} />
       {target?.ok && <div className="absolute inset-0 pointer-events-none" style={{ boxShadow: `inset 0 0 0 2px ${TONE[target.tone]}99` }} />}
       <span className="font-logik-extended-bold uppercase text-[13px] tracking-[0.18em] w-[96px] shrink-0 leading-tight" style={{ color: sideColor(side), ...font }}>{side === 0 ? 'Twoja baza' : 'Baza rywala'}</span>
       <div className="relative flex items-center gap-3">
         {smokeHere && <SmokeFx />}
-        <AnimatePresence>{units.map(u => unitFigure(u, 90, a))}</AnimatePresence>
+        <AnimatePresence>{units.map(u => unitFigure(u, 80, a))}</AnimatePresence>
       </div>
       {target?.ok && <div className="ml-auto pointer-events-none"><Pill t={target} /></div>}
     </div>
@@ -316,7 +326,7 @@ function ScoreRace({ shown }: { shown: [number, number] }) {
     return <span key={i} className="h-[10px] flex-1 rounded-full transition-all duration-500" style={{ background: lit ? sideColor(side) : T.faint, boxShadow: lit ? `0 0 8px ${sideColor(side)}` : undefined }} />;
   });
   return (
-    <div className="flex items-center gap-4 w-[760px]">
+    <div data-tour="score" className="flex items-center gap-4 w-[760px]">
       <span data-score={0} className="font-logik-extended-bold text-[34px] w-12 text-right tabular-nums" style={{ color: T.me, ...font }}>{shown[0]}</span>
       <div className="flex-1 flex gap-1">{pips(0)}</div>
       <div className="text-center leading-none">
@@ -333,13 +343,18 @@ function ScoreRace({ shown }: { shown: [number, number] }) {
 
 function Mini({ c, dead }: { c: GCard; dead?: boolean }) {
   return (
-    <Tip content={`${c.name} · ${KEYWORD[c.role].name}`}>
-      <span className="relative inline-block" style={{ filter: dead ? 'grayscale(1) brightness(0.6)' : undefined }}>
-        <Avatar player={c.player} size={26} />
-        {dead && <Skull className="absolute -right-1 -bottom-1 w-3.5 h-3.5" style={{ color: T.neg }} />}
+    <Tip content={<CardInfo card={c} m={baseMight(c)} parts={[{ kind: 'card', label: 'Karta', v: cardStrength(c) }]} />}>
+      <span className="inline-flex items-center gap-1.5 rounded-full pl-0.5 pr-2.5 py-0.5 cursor-help" style={{ background: 'rgba(255,255,255,0.06)', filter: dead ? 'grayscale(1) brightness(0.65)' : undefined }}>
+        <span className="relative"><Avatar player={c.player} size={22} />{dead && <Skull className="absolute -right-1 -bottom-1 w-3.5 h-3.5" style={{ color: T.neg }} />}</span>
+        <span className="font-bold text-[12px]" style={{ textDecoration: dead ? 'line-through' : undefined }}>{c.name}</span>
+        <span className="text-[10px] uppercase tracking-wider" style={{ color: ACC_L }}>{KEYWORD[c.role].name}</span>
       </span>
     </Tip>
   );
+}
+/** An action icon that says what it means on hover */
+function Act({ tip, children }: { tip: string; children: React.ReactNode }) {
+  return <Tip content={tip}><span className="inline-flex cursor-help">{children}</span></Tip>;
 }
 function ObjTag({ s, at }: { s: OState; at: Loc }) {
   if (at === 'base') return <span className="inline-flex items-center gap-1" style={{ color: T.muted }}><Home className="w-4 h-4" />baza</span>;
@@ -353,19 +368,19 @@ function EvRow({ s, e }: { s: OState; e: Ev }) {
   switch (e.kind) {
     case 'turn': return null;
     case 'deploy':
-      return <div className="flex items-center gap-2"><Plus className="w-4 h-4" style={{ color: c }} /><span className="flex -space-x-1.5">{e.cards.map(x => <Mini key={x.id} c={x} />)}</span><ArrowRight className="w-4 h-4 opacity-50" /><ObjTag s={s} at="base" /></div>;
+      return <div className="flex items-center gap-2 flex-wrap"><Act tip="Wystawienie kart z ręki do bazy"><Plus className="w-4 h-4" style={{ color: c }} /></Act>{e.cards.map(x => <Mini key={x.id} c={x} />)}<ArrowRight className="w-4 h-4 opacity-50" /><ObjTag s={s} at="base" /></div>;
     case 'move':
-      return <div className="flex items-center gap-2">{e.free ? <Wind className="w-4 h-4" style={{ color: T.smoke }} /> : <ArrowRight className="w-4 h-4" style={{ color: c }} />}<span className="flex -space-x-1.5">{e.cards.map(x => <Mini key={x.id} c={x} />)}</span><ObjTag s={s} at={e.from} /><ArrowRight className="w-4 h-4 opacity-50" /><ObjTag s={s} at={e.to} /></div>;
+      return <div className="flex items-center gap-2 flex-wrap"><Act tip={e.free ? 'Ruch bez rozkazu (soft support w grupie)' : 'Ruch grupy (1 rozkaz)'}>{e.free ? <Wind className="w-4 h-4" style={{ color: T.smoke }} /> : <ArrowRight className="w-4 h-4" style={{ color: c }} />}</Act>{e.cards.map(x => <Mini key={x.id} c={x} />)}<ObjTag s={s} at={e.from} /><ArrowRight className="w-4 h-4 opacity-50" /><ObjTag s={s} at={e.to} /></div>;
     case 'fight':
       return (
         <div className="flex items-center gap-2">
-          <Swords className="w-4 h-4" style={{ color: T.warn }} /><ObjTag s={s} at={e.at} />
+          <Act tip="Walka: siła atakujących kontra siła obrońców; czaszka = poległy"><Swords className="w-4 h-4" style={{ color: T.warn }} /></Act><ObjTag s={s} at={e.at} />
           <span className="font-logik-extended-bold text-[16px] tabular-nums" style={font}><span style={{ color: T.me }}>{e.power[0]}</span><span className="opacity-40"> : </span><span style={{ color: T.rival }}>{e.power[1]}</span></span>
           {e.died.length > 0 && <span className="flex gap-1 ml-1">{e.died.map(d => <Mini key={d.card.id + d.side} c={d.card} dead />)}</span>}
         </div>
       );
     case 'points':
-      return <div className="flex items-center gap-2">{e.why === 'take' ? <Flag className="w-4 h-4" style={{ color: c }} /> : <Shield className="w-4 h-4" style={{ color: c }} />}<ObjTag s={s} at={e.at} /><span className="font-logik-extended-bold" style={{ color: T.pts, ...font }}>+{e.pts}</span></div>;
+      return <div className="flex items-center gap-2"><Act tip={e.why === 'take' ? 'Przejęcie objective\'u' : 'Trzymanie objective\'u na początku tury'}>{e.why === 'take' ? <Flag className="w-4 h-4" style={{ color: c }} /> : <Shield className="w-4 h-4" style={{ color: c }} />}</Act><ObjTag s={s} at={e.at} /><span className="font-logik-extended-bold" style={{ color: T.pts, ...font }}>+{e.pts}</span></div>;
   }
 }
 function CombatLog({ s, onClose }: { s: OState; onClose: () => void }) {
@@ -544,10 +559,23 @@ function EndScreen({ won, score, turns, onRematch, onNew }: { won: boolean; scor
 
 // ── The game ─────────────────────────────────────────────────────────────────
 
+const TOUR_KEY = 'karty:tour-seen';
+const TOUR: TourStep[] = [
+  { target: '[data-tour="score"]', title: 'Cel gry', text: 'Kto pierwszy zdobędzie 10 punktów, wygrywa. Punkty dają objective\'y: +1 za przejęcie (Roshan +2) i +1 na początku każdej Twojej tury za każdy objective, na którym stoi Twoja jednostka.' },
+  { target: '[data-tour="objectives"]', title: 'Objective\'y', text: 'Trzy miejsca z mapy. Każde ma swoją zasadę, napisaną pod nazwą. Na górze stoją jednostki rywala, na dole Twoje.' },
+  { target: '[data-tour="slots"]', title: 'Miejsca', text: 'Na jednym objectivie zmieszczą się maks. 3 Twoje jednostki: półprzezroczyste pola pokazują wolne miejsca.' },
+  { target: '[data-tour="hand"]', title: 'Twoje karty', text: <>Duża liczba to <b>siła</b> (z oceny gracza za tę serię). Pod nazwą jest <b>typ</b>: Carry, Mid, Offlane, Soft support albo Hard support. <b>Każdy typ ma specjalną umiejętność</b>: najedź na kartę i przeczytaj ją. To klucz do wygranej.</> },
+  { target: '[data-tour="orders"]', title: 'Rozkazy', text: <>Masz <b>3 rozkazy na turę, wspólne na wszystko</b>. Wystawienie karty z ręki = 1 rozkaz. Ruch = 1 rozkaz, <b>także gdy ruszasz kilka jednostek naraz</b> z jednego miejsca. Nie musisz wystawiać wszystkich kart: zostaw rozkazy na ruchy.</> },
+  { target: '[data-tour="base"]', title: 'Baza', text: 'Wystawione karty czekają tu do następnej tury. Potem wysyłasz je na objective\'y. Z objective\'u na inny objective idzie się przez bazę (prosto potrafi tylko Mid i każdy z Twin Gates). Każda jednostka rusza się raz na turę.' },
+  { target: '[data-tour="objectives"]', title: 'Walka', text: <>Gdy wejdziesz na objective, na którym stoi rywal, jest walka. <b>Każda strona zadaje tyle obrażeń, ile ma siły łącznie.</b> Obrażenia trafiają najpierw w Offlane&apos;a, potem w najsłabszych. Jednostka ginie, gdy dostanie tyle, ile ma siły. Kto zostanie, trzyma objective; jeśli przeżyją obie strony, atakujący wracają do bazy.</> },
+  { target: '[data-tour="turn"]', title: 'Tura', text: 'Najpierw wystawiasz karty (faza 1), potem ruszasz jednostki (faza 2). Ten przycisk przechodzi dalej. Gdy rozkazy się skończą, tura skończy się sama.' },
+  { target: '[data-tour="help"]', title: 'Pomoc i przebieg', text: 'Znak zapytania uruchamia ten samouczek jeszcze raz. Ikona obok pokazuje przebieg meczu.' },
+];
+
 interface Flyer { id: string; side: Side; pts: number; why: Gain['why']; from: { x: number; y: number }; to: { x: number; y: number } }
 interface DragState { kind: 'card' | 'units'; ids: string[] }
 
-export function OutpostsGame({ deck, all }: { deck: GCard[]; all: GCard[] }) {
+export function OutpostsGame({ deck, all, onBack }: { deck: GCard[]; all: GCard[]; onBack?: () => void }) {
   const font = useHeaderFont();
   const fit = useFitScale();
   const [cpu, setCpu] = useState<GCard[]>([]);
@@ -562,6 +590,10 @@ export function OutpostsGame({ deck, all }: { deck: GCard[]; all: GCard[] }) {
   const [owed, setOwed] = useState<[number, number]>([0, 0]);
   const [note, setNote] = useState<string | null>(null);
   const [logOpen, setLogOpen] = useState(false);
+  const [tour, setTour] = useState(false);
+  // The walkthrough runs by itself the first time
+  useEffect(() => { try { if (!localStorage.getItem(TOUR_KEY)) setTour(true); } catch { setTour(true); } }, []);
+  const closeTour = () => { setTour(false); try { localStorage.setItem(TOUR_KEY, '1'); } catch { /* private mode */ } };
   const boardRef = useRef<HTMLDivElement>(null);
   const ghostRef = useRef<HTMLDivElement>(null);
   const pointer = useRef({ x: 0, y: 0, gx: 0, gy: 0, tilt: 0, lastX: 0 });
@@ -585,7 +617,7 @@ export function OutpostsGame({ deck, all }: { deck: GCard[]; all: GCard[] }) {
     const ro = new ResizeObserver(() => setObjBox({ w: objEl.clientWidth, h: objEl.clientHeight }));
     ro.observe(objEl); return () => ro.disconnect();
   }, [objEl]);
-  const figW = Math.max(60, Math.min(112, (objBox.w - 40) / PER_SIDE_AT_OBJECTIVE, (objBox.h - 14) / 1.34));
+  const figW = Math.max(60, Math.min(140, (objBox.w - 40) / PER_SIDE_AT_OBJECTIVE, (objBox.h - 14) / 1.34));
 
   // New fight → scene; new points → fly once the scene is over
   useEffect(() => {
@@ -638,10 +670,23 @@ export function OutpostsGame({ deck, all }: { deck: GCard[]; all: GCard[] }) {
 
   // The computer: one action at a time, waiting for scenes and flying points
   useEffect(() => {
-    if (!s || s.active !== 1 || s.winner !== null || scene || flyers.length || banner || logOpen) return;
+    if (!s || s.active !== 1 || s.winner !== null || scene || flyers.length || banner || logOpen || tour) return;
     const t = setTimeout(() => { const a = cpuNextAction(s); setS(a ? applyAct(s, a) : endTurn(s)); }, 900);
     return () => clearTimeout(t);
-  }, [s, scene, flyers.length, banner, logOpen]);
+  }, [s, scene, flyers.length, banner, logOpen, tour]);
+
+  // Out of orders (and no free Smoke move left): move on by itself, and say why
+  useEffect(() => {
+    if (!s || s.active !== 0 || s.winner !== null || scene || flyers.length || tour || logOpen) return;
+    const freeLeft = s.phase === 'move' && s.freeRotation && s.units.some(u => u.side === 0 && u.card.role === 'Soft Support' && !u.moved && !u.fresh);
+    if (s.orders > 0 || freeLeft) return;
+    setNote(s.phase === 'deploy' ? 'Rozkazy się skończyły: przechodzę do ruchów' : 'Rozkazy się skończyły: koniec tury');
+    const t = setTimeout(() => {
+      const cur = stateRef.current; if (!cur || cur.active !== 0 || cur.winner !== null) return;
+      setS(cur.phase === 'deploy' ? startOrders(cur) : endTurn(cur)); setSel([]); setSelCards([]);
+    }, 1700);
+    return () => clearTimeout(t);
+  }, [s, scene, flyers.length, tour, logOpen]);
 
   useEffect(() => { if (!note) return; const t = setTimeout(() => setNote(null), 2600); return () => clearTimeout(t); }, [note]);
   useEffect(() => { if (!settled.size) return; const t = setTimeout(() => setSettled(new Set()), 700); return () => clearTimeout(t); }, [settled]);
@@ -744,9 +789,13 @@ export function OutpostsGame({ deck, all }: { deck: GCard[]; all: GCard[] }) {
       const n = movingCards.length;
       return n <= s.orders ? { ok: true, text: `Wystaw · ${n} ${n === 1 ? 'rozkaz' : n < 5 ? 'rozkazy' : 'rozkazów'}`, tone: 'good', free: false } : { ok: false, text: `Za mało rozkazów (${s.orders})`, tone: 'off', free: false };
     }
-    if (movingUnits.length && phase === 'move') return unitTarget(s, movingUnits, to);
+    if (movingUnits.length && phase === 'move') {
+      if (s.units.filter(u => movingUnits.includes(u.uid)).every(u => u.loc === to)) return null;
+      return unitTarget(s, movingUnits, to);
+    }
     return null;
   };
+  const advance = () => { const cur = stateRef.current; if (!cur || cur.active !== 0) return; setS(cur.phase === 'deploy' ? startOrders(cur) : endTurn(cur)); setSel([]); setSelCards([]); };
   const sendTo = (to: Loc) => { if (movingCards.length && to === 'base') doDeploy(movingCards); else if (sel.length) doMove(sel, to); };
   const pendingCost = movingCards.length ? movingCards.length : movingUnits.length && phase === 'move' ? (freeMove(s, movingUnits) ? 0 : 1) : 0;
 
@@ -757,32 +806,47 @@ export function OutpostsGame({ deck, all }: { deck: GCard[]; all: GCard[] }) {
   const shown: [number, number] = [s.sides[0].score - owed[0], s.sides[1].score - owed[1]];
   const lastRival = [...s.events].reverse().find(e => e.side === 1 && e.kind !== 'turn');
 
+  const restedNow = rested.length > 0;
   const prompt = !mine ? null
     : phase === 'deploy'
-      ? (movingCards.length ? 'Kliknij swoją bazę, by wystawić zaznaczone karty' : canPlay ? 'Wystaw karty z ręki do bazy. Każda kosztuje 1 rozkaz.' : 'Przejdź do rozkazów')
-      : (movingUnits.length ? 'Kliknij objective albo bazę' : canGo ? 'Wyślij jednostki na objective. 1 rozkaz za grupę.' : 'Zakończ turę');
+      ? (canPlay ? (restedNow ? 'Przeciągnij karty z ręki do bazy (1 rozkaz każda). Zostaw rozkazy na ruchy jednostek!' : 'Przeciągnij karty z ręki do bazy. Każda kosztuje 1 rozkaz.') : 'Przejdź do ruchów')
+      : (movingUnits.length ? 'Kliknij objective albo bazę. Cała grupa = 1 rozkaz.' : canGo ? "Przeciągnij jednostki z bazy albo z objective'u na objective. Kilka naraz = 1 rozkaz." : 'Zakończ turę');
+  // A prompt that names an action is that action
+  const promptAct = mine && !movingCards.length && !movingUnits.length && ((phase === 'deploy' && !canPlay) || (phase === 'move' && !canGo)) ? advance : null;
+  const n = movingCards.length;
 
   return (
     <div ref={boardRef} className="relative h-full flex flex-col overflow-hidden select-none" style={{ background: `radial-gradient(110% 80% at 45% 0%, #191c25, ${T.bg} 62%)`, color: T.text }}
       onClick={e => { if (e.target === e.currentTarget) { setSel([]); setSelCards([]); } }}>
+      <style>{'@keyframes karty-blink{0%,100%{opacity:1}50%{opacity:.2}}'}</style>
       <LayoutGroup>
         {/* Top HUD */}
         <div className="h-[64px] shrink-0 flex items-center justify-center relative">
+          {onBack && (
+            <motion.button type="button" onClick={onBack} whileHover={{ x: -3 }} className="absolute left-5 flex items-center gap-1.5 rounded-full pl-2.5 pr-4 h-10 text-[13px] font-bold"
+              style={{ boxShadow: `inset 0 0 0 1.5px ${T.faint}`, color: T.text }}><ArrowLeft className="w-4 h-4" />Album i talia</motion.button>
+          )}
           <Tip content={`Rywal · na ręce: ${rival.hand.length} · w talii: ${rival.deck.length} · polegli: ${rival.grave.length}`}>
-            <div className="absolute left-6 flex items-center gap-3 cursor-help">
+            <div className="absolute left-[200px] flex items-center gap-3 cursor-help">
               <div className="flex -space-x-5">{rival.hand.map((_, i) => <div key={i} style={{ transform: `rotate(${(i - rival.hand.length / 2) * 6}deg)` }}><CardBack w={28} /></div>)}</div>
               <span className="font-logik-extended-bold text-[22px]" style={{ color: T.rival, ...font }}>{rival.hand.length}</span>
               <span className="text-[11px] uppercase tracking-widest leading-tight" style={{ color: T.muted }}>kart na ręce<br />rywala</span>
             </div>
           </Tip>
           <ScoreRace shown={shown} />
-          <Tip content="Przebieg meczu">
-            <motion.button type="button" onClick={() => setLogOpen(true)} whileHover={{ scale: 1.08 }} className="absolute right-6 w-11 h-11 rounded-full flex items-center justify-center"
-              style={{ boxShadow: `inset 0 0 0 1.5px ${T.faint}`, color: T.text }} aria-label="Przebieg meczu"><ScrollText className="w-5 h-5" /></motion.button>
-          </Tip>
+          <div data-tour="help" className="absolute right-5 flex items-center gap-2">
+            <Tip content="Samouczek">
+              <motion.button type="button" onClick={() => setTour(true)} whileHover={{ scale: 1.08 }} className="w-11 h-11 rounded-full flex items-center justify-center"
+                style={{ boxShadow: `inset 0 0 0 1.5px ${T.faint}`, color: T.text }} aria-label="Samouczek"><CircleHelp className="w-5 h-5" /></motion.button>
+            </Tip>
+            <Tip content="Przebieg meczu">
+              <motion.button type="button" onClick={() => setLogOpen(true)} whileHover={{ scale: 1.08 }} className="w-11 h-11 rounded-full flex items-center justify-center"
+                style={{ boxShadow: `inset 0 0 0 1.5px ${T.faint}`, color: T.text }} aria-label="Przebieg meczu"><ScrollText className="w-5 h-5" /></motion.button>
+            </Tip>
+          </div>
         </div>
         <BaseBand side={1} a={ctx} target={movingCards.length || movingUnits.length ? { ok: false, text: '', tone: 'off', free: false } : null} />
-        <div className="relative flex-1 min-h-0 flex">
+        <div data-tour="objectives" className="relative flex-1 min-h-0 flex">
           {([0, 1, 2] as const).map(i => (
             <React.Fragment key={i}>
               {i > 0 && <div className="w-px shrink-0" style={{ background: `linear-gradient(180deg, transparent, ${T.line}, transparent)` }} />}
@@ -793,17 +857,27 @@ export function OutpostsGame({ deck, all }: { deck: GCard[]; all: GCard[] }) {
         <BaseBand side={0} a={ctx} target={targetFor('base')} onSend={() => sendTo('base')} />
 
         {/* Bottom HUD: prompt + hand, the orders and the turn button right beside it */}
-        <div className="relative h-[206px] shrink-0 flex">
+        <div className="relative h-[214px] shrink-0 flex">
           <div className="w-[300px] shrink-0" />
           <div className="flex-1 min-w-0 flex flex-col items-center">
-            <div className="relative z-30 h-[40px] mt-1 flex items-center">
+            <div className="relative z-50 h-[44px] mt-1 flex items-center">
               <AnimatePresence mode="wait">
-                {mine && (note || prompt) && (
-                  <motion.div key={(note ?? '') + (prompt ?? '') + phase} className="flex items-center gap-3 px-5 h-[38px] rounded-full"
+                {mine && phase === 'deploy' && n > 0 && !note && (
+                  <motion.button key={`deploy${n}`} type="button" onClick={() => doDeploy(movingCards)} disabled={n > s.orders}
+                    className="flex items-center gap-3 px-7 h-[44px] rounded-full font-logik-extended-bold uppercase tracking-widest text-[14px] text-white disabled:opacity-50"
+                    initial={{ opacity: 0, y: 14, scale: 1.08 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -8 }} whileHover={{ scale: 1.05 }}
+                    style={{ background: ACC, boxShadow: `0 0 26px ${mix(ACC, 70)}`, ...font }}>
+                    {n > s.orders ? `Za mało rozkazów (masz ${s.orders})` : <>Wystaw {n} {n === 1 ? 'kartę' : n < 5 ? 'karty' : 'kart'} do bazy<span className="flex gap-1.5 ml-1">{Array.from({ length: n }, (_, k) => <Gem key={k} size={11} />)}</span></>}
+                  </motion.button>
+                )}
+                {mine && (note || prompt) && !(phase === 'deploy' && n > 0 && !note) && (
+                  <motion.div key={(note ?? '') + (prompt ?? '') + phase} onClick={!note && promptAct ? promptAct : undefined}
+                    className={`flex items-center gap-3 px-5 h-[40px] rounded-full ${!note && promptAct ? 'cursor-pointer' : ''}`}
                     initial={{ opacity: 0, y: 14, scale: 1.08 }} animate={{ opacity: 1, y: 0, scale: 1, boxShadow: [`0 0 0 2px ${ACC_L}, 0 0 30px ${mix(ACC, 70)}`, `0 0 0 1px ${T.faint}, 0 0 0px transparent`] }}
-                    exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.35, boxShadow: { duration: 1.4 } }} style={{ background: 'rgba(0,0,0,0.5)' }}>
-                    <span className="font-logik-extended-bold uppercase text-[12px] tracking-widest whitespace-nowrap" style={{ color: ACC_L, ...font }}>{phase === 'deploy' ? 'Faza 1/2 · Wystawianie' : 'Faza 2/2 · Rozkazy'}</span>
-                    <span className="text-[14px] font-bold whitespace-nowrap" style={{ color: note ? T.warn : T.text }}>{note ?? prompt}</span>
+                    exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.35, boxShadow: { duration: 1.4 } }} whileHover={!note && promptAct ? { scale: 1.04 } : undefined}
+                    style={{ background: !note && promptAct ? ACC : 'rgba(0,0,0,0.5)' }}>
+                    <span className="font-logik-extended-bold uppercase text-[12px] tracking-widest whitespace-nowrap" style={{ color: !note && promptAct ? '#fff' : ACC_L, ...font }}>{phase === 'deploy' ? 'Faza 1/2 · Wystawianie' : 'Faza 2/2 · Ruchy'}</span>
+                    <span className="text-[14px] font-bold whitespace-nowrap" style={{ color: note ? T.warn : T.text }}>{note ?? prompt}{!note && promptAct ? ' →' : ''}</span>
                   </motion.div>
                 )}
                 {!mine && s.winner === null && lastRival && (
@@ -816,6 +890,7 @@ export function OutpostsGame({ deck, all }: { deck: GCard[]; all: GCard[] }) {
               </AnimatePresence>
             </div>
             <div className="relative flex-1 w-full flex justify-center items-end pb-3">
+              <div data-tour="hand" className="flex items-end">
               {me.hand.map((c, i) => {
                 const n = me.hand.length; const off = i - (n - 1) / 2;
                 const can = mine && !canDeploy(s, c.id);
@@ -830,26 +905,36 @@ export function OutpostsGame({ deck, all }: { deck: GCard[]; all: GCard[] }) {
                   </motion.div>
                 );
               })}
+              </div>
+              {mine && phase === 'deploy' && me.hand.length > 0 && (
+                <motion.button type="button" onClick={advance} whileHover={{ y: -10 }} className="ml-4 shrink-0 rounded-[12px] flex flex-col items-center justify-center gap-2 px-3 text-center"
+                  style={{ width: 112, height: 150, border: `2px dashed ${mix(ACC_L, 60)}`, background: 'rgba(255,255,255,0.03)', color: T.text }}>
+                  <ArrowRight className="w-6 h-6" style={{ color: ACC_L }} />
+                  <span className="font-logik-extended-bold uppercase text-[12px] leading-tight" style={font}>Nie wystawiam więcej</span>
+                  <span className="text-[11px] leading-snug" style={{ color: T.muted }}>Rozkazy zostają na ruchy</span>
+                </motion.button>
+              )}
               {!me.hand.length && <span className="text-[12px] mb-10" style={{ color: T.muted }}>Ręka pusta: na początku tury dobierasz 1 kartę</span>}
             </div>
           </div>
           {/* Orders + turn button, right next to the hand */}
           <div className="w-[300px] shrink-0 flex items-center justify-center gap-5">
-            <div className="flex flex-col items-center gap-2">
-              <div className="flex items-center gap-2.5">
-                {Array.from({ length: Math.max(ORDERS, s.orders) }, (_, i) => <Gem key={i} size={20} on={mine && i < s.orders} pending={mine && i >= s.orders - pendingCost && i < s.orders} />)}
+            <Tip content="Rozkazy na tę turę, wspólne na wszystko: wystawienie karty = 1, ruch jednostki albo całej grupy z jednego miejsca = 1. Migają te, które zużyje to, co masz zaznaczone.">
+              <div data-tour="orders" className="flex flex-col items-center gap-2 cursor-help">
+                <div className="flex items-center gap-2.5">
+                  {Array.from({ length: Math.max(ORDERS, s.orders) }, (_, i) => <Gem key={i} size={20} on={mine && i < s.orders} pending={mine && i >= s.orders - pendingCost && i < s.orders} />)}
+                </div>
+                <span className="text-[11px] uppercase tracking-widest" style={{ color: T.muted }}>rozkazy</span>
               </div>
-              <span className="text-[11px] uppercase tracking-widest" style={{ color: T.muted }}>rozkazy{pendingCost ? ` · −${pendingCost}` : ''}</span>
-            </div>
-            <motion.button type="button" disabled={!mine}
-              onClick={() => { const cur = stateRef.current; if (!cur) return; setS(cur.phase === 'deploy' ? startOrders(cur) : endTurn(cur)); setSel([]); setSelCards([]); }}
+            </Tip>
+            <motion.button type="button" data-tour="turn" disabled={!mine} onClick={advance}
               className="relative w-[124px] h-[124px] rounded-full flex flex-col items-center justify-center font-logik-extended-bold uppercase text-white disabled:cursor-not-allowed"
               whileHover={mine ? { scale: 1.06, filter: 'brightness(1.35)' } : undefined}
               animate={recommend ? { boxShadow: [`0 0 0 3px ${ACC_L}, 0 0 8px ${mix(ACC, 60)}`, `0 0 0 3px ${ACC_L}, 0 0 40px ${ACC}`, `0 0 0 3px ${ACC_L}, 0 0 8px ${mix(ACC, 60)}`], backgroundColor: [mix(ACC, 70), ACC, mix(ACC, 70)] } : { boxShadow: `0 0 0 2px ${mine ? mix(ACC, 70) : T.faint}`, backgroundColor: mine ? mix(ACC, 30) : '#1a1c22' }}
               transition={recommend ? { duration: 1.8, repeat: Infinity } : { duration: 0.3 }}
               style={{ color: mine ? '#fff' : T.muted, ...font }}>
               <span className="text-[16px] leading-tight text-center">{!mine ? (s.winner === null ? 'Tura rywala' : 'Koniec') : phase === 'deploy' ? 'Dalej' : 'Koniec tury'}</span>
-              {mine && <span className="text-[9px] tracking-widest mt-1 opacity-80">{phase === 'deploy' ? 'do rozkazów' : 'oddaj ruch'}</span>}
+              {mine && <span className="text-[9px] tracking-widest mt-1 opacity-80">{phase === 'deploy' ? 'do ruchów' : 'oddaj ruch'}</span>}
             </motion.button>
           </div>
         </div>
@@ -876,6 +961,7 @@ export function OutpostsGame({ deck, all }: { deck: GCard[]; all: GCard[] }) {
         )}
       </AnimatePresence>
       <AnimatePresence>{logOpen && <CombatLog s={s} onClose={() => setLogOpen(false)} />}</AnimatePresence>
+      {tour && !scene && <Tour steps={TOUR} onClose={closeTour} />}
       <AnimatePresence>
         {scene && <FightScene key={scene.key} f={scene} name={OBJECTIVES[s.objectives[scene.at].id].name} icon={OBJECTIVES[s.objectives[scene.at].id].icon} onDone={() => setScene(null)} />}
       </AnimatePresence>

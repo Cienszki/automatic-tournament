@@ -46,11 +46,11 @@ export const takePoints = (id: ObjId) => (id === 'roshan' ? 2 : 1);
 
 // ── Types = the position the player played in that series ────────────────────
 export const KEYWORD: Record<RoleKey, { name: string; ability: string; text: string }> = {
-  Carry: { name: 'Carry', ability: 'Farm', text: `co turę na Twoim objectivie +1 siły na stałe (maks. +${FARMER_MAX})` },
-  Mid: { name: 'Mid', ability: 'Gank', text: "idzie prosto z objective'u na inny objective (reszta przez bazę)" },
-  Offlane: { name: 'Offlane', ability: 'Tank', text: '+1 siły i obrywa pierwszy' },
-  'Soft Support': { name: 'Soft support', ability: 'Smoke', text: 'raz na turę jego grupa rusza się bez rozkazu' },
-  'Hard Support': { name: 'Hard support', ability: 'Aura', text: '+1 siły dla każdego sojusznika na tym samym objectivie (także dla niego)' },
+  Carry: { name: 'Carry', ability: 'Farma', text: `Na początku każdej Twojej tury, jeśli stoi na Twoim objectivie, zyskuje +1 siły na stałe (maks. +${FARMER_MAX}).` },
+  Mid: { name: 'Mid', ability: 'Gank', text: "Może iść prosto z objective'u na inny objective. Pozostali muszą najpierw wrócić do bazy." },
+  Offlane: { name: 'Offlane', ability: 'Tank', text: '+1 siły. W walce obrywa jako pierwszy.' },
+  'Soft Support': { name: 'Soft support', ability: 'Smoke', text: 'Raz na turę grupa, w której jest, rusza się bez rozkazu.' },
+  'Hard Support': { name: 'Hard support', ability: 'Aura', text: '+1 siły dla każdej Twojej jednostki na tym samym objectivie, także dla siebie.' },
 };
 
 export interface OUnit { uid: string; card: GCard; side: Side; loc: Loc; moved: boolean; fresh: boolean; growth: number }
@@ -108,16 +108,16 @@ export interface OState {
 export const cardStrength = (c: GCard) => STRENGTH.min + Math.round((STRENGTH.max - STRENGTH.min) * Math.max(0, Math.min(1, (c.ovr - 45) / 54)) ** STRENGTH.curve);
 const roleMod = (c: GCard) => (c.role === 'Offlane' ? 1 : c.role === 'Hard Support' || c.role === 'Soft Support' ? -1 : 0);
 /** Strength of a card in hand (no board bonuses) */
-export const baseMight = (c: GCard) => cardStrength(c) + roleMod(c);
+export const baseMight = (c: GCard) => Math.max(1, cardStrength(c) + roleMod(c));
 
 export function strengthParts(s: OState, u: OUnit, defending = false): Part[] {
   const parts: Part[] = [{ kind: 'card', label: 'Karta', v: cardStrength(u.card) }];
   const rm = roleMod(u.card);
   if (rm) parts.push({ kind: 'role', label: rm > 0 ? 'Offlane' : 'Support', v: rm });
-  if (u.growth) parts.push({ kind: 'farmer', label: 'Farm', v: u.growth });
+  if (u.growth) parts.push({ kind: 'farmer', label: 'Carry: farma', v: u.growth });
   if (u.loc !== 'base') {
     const aura = s.units.filter(o => o.side === u.side && o.loc === u.loc && o.card.role === 'Hard Support').length;
-    if (aura) parts.push({ kind: 'aura', label: 'Aura', v: aura });
+    if (aura) parts.push({ kind: 'aura', label: 'Hard support', v: aura });
     if (u.card.team && s.units.some(o => o !== u && o.side === u.side && o.loc === u.loc && o.card.team?.id === u.card.team?.id)) parts.push({ kind: 'team', label: 'Drużyna', v: TEAM_BONUS });
     const ob = s.objectives[u.loc];
     if (defending && ob.id === 'highground' && ob.owner === u.side) parts.push({ kind: 'hg', label: 'High Ground', v: 1 });
