@@ -20,9 +20,10 @@ import {
   baseMight, canDeploy, canMove, cardStrength, deploy, endTurn, freeMove, itemIcon, might, move, newGame, startOrders, strengthParts, takePoints,
   type Ev, type Fight, type Gain, type Loc, type ObjId, type OState, type OUnit, type Part, type Side,
 } from '@/lib/card-lab/outposts';
-import { applyAct, cpuNextAction } from '@/lib/card-lab/outposts-ai';
+import { applyAct, cpuNextAction, LEVELS, type Level } from '@/lib/card-lab/outposts-ai';
 import { CardBack, useFitScale } from './ui';
 import { Tour, type TourStep } from '@/components/tour/Tour';
+import { Hint } from '@/components/tour/Hint';
 
 export const OUTPOSTS_RULE: DeckRule = { size: DECK_SIZE, perRole: DECK_PER_ROLE, text: `${DECK_SIZE} kart, co najmniej ${DECK_PER_ROLE} na każdej pozycji, każdy gracz raz` };
 
@@ -96,50 +97,95 @@ interface FigProps {
   card: GCard; m: number; side: Side; w: number; layoutId?: string;
   parts?: Part[]; smoke?: boolean; bump?: { v: number; key: number } | null;
   selected?: boolean; tired?: boolean; glow?: boolean; ghost?: boolean; settle?: boolean;
-  onPointerDown?: (e: React.PointerEvent) => void; tip?: React.ReactNode;
+  onPointerDown?: (e: React.PointerEvent) => void;
+  /** Hover turns the card over and shows this on its back */
+  info?: { parts?: Part[]; note?: string; showParts?: boolean };
+  /** Which way the card grows when it turns over (hand: up, rival base: down) */
+  grow?: 'up' | 'down' | 'center';
+  dataId?: string;
 }
-function Figure({ card, m, side, w, layoutId, parts, smoke, bump, selected, tired, glow, ghost, settle, onPointerDown, tip }: FigProps) {
+const FLIP_DELAY = 350; const FLIP_SCALE = 1.55;
+
+function Figure({ card, m, side, w, layoutId, parts, smoke, bump, selected, tired, glow, ghost, settle, onPointerDown, info, grow = 'center', dataId }: FigProps) {
   const font = useHeaderFont();
   const h = Math.round(w * 1.34);
   const k = w / 110;
   const buffs = (parts ?? []).filter(p => PART_ICON[p.kind]);
-  const body = (
-    <motion.div layoutId={layoutId} layout={!!layoutId} transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-      initial={settle ? { scale: 1.12, opacity: 1 } : { opacity: 0, scale: 0.75 }} animate={{ opacity: ghost ? 0 : 1, scale: 1, y: selected ? -8 : 0 }}
+  const [flipped, setFlipped] = useState(false);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const enter = () => { if (!info) return; timer.current = setTimeout(() => setFlipped(true), FLIP_DELAY); };
+  const leave = () => { if (timer.current) clearTimeout(timer.current); setFlipped(false); };
+  useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
+  const origin = grow === 'up' ? '50% 100%' : grow === 'down' ? '50% 0%' : '50% 50%';
+  const face: React.CSSProperties = { position: 'absolute', inset: 0, backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden' };
+  return (
+    <motion.div layoutId={layoutId} layout={!!layoutId} transition={{ type: 'spring', stiffness: 300, damping: 30 }} data-uid={dataId}
+      initial={settle ? { scale: 1.12, opacity: 1 } : { opacity: 0, scale: 0.75 }}
+      animate={{ opacity: ghost ? 0 : 1, scale: flipped ? FLIP_SCALE : 1, y: flipped && grow === 'up' ? -80 : selected && !flipped ? -8 : 0 }}
       exit={{ opacity: 0, scale: 0.6, transition: { duration: 0.3 } }}
-      onPointerDown={onPointerDown} onClick={e => e.stopPropagation()} className="relative shrink-0 touch-none select-none"
-      style={{ width: w, height: h, cursor: onPointerDown ? 'grab' : 'default' }}>
-      <div className="absolute inset-0 overflow-hidden" style={{
-        borderRadius: 12 * k,
-        background: `radial-gradient(120% 80% at 50% 100%, ${sideColor(side)}38, transparent 60%), linear-gradient(180deg, #1c1f29, #0a0b0f)`,
-        boxShadow: selected ? `0 0 0 3px ${ACC_L}, 0 0 26px ${mix(ACC, 80)}`
-          : glow ? `0 0 0 2px ${ACC_L}, 0 0 18px ${mix(ACC, 55)}`
-          : smoke ? `0 0 0 2px ${T.smoke}, 0 0 20px ${T.smoke}aa`
-          : `0 0 0 1.5px ${sideColor(side)}99, 0 10px 22px rgba(0,0,0,0.55)`,
-        filter: tired ? 'saturate(0.3) brightness(0.72)' : undefined, transition: 'box-shadow .2s',
-      }}>
-        <div className="absolute inset-x-0" style={{ top: 6 * k, bottom: 30 * k }}><HeroRender heroId={card.heroId} sizes={`${Math.round(w * 1.4)}px`} /></div>
-        <div className="absolute inset-0" style={{ background: 'linear-gradient(0deg, rgba(5,6,9,0.97) 14%, transparent 58%)' }} />
-        <span className="absolute" style={{ right: 6 * k, top: 6 * k }}><Avatar player={card.player} size={Math.round(26 * k)} ring="rgba(0,0,0,0.6)" /></span>
-        <div className="absolute" style={{ left: 6 * k, right: 6 * k, bottom: 5 * k, color: T.text }}>
-          <FitLine text={card.name} max={Math.max(11, 13 * k)} min={9} className="font-bold leading-tight" />
-          <div className="font-bold uppercase tracking-wider flex items-center gap-1" style={{ fontSize: Math.max(10, 10 * k), color: smoke ? T.smoke : ACC_L }}>
-            {KEYWORD[card.role].name}{tired && <Moon className="ml-auto" style={{ width: Math.max(11, 12 * k), height: Math.max(11, 12 * k), color: T.muted }} />}
+      onMouseEnter={enter} onMouseLeave={leave}
+      onPointerDown={e => { leave(); onPointerDown?.(e); }} onClick={e => e.stopPropagation()} className="relative shrink-0 touch-none select-none"
+      style={{ width: w, height: h, cursor: onPointerDown ? 'grab' : 'default', zIndex: flipped ? 80 : undefined, transformOrigin: origin, perspective: 900 }}>
+      <motion.div className="absolute inset-0" style={{ transformStyle: 'preserve-3d' }} animate={{ rotateY: flipped ? 180 : 0 }} transition={{ duration: 0.45, ease: [0.3, 1.1, 0.5, 1] }}>
+        {/* Front */}
+        <div style={face}>
+          <div className="absolute inset-0 overflow-hidden" style={{
+            borderRadius: 12 * k,
+            background: `radial-gradient(120% 80% at 50% 100%, ${sideColor(side)}38, transparent 60%), linear-gradient(180deg, #1c1f29, #0a0b0f)`,
+            boxShadow: selected ? `0 0 0 3px ${ACC_L}, 0 0 26px ${mix(ACC, 80)}`
+              : glow ? `0 0 0 2px ${ACC_L}, 0 0 18px ${mix(ACC, 55)}`
+              : smoke ? `0 0 0 2px ${T.smoke}, 0 0 20px ${T.smoke}aa`
+              : `0 0 0 1.5px ${sideColor(side)}99, 0 10px 22px rgba(0,0,0,0.55)`,
+            filter: tired ? 'saturate(0.3) brightness(0.72)' : undefined, transition: 'box-shadow .2s',
+          }}>
+            <div className="absolute inset-x-0" style={{ top: 6 * k, bottom: 30 * k }}><HeroRender heroId={card.heroId} sizes={`${Math.round(w * 1.4)}px`} /></div>
+            <div className="absolute inset-0" style={{ background: 'linear-gradient(0deg, rgba(5,6,9,0.97) 14%, transparent 58%)' }} />
+            <span className="absolute" style={{ right: 6 * k, top: 6 * k }}><Avatar player={card.player} size={Math.round(26 * k)} ring="rgba(0,0,0,0.6)" /></span>
+            <div className="absolute" style={{ left: 6 * k, right: 6 * k, bottom: 5 * k, color: T.text }}>
+              <FitLine text={card.name} max={Math.max(11, 13 * k)} min={9} className="font-bold leading-tight" />
+              <div className="font-bold uppercase tracking-wider flex items-center gap-1" style={{ fontSize: Math.max(10, 10 * k), color: smoke ? T.smoke : ACC_L }}>
+                {KEYWORD[card.role].name}{tired && <Moon className="ml-auto" style={{ width: Math.max(11, 12 * k), height: Math.max(11, 12 * k), color: T.muted }} />}
+              </div>
+            </div>
           </div>
+          <motion.span key={bump?.key ?? 'm'} className="absolute flex items-center justify-center font-logik-extended-bold leading-none z-10"
+            initial={bump ? { scale: 1.8 } : false} animate={{ scale: 1 }} transition={{ type: 'spring', stiffness: 300, damping: 14 }}
+            style={{ left: 5 * k, top: 5 * k, width: 34 * k, height: 34 * k, fontSize: 20 * k, borderRadius: '50% 50% 50% 10%', background: sideColor(side), color: '#07080b', boxShadow: bump ? `0 0 18px ${ACC_L}` : '0 2px 8px rgba(0,0,0,0.6)', ...font }}>{m}</motion.span>
+          {buffs.length > 0 && (
+            <div className="absolute flex flex-col gap-0.5 z-10" style={{ left: 5 * k, top: 42 * k }}>
+              {buffs.map(p => {
+                const Icon = PART_ICON[p.kind]!;
+                return <span key={p.kind} className="flex items-center gap-0.5 rounded-full px-1 font-bold" style={{ fontSize: Math.max(10, 10 * k), background: 'rgba(0,0,0,0.78)', color: PART_COLOR[p.kind] }}><Icon style={{ width: 10 * k + 2, height: 10 * k + 2 }} />+{p.v}</span>;
+              })}
+            </div>
+          )}
+          {smoke && <span className="absolute z-10 rounded-full flex items-center justify-center" style={{ right: 4 * k, top: 36 * k, width: 22 * k, height: 22 * k, background: 'rgba(0,0,0,0.75)' }}><Wind style={{ width: 13 * k, height: 13 * k, color: T.smoke }} /></span>}
         </div>
-      </div>
-      <motion.span key={bump?.key ?? 'm'} className="absolute flex items-center justify-center font-logik-extended-bold leading-none z-10"
-        initial={bump ? { scale: 1.8 } : false} animate={{ scale: 1 }} transition={{ type: 'spring', stiffness: 300, damping: 14 }}
-        style={{ left: 5 * k, top: 5 * k, width: 34 * k, height: 34 * k, fontSize: 20 * k, borderRadius: '50% 50% 50% 10%', background: sideColor(side), color: '#07080b', boxShadow: bump ? `0 0 18px ${ACC_L}` : '0 2px 8px rgba(0,0,0,0.6)', ...font }}>{m}</motion.span>
-      {buffs.length > 0 && (
-        <div className="absolute flex flex-col gap-0.5 z-10" style={{ left: 5 * k, top: 42 * k }}>
-          {buffs.map(p => {
-            const Icon = PART_ICON[p.kind]!;
-            return <span key={p.kind} className="flex items-center gap-0.5 rounded-full px-1 font-bold" style={{ fontSize: Math.max(10, 10 * k), background: 'rgba(0,0,0,0.78)', color: PART_COLOR[p.kind] }}><Icon style={{ width: 10 * k + 2, height: 10 * k + 2 }} />+{p.v}</span>;
-          })}
-        </div>
-      )}
-      {smoke && <span className="absolute z-10 rounded-full flex items-center justify-center" style={{ right: 4 * k, top: 36 * k, width: 22 * k, height: 22 * k, background: 'rgba(0,0,0,0.75)' }}><Wind style={{ width: 13 * k, height: 13 * k, color: T.smoke }} /></span>}
+        {/* Back: what the card is and does */}
+        {info && (
+          <div style={{ ...face, transform: 'rotateY(180deg)' }}>
+            <div className="absolute inset-0 overflow-hidden flex flex-col" style={{ borderRadius: 12 * k, padding: 7 * k, background: `linear-gradient(180deg, #1d2030, #0b0c12)`, boxShadow: `0 0 0 1.5px ${ACC_L}, 0 16px 40px rgba(0,0,0,0.7)`, color: T.text }}>
+              <div className="font-bold leading-tight break-words" style={{ fontSize: 11 * k }}>{card.name}</div>
+              <div className="leading-tight break-words" style={{ fontSize: 7.5 * k, color: T.muted }}>{card.team?.name}{card.series.opp ? ` vs ${card.series.opp.name}` : ''}</div>
+              <div className="font-logik-extended-bold uppercase leading-none" style={{ fontSize: 10 * k, color: ACC_L, marginTop: 6 * k, ...font }}>{KEYWORD[card.role].name}</div>
+              <div className="leading-snug" style={{ fontSize: 8.5 * k, marginTop: 3 * k }}>{KEYWORD[card.role].text}</div>
+              <div className="mt-auto">
+                {info.showParts && info.parts && info.parts.map((p, i) => (
+                  <div key={i} className="flex items-baseline gap-1 uppercase" style={{ fontSize: 7.5 * k }}>
+                    <span style={{ color: T.muted }}>{p.kind === 'card' ? 'Karta' : p.label}</span>
+                    <b style={{ color: p.kind === 'card' ? T.text : signColor(p.v) }}>{p.kind === 'card' ? p.v : `${p.v > 0 ? '+' : '−'}${Math.abs(p.v)}`}</b>
+                  </div>
+                ))}
+                <div className="flex items-baseline gap-1.5" style={{ marginTop: 2 * k }}>
+                  <span className="uppercase font-bold" style={{ fontSize: 8.5 * k }}>Siła</span>
+                  <span className="font-logik-extended-bold leading-none" style={{ fontSize: 16 * k, color: sideColor(side), ...font }}>{m}</span>
+                </div>
+                {info.note && <div className="leading-tight" style={{ fontSize: 7 * k, color: T.muted, marginTop: 2 * k }}>{info.note}</div>}
+              </div>
+            </div>
+          </div>
+        )}
+      </motion.div>
       <AnimatePresence>
         {bump && (
           <motion.span key={bump.key} className="absolute left-1/2 -translate-x-1/2 font-logik-extended-bold text-[22px] z-20 pointer-events-none" style={{ top: -4, color: ACC_L, textShadow: `0 0 12px ${ACC}, 0 2px 4px #000`, ...font }}
@@ -148,32 +194,31 @@ function Figure({ card, m, side, w, layoutId, parts, smoke, bump, selected, tire
       </AnimatePresence>
     </motion.div>
   );
-  return tip ? <Tip content={tip}>{body}</Tip> : body;
 }
 
-/** Hover card: who, the type and what it does, and (for your cards) how the strength adds up */
+/** Board buffs (not the card's own value or the type's fixed ±1) — only these are worth a breakdown */
+const hasBuffs = (parts?: Part[]) => !!parts?.some(p => p.kind !== 'card' && p.kind !== 'role');
+
+/** Info about a card (used in the combat log): who, the type and what it does, strength */
 function CardInfo({ card, parts, m, note }: { card: GCard; parts?: Part[]; m: number; note?: string }) {
   const kw = KEYWORD[card.role];
   return (
-    <div className="w-[300px] text-[12px] leading-snug">
-      <div className="flex items-baseline gap-2">
-        <span className="text-[15px] font-bold">{card.name}</span>
-        <span className="truncate" style={{ color: T.muted }}>{card.team?.name}{card.series.opp ? ` vs ${card.series.opp.name}` : ''}</span>
-      </div>
-      {/* The type's special ability — the thing to read */}
-      <div className="mt-2 rounded-xl px-3 py-2" style={{ background: mix(ACC, 22), boxShadow: `inset 0 0 0 1px ${mix(ACC, 55)}` }}>
-        <div className="font-logik-extended-bold uppercase text-[13px] tracking-wide" style={{ color: ACC_L }}>{kw.name}</div>
-        <div className="text-[13px] mt-0.5" style={{ color: T.text }}>{kw.text}</div>
-      </div>
-      <div className="mt-2 flex flex-col gap-0.5">
-        {(parts ?? []).map((p, i) => (
-          <span key={i} className="flex items-baseline gap-1.5">
-            <span className="uppercase tracking-wide" style={{ color: T.muted }}>{p.kind === 'card' ? 'Karta' : p.label}</span>
-            <b style={{ color: p.kind === 'card' ? T.text : signColor(p.v) }}>{p.kind === 'card' ? p.v : `${p.v > 0 ? '+' : '−'}${Math.abs(p.v)}`}</b>
-          </span>
-        ))}
-        <span className="flex items-baseline gap-1.5 mt-1 text-[14px]"><span className="uppercase tracking-wide font-bold">Siła</span><b className="font-logik-extended-bold" style={{ color: T.text }}>{m}</b></span>
-      </div>
+    <div className="w-[280px] text-[12px] leading-snug">
+      <div className="text-[15px] font-bold break-words">{card.name}</div>
+      <div className="break-words" style={{ color: T.muted }}>{card.team?.name}{card.series.opp ? ` vs ${card.series.opp.name}` : ''}</div>
+      <div className="mt-2 font-logik-extended-bold uppercase text-[13px] tracking-wide" style={{ color: ACC_L }}>{kw.name}</div>
+      <div className="text-[13px]" style={{ color: T.text }}>{kw.text}</div>
+      {hasBuffs(parts) && (
+        <div className="mt-2 flex flex-col gap-0.5">
+          {parts!.map((p, i) => (
+            <span key={i} className="flex items-baseline gap-1.5">
+              <span className="uppercase tracking-wide" style={{ color: T.muted }}>{p.kind === 'card' ? 'Karta' : p.label}</span>
+              <b style={{ color: p.kind === 'card' ? T.text : signColor(p.v) }}>{p.kind === 'card' ? p.v : `${p.v > 0 ? '+' : '−'}${Math.abs(p.v)}`}</b>
+            </span>
+          ))}
+        </div>
+      )}
+      <div className="mt-1.5 flex items-baseline gap-1.5 text-[14px]"><span className="uppercase tracking-wide font-bold">Siła</span><b className="font-logik-extended-bold">{m}</b></div>
       {note && <div className="mt-2" style={{ color: T.muted }}>{note}</div>}
     </div>
   );
@@ -203,7 +248,7 @@ function Pill({ t }: { t: Target }) {
     <motion.span initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
       className="flex items-center gap-2 rounded-full pl-2.5 pr-4 py-1.5 text-[13px] font-bold whitespace-nowrap pointer-events-none"
       style={{ background: TONE[t.tone], color: '#07080b', boxShadow: `0 0 18px ${TONE[t.tone]}66` }}>
-      {t.free ? <><Wind className="w-4 h-4" />Soft support: bez rozkazu ·</> : null}<span>{t.text}</span>
+      {t.free ? <><Wind className="w-4 h-4" />Soft support w grupie: nie kosztuje rozkazu ·</> : <span className="flex items-center gap-1.5">koszt <Gem size={10} /> ·</span>}<span>{t.text}</span>
     </motion.span>
   );
 }
@@ -228,7 +273,9 @@ function unitFigure(u: OUnit, w: number, a: AreaCtx) {
   return (
     <Figure key={u.uid} layoutId={settle ? undefined : u.uid} settle={settle} card={u.card} m={m} side={u.side} w={w} parts={parts} smoke={smoke}
       bump={a.bumps[u.uid] ?? null} selected={a.sel.includes(u.uid)} tired={u.side === s.active && (u.moved || u.fresh)} glow={ready && !a.sel.length && !smoke} ghost={a.hidden.has(u.uid)}
-      onPointerDown={ready ? e => a.pressUnit(e, u) : undefined} tip={<CardInfo card={u.card} parts={parts} m={m} note={note} />} />
+      onPointerDown={ready ? e => a.pressUnit(e, u) : undefined} dataId={u.uid}
+      grow={u.loc === 'base' ? (u.side === 1 ? 'down' : 'up') : u.side === 1 ? 'down' : 'up'}
+      info={{ parts: parts ?? strengthParts(s, u, defending), showParts: u.side === 0 && hasBuffs(parts), note }} />
   );
 }
 
@@ -247,7 +294,7 @@ function Arena({ id }: { id: ObjId }) {
 
 /** A free place on an objective (max 3 per side) */
 function Slot({ w, side, tour }: { w: number; side: Side; tour?: boolean }) {
-  return <div data-tour={tour ? 'slots' : undefined} className="shrink-0 rounded-[12px]" style={{ width: w, height: Math.round(w * 1.34), border: `1.5px dashed ${sideColor(side)}33`, background: `${sideColor(side)}08` }} />;
+  return <div data-tour={tour ? 'slots' : undefined} className="shrink-0 rounded-[12px]" style={{ width: w, height: Math.round(w * 1.34), border: `1.5px dashed rgba(255,255,255,${side === 0 ? 0.3 : 0.2})` }} />;
 }
 
 function Objective({ i, a, target, onSend, rowRef, w }: { i: 0 | 1 | 2; a: AreaCtx; target: Target | null; onSend: () => void; rowRef?: React.Ref<HTMLDivElement>; w: number }) {
@@ -296,7 +343,7 @@ function Objective({ i, a, target, onSend, rowRef, w }: { i: 0 | 1 | 2; a: AreaC
   );
 }
 
-function BaseBand({ side, a, target, onSend }: { side: Side; a: AreaCtx; target?: Target | null; onSend?: () => void }) {
+function BaseBand({ side, a, target, onSend, deployN }: { side: Side; a: AreaCtx; target?: Target | null; onSend?: () => void; deployN?: number }) {
   const font = useHeaderFont();
   const { s } = a;
   const units = s.units.filter(u => u.side === side && u.loc === 'base');
@@ -314,7 +361,17 @@ function BaseBand({ side, a, target, onSend }: { side: Side; a: AreaCtx; target?
         {smokeHere && <SmokeFx />}
         <AnimatePresence>{units.map(u => unitFigure(u, 80, a))}</AnimatePresence>
       </div>
-      {target?.ok && <div className="ml-auto pointer-events-none"><Pill t={target} /></div>}
+      {deployN ? (
+        <motion.div className="absolute inset-0 flex items-center justify-center gap-4 pointer-events-none" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+          <motion.span className="font-logik-extended-bold uppercase text-[26px]" style={{ color: '#fff', textShadow: `0 0 18px ${T.me}, 0 2px 6px #000`, ...font }}
+            animate={{ scale: [1, 1.04, 1] }} transition={{ duration: 1.6, repeat: Infinity }}>
+            Kliknij tutaj: wystaw {deployN} {deployN === 1 ? 'kartę' : deployN < 5 ? 'karty' : 'kart'}
+          </motion.span>
+          <span className="flex items-center gap-2 rounded-full px-3 py-1 text-[13px] font-bold" style={{ background: 'rgba(0,0,0,0.55)', color: T.text }}>
+            koszt {Array.from({ length: deployN }, (_, k) => <Gem key={k} size={12} />)}
+          </span>
+        </motion.div>
+      ) : target?.ok ? <div className="ml-auto pointer-events-none"><Pill t={target} /></div> : null}
     </div>
   );
 }
@@ -560,6 +617,7 @@ function EndScreen({ won, score, turns, onRematch, onNew }: { won: boolean; scor
 // ── The game ─────────────────────────────────────────────────────────────────
 
 const TOUR_KEY = 'karty:tour-seen';
+const HINTS_KEY = 'karty:hints';
 const TOUR: TourStep[] = [
   { target: '[data-tour="score"]', title: 'Cel gry', text: 'Kto pierwszy zdobędzie 10 punktów, wygrywa. Punkty dają objective\'y: +1 za przejęcie (Roshan +2) i +1 na początku każdej Twojej tury za każdy objective, na którym stoi Twoja jednostka.' },
   { target: '[data-tour="objectives"]', title: 'Objective\'y', text: 'Trzy miejsca z mapy. Każde ma swoją zasadę, napisaną pod nazwą. Na górze stoją jednostki rywala, na dole Twoje.' },
@@ -575,7 +633,7 @@ const TOUR: TourStep[] = [
 interface Flyer { id: string; side: Side; pts: number; why: Gain['why']; from: { x: number; y: number }; to: { x: number; y: number } }
 interface DragState { kind: 'card' | 'units'; ids: string[] }
 
-export function OutpostsGame({ deck, all, onBack }: { deck: GCard[]; all: GCard[]; onBack?: () => void }) {
+export function OutpostsGame({ deck, all, onBack, level = 'easy' }: { deck: GCard[]; all: GCard[]; onBack?: () => void; level?: Level }) {
   const font = useHeaderFont();
   const fit = useFitScale();
   const [cpu, setCpu] = useState<GCard[]>([]);
@@ -591,8 +649,14 @@ export function OutpostsGame({ deck, all, onBack }: { deck: GCard[]; all: GCard[
   const [note, setNote] = useState<string | null>(null);
   const [logOpen, setLogOpen] = useState(false);
   const [tour, setTour] = useState(false);
-  // The walkthrough runs by itself the first time
-  useEffect(() => { try { if (!localStorage.getItem(TOUR_KEY)) setTour(true); } catch { setTour(true); } }, []);
+  // Hints shown once each (remembered in this browser)
+  const [seenHints, setSeenHints] = useState<Set<string>>(() => { try { return new Set(JSON.parse(localStorage.getItem(HINTS_KEY) || '[]')); } catch { return new Set(); } });
+  const markHint = (id: string) => setSeenHints(prev => {
+    if (prev.has(id)) return prev;
+    const next = new Set(prev).add(id);
+    try { localStorage.setItem(HINTS_KEY, JSON.stringify([...next])); } catch { /* private mode */ }
+    return next;
+  });
   const closeTour = () => { setTour(false); try { localStorage.setItem(TOUR_KEY, '1'); } catch { /* private mode */ } };
   const boardRef = useRef<HTMLDivElement>(null);
   const ghostRef = useRef<HTMLDivElement>(null);
@@ -605,7 +669,7 @@ export function OutpostsGame({ deck, all, onBack }: { deck: GCard[]; all: GCard[
   stateRef.current = s;
 
   const start = (rematch = false) => {
-    const theirs = rematch && cpu.length ? cpu : cpuDeck(all, OUTPOSTS_RULE, avgOvr(deck), new Set(deck.map(c => c.pid)));
+    const theirs = rematch && cpu.length ? cpu : cpuDeck(all, OUTPOSTS_RULE, avgOvr(deck) - LEVELS[level].deckGap, new Set(deck.map(c => c.pid)));
     seenFight.current = 0; seenGain.current = 0; pendingGains.current = []; prevMight.current = {};
     setCpu(theirs); setS(newGame([deck, theirs])); setSel([]); setSelCards([]); setScene(null); setFlyers([]); setOwed([0, 0]);
   };
@@ -661,34 +725,42 @@ export function OutpostsGame({ deck, all, onBack }: { deck: GCard[]; all: GCard[
   }, [s]);
 
   const active = s?.active; const turn = s?.turn; const over = s ? s.winner !== null : false;
-  useEffect(() => {
-    if (active == null || over) return;
-    setBanner({ text: active === 0 ? 'Twoja tura' : 'Tura rywala', side: active, key: turn ?? 0 });
-    const t = setTimeout(() => setBanner(null), 1100);
-    return () => clearTimeout(t);
-  }, [active, turn, over]);
+  const showBanner = (text: string, side: Side) => setBanner({ text, side, key: Date.now() });
+  useEffect(() => { if (active != null && !over) showBanner(active === 0 ? 'Twoja tura' : 'Tura rywala', active); }, [active, turn, over]);
+  useEffect(() => { if (!banner) return; const t = setTimeout(() => setBanner(null), 1150); return () => clearTimeout(t); }, [banner]);
 
   // The computer: one action at a time, waiting for scenes and flying points
   useEffect(() => {
     if (!s || s.active !== 1 || s.winner !== null || scene || flyers.length || banner || logOpen || tour) return;
-    const t = setTimeout(() => { const a = cpuNextAction(s); setS(a ? applyAct(s, a) : endTurn(s)); }, 900);
+    const t = setTimeout(() => { const a = cpuNextAction(s, Math.random, level); setS(a ? applyAct(s, a) : endTurn(s)); }, 900);
     return () => clearTimeout(t);
   }, [s, scene, flyers.length, banner, logOpen, tour]);
 
-  // Out of orders (and no free Smoke move left): move on by itself, and say why
+  // Nothing (more) to do: move on by itself. Running out shows a big banner saying why.
+  const autoKey = useRef('');
   useEffect(() => {
-    if (!s || s.active !== 0 || s.winner !== null || scene || flyers.length || tour || logOpen) return;
-    const freeLeft = s.phase === 'move' && s.freeRotation && s.units.some(u => u.side === 0 && u.card.role === 'Soft Support' && !u.moved && !u.fresh);
-    if (s.orders > 0 || freeLeft) return;
-    setNote(s.phase === 'deploy' ? 'Rozkazy się skończyły: przechodzę do ruchów' : 'Rozkazy się skończyły: koniec tury');
-    const t = setTimeout(() => {
-      const cur = stateRef.current; if (!cur || cur.active !== 0 || cur.winner !== null) return;
-      setS(cur.phase === 'deploy' ? startOrders(cur) : endTurn(cur)); setSel([]); setSelCards([]);
-    }, 1700);
-    return () => clearTimeout(t);
-  }, [s, scene, flyers.length, tour, logOpen]);
+    if (!s || s.active !== 0 || s.winner !== null || scene || flyers.length || tour || logOpen || banner) return;
+    const asMove = s.phase === 'deploy' ? startOrders(s) : s;
+    const hasMove = asMove.units.some(u => u.side === 0 && !u.moved && !u.fresh && (['base', 0, 1, 2] as Loc[]).some(l => !canMove(asMove, [u.uid], l)));
+    let next: 'orders' | 'end' | null = null; let why: string | null = null;
+    if (s.phase === 'deploy' && (s.orders === 0 || !s.sides[0].hand.length)) {
+      if (hasMove) next = 'orders';
+      else { next = 'end'; why = s.orders === 0 ? 'Brak rozkazów' : 'Brak ruchów'; }
+    } else if (s.phase === 'move' && !hasMove) { next = 'end'; why = s.orders === 0 ? 'Brak rozkazów' : 'Brak ruchów'; }
+    if (!next) return;
+    const key = `${s.turn}-${s.phase}-${next}`;
+    if (autoKey.current === key) return;
+    autoKey.current = key;
+    if (why) showBanner(why, 0);
+    const turnNow = s.turn;
+    setTimeout(() => {
+      const cur = stateRef.current; if (!cur || cur.active !== 0 || cur.winner !== null || cur.turn !== turnNow) return;
+      setS(next === 'orders' ? startOrders(cur) : endTurn(cur)); setSel([]); setSelCards([]);
+    }, why ? 1300 : 250);
+  }, [s, scene, flyers.length, tour, logOpen, banner]);
 
   useEffect(() => { if (!note) return; const t = setTimeout(() => setNote(null), 2600); return () => clearTimeout(t); }, [note]);
+  const lastHint = useRef<string | null>(null);
   useEffect(() => { if (!settled.size) return; const t = setTimeout(() => setSettled(new Set()), 700); return () => clearTimeout(t); }, [settled]);
 
   // ── Actions ──
@@ -809,11 +881,43 @@ export function OutpostsGame({ deck, all, onBack }: { deck: GCard[]; all: GCard[
   const restedNow = rested.length > 0;
   const prompt = !mine ? null
     : phase === 'deploy'
-      ? (canPlay ? (restedNow ? 'Przeciągnij karty z ręki do bazy (1 rozkaz każda). Zostaw rozkazy na ruchy jednostek!' : 'Przeciągnij karty z ręki do bazy. Każda kosztuje 1 rozkaz.') : 'Przejdź do ruchów')
-      : (movingUnits.length ? 'Kliknij objective albo bazę. Cała grupa = 1 rozkaz.' : canGo ? "Przeciągnij jednostki z bazy albo z objective'u na objective. Kilka naraz = 1 rozkaz." : 'Zakończ turę');
+      ? (movingCards.length ? 'Kliknij swoją bazę' : canPlay ? (restedNow ? 'Wybierz karty i postaw je w bazie. Zostaw rozkazy na ruchy!' : 'Wybierz karty i postaw je w bazie. Każda kosztuje 1 rozkaz.') : 'Przejdź do ruchów')
+      : (movingUnits.length ? 'Kliknij objective albo bazę' : canGo ? 'Wybierz jednostki i kliknij objective. Ruch kosztuje 1 rozkaz (cała grupa razem).' : 'Zakończ turę');
   // A prompt that names an action is that action
   const promptAct = mine && !movingCards.length && !movingUnits.length && ((phase === 'deploy' && !canPlay) || (phase === 'move' && !canGo)) ? advance : null;
   const n = movingCards.length;
+
+  // ── Just-in-time hints: one at a time, each once, pointing at the thing it is about ──
+  const hint = (() => {
+    if (!mine) return null;
+    const out: Array<{ id: string; target: string; text: string; when: boolean; place?: 'left' | 'right' }> = [];
+    const oneCard = movingCards.length === 1 ? me.hand.find(c => c.id === movingCards[0]) : undefined;
+    const oneUnit = movingUnits.length === 1 ? s.units.find(u => u.uid === movingUnits[0]) : undefined;
+    const role = oneCard?.role ?? oneUnit?.card.role;
+    const roleTarget = oneCard ? `[data-uid="0:${oneCard.id}"]` : oneUnit ? `[data-uid="${oneUnit.uid}"]` : '';
+    if (role) out.push({ id: `type:${role}`, target: roleTarget, text: `${KEYWORD[role].name}: ${KEYWORD[role].text}`, when: true, place: oneCard ? 'left' : undefined });
+    out.push({ id: 'cost', target: '[data-tour="orders"]', text: 'Migające rozkazy to koszt. Na całą turę masz 3: na karty i na ruchy.', when: movingCards.length > 0 });
+    out.push({ id: 'deploy-base', target: '[data-tour="base"]', text: 'Kliknij swoją bazę, żeby wystawić zaznaczone karty.', when: movingCards.length > 0 });
+    out.push({ id: 'keep', target: '[data-hint="pass"]', text: 'Nie musisz wystawiać wszystkiego. Zostaw rozkazy na ruchy.', when: canPlay && !movingCards.length && restedNow, place: 'right' });
+    const firstRested = rested[0];
+    out.push({ id: 'move', target: firstRested ? `[data-uid="${firstRested.uid}"]` : '', text: 'Kliknij jednostkę, a potem objective. Ruch kosztuje 1 rozkaz.', when: phase === 'move' && canGo && !movingUnits.length && !!firstRested });
+    const mate = oneUnit && rested.find(u => u.uid !== oneUnit.uid && u.loc === oneUnit.loc);
+    out.push({ id: 'group', target: mate ? `[data-uid="${mate.uid}"]` : '', text: 'Kliknij też tę: cała grupa idzie za 1 rozkaz.', when: phase === 'move' && !!mate });
+    const onObj = movingUnits.length > 0 && s.units.filter(u => movingUnits.includes(u.uid)).every(u => u.loc !== 'base' && u.card.role !== 'Mid');
+    out.push({ id: 'via-base', target: oneUnit ? `[data-uid="${oneUnit.uid}"]` : '[data-tour="base"]', text: "Z objective'u na inny idzie się przez bazę. Prosto potrafi tylko Mid (i każdy z Twin Gates).", when: phase === 'move' && onObj });
+    const fightAt = ([0, 1, 2] as const).find(i => targetFor(i)?.tone === 'fight');
+    out.push({ id: 'fight', target: `[data-obj="${fightAt}"]`, text: 'Tu stoi rywal: będzie walka. Każda strona zadaje tyle obrażeń, ile ma siły. Najpierw obrywa Offlane.', when: fightAt != null });
+    const sinceTurn = s.events.slice(s.events.map(e => e.kind).lastIndexOf('turn'));
+    out.push({ id: 'hold', target: '[data-tour="score"]', text: '+1 na początku Twojej tury za każdy objective, na którym stoisz.', when: phase === 'deploy' && sinceTurn.some(e => e.kind === 'points' && e.why === 'hold' && e.side === 0) });
+    return out.find(h => h.when && h.target && !seenHints.has(h.id)) ?? null;
+  })();
+  const hintBlocked = !!(scene || banner || tour || logOpen || drag || flyers.length || s.winner !== null);
+
+  // A hint counts as seen once something else replaces it (the player acted on it)
+  if (hint?.id !== lastHint.current && !hintBlocked) {
+    const prev = lastHint.current; lastHint.current = hint?.id ?? null;
+    if (prev) queueMicrotask(() => markHint(prev));
+  }
 
   return (
     <div ref={boardRef} className="relative h-full flex flex-col overflow-hidden select-none" style={{ background: `radial-gradient(110% 80% at 45% 0%, #191c25, ${T.bg} 62%)`, color: T.text }}
@@ -854,7 +958,7 @@ export function OutpostsGame({ deck, all, onBack }: { deck: GCard[]; all: GCard[
             </React.Fragment>
           ))}
         </div>
-        <BaseBand side={0} a={ctx} target={targetFor('base')} onSend={() => sendTo('base')} />
+        <BaseBand side={0} a={ctx} target={targetFor('base')} onSend={() => sendTo('base')} deployN={mine && phase === 'deploy' && n > 0 && n <= s.orders ? n : 0} />
 
         {/* Bottom HUD: prompt + hand, the orders and the turn button right beside it */}
         <div className="relative h-[214px] shrink-0 flex">
@@ -862,22 +966,14 @@ export function OutpostsGame({ deck, all, onBack }: { deck: GCard[]; all: GCard[
           <div className="flex-1 min-w-0 flex flex-col items-center">
             <div className="relative z-50 h-[44px] mt-1 flex items-center">
               <AnimatePresence mode="wait">
-                {mine && phase === 'deploy' && n > 0 && !note && (
-                  <motion.button key={`deploy${n}`} type="button" onClick={() => doDeploy(movingCards)} disabled={n > s.orders}
-                    className="flex items-center gap-3 px-7 h-[44px] rounded-full font-logik-extended-bold uppercase tracking-widest text-[14px] text-white disabled:opacity-50"
-                    initial={{ opacity: 0, y: 14, scale: 1.08 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -8 }} whileHover={{ scale: 1.05 }}
-                    style={{ background: ACC, boxShadow: `0 0 26px ${mix(ACC, 70)}`, ...font }}>
-                    {n > s.orders ? `Za mało rozkazów (masz ${s.orders})` : <>Wystaw {n} {n === 1 ? 'kartę' : n < 5 ? 'karty' : 'kart'} do bazy<span className="flex gap-1.5 ml-1">{Array.from({ length: n }, (_, k) => <Gem key={k} size={11} />)}</span></>}
-                  </motion.button>
-                )}
-                {mine && (note || prompt) && !(phase === 'deploy' && n > 0 && !note) && (
+                {mine && (note || prompt || n > s.orders) && (
                   <motion.div key={(note ?? '') + (prompt ?? '') + phase} onClick={!note && promptAct ? promptAct : undefined}
                     className={`flex items-center gap-3 px-5 h-[40px] rounded-full ${!note && promptAct ? 'cursor-pointer' : ''}`}
                     initial={{ opacity: 0, y: 14, scale: 1.08 }} animate={{ opacity: 1, y: 0, scale: 1, boxShadow: [`0 0 0 2px ${ACC_L}, 0 0 30px ${mix(ACC, 70)}`, `0 0 0 1px ${T.faint}, 0 0 0px transparent`] }}
                     exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.35, boxShadow: { duration: 1.4 } }} whileHover={!note && promptAct ? { scale: 1.04 } : undefined}
                     style={{ background: !note && promptAct ? ACC : 'rgba(0,0,0,0.5)' }}>
                     <span className="font-logik-extended-bold uppercase text-[12px] tracking-widest whitespace-nowrap" style={{ color: !note && promptAct ? '#fff' : ACC_L, ...font }}>{phase === 'deploy' ? 'Faza 1/2 · Wystawianie' : 'Faza 2/2 · Ruchy'}</span>
-                    <span className="text-[14px] font-bold whitespace-nowrap" style={{ color: note ? T.warn : T.text }}>{note ?? prompt}{!note && promptAct ? ' →' : ''}</span>
+                    <span className="text-[14px] font-bold whitespace-nowrap" style={{ color: note || n > s.orders ? T.warn : T.text }}>{note ?? (n > s.orders ? `Za dużo kart: masz ${s.orders} ${s.orders === 1 ? 'rozkaz' : 'rozkazy'}` : prompt)}{!note && promptAct ? ' →' : ''}</span>
                   </motion.div>
                 )}
                 {!mine && s.winner === null && lastRival && (
@@ -897,17 +993,17 @@ export function OutpostsGame({ deck, all, onBack }: { deck: GCard[]; all: GCard[
                 const picked = movingCards.includes(c.id);
                 const dragged = drag?.kind === 'card' && drag.ids.includes(c.id);
                 return (
-                  <motion.div key={c.id} className="-mx-1.5" style={{ zIndex: picked ? 40 : i }}
+                  <motion.div key={c.id} className="-mx-1.5 hover:!z-[70]" style={{ zIndex: picked ? 40 : i }}
                     animate={{ rotate: off * 3, y: Math.abs(off) * 3 + (picked ? -10 : 0), opacity: dragged ? 0 : 1 }}
                     whileHover={can && !drag ? { y: -14, scale: 1.05 } : undefined}>
                     <Figure card={c} layoutId={`0:${c.id}`} m={baseMight(c)} side={0} w={112} selected={picked} glow={can && !movingCards.length} tired={!can}
-                      onPointerDown={can ? e => pressCard(e, c) : undefined} tip={drag ? undefined : <CardInfo card={c} parts={[{ kind: 'card', label: 'Karta', v: cardStrength(c) }, ...(baseMight(c) !== cardStrength(c) ? [{ kind: 'role' as const, label: c.role === 'Offlane' ? 'Offlane' : 'Support', v: baseMight(c) - cardStrength(c) }] : [])]} m={baseMight(c)} />} />
+                      onPointerDown={can ? e => pressCard(e, c) : undefined} dataId={`0:${c.id}`} grow="up" info={drag ? undefined : { showParts: false }} />
                   </motion.div>
                 );
               })}
               </div>
               {mine && phase === 'deploy' && me.hand.length > 0 && (
-                <motion.button type="button" onClick={advance} whileHover={{ y: -10 }} className="ml-4 shrink-0 rounded-[12px] flex flex-col items-center justify-center gap-2 px-3 text-center"
+                <motion.button type="button" data-hint="pass" onClick={advance} whileHover={{ y: -10 }} className="ml-4 shrink-0 rounded-[12px] flex flex-col items-center justify-center gap-2 px-3 text-center"
                   style={{ width: 112, height: 150, border: `2px dashed ${mix(ACC_L, 60)}`, background: 'rgba(255,255,255,0.03)', color: T.text }}>
                   <ArrowRight className="w-6 h-6" style={{ color: ACC_L }} />
                   <span className="font-logik-extended-bold uppercase text-[12px] leading-tight" style={font}>Nie wystawiam więcej</span>
@@ -919,12 +1015,12 @@ export function OutpostsGame({ deck, all, onBack }: { deck: GCard[]; all: GCard[
           </div>
           {/* Orders + turn button, right next to the hand */}
           <div className="w-[300px] shrink-0 flex items-center justify-center gap-5">
-            <Tip content="Rozkazy na tę turę, wspólne na wszystko: wystawienie karty = 1, ruch jednostki albo całej grupy z jednego miejsca = 1. Migają te, które zużyje to, co masz zaznaczone.">
+            <Tip content="Rozkazy to waluta tury: masz 3 na wszystko. Wystawienie karty kosztuje 1, ruch jednostki albo całej grupy z jednego miejsca kosztuje 1. Migają te, które zapłacisz za to, co masz zaznaczone.">
               <div data-tour="orders" className="flex flex-col items-center gap-2 cursor-help">
                 <div className="flex items-center gap-2.5">
                   {Array.from({ length: Math.max(ORDERS, s.orders) }, (_, i) => <Gem key={i} size={20} on={mine && i < s.orders} pending={mine && i >= s.orders - pendingCost && i < s.orders} />)}
                 </div>
-                <span className="text-[11px] uppercase tracking-widest" style={{ color: T.muted }}>rozkazy</span>
+                <span className="text-[11px] uppercase tracking-widest" style={{ color: T.muted }}>rozkazy · płacisz nimi</span>
               </div>
             </Tip>
             <motion.button type="button" data-tour="turn" disabled={!mine} onClick={advance}
@@ -962,6 +1058,7 @@ export function OutpostsGame({ deck, all, onBack }: { deck: GCard[]; all: GCard[
       </AnimatePresence>
       <AnimatePresence>{logOpen && <CombatLog s={s} onClose={() => setLogOpen(false)} />}</AnimatePresence>
       {tour && !scene && <Tour steps={TOUR} onClose={closeTour} />}
+      {hint && !hintBlocked && <Hint target={hint.target} text={hint.text} place={hint.place} onClose={() => markHint(hint.id)} />}
       <AnimatePresence>
         {scene && <FightScene key={scene.key} f={scene} name={OBJECTIVES[s.objectives[scene.at].id].name} icon={OBJECTIVES[s.objectives[scene.at].id].icon} onDone={() => setScene(null)} />}
       </AnimatePresence>

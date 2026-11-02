@@ -10,12 +10,13 @@ import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { Avatar, C, TeamLogo, ink, mix, useHeaderFont } from '@/components/stats-lab/kit';
 import { useFitText, useLogoColor } from '@/components/teams-section/fit';
 import type { PlayerX, TeamX } from '@/lib/stats-lab/derive';
-import { ROLE_KEYS, ROLE_SHORT, openPack, packPool, TOTW_CHANCE, type GCard } from '@/lib/card-lab/cards';
+import { ROLE_KEYS, ROLE_SHORT, TIER, openPack, packPool, tierOf, TOTW_CHANCE, type GCard, type Tier } from '@/lib/card-lab/cards';
+import { useTournament } from '@/context/TournamentContext';
 import { count } from '@/lib/plural';
 import { Action, CardBack, CardFace, Heading, Label, RATIO } from './ui';
 
 const PER_PAGE = 4;
-const CELL = 124;
+const CELL = 112;
 
 interface Slot { key: string; label: string; player?: PlayerX; cards: GCard[] }
 
@@ -83,27 +84,172 @@ function TeamBlock({ team, collection, onOpen }: { team: TeamX; collection: GCar
   );
 }
 
-/** Pack opening: five face-down cards, click to turn (or turn all) */
-function PackReveal({ cards, isNew, onClose }: { cards: GCard[]; isNew: (c: GCard) => boolean; onClose: () => void }) {
-  const [open, setOpen] = useState<Set<number>>(new Set());
-  const all = open.size === cards.length;
-  return (
-    <motion.div className="absolute inset-0 z-40 flex flex-col items-center justify-center gap-8" style={{ background: 'rgba(5,5,10,0.82)', backdropFilter: 'blur(6px)' }} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-      <Heading size={30}>Nowa paczka</Heading>
-      <div className="flex gap-6">
-        {cards.map((c, i) => (
-          <motion.div key={i} className="relative" style={{ width: 210, height: Math.round(210 * RATIO), perspective: 1200 }}
-            initial={{ y: 200, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: i * 0.08, type: 'spring', stiffness: 150, damping: 17 }}>
-            <motion.button type="button" className="absolute inset-0" style={{ transformStyle: 'preserve-3d' }} onClick={() => setOpen(o => new Set(o).add(i))}
-              animate={{ rotateY: open.has(i) ? 180 : 0 }} transition={{ duration: 0.55 }}>
-              <div className="absolute inset-0" style={{ backfaceVisibility: 'hidden' }}><CardBack w={210} /></div>
-              <div className="absolute inset-0" style={{ transform: 'rotateY(180deg)', backfaceVisibility: 'hidden' }}><CardFace c={c} w={210} tip={false} /></div>
-            </motion.button>
-            {open.has(i) && isNew(c) && <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full px-3 py-0.5 text-[11px] font-bold uppercase tracking-widest text-black z-10" style={{ background: C.win }}>Nowy gracz</span>}
-          </motion.div>
-        ))}
+/** The sealed pack: tournament colours, logo, a foil sheen. Shakes harder and harder, then bursts. */
+function Pack({ phase, onOpen }: { phase: 'idle' | 'shake' | 'burst'; onOpen: () => void }) {
+  const { tournament } = useTournament();
+  const font = useHeaderFont();
+  const logo = tournament?.theme?.logoUrl;
+  const W = 280; const H = 420; const TEAR = H * 0.2;
+  const half = (top: boolean) => (
+    <motion.div className="absolute inset-x-0 overflow-hidden" style={{ top: top ? 0 : TEAR, height: top ? TEAR : H - TEAR }}
+      animate={phase === 'burst' ? (top ? { y: -260, x: 80, rotate: 28, opacity: 0 } : { y: 340, opacity: 0, scale: 0.9 }) : {}}
+      transition={{ duration: 0.6, ease: 'easeIn' }}>
+      <div className="absolute inset-x-0" style={{ top: top ? 0 : -TEAR, height: H }}>
+        <div className="absolute inset-0 rounded-[18px]" style={{ background: `linear-gradient(155deg, ${C.primary}, ${mix(C.primary, 55)} 45%, #0b0c12 100%)`, boxShadow: 'inset 0 0 0 2px rgba(255,255,255,0.22)' }} />
+        <div className="absolute inset-0 rounded-[18px] opacity-40" style={{ background: 'repeating-linear-gradient(115deg, transparent 0 22px, rgba(255,255,255,0.08) 22px 24px)' }} />
+        <div className="absolute inset-x-0 flex flex-col items-center gap-4" style={{ top: H * 0.3 }}>
+          {logo ? <img src={logo} alt="" className="w-[130px] h-[130px] object-contain" style={{ filter: 'drop-shadow(0 6px 16px rgba(0,0,0,0.5))' }} /> : null}
+          <div className="font-logik-extended-bold uppercase text-[34px] leading-none text-white" style={{ textShadow: '0 3px 10px rgba(0,0,0,0.5)', ...font }}>Karty</div>
+          <div className="text-[11px] font-bold uppercase tracking-[0.35em] text-white/80">5 kart · 1 na pozycję</div>
+        </div>
+        {/* The tear line */}
+        <div className="absolute inset-x-3 border-t-2 border-dashed border-white/40" style={{ top: TEAR }} />
       </div>
-      {all ? <Action primary big onClick={onClose}>Do albumu</Action> : <Action onClick={() => setOpen(new Set(cards.map((_, i) => i)))}>Odkryj wszystkie</Action>}
+    </motion.div>
+  );
+  return (
+    <motion.button type="button" onClick={phase === 'idle' ? onOpen : undefined} className="relative" style={{ width: W, height: H, cursor: phase === 'idle' ? 'pointer' : 'default' }}
+      initial={{ y: -500, rotate: -8, opacity: 0 }}
+      animate={phase === 'shake'
+        ? { y: 0, opacity: 1, rotate: [0, -3, 3, -5, 5, -8, 8, -10, 10, 0], scale: [1, 1.02, 1.02, 1.05, 1.05, 1.08, 1.08, 1.12, 1.12, 1.15] }
+        : { y: 0, rotate: 0, opacity: 1, scale: phase === 'burst' ? 1.15 : 1 }}
+      transition={phase === 'shake' ? { duration: 0.9, ease: 'easeIn' } : { type: 'spring', stiffness: 120, damping: 14 }}
+      whileHover={phase === 'idle' ? { scale: 1.04, rotate: -1.5 } : undefined}>
+      {/* Glow under the pack, growing as it shakes */}
+      <motion.div className="absolute -inset-10 rounded-full blur-3xl -z-10" style={{ background: mix(C.primary, 60) }}
+        animate={phase === 'idle' ? { opacity: [0.35, 0.6, 0.35] } : { opacity: phase === 'burst' ? 0 : 1, scale: 1.4 }}
+        transition={phase === 'idle' ? { duration: 2.2, repeat: Infinity } : { duration: phase === 'burst' ? 0.3 : 0.9 }} />
+      {half(true)}{half(false)}
+      {/* Foil sheen */}
+      {phase !== 'burst' && (
+        <div className="absolute inset-0 rounded-[18px] overflow-hidden pointer-events-none">
+          <motion.div className="absolute -inset-y-10 w-24 -skew-x-12" style={{ background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.35), transparent)' }}
+            animate={{ x: [-140, W + 140] }} transition={{ duration: 1.8, repeat: Infinity, repeatDelay: 0.8 }} />
+        </div>
+      )}
+    </motion.button>
+  );
+}
+
+/** Light rays turning behind the cards */
+function Rays({ color, size = 1300 }: { color: string; size?: number }) {
+  const mask = 'radial-gradient(circle, black 10%, transparent 65%)';
+  return (
+    <motion.div className="absolute pointer-events-none" style={{ width: size, height: size, left: '50%', top: '50%', marginLeft: -size / 2, marginTop: -size / 2,
+      background: `repeating-conic-gradient(from 0deg, ${mix(color, 20)} 0deg 7deg, transparent 7deg 20deg)`, maskImage: mask, WebkitMaskImage: mask }}
+      initial={{ opacity: 0, scale: 0.6 }} animate={{ opacity: 1, scale: 1, rotate: 360 }} exit={{ opacity: 0 }}
+      transition={{ opacity: { duration: 0.5 }, scale: { duration: 0.6 }, rotate: { duration: 40, repeat: Infinity, ease: 'linear' } }} />
+  );
+}
+
+/** Sparks flying out of a card when it turns */
+function Sparks({ color, n = 16 }: { color: string; n?: number }) {
+  const bits = useMemo(() => Array.from({ length: n }, (_, i) => {
+    const a = (i / n) * Math.PI * 2 + Math.random() * 0.4; const d = 140 + Math.random() * 120;
+    return { x: Math.cos(a) * d, y: Math.sin(a) * d, s: 4 + Math.random() * 6 };
+  }), [n]);
+  return (
+    <div className="absolute left-1/2 top-1/2 pointer-events-none">
+      {bits.map((b, i) => (
+        <motion.span key={i} className="absolute rounded-full" style={{ width: b.s, height: b.s, marginLeft: -b.s / 2, marginTop: -b.s / 2, background: color, boxShadow: `0 0 10px ${color}` }}
+          initial={{ x: 0, y: 0, opacity: 1, scale: 1 }} animate={{ x: b.x, y: b.y, opacity: 0, scale: 0.3 }} transition={{ duration: 0.9, delay: 0.25, ease: 'easeOut' }} />
+      ))}
+    </div>
+  );
+}
+
+const RANK: Record<Tier, number> = { bronze: 0, silver: 1, gold: 2, elite: 3, totw: 4 };
+
+/**
+ * Pack opening: the pack drops in, shakes and bursts; five cards fly out face down, each glowing in its
+ * tier's colour (you can tell a good one is coming); click to turn one (or all). Better cards get a
+ * bigger flare, elite and team-of-the-round cards flash the whole screen.
+ */
+function PackReveal({ cards, isNew, onClose }: { cards: GCard[]; isNew: (c: GCard) => boolean; onClose: () => void }) {
+  const font = useHeaderFont();
+  const [phase, setPhase] = useState<'idle' | 'shake' | 'burst' | 'cards'>('idle');
+  const [open, setOpen] = useState<Set<number>>(new Set());
+  const [flash, setFlash] = useState<{ color: string; k: number } | null>(null);
+  const all = open.size === cards.length;
+  const bestTier = cards.reduce<Tier>((b, c) => (RANK[tierOf(c)] > RANK[b] ? tierOf(c) : b), 'bronze');
+
+  const tear = () => {
+    setPhase('shake');
+    setTimeout(() => { setPhase('burst'); setFlash({ color: '#ffffff', k: Date.now() }); }, 900);
+    setTimeout(() => setPhase('cards'), 1350);
+  };
+  const turn = (i: number) => {
+    setOpen(o => {
+      if (o.has(i)) return o;
+      const t = tierOf(cards[i]);
+      if (RANK[t] >= 3) setTimeout(() => setFlash({ color: TIER[t].color, k: Date.now() }), 250);
+      return new Set(o).add(i);
+    });
+  };
+  const turnAll = () => cards.forEach((_, i) => setTimeout(() => turn(i), i * 260));
+
+  return (
+    <motion.div className="absolute -inset-x-16 -top-24 -bottom-6 z-40 flex flex-col items-center justify-center gap-10 overflow-hidden"
+      style={{ background: 'radial-gradient(70% 70% at 50% 50%, rgba(18,18,28,0.95), rgba(4,4,8,0.98))' }}
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+      <AnimatePresence>{(phase === 'burst' || phase === 'cards') && <Rays key="rays" color={all ? TIER[bestTier].color : '#ffffff'} />}</AnimatePresence>
+      <AnimatePresence>
+        {flash && (
+          <motion.div key={flash.k} className="absolute inset-0 pointer-events-none" style={{ background: `radial-gradient(circle at 50% 50%, ${flash.color}, transparent 70%)` }}
+            initial={{ opacity: 0.9 }} animate={{ opacity: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.8 }} onAnimationComplete={() => setFlash(null)} />
+        )}
+      </AnimatePresence>
+
+      <div className="relative font-logik-extended-bold uppercase text-[30px] text-white" style={font}>
+        {phase === 'cards' ? (all ? 'Twoja paczka' : 'Kliknij karty, żeby je odkryć') : 'Kliknij paczkę, żeby ją otworzyć'}
+      </div>
+
+      <div className="relative flex items-center justify-center" style={{ height: 460, width: 5 * 210 + 4 * 24 }}>
+        {phase !== 'cards' && <Pack phase={phase} onOpen={tear} />}
+        {phase === 'cards' && cards.map((c, i) => {
+          const t = tierOf(c); const col = TIER[t].color; const turned = open.has(i);
+          const x = (i - (cards.length - 1) / 2) * 234;
+          return (
+            <motion.div key={i} className="absolute" style={{ width: 210, height: Math.round(210 * RATIO), perspective: 1200, zIndex: turned ? 2 : 1 }}
+              initial={{ x: 0, y: 30, scale: 0.3, rotate: (i - 2) * 25, opacity: 0 }} animate={{ x, y: 0, scale: 1, rotate: 0, opacity: 1 }}
+              transition={{ delay: i * 0.07, type: 'spring', stiffness: 170, damping: 18 }}>
+              {/* Tier glow: the better the card, the stronger it pulses while still face down */}
+              <motion.div className="absolute -inset-4 rounded-[28px] blur-xl" style={{ background: col }}
+                animate={turned ? { opacity: RANK[t] >= 2 ? 0.55 : 0.15 } : { opacity: [0.12 + RANK[t] * 0.1, 0.3 + RANK[t] * 0.15, 0.12 + RANK[t] * 0.1] }}
+                transition={turned ? { duration: 0.4 } : { duration: 1.4 - RANK[t] * 0.2, repeat: Infinity }} />
+              <motion.button type="button" className="absolute inset-0" style={{ transformStyle: 'preserve-3d' }} onClick={() => turn(i)}
+                whileHover={!turned ? { y: -10 } : undefined}
+                animate={turned ? { rotateY: 180, scale: [1, 1.18, 1] } : { rotateY: 0, scale: 1 }} transition={{ duration: 0.7, ease: 'easeOut' }}>
+                <div className="absolute inset-0" style={{ backfaceVisibility: 'hidden' }}><CardBack w={210} /></div>
+                <div className="absolute inset-0" style={{ transform: 'rotateY(180deg)', backfaceVisibility: 'hidden' }}><CardFace c={c} w={210} tip={false} /></div>
+              </motion.button>
+              {turned && <Sparks color={col} n={8 + RANK[t] * 6} />}
+              {turned && RANK[t] >= 2 && (
+                <motion.div className="absolute inset-0 rounded-[16px] pointer-events-none" style={{ boxShadow: `0 0 0 3px ${col}, 0 0 40px ${col}` }}
+                  initial={{ opacity: 0 }} animate={{ opacity: [0, 1, 0.6] }} transition={{ duration: 0.8, delay: 0.3 }} />
+              )}
+              {turned && RANK[t] >= 3 && (
+                <motion.span className="absolute -bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-widest text-black z-10"
+                  style={{ background: col, boxShadow: `0 0 18px ${col}` }} initial={{ scale: 0, y: 10 }} animate={{ scale: 1, y: 0 }} transition={{ delay: 0.45, type: 'spring', stiffness: 400, damping: 14 }}>
+                  {TIER[t].label}
+                </motion.span>
+              )}
+              {turned && isNew(c) && (
+                <motion.span className="absolute -top-3 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full px-3 py-0.5 text-[11px] font-bold uppercase tracking-widest text-black z-10" style={{ background: C.win }}
+                  initial={{ scale: 0, rotate: -12 }} animate={{ scale: 1, rotate: 0 }} transition={{ delay: 0.5, type: 'spring', stiffness: 500, damping: 12 }}>
+                  Nowy gracz
+                </motion.span>
+              )}
+            </motion.div>
+          );
+        })}
+      </div>
+
+      <div className="relative h-[60px] flex items-center">
+        {phase === 'cards' && (all
+          ? <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }}><Action primary big onClick={onClose}>Do albumu</Action></motion.div>
+          : <Action onDark onClick={turnAll}>Odkryj wszystkie</Action>)}
+      </div>
     </motion.div>
   );
 }
@@ -142,17 +288,18 @@ export function Album({ cards, collection, setCollection, packs, onPackOpened }:
         <Action primary big disabled={packs <= 0} onClick={rip}>{packs > 0 ? `Otwórz paczkę · ${packs}` : 'Brak paczek'}</Action>
       </div>
 
-      <div className="relative flex-1 min-h-0 flex items-center">
+      {/* Room at the bottom right for the Play button */}
+      <div className="relative flex-1 min-h-0 flex items-center pb-[120px]">
         <button type="button" aria-label="Poprzednia strona" disabled={page === 0} onClick={() => setPage(p => p - 1)} className="absolute -left-2 z-10 p-2 disabled:opacity-15 transition-opacity" style={{ color: C.heading }}><ChevronLeft className="w-12 h-12" /></button>
         <AnimatePresence mode="wait">
-          <motion.div key={page} className="w-full grid grid-cols-2 gap-x-20 gap-y-10 px-16"
+          <motion.div key={page} className="w-full grid grid-cols-2 gap-x-20 gap-y-8 px-16"
             initial={{ opacity: 0, x: 40 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -40 }} transition={{ duration: 0.25 }}>
             {teams.slice(page * PER_PAGE, page * PER_PAGE + PER_PAGE).map(t => <TeamBlock key={t.id} team={t} collection={collection} onOpen={setFocus} />)}
           </motion.div>
         </AnimatePresence>
         <button type="button" aria-label="Następna strona" disabled={page >= pages - 1} onClick={() => setPage(p => p + 1)} className="absolute -right-2 z-10 p-2 disabled:opacity-15 transition-opacity" style={{ color: C.heading }}><ChevronRight className="w-12 h-12" /></button>
       </div>
-      <div className="flex justify-center gap-2">
+      <div className="absolute left-0 right-0 bottom-8 flex justify-center gap-2">
         {Array.from({ length: pages }, (_, i) => (
           <button key={i} type="button" aria-label={`Strona ${i + 1}`} onClick={() => setPage(i)} className="h-2 rounded-full transition-all" style={{ width: i === page ? 28 : 8, background: i === page ? C.secondary : ink(20) }} />
         ))}

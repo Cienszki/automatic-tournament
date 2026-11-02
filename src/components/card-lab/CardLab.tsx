@@ -15,10 +15,11 @@ import { autoDeck, buildSeriesCards, deckProblem, type GCard } from '@/lib/card-
 import { Album } from './Album';
 import { DeckBuilder } from './DeckBuilder';
 import { OUTPOSTS_RULE, OutpostsGame } from './OutpostsGame';
+import { LEVELS, type Level } from '@/lib/card-lab/outposts-ai';
 import { FitScaleCtx } from './ui';
 
 type Tab = 'album' | 'talia' | 'gra';
-const TABS: Array<{ id: Tab; label: string }> = [{ id: 'album', label: 'Album' }, { id: 'talia', label: 'Talia' }, { id: 'gra', label: 'Kontrola mapy' }];
+const TABS: Array<{ id: Tab; label: string }> = [{ id: 'album', label: 'Album' }, { id: 'talia', label: 'Talia' }];
 const BASE_W = 1920; const BASE_H = 900;
 const START_PACKS = 10;
 
@@ -46,13 +47,43 @@ const storeKey = (k: string) => `card-lab:${k}:v1`;
 function load(k: string): Saved | null { try { const v = localStorage.getItem(storeKey(k)); return v ? JSON.parse(v) as Saved : null; } catch { return null; } }
 function save(k: string, v: Saved) { try { localStorage.setItem(storeKey(k), JSON.stringify(v)); } catch { /* private mode */ } }
 const SEEN_KEY = 'card-lab:intro-seen';
+const LEVEL_KEY = 'card-lab:level';
+
+/** The way into a match, where Dota players look for it: bottom right, big, in the tournament's colours */
+function PlayButton({ ready, running, level, setLevel, onPlay, onResume }: { ready: string | null; running: boolean; level: Level; setLevel: (l: Level) => void; onPlay: () => void; onResume: () => void }) {
+  const font = useHeaderFont();
+  return (
+    <div className="absolute right-16 bottom-6 z-30 flex flex-col items-stretch gap-2 w-[380px]">
+      <div className="flex items-center justify-end gap-1 text-[12px] font-bold uppercase tracking-widest">
+        <span className="mr-2" style={{ color: C.muted }}>Komputer</span>
+        {(Object.keys(LEVELS) as Level[]).map(l => (
+          <button key={l} type="button" onClick={() => setLevel(l)} className="px-3 py-1 rounded-full transition-colors"
+            style={{ color: l === level ? '#fff' : C.muted, background: l === level ? mix(C.primary, 70) : 'transparent', boxShadow: l === level ? 'none' : `inset 0 0 0 1px ${mix(C.text, 18)}` }}>
+            {LEVELS[l].name}
+          </button>
+        ))}
+      </div>
+      <motion.button type="button" onClick={running ? onResume : onPlay} disabled={!!ready && !running} title={ready ?? undefined}
+        className="relative h-[86px] overflow-hidden rounded-[6px] flex flex-col items-center justify-center text-white disabled:grayscale disabled:opacity-60"
+        style={{ background: `linear-gradient(180deg, ${mix(C.primary, 100)}, ${mix(C.primary, 62)} 55%, ${mix(C.primary, 45)})`, boxShadow: `inset 0 1px 0 rgba(255,255,255,0.35), inset 0 -3px 0 rgba(0,0,0,0.35), 0 0 0 1px ${mix(C.primary, 80)}, 0 12px 40px ${mix(C.primary, 45)}` }}
+        whileHover={{ filter: 'brightness(1.18)' }} whileTap={{ scale: 0.98 }}>
+        {/* A slow sheen across the button */}
+        <motion.span className="absolute inset-y-0 w-24 -skew-x-12" style={{ background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.28), transparent)' }}
+          animate={{ x: [-160, 460] }} transition={{ duration: 2.6, repeat: Infinity, repeatDelay: 1.4, ease: 'easeInOut' }} />
+        <span className="relative font-logik-extended-bold uppercase text-[34px] leading-none tracking-wider" style={{ textShadow: '0 2px 8px rgba(0,0,0,0.4)', ...font }}>{running ? 'Wróć do gry' : 'Graj'}</span>
+        <span className="relative text-[11px] font-bold uppercase tracking-[0.3em] mt-1.5 opacity-85">{ready && !running ? ready : 'Kontrola mapy · z komputerem'}</span>
+      </motion.button>
+      {running && <button type="button" onClick={onPlay} className="self-end text-[12px] font-bold uppercase tracking-widest underline-offset-4 hover:underline" style={{ color: C.muted }}>Nowy mecz</button>}
+    </div>
+  );
+}
 
 /** The first-visit explanation: what you get, what to do — the game itself you learn by playing */
 function Intro({ onClose }: { onClose: () => void }) {
   const font = useHeaderFont();
   const steps = [
     { n: 1, title: 'Zbierasz karty graczy', text: `Każdy gracz turnieju ma kartę za każdą serię, którą zagrał. Im lepiej zagrał, tym mocniejsza karta. Na start masz ${START_PACKS} paczek: otwórz je w Albumie.` },
-    { n: 2, title: 'Układasz talię', text: 'W zakładce Talie wybierasz karty do gry (albo klikasz „Ułóż najlepszą”).' },
+    { n: 2, title: 'Układasz talię', text: 'W zakładce Talia wybierasz karty do gry (albo klikasz „Ułóż najlepszą”). Potem wielki przycisk Graj w prawym dolnym rogu.' },
     { n: 3, title: 'Grasz', text: "Kontrola mapy: wystawiaj karty i przejmuj objective'y na mapie. Pierwszy do 10 punktów wygrywa. Reszty dowiesz się, grając." },
   ];
   return (
@@ -90,6 +121,9 @@ function Lab({ model }: { model: Model }) {
   const [tab, setTab] = useState<Tab>('album');
   const [match, setMatch] = useState(0);
   const [intro, setIntro] = useState(false);
+  const [level, setLevelState] = useState<Level>('easy');
+  useEffect(() => { try { const l = localStorage.getItem(LEVEL_KEY) as Level | null; if (l && l in LEVELS) setLevelState(l); } catch { /* private mode */ } }, []);
+  const setLevel = (l: Level) => { setLevelState(l); try { localStorage.setItem(LEVEL_KEY, l); } catch { /* private mode */ } };
 
   // Restore this browser's collection, show the intro once
   useEffect(() => {
@@ -135,12 +169,16 @@ function Lab({ model }: { model: Model }) {
       </div>
       <div className="flex-1 min-h-0">
         {tab === 'album' && <Album cards={cards} collection={collection} setCollection={setCollection} packs={packs} onPackOpened={() => setPacks(p => Math.max(0, p - 1))} />}
-        {tab === 'talia' && <DeckBuilder collection={collection} rule={OUTPOSTS_RULE} deck={deck} setDeck={setDeck} onPlay={() => { setMatch(m => m + 1); setTab('gra'); }} />}
+        {tab === 'talia' && <DeckBuilder collection={collection} rule={OUTPOSTS_RULE} deck={deck} setDeck={setDeck} />}
         {/* The match stays mounted while you look at the album */}
         <div className={tab === 'gra' ? 'h-full' : 'hidden'}>
-          {ready ? <OutpostsGame key={match} deck={deck} all={cards} onBack={() => setTab('talia')} /> : notReady}
+          {!match ? null : ready ? <OutpostsGame key={match} deck={deck} all={cards} level={level} onBack={() => setTab('talia')} /> : notReady}
         </div>
       </div>
+      {tab !== 'gra' && (
+        <PlayButton ready={collection.length ? deckProblem(deck, OUTPOSTS_RULE) : 'Najpierw otwórz paczki'} running={match > 0 && ready} level={level} setLevel={setLevel}
+          onPlay={() => { setMatch(m => m + 1); setTab('gra'); }} onResume={() => setTab('gra')} />
+      )}
       <AnimatePresence>{intro && <Intro onClose={closeIntro} />}</AnimatePresence>
     </div>
   );
