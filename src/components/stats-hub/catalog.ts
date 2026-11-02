@@ -19,6 +19,8 @@ export type PageGroup = 'main' | 'play' | 'players' | 'teams' | 'heroes' | 'reco
 export interface StatsPage {
   id: string;
   title: string;
+  /** Title for tournaments that play in rounds (league, Swiss), when it differs */
+  roundTitle?: string;
   /** One line for the dropdown and the advanced index */
   blurb: string;
   group: PageGroup;
@@ -48,7 +50,7 @@ export const PAGES: StatsPage[] = [
   { id: 'tiery', title: 'Lista tierów', blurb: 'S–D z danych — i Twoja własna lista do porównania', group: 'players', icon: ListOrdered, load: () => import('@/components/stats-lab/designs/D22TierList') },
   { id: 'blizniacy', title: 'Bliźniacy', blurb: 'Kto gra najbardziej jak Ty — i kto zupełnie inaczej', group: 'players', icon: Users, load: () => import('@/components/stats-lab/designs/D75Twins') },
   { id: 'wyscig', title: 'Wyścig', blurb: 'Sezon gra po grze jako wyścig słupków', group: 'players', icon: Flag, load: () => import('@/components/stats-lab/designs/D17Race') },
-  { id: 'druzyna-tygodnia', title: 'Drużyna tygodnia', blurb: 'Najlepszy gracz każdej pozycji na mapie', group: 'teams', icon: MapIcon, load: () => import('@/components/stats-lab/designs/D15TeamOfWeek') },
+  { id: 'druzyna-tygodnia', title: 'Drużyna tygodnia', roundTitle: 'Drużyna kolejki', blurb: 'Najlepsza seria na każdej pozycji, na mapie', group: 'teams', icon: MapIcon, load: () => import('@/components/stats-lab/designs/D15TeamOfWeek') },
   { id: 'odciski', title: 'Odciski drużyn', blurb: 'Styl gry każdej drużyny na tle reszty ligi', group: 'teams', icon: Fingerprint, load: () => import('@/components/stats-lab/designs/D07Fingerprints') },
   { id: 'kolekcja', title: 'Kolekcja bohaterów', blurb: 'Iloma bohaterami zagrała każda drużyna', group: 'teams', icon: LayoutGrid, load: () => import('./pages/TeamHeroes') },
   { id: 'draft', title: 'Pokój draftu', blurb: 'Co wybierano w każdym kroku draftu', group: 'heroes', icon: Ban, load: () => import('@/components/stats-lab/designs/D11Draft') },
@@ -86,3 +88,6 @@ export const MATCH_PREP = {
 
 /** Old standalone route of the tool — only the unused overview variants (overviews/) still link it */
 export const MATCH_PREP_PATH = '/draft-prep-2';
+
+/** The page's title for this tournament type (league and Swiss play in rounds, not weeks) */
+export const pageTitle = (p: StatsPage, type?: string) => (type === 'league' || type === 'swiss') && p.roundTitle ? p.roundTitle : p.title;

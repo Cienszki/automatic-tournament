@@ -27,6 +27,99 @@ export function seasonWeeks(model: Model): Array<{ key: string; perfs: Perf[] }>
   return [...m.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([key, perfs]) => ({ key, perfs }));
 }
 
+/** A slice of the season for "team of the …": a calendar week, a league kolejka or a Swiss round */
+export interface Period { key: string; short: string; label: string; perfs: Perf[] }
+export interface Periods {
+  unit: 'week' | 'round';
+  /** "Drużyna tygodnia" / "Drużyna kolejki" */
+  title: string;
+  /** Navigation labels: "Ostatni tydzień" / "Ostatnia kolejka" … */
+  last: string; prev: string; next: string;
+  list: Period[];
+}
+
+/** Tournaments that play in rounds (league kolejki, Swiss rounds) are sliced by round; the rest
+ *  (MMR-limited: group matches spread over the calendar) by calendar week. Playoffs come last. */
+export function seasonPeriods(model: Model, type?: string): Periods {
+  if (type !== 'league' && type !== 'swiss') {
+    return {
+      unit: 'week', title: 'Drużyna tygodnia', last: 'Ostatni tydzień', prev: 'Poprzedni tydzień', next: 'Następny tydzień',
+      list: seasonWeeks(model).map(w => {
+        const sun = new Date(new Date(w.key + 'T12:00:00Z').getTime() + 6 * 864e5).toISOString().slice(0, 10);
+        return { key: w.key, short: fmtShort(w.key), label: `${fmtShort(w.key)} – ${fmtShort(sun)}`, perfs: w.perfs };
+      }),
+    };
+  }
+  const multiRound = type === 'league' && new Set(model.games.filter(g => g.match && !g.match.isPlayoff).map(g => g.match!.round || 1)).size > 1;
+  const by = new Map<string, Period & { order: number }>();
+  for (const p of model.perfs) {
+    const m = p.game.match;
+    let k: string, order: number, short: string, label: string;
+    if (m?.isPlayoff) { k = 'po'; order = 1e9; short = 'PO'; label = 'Playoffy'; }
+    else if (type === 'league') {
+      const r = m?.round || 1, md = m?.matchday || 1;
+      k = `r${r}-k${md}`; order = r * 1000 + md; short = multiRound ? `R${r} K${md}` : `K${md}`;
+      label = multiRound ? `Runda ${r} · kolejka ${md}` : `Kolejka ${md}`;
+    } else {
+      const r = m?.round || m?.matchday || 1;
+      k = `r${r}`; order = r; short = `R${r}`; label = `Runda ${r}`;
+    }
+    if (!by.has(k)) by.set(k, { key: k, short, label, perfs: [], order });
+    by.get(k)!.perfs.push(p);
+  }
+  return {
+    unit: 'round', title: 'Drużyna kolejki', last: 'Ostatnia kolejka', prev: 'Poprzednia kolejka', next: 'Następna kolejka',
+    list: [...by.values()].sort((a, b) => a.order - b.order).map(({ key, short, label, perfs }) => ({ key, short, label, perfs })),
+  };
+}
+
+/** One player's series in a period (or their whole tournament, when `opp` is unset) */
+export interface SeriesEntry {
+  player: PlayerX;
+  /** The counted games */
+  perfs: Perf[];
+  /** Average performance score of the counted games */
+  avg: number;
+  best: Perf;
+  opp?: TeamX;
+  /** Series score from the player's side, "2:1" */
+  result?: string;
+  /** Series the player played in the period */
+  series: number;
+}
+
+/**
+ * Each player's BEST series among `perfs`, by the average performance score of its games — the
+ * "team of the week / kolejka" rule. In a calendar week a team can play several series; averaging
+ * them would rank a player with one great and one poor series below someone who played only the
+ * great one. Rostered players with a role only.
+ */
+export function bestSeries(perfs: Perf[]): SeriesEntry[] {
+  const by = new Map<string, Map<string, Perf[]>>();
+  for (const p of perfs) {
+    if (!p.player?.role || !Number.isFinite(p.score)) continue;
+    const ms = by.get(p.pid) ?? new Map<string, Perf[]>(); by.set(p.pid, ms);
+    const list = ms.get(p.game.matchId) ?? []; ms.set(p.game.matchId, list); list.push(p);
+  }
+  const out: SeriesEntry[] = [];
+  for (const ms of by.values()) {
+    let top: SeriesEntry | null = null;
+    for (const list of ms.values()) {
+      const avg = list.reduce((a, x) => a + x.score, 0) / list.length;
+      if (top && avg <= top.avg) continue;
+      const f = list[0]; const g = f.game; const m = g.match;
+      const result = m?.teamA === f.tid ? `${m.scoreA}:${m.scoreB}` : m?.teamB === f.tid ? `${m.scoreB}:${m.scoreA}`
+        : `${list.filter(x => x.win).length}:${list.filter(x => !x.win).length}`;
+      top = {
+        player: f.player!, perfs: list, avg, best: [...list].sort((a, b) => b.score - a.score)[0],
+        opp: g.radiant === f.tid ? g.direTeam : g.radiantTeam, result, series: ms.size,
+      };
+    }
+    if (top) out.push(top);
+  }
+  return out.sort((a, b) => b.avg - a.avg);
+}
+
 /** Scored performances only (performance score is NaN for standins / short games) */
 export const scored = (list: Perf[]) => list.filter(p => Number.isFinite(p.score));
 export const avgScore = (list: Perf[]) => { const s = scored(list); return s.length ? s.reduce((a, p) => a + p.score, 0) / s.length : null; };

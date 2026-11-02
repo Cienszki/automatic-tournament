@@ -16,7 +16,7 @@ import { useHomeNavigation } from '@/context/HomeNavigationContext';
 import { cn } from '@/lib/utils';
 import { LabEmbedded, loadStatsModel, useStatsKey } from '@/components/stats-lab/kit';
 import { ScaledStage } from '@/components/ui/ScaledStage';
-import { ADVANCED, ADVANCED_GROUPS, GROUP_LABEL, MATCH_PREP, OVERVIEW, PAGES, PAGE_BY_ID, type PageGroup, type StatsPage } from './catalog';
+import { ADVANCED, ADVANCED_GROUPS, GROUP_LABEL, MATCH_PREP, OVERVIEW, PAGES, PAGE_BY_ID, pageTitle, type PageGroup, type StatsPage } from './catalog';
 import { StatsNavCtx, type StatsNav } from './nav';
 import { baseAssets, lowDataMode, warmer } from './assets';
 import { overviewAssets } from './overview-assets';
@@ -134,6 +134,7 @@ function MenuItem({ icon: Icon, title, blurb, on, onClick }: { icon: StatsPage['
 
 function ViewMenu({ view, go, onClose }: { view: string; go: (id: string) => void; onClose: () => void }) {
   const pick = (id: string) => { go(id); onClose(); };
+  const { tournament } = useTournament();
   return (
     // Centring lives on a plain wrapper: framer-motion's transform would override a translate class
     <div className="absolute left-1/2 top-full z-50 mt-2 -translate-x-1/2" onClick={e => e.stopPropagation()}>
@@ -151,7 +152,7 @@ function ViewMenu({ view, go, onClose }: { view: string; go: (id: string) => voi
             <div className={cn('grid gap-0.5', col.groups.length > 1 ? 'grid-cols-2 gap-x-3' : 'grid-cols-1')}>
               {col.groups[0] === 'main' && <MenuItem icon={OVERVIEW.icon} title="Przegląd" blurb="Sezon w skrócie" on={view === OVERVIEW.id} onClick={() => pick(OVERVIEW.id)} />}
               {PAGES.filter(p => col.groups.includes(p.group)).map(p => (
-                <MenuItem key={p.id} icon={p.icon} title={p.title} blurb={p.blurb} on={view === p.id} onClick={() => pick(p.id)} />
+                <MenuItem key={p.id} icon={p.icon} title={pageTitle(p, tournament?.type)} blurb={p.blurb} on={view === p.id} onClick={() => pick(p.id)} />
               ))}
               {col.groups[0] === 'play' && <MenuItem icon={MATCH_PREP.icon} title={MATCH_PREP.title} blurb={MATCH_PREP.blurb} on={view === MATCH_PREP.id} onClick={() => pick(MATCH_PREP.id)} />}
               {col.groups.length > 1 && <MenuItem icon={ADVANCED.icon} title="Wszystkie widoki" blurb="Indeks dla analityków" on={view === ADVANCED.id} onClick={() => pick(ADVANCED.id)} />}
@@ -165,11 +166,11 @@ function ViewMenu({ view, go, onClose }: { view: string; go: (id: string) => voi
 }
 
 function HubHeader({ view, go, back }: { view: string; go: (id: string) => void; back: () => void }) {
-  const { theme } = useTournament();
+  const { theme, tournament } = useTournament();
   const [menu, setMenu] = useState(false);
   const page = PAGE_BY_ID.get(view);
   const screen = view === ADVANCED.id ? ADVANCED : view === MATCH_PREP.id ? MATCH_PREP : OVERVIEW;
-  const title = page?.title ?? screen.title;
+  const title = page ? pageTitle(page, tournament?.type) : screen.title;
   const Icon = page?.icon ?? screen.icon;
   const primaryColor = theme?.primaryColor || '#8B1538';
   const parent = page ? (page.group === 'main' || page.group === 'play' ? 'Przegląd' : 'Zaawansowane') : screen === OVERVIEW ? null : 'Przegląd';

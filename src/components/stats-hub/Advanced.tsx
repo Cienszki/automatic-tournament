@@ -12,9 +12,10 @@ import { rankPlayers, topPerfs } from '@/lib/stats-lab/derive';
 import { heroName } from '@/lib/stats-lab/heroes';
 import { METRIC_LIST, metric, type MetricKey } from '@/lib/stats-lab/metrics';
 import { buildFacts, eloTable } from '@/lib/stats-lab/teasers';
-import { profiles, qualified, scored, seasonWeeks } from '@/lib/stats-lab/season';
+import { bestSeries, profiles, qualified, scored, seasonPeriods, seasonWeeks } from '@/lib/stats-lab/season';
 import { Avatar, C, HeroImg, LabView, TeamLogo, WithModel, ink, mix, onDark, useHeaderFont } from '@/components/stats-lab/kit';
-import { GROUP_LABEL, PAGES, type PageGroup } from './catalog';
+import { GROUP_LABEL, PAGES, pageTitle, type PageGroup } from './catalog';
+import { useTournament } from '@/context/TournamentContext';
 import { useStatsNav } from './nav';
 import { count, plural } from '@/lib/plural';
 
@@ -34,7 +35,7 @@ const hero = (id?: number) => (id != null ? <HeroImg heroId={id} className="roun
 const B = ({ children }: { children: React.ReactNode }) => <b style={{ color: C.heading }}>{children}</b>;
 
 /** One live finding per view, for the index rows (also used by overview variants) */
-export function findings(model: Model): Record<string, Finding> {
+export function findings(model: Model, type?: string): Record<string, Finding> {
   const out: Record<string, Finding> = {};
   const facts = buildFacts(model);
   const fact = (id: string) => facts.find(f => f.id === id);
@@ -78,8 +79,11 @@ export function findings(model: Model): Record<string, Finding> {
   if (elo) out.elo = { visual: lg(elo.t), line: <>Na szczycie <B>{elo.t.name}</B> — {Math.round(elo.v)}</> };
   const weeks = seasonWeeks(model);
   const lastWeek = weeks[weeks.length - 1];
-  const weekBest = lastWeek ? scored(lastWeek.perfs).sort((a, b) => b.score - a.score)[0] : undefined;
-  if (weekBest?.player) out['druzyna-tygodnia'] = { visual: av(weekBest.player), line: <>Ostatni tydzień: <B>{weekBest.player.name}</B> na {heroName(weekBest.heroId)}</> };
+  const periods = seasonPeriods(model, type);
+  const lastPeriod = periods.list[periods.list.length - 1];
+  // The view's MVP: best series of the latest period
+  const periodMvp = lastPeriod ? bestSeries(lastPeriod.perfs)[0] : undefined;
+  if (periodMvp) out['druzyna-tygodnia'] = { visual: av(periodMvp.player), line: <>{periods.last}: MVP <B>{periodMvp.player.name}</B> — {periodMvp.avg.toFixed(1)} pkt na grę vs {periodMvp.opp?.name}</> };
   const fighters = [...model.teams].filter(t => t.games.length >= 2).sort((a, b) => b.avg.kills - a.avg.kills)[0];
   if (fighters) out.odciski = { visual: lg(fighters), line: <>Najbardziej krwawi: <B>{fighters.name}</B>, {fighters.avg.kills.toFixed(1)} zabójstwa na grę</> };
   const pool = [...model.teams].sort((a, b) => b.heroPicks.length - a.heroPicks.length)[0];
@@ -119,6 +123,7 @@ export function findings(model: Model): Record<string, Finding> {
 function Row({ id, f, index }: { id: string; f?: Finding; index: number }) {
   const nav = useStatsNav();
   const font = useHeaderFont();
+  const { tournament } = useTournament();
   const page = PAGES.find(p => p.id === id)!;
   const Icon = page.icon;
   return (
@@ -132,7 +137,7 @@ function Row({ id, f, index }: { id: string; f?: Finding; index: number }) {
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5">
           <Icon className="w-3.5 h-3.5 shrink-0" style={{ color: onDark(C.secondary, 70) }} />
-          <span className="font-logik-extended-bold uppercase text-[15px] leading-tight truncate" style={{ color: C.heading, ...font }}>{page.title}</span>
+          <span className="font-logik-extended-bold uppercase text-[15px] leading-tight truncate" style={{ color: C.heading, ...font }}>{pageTitle(page, tournament?.type)}</span>
         </div>
         <div className="text-[11px] leading-snug line-clamp-1 mt-0.5" style={{ color: C.muted }}>{page.blurb}</div>
         {f && <div className="text-xs leading-snug line-clamp-2 mt-1" style={{ color: C.text }}>{f.line}</div>}
@@ -144,7 +149,8 @@ function Row({ id, f, index }: { id: string; f?: Finding; index: number }) {
 
 function AdvancedBody({ model }: { model: Model }) {
   const font = useHeaderFont();
-  const f = useMemo(() => findings(model), [model]);
+  const { tournament } = useTournament();
+  const f = useMemo(() => findings(model, tournament?.type), [model, tournament?.type]);
   return (
     <div className="flex-1 min-h-0 grid gap-6 max-xl:overflow-y-auto max-xl:auto-rows-max grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
       {COLUMNS.map(col => (
