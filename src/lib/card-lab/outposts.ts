@@ -20,8 +20,10 @@ export type Phase = 'deploy' | 'move' | 'fight';
 // ── Balance ───────────────────────────────────────────────────────────────
 export const WIN_POINTS = 10;
 export const ORDERS = 3;
+/** Cards drawn at the start of each turn (sim: with 1 the hand runs dry and orders go unused) */
+export const DRAW = 2;
 /** Per-turn numbers, adjustable for balance simulations */
-export const RULES = { orders: ORDERS, draw: 1 };
+export const RULES = { orders: ORDERS, draw: DRAW };
 export const START_HAND = 4;
 export const HAND_MAX = 7;
 export const DECK_SIZE = 20;
@@ -39,7 +41,7 @@ export type ObjId = 'roshan' | 'outpost' | 'lotus' | 'highground' | 'gates' | 't
 export const OBJECTIVES: Record<ObjId, { name: string; rule: string; icon: string }> = {
   roshan: { name: 'Roshan', rule: 'Przejęcie daje 2 pkt zamiast 1', icon: 'aegis' },
   outpost: { name: 'Outpost', rule: 'Właściciel ma 4 rozkazy zamiast 3', icon: 'ward_observer' },
-  lotus: { name: 'Lotus Pool', rule: 'Właściciel dobiera co turę 2 karty zamiast 1', icon: 'great_famango' },
+  lotus: { name: 'Lotus Pool', rule: 'Właściciel dobiera co turę 3 karty zamiast 2', icon: 'great_famango' },
   highground: { name: 'High Ground', rule: 'Broniący się właściciel: +1 siły na każdej jednostce', icon: 'ward_sentry' },
   gates: { name: 'Twin Gates', rule: 'Stąd można iść prosto na inny cel', icon: 'tpscroll' },
   tormentor: { name: 'Tormentor', rule: 'Kto go przejmie, dobiera 2 karty', icon: 'aghanims_shard' },
@@ -74,7 +76,7 @@ export interface Fight {
   /** In order: damage each unit took, from the other side's total */
   hits: Array<{ uid: string; dmg: number; died: boolean }>;
   died: string[];
-  outcome: 'took' | 'held' | 'repelled' | 'wiped';
+  outcome: 'took' | 'held' | 'wiped';
   points: number;
 }
 export interface Gain { side: Side; pts: number; at: 0 | 1 | 2; why: 'take' | 'hold' }
@@ -306,13 +308,15 @@ export function resolve(prev: OState): OState {
       s.units = s.units.filter(u => !died.includes(u.uid));
       const left = s.units.filter(u => u.side === side && u.loc === to);
       const stay = s.units.filter(u => u.side === foe && u.loc === to);
-      const outcome: Fight['outcome'] = left.length && stay.length ? 'repelled' : left.length ? 'took' : stay.length ? 'held' : 'wiped';
+      // Both sides can never survive: damage stops at the first unit that lives, so that would need each
+      // side's first-hit unit to be stronger than the whole other side
+      const outcome: Fight['outcome'] = left.length && !stay.length ? 'took' : stay.length ? 'held' : 'wiped';
       const points = outcome === 'took' && ob.owner !== side ? takePoints(ob.id) : 0;
       s.fightKey++;
       s.fights = [...s.fights, { key: s.fightKey, at: to, attacker: side, lines, power: side === 0 ? [pa, pd] : [pd, pa], hits, died, outcome, points }];
       say(s, side, `Walka o ${name}: ${pa} na ${pd}`);
       ev(s, { kind: 'fight', side, at: to, power: side === 0 ? [pa, pd] : [pd, pa], died: died.map(id => { const l = lines.find(x => x.uid === id)!; return { card: l.card, side: l.side }; }), outcome });
-      if (outcome === 'repelled') { left.forEach(u => { u.loc = 'base'; }); continue; }
+      if (left.length && stay.length) left.forEach(u => { u.loc = 'base'; });
       if (outcome !== 'took') continue;
     }
     if (ob.owner !== side) {

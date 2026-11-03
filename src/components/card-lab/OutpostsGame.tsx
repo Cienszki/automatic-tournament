@@ -528,8 +528,8 @@ function FightScene({ f, name, icon, onDone }: { f: Fight; name: string; icon: s
   const result = t > HIT_AT + waves * WAVE + 0.15;
   const outcomeText = f.outcome === 'took' ? (f.attacker === 0 ? 'Przejmujesz objective' : 'Rywal przejmuje objective')
     : f.outcome === 'held' ? (f.attacker === 0 ? 'Obrona rywala wytrzymała' : 'Twoja obrona wytrzymała')
-    : f.outcome === 'repelled' ? 'Odparci: atakujący wracają do bazy' : 'Remis: polegli wszyscy';
-  const goodForMe = (f.outcome === 'took' && f.attacker === 0) || ((f.outcome === 'held' || f.outcome === 'repelled') && f.attacker === 1);
+    : 'Remis: polegli wszyscy';
+  const goodForMe = (f.outcome === 'took' && f.attacker === 0) || (f.outcome === 'held' && f.attacker === 1);
 
   const card = (l: Fight['lines'][number]) => {
     const i = f.hits.findIndex(h => h.uid === l.uid); const h = i >= 0 ? f.hits[i] : null;
@@ -1057,7 +1057,7 @@ export function OutpostsGame({ deck, all, onBack, level = 'easy' }: { deck: GCar
                   <span className="text-[11px] leading-snug" style={{ color: T.muted }}>Rozkazy zostają na ruchy</span>
                 </motion.button>
               )}
-              {!me.hand.length && <span className="text-[12px] mb-10" style={{ color: T.muted }}>Ręka pusta: na początku tury dobierasz 1 kartę</span>}
+              {!me.hand.length && <span className="text-[12px] mb-10" style={{ color: T.muted }}>Ręka pusta: na początku tury dobierasz 2 karty</span>}
           {/* Orders + turn button right beside the hand: short mouse trips */}
           <div className="ml-10 mb-1 shrink-0 flex items-center gap-5">
             <Tip content="Rozkazy to waluta tury: masz 3 na wszystko. Wystawienie karty kosztuje 1. Ruch kosztuje 1 na grupę: jednostki idące z jednego miejsca w to samo miejsce płacą razem. Migają te, które zapłacisz za to, co masz zaznaczone.">
