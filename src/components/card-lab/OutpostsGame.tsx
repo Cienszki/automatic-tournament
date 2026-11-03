@@ -44,6 +44,7 @@ const MAP_AT: Record<ObjId, [number, number]> = {
   gates: [0.098, 0.36], lotus: [0.465, 0.13], highground: [0.24, 0.72],
 };
 const MAP_VIEW = 0.3; // how much of the map's width an arena shows
+const MAP_EDGE = [0.065, 0.935]; // the drawn map inside the image's black border
 
 const PART_ICON: Partial<Record<Part['kind'], typeof Sun>> = { aura: Sun, farmer: Sprout, hg: Mountain, team: Users };
 const PART_COLOR: Record<Part['kind'], string> = { card: T.text, role: T.text, aura: ACC_L, farmer: T.me, hg: '#6fb7ff', team: '#7fd3ff' };
@@ -148,10 +149,11 @@ function Figure({ card, m, side, w, layoutId, parts, smoke, bump, selected, tire
               </div>
             </div>
           </div>
-          <motion.span key={bump?.key ?? 'm'} className="absolute flex items-center justify-center font-logik-extended-bold leading-none z-10"
+          {/* Badges sit outside the 3D faces (own transforms), so they would show through mirrored: hide them on the back */}
+          {!flipped && <motion.span key={bump?.key ?? 'm'} className="absolute flex items-center justify-center font-logik-extended-bold leading-none z-10"
             initial={bump ? { scale: 1.8 } : false} animate={{ scale: 1 }} transition={{ type: 'spring', stiffness: 300, damping: 14 }}
-            style={{ left: 5 * k, top: 5 * k, width: 34 * k, height: 34 * k, fontSize: 20 * k, borderRadius: '50% 50% 50% 10%', background: sideColor(side), color: '#07080b', boxShadow: bump ? `0 0 18px ${ACC_L}` : '0 2px 8px rgba(0,0,0,0.6)', ...font }}>{m}</motion.span>
-          {buffs.length > 0 && (
+            style={{ left: 5 * k, top: 5 * k, width: 34 * k, height: 34 * k, fontSize: 20 * k, borderRadius: '50% 50% 50% 10%', background: sideColor(side), color: '#07080b', boxShadow: bump ? `0 0 18px ${ACC_L}` : '0 2px 8px rgba(0,0,0,0.6)', ...font }}>{m}</motion.span>}
+          {!flipped && buffs.length > 0 && (
             <div className="absolute flex flex-col gap-0.5 z-10" style={{ left: 5 * k, top: 42 * k }}>
               {buffs.map(p => {
                 const Icon = PART_ICON[p.kind]!;
@@ -159,7 +161,7 @@ function Figure({ card, m, side, w, layoutId, parts, smoke, bump, selected, tire
               })}
             </div>
           )}
-          {smoke && <span className="absolute z-10 rounded-full flex items-center justify-center" style={{ right: 4 * k, top: 36 * k, width: 22 * k, height: 22 * k, background: 'rgba(0,0,0,0.75)' }}><Wind style={{ width: 13 * k, height: 13 * k, color: T.smoke }} /></span>}
+          {!flipped && smoke && <span className="absolute z-10 rounded-full flex items-center justify-center" style={{ right: 4 * k, top: 36 * k, width: 22 * k, height: 22 * k, background: 'rgba(0,0,0,0.75)' }}><Wind style={{ width: 13 * k, height: 13 * k, color: T.smoke }} /></span>}
         </div>
         {/* Back: what the card is and does */}
         {info && (
@@ -282,8 +284,10 @@ function unitFigure(u: OUnit, w: number, a: AreaCtx) {
 /** The arena background: the minimap, centred on where the objective really is */
 function Arena({ id }: { id: ObjId }) {
   const [ref, box] = useSize<HTMLDivElement>();
-  const [x, y] = MAP_AT[id];
   const D = box.w / MAP_VIEW;
+  // Keep the view inside the drawn map (the image has a black border): objectives near the edge sit off-centre instead
+  const clamp = (v: number, half: number) => Math.min(MAP_EDGE[1] - half, Math.max(MAP_EDGE[0] + half, v));
+  const x = clamp(MAP_AT[id][0], MAP_VIEW / 2); const y = clamp(MAP_AT[id][1], box.h / D / 2 || 0);
   return (
     <div ref={ref} className="absolute inset-0 overflow-hidden pointer-events-none">
       {box.w > 0 && <div className="absolute inset-0" style={{ backgroundImage: 'url(/stats-lab/minimap-741.webp)', backgroundSize: `${D}px ${D}px`, backgroundPosition: `${box.w / 2 - x * D}px ${box.h / 2 - y * D}px`, filter: 'saturate(0.9) brightness(0.62)' }} />}
@@ -502,7 +506,7 @@ function FightScene({ f, name, icon, onDone }: { f: Fight; name: string; icon: s
   const result = t > HIT_AT + waves * WAVE + 0.15;
   const outcomeText = f.outcome === 'took' ? (f.attacker === 0 ? 'Przejmujesz objective' : 'Rywal przejmuje objective')
     : f.outcome === 'held' ? (f.attacker === 0 ? 'Obrona rywala wytrzymała' : 'Twoja obrona wytrzymała')
-    : f.outcome === 'repelled' ? 'Odparci: atakujący wracają do bazy' : 'Polegli wszyscy';
+    : f.outcome === 'repelled' ? 'Odparci: atakujący wracają do bazy' : 'Remis: polegli wszyscy';
   const goodForMe = (f.outcome === 'took' && f.attacker === 0) || ((f.outcome === 'held' || f.outcome === 'repelled') && f.attacker === 1);
 
   const card = (l: Fight['lines'][number]) => {
@@ -561,7 +565,7 @@ function FightScene({ f, name, icon, onDone }: { f: Fight; name: string; icon: s
         <AnimatePresence mode="wait">
           {result ? (
             <motion.div key="r" className="font-logik-extended-bold uppercase text-[32px]" initial={{ scale: 0.6, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
-              style={{ color: goodForMe ? T.me : T.rival, textShadow: `0 0 24px ${goodForMe ? T.me : T.rival}`, ...font }}>{outcomeText}{f.points ? ` · +${f.points} pkt` : ''}</motion.div>
+              style={{ color: f.outcome === 'wiped' ? T.text : goodForMe ? T.me : T.rival, textShadow: `0 0 24px ${f.outcome === 'wiped' ? T.muted : goodForMe ? T.me : T.rival}`, ...font }}>{outcomeText}{f.points ? ` · +${f.points} pkt` : ''}</motion.div>
           ) : (
             <motion.div key="h" className="text-[14px] max-w-[760px] text-center" style={{ color: T.muted }} exit={{ opacity: 0 }}>
               Każda strona zadaje tyle obrażeń, ile ma siły łącznie. Najpierw obrywa Offlane, potem najsłabsi. Ginie ten, kto dostanie tyle, ile sam ma siły.

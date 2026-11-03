@@ -194,7 +194,8 @@ export function deckProblem(deck: GCard[], rule: DeckRule): string | null {
 
 /** The strongest legal deck from a collection (greedy: role minimums first, then best rated) */
 export function autoDeck(collection: GCard[], rule: DeckRule): GCard[] {
-  const uniq = [...new Map([...collection].sort((a, b) => b.ovr - a.ovr).map(c => [c.pid, c])).values()];
+  // One card per player: the best one (a Map keeps the last value set, so best goes in last)
+  const uniq = [...new Map([...collection].sort((a, b) => a.ovr - b.ovr).map(c => [c.pid, c])).values()].sort((a, b) => b.ovr - a.ovr);
   const deck: GCard[] = [];
   for (const r of ROLE_KEYS) deck.push(...uniq.filter(c => c.role === r).slice(0, rule.perRole));
   for (const c of uniq) if (deck.length < rule.size && !deck.includes(c)) deck.push(c);
