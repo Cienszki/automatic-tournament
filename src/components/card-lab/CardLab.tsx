@@ -16,7 +16,8 @@ import { Album } from './Album';
 import { DeckBuilder } from './DeckBuilder';
 import { OUTPOSTS_RULE, OutpostsGame } from './OutpostsGame';
 import { LEVELS, type Level } from '@/lib/card-lab/outposts-ai';
-import { FitScaleCtx } from './ui';
+import { FitScaleCtx, useFitScale } from './ui';
+import { centreOf, pulseAt } from '@/components/tour/pulse';
 
 type Tab = 'album' | 'talia' | 'gra';
 const TABS: Array<{ id: Tab; label: string }> = [{ id: 'album', label: 'Album' }, { id: 'talia', label: 'Talia' }];
@@ -78,17 +79,30 @@ function PlayButton({ ready, running, level, setLevel, onPlay, onResume }: { rea
   );
 }
 
-/** The first-visit explanation: what you get, what to do — the game itself you learn by playing */
+/** The first-visit explanation: what you get, what to do — the game itself you learn by playing.
+ *  Closing it flies it into the "?" button, so you know where it lives. */
 function Intro({ onClose }: { onClose: () => void }) {
   const font = useHeaderFont();
+  const k = useFitScale();
+  const panel = useRef<HTMLDivElement>(null);
+  const [fly, setFly] = useState<{ x: number; y: number } | null>(null);
+  const close = () => {
+    const to = centreOf('[data-help="intro"]'); const r = panel.current?.getBoundingClientRect();
+    if (!to || !r) { onClose(); return; }
+    // The stage is scaled: screen px → layout px
+    setFly({ x: (to.x - (r.left + r.width / 2)) / k, y: (to.y - (r.top + r.height / 2)) / k });
+    setTimeout(() => { onClose(); pulseAt('[data-help="intro"]'); }, 560);
+  };
   const steps = [
     { n: 1, title: 'Zbierasz karty graczy', text: `Każdy gracz turnieju ma kartę za każdą serię, którą zagrał. Im lepiej zagrał, tym mocniejsza karta. Na start masz ${START_PACKS} paczek: otwórz je w Albumie.` },
     { n: 2, title: 'Układasz talię', text: 'W zakładce Talia wybierasz karty do gry (albo klikasz „Ułóż najlepszą”). Potem wielki przycisk Graj w prawym dolnym rogu.' },
     { n: 3, title: 'Grasz', text: "Kontrola mapy: wystawiaj karty i przejmuj objective'y na mapie. Pierwszy do 10 punktów wygrywa. Reszty dowiesz się, grając." },
   ];
   return (
-    <motion.div className="absolute inset-0 z-[60] flex items-center justify-center" style={{ background: 'rgba(5,6,9,0.78)', backdropFilter: 'blur(6px)' }} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-      <motion.div className="w-[1100px] flex flex-col items-center gap-10 text-white" initial={{ y: 20 }} animate={{ y: 0 }}>
+    <motion.div className="absolute inset-0 z-[60] flex items-center justify-center" style={{ background: 'rgba(5,6,9,0.78)', backdropFilter: 'blur(6px)', pointerEvents: fly ? 'none' : undefined }}
+      initial={{ opacity: 0 }} animate={{ opacity: fly ? 0 : 1 }} exit={{ opacity: 0 }} transition={fly ? { duration: 0.5, ease: 'easeIn' } : undefined}>
+      <motion.div ref={panel} className="w-[1100px] flex flex-col items-center gap-10 text-white" initial={{ y: 20 }}
+        animate={fly ? { x: fly.x, y: fly.y, scale: 0.03, rotate: -14, opacity: 0.5 } : { y: 0 }} transition={fly ? { duration: 0.55, ease: [0.6, 0, 0.9, 0.5] } : undefined}>
         <div className="text-center">
           <div className="text-[12px] uppercase tracking-[0.35em] opacity-60">Wersja testowa</div>
           <div className="font-logik-extended-bold uppercase text-[54px] leading-none mt-2" style={font}>Karty</div>
@@ -102,7 +116,7 @@ function Intro({ onClose }: { onClose: () => void }) {
             </div>
           ))}
         </div>
-        <button type="button" onClick={onClose} className="rounded-full px-10 py-4 font-logik-extended-bold uppercase tracking-widest text-[16px] text-white" style={{ background: C.primary, boxShadow: `0 0 30px ${mix(C.primary, 60)}`, ...font }}>Zaczynamy</button>
+        <button type="button" onClick={close} className="rounded-full px-10 py-4 font-logik-extended-bold uppercase tracking-widest text-[16px] text-white" style={{ background: C.primary, boxShadow: `0 0 30px ${mix(C.primary, 60)}`, ...font }}>Zaczynamy</button>
       </motion.div>
     </motion.div>
   );
@@ -154,8 +168,7 @@ function Lab({ model }: { model: Model }) {
     <div className={`relative h-full flex flex-col ${tab === 'gra' ? '' : 'px-16 pt-5 pb-6 gap-5'}`} style={{ color: C.text }}>
       {/* During a match the whole screen is the board: the game has its own back button and help */}
       <div className={`flex items-center gap-10 shrink-0 ${tab === 'gra' ? 'hidden' : ''}`}>
-        <div className="font-logik-extended-bold uppercase text-[28px] leading-none" style={{ color: C.heading, ...font }}>Karty</div>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 -ml-4">
           {TABS.map(t => (
             <button key={t.id} type="button" onClick={() => setTab(t.id)}
               className="relative px-4 py-1.5 font-logik-extended-bold uppercase text-[15px] transition-colors" style={{ color: tab === t.id ? C.heading : C.muted, ...font }}>
@@ -165,7 +178,7 @@ function Lab({ model }: { model: Model }) {
           ))}
         </div>
         <div className="flex-1 h-px" style={{ background: `linear-gradient(90deg, ${ink(14)}, transparent)` }} />
-        <button type="button" onClick={() => setIntro(true)} aria-label="Jak to działa" className="w-9 h-9 rounded-full font-logik-extended-bold text-[16px]" style={{ color: C.heading, boxShadow: `inset 0 0 0 1.5px ${mix(C.heading, 40)}`, ...font }}>?</button>
+        <button type="button" data-help="intro" onClick={() => setIntro(true)} aria-label="Jak to działa" className="w-9 h-9 rounded-full font-logik-extended-bold text-[16px]" style={{ color: C.heading, boxShadow: `inset 0 0 0 1.5px ${mix(C.heading, 40)}`, ...font }}>?</button>
       </div>
       <div className="flex-1 min-h-0">
         {tab === 'album' && <Album cards={cards} collection={collection} setCollection={setCollection} packs={packs} onPackOpened={() => setPacks(p => Math.max(0, p - 1))} />}

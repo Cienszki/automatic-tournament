@@ -1,11 +1,13 @@
 // "Kontrola mapy" — an area-control card game (the genre of Riftbound-style battlefield games, with
 // our own rules). Pure rules, no React.
 //
-// Three Dota objectives sit between the two bases. A turn has two phases:
+// Three Dota objectives sit between the two bases. A turn has three phases:
 //   1. deploy — put cards from your hand into your base (1 order each);
-//   2. orders — move groups of units from one place to another (1 order per group; each unit moves
-//      once a turn; between objectives only through the base, except Gankers / Twin Gates).
-// Moving onto an objective the rival stands on starts a fight; whoever is left takes it.
+//   2. moves — PLAN where units go (each unit has one destination a turn, changeable until you
+//      confirm; between objectives only through the base, except Mid / from Twin Gates). Units going
+//      from the same place to the same place are one group = 1 order, however they were moved;
+//      one group with a Soft supp in it is free;
+//   3. fights — everything resolves at once: fights where both sides stand, then take-overs.
 // Points: taking over an objective = 1 (Roshan 2); at the start of your turn every objective you own
 // and still stand on = 1. First to 10 wins. Card quality = strength (siła); cards cost nothing.
 
@@ -13,11 +15,13 @@ import { shuffle, type GCard, type RoleKey } from './cards';
 
 export type Side = 0 | 1;
 export type Loc = 'base' | 0 | 1 | 2;
-export type Phase = 'deploy' | 'move';
+export type Phase = 'deploy' | 'move' | 'fight';
 
 // ── Balance ───────────────────────────────────────────────────────────────
 export const WIN_POINTS = 10;
 export const ORDERS = 3;
+/** Per-turn numbers, adjustable for balance simulations */
+export const RULES = { orders: ORDERS, draw: 1 };
 export const START_HAND = 4;
 export const HAND_MAX = 7;
 export const DECK_SIZE = 20;
@@ -49,11 +53,12 @@ export const KEYWORD: Record<RoleKey, { name: string; ability: string; text: str
   Carry: { name: 'Carry', ability: 'Farma', text: `Na początku każdej Twojej tury, jeśli stoi na Twoim objectivie, zyskuje +1 siły na stałe (maks. +${FARMER_MAX}).` },
   Mid: { name: 'Mid', ability: 'Gank', text: "Może iść prosto z objective'u na inny objective. Pozostali muszą najpierw wrócić do bazy." },
   Offlane: { name: 'Offlane', ability: 'Tank', text: '+1 siły. W walce obrywa jako pierwszy.' },
-  'Soft Support': { name: 'Soft support', ability: 'Smoke', text: 'Raz na turę grupa, w której jest, rusza się bez rozkazu.' },
+  'Soft Support': { name: 'Soft supp', ability: 'Smoke', text: 'Raz na turę grupa, w której jest, rusza się bez rozkazu.' },
   'Hard Support': { name: 'Hard support', ability: 'Aura', text: '+1 siły dla każdej Twojej jednostki na tym samym objectivie, także dla siebie.' },
 };
 
-export interface OUnit { uid: string; card: GCard; side: Side; loc: Loc; moved: boolean; fresh: boolean; growth: number }
+/** `loc` = where it is (or is planned to go this turn), `from` = where it stood when the turn began */
+export interface OUnit { uid: string; card: GCard; side: Side; loc: Loc; from: Loc; moved: boolean; fresh: boolean; growth: number }
 export interface OBoard { hand: GCard[]; deck: GCard[]; grave: GCard[]; score: number }
 
 /** One part of a unit's strength, for the breakdown chips */
@@ -86,15 +91,21 @@ export interface OState {
   turn: number;
   active: Side;
   phase: Phase;
+  /** Orders left (= budget − cards put out − what the planned moves cost) */
   orders: number;
-  freeRotation: boolean;
+  /** Orders this turn (3, 4 with the Outpost) and cards put out so far */
+  budget: number;
+  deployed: number;
   objectives: Array<{ id: ObjId; owner: Side | null }>;
   units: OUnit[];
   sides: [OBoard, OBoard];
   winner: Side | null;
+  /** Points needed to win */
+  win: number;
   log: Array<{ side: Side | null; text: string }>;
-  /** The last fight (for the fight scene); `key` grows with every fight */
-  fight: Fight | null;
+  /** The fights of the last resolution, in order (for the fight scenes); `key` grows with every fight */
+  fights: Fight[];
+  fightKey: number;
   /** Points scored by the last action / turn start (for the point animation) */
   gains: Gain[];
   gainKey: number;
@@ -142,13 +153,13 @@ const clone = (s: OState): OState => ({
 
 // ── Setup ─────────────────────────────────────────────────────────────────
 
-export function newGame(decks: [GCard[], GCard[]], rnd = Math.random): OState {
+export function newGame(decks: [GCard[], GCard[]], rnd = Math.random, win = WIN_POINTS): OState {
   const ids = shuffle(OBJ_IDS, rnd).slice(0, 3);
   // No compensation for going second: in simulations the second player already wins about half
   const sides = decks.map((d): OBoard => { const x = shuffle(d, rnd); return { hand: x.slice(0, START_HAND), deck: x.slice(START_HAND), grave: [], score: 0 }; }) as OState['sides'];
   const s: OState = {
-    turn: 1, active: 0, phase: 'deploy', orders: ORDERS, freeRotation: true, objectives: ids.map(id => ({ id, owner: null })),
-    units: [], sides, winner: null, log: [], fight: null, gains: [], gainKey: 0, events: [{ kind: 'turn', side: 0, turn: 1 }],
+    turn: 1, active: 0, phase: 'deploy', orders: RULES.orders, budget: RULES.orders, deployed: 0, objectives: ids.map(id => ({ id, owner: null })),
+    units: [], sides, winner: null, win, log: [], fights: [], fightKey: 0, gains: [], gainKey: 0, events: [{ kind: 'turn', side: 0, turn: 1 }],
   };
   say(s, null, `Cele: ${ids.map(i => OBJECTIVES[i].name).join(', ')}. Zaczynasz Ty.`);
   return s;
@@ -157,6 +168,22 @@ export function newGame(decks: [GCard[], GCard[]], rnd = Math.random): OState {
 // ── Actions ───────────────────────────────────────────────────────────────
 
 export const countAt = (s: OState, side: Side, loc: Loc) => s.units.filter(u => u.side === side && u.loc === loc).length;
+
+/** What the planned moves cost: one order per group (same start, same destination), one group with a
+ *  Soft supp in it free — so moving units one by one costs the same as moving them together */
+export function planCost(s: OState): number {
+  const groups = new Map<string, boolean>();
+  for (const u of s.units) {
+    if (u.side !== s.active || !u.moved) continue;
+    const k = `${u.from}>${u.loc}`;
+    groups.set(k, (groups.get(k) ?? false) || u.card.role === 'Soft Support');
+  }
+  const smoke = [...groups.values()].some(Boolean);
+  return Math.max(0, groups.size - (smoke ? 1 : 0));
+}
+/** Is the Soft supp's free group still unused this turn? */
+export const smokeLeft = (s: OState) => !s.units.some(u => u.side === s.active && u.moved && u.card.role === 'Soft Support');
+const recount = (s: OState) => { s.orders = s.budget - s.deployed - planCost(s); };
 
 export function canDeploy(s: OState, cardId: string): string | null {
   if (s.winner !== null) return 'Koniec gry';
@@ -171,41 +198,63 @@ export function deploy(prev: OState, cardId: string): OState {
   const card = b.hand.find(c => c.id === cardId)!;
   b.hand = b.hand.filter(c => c.id !== cardId);
   // uid = side + card: a card is deployed at most once, and the hand card can animate into the unit
-  s.units.push({ uid: `${s.active}:${card.id}`, card, side: s.active, loc: 'base', moved: true, fresh: true, growth: 0 });
-  s.orders--;
+  s.units.push({ uid: `${s.active}:${card.id}`, card, side: s.active, loc: 'base', from: 'base', moved: false, fresh: true, growth: 0 });
+  s.deployed++; recount(s);
   say(s, s.active, `${who(s.active)}: ${card.name} wchodzi do bazy`);
   ev(s, { kind: 'deploy', side: s.active, cards: [card] });
   return s;
 }
 
-/** End of the deploy phase: from now on, orders move units */
+/** End of the deploy phase: from now on, orders plan moves */
 export function startOrders(prev: OState): OState {
   if (prev.phase !== 'deploy' || prev.winner !== null) return prev;
   return { ...clone(prev), phase: 'move' };
 }
 
-/** Does this group move for free (a Smoke unit in it, once a turn)? */
-export const freeMove = (s: OState, uids: string[]) => s.freeRotation && s.units.some(u => uids.includes(u.uid) && u.card.role === 'Soft Support');
+/** Why a unit cannot go from where it stood at the start of the turn to `to` (null = it can) */
+function pathProblem(s: OState, u: OUnit, to: Loc): string | null {
+  if (to === u.from || u.from === 'base' || to === 'base') return null;
+  if (s.objectives[u.from].id === 'gates' || u.card.role === 'Mid') return null;
+  return "Z objective'u na inny: najpierw do bazy (prosto idzie tylko Mid i każdy, kto stoi na Twin Gates)";
+}
 
-/** Why this group cannot go there (null = it can). Groups move from one place, each unit once a turn. */
+/** Plans the move without checking it */
+function place(prev: OState, uids: string[], to: Loc): OState {
+  const s = clone(prev);
+  for (const u of s.units) if (uids.includes(u.uid)) { u.loc = to; u.moved = to !== u.from; }
+  recount(s);
+  return s;
+}
+
+/** What planning this move would add to the cost (0 = joins a group / free Smoke, 1, or −1 when it
+ *  cancels a move) */
+export const moveCost = (s: OState, uids: string[], to: Loc) => planCost(place(s, uids, to)) - planCost(s);
+
+/** Why this group cannot be planned there (null = it can). A group is picked up from one place. */
 export function canMove(s: OState, uids: string[], to: Loc): string | null {
   if (s.winner !== null) return 'Koniec gry';
   const us = s.units.filter(u => uids.includes(u.uid));
   if (!us.length || us.length !== uids.length) return 'Wybierz jednostki';
   if (us.some(u => u.side !== s.active)) return 'To nie Twoje jednostki';
-  if (s.phase !== 'move') return 'Najpierw wystaw karty, potem rozkazy';
-  const from = us[0].loc;
-  if (us.some(u => u.loc !== from)) return 'Grupa musi ruszać z jednego miejsca';
-  if (from === to) return 'Już tam są';
+  if (s.phase === 'deploy') return 'Najpierw wystaw karty, potem ruchy';
+  if (s.phase !== 'move') return 'Ruchy już zatwierdzone';
+  const at = us[0].loc;
+  if (us.some(u => u.loc !== at)) return 'Grupa musi ruszać z jednego miejsca';
+  if (at === to) return 'Już tam są';
   if (us.some(u => u.fresh)) return 'Wystawione w tej turze, ruszą się w następnej';
-  if (us.some(u => u.moved)) return 'Każda jednostka rusza się raz na turę';
-  if (from !== 'base' && to !== 'base' && !(s.objectives[from].id === 'gates' || us.every(u => u.card.role === 'Mid'))) return 'Z celu na inny cel: najpierw do bazy (prosto idą tylko Gankerzy i z Twin Gates)';
-  if (to !== 'base' && countAt(s, s.active, to) + us.length > PER_SIDE_AT_OBJECTIVE) return `Maks. ${PER_SIDE_AT_OBJECTIVE} jednostki na celu`;
-  if (!freeMove(s, uids) && s.orders < 1) return 'Brak rozkazów';
+  for (const u of us) { const why = pathProblem(s, u, to); if (why) return why; }
+  if (to !== 'base' && countAt(s, s.active, to) + us.length > PER_SIDE_AT_OBJECTIVE) return `Maks. ${PER_SIDE_AT_OBJECTIVE} jednostki na objectivie`;
+  if (s.budget - s.deployed - planCost(place(s, uids, to)) < 0) return 'Brak rozkazów';
   return null;
 }
 
-/** Damage order: Tanks first, then the weakest (most kills for the damage) */
+/** Plans a move (nothing happens on the map until the moves are confirmed) */
+export function move(prev: OState, uids: string[], to: Loc): OState {
+  if (canMove(prev, uids, to)) return prev;
+  return place(prev, uids, to);
+}
+
+/** Damage order: Offlane first, then the weakest (most kills for the damage) */
 function takeDamage(s: OState, targets: OUnit[], dmg: number): Fight['hits'] {
   const order = [...targets].sort((a, b) => (b.card.role === 'Offlane' ? 1 : 0) - (a.card.role === 'Offlane' ? 1 : 0) || might(s, a, true) - might(s, b, true));
   const hits: Fight['hits'] = [];
@@ -225,45 +274,54 @@ function score(s: OState, side: Side, at: 0 | 1 | 2, pts: number, why: Gain['why
   ev(s, { kind: 'points', side, at, pts, why });
 }
 
-export function move(prev: OState, uids: string[], to: Loc): OState {
-  if (canMove(prev, uids, to)) return prev;
+/** Phase 3: the planned moves happen — fights where both sides now stand, then take-overs */
+export function resolve(prev: OState): OState {
+  if (prev.phase === 'fight' || prev.winner !== null) return prev;
   const s = clone(prev); const side = s.active; const foe = (1 - side) as Side;
-  const us = s.units.filter(u => uids.includes(u.uid));
-  const from = us[0].loc;
-  const free = freeMove(prev, uids);
-  if (free) s.freeRotation = false; else s.orders--;
-  us.forEach(u => { u.loc = to; u.moved = true; });
-  ev(s, { kind: 'move', side, cards: us.map(u => u.card), from, to, free });
-  if (to === 'base') { say(s, side, `${who(side)}: ${us.map(u => u.card.name).join(', ')} wraca do bazy`); return s; }
-  const ob = s.objectives[to]; const name = OBJECTIVES[ob.id].name;
-  const enemies = s.units.filter(u => u.side === foe && u.loc === to);
-  say(s, side, `${who(side)}: ${us.map(u => u.card.name).join(', ')} → ${name}${from !== 'base' ? ' (gank)' : ''}`);
-  if (enemies.length) {
-    const attackers = s.units.filter(u => u.side === side && u.loc === to);
-    const line = (u: OUnit, def: boolean): FightLine => ({ uid: u.uid, card: u.card, side: u.side, parts: strengthParts(s, u, def), m: might(s, u, def) });
-    const lines = [...attackers.map(u => line(u, false)), ...enemies.map(u => line(u, true))];
-    const pa = attackers.reduce((a, u) => a + might(s, u), 0);
-    const pd = enemies.reduce((a, u) => a + might(s, u, true), 0);
-    const hits = [...takeDamage(s, enemies, pa), ...takeDamage(s, attackers, pd)];
-    const died = hits.filter(h => h.died).map(h => h.uid);
-    for (const id of died) { const u = s.units.find(x => x.uid === id)!; s.sides[u.side].grave.push(u.card); }
-    s.units = s.units.filter(u => !died.includes(u.uid));
-    const left = s.units.filter(u => u.side === side && u.loc === to);
-    const stay = s.units.filter(u => u.side === foe && u.loc === to);
-    const outcome: Fight['outcome'] = left.length && stay.length ? 'repelled' : left.length ? 'took' : stay.length ? 'held' : 'wiped';
-    const points = outcome === 'took' && ob.owner !== side ? takePoints(ob.id) : 0;
-    s.fight = { key: (prev.fight?.key ?? 0) + 1, at: to, attacker: side, lines, power: side === 0 ? [pa, pd] : [pd, pa], hits, died, outcome, points };
-    say(s, side, `Walka o ${name}: ${pa} na ${pd}`);
-    ev(s, { kind: 'fight', side, at: to, power: s.fight.power, died: died.map(id => { const l = lines.find(x => x.uid === id)!; return { card: l.card, side: l.side }; }), outcome });
-    if (outcome === 'repelled') { left.forEach(u => { u.loc = 'base'; }); return s; }
-    if (outcome !== 'took') return s;
+  s.phase = 'fight'; s.fights = [];
+  // The log gets one line per group that went somewhere
+  const groups = new Map<string, OUnit[]>();
+  for (const u of s.units) if (u.side === side && u.moved) { const k = `${u.from}>${u.loc}`; groups.set(k, [...(groups.get(k) ?? []), u]); }
+  let smokeShown = false;
+  for (const us of groups.values()) {
+    const free = !smokeShown && us.some(u => u.card.role === 'Soft Support');
+    if (free) smokeShown = true;
+    ev(s, { kind: 'move', side, cards: us.map(u => u.card), from: us[0].from, to: us[0].loc, free });
+    say(s, side, `${who(side)}: ${us.map(u => u.card.name).join(', ')} → ${us[0].loc === 'base' ? 'baza' : OBJECTIVES[s.objectives[us[0].loc].id].name}`);
   }
-  if (ob.owner !== side) {
-    ob.owner = side;
-    score(s, side, to, takePoints(ob.id), 'take');
-    say(s, side, `${who(side)} przejmuje ${name} (+${takePoints(ob.id)})`);
-    if (ob.id === 'tormentor') drawCards(s, side, 2);
-    checkWin(s);
+  for (const to of [0, 1, 2] as const) {
+    if (s.winner !== null) break;
+    const ob = s.objectives[to]; const name = OBJECTIVES[ob.id].name;
+    const attackers = s.units.filter(u => u.side === side && u.loc === to);
+    if (!attackers.length) continue;
+    const enemies = s.units.filter(u => u.side === foe && u.loc === to);
+    if (enemies.length) {
+      const line = (u: OUnit, def: boolean): FightLine => ({ uid: u.uid, card: u.card, side: u.side, parts: strengthParts(s, u, def), m: might(s, u, def) });
+      const lines = [...attackers.map(u => line(u, false)), ...enemies.map(u => line(u, true))];
+      const pa = attackers.reduce((a, u) => a + might(s, u), 0);
+      const pd = enemies.reduce((a, u) => a + might(s, u, true), 0);
+      const hits = [...takeDamage(s, enemies, pa), ...takeDamage(s, attackers, pd)];
+      const died = hits.filter(h => h.died).map(h => h.uid);
+      for (const id of died) { const u = s.units.find(x => x.uid === id)!; s.sides[u.side].grave.push(u.card); }
+      s.units = s.units.filter(u => !died.includes(u.uid));
+      const left = s.units.filter(u => u.side === side && u.loc === to);
+      const stay = s.units.filter(u => u.side === foe && u.loc === to);
+      const outcome: Fight['outcome'] = left.length && stay.length ? 'repelled' : left.length ? 'took' : stay.length ? 'held' : 'wiped';
+      const points = outcome === 'took' && ob.owner !== side ? takePoints(ob.id) : 0;
+      s.fightKey++;
+      s.fights = [...s.fights, { key: s.fightKey, at: to, attacker: side, lines, power: side === 0 ? [pa, pd] : [pd, pa], hits, died, outcome, points }];
+      say(s, side, `Walka o ${name}: ${pa} na ${pd}`);
+      ev(s, { kind: 'fight', side, at: to, power: side === 0 ? [pa, pd] : [pd, pa], died: died.map(id => { const l = lines.find(x => x.uid === id)!; return { card: l.card, side: l.side }; }), outcome });
+      if (outcome === 'repelled') { left.forEach(u => { u.loc = 'base'; }); continue; }
+      if (outcome !== 'took') continue;
+    }
+    if (ob.owner !== side) {
+      ob.owner = side;
+      score(s, side, to, takePoints(ob.id), 'take');
+      say(s, side, `${who(side)} przejmuje ${name} (+${takePoints(ob.id)})`);
+      if (ob.id === 'tormentor') drawCards(s, side, 2);
+      checkWin(s);
+    }
   }
   return s;
 }
@@ -273,22 +331,24 @@ function drawCards(s: OState, side: Side, n: number) {
   for (let i = 0; i < n; i++) if (b.deck.length && b.hand.length < HAND_MAX) b.hand.push(b.deck.shift()!);
 }
 function checkWin(s: OState) {
-  for (const side of [0, 1] as Side[]) if (s.sides[side].score >= WIN_POINTS && s.winner === null) { s.winner = side; say(s, side, side === 0 ? 'Wygrywasz!' : 'Rywal wygrywa'); }
+  for (const side of [0, 1] as Side[]) if (s.sides[side].score >= s.win && s.winner === null) { s.winner = side; say(s, side, side === 0 ? 'Wygrywasz!' : 'Rywal wygrywa'); }
 }
 
-/** Ends the turn: the other side scores what it holds, its Farmers grow, it draws and gets orders */
+/** Ends the turn (resolving the planned moves first): the other side scores what it holds, its
+ *  Carries farm, it draws and gets its orders */
 export function endTurn(prev: OState): OState {
   if (prev.winner !== null) return prev;
-  const s = clone(prev);
+  const s = clone(prev.phase === 'fight' ? prev : resolve(prev));
+  if (s.winner !== null) return s;
   const side = (1 - s.active) as Side;
-  s.active = side; s.turn++; s.freeRotation = true; s.phase = 'deploy';
+  s.active = side; s.turn++; s.phase = 'deploy'; s.fights = [];
   ev(s, { kind: 'turn', side, turn: s.turn });
-  s.units.forEach(u => { u.moved = false; u.fresh = false; });
+  s.units.forEach(u => { u.moved = false; u.fresh = false; u.from = u.loc; });
   s.objectives.forEach((o, i) => { if (o.owner === side && countAt(s, side, i as Loc) > 0) score(s, side, i as 0 | 1 | 2, 1, 'hold'); });
   checkWin(s);
   s.units.forEach(u => { if (u.side === side && u.card.role === 'Carry' && u.loc !== 'base' && s.objectives[u.loc].owner === side && u.growth < FARMER_MAX) u.growth++; });
   const owns = (id: ObjId) => s.objectives.some((o, i) => o.id === id && o.owner === side && countAt(s, side, i as Loc) > 0);
-  drawCards(s, side, 1 + (owns('lotus') ? 1 : 0));
-  s.orders = ORDERS + (owns('outpost') ? 1 : 0);
+  drawCards(s, side, RULES.draw + (owns('lotus') ? 1 : 0));
+  s.budget = RULES.orders + (owns('outpost') ? 1 : 0); s.deployed = 0; s.orders = s.budget;
   return s;
 }

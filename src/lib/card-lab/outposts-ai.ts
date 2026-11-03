@@ -1,11 +1,11 @@
 // The practice opponent for "Kontrola mapy": hand-written, one action at a time. Deploy phase: it
 // first works out how many moves it will want this turn and keeps those orders, then deploys the
 // best cards with the rest. Orders phase: it tries every sensible group move, scores the board after
-// each and plays the best one while it helps; then it ends the turn.
+// each (as it will be once the fights resolve) and plays the best one while it helps; then it ends the turn.
 // The expert level instead plans the whole turn (which cards, then a search over move sequences) and
 // checks every plan against the rival's best answer, using only what is on the board (never its hand).
 
-import { canDeploy, canMove, deploy, endTurn, freeMove, might, move, startOrders, type Loc, type OState, type Side } from './outposts';
+import { canDeploy, canMove, deploy, endTurn, might, move, moveCost, resolve, smokeLeft, startOrders, type Loc, type OState, type Side } from './outposts';
 
 /** Practice levels: noise in the computer's judgement, how often it stops early, and how much weaker its deck is */
 export type Level = 'easy' | 'medium' | 'hard' | 'expert';
@@ -40,6 +40,9 @@ function value(s: OState, side: Side): number {
   return v;
 }
 
+/** A plan is judged by the board it leads to once its fights and take-overs are resolved */
+const judge = (s: OState, side: Side) => value(s.phase === 'move' ? resolve(s) : s, side);
+
 /** Sensible group moves: everyone from a place, the strongest one / two / three, or any single unit */
 function candidates(s: OState): Array<{ uids: string[]; to: Loc }> {
   const side = s.active; const out: Array<{ uids: string[]; to: Loc }> = [];
@@ -58,10 +61,10 @@ function candidates(s: OState): Array<{ uids: string[]; to: Loc }> {
 }
 
 function bestMove(s: OState, rnd: () => number, noise = 0.3): { uids: string[]; to: Loc; v: number } | null {
-  const side = s.active; const base = value(s, side);
+  const side = s.active; const base = judge(s, side);
   let best: { uids: string[]; to: Loc; v: number } | null = null;
   for (const c of candidates(s)) {
-    const v = value(move(s, c.uids, c.to), side) - base + rnd() * noise;
+    const v = judge(move(s, c.uids, c.to), side) - base + rnd() * noise;
     if (!best || v > best.v) best = { ...c, v };
   }
   return best && best.v > 0.1 ? best : null;
@@ -69,11 +72,11 @@ function bestMove(s: OState, rnd: () => number, noise = 0.3): { uids: string[]; 
 
 /** How many order-costing moves the computer would like to make this turn */
 function wantedMoves(s: OState, rnd: () => number, noise: number): number {
-  let t: OState = { ...startOrders(s), orders: 9 };
+  let t: OState = { ...startOrders(s), budget: 9, orders: 9 };
   let n = 0;
   for (let i = 0; i < 4; i++) {
     const m = bestMove(t, rnd, noise); if (!m) break;
-    if (!freeMove(t, m.uids)) n++;
+    if (moveCost(t, m.uids, m.to) > 0) n++;
     t = move(t, m.uids, m.to);
   }
   return n;
@@ -91,7 +94,7 @@ function afterReply(s: OState): OState {
   return t.winner !== null ? t : endTurn(t);
 }
 
-const fp = (s: OState) => `${s.turn}|${s.phase}|${s.orders}|${s.freeRotation ? 1 : 0}|${s.sides[s.active].hand.map(c => c.id).join()}|${s.units.map(u => `${u.uid}@${u.loc}${u.moved ? '*' : ''}`).join()}`;
+const fp = (s: OState) => `${s.turn}|${s.phase}|${s.orders}|${smokeLeft(s) ? 1 : 0}|${s.sides[s.active].hand.map(c => c.id).join()}|${s.units.map(u => `${u.uid}@${u.loc}${u.moved ? '*' : ''}`).join()}`;
 
 const BEAM = 6; const LEAVES = 6;
 
@@ -99,7 +102,7 @@ const BEAM = 6; const LEAVES = 6;
 function planMoves(s: OState): { acts: Act[]; v: number } {
   const me = s.active;
   type Node = { s: OState; acts: Act[]; v: number };
-  let beam: Node[] = [{ s, acts: [], v: value(s, me) }];
+  let beam: Node[] = [{ s, acts: [], v: judge(s, me) }];
   const leaves: Node[] = [...beam];
   for (let depth = 0; depth < 5; depth++) {
     const next = new Map<string, Node>();
@@ -108,7 +111,7 @@ function planMoves(s: OState): { acts: Act[]; v: number } {
       for (const c of candidates(b.s)) {
         const t = move(b.s, c.uids, c.to);
         const k = fp(t); if (next.has(k)) continue;
-        next.set(k, { s: t, acts: [...b.acts, { kind: 'move', uids: c.uids, to: c.to }], v: value(t, me) });
+        next.set(k, { s: t, acts: [...b.acts, { kind: 'move', uids: c.uids, to: c.to }], v: judge(t, me) });
       }
     }
     if (!next.size) break;

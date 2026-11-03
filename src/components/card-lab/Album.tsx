@@ -165,7 +165,7 @@ const RANK: Record<Tier, number> = { bronze: 0, silver: 1, gold: 2, elite: 3, to
  * tier's colour (you can tell a good one is coming); click to turn one (or all). Better cards get a
  * bigger flare, elite and team-of-the-round cards flash the whole screen.
  */
-function PackReveal({ cards, isNew, onClose }: { cards: GCard[]; isNew: (c: GCard) => boolean; onClose: () => void }) {
+function PackReveal({ cards, isNew, onClose, left, onNext }: { cards: GCard[]; isNew: (c: GCard) => boolean; onClose: () => void; left: number; onNext: () => void }) {
   const font = useHeaderFont();
   const [phase, setPhase] = useState<'idle' | 'shake' | 'burst' | 'cards'>('idle');
   const [open, setOpen] = useState<Set<number>>(new Set());
@@ -247,7 +247,10 @@ function PackReveal({ cards, isNew, onClose }: { cards: GCard[]; isNew: (c: GCar
 
       <div className="relative h-[60px] flex items-center">
         {phase === 'cards' && (all
-          ? <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }}><Action primary big onClick={onClose}>Do albumu</Action></motion.div>
+          ? <motion.div className="flex items-center gap-4" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }}>
+              {left > 0 && <Action primary big onClick={onNext}>Otwórz kolejną · {left}</Action>}
+              <Action big onDark={left > 0} primary={left === 0} onClick={onClose}>Do albumu</Action>
+            </motion.div>
           : <Action onDark onClick={turnAll}>Odkryj wszystkie</Action>)}
       </div>
     </motion.div>
@@ -258,7 +261,7 @@ export function Album({ cards, collection, setCollection, packs, onPackOpened }:
   const teams = useMemo(() => [...new Map(cards.filter(c => c.team).map(c => [c.team!.id, c.team!])).values()].sort((a, b) => a.name.localeCompare(b.name, 'pl')), [cards]);
   const pool = useMemo(() => packPool(cards), [cards]);
   const [page, setPage] = useState(0);
-  const [pack, setPack] = useState<{ cards: GCard[]; before: Set<string> } | null>(null);
+  const [pack, setPack] = useState<{ cards: GCard[]; before: Set<string>; n: number } | null>(null);
   const [focus, setFocus] = useState<Slot | null>(null);
   const pages = Math.max(1, Math.ceil(teams.length / PER_PAGE));
   const players = new Set(collection.map(c => c.pid));
@@ -269,7 +272,7 @@ export function Album({ cards, collection, setCollection, packs, onPackOpened }:
     if (packs <= 0) return;
     onPackOpened();
     const p = openPack(pool);
-    setPack({ cards: p, before: new Set(collection.map(c => c.pid)) });
+    setPack(prev => ({ cards: p, before: new Set(collection.map(c => c.pid)), n: (prev?.n ?? 0) + 1 }));
     setCollection([...collection, ...p]);
   };
 
@@ -306,7 +309,7 @@ export function Album({ cards, collection, setCollection, packs, onPackOpened }:
       </div>
 
       <AnimatePresence>
-        {pack && <PackReveal cards={pack.cards} isNew={c => !pack.before.has(c.pid)} onClose={() => setPack(null)} />}
+        {pack && <PackReveal key={pack.n} cards={pack.cards} isNew={c => !pack.before.has(c.pid)} onClose={() => setPack(null)} left={packs} onNext={rip} />}
         {focus && focus.cards.length > 0 && (
           <motion.div className="absolute inset-0 z-40 flex flex-col items-center justify-center gap-6" style={{ background: 'rgba(5,5,10,0.85)', backdropFilter: 'blur(6px)' }} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setFocus(null)}>
             <div className="flex items-center gap-4 text-white">
