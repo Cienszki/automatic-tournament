@@ -12,7 +12,7 @@ import { calcPerformanceScore, MIN_SCORED_GAME_MINS } from '@/lib/performance-sc
 export const ROLE_KEYS = ['Carry', 'Mid', 'Offlane', 'Soft Support', 'Hard Support'] as const;
 export type RoleKey = typeof ROLE_KEYS[number];
 export const POS: Record<RoleKey, number> = { Carry: 1, Mid: 2, Offlane: 3, 'Soft Support': 4, 'Hard Support': 5 };
-export const ROLE_SHORT: Record<RoleKey, string> = { Carry: 'Carry', Mid: 'Mid', Offlane: 'Offlane', 'Soft Support': 'Soft supp', 'Hard Support': 'Hard sup' };
+export const ROLE_SHORT: Record<RoleKey, string> = { Carry: 'Carry', Mid: 'Mid', Offlane: 'Offlane', 'Soft Support': 'Support', 'Hard Support': 'Hard Supp' };
 
 export const ATTRS = [
   { abbr: 'WAL', name: 'Walka', key: 'kda' },

@@ -8,7 +8,7 @@
 // Cards are dragged (the card sticks to the pointer where you grabbed it) or tapped and then sent by
 // clicking anywhere on a target. Fights play as a scene; points fly to the score; the end is a show.
 
-import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, LayoutGroup, motion } from 'framer-motion';
 import { ArrowLeft, ArrowRight, CircleHelp, Flag, Home, Moon, Mountain, Plus, ScrollText, Shield, Skull, Sprout, Sun, Swords, Users, Wind, X } from 'lucide-react';
@@ -17,10 +17,10 @@ import { useFitText } from '@/components/teams-section/fit';
 import { avgOvr, cpuDeck, type DeckRule, type GCard } from '@/lib/card-lab/cards';
 import {
   DECK_PER_ROLE, DECK_SIZE, KEYWORD, OBJECTIVES, ORDERS, PER_SIDE_AT_OBJECTIVE, WIN_POINTS,
-  baseMight, canDeploy, canMove, cardStrength, deploy, endTurn, itemIcon, might, move, moveCost, newGame, resolve, smokeLeft, startOrders, strengthParts, takePoints,
-  type Ev, type Fight, type Gain, type Loc, type ObjId, type OState, type OUnit, type Part, type Side,
+  autoTargets, baseMight, battle, canDeploy, canMove, cardStrength, clashes as clashesOf, deploy, endTurn, fighters, might, move, moveCost, newGame, resolve, smokeLeft, startOrders, strengthParts, takePoints, targetProblem,
+  type Ev, type Fight, type Gain, type Loc, type ObjId, type OState, type Targets, type OUnit, type Part, type Side,
 } from '@/lib/card-lab/outposts';
-import { applyAct, cpuNextAction, LEVELS, type Level } from '@/lib/card-lab/outposts-ai';
+import { applyAct, chooseTargets, cpuNextAction, LEVELS, type Level } from '@/lib/card-lab/outposts-ai';
 import { CardBack, useFitScale } from './ui';
 import { Tour, type TourStep } from '@/components/tour/Tour';
 import { Hint } from '@/components/tour/Hint';
@@ -259,7 +259,7 @@ function Pill({ t }: { t: Target }) {
       className="flex items-center gap-2 rounded-full pl-2.5 pr-4 py-1.5 text-[13px] font-bold whitespace-nowrap pointer-events-none"
       style={{ background: TONE[t.tone], color: '#07080b', boxShadow: `0 0 18px ${TONE[t.tone]}66` }}>
       {t.cost < 0 ? <span>zwalnia rozkaz ·</span>
-        : t.smoke ? <><Wind className="w-4 h-4" />Soft supp w grupie: nie kosztuje rozkazu ·</>
+        : t.smoke ? <><Wind className="w-4 h-4" />Support w grupie: nie kosztuje rozkazu ·</>
         : t.cost === 0 ? <span>dołącza do grupy: bez kosztu ·</span>
         : <span className="flex items-center gap-1.5">koszt <Gem size={10} /> ·</span>}<span>{t.text}</span>
     </motion.span>
@@ -501,108 +501,189 @@ function CombatLog({ s, onClose }: { s: OState; onClose: () => void }) {
   );
 }
 
-// ── The fight scene ─────────────────────────────────────────────────────────
+// ── The battle: you pick who hits whom, the rival picks at the same time ──────
 
-const HIT_AT = 1.5; const WAVE = 0.5;
-function FightScene({ f, name, icon, onDone }: { f: Fight; name: string; icon: string; onDone: () => void }) {
+type Pt = { x: number; y: number; w: number; h: number };
+const BW = 148;
+
+/**
+ * One fight. Before: your units' arrows (pre-filled with a sensible choice — click your card, then an
+ * enemy, to change one). "Walcz!" reveals the rival's arrows, the hits land at once, the dead burn,
+ * and the result shows. `onDone` gets your final choice.
+ */
+function BattleScreen({ s, at, initial, theirs, onDone }: { s: OState; at: 0 | 1 | 2; initial: Targets; theirs: Targets; onDone: (mine: Targets) => void }) {
   const font = useHeaderFont();
-  const [t, setT] = useState(0);
-  const done = useRef(onDone); done.current = onDone;
-  // Both sides hit at the same time: the n-th hit of each side lands in the same wave
-  const wave = useMemo(() => {
-    const side = (uid: string) => f.lines.find(l => l.uid === uid)!.side;
-    const n: Record<Side, number> = { 0: 0, 1: 0 };
-    return f.hits.map(h => n[side(h.uid)]++);
-  }, [f]);
-  const waves = Math.max(0, ...wave.map(w => w + 1));
-  const total = HIT_AT + waves * WAVE + 1.3;
-  useEffect(() => {
-    const start = performance.now(); let raf = 0;
-    const tick = () => { const x = (performance.now() - start) / 1000; setT(x); if (x < total) raf = requestAnimationFrame(tick); else done.current(); };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
-  }, [total]);
-  const row = (side: Side) => f.lines.filter(l => l.side === side);
-  const counted = (side: Side) => Math.round(f.power[side] * Math.min(1, Math.max(0, (t - 0.4) / 0.8)));
-  const lunge = t > 1.15 && t < 1.5;
-  const result = t > HIT_AT + waves * WAVE + 0.15;
-  const outcomeText = f.outcome === 'took' ? (f.attacker === 0 ? 'Przejmujesz objective' : 'Rywal przejmuje objective')
-    : f.outcome === 'held' ? (f.attacker === 0 ? 'Obrona rywala wytrzymała' : 'Twoja obrona wytrzymała')
-    : 'Remis: polegli wszyscy';
-  const goodForMe = (f.outcome === 'took' && f.attacker === 0) || (f.outcome === 'held' && f.attacker === 1);
+  const fit = useFitScale();
+  const [mine, setMine] = useState<Targets>(initial);
+  const [picked, setPicked] = useState<string | null>(null);
+  const [stage, setStage] = useState(0); // 0 choosing · 1 rival's arrows · 2 hits · 3 dead · 4 result
+  const [pos, setPos] = useState<Record<string, Pt>>({});
+  const [ptr, setPtr] = useState<{ x: number; y: number } | null>(null);
+  const area = useRef<HTMLDivElement>(null);
+  const ob = s.objectives[at]; const def = OBJECTIVES[ob.id];
+  const attacking = s.active === 0;
+  const me = fighters(s, at, 0); const them = fighters(s, at, 1);
+  const problem = targetProblem(s, at, 0, mine);
+  const f = useMemo(() => (stage ? battle(s, at, { ...mine, ...theirs }) : null), [stage, s, at, mine, theirs]);
 
-  const card = (l: Fight['lines'][number]) => {
-    const i = f.hits.findIndex(h => h.uid === l.uid); const h = i >= 0 ? f.hits[i] : null;
-    const hitT = HIT_AT + (i >= 0 ? wave[i] : 0) * WAVE;
-    const hit = !!h && t > hitT; const burning = !!h?.died && t > hitT + 0.12;
+  // Where the cards are (layout px inside the scaled stage), for the arrows
+  const measure = useCallback(() => {
+    const box = area.current?.getBoundingClientRect(); if (!box) return;
+    const out: Record<string, Pt> = {};
+    area.current!.querySelectorAll<HTMLElement>('[data-bu]').forEach(el => {
+      const r = el.getBoundingClientRect();
+      out[el.dataset.bu!] = { x: (r.left - box.left) / fit, y: (r.top - box.top) / fit, w: r.width / fit, h: r.height / fit };
+    });
+    setPos(out);
+  }, [fit]);
+  useLayoutEffect(() => { measure(); const t = setTimeout(measure, 450); return () => clearTimeout(t); }, [measure]);
+
+  const fight = () => {
+    if (problem || stage) return;
+    setPicked(null); setStage(1);
+    [2, 3, 4].forEach((n, i) => setTimeout(() => setStage(x => Math.max(x, n)), 650 + i * 450));
+  };
+  const pick = (uid: string) => { if (!stage) setPicked(p => (p === uid ? null : uid)); };
+  const aim = (target: string) => {
+    if (stage || !picked) return;
+    setMine(m => ({ ...m, [picked]: target })); setPicked(null); setPtr(null);
+  };
+  const local = (e: React.PointerEvent) => { const box = area.current!.getBoundingClientRect(); return { x: (e.clientX - box.left) / fit, y: (e.clientY - box.top) / fit }; };
+
+  // My damage on each enemy, as chosen so far
+  const incoming = (uid: string) => me.filter(x => mine[x.u.uid] === uid).reduce((a, x) => a + x.m, 0);
+  const taken = (uid: string) => f?.taken[uid] ?? 0;
+  const dead = (uid: string) => stage >= 3 && !!f?.died.includes(uid);
+
+  const arrow = (from: string, to: string, side: Side, k: number, n: number) => {
+    const a = pos[from]; const b = pos[to]; if (!a || !b) return null;
+    const off = (k - (n - 1) / 2) * 16 + (side === 0 ? -8 : 8);
+    const x1 = a.x + a.w / 2 + off; const y1 = side === 0 ? a.y - 4 : a.y + a.h + 4;
+    const x2 = b.x + b.w / 2 + off; const y2 = side === 0 ? b.y + b.h + 8 : b.y - 8;
+    const c = sideColor(side);
     return (
-      <motion.div key={l.uid} className="relative"
-        animate={{ x: hit && t < hitT + 0.3 ? [0, -10, 10, -6, 0] : 0, y: lunge ? (l.side === 0 ? -34 : 34) : 0, opacity: burning && t > hitT + 0.8 ? 0.25 : 1, filter: burning ? 'grayscale(0.8) brightness(0.6)' : 'none' }}
-        transition={{ duration: 0.25 }}>
-        <Figure card={l.card} m={l.m} side={l.side} w={128} parts={l.parts} />
-        <div className="absolute -bottom-7 inset-x-0 flex justify-center gap-1">
-          {l.parts.map((p, j) => (
-            <motion.span key={j} className="rounded-full px-1.5 text-[11px] font-bold whitespace-nowrap" style={{ background: 'rgba(0,0,0,0.78)', color: p.kind === 'card' ? T.text : signColor(p.v) }}
-              initial={{ opacity: 0, y: 6 }} animate={{ opacity: t > 0.25 + j * 0.12 ? 1 : 0, y: t > 0.25 + j * 0.12 ? 0 : 6 }}>{j && p.v >= 0 ? '+' : ''}{p.v}{p.kind === 'card' ? '' : ` ${p.label}`}</motion.span>
-          ))}
-        </div>
-        {hit && <motion.div className="absolute inset-0 rounded-[14px] pointer-events-none" initial={{ opacity: 0.9 }} animate={{ opacity: 0 }} transition={{ duration: 0.45 }} style={{ background: 'rgba(255,60,40,0.55)' }} />}
+      <motion.path key={`${side}${from}`} d={`M${x1},${y1} C${x1},${(y1 + y2) / 2} ${x2},${(y1 + y2) / 2} ${x2},${y2}`} fill="none" stroke={c} strokeWidth={5} strokeLinecap="round"
+        markerEnd={`url(#bh${side})`} style={{ filter: `drop-shadow(0 0 6px ${c})` }}
+        initial={{ pathLength: 0, opacity: 0 }} animate={{ pathLength: 1, opacity: dead(from) ? 0.25 : 1 }} transition={{ duration: 0.45 }} />
+    );
+  };
+  const arrows = (side: Side, t: Targets) => {
+    const list = (side === 0 ? me : them).filter(x => t[x.u.uid]);
+    const per: Record<string, number> = {};
+    return list.map(x => { const to = t[x.u.uid]; const k = per[to] = (per[to] ?? -1) + 1; return arrow(x.u.uid, to, side, k, list.filter(y => t[y.u.uid] === to).length); });
+  };
+
+  const card = ({ u, m }: { u: OUnit; m: number }) => {
+    const enemy = u.side === 1;
+    const inc = enemy && !stage ? incoming(u.uid) : 0;
+    const hit = stage >= 2 && taken(u.uid) > 0;
+    const burning = dead(u.uid);
+    const target = enemy && !!picked && !stage;
+    return (
+      <motion.div key={u.uid} data-bu={u.uid} className="relative" style={{ cursor: !stage ? 'pointer' : undefined }}
+        onPointerDown={!enemy ? () => pick(u.uid) : undefined} onPointerUp={enemy ? () => aim(u.uid) : undefined}
+        animate={{ x: hit && stage === 2 ? [0, -10, 10, -6, 0] : 0, opacity: burning && stage >= 4 ? 0.3 : 1, filter: burning ? 'grayscale(0.8) brightness(0.6)' : 'none', scale: target ? 1.04 : 1 }}
+        whileHover={!stage ? { y: enemy ? 4 : -6 } : undefined} transition={{ duration: 0.25 }}>
+        <Figure card={u.card} m={m} side={u.side} w={BW} selected={picked === u.uid} glow={target} />
+        {u.card.role === 'Offlane' && (
+          <Tip content="Tank: zanim uderzysz kogoś innego, Offlane musi dostać tyle obrażeń, żeby zginął">
+            <span className="absolute -right-3 -top-3 z-20 w-9 h-9 rounded-full flex items-center justify-center" style={{ background: '#0b0c12', boxShadow: `0 0 0 2px ${sideColor(u.side)}` }}><Shield className="w-5 h-5" style={{ color: sideColor(u.side) }} /></span>
+          </Tip>
+        )}
+        {/* What my arrows will do to this enemy */}
+        {inc > 0 && (
+          <span className="absolute left-1/2 -translate-x-1/2 -bottom-4 z-20 flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[14px] font-bold whitespace-nowrap"
+            style={{ background: inc >= m ? T.warn : 'rgba(0,0,0,0.85)', color: inc >= m ? '#07080b' : T.text }}>
+            {inc >= m && <Skull className="w-4 h-4" />}−{inc} / {m}
+          </span>
+        )}
+        {hit && <motion.div className="absolute inset-0 rounded-[14px] pointer-events-none" initial={{ opacity: 0.9 }} animate={{ opacity: 0 }} transition={{ duration: 0.5 }} style={{ background: 'rgba(255,60,40,0.55)' }} />}
         {hit && (
-          <motion.span className="absolute left-1/2 -translate-x-1/2 top-6 font-logik-extended-bold text-[34px] z-20" style={{ color: '#ff6b5b', textShadow: '0 0 12px #000, 0 2px 4px #000', ...font }}
-            initial={{ scale: 0.4, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 0.3 }}>−{h!.dmg}</motion.span>
+          <motion.span className="absolute left-1/2 -translate-x-1/2 top-8 font-logik-extended-bold text-[38px] z-20" style={{ color: '#ff6b5b', textShadow: '0 0 12px #000, 0 2px 4px #000', ...font }}
+            initial={{ scale: 0.4, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 0.3 }}>−{taken(u.uid)}</motion.span>
         )}
         {burning && (
           <motion.div className="absolute inset-0 rounded-[14px] pointer-events-none overflow-hidden" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
             <motion.div className="absolute inset-x-0 bottom-0" style={{ background: 'linear-gradient(0deg, #ff3d00, #ff9100cc 40%, #ffd60033 75%, transparent)', mixBlendMode: 'screen' }}
               initial={{ height: '0%' }} animate={{ height: ['0%', '110%', '110%'], opacity: [1, 1, 0.4] }} transition={{ duration: 0.8 }} />
-            {Array.from({ length: 7 }, (_, j) => (
-              <motion.span key={j} className="absolute rounded-full" style={{ left: `${10 + j * 12}%`, bottom: 0, width: 6, height: 6, background: '#ffb347', boxShadow: '0 0 8px #ff6d00' }}
-                animate={{ y: [-10, -140], opacity: [1, 0] }} transition={{ duration: 0.9 + (j % 3) * 0.3, delay: j * 0.06 }} />
-            ))}
           </motion.div>
         )}
       </motion.div>
     );
   };
 
+  const outcomeText = !f ? '' : f.outcome === 'took' ? (attacking ? 'Przejmujesz objective' : 'Rywal przejmuje objective')
+    : f.outcome === 'held' ? (attacking ? 'Obrona rywala wytrzymała' : 'Twoja obrona wytrzymała')
+    : f.outcome === 'repelled' ? (attacking ? 'Przeżyli obaj: wracasz do bazy' : 'Przeżyli obaj: rywal wraca do bazy') : 'Remis: polegli wszyscy';
+  const good = !!f && ((f.outcome === 'took' && attacking) || ((f.outcome === 'held' || f.outcome === 'repelled') && !attacking));
+
   return (
-    <motion.div className="absolute inset-0 z-50 flex flex-col items-center justify-center gap-6 cursor-pointer" onClick={() => done.current()}
-      style={{ background: 'radial-gradient(circle at 50% 50%, rgba(40,20,14,0.88), rgba(5,6,9,0.94) 70%)', backdropFilter: 'blur(5px)' }}
-      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-      <motion.div className="flex items-center gap-3" initial={{ scale: 1.4, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}>
+    <motion.div className="absolute inset-0 z-[95] flex flex-col items-center justify-center gap-5" onClick={() => { if (stage && stage < 4) setStage(4); }}
+      style={{ background: 'radial-gradient(circle at 50% 50%, rgba(40,20,14,0.9), rgba(5,6,9,0.95) 70%)', backdropFilter: 'blur(5px)' }}
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      onPointerMove={picked ? e => setPtr(local(e)) : undefined}>
+      <motion.div className="flex items-center gap-3" initial={{ scale: 1.3, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={objModel(icon)} alt="" className="w-[84px] h-[84px] object-contain -my-5" style={{ filter: 'drop-shadow(0 6px 12px rgba(0,0,0,0.8))' }} />
-        <span className="font-logik-extended-bold uppercase text-[34px]" style={{ color: T.text, ...font }}>Walka: {name}</span>
+        <img src={objModel(ob.id)} alt="" className="w-[84px] h-[84px] object-contain -my-5" style={{ filter: 'drop-shadow(0 6px 12px rgba(0,0,0,0.8))' }} />
+        <span className="font-logik-extended-bold uppercase text-[32px]" style={{ color: T.text, ...font }}>{attacking ? 'Atakujesz' : 'Rywal atakuje'}: {def.name}</span>
       </motion.div>
-      {([1, 0] as Side[]).map(side => (
-        <div key={side} className="flex items-center gap-8">
-          <div className="w-[120px] text-right">
-            <div className="font-logik-extended-bold text-[56px] leading-none tabular-nums" style={{ color: sideColor(side), textShadow: `0 0 20px ${sideColor(side)}`, ...font }}>{counted(side)}</div>
-            <div className="text-[12px] uppercase tracking-widest" style={{ color: T.muted }}>{side === 0 ? 'Twoja siła' : 'Siła rywala'}</div>
-          </div>
-          <div className="flex gap-5 pb-7">{row(side).map(card)}</div>
-        </div>
-      ))}
-      <div className="h-[64px] flex flex-col items-center justify-center">
-        <AnimatePresence mode="wait">
-          {result ? (
-            <motion.div key="r" className="font-logik-extended-bold uppercase text-[32px]" initial={{ scale: 0.6, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
-              style={{ color: f.outcome === 'wiped' ? T.text : goodForMe ? T.me : T.rival, textShadow: `0 0 24px ${f.outcome === 'wiped' ? T.muted : goodForMe ? T.me : T.rival}`, ...font }}>{outcomeText}{f.points ? ` · +${f.points} pkt` : ''}</motion.div>
-          ) : (
-            <motion.div key="h" className="text-[14px] max-w-[760px] text-center" style={{ color: T.muted }} exit={{ opacity: 0 }}>
-              Każda strona zadaje tyle obrażeń, ile ma siły łącznie. Najpierw obrywa Offlane, potem najsłabsi. Ginie ten, kto dostanie tyle obrażeń, ile sam ma siły.
-            </motion.div>
+      <div className="text-[15px] font-bold" style={{ color: T.muted }}>
+        {stage ? 'Wszystkie ciosy padają naraz' : <>Każda jednostka bije jeden cel za tyle, ile ma siły. <span style={{ color: T.text }}>Kliknij swoją kartę, potem cel rywala.</span> Rywal wybiera w tym samym czasie.</>}
+      </div>
+
+      <div ref={area} className="relative flex flex-col items-center gap-[150px] py-6 px-10">
+        <div className="flex gap-8">{them.map(card)}</div>
+        <div className="flex gap-8">{me.map(card)}</div>
+        <svg className="absolute inset-0 w-full h-full overflow-visible pointer-events-none">
+          <defs>
+            {([0, 1] as Side[]).map(sd => (
+              <marker key={sd} id={`bh${sd}`} viewBox="0 0 10 10" refX="5" refY="5" markerWidth="4" markerHeight="4" orient="auto-start-reverse">
+                <path d="M0,0 L10,5 L0,10 z" fill={sideColor(sd)} />
+              </marker>
+            ))}
+          </defs>
+          {arrows(0, picked ? Object.fromEntries(Object.entries(mine).filter(([k]) => k !== picked)) : mine)}
+          {stage >= 1 && arrows(1, theirs)}
+          {picked && ptr && pos[picked] && (
+            <path d={`M${pos[picked].x + pos[picked].w / 2},${pos[picked].y - 4} L${ptr.x},${ptr.y}`} stroke={T.me} strokeWidth={4} strokeDasharray="8 8" fill="none" markerEnd="url(#bh0)" />
           )}
+        </svg>
+      </div>
+
+      <div className="h-[44px] flex items-center justify-center">
+        <AnimatePresence mode="wait">
+          {stage >= 4 && f ? (
+            <motion.div key="r" className="font-logik-extended-bold uppercase text-[30px]" initial={{ scale: 0.6, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+              style={{ color: f.outcome === 'wiped' ? T.text : good ? T.me : T.rival, textShadow: `0 0 24px ${f.outcome === 'wiped' ? T.muted : good ? T.me : T.rival}`, ...font }}>
+              {outcomeText}{f.points ? ` · +${f.points} pkt` : ''}
+            </motion.div>
+          ) : !stage && problem ? (
+            <motion.div key="p" className="text-[15px] font-bold" style={{ color: T.warn }} initial={{ opacity: 0 }} animate={{ opacity: 1 }}>{problem}</motion.div>
+          ) : null}
         </AnimatePresence>
       </div>
-      <div className="absolute bottom-4 text-[11px]" style={{ color: T.muted }}>kliknij, by pominąć</div>
+      <div className="h-[52px] flex items-center gap-4">
+        {!stage && (
+          <>
+            <motion.button type="button" onClick={e => { e.stopPropagation(); setMine(autoTargets(s, at, 0)); setPicked(null); }} whileHover={{ scale: 1.04 }}
+              className="rounded-full px-6 py-3 text-[13px] font-bold uppercase tracking-widest" style={{ boxShadow: `inset 0 0 0 1.5px ${T.faint}`, color: T.text }}>Podpowiedz</motion.button>
+            <motion.button type="button" disabled={!!problem} onClick={e => { e.stopPropagation(); fight(); }} whileHover={!problem ? { scale: 1.05 } : undefined}
+              className="rounded-full px-10 py-3 font-logik-extended-bold uppercase tracking-widest text-[16px] text-white disabled:opacity-40"
+              style={{ background: ACC, boxShadow: `0 0 26px ${mix(ACC, 60)}`, ...font }}>Walcz!</motion.button>
+          </>
+        )}
+        {stage >= 4 && (
+          <motion.button type="button" onClick={e => { e.stopPropagation(); onDone(mine); }} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
+            className="rounded-full px-10 py-3 font-logik-extended-bold uppercase tracking-widest text-[16px] text-white" style={{ background: ACC, boxShadow: `0 0 26px ${mix(ACC, 60)}`, ...font }}>Dalej</motion.button>
+        )}
+      </div>
     </motion.div>
   );
 }
 
 // ── The end ─────────────────────────────────────────────────────────────────
 
-function EndScreen({ won, score, turns, onRematch, onNew }: { won: boolean; score: [number, number]; turns: number; onRematch: () => void; onNew: () => void }) {
+function EndScreen({ won, score, turns, onRematch, onNew, onExit }: { won: boolean; score: [number, number]; turns: number; onRematch: () => void; onNew: () => void; onExit?: () => void }) {
   const font = useHeaderFont();
   const color = won ? T.me : T.rival;
   const word = won ? 'Zwycięstwo' : 'Porażka';
@@ -635,6 +716,7 @@ function EndScreen({ won, score, turns, onRematch, onNew }: { won: boolean; scor
       <motion.div className="relative flex gap-4 mt-8" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1.6 }}>
         <motion.button type="button" onClick={onRematch} whileHover={{ scale: 1.05 }} className="rounded-full px-9 py-3.5 font-logik-extended-bold uppercase tracking-widest text-white" style={{ background: ACC, boxShadow: `0 0 30px ${mix(ACC, 60)}`, ...font }}>Rewanż</motion.button>
         <motion.button type="button" onClick={onNew} whileHover={{ scale: 1.05 }} className="rounded-full px-9 py-3.5 font-logik-extended-bold uppercase tracking-widest text-white" style={{ boxShadow: 'inset 0 0 0 1.5px rgba(255,255,255,0.45)', ...font }}>Nowy rywal</motion.button>
+        {onExit && <motion.button type="button" onClick={onExit} whileHover={{ scale: 1.05 }} className="flex items-center gap-2 rounded-full px-9 py-3.5 font-logik-extended-bold uppercase tracking-widest text-white" style={{ boxShadow: 'inset 0 0 0 1.5px rgba(255,255,255,0.45)', ...font }}><Home className="w-5 h-5" />Wyjdź</motion.button>}
       </motion.div>
     </motion.div>
   );
@@ -648,10 +730,10 @@ const TOUR: TourStep[] = [
   { target: '[data-tour="score"]', title: 'Cel gry', text: 'Kto pierwszy zdobędzie 10 punktów, wygrywa. Punkty dają objective\'y: +1 za przejęcie (Roshan +2) i +1 na początku każdej Twojej tury za każdy objective, na którym stoi Twoja jednostka.' },
   { target: '[data-tour="objectives"]', title: 'Objective\'y', text: 'Trzy miejsca z mapy. Każde ma swoją zasadę, napisaną pod nazwą. Na górze stoją jednostki rywala, na dole Twoje.' },
   { target: '[data-tour="slots"]', title: 'Miejsca', text: 'Na jednym objectivie zmieszczą się maks. 3 Twoje jednostki: półprzezroczyste pola pokazują wolne miejsca.' },
-  { target: '[data-tour="hand"]', title: 'Twoje karty', text: <>Duża liczba to <b>siła</b> (z oceny gracza za tę serię). Pod nazwą jest <b>typ</b>: Carry, Mid, Offlane, Soft supp albo Hard support. <b>Każdy typ ma specjalną umiejętność</b>: najedź na kartę i przeczytaj ją. To klucz do wygranej.</> },
+  { target: '[data-tour="hand"]', title: 'Twoje karty', text: <>Duża liczba to <b>siła</b> (z oceny gracza za tę serię). Pod nazwą jest <b>typ</b>: Carry, Mid, Offlane, Support albo Hard Supp. <b>Każdy typ ma specjalną umiejętność</b>: najedź na kartę i przeczytaj ją. To klucz do wygranej.</> },
   { target: '[data-tour="orders"]', title: 'Rozkazy', text: <>Masz <b>3 rozkazy na turę, wspólne na wszystko</b>. Wystawienie kart z ręki kosztuje 1 rozkaz na kartę. Ruch kosztuje 1 rozkaz na <b>grupę</b>: jednostki idące z jednego miejsca w to samo miejsce płacą razem, także gdy przeciągasz je po kolei. Nie musisz wystawiać wszystkich kart: możesz zostawić rozkazy na ruchy.</> },
   { target: '[data-tour="base"]', title: 'Baza', text: 'Wystawiasz tu karty z ręki i czekają tu do następnej tury. Potem wysyłasz je na objective\'y. Z objective\'u na inny objective idzie się przez bazę (prosto potrafi tylko Mid i każdy, kto stoi na Twin Gates). Każda jednostka może ruszyć się raz na turę.' },
-  { target: '[data-tour="objectives"]', title: 'Walka', text: <>Gdy po zatwierdzeniu ruchów Twoje jednostki stoją na objectivie z rywalem, jest walka. <b>Każda strona zadaje tyle obrażeń, ile ma siły łącznie.</b> Obrażenia trafiają najpierw w Offlane&apos;a, potem w najsłabszych. Jednostka ginie, gdy dostanie tyle obrażeń, ile ma siły. Kto zostanie, trzyma objective. Przy remisie giną wszyscy.</> },
+  { target: '[data-tour="objectives"]', title: 'Walka', text: <>Gdy po zatwierdzeniu ruchów Twoje jednostki stoją na objectivie z rywalem, jest walka. <b>Każda jednostka wybiera jeden cel i zadaje mu tyle obrażeń, ile ma siły</b>; rywal wybiera w tym samym czasie. Jednostka ginie, gdy dostanie tyle obrażeń, ile ma siły. Offlane&apos;owi rywala trzeba najpierw dać tyle, żeby zginął. Zostali tylko atakujący: przejmują objective. Jeśli przeżyją obie strony, atakujący wracają do bazy.</> },
   { target: '[data-tour="turn"]', title: 'Tura', text: 'Faza 1: wystawiasz karty. Faza 2: planujesz ruchy, które możesz zmieniać i cofać. Faza 3: po zatwierdzeniu wszystkie walki i przejęcia rozgrywają się naraz. Ten przycisk przechodzi dalej. Gdy rozkazy się skończą, lub nie możesz wykonać już żadnej akcji, przejdziesz dalej sam.' },
   { target: '[data-tour="help"]', title: 'Pomoc i przebieg', text: 'Znak zapytania uruchamia ten samouczek jeszcze raz (tam się schowa). Ikona obok pokazuje przebieg meczu.' },
 ];
@@ -669,8 +751,9 @@ export function OutpostsGame({ deck, all, onBack, level = 'easy' }: { deck: GCar
   const [drag, setDrag] = useState<DragState | null>(null);
   const [settled, setSettled] = useState<Set<string>>(new Set());
   const [banner, setBanner] = useState<{ text: string; side: Side; key: number } | null>(null);
-  const [scenes, setScenes] = useState<Fight[]>([]);
-  const scene = scenes[0] ?? null;
+  // The fights of this phase 3, one battle screen each; all choices go to resolve() at the end
+  const [battleQ, setBattleQ] = useState<{ base: OState; locs: Array<0 | 1 | 2>; i: number; chosen: Targets; mine: Targets; theirs: Targets } | null>(null);
+  const scene = battleQ;
   const [flyers, setFlyers] = useState<Flyer[]>([]);
   const [owed, setOwed] = useState<[number, number]>([0, 0]);
   const [note, setNote] = useState<string | null>(null);
@@ -701,7 +784,7 @@ export function OutpostsGame({ deck, all, onBack, level = 'easy' }: { deck: GCar
   const start = (rematch = false) => {
     const theirs = rematch && cpu.length ? cpu : cpuDeck(all, OUTPOSTS_RULE, avgOvr(deck) - LEVELS[level].deckGap, new Set(deck.map(c => c.pid)));
     seenFight.current = 0; seenGain.current = 0; pendingGains.current = []; prevMight.current = {};
-    setCpu(theirs); setS(newGame([deck, theirs])); setSel([]); setSelCards([]); setScenes([]); setFlyers([]); setOwed([0, 0]);
+    setCpu(theirs); setS(newGame([deck, theirs])); setSel([]); setSelCards([]); setBattleQ(null); setFlyers([]); setOwed([0, 0]);
   };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { start(); }, [deck]);
@@ -716,7 +799,7 @@ export function OutpostsGame({ deck, all, onBack, level = 'easy' }: { deck: GCar
   // New fight → scene; new points → fly once the scene is over
   useEffect(() => {
     if (!s) return;
-    if (s.fightKey !== seenFight.current) { const fresh = s.fights.filter(f => f.key > seenFight.current); seenFight.current = s.fightKey; if (fresh.length) setScenes(q => [...q, ...fresh]); }
+    seenFight.current = s.fightKey;
     if (s.gainKey !== seenGain.current) {
       seenGain.current = s.gainKey;
       pendingGains.current = [...pendingGains.current, ...s.gains];
@@ -762,7 +845,7 @@ export function OutpostsGame({ deck, all, onBack, level = 'easy' }: { deck: GCar
   // The computer: one action at a time, waiting for scenes and flying points
   useEffect(() => {
     if (!s || s.active !== 1 || s.winner !== null || s.phase === 'fight' || scene || flyers.length || banner || logOpen || tour) return;
-    const t = setTimeout(() => { const a = cpuNextAction(s, Math.random, level); setS(a ? applyAct(s, a) : resolve(s)); }, 900);
+    const t = setTimeout(() => { const a = cpuNextAction(s, Math.random, level); if (a) setS(applyAct(s, a)); else openBattles(s); }, 900);
     return () => clearTimeout(t);
   }, [s, scene, flyers.length, banner, logOpen, tour]);
 
@@ -801,6 +884,22 @@ export function OutpostsGame({ deck, all, onBack, level = 'easy' }: { deck: GCar
   useEffect(() => { if (!note) return; const t = setTimeout(() => setNote(null), 2600); return () => clearTimeout(t); }, [note]);
   const lastHint = useRef<string | null>(null);
   useEffect(() => { if (!settled.size) return; const t = setTimeout(() => setSettled(new Set()), 700); return () => clearTimeout(t); }, [settled]);
+
+  // ── Phase 3: one battle screen per fight (you attacking or defending), then everything resolves ──
+  const battleFor = (cur: OState, at: 0 | 1 | 2) => ({ mine: autoTargets(cur, at, 0), theirs: chooseTargets(cur, at, 1, level) });
+  const openBattles = (cur: OState) => {
+    const locs = clashesOf(cur);
+    if (!locs.length) { setS(resolve(cur)); return; }
+    setSel([]); setSelCards([]);
+    setBattleQ({ base: cur, locs: [...locs], i: 0, chosen: {}, ...battleFor(cur, locs[0]) });
+  };
+  const battleDone = (mine: Targets) => {
+    const b = battleQ; if (!b) return;
+    const chosen = { ...b.chosen, ...mine, ...b.theirs };
+    const i = b.i + 1;
+    if (i < b.locs.length) { setBattleQ({ ...b, i, chosen, ...battleFor(b.base, b.locs[i]) }); return; }
+    setBattleQ(null); setS(resolve(b.base, chosen));
+  };
 
   // ── Actions ──
   const doDeploy = (ids: string[]) => {
@@ -908,7 +1007,7 @@ export function OutpostsGame({ deck, all, onBack, level = 'easy' }: { deck: GCar
     }
     return null;
   };
-  const advance = () => { const cur = stateRef.current; if (!cur || cur.active !== 0 || cur.phase === 'fight') return; setS(cur.phase === 'deploy' ? startOrders(cur) : resolve(cur)); setSel([]); setSelCards([]); };
+  const advance = () => { const cur = stateRef.current; if (!cur || cur.active !== 0 || cur.phase === 'fight') return; if (cur.phase === 'deploy') setS(startOrders(cur)); else openBattles(cur); setSel([]); setSelCards([]); };
   const sendTo = (to: Loc) => { if (movingCards.length && to === 'base') doDeploy(movingCards); else if (sel.length) doMove(sel, to); };
   // What the picked-up units would cost (exactly, once the pointer is over a target)
   const hoverCost = hoverTo != null && movingUnits.length && phase === 'move' && !canMove(s, movingUnits, hoverTo) ? moveCost(s, movingUnits, hoverTo) : null;
@@ -954,7 +1053,7 @@ export function OutpostsGame({ deck, all, onBack, level = 'easy' }: { deck: GCar
     const onObj = movingUnits.length > 0 && s.units.filter(u => movingUnits.includes(u.uid)).every(u => u.loc !== 'base' && u.card.role !== 'Mid');
     out.push({ id: 'via-base', target: oneUnit ? `[data-uid="${oneUnit.uid}"]` : '[data-tour="base"]', text: "Z objective'u na inny idzie się przez bazę. Prosto potrafi tylko Mid (i każdy, kto stoi na Twin Gates).", when: phase === 'move' && onObj });
     const fightAt = ([0, 1, 2] as const).find(i => targetFor(i)?.tone === 'fight');
-    out.push({ id: 'fight', target: `[data-obj="${fightAt}"]`, text: 'Tu stoi rywal: po zatwierdzeniu ruchów będzie walka. Każda strona zadaje tyle obrażeń, ile ma siły. Najpierw obrywa Offlane.', when: fightAt != null });
+    out.push({ id: 'fight', target: `[data-obj="${fightAt}"]`, text: 'Tu stoi rywal: po zatwierdzeniu ruchów będzie walka. W walce sam wybierasz, kogo bije każda Twoja jednostka.', when: fightAt != null });
     const sinceTurn = s.events.slice(s.events.map(e => e.kind).lastIndexOf('turn'));
     out.push({ id: 'hold', target: '[data-tour="score"]', text: '+1 na początku Twojej tury za każdy objective, na którym stoisz.', when: phase === 'deploy' && sinceTurn.some(e => e.kind === 'points' && e.why === 'hold' && e.side === 0) });
     return out.find(h => h.when && h.target && !seenHints.has(h.id)) ?? null;
@@ -1107,11 +1206,11 @@ export function OutpostsGame({ deck, all, onBack, level = 'easy' }: { deck: GCar
       {tour && !scene && <Tour steps={TOUR} onClose={closeTour} home='[data-help="tour"]' />}
       {hint && !hintBlocked && <Hint target={hint.target} text={hint.text} place={hint.place} onClose={() => markHint(hint.id)} />}
       <AnimatePresence>
-        {scene && <FightScene key={scene.key} f={scene} name={OBJECTIVES[s.objectives[scene.at].id].name} icon={s.objectives[scene.at].id} onDone={() => setScenes(q => q.slice(1))} />}
+        {battleQ && <BattleScreen key={`${battleQ.base.turn}-${battleQ.i}`} s={battleQ.base} at={battleQ.locs[battleQ.i]} initial={battleQ.mine} theirs={battleQ.theirs} onDone={battleDone} />}
       </AnimatePresence>
       <AnimatePresence>
         {s.winner !== null && !scene && !flyers.length && (
-          <EndScreen won={s.winner === 0} score={[s.sides[0].score, s.sides[1].score]} turns={Math.ceil(s.turn / 2)} onRematch={() => start(true)} onNew={() => start()} />
+          <EndScreen won={s.winner === 0} score={[s.sides[0].score, s.sides[1].score]} turns={Math.ceil(s.turn / 2)} onRematch={() => start(true)} onNew={() => start()} onExit={onBack} />
         )}
       </AnimatePresence>
 

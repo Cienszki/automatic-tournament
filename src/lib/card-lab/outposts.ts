@@ -54,9 +54,9 @@ export const takePoints = (id: ObjId) => (id === 'roshan' ? 2 : 1);
 export const KEYWORD: Record<RoleKey, { name: string; ability: string; text: string }> = {
   Carry: { name: 'Carry', ability: 'Farma', text: `Na początku każdej Twojej tury, jeśli stoi na Twoim objectivie, zyskuje +1 siły na stałe (maks. +${FARMER_MAX}).` },
   Mid: { name: 'Mid', ability: 'Gank', text: "Może iść prosto z objective'u na inny objective. Pozostali muszą najpierw wrócić do bazy." },
-  Offlane: { name: 'Offlane', ability: 'Tank', text: '+1 siły. W walce obrywa jako pierwszy.' },
-  'Soft Support': { name: 'Soft supp', ability: 'Smoke', text: 'Raz na turę grupa, w której jest, rusza się bez rozkazu.' },
-  'Hard Support': { name: 'Hard support', ability: 'Aura', text: '+1 siły dla każdej Twojej jednostki na tym samym objectivie, także dla siebie.' },
+  Offlane: { name: 'Offlane', ability: 'Tank', text: '+1 siły. W walce rywal musi najpierw dać mu tyle obrażeń, żeby zginął, zanim uderzy kogoś innego.' },
+  'Soft Support': { name: 'Support', ability: 'Smoke', text: 'Raz na turę grupa, w której jest, rusza się bez rozkazu.' },
+  'Hard Support': { name: 'Hard Supp', ability: 'Aura', text: '+1 siły dla każdej Twojej jednostki na tym samym objectivie, także dla siebie.' },
 };
 
 /** `loc` = where it is (or is planned to go this turn), `from` = where it stood when the turn began */
@@ -73,10 +73,12 @@ export interface Fight {
   lines: FightLine[];
   /** [side 0 power, side 1 power] */
   power: [number, number];
-  /** In order: damage each unit took, from the other side's total */
-  hits: Array<{ uid: string; dmg: number; died: boolean }>;
+  /** Every unit's hit: who it struck and for how much */
+  blows: Array<{ from: string; to: string; dmg: number }>;
+  /** Damage each unit took in total */
+  taken: Record<string, number>;
   died: string[];
-  outcome: 'took' | 'held' | 'wiped';
+  outcome: 'took' | 'held' | 'repelled' | 'wiped';
   points: number;
 }
 export interface Gain { side: Side; pts: number; at: 0 | 1 | 2; why: 'take' | 'hold' }
@@ -130,7 +132,7 @@ export function strengthParts(s: OState, u: OUnit, defending = false): Part[] {
   if (u.growth) parts.push({ kind: 'farmer', label: 'Carry: farma', v: u.growth });
   if (u.loc !== 'base') {
     const aura = s.units.filter(o => o.side === u.side && o.loc === u.loc && o.card.role === 'Hard Support').length;
-    if (aura) parts.push({ kind: 'aura', label: 'Hard support', v: aura });
+    if (aura) parts.push({ kind: 'aura', label: 'Hard Supp', v: aura });
     if (u.card.team && s.units.some(o => o !== u && o.side === u.side && o.loc === u.loc && o.card.team?.id === u.card.team?.id)) parts.push({ kind: 'team', label: 'Drużyna', v: TEAM_BONUS });
     const ob = s.objectives[u.loc];
     if (defending && ob.id === 'highground' && ob.owner === u.side) parts.push({ kind: 'hg', label: 'High Ground', v: 1 });
@@ -157,8 +159,9 @@ const clone = (s: OState): OState => ({
 
 export function newGame(decks: [GCard[], GCard[]], rnd = Math.random, win = WIN_POINTS): OState {
   const ids = shuffle(OBJ_IDS, rnd).slice(0, 3);
-  // No compensation for going second: in simulations the second player already wins about half
-  const sides = decks.map((d): OBoard => { const x = shuffle(d, rnd); return { hand: x.slice(0, START_HAND), deck: x.slice(START_HAND), grave: [], score: 0 }; }) as OState['sides'];
+  // Going second starts with one card more: with chosen targets the first player won 63 % in
+  // simulations, 54 % with this (2 orders on the first turn instead overshot to 43 %)
+  const sides = decks.map((d, i): OBoard => { const x = shuffle(d, rnd); const n = START_HAND + (i === 1 ? 1 : 0); return { hand: x.slice(0, n), deck: x.slice(n), grave: [], score: 0 }; }) as OState['sides'];
   const s: OState = {
     turn: 1, active: 0, phase: 'deploy', orders: RULES.orders, budget: RULES.orders, deployed: 0, objectives: ids.map(id => ({ id, owner: null })),
     units: [], sides, winner: null, win, log: [], fights: [], fightKey: 0, gains: [], gainKey: 0, events: [{ kind: 'turn', side: 0, turn: 1 }],
@@ -256,17 +259,82 @@ export function move(prev: OState, uids: string[], to: Loc): OState {
   return place(prev, uids, to);
 }
 
-/** Damage order: Offlane first, then the weakest (most kills for the damage) */
-function takeDamage(s: OState, targets: OUnit[], dmg: number): Fight['hits'] {
-  const order = [...targets].sort((a, b) => (b.card.role === 'Offlane' ? 1 : 0) - (a.card.role === 'Offlane' ? 1 : 0) || might(s, a, true) - might(s, b, true));
-  const hits: Fight['hits'] = [];
-  for (const t of order) {
-    if (dmg <= 0) break;
-    const hp = might(s, t, true);
-    if (dmg >= hp) { hits.push({ uid: t.uid, dmg: hp, died: true }); dmg -= hp; }
-    else { hits.push({ uid: t.uid, dmg, died: false }); dmg = 0; }
+// ── Fights: everyone picks a target ─────────────────────────────────────────
+// Each unit in a fight hits one enemy for its strength; both sides choose at the same time. A unit
+// dies when the damage it takes reaches its strength. Offlane (Tank): before hitting anyone else, the
+// enemy must give each Offlane enough damage to kill it. Only the attackers left → they take the
+// objective; anyone defending left → it holds (surviving attackers go back to base).
+
+/** Who hits whom: unit uid → target uid */
+export type Targets = Record<string, string>;
+
+/** The units fighting at an objective, each with its strength (= what it deals and what kills it) */
+export function fighters(s: OState, at: 0 | 1 | 2, side: Side): Array<{ u: OUnit; m: number }> {
+  const def = side !== s.active;
+  return s.units.filter(u => u.side === side && u.loc === at).map(u => ({ u, m: might(s, u, def) }));
+}
+
+/** Why these targets are not allowed (null = fine). Checks `side`'s choices only. */
+export function targetProblem(s: OState, at: 0 | 1 | 2, side: Side, t: Targets): string | null {
+  const mine = fighters(s, at, side); const foes = fighters(s, at, (1 - side) as Side);
+  for (const { u } of mine) if (!foes.some(f => f.u.uid === t[u.uid])) return `Wybierz cel dla: ${u.card.name}`;
+  const tanks = foes.filter(f => f.u.card.role === 'Offlane');
+  if (tanks.length && mine.some(({ u }) => !tanks.some(f => f.u.uid === t[u.uid]))) {
+    for (const tk of tanks) {
+      const dmg = mine.filter(({ u }) => t[u.uid] === tk.u.uid).reduce((a, x) => a + x.m, 0);
+      if (dmg < tk.m) return `Najpierw Offlane: ${tk.u.card.name} musi dostać ${tk.m} obrażeń, zanim uderzysz kogoś innego`;
+    }
   }
-  return hits;
+  return null;
+}
+
+/** The fewest of `units` that together reach `hp` (null = they cannot) */
+function killWith(units: Array<{ u: OUnit; m: number }>, hp: number) {
+  const one = [...units].sort((a, b) => a.m - b.m).find(x => x.m >= hp);
+  if (one) return [one];
+  const out: typeof units = []; let sum = 0;
+  for (const x of [...units].sort((a, b) => b.m - a.m)) { out.push(x); sum += x.m; if (sum >= hp) return out; }
+  return null;
+}
+
+/** A sensible choice without searching: kill the Offlanes first (as the rule says), then the
+ *  strongest enemies that can be killed, the rest onto whoever is closest to dying */
+export function autoTargets(s: OState, at: 0 | 1 | 2, side: Side): Targets {
+  const t: Targets = {};
+  let left = fighters(s, at, side);
+  const foes = fighters(s, at, (1 - side) as Side);
+  if (!foes.length) return t;
+  const give = (who: typeof left, target: OUnit) => { for (const x of who) t[x.u.uid] = target.uid; left = left.filter(x => !who.includes(x)); };
+  const tanks = foes.filter(f => f.u.card.role === 'Offlane').sort((a, b) => a.m - b.m);
+  for (const tk of tanks) {
+    const k = killWith(left, tk.m);
+    if (!k) { give(left, tk.u); return t; }
+    give(k, tk.u);
+  }
+  const rest = foes.filter(f => f.u.card.role !== 'Offlane').sort((a, b) => b.m - a.m);
+  for (const f of rest) { const k = killWith(left, f.m); if (k) give(k, f.u); }
+  if (left.length) give(left, (rest[0] ?? tanks[0]).u);
+  return t;
+}
+
+/** The outcome of one fight with these targets (pure: nothing changes on the board) */
+export function battle(s: OState, at: 0 | 1 | 2, t: Targets): Omit<Fight, 'key'> {
+  const side = s.active; const foe = (1 - side) as Side; const ob = s.objectives[at];
+  const att = fighters(s, at, side); const def = fighters(s, at, foe);
+  const all = [...att, ...def];
+  const blows = all.map(({ u, m }) => ({ from: u.uid, to: t[u.uid], dmg: m })).filter(b => all.some(x => x.u.uid === b.to));
+  const taken: Record<string, number> = {};
+  for (const b of blows) taken[b.to] = (taken[b.to] ?? 0) + b.dmg;
+  const died = all.filter(({ u, m }) => (taken[u.uid] ?? 0) >= m).map(({ u }) => u.uid);
+  const left = att.filter(x => !died.includes(x.u.uid)).length; const stay = def.filter(x => !died.includes(x.u.uid)).length;
+  const outcome: Fight['outcome'] = left && !stay ? 'took' : left && stay ? 'repelled' : stay ? 'held' : 'wiped';
+  const sum = (xs: typeof att) => xs.reduce((a, x) => a + x.m, 0);
+  return {
+    at, attacker: side,
+    lines: all.map(({ u, m }) => ({ uid: u.uid, card: u.card, side: u.side, parts: strengthParts(s, u, u.side === foe), m })),
+    power: side === 0 ? [sum(att), sum(def)] : [sum(def), sum(att)],
+    blows, taken, died, outcome, points: outcome === 'took' && ob.owner !== side ? takePoints(ob.id) : 0,
+  };
 }
 
 function score(s: OState, side: Side, at: 0 | 1 | 2, pts: number, why: Gain['why']) {
@@ -276,8 +344,12 @@ function score(s: OState, side: Side, at: 0 | 1 | 2, pts: number, why: Gain['why
   ev(s, { kind: 'points', side, at, pts, why });
 }
 
-/** Phase 3: the planned moves happen — fights where both sides now stand, then take-overs */
-export function resolve(prev: OState): OState {
+/** Where the fights will be this turn */
+export const clashes = (s: OState) => ([0, 1, 2] as const).filter(i => s.units.some(u => u.side === 0 && u.loc === i) && s.units.some(u => u.side === 1 && u.loc === i));
+
+/** Phase 3: the planned moves happen — fights where both sides now stand (with the targets each side
+ *  chose; a missing or not allowed choice is made for it), then take-overs */
+export function resolve(prev: OState, chosen: Targets = {}): OState {
   if (prev.phase === 'fight' || prev.winner !== null) return prev;
   const s = clone(prev); const side = s.active; const foe = (1 - side) as Side;
   s.phase = 'fight'; s.fights = [];
@@ -296,28 +368,21 @@ export function resolve(prev: OState): OState {
     const ob = s.objectives[to]; const name = OBJECTIVES[ob.id].name;
     const attackers = s.units.filter(u => u.side === side && u.loc === to);
     if (!attackers.length) continue;
-    const enemies = s.units.filter(u => u.side === foe && u.loc === to);
-    if (enemies.length) {
-      const line = (u: OUnit, def: boolean): FightLine => ({ uid: u.uid, card: u.card, side: u.side, parts: strengthParts(s, u, def), m: might(s, u, def) });
-      const lines = [...attackers.map(u => line(u, false)), ...enemies.map(u => line(u, true))];
-      const pa = attackers.reduce((a, u) => a + might(s, u), 0);
-      const pd = enemies.reduce((a, u) => a + might(s, u, true), 0);
-      const hits = [...takeDamage(s, enemies, pa), ...takeDamage(s, attackers, pd)];
-      const died = hits.filter(h => h.died).map(h => h.uid);
-      for (const id of died) { const u = s.units.find(x => x.uid === id)!; s.sides[u.side].grave.push(u.card); }
-      s.units = s.units.filter(u => !died.includes(u.uid));
-      const left = s.units.filter(u => u.side === side && u.loc === to);
-      const stay = s.units.filter(u => u.side === foe && u.loc === to);
-      // Both sides can never survive: damage stops at the first unit that lives, so that would need each
-      // side's first-hit unit to be stronger than the whole other side
-      const outcome: Fight['outcome'] = left.length && !stay.length ? 'took' : stay.length ? 'held' : 'wiped';
-      const points = outcome === 'took' && ob.owner !== side ? takePoints(ob.id) : 0;
+    if (s.units.some(u => u.side === foe && u.loc === to)) {
+      const pick = (sd: Side): Targets => {
+        const own: Targets = {};
+        for (const { u } of fighters(s, to, sd)) if (chosen[u.uid]) own[u.uid] = chosen[u.uid];
+        return targetProblem(s, to, sd, own) ? autoTargets(s, to, sd) : own;
+      };
+      const f = battle(s, to, { ...pick(side), ...pick(foe) });
+      for (const id of f.died) { const u = s.units.find(x => x.uid === id)!; s.sides[u.side].grave.push(u.card); }
+      s.units = s.units.filter(u => !f.died.includes(u.uid));
       s.fightKey++;
-      s.fights = [...s.fights, { key: s.fightKey, at: to, attacker: side, lines, power: side === 0 ? [pa, pd] : [pd, pa], hits, died, outcome, points }];
-      say(s, side, `Walka o ${name}: ${pa} na ${pd}`);
-      ev(s, { kind: 'fight', side, at: to, power: side === 0 ? [pa, pd] : [pd, pa], died: died.map(id => { const l = lines.find(x => x.uid === id)!; return { card: l.card, side: l.side }; }), outcome });
-      if (left.length && stay.length) left.forEach(u => { u.loc = 'base'; });
-      if (outcome !== 'took') continue;
+      s.fights = [...s.fights, { ...f, key: s.fightKey }];
+      say(s, side, `Walka o ${name}: ${f.power[side]} na ${f.power[foe]}`);
+      ev(s, { kind: 'fight', side, at: to, power: f.power, died: f.died.map(id => { const l = f.lines.find(x => x.uid === id)!; return { card: l.card, side: l.side }; }), outcome: f.outcome });
+      if (f.outcome === 'repelled') s.units.forEach(u => { if (u.side === side && u.loc === to) u.loc = 'base'; });
+      if (f.outcome !== 'took') continue;
     }
     if (ob.owner !== side) {
       ob.owner = side;

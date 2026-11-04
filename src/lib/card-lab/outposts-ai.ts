@@ -5,7 +5,7 @@
 // The expert level instead plans the whole turn (which cards, then a search over move sequences) and
 // checks every plan against the rival's best answer, using only what is on the board (never its hand).
 
-import { canDeploy, canMove, deploy, endTurn, might, move, moveCost, resolve, smokeLeft, startOrders, type Loc, type OState, type Side } from './outposts';
+import { autoTargets, battle, canDeploy, canMove, deploy, endTurn, fighters, might, move, moveCost, resolve, smokeLeft, startOrders, targetProblem, type Loc, type OState, type Side, type Targets } from './outposts';
 
 /** Practice levels: noise in the computer's judgement, how often it stops early, and how much weaker its deck is */
 export type Level = 'easy' | 'medium' | 'hard' | 'expert';
@@ -184,4 +184,42 @@ export function cpuNextAction(s: OState, rnd = Math.random, level: Level = 'hard
   return m ? { kind: 'move', uids: m.uids, to: m.to } : null;
 }
 
-export const applyAct = (s: OState, a: Act) => (a.kind === 'deploy' ? deploy(s, a.cardId) : a.kind === 'orders' ? startOrders(s) : move(s, a.uids, a.to));
+// ── Targets in a fight ──────────────────────────────────────────────────────
+
+/** Every allowed choice for one side (each of up to 3 units picks one of up to 3 enemies) */
+function allTargetings(s: OState, at: 0 | 1 | 2, side: Side): Targets[] {
+  const foes = fighters(s, at, (1 - side) as Side);
+  let out: Targets[] = [{}];
+  for (const { u } of fighters(s, at, side)) out = out.flatMap(t => foes.map(f => ({ ...t, [u.uid]: f.u.uid })));
+  return out.filter(t => !targetProblem(s, at, side, t));
+}
+
+/** How good a fight's result is for `side`: strength killed vs lost, and who keeps the objective */
+function fightScore(f: ReturnType<typeof battle>, side: Side): number {
+  let v = 0;
+  for (const id of f.died) { const l = f.lines.find(x => x.uid === id)!; v += (l.side === side ? -1 : 1) * l.m; }
+  const attacking = f.attacker === side;
+  if (f.outcome === 'took') v += (attacking ? 1 : -1) * (6 + 3 * f.points);
+  if (f.outcome === 'held' || f.outcome === 'repelled') v += attacking ? -3 : 3;
+  return v;
+}
+
+/** The computer's targets: tried against every choice the other side could make at the same time */
+export function chooseTargets(s: OState, at: 0 | 1 | 2, side: Side, level: Level = 'hard', rnd = Math.random): Targets {
+  const mine = allTargetings(s, at, side);
+  if (!mine.length) return autoTargets(s, at, side);
+  if (level === 'easy' && rnd() < 0.5) return mine[Math.floor(rnd() * mine.length)];
+  const theirs = allTargetings(s, at, (1 - side) as Side);
+  if (!theirs.length) return mine[0];
+  const careful = level === 'expert' ? 0.5 : level === 'hard' ? 0.3 : 0;
+  let best = mine[0]; let bestV = -Infinity;
+  for (const t of mine) {
+    let sum = 0; let min = Infinity;
+    for (const o of theirs) { const v = fightScore(battle(s, at, { ...t, ...o }), side); sum += v; min = Math.min(min, v); }
+    const v = (1 - careful) * (sum / theirs.length) + careful * min + (level === 'medium' || level === 'easy' ? rnd() * 3 : 0);
+    if (v > bestV) { bestV = v; best = t; }
+  }
+  return best;
+}
+
+export const applyAct =(s: OState, a: Act) => (a.kind === 'deploy' ? deploy(s, a.cardId) : a.kind === 'orders' ? startOrders(s) : move(s, a.uids, a.to));

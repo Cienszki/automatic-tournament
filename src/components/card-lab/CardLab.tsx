@@ -43,7 +43,8 @@ function FitStage({ children }: { children: React.ReactNode }) {
 }
 
 // ── Saved in this browser: which cards you opened and how many packs are left ──
-interface Saved { ids: string[]; packs: number; deck?: string[] }
+interface Saved { ids: string[]; packs: number; deck?: string[]; custom?: boolean }
+const sameDeck = (a: GCard[], b: GCard[]) => a.length === b.length && a.every(c => b.some(d => d.id === c.id));
 const storeKey = (k: string) => `card-lab:${k}:v1`;
 function load(k: string): Saved | null { try { const v = localStorage.getItem(storeKey(k)); return v ? JSON.parse(v) as Saved : null; } catch { return null; } }
 function save(k: string, v: Saved) { try { localStorage.setItem(storeKey(k), JSON.stringify(v)); } catch { /* private mode */ } }
@@ -132,6 +133,8 @@ function Lab({ model }: { model: Model }) {
   const [packs, setPacks] = useState(START_PACKS);
   const [loaded, setLoaded] = useState(false);
   const [deck, setDeck] = useState<GCard[]>([]);
+  // Until the player edits it, the deck follows the best cards they own
+  const [custom, setCustom] = useState(false);
   const [tab, setTab] = useState<Tab>('album');
   const [match, setMatch] = useState(0);
   const [intro, setIntro] = useState(false);
@@ -144,14 +147,21 @@ function Lab({ model }: { model: Model }) {
     const v = load(key);
     if (v) {
       setCollection(v.ids.map(id => byId.get(id)).filter((c): c is GCard => !!c)); setPacks(v.packs);
-      if (v.deck) setDeck(v.deck.map(id => byId.get(id)).filter((c): c is GCard => !!c));
+      const owned = v.ids.map(id => byId.get(id)).filter((c): c is GCard => !!c);
+      if (v.deck) {
+        const d = v.deck.map(id => byId.get(id)).filter((c): c is GCard => !!c);
+        setDeck(d);
+        // Saved before the flag existed: a deck that is not the automatic pick was made by hand
+        setCustom(v.custom ?? !sameDeck(d, autoDeck(owned, OUTPOSTS_RULE)));
+      }
     }
     try { if (!localStorage.getItem(SEEN_KEY)) setIntro(true); } catch { setIntro(true); }
     setLoaded(true);
   }, [key, byId]);
-  useEffect(() => { if (loaded) save(key, { ids: collection.map(c => c.id), packs, deck: deck.map(c => c.id) }); }, [loaded, key, collection, packs, deck]);
-  // A deck that is not legal yet is rebuilt from the collection (a legal one is left alone)
-  useEffect(() => { setDeck(d => (deckProblem(d, OUTPOSTS_RULE) ? autoDeck(collection, OUTPOSTS_RULE) : d)); }, [collection]);
+  useEffect(() => { if (loaded) save(key, { ids: collection.map(c => c.id), packs, deck: deck.map(c => c.id), custom }); }, [loaded, key, collection, packs, deck, custom]);
+  // New cards improve an automatic deck; a hand-made one is only rebuilt while it is not legal
+  useEffect(() => { if (loaded) setDeck(d => (!custom || deckProblem(d, OUTPOSTS_RULE) ? autoDeck(collection, OUTPOSTS_RULE) : d)); }, [collection, custom, loaded]);
+  const editDeck = (d: GCard[]) => { setDeck(d); setCustom(!sameDeck(d, autoDeck(collection, OUTPOSTS_RULE))); };
   const closeIntro = () => { setIntro(false); try { localStorage.setItem(SEEN_KEY, '1'); } catch { /* ignore */ } };
 
   const ready = !deckProblem(deck, OUTPOSTS_RULE);
@@ -182,7 +192,7 @@ function Lab({ model }: { model: Model }) {
       </div>
       <div className="flex-1 min-h-0">
         {tab === 'album' && <Album cards={cards} collection={collection} setCollection={setCollection} packs={packs} onPackOpened={() => setPacks(p => Math.max(0, p - 1))} />}
-        {tab === 'talia' && <DeckBuilder collection={collection} rule={OUTPOSTS_RULE} deck={deck} setDeck={setDeck} />}
+        {tab === 'talia' && <DeckBuilder collection={collection} rule={OUTPOSTS_RULE} deck={deck} setDeck={editDeck} />}
         {/* The match stays mounted while you look at the album */}
         <div className={tab === 'gra' ? 'h-full' : 'hidden'}>
           {!match ? null : ready ? <OutpostsGame key={match} deck={deck} all={cards} level={level} onBack={() => setTab('talia')} /> : notReady}
