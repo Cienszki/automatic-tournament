@@ -683,7 +683,7 @@ function BattleScreen({ s, at, initial, theirs, onDone }: { s: OState; at: 0 | 1
 
 // ── The end ─────────────────────────────────────────────────────────────────
 
-function EndScreen({ won, score, turns, onRematch, onNew, onExit }: { won: boolean; score: [number, number]; turns: number; onRematch: () => void; onNew: () => void; onExit?: () => void }) {
+function EndScreen({ won, score, turns, rival, onRematch, onNew, onExit }: { won: boolean; score: [number, number]; turns: number; rival: string; onRematch: () => void; onNew: () => void; onExit?: () => void }) {
   const font = useHeaderFont();
   const color = won ? T.me : T.rival;
   const word = won ? 'Zwycięstwo' : 'Porażka';
@@ -709,7 +709,10 @@ function EndScreen({ won, score, turns, onRematch, onNew, onExit }: { won: boole
             initial={{ y: -80, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.15 + i * 0.05, type: 'spring', stiffness: 260, damping: 14 }}>{ch}</motion.span>
         ))}
       </motion.div>
-      <motion.div className="relative mt-4 font-logik-extended-bold text-[44px] tabular-nums" style={{ color: T.text, ...font }} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1.1 }}>
+      <motion.div className="relative mt-5 font-logik-extended-bold uppercase tracking-[0.2em] text-[18px]" style={{ color: T.text, ...font }} initial={{ opacity: 0 }} animate={{ opacity: 0.85 }} transition={{ delay: 0.9 }}>
+        vs {rival}
+      </motion.div>
+      <motion.div className="relative mt-2 font-logik-extended-bold text-[44px] tabular-nums" style={{ color: T.text, ...font }} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1.1 }}>
         <span style={{ color: T.me }}>{score[0]}</span><span className="opacity-40"> : </span><span style={{ color: T.rival }}>{score[1]}</span>
         <span className="text-[16px] ml-4 align-middle" style={{ color: T.muted }}>po {turns} turach</span>
       </motion.div>
@@ -781,8 +784,12 @@ export function OutpostsGame({ deck, all, onBack, level = 'easy' }: { deck: GCar
   const stateRef = useRef<OState | null>(null);
   stateRef.current = s;
 
+  // The difficulty is fixed when a match starts (a rematch keeps the rival as it was)
+  const [gameLevel, setGameLevel] = useState<Level>(level);
   const start = (rematch = false) => {
-    const theirs = rematch && cpu.length ? cpu : cpuDeck(all, OUTPOSTS_RULE, avgOvr(deck) - LEVELS[level].deckGap, new Set(deck.map(c => c.pid)));
+    const lv = rematch && cpu.length ? gameLevel : level;
+    setGameLevel(lv);
+    const theirs = rematch && cpu.length ? cpu : cpuDeck(all, OUTPOSTS_RULE, avgOvr(deck) - LEVELS[lv].deckGap, new Set(deck.map(c => c.pid)));
     seenFight.current = 0; seenGain.current = 0; pendingGains.current = []; prevMight.current = {};
     setCpu(theirs); setS(newGame([deck, theirs])); setSel([]); setSelCards([]); setBattleQ(null); setFlyers([]); setOwed([0, 0]);
   };
@@ -845,7 +852,7 @@ export function OutpostsGame({ deck, all, onBack, level = 'easy' }: { deck: GCar
   // The computer: one action at a time, waiting for scenes and flying points
   useEffect(() => {
     if (!s || s.active !== 1 || s.winner !== null || s.phase === 'fight' || scene || flyers.length || banner || logOpen || tour) return;
-    const t = setTimeout(() => { const a = cpuNextAction(s, Math.random, level); if (a) setS(applyAct(s, a)); else openBattles(s); }, 900);
+    const t = setTimeout(() => { const a = cpuNextAction(s, Math.random, gameLevel); if (a) setS(applyAct(s, a)); else openBattles(s); }, 900);
     return () => clearTimeout(t);
   }, [s, scene, flyers.length, banner, logOpen, tour]);
 
@@ -886,7 +893,7 @@ export function OutpostsGame({ deck, all, onBack, level = 'easy' }: { deck: GCar
   useEffect(() => { if (!settled.size) return; const t = setTimeout(() => setSettled(new Set()), 700); return () => clearTimeout(t); }, [settled]);
 
   // ── Phase 3: one battle screen per fight (you attacking or defending), then everything resolves ──
-  const battleFor = (cur: OState, at: 0 | 1 | 2) => ({ mine: autoTargets(cur, at, 0), theirs: chooseTargets(cur, at, 1, level) });
+  const battleFor = (cur: OState, at: 0 | 1 | 2) => ({ mine: autoTargets(cur, at, 0), theirs: chooseTargets(cur, at, 1, gameLevel) });
   const openBattles = (cur: OState) => {
     const locs = clashesOf(cur);
     if (!locs.length) { setS(resolve(cur)); return; }
@@ -1210,7 +1217,7 @@ export function OutpostsGame({ deck, all, onBack, level = 'easy' }: { deck: GCar
       </AnimatePresence>
       <AnimatePresence>
         {s.winner !== null && !scene && !flyers.length && (
-          <EndScreen won={s.winner === 0} score={[s.sides[0].score, s.sides[1].score]} turns={Math.ceil(s.turn / 2)} onRematch={() => start(true)} onNew={() => start()} onExit={onBack} />
+          <EndScreen won={s.winner === 0} score={[s.sides[0].score, s.sides[1].score]} turns={Math.ceil(s.turn / 2)} rival={`Komputer ${LEVELS[gameLevel].name}`} onRematch={() => start(true)} onNew={() => start()} onExit={onBack} />
         )}
       </AnimatePresence>
 
