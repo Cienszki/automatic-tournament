@@ -65,6 +65,7 @@ function PlayButton({ ready, running, level, setLevel, onPlay, onResume }: { rea
           </button>
         ))}
       </div>
+      {LEVELS[level].note && <div className="text-right text-[12px] font-bold" style={{ color: C.muted }}>{LEVELS[level].note}</div>}
       <motion.button type="button" onClick={running ? onResume : onPlay} disabled={!!ready && !running} title={ready ?? undefined}
         className="relative h-[86px] overflow-hidden rounded-[6px] flex flex-col items-center justify-center text-white disabled:grayscale disabled:opacity-60"
         style={{ background: `linear-gradient(180deg, ${mix(C.primary, 100)}, ${mix(C.primary, 62)} 55%, ${mix(C.primary, 45)})`, boxShadow: `inset 0 1px 0 rgba(255,255,255,0.35), inset 0 -3px 0 rgba(0,0,0,0.35), 0 0 0 1px ${mix(C.primary, 80)}, 0 12px 40px ${mix(C.primary, 45)}` }}

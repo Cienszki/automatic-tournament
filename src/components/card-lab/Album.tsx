@@ -292,7 +292,7 @@ export function Album({ cards, collection, setCollection, packs, onPackOpened }:
       </div>
 
       {/* Room at the bottom right for the Play button */}
-      <div className="relative flex-1 min-h-0 flex items-center pb-[120px]">
+      <div className="relative flex-1 min-h-0 flex items-center pb-[140px]">
         <button type="button" aria-label="Poprzednia strona" disabled={page === 0} onClick={() => setPage(p => p - 1)} className="absolute -left-2 z-10 p-2 disabled:opacity-15 transition-opacity" style={{ color: C.heading }}><ChevronLeft className="w-12 h-12" /></button>
         <AnimatePresence mode="wait">
           <motion.div key={page} className="w-full grid grid-cols-2 gap-x-20 gap-y-8 px-16"

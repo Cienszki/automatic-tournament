@@ -5,15 +5,16 @@
 // The expert level instead plans the whole turn (which cards, then a search over move sequences) and
 // checks every plan against the rival's best answer, using only what is on the board (never its hand).
 
-import { autoTargets, battle, canDeploy, canMove, deploy, endTurn, fighters, might, move, moveCost, resolve, smokeLeft, startOrders, targetProblem, type Loc, type OState, type Side, type Targets } from './outposts';
+import { autoTargets, battle, canDeploy, clashes, canMove, deploy, endTurn, fighters, might, move, moveCost, resolve, smokeLeft, startOrders, targetProblem, type Loc, type OState, type Side, type Targets } from './outposts';
 
 /** Practice levels: noise in the computer's judgement, how often it stops early, and how much weaker its deck is */
 export type Level = 'easy' | 'medium' | 'hard' | 'expert';
-export const LEVELS: Record<Level, { name: string; noise: number; quit: number; deckGap: number }> = {
+export const LEVELS: Record<Level, { name: string; noise: number; quit: number; deckGap: number; note?: string }> = {
   easy: { name: 'Łatwy', noise: 6, quit: 0.35, deckGap: 10 },
   medium: { name: 'Średni', noise: 2, quit: 0.12, deckGap: 4 },
   hard: { name: 'Trudny', noise: 0.3, quit: 0, deckGap: 0 },
-  expert: { name: 'Mistrz', noise: 0, quit: 0, deckGap: 0 },
+  // Plans whole turns, expects your best answer in every fight, and plays a better deck
+  expert: { name: 'Mistrz', noise: 0, quit: 0, deckGap: -8, note: 'Mistrz gra mocniejszą talią (+8 do oceny)' },
 };
 
 export type Act = { kind: 'deploy'; cardId: string } | { kind: 'move'; uids: string[]; to: Loc } | { kind: 'orders' };
@@ -84,25 +85,53 @@ function wantedMoves(s: OState, rnd: () => number, noise: number): number {
 
 // ── Expert: whole-turn planning with a look at the rival's answer ─────────────
 
+/** Fights as a strong player would fight them: each attack choice is judged by the defender's best
+ *  answer (maximin), and the defender answers that way. Remembered per fight line-up during a plan. */
+const fightMemo = new Map<string, Targets>();
+function sharpTargets(s: OState, at: 0 | 1 | 2): Targets {
+  const side = s.active; const foe = (1 - side) as Side;
+  const key = `${at}|${s.objectives[at].owner}|${fighters(s, at, side).map(x => `${x.u.uid}:${x.m}`).join()}|${fighters(s, at, foe).map(x => `${x.u.uid}:${x.m}`).join()}`;
+  const hit = fightMemo.get(key); if (hit) return hit;
+  const mine = allTargetings(s, at, side); const theirs = allTargetings(s, at, foe);
+  let out: Targets = { ...autoTargets(s, at, side), ...autoTargets(s, at, foe) };
+  let best = -Infinity;
+  for (const t of mine) {
+    let worst: { o: Targets; v: number } | null = null;
+    for (const o of theirs) { const v = fightScore(battle(s, at, { ...t, ...o }), side); if (!worst || v < worst.v) worst = { o, v }; }
+    if (worst && worst.v > best) { best = worst.v; out = { ...t, ...worst.o }; }
+  }
+  if (fightMemo.size > 5000) fightMemo.clear();
+  fightMemo.set(key, out);
+  return out;
+}
+/** Phase 3 with sharp targets on both sides */
+function sharpResolve(s: OState): OState {
+  if (s.phase !== 'move') return s;
+  const t: Targets = {};
+  for (const at of clashes(s)) Object.assign(t, sharpTargets(s, at));
+  return resolve(s, t);
+}
+const judgeSharp = (s: OState, side: Side) => value(sharpResolve(s), side);
+
 /** The board after the rival's best reply and the start of our next turn (our hold points, Carry growth) */
 function afterReply(s: OState): OState {
-  let t = endTurn(s);
+  let t = endTurn(sharpResolve(s));
   if (t.winner !== null) return t;
   // Only units already on the board can move in the rival's turn, so its hidden hand does not matter
   t = startOrders(t);
   for (let i = 0; i < 5 && t.winner === null; i++) { const m = bestMove(t, () => 0, 0); if (!m) break; t = move(t, m.uids, m.to); }
-  return t.winner !== null ? t : endTurn(t);
+  return t.winner !== null ? t : endTurn(sharpResolve(t));
 }
 
 const fp = (s: OState) => `${s.turn}|${s.phase}|${s.orders}|${smokeLeft(s) ? 1 : 0}|${s.sides[s.active].hand.map(c => c.id).join()}|${s.units.map(u => `${u.uid}@${u.loc}${u.moved ? '*' : ''}`).join()}`;
 
-const BEAM = 6; const LEAVES = 6;
+const BEAM = 10; const LEAVES = 12;
 
 /** The best sequence of moves from here (beam search), judged after the rival's answer */
 function planMoves(s: OState): { acts: Act[]; v: number } {
   const me = s.active;
   type Node = { s: OState; acts: Act[]; v: number };
-  let beam: Node[] = [{ s, acts: [], v: judge(s, me) }];
+  let beam: Node[] = [{ s, acts: [], v: judgeSharp(s, me) }];
   const leaves: Node[] = [...beam];
   for (let depth = 0; depth < 5; depth++) {
     const next = new Map<string, Node>();
@@ -111,7 +140,7 @@ function planMoves(s: OState): { acts: Act[]; v: number } {
       for (const c of candidates(b.s)) {
         const t = move(b.s, c.uids, c.to);
         const k = fp(t); if (next.has(k)) continue;
-        next.set(k, { s: t, acts: [...b.acts, { kind: 'move', uids: c.uids, to: c.to }], v: judge(t, me) });
+        next.set(k, { s: t, acts: [...b.acts, { kind: 'move', uids: c.uids, to: c.to }], v: judgeSharp(t, me) });
       }
     }
     if (!next.size) break;
