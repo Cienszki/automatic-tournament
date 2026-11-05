@@ -5,7 +5,7 @@
 // browser), deck building and "Kontrola mapy" against the practice computer.
 // Laid out once for 1920×900 and scaled to the screen (up and down), so nothing scrolls.
 
-import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import * as TooltipPrimitive from '@radix-ui/react-tooltip';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useTournament } from '@/context/TournamentContext';
@@ -13,7 +13,9 @@ import type { Model } from '@/lib/stats-lab/derive';
 import { C, WithModel, ink, mix, useHeaderFont, useStatsKey } from '@/components/stats-lab/kit';
 import { autoDeck, buildSeriesCards, deckProblem, type GCard } from '@/lib/card-lab/cards';
 import { Album } from './Album';
-import { DeckBuilder, slotsFromDeck, type DeckSlots } from './DeckBuilder';
+import { DeckBuilder, type DeckSlots } from './DeckBuilder';
+import { thawCard, type FrozenCard } from '@/lib/card-lab/frozen';
+import { useAuth } from '@/context/AuthContext';
 import { OUTPOSTS_RULE, OutpostsGame } from './OutpostsGame';
 import { LEVELS, type Level } from '@/lib/card-lab/outposts-ai';
 import { FitScaleCtx, useFitScale } from './ui';
@@ -22,7 +24,6 @@ import { centreOf, pulseAt } from '@/components/tour/pulse';
 type Tab = 'album' | 'talia' | 'gra';
 const TABS: Array<{ id: Tab; label: string }> = [{ id: 'album', label: 'Album' }, { id: 'talia', label: 'Talia' }];
 const BASE_W = 1920; const BASE_H = 900;
-const START_PACKS = 10;
 
 /** Scales a 1920×900 layout to the box it gets, up or down */
 function FitStage({ children }: { children: React.ReactNode }) {
@@ -42,11 +43,10 @@ function FitStage({ children }: { children: React.ReactNode }) {
   );
 }
 
-// ── Saved in this browser: which cards you opened and how many packs are left ──
-interface Saved { ids: string[]; packs: number; deck?: string[]; slots?: DeckSlots }
-const storeKey = (k: string) => `card-lab:${k}:v1`;
-function load(k: string): Saved | null { try { const v = localStorage.getItem(storeKey(k)); return v ? JSON.parse(v) as Saved : null; } catch { return null; } }
-function save(k: string, v: Saved) { try { localStorage.setItem(storeKey(k), JSON.stringify(v)); } catch { /* private mode */ } }
+// ── The collection lives on the account (/api/cards): packs drawn there, cards frozen when issued ──
+type Api = <T>(method: 'GET' | 'POST' | 'PUT', body?: object) => Promise<T>;
+/** Starter packs of a new account (granted by the server; shown in the intro) */
+const START_PACKS = 10;
 const SEEN_KEY = 'card-lab:intro-seen';
 const LEVEL_KEY = 'card-lab:level';
 
@@ -130,15 +130,15 @@ function Intro({ onClose }: { onClose: () => void }) {
   );
 }
 
-function Lab({ model }: { model: Model }) {
+function Lab({ model, api }: { model: Model; api: Api }) {
   const { tournament } = useTournament();
-  const key = useStatsKey() ?? 'x';
   const font = useHeaderFont();
   const cards = useMemo(() => buildSeriesCards(model, tournament?.type), [model, tournament?.type]);
-  const byId = useMemo(() => new Map(cards.map(c => [c.id, c])), [cards]);
   const [collection, setCollection] = useState<GCard[]>([]);
-  const [packs, setPacks] = useState(START_PACKS);
+  const byId = useMemo(() => new Map(collection.map(c => [c.id, c])), [collection]);
+  const [packs, setPacks] = useState(0);
   const [loaded, setLoaded] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   // The deck as the player laid it out (slot → card); the deck itself is what is in the slots
   const [slots, setSlots] = useState<DeckSlots>({});
   const deck = useMemo(() => Object.values(slots).map(id => byId.get(id)).filter((c): c is GCard => !!c), [slots, byId]);
@@ -151,24 +151,37 @@ function Lab({ model }: { model: Model }) {
   useEffect(() => { try { const l = localStorage.getItem(LEVEL_KEY) as Level | null; if (l && l in LEVELS) setLevelState(l); } catch { /* private mode */ } }, []);
   const setLevel = (l: Level) => { setLevelState(l); try { localStorage.setItem(LEVEL_KEY, l); } catch { /* private mode */ } };
 
-  // Restore this browser's collection, show the intro once
+  // The account's collection (a new account gets its starter packs); the intro once per browser
   useEffect(() => {
-    const v = load(key);
-    if (v) {
-      setCollection(v.ids.map(id => byId.get(id)).filter((c): c is GCard => !!c)); setPacks(v.packs);
-      // The deck is the player's own work: never built for them
-      if (v.slots) setSlots(Object.fromEntries(Object.entries(v.slots).filter(([, id]) => byId.has(id))));
-      else if (v.deck) setSlots(slotsFromDeck(v.deck.map(id => byId.get(id)).filter((c): c is GCard => !!c), OUTPOSTS_RULE));
-    }
+    api<{ packs: number; cards: FrozenCard[]; slots: DeckSlots }>('GET')
+      .then(v => { setCollection(v.cards.map(thawCard)); setPacks(v.packs); setSlots(v.slots); setLoaded(true); })
+      .catch(e => setLoadError(e.message || 'Nie udało się wczytać kolekcji'));
     try { if (!localStorage.getItem(SEEN_KEY)) setIntro(true); } catch { setIntro(true); }
-    setLoaded(true);
-  }, [key, byId]);
-  useEffect(() => { if (loaded) save(key, { ids: collection.map(c => c.id), packs, deck: deck.map(c => c.id), slots }); }, [loaded, key, collection, packs, deck, slots]);
+  }, [api]);
+  const openPack = async (): Promise<GCard[] | null> => {
+    try {
+      const r = await api<{ opened: FrozenCard[]; packs: number }>('POST', { action: 'open' });
+      const got = r.opened.map(thawCard);
+      setCollection(c => [...c, ...got]); setPacks(r.packs);
+      return got;
+    } catch (e) { setLoadError((e as Error).message); return null; }
+  };
+  // Every deck change is saved to the account (shortly after the last click)
+  const savedSlots = useRef<string>('');
+  useEffect(() => {
+    if (!loaded) return;
+    const json = JSON.stringify(slots);
+    if (!savedSlots.current) { savedSlots.current = json; return; }
+    if (json === savedSlots.current) return;
+    const t = setTimeout(() => { api('PUT', { slots }).then(() => { savedSlots.current = json; }).catch(e => setLoadError((e as Error).message)); }, 600);
+    return () => clearTimeout(t);
+  }, [slots, loaded, api]);
   // The tutorial needs no deck of yours: it brings one (from your cards if they make a legal deck)
   const tutorialDeck = useMemo(() => { const d = autoDeck(collection, OUTPOSTS_RULE); return deckProblem(d, OUTPOSTS_RULE) ? autoDeck(cards, OUTPOSTS_RULE) : d; }, [collection, cards]);
   const closeIntro = () => { setIntro(false); try { localStorage.setItem(SEEN_KEY, '1'); } catch { /* ignore */ } };
 
   const ready = !deckProblem(deck, OUTPOSTS_RULE);
+  if (!loaded) return <Centered>{loadError ? <>{loadError}<button type="button" onClick={() => location.reload()} className="mt-4 underline underline-offset-4">Spróbuj ponownie</button></> : 'Wczytuję kolekcję…'}</Centered>;
   const notReady = (
     <div className="h-full flex flex-col items-center justify-center gap-4 text-[16px]" style={{ color: C.text }}>
       <div>{collection.length ? `Talia jeszcze niegotowa: ${deckProblem(deck, OUTPOSTS_RULE)}.` : 'Najpierw otwórz paczki w Albumie.'}</div>
@@ -195,7 +208,7 @@ function Lab({ model }: { model: Model }) {
         <button type="button" data-help="intro" onClick={() => setIntro(true)} aria-label="Jak to działa" className="w-9 h-9 rounded-full font-logik-extended-bold text-[16px]" style={{ color: C.heading, boxShadow: `inset 0 0 0 1.5px ${mix(C.heading, 40)}`, ...font }}>?</button>
       </div>
       <div className="flex-1 min-h-0">
-        {tab === 'album' && <Album cards={cards} collection={collection} setCollection={setCollection} packs={packs} onPackOpened={() => setPacks(p => Math.max(0, p - 1))} />}
+        {tab === 'album' && <Album cards={cards} collection={collection} packs={packs} onOpenPack={openPack} />}
         {tab === 'talia' && <DeckBuilder collection={collection} rule={OUTPOSTS_RULE} slots={slots} setSlots={setSlots} />}
         {/* The match stays mounted while you look at the album */}
         <div className={tab === 'gra' ? 'h-full' : 'hidden'}>
@@ -209,8 +222,45 @@ function Lab({ model }: { model: Model }) {
           onPlay={() => { setMatch(m => m + 1); setMatchLevel(level); setTab('gra'); }} onResume={() => setTab('gra')} />
       )}
       <AnimatePresence>{intro && <Intro onClose={closeIntro} />}</AnimatePresence>
+      {loadError && <button type="button" onClick={() => setLoadError(null)} className="absolute left-1/2 -translate-x-1/2 bottom-6 z-40 rounded-full px-5 py-2 text-[14px] font-bold text-white" style={{ background: C.loss }}>{loadError} ✕</button>}
     </div>
   );
+}
+
+function Centered({ children }: { children: React.ReactNode }) {
+  return <div className="h-full flex flex-col items-center justify-center text-[16px] text-center" style={{ color: C.text }}>{children}</div>;
+}
+
+/** Signed out: the collection belongs to an account */
+function SignIn({ onSignIn }: { onSignIn: () => void }) {
+  const font = useHeaderFont();
+  return (
+    <div className="h-full flex flex-col items-center justify-center gap-6" style={{ color: C.text }}>
+      <div className="font-logik-extended-bold uppercase text-[54px] leading-none" style={{ color: C.heading, ...font }}>Karty</div>
+      <div className="text-[16px]" style={{ color: C.muted }}>Zaloguj się: karty i talia zapisują się na Twoim koncie.</div>
+      <button type="button" onClick={onSignIn} className="rounded-full px-10 py-4 font-logik-extended-bold uppercase tracking-widest text-[16px] text-white"
+        style={{ background: C.primary, boxShadow: `0 0 30px ${mix(C.primary, 50)}`, ...font }}>Zaloguj się przez Google</button>
+    </div>
+  );
+}
+
+/** Signed in → the lab, talking to /api/cards for this tournament with the account's token */
+function Gate() {
+  const { user, loading, signInWithGoogle } = useAuth();
+  const key = useStatsKey();
+  const api = useCallback<Api>(async <T,>(method: 'GET' | 'POST' | 'PUT', body?: object) => {
+    const token = await user!.getIdToken();
+    const res = await fetch(method === 'GET' ? `/api/cards?t=${encodeURIComponent(key!)}` : '/api/cards', {
+      method, headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: method === 'GET' ? undefined : JSON.stringify({ t: key, ...body }),
+    });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(json.error || 'Błąd serwera');
+    return json as T;
+  }, [user, key]);
+  if (loading || !key) return null;
+  if (!user) return <SignIn onSignIn={signInWithGoogle} />;
+  return <WithModel>{m => <Lab key={user.uid} model={m} api={api} />}</WithModel>;
 }
 
 /** The game is built for a computer screen (drag and drop, 1920×900 layout) */
@@ -237,7 +287,7 @@ export default function CardLab() {
       <div className="fixed inset-x-0 bottom-0 top-14 z-[45]" style={{ background: 'var(--tournament-background, #0b0b10)' }}>
         {small ? <SmallScreen /> : (
           <FitStage>
-            <WithModel>{m => <Lab model={m} />}</WithModel>
+            <Gate />
           </FitStage>
         )}
       </div>

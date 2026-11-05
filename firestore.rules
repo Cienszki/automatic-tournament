@@ -421,6 +421,12 @@ service cloud.firestore {
     }
     // === END MULTI-TOURNAMENT STRUCTURE ===
 
+    // Card collections (one per account and tournament): packs are opened and decks checked on the
+    // server (/api/cards), so clients never touch these documents directly.
+    match /cardCollections/{id} {
+      allow read, write: if false;
+    }
+
     // --- USER-SPECIFIC WRITE RULES ---
     match /users/{userId} {
       allow read, write: if request.auth.uid == userId || isAdmin();

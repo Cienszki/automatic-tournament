@@ -10,6 +10,7 @@ import { ChevronLeft, ChevronRight, Plus, X } from 'lucide-react';
 import { C, mix, useHeaderFont } from '@/components/stats-lab/kit';
 import { roleIcons } from '@/app/fantasy/roleIcons';
 import { ROLE_KEYS, type DeckRule, type GCard, type RoleKey } from '@/lib/card-lab/cards';
+import { slotDefs, type DeckSlots, type SlotDef } from '@/lib/card-lab/frozen';
 import { KEYWORD } from '@/lib/card-lab/outposts';
 import { Action, CardFace, RATIO } from './ui';
 
@@ -18,30 +19,7 @@ const PICK_W = 168;
 const PER_PAGE = 9;
 const DIM = 'rgba(255,255,255,0.55)';
 
-/** Slot key → card id (the deck as the player laid it out) */
-export type DeckSlots = Record<string, string>;
-/** A slot: the position it is for (null = any position) */
-interface SlotDef { key: string; role: RoleKey | null }
-
-export function slotDefs(rule: DeckRule): SlotDef[] {
-  return [
-    ...ROLE_KEYS.flatMap(r => Array.from({ length: rule.perRole }, (_, i): SlotDef => ({ key: `${r}-${i}`, role: r }))),
-    ...Array.from({ length: Math.max(0, rule.size - ROLE_KEYS.length * rule.perRole) }, (_, i): SlotDef => ({ key: `free-${i}`, role: null })),
-  ];
-}
-
-/** A layout for a deck saved without one: position slots first (best first), the rest in the free slots */
-export function slotsFromDeck(deck: GCard[], rule: DeckRule): DeckSlots {
-  const slots = slotDefs(rule); const out: DeckSlots = {}; const extra: GCard[] = [];
-  for (const r of ROLE_KEYS) {
-    const cs = deck.filter(c => c.role === r).sort((a, b) => b.ovr - a.ovr);
-    const mine = slots.filter(s => s.role === r);
-    cs.slice(0, rule.perRole).forEach((c, i) => { out[mine[i].key] = c.id; });
-    extra.push(...cs.slice(rule.perRole));
-  }
-  slots.filter(s => !s.role).forEach((s, i) => { if (extra[i]) out[s.key] = extra[i].id; });
-  return out;
-}
+export type { DeckSlots } from '@/lib/card-lab/frozen';
 
 export function DeckBuilder({ collection, rule, slots, setSlots }: { collection: GCard[]; rule: DeckRule; slots: DeckSlots; setSlots: (s: DeckSlots) => void }) {
   const defs = slotDefs(rule);

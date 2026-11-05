@@ -10,7 +10,7 @@ import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { Avatar, C, TeamLogo, ink, mix, useHeaderFont } from '@/components/stats-lab/kit';
 import { useFitText, useLogoColor } from '@/components/teams-section/fit';
 import type { PlayerX, TeamX } from '@/lib/stats-lab/derive';
-import { ROLE_KEYS, ROLE_SHORT, TIER, openPack, packPool, tierOf, TOTW_CHANCE, type GCard, type Tier } from '@/lib/card-lab/cards';
+import { ROLE_KEYS, ROLE_SHORT, TIER, tierOf, TOTW_CHANCE, type GCard, type Tier } from '@/lib/card-lab/cards';
 import { useTournament } from '@/context/TournamentContext';
 import { count } from '@/lib/plural';
 import { Action, CardBack, CardFace, Heading, Label, RATIO } from './ui';
@@ -257,9 +257,9 @@ function PackReveal({ cards, isNew, onClose, left, onNext }: { cards: GCard[]; i
   );
 }
 
-export function Album({ cards, collection, setCollection, packs, onPackOpened }: { cards: GCard[]; collection: GCard[]; setCollection: (c: GCard[]) => void; packs: number; onPackOpened: () => void }) {
+export function Album({ cards, collection, packs, onOpenPack }: { cards: GCard[]; collection: GCard[]; packs: number; onOpenPack: () => Promise<GCard[] | null> }) {
   const teams = useMemo(() => [...new Map(cards.filter(c => c.team).map(c => [c.team!.id, c.team!])).values()].sort((a, b) => a.name.localeCompare(b.name, 'pl')), [cards]);
-  const pool = useMemo(() => packPool(cards), [cards]);
+  const [opening, setOpening] = useState(false);
   const [page, setPage] = useState(0);
   const [pack, setPack] = useState<{ cards: GCard[]; before: Set<string>; n: number } | null>(null);
   const [focus, setFocus] = useState<Slot | null>(null);
@@ -268,12 +268,14 @@ export function Album({ cards, collection, setCollection, packs, onPackOpened }:
   const allPlayers = new Set(cards.map(c => c.pid));
   const font = useHeaderFont();
 
-  const rip = () => {
-    if (packs <= 0) return;
-    onPackOpened();
-    const p = openPack(pool);
-    setPack(prev => ({ cards: p, before: new Set(collection.map(c => c.pid)), n: (prev?.n ?? 0) + 1 }));
-    setCollection([...collection, ...p]);
+  // The pack is drawn on the server; the reveal starts once its cards are here
+  const rip = async () => {
+    if (packs <= 0 || opening) return;
+    setOpening(true);
+    const before = new Set(collection.map(c => c.pid));
+    const p = await onOpenPack();
+    setOpening(false);
+    if (p) setPack(prev => ({ cards: p, before, n: (prev?.n ?? 0) + 1 }));
   };
 
   return (
