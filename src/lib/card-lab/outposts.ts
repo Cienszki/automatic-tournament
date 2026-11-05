@@ -27,7 +27,8 @@ export const RULES = { orders: ORDERS, draw: DRAW };
 export const START_HAND = 4;
 export const HAND_MAX = 7;
 export const DECK_SIZE = 20;
-export const DECK_PER_ROLE = 3;
+/** Only 2 per position are required: the other 10 are the player's choice */
+export const DECK_PER_ROLE = 2;
 export const PER_SIDE_AT_OBJECTIVE = 3;
 export const FARMER_MAX = 3;
 /** Strength from the rating: 1–9 on a curve, so great performances are worth clearly more (sim: a deck
@@ -54,7 +55,7 @@ export const takePoints = (id: ObjId) => (id === 'roshan' ? 2 : 1);
 export const KEYWORD: Record<RoleKey, { name: string; ability: string; text: string }> = {
   Carry: { name: 'Carry', ability: 'Farma', text: `Na początku każdej Twojej tury, jeśli stoi na Twoim objectivie, zyskuje +1 siły na stałe (maks. +${FARMER_MAX}).` },
   Mid: { name: 'Mid', ability: 'Gank', text: "Może iść prosto z objective'u na inny objective. Pozostali muszą najpierw wrócić do bazy." },
-  Offlane: { name: 'Offlane', ability: 'Tank', text: '+1 siły. W walce rywal musi najpierw dać mu tyle obrażeń, żeby zginął, zanim uderzy kogoś innego.' },
+  Offlane: { name: 'Offlane', ability: 'Tank', text: '+1 siły. Zanim rywal zaatakuje kogoś innego, Offlane musi zostać zabity.' },
   'Soft Support': { name: 'Support', ability: 'Smoke', text: 'Raz na turę grupa, w której jest, rusza się bez rozkazu.' },
   'Hard Support': { name: 'Hard Supp', ability: 'Aura', text: '+1 siły dla każdej Twojej jednostki na tym samym objectivie, także dla siebie.' },
 };

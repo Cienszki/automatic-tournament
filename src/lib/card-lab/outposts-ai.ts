@@ -8,8 +8,10 @@
 import { autoTargets, battle, canDeploy, clashes, canMove, deploy, endTurn, fighters, might, move, moveCost, resolve, smokeLeft, startOrders, targetProblem, type Loc, type OState, type Side, type Targets } from './outposts';
 
 /** Practice levels: noise in the computer's judgement, how often it stops early, and how much weaker its deck is */
-export type Level = 'easy' | 'medium' | 'hard' | 'expert';
+export type Level = 'tutorial' | 'easy' | 'medium' | 'hard' | 'expert';
 export const LEVELS: Record<Level, { name: string; noise: number; quit: number; deckGap: number; note?: string }> = {
+  // A short coached match (6 points) against a gentle computer with a weak deck
+  tutorial: { name: 'Samouczek', noise: 6, quit: 0.5, deckGap: 18, note: 'Krok po kroku, krótki mecz do 6 punktów' },
   easy: { name: 'Łatwy', noise: 6, quit: 0.35, deckGap: 10 },
   medium: { name: 'Średni', noise: 2, quit: 0.12, deckGap: 4 },
   hard: { name: 'Trudny', noise: 0.3, quit: 0, deckGap: 0 },
@@ -237,7 +239,7 @@ function fightScore(f: ReturnType<typeof battle>, side: Side): number {
 export function chooseTargets(s: OState, at: 0 | 1 | 2, side: Side, level: Level = 'hard', rnd = Math.random): Targets {
   const mine = allTargetings(s, at, side);
   if (!mine.length) return autoTargets(s, at, side);
-  if (level === 'easy' && rnd() < 0.5) return mine[Math.floor(rnd() * mine.length)];
+  if ((level === 'easy' || level === 'tutorial') && rnd() < 0.5) return mine[Math.floor(rnd() * mine.length)];
   const theirs = allTargetings(s, at, (1 - side) as Side);
   if (!theirs.length) return mine[0];
   const careful = level === 'expert' ? 0.5 : level === 'hard' ? 0.3 : 0;
@@ -245,7 +247,7 @@ export function chooseTargets(s: OState, at: 0 | 1 | 2, side: Side, level: Level
   for (const t of mine) {
     let sum = 0; let min = Infinity;
     for (const o of theirs) { const v = fightScore(battle(s, at, { ...t, ...o }), side); sum += v; min = Math.min(min, v); }
-    const v = (1 - careful) * (sum / theirs.length) + careful * min + (level === 'medium' || level === 'easy' ? rnd() * 3 : 0);
+    const v = (1 - careful) * (sum / theirs.length) + careful * min + (level === 'medium' || level === 'easy' || level === 'tutorial' ? rnd() * 3 : 0);
     if (v > bestV) { bestV = v; best = t; }
   }
   return best;

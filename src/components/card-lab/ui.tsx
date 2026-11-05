@@ -1,13 +1,14 @@
 'use client';
 
-// Shared look of the card game: the card face (FUT-style, like the stats hub's Karty), the card
+// Shared look of the card game: the card face (what it does in the game), the card
 // back, piles, HP / mana bars and small text helpers. Sizes scale from the card width.
 
 import React, { createContext, useContext } from 'react';
 import { motion } from 'framer-motion';
 import { Avatar, C, HeroImg, TeamLogo, Tip, TipBody, ink, mix, useHeaderFont, useMetals } from '@/components/stats-lab/kit';
 import { useFitText } from '@/components/teams-section/fit';
-import { ATTRS, ROLE_SHORT, TIER, tierOf, type GCard } from '@/lib/card-lab/cards';
+import { TIER, tierOf, type GCard } from '@/lib/card-lab/cards';
+import { KEYWORD, baseMight } from '@/lib/card-lab/outposts';
 
 export const RATIO = 1.42;
 
@@ -15,13 +16,15 @@ export const RATIO = 1.42;
 export const FitScaleCtx = createContext(1);
 export const useFitScale = () => useContext(FitScaleCtx);
 
-/** Explains a card on hover */
+/** Explains a card on hover: what it does in the game, and where it comes from */
 export function CardTip({ c }: { c: GCard }) {
+  const k = KEYWORD[c.role];
   return (
-    <TipBody title={`${c.name} · ${ROLE_SHORT[c.role]} · ocena ${c.ovr}`}>
-      <div>{c.team?.name ?? '—'} {c.series.result} z {c.series.opp?.name ?? '?'} · {c.series.games} {c.series.games === 1 ? 'gra' : 'gry'}{c.standin ? ' · jako standin' : ''}</div>
-      {c.totw && <div style={{ color: TIER.totw.color }}>Drużyna kolejki{c.series.label ? ` (${c.series.label})` : ''}: +4 do wszystkiego</div>}
-      <div className="mt-1 grid grid-cols-3 gap-x-3 tabular-nums">{ATTRS.map(a => <span key={a.abbr}>{a.name} <b>{c.attrs[a.abbr]}</b></span>)}</div>
+    <TipBody title={`${c.name} · ${k.name} · siła ${baseMight(c)}`}>
+      <div><b>{k.ability}:</b> {k.text}</div>
+      {c.team && <div className="mt-1"><b>Drużyna:</b> +1 siły, gdy stoi na objectivie z graczem z {c.team.name}.</div>}
+      <div className="mt-1 opacity-70">Za serię {c.series.result} z {c.series.opp?.name ?? '?'}{c.standin ? ' (jako standin)' : ''} · ocena {c.ovr}</div>
+      {c.totw && <div className="mt-1" style={{ color: TIER.totw.color }}>Drużyna kolejki{c.series.label ? ` (${c.series.label})` : ''}: karta mocniejsza niż zwykła</div>}
     </TipBody>
   );
 }
@@ -32,9 +35,15 @@ function FitName({ text, max, min }: { text: string; max: number; min: number })
   return <div ref={ref} className="font-logik-extended-bold uppercase whitespace-nowrap overflow-hidden text-center" style={font}>{text}</div>;
 }
 
+const FOIL_CSS = `
+@keyframes karty-foil { 0% { background-position: 0% 50% } 100% { background-position: 300% 50% } }
+@keyframes karty-twinkle { 0%, 100% { opacity: 0; transform: scale(.4) } 50% { opacity: 1; transform: scale(1) } }`;
+
 /**
- * The card. `w` = width in px (height = w × 1.42). Below ~130 px the attributes are left out.
- * `selected` glows in the secondary colour, `dim` fades it.
+ * The card, showing what matters in the game: strength (big), position with its ability, the team (for
+ * the team bonus). `w` = width in px (height = w × 1.42); below ~130 px the ability text is left out.
+ * Team-of-the-round cards are holographic: moving foil, a ribbon, a double frame and sparkles.
+ * `selected` glows in the secondary colour, `dim` fades it; `children` are drawn on top (inside the card).
  */
 export function CardFace({ c, w, selected, dim, onClick, tip = true, children }: {
   c: GCard; w: number; selected?: boolean; dim?: boolean; onClick?: () => void; tip?: boolean; children?: React.ReactNode;
@@ -44,52 +53,68 @@ export function CardFace({ c, w, selected, dim, onClick, tip = true, children }:
   const t = TIER[tierOf(c)];
   const full = w >= 130;
   const font = useHeaderFont();
+  const k = KEYWORD[c.role];
+  const special = !!c.totw;
+  const r = Math.max(8, 16 * s);
   const face = (
     <motion.div onClick={onClick} whileHover={onClick ? { y: -6 } : undefined}
       className={`relative shrink-0 overflow-hidden text-white select-none ${onClick ? 'cursor-pointer' : ''}`}
       style={{
-        width: w, height: h, borderRadius: Math.max(8, 16 * s),
-        background: c.totw
-          ? `linear-gradient(160deg, ${mix(t.color, 35)}, transparent 40%, ${mix('#b072ff', 25)} 80%), linear-gradient(180deg, #10141c, #07080d)`
+        width: w, height: h, borderRadius: r,
+        background: special
+          ? `radial-gradient(120% 70% at 50% 0%, ${mix(t.color, 40)}, transparent 60%), linear-gradient(180deg, #0f1a26, #06080d)`
           : `linear-gradient(160deg, ${mix(t.color, 30)} 0%, transparent 45%), linear-gradient(180deg, #17171f, #0b0b10)`,
         boxShadow: selected
           ? `0 0 0 ${Math.max(2, 3 * s)}px ${C.secondary}, 0 0 ${24 * s}px ${mix(C.secondary, 70)}`
-          : `0 0 0 ${Math.max(1, 1.5 * s)}px ${mix(t.color, 75)}, 0 ${10 * s}px ${26 * s}px rgba(0,0,0,0.45)`,
+          : special
+            ? `0 0 0 ${Math.max(2, 2.5 * s)}px ${t.color}, 0 0 0 ${Math.max(4, 5 * s)}px #f2c94c, 0 0 ${30 * s}px ${t.color}, 0 ${10 * s}px ${26 * s}px rgba(0,0,0,0.5)`
+            : `0 0 0 ${Math.max(1, 1.5 * s)}px ${mix(t.color, 75)}, 0 ${10 * s}px ${26 * s}px rgba(0,0,0,0.45)`,
         opacity: dim ? 0.4 : 1, transition: 'opacity .2s, box-shadow .2s',
       }}>
+      {special && <style>{FOIL_CSS}</style>}
       <HeroImg heroId={c.heroId} title={false} className="absolute inset-0 w-full h-full scale-125 blur-xl opacity-30" />
       <div className="absolute -right-8 -top-8 rounded-full blur-2xl" style={{ width: 120 * s, height: 120 * s, background: mix(t.color, 30) }} />
-      {/* Rating, position, team */}
-      <div className="absolute flex flex-col items-center" style={{ left: 12 * s, top: 12 * s, width: 50 * s }}>
-        <span className="font-logik-extended-bold leading-none" style={{ fontSize: 40 * s, color: t.color, ...font }}>{c.ovr}</span>
-        <span className="font-bold tracking-widest opacity-85" style={{ fontSize: 11 * s, marginTop: 3 * s }}>POZ {c.pos}</span>
-        {c.team && <span style={{ marginTop: 6 * s }}><TeamLogo team={c.team} size={Math.round(26 * s)} /></span>}
+      {/* Holographic foil sweeping across the whole card */}
+      {special && (
+        <div className="absolute inset-0 pointer-events-none" style={{
+          background: 'linear-gradient(115deg, transparent 20%, rgba(255,90,200,0.35) 30%, rgba(90,240,255,0.4) 38%, rgba(255,240,120,0.35) 46%, transparent 56%)',
+          backgroundSize: '300% 100%', mixBlendMode: 'color-dodge', animation: 'karty-foil 4s linear infinite',
+        }} />
+      )}
+      {/* Strength (what it hits for in the game) and team */}
+      <div className="absolute flex flex-col items-center" style={{ left: 10 * s, top: special ? 30 * s : 10 * s, width: 56 * s }}>
+        <span className="flex items-center justify-center font-logik-extended-bold leading-none"
+          style={{ width: 50 * s, height: 50 * s, fontSize: 32 * s, borderRadius: '50% 50% 50% 12%', background: t.color, color: '#07080b', boxShadow: `0 0 ${14 * s}px ${mix(t.color, 70)}`, ...font }}>{baseMight(c)}</span>
+        <span className="font-bold tracking-widest opacity-85" style={{ fontSize: 9 * s, marginTop: 3 * s }}>SIŁA</span>
+        {c.team && <span style={{ marginTop: 5 * s }}><TeamLogo team={c.team} size={Math.round(26 * s)} /></span>}
       </div>
-      <div className="absolute" style={{ right: 10 * s, top: 12 * s }}>
-        <Avatar player={c.player} size={Math.round(108 * s)} ring={mix(t.color, 85)} />
+      <div className="absolute" style={{ right: 10 * s, top: special ? 30 * s : 12 * s }}>
+        <Avatar player={c.player} size={Math.round((special ? 96 : 108) * s)} ring={mix(t.color, 85)} />
       </div>
-      {/* Name and the series the card comes from */}
-      <div className="absolute inset-x-0 px-2" style={{ top: 126 * s }}>
-        <div style={{ height: 24 * s }}><FitName text={c.name} max={21 * s} min={10 * s} /></div>
-        <div className="h-px mx-5" style={{ background: `linear-gradient(90deg, transparent, ${t.color}, transparent)`, marginTop: 2 * s }} />
-        <div className="text-center whitespace-nowrap overflow-hidden opacity-75" style={{ fontSize: 10.5 * s, marginTop: 3 * s }}>
-          {c.series.result} z {c.series.opp?.name ?? '?'}
-        </div>
-      </div>
-      {full && (
-        <div className="absolute grid grid-cols-2 gap-x-4" style={{ top: 174 * s, left: 22 * s, right: 22 * s, rowGap: 0, lineHeight: 1.2 }}>
-          {ATTRS.map(a => (
-            <span key={a.abbr} className="flex items-baseline gap-1.5">
-              <span className="font-logik-extended-bold tabular-nums text-right" style={{ width: 28 * s, fontSize: 16 * s, color: c.attrs[a.abbr] >= 80 ? t.color : undefined, ...font }}>{c.attrs[a.abbr]}</span>
-              <span className="tracking-widest opacity-70" style={{ fontSize: 10 * s }}>{a.abbr}</span>
-            </span>
-          ))}
+      {/* Team of the round ribbon */}
+      {special && (
+        <div className="absolute inset-x-0 top-0 flex items-center justify-center gap-1.5 font-logik-extended-bold uppercase tracking-widest text-black"
+          style={{ height: 22 * s, fontSize: 10 * s, background: `linear-gradient(90deg, #f2c94c, ${t.color}, #f2c94c)`, ...font }}>
+          <span>★</span>Drużyna kolejki<span>★</span>
         </div>
       )}
+      {/* Name, position + ability, what the ability does */}
+      <div className="absolute inset-x-0 px-2" style={{ top: 128 * s }}>
+        <div style={{ height: 24 * s }}><FitName text={c.name} max={21 * s} min={10 * s} /></div>
+        <div className="h-px mx-5" style={{ background: `linear-gradient(90deg, transparent, ${t.color}, transparent)`, marginTop: 2 * s }} />
+        <div className="text-center font-logik-extended-bold uppercase tracking-wider" style={{ fontSize: 12 * s, marginTop: 4 * s, color: t.color, ...font }}>
+          {k.name} <span className="opacity-70">· {k.ability}</span>
+        </div>
+        {full && <div className="text-center leading-snug opacity-90" style={{ fontSize: 10.5 * s, marginTop: 3 * s, paddingInline: 6 * s }}>{k.text}</div>}
+      </div>
       <div className="absolute inset-x-0 flex items-center justify-center gap-2 uppercase tracking-widest" style={{ bottom: 8 * s, fontSize: 9 * s }}>
         <HeroImg heroId={c.heroId} className="rounded" style={{ width: 34 * s, height: 19 * s }} />
-        <span style={{ color: t.color }} className="font-bold">{c.totw ? 'Drużyna kolejki' : c.standin ? 'Standin' : t.label}</span>
+        <span style={{ color: t.color }} className="font-bold">{special ? `Seria ${c.series.result}` : c.standin ? 'Standin' : t.label}</span>
       </div>
+      {/* Sparkles */}
+      {special && [[18, 40], [82, 22], [70, 64], [26, 78], [90, 84]].map(([x, y], i) => (
+        <span key={i} className="absolute pointer-events-none" style={{ left: `${x}%`, top: `${y}%`, width: 8 * s, height: 8 * s, background: '#fff', clipPath: 'polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%)', animation: `karty-twinkle ${1.6 + i * 0.4}s ease-in-out ${i * 0.5}s infinite` }} />
+      ))}
       {children}
     </motion.div>
   );
