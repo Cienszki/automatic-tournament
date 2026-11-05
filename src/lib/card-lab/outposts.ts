@@ -23,7 +23,18 @@ export const ORDERS = 3;
 /** Cards drawn at the start of each turn (sim: with 1 the hand runs dry and orders go unused) */
 export const DRAW = 2;
 /** Per-turn numbers, adjustable for balance simulations */
-export const RULES = { orders: ORDERS, draw: DRAW };
+export const RULES = {
+  orders: ORDERS, draw: DRAW,
+  /** Smoke frees one group a turn: 'group' = a group with the Support in it; 'place' = a group leaving
+   *  the place where a Support stood when the turn began (the Support may stay) */
+  smoke: 'place' as 'group' | 'place',
+  /** Fights go on round after round until one side is gone (false = everyone attacks once) */
+  toTheEnd: false,
+  /** Survivors that took damage are wounded (−1) until they start a turn in the base */
+  wounds: false,
+  /** Extra opening cards for the player who goes second */
+  secondBonus: 1,
+};
 export const START_HAND = 4;
 export const HAND_MAX = 7;
 export const DECK_SIZE = 20;
@@ -56,16 +67,16 @@ export const KEYWORD: Record<RoleKey, { name: string; ability: string; text: str
   Carry: { name: 'Carry', ability: 'Farma', text: `Na początku każdej Twojej tury, jeśli stoi na Twoim objectivie, zyskuje +1 siły na stałe (maks. +${FARMER_MAX}).` },
   Mid: { name: 'Mid', ability: 'Gank', text: "Może iść prosto z objective'u na inny objective. Pozostali muszą najpierw wrócić do bazy." },
   Offlane: { name: 'Offlane', ability: 'Tank', text: '+1 siły. Zanim rywal zaatakuje kogoś innego, Offlane musi zostać zabity.' },
-  'Soft Support': { name: 'Support', ability: 'Smoke', text: 'Raz na turę grupa, w której jest, rusza się bez rozkazu.' },
+  'Soft Support': { name: 'Support', ability: 'Smoke', text: 'Raz na turę jedna grupa ruszająca z miejsca, w którym stoi, idzie bez rozkazu (on sam może zostać).' },
   'Hard Support': { name: 'Hard Supp', ability: 'Aura', text: '+1 siły dla każdej Twojej jednostki na tym samym objectivie, także dla siebie.' },
 };
 
 /** `loc` = where it is (or is planned to go this turn), `from` = where it stood when the turn began */
-export interface OUnit { uid: string; card: GCard; side: Side; loc: Loc; from: Loc; moved: boolean; fresh: boolean; growth: number }
+export interface OUnit { uid: string; card: GCard; side: Side; loc: Loc; from: Loc; moved: boolean; fresh: boolean; growth: number; wounded?: boolean }
 export interface OBoard { hand: GCard[]; deck: GCard[]; grave: GCard[]; score: number }
 
 /** One part of a unit's strength, for the breakdown chips */
-export interface Part { kind: 'card' | 'role' | 'farmer' | 'aura' | 'hg' | 'team'; label: string; v: number }
+export interface Part { kind: 'card' | 'role' | 'farmer' | 'aura' | 'hg' | 'team' | 'wound'; label: string; v: number }
 export interface FightLine { uid: string; card: GCard; side: Side; parts: Part[]; m: number }
 export interface Fight {
   key: number;
@@ -131,6 +142,7 @@ export function strengthParts(s: OState, u: OUnit, defending = false): Part[] {
   const rm = roleMod(u.card);
   if (rm) parts.push({ kind: 'role', label: rm > 0 ? 'Offlane' : 'Support', v: rm });
   if (u.growth) parts.push({ kind: 'farmer', label: 'Carry: farma', v: u.growth });
+  if (u.wounded) parts.push({ kind: 'wound', label: 'Ranny', v: -1 });
   if (u.loc !== 'base') {
     const aura = s.units.filter(o => o.side === u.side && o.loc === u.loc && o.card.role === 'Hard Support').length;
     if (aura) parts.push({ kind: 'aura', label: 'Hard Supp', v: aura });
@@ -162,7 +174,7 @@ export function newGame(decks: [GCard[], GCard[]], rnd = Math.random, win = WIN_
   const ids = shuffle(OBJ_IDS, rnd).slice(0, 3);
   // Going second starts with one card more: with chosen targets the first player won 63 % in
   // simulations, 54 % with this (2 orders on the first turn instead overshot to 43 %)
-  const sides = decks.map((d, i): OBoard => { const x = shuffle(d, rnd); const n = START_HAND + (i === 1 ? 1 : 0); return { hand: x.slice(0, n), deck: x.slice(n), grave: [], score: 0 }; }) as OState['sides'];
+  const sides = decks.map((d, i): OBoard => { const x = shuffle(d, rnd); const n = START_HAND + (i === 1 ? RULES.secondBonus : 0); return { hand: x.slice(0, n), deck: x.slice(n), grave: [], score: 0 }; }) as OState['sides'];
   const s: OState = {
     turn: 1, active: 0, phase: 'deploy', orders: RULES.orders, budget: RULES.orders, deployed: 0, objectives: ids.map(id => ({ id, owner: null })),
     units: [], sides, winner: null, win, log: [], fights: [], fightKey: 0, gains: [], gainKey: 0, events: [{ kind: 'turn', side: 0, turn: 1 }],
@@ -175,20 +187,29 @@ export function newGame(decks: [GCard[], GCard[]], rnd = Math.random, win = WIN_
 
 export const countAt = (s: OState, side: Side, loc: Loc) => s.units.filter(u => u.side === side && u.loc === loc).length;
 
-/** What the planned moves cost: one order per group (same start, same destination), one group with a
- *  Soft supp in it free — so moving units one by one costs the same as moving them together */
-export function planCost(s: OState): number {
+/** Places a Support stood on when the turn began (it can free a group leaving from there) */
+export const smokePlaces = (s: OState): Set<Loc> => new Set(s.units.filter(u => u.side === s.active && u.card.role === 'Soft Support' && !u.fresh).map(u => u.from));
+/** The planned groups (same start, same destination), each marked if Smoke can pay for it */
+function plannedGroups(s: OState): Map<string, boolean> {
+  const places = RULES.smoke === 'place' ? smokePlaces(s) : null;
   const groups = new Map<string, boolean>();
   for (const u of s.units) {
     if (u.side !== s.active || !u.moved) continue;
     const k = `${u.from}>${u.loc}`;
-    groups.set(k, (groups.get(k) ?? false) || u.card.role === 'Soft Support');
+    groups.set(k, (groups.get(k) ?? false) || u.card.role === 'Soft Support' || !!places?.has(u.from));
   }
-  const smoke = [...groups.values()].some(Boolean);
-  return Math.max(0, groups.size - (smoke ? 1 : 0));
+  return groups;
 }
-/** Is the Soft supp's free group still unused this turn? */
-export const smokeLeft = (s: OState) => !s.units.some(u => u.side === s.active && u.moved && u.card.role === 'Soft Support');
+/** What the planned moves cost: one order per group (same start, same destination), one group Smoke can
+ *  pay for is free — so moving units one by one costs the same as moving them together */
+export function planCost(s: OState): number {
+  const groups = plannedGroups(s);
+  return Math.max(0, groups.size - ([...groups.values()].some(Boolean) ? 1 : 0));
+}
+/** Is the Smoke free move still unused this turn? */
+export const smokeLeft = (s: OState) => ![...plannedGroups(s).values()].some(Boolean);
+/** Would a group of these units, moving now, be the one Smoke pays for? */
+export const smokeCovers = (s: OState, uids: string[]) => smokeLeft(s) && s.units.some(u => uids.includes(u.uid) && (u.card.role === 'Soft Support' || (RULES.smoke === 'place' && smokePlaces(s).has(u.from))));
 const recount = (s: OState) => { s.orders = s.budget - s.deployed - planCost(s); };
 
 export function canDeploy(s: OState, cardId: string): string | null {
@@ -271,7 +292,7 @@ export function move(prev: OState, uids: string[], to: Loc): OState {
 export interface DuelUnit { uid: string; side: Side; m: number; hp: number; acted: boolean; tank: boolean }
 export interface Attack { from: string; to: string }
 export interface Duel {
-  at: 0 | 1 | 2; attacker: Side; turn: Side; units: DuelUnit[];
+  at: 0 | 1 | 2; attacker: Side; turn: Side; units: DuelUnit[]; round: number;
   /** Points the attacker gets for taking the objective (0 if it already owns it) */
   stake: number;
   log: Array<Attack & { dmg: number; killed: boolean }>;
@@ -286,7 +307,7 @@ export function fighters(s: OState, at: 0 | 1 | 2, side: Side): Array<{ u: OUnit
 export function startDuel(s: OState, at: 0 | 1 | 2): Duel {
   const side = s.active; const ob = s.objectives[at];
   const units = ([side, (1 - side) as Side]).flatMap(sd => fighters(s, at, sd).map(({ u, m }) => ({ uid: u.uid, side: sd, m, hp: m, acted: false, tank: u.card.role === 'Offlane' })));
-  return { at, attacker: side, turn: side, units, stake: ob.owner !== side ? takePoints(ob.id) : 0, log: [] };
+  return { at, attacker: side, turn: side, units, round: 1, stake: ob.owner !== side ? takePoints(ob.id) : 0, log: [] };
 }
 
 const alive = (u: DuelUnit) => u.hp > 0;
@@ -317,6 +338,10 @@ export function duelAct(d: Duel, a: Attack): Duel {
   const next: Duel = { ...d, units, log: [...d.log, { ...a, dmg: from.m, killed: to.hp <= 0 }] };
   const other = (1 - d.turn) as Side;
   next.turn = canAct(next, other) ? other : d.turn;
+  // Everyone has attacked but both sides still stand: next round, the attacker first again
+  if (RULES.toTheEnd && !canAct(next, 0) && !canAct(next, 1) && units.some(u => u.side === 0 && alive(u)) && units.some(u => u.side === 1 && alive(u))) {
+    next.units = units.map(u => ({ ...u, acted: false })); next.turn = d.attacker; next.round = d.round + 1;
+  }
   return next;
 }
 
@@ -392,7 +417,7 @@ export function resolve(prev: OState, chosen: Partial<Record<0 | 1 | 2, Attack[]
   for (const u of s.units) if (u.side === side && u.moved) { const k = `${u.from}>${u.loc}`; groups.set(k, [...(groups.get(k) ?? []), u]); }
   let smokeShown = false;
   for (const us of groups.values()) {
-    const free = !smokeShown && us.some(u => u.card.role === 'Soft Support');
+    const free = !smokeShown && us.some(u => u.card.role === 'Soft Support' || (RULES.smoke === 'place' && smokePlaces(prev).has(u.from)));
     if (free) smokeShown = true;
     ev(s, { kind: 'move', side, cards: us.map(u => u.card), from: us[0].from, to: us[0].loc, free });
     say(s, side, `${who(side)}: ${us.map(u => u.card.name).join(', ')} → ${us[0].loc === 'base' ? 'baza' : OBJECTIVES[s.objectives[us[0].loc].id].name}`);
@@ -405,6 +430,7 @@ export function resolve(prev: OState, chosen: Partial<Record<0 | 1 | 2, Attack[]
     if (s.units.some(u => u.side === foe && u.loc === to)) {
       const f = duelFight(s, playDuel(s, to, chosen[to]));
       for (const id of f.died) { const u = s.units.find(x => x.uid === id)!; s.sides[u.side].grave.push(u.card); }
+      if (RULES.wounds) for (const u of s.units) if (!f.died.includes(u.uid) && (f.taken[u.uid] ?? 0) > 0) u.wounded = true;
       s.units = s.units.filter(u => !f.died.includes(u.uid));
       s.fightKey++;
       s.fights = [...s.fights, { ...f, key: s.fightKey }];
@@ -441,7 +467,7 @@ export function endTurn(prev: OState): OState {
   const side = (1 - s.active) as Side;
   s.active = side; s.turn++; s.phase = 'deploy'; s.fights = [];
   ev(s, { kind: 'turn', side, turn: s.turn });
-  s.units.forEach(u => { u.moved = false; u.fresh = false; u.from = u.loc; });
+  s.units.forEach(u => { u.moved = false; u.fresh = false; u.from = u.loc; if (u.side === side && u.loc === 'base') u.wounded = false; });
   s.objectives.forEach((o, i) => { if (o.owner === side && countAt(s, side, i as Loc) > 0) score(s, side, i as 0 | 1 | 2, 1, 'hold'); });
   checkWin(s);
   s.units.forEach(u => { if (u.side === side && u.card.role === 'Carry' && u.loc !== 'base' && s.objectives[u.loc].owner === side && u.growth < FARMER_MAX) u.growth++; });

@@ -11,12 +11,12 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, LayoutGroup, motion } from 'framer-motion';
-import { ArrowLeft, ArrowRight, Bot, CircleHelp, Flag, Home, Moon, Mountain, Plus, ScrollText, Shield, Skull, Sprout, Sun, Swords, Users, Wind, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Bot, CircleHelp, HeartCrack, Flag, Home, Moon, Mountain, Plus, ScrollText, Shield, Skull, Sprout, Sun, Swords, Users, Wind, X } from 'lucide-react';
 import { Avatar, C, HeroRender, Tip, mix, onDark, useHeaderFont, useSize } from '@/components/stats-lab/kit';
 import { useFitText } from '@/components/teams-section/fit';
 import { avgOvr, cpuDeck, type DeckRule, type GCard, type RoleKey } from '@/lib/card-lab/cards';
 import {
-  DECK_PER_ROLE, DECK_SIZE, KEYWORD, OBJECTIVES, ORDERS, PER_SIDE_AT_OBJECTIVE, WIN_POINTS, baseMight, canDeploy, canMove, cardStrength, clashes as clashesOf, deploy, endTurn, might, move, moveCost, newGame, resolve, smokeLeft, startOrders, strengthParts, takePoints, type Ev, type Fight, type Gain, type Loc, type ObjId, type OState, type OUnit, type Part, type Side, duelAct, duelOver, duelTargets, startDuel, type Attack, type Duel, type DuelUnit,
+  DECK_PER_ROLE, DECK_SIZE, KEYWORD, OBJECTIVES, ORDERS, PER_SIDE_AT_OBJECTIVE, WIN_POINTS, baseMight, canDeploy, canMove, cardStrength, clashes as clashesOf, deploy, endTurn, might, move, moveCost, newGame, resolve, RULES, smokeCovers, smokeLeft, startOrders, strengthParts, takePoints, type Ev, type Fight, type Gain, type Loc, type ObjId, type OState, type OUnit, type Part, type Side, duelAct, duelOver, duelTargets, startDuel, type Attack, type Duel, type DuelUnit,
 } from '@/lib/card-lab/outposts';
 import { applyAct, chooseAttack, cpuNextAction, LEVELS, type Level } from '@/lib/card-lab/outposts-ai';
 import { CardBack, useFitScale } from './ui';
@@ -47,8 +47,8 @@ const objModel = (id: string) => `/card-lab/objectives/${id}.webp`;
 const MAP_VIEW = 0.3; // how much of the map's width an arena shows
 const MAP_EDGE = [0.065, 0.935]; // the drawn map inside the image's black border
 
-const PART_ICON: Partial<Record<Part['kind'], typeof Sun>> = { aura: Sun, farmer: Sprout, hg: Mountain, team: Users };
-const PART_COLOR: Record<Part['kind'], string> = { card: T.text, role: T.text, aura: ACC_L, farmer: T.me, hg: '#6fb7ff', team: '#7fd3ff' };
+const PART_ICON: Partial<Record<Part['kind'], typeof Sun>> = { aura: Sun, farmer: Sprout, hg: Mountain, team: Users, wound: HeartCrack };
+const PART_COLOR: Record<Part['kind'], string> = { card: T.text, role: T.text, aura: ACC_L, farmer: T.me, hg: '#6fb7ff', team: '#7fd3ff', wound: '#ff7a6b' };
 const signColor = (v: number) => (v > 0 ? T.pos : v < 0 ? T.neg : T.zero);
 
 function FitLine({ text, max, min, className, style }: { text: string; max: number; min: number; className?: string; style?: React.CSSProperties }) {
@@ -76,46 +76,69 @@ function SmokeFx() {
         <motion.span key={i} className="absolute rounded-full" style={{ left: `${4 + (i * 9) % 90}%`, top: `${12 + (i * 29) % 72}%`, width: 150, height: 100, marginLeft: -75, marginTop: -50, background: `radial-gradient(ellipse, ${T.smoke}cc, ${T.smoke}44 45%, transparent 70%)`, filter: 'blur(5px)' }}
           animate={{ x: [0, i % 2 ? 26 : -26, 0], y: [0, -14, 0], opacity: [0.45, 0.95, 0.45], scale: [1, 1.15, 1] }} transition={{ duration: 3.4 + (i % 3), repeat: Infinity, delay: i * 0.25 }} />
       ))}
-      <span className="absolute right-3 top-2 z-10 flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[12px] font-bold uppercase tracking-wider whitespace-nowrap" style={{ background: T.smoke, color: '#07080b', boxShadow: `0 0 14px ${T.smoke}` }}>
-        <Wind className="w-3.5 h-3.5" />Smoke · ruch za 0
-      </span>
     </div>
   );
 }
-/** A bright field under a group with a Hard Supp, a ring on the ground and sparks rising */
+/** A soft glow under a group with a Hard Supp, sparks rising */
 function AuraFx() {
   return (
     <div className="absolute inset-x-[3%] inset-y-0 pointer-events-none">
-      <motion.div className="absolute inset-0" style={{ background: `radial-gradient(55% 60% at 50% 55%, ${mix(ACC_L, 75)}, ${mix(ACC, 35)} 45%, transparent 75%)` }}
-        animate={{ opacity: [0.55, 1, 0.55] }} transition={{ duration: 2.4, repeat: Infinity }} />
-      {[0, 1].map(i => (
-        <motion.div key={i} className="absolute left-1/2 bottom-[3%] -translate-x-1/2 rounded-[50%]" style={{ width: '88%', height: 54, border: `3px solid ${ACC_L}`, boxShadow: `0 0 22px ${ACC_L}, inset 0 0 18px ${ACC_L}` }}
-          animate={{ scale: [0.85, 1.08], opacity: [0.9, 0] }} transition={{ duration: 2.2, repeat: Infinity, delay: i * 1.1, ease: 'easeOut' }} />
-      ))}
+      <motion.div className="absolute inset-0" style={{ background: `radial-gradient(55% 60% at 50% 60%, ${mix(ACC_L, 45)}, ${mix(ACC, 18)} 45%, transparent 75%)` }}
+        animate={{ opacity: [0.5, 0.75, 0.5] }} transition={{ duration: 4, repeat: Infinity }} />
       {Array.from({ length: 14 }, (_, i) => (
-        <motion.span key={i} className="absolute rounded-full" style={{ left: `${6 + i * 6.5}%`, bottom: '6%', width: 7, height: 7, background: '#fff', boxShadow: `0 0 10px ${ACC_L}, 0 0 4px #fff` }}
-          animate={{ y: [0, -160], opacity: [0, 1, 0] }} transition={{ duration: 2.2 + (i % 3) * 0.5, repeat: Infinity, delay: i * 0.22 }} />
+        <motion.span key={i} className="absolute rounded-full" style={{ left: `${6 + i * 6.5}%`, bottom: '6%', width: 6, height: 6, background: '#fff', boxShadow: `0 0 10px ${ACC_L}, 0 0 4px #fff` }}
+          animate={{ y: [0, -160], opacity: [0, 0.9, 0] }} transition={{ duration: 2.4 + (i % 3) * 0.5, repeat: Infinity, delay: i * 0.22 }} />
       ))}
-      <span className="absolute right-3 top-2 z-10 flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[12px] font-bold uppercase tracking-wider whitespace-nowrap" style={{ background: ACC_L, color: '#07080b', boxShadow: `0 0 14px ${ACC_L}` }}>
-        <Sun className="w-3.5 h-3.5" />Aura · +1 siły
-      </span>
     </div>
   );
 }
-/** High Ground held: a glowing rampart on the side facing the enemy */
-function HgFx({ side }: { side: Side }) {
-  const c = '#6fb7ff';
-  const edge: React.CSSProperties = side === 0 ? { top: 0 } : { bottom: 0 };
+const HG_COLOR = '#6fb7ff';
+/** High Ground held: see-through towers standing on both sides of the three places */
+function HgFx({ w }: { w: number }) {
+  const span = 3 * w + 20; const tw = Math.round(w * 0.62);
+  const tower = (right: boolean) => (
+    /* eslint-disable-next-line @next/next/no-img-element */
+    <img src={objModel('highground')} alt="" className="absolute bottom-[6%] pointer-events-none select-none"
+      style={{ height: '88%', width: tw, objectFit: 'contain', [right ? 'left' : 'right']: `calc(50% + ${span / 2 + 6}px)`, opacity: 0.42, transform: right ? 'scaleX(-1)' : undefined, filter: `drop-shadow(0 0 14px ${HG_COLOR}) saturate(0.7) brightness(1.25)` }} />
+  );
   return (
-    <div className="absolute inset-x-[4%] pointer-events-none" style={{ ...edge, height: 46 }}>
-      <motion.div className="absolute inset-0" style={{ background: `linear-gradient(${side === 0 ? '180deg' : '0deg'}, ${c}bb, transparent)`, borderTop: side === 0 ? `3px solid ${c}` : undefined, borderBottom: side === 1 ? `3px solid ${c}` : undefined, boxShadow: `0 0 26px ${c}` }}
-        animate={{ opacity: [0.6, 1, 0.6] }} transition={{ duration: 2.6, repeat: Infinity }} />
-      <div className="absolute inset-x-0" style={{ ...edge, height: 10, background: `repeating-linear-gradient(90deg, ${c} 0 18px, transparent 18px 30px)`, opacity: 0.9 }} />
-      <span className="absolute right-3 z-10 flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[12px] font-bold uppercase tracking-wider whitespace-nowrap" style={{ ...(side === 0 ? { top: 14 } : { bottom: 14 }), background: c, color: '#07080b', boxShadow: `0 0 14px ${c}` }}>
-        <Mountain className="w-3.5 h-3.5" />High Ground · +1
-      </span>
+    <div className="absolute inset-0 pointer-events-none">
+      <div className="absolute left-1/2 bottom-[2%] -translate-x-1/2 rounded-[50%]" style={{ width: span + 2 * tw, height: 40, background: `radial-gradient(closest-side, ${HG_COLOR}55, transparent)` }} />
+      {tower(false)}{tower(true)}
     </div>
   );
+}
+interface Effect { key: string; icon: typeof Sun; label: string; color: string; tip: React.ReactNode }
+/** The effects working on a row, as short labels side by side; hover for what each does */
+function EffectChips({ items, side }: { items: Effect[]; side: Side }) {
+  if (!items.length) return null;
+  return (
+    <div className="absolute right-3 z-30 flex gap-1.5 pointer-events-auto" style={side === 0 ? { top: 8 } : { bottom: 8 }}>
+      {items.map(e => (
+        <Tip key={e.key} content={e.tip}>
+          <span className="flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider whitespace-nowrap cursor-help"
+            style={{ background: e.color, color: '#07080b', boxShadow: `0 0 10px ${e.color}88` }}>
+            <e.icon className="w-3.5 h-3.5" />{e.label}
+          </span>
+        </Tip>
+      ))}
+    </div>
+  );
+}
+const SMOKE_TIP = () => (RULES.smoke === 'place' ? 'Raz na turę jedna grupa ruszająca stąd idzie bez rozkazu (Support nie musi iść).' : 'Raz na turę grupa z Supportem w środku idzie bez rozkazu.');
+function effectsAt(s: OState, loc: Loc, side: Side): Effect[] {
+  const here = s.units.filter(u => u.side === side && u.loc === loc);
+  if (!here.length) return [];
+  const out: Effect[] = [];
+  if (side === 0 && s.active === 0 && s.phase === 'move' && here.some(u => !u.moved && !u.fresh && smokeCovers(s, [u.uid])))
+    out.push({ key: 'smoke', icon: Wind, label: 'Smoke', color: T.smoke, tip: SMOKE_TIP() });
+  if (loc !== 'base' && here.some(u => u.card.role === 'Hard Support'))
+    out.push({ key: 'aura', icon: Sun, label: 'Aura', color: ACC_L, tip: 'Hard Supp: +1 siły dla każdej jednostki tutaj (także dla siebie).' });
+  if (loc !== 'base' && s.objectives[loc].id === 'highground' && s.objectives[loc].owner === side)
+    out.push({ key: 'hg', icon: Mountain, label: 'High Ground', color: HG_COLOR, tip: 'W obronie: +1 siły dla każdej jednostki właściciela.' });
+  if (loc !== 'base' && here.some(u => strengthParts(s, u).some(p => p.kind === 'team')))
+    out.push({ key: 'team', icon: Users, label: 'Drużyna', color: '#7fd3ff', tip: 'Gracze z tej samej drużyny stoją razem: każdy z nich +1 siły.' });
+  return out;
 }
 
 // ── A figure: a unit, or a card in the hand (same look) ─────────────────────
@@ -183,7 +206,7 @@ function Figure({ card, m, side, w, layoutId, parts, smoke, bump, selected, tire
             <div className="absolute flex flex-col gap-0.5 z-10" style={{ left: 5 * k, top: 42 * k }}>
               {buffs.map(p => {
                 const Icon = PART_ICON[p.kind]!;
-                return <span key={p.kind} className="flex items-center gap-0.5 rounded-full px-1 font-bold" style={{ fontSize: Math.max(10, 10 * k), background: 'rgba(0,0,0,0.78)', color: PART_COLOR[p.kind] }}><Icon style={{ width: 10 * k + 2, height: 10 * k + 2 }} />+{p.v}</span>;
+                return <span key={p.kind} className="flex items-center gap-0.5 rounded-full px-1 font-bold" style={{ fontSize: Math.max(10, 10 * k), background: 'rgba(0,0,0,0.78)', color: PART_COLOR[p.kind] }}><Icon style={{ width: 10 * k + 2, height: 10 * k + 2 }} />{p.v > 0 ? '+' : '−'}{Math.abs(p.v)}</span>;
               })}
             </div>
           )}
@@ -271,7 +294,7 @@ function unitTarget(s: OState, ids: string[], to: Loc): Target {
   if (why) return { ok: false, text: why, tone: 'off', cost: 0 };
   const cost = moveCost(s, ids, to);
   const us = s.units.filter(u => ids.includes(u.uid));
-  const smoke = cost === 0 && smokeLeft(s) && us.some(u => u.card.role === 'Soft Support');
+  const smoke = cost === 0 && smokeCovers(s, ids);
   if (us.every(u => u.from === to)) return { ok: true, text: 'Cofnięcie ruchu', tone: 'plain', cost };
   if (to === 'base') return { ok: true, text: 'Do bazy', tone: 'plain', cost, smoke };
   const p = powerIfMoved(s, ids, to);
@@ -285,12 +308,12 @@ const NO_TARGET: Target = { ok: false, text: '', tone: 'off', cost: 0 };
 function Pill({ t }: { t: Target }) {
   return (
     <motion.span initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
-      className="flex items-center gap-2 rounded-full pl-2.5 pr-4 py-1.5 text-[13px] font-bold whitespace-nowrap pointer-events-none"
+      className="flex items-center gap-2 rounded-full px-4 py-1.5 text-[13px] font-bold whitespace-nowrap pointer-events-none"
       style={{ background: TONE[t.tone], color: '#07080b', boxShadow: `0 0 18px ${TONE[t.tone]}66` }}>
-      {t.cost < 0 ? <span>zwalnia rozkaz ·</span>
-        : t.smoke ? <><Wind className="w-4 h-4" />Support w grupie: nie kosztuje rozkazu ·</>
-        : t.cost === 0 ? <span>dołącza do grupy: bez kosztu ·</span>
-        : <span className="flex items-center gap-1.5">koszt <Gem size={10} /> ·</span>}<span>{t.text}</span>
+      {t.cost < 0 ? 'zwalnia rozkaz'
+        : t.smoke ? <><Wind className="w-4 h-4" />Smoke: bez rozkazu</>
+        : t.cost === 0 ? 'bez kosztu: dołącza do grupy'
+        : <>koszt {Array.from({ length: t.cost }, (_, k) => <Gem key={k} size={10} />)}</>}
     </motion.span>
   );
 }
@@ -308,9 +331,9 @@ function unitFigure(u: OUnit, w: number, a: AreaCtx) {
   const m = might(s, u, defending);
   const mine = s.active === 0 && s.winner === null && u.side === 0;
   const ready = mine && s.phase === 'move' && !u.fresh;
-  const smoke = mine && s.phase === 'move' && smokeLeft(s) && !u.moved && !u.fresh && s.units.some(o => o.side === 0 && o.loc === u.loc && o.card.role === 'Soft Support' && !o.moved && !o.fresh);
+  const smoke = mine && s.phase === 'move' && !u.moved && !u.fresh && smokeCovers(s, [u.uid]);
   const parts = u.side === 0 ? strengthParts(s, u, defending) : undefined;
-  const note = u.side === s.active && u.fresh ? 'Wystawiony w tej turze: ruszy się w następnej.' : u.side === s.active && u.moved ? 'Zaplanowany ruch: przeciągnij z powrotem, żeby go cofnąć.' : undefined;
+  const note = u.side === s.active && u.fresh ? 'Wystawiony w tej turze: ruszy się w następnej.' : u.wounded ? 'Ranny: −1 siły, wyleczy się na początku tury w bazie.' : undefined;
   const settle = a.settled.has(u.uid);
   return (
     <Figure key={u.uid} layoutId={settle ? undefined : u.uid} settle={settle} card={u.card} m={m} side={u.side} w={w} parts={parts} smoke={smoke}
@@ -347,9 +370,7 @@ function Objective({ i, a, target, onSend, rowRef, w }: { i: 0 | 1 | 2; a: AreaC
   const ob = s.objectives[i]; const def = OBJECTIVES[ob.id];
   const units = (side: Side) => s.units.filter(u => u.side === side && u.loc === i);
   const mineHere = units(0);
-  const smokeHere = mineHere.some(u => u.card.role === 'Soft Support' && !u.moved && !u.fresh) && s.active === 0 && s.phase === 'move' && smokeLeft(s);
-  // Both sides on one objective = a fight when the moves are confirmed
-  const clash = s.phase === 'move' && units(0).length > 0 && units(1).length > 0;
+  const smokeHere = s.active === 0 && s.phase === 'move' && mineHere.some(u => !u.moved && !u.fresh && smokeCovers(s, [u.uid]));
   const auraHere = mineHere.some(u => u.card.role === 'Hard Support');
   const off = target && !target.ok;
   return (
@@ -359,17 +380,12 @@ function Objective({ i, a, target, onSend, rowRef, w }: { i: 0 | 1 | 2; a: AreaC
       {ob.owner != null && <div className="absolute inset-0 pointer-events-none" style={{ background: `radial-gradient(70% 50% at 50% ${ob.owner === 0 ? 80 : 20}%, ${sideColor(ob.owner)}30, transparent 70%)` }} />}
       {target?.ok && <div className="absolute inset-0 pointer-events-none" style={{ boxShadow: `inset 0 0 0 2px ${TONE[target.tone]}99`, background: `${TONE[target.tone]}14` }} />}
       <div ref={rowRef} className="relative flex-1 min-h-0 flex justify-center items-end gap-[10px] pb-2">
-        {ob.id === 'highground' && ob.owner === 1 && units(1).length > 0 && <HgFx side={1} />}
+        {ob.id === 'highground' && ob.owner === 1 && units(1).length > 0 && <HgFx w={w} />}
+        <EffectChips items={effectsAt(s, i, 1)} side={1} />
         <AnimatePresence>{units(1).map(u => unitFigure(u, w, a))}</AnimatePresence>
         {Array.from({ length: PER_SIDE_AT_OBJECTIVE - units(1).length }, (_, k) => <Slot key={k} w={w} side={1} />)}
       </div>
       <div className="relative text-center px-3 py-1 pointer-events-none">
-        {clash && (
-          <motion.div className="absolute right-4 top-1/2 -translate-y-1/2 z-20 flex items-center gap-1.5 rounded-full px-3 py-1 text-[12px] font-bold uppercase tracking-wider"
-            style={{ background: T.warn, color: '#07080b', boxShadow: `0 0 18px ${T.warn}88` }} animate={{ scale: [1, 1.08, 1] }} transition={{ duration: 1.2, repeat: Infinity }}>
-            <Swords className="w-4 h-4" />walka po zatwierdzeniu
-          </motion.div>
-        )}
         <div className="flex items-center justify-center gap-4">
           {/* The objective's own model from the game, beside its name and rules */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -387,7 +403,8 @@ function Objective({ i, a, target, onSend, rowRef, w }: { i: 0 | 1 | 2; a: AreaC
       <div className="relative flex-1 min-h-0 flex justify-center items-start gap-[10px] pt-2">
         {auraHere && <AuraFx />}
         {smokeHere && <SmokeFx />}
-        {ob.id === 'highground' && ob.owner === 0 && mineHere.length > 0 && <HgFx side={0} />}
+        {ob.id === 'highground' && ob.owner === 0 && mineHere.length > 0 && <HgFx w={w} />}
+        <EffectChips items={effectsAt(s, i, 0)} side={0} />
         <AnimatePresence>{mineHere.map(u => unitFigure(u, w, a))}</AnimatePresence>
         {Array.from({ length: PER_SIDE_AT_OBJECTIVE - mineHere.length }, (_, k) => <Slot key={k} w={w} side={0} tour={i === 0 && k === 0} />)}
       </div>
@@ -405,7 +422,7 @@ function BaseBand({ side, a, target, onSend, deployN }: { side: Side; a: AreaCtx
   const { s } = a;
   const units = s.units.filter(u => u.side === side && u.loc === 'base');
   const line: React.CSSProperties = side === 0 ? { top: 0 } : { bottom: 0 };
-  const smokeHere = side === 0 && units.some(u => u.card.role === 'Soft Support' && !u.moved && !u.fresh) && s.active === 0 && s.phase === 'move' && smokeLeft(s);
+  const smokeHere = side === 0 && s.active === 0 && s.phase === 'move' && units.some(u => !u.moved && !u.fresh && smokeCovers(s, [u.uid]));
   const off = target && !target.ok;
   return (
     <div data-drop={side === 0 ? 'base' : undefined} data-tour={side === 0 ? 'base' : undefined} onClick={() => target?.ok && onSend?.()}
@@ -416,6 +433,7 @@ function BaseBand({ side, a, target, onSend, deployN }: { side: Side; a: AreaCtx
       <span className="font-logik-extended-bold uppercase text-[13px] tracking-[0.18em] w-[96px] shrink-0 leading-tight" style={{ color: sideColor(side), ...font }}>{side === 0 ? 'Twoja baza' : 'Baza rywala'}</span>
       <div className="relative flex items-center gap-3">
         {smokeHere && <SmokeFx />}
+        {smokeHere && <EffectChips items={effectsAt(s, 'base', 0)} side={0} />}
         <AnimatePresence>{units.map(u => unitFigure(u, 80, a))}</AnimatePresence>
       </div>
       {deployN ? (
@@ -596,8 +614,7 @@ function BattleScreen({ s, at, level, onDone }: { s: OState; at: 0 | 1 | 2; leve
     const striking = hit && hit.a.from === du.uid;
     const lunge = striking ? (du.side === 0 ? -40 : 40) : 0;
     return (
-      <motion.div key={du.uid} data-bu={du.uid} className="relative"
-        style={{ cursor: canPick || canHit ? 'pointer' : undefined }}
+      <motion.div key={du.uid} data-bu={du.uid} className={`relative ${canPick || canHit ? '[&_*]:!cursor-pointer !cursor-pointer' : ''}`}
         // Pointer, not click: the card inside stops click events
         onPointerUp={() => { if (canPick) setPicked(p => (p === du.uid ? null : du.uid)); else if (canHit && picked) attack({ from: picked, to: du.uid }); }}
         animate={{ y: lunge, x: struck ? [0, -12, 12, -7, 0] : 0, opacity: dead ? 0.28 : du.acted && !striking ? 0.7 : 1, filter: dead ? 'grayscale(1) brightness(0.55)' : 'none', scale: canHit ? 1.04 : 1 }}
@@ -1148,7 +1165,7 @@ export function OutpostsGame({ deck, all, onBack, level = 'easy' }: { deck: GCar
       { id: 'hold', target: '[data-tour="score"]', title: 'Trzymanie', points: [<>Na początku tury <b>+1</b> za każdy Twój objective, na którym stoisz.</>, 'Zostaw tam jednostkę, a punkty wpadają same.'], when: () => pointsFor('hold') },
       { id: 'team', target: teamAt != null ? `[data-obj="${teamAt}"]` : undefined, title: 'Drużyna +1', points: ['Na tym objectivie stoją gracze z tej samej drużyny.', <>Każdy z nich dostaje <b>+1 siły</b> (ikona z ludzikami na karcie).</>, 'Zbieraj karty całych drużyn, żeby to wykorzystać.'], when: () => teamAt != null && mine },
       { id: 'aura', target: auraAt != null ? `[data-obj="${auraAt}"]` : undefined, title: 'Hard Supp: Aura', points: [<>Każda Twoja jednostka na tym objectivie ma <b>+1 siły</b>.</>], when: () => auraAt != null && mine },
-      { id: 'smoke', target: supp ? `[data-uid="${supp.uid}"]` : undefined, title: 'Support: Smoke', points: ['Raz na turę grupa z Supportem rusza się bez rozkazu.'], when: () => !!supp },
+      { id: 'smoke', target: supp ? `[data-uid="${supp.uid}"]` : undefined, title: 'Support: Smoke', points: ['Raz na turę jedna grupa ruszająca z miejsca Supportu idzie bez rozkazu.', 'Support może zostać na miejscu.'], when: () => !!supp },
       { id: 'mid', target: midU ? `[data-uid="${midU.uid}"]` : undefined, title: 'Mid: Gank', points: ['Mid może iść prosto na inny objective, bez wracania do bazy.'], when: () => !!midU },
     ];
     const finish = (id: string) => queueMicrotask(() => setTutDone(d => (d.has(id) ? d : new Set(d).add(id))));
@@ -1195,8 +1212,8 @@ export function OutpostsGame({ deck, all, onBack, level = 'easy' }: { deck: GCar
           <ScoreRace shown={shown} win={s.win} />
           {/* Who you play against, on the rival's side of the score */}
           <div className="absolute right-[150px] flex items-center gap-2.5 whitespace-nowrap">
-            <span className="font-logik-extended-bold uppercase text-[14px] leading-tight text-right" style={{ color: T.rival, ...font }}>{gameLevel === 'tutorial' ? 'Samouczek' : `Komputer ${LEVELS[gameLevel].name}`}</span>
-            <span className="w-9 h-9 rounded-full flex items-center justify-center" style={{ background: mix(T.rival, 25), boxShadow: `0 0 0 2px ${T.rival}` }}><Bot className="w-5 h-5" style={{ color: T.rival }} /></span>
+            <span className="font-logik-extended-bold uppercase text-[14px] leading-tight text-right" style={{ color: LEVELS[gameLevel].color, ...font }}>{gameLevel === 'tutorial' ? 'Samouczek' : `Komputer ${LEVELS[gameLevel].name}`}</span>
+            <span className="w-9 h-9 rounded-full flex items-center justify-center" style={{ background: mix(LEVELS[gameLevel].color, 25), boxShadow: `0 0 0 2px ${LEVELS[gameLevel].color}` }}><Bot className="w-5 h-5" style={{ color: LEVELS[gameLevel].color }} /></span>
           </div>
           <div data-tour="help" className="absolute right-5 flex items-center gap-2">
             <Tip content="Samouczek">

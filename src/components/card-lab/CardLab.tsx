@@ -61,11 +61,10 @@ function PlayButton({ problem, build, running, level, setLevel, onPlay, onResume
   return (
     <div className="absolute right-16 bottom-6 z-30 flex flex-col items-stretch gap-2 w-[470px]">
       <div className="flex items-center justify-end gap-1 text-[12px] font-bold uppercase tracking-widest">
-        <span className="mr-2" style={{ color: C.muted }}>Komputer</span>
         {(Object.keys(LEVELS) as Level[]).map(l => (
-          <button key={l} type="button" onClick={() => setLevel(l)} className="px-3 py-1 rounded-full transition-colors"
-            style={{ color: l === level ? '#fff' : C.muted, background: l === level ? mix(C.primary, 70) : 'transparent', boxShadow: l === level ? 'none' : `inset 0 0 0 1px ${mix(C.text, 18)}` }}>
-            {LEVELS[l].name}
+          <button key={l} type="button" onClick={() => setLevel(l)} className="flex items-center whitespace-nowrap px-3 py-1 rounded-full transition-colors"
+            style={{ color: l === level ? '#07080b' : C.text, background: l === level ? LEVELS[l].color : 'transparent', boxShadow: l === level ? `0 0 12px ${mix(LEVELS[l].color, 60)}` : `inset 0 0 0 1.5px ${mix(LEVELS[l].color, 70)}` }}>
+            <span className="inline-block w-2 h-2 rounded-full mr-1.5 shrink-0" style={{ background: l === level ? '#07080b' : LEVELS[l].color }} />{LEVELS[l].name}
           </button>
         ))}
       </div>
