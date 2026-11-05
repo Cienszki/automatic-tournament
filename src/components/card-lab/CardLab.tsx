@@ -239,7 +239,7 @@ function SignIn({ onSignIn }: { onSignIn: () => void }) {
       <div className="font-logik-extended-bold uppercase text-[54px] leading-none" style={{ color: C.heading, ...font }}>Karty</div>
       <div className="text-[16px]" style={{ color: C.muted }}>Zaloguj się: karty i talia zapisują się na Twoim koncie.</div>
       <button type="button" onClick={onSignIn} className="rounded-full px-10 py-4 font-logik-extended-bold uppercase tracking-widest text-[16px] text-white"
-        style={{ background: C.primary, boxShadow: `0 0 30px ${mix(C.primary, 50)}`, ...font }}>Zaloguj się przez Google</button>
+        style={{ background: C.primary, boxShadow: `0 0 30px ${mix(C.primary, 50)}`, ...font }}>Zaloguj się</button>
     </div>
   );
 }

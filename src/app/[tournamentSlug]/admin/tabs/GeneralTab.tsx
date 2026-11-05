@@ -84,6 +84,11 @@ export function GeneralTab() {
   const [leagueId, setLeagueId] = useState(tournament?.leagueId?.toString() || '');
   const [twitchUrl, setTwitchUrl] = useState(tournament?.twitchUrl || '');
   const [discordUrl, setDiscordUrl] = useState(tournament?.discordUrl || '');
+  const [discordGuildId, setDiscordGuildId] = useState(tournament?.discordServer?.guildId || '');
+  const [requireDiscordMember, setRequireDiscordMember] = useState(!!tournament?.discordServer?.requireMember);
+  // Invite link for our bot (needed on the server for the membership check and, later, notifications)
+  const [botInvite, setBotInvite] = useState<string | null>(null);
+  useEffect(() => { fetch('/api/login/providers').then(r => r.json()).then(p => setBotInvite(p.botInvite ?? null)).catch(() => {}); }, []);
   const [youtubeUrl, setYoutubeUrl] = useState(tournament?.youtubeUrl || '');
   const [instagramUrl, setInstagramUrl] = useState(tournament?.instagramUrl || '');
   const [tiktokUrl, setTiktokUrl] = useState(tournament?.tiktokUrl || '');
@@ -240,6 +245,8 @@ export function GeneralTab() {
     setLeagueId(tournament.leagueId?.toString() || '');
     setTwitchUrl(tournament.twitchUrl || '');
     setDiscordUrl(tournament.discordUrl || '');
+    setDiscordGuildId(tournament.discordServer?.guildId || '');
+    setRequireDiscordMember(!!tournament.discordServer?.requireMember);
     setYoutubeUrl(tournament.youtubeUrl || '');
     setInstagramUrl(tournament.instagramUrl || '');
     setTiktokUrl(tournament.tiktokUrl || '');
@@ -493,6 +500,7 @@ export function GeneralTab() {
         leagueId: leagueId ? Number(leagueId) : null,
         twitchUrl: twitchUrl || null,
         discordUrl: discordUrl || null,
+        discordServer: /^\d{15,22}$/.test(discordGuildId.trim()) ? { guildId: discordGuildId.trim(), requireMember: requireDiscordMember } : null,
         youtubeUrl: youtubeUrl || null,
         instagramUrl: instagramUrl || null,
         tiktokUrl: tiktokUrl || null,
@@ -724,6 +732,22 @@ export function GeneralTab() {
                 Link zaproszenia do serwera Discord - zostanie użyty w menu i stopce
               </p>
             </div>
+          </div>
+
+          {/* The tournament's Discord server: our bot there checks captains (and will send notifications) */}
+          <div className="space-y-3 rounded-md border p-4">
+            <Label className="font-logik-extended-bold">Serwer Discord turnieju</Label>
+            <ol className="list-decimal ml-5 space-y-1 text-sm text-muted-foreground font-logik">
+              <li>Dodaj naszego bota na swój serwer{botInvite ? <>: <a href={botInvite} target="_blank" rel="noreferrer" className="underline text-foreground">zaproś bota</a></> : ' (link pojawi się, gdy bot będzie skonfigurowany)'}.</li>
+              <li>W Discordzie włącz Ustawienia → Zaawansowane → Tryb dewelopera.</li>
+              <li>Kliknij prawym na nazwę serwera → Kopiuj ID serwera i wklej poniżej.</li>
+            </ol>
+            <Input value={discordGuildId} onChange={(e) => setDiscordGuildId(e.target.value)} placeholder="ID serwera, np. 123456789012345678" className="font-logik max-w-md" />
+            <div className="flex items-center gap-3">
+              <Switch checked={requireDiscordMember} onCheckedChange={setRequireDiscordMember} disabled={!discordGuildId} />
+              <span className="text-sm font-logik">Kapitan musi być na tym serwerze, żeby zarejestrować drużynę</span>
+            </div>
+            <p className="text-xs text-muted-foreground font-logik">Kapitan loguje się przez Discord (albo łączy Discord na stronie Konto); sprawdzamy to przy rejestracji. Link zaproszenia powyżej pokażemy mu w formularzu.</p>
           </div>
 
           {/* Additional Social Links */}

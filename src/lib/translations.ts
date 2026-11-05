@@ -74,7 +74,7 @@ export const translations = {
     logout: "Wyloguj się",
     signIn: "Zaloguj się",
     signOut: "Wyloguj się",
-    signInWithGoogle: "Zaloguj się przez Google",
+    signInWithGoogle: "Zaloguj się",
     refresh: "Odśwież",
     search: "Szukaj",
     filter: "Filtruj",
@@ -643,7 +643,7 @@ export const translations = {
     discordRequiredDesc: "Aby zapisać przewidywania, musisz podać swój nick Discord w ustawieniach profilu.",
     setDiscordUsername: "Ustaw Nick Discord",
     joinChallenge: "Dołącz do wyzwania!",
-    loginToPredict: "Zaloguj się przez Google, aby dokonać przewidywań.",
+    loginToPredict: "Zaloguj się, aby dokonać przewidywań.",
     finalPlacements: "Pick'em: Ostateczne Miejsca",
     resetAllPicks: "Resetuj Wszystkie Wybory",
     saving: "Zapisywanie...",
@@ -1001,7 +1001,7 @@ export const translations = {
     discord: "Discorda",
     findTeamChannel: "i odwiedź kanał #szukam-teamu-gracza",
     signInToStart: "Zaloguj się, aby rozpocząć i stworzyć swoją drużynę.",
-    signInWithGoogle: "Zaloguj się przez Google",
+    signInWithGoogle: "Zaloguj się",
     readyToJoin: "Gotowy do dołączenia do turnieju? Zarejestruj swoją drużynę i poprowadź ją do zwycięstwa.",
     takeFirstStep: "Zrób pierwszy krok i zarejestruj swoją drużynę.",
     registerYourTeam: "Zarejestruj swoją drużynę",
@@ -1337,7 +1337,7 @@ export const translations = {
     registration: {
       howToRegister: {
         question: "Jak zarejestrować moją drużynę?",
-        answer: "1. Zaloguj się na stronie używając Google. 2. Przejdź do sekcji \'Moja Drużyna\'. 3. Wypełnij formularz rejestracyjny z danymi drużyny i wszystkich graczy. 4. Poczekaj na weryfikację przez administrację."
+        answer: "1. Zaloguj się na stronie (przez Discord lub Google). 2. Przejdź do sekcji \'Moja Drużyna\'. 3. Wypełnij formularz rejestracyjny z danymi drużyny i wszystkich graczy. 4. Poczekaj na weryfikację przez administrację."
       },
       deadline: {
         question: "Jaki jest termin rejestracji?",
@@ -1422,11 +1422,11 @@ export const translations = {
     technical: {
       website: {
         question: "Jak korzystać ze strony turnieju?",
-        answer: "Zaloguj się przez Google, niektóre funkcje dostępne są dopiero po zalogowaniu. Przejdź do sekcji \'Moja Drużyna\' aby zarejestrować drużynę, zaplanować mecze, sprawdzić statystyki i przewidywania. Strona jest responsywna i działa na komputerach i urządzeniach mobilnych."
+        answer: "Zaloguj się, niektóre funkcje dostępne są dopiero po zalogowaniu. Przejdź do sekcji \'Moja Drużyna\' aby zarejestrować drużynę, zaplanować mecze, sprawdzić statystyki i przewidywania. Strona jest responsywna i działa na komputerach i urządzeniach mobilnych."
       },
       account: {
         question: "Problemy z logowaniem lub kontem?",
-        answer: "Upewnij się, że używasz konta Google użytego do rejestracji. Wyczyść cache przeglądarki, sprawdź blokery reklam. Jeśli problem nie ustępuje, napisz na Discord z szczegółami błędu."
+        answer: "Upewnij się, że logujesz się tym samym kontem (Discord lub Google), którego użyto do rejestracji. Wyczyść cache przeglądarki, sprawdź blokery reklam. Jeśli problem nie ustępuje, napisz na Discord z szczegółami błędu."
       },
       bugs: {
         question: "Co robić gdy znajdę błąd na stronie?",

@@ -104,7 +104,7 @@ export default function AdminPage() {
               style={{ backgroundColor: theme.primaryColor }}
             >
               <LogIn className="mr-2 h-5 w-5" />
-              Zaloguj przez Google
+              Zaloguj się
             </Button>
           </CardContent>
         </Card>

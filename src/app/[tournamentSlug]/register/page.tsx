@@ -370,8 +370,15 @@ function MmrSummary({ form, mmrCap }: { form: { watch: (name: string) => any }; 
 }
 
 export default function RegisterPage() {
-  const { user, signInWithGoogle } = useAuth();
+  const { user, signInWithGoogle, linkDiscord } = useAuth();
   const { tournament, getTournamentPath } = useTournament();
+  // The captain's Discord from their linked account: filled in and locked (the server uses it anyway)
+  const [accountDiscord, setAccountDiscord] = React.useState<string | null>(null);
+  React.useEffect(() => {
+    if (!user) return;
+    user.getIdToken().then(t => fetch('/api/account', { headers: { Authorization: `Bearer ${t}` } })).then(r => r.ok ? r.json() : null)
+      .then(a => { if (a?.discord?.username) setAccountDiscord(a.discord.username); }).catch(() => {});
+  }, [user]);
   const { isMmrLimited, isSwiss } = useTournamentType();
   // Swiss tournaments may run without any MMR at all; default to on for older docs.
   const swissUsesMmr = isSwiss && (tournament?.swiss?.useMmrSeeding ?? true);
@@ -412,6 +419,7 @@ export default function RegisterPage() {
       rulesAcknowledged: false,
     } as never,
   });
+  React.useEffect(() => { if (accountDiscord) form.setValue('discordUsername', accountDiscord, { shouldValidate: true }); }, [accountDiscord, form]);
 
   const { fields } = useFieldArray({ control: form.control, name: "players" });
 
@@ -791,8 +799,14 @@ export default function RegisterPage() {
                   <FormItem>
                     <FormLabel className="text-white/80 font-bold ml-1">{t('discordUsername')}</FormLabel>
                     <FormControl>
-                      <Input {...field} placeholder="your_discord_name" className="bg-black/30 backdrop-blur-md border-white/10 text-white placeholder:text-white/20 focus:border-[#8B1538] focus:bg-black/50 transition-all duration-300 h-12" />
+                      <Input {...field} value={accountDiscord ?? field.value} readOnly={!!accountDiscord} placeholder="your_discord_name" className="bg-black/30 backdrop-blur-md border-white/10 text-white placeholder:text-white/20 focus:border-[#8B1538] focus:bg-black/50 transition-all duration-300 h-12 read-only:opacity-80" />
                     </FormControl>
+                    {accountDiscord
+                      ? <p className="text-xs text-white/60 ml-1">Z Twojego konta Discord</p>
+                      : <button type="button" onClick={linkDiscord} className="text-xs text-white/70 underline underline-offset-4 ml-1 text-left">Połącz konto z Discordem, żeby nie wpisywać ręcznie</button>}
+                    {tournament?.discordServer?.requireMember && (
+                      <p className="text-xs text-white/70 ml-1">Kapitan musi być na serwerze Discord turnieju{tournament.discordUrl ? <> (<a href={tournament.discordUrl} target="_blank" rel="noreferrer" className="underline">dołącz</a>)</> : null}.</p>
+                    )}
                     <FormMessage />
                   </FormItem>
                 )} />

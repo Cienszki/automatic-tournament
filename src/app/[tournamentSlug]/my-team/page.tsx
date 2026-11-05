@@ -1645,7 +1645,7 @@ function MyTeamView() {
             <div className="w-full max-w-lg text-center shadow-lg p-8 rounded-lg bg-card">
               <p className="text-muted-foreground mb-6">Zaloguj się aby zobaczyć swoją drużynę</p>
               <Button onClick={signInWithGoogle}>
-                <Users className="mr-2 h-4 w-4" /> Zaloguj się przez Google
+                <Users className="mr-2 h-4 w-4" /> Zaloguj się
               </Button>
             </div>
           </div>
@@ -1730,7 +1730,7 @@ function MyTeamView() {
                 className="w-full bg-pdl-crimson hover:bg-pdl-crimson/80 text-white font-logik-extended-bold"
               >
                 <LogIn className="mr-2 h-4 w-4" />
-                Zaloguj się przez Google
+                Zaloguj się
               </Button>
             </div>
           </div>

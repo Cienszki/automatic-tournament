@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { Youtube, LogIn, LogOut } from 'lucide-react';
+import { Youtube, LogIn, LogOut, UserRound } from 'lucide-react';
 import Link from 'next/link';
 import React from 'react';
 import { useAuth } from '../../context/AuthContext';
@@ -48,7 +48,7 @@ const TikTokIcon = (props: React.SVGProps<SVGSVGElement>) => (
 
 export function Footer() {
   const { user, signInWithGoogle, signOut } = useAuth();
-  const { tournament } = useTournament();
+  const { tournament, getTournamentPath } = useTournament();
   const isDevelopment = process.env.NODE_ENV === 'development';
   
   // Extract Twitch channel from URL or use legacy twitchChannel
@@ -151,16 +151,22 @@ export function Footer() {
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link href={tournament ? getTournamentPath('/konto') : '/wiosenna/konto'}>
+                    <UserRound className="mr-2 h-4 w-4" />
+                    <span>Konto</span>
+                  </Link>
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={signOut}>
                   <LogOut className="mr-2 h-4 w-4" />
-                  <span>Log out</span>
+                  <span>Wyloguj się</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
             <Button onClick={signInWithGoogle} variant="outline">
               <LogIn className="mr-2 h-4 w-4" />
-              Sign In
+              Zaloguj się
             </Button>
           )}
         </div>

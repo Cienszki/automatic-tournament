@@ -139,7 +139,7 @@ export default function OrganizerPage() {
             onClick={() => signInWithGoogle()}
             className="px-6 py-3 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors"
           >
-            Zaloguj przez Google
+            Zaloguj się
           </button>
         </div>
       </Centered>

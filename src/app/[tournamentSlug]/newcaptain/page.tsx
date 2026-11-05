@@ -117,7 +117,7 @@ export default function NewCaptainPage() {
           className="w-full bg-pdl-crimson hover:bg-pdl-crimson/80 text-white font-logik-extended-bold"
         >
           <LogIn className="mr-2 h-4 w-4" />
-          Zaloguj się przez Google
+          Zaloguj się
         </Button>
       </Shell>
     );

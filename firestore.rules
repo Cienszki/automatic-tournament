@@ -427,6 +427,15 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // Accounts (Discord / Steam links, profile): written only by the server (/api/account, /api/login,
+    // /api/connect); the owner may read their own. The link indexes are server-only.
+    match /accounts/{uid} {
+      allow read: if request.auth != null && request.auth.uid == uid;
+      allow write: if false;
+    }
+    match /discordLinks/{id} { allow read, write: if false; }
+    match /steamLinks/{id} { allow read, write: if false; }
+
     // --- USER-SPECIFIC WRITE RULES ---
     match /users/{userId} {
       allow read, write: if request.auth.uid == userId || isAdmin();

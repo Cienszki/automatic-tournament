@@ -22,6 +22,8 @@ import { checkRateLimit, LIMIT_REGISTRATION } from '@/lib/rate-limit';
  *   "coach": {...}
  * }
  */
+import { captainDiscord } from '@/server/accounts/discord-gate';
+
 export async function POST(req: NextRequest) {
     const rateLimitRes = checkRateLimit(req, 'register-pdl-team', LIMIT_REGISTRATION);
     if (rateLimitRes) return rateLimitRes;
@@ -97,6 +99,11 @@ export async function POST(req: NextRequest) {
                 { status: 400 }
             );
         }
+
+        // Discord: the linked account's name wins over the typed one; the organizer's membership rule
+        const discord = await captainDiscord(authenticatedUserId, tournamentId);
+        if ('error' in discord) return NextResponse.json({ success: false, message: discord.error }, { status: 403 });
+        if (discord.username) teamData.discordUsername = discord.username;
 
         // Call registration function
         const result = await registerPDLTeam(tournamentId, teamData);

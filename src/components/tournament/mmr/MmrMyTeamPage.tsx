@@ -65,7 +65,7 @@ export function MmrMyTeamPage({ team, hasTeam, matches, loading }: MmrMyTeamProp
             size="lg"
             className="bg-white/10 hover:bg-white/20 border border-white/20 text-white"
           >
-            <LogIn className="mr-2 h-4 w-4" /> Zaloguj się przez Google
+            <LogIn className="mr-2 h-4 w-4" /> Zaloguj się
           </Button>
         </div>
       </div>

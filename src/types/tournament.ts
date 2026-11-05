@@ -467,6 +467,9 @@ export interface TournamentConfig {
   // Social/Streaming
   twitchUrl?: string; // Full Twitch URL (e.g., https://www.twitch.tv/pd2ih)
   discordUrl?: string; // Full Discord invite URL (e.g., https://discord.gg/pd2ih)
+  /** The tournament's Discord server (our bot must be on it): its ID, and whether a captain has to be
+   *  a member to register (checked through the bot; the invite is `discordUrl`) */
+  discordServer?: { guildId: string; requireMember?: boolean };
   youtubeUrl?: string; // Full YouTube channel URL
   instagramUrl?: string; // Full Instagram profile URL
   tiktokUrl?: string; // Full TikTok profile URL
