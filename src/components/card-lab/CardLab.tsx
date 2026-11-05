@@ -60,11 +60,13 @@ function PlayButton({ problem, build, running, level, setLevel, onPlay, onResume
   const font = useHeaderFont();
   return (
     <div className="absolute right-16 bottom-6 z-30 flex flex-col items-stretch gap-2 w-[470px]">
-      <div className="flex items-center justify-end gap-1 text-[12px] font-bold uppercase tracking-widest">
+      {/* Same language as the Album / Talia tabs: words, the chosen one underlined in the tournament colour */}
+      <div className="flex items-center justify-end gap-1">
         {(Object.keys(LEVELS) as Level[]).map(l => (
-          <button key={l} type="button" onClick={() => setLevel(l)} className="flex items-center whitespace-nowrap px-3 py-1 rounded-full transition-colors"
-            style={{ color: l === level ? '#07080b' : C.text, background: l === level ? LEVELS[l].color : 'transparent', boxShadow: l === level ? `0 0 12px ${mix(LEVELS[l].color, 60)}` : `inset 0 0 0 1.5px ${mix(LEVELS[l].color, 70)}` }}>
-            <span className="inline-block w-2 h-2 rounded-full mr-1.5 shrink-0" style={{ background: l === level ? '#07080b' : LEVELS[l].color }} />{LEVELS[l].name}
+          <button key={l} type="button" onClick={() => setLevel(l)} className="relative px-3 py-1 font-logik-extended-bold uppercase text-[13px] whitespace-nowrap transition-colors"
+            style={{ color: l === level ? C.heading : C.muted, ...font }}>
+            {LEVELS[l].name}
+            {l === level && <span className="absolute left-2.5 right-2.5 -bottom-0.5 h-[3px] rounded-full" style={{ background: C.primary }} />}
           </button>
         ))}
       </div>
