@@ -29,11 +29,11 @@ export const RULES = {
    *  the place where a Support stood when the turn began (the Support may stay) */
   smoke: 'place' as 'group' | 'place',
   /** Fights go on round after round until one side is gone (false = everyone attacks once) */
-  toTheEnd: false,
+  toTheEnd: true,
   /** Survivors that took damage are wounded (−1) until they start a turn in the base */
   wounds: false,
   /** Extra opening cards for the player who goes second */
-  secondBonus: 1,
+  secondBonus: 0,
 };
 export const START_HAND = 4;
 export const HAND_MAX = 7;
@@ -172,8 +172,8 @@ const clone = (s: OState): OState => ({
 
 export function newGame(decks: [GCard[], GCard[]], rnd = Math.random, win = WIN_POINTS): OState {
   const ids = shuffle(OBJ_IDS, rnd).slice(0, 3);
-  // Going second starts with one card more: with chosen targets the first player won 63 % in
-  // simulations, 54 % with this (2 orders on the first turn instead overshot to 43 %)
+  // RULES.secondBonus extra opening cards for the player going second. With fights to the end it is 0:
+  // the first player then wins ~44 % in simulations (with 1 extra card only 36 %)
   const sides = decks.map((d, i): OBoard => { const x = shuffle(d, rnd); const n = START_HAND + (i === 1 ? RULES.secondBonus : 0); return { hand: x.slice(0, n), deck: x.slice(n), grave: [], score: 0 }; }) as OState['sides'];
   const s: OState = {
     turn: 1, active: 0, phase: 'deploy', orders: RULES.orders, budget: RULES.orders, deployed: 0, objectives: ids.map(id => ({ id, owner: null })),
@@ -284,8 +284,9 @@ export function move(prev: OState, uids: string[], to: Loc): OState {
 // ── Fights: one attack at a time ────────────────────────────────────────────
 // The sides take turns, the attacker first: on your turn one of your units that has not attacked yet
 // hits one enemy for its strength. Damage stays until the fight ends; a unit dies when the damage it
-// took reaches its strength. A side with nobody left to act passes; the fight ends when nobody can
-// act. Offlane (Tank): while an enemy Offlane is alive, you can only attack Offlanes.
+// took reaches its strength. A side with nobody left to act passes; when everyone has attacked, a new
+// round starts (RULES.toTheEnd), until one side is gone. Offlane (Tank): while an enemy Offlane is
+// alive, you can only attack Offlanes.
 // Only the attackers left → they take the objective; anyone defending left → it holds (surviving
 // attackers go back to base). Units are whole again after the fight.
 

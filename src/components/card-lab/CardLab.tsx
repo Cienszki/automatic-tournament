@@ -13,7 +13,7 @@ import type { Model } from '@/lib/stats-lab/derive';
 import { C, WithModel, ink, mix, useHeaderFont, useStatsKey } from '@/components/stats-lab/kit';
 import { autoDeck, buildSeriesCards, deckProblem, type GCard } from '@/lib/card-lab/cards';
 import { Album } from './Album';
-import { DeckBuilder } from './DeckBuilder';
+import { DeckBuilder, slotsFromDeck, type DeckSlots } from './DeckBuilder';
 import { OUTPOSTS_RULE, OutpostsGame } from './OutpostsGame';
 import { LEVELS, type Level } from '@/lib/card-lab/outposts-ai';
 import { FitScaleCtx, useFitScale } from './ui';
@@ -43,7 +43,7 @@ function FitStage({ children }: { children: React.ReactNode }) {
 }
 
 // ── Saved in this browser: which cards you opened and how many packs are left ──
-interface Saved { ids: string[]; packs: number; deck?: string[] }
+interface Saved { ids: string[]; packs: number; deck?: string[]; slots?: DeckSlots }
 const storeKey = (k: string) => `card-lab:${k}:v1`;
 function load(k: string): Saved | null { try { const v = localStorage.getItem(storeKey(k)); return v ? JSON.parse(v) as Saved : null; } catch { return null; } }
 function save(k: string, v: Saved) { try { localStorage.setItem(storeKey(k), JSON.stringify(v)); } catch { /* private mode */ } }
@@ -68,7 +68,6 @@ function PlayButton({ problem, build, running, level, setLevel, onPlay, onResume
           </button>
         ))}
       </div>
-      {LEVELS[level].note && <div className="text-right text-[12px] font-bold" style={{ color: C.muted }}>{LEVELS[level].note}</div>}
       <motion.button type="button" onClick={resume ? onResume : needDeck ? onBuild : onPlay} title={problem ?? undefined}
         className="relative h-[86px] overflow-hidden rounded-[6px] flex flex-col items-center justify-center text-white disabled:grayscale disabled:opacity-60"
         style={{ background: `linear-gradient(180deg, ${mix(C.primary, 100)}, ${mix(C.primary, 62)} 55%, ${mix(C.primary, 45)})`, boxShadow: `inset 0 1px 0 rgba(255,255,255,0.35), inset 0 -3px 0 rgba(0,0,0,0.35), 0 0 0 1px ${mix(C.primary, 80)}, 0 12px 40px ${mix(C.primary, 45)}` }}
@@ -77,7 +76,7 @@ function PlayButton({ problem, build, running, level, setLevel, onPlay, onResume
         <motion.span className="absolute inset-y-0 w-24 -skew-x-12" style={{ background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.28), transparent)' }}
           animate={{ x: [-160, 460] }} transition={{ duration: 2.6, repeat: Infinity, repeatDelay: 1.4, ease: 'easeInOut' }} />
         <span className="relative font-logik-extended-bold uppercase text-[34px] leading-none tracking-wider" style={{ textShadow: '0 2px 8px rgba(0,0,0,0.4)', ...font }}>{resume ? 'Wróć do gry' : needDeck ? build : 'Graj'}</span>
-        <span className="relative text-[11px] font-bold uppercase tracking-[0.3em] mt-1.5 opacity-85">{needDeck ? problem : level === 'tutorial' ? 'Samouczek · krok po kroku' : `Kontrola mapy · Komputer ${LEVELS[level].name}`}</span>
+        <span className="relative text-[11px] font-bold uppercase tracking-[0.3em] mt-1.5 opacity-85">{needDeck ? problem : level === 'tutorial' ? 'Samouczek' : `Komputer ${LEVELS[level].name}`}</span>
       </motion.button>
       {running && (resume
         ? <button type="button" onClick={onPlay} className="self-end text-[12px] font-bold uppercase tracking-widest underline-offset-4 hover:underline" style={{ color: C.muted }}>Nowy mecz</button>
@@ -138,7 +137,9 @@ function Lab({ model }: { model: Model }) {
   const [collection, setCollection] = useState<GCard[]>([]);
   const [packs, setPacks] = useState(START_PACKS);
   const [loaded, setLoaded] = useState(false);
-  const [deck, setDeck] = useState<GCard[]>([]);
+  // The deck as the player laid it out (slot → card); the deck itself is what is in the slots
+  const [slots, setSlots] = useState<DeckSlots>({});
+  const deck = useMemo(() => Object.values(slots).map(id => byId.get(id)).filter((c): c is GCard => !!c), [slots, byId]);
   const [tab, setTab] = useState<Tab>('album');
   const [match, setMatch] = useState(0);
   const [matchLevel, setMatchLevel] = useState<Level | null>(null);
@@ -154,12 +155,13 @@ function Lab({ model }: { model: Model }) {
     if (v) {
       setCollection(v.ids.map(id => byId.get(id)).filter((c): c is GCard => !!c)); setPacks(v.packs);
       // The deck is the player's own work: never built for them
-      if (v.deck) setDeck(v.deck.map(id => byId.get(id)).filter((c): c is GCard => !!c));
+      if (v.slots) setSlots(Object.fromEntries(Object.entries(v.slots).filter(([, id]) => byId.has(id))));
+      else if (v.deck) setSlots(slotsFromDeck(v.deck.map(id => byId.get(id)).filter((c): c is GCard => !!c), OUTPOSTS_RULE));
     }
     try { if (!localStorage.getItem(SEEN_KEY)) setIntro(true); } catch { setIntro(true); }
     setLoaded(true);
   }, [key, byId]);
-  useEffect(() => { if (loaded) save(key, { ids: collection.map(c => c.id), packs, deck: deck.map(c => c.id) }); }, [loaded, key, collection, packs, deck]);
+  useEffect(() => { if (loaded) save(key, { ids: collection.map(c => c.id), packs, deck: deck.map(c => c.id), slots }); }, [loaded, key, collection, packs, deck, slots]);
   // The tutorial needs no deck of yours: it brings one (from your cards if they make a legal deck)
   const tutorialDeck = useMemo(() => { const d = autoDeck(collection, OUTPOSTS_RULE); return deckProblem(d, OUTPOSTS_RULE) ? autoDeck(cards, OUTPOSTS_RULE) : d; }, [collection, cards]);
   const closeIntro = () => { setIntro(false); try { localStorage.setItem(SEEN_KEY, '1'); } catch { /* ignore */ } };
@@ -192,11 +194,11 @@ function Lab({ model }: { model: Model }) {
       </div>
       <div className="flex-1 min-h-0">
         {tab === 'album' && <Album cards={cards} collection={collection} setCollection={setCollection} packs={packs} onPackOpened={() => setPacks(p => Math.max(0, p - 1))} />}
-        {tab === 'talia' && <DeckBuilder collection={collection} rule={OUTPOSTS_RULE} deck={deck} setDeck={setDeck} />}
+        {tab === 'talia' && <DeckBuilder collection={collection} rule={OUTPOSTS_RULE} slots={slots} setSlots={setSlots} />}
         {/* The match stays mounted while you look at the album */}
         <div className={tab === 'gra' ? 'h-full' : 'hidden'}>
-          {!match ? null : matchLevel === 'tutorial' ? <OutpostsGame key={match} deck={ready ? deck : tutorialDeck} all={cards} level="tutorial" onBack={() => setTab('talia')} />
-            : ready ? <OutpostsGame key={match} deck={deck} all={cards} level={matchLevel ?? level} onBack={() => setTab('talia')} /> : notReady}
+          {!match ? null : matchLevel === 'tutorial' ? <OutpostsGame key={match} deck={ready ? deck : tutorialDeck} all={cards} level="tutorial" onBack={() => setTab('talia')} visible={tab === 'gra'} />
+            : ready ? <OutpostsGame key={match} deck={deck} all={cards} level={matchLevel ?? level} onBack={() => setTab('talia')} visible={tab === 'gra'} /> : notReady}
         </div>
       </div>
       {tab !== 'gra' && (

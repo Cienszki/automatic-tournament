@@ -670,12 +670,12 @@ function BattleScreen({ s, at, level, onDone }: { s: OState; at: 0 | 1 | 2; leve
         <img src={objModel(ob.id)} alt="" className="w-[84px] h-[84px] object-contain -my-5" style={{ filter: 'drop-shadow(0 6px 12px rgba(0,0,0,0.8))' }} />
         <span className="font-logik-extended-bold uppercase text-[32px]" style={{ color: T.text, ...font }}>{attacking ? 'Atakujesz' : 'Rywal atakuje'}: {def.name}</span>
       </motion.div>
-      <div className="text-[14px]" style={{ color: T.muted }}>Uderzacie na zmianę, jedna jednostka naraz. Zaczyna atakujący. Obrażenia zostają do końca walki.</div>
+      <div className="text-[14px]" style={{ color: T.muted }}>Uderzacie na zmianę, jedna jednostka naraz, zaczyna atakujący. Walka trwa, aż jedna strona padnie.</div>
       <div className="h-[30px] flex items-center">
         <AnimatePresence mode="wait">
           <motion.div key={over ? 'o' : myTurn ? (picked ? 'p' : 'm') : 'r'} className="font-logik-extended-bold uppercase text-[18px] tracking-wider"
             style={{ color: over ? T.text : myTurn ? T.me : T.rival, ...font }} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
-            {over ? 'Koniec walki' : myTurn ? (picked ? 'Teraz kliknij cel rywala' : 'Twój ruch: kliknij swoją jednostkę') : duel.turn === 0 ? '…' : 'Ruch rywala…'}
+            {duel.round > 1 && !over ? `Runda ${duel.round} · ` : ''}{over ? 'Koniec walki' : myTurn ? (picked ? 'Teraz kliknij cel rywala' : 'Twój ruch: kliknij swoją jednostkę') : duel.turn === 0 ? '…' : 'Ruch rywala…'}
           </motion.div>
         </AnimatePresence>
       </div>
@@ -783,7 +783,7 @@ const TOUR: TourStep[] = [
   { target: '[data-tour="hand"]', title: 'Twoje karty', text: pts(<>Liczba w rogu to <b>siła</b>.</>, 'Pod nazwą pozycja: Carry, Mid, Offlane, Support, Hard Supp.', <>Każda pozycja ma <b>umiejętność</b>: najedź na kartę, żeby ją odwrócić.</>, <><b>Drużyna:</b> gracze z tej samej drużyny na jednym objectivie dostają po <b>+1 siły</b>.</>) },
   { target: '[data-tour="orders"]', title: 'Rozkazy', text: pts(<><b>3 rozkazy</b> na turę, na wszystko.</>, <>Karta z ręki: <b>1</b>. Ruch grupy: <b>1</b>.</>, 'Grupa = jednostki z jednego miejsca w to samo miejsce, także przeciągane po kolei.', 'Nie musisz wystawiać wszystkich kart: możesz zostawić rozkazy na ruchy.') },
   { target: '[data-tour="base"]', title: 'Baza', text: pts('Tu wystawiasz karty z ręki; ruszą w następnej turze.', 'Między objective\'ami idzie się przez bazę (prosto tylko Mid i z Twin Gates).', 'Każda jednostka może ruszyć się raz na turę.') },
-  { target: '[data-tour="objectives"]', title: 'Walka', text: pts(<>Uderzacie <b>na zmianę</b>, jedna jednostka naraz; zaczyna atakujący.</>, <>Jednostka bije wybrany cel za <b>tyle, ile ma siły</b>.</>, 'Obrażenia zostają do końca walki; ginie ten, kto dostanie tyle, ile ma siły.', 'Offlane rywala musi zginąć, zanim zaatakujesz kogoś innego.', 'Przeżyli obaj? Atakujący wracają do bazy.') },
+  { target: '[data-tour="objectives"]', title: 'Walka', text: pts(<>Uderzacie <b>na zmianę</b>, jedna jednostka naraz; zaczyna atakujący.</>, <>Jednostka bije wybrany cel za <b>tyle, ile ma siły</b>.</>, 'Obrażenia zostają do końca walki; ginie ten, kto dostanie tyle, ile ma siły.', 'Offlane rywala musi zginąć, zanim zaatakujesz kogoś innego.', 'Gdy wszyscy uderzą, zaczyna się kolejna runda: walka trwa, aż jedna strona padnie.') },
   { target: '[data-tour="turn"]', title: 'Tura', text: pts(<><b>1.</b> Wystawiasz karty.</>, <><b>2.</b> Planujesz ruchy (możesz je zmieniać).</>, <><b>3.</b> Zatwierdzasz: walki i przejęcia dzieją się naraz.</>) },
   { target: '[data-tour="help"]', title: 'Pomoc i przebieg', text: pts('Znak zapytania: ten przewodnik jeszcze raz.', 'Ikona obok: przebieg meczu.') },
 ];
@@ -797,7 +797,7 @@ interface TutStep extends CoachStep { when: () => boolean; done?: () => boolean;
 interface Flyer { id: string; side: Side; pts: number; why: Gain['why']; from: { x: number; y: number }; to: { x: number; y: number } }
 interface DragState { kind: 'card' | 'units'; ids: string[] }
 
-export function OutpostsGame({ deck, all, onBack, level = 'easy' }: { deck: GCard[]; all: GCard[]; onBack?: () => void; level?: Level }) {
+export function OutpostsGame({ deck, all, onBack, level = 'easy', visible = true }: { deck: GCard[]; all: GCard[]; onBack?: () => void; level?: Level; visible?: boolean }) {
   const font = useHeaderFont();
   const fit = useFitScale();
   const [cpu, setCpu] = useState<GCard[]>([]);
@@ -1160,7 +1160,7 @@ export function OutpostsGame({ deck, all, onBack, level = 'easy' }: { deck: GCar
       { id: 'move', seq: true, target: rested[0] ? `[data-uid="${rested[0].uid}"]` : '[data-tour="base"]', title: 'Ruch na objective', points: ['Przeciągnij jednostkę na objective (albo kliknij ją, a potem objective).', 'Ruch kosztuje 1 rozkaz.', 'To dopiero plan: możesz go zmienić.'], action: 'Wyślij jednostkę na objective', when: () => mine && phase === 'move' && canGo, done: () => planned, expire: () => s.turn >= 5 },
       { id: 'group', target: '[data-tour="orders"]', title: 'Grupa płaci raz', points: ['Jednostki z jednego miejsca w to samo miejsce to jedna grupa.', 'Płacisz 1 rozkaz, nawet gdy przeciągasz je po kolei.'], when: () => !!mate },
       { id: 'confirm', seq: true, target: '[data-tour="turn"]', title: 'Zatwierdź', points: ['Teraz wszystko dzieje się naraz: walki i przejęcia.'], action: 'Kliknij Zatwierdź', when: () => mine && phase === 'move' && planned, done: () => s.events.some(e => e.kind === 'move' && e.side === 0), expire: () => s.turn >= 7 },
-      { id: 'battle', title: 'Walka', points: [<>Uderzacie <b>na zmianę</b>, jedna jednostka naraz; zaczyna atakujący.</>, <>Kliknij swoją jednostkę, potem cel: bije <b>za tyle, ile ma siły</b>.</>, 'Obrażenia zostają do końca walki (pasek pod kartą).', 'Offlane rywala musi zginąć, zanim zaatakujesz kogoś innego.'], when: () => !!battleQ },
+      { id: 'battle', title: 'Walka', points: [<>Uderzacie <b>na zmianę</b>, jedna jednostka naraz; zaczyna atakujący.</>, <>Kliknij swoją jednostkę, potem cel: bije <b>za tyle, ile ma siły</b>.</>, 'Obrażenia zostają do końca walki (pasek pod kartą).', 'Offlane rywala musi zginąć, zanim zaatakujesz kogoś innego.', 'Walka trwa runda po rundzie, aż jedna strona padnie.'], when: () => !!battleQ },
       { id: 'take', target: '[data-tour="score"]', title: 'Przejęcie!', points: [<><b>+1</b> za przejęcie (Roshan <b>+2</b>).</>, 'Ten objective jest teraz Twój.'], when: () => pointsFor('take') },
       { id: 'hold', target: '[data-tour="score"]', title: 'Trzymanie', points: [<>Na początku tury <b>+1</b> za każdy Twój objective, na którym stoisz.</>, 'Zostaw tam jednostkę, a punkty wpadają same.'], when: () => pointsFor('hold') },
       { id: 'team', target: teamAt != null ? `[data-obj="${teamAt}"]` : undefined, title: 'Drużyna +1', points: ['Na tym objectivie stoją gracze z tej samej drużyny.', <>Każdy z nich dostaje <b>+1 siły</b> (ikona z ludzikami na karcie).</>, 'Zbieraj karty całych drużyn, żeby to wykorzystać.'], when: () => teamAt != null && mine },
@@ -1333,9 +1333,9 @@ export function OutpostsGame({ deck, all, onBack, level = 'easy' }: { deck: GCar
         )}
       </AnimatePresence>
       <AnimatePresence>{logOpen && <CombatLog s={s} onClose={() => setLogOpen(false)} />}</AnimatePresence>
-      {tour && !scene && <Tour steps={TOUR} onClose={closeTour} home='[data-help="tour"]' />}
-      {hint && !hintBlocked && <Hint target={hint.target} text={hint.text} place={hint.place} onClose={() => markHint(hint.id)} />}
-      {coach && !banner && !tour && (
+      {visible && tour && !scene && <Tour steps={TOUR} onClose={closeTour} home='[data-help="tour"]' />}
+      {visible && hint && !hintBlocked && <Hint target={hint.target} text={hint.text} place={hint.place} onClose={() => markHint(hint.id)} />}
+      {visible && coach && !banner && !tour && (
         <Coach step={coach.st} n={Math.min(coach.n, coach.total)} total={coach.total} onSkip={() => setTutOff(true)}
           onNext={coach.st.action ? undefined : () => setTutDone(d => new Set(d).add(coach.st.id))} />
       )}
