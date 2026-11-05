@@ -260,14 +260,22 @@ export function move(prev: OState, uids: string[], to: Loc): OState {
   return place(prev, uids, to);
 }
 
-// ── Fights: everyone picks a target ─────────────────────────────────────────
-// Each unit in a fight hits one enemy for its strength; both sides choose at the same time. A unit
-// dies when the damage it takes reaches its strength. Offlane (Tank): before hitting anyone else, the
-// enemy must give each Offlane enough damage to kill it. Only the attackers left → they take the
-// objective; anyone defending left → it holds (surviving attackers go back to base).
+// ── Fights: one attack at a time ────────────────────────────────────────────
+// The sides take turns, the attacker first: on your turn one of your units that has not attacked yet
+// hits one enemy for its strength. Damage stays until the fight ends; a unit dies when the damage it
+// took reaches its strength. A side with nobody left to act passes; the fight ends when nobody can
+// act. Offlane (Tank): while an enemy Offlane is alive, you can only attack Offlanes.
+// Only the attackers left → they take the objective; anyone defending left → it holds (surviving
+// attackers go back to base). Units are whole again after the fight.
 
-/** Who hits whom: unit uid → target uid */
-export type Targets = Record<string, string>;
+export interface DuelUnit { uid: string; side: Side; m: number; hp: number; acted: boolean; tank: boolean }
+export interface Attack { from: string; to: string }
+export interface Duel {
+  at: 0 | 1 | 2; attacker: Side; turn: Side; units: DuelUnit[];
+  /** Points the attacker gets for taking the objective (0 if it already owns it) */
+  stake: number;
+  log: Array<Attack & { dmg: number; killed: boolean }>;
+}
 
 /** The units fighting at an objective, each with its strength (= what it deals and what kills it) */
 export function fighters(s: OState, at: 0 | 1 | 2, side: Side): Array<{ u: OUnit; m: number }> {
@@ -275,67 +283,92 @@ export function fighters(s: OState, at: 0 | 1 | 2, side: Side): Array<{ u: OUnit
   return s.units.filter(u => u.side === side && u.loc === at).map(u => ({ u, m: might(s, u, def) }));
 }
 
-/** Why these targets are not allowed (null = fine). Checks `side`'s choices only. */
-export function targetProblem(s: OState, at: 0 | 1 | 2, side: Side, t: Targets): string | null {
-  const mine = fighters(s, at, side); const foes = fighters(s, at, (1 - side) as Side);
-  for (const { u } of mine) if (!foes.some(f => f.u.uid === t[u.uid])) return `Wybierz cel dla: ${u.card.name}`;
-  const tanks = foes.filter(f => f.u.card.role === 'Offlane');
-  if (tanks.length && mine.some(({ u }) => !tanks.some(f => f.u.uid === t[u.uid]))) {
-    for (const tk of tanks) {
-      const dmg = mine.filter(({ u }) => t[u.uid] === tk.u.uid).reduce((a, x) => a + x.m, 0);
-      if (dmg < tk.m) return `Najpierw Offlane: ${tk.u.card.name} musi dostać ${tk.m} obrażeń, zanim uderzysz kogoś innego`;
-    }
+export function startDuel(s: OState, at: 0 | 1 | 2): Duel {
+  const side = s.active; const ob = s.objectives[at];
+  const units = ([side, (1 - side) as Side]).flatMap(sd => fighters(s, at, sd).map(({ u, m }) => ({ uid: u.uid, side: sd, m, hp: m, acted: false, tank: u.card.role === 'Offlane' })));
+  return { at, attacker: side, turn: side, units, stake: ob.owner !== side ? takePoints(ob.id) : 0, log: [] };
+}
+
+const alive = (u: DuelUnit) => u.hp > 0;
+/** Who can be attacked by `side` now (Offlanes first while one stands) */
+export function duelTargets(d: Duel, side: Side): DuelUnit[] {
+  const foes = d.units.filter(u => u.side !== side && alive(u));
+  const tanks = foes.filter(u => u.tank);
+  return tanks.length ? tanks : foes;
+}
+const ready = (d: Duel, side: Side) => d.units.filter(u => u.side === side && alive(u) && !u.acted);
+const canAct = (d: Duel, side: Side) => ready(d, side).length > 0 && duelTargets(d, side).length > 0;
+export const duelOver = (d: Duel) => !canAct(d, 0) && !canAct(d, 1);
+
+/** Every attack the side to move can make */
+export function duelOptions(d: Duel): Attack[] {
+  if (duelOver(d)) return [];
+  const out: Attack[] = [];
+  for (const u of ready(d, d.turn)) for (const t of duelTargets(d, d.turn)) out.push({ from: u.uid, to: t.uid });
+  return out;
+}
+export const duelLegal = (d: Duel, a: Attack) => duelOptions(d).some(o => o.from === a.from && o.to === a.to);
+
+/** One attack; then the other side moves (or the same side again, if the other has nobody left to act) */
+export function duelAct(d: Duel, a: Attack): Duel {
+  const units = d.units.map(u => ({ ...u }));
+  const from = units.find(u => u.uid === a.from)!; const to = units.find(u => u.uid === a.to)!;
+  from.acted = true; to.hp -= from.m;
+  const next: Duel = { ...d, units, log: [...d.log, { ...a, dmg: from.m, killed: to.hp <= 0 }] };
+  const other = (1 - d.turn) as Side;
+  next.turn = canAct(next, other) ? other : d.turn;
+  return next;
+}
+
+/** A sensible attack without searching: kill the strongest enemy you can with the weakest unit that
+ *  kills it; if nobody can be killed, hit hardest the enemy closest to dying */
+export function autoAttack(d: Duel): Attack {
+  let best: { a: Attack; v: number } | null = null;
+  for (const o of duelOptions(d)) {
+    const f = d.units.find(u => u.uid === o.from)!; const t = d.units.find(u => u.uid === o.to)!;
+    const v = f.m >= t.hp ? 100 + t.m * 10 - f.m : (f.m / t.hp) * 10 + f.m * 0.1;
+    if (!best || v > best.v) best = { a: o, v };
   }
-  return null;
+  return best!.a;
 }
 
-/** The fewest of `units` that together reach `hp` (null = they cannot) */
-function killWith(units: Array<{ u: OUnit; m: number }>, hp: number) {
-  const one = [...units].sort((a, b) => a.m - b.m).find(x => x.m >= hp);
-  if (one) return [one];
-  const out: typeof units = []; let sum = 0;
-  for (const x of [...units].sort((a, b) => b.m - a.m)) { out.push(x); sum += x.m; if (sum >= hp) return out; }
-  return null;
+/** How the fight ended, from the duel */
+function duelOutcome(d: Duel): Fight['outcome'] {
+  const left = d.units.some(u => u.side === d.attacker && alive(u)); const stay = d.units.some(u => u.side !== d.attacker && alive(u));
+  return left && !stay ? 'took' : left && stay ? 'repelled' : stay ? 'held' : 'wiped';
 }
 
-/** A sensible choice without searching: kill the Offlanes first (as the rule says), then the
- *  strongest enemies that can be killed, the rest onto whoever is closest to dying */
-export function autoTargets(s: OState, at: 0 | 1 | 2, side: Side): Targets {
-  const t: Targets = {};
-  let left = fighters(s, at, side);
-  const foes = fighters(s, at, (1 - side) as Side);
-  if (!foes.length) return t;
-  const give = (who: typeof left, target: OUnit) => { for (const x of who) t[x.u.uid] = target.uid; left = left.filter(x => !who.includes(x)); };
-  const tanks = foes.filter(f => f.u.card.role === 'Offlane').sort((a, b) => a.m - b.m);
-  for (const tk of tanks) {
-    const k = killWith(left, tk.m);
-    if (!k) { give(left, tk.u); return t; }
-    give(k, tk.u);
-  }
-  const rest = foes.filter(f => f.u.card.role !== 'Offlane').sort((a, b) => b.m - a.m);
-  for (const f of rest) { const k = killWith(left, f.m); if (k) give(k, f.u); }
-  if (left.length) give(left, (rest[0] ?? tanks[0]).u);
-  return t;
+/** Play a fight to its end: the given attacks first (each if still allowed), then sensible ones */
+export function playDuel(s: OState, at: 0 | 1 | 2, script: Attack[] = []): Duel {
+  let d = startDuel(s, at);
+  for (const a of script) { if (duelOver(d)) break; d = duelAct(d, duelLegal(d, a) ? a : autoAttack(d)); }
+  while (!duelOver(d)) d = duelAct(d, autoAttack(d));
+  return d;
 }
 
-/** The outcome of one fight with these targets (pure: nothing changes on the board) */
-export function battle(s: OState, at: 0 | 1 | 2, t: Targets): Omit<Fight, 'key'> {
-  const side = s.active; const foe = (1 - side) as Side; const ob = s.objectives[at];
-  const att = fighters(s, at, side); const def = fighters(s, at, foe);
-  const all = [...att, ...def];
-  const blows = all.map(({ u, m }) => ({ from: u.uid, to: t[u.uid], dmg: m })).filter(b => all.some(x => x.u.uid === b.to));
+/** The record of a finished fight (for the log and the scene) */
+export function duelFight(s: OState, d: Duel): Omit<Fight, 'key'> {
+  const side = d.attacker; const foe = (1 - side) as Side;
+  const lines = d.units.map(du => { const u = s.units.find(x => x.uid === du.uid)!; return { uid: du.uid, card: u.card, side: du.side, parts: strengthParts(s, u, du.side === foe), m: du.m }; });
+  const sum = (sd: Side) => d.units.filter(u => u.side === sd).reduce((a, u) => a + u.m, 0);
   const taken: Record<string, number> = {};
-  for (const b of blows) taken[b.to] = (taken[b.to] ?? 0) + b.dmg;
-  const died = all.filter(({ u, m }) => (taken[u.uid] ?? 0) >= m).map(({ u }) => u.uid);
-  const left = att.filter(x => !died.includes(x.u.uid)).length; const stay = def.filter(x => !died.includes(x.u.uid)).length;
-  const outcome: Fight['outcome'] = left && !stay ? 'took' : left && stay ? 'repelled' : stay ? 'held' : 'wiped';
-  const sum = (xs: typeof att) => xs.reduce((a, x) => a + x.m, 0);
+  for (const b of d.log) taken[b.to] = (taken[b.to] ?? 0) + b.dmg;
+  const outcome = duelOutcome(d);
   return {
-    at, attacker: side,
-    lines: all.map(({ u, m }) => ({ uid: u.uid, card: u.card, side: u.side, parts: strengthParts(s, u, u.side === foe), m })),
-    power: side === 0 ? [sum(att), sum(def)] : [sum(def), sum(att)],
-    blows, taken, died, outcome, points: outcome === 'took' && ob.owner !== side ? takePoints(ob.id) : 0,
+    at: d.at, attacker: side, lines, power: [sum(0), sum(1)],
+    blows: d.log.map(b => ({ from: b.from, to: b.to, dmg: b.dmg })), taken,
+    died: d.units.filter(u => !alive(u)).map(u => u.uid), outcome, points: outcome === 'took' ? d.stake : 0,
   };
+}
+
+/** How good a finished fight is for `side`: strength killed vs lost, and who keeps the objective */
+export function duelScore(d: Duel, side: Side): number {
+  let v = 0;
+  for (const u of d.units) if (!alive(u)) v += (u.side === side ? -1 : 1) * u.m;
+  const o = duelOutcome(d); const attacking = d.attacker === side;
+  if (o === 'took') v += (attacking ? 1 : -1) * (6 + 3 * d.stake);
+  if (o === 'held' || o === 'repelled') v += attacking ? -3 : 3;
+  return v;
 }
 
 function score(s: OState, side: Side, at: 0 | 1 | 2, pts: number, why: Gain['why']) {
@@ -348,9 +381,9 @@ function score(s: OState, side: Side, at: 0 | 1 | 2, pts: number, why: Gain['why
 /** Where the fights will be this turn */
 export const clashes = (s: OState) => ([0, 1, 2] as const).filter(i => s.units.some(u => u.side === 0 && u.loc === i) && s.units.some(u => u.side === 1 && u.loc === i));
 
-/** Phase 3: the planned moves happen — fights where both sides now stand (with the targets each side
- *  chose; a missing or not allowed choice is made for it), then take-overs */
-export function resolve(prev: OState, chosen: Targets = {}): OState {
+/** Phase 3: the planned moves happen — fights where both sides now stand (played out from the
+ *  attacks the players made, the rest sensibly), then take-overs */
+export function resolve(prev: OState, chosen: Partial<Record<0 | 1 | 2, Attack[]>> = {}): OState {
   if (prev.phase === 'fight' || prev.winner !== null) return prev;
   const s = clone(prev); const side = s.active; const foe = (1 - side) as Side;
   s.phase = 'fight'; s.fights = [];
@@ -370,12 +403,7 @@ export function resolve(prev: OState, chosen: Targets = {}): OState {
     const attackers = s.units.filter(u => u.side === side && u.loc === to);
     if (!attackers.length) continue;
     if (s.units.some(u => u.side === foe && u.loc === to)) {
-      const pick = (sd: Side): Targets => {
-        const own: Targets = {};
-        for (const { u } of fighters(s, to, sd)) if (chosen[u.uid]) own[u.uid] = chosen[u.uid];
-        return targetProblem(s, to, sd, own) ? autoTargets(s, to, sd) : own;
-      };
-      const f = battle(s, to, { ...pick(side), ...pick(foe) });
+      const f = duelFight(s, playDuel(s, to, chosen[to]));
       for (const id of f.died) { const u = s.units.find(x => x.uid === id)!; s.sides[u.side].grave.push(u.card); }
       s.units = s.units.filter(u => !f.died.includes(u.uid));
       s.fightKey++;

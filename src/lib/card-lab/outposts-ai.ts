@@ -5,13 +5,14 @@
 // The expert level instead plans the whole turn (which cards, then a search over move sequences) and
 // checks every plan against the rival's best answer, using only what is on the board (never its hand).
 
-import { autoTargets, battle, canDeploy, clashes, canMove, deploy, endTurn, fighters, might, move, moveCost, resolve, smokeLeft, startOrders, targetProblem, type Loc, type OState, type Side, type Targets } from './outposts';
+import { autoAttack, canDeploy, clashes, canMove, deploy, duelAct, duelOptions, duelOver, duelScore, endTurn, might, move, moveCost, resolve, smokeLeft, startDuel, startOrders, type Attack, type Duel, type Loc, type OState, type Side } from './outposts';
 
 /** Practice levels: noise in the computer's judgement, how often it stops early, and how much weaker its deck is */
 export type Level = 'tutorial' | 'easy' | 'medium' | 'hard' | 'expert';
 export const LEVELS: Record<Level, { name: string; noise: number; quit: number; deckGap: number; note?: string }> = {
   // A short coached match (6 points) against a gentle computer with a weak deck
-  tutorial: { name: 'Samouczek', noise: 6, quit: 0.5, deckGap: 18, note: 'Krok po kroku, krótki mecz do 6 punktów' },
+  // Plays properly (no nonsense like ending its turn early) but with a much weaker deck
+  tutorial: { name: 'Samouczek', noise: 1.5, quit: 0, deckGap: 18, note: 'Krok po kroku, krótki mecz do 6 punktów' },
   easy: { name: 'Łatwy', noise: 6, quit: 0.35, deckGap: 10 },
   medium: { name: 'Średni', noise: 2, quit: 0.12, deckGap: 4 },
   hard: { name: 'Trudny', noise: 0.3, quit: 0, deckGap: 0 },
@@ -87,31 +88,12 @@ function wantedMoves(s: OState, rnd: () => number, noise: number): number {
 
 // ── Expert: whole-turn planning with a look at the rival's answer ─────────────
 
-/** Fights as a strong player would fight them: each attack choice is judged by the defender's best
- *  answer (maximin), and the defender answers that way. Remembered per fight line-up during a plan. */
-const fightMemo = new Map<string, Targets>();
-function sharpTargets(s: OState, at: 0 | 1 | 2): Targets {
-  const side = s.active; const foe = (1 - side) as Side;
-  const key = `${at}|${s.objectives[at].owner}|${fighters(s, at, side).map(x => `${x.u.uid}:${x.m}`).join()}|${fighters(s, at, foe).map(x => `${x.u.uid}:${x.m}`).join()}`;
-  const hit = fightMemo.get(key); if (hit) return hit;
-  const mine = allTargetings(s, at, side); const theirs = allTargetings(s, at, foe);
-  let out: Targets = { ...autoTargets(s, at, side), ...autoTargets(s, at, foe) };
-  let best = -Infinity;
-  for (const t of mine) {
-    let worst: { o: Targets; v: number } | null = null;
-    for (const o of theirs) { const v = fightScore(battle(s, at, { ...t, ...o }), side); if (!worst || v < worst.v) worst = { o, v }; }
-    if (worst && worst.v > best) { best = worst.v; out = { ...t, ...worst.o }; }
-  }
-  if (fightMemo.size > 5000) fightMemo.clear();
-  fightMemo.set(key, out);
-  return out;
-}
-/** Phase 3 with sharp targets on both sides */
+/** Phase 3 with both sides fighting at their best (the expert plans against a strong player) */
 function sharpResolve(s: OState): OState {
   if (s.phase !== 'move') return s;
-  const t: Targets = {};
-  for (const at of clashes(s)) Object.assign(t, sharpTargets(s, at));
-  return resolve(s, t);
+  const c: Partial<Record<0 | 1 | 2, Attack[]>> = {};
+  for (const at of clashes(s)) c[at] = fightScript(s, at, ['expert', 'expert']);
+  return resolve(s, c);
 }
 const judgeSharp = (s: OState, side: Side) => value(sharpResolve(s), side);
 
@@ -215,42 +197,43 @@ export function cpuNextAction(s: OState, rnd = Math.random, level: Level = 'hard
   return m ? { kind: 'move', uids: m.uids, to: m.to } : null;
 }
 
-// ── Targets in a fight ──────────────────────────────────────────────────────
+// ── Fights: one attack at a time, searched to the end ──────────────────────────
 
-/** Every allowed choice for one side (each of up to 3 units picks one of up to 3 enemies) */
-function allTargetings(s: OState, at: 0 | 1 | 2, side: Side): Targets[] {
-  const foes = fighters(s, at, (1 - side) as Side);
-  let out: Targets[] = [{}];
-  for (const { u } of fighters(s, at, side)) out = out.flatMap(t => foes.map(f => ({ ...t, [u.uid]: f.u.uid })));
-  return out.filter(t => !targetProblem(s, at, side, t));
-}
-
-/** How good a fight's result is for `side`: strength killed vs lost, and who keeps the objective */
-function fightScore(f: ReturnType<typeof battle>, side: Side): number {
-  let v = 0;
-  for (const id of f.died) { const l = f.lines.find(x => x.uid === id)!; v += (l.side === side ? -1 : 1) * l.m; }
-  const attacking = f.attacker === side;
-  if (f.outcome === 'took') v += (attacking ? 1 : -1) * (6 + 3 * f.points);
-  if (f.outcome === 'held' || f.outcome === 'repelled') v += attacking ? -3 : 3;
-  return v;
-}
-
-/** The computer's targets: tried against every choice the other side could make at the same time */
-export function chooseTargets(s: OState, at: 0 | 1 | 2, side: Side, level: Level = 'hard', rnd = Math.random): Targets {
-  const mine = allTargetings(s, at, side);
-  if (!mine.length) return autoTargets(s, at, side);
-  if ((level === 'easy' || level === 'tutorial') && rnd() < 0.5) return mine[Math.floor(rnd() * mine.length)];
-  const theirs = allTargetings(s, at, (1 - side) as Side);
-  if (!theirs.length) return mine[0];
-  const careful = level === 'expert' ? 0.5 : level === 'hard' ? 0.3 : 0;
-  let best = mine[0]; let bestV = -Infinity;
-  for (const t of mine) {
-    let sum = 0; let min = Infinity;
-    for (const o of theirs) { const v = fightScore(battle(s, at, { ...t, ...o }), side); sum += v; min = Math.min(min, v); }
-    const v = (1 - careful) * (sum / theirs.length) + careful * min + (level === 'medium' || level === 'easy' || level === 'tutorial' ? rnd() * 3 : 0);
-    if (v > bestV) { bestV = v; best = t; }
-  }
+/** How the fight ends from here with both sides at their best (from the attacker's view), remembered */
+const duelMemo = new Map<string, number>();
+const duelKey = (d: Duel) => `${d.attacker}${d.turn}|${d.stake}|${d.units.map(u => `${u.uid}:${u.m}:${u.hp}:${u.acted ? 1 : 0}`).join()}`;
+function duelValue(d: Duel): number {
+  if (duelOver(d)) return duelScore(d, d.attacker);
+  const k = duelKey(d); const hit = duelMemo.get(k); if (hit !== undefined) return hit;
+  const maxi = d.turn === d.attacker;
+  let best = maxi ? -Infinity : Infinity;
+  for (const a of duelOptions(d)) { const v = duelValue(duelAct(d, a)); best = maxi ? Math.max(best, v) : Math.min(best, v); }
+  if (duelMemo.size > 200000) duelMemo.clear();
+  duelMemo.set(k, best);
   return best;
+}
+/** The best attack for the side to move (with some noise for the easier levels) */
+function bestAttack(d: Duel, noise = 0, rnd: () => number = Math.random): Attack {
+  const sign = d.turn === d.attacker ? 1 : -1;
+  let best: { a: Attack; v: number } | null = null;
+  for (const a of duelOptions(d)) { const v = sign * duelValue(duelAct(d, a)) + rnd() * noise; if (!best || v > best.v) best = { a, v }; }
+  return best!.a;
+}
+
+/** The computer's next attack in a fight */
+export function chooseAttack(d: Duel, level: Level = 'hard', rnd: () => number = Math.random): Attack {
+  const opts = duelOptions(d);
+  if (level === 'easy' && rnd() < 0.4) return opts[Math.floor(rnd() * opts.length)];
+  if (level === 'easy') return autoAttack(d);
+  const noise = level === 'expert' ? 0 : level === 'hard' ? 0.5 : 3;
+  return bestAttack(d, noise, rnd);
+}
+
+/** A whole fight, each side choosing at its level (null = the plain sensible choice) */
+export function fightScript(s: OState, at: 0 | 1 | 2, levels: [Level | null, Level | null], rnd: () => number = Math.random): Attack[] {
+  let d = startDuel(s, at);
+  while (!duelOver(d)) { const lv = levels[d.turn]; d = duelAct(d, lv ? chooseAttack(d, lv, rnd) : autoAttack(d)); }
+  return d.log.map(({ from, to }) => ({ from, to }));
 }
 
 export const applyAct =(s: OState, a: Act) => (a.kind === 'deploy' ? deploy(s, a.cardId) : a.kind === 'orders' ? startOrders(s) : move(s, a.uids, a.to));
