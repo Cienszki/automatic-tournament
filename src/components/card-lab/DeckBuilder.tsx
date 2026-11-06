@@ -124,7 +124,8 @@ function Picker({ slot, current, collection, deckIds, deckPids, onChoose, onRemo
         <button type="button" aria-label="Zamknij" onClick={onClose} className="opacity-70 hover:opacity-100"><X className="w-8 h-8" /></button>
       </div>
       <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar" data-own-scroll>
-        <div className="flex flex-wrap justify-center gap-x-5 gap-y-4 pb-4">
+        {/* Room above and at the sides: hovered cards lift and the chosen one glows past its edge */}
+        <div className="flex flex-wrap justify-center gap-x-5 gap-y-4 pt-4 px-3 pb-4">
           {list.map(c => {
             const here = c.id === current?.id;
             const used = !here && deckIds.has(c.id);
