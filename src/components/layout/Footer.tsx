@@ -152,7 +152,7 @@ export function Footer() {
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
-                  <Link href={tournament ? getTournamentPath('/konto') : '/wiosenna/konto'}>
+                  <Link href={tournament ? getTournamentPath('/account') : '/wiosenna/account'}>
                     <UserRound className="mr-2 h-4 w-4" />
                     <span>Konto</span>
                   </Link>

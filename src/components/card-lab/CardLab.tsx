@@ -1,6 +1,6 @@
 'use client';
 
-// The card game test build (/[slug]/karty, not linked from the site — testers get the link):
+// The card game test build (/[slug]/cards, not linked from the site — testers get the link):
 // per-series player cards from this tournament, 10 unopened packs (opened in the album, kept in this
 // browser), deck building and "Kontrola mapy" against the practice computer.
 // Laid out once for 1920×900 and scaled to the screen (up and down), so nothing scrolls.

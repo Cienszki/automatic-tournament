@@ -1,7 +1,7 @@
 'use client';
 
-// The account page (/[slug]/konto), in the teams section's language: a banner with the person's
-// picture and name, then three plain columns under numbered rules — profile, linked accounts,
+// The account page (/[slug]/account), in the teams section's language: a banner with the person's
+// picture and name, then three plain columns under rules — profile, linked accounts,
 // roles and cards. No cards, no boxes. Everything is read and written through /api/account.
 
 import React, { useCallback, useEffect, useState } from 'react';
@@ -30,13 +30,13 @@ const SOURCE_NAME: Record<Source, string> = { google: 'Google', discord: 'Discor
 const STEAM_FROM: Record<string, string> = { discord: 'z Twojego Discorda', inhouse: 'z dota2inhouse.pl', steam: 'zalogowano na Steam' };
 const DISCORD = '#5865F2';
 
-/** Column heading: number + label on a rule that starts in the tournament colour (as in Herby) */
-function Label({ n, children }: { n: number; children: React.ReactNode }) {
+/** Column heading on a rule that starts in the tournament colour (as in Herby) */
+function Label({ children }: { children: React.ReactNode }) {
   const font = useHeaderFont();
   return (
     <div className="shrink-0 mb-4">
       <h2 className="text-[11px] font-logik-extended-bold uppercase tracking-[0.22em]" style={{ color: C.primary, ...font }}>
-        <span className="tabular-nums opacity-60 mr-2">{String(n).padStart(2, '0')}</span>{children}
+        {children}
       </h2>
       <div className="relative h-px mt-1.5" style={{ background: ink(12) }}>
         <span className="absolute left-0 top-0 h-px w-10" style={{ background: C.primary }} />
@@ -117,14 +117,7 @@ export default function AccountPage() {
         <div className="relative max-w-[1680px] mx-auto px-4 lg:px-14 py-10 flex flex-col sm:flex-row sm:items-center gap-6 sm:gap-10">
           <Pic src={picture} size={150} name={acc.nickname} />
           <div className="min-w-0">
-            <div className="text-[11px] uppercase tracking-[0.3em] text-white/60">Konto</div>
-            <h1 className="font-logik-extended-bold uppercase leading-[0.95] mt-2 break-words" style={{ fontSize: 'clamp(34px, 4.5vw, 64px)', ...font }}>{acc.nickname || 'Bez nicku'}</h1>
-            <div className="mt-3 flex flex-wrap gap-x-6 gap-y-1 text-[13px] text-white/75">
-              {acc.discord && <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full" style={{ background: DISCORD }} />@{acc.discord.username}</span>}
-              {acc.steam.length > 0 && <span>Steam · {count(acc.steam.length, 'konto', 'konta', 'kont')}</span>}
-              {acc.google?.email && <span>{acc.google.email}</span>}
-              {acc.superAdmin && <span className="text-white">Super admin</span>}
-            </div>
+            <h1 className="font-logik-extended-bold uppercase leading-[0.95] break-words" style={{ fontSize: 'clamp(34px, 4.5vw, 64px)', ...font }}>{acc.nickname || 'Bez nicku'}</h1>
           </div>
         </div>
       </div>
@@ -132,7 +125,7 @@ export default function AccountPage() {
       <div className="max-w-[1680px] mx-auto px-4 lg:px-14 py-8 grid gap-10 lg:grid-cols-3">
         {/* 1 · Profile */}
         <section>
-          <Label n={1}>Profil</Label>
+          <Label>Profil</Label>
           <Sub>Nick</Sub>
           <div className="flex items-end gap-3">
             <input value={nick} onChange={e => setNick(e.target.value)} maxLength={32} onKeyDown={e => { if (e.key === 'Enter' && nick !== acc.nickname) save({ nickname: nick }); }}
@@ -167,7 +160,7 @@ export default function AccountPage() {
 
         {/* 2 · Linked accounts */}
         <section>
-          <Label n={2}>Połączone konta</Label>
+          <Label>Połączone konta</Label>
           <Row>
             <span className="w-10 h-10 rounded-full flex items-center justify-center text-white shrink-0" style={{ background: DISCORD }}>D</span>
             <div className="flex-1 min-w-0">
@@ -209,7 +202,7 @@ export default function AccountPage() {
 
         {/* 3 · Roles and cards */}
         <section>
-          <Label n={3}>Role</Label>
+          <Label>Role</Label>
           {acc.superAdmin && <Row><ShieldCheck className="h-5 w-5" style={{ color: C.primary }} /><span className="font-bold" style={{ color: C.heading }}>Super admin</span></Row>}
           {roles.map(r => (
             <Row key={r.key}>
@@ -220,15 +213,15 @@ export default function AccountPage() {
           ))}
           {!acc.superAdmin && !roles.length && <div className="text-[14px] py-3 flex items-center gap-2" style={{ color: C.muted }}><Users className="h-4 w-4" />Brak ról. Kapitanem zostajesz, rejestrując drużynę.</div>}
 
-          <div className="mt-8"><Label n={4}>Karty</Label></div>
+          <div className="mt-8"><Label>Karty</Label></div>
           {acc.cards.map(c => (
             <Row key={c.tournament}>
               <div className="flex-1 min-w-0"><div className="font-bold truncate" style={{ color: C.heading }}>{c.name}</div>
                 <div className="text-[13px]" style={{ color: C.muted }}>{count(c.cards, 'karta', 'karty', 'kart')}{c.packs ? ` · ${count(c.packs, 'paczka', 'paczki', 'paczek')} do otwarcia` : ''}</div></div>
-              <Link href={`/${c.slug}/karty`} className="text-[12px] font-bold uppercase tracking-widest hover:underline underline-offset-4" style={{ color: C.primary }}>Otwórz</Link>
+              <Link href={`/${c.slug}/cards`} className="text-[12px] font-bold uppercase tracking-widest hover:underline underline-offset-4" style={{ color: C.primary }}>Otwórz</Link>
             </Row>
           ))}
-          {!acc.cards.length && <div className="text-[14px] py-3" style={{ color: C.muted }}>Jeszcze nie zbierasz kart. <Link href={getTournamentPath('/karty')} className="font-bold underline underline-offset-4" style={{ color: C.primary }}>Zacznij</Link></div>}
+          {!acc.cards.length && <div className="text-[14px] py-3" style={{ color: C.muted }}>Jeszcze nie zbierasz kart. <Link href={getTournamentPath('/cards')} className="font-bold underline underline-offset-4" style={{ color: C.primary }}>Zacznij</Link></div>}
         </section>
       </div>
 

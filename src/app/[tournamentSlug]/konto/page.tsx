@@ -1,8 +1,7 @@
-"use client";
+import { redirect } from 'next/navigation';
 
-import AccountPage from '@/components/account/AccountPage';
-
-/** The signed-in person's account: profile, linked Discord / Steam, roles, cards */
-export default function KontoPage() {
-  return <AccountPage />;
+/** Old address (Polish); the page lives at /[slug]/account */
+export default async function Moved({ params }: { params: Promise<{ tournamentSlug: string }> }) {
+  const { tournamentSlug } = await params;
+  redirect(`/${tournamentSlug}/account`);
 }
