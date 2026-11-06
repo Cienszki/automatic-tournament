@@ -18,7 +18,7 @@ import type { PDLUpcomingMatchProps } from '@/components/pdl/my-team/PDLUpcoming
 import type { AccountBanner } from '@/components/account/AccountPage';
 import { MatchPanel } from './MatchPanel';
 import { SquadView, type SquadProps } from './SquadView';
-import { Label, T, dayTime, seriesScore } from './ui';
+import { Label, T, dayTime, seriesScore, useWide } from './ui';
 import { Availability, type AvailabilityProps } from './Availability';
 
 export type { ScrimSlot } from './Availability';
@@ -107,6 +107,7 @@ function TeamSide({ team, divisionName, place, todos, setView }: TeamDeskProps) 
   const status = team.status ? STATUS[team.status] : undefined;
   const kicker = [team.tag && `[${team.tag}]`, divisionName, place ? `${place}. miejsce` : null].filter(Boolean) as string[];
   const shown = todos.slice(0, 2);
+  const wide = useWide();
   return (
     <div className="flex flex-row-reverse justify-end lg:flex-row lg:justify-end items-center gap-6 lg:gap-10 min-w-0">
       <div className="min-w-0 lg:text-right">
@@ -133,8 +134,7 @@ function TeamSide({ team, divisionName, place, todos, setView }: TeamDeskProps) 
           </div>
         )}
       </div>
-      <span className="hidden lg:block shrink-0"><TeamLogo team={team} size={140} className="drop-shadow-[0_10px_30px_rgba(0,0,0,0.6)]" /></span>
-      <span className="lg:hidden shrink-0"><TeamLogo team={team} size={84} /></span>
+      <TeamLogo team={team} size={wide ? 140 : 84} className="shrink-0 drop-shadow-[0_10px_30px_rgba(0,0,0,0.6)]" />
     </div>
   );
 }

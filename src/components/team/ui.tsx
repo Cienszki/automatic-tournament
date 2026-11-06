@@ -2,7 +2,7 @@
 
 // Shared pieces of the team views on the account page (teams-section language: rules and type)
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import type { Match } from '@/lib/definitions';
 import { cn } from '@/lib/utils';
 import { C, ink, useHeaderFont, useSize } from '@/components/stats-lab/kit';
@@ -89,3 +89,16 @@ export const fieldStyle: React.CSSProperties = { borderColor: ink(18), color: C.
 export const Kicker = ({ children }: { children: React.ReactNode }) => (
   <span className="text-[10px] uppercase tracking-[0.2em]" style={{ color: C.muted }}>{children}</span>
 );
+
+/** Desktop-wide window (≥ lg), for sizes that can't be a CSS class (crest sizes are props) */
+export function useWide(min = 1024): boolean {
+  const [wide, setWide] = useState(false);
+  useEffect(() => {
+    const q = window.matchMedia(`(min-width: ${min}px)`);
+    const on = () => setWide(q.matches);
+    on();
+    q.addEventListener('change', on);
+    return () => q.removeEventListener('change', on);
+  }, [min]);
+  return wide;
+}

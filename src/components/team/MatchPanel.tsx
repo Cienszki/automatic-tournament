@@ -21,7 +21,7 @@ import { MatchDetailModal } from '@/components/divisions/MatchDetailModal';
 import { PDLStandinRequestSection } from '@/components/pdl/my-team/PDLStandinRequest';
 import { PDLCoachSection } from '@/components/pdl/my-team/PDLCoachSection';
 import type { PDLUpcomingMatchProps } from '@/components/pdl/my-team/PDLUpcomingMatchNew';
-import { Act, Label, Solid, T, fieldClass as field, seriesScore } from './ui';
+import { Act, Label, Solid, T, fieldClass as field, seriesScore, useWide } from './ui';
 
 const longDate = (iso: string) => new Date(iso).toLocaleString('pl-PL', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
 const normalizeTime = (v: string) => { const d = v.replace(/\D/g, '').slice(0, 4); return d.length <= 2 ? d : `${d.slice(0, 2)}:${d.slice(2)}`; };
@@ -33,6 +33,7 @@ export function MatchPanel(p: PDLUpcomingMatchProps) {
   const [details, setDetails] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [proposing, setProposing] = useState(false);
+  const wide = useWide(640);
   const canPropose = isCaptain && !(match.status === 'completed') && match.rescheduleRequest?.status !== 'pending';
 
   const isTeamA = match.teamA?.id === myTeamId;
@@ -60,8 +61,7 @@ export function MatchPanel(p: PDLUpcomingMatchProps) {
       {/* Who and when */}
       <div className="shrink-0 flex flex-wrap items-center gap-x-6 gap-y-4 pb-4" style={{ borderBottom: `1px solid ${ink(12)}` }}>
         <div className="flex items-center gap-x-6 gap-y-4 min-w-0 basis-full md:basis-0 md:flex-1">
-        <span className="hidden sm:block shrink-0"><TeamLogo team={{ name: opponent?.name ?? '?', logoUrl: oppTeam?.logoUrl || opponent?.logoUrl, tag: oppTeam?.tag }} size={140} className="drop-shadow-[0_8px_24px_rgba(0,0,0,0.5)]" /></span>
-        <span className="sm:hidden shrink-0"><TeamLogo team={{ name: opponent?.name ?? '?', logoUrl: oppTeam?.logoUrl || opponent?.logoUrl, tag: oppTeam?.tag }} size={72} /></span>
+        <TeamLogo team={{ name: opponent?.name ?? '?', logoUrl: oppTeam?.logoUrl || opponent?.logoUrl, tag: oppTeam?.tag }} size={wide ? 140 : 72} className="shrink-0 drop-shadow-[0_8px_24px_rgba(0,0,0,0.5)]" />
         <div className="flex-1 min-w-0">
           <div className="text-[11px] uppercase tracking-[0.25em] flex flex-wrap gap-x-3" style={{ color: C.muted }}>{kicker.map(k => <span key={k}>{k}</span>)}</div>
           <h3 className="font-logik-extended-bold uppercase leading-[0.95] mt-1 break-words" style={{ fontSize: 'clamp(24px, 2.4vw, 40px)', color: C.heading, ...font }}>vs {opponent?.name ?? 'TBA'}</h3>
