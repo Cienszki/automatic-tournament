@@ -53,9 +53,10 @@ const ScheduleSection = dynamic(() => import('@/components/schedule/ScheduleSect
 // Stats hub: every stats view (rankings, records, games, match prep…) inside one section
 const StatsHub = dynamic(() => import('@/components/stats-hub/StatsHub'), { ssr: false });
 
-// Lazy-loaded My Team view (only rendered for captains)
-const MyTeamPage = dynamic(
-  () => import('@/app/[tournamentSlug]/my-team/page'),
+// Lazy-loaded team management (only rendered for captains). Not the /my-team page: that one
+// redirects to /account, which must never happen from inside the home page.
+const MyTeamView = dynamic(
+  () => import('@/components/team/MyTeamView'),
   {
     ssr: false,
     loading: () => (
@@ -1104,7 +1105,7 @@ export function TournamentHomePage() {
             <div className="h-full w-full overflow-y-auto text-white
               [&>div]:!min-h-0 [&>div]:!h-full
               [&>div>div.fixed]:!hidden">
-              <MyTeamPage />
+              <MyTeamView embedded={!isLegacyTournament} />
             </div>
           </FullScreenSection>
         )}

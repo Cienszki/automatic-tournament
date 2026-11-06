@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useTournament } from '@/context/TournamentContext';
 import MyTeamView from '@/components/team/MyTeamView';
 
@@ -9,8 +9,11 @@ import MyTeamView from '@/components/team/MyTeamView';
 export default function MyTeamPage() {
   const { tournament, isLegacyTournament, getTournamentPath } = useTournament();
   const router = useRouter();
+  const pathname = usePathname();
+  // Only when this really is the /my-team address (never when the component is shown elsewhere)
+  const onMyTeam = /\/my-team\/?$/.test(pathname ?? '');
   useEffect(() => {
-    if (tournament && !isLegacyTournament) router.replace(getTournamentPath('/account'));
-  }, [tournament, isLegacyTournament, getTournamentPath, router]);
+    if (onMyTeam && tournament && !isLegacyTournament) router.replace(getTournamentPath('/account'));
+  }, [onMyTeam, tournament, isLegacyTournament, getTournamentPath, router]);
   return isLegacyTournament ? <MyTeamView /> : null;
 }
