@@ -52,12 +52,42 @@ async function addSteam(uid: string, ids: Array<{ id: string; source: 'discord' 
   return conflicts;
 }
 
+/**
+ * An account made only because someone once pressed "Zaloguj przez Discord" (no Google, no role, no
+ * team, no cards). When its owner — signed in on their real account — links that Discord, it would
+ * block the link forever; such an account is simply removed and the Discord moves over.
+ */
+async function isThrowaway(uid: string): Promise<boolean> {
+  if (!uid.startsWith('discord_')) return false;
+  const user = await getAdminAuth().getUser(uid).catch(() => null);
+  if (user && user.providerData.length) return false;
+  if ((await db().collection('admins').doc(uid).get()).exists) return false;
+  if (!(await db().collection('teams').where('captainId', '==', uid).limit(1).get()).empty) return false;
+  for (const t of (await db().collection('tournaments').get()).docs) {
+    const [caster, admin, team] = await Promise.all([
+      t.ref.collection('casters').doc(uid).get(), t.ref.collection('admins').doc(uid).get(),
+      t.ref.collection('teams').where('captainId', '==', uid).limit(1).get(),
+    ]);
+    if (caster.exists || admin.exists || !team.empty) return false;
+  }
+  const cards = await db().collection('cardCollections').where('uid', '==', uid).get();
+  return cards.docs.every(c => !(c.data().cards ?? []).length);
+}
+
 /** Links a Discord user to an account (and the Steam accounts known for them). Refuses one held by another account. */
 export async function linkDiscord(uid: string, d: DiscordIdentity): Promise<{ ok: true; steamConflicts: string[] } | { error: string }> {
   const linkRef = db().collection('discordLinks').doc(d.id);
+  // Held by an empty account made by an earlier Discord sign-in: that one goes, the link moves here
+  const holder = (await linkRef.get()).data()?.uid as string | undefined;
+  if (holder && holder !== uid && await isThrowaway(holder)) {
+    const inbox = await accountRef(holder).collection('inbox').get();
+    await Promise.all(inbox.docs.map(x => x.ref.delete()));
+    await db().collection('cardActivity').doc(holder).delete();
+    await deleteAccount(holder);
+  }
   const res = await db().runTransaction<{ error: string } | { ok: true }>(async tx => {
     const owner = (await tx.get(linkRef)).data()?.uid;
-    if (owner && owner !== uid) return { error: 'Ten Discord jest już połączony z innym kontem.' };
+    if (owner && owner !== uid) return { error: 'Ten Discord ma już osobne konto na stronie (z grą, drużyną albo rolą). Zaloguj się nim przez Discord albo napisz do organizatorów.' };
     const acc = ((await tx.get(accountRef(uid))).data() as AccountDoc) ?? {};
     if (acc.discord && acc.discord.id !== d.id) tx.delete(db().collection('discordLinks').doc(acc.discord.id));
     tx.set(linkRef, { uid, at: FieldValue.serverTimestamp() });

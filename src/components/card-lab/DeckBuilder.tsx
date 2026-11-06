@@ -9,7 +9,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { Plus, X } from 'lucide-react';
 import { C, mix, useHeaderFont } from '@/components/stats-lab/kit';
 import { roleIcons } from '@/app/fantasy/roleIcons';
-import { byStrength, ROLE_KEYS, type DeckRule, type GCard, type RoleKey } from '@/lib/card-lab/cards';
+import { byStrength, type DeckRule, type GCard, type RoleKey } from '@/lib/card-lab/cards';
 import { slotDefs, type DeckSlots, type SlotDef } from '@/lib/card-lab/frozen';
 import { KEYWORD } from '@/lib/card-lab/outposts';
 import { Action, CardFace, RATIO } from './ui';
@@ -81,7 +81,10 @@ function Slot({ def, card, w, active, onClick }: { def: SlotDef; card?: GCard; w
         <span className="absolute inset-0 flex flex-col items-center justify-center gap-2 rounded-[16px] transition-colors"
           style={{ border: `2px dashed ${active ? C.primary : mix(C.text, 28)}`, color: active ? C.primary : mix(C.text, 50) }}>
           <span className="transition-transform group-hover:scale-110"><SlotIcon role={def.role} size={Math.round(w * (def.role ? 0.28 : 0.25))} /></span>
-          {def.role && <Plus className="w-5 h-5 opacity-70" />}
+          {/* Which position the slot is for (the icons alone don't say) */}
+          <span className="font-logik-extended-bold uppercase tracking-wider text-center leading-tight" style={{ fontSize: Math.max(11, Math.round(w * 0.085)), ...font }}>
+            {def.role ? KEYWORD[def.role].name : 'Dowolna pozycja'}
+          </span>
         </span>
       )}
     </button>
@@ -94,10 +97,9 @@ function Picker({ slot, current, collection, deckIds, deckPids, onChoose, onRemo
   onChoose: (c: GCard) => void; onRemove: () => void; onClose: () => void;
 }) {
   const font = useHeaderFont();
-  const [role, setRole] = useState<RoleKey>(slot.role ?? current?.role ?? 'Carry');
-  useEffect(() => { setRole(slot.role ?? current?.role ?? 'Carry'); }, [slot.key]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { const k = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); }; window.addEventListener('keydown', k); return () => window.removeEventListener('keydown', k); }, [onClose]);
-  const list = [...new Map(collection.map(c => [c.id, c])).values()].filter(c => c.role === role).sort(byStrength);
+  // A position's slot: its cards; a free slot: every card, strongest first (no split by position)
+  const list = [...new Map(collection.map(c => [c.id, c])).values()].filter(c => !slot.role || c.role === slot.role).sort(byStrength);
 
   // Over the whole page: every card that fits, at a size you can read
   return (
@@ -105,20 +107,17 @@ function Picker({ slot, current, collection, deckIds, deckPids, onChoose, onRemo
       style={{ background: 'rgba(10,11,16,0.97)', backdropFilter: 'blur(6px)' }}
       initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 24 }} transition={{ duration: 0.22 }}>
       <div className="shrink-0 flex items-center gap-6 text-white">
-        {slot.role
-          ? <span className="flex items-center gap-2.5 font-logik-extended-bold uppercase text-[24px]" style={font}><SlotIcon role={slot.role} size={28} />{KEYWORD[slot.role].name}</span>
-          : (
-            <div className="flex items-center gap-1">
-              {ROLE_KEYS.map(r => (
-                <button key={r} type="button" onClick={() => setRole(r)} className="relative flex items-center gap-2 px-3 py-1.5 font-logik-extended-bold uppercase text-[15px]"
-                  style={{ color: r === role ? '#fff' : DIM, ...font }}>
-                  <SlotIcon role={r} size={19} />{KEYWORD[r].name}
-                  {r === role && <span className="absolute left-2 right-2 -bottom-0.5 h-[3px] rounded-full" style={{ background: C.primary }} />}
-                </button>
-              ))}
-            </div>
-          )}
-        <span className="text-[14px]" style={{ color: DIM }}>{KEYWORD[role].ability}: {KEYWORD[role].text}</span>
+        {slot.role ? (
+          <>
+            <span className="flex items-center gap-2.5 font-logik-extended-bold uppercase text-[24px]" style={font}><SlotIcon role={slot.role} size={28} />{KEYWORD[slot.role].name}</span>
+            <span className="text-[14px]" style={{ color: DIM }}>{KEYWORD[slot.role].ability}: {KEYWORD[slot.role].text}</span>
+          </>
+        ) : (
+          <>
+            <span className="flex items-center gap-2.5 font-logik-extended-bold uppercase text-[24px]" style={font}><SlotIcon role={null} size={26} />Dowolna pozycja</span>
+            <span className="text-[14px]" style={{ color: DIM }}>Tu pasuje karta z każdej pozycji.</span>
+          </>
+        )}
         <div className="flex-1" />
         {current && <Action onDark onClick={onRemove}>Zdejmij z talii</Action>}
         <button type="button" aria-label="Zamknij" onClick={onClose} className="opacity-70 hover:opacity-100"><X className="w-8 h-8" /></button>
@@ -139,7 +138,7 @@ function Picker({ slot, current, collection, deckIds, deckPids, onChoose, onRemo
               </div>
             );
           })}
-          {!list.length && <span className="self-center mt-24 text-[16px]" style={{ color: DIM }}>Nie masz jeszcze kart na tej pozycji: otwórz paczkę.</span>}
+          {!list.length && <span className="self-center mt-24 text-[16px]" style={{ color: DIM }}>{slot.role ? 'Nie masz jeszcze kart na tej pozycji: otwórz paczkę.' : 'Nie masz jeszcze kart: otwórz paczkę.'}</span>}
         </div>
       </div>
     </motion.div>

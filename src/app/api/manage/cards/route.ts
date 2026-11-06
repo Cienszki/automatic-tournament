@@ -4,6 +4,9 @@
  *   GET  ?tournamentId=…&q=<text>   → { found }: accounts whose nick or Discord name matches
  *   PUT  { tournamentId, settings } → { settings }: the "how to get cards" text, packs per round, Twitch channels
  *   POST { tournamentId, uids, n, reason } → { grants }: gives these accounts n packs each, with a notification
+ *   GET  ?tournamentId=…&reports=1  → { reports }: players' bug reports (newest 40, without the heavy parts)
+ *   GET  ?tournamentId=…&report=<id> → the whole report (to download)
+ *   PATCH { tournamentId, reportId, status: 'new' | 'done' }
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -34,6 +37,19 @@ export async function GET(req: NextRequest) {
   if (!ID.test(tid)) return bad('Złe zapytanie');
   const caller = await requireAdmin(req, tid); if (caller instanceof NextResponse) return caller;
   try {
+    const rid = req.nextUrl.searchParams.get('report');
+    if (rid) {
+      if (!ID.test(rid)) return bad('Złe zapytanie');
+      const r = (await db().collection('cardReports').doc(rid).get()).data();
+      if (!r || r.t !== tid) return bad('Nie ma takiego zgłoszenia', 404);
+      return NextResponse.json({ ...r, at: r.at?.toMillis?.() ?? null });
+    }
+    if (req.nextUrl.searchParams.get('reports')) {
+      const snap = await db().collection('cardReports').where('t', '==', tid).get();
+      const reports = snap.docs.map(d => { const r = d.data(); return { id: d.id, name: r.name as string, text: r.text as string, mode: (r.mode ?? null) as string | null, duelId: (r.duelId ?? null) as string | null, status: r.status as string, at: r.at?.toMillis?.() ?? 0 }; })
+        .sort((a, b) => b.at - a.at).slice(0, 40);
+      return NextResponse.json({ reports });
+    }
     const q = (req.nextUrl.searchParams.get('q') ?? '').trim().toLowerCase();
     if (q) {
       if (q.length < 2) return NextResponse.json({ found: [] });
@@ -96,4 +112,16 @@ export async function POST(req: NextRequest) {
     });
     return NextResponse.json({ grants: await grants(b.tournamentId) });
   } catch (e) { console.error('[manage/cards] grant failed:', e); return bad('Nie udało się dać paczek', 500); }
+}
+
+export async function PATCH(req: NextRequest) {
+  const b = await req.json().catch(() => null);
+  if (!ID.test(b?.tournamentId ?? '') || !ID.test(b?.reportId ?? '') || (b?.status !== 'new' && b?.status !== 'done')) return bad('Złe zapytanie');
+  const caller = await requireAdmin(req, b.tournamentId); if (caller instanceof NextResponse) return caller;
+  try {
+    const ref = db().collection('cardReports').doc(b.reportId);
+    if ((await ref.get()).data()?.t !== b.tournamentId) return bad('Nie ma takiego zgłoszenia', 404);
+    await ref.update({ status: b.status });
+    return NextResponse.json({ ok: true });
+  } catch (e) { console.error('[manage/cards] patch failed:', e); return bad('Nie udało się zapisać', 500); }
 }

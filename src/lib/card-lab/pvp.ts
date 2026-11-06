@@ -63,6 +63,8 @@ export interface Game {
 
 export type PvpAction =
   | { kind: 'deploy'; cardId: string }
+  /** Several hand cards to the base at once (one request, all or none) */
+  | { kind: 'deployMany'; cardIds: string[] }
   | { kind: 'orders' }
   | { kind: 'move'; uids: string[]; to: Loc }
   /** Done planning: the fights start (or, with none, the moves happen) */
@@ -70,7 +72,12 @@ export type PvpAction =
   | { kind: 'hit'; from: string; to: string }
   /** After the fights: pass the turn now instead of waiting */
   | { kind: 'end' }
-  | { kind: 'resign' };
+  | { kind: 'resign' }
+  /** A whole phase at once: what the player did on their own screen, replayed here step by step
+   *  (all or nothing). Only the planning steps and the confirm/end that close a phase. */
+  | { kind: 'batch'; actions: BatchStep[] };
+export type BatchStep = Extract<PvpAction, { kind: 'deploy' | 'deployMany' | 'orders' | 'move' | 'confirm' | 'end' }>;
+export const BATCH_KINDS = ['deploy', 'deployMany', 'orders', 'move', 'confirm', 'end'] as const;
 
 const other = (s: Side) => (1 - s) as Side;
 
@@ -138,9 +145,12 @@ function afterHit(g: Game, duel: Duel, t: number): Game {
 export function settle(game: Game, now: number): Game {
   let g = game;
   for (let guard = 0; guard < 500 && !g.end; guard++) {
-    const gone = ([0, 1] as Side[]).find(sd => now - g.clock.seen[sd] > CLOCK.away);
-    if (gone !== undefined) return finish(g, other(gone), 'away');
+    // Whoever went quiet first is the one away (not simply side 0), and only if that came before
+    // the next thing that was due
+    const first: Side = g.clock.seen[0] <= g.clock.seen[1] ? 0 : 1;
+    const awayAt = g.clock.seen[first] + CLOCK.away;
     const t = g.clock.deadline;
+    if (awayAt < now && awayAt <= t) return finish(g, other(first), 'away');
     if (t > now) break;
     if (g.fight) {
       // A hit not made in time: a sensible one
@@ -160,11 +170,28 @@ export function settle(game: Game, now: number): Game {
 
 // ── Actions ─────────────────────────────────────────────────────────────────
 
+/** A player is here at `now` (their own request proves it, so it counts before anything else) */
+export const checkIn = (g: Game, side: Side, now: number): Game => ({ ...g, clock: { ...g.clock, seen: side === 0 ? [now, g.clock.seen[1]] : [g.clock.seen[0], now] } });
+
 export function act(game: Game, side: Side, a: PvpAction, now: number): { game: Game } | { error: string } {
-  let g = settle(game, now);
-  g = { ...g, clock: { ...g.clock, seen: side === 0 ? [now, g.clock.seen[1]] : [g.clock.seen[0], now] } };
+  const g = settle(checkIn(game, side, now), now);
   if (g.end) return a.kind === 'resign' ? { game: g } : { error: 'Mecz się skończył' };
   if (a.kind === 'resign') return { game: finish(g, other(side), 'resign') };
+  if (a.kind === 'batch') {
+    let cur = g;
+    for (const x of a.actions) {
+      const r = step(cur, side, x, now);
+      if ('error' in r) return r;
+      cur = r.game;
+      if (cur.end) break;
+    }
+    return { game: cur };
+  }
+  return step(g, side, a, now);
+}
+
+/** One action on a settled game */
+function step(g: Game, side: Side, a: Exclude<PvpAction, { kind: 'batch' | 'resign' }>, now: number): { game: Game } | { error: string } {
 
   if (a.kind === 'hit') {
     const f = g.fight;
@@ -182,6 +209,11 @@ export function act(game: Game, side: Side, a: PvpAction, now: number): { game: 
     case 'deploy': {
       const why = canDeploy(s, a.cardId);
       return why ? { error: why } : { game: { ...g, s: deploy(s, a.cardId) } };
+    }
+    case 'deployMany': {
+      let st = s;
+      for (const id of a.cardIds) { const why = canDeploy(st, id); if (why) return { error: why }; st = deploy(st, id); }
+      return { game: { ...g, s: st } };
     }
     case 'orders':
       return s.phase === 'deploy' ? { game: { ...g, s: startOrders(s) } } : { error: 'Już planujesz ruchy' };
@@ -261,6 +293,7 @@ export function viewFor(game: Game, side: Side): Game {
 /** An action made on a view → the same action on the real game */
 export function fromView(a: PvpAction, side: Side): PvpAction {
   if (side === 0) return a;
+  if (a.kind === 'batch') return { ...a, actions: a.actions.map(x => fromView(x, side) as BatchStep) };
   if (a.kind === 'move') return { ...a, uids: a.uids.map(flipUid) };
   if (a.kind === 'hit') return { ...a, from: flipUid(a.from), to: flipUid(a.to) };
   return a;

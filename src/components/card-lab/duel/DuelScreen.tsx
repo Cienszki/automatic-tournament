@@ -213,7 +213,7 @@ export function DuelScreen({ id }: { id: string }) {
   if (view?.game && view.players && (view.status === 'play' || view.status === 'done')) {
     return (
       <OutpostsGame key={id} deck={[]} all={[]} onBack={toCards}
-        net={{ game: view.game, players: view.players, result: view.result, offset, send, onRematch: rematch }} />
+        net={{ id, game: view.game, players: view.players, result: view.result, offset, send, onRematch: rematch }} />
     );
   }
   if (missing) return <Faceoff left={null} right={null} kicker="Pojedynek" title="Nie ma takiego wyzwania"><Quiet onClick={toCards}>Rzuć własne wyzwanie</Quiet></Faceoff>;

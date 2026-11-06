@@ -27,6 +27,7 @@ import { count } from '@/lib/plural';
 import { Album, PackReveal } from './Album';
 import { DeckBuilder } from './DeckBuilder';
 import { FoilPack, GOLD } from './FoilPack';
+import { ReportBug } from './ReportBug';
 import { OUTPOSTS_RULE, OutpostsGame } from './OutpostsGame';
 import { duelPost, useDuel } from './duel/useDuel';
 
@@ -411,11 +412,15 @@ export function CardsHome({ statsKey, cards, collection, packs, slots, setSlots,
 
   return (
     <div className="relative h-full flex flex-col px-10 pt-5 pb-5" style={{ color: C.text }}>
-      <button type="button" data-help="intro" onClick={onHelp} aria-label="Jak to działa" className="absolute right-4 top-4 z-20 w-9 h-9 rounded-full font-logik-extended-bold text-[16px]"
-        style={{ color: C.heading, boxShadow: `inset 0 0 0 1.5px ${mix(C.heading, 40)}`, ...font }}>?</button>
+      <div className="absolute right-4 top-4 z-20 flex items-center gap-2">
+        <ReportBug className="w-9 h-9 rounded-full flex items-center justify-center" style={{ color: C.heading, boxShadow: `inset 0 0 0 1.5px ${mix(C.heading, 40)}` }}
+          context={() => ({ mode: 'front', duelId: duelId ?? null, duelStatus: duel.view?.status ?? null, packs, cards: collection.length, deck: Object.keys(slots).length, problem })} />
+        <button type="button" data-help="intro" onClick={onHelp} aria-label="Jak to działa" className="w-9 h-9 rounded-full font-logik-extended-bold text-[16px]"
+          style={{ color: C.heading, boxShadow: `inset 0 0 0 1.5px ${mix(C.heading, 40)}`, ...font }}>?</button>
+      </div>
 
       {/* The deck, across the whole width */}
-      <div className="shrink-0 h-[44px] flex items-baseline gap-5 pr-12" data-deck>
+      <div className="shrink-0 h-[44px] flex items-baseline gap-5 pr-[100px]" data-deck>
         <span className="font-logik-extended-bold uppercase text-[30px] leading-none" style={{ color: C.heading, ...font }}>Talia</span>
         {!collection.length || problem ? (
           <span className="text-[14px]" style={{ color: problem ? C.loss : C.muted }}>{problem ?? 'Otwórz paczki, żeby mieć z czego ją ułożyć.'}</span>
@@ -469,7 +474,7 @@ export function CardsHome({ statsKey, cards, collection, packs, slots, setSlots,
       {playing && (
         <div className="absolute inset-0 z-50" data-snap-lock>
           <OutpostsGame key={duelId!} deck={[]} all={[]} onBack={() => { setDuelId(null); setRefresh(r => r + 1); }}
-            net={{ game: duel.view!.game!, players: duel.view!.players!, result: duel.view!.result, offset: duel.offset, send: duel.send, onRematch: () => challenge(duel.view!.players![1]) }} />
+            net={{ id: duelId!, game: duel.view!.game!, players: duel.view!.players!, result: duel.view!.result, offset: duel.offset, send: duel.send, onRematch: () => challenge(duel.view!.players![1]) }} />
         </div>
       )}
     </div>

@@ -18,7 +18,7 @@ import { getAccount } from '@/server/accounts/store';
 import { notify, tournamentInfo } from '@/server/notify/notify';
 import { playableDeck } from './collection';
 import {
-  act, eloDelta, fromView, LOBBY, settle, startGame, START_RATING, viewFor,
+  act, checkIn, eloDelta, fromView, LOBBY, settle, startGame, START_RATING, viewFor,
   type DuelStatus, type DuelView, type EndReason, type Game, type Person, type PvpAction,
 } from '@/lib/card-lab/pvp';
 import type { Side } from '@/lib/card-lab/outposts';
@@ -74,9 +74,17 @@ function viewOf(id: string, d: DuelDoc, uid: string, now: number): DuelView {
 }
 
 /** Writes the duel and every participant's view in one go */
-function write(tx: FirebaseFirestore.Transaction, id: string, d: DuelDoc, now: number, also: string[] = []) {
+/** The duel without who-was-seen-when (a check-in that changed nothing else needn't rewrite the views) */
+function shape(d: DuelDoc): string {
+  const g = d.game ? (JSON.parse(d.game) as Game) : null;
+  return JSON.stringify({ ...d, hostSeen: 0, updatedAt: 0, game: g ? { ...g, clock: { ...g.clock, seen: [0, 0] } } : null });
+}
+
+function write(tx: FirebaseFirestore.Transaction, id: string, d: DuelDoc, now: number, also: string[] = [], before?: DuelDoc) {
   const ref = duels().doc(id);
   tx.set(ref, { ...d, updatedAt: now });
+  // Nothing anyone sees changed (a check-in): the players' views stay, no update is pushed to them
+  if (before && !also.length && shape(before) === shape(d)) return;
   const uids = new Set([d.host.uid, ...(d.guest ? [d.guest.uid] : []), ...also]);
   for (const uid of uids) tx.set(ref.collection('views').doc(uid), { json: JSON.stringify(viewOf(id, { ...d, updatedAt: now }, uid, now)), at: now });
 }
@@ -115,7 +123,8 @@ export async function publicLobby(id: string) {
   return { id, key: d.key, kind: d.kind, status, host: d.host, invited: d.invited, guest: status === 'seated' || status === 'play' ? d.guest : null, players: d.players };
 }
 
-type Res = { ok: true } | { error: string; status?: number };
+/** `view`: the caller's view right after the change (JSON), so their screen needn't wait for the push */
+type Res = { ok: true; view?: string } | { error: string; status?: number };
 
 async function update(id: string, uid: string, fn: (d: DuelDoc, now: number) => DuelDoc | { error: string; status?: number } | null): Promise<Res> {
   const ref = duels().doc(id);
@@ -127,11 +136,12 @@ async function update(id: string, uid: string, fn: (d: DuelDoc, now: number) => 
     const next = fn(before, now);
     if (!next) return { ok: true };
     if ('error' in next) return next;
-    write(tx, id, next, now, before.guest && before.guest.uid !== next.guest?.uid ? [before.guest.uid] : []);
-    return { ok: true, finished: next.status === 'done' && !next.rated };
+    write(tx, id, next, now, before.guest && before.guest.uid !== next.guest?.uid ? [before.guest.uid] : [], before);
+    const mine = uid && (next.host.uid === uid || next.guest?.uid === uid) ? JSON.stringify(viewOf(id, { ...next, updatedAt: now }, uid, now)) : undefined;
+    return { ok: true, finished: next.status === 'done' && !next.rated, view: mine };
   });
   if ('finished' in out && out.finished) await rate(id).catch(e => console.error('[duels] rating failed', e));
-  return 'error' in out ? out : { ok: true };
+  return 'error' in out ? out : { ok: true, view: out.view };
 }
 
 /** "Przyjmij": the seat is yours for LOBBY.seat */
@@ -208,10 +218,8 @@ export async function ping(id: string, uid: string): Promise<Res> {
     if (d.status !== 'play') return null;
     const g = JSON.parse(d.game!) as Game;
     const side = d.sides!.indexOf(uid) as Side;
-    const settled = settle(g, now);
-    const seen: [number, number] = [...settled.clock.seen];
-    if (side >= 0) seen[side] = now;
-    return withGame(d, { ...settled, clock: { ...settled.clock, seen } });
+    // Here now (counted first: your own check-in can't make you the one away)
+    return withGame(d, settle(side >= 0 ? checkIn(g, side, now) : g, now));
   });
 }
 

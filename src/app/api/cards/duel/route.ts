@@ -16,7 +16,7 @@ import { requireUser } from '@/server/lib/require-user';
 import { ensureAdminInitialized, getAdminDb } from '@/server/lib/admin';
 import { NEED_NAME, hasName, validKey } from '@/server/card-lab/collection';
 import { createDuel, history, leave, myDuels, ping, play, publicLobby, ranking, startMatch, takeSeat } from '@/server/card-lab/duels';
-import type { PvpAction } from '@/lib/card-lab/pvp';
+import { BATCH_KINDS, type BatchStep, type PvpAction } from '@/lib/card-lab/pvp';
 
 export const dynamic = 'force-dynamic';
 const ID = /^[A-Za-z0-9_-]{6,40}$/;
@@ -28,9 +28,16 @@ const str = (v: unknown) => typeof v === 'string' && v.length > 0 && v.length < 
 function parseMove(m: Record<string, unknown> | null | undefined): PvpAction | null {
   switch (m?.kind) {
     case 'deploy': return str(m.cardId) ? { kind: 'deploy', cardId: m.cardId as string } : null;
+    case 'deployMany': return Array.isArray(m.cardIds) && m.cardIds.length && m.cardIds.length <= 10 && m.cardIds.every(str) ? { kind: 'deployMany', cardIds: m.cardIds as string[] } : null;
     case 'move': return Array.isArray(m.uids) && m.uids.length && m.uids.length <= 7 && m.uids.every(str) && LOC(m.to) ? { kind: 'move', uids: m.uids as string[], to: m.to as 'base' } : null;
     case 'hit': return str(m.from) && str(m.to) ? { kind: 'hit', from: m.from as string, to: m.to as string } : null;
     case 'orders': case 'confirm': case 'end': case 'resign': return { kind: m.kind };
+    case 'batch': {
+      // A whole phase: only planning steps and the confirm/end that close it
+      if (!Array.isArray(m.actions) || !m.actions.length || m.actions.length > 40) return null;
+      const steps = (m.actions as Array<Record<string, unknown>>).map(x => ((BATCH_KINDS as readonly unknown[]).includes(x?.kind) ? parseMove(x) : null));
+      return steps.every(Boolean) ? { kind: 'batch', actions: steps as BatchStep[] } : null;
+    }
     default: return null;
   }
 }

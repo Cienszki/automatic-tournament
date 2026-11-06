@@ -17,11 +17,17 @@ export interface PublicLobby {
 
 /** POST /api/cards/duel; resolves to the error (null = done) and the answer */
 export async function duelPost<T = { ok: true }>(user: User, body: object): Promise<{ error: string | null; data: T | null }> {
-  const r = await fetch('/api/cards/duel', {
-    method: 'POST', headers: { Authorization: `Bearer ${await user.getIdToken()}`, 'Content-Type': 'application/json' }, body: JSON.stringify(body),
-  });
-  const j = await r.json().catch(() => ({}));
-  return r.ok ? { error: null, data: j as T } : { error: (j as { error?: string }).error || 'Coś poszło nie tak', data: null };
+  // Never hang: a move left waiting would hold the board (it waits for its answer)
+  const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), 15_000);
+  try {
+    const r = await fetch('/api/cards/duel', {
+      method: 'POST', headers: { Authorization: `Bearer ${await user.getIdToken()}`, 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: ctl.signal,
+    });
+    const j = await r.json().catch(() => ({}));
+    return r.ok ? { error: null, data: j as T } : { error: (j as { error?: string }).error || 'Coś poszło nie tak', data: null };
+  } catch {
+    return { error: 'Brak połączenia z serwerem', data: null };
+  } finally { clearTimeout(t); }
 }
 
 const PING_MS = 10_000;
@@ -50,18 +56,32 @@ export function useDuel(id: string | null, user: User | null) {
     return () => clearInterval(t);
   }, [loadLobby, view]);
 
+  // Views come from the live push and from the answers to your own requests: never go back to an older one
+  const lastAt = useRef(0);
+  const apply = useCallback((v: DuelView) => {
+    if (v.at < lastAt.current) return;
+    lastAt.current = v.at;
+    setOffset(v.at - Date.now());
+    setView(v);
+  }, []);
+
   // Your own view, live (exists once you host or hold the seat)
   useEffect(() => {
+    lastAt.current = 0;
     if (!user || !id) { setView(null); return; }
     return onSnapshot(doc(db, 'cardDuels', id, 'views', user.uid), snap => {
       if (!snap.exists()) { setView(null); return; }
-      const v = JSON.parse(snap.data().json as string) as DuelView;
-      setOffset(v.at - Date.now());
-      setView(v);
+      apply(JSON.parse(snap.data().json as string) as DuelView);
     }, () => setView(null));
-  }, [id, user]);
+  }, [id, user, apply]);
 
-  const post = useCallback(async (body: object) => (user && id ? (await duelPost(user, { id, ...body })).error : 'Zaloguj się'), [id, user]);
+  const post = useCallback(async (body: object) => {
+    if (!user || !id) return 'Zaloguj się';
+    const r = await duelPost<{ view?: string }>(user, { id, ...body });
+    // The answer already holds your view after the change: show it without waiting for the push
+    if (r.data?.view) apply(JSON.parse(r.data.view) as DuelView);
+    return r.error;
+  }, [id, user, apply]);
   const send = useCallback((m: PvpAction) => post({ action: 'play', move: m }), [post]);
 
   // Check in while taking part; also right after a deadline passes (so it applies without waiting)

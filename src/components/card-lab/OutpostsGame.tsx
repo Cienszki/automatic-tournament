@@ -10,6 +10,7 @@
 
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { ReportBug } from './ReportBug';
 import { AnimatePresence, LayoutGroup, motion } from 'framer-motion';
 import { ArrowLeft, ArrowRight, Bot, CircleHelp, HeartCrack, Flag, Home, Moon, Mountain, Plus, ScrollText, Shield, Skull, Sprout, Sun, Swords, Users, Wind, X } from 'lucide-react';
 import { Avatar, C, HeroRender, Tip, mix, onDark, useHeaderFont, useSize } from '@/components/stats-lab/kit';
@@ -18,7 +19,7 @@ import { avgOvr, cpuDeck, type DeckRule, type GCard, type RoleKey } from '@/lib/
 import {
   DECK_PER_ROLE, DECK_SIZE, KEYWORD, OBJECTIVES, ORDERS, PER_SIDE_AT_OBJECTIVE, WIN_POINTS, baseMight, canDeploy, canMove, cardStrength, clashes as clashesOf, deploy, endTurn, might, move, moveCost, newGame, resolve, RULES, smokeCovers, smokeLeft, startOrders, strengthParts, takePoints, type Ev, type Fight, type Gain, type Loc, type ObjId, type OState, type OUnit, type Part, type Side, duelAct, duelOver, duelTargets, playDuel, startDuel, type Attack, type Duel, type DuelUnit,
 } from '@/lib/card-lab/outposts';
-import type { DuelView, Fighting, Game, Person, PvpAction } from '@/lib/card-lab/pvp';
+import type { BatchStep, DuelView, Fighting, Game, Person, PvpAction } from '@/lib/card-lab/pvp';
 import { applyAct, chooseAttack, cpuNextAction, LEVELS, type Level } from '@/lib/card-lab/outposts-ai';
 import { CardBack, useFitScale } from './ui';
 import { Tour, type TourStep } from '@/components/tour/Tour';
@@ -27,6 +28,8 @@ import { Coach, type CoachStep } from '@/components/tour/Coach';
 
 /** A match against a person (the duel page): the board comes from the server, moves go to it */
 export interface NetGame {
+  /** The duel's id (bug reports) */
+  id: string;
   /** The match as this player sees it (they are side 0) */
   game: Game;
   /** [you, rival] */
@@ -466,7 +469,8 @@ function BaseBand({ side, a, target, onSend, deployN }: { side: Side; a: AreaCtx
   );
 }
 
-function ScoreRace({ shown, win }: { shown: [number, number]; win: number }) {
+/** `clock`: against a person, the turn clock sits in the middle, like Dota's game clock */
+function ScoreRace({ shown, win, clock }: { shown: [number, number]; win: number; clock?: React.ReactNode }) {
   const font = useHeaderFont();
   const pips = (side: Side) => Array.from({ length: win }, (_, i) => {
     const lit = i < shown[side];
@@ -476,10 +480,12 @@ function ScoreRace({ shown, win }: { shown: [number, number]; win: number }) {
     <div data-tour="score" className="flex items-center gap-4 w-[760px]">
       <span data-score={0} className="font-logik-extended-bold text-[34px] w-12 text-right tabular-nums" style={{ color: T.me, ...font }}>{shown[0]}</span>
       <div className="flex-1 flex gap-1">{pips(0)}</div>
-      <div className="text-center leading-none">
-        <div className="font-logik-extended-bold text-[22px]" style={{ color: T.text, ...font }}>{win}</div>
-        <div className="text-[10px] uppercase tracking-[0.2em] mt-0.5" style={{ color: T.muted }}>pkt wygrywa</div>
-      </div>
+      {clock ?? (
+        <div className="text-center leading-none">
+          <div className="font-logik-extended-bold text-[22px]" style={{ color: T.text, ...font }}>{win}</div>
+          <div className="text-[10px] uppercase tracking-[0.2em] mt-0.5" style={{ color: T.muted }}>pkt wygrywa</div>
+        </div>
+      )}
       <div className="flex-1 flex gap-1 flex-row-reverse">{pips(1)}</div>
       <span data-score={1} className="font-logik-extended-bold text-[34px] w-12 tabular-nums" style={{ color: T.rival, ...font }}>{shown[1]}</span>
     </div>
@@ -810,7 +816,9 @@ function PersonPic({ p, ring, size = 36 }: { p: Person; ring: string; size?: num
 }
 
 /** Time left in the turn (then the reserve), ticking; red in the last 10 s */
-function TurnClock({ clock, active, offset }: { clock: Game['clock']; active: Side; offset: number }) {
+/** The turn clock, top centre between the scores: the turn's own time, then the reserve (red near the end) */
+function TurnClock({ clock, active, offset, win }: { clock: Game['clock']; active: Side; offset: number; win: number }) {
+  const font = useHeaderFont();
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => { const t = setInterval(() => setNow(Date.now()), 250); return () => clearInterval(t); }, []);
   const t = now + offset;
@@ -818,10 +826,12 @@ function TurnClock({ clock, active, offset }: { clock: Game['clock']; active: Si
   const total = Math.max(0, clock.deadline - t);
   const fmt = (ms: number) => { const sec = Math.ceil(ms / 1000); return `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`; };
   return (
-    <span className="text-[13px] tracking-wider mt-1 tabular-nums" style={{ color: total < 10_000 ? '#ffb3ad' : undefined }}>
-      {own > 0 ? fmt(own) : <>rezerwa {fmt(total)}</>}
-      {own > 0 && clock.reserve[active] > 0 && <span className="opacity-60 text-[10px]"> +{fmt(clock.reserve[active])}</span>}
-    </span>
+    <Tip content={`Tura: 30 s, potem rezerwa na cały mecz (zostało ${fmt(clock.reserve[active])}). Gra do ${win} pkt.`}>
+      <div className="text-center leading-none cursor-help min-w-[96px] rounded-[10px] px-3 py-1.5" style={{ background: 'rgba(0,0,0,0.35)', boxShadow: `inset 0 0 0 1px ${active === 0 ? mix(T.me, 55) : mix(T.rival, 55)}` }}>
+        <div className="font-logik-extended-bold text-[24px] tabular-nums" style={{ color: own > 0 ? T.text : total < 10_000 ? '#ff7a6b' : '#ffb3ad', ...font }}>{fmt(own > 0 ? own : total)}</div>
+        <div className="text-[10px] uppercase tracking-[0.18em] mt-1" style={{ color: active === 0 ? T.me : T.rival }}>{own > 0 ? (active === 0 ? 'Twoja tura' : 'Tura rywala') : 'Rezerwa'}</div>
+      </div>
+    </Tip>
   );
 }
 
@@ -895,9 +905,15 @@ export function OutpostsGame({ deck, all, onBack, level = 'easy', visible = true
     const script = sameTurn ? f.chosen[at] : net.game.s.fights.find(x => x.at === at)?.blows.map(b => ({ from: b.from, to: b.to }));
     const key = `${p.base.turn}-${at}`;
     setOutro({ base: p.base, at, duel: playDuel(p.base, at, script ?? p.duel.log.map(({ from, to }) => ({ from, to }))), key });
+  }, [net?.game]); // eslint-disable-line react-hooks/exhaustive-deps
+  // The finished fight leaves after a moment. Its own timer: tied to the game updates above, the
+  // next update (a check-in, the rival's move) cancelled it and the fight stayed on screen for good.
+  useEffect(() => {
+    if (!outro) return;
+    const key = outro.key;
     const t = setTimeout(() => setOutro(o => (o?.key === key ? null : o)), 2200);
     return () => clearTimeout(t);
-  }, [net?.game]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [outro?.key]); // eslint-disable-line react-hooks/exhaustive-deps
   const netFight = net?.game.fight;
   const netBattle = !net ? null : outro ? { base: outro.base, at: outro.at, duel: outro.duel, live: false }
     : netFight ? { base: netFight.base, at: netFight.locs[netFight.i], duel: netFight.duel, live: true } : null;
@@ -954,14 +970,67 @@ export function OutpostsGame({ deck, all, onBack, level = 'easy', visible = true
   };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { if (!net) start(); }, [deck]);
-  // Against a person every server update is the truth (it replaces what was shown ahead of it)
-  useEffect(() => { if (net) setS(net.game.s); }, [net?.game]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Against a person the server's board is the truth, but your own moves show at once. Placing cards
+  // and planning moves stay on your screen; the whole phase goes to the server in one request when it
+  // ends (Dalej / Zatwierdź), or 3 s before your time runs out. Meanwhile (and while a request is on
+  // its way) the board shown is kept: updates in between would pull cards back for a moment.
+  const [inflight, setInflight] = useState(0);
+  const netRef = useRef(net); netRef.current = net;
+  const queue = useRef<{ turn: number; actions: BatchStep[] }>({ turn: -1, actions: [] });
+  const [queued, setQueued] = useState(0);
+  const planKey = net ? `card-duel:${net.id}:plan` : null;
+  const keepPlan = () => { if (!planKey) return; try { if (queue.current.actions.length) sessionStorage.setItem(planKey, JSON.stringify(queue.current)); else sessionStorage.removeItem(planKey); } catch { /* private mode */ } };
+  const setQueue = (turn: number, actions: BatchStep[]) => { queue.current = { turn, actions }; setQueued(actions.length); keepPlan(); };
+  useEffect(() => { if (net && inflight === 0 && queued === 0) setS(net.game.s); }, [net?.game, inflight, queued]); // eslint-disable-line react-hooks/exhaustive-deps
+  // The turn moved on without the plan (it ran out): the plan is void
+  useEffect(() => { if (net && queued && (net.game.s.turn !== queue.current.turn || net.game.s.active !== 0)) setQueue(-1, []); }, [net?.game]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Back after a refresh in the middle of your turn: your unsent plan is laid out again
+  useEffect(() => {
+    if (!net || !planKey) return;
+    try {
+      const saved = JSON.parse(sessionStorage.getItem(planKey) || 'null') as { turn: number; actions: BatchStep[] } | null;
+      if (!saved?.actions?.length || saved.turn !== net.game.s.turn || net.game.s.active !== 0) { sessionStorage.removeItem(planKey); return; }
+      let cur = net.game.s; const kept: BatchStep[] = [];
+      for (const x of saved.actions) {
+        if (x.kind === 'deploy' && !canDeploy(cur, x.cardId)) { cur = deploy(cur, x.cardId); kept.push(x); }
+        else if (x.kind === 'deployMany' && x.cardIds.every(id => !canDeploy(cur, id))) { for (const id of x.cardIds) cur = deploy(cur, id); kept.push(x); }
+        else if (x.kind === 'orders' && cur.phase === 'deploy') { cur = startOrders(cur); kept.push(x); }
+        else if (x.kind === 'move') { const st = cur.phase === 'deploy' ? startOrders(cur) : cur; if (!canMove(st, x.uids, x.to)) { cur = move(st, x.uids, x.to); kept.push(x); } }
+      }
+      setQueue(net.game.s.turn, kept); setS(cur);
+    } catch { /* nothing kept */ }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  /** A move against a person: shown at once, sent to the server; refused → back to the server's board */
+  /** Straight to the server; refused → back to the server's board */
+  const sendNow = (m: PvpAction) => {
+    if (!net) return;
+    setInflight(n => n + 1);
+    net.send(m).then(err => {
+      if (err) { setNote(err); if (netRef.current) setS(netRef.current.game.s); }
+      setInflight(n => n - 1);
+    });
+  };
+  /** The planned phase in one request (what is left of it, if anything) */
+  const flush = (closing?: BatchStep) => {
+    const list = closing ? [...queue.current.actions, closing] : queue.current.actions;
+    setQueue(-1, []);
+    if (list.length) sendNow(list.length === 1 ? list[0] : { kind: 'batch', actions: list });
+  };
+  /** A move against a person: shown at once; planning waits for the end of the phase */
   const sendNet = (m: PvpAction) => {
     if (!net) return;
-    net.send(m).then(err => { if (err) { setNote(err); setS(net.game.s); } });
+    const turn = stateRef.current?.turn ?? -1;
+    if (m.kind === 'deploy' || m.kind === 'deployMany' || m.kind === 'move') { setQueue(turn, [...(queue.current.turn === turn ? queue.current.actions : []), m]); return; }
+    if (m.kind === 'orders' || m.kind === 'confirm' || m.kind === 'end') { if (queue.current.turn !== turn) setQueue(-1, []); flush(m); return; }
+    if (m.kind === 'resign') setQueue(-1, []);
+    sendNow(m);
   };
+  // Your time is nearly up: send what is planned, so it counts
+  useEffect(() => {
+    if (!net || !queued) return;
+    const t = setInterval(() => { const n = netRef.current; if (n && n.game.clock.deadline - (Date.now() + n.offset) < 3000) flush(); }, 400);
+    return () => clearInterval(t);
+  }, [queued]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!objEl) return;
@@ -1089,7 +1158,8 @@ export function OutpostsGame({ deck, all, onBack, level = 'easy', visible = true
     const done: string[] = [];
     for (const id of ids) { if (canDeploy(cur, id)) { setNote(canDeploy(cur, id)); break; } cur = deploy(cur, id); done.push(id); }
     setS(cur); setSelCards([]);
-    if (net) (async () => { for (const id of done) { const err = await net.send({ kind: 'deploy', cardId: id }); if (err) { setNote(err); setS(net.game.s); break; } } })();
+    // All the chosen cards in one request (one by one, quick clicks got some of them refused)
+    if (net && done.length) sendNet({ kind: 'deployMany', cardIds: done });
   };
   const doMove = (ids: string[], to: Loc) => {
     const cur = stateRef.current; if (!cur) return;
@@ -1266,14 +1336,16 @@ export function OutpostsGame({ deck, all, onBack, level = 'easy', visible = true
     const mate = mine && phase === 'move' && planned && rested.some(u => s.units.some(q => q.side === 0 && q.moved && q.from === u.loc));
     const mineCount = s.units.filter(u => u.side === 0).length;
     const steps: TutStep[] = [
-      { id: 'orders', target: '[data-tour="orders"]', align: 'right', title: 'Rozkazy to koszt', points: [<><b>3 rozkazy</b> na turę, na wszystko.</>, 'Migają te, które zapłacisz za zaznaczone karty.'], when: () => mine && phase === 'deploy' && movingCards.length > 0 && tutDone.has('cards') },
       { id: 'goal', seq: true, target: '[data-tour="score"]', title: 'Cel gry', points: [<>Zdobądź <b>6 punktów</b> (w zwykłej grze 10).</>, <><b>+1</b> za przejęcie objective&apos;u, Roshan <b>+2</b>.</>, <><b>+1</b> co turę za objective, na którym stoisz.</>], when: () => mine, expire: () => s.turn >= 3 },
       { id: 'objectives', seq: true, target: '[data-tour="objectives"]', title: 'Objective\'y', points: ['Trzy miejsca z mapy, każde z własną zasadą (pod nazwą).', 'Na dole Twoje miejsca, na górze rywala.'], when: () => mine, expire: () => s.turn >= 3 },
       { id: 'cards', seq: true, target: '[data-tour="hand"]', title: 'Twoje karty', points: [<>Liczba w rogu to <b>siła</b>.</>, 'Pod nazwą pozycja: każda ma umiejętność.', 'Najedź na kartę, żeby ją odwrócić i przeczytać.'], when: () => mine, expire: () => s.turn >= 3 },
+      // Before the first click: how a turn goes and that the orders are one budget for all of it
+      { id: 'phases', seq: true, target: '[data-tour="turn"]', title: 'Tura ma 3 fazy', points: [<><b>1. Wystawianie:</b> karty z ręki idą do Twojej bazy.</>, <><b>2. Ruchy:</b> planujesz, kto idzie na który objective.</>, <><b>3. Walki i przejęcia:</b> dzieją się po kliknięciu Zatwierdź.</>, 'Ten przycisk przenosi Cię do następnej fazy.'], when: () => mine && phase === 'deploy', expire: () => s.turn >= 3 },
+      { id: 'orders', seq: true, target: '[data-tour="orders"]', align: 'right', title: 'Rozkazy są wspólne', points: [<><b>3 rozkazy</b> na całą turę: na wystawianie i na ruchy razem.</>, 'Każda wystawiona karta i każdy ruch kosztuje 1.', 'Wydasz wszystkie na wystawianie, to nie zostanie nic na ruchy.'], when: () => mine && phase === 'deploy', expire: () => s.turn >= 3 },
       { id: 'deploy', seq: true, target: '[data-tour="hand"]', title: 'Wystaw karty', points: ['Karty z ręki idą najpierw do Twojej bazy.', 'Każda kosztuje 1 rozkaz.'], action: 'Kliknij 2 karty, potem swoją bazę', when: () => mine && phase === 'deploy', done: () => mineCount >= 2, expire: () => s.turn > 1 },
       { id: 'to-moves', seq: true, target: '[data-tour="turn"]', title: 'Dalej', points: ['Wystawione karty ruszą dopiero w następnej turze.', 'Teraz przejdź dalej: tura przejdzie do rywala.'], action: 'Kliknij Dalej', when: () => mine && phase === 'deploy' && s.turn === 1, done: () => phase !== 'deploy', expire: () => s.turn > 1 },
       { id: 'rival', seq: true, title: 'Tura rywala', points: ['Rywal robi to samo: wystawia karty i rusza jednostki.', 'Jego karty i bazę widzisz na górze.'], when: () => !mine && s.turn === 2, expire: () => s.turn > 2 },
-      { id: 'turn2', seq: true, target: '[data-tour="turn"]', title: 'Twoja tura', points: [<>Na początku tury dobierasz <b>2 karty</b>.</>, 'Wystaw coś jeszcze albo od razu przejdź do ruchów.'], action: 'Kliknij Dalej, żeby przejść do ruchów', when: () => mine && phase === 'deploy' && s.turn >= 3, done: () => phase !== 'deploy', expire: () => s.turn >= 5 },
+      { id: 'turn2', seq: true, target: '[data-tour="turn"]', title: 'Twoja tura', points: [<>Na początku tury dobierasz <b>2 karty</b>.</>, 'Wystaw coś jeszcze albo od razu przejdź do ruchów.', 'Rozkazy, których nie wydasz na wystawianie, zostają na ruchy.'], action: 'Kliknij Dalej, żeby przejść do ruchów', when: () => mine && phase === 'deploy' && s.turn >= 3, done: () => phase !== 'deploy', expire: () => s.turn >= 5 },
       { id: 'move', seq: true, target: rested[0] ? `[data-uid="${rested[0].uid}"]` : '[data-tour="base"]', title: 'Ruch na objective', points: ['Przeciągnij jednostkę na objective (albo kliknij ją, a potem objective).', 'Ruch kosztuje 1 rozkaz.', 'To dopiero plan: możesz go zmienić.'], action: 'Wyślij jednostkę na objective', when: () => mine && phase === 'move' && canGo, done: () => planned, expire: () => s.turn >= 5 },
       { id: 'group', target: '[data-tour="orders"]', title: 'Grupa płaci raz', points: ['Jednostki z jednego miejsca w to samo miejsce to jedna grupa.', 'Płacisz 1 rozkaz, nawet gdy przeciągasz je po kolei.'], when: () => !!mate },
       { id: 'confirm', seq: true, target: '[data-tour="turn"]', title: 'Zatwierdź', points: ['Teraz wszystko dzieje się naraz: walki i przejęcia.'], action: 'Kliknij Zatwierdź', when: () => mine && phase === 'move' && planned, done: () => s.events.some(e => e.kind === 'move' && e.side === 0), expire: () => s.turn >= 7 },
@@ -1326,10 +1398,11 @@ export function OutpostsGame({ deck, all, onBack, level = 'easy', visible = true
               <span className="text-[11px] uppercase tracking-widest leading-tight" style={{ color: T.muted }}>kart na ręce<br />rywala</span>
             </div>
           </Tip>
-          <ScoreRace shown={shown} win={s.win} />
+          <ScoreRace shown={shown} win={s.win}
+            clock={net && s.winner === null && phase !== 'fight' ? <TurnClock clock={net.game.clock} active={s.active} offset={net.offset} win={s.win} /> : undefined} />
           {/* Who you play against, on the rival's side of the score */}
           {net ? (
-            <div className="absolute right-[214px] flex items-center gap-2.5 whitespace-nowrap">
+            <div className="absolute right-[234px] flex items-center gap-2.5 whitespace-nowrap">
               <span className="flex flex-col items-end leading-tight">
                 <span className="font-logik-extended-bold uppercase text-[14px]" style={{ color: T.rival, ...font }}>{net.players[1].name}</span>
                 {net.players[1].rating != null && <span className="text-[11px] tabular-nums" style={{ color: T.muted }}>{net.players[1].rating}</span>}
@@ -1337,7 +1410,7 @@ export function OutpostsGame({ deck, all, onBack, level = 'easy', visible = true
               <PersonPic p={net.players[1]} ring={T.rival} />
             </div>
           ) : (
-            <div className="absolute right-[150px] flex items-center gap-2.5 whitespace-nowrap">
+            <div className="absolute right-[186px] flex items-center gap-2.5 whitespace-nowrap">
               <span className="font-logik-extended-bold uppercase text-[14px] leading-tight text-right" style={{ color: LEVELS[gameLevel].color, ...font }}>{gameLevel === 'tutorial' ? 'Samouczek' : `Komputer ${LEVELS[gameLevel].name}`}</span>
               <span className="w-9 h-9 rounded-full flex items-center justify-center" style={{ background: mix(LEVELS[gameLevel].color, 25), boxShadow: `0 0 0 2px ${LEVELS[gameLevel].color}` }}><Bot className="w-5 h-5" style={{ color: LEVELS[gameLevel].color }} /></span>
             </div>
@@ -1357,6 +1430,13 @@ export function OutpostsGame({ deck, all, onBack, level = 'easy', visible = true
               <motion.button type="button" onClick={() => setLogOpen(true)} whileHover={{ scale: 1.08 }} className="w-11 h-11 rounded-full flex items-center justify-center"
                 style={{ boxShadow: `inset 0 0 0 1.5px ${T.faint}`, color: T.text }} aria-label="Przebieg meczu"><ScrollText className="w-5 h-5" /></motion.button>
             </Tip>
+            <ReportBug className="w-11 h-11 rounded-full flex items-center justify-center transition-transform hover:scale-[1.08]" style={{ boxShadow: `inset 0 0 0 1.5px ${T.faint}`, color: T.text }}
+              context={() => ({
+                mode: net ? 'pvp' : gameLevel, duelId: net?.id ?? null, turn: s.turn, active: s.active, phase: s.phase, winner: s.winner,
+                screen: { battleQ: !!battleQ, netBattle: netBattle ? { at: netBattle.at, live: netBattle.live } : null, outro: outro?.key ?? null, banner: banner?.text ?? null, flyers: flyers.length, inflight, note },
+                server: net ? { clock: net.game.clock, fight: net.game.fight ? { i: net.game.fight.i, locs: net.game.fight.locs, turn: net.game.fight.duel.turn, log: net.game.fight.duel.log } : null, end: net.game.end, offset: net.offset } : null,
+                state: s,
+              })} />
           </div>
         </div>
         <BaseBand side={1} a={ctx} target={movingCards.length || movingUnits.length ? NO_TARGET : null} />
@@ -1437,8 +1517,7 @@ export function OutpostsGame({ deck, all, onBack, level = 'easy', visible = true
               transition={recommend ? { duration: 1.8, repeat: Infinity } : { duration: 0.3 }}
               style={{ color: mine ? '#fff' : T.muted, ...font }}>
               <span className="text-[16px] leading-tight text-center">{!mine ? (s.winner === null ? 'Tura rywala' : 'Koniec') : phase === 'deploy' ? 'Dalej' : phase === 'fight' ? 'Walki' : clashes ? 'Walcz' : planned ? 'Zatwierdź' : 'Koniec tury'}</span>
-              {net && s.winner === null && phase !== 'fight' ? <TurnClock clock={net.game.clock} active={s.active} offset={net.offset} />
-                : mine && <span className="text-[9px] tracking-widest mt-1 opacity-80">{phase === 'deploy' ? 'do ruchów' : phase === 'fight' ? '' : planned ? 'zatwierdź ruchy' : 'oddaj ruch'}</span>}
+              {mine && <span className="text-[9px] tracking-widest mt-1 opacity-80">{phase === 'deploy' ? 'do ruchów' : phase === 'fight' ? '' : planned ? 'zatwierdź ruchy' : 'oddaj ruch'}</span>}
             </motion.button>
           </div>
             </div>

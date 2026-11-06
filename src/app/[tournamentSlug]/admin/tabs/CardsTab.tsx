@@ -5,7 +5,7 @@
 // Talks to /api/manage/cards.
 
 import React, { useCallback, useEffect, useState } from 'react';
-import { GalleryVerticalEnd, Gift, Loader2, X } from 'lucide-react';
+import { Bug, GalleryVerticalEnd, Gift, Loader2, X } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useTournament } from '@/context/TournamentContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -18,6 +18,7 @@ import { roundWord, type CardSettings } from '@/lib/card-lab/settings';
 import { count } from '@/lib/plural';
 
 interface Found { uid: string; name: string; discord: string | null; avatar: string | null }
+interface Report { id: string; name: string; text: string; mode: string | null; duelId: string | null; status: string; at: number }
 interface Grant { id: string; kind: 'round' | 'admin'; label: string | null; reason: string | null; n: number; uids: number; names: string[]; at: number }
 
 function Pic({ src, name }: { src: string | null; name: string }) {
@@ -46,9 +47,11 @@ export function CardsTab() {
   const [reason, setReason] = useState('');
   const [giving, setGiving] = useState(false);
 
-  const call = useCallback(async (method: 'GET' | 'PUT' | 'POST', arg?: string | object) => {
+  const [reports, setReports] = useState<Report[] | null>(null);
+  const call = useCallback(async (method: 'GET' | 'PUT' | 'POST' | 'PATCH', arg?: string | object) => {
     const token = await user!.getIdToken();
-    const qs = method === 'GET' ? `?tournamentId=${encodeURIComponent(tournament!.id)}${arg ? `&q=${encodeURIComponent(String(arg))}` : ''}` : '';
+    // GET arg: a search text, or ready query params ("&reports=1")
+    const qs = method === 'GET' ? `?tournamentId=${encodeURIComponent(tournament!.id)}${arg ? (String(arg).startsWith('&') ? String(arg) : `&q=${encodeURIComponent(String(arg))}`) : ''}` : '';
     const r = await fetch(`/api/manage/cards${qs}`, {
       method, headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
       body: method === 'GET' ? undefined : JSON.stringify({ tournamentId: tournament!.id, ...(arg as object) }),
@@ -62,7 +65,20 @@ export function CardsTab() {
     if (!user || !tournament?.id) return;
     call('GET').then(j => { setSettings(j.settings); setChannelsText(j.settings.twitchChannels.join(', ')); setFallback(j.defaultHowTo); setHistory(j.grants); })
       .catch(e => toast({ title: 'Błąd', description: e.message, variant: 'destructive' }));
+    call('GET', '&reports=1').then(j => setReports(j.reports)).catch(() => setReports([]));
   }, [user, tournament?.id, call, toast]);
+
+  const download = async (r: Report) => {
+    const j = await call('GET', `&report=${r.id}`);
+    const blob = new Blob([JSON.stringify(j, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `zgloszenie-${r.id}.json`; a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  };
+  const markReport = async (r: Report) => {
+    const status = r.status === 'done' ? 'new' : 'done';
+    try { await call('PATCH', { reportId: r.id, status }); setReports(list => list?.map(x => (x.id === r.id ? { ...x, status } : x)) ?? null); }
+    catch (e) { toast({ title: 'Nie zapisano', description: (e as Error).message, variant: 'destructive' }); }
+  };
 
   // Search as you type
   useEffect(() => {
@@ -203,6 +219,35 @@ export function CardsTab() {
               </div>
             </div>
           )}
+        </CardContent>
+      </Card>
+
+      <Card className="border-0 shadow-lg bg-card/50 backdrop-blur-sm lg:col-span-2">
+        <CardHeader className="pb-4">
+          <CardTitle className="flex items-center gap-2 font-logik-extended-bold">
+            <Bug className="h-5 w-5" style={{ color: theme.primaryColor }} />
+            Zgłoszenia błędów
+          </CardTitle>
+          <CardDescription className="font-logik">Gracze zgłaszają je z gry. Do każdego dołączony jest stan meczu i ostatnie błędy strony: „Pobierz” zapisuje je w pliku.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {!reports ? <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+            : !reports.length ? <p className="text-sm text-muted-foreground">Na razie nikt nic nie zgłosił.</p>
+            : (
+              <div className="divide-y divide-border">
+                {reports.map(r => (
+                  <div key={r.id} className="py-2.5 flex items-start gap-4 text-sm" style={{ opacity: r.status === 'done' ? 0.5 : 1 }}>
+                    <span className="text-muted-foreground tabular-nums shrink-0 w-28">{when(r.at)}</span>
+                    <span className="flex-1 min-w-0">
+                      <b>{r.name}</b>{r.mode && <span className="text-muted-foreground"> · {r.mode}{r.duelId ? ` · ${r.duelId}` : ''}</span>}
+                      <span className="block whitespace-pre-line">{r.text}</span>
+                    </span>
+                    <button type="button" onClick={() => download(r)} className="text-xs font-bold uppercase tracking-widest hover:underline shrink-0" style={{ color: theme.primaryColor }}>Pobierz</button>
+                    <button type="button" onClick={() => markReport(r)} className="text-xs font-bold uppercase tracking-widest hover:underline shrink-0 text-muted-foreground">{r.status === 'done' ? 'Przywróć' : 'Załatwione'}</button>
+                  </div>
+                ))}
+              </div>
+            )}
         </CardContent>
       </Card>
     </div>

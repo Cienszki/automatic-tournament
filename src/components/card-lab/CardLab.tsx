@@ -11,11 +11,11 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { useTournament } from '@/context/TournamentContext';
 import type { Model } from '@/lib/stats-lab/derive';
 import { C, WithModel, mix, useHeaderFont, useStatsKey } from '@/components/stats-lab/kit';
-import { buildSeriesCards, type GCard } from '@/lib/card-lab/cards';
+import { buildSeriesCards, byStrength, type GCard } from '@/lib/card-lab/cards';
 import { type DeckSlots } from './DeckBuilder';
 import { thawCard, type FrozenCard } from '@/lib/card-lab/frozen';
 import { useAuth } from '@/context/AuthContext';
-import { FitScaleCtx, useFitScale } from './ui';
+import { CardFace, FitScaleCtx, useFitScale } from './ui';
 import { centreOf, pulseAt } from '@/components/tour/pulse';
 import { CardsHome } from './Home';
 import { SignIn } from './landing/SignIn';
@@ -47,13 +47,57 @@ type Api = <T>(method: 'GET' | 'POST' | 'PUT', body?: object) => Promise<T>;
 const START_PACKS = 10;
 const SEEN_KEY = 'card-lab:intro-seen';
 
-/** The first-visit explanation: what you get, what to do — the game itself you learn by playing.
- *  Closing it flies it into the "?" button, so you know where it lives. */
-function Intro({ onClose }: { onClose: () => void }) {
+/** What each part of a card means: a big example with numbered marks and the legend next to it.
+ *  Marks sit on the card's own layout (CardFace is drawn on a 200-px grid, scaled). */
+const PARTS: Array<{ x: number; y: number; side: 'left' | 'right'; title: string; text: string }> = [
+  { x: 14, y: 35, side: 'left', title: 'Siła', text: 'Tyle karta bije w walce. Kolor koła to rzadkość: drewniana, brązowa, srebrna, złota, elitarna.' },
+  { x: 24, y: 104, side: 'left', title: 'Drużyna', text: 'Gracze tej samej drużyny na jednym objectivie dostają po +1 siły.' },
+  { x: 192, y: 66, side: 'right', title: 'Gracz', text: 'Karta jest za jedną serię tego gracza: im lepsza gra w tej serii, tym mocniejsza karta.' },
+  { x: 32, y: 167, side: 'left', title: 'Pozycja i umiejętność', text: 'Każda pozycja ma swoją umiejętność (Farma, Gank, Tank, Smoke, Aura), opisaną pod spodem.' },
+  { x: 50, y: 272, side: 'left', title: 'Bohater i rzadkość', text: 'Bohater z najlepszej gry tej serii. Karta drużyny kolejki ma tu wynik serii i +1 siły.' },
+];
+function CardAnatomy({ card }: { card: GCard }) {
+  const font = useHeaderFont();
+  const W = 330; const k = W / 200;
+  return (
+    <div className="flex items-center gap-16">
+      {/* The marks stand beside the card, a thin line to the part they name (nothing on the card is covered) */}
+      <div className="relative shrink-0 mx-12">
+        <CardFace c={card} w={W} tip={false} />
+        <svg className="absolute inset-0 overflow-visible pointer-events-none" width={W} height={Math.round(W * 1.42)}>
+          {PARTS.map(p => {
+            const mx = p.side === 'left' ? -34 : W + 34;
+            return <line key={p.title} x1={mx} y1={p.y * k} x2={p.x * k} y2={p.y * k} stroke={C.primary} strokeWidth={2} strokeDasharray="4 3" />;
+          })}
+        </svg>
+        {PARTS.map((p, i) => (
+          <span key={p.title} className="absolute w-8 h-8 -ml-4 -mt-4 rounded-full flex items-center justify-center font-logik-extended-bold text-[15px] text-white"
+            style={{ left: p.side === 'left' ? -34 : W + 34, top: p.y * k, background: C.primary, boxShadow: `0 0 0 3px #0b0b10, 0 0 16px ${mix(C.primary, 70)}`, ...font }}>{i + 1}</span>
+        ))}
+      </div>
+      <div className="w-[560px] flex flex-col gap-5">
+        {PARTS.map((p, i) => (
+          <div key={p.title} className="flex gap-4">
+            <span className="w-8 h-8 shrink-0 rounded-full flex items-center justify-center font-logik-extended-bold text-[15px] text-white" style={{ background: C.primary, ...font }}>{i + 1}</span>
+            <div>
+              <div className="font-logik-extended-bold uppercase text-[18px]" style={font}>{p.title}</div>
+              <div className="text-[15px] leading-relaxed opacity-80">{p.text}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** The first-visit explanation: what a card shows, then what to do — the game itself you learn by
+ *  playing. Closing it flies it into the "?" button, so you know where it lives. */
+function Intro({ onClose, example }: { onClose: () => void; example: GCard | null }) {
   const font = useHeaderFont();
   const k = useFitScale();
   const panel = useRef<HTMLDivElement>(null);
   const [fly, setFly] = useState<{ x: number; y: number } | null>(null);
+  const [page, setPage] = useState(example ? 0 : 1);
   const close = () => {
     const to = centreOf('[data-help="intro"]'); const r = panel.current?.getBoundingClientRect();
     if (!to || !r) { onClose(); return; }
@@ -62,28 +106,38 @@ function Intro({ onClose }: { onClose: () => void }) {
     setTimeout(() => { onClose(); pulseAt('[data-help="intro"]'); }, 560);
   };
   const steps = [
-    { n: 1, title: 'Zbierasz karty graczy', text: `Każdy gracz turnieju ma kartę za każdą serię, którą zagrał. Im lepiej zagrał, tym mocniejsza karta. Na start masz ${START_PACKS} paczek: otwierasz je u góry.` },
+    { n: 1, title: 'Zbierasz karty graczy', text: `Każdy gracz turnieju ma kartę za każdą rozegraną serię. Im lepsza gra, tym mocniejsza karta. Na start masz ${START_PACKS} paczek: otwierasz je u góry.` },
     { n: 2, title: 'Układasz talię', text: 'Talia to 20 kart: po 2 na każdą pozycję i 10 dowolnych. Kliknij miejsce w talii, żeby wybrać kartę. Liczy się siła, pozycja i drużyna.' },
     { n: 3, title: 'Grasz', text: 'Przycisk Graj w prawym dolnym rogu: z innym graczem (link albo wyzwanie po nicku), z komputerem albo Samouczek, krótki mecz krok po kroku.' },
   ];
+  const button = (label: string, onClick: () => void) => (
+    <button type="button" onClick={onClick} className="rounded-full px-10 py-4 font-logik-extended-bold uppercase tracking-widest text-[16px] text-white" style={{ background: C.primary, boxShadow: `0 0 30px ${mix(C.primary, 60)}`, ...font }}>{label}</button>
+  );
   return (
     <motion.div className="absolute inset-0 z-[60] flex items-center justify-center" style={{ background: 'rgba(5,6,9,0.78)', backdropFilter: 'blur(6px)', pointerEvents: fly ? 'none' : undefined }}
       initial={{ opacity: 0 }} animate={{ opacity: fly ? 0 : 1 }} exit={{ opacity: 0 }} transition={fly ? { duration: 0.5, ease: 'easeIn' } : undefined}>
       <motion.div ref={panel} className="w-[1100px] flex flex-col items-center gap-10 text-white" initial={{ y: 20 }}
         animate={fly ? { x: fly.x, y: fly.y, scale: 0.03, rotate: -14, opacity: 0.5 } : { y: 0 }} transition={fly ? { duration: 0.55, ease: [0.6, 0, 0.9, 0.5] } : undefined}>
-        <div className="text-center">
-          <div className="font-logik-extended-bold uppercase text-[54px] leading-none" style={font}>Gra karciana</div>
-        </div>
-        <div className="grid grid-cols-3 gap-12 w-full">
-          {steps.map(st => (
-            <div key={st.n} className="flex flex-col items-center text-center gap-3">
-              <span className="w-14 h-14 rounded-full flex items-center justify-center font-logik-extended-bold text-[24px] text-white" style={{ background: C.primary, boxShadow: `0 0 24px ${mix(C.primary, 60)}`, ...font }}>{st.n}</span>
-              <div className="font-logik-extended-bold uppercase text-[20px]" style={font}>{st.title}</div>
-              <div className="text-[15px] leading-relaxed opacity-80">{st.text}</div>
+        <div className="font-logik-extended-bold uppercase text-[54px] leading-none" style={font}>{page === 0 ? 'Karta' : 'Gra karciana'}</div>
+        {page === 0 && example ? (
+          <>
+            <CardAnatomy card={example} />
+            {button('Dalej', () => setPage(1))}
+          </>
+        ) : (
+          <>
+            <div className="grid grid-cols-3 gap-12 w-full">
+              {steps.map(st => (
+                <div key={st.n} className="flex flex-col items-center text-center gap-3">
+                  <span className="w-14 h-14 rounded-full flex items-center justify-center font-logik-extended-bold text-[24px] text-white" style={{ background: C.primary, boxShadow: `0 0 24px ${mix(C.primary, 60)}`, ...font }}>{st.n}</span>
+                  <div className="font-logik-extended-bold uppercase text-[20px]" style={font}>{st.title}</div>
+                  <div className="text-[15px] leading-relaxed opacity-80">{st.text}</div>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-        <button type="button" onClick={close} className="rounded-full px-10 py-4 font-logik-extended-bold uppercase tracking-widest text-[16px] text-white" style={{ background: C.primary, boxShadow: `0 0 30px ${mix(C.primary, 60)}`, ...font }}>Zaczynamy</button>
+            {button('Zaczynamy', close)}
+          </>
+        )}
       </motion.div>
     </motion.div>
   );
@@ -92,6 +146,8 @@ function Intro({ onClose }: { onClose: () => void }) {
 function Lab({ model, api, statsKey }: { model: Model; api: Api; statsKey: string }) {
   const { tournament } = useTournament();
   const cards = useMemo(() => buildSeriesCards(model, tournament?.type), [model, tournament?.type]);
+  // The intro's example card: a strong one with a team (shows every part)
+  const example = useMemo(() => [...cards].filter(c => !c.totw && !c.standin && c.team).sort(byStrength)[0] ?? null, [cards]);
   const [collection, setCollection] = useState<GCard[]>([]);
   const [packs, setPacks] = useState(0);
   const [loaded, setLoaded] = useState(false);
@@ -141,7 +197,7 @@ function Lab({ model, api, statsKey }: { model: Model; api: Api; statsKey: strin
   return (
     <div className="relative h-full">
       <CardsHome statsKey={statsKey} cards={cards} collection={collection} packs={packs} slots={slots} setSlots={setSlots} onOpenPack={openPack} onHelp={() => setIntro(true)} />
-      <AnimatePresence>{intro && <Intro onClose={closeIntro} />}</AnimatePresence>
+      <AnimatePresence>{intro && <Intro onClose={closeIntro} example={example} />}</AnimatePresence>
       {loadError && <button type="button" onClick={() => setLoadError(null)} className="absolute left-1/2 -translate-x-1/2 bottom-6 z-40 rounded-full px-5 py-2 text-[14px] font-bold text-white" style={{ background: C.loss }}>{loadError} ✕</button>}
     </div>
   );
