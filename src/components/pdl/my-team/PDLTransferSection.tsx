@@ -80,6 +80,8 @@ interface PDLTransferSectionProps {
     /** Save a nickname, or null to remove the coach */
     onSave: (nickname: string | null) => Promise<void>;
   };
+  /** Editing only (the account page shows the line-up itself): called on cancel and after saving */
+  onClose?: () => void;
   /** Called when captain saves all roster changes */
   onSaveRoster: (data: {
     players: Player[];
@@ -123,6 +125,7 @@ export function PDLTransferSection({
   isMmrLimited,
   mmrCap,
   coach,
+  onClose,
   onSaveRoster,
 }: PDLTransferSectionProps) {
   const [isEditing, setIsEditing] = useState(false);
@@ -544,6 +547,7 @@ export function PDLTransferSection({
 
       setIsEditing(false);
       setConfirmDialogOpen(false);
+      onClose?.();
     } finally {
       setLoading(false);
     }
@@ -551,11 +555,12 @@ export function PDLTransferSection({
 
   // Not in transfer window and not captain
   if (!isTransferWindowOpen && !isCaptain) return null;
+  if (onClose && !isEditing) return null;
 
   return (
     <div className="space-y-6">
-      {/* Transfer counter — only show when editing and season is active */}
-      {isSeasonActive && isEditing && (
+      {/* Transfer counter (the editor's own budget line says the same) */}
+      {isSeasonActive && isEditing && !onClose && (
         <p className="text-xs font-logik" style={{ color: 'var(--tournament-secondary-text)' }}>
           Transfery: {transfersUsed}/{maxTransfers} wykorzystane
         </p>
@@ -1069,7 +1074,7 @@ export function PDLTransferSection({
           <div className="flex gap-3 justify-end">
             <Button
               variant="ghost"
-              onClick={() => setIsEditing(false)}
+              onClick={() => { setIsEditing(false); onClose?.(); }}
               className="text-white/60"
             >
               Anuluj

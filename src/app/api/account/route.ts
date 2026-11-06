@@ -1,9 +1,8 @@
 /**
  * The signed-in account.
- *   GET                                   → profile, linked Discord / Steam / Google, roles, card collections
+ *   GET  ?t=<tournamentId>                → profile, linked Discord / Steam / Google, admin of this tournament
  *   PUT  { nickname?, avatar? }           → profile (avatar: { source: 'google'|'discord'|'steam'|'url', url? })
  *   PUT  { unlink: 'discord' | steamId64 } → removes a link
- *   DELETE                                → deletes the account and everything tied to it
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -11,31 +10,21 @@ import { FieldValue } from 'firebase-admin/firestore';
 import { requireUser } from '@/server/lib/require-user';
 import { ensureAdminInitialized, getAdminAuth, getAdminDb } from '@/server/lib/admin';
 import { steamAvatar } from '@/server/accounts/identity';
-import { accountRef, deleteAccount, getAccount, unlinkDiscord, unlinkSteam, type AvatarSource } from '@/server/accounts/store';
+import { accountRef, getAccount, unlinkDiscord, unlinkSteam, type AvatarSource } from '@/server/accounts/store';
 
 export const dynamic = 'force-dynamic';
 const bad = (error: string, status = 400) => NextResponse.json({ error }, { status });
 
-async function view(uid: string) {
+async function view(uid: string, tournamentId?: string | null) {
   ensureAdminInitialized();
   const db = getAdminDb();
-  const [acc, user, superAdmin, tournaments, cards] = await Promise.all([
+  const [acc, user, superAdmin, tAdmin] = await Promise.all([
     getAccount(uid), getAdminAuth().getUser(uid),
     db.collection('admins').doc(uid).get(),
-    db.collection('tournaments').select('name', 'slug', 'status').get(),
-    db.collection('cardCollections').where('uid', '==', uid).get(),
+    tournamentId ? db.collection('tournaments').doc(tournamentId).collection('admins').doc(uid).get() : null,
   ]);
   const google = user.providerData.find(p => p.providerId === 'google.com');
-  // Roles per tournament: admin, captain
-  const perT = await Promise.all(tournaments.docs.map(async t => {
-    const [adm, teams] = await Promise.all([
-      t.ref.collection('admins').doc(uid).get(),
-      t.ref.collection('teams').where('captainId', '==', uid).select('name', 'tag', 'logoUrl').get(),
-    ]);
-    const d = t.data();
-    return { id: t.id, name: d.name as string, slug: d.slug as string, admin: adm.exists, teams: teams.docs.map(x => ({ id: x.id, ...(x.data() as { name: string; tag?: string; logoUrl?: string }) })) };
-  }));
-  const steam = await Promise.all((acc.steam ?? []).map(async s => ({ ...s, avatar: s.avatar ?? await steamAvatar(s.id) })));
+  const steam = await Promise.all((acc.steam ?? []).slice(0, 1).map(async s => ({ ...s, avatar: s.avatar ?? await steamAvatar(s.id) })));
   const pictures: Partial<Record<AvatarSource, string>> = {
     ...(user.photoURL && google ? { google: google.photoURL ?? user.photoURL } : {}),
     ...(acc.discord?.avatar ? { discord: acc.discord.avatar } : {}),
@@ -49,20 +38,18 @@ async function view(uid: string) {
     avatar: { source: src, url: pictures[src] ?? null },
     pictures,
     discord: acc.discord ? { id: acc.discord.id, username: acc.discord.username, name: acc.discord.name, avatar: acc.discord.avatar } : null,
-    steam,
+    steam: steam[0] ?? null,
     google: google ? { email: google.email ?? user.email ?? null } : null,
-    superAdmin: superAdmin.exists,
-    tournaments: perT.filter(t => t.admin || t.teams.length),
-    cards: cards.docs.map(c => {
-      const d = c.data(); const t = tournaments.docs.find(x => x.id === d.tournament)?.data();
-      return { tournament: d.tournament as string, name: (t?.name as string) ?? 'Letnia Batalia', slug: (t?.slug as string) ?? 'letnia', cards: (d.cards ?? []).length as number, packs: d.packs as number };
-    }),
+    /** Roles in the tournament being viewed (the captain role shows as the team below) */
+    admin: superAdmin.exists || !!tAdmin?.exists,
   };
 }
 
+const tid = (req: NextRequest) => { const t = req.nextUrl.searchParams.get('t'); return t && /^[A-Za-z0-9_-]{1,64}$/.test(t) ? t : null; };
+
 export async function GET(req: NextRequest) {
   const user = await requireUser(req); if (user instanceof NextResponse) return user;
-  try { return NextResponse.json(await view(user.uid)); }
+  try { return NextResponse.json(await view(user.uid, tid(req))); }
   catch (e) { console.error('[account] get failed:', e); return bad('Nie udało się wczytać konta', 500); }
 }
 
@@ -88,9 +75,9 @@ export async function PUT(req: NextRequest) {
   try {
     if (b.unlink === 'discord') {
       const r = await unlinkDiscord(user.uid);
-      return 'error' in r ? bad(r.error, 409) : NextResponse.json(await view(user.uid));
+      return 'error' in r ? bad(r.error, 409) : NextResponse.json(await view(user.uid, tid(req)));
     }
-    if (typeof b.unlink === 'string' && /^\d{17}$/.test(b.unlink)) { await unlinkSteam(user.uid, b.unlink); return NextResponse.json(await view(user.uid)); }
+    if (typeof b.unlink === 'string' && /^\d{17}$/.test(b.unlink)) { await unlinkSteam(user.uid, b.unlink); return NextResponse.json(await view(user.uid, tid(req))); }
 
     const patch: Record<string, unknown> = {};
     const auth: { displayName?: string; photoURL?: string | null } = {};
@@ -110,17 +97,11 @@ export async function PUT(req: NextRequest) {
     }
     if (!Object.keys(patch).length) return bad('Nic do zmiany');
     await accountRef(user.uid).set({ ...patch, updatedAt: FieldValue.serverTimestamp() }, { merge: true });
-    const v = await view(user.uid);
+    const v = await view(user.uid, tid(req));
     // The name and picture everywhere else on the site (sign-in menu, Pick'em…)
     if (b.avatar !== undefined) auth.photoURL = v.avatar.url;
     await getAdminAuth().updateUser(user.uid, auth);
     await getAdminDb().collection('users').doc(user.uid).set({ ...(auth.displayName ? { displayName: auth.displayName } : {}), ...(auth.photoURL !== undefined ? { photoURL: auth.photoURL } : {}) }, { merge: true });
     return NextResponse.json(v);
   } catch (e) { console.error('[account] put failed:', e); return bad('Nie udało się zapisać', 500); }
-}
-
-export async function DELETE(req: NextRequest) {
-  const user = await requireUser(req); if (user instanceof NextResponse) return user;
-  try { await deleteAccount(user.uid); return NextResponse.json({ ok: true }); }
-  catch (e) { console.error('[account] delete failed:', e); return bad('Nie udało się usunąć konta', 500); }
 }

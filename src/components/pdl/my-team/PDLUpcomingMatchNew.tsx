@@ -32,7 +32,7 @@ import { extraTag } from '@/lib/match-flags';
 import { DraftPenaltyBanner } from '@/components/penalties/DraftPenaltyBanner';
 import { checkReschedule, reschedulePolicy } from '@/lib/reschedule-rules';
 
-interface PDLUpcomingMatchProps {
+export interface PDLUpcomingMatchProps {
   match: Match;
   myTeamId: string;
   isCaptain: boolean;

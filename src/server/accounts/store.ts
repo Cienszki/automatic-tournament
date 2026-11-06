@@ -32,21 +32,20 @@ async function inhouseSteam(discordId: string): Promise<string[]> {
   return ids.filter(x => /^\d+$/.test(x)).map(steam32to64);
 }
 
-/** Adds Steam accounts that no other account holds yet; returns those that belong to someone else */
+/** Links a Steam account no other account holds (only while none is linked); returns those that belong to someone else */
 async function addSteam(uid: string, ids: Array<{ id: string; source: 'discord' | 'inhouse' | 'steam' }>): Promise<string[]> {
   const conflicts: string[] = [];
   const ref = accountRef(uid);
   await db().runTransaction(async tx => {
     const acc = ((await tx.get(ref)).data() as AccountDoc) ?? {};
-    const have = new Map((acc.steam ?? []).map(s => [s.id, s]));
+    // One Steam account per site account: keep the one already linked, else take the first free one
+    if (acc.steam?.length) return;
     const links = await Promise.all(ids.map(i => tx.get(db().collection('steamLinks').doc(i.id))));
-    ids.forEach((i, k) => {
-      const owner = links[k].data()?.uid;
-      if (owner && owner !== uid) { conflicts.push(i.id); return; }
-      if (!have.has(i.id)) have.set(i.id, { id: i.id, source: i.source });
-      if (!owner) tx.set(db().collection('steamLinks').doc(i.id), { uid, at: FieldValue.serverTimestamp() });
-    });
-    tx.set(ref, { steam: [...have.values()], updatedAt: FieldValue.serverTimestamp() }, { merge: true });
+    const k = ids.findIndex((_, n) => { const owner = links[n].data()?.uid; return !owner || owner === uid; });
+    ids.forEach((i, n) => { const owner = links[n].data()?.uid; if (owner && owner !== uid) conflicts.push(i.id); });
+    if (k < 0) return;
+    if (!links[k].data()?.uid) tx.set(db().collection('steamLinks').doc(ids[k].id), { uid, at: FieldValue.serverTimestamp() });
+    tx.set(ref, { steam: [{ id: ids[k].id, source: ids[k].source }], updatedAt: FieldValue.serverTimestamp() }, { merge: true });
   });
   return conflicts;
 }

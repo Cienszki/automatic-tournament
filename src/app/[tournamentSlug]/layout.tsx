@@ -27,6 +27,8 @@ export default function TournamentLayout({ children }: TournamentLayoutProps) {
 
   // Detect home page for fullscreen snap-scroll layout
   const isHomePage = pathname === `/${tournamentSlug}` || pathname === `/${tournamentSlug}/`;
+  // Pages whose banner spans the whole window (they lay out their own width)
+  const isFullBleed = pathname === `/${tournamentSlug}/account`;
 
   const [bgImageReady, setBgImageReady] = useState(true);
   const [pageReady, setPageReady] = useState(false);
@@ -220,7 +222,7 @@ export default function TournamentLayout({ children }: TournamentLayoutProps) {
             ) : (
               <TournamentNavbar />
             )}
-            <main className={isHomePage ? 'relative z-10' : 'flex-grow container mx-auto px-4 py-8 relative z-10'}>
+            <main className={isHomePage ? 'relative z-10' : isFullBleed ? 'flex-grow relative z-10' : 'flex-grow container mx-auto px-4 py-8 relative z-10'}>
               {/* Keyed by tournament: Next keeps page components mounted when only the slug
                   changes (/pdl -> /pdl-s2), so their state (stats, teams, ...) leaked into the
                   next tournament wherever a loader skips "not found" results. A new tournament
