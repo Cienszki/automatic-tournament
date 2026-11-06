@@ -8,8 +8,8 @@ import React from 'react';
 import { Check, ChevronLeft, ChevronRight, Copy, Loader2, X } from 'lucide-react';
 import { DateInput } from '@/components/ui/date-time-input';
 import { cn } from '@/lib/utils';
-import { C, Tip, TipBody, ink, mix, useHeaderFont } from '@/components/stats-lab/kit';
-import { Label, T } from './ui';
+import { C, Tip, TipBody, ink, mix, useHeaderFont, useSize } from '@/components/stats-lab/kit';
+import { Label, T, fieldClass as field } from './ui';
 
 export interface ScrimSlot {
   id: string;
@@ -48,7 +48,8 @@ export interface AvailabilityProps {
   };
 }
 
-const HOUR_HEIGHT = 46;
+/** Hour height on phones; on desktop the hours share the height the view has */
+const PHONE_HOUR = 46;
 const CAL_START = 14;
 const CAL_END = 24;
 const CAL_HOURS = CAL_END - CAL_START;
@@ -57,7 +58,6 @@ const ONE_HOUR = 60 * 60 * 1000;
 
 const normalizeTime = (v: string) => { const d = v.replace(/\D/g, '').slice(0, 4); return d.length <= 2 ? d : `${d.slice(0, 2)}:${d.slice(2)}`; };
 const hm = (d: Date) => `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-const field = 'bg-transparent border-0 border-b-2 rounded-none px-0 h-10 text-[16px] outline-none focus:border-[var(--team)]';
 
 /** Side-by-side columns for windows that overlap on one day */
 function layoutSlots(slots: ScrimSlot[]): Map<string, { col: number; cols: number }> {
@@ -87,9 +87,13 @@ export function Availability(p: AvailabilityProps) {
   const now = new Date();
   const nowFrac = now.getHours() + now.getMinutes() / 60;
   const ready = !!form.date && /^\d\d:\d\d$/.test(form.start) && /^\d\d:\d\d$/.test(form.end);
+  const [bodyRef, body] = useSize<HTMLDivElement>();
+  const HOUR_HEIGHT = typeof window !== 'undefined' && window.innerWidth >= 1024 && body.h > 0
+    ? Math.max(22, Math.min(64, Math.floor((body.h - 4) / CAL_HOURS)))
+    : PHONE_HOUR;
 
   return (
-    <div className="flex flex-col gap-10">
+    <div className="flex flex-col gap-7 lg:h-full lg:min-h-0">
       {p.isCaptain && (
         <section>
           <Label>Dodaj swoje okno</Label>
@@ -130,7 +134,7 @@ export function Availability(p: AvailabilityProps) {
         </section>
       )}
 
-      <section>
+      <section className="flex flex-col lg:flex-1 lg:min-h-0">
         <Label right={
           <>
             <span className="hidden sm:flex items-center gap-1.5"><i className="w-2.5 h-2.5 rounded-[2px]" style={{ background: T }} />Twoje</span>
@@ -142,8 +146,8 @@ export function Availability(p: AvailabilityProps) {
           </>
         }>Tydzień</Label>
 
-        <div className="overflow-x-auto -mx-4 px-4">
-          <div className="min-w-[680px]">
+        <div className="overflow-x-auto -mx-4 px-4 lg:mx-0 lg:px-0 lg:overflow-hidden lg:flex-1 lg:min-h-0 flex flex-col">
+          <div className="min-w-[680px] lg:flex-1 lg:min-h-0 flex flex-col">
             <div className="flex pl-11">
               {days.map((d, i) => {
                 const today = d.toDateString() === now.toDateString();
@@ -155,7 +159,7 @@ export function Availability(p: AvailabilityProps) {
                 );
               })}
             </div>
-            <div className="flex">
+            <div ref={bodyRef} className="flex lg:flex-1 lg:min-h-0">
               <div className="w-11 shrink-0 relative" style={{ height: HOUR_HEIGHT * CAL_HOURS }}>
                 {Array.from({ length: CAL_HOURS / 2 + 1 }, (_, k) => CAL_START + k * 2).map(h => (
                   <div key={h} className="absolute right-2 text-[10px] tabular-nums -translate-y-1/2" style={{ top: (h - CAL_START) * HOUR_HEIGHT, color: C.muted }}>{h === 24 ? '00' : h}:00</div>

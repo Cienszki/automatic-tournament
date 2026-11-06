@@ -53,8 +53,10 @@ const ScheduleSection = dynamic(() => import('@/components/schedule/ScheduleSect
 // Stats hub: every stats view (rankings, records, games, match prep…) inside one section
 const StatsHub = dynamic(() => import('@/components/stats-hub/StatsHub'), { ssr: false });
 
-// Lazy-loaded team management (only rendered for captains). Not the /my-team page: that one
-// redirects to /account, which must never happen from inside the home page.
+// Captains' section: the account page (banner + team views), one screen like the other sections.
+// Not the /my-team page: that one redirects to /account, which must never happen from the home page.
+const AccountPage = dynamic(() => import('@/components/account/AccountPage'), { ssr: false });
+// Letnia Batalia keeps its old team page
 const MyTeamView = dynamic(
   () => import('@/components/team/MyTeamView'),
   {
@@ -1102,11 +1104,13 @@ export function TournamentHomePage() {
         {hasTeam && (
           <FullScreenSection isActive={currentSection === sectionIndex('my-team')} isMobile={isMobile} id={`home-section-${sectionIndex('my-team')}`}>
             {/* Override the standalone page styles: hide fixed background, remove min-h-screen */}
-            <div className="h-full w-full overflow-y-auto text-white
-              [&>div]:!min-h-0 [&>div]:!h-full
-              [&>div>div.fixed]:!hidden">
-              <MyTeamView embedded={!isLegacyTournament} />
-            </div>
+            {isLegacyTournament ? (
+              <div className="h-full w-full overflow-y-auto text-white
+                [&>div]:!min-h-0 [&>div]:!h-full
+                [&>div>div.fixed]:!hidden">
+                <MyTeamView />
+              </div>
+            ) : <AccountPage inSection />}
           </FullScreenSection>
         )}
 

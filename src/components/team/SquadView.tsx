@@ -1,54 +1,37 @@
 'use client';
 
-import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
-import Image from 'next/image';
+// The squad on the account page, edited where it is shown (no separate edit mode): the five players
+// with their league nick, role and Steam account, the team's name / tag / captain's Discord / crest,
+// the coach and the transfer window. "Zapisz skład" appears once something changed; the transfer
+// rules (window, limit per window, 5 players, unique roles, MMR cap) are the same as before.
+
+import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { useTournament } from '@/context/TournamentContext';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { Label as FieldLabel } from '@/components/ui/label';
 import { uploadScreenshot } from '@/lib/storage';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from '@/components/ui/dialog';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import {
-  ArrowLeftRight,
-  Loader2,
-  UserPlus,
-  UserMinus,
-  Pencil,
-  Save,
-  X,
-  AlertTriangle,
-  CheckCircle,
-  Upload,
-  Shield,
-  Lock,
-  RefreshCw,
-  GraduationCap,
-} from 'lucide-react';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { AlertTriangle, Eye, HandHelping, Loader2, Lock, MoreHorizontal, RefreshCw, Save, Shield, Sparkles, Swords, Upload, X } from 'lucide-react';
 import { InfoPopover } from '@/components/ui/info-popover';
 import { cn } from '@/lib/utils';
 import type { Player, PlayerRole, Team } from '@/lib/definitions';
 import { PlayerRoles } from '@/lib/definitions';
 import type { CoachLock } from '@/lib/coach-rules';
-import { count, plural } from '@/lib/plural';
+import { count } from '@/lib/plural';
+import { Avatar, C, Tip, TipBody, ink, useHeaderFont } from '@/components/stats-lab/kit';
+import { Act, Kicker, Label, Solid, T, fieldClass, fieldStyle } from './ui';
+
+const ROLE_ICON: Record<string, React.ComponentType<{ className?: string }>> = {
+  Carry: Swords, Mid: Sparkles, Offlane: Shield, 'Soft Support': HandHelping, 'Hard Support': Eye,
+};
+const selectClass = 'h-9 bg-transparent border-0 border-b-2 rounded-none px-0 text-[14px] focus:ring-0 focus:ring-offset-0 shadow-none';
 
 const MAX_COACH_NICKNAME = 32;
 
-interface PDLTransferSectionProps {
+export interface SquadProps {
   team: Team;
   isCaptain: boolean;
   /** Whether the transfer window is currently open */
@@ -59,8 +42,6 @@ interface PDLTransferSectionProps {
   previousRoundPlayers: Player[];
   /** Max allowed roster changes per transfer window */
   maxTransfers: number;
-  /** When true, immediately enter editing mode on mount */
-  autoEdit?: boolean;
   /** True for MMR-limited tournaments — shows extra MMR/screenshot/smurf fields */
   isMmrLimited?: boolean;
   /** Team MMR cap (only relevant when isMmrLimited is true) */
@@ -80,8 +61,6 @@ interface PDLTransferSectionProps {
     /** Save a nickname, or null to remove the coach */
     onSave: (nickname: string | null) => Promise<void>;
   };
-  /** Editing only (the account page shows the line-up itself): called on cancel and after saving */
-  onClose?: () => void;
   /** Called when captain saves all roster changes */
   onSaveRoster: (data: {
     players: Player[];
@@ -114,20 +93,18 @@ interface EditablePlayer {
   smurfAccounts?: { steamProfileUrl: string; steamId64?: string; steamId32?: string }[];
 }
 
-export function PDLTransferSection({
+export function SquadView({
   team,
   isCaptain,
   isTransferWindowOpen,
   isSeasonActive,
   previousRoundPlayers,
   maxTransfers,
-  autoEdit,
   isMmrLimited,
   mmrCap,
   coach,
-  onClose,
   onSaveRoster,
-}: PDLTransferSectionProps) {
+}: SquadProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
   const { theme } = useTournament();
@@ -198,13 +175,11 @@ export function PDLTransferSection({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [team, coach?.nickname]);
 
-  // Auto-enter editing mode when requested
+  // The squad is always editable where it is shown; a saved (or changed elsewhere) team starts it over
   useEffect(() => {
-    if (autoEdit && isCaptain && !isEditing) {
-      startEditing();
-    }
+    startEditing();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoEdit]);
+  }, [team, coach?.nickname]);
 
   // Count how many SteamIDs changed compared to previous round
   const transfersUsed = useMemo(() => {
@@ -545,549 +520,226 @@ export function PDLTransferSection({
         await coach.onSave(editCoach.trim().slice(0, MAX_COACH_NICKNAME) || null);
       }
 
-      setIsEditing(false);
       setConfirmDialogOpen(false);
-      onClose?.();
     } finally {
       setLoading(false);
     }
   };
 
-  // Not in transfer window and not captain
-  if (!isTransferWindowOpen && !isCaptain) return null;
-  if (onClose && !isEditing) return null;
+  const font = useHeaderFont();
+  const open = isTransferWindowOpen;
+  const original = (id: string) => team.players?.find(p => p.id === id);
+  // Something differs from the saved team: only then is there anything to save
+  const dirty = editPlayers.some(p => p.isNew || p.isRemoved)
+    || editPlayers.some(p => { const o = original(p.id); return !!o && (o.nickname !== p.nickname || o.role !== p.role || (o.steamProfileUrl || '') !== (p.steamProfileUrl || '')); })
+    || editTeamName !== team.name || editTeamTag !== team.tag
+    || editCaptainDiscord !== (team.discordUsername || team.captainDiscordUsername || '')
+    || !!editLogoFile || coachChanged;
+  // Why "Zapisz skład" is off (same rules as canSave)
+  const blocker = activePlayerCount !== 5 ? `Skład musi mieć 5 graczy (teraz ${activePlayerCount})`
+    : roleErrors.length ? null
+    : !editTeamName.trim() || !editTeamTag.trim() ? 'Podaj nazwę i tag drużyny'
+    : !open && rosterCompositionChanged ? 'Okno transferowe jest zamknięte: nie można dodawać ani usuwać graczy'
+    : isSeasonActive && open && transfersUsed > maxTransfers ? `Za dużo zmian zawodników (${transfersUsed}/${maxTransfers})`
+    : null;
+  const totalMmr = editPlayers.filter(p => !p.isRemoved).reduce((s, p) => s + (p.mmr || 0), 0);
+  const cancelAdd = () => { setShowAddPlayer(false); setNewNickname(''); setNewRole(''); setNewSteamUrl(''); setNewMmr(''); setNewProfileScreenshotFile(null); setNewProfileScreenshotPreview(null); setNewSmurfUrls(['']); };
+  const rule = { borderBottom: `1px solid ${ink(8)}` };
 
   return (
-    <div className="space-y-6">
-      {/* Transfer counter (the editor's own budget line says the same) */}
-      {isSeasonActive && isEditing && !onClose && (
-        <p className="text-xs font-logik" style={{ color: 'var(--tournament-secondary-text)' }}>
-          Transfery: {transfersUsed}/{maxTransfers} wykorzystane
-        </p>
-      )}
-
-      {/* Info about transfer window */}
-      {isCaptain && !isEditing && (
-        isTransferWindowOpen ? (
-          <div className="rounded-lg border border-green-500/30 bg-green-500/10 p-4 flex items-start gap-3">
-            <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" />
-            <div>
-              <p className="text-sm font-logik-extended-bold" style={{ color: theme.sectionHeaderColor || '#bbf7d0' }}>
-                Okno transferowe jest otwarte
-              </p>
-              <p className="text-xs mt-1" style={{ color: theme.secondaryTextColor || 'rgba(187,247,208,0.6)' }}>
-                {isSeasonActive
-                  ? `Możesz dokonać maksymalnie ${maxTransfers} ${plural(maxTransfers, 'zmiany', 'zmian', 'zmian')} w składzie (porównanie z ostatnią zakończoną rundą). Zmiany nicków i ról nie liczą się jako transfery.`
-                  : 'Sezon jeszcze nie rozpoczył się — możesz dowolnie modyfikować skład bez ograniczeń.'}
-              </p>
-            </div>
-          </div>
-        ) : (
-          <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/10 p-4 flex items-start gap-3">
-            <Lock className="w-5 h-5 text-yellow-400 flex-shrink-0 mt-0.5" />
-            <div>
-              <p className="text-sm font-logik-extended-bold" style={{ color: theme.sectionHeaderColor || '#fef9c3' }}>
-                Okno transferowe zamknięte
-              </p>
-              <p className="text-xs mt-1" style={{ color: theme.secondaryTextColor || 'rgba(254,249,195,0.6)' }}>
-                Możesz zmienić nick gracza, jego rolę, discord kapitana oraz dodawać konta smurf. Kliknij ikonę ołówka przy graczu, aby edytować nick i smurfy.
-              </p>
-            </div>
-          </div>
-        )
-      )}
-
-      {/* Editing mode */}
-      {isEditing && (
-        <div className="space-y-6">
-          {/* Transfer budget warning */}
-          {isSeasonActive && (
-            <div className={cn(
-              'rounded-lg border p-3 flex items-center justify-between',
-              transfersUsed > maxTransfers
-                ? 'border-red-500/30 bg-red-500/10'
-                : transfersUsed === maxTransfers
-                ? 'border-yellow-500/30 bg-yellow-500/10'
-                : 'border-white/10 bg-white/[0.03]'
-            )}>
-              <div className="flex items-center gap-2">
-                <ArrowLeftRight className={cn(
-                  'w-4 h-4',
-                  transfersUsed > maxTransfers ? 'text-red-400' : 'text-white/60'
-                )} />
-                <span className="text-sm text-white/80 font-logik">
-                  Zmiany zawodników: <span className="font-logik-extended-bold">{transfersUsed}</span> / {maxTransfers}
-                </span>
-              </div>
-              {transfersUsed > maxTransfers && (
-                <span className="text-xs text-red-400 font-logik-extended-bold">
-                  Za dużo zmian!
-                </span>
-              )}
-            </div>
-          )}
-
-          {/* Team info edit */}
-          <div className="rounded-xl border border-white/5 bg-white/[0.02] p-5 space-y-4">
-            <h3
-              className="text-base uppercase tracking-[0.15em]"
-              style={{
-                color: 'var(--tournament-heading)',
-                fontFamily: theme?.headerFont ? `var(${theme.headerFont})` : undefined,
-              }}
-            >
-              Dane Drużyny
-            </h3>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label className="text-sm" style={{ color: 'var(--tournament-secondary-text)' }}>Nazwa drużyny</Label>
-                <Input
-                  value={editTeamName}
-                  onChange={(e) => setEditTeamName(e.target.value)}
-                  className="bg-white/5 border-white/10 text-white"
-                  disabled={!isTransferWindowOpen}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-sm" style={{ color: 'var(--tournament-secondary-text)' }}>Tag (max 5 znaków)</Label>
-                <Input
-                  value={editTeamTag}
-                  onChange={(e) => setEditTeamTag(e.target.value.slice(0, 5))}
-                  className="bg-white/5 border-white/10 text-white"
-                  maxLength={5}
-                  disabled={!isTransferWindowOpen}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-sm" style={{ color: 'var(--tournament-secondary-text)' }}>Discord kapitana</Label>
-                <Input
-                  value={editCaptainDiscord}
-                  onChange={(e) => setEditCaptainDiscord(e.target.value)}
-                  className="bg-white/5 border-white/10 text-white"
-                />
-              </div>
-
-              {isTransferWindowOpen && <div className="space-y-2">
-                <Label className="text-sm" style={{ color: 'var(--tournament-secondary-text)' }}>Logo drużyny</Label>
-                <div className="flex items-center gap-3">
-                  <div className="relative w-10 h-10 rounded-lg border border-white/10 overflow-hidden bg-black/40 flex-shrink-0">
-                    <Image
-                      src={editLogoPreview || '/placeholder-team.svg'}
-                      alt="Logo"
-                      fill
-                      className="object-cover"
-                      unoptimized
-                    />
-                  </div>
-                  <Label className="cursor-pointer">
-                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-md border border-white/10 bg-white/5 hover:bg-white/10 transition-colors text-sm text-white/60">
-                      <Upload className="w-4 h-4" />
-                      Zmień logo
-                    </div>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={handleLogoChange}
-                    />
-                  </Label>
+    <div className="grid gap-x-12 gap-y-10 lg:h-full lg:min-h-0 lg:grid-cols-[minmax(0,1.75fr)_minmax(300px,1fr)]">
+      {/* Players */}
+      <div className="min-w-0 lg:min-h-0 flex flex-col">
+        <Label right={
+          isSeasonActive && open
+            ? <span style={{ color: transfersUsed > maxTransfers ? C.loss : C.muted }}>Zmiany zawodników {transfersUsed}/{maxTransfers}</span>
+            : !open ? <span className="flex items-center gap-1.5"><Lock className="w-3 h-3" />Transfery zamknięte</span> : undefined
+        }>Skład</Label>
+        <div className="lg:flex-1 lg:min-h-0 lg:overflow-y-auto custom-scrollbar lg:pr-1">
+          {editPlayers.map(pl => {
+            const Icon = ROLE_ICON[pl.role];
+            if (pl.isRemoved) {
+              return (
+                <div key={pl.id} className="relative h-[54px] flex items-center gap-3 pl-3" style={rule}>
+                  <span className="absolute left-0 top-2 bottom-2 w-[3px]" style={{ background: C.loss }} />
+                  <span className="flex-1 min-w-0 truncate line-through" style={{ color: C.muted }}>{pl.nickname} · {pl.role}</span>
+                  {open && <Act onClick={() => handleRestorePlayer(pl.id)}>Przywróć</Act>}
                 </div>
-              </div>}
-            </div>
-          </div>
-
-          {/* Player list */}
-          <div className="rounded-xl border border-white/5 bg-white/[0.02] p-5 space-y-4">
-            <div className="flex items-center justify-between">
-              <h3
-                className="text-base uppercase tracking-[0.15em]"
-                style={{
-                  color: 'var(--tournament-heading)',
-                  fontFamily: theme?.headerFont ? `var(${theme.headerFont})` : undefined,
-                }}
-              >
-                Gracze ({activePlayerCount}/5)
-              </h3>
-              {!isTransferWindowOpen && (
-                <div className="flex items-center gap-2 text-yellow-400/60">
-                  <Lock className="w-3 h-3" />
-                  <span className="text-xs font-logik">Transfery zablokowane · nicki i smurfy edytowalne</span>
-                </div>
-              )}
-            </div>
-
-            {/* Role errors */}
-            {roleErrors.length > 0 && (
-              <div className="rounded-md border border-red-500/30 bg-red-500/10 p-3 space-y-1">
-                {roleErrors.map((err, i) => (
-                  <p key={i} className="text-xs text-red-400 flex items-center gap-1">
-                    <AlertTriangle className="w-3 h-3" />
-                    {err}
-                  </p>
-                ))}
-              </div>
-            )}
-
-            <div className="space-y-3">
-              {editPlayers.map((player) => (
-                <div
-                  key={player.id}
-                  className={cn(
-                    'py-2 flex flex-col sm:flex-row gap-2 items-stretch transition-all border-b last:border-b-0',
-                    player.isRemoved
-                      ? 'border-red-500/20 opacity-50'
-                      : player.isNew
-                      ? 'border-green-500/20'
-                      : 'border-white/5'
-                  )}
-                >
-                  {player.isRemoved ? (
-                    <div className="flex items-center justify-between w-full">
-                      <div className="flex items-center gap-2">
-                        <UserMinus className="w-4 h-4 text-red-400" />
-                        <span className="text-sm text-red-400 line-through">{player.nickname}</span>
-                        <span className="text-xs text-white/30">({player.role})</span>
-                      </div>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => handleRestorePlayer(player.id)}
-                        disabled={!isTransferWindowOpen}
-                        className="text-white/40 hover:text-white h-7"
-                      >
-                        Przywróć
-                      </Button>
-                    </div>
-                  ) : isMmrLimited ? (
-                    <div className="flex items-center gap-3 flex-1">
-                      {player.avatar && (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={player.avatar} alt={player.nickname} className="w-8 h-8 rounded-full object-cover flex-shrink-0" />
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <span className="text-sm text-white font-medium truncate block">{player.nickname}</span>
-                        {player.mmr != null && (
-                          <span className="text-xs text-white/40">{player.mmr} MMR</span>
-                        )}
-                      </div>
-                      <Select
-                        value={player.role}
-                        onValueChange={(val) => handlePlayerFieldChange(player.id, 'role', val)}
-                      >
-                        <SelectTrigger className="bg-white/5 border-white/10 text-white text-sm h-9 w-36 flex-shrink-0">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent className="bg-[#1a1a1a] border-white/10">
-                          {PlayerRoles.map((role) => (
-                            <SelectItem key={role} value={role} className="text-white text-sm">
-                              {role}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => handleOpenEditPlayer(player.id)}
-                        className="text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 h-9 w-9 p-0 flex-shrink-0"
-                        title="Edytuj gracza (nick, MMR, smurfy)"
-                      >
-                        <Pencil className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => handleRemovePlayer(player.id)}
-                        disabled={!isTransferWindowOpen}
-                        className="text-red-400/60 hover:text-red-400 hover:bg-red-500/10 h-9 w-9 p-0 flex-shrink-0"
-                      >
-                        <X className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  ) : (
-                    <>
-                      <div className="flex-1 grid grid-cols-1 sm:grid-cols-3 gap-2 items-center">
-                        <Input
-                          value={player.nickname}
-                          onChange={(e) => handlePlayerFieldChange(player.id, 'nickname', e.target.value)}
-                          placeholder="Nick w lidze"
-                          title="Nick, pod którym gracz występuje w lidze — może różnić się od nicku na Steamie. Można go zmienić także przy zamkniętym oknie transferowym."
-                          className="bg-white/5 border-white/10 text-white text-sm h-9"
-                        />
-                        <Select
-                          value={player.role}
-                          onValueChange={(val) => handlePlayerFieldChange(player.id, 'role', val)}
-                        >
-                          <SelectTrigger className="bg-white/5 border-white/10 text-white text-sm h-9">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent className="bg-[#1a1a1a] border-white/10">
-                            {PlayerRoles.map((role) => (
-                              <SelectItem key={role} value={role} className="text-white text-sm">
-                                {role}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <div className="flex gap-2 items-center">
-                          <Input
-                            value={player.steamProfileUrl}
-                            onChange={(e) => {
-                              handlePlayerFieldChange(player.id, 'steamProfileUrl', e.target.value);
-                              // Extract steam ID
-                              const match = e.target.value.match(/\/profiles\/(\d+)/);
-                              if (match) {
-                                handlePlayerFieldChange(player.id, 'steamId', match[1]);
-                              }
-                            }}
-                            placeholder="Link do Steam"
-                            className="bg-white/5 border-white/10 text-white text-sm flex-1 h-9"
-                            disabled={!isTransferWindowOpen}
-                          />
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleRefreshPlayerSteam(player.id)}
-                            disabled={loading || !player.steamProfileUrl || !isTransferWindowOpen}
-                            className="text-pdl-gold/60 hover:text-pdl-gold hover:bg-pdl-gold/10 h-9 w-9 p-0 flex-shrink-0"
-                            title="Odśwież dane Steam (avatar, ID)"
-                          >
-                            <RefreshCw className={cn("w-4 h-4", loading && "animate-spin")} />
-                          </Button>
-                        </div>
-                      </div>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => handleOpenEditPlayer(player.id)}
-                        className="text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 h-9 w-9 p-0 flex-shrink-0 self-center"
-                        title="Edytuj gracza (nick, smurfy)"
-                      >
-                        <Pencil className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => handleRemovePlayer(player.id)}
-                        disabled={!isTransferWindowOpen}
-                        className="text-red-400/60 hover:text-red-400 hover:bg-red-500/10 h-9 w-9 p-0 flex-shrink-0 self-center"
-                      >
-                        <X className="w-4 h-4" />
-                      </Button>
-                    </>
-                  )}
-                </div>
-              ))}
-            </div>
-
-            {/* Add new player */}
-            {isTransferWindowOpen && activePlayerCount < 5 && (
-              showAddPlayer ? (
-                <div className="rounded-lg border border-dashed border-white/20 bg-white/[0.02] p-3 space-y-3">
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                    <Input
-                      value={newNickname}
-                      onChange={(e) => setNewNickname(e.target.value)}
-                      placeholder="Nick gracza"
-                      className="bg-white/5 border-white/10 text-white text-sm"
-                    />
-                    <Select value={newRole} onValueChange={(val) => setNewRole(val as PlayerRole)}>
-                      <SelectTrigger className="bg-white/5 border-white/10 text-white text-sm">
-                        <SelectValue placeholder="Rola" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-[#1a1a1a] border-white/10">
-                        {PlayerRoles.map((role) => (
-                          <SelectItem key={role} value={role} className="text-white text-sm">
-                            {role}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <Input
-                      value={newSteamUrl}
-                      onChange={(e) => setNewSteamUrl(e.target.value)}
-                      placeholder="Link do profilu Steam"
-                      className="bg-white/5 border-white/10 text-white text-sm"
-                    />
-                  </div>
-                  {/* Extra fields for MMR-limited tournaments */}
-                  {isMmrLimited && (
-                    <div className="space-y-2 pt-1 border-t border-white/10">
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        <div className="space-y-1">
-                          <label className="text-xs text-white/50">MMR gracza *</label>
-                          <Input
-                            type="number"
-                            min={0}
-                            value={newMmr}
-                            onChange={(e) => setNewMmr(e.target.value)}
-                            placeholder="np. 4500"
-                            className="bg-white/5 border-white/10 text-white text-sm"
-                          />
-                          {mmrCap && newMmr && (() => {
-                            const currentTotal = editPlayers.filter(p => !p.isRemoved).reduce((s, p) => s + (p.mmr || 0), 0);
-                            const incoming = parseInt(newMmr, 10) || 0;
-                            return currentTotal + incoming > mmrCap ? (
-                              <p className="text-xs text-red-400 flex items-center gap-1">
-                                <AlertTriangle className="w-3 h-3" />
-                                Przekroczy limit MMR ({currentTotal + incoming}/{mmrCap})
-                              </p>
-                            ) : null;
-                          })()}
-                        </div>
-                        <div className="space-y-1">
-                          <label className="text-xs text-white/50">Screenshot profilu *</label>
-                          <div
-                            className="relative border border-dashed border-white/20 rounded-md bg-white/5 hover:bg-white/10 transition-colors cursor-pointer text-center p-2"
-                            onClick={() => screenshotInputRef.current?.click()}
-                          >
-                            {newProfileScreenshotPreview ? (
-                              <img
-                                src={newProfileScreenshotPreview}
-                                alt="Screenshot preview"
-                                className="max-h-24 mx-auto rounded object-contain"
-                              />
-                            ) : (
-                              <div className="flex flex-col items-center gap-1 py-1">
-                                <Upload className="w-4 h-4 text-white/40" />
-                                <span className="text-xs text-white/40">Kliknij aby wgrać</span>
-                              </div>
-                            )}
-                            <input
-                              ref={screenshotInputRef}
-                              type="file"
-                              accept="image/*"
-                              className="hidden"
-                              onChange={(e) => {
-                                const file = e.target.files?.[0] ?? null;
-                                setNewProfileScreenshotFile(file);
-                                if (file) {
-                                  const reader = new FileReader();
-                                  reader.onload = () => setNewProfileScreenshotPreview(reader.result as string);
-                                  reader.readAsDataURL(file);
-                                } else {
-                                  setNewProfileScreenshotPreview(null);
-                                }
-                              }}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-xs text-white/50">Konta smurf (opcjonalnie)</label>
-                        {newSmurfUrls.map((url, i) => (
-                          <div key={i} className="flex gap-2">
-                            <Input
-                              value={url}
-                              onChange={(e) => setNewSmurfUrls(prev => prev.map((u, idx) => idx === i ? e.target.value : u))}
-                              placeholder="Link do profilu Steam smurfa"
-                              className="bg-white/5 border-white/10 text-white text-sm flex-1"
-                            />
-                            {newSmurfUrls.length > 1 && (
-                              <Button size="sm" variant="ghost" className="text-white/40 px-2" onClick={() => setNewSmurfUrls(prev => prev.filter((_, idx) => idx !== i))}>
-                                <X className="w-3 h-3" />
-                              </Button>
-                            )}
-                          </div>
-                        ))}
-                        {newSmurfUrls.length < 3 && (
-                          <Button size="sm" variant="ghost" className="text-white/40 text-xs" onClick={() => setNewSmurfUrls(prev => [...prev, ''])}>
-                            + Dodaj smurf
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      onClick={handleAddPlayer}
-                      disabled={!newNickname.trim() || !newRole || !newSteamUrl.trim() || (isMmrLimited ? (!newMmr.trim() || !newProfileScreenshotFile) : false)}
-                      className="bg-green-600 hover:bg-green-700 text-white"
-                    >
-                      <UserPlus className="w-4 h-4 mr-1" />
-                      Dodaj
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => { setShowAddPlayer(false); setNewMmr(''); setNewProfileScreenshotFile(null); setNewProfileScreenshotPreview(null); setNewSmurfUrls(['']); }}
-                      className="text-white/60"
-                    >
-                      Anuluj
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <Button
-                  variant="outline"
-                  className="w-full border-dashed border-white/10 text-white/40 hover:text-white hover:bg-white/5"
-                  onClick={() => setShowAddPlayer(true)}
-                >
-                  <UserPlus className="w-4 h-4 mr-2" />
-                  Dodaj gracza ({activePlayerCount}/5)
-                </Button>
-              )
-            )}
-
-            {/* Coach — one per team, managed with the rest of the team */}
-            {coach && (
-              <div className="pt-4 border-t border-white/5 space-y-2">
-                <div className="flex items-center gap-2">
-                  <GraduationCap className="w-4 h-4" style={{ color: 'var(--tournament-secondary-text)' }} />
-                  <span
-                    className="text-sm uppercase tracking-[0.15em]"
-                    style={{ color: 'var(--tournament-heading)', fontFamily: theme?.headerFont ? `var(${theme.headerFont})` : undefined }}
-                  >
-                    Trener
-                  </span>
-                  <span className="text-xs text-white/40">(opcjonalnie)</span>
-                  <InfoPopover label="Zasady dotyczące trenera w tym turnieju" title="Zasady dotyczące trenera w tym turnieju">{coach.rulesDetails}</InfoPopover>
-                </div>
-                {coach.lock.locked ? (
-                  <div className="space-y-1">
-                    <p className="text-sm text-white">{coach.nickname || <span className="text-white/40">Brak trenera</span>}</p>
-                    <p className="flex items-start gap-1.5 text-xs text-yellow-300/80">
-                      <Lock className="w-3 h-3 mt-0.5 shrink-0" />
-                      {coach.lock.reason}
-                    </p>
-                  </div>
+              );
+            }
+            return (
+              <div key={pl.id} className="relative min-h-[54px] flex flex-wrap lg:flex-nowrap items-center gap-x-3 gap-y-1 pl-3 py-1.5" style={rule}>
+                {pl.isNew && <span className="absolute left-0 top-2 bottom-2 w-[3px]" style={{ background: C.win }} />}
+                <Tip content={<TipBody title={pl.role} />}>
+                  <span className="w-4 flex justify-center shrink-0" style={{ color: C.muted }}>{Icon ? <Icon className="w-4 h-4" /> : '–'}</span>
+                </Tip>
+                <Avatar player={{ name: pl.nickname, avatar: pl.avatar }} size={34} />
+                <input value={pl.nickname} onChange={e => handlePlayerFieldChange(pl.id, 'nickname', e.target.value)} aria-label="Nick w lidze"
+                  title="Nick, pod którym gracz występuje w lidze (może różnić się od nicku na Steamie)"
+                  className={cn(fieldClass, 'w-[170px] font-bold')} style={fieldStyle} />
+                <Select value={pl.role} onValueChange={val => handlePlayerFieldChange(pl.id, 'role', val)}>
+                  <SelectTrigger aria-label="Rola" className={cn(selectClass, 'w-[140px]')} style={fieldStyle}><SelectValue /></SelectTrigger>
+                  <SelectContent>{PlayerRoles.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}</SelectContent>
+                </Select>
+                {isMmrLimited ? (
+                  <span className="flex-1 min-w-0 text-[13px] tabular-nums" style={{ color: C.muted }}>{pl.mmr != null ? `${pl.mmr} MMR` : ''}</span>
                 ) : (
-                  <Input
-                    value={editCoach}
-                    maxLength={MAX_COACH_NICKNAME}
-                    onChange={(e) => setEditCoach(e.target.value)}
-                    placeholder="Nick trenera (puste = drużyna bez trenera)"
-                    aria-label="Nick trenera"
-                    className="bg-white/5 border-white/10 text-white text-sm max-w-sm"
-                  />
+                  <>
+                    <input value={pl.steamProfileUrl} disabled={!open} placeholder="Link do Steam" aria-label="Link do Steam"
+                      onChange={e => {
+                        handlePlayerFieldChange(pl.id, 'steamProfileUrl', e.target.value);
+                        const m = e.target.value.match(/\/profiles\/(\d+)/);
+                        if (m) handlePlayerFieldChange(pl.id, 'steamId', m[1]);
+                      }}
+                      className={cn(fieldClass, 'flex-1 min-w-[160px] text-[13px]')} style={{ ...fieldStyle, color: C.muted }} />
+                    {open && (
+                      <Tip content={<TipBody title="Odśwież dane ze Steama" />}>
+                        <button type="button" onClick={() => handleRefreshPlayerSteam(pl.id)} disabled={loading || !pl.steamProfileUrl} aria-label="Odśwież dane ze Steama"
+                          className="p-1 opacity-60 hover:opacity-100 disabled:opacity-25" style={{ color: C.text }}>
+                          <RefreshCw className={cn('w-4 h-4', loading && 'animate-spin')} />
+                        </button>
+                      </Tip>
+                    )}
+                  </>
                 )}
-                <p className="text-xs text-white/40">{coach.ruleSummary}</p>
+                <Tip content={<TipBody title={isMmrLimited ? 'Nick, MMR i konta smurf' : 'Konta smurf'} />}>
+                  <button type="button" onClick={() => handleOpenEditPlayer(pl.id)} aria-label={`Więcej: ${pl.nickname}`} className="p-1 opacity-60 hover:opacity-100" style={{ color: C.text }}>
+                    <MoreHorizontal className="w-4 h-4" />
+                  </button>
+                </Tip>
+                {open && (
+                  <Tip content={<TipBody title="Usuń ze składu" />}>
+                    <button type="button" onClick={() => handleRemovePlayer(pl.id)} aria-label={`Usuń ${pl.nickname}`} className="p-1 opacity-60 hover:opacity-100" style={{ color: C.loss }}>
+                      <X className="w-4 h-4" />
+                    </button>
+                  </Tip>
+                )}
               </div>
-            )}
-          </div>
+            );
+          })}
 
-          {/* Action buttons */}
-          <div className="flex gap-3 justify-end">
-            <Button
-              variant="ghost"
-              onClick={() => { setIsEditing(false); onClose?.(); }}
-              className="text-white/60"
-            >
-              Anuluj
-            </Button>
-            <Button
-              onClick={handleSave}
-              disabled={!canSave || loading}
-              className="bg-pdl-crimson hover:bg-pdl-crimson/80 text-white font-logik-extended-bold"
-            >
-              <Save className="w-4 h-4 mr-2" />
-              Zapisz skład
-            </Button>
+          {open && activePlayerCount < 5 && (showAddPlayer ? (
+            <div className="relative py-3 pl-3" style={rule}>
+              <span className="absolute left-0 top-3 bottom-3 w-[3px]" style={{ background: T }} />
+              <div className="flex flex-wrap items-end gap-x-3 gap-y-2">
+                <input value={newNickname} onChange={e => setNewNickname(e.target.value)} placeholder="Nick gracza" aria-label="Nick nowego gracza" className={cn(fieldClass, 'w-[170px]')} style={fieldStyle} />
+                <Select value={newRole} onValueChange={val => setNewRole(val as PlayerRole)}>
+                  <SelectTrigger aria-label="Rola nowego gracza" className={cn(selectClass, 'w-[140px]')} style={fieldStyle}><SelectValue placeholder="Rola" /></SelectTrigger>
+                  <SelectContent>{PlayerRoles.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}</SelectContent>
+                </Select>
+                <input value={newSteamUrl} onChange={e => setNewSteamUrl(e.target.value)} placeholder="Link do profilu Steam" aria-label="Steam nowego gracza" className={cn(fieldClass, 'flex-1 min-w-[180px] text-[13px]')} style={fieldStyle} />
+                <Solid onClick={handleAddPlayer} disabled={loading || !newNickname.trim() || !newRole || !newSteamUrl.trim() || (isMmrLimited ? (!newMmr.trim() || !newProfileScreenshotFile) : false)}>
+                  {loading && <Loader2 className="w-4 h-4 animate-spin" />}Dodaj
+                </Solid>
+                <Act onClick={cancelAdd}>Anuluj</Act>
+              </div>
+              {isMmrLimited && (
+                <div className="mt-3 flex flex-wrap items-end gap-x-6 gap-y-3">
+                  <label className="flex flex-col gap-1">
+                    <Kicker>MMR</Kicker>
+                    <input type="number" min={0} value={newMmr} onChange={e => setNewMmr(e.target.value)} placeholder="4500" className={cn(fieldClass, 'w-[100px] tabular-nums')} style={fieldStyle} />
+                  </label>
+                  <div className="flex flex-col gap-1">
+                    <Kicker>Screenshot profilu</Kicker>
+                    <button type="button" onClick={() => screenshotInputRef.current?.click()} className="h-9 flex items-center gap-2 text-[13px]" style={{ color: newProfileScreenshotPreview ? C.win : T }}>
+                      <Upload className="w-4 h-4" />{newProfileScreenshotPreview ? 'Wgrany, zmień' : 'Wgraj'}
+                    </button>
+                    <input ref={screenshotInputRef} type="file" accept="image/*" className="hidden" onChange={e => {
+                      const file = e.target.files?.[0] ?? null;
+                      setNewProfileScreenshotFile(file);
+                      if (file) { const reader = new FileReader(); reader.onload = () => setNewProfileScreenshotPreview(reader.result as string); reader.readAsDataURL(file); }
+                      else setNewProfileScreenshotPreview(null);
+                    }} />
+                  </div>
+                  <div className="flex flex-col gap-1 flex-1 min-w-[220px]">
+                    <Kicker>Konta smurf</Kicker>
+                    {newSmurfUrls.map((url, i) => (
+                      <div key={i} className="flex items-end gap-2">
+                        <input value={url} onChange={e => setNewSmurfUrls(prev => prev.map((u, idx) => idx === i ? e.target.value : u))} placeholder="Link do profilu Steam smurfa" className={cn(fieldClass, 'flex-1 text-[13px]')} style={fieldStyle} />
+                        {newSmurfUrls.length > 1 && <button type="button" onClick={() => setNewSmurfUrls(prev => prev.filter((_, idx) => idx !== i))} aria-label="Usuń smurfa" className="p-1 opacity-60 hover:opacity-100"><X className="w-3.5 h-3.5" /></button>}
+                      </div>
+                    ))}
+                    {newSmurfUrls.length < 3 && <Act className="self-start mt-1" onClick={() => setNewSmurfUrls(prev => [...prev, ''])}>+ Smurf</Act>}
+                  </div>
+                  {mmrCap && newMmr && totalMmr + (parseInt(newMmr, 10) || 0) > mmrCap && (
+                    <p className="w-full text-[13px] flex items-center gap-1.5" style={{ color: C.loss }}><AlertTriangle className="w-3.5 h-3.5" />Przekroczy limit MMR ({totalMmr + (parseInt(newMmr, 10) || 0)}/{mmrCap})</p>
+                  )}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="pt-3"><Act onClick={() => setShowAddPlayer(true)}>+ Dodaj gracza</Act></div>
+          ))}
+
+          {roleErrors.map(err => (
+            <p key={err} className="mt-2 text-[13px] flex items-center gap-1.5" style={{ color: C.loss }}><AlertTriangle className="w-3.5 h-3.5" />{err}</p>
+          ))}
+        </div>
+      </div>
+
+      {/* The team, the coach, the window — and saving */}
+      <div className="min-w-0 lg:min-h-0 flex flex-col">
+        <Label>Drużyna</Label>
+        <div className="flex items-end gap-5">
+          <Tip content={open ? <TipBody title="Zmień herb" /> : null}>
+            <label className={cn('relative shrink-0 rounded-[10px] overflow-hidden', open && 'cursor-pointer group')} style={{ width: 60, height: 60, background: ink(8) }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              {editLogoPreview && <img src={editLogoPreview} alt="Herb drużyny" className="w-full h-full object-cover" />}
+              {open && <span className="absolute inset-0 flex items-center justify-center bg-black/55 opacity-0 group-hover:opacity-100 transition-opacity text-white"><Upload className="w-5 h-5" /></span>}
+              {open && <input type="file" accept="image/*" className="hidden" onChange={handleLogoChange} />}
+            </label>
+          </Tip>
+          <label className="flex flex-col gap-1 flex-1 min-w-0">
+            <Kicker>Nazwa</Kicker>
+            <input value={editTeamName} onChange={e => setEditTeamName(e.target.value)} disabled={!open} aria-label="Nazwa drużyny" className={cn(fieldClass, 'w-full font-bold')} style={fieldStyle} />
+          </label>
+          <label className="flex flex-col gap-1 w-[84px] shrink-0">
+            <Kicker>Tag</Kicker>
+            <input value={editTeamTag} onChange={e => setEditTeamTag(e.target.value.slice(0, 5))} maxLength={5} disabled={!open} aria-label="Tag drużyny" className={cn(fieldClass, 'w-full font-bold uppercase')} style={fieldStyle} />
+          </label>
+        </div>
+        <label className="flex flex-col gap-1 mt-4">
+          <Kicker>Discord kapitana</Kicker>
+          <input value={editCaptainDiscord} onChange={e => setEditCaptainDiscord(e.target.value)} aria-label="Discord kapitana" className={cn(fieldClass, 'w-full')} style={fieldStyle} />
+        </label>
+
+        {coach && (
+          <>
+            <Label className="mt-7" right={<InfoPopover label="Zasady dotyczące trenera w tym turnieju" title="Zasady dotyczące trenera w tym turnieju">{coach.rulesDetails}</InfoPopover>}>Trener</Label>
+            {coach.lock.locked ? (
+              <>
+                <div className="font-bold" style={{ color: coach.nickname ? C.heading : C.muted }}>{coach.nickname || 'Bez trenera'}</div>
+                <p className="mt-1 text-[12px] flex items-start gap-1.5" style={{ color: C.muted }}><Lock className="w-3 h-3 mt-0.5 shrink-0" />{coach.lock.reason}</p>
+              </>
+            ) : (
+              <input value={editCoach} maxLength={MAX_COACH_NICKNAME} onChange={e => setEditCoach(e.target.value)} placeholder="Bez trenera" aria-label="Nick trenera"
+                className={cn(fieldClass, 'w-full')} style={fieldStyle} />
+            )}
+            <p className="mt-1.5 text-[12px] leading-snug" style={{ color: C.muted }}>{coach.ruleSummary}</p>
+          </>
+        )}
+
+        <Label className="mt-7">Okno transferowe</Label>
+        <div className="font-logik-extended-bold uppercase text-[22px] leading-none" style={{ color: open ? C.win : C.muted, ...font }}>{open ? 'Otwarte' : 'Zamknięte'}</div>
+        <p className="mt-1.5 text-[12px] leading-snug" style={{ color: C.muted }}>
+          {open
+            ? isSeasonActive ? `Do ${count(maxTransfers, 'zmiany', 'zmian', 'zmian')} zawodników w tym oknie. Nicki i role się nie liczą.` : 'Przed sezonem skład zmieniasz bez limitu.'
+            : 'Możesz poprawić nicki, role, konta smurf i Discord kapitana.'}
+        </p>
+        {isMmrLimited && (
+          <p className="mt-2 text-[13px] tabular-nums" style={{ color: mmrCap != null && totalMmr > mmrCap ? C.loss : C.text }}>
+            Łączne MMR: <b>{totalMmr}</b>{mmrCap != null && <span style={{ color: C.muted }}> / {mmrCap}</span>}
+          </p>
+        )}
+
+        {dirty && (
+          <div className="mt-auto pt-6 flex flex-wrap items-center gap-x-5 gap-y-2">
+            <Solid onClick={handleSave} disabled={!canSave || loading}><Save className="w-4 h-4" />Zapisz skład</Solid>
+            <Act onClick={() => { startEditing(); cancelAdd(); }}>Cofnij zmiany</Act>
+            {blocker && <p className="w-full text-[13px]" style={{ color: C.loss }}>{blocker}</p>}
           </div>
+        )}
+      </div>
 
           {/* Confirm dialog */}
           <Dialog open={confirmDialogOpen} onOpenChange={setConfirmDialogOpen}>
@@ -1228,7 +880,7 @@ export function PDLTransferSection({
               <div className="space-y-4">
                 {/* Nickname */}
                 <div className="space-y-1">
-                  <Label className="text-sm" style={{ color: 'var(--tournament-secondary-text)' }}>Nick gracza</Label>
+                  <FieldLabel className="text-sm" style={{ color: 'var(--tournament-secondary-text)' }}>Nick gracza</FieldLabel>
                   <Input
                     value={editDialogNickname}
                     onChange={(e) => setEditDialogNickname(e.target.value)}
@@ -1241,7 +893,7 @@ export function PDLTransferSection({
                 {isMmrLimited && isTransferWindowOpen && (
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1">
-                      <Label className="text-sm" style={{ color: 'var(--tournament-secondary-text)' }}>MMR</Label>
+                      <FieldLabel className="text-sm" style={{ color: 'var(--tournament-secondary-text)' }}>MMR</FieldLabel>
                       <Input
                         type="number"
                         min={0}
@@ -1252,7 +904,7 @@ export function PDLTransferSection({
                       />
                     </div>
                     <div className="space-y-1">
-                      <Label className="text-sm" style={{ color: 'var(--tournament-secondary-text)' }}>Screenshot MMR</Label>
+                      <FieldLabel className="text-sm" style={{ color: 'var(--tournament-secondary-text)' }}>Screenshot MMR</FieldLabel>
                       <div
                         className="relative border border-dashed border-white/20 rounded-md bg-white/5 hover:bg-white/10 transition-colors cursor-pointer text-center p-2"
                         onClick={() => editScreenshotInputRef.current?.click()}
@@ -1292,10 +944,10 @@ export function PDLTransferSection({
 
                 {/* Smurf accounts */}
                 <div className="space-y-1">
-                  <Label className="text-sm" style={{ color: 'var(--tournament-secondary-text)' }}>
+                  <FieldLabel className="text-sm" style={{ color: 'var(--tournament-secondary-text)' }}>
                     Konta smurf
                     <span className="ml-1 text-white/30 font-normal">(opcjonalnie)</span>
-                  </Label>
+                  </FieldLabel>
                   <div className="space-y-2">
                     {editDialogSmurfs.map((url, i) => {
                       const isExisting = i < editDialogOriginalSmurfCount;
@@ -1353,8 +1005,6 @@ export function PDLTransferSection({
               </DialogFooter>
             </DialogContent>
           </Dialog>
-        </div>
-      )}
     </div>
   );
 }

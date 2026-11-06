@@ -30,6 +30,7 @@ import NoTeamFound from '@/components/app/my-team/NoTeamFound';
 
 // PDL components
 import { TeamDesk, type DeskView, type DeskTodo, type ScrimSlot } from './TeamDesk';
+import type { AccountBanner } from '@/components/account/AccountPage';
 import { checkReschedule, reschedulePolicy } from "@/lib/reschedule-rules";
 import { COACH_CHANGE_LOCK_HOURS, coachModeOption, isPerMatchCoachMode, isTeamLevelCoachMode, isWithinCoachLock, teamCoachLock } from "@/lib/coach-rules";
 import { upsertGlobalPlayerProfilesAction, clearPlayerCurrentTeamsAction } from "@/lib/player-profile-actions";
@@ -183,7 +184,7 @@ async function fetchStandinRequestsForMatchIds(
  * A captain's team: the legacy (Letnia) my-team page, or, for every newer tournament, the team
  * management shown under the account banner (`embedded`).
  */
-export default function MyTeamView({ embedded = false }: { embedded?: boolean }) {
+export default function MyTeamView({ embedded = false, banner }: { embedded?: boolean; banner?: AccountBanner }) {
   const { tournament, theme, isLegacyTournament, getTournamentPath } = useTournament();
   const { isMmrLimited, isLeague } = useTournamentType();
   // Drive coach UI off the actual setting rather than the tournament type. Both
@@ -1547,7 +1548,7 @@ export default function MyTeamView({ embedded = false }: { embedded?: boolean })
   // LEGACY TOURNAMENT UI (Letnia Batalia)
   // =========================================================================
   if (isLegacyTournament) {
-    if (embedded) return null;
+    if (embedded) return <>{banner?.()}</>;
     if (authLoading || loading) {
       return <LoadingScreen />;
     }
@@ -1610,18 +1611,23 @@ export default function MyTeamView({ embedded = false }: { embedded?: boolean })
   // =========================================================================
 
   // Under the account banner: signed out is handled there; no team = the way to register one
-  if (!user) return null;
+  if (!user) return <>{banner?.()}</>;
   if (authLoading || loading) {
-    return <div className="py-20 flex justify-center" style={{ color: 'var(--tournament-secondary-text)' }}><Loader2 className="w-6 h-6 animate-spin" /></div>;
+    return <>{banner?.()}<div className="flex-1 py-20 flex items-center justify-center" style={{ color: 'var(--tournament-secondary-text)' }}><Loader2 className="w-6 h-6 animate-spin" /></div></>;
   }
   if (!hasTeam) {
-    return tournament.status === 'registration' ? (
-      <div className="max-w-[1680px] mx-auto px-4 lg:px-14 py-12">
-        <a href={getTournamentPath('/register')} className="font-logik-extended-bold uppercase tracking-widest text-[14px] underline-offset-4 hover:underline" style={{ color: 'var(--tournament-primary)' }}>
-          Zarejestruj drużynę
-        </a>
-      </div>
-    ) : null;
+    return (
+      <>
+        {banner?.()}
+        {tournament.status === 'registration' && (
+          <div className="px-[var(--pad)] py-12">
+            <a href={getTournamentPath('/register')} className="font-logik-extended-bold uppercase tracking-widest text-[14px] underline-offset-4 hover:underline" style={{ color: 'var(--tournament-primary)' }}>
+              Zarejestruj drużynę
+            </a>
+          </div>
+        )}
+      </>
+    );
   }
 
   // Has team - show full dashboard
@@ -1750,6 +1756,7 @@ export default function MyTeamView({ embedded = false }: { embedded?: boolean })
   if (!team) return null;
   return (
     <TeamDesk
+      banner={banner ?? (() => null)}
       team={team}
       matches={upcomingMatches}
       view={deskView}
@@ -1794,6 +1801,7 @@ export default function MyTeamView({ embedded = false }: { embedded?: boolean })
         botLobbyPassword: botSessionMap.get(match.id)?.lobbyPassword || fixedLobbyPassword,
       })}
       roster={{
+        isCaptain,
         isTransferWindowOpen,
         isSeasonActive,
         previousRoundPlayers,

@@ -5,6 +5,7 @@
 // the lobby. Same actions and rules as the old my-team match card, laid out on rules instead of boxes.
 
 import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Check, ClipboardList, Gavel, Loader2, RefreshCw, X } from 'lucide-react';
 import { useTournament } from '@/context/TournamentContext';
 import { DateInput } from '@/components/ui/date-time-input';
@@ -20,20 +21,10 @@ import { MatchDetailModal } from '@/components/divisions/MatchDetailModal';
 import { PDLStandinRequestSection } from '@/components/pdl/my-team/PDLStandinRequest';
 import { PDLCoachSection } from '@/components/pdl/my-team/PDLCoachSection';
 import type { PDLUpcomingMatchProps } from '@/components/pdl/my-team/PDLUpcomingMatchNew';
-import { Act, Label, T, seriesScore } from './ui';
+import { Act, Label, Solid, T, fieldClass as field, seriesScore } from './ui';
 
 const longDate = (iso: string) => new Date(iso).toLocaleString('pl-PL', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
 const normalizeTime = (v: string) => { const d = v.replace(/\D/g, '').slice(0, 4); return d.length <= 2 ? d : `${d.slice(0, 2)}:${d.slice(2)}`; };
-const field = 'bg-transparent border-0 border-b-2 rounded-none px-0 h-10 text-[16px] outline-none focus:border-[var(--team)]';
-
-/** The site's solid button, in the team colour */
-function Solid({ children, onClick, disabled }: { children: React.ReactNode; onClick: () => void; disabled?: boolean }) {
-  return (
-    <button type="button" onClick={onClick} disabled={disabled}
-      className="inline-flex items-center gap-2 h-9 px-5 rounded-full text-[12px] font-bold uppercase tracking-widest text-white transition-[filter] hover:brightness-110 disabled:opacity-40 disabled:hover:brightness-100"
-      style={{ background: T }}>{children}</button>
-  );
-}
 
 export function MatchPanel(p: PDLUpcomingMatchProps) {
   const { match, myTeamId, isCaptain, teams = [] } = p;
@@ -63,9 +54,9 @@ export function MatchPanel(p: PDLUpcomingMatchProps) {
   };
 
   return (
-    <div style={{ color: C.text }}>
+    <div className="lg:h-full lg:min-h-0 flex flex-col" style={{ color: C.text }}>
       {/* Who and when */}
-      <div className="flex flex-wrap items-center gap-x-6 gap-y-4 pb-5" style={{ borderBottom: `1px solid ${ink(12)}` }}>
+      <div className="shrink-0 flex flex-wrap items-center gap-x-6 gap-y-4 pb-4" style={{ borderBottom: `1px solid ${ink(12)}` }}>
         <div className="flex items-center gap-x-6 gap-y-4 min-w-0 basis-full md:basis-0 md:flex-1">
         <span className="hidden sm:block shrink-0"><TeamLogo team={{ name: opponent?.name ?? '?', logoUrl: oppTeam?.logoUrl || opponent?.logoUrl, tag: oppTeam?.tag }} size={84} /></span>
         <span className="sm:hidden shrink-0"><TeamLogo team={{ name: opponent?.name ?? '?', logoUrl: oppTeam?.logoUrl || opponent?.logoUrl, tag: oppTeam?.tag }} size={56} /></span>
@@ -97,7 +88,7 @@ export function MatchPanel(p: PDLUpcomingMatchProps) {
         const mine = pen.teamId === myTeamId;
         const which = !pen.games?.length ? 'całą serię' : `gry ${pen.games.join(', ')}`;
         return (
-          <div key={pen.id} className="relative flex items-start gap-3 py-3 pl-4" style={{ borderBottom: `1px solid ${ink(8)}` }}>
+          <div key={pen.id} className="shrink-0 relative flex items-start gap-3 py-2.5 pl-4" style={{ borderBottom: `1px solid ${ink(8)}` }}>
             <span className="absolute left-0 top-3 bottom-3 w-[3px]" style={{ background: mine ? C.loss : '#f0c419' }} />
             <Gavel className="w-4 h-4 mt-0.5 shrink-0" style={{ color: mine ? C.loss : '#f0c419' }} />
             <div className="text-[14px]">
@@ -108,8 +99,9 @@ export function MatchPanel(p: PDLUpcomingMatchProps) {
         );
       })}
 
-      <div className="grid gap-x-12 gap-y-10 xl:grid-cols-2 mt-7">
-        <div className="min-w-0 flex flex-col gap-10">
+      {/* Two columns that share the rest of the height (each scrolls only if it must) */}
+      <div className="grid gap-x-12 gap-y-10 lg:grid-cols-2 mt-5 lg:flex-1 lg:min-h-0">
+        <div className="min-w-0 flex flex-col gap-8 lg:min-h-0 lg:overflow-y-auto custom-scrollbar lg:pr-2">
           <DateBlock {...p} />
           {p.onSetCoach && p.onRemoveCoach && (
             <section>
@@ -136,15 +128,16 @@ export function MatchPanel(p: PDLUpcomingMatchProps) {
                 allTournamentRequests={p.allTournamentRequests} matchNameMap={p.matchNameMap} totalGames={games} />
             </section>
           )}
+          {!done && <Rules games={games} />}
         </div>
         {!done && (
-          <div className="min-w-0">
+          <div className="min-w-0 lg:min-h-0 lg:overflow-y-auto custom-scrollbar lg:pr-2">
             <Lobby match={match} games={games} timePenalty={p.timePenalty} lobbyName={p.botLobbyName} lobbyPassword={p.botLobbyPassword} />
           </div>
         )}
       </div>
 
-      {done && <MatchDetailModal match={details ? match : null} isOpen={details} onClose={() => setDetails(false)} divisionColor={T} />}
+      {done && details && createPortal(<MatchDetailModal match={match} isOpen onClose={() => setDetails(false)} divisionColor="var(--tournament-primary)" />, document.body)}
     </div>
   );
 }
@@ -347,7 +340,18 @@ function Lobby({ match, games, timePenalty, lobbyName, lobbyPassword }: { match:
         </div>
       )}
 
-      <div className="mt-8 grid gap-x-8 gap-y-5 sm:grid-cols-2">
+    </section>
+  );
+}
+
+/** Pick priority and lateness: the series rules that apply to every match */
+function Rules({ games }: { games: number }) {
+  const { tournament } = useTournament();
+  const lobby = tournament?.lobbySettings;
+  return (
+    <section>
+      <Label>Zasady</Label>
+      <div className="grid gap-x-8 gap-y-5 sm:grid-cols-2">
         <div>
           <div className="text-[10px] uppercase tracking-[0.2em] mb-1.5" style={{ color: C.muted }}>Priorytet wyboru</div>
           <div className="text-[14px] space-y-1">
@@ -366,4 +370,3 @@ function Lobby({ match, games, timePenalty, lobbyName, lobbyPassword }: { match:
     </section>
   );
 }
-

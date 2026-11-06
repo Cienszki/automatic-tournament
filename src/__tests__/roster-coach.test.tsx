@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { PDLTransferSection } from '@/components/pdl/my-team/PDLTransferSection';
+import * as TooltipPrimitive from '@radix-ui/react-tooltip';
+import { SquadView } from '@/components/team/SquadView';
 import type { Team } from '@/lib/definitions';
 
 vi.mock('@/lib/firebase', () => ({ db: {}, auth: {}, storage: {} }));
@@ -17,15 +18,16 @@ const team = {
 function setup(coach: { nickname: string | null; locked?: boolean }) {
   const onSaveRoster = vi.fn().mockResolvedValue(undefined);
   const onSaveCoach = vi.fn().mockResolvedValue(undefined);
+  // The account page provides the tooltips' provider
   render(
-    <PDLTransferSection
+    <TooltipPrimitive.Provider>
+    <SquadView
       team={team}
       isCaptain
       isTransferWindowOpen
       isSeasonActive={false}
       previousRoundPlayers={[]}
       maxTransfers={2}
-      autoEdit
       onSaveRoster={onSaveRoster}
       coach={{
         nickname: coach.nickname,
@@ -34,7 +36,8 @@ function setup(coach: { nickname: string | null; locked?: boolean }) {
         rulesDetails: 'Kapitan może go zmienić w dowolnym momencie — z wyjątkiem 24 h przed meczem.',
         onSave: onSaveCoach,
       }}
-    />,
+    />
+    </TooltipPrimitive.Provider>,
   );
   return { onSaveRoster, onSaveCoach };
 }
@@ -63,8 +66,14 @@ describe('coach in the roster editor', () => {
     await waitFor(() => expect(onSaveCoach).toHaveBeenCalledWith(null));
   });
 
-  it('does not touch the coach when it was not changed', async () => {
+  it('offers saving only once something changed', () => {
+    setup({ nickname: 'Kubox' });
+    expect(screen.queryByRole('button', { name: /Zapisz skład/ })).toBeNull();
+  });
+
+  it('does not touch the coach when only the squad changed', async () => {
     const { onSaveRoster, onSaveCoach } = setup({ nickname: 'Kubox' });
+    fireEvent.change(screen.getAllByLabelText('Nick w lidze')[0], { target: { value: 'Nowy nick' } });
     await saveAndConfirm();
     await waitFor(() => expect(onSaveRoster).toHaveBeenCalled());
     expect(onSaveCoach).not.toHaveBeenCalled();
