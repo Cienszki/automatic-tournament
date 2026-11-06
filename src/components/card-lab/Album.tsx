@@ -10,7 +10,7 @@ import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { Avatar, C, TeamLogo, ink, mix, useHeaderFont } from '@/components/stats-lab/kit';
 import { useFitText, useLogoColor } from '@/components/teams-section/fit';
 import type { PlayerX, TeamX } from '@/lib/stats-lab/derive';
-import { byStrength, RARITY_ODDS, ROLE_KEYS, ROLE_SHORT, TIER, tierOf, TOTW_CHANCE, type GCard, type Tier } from '@/lib/card-lab/cards';
+import { byStrength, ROLE_KEYS, ROLE_SHORT, TIER, tierOf, type GCard, type Tier } from '@/lib/card-lab/cards';
 import { useTournament } from '@/context/TournamentContext';
 import { count } from '@/lib/plural';
 import { Action, CardBack, CardFace, Heading, Label, RATIO } from './ui';
@@ -161,8 +161,8 @@ function Sparks({ color, n = 16 }: { color: string; n?: number }) {
 const RANK: Record<Tier, number> = { wood: 0, bronze: 1, silver: 2, gold: 3, elite: 4, totw: 5 };
 
 /**
- * Pack opening: the pack drops in, shakes and bursts; five cards fly out face down, each glowing in its
- * tier's colour (you can tell a good one is coming); click to turn one (or all). Better cards get a
+ * Pack opening: the pack drops in, shakes and bursts; five cards fly out face down, all alike (nothing
+ * gives a card away before it is turned); click to turn one (or all). Better cards get a
  * bigger flare, elite and team-of-the-round cards flash the whole screen.
  */
 export function PackReveal({ cards, isNew, onClose, left, onNext }: { cards: GCard[]; isNew: (c: GCard) => boolean; onClose: () => void; left: number; onNext: () => void }) {
@@ -213,10 +213,11 @@ export function PackReveal({ cards, isNew, onClose, left, onNext }: { cards: GCa
             <motion.div key={i} className="absolute" style={{ width: 210, height: Math.round(210 * RATIO), perspective: 1200, zIndex: turned ? 2 : 1 }}
               initial={{ x: 0, y: 30, scale: 0.3, rotate: (i - 2) * 25, opacity: 0 }} animate={{ x, y: 0, scale: 1, rotate: 0, opacity: 1 }}
               transition={{ delay: i * 0.07, type: 'spring', stiffness: 170, damping: 18 }}>
-              {/* Tier glow: the better the card, the stronger it pulses while still face down */}
-              <motion.div className="absolute -inset-4 rounded-[28px] blur-xl" style={{ background: col }}
-                animate={turned ? { opacity: RANK[t] >= 2 ? 0.55 : 0.15 } : { opacity: [0.12 + RANK[t] * 0.1, 0.3 + RANK[t] * 0.15, 0.12 + RANK[t] * 0.1] }}
-                transition={turned ? { duration: 0.4 } : { duration: 1.4 - RANK[t] * 0.2, repeat: Infinity }} />
+              {/* Glow: the same soft pulse on every card while face down (nothing gives the card away),
+                  the card's own rarity colour once it is turned */}
+              <motion.div className="absolute -inset-4 rounded-[28px] blur-xl" style={{ background: turned ? col : '#ffffff' }}
+                animate={turned ? { opacity: RANK[t] >= 2 ? 0.55 : 0.15 } : { opacity: [0.06, 0.16, 0.06] }}
+                transition={turned ? { duration: 0.4 } : { duration: 1.6, repeat: Infinity }} />
               <motion.button type="button" className="absolute inset-0" style={{ transformStyle: 'preserve-3d' }} onClick={() => turn(i)}
                 whileHover={!turned ? { y: -10 } : undefined}
                 animate={turned ? { rotateY: 180, scale: [1, 1.18, 1] } : { rotateY: 0, scale: 1 }} transition={{ duration: 0.7, ease: 'easeOut' }}>
@@ -257,26 +258,14 @@ export function PackReveal({ cards, isNew, onClose, left, onNext }: { cards: GCa
   );
 }
 
-export function Album({ cards, collection, packs, onOpenPack }: { cards: GCard[]; collection: GCard[]; packs: number; onOpenPack: () => Promise<GCard[] | null> }) {
+export function Album({ cards, collection }: { cards: GCard[]; collection: GCard[] }) {
   const teams = useMemo(() => [...new Map(cards.filter(c => c.team).map(c => [c.team!.id, c.team!])).values()].sort((a, b) => a.name.localeCompare(b.name, 'pl')), [cards]);
-  const [opening, setOpening] = useState(false);
   const [page, setPage] = useState(0);
-  const [pack, setPack] = useState<{ cards: GCard[]; before: Set<string>; n: number } | null>(null);
   const [focus, setFocus] = useState<Slot | null>(null);
   const pages = Math.max(1, Math.ceil(teams.length / PER_PAGE));
   const players = new Set(collection.map(c => c.pid));
   const allPlayers = new Set(cards.map(c => c.pid));
   const font = useHeaderFont();
-
-  // The pack is drawn on the server; the reveal starts once its cards are here
-  const rip = async () => {
-    if (packs <= 0 || opening) return;
-    setOpening(true);
-    const before = new Set(collection.map(c => c.pid));
-    const p = await onOpenPack();
-    setOpening(false);
-    if (p) setPack(prev => ({ cards: p, before, n: (prev?.n ?? 0) + 1 }));
-  };
 
   return (
     <div className="relative h-full flex flex-col gap-5 min-h-0">
@@ -285,12 +274,6 @@ export function Album({ cards, collection, packs, onOpenPack }: { cards: GCard[]
           <Label>Kolekcja</Label>
           <div className="font-logik-extended-bold text-[34px] leading-none tabular-nums" style={{ color: C.heading, ...font }}>{players.size}<span className="text-[18px]" style={{ color: C.muted }}> / {allPlayers.size} graczy</span></div>
         </div>
-        <div className="text-[13px] pb-1" style={{ color: C.muted }}>{count(collection.length, 'karta', 'karty', 'kart')} · {count(new Set(collection.map(c => c.id)).size, 'różna', 'różne', 'różnych')} · {count(collection.filter(c => c.totw).length, 'karta drużyny kolejki', 'karty drużyny kolejki', 'kart drużyny kolejki')}</div>
-        <div className="flex-1" />
-        <div className="text-[12px] max-w-[440px] text-right pb-1" style={{ color: C.muted }}>
-          Paczka: po jednej karcie na pozycję, z ostatniego meczu drużyny. Szanse: {(Object.keys(RARITY_ODDS) as Array<keyof typeof RARITY_ODDS>).map(t => `${TIER[t].label.toLowerCase()} ${RARITY_ODDS[t]} %`).join(', ')}. Gracz z drużyny kolejki: {Math.round(TOTW_CHANCE * 100)} % szans na jego kartę specjalną (+1 siły).
-        </div>
-        <Action primary big disabled={packs <= 0} onClick={rip}>{packs > 0 ? `Otwórz paczkę · ${packs}` : 'Brak paczek'}</Action>
       </div>
 
       {/* Room at the bottom right for the Play button */}
@@ -311,7 +294,6 @@ export function Album({ cards, collection, packs, onOpenPack }: { cards: GCard[]
       </div>
 
       <AnimatePresence>
-        {pack && <PackReveal key={pack.n} cards={pack.cards} isNew={c => !pack.before.has(c.pid)} onClose={() => setPack(null)} left={packs} onNext={rip} />}
         {focus && focus.cards.length > 0 && (
           <motion.div className="absolute inset-0 z-40 flex flex-col items-center justify-center gap-6" style={{ background: 'rgba(5,5,10,0.85)', backdropFilter: 'blur(6px)' }} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setFocus(null)}>
             <div className="flex items-center gap-4 text-white">

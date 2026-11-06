@@ -162,21 +162,20 @@ export function packPool(cards: GCard[]): Map<RoleKey, Array<{ base: GCard; totw
   return pool;
 }
 
-/** Chance (%) of each rarity in a pack slot. A rarity the position has no card of now shares its
- *  chance out among the others. Sim: ~40 packs over a season give 4.5–5.5 elite cards in a deck. */
-export const RARITY_ODDS: Record<Exclude<Tier, 'totw'>, number> = { wood: 30, bronze: 26, silver: 20, gold: 14, elite: 10 };
+/** How likely each card is next to a wooden one (per card, not per rarity: a rarity only a couple
+ *  of cards have would otherwise hand those few out all the time). Sim on real seasons: ~40 packs
+ *  give 4.5–5.5 elite cards in a deck, no card is more than ~11 % of its position's draws. */
+export const RARITY_WEIGHT: Record<Exclude<Tier, 'totw'>, number> = { wood: 1, bronze: 0.95, silver: 0.9, gold: 0.8, elite: 0.65 };
+const weightOf = (c: GCard) => RARITY_WEIGHT[tierOf({ ...c, totw: false }) as keyof typeof RARITY_WEIGHT];
 
-/** One pack: a card for each role — a rarity by RARITY_ODDS, then a random team's last series of it */
+/** One pack: a card for each role — a random team's last series, better cards a bit less likely */
 export function openPack(pool: ReturnType<typeof packPool>, rnd = Math.random): GCard[] {
   const out: GCard[] = [];
   for (const r of ROLE_KEYS) {
     const list = pool.get(r)!;
     if (!list.length) continue;
-    const n = new Map<Tier, number>();
-    for (const e of list) n.set(tierOf(e.base), (n.get(tierOf(e.base)) ?? 0) + 1);
-    const weight = (e: { base: GCard }) => { const t = tierOf(e.base) as keyof typeof RARITY_ODDS; return RARITY_ODDS[t] / n.get(t)!; };
-    let x = rnd() * list.reduce((a, e) => a + weight(e), 0);
-    const e = list.find(c => (x -= weight(c)) <= 0) ?? list[list.length - 1];
+    let x = rnd() * list.reduce((a, e) => a + weightOf(e.base), 0);
+    const e = list.find(c => (x -= weightOf(c.base)) <= 0) ?? list[list.length - 1];
     out.push(e.totw && rnd() < TOTW_CHANCE ? e.totw : e.base);
   }
   return out;

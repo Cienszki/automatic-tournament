@@ -296,7 +296,7 @@ function LobbyHub({ view, link, offset, onCancel }: { view: NonNullable<ReturnTy
           <span className="flex items-center gap-1.5 text-[12px] font-bold uppercase tracking-widest" style={{ color: copied ? C.win : C.primary }}>{copied ? <><Check className="w-4 h-4" />Skopiowany</> : <><Copy className="w-4 h-4" />Kopiuj</>}</span>
         </button>
       )}
-      <BigButton title={seated ? 'Rywal prawie gotowy' : `Szukam · ${fmt(waited)}`} sub="Kliknij, żeby anulować" onClick={onCancel} waiting />
+      <BigButton title={seated ? 'Rywal prawie gotowy' : `Czekam · ${fmt(waited)}`} sub="Kliknij, żeby anulować" onClick={onCancel} waiting />
     </motion.div>
   );
 }
@@ -453,7 +453,7 @@ export function CardsHome({ statsKey, cards, collection, packs, slots, setSlots,
         {album && (
           <motion.div key="album" data-snap-lock className="absolute inset-0 z-40 px-16 pt-6 pb-6" style={{ background: 'var(--tournament-background, #0b0b10)' }} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }}>
             <button type="button" aria-label="Zamknij album" onClick={() => setAlbum(false)} className="absolute right-6 top-5 z-50 p-2 opacity-70 hover:opacity-100" style={{ color: C.heading }}><X className="w-8 h-8" /></button>
-            <Album cards={cards} collection={collection} packs={packs} onOpenPack={onOpenPack} />
+            <Album cards={cards} collection={collection} />
           </motion.div>
         )}
         {pack && <PackReveal key={pack.n} cards={pack.cards} isNew={c => !pack.before.has(c.pid)} onClose={() => setPack(null)} left={packs} onNext={rip} />}
