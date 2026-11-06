@@ -6,7 +6,7 @@ import type { ComponentType } from 'react';
 import type { LucideIcon } from 'lucide-react';
 import {
   ArrowUpDown, Award, Ban, ChartCandlestick, ChartNoAxesColumn, CircleHelp, Clapperboard, ClipboardList, Crosshair, Crown, Fingerprint,
-  Flag, Flame, FlaskConical, Grid3x3, History, Layers, LayoutGrid, ListOrdered, Map as MapIcon, Medal, Sparkles, Swords,
+  Flag, Flame, FlaskConical, Grid3x3, History, LayoutGrid, ListOrdered, Map as MapIcon, Medal, Sparkles, Swords,
   TrendingUp, Trophy, UserSearch, Users,
 } from 'lucide-react';
 import type { Model } from '@/lib/stats-lab/derive';
@@ -34,12 +34,11 @@ export const PAGES: StatsPage[] = [
   { id: 'rekordy', title: 'Rekordy', blurb: 'Najlepsze pojedyncze występy i kto ich goni', group: 'main', icon: Medal, load: () => import('@/components/stats-lab/designs/D01Records') },
   { id: 'liderzy', title: 'Liderzy', blurb: 'Podium w każdej statystyce — średnio, łącznie, w jednej grze', group: 'main', icon: Crown, load: () => import('@/components/stats-lab/designs/D02Podium') },
   { id: 'bohaterowie', title: 'Bohaterowie', blurb: 'Kto rządzi draftem: picki, bany i skuteczność', group: 'main', icon: Swords, load: () => import('@/components/stats-lab/designs/D03HeroMosaic') },
-  { id: 'historie', title: 'Historie', blurb: 'Najlepsze momenty sezonu jako relacje', group: 'main', icon: Clapperboard, load: () => import('@/components/stats-lab/designs/D10Stories') },
+  { id: 'druzyna-tygodnia', title: 'Drużyna tygodnia', roundTitle: 'Drużyna kolejki', blurb: 'Najlepsza seria na każdej pozycji, na mapie', group: 'main', icon: MapIcon, load: () => import('@/components/stats-lab/designs/D15TeamOfWeek') },
   { id: 'osiagniecia', title: 'Osiągnięcia', blurb: 'Brąz, srebro i złoto — kto co już zdobył', group: 'main', icon: Award, load: () => import('@/components/stats-lab/designs/D08Achievements') },
   { id: 'elo', title: 'Ranking Elo', blurb: 'Siła drużyn po każdej grze i szanse w meczu', group: 'main', icon: TrendingUp, load: () => import('@/components/stats-lab/designs/D23Elo') },
 
   // ── Play ───────────────────────────────────────────────────────────
-  { id: 'karty', title: 'Karty', blurb: 'Otwieraj paczki, zbieraj karty graczy i drużyn, wygrywaj pojedynki', group: 'play', icon: Layers, load: () => import('./pages/Cards') },
   { id: 'dotadle', title: 'Dotadle', blurb: 'Zgadnij gracza, bohatera i drużynę dnia', group: 'play', icon: Grid3x3, load: () => import('./pages/Dotadle') },
   { id: 'kto-to', title: 'Kto to?', blurb: 'Quiz z liczb sezonu — im mniej podpowiedzi, tym więcej punktów', group: 'play', icon: CircleHelp, load: () => import('./pages/Quiz') },
   { id: 'wyzej-nizej', title: 'Wyżej czy niżej', blurb: 'Która liczba jest większa? Graj na serię', group: 'play', icon: ArrowUpDown, load: () => import('@/components/stats-lab/designs/D19HigherLower') },
@@ -50,12 +49,12 @@ export const PAGES: StatsPage[] = [
   { id: 'tiery', title: 'Lista tierów', blurb: 'S–D z danych — i Twoja własna lista do porównania', group: 'players', icon: ListOrdered, load: () => import('@/components/stats-lab/designs/D22TierList') },
   { id: 'blizniacy', title: 'Bliźniacy', blurb: 'Kto gra najbardziej jak Ty — i kto zupełnie inaczej', group: 'players', icon: Users, load: () => import('@/components/stats-lab/designs/D75Twins') },
   { id: 'wyscig', title: 'Wyścig', blurb: 'Sezon gra po grze jako wyścig słupków', group: 'players', icon: Flag, load: () => import('@/components/stats-lab/designs/D17Race') },
-  { id: 'druzyna-tygodnia', title: 'Drużyna tygodnia', roundTitle: 'Drużyna kolejki', blurb: 'Najlepsza seria na każdej pozycji, na mapie', group: 'teams', icon: MapIcon, load: () => import('@/components/stats-lab/designs/D15TeamOfWeek') },
   { id: 'odciski', title: 'Odciski drużyn', blurb: 'Styl gry każdej drużyny na tle reszty ligi', group: 'teams', icon: Fingerprint, load: () => import('@/components/stats-lab/designs/D07Fingerprints') },
   { id: 'kolekcja', title: 'Kolekcja bohaterów', blurb: 'Iloma bohaterami zagrała każda drużyna', group: 'teams', icon: LayoutGrid, load: () => import('./pages/TeamHeroes') },
   { id: 'draft', title: 'Pokój draftu', blurb: 'Co wybierano w każdym kroku draftu', group: 'heroes', icon: Ban, load: () => import('@/components/stats-lab/designs/D11Draft') },
   { id: 'meta', title: 'Meta tygodnia', blurb: 'Kto rośnie, a kto spada w drafcie', group: 'heroes', icon: Flame, load: () => import('@/components/stats-lab/designs/D59Meta') },
   { id: 'konstelacja', title: 'Konstelacja', blurb: 'Bohaterowie grani razem i przeciwko sobie', group: 'heroes', icon: Sparkles, load: () => import('@/components/stats-lab/designs/D12Constellation') },
+  { id: 'historie', title: 'Historie', blurb: 'Najlepsze momenty sezonu jako relacje', group: 'records', icon: Clapperboard, load: () => import('@/components/stats-lab/designs/D10Stories') },
   { id: 'kronika', title: 'Kronika rekordów', blurb: 'Jak padał każdy rekord, krok po kroku', group: 'records', icon: History, load: () => import('@/components/stats-lab/designs/D26RecordChronicle') },
   { id: 'laboratorium', title: 'Laboratorium', blurb: 'Dowolne dwie statystyki na wykresie albo w tabeli', group: 'records', icon: FlaskConical, load: () => import('@/components/stats-lab/designs/D09Lab') },
 ];

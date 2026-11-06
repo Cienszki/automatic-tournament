@@ -1,37 +1,37 @@
 'use client';
 
 // Deck building: 20 slots on screen — the top row two for each position (marked with the position's
-// icon), the bottom row free for any position. Click a slot (empty, or a card to change it) and the
-// cards that fit slide in at the top; the chosen card stays in exactly that slot. One card per player.
+// icon), the bottom row free for any position. Click a slot (empty, or a card to change it) and every
+// card that fits opens over the page; the chosen card stays in exactly that slot. One card per player.
 
 import React, { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ChevronLeft, ChevronRight, Plus, X } from 'lucide-react';
+import { Plus, X } from 'lucide-react';
 import { C, mix, useHeaderFont } from '@/components/stats-lab/kit';
 import { roleIcons } from '@/app/fantasy/roleIcons';
-import { ROLE_KEYS, type DeckRule, type GCard, type RoleKey } from '@/lib/card-lab/cards';
+import { byStrength, ROLE_KEYS, type DeckRule, type GCard, type RoleKey } from '@/lib/card-lab/cards';
 import { slotDefs, type DeckSlots, type SlotDef } from '@/lib/card-lab/frozen';
 import { KEYWORD } from '@/lib/card-lab/outposts';
 import { Action, CardFace, RATIO } from './ui';
 
 const W = 162;
-const PICK_W = 168;
-const PER_PAGE = 9;
+const PICK_W = 196;
 const DIM = 'rgba(255,255,255,0.55)';
 
 export type { DeckSlots } from '@/lib/card-lab/frozen';
 
-export function DeckBuilder({ collection, rule, slots, setSlots }: { collection: GCard[]; rule: DeckRule; slots: DeckSlots; setSlots: (s: DeckSlots) => void }) {
+/** `w` = card width (the front page uses smaller cards); `room` = leave space at the bottom for the Play button */
+export function DeckBuilder({ collection, rule, slots, setSlots, w = W, room = true }: { collection: GCard[]; rule: DeckRule; slots: DeckSlots; setSlots: (s: DeckSlots) => void; w?: number; room?: boolean }) {
   const defs = slotDefs(rule);
   const byId = new Map(collection.map(c => [c.id, c]));
   const cardIn = (key: string) => (slots[key] ? byId.get(slots[key]) : undefined);
   const [open, setOpen] = useState<SlotDef | null>(null);
   const pairs = (list: SlotDef[]) => Array.from({ length: Math.ceil(list.length / 2) }, (_, i) => list.slice(i * 2, i * 2 + 2));
   const row = (list: SlotDef[]) => (
-    <div className="flex justify-center gap-7">
+    <div className="flex justify-center" style={{ gap: Math.round(w * 0.17) }}>
       {pairs(list).map((pair, i) => (
-        <div key={i} className="flex gap-2.5">
-          {pair.map(sl => <Slot key={sl.key} def={sl} card={cardIn(sl.key)} active={open?.key === sl.key} onClick={() => setOpen(sl)} />)}
+        <div key={i} className="flex" style={{ gap: Math.round(w * 0.06) }}>
+          {pair.map(sl => <Slot key={sl.key} def={sl} card={cardIn(sl.key)} w={w} active={open?.key === sl.key} onClick={() => setOpen(sl)} />)}
         </div>
       ))}
     </div>
@@ -46,7 +46,8 @@ export function DeckBuilder({ collection, rule, slots, setSlots }: { collection:
   const remove = (key: string) => { const next = { ...slots }; delete next[key]; setSlots(next); };
 
   return (
-    <div className="relative h-full flex flex-col justify-center gap-8 min-h-0 pb-[110px]">
+    // Not `relative`: the card picker covers the whole page around the deck
+    <div className={`h-full flex flex-col justify-center min-h-0 ${room ? 'gap-8 pb-[110px]' : 'gap-5'}`}>
       {row(defs.filter(d => d.role))}
       {row(defs.filter(d => !d.role))}
       <AnimatePresence>
@@ -63,23 +64,23 @@ function SlotIcon({ role, size }: { role: RoleKey | null; size: number }) {
   return <Icon style={{ width: size, height: size }} />;
 }
 
-function Slot({ def, card, active, onClick }: { def: SlotDef; card?: GCard; active: boolean; onClick: () => void }) {
+function Slot({ def, card, w, active, onClick }: { def: SlotDef; card?: GCard; w: number; active: boolean; onClick: () => void }) {
   const font = useHeaderFont();
-  const h = Math.round(W * RATIO);
+  const h = Math.round(w * RATIO);
   return (
-    <button type="button" data-slot={def.key} onClick={onClick} className="group relative" style={{ width: W, height: h }}>
+    <button type="button" data-slot={def.key} onClick={onClick} className="group relative" style={{ width: w, height: h }}>
       {card ? (
-        <CardFace c={card} w={W} selected={active}>
+        <CardFace c={card} w={w} selected={active}>
           {/* Inside the card, so it covers exactly the card */}
           <span className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity font-logik-extended-bold uppercase tracking-widest text-[15px] text-white"
             style={{ background: 'rgba(10,11,15,0.74)', ...font }}>
-            <SlotIcon role={def.role} size={34} />Zmień
+            <SlotIcon role={def.role} size={Math.round(w * 0.21)} />Zmień
           </span>
         </CardFace>
       ) : (
         <span className="absolute inset-0 flex flex-col items-center justify-center gap-2 rounded-[16px] transition-colors"
           style={{ border: `2px dashed ${active ? C.primary : mix(C.text, 28)}`, color: active ? C.primary : mix(C.text, 50) }}>
-          <span className="transition-transform group-hover:scale-110"><SlotIcon role={def.role} size={def.role ? 46 : 40} /></span>
+          <span className="transition-transform group-hover:scale-110"><SlotIcon role={def.role} size={Math.round(w * (def.role ? 0.28 : 0.25))} /></span>
           {def.role && <Plus className="w-5 h-5 opacity-70" />}
         </span>
       )}
@@ -87,65 +88,59 @@ function Slot({ def, card, active, onClick }: { def: SlotDef; card?: GCard; acti
   );
 }
 
-/** The cards that fit a slot, sliding in at the top of the screen */
+/** Every card that fits a slot, over the whole page */
 function Picker({ slot, current, collection, deckIds, deckPids, onChoose, onRemove, onClose }: {
   slot: SlotDef; current?: GCard; collection: GCard[]; deckIds: Set<string>; deckPids: Set<string | undefined>;
   onChoose: (c: GCard) => void; onRemove: () => void; onClose: () => void;
 }) {
   const font = useHeaderFont();
   const [role, setRole] = useState<RoleKey>(slot.role ?? current?.role ?? 'Carry');
-  const [page, setPage] = useState(0);
-  useEffect(() => { setRole(slot.role ?? current?.role ?? 'Carry'); setPage(0); }, [slot.key]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { setRole(slot.role ?? current?.role ?? 'Carry'); }, [slot.key]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { const k = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); }; window.addEventListener('keydown', k); return () => window.removeEventListener('keydown', k); }, [onClose]);
-  const list = [...new Map(collection.map(c => [c.id, c])).values()].filter(c => c.role === role).sort((a, b) => b.ovr - a.ovr);
-  const pages = Math.max(1, Math.ceil(list.length / PER_PAGE));
+  const list = [...new Map(collection.map(c => [c.id, c])).values()].filter(c => c.role === role).sort(byStrength);
 
+  // Over the whole page: every card that fits, at a size you can read
   return (
-    <>
-      <motion.div className="absolute -inset-x-16 -bottom-6 -top-24 z-40" style={{ background: 'rgba(5,6,9,0.55)' }} onClick={onClose}
-        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} />
-      <motion.div className="absolute -left-16 -right-16 -top-24 z-50 px-16 pt-6 pb-7 flex flex-col gap-4"
-        style={{ background: 'linear-gradient(180deg, #0d0f15 85%, rgba(13,15,21,0.94))', boxShadow: `0 1px 0 ${mix(C.primary, 60)}, 0 30px 60px rgba(0,0,0,0.6)` }}
-        initial={{ y: '-100%' }} animate={{ y: 0 }} exit={{ y: '-100%' }} transition={{ type: 'spring', stiffness: 260, damping: 30 }}>
-        <div className="flex items-center gap-6 text-white">
-          {slot.role
-            ? <span className="flex items-center gap-2.5 font-logik-extended-bold uppercase text-[22px]" style={font}><SlotIcon role={slot.role} size={26} />{KEYWORD[slot.role].name}</span>
-            : (
-              <div className="flex items-center gap-1">
-                {ROLE_KEYS.map(r => (
-                  <button key={r} type="button" onClick={() => { setRole(r); setPage(0); }} className="relative flex items-center gap-2 px-3 py-1.5 font-logik-extended-bold uppercase text-[14px]"
-                    style={{ color: r === role ? '#fff' : DIM, ...font }}>
-                    <SlotIcon role={r} size={18} />{KEYWORD[r].name}
-                    {r === role && <span className="absolute left-2 right-2 -bottom-0.5 h-[3px] rounded-full" style={{ background: C.primary }} />}
-                  </button>
-                ))}
+    <motion.div data-snap-lock className="absolute inset-0 z-50 flex flex-col px-10 pt-6 pb-6 gap-5"
+      style={{ background: 'rgba(10,11,16,0.97)', backdropFilter: 'blur(6px)' }}
+      initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 24 }} transition={{ duration: 0.22 }}>
+      <div className="shrink-0 flex items-center gap-6 text-white">
+        {slot.role
+          ? <span className="flex items-center gap-2.5 font-logik-extended-bold uppercase text-[24px]" style={font}><SlotIcon role={slot.role} size={28} />{KEYWORD[slot.role].name}</span>
+          : (
+            <div className="flex items-center gap-1">
+              {ROLE_KEYS.map(r => (
+                <button key={r} type="button" onClick={() => setRole(r)} className="relative flex items-center gap-2 px-3 py-1.5 font-logik-extended-bold uppercase text-[15px]"
+                  style={{ color: r === role ? '#fff' : DIM, ...font }}>
+                  <SlotIcon role={r} size={19} />{KEYWORD[r].name}
+                  {r === role && <span className="absolute left-2 right-2 -bottom-0.5 h-[3px] rounded-full" style={{ background: C.primary }} />}
+                </button>
+              ))}
+            </div>
+          )}
+        <span className="text-[14px]" style={{ color: DIM }}>{KEYWORD[role].ability}: {KEYWORD[role].text}</span>
+        <div className="flex-1" />
+        {current && <Action onDark onClick={onRemove}>Zdejmij z talii</Action>}
+        <button type="button" aria-label="Zamknij" onClick={onClose} className="opacity-70 hover:opacity-100"><X className="w-8 h-8" /></button>
+      </div>
+      <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar" data-own-scroll>
+        <div className="flex flex-wrap justify-center gap-x-5 gap-y-4 pb-4">
+          {list.map(c => {
+            const here = c.id === current?.id;
+            const used = !here && deckIds.has(c.id);
+            const twin = !here && !used && deckPids.has(c.pid);
+            return (
+              <div key={c.id} className="flex flex-col items-center gap-1.5">
+                <CardFace c={c} w={PICK_W} selected={here} dim={used} onClick={here || used ? undefined : () => onChoose(c)} />
+                <span className="text-[10px] font-bold uppercase tracking-widest whitespace-nowrap" style={{ color: here ? '#fff' : twin ? '#f0b44c' : DIM }}>
+                  {here ? 'W tym miejscu' : used ? 'Już w talii' : twin ? 'Zamieni inną kartę gracza' : ' '}
+                </span>
               </div>
-            )}
-          <div className="flex-1" />
-          {current && <Action onDark onClick={onRemove}>Zdejmij z talii</Action>}
-          <button type="button" aria-label="Zamknij" onClick={onClose} className="opacity-70 hover:opacity-100"><X className="w-7 h-7" /></button>
+            );
+          })}
+          {!list.length && <span className="self-center mt-24 text-[16px]" style={{ color: DIM }}>Nie masz jeszcze kart na tej pozycji: otwórz paczkę.</span>}
         </div>
-        <div className="flex items-center gap-3">
-          <button type="button" aria-label="Poprzednie" disabled={page === 0} onClick={() => setPage(p => p - 1)} className="text-white disabled:opacity-15"><ChevronLeft className="w-9 h-9" /></button>
-          <div className="flex-1 flex gap-4 justify-center" style={{ minHeight: Math.round(PICK_W * RATIO) + 22 }}>
-            {list.slice(page * PER_PAGE, page * PER_PAGE + PER_PAGE).map(c => {
-              const here = c.id === current?.id;
-              const used = !here && deckIds.has(c.id);
-              const twin = !here && !used && deckPids.has(c.pid);
-              return (
-                <div key={c.id} className="flex flex-col items-center gap-1.5">
-                  <CardFace c={c} w={PICK_W} selected={here} dim={used} onClick={here || used ? undefined : () => onChoose(c)} />
-                  <span className="text-[10px] font-bold uppercase tracking-widest whitespace-nowrap" style={{ color: here ? '#fff' : twin ? '#f0b44c' : DIM }}>
-                    {here ? 'W tym miejscu' : used ? 'Już w talii' : twin ? 'Zamieni inną kartę gracza' : ' '}
-                  </span>
-                </div>
-              );
-            })}
-            {!list.length && <span className="self-center text-[15px]" style={{ color: DIM }}>Nie masz jeszcze kart na tej pozycji: otwórz paczkę w albumie.</span>}
-          </div>
-          <button type="button" aria-label="Następne" disabled={page >= pages - 1} onClick={() => setPage(p => p + 1)} className="text-white disabled:opacity-15"><ChevronRight className="w-9 h-9" /></button>
-        </div>
-      </motion.div>
-    </>
+      </div>
+    </motion.div>
   );
 }

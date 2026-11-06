@@ -4,8 +4,7 @@ import type { Model, Perf, PlayerX, TeamX } from '@/lib/stats-lab/derive';
 import { rankPlayers, topPerfs } from '@/lib/stats-lab/derive';
 import { metric, type MetricKey } from '@/lib/stats-lab/metrics';
 import { computeAchievements, collectorRanking, type AchievementState } from '@/lib/stats-lab/achievements';
-import { ROLES, eloTimeline } from '@/lib/stats-lab/season';
-import { buildFacts, type Fact } from '@/lib/stats-lab/teasers';
+import { ROLES, bestSeries, eloTimeline, seasonPeriods, type SeriesEntry } from '@/lib/stats-lab/season';
 
 /** Records the gallery's "Rekordy" panel cycles through */
 const RECORD_KEYS: MetricKey[] = ['kills', 'assists', 'gpm', 'heroDamage', 'xpm', 'lastHits', 'wards', 'netWorth', 'towerDamage', 'stacks'];
@@ -18,12 +17,13 @@ export interface OverviewData {
   records: RecordTeaser[];
   leaders: Array<{ player: PlayerX; value: number }>;
   heroes: Model['heroes'];
-  stories: Fact[];
+  /** The team of the latest week / round: the best series at each position */
+  totw: { label: string; picks: Array<{ role: string; entry: SeriesEntry }> } | null;
   achievements: { featured: AchievementState[]; lit: number; total: number; top?: { player: PlayerX; points: number } };
   elo: Array<{ team: TeamX; rating: number; spark: number[] }>;
 }
 
-export function buildOverview(model: Model): OverviewData {
+export function buildOverview(model: Model, type?: string): OverviewData {
   const games = model.games;
 
   const records: RecordTeaser[] = [];
@@ -54,9 +54,6 @@ export function buildOverview(model: Model): OverviewData {
     }
   }
 
-  const facts = buildFacts(model);
-  // Records and the MVP have panels of their own
-  const stories = facts.filter(f => f.heroId != null && (f.player || f.team) && !f.id.startsWith('rec-') && f.id !== 'mvp').slice(0, 6);
 
   // Same populations as the rankings view: every scored game counts, no minimum
   const scored = rankPlayers(model, 'score', 'avg', 1);
@@ -70,12 +67,17 @@ export function buildOverview(model: Model): OverviewData {
   }
   const bestTeam = [...teamScore.values()].map(t => ({ team: t.team, value: t.sum / t.n })).sort((a, b) => b.value - a.value)[0];
 
+  const last = seasonPeriods(model, type).list.filter(p => p.perfs.length).pop();
+  const best = last ? bestSeries(last.perfs) : [];
+  const picks = ROLES.flatMap(role => { const entry = best.find(e => e.player.role === role); return entry ? [{ role, entry }] : []; });
+  const totw = last && picks.length ? { label: last.label, picks } : null;
+
   return {
     rankings: { roles, team: bestTeam },
     records,
     leaders: rankPlayers(model, 'score', 'avg').slice(0, 3).map(r => ({ player: r.player, value: r.value })),
     heroes: [...model.heroes].sort((a, b) => b.contest - a.contest).slice(0, 5),
-    stories,
+    totw,
     achievements: { featured, lit, total: ach.length * 3, top: collectorRanking(ach)[0] },
     elo: table.map(r => ({ ...r, spark: spark.get(r.team.id) ?? [] })),
   };

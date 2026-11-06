@@ -3,11 +3,11 @@ import { getHomeSections, getHomeSectionIndex } from '@/context/HomeNavigationCo
 
 describe('getHomeSections', () => {
   it('includes optional sections only when they apply', () => {
-    expect(getHomeSections({ pickemEnabled: true, hasTeam: true })).toEqual(
-      ['start', 'groups', 'schedule', 'teams', 'stats', 'pickem', 'my-team'],
+    expect(getHomeSections({ pickemEnabled: true, signedIn: true })).toEqual(
+      ['start', 'groups', 'schedule', 'teams', 'stats', 'cards', 'pickem', 'my-team'],
     );
-    expect(getHomeSections({ pickemEnabled: false, hasTeam: false })).toEqual(
-      ['start', 'groups', 'schedule', 'teams', 'stats'],
+    expect(getHomeSections({ pickemEnabled: false, signedIn: false })).toEqual(
+      ['start', 'groups', 'schedule', 'teams', 'stats', 'cards'],
     );
   });
 });
@@ -21,17 +21,18 @@ describe('getHomeSectionIndex', () => {
       expect(getHomeSectionIndex('stats', { pickemEnabled })).toBe(4);
       // Rankings is a view of the stats section now
       expect(getHomeSectionIndex('rankings', { pickemEnabled })).toBe(4);
+      expect(getHomeSectionIndex('cards', { pickemEnabled })).toBe(5);
     }
   });
 
-  it('moves "my team" up when Pick\'em is disabled', () => {
-    expect(getHomeSectionIndex('my-team', { pickemEnabled: true })).toBe(6);
-    expect(getHomeSectionIndex('my-team', { pickemEnabled: false })).toBe(5);
+  it('moves the account section up when Pick\'em is disabled', () => {
+    expect(getHomeSectionIndex('my-team', { pickemEnabled: true })).toBe(7);
+    expect(getHomeSectionIndex('my-team', { pickemEnabled: false })).toBe(6);
   });
 
-  it('has no index for a disabled Pick\'em, unknown views or my-team without a team', () => {
+  it('has no index for a disabled Pick\'em, unknown views or the account section when signed out', () => {
     expect(getHomeSectionIndex('pickem', { pickemEnabled: false })).toBeUndefined();
     expect(getHomeSectionIndex('nonsense', { pickemEnabled: true })).toBeUndefined();
-    expect(getHomeSectionIndex('my-team', { pickemEnabled: true, hasTeam: false })).toBeUndefined();
+    expect(getHomeSectionIndex('my-team', { pickemEnabled: true, signedIn: false })).toBeUndefined();
   });
 });

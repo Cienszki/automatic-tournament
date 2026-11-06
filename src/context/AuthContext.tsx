@@ -26,6 +26,10 @@ interface AuthContextType {
   /** Same as signIn (kept for the pages that call it) */
   signInWithGoogle: () => Promise<void>;
   signInWithDiscord: () => Promise<void>;
+  /** Straight to Google (no choice dialog): for pages that show both buttons themselves */
+  signInGoogleDirect: () => Promise<void>;
+  /** Discord login is set up (null = still checking) */
+  discordLogin: boolean | null;
   /** Links Discord / Steam to the signed-in account; the browser comes back to this page */
   linkDiscord: () => Promise<void>;
   connectSteam: () => Promise<void>;
@@ -138,7 +142,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, signIn, signInWithGoogle: async () => signIn(), signInWithDiscord, linkDiscord, connectSteam, signOut }}>
+    <AuthContext.Provider value={{ user, loading, signIn, signInWithGoogle: async () => signIn(), signInWithDiscord, signInGoogleDirect: google, discordLogin: discordOn, linkDiscord, connectSteam, signOut }}>
       {children}
       <Dialog open={choosing} onOpenChange={setChoosing}>
         <DialogContent className="max-w-sm">

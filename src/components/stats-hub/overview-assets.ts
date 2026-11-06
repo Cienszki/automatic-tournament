@@ -3,9 +3,9 @@ import type { Model } from '@/lib/stats-lab/derive';
 import { avatar, logo, portrait, render, type Asset } from './assets';
 import { GALLERY_RENDER_SIZES, buildOverview } from './overview-data';
 
-export function overviewAssets(model: Model): Asset[] {
+export function overviewAssets(model: Model, type?: string): Asset[] {
   if (!model.games.length) return [];
-  const d = buildOverview(model);
+  const d = buildOverview(model, type);
   return [
     // First panel of the gallery — what is visible the moment it opens
     ...render(d.records[0]?.perf.heroId, GALLERY_RENDER_SIZES),
@@ -17,11 +17,10 @@ export function overviewAssets(model: Model): Asset[] {
     ...d.leaders.flatMap(l => [...avatar(l.player), ...portrait(l.player.heroes[0]?.heroId)]),
     ...render(d.heroes[0]?.heroId, GALLERY_RENDER_SIZES),
     ...d.heroes.flatMap(h => portrait(h.heroId)),
-    ...d.stories.flatMap(f => [...render(f.heroId, GALLERY_RENDER_SIZES), ...avatar(f.player), ...logo(f.team)]),
+    ...(d.totw?.picks ?? []).flatMap(p => [...avatar(p.entry.player), ...portrait(p.entry.best.heroId)]),
     ...d.elo.flatMap(e => [...logo(e.team), ...portrait(e.team.heroPicks[0]?.heroId)]),
     ...d.achievements.featured.flatMap(a => avatar(a.unlocks[0]?.player)),
     // Thumbnails of the other overview designs
     ...portrait(d.achievements.featured[0]?.unlocks[0]?.perf?.heroId),
-    ...portrait(d.stories[0]?.heroId),
   ];
 }

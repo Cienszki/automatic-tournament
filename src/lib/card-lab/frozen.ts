@@ -66,3 +66,13 @@ export function slotsProblem(slots: DeckSlots, owned: Map<string, { pid: string;
   }
   return null;
 }
+
+/** A ready deck laid out in slots: each card in a slot of its position while there is one, the rest free */
+export function slotsForDeck(deck: Array<{ id: string; role: RoleKey }>, rule: DeckRule): DeckSlots {
+  const out: DeckSlots = {};
+  const defs = slotDefs(rule);
+  const left = [...deck];
+  for (const d of defs.filter(x => x.role)) { const i = left.findIndex(c => c.role === d.role); if (i >= 0) { out[d.key] = left[i].id; left.splice(i, 1); } }
+  for (const d of defs.filter(x => !x.role)) { const c = left.shift(); if (c) out[d.key] = c.id; }
+  return out;
+}

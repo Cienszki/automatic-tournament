@@ -9,6 +9,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Bell, ChevronLeft } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { NavLogin } from '@/components/auth/NavLogin';
 import { useTournament } from '@/context/TournamentContext';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Switch } from '@/components/ui/switch';
@@ -49,7 +50,7 @@ function ago(iso: string): string {
 }
 
 export function NotificationBell({ color }: { color?: string }) {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
   const { tournament, getTournamentPath } = useTournament();
   const router = useRouter();
   const [box, setBox] = useState<Inbox | null>(null);
@@ -102,7 +103,8 @@ export function NotificationBell({ color }: { color?: string }) {
     } catch (e) { setError((e as Error).message); } finally { setTesting(false); }
   };
 
-  if (!user) return null;
+  // Visitors get the way in instead
+  if (!user) return loading ? null : <NavLogin color={color} />;
   const unread = box?.unread ?? 0;
   const dmOn = box ? NOTIFY_ORDER.filter(t => box.discord.on[t]).length : 0;
 

@@ -4,6 +4,7 @@ import { useParams, usePathname } from 'next/navigation';
 import { useEffect, useState, useCallback } from 'react';
 import { useTournament } from '@/context/TournamentContext';
 import { TournamentNavbar } from '@/components/layout/TournamentNavbar';
+import { PackFinder } from '@/components/card-lab/PackFinder';
 import { Footer } from '@/components/layout/Footer';
 import { DynamicFontLoader } from '@/components/DynamicFontLoader';
 import { HomeNavigationProvider } from '@/context/HomeNavigationContext';
@@ -222,6 +223,8 @@ export default function TournamentLayout({ children }: TournamentLayoutProps) {
             ) : (
               <TournamentNavbar />
             )}
+            {/* Packs found while using the site (signed in) */}
+            <PackFinder />
             <main className={isHomePage ? 'relative z-10' : isFullBleed ? 'flex-grow relative z-10' : 'flex-grow container mx-auto px-4 py-8 relative z-10'}>
               {/* Keyed by tournament: Next keeps page components mounted when only the slug
                   changes (/pdl -> /pdl-s2), so their state (stats, teams, ...) leaked into the

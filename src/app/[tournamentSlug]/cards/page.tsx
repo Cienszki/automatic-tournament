@@ -1,8 +1,7 @@
-"use client";
+import { redirect } from 'next/navigation';
 
-import CardLab from '@/components/card-lab/CardLab';
-
-/** The card game test build (/[slug]/cards), not linked from the site — testers get the link */
-export default function KartyPage() {
-  return <CardLab />;
+/** The card game is a section of the tournament's home page now; old links land on it */
+export default async function CardsMoved({ params }: { params: Promise<{ tournamentSlug: string }> }) {
+  const { tournamentSlug } = await params;
+  redirect(`/${tournamentSlug}?view=cards`);
 }

@@ -6,14 +6,23 @@ import { unstable_cache } from 'next/cache';
 import { FieldValue } from 'firebase-admin/firestore';
 import { buildStatsDataset } from '@/lib/stats-lab/build-dataset';
 import { deriveModel } from '@/lib/stats-lab/derive';
-import { buildSeriesCards, openPack, packPool, type DeckRule, type GCard } from '@/lib/card-lab/cards';
+import { autoDeck, buildSeriesCards, deckProblem, openPack, packPool, type DeckRule, type GCard } from '@/lib/card-lab/cards';
 import { DECK_PER_ROLE, DECK_SIZE } from '@/lib/card-lab/outposts';
-import { freezeCard, slotsProblem, type DeckSlots, type FrozenCard } from '@/lib/card-lab/frozen';
+import { freezeCard, slotsForDeck, slotsProblem, thawCard, type DeckSlots, type FrozenCard } from '@/lib/card-lab/frozen';
 import { ensureAdminInitialized, getAdminDb } from '@/server/lib/admin';
+import { getAccount } from '@/server/accounts/store';
 
 export const START_PACKS = 10;
 export const DECK_RULE: DeckRule = { size: DECK_SIZE, perRole: DECK_PER_ROLE, text: '' };
 export const validKey = (k: unknown): k is string => typeof k === 'string' && /^[A-Za-z0-9_-]{1,64}$/.test(k);
+
+/** Rivals and the ranking see a name: an account plays cards only with its own nick set or Discord linked */
+export async function hasName(uid: string): Promise<boolean> {
+  ensureAdminInitialized();
+  const a = await getAccount(uid);
+  return !!a.nickname?.trim() || !!a.discord;
+}
+export const NEED_NAME = { error: 'Najpierw ustaw nick albo połącz Discord', need: 'name' } as const;
 
 export interface CollectionState { packs: number; cards: FrozenCard[]; slots: DeckSlots }
 
@@ -81,4 +90,62 @@ export async function saveSlots(key: string, uid: string, slots: DeckSlots): Pro
     tx.update(r, { slots, updatedAt: FieldValue.serverTimestamp() });
     return { ok: true as const };
   });
+}
+
+/** The account's saved deck, ready to play, or why it can't be played */
+export async function playableDeck(key: string, uid: string): Promise<{ deck: GCard[] } | { error: string }> {
+  ensureAdminInitialized();
+  const snap = await ref(key, uid).get();
+  if (!snap.exists) return { error: 'Najpierw otwórz paczki' };
+  const st = toState(snap.data()!);
+  const byId = new Map(st.cards.map(c => [c.id, c]));
+  const deck = Object.values(st.slots).map(id => byId.get(id)).filter((c): c is FrozenCard => !!c).map(thawCard);
+  const problem = deckProblem(deck, DECK_RULE);
+  return problem ? { error: `Talia niegotowa: ${problem}` } : { deck };
+}
+
+/** "Szybka talia" (only on a newcomer's first-game path): the best legal deck from the collection, saved */
+export async function quickDeck(key: string, uid: string): Promise<{ slots: DeckSlots } | { error: string }> {
+  ensureAdminInitialized();
+  const r = ref(key, uid);
+  return getAdminDb().runTransaction(async tx => {
+    const snap = await tx.get(r);
+    if (!snap.exists) return { error: 'Najpierw otwórz paczki' };
+    const st = toState(snap.data()!);
+    const deck = autoDeck(st.cards.map(thawCard), DECK_RULE);
+    const problem = deckProblem(deck, DECK_RULE);
+    if (problem) return { error: `Za mało kart na talię: ${problem}` };
+    const slots = slotsForDeck(deck, DECK_RULE);
+    tx.update(r, { slots, updatedAt: FieldValue.serverTimestamp() });
+    return { slots };
+  });
+}
+
+/** Gives an account packs (an admin's grant); an account that never opened the cards gets them on top of its starter packs */
+export async function addPacks(key: string, uid: string, n: number): Promise<number> {
+  ensureAdminInitialized();
+  const r = ref(key, uid);
+  return getAdminDb().runTransaction(async tx => {
+    const snap = await tx.get(r);
+    if (!snap.exists) {
+      tx.set(r, { uid, tournament: key, packs: START_PACKS + n, cards: [], slots: {}, createdAt: FieldValue.serverTimestamp(), updatedAt: FieldValue.serverTimestamp() });
+      return START_PACKS + n;
+    }
+    const packs = toState(snap.data()!).packs + n;
+    tx.update(r, { packs, updatedAt: FieldValue.serverTimestamp() });
+    return packs;
+  });
+}
+
+/** Gives every collection of the tournament `n` packs; returns the accounts that got them */
+export async function addPacksToAll(key: string, n: number): Promise<string[]> {
+  ensureAdminInitialized();
+  const db = getAdminDb();
+  const snap = await db.collection('cardCollections').where('tournament', '==', key).select('uid').get();
+  for (let i = 0; i < snap.docs.length; i += 400) {
+    const batch = db.batch();
+    for (const d of snap.docs.slice(i, i + 400)) batch.update(d.ref, { packs: FieldValue.increment(n), updatedAt: FieldValue.serverTimestamp() });
+    await batch.commit();
+  }
+  return snap.docs.map(d => d.data().uid as string).filter(Boolean);
 }

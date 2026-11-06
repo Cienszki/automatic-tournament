@@ -14,11 +14,11 @@ import { heroName } from '@/lib/stats-lab/heroes';
 import { TIER_COLOR, descOf } from '@/lib/stats-lab/achievements';
 import { POS_OF, ROLE_LABEL, qualified, seededRandom } from '@/lib/stats-lab/season';
 import { cn } from '@/lib/utils';
-import { Avatar, C, HeroImg, HeroRender, TeamLogo, Tip, TipBody, ink, mix, onDark, useHeaderFont, useMetals, useStatsKey } from '@/components/stats-lab/kit';
+import { Avatar, C, HeroImg, HeroRender, TeamLogo, Tip, TipBody, ink, mix, onDark, useHeaderFont, useMetals } from '@/components/stats-lab/kit';
 import { ADVANCED, ADVANCED_GROUPS, MATCH_PREP, MATCH_PREP_PATH, PAGES } from './catalog';
-import { useStatsNav, readStore } from './nav';
+import { useStatsNav } from './nav';
+import { getHomeSectionIndex, useHomeNavigation } from '@/context/HomeNavigationContext';
 import { GALLERY_RENDER_SIZES, type OverviewData } from './overview-data';
-import { cardsKey, refill, emptyCollection } from './cards-data';
 import { count } from '@/lib/plural';
 
 export const NEXT_MS = 7000;
@@ -196,46 +196,36 @@ export function HeroesTeaser({ d }: { d: OverviewData }) {
   );
 }
 
-export function StoriesTeaser({ d }: { d: OverviewData }) {
+/** The team of the latest week / round: five big portraits, the best one lit */
+export function TeamOfRoundTeaser({ d }: { d: OverviewData }) {
   const font = useHeaderFont();
-  const [i, setI] = useCycle(d.stories.length, 3200);
-  const s = d.stories[i];
-  if (!s) return null;
+  const t = d.totw;
+  if (!t) return null;
+  const top = t.picks.reduce((a, p) => (p.entry.avg > a.entry.avg ? p : a), t.picks[0]);
   return (
     <>
-      <AnimatePresence mode="popLayout">
-        <motion.div key={s.id} className="absolute inset-0" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.5 }}>
-          {s.heroId != null && <div className="absolute top-[8%] bottom-[22%] right-[-6%] w-[60%]"><HeroRender heroId={s.heroId} sizes={GALLERY_RENDER_SIZES} /></div>}
-        </motion.div>
-      </AnimatePresence>
-      <div className="absolute inset-0" style={{ background: 'linear-gradient(90deg, rgba(0,0,0,0.85), rgba(0,0,0,0.25) 60%, transparent), linear-gradient(0deg, rgba(0,0,0,0.88), transparent 50%)' }} />
-      {/* Story progress, like the real thing */}
-      <div className="absolute top-3 inset-x-4 flex gap-1">
-        {d.stories.map((x, k) => (
-          <div key={x.id} className="flex-1 h-[3px] rounded-full overflow-hidden bg-white/25">
-            {k < i && <div className="h-full w-full bg-white" />}
-            {k === i && <motion.div key={`${s.id}-bar`} className="h-full bg-white" initial={{ width: 0 }} animate={{ width: '100%' }} transition={{ duration: 3.2, ease: 'linear' }} />}
-          </div>
-        ))}
-      </div>
-      <AnimatePresence mode="wait">
-        <motion.div key={s.id} className="relative flex flex-col gap-2" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.3 }}>
-          <Kicker color={s.tone === 'roast' ? '#ff8a3d' : undefined}>{s.kicker}</Kicker>
-          <div className="font-logik-extended-bold tabular-nums leading-[0.9]" style={{ fontSize: 'clamp(48px, 9vh, 100px)', ...font }}>{s.big}</div>
-          <div className="text-2xl font-bold leading-tight max-w-[70%]">{s.title}</div>
-          {s.sub && <div className="text-sm text-white/70 max-w-[60%] line-clamp-2">{s.sub}</div>}
-        </motion.div>
-      </AnimatePresence>
-      {/* Story rings */}
-      <div className="relative flex gap-2.5 mt-4">
-        {d.stories.map((x, k) => (
-          <button key={x.id} type="button" onClick={e => { e.stopPropagation(); setI(k); }} className="rounded-full p-[2px] transition-transform hover:scale-110"
-            style={{ background: k === i ? `conic-gradient(${onDark(C.secondary)}, ${C.primary}, ${onDark(C.secondary)})` : 'rgba(255,255,255,0.25)' }}>
-            <span className="block rounded-full p-[2px] bg-black">
-              {x.player ? <Avatar player={x.player} size={36} /> : <TeamLogo team={x.team} size={36} />}
-            </span>
-          </button>
-        ))}
+      <div className="absolute inset-0" style={{ background: 'linear-gradient(0deg, rgba(0,0,0,0.92), rgba(0,0,0,0.35))' }} />
+      <div className="relative flex flex-col flex-1 min-h-0">
+        <Kicker>{t.label} · najlepsza seria na każdej pozycji</Kicker>
+        <div className="flex-1 min-h-0 flex items-end gap-3 mt-3">
+          {t.picks.map((p, k) => {
+            const on = p === top;
+            return (
+              <motion.div key={p.role} className="flex-1 min-w-0 flex flex-col items-center text-center" initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: k * 0.08 }}>
+                <div className="relative w-full aspect-[3/4] rounded-xl overflow-hidden" style={{ boxShadow: on ? `0 0 0 2px ${onDark(C.secondary)}, 0 0 24px ${mix(C.secondary, 45)}` : '0 0 0 1px rgba(255,255,255,0.15)' }}>
+                  <HeroImg heroId={p.entry.best.heroId} title={false} className="absolute inset-0 w-full h-full object-cover" />
+                  <div className="absolute inset-0" style={{ background: 'linear-gradient(0deg, rgba(0,0,0,0.85), transparent 55%)' }} />
+                  <div className="absolute inset-x-0 bottom-2 flex flex-col items-center gap-1">
+                    <Avatar player={p.entry.player} size={on ? 54 : 46} ring={on ? onDark(C.secondary) : undefined} />
+                  </div>
+                </div>
+                <span className="mt-2 block w-full truncate font-bold leading-tight text-base">{p.entry.player.name}</span>
+                <span className="block w-full truncate text-[11px] text-white/60">{ROLE_LABEL[p.role]}{p.entry.opp ? ` · vs ${p.entry.opp.name}` : ''}</span>
+                <span className="font-logik-extended-bold tabular-nums text-xl mt-0.5" style={{ color: on ? onDark(C.secondary) : undefined, ...font }}>{p.entry.avg.toFixed(1)}</span>
+              </motion.div>
+            );
+          })}
+        </div>
       </div>
     </>
   );
@@ -361,18 +351,12 @@ export const MiniWordle = () => (
 );
 
 
-/** What the game doors say about this visitor (pack count read from localStorage after mount) */
+/** What the game doors show */
 export function usePlayStatus(model: Model) {
-  const statsKey = useStatsKey();
-  const [packs, setPacks] = useState(0);
-  useEffect(() => {
-    if (!statsKey) return;
-    setPacks(refill(readStore(cardsKey(statsKey), emptyCollection())).packs);
-  }, [statsKey]);
   // A face for the quiz door: someone everyone has played against, blurred
   const mystery = useMemo(() => { const q = qualified(model); return q[Math.floor(seededRandom(q.length * 7919 + 13)() * q.length)]; }, [model]);
   const killsPerGame = model.games.length ? Math.round(model.totals.kills / model.games.length) : 42;
-  return { packs, mystery, killsPerGame };
+  return { mystery, killsPerGame };
 }
 export type PlayStatus = ReturnType<typeof usePlayStatus>;
 
@@ -381,10 +365,8 @@ export interface PlayItem { id: string; title: string; hook: string; visual: Rea
 /** The four games: id, title, hook line and a small visual */
 export function playItems(s: PlayStatus, font: React.CSSProperties): PlayItem[] {
   return [
-    {
-      id: 'karty', title: 'Karty', visual: <MiniCards />,
-      hook: s.packs > 0 ? `${s.packs} ${s.packs === 1 ? 'paczka czeka' : s.packs < 5 ? 'paczki czekają' : 'paczek czeka'} na otwarcie` : 'Paczki kart graczy i drużyn sezonu',
-    },
+    // Not a stats view: the card game's own section of the home page, under this one
+    { id: 'cards', title: 'Gra karciana', visual: <MiniCards />, hook: 'Zbierz talię i rzuć wyzwanie znajomym' },
     { id: 'dotadle', title: 'Dotadle', visual: <MiniWordle />, hook: 'Gracz, bohater i drużyna dnia' },
     {
       id: 'kto-to', title: 'Kto to?', hook: 'Quiz z liczb tego sezonu',
@@ -474,16 +456,28 @@ export function AdvancedDoor({ className }: { className?: string }) {
   );
 }
 
+/** Goes to the card game: its home-page section, or the home page opened on it */
+export function useOpenCards() {
+  const { tournament, getTournamentPath } = useTournament();
+  const { goToHomeSection, isHomeActive } = useHomeNavigation();
+  return () => {
+    const i = getHomeSectionIndex('cards', { pickemEnabled: !!tournament?.pickem?.enabled });
+    if (isHomeActive() && i !== undefined) goToHomeSection(i);
+    else window.location.assign(getTournamentPath('/?view=cards'));
+  };
+}
+
 /** The "Zagraj" column: four games, the match-prep door, the advanced door */
 export function PlayColumn({ model }: { model: Model }) {
   const nav = useStatsNav();
+  const openCards = useOpenCards();
   const font = useHeaderFont();
   const status = usePlayStatus(model);
   return (
     <div className="min-h-0 flex flex-col">
       <ColumnHead>Zagraj</ColumnHead>
       <div className="flex-1 min-h-0 flex flex-col">
-        {playItems(status, font).map(it => <Door key={it.id} title={it.title} visual={it.visual} hook={it.hook} onClick={() => nav?.go(it.id)} />)}
+        {playItems(status, font).map(it => <Door key={it.id} title={it.title} visual={it.visual} hook={it.hook} onClick={() => (it.id === 'cards' ? openCards() : nav?.go(it.id))} />)}
       </div>
       <div className="shrink-0 mt-4"><ColumnHead>Dla kapitanów</ColumnHead></div>
       <PrepTile model={model} className="shrink-0" />
@@ -494,7 +488,7 @@ export function PlayColumn({ model }: { model: Model }) {
 
 // ── Main pages: teaser + one-line fact ─────────────────────────────────
 
-export const MAIN_IDS = ['rankingi', 'rekordy', 'liderzy', 'bohaterowie', 'historie', 'osiagniecia', 'elo'] as const;
+export const MAIN_IDS = ['rankingi', 'rekordy', 'liderzy', 'bohaterowie', 'druzyna-tygodnia', 'osiagniecia', 'elo'] as const;
 export type MainId = typeof MAIN_IDS[number];
 
 /** The big teaser of a main page (drawn on a dark panel, content at the bottom) */
@@ -504,7 +498,7 @@ export function Teaser({ id, d }: { id: MainId; d: OverviewData }) {
     case 'rekordy': return <RecordsTeaser d={d} />;
     case 'liderzy': return <LeadersTeaser d={d} />;
     case 'bohaterowie': return <HeroesTeaser d={d} />;
-    case 'historie': return <StoriesTeaser d={d} />;
+    case 'druzyna-tygodnia': return <TeamOfRoundTeaser d={d} />;
     case 'osiagniecia': return <AchievementsTeaser d={d} />;
     case 'elo': return <EloTeaser d={d} />;
   }
@@ -545,9 +539,9 @@ export function mainFace(id: MainId, d: OverviewData): { heroId?: number; visual
       const h = d.heroes[0];
       return { heroId: h?.heroId, visual: h ? <HeroImg heroId={h.heroId} variant="icon" className="w-10 h-10 rounded-full" /> : null, value: h ? `${h.contest}×` : '–', line: h ? `w drafcie · ${heroName(h.heroId)}` : 'bohaterowie' };
     }
-    case 'historie': {
-      const s = d.stories[0];
-      return { heroId: s?.heroId, visual: s?.player ? <Avatar player={s.player} size={40} /> : <TeamLogo team={s?.team} size={40} />, value: s?.big ?? '–', line: s ? s.kicker.toLowerCase() : 'historie sezonu' };
+    case 'druzyna-tygodnia': {
+      const top = d.totw?.picks.reduce((a, p) => (p.entry.avg > a.entry.avg ? p : a), d.totw.picks[0]);
+      return { heroId: top?.entry.best.heroId, visual: top ? <Avatar player={top.entry.player} size={40} /> : null, value: top ? top.entry.avg.toFixed(1) : '–', line: top ? `${d.totw!.label.toLowerCase()} · ${top.entry.player.name}` : 'najlepsi w kolejce' };
     }
     case 'osiagniecia': {
       const a = d.achievements;

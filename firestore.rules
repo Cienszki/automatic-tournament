@@ -409,6 +409,16 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // Card duels: the duel (both hands) is server-only; each participant reads their own view live
+    match /cardDuels/{id} {
+      allow read, write: if false;
+      match /views/{uid} {
+        allow read: if request.auth != null && request.auth.uid == uid;
+        allow write: if false;
+      }
+    }
+    match /cardRankings/{path=**} { allow read, write: if false; }
+
     // Accounts (Discord / Steam links, profile): written only by the server (/api/account, /api/login,
     // /api/connect); the owner may read their own. The link indexes are server-only.
     match /accounts/{uid} {

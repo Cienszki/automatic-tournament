@@ -28,6 +28,7 @@ import {
   Trophy,
   Bot,
   Gift,
+  GalleryVerticalEnd,
   Shuffle,
 } from 'lucide-react';
 
@@ -48,6 +49,7 @@ import { RulesTab } from './tabs/RulesTab';
 import { PrizesTab } from './tabs/PrizesTab';
 import { PlayoffsTab } from './tabs/PlayoffsTab';
 import { BotTab } from './tabs/BotTab';
+import { CardsTab } from './tabs/CardsTab';
 import { TournamentLaunchCard } from '@/components/admin/TournamentLaunchCard';
 
 /**
@@ -160,6 +162,7 @@ export default function AdminPage() {
     { id: 'stats', label: 'Statystyki', icon: BarChart3 },
     { id: 'rules', label: 'Regulamin', icon: ScrollText },
     { id: 'prizes', label: 'Nagrody', icon: Gift },
+    { id: 'cards', label: 'Karty', icon: GalleryVerticalEnd },
     { id: 'bot', label: 'Bot', icon: Bot },
   ];
 
@@ -274,6 +277,10 @@ export default function AdminPage() {
 
           <TabsContent value="prizes" className="mt-0">
             <PrizesTab />
+          </TabsContent>
+
+          <TabsContent value="cards" className="mt-0">
+            <CardsTab />
           </TabsContent>
 
           <TabsContent value="bot" className="mt-0">

@@ -52,6 +52,7 @@ const ScheduleSection = dynamic(() => import('@/components/schedule/ScheduleSect
 
 // Stats hub: every stats view (rankings, records, games, match prep…) inside one section
 const StatsHub = dynamic(() => import('@/components/stats-hub/StatsHub'), { ssr: false });
+const CardsSection = dynamic(() => import('@/components/card-lab/CardLab').then(m => m.CardsSection), { ssr: false });
 
 // Captains' section: the account page (banner + team views), one screen like the other sections.
 // Not the /my-team page: that one redirects to /account, which must never happen from the home page.
@@ -131,6 +132,7 @@ const SECTION_LABELS: Record<HomeSectionKey, string> = {
   schedule: 'Terminarz',
   teams: 'Drużyny',
   stats: 'Statystyki',
+  cards: 'Gra karciana',
   pickem: 'Pick\'em',
   'my-team': 'Moja drużyna',
 };
@@ -290,16 +292,18 @@ export function TournamentHomePage() {
   const playoffsActive = !!(tournament?.playoffs?.enabled && tournament?.playoffs?.playoffsVisible);
 
   const primaryColor = theme?.primaryColor || '#8B1538';
-  // Sections shown for this tournament/user: a disabled Pick'em has no section,
-  // "Moja drużyna" only for captains and casters. Position = index in this list.
+  // Sections shown for this tournament/user: a disabled Pick'em has no section, the account
+  // section ("my-team") for everyone signed in. Position = index in this list.
   const pickemEnabled = !!tournament?.pickem?.enabled;
-  const sections = useMemo(() => getHomeSections({ pickemEnabled, hasTeam }), [pickemEnabled, hasTeam]);
+  const signedIn = !!user;
+  const sections = useMemo(() => getHomeSections({ pickemEnabled, signedIn }), [pickemEnabled, signedIn]);
   const sectionIndex = (key: HomeSectionKey) => sections.indexOf(key);
   const TOTAL_SECTIONS = sections.length;
   const sectionLabels = useMemo(
     // Swiss has one standings table — no groups or divisions
-    () => sections.map(key => (key === 'groups' && isSwiss ? 'Tabela' : SECTION_LABELS[key])),
-    [sections, isSwiss],
+    // Captains and casters manage their team there; everyone else has their account
+    () => sections.map(key => (key === 'groups' && isSwiss ? 'Tabela' : key === 'my-team' && !hasTeam ? 'Konto' : SECTION_LABELS[key])),
+    [sections, isSwiss, hasTeam],
   );
 
   const {
@@ -351,7 +355,7 @@ export function TournamentHomePage() {
     const view = searchParams.get('view');
     const group = searchParams.get('group');
     const team = searchParams.get('team');
-    // hasTeam is still loading here — "my-team" is always last, so its index is known anyway
+    // The user may still be loading here — "my-team" is always last, so its index is known anyway
     const viewIndex = view ? getHomeSectionIndex(view, { pickemEnabled }) : undefined;
     if (view && viewIndex !== undefined) {
       if (view === 'groups' || view === 'playoffs') setSection1View(view);
@@ -700,9 +704,9 @@ export function TournamentHomePage() {
       </motion.div>
       </div>
 
-      {/* Social media links */}
+      {/* Social media links, the rulebook under them */}
       {(tournament?.discordUrl || tournament?.twitchUrl || tournament?.youtubeUrl || tournament?.instagramUrl || tournament?.tiktokUrl) && (
-        <div className="flex items-center justify-center gap-6 py-3">
+        <div className="flex items-center justify-center gap-6 pt-3">
           {tournament?.discordUrl && (
             <a href={tournament.discordUrl} target="_blank" rel="noopener noreferrer" aria-label="Discord"
                className="transition-opacity hover:opacity-100 opacity-60" style={{ color: 'var(--tournament-secondary-text)' }}>
@@ -740,6 +744,10 @@ export function TournamentHomePage() {
           )}
         </div>
       )}
+      <div className="flex justify-center pt-2 pb-3">
+        <Link href={getTournamentPath('/rules')} className="text-xs uppercase tracking-[0.25em] transition-opacity hover:opacity-100 opacity-60 hover:underline underline-offset-4"
+          style={{ color: 'var(--tournament-secondary-text)' }}>Regulamin</Link>
+      </div>
     </div>
   );
 
@@ -1092,7 +1100,14 @@ export function TournamentHomePage() {
         </FullScreenSection>
 
         {/* ═══════════════════════════════════════════════════════════
-            VIEW 6: Pick'em (only when enabled — no "unavailable" placeholder view)
+            VIEW 6: The card game (desktop; phones get a notice)
+           ═══════════════════════════════════════════════════════════ */}
+        <FullScreenSection isActive={currentSection === sectionIndex('cards')} isMobile={isMobile} id={`home-section-${sectionIndex('cards')}`}>
+          <CardsSection active={currentSection === sectionIndex('cards')} />
+        </FullScreenSection>
+
+        {/* ═══════════════════════════════════════════════════════════
+            VIEW 7: Pick'em (only when enabled — no "unavailable" placeholder view)
            ═══════════════════════════════════════════════════════════ */}
         {pickemEnabled && (
           <FullScreenSection isActive={currentSection === sectionIndex('pickem')} isMobile={isMobile} id={`home-section-${sectionIndex('pickem')}`} allowOverflow>
@@ -1106,9 +1121,9 @@ export function TournamentHomePage() {
         )}
 
         {/* ═══════════════════════════════════════════════════════════
-            VIEW 7: My Team (captains and casters: the account page) — always the last section
+            VIEW 8: The account page (everyone signed in; captains' team views) — always the last section
            ═══════════════════════════════════════════════════════════ */}
-        {hasTeam && (
+        {signedIn && (
           <FullScreenSection isActive={currentSection === sectionIndex('my-team')} isMobile={isMobile} id={`home-section-${sectionIndex('my-team')}`}>
             {/* Override the standalone page styles: hide fixed background, remove min-h-screen */}
             {isLegacyTournament ? (

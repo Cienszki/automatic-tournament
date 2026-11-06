@@ -21,6 +21,8 @@ import { requireAdmin } from '@/server/lib/require-admin';
 import { syncPDLMatchesAdmin, forfeitPDLMatchAdmin } from '@/lib/pdl-admin-actions';
 import { recalculateAllStats } from '@/lib/stats-service-simple';
 import { sendMatchReminders } from '@/server/notify/events';
+import { settleStale } from '@/server/card-lab/duels';
+import { roundRewards } from '@/server/card-lab/rewards';
 
 interface OrchestrateResult {
   syncTasksExecuted: number;
@@ -64,6 +66,20 @@ export async function POST(req: Request): Promise<Response> {
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Unknown error';
       result.errors.push(`Reminders: ${msg}`);
+    }
+
+    // Card duels nobody looks at any more: their clocks run out here, so they end and get rated
+    try {
+      await settleStale();
+    } catch (err: unknown) {
+      result.errors.push(`Duels: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    }
+
+    // Packs for everyone when a round is over and its team of the round is known
+    try {
+      await roundRewards();
+    } catch (err: unknown) {
+      result.errors.push(`Card packs: ${err instanceof Error ? err.message : 'Unknown error'}`);
     }
 
     return NextResponse.json(result);

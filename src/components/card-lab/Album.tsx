@@ -10,7 +10,7 @@ import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { Avatar, C, TeamLogo, ink, mix, useHeaderFont } from '@/components/stats-lab/kit';
 import { useFitText, useLogoColor } from '@/components/teams-section/fit';
 import type { PlayerX, TeamX } from '@/lib/stats-lab/derive';
-import { ROLE_KEYS, ROLE_SHORT, TIER, tierOf, TOTW_CHANCE, type GCard, type Tier } from '@/lib/card-lab/cards';
+import { byStrength, RARITY_ODDS, ROLE_KEYS, ROLE_SHORT, TIER, tierOf, TOTW_CHANCE, type GCard, type Tier } from '@/lib/card-lab/cards';
 import { useTournament } from '@/context/TournamentContext';
 import { count } from '@/lib/plural';
 import { Action, CardBack, CardFace, Heading, Label, RATIO } from './ui';
@@ -21,7 +21,7 @@ const CELL = 112;
 interface Slot { key: string; label: string; player?: PlayerX; cards: GCard[] }
 
 function slotsOf(team: TeamX, collection: GCard[]): Slot[] {
-  const mine = collection.filter(c => c.team?.id === team.id).sort((a, b) => b.ovr - a.ovr);
+  const mine = collection.filter(c => c.team?.id === team.id).sort(byStrength);
   const roster = ROLE_KEYS.map(r => ({ r, p: team.players.find(p => !p.standin && p.role === r) }));
   const rosterIds = new Set(roster.map(x => x.p?.id).filter(Boolean));
   return [
@@ -158,20 +158,20 @@ function Sparks({ color, n = 16 }: { color: string; n?: number }) {
   );
 }
 
-const RANK: Record<Tier, number> = { bronze: 0, silver: 1, gold: 2, elite: 3, totw: 4 };
+const RANK: Record<Tier, number> = { wood: 0, bronze: 1, silver: 2, gold: 3, elite: 4, totw: 5 };
 
 /**
  * Pack opening: the pack drops in, shakes and bursts; five cards fly out face down, each glowing in its
  * tier's colour (you can tell a good one is coming); click to turn one (or all). Better cards get a
  * bigger flare, elite and team-of-the-round cards flash the whole screen.
  */
-function PackReveal({ cards, isNew, onClose, left, onNext }: { cards: GCard[]; isNew: (c: GCard) => boolean; onClose: () => void; left: number; onNext: () => void }) {
+export function PackReveal({ cards, isNew, onClose, left, onNext }: { cards: GCard[]; isNew: (c: GCard) => boolean; onClose: () => void; left: number; onNext: () => void }) {
   const font = useHeaderFont();
   const [phase, setPhase] = useState<'idle' | 'shake' | 'burst' | 'cards'>('idle');
   const [open, setOpen] = useState<Set<number>>(new Set());
   const [flash, setFlash] = useState<{ color: string; k: number } | null>(null);
   const all = open.size === cards.length;
-  const bestTier = cards.reduce<Tier>((b, c) => (RANK[tierOf(c)] > RANK[b] ? tierOf(c) : b), 'bronze');
+  const bestTier = cards.reduce<Tier>((b, c) => (RANK[tierOf(c)] > RANK[b] ? tierOf(c) : b), 'wood');
 
   const tear = () => {
     setPhase('shake');
@@ -182,14 +182,14 @@ function PackReveal({ cards, isNew, onClose, left, onNext }: { cards: GCard[]; i
     setOpen(o => {
       if (o.has(i)) return o;
       const t = tierOf(cards[i]);
-      if (RANK[t] >= 3) setTimeout(() => setFlash({ color: TIER[t].color, k: Date.now() }), 250);
+      if (RANK[t] >= RANK.elite) setTimeout(() => setFlash({ color: TIER[t].color, k: Date.now() }), 250);
       return new Set(o).add(i);
     });
   };
   const turnAll = () => cards.forEach((_, i) => setTimeout(() => turn(i), i * 260));
 
   return (
-    <motion.div className="absolute -inset-x-16 -top-24 -bottom-6 z-40 flex flex-col items-center justify-center gap-10 overflow-hidden"
+    <motion.div data-snap-lock className="absolute -inset-x-16 -top-24 -bottom-6 z-40 flex flex-col items-center justify-center gap-10 overflow-hidden"
       style={{ background: 'radial-gradient(70% 70% at 50% 50%, rgba(18,18,28,0.95), rgba(4,4,8,0.98))' }}
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
       <AnimatePresence>{(phase === 'burst' || phase === 'cards') && <Rays key="rays" color={all ? TIER[bestTier].color : '#ffffff'} />}</AnimatePresence>
@@ -288,7 +288,7 @@ export function Album({ cards, collection, packs, onOpenPack }: { cards: GCard[]
         <div className="text-[13px] pb-1" style={{ color: C.muted }}>{count(collection.length, 'karta', 'karty', 'kart')} · {count(new Set(collection.map(c => c.id)).size, 'różna', 'różne', 'różnych')} · {count(collection.filter(c => c.totw).length, 'karta drużyny kolejki', 'karty drużyny kolejki', 'kart drużyny kolejki')}</div>
         <div className="flex-1" />
         <div className="text-[12px] max-w-[440px] text-right pb-1" style={{ color: C.muted }}>
-          Paczka: po jednej karcie na pozycję, z losowej drużyny, z jej ostatniego meczu. Gracz z drużyny kolejki: {Math.round(TOTW_CHANCE * 100)} % szans na jego kartę specjalną.
+          Paczka: po jednej karcie na pozycję, z ostatniego meczu drużyny. Szanse: {(Object.keys(RARITY_ODDS) as Array<keyof typeof RARITY_ODDS>).map(t => `${TIER[t].label.toLowerCase()} ${RARITY_ODDS[t]} %`).join(', ')}. Gracz z drużyny kolejki: {Math.round(TOTW_CHANCE * 100)} % szans na jego kartę specjalną (+1 siły).
         </div>
         <Action primary big disabled={packs <= 0} onClick={rip}>{packs > 0 ? `Otwórz paczkę · ${packs}` : 'Brak paczek'}</Action>
       </div>

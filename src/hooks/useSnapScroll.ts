@@ -60,7 +60,12 @@ export function useSnapScroll({
     if (!container) return;
 
     const handleWheel = (e: WheelEvent) => {
+      // A list marked data-own-scroll scrolls itself while it still can
+      const own = (e.target as HTMLElement | null)?.closest?.('[data-own-scroll]') as HTMLElement | null;
+      if (own && ((e.deltaY > 0 && own.scrollTop + own.clientHeight < own.scrollHeight - 1) || (e.deltaY < 0 && own.scrollTop > 0))) return;
       e.preventDefault();
+      // Something on screen holds the page in place (a card match in progress)
+      if (container.querySelector('[data-snap-lock]')) return;
       if (Math.abs(e.deltaY) < 5) return; // ignore micro-scrolls
       if (e.deltaY > 0) goNext();
       else goPrev();
@@ -81,6 +86,7 @@ export function useSnapScroll({
       ) {
         return;
       }
+      if (containerRef.current?.querySelector('[data-snap-lock]')) return;
 
       if (e.key === 'ArrowDown' || e.key === 'PageDown') {
         e.preventDefault();

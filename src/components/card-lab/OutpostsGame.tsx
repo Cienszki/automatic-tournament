@@ -16,13 +16,28 @@ import { Avatar, C, HeroRender, Tip, mix, onDark, useHeaderFont, useSize } from 
 import { useFitText } from '@/components/teams-section/fit';
 import { avgOvr, cpuDeck, type DeckRule, type GCard, type RoleKey } from '@/lib/card-lab/cards';
 import {
-  DECK_PER_ROLE, DECK_SIZE, KEYWORD, OBJECTIVES, ORDERS, PER_SIDE_AT_OBJECTIVE, WIN_POINTS, baseMight, canDeploy, canMove, cardStrength, clashes as clashesOf, deploy, endTurn, might, move, moveCost, newGame, resolve, RULES, smokeCovers, smokeLeft, startOrders, strengthParts, takePoints, type Ev, type Fight, type Gain, type Loc, type ObjId, type OState, type OUnit, type Part, type Side, duelAct, duelOver, duelTargets, startDuel, type Attack, type Duel, type DuelUnit,
+  DECK_PER_ROLE, DECK_SIZE, KEYWORD, OBJECTIVES, ORDERS, PER_SIDE_AT_OBJECTIVE, WIN_POINTS, baseMight, canDeploy, canMove, cardStrength, clashes as clashesOf, deploy, endTurn, might, move, moveCost, newGame, resolve, RULES, smokeCovers, smokeLeft, startOrders, strengthParts, takePoints, type Ev, type Fight, type Gain, type Loc, type ObjId, type OState, type OUnit, type Part, type Side, duelAct, duelOver, duelTargets, playDuel, startDuel, type Attack, type Duel, type DuelUnit,
 } from '@/lib/card-lab/outposts';
+import type { DuelView, Fighting, Game, Person, PvpAction } from '@/lib/card-lab/pvp';
 import { applyAct, chooseAttack, cpuNextAction, LEVELS, type Level } from '@/lib/card-lab/outposts-ai';
 import { CardBack, useFitScale } from './ui';
 import { Tour, type TourStep } from '@/components/tour/Tour';
 import { Hint } from '@/components/tour/Hint';
 import { Coach, type CoachStep } from '@/components/tour/Coach';
+
+/** A match against a person (the duel page): the board comes from the server, moves go to it */
+export interface NetGame {
+  /** The match as this player sees it (they are side 0) */
+  game: Game;
+  /** [you, rival] */
+  players: [Person, Person];
+  result: DuelView['result'];
+  /** Server time − this computer's time */
+  offset: number;
+  /** A move; resolves to the error, or null when the server took it */
+  send: (m: PvpAction) => Promise<string | null>;
+  onRematch?: () => void;
+}
 
 export const OUTPOSTS_RULE: DeckRule = { size: DECK_SIZE, perRole: DECK_PER_ROLE, text: `${DECK_SIZE} kart, co najmniej ${DECK_PER_ROLE} na każdej pozycji, każdy gracz raz` };
 
@@ -48,7 +63,7 @@ const MAP_VIEW = 0.3; // how much of the map's width an arena shows
 const MAP_EDGE = [0.065, 0.935]; // the drawn map inside the image's black border
 
 const PART_ICON: Partial<Record<Part['kind'], typeof Sun>> = { aura: Sun, farmer: Sprout, hg: Mountain, team: Users, wound: HeartCrack };
-const PART_COLOR: Record<Part['kind'], string> = { card: T.text, role: T.text, aura: ACC_L, farmer: T.me, hg: '#6fb7ff', team: '#7fd3ff', wound: '#ff7a6b' };
+const PART_COLOR: Record<Part['kind'], string> = { card: T.text, totw: '#5ef0ff', role: T.text, aura: ACC_L, farmer: T.me, hg: '#6fb7ff', team: '#7fd3ff', wound: '#ff7a6b' };
 const signColor = (v: number) => (v > 0 ? T.pos : v < 0 ? T.neg : T.zero);
 
 function FitLine({ text, max, min, className, style }: { text: string; max: number; min: number; className?: string; style?: React.CSSProperties }) {
@@ -254,7 +269,7 @@ function Figure({ card, m, side, w, layoutId, parts, smoke, bump, selected, tire
 }
 
 /** Board buffs (not the card's own value or the type's fixed ±1) — only these are worth a breakdown */
-const hasBuffs = (parts?: Part[]) => !!parts?.some(p => p.kind !== 'card' && p.kind !== 'role');
+const hasBuffs = (parts?: Part[]) => !!parts?.some(p => p.kind !== 'card' && p.kind !== 'totw' && p.kind !== 'role');
 
 /** Info about a card (used in the combat log): who, the type and what it does, strength */
 function CardInfo({ card, parts, m, note }: { card: GCard; parts?: Part[]; m: number; note?: string }) {
@@ -525,7 +540,7 @@ function CombatLog({ s, onClose }: { s: OState; onClose: () => void }) {
   }
   return (
     <motion.div className="absolute inset-0 z-[55] flex justify-center pt-16" style={{ background: 'rgba(5,6,9,0.6)' }} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose}>
-      <motion.div className="w-[860px] max-h-[78%] overflow-y-auto rounded-[22px] px-7 py-5" style={{ background: '#11131a', boxShadow: '0 30px 80px rgba(0,0,0,0.6)' }}
+      <motion.div data-own-scroll className="w-[860px] max-h-[78%] overflow-y-auto rounded-[22px] px-7 py-5" style={{ background: '#11131a', boxShadow: '0 30px 80px rgba(0,0,0,0.6)' }}
         initial={{ y: -30 }} animate={{ y: 0 }} onClick={e => e.stopPropagation()}>
         <div className="flex items-center gap-3 mb-3">
           <ScrollText className="w-5 h-5" style={{ color: ACC_L }} />
@@ -560,10 +575,16 @@ const BW = 148;
  * an enemy (a line follows the pointer). The rival answers with one attack of its own. Damage stays
  * until the fight ends (the bar under each card). `onDone` gets every attack, to replay in the rules.
  */
-function BattleScreen({ s, at, level, onDone }: { s: OState; at: 0 | 1 | 2; level: Level; onDone: (script: Attack[]) => void }) {
+/** With `net`: a fight against a person — the duel comes from the server, your hits go to it, theirs arrive and play out */
+function BattleScreen({ s, at, level, onDone, net }: { s: OState; at: 0 | 1 | 2; level: Level; onDone: (script: Attack[]) => void; net?: { duel: Duel; onHit: (a: Attack) => void; deadline: number | null; offset: number } }) {
   const font = useHeaderFont();
   const fit = useFitScale();
-  const [duel, setDuel] = useState<Duel>(() => startDuel(s, at));
+  const [localDuel, setDuel] = useState<Duel>(() => startDuel(s, at));
+  const duel = net ? net.duel : localDuel;
+  /** Hits already shown (the server's log grows by your hits and the rival's) */
+  const shownHits = useRef(net ? net.duel.log.length : 0);
+  const [clockNow, setClockNow] = useState(() => Date.now());
+  useEffect(() => { if (!net?.deadline) return; const t = setInterval(() => setClockNow(Date.now()), 250); return () => clearInterval(t); }, [net?.deadline]);
   const [picked, setPicked] = useState<string | null>(null);
   const [ptr, setPtr] = useState<{ x: number; y: number } | null>(null);
   const [hit, setHit] = useState<{ a: Attack; dmg: number; key: number } | null>(null);
@@ -591,11 +612,21 @@ function BattleScreen({ s, at, level, onDone }: { s: OState; at: 0 | 1 | 2; leve
   const attack = (a: Attack) => {
     const dmg = duel.units.find(u => u.uid === a.from)!.m;
     setPicked(null); setPtr(null); setBusy(true); setHit({ a, dmg, key: Date.now() });
+    if (net) { shownHits.current = duel.log.length + 1; net.onHit(a); setTimeout(() => setBusy(false), 750); return; }
     setTimeout(() => { setDuel(d => duelAct(d, a)); setBusy(false); }, 750);
   };
-  // The rival's turn
+  // A person's hits arrive from the server: play the newest one
   useEffect(() => {
-    if (over || busy || duel.turn !== 1) return;
+    if (!net || net.duel.log.length <= shownHits.current) return;
+    const last = net.duel.log[net.duel.log.length - 1];
+    shownHits.current = net.duel.log.length;
+    setBusy(true); setHit({ a: { from: last.from, to: last.to }, dmg: last.dmg, key: Date.now() });
+    const t = setTimeout(() => setBusy(false), 750);
+    return () => clearTimeout(t);
+  }, [net?.duel]); // eslint-disable-line react-hooks/exhaustive-deps
+  // The computer's turn
+  useEffect(() => {
+    if (net || over || busy || duel.turn !== 1) return;
     const t = setTimeout(() => attack(chooseAttack(duel, level)), 800);
     return () => clearTimeout(t);
   }, [duel, busy, over]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -676,6 +707,7 @@ function BattleScreen({ s, at, level, onDone }: { s: OState; at: 0 | 1 | 2; leve
           <motion.div key={over ? 'o' : myTurn ? (picked ? 'p' : 'm') : 'r'} className="font-logik-extended-bold uppercase text-[18px] tracking-wider"
             style={{ color: over ? T.text : myTurn ? T.me : T.rival, ...font }} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
             {duel.round > 1 && !over ? `Runda ${duel.round} · ` : ''}{over ? 'Koniec walki' : myTurn ? (picked ? 'Teraz kliknij cel rywala' : 'Twój ruch: kliknij swoją jednostkę') : duel.turn === 0 ? '…' : 'Ruch rywala…'}
+            {net?.deadline && !over && <span className="ml-3 tabular-nums" style={{ color: T.muted }}>{Math.max(0, Math.ceil((net.deadline - clockNow - net.offset) / 1000))} s</span>}
           </motion.div>
         </AnimatePresence>
       </div>
@@ -714,7 +746,7 @@ function BattleScreen({ s, at, level, onDone }: { s: OState; at: 0 | 1 | 2; leve
         )}
       </div>
       <div className="h-[52px] flex items-center gap-4">
-        {over && (
+        {over && !net && (
           <motion.button type="button" onClick={() => onDone(duel.log.map(({ from: f, to: t }) => ({ from: f, to: t })))} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.8 }}
             className="rounded-full px-10 py-3 font-logik-extended-bold uppercase tracking-widest text-[16px] text-white" style={{ background: ACC, boxShadow: `0 0 26px ${mix(ACC, 60)}`, ...font }}>Dalej</motion.button>
         )}
@@ -725,7 +757,7 @@ function BattleScreen({ s, at, level, onDone }: { s: OState; at: 0 | 1 | 2; leve
 
 // ── The end ─────────────────────────────────────────────────────────────────
 
-function EndScreen({ won, score, turns, rival, onRematch, onNew, onExit }: { won: boolean; score: [number, number]; turns: number; rival: string; onRematch: () => void; onNew: () => void; onExit?: () => void }) {
+function EndScreen({ won, score, turns, rival, onRematch, onNew, onExit, extra }: { won: boolean; score: [number, number]; turns: number; rival: string; onRematch?: () => void; onNew?: () => void; onExit?: () => void; extra?: React.ReactNode }) {
   const font = useHeaderFont();
   const color = won ? T.me : T.rival;
   const word = won ? 'Zwycięstwo' : 'Porażka';
@@ -758,12 +790,53 @@ function EndScreen({ won, score, turns, rival, onRematch, onNew, onExit }: { won
         <span style={{ color: T.me }}>{score[0]}</span><span className="opacity-40"> : </span><span style={{ color: T.rival }}>{score[1]}</span>
         <span className="text-[16px] ml-4 align-middle" style={{ color: T.muted }}>po {turns} turach</span>
       </motion.div>
+      {extra && <motion.div className="relative mt-3 text-[18px]" style={{ color: T.text }} initial={{ opacity: 0 }} animate={{ opacity: 0.9 }} transition={{ delay: 1.3 }}>{extra}</motion.div>}
       <motion.div className="relative flex gap-4 mt-8" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1.6 }}>
-        <motion.button type="button" onClick={onRematch} whileHover={{ scale: 1.05 }} className="rounded-full px-9 py-3.5 font-logik-extended-bold uppercase tracking-widest text-white" style={{ background: ACC, boxShadow: `0 0 30px ${mix(ACC, 60)}`, ...font }}>Rewanż</motion.button>
-        <motion.button type="button" onClick={onNew} whileHover={{ scale: 1.05 }} className="rounded-full px-9 py-3.5 font-logik-extended-bold uppercase tracking-widest text-white" style={{ boxShadow: 'inset 0 0 0 1.5px rgba(255,255,255,0.45)', ...font }}>Nowy rywal</motion.button>
+        {onRematch && <motion.button type="button" onClick={onRematch} whileHover={{ scale: 1.05 }} className="rounded-full px-9 py-3.5 font-logik-extended-bold uppercase tracking-widest text-white" style={{ background: ACC, boxShadow: `0 0 30px ${mix(ACC, 60)}`, ...font }}>Rewanż</motion.button>}
+        {onNew && <motion.button type="button" onClick={onNew} whileHover={{ scale: 1.05 }} className="rounded-full px-9 py-3.5 font-logik-extended-bold uppercase tracking-widest text-white" style={{ boxShadow: 'inset 0 0 0 1.5px rgba(255,255,255,0.45)', ...font }}>Nowy rywal</motion.button>}
         {onExit && <motion.button type="button" onClick={onExit} whileHover={{ scale: 1.05 }} className="flex items-center gap-2 rounded-full px-9 py-3.5 font-logik-extended-bold uppercase tracking-widest text-white" style={{ boxShadow: 'inset 0 0 0 1.5px rgba(255,255,255,0.45)', ...font }}><Home className="w-5 h-5" />Wyjdź</motion.button>}
       </motion.div>
     </motion.div>
+  );
+}
+
+// ── Against a person ─────────────────────────────────────────────────────────
+
+function PersonPic({ p, ring, size = 36 }: { p: Person; ring: string; size?: number }) {
+  return p.avatar
+    // eslint-disable-next-line @next/next/no-img-element
+    ? <img src={p.avatar} alt="" referrerPolicy="no-referrer" className="rounded-full object-cover" style={{ width: size, height: size, boxShadow: `0 0 0 2px ${ring}` }} />
+    : <span className="rounded-full flex items-center justify-center font-bold" style={{ width: size, height: size, background: mix(ring, 25), boxShadow: `0 0 0 2px ${ring}`, color: ring }}>{p.name.slice(0, 1).toUpperCase()}</span>;
+}
+
+/** Time left in the turn (then the reserve), ticking; red in the last 10 s */
+function TurnClock({ clock, active, offset }: { clock: Game['clock']; active: Side; offset: number }) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => { const t = setInterval(() => setNow(Date.now()), 250); return () => clearInterval(t); }, []);
+  const t = now + offset;
+  const own = Math.max(0, clock.turnEnds - t);
+  const total = Math.max(0, clock.deadline - t);
+  const fmt = (ms: number) => { const sec = Math.ceil(ms / 1000); return `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`; };
+  return (
+    <span className="text-[13px] tracking-wider mt-1 tabular-nums" style={{ color: total < 10_000 ? '#ffb3ad' : undefined }}>
+      {own > 0 ? fmt(own) : <>rezerwa {fmt(total)}</>}
+      {own > 0 && clock.reserve[active] > 0 && <span className="opacity-60 text-[10px]"> +{fmt(clock.reserve[active])}</span>}
+    </span>
+  );
+}
+
+const END_WHY: Record<string, [string, string]> = {
+  points: ['', ''], resign: ['Rywal się poddał', 'Mecz poddany'], timeout: ['Rywalowi dwa razy skończył się czas', 'Dwa razy skończył ci się czas'], away: ['Rywal wyszedł z gry', 'Zbyt długo cię nie było'],
+};
+function NetResult({ net }: { net: NetGame }) {
+  const r = net.result;
+  if (!r) return <span style={{ color: T.muted }}>Liczę ranking…</span>;
+  const why = END_WHY[r.reason]?.[r.won ? 0 : 1];
+  return (
+    <span className="flex items-center gap-4">
+      {why && <span style={{ color: T.muted }}>{why}</span>}
+      {r.rating != null && <span className="font-bold tabular-nums">Ranking {r.rating} <span style={{ color: (r.delta ?? 0) >= 0 ? T.me : T.rival }}>{(r.delta ?? 0) >= 0 ? '+' : ''}{r.delta}</span></span>}
+    </span>
   );
 }
 
@@ -797,7 +870,7 @@ interface TutStep extends CoachStep { when: () => boolean; done?: () => boolean;
 interface Flyer { id: string; side: Side; pts: number; why: Gain['why']; from: { x: number; y: number }; to: { x: number; y: number } }
 interface DragState { kind: 'card' | 'units'; ids: string[] }
 
-export function OutpostsGame({ deck, all, onBack, level = 'easy', visible = true }: { deck: GCard[]; all: GCard[]; onBack?: () => void; level?: Level; visible?: boolean }) {
+export function OutpostsGame({ deck, all, onBack, level = 'easy', visible = true, net }: { deck: GCard[]; all: GCard[]; onBack?: () => void; level?: Level; visible?: boolean; net?: NetGame }) {
   const font = useHeaderFont();
   const fit = useFitScale();
   const [cpu, setCpu] = useState<GCard[]>([]);
@@ -809,7 +882,26 @@ export function OutpostsGame({ deck, all, onBack, level = 'easy', visible = true
   const [banner, setBanner] = useState<{ text: string; side: Side; key: number } | null>(null);
   // The fights of this phase 3, one battle screen each; all choices go to resolve() at the end
   const [battleQ, setBattleQ] = useState<{ base: OState; locs: Array<0 | 1 | 2>; i: number; chosen: Partial<Record<0 | 1 | 2, Attack[]>> } | null>(null);
-  const scene = battleQ;
+  // Against a person: the fight comes from the server; a finished one stays on screen a moment
+  const [outro, setOutro] = useState<{ base: OState; at: 0 | 1 | 2; duel: Duel; key: string } | null>(null);
+  const prevFight = useRef<Fighting | null>(null);
+  useEffect(() => {
+    if (!net) return;
+    const f = net.game.fight; const p = prevFight.current;
+    prevFight.current = f;
+    if (!p || (f && f.i === p.i && f.base.turn === p.base.turn)) return;
+    const at = p.locs[p.i];
+    const sameTurn = f && f.base.turn === p.base.turn;
+    const script = sameTurn ? f.chosen[at] : net.game.s.fights.find(x => x.at === at)?.blows.map(b => ({ from: b.from, to: b.to }));
+    const key = `${p.base.turn}-${at}`;
+    setOutro({ base: p.base, at, duel: playDuel(p.base, at, script ?? p.duel.log.map(({ from, to }) => ({ from, to }))), key });
+    const t = setTimeout(() => setOutro(o => (o?.key === key ? null : o)), 2200);
+    return () => clearTimeout(t);
+  }, [net?.game]); // eslint-disable-line react-hooks/exhaustive-deps
+  const netFight = net?.game.fight;
+  const netBattle = !net ? null : outro ? { base: outro.base, at: outro.at, duel: outro.duel, live: false }
+    : netFight ? { base: netFight.base, at: netFight.locs[netFight.i], duel: netFight.duel, live: true } : null;
+  const scene = battleQ ?? netBattle;
   const [flyers, setFlyers] = useState<Flyer[]>([]);
   const [owed, setOwed] = useState<[number, number]>([0, 0]);
   const [note, setNote] = useState<string | null>(null);
@@ -827,7 +919,7 @@ export function OutpostsGame({ deck, all, onBack, level = 'easy', visible = true
   });
   const closeTour = () => { setTour(false); try { localStorage.setItem(TOUR_KEY, '1'); } catch { /* private mode */ } };
   // The walk-me runs by itself the first time (the tutorial has its own coach instead)
-  useEffect(() => { if (level === 'tutorial') return; try { if (!localStorage.getItem(TOUR_KEY)) setTour(true); } catch { /* private mode */ } }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (level === 'tutorial' || net) return; try { if (!localStorage.getItem(TOUR_KEY)) setTour(true); } catch { /* private mode */ } }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const boardRef = useRef<HTMLDivElement>(null);
   const ghostRef = useRef<HTMLDivElement>(null);
   const pointer = useRef({ x: 0, y: 0, gx: 0, gy: 0, tilt: 0, lastX: 0 });
@@ -861,7 +953,15 @@ export function OutpostsGame({ deck, all, onBack, level = 'easy', visible = true
     setCpu(theirs); setS(g); setSel([]); setSelCards([]); setBattleQ(null); setFlyers([]); setOwed([0, 0]);
   };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { start(); }, [deck]);
+  useEffect(() => { if (!net) start(); }, [deck]);
+  // Against a person every server update is the truth (it replaces what was shown ahead of it)
+  useEffect(() => { if (net) setS(net.game.s); }, [net?.game]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  /** A move against a person: shown at once, sent to the server; refused → back to the server's board */
+  const sendNet = (m: PvpAction) => {
+    if (!net) return;
+    net.send(m).then(err => { if (err) { setNote(err); setS(net.game.s); } });
+  };
 
   useEffect(() => {
     if (!objEl) return;
@@ -918,7 +1018,7 @@ export function OutpostsGame({ deck, all, onBack, level = 'easy', visible = true
 
   // The computer: one action at a time, waiting for scenes and flying points
   useEffect(() => {
-    if (!s || s.active !== 1 || s.winner !== null || s.phase === 'fight' || scene || flyers.length || banner || logOpen || tour) return;
+    if (net || !s || s.active !== 1 || s.winner !== null || s.phase === 'fight' || scene || flyers.length || banner || logOpen || tour) return;
     const t = setTimeout(() => { const a = cpuNextAction(s, Math.random, gameLevel); if (a) setS(applyAct(s, a)); else openBattles(s); }, 900);
     return () => clearTimeout(t);
   }, [s, scene, flyers.length, banner, logOpen, tour]);
@@ -926,10 +1026,16 @@ export function OutpostsGame({ deck, all, onBack, level = 'easy', visible = true
   // Phase 3 played out (scenes and points done): the turn passes
   useEffect(() => {
     if (!s || s.phase !== 'fight' || s.winner !== null || scene || flyers.length || banner || logOpen) return;
-    const t = setTimeout(() => { const cur = stateRef.current; if (cur?.phase === 'fight') { setS(endTurn(cur)); setSel([]); setSelCards([]); } }, 700);
+    const t = setTimeout(() => {
+      const cur = stateRef.current; if (cur?.phase !== 'fight') return;
+      // Against a person the server passes the turn (the active player just says they've seen it)
+      if (net) { if (cur.active === 0 && endSent.current !== cur.turn) { endSent.current = cur.turn; sendNet({ kind: 'end' }); } return; }
+      setS(endTurn(cur)); setSel([]); setSelCards([]);
+    }, 700);
     return () => clearTimeout(t);
   }, [s, scene, flyers.length, banner, logOpen]);
 
+  const endSent = useRef(-1);
   // Nothing (more) to do: move on by itself. Running out shows a big banner saying why. With moves
   // planned it waits for the player to confirm them (they may still want to change something).
   const autoKey = useRef('');
@@ -951,7 +1057,10 @@ export function OutpostsGame({ deck, all, onBack, level = 'easy', visible = true
     const turnNow = s.turn;
     setTimeout(() => {
       const cur = stateRef.current; if (!cur || cur.active !== 0 || cur.winner !== null || cur.turn !== turnNow) return;
-      setS(next === 'orders' ? startOrders(cur) : endTurn(cur)); setSel([]); setSelCards([]);
+      if (next === 'orders') { setS(startOrders(cur)); sendNet({ kind: 'orders' }); }
+      else if (net) sendNet({ kind: 'confirm' });
+      else setS(endTurn(cur));
+      setSel([]); setSelCards([]);
     }, why ? 1300 : 250);
   }, [s, scene, flyers.length, tour, logOpen, banner]);
 
@@ -977,13 +1086,15 @@ export function OutpostsGame({ deck, all, onBack, level = 'easy', visible = true
   // ── Actions ──
   const doDeploy = (ids: string[]) => {
     let cur = stateRef.current; if (!cur) return;
-    for (const id of ids) { if (canDeploy(cur, id)) { setNote(canDeploy(cur, id)); break; } cur = deploy(cur, id); }
+    const done: string[] = [];
+    for (const id of ids) { if (canDeploy(cur, id)) { setNote(canDeploy(cur, id)); break; } cur = deploy(cur, id); done.push(id); }
     setS(cur); setSelCards([]);
+    if (net) (async () => { for (const id of done) { const err = await net.send({ kind: 'deploy', cardId: id }); if (err) { setNote(err); setS(net.game.s); break; } } })();
   };
   const doMove = (ids: string[], to: Loc) => {
     const cur = stateRef.current; if (!cur) return;
     const why = canMove(cur, ids, to);
-    if (why) setNote(why); else setS(move(cur, ids, to));
+    if (why) setNote(why); else { setS(move(cur, ids, to)); sendNet({ kind: 'move', uids: ids, to }); }
     setSel([]);
   };
 
@@ -1082,7 +1193,13 @@ export function OutpostsGame({ deck, all, onBack, level = 'easy', visible = true
     }
     return null;
   };
-  const advance = () => { const cur = stateRef.current; if (!cur || cur.active !== 0 || cur.phase === 'fight' || selCards.length) return; if (cur.phase === 'deploy') setS(startOrders(cur)); else openBattles(cur); setSel([]); setSelCards([]); };
+  const advance = () => {
+    const cur = stateRef.current; if (!cur || cur.active !== 0 || cur.phase === 'fight' || selCards.length) return;
+    if (cur.phase === 'deploy') { setS(startOrders(cur)); sendNet({ kind: 'orders' }); }
+    else if (net) sendNet({ kind: 'confirm' });
+    else openBattles(cur);
+    setSel([]); setSelCards([]);
+  };
   const sendTo = (to: Loc) => { if (movingCards.length && to === 'base') doDeploy(movingCards); else if (sel.length) doMove(sel, to); };
   // What the picked-up units would cost (exactly, once the pointer is over a target)
   const hoverCost = hoverTo != null && movingUnits.length && phase === 'move' && !canMove(s, movingUnits, hoverTo) ? moveCost(s, movingUnits, hoverTo) : null;
@@ -1200,7 +1317,7 @@ export function OutpostsGame({ deck, all, onBack, level = 'easy', visible = true
         <div className="h-[64px] shrink-0 flex items-center justify-center relative">
           {onBack && (
             <motion.button type="button" onClick={onBack} whileHover={{ x: -3 }} className="absolute left-5 flex items-center gap-1.5 rounded-full pl-2.5 pr-4 h-10 text-[13px] font-bold"
-              style={{ boxShadow: `inset 0 0 0 1.5px ${T.faint}`, color: T.text }}><ArrowLeft className="w-4 h-4" />Album i talia</motion.button>
+              style={{ boxShadow: `inset 0 0 0 1.5px ${T.faint}`, color: T.text }}><ArrowLeft className="w-4 h-4" />Karty</motion.button>
           )}
           <Tip content={`Rywal · na ręce: ${rival.hand.length} · w talii: ${rival.deck.length} · polegli: ${rival.grave.length}`}>
             <div className="absolute left-[200px] flex items-center gap-3 cursor-help">
@@ -1211,11 +1328,27 @@ export function OutpostsGame({ deck, all, onBack, level = 'easy', visible = true
           </Tip>
           <ScoreRace shown={shown} win={s.win} />
           {/* Who you play against, on the rival's side of the score */}
-          <div className="absolute right-[150px] flex items-center gap-2.5 whitespace-nowrap">
-            <span className="font-logik-extended-bold uppercase text-[14px] leading-tight text-right" style={{ color: LEVELS[gameLevel].color, ...font }}>{gameLevel === 'tutorial' ? 'Samouczek' : `Komputer ${LEVELS[gameLevel].name}`}</span>
-            <span className="w-9 h-9 rounded-full flex items-center justify-center" style={{ background: mix(LEVELS[gameLevel].color, 25), boxShadow: `0 0 0 2px ${LEVELS[gameLevel].color}` }}><Bot className="w-5 h-5" style={{ color: LEVELS[gameLevel].color }} /></span>
-          </div>
+          {net ? (
+            <div className="absolute right-[214px] flex items-center gap-2.5 whitespace-nowrap">
+              <span className="flex flex-col items-end leading-tight">
+                <span className="font-logik-extended-bold uppercase text-[14px]" style={{ color: T.rival, ...font }}>{net.players[1].name}</span>
+                {net.players[1].rating != null && <span className="text-[11px] tabular-nums" style={{ color: T.muted }}>{net.players[1].rating}</span>}
+              </span>
+              <PersonPic p={net.players[1]} ring={T.rival} />
+            </div>
+          ) : (
+            <div className="absolute right-[150px] flex items-center gap-2.5 whitespace-nowrap">
+              <span className="font-logik-extended-bold uppercase text-[14px] leading-tight text-right" style={{ color: LEVELS[gameLevel].color, ...font }}>{gameLevel === 'tutorial' ? 'Samouczek' : `Komputer ${LEVELS[gameLevel].name}`}</span>
+              <span className="w-9 h-9 rounded-full flex items-center justify-center" style={{ background: mix(LEVELS[gameLevel].color, 25), boxShadow: `0 0 0 2px ${LEVELS[gameLevel].color}` }}><Bot className="w-5 h-5" style={{ color: LEVELS[gameLevel].color }} /></span>
+            </div>
+          )}
           <div data-tour="help" className="absolute right-5 flex items-center gap-2">
+            {net && s.winner === null && (
+              <Tip content="Poddaj mecz">
+                <motion.button type="button" onClick={() => { if (window.confirm('Poddać mecz? Liczy się jak porażka.')) sendNet({ kind: 'resign' }); }} whileHover={{ scale: 1.08 }}
+                  className="w-11 h-11 rounded-full flex items-center justify-center" style={{ boxShadow: `inset 0 0 0 1.5px ${T.faint}`, color: T.text }} aria-label="Poddaj mecz"><Flag className="w-5 h-5" /></motion.button>
+              </Tip>
+            )}
             <Tip content="Samouczek">
               <motion.button type="button" data-help="tour" onClick={() => setTour(true)} whileHover={{ scale: 1.08 }} className="w-11 h-11 rounded-full flex items-center justify-center"
                 style={{ boxShadow: `inset 0 0 0 1.5px ${T.faint}`, color: T.text }} aria-label="Samouczek"><CircleHelp className="w-5 h-5" /></motion.button>
@@ -1304,7 +1437,8 @@ export function OutpostsGame({ deck, all, onBack, level = 'easy', visible = true
               transition={recommend ? { duration: 1.8, repeat: Infinity } : { duration: 0.3 }}
               style={{ color: mine ? '#fff' : T.muted, ...font }}>
               <span className="text-[16px] leading-tight text-center">{!mine ? (s.winner === null ? 'Tura rywala' : 'Koniec') : phase === 'deploy' ? 'Dalej' : phase === 'fight' ? 'Walki' : clashes ? 'Walcz' : planned ? 'Zatwierdź' : 'Koniec tury'}</span>
-              {mine && <span className="text-[9px] tracking-widest mt-1 opacity-80">{phase === 'deploy' ? 'do ruchów' : phase === 'fight' ? '' : planned ? 'zatwierdź ruchy' : 'oddaj ruch'}</span>}
+              {net && s.winner === null && phase !== 'fight' ? <TurnClock clock={net.game.clock} active={s.active} offset={net.offset} />
+                : mine && <span className="text-[9px] tracking-widest mt-1 opacity-80">{phase === 'deploy' ? 'do ruchów' : phase === 'fight' ? '' : planned ? 'zatwierdź ruchy' : 'oddaj ruch'}</span>}
             </motion.button>
           </div>
             </div>
@@ -1341,10 +1475,19 @@ export function OutpostsGame({ deck, all, onBack, level = 'easy', visible = true
       )}
       <AnimatePresence>
         {battleQ && <BattleScreen key={`${battleQ.base.turn}-${battleQ.i}`} s={battleQ.base} at={battleQ.locs[battleQ.i]} level={gameLevel} onDone={battleDone} />}
+        {net && netBattle && (
+          <BattleScreen key={`n${netBattle.base.turn}-${netBattle.at}`} s={netBattle.base} at={netBattle.at} level={gameLevel} onDone={() => {}}
+            net={{ duel: netBattle.duel, onHit: a => sendNet({ kind: 'hit', from: a.from, to: a.to }), deadline: netBattle.live ? net.game.clock.deadline : null, offset: net.offset }} />
+        )}
       </AnimatePresence>
       <AnimatePresence>
         {s.winner !== null && !scene && !flyers.length && (
-          <EndScreen won={s.winner === 0} score={[s.sides[0].score, s.sides[1].score]} turns={Math.ceil(s.turn / 2)} rival={gameLevel === 'tutorial' ? 'Samouczek' : `Komputer ${LEVELS[gameLevel].name}`} onRematch={() => start(true)} onNew={() => start()} onExit={onBack} />
+          net ? (
+            <EndScreen won={net.result ? net.result.won : s.winner === 0} score={[s.sides[0].score, s.sides[1].score]} turns={Math.ceil(s.turn / 2)} rival={net.players[1].name}
+              onRematch={net.onRematch} onExit={onBack} extra={<NetResult net={net} />} />
+          ) : (
+            <EndScreen won={s.winner === 0} score={[s.sides[0].score, s.sides[1].score]} turns={Math.ceil(s.turn / 2)} rival={gameLevel === 'tutorial' ? 'Samouczek' : `Komputer ${LEVELS[gameLevel].name}`} onRematch={() => start(true)} onNew={() => start()} onExit={onBack} />
+          )
         )}
       </AnimatePresence>
 

@@ -8,6 +8,8 @@ import { pctRank } from '@/lib/stats-lab/derive';
 import { metric, type MetricKey } from '@/lib/stats-lab/metrics';
 import { bestSeries, seasonPeriods } from '@/lib/stats-lab/season';
 import { calcPerformanceScore, MIN_SCORED_GAME_MINS } from '@/lib/performance-score';
+// Only called at run time (outposts.ts imports from this file too)
+import { baseMight } from './outposts';
 
 export const ROLE_KEYS = ['Carry', 'Mid', 'Offlane', 'Soft Support', 'Hard Support'] as const;
 export type RoleKey = typeof ROLE_KEYS[number];
@@ -44,18 +46,25 @@ export interface GCard {
   totw: boolean;
 }
 
-/** Boost of a team-of-the-week / round card (balance: later) */
-export const TOTW_BOOST = 4;
+/** A team-of-the-week / round card keeps its series' rating and plays +1 stronger (see baseMight) */
+export const TOTW_STRENGTH = 1;
 
-export type Tier = 'bronze' | 'silver' | 'gold' | 'elite' | 'totw';
+export type Tier = 'wood' | 'bronze' | 'silver' | 'gold' | 'elite' | 'totw';
 export const TIER: Record<Tier, { label: string; color: string }> = {
-  bronze: { label: 'Brązowa', color: '#c98a55' },
+  wood: { label: 'Drewniana', color: '#9c7a58' },
+  bronze: { label: 'Brązowa', color: '#d6873f' },
   silver: { label: 'Srebrna', color: '#c9d1db' },
   gold: { label: 'Złota', color: '#f2c94c' },
   elite: { label: 'Elitarna', color: '#b072ff' },
   totw: { label: 'Drużyna kolejki', color: '#5ef0ff' },
 };
-export const tierOf = (c: GCard): Tier => (c.totw ? 'totw' : c.ovr >= 92 ? 'elite' : c.ovr >= 80 ? 'gold' : c.ovr >= 65 ? 'silver' : 'bronze');
+/** Rarity = the strength the card shows (SIŁA): 1–2 wooden, 3–4 bronze, 5–6 silver, 7–8 gold,
+ *  9+ elite. Worked out from the card each time, so every card ever issued follows it. */
+export function tierOf(c: GCard): Tier {
+  if (c.totw) return 'totw';
+  const m = baseMight(c);
+  return m >= 9 ? 'elite' : m >= 7 ? 'gold' : m >= 5 ? 'silver' : m >= 3 ? 'bronze' : 'wood';
+}
 
 interface Raw { pid: string; player: PlayerX; team?: TeamX; role: RoleKey; standin: boolean; perfs: Perf[]; score: number; vals: Record<AttrKey, number> }
 
@@ -125,8 +134,7 @@ export function buildSeriesCards(model: Model, tournamentType?: string): GCard[]
       const c = byId.get(id);
       if (!c) continue;
       c.series.label = per.label;
-      const b = (v: number) => Math.min(99, v + TOTW_BOOST);
-      cards.push({ ...c, id: `${c.id}:totw`, totw: true, ovr: b(c.ovr), attrs: Object.fromEntries(Object.entries(c.attrs).map(([k, v]) => [k, b(v)])) as GCard['attrs'] });
+      cards.push({ ...c, id: `${c.id}:totw`, totw: true });
     }
   }
   return cards.sort((a, b) => a.series.start - b.series.start);
@@ -154,13 +162,21 @@ export function packPool(cards: GCard[]): Map<RoleKey, Array<{ base: GCard; totw
   return pool;
 }
 
-/** One pack: a card for each role, from a totally random team's last series */
+/** Chance (%) of each rarity in a pack slot. A rarity the position has no card of now shares its
+ *  chance out among the others. Sim: ~40 packs over a season give 4.5–5.5 elite cards in a deck. */
+export const RARITY_ODDS: Record<Exclude<Tier, 'totw'>, number> = { wood: 30, bronze: 26, silver: 20, gold: 14, elite: 10 };
+
+/** One pack: a card for each role — a rarity by RARITY_ODDS, then a random team's last series of it */
 export function openPack(pool: ReturnType<typeof packPool>, rnd = Math.random): GCard[] {
   const out: GCard[] = [];
   for (const r of ROLE_KEYS) {
     const list = pool.get(r)!;
     if (!list.length) continue;
-    const e = list[Math.floor(rnd() * list.length)];
+    const n = new Map<Tier, number>();
+    for (const e of list) n.set(tierOf(e.base), (n.get(tierOf(e.base)) ?? 0) + 1);
+    const weight = (e: { base: GCard }) => { const t = tierOf(e.base) as keyof typeof RARITY_ODDS; return RARITY_ODDS[t] / n.get(t)!; };
+    let x = rnd() * list.reduce((a, e) => a + weight(e), 0);
+    const e = list.find(c => (x -= weight(c)) <= 0) ?? list[list.length - 1];
     out.push(e.totw && rnd() < TOTW_CHANCE ? e.totw : e.base);
   }
   return out;
@@ -182,7 +198,11 @@ export interface DeckRule {
   text: string;
 }
 
-export const avgOvr = (d: GCard[]) => (d.length ? d.reduce((s, c) => s + c.ovr, 0) / d.length : 0);
+/** Rating with the team-of-the-round bonus counted in (+1 strength ≈ +7 rating), for matching deck strength */
+const rating = (c: GCard) => c.ovr + (c.totw ? 7 : 0);
+export const avgOvr = (d: GCard[]) => (d.length ? d.reduce((s, c) => s + rating(c), 0) / d.length : 0);
+/** Strongest first (what the card hits for in the game), then by rating */
+export const byStrength = (a: GCard, b: GCard) => baseMight(b) - baseMight(a) || b.ovr - a.ovr;
 
 /** Why a deck is not legal (null = fine). One card per player. */
 export function deckProblem(deck: GCard[], rule: DeckRule): string | null {
@@ -195,7 +215,7 @@ export function deckProblem(deck: GCard[], rule: DeckRule): string | null {
 /** The strongest legal deck from a collection (greedy: role minimums first, then best rated) */
 export function autoDeck(collection: GCard[], rule: DeckRule): GCard[] {
   // One card per player: the best one (a Map keeps the last value set, so best goes in last)
-  const uniq = [...new Map([...collection].sort((a, b) => a.ovr - b.ovr).map(c => [c.pid, c])).values()].sort((a, b) => b.ovr - a.ovr);
+  const uniq = [...new Map([...collection].sort((a, b) => byStrength(b, a)).map(c => [c.pid, c])).values()].sort(byStrength);
   const deck: GCard[] = [];
   for (const r of ROLE_KEYS) deck.push(...uniq.filter(c => c.role === r).slice(0, rule.perRole));
   for (const c of uniq) if (deck.length < rule.size && !deck.includes(c)) deck.push(c);

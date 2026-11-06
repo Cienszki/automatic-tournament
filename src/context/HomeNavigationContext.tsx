@@ -85,19 +85,19 @@ export function HomeNavigationProvider({ children }: { children: React.ReactNode
 export const useHomeNavigation = () => useContext(HomeNavigationContext);
 
 /** All homepage sections in display order; optional ones are dropped by getHomeSections. */
-const HOME_SECTION_ORDER = ['start', 'groups', 'schedule', 'teams', 'stats', 'pickem', 'my-team'] as const;
+const HOME_SECTION_ORDER = ['start', 'groups', 'schedule', 'teams', 'stats', 'cards', 'pickem', 'my-team'] as const;
 export type HomeSectionKey = (typeof HOME_SECTION_ORDER)[number];
 
 export interface HomeSectionOptions {
   /** tournament.pickem?.enabled — a disabled Pick'em gets no section at all */
   pickemEnabled: boolean;
-  /** The signed-in user captains a team in this tournament */
-  hasTeam: boolean;
+  /** Somebody is signed in: the account section ("my-team") is theirs */
+  signedIn: boolean;
 }
 
 /** Sections FullScreenHomePage renders for this tournament/user, in order (index = section index). */
-export function getHomeSections({ pickemEnabled, hasTeam }: HomeSectionOptions): HomeSectionKey[] {
-  return HOME_SECTION_ORDER.filter(key => (key !== 'pickem' || pickemEnabled) && (key !== 'my-team' || hasTeam));
+export function getHomeSections({ pickemEnabled, signedIn }: HomeSectionOptions): HomeSectionKey[] {
+  return HOME_SECTION_ORDER.filter(key => (key !== 'pickem' || pickemEnabled) && (key !== 'my-team' || signedIn));
 }
 
 /**
@@ -109,11 +109,11 @@ export const STATS_VIEW_KEYS: Record<string, string> = { rankings: 'rankingi', p
 /**
  * Section index for a view key (`?view=` values and navbar targets), or undefined when the
  * section doesn't exist. "playoffs" shares the groups section, "rankings" lives in stats.
- * Sections before Pick'em never move, so callers that don't know hasTeam can omit it —
+ * Sections before Pick'em never move, so callers that don't know signedIn can omit it —
  * "my-team" is always last.
  */
-export function getHomeSectionIndex(view: string, { pickemEnabled, hasTeam = true }: Pick<HomeSectionOptions, 'pickemEnabled'> & Partial<HomeSectionOptions>): number | undefined {
+export function getHomeSectionIndex(view: string, { pickemEnabled, signedIn = true }: Pick<HomeSectionOptions, 'pickemEnabled'> & Partial<HomeSectionOptions>): number | undefined {
   const key = view === 'playoffs' ? 'groups' : STATS_VIEW_KEYS[view] ? 'stats' : view;
-  const index = getHomeSections({ pickemEnabled, hasTeam }).indexOf(key as HomeSectionKey);
+  const index = getHomeSections({ pickemEnabled, signedIn }).indexOf(key as HomeSectionKey);
   return index === -1 ? undefined : index;
 }

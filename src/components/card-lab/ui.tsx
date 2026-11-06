@@ -42,7 +42,8 @@ const FOIL_CSS = `
 /**
  * The card, showing what matters in the game: strength (big), position with its ability, the team (for
  * the team bonus). `w` = width in px (height = w × 1.42); below ~130 px the ability text is left out.
- * Team-of-the-round cards are holographic: moving foil, a ribbon, a double frame and sparkles.
+ * The rarity follows the strength (wooden grain, bronze, silver, gold, elite);
+ * team-of-the-round cards are holographic: moving foil, a ribbon, a double frame and sparkles.
  * `selected` glows in the secondary colour, `dim` fades it; `children` are drawn on top (inside the card).
  */
 export function CardFace({ c, w, selected, dim, onClick, tip = true, children }: {
@@ -50,7 +51,8 @@ export function CardFace({ c, w, selected, dim, onClick, tip = true, children }:
 }) {
   const h = Math.round(w * RATIO);
   const s = w / 200;
-  const t = TIER[tierOf(c)];
+  const tier = tierOf(c);
+  const t = TIER[tier];
   const full = w >= 130;
   const font = useHeaderFont();
   const k = KEYWORD[c.role];
@@ -72,6 +74,12 @@ export function CardFace({ c, w, selected, dim, onClick, tip = true, children }:
         opacity: dim ? 0.4 : 1, transition: 'opacity .2s, box-shadow .2s',
       }}>
       {special && <style>{FOIL_CSS}</style>}
+      {/* Wooden: a dull grain */}
+      {tier === 'wood' && (
+        <div className="absolute inset-0 pointer-events-none" style={{
+          background: 'repeating-linear-gradient(97deg, rgba(156,122,88,0.16) 0 3px, transparent 3px 12px), repeating-linear-gradient(93deg, rgba(70,45,22,0.22) 0 1px, transparent 1px 8px), linear-gradient(180deg, rgba(110,80,50,0.18), transparent 70%)',
+        }} />
+      )}
       <HeroImg heroId={c.heroId} title={false} className="absolute inset-0 w-full h-full scale-125 blur-xl opacity-30" />
       <div className="absolute -right-8 -top-8 rounded-full blur-2xl" style={{ width: 120 * s, height: 120 * s, background: mix(t.color, 30) }} />
       {/* Holographic foil sweeping across the whole card */}

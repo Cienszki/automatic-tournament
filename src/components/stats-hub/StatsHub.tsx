@@ -52,15 +52,15 @@ function whenIdle(fn: () => void, timeout: number): () => void {
  * Stage 2 (only while the stats section is on screen): every view's code, then its pictures —
  * paused whenever the visitor moves to another section.
  */
-function useWarmup(statsKey: string | null, visible: boolean, view: string) {
+function useWarmup(statsKey: string | null, visible: boolean, view: string, type?: string) {
   useEffect(() => {
     if (!statsKey || !warmer) return;
     let cancelled = false;
     const stop = whenIdle(() => {
-      loadStatsModel(statsKey).then(m => { if (!cancelled) warmer!.now(overviewAssets(m)); }).catch(() => { /* view shows the error */ });
+      loadStatsModel(statsKey).then(m => { if (!cancelled) warmer!.now(overviewAssets(m, type)); }).catch(() => { /* view shows the error */ });
     }, 3000);
     return () => { cancelled = true; stop(); };
-  }, [statsKey]);
+  }, [statsKey, type]);
 
   const started = useRef<string | null>(null);
   useEffect(() => {
@@ -228,13 +228,14 @@ const VALID_VIEWS = new Set<string>([OVERVIEW.id, ADVANCED.id, MATCH_PREP.id, ..
 
 export default function StatsHub({ active }: { active?: boolean }) {
   const statsKey = useStatsKey();
+  const { tournament: hubTournament } = useTournament();
   const searchParams = useSearchParams();
   const [view, setView] = useState<string>(() => {
     const sv = searchParams.get('sv');
     return sv && VALID_VIEWS.has(sv) ? sv : OVERVIEW.id;
   });
   const [ref, onScreen] = useOnScreen<HTMLDivElement>(active);
-  useWarmup(statsKey, onScreen, view);
+  useWarmup(statsKey, onScreen, view, hubTournament?.type);
 
   const go = useCallback((id: string) => { if (VALID_VIEWS.has(id)) setView(id); }, []);
   const back = useCallback(() => {

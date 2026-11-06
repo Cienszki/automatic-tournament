@@ -11,6 +11,7 @@ import {
   CalendarDays,
   GitFork,
   ScrollText,
+  GalleryVerticalEnd,
   HelpCircle,
   BarChart2,
   Crown,
@@ -563,18 +564,15 @@ export function TournamentNavbar() {
                   </Button>
                 )}
 
-                {/* Rules */}
+                {/* Card game */}
                 <Button
                   variant="ghost"
-                  asChild
-                  onClick={() => setIsMobileMenuOpen(false)}
+                  onClick={() => { handleViewNavigation('cards'); setIsMobileMenuOpen(false); }}
                   className="w-full justify-start text-base py-3 px-3"
-                  style={{ color: isActive('/rules') ? theme.primaryColor : navTextColor }}
+                  style={{ color: navTextColor }}
                 >
-                  <Link href={getTournamentPath('/rules')} className="flex items-center">
-                    <ScrollText className="h-5 w-5 mr-3" />
-                    <span>Regulamin</span>
-                  </Link>
+                  <GalleryVerticalEnd className="h-5 w-5 mr-3" />
+                  <span>Gra karciana</span>
                 </Button>
 
                 {/* Prizes — only when the organiser gives any */}
@@ -884,14 +882,14 @@ export function TournamentNavbar() {
               );
             })()}
 
-            {/* ── My Team — only for captains ───────────────────── */}
-            {/* ── Rules — full-page link ────────────────────────── */}
+            {/* ── Card game — its home-page section, under the stats ── */}
             {(() => {
-              const active = isActive('/rules');
+              const active = isActive('/cards');
               return (
-                <a
-                  key="rules"
-                  href={getTournamentPath('/rules')}
+                <button
+                  key="cards"
+                  onClick={() => handleViewNavigation('cards')}
+                  onAuxClick={(e) => { if (e.button === 1) { e.preventDefault(); window.open(`${getTournamentPath('')}?view=cards`, '_blank'); } }}
                   className={cn(
                     "relative text-sm font-medium shrink-0 px-3 py-2 transition-all duration-200 group flex items-center gap-2",
                     "hover:bg-[var(--nav-hover-bg)] hover:text-[var(--nav-hover-text)]",
@@ -904,8 +902,8 @@ export function TournamentNavbar() {
                     '--nav-hover-text': theme.primaryColor,
                   } as React.CSSProperties}
                 >
-                  <ScrollText className="h-4 w-4" />
-                  <span className="hidden lg:inline">Regulamin</span>
+                  <GalleryVerticalEnd className="h-4 w-4" />
+                  <span className="hidden lg:inline">Gra karciana</span>
                   <span
                     className={cn(
                       "absolute bottom-2 left-0 h-0.5 w-full transform transition-transform duration-300 ease-out",
@@ -913,7 +911,7 @@ export function TournamentNavbar() {
                     )}
                     style={{ backgroundColor: theme.primaryColor }}
                   />
-                </a>
+                </button>
               );
             })()}
 

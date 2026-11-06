@@ -11,7 +11,7 @@
 // Points: taking over an objective = 1 (Roshan 2); at the start of your turn every objective you own
 // and still stand on = 1. First to 10 wins. Card quality = strength (siła); cards cost nothing.
 
-import { shuffle, type GCard, type RoleKey } from './cards';
+import { shuffle, TOTW_STRENGTH, type GCard, type RoleKey } from './cards';
 
 export type Side = 0 | 1;
 export type Loc = 'base' | 0 | 1 | 2;
@@ -76,7 +76,7 @@ export interface OUnit { uid: string; card: GCard; side: Side; loc: Loc; from: L
 export interface OBoard { hand: GCard[]; deck: GCard[]; grave: GCard[]; score: number }
 
 /** One part of a unit's strength, for the breakdown chips */
-export interface Part { kind: 'card' | 'role' | 'farmer' | 'aura' | 'hg' | 'team' | 'wound'; label: string; v: number }
+export interface Part { kind: 'card' | 'totw' | 'role' | 'farmer' | 'aura' | 'hg' | 'team' | 'wound'; label: string; v: number }
 export interface FightLine { uid: string; card: GCard; side: Side; parts: Part[]; m: number }
 export interface Fight {
   key: number;
@@ -135,10 +135,11 @@ export interface OState {
 export const cardStrength = (c: GCard) => STRENGTH.min + Math.round((STRENGTH.max - STRENGTH.min) * Math.max(0, Math.min(1, (c.ovr - 45) / 54)) ** STRENGTH.curve);
 const roleMod = (c: GCard) => (c.role === 'Offlane' ? 1 : c.role === 'Hard Support' || c.role === 'Soft Support' ? -1 : 0);
 /** Strength of a card in hand (no board bonuses) */
-export const baseMight = (c: GCard) => Math.max(1, cardStrength(c) + roleMod(c));
+export const baseMight = (c: GCard) => Math.max(1, cardStrength(c) + (c.totw ? TOTW_STRENGTH : 0) + roleMod(c));
 
 export function strengthParts(s: OState, u: OUnit, defending = false): Part[] {
   const parts: Part[] = [{ kind: 'card', label: 'Karta', v: cardStrength(u.card) }];
+  if (u.card.totw) parts.push({ kind: 'totw', label: 'Drużyna kolejki', v: TOTW_STRENGTH });
   const rm = roleMod(u.card);
   if (rm) parts.push({ kind: 'role', label: rm > 0 ? 'Offlane' : 'Support', v: rm });
   if (u.growth) parts.push({ kind: 'farmer', label: 'Carry: farma', v: u.growth });

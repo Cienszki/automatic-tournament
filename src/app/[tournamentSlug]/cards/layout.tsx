@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
 
-// The card game test build: shared with testers by link, kept out of search engines
+// Card duel pages (/cards/duel/[id]): shared by link, kept out of search engines
 export const metadata: Metadata = {
-  title: 'Karty — wersja testowa',
+  title: 'Gra karciana',
   robots: { index: false, follow: false },
 };
 
