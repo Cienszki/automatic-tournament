@@ -16,6 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Loader2, Plus } from 'lucide-react';
 import type { ExtraMatchKind, Match } from '@/lib/definitions';
 import { formatDateTimePL } from '@/lib/utils';
+import { useNotifyPrompt } from '@/components/admin/NotifyPrompt';
 
 type Row = Match & { teamAName: string; teamBName: string };
 
@@ -37,6 +38,7 @@ export function ExtraMatchDialog({ tournamentId, tournamentType, defaultFormat, 
 }) {
   const { user } = useAuth();
   const { toast } = useToast();
+  const notifyPrompt = useNotifyPrompt();
   const [open, setOpen] = useState(false);
   const [a, setA] = useState('');
   const [b, setB] = useState('');
@@ -88,6 +90,7 @@ export function ExtraMatchDialog({ tournamentId, tournamentType, defaultFormat, 
       if (!res.ok) throw new Error(j.error || `HTTP ${res.status}`);
       toast({ title: 'Mecz dodany', description: rematch ? 'Powtórka zastąpi pierwotny mecz w tabeli i statystykach.' : 'Mecz pojawi się w terminarzu i u kapitanów obu drużyn.' });
       setOpen(false); reset(); onDone();
+      if (j.matchId) await notifyPrompt.ask({ ids: [j.matchId], fresh: true });
     } catch (e: any) {
       toast({ title: 'Nie udało się dodać meczu', description: e?.message, variant: 'destructive' });
     } finally {
@@ -106,6 +109,8 @@ export function ExtraMatchDialog({ tournamentId, tournamentType, defaultFormat, 
   );
 
   return (
+    <>
+    {notifyPrompt.dialog}
     <Dialog open={open} onOpenChange={o => { setOpen(o); if (!o) reset(); }}>
       <DialogTrigger asChild>
         <Button variant="outline" className="font-logik"><Plus className="h-4 w-4 mr-2" />Dodaj mecz</Button>
@@ -215,5 +220,6 @@ export function ExtraMatchDialog({ tournamentId, tournamentType, defaultFormat, 
         </DialogFooter>
       </DialogContent>
     </Dialog>
+    </>
   );
 }

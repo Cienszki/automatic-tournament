@@ -15,48 +15,40 @@
 // here — running them alongside the Conductor double-schedules and double-assigns.
 
 import { NextResponse } from 'next/server';
-import { getAdminDb, getAdminAuth } from '@/server/lib/admin';
+import { timingSafeEqual } from 'crypto';
+import { getAdminDb } from '@/server/lib/admin';
+import { requireAdmin } from '@/server/lib/require-admin';
 import { syncPDLMatchesAdmin, forfeitPDLMatchAdmin } from '@/lib/pdl-admin-actions';
 import { recalculateAllStats } from '@/lib/stats-service-simple';
+import { sendMatchReminders } from '@/server/notify/events';
 
 interface OrchestrateResult {
   syncTasksExecuted: number;
+  remindersSent: number;
   errors: string[];
 }
 
 /**
  * POST /api/manage/bot/orchestrate
  * Drains pending botSyncTasks (post-match OpenDota import → standings).
- * Auth: a Firebase admin ID token, or the CRON_SECRET sent as a Bearer token by the
- * scheduled cron job (Google Cloud Scheduler) that hits this endpoint.
+ * Auth: the CRON_SECRET as a Bearer token (the Railway Conductor), or the ID token of a super
+ * admin / an admin of the tournament in the body.
  */
 export async function POST(req: Request): Promise<Response> {
   try {
-    const authHeader = req.headers.get('authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const token = authHeader.split('Bearer ')[1];
+    // The Conductor's CRON_SECRET, or an admin (the Bot tab's "run now" sends its tournament).
+    // A signed-in account that is not an admin is refused.
+    const authHeader = req.headers.get('authorization') ?? '';
+    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
     const cronSecret = process.env.CRON_SECRET;
-
-    let authorized = false;
-    if (cronSecret && token === cronSecret) {
-      authorized = true;
-    } else {
-      try {
-        await getAdminAuth().verifyIdToken(token);
-        authorized = true;
-      } catch {
-        // Not a valid Firebase token
-      }
+    const isCron = !!cronSecret && token.length === cronSecret.length && timingSafeEqual(Buffer.from(token), Buffer.from(cronSecret));
+    if (!isCron) {
+      const body = await req.clone().json().catch(() => ({})) as { tournamentId?: unknown };
+      const caller = await requireAdmin(req, typeof body.tournamentId === 'string' ? body.tournamentId : null);
+      if (caller instanceof NextResponse) return caller;
     }
 
-    if (!authorized) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
-    }
-
-    const result: OrchestrateResult = { syncTasksExecuted: 0, errors: [] };
+    const result: OrchestrateResult = { syncTasksExecuted: 0, remindersSent: 0, errors: [] };
     const db = getAdminDb();
 
     try {
@@ -64,6 +56,14 @@ export async function POST(req: Request): Promise<Response> {
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Unknown error';
       result.errors.push(`Sync tasks: ${msg}`);
+    }
+
+    // "Mecz za godzinę" notifications ride on this 5-minute call (no other scheduler runs)
+    try {
+      result.remindersSent = await sendMatchReminders();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Unknown error';
+      result.errors.push(`Reminders: ${msg}`);
     }
 
     return NextResponse.json(result);

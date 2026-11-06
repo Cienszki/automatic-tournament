@@ -15,6 +15,7 @@ import { C, ink, useHeaderFont } from '@/components/stats-lab/kit';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import MyTeamView from '@/components/team/MyTeamView';
 import { FitStage } from '@/components/team/ui';
+import { CasterDesk } from './CasterDesk';
 
 type Source = 'google' | 'discord' | 'steam' | 'url';
 interface Account {
@@ -25,6 +26,8 @@ interface Account {
   steam: { id: string; source: 'discord' | 'inhouse' | 'steam'; avatar: string | null } | null;
   google: { email: string | null } | null;
   admin: boolean;
+  caster: boolean;
+  stream: string | null;
 }
 /** Renders the banner; the team views pass their side of it (crest, name, what's waiting) */
 export type AccountBanner = (side?: React.ReactNode) => React.ReactNode;
@@ -190,9 +193,11 @@ export default function AccountPage({ inSection = false }: { inSection?: boolean
               ) : <Connect onClick={connectSteam} />}
             </Linked>
             {acc.google && <Linked k="Google"><span className="truncate">{acc.google.email ?? 'połączony'}</span></Linked>}
-            {acc.admin && (
+            {(acc.admin || acc.caster) && (
               <Linked k="Rola">
-                <Link href={getTournamentPath('/admin')} className="hover:underline underline-offset-4">Admin</Link>
+                {acc.admin && <Link href={getTournamentPath('/admin')} className="hover:underline underline-offset-4">Admin</Link>}
+                {acc.admin && acc.caster && <span className="text-white/40">·</span>}
+                {acc.caster && <span>Caster</span>}
               </Linked>
             )}
             <button type="button" onClick={signOut} className="ml-5 mb-0.5 text-[11px] font-bold uppercase tracking-widest text-white/60 hover:text-white hover:underline underline-offset-4">
@@ -210,7 +215,11 @@ export default function AccountPage({ inSection = false }: { inSection?: boolean
 
   return frame(
     <FitStage>
-      <MyTeamView embedded banner={banner} linkedDiscord={acc.discord?.username} />
+      <MyTeamView embedded banner={banner} linkedDiscord={acc.discord?.username}
+        noTeam={acc.caster && tournament?.id ? (
+          <CasterDesk banner={banner} tournamentId={tournament.id} uid={acc.uid} stream={acc.stream} hasSteam={!!acc.steam}
+            onStream={v => save({ stream: v })} />
+        ) : undefined} />
     </FitStage>,
   );
 }

@@ -1,7 +1,7 @@
 /**
  * The signed-in account.
- *   GET  ?t=<tournamentId>                → profile, linked Discord / Steam / Google, admin of this tournament
- *   PUT  { nickname?, avatar? }           → profile (avatar: { source: 'google'|'discord'|'steam'|'url', url? })
+ *   GET  ?t=<tournamentId>                → profile, linked Discord / Steam / Google, admin / caster of this tournament
+ *   PUT  { nickname?, avatar?, stream? }  → profile (avatar: { source: 'google'|'discord'|'steam'|'url', url? }; stream: link or channel, '' clears)
  *   PUT  { unlink: 'discord' | steamId64 } → removes a link
  */
 
@@ -11,6 +11,7 @@ import { requireUser } from '@/server/lib/require-user';
 import { ensureAdminInitialized, getAdminAuth, getAdminDb } from '@/server/lib/admin';
 import { steamAvatar } from '@/server/accounts/identity';
 import { accountRef, getAccount, unlinkDiscord, unlinkSteam, type AvatarSource } from '@/server/accounts/store';
+import { parseStream } from '@/lib/stream-link';
 
 export const dynamic = 'force-dynamic';
 const bad = (error: string, status = 400) => NextResponse.json({ error }, { status });
@@ -18,10 +19,11 @@ const bad = (error: string, status = 400) => NextResponse.json({ error }, { stat
 async function view(uid: string, tournamentId?: string | null) {
   ensureAdminInitialized();
   const db = getAdminDb();
-  const [acc, user, superAdmin, tAdmin] = await Promise.all([
+  const [acc, user, superAdmin, tAdmin, caster] = await Promise.all([
     getAccount(uid), getAdminAuth().getUser(uid),
     db.collection('admins').doc(uid).get(),
     tournamentId ? db.collection('tournaments').doc(tournamentId).collection('admins').doc(uid).get() : null,
+    tournamentId ? db.collection('tournaments').doc(tournamentId).collection('casters').doc(uid).get() : null,
   ]);
   const google = user.providerData.find(p => p.providerId === 'google.com');
   const steam = await Promise.all((acc.steam ?? []).slice(0, 1).map(async s => ({ ...s, avatar: s.avatar ?? await steamAvatar(s.id) })));
@@ -42,6 +44,8 @@ async function view(uid: string, tournamentId?: string | null) {
     google: google ? { email: google.email ?? user.email ?? null } : null,
     /** Roles in the tournament being viewed (the captain role shows as the team below) */
     admin: superAdmin.exists || !!tAdmin?.exists,
+    caster: !!caster?.exists,
+    stream: acc.stream ?? null,
   };
 }
 
@@ -94,6 +98,11 @@ export async function PUT(req: NextRequest) {
         if (problem) return bad(problem);
         patch.avatar = { source: 'url', url: String(b.avatar.url) };
       } else patch.avatar = { source: src };
+    }
+    if (b.stream !== undefined) {
+      const r = parseStream(String(b.stream));
+      if ('error' in r) return bad(r.error);
+      patch.stream = r.url || FieldValue.delete();
     }
     if (!Object.keys(patch).length) return bad('Nic do zmiany');
     await accountRef(user.uid).set({ ...patch, updatedAt: FieldValue.serverTimestamp() }, { merge: true });

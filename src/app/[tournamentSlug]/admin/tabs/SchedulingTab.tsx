@@ -52,6 +52,7 @@ import {
   AlertTitle,
 } from '@/components/ui/alert';
 import { count } from '@/lib/plural';
+import { useNotifyPrompt } from '@/components/admin/NotifyPrompt';
 
 interface MatchDay {
   id: string;
@@ -110,6 +111,7 @@ export function SchedulingTab() {
   });
 
   const { toast } = useToast();
+  const notifyPrompt = useNotifyPrompt();
 
   // Load divisions from database
   useEffect(() => {
@@ -491,6 +493,7 @@ export function SchedulingTab() {
       setGeneratedStructures([]);
       setMatchdayDates({});
 
+      await notifyPrompt.ask({ ids: allMatches.map(m => m.ref.id), fresh: true });
       setTimeout(() => window.location.reload(), 1500);
     } catch (error) {
       console.error('[SchedulingTab] Error finalizing schedule:', error);
@@ -655,6 +658,7 @@ export function SchedulingTab() {
 
   return (
     <div className="space-y-6">
+      {notifyPrompt.dialog}
       {/* Page Header */}
       <div className="flex items-center justify-between">
         <div>

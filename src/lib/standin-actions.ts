@@ -27,6 +27,11 @@ import { FieldValue } from 'firebase-admin/firestore';
 import { getAdminDb, ensureAdminInitialized } from '@/server/lib/admin';
 import { extractSteamIdFromUrl } from './steam-id-utils';
 import { upsertGlobalPlayerProfile } from './player-profiles';
+import { standinEvent } from '@/server/notify/events';
+
+/** Tells the captain who has to know (bell + Discord); a failed notification never fails the action */
+const announce = (tournamentId: string, requestId: string) =>
+  standinEvent(tournamentId, requestId).then(() => undefined, e => console.warn('[standin-actions] notify failed', e));
 
 export interface ApprovedStandinEntry {
   steamId32: string;
@@ -337,6 +342,7 @@ export async function approveStandinRequest(
       console.warn('[standin-actions] Failed to sync lobby sessions after standin approval:', syncErr);
     }
 
+    await announce(tournamentId, requestId);
     return { success: true };
   } catch (e) {
     console.error('[standin-actions] approveStandinRequest error', e);
@@ -374,6 +380,7 @@ export async function rejectStandinRequest(
       }).catch(() => { /* match may not have the field yet */ }),
     ]);
 
+    await announce(tournamentId, requestId);
     return { success: true };
   } catch (e) {
     console.error('[standin-actions] rejectStandinRequest error', e);
@@ -467,6 +474,7 @@ export async function editStandinRequestGames(
       console.warn('[standin-actions] Failed to sync lobby sessions after standin edit:', syncErr);
     }
 
+    await announce(tournamentId, requestId);
     return { success: true };
   } catch (e) {
     console.error('[standin-actions] editStandinRequestGames error', e);
@@ -560,6 +568,7 @@ export async function approveStandinAppeal(
       console.warn('[standin-actions] Failed to sync lobby sessions after appeal approval:', syncErr);
     }
 
+    await announce(tournamentId, requestId);
     return { success: true };
   } catch (e) {
     console.error('[standin-actions] approveStandinAppeal error', e);
@@ -598,6 +607,7 @@ export async function rejectStandinAppeal(
       }).catch(() => { /* match may not have the field yet */ }),
     ]);
 
+    await announce(tournamentId, requestId);
     return { success: true };
   } catch (e) {
     console.error('[standin-actions] rejectStandinAppeal error', e);

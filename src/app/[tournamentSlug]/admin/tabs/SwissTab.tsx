@@ -53,6 +53,7 @@ import {
 } from '@/lib/lan-qualifier/actions';
 import { FormatCard, GroupACard, TiebreakCard, LanStatusCard, lanPairingLabel } from './swiss/LanQualifierCards';
 import { count, plural } from '@/lib/plural';
+import { useNotifyPrompt } from '@/components/admin/NotifyPrompt';
 
 const MATCH_FORMATS: { value: MatchFormat; label: string; maxPoints: number }[] = [
   { value: 'bo1', label: 'BO1', maxPoints: 1 },
@@ -79,6 +80,7 @@ export function SwissTab() {
   const { tournament, theme, refetchTournament } = useTournament();
   const { user } = useAuth();
   const { toast } = useToast();
+  const notifyPrompt = useNotifyPrompt();
 
   const [teams, setTeams] = useState<SwissTeam[]>([]);
   const [matches, setMatches] = useState<SwissRoundMatch[]>([]);
@@ -544,6 +546,7 @@ export function SwissTab() {
         description: `Utworzono ${count(res.created, 'mecz', 'mecze', 'meczów')}${res.byes ? `, w tym ${count(res.byes, 'wolny los', 'wolne losy', 'wolnych losów')}` : ''}.`,
         action: <CheckCircle2 className="h-5 w-5 text-green-500" />,
       });
+      await notifyPrompt.ask({ ids: res.matchIds, fresh: true });
     });
 
   const handleRoundLatest = (r: SwissRound, value: string) =>
@@ -591,6 +594,7 @@ export function SwissTab() {
 
   return (
     <div className="space-y-6">
+      {notifyPrompt.dialog}
       <div>
         <h2 className="text-2xl font-logik-extended-bold">{isLan ? 'Kwalifikacje LAN (Swiss)' : 'Liga szwajcarska'}</h2>
         <p className="text-sm text-muted-foreground font-logik">

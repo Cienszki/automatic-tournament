@@ -268,6 +268,7 @@ export function TournamentHomePage() {
   const t = useTranslations('pdlHome');
 
   // ── Auth state ───
+  /** The "Moja drużyna" section (and hero button) shows: a captain here, or one of its casters */
   const [hasTeam, setHasTeam] = useState(false);
   // The team the signed-in user captains here (the schedule shows its next match)
   const [myTeamId, setMyTeamId] = useState<string | null>(null);
@@ -290,7 +291,7 @@ export function TournamentHomePage() {
 
   const primaryColor = theme?.primaryColor || '#8B1538';
   // Sections shown for this tournament/user: a disabled Pick'em has no section,
-  // "Moja drużyna" only for captains. Position = index in this list.
+  // "Moja drużyna" only for captains and casters. Position = index in this list.
   const pickemEnabled = !!tournament?.pickem?.enabled;
   const sections = useMemo(() => getHomeSections({ pickemEnabled, hasTeam }), [pickemEnabled, hasTeam]);
   const sectionIndex = (key: HomeSectionKey) => sections.indexOf(key);
@@ -381,6 +382,11 @@ export function TournamentHomePage() {
         const snap = await getDocs(q);
         setHasTeam(!snap.empty);
         setMyTeamId(snap.docs[0]?.id ?? null);
+        // A caster without a team gets the same section: the account page shows their caster desk
+        if (snap.empty && !isLegacyTournament) {
+          const r = await fetch(`/api/casters?t=${encodeURIComponent(tournament.id)}&check=1`, { headers: { Authorization: `Bearer ${await user.getIdToken()}` } });
+          if (r.ok && (await r.json()).caster) setHasTeam(true);
+        }
       } catch {
         setHasTeam(false);
         setMyTeamId(null);
@@ -438,6 +444,7 @@ export function TournamentHomePage() {
             extra: data.extra,
             replacesMatchId: data.replacesMatchId,
             replacedByMatchId: data.replacedByMatchId,
+            casters: data.casters,
           } as unknown as Match;
         });
         // A Swiss round shows every match, scheduled or not ("TBD"); other
@@ -1099,7 +1106,7 @@ export function TournamentHomePage() {
         )}
 
         {/* ═══════════════════════════════════════════════════════════
-            VIEW 7: My Team (captains only) — always the last section
+            VIEW 7: My Team (captains and casters: the account page) — always the last section
            ═══════════════════════════════════════════════════════════ */}
         {hasTeam && (
           <FullScreenSection isActive={currentSection === sectionIndex('my-team')} isMobile={isMobile} id={`home-section-${sectionIndex('my-team')}`}>

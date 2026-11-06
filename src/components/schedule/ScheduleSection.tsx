@@ -8,7 +8,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import * as TooltipPrimitive from '@radix-ui/react-tooltip';
-import { CalendarDays, ChevronLeft, ChevronRight, Coffee } from 'lucide-react';
+import { CalendarDays, ChevronLeft, ChevronRight, Coffee, Mic } from 'lucide-react';
 import { useTournament } from '@/context/TournamentContext';
 import { cn } from '@/lib/utils';
 import { C, TeamLogo, Tip, TipBody, ink, mix, useHeaderFont } from '@/components/stats-lab/kit';
@@ -20,6 +20,7 @@ import type { Match } from '@/lib/definitions';
 import { count, plural } from '@/lib/plural';
 import { useOpenMatchPrep } from '@/components/draft-prep/open';
 import { extraTag } from '@/lib/match-flags';
+import { castersLine } from '@/lib/casters';
 import {
   buildUnits, dayColumns, ddmm, divisionColumns, fromNow, initialUnit, isDone, isLive, myNextMatch, nowAndNext, swissColumns, weekdayShort,
   type Column, type Group, type SMatch, type Unit,
@@ -213,6 +214,7 @@ function MatchRow({ m, tag, rec, showDay, open }: { m: SMatch; tag?: string; rec
   const extra = extraTag(m);
   const replayed = !!m.replacedByMatchId;
   const fmt = m.series_format?.toUpperCase() ?? (m.bestOf ? `BO${m.bestOf}` : null);
+  const cast = !done ? castersLine(m.casters) || null : null;
   const bar = live ? C.loss : soon ? C.primary : done ? ink(22) : ink(10);
   return (
     <button type="button" onClick={() => open(m)}
@@ -237,9 +239,10 @@ function MatchRow({ m, tag, rec, showDay, open }: { m: SMatch; tag?: string; rec
       </span>
       {/* Who */}
       <span className="flex-1 min-w-0 flex flex-col justify-center pr-2">
-        {(tag || pending || walkover || extra) && (
+        {(tag || pending || walkover || extra || cast) && (
           <span className="flex items-center justify-center gap-2 text-[9px] uppercase tracking-[0.2em] leading-none mb-1 whitespace-nowrap">
             {tag && <span style={{ color: C.muted }}>{tag}</span>}
+            {cast && <span className="flex items-center gap-1 min-w-0 truncate" style={{ color: C.primary }} title={`Castuje: ${cast}`}><Mic className="w-2.5 h-2.5 shrink-0" />{cast}</span>}
             {extra && <span style={{ color: replayed ? C.muted : C.secondary }}>{extra}</span>}
             {walkover && <span style={{ color: C.loss }}>Walkower</span>}
             {pending && <span style={{ color: '#e0a03c' }}>Zmiana terminu</span>}

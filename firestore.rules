@@ -390,24 +390,6 @@ service cloud.firestore {
         allow write: if hasAdminAccess(tournamentId);
       }
 
-      // Notifications in tournaments
-      match /notifications/{notificationId} {
-        // Anyone authenticated can read notifications
-        // (component will filter by recipientId on the client side)
-        allow read: if request.auth.uid != null;
-        
-        // Only admins and cloud functions can create notifications
-        allow create: if hasAdminAccess(tournamentId);
-        
-        // Users can update notifications (mark as read, dismissed, etc.)
-        // Only allow updating read, dismissed, actionTaken, actionTakenAt fields
-        allow update: if request.auth.uid != null &&
-                       request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read', 'dismissed', 'actionTaken', 'actionTakenAt']);
-        
-        // Only admins can delete notifications
-        allow delete: if hasAdminAccess(tournamentId);
-      }
-
       // Player game history — denormalized per-player game records for fast profile display
       match /playerGameHistory/{steamId64} {
         allow read: if true;

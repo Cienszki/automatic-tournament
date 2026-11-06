@@ -68,6 +68,7 @@ import {
 import { count } from '@/lib/plural';
 import { extraTag } from '@/lib/match-flags';
 import { ExtraMatchDialog } from './ExtraMatchDialog';
+import { useNotifyPrompt } from '@/components/admin/NotifyPrompt';
 
 interface MatchWithTeamNames extends Match {
   teamAName: string;
@@ -88,6 +89,7 @@ export function MatchesTab() {
   const { tournament, theme, refetchTournament } = useTournament();
   const { user } = useAuth();
   const { toast } = useToast();
+  const notifyPrompt = useNotifyPrompt();
   
   const [matches, setMatches] = useState<MatchWithTeamNames[]>([]);
   const [divisionsMap, setDivisionsMap] = useState<Map<string, string>>(new Map());
@@ -894,9 +896,11 @@ export function MatchesTab() {
       if (data.success) {
         // The server's message formats the time on the server's clock (UTC) — use the admin's own
         toast({ title: 'Termin ustawiony', description: `Mecz zaplanowany na ${formatDateTimePL(new Date(forceScheduleDateTime))}.` });
+        const movedId = forceScheduleMatch.id;
         setShowForceScheduleDialog(false);
         setForceScheduleMatch(null);
         await loadMatches();
+        await notifyPrompt.ask({ ids: [movedId], fresh: false });
       } else {
         toast({ title: 'Błąd', description: data.error || 'Nie udało się ustawić terminu', variant: 'destructive' });
       }
@@ -1023,6 +1027,7 @@ export function MatchesTab() {
 
   return (
     <div className="space-y-6">
+      {notifyPrompt.dialog}
       {/* Sync Result Banner */}
       {syncResult && (
         <div className={cn(

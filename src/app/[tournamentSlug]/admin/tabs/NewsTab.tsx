@@ -105,6 +105,14 @@ export function NewsTab() {
     }
   };
 
+  // A published post reaches the tournament's players (bell + Discord for those who chose it); once per post
+  const announce = (postId: string) => {
+    if (!user || !tournament?.id) return;
+    user.getIdToken()
+      .then(token => fetch('/api/notify', { method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ t: tournament.id, event: 'announcement', id: postId }) }))
+      .catch(e => console.warn('[NewsTab] notify failed', e));
+  };
+
   const handleCreatePost = async () => {
     if (!tournament?.id || !user) {
       toast({
@@ -137,6 +145,7 @@ export function NewsTab() {
           ...postData,
           createdAt: editingPost.createdAt, // Keep original creation date
         });
+        if (postData.published) announce(editingPost.id);
         
         toast({
           title: 'Zaktualizowano',
@@ -145,7 +154,8 @@ export function NewsTab() {
         });
       } else {
         // Create new post
-        await addDoc(announcementsRef, postData);
+        const created = await addDoc(announcementsRef, postData);
+        if (postData.published) announce(created.id);
         
         toast({
           title: 'Utworzono',
@@ -184,6 +194,8 @@ export function NewsTab() {
         published: !post.published,
         updatedAt: new Date().toISOString(),
       });
+
+      if (!post.published) announce(postId);
 
       // Update local state
       setPosts(posts.map(p => 

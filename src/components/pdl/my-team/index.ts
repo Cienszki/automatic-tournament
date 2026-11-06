@@ -9,5 +9,4 @@ export { PDLCoachSection } from './PDLCoachSection';
 export { PDLSeasonProgress } from './PDLSeasonProgress';
 export { PDLMatchRules } from './PDLMatchRules';
 export { PDLCaptainActions } from './PDLCaptainActions';
-export { PDLNotificationCenter } from './PDLNotificationCenter';
 export { PDLPreMatchChecklist } from './PDLPreMatchChecklist';

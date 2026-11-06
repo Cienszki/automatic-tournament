@@ -185,7 +185,7 @@ async function fetchStandinRequestsForMatchIds(
  * A captain's team: the legacy (Letnia) my-team page, or, for every newer tournament, the team
  * management shown under the account banner (`embedded`).
  */
-export default function MyTeamView({ embedded = false, banner, linkedDiscord }: { embedded?: boolean; banner?: AccountBanner; linkedDiscord?: string }) {
+export default function MyTeamView({ embedded = false, banner, linkedDiscord, noTeam }: { embedded?: boolean; banner?: AccountBanner; linkedDiscord?: string; /** Shown instead of the banner + register link when the account has no team (the caster's desk) */ noTeam?: React.ReactNode }) {
   const { tournament, theme, isLegacyTournament, getTournamentPath } = useTournament();
   const { isMmrLimited, isLeague } = useTournamentType();
   // Drive coach UI off the actual setting rather than the tournament type. Both
@@ -436,8 +436,6 @@ export default function MyTeamView({ embedded = false, banner, linkedDiscord }: 
 
     return () => unsubscribe();
   }, [tournament?.id, isLegacyTournament, mapScrimSlot]);
-
-  // Notifications are now loaded from database via PDLNotificationCenter component
 
   // Fetch team data for PDL tournaments
   React.useEffect(() => {
@@ -817,6 +815,14 @@ export default function MyTeamView({ embedded = false, banner, linkedDiscord }: 
   const reschedulePolicyFor = (originalDate: string, matchData?: { deadline?: string | null; rescheduleMaxHoursLater?: number | null; rescheduleLatest?: string | null }) =>
     reschedulePolicy({ originalIso: originalDate, tournament, match: matchData });
 
+  // After a write made here, the server reads what changed and notifies the other side (bell + Discord)
+  const notifyEvent = (event: 'reschedule' | 'standin', id: string) => {
+    if (!user || !tournament?.id) return;
+    user.getIdToken()
+      .then(token => fetch('/api/notify', { method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ t: tournament.id, event, id }) }))
+      .catch(e => console.warn('[MyTeam] notify failed', e));
+  };
+
   // Reschedule handlers for PDL
   const handleRequestReschedule = async (matchId: string, proposedDate: string) => {
     if (!tournament?.id || !team) {
@@ -854,6 +860,7 @@ export default function MyTeamView({ embedded = false, banner, linkedDiscord }: 
         }
       });
 
+      notifyEvent('reschedule', matchId);
       toast({
         title: 'Wniosek wysłany',
         description: 'Wniosek o zmianę terminu został wysłany do przeciwnika.',
@@ -913,6 +920,7 @@ export default function MyTeamView({ embedded = false, banner, linkedDiscord }: 
         'rescheduleRequest.status': 'approved',
         'rescheduleRequest.respondedAt': new Date().toISOString(),
       });
+      notifyEvent('reschedule', matchId);
       toast({
         title: 'Zmiana terminu zatwierdzona',
         description: 'Mecz został przełożony na nowy termin.',
@@ -942,6 +950,7 @@ export default function MyTeamView({ embedded = false, banner, linkedDiscord }: 
         'rescheduleRequest.respondedAt': new Date().toISOString(),
       });
 
+      notifyEvent('reschedule', matchId);
       toast({
         title: 'Zmiana terminu odrzucona',
         description: 'Wniosek o zmianę terminu został odrzucony.',
@@ -1130,7 +1139,7 @@ export default function MyTeamView({ embedded = false, banner, linkedDiscord }: 
     }
 
     const standinRequestsRef = collection(db, 'tournaments', tournament.id, 'standinRequests');
-    await addDoc(standinRequestsRef, {
+    const created = await addDoc(standinRequestsRef, {
       matchId: data.matchId,
       teamId: team.id,
       requestingTeamId: team.id,
@@ -1153,6 +1162,7 @@ export default function MyTeamView({ embedded = false, banner, linkedDiscord }: 
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     });
+    notifyEvent('standin', created.id);
 
     await refreshStandinRequests();
   };
@@ -1617,6 +1627,7 @@ export default function MyTeamView({ embedded = false, banner, linkedDiscord }: 
     return <>{banner?.()}<div className="flex-1 py-20 flex items-center justify-center" style={{ color: 'var(--tournament-secondary-text)' }}><Loader2 className="w-6 h-6 animate-spin" /></div></>;
   }
   if (!hasTeam) {
+    if (noTeam) return <>{noTeam}</>;
     return (
       <>
         {banner?.()}

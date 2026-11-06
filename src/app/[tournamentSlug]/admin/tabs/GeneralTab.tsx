@@ -29,6 +29,7 @@ import { HeroPanelsEditor } from '@/components/admin/HeroPanelsEditor';
 import { bunnyVideoIds, cleanHeroMedia } from '@/lib/hero-video';
 import { deleteHeroVideoFromBunny } from '@/lib/hero-video-bunny-client';
 import { TournamentCreatorsManager } from '@/components/admin/TournamentCreatorsManager';
+import { CastersManager } from '@/components/admin/CastersManager';
 import { fetchOwnedSlugs } from '@/lib/api/tournaments';
 import {
   uploadTournamentLogo,
@@ -2745,6 +2746,8 @@ export function GeneralTab() {
           </div>
         </CardContent>
       </Card>
+
+      <CastersManager />
     </div>
   );
 }

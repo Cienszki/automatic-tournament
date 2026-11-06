@@ -1,4 +1,5 @@
 // src/lib/definitions.ts
+import type { MatchCaster } from './casters';
 
 // ... (other definitions remain the same)
 
@@ -84,6 +85,8 @@ export interface Match {
   /** Admin-set per Swiss round (ISO): the latest time captains may move the match to; any earlier time is fine. Wins over every other limit. */
   rescheduleLatest?: string | null;
   game_ids?: number[]; // This now holds the IDs of the individual games
+  /** Who casts the match (written by /api/casters: the tournament's casters take matches themselves) */
+  casters?: MatchCaster[];
   completed_at?: string;
   series_format?: 'bo1' | 'bo2' | 'bo3' | 'bo5'; // Series format (BO2 for groups, BO1/BO3/BO5 for playoffs)
   winnerId?: string | null; // Winner of the match, null for draws
@@ -680,78 +683,3 @@ export interface PlayoffData {
   updatedAt: string;
 }
 
-// ============================================
-// NOTIFICATION SYSTEM
-// ============================================
-
-export type NotificationType = 
-  | 'standin_approval_required'
-  | 'reschedule_approval_required'
-  | 'admin_message'
-  | 'match_reminder_24h'
-  | 'transfer_window_opened'
-  | 'transfer_window_closing'
-  | 'standin_request_approved'
-  | 'standin_request_denied'
-  | 'reschedule_request_approved'
-  | 'reschedule_request_denied'
-  | 'admin_announcement'
-  | 'promotion_relegation_match';
-
-export type NotificationPriority = 'critical' | 'high' | 'medium' | 'low';
-
-export type NotificationRecipientType = 'team' | 'player' | 'captain';
-
-export interface NotificationMetadata {
-  // Standin-related
-  requestId?: string;
-  standinName?: string;
-  standinSteamId?: string;
-  opponentTeamName?: string;
-  denialReason?: string;
-
-  // Match-related
-  matchId?: string;
-  matchTime?: string;
-  opponentName?: string;
-  checklistComplete?: boolean;
-
-  // Reschedule-related
-  originalDate?: string;
-  proposedDate?: string;
-  newDate?: string;
-  approvedBy?: 'opponent' | 'admin';
-  deniedBy?: 'opponent' | 'admin';
-
-  // Transfer window
-  windowCloses?: string;
-  maxTransfers?: number;
-  remainingTransfers?: number;
-
-  // Promotion/Relegation
-  matchType?: 'promotion' | 'relegation';
-  divisionMovement?: string;
-
-  // Admin message
-  requiresResponse?: boolean;
-  responseDeadline?: string;
-}
-
-export interface Notification {
-  id: string;
-  tournamentId: string;
-  type: NotificationType;
-  priority: NotificationPriority;
-  recipientType: NotificationRecipientType;
-  recipientId: string; // teamId or userId depending on recipientType
-  title: string;
-  message: string;
-  metadata: NotificationMetadata;
-  createdAt: string;
-  expiresAt?: string;
-  read: boolean;
-  dismissed: boolean;
-  actionable: boolean;
-  actionTaken?: boolean;
-  actionTakenAt?: string;
-}

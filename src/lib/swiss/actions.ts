@@ -426,7 +426,7 @@ export async function commitRound(input: {
   pairings: SwissPairing[];
   teamsById: Record<string, SwissTeam>;
   adminUserId: string;
-}): Promise<{ created: number; byes: number }> {
+}): Promise<{ created: number; byes: number; matchIds: string[] }> {
   const {
     tournamentId, round, divisionId, matchFormat, scheduling, pairings, teamsById, adminUserId,
   } = input;
@@ -548,7 +548,7 @@ export async function commitRound(input: {
   });
 
   await batch.commit();
-  return { created: pairings.length, byes };
+  return { created: pairings.length, byes, matchIds: persistedPairings.filter(p => !p.isBye).map(p => p.matchId) };
 }
 
 /**

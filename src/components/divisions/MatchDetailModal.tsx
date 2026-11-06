@@ -8,7 +8,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import Image from 'next/image';
-import { Calendar, Trophy, ExternalLink, Loader2, Shield, Users, ArrowRightLeft, Swords, Sparkles, HandHelping, Eye } from 'lucide-react';
+import { Calendar, Trophy, ExternalLink, Loader2, Shield, Users, ArrowRightLeft, Swords, Sparkles, HandHelping, Eye, Radio } from 'lucide-react';
+import { coCasters, mainCaster } from '@/lib/casters';
+import { streamLabel } from '@/lib/stream-link';
 import type { Match, DraftPenalty } from '@/lib/definitions';
 import { cn } from '@/lib/utils';
 import { DraftPenaltyBanner } from '@/components/penalties/DraftPenaltyBanner';
@@ -349,6 +351,33 @@ export function MatchDetailModal({ match, isOpen, onClose, divisionColor }: Matc
                 );
               })()}
             </div>
+
+            {/* Who casts it: the main caster's stream is the match's stream; co-casters beside */}
+            {!isCompleted && (() => {
+              const main = mainCaster(match.casters);
+              if (!main) return null;
+              const face = (c: { avatar: string | null }) => c.avatar
+                // eslint-disable-next-line @next/next/no-img-element
+                ? <img src={c.avatar} alt="" referrerPolicy="no-referrer" className="w-6 h-6 rounded-full object-cover" /> : null;
+              const co = coCasters(match.casters);
+              return (
+                <div className="-mt-4 mb-8 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-sm" style={{ color: 'var(--tournament-section-header)' }}>
+                  <span className="text-[10px] uppercase tracking-widest opacity-50" style={{ color: 'var(--tournament-primary-text)' }}>Castuje</span>
+                  <span className="flex items-center gap-2 font-bold">{face(main)}{main.name}</span>
+                  {co.length > 0 && (
+                    <span className="flex items-center gap-2">
+                      <span className="opacity-50">co-caster</span>
+                      {co.map(c => <span key={c.uid} className="flex items-center gap-2 font-bold">{face(c)}{c.name}</span>)}
+                    </span>
+                  )}
+                  {main.stream && (
+                    <a href={main.stream} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 hover:underline underline-offset-4" style={{ color: 'var(--tournament-primary)' }}>
+                      <Radio className="w-4 h-4" />{streamLabel(main.stream)}
+                    </a>
+                  )}
+                </div>
+              );
+            })()}
 
             {/* Teams + Score */}
             <div className="flex items-center justify-between gap-8">

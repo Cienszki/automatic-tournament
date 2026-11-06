@@ -82,6 +82,7 @@ class Runner {
         this.configUnsub = null;   // onSnapshot of config/bot (whitelist/enforcement/messages live)
         this.welcomedPlayers = new Set(); // steamId32s already greeted (one welcome per player per lobby)
         this.kickedPlayers = new Set();   // steamId32s already kicked this lobby (prevent duplicate kicks + messages)
+        this.invitedCasters = new Set(); // steamId32s of this match's casters already invited to THIS lobby
     }
 
     // ─── Boot ────────────────────────────────────────────────────────────────
@@ -272,7 +273,27 @@ class Runner {
         this.matchUnsub = ref.onSnapshot((snap) => {
             if (!snap.exists || this.finalizing) return;
             this.recomputeRosterFromMatch(snap.data()).catch((e) => logger.error('[Runner] match recompute', e));
+            this.inviteCasters(snap.data()).catch((e) => logger.error('[Runner] caster invites', e));
         }, (err) => logger.error('[Runner] match watch error', err));
+    }
+
+    /**
+     * Casters who took this match on the website (match.casters[].steamId32). Every caster of the
+     * tournament is on the whitelist (never kicked); these are the ones who get an invite.
+     */
+    casterIdsOf(match) {
+        return [...new Set((match?.casters ?? []).map((c) => c && c.steamId32 && String(c.steamId32)).filter((id) => id && id !== '0'))];
+    }
+
+    /** Invite this match's casters not yet invited to the current lobby (also those who take it while it's open). */
+    async inviteCasters(match) {
+        const acceptingPlayers = ['lobby_open', 'ready_check'].includes(this.session?.state);
+        if (!acceptingPlayers || !this.dota?.isConnected || this.creatingLobby) return;
+        for (const id of this.casterIdsOf(match)) {
+            if (this.invitedCasters.has(id)) continue;
+            try { await this.dota.invitePlayer(id); this.invitedCasters.add(id); }
+            catch (e) { logger.warn('[Runner] caster invite failed', e); }
+        }
     }
 
     /**
@@ -426,6 +447,7 @@ class Runner {
         this.postgameNoOutcomeLogged = false;
         this.welcomedPlayers.clear(); // greet players freshly in each game's lobby
         this.kickedPlayers.clear();   // reset per-lobby kick memory
+        this.invitedCasters.clear();  // each game's lobby invites the casters again
         await this.updateSession({
             state: 'lobby_open',
             dotaLobbyId,
@@ -482,7 +504,7 @@ class Runner {
         return false;
     }
 
-    /** Invite ONLY the registered roster (+coaches; NOT the whitelist) and post instructions. */
+    /** Invite the registered roster (+coaches) and this match's casters — NOT the rest of the whitelist — and post instructions. */
     async inviteRosterAndWelcome() {
         const ids = new Set();
         for (const p of this.session.radiantTeam.expectedPlayers) ids.add(p.steamId32);
@@ -494,6 +516,17 @@ class Runner {
             try { await this.dota.invitePlayers(list); }
             catch (e) { logger.warn('[Runner] invite roster failed', e); }
         }
+        // ...and the casters who took this match (read now: the match watcher may not have fired yet)
+        try {
+            const snap = await this.db.collection('tournaments').doc(this.session.tournamentId)
+                .collection('matches').doc(this.session.matchId).get();
+            const casters = this.casterIdsOf(snap.data()).filter((id) => !this.invitedCasters.has(id));
+            for (const id of casters) {
+                try { await this.dota.invitePlayer(id); this.invitedCasters.add(id); }
+                catch (e) { logger.warn('[Runner] caster invite failed', e); }
+            }
+            if (casters.length) logger.info(`[Runner] Invited ${casters.length} caster(s)`);
+        } catch (e) { logger.warn('[Runner] caster lookup failed', e); }
         const readyCmd = this.botConfig.readyCheck?.readyCommands?.[0] ?? '!ready';
         await this.sendChat(`[BOT] ${this.session.lobbyName} — invites sent. Take your team's slots, then type ${readyCmd} once your whole team is seated.`);
     }

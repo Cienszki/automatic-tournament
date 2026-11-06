@@ -36,6 +36,7 @@ import { useTournament, useTournamentType } from '@/context/TournamentContext';
 import type { TournamentType } from '@/types/tournament';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useAuth } from '@/context/AuthContext';
+import { NotificationBell } from '@/components/notify/NotificationBell';
 import { checkIfAdmin } from '@/lib/auth';
 import { getFontFamily } from '@/lib/dynamic-fonts';
 import { useHomeNavigation, getHomeSectionIndex, STATS_VIEW_KEYS } from '@/context/HomeNavigationContext';
@@ -468,6 +469,7 @@ export function TournamentNavbar() {
       >
         <div className="site-container flex items-stretch justify-between h-14">
           <LogoWithSwitcher />
+          <div className="flex items-stretch ml-auto"><NotificationBell color={navTextColor} /></div>
           <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
             <SheetTrigger asChild>
               <Button variant="ghost" size="icon" className="self-stretch h-auto w-14 rounded-none">
@@ -949,6 +951,7 @@ export function TournamentNavbar() {
 
           </nav>
         </div>
+        <NotificationBell color={navTextColor} />
         {/* Admin button on the right - only shown if user is admin */}
         {isAdmin && (
           <Button

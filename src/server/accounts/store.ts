@@ -15,6 +15,8 @@ export interface AccountDoc {
   steam?: Array<{ id: string; source: 'discord' | 'inhouse' | 'steam'; avatar?: string | null }>;
   nickname?: string;
   avatar?: { source: AvatarSource; url?: string };
+  /** Stream link, any platform (casters show it on their matches; src/lib/stream-link.ts) */
+  stream?: string;
 }
 
 const db = () => { ensureAdminInitialized(); return getAdminDb(); };
