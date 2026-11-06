@@ -50,6 +50,9 @@ async function saveAndConfirm() {
 describe('coach in the roster editor', () => {
   it('saves a new coach together with the roster', async () => {
     const { onSaveRoster, onSaveCoach } = setup({ nickname: null });
+    // No coach yet: only the button to add one
+    expect(screen.queryByLabelText('Nick trenera')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: /Dodaj trenera/ }));
     fireEvent.change(screen.getByLabelText('Nick trenera'), { target: { value: ' White Dance ' } });
     await saveAndConfirm();
     await waitFor(() => expect(onSaveCoach).toHaveBeenCalledWith('White Dance'));
@@ -73,7 +76,9 @@ describe('coach in the roster editor', () => {
 
   it('does not touch the coach when only the squad changed', async () => {
     const { onSaveRoster, onSaveCoach } = setup({ nickname: 'Kubox' });
-    fireEvent.change(screen.getAllByLabelText('Nick w lidze')[0], { target: { value: 'Nowy nick' } });
+    // The pencil turns the player's row into its edit view
+    fireEvent.click(screen.getByRole('button', { name: 'Edytuj: Gracz0' }));
+    fireEvent.change(screen.getByLabelText('Nick w lidze'), { target: { value: 'Nowy nick' } });
     await saveAndConfirm();
     await waitFor(() => expect(onSaveRoster).toHaveBeenCalled());
     expect(onSaveCoach).not.toHaveBeenCalled();

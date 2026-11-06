@@ -32,6 +32,8 @@ export function MatchPanel(p: PDLUpcomingMatchProps) {
   const openPrep = useOpenMatchPrep();
   const [details, setDetails] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [proposing, setProposing] = useState(false);
+  const canPropose = isCaptain && !(match.status === 'completed') && match.rescheduleRequest?.status !== 'pending';
 
   const isTeamA = match.teamA?.id === myTeamId;
   const opponent = isTeamA ? match.teamB : match.teamA;
@@ -58,13 +60,16 @@ export function MatchPanel(p: PDLUpcomingMatchProps) {
       {/* Who and when */}
       <div className="shrink-0 flex flex-wrap items-center gap-x-6 gap-y-4 pb-4" style={{ borderBottom: `1px solid ${ink(12)}` }}>
         <div className="flex items-center gap-x-6 gap-y-4 min-w-0 basis-full md:basis-0 md:flex-1">
-        <span className="hidden sm:block shrink-0"><TeamLogo team={{ name: opponent?.name ?? '?', logoUrl: oppTeam?.logoUrl || opponent?.logoUrl, tag: oppTeam?.tag }} size={84} /></span>
-        <span className="sm:hidden shrink-0"><TeamLogo team={{ name: opponent?.name ?? '?', logoUrl: oppTeam?.logoUrl || opponent?.logoUrl, tag: oppTeam?.tag }} size={56} /></span>
+        <span className="hidden sm:block shrink-0"><TeamLogo team={{ name: opponent?.name ?? '?', logoUrl: oppTeam?.logoUrl || opponent?.logoUrl, tag: oppTeam?.tag }} size={140} className="drop-shadow-[0_8px_24px_rgba(0,0,0,0.5)]" /></span>
+        <span className="sm:hidden shrink-0"><TeamLogo team={{ name: opponent?.name ?? '?', logoUrl: oppTeam?.logoUrl || opponent?.logoUrl, tag: oppTeam?.tag }} size={72} /></span>
         <div className="flex-1 min-w-0">
           <div className="text-[11px] uppercase tracking-[0.25em] flex flex-wrap gap-x-3" style={{ color: C.muted }}>{kicker.map(k => <span key={k}>{k}</span>)}</div>
           <h3 className="font-logik-extended-bold uppercase leading-[0.95] mt-1 break-words" style={{ fontSize: 'clamp(24px, 2.4vw, 40px)', color: C.heading, ...font }}>vs {opponent?.name ?? 'TBA'}</h3>
-          <div className="mt-2 text-[15px] first-letter:uppercase" style={{ color: match.scheduledFor ? C.text : C.loss }}>
-            {match.scheduledFor ? longDate(match.scheduledFor) : 'Termin do ustalenia'}
+          <div className="mt-2 flex flex-wrap items-baseline gap-x-5 gap-y-1">
+            <span className="text-[16px] first-letter:uppercase" style={{ color: match.scheduledFor ? C.text : C.loss }}>
+              {match.scheduledFor ? longDate(match.scheduledFor) : 'Termin do ustalenia'}
+            </span>
+            {canPropose && !proposing && <Act onClick={() => setProposing(true)}>{match.scheduledFor ? 'Zmień termin' : 'Ustal termin'}</Act>}
           </div>
         </div>
         </div>
@@ -102,7 +107,7 @@ export function MatchPanel(p: PDLUpcomingMatchProps) {
       {/* Two columns that share the rest of the height (each scrolls only if it must) */}
       <div className="grid gap-x-12 gap-y-10 lg:grid-cols-2 mt-5 lg:flex-1 lg:min-h-0">
         <div className="min-w-0 flex flex-col gap-8 lg:min-h-0 lg:overflow-y-auto custom-scrollbar lg:pr-2">
-          <DateBlock {...p} />
+          <DateBlock {...p} open={proposing} setOpen={setProposing} />
           {p.onSetCoach && p.onRemoveCoach && (
             <section>
               <Label>Trener</Label>
@@ -128,7 +133,6 @@ export function MatchPanel(p: PDLUpcomingMatchProps) {
                 allTournamentRequests={p.allTournamentRequests} matchNameMap={p.matchNameMap} totalGames={games} />
             </section>
           )}
-          {!done && <Rules games={games} />}
         </div>
         {!done && (
           <div className="min-w-0 lg:min-h-0 lg:overflow-y-auto custom-scrollbar lg:pr-2">
@@ -144,11 +148,11 @@ export function MatchPanel(p: PDLUpcomingMatchProps) {
 
 // ── The date: propose a change, answer one, withdraw one ─────────────────
 
-function DateBlock(p: PDLUpcomingMatchProps) {
-  const { match, myTeamId, isCaptain } = p;
+/** Only when there is something to do: answer the opponent, see or withdraw your proposal, or propose (opened beside the date) */
+function DateBlock(p: PDLUpcomingMatchProps & { open: boolean; setOpen: (v: boolean) => void }) {
+  const { match, myTeamId, isCaptain, open, setOpen } = p;
   const { tournament } = useTournament();
   const font = useHeaderFont();
-  const [open, setOpen] = useState(false);
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
   const [busy, setBusy] = useState(false);
@@ -169,10 +173,10 @@ function DateBlock(p: PDLUpcomingMatchProps) {
   const run = async (f: () => Promise<void>) => { setBusy(true); try { await f(); } catch (e) { console.error('[MatchPanel]', e); } finally { setBusy(false); } };
   const send = () => iso && !broken && p.onRequestReschedule && run(async () => { await p.onRequestReschedule!(match.id, iso); setOpen(false); setDate(''); setTime(''); });
   const canPropose = isCaptain && match.status !== 'completed' && !pending;
+  if (!(fromThem && isCaptain) && !(fromUs && req) && !(canPropose && open)) return null;
 
   return (
     <section>
-      <Label right={canPropose && !open ? <Act onClick={() => setOpen(true)}>{match.scheduledFor ? 'Zmień termin' : 'Ustal termin'}</Act> : undefined}>Termin</Label>
 
       {fromThem && isCaptain && (
         <div className="relative pl-4 py-1">
@@ -223,12 +227,6 @@ function DateBlock(p: PDLUpcomingMatchProps) {
             <Act onClick={() => setOpen(false)}><X className="w-3.5 h-3.5" />Anuluj</Act>
           </div>
           {broken && <p className="mt-2 text-[13px]" style={{ color: C.loss }}>{broken.violation}</p>}
-        </div>
-      )}
-
-      {!req && !open && (
-        <div className="text-[14px]" style={{ color: C.muted }}>
-          {match.status === 'completed' ? 'Mecz rozegrany.' : match.scheduledFor ? 'Termin ustalony.' : 'Mecz nie ma jeszcze terminu.'}
         </div>
       )}
     </section>
@@ -299,7 +297,7 @@ function Lobby({ match, games, timePenalty, lobbyName, lobbyPassword }: { match:
             <span className="font-logik-extended-bold tracking-widest" style={{ color: password ? C.heading : C.muted, ...(password ? font : {}) }}>{password || '–'}</span>
           </div>
           <p className="mt-4 text-[14px] leading-relaxed">
-            Bot otwiera lobby <b style={{ color: C.heading }}>{count(bot?.leadMinutes ?? 10, 'minutę', 'minuty', 'minut')} przed meczem</b> i zaprasza każdego zarejestrowanego gracza. Przyjmij zaproszenie w Dota 2.
+            Bot otwiera lobby <b style={{ color: C.heading }}>{count(bot?.leadMinutes ?? 10, 'minutę', 'minuty', 'minut')} przed meczem</b> i zaprasza zgłoszonych graczy. Przyjmij zaproszenie w Dota 2.
           </p>
 
           <button type="button" onClick={() => setManual(v => !v)} className="mt-4 text-[12px] font-bold uppercase tracking-widest hover:underline underline-offset-4" style={{ color: T }}>
@@ -340,6 +338,7 @@ function Lobby({ match, games, timePenalty, lobbyName, lobbyPassword }: { match:
         </div>
       )}
 
+      <Rules games={games} />
     </section>
   );
 }
@@ -349,8 +348,7 @@ function Rules({ games }: { games: number }) {
   const { tournament } = useTournament();
   const lobby = tournament?.lobbySettings;
   return (
-    <section>
-      <Label>Zasady</Label>
+    <section className="mt-6">
       <div className="grid gap-x-8 gap-y-5 sm:grid-cols-2">
         <div>
           <div className="text-[10px] uppercase tracking-[0.2em] mb-1.5" style={{ color: C.muted }}>Priorytet wyboru</div>

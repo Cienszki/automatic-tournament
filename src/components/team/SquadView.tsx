@@ -14,14 +14,14 @@ import { Label as FieldLabel } from '@/components/ui/label';
 import { uploadScreenshot } from '@/lib/storage';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { AlertTriangle, Eye, HandHelping, Loader2, Lock, MoreHorizontal, RefreshCw, Save, Shield, Sparkles, Swords, Upload, X } from 'lucide-react';
+import { AlertTriangle, Check, Eye, HandHelping, Loader2, Lock, Pencil, RefreshCw, Save, Shield, Sparkles, Swords, Upload, X } from 'lucide-react';
 import { InfoPopover } from '@/components/ui/info-popover';
 import { cn } from '@/lib/utils';
 import type { Player, PlayerRole, Team } from '@/lib/definitions';
 import { PlayerRoles } from '@/lib/definitions';
 import type { CoachLock } from '@/lib/coach-rules';
 import { count } from '@/lib/plural';
-import { Avatar, C, Tip, TipBody, ink, useHeaderFont } from '@/components/stats-lab/kit';
+import { Avatar, C, Tip, TipBody, ink, mix, useHeaderFont } from '@/components/stats-lab/kit';
 import { Act, Kicker, Label, Solid, T, fieldClass, fieldStyle } from './ui';
 
 const ROLE_ICON: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -61,6 +61,8 @@ export interface SquadProps {
     /** Save a nickname, or null to remove the coach */
     onSave: (nickname: string | null) => Promise<void>;
   };
+  /** The captain's Discord from their linked account: shown as is, not editable */
+  linkedDiscord?: string;
   /** Called when captain saves all roster changes */
   onSaveRoster: (data: {
     players: Player[];
@@ -103,6 +105,7 @@ export function SquadView({
   isMmrLimited,
   mmrCap,
   coach,
+  linkedDiscord,
   onSaveRoster,
 }: SquadProps) {
   const [isEditing, setIsEditing] = useState(false);
@@ -116,7 +119,9 @@ export function SquadView({
   const [editPlayers, setEditPlayers] = useState<EditablePlayer[]>([]);
   const [editTeamName, setEditTeamName] = useState(team.name);
   const [editTeamTag, setEditTeamTag] = useState(team.tag);
-  const [editCaptainDiscord, setEditCaptainDiscord] = useState(team.discordUsername || team.captainDiscordUsername || '');
+  const [editCaptainDiscord, setEditCaptainDiscord] = useState(linkedDiscord || team.discordUsername || team.captainDiscordUsername || '');
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [addingCoach, setAddingCoach] = useState(false);
   const [editCoach, setEditCoach] = useState(coach?.nickname ?? '');
   const [editLogoFile, setEditLogoFile] = useState<File | null>(null);
   const [editLogoPreview, setEditLogoPreview] = useState(team.logoUrl);
@@ -167,7 +172,9 @@ export function SquadView({
     );
     setEditTeamName(team.name);
     setEditTeamTag(team.tag);
-    setEditCaptainDiscord(team.discordUsername || team.captainDiscordUsername || '');
+    setEditCaptainDiscord(linkedDiscord || team.discordUsername || team.captainDiscordUsername || '');
+    setEditingId(null);
+    setAddingCoach(false);
     setEditLogoPreview(team.logoUrl);
     setEditLogoFile(null);
     setEditCoach(coach?.nickname ?? '');
@@ -533,7 +540,7 @@ export function SquadView({
   const dirty = editPlayers.some(p => p.isNew || p.isRemoved)
     || editPlayers.some(p => { const o = original(p.id); return !!o && (o.nickname !== p.nickname || o.role !== p.role || (o.steamProfileUrl || '') !== (p.steamProfileUrl || '')); })
     || editTeamName !== team.name || editTeamTag !== team.tag
-    || editCaptainDiscord !== (team.discordUsername || team.captainDiscordUsername || '')
+    || editCaptainDiscord !== (linkedDiscord || team.discordUsername || team.captainDiscordUsername || '')
     || !!editLogoFile || coachChanged;
   // Why "Zapisz skład" is off (same rules as canSave)
   const blocker = activePlayerCount !== 5 ? `Skład musi mieć 5 graczy (teraz ${activePlayerCount})`
@@ -551,75 +558,95 @@ export function SquadView({
       {/* Players */}
       <div className="min-w-0 lg:min-h-0 flex flex-col">
         <Label right={
-          isSeasonActive && open
-            ? <span style={{ color: transfersUsed > maxTransfers ? C.loss : C.muted }}>Zmiany zawodników {transfersUsed}/{maxTransfers}</span>
-            : !open ? <span className="flex items-center gap-1.5"><Lock className="w-3 h-3" />Transfery zamknięte</span> : undefined
+          !open ? <span className="flex items-center gap-1.5"><Lock className="w-3 h-3" />Transfery zamknięte</span>
+            : isSeasonActive ? <span style={{ color: transfersUsed > maxTransfers ? C.loss : C.muted }}>Zmiany zawodników {transfersUsed}/{maxTransfers}</span>
+            : <span style={{ color: C.win }}>Transfery otwarte</span>
         }>Skład</Label>
-        <div className="lg:flex-1 lg:min-h-0 lg:overflow-y-auto custom-scrollbar lg:pr-1">
+        <div className="lg:flex-1 lg:min-h-0 lg:overflow-y-auto custom-scrollbar lg:pr-1 flex flex-col">
           {editPlayers.map(pl => {
             const Icon = ROLE_ICON[pl.role];
             if (pl.isRemoved) {
               return (
-                <div key={pl.id} className="relative h-[54px] flex items-center gap-3 pl-3" style={rule}>
+                <div key={pl.id} className="relative h-[54px] shrink-0 flex items-center gap-3 pl-4" style={rule}>
                   <span className="absolute left-0 top-2 bottom-2 w-[3px]" style={{ background: C.loss }} />
                   <span className="flex-1 min-w-0 truncate line-through" style={{ color: C.muted }}>{pl.nickname} · {pl.role}</span>
                   {open && <Act onClick={() => handleRestorePlayer(pl.id)}>Przywróć</Act>}
                 </div>
               );
             }
+            const editing = editingId === pl.id;
             return (
-              <div key={pl.id} className="relative min-h-[54px] flex flex-wrap lg:flex-nowrap items-center gap-x-3 gap-y-1 pl-3 py-1.5" style={rule}>
-                {pl.isNew && <span className="absolute left-0 top-2 bottom-2 w-[3px]" style={{ background: C.win }} />}
-                <Tip content={<TipBody title={pl.role} />}>
-                  <span className="w-4 flex justify-center shrink-0" style={{ color: C.muted }}>{Icon ? <Icon className="w-4 h-4" /> : '–'}</span>
-                </Tip>
-                <Avatar player={{ name: pl.nickname, avatar: pl.avatar }} size={34} />
-                <input value={pl.nickname} onChange={e => handlePlayerFieldChange(pl.id, 'nickname', e.target.value)} aria-label="Nick w lidze"
-                  title="Nick, pod którym gracz występuje w lidze (może różnić się od nicku na Steamie)"
-                  className={cn(fieldClass, 'w-[170px] font-bold')} style={fieldStyle} />
-                <Select value={pl.role} onValueChange={val => handlePlayerFieldChange(pl.id, 'role', val)}>
-                  <SelectTrigger aria-label="Rola" className={cn(selectClass, 'w-[140px]')} style={fieldStyle}><SelectValue /></SelectTrigger>
-                  <SelectContent>{PlayerRoles.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}</SelectContent>
-                </Select>
-                {isMmrLimited ? (
-                  <span className="flex-1 min-w-0 text-[13px] tabular-nums" style={{ color: C.muted }}>{pl.mmr != null ? `${pl.mmr} MMR` : ''}</span>
-                ) : (
-                  <>
-                    <input value={pl.steamProfileUrl} disabled={!open} placeholder="Link do Steam" aria-label="Link do Steam"
-                      onChange={e => {
-                        handlePlayerFieldChange(pl.id, 'steamProfileUrl', e.target.value);
-                        const m = e.target.value.match(/\/profiles\/(\d+)/);
-                        if (m) handlePlayerFieldChange(pl.id, 'steamId', m[1]);
-                      }}
-                      className={cn(fieldClass, 'flex-1 min-w-[160px] text-[13px]')} style={{ ...fieldStyle, color: C.muted }} />
-                    {open && (
-                      <Tip content={<TipBody title="Odśwież dane ze Steama" />}>
-                        <button type="button" onClick={() => handleRefreshPlayerSteam(pl.id)} disabled={loading || !pl.steamProfileUrl} aria-label="Odśwież dane ze Steama"
-                          className="p-1 opacity-60 hover:opacity-100 disabled:opacity-25" style={{ color: C.text }}>
-                          <RefreshCw className={cn('w-4 h-4', loading && 'animate-spin')} />
-                        </button>
-                      </Tip>
-                    )}
-                  </>
-                )}
-                <Tip content={<TipBody title={isMmrLimited ? 'Nick, MMR i konta smurf' : 'Konta smurf'} />}>
-                  <button type="button" onClick={() => handleOpenEditPlayer(pl.id)} aria-label={`Więcej: ${pl.nickname}`} className="p-1 opacity-60 hover:opacity-100" style={{ color: C.text }}>
-                    <MoreHorizontal className="w-4 h-4" />
-                  </button>
-                </Tip>
-                {open && (
-                  <Tip content={<TipBody title="Usuń ze składu" />}>
-                    <button type="button" onClick={() => handleRemovePlayer(pl.id)} aria-label={`Usuń ${pl.nickname}`} className="p-1 opacity-60 hover:opacity-100" style={{ color: C.loss }}>
-                      <X className="w-4 h-4" />
+              <div key={pl.id} className={cn('relative flex flex-col justify-center pl-4 pr-1 py-2', editing ? 'shrink-0' : 'lg:flex-1 min-h-[72px] lg:max-h-[124px]')}
+                style={{ ...rule, background: editing ? mix(T, 8) : undefined }}>
+                {(pl.isNew || editing) && <span className="absolute left-0 top-2 bottom-2 w-[3px]" style={{ background: editing ? T : C.win }} />}
+                {/* The player: picture, league nick, role */}
+                <div className="flex items-center gap-5 min-w-0">
+                  <Avatar player={{ name: pl.nickname, avatar: pl.avatarfull || pl.avatarmedium || pl.avatar }} size={editing ? 48 : 64} />
+                  <div className="flex-1 min-w-0">
+                    <div className="font-logik-extended-bold text-[22px] leading-tight truncate" style={{ color: C.heading, ...font }}>{pl.nickname || '–'}</div>
+                    <div className="mt-1 flex items-center gap-2 text-[13px]" style={{ color: C.muted }}>
+                      {Icon && <Icon className="w-3.5 h-3.5" />}{pl.role}
+                    </div>
+                  </div>
+                  <Tip content={<TipBody title={editing ? 'Gotowe' : 'Edytuj gracza'} />}>
+                    <button type="button" onClick={() => setEditingId(editing ? null : pl.id)} aria-label={editing ? 'Gotowe' : `Edytuj: ${pl.nickname}`}
+                      className="w-9 h-9 shrink-0 rounded-full flex items-center justify-center transition-colors hover:bg-[color-mix(in_srgb,var(--tournament-text,#fff)_8%,transparent)]" style={{ color: editing ? T : C.muted }}>
+                      {editing ? <Check className="w-5 h-5" /> : <Pencil className="w-4 h-4" />}
                     </button>
                   </Tip>
+                </div>
+                {/* The same row, editable: nick, role, Steam (smurfs and MMR only where MMR is limited) */}
+                {editing && (
+                  <div className="mt-3 flex flex-wrap items-end gap-x-5 gap-y-3">
+                    <label className="flex flex-col gap-1">
+                      <Kicker>Nick w lidze</Kicker>
+                      <input value={pl.nickname} onChange={e => handlePlayerFieldChange(pl.id, 'nickname', e.target.value)} aria-label="Nick w lidze" autoFocus
+                        className={cn(fieldClass, 'w-[190px] font-bold')} style={fieldStyle} />
+                    </label>
+                    <label className="flex flex-col gap-1">
+                      <Kicker>Rola</Kicker>
+                      <Select value={pl.role} onValueChange={val => handlePlayerFieldChange(pl.id, 'role', val)}>
+                        <SelectTrigger aria-label="Rola" className={cn(selectClass, 'w-[150px]')} style={fieldStyle}><SelectValue /></SelectTrigger>
+                        <SelectContent>{PlayerRoles.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}</SelectContent>
+                      </Select>
+                    </label>
+                    {!isMmrLimited && (
+                      <label className="flex flex-col gap-1 flex-1 min-w-[220px]">
+                        <Kicker>Steam</Kicker>
+                        <span className="flex items-end gap-2">
+                          <input value={pl.steamProfileUrl} disabled={!open} placeholder="Link do profilu Steam" aria-label="Link do Steam"
+                            onChange={e => {
+                              handlePlayerFieldChange(pl.id, 'steamProfileUrl', e.target.value);
+                              const m = e.target.value.match(/\/profiles\/(\d+)/);
+                              if (m) handlePlayerFieldChange(pl.id, 'steamId', m[1]);
+                            }}
+                            className={cn(fieldClass, 'flex-1 text-[13px]')} style={fieldStyle} />
+                          {open && (
+                            <Tip content={<TipBody title="Odśwież dane ze Steama" />}>
+                              <button type="button" onClick={() => handleRefreshPlayerSteam(pl.id)} disabled={loading || !pl.steamProfileUrl} aria-label="Odśwież dane ze Steama"
+                                className="p-1 mb-1 opacity-60 hover:opacity-100 disabled:opacity-25" style={{ color: C.text }}>
+                                <RefreshCw className={cn('w-4 h-4', loading && 'animate-spin')} />
+                              </button>
+                            </Tip>
+                          )}
+                        </span>
+                      </label>
+                    )}
+                    {isMmrLimited && (
+                      <>
+                        <span className="h-9 flex items-center text-[13px] tabular-nums" style={{ color: C.muted }}>{pl.mmr != null ? `${pl.mmr} MMR` : ''}</span>
+                        <Act onClick={() => handleOpenEditPlayer(pl.id)}>MMR i smurfy</Act>
+                      </>
+                    )}
+                    {open && <Act danger onClick={() => { handleRemovePlayer(pl.id); setEditingId(null); }}><X className="w-3.5 h-3.5" />Usuń ze składu</Act>}
+                  </div>
                 )}
               </div>
             );
           })}
 
           {open && activePlayerCount < 5 && (showAddPlayer ? (
-            <div className="relative py-3 pl-3" style={rule}>
+            <div className="relative shrink-0 py-3 pl-3" style={rule}>
               <span className="absolute left-0 top-3 bottom-3 w-[3px]" style={{ background: T }} />
               <div className="flex flex-wrap items-end gap-x-3 gap-y-2">
                 <input value={newNickname} onChange={e => setNewNickname(e.target.value)} placeholder="Nick gracza" aria-label="Nick nowego gracza" className={cn(fieldClass, 'w-[170px]')} style={fieldStyle} />
@@ -668,7 +695,7 @@ export function SquadView({
               )}
             </div>
           ) : (
-            <div className="pt-3"><Act onClick={() => setShowAddPlayer(true)}>+ Dodaj gracza</Act></div>
+            <div className="shrink-0 pt-3"><Act onClick={() => setShowAddPlayer(true)}>+ Dodaj gracza</Act></div>
           ))}
 
           {roleErrors.map(err => (
@@ -700,7 +727,10 @@ export function SquadView({
         </div>
         <label className="flex flex-col gap-1 mt-4">
           <Kicker>Discord kapitana</Kicker>
-          <input value={editCaptainDiscord} onChange={e => setEditCaptainDiscord(e.target.value)} aria-label="Discord kapitana" className={cn(fieldClass, 'w-full')} style={fieldStyle} />
+          {linkedDiscord
+            // The captain's own Discord account is linked: that is the Discord, nothing to type
+            ? <span className="h-9 flex items-center font-bold" style={{ color: C.heading }}>{linkedDiscord}</span>
+            : <input value={editCaptainDiscord} onChange={e => setEditCaptainDiscord(e.target.value)} aria-label="Discord kapitana" className={cn(fieldClass, 'w-full')} style={fieldStyle} />}
         </label>
 
         {coach && (
@@ -711,23 +741,17 @@ export function SquadView({
                 <div className="font-bold" style={{ color: coach.nickname ? C.heading : C.muted }}>{coach.nickname || 'Bez trenera'}</div>
                 <p className="mt-1 text-[12px] flex items-start gap-1.5" style={{ color: C.muted }}><Lock className="w-3 h-3 mt-0.5 shrink-0" />{coach.lock.reason}</p>
               </>
+            ) : editCoach || coach.nickname || addingCoach ? (
+              <input value={editCoach} maxLength={MAX_COACH_NICKNAME} onChange={e => setEditCoach(e.target.value)} placeholder="Nick trenera" aria-label="Nick trenera" autoFocus={addingCoach}
+                className={cn(fieldClass, 'w-full font-bold')} style={fieldStyle} />
             ) : (
-              <input value={editCoach} maxLength={MAX_COACH_NICKNAME} onChange={e => setEditCoach(e.target.value)} placeholder="Bez trenera" aria-label="Nick trenera"
-                className={cn(fieldClass, 'w-full')} style={fieldStyle} />
+              <Act className="self-start" onClick={() => setAddingCoach(true)}>+ Dodaj trenera</Act>
             )}
-            <p className="mt-1.5 text-[12px] leading-snug" style={{ color: C.muted }}>{coach.ruleSummary}</p>
           </>
         )}
 
-        <Label className="mt-7">Okno transferowe</Label>
-        <div className="font-logik-extended-bold uppercase text-[22px] leading-none" style={{ color: open ? C.win : C.muted, ...font }}>{open ? 'Otwarte' : 'Zamknięte'}</div>
-        <p className="mt-1.5 text-[12px] leading-snug" style={{ color: C.muted }}>
-          {open
-            ? isSeasonActive ? `Do ${count(maxTransfers, 'zmiany', 'zmian', 'zmian')} zawodników w tym oknie. Nicki i role się nie liczą.` : 'Przed sezonem skład zmieniasz bez limitu.'
-            : 'Możesz poprawić nicki, role, konta smurf i Discord kapitana.'}
-        </p>
         {isMmrLimited && (
-          <p className="mt-2 text-[13px] tabular-nums" style={{ color: mmrCap != null && totalMmr > mmrCap ? C.loss : C.text }}>
+          <p className="mt-7 text-[13px] tabular-nums" style={{ color: mmrCap != null && totalMmr > mmrCap ? C.loss : C.text }}>
             Łączne MMR: <b>{totalMmr}</b>{mmrCap != null && <span style={{ color: C.muted }}> / {mmrCap}</span>}
           </p>
         )}

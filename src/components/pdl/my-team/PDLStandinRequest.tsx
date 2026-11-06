@@ -111,6 +111,14 @@ const statusConfig: Record<PDLStandinRequestStatus, { label: string; className: 
   appeal_rejected: { label: 'Admin odrzucił - nie może grać', className: 'bg-red-500/20 text-red-400 border-red-500/30', canPlay: false, cannotPlay: true },
 };
 
+/** Status as a colour (the row's lead) and a word: may this standin play? */
+const STATUS_COLOR: Record<PDLStandinRequestStatus, string> = {
+  pending: '#f0c419', approved: '#3fbf7f', rejected: '#e5534b', appeal_pending: '#b072ff', appeal_approved: '#3fbf7f', appeal_rejected: '#e5534b',
+};
+const STATUS_SHORT: Record<PDLStandinRequestStatus, string> = {
+  pending: 'Czeka na zgodę', approved: 'Może grać', rejected: 'Odrzucony', appeal_pending: 'Odwołanie u admina', appeal_approved: 'Może grać (admin)', appeal_rejected: 'Nie może grać',
+};
+
 /**
  * Extracts steamId32 purely from a direct /profiles/STEAMID64/ URL (no API call).
  * Returns null for vanity /id/name/ URLs — those need async resolution.
@@ -341,130 +349,23 @@ export function PDLStandinRequestSection({
             const isResolved = ['approved', 'appeal_approved', 'appeal_rejected'].includes(request.status);
 
             return (
-              <div
-                key={request.id}
-                className={cn(
-                  'rounded-lg border p-4 space-y-3',
-                  config.canPlay 
-                    ? 'border-green-500/30 bg-green-500/5' 
-                    : config.cannotPlay 
-                    ? 'border-red-500/30 bg-red-500/5'
-                    : isResolved 
-                    ? 'border-white/5 bg-white/[0.01]' 
-                    : 'border-white/10 bg-white/[0.03]'
-                )}
-              >
-                {/* Success banner for approved standins */}
-                {config.canPlay && (
-                  <div className="rounded-md bg-green-500/20 border border-green-500/40 p-3 flex items-start gap-3">
-                    <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" />
-                    <div>
-                      <p className="text-sm font-logik-extended-bold text-green-400">
-                        ✓ Ten standin może grać w meczu
-                      </p>
-                      <p className="text-xs text-green-400/80 mt-1">
-                        {request.status === 'approved' 
-                          ? 'Zatwierdzony przez kapitana przeciwnika'
-                          : 'Zatwierdzony przez administrację po odwołaniu'}
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-                {/* Warning banner for rejected standins */}
-                {config.cannotPlay && (
-                  <div className="rounded-md bg-red-500/20 border border-red-500/40 p-3 flex items-start gap-3">
-                    <XCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
-                    <div>
-                      <p className="text-sm font-logik-extended-bold text-red-400">
-                        ✗ Ten standin NIE może grać w meczu
-                      </p>
-                      <p className="text-xs text-red-400/80 mt-1">
-                        {request.status === 'rejected' 
-                          ? 'Odrzucony przez kapitana przeciwnika. Możesz złożyć odwołanie do admina.'
-                          : 'Odwołanie zostało odrzucone przez administrację.'}
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-                {/* Info banner for appeal pending */}
-                {request.status === 'appeal_pending' && (
-                  <div className="rounded-md bg-purple-500/20 border border-purple-500/40 p-3 flex items-start gap-3">
-                    <Gavel className="w-5 h-5 text-purple-400 flex-shrink-0 mt-0.5" />
-                    <div>
-                      <p className="text-sm font-logik-extended-bold text-purple-400">
-                        ⏳ Oczekiwanie na decyzję administracji
-                      </p>
-                      <p className="text-xs text-purple-400/80 mt-1">
-                        Twoje odwołanie zostało przekazane do admina. Standin będzie mógł grać tylko jeśli admin je zatwierdzi.
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-                <div className="flex items-start justify-between gap-3">
-                  <div className="space-y-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <UserPlus className="w-4 h-4 text-white/60 flex-shrink-0" />
-                      <span className="text-sm text-white/60">Standin:</span>
-                      <span className="font-logik-extended-bold text-white">
-                        {request.standinNickname}
-                      </span>
-                      <a
-                        href={request.standinSteamProfileUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-pdl-gold hover:text-pdl-gold/80 transition-colors"
-                      >
-                        <ExternalLink className="w-3.5 h-3.5" />
-                      </a>
-                    </div>
-                    <p className="text-sm text-white/40">
-                      Za: <span className="text-white/60">{request.replacedPlayerNickname}</span>
-                      {request.replacedPlayerMmr !== undefined && (
-                        <span className="text-white/40"> ({request.replacedPlayerMmr.toLocaleString()} MMR)</span>
-                      )}
-                    </p>
-                    <p className="text-sm text-white/40">
-                      Gry: <span className="text-white/60">
-                        {request.gameNumbers && request.gameNumbers.length
-                          ? request.gameNumbers.join(', ')
-                          : 'cała seria'}
-                      </span>
-                    </p>
-                    {request.standinMmr !== undefined && (
-                      <p className="text-sm text-white/40">
-                        MMR standina: <span className="text-white/60 font-logik-extended-bold">{request.standinMmr.toLocaleString()}</span>
-                      </p>
-                    )}
-                  </div>
-
-                  <Badge className={cn('flex-shrink-0 text-xs font-logik flex items-center gap-1', config.className)}>
-                    {config.icon && <config.icon className="w-3 h-3" />}
-                    {config.label}
-                  </Badge>
+              <div key={request.id} className="relative pl-4 py-2.5 space-y-2" style={{ borderBottom: '1px solid color-mix(in srgb, var(--tournament-text, #fff) 8%, transparent)' }}>
+                {/* One line: who, for whom, which games — and whether they may play */}
+                <span className="absolute left-0 top-2.5 bottom-2.5 w-[3px]" style={{ background: STATUS_COLOR[request.status] }} />
+                <div className="flex items-baseline gap-x-3 gap-y-0.5 flex-wrap">
+                  <a href={request.standinSteamProfileUrl} target="_blank" rel="noopener noreferrer" className="font-bold hover:underline underline-offset-4 inline-flex items-center gap-1.5" style={{ color: 'var(--tournament-heading, #fff)' }}>
+                    {request.standinNickname}<ExternalLink className="w-3 h-3 opacity-50" />
+                  </a>
+                  <span className="text-[13px]" style={{ color: 'var(--tournament-secondary-text)' }}>
+                    za {request.replacedPlayerNickname}
+                    {' · '}{request.gameNumbers && request.gameNumbers.length ? `gry ${request.gameNumbers.join(', ')}` : 'cała seria'}
+                    {request.standinMmr !== undefined && ` · ${request.standinMmr.toLocaleString('pl-PL')} MMR`}
+                    {request.replacedPlayerMmr !== undefined && ` (za ${request.replacedPlayerMmr.toLocaleString('pl-PL')})`}
+                  </span>
+                  <span className="ml-auto text-[11px] font-bold uppercase tracking-widest" style={{ color: STATUS_COLOR[request.status] }}>{STATUS_SHORT[request.status]}</span>
                 </div>
-
-                {/* Rejection reason */}
-                {request.rejectionReason && (
-                  <div className="rounded-md bg-red-500/10 border border-red-500/20 p-3">
-                    <p className="text-xs text-red-400">
-                      <span className="font-logik-extended-bold">Powód odrzucenia: </span>
-                      {request.rejectionReason}
-                    </p>
-                  </div>
-                )}
-
-                {/* Admin note */}
-                {request.appealAdminNote && (
-                  <div className="rounded-md bg-purple-500/10 border border-purple-500/20 p-3">
-                    <p className="text-xs text-purple-400">
-                      <span className="font-logik-extended-bold">Notatka admina: </span>
-                      {request.appealAdminNote}
-                    </p>
-                  </div>
-                )}
+                {request.rejectionReason && <p className="text-[12px]" style={{ color: '#e5534b' }}>Powód: {request.rejectionReason}</p>}
+                {request.appealAdminNote && <p className="text-[12px]" style={{ color: '#b072ff' }}>Admin: {request.appealAdminNote}</p>}
 
                 {/* Opponent captain: profile links + history (always visible), plus
                     approve/reject controls while the request is still pending. */}
@@ -483,125 +384,32 @@ export function PDLStandinRequestSection({
 
                   return (
                     <div className="space-y-3">
-                      {/* Info panel: profile links + history */}
-                      <div className="rounded-lg border border-white/10 bg-white/[0.02] p-3 space-y-3">
-                        {/* External profile links */}
-                        <div className="space-y-2">
-                          <p className="text-[10px] font-logik-extended-bold text-white/40 uppercase tracking-widest">
-                            Sprawdź gracza
-                          </p>
-                          <div className="flex flex-wrap gap-2">
-                            <a
-                              href={request.standinSteamProfileUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md bg-[#1b2838] text-[#c7d5e0] hover:bg-[#2a475e] border border-white/10 transition-colors"
-                            >
-                              <ExternalLink className="w-3 h-3" />
-                              Steam
-                            </a>
-                            {openDotaUrl ? (
-                              <a
-                                href={openDotaUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md bg-[#4a90d9]/10 text-[#4a90d9] hover:bg-[#4a90d9]/20 border border-[#4a90d9]/30 transition-colors"
-                              >
-                                <ExternalLink className="w-3 h-3" />
-                                OpenDota
-                              </a>
-                            ) : (
-                              <span className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md bg-white/[0.03] text-white/20 border border-white/5">
-                                <Loader2 className="w-3 h-3 animate-spin" />
-                                OpenDota
-                              </span>
-                            )}
-                            {dotabuffUrl ? (
-                              <a
-                                href={dotabuffUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md bg-[#bf4b0b]/10 text-[#e87040] hover:bg-[#bf4b0b]/20 border border-[#bf4b0b]/30 transition-colors"
-                              >
-                                <ExternalLink className="w-3 h-3" />
-                                Dotabuff
-                              </a>
-                            ) : (
-                              <span className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md bg-white/[0.03] text-white/20 border border-white/5">
-                                <Loader2 className="w-3 h-3 animate-spin" />
-                                Dotabuff
-                              </span>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Smurf accounts */}
-                        {request.standinSmurfAccounts && request.standinSmurfAccounts.length > 0 && (
-                          <div className="space-y-2">
-                            <p className="text-[10px] font-logik-extended-bold text-white/40 uppercase tracking-widest">
-                              Konta smurf standina
-                            </p>
-                            <div className="flex flex-wrap gap-2">
-                              {request.standinSmurfAccounts.map((smurf, idx) => (
-                                <a
-                                  key={idx}
-                                  href={smurf.steamProfileUrl}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md bg-[#1b2838] text-[#c7d5e0] hover:bg-[#2a475e] border border-white/10 transition-colors"
-                                >
-                                  <ExternalLink className="w-3 h-3" />
-                                  Smurf {idx + 1}
-                                </a>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Approval history for this standin replacing the same player */}
-                        <div className="space-y-1.5">
-                          <p className="text-[10px] font-logik-extended-bold text-white/40 uppercase tracking-widest">
-                            Historia za {request.replacedPlayerNickname}
-                          </p>
-                          {previousApprovals.length === 0 ? (
-                            <p className="text-xs text-white/30">
-                              Brak wcześniejszych zatwierdzeń
-                            </p>
-                          ) : (
-                            <div className="space-y-1">
-                              <div className="flex items-center gap-1.5">
-                                <CheckCircle className="w-3.5 h-3.5 text-green-400 flex-shrink-0" />
-                                <p className="text-xs text-green-400 font-logik-extended-bold">
-                                  Zatwierdzony {previousApprovals.length}× za tego gracza
-                                </p>
-                              </div>
-                              <ul className="ml-5 space-y-0.5">
-                                {previousApprovals.map(prev => {
-                                  // Prefer labels denormalized on the request itself so history
-                                  // renders "TeamA vs TeamB — date (gry …)" even when the match
-                                  // isn't in the current team's loaded list.
-                                  const teamsLabel = prev.matchTeamAName && prev.matchTeamBName
-                                    ? `${prev.matchTeamAName} vs ${prev.matchTeamBName}`
-                                    : matchNameMap?.[prev.matchId] ?? `Mecz ${prev.matchId.substring(0, 8)}…`;
-                                  const dateLabel = prev.matchScheduledFor
-                                    ? new Date(prev.matchScheduledFor).toLocaleDateString('pl-PL')
-                                    : null;
-                                  const gamesLabel = prev.gameNumbers && prev.gameNumbers.length
-                                    ? `gry ${prev.gameNumbers.join(', ')}`
-                                    : null;
-                                  return (
-                                    <li key={prev.id} className="text-xs text-white/40">
-                                      • {teamsLabel}
-                                      {dateLabel && <span className="text-white/30"> — {dateLabel}</span>}
-                                      {gamesLabel && <span className="text-white/30"> ({gamesLabel})</span>}
-                                    </li>
-                                  );
-                                })}
-                              </ul>
-                            </div>
-                          )}
-                        </div>
+                      {/* Check the player: links on one line, earlier approvals for the same absent player on the next */}
+                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[12px] font-bold uppercase tracking-widest">
+                        {[
+                          { label: 'Steam', href: request.standinSteamProfileUrl },
+                          { label: 'OpenDota', href: openDotaUrl },
+                          { label: 'Dotabuff', href: dotabuffUrl },
+                          ...(request.standinSmurfAccounts ?? []).map((sm, i) => ({ label: `Smurf ${i + 1}`, href: sm.steamProfileUrl })),
+                        ].map(l => l.href ? (
+                          <a key={l.label} href={l.href} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 hover:underline underline-offset-4" style={{ color: 'var(--team, var(--tournament-primary))' }}>
+                            {l.label}<ExternalLink className="w-3 h-3 opacity-60" />
+                          </a>
+                        ) : (
+                          <span key={l.label} className="inline-flex items-center gap-1 opacity-40"><Loader2 className="w-3 h-3 animate-spin" />{l.label}</span>
+                        ))}
                       </div>
+                      <p className="text-[12px]" style={{ color: 'var(--tournament-secondary-text)' }}>
+                        {previousApprovals.length === 0
+                          ? `Wcześniej nie grał za ${request.replacedPlayerNickname}`
+                          : <>Zatwierdzony już {previousApprovals.length}× za {request.replacedPlayerNickname}: {previousApprovals.map(prev => {
+                              const teamsLabel = prev.matchTeamAName && prev.matchTeamBName
+                                ? `${prev.matchTeamAName} vs ${prev.matchTeamBName}`
+                                : matchNameMap?.[prev.matchId] ?? `mecz ${prev.matchId.substring(0, 8)}…`;
+                              const dateLabel = prev.matchScheduledFor ? ` (${new Date(prev.matchScheduledFor).toLocaleDateString('pl-PL')})` : '';
+                              return `${teamsLabel}${dateLabel}`;
+                            }).join(', ')}</>}
+                      </p>
 
                       {/* Approve / Reject buttons — only while the request is pending */}
                       {canApproveReject && (showRejectInput === request.id ? (

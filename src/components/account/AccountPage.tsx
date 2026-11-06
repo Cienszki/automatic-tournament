@@ -212,7 +212,7 @@ export default function AccountPage({ inSection = false }: { inSection?: boolean
 
   return frame(
     <FitStage>
-      <MyTeamView embedded banner={banner} />
+      <MyTeamView embedded banner={banner} linkedDiscord={acc.discord?.username} />
     </FitStage>,
   );
 }

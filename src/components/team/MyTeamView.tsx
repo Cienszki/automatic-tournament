@@ -32,6 +32,7 @@ import NoTeamFound from '@/components/app/my-team/NoTeamFound';
 import { TeamDesk, type DeskView, type DeskTodo, type ScrimSlot } from './TeamDesk';
 import type { AccountBanner } from '@/components/account/AccountPage';
 import { checkReschedule, reschedulePolicy } from "@/lib/reschedule-rules";
+import { lobbyNameFor } from '@/lib/bot/lobby-name';
 import { COACH_CHANGE_LOCK_HOURS, coachModeOption, isPerMatchCoachMode, isTeamLevelCoachMode, isWithinCoachLock, teamCoachLock } from "@/lib/coach-rules";
 import { upsertGlobalPlayerProfilesAction, clearPlayerCurrentTeamsAction } from "@/lib/player-profile-actions";
 import { count } from '@/lib/plural';
@@ -184,7 +185,7 @@ async function fetchStandinRequestsForMatchIds(
  * A captain's team: the legacy (Letnia) my-team page, or, for every newer tournament, the team
  * management shown under the account banner (`embedded`).
  */
-export default function MyTeamView({ embedded = false, banner }: { embedded?: boolean; banner?: AccountBanner }) {
+export default function MyTeamView({ embedded = false, banner, linkedDiscord }: { embedded?: boolean; banner?: AccountBanner; linkedDiscord?: string }) {
   const { tournament, theme, isLegacyTournament, getTournamentPath } = useTournament();
   const { isMmrLimited, isLeague } = useTournamentType();
   // Drive coach UI off the actual setting rather than the tournament type. Both
@@ -1795,13 +1796,16 @@ export default function MyTeamView({ embedded = false, banner }: { embedded?: bo
         onRemoveCoach: coachPerMatch ? handleRemoveCoach : undefined,
         onRefreshMatch: () => refreshSingleMatch(match.id),
         isMmrLimited,
-        // Before the bot opens it: the name the bot will use (matches scheduling.js)
+        // Before the bot opens it: the name the bot will use (scheduling.js: tags first, team A is Radiant in game 1)
         botLobbyName: botSessionMap.get(match.id)?.lobbyName
-          ?? `${tournament?.lobbySettings?.leagueName || tournament?.name || 'Tournament'} - ${match.teamA?.name || 'TBA'} vs ${match.teamB?.name || 'TBA'}`,
+          ?? lobbyNameFor(tournament?.lobbySettings?.leagueName || tournament?.name || 'Tournament',
+            { tag: teams.find(t => t.id === match.teamA?.id)?.tag, name: match.teamA?.name },
+            { tag: teams.find(t => t.id === match.teamB?.id)?.tag, name: match.teamB?.name }),
         botLobbyPassword: botSessionMap.get(match.id)?.lobbyPassword || fixedLobbyPassword,
       })}
       roster={{
         isCaptain,
+        linkedDiscord,
         isTransferWindowOpen,
         isSeasonActive,
         previousRoundPlayers,
