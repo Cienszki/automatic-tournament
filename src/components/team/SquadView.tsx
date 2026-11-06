@@ -14,7 +14,7 @@ import { Label as FieldLabel } from '@/components/ui/label';
 import { uploadScreenshot } from '@/lib/storage';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { AlertTriangle, Check, Eye, HandHelping, Loader2, Lock, Pencil, RefreshCw, Save, Shield, Sparkles, Swords, Upload, X } from 'lucide-react';
+import { AlertTriangle, Check, Loader2, Lock, Pencil, RefreshCw, Save, Shield, Upload, X } from 'lucide-react';
 import { InfoPopover } from '@/components/ui/info-popover';
 import { cn } from '@/lib/utils';
 import type { Player, PlayerRole, Team } from '@/lib/definitions';
@@ -24,9 +24,8 @@ import { count } from '@/lib/plural';
 import { Avatar, C, Tip, TipBody, ink, mix, useHeaderFont } from '@/components/stats-lab/kit';
 import { Act, Kicker, Label, Solid, T, fieldClass, fieldStyle } from './ui';
 
-const ROLE_ICON: Record<string, React.ComponentType<{ className?: string }>> = {
-  Carry: Swords, Mid: Sparkles, Offlane: Shield, 'Soft Support': HandHelping, 'Hard Support': Eye,
-};
+const ROLE_ORDER = ['Carry', 'Mid', 'Offlane', 'Soft Support', 'Hard Support'];
+const roleOrder = (r: string) => { const i = ROLE_ORDER.indexOf(r); return i < 0 ? 9 : i; };
 const selectClass = 'h-9 bg-transparent border-0 border-b-2 rounded-none px-0 text-[14px] focus:ring-0 focus:ring-offset-0 shadow-none';
 
 const MAX_COACH_NICKNAME = 32;
@@ -563,8 +562,8 @@ export function SquadView({
             : <span style={{ color: C.win }}>Transfery otwarte</span>
         }>Skład</Label>
         <div className="lg:flex-1 lg:min-h-0 lg:overflow-y-auto custom-scrollbar lg:pr-1 flex flex-col">
-          {editPlayers.map(pl => {
-            const Icon = ROLE_ICON[pl.role];
+          {/* Carry → Hard Support, the order every captain thinks in */}
+          {[...editPlayers].sort((a, b) => roleOrder(a.role) - roleOrder(b.role)).map(pl => {
             if (pl.isRemoved) {
               return (
                 <div key={pl.id} className="relative h-[54px] shrink-0 flex items-center gap-3 pl-4" style={rule}>
@@ -579,15 +578,10 @@ export function SquadView({
               <div key={pl.id} className={cn('relative flex flex-col justify-center pl-4 pr-1 py-2', editing ? 'shrink-0' : 'lg:flex-1 min-h-[72px] lg:max-h-[124px]')}
                 style={{ ...rule, background: editing ? mix(T, 8) : undefined }}>
                 {(pl.isNew || editing) && <span className="absolute left-0 top-2 bottom-2 w-[3px]" style={{ background: editing ? T : C.win }} />}
-                {/* The player: picture, league nick, role */}
+                {/* The player: picture and league nick, the pencil right beside it */}
                 <div className="flex items-center gap-5 min-w-0">
                   <Avatar player={{ name: pl.nickname, avatar: pl.avatarfull || pl.avatarmedium || pl.avatar }} size={editing ? 48 : 64} />
-                  <div className="flex-1 min-w-0">
-                    <div className="font-logik-extended-bold text-[22px] leading-tight truncate" style={{ color: C.heading, ...font }}>{pl.nickname || '–'}</div>
-                    <div className="mt-1 flex items-center gap-2 text-[13px]" style={{ color: C.muted }}>
-                      {Icon && <Icon className="w-3.5 h-3.5" />}{pl.role}
-                    </div>
-                  </div>
+                  <div className="font-logik-extended-bold text-[22px] leading-tight truncate min-w-0" style={{ color: C.heading, ...font }}>{pl.nickname || '–'}</div>
                   <Tip content={<TipBody title={editing ? 'Gotowe' : 'Edytuj gracza'} />}>
                     <button type="button" onClick={() => setEditingId(editing ? null : pl.id)} aria-label={editing ? 'Gotowe' : `Edytuj: ${pl.nickname}`}
                       className="w-9 h-9 shrink-0 rounded-full flex items-center justify-center transition-colors hover:bg-[color-mix(in_srgb,var(--tournament-text,#fff)_8%,transparent)]" style={{ color: editing ? T : C.muted }}>

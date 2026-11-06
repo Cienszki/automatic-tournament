@@ -202,9 +202,7 @@ export default function AccountPage({ inSection = false }: { inSection?: boolean
         </div>
 
         {side && (
-          <div className="lg:w-[480px] shrink-0 lg:self-stretch lg:my-6 lg:pl-8 lg:border-l border-white/15 min-w-0 flex flex-col justify-center">
-            {side}
-          </div>
+          <div className="lg:max-w-[48%] shrink-0 min-w-0">{side}</div>
         )}
       </div>
     </div>

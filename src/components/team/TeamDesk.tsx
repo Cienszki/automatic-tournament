@@ -9,7 +9,7 @@
 import React, { useRef } from 'react';
 import * as TooltipPrimitive from '@radix-ui/react-tooltip';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ChevronRight, RefreshCw } from 'lucide-react';
+import { RefreshCw } from 'lucide-react';
 import type { Match, Team } from '@/lib/definitions';
 import { cn } from '@/lib/utils';
 import { C, TeamLogo, Tip, TipBody, ink, mix, useHeaderFont } from '@/components/stats-lab/kit';
@@ -100,45 +100,42 @@ export function TeamDesk(p: TeamDeskProps) {
   );
 }
 
-/** The banner's right side: the team, and what waits for the captain (each row takes you there) */
+/** The banner's right side mirrors the person on the left: the team's name, then its crest at the edge;
+ *  under the name, what waits for the captain (each row takes you there) */
 function TeamSide({ team, divisionName, place, todos, setView }: TeamDeskProps) {
   const font = useHeaderFont();
   const status = team.status ? STATUS[team.status] : undefined;
   const kicker = [team.tag && `[${team.tag}]`, divisionName, place ? `${place}. miejsce` : null].filter(Boolean) as string[];
   const shown = todos.slice(0, 2);
   return (
-    <>
-      <div className="flex items-center gap-4 min-w-0">
-        <TeamLogo team={team} size={60} className="drop-shadow-[0_6px_20px_rgba(0,0,0,0.6)]" />
-        <div className="min-w-0">
-          <div className="text-[10px] uppercase tracking-[0.25em] flex flex-wrap gap-x-3" style={{ color: TL }}>
-            {kicker.map(k => <span key={k}>{k}</span>)}
-            {status && <span style={{ color: status.bad ? '#ff8a80' : 'rgba(255,255,255,0.65)' }}>{status.label}</span>}
-          </div>
-          <div className="font-logik-extended-bold uppercase leading-none mt-1 truncate text-[28px]" style={font}>{team.name}</div>
+    <div className="flex flex-row-reverse justify-end lg:flex-row lg:justify-end items-center gap-6 lg:gap-10 min-w-0">
+      <div className="min-w-0 lg:text-right">
+        <div className="text-[11px] uppercase tracking-[0.25em] flex flex-wrap gap-x-3 lg:justify-end" style={{ color: TL }}>
+          {kicker.map(k => <span key={k}>{k}</span>)}
+          {status && <span style={{ color: status.bad ? '#ff8a80' : 'rgba(255,255,255,0.65)' }}>{status.label}</span>}
         </div>
-      </div>
-      {shown.length > 0 && (
-        <div className="mt-3 flex flex-col">
-          {shown.map(t => (
-            <button key={t.id} type="button" onClick={t.action!.onClick}
-              className="group relative flex items-center gap-3 py-1.5 pl-3 text-left hover:bg-white/5 transition-colors">
-              <span className="absolute left-0 top-1.5 bottom-1.5 w-[3px]" style={{ background: t.urgent ? '#ff6b61' : TL }} />
-              <span className="flex-1 min-w-0">
-                <span className="block text-[13px] font-bold truncate">{t.title}</span>
+        <div className="font-logik-extended-bold uppercase leading-[0.95] mt-1.5 break-words line-clamp-2" style={{ fontSize: 'clamp(30px, 3.4vw, 60px)', ...font }}>{team.name}</div>
+        {shown.length > 0 && (
+          <div className="mt-3 flex flex-col lg:items-end">
+            {shown.map(t => (
+              <button key={t.id} type="button" onClick={t.action!.onClick}
+                className="group relative max-w-full py-1 pl-3 lg:pl-0 lg:pr-3 text-left lg:text-right">
+                <span className="absolute left-0 lg:left-auto lg:right-0 top-1 bottom-1 w-[3px]" style={{ background: t.urgent ? '#ff6b61' : TL }} />
+                <span className="block text-[13px] font-bold truncate group-hover:underline underline-offset-4">{t.title}</span>
                 <span className="block text-[11px] truncate text-white/60">{t.description}</span>
-              </span>
-              <ChevronRight className="w-4 h-4 shrink-0 opacity-50 group-hover:opacity-100" />
-            </button>
-          ))}
-          {todos.length > shown.length && (
-            <button type="button" onClick={() => setView('matches')} className="self-start mt-1 pl-3 text-[11px] font-bold uppercase tracking-widest hover:underline underline-offset-4" style={{ color: TL }}>
-              +{todos.length - shown.length}
-            </button>
-          )}
-        </div>
-      )}
-    </>
+              </button>
+            ))}
+            {todos.length > shown.length && (
+              <button type="button" onClick={() => setView('matches')} className="mt-1 pl-3 lg:pl-0 lg:pr-3 text-[11px] font-bold uppercase tracking-widest hover:underline underline-offset-4" style={{ color: TL }}>
+                +{todos.length - shown.length}
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+      <span className="hidden lg:block shrink-0"><TeamLogo team={team} size={140} className="drop-shadow-[0_10px_30px_rgba(0,0,0,0.6)]" /></span>
+      <span className="lg:hidden shrink-0"><TeamLogo team={team} size={84} /></span>
+    </div>
   );
 }
 
