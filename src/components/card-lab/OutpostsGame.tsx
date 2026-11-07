@@ -23,6 +23,7 @@ import {
 } from '@/lib/card-lab/outposts';
 import { PACES, paceText, unlimited, type BatchStep, type DuelView, type Fighting, type Game, type Pace, type Person, type PvpAction } from '@/lib/card-lab/pvp';
 import { applyAct, chooseAttack, cpuNextAction, LEVELS, type Level } from '@/lib/card-lab/outposts-ai';
+import { rivalScript, tutAllows, tutorialGame, tutUid, type TutAllow, type TutCast } from '@/lib/card-lab/tutorial';
 import { CardBack, useFitScale } from './ui';
 import { Tour, type TourStep } from '@/components/tour/Tour';
 import { Hint } from '@/components/tour/Hint';
@@ -1034,6 +1035,10 @@ export function OutpostsGame({ deck, all, onBack, level = 'easy', visible = true
   const [gameLevel, setGameLevel] = useState<Level>(level);
   const [tutDone, setTutDone] = useState<Set<string>>(new Set());
   const [tutOff, setTutOff] = useState(false);
+  /** The scripted tutorial's cards (null outside it) */
+  const [tutCast, setTutCast] = useState<TutCast | null>(null);
+  /** The tutorial step on screen (set while rendering): the player's moves are checked against it */
+  const tutStep = useRef<{ id: string; action: string | null } | null>(null);
   // The tutorial waits for the player's own first flip and first hit
   const [didFlip, setDidFlip] = useState(false);
   const [didHit, setDidHit] = useState(false);
@@ -1052,16 +1057,15 @@ export function OutpostsGame({ deck, all, onBack, level = 'easy', visible = true
     const theirs = rematch && cpu.length ? cpu : cpuDeck(all, OUTPOSTS_RULE, avgOvr(deck) - LEVELS[lv].deckGap, new Set(deck.map(c => c.pid)));
     seenFight.current = 0; seenGain.current = 0; pendingGains.current = []; prevMight.current = {};
     let g = newGame([deck, theirs]);
+    let cast: TutCast | null = null;
     if (lv === 'tutorial') {
-      // The same short match every time: three simple objectives, an opening hand that shows the positions
-      g = newGame([deck, theirs], seeded(7), 6);
-      g.objectives = (['lotus', 'roshan', 'outpost'] as ObjId[]).map(id => ({ id, owner: null }));
-      const pool = [...g.sides[0].hand, ...g.sides[0].deck];
-      const hand = (['Carry', 'Mid', 'Offlane', 'Hard Support'] as RoleKey[]).map(r => pool.find(c => c.role === r)).filter((c): c is GCard => !!c);
-      g.sides[0].hand = hand; g.sides[0].deck = pool.filter(c => !hand.includes(c));
+      // One fixed match (src/lib/card-lab/tutorial.ts): the decks, the draws, the rival's moves and yours
+      const t = tutorialGame(deck, all);
+      if (t) { g = t.g; cast = t.cast; }
     }
+    setTutCast(cast); setDidFlip(false); setDidHit(false);
     setTutDone(new Set()); setTutOff(false); tutReached.current = new Set();
-    setCpu(theirs); setS(g); setSel([]); setSelCards([]); setBattleQ(null); setFlyers([]); setOwed([0, 0]);
+    setCpu(cast ? [...g.sides[1].hand, ...g.sides[1].deck] : theirs); setS(g); setSel([]); setSelCards([]); setBattleQ(null); setFlyers([]); setOwed([0, 0]);
   };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { if (!net) start(); }, [deck]);
@@ -1193,7 +1197,12 @@ export function OutpostsGame({ deck, all, onBack, level = 'easy', visible = true
   // The computer: one action at a time, waiting for scenes and flying points
   useEffect(() => {
     if (net || !s || s.active !== 1 || s.winner !== null || s.phase === 'fight' || scene || flyers.length || banner || logOpen || tour || coachRef.current) return;
-    const t = setTimeout(() => { if (coachRef.current) return; const a = cpuNextAction(s, Math.random, gameLevel); if (a) setS(applyAct(s, a)); else openBattles(s); }, 900);
+    const t = setTimeout(() => {
+      if (coachRef.current) return;
+      // In the tutorial the rival plays its script
+      const a = tutCast && !tutOff ? rivalScript(s, tutCast) : cpuNextAction(s, Math.random, gameLevel);
+      if (a) setS(applyAct(s, a)); else openBattles(s);
+    }, 900);
     return () => clearTimeout(t);
   }, [s, scene, flyers.length, banner, logOpen, tour, coachKey]);
 
@@ -1259,7 +1268,15 @@ export function OutpostsGame({ deck, all, onBack, level = 'easy', visible = true
   };
 
   // ── Actions ──
+  /** In the tutorial only the step's own move is taken; anything else says what to do */
+  const tutGate = (ok: (a: TutAllow) => boolean) => {
+    if (!tutCast || tutOff || gameLevel !== 'tutorial' || !tutStep.current) return true;
+    if (ok(tutAllows(tutStep.current.id, tutCast))) return true;
+    setNote(tutStep.current.action ? `Samouczek: ${tutStep.current.action}` : 'Samouczek: najpierw przeczytaj podpowiedź i kliknij w niej Dalej');
+    return false;
+  };
   const doDeploy = (ids: string[]) => {
+    if (!tutGate(a => !!a.deploy && ids.every(id => a.deploy!.includes(id)))) { setSelCards([]); return; }
     let cur = stateRef.current; if (!cur) return;
     const done: string[] = [];
     for (const id of ids) { if (canDeploy(cur, id)) { setNote(canDeploy(cur, id)); break; } cur = deploy(cur, id); done.push(id); }
@@ -1268,6 +1285,7 @@ export function OutpostsGame({ deck, all, onBack, level = 'easy', visible = true
     if (net && done.length) sendNet({ kind: 'deployMany', cardIds: done });
   };
   const doMove = (ids: string[], to: Loc) => {
+    if (!tutGate(a => !!a.moves && ids.every(id => a.moves![id] === to))) { setSel([]); return; }
     const cur = stateRef.current; if (!cur) return;
     const why = canMove(cur, ids, to);
     if (why) setNote(why); else { setS(move(cur, ids, to)); sendNet({ kind: 'move', uids: ids, to }); }
@@ -1384,6 +1402,7 @@ export function OutpostsGame({ deck, all, onBack, level = 'easy', visible = true
   };
   const advance = () => {
     const cur = stateRef.current; if (!cur || cur.active !== 0 || cur.phase === 'fight' || selCards.length) return;
+    if (!tutGate(a => a.advance === cur.phase)) return;
     if (cur.phase === 'deploy') { setS(startOrders(cur)); sendNet({ kind: 'orders' }); }
     else if (net) sendNet({ kind: 'confirm' });
     else openBattles(cur);
@@ -1447,37 +1466,39 @@ export function OutpostsGame({ deck, all, onBack, level = 'easy', visible = true
   // ── Tutorial coach: each step shows when it is true on the board; action steps wait for the action ──
   const coach = (() => {
     if (!tutorial) return null;
-    const pointsFor = (why: 'take' | 'hold') => s.events.some(e => e.kind === 'points' && e.side === 0 && e.why === why);
-    const auraAt = ([0, 1, 2] as const).find(i => s.units.some(u => u.side === 0 && u.loc === i && u.card.role === 'Hard Support'));
-    const teamAt = ([0, 1, 2] as const).find(i => s.units.some(u => u.side === 0 && u.loc === i && strengthParts(s, u).some(p => p.kind === 'team')));
-    const supp = mine && phase === 'move' && smokeLeft(s) ? rested.find(u => u.card.role === 'Soft Support') : undefined;
-    const midU = mine && phase === 'move' ? rested.find(u => u.card.role === 'Mid' && u.loc !== 'base') : undefined;
-    const mate = mine && phase === 'move' && planned && rested.some(u => s.units.some(q => q.side === 0 && q.moved && q.from === u.loc));
-    const mineCount = s.units.filter(u => u.side === 0).length;
-    const steps: TutStep[] = [
-      { id: 'goal', seq: true, target: '[data-tour="score"]', title: 'Cel gry: zniszcz Ancienta', points: [<>Ancient rywala (po prawej) ma tu <b>6 HP</b> (w zwykłej grze 10).</>, <>Przejęcie objective&apos;u: <b>−1 HP</b> (Roshan <b>−2</b>).</>, <>Co turę <b>−1 HP</b> za każdy objective, na którym stoisz.</>, 'Rywal tak samo rani Twojego (po lewej).'], when: () => mine, expire: () => s.turn >= 3 },
-      { id: 'objectives', seq: true, target: '[data-tour="objectives"]', title: 'Objective\'y', points: ['Trzy miejsca z mapy, każde z własną zasadą (pod nazwą).', 'Na dole Twoje miejsca, na górze rywala.'], when: () => mine, expire: () => s.turn >= 3 },
-      { id: 'cards', seq: true, target: '[data-tour="hand"]', title: 'Twoje karty', points: [<>Liczba w rogu to <b>siła</b>.</>, 'Pod nazwą pozycja: każda ma umiejętność.'], when: () => mine, expire: () => s.turn >= 3 },
-      { id: 'flip', seq: true, target: '[data-tour="hand"]', title: 'Odwróć kartę', points: ['Na odwrocie jest wszystko o karcie: umiejętność pozycji i skąd jej siła.'], action: 'Najedź myszką na kartę i chwilę poczekaj', when: () => mine && phase === 'deploy', done: () => didFlip, expire: () => s.turn >= 3 },
-      // Before the first click: how a turn goes and that the orders are one budget for all of it
-      { id: 'phases', seq: true, target: '[data-tour="turn"]', title: 'Tura ma 3 fazy', points: [<><b>1. Wystawianie:</b> karty z ręki idą do Twojej bazy.</>, <><b>2. Ruchy:</b> planujesz, kto idzie na który objective.</>, <><b>3. Walki i przejęcia:</b> dzieją się po kliknięciu Zatwierdź.</>, 'Ten przycisk przenosi Cię do następnej fazy.'], when: () => mine && phase === 'deploy', expire: () => s.turn >= 3 },
-      { id: 'orders', seq: true, target: '[data-tour="orders"]', align: 'right', title: 'Rozkazy są wspólne', points: [<><b>3 rozkazy</b> na całą turę: na wystawianie i na ruchy razem.</>, 'Każda wystawiona karta i każdy ruch kosztuje 1.', 'Wydasz wszystkie na wystawianie, to nie zostanie nic na ruchy.'], when: () => mine && phase === 'deploy', expire: () => s.turn >= 3 },
-      { id: 'deploy', seq: true, target: '[data-tour="hand"]', title: 'Wystaw karty', points: ['Karty z ręki idą najpierw do Twojej bazy.', 'Każda kosztuje 1 rozkaz.'], action: 'Kliknij 2 karty, potem swoją bazę', when: () => mine && phase === 'deploy', done: () => mineCount >= 2, expire: () => s.turn > 1 },
-      { id: 'to-moves', seq: true, target: '[data-tour="turn"]', title: 'Dalej', points: ['Wystawione karty ruszą dopiero w następnej turze.', 'Teraz przejdź dalej: tura przejdzie do rywala.'], action: 'Kliknij Dalej', when: () => mine && phase === 'deploy' && s.turn === 1, done: () => phase !== 'deploy', expire: () => s.turn > 1 },
-      { id: 'rival', seq: true, title: 'Tura rywala', points: ['Rywal robi to samo: wystawia karty i rusza jednostki.', 'Jego karty i bazę widzisz na górze.', 'Rywal zacznie, gdy klikniesz Dalej.'], when: () => !mine && s.turn === 2, expire: () => s.turn > 2 },
-      { id: 'turn2', seq: true, target: '[data-tour="turn"]', title: 'Twoja tura', points: [<>Na początku tury dobierasz <b>2 karty</b>.</>, 'Wystaw coś jeszcze albo od razu przejdź do ruchów.', 'Rozkazy, których nie wydasz na wystawianie, zostają na ruchy.'], action: 'Kliknij Dalej, żeby przejść do ruchów', when: () => mine && phase === 'deploy' && s.turn >= 3, done: () => phase !== 'deploy', expire: () => s.turn >= 5 },
-      { id: 'move', seq: true, target: rested[0] ? `[data-uid="${rested[0].uid}"]` : '[data-tour="base"]', title: 'Ruch na objective', points: ['Przeciągnij jednostkę na objective (albo kliknij ją, a potem objective).', 'Ruch kosztuje 1 rozkaz.', 'To dopiero plan: możesz go zmienić.'], action: 'Wyślij jednostkę na objective', when: () => mine && phase === 'move' && canGo, done: () => planned, expire: () => s.turn >= 5 },
-      { id: 'group', target: '[data-tour="orders"]', title: 'Grupa płaci raz', points: ['Jednostki z jednego miejsca w to samo miejsce to jedna grupa.', 'Płacisz 1 rozkaz, nawet gdy przeciągasz je po kolei.'], when: () => !!mate },
-      { id: 'confirm', seq: true, target: '[data-tour="turn"]', title: 'Zatwierdź', points: ['Teraz wszystko dzieje się naraz: walki i przejęcia.'], action: 'Kliknij Zatwierdź', when: () => mine && phase === 'move' && planned, done: () => s.events.some(e => e.kind === 'move' && e.side === 0), expire: () => s.turn >= 7 },
-      { id: 'battle', title: 'Walka', points: [<>Uderzacie <b>na zmianę</b>, jedna jednostka naraz; zaczyna atakujący.</>, <>Jednostka bije <b>za tyle, ile ma siły</b>.</>, 'Obrażenia zostają do końca walki (pasek pod kartą).', 'Offlane rywala musi zginąć, zanim zaatakujesz kogoś innego.', 'Walka trwa runda po rundzie, aż jedna strona padnie.'], when: () => !!battleQ },
-      { id: 'hit', title: 'Twój cios', points: ['Gdy przyjdzie Twoja kolej: kliknij swoją jednostkę (świeci), potem cel rywala.'], action: 'Uderz', when: () => !!battleQ, done: () => didHit },
-      { id: 'take', target: '[data-tour="score"]', title: 'Przejęcie!', points: [<>Ancient rywala traci <b>1 HP</b> (za Roshana <b>2</b>).</>, 'Ten objective jest teraz Twój.'], when: () => pointsFor('take') },
-      { id: 'hold', target: '[data-tour="score"]', title: 'Trzymanie', points: [<>Na początku tury Ancient rywala traci <b>1 HP</b> za każdy Twój objective, na którym stoisz.</>, 'Zostaw tam jednostkę, a rani go co turę.'], when: () => pointsFor('hold') },
-      { id: 'team', target: teamAt != null ? `[data-obj="${teamAt}"]` : undefined, title: 'Drużyna +1', points: ['Na tym objectivie stoją gracze z tej samej drużyny.', <>Każdy z nich dostaje <b>+1 siły</b> (ikona z ludzikami na karcie).</>, 'Zbieraj karty całych drużyn, żeby to wykorzystać.'], when: () => teamAt != null && mine },
-      { id: 'aura', target: auraAt != null ? `[data-obj="${auraAt}"]` : undefined, title: 'Hard Supp: Aura', points: [<>Każda Twoja jednostka na tym objectivie ma <b>+1 siły</b>.</>], when: () => auraAt != null && mine },
-      { id: 'smoke', target: supp ? `[data-uid="${supp.uid}"]` : undefined, title: 'Support: Smoke', points: ['Raz na turę jedna grupa ruszająca z miejsca Supportu idzie bez rozkazu.', 'Support może zostać na miejscu.'], when: () => !!supp },
-      { id: 'mid', target: midU ? `[data-uid="${midU.uid}"]` : undefined, title: 'Mid: Gank', points: ['Mid może iść prosto na inny objective, bez wracania do bazy.'], when: () => !!midU },
-    ];
+    if (!tutCast) return null;
+    const K = tutCast; const T = s.turn;
+    const has = (c: GCard) => s.units.some(u => u.uid === tutUid(0, c));
+    const at = (c: GCard) => s.units.find(u => u.uid === tutUid(0, c))?.loc;
+    const card = (c: GCard) => `[data-uid="${tutUid(0, c)}"]`;
+    // The whole match, step by step (src/lib/card-lab/tutorial.ts has the plan). Explanations wait for
+    // Dalej; action steps wait for exactly that move (anything else is refused with a pointer here).
+    const steps: TutStep[] = ([
+      { id: 'goal', target: '[data-tour="score"]', title: 'Cel gry: zniszcz Ancienta', points: [<>Ancient rywala (po prawej) ma tu <b>6 HP</b> (w zwykłej grze 10).</>, <>Przejęcie objective&apos;u: <b>−1 HP</b> (Roshan <b>−2</b>).</>, <>Co turę <b>−1 HP</b> za każdy objective, na którym stoisz.</>, 'Rywal tak samo rani Twojego (po lewej).'], when: () => mine && T === 1 },
+      { id: 'objectives', target: '[data-tour="objectives"]', title: "Objective'y", points: ['Trzy miejsca z mapy, każde z własną zasadą (pod nazwą).', 'Na dole Twoje miejsca, na górze rywala.'], when: () => mine && T === 1 },
+      { id: 'cards', target: '[data-tour="hand"]', title: 'Twoje karty', points: [<>Liczba w rogu to <b>siła</b>.</>, 'Pod nazwą pozycja: każda ma umiejętność.'], when: () => mine && T === 1 },
+      { id: 'flip', target: '[data-tour="hand"]', title: 'Odwróć kartę', points: ['Na odwrocie jest wszystko o karcie: umiejętność pozycji i skąd jej siła.'], action: 'najedź myszką na kartę i chwilę poczekaj', when: () => mine && T === 1, done: () => didFlip },
+      { id: 'phases', target: '[data-tour="turn"]', title: 'Tura ma 3 fazy', points: [<><b>1. Wystawianie:</b> karty z ręki idą do Twojej bazy.</>, <><b>2. Ruchy:</b> planujesz, kto idzie na który objective.</>, <><b>3. Walki i przejęcia:</b> dzieją się po kliknięciu Zatwierdź.</>, 'Ten przycisk przenosi Cię do następnej fazy.'], when: () => mine && T === 1 },
+      { id: 'orders', target: '[data-tour="orders"]', align: 'right', title: 'Rozkazy są wspólne', points: [<><b>3 rozkazy</b> na całą turę: na wystawianie i na ruchy razem.</>, 'Każda wystawiona karta i każdy ruch kosztuje 1.', 'Karta wystawiona w tej turze ruszy się dopiero w następnej: teraz wszystkie 3 rozkazy idą na wystawianie.'], when: () => mine && T === 1 },
+      { id: 'deploy3', target: '[data-tour="hand"]', title: 'Wystaw 3 karty', points: [<><b>{K.c.name}</b>, <b>{K.m.name}</b> i <b>{K.o.name}</b>.</>, 'Kliknij kartę, potem swoją bazę (albo przeciągnij). Można kilka naraz.'], action: `wystaw ${K.c.name}, ${K.m.name} i ${K.o.name}`, when: () => mine && T === 1, done: () => has(K.c) && has(K.m) && has(K.o) },
+      { id: 'deployed', target: '[data-tour="base"]', title: 'Rozkazy wydane', points: ['Wystawione karty ruszą się w Twojej następnej turze.', 'Teraz tura rywala.'], when: () => mine && T === 1 },
+      { id: 'rival', title: 'Tura rywala', points: ['Rywal robi to samo: wystawia karty i rusza jednostki.', 'Jego karty i bazę widzisz na górze.', 'Rywal zacznie, gdy klikniesz Dalej.'], when: () => !mine && T === 2 },
+      { id: 'turn3', target: '[data-tour="hand"]', title: 'Twoja tura', points: ['Rywal wystawił 3 karty. Na początku tury dobrałeś 2.', 'Twoje jednostki z bazy mogą już ruszyć.', 'Plan: 1 rozkaz na kartę, 2 na ruchy.'], when: () => mine && T === 3 },
+      { id: 'deploy1', target: card(K.hs), title: `Wystaw ${K.hs.name}`, points: ['Hard Supp przyda się w następnej turze.'], action: `wystaw ${K.hs.name}`, when: () => mine && T === 3, done: () => has(K.hs) },
+      { id: 'to-moves', target: '[data-tour="turn"]', title: 'Faza 2: ruchy', points: ['Zostały 2 rozkazy: oba na ruchy.'], action: 'kliknij Dalej', when: () => mine && T === 3, done: () => phase !== 'deploy' },
+      { id: 'group', target: at(K.c) === 1 ? card(K.o) : card(K.c), avoid: '[data-obj="1"]', title: 'Grupa na Roshana', points: [<>Przeciągnij <b>{K.c.name}</b> i <b>{K.o.name}</b> na Roshana, jedno po drugim.</>, 'Z jednego miejsca w to samo miejsce to jedna grupa: 1 rozkaz za obie.', <>Przejęcie Roshana: Ancient rywala <b>−2 HP</b>.</>], action: `wyślij ${K.c.name} i ${K.o.name} na Roshana`, when: () => mine && T === 3 && phase === 'move', done: () => at(K.c) === 1 && at(K.o) === 1 },
+      { id: 'mid', target: card(K.m), avoid: '[data-obj="0"]', title: 'Mid na Lotus Pool', points: [<>Wyślij <b>{K.m.name}</b> na Lotus Pool: <b>−1 HP</b>.</>, 'Właściciel Lotus Pool dobiera co turę 3 karty zamiast 2.'], action: `wyślij ${K.m.name} na Lotus Pool`, when: () => mine && T === 3 && phase === 'move', done: () => at(K.m) === 0 },
+      { id: 'confirm', target: '[data-tour="turn"]', title: 'Zatwierdź', points: ['Wszystkie 3 rozkazy wydane, żaden się nie zmarnował.', 'Rywal stoi w bazie: będą przejęcia bez walki.'], action: 'kliknij Zatwierdź', when: () => mine && T === 3, done: () => phase === 'fight' },
+      { id: 'take', target: '[data-tour="score"]', title: 'Przejęcia!', points: [<>Ancient rywala: <b>−3 HP</b> (Roshan 2, Lotus Pool 1).</>, 'Zostało mu 3.'], when: () => mine && T === 3 && phase === 'fight' },
+      { id: 'rival2', title: 'Rywal kontratakuje', points: ["Rywal może zaatakować Twoje objective'y.", 'Rywal zacznie, gdy klikniesz Dalej.'], when: () => !mine && T === 4 },
+      { id: 'battle', align: 'right', title: 'Walka o Lotus Pool', points: ['Rywal atakuje, Ty się bronisz.', <>Uderzacie <b>na zmianę</b>, jedna jednostka naraz; zaczyna atakujący.</>, <>Jednostka bije <b>za tyle, ile ma siły</b>. Obrażenia zostają do końca walki.</>, 'Walka trwa, aż jedna strona padnie.'], when: () => !!battleQ },
+      { id: 'hit', align: 'right', title: 'Twój cios', points: ['Gdy przyjdzie Twoja kolej: kliknij swoją jednostkę (świeci), potem cel rywala.'], action: 'uderz', when: () => !!battleQ, done: () => didHit },
+      { id: 'held', target: '[data-tour="score"]', title: 'Lotus Pool obroniony', points: ['Rywal przejął za to pusty Outpost: Twój Ancient −1 HP.', 'Outpost daje właścicielowi 4 rozkazy na turę zamiast 3.'], when: () => !mine && T === 4 && phase === 'fight' && !battleQ },
+      { id: 'hold', target: '[data-tour="score"]', title: 'Trzymanie', points: [<>Na początku tury Ancient rywala stracił <b>2 HP</b>: po 1 za Roshana i Lotus Pool, bo na nich stoisz.</>, `${K.c.name} na Roshanie: Farma, +1 siły na stałe.`, 'Lotus Pool: dobrałeś 3 karty.', 'Rywalowi został 1 HP.'], when: () => mine && T === 5 },
+      { id: 'pass', target: '[data-hint="pass"]', title: 'Bez wystawiania', points: ['Do wygranej wystarczy jedno przejęcie.', 'Karty z ręki ruszyłyby się dopiero w następnej turze: nic tu nie dadzą.'], action: 'kliknij Nie wystawiam więcej', when: () => mine && T === 5, done: () => phase !== 'deploy' },
+      { id: 'attack', target: card(K.hs), avoid: '[data-obj="2"]', title: 'Atak na Outpost', points: [<>Wyślij <b>{K.hs.name}</b> na Outpost.</>, 'Hard Supp: Aura, +1 siły dla Twoich jednostek na tym objectivie.', 'Stoi tam jednostka rywala: będzie walka. Tym razem uderzasz pierwszy.'], action: `wyślij ${K.hs.name} na Outpost`, when: () => mine && T === 5 && phase === 'move', done: () => at(K.hs) === 2 },
+      { id: 'confirm2', target: '[data-tour="turn"]', title: 'Zatwierdź i wygraj', points: ['Wygraj walkę, przejmij Outpost: Ancient rywala padnie.'], action: 'kliknij Zatwierdź', when: () => mine && T === 5, done: () => phase === 'fight' || !!battleQ },
+    ] as TutStep[]).map(st => ({ ...st, seq: true }));
     const finish = (id: string) => queueMicrotask(() => setTutDone(d => (d.has(id) ? d : new Set(d).add(id))));
     let blocked = false;
     for (const st of steps) {
@@ -1500,6 +1521,7 @@ export function OutpostsGame({ deck, all, onBack, level = 'easy', visible = true
   // An explanation waiting for OK holds the game (the computer, automatic steps); a step asking for an
   // action does not (the player is doing it, and in a fight the computer may need to strike first)
   coachRef.current = coach && !coach.st.action && visible ? coach.st.id : null;
+  tutStep.current = coach ? { id: coach.st.id, action: typeof coach.st.action === 'string' ? coach.st.action : null } : null;
   if (coachKey !== coachRef.current) queueMicrotask(() => setCoachKey(coachRef.current));
 
   // A hint counts as seen once something else replaces it (the player acted on it)
@@ -1688,7 +1710,7 @@ export function OutpostsGame({ deck, all, onBack, level = 'easy', visible = true
           onNext={coach.st.action ? undefined : () => setTutDone(d => new Set(d).add(coach.st.id))} />
       )}
       <AnimatePresence>
-        {battleQ && <BattleScreen key={`${battleQ.base.turn}-${battleQ.i}`} s={battleQ.base} at={battleQ.locs[battleQ.i]} level={gameLevel} onDone={battleDone} paused={!!coach} />}
+        {battleQ && <BattleScreen key={`${battleQ.base.turn}-${battleQ.i}`} s={battleQ.base} at={battleQ.locs[battleQ.i]} level={gameLevel} onDone={battleDone} paused={!!coach && !coach.st.action} />}
         {net && netBattle && (
           <BattleScreen key={`n${netBattle.base.turn}-${netBattle.at}`} s={netBattle.base} at={netBattle.at} level={gameLevel} onDone={() => {}}
             net={{ duel: netBattle.duel, onHit: a => sendNow({ kind: 'hit', from: a.from, to: a.to }), deadline: netBattle.live ? net.game.clock.deadline : null, hitEnds: netBattle.live ? net.game.clock.turnEnds : null, offset: net.offset }} />

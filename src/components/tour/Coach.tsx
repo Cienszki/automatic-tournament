@@ -11,7 +11,8 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { MousePointerClick } from 'lucide-react';
 
 /** `align: 'right'` keeps the bubble at the right edge of the screen (so it does not cover the middle) */
-export interface CoachStep { id: string; target?: string; title: string; points: React.ReactNode[]; action?: React.ReactNode; align?: 'right' }
+/** `avoid`: a place the box must not cover (where the player has to drop something) */
+export interface CoachStep { id: string; target?: string; title: string; points: React.ReactNode[]; action?: React.ReactNode; align?: 'right'; avoid?: string }
 
 export function Coach({ step, n, total, onNext, onSkip, accent = 'var(--tournament-primary, #c0392b)' }: {
   step: CoachStep; n: number; total: number; onNext?: () => void; onSkip: () => void; accent?: string;
@@ -32,6 +33,8 @@ export function Coach({ step, n, total, onNext, onSkip, accent = 'var(--tourname
   const vw = window.innerWidth; const vh = window.innerHeight; const G = 18;
   // Beside the target where there is room (above, below, left, right), else centred
   let left = vw / 2 - size.w / 2; let top = vh / 2 - size.h / 2;
+  // No target but told to stay right: at the right edge (e.g. over a fight, where the middle is the game)
+  if (!rect && step.align === 'right') left = vw - size.w - 24;
   if (rect) {
     const cx = Math.min(vw - size.w - 12, Math.max(12, rect.left + rect.width / 2 - size.w / 2));
     if (rect.top - size.h - G > 8) { left = cx; top = rect.top - size.h - G; }
@@ -39,6 +42,11 @@ export function Coach({ step, n, total, onNext, onSkip, accent = 'var(--tourname
     else if (rect.left - size.w - G > 8) { left = rect.left - size.w - G; top = Math.max(8, Math.min(vh - size.h - 8, rect.top + rect.height / 2 - size.h / 2)); }
     else { left = Math.min(vw - size.w - 8, rect.right + G); top = Math.max(8, Math.min(vh - size.h - 8, rect.top + rect.height / 2 - size.h / 2)); }
     if (step.align === 'right') left = vw - size.w - 24;
+    // Off the place the player must reach: beside it, on whichever side has room
+    const av = step.avoid ? document.querySelector(step.avoid)?.getBoundingClientRect() : null;
+    if (av && left < av.right && left + size.w > av.left && top < av.bottom && top + size.h > av.top) {
+      left = av.right + G + size.w < vw - 8 ? av.right + G : Math.max(8, av.left - size.w - G);
+    }
   }
 
   return createPortal(
