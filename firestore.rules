@@ -424,6 +424,11 @@ service cloud.firestore {
     match /accounts/{uid} {
       allow read: if request.auth != null && request.auth.uid == uid;
       allow write: if false;
+      // The owner's notifications, read live by the bell (written only by the server)
+      match /inbox/{id} {
+        allow read: if request.auth != null && request.auth.uid == uid;
+        allow write: if false;
+      }
     }
     match /discordLinks/{id} { allow read, write: if false; }
     match /steamLinks/{id} { allow read, write: if false; }

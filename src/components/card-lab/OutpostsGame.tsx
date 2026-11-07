@@ -582,7 +582,7 @@ const BW = 148;
  * until the fight ends (the bar under each card). `onDone` gets every attack, to replay in the rules.
  */
 /** With `net`: a fight against a person — the duel comes from the server, your hits go to it, theirs arrive and play out */
-function BattleScreen({ s, at, level, onDone, net }: { s: OState; at: 0 | 1 | 2; level: Level; onDone: (script: Attack[]) => void; net?: { duel: Duel; onHit: (a: Attack) => Promise<string | null>; deadline: number | null; offset: number } }) {
+function BattleScreen({ s, at, level, onDone, net }: { s: OState; at: 0 | 1 | 2; level: Level; onDone: (script: Attack[]) => void; net?: { duel: Duel; onHit: (a: Attack) => Promise<string | null>; deadline: number | null; hitEnds: number | null; offset: number } }) {
   const font = useHeaderFont();
   const fit = useFitScale();
   const [localDuel, setDuel] = useState<Duel>(() => startDuel(s, at));
@@ -608,6 +608,8 @@ function BattleScreen({ s, at, level, onDone, net }: { s: OState; at: 0 | 1 | 2;
   const attacking = s.active === 0;
   const over = duelOver(duel);
   const myTurn = !over && !busy && duel.turn === 0;
+  // The last hit shown was struck by the clock (that side's time and reserve ran out)
+  const lastAuto = !!net && shownLen > 0 && !!net.duel.log[shownLen - 1]?.auto;
   const legal = useMemo(() => duelTargets(duel, 0).map(u => u.uid), [duel]);
 
   const measure = useCallback(() => {
@@ -717,7 +719,8 @@ function BattleScreen({ s, at, level, onDone, net }: { s: OState; at: 0 | 1 | 2;
 
   return (
     <motion.div className="absolute inset-0 z-[95] flex flex-col items-center justify-center gap-4"
-      style={{ background: 'radial-gradient(circle at 50% 50%, rgba(40,20,14,0.9), rgba(5,6,9,0.95) 70%)', backdropFilter: 'blur(5px)' }}
+      // No backdrop blur: it costs every frame on computers without graphics acceleration, and the panel is nearly opaque anyway
+      style={{ background: 'radial-gradient(circle at 50% 50%, rgba(40,20,14,0.93), rgba(5,6,9,0.97) 70%)' }}
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
       onPointerMove={picked ? e => setPtr(local(e)) : undefined}>
       <motion.div className="flex items-center gap-3" initial={{ scale: 1.3, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}>
@@ -731,7 +734,15 @@ function BattleScreen({ s, at, level, onDone, net }: { s: OState; at: 0 | 1 | 2;
           <motion.div key={over ? 'o' : myTurn ? (picked ? 'p' : 'm') : 'r'} className="font-logik-extended-bold uppercase text-[18px] tracking-wider"
             style={{ color: over ? T.text : myTurn ? T.me : T.rival, ...font }} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
             {duel.round > 1 && !over ? `Runda ${duel.round} · ` : ''}{over ? 'Koniec walki' : myTurn ? (picked ? 'Teraz kliknij cel rywala' : 'Twój ruch: kliknij swoją jednostkę') : duel.turn === 0 ? '…' : <motion.span animate={{ opacity: [1, 0.45, 1] }} transition={{ duration: 1.4, repeat: Infinity }}>Rywal wybiera cel…</motion.span>}
-            {net?.deadline && !over && <span className="ml-3 tabular-nums" style={{ color: T.muted }}>{Math.max(0, Math.ceil((net.deadline - clockNow - net.offset) / 1000))} s</span>}
+            {net?.deadline && !over && (() => {
+              // The hit's own time, then the striker's reserve (red): only when that is gone too does the clock strike
+              const own = Math.ceil(((net.hitEnds ?? net.deadline) - clockNow - net.offset) / 1000);
+              const left = Math.max(0, Math.ceil((net.deadline - clockNow - net.offset) / 1000));
+              return own > 0
+                ? <span className="ml-3 tabular-nums" style={{ color: T.muted }}>{own} s</span>
+                : <span className="ml-3 tabular-nums" style={{ color: '#ff8a7a' }}>rezerwa {left} s</span>;
+            })()}
+            {lastAuto && <span className="ml-3 text-[13px]" style={{ color: '#ffb3ad' }}>czas minął: cios automatyczny</span>}
           </motion.div>
         </AnimatePresence>
       </div>
@@ -933,8 +944,19 @@ export function OutpostsGame({ deck, all, onBack, level = 'easy', visible = true
     return () => clearTimeout(t);
   }, [outro?.key]); // eslint-disable-line react-hooks/exhaustive-deps
   const netFight = net?.game.fight;
+  // A turn's fights start: the board shows the moves for a moment (the defender sees what came at them),
+  // then the fight screen opens. The server's opening pause (CLOCK.hitStart) covers this.
+  const [reveal, setReveal] = useState<{ key: string; until: number } | null>(null);
+  const fightKey = netFight && netFight.i === 0 && !netFight.duel.log.length ? `${netFight.base.turn}` : null;
+  useEffect(() => {
+    if (!fightKey || reveal?.key === fightKey) return;
+    setReveal({ key: fightKey, until: Date.now() + 2000 });
+    const t = setTimeout(() => setReveal(r => (r?.key === fightKey ? { ...r, until: 0 } : r)), 2000);
+    return () => clearTimeout(t);
+  }, [fightKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  const revealing = !!fightKey && (reveal?.key !== fightKey || reveal.until > 0);
   const netBattle = !net ? null : outro ? { base: outro.base, at: outro.at, duel: outro.duel, live: false }
-    : netFight ? { base: netFight.base, at: netFight.locs[netFight.i], duel: netFight.duel, live: true } : null;
+    : netFight && !revealing ? { base: netFight.base, at: netFight.locs[netFight.i], duel: netFight.duel, live: true } : null;
   const scene = battleQ ?? netBattle;
   const [flyers, setFlyers] = useState<Flyer[]>([]);
   const [owed, setOwed] = useState<[number, number]>([0, 0]);
@@ -1575,7 +1597,7 @@ export function OutpostsGame({ deck, all, onBack, level = 'easy', visible = true
         {battleQ && <BattleScreen key={`${battleQ.base.turn}-${battleQ.i}`} s={battleQ.base} at={battleQ.locs[battleQ.i]} level={gameLevel} onDone={battleDone} />}
         {net && netBattle && (
           <BattleScreen key={`n${netBattle.base.turn}-${netBattle.at}`} s={netBattle.base} at={netBattle.at} level={gameLevel} onDone={() => {}}
-            net={{ duel: netBattle.duel, onHit: a => sendNow({ kind: 'hit', from: a.from, to: a.to }), deadline: netBattle.live ? net.game.clock.deadline : null, offset: net.offset }} />
+            net={{ duel: netBattle.duel, onHit: a => sendNow({ kind: 'hit', from: a.from, to: a.to }), deadline: netBattle.live ? net.game.clock.deadline : null, hitEnds: netBattle.live ? net.game.clock.turnEnds : null, offset: net.offset }} />
         )}
       </AnimatePresence>
       <AnimatePresence>

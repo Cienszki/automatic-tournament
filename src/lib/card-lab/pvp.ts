@@ -20,12 +20,13 @@ import {
 export const CLOCK = {
   /** Each turn's own time; then the reserve runs */
   turn: 30_000,
-  /** Extra time for the whole match */
-  reserve: 60_000,
-  /** One attack in a fight */
-  hit: 10_000,
-  /** At the start of each fight (the screen changes) */
-  hitStart: 3_000,
+  /** Extra time for the whole match (turns and hits draw on it once their own time is up) */
+  reserve: 90_000,
+  /** One attack in a fight; then the striker's reserve runs, and only when that is gone too the clock
+   *  strikes for them (players must never see the computer play for them while they still have time) */
+  hit: 15_000,
+  /** At the start of each fight: the moves are shown on the board first, then the fight screen opens */
+  hitStart: 5_000,
   /** After the fights, to watch the points land; then the turn passes by itself */
   after: 6_000,
   /** Gone (no page open) this long = lost */
@@ -112,6 +113,21 @@ function stopTurnClock(g: Game, t: number, timedOut = false): Clock {
   return { ...c, reserve, timeouts };
 }
 
+/** A hit's clock from `t`: its own time (plus the opening pause at a fight's start), then the striker's reserve.
+ *  During a fight `turnEnds` = when the hit's own time ends. */
+function hitClock(g: Game, duel: Duel, t: number, opening: boolean): Clock {
+  const ends = t + (opening ? CLOCK.hitStart : 0) + CLOCK.hit;
+  return { ...g.clock, turnEnds: ends, deadline: ends + g.clock.reserve[duel.turn] };
+}
+/** The striker hit at `t`: whatever they took beyond the hit's own time comes off their reserve */
+function chargeHit(g: Game, side: Side, t: number): Game {
+  const over = Math.max(0, t - g.clock.turnEnds);
+  if (!over) return g;
+  const reserve: [number, number] = [...g.clock.reserve];
+  reserve[side] = Math.max(0, reserve[side] - over);
+  return { ...g, clock: { ...g.clock, reserve } };
+}
+
 /** The moves are confirmed at `t`: fights one by one, or straight to the result */
 function confirm(g: Game, t: number): Game {
   const s0 = g.s.phase === 'deploy' ? startOrders(g.s) : g.s;
@@ -121,19 +137,21 @@ function confirm(g: Game, t: number): Game {
     const next = { ...g, s, fight: null, clock: { ...g.clock, deadline: t + CLOCK.after } };
     return s.winner !== null ? finish(next, s.winner, 'points') : next;
   }
-  return { ...g, s: s0, fight: { base: s0, locs, i: 0, chosen: {}, duel: startDuel(s0, locs[0]) }, clock: { ...g.clock, deadline: t + CLOCK.hitStart + CLOCK.hit } };
+  const duel = startDuel(s0, locs[0]);
+  return { ...g, s: s0, fight: { base: s0, locs, i: 0, chosen: {}, duel }, clock: hitClock(g, duel, t, true) };
 }
 
 /** After a hit at `t`: the same fight goes on, the next fight starts, or everything resolves */
 function afterHit(g: Game, duel: Duel, t: number): Game {
   const f = g.fight!;
-  if (!duelOver(duel)) return { ...g, fight: { ...f, duel }, clock: { ...g.clock, deadline: t + CLOCK.hit } };
+  if (!duelOver(duel)) return { ...g, fight: { ...f, duel }, clock: hitClock(g, duel, t, false) };
   const chosen = { ...f.chosen, [f.locs[f.i]]: duel.log.map(({ from, to }) => ({ from, to })) };
   const all = resolve(f.base, chosen);
   const next = f.i + 1;
   // The next fight happens unless an earlier take-over already won the match
   if (next < f.locs.length && !(all.winner !== null && !all.fights.some(x => x.at === f.locs[next]))) {
-    return { ...g, fight: { ...f, i: next, chosen, duel: startDuel(f.base, f.locs[next]) }, clock: { ...g.clock, deadline: t + CLOCK.hitStart + CLOCK.hit } };
+    const nd = startDuel(f.base, f.locs[next]);
+    return { ...g, fight: { ...f, i: next, chosen, duel: nd }, clock: hitClock(g, nd, t, true) };
   }
   const done = { ...g, s: all, fight: null, clock: { ...g.clock, deadline: t + CLOCK.after } };
   return all.winner !== null ? finish(done, all.winner, 'points') : done;
@@ -153,8 +171,12 @@ export function settle(game: Game, now: number): Game {
     if (awayAt < now && awayAt <= t) return finish(g, other(first), 'away');
     if (t > now) break;
     if (g.fight) {
-      // A hit not made in time: a sensible one
-      g = afterHit(g, duelAct(g.fight.duel, autoAttack(g.fight.duel)), t);
+      // A hit not made in time, reserve gone too: the clock strikes (a sensible hit, marked as automatic)
+      const d0 = g.fight.duel;
+      const reserve: [number, number] = [...g.clock.reserve]; reserve[d0.turn] = 0;
+      const hit = duelAct(d0, autoAttack(d0));
+      const marked = { ...hit, log: hit.log.map((x, k) => (k === hit.log.length - 1 ? { ...x, auto: true } : x)) };
+      g = afterHit({ ...g, clock: { ...g.clock, reserve } }, marked, t);
     } else if (g.s.phase === 'fight') {
       g = beginTurn({ ...g, s: endTurn(g.s) }, t);
     } else {
@@ -199,7 +221,7 @@ function step(g: Game, side: Side, a: Exclude<PvpAction, { kind: 'batch' | 'resi
     if (f.duel.turn !== side) return { error: 'Teraz uderza rywal' };
     const at: Attack = { from: a.from, to: a.to };
     if (!duelLegal(f.duel, at)) return { error: 'Tego ataku nie można wykonać' };
-    return { game: afterHit(g, duelAct(f.duel, at), now) };
+    return { game: afterHit(chargeHit(g, side, now), duelAct(f.duel, at), now) };
   }
 
   if (g.s.active !== side) return { error: 'Teraz tura rywala' };

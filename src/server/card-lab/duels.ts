@@ -31,6 +31,8 @@ interface DuelDoc {
   key: string;
   kind: 'open' | 'direct';
   status: DuelStatus;
+  /** When the match began (the page opens a match that just started) */
+  startedAt?: number;
   host: Person;
   guest: Person | null;
   invited: Person | null;
@@ -174,7 +176,17 @@ export async function startMatch(id: string, uid: string): Promise<Res> {
     const order: [Person, Person] = hostFirst ? [h, g] : [g, h];
     const decks = hostFirst ? [hd.deck, gd.deck] as const : [gd.deck, hd.deck] as const;
     const game = startGame([decks[0], decks[1]], rnd, now);
-    return { ...d, status: 'play', sides: [order[0].uid, order[1].uid], players: order, game: JSON.stringify(game), seatUntil: null };
+    return { ...d, status: 'play', sides: [order[0].uid, order[1].uid], players: order, game: JSON.stringify(game), seatUntil: null, startedAt: now };
+  }).then(async r => {
+    // The challenger may have stepped away from the lobby: tell them the match is on (the page also opens it)
+    if (!('error' in r)) {
+      const t = await tournamentInfo(pre.key).catch(() => null);
+      await notify([pre.host.uid], {
+        type: 'duel', key: `duel-start:${id}`, tournament: t, href: `/${t?.slug ?? pre.key}/cards/duel/${id}`,
+        title: 'Wyzwanie przyjęte', body: `Mecz z graczem ${pre.guest?.name ?? 'rywal'} właśnie się zaczął.`,
+      }).catch(e => console.warn('[duels] start notify failed', e));
+    }
+    return r;
   });
 }
 
@@ -297,6 +309,6 @@ export async function myDuels(key: string, uid: string) {
   return {
     invites: mine(inv).filter(x => x.d.status === 'open' && !lobbyDead(x.d, now)).map(x => ({ id: x.id, host: x.d.host })),
     hosting: mine(host).filter(x => (x.d.status === 'open' || x.d.status === 'seated') && !lobbyDead(x.d, now)).map(x => ({ id: x.id, status: x.d.status })),
-    live: mine(play).filter(x => x.d.status === 'play').map(x => ({ id: x.id, rival: x.d.players!.find(p => p.uid !== uid)! })),
+    live: mine(play).filter(x => x.d.status === 'play').map(x => ({ id: x.id, rival: x.d.players!.find(p => p.uid !== uid)!, startedAt: x.d.startedAt ?? 0 })),
   };
 }

@@ -8,6 +8,8 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Bell, ChevronLeft } from 'lucide-react';
+import { collection, limit, onSnapshot, orderBy, query } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 import { useAuth } from '@/context/AuthContext';
 import { NavLogin } from '@/components/auth/NavLogin';
 import { useTournament } from '@/context/TournamentContext';
@@ -77,7 +79,17 @@ export function NotificationBell({ color }: { color?: string }) {
     load();
     const t = setInterval(load, POLL_MS);
     document.addEventListener('visibilitychange', load);
-    return () => { stop = true; clearInterval(t); document.removeEventListener('visibilitychange', load); };
+    // Something new arrives → at once (the poll above is only the fallback). Others on the page hear
+    // about it too: the card game refreshes its challenges on a 'duel' one.
+    let first = true;
+    const unsub = onSnapshot(query(collection(db, 'accounts', user.uid, 'inbox'), orderBy('createdAt', 'desc'), limit(1)), snap => {
+      if (first) { first = false; return; }
+      const d = snap.docs[0]?.data();
+      if (!d) return;
+      call('GET').then(b => { if (!stop) setBox(b); }).catch(() => {});
+      window.dispatchEvent(new CustomEvent('inbox:new', { detail: { type: d.type, href: d.href } }));
+    }, () => { /* rules not deployed yet, or offline: the poll still works */ });
+    return () => { stop = true; clearInterval(t); document.removeEventListener('visibilitychange', load); unsub(); };
   }, [user, call]);
 
   const onOpen = (o: boolean) => {

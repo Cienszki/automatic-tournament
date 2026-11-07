@@ -11,7 +11,7 @@
 //            press Graj. Against a person the button becomes the lobby — the link, the wait, who
 //            took it — and the match takes over the screen when both are in.
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Check, Copy, Link2, Loader2, Search, Swords, X } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
@@ -35,7 +35,7 @@ import { duelPost, useDuel } from './duel/useDuel';
 type Who = 'player' | 'rematch' | 'cpu' | 'tutorial';
 interface Ranked { uid: string; name: string; avatar: string | null; rating: number; games: number; wins: number; losses: number }
 interface Played { id: string; opp: Person; won: boolean; score: [number, number]; delta: number; at: number }
-interface Mine { invites: Array<{ id: string; host: Person }>; hosting: Array<{ id: string; status: string }>; live: Array<{ id: string; rival: Person }> }
+interface Mine { invites: Array<{ id: string; host: Person }>; hosting: Array<{ id: string; status: string }>; live: Array<{ id: string; rival: Person; startedAt: number }> }
 
 const MODE_KEY = 'card-lab:play';
 /** The deck takes the whole width: 10 cards a row */
@@ -343,7 +343,10 @@ export function CardsHome({ statsKey, cards, collection, packs, slots, setSlots,
     const load = () => authed('mine=1').then(setMine).catch(() => {});
     load();
     const t = setInterval(load, 12_000);
-    return () => clearInterval(t);
+    // A challenge (or "your challenge was accepted") just came in: look now, not at the next poll
+    const now = (e: Event) => { if ((e as CustomEvent<{ type?: string }>).detail?.type === 'duel') load(); };
+    window.addEventListener('inbox:new', now);
+    return () => { clearInterval(t); window.removeEventListener('inbox:new', now); };
   }, [user, authed, refresh]);
   const lastRival = games[0]?.opp ?? null;
 
@@ -400,6 +403,15 @@ export function CardsHome({ statsKey, cards, collection, packs, slots, setSlots,
     if (duel.view && (duel.view.status === 'open' || duel.view.status === 'seated')) await duel.post({ action: 'leave' });
     setDuelId(null); setRefresh(r => r + 1);
   };
+  // A match of yours that just started (your challenge was accepted while you were elsewhere on the
+  // page): straight into it, once; one you left yourself stays on the list ("Wróć")
+  const entered = useRef<Set<string>>(new Set());
+  useEffect(() => { if (duelId) entered.current.add(duelId); }, [duelId]);
+  useEffect(() => {
+    if (!mine || cpuShown || (duelId && duel.view?.status === 'play')) return;
+    const fresh = mine.live.find(l => Date.now() - l.startedAt < 120_000 && !entered.current.has(l.id));
+    if (fresh) { entered.current.add(fresh.id); setDuelId(fresh.id); }
+  }, [mine]); // eslint-disable-line react-hooks/exhaustive-deps
   // A lobby that ended without a match (expired, closed): back to the page
   useEffect(() => { if (duel.view && (duel.view.status === 'expired' || duel.view.status === 'cancelled')) { setDuelId(null); setError('Wyzwanie wygasło'); } }, [duel.view]);
 

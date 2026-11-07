@@ -297,7 +297,8 @@ export interface Duel {
   at: 0 | 1 | 2; attacker: Side; turn: Side; units: DuelUnit[]; round: number;
   /** Points the attacker gets for taking the objective (0 if it already owns it) */
   stake: number;
-  log: Array<Attack & { dmg: number; killed: boolean }>;
+  /** `auto`: made by the clock (the striker's time, reserve included, ran out) */
+  log: Array<Attack & { dmg: number; killed: boolean; auto?: boolean }>;
 }
 
 /** The units fighting at an objective, each with its strength (= what it deals and what kills it) */
