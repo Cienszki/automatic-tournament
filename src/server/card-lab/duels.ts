@@ -18,8 +18,8 @@ import { getAccount } from '@/server/accounts/store';
 import { notify, tournamentInfo } from '@/server/notify/notify';
 import { playableDeck } from './collection';
 import {
-  act, checkIn, eloDelta, fromView, LOBBY, settle, startGame, START_RATING, viewFor,
-  type DuelStatus, type DuelView, type EndReason, type Game, type Person, type PvpAction,
+  act, checkIn, CLOCK, eloDelta, fromView, LOBBY, settle, startGame, START_RATING, viewFor,
+  type DuelStatus, type Pace, type DuelView, type EndReason, type Game, type Person, type PvpAction,
 } from '@/lib/card-lab/pvp';
 import type { Side } from '@/lib/card-lab/outposts';
 
@@ -33,6 +33,8 @@ interface DuelDoc {
   status: DuelStatus;
   /** When the match began (the page opens a match that just started) */
   startedAt?: number;
+  /** The clock the challenger picked (older duels: normal) */
+  pace?: Pace;
   host: Person;
   guest: Person | null;
   invited: Person | null;
@@ -71,7 +73,7 @@ function viewOf(id: string, d: DuelDoc, uid: string, now: number): DuelView {
   return {
     id, key: d.key, status: d.status, kind: d.kind, me: uid === d.host.uid ? 'host' : 'guest',
     host: d.host, guest: d.guest, invited: d.invited, seatUntil: d.seatUntil, expiresAt: d.expiresAt,
-    players, game, result, at: now,
+    players, game, result, pace: d.pace ?? 'normal', at: now,
   };
 }
 
@@ -93,7 +95,7 @@ function write(tx: FirebaseFirestore.Transaction, id: string, d: DuelDoc, now: n
 
 // ── Lobby ───────────────────────────────────────────────────────────────────
 
-export async function createDuel(key: string, hostUid: string, invitedUid: string | null): Promise<{ id: string } | { error: string }> {
+export async function createDuel(key: string, hostUid: string, invitedUid: string | null, pace: Pace = 'normal'): Promise<{ id: string } | { error: string }> {
   const deck = await playableDeck(key, hostUid);
   if ('error' in deck) return deck;
   if (invitedUid === hostUid) return { error: 'Nie możesz wyzwać samego siebie' };
@@ -102,7 +104,7 @@ export async function createDuel(key: string, hostUid: string, invitedUid: strin
   const now = Date.now();
   const d: DuelDoc = {
     key, kind: invited ? 'direct' : 'open', status: 'open', host, guest: null, invited, hostSeen: now, seatUntil: null,
-    expiresAt: now + LOBBY.max, createdAt: now, sides: null, players: null, game: null, rated: false, result: null, updatedAt: now,
+    expiresAt: now + LOBBY.max, createdAt: now, sides: null, players: null, game: null, rated: false, result: null, updatedAt: now, pace,
   };
   await db().runTransaction(async tx => { write(tx, id, d, now); });
   if (invited) {
@@ -122,13 +124,19 @@ export async function publicLobby(id: string) {
   if (!d) return null;
   const now = Date.now();
   const status: DuelStatus = lobbyDead(d, now) ? 'expired' : seatLapsed(d, now) ? 'open' : d.status;
-  return { id, key: d.key, kind: d.kind, status, host: d.host, invited: d.invited, guest: status === 'seated' || status === 'play' ? d.guest : null, players: d.players };
+  return { id, key: d.key, kind: d.kind, status, host: d.host, invited: d.invited, guest: status === 'seated' || status === 'play' ? d.guest : null, players: d.players, pace: d.pace ?? 'normal' };
 }
 
 /** `view`: the caller's view right after the change (JSON), so their screen needn't wait for the push */
 type Res = { ok: true; view?: string } | { error: string; status?: number };
 
-async function update(id: string, uid: string, fn: (d: DuelDoc, now: number) => DuelDoc | { error: string; status?: number } | null): Promise<Res> {
+/** The match's history for bug reports and checks: the game at the start and every move the server
+ *  took, with its time (settle() is a pure function of time, so these replay the match exactly).
+ *  cardDuels/{id}/meta/history, server only, written in the same commit as the move. */
+const historyRef = (id: string) => duels().doc(id).collection('meta').doc('history');
+type Extra = (tx: FirebaseFirestore.Transaction, before: DuelDoc, next: DuelDoc, now: number) => void;
+
+async function update(id: string, uid: string, fn: (d: DuelDoc, now: number) => DuelDoc | { error: string; status?: number } | null, extra?: Extra): Promise<Res> {
   const ref = duels().doc(id);
   const out = await db().runTransaction<Res & { finished?: boolean }>(async tx => {
     const snap = await tx.get(ref);
@@ -139,6 +147,7 @@ async function update(id: string, uid: string, fn: (d: DuelDoc, now: number) => 
     if (!next) return { ok: true };
     if ('error' in next) return next;
     write(tx, id, next, now, before.guest && before.guest.uid !== next.guest?.uid ? [before.guest.uid] : [], before);
+    extra?.(tx, before, next, now);
     const mine = uid && (next.host.uid === uid || next.guest?.uid === uid) ? JSON.stringify(viewOf(id, { ...next, updatedAt: now }, uid, now)) : undefined;
     return { ok: true, finished: next.status === 'done' && !next.rated, view: mine };
   });
@@ -175,9 +184,9 @@ export async function startMatch(id: string, uid: string): Promise<Res> {
     const h = { ...d.host, rating: rating(hr) }; const g = { ...d.guest, rating: rating(gr) };
     const order: [Person, Person] = hostFirst ? [h, g] : [g, h];
     const decks = hostFirst ? [hd.deck, gd.deck] as const : [gd.deck, hd.deck] as const;
-    const game = startGame([decks[0], decks[1]], rnd, now);
+    const game = startGame([decks[0], decks[1]], rnd, now, d.pace ?? 'normal');
     return { ...d, status: 'play', sides: [order[0].uid, order[1].uid], players: order, game: JSON.stringify(game), seatUntil: null, startedAt: now };
-  }).then(async r => {
+  }, (tx, _b, next, now) => { tx.set(historyRef(id), { start: next.game, startedAt: now, moves: [] }); }).then(async r => {
     // The challenger may have stepped away from the lobby: tell them the match is on (the page also opens it)
     if (!('error' in r)) {
       const t = await tournamentInfo(pre.key).catch(() => null);
@@ -216,11 +225,25 @@ function playOn(d: DuelDoc, uid: string, a: PvpAction, now: number): DuelDoc | {
 }
 
 export async function play(id: string, uid: string, a: PvpAction): Promise<Res> {
-  return update(id, uid, (d, now) => (d.status === 'play' ? playOn(d, uid, a, now) : { error: 'Mecz się nie toczy' }));
+  return update(id, uid, (d, now) => (d.status === 'play' ? playOn(d, uid, a, now) : { error: 'Mecz się nie toczy' }),
+    // Into the history: the move as the server took it (side 0's view), with its time
+    (tx, before, _n, now) => {
+      const side = before.sides!.indexOf(uid) as Side;
+      tx.set(historyRef(id), { moves: FieldValue.arrayUnion(JSON.stringify({ at: now, side, a: fromView(a, side) })) }, { merge: true });
+    });
 }
 
 /** A participant's page is open: keeps the lobby / their side alive, and applies whatever came due */
 export async function ping(id: string, uid: string): Promise<Res> {
+  // Most check-ins change nothing: look first without a transaction. A server transaction locks the
+  // duel while it runs, so pings in one (every 10 s from each player) held up the players' moves.
+  const peek = (await duels().doc(id).get()).data() as DuelDoc | undefined;
+  if (peek?.status === 'play' && peek.game) {
+    const g = JSON.parse(peek.game) as Game; const side = peek.sides!.indexOf(uid);
+    const t = Date.now();
+    const due = g.clock.deadline <= t || g.clock.seen.some(x => t - x > CLOCK.away / 2);
+    if (!due && side >= 0 && t - g.clock.seen[side] < 30_000) return { ok: true };
+  }
   return update(id, uid, (d, now) => {
     if (d.status === 'open' || d.status === 'seated') {
       if (lobbyDead(d, now)) return { ...d, status: 'expired' };
@@ -307,7 +330,7 @@ export async function myDuels(key: string, uid: string) {
   ]);
   const mine = (s: FirebaseFirestore.QuerySnapshot) => s.docs.map(d => ({ id: d.id, d: d.data() as DuelDoc })).filter(x => x.d.key === key);
   return {
-    invites: mine(inv).filter(x => x.d.status === 'open' && !lobbyDead(x.d, now)).map(x => ({ id: x.id, host: x.d.host })),
+    invites: mine(inv).filter(x => x.d.status === 'open' && !lobbyDead(x.d, now)).map(x => ({ id: x.id, host: x.d.host, pace: x.d.pace ?? 'normal' })),
     hosting: mine(host).filter(x => (x.d.status === 'open' || x.d.status === 'seated') && !lobbyDead(x.d, now)).map(x => ({ id: x.id, status: x.d.status })),
     live: mine(play).filter(x => x.d.status === 'play').map(x => ({ id: x.id, rival: x.d.players!.find(p => p.uid !== uid)!, startedAt: x.d.startedAt ?? 0 })),
   };

@@ -21,7 +21,8 @@ import { howToText } from '@/lib/card-lab/settings';
 import { autoDeck, deckProblem, type GCard } from '@/lib/card-lab/cards';
 import { type DeckSlots } from '@/lib/card-lab/frozen';
 import { LEVELS, type Level } from '@/lib/card-lab/outposts-ai';
-import type { Person } from '@/lib/card-lab/pvp';
+import { PACE_KEYS, PACES, paceText, type Pace, type Person } from '@/lib/card-lab/pvp';
+import { chime, titleAlert } from '@/lib/card-lab/chime';
 import { pulseAt } from '@/components/tour/pulse';
 import { count } from '@/lib/plural';
 import { Album, PackReveal } from './Album';
@@ -35,7 +36,7 @@ import { duelPost, useDuel } from './duel/useDuel';
 type Who = 'player' | 'rematch' | 'cpu' | 'tutorial';
 interface Ranked { uid: string; name: string; avatar: string | null; rating: number; games: number; wins: number; losses: number }
 interface Played { id: string; opp: Person; won: boolean; score: [number, number]; delta: number; at: number }
-interface Mine { invites: Array<{ id: string; host: Person }>; hosting: Array<{ id: string; status: string }>; live: Array<{ id: string; rival: Person; startedAt: number }> }
+interface Mine { invites: Array<{ id: string; host: Person; pace?: Pace }>; hosting: Array<{ id: string; status: string }>; live: Array<{ id: string; rival: Person; startedAt: number }> }
 
 const MODE_KEY = 'card-lab:play';
 /** The deck takes the whole width: 10 cards a row */
@@ -139,7 +140,7 @@ function RankingList({ ranking, me }: { ranking: Ranked[] | null; me?: string })
 function Waiting({ mine, games, busy, onAccept, onResume }: { mine: Mine | null; games: Played[]; busy: string | null; onAccept: (id: string) => void; onResume: (id: string) => void }) {
   const font = useHeaderFont();
   const calls = [
-    ...(mine?.invites ?? []).map(x => ({ id: x.id, p: x.host, text: 'wyzywa cię', act: 'Przyjmij', go: () => onAccept(x.id) })),
+    ...(mine?.invites ?? []).map(x => ({ id: x.id, p: x.host, text: `wyzywa cię · ${PACES[x.pace ?? 'normal'].name}`, act: 'Przyjmij', go: () => onAccept(x.id) })),
     ...(mine?.live ?? []).map(x => ({ id: x.id, p: x.rival, text: 'mecz trwa', act: 'Wróć', go: () => onResume(x.id) })),
   ];
   return (
@@ -205,8 +206,9 @@ function Choice({ on, onClick, children }: { on: boolean; onClick: () => void; c
 }
 
 /** Who to play: anyone with a link or a chosen player, the last rival again, the computer (and how hard), the tutorial */
-function PlayHub({ statsKey, who, setWho, level, setLevel, target, setTarget, lastRival, problem, cpuRunning, onPlay, onResumeCpu, lobby }: {
+function PlayHub({ statsKey, who, setWho, level, setLevel, target, setTarget, pace, setPace, lastRival, problem, cpuRunning, onPlay, onResumeCpu, lobby }: {
   statsKey: string; who: Who; setWho: (w: Who) => void; level: Level; setLevel: (l: Level) => void; target: Person | null; setTarget: (p: Person | null) => void;
+  pace: Pace; setPace: (p: Pace) => void;
   lastRival: Person | null; problem: { text: string; fix: string; onFix: () => void } | null; cpuRunning: Level | null; onPlay: () => void; onResumeCpu: () => void;
   lobby: React.ReactNode | null;
 }) {
@@ -264,9 +266,20 @@ function PlayHub({ statsKey, who, setWho, level, setLevel, target, setTarget, la
           </div>
         ))}
       </div>
+      {/* Against a person: the clock (the challenger picks it, both play with it) */}
+      {(who === 'player' || who === 'rematch') && (
+        <div className="h-[26px] flex items-center justify-end gap-1">
+          <span className="text-[11px] uppercase tracking-[0.18em] mr-2" style={{ color: C.muted }}>Czas</span>
+          {PACE_KEYS.map(k => (
+            <Tip key={k} content={paceText(k)}>
+              <button type="button" onClick={() => setPace(k)} className="px-2 text-[13px] font-bold transition-colors" style={{ color: k === pace ? C.primary : C.muted }}>{PACES[k].name}</button>
+            </Tip>
+          ))}
+        </div>
+      )}
       {needsDeck ? <BigButton title={problem.fix} sub={problem.text} onClick={problem.onFix} />
         : resume ? <BigButton title="Wróć do gry" sub={`Komputer · ${LEVELS[level].name}`} onClick={onResumeCpu} />
-        : <BigButton title="Graj" sub={who === 'tutorial' ? 'Krótki mecz krok po kroku' : who === 'cpu' ? `Komputer · ${LEVELS[level].name}` : rival ? `${who === 'rematch' ? 'Rewanż' : 'Wyzwanie'}: ${rival.name}` : 'Link dla każdego'} onClick={onPlay} />}
+        : <BigButton title="Graj" sub={who === 'tutorial' ? 'Krótki mecz krok po kroku' : who === 'cpu' ? `Komputer · ${LEVELS[level].name}` : rival ? `${who === 'rematch' ? 'Rewanż' : 'Wyzwanie'}: ${rival.name} · ${PACES[pace].name}` : `Link dla każdego · ${PACES[pace].name}`} onClick={onPlay} />}
     </div>
   );
 }
@@ -320,10 +333,12 @@ export function CardsHome({ statsKey, cards, collection, packs, slots, setSlots,
   const [who, setWhoState] = useState<Who>('tutorial');
   const [level, setLevelState] = useState<Level>('easy');
   const [target, setTarget] = useState<Person | null>(null);
-  useEffect(() => { try { const v = JSON.parse(localStorage.getItem(MODE_KEY) || 'null'); if (v?.who && v.who !== 'rematch') setWhoState(v.who); if (v?.level && v.level in LEVELS) setLevelState(v.level); } catch { /* private mode */ } }, []);
-  const save = (w: Who, l: Level) => { try { localStorage.setItem(MODE_KEY, JSON.stringify({ who: w, level: l })); } catch { /* private mode */ } };
-  const setWho = (w: Who) => { setWhoState(w); save(w, level); };
-  const setLevel = (l: Level) => { setLevelState(l); save(who, l); };
+  const [pace, setPaceState] = useState<Pace>('normal');
+  useEffect(() => { try { const v = JSON.parse(localStorage.getItem(MODE_KEY) || 'null'); if (v?.who && v.who !== 'rematch') setWhoState(v.who); if (v?.level && v.level in LEVELS) setLevelState(v.level); if (v?.pace && v.pace in PACES) setPaceState(v.pace); } catch { /* private mode */ } }, []);
+  const save = (w: Who, l: Level, p: Pace) => { try { localStorage.setItem(MODE_KEY, JSON.stringify({ who: w, level: l, pace: p })); } catch { /* private mode */ } };
+  const setWho = (w: Who) => { setWhoState(w); save(w, level, pace); };
+  const setLevel = (l: Level) => { setLevelState(l); save(who, l, pace); };
+  const setPace = (p: Pace) => { setPaceState(p); save(who, level, p); };
 
   // Ranking (public), your duels and what's waiting for you (signed in)
   const [refresh, setRefresh] = useState(0);
@@ -380,7 +395,7 @@ export function CardsHome({ statsKey, cards, collection, packs, slots, setSlots,
   const challenge = async (to: Person | null) => {
     if (!user) return;
     setBusy('create'); setError(null);
-    const r = await duelPost<{ id: string }>(user, { action: 'create', t: statsKey, ...(to ? { to: to.uid } : {}) });
+    const r = await duelPost<{ id: string }>(user, { action: 'create', t: statsKey, pace, ...(to ? { to: to.uid } : {}) });
     setBusy(null);
     if (r.error) setError(r.error); else setDuelId(r.data!.id);
   };
@@ -409,7 +424,8 @@ export function CardsHome({ statsKey, cards, collection, packs, slots, setSlots,
   useEffect(() => { if (duelId) entered.current.add(duelId); }, [duelId]);
   useEffect(() => {
     if (!mine || cpuShown || (duelId && duel.view?.status === 'play')) return;
-    const fresh = mine.live.find(l => Date.now() - l.startedAt < 120_000 && !entered.current.has(l.id));
+    // The newest one (with an older match still running, that one stays on the list)
+    const fresh = [...mine.live].sort((x, y) => y.startedAt - x.startedAt).find(l => Date.now() - l.startedAt < 120_000 && !entered.current.has(l.id));
     if (fresh) { entered.current.add(fresh.id); setDuelId(fresh.id); }
   }, [mine]); // eslint-disable-line react-hooks/exhaustive-deps
   // A lobby that ended without a match (expired, closed): back to the page
@@ -423,8 +439,33 @@ export function CardsHome({ statsKey, cards, collection, packs, slots, setSlots,
   const have = new Set(collection.map(c => c.pid)).size;
   const all = new Set(cards.map(c => c.pid)).size;
 
+  // A challenge just came in: it pops up over the page (with a sound), not only in the list below
+  const [dismissed, setDismissed] = useState<Set<string>>(new Set());
+  const heard = useRef<Set<string>>(new Set());
+  const invite = !duelId && !cpuShown ? mine?.invites.find(x => !dismissed.has(x.id)) ?? null : null;
+  useEffect(() => {
+    if (!invite || heard.current.has(invite.id)) return;
+    heard.current.add(invite.id); chime('challenge'); titleAlert(`${invite.host.name} wyzywa cię`);
+  }, [invite?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
   return (
     <div className="relative h-full flex flex-col px-10 pt-5 pb-5" style={{ color: C.text }}>
+      <AnimatePresence>
+        {invite && (
+          <motion.div key={invite.id} className="absolute left-1/2 top-6 z-[70] -translate-x-1/2 flex items-center gap-5 pl-5 pr-4 py-4 rounded-[12px]"
+            initial={{ opacity: 0, y: -30, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -20 }}
+            style={{ background: 'var(--tournament-background, #0b0b10)', boxShadow: `0 0 0 2px ${C.primary}, 0 20px 60px rgba(0,0,0,0.55), 0 0 40px ${mix(C.primary, 40)}` }}>
+            <Pic p={invite.host} size={48} />
+            <div className="min-w-0">
+              <div className="font-logik-extended-bold uppercase text-[20px] leading-tight" style={{ color: C.heading, ...font }}>{invite.host.name} wyzywa cię</div>
+              <div className="text-[13px] mt-1" style={{ color: C.muted }}>Pojedynek · czas: {PACES[invite.pace ?? 'normal'].name}{problem ? ` · najpierw talia: ${problem}` : ''}</div>
+            </div>
+            <button type="button" onClick={() => accept(invite.id)} disabled={!!busy} className="h-11 px-6 rounded-full flex items-center gap-2 font-logik-extended-bold uppercase tracking-widest text-[14px] text-white"
+              style={{ background: C.primary, ...font }}>{busy === invite.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Swords className="w-4 h-4" />}Przyjmij</button>
+            <button type="button" onClick={() => setDismissed(d => new Set(d).add(invite.id))} className="text-[12px] uppercase tracking-widest font-bold px-2" style={{ color: C.muted }}>Później</button>
+          </motion.div>
+        )}
+      </AnimatePresence>
       <div className="absolute right-4 top-4 z-20 flex items-center gap-2">
         <ReportBug className="w-9 h-9 rounded-full flex items-center justify-center" style={{ color: C.heading, boxShadow: `inset 0 0 0 1.5px ${mix(C.heading, 40)}` }}
           context={() => ({ mode: 'front', duelId: duelId ?? null, duelStatus: duel.view?.status ?? null, packs, cards: collection.length, deck: Object.keys(slots).length, problem })} />
@@ -460,7 +501,7 @@ export function CardsHome({ statsKey, cards, collection, packs, slots, setSlots,
         <div className="flex-1 min-w-0 min-h-0 overflow-hidden"><Waiting mine={mine} games={games} busy={busy} onAccept={accept} onResume={id => setDuelId(id)} /></div>
         <div className="shrink-0 flex flex-col justify-end gap-2" style={{ width: HUB_W }}>
           {error && <button type="button" onClick={() => setError(null)} className="text-left text-[13px] font-bold" style={{ color: C.loss }}>{error}</button>}
-          <PlayHub statsKey={statsKey} who={who} setWho={setWho} level={level} setLevel={setLevel} target={target} setTarget={setTarget} lastRival={lastRival}
+          <PlayHub statsKey={statsKey} who={who} setWho={setWho} level={level} setLevel={setLevel} target={target} setTarget={setTarget} pace={pace} setPace={setPace} lastRival={lastRival}
             problem={fix} cpuRunning={cpu && cpu.level !== 'tutorial' ? cpu.level : null} onPlay={busy ? () => {} : play} onResumeCpu={() => setCpuShown(true)}
             lobby={hosting ? <LobbyHub view={duel.view!} link={link} offset={duel.offset} onCancel={leaveDuel} /> : null} />
         </div>

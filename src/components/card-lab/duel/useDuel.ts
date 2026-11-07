@@ -9,11 +9,12 @@ import { doc, onSnapshot } from 'firebase/firestore';
 import type { User } from 'firebase/auth';
 import { db } from '@/lib/firebase';
 import { gameApi } from '@/lib/card-lab/game-api';
-import type { DuelView, Person, PvpAction } from '@/lib/card-lab/pvp';
+import type { DuelView, Pace, Person, PvpAction } from '@/lib/card-lab/pvp';
 
 export interface PublicLobby {
   id: string; key: string; kind: 'open' | 'direct'; status: DuelView['status'];
   host: Person; invited: Person | null; guest: Person | null; players: [Person, Person] | null;
+  pace?: Pace;
 }
 
 /** POST /api/cards/duel; resolves to the error (null = done) and the answer */

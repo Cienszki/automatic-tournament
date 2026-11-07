@@ -46,7 +46,11 @@ export async function POST(req: NextRequest) {
     let duel: string | null = null;
     if (typeof ctx.duelId === 'string' && /^[A-Za-z0-9_-]{6,40}$/.test(ctx.duelId)) {
       const d = (await db.collection('cardDuels').doc(ctx.duelId).get()).data();
-      if (d && (d.host?.uid === user.uid || d.guest?.uid === user.uid)) duel = JSON.stringify(d).slice(0, 400_000);
+      if (d && (d.host?.uid === user.uid || d.guest?.uid === user.uid)) {
+        // The match and its whole history (start + every move with its time: it replays exactly)
+        const h = (await db.collection('cardDuels').doc(ctx.duelId).collection('meta').doc('history').get()).data();
+        duel = JSON.stringify({ ...d, history: h ?? null }).slice(0, 650_000);
+      }
     }
     const acc = await getAccount(user.uid);
     const name = acc.nickname || acc.discord?.name || user.name || '?';
@@ -54,8 +58,8 @@ export async function POST(req: NextRequest) {
       t: b.t, uid: user.uid, name, text,
       url: typeof b.url === 'string' ? b.url.slice(0, 300) : null,
       client: JSON.stringify(b.client ?? null).slice(0, 2000),
-      log: JSON.stringify(b.log ?? []).slice(0, 100_000),
-      context: JSON.stringify(ctx).slice(0, 300_000),
+      log: JSON.stringify(b.log ?? []).slice(0, 60_000),
+      context: JSON.stringify(ctx).slice(0, 200_000),
       duelId: typeof ctx.duelId === 'string' ? ctx.duelId : null, duel,
       mode: typeof ctx.mode === 'string' ? ctx.mode : null,
       status: 'new', at: FieldValue.serverTimestamp(),

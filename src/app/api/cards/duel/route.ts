@@ -6,7 +6,7 @@
  *   GET  ?t=…&history=1                       → your finished duels (signed in)
  *   GET  ?t=…&mine=1                          → { invites, hosting, live } — for the front page (signed in)
  *   GET  ?t=…&q=<text>                        → accounts whose nick starts with it, card players first (signed in; to challenge)
- *   POST { t, action: 'create', to? }         → { id } — an open link, or a challenge for one player
+ *   POST { t, action: 'create', to?, pace? }  → { id } — an open link, or a challenge for one player (pace: the clock)
  *   POST { id, action: 'take' | 'start' | 'leave' | 'ping' }
  *   POST { id, action: 'play', move }         → a move in the match (as seen in your view)
  */
@@ -16,7 +16,7 @@ import { requireUser } from '@/server/lib/require-user';
 import { ensureAdminInitialized, getAdminDb } from '@/server/lib/admin';
 import { NEED_NAME, hasName, validKey } from '@/server/card-lab/collection';
 import { createDuel, history, leave, myDuels, ping, play, publicLobby, ranking, startMatch, takeSeat } from '@/server/card-lab/duels';
-import { BATCH_KINDS, type BatchStep, type PvpAction } from '@/lib/card-lab/pvp';
+import { BATCH_KINDS, PACE_KEYS, type BatchStep, type Pace, type PvpAction } from '@/lib/card-lab/pvp';
 
 export const dynamic = 'force-dynamic';
 const ID = /^[A-Za-z0-9_-]{6,40}$/;
@@ -90,7 +90,8 @@ async function post(req: NextRequest) {
     if (b.action === 'create' && !(await hasName(user.uid))) return NextResponse.json(NEED_NAME, { status: 403 });
     if (b.action === 'create') {
       if (!validKey(b.t) || (b.to != null && !UID.test(String(b.to)))) return bad('Złe zapytanie');
-      const r = await createDuel(b.t, user.uid, (b.to as string | undefined) ?? null);
+      const pace: Pace = PACE_KEYS.find(k => k === b.pace) ?? 'normal';
+      const r = await createDuel(b.t, user.uid, (b.to as string | undefined) ?? null, pace);
       return 'error' in r ? bad(r.error, 409) : NextResponse.json(r);
     }
     const id = String(b.id ?? '');

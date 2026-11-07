@@ -15,7 +15,7 @@ import { useTournament } from '@/context/TournamentContext';
 import { C, ink, mix, useHeaderFont } from '@/components/stats-lab/kit';
 import { deckProblem, type GCard } from '@/lib/card-lab/cards';
 import { thawCard, type DeckSlots, type FrozenCard } from '@/lib/card-lab/frozen';
-import { LOBBY, type Person } from '@/lib/card-lab/pvp';
+import { LOBBY, PACES, paceText, type Pace, type Person } from '@/lib/card-lab/pvp';
 import { OUTPOSTS_RULE, OutpostsGame } from '../OutpostsGame';
 import { CardFace } from '../ui';
 import { NameStep } from '../NameStep';
@@ -222,6 +222,7 @@ export function DuelScreen({ id }: { id: string }) {
   const status = view?.status ?? lobby!.status;
   const host = view?.host ?? lobby!.host;
   const invited = view?.invited ?? lobby!.invited;
+  const pace: Pace = view?.pace ?? lobby?.pace ?? 'normal';
   const guest = view?.guest ?? lobby?.guest ?? null;
   const err = error && <span className="text-[14px] font-bold" style={{ color: C.loss }}>{error}</span>;
 
@@ -275,6 +276,7 @@ export function DuelScreen({ id }: { id: string }) {
         <>
           <p className="max-w-[640px] text-center text-[16px] leading-relaxed" style={{ color: C.text }}>
             Kontrola mapy: talia 20 kart z graczami tego turnieju przeciw talii rywala. Mecz trwa kilka minut.
+            {' '}Czas: {PACES[pace].name.toLowerCase()} ({paceText(pace)}).
             {!user && ' Konto założysz albo zalogujesz się po kliknięciu.'}
           </p>
           <Big onClick={take} busy={busy}>Przyjmij</Big>

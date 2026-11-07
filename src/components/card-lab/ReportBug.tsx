@@ -12,6 +12,20 @@ import { useAuth } from '@/context/AuthContext';
 import { useStatsKey } from '@/components/stats-lab/kit';
 import { installClientLog, recentLog } from '@/lib/card-lab/client-log';
 
+/** JSON of the game state: cards against the computer link player → team → players, a plain
+ *  JSON.stringify throws on that loop (the report then never went out); a player or team seen again
+ *  is written as its id only */
+function safeJson(v: unknown): string {
+  const seen = new WeakSet<object>();
+  return JSON.stringify(v, (_k, x) => {
+    if (x && typeof x === 'object') {
+      if (seen.has(x)) return (x as { id?: string }).id ? { ref: (x as { id: string }).id } : undefined;
+      seen.add(x);
+    }
+    return x;
+  });
+}
+
 export function ReportBug({ context, className, style }: { context: () => Record<string, unknown>; className?: string; style?: React.CSSProperties }) {
   const { user } = useAuth();
   const key = useStatsKey();
@@ -28,7 +42,7 @@ export function ReportBug({ context, className, style }: { context: () => Record
       try { ctx = context(); } catch (e) { ctx = { contextError: String(e) }; }
       const r = await fetch('/api/cards/report', {
         method: 'POST', headers: { Authorization: `Bearer ${await user.getIdToken()}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+        body: safeJson({
           t: key, text: text.trim(), url: location.href,
           client: { ua: navigator.userAgent, w: innerWidth, h: innerHeight, at: Date.now() },
           log: recentLog(), context: ctx,

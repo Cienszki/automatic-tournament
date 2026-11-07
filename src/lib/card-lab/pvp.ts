@@ -17,14 +17,10 @@ import {
 } from './outposts';
 
 // ── Clocks ──────────────────────────────────────────────────────────────────
+// The time per turn, per hit and the match reserve come from the pace (PACES below). A hit's own time
+// runs out → the striker's reserve runs; only when that is gone too the clock strikes for them
+// (players must never see the computer play for them while they still have time).
 export const CLOCK = {
-  /** Each turn's own time; then the reserve runs */
-  turn: 30_000,
-  /** Extra time for the whole match (turns and hits draw on it once their own time is up) */
-  reserve: 90_000,
-  /** One attack in a fight; then the striker's reserve runs, and only when that is gone too the clock
-   *  strikes for them (players must never see the computer play for them while they still have time) */
-  hit: 15_000,
   /** At the start of each fight: the moves are shown on the board first, then the fight screen opens */
   hitStart: 5_000,
   /** After the fights, to watch the points land; then the turn passes by itself */
@@ -34,6 +30,21 @@ export const CLOCK = {
   /** Turns in a row that ran out = lost */
   timeouts: 2,
 };
+
+/** The clock the challenger picks: time per turn and per hit, and the match reserve both draw on */
+export type Pace = 'fast' | 'normal' | 'calm' | 'none';
+export const PACES: Record<Pace, { name: string; turn: number; hit: number; reserve: number }> = {
+  fast: { name: 'Szybki', turn: 20_000, hit: 10_000, reserve: 60_000 },
+  normal: { name: 'Normalny', turn: 30_000, hit: 15_000, reserve: 90_000 },
+  calm: { name: 'Spokojny', turn: 60_000, hit: 25_000, reserve: 180_000 },
+  none: { name: 'Bez limitu', turn: 0, hit: 0, reserve: 0 },
+};
+export const PACE_KEYS = Object.keys(PACES) as Pace[];
+/** "Never" for an unlimited clock (plain number: it goes through JSON; adding to it stays safe) */
+export const NEVER = 4e15;
+export const unlimited = (t: number) => t >= NEVER / 2;
+export const paceText = (p: Pace) => (p === 'none' ? 'bez limitu czasu' : `${PACES[p].turn / 1000} s na turę, ${PACES[p].hit / 1000} s na cios, ${PACES[p].reserve / 1000} s rezerwy`);
+const paceOf = (g: Game) => PACES[g.pace ?? 'normal'];
 
 export type EndReason = 'points' | 'resign' | 'timeout' | 'away';
 export interface Fighting {
@@ -60,6 +71,8 @@ export interface Game {
   fight: Fighting | null;
   clock: Clock;
   end: { winner: Side; reason: EndReason } | null;
+  /** The clock picked for this match (older matches: normal) */
+  pace?: Pace;
 }
 
 export type PvpAction =
@@ -85,13 +98,15 @@ const other = (s: Side) => (1 - s) as Side;
 // ── Start ───────────────────────────────────────────────────────────────────
 
 /** decks[0] moves first */
-export function startGame(decks: [GCard[], GCard[]], rnd: () => number, now: number): Game {
+export function startGame(decks: [GCard[], GCard[]], rnd: () => number, now: number, pace: Pace = 'normal'): Game {
   const s = newGame(decks, rnd);
   s.log = [];
-  return {
-    s, fight: null, end: null,
-    clock: { deadline: now + CLOCK.turn + CLOCK.reserve, turnEnds: now + CLOCK.turn, reserve: [CLOCK.reserve, CLOCK.reserve], timeouts: [0, 0], seen: [now, now] },
+  const p = PACES[pace];
+  const g: Game = {
+    s, fight: null, end: null, pace,
+    clock: { deadline: 0, turnEnds: 0, reserve: [p.reserve, p.reserve], timeouts: [0, 0], seen: [now, now] },
   };
+  return beginTurn(g, now);
 }
 
 const finish = (g: Game, winner: Side, reason: EndReason): Game => ({ ...g, fight: null, end: { winner, reason }, s: { ...g.s, winner } });
@@ -100,7 +115,9 @@ const finish = (g: Game, winner: Side, reason: EndReason): Game => ({ ...g, figh
 function beginTurn(g: Game, t: number): Game {
   if (g.s.winner !== null) return finish(g, g.s.winner, 'points');
   const a = g.s.active;
-  return { ...g, clock: { ...g.clock, turnEnds: t + CLOCK.turn, deadline: t + CLOCK.turn + g.clock.reserve[a] } };
+  if (g.pace === 'none') return { ...g, clock: { ...g.clock, turnEnds: NEVER, deadline: NEVER } };
+  const turn = paceOf(g).turn;
+  return { ...g, clock: { ...g.clock, turnEnds: t + turn, deadline: t + turn + g.clock.reserve[a] } };
 }
 
 /** The active player stops planning at `t`: what they used of the reserve is gone */
@@ -116,7 +133,8 @@ function stopTurnClock(g: Game, t: number, timedOut = false): Clock {
 /** A hit's clock from `t`: its own time (plus the opening pause at a fight's start), then the striker's reserve.
  *  During a fight `turnEnds` = when the hit's own time ends. */
 function hitClock(g: Game, duel: Duel, t: number, opening: boolean): Clock {
-  const ends = t + (opening ? CLOCK.hitStart : 0) + CLOCK.hit;
+  if (g.pace === 'none') return { ...g.clock, turnEnds: NEVER, deadline: NEVER };
+  const ends = t + (opening ? CLOCK.hitStart : 0) + paceOf(g).hit;
   return { ...g.clock, turnEnds: ends, deadline: ends + g.clock.reserve[duel.turn] };
 }
 /** The striker hit at `t`: whatever they took beyond the hit's own time comes off their reserve */
@@ -180,11 +198,12 @@ export function settle(game: Game, now: number): Game {
     } else if (g.s.phase === 'fight') {
       g = beginTurn({ ...g, s: endTurn(g.s) }, t);
     } else {
-      // The turn ran out: what was planned happens (fights played sensibly), the turn passes
+      // The turn ran out: the moves planned so far are confirmed, and their fights are fought by both
+      // players as usual (nobody's hits are made for them while they still have time)
       const a = g.s.active;
       const clock = stopTurnClock(g, t, true);
       if (clock.timeouts[a] >= CLOCK.timeouts) return finish({ ...g, clock }, other(a), 'timeout');
-      g = beginTurn({ ...g, s: endTurn(g.s), clock }, t);
+      g = confirm({ ...g, clock }, t);
     }
   }
   return g;
@@ -356,6 +375,7 @@ export interface DuelView {
   /** The match as you see it (you are side 0) */
   game: Game | null;
   result: { won: boolean; reason: EndReason; delta: number | null; rating: number | null } | null;
+  pace: Pace;
   /** Server time when this view was written (clock sync) */
   at: number;
 }

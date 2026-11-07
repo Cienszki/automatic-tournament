@@ -13,7 +13,7 @@ export type Level = 'tutorial' | 'easy' | 'medium' | 'hard' | 'expert';
 export const LEVELS: Record<Level, { name: string; color: string; noise: number; quit: number; deckGap: number; note?: string }> = {
   // A short coached match (6 points) against a gentle computer with a weak deck
   // Plays properly (no nonsense like ending its turn early) but with a much weaker deck
-  tutorial: { name: 'Samouczek', color: '#5ab0ff', noise: 1.5, quit: 0, deckGap: 18, note: 'Krok po kroku, krótki mecz do 6 punktów' },
+  tutorial: { name: 'Samouczek', color: '#5ab0ff', noise: 1.5, quit: 0, deckGap: 18, note: 'Krok po kroku, krótki mecz: Ancienty mają po 6 HP' },
   easy: { name: 'Łatwy', color: '#3fbf7f', noise: 6, quit: 0.35, deckGap: 10 },
   medium: { name: 'Średni', color: '#f0c419', noise: 2, quit: 0.12, deckGap: 4 },
   hard: { name: 'Trudny', color: '#e5534b', noise: 0.3, quit: 0, deckGap: 0 },

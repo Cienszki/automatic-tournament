@@ -32,8 +32,9 @@ export const RULES = {
   toTheEnd: true,
   /** Survivors that took damage are wounded (−1) until they start a turn in the base */
   wounds: false,
-  /** Extra opening cards for the player who goes second */
-  secondBonus: 0,
+  /** The player who goes second is dealt their first turn's draw with the opening hand (6 cards, no
+   *  draw on that first turn): same cards as before, but no "extra cards out of nowhere" moment */
+  secondBonus: DRAW,
 };
 export const START_HAND = 4;
 export const HAND_MAX = 7;
@@ -51,7 +52,7 @@ export const TEAM_BONUS = 1;
 // ── Objectives (item icon = their emblem, from the Dota CDN) ──────────────
 export type ObjId = 'roshan' | 'outpost' | 'lotus' | 'highground' | 'gates' | 'tormentor';
 export const OBJECTIVES: Record<ObjId, { name: string; rule: string; icon: string }> = {
-  roshan: { name: 'Roshan', rule: 'Przejęcie daje 2 pkt zamiast 1', icon: 'aegis' },
+  roshan: { name: 'Roshan', rule: 'Przejęcie rani Ancienta za 2 zamiast 1', icon: 'aegis' },
   outpost: { name: 'Outpost', rule: 'Właściciel ma 4 rozkazy zamiast 3', icon: 'ward_observer' },
   lotus: { name: 'Lotus Pool', rule: 'Właściciel dobiera co turę 3 karty zamiast 2', icon: 'great_famango' },
   highground: { name: 'High Ground', rule: 'Broniący się właściciel: +1 siły na każdej jednostce', icon: 'ward_sentry' },
@@ -173,8 +174,8 @@ const clone = (s: OState): OState => ({
 
 export function newGame(decks: [GCard[], GCard[]], rnd = Math.random, win = WIN_POINTS): OState {
   const ids = shuffle(OBJ_IDS, rnd).slice(0, 3);
-  // RULES.secondBonus extra opening cards for the player going second. With fights to the end it is 0:
-  // the first player then wins ~44 % in simulations (with 1 extra card only 36 %)
+  // The player going second gets their first draw now (RULES.secondBonus) and skips it on their first
+  // turn (endTurn): the same cards as drawing on turn 2, which the balance simulations were run with
   const sides = decks.map((d, i): OBoard => { const x = shuffle(d, rnd); const n = START_HAND + (i === 1 ? RULES.secondBonus : 0); return { hand: x.slice(0, n), deck: x.slice(n), grave: [], score: 0 }; }) as OState['sides'];
   const s: OState = {
     turn: 1, active: 0, phase: 'deploy', orders: RULES.orders, budget: RULES.orders, deployed: 0, objectives: ids.map(id => ({ id, owner: null })),
@@ -445,7 +446,7 @@ export function resolve(prev: OState, chosen: Partial<Record<0 | 1 | 2, Attack[]
     if (ob.owner !== side) {
       ob.owner = side;
       score(s, side, to, takePoints(ob.id), 'take');
-      say(s, side, `${who(side)} przejmuje ${name} (+${takePoints(ob.id)})`);
+      say(s, side, `${who(side)} przejmuje ${name} (Ancient −${takePoints(ob.id)} HP)`);
       if (ob.id === 'tormentor') drawCards(s, side, 2);
       checkWin(s);
     }
@@ -458,7 +459,7 @@ function drawCards(s: OState, side: Side, n: number) {
   for (let i = 0; i < n; i++) if (b.deck.length && b.hand.length < HAND_MAX) b.hand.push(b.deck.shift()!);
 }
 function checkWin(s: OState) {
-  for (const side of [0, 1] as Side[]) if (s.sides[side].score >= s.win && s.winner === null) { s.winner = side; say(s, side, side === 0 ? 'Wygrywasz!' : 'Rywal wygrywa'); }
+  for (const side of [0, 1] as Side[]) if (s.sides[side].score >= s.win && s.winner === null) { s.winner = side; say(s, side, side === 0 ? 'Ancient rywala zniszczony: wygrywasz!' : 'Twój Ancient zniszczony'); }
 }
 
 /** Ends the turn (resolving the planned moves first): the other side scores what it holds, its
@@ -475,7 +476,8 @@ export function endTurn(prev: OState): OState {
   checkWin(s);
   s.units.forEach(u => { if (u.side === side && u.card.role === 'Carry' && u.loc !== 'base' && s.objectives[u.loc].owner === side && u.growth < FARMER_MAX) u.growth++; });
   const owns = (id: ObjId) => s.objectives.some((o, i) => o.id === id && o.owner === side && countAt(s, side, i as Loc) > 0);
-  drawCards(s, side, RULES.draw + (owns('lotus') ? 1 : 0));
+  // The second player's first turn: their draw came with the opening hand (only Lotus Pool still adds)
+  drawCards(s, side, (s.turn === 2 ? RULES.draw - RULES.secondBonus : RULES.draw) + (owns('lotus') ? 1 : 0));
   s.budget = RULES.orders + (owns('outpost') ? 1 : 0); s.deployed = 0; s.orders = s.budget;
   return s;
 }
