@@ -59,7 +59,9 @@ function Headline() {
   );
 }
 
-export function SignIn({ model }: { model: Model }) {
+/** Signed out: both ways in. `onPlay`: signed in but never played yet: the same page with "Zagraj" */
+export function SignIn({ model, onPlay }: { model: Model; onPlay?: () => void }) {
+  const font = useHeaderFont();
   const { tournament } = useTournament();
   // Each player's best card, strongest first
   const cards = useMemo(() => {
@@ -77,7 +79,13 @@ export function SignIn({ model }: { model: Model }) {
         <div className="text-[13px] uppercase tracking-[0.4em] text-white/60">{tournament?.name} · gra karciana</div>
         <Headline />
         <p className="text-[19px] leading-relaxed text-white/80 max-w-[620px]">Zdobądź najlepszą talię i rzuć wyzwanie znajomym. Sprawdź, na czym polega kontrola mapy. Mecze zajmują ok. 5 minut.</p>
-        <LoginButtons />
+        {onPlay ? (
+          <motion.button type="button" onClick={onPlay} whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.98 }}
+            className="self-start h-[66px] px-14 rounded-[8px] font-logik-extended-bold uppercase tracking-[0.2em] text-[20px] text-white"
+            style={{ background: 'var(--tournament-primary)', boxShadow: '0 12px 36px color-mix(in srgb, var(--tournament-primary) 45%, transparent)', ...font }}>
+            Zagraj
+          </motion.button>
+        ) : <LoginButtons />}
       </div>
     </div>
   );

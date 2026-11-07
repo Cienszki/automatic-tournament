@@ -3,6 +3,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { readState, steamReturn, steamVerify } from '@/server/accounts/identity';
 import { linkSteam } from '@/server/accounts/store';
+import { refreshCaster } from '@/server/casters/casters';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,6 +17,8 @@ export async function GET(req: NextRequest) {
     const id = await steamVerify(q, steamReturn(st.origin, raw!));
     if (!id) return go('konto', 'anulowano');
     const conflicts = await linkSteam(st.uid, id);
+    // A caster's Steam goes onto the lobby whitelist right away
+    await refreshCaster(st.uid).catch(e => console.warn('[steam] caster refresh failed', e));
     return conflicts.length ? go('steam', 'zajety') : go('konto', 'steam');
   } catch (e) {
     console.error('[connect/steam] failed:', e);

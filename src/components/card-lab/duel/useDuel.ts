@@ -8,6 +8,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { doc, onSnapshot } from 'firebase/firestore';
 import type { User } from 'firebase/auth';
 import { db } from '@/lib/firebase';
+import { gameApi } from '@/lib/card-lab/game-api';
 import type { DuelView, Person, PvpAction } from '@/lib/card-lab/pvp';
 
 export interface PublicLobby {
@@ -20,7 +21,7 @@ export async function duelPost<T = { ok: true }>(user: User, body: object): Prom
   // Never hang: a move left waiting would hold the board (it waits for its answer)
   const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), 15_000);
   try {
-    const r = await fetch('/api/cards/duel', {
+    const r = await fetch(gameApi('/api/cards/duel'), {
       method: 'POST', headers: { Authorization: `Bearer ${await user.getIdToken()}`, 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: ctl.signal,
     });
     const j = await r.json().catch(() => ({}));
@@ -43,7 +44,7 @@ export function useDuel(id: string | null, user: User | null) {
   // What anyone with the link sees (also before signing in); refreshed while not taking part
   const loadLobby = useCallback(async () => {
     if (!id) return;
-    const r = await fetch(`/api/cards/duel?id=${encodeURIComponent(id)}`);
+    const r = await fetch(gameApi(`/api/cards/duel?id=${encodeURIComponent(id)}`));
     if (r.status === 404) { setMissing(true); return; }
     if (r.ok) setLobby(await r.json());
   }, [id]);

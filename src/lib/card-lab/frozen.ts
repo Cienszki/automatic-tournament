@@ -3,7 +3,7 @@
 // Also the deck layout rules, shared by the deck builder and the server that checks saved decks.
 
 import type { PlayerX, TeamX } from '@/lib/stats-lab/derive';
-import { ROLE_KEYS, type DeckRule, type GCard, type RoleKey } from './cards';
+import { ONE_PER_PLAYER, ROLE_KEYS, type DeckRule, type GCard, type RoleKey } from './cards';
 
 interface FrozenTeam { id: string; name: string; tag?: string; logoUrl?: string }
 export interface FrozenCard {
@@ -53,16 +53,17 @@ export function slotDefs(rule: DeckRule): SlotDef[] {
   ];
 }
 
-/** Why this layout cannot be saved (null = fine): known slots, owned cards, positions, one per player */
-export function slotsProblem(slots: DeckSlots, owned: Map<string, { pid: string; role: RoleKey }>, rule: DeckRule): string | null {
+/** Why this layout cannot be saved (null = fine): known slots, owned cards, positions, one per player and team */
+export function slotsProblem(slots: DeckSlots, owned: Map<string, { pid: string; role: RoleKey; team?: string }>, rule: DeckRule): string | null {
   const defs = new Map(slotDefs(rule).map(d => [d.key, d]));
-  const pids = new Set<string>(); const ids = new Set<string>();
+  const players = new Set<string>(); const ids = new Set<string>();
   for (const [key, id] of Object.entries(slots)) {
     const def = defs.get(key); if (!def) return 'Nieznane miejsce w talii';
     const c = owned.get(id); if (!c) return 'Tej karty nie ma w Twojej kolekcji';
     if (def.role && def.role !== c.role) return 'Karta na złej pozycji';
-    if (ids.has(id) || pids.has(c.pid)) return 'Każdy gracz może być w talii tylko raz';
-    ids.add(id); pids.add(c.pid);
+    const who = `${c.pid}|${c.team ?? ''}`;
+    if (ids.has(id) || players.has(who)) return ONE_PER_PLAYER;
+    ids.add(id); players.add(who);
   }
   return null;
 }

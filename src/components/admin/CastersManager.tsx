@@ -104,9 +104,13 @@ export function CastersManager() {
                 <span className="flex-1 min-w-0">
                   <span className="block font-bold truncate">{c.name}</span>
                   <span className="block text-xs text-muted-foreground">
-                    {[c.discord && `@${c.discord}`, c.stream && streamLabel(c.stream)].filter(Boolean).join(' · ')}
-                    {!c.steamId64 && <span className="text-amber-500">{c.discord || c.stream ? ' · ' : ''}bez Steam: bot go nie zaprosi ani nie wpuści</span>}
+                    {[c.discord && `Discord @${c.discord}`, c.steamId64 && 'Steam połączony', c.stream && streamLabel(c.stream)].filter(Boolean).join(' · ')}
                   </span>
+                  {(!c.steamId64 || !c.discord) && (
+                    <span className="block text-xs text-amber-500">
+                      {[!c.steamId64 && 'bez Steam: bot nie zaprosi do lobby ani nie wpuści', !c.discord && 'bez Discorda: wiadomości tylko na stronie'].filter(Boolean).join(' · ')}
+                    </span>
+                  )}
                 </span>
                 <button type="button" onClick={() => act('DELETE', c.uid)} disabled={busy === c.uid} aria-label={`Usuń ${c.name}`}
                   className="p-2 text-red-500 opacity-40 group-hover:opacity-100 hover:bg-red-500/10 rounded">

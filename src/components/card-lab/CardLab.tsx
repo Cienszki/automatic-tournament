@@ -157,6 +157,7 @@ function Lab({ model, api, statsKey }: { model: Model; api: Api; statsKey: strin
   const [intro, setIntro] = useState(false);
   // No nick and no Discord yet: pick a name first (then load again)
   const [needName, setNeedName] = useState(false);
+  const [started, setStarted] = useState(false);
   const [tries, setTries] = useState(0);
 
   // The account's collection (a new account gets its starter packs); the intro once per browser
@@ -192,6 +193,8 @@ function Lab({ model, api, statsKey }: { model: Model; api: Api; statsKey: strin
   }, [slots, loaded, api]);
   const closeIntro = () => { setIntro(false); try { localStorage.setItem(SEEN_KEY, '1'); } catch { /* ignore */ } };
 
+  // Signed in but never played: the welcome page first, with "Zagraj" (then a name, if needed)
+  if (!started && (needName || (loaded && !collection.length))) return <SignIn model={model} onPlay={() => setStarted(true)} />;
   if (needName) return <Centered><NameStep onDone={() => setTries(t => t + 1)} /></Centered>;
   if (!loaded) return <Centered>{loadError ? <>{loadError}<button type="button" onClick={() => location.reload()} className="mt-4 underline underline-offset-4">Spróbuj ponownie</button></> : 'Wczytuję kolekcję…'}</Centered>;
   return (

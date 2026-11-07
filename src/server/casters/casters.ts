@@ -36,9 +36,27 @@ const onMatch = (p: CasterDoc, main: boolean): MatchCaster => ({
 
 export const isCaster = async (t: string, uid: string) => (await casters(t).doc(uid).get()).exists;
 
+/** The tournament's casters as their accounts are NOW (Steam or Discord linked later shows at once);
+ *  a stored card that went stale is rewritten */
 export async function listCasters(t: string): Promise<CasterDoc[]> {
   const s = await casters(t).get();
-  return s.docs.map(d => d.data() as CasterDoc).sort((a, b) => a.name.localeCompare(b.name, 'pl'));
+  const list = await Promise.all(s.docs.map(async d => {
+    const p = await profile(d.id);
+    const was = d.data() as CasterDoc;
+    if (p.name !== was.name || p.avatar !== was.avatar || p.steamId64 !== was.steamId64 || p.discord !== was.discord || p.stream !== was.stream) await d.ref.set(p, { merge: true });
+    return p;
+  }));
+  return list.sort((a, b) => a.name.localeCompare(b.name, 'pl'));
+}
+
+/** After someone links or unlinks Steam / Discord or renames: their caster cards and the lobby whitelists follow */
+export async function refreshCaster(uid: string) {
+  const ts = await db().collection('tournaments').get();
+  for (const t of ts.docs) {
+    if (!(await casters(t.id).doc(uid).get()).exists) continue;
+    await casters(t.id).doc(uid).set(await profile(uid), { merge: true });
+    await syncWhitelist(t.id);
+  }
 }
 
 export async function addCaster(t: string, uid: string, by: string) {

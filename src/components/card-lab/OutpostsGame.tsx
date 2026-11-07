@@ -42,7 +42,7 @@ export interface NetGame {
   onRematch?: () => void;
 }
 
-export const OUTPOSTS_RULE: DeckRule = { size: DECK_SIZE, perRole: DECK_PER_ROLE, text: `${DECK_SIZE} kart, co najmniej ${DECK_PER_ROLE} na każdej pozycji, każdy gracz raz` };
+export const OUTPOSTS_RULE: DeckRule = { size: DECK_SIZE, perRole: DECK_PER_ROLE, text: `${DECK_SIZE} kart, co najmniej ${DECK_PER_ROLE} na każdej pozycji, każdy gracz raz z każdej drużyny` };
 
 // The table is always dark; highlights use the tournament's own colour
 const ACC = C.primary;
@@ -582,13 +582,20 @@ const BW = 148;
  * until the fight ends (the bar under each card). `onDone` gets every attack, to replay in the rules.
  */
 /** With `net`: a fight against a person — the duel comes from the server, your hits go to it, theirs arrive and play out */
-function BattleScreen({ s, at, level, onDone, net }: { s: OState; at: 0 | 1 | 2; level: Level; onDone: (script: Attack[]) => void; net?: { duel: Duel; onHit: (a: Attack) => void; deadline: number | null; offset: number } }) {
+function BattleScreen({ s, at, level, onDone, net }: { s: OState; at: 0 | 1 | 2; level: Level; onDone: (script: Attack[]) => void; net?: { duel: Duel; onHit: (a: Attack) => Promise<string | null>; deadline: number | null; offset: number } }) {
   const font = useHeaderFont();
   const fit = useFitScale();
   const [localDuel, setDuel] = useState<Duel>(() => startDuel(s, at));
-  const duel = net ? net.duel : localDuel;
-  /** Hits already shown (the server's log grows by your hits and the rival's) */
-  const shownHits = useRef(net ? net.duel.log.length : 0);
+  // Against a person: the server's hits are shown one by one, as many as have played so far (several
+  // can arrive together); your own hit shows at once, worked out here (the fight rules are the same
+  // on both sides), and the server's answer only confirms it
+  const [shownLen, setShownLen] = useState(net ? net.duel.log.length : 0);
+  const [predicted, setPredicted] = useState<Duel | null>(null);
+  const ownHits = useRef<Set<number>>(new Set());
+  const replay = (n: number) => { let d = startDuel(s, at); for (const x of net!.duel.log.slice(0, n)) d = duelAct(d, { from: x.from, to: x.to }); return d; };
+  const serverShown = net ? (shownLen >= net.duel.log.length ? net.duel : replay(shownLen)) : null;
+  const duel = net ? (predicted && predicted.log.length > net.duel.log.length ? predicted : serverShown!) : localDuel;
+  useEffect(() => { if (predicted && net && net.duel.log.length >= predicted.log.length) setPredicted(null); }, [net?.duel]); // eslint-disable-line react-hooks/exhaustive-deps
   const [clockNow, setClockNow] = useState(() => Date.now());
   useEffect(() => { if (!net?.deadline) return; const t = setInterval(() => setClockNow(Date.now()), 250); return () => clearInterval(t); }, [net?.deadline]);
   const [picked, setPicked] = useState<string | null>(null);
@@ -618,18 +625,29 @@ function BattleScreen({ s, at, level, onDone, net }: { s: OState; at: 0 | 1 | 2;
   const attack = (a: Attack) => {
     const dmg = duel.units.find(u => u.uid === a.from)!.m;
     setPicked(null); setPtr(null); setBusy(true); setHit({ a, dmg, key: Date.now() });
-    if (net) { shownHits.current = duel.log.length + 1; net.onHit(a); setTimeout(() => setBusy(false), 750); return; }
+    if (net) {
+      const idx = duel.log.length;
+      ownHits.current.add(idx);
+      setPredicted(duelAct(duel, a)); setShownLen(n => Math.max(n, idx + 1));
+      // Refused (rare: the time ran out a moment earlier) → back to what the server says
+      net.onHit(a).then(err => { if (err) { ownHits.current.delete(idx); setPredicted(null); setShownLen(net.duel.log.length); } });
+      setTimeout(() => setBusy(false), 750);
+      return;
+    }
     setTimeout(() => { setDuel(d => duelAct(d, a)); setBusy(false); }, 750);
   };
-  // A person's hits arrive from the server: play the newest one
+  // The server's hits not shown yet play one after another (your own were shown already). The timer
+  // that ends each one is never cancelled by a re-render: tied to the effect, starting the animation
+  // itself cancelled it and the rival's hit never finished showing.
+  const playing = useRef(false);
   useEffect(() => {
-    if (!net || net.duel.log.length <= shownHits.current) return;
-    const last = net.duel.log[net.duel.log.length - 1];
-    shownHits.current = net.duel.log.length;
-    setBusy(true); setHit({ a: { from: last.from, to: last.to }, dmg: last.dmg, key: Date.now() });
-    const t = setTimeout(() => setBusy(false), 750);
-    return () => clearTimeout(t);
-  }, [net?.duel]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (!net || playing.current || shownLen >= net.duel.log.length) return;
+    if (ownHits.current.has(shownLen)) { setShownLen(shownLen + 1); return; }
+    const x = net.duel.log[shownLen];
+    playing.current = true;
+    setBusy(true); setHit({ a: { from: x.from, to: x.to }, dmg: x.dmg, key: Date.now() });
+    setTimeout(() => { playing.current = false; setShownLen(n => n + 1); setBusy(false); }, 750);
+  }, [net?.duel, shownLen]); // eslint-disable-line react-hooks/exhaustive-deps
   // The computer's turn
   useEffect(() => {
     if (net || over || busy || duel.turn !== 1) return;
@@ -712,7 +730,7 @@ function BattleScreen({ s, at, level, onDone, net }: { s: OState; at: 0 | 1 | 2;
         <AnimatePresence mode="wait">
           <motion.div key={over ? 'o' : myTurn ? (picked ? 'p' : 'm') : 'r'} className="font-logik-extended-bold uppercase text-[18px] tracking-wider"
             style={{ color: over ? T.text : myTurn ? T.me : T.rival, ...font }} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
-            {duel.round > 1 && !over ? `Runda ${duel.round} · ` : ''}{over ? 'Koniec walki' : myTurn ? (picked ? 'Teraz kliknij cel rywala' : 'Twój ruch: kliknij swoją jednostkę') : duel.turn === 0 ? '…' : 'Ruch rywala…'}
+            {duel.round > 1 && !over ? `Runda ${duel.round} · ` : ''}{over ? 'Koniec walki' : myTurn ? (picked ? 'Teraz kliknij cel rywala' : 'Twój ruch: kliknij swoją jednostkę') : duel.turn === 0 ? '…' : <motion.span animate={{ opacity: [1, 0.45, 1] }} transition={{ duration: 1.4, repeat: Infinity }}>Rywal wybiera cel…</motion.span>}
             {net?.deadline && !over && <span className="ml-3 tabular-nums" style={{ color: T.muted }}>{Math.max(0, Math.ceil((net.deadline - clockNow - net.offset) / 1000))} s</span>}
           </motion.div>
         </AnimatePresence>
@@ -1001,13 +1019,14 @@ export function OutpostsGame({ deck, all, onBack, level = 'easy', visible = true
     } catch { /* nothing kept */ }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  /** Straight to the server; refused → back to the server's board */
-  const sendNow = (m: PvpAction) => {
-    if (!net) return;
+  /** Straight to the server; refused → back to the server's board. Resolves to the error (null = taken). */
+  const sendNow = (m: PvpAction): Promise<string | null> => {
+    if (!net) return Promise.resolve(null);
     setInflight(n => n + 1);
-    net.send(m).then(err => {
+    return net.send(m).then(err => {
       if (err) { setNote(err); if (netRef.current) setS(netRef.current.game.s); }
       setInflight(n => n - 1);
+      return err;
     });
   };
   /** The planned phase in one request (what is left of it, if anything) */
@@ -1556,7 +1575,7 @@ export function OutpostsGame({ deck, all, onBack, level = 'easy', visible = true
         {battleQ && <BattleScreen key={`${battleQ.base.turn}-${battleQ.i}`} s={battleQ.base} at={battleQ.locs[battleQ.i]} level={gameLevel} onDone={battleDone} />}
         {net && netBattle && (
           <BattleScreen key={`n${netBattle.base.turn}-${netBattle.at}`} s={netBattle.base} at={netBattle.at} level={gameLevel} onDone={() => {}}
-            net={{ duel: netBattle.duel, onHit: a => sendNet({ kind: 'hit', from: a.from, to: a.to }), deadline: netBattle.live ? net.game.clock.deadline : null, offset: net.offset }} />
+            net={{ duel: netBattle.duel, onHit: a => sendNow({ kind: 'hit', from: a.from, to: a.to }), deadline: netBattle.live ? net.game.clock.deadline : null, offset: net.offset }} />
         )}
       </AnimatePresence>
       <AnimatePresence>

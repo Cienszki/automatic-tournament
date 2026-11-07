@@ -203,18 +203,22 @@ export const avgOvr = (d: GCard[]) => (d.length ? d.reduce((s, c) => s + rating(
 /** Strongest first (what the card hits for in the game), then by rating */
 export const byStrength = (a: GCard, b: GCard) => baseMight(b) - baseMight(a) || b.ovr - a.ovr;
 
-/** Why a deck is not legal (null = fine). One card per player. */
+/** One card per player and team: a player who also stood in for another team may bring a card from each */
+export const deckKey = (c: { pid: string; team?: { id: string } | null }) => `${c.pid}|${c.team?.id ?? ''}`;
+export const ONE_PER_PLAYER = 'Każdy gracz może być w talii raz z każdej drużyny';
+
+/** Why a deck is not legal (null = fine). One card per player and team. */
 export function deckProblem(deck: GCard[], rule: DeckRule): string | null {
   if (deck.length !== rule.size) return `Talia musi mieć ${rule.size} kart (masz ${deck.length})`;
-  if (new Set(deck.map(c => c.pid)).size !== deck.length) return 'Każdy gracz może być w talii tylko raz';
+  if (new Set(deck.map(deckKey)).size !== deck.length) return ONE_PER_PLAYER;
   for (const r of ROLE_KEYS) if (deck.filter(c => c.role === r).length < rule.perRole) return `Potrzeba co najmniej ${rule.perRole} kart na pozycji ${ROLE_SHORT[r]}`;
   return null;
 }
 
 /** The strongest legal deck from a collection (greedy: role minimums first, then best rated) */
 export function autoDeck(collection: GCard[], rule: DeckRule): GCard[] {
-  // One card per player: the best one (a Map keeps the last value set, so best goes in last)
-  const uniq = [...new Map([...collection].sort((a, b) => byStrength(b, a)).map(c => [c.pid, c])).values()].sort(byStrength);
+  // One card per player and team: the best one (a Map keeps the last value set, so best goes in last)
+  const uniq = [...new Map([...collection].sort((a, b) => byStrength(b, a)).map(c => [deckKey(c), c])).values()].sort(byStrength);
   const deck: GCard[] = [];
   for (const r of ROLE_KEYS) deck.push(...uniq.filter(c => c.role === r).slice(0, rule.perRole));
   for (const c of uniq) if (deck.length < rule.size && !deck.includes(c)) deck.push(c);

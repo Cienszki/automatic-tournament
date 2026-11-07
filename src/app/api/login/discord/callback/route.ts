@@ -8,6 +8,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { ensureAdminInitialized, getAdminAuth } from '@/server/lib/admin';
 import { discordIdentity, readState } from '@/server/accounts/identity';
 import { accountForDiscord, linkDiscord } from '@/server/accounts/store';
+import { refreshCaster } from '@/server/casters/casters';
 
 export const dynamic = 'force-dynamic';
 
@@ -28,6 +29,8 @@ export async function GET(req: NextRequest) {
     if (st.mode === 'link') {
       const r = await linkDiscord(st.uid!, d);
       if ('error' in r) return back(st.origin, st.next, { konto: 'blad', powod: r.error });
+      // A caster's card shows the Discord (and any Steam it brought) at once; Steam joins the lobby whitelist
+      await refreshCaster(st.uid!).catch(e => console.warn('[discord] caster refresh failed', e));
       return back(st.origin, st.next, { konto: 'discord', ...(r.steamConflicts.length ? { steam: 'zajety' } : {}) });
     }
     const uid = await accountForDiscord(d);

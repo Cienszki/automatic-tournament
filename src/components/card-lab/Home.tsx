@@ -28,6 +28,7 @@ import { Album, PackReveal } from './Album';
 import { DeckBuilder } from './DeckBuilder';
 import { FoilPack, GOLD } from './FoilPack';
 import { ReportBug } from './ReportBug';
+import { gameApi } from '@/lib/card-lab/game-api';
 import { OUTPOSTS_RULE, OutpostsGame } from './OutpostsGame';
 import { duelPost, useDuel } from './duel/useDuel';
 
@@ -216,7 +217,7 @@ function PlayHub({ statsKey, who, setWho, level, setLevel, target, setTarget, la
     const v = q.trim();
     if (!user || !v) { setFound([]); return; }
     const t = setTimeout(async () => {
-      const r = await fetch(`/api/cards/duel?t=${encodeURIComponent(statsKey)}&q=${encodeURIComponent(v)}`, { headers: { Authorization: `Bearer ${await user.getIdToken()}` } });
+      const r = await fetch(gameApi(`/api/cards/duel?t=${encodeURIComponent(statsKey)}&q=${encodeURIComponent(v)}`), { headers: { Authorization: `Bearer ${await user.getIdToken()}` } });
       setFound((await r.json().catch(() => ({}))).found ?? []);
     }, 180);
     return () => clearTimeout(t);
@@ -330,11 +331,11 @@ export function CardsHome({ statsKey, cards, collection, packs, slots, setSlots,
   const [games, setGames] = useState<Played[]>([]);
   const [mine, setMine] = useState<Mine | null>(null);
   const authed = useCallback(async (q: string) => {
-    const r = await fetch(`/api/cards/duel?t=${encodeURIComponent(statsKey)}&${q}`, { headers: { Authorization: `Bearer ${await user!.getIdToken()}` } });
+    const r = await fetch(gameApi(`/api/cards/duel?t=${encodeURIComponent(statsKey)}&${q}`), { headers: { Authorization: `Bearer ${await user!.getIdToken()}` } });
     return r.json();
   }, [statsKey, user]);
   useEffect(() => {
-    fetch(`/api/cards/duel?t=${encodeURIComponent(statsKey)}&ranking=1`).then(r => r.json()).then(j => setRanking(j.players ?? [])).catch(() => setRanking([]));
+    fetch(gameApi(`/api/cards/duel?t=${encodeURIComponent(statsKey)}&ranking=1`)).then(r => r.json()).then(j => setRanking(j.players ?? [])).catch(() => setRanking([]));
     if (user) authed('history=1').then(j => setGames(j.games ?? [])).catch(() => {});
   }, [statsKey, user, authed, refresh]);
   useEffect(() => {

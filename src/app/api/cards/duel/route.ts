@@ -42,7 +42,7 @@ function parseMove(m: Record<string, unknown> | null | undefined): PvpAction | n
   }
 }
 
-export async function GET(req: NextRequest) {
+async function get(req: NextRequest) {
   const p = req.nextUrl.searchParams;
   try {
     const id = p.get('id');
@@ -81,7 +81,7 @@ export async function GET(req: NextRequest) {
   } catch (e) { console.error('[duel] get failed:', e); return bad('Nie udało się wczytać', 500); }
 }
 
-export async function POST(req: NextRequest) {
+async function post(req: NextRequest) {
   const user = await requireUser(req); if (user instanceof NextResponse) return user;
   const b = await req.json().catch(() => null) as Record<string, unknown> | null;
   if (!b) return bad('Złe zapytanie');
@@ -110,4 +110,18 @@ export async function POST(req: NextRequest) {
     }
     return 'error' in r ? bad(r.error, r.status ?? 409) : NextResponse.json(r);
   } catch (e) { console.error('[duel] post failed:', e); return bad('Nie udało się', 500); }
+}
+
+// On dota2inhouse.pl the game calls this route on the Firebase host directly (src/lib/card-lab/game-api.ts),
+// skipping the Vercel proxy: those origins may (CORS), with the browser's preflight answered here.
+const ORIGINS = new Set(['https://dota2inhouse.pl', 'https://www.dota2inhouse.pl']);
+function cors(req: NextRequest, res: Response): Response {
+  const o = req.headers.get('origin');
+  if (o && ORIGINS.has(o)) { res.headers.set('Access-Control-Allow-Origin', o); res.headers.append('Vary', 'Origin'); }
+  return res;
+}
+export async function GET(req: NextRequest) { return cors(req, await get(req)); }
+export async function POST(req: NextRequest) { return cors(req, await post(req)); }
+export async function OPTIONS(req: NextRequest) {
+  return cors(req, new Response(null, { status: 204, headers: { 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS', 'Access-Control-Allow-Headers': 'Authorization, Content-Type', 'Access-Control-Max-Age': '7200' } }));
 }

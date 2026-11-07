@@ -12,6 +12,7 @@ import { ensureAdminInitialized, getAdminAuth, getAdminDb } from '@/server/lib/a
 import { steamAvatar } from '@/server/accounts/identity';
 import { accountRef, getAccount, unlinkDiscord, unlinkSteam, type AvatarSource } from '@/server/accounts/store';
 import { parseStream } from '@/lib/stream-link';
+import { refreshCaster } from '@/server/casters/casters';
 
 export const dynamic = 'force-dynamic';
 const bad = (error: string, status = 400) => NextResponse.json({ error }, { status });
@@ -79,9 +80,10 @@ export async function PUT(req: NextRequest) {
   try {
     if (b.unlink === 'discord') {
       const r = await unlinkDiscord(user.uid);
+      if (!('error' in r)) await refreshCaster(user.uid).catch(() => {});
       return 'error' in r ? bad(r.error, 409) : NextResponse.json(await view(user.uid, tid(req)));
     }
-    if (typeof b.unlink === 'string' && /^\d{17}$/.test(b.unlink)) { await unlinkSteam(user.uid, b.unlink); return NextResponse.json(await view(user.uid, tid(req))); }
+    if (typeof b.unlink === 'string' && /^\d{17}$/.test(b.unlink)) { await unlinkSteam(user.uid, b.unlink); await refreshCaster(user.uid).catch(() => {}); return NextResponse.json(await view(user.uid, tid(req))); }
 
     const patch: Record<string, unknown> = {};
     const auth: { displayName?: string; photoURL?: string | null } = {};
@@ -111,6 +113,8 @@ export async function PUT(req: NextRequest) {
     if (b.avatar !== undefined) auth.photoURL = v.avatar.url;
     await getAdminAuth().updateUser(user.uid, auth);
     await getAdminDb().collection('users').doc(user.uid).set({ ...(auth.displayName ? { displayName: auth.displayName } : {}), ...(auth.photoURL !== undefined ? { photoURL: auth.photoURL } : {}) }, { merge: true });
+    // A caster's card (name, picture, stream) follows
+    await refreshCaster(user.uid).catch(() => {});
     return NextResponse.json(v);
   } catch (e) { console.error('[account] put failed:', e); return bad('Nie udało się zapisać', 500); }
 }

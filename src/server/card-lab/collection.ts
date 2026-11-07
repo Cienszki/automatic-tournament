@@ -84,7 +84,7 @@ export async function saveSlots(key: string, uid: string, slots: DeckSlots): Pro
   return getAdminDb().runTransaction(async tx => {
     const snap = await tx.get(r);
     if (!snap.exists) return { error: 'Brak kolekcji' };
-    const owned = new Map(toState(snap.data()!).cards.map(c => [c.id, { pid: c.pid, role: c.role }]));
+    const owned = new Map(toState(snap.data()!).cards.map(c => [c.id, { pid: c.pid, role: c.role, team: c.team?.id }]));
     const problem = slotsProblem(slots, owned, DECK_RULE);
     if (problem) return { error: problem };
     tx.update(r, { slots, updatedAt: FieldValue.serverTimestamp() });

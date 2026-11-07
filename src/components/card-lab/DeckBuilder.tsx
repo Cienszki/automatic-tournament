@@ -9,7 +9,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { Plus, X } from 'lucide-react';
 import { C, mix, useHeaderFont } from '@/components/stats-lab/kit';
 import { roleIcons } from '@/app/fantasy/roleIcons';
-import { byStrength, type DeckRule, type GCard, type RoleKey } from '@/lib/card-lab/cards';
+import { byStrength, deckKey, type DeckRule, type GCard, type RoleKey } from '@/lib/card-lab/cards';
 import { slotDefs, type DeckSlots, type SlotDef } from '@/lib/card-lab/frozen';
 import { KEYWORD } from '@/lib/card-lab/outposts';
 import { Action, CardFace, RATIO } from './ui';
@@ -36,10 +36,11 @@ export function DeckBuilder({ collection, rule, slots, setSlots, w = W, room = t
       ))}
     </div>
   );
-  // The chosen card takes exactly this slot; any other card of the same player leaves the deck
+  // The chosen card takes exactly this slot; another card of the same player AND team leaves the deck
+  // (a player who also stood in for another team may be in it with each team)
   const choose = (key: string, c: GCard) => {
     const next: DeckSlots = {};
-    for (const [k, id] of Object.entries(slots)) { const d = byId.get(id); if (k !== key && d && d.pid !== c.pid) next[k] = id; }
+    for (const [k, id] of Object.entries(slots)) { const d = byId.get(id); if (k !== key && d && deckKey(d) !== deckKey(c)) next[k] = id; }
     next[key] = c.id;
     setSlots(next);
   };
@@ -51,7 +52,7 @@ export function DeckBuilder({ collection, rule, slots, setSlots, w = W, room = t
       {row(defs.filter(d => d.role))}
       {row(defs.filter(d => !d.role))}
       <AnimatePresence>
-        {open && <Picker key="picker" slot={open} current={cardIn(open.key)} collection={collection} deckIds={new Set(Object.values(slots))} deckPids={new Set(Object.values(slots).map(id => byId.get(id)?.pid))}
+        {open && <Picker key="picker" slot={open} current={cardIn(open.key)} collection={collection} deckIds={new Set(Object.values(slots))} deckPids={new Set(Object.values(slots).map(id => { const d = byId.get(id); return d ? deckKey(d) : undefined; }))}
           onChoose={c => { choose(open.key, c); setOpen(null); }} onRemove={() => { remove(open.key); setOpen(null); }} onClose={() => setOpen(null)} />}
       </AnimatePresence>
     </div>
@@ -128,7 +129,7 @@ function Picker({ slot, current, collection, deckIds, deckPids, onChoose, onRemo
           {list.map(c => {
             const here = c.id === current?.id;
             const used = !here && deckIds.has(c.id);
-            const twin = !here && !used && deckPids.has(c.pid);
+            const twin = !here && !used && deckPids.has(deckKey(c));
             return (
               <div key={c.id} className="flex flex-col items-center gap-1.5">
                 <CardFace c={c} w={PICK_W} selected={here} dim={used} onClick={here || used ? undefined : () => onChoose(c)} />
