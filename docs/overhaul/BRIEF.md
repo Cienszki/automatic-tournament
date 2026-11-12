@@ -21,7 +21,8 @@ The product must actually deliver these. Promotional material must not claim mor
 | Repo | Path | Deploys |
 |---|---|---|
 | Website (this repo) | `C:\Users\wilqw\Desktop\code\Letnia\automatic-tournament` | By hand with `firebase deploy` from `feature/multi-tournament-platform`. Firebase Hosting frameworks adapter, SSR on Cloud Run. |
-| Lobby bot | `C:\Users\wilqw\Desktop\code\inhouse bot\dota2-lobby-bot` | Railway, automatically on a push to its feature branch. |
+| Lobby bot (live) | `bot-worker/` inside the website repo | Railway, automatically on a push to `feature/multi-tournament-platform`. Corrected in S0: this is the deployed bot (memory note `inhouse-worker-website-contract.md`). |
+| Old lobby bot | `C:\Users\wilqw\Desktop\code\inhouse bot\dota2-lobby-bot` | Not deployed since about June 2026. Read it only for behaviour that was never ported. Still do not push its branches. |
 | Community site | `C:\Users\wilqw\Desktop\code\dota.pl\dota2-community-site` | Vercel. It owns the dota2inhouse.pl domain and forwards the paths it does not own to Firebase. |
 
 There is only one Firebase project, `tournament-tracker-f35tb`. It is production. There is no staging environment yet.

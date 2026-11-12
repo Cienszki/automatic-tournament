@@ -4,13 +4,13 @@ Every session updates this file as it works, not only at the end. A new session,
 
 ## Next step
 
-S0 in progress (Opus). Part A is done and pushed. Part B: the eight explorer reports are drafted; next is checking their key claims and writing `inventory/*.md`, one commit per file. Browser measurements for `PAGES.md` (LCP, loader time, Firestore request count) are blocked in this session, see the questions.
+Run session S1 (architecture, scale, code health, testing) from `PROMPTS.md`, on Fable. Start from `inventory/*.md`; each file ends with "Problems seen". Before S1, the owner should answer question 1 (the bot-route security fix for production).
 
 ## Sessions
 
 | Session | Model | State | Output |
 |---|---|---|---|
-| S0 Groundwork: safety net + inventories | Opus | in progress | `inventory/*.md`, CI, green tests |
+| S0 Groundwork: safety net + inventories | Opus | done 2026-11-13 | `inventory/*.md`, CI, green tests |
 | S1 Architecture, scale, code health, testing | Fable | not started | `ARCHITECTURE.md`, `TEST_STRATEGY.md`, `ROADMAP.md`, `CONVENTIONS.md` |
 | S2 Organizer experience: admin, wizard, customization | Fable | not started | `ORGANIZER_UX.md`, prototypes |
 | S3 Card game | Fable | not started | `GAME_DESIGN.md` |
@@ -34,6 +34,7 @@ Each question has the asking session, the recommended answer, and whether work c
 
 ## Log
 
+- 2026-11-13 (S0): Part B done: `inventory/{PAGES, ADMIN, DATA, SCALE, PRODUCT, TESTS, CARDS, CODE_HEALTH}.md`. Explorer agents drafted them; Opus checked and corrected them. PAGES.md has curl and build measurements but no browser measurements (question 2). The repo table in BRIEF.md is corrected: the live lobby bot is `bot-worker/`. CI passed on GitHub (run 43327108507, commit `62fbe0b`).
 - 2026-11-13 (S0): Part A done. Tests green (reserved slug `card-lab`; Swiss pairing search sped up about 4x with identical output). CI added (`.github/workflows/ci.yml`); ESLint set up for the first time (0 errors). Deleted `src/app/api/admin/**` plus two prefix-sharing routes, 21 orphaned modules and 9 root one-off scripts (about 15,000 lines). Fixed open bot-account routes (`3db4e3e`).
 - 2026-11-13 (S0) **Incident, read-only:** the first local `next build` loaded the worktree's `.env.local`, which holds the production service account, and prerendering `/sitemap.xml` read the production `tournaments` collection once (no writes). Every later local build and `next start` ran with `FIREBASE_SERVICE_ACCOUNT_BASE64=` and the other secrets blanked, checked by the sitemap coming out empty. Future sessions: always blank them, or the sitemap and any prerendered page read production. The underlying problem (the sitemap is built from production data at build time) is in `inventory/PAGES.md`.
 - 2026-11-12: restore tag `restore/pre-overhaul-2026-11-12` pushed in all three repos. Branch `overhaul` and worktree `.claude/worktrees/overhaul` created from `feature/multi-tournament-platform` at `0fe0974`. Brief, agents and prompts written.
