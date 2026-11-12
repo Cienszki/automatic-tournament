@@ -2,7 +2,7 @@
 // Per-account operations: enable/disable, update, delete
 
 import { NextResponse } from 'next/server';
-import { getAdminAuth } from '@/server/lib/admin';
+import { requireAdmin } from '@/server/lib/require-admin';
 import { deleteBotAccount, updateBotAccount } from '@/lib/bot/bot-config-actions';
 
 /**
@@ -15,16 +15,9 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ): Promise<Response> {
   try {
-    const authHeader = req.headers.get('authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    const token = authHeader.split('Bearer ')[1];
-    try {
-      await getAdminAuth().verifyIdToken(token);
-    } catch {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
-    }
+    // Super admins only: these routes hand out and change the Steam accounts every lobby runs on.
+    const caller = await requireAdmin(req);
+    if (caller instanceof NextResponse) return caller;
 
     const { id } = await params;
     const body = await req.json() as {
@@ -72,16 +65,9 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ): Promise<Response> {
   try {
-    const authHeader = req.headers.get('authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    const token = authHeader.split('Bearer ')[1];
-    try {
-      await getAdminAuth().verifyIdToken(token);
-    } catch {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
-    }
+    // Super admins only: these routes hand out and change the Steam accounts every lobby runs on.
+    const caller = await requireAdmin(req);
+    if (caller instanceof NextResponse) return caller;
 
     const { id } = await params;
 

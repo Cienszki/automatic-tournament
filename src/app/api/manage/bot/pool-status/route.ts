@@ -2,27 +2,19 @@
 // API route for fetching bot pool status overview
 
 import { NextResponse } from 'next/server';
-import { getAdminAuth } from '@/server/lib/admin';
+import { requireAdmin } from '@/server/lib/require-admin';
 import { getBotPoolStatus } from '@/lib/bot/bot-pool-manager';
 
 /**
  * GET /api/manage/bot/pool-status
- * Returns overall bot pool status (total, idle, active, offline, error counts)
+ * Returns overall bot pool status (total, idle, active, offline, error counts).
+ * Counts only, so an admin of the tournament in ?tournamentId= may read it too.
  */
 export async function GET(req: Request): Promise<Response> {
   try {
-    // Verify admin auth
-    const authHeader = req.headers.get('authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const token = authHeader.split('Bearer ')[1];
-    try {
-      await getAdminAuth().verifyIdToken(token);
-    } catch {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
-    }
+    const tournamentId = new URL(req.url).searchParams.get('tournamentId');
+    const caller = await requireAdmin(req, tournamentId);
+    if (caller instanceof NextResponse) return caller;
 
     const status = await getBotPoolStatus();
 

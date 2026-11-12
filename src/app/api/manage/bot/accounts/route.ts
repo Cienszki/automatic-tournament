@@ -2,7 +2,7 @@
 // API routes for managing bot accounts (super admin level)
 
 import { NextResponse } from 'next/server';
-import { getAdminAuth } from '@/server/lib/admin';
+import { requireAdmin } from '@/server/lib/require-admin';
 import { getAllBotAccounts, registerBotAccount } from '@/lib/bot/bot-config-actions';
 import type { BotAccount } from '@/types/lobby-bot';
 
@@ -21,16 +21,9 @@ function toSafe(account: BotAccount): SafeBotAccount {
  */
 export async function GET(req: Request): Promise<Response> {
   try {
-    const authHeader = req.headers.get('authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    const token = authHeader.split('Bearer ')[1];
-    try {
-      await getAdminAuth().verifyIdToken(token);
-    } catch {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
-    }
+    // Super admins only: these routes hand out and change the Steam accounts every lobby runs on.
+    const caller = await requireAdmin(req);
+    if (caller instanceof NextResponse) return caller;
 
     const accounts = await getAllBotAccounts();
     return NextResponse.json({ accounts: accounts.map(toSafe) });
@@ -48,16 +41,9 @@ export async function GET(req: Request): Promise<Response> {
  */
 export async function POST(req: Request): Promise<Response> {
   try {
-    const authHeader = req.headers.get('authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    const token = authHeader.split('Bearer ')[1];
-    try {
-      await getAdminAuth().verifyIdToken(token);
-    } catch {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
-    }
+    // Super admins only: these routes hand out and change the Steam accounts every lobby runs on.
+    const caller = await requireAdmin(req);
+    if (caller instanceof NextResponse) return caller;
 
     const body = await req.json() as {
       username: string;

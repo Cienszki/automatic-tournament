@@ -10,6 +10,7 @@
 
 import { NextResponse } from 'next/server';
 import { getAdminDb, getAdminAuth } from '@/server/lib/admin';
+import { requireAdmin } from '@/server/lib/require-admin';
 import { getSteam64IdFromUrl, getSteamPlayerSummary } from '@/lib/server-utils';
 import { steam64ToSteam32 } from '@/lib/steam-id-utils';
 import type { LobbyWhitelistEntry } from '@/types/lobby-bot';
@@ -53,6 +54,9 @@ export async function GET(req: Request): Promise<Response> {
     return NextResponse.json({ error: 'tournamentId is required' }, { status: 400 });
   }
 
+  const caller = await requireAdmin(req, tournamentId);
+  if (caller instanceof NextResponse) return caller;
+
   try {
     const doc = await botConfigRef(tournamentId).get();
     const whitelist: LobbyWhitelistEntry[] = doc.exists
@@ -94,6 +98,9 @@ export async function POST(req: Request): Promise<Response> {
   if (!tournamentId?.trim()) {
     return NextResponse.json({ error: 'tournamentId is required' }, { status: 400 });
   }
+
+  const caller = await requireAdmin(req, tournamentId);
+  if (caller instanceof NextResponse) return caller;
   if (!steamProfileUrl?.trim()) {
     return NextResponse.json({ error: 'steamProfileUrl is required' }, { status: 400 });
   }
@@ -180,6 +187,9 @@ export async function DELETE(req: Request): Promise<Response> {
       { status: 400 }
     );
   }
+
+  const caller = await requireAdmin(req, tournamentId);
+  if (caller instanceof NextResponse) return caller;
 
   try {
     const ref = botConfigRef(tournamentId);

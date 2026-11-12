@@ -233,7 +233,7 @@ export function BotTab(): React.ReactElement {
         fetch(`/api/manage/bot/sessions?tournamentId=${tournament.id}`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
-        fetch('/api/manage/bot/pool-status', {
+        fetch(`/api/manage/bot/pool-status?tournamentId=${tournament.id}`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
       ]);
