@@ -175,6 +175,22 @@ export default function RegisterPage() {
     }, []);
 
     // Show loading while checking status
+    const form = useForm<z.infer<typeof formSchema>>({
+        resolver: zodResolver(formSchema),
+        mode: "onChange",
+        defaultValues: {
+            name: "",
+            tag: "",
+            discordUsername: "",
+            motto: "",
+            logo: null,
+            players: Array(5).fill({ nickname: "", role: undefined, mmr: 0, steamProfileUrl: "", profileScreenshot: null }),
+            rulesAcknowledged: false,
+        },
+    });
+
+    const { fields } = useFieldArray({ control: form.control, name: "players" });
+
     if (isLoadingStatus) {
         return (
             <div className="min-h-screen bg-gradient-to-br from-[#1a1a2e] via-[#16213e] to-[#0f3460] text-white flex items-center justify-center">
@@ -193,21 +209,6 @@ export default function RegisterPage() {
     if (tournamentStatus && tournamentStatus !== 'initial') {
         return <RegistrationClosed />;
     }
-    const form = useForm<z.infer<typeof formSchema>>({
-        resolver: zodResolver(formSchema),
-        mode: "onChange",
-        defaultValues: {
-            name: "",
-            tag: "",
-            discordUsername: "",
-            motto: "",
-            logo: null,
-            players: Array(5).fill({ nickname: "", role: undefined, mmr: 0, steamProfileUrl: "", profileScreenshot: null }),
-            rulesAcknowledged: false,
-        },
-    });
-
-    const { fields } = useFieldArray({ control: form.control, name: "players" });
     const playerValues = form.watch("players");
     const totalMMR = playerValues.reduce((sum, player) => sum + (Number(player.mmr) || 0), 0);
     const { isSubmitting, isValid } = form.formState;

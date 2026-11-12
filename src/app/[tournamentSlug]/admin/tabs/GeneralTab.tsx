@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useTournament, useTournamentType } from '@/context/TournamentContext';
 import { useAuth } from '@/context/AuthContext';
@@ -1481,14 +1482,14 @@ export function GeneralTab() {
                 Brak przekierowania.
               </p>
             )}
-            <a
+            <Link
               href="/organizer"
               className="inline-flex items-center gap-1.5 text-sm mt-2 hover:underline"
               style={{ color: theme.primaryColor }}
             >
               Zarządzaj przekierowaniami w panelu organizatora
               <ExternalLink className="h-3.5 w-3.5" />
-            </a>
+            </Link>
           </div>
         </CardContent>
       </Card>

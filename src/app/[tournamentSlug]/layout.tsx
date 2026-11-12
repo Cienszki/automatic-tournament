@@ -165,6 +165,8 @@ export default function TournamentLayout({ children }: TournamentLayoutProps) {
           <div className="text-center">
             <h1 className="text-4xl font-bold mb-4 text-destructive">404</h1>
             <p className="text-muted-foreground mb-4">{error || 'Nie znaleziono turnieju'}</p>
+            {/* "/" is the community site on dota2inhouse.pl, so this must be a full page load. */}
+            {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
             <a href="/" className="text-primary hover:underline">Wróć na stronę główną</a>
           </div>
         </div>

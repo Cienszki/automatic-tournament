@@ -166,13 +166,13 @@ export function InfoWidgets() {
         {/* Informational: Magenta Button */}
         <Card className="min-h-[120px] flex flex-col items-center justify-center bg-gradient-to-br from-[#2d1b3c] via-[#3a295a] to-[#181c2f] shadow-none border-0 relative overflow-hidden transition-transform duration-300 hover:scale-105 hover:shadow-[0_0_32px_8px_#0ff0fccc,0_0_24px_0_#b86fc699]">
           <CardContent className="flex items-center justify-center w-full h-full p-0">
-            <a
+            <Link
               href="/my-team"
               className="w-full h-full flex items-center justify-center text-[#0ff0fc] font-extrabold text-lg py-6 rounded-lg bg-[#b86fc6] hover:bg-[#0ff0fc] hover:text-[#b86fc6] transition-all duration-300 tracking-widest shadow-lg uppercase border-2 border-transparent hover:border-[#0ff0fc] hover:shadow-[0_0_16px_4px_#0ff0fc99]"
               style={{ borderRadius: 8 }}
             >
               <span className="drop-shadow-[0_0_8px_#0ff0fc]">{t('home.registerNow')}</span>
-            </a>
+            </Link>
           </CardContent>
         </Card>
         {/* Discord Section */}

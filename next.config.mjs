@@ -73,7 +73,7 @@ const buildConfig = (phase) => {
         ignoreBuildErrors: false,
     },
     eslint: {
-        ignoreDuringBuilds: false,
+        ignoreDuringBuilds: true, // CI runs `npm run lint`; keep the build independent of it
         dirs: ['src'],
     },
     pageExtensions: ['tsx', 'ts', 'jsx', 'js'],

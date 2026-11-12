@@ -33,8 +33,6 @@ export default function FaqPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
-  if (!tournament) return null;
-
   const categories = [
     { id: "general", icon: HelpCircle, color: "bg-blue-500" },
     { id: "registration", icon: Users, color: "bg-green-500" },
@@ -106,6 +104,8 @@ export default function FaqPage() {
 
     return filtered;
   }, [faqData, selectedCategory, searchQuery]);
+
+  if (!tournament) return null;
 
   const totalQuestions = faqData.reduce((sum, section) => sum + section.items.length, 0);
   const filteredQuestions = filteredFaq.reduce((sum, section) => sum + section.items.length, 0);
