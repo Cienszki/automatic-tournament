@@ -85,6 +85,7 @@ Fable 5.2 quota is limited, and we do not know the limit. Spend Fable on what ne
 
 ### Limits, and the reason for each
 
+- **Never delete, move or force-push the restore points:** the `restore/*` tags and the `backup/*` branches, locally or on GitHub, in any of the three repos. They are the owner's way back to the state before the overhaul.
 - **Do not run `firebase deploy` or any other deploy.** Production serves live leagues.
 - **Push only the `overhaul` and `wp/*` branches of this repo.** Never push `feature/multi-tournament-platform`. Never push the bot repo's or the community site's branches: Railway and Vercel deploy on those pushes.
 - **Do not write to the production Firestore or Storage.** Do not run scripts that use service-account credentials. Use the Firebase emulator or fixtures. Reading production data through the public website is fine.
