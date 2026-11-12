@@ -191,12 +191,12 @@ Candidates outside `src`, which S0 does not delete in `_archive/`, `docs/` or `s
 
 ESLint (set up in S0, `next/core-web-vitals`) does not enable `no-explicit-any`. It reports 0 errors and 76 warnings (`no-img-element` 39, `exhaustive-deps` 35).
 
-## 5. Mixed patterns (non-admin file counts, `grep -l`)
+## 5. Mixed patterns (file counts from `grep -l`, taken before S0's deletions)
 
 | Concern | Variants found |
 |---|---|
 | Data fetching | Browser Firestore (`firebase/firestore` in 72 files; `@/lib/firebase` in 55), Admin SDK (84 files), `fetch('/api...')` (35 files), `'use server'` actions (11 files), `onSnapshot` (5 files) |
-| Auth on API routes | `requireAdmin(req, tournamentId?)` in `server/lib/require-admin.ts:21` (22 files); `requireUser` in `server/lib/require-user.ts:13`; hand-rolled `verifyIdToken` (34 files); `isAdmin` (10 files); `checkAdmin` in `api/checkAdmin/route.ts` (reimplements the admin check inline: `verifyIdToken` + `admins` collection), `lib/auth.ts` and `GeneralTab.tsx` call it |
+| Auth on API routes | `requireAdmin(req, tournamentId?)` in `server/lib/require-admin.ts:21` (24 route files after S0); `requireUser` in `server/lib/require-user.ts:13`; hand-rolled `verifyIdToken` (23 route files after S0); `isAdmin` (10 files); `checkAdmin` in `api/checkAdmin/route.ts` (reimplements the admin check inline: `verifyIdToken` + `admins` collection), `lib/auth.ts` and `GeneralTab.tsx` call it |
 | Error and toast | `useToast`/`toast(` in 38 files (`hooks/use-toast.ts`); `ErrorBoundary.tsx`; `lib/error-reporting.ts`; `console.error` plus JSON `{success,message}` returns (e.g. `fantasy-scoring-admin.ts:99-104`) |
 | Styling | Tailwind `className=` in 317 files; inline `style={{` in 198 files; `styled-components` is in `package.json:71` but has 0 imports |
 | i18n | `next-intl` in 32 files (`error.tsx`, `layout.tsx`, `register/page.tsx`, `[tournamentSlug]/playoffs/page.tsx`, ...) with `messages/pl.json` (1193 lines) and `en.json` (1092 lines); the custom `hooks/useTranslation.ts` reading `lib/translations.ts` (3 importers, 67 files mention `useTranslation`); Polish diacritics hard-coded in 456 files outside `translations.ts` |
