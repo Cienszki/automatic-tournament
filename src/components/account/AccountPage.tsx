@@ -27,6 +27,8 @@ interface Account {
   google: { email: string | null } | null;
   admin: boolean;
   caster: boolean;
+  /** Their request to cast this tournament */
+  casterRequest: 'pending' | 'declined' | null;
   stream: string | null;
 }
 /** Renders the banner; the team views pass their side of it (crest, name, what's waiting) */
@@ -72,6 +74,7 @@ export default function AccountPage({ inSection = false }: { inSection?: boolean
   const [nick, setNick] = useState('');
   const [link, setLink] = useState('');
   const [picking, setPicking] = useState(false);
+  const [asking, setAsking] = useState(false);
   const nameRef = useRef<HTMLInputElement>(null);
 
   const call = useCallback(async (method: 'GET' | 'PUT', body?: object) => {
@@ -92,6 +95,18 @@ export default function AccountPage({ inSection = false }: { inSection?: boolean
   const save = async (body: object) => {
     setBusy(true); setError(null);
     try { setAcc(await call('PUT', body) as Account); return true; } catch (e) { setError((e as Error).message); return false; } finally { setBusy(false); }
+  };
+  /** One click: the tournament's admins get the request in their inbox */
+  const askToCast = async () => {
+    if (!tournament?.id) return;
+    setAsking(true); setError(null);
+    try {
+      const token = await user!.getIdToken();
+      const r = await fetch('/api/caster-requests', { method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ t: tournament.id }) });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j.error || 'Nie udało się wysłać zgłoszenia');
+      setAcc(a => (a ? { ...a, casterRequest: 'pending' } : a));
+    } catch (e) { setError((e as Error).message); } finally { setAsking(false); }
   };
   const saveName = async () => {
     const v = nick.trim();
@@ -193,11 +208,22 @@ export default function AccountPage({ inSection = false }: { inSection?: boolean
               ) : <Connect onClick={connectSteam} />}
             </Linked>
             {acc.google && <Linked k="Google"><span className="truncate">{acc.google.email ?? 'połączony'}</span></Linked>}
-            {(acc.admin || acc.caster) && (
+            {(acc.admin || acc.caster) ? (
               <Linked k="Rola">
                 {acc.admin && <Link href={getTournamentPath('/admin')} className="hover:underline underline-offset-4">Admin</Link>}
                 {acc.admin && acc.caster && <span className="text-white/40">·</span>}
-                {acc.caster && <span>Caster</span>}
+                {acc.caster && <Link href={getTournamentPath('/caster')} className="hover:underline underline-offset-4" title="Kącik castera">Caster</Link>}
+              </Linked>
+            ) : tournament?.id && (
+              <Linked k="Caster">
+                {acc.casterRequest === 'pending' ? <span className="text-white/70 font-normal">Zgłoszenie wysłane</span>
+                  : acc.casterRequest === 'declined' ? <span className="text-white/50 font-normal">Zgłoszenie odrzucone</span>
+                  : (
+                    <button type="button" onClick={askToCast} disabled={asking} title="Organizatorzy dostaną twoje zgłoszenie"
+                      className="underline-offset-4 hover:underline disabled:opacity-50" style={{ color: 'color-mix(in srgb, var(--tournament-primary) 65%, #fff)' }}>
+                      Zgłoś się
+                    </button>
+                  )}
               </Linked>
             )}
             <button type="button" onClick={signOut} className="ml-5 mb-0.5 text-[11px] font-bold uppercase tracking-widest text-white/60 hover:text-white hover:underline underline-offset-4">

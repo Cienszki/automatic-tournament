@@ -29,7 +29,7 @@ export default function TournamentLayout({ children }: TournamentLayoutProps) {
   // Detect home page for fullscreen snap-scroll layout
   const isHomePage = pathname === `/${tournamentSlug}` || pathname === `/${tournamentSlug}/`;
   // Pages whose banner spans the whole window (they lay out their own width)
-  const isFullBleed = pathname === `/${tournamentSlug}/account`;
+  const isFullBleed = pathname === `/${tournamentSlug}/account` || pathname === `/${tournamentSlug}/caster`;
 
   const [bgImageReady, setBgImageReady] = useState(true);
   const [pageReady, setPageReady] = useState(false);

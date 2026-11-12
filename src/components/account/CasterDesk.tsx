@@ -4,11 +4,13 @@
 // their stream link (click to set it; any platform, a bare name means Twitch), then the matches they
 // cast — with the lobby to look for — beside every match still to come. The first caster to take a
 // match leads it (their stream is the match's stream); others join as co-casters, and the lead can
-// be handed over. Talks to /api/casters.
+// be handed over; "Przygotuj się" opens the caster corner on that match. Talks to /api/casters.
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Check, Loader2, Pencil } from 'lucide-react';
+import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
+import { useTournament } from '@/context/TournamentContext';
 import { C, TeamLogo, ink, useHeaderFont } from '@/components/stats-lab/kit';
 import { Act, Kicker, Label, dayTime } from '@/components/team/ui';
 import { coCasters, mainCaster, type MatchCaster } from '@/lib/casters';
@@ -55,6 +57,7 @@ export function CasterDesk({ banner, tournamentId, stream, onStream, hasSteam, u
   onStream: (v: string) => Promise<boolean>;
 }) {
   const { user, connectSteam } = useAuth();
+  const { getTournamentPath } = useTournament();
   const font = useHeaderFont();
   const [matches, setMatches] = useState<CMatch[] | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
@@ -132,7 +135,10 @@ export function CasterDesk({ banner, tournamentId, stream, onStream, hasSteam, u
               <div key={m.id} className="py-4 border-b" style={{ borderColor: ink(10) }}>
                 <div className="flex items-center gap-3">
                   <Kicker>{dayTime(m.scheduledFor)} · {lead ? 'prowadzisz' : 'co-caster'}</Kicker>
-                  <span className="ml-auto"><Act danger disabled={busy === m.id} onClick={() => act(m, 'drop')}>Rezygnuję</Act></span>
+                  <span className="ml-auto flex items-center gap-5">
+                    <Link href={getTournamentPath(`/caster?match=${m.id}`)} className="text-[12px] font-bold uppercase tracking-widest underline-offset-4 hover:underline" style={{ color: C.primary }}>Przygotuj się</Link>
+                    <Act danger disabled={busy === m.id} onClick={() => act(m, 'drop')}>Rezygnuję</Act>
+                  </span>
                 </div>
                 <div className="mt-2"><Teams m={m} /></div>
                 {m.lobby && (
