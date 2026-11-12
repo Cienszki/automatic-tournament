@@ -53,9 +53,9 @@ service cloud.firestore {
         'organizator', 'pickem', 'playoffs', 'register', 'rules', 'schedule',
         'standins', 'stats', 'teams',
         // Framework / static paths
-        '_next', 'well-known', 'manifest', 'sw',
+        '_next', 'well-known', 'manifest', 'sw', 'opengraph-image',
         // Public asset folders
-        'images', 'ranks', 'backgrounds', 'icons', 'logos',
+        'images', 'ranks', 'backgrounds', 'icons', 'logos', 'stats-lab', 'card-lab',
         // Common routes & reserved words (PL + EN)
         'turnieje', 'turniej', 'login', 'logout', 'signin', 'signout',
         'rejestracja', 'konto', 'account', 'profil', 'profile', 'ustawienia', 'settings',

@@ -290,7 +290,9 @@ describe('no-consecutive-rematch constraint', () => {
         }
       }
     }
-  });
+    // 240 full pairings by design. About 0.7 s alone; the margin is for CI and
+    // for running beside the jsdom component tests.
+  }, 30_000);
 
   it('returns a complete matching for every field size, odd or even', () => {
     for (let n = 4; n <= 32; n++) {

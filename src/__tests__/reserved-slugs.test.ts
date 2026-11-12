@@ -57,6 +57,22 @@ describe('reserved slugs vs real routes', () => {
     ).toEqual([]);
   });
 
+  it('keeps the firestore.rules copy in step with RESERVED_SLUGS', () => {
+    // The rules enforce the same list so a creator cannot bypass the wizard
+    // with the client SDK. Only slug-shaped entries matter there: the format
+    // rule already rejects anything with '.', '_' or uppercase.
+    const rules = fs.readFileSync(path.join(REPO_ROOT, 'firestore.rules'), 'utf8');
+    const body = rules.match(/function isReservedSlug\(slug\)\s*\{\s*return slug in \[([\s\S]*?)\];/);
+    expect(body, 'isReservedSlug not found in firestore.rules').not.toBeNull();
+    const list = body![1].replace(/\/\/.*$/gm, '');
+    const inRules = new Set([...list.matchAll(/'([^']+)'/g)].map(m => m[1]));
+    const missing = [...RESERVED_SLUGS].filter(s => isValidSlugFormat(s) && !inRules.has(s));
+    expect(
+      missing,
+      `These reserved slugs are missing from isReservedSlug in firestore.rules: ${missing.join(', ')}`
+    ).toEqual([]);
+  });
+
   it('makes every root-served file unreachable as a slug', () => {
     // A public root file is safe if it is EITHER explicitly reserved OR cannot
     // be a slug at all. In practice the format rule does the heavy lifting here:

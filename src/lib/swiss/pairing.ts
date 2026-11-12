@@ -537,11 +537,20 @@ function searchMatching(
   let best: { pairings: SwissPairing[]; cost: number } | null = null;
   let nodes = 0;
 
-  const isBlocked = (i: number, j: number): boolean => {
-    if (allowConsecutiveRematch) return false;
-    if (history.lastRound === 0) return false;
-    return history.lastOpponent[field[i].teamId] === field[j].teamId;
-  };
+  // Every pair's cost and block are fixed for the whole search, so work them
+  // out once. Recomputing them per node (string keys, map lookups) made a
+  // 32-team round take tens of milliseconds.
+  const cost = new Float64Array(n * n);
+  const blocked = new Uint8Array(n * n);
+  const checkBlocks = !allowConsecutiveRematch && history.lastRound !== 0;
+  for (let i = 0; i < n; i++) {
+    for (let j = i + 1; j < n; j++) {
+      cost[i * n + j] = pairCost(field[i], field[j], history, weights, maxMmrGap);
+      if (checkBlocks && history.lastOpponent[field[i].teamId] === field[j].teamId) {
+        blocked[i * n + j] = 1;
+      }
+    }
+  }
 
   const recurse = (costSoFar: number): void => {
     if (nodes++ > maxNodes) return;
@@ -566,10 +575,11 @@ function searchMatching(
 
     // Candidate partners: the next `windowSize` unpaired teams, cheapest first.
     const candidates: Array<{ j: number; cost: number }> = [];
+    const row = first * n;
     for (let j = first + 1; j < n && candidates.length < windowSize; j++) {
       if (paired[j]) continue;
-      if (isBlocked(first, j)) continue;
-      candidates.push({ j, cost: pairCost(field[first], field[j], history, weights, maxMmrGap) });
+      if (blocked[row + j]) continue;
+      candidates.push({ j, cost: cost[row + j] });
     }
     candidates.sort((x, y) => x.cost - y.cost || x.j - y.j);
 
@@ -577,18 +587,19 @@ function searchMatching(
     // whole remaining field so a legal matching is never missed on a technicality.
     if (candidates.length === 0) {
       for (let j = first + 1; j < n; j++) {
-        if (paired[j] || isBlocked(first, j)) continue;
-        candidates.push({ j, cost: pairCost(field[first], field[j], history, weights, maxMmrGap) });
+        if (paired[j] || blocked[row + j]) continue;
+        candidates.push({ j, cost: cost[row + j] });
       }
       candidates.sort((x, y) => x.cost - y.cost || x.j - y.j);
     }
 
-    for (const { j, cost } of candidates) {
+    for (const c of candidates) {
+      const j = c.j;
       paired[first] = true;
       paired[j] = true;
       chosen.push([first, j]);
 
-      recurse(costSoFar + cost);
+      recurse(costSoFar + c.cost);
 
       chosen.pop();
       paired[first] = false;
