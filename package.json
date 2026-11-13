@@ -13,6 +13,7 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "typecheck": "tsc --noEmit",
+    "check:unreachable": "node scripts/tools/unreachable.mjs",
     "serve": "npm run build && firebase emulators:start --only functions,hosting,firestore",
     "deploy": "firebase deploy --only hosting"
   },

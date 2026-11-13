@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [overhaul, feature/multi-tournament-platform]
+    branches: [overhaul, feature/multi-tournament-platform, 'wp/**']
   pull_request:
     branches: [overhaul, feature/multi-tournament-platform]
 
@@ -33,6 +33,8 @@ jobs:
       - run: npm ci
       - name: Typecheck
         run: npm run typecheck
+      - name: Unreachable files
+        run: npm run check:unreachable
       - name: Lint
         run: npm run lint
       - name: Test
