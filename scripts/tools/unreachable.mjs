@@ -53,10 +53,13 @@ const CODE_EXT = ['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs'];
 const RESOLVE_EXT = [...CODE_EXT, '.json'];
 
 /** Unreachable files kept on purpose. Path (relative to the repo root, `/`) -> reason. */
+/** Files that only a kept file imports are kept with it, so the kept file still compiles. */
 export const KEEP = {
   'src/components/tournament/MmrTournamentHomePage.tsx':
-    'WP-13a reads its ranking rule (lines 25-37) as a source; WP-10 also names it',
-  'src/components/tournament/LeagueHomePage.tsx': 'WP-10 names it in its Files list',
+    'WP-13a reads its group ranking rule (sortGroupStandings) as a source',
+  'src/components/app/GroupTable.tsx': 'WP-13a reads its ranking rule (lines 15-52) as a source',
+  'src/components/fantasy/FantasyScoreCalculator.tsx':
+    "WP-16 reads it as a source (the role-based fantasy formula copied into viewer copy)",
 };
 
 const NEXT_APP_CONVENTIONS = new Set([
@@ -168,34 +171,37 @@ export function analyse() {
   }
   for (const target of configEntries()) if (isCode(target)) entries.add(target);
 
-  const reached = new Set();
-  const prefixDirs = [];
   const unresolved = [];
-  const queue = [...entries];
-  while (queue.length) {
-    const file = queue.pop();
-    if (reached.has(file)) continue;
-    reached.add(file);
-    const { specs, prefixes } = readImports(file);
-    for (const spec of specs) {
-      const target = resolveSpecifier(spec, file);
-      if (target) {
-        if (isCode(target) && !reached.has(target)) queue.push(target);
-      } else if (spec.startsWith('.') || spec.startsWith('@/')) {
-        unresolved.push(`${rel(file)} -> ${spec}`);
+  const visit = (starts, reached) => {
+    const queue = [...starts];
+    while (queue.length) {
+      const file = queue.pop();
+      if (reached.has(file)) continue;
+      reached.add(file);
+      const { specs, prefixes } = readImports(file);
+      for (const spec of specs) {
+        const target = resolveSpecifier(spec, file);
+        if (target) {
+          if (isCode(target) && !reached.has(target)) queue.push(target);
+        } else if (spec.startsWith('.') || spec.startsWith('@/')) {
+          unresolved.push(`${rel(file)} -> ${spec}`);
+        }
+      }
+      for (const prefix of prefixes) {
+        const dir = prefix.startsWith('@/') ? path.join(ROOT, 'src', prefix.slice(2)) : path.resolve(path.dirname(file), prefix);
+        for (const f of walk(dir)) if (!reached.has(f)) queue.push(f);
       }
     }
-    for (const prefix of prefixes) {
-      const dir = prefix.startsWith('@/') ? path.join(ROOT, 'src', prefix.slice(2)) : path.resolve(path.dirname(file), prefix);
-      prefixDirs.push(dir);
-      for (const f of walk(dir)) if (!reached.has(f)) queue.push(f);
-    }
-  }
+    return reached;
+  };
 
+  const reached = visit(entries, new Set());
   const unreachable = files.filter((f) => !reached.has(f)).map(rel).sort();
-  const kept = unreachable.filter((f) => f in KEEP);
-  const dead = unreachable.filter((f) => !(f in KEEP));
   const staleKeep = Object.keys(KEEP).filter((f) => !fs.existsSync(path.join(ROOT, f)) || !unreachable.includes(f));
+  const keepStarts = Object.keys(KEEP).filter((f) => !staleKeep.includes(f)).map((f) => path.join(ROOT, f));
+  const keptClosure = visit(keepStarts, new Set(reached));
+  const kept = unreachable.filter((f) => keptClosure.has(path.join(ROOT, f)));
+  const dead = unreachable.filter((f) => !keptClosure.has(path.join(ROOT, f)));
   return {
     scanned: files.length,
     entries: entries.size,
@@ -223,7 +229,7 @@ function main() {
     }
     if (result.kept.length) {
       console.log(`\nUnreachable but kept for a later work package (${result.kept.length}):`);
-      for (const f of result.kept) console.log(`  ${f}  (${KEEP[f]})`);
+      for (const f of result.kept) console.log(`  ${f}  (${KEEP[f] ?? 'imported only by a kept file'})`);
     }
     if (result.staleKeep.length) {
       console.log(`\nKEEP entries that are missing or now reachable; remove them from scripts/tools/unreachable.mjs (${result.staleKeep.length}):`);
