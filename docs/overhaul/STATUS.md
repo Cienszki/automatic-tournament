@@ -47,7 +47,7 @@ One line per WP: id, name, branch, state (planned / in progress / in review / me
 | WP-02 | Test the Firestore rules | — | dropped | No browser database access on the new platform |
 | WP-03 | Environments: local database, seed, CI, previews | `wp/03-environments` | planned | M, Opus review. Staging part needs question 5 |
 | WP-04 | Error monitoring and structured logs | `wp/04-observability` | planned | S, Opus review. Runs beside anything |
-| WP-05 | Delete dead code | `wp/05-dead-code` | in progress | M, Opus review. Implementer started 2026-11-13 |
+| WP-05 | Delete dead code | `wp/05-dead-code` | merged 2026-11-13 | 385 files and 801k lines deleted (27k in `src`, 749k in `_archive/`). `npm run check:unreachable` runs in CI and fails on a new unreachable file. CI now also runs on `wp/**` pushes. Follow-ups: `.firebase/` deploy caches are tracked in git; `genkit` packages and a few Radix packages may now be unused |
 | WP-06 | Trial: fast page on Vercel and Supabase, forwarding to the old site | `wp/06-hosting-trial` | planned | M, Fable review. Decision gate. Needs question 5 |
 | WP-07 | Platform kernel and enforced boundaries | `wp/07-platform-kernel` | planned | L, Fable review |
 | WP-08 | Server-rendered shell | `wp/08-server-shell` | planned | L, Fable review |
@@ -93,7 +93,7 @@ Each question has the asking session, the recommendation, the owner's answer if 
 
 2. **(S0) Browser measurements.** Tried again on 2026-11-13 after `npm ci`: `puppeteer-core` is installed now, but Edge fails to start from an agent's shell, inside and outside the sandbox ("Failed to launch the browser process"). The owner can run this line in a normal terminal in the `overhaul` worktree and leave `pages.json` there (it is git-ignored):
    ```
-   node scripts/measure-pages.js https://dota2inhouse.pl pages.json /wiosenna /wiosenna/teams /wiosenna/schedule /pdl-s2 /pdl-s2/teams /pdl-s2/schedule
+   node scripts/tools/measure-pages.js https://dota2inhouse.pl pages.json /wiosenna /wiosenna/teams /wiosenna/schedule /pdl-s2 /pdl-s2/teams /pdl-s2/schedule
    ```
    No decision waits for it. The same limit means agents cannot look at screenshots locally; browser tests run in CI on GitHub.
 5. **(S1) The staging accounts.** In progress. The owner created the Supabase project, the Firebase project, a Vercel project and a Discord application, and asked for step-by-step help with the rest: it is `SETUP_STAGING.md`. The database password was pasted into the chat; the guide asks the owner to reset it. Nothing is verified yet.

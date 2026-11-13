@@ -144,7 +144,7 @@ What waits for the owner: WP-03 (staging part), WP-06 and WP-35 need the account
 
 - **State.** Not scheduled. The owner decided that old production is not changed until the new platform is ready (questions 1 and 4). The new platform does not have these holes by construction (ADR-07). This package stays here so that, if the owner changes that decision, the patch is one request away.
 - **Goal.** No server function on the old site that reads private data or writes anything can be called without a permission check. Small enough to cherry-pick to the production branch together with S0's commit `3db4e3e`.
-- **Files.** `src/lib/standin-actions.ts`, `src/lib/bot/bot-config-actions.ts`, `src/lib/playoff-sync-actions.ts`, `src/lib/player-profile-actions.ts`, `src/lib/fake-team-action.ts`, `src/lib/admin-actions.ts`, `src/lib/match-players-action.ts`, `src/lib/team-actions.ts` (`getUserTeam`); their importers (`MyTeamView.tsx`, `MatchPanel.tsx`, `StandinsTab.tsx`, `MatchesTab.tsx`, `PDLMatchRules.tsx`); routes `api/manage/bot/config` (GET), `api/manage/bot/sessions` (GET), `api/pickem/export`, `api/dev/*`.
+- **Files.** `src/lib/standin-actions.ts`, `src/lib/bot/bot-config-actions.ts`, `src/lib/playoff-sync-actions.ts`, `src/lib/player-profile-actions.ts`, `src/lib/admin-actions.ts`, `src/lib/match-players-action.ts`, `src/lib/team-actions.ts` (`getUserTeam`); their importers (`MyTeamView.tsx`, `MatchPanel.tsx`, `StandinsTab.tsx`, `MatchesTab.tsx`, `PDLMatchRules.tsx`); routes `api/manage/bot/config` (GET), `api/manage/bot/sessions` (GET), `api/pickem/export`, `api/dev/*`.
 - **Design.** For each `'use server'` file: functions that only server code calls move to a module that starts with `import 'server-only'`; functions a client calls become route handlers that call `requireAdmin` or `requireUser` plus the specific check (captain of the opponent team for approving a stand-in). `saveTournamentBotConfig` takes the actor from the verified token.
 - **Acceptance.** A signed-in user who is not the opponent's captain gets 403 when approving a stand-in; the right captain succeeds; the bot tab and stand-in flow work for the right roles.
 - **Size.** M. **Review.** Fable.
@@ -229,7 +229,7 @@ What waits for the owner: WP-03 (staging part), WP-06 and WP-35 need the account
 ### WP-10. The home page on server data, and deep links without redirects
 
 - **Goal.** The home page keeps its design and gets its data from the server. `/stats`, `/rankings`, `/teams/[teamId]` and the player page open the right section directly.
-- **Files.** `src/app/[tournamentSlug]/page.tsx`, `src/components/tournament/FullScreenHomePage.tsx` (1,142 lines; split by section while here), `LeagueHomePage`, `MmrTournamentHomePage`, `src/context/HomeNavigationContext.tsx`, `src/app/[tournamentSlug]/{stats,rankings}/page.tsx`, `HeroMediaGateProvider`, `src/components/stats-lab/kit.tsx`.
+- **Files.** `src/app/[tournamentSlug]/page.tsx`, `src/components/tournament/FullScreenHomePage.tsx` (1,142 lines; split by section while here), `src/context/HomeNavigationContext.tsx`, `src/app/[tournamentSlug]/{stats,rankings}/page.tsx`, `HeroMediaGateProvider`, `src/components/stats-lab/kit.tsx`.
 - **Design.** Section 2.1 points 4-6.
   - The page loads teams, matches, standings and bracket once through the WP-09 queries and passes them to the client shell. The browser reads are removed.
   - `?view=` stays a client-side concern so the HTML is the same for every view. The deep-link routes render the same shell with an `initialView` prop.
@@ -494,7 +494,7 @@ What waits for the owner: WP-03 (staging part), WP-06 and WP-35 need the account
 ### WP-27. Theme tokens with guard rails, and visual tests
 
 - **Goal.** A validated theme format that the server renders, limits that keep every tournament readable, and screenshots that prove pages hold under any theme.
-- **Files.** `src/types/tournament.ts` (`TournamentTheme`, about 40 fields), `src/features/tournaments/domain/theme.ts`, `src/lib/themes/*`, `division-themes.ts`, `google-fonts.ts`, `dynamic-fonts.ts`, components with hard-coded colours (`docs/THEME_COLOR_AUDIT.md` is the list), `src/components/themed/*`, Playwright visual suite.
+- **Files.** `src/types/tournament.ts` (`TournamentTheme`, about 40 fields), `src/features/tournaments/domain/theme.ts`, `src/lib/themes/*`, `division-themes.ts`, `google-fonts.ts`, `dynamic-fonts.ts`, components with hard-coded colours (`docs/THEME_COLOR_AUDIT.md` is the list), Playwright visual suite.
 - **Design.** ADR-08 (theming); `TEST_STRATEGY.md` level 8. S2 decides which tokens organizers see; this WP builds the schema (versioned; the import converts current fields with no visible change), the contrast and size checks, font loading without blocking, and removes hard-coded colours.
 - **Acceptance.** Imported tournaments render identically after the theme conversion (screenshots); a theme that fails contrast cannot be published; the extreme test theme breaks no layout at three widths; no component reads a slug to pick a style.
 - **Dependencies.** WP-08. Coordinate with S2's customization WPs.
