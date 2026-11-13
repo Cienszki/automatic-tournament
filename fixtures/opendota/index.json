@@ -1,0 +1,94 @@
+{
+ "source": "https://api.opendota.com/api/matches/{id}",
+ "recordedAt": "2026-11-13T06:43:35.813Z",
+ "matches": [
+  {
+   "matchId": "9054192234",
+   "fixture": "pdl-s2",
+   "matchDoc": "DZwQbEYOhwbAYrceDKNZ",
+   "why": "normal parsed game",
+   "status": 200,
+   "lobbyType": 1,
+   "leagueId": 20400,
+   "parsedByOpenDota": true,
+   "bytes": 256061
+  },
+  {
+   "matchId": "9077734536",
+   "fixture": "pdl-s2",
+   "matchDoc": "mNZcfCjeFT1RuQKZIIn8",
+   "why": "normal parsed game, late in the season",
+   "status": 200,
+   "lobbyType": 1,
+   "leagueId": 20400,
+   "parsedByOpenDota": true,
+   "bytes": 274792
+  },
+  {
+   "matchId": "9056981747",
+   "fixture": "pdl-s2",
+   "matchDoc": "zyrVw8abOPfuzRK1Wtmx",
+   "why": "game in a match with an approved stand-in",
+   "status": 200,
+   "lobbyType": 1,
+   "leagueId": 20400,
+   "parsedByOpenDota": true,
+   "bytes": 299607
+  },
+  {
+   "matchId": "8829337551",
+   "fixture": "wiosenna",
+   "matchDoc": "EnOVkhlhjEGAgF6jteE6",
+   "why": "normal parsed game",
+   "status": 200,
+   "lobbyType": 1,
+   "leagueId": 19649,
+   "parsedByOpenDota": true,
+   "bytes": 246592
+  },
+  {
+   "matchId": "8886071396",
+   "fixture": "wiosenna",
+   "matchDoc": "WG1ieiRewGrTJICWsqKK",
+   "why": "normal parsed game, late in the season",
+   "status": 200,
+   "lobbyType": 1,
+   "leagueId": 19649,
+   "parsedByOpenDota": true,
+   "bytes": 214390
+  },
+  {
+   "matchId": "8829411756",
+   "fixture": "wiosenna",
+   "matchDoc": "EnOVkhlhjEGAgF6jteE6",
+   "why": "unparsed game: performances without parsed-only numbers",
+   "status": 200,
+   "lobbyType": 1,
+   "leagueId": 19649,
+   "parsedByOpenDota": true,
+   "bytes": 264657
+  },
+  {
+   "matchId": "8834790508",
+   "fixture": "wiosenna",
+   "matchDoc": "T26v5rBsJsPrQup0IM0D",
+   "why": "game in a match with an approved stand-in",
+   "status": 200,
+   "lobbyType": 1,
+   "leagueId": 19649,
+   "parsedByOpenDota": true,
+   "bytes": 196888
+  },
+  {
+   "matchId": "8893518659",
+   "fixture": "wiosenna",
+   "matchDoc": "ub-r1-p5",
+   "why": "playoff game",
+   "status": 200,
+   "lobbyType": 1,
+   "leagueId": 19649,
+   "parsedByOpenDota": true,
+   "bytes": 264928
+  }
+ ]
+}

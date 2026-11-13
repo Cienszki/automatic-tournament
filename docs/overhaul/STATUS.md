@@ -4,13 +4,13 @@ Every session updates this file as it works, not only at the end. A new session,
 
 ## Next step
 
-Three implementers are running: **WP-05**, **WP-12**, **WP-20**. They were stopped once by the usage limit and resumed on 2026-11-13. When each reports, review it (reviewer agent for 05 and 12, Fable for 20), merge with `--no-ff`, and remove its worktree.
+Merged so far: WP-05, WP-12, WP-20. Running: **WP-32** (schema code, after the approved `SCHEMA.md` on its branch) and **WP-13a** (ranking rules). When each reports, review (Fable for both), merge with `--no-ff`, remove its worktree (run `rmdir` on any `node_modules` junction first), then run `npm ci` in the `overhaul` worktree if `package.json` changed.
 
-Then: **WP-32** (database schema; Fable reviews `SCHEMA.md` before migrations are written), then WP-33, WP-03, WP-06.
+Next in line: **WP-33** (import tool; needs WP-32), **WP-03** (seed, CI, previews), **WP-06** (trial on Vercel and Supabase; the staging values are in `.env.staging.local` and already loaded into the Vercel project `tournament-platform`), **WP-04** (branch exists with Sentry's wizard output), **WP-15** (needs 13a, 32, 33).
 
-The owner is filling in the staging accounts with `SETUP_STAGING.md`. When they say a step is done, check the value by using it, then load the file into GitHub secrets (`gh secret set --env-file .env.staging.local`) and Vercel. The file `.env.staging.local` in the `overhaul` worktree is git-ignored; never print its values.
+The implementer model's usage limit stops agents every few hours; resume them with SendMessage after the reset time in the notification.
 
-**S2 (organizer experience)** is a prerequisite of WP-18. Its prototype review needs a browser, which the agent sandbox blocks (question 2).
+**S2 (organizer experience)** is a prerequisite of WP-18. Its prototype review needs a browser, which agents cannot start on this machine (question 2).
 
 ## Decisions that changed the plan (owner, 2026-11-13)
 
@@ -46,7 +46,7 @@ One line per WP: id, name, branch, state (planned / in progress / in review / me
 | WP-01 | Close unauthenticated server actions on the old site | `wp/01-server-action-auth` | on request | Not scheduled: the owner will not change production now. Ready to run if that changes |
 | WP-02 | Test the Firestore rules | — | dropped | No browser database access on the new platform |
 | WP-03 | Environments: local database, seed, CI, previews | `wp/03-environments` | planned | M, Opus review. Staging part needs question 5 |
-| WP-04 | Error monitoring and structured logs | `wp/04-observability` | planned | S, Opus review. Runs beside anything |
+| WP-04 | Error monitoring and structured logs | `wp/04-observability` | planned | S, Opus review. Branch exists with Sentry's wizard output as a starting point |
 | WP-05 | Delete dead code | `wp/05-dead-code` | merged 2026-11-13 | 385 files and 801k lines deleted (27k in `src`, 749k in `_archive/`). `npm run check:unreachable` runs in CI and fails on a new unreachable file. CI now also runs on `wp/**` pushes. Follow-ups: `.firebase/` deploy caches are tracked in git; `genkit` packages and a few Radix packages may now be unused |
 | WP-06 | Trial: fast page on Vercel and Supabase, forwarding to the old site | `wp/06-hosting-trial` | planned | M, Fable review. Decision gate. Needs question 5 |
 | WP-07 | Platform kernel and enforced boundaries | `wp/07-platform-kernel` | planned | L, Fable review |
@@ -54,8 +54,8 @@ One line per WP: id, name, branch, state (planned / in progress / in review / me
 | WP-09 | Public subpages on cached queries (09a, 09b, 09c) | `wp/09a-teams-schedule`, `wp/09b-standings-playoffs`, `wp/09c-content` | planned | L, Opus review; Fable for 09b |
 | WP-10 | Home page on server data, deep links without redirects | `wp/10-home-server-data` | planned | L, Fable review |
 | WP-11 | Performance budgets in CI, lighter bundle | `wp/11-perf-budgets` | planned | M, Opus review |
-| WP-12 | Capture tool and parity fixtures | `wp/12-capture-fixtures` | in progress | M, Opus review. Implementer started 2026-11-13. Full captures go to `data-exports/` in the overhaul worktree (git-ignored) |
-| WP-13a | Standings and ranking rules as pure functions | `wp/13a-ranking` | planned | M, Fable review |
+| WP-12 | Capture tool and parity fixtures | `wp/12-capture-fixtures` | merged 2026-11-13 | Four tournaments captured without credentials into `data-exports/` (10 MB, git-ignored); fixtures for pdl-s2 and wiosenna with published tables in `fixtures/exports/`; field list in `EXPORT_FORMAT.md`. A re-capture of pdl-s2 takes 41 s. Private collections (users, accounts, admins, card game, bot config) answer 403 and need the owner's export |
+| WP-13a | Standings and ranking rules as pure functions | `wp/13a-ranking` | in progress | M, Fable review. Implementer started 2026-11-13 |
 | WP-13b | `results` feature: one way to change a result | `wp/13b-results` | planned | L, Fable review |
 | WP-14 | Job queue in the database | `wp/14-jobs` | planned | M, Fable review |
 | WP-15 | `stats` feature: one compute from PostgreSQL | `wp/15-stats` | planned | L, Fable review |
@@ -63,7 +63,7 @@ One line per WP: id, name, branch, state (planned / in progress / in review / me
 | WP-17 | Captain flows through commands | `wp/17-captain-commands` | planned | L, Fable review |
 | WP-18 | Organizer commands with S2's screens (18a-18e) | `wp/18a-settings ... wp/18e-content` | planned | XL, split. Fable for 18a, 18d. Needs S2 |
 | WP-19 | No database access from the browser | `wp/19-no-browser-db` | planned | S, Fable review |
-| WP-20 | Bot source under control (TypeScript, tests) | `wp/20-bot-source` | in progress | L, Fable review. Implementer started 2026-11-13 |
+| WP-20 | Bot source under control (TypeScript, tests) | `wp/20-bot-source` | merged 2026-11-13 | Seven hand-written files are TypeScript, proven equivalent to the old `dist/` statement by statement; `dist/` is out of git; the image builds from source in CI; 104 tests with fakes; all storage behind `Store` (the methods and their collections are in `bot-worker/src/store.ts` and `store-firestore.ts`, which is WP-21's specification). Not deployed; the manual lobby test in `bot-worker/RELEASE_CHECK.md` is required before it ever is. Ten bugs found and left unfixed, listed in `bot-worker/KNOWN_BUGS.md` |
 | WP-21 | Contract, and the bot on its own tables | `wp/21-bot-contract` | planned | L, Fable review |
 | WP-22 | Bot: due work only, encrypted credentials, visible waiting | `wp/22-bot-due-work` | planned | M, Fable review |
 | WP-23 | Measure and scale lobby workers | `wp/23-bot-scale` | planned | S + M, Fable review for part 2 |
@@ -75,7 +75,7 @@ One line per WP: id, name, branch, state (planned / in progress / in review / me
 | WP-29 | One translation system | `wp/29-i18n` | planned | L, Opus review |
 | WP-30 | Full end-to-end suite | `wp/30-e2e` | planned | M, Opus review |
 | WP-31 | Load test at 1,000 tournaments | `wp/31-load-test` | planned | M, Fable review |
-| WP-32 | Database schema v1 and `platform/db` | `wp/32-schema` | planned | L, Fable review twice (`SCHEMA.md`, then the result) |
+| WP-32 | Database schema v1 and `platform/db` | `wp/32-schema` | in progress | `SCHEMA.md` (50 tables) written and approved by Fable on 2026-11-13 with four changes (bot role policies, a home for tie decisions, player slot on performances, convention example). Implementer is writing tables, migrations and tests |
 | WP-33 | Import tool (Firestore export to PostgreSQL, Letnia adapter) | `wp/33-import` | planned | L, Fable review |
 | WP-34 | Tiebreaker matches, ranking across groups, places into bracket slots | `wp/34-advancement` | planned | L, Fable review |
 | WP-35 | Go-live step one: the archive (Letnia, finished seasons) | `wp/35-go-live-1` | planned | S, Fable review. The owner runs it |
@@ -96,8 +96,8 @@ Each question has the asking session, the recommendation, the owner's answer if 
    node scripts/tools/measure-pages.js https://dota2inhouse.pl pages.json /wiosenna /wiosenna/teams /wiosenna/schedule /pdl-s2 /pdl-s2/teams /pdl-s2/schedule
    ```
    No decision waits for it. The same limit means agents cannot look at screenshots locally; browser tests run in CI on GitHub.
-5. **(S1) The staging accounts.** In progress. The owner created the Supabase project, the Firebase project, a Vercel project and a Discord application, and asked for step-by-step help with the rest: it is `SETUP_STAGING.md`. The database password was pasted into the chat; the guide asks the owner to reset it. Nothing is verified yet.
-18. **(S5) The disk is full.** Drive C: had about 0.8 GB free on 2026-11-13 after `npm ci` in the worktree. A local `next build` needs about 1.1 GB, so agents cannot build locally and rely on CI; tests and typecheck still run. Any work package that adds packages needs another `npm ci`. Please free 10 GB or more. Agents do not delete anything outside their own worktrees.
+5. **(S1) The staging accounts.** Done by the owner on 2026-11-13: Supabase staging project, Firebase project `dota2inhouse-staging-6e3ef` (sign-in, storage, web app, service key), Discord application, Sentry (two projects), alert webhook. The values are in `.env.staging.local` in the `overhaul` worktree (git-ignored; never print them). Fable checked their shape and that the database address answers; a real database login is first made in WP-32. Fable created the Vercel project `tournament-platform` from the terminal, linked the worktree, and loaded the values as preview and development variables. It is not connected to GitHub: previews are made with `vercel deploy` from a work package (first in WP-06). Still missing: GitHub secrets, because `gh` is not installed (`winget install GitHub.cli`, `gh auth login`, then `gh secret set --env-file .env.staging.local`); needed from WP-03. Note: `vercel link` appends a token to `.env.local` and adds `.env*` to `.gitignore`; revert the `.gitignore` line. The owner ran Sentry's setup wizard in the worktree; its output is parked on branch `wp/04-observability` as the starting point of WP-04 (DSNs are hard-coded there and must move to environment variables).
+18. **(S5) Disk space.** Solved by the owner on 2026-11-13: 93 GB free.
 17. **(S1 revision 2) What do you pay today?** The table in `COSTS.md` section 1 is still empty. It only makes the cost report exact; nothing waits for it.
 
 ### Answered
@@ -116,6 +116,9 @@ Each question has the asking session, the recommendation, the owner's answer if 
 14. **(S1 revision) Commercial use.** Owner: none now; a better plan when there is. The current bills were not given (question 17).
 15. **(S1 revision) The card game.** Owner: it must work on PDL S2 on the new website, and PDL S2 is to run from there. So the game is moved as it is (WP-40) before PDL S2 moves; S3 redesigns it later.
 16. **(S1 revision) Database and hosting choice.** Owner: accepted, and Firebase sign-in and files may be replaced if Fable thinks that is better, without asking. Fable keeps both: they are free, they work, and replacing either would move every user or every file for nothing a visitor would notice. Both are behind one module each, so the choice can change later.
+
+19. **(S5) Personal data readable on the old site** (e-mail addresses in Wiosenna's `pickems`, a preview token, Discord names). Owner, 2026-11-13: not a concern on the current site; leave it. The import drops those fields, and the new platform does not expose them.
+20. **(S5) Data oddities, owner's answers of 2026-11-13.** Letnia has no tournament document because the site was Letnia's own before it became a tournament creator (August to October 2024); its data is in the root collections, which WP-12 captured in full (2,333 documents). `swiss-test` is a throwaway test tournament; do not import it. All tournaments have the same organizer; Wiosenna predates the organizer field, so the import gives it the same organization as the others.
 
 ## Log
 

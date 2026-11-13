@@ -10,8 +10,9 @@
     "runner": "node dist/runner.js",
     "discord": "node dist/discord-gateway.js",
     "setup:local": "node setup-local.js",
-    "build": "tsc -p tsconfig.json",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --config vitest.config.mts"
   },
   "engines": {
     "node": ">=20"

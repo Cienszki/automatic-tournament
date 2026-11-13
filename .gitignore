@@ -165,8 +165,10 @@ fix-*.js
 .env.staging.local
 .env.staging
 .vercel
-data-exports/
 pages.json
+
+# Full tournament captures (WP-12): contain user ids; only fixtures/ is committed
+data-exports/
 
 # Sentry Config File
 .env.sentry-build-plugin

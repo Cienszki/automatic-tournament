@@ -41,3 +41,58 @@ jobs:
         run: npm test
       - name: Build
         run: npm run build
+
+  # The lobby bot (bot-worker/). Its tests run with the root's vitest against fakes
+  # only: no Steam login, no Firestore, no network. The image is built exactly as
+  # Railway builds it, then started far enough to prove the compiled entry points and
+  # the protobuf patches are in place. Nothing is pushed or deployed.
+  bot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          # The image runs node:20-slim.
+          node-version: 20
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            bot-worker/package-lock.json
+      - name: Install the root's dependencies (vitest)
+        run: npm ci
+      - name: Install the bot's dependencies
+        working-directory: bot-worker
+        # npm's error lines are repeated as annotations so they show on the run's summary.
+        run: |
+          set -o pipefail
+          npm ci 2>&1 | tee npm-ci.log || { grep -E 'npm (error|ERR)' npm-ci.log | head -30 | sed 's/^/::error::/'; exit 1; }
+      - name: Apply the image's protobuf patches (node-dota2 cannot load without them)
+        working-directory: bot-worker
+        run: node setup-local.js
+      - name: dist/ is not in git
+        run: test -z "$(git ls-files bot-worker/dist)"
+      - name: Typecheck
+        working-directory: bot-worker
+        run: npm run typecheck
+      - name: Test
+        working-directory: bot-worker
+        run: npm test -- --reporter=default --reporter=github-actions
+      - name: Build the image
+        run: docker build -t bot-worker:ci bot-worker
+      - name: Smoke-test the image
+        run: |
+          docker run --rm --entrypoint node bot-worker:ci -e "
+            for (const f of ['conductor', 'runner', 'inhouse-runner', 'discord-gateway']) require.resolve('./dist/' + f + '.js');
+            require('./dist/inhouse/proto-patch.js');
+            const D = require('dota2');
+            if (D._lobbyOptions.do_player_draft !== 'boolean') { console.error('Immortal Draft patch missing'); process.exit(1); }
+            console.log('image OK');
+          "
+          # Without credentials the Conductor must refuse to start, before any network call.
+          set +e
+          docker run --rm -e FIREBASE_SERVICE_ACCOUNT_BASE64= bot-worker:ci > conductor.log 2>&1
+          code=$?
+          set -e
+          cat conductor.log
+          test "$code" = 1 && grep -q 'FIREBASE_SERVICE_ACCOUNT_BASE64 is not set' conductor.log

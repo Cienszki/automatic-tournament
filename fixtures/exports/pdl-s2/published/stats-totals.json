@@ -1,0 +1,1297 @@
+{
+ "datasetGeneratedAt": "2026-11-13T06:27:42.489Z",
+ "method": "The live /api/stats/dataset payload (stats-dataset.json), run through src/lib/stats-lab/derive.ts deriveModel and src/components/stats-hub/overview-data.ts buildOverview, the functions the stats hub calls.",
+ "counts": {
+  "teams": 12,
+  "namedPlayers": 62,
+  "matches": 12,
+  "games": 24,
+  "parsedGames": 24,
+  "draftGames": 24,
+  "performances": 240,
+  "minGames": 2,
+  "heroesPicked": 88
+ },
+ "totals": {
+  "kills": 1630,
+  "deaths": 1650,
+  "assists": 3498,
+  "rampages": 1,
+  "ultraKills": 7,
+  "tripleKills": 46,
+  "roshans": 29,
+  "towers": 202,
+  "wards": 2098,
+  "dewards": 677,
+  "stacks": 347,
+  "runes": 1049,
+  "buybacks": 99,
+  "couriers": 64,
+  "heroDamage": 5136705,
+  "gold": 4045713,
+  "healing": 450803,
+  "lastHits": 43968,
+  "denies": 1703,
+  "hours": 14.1867
+ },
+ "overview": {
+  "leaders": [
+   {
+    "player": {
+     "id": "76561197996013648",
+     "name": "Cienszki",
+     "teamId": "xgdYNPVLXxxlh41wjvAU"
+    },
+    "value": 15.547
+   },
+   {
+    "player": {
+     "id": "76561199635175535",
+     "name": "godspell",
+     "teamId": "GA1fDvQSjqq238zJbBgB"
+    },
+    "value": 15.4164
+   },
+   {
+    "player": {
+     "id": "76561198138298284",
+     "name": "fey",
+     "teamId": "2f2hIwdITgZW7UjwmGQY"
+    },
+    "value": 14.7211
+   }
+  ],
+  "bestPerRole": [
+   {
+    "role": "Carry",
+    "player": {
+     "id": "76561198138298284",
+     "name": "fey",
+     "teamId": "2f2hIwdITgZW7UjwmGQY"
+    },
+    "value": 14.7211
+   },
+   {
+    "role": "Mid",
+    "player": {
+     "id": "76561197996013648",
+     "name": "Cienszki",
+     "teamId": "xgdYNPVLXxxlh41wjvAU"
+    },
+    "value": 15.547
+   },
+   {
+    "role": "Offlane",
+    "player": {
+     "id": "76561198823794311",
+     "name": "Dran_ik",
+     "teamId": "osYDYGGcjbOtOmPq9NKj"
+    },
+    "value": 14.583
+   },
+   {
+    "role": "Soft Support",
+    "player": {
+     "id": "76561198047075406",
+     "name": "Nawle",
+     "teamId": "H3cMXhvvJQwhyY48iLq9"
+    },
+    "value": 13.1853
+   },
+   {
+    "role": "Hard Support",
+    "player": {
+     "id": "76561198399864619",
+     "name": "Somebody",
+     "teamId": "GA1fDvQSjqq238zJbBgB"
+    },
+    "value": 13.4571
+   }
+  ],
+  "bestTeam": {
+   "teamId": "osYDYGGcjbOtOmPq9NKj",
+   "value": 13.1364
+  },
+  "records": [
+   {
+    "key": "kills",
+    "value": "25",
+    "gameId": "9056981747",
+    "matchId": "zyrVw8abOPfuzRK1Wtmx",
+    "playerId": "76561198012339435",
+    "teamId": "H3cMXhvvJQwhyY48iLq9"
+   },
+   {
+    "key": "assists",
+    "value": "42",
+    "gameId": "9063519658",
+    "matchId": "JvUwHCWVuhNaYUAsFIS2",
+    "playerId": "76561198011820621",
+    "teamId": "rHdyBSmoIU4NDNMMShrm"
+   },
+   {
+    "key": "gpm",
+    "value": "999",
+    "gameId": "9055841127",
+    "matchId": "FcW4hbqAXZt3mY5xtjaK",
+    "playerId": "76561198063072494",
+    "teamId": "NYmU8xmsy7zWwsnM60SW"
+   },
+   {
+    "key": "heroDamage",
+    "value": "119.1k",
+    "gameId": "9055738557",
+    "matchId": "FcW4hbqAXZt3mY5xtjaK",
+    "playerId": "76561198138298284",
+    "teamId": "2f2hIwdITgZW7UjwmGQY"
+   },
+   {
+    "key": "xpm",
+    "value": "1275",
+    "gameId": "9055693107",
+    "matchId": "6zajMro0SSDCrqXjyLfU",
+    "playerId": "76561198823794311",
+    "teamId": "osYDYGGcjbOtOmPq9NKj"
+   },
+   {
+    "key": "lastHits",
+    "value": "1521",
+    "gameId": "9055841127",
+    "matchId": "FcW4hbqAXZt3mY5xtjaK",
+    "playerId": "76561198063072494",
+    "teamId": "NYmU8xmsy7zWwsnM60SW"
+   },
+   {
+    "key": "wards",
+    "value": "78",
+    "gameId": "9055841127",
+    "matchId": "FcW4hbqAXZt3mY5xtjaK",
+    "playerId": "76561198001236924",
+    "teamId": "2f2hIwdITgZW7UjwmGQY"
+   },
+   {
+    "key": "netWorth",
+    "value": "70.1k",
+    "gameId": "9055841127",
+    "matchId": "FcW4hbqAXZt3mY5xtjaK",
+    "playerId": "76561198063072494",
+    "teamId": "NYmU8xmsy7zWwsnM60SW"
+   },
+   {
+    "key": "towerDamage",
+    "value": "42.1k",
+    "gameId": "9055841127",
+    "matchId": "FcW4hbqAXZt3mY5xtjaK",
+    "playerId": "76561198138298284",
+    "teamId": "2f2hIwdITgZW7UjwmGQY"
+   },
+   {
+    "key": "stacks",
+    "value": "16",
+    "gameId": "9077734536",
+    "matchId": "mNZcfCjeFT1RuQKZIIn8",
+    "playerId": "76561198023523222",
+    "teamId": "NYmU8xmsy7zWwsnM60SW"
+   }
+  ],
+  "topHeroes": [
+   {
+    "heroId": 74,
+    "picks": 0,
+    "bans": 20,
+    "contest": 20,
+    "wins": 0
+   },
+   {
+    "heroId": 49,
+    "picks": 9,
+    "bans": 9,
+    "contest": 18,
+    "wins": 4
+   },
+   {
+    "heroId": 135,
+    "picks": 7,
+    "bans": 10,
+    "contest": 17,
+    "wins": 4
+   },
+   {
+    "heroId": 30,
+    "picks": 11,
+    "bans": 5,
+    "contest": 16,
+    "wins": 7
+   },
+   {
+    "heroId": 76,
+    "picks": 5,
+    "bans": 11,
+    "contest": 16,
+    "wins": 3
+   }
+  ],
+  "teamOfTheWeek": {
+   "label": "Runda 2",
+   "picks": [
+    {
+     "role": "Carry",
+     "player": {
+      "id": "76561198170152790",
+      "name": "ambitious",
+      "teamId": "osYDYGGcjbOtOmPq9NKj"
+     },
+     "avg": 15.8234
+    },
+    {
+     "role": "Mid",
+     "player": {
+      "id": "76561199635175535",
+      "name": "godspell",
+      "teamId": "GA1fDvQSjqq238zJbBgB"
+     },
+     "avg": 18.6435
+    },
+    {
+     "role": "Offlane",
+     "player": {
+      "id": "76561198038371243",
+      "name": "Odin",
+      "teamId": "H3cMXhvvJQwhyY48iLq9"
+     },
+     "avg": 16.1053
+    },
+    {
+     "role": "Soft Support",
+     "player": {
+      "id": "76561198047075406",
+      "name": "Nawle",
+      "teamId": "H3cMXhvvJQwhyY48iLq9"
+     },
+     "avg": 19.2588
+    },
+    {
+     "role": "Hard Support",
+     "player": {
+      "id": "76561198399864619",
+      "name": "Somebody",
+      "teamId": "GA1fDvQSjqq238zJbBgB"
+     },
+     "avg": 17.8718
+    }
+   ]
+  },
+  "achievements": {
+   "lit": 51,
+   "total": 69,
+   "top": {
+    "player": {
+     "id": "76561198138298284",
+     "name": "fey",
+     "teamId": "2f2hIwdITgZW7UjwmGQY"
+    },
+    "points": 45
+   }
+  },
+  "elo": [
+   {
+    "teamId": "osYDYGGcjbOtOmPq9NKj",
+    "rating": 1561.06
+   },
+   {
+    "teamId": "2f2hIwdITgZW7UjwmGQY",
+    "rating": 1546.59
+   },
+   {
+    "teamId": "xgdYNPVLXxxlh41wjvAU",
+    "rating": 1530.53
+   },
+   {
+    "teamId": "lJgvtuKElJqLo5iukMog",
+    "rating": 1517.33
+   }
+  ]
+ },
+ "scoreRanking": [
+  {
+   "player": {
+    "id": "76561197996013648",
+    "name": "Cienszki",
+    "teamId": "xgdYNPVLXxxlh41wjvAU"
+   },
+   "games": 2,
+   "value": 15.547
+  },
+  {
+   "player": {
+    "id": "76561199635175535",
+    "name": "godspell",
+    "teamId": "GA1fDvQSjqq238zJbBgB"
+   },
+   "games": 4,
+   "value": 15.4164
+  },
+  {
+   "player": {
+    "id": "76561198138298284",
+    "name": "fey",
+    "teamId": "2f2hIwdITgZW7UjwmGQY"
+   },
+   "games": 5,
+   "value": 14.7211
+  },
+  {
+   "player": {
+    "id": "76561198823794311",
+    "name": "Dran_ik",
+    "teamId": "osYDYGGcjbOtOmPq9NKj"
+   },
+   "games": 6,
+   "value": 14.583
+  },
+  {
+   "player": {
+    "id": "76561199043383000",
+    "name": "b4lfour",
+    "teamId": "xgdYNPVLXxxlh41wjvAU"
+   },
+   "games": 2,
+   "value": 13.6804
+  },
+  {
+   "player": {
+    "id": "76561199576769390",
+    "name": "budda",
+    "teamId": "osYDYGGcjbOtOmPq9NKj"
+   },
+   "games": 4,
+   "value": 13.4978
+  },
+  {
+   "player": {
+    "id": "76561198399864619",
+    "name": "Somebody",
+    "teamId": "GA1fDvQSjqq238zJbBgB"
+   },
+   "games": 4,
+   "value": 13.4571
+  },
+  {
+   "player": {
+    "id": "76561198047075406",
+    "name": "Nawle",
+    "teamId": "H3cMXhvvJQwhyY48iLq9"
+   },
+   "games": 5,
+   "value": 13.1853
+  },
+  {
+   "player": {
+    "id": "76561198170152790",
+    "name": "ambitious",
+    "teamId": "osYDYGGcjbOtOmPq9NKj"
+   },
+   "games": 4,
+   "value": 13.183
+  },
+  {
+   "player": {
+    "id": "76561198076360474",
+    "name": "Supreme",
+    "teamId": "2f2hIwdITgZW7UjwmGQY"
+   },
+   "games": 5,
+   "value": 13.1337
+  },
+  {
+   "player": {
+    "id": "76561198161015896",
+    "name": "Smok",
+    "teamId": "lJgvtuKElJqLo5iukMog"
+   },
+   "games": 3,
+   "value": 13.132
+  },
+  {
+   "player": {
+    "id": "76561198143191825",
+    "name": "Maruda",
+    "teamId": "osYDYGGcjbOtOmPq9NKj"
+   },
+   "games": 4,
+   "value": 12.8256
+  },
+  {
+   "player": {
+    "id": "76561198436376845",
+    "name": "QW",
+    "teamId": "xgdYNPVLXxxlh41wjvAU"
+   },
+   "games": 4,
+   "value": 12.6715
+  },
+  {
+   "player": {
+    "id": "76561198056980796",
+    "name": "Ryuzaki",
+    "teamId": "lJgvtuKElJqLo5iukMog"
+   },
+   "games": 3,
+   "value": 12.0134
+  },
+  {
+   "player": {
+    "id": "76561198047727306",
+    "name": "MORI",
+    "teamId": "rHdyBSmoIU4NDNMMShrm"
+   },
+   "games": 4,
+   "value": 11.9829
+  },
+  {
+   "player": {
+    "id": "76561198060161583",
+    "name": "KirzyK",
+    "teamId": "xgdYNPVLXxxlh41wjvAU"
+   },
+   "games": 2,
+   "value": 11.8854
+  },
+  {
+   "player": {
+    "id": "76561197986488117",
+    "name": "MrBuFF",
+    "teamId": "osYDYGGcjbOtOmPq9NKj"
+   },
+   "games": 4,
+   "value": 11.5925
+  },
+  {
+   "player": {
+    "id": "76561198332840530",
+    "name": "Juxi",
+    "teamId": "GA1fDvQSjqq238zJbBgB"
+   },
+   "games": 4,
+   "value": 11.5915
+  },
+  {
+   "player": {
+    "id": "76561198012339435",
+    "name": "Papież",
+    "teamId": "H3cMXhvvJQwhyY48iLq9"
+   },
+   "games": 5,
+   "value": 11.5136
+  },
+  {
+   "player": {
+    "id": "76561198038371243",
+    "name": "Odin",
+    "teamId": "H3cMXhvvJQwhyY48iLq9"
+   },
+   "games": 5,
+   "value": 11.4604
+  },
+  {
+   "player": {
+    "id": "76561198793224409",
+    "name": "krinzhik",
+    "teamId": "NYmU8xmsy7zWwsnM60SW"
+   },
+   "games": 5,
+   "value": 11.3124
+  },
+  {
+   "player": {
+    "id": "76561198067529230",
+    "name": "Zys",
+    "teamId": "NYmU8xmsy7zWwsnM60SW"
+   },
+   "games": 5,
+   "value": 10.8634
+  },
+  {
+   "player": {
+    "id": "76561197998149107",
+    "name": "Songoas",
+    "teamId": "ukWZSzbPxHRFzeX2vCxj"
+   },
+   "games": 4,
+   "value": 10.852
+  },
+  {
+   "player": {
+    "id": "76561198063072494",
+    "name": "Duel Maister",
+    "teamId": "NYmU8xmsy7zWwsnM60SW"
+   },
+   "games": 5,
+   "value": 10.7378
+  },
+  {
+   "player": {
+    "id": "76561198001236924",
+    "name": "Boskey",
+    "teamId": "2f2hIwdITgZW7UjwmGQY"
+   },
+   "games": 5,
+   "value": 10.583
+  },
+  {
+   "player": {
+    "id": "76561197998055430",
+    "name": "DARTHSABBAKA",
+    "teamId": "rHdyBSmoIU4NDNMMShrm"
+   },
+   "games": 4,
+   "value": 10.5785
+  },
+  {
+   "player": {
+    "id": "76561198011820621",
+    "name": "PETER_KOLASZ_SOLO",
+    "teamId": "rHdyBSmoIU4NDNMMShrm"
+   },
+   "games": 4,
+   "value": 10.5236
+  },
+  {
+   "player": {
+    "id": "76561198030158013",
+    "name": "dave",
+    "teamId": "2f2hIwdITgZW7UjwmGQY"
+   },
+   "games": 5,
+   "value": 10.365
+  },
+  {
+   "player": {
+    "id": "76561198374441816",
+    "name": "Midir",
+    "teamId": "xgdYNPVLXxxlh41wjvAU"
+   },
+   "games": 2,
+   "value": 10.0428
+  },
+  {
+   "player": {
+    "id": "76561198188706181",
+    "name": "Szajtek",
+    "teamId": "ukWZSzbPxHRFzeX2vCxj"
+   },
+   "games": 4,
+   "value": 9.721
+  },
+  {
+   "player": {
+    "id": "76561198140024055",
+    "name": "Andrzej",
+    "teamId": "lJgvtuKElJqLo5iukMog"
+   },
+   "games": 3,
+   "value": 9.7192
+  },
+  {
+   "player": {
+    "id": "76561198072962531",
+    "name": "Aravor",
+    "teamId": "lJgvtuKElJqLo5iukMog"
+   },
+   "games": 3,
+   "value": 9.7148
+  },
+  {
+   "player": {
+    "id": "76561198022799638",
+    "name": "Exotic_Deer",
+    "teamId": "2f2hIwdITgZW7UjwmGQY"
+   },
+   "games": 3,
+   "value": 9.4024
+  },
+  {
+   "player": {
+    "id": "76561198185674357",
+    "name": "Miyagi",
+    "teamId": "NYmU8xmsy7zWwsnM60SW"
+   },
+   "games": 5,
+   "value": 9.3625
+  },
+  {
+   "player": {
+    "id": "76561197989700656",
+    "name": "Ciptok",
+    "teamId": "ukWZSzbPxHRFzeX2vCxj"
+   },
+   "games": 7,
+   "value": 9.283
+  },
+  {
+   "player": {
+    "id": "76561198023523222",
+    "name": "br0 Ciasteczkowy",
+    "teamId": "NYmU8xmsy7zWwsnM60SW"
+   },
+   "games": 5,
+   "value": 9.0933
+  },
+  {
+   "player": {
+    "id": "76561198090266865",
+    "name": "Jacob",
+    "teamId": "ukWZSzbPxHRFzeX2vCxj"
+   },
+   "games": 4,
+   "value": 8.0548
+  },
+  {
+   "player": {
+    "id": "76561198161162768",
+    "name": "Kapik_pl",
+    "teamId": "6lLwVula9Gd2g9V2iJpF"
+   },
+   "games": 4,
+   "value": 7.9727
+  },
+  {
+   "player": {
+    "id": "76561198092135370",
+    "name": "Kubox",
+    "teamId": "ukWZSzbPxHRFzeX2vCxj"
+   },
+   "games": 4,
+   "value": 7.8005
+  },
+  {
+   "player": {
+    "id": "76561198047884354",
+    "name": "Kez",
+    "teamId": "H3cMXhvvJQwhyY48iLq9"
+   },
+   "games": 5,
+   "value": 7.2149
+  },
+  {
+   "player": {
+    "id": "76561198073681013",
+    "name": "Benito",
+    "teamId": "H3cMXhvvJQwhyY48iLq9"
+   },
+   "games": 3,
+   "value": 6.6381
+  },
+  {
+   "player": {
+    "id": "76561198377783826",
+    "name": "WERMI",
+    "teamId": "rHdyBSmoIU4NDNMMShrm"
+   },
+   "games": 4,
+   "value": 6.4677
+  },
+  {
+   "player": {
+    "id": "76561198100365966",
+    "name": "Ryuga",
+    "teamId": "GA1fDvQSjqq238zJbBgB"
+   },
+   "games": 2,
+   "value": 6.3241
+  },
+  {
+   "player": {
+    "id": "76561198090159373",
+    "name": "Sargass",
+    "teamId": "fVRNSc9IjxmxobElp9Db"
+   },
+   "games": 4,
+   "value": 5.9031
+  },
+  {
+   "player": {
+    "id": "76561198817226452",
+    "name": "SadBart",
+    "teamId": "GA1fDvQSjqq238zJbBgB"
+   },
+   "games": 2,
+   "value": 5.8945
+  },
+  {
+   "player": {
+    "id": "76561198452973445",
+    "name": "Dredo",
+    "teamId": "fVRNSc9IjxmxobElp9Db"
+   },
+   "games": 4,
+   "value": 5.3747
+  },
+  {
+   "player": {
+    "id": "76561198077103233",
+    "name": "Luntri",
+    "teamId": "fVRNSc9IjxmxobElp9Db"
+   },
+   "games": 4,
+   "value": 5.1586
+  },
+  {
+   "player": {
+    "id": "76561198315039202",
+    "name": "Saint",
+    "teamId": "6lLwVula9Gd2g9V2iJpF"
+   },
+   "games": 4,
+   "value": 4.7435
+  },
+  {
+   "player": {
+    "id": "76561198074711410",
+    "name": "Suszkin",
+    "teamId": "W8MwNbnGJ47ClySu4T9r"
+   },
+   "games": 4,
+   "value": 4.5171
+  },
+  {
+   "player": {
+    "id": "76561198376627158",
+    "name": "Cybuchson",
+    "teamId": "W8MwNbnGJ47ClySu4T9r"
+   },
+   "games": 4,
+   "value": 4.4316
+  },
+  {
+   "player": {
+    "id": "76561197998399711",
+    "name": "theLAGmaster",
+    "teamId": "fVRNSc9IjxmxobElp9Db"
+   },
+   "games": 4,
+   "value": 3.9965
+  },
+  {
+   "player": {
+    "id": "76561198096270734",
+    "name": "Obstacle",
+    "teamId": "6lLwVula9Gd2g9V2iJpF"
+   },
+   "games": 4,
+   "value": 3.7325
+  },
+  {
+   "player": {
+    "id": "76561198214076332",
+    "name": "TheHeroOfLegend",
+    "teamId": "6lLwVula9Gd2g9V2iJpF"
+   },
+   "games": 4,
+   "value": 3.6846
+  },
+  {
+   "player": {
+    "id": "76561198031020235",
+    "name": "Ytsuqen",
+    "teamId": "6lLwVula9Gd2g9V2iJpF"
+   },
+   "games": 4,
+   "value": 3.1024
+  },
+  {
+   "player": {
+    "id": "76561197963412265",
+    "name": "epa epa",
+    "teamId": "W8MwNbnGJ47ClySu4T9r"
+   },
+   "games": 2,
+   "value": 2.1263
+  },
+  {
+   "player": {
+    "id": "76561197990581477",
+    "name": "Illusive",
+    "teamId": "fVRNSc9IjxmxobElp9Db"
+   },
+   "games": 4,
+   "value": 2.084
+  },
+  {
+   "player": {
+    "id": "76561198072720505",
+    "name": "Royall",
+    "teamId": "W8MwNbnGJ47ClySu4T9r"
+   },
+   "games": 4,
+   "value": 2.0703
+  },
+  {
+   "player": {
+    "id": "76561198026191400",
+    "name": "Dzoszkuna",
+    "teamId": "W8MwNbnGJ47ClySu4T9r"
+   },
+   "games": 4,
+   "value": 1.0804
+  }
+ ],
+ "rankingsView": [
+  {
+   "role": "carry",
+   "gameCount": 223,
+   "entries": [
+    {
+     "name": "fey",
+     "teamName": "Team Poland",
+     "games": 5,
+     "avgScore": 14.721131182021898
+    },
+    {
+     "name": "ambitious",
+     "teamName": "Voodoo Monkey",
+     "games": 4,
+     "avgScore": 13.182954545360158
+    },
+    {
+     "name": "Smok",
+     "teamName": "TOP SMOK FANS",
+     "games": 3,
+     "avgScore": 13.13197790585265
+    },
+    {
+     "name": "Juxi",
+     "teamName": "Sparta Orzechowo",
+     "games": 4,
+     "avgScore": 11.591530673012226
+    },
+    {
+     "name": "Duel Maister",
+     "teamName": "Uncreative Baboons",
+     "games": 5,
+     "avgScore": 10.73780366490567
+    },
+    {
+     "name": "Midir",
+     "teamName": "Randomowe Jasie",
+     "games": 2,
+     "avgScore": 10.042751997798419
+    },
+    {
+     "name": "Szajtek",
+     "teamName": "Bociarnia",
+     "games": 4,
+     "avgScore": 9.721006511102866
+    },
+    {
+     "name": "Kez",
+     "teamName": "Statek",
+     "games": 5,
+     "avgScore": 7.214854317758393
+    },
+    {
+     "name": "Saint",
+     "teamName": "Bociarnia Junior",
+     "games": 4,
+     "avgScore": 4.743495265752015
+    },
+    {
+     "name": "Illusive",
+     "teamName": "Nafeedowalem",
+     "games": 4,
+     "avgScore": 2.084007053492526
+    },
+    {
+     "name": "Royall",
+     "teamName": "KS Bystra",
+     "games": 4,
+     "avgScore": 2.0702948436718986
+    }
+   ]
+  },
+  {
+   "role": "hard-support",
+   "gameCount": 223,
+   "entries": [
+    {
+     "name": "Somebody",
+     "teamName": "Sparta Orzechowo",
+     "games": 4,
+     "avgScore": 13.457118109532773
+    },
+    {
+     "name": "KirzyK",
+     "teamName": "Randomowe Jasie",
+     "games": 2,
+     "avgScore": 11.88541511179983
+    },
+    {
+     "name": "MrBuFF",
+     "teamName": "Voodoo Monkey",
+     "games": 4,
+     "avgScore": 11.592487167898534
+    },
+    {
+     "name": "Boskey",
+     "teamName": "Team Poland",
+     "games": 5,
+     "avgScore": 10.583025548288699
+    },
+    {
+     "name": "PETER_KOLASZ_SOLO",
+     "teamName": "LATE-GAMING",
+     "games": 4,
+     "avgScore": 10.52360156507151
+    },
+    {
+     "name": "Andrzej",
+     "teamName": "TOP SMOK FANS",
+     "games": 3,
+     "avgScore": 9.719204857486114
+    },
+    {
+     "name": "Ciptok",
+     "teamName": "Bociarnia",
+     "games": 4,
+     "avgScore": 9.282970278608513
+    },
+    {
+     "name": "br0 Ciasteczkowy",
+     "teamName": "Uncreative Baboons",
+     "games": 5,
+     "avgScore": 9.09330206449928
+    },
+    {
+     "name": "Kapik_pl",
+     "teamName": "Bociarnia Junior",
+     "games": 4,
+     "avgScore": 7.972738979133927
+    },
+    {
+     "name": "Benito",
+     "teamName": "Statek",
+     "games": 3,
+     "avgScore": 6.638120209033179
+    },
+    {
+     "name": "Cybuchson",
+     "teamName": "KS Bystra",
+     "games": 4,
+     "avgScore": 4.4315878183007
+    },
+    {
+     "name": "theLAGmaster",
+     "teamName": "Nafeedowalem",
+     "games": 4,
+     "avgScore": 3.9964584966324317
+    }
+   ]
+  },
+  {
+   "role": "mid",
+   "gameCount": 223,
+   "entries": [
+    {
+     "name": "Cienszki",
+     "teamName": "Randomowe Jasie",
+     "games": 2,
+     "avgScore": 15.546992936058688
+    },
+    {
+     "name": "godspell",
+     "teamName": "Sparta Orzechowo",
+     "games": 4,
+     "avgScore": 15.416447244162157
+    },
+    {
+     "name": "budda",
+     "teamName": "Voodoo Monkey",
+     "games": 4,
+     "avgScore": 13.497810335227296
+    },
+    {
+     "name": "Supreme",
+     "teamName": "Team Poland",
+     "games": 5,
+     "avgScore": 13.133744592363916
+    },
+    {
+     "name": "Ryuzaki",
+     "teamName": "TOP SMOK FANS",
+     "games": 3,
+     "avgScore": 12.01337673790683
+    },
+    {
+     "name": "MORI",
+     "teamName": "LATE-GAMING",
+     "games": 4,
+     "avgScore": 11.982930013226545
+    },
+    {
+     "name": "Papież",
+     "teamName": "Statek",
+     "games": 5,
+     "avgScore": 11.513630674278701
+    },
+    {
+     "name": "Zys",
+     "teamName": "Uncreative Baboons",
+     "games": 5,
+     "avgScore": 10.863404289871385
+    },
+    {
+     "name": "Jacob",
+     "teamName": "Bociarnia",
+     "games": 4,
+     "avgScore": 8.05482649944046
+    },
+    {
+     "name": "Luntri",
+     "teamName": "Nafeedowalem",
+     "games": 4,
+     "avgScore": 5.158639887562371
+    },
+    {
+     "name": "Ytsuqen",
+     "teamName": "Bociarnia Junior",
+     "games": 4,
+     "avgScore": 3.1023857135441597
+    },
+    {
+     "name": "epa epa",
+     "teamName": "KS Bystra",
+     "games": 2,
+     "avgScore": 2.1262917436792033
+    }
+   ]
+  },
+  {
+   "role": "offlane",
+   "gameCount": 223,
+   "entries": [
+    {
+     "name": "Dran_ik",
+     "teamName": "Voodoo Monkey",
+     "games": 4,
+     "avgScore": 14.583003539705247
+    },
+    {
+     "name": "b4lfour",
+     "teamName": "Randomowe Jasie",
+     "games": 2,
+     "avgScore": 13.680420560541224
+    },
+    {
+     "name": "Odin",
+     "teamName": "Statek",
+     "games": 5,
+     "avgScore": 11.460417630778199
+    },
+    {
+     "name": "Aravor",
+     "teamName": "TOP SMOK FANS",
+     "games": 3,
+     "avgScore": 9.714760322878812
+    },
+    {
+     "name": "Exotic_Deer",
+     "teamName": "Team Poland",
+     "games": 3,
+     "avgScore": 9.402366198622614
+    },
+    {
+     "name": "Miyagi",
+     "teamName": "Uncreative Baboons",
+     "games": 5,
+     "avgScore": 9.362506608916672
+    },
+    {
+     "name": "Kubox",
+     "teamName": "Bociarnia",
+     "games": 4,
+     "avgScore": 7.800503689682916
+    },
+    {
+     "name": "WERMI",
+     "teamName": "LATE-GAMING",
+     "games": 4,
+     "avgScore": 6.467722659071229
+    },
+    {
+     "name": "Ryuga",
+     "teamName": "Sparta Orzechowo",
+     "games": 2,
+     "avgScore": 6.324104806836663
+    },
+    {
+     "name": "Dredo",
+     "teamName": "Nafeedowalem",
+     "games": 4,
+     "avgScore": 5.374666168528756
+    },
+    {
+     "name": "Obstacle",
+     "teamName": "Bociarnia Junior",
+     "games": 4,
+     "avgScore": 3.7324534676127525
+    },
+    {
+     "name": "Dzoszkuna",
+     "teamName": "KS Bystra",
+     "games": 4,
+     "avgScore": 1.080444743866781
+    }
+   ]
+  },
+  {
+   "role": "soft-support",
+   "gameCount": 223,
+   "entries": [
+    {
+     "name": "Nawle",
+     "teamName": "Statek",
+     "games": 5,
+     "avgScore": 13.18531148974669
+    },
+    {
+     "name": "Maruda",
+     "teamName": "Voodoo Monkey",
+     "games": 4,
+     "avgScore": 12.825561784473884
+    },
+    {
+     "name": "QW",
+     "teamName": "Randomowe Jasie",
+     "games": 2,
+     "avgScore": 12.671527937664585
+    },
+    {
+     "name": "krinzhik",
+     "teamName": "Uncreative Baboons",
+     "games": 5,
+     "avgScore": 11.312403655502626
+    },
+    {
+     "name": "Songoas",
+     "teamName": "Bociarnia",
+     "games": 4,
+     "avgScore": 10.85196638818587
+    },
+    {
+     "name": "DARTHSABBAKA",
+     "teamName": "LATE-GAMING",
+     "games": 4,
+     "avgScore": 10.578522632447907
+    },
+    {
+     "name": "dave",
+     "teamName": "Team Poland",
+     "games": 5,
+     "avgScore": 10.364984649294552
+    },
+    {
+     "name": "Sargass",
+     "teamName": "Nafeedowalem",
+     "games": 4,
+     "avgScore": 5.903123393935385
+    },
+    {
+     "name": "SadBart",
+     "teamName": "Sparta Orzechowo",
+     "games": 2,
+     "avgScore": 5.8945313638388335
+    },
+    {
+     "name": "Suszkin",
+     "teamName": "KS Bystra",
+     "games": 4,
+     "avgScore": 4.517120803326849
+    },
+    {
+     "name": "TheHeroOfLegend",
+     "teamName": "Bociarnia Junior",
+     "games": 4,
+     "avgScore": 3.684645808118954
+    }
+   ]
+  },
+  {
+   "role": "teams",
+   "gameCount": 223,
+   "entries": [
+    {
+     "name": "Voodoo Monkey",
+     "teamName": "Voodoo Monkey",
+     "games": 20,
+     "avgScore": 13.136363474533024
+    },
+    {
+     "name": "Randomowe Jasie",
+     "teamName": "Randomowe Jasie",
+     "games": 10,
+     "avgScore": 12.765421708772548
+    },
+    {
+     "name": "Team Poland",
+     "teamName": "Team Poland",
+     "games": 23,
+     "avgScore": 11.835718628509268
+    },
+    {
+     "name": "Sparta Orzechowo",
+     "teamName": "Sparta Orzechowo",
+     "games": 16,
+     "avgScore": 11.643603528011226
+    },
+    {
+     "name": "TOP SMOK FANS",
+     "teamName": "TOP SMOK FANS",
+     "games": 12,
+     "avgScore": 11.144829956031103
+    },
+    {
+     "name": "Statek",
+     "teamName": "Statek",
+     "games": 23,
+     "avgScore": 10.295018747387367
+    },
+    {
+     "name": "Uncreative Baboons",
+     "teamName": "Uncreative Baboons",
+     "games": 25,
+     "avgScore": 10.273884056739126
+    },
+    {
+     "name": "LATE-GAMING",
+     "teamName": "LATE-GAMING",
+     "games": 16,
+     "avgScore": 9.888194217454297
+    },
+    {
+     "name": "Bociarnia",
+     "teamName": "Bociarnia",
+     "games": 20,
+     "avgScore": 9.142254673404123
+    },
+    {
+     "name": "Bociarnia Junior",
+     "teamName": "Bociarnia Junior",
+     "games": 20,
+     "avgScore": 4.647143846832361
+    },
+    {
+     "name": "Nafeedowalem",
+     "teamName": "Nafeedowalem",
+     "games": 20,
+     "avgScore": 4.503379000030294
+    },
+    {
+     "name": "KS Bystra",
+     "teamName": "KS Bystra",
+     "games": 18,
+     "avgScore": 2.9250209068901842
+    }
+   ]
+  }
+ ]
+}
