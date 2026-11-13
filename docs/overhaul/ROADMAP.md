@@ -18,16 +18,16 @@ Written in S1 (2026-11-13) by Fable, and rewritten the same day after the owner'
 | Milestone | WPs | What is true when it is reached |
 |---|---|---|
 | M0 Ground | 05, 12, 03, 32, 33, 06, 04 | Dead code gone; a database schema with tests; real tournament data imported into it; staging exists; the hosting and database choice is proven by measurement |
-| M1 Fast and read-only | 07, 13a, 15, 08, 09, 10, 11, 35 | Every public page is served complete from the CDN out of PostgreSQL. **Go-live step one:** Letnia and finished seasons are served by the new platform |
+| M1 Fast and read-only | 07, 13a, 15, 08, 09, 10, 11, 35, 39 | Every public page is served complete from the CDN out of PostgreSQL. **Go-live step one:** Letnia and finished seasons are served by the new platform, and PDL S2 is mirrored on it and compared with the old site every day |
 | M2 Results run themselves | 14, 13b, 34, 16 | A played game becomes a result, standings, stats and fantasy points with no admin action; organizers' ranking rules decide ties and playoff places |
-| M3 Organizers run a season | 24, 17, 18, 38, 19 | Everything an organizer, referee or captain does is a command behind S2's new screens; the browser has no database access |
+| M3 Organizers run a season | 24, 17, 18, 38, 40, 19 | Everything an organizer, referee or captain does is a command behind S2's new screens; the browser has no database access |
 | M4 A bot we can maintain | 20, 21, 22, 23 | Bot source in TypeScript with tests, a written contract, its own database role, a plan to scale out |
 | M5 A platform | 26, 27, 29, 36 | Custom domains, guarded themes, one translation system, backups and tournament export |
-| M6 Proven and live | 30, 31, 37 | End-to-end flows green; load test passed. **Go-live step two:** new seasons run on the new platform. **Step three:** the old site retires |
+| M6 Proven and live | 30, 31, 37 | End-to-end flows green; load test passed. **Go-live step two:** PDL S2 moves to the new platform while it is being played. **Step three:** new seasons start there. **Step four:** the old site retires |
 
-What can run in parallel: WP-05, WP-12 and WP-20 can start now and need nothing from the owner. M4 runs beside M1 to M3 (different folders). WP-04 runs beside anything. S2 must have run before WP-18 starts, because WP-18 builds S2's screens. S3 decides when the card game arrives on the new platform.
+What can run in parallel: WP-05, WP-12 and WP-20 can start now and need nothing from the owner. M4 runs beside M1 to M3 (different folders). WP-04 runs beside anything. S2 must have run before WP-18 starts, because WP-18 builds S2's screens. The card game moves as it is in WP-40; S3 redesigns it later.
 
-What waits for the owner: WP-03 (staging part), WP-06 and WP-35 need the accounts in `TEST_STRATEGY.md`, "What the owner must create". WP-16 waits for question 8.
+What waits for the owner: WP-03 (staging part), WP-06 and WP-35 need the accounts in `TEST_STRATEGY.md`, "What the owner must create". Question 8 is answered: the role-based formula is the default for new tournaments.
 
 ---
 
@@ -144,7 +144,7 @@ What waits for the owner: WP-03 (staging part), WP-06 and WP-35 need the account
 
 - **State.** Not scheduled. The owner decided that old production is not changed until the new platform is ready (questions 1 and 4). The new platform does not have these holes by construction (ADR-07). This package stays here so that, if the owner changes that decision, the patch is one request away.
 - **Goal.** No server function on the old site that reads private data or writes anything can be called without a permission check. Small enough to cherry-pick to the production branch together with S0's commit `3db4e3e`.
-- **Files.** `src/lib/standin-actions.ts`, `src/lib/bot/bot-config-actions.ts`, `src/lib/playoff-sync-actions.ts`, `src/lib/player-profile-actions.ts`, `src/lib/fake-team-action.ts`, `src/lib/admin-actions.ts`, `src/lib/match-players-action.ts`, `src/lib/team-actions.ts` (`getUserTeam`); their importers (`MyTeamView.tsx`, `MatchPanel.tsx`, `StandinsTab.tsx`, `MatchesTab.tsx`, `PDLMatchRules.tsx`); routes `api/manage/bot/config` (GET), `api/manage/bot/sessions` (GET), `api/pickem/export`, `api/dev/*`.
+- **Files.** `src/lib/standin-actions.ts`, `src/lib/bot/bot-config-actions.ts`, `src/lib/playoff-sync-actions.ts`, `src/lib/player-profile-actions.ts`, `src/lib/admin-actions.ts`, `src/lib/match-players-action.ts`, `src/lib/team-actions.ts` (`getUserTeam`); their importers (`MyTeamView.tsx`, `MatchPanel.tsx`, `StandinsTab.tsx`, `MatchesTab.tsx`, `PDLMatchRules.tsx`); routes `api/manage/bot/config` (GET), `api/manage/bot/sessions` (GET), `api/pickem/export`, `api/dev/*`.
 - **Design.** For each `'use server'` file: functions that only server code calls move to a module that starts with `import 'server-only'`; functions a client calls become route handlers that call `requireAdmin` or `requireUser` plus the specific check (captain of the opponent team for approving a stand-in). `saveTournamentBotConfig` takes the actor from the verified token.
 - **Acceptance.** A signed-in user who is not the opponent's captain gets 403 when approving a stand-in; the right captain succeeds; the bot tab and stand-in flow work for the right roles.
 - **Size.** M. **Review.** Fable.
@@ -229,7 +229,7 @@ What waits for the owner: WP-03 (staging part), WP-06 and WP-35 need the account
 ### WP-10. The home page on server data, and deep links without redirects
 
 - **Goal.** The home page keeps its design and gets its data from the server. `/stats`, `/rankings`, `/teams/[teamId]` and the player page open the right section directly.
-- **Files.** `src/app/[tournamentSlug]/page.tsx`, `src/components/tournament/FullScreenHomePage.tsx` (1,142 lines; split by section while here), `LeagueHomePage`, `MmrTournamentHomePage`, `src/context/HomeNavigationContext.tsx`, `src/app/[tournamentSlug]/{stats,rankings}/page.tsx`, `HeroMediaGateProvider`, `src/components/stats-lab/kit.tsx`.
+- **Files.** `src/app/[tournamentSlug]/page.tsx`, `src/components/tournament/FullScreenHomePage.tsx` (1,142 lines; split by section while here), `src/context/HomeNavigationContext.tsx`, `src/app/[tournamentSlug]/{stats,rankings}/page.tsx`, `HeroMediaGateProvider`, `src/components/stats-lab/kit.tsx`.
 - **Design.** Section 2.1 points 4-6.
   - The page loads teams, matches, standings and bracket once through the WP-09 queries and passes them to the client shell. The browser reads are removed.
   - `?view=` stays a client-side concern so the HTML is the same for every view. The deep-link routes render the same shell with an `initialView` prop.
@@ -259,6 +259,21 @@ What waits for the owner: WP-03 (staging part), WP-06 and WP-35 need the account
 - **Risks and rollback.** The forwarding breaks something on the old site for a running season. The trial (WP-06) and the rehearsal test exactly this; rollback is one setting.
 - **Dependencies.** WP-08 to WP-11, WP-15, the owner's production accounts.
 - **Size.** S for the agent. **Review.** Fable.
+
+### WP-39. Mirror a live season and compare it every day
+
+- **Goal.** PDL S2, while it is being played on the old site, is also on the new platform, kept up to date, and a daily report says where the two sites differ. This is the owner's way of testing on a real tournament.
+- **Files.** `tournaments.serving` (`mirror` or `live`; a migration), `src/middleware.ts` (the public domain serves only `live` tournaments and forwards the rest), `.github/workflows/mirror.yml`, `scripts/tools/compare-sites.mjs` (from WP-35), `scripts/tools/mirror-report.ts`.
+- **Design.** ADR-15 "Going live", step 4, "Mirror".
+  1. A scheduled CI job (every few hours, and on demand) runs the WP-12 capture for `pdl-s2` and the WP-33 import into the new production database. Both are safe to repeat. The capture only reads public data.
+  2. A mirrored tournament is visible on the new app's own address and on preview addresses, with a small "mirror of the live site, data from HH:MM" note for signed-in admins only. On the public domain its paths are forwarded to the old site.
+  3. The report compares, for the mirrored season: every standings table (order and numbers), every match result, the schedule, and the stats hub's totals, between what the old site publishes (the capture's `published/` files, regenerated each run) and what the new code computes from the imported rows. Once WP-13b exists, it also runs `recordGame` with `dryRun` for each newly captured game and compares the rows it would write with the imported ones.
+  4. The report is a short page for the platform admin and one line in the alert channel: "PDL S2 mirror: 0 differences" or the list.
+- **Acceptance.** The job has run for a week of real matches with no manual step; each difference it reported is either fixed or explained in the report's "known differences" list; the mirror never appears on the public domain; a failed capture or import raises an alert and leaves the previous data in place.
+- **Tests.** The comparison on two fixtures with a planted difference; the middleware rule for `mirror` and `live`.
+- **Risks and rollback.** The mirror reads production through public reads a few times a day; keep the request rate low. Switching it off is disabling the job.
+- **Dependencies.** WP-35 (the new production database and app exist), WP-12, WP-33, WP-15.
+- **Size.** M. **Review.** Fable.
 
 ---
 
@@ -314,7 +329,7 @@ What waits for the owner: WP-03 (staging part), WP-06 and WP-35 need the account
 
 - **Goal.** Fantasy and pick'em produce points and a ranking, from one formula per tournament.
 - **Files.** Sources to read: `src/lib/pdl-fantasy-scoring.ts`, `opendota.ts:285` (`calculateFantasyPoints`), `src/lib/firestore.ts` (fantasy and pick'em helpers), `src/app/[tournamentSlug]/{fantasy,pickem}/page.tsx`, `components/fantasy/FantasyScoreCalculator.tsx`. New `src/features/stats/domain/{fantasy,pickem}.ts`, `src/features/{fantasy,pickem}/`.
-- **Design.** ADR-11. Waits for the owner's answer to question 8 (which scoring preset new tournaments use, and whether fantasy is built now or after S2).
+- **Design.** ADR-11. The owner chose the role-based formula as the default for new tournaments (question 8); existing seasons keep the formula they were scored with.
   - `scoreFantasy(performance, preset)` with presets `pdl-flat` and `role-based` reproducing the two live formulas exactly.
   - `computeTournament` adds per-round user totals from `fantasy_lineups` and a leaderboard. Saving a lineup is a command that enforces the round lock on the server.
   - Pick'em: a scoring function comparing picks with final placements, and a leaderboard. Picks lock by a server-checked deadline. Lineups and picks of other users are not returned before the lock.
@@ -322,7 +337,7 @@ What waits for the owner: WP-03 (staging part), WP-06 and WP-35 need the account
   - The viewer screens get the minimum needed to show points and rank using existing components; their redesign is S2's.
 - **Acceptance.** On the seeded tournament, a user's lineup scores after a recorded game and appears in the ranking; saving after the lock is refused by the server; pick'em ranks users after the final; preset functions return the pinned numbers for the recorded games.
 - **Tests.** Level 1 for both scoring functions; level 4 for the commands and the lock; end-to-end flow 10.
-- **Dependencies.** WP-15, WP-13b. Question 8.
+- **Dependencies.** WP-15, WP-13b.
 - **Size.** L. **Review.** Opus.
 
 ---
@@ -378,13 +393,29 @@ What waits for the owner: WP-03 (staging part), WP-06 and WP-35 need the account
 - **Dependencies.** WP-07, WP-14, WP-17.
 - **Size.** L; split into two branches (accounts and notifications; the rest). **Review.** Fable for accounts; Opus for the rest.
 
+### WP-40. The card game on the new platform, as it is today
+
+- **Goal.** The card game works for a tournament on the new platform exactly as it does on the old site, so that PDL S2 keeps it when it moves.
+- **Files.** Sources: `src/server/card-lab/*` (`collection.ts`, `duels.ts`, `rewards.ts`, `finds.ts`), `src/lib/card-lab/*` (the engine; it is pure and moves unchanged into `src/features/cards/domain`), `src/hooks/useDuel.ts`, `api/cards/**`, `api/manage/cards`, the cards section components, `inventory/CARDS.md`. New `src/features/cards/`, new tables in `src/platform/db/schema/cards.ts`.
+- **Design.** ADR-04 (card tables), ADR-16 (live updates). This is a move, not a redesign; S3 changes the game later.
+  - Tables for collections, duels, duel views, rankings, rewards, grants and reports, each with `tournament_id` where the data is per tournament today. The duel state that is a JSON string today becomes a JSON column validated by the engine's schema.
+  - A duel move is a command. The opponent's view comes from a short-cached endpoint polled while a duel is open (ADR-16); measure the delay a player feels and say so in the report. If it is over a second, use Supabase Realtime broadcast for duels only.
+  - Settling stale duels and round rewards become job types.
+  - The import tool gets a mapper for the card collections from the owner's export (they are not publicly readable).
+  - Everything reads the stats dataset through `features/stats`.
+- **Acceptance.** On staging, with PDL S2 imported including card data from an export: a user's collection shows the same cards as on the old site; a duel can be played to the end between two test users; rewards for a finished round are granted once (idempotency test); the engine's existing tests pass unchanged.
+- **Tests.** Level 4 for the commands and jobs; the engine's own tests; an end-to-end duel between two users.
+- **Risks and rollback.** Card data for a live season is the one place where a move can lose something players care about. The import report lists every collection with its card count on both sides.
+- **Dependencies.** WP-07, WP-14, WP-15, WP-38 (accounts).
+- **Size.** L. **Review.** Fable.
+
 ### WP-19. No database access from the browser
 
 - **Goal.** What the architecture says is checked by a machine: the browser cannot read or write data except through the server.
 - **Files.** `storage.rules` (deny all client writes; uploads use addresses issued by commands from `platform/files`), `src/lib/firebase.ts`, the lint configuration, `package.json`.
 - **Design.** ADR-04 rule 1, ADR-07.
 - **Acceptance.** No file under `src` imports `firebase/firestore`, `firebase/storage` or `firebase/functions`; the Storage rules deny every client write and a test proves an upload through a command works; on staging, the database's browser API is off and a request with the public key gets nothing; `src/lib` and `src/components` hold no data access.
-- **Dependencies.** WP-17, WP-18 (all parts), WP-16, WP-38.
+- **Dependencies.** WP-17, WP-18 (all parts), WP-16, WP-38, WP-40.
 - **Size.** S. **Review.** Fable.
 
 ---
@@ -463,7 +494,7 @@ What waits for the owner: WP-03 (staging part), WP-06 and WP-35 need the account
 ### WP-27. Theme tokens with guard rails, and visual tests
 
 - **Goal.** A validated theme format that the server renders, limits that keep every tournament readable, and screenshots that prove pages hold under any theme.
-- **Files.** `src/types/tournament.ts` (`TournamentTheme`, about 40 fields), `src/features/tournaments/domain/theme.ts`, `src/lib/themes/*`, `division-themes.ts`, `google-fonts.ts`, `dynamic-fonts.ts`, components with hard-coded colours (`docs/THEME_COLOR_AUDIT.md` is the list), `src/components/themed/*`, Playwright visual suite.
+- **Files.** `src/types/tournament.ts` (`TournamentTheme`, about 40 fields), `src/features/tournaments/domain/theme.ts`, `src/lib/themes/*`, `division-themes.ts`, `google-fonts.ts`, `dynamic-fonts.ts`, components with hard-coded colours (`docs/THEME_COLOR_AUDIT.md` is the list), Playwright visual suite.
 - **Design.** ADR-08 (theming); `TEST_STRATEGY.md` level 8. S2 decides which tokens organizers see; this WP builds the schema (versioned; the import converts current fields with no visible change), the contrast and size checks, font loading without blocking, and removes hard-coded colours.
 - **Acceptance.** Imported tournaments render identically after the theme conversion (screenshots); a theme that fails contrast cannot be published; the extreme test theme breaks no layout at three widths; no component reads a slug to pick a style.
 - **Dependencies.** WP-08. Coordinate with S2's customization WPs.
@@ -511,16 +542,16 @@ What waits for the owner: WP-03 (staging part), WP-06 and WP-35 need the account
 - **Dependencies.** M1, M2, WP-22.
 - **Size.** M. **Review.** Fable.
 
-### WP-37. Go-live steps two and three: new seasons, then retiring the old site
+### WP-37. Go-live steps two to four: PDL S2 moves, new seasons start, the old site retires
 
-- **Goal.** New seasons run on the new platform, and when the last old season has ended, the old site, its bot and its hosting are switched off.
-- **Files.** `docs/overhaul/runbooks/go-live-2.md`, `go-live-3.md`, `scripts/tools/export-firestore.mjs` (from WP-33).
-- **Design.** ADR-15 "Going live", steps 4 and 5. Written and rehearsed on staging by an agent; **the owner runs them.**
-  - Step two: the owner's export of the private collections (users, accounts, links, roles) is imported; the new bot service is started with its own Steam accounts; one season is created on the new platform and one test lobby is played; backups are confirmed.
-  - Moving a running season, if the owner wants it: between match days, capture, import, compare, then remove the tournament from the old site's reach. The runbook has the steps and the way back.
-  - Step three: import the last finished seasons; switch off the old bot and the old hosting; keep a Firestore export; turn the Firestore rules to deny all; rename `overhaul` to `main` and retire `master` (question 10: remind the owner).
-- **Acceptance.** Rehearsal reports for both runbooks; after step two, a real series is played end to end on the new platform with no admin action between lobby creation and updated standings; after step three, no request reaches the old hosting for a week before it is removed.
-- **Dependencies.** M3, M4, WP-36, WP-30.
+- **Goal.** PDL S2 is played on the new platform from one match day to the next; new seasons are created there; when the last old season has ended, the old site, its bot and its hosting are switched off.
+- **Files.** `docs/overhaul/runbooks/move-live-season.md`, `go-live-new-seasons.md`, `retire-old-site.md`, `scripts/tools/export-firestore.mjs` (from WP-33).
+- **Design.** ADR-15 "Going live", steps 4 to 6. Written and rehearsed on staging by an agent; **the owner runs them.**
+  - Moving PDL S2, between two match days: confirm the mirror report (WP-39) shows no unexplained difference; run the owner's export of the private data (users, accounts, links, roles, card collections, bot settings); import it; play one test lobby with the new bot and its own Steam accounts; set `serving` to `live`; watch the first match day with the owner. The way back is setting `serving` to `mirror`; results entered on the new side since the move are then entered again on the old side by hand, and the runbook lists how to find them.
+  - New seasons: backups confirmed (WP-36); creation is open to the allowlist.
+  - Retiring: import the last finished seasons; switch off the old bot and the old hosting; keep a Firestore export; turn the Firestore rules to deny all for the tournament collections (the inhouse bot's collections stay); rename `overhaul` to `main` and retire `master` (question 10: remind the owner).
+- **Acceptance.** Rehearsal reports for the three runbooks; after the move, a real PDL S2 series is played end to end on the new platform with no admin action between lobby creation and updated standings, and the card game works for its players; after retiring, no request reaches the old hosting for a week before it is removed.
+- **Dependencies.** M3, M4, WP-36, WP-39, WP-40, WP-30.
 - **Size.** M for the agent. **Review.** Fable.
 
 ---
