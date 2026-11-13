@@ -416,7 +416,6 @@ Each tournament has its own:
 | `docs/pdl-s1-logo.png` | PDL Season 1 logo |
 | `docs/FANTASY_SCORING_GUIDE.md` | Current fantasy scoring details |
 | `docs/PLAYOFF_SYSTEM.md` | Playoff bracket documentation |
-| `database_schema.md` | Current database schema |
 | `firestore.rules` | Current security rules |
 
 ---
