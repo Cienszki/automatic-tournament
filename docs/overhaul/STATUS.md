@@ -45,7 +45,7 @@ One line per WP: id, name, branch, state (planned / in progress / in review / me
 | WP-02 | Test the Firestore rules | — | dropped | No browser database access on the new platform |
 | WP-03 | Environments: local database, seed, CI, previews | `wp/03-environments` | planned | M, Opus review. Staging part needs question 5 |
 | WP-04 | Error monitoring and structured logs | `wp/04-observability` | planned | S, Opus review. Runs beside anything |
-| WP-05 | Delete dead code | `wp/05-dead-code` | in progress | M, Opus review. Implementer started 2026-11-13 |
+| WP-05 | Delete dead code | `wp/05-dead-code` | in review | M, Opus review. 385 files and 801k lines deleted (27k in `src`, 749k in `_archive/`); `scripts/tools/unreachable.mjs` runs in CI; 3 unreachable files kept for WP-13a and WP-16. Local build not run (disk full); CI builds it |
 | WP-06 | Trial: fast page on Vercel and Supabase, forwarding to the old site | `wp/06-hosting-trial` | planned | M, Fable review. Decision gate. Needs question 5 |
 | WP-07 | Platform kernel and enforced boundaries | `wp/07-platform-kernel` | planned | L, Fable review |
 | WP-08 | Server-rendered shell | `wp/08-server-shell` | planned | L, Fable review |
@@ -89,7 +89,7 @@ Each question has the asking session, the recommendation, the owner's answer if 
 
 2. **(S0) Browser measurements.** The owner said: run it, and install what is needed. S1 tried on 2026-11-13: `puppeteer-core` is not installed anywhere on this machine, and installing it into a new folder was refused twice by the session's permission system. The fastest way is for the owner to run these once, in the `overhaul` worktree, after question 13's `npm ci`:
    ```
-   node scripts/measure-pages.js https://dota2inhouse.pl pages.json /wiosenna /wiosenna/teams /wiosenna/schedule /pdl-s2 /pdl-s2/teams /pdl-s2/schedule
+   node scripts/tools/measure-pages.js https://dota2inhouse.pl pages.json /wiosenna /wiosenna/teams /wiosenna/schedule /pdl-s2 /pdl-s2/teams /pdl-s2/schedule
    ```
    and leave `pages.json` in the worktree. For agents to do this themselves in future, a Bash permission rule that allows `npm` installs and launching Edge headless outside the sandbox is needed. The numbers are useful as a "before" picture; no decision waits for them.
 5. **(S1) Create the staging accounts.** The list changed with the new database and is in `TEST_STRATEGY.md`, "What the owner must create" (points 1 to 7; all free). WP-03's staging part and WP-06 wait for it. Not answered yet beyond the general notes.
