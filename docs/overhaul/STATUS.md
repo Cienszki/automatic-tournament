@@ -91,11 +91,11 @@ Each question has the asking session, the recommendation, the owner's answer if 
 
 ### Open
 
-2. **(S0) Browser measurements.** `npm ci` has now been run in the `overhaul` worktree, so `puppeteer-core` is installed. What is still unknown is whether the agent sandbox lets Edge start. The next session tries once:
+2. **(S0) Browser measurements.** Tried again on 2026-11-13 after `npm ci`: `puppeteer-core` is installed now, but Edge fails to start from an agent's shell, inside and outside the sandbox ("Failed to launch the browser process"). The owner can run this line in a normal terminal in the `overhaul` worktree and leave `pages.json` there (it is git-ignored):
    ```
    node scripts/measure-pages.js https://dota2inhouse.pl pages.json /wiosenna /wiosenna/teams /wiosenna/schedule /pdl-s2 /pdl-s2/teams /pdl-s2/schedule
    ```
-   If it is refused, the owner runs that line in the worktree and leaves `pages.json` there. No decision waits for it.
+   No decision waits for it. The same limit means agents cannot look at screenshots locally; browser tests run in CI on GitHub.
 5. **(S1) The staging accounts.** In progress. The owner created the Supabase project, the Firebase project, a Vercel project and a Discord application, and asked for step-by-step help with the rest: it is `SETUP_STAGING.md`. The database password was pasted into the chat; the guide asks the owner to reset it. Nothing is verified yet.
 17. **(S1 revision 2) What do you pay today?** The table in `COSTS.md` section 1 is still empty. It only makes the cost report exact; nothing waits for it.
 
