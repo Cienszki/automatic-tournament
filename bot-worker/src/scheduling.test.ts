@@ -1,11 +1,57 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   buildBasePlayers,
   buildExpectedPlayersForGame,
   buildStandinAssignments,
   generateLobbyPassword,
+  scheduleUpcomingMatches,
   seriesTotals,
 } from './scheduling';
+import { MemoryStore } from './testing/memory-store';
+import { aBotConfig, aMatch } from './testing/fixtures';
+
+describe('scheduleUpcomingMatches', () => {
+  afterEach(() => { vi.useRealTimers(); });
+
+  function storeWith(matches: Record<string, ReturnType<typeof aMatch>>): MemoryStore {
+    vi.useFakeTimers({ now: new Date('2026-11-13T18:00:00Z') });
+    const store = new MemoryStore();
+    for (const [id, m] of Object.entries(matches)) store.putMatch('cup', id, m);
+    store.putTeam('cup', 'A', { tag: 'ALP', players: [{ id: 'a1', steamId32: '101', nickname: 'one' }] });
+    store.putTeam('cup', 'B', { tag: '', roster: { '7656': { steamId32: '201', nickname: 'two' } } });
+    return store;
+  }
+
+  it('creates one pending session per match inside the lead window, with group matches as bo2', async () => {
+    const store = storeWith({
+      soon: aMatch({ scheduledFor: '2026-11-13T18:08:00Z', group_id: 'g1' }),
+      late: aMatch({ scheduledFor: '2026-11-13T17:40:00Z', series_format: 'bo5' }),
+      far: aMatch({ scheduledFor: '2026-11-13T18:30:00Z' }),
+      stale: aMatch({ scheduledFor: '2026-11-13T17:20:00Z' }),
+      decided: aMatch({ scheduledFor: '2026-11-13T18:05:00Z', winnerId: 'A' }),
+      untimed: aMatch(),
+    });
+    const created = await scheduleUpcomingMatches(store, 'cup', aBotConfig(), { name: 'Cup', lobbySettings: { leagueName: 'PDL' } });
+    expect(created).toBe(2);
+    const sessions = [...store.sessions.values()];
+    expect(sessions.map((s) => [s.matchId, s.seriesFormat, s.totalGames, s.lobbySeriesType])).toEqual([
+      ['soon', 'bo2', 2, 1],
+      ['late', 'bo5', 5, 2],
+    ]);
+    // Tags first; a blank tag falls back to the name.
+    expect(sessions[0]).toMatchObject({ state: 'pending', botAccountId: '', lobbyName: 'ALP vs Beta - PDL', seriesScore: { A: 0, B: 0 } });
+    expect(sessions[0].lobbyPassword).toMatch(/^[A-Za-z0-9]{8}$/);
+    expect(sessions[0].direTeam.expectedPlayers).toEqual([{ steamId32: '201', nickname: 'two', isStandin: false }]);
+  });
+
+  it('skips a match that already has a live session, uses the fixed password, and does nothing when disabled', async () => {
+    const store = storeWith({ soon: aMatch({ scheduledFor: '2026-11-13T18:08:00Z' }) });
+    expect(await scheduleUpcomingMatches(store, 'cup', aBotConfig({ enabled: false }), null)).toBe(0);
+    expect(await scheduleUpcomingMatches(store, 'cup', aBotConfig({ lobby: { password: ' fixed ' } }), null)).toBe(1);
+    expect([...store.sessions.values()][0]).toMatchObject({ lobbyPassword: 'fixed', lobbyName: 'ALP vs Beta - Tournament', seriesFormat: 'bo3' });
+    expect(await scheduleUpcomingMatches(store, 'cup', aBotConfig(), null)).toBe(0);
+  });
+});
 
 describe('seriesTotals', () => {
   it.each([

@@ -10,7 +10,7 @@
 // series (the Runner advances currentGameNumber in-process), so we create one session
 // per match, not one per game.
 import crypto = require('crypto');
-import type { Firestore } from 'firebase-admin/firestore';
+import type { Store } from './store';
 import { logger } from './logger.js';
 import type {
     BasePlayer,
@@ -114,19 +114,16 @@ function buildExpectedPlayersForGame(basePlayers: BasePlayer[] | undefined, stan
  * or null if the match/teams can't be read. The base rosters + standinAssignments let the
  * runner recompute the effective roster for any game without re-reading the match doc.
  */
-async function buildLobbyTeamAssignments(db: Firestore, tournamentId: string, matchId: string, gameNumber = 1): Promise<LobbyTeamAssignments | null> {
-    const matchDoc = await db.collection('tournaments').doc(tournamentId).collection('matches').doc(matchId).get();
-    if (!matchDoc.exists) return null;
-    const match = matchDoc.data() as MatchDoc;
+async function buildLobbyTeamAssignments(store: Store, tournamentId: string, matchId: string, gameNumber = 1): Promise<LobbyTeamAssignments | null> {
+    const match = await store.getMatch(tournamentId, matchId);
+    if (!match) return null;
     if (!match.teamA?.id || !match.teamB?.id) return null;
 
-    const [teamADoc, teamBDoc] = await Promise.all([
-        db.collection('tournaments').doc(tournamentId).collection('teams').doc(match.teamA.id).get(),
-        db.collection('tournaments').doc(tournamentId).collection('teams').doc(match.teamB.id).get(),
+    const [teamA, teamB] = await Promise.all([
+        store.getTeam(tournamentId, match.teamA.id),
+        store.getTeam(tournamentId, match.teamB.id),
     ]);
-    if (!teamADoc.exists || !teamBDoc.exists) return null;
-    const teamA = teamADoc.data() as TeamDoc;
-    const teamB = teamBDoc.data() as TeamDoc;
+    if (!teamA || !teamB) return null;
 
     const baseRadiantPlayers = buildBasePlayers(teamA);
     const baseDirePlayers = buildBasePlayers(teamB);
@@ -150,39 +147,38 @@ async function buildLobbyTeamAssignments(db: Firestore, tournamentId: string, ma
 }
 
 /** Does the match already have a non-terminal session? */
-async function hasActiveSession(db: Firestore, matchId: string): Promise<boolean> {
-    const snap = await db.collection('botLobbySessions').where('matchId', '==', matchId).get();
-    return snap.docs.some((d) => !['completed', 'cancelled', 'error'].includes(d.data().state));
+async function hasActiveSession(store: Store, matchId: string): Promise<boolean> {
+    const sessions = await store.listSessionsForMatch(matchId);
+    return sessions.some((d) => !['completed', 'cancelled', 'error'].includes(d.data.state));
 }
 
 /**
  * Create pending lobby sessions for all matches of a tournament that are inside the
  * pre-warm window. Returns the number of sessions created.
  */
-async function scheduleUpcomingMatches(db: Firestore, tournamentId: string, botConfig: BotConfig | null | undefined, tournamentDoc: TournamentDoc | null | undefined): Promise<number> {
+async function scheduleUpcomingMatches(store: Store, tournamentId: string, botConfig: BotConfig | null | undefined, tournamentDoc: TournamentDoc | null | undefined): Promise<number> {
     if (!botConfig?.enabled) return 0;
     const leadMs = (botConfig.lobbyCreationLeadMinutes || 10) * 60 * 1000;
     const ts = Date.now();
     const windowEnd = ts + leadMs;
 
-    const matchesSnap = await db.collection('tournaments').doc(tournamentId).collection('matches')
-        .where('status', 'in', ['scheduled', 'upcoming', 'pending']).get();
-    if (matchesSnap.empty) return 0;
+    const matches = await store.listSchedulableMatches(tournamentId);
+    if (matches.length === 0) return 0;
 
     const lobbyPrefix = tournamentDoc?.lobbySettings?.leagueName || tournamentDoc?.name || 'Tournament';
     let created = 0;
 
-    for (const matchDoc of matchesSnap.docs) {
-        const match = matchDoc.data() as MatchDoc;
+    for (const matchDoc of matches) {
+        const match = matchDoc.data;
         const matchTime = match.scheduledFor ? new Date(match.scheduledFor).getTime() : null;
         // Skip: no time, too far out, or more than 30 min past.
         if (!matchTime || matchTime > windowEnd || matchTime < ts - 30 * 60 * 1000) continue;
         // Skip decided/completed matches.
         if (match.winnerId != null || match.status === 'completed') continue;
         // One series = one session: skip if any active session already exists.
-        if (await hasActiveSession(db, matchDoc.id)) continue;
+        if (await hasActiveSession(store, matchDoc.id)) continue;
 
-        const assignments = await buildLobbyTeamAssignments(db, tournamentId, matchDoc.id);
+        const assignments = await buildLobbyTeamAssignments(store, tournamentId, matchDoc.id);
         if (!assignments) { logger.warn(`[Scheduling] Could not build assignments for match ${matchDoc.id}`); continue; }
 
         // Mirror the fallback used in admin-match-actions-server.ts: group matches default
@@ -227,9 +223,9 @@ async function scheduleUpcomingMatches(db: Firestore, tournamentId: string, botC
             updatedAt: nowIso(),
         };
 
-        const ref = await db.collection('botLobbySessions').add(session);
+        const sessionId = await store.createSession(session);
         created++;
-        logger.info(`[Scheduling] Created session ${ref.id} for match ${matchDoc.id} (${session.lobbyName}, ${fmt})`);
+        logger.info(`[Scheduling] Created session ${sessionId} for match ${matchDoc.id} (${session.lobbyName}, ${fmt})`);
     }
     return created;
 }

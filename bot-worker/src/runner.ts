@@ -24,16 +24,17 @@
 
 import dotenv = require('dotenv');
 dotenv.config();
-import type { DocumentReference, Firestore } from 'firebase-admin/firestore';
 import { initFirebase } from './firebase.js';
 import { DotaClient } from './dota-client.js';
+import type { CreateLobbyClient, LobbyClient } from './lobby-client';
+import type { Store } from './store';
+import { FirestoreStore } from './store-firestore.js';
 import type { LobbyChatMessage, LobbyCreateOptions, LobbyUpdateData } from './dota-client.js';
 import { logger } from './logger.js';
 import * as L from './runner-logic.js';
 import type { SeriesResult } from './runner-logic.js';
 import { buildExpectedPlayersForGame, buildStandinAssignments } from './scheduling.js';
 import type {
-    BotAccountDoc,
     BotConfig,
     LateArrivalPolicy,
     LobbySlot,
@@ -76,15 +77,15 @@ function nowIso(): string { return new Date().toISOString(); }
 class Runner {
     // Field declarations only: the constructor below assigns them, and `declare`
     // keeps the compiled class identical to the hand-written one (no class fields).
-    declare db: Firestore;
+    declare store: Store;
     declare sessionId: string;
     declare botAccountId: string;
-    declare sessionRef: DocumentReference;
+    declare createClient: CreateLobbyClient;
     // session, botConfig and dota start as null and are set by run() before any
     // handler that reads them is wired up, so they are typed as always present.
     declare session: Session;
     declare botConfig: BotConfig;
-    declare dota: DotaClient;
+    declare dota: LobbyClient;
     declare timers: Partial<Record<TimerName, NodeJS.Timeout>>;
     declare finalizing: boolean;
     declare gameEndHandledFor: number | null;
@@ -109,11 +110,12 @@ class Runner {
     declare exitCode: number | undefined;
     declare donePromiseResolve: (() => void) | undefined;
 
-    constructor(db: Firestore, sessionId: string, botAccountId: string) {
-        this.db = db;
+    /** createClient is replaced by a fake in tests; production always logs in to Steam. */
+    constructor(store: Store, sessionId: string, botAccountId: string, createClient: CreateLobbyClient = (config) => new DotaClient(config)) {
+        this.store = store;
         this.sessionId = sessionId;
         this.botAccountId = botAccountId;
-        this.sessionRef = db.collection('botLobbySessions').doc(sessionId);
+        this.createClient = createClient;
         this.session = null!;      // in-memory mirror of the session doc (source of truth = Firestore, but we own lifecycle writes)
         this.botConfig = null!;    // tournaments/{id}/config/bot
         this.dota = null!;
@@ -140,17 +142,16 @@ class Runner {
 
     // ─── Boot ────────────────────────────────────────────────────────────────
     async run(): Promise<number> {
-        const snap = await this.sessionRef.get();
-        if (!snap.exists) { logger.error(`[Runner] Session ${this.sessionId} not found — exiting`); return 0; }
-        this.session = { id: snap.id, ...snap.data() as SessionData };
+        const session = await this.store.getSession(this.sessionId);
+        if (!session) { logger.error(`[Runner] Session ${this.sessionId} not found — exiting`); return 0; }
+        this.session = session;
         if (TERMINAL_STATES.includes(this.session.state)) {
             logger.info(`[Runner] Session ${this.sessionId} already ${this.session.state} — nothing to do`);
             return 0;
         }
 
-        const botSnap = await this.db.collection('botAccounts').doc(this.botAccountId).get();
-        if (!botSnap.exists) { logger.error(`[Runner] Bot account ${this.botAccountId} not found`); return 1; }
-        const bot = botSnap.data() as BotAccountDoc;
+        const bot = await this.store.getAccount(this.botAccountId);
+        if (!bot) { logger.error(`[Runner] Bot account ${this.botAccountId} not found`); return 1; }
         this.botDocSteamId32 = bot.steamId32 || null; // confirmed precisely after login (getSelfSteamId32)
 
         // Typed as present; the null case is handled on the next line.
@@ -166,7 +167,7 @@ class Runner {
 
         logger.info(`[Runner] session=${this.sessionId} match=${this.session.matchId} game=${this.session.currentGameNumber} bot=${bot.displayName || username}`);
 
-        this.dota = new DotaClient({ username, password, steamGuardSharedSecret: sharedSecret });
+        this.dota = this.createClient({ username, password, steamGuardSharedSecret: sharedSecret });
         this.wireDotaEvents();
 
         await this.updateBotStatus('connecting');
@@ -204,8 +205,7 @@ class Runner {
     }
 
     async loadBotConfig(tournamentId: string): Promise<BotConfig | null> {
-        const doc = await this.db.collection('tournaments').doc(tournamentId).collection('config').doc('bot').get();
-        return doc.exists ? doc.data() as BotConfig : null;
+        return this.store.getBotConfig(tournamentId);
     }
 
     /**
@@ -216,10 +216,9 @@ class Runner {
      */
     watchBotConfigDoc(): void {
         if (!this.session?.tournamentId) return;
-        const ref = this.db.collection('tournaments').doc(this.session.tournamentId).collection('config').doc('bot');
-        this.configUnsub = ref.onSnapshot((snap) => {
-            if (!snap.exists || this.finalizing) return;
-            this.botConfig = snap.data() as BotConfig;
+        this.configUnsub = this.store.watchBotConfig(this.session.tournamentId, (config) => {
+            if (!config || this.finalizing) return;
+            this.botConfig = config;
         }, (err) => logger.error('[Runner] config watch error', err));
     }
 
@@ -227,13 +226,13 @@ class Runner {
     /** Merge fields into the in-memory session and persist them to Firestore. */
     async updateSession(fields: Partial<SessionData>): Promise<void> {
         Object.assign(this.session, fields);
-        try { await this.sessionRef.update({ ...fields, updatedAt: nowIso() }); }
+        try { await this.store.updateSession(this.sessionId, { ...fields, updatedAt: nowIso() }); }
         catch (e) { logger.error('[Runner] Failed to update session', e); }
     }
 
     async updateBotStatus(status: string): Promise<void> {
         try {
-            await this.db.collection('botAccounts').doc(this.botAccountId).update({
+            await this.store.updateAccount(this.botAccountId, {
                 status, currentSessionId: this.sessionId,
                 lastHeartbeat: nowIso(), updatedAt: nowIso(),
             });
@@ -243,10 +242,10 @@ class Runner {
     startHeartbeat(): void {
         const beat = async () => {
             try {
-                await this.db.collection('botAccounts').doc(this.botAccountId).update({
+                await this.store.updateAccount(this.botAccountId, {
                     lastHeartbeat: nowIso(), connected: !!(this.dota && this.dota.isConnected),
                 });
-                await this.sessionRef.update({ lastHeartbeat: nowIso() });
+                await this.store.updateSession(this.sessionId, { lastHeartbeat: nowIso() });
             } catch { /* non-fatal */ }
         };
         this.timers.heartbeat = setInterval(beat, HEARTBEAT_MS);
@@ -261,9 +260,8 @@ class Runner {
      *    kick removed, update our in-memory allow-list.
      */
     watchSessionDoc(): void {
-        this.sessionUnsub = this.sessionRef.onSnapshot((snap) => {
-            if (!snap.exists) return;
-            const next: Session = { id: snap.id, ...snap.data() as SessionData };
+        this.sessionUnsub = this.store.watchSession(this.sessionId, (next) => {
+            if (!next) return;
             // External cancellation.
             if (TERMINAL_STATES.includes(next.state) && !this.finalizing) {
                 logger.warn(`[Runner] Session externally moved to ${next.state} — leaving`);
@@ -283,7 +281,7 @@ class Runner {
         }, (err) => logger.error('[Runner] session watch error', err));
     }
 
-    async reconcileRoster(next: Session): Promise<void> {
+    async reconcileRoster(next: Pick<SessionData, 'radiantTeam' | 'direTeam'>): Promise<void> {
         const acceptingPlayers = ['lobby_open', 'ready_check'].includes(this.session.state);
         const oldIds = new Set([
             ...this.session.radiantTeam.expectedPlayers.map((p) => p.steamId32),
@@ -322,12 +320,10 @@ class Runner {
      */
     watchMatchDoc(): void {
         if (!this.session?.tournamentId || !this.session?.matchId) return;
-        const ref = this.db.collection('tournaments').doc(this.session.tournamentId)
-            .collection('matches').doc(this.session.matchId);
-        this.matchUnsub = ref.onSnapshot((snap) => {
-            if (!snap.exists || this.finalizing) return;
-            this.recomputeRosterFromMatch(snap.data() as MatchDoc).catch((e) => logger.error('[Runner] match recompute', e));
-            this.inviteCasters(snap.data() as MatchDoc).catch((e) => logger.error('[Runner] caster invites', e));
+        this.matchUnsub = this.store.watchMatch(this.session.tournamentId, this.session.matchId, (match) => {
+            if (!match || this.finalizing) return;
+            this.recomputeRosterFromMatch(match).catch((e) => logger.error('[Runner] match recompute', e));
+            this.inviteCasters(match).catch((e) => logger.error('[Runner] caster invites', e));
         }, (err) => logger.error('[Runner] match watch error', err));
     }
 
@@ -335,7 +331,7 @@ class Runner {
      * Casters who took this match on the website (match.casters[].steamId32). Every caster of the
      * tournament is on the whitelist (never kicked); these are the ones who get an invite.
      */
-    casterIdsOf(match: MatchDoc | undefined): string[] {
+    casterIdsOf(match: MatchDoc | null | undefined): string[] {
         return [...new Set((match?.casters ?? []).map((c) => c && c.steamId32 && String(c.steamId32)).filter((id) => id && id !== '0'))] as string[];
     }
 
@@ -572,9 +568,8 @@ class Runner {
         }
         // ...and the casters who took this match (read now: the match watcher may not have fired yet)
         try {
-            const snap = await this.db.collection('tournaments').doc(this.session.tournamentId)
-                .collection('matches').doc(this.session.matchId).get();
-            const casters = this.casterIdsOf(snap.data() as MatchDoc | undefined).filter((id) => !this.invitedCasters.has(id));
+            const match = await this.store.getMatch(this.session.tournamentId, this.session.matchId);
+            const casters = this.casterIdsOf(match).filter((id) => !this.invitedCasters.has(id));
             for (const id of casters) {
                 try { await this.dota.invitePlayer(id); this.invitedCasters.add(id); }
                 catch (e) { logger.warn('[Runner] caster invite failed', e); }
@@ -1139,9 +1134,8 @@ class Runner {
             let penaltyRadiant = 0, penaltyDire = 0;
             const announce: Array<{ name: string; sec: number }> = [];
             try {
-                const matchSnap = await this.db.collection('tournaments').doc(this.session.tournamentId)
-                    .collection('matches').doc(this.session.matchId).get();
-                const penalties = (matchSnap.exists && (matchSnap.data() as MatchDoc).draftPenalties) || [];
+                const match = await this.store.getMatch(this.session.tournamentId, this.session.matchId);
+                const penalties = (match && match.draftPenalties) || [];
                 const levelFor = (teamId: string) => {
                     let lvl = 0;
                     for (const p of penalties) {
@@ -1248,7 +1242,7 @@ class Runner {
         const delayMin = this.botConfig.postMatch?.syncDelayMinutes ?? 5;
         const syncAt = new Date(now() + delayMin * 60000).toISOString();
         try {
-            await this.db.collection('botSyncTasks').add({
+            await this.store.addResultTask({
                 type: 'sync',
                 sessionId: this.sessionId,
                 matchId: this.session.matchId,
@@ -1271,7 +1265,7 @@ class Runner {
         const forfeitingTeamId = forfeitedSide === 'radiant'
             ? this.session.radiantTeam.teamId : this.session.direTeam.teamId;
         try {
-            await this.db.collection('botSyncTasks').add({
+            await this.store.addResultTask({
                 type: 'forfeit',
                 sessionId: this.sessionId,
                 matchId: this.session.matchId,
@@ -1651,9 +1645,8 @@ class Runner {
     async matchAlreadyComplete(): Promise<boolean> {
         if (!this.session?.tournamentId || !this.session?.matchId) return false;
         try {
-            const snap = await this.db.collection('tournaments').doc(this.session.tournamentId)
-                .collection('matches').doc(this.session.matchId).get();
-            return snap.exists && (snap.data() as MatchDoc).status === 'completed';
+            const match = await this.store.getMatch(this.session.tournamentId, this.session.matchId);
+            return !!match && match.status === 'completed';
         } catch { return false; }
     }
 
@@ -1687,7 +1680,7 @@ class Runner {
         if (reassignCount > MAX_REASSIGNS) {
             this.exitCode = 1;
             try {
-                await this.sessionRef.update({
+                await this.store.updateSession(this.sessionId, {
                     state: 'error',
                     error: { message: `Could not place lobby after ${MAX_REASSIGNS} bot reassignments: ${reason}`, code: 'NO_CLEAN_BOT', timestamp: nowIso() },
                     updatedAt: nowIso(),
@@ -1698,14 +1691,14 @@ class Runner {
             this.exitCode = 0;
             // Long cooldown on the stuck bot so the Conductor's pool skips it until its game clears.
             try {
-                await this.db.collection('botAccounts').doc(this.botAccountId).update({
+                await this.store.updateAccount(this.botAccountId, {
                     status: 'idle', busyWithSessionId: null, currentSessionId: null,
                     cooldownUntil: new Date(now() + 30 * 60000).toISOString(), lastStuckAt: nowIso(), updatedAt: nowIso(),
                 });
             } catch { /* ignore */ }
             // Bounce the session back to the pool for a different bot.
             try {
-                await this.sessionRef.update({ state: 'pending', botAccountId: '', reassignReason: reason, reassignCount, updatedAt: nowIso() });
+                await this.store.updateSession(this.sessionId, { state: 'pending', botAccountId: '', reassignReason: reason, reassignCount, updatedAt: nowIso() });
             } catch { /* ignore */ }
             logger.info(`[Runner] Bounced session ${this.sessionId} to pending (reassign ${reassignCount}/${MAX_REASSIGNS}); bot ${this.botAccountId} on 30min cooldown`);
         }
@@ -1731,13 +1724,13 @@ class Runner {
         if (this.configUnsub) { try { this.configUnsub(); } catch { /* ignore */ } this.configUnsub = null; }
 
         if (!alreadyPersisted && state) {
-            try { await this.sessionRef.update({ state, completedAt: nowIso(), updatedAt: nowIso() }); } catch { /* ignore */ }
+            try { await this.store.updateSession(this.sessionId, { state, completedAt: nowIso(), updatedAt: nowIso() }); } catch { /* ignore */ }
         }
         // Only release the account on a TERMINAL finish. On a crash/respawn exit (non-terminal
         // state, exitCode 1) the Conductor will respawn this same runner with this same account,
         // so flipping it to idle here would let another session double-claim it.
         if (TERMINAL_STATES.includes(state)) {
-            try { await this.db.collection('botAccounts').doc(this.botAccountId).update({ status: 'idle', busyWithSessionId: null, currentSessionId: null, updatedAt: nowIso() }); } catch { /* ignore */ }
+            try { await this.store.updateAccount(this.botAccountId, { status: 'idle', busyWithSessionId: null, currentSessionId: null, updatedAt: nowIso() }); } catch { /* ignore */ }
         }
         try { if (this.dota) await this.dota.disconnect(); } catch { /* ignore */ }
         logger.info(`[Runner] Finished session ${this.sessionId} → ${state} (exit ${exitCode})`);
@@ -1763,8 +1756,8 @@ async function main(): Promise<void> {
         process.exit(1);
     }
 
-    const db = initFirebase();
-    const runner = new Runner(db, sessionId, botAccountId);
+    const store = new FirestoreStore(initFirebase());
+    const runner = new Runner(store, sessionId, botAccountId);
 
     let shuttingDown = false;
     const shutdown = async (signal: string) => {
@@ -1788,7 +1781,7 @@ async function main(): Promise<void> {
         // here is often transient (Steam rate-limit, GC hello timeout). Exiting non-zero lets the
         // Conductor respawn with backoff; it owns the crash-loop→error decision after a cap.
         try {
-            await db.collection('botLobbySessions').doc(sessionId).update({
+            await store.updateSession(sessionId, {
                 lastRunnerError: { message: err instanceof Error ? err.message : String(err), timestamp: nowIso() },
                 updatedAt: nowIso(),
             });
@@ -1797,4 +1790,7 @@ async function main(): Promise<void> {
     }
 }
 
-main();
+// Run only as the forked process (node dist/runner.js); tests import Runner instead.
+if (require.main === module) main();
+
+export { Runner };

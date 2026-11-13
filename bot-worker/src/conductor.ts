@@ -28,8 +28,10 @@ dotenv.config();
 import { initFirebase } from './firebase.js';
 import { logger } from './logger.js';
 import { scheduleUpcomingMatches } from './scheduling.js';
+import { FirestoreStore } from './store-firestore.js';
+import type { Store } from './store';
 import type { InhouseRunners } from './inhouse/conductor-hook';
-import type { BotAccountDoc, BotConfig, SessionData, TournamentDoc } from './types';
+import type { BotConfig, SessionData, SessionState } from './types';
 
 type InhouseHook = typeof import('./inhouse/conductor-hook');
 
@@ -64,7 +66,7 @@ catch (err) {
 
 const RUNNER_SCRIPT = path.resolve(__dirname, 'runner.js');
 const TERMINAL_STATES = ['completed', 'cancelled', 'error'];
-const ACTIVE_STATES = ['bot_assigned', 'lobby_creating', 'lobby_open', 'ready_check', 'requirements_met', 'coin_toss', 'in_game', 'post_game', 'syncing'];
+const ACTIVE_STATES: SessionState[] = ['bot_assigned', 'lobby_creating', 'lobby_open', 'ready_check', 'requirements_met', 'coin_toss', 'in_game', 'post_game', 'syncing'];
 
 const WORK_TICK_MS = 20000;       // assign + spawn + pending-timeout
 const SCHEDULE_TICK_MS = 60000;   // scan tournaments + create sessions
@@ -88,7 +90,9 @@ const runners = new Map<string, RunnerState>();
 /** inhouse: gameId → supervised runner state (separate keyspace, same shape) */
 const inhouseRunners: InhouseRunners = new Map();
 let shuttingDown = false;
+/** Only for the inhouse hook, which has its own store; everything else goes through `store`. */
 let db: Firestore;
+let store: Store;
 
 // ─── Per-tournament bot config cache (for pending timeouts) ──────────────────
 const configCache = new Map<string, { cfg: BotConfig | null; at: number }>(); // tournamentId → { cfg, at }
@@ -97,8 +101,7 @@ async function getBotConfig(tournamentId: string): Promise<BotConfig | null> {
     if (cached && Date.now() - cached.at < 60000) return cached.cfg;
     let cfg: BotConfig | null = null;
     try {
-        const doc = await db.collection('tournaments').doc(tournamentId).collection('config').doc('bot').get();
-        cfg = doc.exists ? doc.data() as BotConfig : null;
+        cfg = await store.getBotConfig(tournamentId);
     } catch { /* ignore */ }
     configCache.set(tournamentId, { cfg, at: Date.now() });
     return cfg;
@@ -108,12 +111,12 @@ async function getBotConfig(tournamentId: string): Promise<BotConfig | null> {
 async function scheduleLoop(): Promise<void> {
     if (shuttingDown) return;
     try {
-        const tournaments = await db.collection('tournaments').get();
-        for (const doc of tournaments.docs) {
+        const tournaments = await store.listTournaments();
+        for (const doc of tournaments) {
             const cfg = await getBotConfig(doc.id);
             if (!cfg?.enabled) continue;
             try {
-                await scheduleUpcomingMatches(db, doc.id, cfg, doc.data() as TournamentDoc);
+                await scheduleUpcomingMatches(store, doc.id, cfg, doc.data);
             } catch (e) {
                 logger.error(`[Conductor] scheduleUpcomingMatches failed for ${doc.id}`, e);
             }
@@ -146,42 +149,40 @@ async function syncLoop(): Promise<void> {
 
 // ─── 2. ASSIGN ───────────────────────────────────────────────────────────────
 async function assignPendingSessions(): Promise<void> {
-    const pendingSnap = await db.collection('botLobbySessions')
-        .where('state', '==', 'pending').orderBy('createdAt', 'asc').get();
-    if (pendingSnap.empty) return;
+    const pending = await store.listPendingSessionsOldestFirst();
+    if (pending.length === 0) return;
 
     // Available accounts: enabled + idle + not in cooldown + not already driving a runner.
-    const acctSnap = await db.collection('botAccounts')
-        .where('enabled', '==', true).where('status', '==', 'idle').get();
+    const accounts = await store.listIdleEnabledAccounts();
     const busy = new Set([...runners.values()].map((r) => r.botAccountId));
     const ts = Date.now();
-    const available = acctSnap.docs.filter((d) => {
-        const a = d.data() as BotAccountDoc;
+    const available = accounts.filter((d) => {
+        const a = d.data;
         if (busy.has(d.id)) return false;
         if (a.cooldownUntil && new Date(a.cooldownUntil).getTime() > ts) return false;
         return true;
     });
 
     if (available.length === 0) {
-        if (!pendingSnap.empty) logger.warn(`[Conductor] ${pendingSnap.size} pending session(s) but no available bot accounts`);
+        if (pending.length > 0) logger.warn(`[Conductor] ${pending.length} pending session(s) but no available bot accounts`);
         return;
     }
 
     let i = 0;
-    for (const sessionDoc of pendingSnap.docs) {
+    for (const sessionDoc of pending) {
         if (i >= available.length) break;
-        const session = sessionDoc.data() as SessionData;
+        const session = sessionDoc.data;
         const cfg = await getBotConfig(session.tournamentId);
         if (!cfg?.enabled) continue;
 
         const botDoc = available[i++];
         try {
-            await db.collection('botAccounts').doc(botDoc.id).update({
+            await store.updateAccount(botDoc.id, {
                 status: 'starting', busyWithSessionId: sessionDoc.id, currentSessionId: sessionDoc.id,
                 currentMatchId: session.matchId, currentTournamentId: session.tournamentId, updatedAt: nowIso(),
             });
-            await sessionDoc.ref.update({ state: 'bot_assigned', botAccountId: botDoc.id, updatedAt: nowIso() });
-            logger.info(`[Conductor] Assigned bot ${(botDoc.data() as BotAccountDoc).displayName || botDoc.id} to session ${sessionDoc.id} (match ${session.matchId})`);
+            await store.updateSession(sessionDoc.id, { state: 'bot_assigned', botAccountId: botDoc.id, updatedAt: nowIso() });
+            logger.info(`[Conductor] Assigned bot ${botDoc.data.displayName || botDoc.id} to session ${sessionDoc.id} (match ${session.matchId})`);
         } catch (e) {
             logger.error(`[Conductor] Failed to assign bot ${botDoc.id} to session ${sessionDoc.id}`, e);
             i--; // let this account be retried next round
@@ -195,10 +196,10 @@ async function assignPendingSessions(): Promise<void> {
 // it only records a backoff. This prevents the double-spawn storm where a setTimeout respawn
 // and this tick both launched a runner for the same bot, causing LogonSessionReplaced churn.
 async function ensureRunners(): Promise<void> {
-    const snap = await db.collection('botLobbySessions').where('state', 'in', ACTIVE_STATES).get();
+    const sessions = await store.listSessionsInStates(ACTIVE_STATES);
     const now = Date.now();
-    for (const doc of snap.docs) {
-        const session = doc.data() as SessionData;
+    for (const doc of sessions) {
+        const session = doc.data;
         if (!session.botAccountId) continue;
         const existing = runners.get(doc.id);
         if (existing) {
@@ -244,7 +245,7 @@ async function onRunnerExit(sessionId: string, code: number | null, signal: Node
 
     // Re-read the session: terminal → clean finish, else → crash (respawn).
     let session: SessionData | null = null;
-    try { const d = await db.collection('botLobbySessions').doc(sessionId).get(); session = d.exists ? d.data() as SessionData : null; }
+    try { session = await store.getSession(sessionId); }
     catch (e) { logger.error('[Conductor] failed to read session on exit', e); }
 
     if (!session || TERMINAL_STATES.includes(session.state)) {
@@ -268,7 +269,7 @@ async function onRunnerExit(sessionId: string, code: number | null, signal: Node
     if (state.restartCount >= MAX_RESPAWNS) {
         logger.error(`[Conductor] Runner for session ${sessionId} crashed ${MAX_RESPAWNS}× — marking session error`);
         try {
-            await db.collection('botLobbySessions').doc(sessionId).update({
+            await store.updateSession(sessionId, {
                 state: 'error',
                 error: { message: `Runner crashed ${MAX_RESPAWNS} times`, code: 'RUNNER_CRASH_LOOP', timestamp: nowIso() },
                 updatedAt: nowIso(),
@@ -288,7 +289,7 @@ async function onRunnerExit(sessionId: string, code: number | null, signal: Node
 async function releaseAccount(botAccountId: string): Promise<void> {
     if (!botAccountId) return;
     try {
-        await db.collection('botAccounts').doc(botAccountId).update({
+        await store.updateAccount(botAccountId, {
             status: 'idle', busyWithSessionId: null, currentSessionId: null,
             currentMatchId: null, currentTournamentId: null,
             cooldownUntil: new Date(Date.now() + ACCOUNT_COOLDOWN_MS).toISOString(),
@@ -300,16 +301,16 @@ async function releaseAccount(botAccountId: string): Promise<void> {
 
 // ─── 5. PENDING TIMEOUT ──────────────────────────────────────────────────────
 async function cancelStuckPending(): Promise<void> {
-    const snap = await db.collection('botLobbySessions').where('state', '==', 'pending').get();
+    const pending = await store.listPendingSessions();
     const ts = Date.now();
-    for (const doc of snap.docs) {
-        const session = doc.data() as SessionData;
+    for (const doc of pending) {
+        const session = doc.data;
         const cfg = await getBotConfig(session.tournamentId);
         const timeoutMin = cfg?.pendingSessionTimeoutMinutes ?? 20;
         const elapsedMin = (ts - new Date(session.createdAt).getTime()) / 60000;
         if (elapsedMin >= timeoutMin) {
             try {
-                await doc.ref.update({
+                await store.updateSession(doc.id, {
                     state: 'cancelled',
                     cancelReason: `No bot was available for ${Math.round(elapsedMin)} minutes`,
                     completedAt: nowIso(), updatedAt: nowIso(),
@@ -347,6 +348,7 @@ async function main(): Promise<void> {
         process.exit(1);
     }
     db = initFirebase();
+    store = new FirestoreStore(db);
 
     // The first workTick rediscovers active sessions and respawns their runners (which
     // reattach to live lobbies from the GC cache). Routed through workTick so the overlap
