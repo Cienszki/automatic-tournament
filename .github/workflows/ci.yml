@@ -61,7 +61,10 @@ jobs:
         run: npm ci
       - name: Install the bot's dependencies
         working-directory: bot-worker
-        run: npm ci
+        # npm's error lines are repeated as annotations so they show on the run's summary.
+        run: |
+          set -o pipefail
+          npm ci 2>&1 | tee npm-ci.log || { grep -E 'npm (error|ERR)' npm-ci.log | head -30 | sed 's/^/::error::/'; exit 1; }
       - name: dist/ is not in git
         run: test -z "$(git ls-files bot-worker/dist)"
       - name: Typecheck
