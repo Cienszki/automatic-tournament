@@ -205,7 +205,7 @@ Each decision is a short record: context, options, choice, reason, cost.
 
 - **PostgreSQL, hosted on Supabase, in Frankfurt.** Supabase is used as a database host only: a connection string for the server and the bot. Its client library, its sign-in and its browser API are not used, so moving to any other PostgreSQL host is a dump, a restore and a new connection string.
 - **Drizzle** defines the schema in TypeScript and generates SQL migrations. Tests run against an in-process PostgreSQL (PGlite), with no Docker and no Java.
-- **Firebase keeps two jobs:** sign-in (Firebase Auth, so no user has to do anything and user ids stay the same) and files (Storage, so no file or link moves). The Firestore database stays only for the old site until it retires and for the inhouse Discord bot, which is outside this overhaul.
+- **Firebase keeps two jobs:** sign-in (Firebase Auth, so no user has to do anything and user ids stay the same) and files (Storage, so no file or link moves). The owner left this to Fable (question 16). Both are free at this size and work; replacing either would move every user or every file for no gain a visitor could notice. Both sit behind `platform/auth` and `platform/files`, so either can be replaced later in one place. The Firestore database stays only for the old site until it retires and for the inhouse Discord bot, which is outside this overhaul.
 
 **Why PostgreSQL.**
 - The data is relational: teams play matches, matches have games, games have performances, and almost every screen is a table or a sum over them. In Firestore each of those needed a hand-kept copy or a browser-side calculation; that is where the seven standings implementations and the three stats calculators came from.
@@ -231,7 +231,7 @@ Each decision is a short record: context, options, choice, reason, cost.
 
 - **One model for every format.** A tournament has ordered *stages* (round robin, Swiss, bracket). A stage has *groups* (a league's divisions and a group stage's groups are the same thing). A playoff match is an ordinary match with a bracket position. This replaces `divisions`, `groups`, `swissRounds`, `playoffs` and `playoff_matches` with its mirror into `matches`.
 - **Typed columns for what is queried, JSON for what is only displayed.** Theme, format settings and ranking rules are JSON columns validated by a schema in code. Raw OpenDota responses are not stored in the database.
-- The card game's tables are designed by S3. Until then the card game is not on the new platform.
+- The card game moves as it is today (WP-40), because the owner wants it on PDL S2 when that season moves. Its engine is already pure code and does not change; only its storage moves to tables. S3 redesigns the game later, on top of that.
 
 **How the data gets there.** An import tool reads Firestore data (a read-only export the owner makes) and writes the new tables, one tournament at a time, and can be run again without duplicating anything. It has an adapter for Letnia's old layout. It prints a comparison report: counts, standings and totals on both sides (WP-33). Production Firestore is only ever read.
 
@@ -524,13 +524,16 @@ A lint rule enforces all five. Old code in `src/lib` and `src/components` is exe
 1. **Old production is frozen for features.** The production branch gets fixes only. Anything new is built on the new platform. Otherwise the two drift and the import tool chases a moving target.
 2. **The new app sits in front.** The community site forwards to the new app. The new app serves the tournaments it has and forwards every other path to the old site, as the community site forwards to it today. Visitors and links see one site.
 3. **Step one: the archive.** Letnia, which nobody can open today, and finished seasons are imported and served by the new platform. This puts the new stack in front of real visitors with nothing at stake, and it can happen as soon as the public pages are done (after M1).
-4. **Step two: new seasons.** A new season is created on the new platform once organizers can run one there (after M3). A running season is not moved; it ends on the old site, or the owner moves it between match days with the same import tool.
-5. **Step three: the old site retires.** When its last tournament has ended and been imported, the old hosting and the old bot are switched off. The Firestore data is kept as an export.
+4. **Step two: PDL S2 runs in both systems.** The owner wants the new platform proven on a real season that is being played, and accepts the rough edges.
+   - **Mirror.** As soon as public pages exist, PDL S2 is captured from the old site on a schedule and imported. A tournament has a `serving` state: `mirror` means it is in the new database and visible on the new app's own address, while the public domain still forwards to the old site. Each day a report compares the two sites for that season: tables, results, schedule, stats. The new results code also runs in dry-run on every newly captured game and its output is compared with what the old site saved.
+   - **Move.** When organizers, captains, the bot and the card game work on the new platform (M3, M4, WP-40), the owner moves PDL S2 between two match days: a last capture and import, the owner's export of the private data (accounts, roles, card collections), `serving` set to `live`, and the new bot takes its lobbies. The old copy is left untouched as the way back; anything entered on the new side after the move would have to be entered again on the old side if the move is undone.
+5. **Step three: new seasons** are created on the new platform.
+6. **Step four: the old site retires.** When its last tournament has ended and been imported, the old hosting and the old bot are switched off. The Firestore data is kept as an export.
 
-Rollback of any step is removing that tournament from the new database or switching the forwarding back; the old site and its data are untouched until step three.
+Rollback of any step is removing that tournament from the new database or switching the forwarding back; the old site and its data are untouched until step four.
 
 - **Feature flags** are columns on the tournament or a platform settings row, read on the server.
-- **Branches.** `overhaul` becomes the new production branch. After step three it is renamed `main` and `master` is retired (question 10; the owner asked to be reminded).
+- **Branches.** `overhaul` becomes the new production branch. After step four it is renamed `main` and `master` is retired (question 10; the owner asked to be reminded).
 
 **Cost.** Two systems run side by side for a while, including two bots. Sign-in is shared (same Firebase project, same domain), so a user is signed in on both. Account links changed on one side appear on the other only after the next import run.
 

@@ -160,3 +160,8 @@ firebase-acc.json
 test-*.js
 check-*.js
 fix-*.js
+
+# Staging values for the new platform (see docs/overhaul/SETUP_STAGING.md)
+.env.staging.local
+.env.staging
+.vercel
