@@ -588,7 +588,7 @@ The website never calls the bot, and the bot cannot read the website's tables. T
 | Archive and first seasons live, no income | new platform on free plans; old site winding down | $0 to $5 (a second small bot service) |
 | Public launch, first income | paid hosting and database for backups and the commercial licence | about $45 to $70 |
 | About 100 active tournaments | more bot capacity, a paid OpenDota key | about $80 to $130 |
-| About 1,000 active tournaments | larger database, several bot workers | about $250 to $450, so $0.25 to $0.45 per tournament |
+| About 1,000 active tournaments | larger database, several bot workers, CDN usage | about $300 to $500, so $0.30 to $0.50 per tournament |
 
 Why the cost per tournament is low and flat:
 
