@@ -1,6 +1,5 @@
-// @ts-nocheck
 "use strict";
-// bot-worker/dist/conductor.js
+// bot-worker/src/conductor.ts
 // Conductor — the thin, always-on supervisor of the meepow-style rebuild.
 //
 // Replaces the old manager.js (which kept one persistent worker per account) AND the
@@ -21,13 +20,29 @@
 // The result-sync path (botSyncTasks → OpenDota import → standings) stays in the Next.js
 // app; the Runner writes botSyncTasks on game-end and the existing executor consumes them.
 
-const path = require('path');
-const { fork } = require('child_process');
-const dotenv = require('dotenv');
+import path = require('path');
+import { fork, type ChildProcess } from 'child_process';
+import dotenv = require('dotenv');
+import type { Firestore } from 'firebase-admin/firestore';
 dotenv.config();
-const { initFirebase } = require('./firebase.js');
-const { logger } = require('./logger.js');
-const { scheduleUpcomingMatches } = require('./scheduling.js');
+import { initFirebase } from './firebase.js';
+import { logger } from './logger.js';
+import { scheduleUpcomingMatches } from './scheduling.js';
+import type { InhouseRunners } from './inhouse/conductor-hook';
+import type { BotAccountDoc, BotConfig, SessionData, TournamentDoc } from './types';
+
+type InhouseHook = typeof import('./inhouse/conductor-hook');
+
+/** Supervised runner state, per session. */
+interface RunnerState {
+    child: ChildProcess | null;
+    botAccountId: string;
+    restartCount: number;
+    lastStart: number;
+    stopping: boolean;
+    notBefore: number;
+}
+
 // Inhouse lobbies are supervised the same way tournament ones are, but driven
 // by inhouseGames instead of botLobbySessions. All of that logic lives in the
 // module below (real TypeScript, built from src/) so the footprint in this
@@ -38,10 +53,10 @@ const { scheduleUpcomingMatches } = require('./scheduling.js');
 // missed by the `dist` gitignore rule, a bad build — a boot crash that takes
 // tournaments down with it. Degrading to no-ops instead means the worst an
 // inhouse problem can do is disable inhouses.
-let spawnInhouseRunnersTick = async () => { };
-let stopInhouseRunners = () => { };
+let spawnInhouseRunnersTick: InhouseHook['spawnInhouseRunnersTick'] = async () => { };
+let stopInhouseRunners: InhouseHook['stopInhouseRunners'] = () => { };
 try {
-    ({ spawnInhouseRunnersTick, stopInhouseRunners } = require('./inhouse/conductor-hook.js'));
+    ({ spawnInhouseRunnersTick, stopInhouseRunners } = require('./inhouse/conductor-hook.js') as InhouseHook);
 }
 catch (err) {
     logger.error('[Conductor] Inhouse hook failed to load — inhouse lobbies disabled, tournaments unaffected', err);
@@ -66,31 +81,31 @@ const SYNC_TICK_MS = 5 * 60 * 1000;
 const WEB_SYNC_URL = process.env.WEB_SYNC_URL || '';     // https://tournament-tracker-f35tb.web.app/api/manage/bot/orchestrate (/api/admin* is 410/401 since 2026-10-20)
 const CRON_SECRET = process.env.CRON_SECRET || '';
 
-function nowIso() { return new Date().toISOString(); }
+function nowIso(): string { return new Date().toISOString(); }
 
 /** sessionId → supervised runner state */
-const runners = new Map();
+const runners = new Map<string, RunnerState>();
 /** inhouse: gameId → supervised runner state (separate keyspace, same shape) */
-const inhouseRunners = new Map();
+const inhouseRunners: InhouseRunners = new Map();
 let shuttingDown = false;
-let db;
+let db: Firestore;
 
 // ─── Per-tournament bot config cache (for pending timeouts) ──────────────────
-const configCache = new Map(); // tournamentId → { cfg, at }
-async function getBotConfig(tournamentId) {
+const configCache = new Map<string, { cfg: BotConfig | null; at: number }>(); // tournamentId → { cfg, at }
+async function getBotConfig(tournamentId: string): Promise<BotConfig | null> {
     const cached = configCache.get(tournamentId);
     if (cached && Date.now() - cached.at < 60000) return cached.cfg;
-    let cfg = null;
+    let cfg: BotConfig | null = null;
     try {
         const doc = await db.collection('tournaments').doc(tournamentId).collection('config').doc('bot').get();
-        cfg = doc.exists ? doc.data() : null;
+        cfg = doc.exists ? doc.data() as BotConfig : null;
     } catch { /* ignore */ }
     configCache.set(tournamentId, { cfg, at: Date.now() });
     return cfg;
 }
 
 // ─── 1. SCHEDULE ─────────────────────────────────────────────────────────────
-async function scheduleLoop() {
+async function scheduleLoop(): Promise<void> {
     if (shuttingDown) return;
     try {
         const tournaments = await db.collection('tournaments').get();
@@ -98,7 +113,7 @@ async function scheduleLoop() {
             const cfg = await getBotConfig(doc.id);
             if (!cfg?.enabled) continue;
             try {
-                await scheduleUpcomingMatches(db, doc.id, cfg, doc.data());
+                await scheduleUpcomingMatches(db, doc.id, cfg, doc.data() as TournamentDoc);
             } catch (e) {
                 logger.error(`[Conductor] scheduleUpcomingMatches failed for ${doc.id}`, e);
             }
@@ -109,7 +124,7 @@ async function scheduleLoop() {
 }
 
 // ─── Result-sync trigger (replaces Cloud Scheduler) ──────────────────────────
-async function syncLoop() {
+async function syncLoop(): Promise<void> {
     if (shuttingDown || !WEB_SYNC_URL || !CRON_SECRET) return;
     try {
         const res = await fetch(WEB_SYNC_URL, {
@@ -122,7 +137,7 @@ async function syncLoop() {
             logger.warn(`[Conductor] sync trigger HTTP ${res.status}: ${text.slice(0, 200)}`);
             return;
         }
-        let executed; try { executed = JSON.parse(text).syncTasksExecuted; } catch { /* ignore */ }
+        let executed: unknown; try { executed = JSON.parse(text).syncTasksExecuted; } catch { /* ignore */ }
         if (executed) logger.info(`[Conductor] sync trigger ok — ${executed} task(s) executed`);
     } catch (e) {
         logger.warn('[Conductor] sync trigger failed', e);
@@ -130,7 +145,7 @@ async function syncLoop() {
 }
 
 // ─── 2. ASSIGN ───────────────────────────────────────────────────────────────
-async function assignPendingSessions() {
+async function assignPendingSessions(): Promise<void> {
     const pendingSnap = await db.collection('botLobbySessions')
         .where('state', '==', 'pending').orderBy('createdAt', 'asc').get();
     if (pendingSnap.empty) return;
@@ -141,7 +156,7 @@ async function assignPendingSessions() {
     const busy = new Set([...runners.values()].map((r) => r.botAccountId));
     const ts = Date.now();
     const available = acctSnap.docs.filter((d) => {
-        const a = d.data();
+        const a = d.data() as BotAccountDoc;
         if (busy.has(d.id)) return false;
         if (a.cooldownUntil && new Date(a.cooldownUntil).getTime() > ts) return false;
         return true;
@@ -155,7 +170,7 @@ async function assignPendingSessions() {
     let i = 0;
     for (const sessionDoc of pendingSnap.docs) {
         if (i >= available.length) break;
-        const session = sessionDoc.data();
+        const session = sessionDoc.data() as SessionData;
         const cfg = await getBotConfig(session.tournamentId);
         if (!cfg?.enabled) continue;
 
@@ -166,7 +181,7 @@ async function assignPendingSessions() {
                 currentMatchId: session.matchId, currentTournamentId: session.tournamentId, updatedAt: nowIso(),
             });
             await sessionDoc.ref.update({ state: 'bot_assigned', botAccountId: botDoc.id, updatedAt: nowIso() });
-            logger.info(`[Conductor] Assigned bot ${botDoc.data().displayName || botDoc.id} to session ${sessionDoc.id} (match ${session.matchId})`);
+            logger.info(`[Conductor] Assigned bot ${(botDoc.data() as BotAccountDoc).displayName || botDoc.id} to session ${sessionDoc.id} (match ${session.matchId})`);
         } catch (e) {
             logger.error(`[Conductor] Failed to assign bot ${botDoc.id} to session ${sessionDoc.id}`, e);
             i--; // let this account be retried next round
@@ -179,11 +194,11 @@ async function assignPendingSessions() {
 // for respawning after a crash (gated by `notBefore`). onRunnerExit never spawns directly;
 // it only records a backoff. This prevents the double-spawn storm where a setTimeout respawn
 // and this tick both launched a runner for the same bot, causing LogonSessionReplaced churn.
-async function ensureRunners() {
+async function ensureRunners(): Promise<void> {
     const snap = await db.collection('botLobbySessions').where('state', 'in', ACTIVE_STATES).get();
     const now = Date.now();
     for (const doc of snap.docs) {
-        const session = doc.data();
+        const session = doc.data() as SessionData;
         if (!session.botAccountId) continue;
         const existing = runners.get(doc.id);
         if (existing) {
@@ -194,7 +209,7 @@ async function ensureRunners() {
     }
 }
 
-function spawnRunner(sessionId, botAccountId) {
+function spawnRunner(sessionId: string, botAccountId: string): void {
     if (shuttingDown) return;
     const state = runners.get(sessionId) ?? { child: null, botAccountId, restartCount: 0, lastStart: 0, stopping: false, notBefore: 0 };
     // Hard guard: never launch a second runner while one is alive (a bot can host only one
@@ -217,7 +232,7 @@ function spawnRunner(sessionId, botAccountId) {
     child.on('exit', (code, signal) => onRunnerExit(sessionId, code, signal).catch((e) => logger.error('[Conductor] onRunnerExit', e)));
 }
 
-async function onRunnerExit(sessionId, code, signal) {
+async function onRunnerExit(sessionId: string, code: number | null, signal: NodeJS.Signals | null): Promise<void> {
     const state = runners.get(sessionId);
     if (!state) return;
     state.child = null;
@@ -228,8 +243,8 @@ async function onRunnerExit(sessionId, code, signal) {
     }
 
     // Re-read the session: terminal → clean finish, else → crash (respawn).
-    let session = null;
-    try { const d = await db.collection('botLobbySessions').doc(sessionId).get(); session = d.exists ? d.data() : null; }
+    let session: SessionData | null = null;
+    try { const d = await db.collection('botLobbySessions').doc(sessionId).get(); session = d.exists ? d.data() as SessionData : null; }
     catch (e) { logger.error('[Conductor] failed to read session on exit', e); }
 
     if (!session || TERMINAL_STATES.includes(session.state)) {
@@ -270,7 +285,7 @@ async function onRunnerExit(sessionId, code, signal) {
     logger.warn(`[Conductor] Runner for session ${sessionId} crashed (code=${code} signal=${signal}) — will respawn after ~${Math.round(backoffMs / 1000)}s (attempt ${state.restartCount}/${MAX_RESPAWNS})`);
 }
 
-async function releaseAccount(botAccountId) {
+async function releaseAccount(botAccountId: string): Promise<void> {
     if (!botAccountId) return;
     try {
         await db.collection('botAccounts').doc(botAccountId).update({
@@ -284,11 +299,11 @@ async function releaseAccount(botAccountId) {
 }
 
 // ─── 5. PENDING TIMEOUT ──────────────────────────────────────────────────────
-async function cancelStuckPending() {
+async function cancelStuckPending(): Promise<void> {
     const snap = await db.collection('botLobbySessions').where('state', '==', 'pending').get();
     const ts = Date.now();
     for (const doc of snap.docs) {
-        const session = doc.data();
+        const session = doc.data() as SessionData;
         const cfg = await getBotConfig(session.tournamentId);
         const timeoutMin = cfg?.pendingSessionTimeoutMinutes ?? 20;
         const elapsedMin = (ts - new Date(session.createdAt).getTime()) / 60000;
@@ -307,7 +322,7 @@ async function cancelStuckPending() {
 
 // ─── Loops ───────────────────────────────────────────────────────────────────
 let workTickRunning = false;
-async function workTick() {
+async function workTick(): Promise<void> {
     if (shuttingDown || workTickRunning) return; // never overlap (avoids racing spawns)
     workTickRunning = true;
     try {
@@ -325,7 +340,7 @@ async function workTick() {
     }
 }
 
-async function main() {
+async function main(): Promise<void> {
     logger.info('[Conductor] Starting...');
     if (!process.env.FIREBASE_SERVICE_ACCOUNT_BASE64) {
         logger.error('[Conductor] FIREBASE_SERVICE_ACCOUNT_BASE64 is not set');
@@ -351,7 +366,7 @@ async function main() {
 
     logger.info('[Conductor] Running. Watching for sessions to schedule, assign, and supervise.');
 
-    const shutdown = (signal) => {
+    const shutdown = (signal: string) => {
         if (shuttingDown) return;
         shuttingDown = true;
         logger.info(`[Conductor] Received ${signal} — leaving runners to finish/reattach and exiting`);
