@@ -1,11 +1,11 @@
-// scripts/measure-pages.js
+// scripts/tools/measure-pages.js
 // Measures page loads in a real browser for docs/overhaul/inventory/PAGES.md:
 // TTFB, LCP, when the full-screen loading screen is gone, Firestore requests,
 // /api requests and JS weight. Cold = fresh incognito context; warm = the same
 // URL loaded again in that tab (HTTP cache and sessionStorage warm).
 //
 //   npm install          (puppeteer-core is a devDependency; it uses installed Edge)
-//   node scripts/measure-pages.js https://dota2inhouse.pl out.json /wiosenna /wiosenna/teams /pdl-s2 /pdl-s2/teams
+//   node scripts/tools/measure-pages.js https://dota2inhouse.pl out.json /wiosenna /wiosenna/teams /pdl-s2 /pdl-s2/teams
 //
 // Against a local production build, blank the server secrets first, or
 // prerendering and server routes read production with the service account:
