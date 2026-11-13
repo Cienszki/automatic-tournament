@@ -1,6 +1,5 @@
-// @ts-nocheck
 "use strict";
-// bot-worker/dist/runner.js
+// bot-worker/src/runner.ts
 // Lobby Runner — one ephemeral process owns ONE match/series end-to-end, in real time.
 //
 // This is the heart of the meepow-style rebuild (see bot-worker/REBUILD_PLAN.md).
@@ -23,20 +22,38 @@
 // ClientWelcome, so we REATTACH to the live lobby instead of creating a new one. Every
 // handler re-derives from the current session state, so resuming is safe.
 
-const dotenv = require('dotenv');
+import dotenv = require('dotenv');
 dotenv.config();
-const { initFirebase } = require('./firebase.js');
-const { DotaClient } = require('./dota-client.js');
-const { logger } = require('./logger.js');
-const L = require('./runner-logic.js');
-const { buildExpectedPlayersForGame, buildStandinAssignments } = require('./scheduling.js');
+import type { DocumentReference, Firestore } from 'firebase-admin/firestore';
+import { initFirebase } from './firebase.js';
+import { DotaClient } from './dota-client.js';
+import type { LobbyChatMessage, LobbyCreateOptions, LobbyUpdateData } from './dota-client.js';
+import { logger } from './logger.js';
+import * as L from './runner-logic.js';
+import type { SeriesResult } from './runner-logic.js';
+import { buildExpectedPlayersForGame, buildStandinAssignments } from './scheduling.js';
+import type {
+    BotAccountDoc,
+    BotConfig,
+    LateArrivalPolicy,
+    LobbySlot,
+    MatchDoc,
+    Session,
+    SessionData,
+    SessionState,
+    TeamSide,
+    WhitelistEntry,
+} from './types';
+
+type Unsubscribe = () => void;
+type TimerName = 'timeout' | 'late' | 'resultPoll' | 'heartbeat' | 'readyTimeout';
 
 // CSODOTALobby.State enum: UI=0, SERVERSETUP=1, RUN=2, POSTGAME=3, READYUP=4, NOTREADY=5, SERVERASSIGN=6
-const LOBBY_STATE = { UI: 0, SERVERSETUP: 1, RUN: 2, POSTGAME: 3, READYUP: 4, NOTREADY: 5, SERVERASSIGN: 6 };
+const LOBBY_STATE: Record<'UI' | 'SERVERSETUP' | 'RUN' | 'POSTGAME' | 'READYUP' | 'NOTREADY' | 'SERVERASSIGN', number> = { UI: 0, SERVERSETUP: 1, RUN: 2, POSTGAME: 3, READYUP: 4, NOTREADY: 5, SERVERASSIGN: 6 };
 // EMatchOutcome: RAD_VICTORY=2, DIRE_VICTORY=3
 const OUTCOME = { RAD_VICTORY: 2, DIRE_VICTORY: 3 };
 
-const TERMINAL_STATES = ['completed', 'cancelled', 'error'];
+const TERMINAL_STATES: SessionState[] = ['completed', 'cancelled', 'error'];
 const HEARTBEAT_MS = 30000;
 const LATE_TICK_MS = 15000;
 const TIMEOUT_TICK_MS = 30000;
@@ -52,19 +69,54 @@ const REATTACH_SETTLE_MS = 5000;
 // If Steam/GC drops and doesn't recover within this window, exit so the Conductor respawns.
 const DISCONNECT_GRACE_MS = 60000;
 
-function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
-function now() { return Date.now(); }
-function nowIso() { return new Date().toISOString(); }
+function sleep(ms: number): Promise<void> { return new Promise((r) => setTimeout(r, ms)); }
+function now(): number { return Date.now(); }
+function nowIso(): string { return new Date().toISOString(); }
 
 class Runner {
-    constructor(db, sessionId, botAccountId) {
+    // Field declarations only: the constructor below assigns them, and `declare`
+    // keeps the compiled class identical to the hand-written one (no class fields).
+    declare db: Firestore;
+    declare sessionId: string;
+    declare botAccountId: string;
+    declare sessionRef: DocumentReference;
+    // session, botConfig and dota start as null and are set by run() before any
+    // handler that reads them is wired up, so they are typed as always present.
+    declare session: Session;
+    declare botConfig: BotConfig;
+    declare dota: DotaClient;
+    declare timers: Partial<Record<TimerName, NodeJS.Timeout>>;
+    declare finalizing: boolean;
+    declare gameEndHandledFor: number | null;
+    declare gameEndHandled: boolean;
+    declare waitingForMatchId: boolean;
+    declare gameStarted: boolean;
+    declare pendingRestart: boolean;
+    declare handlingAbort: boolean;
+    declare creatingLobby: boolean;
+    declare _lastReconnectPromptAt: number;
+    declare postgameNoOutcomeLogged: boolean;
+    declare lastPlayersJson: string;
+    declare disconnectTimer: NodeJS.Timeout | null;
+    declare sessionUnsub: Unsubscribe | null;
+    declare matchUnsub: Unsubscribe | null;
+    declare configUnsub: Unsubscribe | null;
+    declare welcomedPlayers: Set<string>;
+    declare kickedPlayers: Set<string>;
+    declare invitedCasters: Set<string>;
+    declare botDocSteamId32: string | null;
+    declare botSteamId32: string | null;
+    declare exitCode: number | undefined;
+    declare donePromiseResolve: (() => void) | undefined;
+
+    constructor(db: Firestore, sessionId: string, botAccountId: string) {
         this.db = db;
         this.sessionId = sessionId;
         this.botAccountId = botAccountId;
         this.sessionRef = db.collection('botLobbySessions').doc(sessionId);
-        this.session = null;       // in-memory mirror of the session doc (source of truth = Firestore, but we own lifecycle writes)
-        this.botConfig = null;     // tournaments/{id}/config/bot
-        this.dota = null;
+        this.session = null!;      // in-memory mirror of the session doc (source of truth = Firestore, but we own lifecycle writes)
+        this.botConfig = null!;    // tournaments/{id}/config/bot
+        this.dota = null!;
         this.timers = {};          // named interval/timeout handles
         this.finalizing = false;   // guard against re-entrant finalize/cancel
         this.gameEndHandledFor = null; // dotaMatchId we already processed game-end for (de-dupe POSTGAME spam)
@@ -87,10 +139,10 @@ class Runner {
     }
 
     // ─── Boot ────────────────────────────────────────────────────────────────
-    async run() {
+    async run(): Promise<number> {
         const snap = await this.sessionRef.get();
         if (!snap.exists) { logger.error(`[Runner] Session ${this.sessionId} not found — exiting`); return 0; }
-        this.session = { id: snap.id, ...snap.data() };
+        this.session = { id: snap.id, ...snap.data() as SessionData };
         if (TERMINAL_STATES.includes(this.session.state)) {
             logger.info(`[Runner] Session ${this.sessionId} already ${this.session.state} — nothing to do`);
             return 0;
@@ -98,10 +150,11 @@ class Runner {
 
         const botSnap = await this.db.collection('botAccounts').doc(this.botAccountId).get();
         if (!botSnap.exists) { logger.error(`[Runner] Bot account ${this.botAccountId} not found`); return 1; }
-        const bot = botSnap.data();
+        const bot = botSnap.data() as BotAccountDoc;
         this.botDocSteamId32 = bot.steamId32 || null; // confirmed precisely after login (getSelfSteamId32)
 
-        this.botConfig = await this.loadBotConfig(this.session.tournamentId);
+        // Typed as present; the null case is handled on the next line.
+        this.botConfig = await this.loadBotConfig(this.session.tournamentId) as BotConfig;
         if (!this.botConfig) { logger.error(`[Runner] No bot config for tournament ${this.session.tournamentId}`); return 1; }
         this.watchBotConfigDoc(); // keep whitelist/enforcement/messages live after the lobby exists
 
@@ -146,13 +199,13 @@ class Runner {
         this.timers.resultPoll = setInterval(() => this.pollExternalGameResult().catch((e) => logger.error('[Runner] result poll', e)), RESULT_POLL_MS);
 
         // Resolve when the session finishes (finalize / cancel sets this.donePromiseResolve).
-        await new Promise((resolve) => { this.donePromiseResolve = resolve; });
+        await new Promise<void>((resolve) => { this.donePromiseResolve = resolve; });
         return this.exitCode ?? 0;
     }
 
-    async loadBotConfig(tournamentId) {
+    async loadBotConfig(tournamentId: string): Promise<BotConfig | null> {
         const doc = await this.db.collection('tournaments').doc(tournamentId).collection('config').doc('bot').get();
-        return doc.exists ? doc.data() : null;
+        return doc.exists ? doc.data() as BotConfig : null;
     }
 
     /**
@@ -161,24 +214,24 @@ class Runner {
      * enforcement toggles and chat messages, all of which are read fresh on each use. Lobby-create
      * settings are only consumed at creation, so a later change to those simply applies next lobby.
      */
-    watchBotConfigDoc() {
+    watchBotConfigDoc(): void {
         if (!this.session?.tournamentId) return;
         const ref = this.db.collection('tournaments').doc(this.session.tournamentId).collection('config').doc('bot');
         this.configUnsub = ref.onSnapshot((snap) => {
             if (!snap.exists || this.finalizing) return;
-            this.botConfig = snap.data();
+            this.botConfig = snap.data() as BotConfig;
         }, (err) => logger.error('[Runner] config watch error', err));
     }
 
     // ─── Session doc helpers ───────────────────────────────────────────────────
     /** Merge fields into the in-memory session and persist them to Firestore. */
-    async updateSession(fields) {
+    async updateSession(fields: Partial<SessionData>): Promise<void> {
         Object.assign(this.session, fields);
         try { await this.sessionRef.update({ ...fields, updatedAt: nowIso() }); }
         catch (e) { logger.error('[Runner] Failed to update session', e); }
     }
 
-    async updateBotStatus(status) {
+    async updateBotStatus(status: string): Promise<void> {
         try {
             await this.db.collection('botAccounts').doc(this.botAccountId).update({
                 status, currentSessionId: this.sessionId,
@@ -187,7 +240,7 @@ class Runner {
         } catch { /* non-fatal */ }
     }
 
-    startHeartbeat() {
+    startHeartbeat(): void {
         const beat = async () => {
             try {
                 await this.db.collection('botAccounts').doc(this.botAccountId).update({
@@ -207,10 +260,10 @@ class Runner {
      *  - radiantTeam/direTeam roster changes (standin approved/revoked) → invite added,
      *    kick removed, update our in-memory allow-list.
      */
-    watchSessionDoc() {
+    watchSessionDoc(): void {
         this.sessionUnsub = this.sessionRef.onSnapshot((snap) => {
             if (!snap.exists) return;
-            const next = { id: snap.id, ...snap.data() };
+            const next: Session = { id: snap.id, ...snap.data() as SessionData };
             // External cancellation.
             if (TERMINAL_STATES.includes(next.state) && !this.finalizing) {
                 logger.warn(`[Runner] Session externally moved to ${next.state} — leaving`);
@@ -230,7 +283,7 @@ class Runner {
         }, (err) => logger.error('[Runner] session watch error', err));
     }
 
-    async reconcileRoster(next) {
+    async reconcileRoster(next: Session): Promise<void> {
         const acceptingPlayers = ['lobby_open', 'ready_check'].includes(this.session.state);
         const oldIds = new Set([
             ...this.session.radiantTeam.expectedPlayers.map((p) => p.steamId32),
@@ -267,14 +320,14 @@ class Runner {
      * check (who must be seated) share ONE source of truth: the approved standins for the
      * CURRENT game.
      */
-    watchMatchDoc() {
+    watchMatchDoc(): void {
         if (!this.session?.tournamentId || !this.session?.matchId) return;
         const ref = this.db.collection('tournaments').doc(this.session.tournamentId)
             .collection('matches').doc(this.session.matchId);
         this.matchUnsub = ref.onSnapshot((snap) => {
             if (!snap.exists || this.finalizing) return;
-            this.recomputeRosterFromMatch(snap.data()).catch((e) => logger.error('[Runner] match recompute', e));
-            this.inviteCasters(snap.data()).catch((e) => logger.error('[Runner] caster invites', e));
+            this.recomputeRosterFromMatch(snap.data() as MatchDoc).catch((e) => logger.error('[Runner] match recompute', e));
+            this.inviteCasters(snap.data() as MatchDoc).catch((e) => logger.error('[Runner] caster invites', e));
         }, (err) => logger.error('[Runner] match watch error', err));
     }
 
@@ -282,12 +335,12 @@ class Runner {
      * Casters who took this match on the website (match.casters[].steamId32). Every caster of the
      * tournament is on the whitelist (never kicked); these are the ones who get an invite.
      */
-    casterIdsOf(match) {
-        return [...new Set((match?.casters ?? []).map((c) => c && c.steamId32 && String(c.steamId32)).filter((id) => id && id !== '0'))];
+    casterIdsOf(match: MatchDoc | undefined): string[] {
+        return [...new Set((match?.casters ?? []).map((c) => c && c.steamId32 && String(c.steamId32)).filter((id) => id && id !== '0'))] as string[];
     }
 
     /** Invite this match's casters not yet invited to the current lobby (also those who take it while it's open). */
-    async inviteCasters(match) {
+    async inviteCasters(match: MatchDoc): Promise<void> {
         const acceptingPlayers = ['lobby_open', 'ready_check'].includes(this.session?.state);
         if (!acceptingPlayers || !this.dota?.isConnected || this.creatingLobby) return;
         for (const id of this.casterIdsOf(match)) {
@@ -302,7 +355,7 @@ class Runner {
      * to the live lobby (invite newly-authorized standins, kick those no longer authorized).
      * No-op on legacy sessions that predate the per-game roster source.
      */
-    async recomputeRosterFromMatch(match) {
+    async recomputeRosterFromMatch(match: MatchDoc): Promise<void> {
         const baseR = this.session.baseRadiantPlayers, baseD = this.session.baseDirePlayers;
         if (!Array.isArray(baseR) || !Array.isArray(baseD)) return; // can't recompute without base rosters
         const gameNum = this.session.currentGameNumber || 1;
@@ -344,7 +397,7 @@ class Runner {
     }
 
     // ─── Lobby create / reattach ────────────────────────────────────────────────
-    async reattachOrCreate() {
+    async reattachOrCreate(): Promise<void> {
         // Give the GC a moment to deliver a cached lobby SObject (set on ClientWelcome).
         await sleep(REATTACH_SETTLE_MS);
 
@@ -403,7 +456,7 @@ class Runner {
      * limited to specific games only appears in those games. No-op on legacy sessions that
      * predate the per-game fields (keeps using whatever expectedPlayers they already have).
      */
-    async recomputeEffectiveRosterForCurrentGame() {
+    async recomputeEffectiveRosterForCurrentGame(): Promise<void> {
         const { baseRadiantPlayers, baseDirePlayers, standinAssignments } = this.session;
         if (!Array.isArray(baseRadiantPlayers) || !Array.isArray(baseDirePlayers)) return;
         const gameNum = this.session.currentGameNumber || 1;
@@ -417,7 +470,7 @@ class Runner {
         logger.info(`[Runner] Effective roster for game ${gameNum}: radiant=${radiantExpected.map((p) => p.steamId32).join(',')} dire=${direExpected.map((p) => p.steamId32).join(',')}`);
     }
 
-    async createLobbyForCurrentGame() {
+    async createLobbyForCurrentGame(): Promise<void> {
         this.creatingLobby = true;
         try {
         const gameNum = this.session.currentGameNumber || 1;
@@ -477,9 +530,9 @@ class Runner {
      * so the Conductor respawns us with a FRESH GC connection and reattachOrCreate recreates the
      * current game's lobby. Returns true on success, false if it gave up (and triggered the exit).
      */
-    async createLobbyResilient(opts) {
+    async createLobbyResilient(opts: LobbyCreateOptions): Promise<boolean> {
         const attempts = 4;
-        let lastErr;
+        let lastErr: unknown;
         for (let i = 1; i <= attempts && !this.finalizing; i++) {
             // A lingering lobby (leave not fully propagated) makes createPracticeLobby hang.
             if (this.dota.getCurrentLobbyId()) {
@@ -494,20 +547,20 @@ class Runner {
             } catch (e) {
                 lastErr = e;
                 const backoff = Math.min(15000, 3000 * i);
-                logger.warn(`[Runner] createLobby attempt ${i}/${attempts} failed: ${e?.message || e} — retrying in ${backoff}ms`);
+                logger.warn(`[Runner] createLobby attempt ${i}/${attempts} failed: ${(e as Error)?.message || e} — retrying in ${backoff}ms`);
                 await sleep(backoff);
             }
         }
         if (this.finalizing) return false;
-        logger.error(`[Runner] createLobby failed after ${attempts} attempts (${lastErr?.message || lastErr}) — exiting for Conductor respawn; reattach will recreate game ${this.session.currentGameNumber}`);
+        logger.error(`[Runner] createLobby failed after ${attempts} attempts (${(lastErr as Error)?.message || lastErr}) — exiting for Conductor respawn; reattach will recreate game ${this.session.currentGameNumber}`);
         // Non-terminal exit(1): same account respawns → reattachOrCreate → recreate this game.
         await this.finishUp(1, this.session.state, true);
         return false;
     }
 
     /** Invite the registered roster (+coaches) and this match's casters — NOT the rest of the whitelist — and post instructions. */
-    async inviteRosterAndWelcome() {
-        const ids = new Set();
+    async inviteRosterAndWelcome(): Promise<void> {
+        const ids = new Set<string>();
         for (const p of this.session.radiantTeam.expectedPlayers) ids.add(p.steamId32);
         for (const p of this.session.direTeam.expectedPlayers) ids.add(p.steamId32);
         if (this.session.radiantTeam.coachSteamId32) ids.add(this.session.radiantTeam.coachSteamId32);
@@ -521,7 +574,7 @@ class Runner {
         try {
             const snap = await this.db.collection('tournaments').doc(this.session.tournamentId)
                 .collection('matches').doc(this.session.matchId).get();
-            const casters = this.casterIdsOf(snap.data()).filter((id) => !this.invitedCasters.has(id));
+            const casters = this.casterIdsOf(snap.data() as MatchDoc | undefined).filter((id) => !this.invitedCasters.has(id));
             for (const id of casters) {
                 try { await this.dota.invitePlayer(id); this.invitedCasters.add(id); }
                 catch (e) { logger.warn('[Runner] caster invite failed', e); }
@@ -532,15 +585,15 @@ class Runner {
         await this.sendChat(`[BOT] ${this.session.lobbyName} — invites sent. Take your team's slots, then type ${readyCmd} once your whole team is seated.`);
     }
 
-    async sendChat(message) {
+    async sendChat(message: string): Promise<void> {
         try { await this.dota.sendChatMessage(message); }
         catch (e) { logger.warn('[Runner] sendChat failed', e); }
     }
 
     // ─── DotaClient event wiring ─────────────────────────────────────────────────
-    wireDotaEvents() {
-        this.dota.on('lobbyUpdate', (data) => this.onLobbyUpdate(data).catch((e) => logger.error('[Runner] lobbyUpdate', e)));
-        this.dota.on('chatMessage', (msg) => this.onChatMessage(msg).catch((e) => logger.error('[Runner] chatMessage', e)));
+    wireDotaEvents(): void {
+        this.dota.on('lobbyUpdate', (data: LobbyUpdateData) => this.onLobbyUpdate(data).catch((e) => logger.error('[Runner] lobbyUpdate', e)));
+        this.dota.on('chatMessage', (msg: LobbyChatMessage) => this.onChatMessage(msg).catch((e) => logger.error('[Runner] chatMessage', e)));
         this.dota.on('lobbyCleared', () => logger.info('[Runner] Lobby cleared/destroyed'));
         this.dota.on('disconnected', () => this.onDisconnected());
         this.dota.on('gcReconnected', () => this.onGcReconnected().catch((e) => logger.error('[Runner] gcReconnected', e)));
@@ -553,7 +606,7 @@ class Runner {
      * teams to confirm, no admin needed. A blip while a game is actually live (in_game) needs no
      * action; the abort watchdog handles a real abort.
      */
-    async onGcReconnected() {
+    async onGcReconnected(): Promise<void> {
         if (this.finalizing) return;
         // Only re-prompt where a lobby definitely exists and players are waiting. In 'lobby_creating'
         // the create retry/watchdog re-establishes the lobby; in 'in_game' the abort watchdog handles
@@ -571,7 +624,7 @@ class Runner {
         });
     }
 
-    onDisconnected() {
+    onDisconnected(): void {
         if (this.finalizing) return;
         logger.warn('[Runner] Disconnected from Steam/Dota — waiting for reconnect');
         if (this.disconnectTimer) return;
@@ -591,11 +644,11 @@ class Runner {
         }, 3000);
     }
 
-    async onLobbyUpdate(data) {
+    async onLobbyUpdate(data: LobbyUpdateData): Promise<void> {
         if (this.finalizing) return;
         // DotaClient emits players with `.team`; the rest of the runner/logic speaks
         // `.teamSide` (the orchestrator's LobbySlotInfo shape). Normalize once here.
-        const players = (data.players || []).map((p) => ({ steamId32: p.steamId32, slotIndex: p.slot, teamSide: p.team, name: p.name || null }));
+        const players: LobbySlot[] = (data.players || []).map((p) => ({ steamId32: p.steamId32, slotIndex: p.slot, teamSide: p.team, name: p.name || null }));
 
         // Persist occupancy as a FIELD (state, not a stream) — de-duped to avoid churn.
         const playersForDoc = players.map((p) => ({ steamId32: p.steamId32, teamSide: p.teamSide }));
@@ -714,7 +767,7 @@ class Runner {
      * present, else the roster nickname, else a live Steam persona lookup (the GC name is
      * frequently empty right after a join), else the Steam32 id as a last resort.
      */
-    async displayNameFor(steamId32, lobbyName) {
+    async displayNameFor(steamId32: string, lobbyName: string | null | undefined): Promise<string> {
         if (lobbyName && String(lobbyName).trim()) return String(lobbyName).trim();
         // getPlayerNickname returns the steamId32 itself when the player is NOT on either
         // roster — which is exactly the unregistered-player case we want to resolve via Steam.
@@ -728,7 +781,7 @@ class Runner {
         return `Steam32:${steamId32}`;
     }
 
-    async enforce(players) {
+    async enforce(players: LobbySlot[]): Promise<void> {
         // Forget anyone who has actually LEFT the lobby, so a kicked player who REJOINS is kicked
         // again. The kickedPlayers guard exists only to de-dupe the continuous stream of
         // lobbyUpdate events while the SAME player is still present (kick + GC removal are async);
@@ -737,7 +790,7 @@ class Runner {
         for (const id of this.kickedPlayers) if (!present.has(id)) this.kickedPlayers.delete(id);
 
         // Authorize the bot's own account (it sits in the player pool) so we never kick/flag it.
-        const whitelist = [...(this.botConfig.whitelist ?? [])];
+        const whitelist: WhitelistEntry[] = [...(this.botConfig.whitelist ?? [])];
         if (this.botSteamId32) whitelist.push({ steamId32: this.botSteamId32 });
         const cfg = this.botConfig.enforcement ?? { autoKickUnauthorized: true, autoKickWrongSlot: false, wrongSlotGracePeriodSeconds: 30 };
         const action = L.evaluateEnforcement(this.session, players, cfg, whitelist);
@@ -776,7 +829,7 @@ class Runner {
      * empty slots, or soon-to-be-kicked unregistered randoms. One greeting per player
      * per game lobby (welcomedPlayers is cleared when each new lobby is created).
      */
-    async welcomeJoinedPlayers(players) {
+    async welcomeJoinedPlayers(players: LobbySlot[]): Promise<void> {
         const chat = L.getEffectiveChatMessages(this.botConfig, this.botAccountId);
         const welcome = chat.welcomeMessage;
         if (!welcome) return;
@@ -792,7 +845,7 @@ class Runner {
     }
 
     // ─── Chat: ready-check, custom commands, late-vote ───────────────────────────
-    async onChatMessage(msg) {
+    async onChatMessage(msg: LobbyChatMessage): Promise<void> {
         if (this.finalizing) return;
         // Manual restart failsafe: an authorized participant can force a fresh ready-check + relaunch
         // when the bot didn't auto-detect an abort or is otherwise stuck. Works in any live state.
@@ -813,7 +866,7 @@ class Runner {
      * stuck in_game, this restarts with a single relaunch (no re-toss); otherwise it falls back to
      * a normal coin-toss start. Returns true if the command was accepted+handled.
      */
-    async handleStartCommand(msg) {
+    async handleStartCommand(msg: LobbyChatMessage): Promise<boolean> {
         const wl = [...(this.botConfig.whitelist ?? [])];
         const authorized = L.getAllAuthorizedSteamIds(this.session, wl);
         if (!authorized.has(msg.steamId32)) return false;
@@ -830,7 +883,7 @@ class Runner {
      * applied (post-abort / mid-series) so the eventual launch is a single relaunch — no re-toss,
      * no score change; restart:false means a normal coin-toss start.
      */
-    async promptReadyAgain({ restart, message } = {}) {
+    async promptReadyAgain({ restart, message }: { restart?: boolean; message?: string } = {}): Promise<void> {
         this.pendingRestart = !!restart;
         this.gameStarted = false;
         await this.updateSession({
@@ -853,7 +906,7 @@ class Runner {
      * score — a single launchPracticeLobby resumes the game. The ready-check already re-verified both
      * teams are seated together on opposite sides, so we only guard the team-name (result-sync) field.
      */
-    async relaunchGame() {
+    async relaunchGame(): Promise<void> {
         if (this.session.startGameSentAt) return; // already relaunched
         const launchNames = this.dota.getLobbyTeamNames();
         if (!launchNames.radiant?.trim() || !launchNames.dire?.trim()) {
@@ -875,7 +928,7 @@ class Runner {
         }
     }
 
-    async handleCustomCommands(msg) {
+    async handleCustomCommands(msg: LobbyChatMessage): Promise<void> {
         const custom = this.botConfig.chatMessages?.customCommands || [];
         if (!custom.length) return;
         const text = (msg.message || '').trim().toLowerCase();
@@ -887,7 +940,7 @@ class Runner {
         }
     }
 
-    async handleReadyCheck(msg) {
+    async handleReadyCheck(msg: LobbyChatMessage): Promise<void> {
         const team = L.identifyPlayerTeam(this.session, msg.steamId32);
         if (!team) return; // not a recognized player
 
@@ -907,7 +960,7 @@ class Runner {
             // Sides are NOT pre-assigned (coin toss decides). A team is ready when ALL its
             // players are seated TOGETHER on one side — either side is fine, as long as they're
             // not split. We don't require a specific side per player.
-            const live = this.dota.getCurrentLobbyPlayers().map((p) => ({ steamId32: p.steamId32, teamSide: p.team }));
+            const live: LobbySlot[] = this.dota.getCurrentLobbyPlayers().map((p) => ({ steamId32: p.steamId32, teamSide: p.team }));
             const side = L.teamSeatedSide(teamAssignment, live);
             if (!side) {
                 const ids = new Set(teamAssignment.expectedPlayers.map((p) => p.steamId32));
@@ -972,7 +1025,7 @@ class Runner {
         }
     }
 
-    async launchGame() {
+    async launchGame(): Promise<void> {
         if (this.session.startGameSentAt) return; // already launched
 
         // Safety net: never launch with an unnamed team. Both Dota lobby team-name fields must
@@ -988,10 +1041,10 @@ class Runner {
         // ── Pre-launch sweep ──────────────────────────────────────────────────
         // Take a live snapshot rather than the potentially-stale lastLobbyPlayers field.
         // Keep each member's Steam name so kick messages are meaningful to humans.
-        const live = this.dota.getCurrentLobbyPlayers().map((p) => ({ steamId32: p.steamId32, teamSide: p.team, name: p.name || null }));
+        const live: LobbySlot[] = this.dota.getCurrentLobbyPlayers().map((p) => ({ steamId32: p.steamId32, teamSide: p.team, name: p.name || null }));
 
         // Build the authorized set with the bot's own account whitelisted so it is never kicked.
-        const wl = [...(this.botConfig.whitelist ?? [])];
+        const wl: WhitelistEntry[] = [...(this.botConfig.whitelist ?? [])];
         if (this.botSteamId32) wl.push({ steamId32: this.botSteamId32 });
         const authorized = L.getAllAuthorizedSteamIds(this.session, wl);
 
@@ -1030,7 +1083,7 @@ class Runner {
         const dSide = L.teamSeatedSide(this.session.direTeam, live);
 
         if (!rSide || !dSide) {
-            const issues = [];
+            const issues: string[] = [];
             for (const team of [this.session.radiantTeam, this.session.direTeam]) {
                 if (L.teamSeatedSide(team, live)) continue;
                 const seatedIds = new Set(
@@ -1081,15 +1134,15 @@ class Runner {
             // Admin-issued draft penalties — read fresh from the match doc (may be issued after the
             // session was created), apply for the game about to be played, mapped to each team's
             // current side. Penalty levels: 1=-30s, 2=-70s, 3=-130s draft time.
-            const PENALTY_SECONDS = { 1: 30, 2: 70, 3: 130 };
+            const PENALTY_SECONDS: Record<number, number> = { 1: 30, 2: 70, 3: 130 };
             const gameNumber = (this.session.completedGameIds ? this.session.completedGameIds.length : 0) + 1;
             let penaltyRadiant = 0, penaltyDire = 0;
-            const announce = [];
+            const announce: Array<{ name: string; sec: number }> = [];
             try {
                 const matchSnap = await this.db.collection('tournaments').doc(this.session.tournamentId)
                     .collection('matches').doc(this.session.matchId).get();
-                const penalties = (matchSnap.exists && matchSnap.data().draftPenalties) || [];
-                const levelFor = (teamId) => {
+                const penalties = (matchSnap.exists && (matchSnap.data() as MatchDoc).draftPenalties) || [];
+                const levelFor = (teamId: string) => {
                     let lvl = 0;
                     for (const p of penalties) {
                         if (p.teamId !== teamId) continue;
@@ -1137,9 +1190,9 @@ class Runner {
      * Map session-teams to the Dota sides they currently occupy. Returns
      * { radiant: teamId|null, dire: teamId|null }. Fills a missing side by elimination.
      */
-    captureGameSides(players) {
+    captureGameSides(players: LobbySlot[]): { radiant: string | null; dire: string | null } {
         const rTeam = this.session.radiantTeam, dTeam = this.session.direTeam;
-        const map = { radiant: null, dire: null };
+        const map: { radiant: string | null; dire: string | null } = { radiant: null, dire: null };
         const rSide = L.teamSeatedSide(rTeam, players);
         const dSide = L.teamSeatedSide(dTeam, players);
         if (rSide) map[rSide] = rTeam.teamId;
@@ -1150,9 +1203,9 @@ class Runner {
     }
 
     // ─── Series game-end handler ─────────────────────────────────────────────────
-    async handleGameEnded(dotaMatchId, radiantWin) {
+    async handleGameEnded(dotaMatchId: number, radiantWin: boolean): Promise<void> {
         this.gameEndHandled = true; // block re-entry from any further POSTGAME events for this game
-        const dotaWinnerSide = radiantWin ? 'radiant' : 'dire';
+        const dotaWinnerSide: TeamSide = radiantWin ? 'radiant' : 'dire';
         // Map the Dota-side outcome to a team via the side mapping captured at game start
         // (teams may sit on either side). Fall back to the session label if unknown.
         const sides = this.session.currentGameSides;
@@ -1160,7 +1213,7 @@ class Runner {
             ? sides[dotaWinnerSide]
             : (radiantWin ? this.session.radiantTeam.teamId : this.session.direTeam.teamId);
         // Record the winner by the SESSION's side label for that team (stable team identity).
-        const winnerSide = (winnerTeamId === this.session.radiantTeam.teamId) ? 'radiant' : 'dire';
+        const winnerSide: TeamSide = (winnerTeamId === this.session.radiantTeam.teamId) ? 'radiant' : 'dire';
 
         const completedGameIds = [...this.session.completedGameIds, dotaMatchId];
         const completedGameWinners = [...this.session.completedGameWinners, winnerSide];
@@ -1190,7 +1243,7 @@ class Runner {
         }
     }
 
-    async scheduleMatchSync(dotaMatchId) {
+    async scheduleMatchSync(dotaMatchId: number): Promise<void> {
         if (this.botConfig.postMatch?.autoSyncEnabled === false) return;
         const delayMin = this.botConfig.postMatch?.syncDelayMinutes ?? 5;
         const syncAt = new Date(now() + delayMin * 60000).toISOString();
@@ -1214,7 +1267,7 @@ class Runner {
      * the SAME admin action a human would use — so the bot never writes match scores itself.
      * gameNumbers are individual games to flag as walkovers (never a whole-series scope).
      */
-    async scheduleForfeit(forfeitedSide, gameNumbers, reason) {
+    async scheduleForfeit(forfeitedSide: TeamSide, gameNumbers: number[], reason: string): Promise<void> {
         const forfeitingTeamId = forfeitedSide === 'radiant'
             ? this.session.radiantTeam.teamId : this.session.direTeam.teamId;
         try {
@@ -1234,7 +1287,7 @@ class Runner {
         } catch (e) { logger.error('[Runner] Failed to enqueue forfeit task', e); }
     }
 
-    async finalizeSeries(result, scoreText) {
+    async finalizeSeries(result: SeriesResult, scoreText: string): Promise<void> {
         const winnerTeamName = result.winnerId
             ? (result.winnerId === this.session.radiantTeam.teamId ? this.session.radiantTeam.teamName : this.session.direTeam.teamName)
             : null;
@@ -1248,7 +1301,7 @@ class Runner {
         await this.finishUp(0, 'completed');
     }
 
-    async advanceToNextGame(winnerSide, scoreText) {
+    async advanceToNextGame(winnerSide: TeamSide, scoreText: string): Promise<void> {
         const next = L.getNextGameNumber(this.session);
         if (next === null) {
             logger.error('[Runner] getNextGameNumber returned null but series not decided — finalizing defensively');
@@ -1292,7 +1345,7 @@ class Runner {
      * decisive result, drives the SAME handleGameEnded path (advance or finalize). Because the
      * match id is persisted on the session, this also recovers after a process restart.
      */
-    async pollExternalGameResult() {
+    async pollExternalGameResult(): Promise<void> {
         if (this.finalizing) return;
         if (this.session.state !== 'in_game') return; // only while a game is live (post_game already handled)
         if (this.gameEndHandled) return;              // POSTGAME already won the race
@@ -1321,15 +1374,15 @@ class Runner {
      * else null (404 while it isn't ingested yet, non-boolean radiant_win, or any network error).
      * OpenDota only stores FINISHED matches, so a decisive radiant_win is a safe game-over signal.
      */
-    async fetchOpenDotaResult(matchId) {
+    async fetchOpenDotaResult(matchId: number): Promise<{ radiantWin: boolean } | null> {
         try {
             const key = process.env.OPENDOTA_API_KEY;
             const url = `https://api.opendota.com/api/matches/${matchId}` + (key ? `?api_key=${key}` : '');
             const res = await fetch(url, { headers: { 'User-Agent': 'dota2-lobby-bot' } });
             if (!res.ok) return null;
-            const m = await res.json();
+            const m = await res.json() as { radiant_win?: unknown };
             if (typeof m.radiant_win !== 'boolean') return null; // not resulted yet
-            return { radiantWin: m.radiant_win };
+            return { radiantWin: m.radiant_win as boolean };
         } catch (e) {
             logger.warn(`[Runner] OpenDota result fetch failed for ${matchId}`, e);
             return null;
@@ -1337,7 +1390,7 @@ class Runner {
     }
 
     // ─── Late-arrival forfeit / wait voting ─────────────────────────────────────
-    async tickLateArrival() {
+    async tickLateArrival(): Promise<void> {
         if (this.finalizing) return;
         const policy = this.botConfig.lateArrival;
         if (!policy?.enabled) return;
@@ -1356,7 +1409,7 @@ class Runner {
         if (this.session.lateWaitUntil && new Date(this.session.lateWaitUntil).getTime() > now()) return;
 
         const elapsedMin = (now() - new Date(this.session.scheduledMatchTime).getTime()) / 60000;
-        let kind = null;
+        let kind: 'series' | 'game1' | null = null;
         if (elapsedMin >= policy.seriesForfeitMinutes) kind = 'series';
         else if (elapsedMin >= policy.game1ForfeitMinutes) kind = 'game1';
         if (!kind) return;
@@ -1371,7 +1424,7 @@ class Runner {
         // If the present (non-late) team is itself short, do NOT open a vote yet — return and let
         // the next tick (every LATE_TICK_MS) re-check, effectively waiting until they have everyone
         // in the lobby. This guarantees we never ask a half-present team to vote out the other.
-        let lateSide = null;
+        let lateSide: TeamSide | null = null;
         if (!radiantFull && direFull) lateSide = 'radiant';
         else if (!direFull && radiantFull) lateSide = 'dire';
         if (!lateSide) return;
@@ -1379,7 +1432,7 @@ class Runner {
         await this.openLateVote(policy, kind, lateSide);
     }
 
-    async openLateVote(policy, kind, lateSide) {
+    async openLateVote(policy: LateArrivalPolicy, kind: 'series' | 'game1', lateSide: TeamSide): Promise<void> {
         const closesAt = new Date(now() + (policy.votingWindowSeconds || 60) * 1000).toISOString();
         const lateTeamName = lateSide === 'radiant' ? this.session.radiantTeam.teamName : this.session.direTeam.teamName;
         const presentTeamName = lateSide === 'radiant' ? this.session.direTeam.teamName : this.session.radiantTeam.teamName;
@@ -1395,8 +1448,8 @@ class Runner {
         logger.info(`[Runner] Opened ${kind} late vote against ${lateSide} (${lateTeamName})`);
     }
 
-    async resolveLateVote(policy) {
-        const vote = this.session.lateVote;
+    async resolveLateVote(policy: LateArrivalPolicy): Promise<void> {
+        const vote = this.session.lateVote!;
         const tally = Object.values(vote.votes);
         const forfeitVotes = tally.filter((v) => v === 'forfeit').length;
         const lateTeamName = vote.lateSide === 'radiant' ? this.session.radiantTeam.teamName : this.session.direTeam.teamName;
@@ -1419,7 +1472,7 @@ class Runner {
         }
     }
 
-    async handleLateVoteChat(msg) {
+    async handleLateVoteChat(msg: LobbyChatMessage): Promise<void> {
         const vote = this.session.lateVote;
         if (!vote) return;
         if (now() >= new Date(vote.closesAt).getTime()) return;
@@ -1432,7 +1485,7 @@ class Runner {
         const isForfeit = (policy.forfeitCommands || []).some((c) => c.toLowerCase() === text);
         const isWait = (policy.waitCommands || []).some((c) => c.toLowerCase() === text);
         if (!isForfeit && !isWait) return;
-        const votes = { ...vote.votes, [msg.steamId32]: isForfeit ? 'forfeit' : 'wait' };
+        const votes: Record<string, 'forfeit' | 'wait'> = { ...vote.votes, [msg.steamId32]: isForfeit ? 'forfeit' : 'wait' };
         await this.updateSession({ lateVote: { ...vote, votes } });
     }
 
@@ -1440,14 +1493,14 @@ class Runner {
      * Apply a forfeit (from a passed late vote). A game1 forfeit awards +1 and continues
      * the series; a series forfeit finalizes the match for the present team.
      */
-    async handleForfeit(forfeitType, forfeitedSide) {
-        const winnerSide = forfeitedSide === 'radiant' ? 'dire' : 'radiant';
+    async handleForfeit(forfeitType: 'series' | 'game1', forfeitedSide: TeamSide): Promise<void> {
+        const winnerSide: TeamSide = forfeitedSide === 'radiant' ? 'dire' : 'radiant';
 
         if (forfeitType === 'series') {
             // Flag EVERY remaining (unplayed) game as an INDIVIDUAL walkover — never a whole-series
             // scope. forfeitPDLMatchAdmin (run web-side) records them exactly like a manual admin
             // game-level forfeit, which marks the match complete + recalculates standings.
-            const remaining = [];
+            const remaining: number[] = [];
             const total = this.session.totalGames || this.session.currentGameNumber;
             for (let g = this.session.currentGameNumber; g <= total; g++) remaining.push(g);
             const forfeitedGames = [...(this.session.forfeitedGames || []),
@@ -1490,7 +1543,7 @@ class Runner {
      * registered player in it (e.g. a team waiting for the opponent, including after a
      * passed !wait vote). Whitelist/observers/coaches don't count — only match players.
      */
-    anyRegisteredPlayerPresent() {
+    anyRegisteredPlayerPresent(): boolean {
         if (!this.dota?.isConnected) return false;
         const expectedIds = new Set([
             ...this.session.radiantTeam.expectedPlayers.map((p) => p.steamId32),
@@ -1501,7 +1554,7 @@ class Runner {
     }
 
     // ─── Timeouts (runner-local; pending/bot_assigned timeouts belong to the Conductor) ──
-    async checkTimeouts() {
+    async checkTimeouts(): Promise<void> {
         if (this.finalizing) return;
         const cfg = this.botConfig;
         const ts = now();
@@ -1595,16 +1648,16 @@ class Runner {
     }
 
     /** True if this session's match doc is already marked completed (games synced). */
-    async matchAlreadyComplete() {
+    async matchAlreadyComplete(): Promise<boolean> {
         if (!this.session?.tournamentId || !this.session?.matchId) return false;
         try {
             const snap = await this.db.collection('tournaments').doc(this.session.tournamentId)
                 .collection('matches').doc(this.session.matchId).get();
-            return snap.exists && snap.data().status === 'completed';
+            return snap.exists && (snap.data() as MatchDoc).status === 'completed';
         } catch { return false; }
     }
 
-    async cancel(reason, chatMsg) {
+    async cancel(reason: string, chatMsg?: string): Promise<void> {
         if (this.finalizing) return;
         logger.warn(`[Runner] Cancelling session ${this.sessionId}: ${reason}`);
         if (chatMsg) await this.sendChat(chatMsg);
@@ -1618,10 +1671,10 @@ class Runner {
      * session back to 'pending' so the Conductor reassigns it to a clean bot. After too many
      * bounces (no clean bot available), give up and mark the session error.
      */
-    async bounceToCleanBot(reason) {
+    async bounceToCleanBot(reason: string): Promise<void> {
         if (this.finalizing) return;
         this.finalizing = true;
-        for (const name of Object.keys(this.timers)) this.clearTimer(name);
+        for (const name of Object.keys(this.timers) as TimerName[]) this.clearTimer(name);
         if (this.disconnectTimer) { clearTimeout(this.disconnectTimer); this.disconnectTimer = null; }
         if (this.sessionUnsub) { try { this.sessionUnsub(); } catch { /* ignore */ } this.sessionUnsub = null; }
         if (this.matchUnsub) { try { this.matchUnsub(); } catch { /* ignore */ } this.matchUnsub = null; }
@@ -1661,17 +1714,17 @@ class Runner {
     }
 
     // ─── Teardown ────────────────────────────────────────────────────────────────
-    clearTimer(name) { if (this.timers[name]) { clearTimeout(this.timers[name]); clearInterval(this.timers[name]); delete this.timers[name]; } }
+    clearTimer(name: TimerName): void { if (this.timers[name]) { clearTimeout(this.timers[name]); clearInterval(this.timers[name]); delete this.timers[name]; } }
 
     /**
      * Leave the lobby, disconnect, release the account, and resolve run(). `state` is the
      * terminal session state; if not already persisted we write it (completed path).
      */
-    async finishUp(exitCode, state, alreadyPersisted = false) {
+    async finishUp(exitCode: number, state: SessionState, alreadyPersisted = false): Promise<void> {
         if (this.finalizing) return;
         this.finalizing = true;
         this.exitCode = exitCode;
-        for (const name of Object.keys(this.timers)) this.clearTimer(name);
+        for (const name of Object.keys(this.timers) as TimerName[]) this.clearTimer(name);
         if (this.disconnectTimer) { clearTimeout(this.disconnectTimer); this.disconnectTimer = null; }
         if (this.sessionUnsub) { try { this.sessionUnsub(); } catch { /* ignore */ } this.sessionUnsub = null; }
         if (this.matchUnsub) { try { this.matchUnsub(); } catch { /* ignore */ } this.matchUnsub = null; }
@@ -1693,12 +1746,12 @@ class Runner {
 }
 
 // ─── Entry point ───────────────────────────────────────────────────────────────
-function argVal(flag) {
+function argVal(flag: string): string | undefined {
     const a = process.argv.find((x) => x.startsWith(`${flag}=`));
     return a ? a.split('=')[1] : undefined;
 }
 
-async function main() {
+async function main(): Promise<void> {
     const sessionId = argVal('--session-id') || process.env.SESSION_ID;
     const botAccountId = argVal('--bot-id') || process.env.BOT_ACCOUNT_ID;
     if (!sessionId || !botAccountId) {
@@ -1714,7 +1767,7 @@ async function main() {
     const runner = new Runner(db, sessionId, botAccountId);
 
     let shuttingDown = false;
-    const shutdown = async (signal) => {
+    const shutdown = async (signal: string) => {
         if (shuttingDown) return;
         shuttingDown = true;
         logger.info(`[Runner] Received ${signal} — leaving lobby (will reattach on respawn)`);

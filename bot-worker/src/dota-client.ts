@@ -28,8 +28,10 @@ import { logger } from './logger.js';
 // Public types of the client. The file itself is still unchecked (@ts-nocheck); these
 // signatures are what the rest of the bot is checked against.
 export interface DotaClientConfig {
-  username: string;
-  password: string;
+  // Either may be missing: the tournament runner passes the account document's fields
+  // through unchecked, and steam-user then fails the logon.
+  username: string | undefined;
+  password: string | undefined;
   steamGuardSharedSecret?: string;
 }
 
