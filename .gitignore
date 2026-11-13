@@ -161,5 +161,14 @@ test-*.js
 check-*.js
 fix-*.js
 
-# Full tournament captures (WP-12): contain user ids; only fixtures/exports is committed
+# Staging values for the new platform (see docs/overhaul/SETUP_STAGING.md)
+.env.staging.local
+.env.staging
+.vercel
+pages.json
+
+# Full tournament captures (WP-12): contain user ids; only fixtures/ is committed
 data-exports/
+
+# Sentry Config File
+.env.sentry-build-plugin

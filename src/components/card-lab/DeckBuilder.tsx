@@ -8,7 +8,7 @@ import React, { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Plus, X } from 'lucide-react';
 import { C, mix, useHeaderFont } from '@/components/stats-lab/kit';
-import { roleIcons } from '@/app/fantasy/roleIcons';
+import { roleIcons } from '@/components/fantasy/roleIcons';
 import { byStrength, deckKey, type DeckRule, type GCard, type RoleKey } from '@/lib/card-lab/cards';
 import { slotDefs, type DeckSlots, type SlotDef } from '@/lib/card-lab/frozen';
 import { KEYWORD } from '@/lib/card-lab/outposts';
