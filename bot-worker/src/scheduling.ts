@@ -1,6 +1,5 @@
-// @ts-nocheck
 "use strict";
-// bot-worker/dist/scheduling.js
+// bot-worker/src/scheduling.ts
 // Match scheduling for the Conductor — ported from the old Next.js orchestrator
 // (src/app/api/admin/bot/orchestrate/route.ts scheduleUpcomingMatches +
 //  src/lib/bot/bot-config-actions.ts buildLobbyTeamAssignments / scheduleLobbyForMatch).
@@ -10,21 +9,42 @@
 // enters the pre-warm window. Unlike the old code, a single session now owns the WHOLE
 // series (the Runner advances currentGameNumber in-process), so we create one session
 // per match, not one per game.
-Object.defineProperty(exports, "__esModule", { value: true });
-const crypto = require('crypto');
-const { logger } = require('./logger.js');
+import crypto = require('crypto');
+import type { Firestore } from 'firebase-admin/firestore';
+import { logger } from './logger.js';
+import type {
+    BasePlayer,
+    BotConfig,
+    ExpectedPlayer,
+    MatchDoc,
+    SeriesFormat,
+    SessionData,
+    StandinAssignment,
+    TeamAssignment,
+    TeamDoc,
+    TournamentDoc,
+} from './types';
 
-function nowIso() { return new Date().toISOString(); }
+export interface LobbyTeamAssignments {
+    radiant: TeamAssignment;
+    dire: TeamAssignment;
+    match: MatchDoc;
+    baseRadiantPlayers: BasePlayer[];
+    baseDirePlayers: BasePlayer[];
+    standinAssignments: StandinAssignment[];
+}
+
+function nowIso(): string { return new Date().toISOString(); }
 
 /** Random, ambiguity-free alphanumeric lobby password (mirror of bot-config-actions). */
-function generateLobbyPassword() {
+function generateLobbyPassword(): string {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
     let p = '';
     for (let i = 0; i < 8; i++) p += chars.charAt(crypto.randomInt(0, chars.length));
     return p;
 }
 
-function seriesTotals(seriesFormat) {
+function seriesTotals(seriesFormat: SeriesFormat | undefined): { fmt: SeriesFormat; totalGames: number; lobbySeriesType: number } {
     const fmt = seriesFormat || 'bo1';
     const totalGames = fmt === 'bo1' ? 1 : fmt === 'bo2' ? 2 : fmt === 'bo3' ? 3 : fmt === 'bo5' ? 5 : 1;
     // Dota 2 lobby series_type: bo1→0 (none), bo2/bo3→1 (BO3), bo5→2 (BO5).
@@ -33,7 +53,7 @@ function seriesTotals(seriesFormat) {
 }
 
 /** Registered roster as raw { id, steamId32, nickname } entries (no standins applied). */
-function buildBasePlayers(team) {
+function buildBasePlayers(team: TeamDoc): BasePlayer[] {
     return (team.players && team.players.length)
         ? team.players.map((p) => ({ id: p.id, steamId32: p.steamId32 || '', nickname: p.nickname }))
         : Object.entries(team.roster || {}).map(([steamId64, p]) => ({ id: steamId64, steamId32: p.steamId32 || '', nickname: p.nickname }));
@@ -44,7 +64,7 @@ function buildBasePlayers(team) {
  * approvedStandins: { reqId: { teamId, replacedPlayerId, steamId32, nickname, gameNumbers? } }
  * gameNumbers omitted/empty = whole series.
  */
-function buildStandinAssignments(match) {
+function buildStandinAssignments(match: MatchDoc): StandinAssignment[] {
     const approvedStandins = match.approvedStandins || {};
     return Object.values(approvedStandins).map((req) => ({
         teamId: req.teamId,
@@ -60,8 +80,8 @@ function buildStandinAssignments(match) {
  * standin whose game scope covers `gameNumber` swapped in, then filtered to valid steamId32.
  * A standin with an empty gameNumbers list applies to every game (whole-series, legacy).
  */
-function buildExpectedPlayersForGame(basePlayers, standinAssignments, teamId, gameNumber) {
-    const teamStandins = {};
+function buildExpectedPlayersForGame(basePlayers: BasePlayer[] | undefined, standinAssignments: StandinAssignment[] | undefined, teamId: string, gameNumber: number): ExpectedPlayer[] {
+    const teamStandins: Record<string, { steamId32: string; nickname: string }> = {};
     for (const s of (standinAssignments || [])) {
         if (s.teamId !== teamId) continue;
         const covers = !s.gameNumbers || s.gameNumbers.length === 0 || s.gameNumbers.includes(gameNumber);
@@ -94,10 +114,10 @@ function buildExpectedPlayersForGame(basePlayers, standinAssignments, teamId, ga
  * or null if the match/teams can't be read. The base rosters + standinAssignments let the
  * runner recompute the effective roster for any game without re-reading the match doc.
  */
-async function buildLobbyTeamAssignments(db, tournamentId, matchId, gameNumber = 1) {
+async function buildLobbyTeamAssignments(db: Firestore, tournamentId: string, matchId: string, gameNumber = 1): Promise<LobbyTeamAssignments | null> {
     const matchDoc = await db.collection('tournaments').doc(tournamentId).collection('matches').doc(matchId).get();
     if (!matchDoc.exists) return null;
-    const match = matchDoc.data();
+    const match = matchDoc.data() as MatchDoc;
     if (!match.teamA?.id || !match.teamB?.id) return null;
 
     const [teamADoc, teamBDoc] = await Promise.all([
@@ -105,20 +125,20 @@ async function buildLobbyTeamAssignments(db, tournamentId, matchId, gameNumber =
         db.collection('tournaments').doc(tournamentId).collection('teams').doc(match.teamB.id).get(),
     ]);
     if (!teamADoc.exists || !teamBDoc.exists) return null;
-    const teamA = teamADoc.data();
-    const teamB = teamBDoc.data();
+    const teamA = teamADoc.data() as TeamDoc;
+    const teamB = teamBDoc.data() as TeamDoc;
 
     const baseRadiantPlayers = buildBasePlayers(teamA);
     const baseDirePlayers = buildBasePlayers(teamB);
     const standinAssignments = buildStandinAssignments(match);
 
-    const radiant = {
-        teamId: match.teamA.id, teamName: match.teamA.name, teamTag: teamA.tag || null,
+    const radiant: TeamAssignment = {
+        teamId: match.teamA.id, teamName: match.teamA.name as string, teamTag: teamA.tag || null,
         expectedPlayers: buildExpectedPlayersForGame(baseRadiantPlayers, standinAssignments, match.teamA.id, gameNumber),
         coachNickname: teamA.coach?.nickname,
     };
-    const dire = {
-        teamId: match.teamB.id, teamName: match.teamB.name, teamTag: teamB.tag || null,
+    const dire: TeamAssignment = {
+        teamId: match.teamB.id, teamName: match.teamB.name as string, teamTag: teamB.tag || null,
         expectedPlayers: buildExpectedPlayersForGame(baseDirePlayers, standinAssignments, match.teamB.id, gameNumber),
         coachNickname: teamB.coach?.nickname,
     };
@@ -130,7 +150,7 @@ async function buildLobbyTeamAssignments(db, tournamentId, matchId, gameNumber =
 }
 
 /** Does the match already have a non-terminal session? */
-async function hasActiveSession(db, matchId) {
+async function hasActiveSession(db: Firestore, matchId: string): Promise<boolean> {
     const snap = await db.collection('botLobbySessions').where('matchId', '==', matchId).get();
     return snap.docs.some((d) => !['completed', 'cancelled', 'error'].includes(d.data().state));
 }
@@ -139,7 +159,7 @@ async function hasActiveSession(db, matchId) {
  * Create pending lobby sessions for all matches of a tournament that are inside the
  * pre-warm window. Returns the number of sessions created.
  */
-async function scheduleUpcomingMatches(db, tournamentId, botConfig, tournamentDoc) {
+async function scheduleUpcomingMatches(db: Firestore, tournamentId: string, botConfig: BotConfig | null | undefined, tournamentDoc: TournamentDoc | null | undefined): Promise<number> {
     if (!botConfig?.enabled) return 0;
     const leadMs = (botConfig.lobbyCreationLeadMinutes || 10) * 60 * 1000;
     const ts = Date.now();
@@ -153,7 +173,7 @@ async function scheduleUpcomingMatches(db, tournamentId, botConfig, tournamentDo
     let created = 0;
 
     for (const matchDoc of matchesSnap.docs) {
-        const match = matchDoc.data();
+        const match = matchDoc.data() as MatchDoc;
         const matchTime = match.scheduledFor ? new Date(match.scheduledFor).getTime() : null;
         // Skip: no time, too far out, or more than 30 min past.
         if (!matchTime || matchTime > windowEnd || matchTime < ts - 30 * 60 * 1000) continue;
@@ -171,12 +191,12 @@ async function scheduleUpcomingMatches(db, tournamentId, botConfig, tournamentDo
         const resolvedFormat = match.series_format || (match.group_id ? 'bo2' : 'bo3');
         const { fmt, totalGames, lobbySeriesType } = seriesTotals(resolvedFormat);
         // Tags first: the Dota lobby browser cuts long names (same rule as src/lib/bot/lobby-name.ts)
-        const shortName = (tag, name) => (tag || '').trim() || (name || '').trim() || 'TBA';
+        const shortName = (tag: string | null | undefined, name: string | undefined) => (tag || '').trim() || (name || '').trim() || 'TBA';
         const lobbyName = `${shortName(assignments.radiant.teamTag, match.teamA?.name)} vs ${shortName(assignments.dire.teamTag, match.teamB?.name)} - ${lobbyPrefix}`;
         // Use the admin-configured fixed password if set, otherwise generate a random one.
         const fixedPassword = (botConfig.lobby?.password || '').trim();
 
-        const session = {
+        const session: SessionData = {
             matchId: matchDoc.id,
             tournamentId,
             botAccountId: '',
@@ -214,7 +234,7 @@ async function scheduleUpcomingMatches(db, tournamentId, botConfig, tournamentDo
     return created;
 }
 
-module.exports = {
+export {
     generateLobbyPassword,
     seriesTotals,
     buildBasePlayers,
