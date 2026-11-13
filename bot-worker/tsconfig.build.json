@@ -1,0 +1,6 @@
+{
+  // What the Docker image compiles into dist/: the bot without its tests and fakes.
+  // tsconfig.json (typecheck) covers everything, tests included.
+  "extends": "./tsconfig.json",
+  "exclude": ["src/**/*.test.ts", "src/testing/**"]
+}

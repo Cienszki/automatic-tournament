@@ -1,6 +1,5 @@
-// @ts-nocheck
 "use strict";
-// bot-worker/dist/runner-logic.js
+// bot-worker/src/runner-logic.ts
 // Pure, side-effect-free lobby logic used by the Lobby Runner.
 //
 // Ported from the old orchestrator's src/lib/bot/lobby-lifecycle.ts and the
@@ -9,12 +8,60 @@
 // decisions — kicks, ready transitions, series outcomes, settings maps — that the
 // runner then acts on against the DotaClient. Keeping them pure makes them unit-
 // testable and safe to re-run on a restart (every decision re-derives from state).
-Object.defineProperty(exports, "__esModule", { value: true });
+import type {
+    BotConfig,
+    ChatMessages,
+    EnforcementConfig,
+    LobbySettings,
+    LobbySlot,
+    Session,
+    SeriesFormat,
+    TeamAssignment,
+    TeamSide,
+    WhitelistEntry,
+} from './types';
+
+/** The numeric lobby options DotaClient.createLobby takes, minus name and password. */
+export interface LobbyCreateSettings {
+    gameMode: number;
+    serverRegion: number;
+    visibility: number;
+    dotaTvDelay: number;
+    seriesType: number;
+    leagueId: number | undefined;
+    cheatsEnabled: boolean;
+    fillWithBots: boolean;
+    allowSpectators: boolean;
+    pauseSetting: number;
+    selectionPriorityRules: number;
+    radiantSeriesWins: number;
+    direSeriesWins: number;
+}
+
+export interface EnforcementAction {
+    kickPlayers: Array<{ steamId32: string; reason: 'not_registered' }>;
+    chatMessages: string[];
+}
+
+export interface SeriesResult {
+    decided: boolean;
+    winnerId: string | null;
+    isDraw: boolean;
+    score: Record<string, number>;
+    gamesPlayed: number;
+    maxGames: number;
+    winsToWin: number;
+}
+
+/** The session fields the series math reads. */
+type SeriesState = Pick<Session, 'seriesFormat' | 'totalGames' | 'seriesScore' | 'completedGameIds' | 'radiantTeam' | 'direTeam'>;
+/** The session fields the roster helpers read. */
+type Rosters = Pick<Session, 'radiantTeam' | 'direTeam'>;
 
 // ─── Dota 2 enum maps (mirror of src/types/lobby-bot.ts) ────────────────────
 // Server region values are the node-dota2 EServerRegion enum (authoritative):
 // europe_west = EUROPE (3); Stockholm (8) is Europe East.
-const DOTA_GAME_MODE_IDS = {
+const DOTA_GAME_MODE_IDS: Record<string, number> = {
     all_pick: 1,
     captains_mode: 2,
     captains_draft: 16,
@@ -23,7 +70,7 @@ const DOTA_GAME_MODE_IDS = {
     all_random: 3,
     turbo: 23,
 };
-const DOTA_SERVER_REGION_IDS = {
+const DOTA_SERVER_REGION_IDS: Record<string, number> = {
     us_west: 1,
     us_east: 2,
     europe_west: 3,
@@ -44,21 +91,21 @@ const DOTA_SERVER_REGION_IDS = {
  * Map admin-facing string lobby settings → the numeric GC enums the DotaClient
  * expects. series_type / series wins come from the session (carried across games).
  */
-function toLobbyCreateSettings(lobby, session) {
-    const visMap = { public: 0, friends_only: 1, unlisted: 2 };
-    const pauseMap = { unlimited: 0, limited: 1, disabled: 2 };
+function toLobbyCreateSettings(lobby: LobbySettings, session: Pick<Session, 'lobbySeriesType' | 'lobbyRadiantWins' | 'lobbyDireWins'>): LobbyCreateSettings {
+    const visMap: Record<string, number> = { public: 0, friends_only: 1, unlisted: 2 };
+    const pauseMap: Record<string, number> = { unlimited: 0, limited: 1, disabled: 2 };
     return {
-        gameMode: DOTA_GAME_MODE_IDS[lobby.gameMode] ?? 2,
+        gameMode: DOTA_GAME_MODE_IDS[lobby.gameMode as string] ?? 2,
         // Fallbacks when a setting is unset: Europe West (3), Public (0), Unlimited pauses (0).
-        serverRegion: DOTA_SERVER_REGION_IDS[lobby.serverRegion] ?? 3,
-        visibility: visMap[lobby.visibility] ?? 0,
+        serverRegion: DOTA_SERVER_REGION_IDS[lobby.serverRegion as string] ?? 3,
+        visibility: visMap[lobby.visibility as string] ?? 0,
         dotaTvDelay: lobby.dotaTvDelay ?? 120,
         seriesType: session.lobbySeriesType ?? 0,
         leagueId: lobby.leagueId,
         cheatsEnabled: lobby.cheatsEnabled ?? false,
         fillWithBots: lobby.fillWithBots ?? false,
         allowSpectators: lobby.allowSpectators ?? true,
-        pauseSetting: pauseMap[lobby.pauseSetting] ?? 0,
+        pauseSetting: pauseMap[lobby.pauseSetting as string] ?? 0,
         // Default to Automatic (coin toss) for official matches.
         selectionPriorityRules: lobby.selectionPriorityRules ?? 1,
         // Pre-populate the series score for game 2+ (shows in the Dota 2 lobby UI).
@@ -73,8 +120,8 @@ function toLobbyCreateSettings(lobby, session) {
  * Every Steam32 id allowed in this lobby: both rosters, coaches, and the
  * tournament-level whitelist (commentators/observers/admins).
  */
-function getAllAuthorizedSteamIds(session, whitelist = []) {
-    const authorized = new Set();
+function getAllAuthorizedSteamIds(session: Rosters, whitelist: WhitelistEntry[] = []): Set<string> {
+    const authorized = new Set<string>();
     for (const p of session.radiantTeam.expectedPlayers) authorized.add(p.steamId32);
     for (const p of session.direTeam.expectedPlayers) authorized.add(p.steamId32);
     if (session.radiantTeam.coachSteamId32) authorized.add(session.radiantTeam.coachSteamId32);
@@ -84,18 +131,18 @@ function getAllAuthorizedSteamIds(session, whitelist = []) {
 }
 
 /** 'radiant' | 'dire' | null — which side a player is expected on (null = not a player). */
-function getExpectedTeamSide(session, steamId32) {
+function getExpectedTeamSide(session: Rosters, steamId32: string): TeamSide | null {
     if (session.radiantTeam.expectedPlayers.some((p) => p.steamId32 === steamId32)) return 'radiant';
     if (session.direTeam.expectedPlayers.some((p) => p.steamId32 === steamId32)) return 'dire';
     return null;
 }
 
 /** Same as getExpectedTeamSide — kept under the orchestrator's old name for ready-check code. */
-function identifyPlayerTeam(session, steamId32) {
+function identifyPlayerTeam(session: Rosters, steamId32: string): TeamSide | null {
     return getExpectedTeamSide(session, steamId32);
 }
 
-function getPlayerNickname(session, steamId32) {
+function getPlayerNickname(session: Rosters, steamId32: string): string {
     const r = session.radiantTeam.expectedPlayers.find((p) => p.steamId32 === steamId32);
     if (r) return r.nickname;
     const d = session.direTeam.expectedPlayers.find((p) => p.steamId32 === steamId32);
@@ -105,12 +152,12 @@ function getPlayerNickname(session, steamId32) {
 
 // ─── Chat command matching ──────────────────────────────────────────────────
 
-function isReadyCommand(message, readyCommands) {
+function isReadyCommand(message: string, readyCommands: string[] | undefined): boolean {
     const normalized = message.trim().toLowerCase();
     return (readyCommands || []).some((cmd) => normalized === cmd.toLowerCase());
 }
 
-function isUnreadyCommand(message, unreadyCommands) {
+function isUnreadyCommand(message: string, unreadyCommands: string[] | undefined): boolean {
     const normalized = message.trim().toLowerCase();
     return (unreadyCommands || []).some((cmd) => normalized === cmd.toLowerCase());
 }
@@ -123,8 +170,8 @@ function isUnreadyCommand(message, unreadyCommands) {
  * informationally (sides are interchangeable under coin toss). Returns the list
  * of kicks with reasons; the runner executes the not_registered ones.
  */
-function evaluateEnforcement(session, players, config, whitelist = []) {
-    const action = { kickPlayers: [], chatMessages: [] };
+function evaluateEnforcement(session: Rosters, players: LobbySlot[], config: EnforcementConfig | null | undefined, whitelist: WhitelistEntry[] = []): EnforcementAction {
+    const action: EnforcementAction = { kickPlayers: [], chatMessages: [] };
     if (!config) return action;
     const authorized = getAllAuthorizedSteamIds(session, whitelist);
 
@@ -165,12 +212,12 @@ function evaluateEnforcement(session, players, config, whitelist = []) {
  * must all sit on the SAME side (radiant or dire — the side itself is decided by
  * coin toss). Returns the names of teams whose players are split across sides.
  */
-function findSplitTeams(session, players) {
+function findSplitTeams(session: Rosters, players: LobbySlot[]): string[] {
     const teams = [
         { ids: new Set(session.radiantTeam.expectedPlayers.map((p) => p.steamId32)), name: session.radiantTeam.teamName },
         { ids: new Set(session.direTeam.expectedPlayers.map((p) => p.steamId32)), name: session.direTeam.teamName },
     ];
-    const split = [];
+    const split: string[] = [];
     for (const { ids, name } of teams) {
         const seated = players.filter((p) => ids.has(p.steamId32) && (p.teamSide === 'radiant' || p.teamSide === 'dire'));
         const onRadiant = seated.filter((p) => p.teamSide === 'radiant').length;
@@ -186,17 +233,17 @@ function findSplitTeams(session, players) {
  * Sides are NOT pre-assigned — a team may sit on either side (the coin toss decides), so this
  * is how we both gate the ready-check (team must be cohesive) and learn the team→side mapping.
  */
-function teamSeatedSide(teamAssignment, players) {
+function teamSeatedSide(teamAssignment: Pick<TeamAssignment, 'expectedPlayers'>, players: LobbySlot[]): TeamSide | null {
     const ids = new Set(teamAssignment.expectedPlayers.map((p) => p.steamId32));
     const seated = players.filter((p) => ids.has(p.steamId32) && (p.teamSide === 'radiant' || p.teamSide === 'dire'));
     if (seated.length < teamAssignment.expectedPlayers.length) return null; // not everyone seated
-    const sides = new Set(seated.map((p) => p.teamSide));
+    const sides = new Set(seated.map((p) => p.teamSide as TeamSide));
     if (sides.size !== 1) return null; // split across both sides
     return [...sides][0];
 }
 
 /** Count how many of each team's expected players are currently seated/in the lobby. */
-function computeTeamPresence(session, lobbyPlayers) {
+function computeTeamPresence(session: Rosters & Pick<Session, 'lastLobbyPlayers'>, lobbyPlayers?: Array<Pick<LobbySlot, 'steamId32'>> | null): { radiant: number; dire: number } {
     const present = new Set((lobbyPlayers ?? session.lastLobbyPlayers ?? []).map((p) => p.steamId32));
     return {
         radiant: session.radiantTeam.expectedPlayers.filter((p) => present.has(p.steamId32)).length,
@@ -207,7 +254,7 @@ function computeTeamPresence(session, lobbyPlayers) {
 // ─── Series math ────────────────────────────────────────────────────────────
 
 /** Wins needed to clinch. BO2 is special — both games are always played. */
-function getWinsToWin(seriesFormat) {
+function getWinsToWin(seriesFormat: SeriesFormat | string | undefined): number {
     switch (seriesFormat) {
         case 'bo1': return 1;
         case 'bo2': return Infinity;
@@ -218,14 +265,14 @@ function getWinsToWin(seriesFormat) {
 }
 
 /** Decide whether the series is over, who won, and the running score. */
-function calculateSeriesResult(session) {
+function calculateSeriesResult(session: SeriesState): SeriesResult {
     const { seriesFormat, totalGames, seriesScore, completedGameIds, radiantTeam, direTeam } = session;
     const winsToWin = getWinsToWin(seriesFormat);
     const radiantWins = seriesScore[radiantTeam.teamId] || 0;
     const direWins = seriesScore[direTeam.teamId] || 0;
     const gamesPlayed = completedGameIds.length;
 
-    const result = {
+    const result: SeriesResult = {
         decided: false, winnerId: null, isDraw: false,
         score: { ...seriesScore }, gamesPlayed, maxGames: totalGames, winsToWin,
     };
@@ -253,14 +300,14 @@ function calculateSeriesResult(session) {
 }
 
 /** Next game number (1-indexed) or null if the series is complete. */
-function getNextGameNumber(session) {
+function getNextGameNumber(session: SeriesState): number | null {
     const result = calculateSeriesResult(session);
     if (result.decided) return null;
     return session.completedGameIds.length + 1;
 }
 
 /** "Team Alpha 2 - 1 Team Beta" */
-function formatSeriesScore(session) {
+function formatSeriesScore(session: Rosters & Pick<Session, 'seriesScore'>): string {
     const r = session.seriesScore[session.radiantTeam.teamId] || 0;
     const d = session.seriesScore[session.direTeam.teamId] || 0;
     return `${session.radiantTeam.teamName} ${r} - ${d} ${session.direTeam.teamName}`;
@@ -269,14 +316,14 @@ function formatSeriesScore(session) {
 // ─── Chat message templating ────────────────────────────────────────────────
 
 /** Merge per-bot personality overrides on top of the tournament chat defaults. */
-function getEffectiveChatMessages(botConfig, botAccountId) {
+function getEffectiveChatMessages(botConfig: Pick<BotConfig, 'chatMessages' | 'perBotMessages'> | null | undefined, botAccountId: string): ChatMessages {
     const overrides = botConfig?.perBotMessages?.[botAccountId];
     if (!overrides) return botConfig?.chatMessages || {};
     return { ...botConfig.chatMessages, ...overrides };
 }
 
 /** Replace {player_name}/{team_name}/{missing}; leaves unknown tokens intact. */
-function applyPlaceholders(message, ctx) {
+function applyPlaceholders(message: string | undefined, ctx: { player_name?: string; team_name?: string; missing?: string }): string {
     return (message || '')
         .replace(/\{player_name\}/g, ctx.player_name ?? '')
         .replace(/\{team_name\}/g, ctx.team_name ?? '')
@@ -284,11 +331,11 @@ function applyPlaceholders(message, ctx) {
 }
 
 /** Replace {token} from ctx; unknown tokens are left intact (late-arrival templates). */
-function applyLatePlaceholders(tmpl, ctx) {
-    return (tmpl || '').replace(/\{(\w+)\}/g, (_m, k) => (ctx[k] !== undefined ? ctx[k] : `{${k}}`));
+function applyLatePlaceholders(tmpl: string | undefined, ctx: Record<string, string | undefined>): string {
+    return (tmpl || '').replace(/\{(\w+)\}/g, (_m, k: string) => (ctx[k] !== undefined ? ctx[k] : `{${k}}`));
 }
 
-module.exports = {
+export {
     DOTA_GAME_MODE_IDS,
     DOTA_SERVER_REGION_IDS,
     toLobbyCreateSettings,
