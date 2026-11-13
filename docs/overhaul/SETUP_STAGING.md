@@ -81,7 +81,7 @@ firebase apps:sdkconfig WEB --project YOUR-STAGING-PROJECT-ID
 1. **Project settings** → tab **Service accounts** → **Generate new private key** → **Generate key**. A `.json` file is downloaded.
 2. The app wants it as one long line of text. In a PowerShell terminal, with the real path of the downloaded file:
    ```
-   [Convert]::ToBase64String([IO.File]::ReadAllBytes("C:\Users\you\Downloads\the-file.json")) | Set-Clipboard
+   [Convert]::ToBase64String([IO.File]::ReadAllBytes("C:\Users\wilqw\Downloads\the-file.json")) | Set-Clipboard
    ```
 3. Paste (Ctrl+V) into the file as `FIREBASE_SERVICE_ACCOUNT_BASE64`. It is one very long line.
 4. Delete the downloaded `.json` file.

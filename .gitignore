@@ -167,3 +167,6 @@ fix-*.js
 .vercel
 data-exports/
 pages.json
+
+# Sentry Config File
+.env.sentry-build-plugin
