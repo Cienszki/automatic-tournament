@@ -45,8 +45,8 @@ interface RunnerState {
 
 // Inhouse lobbies are supervised the same way tournament ones are, but driven
 // by inhouseGames instead of botLobbySessions. All of that logic lives in the
-// module below (real TypeScript, built from src/) so the footprint in this
-// sourceless file stays to the four additive hooks marked "inhouse".
+// module below so the footprint in this file stays to the four additive hooks
+// marked "inhouse".
 // Loaded defensively: this file is the entry point for the tournament system,
 // which ran for months before inhouses existed and must keep running exactly as
 // it did. A bare require here would make any inhouse-side load failure — a file

@@ -1,21 +1,24 @@
 "use strict";
-// Companion to _create-inhouse-game.js — ongoing interaction with a live M1
+// MANUAL TOOL, NOT A TEST. It writes to whatever Firestore FIREBASE_SERVICE_ACCOUNT_BASE64
+// points at. Run it only against a staging project, after `npm run build` (it loads dist/).
+// See ../../RELEASE_CHECK.md.
+// Companion to create-inhouse-game.js — ongoing interaction with a live M1
 // test lobby, mirroring _drytest.js's phase-based CLI style.
 //
 // Usage (while dist/inhouse-runner.js is running against the game from
-// _create-inhouse-game.js create):
-//   node dist/_drytest-inhouse.js invite <steamId32>   — queue invite_player
-//   node dist/_drytest-inhouse.js kick <steamId32>     — queue kick_player
-//   node dist/_drytest-inhouse.js chat <message...>    — queue send_chat
-//   node dist/_drytest-inhouse.js end [reason]         — queue end_inhouse_session
-//   node dist/_drytest-inhouse.js ban <steamId32>      — write a test ban (verification step 5)
-//   node dist/_drytest-inhouse.js unban <steamId32>    — remove it again
+// create-inhouse-game.js create):
+//   node scripts/manual/queue-inhouse-command.js invite <steamId32>   — queue invite_player
+//   node scripts/manual/queue-inhouse-command.js kick <steamId32>     — queue kick_player
+//   node scripts/manual/queue-inhouse-command.js chat <message...>    — queue send_chat
+//   node scripts/manual/queue-inhouse-command.js end [reason]         — queue end_inhouse_session
+//   node scripts/manual/queue-inhouse-command.js ban <steamId32>      — write a test ban (verification step 5)
+//   node scripts/manual/queue-inhouse-command.js unban <steamId32>    — remove it again
 
 const dotenv = require('dotenv');
 dotenv.config();
-const { initFirebase } = require('./firebase.js');
+const { initFirebase } = require('../../dist/firebase.js');
 
-const STAGING_BOT_ID = 'staging-pd2ihbot5'; // same value as in _create-inhouse-game.js
+const STAGING_BOT_ID = 'staging-pd2ihbot5'; // same value as in create-inhouse-game.js
 const GAME_ID = 'm1-drytest';
 
 async function queue(db, command) {
@@ -29,7 +32,7 @@ async function queue(db, command) {
 
 async function main() {
   if (STAGING_BOT_ID === 'CHANGE_ME') {
-    console.error('Set STAGING_BOT_ID at the top of this file first (same value as _create-inhouse-game.js).');
+    console.error('Set STAGING_BOT_ID at the top of this file first (same value as create-inhouse-game.js).');
     process.exit(1);
   }
 
@@ -63,7 +66,7 @@ async function main() {
     await db.collection('inhouseBans').doc(`s_${arg}`).delete();
     console.log(`Removed inhouseBans/s_${arg}. BanGuard caches for 60s, so this may take up to a minute to take effect in the live lobby.`);
   } else {
-    console.log('Usage: node dist/_drytest-inhouse.js <invite|kick|chat|end|ban|unban> <arg...>');
+    console.log('Usage: node scripts/manual/queue-inhouse-command.js <invite|kick|chat|end|ban|unban> <arg...>');
     process.exit(1);
   }
 

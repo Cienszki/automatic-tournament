@@ -1,3 +1,20 @@
+# ─── Build stage: compile src/ into dist/ ────────────────────────────────────
+# dist/ is not in git. Everything that runs is compiled here from src/, with the
+# typecheck as part of the build: a type error fails the image, and Railway keeps
+# the previous deploy.
+FROM node:20-slim AS build
+
+# git is required for npm to install GitHub-sourced dependencies (steam-resources)
+RUN apt-get update && apt-get install -y --no-install-recommends git ca-certificates && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci --no-audit --no-fund
+COPY tsconfig.json tsconfig.build.json ./
+COPY src/ ./src/
+RUN npx tsc -p tsconfig.build.json
+
+# ─── Runtime stage ───────────────────────────────────────────────────────────
 FROM node:20-slim
 
 # git is required for npm to install GitHub-sourced dependencies (steam-resources)
@@ -5,8 +22,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends git ca-certific
 
 WORKDIR /app
 
-COPY package.json ./
-RUN npm install --production --no-audit --no-fund
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev --no-audit --no-fund
 
 # steam-resources needs protobufjs@4.x. Install it in a temp dir with --ignore-scripts
 # (avoids the svn prepare script that fetches protobuf definitions).
@@ -58,8 +75,8 @@ RUN node -e "const fs=require('fs');const p='/app/node_modules/steam-resources/p
 # which is also why proto-patch.ts refuses to whitelist the option unless this passed.
 RUN node -e "const D=require('/app/node_modules/steam-resources').GC.Dota.Internal; if(!D||!D.CSODOTALobbyMember){console.error('FATAL: CSODOTALobbyMember missing');process.exit(1);} if(!D.DOTAGameVersion||D.DOTAGameVersion.GAME_VERSION_STABLE===undefined){console.error('FATAL: DOTAGameVersion.GAME_VERSION_STABLE missing (createLobby would break)');process.exit(1);} try{new D.CMsgPracticeLobbySetDetails({do_player_draft:true});}catch(e){console.error('FATAL: do_player_draft missing from CMsgPracticeLobbySetDetails (Immortal Draft would be silently dropped)');process.exit(1);} console.log('OK: CSODOTALobbyMember + DOTAGameVersion + do_player_draft all present');"
 
-# Copy compiled code
-COPY dist/ ./dist/
+# Compiled code from the build stage
+COPY --from=build /app/dist ./dist
 
 # DO NOT copy .env — credentials come from Railway environment variables.
 # The only required env var is FIREBASE_SERVICE_ACCOUNT_BASE64.

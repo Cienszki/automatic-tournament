@@ -1,5 +1,8 @@
 "use strict";
-// Manual M1 dry-run driver for the Inhouse Runner — mirrors _create-session.js
+// MANUAL TOOL, NOT A TEST. It writes to whatever Firestore FIREBASE_SERVICE_ACCOUNT_BASE64
+// points at. Run it only against a staging project, after `npm run build` (it loads dist/).
+// See ../../RELEASE_CHECK.md.
+// Manual M1 dry-run driver for the Inhouse Runner — mirrors the old _create-session.js
 // / _drytest.js's style and conventions (plain JS, require the compiled
 // dist/ output directly, phase-based argv CLI).
 //
@@ -9,18 +12,18 @@
 // InhouseRunner code path, not a special test-only shortcut.
 //
 // Usage:
-//   node dist/_create-inhouse-game.js create   — write the game doc + queue the command
-//   node dist/_create-inhouse-game.js status   — print the game doc + slotSnapshot + memberships
-//   node dist/_create-inhouse-game.js clear    — delete this test game's queued commands
+//   node scripts/manual/create-inhouse-game.js create   — write the game doc + queue the command
+//   node scripts/manual/create-inhouse-game.js status   — print the game doc + slotSnapshot + memberships
+//   node scripts/manual/create-inhouse-game.js clear    — delete this test game's queued commands
 //
 // Then, in another terminal:
 //   node dist/inhouse-runner.js --game-id=<printed id> --bot-id=<STAGING_BOT_ID>
 
 const dotenv = require('dotenv');
 dotenv.config();
-const { initFirebase } = require('./firebase.js');
-const { resolveSettings } = require('./inhouse/core/settings.js');
-const { InhouseStore } = require('./inhouse/core/store.js');
+const { initFirebase } = require('../../dist/firebase.js');
+const { resolveSettings } = require('../../dist/inhouse/core/settings.js');
+const { InhouseStore } = require('../../dist/inhouse/core/store.js');
 
 // ─── Fill these in before running ───────────────────────────────────────────
 // A staging account per the plan's verification steps: enabled:false in
