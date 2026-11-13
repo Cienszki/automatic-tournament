@@ -52,7 +52,7 @@ One line per WP: id, name, branch, state (planned / in progress / in review / me
 | WP-09 | Public subpages on cached queries (09a, 09b, 09c) | `wp/09a-teams-schedule`, `wp/09b-standings-playoffs`, `wp/09c-content` | planned | L, Opus review; Fable for 09b |
 | WP-10 | Home page on server data, deep links without redirects | `wp/10-home-server-data` | planned | L, Fable review |
 | WP-11 | Performance budgets in CI, lighter bundle | `wp/11-perf-budgets` | planned | M, Opus review |
-| WP-12 | Capture tool and parity fixtures | `wp/12-capture-fixtures` | in progress | M, Opus review. Implementer started 2026-11-13. Full captures go to `data-exports/` in the overhaul worktree (git-ignored) |
+| WP-12 | Capture tool and parity fixtures | `wp/12-capture-fixtures` | in review | M, Opus review. Done 2026-11-13: `scripts/tools/capture/`, `docs/overhaul/EXPORT_FORMAT.md`, fixtures for pdl-s2 and wiosenna with published standings and stats, 8 OpenDota responses. Full captures of letnia, pdl, pdl-s2, wiosenna and the global collections are in `data-exports/` in the overhaul worktree (git-ignored, about 10 MB). Private collections need the owner's export (list in each manifest). Found: Wiosenna `pickems` documents hold e-mail addresses and are publicly readable |
 | WP-13a | Standings and ranking rules as pure functions | `wp/13a-ranking` | planned | M, Fable review |
 | WP-13b | `results` feature: one way to change a result | `wp/13b-results` | planned | L, Fable review |
 | WP-14 | Job queue in the database | `wp/14-jobs` | planned | M, Fable review |
