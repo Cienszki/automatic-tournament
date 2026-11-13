@@ -160,3 +160,6 @@ firebase-acc.json
 test-*.js
 check-*.js
 fix-*.js
+
+# Full tournament captures (WP-12): contain user ids; only fixtures/exports is committed
+data-exports/
