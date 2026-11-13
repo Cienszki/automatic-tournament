@@ -67,6 +67,9 @@ jobs:
         run: |
           set -o pipefail
           npm ci 2>&1 | tee npm-ci.log || { grep -E 'npm (error|ERR)' npm-ci.log | head -30 | sed 's/^/::error::/'; exit 1; }
+      - name: Apply the image's protobuf patches (node-dota2 cannot load without them)
+        working-directory: bot-worker
+        run: node setup-local.js
       - name: dist/ is not in git
         run: test -z "$(git ls-files bot-worker/dist)"
       - name: Typecheck
@@ -74,7 +77,7 @@ jobs:
         run: npm run typecheck
       - name: Test
         working-directory: bot-worker
-        run: npm test
+        run: npm test -- --reporter=default --reporter=github-actions
       - name: Build the image
         run: docker build -t bot-worker:ci bot-worker
       - name: Smoke-test the image
