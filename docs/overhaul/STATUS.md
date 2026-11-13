@@ -4,13 +4,13 @@ Every session updates this file as it works, not only at the end. A new session,
 
 ## Next step
 
-Three implementers are running: **WP-05**, **WP-12**, **WP-20**. They were stopped once by the usage limit and resumed on 2026-11-13. When each reports, review it (reviewer agent for 05 and 12, Fable for 20), merge with `--no-ff`, and remove its worktree.
+Merged so far: WP-05, WP-12, WP-20. Running: **WP-32** (schema code, after the approved `SCHEMA.md` on its branch) and **WP-13a** (ranking rules). When each reports, review (Fable for both), merge with `--no-ff`, remove its worktree (run `rmdir` on any `node_modules` junction first), then run `npm ci` in the `overhaul` worktree if `package.json` changed.
 
-Then: **WP-32** (database schema; Fable reviews `SCHEMA.md` before migrations are written), then WP-33, WP-03, WP-06.
+Next in line: **WP-33** (import tool; needs WP-32), **WP-03** (seed, CI, previews), **WP-06** (trial on Vercel and Supabase; the staging values are in `.env.staging.local` and already loaded into the Vercel project `tournament-platform`), **WP-04** (branch exists with Sentry's wizard output), **WP-15** (needs 13a, 32, 33).
 
-The owner is filling in the staging accounts with `SETUP_STAGING.md`. When they say a step is done, check the value by using it, then load the file into GitHub secrets (`gh secret set --env-file .env.staging.local`) and Vercel. The file `.env.staging.local` in the `overhaul` worktree is git-ignored; never print its values.
+The implementer model's usage limit stops agents every few hours; resume them with SendMessage after the reset time in the notification.
 
-**S2 (organizer experience)** is a prerequisite of WP-18. Its prototype review needs a browser, which the agent sandbox blocks (question 2).
+**S2 (organizer experience)** is a prerequisite of WP-18. Its prototype review needs a browser, which agents cannot start on this machine (question 2).
 
 ## Decisions that changed the plan (owner, 2026-11-13)
 
@@ -55,7 +55,7 @@ One line per WP: id, name, branch, state (planned / in progress / in review / me
 | WP-10 | Home page on server data, deep links without redirects | `wp/10-home-server-data` | planned | L, Fable review |
 | WP-11 | Performance budgets in CI, lighter bundle | `wp/11-perf-budgets` | planned | M, Opus review |
 | WP-12 | Capture tool and parity fixtures | `wp/12-capture-fixtures` | merged 2026-11-13 | Four tournaments captured without credentials into `data-exports/` (10 MB, git-ignored); fixtures for pdl-s2 and wiosenna with published tables in `fixtures/exports/`; field list in `EXPORT_FORMAT.md`. A re-capture of pdl-s2 takes 41 s. Private collections (users, accounts, admins, card game, bot config) answer 403 and need the owner's export |
-| WP-13a | Standings and ranking rules as pure functions | `wp/13a-ranking` | planned | M, Fable review |
+| WP-13a | Standings and ranking rules as pure functions | `wp/13a-ranking` | in progress | M, Fable review. Implementer started 2026-11-13 |
 | WP-13b | `results` feature: one way to change a result | `wp/13b-results` | planned | L, Fable review |
 | WP-14 | Job queue in the database | `wp/14-jobs` | planned | M, Fable review |
 | WP-15 | `stats` feature: one compute from PostgreSQL | `wp/15-stats` | planned | L, Fable review |
@@ -75,7 +75,7 @@ One line per WP: id, name, branch, state (planned / in progress / in review / me
 | WP-29 | One translation system | `wp/29-i18n` | planned | L, Opus review |
 | WP-30 | Full end-to-end suite | `wp/30-e2e` | planned | M, Opus review |
 | WP-31 | Load test at 1,000 tournaments | `wp/31-load-test` | planned | M, Fable review |
-| WP-32 | Database schema v1 and `platform/db` | `wp/32-schema` | planned | L, Fable review twice (`SCHEMA.md`, then the result) |
+| WP-32 | Database schema v1 and `platform/db` | `wp/32-schema` | in progress | `SCHEMA.md` (50 tables) written and approved by Fable on 2026-11-13 with four changes (bot role policies, a home for tie decisions, player slot on performances, convention example). Implementer is writing tables, migrations and tests |
 | WP-33 | Import tool (Firestore export to PostgreSQL, Letnia adapter) | `wp/33-import` | planned | L, Fable review |
 | WP-34 | Tiebreaker matches, ranking across groups, places into bracket slots | `wp/34-advancement` | planned | L, Fable review |
 | WP-35 | Go-live step one: the archive (Letnia, finished seasons) | `wp/35-go-live-1` | planned | S, Fable review. The owner runs it |
