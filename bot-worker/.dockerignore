@@ -3,16 +3,22 @@
 *.env.local
 *.env.*.local
 
+# Installed and built inside the image (npm ci, tsc), never copied from the host
+node_modules
+dist
+
 # Logs
 *.log
-manager.log
-manager-err.log
 
 # Windows/macOS junk
 Thumbs.db
 .DS_Store
 
-# Dev scripts (not needed at runtime)
-deploy-bot.ps1
-setup-vps.sh
-ecosystem.config.cjs
+# Not needed to build or run the bot
+scripts/
+*.md
+ih.png
+setup-local.js
+vitest.config.mts
+src/**/*.test.ts
+src/testing/

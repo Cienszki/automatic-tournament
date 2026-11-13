@@ -63,7 +63,7 @@ One line per WP: id, name, branch, state (planned / in progress / in review / me
 | WP-17 | Captain flows through commands | `wp/17-captain-commands` | planned | L, Fable review |
 | WP-18 | Organizer commands with S2's screens (18a-18e) | `wp/18a-settings ... wp/18e-content` | planned | XL, split. Fable for 18a, 18d. Needs S2 |
 | WP-19 | No database access from the browser | `wp/19-no-browser-db` | planned | S, Fable review |
-| WP-20 | Bot source under control (TypeScript, tests) | `wp/20-bot-source` | in progress | L, Fable review. Implementer started 2026-11-13 |
+| WP-20 | Bot source under control (TypeScript, tests) | `wp/20-bot-source` | merged 2026-11-13 | Seven hand-written files are TypeScript, proven equivalent to the old `dist/` statement by statement; `dist/` is out of git; the image builds from source in CI; 104 tests with fakes; all storage behind `Store` (the methods and their collections are in `bot-worker/src/store.ts` and `store-firestore.ts`, which is WP-21's specification). Not deployed; the manual lobby test in `bot-worker/RELEASE_CHECK.md` is required before it ever is. Ten bugs found and left unfixed, listed in `bot-worker/KNOWN_BUGS.md` |
 | WP-21 | Contract, and the bot on its own tables | `wp/21-bot-contract` | planned | L, Fable review |
 | WP-22 | Bot: due work only, encrypted credentials, visible waiting | `wp/22-bot-due-work` | planned | M, Fable review |
 | WP-23 | Measure and scale lobby workers | `wp/23-bot-scale` | planned | S + M, Fable review for part 2 |

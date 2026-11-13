@@ -1,0 +1,5 @@
+# Build output: compiled from src/ by `npm run build` and by the Docker image.
+# Never commit it; it used to be the only copy of the tournament bot (WP-20).
+dist/
+node_modules/
+.env
