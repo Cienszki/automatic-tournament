@@ -1,0 +1,1849 @@
+{
+ "datasetGeneratedAt": "2026-11-13T06:37:00.239Z",
+ "method": "The live /api/stats/dataset payload (stats-dataset.json), run through src/lib/stats-lab/derive.ts deriveModel and src/components/stats-hub/overview-data.ts buildOverview, the functions the stats hub calls.",
+ "counts": {
+  "teams": 19,
+  "namedPlayers": 120,
+  "matches": 82,
+  "games": 163,
+  "parsedGames": 147,
+  "draftGames": 161,
+  "performances": 1630,
+  "minGames": 7,
+  "heroesPicked": 121
+ },
+ "totals": {
+  "kills": 11432,
+  "deaths": 11645,
+  "assists": 25615,
+  "rampages": 11,
+  "ultraKills": 66,
+  "tripleKills": 275,
+  "roshans": 257,
+  "towers": 1517,
+  "wards": 15646,
+  "dewards": 5319,
+  "stacks": 2297,
+  "runes": 7722,
+  "buybacks": 796,
+  "couriers": 373,
+  "heroDamage": 40420856,
+  "gold": 34001614,
+  "healing": 2526114,
+  "lastHits": 369033,
+  "denies": 11755,
+  "hours": 117.0894
+ },
+ "overview": {
+  "leaders": [
+   {
+    "player": {
+     "id": "76561198067529230",
+     "name": "Zys",
+     "teamId": "zdMgjFO2iTIcCQXwXEn2"
+    },
+    "value": 18.8436
+   },
+   {
+    "player": {
+     "id": "76561198106618294",
+     "name": "white",
+     "teamId": "VLI67jzh3hYFx9Eysnbn"
+    },
+    "value": 18.3277
+   },
+   {
+    "player": {
+     "id": "76561198096270734",
+     "name": "Obstacle",
+     "teamId": "n5uP41hQfGnnZdaHW72h"
+    },
+    "value": 17.4794
+   }
+  ],
+  "bestPerRole": [
+   {
+    "role": "Carry",
+    "player": {
+     "id": "76561198315039202",
+     "name": "Saint",
+     "teamId": "RXEbqcFKE0XaWIcufsnj"
+    },
+    "value": 16.0676
+   },
+   {
+    "role": "Mid",
+    "player": {
+     "id": "76561198067529230",
+     "name": "Zys",
+     "teamId": "zdMgjFO2iTIcCQXwXEn2"
+    },
+    "value": 18.8436
+   },
+   {
+    "role": "Offlane",
+    "player": {
+     "id": "76561198096270734",
+     "name": "Obstacle",
+     "teamId": "n5uP41hQfGnnZdaHW72h"
+    },
+    "value": 17.4794
+   },
+   {
+    "role": "Soft Support",
+    "player": {
+     "id": "76561198294297767",
+     "name": "pavlo_denys",
+     "teamId": "H3HMslxOZ1zcTd7oX2Ro"
+    },
+    "value": 13.1055
+   },
+   {
+    "role": "Hard Support",
+    "player": {
+     "id": "76561198018696968",
+     "name": "Tabaluga101",
+     "teamId": "0OKTuz7PNdsMzKgvRrOh"
+    },
+    "value": 12.4759
+   }
+  ],
+  "bestTeam": {
+   "teamId": "n5uP41hQfGnnZdaHW72h",
+   "value": 13.3521
+  },
+  "records": [
+   {
+    "key": "kills",
+    "value": "35",
+    "gameId": "8879524862",
+    "matchId": "YEFQv4tDs9SRLLXXpgRb",
+    "playerId": "76561198315039202",
+    "teamId": "RXEbqcFKE0XaWIcufsnj"
+   },
+   {
+    "key": "assists",
+    "value": "55",
+    "gameId": "8879524862",
+    "matchId": "YEFQv4tDs9SRLLXXpgRb",
+    "playerId": "76561198161162768",
+    "teamId": "RXEbqcFKE0XaWIcufsnj"
+   },
+   {
+    "key": "gpm",
+    "value": "980",
+    "gameId": "8893712085",
+    "matchId": "ub-r1-p7",
+    "playerId": "76561198096270734",
+    "teamId": "n5uP41hQfGnnZdaHW72h"
+   },
+   {
+    "key": "heroDamage",
+    "value": "120.8k",
+    "gameId": "8879524862",
+    "matchId": "YEFQv4tDs9SRLLXXpgRb",
+    "playerId": "76561198315039202",
+    "teamId": "RXEbqcFKE0XaWIcufsnj"
+   },
+   {
+    "key": "xpm",
+    "value": "1423",
+    "gameId": "8904277430",
+    "matchId": "ub-r2-p4",
+    "playerId": "76561198096270734",
+    "teamId": "n5uP41hQfGnnZdaHW72h"
+   },
+   {
+    "key": "lastHits",
+    "value": "1310",
+    "gameId": "8841311328",
+    "matchId": "bbiRBkadFWAqmGDdA6tw",
+    "playerId": "76561198373096930",
+    "teamId": "omyDOuB6gb9syLuqDORc"
+   },
+   {
+    "key": "wards",
+    "value": "86",
+    "gameId": "8841311328",
+    "matchId": "bbiRBkadFWAqmGDdA6tw",
+    "playerId": "76561198004657568",
+    "teamId": "RXEbqcFKE0XaWIcufsnj"
+   },
+   {
+    "key": "netWorth",
+    "value": "68.6k",
+    "gameId": "8841311328",
+    "matchId": "bbiRBkadFWAqmGDdA6tw",
+    "playerId": "76561198373096930",
+    "teamId": "omyDOuB6gb9syLuqDORc"
+   },
+   {
+    "key": "towerDamage",
+    "value": "46.4k",
+    "gameId": "8878088016",
+    "matchId": "seYp4njH3lax8dDdAnQN",
+    "playerId": "76561198047075406",
+    "teamId": "nVzav95nziXL8mddtpix"
+   },
+   {
+    "key": "stacks",
+    "value": "26",
+    "gameId": "8882995549",
+    "matchId": "TKcEJglgsUOoRudRG3Vh",
+    "playerId": "76561197995560626",
+    "teamId": "0OKTuz7PNdsMzKgvRrOh"
+   }
+  ],
+  "topHeroes": [
+   {
+    "heroId": 128,
+    "picks": 51,
+    "bans": 70,
+    "contest": 121,
+    "wins": 26
+   },
+   {
+    "heroId": 6,
+    "picks": 32,
+    "bans": 79,
+    "contest": 111,
+    "wins": 15
+   },
+   {
+    "heroId": 31,
+    "picks": 51,
+    "bans": 53,
+    "contest": 104,
+    "wins": 30
+   },
+   {
+    "heroId": 2,
+    "picks": 50,
+    "bans": 49,
+    "contest": 99,
+    "wins": 28
+   },
+   {
+    "heroId": 39,
+    "picks": 14,
+    "bans": 83,
+    "contest": 97,
+    "wins": 8
+   }
+  ],
+  "teamOfTheWeek": {
+   "label": "20 lip – 26 lip",
+   "picks": [
+    {
+     "role": "Carry",
+     "player": {
+      "id": "76561198140024055",
+      "name": "Shiaua baba mac",
+      "teamId": "n5uP41hQfGnnZdaHW72h"
+     },
+     "avg": 13.286
+    },
+    {
+     "role": "Mid",
+     "player": {
+      "id": "76561198273949482",
+      "name": "Przepraszam",
+      "teamId": "u6kMrDWsUi2WF6GKhWH5"
+     },
+     "avg": 17.6214
+    },
+    {
+     "role": "Offlane",
+     "player": {
+      "id": "76561198096270734",
+      "name": "Obstacle",
+      "teamId": "n5uP41hQfGnnZdaHW72h"
+     },
+     "avg": 23.5332
+    },
+    {
+     "role": "Soft Support",
+     "player": {
+      "id": "76561198060161583",
+      "name": "Kirzyk",
+      "teamId": "u6kMrDWsUi2WF6GKhWH5"
+     },
+     "avg": 18.2597
+    },
+    {
+     "role": "Hard Support",
+     "player": {
+      "id": "76561198072152480",
+      "name": "pupa",
+      "teamId": "nVzav95nziXL8mddtpix"
+     },
+     "avg": 9.5524
+    }
+   ]
+  },
+  "achievements": {
+   "lit": 67,
+   "total": 69,
+   "top": {
+    "player": {
+     "id": "76561198096270734",
+     "name": "Obstacle",
+     "teamId": "n5uP41hQfGnnZdaHW72h"
+    },
+    "points": 80
+   }
+  },
+  "elo": [
+   {
+    "teamId": "n5uP41hQfGnnZdaHW72h",
+    "rating": 1672.36
+   },
+   {
+    "teamId": "zdMgjFO2iTIcCQXwXEn2",
+    "rating": 1613.72
+   },
+   {
+    "teamId": "nVzav95nziXL8mddtpix",
+    "rating": 1603.96
+   },
+   {
+    "teamId": "VLI67jzh3hYFx9Eysnbn",
+    "rating": 1560.59
+   }
+  ]
+ },
+ "scoreRanking": [
+  {
+   "player": {
+    "id": "76561198067529230",
+    "name": "Zys",
+    "teamId": "zdMgjFO2iTIcCQXwXEn2"
+   },
+   "games": 19,
+   "value": 18.8436
+  },
+  {
+   "player": {
+    "id": "76561198106618294",
+    "name": "white",
+    "teamId": "VLI67jzh3hYFx9Eysnbn"
+   },
+   "games": 15,
+   "value": 18.3277
+  },
+  {
+   "player": {
+    "id": "76561198096270734",
+    "name": "Obstacle",
+    "teamId": "n5uP41hQfGnnZdaHW72h"
+   },
+   "games": 27,
+   "value": 17.4794
+  },
+  {
+   "player": {
+    "id": "76561198315039202",
+    "name": "Saint",
+    "teamId": "RXEbqcFKE0XaWIcufsnj"
+   },
+   "games": 21,
+   "value": 16.0676
+  },
+  {
+   "player": {
+    "id": "76561198056980796",
+    "name": "ICEMAN",
+    "teamId": "Ii52VFXiWLS9NcKCAi58"
+   },
+   "games": 20,
+   "value": 15.8846
+  },
+  {
+   "player": {
+    "id": "76561198360331595",
+    "name": "OnlyMatt",
+    "teamId": "c6KuothJZCHyA09sPTJF"
+   },
+   "games": 17,
+   "value": 15.0474
+  },
+  {
+   "player": {
+    "id": "76561198063072494",
+    "name": "Duel maister",
+    "teamId": "zdMgjFO2iTIcCQXwXEn2"
+   },
+   "games": 19,
+   "value": 14.4341
+  },
+  {
+   "player": {
+    "id": "76561198047075406",
+    "name": "Nawle",
+    "teamId": "nVzav95nziXL8mddtpix"
+   },
+   "games": 23,
+   "value": 14.3296
+  },
+  {
+   "player": {
+    "id": "76561198161015896",
+    "name": "Smok",
+    "teamId": "VLI67jzh3hYFx9Eysnbn"
+   },
+   "games": 14,
+   "value": 13.4895
+  },
+  {
+   "player": {
+    "id": "76561198214076332",
+    "name": "TheHeroOfLegend",
+    "teamId": "RXEbqcFKE0XaWIcufsnj"
+   },
+   "games": 21,
+   "value": 13.464
+  },
+  {
+   "player": {
+    "id": "76561198273949482",
+    "name": "Przepraszam",
+    "teamId": "u6kMrDWsUi2WF6GKhWH5"
+   },
+   "games": 27,
+   "value": 13.336
+  },
+  {
+   "player": {
+    "id": "76561198074798891",
+    "name": "mojeid",
+    "teamId": "0OKTuz7PNdsMzKgvRrOh"
+   },
+   "games": 17,
+   "value": 13.1944
+  },
+  {
+   "player": {
+    "id": "76561198035158048",
+    "name": "mmr disaster",
+    "teamId": "n5uP41hQfGnnZdaHW72h"
+   },
+   "games": 26,
+   "value": 13.1197
+  },
+  {
+   "player": {
+    "id": "76561198294297767",
+    "name": "pavlo_denys",
+    "teamId": "H3HMslxOZ1zcTd7oX2Ro"
+   },
+   "games": 14,
+   "value": 13.1055
+  },
+  {
+   "player": {
+    "id": "76561198051600891",
+    "name": "qoody",
+    "teamId": "H3HMslxOZ1zcTd7oX2Ro"
+   },
+   "games": 16,
+   "value": 12.9495
+  },
+  {
+   "player": {
+    "id": "76561198060161583",
+    "name": "Kirzyk",
+    "teamId": "u6kMrDWsUi2WF6GKhWH5"
+   },
+   "games": 25,
+   "value": 12.8224
+  },
+  {
+   "player": {
+    "id": "76561198983457024",
+    "name": "Szajba",
+    "teamId": "nVzav95nziXL8mddtpix"
+   },
+   "games": 21,
+   "value": 12.7976
+  },
+  {
+   "player": {
+    "id": "76561199128493979",
+    "name": "telefraudpl",
+    "teamId": "zdMgjFO2iTIcCQXwXEn2"
+   },
+   "games": 17,
+   "value": 12.6286
+  },
+  {
+   "player": {
+    "id": "76561198000780312",
+    "name": "SBK",
+    "teamId": "ascZbE2c3v568Yb2bsFN"
+   },
+   "games": 14,
+   "value": 12.6173
+  },
+  {
+   "player": {
+    "id": "76561198018696968",
+    "name": "Tabaluga101",
+    "teamId": "0OKTuz7PNdsMzKgvRrOh"
+   },
+   "games": 17,
+   "value": 12.4759
+  },
+  {
+   "player": {
+    "id": "76561198161162768",
+    "name": "Kapik_pl",
+    "teamId": "RXEbqcFKE0XaWIcufsnj"
+   },
+   "games": 21,
+   "value": 12.3081
+  },
+  {
+   "player": {
+    "id": "76561198868216698",
+    "name": "Melonas",
+    "teamId": "c6KuothJZCHyA09sPTJF"
+   },
+   "games": 17,
+   "value": 12.2945
+  },
+  {
+   "player": {
+    "id": "76561198332840530",
+    "name": "Juxi",
+    "teamId": "ipWCrBDspzP77i2ErR27"
+   },
+   "games": 17,
+   "value": 11.9065
+  },
+  {
+   "player": {
+    "id": "76561198157082470",
+    "name": "V3RsTAp3N Mentality",
+    "teamId": "H3HMslxOZ1zcTd7oX2Ro"
+   },
+   "games": 16,
+   "value": 11.9027
+  },
+  {
+   "player": {
+    "id": "76561198047884354",
+    "name": "Thragg",
+    "teamId": "Ii52VFXiWLS9NcKCAi58"
+   },
+   "games": 20,
+   "value": 11.8349
+  },
+  {
+   "player": {
+    "id": "76561198061476067",
+    "name": "Ybrish",
+    "teamId": "ipWCrBDspzP77i2ErR27"
+   },
+   "games": 17,
+   "value": 11.8337
+  },
+  {
+   "player": {
+    "id": "76561198140024055",
+    "name": "Shiaua baba mac",
+    "teamId": "n5uP41hQfGnnZdaHW72h"
+   },
+   "games": 27,
+   "value": 11.8276
+  },
+  {
+   "player": {
+    "id": "76561198043733541",
+    "name": "Bartheez",
+    "teamId": "bvpFdNauTeF17fx69L2c"
+   },
+   "games": 16,
+   "value": 11.7992
+  },
+  {
+   "player": {
+    "id": "76561198141707832",
+    "name": "GandalfTheGrey",
+    "teamId": "vuFoaCjeDtrCrawOqWRw"
+   },
+   "games": 10,
+   "value": 11.6164
+  },
+  {
+   "player": {
+    "id": "76561198016943009",
+    "name": "terrages",
+    "teamId": "nVzav95nziXL8mddtpix"
+   },
+   "games": 21,
+   "value": 11.4307
+  },
+  {
+   "player": {
+    "id": "76561198185674357",
+    "name": "I will always wait",
+    "teamId": "omyDOuB6gb9syLuqDORc"
+   },
+   "games": 11,
+   "value": 11.401
+  },
+  {
+   "player": {
+    "id": "76561198436376845",
+    "name": "QW",
+    "teamId": "H3HMslxOZ1zcTd7oX2Ro"
+   },
+   "games": 16,
+   "value": 11.0307
+  },
+  {
+   "player": {
+    "id": "76561198823794311",
+    "name": "Dran_ik",
+    "teamId": "zO8OY2bf8lYsydnqKTrQ"
+   },
+   "games": 9,
+   "value": 10.9275
+  },
+  {
+   "player": {
+    "id": "76561198050091162",
+    "name": "Simon ",
+    "teamId": "c6KuothJZCHyA09sPTJF"
+   },
+   "games": 16,
+   "value": 10.9021
+  },
+  {
+   "player": {
+    "id": "76561198026219939",
+    "name": "xpapaya",
+    "teamId": "bvpFdNauTeF17fx69L2c"
+   },
+   "games": 16,
+   "value": 10.8602
+  },
+  {
+   "player": {
+    "id": "76561198008118238",
+    "name": "Damianexis",
+    "teamId": "ascZbE2c3v568Yb2bsFN"
+   },
+   "games": 16,
+   "value": 10.8589
+  },
+  {
+   "player": {
+    "id": "76561198070846685",
+    "name": "potato",
+    "teamId": "n5uP41hQfGnnZdaHW72h"
+   },
+   "games": 30,
+   "value": 10.6661
+  },
+  {
+   "player": {
+    "id": "76561197994908511",
+    "name": "sit35",
+    "teamId": "vuFoaCjeDtrCrawOqWRw"
+   },
+   "games": 7,
+   "value": 10.5508
+  },
+  {
+   "player": {
+    "id": "76561198004657568",
+    "name": "Cleam",
+    "teamId": "RXEbqcFKE0XaWIcufsnj"
+   },
+   "games": 16,
+   "value": 10.5024
+  },
+  {
+   "player": {
+    "id": "76561198099626068",
+    "name": "DeRizzium",
+    "teamId": "omyDOuB6gb9syLuqDORc"
+   },
+   "games": 10,
+   "value": 10.344
+  },
+  {
+   "player": {
+    "id": "76561197995560626",
+    "name": "Choc D",
+    "teamId": "0OKTuz7PNdsMzKgvRrOh"
+   },
+   "games": 15,
+   "value": 10.3366
+  },
+  {
+   "player": {
+    "id": "76561198093842174",
+    "name": "Szczodry ",
+    "teamId": "c6KuothJZCHyA09sPTJF"
+   },
+   "games": 16,
+   "value": 10.3317
+  },
+  {
+   "player": {
+    "id": "76561198126684524",
+    "name": "markoo_tgcru",
+    "teamId": "x2vbMbrLklQ5Fogl1poE"
+   },
+   "games": 12,
+   "value": 10.3143
+  },
+  {
+   "player": {
+    "id": "76561199610522589",
+    "name": "DelgaGOD",
+    "teamId": "u6kMrDWsUi2WF6GKhWH5"
+   },
+   "games": 18,
+   "value": 10.3129
+  },
+  {
+   "player": {
+    "id": "76561198075312067",
+    "name": "Captain Jack",
+    "teamId": "0OKTuz7PNdsMzKgvRrOh"
+   },
+   "games": 13,
+   "value": 10.2362
+  },
+  {
+   "player": {
+    "id": "76561198008644922",
+    "name": "Buzz Rakekthak",
+    "teamId": "0OKTuz7PNdsMzKgvRrOh"
+   },
+   "games": 17,
+   "value": 10.095
+  },
+  {
+   "player": {
+    "id": "76561198072152480",
+    "name": "pupa",
+    "teamId": "nVzav95nziXL8mddtpix"
+   },
+   "games": 23,
+   "value": 10.0799
+  },
+  {
+   "player": {
+    "id": "76561198161889722",
+    "name": "Vegaald",
+    "teamId": "bvpFdNauTeF17fx69L2c"
+   },
+   "games": 16,
+   "value": 10.0778
+  },
+  {
+   "player": {
+    "id": "76561198399864619",
+    "name": "Somebody",
+    "teamId": "ipWCrBDspzP77i2ErR27"
+   },
+   "games": 16,
+   "value": 10.0571
+  },
+  {
+   "player": {
+    "id": "76561197996013648",
+    "name": "Cienszki",
+    "teamId": "nVzav95nziXL8mddtpix"
+   },
+   "games": 25,
+   "value": 10.0362
+  },
+  {
+   "player": {
+    "id": "76561198373096930",
+    "name": "Norikss",
+    "teamId": "omyDOuB6gb9syLuqDORc"
+   },
+   "games": 10,
+   "value": 9.8113
+  },
+  {
+   "player": {
+    "id": "76561197986488117",
+    "name": "MrBuff",
+    "teamId": "zO8OY2bf8lYsydnqKTrQ"
+   },
+   "games": 17,
+   "value": 9.7927
+  },
+  {
+   "player": {
+    "id": "76561197989700656",
+    "name": "Ciptok",
+    "teamId": "bQVSbkopKwi333zDlvH5"
+   },
+   "games": 12,
+   "value": 9.7584
+  },
+  {
+   "player": {
+    "id": "76561198127383602",
+    "name": "Zimbora",
+    "teamId": "vuFoaCjeDtrCrawOqWRw"
+   },
+   "games": 7,
+   "value": 9.6057
+  },
+  {
+   "player": {
+    "id": "76561197985160529",
+    "name": "Rozpingwiniacz",
+    "teamId": "bvpFdNauTeF17fx69L2c"
+   },
+   "games": 16,
+   "value": 9.5001
+  },
+  {
+   "player": {
+    "id": "76561198012365134",
+    "name": "BlinGG",
+    "teamId": "zO8OY2bf8lYsydnqKTrQ"
+   },
+   "games": 13,
+   "value": 9.4739
+  },
+  {
+   "player": {
+    "id": "76561198143191825",
+    "name": "Maruda",
+    "teamId": "zO8OY2bf8lYsydnqKTrQ"
+   },
+   "games": 17,
+   "value": 9.3804
+  },
+  {
+   "player": {
+    "id": "76561198058519947",
+    "name": "JebuduKlon",
+    "teamId": "vuFoaCjeDtrCrawOqWRw"
+   },
+   "games": 9,
+   "value": 9.3294
+  },
+  {
+   "player": {
+    "id": "76561198423961699",
+    "name": "Zabila",
+    "teamId": "H3HMslxOZ1zcTd7oX2Ro"
+   },
+   "games": 14,
+   "value": 9.1909
+  },
+  {
+   "player": {
+    "id": "76561198062948719",
+    "name": "phaate",
+    "teamId": "bQVSbkopKwi333zDlvH5"
+   },
+   "games": 12,
+   "value": 9.1106
+  },
+  {
+   "player": {
+    "id": "76561198065580282",
+    "name": "Quazi",
+    "teamId": "ascZbE2c3v568Yb2bsFN"
+   },
+   "games": 18,
+   "value": 9.0677
+  },
+  {
+   "player": {
+    "id": "76561199043383000",
+    "name": "b4lfour",
+    "teamId": "ascZbE2c3v568Yb2bsFN"
+   },
+   "games": 16,
+   "value": 8.7042
+  },
+  {
+   "player": {
+    "id": "76561199628230029",
+    "name": "Chojrak28",
+    "teamId": "zdMgjFO2iTIcCQXwXEn2"
+   },
+   "games": 22,
+   "value": 8.591
+  },
+  {
+   "player": {
+    "id": "76561198018991177",
+    "name": "PhilFerdinand",
+    "teamId": "Ii52VFXiWLS9NcKCAi58"
+   },
+   "games": 20,
+   "value": 8.543
+  },
+  {
+   "player": {
+    "id": "76561198086264377",
+    "name": "Szpakozaurus Rex",
+    "teamId": "bvpFdNauTeF17fx69L2c"
+   },
+   "games": 16,
+   "value": 8.5155
+  },
+  {
+   "player": {
+    "id": "76561198061383371",
+    "name": "Pocieszny",
+    "teamId": "u6kMrDWsUi2WF6GKhWH5"
+   },
+   "games": 16,
+   "value": 8.515
+  },
+  {
+   "player": {
+    "id": "76561198080266570",
+    "name": "BUblinek",
+    "teamId": "x2vbMbrLklQ5Fogl1poE"
+   },
+   "games": 14,
+   "value": 8.3624
+  },
+  {
+   "player": {
+    "id": "76561198046311461",
+    "name": "Dziadek",
+    "teamId": "VLI67jzh3hYFx9Eysnbn"
+   },
+   "games": 17,
+   "value": 8.2404
+  },
+  {
+   "player": {
+    "id": "76561198010446927",
+    "name": "BB - Beza Bezlitosna",
+    "teamId": "x2vbMbrLklQ5Fogl1poE"
+   },
+   "games": 12,
+   "value": 8.0774
+  },
+  {
+   "player": {
+    "id": "76561198152096511",
+    "name": "tidEman",
+    "teamId": "bQVSbkopKwi333zDlvH5"
+   },
+   "games": 12,
+   "value": 7.8784
+  },
+  {
+   "player": {
+    "id": "76561198096108702",
+    "name": "chaos_maker",
+    "teamId": "c6KuothJZCHyA09sPTJF"
+   },
+   "games": 17,
+   "value": 7.8563
+  },
+  {
+   "player": {
+    "id": "76561198096839914",
+    "name": "Azqez",
+    "teamId": "bQVSbkopKwi333zDlvH5"
+   },
+   "games": 12,
+   "value": 7.7618
+  },
+  {
+   "player": {
+    "id": "76561198870527931",
+    "name": "S1NIAWA",
+    "teamId": "VLI67jzh3hYFx9Eysnbn"
+   },
+   "games": 9,
+   "value": 7.6997
+  },
+  {
+   "player": {
+    "id": "76561199161832768",
+    "name": "Damian1923",
+    "teamId": "ipWCrBDspzP77i2ErR27"
+   },
+   "games": 13,
+   "value": 7.4633
+  },
+  {
+   "player": {
+    "id": "76561198062773228",
+    "name": "Rurstahk",
+    "teamId": "u6kMrDWsUi2WF6GKhWH5"
+   },
+   "games": 24,
+   "value": 7.3816
+  },
+  {
+   "player": {
+    "id": "76561197989966168",
+    "name": "Yep",
+    "teamId": "Ii52VFXiWLS9NcKCAi58"
+   },
+   "games": 25,
+   "value": 7.3318
+  },
+  {
+   "player": {
+    "id": "76561198014375820",
+    "name": "Doge",
+    "teamId": "bQVSbkopKwi333zDlvH5"
+   },
+   "games": 12,
+   "value": 7.1921
+  },
+  {
+   "player": {
+    "id": "76561198037242519",
+    "name": "Djiark",
+    "teamId": "RXEbqcFKE0XaWIcufsnj"
+   },
+   "games": 21,
+   "value": 6.9441
+  },
+  {
+   "player": {
+    "id": "76561198817226452",
+    "name": "SadBart",
+    "teamId": "ipWCrBDspzP77i2ErR27"
+   },
+   "games": 15,
+   "value": 6.933
+  },
+  {
+   "player": {
+    "id": "76561198164072251",
+    "name": "Zmotywowany SenSi",
+    "teamId": "vuFoaCjeDtrCrawOqWRw"
+   },
+   "games": 10,
+   "value": 6.9148
+  },
+  {
+   "player": {
+    "id": "76561197974757518",
+    "name": "park",
+    "teamId": "x2vbMbrLklQ5Fogl1poE"
+   },
+   "games": 12,
+   "value": 6.857
+  },
+  {
+   "player": {
+    "id": "76561199753361788",
+    "name": "Frytka",
+    "teamId": "ascZbE2c3v568Yb2bsFN"
+   },
+   "games": 16,
+   "value": 6.8511
+  },
+  {
+   "player": {
+    "id": "76561198044953683",
+    "name": "Berserker ",
+    "teamId": "2zOyLiVvkJdIHzYb8klX"
+   },
+   "games": 13,
+   "value": 6.8508
+  },
+  {
+   "player": {
+    "id": "76561198294716042",
+    "name": "KiwisFruity ",
+    "teamId": "2zOyLiVvkJdIHzYb8klX"
+   },
+   "games": 13,
+   "value": 6.4235
+  },
+  {
+   "player": {
+    "id": "76561198315469847",
+    "name": "Dyr3kt0r",
+    "teamId": "omyDOuB6gb9syLuqDORc"
+   },
+   "games": 10,
+   "value": 6.3577
+  },
+  {
+   "player": {
+    "id": "76561198127402810",
+    "name": "NocTaLi ",
+    "teamId": "2zOyLiVvkJdIHzYb8klX"
+   },
+   "games": 13,
+   "value": 6.2924
+  },
+  {
+   "player": {
+    "id": "76561198273491572",
+    "name": "Pinacik",
+    "teamId": "x2vbMbrLklQ5Fogl1poE"
+   },
+   "games": 10,
+   "value": 5.771
+  },
+  {
+   "player": {
+    "id": "76561198066345702",
+    "name": "Łysy",
+    "teamId": "zdMgjFO2iTIcCQXwXEn2"
+   },
+   "games": 19,
+   "value": 5.2979
+  },
+  {
+   "player": {
+    "id": "76561197991774538",
+    "name": "Lakos",
+    "teamId": "zO8OY2bf8lYsydnqKTrQ"
+   },
+   "games": 2,
+   "value": 4.9976
+  },
+  {
+   "player": {
+    "id": "76561198151328131",
+    "name": "Lucifer",
+    "teamId": "2zOyLiVvkJdIHzYb8klX"
+   },
+   "games": 13,
+   "value": 4.5044
+  },
+  {
+   "player": {
+    "id": "76561199024803800",
+    "name": "Vecord",
+    "teamId": "omyDOuB6gb9syLuqDORc"
+   },
+   "games": 8,
+   "value": 4.5016
+  },
+  {
+   "player": {
+    "id": "76561199478364361",
+    "name": "MichalsMuscles ",
+    "teamId": "2zOyLiVvkJdIHzYb8klX"
+   },
+   "games": 13,
+   "value": 0.3241
+  }
+ ],
+ "rankingsView": [
+  {
+   "role": "carry",
+   "gameCount": 1457,
+   "entries": [
+    {
+     "name": "Saint",
+     "teamName": "Bociarnia Junior",
+     "games": 21,
+     "avgScore": 16.066374149319305
+    },
+    {
+     "name": "OnlyMatt",
+     "teamName": "Gramy Dla Wujka ",
+     "games": 17,
+     "avgScore": 15.046325278878552
+    },
+    {
+     "name": "Duel maister",
+     "teamName": "Keo Esports",
+     "games": 19,
+     "avgScore": 14.433028285967163
+    },
+    {
+     "name": "mojeid",
+     "teamName": "Czosnek",
+     "games": 17,
+     "avgScore": 13.193453345863846
+    },
+    {
+     "name": "Smok",
+     "teamName": "Puck It!",
+     "games": 15,
+     "avgScore": 13.11154735381773
+    },
+    {
+     "name": "qoody",
+     "teamName": "Samci Savci",
+     "games": 16,
+     "avgScore": 12.948571524828449
+    },
+    {
+     "name": "SBK",
+     "teamName": "Syzyf",
+     "games": 14,
+     "avgScore": 12.616357455777031
+    },
+    {
+     "name": "Juxi",
+     "teamName": "Sparta Orzechowo",
+     "games": 17,
+     "avgScore": 11.905638599839483
+    },
+    {
+     "name": "Thragg",
+     "teamName": "Agresywny Pilates",
+     "games": 20,
+     "avgScore": 11.834024136567887
+    },
+    {
+     "name": "Shiaua baba mac",
+     "teamName": "Gang sylwka",
+     "games": 27,
+     "avgScore": 11.826677620609583
+    },
+    {
+     "name": "Dran_ik",
+     "teamName": "Voodoo Monkey",
+     "games": 9,
+     "avgScore": 10.926724759788861
+    },
+    {
+     "name": "DelgaGOD",
+     "teamName": "Adaś, ile za tę Robotę?",
+     "games": 19,
+     "avgScore": 10.737700069710163
+    },
+    {
+     "name": "Cienszki",
+     "teamName": "Chrupek zamknij się",
+     "games": 24,
+     "avgScore": 9.950193782836726
+    },
+    {
+     "name": "Norikss",
+     "teamName": "mid diff",
+     "games": 10,
+     "avgScore": 9.810576434879803
+    },
+    {
+     "name": "Rozpingwiniacz",
+     "teamName": "Dwa Razy I Do Bazy",
+     "games": 16,
+     "avgScore": 9.49936072981719
+    },
+    {
+     "name": "Doge",
+     "teamName": "PSY",
+     "games": 12,
+     "avgScore": 7.191629496579036
+    },
+    {
+     "name": "Zmotywowany SenSi",
+     "teamName": "Siusiaczki",
+     "games": 10,
+     "avgScore": 6.914304801065444
+    },
+    {
+     "name": "park",
+     "teamName": "Bubliny Team",
+     "games": 12,
+     "avgScore": 6.856500270173648
+    },
+    {
+     "name": "MichalsMuscles ",
+     "teamName": "HoundGaming",
+     "games": 13,
+     "avgScore": 0.32409459777122096
+    }
+   ]
+  },
+  {
+   "role": "hard-support",
+   "gameCount": 1457,
+   "entries": [
+    {
+     "name": "Tabaluga101",
+     "teamName": "Czosnek",
+     "games": 17,
+     "avgScore": 12.474815368488157
+    },
+    {
+     "name": "Kapik_pl",
+     "teamName": "Bociarnia Junior",
+     "games": 21,
+     "avgScore": 12.307067967846587
+    },
+    {
+     "name": "GandalfTheGrey",
+     "teamName": "Siusiaczki",
+     "games": 10,
+     "avgScore": 11.615408267346305
+    },
+    {
+     "name": "xpapaya",
+     "teamName": "Dwa Razy I Do Bazy",
+     "games": 16,
+     "avgScore": 10.85930380308224
+    },
+    {
+     "name": "Somebody",
+     "teamName": "Sparta Orzechowo",
+     "games": 16,
+     "avgScore": 10.056211265178653
+    },
+    {
+     "name": "pupa",
+     "teamName": "Chrupek zamknij się",
+     "games": 24,
+     "avgScore": 9.927540348884733
+    },
+    {
+     "name": "Ciptok",
+     "teamName": "PSY",
+     "games": 12,
+     "avgScore": 9.757592890943032
+    },
+    {
+     "name": "Zabila",
+     "teamName": "Samci Savci",
+     "games": 14,
+     "avgScore": 9.190091688662292
+    },
+    {
+     "name": "Quazi",
+     "teamName": "Syzyf",
+     "games": 16,
+     "avgScore": 9.066888852833156
+    },
+    {
+     "name": "Chojrak28",
+     "teamName": "Keo Esports",
+     "games": 19,
+     "avgScore": 8.590311626211468
+    },
+    {
+     "name": "BUblinek",
+     "teamName": "Bubliny Team",
+     "games": 12,
+     "avgScore": 8.361636880729776
+    },
+    {
+     "name": "chaos_maker",
+     "teamName": "Gramy Dla Wujka ",
+     "games": 17,
+     "avgScore": 7.8555990007025
+    },
+    {
+     "name": "S1NIAWA",
+     "teamName": "Puck It!",
+     "games": 10,
+     "avgScore": 7.539254465173246
+    },
+    {
+     "name": "Rurstahk",
+     "teamName": "Adaś, ile za tę Robotę?",
+     "games": 26,
+     "avgScore": 7.4040285658174
+    },
+    {
+     "name": "Berserker ",
+     "teamName": "HoundGaming",
+     "games": 13,
+     "avgScore": 6.8501864713460545
+    },
+    {
+     "name": "Dyr3kt0r",
+     "teamName": "mid diff",
+     "games": 10,
+     "avgScore": 6.357202201586653
+    },
+    {
+     "name": "Lakos",
+     "teamName": "Voodoo Monkey",
+     "games": 2,
+     "avgScore": 4.9973109322404135
+    }
+   ]
+  },
+  {
+   "role": "mid",
+   "gameCount": 1457,
+   "entries": [
+    {
+     "name": "Zys",
+     "teamName": "Keo Esports",
+     "games": 19,
+     "avgScore": 18.84229024493728
+    },
+    {
+     "name": "white",
+     "teamName": "Puck It!",
+     "games": 15,
+     "avgScore": 17.920730217924344
+    },
+    {
+     "name": "ICEMAN",
+     "teamName": "Agresywny Pilates",
+     "games": 20,
+     "avgScore": 15.883550387652605
+    },
+    {
+     "name": "Nawle",
+     "teamName": "Chrupek zamknij się",
+     "games": 24,
+     "avgScore": 14.242294043467384
+    },
+    {
+     "name": "TheHeroOfLegend",
+     "teamName": "Bociarnia Junior",
+     "games": 21,
+     "avgScore": 13.463036198232654
+    },
+    {
+     "name": "Przepraszam",
+     "teamName": "Adaś, ile za tę Robotę?",
+     "games": 29,
+     "avgScore": 13.41889191142411
+    },
+    {
+     "name": "mmr disaster",
+     "teamName": "Gang sylwka",
+     "games": 25,
+     "avgScore": 13.118768857492773
+    },
+    {
+     "name": "V3RsTAp3N Mentality",
+     "teamName": "Samci Savci",
+     "games": 16,
+     "avgScore": 11.901897805374482
+    },
+    {
+     "name": "Ybrish",
+     "teamName": "Sparta Orzechowo",
+     "games": 17,
+     "avgScore": 11.832930974389868
+    },
+    {
+     "name": "Bartheez",
+     "teamName": "Dwa Razy I Do Bazy",
+     "games": 16,
+     "avgScore": 11.798394318239177
+    },
+    {
+     "name": "I will always wait",
+     "teamName": "mid diff",
+     "games": 10,
+     "avgScore": 11.400290799339425
+    },
+    {
+     "name": "Simon ",
+     "teamName": "Gramy Dla Wujka ",
+     "games": 16,
+     "avgScore": 10.901414204997062
+    },
+    {
+     "name": "Damianexis",
+     "teamName": "Syzyf",
+     "games": 16,
+     "avgScore": 10.858151191861108
+    },
+    {
+     "name": "markoo_tgcru",
+     "teamName": "Bubliny Team",
+     "games": 12,
+     "avgScore": 10.313597471726359
+    },
+    {
+     "name": "Captain Jack",
+     "teamName": "Czosnek",
+     "games": 13,
+     "avgScore": 10.2354476001111
+    },
+    {
+     "name": "MrBuff",
+     "teamName": "Voodoo Monkey",
+     "games": 17,
+     "avgScore": 9.792101434272793
+    },
+    {
+     "name": "Zimbora",
+     "teamName": "Siusiaczki",
+     "games": 7,
+     "avgScore": 9.605073173308819
+    },
+    {
+     "name": "phaate",
+     "teamName": "PSY",
+     "games": 12,
+     "avgScore": 9.110006042133493
+    },
+    {
+     "name": "Lucifer",
+     "teamName": "HoundGaming",
+     "games": 13,
+     "avgScore": 4.504106281855663
+    }
+   ]
+  },
+  {
+   "role": "offlane",
+   "gameCount": 1457,
+   "entries": [
+    {
+     "name": "Obstacle",
+     "teamName": "Gang sylwka",
+     "games": 27,
+     "avgScore": 17.478089462001737
+    },
+    {
+     "name": "Melonas",
+     "teamName": "Gramy Dla Wujka ",
+     "games": 17,
+     "avgScore": 12.293539989540369
+    },
+    {
+     "name": "terrages",
+     "teamName": "Chrupek zamknij się",
+     "games": 22,
+     "avgScore": 11.295878734576469
+    },
+    {
+     "name": "QW",
+     "teamName": "Samci Savci",
+     "games": 16,
+     "avgScore": 11.029845675468005
+    },
+    {
+     "name": "sit35",
+     "teamName": "Siusiaczki",
+     "games": 7,
+     "avgScore": 10.549915443694948
+    },
+    {
+     "name": "Buzz Rakekthak",
+     "teamName": "Czosnek",
+     "games": 17,
+     "avgScore": 10.094156804862136
+    },
+    {
+     "name": "Vegaald",
+     "teamName": "Dwa Razy I Do Bazy",
+     "games": 16,
+     "avgScore": 10.077058020509673
+    },
+    {
+     "name": "BlinGG",
+     "teamName": "Voodoo Monkey",
+     "games": 13,
+     "avgScore": 9.473110011837914
+    },
+    {
+     "name": "b4lfour",
+     "teamName": "Syzyf",
+     "games": 16,
+     "avgScore": 8.703579818542206
+    },
+    {
+     "name": "Pocieszny",
+     "teamName": "Adaś, ile za tę Robotę?",
+     "games": 17,
+     "avgScore": 8.413836290658756
+    },
+    {
+     "name": "Dziadek",
+     "teamName": "Puck It!",
+     "games": 16,
+     "avgScore": 7.961932792946215
+    },
+    {
+     "name": "tidEman",
+     "teamName": "PSY",
+     "games": 12,
+     "avgScore": 7.87779733663714
+    },
+    {
+     "name": "Yep",
+     "teamName": "Agresywny Pilates",
+     "games": 20,
+     "avgScore": 7.331237832836186
+    },
+    {
+     "name": "Djiark",
+     "teamName": "Bociarnia Junior",
+     "games": 21,
+     "avgScore": 6.94357513477875
+    },
+    {
+     "name": "SadBart",
+     "teamName": "Sparta Orzechowo",
+     "games": 15,
+     "avgScore": 6.932454559407561
+    },
+    {
+     "name": "KiwisFruity ",
+     "teamName": "HoundGaming",
+     "games": 13,
+     "avgScore": 6.42295671419113
+    },
+    {
+     "name": "Pinacik",
+     "teamName": "Bubliny Team",
+     "games": 10,
+     "avgScore": 5.770602559805931
+    },
+    {
+     "name": "Łysy",
+     "teamName": "Keo Esports",
+     "games": 19,
+     "avgScore": 5.2975528051244565
+    },
+    {
+     "name": "Vecord",
+     "teamName": "mid diff",
+     "games": 8,
+     "avgScore": 4.501285529855386
+    }
+   ]
+  },
+  {
+   "role": "soft-support",
+   "gameCount": 1457,
+   "entries": [
+    {
+     "name": "Kirzyk",
+     "teamName": "Adaś, ile za tę Robotę?",
+     "games": 27,
+     "avgScore": 13.207006071794675
+    },
+    {
+     "name": "pavlo_denys",
+     "teamName": "Samci Savci",
+     "games": 14,
+     "avgScore": 13.10440092447072
+    },
+    {
+     "name": "Szajba",
+     "teamName": "Chrupek zamknij się",
+     "games": 22,
+     "avgScore": 12.872680620469579
+    },
+    {
+     "name": "telefraudpl",
+     "teamName": "Keo Esports",
+     "games": 2,
+     "avgScore": 12.62756070726278
+    },
+    {
+     "name": "potato",
+     "teamName": "Gang sylwka",
+     "games": 24,
+     "avgScore": 10.665200343539695
+    },
+    {
+     "name": "Cleam",
+     "teamName": "Bociarnia Junior",
+     "games": 16,
+     "avgScore": 10.501489153015394
+    },
+    {
+     "name": "DeRizzium",
+     "teamName": "mid diff",
+     "games": 10,
+     "avgScore": 10.34307724708869
+    },
+    {
+     "name": "Choc D",
+     "teamName": "Czosnek",
+     "games": 15,
+     "avgScore": 10.335745870922203
+    },
+    {
+     "name": "Szczodry ",
+     "teamName": "Gramy Dla Wujka ",
+     "games": 16,
+     "avgScore": 10.33082076362383
+    },
+    {
+     "name": "Maruda",
+     "teamName": "Voodoo Monkey",
+     "games": 17,
+     "avgScore": 9.379651001904293
+    },
+    {
+     "name": "JebuduKlon",
+     "teamName": "Siusiaczki",
+     "games": 9,
+     "avgScore": 9.328675751764282
+    },
+    {
+     "name": "PhilFerdinand",
+     "teamName": "Agresywny Pilates",
+     "games": 20,
+     "avgScore": 8.5422369225447
+    },
+    {
+     "name": "Szpakozaurus Rex",
+     "teamName": "Dwa Razy I Do Bazy",
+     "games": 16,
+     "avgScore": 8.514776457638641
+    },
+    {
+     "name": "BB - Beza Bezlitosna",
+     "teamName": "Bubliny Team",
+     "games": 12,
+     "avgScore": 8.076702004178985
+    },
+    {
+     "name": "Azqez",
+     "teamName": "PSY",
+     "games": 12,
+     "avgScore": 7.7611383201010335
+    },
+    {
+     "name": "Damian1923",
+     "teamName": "Sparta Orzechowo",
+     "games": 13,
+     "avgScore": 7.462627868705821
+    },
+    {
+     "name": "Frytka",
+     "teamName": "Syzyf",
+     "games": 16,
+     "avgScore": 6.8505000060562775
+    },
+    {
+     "name": "NocTaLi ",
+     "teamName": "HoundGaming",
+     "games": 13,
+     "avgScore": 6.2919105286378505
+    }
+   ]
+  },
+  {
+   "role": "teams",
+   "gameCount": 1457,
+   "entries": [
+    {
+     "name": "Gang sylwka",
+     "teamName": "Gang sylwka",
+     "games": 103,
+     "avgScore": 13.351094571968716
+    },
+    {
+     "name": "Puck It!",
+     "teamName": "Puck It!",
+     "games": 56,
+     "avgScore": 11.93335058776791
+    },
+    {
+     "name": "Bociarnia Junior",
+     "teamName": "Bociarnia Junior",
+     "games": 100,
+     "avgScore": 11.924049489019694
+    },
+    {
+     "name": "Keo Esports",
+     "teamName": "Keo Esports",
+     "games": 78,
+     "avgScore": 11.812251252526828
+    },
+    {
+     "name": "Samci Savci",
+     "teamName": "Samci Savci",
+     "games": 76,
+     "avgScore": 11.660630745718382
+    },
+    {
+     "name": "Chrupek zamknij się",
+     "teamName": "Chrupek zamknij się",
+     "games": 116,
+     "avgScore": 11.643008465651254
+    },
+    {
+     "name": "Czosnek",
+     "teamName": "Czosnek",
+     "games": 79,
+     "avgScore": 11.342509375847058
+    },
+    {
+     "name": "Gramy Dla Wujka ",
+     "teamName": "Gramy Dla Wujka ",
+     "games": 83,
+     "avgScore": 11.301670506903596
+    },
+    {
+     "name": "Agresywny Pilates",
+     "teamName": "Agresywny Pilates",
+     "games": 80,
+     "avgScore": 10.897762319900345
+    },
+    {
+     "name": "Adaś, ile za tę Robotę?",
+     "teamName": "Adaś, ile za tę Robotę?",
+     "games": 118,
+     "avgScore": 10.892316019887286
+    },
+    {
+     "name": "Dwa Razy I Do Bazy",
+     "teamName": "Dwa Razy I Do Bazy",
+     "games": 80,
+     "avgScore": 10.149778665857385
+    },
+    {
+     "name": "Sparta Orzechowo",
+     "teamName": "Sparta Orzechowo",
+     "games": 78,
+     "avgScore": 9.813539021654442
+    },
+    {
+     "name": "Voodoo Monkey",
+     "teamName": "Voodoo Monkey",
+     "games": 58,
+     "avgScore": 9.610437349508343
+    },
+    {
+     "name": "Siusiaczki",
+     "teamName": "Siusiaczki",
+     "games": 43,
+     "avgScore": 9.542793785326102
+    },
+    {
+     "name": "Syzyf",
+     "teamName": "Syzyf",
+     "games": 78,
+     "avgScore": 9.54224259345593
+    },
+    {
+     "name": "mid diff",
+     "teamName": "mid diff",
+     "games": 48,
+     "avgScore": 8.648369813912266
+    },
+    {
+     "name": "PSY",
+     "teamName": "PSY",
+     "games": 60,
+     "avgScore": 8.339632817278748
+    },
+    {
+     "name": "Bubliny Team",
+     "teamName": "Bubliny Team",
+     "games": 58,
+     "avgScore": 7.94840112275456
+    },
+    {
+     "name": "HoundGaming",
+     "teamName": "HoundGaming",
+     "games": 65,
+     "avgScore": 4.878650918760383
+    }
+   ]
+  }
+ ]
+}

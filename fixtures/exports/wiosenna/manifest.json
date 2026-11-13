@@ -1,0 +1,295 @@
+{
+  "format": "dota2inhouse-firestore-export",
+  "version": 1,
+  "slug": "wiosenna",
+  "tournamentId": "t2LLkrQbj0pwKm9i4nUs",
+  "root": "tournaments/t2LLkrQbj0pwKm9i4nUs",
+  "layout": "scoped",
+  "source": "firestore-rest-public",
+  "projectId": "tournament-tracker-f35tb",
+  "capturedAt": "2026-11-13T06:33:06.792Z",
+  "finishedAt": "2026-11-13T06:34:59.685Z",
+  "complete": true,
+  "requests": 394,
+  "collections": {
+    "admins": {
+      "file": "admins.jsonl",
+      "documents": 0,
+      "status": "denied",
+      "parentsListed": 1,
+      "parentsDenied": 1
+    },
+    "announcements": {
+      "file": "announcements.jsonl",
+      "documents": 0,
+      "status": "ok",
+      "parentsListed": 1
+    },
+    "casters": {
+      "file": "casters.jsonl",
+      "documents": 0,
+      "status": "denied",
+      "parentsListed": 1,
+      "parentsDenied": 1
+    },
+    "commentatorRequests": {
+      "file": "commentatorRequests.jsonl",
+      "documents": 0,
+      "status": "ok",
+      "parentsListed": 1
+    },
+    "commentators": {
+      "file": "commentators.jsonl",
+      "documents": 0,
+      "status": "ok",
+      "parentsListed": 1
+    },
+    "config": {
+      "file": "config.jsonl",
+      "documents": 0,
+      "status": "denied",
+      "parentsListed": 1,
+      "parentsDenied": 1
+    },
+    "divisions": {
+      "file": "divisions.jsonl",
+      "documents": 2,
+      "status": "ok",
+      "parentsListed": 1
+    },
+    "fantasyLineups": {
+      "file": "fantasyLineups.jsonl",
+      "documents": 0,
+      "status": "ok",
+      "parentsListed": 1
+    },
+    "fantasyRounds": {
+      "file": "fantasyRounds.jsonl",
+      "documents": 0,
+      "status": "denied",
+      "parentsListed": 1,
+      "parentsDenied": 1
+    },
+    "groups": {
+      "file": "groups.jsonl",
+      "documents": 2,
+      "status": "ok",
+      "parentsListed": 1
+    },
+    "matches": {
+      "file": "matches.jsonl",
+      "documents": 121,
+      "status": "ok",
+      "parentsListed": 1
+    },
+    "matches.games": {
+      "file": "matches.games.jsonl",
+      "documents": 190,
+      "status": "ok",
+      "parentsListed": 121
+    },
+    "matches.games.performances": {
+      "file": "matches.games.performances.jsonl",
+      "documents": 1650,
+      "status": "ok",
+      "parentsListed": 190
+    },
+    "performanceRankings": {
+      "file": "performanceRankings.jsonl",
+      "documents": 6,
+      "status": "ok",
+      "parentsListed": 1
+    },
+    "pickems": {
+      "file": "pickems.jsonl",
+      "documents": 15,
+      "status": "ok",
+      "parentsListed": 1
+    },
+    "playerGameHistory": {
+      "file": "playerGameHistory.jsonl",
+      "documents": 0,
+      "status": "ok",
+      "parentsListed": 1
+    },
+    "playerStats": {
+      "file": "playerStats.jsonl",
+      "documents": 120,
+      "status": "ok",
+      "parentsListed": 1
+    },
+    "playoff_matches": {
+      "file": "playoff_matches.jsonl",
+      "documents": 15,
+      "status": "ok",
+      "parentsListed": 1
+    },
+    "playoffs": {
+      "file": "playoffs.jsonl",
+      "documents": 0,
+      "status": "ok",
+      "parentsListed": 1
+    },
+    "prizes": {
+      "file": "prizes.jsonl",
+      "documents": 1,
+      "status": "ok",
+      "parentsListed": 1
+    },
+    "processedGames": {
+      "file": "processedGames.jsonl",
+      "documents": 0,
+      "status": "denied",
+      "parentsListed": 1,
+      "parentsDenied": 1
+    },
+    "rules": {
+      "file": "rules.jsonl",
+      "documents": 17,
+      "status": "ok",
+      "parentsListed": 1
+    },
+    "rules.paragraphs": {
+      "file": "rules.paragraphs.jsonl",
+      "documents": 130,
+      "status": "ok",
+      "parentsListed": 17
+    },
+    "scrimSlots": {
+      "file": "scrimSlots.jsonl",
+      "documents": 90,
+      "status": "ok",
+      "parentsListed": 1
+    },
+    "skippedGames": {
+      "file": "skippedGames.jsonl",
+      "documents": 0,
+      "status": "denied",
+      "parentsListed": 1,
+      "parentsDenied": 1
+    },
+    "standinRequests": {
+      "file": "standinRequests.jsonl",
+      "documents": 108,
+      "status": "ok",
+      "parentsListed": 1
+    },
+    "standings": {
+      "file": "standings.jsonl",
+      "documents": 0,
+      "status": "ok",
+      "parentsListed": 1
+    },
+    "standins": {
+      "file": "standins.jsonl",
+      "documents": 0,
+      "status": "ok",
+      "parentsListed": 1
+    },
+    "stats": {
+      "file": "stats.jsonl",
+      "documents": 1,
+      "status": "ok",
+      "parentsListed": 1
+    },
+    "swissRounds": {
+      "file": "swissRounds.jsonl",
+      "documents": 0,
+      "status": "ok",
+      "parentsListed": 1
+    },
+    "teamStats": {
+      "file": "teamStats.jsonl",
+      "documents": 19,
+      "status": "ok",
+      "parentsListed": 1
+    },
+    "teams": {
+      "file": "teams.jsonl",
+      "documents": 22,
+      "status": "ok",
+      "parentsListed": 1
+    },
+    "teams.players": {
+      "file": "teams.players.jsonl",
+      "documents": 110,
+      "status": "ok",
+      "parentsListed": 22
+    },
+    "teams.transfers": {
+      "file": "teams.transfers.jsonl",
+      "documents": 0,
+      "status": "denied",
+      "parentsListed": 1,
+      "parentsDenied": 22
+    },
+    "tournaments": {
+      "file": "tournaments.jsonl",
+      "documents": 1,
+      "status": "ok",
+      "parentsListed": 1
+    },
+    "unparsedMatches": {
+      "file": "unparsedMatches.jsonl",
+      "documents": 0,
+      "status": "denied",
+      "parentsListed": 1,
+      "parentsDenied": 1
+    }
+  },
+  "probes": [
+    {
+      "path": "cardCollections",
+      "result": "denied"
+    },
+    {
+      "path": "cardDuels",
+      "result": "denied"
+    },
+    {
+      "path": "cardRankings",
+      "result": "denied"
+    },
+    {
+      "path": "cardActivity",
+      "result": "denied"
+    },
+    {
+      "path": "cardRewards",
+      "result": "denied"
+    },
+    {
+      "path": "cardGrants",
+      "result": "denied"
+    },
+    {
+      "path": "cardReports",
+      "result": "denied"
+    },
+    {
+      "path": "cardReportLimits",
+      "result": "denied"
+    },
+    {
+      "path": "cardRankings/t2LLkrQbj0pwKm9i4nUs/players",
+      "result": "denied"
+    },
+    {
+      "path": "cardRankings/t2LLkrQbj0pwKm9i4nUs/pairs",
+      "result": "denied"
+    },
+    {
+      "path": "cardRewards/t2LLkrQbj0pwKm9i4nUs",
+      "result": "denied"
+    },
+    {
+      "path": "cardRankings/t2LLkrQbj0pwKm9i4nUs",
+      "result": "denied"
+    }
+  ],
+  "notes": [
+    "Refused by the public rules, needs the owner's export: teams.transfers, fantasyRounds, admins, config, casters, processedGames, skippedGames, unparsedMatches.",
+    "Subcollections under a document that does not exist (a \"missing\" parent) cannot be found by anonymous reads: listing with showMissing is refused by the rules.",
+    "Reduced fixture: 33 Firebase user ids replaced by fake ids (user-<10 hex>); e-mail addresses, Discord names and ids, sign-in display names and tokens removed (scripts/tools/capture/lib/personal.ts). Nicknames and Steam ids kept."
+  ]
+}
