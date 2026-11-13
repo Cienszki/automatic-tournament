@@ -1,6 +1,6 @@
 # Code conventions
 
-Written in S1 (2026-11-13) by Fable. These rules apply to all new and moved code from now on. Old code is brought in line when a work package touches it, not before. The reasons for the structure are in `ARCHITECTURE.md` (ADR-14 for modules, ADR-07 for writes, ADR-02 for reads).
+Written in S1 (2026-11-13) by Fable, and revised the same day for the new database (ADR-04). These rules apply to all new code from now on. Old code in `src/lib` and `src/components` is not brought in line; it is replaced, and deleted by the work package that replaces it. The reasons for the structure are in `ARCHITECTURE.md` (ADR-14 for modules, ADR-07 for writes, ADR-02 for reads).
 
 The test for every rule: a new developer, or an AI agent with no memory of this project, opens one file and can tell what it does, what it may depend on, and how to check that a change works.
 
@@ -14,7 +14,7 @@ src/features/<name>/      one product area
   commands.ts             writes (server only)
   components/             React components
   index.ts                the feature's public surface
-src/platform/             shared server machinery (firestore, auth, cache, jobs, log)
+src/platform/             shared server machinery (db, auth, cache, jobs, log)
 src/ui/                   design-system components
 contract/                 schemas shared with the bot
 bot-worker/src/           the bot
@@ -23,7 +23,7 @@ bot-worker/src/           the bot
 - New code never goes into `src/lib/`, `src/components/` or `src/server/`. Those folders only shrink.
 - A file in `src/app/` is thin. A page loads data through queries and renders a feature's component. A route handler is one `defineCommand` or one query call.
 - A feature imports another feature only from its `index.ts`. If two features need the same thing, it belongs in `platform/` (machinery) or in the feature that owns the data.
-- `domain/` imports no Firebase, Next or React. This is what makes it testable in milliseconds.
+- `domain/` imports no database client, Firebase, Next or React. This is what makes it testable in milliseconds.
 
 Bad, today: `src/app/[tournamentSlug]/teams/page.tsx` is a client component that calls `getDocs(collection(db, 'tournaments', id, 'teams'))` in an effect.
 
@@ -61,37 +61,50 @@ Why sizes matter here: an AI agent reads whole files. A 3,000-line tab costs it 
 ## 4. Types
 
 - No `any` in new code (lint error under the new folders). Use `unknown` and narrow it.
-- Data that crosses a boundary is parsed by a schema (zod): request bodies, Firestore documents read in `queries.ts`, OpenDota and Steam responses, bot documents. Inside the boundary, code trusts the type.
+- Data that crosses a boundary is parsed by a schema (zod): request bodies, JSON columns read from the database, OpenDota and Steam responses, everything in `contract/`. Inside the boundary, code trusts the type. Typed columns need no parsing: their types come from the table definition.
 - Each feature's `domain/` owns its types. `src/lib/definitions.ts` (685 lines, 131 importers) is split up as features move; nothing new is added to it.
-- A Firestore document's schema and its TypeScript type come from one definition:
+- A table and its TypeScript type come from one definition in `src/platform/db/schema/`. A JSON column names its zod schema next to it:
 
 ```ts
-// src/features/results/domain/game.ts
-export const gameSchema = z.object({
-  id: z.string(),
-  radiantWin: z.boolean(),
-  durationSeconds: z.number().int().nonnegative(),
-  // ...
-});
-export type Game = z.infer<typeof gameSchema>;
+// src/platform/db/schema/results.ts
+export const games = app.table('games', {
+  tournamentId: text('tournament_id').notNull(),
+  id: text('id').notNull(),
+  matchId: text('match_id').notNull(),
+  number: integer('number').notNull(),
+  dotaMatchId: bigint('dota_match_id', { mode: 'bigint' }),
+  radiantWin: boolean('radiant_win'),
+  durationSeconds: integer('duration_seconds'),
+}, (t) => [
+  primaryKey({ columns: [t.tournamentId, t.id] }),
+  foreignKey({ columns: [t.tournamentId, t.matchId], foreignColumns: [matches.tournamentId, matches.id] }),
+  unique().on(t.tournamentId, t.dotaMatchId),
+]);
+export type Game = typeof games.$inferSelect;
 ```
+
+- Column and table names are `snake_case` in SQL and `camelCase` in TypeScript. Ids are text. Times are `timestamptz` and are never stored as local time or as strings.
 
 ## 5. Reading data
 
-- Server code reads through a query function in a feature's `queries.ts`. Nothing else calls `db.collection(...)`.
-- Every path comes from `platform/firestore/paths.ts`. A raw `'tournaments'` string elsewhere is a lint error. (Today there are 120 of them in 39 files, and the path helper has one importer.)
-- Every query takes a `tournamentId` first. There is no "current tournament" on the server and no `null` tournament.
+- Server code reads through a query function in a feature's `queries.ts`. Nothing else touches the database.
+- Every query takes a `tournamentId` first and reads through `scoped(db, tournamentId)`, which adds the tournament filter to every table it hands out. There is no "current tournament" on the server and no `null` tournament. A statement on a tournament table without the filter is a review failure, and the scoped helper makes it hard to write.
 - A query that a public page uses is wrapped in `cachedQuery` with tags from `platform/cache/tags.ts`. Tags are never written as strings at the call site.
-- No loop over all tournaments, and no `collectionGroup` query without a filter and a limit.
-- No read inside a loop. Fetch the list once, or store what the page needs in one document. (`rules/page.tsx` reads paragraphs once per section; `getAllTeams` reads players once per team.)
-- Public pages do not import `firebase/firestore`. The browser SDK is allowed only in components that need live updates, listed in the lint config.
+- No statement inside a loop. Fetch with a join or one `IN (...)` statement. Every public query has a test with a statement ceiling that does not grow with the data. (Today `rules/page.tsx` reads paragraphs once per section, and `getAllTeams` reads players once per team.)
+- Select the columns the page needs, not the whole row, when a row carries large JSON.
+- No statement across tournaments outside platform jobs, and those have a `WHERE` on due work and a `LIMIT`.
+- Derived numbers (standings, totals, rankings) are computed by `domain/` functions from rows. Do not re-derive them in SQL in a second place, and do not store them.
+- No file imports `firebase/firestore`. The browser never talks to the database.
 
 ```ts
 // src/features/teams/queries.ts
 export const getTeams = cachedQuery(
   async (tournamentId: TournamentId): Promise<TeamSummary[]> => {
-    const snap = await paths.teams(tournamentId).get();
-    return snap.docs.map((d) => toTeamSummary(teamDocSchema.parse(d.data()), d.id));
+    const t = scoped(db, tournamentId);
+    const rows = await t.select({ id: teams.id, name: teams.name, logoUrl: teams.logoUrl, groupId: teams.groupId })
+      .from(teams)
+      .orderBy(teams.name);
+    return rows.map(toTeamSummary);
   },
   { tags: (tournamentId) => [tags.teams(tournamentId)] },
 );
@@ -99,12 +112,13 @@ export const getTeams = cachedQuery(
 
 ## 6. Writing data
 
-- Every write is a command made with `defineCommand`. No `setDoc`, `updateDoc` or `writeBatch` in components. No `'use server'`.
+- Every write is a command made with `defineCommand`. No component, page or query writes. No `'use server'`.
 - A command states its input schema, the action it needs and its scope. The helper authenticates, authorizes, runs the handler, writes the audit entry and maps errors to responses. The handler does the domain work and returns the tags to invalidate and the jobs to enqueue.
-- A command never trusts an id from the client to belong to the tournament in the URL. It loads the document through the tournament's path.
+- A command never trusts an id from the client to belong to the tournament in the URL. It loads the row through `scoped(tx, tournamentId)`, so an id from another tournament is simply not found.
 - Business rules live in `domain/` as pure functions that the command calls. The command itself is short.
-- A change to several documents that must agree uses a transaction or a batch.
-- Schema changes are additive, with a migration script in `scripts/migrations/` and an emulator test. Old and new code must both work during the change.
+- The handler runs inside one transaction that the helper opens; the audit row is written in the same transaction. Calls to other services (Discord, OpenDota, Steam) never happen inside it: enqueue a job.
+- A schema change is a migration generated by `drizzle-kit` from the table definitions and checked in. Until production data exists (go-live step one), migrations may reshape freely. After that they are additive, and a column is removed only in a later release than the code that stopped using it.
+- Let the database enforce what it can: `NOT NULL`, unique keys, foreign keys, check constraints. A rule the database enforces needs no code to defend it.
 
 ```ts
 // src/features/teams/commands.ts
@@ -122,6 +136,8 @@ export const approveStandin = defineCommand({
 ```
 
 Compare with today's `approveStandinRequest(tournamentId, requestId)` in `src/lib/standin-actions.ts`: a server action that uses the Admin SDK and never checks who is calling.
+
+The bot follows the same idea on its side: it reads and writes only through its `Store` interface, on the tables of the `bot` schema, with shapes from `contract/`.
 
 ## 7. Errors
 
@@ -153,9 +169,9 @@ Compare with today's `approveStandinRequest(tournamentId, requestId)` in `src/li
 
 Levels, tools and goals are in `TEST_STRATEGY.md`. The rules for everyday work:
 
-- A test file sits next to the code it tests: `standings.ts` and `standings.test.ts`. The old `src/__tests__/` folder is moved over as features move.
+- A test file sits next to the code it tests: `standings.ts` and `standings.test.ts`. Tests in the old `src/__tests__/` folder move with the code they cover or are deleted with it.
 - Every function in `domain/` has tests. A bug fix starts with a test that fails.
-- Every command has an emulator test for: the allowed role succeeds, every other role is refused, bad input is refused, and the documents written are right.
+- Every command has a database test (PGlite, through `platform/db/testing`) for: the allowed role succeeds, every other role is refused, bad input is refused, an id from another tournament is not found, and the rows written are right.
 - Tests use fixture builders (`aTournament()`, `aMatch({ format: 'bo3' })`) and fixed clocks and random seeds. No test reads production or the network.
 - Test names state behaviour: `it('counts a forfeited series as 2:0 for the opponent')`.
 - A test that fails now and then is fixed or deleted the same day. It is never retried until green.
@@ -165,7 +181,7 @@ Levels, tools and goals are in `TEST_STRATEGY.md`. The rules for everyday work:
 - One work package, one branch `wp/NN-short-name`, merged with `--no-ff`.
 - Commits are small and say what and why: `fix(results): full-series forfeit now updates standings`.
 - A change is done when typecheck, lint, tests and build pass in CI, and the work package's acceptance criteria are checked one by one in the pull request text.
-- No deploy from a working copy. No build with production credentials.
+- No deploy from a working copy. No build with production credentials. A build opens no database connection.
 - Do not leave work uncommitted at the end of a session.
 
 ## 12. What the lint enforces
@@ -176,10 +192,11 @@ So that these rules do not depend on memory, the ESLint config (set up in WP-07)
 |---|---|
 | File over 400 lines, function over 80 lines | `src/features`, `src/platform`, `bot-worker/src` |
 | `any` | same |
-| Import of `firebase/firestore` outside the allowlist | all of `src` |
-| Import of `firebase-admin` outside `platform/firestore`, `queries.ts`, `commands.ts`, jobs | all of `src` |
-| `'use server'` outside the allowlist | all of `src` |
-| A feature importing another feature's inner files; `domain/` importing Firebase, Next or React; `platform` importing a feature | `src/features`, `src/platform` |
+| Import of `firebase/firestore`, `firebase/storage`, `firebase/functions` | new folders at once; all of `src` after WP-19 |
+| Import of the database client outside `platform/db`, `queries.ts`, `commands.ts`, jobs | all of `src` |
+| Import of `firebase-admin` outside `platform/auth` and `platform/files` | new folders |
+| `'use server'` | new folders at once; all of `src` after WP-19 |
+| A feature importing another feature's inner files; `domain/` importing the database client, Firebase, Next or React; `platform` importing a feature | `src/features`, `src/platform` |
 | New files under `src/lib`, `src/components`, `src/server` | checked in CI by a file-count ratchet |
 | `console.log` | new folders |
 

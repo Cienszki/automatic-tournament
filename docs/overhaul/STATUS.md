@@ -4,83 +4,125 @@ Every session updates this file as it works, not only at the end. A new session,
 
 ## Next step
 
-S1 is done (2026-11-13). Two things can start now, in either order or side by side:
+The owner answered the S0 and S1 questions on 2026-11-13, and S1 revised the plan the same day. **Read "Decisions that changed the plan" below before anything else**: they override parts of `BRIEF.md` that assume Firestore and a gradual change of the live site.
 
-- **Implementation (S5 prompt in `PROMPTS.md`), starting with WP-01.** WP-01 closes security holes that are live in production (question 4). WP-02, WP-04, WP-05 and WP-12 need no answer from the owner. WP-03 and WP-06 need the staging project and the hosting answer (questions 5 and 6); do the parts that do not, and mark the rest as waiting.
-- **S2 (organizer experience)**, which reads `ARCHITECTURE.md` and adds its own work packages to `ROADMAP.md`.
+What can start now, with nothing from the owner:
 
-The owner should answer questions 1, 4, 5 and 6 first; the others can wait.
+- **WP-05** (delete dead code), **WP-12** (capture real tournaments and what the old site publishes) and **WP-20** (bot source to TypeScript). Use the S5 prompt in `PROMPTS.md`.
+- **S2 (organizer experience).** It is now a prerequisite of WP-18, because the old admin tabs are not converted: S2's screens are built directly on the new commands. Its prototype review needs a browser, which the agent sandbox blocks (question 2), so that part waits for the owner or runs in CI.
+
+What waits for the owner: the staging accounts (question 5) for WP-03's staging part and WP-06; `npm ci` in the worktree (question 13) for running lint and the new tests locally; question 8 for WP-16.
+
+After WP-12: **WP-32** (database schema). It has a Fable review of `SCHEMA.md` before any migration is written.
+
+## Decisions that changed the plan (owner, 2026-11-13)
+
+1. **Firestore is not required.** The tournament platform moves to PostgreSQL with a clean structure (`ARCHITECTURE.md` ADR-04). Firebase keeps sign-in and files. Fable chose Supabase (free plan, Frankfurt) as the host, used as plain PostgreSQL.
+2. **Production does not change until the new platform is ready.** This includes the two security fixes (questions 1 and 4). The new platform is built on `overhaul` beside the old site and takes over one tournament at a time, starting with archived ones (ADR-15). The brief's rules still hold: no deploy by agents, no writes to production Firestore, no script with production credentials. The brief's rule "change the Firestore schema only additively" no longer applies, because the Firestore schema is not changed at all.
+3. **Letnia becomes an ordinary tournament** at `/letnia`, imported into the same tables as the others (WP-33). It is not reachable today, so it is the first tournament to go live on the new platform.
+4. **Free or basic plans until there is income.** Every service starts free; `COSTS.md` gives the triggers for paying.
+5. **Organizers choose their tie-breakers and their order,** can use tiebreaker matches, and can rank teams from different groups for playoff places and seeding (ADR-11, WP-13a, WP-34).
+6. **Region per tournament** is not built now. The design keeps it possible, and the reasons are in ADR-17.
 
 ## Sessions
 
 | Session | Model | State | Output |
 |---|---|---|---|
 | S0 Groundwork: safety net + inventories | Opus | done 2026-11-13 | `inventory/*.md`, CI, green tests |
-| S1 Architecture, scale, code health, testing | Fable | done 2026-11-13 | `ARCHITECTURE.md`, `TEST_STRATEGY.md`, `ROADMAP.md`, `CONVENTIONS.md` |
-| S2 Organizer experience: admin, wizard, customization | Fable | not started | `ORGANIZER_UX.md`, prototypes |
-| S3 Card game | Fable | not started | `GAME_DESIGN.md` |
+| S1 Architecture, scale, code health, testing | Fable | done 2026-11-13; revised 2026-11-13 after the owner's answers | `ARCHITECTURE.md`, `TEST_STRATEGY.md`, `ROADMAP.md`, `CONVENTIONS.md`, `COSTS.md` |
+| S2 Organizer experience: admin, wizard, customization | Fable | not started; needed before WP-18 | `ORGANIZER_UX.md`, prototypes |
+| S3 Card game | Fable | not started; decides when cards arrive on the new platform (question 15) | `GAME_DESIGN.md` |
 | S4 Business and marketing | Opus, or Fable if quota is left | not started | `docs/business/*` |
 | S5+ Implementation of the roadmap | Fable or Opus as orchestrator | not started | `wp/*` branches merged into `overhaul` |
 
 ## Work packages
 
-Filled in by S1, and later by S2 and S3. One line per WP: id, name, branch, state (planned / in progress / in review / merged / dropped), notes.
+One line per WP: id, name, branch, state (planned / in progress / in review / merged / dropped / on request), notes. The order to run them in is the milestone table in `ROADMAP.md`, not the id.
 
 | WP | Name | Branch | State | Notes |
 |---|---|---|---|---|
-| WP-01 | Close unauthenticated server actions and weak routes | `wp/01-server-action-auth` | planned | M, Fable review. Cherry-pick to production (question 4) |
-| WP-02 | Test the Firestore and Storage rules, close holes | `wp/02-rules-tests` | planned | L, Fable review |
-| WP-03 | Staging, fixtures, deploys from git | `wp/03-staging-ci` | planned | L, Opus review. Needs question 5 for the staging part |
-| WP-04 | Error monitoring, logs, bot heartbeat | `wp/04-observability` | planned | M, Opus review. Question 9 |
-| WP-05 | Delete dead code, remove single-tenant fallbacks | `wp/05-dead-code` | planned | M, Opus review |
-| WP-06 | Trial: server-rendered, CDN-cached page on new hosting | `wp/06-hosting-trial` | planned | M, Fable review. Decision gate for ADR-03. Questions 5, 6 |
+| WP-01 | Close unauthenticated server actions on the old site | `wp/01-server-action-auth` | on request | Not scheduled: the owner will not change production now. Ready to run if that changes |
+| WP-02 | Test the Firestore rules | — | dropped | No browser database access on the new platform |
+| WP-03 | Environments: local database, seed, CI, previews | `wp/03-environments` | planned | M, Opus review. Staging part needs question 5 |
+| WP-04 | Error monitoring and structured logs | `wp/04-observability` | planned | S, Opus review. Runs beside anything |
+| WP-05 | Delete dead code | `wp/05-dead-code` | planned | M, Opus review. Can start now |
+| WP-06 | Trial: fast page on Vercel and Supabase, forwarding to the old site | `wp/06-hosting-trial` | planned | M, Fable review. Decision gate. Needs question 5 |
 | WP-07 | Platform kernel and enforced boundaries | `wp/07-platform-kernel` | planned | L, Fable review |
 | WP-08 | Server-rendered shell | `wp/08-server-shell` | planned | L, Fable review |
-| WP-09 | Public subpages on cached queries (09a, 09b, 09c) | `wp/09a-teams-schedule, wp/09b-standings-playoffs, wp/09c-content` | planned | L, Opus review; Fable for 09b |
+| WP-09 | Public subpages on cached queries (09a, 09b, 09c) | `wp/09a-teams-schedule`, `wp/09b-standings-playoffs`, `wp/09c-content` | planned | L, Opus review; Fable for 09b |
 | WP-10 | Home page on server data, deep links without redirects | `wp/10-home-server-data` | planned | L, Fable review |
 | WP-11 | Performance budgets in CI, lighter bundle | `wp/11-perf-budgets` | planned | M, Opus review |
-| WP-12 | Characterisation tests and golden fixtures for results | `wp/12-results-fixtures` | planned | M, Opus review. Can run beside M1 |
-| WP-13 | `results` feature: one way to change a result | `wp/13-results-feature` | planned | L, Fable review. Question 11 |
-| WP-14 | Job queue | `wp/14-jobs` | planned | L, Fable review |
-| WP-15 | `stats` feature: one compute, stored dataset | `wp/15-stats-feature` | planned | L, Fable review |
+| WP-12 | Capture tool and parity fixtures | `wp/12-capture-fixtures` | planned | M, Opus review. Can start now |
+| WP-13a | Standings and ranking rules as pure functions | `wp/13a-ranking` | planned | M, Fable review |
+| WP-13b | `results` feature: one way to change a result | `wp/13b-results` | planned | L, Fable review |
+| WP-14 | Job queue in the database | `wp/14-jobs` | planned | M, Fable review |
+| WP-15 | `stats` feature: one compute from PostgreSQL | `wp/15-stats` | planned | L, Fable review |
 | WP-16 | Fantasy and pick'em scoring | `wp/16-fantasy-pickem` | planned | L, Opus review. Waits for question 8 |
 | WP-17 | Captain flows through commands | `wp/17-captain-commands` | planned | L, Fable review |
-| WP-18 | Admin writes through commands (18a-18e) | `wp/18a-settings ... wp/18e-content` | planned | XL, split. Fable for 18a, 18d. Coordinate with S2 |
-| WP-19 | Lock the rules | `wp/19-rules-lock` | planned | M, Fable review |
-| WP-20 | Bot source under control (TypeScript, tests) | `wp/20-bot-source` | planned | L, Fable review. Owner deploys between match days |
-| WP-21 | Contract and self-contained lobby sessions | `wp/21-bot-contract` | planned | L, Fable review |
-| WP-22 | Bot: no idle cost, encrypted credentials, visible waiting | `wp/22-bot-due-work` | planned | M, Fable review |
-| WP-23 | Measure and scale lobby workers | `wp/23-bot-scale` | planned | S + L, Fable review for part 2 |
-| WP-24 | Organizations and roles | `wp/24-organizations` | planned | L, Fable review |
-| WP-25 | Letnia into the model, legacy removed | `wp/25-letnia-migration` | planned | L, Fable review. Owner runs the migration |
+| WP-18 | Organizer commands with S2's screens (18a-18e) | `wp/18a-settings ... wp/18e-content` | planned | XL, split. Fable for 18a, 18d. Needs S2 |
+| WP-19 | No database access from the browser | `wp/19-no-browser-db` | planned | S, Fable review |
+| WP-20 | Bot source under control (TypeScript, tests) | `wp/20-bot-source` | planned | L, Fable review. Can start now |
+| WP-21 | Contract, and the bot on its own tables | `wp/21-bot-contract` | planned | L, Fable review |
+| WP-22 | Bot: due work only, encrypted credentials, visible waiting | `wp/22-bot-due-work` | planned | M, Fable review |
+| WP-23 | Measure and scale lobby workers | `wp/23-bot-scale` | planned | S + M, Fable review for part 2 |
+| WP-24 | Organizations and roles | `wp/24-organizations` | planned | M, Fable review |
+| WP-25 | Letnia migration inside Firestore | — | dropped | Letnia is imported by WP-33 |
 | WP-26 | Custom domains, link helper, sign-in from any domain | `wp/26-custom-domains` | planned | L, Fable review |
 | WP-27 | Theme tokens with guard rails, visual tests | `wp/27-theme-tokens` | planned | L, Opus review. Coordinate with S2 |
-| WP-28 | Move the database to Europe | `wp/28-eu-database` | planned | M to prepare, Fable review. Question 7. Owner runs it |
+| WP-28 | Move Firestore to Europe | — | dropped | The new database starts in Frankfurt |
 | WP-29 | One translation system | `wp/29-i18n` | planned | L, Opus review |
 | WP-30 | Full end-to-end suite | `wp/30-e2e` | planned | M, Opus review |
 | WP-31 | Load test at 1,000 tournaments | `wp/31-load-test` | planned | M, Fable review |
+| WP-32 | Database schema v1 and `platform/db` | `wp/32-schema` | planned | L, Fable review twice (`SCHEMA.md`, then the result) |
+| WP-33 | Import tool (Firestore export to PostgreSQL, Letnia adapter) | `wp/33-import` | planned | L, Fable review |
+| WP-34 | Tiebreaker matches, ranking across groups, places into bracket slots | `wp/34-advancement` | planned | L, Fable review |
+| WP-35 | Go-live step one: the archive (Letnia, finished seasons) | `wp/35-go-live-1` | planned | S, Fable review. The owner runs it |
+| WP-36 | Backups, export and import of one tournament | `wp/36-backups` | planned | M, Fable review. Before WP-37 |
+| WP-37 | Go-live steps two and three: new seasons, old site retires | `wp/37-go-live-2-3` | planned | M, Fable review. The owner runs it |
+| WP-38 | Move the remaining server features (accounts, notifications, casters, draft prep) | `wp/38-remaining-features` | planned | L, split in two. Fable for accounts |
 
 ## Questions for the owner
 
-Each question has the asking session, the recommended answer, and whether work continued on that recommendation.
+Each question has the asking session, the recommendation, the owner's answer if given, and what follows.
 
-1. **(S0, urgent) Copy the bot-route security fix into production?** Commit `3db4e3e` on `overhaul`. In production, any signed-in visitor can list, add, re-password, disable or delete the lobby bot's Steam accounts, and edit any tournament's lobby whitelist (`/api/manage/bot/accounts`, `accounts/[id]`, `pool-status`, `whitelist` only check that a token is valid). Recommended: cherry-pick `3db4e3e` onto `feature/multi-tournament-platform` and deploy soon. It touches four route files and one line of `BotTab.tsx`. Not done by S0, because S0 may not deploy or push that branch.
-2. **(S0) Browser measurements for PAGES.md.** The headless browser (Edge through puppeteer-core) cannot start inside this session's command sandbox, and running it outside the sandbox was refused. TTFB, page weight and Firestore round-trip times were measured with curl instead. Recommended: run `node scripts/measure-pages.js` yourself once (see `inventory/PAGES.md`), or allow the browser for the S1 session. Work continued without it.
-3. **(S0) `firestore.rules` changed on `overhaul`** (reserved slugs `card-lab`, `stats-lab`, `opengraph-image`). Not deployed. Recommended: deploy with the next rules deploy; it only rejects more slugs.
+### Open
 
-4. **(S1, urgent) Copy WP-01 to production as soon as it is merged?** Several server functions use admin rights and never check who is calling (`src/lib/standin-actions.ts`, `src/lib/bot/bot-config-actions.ts`, `playoff-sync-actions.ts`, `player-profile-actions.ts`; S1 checked the code). Client pages import them, so they are public endpoints: anyone can approve or reject stand-in requests today, and probably change bot settings and bot accounts. Not tested against production. Recommended: run WP-01 first and cherry-pick its merge onto `feature/multi-tournament-platform`, together with `3db4e3e` from question 1. Work continues on that plan.
-5. **(S1) Create the staging environment.** `TEST_STRATEGY.md`, "What the owner must create", lists it exactly: a Firebase project `dota2inhouse-staging` on Blaze with Firestore in `eur3`, Google sign-in, Storage, a web app and a service account key; a Discord application for staging; the GitHub secrets. Recommended: yes, this week; WP-03 and WP-06 wait for it. Work continues on the parts that do not need it.
-6. **(S1) Host the web app on Vercel as its own project?** (`ARCHITECTURE.md`, ADR-03.) Firebase stays for sign-in, database and files. The community site keeps the domain and forwards to the new project as it forwards to Firebase today; cutover and rollback are one setting. It needs a Vercel Pro plan (about $20 per member per month plus usage; please confirm the price and which plan the community site is on). Recommended: yes, subject to the measured trial in WP-06. If no: pages are still made fast with time-based caching on Firebase, but an organizer's change takes up to a minute to show, deploys stay manual, and custom domains need another solution.
-7. **(S1) Move the database from the US to Europe before opening to outside organizers?** (ADR-04.) It needs one write freeze of about 30-60 minutes outside match days, rehearsed first (WP-28). Recommended: yes. Nothing else waits for this answer.
-8. **(S1) Fantasy and pick'em do not work for any tournament except old Letnia.** The fantasy page shows a placeholder ranking and nothing computes points; pick'em stores picks and never scores them. Two decisions: (a) build the scoring in WP-16, or hide both features until S2 has redesigned them? (b) which fantasy formula do new tournaments use: the flat PDL one, or the role-based one? Recommended: (a) build the scoring in WP-16, because viewer features are a selling point and the creator page already advertises them; (b) the flat PDL formula as the default, with the role-based one as a preset. Work continues on other packages; WP-16 waits.
-9. **(S1) Accounts for monitoring:** a Sentry organization (free tier) with two projects, and a private Discord channel with a webhook for alerts (ADR-13). Recommended: yes. WP-04 can be built without them and switched on later.
-10. **(S1) Branch naming after the overhaul is proven:** merge `overhaul` into the production branch and rename it `main`, and retire `master` (228 commits behind, unused)? Recommended: yes. Easy to decide later.
-11. **(S1) One tie-break order for standings.** Pages disagree today (division table: head-to-head, then Neustadtl, then lower MMR; stats hub: game difference, games won, name). WP-13 makes the division table's order the single rule, stored per tournament. Recommended: accept; say so if a league's rulebook says otherwise.
+2. **(S0) Browser measurements.** The owner said: run it, and install what is needed. S1 tried on 2026-11-13: `puppeteer-core` is not installed anywhere on this machine, and installing it into a new folder was refused twice by the session's permission system. The fastest way is for the owner to run these once, in the `overhaul` worktree, after question 13's `npm ci`:
+   ```
+   node scripts/measure-pages.js https://dota2inhouse.pl pages.json /wiosenna /wiosenna/teams /wiosenna/schedule /pdl-s2 /pdl-s2/teams /pdl-s2/schedule
+   ```
+   and leave `pages.json` in the worktree. For agents to do this themselves in future, a Bash permission rule that allows `npm` installs and launching Edge headless outside the sandbox is needed. The numbers are useful as a "before" picture; no decision waits for them.
+5. **(S1) Create the staging accounts.** The list changed with the new database and is in `TEST_STRATEGY.md`, "What the owner must create" (points 1 to 7; all free). WP-03's staging part and WP-06 wait for it. Not answered yet beyond the general notes.
+8. **(S1) Fantasy and pick'em do not work for any tournament except old Letnia.** (a) Build the scoring in WP-16, or leave both out of the new platform until S2 has redesigned them? (b) Which fantasy formula do new tournaments use: the flat PDL one, or the role-based one? Recommended: (a) build it in WP-16; (b) flat as the default, role-based as a preset. Not answered. WP-16 waits; nothing else does.
+12. **(S1 revision) Freeze the old site for new features?** From now on the production branch would get fixes only, and anything new is built on the new platform. Otherwise the two drift apart and the import keeps chasing changes. Recommended: yes. Work continues on that assumption.
+13. **(S1 revision) Run `npm ci` in the `overhaul` worktree.** The worktree has no `node_modules`; it borrows the main working copy's, which lacks ESLint, Playwright, `puppeteer-core` and every package the new platform adds. Agents are not allowed to install into a new folder, and the disk has 8 GB free. Needed: about 3 GB free, then `npm ci` in `.claude/worktrees/overhaul`, and again when a work package adds packages (its report will say so). Until then agents rely on CI on GitHub for lint and new tests, which is slower.
+14. **(S1 revision) Three facts for the cost report** (`COSTS.md`, section 5): what is paid today per service; whether the site already earns anything (paid sponsors, fees, ads), because Vercel's free plan is for non-commercial use only; and which Vercel plan the community site is on.
+15. **(S1 revision) The card game on the new platform.** Its tables are left to S3. Until S3's packages are built, tournaments on the new platform have no card game; archived ones do not need it. Should S3 run before the first new season starts there, or may a new season start without cards? Recommended: run S3 after S2, and decide when M3 is in sight.
+16. **(S1 revision) Confirm the database and hosting choice,** or say what to change: PostgreSQL on Supabase's free plan in Frankfurt; the web app on Vercel's free plan; Firebase kept for sign-in and files only. Work continues on this. WP-06 measures it before anything depends on it.
+
+### Answered
+
+1. **(S0) Copy the bot-route security fix `3db4e3e` to production?** Owner: "yes please". But see 4, which the owner answered later and more broadly. Read together: not now. The fix stays ready; say the word and it is a ten-minute cherry-pick and deploy by the owner.
+3. **(S0) `firestore.rules` changed on `overhaul`** (reserved slugs). No longer matters: the old rules are not deployed from `overhaul`, and on the new platform reserved slugs are a list in code checked by the create-tournament command.
+4. **(S1) Copy WP-01 to production?** Owner: finish everything first and only then change production; traffic is low and the risk is accepted for now. WP-01 is kept "on request". The new platform cannot have this class of hole (ADR-07).
+6. **(S1) Host on Vercel?** Owner: no large payments; free or basic plans until there is income. Decision: Vercel's free plan first, the $20 plan at the first income or limit (ADR-03, `COSTS.md`).
+7. **(S1) Move the database to Europe?** Replaced by decision 1: the new database is created in Frankfurt.
+9. **(S1) Sentry and a Discord alert webhook.** Owner: yes. They are points 6 in the staging list.
+10. **(S1) Rename the branch to `main` at the end.** Owner: at the end; remind me. It is the last step of WP-37.
+11. **(S1) One tie-break order.** Owner: yes, and organizers must be able to choose which tie-breakers apply and in which order, use tiebreaker matches, and rank teams from different groups (as in Wiosenna: 12 playoff places from two groups, some entering later). Designed in ADR-11; built by WP-13a and WP-34; S2 designs the screens.
 
 ## Log
 
+- 2026-11-13 (S1 revision): the owner answered questions 1 to 11 and added notes on Firebase, Letnia, regions and budget. Fable revised `ARCHITECTURE.md` Part 2 (PostgreSQL on Supabase, go-live one tournament at a time with forwarding to the old site, free plans first, ranking rules as data, a record on regions), rewrote `ROADMAP.md` (36 packages; WP-02, 25, 28 dropped; WP-32 to 38 new; WP-13 split), updated `TEST_STRATEGY.md` and `CONVENTIONS.md`, and wrote `COSTS.md`. An explorer mapped today's ranking code: nine implementations, nothing configurable, playoff slots filled by hand. Prices were read from the vendors' pages. Found: the worktree cannot run lint or new packages locally (question 13). The browser measurement could not be run (question 2).
 - 2026-11-13 (S1): done. Wrote `ARCHITECTURE.md` (current state, 13 bad decisions with evidence, target design, 16 decision records), `CONVENTIONS.md`, `TEST_STRATEGY.md` and `ROADMAP.md` (31 work packages in 7 milestones). Four explorer agents checked the inventories and filled gaps; Fable re-checked the claims the decisions rest on. Findings beyond S0: server actions with admin rights and no caller check (question 4); the live tournament bot has no source code, only hand-edited JavaScript in `bot-worker/dist/`; fantasy and pick'em compute nothing outside legacy Letnia (question 8); the security rules let a captain rewrite their match's score. No spike was run: the hosting trial (WP-06) needs the staging project and a hosting account that only the owner can create.
 - 2026-11-13 (S0): Part B done: `inventory/{PAGES, ADMIN, DATA, SCALE, PRODUCT, TESTS, CARDS, CODE_HEALTH}.md`. Explorer agents drafted them; Opus checked and corrected them. PAGES.md has curl and build measurements but no browser measurements (question 2). The repo table in BRIEF.md is corrected: the live lobby bot is `bot-worker/`. CI passed on GitHub (run 43327108507, commit `62fbe0b`).
 - 2026-11-13 (S0): Part A done. Tests green (reserved slug `card-lab`; Swiss pairing search sped up about 4x with identical output). CI added (`.github/workflows/ci.yml`); ESLint set up for the first time (0 errors). Deleted `src/app/api/admin/**` plus two prefix-sharing routes, 21 orphaned modules and 9 root one-off scripts (about 15,000 lines). Fixed open bot-account routes (`3db4e3e`).
 - 2026-11-13 (S0) **Incident, read-only:** the first local `next build` loaded the worktree's `.env.local`, which holds the production service account, and prerendering `/sitemap.xml` read the production `tournaments` collection once (no writes). Every later local build and `next start` ran with `FIREBASE_SERVICE_ACCOUNT_BASE64=` and the other secrets blanked, checked by the sitemap coming out empty. Future sessions: always blank them, or the sitemap and any prerendered page read production. The underlying problem (the sitemap is built from production data at build time) is in `inventory/PAGES.md`.
 - 2026-11-12: restore tag `restore/pre-overhaul-2026-11-12` pushed in all three repos. Branch `overhaul` and worktree `.claude/worktrees/overhaul` created from `feature/multi-tournament-platform` at `0fe0974`. Brief, agents and prompts written.
+
+## The owner's notes of 2026-11-13, kept as written
+
+"so i chose firebase at the beginning of this project because i heards it is easy and i had previous experience with google as i was working as google workspace admin. i was a noob dev then and did the only thing that i found how to do. additionally it had great (for the time) feature of a gemini design functionality that helped me design visuals. i also ad some free credits there. right now there is no need to use firestore at all if there are betrter options.
+Additionally, the legacy tournament - letnia, is no longer accessible, so the database is messy with its data. what we need really to do is restructure database (when migreating to a better one, maybe we want to restructure it completely from ground up and choose diufferent technbology than the type of database that firestore ) and take all the data we have on letnia tournament and put it in the database just like it was another of our tournaments, with /letnia slug, so we can see the tournament and the database is cleaner. it should be amazing if we could let the organizer choose what region they want to have the database and hosting for their tournaament since dota players are scatter among the world with most being in peru, eu, russia, and SEA"
+
+Budget, from the same day's message: no large payments now; free or basic plans until the product can pay for more and goes public; a cost report was requested (`COSTS.md`).

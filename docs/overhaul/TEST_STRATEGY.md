@@ -1,10 +1,10 @@
 # Test strategy
 
-Written in S1 (2026-11-13) by Fable. It says which kinds of test the product needs, what each one covers, the tools, the environments, the goals, and the order to build them in. The work packages that build them are in `ROADMAP.md`.
+Written in S1 (2026-11-13) by Fable, and revised the same day for the new database (`ARCHITECTURE.md`, ADR-04, ADR-15). It says which kinds of test the product needs, what each one covers, the tools, the environments, the goals, and the order to build them in. The work packages that build them are in `ROADMAP.md`.
 
 **Where we start.** 26 test files with 256 tests cover small helpers and the Swiss pairing. Nothing tests a Firestore write, a security rule, a route's permission check, the result import, standings, scoring, the bot, or a page in a browser. CI runs typecheck, lint, the unit tests and a build.
 
-**The principle.** Put each rule where it is cheapest to test, then test it there. Most of the product's risk is in rules that are pure once they are separated from Firestore: who advances, who gets points, which game belongs to which match, who may do what. The architecture moves those rules into `domain/` folders and commands (`ARCHITECTURE.md`, ADR-07, ADR-11, ADR-14), and that is what makes thorough testing affordable. Until a piece of old code is moved, it gets a characterisation test: a test that records what the code does today, so that moving it cannot change behaviour unnoticed.
+**The principle.** Put each rule where it is cheapest to test, then test it there. Most of the product's risk is in rules that are pure once they are separated from the database: who advances, who gets points, which game belongs to which match, who may do what. The architecture moves those rules into `domain/` folders and commands (`ARCHITECTURE.md`, ADR-07, ADR-11, ADR-14), and that is what makes thorough testing affordable. The old code is not changed. The new code is checked against what the old site publishes for real tournaments (the parity fixtures of WP-12), so that rebuilding a rule cannot change a table unnoticed.
 
 ## 1. The levels
 
@@ -12,13 +12,13 @@ Written in S1 (2026-11-13) by Fable. It says which kinds of test the product nee
 |---|---|---|---|---|---|
 | 1 | Pure logic | A rule gives the right answer for every case that matters | vitest, node environment | every push | whole level under 30 s |
 | 2 | Components | A component shows the right state and calls the right command | vitest with jsdom, Testing Library | every push | under 60 s |
-| 3 | Firestore rules | The browser can read and write only what its role allows | Firebase emulator, `@firebase/rules-unit-testing` | every push | under 60 s |
-| 4 | Commands, queries and jobs | A server function checks permission, validates, writes the right documents, invalidates the right tags, and is safe to repeat | vitest against the Firestore and Auth emulators | every push | under 3 min |
-| 5 | Contract between website and bot | Documents written by one side are accepted by the other, in every supported version | shared schemas in `contract/`, fixtures, emulator scenario with a fake Dota client | every push | under 60 s |
-| 6 | End-to-end flows | A person can complete the journeys the product is sold on | Playwright against a production build with emulators | every push to `overhaul`; every pull request | under 10 min |
-| 7 | Performance | Pages stay inside their budgets | Lighthouse CI, bundle-size check, read-count assertions | every pull request | under 5 min |
+| 3 | Database schema and isolation | The database refuses bad data, one tournament cannot reach another, and the bot's role can touch only its own tables | vitest on in-process PostgreSQL (PGlite) and on a PostgreSQL container in CI | every push | under 60 s |
+| 4 | Commands, queries and jobs | A server function checks permission, validates, writes the right documents, invalidates the right tags, and is safe to repeat | vitest on in-process PostgreSQL (PGlite) | every push | under 3 min |
+| 5 | Contract between website and bot | Documents written by one side are accepted by the other, in every supported version | shared schemas in `contract/`, fixtures, database scenario with a fake Dota client | every push | under 60 s |
+| 6 | End-to-end flows | A person can complete the journeys the product is sold on | Playwright against a production build with a seeded local database | every push to `overhaul`; every pull request | under 10 min |
+| 7 | Performance | Pages stay inside their budgets | Lighthouse CI, bundle-size check, statement-count assertions | every pull request | under 5 min |
 | 8 | Visual | Pages look right under different themes and screen sizes | Playwright screenshots | every pull request, comparison reviewed by a person | under 5 min |
-| 9 | Load | The platform holds 1,000 tournaments and a busy match evening | k6 against staging with seeded data | before each milestone, by hand | 30 min |
+| 9 | Load | The platform holds 1,000 tournaments and a busy match evening | k6 against a PostgreSQL container in CI and against staging | before each milestone, by hand | 30 min |
 | 10 | Production checks | The live site works after a deploy | Playwright smoke test (read-only), uptime check, error monitoring | after each deploy, then continuously | 2 min |
 
 ### Level 1. Pure logic
@@ -26,7 +26,7 @@ Written in S1 (2026-11-13) by Fable. It says which kinds of test the product nee
 The largest level, and the one to grow first. Targets, in order of risk:
 
 - **Results:** matching a Dota game to two teams by player ids (three or more players per side, stand-ins, a player in two teams); choosing the match for a game; series completion for bo1, bo2, bo3 and bo5, including forfeited games; the practice-game filter; walkovers.
-- **Standings:** league and group tables with every tie-break in the configured order; Swiss standings and Buchholz; the effect of extra matches, replayed matches and banned teams (`match-flags`).
+- **Standings:** league and group tables with every tie-breaker in the catalogue, in any order, including three-way ties; open ties and tiebreaker matches; ranking across groups; places into bracket slots; Swiss standings and Buchholz; the effect of extra matches, replayed matches and banned teams (`match-flags`).
 - **Scoring:** fantasy points for each scoring preset, checked against fixed numbers from real games; the performance score; pick'em scoring.
 - **Formats:** round-robin schedule generation (every pair once, no team twice in a round); the playoff bracket generator, advancement, byes and the mirror into `matches`; Swiss pairing (already tested); the LAN qualifier.
 - **Policies:** reschedule rules (already tested), stand-in rules, coach rules, transfer limits, registration validation, slug rules.
@@ -36,43 +36,43 @@ The largest level, and the one to grow first. Targets, in order of risk:
 
 Style: table-driven tests and property tests (fast-check) where a rule must hold for all inputs, for example "the sum of points in a table equals two per completed match" and "a bracket never advances a team that lost".
 
-Golden fixtures: a few real finished tournaments (pdl-s2 and Wiosenna, read through the public site, with user data reduced to ids and nicknames) are stored as JSON. `computeTournament(fixture)` must reproduce the standings and totals that were published. This is the safety net for replacing the seven standings implementations and the stats calculator.
+Parity fixtures: real finished tournaments (pdl-s2 and Wiosenna, captured through public reads, with user data reduced to ids and nicknames) are stored in the export format, together with the tables the old site publishes for them (WP-12). The new standings and `computeTournament` must reproduce those tables. This is the safety net for replacing the nine standings implementations and the stats calculators. The same captures, imported, are what the new pages are compared with screen by screen.
 
 ### Level 2. Components
 
 Only where a component has behaviour of its own: forms and their validation, the reschedule picker, bracket display with byes, the home page's section navigation, the theme preview. A component that only lays out props is covered by level 8. Server components are tested through level 6.
 
-### Level 3. Firestore rules
+### Level 3. Database schema and isolation
 
-The rules file is 570 lines with no tests. It gets a test file per collection group, each with the same matrix: signed-out visitor, signed-in user, captain of the team, captain of another team, tournament admin, admin of another tournament, platform admin; for read, create, update of each sensitive field, delete.
+The security rules and their tests are gone, because the browser cannot reach the database (ADR-04, ADR-07). What replaces them is checked here:
 
-- First pass (WP-02): write the matrix for the rules as they are, with the known holes as failing expectations, then close the holes.
-- Each time an area moves to commands, its write rules become "deny", and the matrix is updated in the same change.
-- End state: a short file whose tests say "clients can write nothing; clients can read only their own private documents and the live-update documents".
-- `storage.rules` gets the same treatment.
-- The test that the rules' reserved-slug list matches the code already exists; keep it.
+- **Catalog tests.** A test walks the database catalog and fails on: a tournament table without `tournament_id`; a foreign key between tournament tables that omits it; a table in the `public` schema; a table without row-level security enabled.
+- **Constraints.** Tests that the database refuses a duplicate slug, a game imported twice, a match whose team belongs to another tournament.
+- **Roles.** The bot's database role cannot read or write anything outside its schema and cannot do more than insert into the job table.
+- **Migrations.** Every migration is applied to a database at the previous version that holds seed data, in CI, on a real PostgreSQL. Once production data exists, a migration that drops or rewrites a column needs a test that the old code still runs between the two deploy steps.
+- **The import tool.** Mapper tests on the fixtures; a second run changes nothing; the Letnia adapter; the count and standings comparison (WP-33).
+- **Storage rules.** A short test that every client write is denied and that an upload through a command works (WP-19).
 
 ### Level 4. Commands, queries and jobs
 
-Every command gets the same four tests through a shared helper: the allowed role succeeds and writes exactly the expected documents; each other role gets `Forbidden`; invalid input gets `Invalid`; an id from another tournament gets `NotFound`. Then the tests of its own behaviour.
+Every command gets the same four tests through a shared helper: the allowed role succeeds and writes exactly the expected documents; each other role gets `Forbidden`; invalid input gets `Invalid`; an id from another tournament gets `NotFound`. A failed command leaves no row behind (the transaction rolled back). Then the tests of its own behaviour.
 
-- A route-inventory test walks `src/app/api/**/route.ts` and fails if a route that changes data is not built with `defineCommand`, and if any `'use server'` file exists outside the allowlist. This is the test that would have caught both security problems found so far.
+- A route-inventory test walks `src/app/api/v1/**/route.ts` and fails if a route is not built with `defineCommand` or `defineQueryRoute`, and if any `'use server'` file exists. This is the test that would have caught both security problems found so far.
 - Jobs: each job type runs twice on the same input and must leave the same state. The queue is tested for claiming (two runners, one job), retry with delay, deduplication, and the one-job-per-tournament limit.
-- The result pipeline end to end on the emulator: a recorded OpenDota response goes in; the match score, standings, dataset and fantasy leaderboard come out. OpenDota and Steam are replaced by recorded responses (msw). No test calls the network.
-- Queries: the shape returned, and a **read-count assertion**: the data layer counts document reads, and each public query has a ceiling (for example "the teams page reads at most T+2 documents"). This stops N+1 reads from coming back.
-- Migrations: each script runs on an emulator seeded with old-shape data; the test checks the new shape, that a second run changes nothing, and that old code paths still read the data.
+- The result pipeline end to end on the test database: a recorded OpenDota response goes in; the match score, standings, dataset and fantasy leaderboard come out. OpenDota and Steam are replaced by recorded responses (msw). No test calls the network.
+- Queries: the shape returned, and a **statement-count assertion**: the test database counts statements, and each public query has a fixed ceiling that does not grow with the number of teams or matches. This stops a query per row from coming back.
 
 ### Level 5. The contract with the bot
 
 1. **Schema tests.** `contract/` holds the schema of every exchanged document. The website's writer output is parsed with the schema; the bot's reader input is the same schema. A fixture folder keeps one example per version. A change that cannot parse the previous version's fixtures fails, which forces a version bump and a compatibility branch.
-2. **Scenario tests on the emulator with a fake Dota client.** The fake implements the small interface the runner uses (create lobby, invite, lobby state events, launch, match result). Scenarios: a bo3 played to 2:1; a team that does not show and is forfeited; a reschedule after the session exists; a stand-in approved after the lobby opened; a runner crash and respawn mid-series; no free account; a lost post-game event recovered by the OpenDota poll. Each ends by checking what the website's side received.
-3. **Website side without a bot.** A fake bot script writes the bot's documents in order, so the website's handling (jobs, live lobby state, results) is tested without the worker.
+2. **Scenario tests on the test database with a fake Dota client.** The fake implements the small interface the runner uses (create lobby, invite, lobby state events, launch, match result). Scenarios: a bo3 played to 2:1; a team that does not show and is forfeited; a reschedule after the session exists; a stand-in approved after the lobby opened; a runner crash and respawn mid-series; no free account; a lost post-game event recovered by the OpenDota poll. Each ends by checking what the website's side received.
+3. **Website side without a bot.** A fake bot script writes the bot's rows in order, so the website's handling (jobs, live lobby state, results) is tested without the worker.
 
 What stays manual: one real lobby on Steam with test accounts before a bot release. Valve's Game Coordinator cannot be emulated faithfully; the checklist for this is short and lives in `bot-worker/RELEASE_CHECK.md` (written in WP-20).
 
 ### Level 6. End-to-end flows
 
-Playwright drives a production build that talks to the emulators, seeded by a script with one tournament per format. Sign-in uses the Auth emulator. The flows, each one a selling point or a past incident:
+Playwright drives a production build that talks to a local database seeded with one tournament per format. Sign-in uses the Firebase Auth emulator. The flows, each one a selling point or a past incident:
 
 1. A visitor opens a tournament's home page, teams, schedule, a team, the stats hub, on desktop and phone sizes; every page has content in the first HTML response.
 2. An organizer creates a tournament in the wizard, publishes it, and sees it live.
@@ -81,7 +81,7 @@ Playwright drives a production build that talks to the emulators, seeded by a sc
 5. A match gets its lobby: the lobby session appears, the fake bot plays the series, the result, standings and stats update with no admin action.
 6. A captain requests a stand-in; the opponent approves; the lobby roster changes. A third user cannot approve.
 7. An admin forfeits a match and reverts it; standings follow both times.
-8. Playoffs: seed, generate, play through to the final; the right teams advance.
+8. Playoffs: two groups finish with a tie on a qualifying place; a tiebreaker match settles it; the bracket is filled from the places with no hand placement; play through to the final; the right teams advance.
 9. A Swiss tournament: three rounds paired, played and ranked.
 10. A user picks a fantasy lineup before the lock and sees points after a game; pick'em likewise.
 11. Roles: a referee can set a result and cannot edit the theme; an admin of tournament A gets nothing in tournament B.
@@ -91,7 +91,7 @@ Rules for this level: each test creates what it needs and does not depend on ano
 
 ### Level 7. Performance
 
-Budgets, measured by Lighthouse CI on a production build with emulator data, phone profile, for the home page, teams, schedule and one team page:
+Budgets, measured by Lighthouse CI on a production build with seeded data, phone profile, for the home page, teams, schedule and one team page:
 
 | Measure | Budget | Today |
 |---|---|---|
@@ -100,8 +100,8 @@ Budgets, measured by Lighthouse CI on a production build with emulator data, pho
 | First Load JS, public page | under 200 kB | 243-489 kB |
 | Layout shift | under 0.1 | not measured |
 | Time to first byte from the CDN, staging | under 300 ms | about 300 ms for an empty shell |
-| Firestore reads per cached page view | 0 | 10 or more |
-| Browser Firestore SDK on a public page | not loaded | loaded on every page |
+| Database work per cached page view | none | 10 or more Firestore reads |
+| Firestore SDK in the browser | not loaded on any page | loaded on every page |
 
 - CI fails a pull request that breaks a budget. Budgets start at today's values for pages not yet converted and tighten as each page is converted.
 - The bundle check lists the largest modules, so a new dependency in the shared bundle is seen in review.
@@ -115,9 +115,9 @@ Screenshots of about fifteen key screens, each under three themes (a dark defaul
 
 ### Level 9. Load
 
-A script seeds staging with 1,000 synthetic tournaments (16 teams, 60 matches, 120 games each) and then k6 runs three scenarios:
+A script seeds 1,000 synthetic tournaments (16 teams, 60 matches, 120 games each) into a PostgreSQL container in CI, which is free and has no size limit, and k6 runs three scenarios against the app in front of it. The CDN behaviour is measured separately on staging with as many tournaments as its free database holds.
 
-1. **Viewers:** 500 requests a second across random tournaments and pages for ten minutes. Pass: 95% answered under 500 ms, error rate under 0.1%, Firestore reads per request near zero once warm.
+1. **Viewers:** 500 requests a second across random tournaments and pages for ten minutes. Pass: 95% answered under 500 ms, error rate under 0.1%, database statements per request near zero once warm.
 2. **Match evening:** 300 series finish within fifteen minutes. Results are enqueued as the bot would. Pass: every result visible within two minutes, no failed job, no tournament delayed by another.
 3. **Organizers:** 50 organizers editing settings, schedules and results at once. Pass: 95% of commands under 800 ms, pages show the change within five seconds.
 
@@ -127,37 +127,42 @@ Also measured once, by hand: how many lobbies one bot worker can hold (memory an
 
 - A read-only smoke test runs after every production deploy: the home page and four subpages of two live tournaments have content, no console errors, correct titles.
 - The uptime check and error monitoring run all the time (ADR-13).
-- No test writes to production. A dedicated hidden test tournament for write checks in production is possible later; it is not needed while staging mirrors production.
+- No test writes to production. A dedicated hidden test tournament for write checks in production is possible later.
 
 ## 2. Environments
 
-| Environment | Firebase | Web app | Bot | Used for |
-|---|---|---|---|---|
-| Local and CI | Emulator suite (Auth, Firestore, Storage) | `next build` + `next start` on a spare port | fake Dota client | levels 1-8 |
-| Staging | project `dota2inhouse-staging` | preview deployments of work-package branches | a second small worker, switched on when needed | levels 9, manual checks, bot release check |
-| Production | `tournament-tracker-f35tb` | production deployment | Railway | level 10 only |
+| Environment | Database | Web app | Sign-in and files | Bot | Used for |
+|---|---|---|---|---|---|
+| Local and CI | in-process PostgreSQL (PGlite); a PostgreSQL container in CI | `next build` + `next start` on a spare port | Firebase Auth and Storage emulators in CI; fakes in unit tests | fake Dota client | levels 1-8, and the database part of 9 |
+| Staging | Supabase project, free plan, Frankfurt | Vercel preview deployments of work-package branches | Firebase project `dota2inhouse-staging` | a small worker, switched on when needed | the trial (WP-06), rehearsals of every go-live step, manual checks, the bot release check |
+| New production | Supabase project, free plan at first, Frankfurt | Vercel production deployment | the existing Firebase project | a new Railway service | level 10 |
+| Old production | Firestore, unchanged | Firebase Hosting, unchanged | the existing Firebase project | the existing Railway service | untouched until it retires |
 
-The emulator needs Java, which GitHub's runners have. Locally it runs with `npm run emulators`; `firebase-tools` becomes a pinned dev dependency so everyone uses the same version.
+PGlite needs no Docker and no Java, so database tests run anywhere Node runs, including this machine. The Auth and Storage emulators need Java, which GitHub's runners have; they are used only by the end-to-end level.
 
-**Fixtures.** One seed module builds tournaments of each format at chosen stages (registration open, mid-season, playoffs, finished). It is used by the emulator tests, the end-to-end tests, the staging seed and the load seed, so all of them describe the same world. No fixture contains real e-mail addresses, tokens or Discord ids.
+**Fixtures.** One seed module builds tournaments of each format at chosen stages (registration open, mid-season, playoffs, finished). It is used by the database tests, the end-to-end tests, the staging seed and the load seed, so all of them describe the same world. No fixture contains real e-mail addresses, tokens or Discord ids. Real tournaments reach staging only through the import tool with `--anonymize`.
 
 ### What the owner must create
 
-Nothing below can be done by an agent, because each needs an account owner. This is question 5 in `STATUS.md`.
+Nothing below can be done by an agent, because each needs an account owner. Everything in the first list is free. This is question 5 in `STATUS.md`.
 
-1. **A Firebase project for staging**, named `dota2inhouse-staging`, on the Blaze plan with a budget alert at a low amount.
-   - Firestore in Native mode, location `eur3` (Europe). The location cannot be changed later.
-   - Authentication with the Google provider enabled.
-   - A Storage bucket in a European location.
-   - A web app registered in the project (this gives the six `NEXT_PUBLIC_FIREBASE_*` values).
-   - A service account key for the Admin SDK.
-2. **A Discord application for staging** (Developer Portal), with its client id and secret, and redirect URLs for the staging address. Using production's application for staging is possible but mixes the two.
-3. **GitHub repository secrets:** the staging service account (base64), the staging `NEXT_PUBLIC_FIREBASE_*` values, the staging Discord client id and secret, a staging `CRON_SECRET`, and a Firebase CI token or workload identity for deploying rules and indexes to staging.
-4. **Hosting for previews** (if ADR-03 is accepted): a Vercel project for the tournament app connected to the GitHub repository, with the staging values as preview environment variables. If ADR-03 is declined: a second Firebase Hosting site in the staging project.
-5. **For bot testing, later (WP-20):** two or three Steam accounts that are only for testing, and a Railway service for the staging worker that is switched off when not in use.
-6. **Error monitoring** (ADR-13): a Sentry organization with two projects (web, bot) and their DSNs as secrets.
+**Now, for staging and the trial (WP-03, WP-06):**
 
-Production's own secrets are not needed for any test and must not be added to CI until deploys move there (WP-03).
+1. **A Supabase account with two projects** in the region Central EU (Frankfurt), both on the free plan: `dota2inhouse-staging` now, and `dota2inhouse` for production later (create it when WP-35 asks). For each project, from Settings: the database password, and the two connection strings (direct, and the pooled one on port 6543). Turn the Data API off in the project's API settings.
+2. **A Firebase project for staging**, named `dota2inhouse-staging`, on the Blaze plan with a budget alert at $1. It needs only: Authentication with the Google provider enabled; a Storage bucket in a European location; a web app registered in the project (this gives the six `NEXT_PUBLIC_FIREBASE_*` values); a service account key. No Firestore database.
+3. **A Vercel project for the tournament app**, on the free Hobby plan, connected to the GitHub repository, production branch `overhaul`, function region Frankfurt (`fra1`), with the staging values as preview environment variables. It can live in the same Vercel account as the community site.
+4. **A Discord application for staging** (Developer Portal), with its client id and secret, and redirect URLs for the staging address.
+5. **GitHub repository secrets:** the staging database connection strings, the staging service account (base64), the staging `NEXT_PUBLIC_FIREBASE_*` values, the staging Discord client id and secret, a staging `CRON_SECRET`.
+6. **Error monitoring** (ADR-13): a Sentry organization on the free plan with two projects (web, bot) and their DSNs as secrets; a private Discord channel with a webhook for alerts.
+7. **On this computer:** about 3 GB of free disk space and one run of `npm ci` in the `overhaul` worktree, so that agents can run lint and the new tests locally (question 13).
+
+**Later:**
+
+8. **For bot testing (WP-21):** two or three Steam accounts that are only for testing, and a Railway service for the staging worker that is switched off when not in use.
+9. **For go-live step one (WP-35):** the production Supabase project from point 1 and the production environment variables on the Vercel project.
+10. **For go-live step two (WP-37):** Steam accounts for the new bot, a Railway service for it, and one run of the read-only export script for the private collections.
+
+Production's own secrets are not needed for any test and are never added to CI.
 
 ## 3. Coverage goals
 
@@ -170,33 +175,36 @@ Coverage is a floor that stops untested code from being added, not a target to c
 | `src/platform` | 85% | |
 | `bot-worker/src` logic (not the Steam client wrapper) | 80% | the seven scenarios of level 5 |
 | React components | no floor | level 8 screens, level 2 where there is behaviour |
-| `firestore.rules`, `storage.rules` | every `allow` statement reached by a test | the role matrix |
-| Old code in `src/lib`, `src/components` | no floor | a characterisation test before it is changed |
+| `src/platform/db`, `scripts/import` | 85% | the catalog tests; the import report for every captured tournament |
+| Old code in `src/lib`, `src/components` | no floor | none; it is replaced, and parity fixtures check the replacement |
 
 Other goals:
-- Every route that changes data is covered by the route-inventory test: 100%.
+- Every route that changes data is built with `defineCommand`, checked by the route-inventory test: 100%.
 - Each of the twelve end-to-end flows is green on the production branch at all times.
 - A bug found in production gets a test at the lowest level that can show it, in the same change as the fix.
 - The test suite for levels 1-5 runs in under five minutes on CI. If it gets slower, it is split, not skipped.
 
 ## 4. The order to build in
 
-The order follows risk and the roadmap: first the tests that protect against harm that could happen today, then the tests that make the big changes safe, then the wide journeys.
+The order follows the roadmap: first the net that makes the rebuild safe, then tests that arrive with each piece of new code, then the wide journeys.
 
 | Step | What | Why now | Work package |
 |---|---|---|---|
-| 1 | Route-inventory test and the role tests for the routes and server actions fixed in the security pass | The two security holes found were both "a write nobody checked" | WP-01 |
-| 2 | Emulator harness in CI; the rules matrix; close the rule holes | Rules are the only guard on browser writes until commands replace them | WP-02 |
-| 3 | Fixtures and the seed module; staging project | Everything after this needs them | WP-03 |
-| 4 | Characterisation tests and golden fixtures for the result pipeline and standings | They must exist before that code is moved | WP-12 |
-| 5 | Performance budgets and the first Playwright flow (flow 1) | Proves the fast-page work and guards it | WP-06, WP-11 |
-| 6 | Level 1 for each `domain/` as it is extracted; level 4 for each command as it is written | Tests arrive with the code, never after | WP-13 onward |
-| 7 | Jobs: queue tests and idempotency | Before result processing moves to the queue | WP-14 |
-| 8 | Contract schemas, bot scenario tests with the fake Dota client | Before the bot's code is converted | WP-20, WP-21 |
-| 9 | End-to-end flows 2-11 | Once the commands they exercise exist | WP-17 onward, WP-30 |
-| 10 | Visual screenshots across themes | Together with the theme work, so S2's redesign starts with a net | WP-27 |
-| 11 | Load test on staging | Before the platform is opened to outside organizers | WP-31 |
-| 12 | Production smoke test wired to deploys | When deploys move to CI | WP-03 |
+| 1 | Capture real tournaments and what the old site publishes for them | Everything rebuilt is compared with this | WP-12 |
+| 2 | Database test harness (PGlite), catalog and constraint tests | The schema is the foundation | WP-32 |
+| 3 | Import tool tests and the comparison report | Real data proves the schema | WP-33 |
+| 4 | Seed module, CI with the database, blank-secrets build | Everything after this needs them | WP-03 |
+| 5 | The measured trial on staging | The riskiest unknown | WP-06 |
+| 6 | Level 1 for standings and ranking rules against the parity fixtures | Before any page shows a table | WP-13a, WP-15 |
+| 7 | Permission table test, `defineCommand` tests, the route-inventory test | Before the first command | WP-07 |
+| 8 | Statement ceilings per query; performance budgets; the first Playwright flow | Proves the fast pages and guards them | WP-08 to WP-11 |
+| 9 | Jobs: queue tests and idempotency | Before results run through the queue | WP-14 |
+| 10 | Level 4 for each command as it is written; end-to-end flows 2-11 | Tests arrive with the code, never after | WP-13b onward, WP-30 |
+| 11 | Bot dry-runs as tests, contract schemas, scenarios with the fake Dota client | Before the bot's storage changes | WP-20, WP-21 |
+| 12 | Visual screenshots across themes | Together with the theme work | WP-27 |
+| 13 | Restore rehearsal; tournament export and import round trip | Before production holds data that exists nowhere else | WP-36 |
+| 14 | Load test | Before the platform is opened to outside organizers | WP-31 |
+| 15 | Production smoke test and site comparison | At each go-live step | WP-35, WP-37 |
 
 ## 5. What is deliberately not tested
 
