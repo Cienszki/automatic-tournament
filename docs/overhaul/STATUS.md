@@ -97,6 +97,7 @@ Each question has the asking session, the recommendation, the owner's answer if 
    ```
    No decision waits for it. The same limit means agents cannot look at screenshots locally; browser tests run in CI on GitHub.
 5. **(S1) The staging accounts.** In progress. The owner created the Supabase project, the Firebase project, a Vercel project and a Discord application, and asked for step-by-step help with the rest: it is `SETUP_STAGING.md`. The database password was pasted into the chat; the guide asks the owner to reset it. Nothing is verified yet.
+18. **(S5) The disk is full.** Drive C: had about 0.8 GB free on 2026-11-13 after `npm ci` in the worktree. A local `next build` needs about 1.1 GB, so agents cannot build locally and rely on CI; tests and typecheck still run. Any work package that adds packages needs another `npm ci`. Please free 10 GB or more. Agents do not delete anything outside their own worktrees.
 17. **(S1 revision 2) What do you pay today?** The table in `COSTS.md` section 1 is still empty. It only makes the cost report exact; nothing waits for it.
 
 ### Answered
