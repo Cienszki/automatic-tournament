@@ -33,7 +33,7 @@ After WP-12: **WP-32** (database schema). It has a Fable review of `SCHEMA.md` b
 | S2 Organizer experience: admin, wizard, customization | Fable | not started; needed before WP-18 | `ORGANIZER_UX.md`, prototypes |
 | S3 Card game | Fable | not started; decides when cards arrive on the new platform (question 15) | `GAME_DESIGN.md` |
 | S4 Business and marketing | Opus, or Fable if quota is left | not started | `docs/business/*` |
-| S5+ Implementation of the roadmap | Fable or Opus as orchestrator | not started | `wp/*` branches merged into `overhaul` |
+| S5+ Implementation of the roadmap | Fable or Opus as orchestrator | started 2026-11-13 with WP-05, WP-12, WP-20 | `wp/*` branches merged into `overhaul` |
 
 ## Work packages
 
@@ -45,14 +45,14 @@ One line per WP: id, name, branch, state (planned / in progress / in review / me
 | WP-02 | Test the Firestore rules | — | dropped | No browser database access on the new platform |
 | WP-03 | Environments: local database, seed, CI, previews | `wp/03-environments` | planned | M, Opus review. Staging part needs question 5 |
 | WP-04 | Error monitoring and structured logs | `wp/04-observability` | planned | S, Opus review. Runs beside anything |
-| WP-05 | Delete dead code | `wp/05-dead-code` | planned | M, Opus review. Can start now |
+| WP-05 | Delete dead code | `wp/05-dead-code` | in progress | M, Opus review. Implementer started 2026-11-13 |
 | WP-06 | Trial: fast page on Vercel and Supabase, forwarding to the old site | `wp/06-hosting-trial` | planned | M, Fable review. Decision gate. Needs question 5 |
 | WP-07 | Platform kernel and enforced boundaries | `wp/07-platform-kernel` | planned | L, Fable review |
 | WP-08 | Server-rendered shell | `wp/08-server-shell` | planned | L, Fable review |
 | WP-09 | Public subpages on cached queries (09a, 09b, 09c) | `wp/09a-teams-schedule`, `wp/09b-standings-playoffs`, `wp/09c-content` | planned | L, Opus review; Fable for 09b |
 | WP-10 | Home page on server data, deep links without redirects | `wp/10-home-server-data` | planned | L, Fable review |
 | WP-11 | Performance budgets in CI, lighter bundle | `wp/11-perf-budgets` | planned | M, Opus review |
-| WP-12 | Capture tool and parity fixtures | `wp/12-capture-fixtures` | planned | M, Opus review. Can start now |
+| WP-12 | Capture tool and parity fixtures | `wp/12-capture-fixtures` | in progress | M, Opus review. Implementer started 2026-11-13. Full captures go to `data-exports/` in the overhaul worktree (git-ignored) |
 | WP-13a | Standings and ranking rules as pure functions | `wp/13a-ranking` | planned | M, Fable review |
 | WP-13b | `results` feature: one way to change a result | `wp/13b-results` | planned | L, Fable review |
 | WP-14 | Job queue in the database | `wp/14-jobs` | planned | M, Fable review |
@@ -61,7 +61,7 @@ One line per WP: id, name, branch, state (planned / in progress / in review / me
 | WP-17 | Captain flows through commands | `wp/17-captain-commands` | planned | L, Fable review |
 | WP-18 | Organizer commands with S2's screens (18a-18e) | `wp/18a-settings ... wp/18e-content` | planned | XL, split. Fable for 18a, 18d. Needs S2 |
 | WP-19 | No database access from the browser | `wp/19-no-browser-db` | planned | S, Fable review |
-| WP-20 | Bot source under control (TypeScript, tests) | `wp/20-bot-source` | planned | L, Fable review. Can start now |
+| WP-20 | Bot source under control (TypeScript, tests) | `wp/20-bot-source` | in progress | L, Fable review. Implementer started 2026-11-13 |
 | WP-21 | Contract, and the bot on its own tables | `wp/21-bot-contract` | planned | L, Fable review |
 | WP-22 | Bot: due work only, encrypted credentials, visible waiting | `wp/22-bot-due-work` | planned | M, Fable review |
 | WP-23 | Measure and scale lobby workers | `wp/23-bot-scale` | planned | S + M, Fable review for part 2 |
