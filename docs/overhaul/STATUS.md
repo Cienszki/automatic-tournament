@@ -4,7 +4,7 @@ Every session updates this file as it works, not only at the end. A new session,
 
 ## Next step
 
-Run session S1 (architecture, scale, code health, testing) from `PROMPTS.md`, on Fable. Start from `inventory/*.md`; each file ends with "Problems seen". Before S1, the owner should answer question 1 (the bot-route security fix for production).
+S1 is in progress (2026-11-13, Fable). `ARCHITECTURE.md` is written and committed. Still to write, in this order: `CONVENTIONS.md`, `TEST_STRATEGY.md`, `ROADMAP.md`, then the work-package table and new questions in this file. If S1 stopped here, continue with the first of those that does not exist yet, following the S1 prompt in `PROMPTS.md` and the decisions in `ARCHITECTURE.md`.
 
 ## Sessions
 
