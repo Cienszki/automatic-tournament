@@ -1,0 +1,274 @@
+// usePDLData.ts on captured data; see old-site-inputs.ts for how the inputs are built.
+// The blocks between BEGIN COPY and END COPY are the hook's own code, unchanged.
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { computeSwissStandings, compareForTable, type SwissMatchResult } from '@/lib/swiss/pairing';
+import type { ExportRecord } from '../lib/format';
+import { eq, snapshot, type TournamentLike } from './old-site-inputs';
+
+// BEGIN COPY usePDLData.ts
+interface TeamStanding {
+  position: number;
+  teamId: string;
+  teamName: string;
+  gamesPlayed: number;
+  matchesPlayed: number; // Alias for gamesPlayed for compatibility
+  points: number;
+  wins: number;
+  draws: number;
+  losses: number;
+  gamesWon: number;
+  gamesLost: number;
+  neustadtlScore: number;
+  headToHead: Record<string, 'win' | 'loss' | 'draw'>;
+  totalMMR: number;
+}
+// END COPY
+
+// BEGIN COPY usePDLData.ts
+interface Division {
+  id: string;
+  name: string;
+  color: string;
+  teams: TeamStanding[];
+  theme?: string;
+  medalUrl?: string;
+  tier?: number;
+  matchday?: string;
+}
+// END COPY
+
+// BEGIN COPY usePDLData.ts
+const DIVISION_COLORS: Record<string, string> = {
+  'elite': '#FFD700',
+  'challenger': '#C0C0C0',
+  'adept': '#CD7F32',
+};
+// END COPY
+
+// BEGIN COPY usePDLData.ts
+// Helper to capitalize first letter
+function capitalize(str: string): string {
+  return str.charAt(0).toUpperCase() + str.slice(1);
+}
+// END COPY
+
+export type HomeDivision = Division;
+
+/** The `divisions` that `usePDLData()` returns: each division with its table, in display order. */
+export function homeTables(tournament: TournamentLike, divisions: ExportRecord[], teams: ExportRecord[], matches: ExportRecord[]): Division[] {
+  const divisionsSnapshot = snapshot(divisions);
+  const allTeamsSnapshot = snapshot(teams);
+  const completedMatchesSnapshot = snapshot(matches, eq('status', 'completed'));
+
+  // BEGIN COPY usePDLData.ts
+        // Create a map of teams by divisionId for O(1) lookup
+        const teamsByDivision = new Map<string, TeamStanding[]>();
+        allTeamsSnapshot.docs.forEach(teamDoc => {
+          const team = teamDoc.data();
+          const divisionId = team.divisionId;
+          if (!divisionId) return;
+
+          const stats = team.stats || {};
+          const teamStanding: TeamStanding = {
+            position: 0,
+            teamId: teamDoc.id,
+            teamName: team.name || teamDoc.id,
+            // wins/draws/losses/points are computed from match results below (not team.stats)
+            // so MMR-limited tournaments (which don't populate team.stats) work correctly
+            gamesPlayed: 0,
+            matchesPlayed: 0,
+            points: 0,
+            wins: 0,
+            draws: 0,
+            losses: 0,
+            gamesWon: stats.gamesWon || 0,
+            gamesLost: stats.gamesLost || 0,
+            neustadtlScore: 0,
+            headToHead: {},
+            totalMMR: team.totalMMR || (Array.isArray(team.players) ? (team.players as Array<{mmr?: number}>).reduce((s: number, p) => s + (p.mmr || 0), 0) : 0),
+          };
+
+          if (!teamsByDivision.has(divisionId)) {
+            teamsByDivision.set(divisionId, []);
+          }
+          teamsByDivision.get(divisionId)!.push(teamStanding);
+        });
+
+        // Group completed matches by divisionId (or group_id for MMR-limited tournaments)
+        // MMR-limited tournaments use group_id on match documents; PDL uses divisionId
+        const completedMatchesByDivision = new Map<string, any[]>();
+        completedMatchesSnapshot.docs.forEach(doc => {
+          const data = doc.data();
+          const divId = data.divisionId || data.group_id;
+          if (!divId) return;
+          if (!completedMatchesByDivision.has(divId)) completedMatchesByDivision.set(divId, []);
+          completedMatchesByDivision.get(divId)!.push(data);
+        });
+
+        // Build divisions data with pre-fetched teams
+        const divisionsData: Division[] = divisionsSnapshot.docs.map(divisionDoc => {
+          const divisionData = divisionDoc.data();
+          const divisionId = divisionDoc.id;
+          const teams = teamsByDivision.get(divisionId) || [];
+          const divisionMatches = completedMatchesByDivision.get(divisionId) || [];
+
+          // FIRST PASS: compute wins/draws/losses/points from match results.
+          // This works for both PDL (divisionId on matches) and MMR-limited (group_id on matches).
+          for (const match of divisionMatches) {
+            const aId: string = match.teamA?.id || match.teams?.[0];
+            const bId: string = match.teamB?.id || match.teams?.[1];
+            const aScore: number = match.teamA?.score ?? 0;
+            const bScore: number = match.teamB?.score ?? 0;
+            if (!aId || !bId) continue;
+
+            const teamA = teams.find(t => t.teamId === aId);
+            const teamB = teams.find(t => t.teamId === bId);
+            if (!teamA || !teamB) continue;
+
+            teamA.matchesPlayed++;
+            teamB.matchesPlayed++;
+            teamA.gamesPlayed++;
+            teamB.gamesPlayed++;
+
+            if (aScore > bScore) {
+              teamA.wins++; teamA.points += 2;
+              teamB.losses++;
+            } else if (bScore > aScore) {
+              teamB.wins++; teamB.points += 2;
+              teamA.losses++;
+            } else {
+              teamA.draws++; teamA.points++;
+              teamB.draws++; teamB.points++;
+            }
+          }
+
+          // SECOND PASS: compute neustadtl and head-to-head using the final points from above
+          const pointsMap = new Map(teams.map(t => [t.teamId, t.points]));
+          // Track h2h win counts: teamId -> opponentId -> wins
+          const h2hWins = new Map<string, Map<string, number>>();
+          teams.forEach(t => h2hWins.set(t.teamId, new Map()));
+
+          for (const match of divisionMatches) {
+            const aId: string = match.teamA?.id || match.teams?.[0];
+            const bId: string = match.teamB?.id || match.teams?.[1];
+            const aScore: number = match.teamA?.score ?? 0;
+            const bScore: number = match.teamB?.score ?? 0;
+            if (!aId || !bId) continue;
+
+            const teamA = teams.find(t => t.teamId === aId);
+            const teamB = teams.find(t => t.teamId === bId);
+            if (!teamA || !teamB) continue;
+
+            const aPoints = pointsMap.get(aId) ?? 0;
+            const bPoints = pointsMap.get(bId) ?? 0;
+
+            if (aScore > bScore) {
+              teamA.neustadtlScore += bPoints;
+              h2hWins.get(aId)!.set(bId, (h2hWins.get(aId)!.get(bId) ?? 0) + 1);
+            } else if (bScore > aScore) {
+              teamB.neustadtlScore += aPoints;
+              h2hWins.get(bId)!.set(aId, (h2hWins.get(bId)!.get(aId) ?? 0) + 1);
+            } else {
+              teamA.neustadtlScore += bPoints * 0.5;
+              teamB.neustadtlScore += aPoints * 0.5;
+            }
+          }
+
+          // Convert win counts to win/loss/draw headToHead entries
+          teams.forEach(t => {
+            const wins = h2hWins.get(t.teamId)!;
+            teams.forEach(opp => {
+              if (opp.teamId === t.teamId) return;
+              const w = wins.get(opp.teamId) ?? 0;
+              const l = h2hWins.get(opp.teamId)!.get(t.teamId) ?? 0;
+              if (w > l) t.headToHead[opp.teamId] = 'win';
+              else if (l > w) t.headToHead[opp.teamId] = 'loss';
+              else if (w > 0 || l > 0) t.headToHead[opp.teamId] = 'draw';
+            });
+          });
+
+          // ── Swiss override ──────────────────────────────────────────────
+          // Same correction as useDivisionData: Swiss scores GAMES won rather
+          // than 2-per-series, and breaks ties on Buchholz instead of "lower
+          // total MMR" (meaningless when MMR is a self-reported seeding figure).
+          // This hook feeds the home page, so without it the most visible table
+          // in the tournament would show the wrong numbers.
+          if (tournament?.type === 'swiss') {
+            const swissResults: SwissMatchResult[] = divisionMatches.map(m => ({
+              teamAId: m.teamA?.id ?? '',
+              teamBId: m.teamB?.id ?? '',
+              scoreA: m.teamA?.score ?? 0,
+              scoreB: m.teamB?.score ?? 0,
+              round: typeof m.round === 'number' ? m.round : 0,
+              // This collection is already filtered to completed matches.
+              completed: true,
+            }));
+
+            const swissRows = computeSwissStandings(teams.map(t => t.teamId), swissResults);
+            const swissById = new Map(swissRows.map(r => [r.teamId, r]));
+
+            for (const t of teams) {
+              const row = swissById.get(t.teamId);
+              if (!row) continue;
+              t.points = row.points;           // games won
+              t.wins = row.matchWins;
+              t.losses = row.matchLosses;
+              t.matchesPlayed = row.opponentIds.length;
+              t.draws = Math.max(0, t.matchesPlayed - row.matchWins - row.matchLosses);
+              t.gamesWon = row.gamesWon;
+              t.gamesLost = row.gamesLost;
+              t.neustadtlScore = row.buchholz; // reuse the existing display slot
+            }
+
+            teams.sort((a, b) => {
+              const ra = swissById.get(a.teamId);
+              const rb = swissById.get(b.teamId);
+              if (!ra || !rb) return 0;
+              return compareForTable(ra, rb);
+            });
+          } else {
+            // Sort: points DESC → head-to-head → neustadtl DESC → lower totalMMR ASC
+            teams.sort((a, b) => {
+              if (b.points !== a.points) return b.points - a.points;
+              // Head-to-head among tied teams
+              const tiedIds = teams.filter(s => s.points === a.points).map(s => s.teamId);
+              if (tiedIds.length > 1) {
+                const aWins = tiedIds.reduce((sum, id) => id !== a.teamId && a.headToHead[id] === 'win' ? sum + 1 : sum, 0);
+                const bWins = tiedIds.reduce((sum, id) => id !== b.teamId && b.headToHead[id] === 'win' ? sum + 1 : sum, 0);
+                if (aWins !== bWins) return bWins - aWins;
+              }
+              if (b.neustadtlScore !== a.neustadtlScore) return b.neustadtlScore - a.neustadtlScore;
+              // Lower total MMR wins the tiebreak
+              return a.totalMMR - b.totalMMR;
+            });
+          }
+
+          // Update positions
+          teams.forEach((team, index) => {
+            team.position = index + 1;
+          });
+
+          return {
+            id: divisionId,
+            name: capitalize(divisionData.name || divisionId),
+            color: divisionData.color || DIVISION_COLORS[divisionId.toLowerCase()] || '#808080',
+            theme: divisionData.theme,
+            medalUrl: divisionData.medalUrl,
+            tier: divisionData.tier,
+            matchday: divisionData.matchday,
+            teams,
+          };
+        });
+
+        // Sort divisions: Elite, Challenger, Adept
+        const divisionOrder = ['elite', 'challenger', 'adept'];
+        divisionsData.sort((a, b) => {
+          const aIndex = divisionOrder.indexOf(a.name.toLowerCase());
+          const bIndex = divisionOrder.indexOf(b.name.toLowerCase());
+          return aIndex - bIndex;
+        });
+  // END COPY
+
+  return divisionsData;
+}

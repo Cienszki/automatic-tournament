@@ -1,0 +1,2627 @@
+{
+ "divisions": {
+  "documents": 1,
+  "fields": {
+   "color": {
+    "string": 1
+   },
+   "createdAt": {
+    "string": 1
+   },
+   "isSwissField": {
+    "boolean": 1
+   },
+   "name": {
+    "string": 1
+   },
+   "tier": {
+    "integer": 1
+   }
+  }
+ },
+ "matches": {
+  "documents": 17,
+  "fields": {
+   "adminScheduleReason": {
+    "null": 5
+   },
+   "adminScheduledAt": {
+    "string": 5
+   },
+   "adminScheduledBy": {
+    "string": 5
+   },
+   "approvedStandins": {
+    "map": 6
+   },
+   "approvedStandins.{key}": {
+    "map": 8
+   },
+   "approvedStandins.{key}.approvedAt": {
+    "string": 8
+   },
+   "approvedStandins.{key}.nickname": {
+    "string": 8
+   },
+   "approvedStandins.{key}.playerDocId": {
+    "string": 3
+   },
+   "approvedStandins.{key}.replacedPlayerId": {
+    "string": 8
+   },
+   "approvedStandins.{key}.replacedPlayerNickname": {
+    "string": 8
+   },
+   "approvedStandins.{key}.steamId32": {
+    "string": 8
+   },
+   "approvedStandins.{key}.teamId": {
+    "string": 8
+   },
+   "bestOf": {
+    "integer": 17
+   },
+   "casters": {
+    "array": 1
+   },
+   "completedAt": {
+    "timestamp": 12
+   },
+   "createdAt": {
+    "string": 17
+   },
+   "divisionId": {
+    "string": 17
+   },
+   "forfeit": {
+    "map": 1
+   },
+   "forfeit.forfeitedGameNumbers": {
+    "array": 1
+   },
+   "forfeit.forfeitedGameNumbers[]": {
+    "integer": 2
+   },
+   "forfeit.forfeitingTeam": {
+    "string": 1
+   },
+   "forfeit.issuedAt": {
+    "string": 1
+   },
+   "forfeit.issuedBy": {
+    "string": 1
+   },
+   "forfeit.scope": {
+    "string": 1
+   },
+   "game_ids": {
+    "array": 17
+   },
+   "game_ids[]": {
+    "integer": 24
+   },
+   "id": {
+    "string": 17
+   },
+   "lanSlot": {
+    "null": 12,
+    "string": 5
+   },
+   "lanStage": {
+    "string": 17
+   },
+   "matchday": {
+    "integer": 17
+   },
+   "proposedById": {
+    "null": 5
+   },
+   "proposedTime": {
+    "null": 5
+   },
+   "proposingCaptainId": {
+    "null": 5
+   },
+   "rescheduleLatest": {
+    "string": 11
+   },
+   "rescheduleMaxHoursLater": {
+    "integer": 12
+   },
+   "rescheduleRequest": {
+    "map": 5
+   },
+   "rescheduleRequest.createdAt": {
+    "string": 5
+   },
+   "rescheduleRequest.originalDate": {
+    "string": 5
+   },
+   "rescheduleRequest.proposedDate": {
+    "string": 5
+   },
+   "rescheduleRequest.requestedBy": {
+    "string": 5
+   },
+   "rescheduleRequest.requestedByCaptainId": {
+    "string": 5
+   },
+   "rescheduleRequest.requestedByName": {
+    "string": 5
+   },
+   "rescheduleRequest.respondedAt": {
+    "string": 4
+   },
+   "rescheduleRequest.status": {
+    "string": 5
+   },
+   "result": {
+    "null": 17
+   },
+   "round": {
+    "integer": 17
+   },
+   "scheduledFor": {
+    "string": 17
+   },
+   "scheduled_for": {
+    "string": 4
+   },
+   "schedulingMethod": {
+    "string": 17
+   },
+   "schedulingStatus": {
+    "string": 17
+   },
+   "series_format": {
+    "string": 17
+   },
+   "status": {
+    "string": 17
+   },
+   "teamA": {
+    "map": 17
+   },
+   "teamA.id": {
+    "string": 17
+   },
+   "teamA.logoUrl": {
+    "string": 17
+   },
+   "teamA.name": {
+    "string": 17
+   },
+   "teamA.score": {
+    "integer": 17
+   },
+   "teamB": {
+    "map": 17
+   },
+   "teamB.id": {
+    "string": 17
+   },
+   "teamB.logoUrl": {
+    "string": 17
+   },
+   "teamB.name": {
+    "string": 17
+   },
+   "teamB.score": {
+    "integer": 17
+   },
+   "teams": {
+    "array": 17
+   },
+   "teams[]": {
+    "string": 34
+   },
+   "tournamentId": {
+    "string": 17
+   },
+   "updatedAt": {
+    "string": 17
+   },
+   "winner": {
+    "null": 17
+   },
+   "winnerId": {
+    "string": 12
+   }
+  }
+ },
+ "matches.games": {
+  "documents": 26,
+  "fields": {
+   "dire_team": {
+    "map": 26
+   },
+   "dire_team.id": {
+    "string": 26
+   },
+   "dire_team.name": {
+    "string": 26
+   },
+   "duration": {
+    "integer": 26
+   },
+   "firstBloodTime": {
+    "integer": 24
+   },
+   "forfeit_by_team_id": {
+    "string": 2
+   },
+   "game_number": {
+    "integer": 2
+   },
+   "id": {
+    "string": 26
+   },
+   "is_forfeit": {
+    "boolean": 2
+   },
+   "match_id": {
+    "string": 2
+   },
+   "picksBans": {
+    "array": 24
+   },
+   "picksBans[]": {
+    "map": 576
+   },
+   "picksBans[].hero_id": {
+    "integer": 576
+   },
+   "picksBans[].is_pick": {
+    "boolean": 576
+   },
+   "picksBans[].order": {
+    "integer": 576
+   },
+   "picksBans[].team": {
+    "integer": 576
+   },
+   "radiant_team": {
+    "map": 26
+   },
+   "radiant_team.id": {
+    "string": 26
+   },
+   "radiant_team.name": {
+    "string": 26
+   },
+   "radiant_win": {
+    "boolean": 26
+   },
+   "start_time": {
+    "integer": 26
+   }
+  }
+ },
+ "matches.games.performances": {
+  "documents": 240,
+  "fields": {
+   "assists": {
+    "integer": 240
+   },
+   "buybackCount": {
+    "integer": 240
+   },
+   "campsStacked": {
+    "integer": 240
+   },
+   "courierKills": {
+    "integer": 240
+   },
+   "deaths": {
+    "integer": 240
+   },
+   "denies": {
+    "integer": 240
+   },
+   "doubleKills": {
+    "integer": 240
+   },
+   "fantasyPoints": {
+    "double": 240
+   },
+   "firstBloodClaimed": {
+    "boolean": 216,
+    "integer": 24
+   },
+   "goldSpent": {
+    "integer": 240
+   },
+   "gpm": {
+    "integer": 240
+   },
+   "heroDamage": {
+    "integer": 240
+   },
+   "heroHealing": {
+    "integer": 240
+   },
+   "heroId": {
+    "integer": 240
+   },
+   "heroKills": {
+    "integer": 240
+   },
+   "highestKillStreak": {
+    "integer": 240
+   },
+   "kills": {
+    "integer": 240
+   },
+   "laneKills": {
+    "integer": 240
+   },
+   "lastHits": {
+    "integer": 240
+   },
+   "multiKills": {
+    "map": 240
+   },
+   "multiKills.{key}": {
+    "integer": 163
+   },
+   "netWorth": {
+    "integer": 240
+   },
+   "neutralKills": {
+    "integer": 240
+   },
+   "obsPlaced": {
+    "integer": 240
+   },
+   "observerKills": {
+    "integer": 240
+   },
+   "playerId": {
+    "string": 240
+   },
+   "rampages": {
+    "integer": 240
+   },
+   "roshanKills": {
+    "integer": 240
+   },
+   "runesPickedUp": {
+    "integer": 240
+   },
+   "senPlaced": {
+    "integer": 240
+   },
+   "sentryKills": {
+    "integer": 240
+   },
+   "steamId": {
+    "string": 240
+   },
+   "teamId": {
+    "string": 240
+   },
+   "totalGold": {
+    "integer": 240
+   },
+   "towerDamage": {
+    "integer": 240
+   },
+   "towerKills": {
+    "integer": 240
+   },
+   "tripleKills": {
+    "integer": 240
+   },
+   "ultraKills": {
+    "integer": 240
+   },
+   "xpm": {
+    "integer": 240
+   }
+  }
+ },
+ "performanceRankings": {
+  "documents": 6,
+  "fields": {
+   "entries": {
+    "array": 6
+   },
+   "entries[]": {
+    "map": 70
+   },
+   "entries[].assistPts": {
+    "double": 58
+   },
+   "entries[].avgScore": {
+    "double": 70
+   },
+   "entries[].campPts": {
+    "double": 48,
+    "integer": 10
+   },
+   "entries[].deathPts": {
+    "double": 58
+   },
+   "entries[].dewardPts": {
+    "double": 52,
+    "integer": 6
+   },
+   "entries[].dmgPts": {
+    "double": 58
+   },
+   "entries[].farmPts": {
+    "double": 58
+   },
+   "entries[].games": {
+    "integer": 70
+   },
+   "entries[].killPts": {
+    "double": 58
+   },
+   "entries[].miscPts": {
+    "double": 29,
+    "integer": 29
+   },
+   "entries[].name": {
+    "string": 70
+   },
+   "entries[].teamName": {
+    "string": 70
+   },
+   "entries[].wardPts": {
+    "integer": 33,
+    "double": 25
+   },
+   "gameCount": {
+    "integer": 6
+   },
+   "updatedAt": {
+    "string": 6
+   }
+  }
+ },
+ "playerStats": {
+  "documents": 62,
+  "fields": {
+   "bestCSPerMinute": {
+    "map": 62
+   },
+   "bestCSPerMinute.heroName": {
+    "string": 62
+   },
+   "bestCSPerMinute.matchId": {
+    "string": 62
+   },
+   "bestCSPerMinute.value": {
+    "double": 53,
+    "integer": 9
+   },
+   "bestFantasyScore": {
+    "map": 62
+   },
+   "bestFantasyScore.heroName": {
+    "string": 62
+   },
+   "bestFantasyScore.matchId": {
+    "string": 62
+   },
+   "bestFantasyScore.value": {
+    "double": 62
+   },
+   "bestFantasyScoreSingleGame": {
+    "map": 62
+   },
+   "bestFantasyScoreSingleGame.heroName": {
+    "string": 62
+   },
+   "bestFantasyScoreSingleGame.matchId": {
+    "string": 62
+   },
+   "bestFantasyScoreSingleGame.value": {
+    "double": 62
+   },
+   "bestKDAAverage": {
+    "map": 62
+   },
+   "bestKDAAverage.heroName": {
+    "string": 62
+   },
+   "bestKDAAverage.matchId": {
+    "string": 62
+   },
+   "bestKDAAverage.value": {
+    "double": 61,
+    "integer": 1
+   },
+   "gamesWithZeroDeaths": {
+    "map": 62
+   },
+   "gamesWithZeroDeaths.heroName": {
+    "string": 62
+   },
+   "gamesWithZeroDeaths.matchId": {
+    "string": 62
+   },
+   "gamesWithZeroDeaths.value": {
+    "integer": 62
+   },
+   "heroSpamScore": {
+    "map": 62
+   },
+   "heroSpamScore.heroName": {
+    "string": 62
+   },
+   "heroSpamScore.matchId": {
+    "string": 62
+   },
+   "heroSpamScore.value": {
+    "integer": 62
+   },
+   "highestAverageKills": {
+    "map": 62
+   },
+   "highestAverageKills.heroName": {
+    "string": 62
+   },
+   "highestAverageKills.matchId": {
+    "string": 62
+   },
+   "highestAverageKills.value": {
+    "double": 44,
+    "integer": 18
+   },
+   "highestDamagePerMinute": {
+    "map": 62
+   },
+   "highestDamagePerMinute.heroName": {
+    "string": 62
+   },
+   "highestDamagePerMinute.matchId": {
+    "string": 62
+   },
+   "highestDamagePerMinute.value": {
+    "integer": 62
+   },
+   "highestGPMSingleGame": {
+    "map": 62
+   },
+   "highestGPMSingleGame.heroName": {
+    "string": 62
+   },
+   "highestGPMSingleGame.matchId": {
+    "string": 62
+   },
+   "highestGPMSingleGame.value": {
+    "integer": 62
+   },
+   "highestGPMSingleMatch": {
+    "map": 62
+   },
+   "highestGPMSingleMatch.heroName": {
+    "string": 62
+   },
+   "highestGPMSingleMatch.matchId": {
+    "string": 62
+   },
+   "highestGPMSingleMatch.value": {
+    "integer": 62
+   },
+   "highestKDASingleMatch": {
+    "map": 62
+   },
+   "highestKDASingleMatch.heroName": {
+    "string": 62
+   },
+   "highestKDASingleMatch.matchId": {
+    "string": 62
+   },
+   "highestKDASingleMatch.value": {
+    "integer": 28,
+    "double": 34
+   },
+   "highestKillStreak": {
+    "map": 62
+   },
+   "highestKillStreak.heroName": {
+    "string": 62
+   },
+   "highestKillStreak.matchId": {
+    "string": 62
+   },
+   "highestKillStreak.value": {
+    "integer": 62
+   },
+   "highestLastHitsSingleGame": {
+    "map": 62
+   },
+   "highestLastHitsSingleGame.heroName": {
+    "string": 62
+   },
+   "highestLastHitsSingleGame.matchId": {
+    "string": 62
+   },
+   "highestLastHitsSingleGame.value": {
+    "integer": 62
+   },
+   "highestNetWorthLead": {
+    "map": 62
+   },
+   "highestNetWorthLead.heroName": {
+    "string": 62
+   },
+   "highestNetWorthLead.matchId": {
+    "string": 62
+   },
+   "highestNetWorthLead.value": {
+    "integer": 62
+   },
+   "highestNetWorthSingleGame": {
+    "map": 62
+   },
+   "highestNetWorthSingleGame.heroName": {
+    "string": 62
+   },
+   "highestNetWorthSingleGame.matchId": {
+    "string": 62
+   },
+   "highestNetWorthSingleGame.value": {
+    "integer": 62
+   },
+   "highestXPM": {
+    "map": 62
+   },
+   "highestXPM.heroName": {
+    "string": 62
+   },
+   "highestXPM.matchId": {
+    "string": 62
+   },
+   "highestXPM.value": {
+    "integer": 62
+   },
+   "highestXPMSingleGame": {
+    "map": 62
+   },
+   "highestXPMSingleGame.heroName": {
+    "string": 62
+   },
+   "highestXPMSingleGame.matchId": {
+    "string": 62
+   },
+   "highestXPMSingleGame.value": {
+    "integer": 62
+   },
+   "highestXPMSingleMatch": {
+    "map": 62
+   },
+   "highestXPMSingleMatch.heroName": {
+    "string": 62
+   },
+   "highestXPMSingleMatch.matchId": {
+    "string": 62
+   },
+   "highestXPMSingleMatch.value": {
+    "integer": 62
+   },
+   "lastUpdated": {
+    "string": 62
+   },
+   "longestKillStreak": {
+    "map": 62
+   },
+   "longestKillStreak.heroName": {
+    "string": 62
+   },
+   "longestKillStreak.matchId": {
+    "string": 62
+   },
+   "longestKillStreak.value": {
+    "integer": 62
+   },
+   "mostAssistsSingleGame": {
+    "map": 62
+   },
+   "mostAssistsSingleGame.heroName": {
+    "string": 62
+   },
+   "mostAssistsSingleGame.matchId": {
+    "string": 62
+   },
+   "mostAssistsSingleGame.value": {
+    "integer": 62
+   },
+   "mostCampsStackedTotal": {
+    "map": 62
+   },
+   "mostCampsStackedTotal.heroName": {
+    "string": 62
+   },
+   "mostCampsStackedTotal.matchId": {
+    "string": 62
+   },
+   "mostCampsStackedTotal.value": {
+    "integer": 62
+   },
+   "mostCourierKillsSingleGame": {
+    "map": 62
+   },
+   "mostCourierKillsSingleGame.heroName": {
+    "string": 62
+   },
+   "mostCourierKillsSingleGame.matchId": {
+    "string": 62
+   },
+   "mostCourierKillsSingleGame.value": {
+    "integer": 62
+   },
+   "mostDenies": {
+    "map": 62
+   },
+   "mostDenies.heroName": {
+    "string": 62
+   },
+   "mostDenies.matchId": {
+    "string": 62
+   },
+   "mostDenies.value": {
+    "integer": 62
+   },
+   "mostFirstBloods": {
+    "map": 62
+   },
+   "mostFirstBloods.heroName": {
+    "string": 62
+   },
+   "mostFirstBloods.matchId": {
+    "string": 62
+   },
+   "mostFirstBloods.value": {
+    "integer": 62
+   },
+   "mostGodlikeStreaks": {
+    "map": 62
+   },
+   "mostGodlikeStreaks.heroName": {
+    "string": 62
+   },
+   "mostGodlikeStreaks.matchId": {
+    "string": 62
+   },
+   "mostGodlikeStreaks.value": {
+    "integer": 62
+   },
+   "mostGoldEarned": {
+    "map": 62
+   },
+   "mostGoldEarned.heroName": {
+    "string": 62
+   },
+   "mostGoldEarned.matchId": {
+    "string": 62
+   },
+   "mostGoldEarned.value": {
+    "integer": 62
+   },
+   "mostGoldSpentSingleGame": {
+    "map": 62
+   },
+   "mostGoldSpentSingleGame.heroName": {
+    "string": 62
+   },
+   "mostGoldSpentSingleGame.matchId": {
+    "string": 62
+   },
+   "mostGoldSpentSingleGame.value": {
+    "integer": 62
+   },
+   "mostHealingDone": {
+    "map": 62
+   },
+   "mostHealingDone.heroName": {
+    "string": 62
+   },
+   "mostHealingDone.matchId": {
+    "string": 62
+   },
+   "mostHealingDone.value": {
+    "integer": 62
+   },
+   "mostHeroDamageSingleGame": {
+    "map": 62
+   },
+   "mostHeroDamageSingleGame.heroName": {
+    "string": 62
+   },
+   "mostHeroDamageSingleGame.matchId": {
+    "string": 62
+   },
+   "mostHeroDamageSingleGame.value": {
+    "integer": 62
+   },
+   "mostHeroDamageSingleMatch": {
+    "map": 62
+   },
+   "mostHeroDamageSingleMatch.heroName": {
+    "string": 62
+   },
+   "mostHeroDamageSingleMatch.matchId": {
+    "string": 62
+   },
+   "mostHeroDamageSingleMatch.value": {
+    "integer": 62
+   },
+   "mostKillsSingleGame": {
+    "map": 62
+   },
+   "mostKillsSingleGame.heroName": {
+    "string": 62
+   },
+   "mostKillsSingleGame.matchId": {
+    "string": 62
+   },
+   "mostKillsSingleGame.value": {
+    "integer": 62
+   },
+   "mostKillsSingleMatch": {
+    "map": 62
+   },
+   "mostKillsSingleMatch.heroName": {
+    "string": 62
+   },
+   "mostKillsSingleMatch.matchId": {
+    "string": 62
+   },
+   "mostKillsSingleMatch.value": {
+    "integer": 62
+   },
+   "mostLaneKillsSingleGame": {
+    "map": 62
+   },
+   "mostLaneKillsSingleGame.heroName": {
+    "string": 62
+   },
+   "mostLaneKillsSingleGame.matchId": {
+    "string": 62
+   },
+   "mostLaneKillsSingleGame.value": {
+    "integer": 62
+   },
+   "mostLastHitsSingleGame": {
+    "map": 62
+   },
+   "mostLastHitsSingleGame.heroName": {
+    "string": 62
+   },
+   "mostLastHitsSingleGame.matchId": {
+    "string": 62
+   },
+   "mostLastHitsSingleGame.value": {
+    "integer": 62
+   },
+   "mostNeutralKillsSingleGame": {
+    "map": 62
+   },
+   "mostNeutralKillsSingleGame.heroName": {
+    "string": 62
+   },
+   "mostNeutralKillsSingleGame.matchId": {
+    "string": 62
+   },
+   "mostNeutralKillsSingleGame.value": {
+    "integer": 62
+   },
+   "mostObserverKillsSingleGame": {
+    "map": 62
+   },
+   "mostObserverKillsSingleGame.heroName": {
+    "string": 62
+   },
+   "mostObserverKillsSingleGame.matchId": {
+    "string": 62
+   },
+   "mostObserverKillsSingleGame.value": {
+    "integer": 62
+   },
+   "mostObserverWards": {
+    "map": 62
+   },
+   "mostObserverWards.heroName": {
+    "string": 62
+   },
+   "mostObserverWards.matchId": {
+    "string": 62
+   },
+   "mostObserverWards.value": {
+    "integer": 62
+   },
+   "mostRunesSingleGame": {
+    "map": 62
+   },
+   "mostRunesSingleGame.heroName": {
+    "string": 62
+   },
+   "mostRunesSingleGame.matchId": {
+    "string": 62
+   },
+   "mostRunesSingleGame.value": {
+    "integer": 62
+   },
+   "mostSentryPlacedSingleGame": {
+    "map": 62
+   },
+   "mostSentryPlacedSingleGame.heroName": {
+    "string": 62
+   },
+   "mostSentryPlacedSingleGame.matchId": {
+    "string": 62
+   },
+   "mostSentryPlacedSingleGame.value": {
+    "integer": 62
+   },
+   "mostTowerDamage": {
+    "map": 62
+   },
+   "mostTowerDamage.heroName": {
+    "string": 62
+   },
+   "mostTowerDamage.matchId": {
+    "string": 62
+   },
+   "mostTowerDamage.value": {
+    "integer": 62
+   },
+   "mostTowerDamageSingleGame": {
+    "map": 62
+   },
+   "mostTowerDamageSingleGame.heroName": {
+    "string": 62
+   },
+   "mostTowerDamageSingleGame.matchId": {
+    "string": 62
+   },
+   "mostTowerDamageSingleGame.value": {
+    "integer": 62
+   },
+   "mostTowerKillsSingleGame": {
+    "map": 62
+   },
+   "mostTowerKillsSingleGame.heroName": {
+    "string": 62
+   },
+   "mostTowerKillsSingleGame.matchId": {
+    "string": 62
+   },
+   "mostTowerKillsSingleGame.value": {
+    "integer": 62
+   },
+   "mostTripleKills": {
+    "map": 62
+   },
+   "mostTripleKills.heroName": {
+    "string": 62
+   },
+   "mostTripleKills.matchId": {
+    "string": 62
+   },
+   "mostTripleKills.value": {
+    "integer": 62
+   },
+   "mostUltraKills": {
+    "map": 62
+   },
+   "mostUltraKills.heroName": {
+    "string": 62
+   },
+   "mostUltraKills.matchId": {
+    "string": 62
+   },
+   "mostUltraKills.value": {
+    "integer": 62
+   },
+   "mostWardsDestroyed": {
+    "map": 62
+   },
+   "mostWardsDestroyed.heroName": {
+    "string": 62
+   },
+   "mostWardsDestroyed.matchId": {
+    "string": 62
+   },
+   "mostWardsDestroyed.value": {
+    "integer": 62
+   },
+   "mostWardsKilled": {
+    "map": 62
+   },
+   "mostWardsKilled.heroName": {
+    "string": 62
+   },
+   "mostWardsKilled.matchId": {
+    "string": 62
+   },
+   "mostWardsKilled.value": {
+    "integer": 62
+   },
+   "mostWardsPlaced": {
+    "map": 62
+   },
+   "mostWardsPlaced.heroName": {
+    "string": 62
+   },
+   "mostWardsPlaced.matchId": {
+    "string": 62
+   },
+   "mostWardsPlaced.value": {
+    "integer": 62
+   },
+   "mostWardsSingleGame": {
+    "map": 62
+   },
+   "mostWardsSingleGame.heroName": {
+    "string": 62
+   },
+   "mostWardsSingleGame.matchId": {
+    "string": 62
+   },
+   "mostWardsSingleGame.value": {
+    "integer": 62
+   },
+   "playerId": {
+    "string": 62
+   },
+   "playerName": {
+    "string": 62
+   },
+   "teamName": {
+    "string": 62
+   },
+   "uniqueHeroesPlayed": {
+    "map": 62
+   },
+   "uniqueHeroesPlayed.heroName": {
+    "string": 62
+   },
+   "uniqueHeroesPlayed.matchId": {
+    "string": 62
+   },
+   "uniqueHeroesPlayed.value": {
+    "integer": 62
+   },
+   "versatilityScore": {
+    "map": 62
+   },
+   "versatilityScore.heroName": {
+    "string": 62
+   },
+   "versatilityScore.matchId": {
+    "string": 62
+   },
+   "versatilityScore.value": {
+    "double": 62
+   }
+  }
+ },
+ "rules": {
+  "documents": 15,
+  "fields": {
+   "order": {
+    "integer": 15
+   },
+   "title": {
+    "string": 15
+   },
+   "updatedAt": {
+    "timestamp": 15
+   }
+  }
+ },
+ "rules.paragraphs": {
+  "documents": 124,
+  "fields": {
+   "commentary": {
+    "null": 99,
+    "string": 25
+   },
+   "content": {
+    "string": 124
+   },
+   "order": {
+    "integer": 124
+   },
+   "parentId": {
+    "null": 86,
+    "string": 38
+   },
+   "updatedAt": {
+    "timestamp": 124
+   }
+  }
+ },
+ "scrimSlots": {
+  "documents": 1,
+  "fields": {
+   "boFormat": {
+    "string": 1
+   },
+   "createdAt": {
+    "string": 1
+   },
+   "divisionId": {
+    "string": 1
+   },
+   "endAt": {
+    "string": 1
+   },
+   "notes": {
+    "string": 1
+   },
+   "startAt": {
+    "string": 1
+   },
+   "status": {
+    "string": 1
+   },
+   "teamId": {
+    "string": 1
+   },
+   "teamName": {
+    "string": 1
+   },
+   "updatedAt": {
+    "string": 1
+   }
+  }
+ },
+ "standinRequests": {
+  "documents": 9,
+  "fields": {
+   "appealAdminNote": {
+    "null": 1
+   },
+   "appealResolvedAt": {
+    "string": 1
+   },
+   "appealResolvedBy": {
+    "string": 1
+   },
+   "appealedAt": {
+    "string": 1
+   },
+   "captainId": {
+    "string": 9
+   },
+   "createdAt": {
+    "string": 9
+   },
+   "matchId": {
+    "string": 9
+   },
+   "matchScheduledFor": {
+    "string": 9
+   },
+   "matchTeamAName": {
+    "string": 9
+   },
+   "matchTeamBName": {
+    "string": 9
+   },
+   "opponentTeamId": {
+    "string": 9
+   },
+   "rejectionReason": {
+    "string": 1
+   },
+   "replacedPlayerId": {
+    "string": 9
+   },
+   "replacedPlayerNickname": {
+    "string": 9
+   },
+   "requestingTeamId": {
+    "string": 9
+   },
+   "requestingTeamName": {
+    "string": 9
+   },
+   "respondedAt": {
+    "string": 9
+   },
+   "standinNickname": {
+    "string": 9
+   },
+   "standinSteamId32": {
+    "string": 8
+   },
+   "standinSteamProfileUrl": {
+    "string": 9
+   },
+   "status": {
+    "string": 9
+   },
+   "teamId": {
+    "string": 9
+   },
+   "updatedAt": {
+    "string": 9
+   }
+  }
+ },
+ "stats": {
+  "documents": 1,
+  "fields": {
+   "averageMatchDuration": {
+    "integer": 1
+   },
+   "bestWardHunter": {
+    "map": 1
+   },
+   "bestWardHunter.playerId": {
+    "string": 1
+   },
+   "bestWardHunter.playerName": {
+    "string": 1
+   },
+   "bestWardHunter.wardsKilled": {
+    "integer": 1
+   },
+   "bloodiestMatch": {
+    "map": 1
+   },
+   "bloodiestMatch.matchId": {
+    "string": 1
+   },
+   "bloodiestMatch.teamA": {
+    "string": 1
+   },
+   "bloodiestMatch.teamB": {
+    "string": 1
+   },
+   "bloodiestMatch.totalKills": {
+    "integer": 1
+   },
+   "cinderellaStory": {
+    "map": 1
+   },
+   "cinderellaStory.finalPosition": {
+    "integer": 1
+   },
+   "cinderellaStory.initialSeed": {
+    "integer": 1
+   },
+   "cinderellaStory.teamId": {
+    "string": 1
+   },
+   "cinderellaStory.teamName": {
+    "string": 1
+   },
+   "fastestFirstBlood": {
+    "map": 1
+   },
+   "fastestFirstBlood.matchId": {
+    "string": 1
+   },
+   "fastestFirstBlood.player": {
+    "string": 1
+   },
+   "fastestFirstBlood.team": {
+    "string": 1
+   },
+   "fastestFirstBlood.time": {
+    "double": 1
+   },
+   "fastestScalingPlayer": {
+    "map": 1
+   },
+   "fastestScalingPlayer.averageXPM": {
+    "integer": 1
+   },
+   "fastestScalingPlayer.playerId": {
+    "string": 1
+   },
+   "fastestScalingPlayer.playerName": {
+    "string": 1
+   },
+   "highestWinRateHero": {
+    "map": 1
+   },
+   "highestWinRateHero.gamesPlayed": {
+    "integer": 1
+   },
+   "highestWinRateHero.heroId": {
+    "integer": 1
+   },
+   "highestWinRateHero.heroName": {
+    "string": 1
+   },
+   "highestWinRateHero.winRate": {
+    "integer": 1
+   },
+   "id": {
+    "string": 1
+   },
+   "lastUpdated": {
+    "string": 1
+   },
+   "longestMatch": {
+    "map": 1
+   },
+   "longestMatch.duration": {
+    "integer": 1
+   },
+   "longestMatch.matchId": {
+    "string": 1
+   },
+   "longestMatch.teamA": {
+    "string": 1
+   },
+   "longestMatch.teamB": {
+    "string": 1
+   },
+   "mostBannedHero": {
+    "map": 1
+   },
+   "mostBannedHero.banCount": {
+    "integer": 1
+   },
+   "mostBannedHero.heroId": {
+    "integer": 1
+   },
+   "mostBannedHero.heroName": {
+    "string": 1
+   },
+   "mostContestedHero": {
+    "map": 1
+   },
+   "mostContestedHero.contestCount": {
+    "integer": 1
+   },
+   "mostContestedHero.heroName": {
+    "string": 1
+   },
+   "mostEfficientFarmer": {
+    "map": 1
+   },
+   "mostEfficientFarmer.averageGPM": {
+    "integer": 1
+   },
+   "mostEfficientFarmer.playerId": {
+    "string": 1
+   },
+   "mostEfficientFarmer.playerName": {
+    "string": 1
+   },
+   "mostPeacefulMatch": {
+    "map": 1
+   },
+   "mostPeacefulMatch.matchId": {
+    "string": 1
+   },
+   "mostPeacefulMatch.teamA": {
+    "string": 1
+   },
+   "mostPeacefulMatch.teamB": {
+    "string": 1
+   },
+   "mostPeacefulMatch.totalKills": {
+    "integer": 1
+   },
+   "mostPickedHero": {
+    "map": 1
+   },
+   "mostPickedHero.heroId": {
+    "integer": 1
+   },
+   "mostPickedHero.heroName": {
+    "string": 1
+   },
+   "mostPickedHero.pickCount": {
+    "integer": 1
+   },
+   "mostPlayedRoleHero": {
+    "string": 1
+   },
+   "mostVersatilePlayer": {
+    "map": 1
+   },
+   "mostVersatilePlayer.playerId": {
+    "string": 1
+   },
+   "mostVersatilePlayer.playerName": {
+    "string": 1
+   },
+   "mostVersatilePlayer.uniqueHeroes": {
+    "integer": 1
+   },
+   "richestPlayer": {
+    "map": 1
+   },
+   "richestPlayer.matchId": {
+    "string": 1
+   },
+   "richestPlayer.netWorth": {
+    "integer": 1
+   },
+   "richestPlayer.playerId": {
+    "string": 1
+   },
+   "richestPlayer.playerName": {
+    "string": 1
+   },
+   "shortestMatch": {
+    "map": 1
+   },
+   "shortestMatch.duration": {
+    "integer": 1
+   },
+   "shortestMatch.matchId": {
+    "string": 1
+   },
+   "shortestMatch.teamA": {
+    "string": 1
+   },
+   "shortestMatch.teamB": {
+    "string": 1
+   },
+   "totalAghanimsItems": {
+    "integer": 1
+   },
+   "totalAssists": {
+    "integer": 1
+   },
+   "totalBuybacks": {
+    "integer": 1
+   },
+   "totalCampsStacked": {
+    "integer": 1
+   },
+   "totalCourierKills": {
+    "integer": 1
+   },
+   "totalCreepsKilled": {
+    "integer": 1
+   },
+   "totalDeaths": {
+    "integer": 1
+   },
+   "totalDenies": {
+    "integer": 1
+   },
+   "totalDoubleKills": {
+    "integer": 1
+   },
+   "totalFantasyPoints": {
+    "integer": 1
+   },
+   "totalGames": {
+    "integer": 1
+   },
+   "totalGoldGenerated": {
+    "integer": 1
+   },
+   "totalGoldSpent": {
+    "integer": 1
+   },
+   "totalHandOfMidasBuilt": {
+    "integer": 1
+   },
+   "totalHealing": {
+    "integer": 1
+   },
+   "totalHoursPlayed": {
+    "double": 1
+   },
+   "totalKills": {
+    "integer": 1
+   },
+   "totalLaneKills": {
+    "integer": 1
+   },
+   "totalMatches": {
+    "integer": 1
+   },
+   "totalMatchesInSingleDay": {
+    "map": 1
+   },
+   "totalMatchesInSingleDay.count": {
+    "integer": 1
+   },
+   "totalMatchesInSingleDay.date": {
+    "string": 1
+   },
+   "totalNeutralKills": {
+    "integer": 1
+   },
+   "totalObserverWardsPlaced": {
+    "integer": 1
+   },
+   "totalRampages": {
+    "integer": 1
+   },
+   "totalRapiers": {
+    "integer": 1
+   },
+   "totalRoshanKills": {
+    "integer": 1
+   },
+   "totalRunesCollected": {
+    "integer": 1
+   },
+   "totalRunesPickedUp": {
+    "integer": 1
+   },
+   "totalSentryWardsPlaced": {
+    "integer": 1
+   },
+   "totalTeams": {
+    "integer": 1
+   },
+   "totalTowerDamage": {
+    "integer": 1
+   },
+   "totalTowerKills": {
+    "integer": 1
+   },
+   "totalTripleKills": {
+    "integer": 1
+   },
+   "totalUltraKills": {
+    "integer": 1
+   },
+   "totalUniqueHeroesPicked": {
+    "integer": 1
+   },
+   "totalWardsPlaced": {
+    "integer": 1
+   },
+   "tournamentWardMaster": {
+    "map": 1
+   },
+   "tournamentWardMaster.playerId": {
+    "string": 1
+   },
+   "tournamentWardMaster.playerName": {
+    "string": 1
+   },
+   "tournamentWardMaster.wardsPlaced": {
+    "integer": 1
+   }
+  }
+ },
+ "swissRounds": {
+  "documents": 3,
+  "fields": {
+   "committedAt": {
+    "string": 3
+   },
+   "generatedAt": {
+    "string": 3
+   },
+   "matchFormat": {
+    "string": 3
+   },
+   "pairings": {
+    "array": 3
+   },
+   "pairings[]": {
+    "map": 17
+   },
+   "pairings[].isBye": {
+    "boolean": 17
+   },
+   "pairings[].matchId": {
+    "string": 17
+   },
+   "pairings[].slot": {
+    "string": 5,
+    "null": 12
+   },
+   "pairings[].stage": {
+    "string": 17
+   },
+   "pairings[].teamAId": {
+    "string": 17
+   },
+   "pairings[].teamBId": {
+    "string": 17
+   },
+   "round": {
+    "integer": 3
+   },
+   "scheduling": {
+    "map": 3
+   },
+   "scheduling.maxHoursLater": {
+    "integer": 2
+   },
+   "scheduling.mode": {
+    "string": 3
+   },
+   "scheduling.rescheduleLatest": {
+    "string": 2
+   },
+   "scheduling.times": {
+    "array": 3
+   },
+   "scheduling.times[]": {
+    "string": 17
+   },
+   "standingsSnapshot": {
+    "array": 3
+   },
+   "status": {
+    "string": 3
+   }
+  }
+ },
+ "teamStats": {
+  "documents": 12,
+  "fields": {
+   "assistsPerKill": {
+    "map": 12
+   },
+   "assistsPerKill.matchId": {
+    "string": 12
+   },
+   "assistsPerKill.opponent": {
+    "string": 12
+   },
+   "assistsPerKill.value": {
+    "double": 12
+   },
+   "bestKDRatio": {
+    "map": 12
+   },
+   "bestKDRatio.matchId": {
+    "string": 12
+   },
+   "bestKDRatio.opponent": {
+    "string": 12
+   },
+   "bestKDRatio.value": {
+    "double": 12
+   },
+   "fewestDeathsSingleMatch": {
+    "map": 12
+   },
+   "fewestDeathsSingleMatch.matchId": {
+    "string": 12
+   },
+   "fewestDeathsSingleMatch.opponent": {
+    "string": 12
+   },
+   "fewestDeathsSingleMatch.value": {
+    "integer": 12
+   },
+   "fewestUniqueHeroes": {
+    "map": 12
+   },
+   "fewestUniqueHeroes.matchId": {
+    "string": 12
+   },
+   "fewestUniqueHeroes.opponent": {
+    "string": 12
+   },
+   "fewestUniqueHeroes.value": {
+    "integer": 12
+   },
+   "highestAvgGPM": {
+    "map": 12
+   },
+   "highestAvgGPM.matchId": {
+    "string": 12
+   },
+   "highestAvgGPM.opponent": {
+    "string": 12
+   },
+   "highestAvgGPM.value": {
+    "integer": 12
+   },
+   "highestCombinedNetWorth": {
+    "map": 12
+   },
+   "highestCombinedNetWorth.matchId": {
+    "string": 12
+   },
+   "highestCombinedNetWorth.opponent": {
+    "string": 12
+   },
+   "highestCombinedNetWorth.value": {
+    "integer": 12
+   },
+   "lastUpdated": {
+    "string": 12
+   },
+   "longestGame": {
+    "map": 12
+   },
+   "longestGame.matchId": {
+    "string": 12
+   },
+   "longestGame.opponent": {
+    "string": 12
+   },
+   "longestGame.value": {
+    "integer": 12
+   },
+   "mostCampsStackedSingleGame": {
+    "map": 12
+   },
+   "mostCampsStackedSingleGame.matchId": {
+    "string": 12
+   },
+   "mostCampsStackedSingleGame.opponent": {
+    "string": 12
+   },
+   "mostCampsStackedSingleGame.value": {
+    "integer": 12
+   },
+   "mostCourierKillsSingleMatch": {
+    "map": 12
+   },
+   "mostCourierKillsSingleMatch.matchId": {
+    "string": 12
+   },
+   "mostCourierKillsSingleMatch.opponent": {
+    "string": 12
+   },
+   "mostCourierKillsSingleMatch.value": {
+    "integer": 12
+   },
+   "mostDeniesSingleMatch": {
+    "map": 12
+   },
+   "mostDeniesSingleMatch.matchId": {
+    "string": 12
+   },
+   "mostDeniesSingleMatch.opponent": {
+    "string": 12
+   },
+   "mostDeniesSingleMatch.value": {
+    "integer": 12
+   },
+   "mostDewardsSingleMatch": {
+    "map": 12
+   },
+   "mostDewardsSingleMatch.matchId": {
+    "string": 12
+   },
+   "mostDewardsSingleMatch.opponent": {
+    "string": 12
+   },
+   "mostDewardsSingleMatch.value": {
+    "integer": 12
+   },
+   "mostKillsSingleMatch": {
+    "map": 12
+   },
+   "mostKillsSingleMatch.matchId": {
+    "string": 12
+   },
+   "mostKillsSingleMatch.opponent": {
+    "string": 12
+   },
+   "mostKillsSingleMatch.value": {
+    "integer": 12
+   },
+   "mostLaneKillsSingleMatch": {
+    "map": 12
+   },
+   "mostLaneKillsSingleMatch.matchId": {
+    "string": 12
+   },
+   "mostLaneKillsSingleMatch.opponent": {
+    "string": 12
+   },
+   "mostLaneKillsSingleMatch.value": {
+    "integer": 12
+   },
+   "mostLastHitsSingleMatch": {
+    "map": 12
+   },
+   "mostLastHitsSingleMatch.matchId": {
+    "string": 12
+   },
+   "mostLastHitsSingleMatch.opponent": {
+    "string": 12
+   },
+   "mostLastHitsSingleMatch.value": {
+    "integer": 12
+   },
+   "mostNeutralKillsSingleMatch": {
+    "map": 12
+   },
+   "mostNeutralKillsSingleMatch.matchId": {
+    "string": 12
+   },
+   "mostNeutralKillsSingleMatch.opponent": {
+    "string": 12
+   },
+   "mostNeutralKillsSingleMatch.value": {
+    "integer": 12
+   },
+   "mostRoshanKills": {
+    "map": 12
+   },
+   "mostRoshanKills.matchId": {
+    "string": 12
+   },
+   "mostRoshanKills.opponent": {
+    "string": 12
+   },
+   "mostRoshanKills.value": {
+    "integer": 12
+   },
+   "mostRunesSingleMatch": {
+    "map": 12
+   },
+   "mostRunesSingleMatch.matchId": {
+    "string": 12
+   },
+   "mostRunesSingleMatch.opponent": {
+    "string": 12
+   },
+   "mostRunesSingleMatch.value": {
+    "integer": 12
+   },
+   "mostUniqueHeroes": {
+    "map": 12
+   },
+   "mostUniqueHeroes.matchId": {
+    "string": 12
+   },
+   "mostUniqueHeroes.opponent": {
+    "string": 12
+   },
+   "mostUniqueHeroes.value": {
+    "integer": 12
+   },
+   "mostWardsSingleMatch": {
+    "map": 12
+   },
+   "mostWardsSingleMatch.matchId": {
+    "string": 12
+   },
+   "mostWardsSingleMatch.opponent": {
+    "string": 12
+   },
+   "mostWardsSingleMatch.value": {
+    "integer": 12
+   },
+   "shortestGame": {
+    "map": 12
+   },
+   "shortestGame.matchId": {
+    "string": 12
+   },
+   "shortestGame.opponent": {
+    "string": 12
+   },
+   "shortestGame.value": {
+    "integer": 12
+   },
+   "teamId": {
+    "string": 12
+   },
+   "teamName": {
+    "string": 12
+   }
+  }
+ },
+ "teams": {
+  "documents": 12,
+  "fields": {
+   "captainId": {
+    "string": 12
+   },
+   "createdAt": {
+    "timestamp": 12
+   },
+   "divisionId": {
+    "string": 12
+   },
+   "draws": {
+    "integer": 12
+   },
+   "logoUrl": {
+    "string": 12
+   },
+   "losses": {
+    "integer": 12
+   },
+   "matchesPlayed": {
+    "integer": 12
+   },
+   "motto": {
+    "string": 12
+   },
+   "name": {
+    "string": 12
+   },
+   "points": {
+    "integer": 12
+   },
+   "recentForm": {
+    "array": 12
+   },
+   "recentForm[]": {
+    "string": 24
+   },
+   "roster": {
+    "map": 12
+   },
+   "roster.{key}": {
+    "map": 60
+   },
+   "roster.{key}.avatar": {
+    "string": 60
+   },
+   "roster.{key}.avatarfull": {
+    "string": 60
+   },
+   "roster.{key}.avatarmedium": {
+    "string": 60
+   },
+   "roster.{key}.mmr": {
+    "integer": 5
+   },
+   "roster.{key}.mostPlayedHeroes": {
+    "map": 60
+   },
+   "roster.{key}.mostPlayedHeroes.lastUpdated": {
+    "string": 60
+   },
+   "roster.{key}.mostPlayedHeroes.overall": {
+    "array": 60
+   },
+   "roster.{key}.mostPlayedHeroes.overall[]": {
+    "map": 260
+   },
+   "roster.{key}.mostPlayedHeroes.overall[].games": {
+    "integer": 260
+   },
+   "roster.{key}.mostPlayedHeroes.overall[].heroId": {
+    "integer": 260
+   },
+   "roster.{key}.mostPlayedHeroes.overall[].win": {
+    "integer": 260
+   },
+   "roster.{key}.mostPlayedHeroes.recent": {
+    "array": 60
+   },
+   "roster.{key}.mostPlayedHeroes.recent[]": {
+    "map": 256
+   },
+   "roster.{key}.mostPlayedHeroes.recent[].games": {
+    "integer": 256
+   },
+   "roster.{key}.mostPlayedHeroes.recent[].heroId": {
+    "integer": 256
+   },
+   "roster.{key}.mostPlayedHeroes.recent[].win": {
+    "integer": 256
+   },
+   "roster.{key}.nickname": {
+    "string": 60
+   },
+   "roster.{key}.role": {
+    "string": 60
+   },
+   "roster.{key}.steamId32": {
+    "string": 60
+   },
+   "seasonPoints": {
+    "integer": 12
+   },
+   "seedMmr": {
+    "integer": 12
+   },
+   "seedPosition": {
+    "integer": 12
+   },
+   "stats": {
+    "map": 12
+   },
+   "stats.draws": {
+    "integer": 12
+   },
+   "stats.gamesLost": {
+    "integer": 12
+   },
+   "stats.gamesWon": {
+    "integer": 12
+   },
+   "stats.losses": {
+    "integer": 12
+   },
+   "stats.played": {
+    "integer": 12
+   },
+   "stats.wins": {
+    "integer": 12
+   },
+   "status": {
+    "string": 12
+   },
+   "tag": {
+    "string": 12
+   },
+   "totalMMR": {
+    "integer": 1
+   },
+   "updatedAt": {
+    "string": 12
+   },
+   "wins": {
+    "integer": 12
+   }
+  }
+ },
+ "teams.players": {
+  "documents": 60,
+  "fields": {
+   "role": {
+    "string": 60
+   },
+   "steamId": {
+    "string": 60
+   },
+   "steamId32": {
+    "string": 60
+   },
+   "updatedAt": {
+    "string": 5
+   }
+  }
+ },
+ "tournaments": {
+  "documents": 1,
+  "fields": {
+   "cardSettings": {
+    "map": 1
+   },
+   "cardSettings.howTo": {
+    "string": 1
+   },
+   "cardSettings.roundPacks": {
+    "integer": 1
+   },
+   "cardSettings.twitchChannels": {
+    "array": 1
+   },
+   "cardSettings.twitchChannels[]": {
+    "string": 1
+   },
+   "coachMode": {
+    "string": 1
+   },
+   "createdAt": {
+    "timestamp": 1
+   },
+   "customFonts": {
+    "array": 1
+   },
+   "customFonts[]": {
+    "map": 1
+   },
+   "customFonts[].category": {
+    "string": 1
+   },
+   "customFonts[].family": {
+    "string": 1
+   },
+   "customFonts[].id": {
+    "string": 1
+   },
+   "customFonts[].path": {
+    "string": 1
+   },
+   "customFonts[].type": {
+    "string": 1
+   },
+   "customFonts[].variants": {
+    "array": 1
+   },
+   "customFonts[].variants[]": {
+    "string": 7
+   },
+   "defaultMatchFormat": {
+    "string": 1
+   },
+   "description": {
+    "string": 1
+   },
+   "discordServer": {
+    "map": 1
+   },
+   "discordServer.guildId": {
+    "string": 1
+   },
+   "discordServer.requireMember": {
+    "boolean": 1
+   },
+   "discordUrl": {
+    "string": 1
+   },
+   "endDate": {
+    "string": 1
+   },
+   "fantasy": {
+    "map": 1
+   },
+   "fantasy.budget": {
+    "integer": 1
+   },
+   "fantasy.enabled": {
+    "boolean": 1
+   },
+   "fantasy.lockBeforeMatchday": {
+    "boolean": 1
+   },
+   "fantasy.rosterSize": {
+    "integer": 1
+   },
+   "fantasy.scoring": {
+    "map": 1
+   },
+   "fantasy.scoring.assistPoints": {
+    "double": 1
+   },
+   "fantasy.scoring.deathPoints": {
+    "integer": 1
+   },
+   "fantasy.scoring.gpmPoints": {
+    "integer": 1
+   },
+   "fantasy.scoring.killPoints": {
+    "integer": 1
+   },
+   "fantasy.scoring.lastHitPoints": {
+    "double": 1
+   },
+   "fantasy.scoring.obsPlacedPoints": {
+    "double": 1
+   },
+   "fantasy.scoring.roshanKillPoints": {
+    "double": 1
+   },
+   "fantasy.scoring.senPlacedPoints": {
+    "double": 1
+   },
+   "fantasy.scoring.teamWinPoints": {
+    "integer": 1
+   },
+   "fantasy.scoring.towerKillPoints": {
+    "double": 1
+   },
+   "fantasy.scoring.xpmPoints": {
+    "integer": 1
+   },
+   "fantasy.type": {
+    "string": 1
+   },
+   "heroLayout": {
+    "string": 1
+   },
+   "heroLeftImageUrl": {
+    "null": 1
+   },
+   "heroMedia": {
+    "map": 1
+   },
+   "heroMedia.logo": {
+    "map": 1
+   },
+   "heroMedia.logo.video": {
+    "map": 1
+   },
+   "heroMedia.logo.video.posterUrl": {
+    "string": 1
+   },
+   "heroMedia.logo.video.url": {
+    "string": 1
+   },
+   "heroMedia.promo": {
+    "map": 1
+   },
+   "heroMedia.promo.type": {
+    "string": 1
+   },
+   "heroMedia.promo.video": {
+    "map": 1
+   },
+   "heroMedia.promo.video.posterUrl": {
+    "string": 1
+   },
+   "heroMedia.promo.video.url": {
+    "string": 1
+   },
+   "heroRightImageUrl": {
+    "null": 1
+   },
+   "heroTitle": {
+    "string": 1
+   },
+   "heroVideoCrt": {
+    "boolean": 1
+   },
+   "instagramUrl": {
+    "string": 1
+   },
+   "leagueId": {
+    "integer": 1
+   },
+   "lobbySettings": {
+    "map": 1
+   },
+   "lobbySettings.dotatvDelayMinutes": {
+    "integer": 1
+   },
+   "lobbySettings.gameMode": {
+    "string": 1
+   },
+   "lobbySettings.latePenaltyGameMinutes": {
+    "integer": 1
+   },
+   "lobbySettings.latePenaltySeriesMinutes": {
+    "integer": 1
+   },
+   "lobbySettings.leagueName": {
+    "string": 1
+   },
+   "lobbySettings.server": {
+    "string": 1
+   },
+   "lobbySettings.visibility": {
+    "string": 1
+   },
+   "maxTeams": {
+    "null": 1
+   },
+   "mmrCap": {
+    "null": 1
+   },
+   "mmrVerificationRequired": {
+    "boolean": 1
+   },
+   "name": {
+    "string": 1
+   },
+   "navbarSponsor": {
+    "map": 1
+   },
+   "navbarSponsor.enabled": {
+    "boolean": 1
+   },
+   "navbarSponsor.intervalMs": {
+    "integer": 1
+   },
+   "navbarSponsor.slides": {
+    "array": 1
+   },
+   "navbarSponsor.url": {
+    "null": 1
+   },
+   "navbarSponsor.widthPx": {
+    "integer": 1
+   },
+   "organizerId": {
+    "string": 1
+   },
+   "pickem": {
+    "map": 1
+   },
+   "pickem.enabled": {
+    "boolean": 1
+   },
+   "pickem.lockTime": {
+    "string": 1
+   },
+   "pickem.matchPredictions": {
+    "boolean": 1
+   },
+   "pickem.mvpPredictions": {
+    "boolean": 1
+   },
+   "pickem.playoffBracket": {
+    "boolean": 1
+   },
+   "pickem.standingsPredictions": {
+    "boolean": 1
+   },
+   "playoffs": {
+    "map": 1
+   },
+   "playoffs.enabled": {
+    "boolean": 1
+   },
+   "playoffs.finalFormat": {
+    "string": 1
+   },
+   "playoffs.format": {
+    "string": 1
+   },
+   "playoffs.grandFinalFormat": {
+    "string": 1
+   },
+   "playoffs.lowerBracketTeams": {
+    "null": 1
+   },
+   "playoffs.semifinalFormat": {
+    "string": 1
+   },
+   "playoffs.teamsCount": {
+    "integer": 1
+   },
+   "playoffs.thirdPlaceFormat": {
+    "string": 1
+   },
+   "playoffs.thirdPlaceMatch": {
+    "boolean": 1
+   },
+   "playoffs.upperBracketTeams": {
+    "null": 1
+   },
+   "playoffs.wildcardSpots": {
+    "integer": 1
+   },
+   "promotionRelegationEnabled": {
+    "boolean": 1
+   },
+   "promotionalImageUrl": {
+    "string": 1
+   },
+   "registration": {
+    "map": 1
+   },
+   "registration.enabled": {
+    "boolean": 1
+   },
+   "registration.endDate": {
+    "string": 1
+   },
+   "registration.maxTeams": {
+    "null": 1
+   },
+   "registration.requireApproval": {
+    "boolean": 1
+   },
+   "registration.startDate": {
+    "string": 1
+   },
+   "registrationEndDate": {
+    "string": 1
+   },
+   "registrationStartDate": {
+    "string": 1
+   },
+   "roundsPerSeason": {
+    "integer": 1
+   },
+   "schedulingMethod": {
+    "string": 1
+   },
+   "shortName": {
+    "string": 1
+   },
+   "slug": {
+    "string": 1
+   },
+   "standins": {
+    "map": 1
+   },
+   "standins.adminCanOverride": {
+    "boolean": 1
+   },
+   "standins.enabled": {
+    "boolean": 1
+   },
+   "standins.maxPerMatch": {
+    "integer": 1
+   },
+   "standins.maxPerRound": {
+    "integer": 1
+   },
+   "standins.mmrRestrictions": {
+    "boolean": 1
+   },
+   "standins.requireOpponentApproval": {
+    "boolean": 1
+   },
+   "standins.requireRegistration": {
+    "boolean": 1
+   },
+   "startDate": {
+    "string": 1
+   },
+   "status": {
+    "string": 1
+   },
+   "swiss": {
+    "map": 1
+   },
+   "swiss.allowConsecutiveRematch": {
+    "boolean": 1
+   },
+   "swiss.byeTeamId": {
+    "null": 1
+   },
+   "swiss.currentRound": {
+    "integer": 1
+   },
+   "swiss.defaultMatchFormat": {
+    "string": 1
+   },
+   "swiss.divisionId": {
+    "string": 1
+   },
+   "swiss.format": {
+    "string": 1
+   },
+   "swiss.lanQualifier": {
+    "map": 1
+   },
+   "swiss.lanQualifier.groupA": {
+    "array": 1
+   },
+   "swiss.lanQualifier.groupA[]": {
+    "string": 4
+   },
+   "swiss.pairingBand": {
+    "integer": 1
+   },
+   "swiss.plannedRounds": {
+    "null": 1
+   },
+   "swiss.useMmrSeeding": {
+    "boolean": 1
+   },
+   "teamSize": {
+    "integer": 1
+   },
+   "theme": {
+    "map": 1
+   },
+   "theme.accentColor": {
+    "string": 1
+   },
+   "theme.backgroundBlur": {
+    "integer": 1
+   },
+   "theme.backgroundColor": {
+    "string": 1
+   },
+   "theme.backgroundGradient": {
+    "string": 1
+   },
+   "theme.backgroundImageUrl": {
+    "null": 1
+   },
+   "theme.backgroundOverlayColor": {
+    "string": 1
+   },
+   "theme.backgroundOverlayOpacity": {
+    "integer": 1
+   },
+   "theme.backgroundPosition": {
+    "string": 1
+   },
+   "theme.backgroundSize": {
+    "string": 1
+   },
+   "theme.bodyFont": {
+    "string": 1
+   },
+   "theme.borderColor": {
+    "string": 1
+   },
+   "theme.cardBlur": {
+    "integer": 1
+   },
+   "theme.cardBorderRadius": {
+    "string": 1
+   },
+   "theme.cardColor": {
+    "string": 1
+   },
+   "theme.cardOpacity": {
+    "integer": 1
+   },
+   "theme.faviconUrl": {
+    "string": 1
+   },
+   "theme.glowColor": {
+    "null": 1
+   },
+   "theme.headerFont": {
+    "string": 1
+   },
+   "theme.headingColor": {
+    "null": 1
+   },
+   "theme.inlineLogoUrl": {
+    "string": 1
+   },
+   "theme.logoUrl": {
+    "string": 1
+   },
+   "theme.mutedTextColor": {
+    "string": 1
+   },
+   "theme.navbarBlur": {
+    "integer": 1
+   },
+   "theme.navbarColor": {
+    "null": 1
+   },
+   "theme.navbarFont": {
+    "null": 1
+   },
+   "theme.navbarOpacity": {
+    "integer": 1
+   },
+   "theme.navbarStyle": {
+    "string": 1
+   },
+   "theme.navbarTextColor": {
+    "null": 1
+   },
+   "theme.organizerLogoUrl": {
+    "string": 1
+   },
+   "theme.primaryColor": {
+    "string": 1
+   },
+   "theme.primaryTextColor": {
+    "null": 1
+   },
+   "theme.readableFont": {
+    "string": 1
+   },
+   "theme.rulesContentFont": {
+    "string": 1
+   },
+   "theme.secondaryColor": {
+    "string": 1
+   },
+   "theme.secondaryTextColor": {
+    "null": 1
+   },
+   "theme.sectionHeaderColor": {
+    "null": 1
+   },
+   "theme.textColor": {
+    "string": 1
+   },
+   "theme.textFont": {
+    "string": 1
+   },
+   "theme.themeStyle": {
+    "string": 1
+   },
+   "theme.titleColor": {
+    "null": 1
+   },
+   "tiktokUrl": {
+    "null": 1
+   },
+   "trailerUrl": {
+    "string": 1
+   },
+   "twitchUrl": {
+    "string": 1
+   },
+   "type": {
+    "string": 1
+   },
+   "updatedAt": {
+    "string": 1
+   },
+   "visibility": {
+    "string": 1
+   },
+   "youtubeUrl": {
+    "string": 1
+   }
+  }
+ }
+}
