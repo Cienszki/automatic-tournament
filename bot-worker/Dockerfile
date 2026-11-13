@@ -25,7 +25,11 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev --no-audit --no-fund
 
-# steam-resources needs protobufjs@4.x. Install it in a temp dir with --ignore-scripts
+# steam-resources needs protobufjs@4.x. npm never installs it: steam-resources is bundled
+# inside `steam`, and npm does not resolve a bundled package's own dependencies. The
+# lockfile records it that way (its entry for node_modules/steam/node_modules/steam-resources
+# leaves out protobufjs), otherwise `npm ci` would refuse the lock as out of sync.
+# Install it in a temp dir with --ignore-scripts
 # (avoids the svn prepare script that fetches protobuf definitions).
 RUN mkdir -p /tmp/pbjs4 && \
     cd /tmp/pbjs4 && \
