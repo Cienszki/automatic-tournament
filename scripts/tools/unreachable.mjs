@@ -36,8 +36,9 @@
 //
 // KEEP lists files that are unreachable today but that a later work package in
 // docs/overhaul/ROADMAP.md names as its source. They are reported separately and
-// do not fail the check. An entry that is missing or has become reachable fails
-// the check, so the list cannot go stale: delete the entry together with the file.
+// do not fail the check, and neither do the files that only they import (so a
+// kept file still compiles). An entry that is missing or has become reachable
+// fails the check, so the list cannot go stale: delete the entry with the file.
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -47,19 +48,21 @@ import { fileURLToPath } from 'node:url';
 const require = createRequire(import.meta.url);
 const ts = require('typescript');
 
-const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
+const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const SCAN_DIRS = ['src', 'server'];
 const CODE_EXT = ['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs'];
 const RESOLVE_EXT = [...CODE_EXT, '.json'];
 
-/** Unreachable files kept on purpose. Path (relative to the repo root, `/`) -> reason. */
-/** Files that only a kept file imports are kept with it, so the kept file still compiles. */
+/**
+ * Unreachable files kept on purpose: path relative to the repo root (with `/`) -> reason.
+ * @type {Record<string, string>}
+ */
 export const KEEP = {
   'src/components/tournament/MmrTournamentHomePage.tsx':
     'WP-13a reads its group ranking rule (sortGroupStandings) as a source',
   'src/components/app/GroupTable.tsx': 'WP-13a reads its ranking rule (lines 15-52) as a source',
   'src/components/fantasy/FantasyScoreCalculator.tsx':
-    "WP-16 reads it as a source (the role-based fantasy formula copied into viewer copy)",
+    'WP-16 reads it as a source (the role-based fantasy formula copied into viewer copy)',
 };
 
 const NEXT_APP_CONVENTIONS = new Set([
@@ -69,8 +72,8 @@ const NEXT_APP_CONVENTIONS = new Set([
 ]);
 const ROOT_ENTRY_NAMES = ['middleware', 'instrumentation', 'instrumentation-client'];
 const CONFIG_FILE = /^(next|vitest|tailwind|postcss|eslint)\.config\.(m?[jt]s|cjs)$/;
+const TEST_FILE = /\.(test|spec)\.[cm]?[jt]sx?$/;
 
-const rel = (abs) => path.relative(ROOT, abs).split(path.sep).join('/');
 const isCode = (file) => CODE_EXT.includes(path.extname(file));
 
 function walk(dir, out = []) {
@@ -96,14 +99,6 @@ function tryFile(base) {
   return null;
 }
 
-/** Resolves an import specifier from `fromFile`, or returns null for packages. */
-function resolveSpecifier(spec, fromFile) {
-  const clean = spec.split('?')[0];
-  if (clean.startsWith('@/')) return tryFile(path.join(ROOT, 'src', clean.slice(2)));
-  if (clean.startsWith('./') || clean.startsWith('../')) return tryFile(path.resolve(path.dirname(fromFile), clean));
-  return null;
-}
-
 function readImports(file) {
   const text = fs.readFileSync(file, 'utf8');
   const specs = ts.preProcessFile(text, true, true).importedFiles.map((f) => f.fileName);
@@ -116,55 +111,66 @@ function readImports(file) {
   return { specs, prefixes };
 }
 
-function isAppConvention(absFile) {
-  const relPath = rel(absFile);
-  if (!relPath.startsWith('src/app/')) return false;
-  const parts = relPath.split('/');
-  if (parts.slice(2, -1).some((p) => p.startsWith('_'))) return false;
-  const name = path.basename(absFile, path.extname(absFile));
-  return NEXT_APP_CONVENTIONS.has(name);
-}
+/**
+ * Builds the import graph of the repository at `root` and returns what is unreachable.
+ * `keep` maps repo-relative paths to the reason they are kept.
+ * @param {{ root?: string, keep?: Record<string, string> }} [options]
+ */
+export function analyse({ root = REPO_ROOT, keep = KEEP } = {}) {
+  const rel = (abs) => path.relative(root, abs).split(path.sep).join('/');
 
-/** Paths under src/ or server/ named by root config files and package.json scripts. */
-function configEntries() {
-  const found = [];
-  const pathLike = /['"`](\.?\/?(?:src|server)\/[^'"`\s]+)['"`]/g;
-  for (const name of fs.readdirSync(ROOT)) {
-    if (!CONFIG_FILE.test(name)) continue;
-    const abs = path.join(ROOT, name);
-    const { specs } = readImports(abs);
-    for (const spec of specs) {
-      const target = resolveSpecifier(spec, abs);
-      if (target) found.push(target);
-    }
-    const text = fs.readFileSync(abs, 'utf8');
-    for (const m of text.matchAll(pathLike)) {
-      const target = tryFile(path.join(ROOT, m[1]));
-      if (target) found.push(target);
-    }
-  }
-  const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
-  for (const script of Object.values(pkg.scripts ?? {})) {
-    for (const m of String(script).matchAll(/(?:^|\s)(\.?\/?(?:src|server)\/\S+)/g)) {
-      const target = tryFile(path.join(ROOT, m[1]));
-      if (target) found.push(target);
-    }
-  }
-  return found;
-}
+  /** Resolves an import specifier from `fromFile`, or returns null for packages. */
+  const resolveSpecifier = (spec, fromFile) => {
+    const clean = spec.split('?')[0];
+    if (clean.startsWith('@/')) return tryFile(path.join(root, 'src', clean.slice(2)));
+    if (clean.startsWith('./') || clean.startsWith('../')) return tryFile(path.resolve(path.dirname(fromFile), clean));
+    return null;
+  };
 
-export function analyse() {
-  const files = SCAN_DIRS.flatMap((d) => walk(path.join(ROOT, d)));
+  const isAppConvention = (absFile) => {
+    const relPath = rel(absFile);
+    if (!relPath.startsWith('src/app/')) return false;
+    if (relPath.split('/').slice(2, -1).some((p) => p.startsWith('_'))) return false;
+    return NEXT_APP_CONVENTIONS.has(path.basename(absFile, path.extname(absFile)));
+  };
+
+  /** Paths under src/ or server/ named by root config files and package.json scripts. */
+  const configEntries = () => {
+    const found = [];
+    const pathLike = /['"`](\.?\/?(?:src|server)\/[^'"`\s]+)['"`]/g;
+    for (const name of fs.readdirSync(root)) {
+      if (!CONFIG_FILE.test(name)) continue;
+      const abs = path.join(root, name);
+      for (const spec of readImports(abs).specs) {
+        const target = resolveSpecifier(spec, abs);
+        if (target) found.push(target);
+      }
+      for (const m of fs.readFileSync(abs, 'utf8').matchAll(pathLike)) {
+        const target = tryFile(path.join(root, m[1]));
+        if (target) found.push(target);
+      }
+    }
+    const pkgFile = path.join(root, 'package.json');
+    const pkg = fs.existsSync(pkgFile) ? JSON.parse(fs.readFileSync(pkgFile, 'utf8')) : {};
+    for (const script of Object.values(pkg.scripts ?? {})) {
+      for (const m of String(script).matchAll(/(?:^|\s)(\.?\/?(?:src|server)\/\S+)/g)) {
+        const target = tryFile(path.join(root, m[1]));
+        if (target) found.push(target);
+      }
+    }
+    return found;
+  };
+
+  const files = SCAN_DIRS.flatMap((d) => walk(path.join(root, d)));
   const entries = new Set();
   for (const file of files) {
     const base = path.basename(file);
-    const relPath = rel(file);
     if (isAppConvention(file)) entries.add(file);
-    else if (/\.(test|spec)\.[cm]?[jt]sx?$/.test(base) && relPath.startsWith('src/')) entries.add(file);
+    else if (TEST_FILE.test(base) && rel(file).startsWith('src/')) entries.add(file);
     else if (base.endsWith('.d.ts')) entries.add(file);
   }
   for (const name of ROOT_ENTRY_NAMES) {
-    for (const dir of [path.join(ROOT, 'src'), ROOT]) {
+    for (const dir of [path.join(root, 'src'), root]) {
       const target = tryFile(path.join(dir, name));
       if (target && isCode(target)) entries.add(target);
     }
@@ -188,7 +194,7 @@ export function analyse() {
         }
       }
       for (const prefix of prefixes) {
-        const dir = prefix.startsWith('@/') ? path.join(ROOT, 'src', prefix.slice(2)) : path.resolve(path.dirname(file), prefix);
+        const dir = prefix.startsWith('@/') ? path.join(root, 'src', prefix.slice(2)) : path.resolve(path.dirname(file), prefix);
         for (const f of walk(dir)) if (!reached.has(f)) queue.push(f);
       }
     }
@@ -197,27 +203,24 @@ export function analyse() {
 
   const reached = visit(entries, new Set());
   const unreachable = files.filter((f) => !reached.has(f)).map(rel).sort();
-  const staleKeep = Object.keys(KEEP).filter((f) => !fs.existsSync(path.join(ROOT, f)) || !unreachable.includes(f));
-  const keepStarts = Object.keys(KEEP).filter((f) => !staleKeep.includes(f)).map((f) => path.join(ROOT, f));
+  const staleKeep = Object.keys(keep).filter((f) => !unreachable.includes(f));
+  const keepStarts = Object.keys(keep).filter((f) => !staleKeep.includes(f)).map((f) => path.join(root, f));
   const keptClosure = visit(keepStarts, new Set(reached));
-  const kept = unreachable.filter((f) => keptClosure.has(path.join(ROOT, f)));
-  const dead = unreachable.filter((f) => !keptClosure.has(path.join(ROOT, f)));
   return {
     scanned: files.length,
     entries: entries.size,
     reached: reached.size,
-    dead,
-    kept,
+    dead: unreachable.filter((f) => !keptClosure.has(path.join(root, f))),
+    kept: unreachable.filter((f) => keptClosure.has(path.join(root, f))),
     staleKeep,
     unresolved: [...new Set(unresolved)].sort(),
   };
 }
 
-const lineCount = (relPath) => fs.readFileSync(path.join(ROOT, relPath), 'utf8').split('\n').length;
-
 function main() {
   const args = new Set(process.argv.slice(2));
   const result = analyse();
+  const lineCount = (relPath) => fs.readFileSync(path.join(REPO_ROOT, relPath), 'utf8').split('\n').length;
   if (args.has('--json')) {
     console.log(JSON.stringify(result, null, 2));
   } else {
