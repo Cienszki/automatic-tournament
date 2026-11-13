@@ -63,7 +63,7 @@ One line per WP: id, name, branch, state (planned / in progress / in review / me
 | WP-17 | Captain flows through commands | `wp/17-captain-commands` | planned | L, Fable review |
 | WP-18 | Organizer commands with S2's screens (18a-18e) | `wp/18a-settings ... wp/18e-content` | planned | XL, split. Fable for 18a, 18d. Needs S2 |
 | WP-19 | No database access from the browser | `wp/19-no-browser-db` | planned | S, Fable review |
-| WP-20 | Bot source under control (TypeScript, tests) | `wp/20-bot-source` | in progress | L, Fable review. Implementer started 2026-11-13 |
+| WP-20 | Bot source under control (TypeScript, tests) | `wp/20-bot-source` | in review | L, Fable review. Done 2026-11-13: bot source in `bot-worker/src` (only `dota-client.ts` unchecked), `dist/` out of git, image built from source in CI, `Store` and `LobbyClient` interfaces with fakes, 104 bot tests. Needs the manual lobby test in `bot-worker/RELEASE_CHECK.md` before this bot is ever deployed. Remove the `bot-worker/node_modules` junction (`rmdir`) before removing the worktree |
 | WP-21 | Contract, and the bot on its own tables | `wp/21-bot-contract` | planned | L, Fable review |
 | WP-22 | Bot: due work only, encrypted credentials, visible waiting | `wp/22-bot-due-work` | planned | M, Fable review |
 | WP-23 | Measure and scale lobby workers | `wp/23-bot-scale` | planned | S + M, Fable review for part 2 |
