@@ -4,13 +4,17 @@ Every session updates this file as it works, not only at the end. A new session,
 
 ## Next step
 
-Merged so far: WP-05, WP-12, WP-20. Running: **WP-32** (schema code, after the approved `SCHEMA.md` on its branch) and **WP-13a** (ranking rules). When each reports, review (Fable for both), merge with `--no-ff`, remove its worktree (run `rmdir` on any `node_modules` junction first), then run `npm ci` in the `overhaul` worktree if `package.json` changed.
+**Fable is available only until the weekly reset (Thursday 2026-11-19, 01:59).** From 2026-11-14 the remaining budget goes to work that needs Fable's judgement; implementation waits, because Opus can do it after the reset from `ROADMAP.md`.
 
-Next in line: **WP-33** (import tool; needs WP-32), **WP-03** (seed, CI, previews), **WP-06** (trial on Vercel and Supabase; the staging values are in `.env.staging.local` and already loaded into the Vercel project `tournament-platform`), **WP-04** (branch exists with Sentry's wizard output), **WP-15** (needs 13a, 32, 33).
+1. **S2 (organizer experience), in a new Fable session** (`/model` Fable, then the S2 prompt from `PROMPTS.md`). Change for this run: no clickable prototypes and no screenshots (agents cannot start a browser on this machine, and the budget is short). Write each key screen as a text wireframe with its states in `ORGANIZER_UX.md`, and leave prototypes to a later Opus work package. Add S2's work packages to `ROADMAP.md` and this file.
+2. **S3 (card game), in a new Fable session**, if budget remains. Same change: no prototypes.
+3. **If budget still remains:** a Fable pass over the packages marked "Fable review" that are not built yet (WP-33, 07, 08, 34, 21, 37), adding to each a short "what the reviewer must check" list, so an Opus reviewer can stand in for Fable.
 
-The implementer model's usage limit stops agents every few hours; resume them with SendMessage after the reset time in the notification.
+Use a new session for each, not this one: this conversation's context is very long, and every turn re-reads it.
 
-**S2 (organizer experience)** is a prerequisite of WP-18. Its prototype review needs a browser, which agents cannot start on this machine (question 2).
+After the reset, implementation continues on Opus in this order (the path to PDL S2 on the new platform): WP-33 import, WP-03 seed and CI, WP-06 trial, WP-07 kernel, WP-15 stats, WP-08 shell, WP-09, WP-10, WP-35 archive live, WP-39 mirror, then M2 to M4. Postponed until after that path: WP-11, 23 part 2, 26, 27, 29, 31, and S4.
+
+Merged so far: WP-04, 05, 12, 13a, 20, 32. Nothing is running.
 
 ## Decisions that changed the plan (owner, 2026-11-13)
 
