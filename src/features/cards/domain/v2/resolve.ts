@@ -107,10 +107,13 @@ function endCheck(s: MatchState, control: MatchState['control']): MatchResult | 
   return atCap ? capResult(s, control) : null;
 }
 
-/** Plays one round from both sides' plans. Pure: `prev` is not changed. Throws on an illegal plan. */
-export function resolveRound(prev: MatchState, plans: [Plan, Plan]): RoundOutcome {
+/**
+ * Plays one round from both sides' plans. Pure: `prev` is not changed. Throws on an illegal plan.
+ * `trusted` skips the legality check, for search code that only builds legal plans.
+ */
+export function resolveRound(prev: MatchState, plans: [Plan, Plan], opts: { trusted?: boolean } = {}): RoundOutcome {
   if (prev.result) throw new Error('the match is over');
-  for (const side of SIDES) {
+  for (const side of opts.trusted ? [] : SIDES) {
     const problem = validatePlan(prev, side, plans[side]);
     if (problem) throw new Error(`side ${side}: ${problem}`);
   }
