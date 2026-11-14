@@ -1,0 +1,120 @@
+{
+ "experiment": "e18",
+ "slug": "wiosenna",
+ "seed": 1,
+ "gamesPlayed": 12000,
+ "gamesArg": null,
+ "ms": 644317,
+ "command": "npx tsx scripts/tools/card-sim/run-v2.ts e18 --slug wiosenna --seed 1",
+ "tables": [
+  {
+   "title": "E18a. Decks with exactly k Mids against each other (wiosenna, rules {\"gankEffect\":\"out\"})",
+   "measured": "planner vs planner, both decks from the same veteran collection, otherwise built like best; 400 games per pair. Win rate of the row deck.",
+   "columns": [
+    "Row vs column",
+    "1 Mid",
+    "2 Mid",
+    "3 Mid",
+    "4 Mid",
+    "5 Mid"
+   ],
+   "rows": [
+    [
+     "1 Mid",
+     "—",
+     "49.6%",
+     "47.4%",
+     "37.6%",
+     "34.3%"
+    ],
+    [
+     "2 Mid",
+     "50.4%",
+     "—",
+     "50.8%",
+     "47.7%",
+     "37.7%"
+    ],
+    [
+     "3 Mid",
+     "52.6%",
+     "49.2%",
+     "—",
+     "39.5%",
+     "42.1%"
+    ],
+    [
+     "4 Mid",
+     "62.4%",
+     "52.3%",
+     "60.5%",
+     "—",
+     "51.2%"
+    ],
+    [
+     "5 Mid",
+     "65.8%",
+     "62.3%",
+     "57.9%",
+     "48.8%",
+     "—"
+    ]
+   ]
+  },
+  {
+   "title": "E18b. The match when both decks have k Mids (wiosenna, rules {\"gankEffect\":\"out\"})",
+   "measured": "Mirror: 800 games, same deck both sides. Veteran against new player, both with k Mids: 800 games, 200 collection pairs.",
+   "columns": [
+    "Mids in both decks",
+    "Rounds",
+    "P(win | behind after round 3)",
+    "Ganks landed per side",
+    "Winner never trailed",
+    "Veteran wins vs new"
+   ],
+   "rows": [
+    [
+     "1",
+     "5.68",
+     "30.0% [26.7–33.5]",
+     "0.78",
+     "52.0%",
+     "68.7% [65.4–71.8]"
+    ],
+    [
+     "2",
+     "5.76",
+     "32.2% [28.8–35.9]",
+     "1.56",
+     "44.5%",
+     "68.5% [65.2–71.6]"
+    ],
+    [
+     "3",
+     "5.94",
+     "38.2% [34.5–41.9]",
+     "2.43",
+     "38.7%",
+     "62.3% [58.9–65.6]"
+    ],
+    [
+     "4",
+     "5.93",
+     "40.9% [37.2–44.7]",
+     "3.26",
+     "33.8%",
+     "65.2% [61.8–68.4]"
+    ],
+    [
+     "5",
+     "5.94",
+     "43.0% [39.2–46.9]",
+     "4.04",
+     "33.1%",
+     "59.0% [55.6–62.4]"
+    ]
+   ]
+  }
+ ],
+ "data": {}
+}

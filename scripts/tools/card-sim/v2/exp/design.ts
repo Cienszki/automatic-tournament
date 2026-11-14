@@ -12,7 +12,7 @@ export async function e6(ctx: Ctx): Promise<Outcome> {
   const pairs: Array<[BuilderName, BuilderName]> = [];
   for (let a = 0; a < ARCHETYPES.length; a++) for (let b = a + 1; b < ARCHETYPES.length; b++) pairs.push([ARCHETYPES[a], ARCHETYPES[b]]);
   const g = Math.min(ctx.games ?? 1000, 500);
-  const cells = pairs.map(([x, y]) => cell({ ...ctx, games: g }, `e6-${x}-${y}`, seat('planner', x), seat('planner', y), { sameCollection: true }));
+  const cells = pairs.map(([x, y]) => cell({ ...ctx, games: g }, `e6-${x}-${y}`, seat('planner', x), seat('planner', y), { sameCollection: true, collections: 30 }));
   const all = await playCells(cells);
   const score = new Map<string, number>();
   const field = new Map<BuilderName, { k: number; n: number }>(ARCHETYPES.map((a) => [a, { k: 0, n: 0 }]));
@@ -29,7 +29,7 @@ export async function e6(ctx: Ctx): Promise<Outcome> {
     tables: [
       {
         title: `E6a. Deck archetypes: win rate of the row deck against the column deck (${ctx.slug})`,
-        measured: `planner vs planner; both decks built from the same veteran collection (40 packs, 100 collections), the default budget; ${g} games per pair, both seats.`,
+        measured: `planner vs planner; both decks built from the same veteran collection (40 packs, 30 collections), the default budget; ${g} games per pair, both seats.`,
         columns: ['Row vs column', ...ARCHETYPES.map(short)],
         rows: ARCHETYPES.map((x) => [short(x), ...ARCHETYPES.map((y) => (x === y ? '—' : pct(score.get(`${x}|${y}`)!)))]),
       },

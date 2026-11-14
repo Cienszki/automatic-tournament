@@ -1,0 +1,247 @@
+{
+ "experiment": "e9",
+ "slug": "wiosenna",
+ "seed": 1,
+ "gamesPlayed": 2000,
+ "gamesArg": null,
+ "ms": 118399,
+ "command": "npx tsx scripts/tools/card-sim/run-v2.ts e9 --slug wiosenna --seed 1",
+ "tables": [
+  {
+   "title": "E9a. Holding an objective in round 2 (wiosenna)",
+   "measured": "planner vs planner, `best` decks from own veteran collections, N = 2000. Win rate of the side that controlled the objective in round 2 (matches where someone did). Roshan's share of all damage in matches with Roshan: 51.9%.",
+   "columns": [
+    "Objective",
+    "Matches with it",
+    "Controlled by someone in round 2",
+    "Controller wins [95% CI]"
+   ],
+   "rows": [
+    [
+     "High Ground",
+     1014,
+     945,
+     "70.2% [67.2–73.0]"
+    ],
+    [
+     "Roshan",
+     985,
+     902,
+     "70.1% [67.0–73.0]"
+    ],
+    [
+     "Outpost",
+     986,
+     855,
+     "57.4% [54.1–60.7]"
+    ],
+    [
+     "Twin Gates",
+     1023,
+     740,
+     "47.6% [44.0–51.2]"
+    ],
+    [
+     "Tormentor",
+     1014,
+     829,
+     "47.9% [44.5–51.3]"
+    ],
+    [
+     "Lotus Pool",
+     960,
+     874,
+     "67.6% [64.4–70.6]"
+    ]
+   ]
+  },
+  {
+   "title": "E9b. By trio of objectives (wiosenna)",
+   "measured": "Same matches. The game is symmetric, so a trio cannot favour a seat; what can differ is length and how decisive early control is.",
+   "columns": [
+    "Trio",
+    "Matches",
+    "Rounds",
+    "Side with more objectives in round 2 wins",
+    "Roshan share of damage"
+   ],
+   "rows": [
+    [
+     "gates + highground + lotus",
+     107,
+     "5.74",
+     "84.4% [74.7–90.9]",
+     "—"
+    ],
+    [
+     "gates + highground + outpost",
+     103,
+     "5.76",
+     "80.2% [70.9–87.1]",
+     "—"
+    ],
+    [
+     "gates + highground + roshan",
+     103,
+     "5.07",
+     "84.5% [74.3–91.1]",
+     "52.0%"
+    ],
+    [
+     "gates + highground + tormentor",
+     113,
+     "5.78",
+     "62.8% [52.2–72.3]",
+     "—"
+    ],
+    [
+     "gates + lotus + outpost",
+     93,
+     "5.72",
+     "78.2% [67.8–85.9]",
+     "—"
+    ],
+    [
+     "gates + lotus + roshan",
+     96,
+     "5.13",
+     "70.9% [57.9–81.2]",
+     "53.0%"
+    ],
+    [
+     "gates + lotus + tormentor",
+     104,
+     "5.79",
+     "79.7% [69.6–87.1]",
+     "—"
+    ],
+    [
+     "gates + outpost + roshan",
+     96,
+     "5.00",
+     "65.5% [54.8–74.8]",
+     "51.7%"
+    ],
+    [
+     "gates + outpost + tormentor",
+     102,
+     "5.80",
+     "73.6% [63.7–81.6]",
+     "—"
+    ],
+    [
+     "gates + roshan + tormentor",
+     110,
+     "5.04",
+     "76.3% [65.6–84.5]",
+     "52.2%"
+    ],
+    [
+     "highground + lotus + outpost",
+     99,
+     "5.62",
+     "81.0% [71.0–88.1]",
+     "—"
+    ],
+    [
+     "highground + lotus + roshan",
+     78,
+     "5.00",
+     "80.3% [68.7–88.4]",
+     "51.4%"
+    ],
+    [
+     "highground + lotus + tormentor",
+     108,
+     "5.73",
+     "81.3% [72.1–88.0]",
+     "—"
+    ],
+    [
+     "highground + outpost + roshan",
+     119,
+     "4.91",
+     "73.1% [63.3–81.1]",
+     "51.6%"
+    ],
+    [
+     "highground + outpost + tormentor",
+     89,
+     "5.67",
+     "74.6% [63.4–83.3]",
+     "—"
+    ],
+    [
+     "highground + roshan + tormentor",
+     97,
+     "4.93",
+     "91.8% [83.2–96.2]",
+     "51.8%"
+    ],
+    [
+     "lotus + outpost + roshan",
+     88,
+     "4.99",
+     "78.3% [67.2–86.4]",
+     "51.0%"
+    ],
+    [
+     "lotus + outpost + tormentor",
+     97,
+     "5.82",
+     "74.7% [64.1–83.0]",
+     "—"
+    ],
+    [
+     "lotus + roshan + tormentor",
+     94,
+     "4.95",
+     "85.0% [73.9–91.9]",
+     "52.9%"
+    ],
+    [
+     "outpost + roshan + tormentor",
+     104,
+     "5.07",
+     "79.0% [68.9–86.5]",
+     "51.2%"
+    ]
+   ]
+  }
+ ],
+ "data": {
+  "byObj": {
+   "highground": {
+    "k": 663,
+    "n": 945,
+    "present": 1014
+   },
+   "roshan": {
+    "k": 632,
+    "n": 902,
+    "present": 985
+   },
+   "outpost": {
+    "k": 491,
+    "n": 855,
+    "present": 986
+   },
+   "gates": {
+    "k": 352,
+    "n": 740,
+    "present": 1023
+   },
+   "tormentor": {
+    "k": 397,
+    "n": 829,
+    "present": 1014
+   },
+   "lotus": {
+    "k": 591,
+    "n": 874,
+    "present": 960
+   }
+  },
+  "roshanShare": 0.5187908322740237
+ }
+}

@@ -35,7 +35,9 @@ async function runOne(name: string, slug: string, seed: number, games?: number) 
   const command = `npx tsx scripts/tools/card-sim/run-v2.ts ${name} --slug ${slug} --seed ${seed}${games ? ` --games ${games}` : ''}`;
   const result = { experiment: name, slug, seed, gamesPlayed: out.games, gamesArg: games ?? null, ms, command, tables: out.tables, data: out.data };
   mkdirSync(OUT_DIR, { recursive: true });
-  writeFileSync(join(OUT_DIR, `${name}-${slug}.json`), `${JSON.stringify(result, (_k, v) => (v === Infinity ? 'Infinity' : v), 1)}\n`);
+  // SIM_TAG adds a word to the file name, to keep two runs of one experiment (with SIM_RULES) side by side
+  const tag = process.env.SIM_TAG ? `-${process.env.SIM_TAG}` : "";
+  writeFileSync(join(OUT_DIR, `${name}${tag}-${slug}.json`), `${JSON.stringify(result, (_k, v) => (v === Infinity ? 'Infinity' : v), 1)}\n`);
   console.log(`${name} ${slug}: ${out.games} games, ${(ms / 1000).toFixed(1)} s`);
 }
 

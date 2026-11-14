@@ -1,0 +1,161 @@
+{
+ "experiment": "e1",
+ "slug": "pdl-s2",
+ "seed": 1,
+ "gamesPlayed": 1000,
+ "gamesArg": null,
+ "ms": 220585,
+ "command": "npx tsx scripts/tools/card-sim/run-v2.ts e1 --slug pdl-s2 --seed 1",
+ "tables": [
+  {
+   "title": "E1. Shape of a match (pdl-s2)",
+   "measured": "planner vs planner, each with a `best` deck (the default budget) from its own veteran collection (40 packs; 100 collection pairs, each played from both seats), default rules. N = 1000 matches.",
+   "columns": [
+    "Measure",
+    "Value"
+   ],
+   "rows": [
+    [
+     "Games",
+     "1000"
+    ],
+    [
+     "Rounds per match: mean / median / p10 / p90",
+     "5.62 / 6.00 / 5.00 / 6.00"
+    ],
+    [
+     "Rounds per match: distribution",
+     "4: 0.8%, 5: 46.5%, 6: 44.3%, 7: 6.8%, 8: 1.6%"
+    ],
+    [
+     "How matches end",
+     "ancient: 99.2%, cap-objectives: 0.5%, draw: 0.3%"
+    ],
+    [
+     "Plays per side per match",
+     "8.56"
+    ],
+    [
+     "Moves per side per match (of them free: Smoke / Gates)",
+     "3.41 (0.88 / 0.46)"
+    ],
+    [
+     "Unused orders per side per match (of orders available)",
+     "1.63 of 12.26 (13.3%)"
+    ],
+    [
+     "Mids played (gank attempts) per side per match",
+     "1.43"
+    ],
+    [
+     "Ganks that returned a unit / blocked by an Offlane / nobody to gank",
+     "1.24 / 0.00 / 0.19"
+    ],
+    [
+     "Replaces per side per match",
+     "0.88"
+    ],
+    [
+     "Cards left in hand at the end, per side",
+     "1.99"
+    ],
+    [
+     "Cards left in deck at the end, per side",
+     "1.45"
+    ],
+    [
+     "Share of rounds with at least one objective tied (both sides there, equal strength)",
+     "12.1%"
+    ],
+    [
+     "Share of rounds with at least one objective nobody controls (tie or empty)",
+     "28.0%"
+    ],
+    [
+     "Farma growth per side per match",
+     "4.46"
+    ],
+    [
+     "Aura / Drużyna / High Ground strength per side per match (summed over units and rounds)",
+     "17.52 / 10.21 / 2.41"
+    ],
+    [
+     "Rounds where the planner's plan differs from its greedy plan",
+     "78.5%"
+    ]
+   ]
+  }
+ ],
+ "data": {
+  "rows": [
+   [
+    "Games",
+    "1000"
+   ],
+   [
+    "Rounds per match: mean / median / p10 / p90",
+    "5.62 / 6.00 / 5.00 / 6.00"
+   ],
+   [
+    "Rounds per match: distribution",
+    "4: 0.8%, 5: 46.5%, 6: 44.3%, 7: 6.8%, 8: 1.6%"
+   ],
+   [
+    "How matches end",
+    "ancient: 99.2%, cap-objectives: 0.5%, draw: 0.3%"
+   ],
+   [
+    "Plays per side per match",
+    "8.56"
+   ],
+   [
+    "Moves per side per match (of them free: Smoke / Gates)",
+    "3.41 (0.88 / 0.46)"
+   ],
+   [
+    "Unused orders per side per match (of orders available)",
+    "1.63 of 12.26 (13.3%)"
+   ],
+   [
+    "Mids played (gank attempts) per side per match",
+    "1.43"
+   ],
+   [
+    "Ganks that returned a unit / blocked by an Offlane / nobody to gank",
+    "1.24 / 0.00 / 0.19"
+   ],
+   [
+    "Replaces per side per match",
+    "0.88"
+   ],
+   [
+    "Cards left in hand at the end, per side",
+    "1.99"
+   ],
+   [
+    "Cards left in deck at the end, per side",
+    "1.45"
+   ],
+   [
+    "Share of rounds with at least one objective tied (both sides there, equal strength)",
+    "12.1%"
+   ],
+   [
+    "Share of rounds with at least one objective nobody controls (tie or empty)",
+    "28.0%"
+   ],
+   [
+    "Farma growth per side per match",
+    "4.46"
+   ],
+   [
+    "Aura / Drużyna / High Ground strength per side per match (summed over units and rounds)",
+    "17.52 / 10.21 / 2.41"
+   ],
+   [
+    "Rounds where the planner's plan differs from its greedy plan",
+    "78.5%"
+   ]
+  ]
+ }
+}

@@ -1,0 +1,307 @@
+{
+ "experiment": "e10",
+ "slug": "wiosenna",
+ "seed": 1,
+ "gamesPlayed": 11000,
+ "gamesArg": null,
+ "ms": 493186,
+ "command": "npx tsx scripts/tools/card-sim/run-v2.ts e10 --slug wiosenna --seed 1",
+ "tables": [
+  {
+   "title": "E10 (reference, STRENGTH unchanged 1-9 curve 1.3): 2a. Deck strength: rating gap (wiosenna)",
+   "measured": "Hard vs hard; the stronger deck aimed at 75+gap, the other at 75 (cpuDeck, realised averages shown); a fresh pair every 2 games, first player alternating. Win rate of the stronger deck.",
+   "columns": [
+    "Aimed gap",
+    "Rating weaker vs stronger (realised)",
+    "Average strength weaker vs stronger",
+    "Decided games",
+    "Stalled",
+    "Stronger deck wins [95% CI]"
+   ],
+   "rows": [
+    [
+     "+0",
+     "74.7 vs 74.5 (gap -0.2)",
+     "4.73 vs 4.71 (gap -0.03)",
+     1000,
+     0,
+     "49.3% [46.2–52.4]"
+    ],
+    [
+     "+3",
+     "74.7 vs 77.3 (gap 2.5)",
+     "4.74 vs 5.12 (gap 0.38)",
+     1000,
+     0,
+     "57.8% [54.7–60.8]"
+    ],
+    [
+     "+5",
+     "74.7 vs 79.2 (gap 4.5)",
+     "4.74 vs 5.40 (gap 0.66)",
+     1000,
+     0,
+     "64.3% [61.3–67.2]"
+    ],
+    [
+     "+10",
+     "74.7 vs 84.0 (gap 9.3)",
+     "4.74 vs 6.15 (gap 1.41)",
+     1000,
+     0,
+     "78.2% [75.5–80.6]"
+    ]
+   ]
+  },
+  {
+   "title": "E10 (reference, STRENGTH unchanged 1-9 curve 1.3): 2b. Deck strength: 10-pack collection vs 40-pack collection (wiosenna)",
+   "measured": "1000 games, hard vs hard, autoDeck(simCollection(cards, 10)) vs autoDeck(simCollection(cards, 40)), fresh collections every 20 games (50 pairs), first player alternating.",
+   "columns": [
+    "Measure",
+    "New player (10 packs)",
+    "Veteran (40 packs)"
+   ],
+   "rows": [
+    [
+     "Deck average rating (TOTW counted +7, as avgOvr)",
+     "73.3",
+     "83.7"
+    ],
+    [
+     "Deck average strength (baseMight)",
+     "4.54",
+     "6.16"
+    ],
+    [
+     "Legal decks (of collections drawn)",
+     "50/50",
+     "50/50"
+    ],
+    [
+     "Wins [95% CI] (decided games; stalled shown below)",
+     "10.0% [8.3–12.0]",
+     "90.0% [88.0–91.7]"
+    ],
+    [
+     "Decided / stalled games",
+     "1000 / 0",
+     ""
+    ]
+   ]
+  },
+  {
+   "title": "E10 (i) STRENGTH min 4, max 8, curve 1: 2a. Deck strength: rating gap (wiosenna)",
+   "measured": "Hard vs hard; the stronger deck aimed at 75+gap, the other at 75 (cpuDeck, realised averages shown); a fresh pair every 2 games, first player alternating. Win rate of the stronger deck.",
+   "columns": [
+    "Aimed gap",
+    "Rating weaker vs stronger (realised)",
+    "Average strength weaker vs stronger",
+    "Decided games",
+    "Stalled",
+    "Stronger deck wins [95% CI]"
+   ],
+   "rows": [
+    [
+     "+0",
+     "74.7 vs 74.5 (gap -0.2)",
+     "6.05 vs 6.02 (gap -0.02)",
+     1000,
+     0,
+     "46.6% [43.5–49.7]"
+    ],
+    [
+     "+3",
+     "74.7 vs 77.3 (gap 2.5)",
+     "6.04 vs 6.24 (gap 0.19)",
+     1000,
+     0,
+     "57.2% [54.1–60.2]"
+    ],
+    [
+     "+5",
+     "74.7 vs 79.2 (gap 4.5)",
+     "6.04 vs 6.38 (gap 0.34)",
+     1000,
+     0,
+     "64.4% [61.4–67.3]"
+    ],
+    [
+     "+10",
+     "74.7 vs 84.0 (gap 9.3)",
+     "6.05 vs 6.77 (gap 0.72)",
+     1000,
+     0,
+     "73.1% [70.3–75.8]"
+    ]
+   ]
+  },
+  {
+   "title": "E10 (i) STRENGTH min 4, max 8, curve 1: 2b. Deck strength: 10-pack collection vs 40-pack collection (wiosenna)",
+   "measured": "1000 games, hard vs hard, autoDeck(simCollection(cards, 10)) vs autoDeck(simCollection(cards, 40)), fresh collections every 20 games (50 pairs), first player alternating.",
+   "columns": [
+    "Measure",
+    "New player (10 packs)",
+    "Veteran (40 packs)"
+   ],
+   "rows": [
+    [
+     "Deck average rating (TOTW counted +7, as avgOvr)",
+     "73.4",
+     "83.2"
+    ],
+    [
+     "Deck average strength (baseMight)",
+     "6.10",
+     "6.89"
+    ],
+    [
+     "Legal decks (of collections drawn)",
+     "50/50",
+     "50/50"
+    ],
+    [
+     "Wins [95% CI] (decided games; stalled shown below)",
+     "16.3% [14.1–18.7]",
+     "83.7% [81.3–85.9]"
+    ],
+    [
+     "Decided / stalled games",
+     "1000 / 0",
+     ""
+    ]
+   ]
+  },
+  {
+   "title": "E10 (ii). Today's game with a deck budget (wiosenna)",
+   "measured": "Today's rules and computer (hard vs hard, first player alternating), decks of 20 cards with 2 per role and sum of cardStrength <= 110, the highest total baseMight within that (exact optimiser); fresh collections every 20 games. 0 games skipped because a collection had no legal deck.",
+   "columns": [
+    "Measure",
+    "New player (10 packs)",
+    "Veteran (40 packs)"
+   ],
+   "rows": [
+    [
+     "Deck cost (sum of cardStrength)",
+     "93.1",
+     "110.0"
+    ],
+    [
+     "Deck total baseMight",
+     "93.3",
+     "116.6"
+    ],
+    [
+     "Wins [95% CI] (decided games)",
+     "14.7% [12.6–17.0]",
+     "85.3% [83.0–87.4]"
+    ],
+    [
+     "Decided / stalled games",
+     "1000 / 0",
+     ""
+    ]
+   ]
+  }
+ ],
+ "data": {
+  "original": {
+   "gap0": {
+    "k": 493,
+    "n": 1000,
+    "stalled": 0,
+    "ratingGap": -0.18459999999999993,
+    "mightGap": -0.028799999999999968
+   },
+   "gap3": {
+    "k": 578,
+    "n": 1000,
+    "stalled": 0,
+    "ratingGap": 2.5479,
+    "mightGap": 0.3791999999999999
+   },
+   "gap5": {
+    "k": 643,
+    "n": 1000,
+    "stalled": 0,
+    "ratingGap": 4.477600000000006,
+    "mightGap": 0.6599999999999994
+   },
+   "gap10": {
+    "k": 782,
+    "n": 1000,
+    "stalled": 0,
+    "ratingGap": 9.3238,
+    "mightGap": 1.414900000000002
+   },
+   "collections": {
+    "w": {
+     "k": 900,
+     "n": 1000,
+     "stalled": 0
+    },
+    "xRating": 83.68499999999999,
+    "yRating": 73.262,
+    "xMight": 6.1610000000000005,
+    "yMight": 4.542000000000001,
+    "xLegal": 50,
+    "yLegal": 50,
+    "blocks": 50
+   }
+  },
+  "changed": {
+   "gap0": {
+    "k": 466,
+    "n": 1000,
+    "stalled": 0,
+    "ratingGap": -0.18459999999999993,
+    "mightGap": -0.021
+   },
+   "gap3": {
+    "k": 572,
+    "n": 1000,
+    "stalled": 0,
+    "ratingGap": 2.5479,
+    "mightGap": 0.19100000000000011
+   },
+   "gap5": {
+    "k": 644,
+    "n": 1000,
+    "stalled": 0,
+    "ratingGap": 4.477600000000006,
+    "mightGap": 0.33699999999999986
+   },
+   "gap10": {
+    "k": 731,
+    "n": 1000,
+    "stalled": 0,
+    "ratingGap": 9.3238,
+    "mightGap": 0.7179
+   },
+   "collections": {
+    "w": {
+     "k": 837,
+     "n": 1000,
+     "stalled": 0
+    },
+    "xRating": 83.23999999999998,
+    "yRating": 73.409,
+    "xMight": 6.891000000000002,
+    "yMight": 6.099999999999999,
+    "xLegal": 50,
+    "yLegal": 50,
+    "blocks": 50
+   }
+  },
+  "budget": {
+   "k": 853,
+   "decided": 1000,
+   "stalled": 0,
+   "skipped": 0,
+   "blocks": 50,
+   "vetCost": 110,
+   "newCost": 93.06,
+   "vetMight": 116.6,
+   "newMight": 93.3
+  }
+ }
+}

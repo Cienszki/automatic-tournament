@@ -1,0 +1,68 @@
+{
+ "experiment": "e12",
+ "slug": "wiosenna",
+ "seed": 1,
+ "gamesPlayed": 0,
+ "gamesArg": null,
+ "ms": 15905,
+ "command": "npx tsx scripts/tools/card-sim/run-v2.ts e12 --slug wiosenna --seed 1",
+ "tables": [
+  {
+   "title": "E12. Duplicates over a season of packs (wiosenna)",
+   "measured": "1000 simulated players, 9 rounds (seasonPeriods). 10 welcome packs after round 1, then 3 or 5 packs after every round; the pack pool after round r is each team's last series up to r (packPool, openPack as on the site, TOTW chance 25%). Cells: mean (p10 / median / p90). A duplicate is a card whose exact id the player already had; \"players\" counts player-and-team pairs (deckKey); a complete team has all five roles held.",
+   "columns": [
+    "Packs",
+    "Packs opened",
+    "Cards received",
+    "Exact duplicates",
+    "Duplicates by tier (mean)",
+    "Distinct players",
+    "Complete teams"
+   ],
+   "rows": [
+    [
+     "3 per round",
+     "37.0 (37 / 37 / 37)",
+     "185.0 (185 / 185 / 185)",
+     "67.7 (63 / 68 / 72)",
+     "wood 24.5, bronze 21.8, silver 10.3, gold 4.6, elite 3.0, totw 3.6",
+     "76.7 (72 / 77 / 81)",
+     "5.0 (3 / 5 / 7)"
+    ],
+    [
+     "5 per round",
+     "55.0 (55 / 55 / 55)",
+     "275.0 (275 / 275 / 275)",
+     "105.1 (98 / 105 / 112)",
+     "wood 39.5, bronze 32.9, silver 16.8, gold 7.3, elite 4.0, totw 4.6",
+     "94.3 (90 / 94 / 99)",
+     "9.7 (7 / 10 / 12)"
+    ]
+   ]
+  }
+ ],
+ "data": {
+  "rows": [
+   [
+    "3 per round",
+    "37.0 (37 / 37 / 37)",
+    "185.0 (185 / 185 / 185)",
+    "67.7 (63 / 68 / 72)",
+    "wood 24.5, bronze 21.8, silver 10.3, gold 4.6, elite 3.0, totw 3.6",
+    "76.7 (72 / 77 / 81)",
+    "5.0 (3 / 5 / 7)"
+   ],
+   [
+    "5 per round",
+    "55.0 (55 / 55 / 55)",
+    "275.0 (275 / 275 / 275)",
+    "105.1 (98 / 105 / 112)",
+    "wood 39.5, bronze 32.9, silver 16.8, gold 7.3, elite 4.0, totw 4.6",
+    "94.3 (90 / 94 / 99)",
+    "9.7 (7 / 10 / 12)"
+   ]
+  ],
+  "periods": 9,
+  "players": 1000
+ }
+}

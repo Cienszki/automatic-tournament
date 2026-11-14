@@ -1,0 +1,192 @@
+{
+ "experiment": "e3",
+ "slug": "wiosenna",
+ "seed": 1,
+ "gamesPlayed": 11000,
+ "gamesArg": null,
+ "ms": 419686,
+ "command": "npx tsx scripts/tools/card-sim/run-v2.ts e3 --slug wiosenna --seed 1",
+ "tables": [
+  {
+   "title": "E3a. Skill ladder: win rate of the row player against the column player (wiosenna)",
+   "measured": "Both sides play the same `best` deck (the default budget) from one regular collection (20 packs) per pair; 1000 games per pair, both seats. Cells with a 95% CI are measured directly; the mirrored cells are 1 minus them. Targets: each step up >= 60%; planner vs greedy >= 70%.",
+   "columns": [
+    "Row vs column",
+    "random",
+    "greedy",
+    "responder",
+    "planner",
+    "planner-mixed"
+   ],
+   "rows": [
+    [
+     "random",
+     "—",
+     "6.4% (N=1000)",
+     "6.4% (N=999)",
+     "5.5% (N=1000)",
+     "6.8% (N=999)"
+    ],
+    [
+     "greedy",
+     "93.6% [91.9–95.0]",
+     "—",
+     "22.3% (N=994)",
+     "21.7% (N=997)",
+     "23.5% (N=992)"
+    ],
+    [
+     "responder",
+     "93.6% [91.9–95.0]",
+     "77.7% [75.0–80.1]",
+     "—",
+     "44.3% (N=994)",
+     "47.5% (N=993)"
+    ],
+    [
+     "planner",
+     "94.5% [92.9–95.8]",
+     "78.3% [75.7–80.8]",
+     "55.7% [52.6–58.8]",
+     "—",
+     "55.8% (N=994)"
+    ],
+    [
+     "planner-mixed",
+     "93.2% [91.5–94.6]",
+     "76.5% [73.8–79.0]",
+     "52.5% [49.4–55.6]",
+     "44.2% [41.1–47.3]",
+     "—"
+    ]
+   ]
+  },
+  {
+   "title": "E3b. Skill against collection (wiosenna)",
+   "measured": "planner with a new player's `best` deck (10 packs) vs greedy with a veteran's `best` deck (40 packs), the default budget, N = 1000.",
+   "columns": [
+    "Matchup",
+    "Planner (new player) wins [95% CI]",
+    "Draws"
+   ],
+   "rows": [
+    [
+     "planner/new vs greedy/veteran",
+     "67.2% [64.2–70.0]",
+     3
+    ]
+   ]
+  }
+ ],
+ "data": {
+  "pairs": [
+   {
+    "x": "greedy",
+    "y": "random",
+    "k": 936,
+    "n": 1000,
+    "draws": 0,
+    "games": 1000,
+    "text": "93.6% [91.9–95.0]",
+    "rounds": 5.178
+   },
+   {
+    "x": "responder",
+    "y": "random",
+    "k": 935,
+    "n": 999,
+    "draws": 1,
+    "games": 1000,
+    "text": "93.6% [91.9–95.0]",
+    "rounds": 5.19
+   },
+   {
+    "x": "planner",
+    "y": "random",
+    "k": 945,
+    "n": 1000,
+    "draws": 0,
+    "games": 1000,
+    "text": "94.5% [92.9–95.8]",
+    "rounds": 5.153
+   },
+   {
+    "x": "planner-mixed",
+    "y": "random",
+    "k": 931,
+    "n": 999,
+    "draws": 1,
+    "games": 1000,
+    "text": "93.2% [91.5–94.6]",
+    "rounds": 5.234
+   },
+   {
+    "x": "responder",
+    "y": "greedy",
+    "k": 772,
+    "n": 994,
+    "draws": 6,
+    "games": 1000,
+    "text": "77.7% [75.0–80.1]",
+    "rounds": 5.627
+   },
+   {
+    "x": "planner",
+    "y": "greedy",
+    "k": 781,
+    "n": 997,
+    "draws": 3,
+    "games": 1000,
+    "text": "78.3% [75.7–80.8]",
+    "rounds": 5.601
+   },
+   {
+    "x": "planner-mixed",
+    "y": "greedy",
+    "k": 759,
+    "n": 992,
+    "draws": 8,
+    "games": 1000,
+    "text": "76.5% [73.8–79.0]",
+    "rounds": 5.646
+   },
+   {
+    "x": "planner",
+    "y": "responder",
+    "k": 554,
+    "n": 994,
+    "draws": 6,
+    "games": 1000,
+    "text": "55.7% [52.6–58.8]",
+    "rounds": 5.717
+   },
+   {
+    "x": "planner-mixed",
+    "y": "responder",
+    "k": 521,
+    "n": 993,
+    "draws": 7,
+    "games": 1000,
+    "text": "52.5% [49.4–55.6]",
+    "rounds": 5.719
+   },
+   {
+    "x": "planner-mixed",
+    "y": "planner",
+    "k": 439,
+    "n": 994,
+    "draws": 6,
+    "games": 1000,
+    "text": "44.2% [41.1–47.3]",
+    "rounds": 5.696
+   }
+  ],
+  "cross": {
+   "k": 670,
+   "n": 997,
+   "draws": 3,
+   "games": 1000,
+   "text": "67.2% [64.2–70.0]"
+  }
+ }
+}
