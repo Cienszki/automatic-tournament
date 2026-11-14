@@ -1,0 +1,151 @@
+{
+ "experiment": "skill",
+ "slug": "wiosenna",
+ "seed": 1,
+ "gamesPlayed": 1000,
+ "gamesArg": null,
+ "ms": 596504,
+ "command": "npx tsx scripts/tools/card-sim/run.ts skill --slug wiosenna --seed 1",
+ "tables": [
+  {
+   "title": "3a. Skill: win rate of the row level against the column level, equal decks (wiosenna)",
+   "measured": "1000 games per pair (expert included: about 0.12 s a game against 0.014 s for the others, fast enough for the full count), equal random decks (target 75), each pair of decks played from both seats with both decks; the levels' own deckGap is not applied. Stalled games over all cells: 0.",
+   "columns": [
+    "Row \\ column",
+    "easy",
+    "medium",
+    "hard",
+    "expert"
+   ],
+   "rows": [
+    [
+     "easy",
+     "—",
+     "16.4% [14.2–18.8]",
+     "8.8% [7.2–10.7]",
+     "2.3% [1.5–3.4]"
+    ],
+    [
+     "medium",
+     "83.6% [81.2–85.8]",
+     "—",
+     "35.0% [32.1–38.0]",
+     "9.6% [7.9–11.6]"
+    ],
+    [
+     "hard",
+     "91.2% [89.3–92.8]",
+     "65.0% [62.0–67.9]",
+     "—",
+     "13.8% [11.8–16.1]"
+    ],
+    [
+     "expert",
+     "97.7% [96.6–98.5]",
+     "90.4% [88.4–92.1]",
+     "86.2% [83.9–88.2]",
+     "—"
+    ]
+   ]
+  },
+  {
+   "title": "3b. Skill against collection (wiosenna)",
+   "measured": "1000 games each, fresh collections every 20 games, first player alternating. Win rate of the first-named player.",
+   "columns": [
+    "Match",
+    "Rating (first vs second)",
+    "Strength (first vs second)",
+    "Decided / stalled",
+    "First-named wins [95% CI]"
+   ],
+   "rows": [
+    [
+     "Expert with a 10-pack deck vs hard with a 40-pack deck",
+     "73.6 vs 83.4",
+     "4.59 vs 6.13",
+     "1000 / 0",
+     "41.9% [38.9–45.0]"
+    ],
+    [
+     "Hard with a 10-pack deck vs medium with a 40-pack deck",
+     "73.7 vs 83.5",
+     "4.61 vs 6.12",
+     "1000 / 0",
+     "29.9% [27.1–32.8]"
+    ]
+   ]
+  }
+ ],
+ "data": {
+  "matrix": {
+   "easy|medium": {
+    "k": 164,
+    "n": 1000,
+    "stalled": 0,
+    "ms": 14062
+   },
+   "easy|hard": {
+    "k": 88,
+    "n": 1000,
+    "stalled": 0,
+    "ms": 13358
+   },
+   "easy|expert": {
+    "k": 23,
+    "n": 1000,
+    "stalled": 0,
+    "ms": 130901
+   },
+   "medium|hard": {
+    "k": 350,
+    "n": 1000,
+    "stalled": 0,
+    "ms": 14926
+   },
+   "medium|expert": {
+    "k": 96,
+    "n": 1000,
+    "stalled": 0,
+    "ms": 121217
+   },
+   "hard|expert": {
+    "k": 138,
+    "n": 1000,
+    "stalled": 0,
+    "ms": 120739
+   }
+  },
+  "cross": [
+   {
+    "label": "Expert with a 10-pack deck vs hard with a 40-pack deck",
+    "w": {
+     "k": 419,
+     "n": 1000,
+     "stalled": 0
+    },
+    "xRating": 73.627,
+    "yRating": 83.42299999999997,
+    "xMight": 4.590999999999999,
+    "yMight": 6.133000000000001,
+    "xLegal": 50,
+    "yLegal": 50,
+    "blocks": 50
+   },
+   {
+    "label": "Hard with a 10-pack deck vs medium with a 40-pack deck",
+    "w": {
+     "k": 299,
+     "n": 1000,
+     "stalled": 0
+    },
+    "xRating": 73.706,
+    "yRating": 83.49199999999998,
+    "xMight": 4.609000000000002,
+    "yMight": 6.119999999999997,
+    "xLegal": 50,
+    "yLegal": 50,
+    "blocks": 50
+   }
+  ]
+ }
+}

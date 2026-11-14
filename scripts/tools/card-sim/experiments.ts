@@ -188,7 +188,7 @@ export function skill(ctx: Ctx): Outcome {
     tables: [
       {
         title: `3a. Skill: win rate of the row level against the column level, equal decks (${ctx.slug})`,
-        measured: `${n} games per pair (expert included: it runs about 0.1 s a game, so it got the full count), equal random decks (target ${TARGET}), each pair of decks played from both seats with both decks; the levels' own deckGap is not applied. Stalled games over all cells: ${stalled}.`,
+        measured: `${n} games per pair (expert included: about 0.12 s a game against 0.014 s for the others, fast enough for the full count), equal random decks (target ${TARGET}), each pair of decks played from both seats with both decks; the levels' own deckGap is not applied. Stalled games over all cells: ${stalled}.`,
         columns: ['Row \\ column', ...levels],
         rows: levels.map(x => [x, ...levels.map(y => at(x, y))]),
       },

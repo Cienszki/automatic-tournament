@@ -1,0 +1,277 @@
+{
+ "experiment": "decisions",
+ "slug": "wiosenna",
+ "seed": 1,
+ "gamesPlayed": 1000,
+ "gamesArg": null,
+ "ms": 64003,
+ "command": "npx tsx scripts/tools/card-sim/run.ts decisions --slug wiosenna --seed 1",
+ "tables": [
+  {
+   "title": "5a. Deploy decisions (wiosenna)",
+   "measured": "1000 games, hard vs hard without noise (rnd() = 0), equal decks. \"Strongest\" by baseMight, ties count as strongest.",
+   "columns": [
+    "Measure",
+    "Value"
+   ],
+   "rows": [
+    [
+     "Cards deployed",
+     25095
+    ],
+    [
+     "Deployed card was the strongest in hand at that moment",
+     "100.0% [100.0–100.0]"
+    ],
+    [
+     "Turns with at least one deploy",
+     "10180 of 10222"
+    ],
+    [
+     "Of those: the cards deployed were exactly the top-k of the hand by strength",
+     "100.0% [100.0–100.0]"
+    ]
+   ]
+  },
+  {
+   "title": "5b. Move decisions (wiosenna)",
+   "measured": "Same games. At every call of the computer in the move phase: candidates it weighs (outposts-ai.ts candidates()) and the gap in its judged value between the best candidate and the best one going to a different destination.",
+   "columns": [
+    "Measure",
+    "Value"
+   ],
+   "rows": [
+    [
+     "Move decisions (calls) / with no candidate at all",
+     "21262 / 8938"
+    ],
+    [
+     "Candidates per decision: mean / median / p10 / p90",
+     "10.8 / 11.0 / 3.0 / 16.0"
+    ],
+    [
+     "Decisions that ended the planning (best gain ≤ 0.1)",
+     "14.1%"
+    ],
+    [
+     "Decisions with only one destination among the candidates",
+     1417
+    ],
+    [
+     "Decisions whose best candidate wins the game on the spot (left out below)",
+     472
+    ],
+    [
+     "Gap best vs best other destination, all decisions: mean / median / p10 / p90",
+     "7.31 / 5.15 / 0.30 / 16.55"
+    ],
+    [
+     "Same, decisions where it moved: mean / median / p10 / p90",
+     "7.63 / 5.85 / 0.35 / 16.65"
+    ],
+    [
+     "Share of gaps < 0.3 (the hard level's noise) / < 1 / < 3",
+     "9.1% / 25.5% / 41.3%"
+    ],
+    [
+     "Turns with no move at all",
+     "20.3% [19.5–21.0]"
+    ],
+    [
+     "Turns with no move at all, from turn 3 on",
+     "1.9% [1.6–2.2]"
+    ]
+   ]
+  },
+  {
+   "title": "5c. Fight decisions (wiosenna)",
+   "measured": "Same games (both sides choose hits by full search, since rnd() = 0). Fights compared on the board they start from; \"result\" = outcome label plus the set of units that died; best play = minimax over duelScore, as the computer searches.",
+   "columns": [
+    "Measure",
+    "Value"
+   ],
+   "rows": [
+    [
+     "Fights",
+     6330
+    ],
+    [
+     "Attacker took the objective",
+     "93.5% [92.9–94.1]"
+    ],
+    [
+     "Result differs: both sides autoAttack vs both sides expert search",
+     "16.3% [15.4–17.2]"
+    ],
+    [
+     "Outcome label differs: autoAttack vs expert search",
+     "5.0% [4.5–5.6]"
+    ],
+    [
+     "Hits",
+     21261
+    ],
+    [
+     "Hits with exactly one legal option",
+     "35.3% [34.6–35.9]"
+    ],
+    [
+     "Hits with 2+ options where every option ends in the same result under best play",
+     "52.1% [51.2–52.9]"
+    ],
+    [
+     "Hits with 2+ options where every option has the same minimax value",
+     "53.0% [52.2–53.8]"
+    ],
+    [
+     "Hits where the choice could change the result (2+ options, results differ)",
+     "31.0% [30.4–31.6]"
+    ]
+   ]
+  },
+  {
+   "title": "5d. Hidden information in fights (wiosenna)",
+   "measured": "Same games. Defenders in a fight that were not on the board at any time during the attacker's previous turn.",
+   "columns": [
+    "Measure",
+    "Value"
+   ],
+   "rows": [
+    [
+     "Fights with a previous attacker turn",
+     6330
+    ],
+    [
+     "Such defenders per fight: mean",
+     "0.000"
+    ],
+    [
+     "Fights with at least one",
+     0
+    ]
+   ]
+  }
+ ],
+ "data": {
+  "dep": {
+   "cards": 25095,
+   "strongest": 25095,
+   "turns": 10222,
+   "topK": 10180,
+   "zeroTurns": 42,
+   "handFull": 0
+  },
+  "ft": {
+   "fights": 6330,
+   "took": 5918,
+   "autoVsExpert": 1033,
+   "autoVsExpertOutcome": 318,
+   "playedVsAuto": 1033,
+   "hits": 21261,
+   "forced": 7498,
+   "noChoice": 7168,
+   "sameValue": 7293
+  },
+  "moveDecisions": 12324,
+  "noCandidates": 8938,
+  "gapHistogram": {
+   "0": 772,
+   "1": 445,
+   "2": 476,
+   "3": 223,
+   "4": 207,
+   "5": 152,
+   "6": 142,
+   "7": 120,
+   "8": 61,
+   "9": 62,
+   "10": 97,
+   "11": 190,
+   "12": 299,
+   "13": 229,
+   "14": 237,
+   "15": 216,
+   "16": 186,
+   "17": 187,
+   "18": 129,
+   "19": 96,
+   "20": 43,
+   "21": 22,
+   "22": 10,
+   "24": 1,
+   "25": 5,
+   "26": 8,
+   "27": 10,
+   "28": 5,
+   "29": 6,
+   "30": 2,
+   "31": 2,
+   "32": 2,
+   "33": 1,
+   "0.5": 1735,
+   "1.5": 487,
+   "2.5": 263,
+   "3.5": 220,
+   "4.5": 254,
+   "5.5": 190,
+   "6.5": 130,
+   "7.5": 83,
+   "8.5": 67,
+   "9.5": 142,
+   "10.5": 424,
+   "11.5": 215,
+   "12.5": 249,
+   "13.5": 212,
+   "14.5": 236,
+   "15.5": 235,
+   "16.5": 211,
+   "17.5": 142,
+   "18.5": 101,
+   "19.5": 89,
+   "20.5": 56,
+   "21.5": 11,
+   "23.5": 3,
+   "24.5": 3,
+   "25.5": 5,
+   "26.5": 5,
+   "27.5": 7,
+   "28.5": 9,
+   "29.5": 7,
+   "30.5": 4,
+   "31.5": 1
+  },
+  "candidatesHistogram": {
+   "1": 576,
+   "2": 105,
+   "3": 977,
+   "4": 206,
+   "5": 523,
+   "6": 503,
+   "7": 308,
+   "8": 330,
+   "9": 2065,
+   "10": 299,
+   "11": 700,
+   "12": 191,
+   "13": 622,
+   "14": 178,
+   "15": 3495,
+   "16": 271,
+   "17": 342,
+   "18": 226,
+   "19": 83,
+   "20": 38,
+   "21": 135,
+   "22": 55,
+   "23": 16,
+   "24": 27,
+   "25": 31,
+   "26": 2,
+   "27": 6,
+   "28": 4,
+   "29": 5,
+   "30": 4,
+   "33": 1
+  }
+ }
+}

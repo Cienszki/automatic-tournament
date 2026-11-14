@@ -1,0 +1,137 @@
+{
+ "experiment": "strength",
+ "slug": "pdl-s2",
+ "seed": 1,
+ "gamesPlayed": 1000,
+ "gamesArg": null,
+ "ms": 72743,
+ "command": "npx tsx scripts/tools/card-sim/run.ts strength --slug pdl-s2 --seed 1",
+ "tables": [
+  {
+   "title": "2a. Deck strength: rating gap (pdl-s2)",
+   "measured": "Hard vs hard; the stronger deck aimed at 75+gap, the other at 75 (cpuDeck, realised averages shown); a fresh pair every 2 games, first player alternating. Win rate of the stronger deck.",
+   "columns": [
+    "Aimed gap",
+    "Rating weaker vs stronger (realised)",
+    "Average strength weaker vs stronger",
+    "Decided games",
+    "Stalled",
+    "Stronger deck wins [95% CI]"
+   ],
+   "rows": [
+    [
+     "+0",
+     "74.8 vs 74.5 (gap -0.3)",
+     "4.75 vs 4.69 (gap -0.06)",
+     1000,
+     0,
+     "44.7% [41.6–47.8]"
+    ],
+    [
+     "+3",
+     "74.9 vs 77.2 (gap 2.3)",
+     "4.75 vs 5.07 (gap 0.32)",
+     1000,
+     0,
+     "54.6% [51.5–57.7]"
+    ],
+    [
+     "+5",
+     "74.9 vs 79.0 (gap 4.2)",
+     "4.75 vs 5.35 (gap 0.60)",
+     1000,
+     0,
+     "58.4% [55.3–61.4]"
+    ],
+    [
+     "+10",
+     "74.8 vs 83.9 (gap 9.1)",
+     "4.75 vs 6.11 (gap 1.36)",
+     1000,
+     0,
+     "74.5% [71.7–77.1]"
+    ]
+   ]
+  },
+  {
+   "title": "2b. Deck strength: 10-pack collection vs 40-pack collection (pdl-s2)",
+   "measured": "1000 games, hard vs hard, autoDeck(simCollection(cards, 10)) vs autoDeck(simCollection(cards, 40)), fresh collections every 20 games (50 pairs), first player alternating.",
+   "columns": [
+    "Measure",
+    "New player (10 packs)",
+    "Veteran (40 packs)"
+   ],
+   "rows": [
+    [
+     "Deck average rating (TOTW counted +7, as avgOvr)",
+     "83.8",
+     "92.0"
+    ],
+    [
+     "Deck average strength (baseMight)",
+     "6.11",
+     "7.58"
+    ],
+    [
+     "Legal decks (of collections drawn)",
+     "50/50",
+     "50/50"
+    ],
+    [
+     "Wins [95% CI] (decided games; stalled shown below)",
+     "18.5% [16.2–21.0]",
+     "81.5% [79.0–83.8]"
+    ],
+    [
+     "Decided / stalled games",
+     "1000 / 0",
+     ""
+    ]
+   ]
+  }
+ ],
+ "data": {
+  "gap0": {
+   "k": 447,
+   "n": 1000,
+   "stalled": 0,
+   "ratingGap": -0.31790000000000024,
+   "mightGap": -0.05730000000000001
+  },
+  "gap3": {
+   "k": 546,
+   "n": 1000,
+   "stalled": 0,
+   "ratingGap": 2.267400000000001,
+   "mightGap": 0.3166999999999996
+  },
+  "gap5": {
+   "k": 584,
+   "n": 1000,
+   "stalled": 0,
+   "ratingGap": 4.172999999999997,
+   "mightGap": 0.6045999999999997
+  },
+  "gap10": {
+   "k": 745,
+   "n": 1000,
+   "stalled": 0,
+   "ratingGap": 9.0776,
+   "mightGap": 1.3604000000000005
+  },
+  "collections": {
+   "w": {
+    "k": 815,
+    "n": 1000,
+    "stalled": 0
+   },
+   "xRating": 92.00200000000001,
+   "yRating": 83.76399999999998,
+   "xMight": 7.585,
+   "yMight": 6.111999999999997,
+   "xLegal": 50,
+   "yLegal": 50,
+   "blocks": 50
+  }
+ }
+}
