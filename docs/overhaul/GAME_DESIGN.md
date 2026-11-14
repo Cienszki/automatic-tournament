@@ -56,7 +56,19 @@ A game has depth when a player regularly faces a choice in which the options tra
 
 On top of this, **the collection decides the match.** The earlier sessions measured that with equal play, a deck rated 10 higher wins about 86% of matches, and the strongest computer level needs a deck 8 points better to be a challenge. A new player with the ten welcome packs cannot beat a player who has collected for a season, whatever they do. For a game that hopes people will challenge each other, that is the most damaging number.
 
-*(The measurements of WP-50 go here: deck strength against win rate with realistic collections, how often the strongest cards are the ones played, the attacker's share of won fights, how often target choice matters, and how often the player who gets ahead stays ahead.)*
+**The measurements.** WP-50 built a simulation harness (`scripts/tools/card-sim/`) that plays today's game, computer against computer, with the real cards of Wiosenna (851 cards) and PDL S2 (117 cards). The full tables are in `docs/overhaul/sim/baseline/REPORT.md` on branch `wp/50-card-sim`. Each number below is from 1,000 or more games on Wiosenna, between two computer players of the same level ("Trudny") unless stated.
+
+| Claim | Measurement |
+|---|---|
+| The collection decides the match | A deck built from the 10 welcome packs loses to a deck built from 40 packs **90%** of the time (81.5% on PDL S2). The stronger computer level ("Mistrz") with the 10-pack deck still loses 58% against the weaker level with the 40-pack deck |
+| Which card to play is never a question | Of 25,095 cards played, **100%** were the strongest card in the hand at that moment |
+| Deck building is sorting | Against the strongest twenty from the same collection: that deck with its three best cards swapped for the next best wins 16%; a deck built around real teams wins 10%; a random legal deck wins 4% |
+| There is nothing to read | In 6,330 fights, **no** defender was ever a unit the attacker had not already seen on the board for a full turn. The attacker won **93.5%** of fights |
+| The fight screen decides little | A match has 6.5 fights and 19 hits. A player's 27 actions in a match are 11 card plays, 6.5 moves and 9.5 hits, so a third of all clicks are hits. Choosing targets with a full search, against simply hitting the obvious target, changes who holds the objective in **5%** of fights, and changes anything at all in 16% |
+| The player who gets ahead stays ahead | The side ahead after three turns each wins 85.5%. With a lead of three points or more at that moment it wins 94% |
+| Going first is a disadvantage | The first player wins 43%. The six-card hand given to the second player overcorrects |
+
+One finding is about packs, not rules. Packs hold only each team's last series, so on Wiosenna a pack can reach 95 of the 851 cards, and only 2 of the 45 team-of-the-round cards. A card from an earlier round can never be collected by someone who joins later. Section 8 keeps the pack rule and adds ways to reach the other cards.
 
 ### 2.2 Why new players are confused
 
