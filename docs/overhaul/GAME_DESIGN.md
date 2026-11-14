@@ -252,3 +252,26 @@ Each decision recorded in `inventory/CARDS.md` and the decision log, with a verd
 | 26 | Rarity by strength; welcome 10 packs; 3 packs per round | Keep, with two of the three round packs now earned in Kolejka (section 8) |
 | 27 | One card per player and team in a deck | Keep |
 | 28 | Cards need a nickname or Discord | Keep; asked after the first match, not before it |
+
+## 11. What this document cannot know, and how to find out
+
+- **Whether people find it fun.** Simulations show that the rules are fair, that thinking pays and that matches are short. They cannot show that a round feels good to play. WP-54 puts three versions of the screen in the owner's hands before anything is built for real, and WP-62 runs a trial with five people who have never seen the game.
+- **How real people play.** The computer players stand in for people. The weakest of them plays "the obvious move", which is roughly what a new player does, but real beginners make other mistakes, and real experts will find things the strongest computer does not. The balance check of WP-52 runs on every change, so a discovery by players becomes a knob change with a measured effect.
+- **How many people play today, and where they stop.** There are no usage numbers. The complaint in the brief and the testers' notes are the only evidence. WP-62 adds the events that answer it: time to the first move, first matches finished, players who return after a real round.
+- **Whether the first minute is really a minute.** The path in section 6 has no step that takes long, but only a stopwatch on a new visitor proves it. That is the first thing the trial measures.
+- **The economy's exact numbers.** The shard values and the effect of the followed team's cards are estimates until WP-61 simulates full seasons.
+- **Small tournaments.** PDL S2 has 12 teams and 117 cards so far, and the rules hold there in simulation. A tournament of four teams in its first round has about 20 cards, fewer than a legal deck needs from one collection with luck against it. The first-run deck and Kolejka's team decks are built from all the tournament's cards, so they work; for a tournament below 8 teams the deck size may need to drop, and WP-52 adds a test for the smallest tournament the game supports.
+
+## 12. Questions for the owner
+
+Each has a recommendation, and the design proceeds on it. They are also in `STATUS.md`.
+
+1. **The deck budget** (decision 9). Recommended: accept. Without it a new player loses nine matches in ten to a collector, and no other rule in this document fixes that.
+2. **No fight screen** (decision 13). Recommended: accept. If the owner wants a moment of direct action kept, the place for it is the reveal, and WP-54's third version plays the reveal objective by objective for that reason.
+3. **Both players plan at once** (decision 12). Recommended: accept. It is what gives the game something to read, and it removes most of the waiting in a match between people.
+4. **Deck of 12** (decision 10). Recommended: accept.
+5. **The first deck is built for the player, and the tutorial becomes a four-round first match** (decisions 19 and 20). Recommended: accept.
+6. **Two of the three round packs are earned in Kolejka.** Recommended: accept. The alternative that keeps today's income for people who never play is to leave all three automatic and make Kolejka's packs extra; that raises a regular player's income by two-thirds.
+7. **Kolejka's opponents are the real teams' lineups.** Recommended: accept. It does not use any user's deck. If a team objects to being "beaten" in a card game, the mode can be named after the round instead of the team.
+8. **A phone layout.** Recommended: yes; it is where the viewers are. It is the largest single piece of screen work in the plan (part of WP-54 and WP-55).
+9. **When v2 replaces v1 for PDL S2.** Recommended: at a round boundary as soon as WP-58 and WP-59 are proven, with collections untouched and rankings started fresh. If v2's live duels are ready before WP-40 moves v1's duels to the new platform, WP-40 skips them.
