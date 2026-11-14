@@ -97,6 +97,7 @@ One line per WP: id, name, branch, state (planned / in progress / in review / me
 | WP-47 | Spike: results from a bot lobby without the organizer's own Valve league | — | dropped | Every tournament keeps its own Dota 2 league (question 21) |
 | WP-48 | Proof: a new organizer runs a season to the final (end-to-end flow and a trial with people) | `wp/48-organizer-trial` | planned | M, Fable review of the findings. The owner runs the trial |
 | WP-49 | Captain's, caster's and viewer's screens with the same problems | — | on request | Not designed; needs a design pass per place (`ORGANIZER_UX.md` section 7) |
+| WP-50 | Card game simulation harness and baseline measurements (S3) | `wp/50-card-sim` | in review | `scripts/tools/card-sim/`: card pool from the fixtures (`loadCards`), seeded CPU-vs-CPU runner (`playGame`), 8 experiments; numbers in `docs/overhaul/sim/baseline/REPORT.md`. Rules and AI unchanged |
 
 ## Questions for the owner
 
