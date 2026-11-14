@@ -1,3 +1,4 @@
+import { withSentryConfig } from '@sentry/nextjs/config';
 import createNextIntlPlugin from 'next-intl/plugin';
 
 const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts');
@@ -157,4 +158,31 @@ const buildConfig = (phase) => {
   return withNextIntl(nextConfig);
 };
 
-export default buildConfig;
+// Sentry's build step. It never talks to the network unless SENTRY_AUTH_TOKEN is
+// set: then it creates the release and uploads source maps; otherwise it only
+// injects the release name. Runtime set-up is in src/platform/errors/sentry.ts.
+const sentryAuthToken = process.env.SENTRY_AUTH_TOKEN || undefined;
+const sentryUpload = Boolean(sentryAuthToken);
+// The commit being built, from the hosting provider (Vercel) or CI (GitHub Actions).
+const release =
+  process.env.SENTRY_RELEASE || process.env.VERCEL_GIT_COMMIT_SHA || process.env.GITHUB_SHA || undefined;
+
+export default withSentryConfig(buildConfig, {
+  org: 'polish-dota2-inhouse',
+  project: 'tournament-web',
+  authToken: sentryAuthToken,
+  silent: !sentryUpload,
+  telemetry: false,
+  release: { name: release, create: sentryUpload, finalize: sentryUpload },
+  sourcemaps: { disable: !sentryUpload, deleteSourcemapsAfterUpload: true },
+  widenClientFileUpload: true,
+  // Wrapping the middleware put the whole edge SDK into it (33 kB to 118 kB);
+  // middleware errors still reach onRequestError in src/instrumentation.ts.
+  webpack: { autoInstrumentMiddleware: false },
+  bundleSizeOptimizations: {
+    excludeDebugStatements: true,
+    excludeReplayIframe: true,
+    excludeReplayShadowDom: true,
+    excludeReplayWorker: true,
+  },
+});

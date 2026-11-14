@@ -1,5 +1,8 @@
 "use client";
 
+import { useEffect } from "react";
+import { reportError } from "@/platform/errors/error-reporting";
+
 // Global error boundary renders outside NextIntlClientProvider,
 // so we use a simple inline translation map based on cookie/navigator locale.
 const translations = {
@@ -32,6 +35,10 @@ interface GlobalErrorProps {
 
 export default function GlobalError({ error, reset }: GlobalErrorProps) {
   const t = translations[getLocale()];
+
+  useEffect(() => {
+    reportError(error, { source: "global-error" });
+  }, [error]);
 
   return (
     <html>

@@ -17,6 +17,7 @@ import {
 import { auth } from "@/lib/firebase";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { setErrorContext } from "@/platform/errors/context";
 
 interface AuthContextType {
   user: User | null;
@@ -60,7 +61,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [discordOn, setDiscordOn] = useState<boolean | null>(null);
   const { toast } = useToast();
 
-  useEffect(() => onAuthStateChanged(auth, u => { setUser(u); setLoading(false); }), []);
+  useEffect(() => onAuthStateChanged(auth, u => { setUser(u); setLoading(false); setErrorContext({ userId: u?.uid ?? null }); }), []);
   useEffect(() => { fetch("/api/login/providers").then(r => r.json()).then(p => setDiscordOn(!!p.discord)).catch(() => setDiscordOn(false)); }, []);
 
   const startSession = async (u: User) => {
