@@ -4,7 +4,8 @@ import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Table } from '../experiments';
 
-export const OUT_DIR = join(__dirname, '..', '..', '..', '..', 'docs', 'overhaul', 'sim', 'v2');
+/** SIM_OUT names another folder under docs/overhaul/sim (default v2) */
+export const OUT_DIR = join(__dirname, '..', '..', '..', '..', 'docs', 'overhaul', 'sim', process.env.SIM_OUT ?? 'v2');
 const INTRO = join(__dirname, 'report-intro.md');
 
 const cellText = (x: string | number) => String(x).replace(/\|/g, '\\|');

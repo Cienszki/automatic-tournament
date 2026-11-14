@@ -19,7 +19,7 @@ function rivalSeen(v: MatchView): GCard[] {
 
 export function rivalAverageCost(v: MatchView): number {
   const seen = rivalSeen(v);
-  if (seen.length >= 3) return seen.reduce((a, c) => a + cost(c), 0) / seen.length;
+  if (seen.length >= 3) return seen.reduce((a, c) => a + cost(c, v.public.rules.costMode), 0) / seen.length;
   const { budget, deckSize } = v.public.rules;
   return Number.isFinite(budget) ? budget / deckSize : NO_BUDGET_AVERAGE;
 }
@@ -30,7 +30,7 @@ export function plausibleCards(v: MatchView, pool: GCard[]): GCard[] {
   const used = new Set(rivalSeen(v).map(deckKey));
   const open = pool.filter((c) => !used.has(deckKey(c)));
   for (const spread of [1.5, 2.5]) {
-    const near = open.filter((c) => Math.abs(cost(c) - mean) <= spread);
+    const near = open.filter((c) => Math.abs(cost(c, v.public.rules.costMode) - mean) <= spread);
     if (near.length >= 12) return near;
   }
   return open.length ? open : pool;

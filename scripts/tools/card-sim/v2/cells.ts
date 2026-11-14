@@ -62,7 +62,7 @@ function deckFor(cell: CellSpec, rules: Rules, seat: 0 | 1, pair: number): GCard
   const { cards, byId } = slugPool(cell.slug);
   if (spec.kind === 'list') return spec.decks[pair % spec.decks.length].map((id) => byId.get(id)!);
   const colSeat = cell.sameCollection ? 0 : seat;
-  const key = `${cell.slug}|${cell.seed}|${spec.packs}|${colSeat}|${pair}|${spec.builder}|${rules.deckSize}|${rules.perRole}|${rules.budget}`;
+  const key = `${cell.slug}|${cell.seed}|${spec.packs}|${colSeat}|${pair}|${spec.builder}|${rules.deckSize}|${rules.perRole}|${rules.budget}|${rules.costMode}`;
   if (!deckCache.has(key)) {
     const col = simCollection(cards, spec.packs, stream(cell.seed, 'collection', spec.packs, colSeat, pair));
     const d = buildDeck(spec.builder, col, rules, stream(cell.seed, 'random-deck', colSeat, pair));

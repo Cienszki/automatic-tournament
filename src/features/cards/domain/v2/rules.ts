@@ -2,6 +2,9 @@
 // of them without touching module state. The engine never reads a rule from anywhere else.
 
 export type GankMode = 'strongest' | 'weakest' | 'off';
+/** What a card costs against the budget: 'rating' = rating strength 1-9; 'might' = that plus the role
+ *  modifier (Offlane +1, supports -1, at least 1); 'full' = 'might' plus the team-of-the-round +1 */
+export type CostMode = 'rating' | 'might' | 'full';
 
 export interface Abilities {
   /** Carry: +1 growth per round on an objective its side controls */
@@ -22,6 +25,16 @@ export interface Rules {
   perRole: number;
   /** Highest allowed sum of card costs (cost = rating strength 1-9); Infinity = no budget */
   budget: number;
+  costMode: CostMode;
+  /** Smoke: 'from' = one free move a round from where a Soft Support stood; 'pull' = each Soft Support
+   *  played from hand lets one own unit move to its objective for no order */
+  smokeMode: 'from' | 'pull';
+  /** Tank: 'block' = a gank does nothing where a rival Offlane stands; 'redirect' = it hits the Offlane */
+  tankMode: 'block' | 'redirect';
+  /** Extra orders for the side with less HP at the start of a round (0 = none) */
+  catchUpOrders: number;
+  /** Extra cards drawn by the side with less HP at the start of a round (0 = none) */
+  catchUpDraw: number;
   /** Ancient hit points */
   hp: number;
   /** Most units one side may have on one objective */
@@ -54,6 +67,11 @@ export const DEFAULT_RULES: Rules = {
   deckSize: 12,
   perRole: 1,
   budget: 66,
+  costMode: 'might',
+  smokeMode: 'pull',
+  tankMode: 'redirect',
+  catchUpOrders: 0,
+  catchUpDraw: 1,
   hp: 12,
   capacity: 3,
   draw: 1,
@@ -67,7 +85,7 @@ export const DEFAULT_RULES: Rules = {
   roshanValue: 2,
   farmMax: 3,
   roundCap: 8,
-  highGround: 'all',
+  highGround: 'here',
   abilities: { farma: true, tank: true, smoke: true, aura: true, team: true },
 };
 
@@ -77,3 +95,7 @@ export type RulesPatch = Partial<Omit<Rules, 'abilities'>> & { abilities?: Parti
 export function makeRules(patch: RulesPatch = {}, base: Rules = DEFAULT_RULES): Rules {
   return { ...base, ...patch, abilities: { ...base.abilities, ...patch.abilities } };
 }
+
+/** The first candidate rule set of WP-51 (before the second round of simulations). The older engine
+ *  tests describe these variants; the simulations of E1-E12 in `sim/v2-first` used them. */
+export const FIRST_RULES: Rules = makeRules({ costMode: 'rating', smokeMode: 'from', tankMode: 'block', catchUpDraw: 0, highGround: 'all' });

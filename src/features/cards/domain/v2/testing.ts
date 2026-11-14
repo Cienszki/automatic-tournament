@@ -3,7 +3,7 @@ import type { GCard, RoleKey } from '@/lib/card-lab/cards';
 import { POS } from '@/lib/card-lab/cards';
 import { cardStrength, type ObjId } from '@/lib/card-lab/outposts';
 import type { PlayerX, TeamX } from '@/lib/stats-lab/derive';
-import { makeRules, type RulesPatch } from './rules';
+import { FIRST_RULES, makeRules, type RulesPatch } from './rules';
 import type { MatchState, Side, Slot, Unit } from './types';
 
 /** The lowest rating that gives this cost (rating strength) */
@@ -37,9 +37,10 @@ export interface BoardSpec {
   orders?: [number, number];
 }
 
-/** A match state put together by hand (round 2 by default, so units on the board can move) */
+/** A match state put together by hand (round 2 by default, so units on the board can move).
+ *  Rules: the first candidate set unless the spec changes them, so each test names the variant it is about. */
 export function aBoard(spec: BoardSpec = {}): MatchState {
-  const rules = makeRules(spec.rules);
+  const rules = makeRules(spec.rules, FIRST_RULES);
   const units: Unit[] = (spec.units ?? []).map((u) => ({ uid: `${u.side}:${u.card.id}`, card: u.card, side: u.side, at: u.at, growth: u.growth ?? 0, played: u.played ?? 1 }));
   const side = (i: Side) => ({ hp: spec.hp?.[i] ?? rules.hp, hand: [...(spec.hands?.[i] ?? [])], deck: [...(spec.decks?.[i] ?? [])], grave: [], known: [] });
   return {

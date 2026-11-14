@@ -76,8 +76,9 @@ export function buildDeck(name: BuilderName, col: GCard[], rules: DeckRules, rnd
       const d = pick(col, rules, (c) => expectedStrength(c) + tie(c), mins);
       return d && improveTeams(d, col, rules, mins);
     }
-    case 'topHeavy': return pick(col, rules, (c) => (cost(c) >= 8 ? 100 + baseMight(c) : -cost(c)) + tie(c), mins);
-    case 'flat': return pick(col, rules, (c) => -10 * Math.abs(cost(c) - target) + baseMight(c) / 10 + tie(c), mins);
+    // Both spend the budget on strength like `best`; they differ only in the shape of the costs
+    case 'topHeavy': return pick(col, rules, (c) => expectedStrength(c) + 0.15 * (cost(c, rules.costMode) - target) ** 2 + tie(c), mins);
+    case 'flat': return pick(col, rules, (c) => expectedStrength(c) - 0.3 * (cost(c, rules.costMode) - target) ** 2 + tie(c), mins);
     case 'teamStack': return teamStack(col, rules);
     case 'random': {
       if (!rnd) throw new Error('random deck needs a random stream');
@@ -92,6 +93,6 @@ export function buildDeck(name: BuilderName, col: GCard[], rules: DeckRules, rnd
   }
 }
 
-export const totalCost = (d: GCard[]) => d.reduce((a, c) => a + cost(c), 0);
+export const totalCost = (d: GCard[], mode: DeckRules['costMode'] = 'rating') => d.reduce((a, c) => a + cost(c, mode), 0);
 export const totalMight = (d: GCard[]) => d.reduce((a, c) => a + baseMight(c), 0);
 export const roleMix = (d: GCard[]) => ROLE_KEYS.map((r) => d.filter((c) => c.role === r).length).join('/');

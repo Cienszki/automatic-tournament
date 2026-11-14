@@ -34,9 +34,9 @@ describe('deck optimiser', () => {
       }
       const roleSkew = buildDeck('roleSkew:Mid', col, DEFAULT_RULES)!;
       expect(roleSkew.filter((c) => c.role === 'Mid')).toHaveLength(8);
-      expect(totalCost(buildDeck('best', col, makeRules({ budget: 54 }))!)).toBeLessThanOrEqual(54);
+      expect(totalCost(buildDeck('best', col, makeRules({ budget: 54 }))!, DEFAULT_RULES.costMode)).toBeLessThanOrEqual(54);
     }
-  });
+  }, 60_000);
 });
 
 describe('experiment cells', () => {

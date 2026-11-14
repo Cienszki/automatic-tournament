@@ -48,7 +48,7 @@ export async function e1(ctx: Ctx): Promise<Outcome> {
 const BUDGETS = [66, Infinity, 54, 60, 72, 78];
 
 export async function e2(ctx: Ctx): Promise<Outcome> {
-  const cells = BUDGETS.map((b) => cell(ctx, `e2-${budgetLabel(b)}`, seat('planner', 'best', PACKS.veteran), seat('planner', 'best', PACKS.new), { rules: { budget: b } }));
+  const cells = BUDGETS.map((b) => cell(ctx, `e2-${budgetLabel(b)}`, seat('planner', 'best', PACKS.veteran), seat('planner', 'best', PACKS.new), { rules: { budget: b }, collections: 250 }));
   const all = await playCells(cells);
   const rows = all.map((res, i) => {
     const t = deckTotals(ctx.slug, res); const w = wins(res);

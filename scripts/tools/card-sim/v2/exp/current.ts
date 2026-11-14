@@ -1,7 +1,7 @@
 // E10: how far small changes to TODAY's game get (direction A), with WP-50's runner.
 //  (i)  STRENGTH set to { min 4, max 8, curve 1 } (restored afterwards): WP-50's strength
 //       experiment as it is, run with the changed curve and with the original one.
-//  (ii) today's game with a deck budget: 20 cards, 2 per role, sum of cardStrength <= 110, built
+//  (ii) today's game with a deck budget: 20 cards, 2 per role, sum of cardStrength <= 90, built
 //       with the v2 optimiser (best total baseMight); new player vs veteran.
 import { simCollection, type GCard } from '@/lib/card-lab/cards';
 import { baseMight, STRENGTH } from '@/lib/card-lab/outposts';
@@ -21,7 +21,7 @@ function withStrength<T>(s: typeof STRENGTH, f: () => T): T {
 }
 
 function budgetSeries(ctx: Ctx, cards: GCard[], n: number) {
-  const rules = { deckSize: 20, perRole: 2, budget: 110 };
+  const rules = { deckSize: 20, perRole: 2, budget: 90 };
   const value = (c: GCard) => baseMight(c) + c.ovr / 1e4;
   const blocks = new Map<number, [GCard[] | null, GCard[] | null]>();
   const decks = (b: number) => {
@@ -62,7 +62,7 @@ export async function e10(ctx: Ctx): Promise<Outcome> {
       ...changed.tables.map((t) => relabel(t, '(i) STRENGTH min 4, max 8, curve 1')),
       {
         title: `E10 (ii). Today's game with a deck budget (${ctx.slug})`,
-        measured: `Today's rules and computer (hard vs hard, first player alternating), decks of 20 cards with 2 per role and sum of cardStrength <= 110, the highest total baseMight within that (exact optimiser); fresh collections every 20 games. ${budget.skipped} games skipped because a collection had no legal deck.`,
+        measured: `Today's rules and computer (hard vs hard, first player alternating), decks of 20 cards with 2 per role and sum of cardStrength <= 90, the highest total baseMight within that (exact optimiser); fresh collections every 20 games. ${budget.skipped} games skipped because a collection had no legal deck.`,
         columns: ['Measure', 'New player (10 packs)', 'Veteran (40 packs)'],
         rows: [
           ['Deck cost (sum of cardStrength)', num(budget.newCost, 1), num(budget.vetCost, 1)],

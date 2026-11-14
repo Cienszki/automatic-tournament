@@ -28,6 +28,21 @@ export function freeMoves(s: MatchState, side: Side, plan: Plan): Map<string, Fr
   const smoke = smokeSlots(s, side);
   const gates = gatesSlot(s, side);
   const at = (uid: string) => s.units.find((u) => u.uid === uid)?.at;
+  if (s.rules.smokeMode === 'pull') {
+    const out = new Map<string, FreeKind>();
+    const gatesMove = gates === null ? undefined : moves.find((m) => at(m.unit) === gates);
+    if (s.rules.abilities.smoke) {
+      const hand = new Map(s.sides[side].hand.map((c) => [c.id, c]));
+      for (const p of plan) {
+        if (p.kind !== 'play' || hand.get(p.card)?.role !== 'Soft Support') continue;
+        const m = moves.find((x) => x.to === p.to && !out.has(x.unit) && x !== gatesMove) ?? moves.find((x) => x.to === p.to && !out.has(x.unit));
+        if (m) out.set(m.unit, 'smoke');
+      }
+    }
+    const g = gates === null ? undefined : moves.find((m) => at(m.unit) === gates && !out.has(m.unit));
+    if (g) out.set(g.unit, 'gates');
+    return out;
+  }
   const smokeOk = moves.filter((m) => { const a = at(m.unit); return a !== undefined && smoke.has(a); }).map((m) => m.unit);
   const gatesOk = gates === null ? [] : moves.filter((m) => at(m.unit) === gates).map((m) => m.unit);
   const out = new Map<string, FreeKind>();

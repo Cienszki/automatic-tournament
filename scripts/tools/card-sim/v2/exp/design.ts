@@ -123,3 +123,34 @@ export async function e8(ctx: Ctx, knobs = KNOBS, title = 'E8. Rule knobs, one a
     }],
   };
 }
+
+/** E13: knobs added after the first results (what a card costs, catch-up for the side behind) */
+export const KNOBS2: Array<{ name: string; rules: RulesPatch }> = [
+  { name: 'defaults', rules: {} },
+  { name: 'cost = might (role modifier counted)', rules: { costMode: 'might' } },
+  { name: 'cost = full (role modifier and TOTW counted)', rules: { costMode: 'full' } },
+  { name: 'catch-up: +1 order when behind', rules: { catchUpOrders: 1 } },
+  { name: 'catch-up: +1 card when behind', rules: { catchUpDraw: 1 } },
+  { name: 'High Ground bonus only on High Ground', rules: { highGround: 'here' } },
+  { name: 'farmMax 2', rules: { farmMax: 2 } },
+  { name: 'no late multiplier, hp 10', rules: { lateFrom: Infinity, hp: 10 } },
+  { name: 'might + catch-up order + HG here', rules: { costMode: 'might', catchUpOrders: 1, highGround: 'here' } },
+  { name: 'full + catch-up order + HG here', rules: { costMode: 'full', catchUpOrders: 1, highGround: 'here' } },
+  { name: 'might + catch-up card + HG here', rules: { costMode: 'might', catchUpDraw: 1, highGround: 'here' } },
+  { name: 'might + catch-up order + card + HG here', rules: { costMode: 'might', catchUpOrders: 1, catchUpDraw: 1, highGround: 'here' } },
+];
+export const e13 = (ctx: Ctx) => e8(ctx, KNOBS2, 'E13. Second round of knobs: card cost and catch-up');
+
+/** E14: Smoke and Tank variants, alone and on top of the E13 combination */
+const BASE14: RulesPatch = { costMode: 'might', highGround: 'here' };
+export const KNOBS3: Array<{ name: string; rules: RulesPatch }> = [
+  { name: 'cost = might, HG here (base for this table)', rules: BASE14 },
+  { name: 'base + Smoke pulls a unit', rules: { ...BASE14, smokeMode: 'pull' } },
+  { name: 'base + Tank takes the gank', rules: { ...BASE14, tankMode: 'redirect' } },
+  { name: 'base + both', rules: { ...BASE14, smokeMode: 'pull', tankMode: 'redirect' } },
+  { name: 'base + both + catch-up order', rules: { ...BASE14, smokeMode: 'pull', tankMode: 'redirect', catchUpOrders: 1 } },
+  { name: 'base + both + catch-up card', rules: { ...BASE14, smokeMode: 'pull', tankMode: 'redirect', catchUpDraw: 1 } },
+  { name: 'base + both + farmMax 2', rules: { ...BASE14, smokeMode: 'pull', tankMode: 'redirect', farmMax: 2 } },
+  { name: 'base + both + gank weakest', rules: { ...BASE14, smokeMode: 'pull', tankMode: 'redirect', gank: 'weakest' } },
+];
+export const e14 = (ctx: Ctx) => e8(ctx, KNOBS3, 'E14. Smoke and Tank variants');

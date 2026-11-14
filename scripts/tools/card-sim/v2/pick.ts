@@ -22,7 +22,7 @@ function groups(col: GCard[]): GCard[][] {
 export function pick(col: GCard[], rules: DeckRules, value: (c: GCard) => number, needs: Needs): GCard[] | null {
   const gs = groups(col);
   const size = rules.deckSize;
-  const cap = Math.min(rules.budget, 9 * size);
+  const cap = Math.min(rules.budget, 12 * size);
   const radix = ROLE_KEYS.map((r) => needs[r].min + 1);
   const stride = radix.map((_, i) => radix.slice(0, i).reduce((a, b) => a * b, 1));
   const states = radix.reduce((a, b) => a * b, 1);
@@ -35,7 +35,7 @@ export function pick(col: GCard[], rules: DeckRules, value: (c: GCard) => number
   for (const g of gs) {
     const next = new Float64Array(val);
     const ch = new Int32Array(W).fill(-1);
-    const opts = g.map((card) => ({ card, r: ROLE_KEYS.indexOf(card.role), cost: cost(card), v: value(card) }));
+    const opts = g.map((card) => ({ card, r: ROLE_KEYS.indexOf(card.role), cost: cost(card, rules.costMode), v: value(card) }));
     for (let k = 0; k < size; k++) for (let c = 0; c <= cap; c++) for (let m = 0; m < states; m++) {
       const v = val[at(k, c, m)];
       if (v === -Infinity) continue;
@@ -64,7 +64,7 @@ export function pick(col: GCard[], rules: DeckRules, value: (c: GCard) => number
     if (x < 0) continue;
     const card = gs[gi][x >> 1];
     deck.push(card);
-    k--; c -= cost(card); m -= (x & 1) * stride[ROLE_KEYS.indexOf(card.role)];
+    k--; c -= cost(card, rules.costMode); m -= (x & 1) * stride[ROLE_KEYS.indexOf(card.role)];
   }
   return deck;
 }

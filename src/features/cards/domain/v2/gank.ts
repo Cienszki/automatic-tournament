@@ -18,8 +18,16 @@ function choose(s: MatchState): Pick[] {
   const picks: Pick[] = [];
   for (const mid of mids) {
     const rivals = s.units.filter((u) => u.side === other(mid.side) && u.at === mid.at);
-    if (s.rules.abilities.tank && rivals.some((u) => u.card.role === 'Offlane')) {
+    const tanks = s.rules.abilities.tank ? rivals.filter((u) => u.card.role === 'Offlane') : [];
+    if (tanks.length && s.rules.tankMode === 'block') {
       picks.push({ mid, target: null, blocked: true });
+      continue;
+    }
+    if (tanks.length) {
+      // The Offlane takes the gank for its side
+      const t = tanks.filter((u) => !taken.has(u.uid)).sort(byId)[0] ?? null;
+      if (t) taken.add(t.uid);
+      picks.push({ mid, target: t, blocked: false });
       continue;
     }
     // Two Mids of one side on one objective take two different units
