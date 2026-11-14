@@ -37,6 +37,8 @@ export interface Rules {
   catchUpOrders: number;
   /** Extra cards drawn by the side with less HP at the start of a round (0 = none) */
   catchUpDraw: number;
+  /** How many HP behind a side must be for the catch-up to apply (1 = any deficit) */
+  catchUpGap: number;
   /** Ancient hit points */
   hp: number;
   /** Most units one side may have on one objective */
@@ -74,7 +76,8 @@ export const DEFAULT_RULES: Rules = {
   smokeMode: 'pull',
   tankMode: 'redirect',
   catchUpOrders: 0,
-  catchUpDraw: 0,
+  catchUpDraw: 1,
+  catchUpGap: 3,
   hp: 12,
   capacity: 3,
   draw: 1,
@@ -101,4 +104,4 @@ export function makeRules(patch: RulesPatch = {}, base: Rules = DEFAULT_RULES): 
 
 /** The first candidate rule set of WP-51 (before the second round of simulations). The older engine
  *  tests describe these variants; the simulations of E1-E12 in `sim/v2-first` used them. */
-export const FIRST_RULES: Rules = makeRules({ budget: 66, costMode: 'rating', auraMode: 'stack', smokeMode: 'from', tankMode: 'block', catchUpDraw: 0, highGround: 'all' });
+export const FIRST_RULES: Rules = makeRules({ budget: 66, costMode: 'rating', auraMode: 'stack', smokeMode: 'from', tankMode: 'block', catchUpDraw: 0, catchUpGap: 1, highGround: 'all' });

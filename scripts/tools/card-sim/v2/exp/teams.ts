@@ -40,6 +40,7 @@ export function teamDecks(slug: string, deckSize = DEFAULT_RULES.deckSize): Team
   return out;
 }
 
+const CPUS = ['greedy', 'responder', 'planner'] as const;
 const five = (xs: number[]) => [0, 0.25, 0.5, 0.75, 1].map((q) => num(quantile(xs, q), 0)).join(' / ');
 
 export async function e11(ctx: Ctx): Promise<Outcome> {
@@ -53,18 +54,18 @@ export async function e11(ctx: Ctx): Promise<Outcome> {
   });
   const small = decks.filter((d) => d.ids.length < DEFAULT_RULES.deckSize);
   const g = Math.min(ctx.games ?? 1000, 300);
-  const specs = (['greedy', 'planner'] as const).flatMap((proxy) => Object.entries(PACKS).flatMap(([name, packs]) => [-2, 0, 2].map((hpDelta) => ({ proxy, name, packs, hpDelta }))));
-  const cells = specs.flatMap((s) => bands.map((band, b) => cell({ ...ctx, games: g }, `e11-${s.proxy}-${s.packs}-${s.hpDelta}-${b}`,
-    seat(s.proxy, 'best', s.packs), { agent: 'planner', deck: { kind: 'list', decks: band.map((d) => d.ids) }, hp: DEFAULT_RULES.hp + s.hpDelta })));
+  const specs = (['greedy', 'planner'] as const).flatMap((proxy) => Object.entries(PACKS).flatMap(([name, packs]) => CPUS.map((cpu) => ({ proxy, name, packs, cpu }))));
+  const cells = specs.flatMap((s) => bands.map((band, b) => cell({ ...ctx, games: g }, `e11-${s.proxy}-${s.packs}-${s.cpu}-${b}`,
+    seat(s.proxy, 'best', s.packs), { agent: s.cpu, deck: { kind: 'list', decks: band.map((d) => d.ids) } })));
   const all = await playCells(cells);
-  const ladder = (hpDelta: number) => specs.filter((s) => s.hpDelta === hpDelta).map((s) => {
+  const ladder = (cpu: string) => specs.filter((s) => s.cpu === cpu).map((s) => {
     const i = specs.indexOf(s);
     return [`${s.proxy}, ${s.name}`, ...bands.map((_, b) => wins(all[i * 5 + b]).text)];
   });
   const bandHead = bands.map((b, i) => `band ${i + 1} (might ${num(b[0].might, 0)}-${num(b[b.length - 1].might, 0)})`);
   return {
     games: all.reduce((a, r) => a + r.length, 0),
-    data: { decks: decks.length, small: small.length, bands: bands.map((b) => b.map((d) => `${d.team}@${d.period}`)), ladder: [-2, 0, 2].map((h) => ({ hpDelta: h, rows: ladder(h) })) },
+    data: { decks: decks.length, small: small.length, bands: bands.map((b) => b.map((d) => `${d.team}@${d.period}`)), ladder: CPUS.map((h) => ({ cpu: h, rows: ladder(h) })) },
     tables: [
       {
         title: `E11a. Team decks next to budget decks (${ctx.slug})`,
@@ -72,9 +73,9 @@ export async function e11(ctx: Ctx): Promise<Outcome> {
         columns: ['Decks', 'Total baseMight', 'Total cost', 'Cards'],
         rows: [['Team decks', five(decks.map((d) => d.might)), five(decks.map((d) => d.cost)), five(decks.map((d) => d.ids.length))], ...proxyTotals],
       },
-      ...[0, -2, 2].map((h) => ({
-        title: `E11${h === 0 ? 'b' : 'c'}. Human proxy vs team decks${h === 0 ? '' : `, team deck Ancient ${h > 0 ? '+' : ''}${h} HP`} (${ctx.slug})`,
-        measured: `Proxy (row) with a \`best\` default-budget deck from its collection vs the computer (planner) with a team deck from the band (team decks sorted by total baseMight, in fifths). ${g} games per cell, both seats. Win rate of the proxy.${h === 0 ? ' Hoped for: greedy proxy about 80% against the weakest band down to 25-35% against the strongest.' : ''}`,
+      ...CPUS.map((h) => ({
+        title: `E11b. Human proxy vs team decks played by the ${h} computer (${ctx.slug})`,
+        measured: `Proxy (row) with a \`best\` default-budget deck from its collection vs the computer with a team deck from the band (team decks sorted by total baseMight, in fifths). ${g} games per cell, both seats. Win rate of the proxy. Hoped for: greedy proxy about 80% against the weakest band down to 25-35% against the strongest.`,
         columns: ['Proxy', ...bandHead], rows: ladder(h),
       })),
     ],

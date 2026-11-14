@@ -47,7 +47,7 @@ const controls = (s: MatchState, side: Side, id: ObjId) => {
 /** Start of a round after the first: draws (Lotus Pool +1) and orders (Outpost +1) */
 export function startRound(s: MatchState, events: MatchEvent[]): void {
   for (const side of [0, 1] as Side[]) {
-    const behind = s.sides[side].hp < s.sides[side === 0 ? 1 : 0].hp;
+    const behind = s.sides[side === 0 ? 1 : 0].hp - s.sides[side].hp >= s.rules.catchUpGap;
     drawCards(s, side, s.rules.draw + (behind ? s.rules.catchUpDraw : 0), 'round', events);
     if (controls(s, side, 'lotus')) drawCards(s, side, 1, 'lotus', events);
     s.orders[side] = s.rules.orders + (controls(s, side, 'outpost') ? 1 : 0) + (behind ? s.rules.catchUpOrders : 0);

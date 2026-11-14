@@ -165,3 +165,14 @@ export const KNOBS4: Array<{ name: string; rules: RulesPatch }> = [
   { name: 'hp 14', rules: { hp: 14 } },
 ];
 export const e15 = (ctx: Ctx) => e8(ctx, KNOBS4, 'E15. Aura once per objective, and the Comeback card, on the settled rules');
+
+/** E16: milder catch-up rules on the settled rules */
+export const KNOBS5: Array<{ name: string; rules: RulesPatch }> = [
+  { name: 'settled rules (no catch-up)', rules: {} },
+  { name: '+1 card when behind by 3 or more', rules: { catchUpDraw: 1, catchUpGap: 3 } },
+  { name: '+1 card when behind by 5 or more', rules: { catchUpDraw: 1, catchUpGap: 5 } },
+  { name: '+1 card when behind at all', rules: { catchUpDraw: 1 } },
+  { name: 'farmMax 2', rules: { farmMax: 2 } },
+  { name: 'late multiplier from round 4', rules: { lateFrom: 4 } },
+];
+export const e16 = (ctx: Ctx) => e8(ctx, KNOBS5, 'E16. Milder catch-up rules on the settled rules');

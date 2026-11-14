@@ -42,6 +42,12 @@ describe('catch-up', () => {
     const s = aBoard({ rules: { catchUpDraw: 1 }, decks: [deck(), deck()], units: [{ card: aCard(), side: 1, at: 1 }] });
     expect(resolveRound(s, [[], []]).state.sides.map((b) => b.hand.length)).toEqual([2, 1]);
   });
+  it('a gap can be required: behind by less than it draws nothing extra', () => {
+    const two = aBoard({ rules: { catchUpDraw: 1, catchUpGap: 3 }, decks: [deck(), deck()], hp: [8, 10] });
+    expect(resolveRound(two, [[], []]).state.sides.map((b) => b.hand.length)).toEqual([1, 1]);
+    const three = aBoard({ rules: { catchUpDraw: 1, catchUpGap: 3 }, decks: [deck(), deck()], hp: [7, 10] });
+    expect(resolveRound(three, [[], []]).state.sides.map((b) => b.hand.length)).toEqual([2, 1]);
+  });
   it('extra orders work the same way', () => {
     const s = aBoard({ rules: { catchUpOrders: 1 }, hp: [8, 10] });
     expect(resolveRound(s, [[], []]).state.orders).toEqual([3, 2]);
