@@ -24,6 +24,17 @@ jobs:
       NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: '000000000000'
       NEXT_PUBLIC_FIREBASE_APP_ID: '1:000000000000:web:ci'
       NEXT_TELEMETRY_DISABLED: '1'
+      # The database tests run on PGlite and, through this URL, also on a real PostgreSQL 15
+      # (the service below). Tests refuse any URL that is not local; they never reach staging.
+      TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -31,6 +42,10 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - name: Migrations match the table definitions
+        run: |
+          npm run db:generate
+          test -z "$(git status --porcelain drizzle)" || { git status --porcelain drizzle; echo '::error::src/platform/db/schema changed without a migration: run npm run db:generate and commit drizzle/'; exit 1; }
       - name: Typecheck
         run: npm run typecheck
       - name: Unreachable files
