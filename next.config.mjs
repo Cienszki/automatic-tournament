@@ -176,6 +176,9 @@ export default withSentryConfig(buildConfig, {
   release: { name: release, create: sentryUpload, finalize: sentryUpload },
   sourcemaps: { disable: !sentryUpload, deleteSourcemapsAfterUpload: true },
   widenClientFileUpload: true,
+  // Wrapping the middleware put the whole edge SDK into it (33 kB to 118 kB);
+  // middleware errors still reach onRequestError in src/instrumentation.ts.
+  webpack: { autoInstrumentMiddleware: false },
   bundleSizeOptimizations: {
     excludeDebugStatements: true,
     excludeReplayIframe: true,
