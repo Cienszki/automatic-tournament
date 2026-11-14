@@ -6,13 +6,13 @@ Every session updates this file as it works, not only at the end. A new session,
 
 **Fable is available only until the weekly reset (Thursday 2026-11-19, 01:59).** From 2026-11-14 the remaining budget goes to work that needs Fable's judgement; implementation waits, because Opus can do it after the reset from `ROADMAP.md`.
 
-1. **S2 (organizer experience), in a new Fable session** (`/model` Fable, then the S2 prompt from `PROMPTS.md`). Change for this run: no clickable prototypes and no screenshots (agents cannot start a browser on this machine, and the budget is short). Write each key screen as a text wireframe with its states in `ORGANIZER_UX.md`, and leave prototypes to a later Opus work package. Add S2's work packages to `ROADMAP.md` and this file.
+1. **S2 (organizer experience): done 2026-11-14.** `ORGANIZER_UX.md` is written, with text wireframes in place of prototypes, and WP-41 to WP-49 are in `ROADMAP.md`. Questions 21 to 28 are open for the owner; none blocks work. WP-41 (clickable prototypes of the five key screens, for the owner to choose versions) can be given to an Opus implementer at any time.
 2. **S3 (card game), in a new Fable session**, if budget remains. Same change: no prototypes.
 3. **If budget still remains:** a Fable pass over the packages marked "Fable review" that are not built yet (WP-33, 07, 08, 34, 21, 37), adding to each a short "what the reviewer must check" list, so an Opus reviewer can stand in for Fable.
 
 Use a new session for each, not this one: this conversation's context is very long, and every turn re-reads it.
 
-After the reset, implementation continues on Opus in this order (the path to PDL S2 on the new platform): WP-33 import, WP-03 seed and CI, WP-06 trial, WP-07 kernel, WP-15 stats, WP-08 shell, WP-09, WP-10, WP-35 archive live, WP-39 mirror, then M2 to M4. Postponed until after that path: WP-11, 23 part 2, 26, 27, 29, 31, and S4.
+After the reset, implementation continues on Opus in this order (the path to PDL S2 on the new platform): WP-33 import, WP-03 seed and CI, WP-06 trial, WP-07 kernel, WP-15 stats, WP-08 shell, WP-09, WP-10, WP-35 archive live, WP-39 mirror, then M2 to M4. The S2 packages join in M3 in this order: WP-42 panel frame, WP-43 wizard, WP-18a to 18e, WP-44 automation, WP-46 platform console; WP-47 (league spike) with WP-21; WP-45 (look) after WP-27; WP-48 (the trial) last. Postponed until after that path: WP-11, 23 part 2, 26, 27, 29, 31, and S4.
 
 Merged so far: WP-04, 05, 12, 13a, 20, 32. Nothing is running.
 
@@ -36,7 +36,7 @@ Merged so far: WP-04, 05, 12, 13a, 20, 32. Nothing is running.
 |---|---|---|---|
 | S0 Groundwork: safety net + inventories | Opus | done 2026-11-13 | `inventory/*.md`, CI, green tests |
 | S1 Architecture, scale, code health, testing | Fable | done 2026-11-13; revised 2026-11-13 after the owner's answers | `ARCHITECTURE.md`, `TEST_STRATEGY.md`, `ROADMAP.md`, `CONVENTIONS.md`, `COSTS.md` |
-| S2 Organizer experience: admin, wizard, customization | Fable | not started; needed before WP-18 | `ORGANIZER_UX.md`, prototypes |
+| S2 Organizer experience: admin, wizard, customization | Fable | done 2026-11-14 | `ORGANIZER_UX.md` (text wireframes; prototypes are WP-41), WP-41 to WP-49 |
 | S3 Card game | Fable | not started; decides when cards arrive on the new platform (question 15) | `GAME_DESIGN.md` |
 | S4 Business and marketing | Opus, or Fable if quota is left | not started | `docs/business/*` |
 | S5+ Implementation of the roadmap | Fable or Opus as orchestrator | started 2026-11-13 with WP-05, WP-12, WP-20 | `wp/*` branches merged into `overhaul` |
@@ -65,7 +65,7 @@ One line per WP: id, name, branch, state (planned / in progress / in review / me
 | WP-15 | `stats` feature: one compute from PostgreSQL | `wp/15-stats` | planned | L, Fable review |
 | WP-16 | Fantasy and pick'em scoring | `wp/16-fantasy-pickem` | planned | L, Opus review. Role-based formula is the default |
 | WP-17 | Captain flows through commands | `wp/17-captain-commands` | planned | L, Fable review |
-| WP-18 | Organizer commands with S2's screens (18a-18e) | `wp/18a-settings ... wp/18e-content` | planned | XL, split. Fable for 18a, 18d. Needs S2 |
+| WP-18 | Organizer commands with S2's screens (18a-18e) | `wp/18a-settings ... wp/18e-content` | planned | XL, split. Fable for 18a, 18d. Screens and acceptance per part are in ROADMAP "S2. The organizer experience". Creation moved to WP-43, lifecycle to WP-44, look to WP-45 |
 | WP-19 | No database access from the browser | `wp/19-no-browser-db` | planned | S, Fable review |
 | WP-20 | Bot source under control (TypeScript, tests) | `wp/20-bot-source` | merged 2026-11-13 | Seven hand-written files are TypeScript, proven equivalent to the old `dist/` statement by statement; `dist/` is out of git; the image builds from source in CI; 104 tests with fakes; all storage behind `Store` (the methods and their collections are in `bot-worker/src/store.ts` and `store-firestore.ts`, which is WP-21's specification). Not deployed; the manual lobby test in `bot-worker/RELEASE_CHECK.md` is required before it ever is. Ten bugs found and left unfixed, listed in `bot-worker/KNOWN_BUGS.md` |
 | WP-21 | Contract, and the bot on its own tables | `wp/21-bot-contract` | planned | L, Fable review |
@@ -74,7 +74,7 @@ One line per WP: id, name, branch, state (planned / in progress / in review / me
 | WP-24 | Organizations and roles | `wp/24-organizations` | planned | M, Fable review |
 | WP-25 | Letnia migration inside Firestore | — | dropped | Letnia is imported by WP-33 |
 | WP-26 | Custom domains, link helper, sign-in from any domain | `wp/26-custom-domains` | planned | L, Fable review |
-| WP-27 | Theme tokens with guard rails, visual tests | `wp/27-theme-tokens` | planned | L, Opus review. Coordinate with S2 |
+| WP-27 | Theme tokens with guard rails, visual tests | `wp/27-theme-tokens` | planned | L, Opus review. Limits are `ORGANIZER_UX.md` section 6.3; the screen is WP-45 |
 | WP-28 | Move Firestore to Europe | — | dropped | The new database starts in Frankfurt |
 | WP-29 | One translation system | `wp/29-i18n` | planned | L, Opus review |
 | WP-30 | Full end-to-end suite | `wp/30-e2e` | planned | M, Opus review |
@@ -88,6 +88,15 @@ One line per WP: id, name, branch, state (planned / in progress / in review / me
 | WP-38 | Move the remaining server features (accounts, notifications, casters, draft prep) | `wp/38-remaining-features` | planned | L, split in two. Fable for accounts |
 | WP-39 | Mirror PDL S2 on the new platform and compare daily | `wp/39-mirror` | planned | M, Fable review. After WP-35 |
 | WP-40 | Card game on the new platform, as it is today | `wp/40-cards` | planned | L, Fable review. Before PDL S2 moves |
+| WP-41 | Clickable prototypes of the five key screens, 3 versions each | `wp/41-organizer-prototypes` | planned | L. Mock data only. Can run now. The owner chooses; until then version 1 is built |
+| WP-42 | Panel frame, shared patterns, decisions and activity (Przegląd) | `wp/42-panel-frame` | planned | L, Fable review |
+| WP-43 | Format presets, the wizard, the organizer page | `wp/43-wizard` | planned | L, Fable review. Question 28 |
+| WP-44 | Registration and lifecycle automation | `wp/44-season-automation` | planned | L, Fable review. Questions 22, 23 |
+| WP-45 | Look screen: draft, live preview, publish, history | `wp/45-look` | planned | L, Opus review; the owner looks at the presets. After WP-27. Question 24 |
+| WP-46 | Platform console (`/platform`) | `wp/46-platform-console` | planned | M, Opus review |
+| WP-47 | Spike: results from a bot lobby without the organizer's own Valve league | `wp/47-league-spike` | planned | S, Fable review. Needs the staging bot accounts and question 21 |
+| WP-48 | Proof: a new organizer runs a season to the final (end-to-end flow and a trial with people) | `wp/48-organizer-trial` | planned | M, Fable review of the findings. The owner runs the trial |
+| WP-49 | Captain's, caster's and viewer's screens with the same problems | — | on request | Not designed; needs a design pass per place (`ORGANIZER_UX.md` section 7) |
 
 ## Questions for the owner
 
@@ -103,6 +112,15 @@ Each question has the asking session, the recommendation, the owner's answer if 
 5. **(S1) The staging accounts.** Done by the owner on 2026-11-13: Supabase staging project, Firebase project `dota2inhouse-staging-6e3ef` (sign-in, storage, web app, service key), Discord application, Sentry (two projects), alert webhook. The values are in `.env.staging.local` in the `overhaul` worktree (git-ignored; never print them). Fable checked their shape and that the database address answers; a real database login is first made in WP-32. Fable created the Vercel project `tournament-platform` from the terminal, linked the worktree, and loaded the values as preview and development variables. It is not connected to GitHub: previews are made with `vercel deploy` from a work package (first in WP-06). Still missing: GitHub secrets, because `gh` is not installed (`winget install GitHub.cli`, `gh auth login`, then `gh secret set --env-file .env.staging.local`); needed from WP-03. Note: `vercel link` appends a token to `.env.local` and adds `.env*` to `.gitignore`; revert the `.gitignore` line. The owner ran Sentry's setup wizard in the worktree; its output is parked on branch `wp/04-observability` as the starting point of WP-04 (DSNs are hard-coded there and must move to environment variables).
 18. **(S5) Disk space.** Solved by the owner on 2026-11-13: 93 GB free.
 17. **(S1 revision 2) What do you pay today?** The table in `COSTS.md` section 1 is still empty. It only makes the cost report exact; nothing waits for it.
+
+21. **(S2) The Valve league id.** Every tournament needs its own today, and getting one is a step outside the platform. Recommendation: one league owned by the platform, used by every bot lobby, with results tied to matches by the bot's report; an organizer's own league stays possible. Needs the owner's knowledge of Valve's rules: how the PDL and Wiosenna ids were obtained, the cost, and whether one league may hold many tournaments. WP-47 measures what works without a league. Until answered, screens treat the league id as optional.
+22. **(S2) Accept complete teams automatically?** Recommendation: yes by default (roster complete, Steam linked, inside the MMR cap, no player on two rosters), with a switch for organizers who want to approve each team.
+23. **(S2) Lateness forfeits.** Recommendation: the bot applies them by the tournament's settings and the organizer can take one back; no confirmation step.
+24. **(S2) Video in the hero.** Recommendation: organizers give a link; upload to the platform's video host stays with the super admin until a paid plan covers it.
+25. **(S2) Drop three bot controls:** bot personality, custom chat commands, custom ready-check words. Recommendation: drop; keep editable chat messages.
+26. **(S2) Swiss rounds.** Recommendation: paired automatically, published after the organizer confirms, with a setting to publish without waiting.
+27. **(S2) Free subdomains.** Recommendation: not now; the path address is free and the organizer's own domain is the upgrade. S4 may revisit.
+28. **(S2) The six formats in the wizard:** Liga, Grupy i playoff, Swiss, Swiss i playoff, Puchar, Kwalifikacje LAN. Recommendation: these six. Is one you have been asked for missing?
 
 ### Answered
 
@@ -126,6 +144,7 @@ Each question has the asking session, the recommendation, the owner's answer if 
 
 ## Log
 
+- 2026-11-14 (S2): done. Fable wrote `ORGANIZER_UX.md`: eight design principles; the people and how often they act; the journey from sign-up to "Nowa edycja" with every removed step named; a new panel of one home screen (Przegląd) and six work areas in place of 17 tabs; a verdict for each of the 112 controls of `inventory/ADMIN.md` (49 keep, 28 merge, 14 automate, 5 to the super admin, 16 drop); text wireframes with states and three versions each for Przegląd, the wizard, the match page, Format and Wygląd; customization in three levels with the limits that keep tournaments readable; other places with the same problems; and what the design adds to the schema. No prototypes or screenshots, as this file instructed; WP-41 builds them. Added WP-41 to WP-49 and re-cut WP-18. One point to check in a Fable or owner review: the design assumes a Valve league id can become optional (question 21, WP-47), which softens one sentence of ADR-11; the record itself was not edited.
 - 2026-11-13 (S1 revision 2): the owner answered questions 8 and 12 to 16, ran `npm ci` in the worktree, created the staging accounts, and decided that PDL S2 is mirrored and then moved while it is being played, with the card game. Fable wrote `SETUP_STAGING.md` and `.env.staging.example`, added WP-39 (mirror and daily comparison) and WP-40 (card game as it is), rewrote WP-37, and updated ADR-15. The three implementers (WP-05, WP-12, WP-20) were stopped by the usage limit and resumed.
 - 2026-11-13 (S1 revision): the owner answered questions 1 to 11 and added notes on Firebase, Letnia, regions and budget. Fable revised `ARCHITECTURE.md` Part 2 (PostgreSQL on Supabase, go-live one tournament at a time with forwarding to the old site, free plans first, ranking rules as data, a record on regions), rewrote `ROADMAP.md` (36 packages; WP-02, 25, 28 dropped; WP-32 to 38 new; WP-13 split), updated `TEST_STRATEGY.md` and `CONVENTIONS.md`, and wrote `COSTS.md`. An explorer mapped today's ranking code: nine implementations, nothing configurable, playoff slots filled by hand. Prices were read from the vendors' pages. Found: the worktree cannot run lint or new packages locally (question 13). The browser measurement could not be run (question 2).
 - 2026-11-13 (S1): done. Wrote `ARCHITECTURE.md` (current state, 13 bad decisions with evidence, target design, 16 decision records), `CONVENTIONS.md`, `TEST_STRATEGY.md` and `ROADMAP.md` (31 work packages in 7 milestones). Four explorer agents checked the inventories and filled gaps; Fable re-checked the claims the decisions rest on. Findings beyond S0: server actions with admin rights and no caller check (question 4); the live tournament bot has no source code, only hand-edited JavaScript in `bot-worker/dist/`; fantasy and pick'em compute nothing outside legacy Letnia (question 8); the security rules let a captain rewrite their match's score. No spike was run: the hosting trial (WP-06) needs the staging project and a hosting account that only the owner can create.
