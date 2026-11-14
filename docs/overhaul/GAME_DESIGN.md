@@ -130,7 +130,7 @@ The game keeps its name, "Kontrola mapy". Every number below is a setting in one
 
 ### 4.1 The deck
 
-- 12 cards, at least one of each position.
+- 12 cards: at least one and at most three of each position. A deck then looks like two or three Dota teams, and no single ability can be stacked.
 - One card per player and team, as today.
 - **Budget: the cards' strength adds up to at most 60.** A card's cost is the strength printed on it. The +1 of a team-of-the-round card is free: it adds strength without adding cost.
 
@@ -168,15 +168,17 @@ A unit's strength is its card's strength plus its bonuses. A card's strength com
 
 | Position | Modifier | Ability | What it does |
 |---|---|---|---|
-| Carry | | **Farma** | After every round on an objective its side controls, +1 strength, up to +3. Lost if the Carry returns to the hand |
-| Mid | | **Gank** | When played from the hand, the rival's strongest unit on that objective returns to the rival's hand |
+| Carry | | **Farma** | After every round on an objective its side controls, +1 strength, up to +3. Lost when the Carry is ganked |
+| Mid | | **Gank** | When played from the hand, the rival's strongest unit on that objective is out for this round: it stays on the board but counts for nothing, gives no bonus, and a Carry loses its Farma |
 | Offlane | +1 | **Tank** | A gank on its objective takes the Offlane, and spares everyone else |
 | Support | −1 | **Smoke** | When played from the hand, one of the player's other units may move to its objective without an order |
 | Hard Support | −1 | **Aura** | +1 strength to each of the player's units on its objective, itself included. A second Hard Support on the same objective adds nothing more |
 
 Two more bonuses: **Drużyna**, +1 to each unit that shares an objective with a card of the same real team; and **Drużyna kolejki**, +1 on a team-of-the-round card.
 
-Two abilities work as today (Farma, and Aura apart from the limit of one per objective). Three changed, and the simulations are the reason:
+Farma works as today, and Aura does apart from the limit of one per objective. Gank, Tank and Smoke changed, and the simulations are the reason:
+
+- **Gank.** In today's game it is a movement rule, which has no meaning once any unit can go anywhere. The first prototype sent the ganked unit back to its owner's hand. That was too strong: every extra Mid in a deck added about eight points of win rate, so the best deck was simply the one with the most Mids. Putting the unit out for one round keeps the moment (the rival's best unit is caught and the objective flips) without the lasting loss. Decks with one, two or three Mids now win equally often against each other.
 
 - **Tank.** In the first prototype an Offlane blocked ganks outright. Blocked ganks outnumbered successful ones, and switching Tank off changed nothing for a deck full of Offlanes. Now the Offlane takes the gank on itself: the gank always does something, and the Offlane still protects the Carry beside it.
 - **Aura.** When every Hard Support on an objective added its own +1 to everyone, the best decks were stacks of Hard Supports and the bonus outweighed the cards. One Aura per objective keeps a Hard Support worth having on each objective and makes a second one there a waste.
@@ -197,7 +199,7 @@ Two abilities work as today (Farma, and Aura apart from the limit of one per obj
 
 | Setting | Value | Why |
 |---|---|---|
-| Deck size / minimum per position | 12 / 1 | A choice for a 50-card collection; most of the deck is seen in a match |
+| Deck size / per position | 12 / 1 to 3 | A choice for a 50-card collection; most of the deck is seen in a match. The limit of three stops decks built from one ability |
 | Budget | 60 | 5 per card. A 10-pack collection can spend all of it; at 66 it could not, and the collector gained from that |
 | Ancient hit points | 12 | Matches of five to six rounds |
 | Units per side per objective | 3 | Limits how much strength can pile on one objective |
@@ -212,7 +214,7 @@ Two abilities work as today (Farma, and Aura apart from the limit of one per obj
 ### 4.7 What the player sees
 
 - **Planning.** The board, the hand, two order marks. Cards and units that can still act glow. A card is dragged onto an objective, or tapped and then the objective tapped; a unit likewise. The player's own planned totals are shown on each objective. Nothing about the rival's round is shown, because nothing is known. One button confirms.
-- **Reveal.** The rival's cards turn over, moved units slide, a gank sends its target back, each bonus adds itself to the total as a small "+1" on the card that gives it, the two totals meet on each objective, and the Ancients take their damage. It takes a few seconds and can be skipped with a tap.
+- **Reveal.** The rival's cards turn over, moved units slide, a gank knocks its target out of the round, each bonus adds itself to the total as a small "+1" on the card that gives it, the two totals meet on each objective, and the Ancients take their damage. It takes a few seconds and can be skipped with a tap.
 - **Every number has one place.** A card shows its strength; a unit shows its current strength; an objective shows each side's total and its own effect. Nothing is repeated in a panel.
 
 ### 4.8 A match between people
@@ -242,7 +244,7 @@ Because both plans are hidden until the reveal, the right play depends on what t
 
 - **How much is there to read?** A measuring program that is told the rival's plan each round beats the strongest honest computer player **94%** of the time with the same deck. Almost everything that separates a good round from a bad one is knowing where the rival goes.
 - **Is being predictable punished?** A program that knows exactly how the rival thinks, without seeing its hand, beats it 68%. A player with habits loses to a player who notices them.
-- **What there is to read.** The rival's board is open: where their Carry is growing, which objective they cannot afford to lose, whether their Offlane stands beside their best unit, how many cards they hold. Their hand is hidden, except cards a gank has sent back. So a player reads intentions from position: "they must defend Roshan this round, so the Outpost is free" is the basic thought of the game, and it has no certain answer.
+- **What there is to read.** The rival's board is open: where their Carry is growing, which objective they cannot afford to lose, whether their Offlane stands beside their best unit, how many cards they hold. Their hand is hidden. So a player reads intentions from position: "they must defend Roshan this round, so the Outpost is free" is the basic thought of the game, and it has no certain answer.
 
 Each ability is a reading question. Gank asks where the rival's best unit will be when the Mid lands. Tank asks whether to keep the Offlane beside the Carry or use its strength elsewhere. Smoke lets two units arrive where one was expected. Farma makes a visible target that grows more worth attacking each round.
 
@@ -307,7 +309,7 @@ The script only fixes what is in the hand and what the rival does. It does not r
 
 ### Matches two and three
 
-The remaining rules arrive one at a time, when they happen. The ready deck and the player's first own deck hold all five positions. The first time a card with an ability the player has not yet seen comes into the hand, its ability line is lit. The first time an ability does something, the board names it once at the place where it happened ("Gank: Kiritych wraca na rękę"). The same goes for each objective's effect, and the first three matches use objective sets that between them contain all six. After three matches the player has seen every rule (goal G3), and none of them was a panel to read.
+The remaining rules arrive one at a time, when they happen. The ready deck and the player's first own deck hold all five positions. The first time a card with an ability the player has not yet seen comes into the hand, its ability line is lit. The first time an ability does something, the board names it once at the place where it happened ("Gank: Kiritych wypada z tej rundy"). The same goes for each objective's effect, and the first three matches use objective sets that between them contain all six. After three matches the player has seen every rule (goal G3), and none of them was a panel to read.
 
 A "?" on the board opens one static page: the round in one sentence, the five abilities, the six objectives. It is for looking something up, and never opens by itself.
 
@@ -475,13 +477,13 @@ Each decision recorded in `inventory/CARDS.md` and the decision log, with a verd
 | 7 | No one-time challenge lists; packs found while browsing | Keep. Kolejka is not a challenge list: it is at most five matches per real round, and it replaces packs that were given for nothing |
 | 8 | Live challenges only; no matchmaking; no play against other users' decks; the computer never uses a user's deck | Keep all four. The list of open tables shows invitations that already exist. Kolejka's decks are real teams' lineups, not users' decks |
 | 9 | **No cost to play a card; better cards must simply be better** | Keep on the table: a 9 beats a 5 and costs nothing to play. **Change in the deck:** a budget limits the total rating strength of a deck. Reason: without any price, deck building is a sort and the collection decides the match (section 2.1). The budget is the smallest price that fixes both, and it is paid once, on the deck screen, in a form fantasy players already know |
-| 10 | **Deck of 20: two per position and ten free** | **Change to 12: one per position and seven free.** Reason: a new player has about 50 cards; 20 of them is nearly all the good ones, and 12 is a choice. A smaller deck also means the player sees most of it in a match, so the deck they built is the deck they play |
+| 10 | **Deck of 20: two per position and ten free** | **Change to 12: one to three per position.** Reason: a new player has about 50 cards; 20 of them is nearly all the good ones, and 12 is a choice. A smaller deck also means the player sees most of it in a match, so the deck they built is the deck they play |
 | 11 | Strength 1 to 9 on a curve (the owner declined a flatter 4 to 8) | Keep. The budget removes the reason to flatten it |
 | 12 | **Turn of three phases; cards enter through the base; moves are a plan; orders shared** | **Change:** both players plan one round at the same time; cards go straight onto objectives; orders stay, two a round. Reason: sections 2.1 and 2.2. Orders, planning before confirming, and "nothing happens until you confirm" are kept |
 | 13 | **Fights hit by hit, to the end, with the aim line** | **Change: no fight screen.** Totals are compared when the round is revealed. Reason: the fight is where a match's time goes, and it decides about one fight in five. The reveal keeps the moment: cards turn over, bonuses count up, the Ancient is hit |
 | 14 | Second player is dealt six cards | No longer needed: there is no second player |
 | 15 | Draw two a turn; first to ten points | Replaced by the numbers in section 4 |
-| 16 | One ability per position: Farma, Gank, Tank, Smoke, Aura; +1 for teammates together | Keep the five names and the team bonus. Farma, Smoke and Aura work as before. Gank and Tank get new meanings that fit a round played at the same time (section 4) |
+| 16 | One ability per position: Farma, Gank, Tank, Smoke, Aura; +1 for teammates together | Keep the five names and the team bonus. Farma and Aura work as before. Gank, Tank and Smoke get new meanings that fit a round played at the same time (section 4.4) |
 | 17 | Six objectives, three per match | Keep |
 | 18 | Computer levels; the strongest plays a deck 8 points better | Keep the levels. The computer in practice plays within the budget like the player. The "stronger deck" challenge moves to Kolejka's top teams, where it has a reason |
 | 19 | **No automatic deck** | **Change for the first deck only:** it is built for the player, and "Ułóż za mnie" stays available. Reason: goal G1. After that the deck is the player's, and under the budget there is no single best deck for a button to find |
