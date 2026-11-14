@@ -14,6 +14,7 @@ export function strengthParts(s: MatchState, u: Unit, units: Unit[] = s.units): 
     if (abilities.aura && o.card.role === 'Hard Support') aura++;
     if (abilities.team && o !== u && u.card.team && o.card.team?.id === u.card.team.id) team = 1;
   }
+  if (s.rules.auraMode === 'once' && aura > 1) aura = 1;
   const hgSlot = s.objectives.indexOf('highground');
   const hg = hgSlot >= 0 && s.control[hgSlot] === u.side && (s.rules.highGround === 'all' || u.at === hgSlot) ? 1 : 0;
   return { base: baseMight(u.card), growth: u.growth, aura, team, highGround: hg };

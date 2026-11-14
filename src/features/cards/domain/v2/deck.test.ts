@@ -41,7 +41,7 @@ describe('deck rules', () => {
     d[0] = aCard({ role: d[0].role, cost: 9 });
     d[1] = aCard({ role: d[1].role, cost: 9 });
     expect(deckCost(d)).toBe(68);
-    expect(deckProblem(d, makeRules({ costMode: 'rating' }))).toMatch(/budget is 66/);
+    expect(deckProblem(d, makeRules({ costMode: 'rating', budget: 66 }))).toMatch(/budget is 66/);
     expect(deckProblem(d, makeRules({ budget: Infinity }))).toBeNull();
   });
 });

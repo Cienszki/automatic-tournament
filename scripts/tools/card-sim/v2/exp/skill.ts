@@ -27,13 +27,13 @@ export async function e3(ctx: Ctx): Promise<Outcome> {
     tables: [
       {
         title: `E3a. Skill ladder: win rate of the row player against the column player (${ctx.slug})`,
-        measured: `Both sides play the same \`best\` deck (budget 66) from one regular collection (20 packs) per pair; ${cells[0].games} games per pair, both seats. Cells with a 95% CI are measured directly; the mirrored cells are 1 minus them. Targets: each step up >= 60%; planner vs greedy >= 70%.`,
+        measured: `Both sides play the same \`best\` deck (the default budget) from one regular collection (20 packs) per pair; ${cells[0].games} games per pair, both seats. Cells with a 95% CI are measured directly; the mirrored cells are 1 minus them. Targets: each step up >= 60%; planner vs greedy >= 70%.`,
         columns: ['Row vs column', ...LADDER],
         rows: LADDER.map((x) => [x, ...LADDER.map((y) => at(x, y))]),
       },
       {
         title: `E3b. Skill against collection (${ctx.slug})`,
-        measured: `planner with a new player's \`best\` deck (10 packs) vs greedy with a veteran's \`best\` deck (40 packs), budget 66, N = ${crossW.games}.`,
+        measured: `planner with a new player's \`best\` deck (10 packs) vs greedy with a veteran's \`best\` deck (40 packs), the default budget, N = ${crossW.games}.`,
         columns: ['Matchup', 'Planner (new player) wins [95% CI]', 'Draws'],
         rows: [['planner/new vs greedy/veteran', crossW.text, crossW.draws]],
       },
@@ -58,7 +58,7 @@ export async function e5(ctx: Ctx): Promise<Outcome> {
     tables: [
       {
         title: `E5a/b. Value of reading the rival (${ctx.slug})`,
-        measured: 'Same `best` deck for both sides (one veteran collection per pair, budget 66), both seats. omniscient is handed the rival\'s actual plan each round; exploiter repeats the deterministic planner\'s reasoning on 3 guessed planner hands and answers the 3 predicted plans. planner vs greedy repeated here for comparison.',
+        measured: 'Same `best` deck for both sides (one veteran collection per pair, the default budget), both seats. omniscient is handed the rival\'s actual plan each round; exploiter repeats the deterministic planner\'s reasoning on 3 guessed planner hands and answers the 3 predicted plans. planner vs greedy repeated here for comparison.',
         columns: ['Row player', 'Rival', 'Games', 'Row player wins [95% CI]', 'Rounds'], rows,
       },
       {

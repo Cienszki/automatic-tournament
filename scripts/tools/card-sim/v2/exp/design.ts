@@ -29,7 +29,7 @@ export async function e6(ctx: Ctx): Promise<Outcome> {
     tables: [
       {
         title: `E6a. Deck archetypes: win rate of the row deck against the column deck (${ctx.slug})`,
-        measured: `planner vs planner; both decks built from the same veteran collection (40 packs, 100 collections), budget 66; ${g} games per pair, both seats.`,
+        measured: `planner vs planner; both decks built from the same veteran collection (40 packs, 100 collections), the default budget; ${g} games per pair, both seats.`,
         columns: ['Row vs column', ...ARCHETYPES.map(short)],
         rows: ARCHETYPES.map((x) => [short(x), ...ARCHETYPES.map((y) => (x === y ? '—' : pct(score.get(`${x}|${y}`)!)))]),
       },
@@ -154,3 +154,14 @@ export const KNOBS3: Array<{ name: string; rules: RulesPatch }> = [
   { name: 'base + both + gank weakest', rules: { ...BASE14, smokeMode: 'pull', tankMode: 'redirect', gank: 'weakest' } },
 ];
 export const e14 = (ctx: Ctx) => e8(ctx, KNOBS3, 'E14. Smoke and Tank variants');
+
+/** E15: Aura counted once per objective, against stacking, on the settled rules */
+export const KNOBS4: Array<{ name: string; rules: RulesPatch }> = [
+  { name: 'settled rules (Aura once per objective)', rules: {} },
+  { name: 'Aura stacks', rules: { auraMode: 'stack' } },
+  { name: 'no Comeback card', rules: { catchUpDraw: 0 } },
+  { name: 'Aura stacks, no Comeback card', rules: { auraMode: 'stack', catchUpDraw: 0 } },
+  { name: 'budget 60', rules: { budget: 60 } },
+  { name: 'hp 14', rules: { hp: 14 } },
+];
+export const e15 = (ctx: Ctx) => e8(ctx, KNOBS4, 'E15. Aura once per objective, and the Comeback card, on the settled rules');

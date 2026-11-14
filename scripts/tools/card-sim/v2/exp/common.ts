@@ -3,7 +3,7 @@
 import { baseMight } from '@/lib/card-lab/outposts';
 import type { AgentName } from '@/features/cards/domain/v2/ai/agents';
 import { cost } from '@/features/cards/domain/v2/deck';
-import type { RulesPatch } from '@/features/cards/domain/v2/rules';
+import { DEFAULT_RULES, type RulesPatch } from '@/features/cards/domain/v2/rules';
 import type { Table } from '../../experiments';
 import { subSeed } from '../../rng';
 import { mean, rate } from '../../stats';
@@ -68,10 +68,10 @@ export function deckTotals(slug: string, res: GameResult[]) {
   const { byId } = slugPool(slug);
   const tot = (ids: string[], f: (c: NonNullable<ReturnType<typeof byId.get>>) => number) => ids.reduce((a, id) => a + f(byId.get(id)!), 0);
   return {
-    xCost: mean(res.map((r) => tot(r.decks[0], cost))), yCost: mean(res.map((r) => tot(r.decks[1], cost))),
+    xCost: mean(res.map((r) => tot(r.decks[0], (c) => cost(c, DEFAULT_RULES.costMode)))), yCost: mean(res.map((r) => tot(r.decks[1], (c) => cost(c, DEFAULT_RULES.costMode)))),
     xMight: mean(res.map((r) => tot(r.decks[0], baseMight))), yMight: mean(res.map((r) => tot(r.decks[1], baseMight))),
   };
 }
 
-export const budgetLabel = (b: number | undefined) => (b === undefined ? '66' : Number.isFinite(b) ? String(b) : 'none');
+export const budgetLabel = (b: number | undefined) => (b === undefined ? 'default' : Number.isFinite(b) ? String(b) : 'none');
 export const rulesLabel = (p: RulesPatch) => JSON.stringify(p, (_k, v) => (v === Infinity ? 'Infinity' : v));

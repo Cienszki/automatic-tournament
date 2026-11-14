@@ -49,7 +49,7 @@ export async function e11(ctx: Ctx): Promise<Outcome> {
   const bands = [0, 1, 2, 3, 4].map((b) => sorted.slice(Math.floor((b * sorted.length) / 5), Math.floor(((b + 1) * sorted.length) / 5)));
   const proxyTotals = Object.entries(PACKS).map(([name, packs]) => {
     const ds = Array.from({ length: 50 }, (_, i) => buildDeck('best', simCollection(cards, packs, stream(ctx.seed, 'e11-col', packs, i)), DEFAULT_RULES)!);
-    return [`best budget-66 deck, ${name} (${packs} packs, 50 collections)`, five(ds.map((d) => d.reduce((a, c) => a + baseMight(c), 0))), five(ds.map((d) => d.reduce((a, c) => a + cost(c), 0))), '12'];
+    return [`best default-budget deck, ${name} (${packs} packs, 50 collections)`, five(ds.map((d) => d.reduce((a, c) => a + baseMight(c), 0))), five(ds.map((d) => d.reduce((a, c) => a + cost(c), 0))), '12'];
   });
   const small = decks.filter((d) => d.ids.length < DEFAULT_RULES.deckSize);
   const g = Math.min(ctx.games ?? 1000, 300);
@@ -74,7 +74,7 @@ export async function e11(ctx: Ctx): Promise<Outcome> {
       },
       ...[0, -2, 2].map((h) => ({
         title: `E11${h === 0 ? 'b' : 'c'}. Human proxy vs team decks${h === 0 ? '' : `, team deck Ancient ${h > 0 ? '+' : ''}${h} HP`} (${ctx.slug})`,
-        measured: `Proxy (row) with a \`best\` budget-66 deck from its collection vs the computer (planner) with a team deck from the band (team decks sorted by total baseMight, in fifths). ${g} games per cell, both seats. Win rate of the proxy.${h === 0 ? ' Hoped for: greedy proxy about 80% against the weakest band down to 25-35% against the strongest.' : ''}`,
+        measured: `Proxy (row) with a \`best\` default-budget deck from its collection vs the computer (planner) with a team deck from the band (team decks sorted by total baseMight, in fifths). ${g} games per cell, both seats. Win rate of the proxy.${h === 0 ? ' Hoped for: greedy proxy about 80% against the weakest band down to 25-35% against the strongest.' : ''}`,
         columns: ['Proxy', ...bandHead], rows: ladder(h),
       })),
     ],

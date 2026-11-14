@@ -39,13 +39,13 @@ export async function e1(ctx: Ctx): Promise<Outcome> {
     games: res.length, data: { rows: shapeRows(res) },
     tables: [{
       title: `E1. Shape of a match (${ctx.slug})`,
-      measured: `planner vs planner, each with a \`best\` deck (budget 66) from its own veteran collection (40 packs; ${c.collections ?? 100} collection pairs, each played from both seats), default rules. N = ${res.length} matches.`,
+      measured: `planner vs planner, each with a \`best\` deck (the default budget) from its own veteran collection (40 packs; ${c.collections ?? 100} collection pairs, each played from both seats), default rules. N = ${res.length} matches.`,
       columns: ['Measure', 'Value'], rows: shapeRows(res),
     }],
   };
 }
 
-const BUDGETS = [66, Infinity, 54, 60, 72, 78];
+const BUDGETS = [60, Infinity, 48, 54, 66, 72];
 
 export async function e2(ctx: Ctx): Promise<Outcome> {
   const cells = BUDGETS.map((b) => cell(ctx, `e2-${budgetLabel(b)}`, seat('planner', 'best', PACKS.veteran), seat('planner', 'best', PACKS.new), { rules: { budget: b }, collections: 250 }));
@@ -58,7 +58,7 @@ export async function e2(ctx: Ctx): Promise<Outcome> {
     games: all.reduce((a, r) => a + r.length, 0), data: { rows },
     tables: [{
       title: `E2. Deck strength: new player (10 packs) vs veteran (40 packs) (${ctx.slug})`,
-      measured: 'planner vs planner, both `best` decks, each from its own collection (100 collection pairs, each played from both seats). Target: with budget 66, veteran wins <= 60%.',
+      measured: 'planner vs planner, both `best` decks, each from its own collection (250 collection pairs, each played from both seats). Deck cost is counted as the default rules count it. Target: with the default budget, veteran wins <= 60%.',
       columns: ['Budget', 'Games', 'Draws', 'Veteran wins [95% CI]', 'Deck cost new / veteran', 'Deck baseMight new / veteran', 'Rounds'], rows,
     }],
   };

@@ -26,6 +26,8 @@ export interface Rules {
   /** Highest allowed sum of card costs (cost = rating strength 1-9); Infinity = no budget */
   budget: number;
   costMode: CostMode;
+  /** Aura: stack = +1 per Hard Support on the objective; once = +1 however many Hard Supports are there */
+  auraMode: 'stack' | 'once';
   /** Smoke: 'from' = one free move a round from where a Soft Support stood; 'pull' = each Soft Support
    *  played from hand lets one own unit move to its objective for no order */
   smokeMode: 'from' | 'pull';
@@ -66,12 +68,13 @@ export interface Rules {
 export const DEFAULT_RULES: Rules = {
   deckSize: 12,
   perRole: 1,
-  budget: 66,
+  budget: 60,
   costMode: 'might',
+  auraMode: 'once',
   smokeMode: 'pull',
   tankMode: 'redirect',
   catchUpOrders: 0,
-  catchUpDraw: 1,
+  catchUpDraw: 0,
   hp: 12,
   capacity: 3,
   draw: 1,
@@ -98,4 +101,4 @@ export function makeRules(patch: RulesPatch = {}, base: Rules = DEFAULT_RULES): 
 
 /** The first candidate rule set of WP-51 (before the second round of simulations). The older engine
  *  tests describe these variants; the simulations of E1-E12 in `sim/v2-first` used them. */
-export const FIRST_RULES: Rules = makeRules({ costMode: 'rating', smokeMode: 'from', tankMode: 'block', catchUpDraw: 0, highGround: 'all' });
+export const FIRST_RULES: Rules = makeRules({ budget: 66, costMode: 'rating', auraMode: 'stack', smokeMode: 'from', tankMode: 'block', catchUpDraw: 0, highGround: 'all' });
