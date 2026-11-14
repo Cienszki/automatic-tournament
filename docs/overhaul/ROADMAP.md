@@ -725,7 +725,7 @@ Added in S3 (2026-11-14) by Fable. The design is `GAME_DESIGN.md`; section numbe
 
 - **Goal.** Three practice levels that feel like people of different strength, and none of them cheats.
 - **Files.** `src/features/cards/domain/v2/ai/`.
-- **Design.** Section 9.3. Łatwy is `greedy` with mistakes, Średni is `responder`, Trudny is `planner` with mixed choices. A decision takes under 150 ms on a mid-range phone (measure in a browser test; lower the search width before lowering strength). The level that plays Kolejka's team decks is fixed (Średni) so that difficulty comes from the real team's cards. No level reads hidden information; the `omniscient` and `exploiter` players stay in `scripts/` as measuring tools.
+- **Design.** Section 9.3. Łatwy is `greedy` with mistakes, Średni is `responder`, Trudny is `planner` with mixed choices. A decision takes under 150 ms on a mid-range phone (measure in a browser test; lower the search width before lowering strength). The level that plays Kolejka's team decks is fixed at the easiest honest one (`greedy`, without added mistakes), so that difficulty comes from the real team's cards (section 7.1 has the measured ladder). No level reads hidden information; the `omniscient` and `exploiter` players stay in `scripts/` as measuring tools.
 - **Acceptance.** With equal decks, each level beats the one below it between 60 and 85% over 1,000 games; the time limit holds; the ladder is part of WP-52's balance check.
 - **Dependencies.** WP-52. **Size.** S. **Review.** Opus.
 
