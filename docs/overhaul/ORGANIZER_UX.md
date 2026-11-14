@@ -352,3 +352,325 @@ Why seven and not seventeen: the old tabs were named after the feature that was 
 #### New controls that have no counterpart today
 
 Ranking rules and tie-breakers per stage; advancement rules; tie decisions; the automatic draw; match evenings for scheduling; the referee role; the organization's members; the domain; language, time zone and Dota server region; the look's draft, preview and history; the audit log view; "Nowa edycja"; the data export; the test lobby.
+
+## 5. The key screens
+
+Each screen is given as a text wireframe. In the wireframes a horizontal rule is a hairline or a band between open areas, never the edge of a box; `[ Tekst ]` is the one filled, primary button; `Tekst ›` is a quiet action; `●` is a state mark whose colour carries meaning (section 5.7). Sample copy is in Polish as it would appear.
+
+Each screen has two or three versions. WP-41 builds them as clickable prototypes behind the `?v=N` picker so the owner can choose; version 1 is always the one recommended here.
+
+### 5.1 Przegląd, the home screen
+
+**What it is for.** The organizer opens the panel with one of three questions: where are we, does anything need me, did the automation work. The screen answers them in that order and holds nothing else.
+
+**Version 1 (recommended): three questions.**
+
+```
+PDL sezon 3                                                    Podgląd strony ›
+Przegląd   Mecze   Drużyny   Format   Treść   Wygląd   Ustawienia
+────────────────────────────────────────────────────────────────────────────────
+ Zapisy ━━━━━━━━ Faza grupowa ━━━━●────── Playoff ─────────── Finał
+                 kolejka 4 z 7              od 12 gru            21 gru
+────────────────────────────────────────────────────────────────────────────────
+ Do decyzji                                   Automat
+
+ ● Remis o 4. miejsce w grupie A              20:47  Team Spirit PL 1:0 Ogry
+   Wilki i Ogry mają tyle samo punktów               gra 1 zaimportowana
+   po wszystkich kryteriach.                  20:03  Lobby: Wilki – Rysie, gra 1
+   [ Rozstrzygnij ]             do 10 gru     19:50  Utworzono 4 lobby
+                                              19:00  Przypomnienie dla 8 drużyn
+ ● Odwołanie od zastępstwa                    wczoraj
+   Rysie · mecz z Wilkami, czw. 20:00         22:10  Walkower: Sowy nie stawiły
+   Rozpatrz ›                   do czw.              się na grę 2      Cofnij ›
+                                              21:30  Kolejka 3 zakończona
+ ● Mecz bez terminu
+   Sowy – Orły · kolejka 4                    Wszystko ›
+   Ustaw termin ›               do niedz.
+────────────────────────────────────────────────────────────────────────────────
+ Dziś
+ 20:00  Wilki – Rysie         ● w lobby, gra 1
+ 20:00  Team Spirit PL – Ogry ● 1:0, gra 2
+ 21:30  Sowy – Orły           ○ lobby o 21:20
+```
+
+- **The phase line** is the tournament's stages from the Format screen plus registration and the final. The mark shows where the season is. It is the only place the status appears. When the next step is the organizer's, the primary button sits on this line, at the mark.
+- **Do decyzji** lists the decisions of section 3.5, most urgent first. Each row: what, which object, the deadline, one action. The most urgent row has the filled button; the others are quiet. A decision leaves the list when it is made, by anyone.
+- **Automat** lists what the platform did, newest first, in past-tense sentences, with "Cofnij" where the action can be taken back. It is the audit log filtered to actions with no human actor.
+- **Dziś** appears only on a day with matches, and is the match rows of the Mecze screen. On other days the area shows the next match day's date and nothing else.
+
+**States.**
+
+| State | Phase line | Do decyzji | Rest |
+|---|---|---|---|
+| Draft | "Szkic", with `[ Opublikuj i otwórz zapisy ]` | empty | The preview link with "Kopiuj". Automat is hidden until there is something in it. |
+| Registration open | "Zapisy", "11 z 16 drużyn", closing date | flagged teams, if any | The registration link with "Kopiuj" and "Kopiuj ogłoszenie". |
+| Registration closed, count fits | `[ Rozlosuj grupy i wygeneruj terminarz ]` | | |
+| Registration closed, count does not fit | "13 drużyn, format zakłada 16" | one decision with three actions: "Przedłuż zapisy", "Zmień grupy", "Graj z wolnym losem" | |
+| Season running, quiet | mark on the current round | the area holds one line: the next match day and when its lobbies open | This is the normal state and it should look calm, not empty. |
+| Match day | as above | match-day decisions (no bot, late import) rise to the top | Dziś is shown; rows update while lobbies are live (ADR-16). |
+| Something failed | unchanged | the failure is a decision with its fix | The affected match row carries a red mark. Nothing else on the screen changes colour. |
+| Stage over | `[ Opublikuj drabinkę ]`, or blocked by a tie | the tie, first | |
+| Completed | all phases filled | empty | Final placings, the season's numbers, `[ Nowa edycja ]`, "Pobierz dane ›". |
+
+**A referee** sees the same screen with match and stand-in decisions only, and no primary action on the phase line.
+
+**Version 2: the match-day console.** The screen is built around a time axis of today's and the next matches, each a row that widens as it goes live. Decisions are marks on the rows they concern; decisions about nothing in particular sit above. It is the best screen for a referee on a match evening and the worst one for a new organizer three weeks before the season, when there are no matches and the screen is empty. Recommended only as how the "Dziś" band of version 1 behaves on a match day.
+
+**Version 3: one stream.** A single chronological column mixing automatic actions and decisions, like a chat with the platform, with open decisions pinned on top. It is the simplest to read on a phone and makes automation very visible, but the phase and the next step get lost in the stream, and a busy match evening pushes a decision out of sight.
+
+### 5.2 The wizard
+
+**What it is for.** Turn "I want to run a tournament" into a tournament that can open registration, while showing the organizer what they are getting. The preview does the persuading; the form asks only what cannot be guessed.
+
+**Version 1 (recommended): choices on the left, the result on the right.**
+
+```
+Nowy turniej                                   Format · Nazwa i terminy · Wygląd
+────────────────────────────────────────────────────────────────────────────────
+ Jak gracie?                         │
+                                     │   Grupa A        Grupa B
+  Liga                               │   ▪ ▪ ▪ ▪        ▪ ▪ ▪ ▪
+  Grupy i playoff            ◀       │   ▪ ▪ ▪ ▪        ▪ ▪ ▪ ▪
+  Swiss                              │      │ 4 najlepsze  │
+  Swiss i playoff                    │      └──────┬───────┘
+  Puchar                             │        ┌────┴────┐
+  Kwalifikacje LAN                   │        Playoff · 8 drużyn
+                                     │        podwójna eliminacja
+ Ile drużyn?   [ 8 ] [ 12 ] [16] [24]│        ╞═╗
+               inna liczba ›         │        ╞═╝═╗
+                                     │        ╞═╗ ╠══ finał BO5
+ Awans z grupy   4 najlepsze ▾       │        ╞═╝═╝
+ Playoff         podwójna elim. ▾    │
+                                     │   56 meczów w grupach · 14 w playoff
+                                     │   około 7 tygodni przy 2 wieczorach
+                              [ Dalej ]
+```
+
+- **Step 1, Format.** Six formats, each a word an organizer knows. Selecting one draws it on the right; the drawing is the explanation, so the formats carry no description text. The team count is a guess used for the drawing and the defaults; the real structure is fixed when registration closes. Two or three follow-up choices appear per format (how many advance, bracket type), each with a default. The line under the drawing answers the question organizers actually have: how many matches and how long.
+- **Step 2, Nazwa i terminy.** Name; address (`dota2inhouse.pl/` plus a slug suggested from the name, checked as it is typed); registration closes; season starts; match evenings (weekday chips and a time). Language, time zone and Dota server region are one quiet line with the detected values and "Zmień ›". The right side becomes a calendar strip showing registration, each stage and the final on real dates.
+- **Step 3, Wygląd.** Eight presets as small renderings of a real home page; a logo; one colour. The right side is the tournament's real home page with the name, dates and format already in it. "Utwórz turniej" is the primary button.
+- Going back keeps everything. Leaving and returning restores the draft from the browser. Nothing is saved on the server until "Utwórz turniej".
+- **An experienced organizer** starts from "Nowa edycja" on the organizer page and gets the same three steps pre-filled from the last edition; step 1 is skipped unless they open it.
+
+**The six formats** and what each presets (all are stages and rules as data, WP-34):
+
+| Format | Stages | Defaults |
+|---|---|---|
+| Liga | one round robin, in divisions | each pair once, BO2, 2/1/0 points |
+| Grupy i playoff | round-robin groups, then a bracket | top half advances; cross-seeded; double elimination; final BO5 |
+| Swiss | one Swiss stage | rounds from the team count; BO3; Buchholz |
+| Swiss i playoff | Swiss, then a bracket | top 8 advance, seeded by place |
+| Puchar | one bracket | seeded by MMR; single elimination |
+| Kwalifikacje LAN | the PDL S2 format | as PDL S2 |
+
+**States.** The address is taken: the field shows a free suggestion in place. A format does not support the team count (for example a bracket of 5): the nearest counts that work are offered as chips. Creation fails: the button returns with the reason next to it, and nothing is lost. Not on the allowlist (before launch): the request form, section 3.1.
+
+**Version 2: one question per screen.** Large type, one decision at a time ("Jak gracie?", "Ile drużyn?", "Kiedy zaczynacie?"), about eight screens. Friendly for a first-timer and good on a phone, but slow for a second tournament, and the preview has no room next to the question, which loses the wizard's main argument.
+
+**Version 3: one page.** All fields on one scrolling page with the preview pinned beside it. The fastest for an experienced organizer and the easiest to build, but a first-timer meets every decision at once.
+
+### 5.3 Mecze and the match page
+
+**What it is for.** The list answers "which matches need me". The page of one match tells that match's whole story and holds every fix.
+
+**The list.**
+
+```
+Mecze                    Wymagają uwagi 2 · Dziś 3 · Bez terminu 1 · Wszystkie
+────────────────────────────────────────────────────────────────────────────────
+ Kolejka 4 · do niedz. 8 gru
+ czw. 20:00   Wilki          1 : 0   Rysie          ● gra 2 w lobby
+ czw. 20:00   Team Spirit PL 2 : 0   Ogry           ✓
+ czw. 21:30   Sowy           – : –   Orły           ● brak wolnego bota
+ —            Bobry          – : –   Żubry          ● bez terminu
+────────────────────────────────────────────────────────────────────────────────
+ Kolejka 3 · zakończona
+ ...
+                                                               Dodaj mecz ›
+```
+
+Rows are the public schedule's match rows with one extra element, the state. Matches are grouped by round or match day, the current one first. The filters at the top are counts that also filter; "Wymagają uwagi" is the default when it is not zero. A filter "Pominięte gry" lists games the organizer told the platform to ignore.
+
+**The match page, version 1 (recommended): the story on the left, the fixes on the right.**
+
+```
+‹ Mecze        Kolejka 4 · Grupa A · BO3                 ‹ poprzedni  następny ›
+────────────────────────────────────────────────────────────────────────────────
+          Wilki    1 : 0    Rysie                              ● gra 2 w lobby
+────────────────────────────────────────────────────────────────────────────────
+ czw. 5 gru                                    Ustaw termin ›
+ 19:00  Przypomnienie wysłane                  Popraw wynik ›
+ 19:50  Lobby utworzone · bot Inhouse#3        Dodaj grę z Dota ›
+ 19:58  Rysie: zastępstwo Kowal za Nowaka      Walkower ›
+        zatwierdzone przez kapitana Wilków     Kara w drafcie ›
+ 20:03  Gra 1 rozpoczęta                       Mecz powtórzony ›
+ 20:47  Gra 1: wygrywają Wilki · 38 min
+        zaimportowana · statystyki ›  Usuń ›   Komentatorzy
+ 20:52  Gra 2: lobby otwarte, 9 z 10 graczy    Majkel · w lobby
+        czeka na: Zieliński (Rysie)
+────────────────────────────────────────────────────────────────────────────────
+ Składy
+ Wilki   Adamski · Baran · Cichy · Dudek · Ekiert
+ Rysie   Fijał · Górski · Hajduk · Kowal (zastępstwo) · Zieliński
+```
+
+- **The left column is the match's timeline**: every automatic and human action on this match, in order, in plain sentences. It is the audit log for this match plus the lobby's state. This is where the organizer learns to trust the automation, and where a referee sees at once what happened before they were called.
+- **The right column is every fix**, as a quiet list. Only actions that make sense in the current state are listed: a completed match has no "Ustaw termin"; an unplayed one has no "Popraw wynik".
+- **When the match has a problem**, the problem takes the place of the state mark's text under the score, with its fix as the page's one filled button. For example: "Gra rozegrana poza lobby nie została rozpoznana" with `[ Dodaj grę z Dota ]`.
+- **Every fix opens in place** (the right column becomes the form), asks for the minimum, and shows the consequence before confirming: "Tabela grupy A: Rysie z 3. na 4. miejsce". Fixes that the audit log needs a reason for (result correction, walkover, removing a game) have a one-line reason field.
+- **Dodaj grę z Dota** takes a Dota match id, shows the game it found (teams, players matched to rosters, winner, duration), and adds it on confirmation.
+- "‹ poprzedni, następny ›" walk through the current filter, so a referee can clear "Wymagają uwagi" without returning to the list.
+
+**States of a match**, and the mark each has:
+
+| State | Mark | Shown as |
+|---|---|---|
+| No time yet | amber | "bez terminu", with the round's deadline |
+| Scheduled | none | date and time |
+| Lobby opens soon | hollow | "lobby o 21:20" |
+| In lobby, in game | green, live | "gra 2 w lobby", "gra 2 trwa, 24 min" |
+| Waiting for a bot | red | "brak wolnego bota" |
+| Game being imported | hollow | "wynik za chwilę" |
+| Import failed, game not recognized | red | the reason |
+| Completed | check | the score |
+| Walkover | check | the score and "walkower" |
+| Disputed (stand-in appeal, reschedule conflict) | amber | the dispute |
+
+**Version 2: a side panel.** The match opens as a panel over the list, which stays visible. Faster on a match evening because the list never leaves, but the timeline and the fixes compete for a narrow column, and it does not work on a phone, where it becomes version 1 anyway.
+
+**Version 3: rows that open.** Each row expands in place to show its games and a row of actions. The least navigation, and the closest to today's panel. It has no room for the timeline, so the automation stays invisible, and a long list jumps as rows open.
+
+### 5.4 Format
+
+**What it is for.** Everything about how the competition works, in one place: stages, groups, how tables are ordered, who advances where, and the schedule. It replaces five tabs (Structure, Divisions, Swiss, Scheduling, Playoffs). After the wizard it is already filled in; the organizer comes here to adjust, to run the draw, and at each change of stage.
+
+**Version 1 (recommended): the season as a line of stages; the selected stage below.**
+
+```
+Format
+────────────────────────────────────────────────────────────────────────────────
+   Faza grupowa              ───▶    Playoff                    + Dodaj etap
+   2 grupy · każdy z każdym          podwójna eliminacja
+   ● trwa, kolejka 4 z 7             12 drużyn · od 12 gru
+   ══════════════
+────────────────────────────────────────────────────────────────────────────────
+ Grupy                       Kolejność w tabeli           Awans
+
+ Grupa A        Grupa B      Punkty  2 · 1 · 0 ▾          1.–2.  górna drabinka, 2. runda
+ 1 Wilki        1 Bobry                                   3.–4.  górna drabinka, 1. runda
+ 2 Spirit PL    2 Żubry      Przy równej liczbie punktów  5.–6.  dolna drabinka
+ 3 Rysie        3 Sowy       ⠿ Bezpośrednie mecze         7.–8.  koniec turnieju
+ 4 Ogry    ●    4 Orły       ⠿ Różnica gier
+ 5 ...          5 ...        ⠿ Mecz dodatkowy             Zmień ›
+                             + Dodaj kryterium
+ Mecze  BO2 · jedna runda ▾
+ Wieczory  wt. czw. 20:00 ▾
+────────────────────────────────────────────────────────────────────────────────
+ Terminarz   28 meczów · 7 kolejek · 14 rozegranych   Wygeneruj ponownie od kolejki 5 ›
+```
+
+- **The line of stages** is the same line as on Przegląd. Selecting a stage shows its three parts side by side: who plays (groups), how the table is ordered (ranking), and where each place leads (advancement).
+- **Grupy** is the public standings component. Before the season, teams can be dragged between groups and the draw can be run again. During the season it is the live table, and a tie that needs a decision is marked on its rows.
+- **Kolejność w tabeli** is the stage's ranking rules (ADR-11): a points scheme and an ordered list of tie-breakers. Rows are dragged to reorder; "Dodaj kryterium" opens the catalogue, where each rule has one sentence saying what it compares. Changing anything re-sorts the table on the left at once and marks the rows that moved, so the organizer sees the effect on their own teams. Before the season the table holds the registered teams with sample results.
+- **Awans** is the stage's advancement rules as sentences. Hovering a line highlights those places in the table and their slots in the next stage. "Zmień" offers the presets of WP-34 (top N per group; top N plus the best K of the next place; cross-seeding; upper and lower bracket by place) and "Własne", where the next stage's bracket is shown and each entry slot is clicked to choose its source ("1. miejsce grupy A", "najlepsze 3. miejsce").
+- **Terminarz** generates the stage's matches on the chosen evenings as a proposal shown in the Mecze list's form, to adjust and confirm. Regenerating touches only unplayed matches and says how many.
+
+**A bracket stage** shows the bracket itself where the groups are, with its entry slots labelled by source until they are filled, and round formats (BO3, final BO5) set on the round headings. **A Swiss stage** shows the standings, the current round's pairings with `[ Opublikuj rundę 3 ]` when a round waits, the number of rounds, and under "więcej" the MMR pairing band.
+
+**Ties.** An open tie is a mark on the tied rows and a decision on Przegląd. Its action opens the two ways out next to the table: "Zagrajcie mecz dodatkowy" (creates the match or, for three or more teams, a small round robin) and "Ustal kolejność" (drag the tied teams, give a reason). Both show which places and bracket slots depend on the outcome.
+
+**The tie-breaker catalogue**, with the names an organizer sees (the keys are WP-13a's):
+
+| Name | Key | Offered for |
+|---|---|---|
+| Bezpośrednie mecze | `head_to_head` | round robin |
+| Różnica gier | `game_difference` | all |
+| Wygrane gry | `games_won` | all |
+| Wygrane mecze | `match_wins` | all |
+| Neustadtl | `neustadtl` | round robin |
+| Buchholz | `buchholz` | Swiss |
+| Niższe MMR drużyny | `lower_mmr` | all |
+| Mecz dodatkowy | `tiebreak_match` | all; always after the computed rules |
+| Decyzja organizatora | `manual` | all; always last |
+
+`head_to_head_wins` exists only so that imported seasons keep their published tables. It is shown on those tournaments as "Bezpośrednie mecze (dawne)" and is not offered for new ones.
+
+**What can change, and when.**
+
+| Change | Before the season | After the stage has results |
+|---|---|---|
+| Add, remove or reorder stages; group count | free | only for stages that have not started |
+| Move a team between groups | free | not possible; withdraw the team instead |
+| Best-of, match evenings | free | applies to unplayed matches |
+| Points and tie-breakers | free | allowed; the screen shows the table before and after, and the change is recorded with a reason |
+| Advancement | free | until the next stage is published |
+
+**States.** Draft: everything editable, the table shows sample teams. Registration closed: `[ Rozlosuj grupy i wygeneruj terminarz ]` sits here as on Przegląd. Running: as drawn above. A problem: the team count stopped fitting (a team withdrew), shown on the stage with the choices.
+
+**Version 2: one long page.** Stages one under another, each with its groups, rules and schedule open. Nothing is hidden and it prints well, but the relation between stages (who advances where) is the hardest thing to understand and here it is spread over a scroll.
+
+**Version 3: edit on the public pages.** No Format screen: the organizer opens the public standings or bracket and sees edit handles on it (the table's ordering rules behind its header, the bracket's slots clickable). It follows "the organizer edits the thing they see" furthest, but it has no natural place for things with no public page yet, such as the draw and schedule generation, and it mixes editing into pages that must stay cacheable.
+
+### 5.5 Wygląd
+
+**What it is for.** Make the tournament look like the organizer's own, with no way to make it look bad. Section 6 says what can be changed and why; this is the screen.
+
+**Version 1 (recommended): controls beside the real site.**
+
+```
+Wygląd       wersja robocza · 3 zmiany          Odrzuć ›   [ Opublikuj wygląd ]
+────────────────────────────────────────────────────────────────────────────────
+ Motyw        Nocny ▾            │   Strona główna · Drużyny · Mecz · Tabela
+                                 │   telefon · komputer
+ Marka                           │  ┌────────────────────────────────────────┐
+  logo        ⬚ pdl.svg          │  │                                        │
+                                 │  │                                        │
+ Kolory                          │  │        the real page, rendered         │
+  główny      ■ #E11D48          │  │        with the draft look             │
+  dodatkowy   ■ #0F172A          │  │                                        │
+  akcent      ■ #F59E0B          │  │                                        │
+                                 │  │                                        │
+ Tło          obraz · 60% ▾      │  │                                        │
+ Czcionki     Rajdhani · Inter ▾ │  └────────────────────────────────────────┘
+ Styl         szkło · miękkie ▾  │
+ Hero         wideo ▾            │
+ Sponsorzy    3 ▾                │
+ Linki        4 ▾                │
+                                 │
+ Historia ›                      │
+```
+
+- The preview is the tournament's real pages (not a mock-up) rendered with the draft look, with a switch between four pages and two widths. It is the one framed object on the screen, because it is a real object: a window onto the site.
+- Each control group is one line that opens in place. A change shows in the preview at once and is saved as a draft that viewers do not see.
+- "Opublikuj wygląd" makes the draft live for everyone. "Historia" lists published looks with their dates and restores any of them.
+- **A colour that would make text unreadable** is not refused with an error. The control shows the nearest colour that works next to the chosen one ("zbyt jasny dla białego tekstu, najbliższy: ■"), and the preview marks the element that would fail. A draft with a failing pair cannot be published; the button says which pair.
+- **An image** is cropped and scaled on upload, with the crop shown on the preview. One that is too small is said to be too small, with the size needed.
+
+**States.** No changes: no draft line, no publish button. Draft: as drawn. Imported tournament with stored values the new controls cannot express (for example its own text colours): the look is kept exactly, and the control group says "własne wartości" with "Wróć do automatycznych ›".
+
+**Version 2: edit on the site.** The whole screen is the real site; clicking an element (the logo, the hero, a heading, the background) opens a small palette for it. The most direct, and impressive in a demo. It costs much more to build, things without a visible element (favicon, link preview image) need a second place, and it is hard to make discoverable without the explanatory text the product rules forbid.
+
+**Version 3: presets only.** A gallery of twelve presets and four fields (logo, one colour, background image, hero). Almost impossible to get wrong and quick to build, but it does not deliver "design each organizer can make their own", the second selling point.
+
+### 5.6 The smaller screens
+
+These follow the same patterns and need no versions.
+
+- **Drużyny.** The public teams list with a state per team (complete, waiting for players, flagged, withdrawn) and filters as counts. A team's page: roster with each player's Steam and MMR state, "MMR do rozstawienia", stand-ins and transfers as a history, and the actions (change captain, edit roster, ban, withdraw). A second view, Zastępstwa, lists stand-in requests and appeals.
+- **Treść.** Three views. Aktualności: posts, with "Powiadom drużyny" as a checkbox on publishing. Regulamin: sections and paragraphs edited in place; a paragraph generated from a setting shows its text greyed with "z ustawień ›" leading to the setting. Nagrody: a list or one image.
+- **Ustawienia.** One page per section named in 4.1, each a short list of fields that save one by one. Settings almost nobody changes sit under "więcej" in their section. Ludzie lists people with their role and an invitation link per role. Adres holds the slug, the domain with its DNS state, and the redirect. Historia zmian is the audit log with filters by person and object. Strefa zagrożenia holds "Cofnij etap" and "Usuń turniej", each listing what it undoes.
+- **`/organizer`.** A list of the organization's tournaments as rows (logo, name, phase, the count of open decisions), running ones first, `[ Utwórz turniej ]`, and "Nowa edycja" on a finished one. A second view for the organization: name, logo, default look, links, members.
+- **`/platform`.** Bot accounts and workers with heartbeat and what each is doing; live lobby sessions; the job queue with retry; creation requests; organizations and their tournaments; card-game bug reports; the mirror report; usage against free-plan limits. It is a working tool for one person; it gets plain tables and no design effort beyond the shared components.
+
+### 5.7 Patterns every screen shares
+
+- **Saving.** A field saves when it is left, through its command, and shows a small check for a moment. There is no page-wide "Zapisz". The three exceptions are proposals the organizer confirms as a whole: the draw and schedule, a Swiss round, and the look.
+- **Decisions** have one anatomy everywhere: a state mark, one line saying what, one line naming the object, a deadline, one action.
+- **Automatic actions** have one anatomy: time, a past-tense sentence, the object as a link, "Cofnij" where possible.
+- **Destructive actions** never ask "Czy na pewno?". They list what will change ("usunie 14 nierozegranych meczów", "3 walkowery dla rywali") and the button repeats the verb ("Wycofaj drużynę").
+- **Colour.** Amber: a decision is waiting. Red: something failed or will fail without action. Green: live now. Everything else uses the tournament's theme. No other colour coding.
+- **Errors** say what happened and what to do, in the organizer's words, where the action was taken: "Ten adres jest już zajęty", not "Błąd 409". An unexpected failure says so, keeps what was typed, and is reported to error monitoring (ADR-13) with nothing for the organizer to copy.
+- **Empty areas** show what will be there or the next event, in one line. They never show an illustration or a paragraph of help.
+- **Phone.** Przegląd, Mecze, the match page and Drużyny must work fully at 390 px, because referees and organizers act on match evenings from a phone. Format and Wygląd are built for a wide screen and must still fit and be usable at 390 px (stacked, preview on a second tab).
+- **Language.** The panel's copy goes through the one translation system (WP-29) from the start; Polish first.
+- **Roles** come from `authorize` (ADR-06). A person never sees a control they may not use; nothing is shown disabled for lack of permission.
