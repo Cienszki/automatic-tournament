@@ -232,18 +232,18 @@ The rule list is short. The depth comes from three places, and each is measured 
 
 A round asks three questions at once, and each has a cost.
 
-- **Which cards.** A hand holds three to five cards and there are two orders. Playing the strongest card is often wrong now: a Mid is worth most when the rival has just put a strong unit down, a Support is worth most when a unit elsewhere can come with it, and a Carry is worth most early, while it can still grow. In the simulations the strongest computer player chose a different plan from the obvious one in **78%** of rounds.
+- **Which cards.** A hand holds three to five cards and there are two orders. Playing the strongest card is often wrong now: a Mid is worth most when the rival has just put a strong unit down, a Support is worth most when a unit elsewhere can come with it, and a Carry is worth most early, while it can still grow. In the simulations the strongest computer player chose a different plan from the obvious one in **77%** of rounds.
 - **Where.** There are three objectives and a player cannot win all of them. Roshan is worth two, so both players want it, which makes the other two the way round it. With three units per side at most, strength cannot be piled without limit, and a full objective forces the question of which unit to give up.
 - **Now or later.** A card played early controls an objective for more rounds; a card kept is an answer the rival cannot see. A move costs the same order as a play, so repositioning is paid for with tempo. From round 5 damage doubles, so a player can plan to be weak early and strong late, or the reverse.
 
-A match is about 8 or 9 cards played and 3 moves made by each player over five or six rounds: around a dozen decisions, each of which matters, against 27 clicks in today's game of which a third decide nothing.
+A match is about 9 cards played and 3 moves made by each player over five or six rounds: around a dozen decisions, each of which matters, against 27 clicks in today's game of which a third decide nothing.
 
 ### 5.2 Reading the rival
 
 Because both plans are hidden until the reveal, the right play depends on what the rival is about to do.
 
-- **How much is there to read?** A measuring program that is told the rival's plan each round beats the strongest honest computer player **94%** of the time with the same deck. Almost everything that separates a good round from a bad one is knowing where the rival goes.
-- **Is being predictable punished?** A program that knows exactly how the rival thinks, without seeing its hand, beats it 68%. A player with habits loses to a player who notices them.
+- **How much is there to read?** A measuring program that is told the rival's plan each round beats the strongest honest computer player **92%** of the time with the same deck. Almost everything that separates a good round from a bad one is knowing where the rival goes.
+- **Is being predictable punished?** A program that knows exactly how the rival thinks, without seeing its hand, beats it 64%. A player with habits loses to a player who notices them.
 - **What there is to read.** The rival's board is open: where their Carry is growing, which objective they cannot afford to lose, whether their Offlane stands beside their best unit, how many cards they hold. Their hand is hidden. So a player reads intentions from position: "they must defend Roshan this round, so the Outpost is free" is the basic thought of the game, and it has no certain answer.
 
 Each ability is a reading question. Gank asks where the rival's best unit will be when the Mid lands. Tank asks whether to keep the Offlane beside the Carry or use its strength elsewhere. Smoke lets two units arrive where one was expected. Farma makes a visible target that grows more worth attacking each round.
@@ -322,7 +322,7 @@ The game's clock is the real tournament. Each real round should give a player a 
 When a real round is finished and its games are in (the moment that already triggers round packs, `src/server/card-lab/rewards.ts`), the game opens that round's **Kolejka**.
 
 - **Opponents.** Every team that played in the round is an opponent, played by the computer. A team's deck is that team's own cards: the five players' cards from this round's series, filled up to the deck size with the same players' most recent earlier series. The computer's team decks ignore the budget and the one-card-per-player rule. Their strength is whatever the team really did, so the bottom of the table is beatable by anyone and the team that dominated the round is a hard opponent. In a tournament with many teams, the game shows five: the weakest, the strongest, and three spread between them.
-- **How hard it is.** The computer plays team decks at its easiest honest level, so the difficulty comes from the team's real cards and not from the program. Simulated on Wiosenna's 19 teams over the season, with the team decks sorted into five bands by strength: a player who makes the obvious move each round wins 85% against the weakest band, then 60%, 44%, 33%, and 18% against the strongest; a strong player wins 99%, 93%, 76%, 63% and 37%. With the computer on a stronger level the average player won under 20% from the second band up, which is why the level is fixed low.
+- **How hard it is.** The computer plays team decks at its easiest honest level, so the difficulty comes from the team's real cards and not from the program. Simulated on Wiosenna's 19 teams over the season, with the team decks sorted into five bands by strength: a new player who makes the obvious move each round wins 92% against the weakest band, then 62%, 36%, 33%, and 10% against the strongest; a strong player with the same new collection wins 99%, 88%, 64%, 46% and 18%. With the computer on a stronger level the average player won under 20% from the third band up, which is why the level is fixed low.
 - **One counted match per opponent per round.** A player may play each opponent once for points. They may replay any opponent, of this round or of past rounds, as often as they like for practice. This keeps the counted play to at most five matches a round, and makes each one matter.
 - **Points and the ranking.** Beating an opponent gives points equal to its place from the bottom (1 for the weakest of five, 5 for the strongest). The season's sum is the **Kolejka ranking** of the tournament. Anyone can climb it at any hour without another player online (goal G7).
 - **Packs.** Two of the three round packs are earned here: one for finishing a counted match, one for winning one. The third still arrives by itself, so a collector who never plays keeps collecting.
@@ -397,9 +397,9 @@ Three, all existing: the game on or off, packs per round, and giving packs. The 
 
 ### 9.1 How this was done
 
-The rules of section 4 were not written and then tested. They were found. WP-51 built the game as a pure rules engine in which every number and every ability variant is a setting, wrote computer players for it, and ran about 250,000 simulated matches on the real cards of Wiosenna and PDL S2. The first candidate rules missed three targets; five rounds of changes, each tested, led to the rules in section 4.
+The rules of section 4 were not written and then tested. They were found. WP-51 built the game as a pure rules engine in which every number and every ability variant is a setting, wrote computer players for it, and ran about 400,000 simulated matches on the real cards of Wiosenna and PDL S2. The first candidate rules missed three targets; seven rounds of changes, each tested, led to the rules in section 4.
 
-- The engine: `src/features/cards/domain/v2/` on branch `wp/51-card-proto`, with 88 tests.
+- The engine: `src/features/cards/domain/v2/` on branch `wp/51-card-proto`, with 93 tests.
 - The experiments: `scripts/tools/card-sim/v2/`. Every run is seeded, and the command that reproduces a table is printed under it.
 - The results: `docs/overhaul/sim/v2/REPORT.md` for the settled rules, and `docs/overhaul/sim/v2-first/REPORT.md` for the first candidate and the steps between.
 
@@ -415,17 +415,18 @@ Each target was set before the prototype ran.
 
 | Goal | Target | Today's game | Recommended game | Met |
 |---|---|---|---|---|
-| Short matches (G2) | 5 to 7 rounds; nearly all end with an Ancient destroyed | 10.4 turns, 6.5 fights, 19 hits | **5.7 rounds**; 99% of matches last 5 to 7; 99.3% end with an Ancient destroyed | Yes |
-| Skill over collection (G4) | A new player's deck loses to a veteran's at most 60% | **90%** | **58.7%** (56 to 62). Without the budget: 81% | Yes |
-| Skill decides (G4) | The good player beats the obvious-move player at least 70% | Not comparable | **82%** | Yes |
-| Skill beats collection | The good player with a new deck beats the obvious-move player with a veteran deck | Loses 58% (best computer level, 10 packs against 40) | **Wins 75%** | Yes |
-| A real choice each round (G5) | The good player's plan differs from the obvious plan in most rounds | The strongest card in hand was played 100% of the time | **78%** of rounds | Yes |
-| Something to read (G5) | Knowing the rival's plan must be worth a lot | Nothing is hidden | A program told the rival's plan wins **94%** against the good player | Yes |
-| Comebacks | The player behind after round 3 wins at least 25% | The side ahead after three turns each wins 85.5% | **32%** | Yes |
-| Leads change | The winner was never behind in at most 55% of matches | Not comparable | **54%** | Yes, narrowly |
+| Short matches (G2) | 5 to 7 rounds; nearly all end with an Ancient destroyed | 10.4 turns, 6.5 fights, 19 hits | **5.7 rounds**; 97% of matches last 5 to 7; 99.8% end with an Ancient destroyed | Yes |
+| Skill over collection (G4) | A new player's deck loses to a veteran's at most 60% | **90%** | **59%** (56 to 62). Without the budget: 88% | Yes, at the edge |
+| Skill decides (G4) | The good player beats the obvious-move player at least 70% | Not comparable | **78%** | Yes |
+| Skill beats collection | The good player with a new deck beats the obvious-move player with a veteran deck | Loses 58% (best computer level, 10 packs against 40) | **Wins 67%** | Yes |
+| A real choice each round (G5) | The good player's plan differs from the obvious plan in most rounds | The strongest card in hand was played 100% of the time | **77%** of rounds | Yes |
+| Something to read (G5) | Knowing the rival's plan must be worth a lot | Nothing is hidden | A program told the rival's plan wins **92%** against the good player | Yes |
+| Comebacks | The player behind after round 3 wins at least 25% | The side ahead after three turns each wins 85.5% | **35%** | Yes |
+| Leads change | The winner was never behind in at most 55% of matches | Not comparable | **46%** | Yes |
 | No seat advantage | 50% | First player wins 43% | No first player exists | Yes |
-| A ladder of skill | Each computer level beats the one below at least 60% | | 94%, 79%, then **56%** between the two strongest | Partly |
-| Objectives are even | Holding any objective in round 2 wins 45 to 65% | First-taker wins 40 to 55% | 50 to 65% (Lotus Pool highest) | Yes |
+| No dominant deck | A deck built around one position wins 40 to 60% against the best ordinary deck | The strongest twenty always win | 42 to 57% (section 9.4) | Yes |
+| A ladder of skill | Each computer level beats the one below at least 60% | | 94%, 78%, then **56%** between the two strongest | Partly |
+| Objectives are even | Holding any objective in round 2 wins 45 to 65% | First-taker wins 40 to 55% | *(from the final run)* | |
 
 The one target missed is the top step of the skill ladder: the two strongest computer players are closer to each other than intended. This is a statement about those two programs, and it limits what the simulations can say about the very top of human play. The trial with people (WP-62) is where that gets answered.
 
@@ -474,7 +475,7 @@ Run on today's engine with the harness of WP-50 (`E10`):
 
 ### 9.6 Kolejka and the economy
 
-- **Kolejka's difficulty** is in section 7.1: a ladder from 85% to 18% for an average player and from 99% to 37% for a strong one.
+- **Kolejka's difficulty** is in section 7.1: a ladder from 92% to 10% for an average player and from 99% to 18% for a strong one, both with a new player's collection.
 - **Duplicates** are in section 8: 68 of the 185 cards of a 37-pack Wiosenna season.
 - **Reach of packs.** Because a pack draws from each team's last series only, a Wiosenna pack can give 95 of 851 cards. After a season of 37 packs a player holds cards of 77 of the 119 players and has 5 of 19 teams complete. The followed team's cards (section 7.2) are the way to finish a chosen team.
 
