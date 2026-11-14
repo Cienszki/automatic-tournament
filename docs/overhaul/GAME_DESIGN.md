@@ -222,7 +222,53 @@ Two abilities work as today (Farma, and Aura apart from the limit of one per obj
 - A player away for 90 seconds loses, as today.
 - A match is at most 8 rounds, so with the 30-second pace it cannot last longer than about six minutes including reveals.
 
-<!-- SECTION 5 GOES HERE -->
+## 5. Where the depth comes from
+
+The rule list is short. The depth comes from three places, and each is measured in section 9.
+
+### 5.1 Decisions in a round
+
+A round asks three questions at once, and each has a cost.
+
+- **Which cards.** A hand holds three to five cards and there are two orders. Playing the strongest card is often wrong now: a Mid is worth most when the rival has just put a strong unit down, a Support is worth most when a unit elsewhere can come with it, and a Carry is worth most early, while it can still grow. In the simulations the strongest computer player chose a different plan from the obvious one in **78%** of rounds.
+- **Where.** There are three objectives and a player cannot win all of them. Roshan is worth two, so both players want it, which makes the other two the way round it. With three units per side at most, strength cannot be piled without limit, and a full objective forces the question of which unit to give up.
+- **Now or later.** A card played early controls an objective for more rounds; a card kept is an answer the rival cannot see. A move costs the same order as a play, so repositioning is paid for with tempo. From round 5 damage doubles, so a player can plan to be weak early and strong late, or the reverse.
+
+A match is about 8 or 9 cards played and 3 moves made by each player over five or six rounds: around a dozen decisions, each of which matters, against 27 clicks in today's game of which a third decide nothing.
+
+### 5.2 Reading the rival
+
+Because both plans are hidden until the reveal, the right play depends on what the rival is about to do.
+
+- **How much is there to read?** A measuring program that is told the rival's plan each round beats the strongest honest computer player **94%** of the time with the same deck. Almost everything that separates a good round from a bad one is knowing where the rival goes.
+- **Is being predictable punished?** A program that knows exactly how the rival thinks, without seeing its hand, beats it 68%. A player with habits loses to a player who notices them.
+- **What there is to read.** The rival's board is open: where their Carry is growing, which objective they cannot afford to lose, whether their Offlane stands beside their best unit, how many cards they hold. Their hand is hidden, except cards a gank has sent back. So a player reads intentions from position: "they must defend Roshan this round, so the Outpost is free" is the basic thought of the game, and it has no certain answer.
+
+Each ability is a reading question. Gank asks where the rival's best unit will be when the Mid lands. Tank asks whether to keep the Offlane beside the Carry or use its strength elsewhere. Smoke lets two units arrive where one was expected. Farma makes a visible target that grows more worth attacking each round.
+
+### 5.3 Building a deck
+
+The budget turns the deck screen into a set of trades.
+
+- **Few strong cards or many middling ones.** A 9 and a 1 cost the same as two 5s. The 9 wins an objective alone but is the gank's first target; the two 5s hold two places.
+- **Positions.** One of each is required; the other seven slots are the deck's character. Mids to disrupt, Carries to grow, an Offlane for each Carry worth protecting, a Hard Support for each objective to be held.
+- **Real teams.** Teammates on one objective get +1 each, and the bonus costs nothing. A deck built around one or two real teams is stronger than its budget says, if the player has collected those teams.
+- **Team-of-the-round cards.** Their +1 is free, so each one is worth chasing.
+
+*(The measured strength of each kind of deck against the others is added here from the final simulation run.)*
+
+A new player does not have to think about any of this: the first deck is built for them. A competitor has a puzzle with no single answer.
+
+### 5.4 Room to grow
+
+The core is deliberately small. Once it is proven with players, depth can be added without touching the round:
+
+- **Hero traits.** Every card already records the hero of the player's best game. Heroes could carry one trait each (a primary attribute, for instance), giving a second way for cards to combine. This uses data the cards have and the game ignores.
+- **Attributes.** The six attributes computed for every card (fight, farm, growth, damage, vision, teamwork) could give a card a second small bonus, so two cards of the same strength differ.
+- **More objectives,** or objectives chosen by the organizer.
+- **Team-of-the-tournament cards** with their own effect, which the owner planned.
+
+None of these is in the work packages. Each would arrive as a rule with a simulation behind it, through the balance check that WP-52 puts in CI.
 
 ## 6. Onboarding: the first match teaches by playing
 
