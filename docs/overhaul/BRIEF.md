@@ -65,7 +65,16 @@ These are the owner's own concerns from 2026-11-12, condensed.
 
 ### Models and quota
 
-Fable 5.2 quota is limited, and we do not know the limit. Spend Fable on what needs the most judgment: decisions, design, and reviewing the results of other agents. Delegate the rest to the agents in `.claude/agents/`:
+There are two weekly quotas, and they are separate: one for Fable 5.2, and one shared by every other model (Opus and Sonnet together). Both reset on Thursday at 01:59. **Spend from the quota that has more left, and check `STATUS.md` ("Quota") for the last numbers the owner gave.**
+
+The first days of the overhaul (2026-11-12 to 14) got this wrong: nearly all implementation went to Opus, and the non-Fable quota ran out mid-task while most of the Fable quota was unused. The rule since 2026-11-14:
+
+- **While Fable has more left than the other quota, Fable does the implementation too.** Start the `implementer` and `reviewer` agents with `model: "fable"`, or do the work in the orchestrating session when it is small or needs the session's context (running simulations, reading results, documents).
+- **Use Opus for implementation only for large, well-specified, mechanical packages**, and only while the non-Fable quota is clearly the fuller one.
+- **Explorers run on Sonnet and draw on the non-Fable quota.** Use them for wide sweeps of many files. For a handful of files, read them directly.
+- **An agent stopped by a quota limit keeps its work** in its worktree and branch. Check the branch and continue from it on the other model; do not start again.
+
+The agents in `.claude/agents/`, with their default models:
 
 | Agent | Model | Use it for |
 |---|---|---|
@@ -73,12 +82,12 @@ Fable 5.2 quota is limited, and we do not know the limit. Spend Fable on what ne
 | `implementer` | Opus | Building one work package on its own branch. |
 | `reviewer` | Opus | Checking a finished work package against its acceptance criteria. Read-only, but may run tests. |
 
-- Use these agents, not the general-purpose agent, which runs on the parent's model.
+- Use these agents, not the general-purpose agent, and state the model in the call whenever it should differ from the default in the table.
 - A subagent starts with no context. Brief it fully: the goal, the files, the worktree path, the acceptance criteria, the limits from this file, and the report you want back.
 - Run subagents in parallel only when they do not edit the same files. Each implementer that runs in parallel gets its own worktree.
 - Explorer reports are summaries. Before a decision depends on a claim, check the important claims yourself, or have an explorer quote the code.
 
-**Every session must be resumable by Opus alone,** because the Fable quota can run out mid-session:
+**Every session must be resumable by the other model alone,** because either quota can run out mid-session:
 
 - Write outputs to files as you go, not at the end. Commit after each finished section.
 - Keep `STATUS.md` current: what is done, what is next, and open questions.
