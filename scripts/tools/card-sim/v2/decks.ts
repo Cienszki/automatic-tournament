@@ -19,7 +19,8 @@ import { cost, deckProblem, type DeckRules } from '@/features/cards/domain/v2/de
 import type { Rnd } from '../rng';
 import { minimums, pick, type Needs } from './pick';
 
-export type BuilderName = 'best' | 'topHeavy' | 'flat' | 'teamStack' | 'random' | `roleSkew:${RoleKey}`;
+/** `count:Role:n` = exactly n cards of that role, the rest chosen like best */
+export type BuilderName = 'best' | 'topHeavy' | 'flat' | 'teamStack' | 'random' | `roleSkew:${RoleKey}` | `count:${RoleKey}:${number}`;
 export const ARCHETYPES: BuilderName[] = ['best', 'topHeavy', 'flat', 'teamStack', ...ROLE_KEYS.map((r) => `roleSkew:${r}` as BuilderName)];
 
 const ABILITY_STRENGTH: Partial<Record<RoleKey, number>> = { Carry: 1, 'Hard Support': 1 };
@@ -54,11 +55,14 @@ function improveTeams(deck: GCard[], col: GCard[], rules: DeckRules, needs: Need
   return cur;
 }
 
-function teamStack(col: GCard[], rules: DeckRules): GCard[] | null {
-  const teams = [...new Set(col.flatMap((c) => (c.team ? [c.team.id] : [])))];
+function teamStack(col: GCard[], rules: DeckRules, needs: Needs): GCard[] | null {
+  const counts = new Map<string, number>();
+  for (const c of col) if (c.team) counts.set(c.team.id, (counts.get(c.team.id) ?? 0) + 1);
+  // The four teams with the most cards in the collection: the others cannot give the biggest stack
+  const teams = [...counts.entries()].sort((x, y) => y[1] - x[1] || (x[0] < y[0] ? -1 : 1)).slice(0, 4).map((e) => e[0]);
   let best: { deck: GCard[]; n: number; v: number } | null = null;
   for (const t of teams) {
-    const deck = pick(col, rules, (c) => (c.team?.id === t ? 100 : 0) + baseMight(c) + tie(c), minimums(rules.perRole));
+    const deck = pick(col, rules, (c) => (c.team?.id === t ? 100 : 0) + baseMight(c) + tie(c), needs);
     if (!deck) continue;
     const n = deck.filter((c) => c.team?.id === t).length;
     const v = deckValue(deck);
@@ -68,8 +72,23 @@ function teamStack(col: GCard[], rules: DeckRules): GCard[] | null {
 }
 
 /** A deck of the named kind from a collection, or null if the collection cannot make a legal one */
+/** A deck of the named kind; when the rules cap a role, a role that would go over is held at exactly the cap */
 export function buildDeck(name: BuilderName, col: GCard[], rules: DeckRules, rnd?: Rnd): GCard[] | null {
+  const cap = rules.maxPerRole ?? Infinity;
+  const fixed = new Map<RoleKey, number>();
+  for (let i = 0; i < 6; i++) {
+    const d = buildWith(name, col, rules, rnd, fixed);
+    if (!d || !Number.isFinite(cap)) return d;
+    const over = ROLE_KEYS.find((r) => d.filter((c) => c.role === r).length > cap);
+    if (!over) return d;
+    fixed.set(over, cap);
+  }
+  return null;
+}
+
+function buildWith(name: BuilderName, col: GCard[], rules: DeckRules, rnd: Rnd | undefined, fixed: Map<RoleKey, number>): GCard[] | null {
   const mins = minimums(rules.perRole);
+  for (const [r, n] of fixed) mins[r] = { min: n, max: n };
   const target = Number.isFinite(rules.budget) ? rules.budget / rules.deckSize : 9;
   switch (name) {
     case 'best': {
@@ -79,14 +98,24 @@ export function buildDeck(name: BuilderName, col: GCard[], rules: DeckRules, rnd
     // Both spend the budget on strength like `best`; they differ only in the shape of the costs
     case 'topHeavy': return pick(col, rules, (c) => expectedStrength(c) + 0.15 * (cost(c, rules.costMode) - target) ** 2 + tie(c), mins);
     case 'flat': return pick(col, rules, (c) => expectedStrength(c) - 0.3 * (cost(c, rules.costMode) - target) ** 2 + tie(c), mins);
-    case 'teamStack': return teamStack(col, rules);
+    case 'teamStack': return teamStack(col, rules, mins);
     case 'random': {
       if (!rnd) throw new Error('random deck needs a random stream');
       return pick(col, rules, () => rnd(), mins);
     }
     default: {
+      if (name.startsWith('count:')) {
+        const [, r, k] = name.split(':');
+        const needs = { ...mins, [r as RoleKey]: { min: Number(k), max: Number(k) } } as Needs;
+        const d = pick(col, rules, (c) => expectedStrength(c) + tie(c), needs);
+        return d && improveTeams(d, col, rules, needs);
+      }
       const role = name.slice('roleSkew:'.length) as RoleKey;
-      const needs = Object.fromEntries(ROLE_KEYS.map((r) => [r, r === role ? { min: rules.perRole, max: Infinity } : { min: rules.perRole, max: rules.perRole }])) as Needs;
+      const top = rules.maxPerRole ?? Infinity;
+      // With a cap the skewed role is held at the cap and the other slots are free
+      const needs = (Number.isFinite(top)
+        ? Object.fromEntries(ROLE_KEYS.map((r) => [r, r === role ? { min: top, max: top } : fixed.has(r) ? mins[r] : { min: rules.perRole, max: Infinity }]))
+        : Object.fromEntries(ROLE_KEYS.map((r) => [r, r === role ? { min: rules.perRole, max: Infinity } : { min: rules.perRole, max: rules.perRole }]))) as Needs;
       const d = pick(col, rules, (c) => expectedStrength(c) + tie(c), needs);
       return d && improveTeams(d, col, rules, needs);
     }

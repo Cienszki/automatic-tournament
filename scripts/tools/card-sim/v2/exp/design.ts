@@ -4,9 +4,9 @@ import { mean, num, pct, rate } from '../../stats';
 import type { GameResult } from '../cells';
 import { ARCHETYPES, type BuilderName } from '../decks';
 import { playCells } from '../parallel';
-import { cell, comeback, deckTotals, differs, meanRounds, PACKS, perSide, rulesLabel, seat, wins, type Ctx, type Outcome } from './common';
+import { cell, comeback, deckTotals, differs, hpLead, meanRounds, PACKS, perSide, rulesLabel, seat, wins, type Ctx, type Outcome } from './common';
 
-const short = (b: BuilderName) => b.replace('roleSkew:', 'skew ').replace('Soft Support', 'SS').replace('Hard Support', 'HS');
+const short = (b: BuilderName) => b.replace('roleSkew:', 'most ').replace('Soft Support', 'Support').replace('Hard Support', 'Hard Supp');
 
 export async function e6(ctx: Ctx): Promise<Outcome> {
   const pairs: Array<[BuilderName, BuilderName]> = [];
@@ -176,3 +176,70 @@ export const KNOBS5: Array<{ name: string; rules: RulesPatch }> = [
   { name: 'late multiplier from round 4', rules: { lateFrom: 4 } },
 ];
 export const e16 = (ctx: Ctx) => e8(ctx, KNOBS5, 'E16. Milder catch-up rules on the settled rules');
+
+/** E17: is a deck of one role dominant? Each role-heavy deck against best, per rule variant */
+const VARIANTS17: Array<{ name: string; rules: RulesPatch }> = [
+  { name: 'rules before E17 (gank reaches any unit)', rules: {} },
+  { name: 'gank only a unit no stronger than the Mid', rules: { gankReach: 'notStronger' } },
+  { name: 'gank the weakest unit', rules: { gank: 'weakest' } },
+  { name: 'gank only a unit weaker than the Mid would be: no stronger, and gank weakest', rules: { gankReach: 'notStronger', gank: 'weakest' } },
+];
+const SKEWS17: BuilderName[] = ['roleSkew:Carry', 'roleSkew:Mid', 'roleSkew:Offlane', 'roleSkew:Soft Support', 'roleSkew:Hard Support', 'teamStack'];
+export async function e17(ctx: Ctx): Promise<Outcome> {
+  const g = Math.min(ctx.games ?? 400, 400);
+  const cells = VARIANTS17.flatMap((v, vi) => [
+    ...SKEWS17.map((b) => ({ ...cell({ ...ctx, games: g }, `e17-skew-${b}`, seat('planner', b), seat('planner', 'best'), { sameCollection: true, rules: v.rules }), key: `e17-${vi}-${b}` })),
+    { ...cell({ ...ctx, games: 2 * g }, 'e17-mirror', seat('planner'), seat('planner'), { sameCollection: true, rules: v.rules }), key: `e17-${vi}-mirror` },
+    { ...cell({ ...ctx, games: 2 * g }, 'e17-vet', seat('planner', 'best', PACKS.veteran), seat('planner', 'best', PACKS.new), { rules: v.rules, collections: 200 }), key: `e17-${vi}-vet` },
+  ]);
+  const all = await playCells(cells);
+  const n = SKEWS17.length + 2;
+  const rows = VARIANTS17.map((v, vi) => [v.name, ...SKEWS17.map((_, i) => pct(wins(all[vi * n + i]).k / wins(all[vi * n + i]).n)), comeback(all[vi * n + SKEWS17.length], 3).text, wins(all[vi * n + SKEWS17.length + 1]).text, num(perSide(all[vi * n + SKEWS17.length], (s) => s.ganks))]);
+  return {
+    games: all.reduce((a, r) => a + r.length, 0), data: { rows },
+    tables: [{
+      title: `E17. One-role decks against the best deck, by rule variant (${ctx.slug})`,
+      measured: `planner vs planner. Columns 2 to 7: win rate of a deck heavy in one role (or one real team) against the best deck from the same veteran collection, ${g} games each; the rows of one column share seeds and collections. Then the comeback rate and ganks landed per side per match in the mirror (${2 * g} games), and the veteran's win rate against a new player (${2 * g} games, 200 collection pairs). A deck far above 60% here is a dominant deck.`,
+      columns: ['Rules', ...SKEWS17.map(short), 'P(win | behind after round 3)', 'Veteran wins vs new', 'Ganks landed'], rows,
+    }],
+  };
+}
+
+/** E18: how many Mids does the best deck want, when ganks reach any unit? Decks with exactly k Mids */
+export async function e18(ctx: Ctx): Promise<Outcome> {
+  const g = Math.min(ctx.games ?? 400, 400);
+  const ks = [1, 2, 3, 4, 5];
+  const deck = (k: number) => `count:Mid:${k}` as BuilderName;
+  // SIM_RULES: a JSON rules patch applied to every cell of this experiment (to compare gank variants)
+  const patch = JSON.parse(process.env.SIM_RULES ?? '{}') as RulesPatch;
+  const tag = process.env.SIM_RULES ? `, rules ${process.env.SIM_RULES}` : '';
+  const pairs: Array<[number, number]> = [];
+  for (let a = 0; a < ks.length; a++) for (let b = a + 1; b < ks.length; b++) pairs.push([ks[a], ks[b]]);
+  const cells = [
+    ...pairs.map(([x, y]) => cell({ ...ctx, games: g }, `e18-${x}-${y}`, seat('planner', deck(x)), seat('planner', deck(y)), { sameCollection: true, rules: patch })),
+    ...ks.map((k) => cell({ ...ctx, games: 2 * g }, `e18-mirror-${k}`, seat('planner', deck(k)), seat('planner', deck(k)), { sameCollection: true, rules: patch })),
+    ...ks.map((k) => cell({ ...ctx, games: 2 * g }, `e18-vet-${k}`, seat('planner', deck(k), PACKS.veteran), seat('planner', deck(k), PACKS.new), { collections: 200, rules: patch })),
+  ];
+  const all = await playCells(cells);
+  const score = new Map<string, number>();
+  pairs.forEach(([x, y], i) => { const w = wins(all[i]); score.set(`${x}|${y}`, w.k / w.n); score.set(`${y}|${x}`, 1 - w.k / w.n); });
+  const m = (i: number) => all[pairs.length + i];
+  const v = (i: number) => all[pairs.length + ks.length + i];
+  return {
+    games: all.reduce((a, r) => a + r.length, 0), data: {},
+    tables: [
+      {
+        title: `E18a. Decks with exactly k Mids against each other (${ctx.slug}${tag})`,
+        measured: `planner vs planner, both decks from the same veteran collection, otherwise built like best; ${g} games per pair. Win rate of the row deck.`,
+        columns: ['Row vs column', ...ks.map((k) => `${k} Mid`)],
+        rows: ks.map((x) => [`${x} Mid`, ...ks.map((y) => (x === y ? '—' : pct(score.get(`${x}|${y}`)!)))]),
+      },
+      {
+        title: `E18b. The match when both decks have k Mids (${ctx.slug}${tag})`,
+        measured: `Mirror: ${2 * g} games, same deck both sides. Veteran against new player, both with k Mids: ${2 * g} games, 200 collection pairs.`,
+        columns: ['Mids in both decks', 'Rounds', 'P(win | behind after round 3)', 'Ganks landed per side', 'Winner never trailed', 'Veteran wins vs new'],
+        rows: ks.map((k, i) => [String(k), num(meanRounds(m(i))), comeback(m(i), 3).text, num(perSide(m(i), (s) => s.ganks)), pct(m(i).filter((r) => { const lead = hpLead(r); const won = r.x === 1; return r.x !== 0.5 && lead.every((l) => (won ? l >= 0 : l <= 0)); }).length / m(i).filter((r) => r.x !== 0.5).length), wins(v(i)).text]),
+      },
+    ],
+  };
+}

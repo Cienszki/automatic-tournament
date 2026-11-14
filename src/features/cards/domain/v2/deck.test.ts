@@ -27,7 +27,7 @@ describe('deck rules', () => {
 
   it('refuses a missing role', () => {
     const d = legal().map((c) => (c.role === 'Mid' ? aCard({ role: 'Carry', cost: 5 }) : c));
-    expect(deckProblem(d, DEFAULT_RULES)).toMatch(/Mid/);
+    expect(deckProblem(d, makeRules({ maxPerRole: Infinity }))).toMatch(/Mid/);
   });
 
   it('refuses two cards of one player and team', () => {

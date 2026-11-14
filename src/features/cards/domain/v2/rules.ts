@@ -23,6 +23,14 @@ export interface Rules {
   deckSize: number;
   /** Minimum cards of each of the five roles */
   perRole: number;
+  /** Most cards of one role in a deck (Infinity = no limit) */
+  maxPerRole: number;
+  /** Gank: 'any' = the Mid returns its target whatever its strength; 'notStronger' = only a unit no
+   *  stronger than the Mid itself (an Offlane stronger than the Mid stops the gank) */
+  gankReach: 'any' | 'notStronger';
+  /** What a gank does to its target: 'return' = back to its owner's hand; 'out' = it stays on the
+   *  board but does not count this round (no strength, no Aura, no Druzyna given) and loses Farma growth */
+  gankEffect: 'return' | 'out';
   /** Highest allowed sum of card costs (cost = rating strength 1-9); Infinity = no budget */
   budget: number;
   costMode: CostMode;
@@ -70,6 +78,9 @@ export interface Rules {
 export const DEFAULT_RULES: Rules = {
   deckSize: 12,
   perRole: 1,
+  maxPerRole: 3,
+  gankReach: 'any',
+  gankEffect: 'out',
   budget: 60,
   costMode: 'might',
   auraMode: 'once',
@@ -104,4 +115,4 @@ export function makeRules(patch: RulesPatch = {}, base: Rules = DEFAULT_RULES): 
 
 /** The first candidate rule set of WP-51 (before the second round of simulations). The older engine
  *  tests describe these variants; the simulations of E1-E12 in `sim/v2-first` used them. */
-export const FIRST_RULES: Rules = makeRules({ budget: 66, costMode: 'rating', auraMode: 'stack', smokeMode: 'from', tankMode: 'block', catchUpDraw: 0, catchUpGap: 1, highGround: 'all' });
+export const FIRST_RULES: Rules = makeRules({ budget: 66, costMode: 'rating', auraMode: 'stack', smokeMode: 'from', tankMode: 'block', catchUpDraw: 0, catchUpGap: 1, highGround: 'all', maxPerRole: Infinity, gankEffect: 'return' });

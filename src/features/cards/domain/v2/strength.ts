@@ -9,8 +9,9 @@ export function strengthParts(s: MatchState, u: Unit, units: Unit[] = s.units): 
   const { abilities } = s.rules;
   let aura = 0;
   let team = 0;
+  if (u.out === s.round) return { base: 0, growth: 0, aura: 0, team: 0, highGround: 0 };
   for (const o of units) {
-    if (o.side !== u.side || o.at !== u.at) continue;
+    if (o.side !== u.side || o.at !== u.at || o.out === s.round) continue;
     if (abilities.aura && o.card.role === 'Hard Support') aura++;
     if (abilities.team && o !== u && u.card.team && o.card.team?.id === u.card.team.id) team = 1;
   }

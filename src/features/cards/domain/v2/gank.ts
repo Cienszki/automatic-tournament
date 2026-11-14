@@ -18,6 +18,7 @@ function choose(s: MatchState): Pick[] {
   const picks: Pick[] = [];
   for (const mid of mids) {
     const rivals = s.units.filter((u) => u.side === other(mid.side) && u.at === mid.at);
+    const reach = (u: Unit) => s.rules.gankReach === 'any' || strength.get(u.uid)! <= strength.get(mid.uid)!;
     const tanks = s.rules.abilities.tank ? rivals.filter((u) => u.card.role === 'Offlane') : [];
     if (tanks.length && s.rules.tankMode === 'block') {
       picks.push({ mid, target: null, blocked: true });
@@ -25,13 +26,13 @@ function choose(s: MatchState): Pick[] {
     }
     if (tanks.length) {
       // The Offlane takes the gank for its side
-      const t = tanks.filter((u) => !taken.has(u.uid)).sort(byId)[0] ?? null;
+      const t = tanks.filter((u) => !taken.has(u.uid) && reach(u)).sort(byId)[0] ?? null;
       if (t) taken.add(t.uid);
-      picks.push({ mid, target: t, blocked: false });
+      picks.push({ mid, target: t, blocked: t === null });
       continue;
     }
     // Two Mids of one side on one objective take two different units
-    const open = rivals.filter((u) => !taken.has(u.uid));
+    const open = rivals.filter((u) => !taken.has(u.uid) && reach(u));
     const sign = mode === 'strongest' ? -1 : 1;
     open.sort((a, b) => sign * (strength.get(a.uid)! - strength.get(b.uid)!) || byId(a, b));
     const target = open[0] ?? null;
@@ -47,7 +48,11 @@ export function resolveGanks(s: MatchState, events: MatchEvent[]): void {
   const gone = new Set<string>();
   for (const p of picks) {
     let toHand = false;
-    if (p.target) {
+    if (p.target && s.rules.gankEffect === 'out') {
+      const u = s.units.find((x) => x.uid === p.target!.uid)!;
+      u.out = s.round;
+      u.growth = 0;
+    } else if (p.target) {
       const owner = s.sides[p.target.side];
       toHand = owner.hand.length < s.rules.handMax;
       if (toHand) {

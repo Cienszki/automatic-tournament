@@ -33,7 +33,7 @@ describe('deck optimiser', () => {
         expect(deckProblem(d, DEFAULT_RULES), `${slug} ${b}`).toBeNull();
       }
       const roleSkew = buildDeck('roleSkew:Mid', col, DEFAULT_RULES)!;
-      expect(roleSkew.filter((c) => c.role === 'Mid')).toHaveLength(8);
+      expect(roleSkew.filter((c) => c.role === 'Mid')).toHaveLength(DEFAULT_RULES.maxPerRole);
       expect(totalCost(buildDeck('best', col, makeRules({ budget: 54 }))!, DEFAULT_RULES.costMode)).toBeLessThanOrEqual(54);
     }
   }, 60_000);

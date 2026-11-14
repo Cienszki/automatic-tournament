@@ -14,6 +14,8 @@ export interface Unit {
   uid: string;
   card: GCard;
   side: Side;
+  /** The round in which a gank put this unit out (it does not count in that round) */
+  out?: number;
   at: Slot;
   /** Farma growth (Carry) */
   growth: number;
