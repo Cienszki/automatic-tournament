@@ -13,7 +13,7 @@ Sources: `ARCHITECTURE.md` ADR-04, 05, 06, 09, 10, 11, 15, 16; `ROADMAP.md` WP-3
 | Rule | What it means |
 |---|---|
 | Schemas | Tables live in `app` and `bot`, never in `public`. The Supabase browser API does not expose either schema. Row-level security is enabled on every table with no policy, as a second lock. |
-| Roles | The web app connects as the owner role. `bot_worker` may read and write `bot.*` and may only `INSERT` into `app.jobs` (ADR-10). |
+| Roles | The role that runs the migrations owns every table, and the web app connects as that role: `DATABASE_URL` is the owner's connection string. An owner is not subject to its tables' row-level security. `bot_worker` (created `NOLOGIN` by migration `0001_roles`; each environment sets its login password by hand, never in git) is not an owner, so it needs both grants and policies: `SELECT, INSERT, UPDATE, DELETE` on every `bot.*` table with a `USING (true) WITH CHECK (true)` policy, and `INSERT` on `app.jobs` with a policy that allows only the job types it reports with (`import-results`, `apply-forfeit`) in state `waiting`. It cannot read `app.jobs`, so it inserts without `RETURNING` and deduplicates with a plain `ON CONFLICT DO NOTHING`. No other role has a policy. `ALL` on schemas `app` and `bot` and their tables is revoked from `PUBLIC` and, on Supabase, from `anon`, `authenticated` and `service_role` (ADR-10). |
 | Ids | `text`. Imported rows keep their Firestore document id, so old links keep working. New rows get an id from `ids.ts`: 20 characters from Firestore's own alphabet (`[A-Za-z0-9]`), so old and new ids look alike. `users.id` is the Firebase user id. Steam ids are `text` with a check (`^[0-9]{17}$` for Steam64). Dota match ids are `bigint`. |
 | Tournament tables | Every row that belongs to a tournament has `tournament_id text not null` as the **first column of its primary key**. Foreign keys between tournament tables are composite: `(tournament_id, x_id) → (tournament_id, id)`, so a row cannot point at another tournament's row. A tournament table may point at a global table (`users`, `players`) with a plain key. |
 | Global tables | `users`, `user_links`, `players`, `organizations`, `organization_members`, `series`, `domains`, `jobs`, `rate_limits`, `inbox`, `dm_log`, `audit_log`, `platform_settings`, `card_activity`, and the `bot` tables. `audit_log`, `jobs`, `inbox` and `bot.lobby_sessions` have an optional or plain `tournament_id` but are not tournament tables: the schema test lists them as exceptions by name. |
@@ -313,7 +313,7 @@ Which teams play in a group.
 | `team_id` | text | | → `teams` |
 | `seed` | smallint | null | Seed within the group (Swiss `seedPosition`, LAN group A order) |
 
-Keys: primary key `(tournament_id, group_id, team_id)`. Index `(tournament_id, team_id)`. New: today a team has one `divisionId`; a team in two stages (Swiss, then the GSL group) needs a membership per group (question 2).
+Keys: primary key `(tournament_id, group_id, team_id)`. Index `(tournament_id, team_id)`. New: today a team has one `divisionId`; a team in two stages needs a membership per group (question 2).
 
 #### `teams`
 | Column | Type | Null | Meaning |
@@ -375,7 +375,7 @@ A series between two teams (section 3 explains the format columns).
 | `tie_ref` | text | null | The tie a tiebreak match settles (WP-34) |
 | `team_a_id`, `team_b_id` | text | null | → `teams`; null while a bracket slot is not filled, or for the empty side of a bye |
 | `best_of` | smallint | | 1, 2, 3, 5, 7 (`bo2` allows a draw) |
-| `status` | text | | `scheduled`, `live`, `completed`, `bye`, `void` (a ban forfeit: hidden, counts nowhere) |
+| `status` | text | | `scheduled`, `live`, `completed`, `bye`, `void` (kept for future use: hidden, counts nowhere). A ban forfeit is `completed` with the forfeit columns set, because the old site counts it in the tables |
 | `schedule_state` | text | | `unscheduled`, `proposed`, `confirmed` |
 | `scheduling_method` | text | null | `captain`, `admin`, `fixed`; null = the tournament's |
 | `scheduled_at` | timestamptz | null | |
@@ -443,9 +443,10 @@ One player in one game.
 | `first_blood` | bool | | |
 | `highest_kill_streak` | smallint | | |
 | `double_kills`, `triple_kills`, `ultra_kills`, `rampages` | smallint | | |
+| `player_slot` | smallint | null | OpenDota's slot (0-4 Radiant, 128-132 Dire). No captured performance has one; new imports set it |
 | `extra` | jsonb | | Long tail (4.11). Default `{}` |
 
-All the counted columns default to 0 for games where OpenDota did not report them; `extra.missing` lists which were absent, so a zero that is not real stays visible. Keys: primary key `(tournament_id, game_id, steam_id64)`, foreign key `(tournament_id, game_id)` with cascade. Index `(tournament_id, steam_id64)` (player pages, cards). Replaces `matches/{m}/games/{g}/performances/{p}`, and makes `playerGameHistory` unnecessary.
+All the counted columns default to 0 for games where OpenDota did not report them; `extra.missing` lists which were absent, so a zero that is not real stays visible. Keys: primary key `(tournament_id, game_id, steam_id64)`, foreign key `(tournament_id, game_id)` with cascade, unique `(tournament_id, game_id, player_slot)` where the slot is set. Every captured performance resolves to a Steam id (the 125 rows not on a roster are keyed `unknown_<steam32>` or a bare Steam32), so the key stays on the Steam id. Index `(tournament_id, steam_id64)` (player pages, cards). Replaces `matches/{m}/games/{g}/performances/{p}`, and makes `playerGameHistory` unnecessary.
 
 #### `match_casters`
 | Column | Type | Null | Meaning |
@@ -667,7 +668,7 @@ Keys: primary key `(tournament_id, user_id)`. Replaces `cardCollections/{key}__{
 | `id` | text | | Existing random id |
 | `kind` | text | | `open`, `direct` |
 | `status` | text | | `open`, `seated`, `play`, `done`, `cancelled`, `expired` |
-| `pace` | text | | `fast`, `normal`, `slow`, `none` |
+| `pace` | text | | `fast`, `normal`, `calm`, `none` |
 | `host_user_id` | text | | → `users` |
 | `guest_user_id`, `invited_user_id` | text | null | → `users` |
 | `side0_user_id`, `side1_user_id` | text | null | → `users`; side 0 moves first |
@@ -850,7 +851,7 @@ A tournament has ordered **stages**. A stage has a `kind` and contains **groups*
 | **Wiosenna**: MMR groups and playoffs | `type: mmr-limited`; teams and matches use `divisions` (Grupa A, Grupa B); a second `groups` collection with the same names is not referred to by any team or match; `playoff_matches` holds the single-elimination bracket (16 slots, byes); playoff matches are also mirrored in `matches` under the same id, and the mirror holds the games | 1. `groups`, `round_robin`; 2. `playoffs`, `bracket` | From `divisions`. The unused `groups` documents are dropped (reported by the import) | Group matches from `matches`. Bracket matches from `playoff_matches` (structure, links, code, result) merged with the mirror document of the same id in `matches` (schedule, stand-ins, completion, games). Bye opponents (`__PLAYOFF_BYE__:...`) become a null team with status `bye` |
 | **Letnia**: MMR groups, wildcards, double elimination | Root collections; six groups (`grupa-*`) with stored standings; one `playoffs/main-playoffs` document with four brackets (wildcard, upper, lower, grand final) defined by slots; playoff matches in root `matches` with `playoff_match_id`, `playoff_bracket_type`, `playoff_round`, `playoff_position` | 1. `groups`, `round_robin`; 2. `playoffs`, `bracket` | Six groups from root `groups` (standings dropped) | Group matches from `matches.group_id`. Bracket matches: the `matches` document whose `playoff_match_id` names the bracket match; `code` = that bracket id (`lb-r1-m3`); `bracket_side` from the bracket type. Slot links (`winnerSlotId`, `loserSlotId` → the match whose `teamASlotId`/`teamBSlotId` is that slot) become `next_winner_*`/`next_loser_*`. Slots holding a team at the first round become `team_a_id`/`team_b_id` and `group_teams` is not used for the bracket |
 | **swiss-test** (standard Swiss) | `type: swiss`, `swiss` config, one division `swiss`, bye team `swiss-bye`, `swissRounds` documents | 1. `swiss`, `swiss`, settings from `tournaments.swiss` | One group `swiss` with every team; `seed` from `seedPosition` | `round` from the Swiss round; the bye team becomes a status `bye` match without a team. Not captured; it is a test tournament and the import may skip it |
-| **PDL S2** (`pdl-s2`): LAN qualifier | `type: swiss`, `swiss.format: lan-qualifier`, `swiss.lanQualifier.groupA` (four teams); one division `swiss`; matches carry `lanStage` (`A` GSL group, `B` Swiss) and `lanSlot` (`o1`, `o2`, `w`, `l`, `d`); `swissRounds` 1-3 | 1. `qualifier`, `swiss`, settings `{ format: 'lan-qualifier', pairingBand, useMmrSeeding, plannedRounds, allowConsecutiveRematch, defaultBestOf }`; a playoff stage only if one is created later | `A` (GSL, the four `groupA` teams, `seed` in that order), `B` (Swiss, the rest). The engine adds `F` (final) and `P` (placement) when it generates them | `group_id` from `lanStage`; `code` from `lanSlot`; `round` from `round` |
+| **PDL S2** (`pdl-s2`): LAN qualifier | `type: swiss`, `swiss.format: lan-qualifier`, `swiss.lanQualifier.groupA` (four teams); one division `swiss`; matches carry `lanStage` (`A` GSL group, `B` Swiss) and `lanSlot` (`o1`, `o2`, `w`, `l`, `d`); `swissRounds` 1-3 | 1. `qualifier`, `swiss`, settings `{ format: 'lan-qualifier', pairingBand, useMmrSeeding, plannedRounds, allowConsecutiveRematch }`; group A's four teams in `state.lanQualifier.groupA`; a playoff stage only if one is created later | One group `swiss` with every team, as the site publishes one table (decided in the WP-13a review) | `group_id` = `swiss`; `code` from `lanSlot`; the GSL/Swiss split (`lanStage`) follows from `state.lanQualifier.groupA` and is not stored on the match; `round` from `round` |
 | **Tiebreak, rematch, showmatch** (any) | `extra.kind`, `replacesMatchId`, `replacedByMatchId` (type only; none in the captures) | — | — | `kind`, `kind_note`, `replaces_match_id`; `replacedByMatchId` is the reverse of `replaces_match_id` and is not stored |
 
 Swiss rounds: each `swissRounds/{round}` document becomes one entry of `stages.state.rounds` (4.7). A committed round's matches are ordinary matches with that `round`. A draft round exists only in `state` until it is committed, as today.
@@ -899,15 +900,15 @@ Today's `TournamentBotConfig` (`src/types/lobby-bot.ts`) without `updatedAt`/`up
 ### 4.6 `stages.settings`
 By kind:
 - `round_robin`: `{ legs: 1|2, rounds?, promotionRelegation?: bool, matchdayLabels? }`.
-- `swiss`: `{ format: 'standard'|'lan-qualifier', useMmrSeeding, pairingBand?, plannedRounds?, allowConsecutiveRematch, lanQualifier?: { groupA: [teamId] } }`.
+- `swiss`: `{ format: 'standard'|'lan-qualifier', useMmrSeeding, pairingBand?, plannedRounds?, allowConsecutiveRematch }`.
 - `bracket`: `{ type: 'single'|'double', teams, upperTeams?, lowerTeams?, wildcardSpots?, thirdPlaceMatch, bestOf: { default, semifinal?, final?, grandFinal?, thirdPlace? }, visible: bool }`.
 
 ### 4.7 `stages.state`
-- `swiss`: `{ currentRound, byeTeamId?, rounds: [{ round, status: 'draft'|'committed'|'complete', bestOf, scheduling: { mode: 'fixed'|'window'|'free', times?: [iso], fixedAt?, maxHoursLater?, rescheduleLatest?, windowStart?, windowEnd? }, pairings: [{ teamAId, teamBId, matchId, isBye, stage?, slot? }], standingsSnapshot: [SwissStandingRow], generatedAt, committedAt? }], lanQualifier?: { advanced?: [teamId], decidedAt?, decidedBy? } }`.
-- Other kinds: `{}`.
+Every kind: `{ tieDecisions: [{ tieRef, order: [teamId], reason, decidedBy, decidedAt }] }`: ties the organizer decided by hand, and ties a tiebreak match settled. `tieRef` names the tie as WP-13a writes it (the group, the places and the tied teams); a tiebreak match's `matches.tie_ref` holds the same value. Each decision also has an audit row.
+- `swiss` adds: `{ currentRound, byeTeamId?, rounds: [{ round, status: 'draft'|'committed'|'complete', bestOf, scheduling: { mode: 'fixed'|'window'|'free', times?: [iso], fixedAt?, maxHoursLater?, rescheduleLatest?, windowStart?, windowEnd? }, pairings: [{ teamAId, teamBId, matchId, isBye, stage?, slot? }], standingsSnapshot: [SwissStandingRow], generatedAt, committedAt? }], lanQualifier?: { groupA: [teamId], advanced?: [teamId], decidedAt?, decidedBy? } }`.
 
 ### 4.8 `stages.ranking`
-ADR-11 and WP-13a: `{ points: { win, draw, loss } | 'games_won', tiebreakers: [ 'head_to_head' | 'head_to_head_wins' | 'game_difference' | 'games_won' | 'neustadtl' | 'buchholz' | 'match_wins' | 'lower_mmr' | 'tiebreak_match' | 'manual' ], tiebreakOnlyWhenDecisive?: bool, manualOrders?: [{ teams: [id], order: [id], reason, by, at }] }`. Defaults per tournament (WP-33): leagues and groups `{ points: { win: 2, draw: 1, loss: 0 }, tiebreakers: ['head_to_head_wins', 'neustadtl', 'lower_mmr'] }`; Swiss `{ points: 'games_won', tiebreakers: ['buchholz', 'match_wins', 'game_difference'] }`. A manual decision is stored here (with its audit row) because it is an input to the ranking, not a result of it.
+ADR-11 and WP-13a: `{ points: { win, draw, loss } | 'games_won', tiebreakers: [ 'head_to_head' | 'head_to_head_wins' | 'game_difference' | 'games_won' | 'neustadtl' | 'buchholz' | 'match_wins' | 'lower_mmr' | 'tiebreak_match' | 'manual' ], tiebreakOnlyWhenDecisive?: bool }`. In `platform/db` the column is plain jsonb; its zod schema lives in `src/features/formats` (WP-13a), which parses it, because platform code may not import a feature. Defaults per tournament (WP-33): leagues and groups `{ points: { win: 2, draw: 1, loss: 0 }, tiebreakers: ['head_to_head_wins', 'neustadtl', 'lower_mmr'] }`; Swiss `{ points: 'games_won', tiebreakers: ['buchholz', 'match_wins', 'game_difference'] }`. Manual decisions are in `stages.state.tieDecisions` (4.7).
 
 ### 4.9 `stages.advancement`
 WP-34: `[ { from: { group, place } | { place, best, by: [rule] }, to: { stage, slot } | 'eliminated' } ]`. A `slot` names a bracket match and side (`{ code: 'U2A', side: 'a' }`), so a first place can enter in round two. Seeding is the same list.
@@ -1051,7 +1052,7 @@ The field lists come from the captures' `schema.json` files and agree with WP-12
 | `winnerId` | → winner_team_id |
 | `winner`, `result` (always null in P and S) | dropped |
 | `status` | → status (`completed`, `scheduled`; `live` from the type) |
-| `isBanForfeit` | → status `void` |
+| `isBanForfeit` | → status `completed` with forfeit_team_id, forfeit_scope `series` and forfeit_reason set (the old site counts these 29 Wiosenna matches in the tables; decided in the WP-13a review) |
 | `schedulingStatus` | → schedule_state (`unscheduled`, `proposed`, `confirmed`); PDL's `admin-scheduled` → `confirmed` with scheduling_method `admin` |
 | `schedulingMethod` | → scheduling_method |
 | `scheduledFor`, `scheduled_for`, Letnia `dateTime`, `defaultMatchTime` | → scheduled_at. Order of preference: `scheduledFor`, `scheduled_for`, `dateTime`; `defaultMatchTime` is the planned slot before captains agreed and is dropped |
@@ -1316,31 +1317,33 @@ Every field of Letnia's `teams`, `teams/*/players`, `matches`, `games`, `perform
 
 ## 8. Open questions, with recommendations
 
-| # | Question | Recommendation |
-|---|---|---|
-| 1 | Keep today's tournament `type` as a column (`format_preset`)? The stages describe the structure, but the view components and card rewards read `type`, and the wizard needs to know which preset to show. | Keep it, documented as "labels and defaults only". A lint rule in WP-07 forbids reading it in `domain/` code. |
-| 2 | Team membership of groups as a table (`group_teams`) instead of `teams.group_id` (which `CONVENTIONS.md` shows in an example). | `group_teams`. PDL S2 already has teams in two groups of one stage (the whole field, then group A), and every future multi-stage format needs it. Update the convention example. |
-| 3 | Cards as a JSON array on the collection row, or one row per card? | JSON array, as today (the move must not change the game). One row per card is a S3 decision; the array can be split later with a migration. |
-| 4 | Keep `card_duel_views`, a stored copy of what each player sees? | Build WP-40 with it, then measure: computing the view on each poll (`viewFor` is pure and fast) removes a write per move per player. Drop the table if the measured poll cost allows. |
-| 5 | Steam ids as `text` (convention: ids are text) or `bigint` (smaller, faster joins on `performances`)? | `text` with a check. Performances are about 3,000 rows a season; the difference is not measurable, and text avoids JavaScript precision mistakes. |
-| 6 | Forfeit games get new ids (`<matchId>-forfeit-<n>`), the one exception to "keep the Firestore id". | Accept. Their ids repeat across matches, so they cannot be kept; nothing links to them. |
-| 7 | Pick'em `scores` (`teamId → number`, Letnia and Wiosenna): is it the user's prediction or a computed score? Wiosenna entries have both `baskets` and `scores`. | Import it verbatim into `predictions`. WP-16 reads the old pick'em page to decide; if it is computed, it is dropped there. |
-| 8 | Is a `series` table needed now, with only PDL S1 and S2 in it? | Yes, it is one small table and ADR-05 relies on it for "the next season" links and series-wide stats. |
-| 9 | Keep a per-roster `nickname` on `team_members` besides `players.nickname`? | Yes. Captains type the roster name, and it differs from the player's global name in many rows; pages show the roster name. |
-| 10 | Fantasy: old seasons' points are recomputed from presets, and stored `fantasyPoints` are dropped. Letnia has traces of a third formula (`algorithm`, `basePoints`, `bonusBreakdown` on 5 performances) and its own scoring numbers. | WP-16 checks each season's stored points against its preset; any season that does not match gets its own preset (a name and a function), never stored numbers. Keep `legacyScoring` for that check. |
-| 11 | `audit_log.tournament_id` without a foreign key, so the log outlives a deleted tournament. | Accept. The schema test lists `audit_log` as a platform table. |
-| 12 | Bot accounts: a separate pool in `bot.accounts`, or the shared Firestore lease with the inhouse bot? | Decided in WP-21 (as ADR-10 says). The table exists either way; with a shared lease it holds only the new bot's accounts. |
-| 13 | `bot.lobby_sessions` has no foreign key to `app.matches`. | Accept: the bot schema must not depend on the website's. A daily job reports sessions whose match no longer exists. |
-| 14 | Store the series score on `matches` (`score_a`, `score_b`, `winner_team_id`) although it could be derived from games? | Store it. Manual results and forfeits have no games, and the results commands are the one writer (ADR-11). Standings still derive from matches. |
-| 15 | Draft preparation data (`draftPrepData`) is left out of version 1. | Accept; WP-38 measures it and adds rows or a cached file. |
-| 16 | Wiosenna's `pickems` documents store the user's e-mail address and Discord name, and the collection is publicly readable today. | Drop them on import (done above). Separately, this is a live privacy leak on the old site; the owner decides whether to delete those two fields in production (a one-off script the owner runs, not an agent). |
+| # | Question | Recommendation | Decision |
+|---|---|---|---|
+| 1 | Keep today's tournament `type` as a column (`format_preset`)? The stages describe the structure, but the view components and card rewards read `type`, and the wizard needs to know which preset to show. | Keep it, documented as "labels and defaults only". A lint rule in WP-07 forbids reading it in `domain/` code. | Accepted, 2026-11-13 |
+| 2 | Team membership of groups as a table (`group_teams`) instead of `teams.group_id` (which `CONVENTIONS.md` shows in an example). | `group_teams`. Every multi-stage format puts a team in more than one group (for example a Swiss field, then a GSL group). The convention example is updated. (PDL S2 itself stays one group, by the later WP-13a decision.) | Accepted, 2026-11-13 |
+| 3 | Cards as a JSON array on the collection row, or one row per card? | JSON array, as today (the move must not change the game). One row per card is a S3 decision; the array can be split later with a migration. | Accepted, 2026-11-13 |
+| 4 | Keep `card_duel_views`, a stored copy of what each player sees? | Build WP-40 with it, then measure: computing the view on each poll (`viewFor` is pure and fast) removes a write per move per player. Drop the table if the measured poll cost allows. | Accepted, 2026-11-13 |
+| 5 | Steam ids as `text` (convention: ids are text) or `bigint` (smaller, faster joins on `performances`)? | `text` with a check. Performances are about 3,000 rows a season; the difference is not measurable, and text avoids JavaScript precision mistakes. | Accepted, 2026-11-13 |
+| 6 | Forfeit games get new ids (`<matchId>-forfeit-<n>`), the one exception to "keep the Firestore id". | Accept. Their ids repeat across matches, so they cannot be kept; nothing links to them. | Accepted, 2026-11-13 |
+| 7 | Pick'em `scores` (`teamId → number`, Letnia and Wiosenna): is it the user's prediction or a computed score? Wiosenna entries have both `baskets` and `scores`. | Import it verbatim into `predictions`. WP-16 reads the old pick'em page to decide; if it is computed, it is dropped there. | Accepted, 2026-11-13 |
+| 8 | Is a `series` table needed now, with only PDL S1 and S2 in it? | Yes, it is one small table and ADR-05 relies on it for "the next season" links and series-wide stats. | Accepted, 2026-11-13 |
+| 9 | Keep a per-roster `nickname` on `team_members` besides `players.nickname`? | Yes. Captains type the roster name, and it differs from the player's global name in many rows; pages show the roster name. | Accepted, 2026-11-13 |
+| 10 | Fantasy: old seasons' points are recomputed from presets, and stored `fantasyPoints` are dropped. Letnia has traces of a third formula (`algorithm`, `basePoints`, `bonusBreakdown` on 5 performances) and its own scoring numbers. | WP-16 checks each season's stored points against its preset; any season that does not match gets its own preset (a name and a function), never stored numbers. Keep `legacyScoring` for that check. | Accepted, 2026-11-13 |
+| 11 | `audit_log.tournament_id` without a foreign key, so the log outlives a deleted tournament. | Accept. The schema test lists `audit_log` as a platform table. | Accepted, 2026-11-13 |
+| 12 | Bot accounts: a separate pool in `bot.accounts`, or the shared Firestore lease with the inhouse bot? | Decided in WP-21 (as ADR-10 says). The table exists either way; with a shared lease it holds only the new bot's accounts. | Accepted, 2026-11-13 |
+| 13 | `bot.lobby_sessions` has no foreign key to `app.matches`. | Accept: the bot schema must not depend on the website's. A daily job reports sessions whose match no longer exists. | Accepted, 2026-11-13 |
+| 14 | Store the series score on `matches` (`score_a`, `score_b`, `winner_team_id`) although it could be derived from games? | Store it. Manual results and forfeits have no games, and the results commands are the one writer (ADR-11). Standings still derive from matches. | Accepted, 2026-11-13 |
+| 15 | Draft preparation data (`draftPrepData`) is left out of version 1. | Accept; WP-38 measures it and adds rows or a cached file. | Accepted, 2026-11-13 |
+| 16 | Wiosenna's `pickems` documents store the user's e-mail address and Discord name, and the collection is publicly readable today. | Drop them on import (done above). Separately, this is a live privacy leak on the old site; the owner decides whether to delete those two fields in production (a one-off script the owner runs, not an agent). | Accepted, 2026-11-13 |
 
 ## 9. Risks
 
 | Risk | Where | What the import does |
 |---|---|---|
 | Steam ids disagree on 4 PDL S1 roster documents (`steamId` ≠ `steamId64`), and on 1 the Steam32 does not match the Steam64 | `pdl` `teams/*/players` | Uses `steamId64`, then Steam32; lists every disagreement in the report for the owner to confirm |
-| Performances keyed by roster document id (all of Letnia, 530 of PDL S1) | `performances` | Resolves through `team_members.id`; an unresolved row is reported, not dropped |
+| Performances keyed by roster document id (all of Letnia, 530 of PDL S1) | `performances` | Resolves through `team_members.id`; 125 rows (73 Letnia, 52 PDL S1) are keyed `unknown_<steam32>` or a bare Steam32 instead and resolve from that; an unresolved row is reported, not dropped |
+| One PDL S1 player is on two rosters at once | `pdl` `teams/*/players` | `team_members` allows one active roster spot per player: the import keeps the later entry, sets `left_at` on the earlier one and reports it |
+| Matches with more games than their series length (2 Wiosenna bo2 with 3 games; 4 PDL S1 bo2 with 4, three of them with forfeited games 1 and 2 beside two played games) | games | Numbered as 7.3 says (forfeits keep their numbers, played games take the next free numbers by start time); every such match is reported |
 | 7 Letnia performances have no `teamId` | Letnia | Team taken from the roster; else null, reported |
 | Times without a zone (94 reschedule proposals) | Wiosenna, PDL S1 | Read as Warsaw time. If the form ever sent UTC, those are off by one or two hours; the report lists them |
 | Game numbers exist only on forfeit games | all | Real games numbered by start time. A series with a forfeited game 1 and a real game 2 must keep that order; the report lists series where the order is unclear |

@@ -66,20 +66,21 @@ Why sizes matter here: an AI agent reads whole files. A 3,000-line tab costs it 
 - A table and its TypeScript type come from one definition in `src/platform/db/schema/`. A JSON column names its zod schema next to it:
 
 ```ts
-// src/platform/db/schema/results.ts
+// src/platform/db/schema/matches.ts (shortened)
 export const games = app.table('games', {
-  tournamentId: text('tournament_id').notNull(),
+  tournamentId: tournamentIdColumn().references(() => tournaments.id, { onDelete: 'cascade' }),
   id: text('id').notNull(),
   matchId: text('match_id').notNull(),
-  number: integer('number').notNull(),
-  dotaMatchId: bigint('dota_match_id', { mode: 'bigint' }),
+  number: smallint('number').notNull(),
+  dotaMatchId: bigint('dota_match_id', { mode: 'number' }), // 10 digits: safe as a JS number
   radiantWin: boolean('radiant_win'),
   durationSeconds: integer('duration_seconds'),
+  picksBans: jsonb('picks_bans').$type<z.infer<typeof picksBansSchema>>().notNull().default([]),
 }, (t) => [
   primaryKey({ columns: [t.tournamentId, t.id] }),
-  foreignKey({ columns: [t.tournamentId, t.matchId], foreignColumns: [matches.tournamentId, matches.id] }),
-  unique().on(t.tournamentId, t.dotaMatchId),
-]);
+  foreignKey({ name: 'games_match_fk', columns: [t.tournamentId, t.matchId], foreignColumns: [matches.tournamentId, matches.id] }).onDelete('cascade'),
+  uniqueIndex('games_dota_match_unique').on(t.tournamentId, t.dotaMatchId),
+]).enableRLS();
 export type Game = typeof games.$inferSelect;
 ```
 
@@ -101,8 +102,9 @@ export type Game = typeof games.$inferSelect;
 export const getTeams = cachedQuery(
   async (tournamentId: TournamentId): Promise<TeamSummary[]> => {
     const t = scoped(db, tournamentId);
-    const rows = await t.select({ id: teams.id, name: teams.name, logoUrl: teams.logoUrl, groupId: teams.groupId })
+    const rows = await t.select({ id: teams.id, name: teams.name, logoUrl: teams.logoUrl, groupId: groupTeams.groupId })
       .from(teams)
+      .leftJoin(groupTeams, and(t.own(groupTeams), eq(groupTeams.teamId, teams.id)))
       .orderBy(teams.name);
     return rows.map(toTeamSummary);
   },

@@ -75,7 +75,7 @@ One line per WP: id, name, branch, state (planned / in progress / in review / me
 | WP-29 | One translation system | `wp/29-i18n` | planned | L, Opus review |
 | WP-30 | Full end-to-end suite | `wp/30-e2e` | planned | M, Opus review |
 | WP-31 | Load test at 1,000 tournaments | `wp/31-load-test` | planned | M, Fable review |
-| WP-32 | Database schema v1 and `platform/db` | `wp/32-schema` | in review (step 1) | L, Fable review twice. Step 1 done 2026-11-13: `SCHEMA.md` (50 tables, 16 open questions) waits for Fable's review; no migration, table code or package yet |
+| WP-32 | Database schema v1 and `platform/db` | `wp/32-schema` | in review | L, Fable review twice. `SCHEMA.md` approved 2026-11-13 (16 recommendations accepted). Step 2 done 2026-11-14: 50 tables in drizzle (`src/platform/db/schema`), migrations `drizzle/0000_init.sql` and `0001_roles.sql` (bot_worker role, grants, policies), `scoped`, `ids`, `testing` (PGlite copy in about 0.4 s), catalog and role tests on PGlite and on PostgreSQL 15 in CI |
 | WP-33 | Import tool (Firestore export to PostgreSQL, Letnia adapter) | `wp/33-import` | planned | L, Fable review |
 | WP-34 | Tiebreaker matches, ranking across groups, places into bracket slots | `wp/34-advancement` | planned | L, Fable review |
 | WP-35 | Go-live step one: the archive (Letnia, finished seasons) | `wp/35-go-live-1` | planned | S, Fable review. The owner runs it |
