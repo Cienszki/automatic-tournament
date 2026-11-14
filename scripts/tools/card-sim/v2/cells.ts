@@ -28,6 +28,9 @@ export interface CellSpec {
   seats: [SeatSpec, SeatSpec];
   games: number;
   seed: number;
+  /** Seed of the simulated collections. Cells of one experiment share it, so they play with the same
+   *  collections and decks (fewer decks to build, and rows differ only by what they change) */
+  colSeed?: number;
   /** Distinct collection pairs to cycle through (default 100) */
   collections?: number;
   /** Both seats build from seat X's collection (equal decks when the builders are equal) */
@@ -62,10 +65,11 @@ function deckFor(cell: CellSpec, rules: Rules, seat: 0 | 1, pair: number): GCard
   const { cards, byId } = slugPool(cell.slug);
   if (spec.kind === 'list') return spec.decks[pair % spec.decks.length].map((id) => byId.get(id)!);
   const colSeat = cell.sameCollection ? 0 : seat;
-  const key = `${cell.slug}|${cell.seed}|${spec.packs}|${colSeat}|${pair}|${spec.builder}|${rules.deckSize}|${rules.perRole}|${rules.budget}|${rules.costMode}|${rules.maxPerRole}`;
+  const cs = cell.colSeed ?? cell.seed;
+  const key = `${cell.slug}|${cs}|${spec.packs}|${colSeat}|${pair}|${spec.builder}|${rules.deckSize}|${rules.perRole}|${rules.budget}|${rules.costMode}|${rules.maxPerRole}`;
   if (!deckCache.has(key)) {
-    const col = simCollection(cards, spec.packs, stream(cell.seed, 'collection', spec.packs, colSeat, pair));
-    const d = buildDeck(spec.builder, col, rules, stream(cell.seed, 'random-deck', colSeat, pair));
+    const col = simCollection(cards, spec.packs, stream(cs, 'collection', spec.packs, colSeat, pair));
+    const d = buildDeck(spec.builder, col, rules, stream(cs, 'random-deck', colSeat, pair));
     if (d && deckProblem(d, rules)) throw new Error(`illegal ${spec.builder} deck: ${deckProblem(d, rules)}`);
     deckCache.set(key, d);
   }

@@ -22,7 +22,7 @@ export const seat = (agent: AgentName, builder: BuilderName = 'best', packs: num
   ({ agent, deck: { kind: 'builder', builder, packs }, hp });
 
 export function cell(ctx: Ctx, key: string, x: SeatSpec, y: SeatSpec, extra: Partial<CellSpec> = {}): CellSpec {
-  return { key, slug: ctx.slug, seats: [x, y], games: ctx.games ?? 1000, seed: subSeed(ctx.seed, ctx.slug, key), ...extra };
+  return { key, slug: ctx.slug, seats: [x, y], games: ctx.games ?? 1000, seed: subSeed(ctx.seed, ctx.slug, key), colSeed: subSeed(ctx.seed, ctx.slug, 'collections'), ...extra };
 }
 
 /** Seat X's win rate over decided games, with the draws counted apart */
