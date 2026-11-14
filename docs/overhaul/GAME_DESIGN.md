@@ -94,7 +94,134 @@ One finding is about packs, not rules. Packs hold only each team's last series, 
 
 **It cannot be played where the viewers are.** Below 900 px the game shows a notice to open it on a computer. The pack that appears while browsing still appears on a phone, and says to open it in a game that will not start there.
 
-<!-- SECTIONS 3-5 GO HERE -->
+## 3. Three directions
+
+### Direction A: tune today's game
+
+Keep the rules and fix the numbers and the edges: flatten card strength (4 to 8 in place of 1 to 9), resolve fights automatically, build the first deck for the player, shorten the tutorial, and add the reasons to play of section 7.
+
+- **For it.** The smallest change: two or three work packages. Nothing the owner chose is reversed. The screens stay.
+- **Against it.** It does not reach the causes. WP-51 measured it on today's engine: with strength flattened to 4 to 8, a 10-pack deck still loses to a 40-pack deck 84% of the time (90% today). *(The result of today's game with a deck budget is added in section 9 when its run finishes.)* And no number can change the structure: with alternating turns and every unit visible a turn before it acts, there is still nothing to read, and the strongest card in hand is still always the right one to play.
+
+### Direction B: the same board, a new round (recommended)
+
+Keep what a player sees and knows: the map, three objectives, Ancients with hit points, cards as units with one strength number, the five positions and their ability names, the team bonus, orders. Change how a round works and how a deck is built:
+
+1. **Both players plan the round at the same time, hidden, and reveal together.** This is what gives the game something to read.
+2. **Cards go straight onto objectives, and totals are compared.** The base, the three phases, the path rules and the fight screen go away, which removes most of the rule list.
+3. **A deck of 12 has a budget.** This makes deck building a choice and lets a new player meet a collector on nearly equal strength.
+
+- **For it.** It answers each cause in section 2 with a structural change, and the simulations confirm each one (section 9). It keeps the visual work: card faces, objective and Ancient models, the score as damage, the end screen. A round is one decision screen and one reveal, which also fits a phone and makes a live match short and hard to break.
+- **Against it.** It reverses several of the owner's decisions (section 10), the largest being the fight screen and the three-phase turn. The match screen is rebuilt. It is seven to nine work packages.
+
+### Direction C: a new game
+
+Start again from the asset. Two shapes were considered. One is a draft game: before a match both players pick and ban from their collections in turns, as teams do in Captains Mode, and the match is then decided by lane and objective contests computed from the cards' six attributes. The other is a full collectible card game with costs, and with heroes and items as cards beside the players.
+
+- **For it.** The highest ceiling. It would use the attributes and heroes that today's cards carry and never use.
+- **Against it.** A draft game puts all the decisions before the match and makes the match something to watch, and a result computed from six attributes is hard to explain to the loser. A full card game needs card types the owner ruled out (players only), a cost system the owner ruled out, and a rule book no viewer learns in a minute. Either one discards the board and its visuals and is two to three times the work of B. Nothing in the diagnosis needs it.
+- **What is kept from it.** Hero and attribute traits as a second property of a card are a good later addition to B, once the core is proven with players (section 5, "Room to grow").
+
+**Recommendation: B.** A is cheaper but leaves the game shallow and the new player beaten nine times in ten. C costs the most and risks the one-minute start. B fixes the measured problems and keeps the look.
+
+## 4. The rules of the recommended game
+
+The game keeps its name, "Kontrola mapy". Every number below is a setting in one rules object in the prototype (`src/features/cards/domain/v2/rules.ts` on branch `wp/51-card-proto`), and each was chosen by simulation (section 9).
+
+### 4.1 The deck
+
+- 12 cards, at least one of each position.
+- One card per player and team, as today.
+- **Budget: the cards' strength adds up to at most 66.** A card's cost is the strength printed on it. The +1 of a team-of-the-round card is free: it adds strength without adding cost.
+
+A new player's ten packs hold about 50 cards, enough to spend the whole budget. A larger collection gives more ways to spend it, not more of it.
+
+### 4.2 The board
+
+- Three objectives, drawn from the six of today's game.
+- Each player has an Ancient with 12 hit points.
+- At most three units per player on one objective.
+- There is no base. A card goes from the hand straight onto an objective.
+
+### 4.3 A round
+
+In one sentence: **both players secretly give two orders, each one a card played onto an objective or a unit moved to another; then everything is revealed, and on each objective the stronger side hurts the rival's Ancient.**
+
+In full:
+
+1. **Start.** Each player draws one card. A player with fewer hit points than the rival draws one more ("Comeback"). The opening hand is four cards, with no draw in round 1. The hand holds at most seven. Each player gets two orders.
+2. **Plan, hidden.** An order does one of two things:
+   - **Play** a card from the hand onto an objective. If the player already has three units there, the new card replaces one of them, which is discarded.
+   - **Move** a unit from one objective to any other. A unit moves once a round, and not in the round it was played.
+
+   Nothing happens until the player confirms, and the plan can be changed freely until then.
+3. **Reveal.** Both plans happen at once.
+4. **Ganks** (see Mid, below).
+5. **Control.** On each objective the side with more total strength controls it this round. A side alone on an objective controls it. Equal totals mean nobody does.
+6. **Damage.** Each controlled objective deals 1 damage to the rival's Ancient; Roshan deals 2. From round 5 on, all damage is doubled.
+7. **Farma** and the objectives' effects (below).
+8. **End.** An Ancient at 0 is destroyed and its owner loses. If both fall in the same round, the one that took less damage beyond 0 wins. A match lasts at most 8 rounds; after that, the player with more hit points wins.
+
+### 4.4 Strength and abilities
+
+A unit's strength is its card's strength plus its bonuses. A card's strength comes from the player's rating in that series (1 to 9), with the position's modifier.
+
+| Position | Modifier | Ability | What it does |
+|---|---|---|---|
+| Carry | | **Farma** | After every round on an objective its side controls, +1 strength, up to +3. Lost if the Carry returns to the hand |
+| Mid | | **Gank** | When played from the hand, the rival's strongest unit on that objective returns to the rival's hand |
+| Offlane | +1 | **Tank** | A gank on its objective takes the Offlane, and spares everyone else |
+| Support | −1 | **Smoke** | When played from the hand, one of the player's other units may move to its objective without an order |
+| Hard Support | −1 | **Aura** | +1 strength to each of the player's units on its objective, itself included |
+
+Two more bonuses: **Drużyna**, +1 to each unit that shares an objective with a card of the same real team; and **Drużyna kolejki**, +1 on a team-of-the-round card.
+
+Three of the five abilities work as today. Two changed, and the simulations are the reason:
+
+- **Tank.** In the first prototype an Offlane blocked ganks outright. Blocked ganks outnumbered successful ones, and switching Tank off changed nothing for a deck full of Offlanes. Now the Offlane takes the gank on itself: the gank always does something, and the Offlane still protects the Carry beside it.
+- **Smoke.** As a free move from where the Support stood, it was used once in three matches and a Support-heavy deck was the weakest of all. Now it acts when the Support arrives, bringing a second unit with it. That is what a smoke is for in Dota: several heroes turn up where one was expected.
+
+### 4.5 Objectives
+
+| Objective | Effect |
+|---|---|
+| Roshan | Deals 2 damage where the others deal 1 |
+| Outpost | The player who controlled it last round has 3 orders |
+| Lotus Pool | The player who controlled it last round draws one more card |
+| High Ground | The player who controlled it last round has +1 on each unit there |
+| Twin Gates | The player who controlled it last round may move one unit from there without an order |
+| Tormentor | A player who takes control of it draws a card |
+
+### 4.6 The numbers
+
+| Setting | Value | Why |
+|---|---|---|
+| Deck size / minimum per position | 12 / 1 | A choice for a 50-card collection; most of the deck is seen in a match |
+| Budget | 66 | 5.5 per card; a 10-pack collection can spend it all |
+| Ancient hit points | 12 | Matches of five to six rounds |
+| Units per side per objective | 3 | Limits how much strength can pile on one objective |
+| Orders per round | 2 | With 3, a third of all orders went unused |
+| Opening hand / draw per round / hand limit | 4 / 1 / 7 | Drawing 2 let the bigger collection matter more |
+| Comeback | +1 card for the player behind | Raises the trailing player's chances without changing who is favoured (section 9) |
+| Roshan | 2 damage | Makes one objective worth fighting over, and the other two a way round it |
+| Late game | Damage doubled from round 5 | Without it matches run a round longer and comebacks are rarer |
+| Farma maximum | +3 | |
+| Last round | 8 | Reached in under 1% of matches |
+
+### 4.7 What the player sees
+
+- **Planning.** The board, the hand, two order marks. Cards and units that can still act glow. A card is dragged onto an objective, or tapped and then the objective tapped; a unit likewise. The player's own planned totals are shown on each objective. Nothing about the rival's round is shown, because nothing is known. One button confirms.
+- **Reveal.** The rival's cards turn over, moved units slide, a gank sends its target back, each bonus adds itself to the total as a small "+1" on the card that gives it, the two totals meet on each objective, and the Ancients take their damage. It takes a few seconds and can be skipped with a tap.
+- **Every number has one place.** A card shows its strength; a unit shows its current strength; an objective shows each side's total and its own effect. Nothing is repeated in a panel.
+
+### 4.8 A match between people
+
+- Each player's plan goes to the server and stays hidden until both are in or the round's clock runs out. Then the server resolves the round and both see the same reveal.
+- One clock per round for both players, from today's paces (20, 30 or 60 seconds, or none). When it runs out, the plan counts as it stands at that moment. The computer never plays for a person.
+- A player away for 90 seconds loses, as today.
+- A match is at most 8 rounds, so with the 30-second pace it cannot last longer than about six minutes including reveals.
+
+<!-- SECTION 5 GOES HERE -->
 
 ## 6. Onboarding: the first match teaches by playing
 
