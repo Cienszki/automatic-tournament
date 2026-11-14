@@ -7,7 +7,7 @@ Written in S2 (2026-11-14) by Fable. It covers the owner's concern 2 (the admin 
 **The short version.**
 
 1. **The panel is organized around what needs the organizer, not around features.** Today's 17 tabs become one home screen and five work areas. The home screen answers three questions: where the tournament is, what needs a decision, and what the platform did by itself.
-2. **Most controls disappear.** Of about 95 controls in today's panel, 31 are kept, 24 are merged into another control, 17 are replaced by automation, 6 move to the platform's super admin, and 17 are dropped. Section 4 lists every one.
+2. **Most controls disappear.** Of the 112 controls counted in today's panel, 49 are kept, 28 are merged into another control, 14 are replaced by automation, 5 move to the platform's super admin, and 16 are dropped. So an organizer meets fewer than half of today's controls, and most of those sit behind defaults. Section 4 lists every one.
 3. **The wizard produces a tournament that is ready to open registration.** The format, the ranking rules, the bot, the rulebook and the look all start from defaults that work. Nothing after the wizard is required before publishing.
 4. **A season runs without the panel.** Registration closes, groups are drawn, the schedule is generated, lobbies are created, results arrive, tables move, the bracket is seeded and the season is closed. The organizer confirms a few of these steps and is messaged on Discord only when a decision is needed.
 5. **Customization has three levels:** a preset and a logo in the wizard; colours, fonts, hero and sponsors on the look screen with a live preview of the real site; and the organizer's own domain. Layout, spacing and text contrast are never editable, which is what keeps every tournament looking good.
@@ -674,3 +674,130 @@ These follow the same patterns and need no versions.
 - **Phone.** Przegląd, Mecze, the match page and Drużyny must work fully at 390 px, because referees and organizers act on match evenings from a phone. Format and Wygląd are built for a wide screen and must still fit and be usable at 390 px (stacked, preview on a second tab).
 - **Language.** The panel's copy goes through the one translation system (WP-29) from the start; Polish first.
 - **Roles** come from `authorize` (ADR-06). A person never sees a control they may not use; nothing is shown disabled for lack of permission.
+
+## 6. Customization
+
+The second selling point is design that each organizer can make their own. The risk is the opposite of the promise: thirty free-form theme fields let an organizer make a site that is unreadable, and then every tournament on the platform looks like a home-made page. The design gives a wide range of looks through a small number of choices that cannot go wrong.
+
+### 6.1 What an organizer can change
+
+| Level | Where | What |
+|---|---|---|
+| 1. In the wizard | step 3 | A preset; the logo; one colour. Enough for a tournament that looks finished. |
+| 2. On the look screen | Wygląd | Everything in the table below. |
+| 3. The address | Ustawienia, Adres | The slug; the organizer's own domain. |
+
+| Group | Choices | Derived by the platform |
+|---|---|---|
+| Motyw | One of the presets (about eight at the start): a complete, tested set of every value below. Choosing one resets the groups the organizer has not touched. | |
+| Marka | Main logo. Optional: a wide logo for the navbar, the organizer's logo, a favicon. | Navbar logo and favicon from the main logo; the link-preview image from the logo, name and colours. |
+| Kolory | Primary, secondary, accent; dark or light mode. | Every text colour, the glow, borders, card surfaces, hover states, colours of state marks on this background. |
+| Tło | A colour, a gradient from the palette, or an image with its position and one "przyciemnienie" slider. | The slider's minimum, from the image's brightness, so text stays readable. |
+| Czcionki | Heading font and body font from a curated list; or an uploaded heading font. | Sizes, weights, line heights, the fonts of the rulebook and long text. |
+| Styl | Cards: solid or glass. Corners: sharp or soft. Navbar: solid, transparent or blurred. | The numbers behind each. |
+| Hero | Layout (logo and promo image, three images, video); the title; the images or a video link. | Crops for each width; a still frame for slow connections. |
+| Sponsorzy | Slides in the navbar strip (image or text), link, pace. | Scaling to the strip's height. |
+| Linki | Twitch, Discord, YouTube, Instagram, TikTok. | Defaults from the organization. |
+| Grupy | Per group or division: a colour and a medal image (on the Format screen, with the group). | The group's accents on tables and team pages. |
+
+An organization can store its own look (Marka, Kolory, Czcionki, Linki) as the default for its new tournaments.
+
+### 6.2 What nobody can change
+
+- The layout of any page, the order of its parts, spacing, the type scale and component shapes. These are what make the site feel like one crafted product, and what the public pages' tests protect.
+- Text colours directly. They follow from the palette.
+- The public navigation's items. They follow from which features are on (Dla widzów): a tournament without fantasy has no fantasy section.
+- Dota terms and the wording of the interface.
+- The platform's mark in the footer. Whether a paid plan may remove it is a business decision for S4.
+- Free-form CSS or HTML, ever. One organizer's script on a shared domain is every organizer's security problem.
+
+### 6.3 The limits that keep every tournament looking good
+
+They are enforced in the theme's schema (WP-27), so no path, including an import or a future API, can store a look that breaks them.
+
+- **Contrast.** Body text against its surface must reach WCAG AA (4.5 to 1); large headings 3 to 1. Text colours are derived to meet this. When a chosen primary or accent cannot carry readable text, the text on it flips between light and dark; when even that fails, the look cannot be published, and the control proposes the nearest colour that works.
+- **Background images.** The overlay has a minimum that depends on the image, so no photo can sit raw under text.
+- **Fonts.** The curated list holds only fonts with Polish letters and with the weights the design uses. An uploaded font is checked for the same; missing letters fall back per letter to the body font, and the control says which letters are missing. Fonts never block text from showing (ADR-08).
+- **Images.** Minimum pixel sizes per slot; a maximum file size; uploads are converted and resized by the platform, so an organizer cannot slow their own site with a 12 MB logo.
+- **Lengths.** Tournament name up to 60 characters, short name up to 12, team name up to 24, team tag up to 5. Every component is tested with the longest values (TEST_STRATEGY level 8, the "extreme" theme), so content fits its container at every size.
+- **Presets are tests.** Each preset is a fixture of the visual test suite. A change to a component that breaks a preset fails in CI.
+
+### 6.4 Preview, publishing and the domain
+
+- **Draft and preview.** Changes on the look screen are stored as a draft beside the published look. The preview renders the tournament's real pages with the draft for the organizer only; those responses are never cached for viewers. "Opublikuj wygląd" replaces the published look in one command, which invalidates the tournament's pages. "Historia" restores an earlier published look.
+- **The draft tournament** as a whole has the preview link it has today: anyone with the link sees the unpublished tournament.
+- **The domain.** Under Adres the organizer types a domain. The screen shows the one DNS record to create, in the words their registrar's form uses (type, name, value), each with "Kopiuj". The state under it moves by itself: "czeka na rekord DNS", "sprawdzanie", "połączono". Once connected, the tournament's links, link previews and sign-in work on that domain (ADR-08), and the platform address keeps working and points to it. A failed check after a day becomes a decision on Przegląd with what the check saw in place of the expected value.
+- A domain can belong to the organization instead, with each tournament at a path under it. This is the same control on the organizer page.
+
+## 7. Other places with the same problems
+
+Lower priority. These were not read in this session; the findings come from the inventories, and each needs a short design pass of its own before it is built (WP-49).
+
+| Place | The problem | Direction |
+|---|---|---|
+| The captain's team page (`MyTeamView.tsx`, 1,859 lines, 17 direct writes) | Grew the same way the admin panel did: roster, stand-ins, reschedules, scrims, transfers and match panels in one view. It is the screen most users with a job to do see. | The same idea as Przegląd, for a captain: the next match with its state and lobby, what needs the captain (a reschedule to answer, a stand-in to approve, a player without Steam), and the roster. WP-17 moves it to commands and keeps the look; the redesign comes after. |
+| Registration (`register/page.tsx`, 1,127 lines) | One long form. A team cannot be registered until everything about every player is known. | Captain creates the team with a name; players join through an invitation link and each links their own Steam. The team becomes complete by itself. This is also what makes automatic acceptance (section 3.3) possible. |
+| Account page (489 kB, the heaviest route) | Holds the account, the team, caster tools and more behind one address. | Split by what the person is: player, captain, caster. Each lands on their own next thing. |
+| Caster desk | Built quickly; several prototype versions exist and it is not clear which shipped. | One screen: matches open to cast, mine, and the lobby seat state. Design with the match page's timeline as the shared component. |
+| Fantasy and pick'em pages | Fantasy shows a placeholder for its ranking; pick'em collects picks and scores nothing (ARCHITECTURE B8). WP-16 makes them work with the existing components. | A design pass once they produce real numbers: the round's deadline, my lineup and its points, the ranking. |
+| The platform's front page | `/` redirects to one tournament. There is no page that says what the platform is or lists tournaments. | Needed before any organizer can sign up from outside. Its content is S4's (promotional material); its design should use the wizard's preview as the main argument. |
+| Rules page and the rules assistant | Not inspected. | Check after generated paragraphs exist (WP-18e). |
+
+## 8. What this design needs from the architecture
+
+Nothing here changes a decision record. It adds data and a few rules, listed so the work packages can cite them.
+
+**One clarification of ADR-11, which depends on question S2-1.** ADR-11 says a tournament without a Steam league id cannot sync. In the new design the bot reports each finished game with its Dota match id (ADR-10 point 5), so a game played in a bot lobby is identified without listing a league. This document assumes the league id is therefore optional: it is needed only to pick up games played outside bot lobbies automatically, and for the lobby to appear as a league game in Dota. WP-47 checks whether full stats can be fetched for a lobby game that belongs to no league. If they cannot, the fallback is in the question.
+
+**Additions to the schema** (each an additive migration in the work package that needs it):
+
+| Addition | For |
+|---|---|
+| `tournaments.theme_draft` (jsonb, null) | the look's draft (6.4). History comes from the audit rows of the publish command, which hold the previous look. |
+| `settings.scheduling.matchEvenings` (`[{ weekday, time }]`) | schedule proposals |
+| `settings.registration.autoAccept` (default true), `minTeams` | automatic acceptance; "count does not fit" |
+| `teams.flags` (jsonb: reasons registration marked the team) | "team needs a look" |
+| `stages.settings.autoPublishRounds` (Swiss, default false) | rounds that publish themselves |
+| `rule_paragraphs.generated_from` (text, null: the settings key) | generated rulebook paragraphs |
+| `creation_requests` (user, text, contact, state, decided by) | the request form before launch |
+| `member_invites` (scope, role, token, expires, used by) | invitation links for staff; caster requests are a row with the user set and no token |
+| `decision_notices` (tournament, decision key, notified at) | one Discord message per decision, not one per page load |
+
+**Decisions are computed, not stored.** `getDecisions(tournamentId)` is a cached query that reads the state the decisions come from: flagged teams, stand-in appeals, matches without a time near their deadline, reschedule requests outside the rules, lobby sessions waiting for an account, roster players without Steam before a match, failed or unrecognized imports (from `jobs`), open ties (from the standings' `openTie`), a Swiss round or a bracket waiting for confirmation (from the stage's state), caster requests, a failed domain check. A decision cannot go stale or be forgotten, because it exists exactly as long as its cause. Each has a stable key (`kind:targetId`), used for links and for `decision_notices`. A job compares the current keys with the notices and messages the tournament's admins on Discord about new ones.
+
+**The activity list is the audit log.** Rows with no human actor, rendered through one table from action to sentence. "Cofnij" is offered for actions that have an inverse command (walkover and revert, import and remove game, publish round and reopen round); the table of inverses is code, next to the role table.
+
+**Automatic lifecycle steps are jobs** with a `run_at` (ADR-09): close registration at its time; complete the tournament when the last match of the last stage is recorded; archive thirty days later. Each writes an audit row, so each appears in the activity list and can be taken back with "Cofnij etap".
+
+**Format presets are data.** `preset(name, teamCount, options)` returns stages with their settings, ranking and advancement, plus the numbers the wizard draws (matches per stage, an estimate of weeks). The wizard, "Nowa edycja" and the seed tool use the same function.
+
+**Proposals are pure functions.** `proposeDraw(teams, stage)` and `proposeSchedule(stage, evenings, from)` return a proposal the organizer edits; a command stores the confirmed version. Nothing is written before confirmation.
+
+**The role table gets the referee's actions** as this document uses them: everything on the match page, stand-in decisions, and reading Przegląd, Mecze and Drużyny. Staff management, the domain, "Cofnij etap" and deletion are the organization's.
+
+**Preview rendering.** A request for a tournament page with the draft look is authorized as an admin's request and is never cached, like a draft tournament's pages (ARCHITECTURE section 2.1).
+
+## 9. Versions to choose, and the recommendation for each
+
+WP-41 builds these as clickable prototypes with mock data. Until the owner has chosen, the real screens are built from version 1.
+
+| Screen | Version 1 (recommended) | Version 2 | Version 3 | Why version 1 |
+|---|---|---|---|---|
+| Przegląd | Three questions: phase line, decisions, activity | Match-day console | One stream | It is useful on every day of a season, including the weeks with no matches, and keeps the next step in one fixed place. Version 2's time axis is kept as the "Dziś" band. |
+| Wizard | Choices beside a live preview, three steps | One question per screen | One page | The preview is the sales argument and the explanation; it must be next to the choice that changes it. |
+| Match page | Timeline and fixes, as a page | Side panel over the list | Rows that open | Only this one shows what the automation did, which is what makes an organizer trust it; and it is the only one that works on a phone. |
+| Format | Line of stages, selected stage below | One long page | Edit on the public pages | It shows the relation between stages, which is the hard part of any format, and has a place for the draw and the schedule. |
+| Wygląd | Controls beside the real site | Edit on the site | Presets only | The range of the second selling point at a fraction of version 2's cost. Version 3 is the fallback if time is short: it is version 1 with most groups hidden. |
+
+## 10. Questions for the owner
+
+They are also in `STATUS.md` (questions 21 to 28) with the same numbers in brackets. Work continues on each recommendation; all are easy to change before the screens are built.
+
+- **S2-1 (21). The Valve league id.** Today every tournament needs its own, and getting one is a step outside the platform that a new organizer may not manage. Recommendation: the platform holds one league of its own, every bot lobby is created in it, and results are tied to matches by the bot's report, so an organizer never hears the words "league id"; an organizer who has their own league may enter it. This needs your knowledge of Valve's rules: how you got the ids for PDL and Wiosenna, what it costs, and whether one league may hold many tournaments' games. If a platform league is not possible, the fallback is: bot lobbies without a league, with results from the bot's own report and full stats only where the data source provides them (WP-47 measures this).
+- **S2-2 (22). Accept complete teams automatically?** Recommendation: yes by default, with a switch "wymagaj akceptacji" for organizers who want to approve each team.
+- **S2-3 (23). Lateness forfeits.** Recommendation: the bot applies them by the tournament's settings and the organizer can take one back, instead of the organizer confirming each one. A forfeit that waits for a person at 20:15 on a match evening is not automation.
+- **S2-4 (24). Video in the hero.** Recommendation: organizers give a link to a hosted video; uploading to the platform's video host stays with the super admin until a paid plan covers its cost.
+- **S2-5 (25). Three bot controls to drop:** bot personality, custom chat commands, and custom words for the ready check. Recommendation: drop all three; keep editable chat messages. Say if any of them matters to you.
+- **S2-6 (26). Swiss rounds.** Recommendation: the next round is paired automatically and waits for the organizer's confirmation by default, with a setting to publish without waiting.
+- **S2-7 (27). Free subdomains** (`pdl.dota2inhouse.pl`). Recommendation: not now. The path address is the free option and the organizer's own domain is the upgrade; a third kind of address adds work and no clear sale. S4 may revisit it as a plan feature.
+- **S2-8 (28). The six formats in the wizard** and their names: Liga, Grupy i playoff, Swiss, Swiss i playoff, Puchar, Kwalifikacje LAN. Recommendation: these six, with Kwalifikacje LAN shown to everyone. Say if a format you have been asked for is missing.
