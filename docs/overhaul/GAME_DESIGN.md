@@ -391,7 +391,74 @@ Unchanged: one card per position, from a random team's last series, with the per
 
 Three, all existing: the game on or off, packs per round, and giving packs. The free-text "how to get more cards" goes, because the screen now shows the sources itself.
 
-<!-- SECTION 9 GOES HERE -->
+## 9. Balance targets and the simulations that prove them
+
+### 9.1 How this was done
+
+The rules of section 4 were not written and then tested. They were found. WP-51 built the game as a pure rules engine in which every number and every ability variant is a setting, wrote computer players for it, and ran about 250,000 simulated matches on the real cards of Wiosenna and PDL S2. The first candidate rules missed three targets; five rounds of changes, each tested, led to the rules in section 4.
+
+- The engine: `src/features/cards/domain/v2/` on branch `wp/51-card-proto`, with 88 tests.
+- The experiments: `scripts/tools/card-sim/v2/`. Every run is seeded, and the command that reproduces a table is printed under it.
+- The results: `docs/overhaul/sim/v2/REPORT.md` for the settled rules, and `docs/overhaul/sim/v2-first/REPORT.md` for the first candidate and the steps between.
+
+**The computer players** stand in for people. From weakest to strongest: one that plays at random; one that makes the obvious move, as if the rival would do nothing this round (roughly a new player); one that predicts the rival's obvious move and answers it; and one that weighs its plans against several things the rival might do (a good player). None of them sees the rival's hand or plan.
+
+**The collections** are simulated with the site's own pack rule: a new player has opened 10 packs, a veteran 40. Each builds the strongest deck the rules allow.
+
+**What the numbers can and cannot carry.** A win rate from 1,000 games is good to about three points. Deck comparisons are a little less exact than that, because the decks come from a limited number of simulated collections. No conclusion below rests on a difference smaller than five points.
+
+### 9.2 The targets and the results
+
+Each target was set before the prototype ran.
+
+| Goal | Target | Today's game | Recommended game | Met |
+|---|---|---|---|---|
+| Short matches (G2) | 5 to 7 rounds; nearly all end with an Ancient destroyed | 10.4 turns, 6.5 fights, 19 hits | **5.7 rounds**; 99% of matches last 5 to 7; 99.3% end with an Ancient destroyed | Yes |
+| Skill over collection (G4) | A new player's deck loses to a veteran's at most 60% | **90%** | **58.7%** (56 to 62). Without the budget: 81% | Yes |
+| Skill decides (G4) | The good player beats the obvious-move player at least 70% | Not comparable | **82%** | Yes |
+| Skill beats collection | The good player with a new deck beats the obvious-move player with a veteran deck | Loses 58% (best computer level, 10 packs against 40) | **Wins 75%** | Yes |
+| A real choice each round (G5) | The good player's plan differs from the obvious plan in most rounds | The strongest card in hand was played 100% of the time | **78%** of rounds | Yes |
+| Something to read (G5) | Knowing the rival's plan must be worth a lot | Nothing is hidden | A program told the rival's plan wins **94%** against the good player | Yes |
+| Comebacks | The player behind after round 3 wins at least 25% | The side ahead after three turns each wins 85.5% | **32%** | Yes |
+| Leads change | The winner was never behind in at most 55% of matches | Not comparable | **54%** | Yes, narrowly |
+| No seat advantage | 50% | First player wins 43% | No first player exists | Yes |
+| A ladder of skill | Each computer level beats the one below at least 60% | | 94%, 79%, then **56%** between the two strongest | Partly |
+| Objectives are even | Holding any objective in round 2 wins 45 to 65% | First-taker wins 40 to 55% | 50 to 65% (Lotus Pool highest) | Yes |
+
+The one target missed is the top step of the skill ladder: the two strongest computer players are closer to each other than intended. This is a statement about those two programs, and it limits what the simulations can say about the very top of human play. The trial with people (WP-62) is where that gets answered.
+
+### 9.3 What the first candidate got wrong, and what fixed it
+
+| Problem found | Evidence | Change | After |
+|---|---|---|---|
+| The collector still won too often with a budget | Veteran won 67 to 74% | Count the position's modifier in a card's cost (an Offlane's +1 was free strength), and lower the budget from 66 to 60 so a new collection can spend all of it | 58.7% |
+| The leader stayed ahead | The player behind after round 3 won 18%; the winner had never trailed in 66% of matches | High Ground's bonus only for units standing on it (it had been applied to every unit by a misreading of the rule); Tank changed; and the Comeback card at 3 or more hit points behind | 32% and 54% |
+| Tank did nothing useful | Blocked ganks outnumbered successful ones 0.45 to 0.34 a match; switching Tank off left an Offlane-heavy deck exactly as strong | The Offlane takes the gank on itself | About one gank a match per player now lands |
+| Smoke was nearly unused | 0.3 free moves a match; a Support-heavy deck won 37% against the field, the lowest | Smoke acts when the Support is played, and brings a unit with it | See the deck table below |
+| Aura swamped the cards | With supports costing less, the best decks stacked Hard Supports | One Aura per objective | |
+| Any-deficit catch-up was too strong | An extra card for any deficit made the player behind after round 3 win 40% and raised the veteran's win rate by four points | Only at 3 or more hit points behind | 32%, and no effect on the veteran's rate |
+
+Three things were tested and rejected: three orders a round (a third of orders went unused), drawing two cards a round (the veteran's win rate rose to 79%), and removing the late-game doubling (matches ran a round longer and comebacks fell).
+
+### 9.4 Decks and abilities
+
+*(The table of deck kinds against each other, and the effect of switching each ability off, are added here from the final run.)*
+
+### 9.5 Direction A, measured
+
+Run on today's engine with the harness of WP-50 (`E10`):
+
+*(Added from the final run.)*
+
+### 9.6 Kolejka and the economy
+
+- **Kolejka's difficulty** is in section 7.1: a ladder from 85% to 18% for an average player and from 99% to 37% for a strong one.
+- **Duplicates** are in section 8: 68 of the 185 cards of a 37-pack Wiosenna season.
+- **Reach of packs.** Because a pack draws from each team's last series only, a Wiosenna pack can give 95 of 851 cards. After a season of 37 packs a player holds cards of 77 of the 119 players and has 5 of 19 teams complete. The followed team's cards (section 7.2) are the way to finish a chosen team.
+
+### 9.7 Keeping it balanced
+
+WP-52 turns the main rows of the table in 9.2 into a test that runs in CI on fixed seeds. A change to a rule, a card formula or the pack rule that moves a result out of its band fails the build. When players find something the computer players did not, the fix is a setting and a re-run.
 
 ## 10. The owner's earlier decisions
 
