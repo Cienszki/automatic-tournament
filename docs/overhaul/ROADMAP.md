@@ -1,6 +1,6 @@
 # Roadmap
 
-Written in S1 (2026-11-13) by Fable, and rewritten the same day after the owner's answers (new database, production untouched until the new platform is ready, free plans first). It turns `ARCHITECTURE.md` into work packages (WPs). Each WP is written so that an Opus implementer can do it from this text, `BRIEF.md`, `CONVENTIONS.md` and the linked decision record (ADR), without the context of the session that planned it. S2 (organizer experience) added WP-41 to WP-49 on 2026-11-14, in the section "S2. The organizer experience" near the end; S3 (card game) adds its own in the same format.
+Written in S1 (2026-11-13) by Fable, and rewritten the same day after the owner's answers (new database, production untouched until the new platform is ready, free plans first). It turns `ARCHITECTURE.md` into work packages (WPs). Each WP is written so that an Opus implementer can do it from this text, `BRIEF.md`, `CONVENTIONS.md` and the linked decision record (ADR), without the context of the session that planned it. S2 (organizer experience) added WP-41 to WP-49 on 2026-11-14, in the section "S2. The organizer experience" near the end; S3 (card game) added WP-50 to WP-63 on 2026-11-14, in the section "S3. The card game".
 
 ## How to read and run this
 
@@ -24,8 +24,9 @@ Written in S1 (2026-11-13) by Fable, and rewritten the same day after the owner'
 | M4 A bot we can maintain | 20, 21, 22, 23 | Bot source in TypeScript with tests, a written contract, its own database role, a plan to scale out |
 | M5 A platform | 26, 27, 45, 29, 36 | Custom domains, guarded themes, one translation system, backups and tournament export |
 | M6 Proven and live | 30, 31, 48, 37 | End-to-end flows green; load test passed. **Go-live step two:** PDL S2 moves to the new platform while it is being played. **Step three:** new seasons start there. **Step four:** the old site retires |
+| The card game (beside M1 to M6) | 52, 53, 54, 55, 56, 57, then 58, 59, 60, 61, 62, 63 | A new player makes a first move within a minute and plays a complete game against the computer on a phone or a desktop (52 to 57, no dependency on the new platform). Then live duels, Kolejka after every real round, real results paying out cards, and today's game retired (58 to 63, after WP-40) |
 
-What can run in parallel: WP-05, WP-12 and WP-20 can start now and need nothing from the owner. M4 runs beside M1 to M3 (different folders). WP-04 runs beside anything. S2 has run: WP-18 builds its screens from `ORGANIZER_UX.md`. WP-41 (prototypes for the owner to choose from) needs nothing and can run at any time; the real screens start from version 1 of each if the owner has not chosen yet. The card game moves as it is in WP-40; S3 redesigns it later.
+What can run in parallel: WP-05, WP-12 and WP-20 can start now and need nothing from the owner. M4 runs beside M1 to M3 (different folders). WP-04 runs beside anything. S2 has run: WP-18 builds its screens from `ORGANIZER_UX.md`. WP-41 (prototypes for the owner to choose from) needs nothing and can run at any time; the real screens start from version 1 of each if the owner has not chosen yet. The card game moves as it is in WP-40; S3 redesigned it (WP-52 to WP-63), and WP-52, 53 and 54 can start at any time.
 
 What waits for the owner: WP-03 (staging part), WP-06 and WP-35 need the accounts in `TEST_STRATEGY.md`, "What the owner must create". Question 8 is answered: the role-based formula is the default for new tournaments.
 
@@ -833,6 +834,6 @@ Added in S3 (2026-11-14) by Fable. The design is `GAME_DESIGN.md`; section numbe
 
 ## Things deliberately left out of S1's packages
 
-- The card game (S3), business material (S4). The new admin panel and wizard were left to S2 and are now WP-41 to WP-49.
+- Business material (S4). The card game was left to S3 and is now WP-50 to WP-63. The new admin panel and wizard were left to S2 and are now WP-41 to WP-49.
 - A redesign of the bot's lobby logic. Open bot gaps recorded in the owner's notes (forfeit voting, coin toss, Immortal Draft seat) are product work to schedule after WP-21.
 - Per-visitor language switching, free subdomains, organization-owned bot pools, billing, a second region. Each has a place in the design (ADR-08, ADR-10, ADR-05, ADR-17) and no package yet.
