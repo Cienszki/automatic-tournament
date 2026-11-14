@@ -1,0 +1,157 @@
+{
+ "experiment": "e14",
+ "slug": "wiosenna",
+ "seed": 1,
+ "gamesPlayed": 9600,
+ "gamesArg": 600,
+ "ms": 511238,
+ "command": "npx tsx scripts/tools/card-sim/run-v2.ts e14 --slug wiosenna --seed 1 --games 600",
+ "tables": [
+  {
+   "title": "E14. Smoke and Tank variants (wiosenna)",
+   "measured": "Each row changes one rule from the defaults. Rounds, comeback, unused orders and planner != greedy: planner vs planner with the same `best` veteran deck. Veteran win rate: the E2 cell (veteran 40 packs vs new player 10 packs, own collections). 600 games per cell.",
+   "columns": [
+    "Change",
+    "Rounds per match",
+    "P(win | behind after round 3)",
+    "Veteran wins vs new player",
+    "Unused orders per side per match",
+    "Planner != greedy"
+   ],
+   "rows": [
+    [
+     "cost = might, HG here (base for this table)",
+     "5.57",
+     "24.5% [21.1–28.4]",
+     "64.5% [60.6–68.2]",
+     "1.80",
+     "78.9%"
+    ],
+    [
+     "base + Smoke pulls a unit",
+     "5.60",
+     "19.7% [16.6–23.3]",
+     "63.5% [59.6–67.3]",
+     "1.76",
+     "77.9%"
+    ],
+    [
+     "base + Tank takes the gank",
+     "5.62",
+     "25.9% [22.4–29.9]",
+     "64.2% [60.3–67.9]",
+     "1.61",
+     "78.4%"
+    ],
+    [
+     "base + both",
+     "5.62",
+     "25.4% [21.9–29.3]",
+     "62.6% [58.7–66.4]",
+     "1.66",
+     "78.0%"
+    ],
+    [
+     "base + both + catch-up order",
+     "5.67",
+     "35.3% [31.2–39.6]",
+     "74.3% [70.6–77.6]",
+     "2.30",
+     "79.5%"
+    ],
+    [
+     "base + both + catch-up card",
+     "5.73",
+     "36.1% [32.1–40.4]",
+     "65.9% [62.0–69.6]",
+     "1.75",
+     "75.8%"
+    ],
+    [
+     "base + both + farmMax 2",
+     "5.61",
+     "23.6% [20.2–27.4]",
+     "68.1% [64.3–71.7]",
+     "1.59",
+     "78.6%"
+    ],
+    [
+     "base + both + gank weakest",
+     "5.67",
+     "28.0% [24.4–32.0]",
+     "66.1% [62.2–69.8]",
+     "1.62",
+     "77.5%"
+    ]
+   ]
+  }
+ ],
+ "data": {
+  "rows": [
+   [
+    "cost = might, HG here (base for this table)",
+    "5.57",
+    "24.5% [21.1–28.4]",
+    "64.5% [60.6–68.2]",
+    "1.80",
+    "78.9%"
+   ],
+   [
+    "base + Smoke pulls a unit",
+    "5.60",
+    "19.7% [16.6–23.3]",
+    "63.5% [59.6–67.3]",
+    "1.76",
+    "77.9%"
+   ],
+   [
+    "base + Tank takes the gank",
+    "5.62",
+    "25.9% [22.4–29.9]",
+    "64.2% [60.3–67.9]",
+    "1.61",
+    "78.4%"
+   ],
+   [
+    "base + both",
+    "5.62",
+    "25.4% [21.9–29.3]",
+    "62.6% [58.7–66.4]",
+    "1.66",
+    "78.0%"
+   ],
+   [
+    "base + both + catch-up order",
+    "5.67",
+    "35.3% [31.2–39.6]",
+    "74.3% [70.6–77.6]",
+    "2.30",
+    "79.5%"
+   ],
+   [
+    "base + both + catch-up card",
+    "5.73",
+    "36.1% [32.1–40.4]",
+    "65.9% [62.0–69.6]",
+    "1.75",
+    "75.8%"
+   ],
+   [
+    "base + both + farmMax 2",
+    "5.61",
+    "23.6% [20.2–27.4]",
+    "68.1% [64.3–71.7]",
+    "1.59",
+    "78.6%"
+   ],
+   [
+    "base + both + gank weakest",
+    "5.67",
+    "28.0% [24.4–32.0]",
+    "66.1% [62.2–69.8]",
+    "1.62",
+    "77.5%"
+   ]
+  ]
+ }
+}

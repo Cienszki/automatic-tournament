@@ -1,0 +1,127 @@
+{
+ "experiment": "e5",
+ "slug": "wiosenna",
+ "seed": 1,
+ "gamesPlayed": 5800,
+ "gamesArg": null,
+ "ms": 411817,
+ "command": "npx tsx scripts/tools/card-sim/run-v2.ts e5 --slug wiosenna --seed 1",
+ "tables": [
+  {
+   "title": "E5a/b. Value of reading the rival (wiosenna)",
+   "measured": "Same `best` deck for both sides (one veteran collection per pair, the default budget), both seats. omniscient is handed the rival's actual plan each round; exploiter repeats the deterministic planner's reasoning on 3 guessed planner hands and answers the 3 predicted plans. planner vs greedy repeated here for comparison.",
+   "columns": [
+    "Row player",
+    "Rival",
+    "Games",
+    "Row player wins [95% CI]",
+    "Rounds"
+   ],
+   "rows": [
+    [
+     "omniscient",
+     "planner",
+     1000,
+     "92.0% [90.1–93.5]",
+     "5.22"
+    ],
+    [
+     "omniscient",
+     "greedy",
+     1000,
+     "93.4% [91.7–94.8]",
+     "5.18"
+    ],
+    [
+     "planner",
+     "greedy",
+     1000,
+     "76.5% [73.8–79.0]",
+     "5.60"
+    ],
+    [
+     "exploiter",
+     "planner",
+     400,
+     "64.4% [59.6–69.0]",
+     "5.65"
+    ],
+    [
+     "exploiter",
+     "planner-mixed",
+     400,
+     "68.5% [63.8–72.9]",
+     "5.55"
+    ],
+    [
+     "planner",
+     "planner-mixed",
+     1000,
+     "52.3% [49.2–55.4]",
+     "5.74"
+    ]
+   ]
+  },
+  {
+   "title": "E5c. How often reading changes the plan (wiosenna)",
+   "measured": "E1 matches (planner vs planner, own veteran collections), N = 1000 matches: share of planner decisions whose chosen plan is not the plan greedy would play (the best plan if the rival did nothing).",
+   "columns": [
+    "Measure",
+    "Value"
+   ],
+   "rows": [
+    [
+     "Planner plan differs from greedy plan",
+     "77.5%"
+    ]
+   ]
+  }
+ ],
+ "data": {
+  "rows": [
+   [
+    "omniscient",
+    "planner",
+    1000,
+    "92.0% [90.1–93.5]",
+    "5.22"
+   ],
+   [
+    "omniscient",
+    "greedy",
+    1000,
+    "93.4% [91.7–94.8]",
+    "5.18"
+   ],
+   [
+    "planner",
+    "greedy",
+    1000,
+    "76.5% [73.8–79.0]",
+    "5.60"
+   ],
+   [
+    "exploiter",
+    "planner",
+    400,
+    "64.4% [59.6–69.0]",
+    "5.65"
+   ],
+   [
+    "exploiter",
+    "planner-mixed",
+    400,
+    "68.5% [63.8–72.9]",
+    "5.55"
+   ],
+   [
+    "planner",
+    "planner-mixed",
+    1000,
+    "52.3% [49.2–55.4]",
+    "5.74"
+   ]
+  ],
+  "plannerDiff": 0.7748512425621281
+ }
+}

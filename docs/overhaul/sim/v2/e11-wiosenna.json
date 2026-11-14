@@ -1,0 +1,508 @@
+{
+ "experiment": "e11",
+ "slug": "wiosenna",
+ "seed": 1,
+ "gamesPlayed": 27000,
+ "gamesArg": null,
+ "ms": 822521,
+ "command": "npx tsx scripts/tools/card-sim/run-v2.ts e11 --slug wiosenna --seed 1",
+ "tables": [
+  {
+   "title": "E11a. Team decks next to budget decks (wiosenna)",
+   "measured": "98 team decks (team x period, 9 periods from seasonPeriods). 18 (18.4%) have fewer than 12 cards; smallest 4. Numbers are min / Q1 / median / Q3 / max.",
+   "columns": [
+    "Decks",
+    "Total baseMight",
+    "Total cost",
+    "Cards"
+   ],
+   "rows": [
+    [
+     "Team decks",
+     "10 / 36 / 51 / 60 / 83",
+     "9 / 37 / 53 / 61 / 84",
+     "4 / 12 / 12 / 12 / 12"
+    ],
+    [
+     "best default-budget deck, new (10 packs, 50 collections)",
+     "53 / 59 / 60 / 60 / 62",
+     "53 / 60 / 63 / 64 / 65",
+     "12"
+    ],
+    [
+     "best default-budget deck, regular (20 packs, 50 collections)",
+     "59 / 60 / 60 / 61 / 62",
+     "61 / 63 / 64 / 65 / 65",
+     "12"
+    ],
+    [
+     "best default-budget deck, veteran (40 packs, 50 collections)",
+     "60 / 60 / 61 / 61 / 62",
+     "61 / 63 / 64 / 64 / 65",
+     "12"
+    ]
+   ]
+  },
+  {
+   "title": "E11b. Human proxy vs team decks played by the greedy computer (wiosenna)",
+   "measured": "Proxy (row) with a `best` default-budget deck from its collection vs the computer with a team deck from the band (team decks sorted by total baseMight, in fifths). 300 games per cell, both seats. Win rate of the proxy. Hoped for: greedy proxy about 80% against the weakest band down to 25-35% against the strongest.",
+   "columns": [
+    "Proxy",
+    "band 1 (might 10-32)",
+    "band 2 (might 32-48)",
+    "band 3 (might 49-53)",
+    "band 4 (might 53-61)",
+    "band 5 (might 63-83)"
+   ],
+   "rows": [
+    [
+     "greedy, new",
+     "91.7% [88.0–94.3]",
+     "61.9% [56.2–67.2]",
+     "35.8% [30.6–41.4]",
+     "32.8% [27.7–38.3]",
+     "9.7% [6.8–13.5]"
+    ],
+    [
+     "greedy, regular",
+     "93.7% [90.3–95.9]",
+     "68.3% [62.9–73.3]",
+     "42.1% [36.6–47.8]",
+     "31.0% [26.0–36.4]",
+     "11.7% [8.5–15.8]"
+    ],
+    [
+     "greedy, veteran",
+     "92.3% [88.7–94.8]",
+     "72.3% [67.0–77.1]",
+     "39.0% [33.7–44.6]",
+     "31.8% [26.8–37.3]",
+     "16.7% [12.9–21.3]"
+    ],
+    [
+     "planner, new",
+     "99.3% [97.6–99.8]",
+     "88.3% [84.2–91.5]",
+     "63.5% [57.9–68.8]",
+     "45.7% [40.1–51.3]",
+     "18.3% [14.4–23.1]"
+    ],
+    [
+     "planner, regular",
+     "100.0% [98.7–100.0]",
+     "89.0% [84.9–92.0]",
+     "68.2% [62.7–73.2]",
+     "52.2% [46.5–57.8]",
+     "19.7% [15.6–24.5]"
+    ],
+    [
+     "planner, veteran",
+     "99.7% [98.1–99.9]",
+     "93.0% [89.5–95.4]",
+     "74.3% [69.1–78.9]",
+     "50.0% [44.4–55.6]",
+     "24.7% [20.1–29.8]"
+    ]
+   ]
+  },
+  {
+   "title": "E11b. Human proxy vs team decks played by the responder computer (wiosenna)",
+   "measured": "Proxy (row) with a `best` default-budget deck from its collection vs the computer with a team deck from the band (team decks sorted by total baseMight, in fifths). 300 games per cell, both seats. Win rate of the proxy. Hoped for: greedy proxy about 80% against the weakest band down to 25-35% against the strongest.",
+   "columns": [
+    "Proxy",
+    "band 1 (might 10-32)",
+    "band 2 (might 32-48)",
+    "band 3 (might 49-53)",
+    "band 4 (might 53-61)",
+    "band 5 (might 63-83)"
+   ],
+   "rows": [
+    [
+     "greedy, new",
+     "80.9% [76.1–85.0]",
+     "42.1% [36.7–47.8]",
+     "14.0% [10.5–18.4]",
+     "7.7% [5.2–11.3]",
+     "0.7% [0.2–2.4]"
+    ],
+    [
+     "greedy, regular",
+     "83.3% [78.7–87.1]",
+     "47.2% [41.6–52.8]",
+     "18.3% [14.4–23.1]",
+     "10.7% [7.7–14.7]",
+     "1.0% [0.3–2.9]"
+    ],
+    [
+     "greedy, veteran",
+     "84.0% [79.4–87.7]",
+     "50.5% [44.9–56.1]",
+     "17.7% [13.8–22.5]",
+     "10.7% [7.7–14.7]",
+     "1.0% [0.3–2.9]"
+    ],
+    [
+     "planner, new",
+     "94.3% [91.1–96.4]",
+     "71.7% [66.3–76.5]",
+     "40.0% [34.6–45.6]",
+     "22.7% [18.3–27.7]",
+     "4.0% [2.3–6.9]"
+    ],
+    [
+     "planner, regular",
+     "96.7% [94.0–98.2]",
+     "75.7% [70.5–80.2]",
+     "46.3% [40.8–52.0]",
+     "25.3% [20.7–30.5]",
+     "4.0% [2.3–6.9]"
+    ],
+    [
+     "planner, veteran",
+     "94.0% [90.7–96.2]",
+     "77.5% [72.4–81.9]",
+     "48.0% [42.4–53.6]",
+     "28.1% [23.3–33.4]",
+     "8.3% [5.7–12.0]"
+    ]
+   ]
+  },
+  {
+   "title": "E11b. Human proxy vs team decks played by the planner computer (wiosenna)",
+   "measured": "Proxy (row) with a `best` default-budget deck from its collection vs the computer with a team deck from the band (team decks sorted by total baseMight, in fifths). 300 games per cell, both seats. Win rate of the proxy. Hoped for: greedy proxy about 80% against the weakest band down to 25-35% against the strongest.",
+   "columns": [
+    "Proxy",
+    "band 1 (might 10-32)",
+    "band 2 (might 32-48)",
+    "band 3 (might 49-53)",
+    "band 4 (might 53-61)",
+    "band 5 (might 63-83)"
+   ],
+   "rows": [
+    [
+     "greedy, new",
+     "83.9% [79.4–87.7]",
+     "45.0% [39.5–50.7]",
+     "8.7% [6.0–12.4]",
+     "7.0% [4.6–10.5]",
+     "1.0% [0.3–2.9]"
+    ],
+    [
+     "greedy, regular",
+     "85.0% [80.5–88.6]",
+     "48.5% [42.9–54.1]",
+     "15.4% [11.8–20.0]",
+     "8.3% [5.7–12.0]",
+     "1.7% [0.7–3.8]"
+    ],
+    [
+     "greedy, veteran",
+     "81.3% [76.5–85.3]",
+     "51.8% [46.2–57.4]",
+     "19.7% [15.6–24.5]",
+     "12.3% [9.1–16.5]",
+     "0.7% [0.2–2.4]"
+    ],
+    [
+     "planner, new",
+     "92.7% [89.1–95.1]",
+     "63.3% [57.7–68.6]",
+     "32.7% [27.6–38.2]",
+     "18.3% [14.4–23.1]",
+     "2.3% [1.1–4.7]"
+    ],
+    [
+     "planner, regular",
+     "93.0% [89.5–95.4]",
+     "72.7% [67.4–77.4]",
+     "39.3% [33.9–44.9]",
+     "24.3% [19.8–29.5]",
+     "5.0% [3.1–8.1]"
+    ],
+    [
+     "planner, veteran",
+     "97.0% [94.4–98.4]",
+     "74.7% [69.5–79.4]",
+     "45.3% [39.7–51.0]",
+     "29.4% [24.6–34.8]",
+     "7.7% [5.2–11.2]"
+    ]
+   ]
+  }
+ ],
+ "data": {
+  "decks": 98,
+  "small": 18,
+  "bands": [
+   [
+    "zO8OY2bf8lYsydnqKTrQ@2026-05-25",
+    "c6KuothJZCHyA09sPTJF@2026-06-08",
+    "ipWCrBDspzP77i2ErR27@2026-06-01",
+    "2zOyLiVvkJdIHzYb8klX@2026-06-01",
+    "omyDOuB6gb9syLuqDORc@2026-06-01",
+    "n5uP41hQfGnnZdaHW72h@2026-06-08",
+    "ascZbE2c3v568Yb2bsFN@2026-06-01",
+    "bQVSbkopKwi333zDlvH5@2026-06-29",
+    "vuFoaCjeDtrCrawOqWRw@2026-06-08",
+    "2zOyLiVvkJdIHzYb8klX@2026-06-29",
+    "x2vbMbrLklQ5Fogl1poE@2026-06-15",
+    "VLI67jzh3hYFx9Eysnbn@2026-06-01",
+    "nVzav95nziXL8mddtpix@2026-06-01",
+    "bQVSbkopKwi333zDlvH5@2026-06-15",
+    "0OKTuz7PNdsMzKgvRrOh@2026-06-01",
+    "omyDOuB6gb9syLuqDORc@2026-06-08",
+    "2zOyLiVvkJdIHzYb8klX@2026-06-15",
+    "x2vbMbrLklQ5Fogl1poE@2026-06-01",
+    "x2vbMbrLklQ5Fogl1poE@2026-06-08"
+   ],
+   [
+    "zO8OY2bf8lYsydnqKTrQ@2026-06-15",
+    "2zOyLiVvkJdIHzYb8klX@2026-06-08",
+    "ascZbE2c3v568Yb2bsFN@2026-06-15",
+    "omyDOuB6gb9syLuqDORc@2026-06-15",
+    "x2vbMbrLklQ5Fogl1poE@2026-06-22",
+    "ascZbE2c3v568Yb2bsFN@2026-06-22",
+    "H3HMslxOZ1zcTd7oX2Ro@2026-05-25",
+    "u6kMrDWsUi2WF6GKhWH5@2026-07-06",
+    "zO8OY2bf8lYsydnqKTrQ@2026-06-22",
+    "ascZbE2c3v568Yb2bsFN@2026-07-06",
+    "ipWCrBDspzP77i2ErR27@2026-06-08",
+    "ipWCrBDspzP77i2ErR27@2026-06-15",
+    "H3HMslxOZ1zcTd7oX2Ro@2026-06-29",
+    "zO8OY2bf8lYsydnqKTrQ@2026-06-08",
+    "Ii52VFXiWLS9NcKCAi58@2026-07-13",
+    "VLI67jzh3hYFx9Eysnbn@2026-06-15",
+    "vuFoaCjeDtrCrawOqWRw@2026-06-29",
+    "u6kMrDWsUi2WF6GKhWH5@2026-07-20",
+    "u6kMrDWsUi2WF6GKhWH5@2026-06-01",
+    "bvpFdNauTeF17fx69L2c@2026-06-15"
+   ],
+   [
+    "H3HMslxOZ1zcTd7oX2Ro@2026-06-22",
+    "ipWCrBDspzP77i2ErR27@2026-07-06",
+    "RXEbqcFKE0XaWIcufsnj@2026-07-13",
+    "bvpFdNauTeF17fx69L2c@2026-07-13",
+    "bQVSbkopKwi333zDlvH5@2026-06-08",
+    "bvpFdNauTeF17fx69L2c@2026-06-22",
+    "nVzav95nziXL8mddtpix@2026-06-29",
+    "bvpFdNauTeF17fx69L2c@2026-06-29",
+    "vuFoaCjeDtrCrawOqWRw@2026-06-22",
+    "zO8OY2bf8lYsydnqKTrQ@2026-07-06",
+    "c6KuothJZCHyA09sPTJF@2026-07-06",
+    "zO8OY2bf8lYsydnqKTrQ@2026-07-13",
+    "0OKTuz7PNdsMzKgvRrOh@2026-07-13",
+    "zdMgjFO2iTIcCQXwXEn2@2026-06-22",
+    "ascZbE2c3v568Yb2bsFN@2026-06-29",
+    "VLI67jzh3hYFx9Eysnbn@2026-07-13",
+    "ascZbE2c3v568Yb2bsFN@2026-06-08",
+    "Ii52VFXiWLS9NcKCAi58@2026-06-08",
+    "RXEbqcFKE0XaWIcufsnj@2026-06-08"
+   ],
+   [
+    "zdMgjFO2iTIcCQXwXEn2@2026-06-15",
+    "Ii52VFXiWLS9NcKCAi58@2026-07-06",
+    "zdMgjFO2iTIcCQXwXEn2@2026-07-20",
+    "VLI67jzh3hYFx9Eysnbn@2026-06-29",
+    "nVzav95nziXL8mddtpix@2026-07-06",
+    "nVzav95nziXL8mddtpix@2026-07-20",
+    "n5uP41hQfGnnZdaHW72h@2026-06-22",
+    "c6KuothJZCHyA09sPTJF@2026-06-29",
+    "zO8OY2bf8lYsydnqKTrQ@2026-06-29",
+    "zdMgjFO2iTIcCQXwXEn2@2026-06-08",
+    "0OKTuz7PNdsMzKgvRrOh@2026-06-15",
+    "Ii52VFXiWLS9NcKCAi58@2026-06-29",
+    "bvpFdNauTeF17fx69L2c@2026-07-06",
+    "nVzav95nziXL8mddtpix@2026-06-22",
+    "u6kMrDWsUi2WF6GKhWH5@2026-06-29",
+    "0OKTuz7PNdsMzKgvRrOh@2026-06-29",
+    "RXEbqcFKE0XaWIcufsnj@2026-07-06",
+    "nVzav95nziXL8mddtpix@2026-07-13",
+    "c6KuothJZCHyA09sPTJF@2026-06-15",
+    "zdMgjFO2iTIcCQXwXEn2@2026-06-29"
+   ],
+   [
+    "VLI67jzh3hYFx9Eysnbn@2026-06-22",
+    "0OKTuz7PNdsMzKgvRrOh@2026-07-06",
+    "zdMgjFO2iTIcCQXwXEn2@2026-07-13",
+    "H3HMslxOZ1zcTd7oX2Ro@2026-06-01",
+    "0OKTuz7PNdsMzKgvRrOh@2026-06-08",
+    "H3HMslxOZ1zcTd7oX2Ro@2026-06-15",
+    "u6kMrDWsUi2WF6GKhWH5@2026-07-13",
+    "u6kMrDWsUi2WF6GKhWH5@2026-06-15",
+    "n5uP41hQfGnnZdaHW72h@2026-06-29",
+    "n5uP41hQfGnnZdaHW72h@2026-06-15",
+    "nVzav95nziXL8mddtpix@2026-06-08",
+    "RXEbqcFKE0XaWIcufsnj@2026-06-01",
+    "RXEbqcFKE0XaWIcufsnj@2026-06-29",
+    "Ii52VFXiWLS9NcKCAi58@2026-06-15",
+    "ipWCrBDspzP77i2ErR27@2026-06-22",
+    "u6kMrDWsUi2WF6GKhWH5@2026-06-22",
+    "n5uP41hQfGnnZdaHW72h@2026-07-20",
+    "n5uP41hQfGnnZdaHW72h@2026-07-06",
+    "nVzav95nziXL8mddtpix@2026-06-15",
+    "n5uP41hQfGnnZdaHW72h@2026-07-13"
+   ]
+  ],
+  "ladder": [
+   {
+    "cpu": "greedy",
+    "rows": [
+     [
+      "greedy, new",
+      "91.7% [88.0–94.3]",
+      "61.9% [56.2–67.2]",
+      "35.8% [30.6–41.4]",
+      "32.8% [27.7–38.3]",
+      "9.7% [6.8–13.5]"
+     ],
+     [
+      "greedy, regular",
+      "93.7% [90.3–95.9]",
+      "68.3% [62.9–73.3]",
+      "42.1% [36.6–47.8]",
+      "31.0% [26.0–36.4]",
+      "11.7% [8.5–15.8]"
+     ],
+     [
+      "greedy, veteran",
+      "92.3% [88.7–94.8]",
+      "72.3% [67.0–77.1]",
+      "39.0% [33.7–44.6]",
+      "31.8% [26.8–37.3]",
+      "16.7% [12.9–21.3]"
+     ],
+     [
+      "planner, new",
+      "99.3% [97.6–99.8]",
+      "88.3% [84.2–91.5]",
+      "63.5% [57.9–68.8]",
+      "45.7% [40.1–51.3]",
+      "18.3% [14.4–23.1]"
+     ],
+     [
+      "planner, regular",
+      "100.0% [98.7–100.0]",
+      "89.0% [84.9–92.0]",
+      "68.2% [62.7–73.2]",
+      "52.2% [46.5–57.8]",
+      "19.7% [15.6–24.5]"
+     ],
+     [
+      "planner, veteran",
+      "99.7% [98.1–99.9]",
+      "93.0% [89.5–95.4]",
+      "74.3% [69.1–78.9]",
+      "50.0% [44.4–55.6]",
+      "24.7% [20.1–29.8]"
+     ]
+    ]
+   },
+   {
+    "cpu": "responder",
+    "rows": [
+     [
+      "greedy, new",
+      "80.9% [76.1–85.0]",
+      "42.1% [36.7–47.8]",
+      "14.0% [10.5–18.4]",
+      "7.7% [5.2–11.3]",
+      "0.7% [0.2–2.4]"
+     ],
+     [
+      "greedy, regular",
+      "83.3% [78.7–87.1]",
+      "47.2% [41.6–52.8]",
+      "18.3% [14.4–23.1]",
+      "10.7% [7.7–14.7]",
+      "1.0% [0.3–2.9]"
+     ],
+     [
+      "greedy, veteran",
+      "84.0% [79.4–87.7]",
+      "50.5% [44.9–56.1]",
+      "17.7% [13.8–22.5]",
+      "10.7% [7.7–14.7]",
+      "1.0% [0.3–2.9]"
+     ],
+     [
+      "planner, new",
+      "94.3% [91.1–96.4]",
+      "71.7% [66.3–76.5]",
+      "40.0% [34.6–45.6]",
+      "22.7% [18.3–27.7]",
+      "4.0% [2.3–6.9]"
+     ],
+     [
+      "planner, regular",
+      "96.7% [94.0–98.2]",
+      "75.7% [70.5–80.2]",
+      "46.3% [40.8–52.0]",
+      "25.3% [20.7–30.5]",
+      "4.0% [2.3–6.9]"
+     ],
+     [
+      "planner, veteran",
+      "94.0% [90.7–96.2]",
+      "77.5% [72.4–81.9]",
+      "48.0% [42.4–53.6]",
+      "28.1% [23.3–33.4]",
+      "8.3% [5.7–12.0]"
+     ]
+    ]
+   },
+   {
+    "cpu": "planner",
+    "rows": [
+     [
+      "greedy, new",
+      "83.9% [79.4–87.7]",
+      "45.0% [39.5–50.7]",
+      "8.7% [6.0–12.4]",
+      "7.0% [4.6–10.5]",
+      "1.0% [0.3–2.9]"
+     ],
+     [
+      "greedy, regular",
+      "85.0% [80.5–88.6]",
+      "48.5% [42.9–54.1]",
+      "15.4% [11.8–20.0]",
+      "8.3% [5.7–12.0]",
+      "1.7% [0.7–3.8]"
+     ],
+     [
+      "greedy, veteran",
+      "81.3% [76.5–85.3]",
+      "51.8% [46.2–57.4]",
+      "19.7% [15.6–24.5]",
+      "12.3% [9.1–16.5]",
+      "0.7% [0.2–2.4]"
+     ],
+     [
+      "planner, new",
+      "92.7% [89.1–95.1]",
+      "63.3% [57.7–68.6]",
+      "32.7% [27.6–38.2]",
+      "18.3% [14.4–23.1]",
+      "2.3% [1.1–4.7]"
+     ],
+     [
+      "planner, regular",
+      "93.0% [89.5–95.4]",
+      "72.7% [67.4–77.4]",
+      "39.3% [33.9–44.9]",
+      "24.3% [19.8–29.5]",
+      "5.0% [3.1–8.1]"
+     ],
+     [
+      "planner, veteran",
+      "97.0% [94.4–98.4]",
+      "74.7% [69.5–79.4]",
+      "45.3% [39.7–51.0]",
+      "29.4% [24.6–34.8]",
+      "7.7% [5.2–11.2]"
+     ]
+    ]
+   }
+  ]
+ }
+}

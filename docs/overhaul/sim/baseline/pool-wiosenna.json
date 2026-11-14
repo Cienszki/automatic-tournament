@@ -1,0 +1,126 @@
+{
+ "experiment": "pool",
+ "slug": "wiosenna",
+ "seed": 1,
+ "gamesPlayed": 0,
+ "gamesArg": null,
+ "ms": 1716,
+ "command": "npx tsx scripts/tools/card-sim/run.ts pool --slug wiosenna --seed 1",
+ "tables": [
+  {
+   "title": "8a. Card pool (wiosenna)",
+   "measured": "All cards buildSeriesCards() makes from the fixture.",
+   "columns": [
+    "Measure",
+    "Value"
+   ],
+   "rows": [
+    [
+     "Cards (TOTW twins included)",
+     851
+    ],
+    [
+     "TOTW cards",
+     45
+    ],
+    [
+     "Distinct players / distinct (player, team)",
+     "119 / 139"
+    ],
+    [
+     "Teams",
+     19
+    ],
+    [
+     "Cards without a team",
+     0
+    ],
+    [
+     "Standin cards",
+     82
+    ],
+    [
+     "Cards per role",
+     "Carry 176, Mid 175, Offlane 177, Soft Support 169, Hard Support 154"
+    ],
+    [
+     "baseMight histogram (strength: cards)",
+     "1:122 2:115 3:109 4:96 5:92 6:88 7:90 8:70 9:43 10:21 11:5"
+    ],
+    [
+     "Pack pool (each team's last series) per role",
+     "Carry 20, Mid 19, Offlane 20, Soft Support 18, Hard Support 18"
+    ],
+    [
+     "Pack pool entries with a TOTW twin",
+     2
+    ]
+   ]
+  },
+  {
+   "title": "8b. Collections (wiosenna)",
+   "measured": "500 simulated collections per size (simCollection, duplicates kept), best deck by autoDeck.",
+   "columns": [
+    "Packs",
+    "Cards",
+    "Distinct players",
+    "Distinct (player, team)",
+    "Legal 20 possible",
+    "Best deck rating",
+    "Best deck strength",
+    "Cards not in the best deck",
+    "Distinct cards not in the best deck"
+   ],
+   "rows": [
+    [
+     10,
+     "50",
+     "39.2",
+     "39.7",
+     "100.0%",
+     "73.7",
+     "4.62",
+     "30.0",
+     "19.7"
+    ],
+    [
+     20,
+     "100",
+     "61.4",
+     "62.7",
+     "100.0%",
+     "79.6",
+     "5.53",
+     "80.0",
+     "42.7"
+    ],
+    [
+     40,
+     "200",
+     "81.5",
+     "83.9",
+     "100.0%",
+     "83.5",
+     "6.13",
+     "180.0",
+     "63.9"
+    ]
+   ]
+  }
+ ],
+ "data": {
+  "mightHistogram": {
+   "1": 122,
+   "2": 115,
+   "3": 109,
+   "4": 96,
+   "5": 92,
+   "6": 88,
+   "7": 90,
+   "8": 70,
+   "9": 43,
+   "10": 21,
+   "11": 5
+  }
+ }
+}

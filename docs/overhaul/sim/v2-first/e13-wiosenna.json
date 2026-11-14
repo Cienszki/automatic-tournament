@@ -1,0 +1,221 @@
+{
+ "experiment": "e13",
+ "slug": "wiosenna",
+ "seed": 1,
+ "gamesPlayed": 14400,
+ "gamesArg": 600,
+ "ms": 1625204,
+ "command": "npx tsx scripts/tools/card-sim/run-v2.ts e13 --slug wiosenna --seed 1 --games 600",
+ "tables": [
+  {
+   "title": "E13. Second round of knobs: card cost and catch-up (wiosenna)",
+   "measured": "Each row changes one rule from the defaults. Rounds, comeback, unused orders and planner != greedy: planner vs planner with the same `best` veteran deck. Veteran win rate: the E2 cell (veteran 40 packs vs new player 10 packs, own collections). 600 games per cell.",
+   "columns": [
+    "Change",
+    "Rounds per match",
+    "P(win | behind after round 3)",
+    "Veteran wins vs new player",
+    "Unused orders per side per match",
+    "Planner != greedy"
+   ],
+   "rows": [
+    [
+     "defaults",
+     "5.41",
+     "20.2% [17.1–23.8]",
+     "74.1% [70.5–77.5]",
+     "1.87",
+     "77.3%"
+    ],
+    [
+     "cost = might (role modifier counted)",
+     "5.54",
+     "21.0% [17.7–24.6]",
+     "62.2% [58.2–66.0]",
+     "1.70",
+     "80.2%"
+    ],
+    [
+     "cost = full (role modifier and TOTW counted)",
+     "5.51",
+     "21.7% [18.4–25.4]",
+     "62.7% [58.7–66.4]",
+     "1.76",
+     "80.2%"
+    ],
+    [
+     "catch-up: +1 order when behind",
+     "5.62",
+     "27.4% [23.7–31.4]",
+     "75.6% [72.0–78.9]",
+     "2.83",
+     "77.8%"
+    ],
+    [
+     "catch-up: +1 card when behind",
+     "5.54",
+     "31.0% [27.2–35.0]",
+     "73.3% [69.6–76.7]",
+     "2.00",
+     "75.9%"
+    ],
+    [
+     "High Ground bonus only on High Ground",
+     "5.46",
+     "17.8% [14.8–21.2]",
+     "72.9% [69.2–76.3]",
+     "1.91",
+     "78.0%"
+    ],
+    [
+     "farmMax 2",
+     "5.44",
+     "19.3% [16.2–22.8]",
+     "73.8% [70.2–77.2]",
+     "1.85",
+     "77.7%"
+    ],
+    [
+     "no late multiplier, hp 10",
+     "5.40",
+     "15.1% [12.3–18.4]",
+     "73.2% [69.5–76.6]",
+     "1.90",
+     "75.7%"
+    ],
+    [
+     "might + catch-up order + HG here",
+     "5.67",
+     "31.4% [27.5–35.5]",
+     "71.0% [67.2–74.5]",
+     "2.49",
+     "79.3%"
+    ],
+    [
+     "full + catch-up order + HG here",
+     "5.76",
+     "32.0% [28.0–36.2]",
+     "71.6% [67.9–75.1]",
+     "2.60",
+     "79.3%"
+    ],
+    [
+     "might + catch-up card + HG here",
+     "5.74",
+     "32.4% [28.5–36.6]",
+     "76.3% [72.7–79.5]",
+     "1.95",
+     "77.2%"
+    ],
+    [
+     "might + catch-up order + card + HG here",
+     "5.85",
+     "36.6% [32.4–41.0]",
+     "76.3% [72.7–79.5]",
+     "3.03",
+     "73.2%"
+    ]
+   ]
+  }
+ ],
+ "data": {
+  "rows": [
+   [
+    "defaults",
+    "5.41",
+    "20.2% [17.1–23.8]",
+    "74.1% [70.5–77.5]",
+    "1.87",
+    "77.3%"
+   ],
+   [
+    "cost = might (role modifier counted)",
+    "5.54",
+    "21.0% [17.7–24.6]",
+    "62.2% [58.2–66.0]",
+    "1.70",
+    "80.2%"
+   ],
+   [
+    "cost = full (role modifier and TOTW counted)",
+    "5.51",
+    "21.7% [18.4–25.4]",
+    "62.7% [58.7–66.4]",
+    "1.76",
+    "80.2%"
+   ],
+   [
+    "catch-up: +1 order when behind",
+    "5.62",
+    "27.4% [23.7–31.4]",
+    "75.6% [72.0–78.9]",
+    "2.83",
+    "77.8%"
+   ],
+   [
+    "catch-up: +1 card when behind",
+    "5.54",
+    "31.0% [27.2–35.0]",
+    "73.3% [69.6–76.7]",
+    "2.00",
+    "75.9%"
+   ],
+   [
+    "High Ground bonus only on High Ground",
+    "5.46",
+    "17.8% [14.8–21.2]",
+    "72.9% [69.2–76.3]",
+    "1.91",
+    "78.0%"
+   ],
+   [
+    "farmMax 2",
+    "5.44",
+    "19.3% [16.2–22.8]",
+    "73.8% [70.2–77.2]",
+    "1.85",
+    "77.7%"
+   ],
+   [
+    "no late multiplier, hp 10",
+    "5.40",
+    "15.1% [12.3–18.4]",
+    "73.2% [69.5–76.6]",
+    "1.90",
+    "75.7%"
+   ],
+   [
+    "might + catch-up order + HG here",
+    "5.67",
+    "31.4% [27.5–35.5]",
+    "71.0% [67.2–74.5]",
+    "2.49",
+    "79.3%"
+   ],
+   [
+    "full + catch-up order + HG here",
+    "5.76",
+    "32.0% [28.0–36.2]",
+    "71.6% [67.9–75.1]",
+    "2.60",
+    "79.3%"
+   ],
+   [
+    "might + catch-up card + HG here",
+    "5.74",
+    "32.4% [28.5–36.6]",
+    "76.3% [72.7–79.5]",
+    "1.95",
+    "77.2%"
+   ],
+   [
+    "might + catch-up order + card + HG here",
+    "5.85",
+    "36.6% [32.4–41.0]",
+    "76.3% [72.7–79.5]",
+    "3.03",
+    "73.2%"
+   ]
+  ]
+ }
+}

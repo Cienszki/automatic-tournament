@@ -1,0 +1,129 @@
+{
+ "experiment": "e17",
+ "slug": "wiosenna",
+ "seed": 1,
+ "gamesPlayed": 16000,
+ "gamesArg": null,
+ "ms": 886982,
+ "command": "npx tsx scripts/tools/card-sim/run-v2.ts e17 --slug wiosenna --seed 1",
+ "tables": [
+  {
+   "title": "E17. One-role decks against the best deck, by rule variant (wiosenna)",
+   "measured": "planner vs planner. Columns 2 to 7: win rate of a deck heavy in one role (or one real team) against the best deck from the same veteran collection, 400 games each; the rows of one column share seeds and collections. Then the comeback rate and ganks landed per side per match in the mirror (800 games), and the veteran's win rate against a new player (800 games, 200 collection pairs). A deck far above 60% here is a dominant deck.",
+   "columns": [
+    "Rules",
+    "skew Carry",
+    "skew Mid",
+    "skew Offlane",
+    "skew SS",
+    "skew HS",
+    "teamStack",
+    "P(win | behind after round 3)",
+    "Veteran wins vs new",
+    "Ganks landed"
+   ],
+   "rows": [
+    [
+     "rules before E17 (gank reaches any unit)",
+     "30.8%",
+     "93.3%",
+     "20.1%",
+     "36.4%",
+     "47.4%",
+     "56.3%",
+     "32.4% [29.0–35.9]",
+     "58.6% [55.2–62.0]",
+     "0.95"
+    ],
+    [
+     "gank only a unit no stronger than the Mid",
+     "29.3%",
+     "30.5%",
+     "14.5%",
+     "44.2%",
+     "48.1%",
+     "57.0%",
+     "26.1% [23.0–29.4]",
+     "66.7% [63.3–69.9]",
+     "0.75"
+    ],
+    [
+     "gank the weakest unit",
+     "34.8%",
+     "90.8%",
+     "17.3%",
+     "36.3%",
+     "44.3%",
+     "59.3%",
+     "32.7% [29.4–36.3]",
+     "59.5% [56.0–62.9]",
+     "0.85"
+    ],
+    [
+     "gank only a unit weaker than the Mid would be: no stronger, and gank weakest",
+     "30.3%",
+     "28.7%",
+     "12.5%",
+     "41.3%",
+     "48.5%",
+     "56.0%",
+     "27.7% [24.6–31.2]",
+     "67.6% [64.3–70.7]",
+     "0.71"
+    ]
+   ]
+  }
+ ],
+ "data": {
+  "rows": [
+   [
+    "rules before E17 (gank reaches any unit)",
+    "30.8%",
+    "93.3%",
+    "20.1%",
+    "36.4%",
+    "47.4%",
+    "56.3%",
+    "32.4% [29.0–35.9]",
+    "58.6% [55.2–62.0]",
+    "0.95"
+   ],
+   [
+    "gank only a unit no stronger than the Mid",
+    "29.3%",
+    "30.5%",
+    "14.5%",
+    "44.2%",
+    "48.1%",
+    "57.0%",
+    "26.1% [23.0–29.4]",
+    "66.7% [63.3–69.9]",
+    "0.75"
+   ],
+   [
+    "gank the weakest unit",
+    "34.8%",
+    "90.8%",
+    "17.3%",
+    "36.3%",
+    "44.3%",
+    "59.3%",
+    "32.7% [29.4–36.3]",
+    "59.5% [56.0–62.9]",
+    "0.85"
+   ],
+   [
+    "gank only a unit weaker than the Mid would be: no stronger, and gank weakest",
+    "30.3%",
+    "28.7%",
+    "12.5%",
+    "41.3%",
+    "48.5%",
+    "56.0%",
+    "27.7% [24.6–31.2]",
+    "67.6% [64.3–70.7]",
+    "0.71"
+   ]
+  ]
+ }
+}

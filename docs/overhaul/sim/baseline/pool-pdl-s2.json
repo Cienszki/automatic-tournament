@@ -1,0 +1,125 @@
+{
+ "experiment": "pool",
+ "slug": "pdl-s2",
+ "seed": 1,
+ "gamesPlayed": 0,
+ "gamesArg": null,
+ "ms": 3183,
+ "command": "npx tsx scripts/tools/card-sim/run.ts pool --slug pdl-s2 --seed 1",
+ "tables": [
+  {
+   "title": "8a. Card pool (pdl-s2)",
+   "measured": "All cards buildSeriesCards() makes from the fixture.",
+   "columns": [
+    "Measure",
+    "Value"
+   ],
+   "rows": [
+    [
+     "Cards (TOTW twins included)",
+     117
+    ],
+    [
+     "TOTW cards",
+     10
+    ],
+    [
+     "Distinct players / distinct (player, team)",
+     "61 / 63"
+    ],
+    [
+     "Teams",
+     12
+    ],
+    [
+     "Cards without a team",
+     0
+    ],
+    [
+     "Standin cards",
+     5
+    ],
+    [
+     "Cards per role",
+     "Carry 22, Mid 24, Offlane 24, Soft Support 23, Hard Support 24"
+    ],
+    [
+     "baseMight histogram (strength: cards)",
+     "1:17 2:15 3:14 4:13 5:12 6:11 7:11 8:12 9:8 10:4"
+    ],
+    [
+     "Pack pool (each team's last series) per role",
+     "Carry 11, Mid 12, Offlane 12, Soft Support 11, Hard Support 12"
+    ],
+    [
+     "Pack pool entries with a TOTW twin",
+     5
+    ]
+   ]
+  },
+  {
+   "title": "8b. Collections (pdl-s2)",
+   "measured": "500 simulated collections per size (simCollection, duplicates kept), best deck by autoDeck.",
+   "columns": [
+    "Packs",
+    "Cards",
+    "Distinct players",
+    "Distinct (player, team)",
+    "Legal 20 possible",
+    "Best deck rating",
+    "Best deck strength",
+    "Cards not in the best deck",
+    "Distinct cards not in the best deck"
+   ],
+   "rows": [
+    [
+     10,
+     "50",
+     "33.9",
+     "34.4",
+     "100.0%",
+     "84.5",
+     "6.23",
+     "30.0",
+     "14.4"
+    ],
+    [
+     20,
+     "100",
+     "47.1",
+     "48.3",
+     "100.0%",
+     "89.8",
+     "7.20",
+     "80.0",
+     "28.3"
+    ],
+    [
+     40,
+     "200",
+     "54.5",
+     "56.3",
+     "100.0%",
+     "92.1",
+     "7.59",
+     "180.0",
+     "36.3"
+    ]
+   ]
+  }
+ ],
+ "data": {
+  "mightHistogram": {
+   "1": 17,
+   "2": 15,
+   "3": 14,
+   "4": 13,
+   "5": 12,
+   "6": 11,
+   "7": 11,
+   "8": 12,
+   "9": 8,
+   "10": 4
+  }
+ }
+}

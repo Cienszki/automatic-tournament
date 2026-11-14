@@ -1,0 +1,151 @@
+{
+ "experiment": "shape",
+ "slug": "pdl-s2",
+ "seed": 1,
+ "gamesPlayed": 1000,
+ "gamesArg": null,
+ "ms": 14918,
+ "command": "npx tsx scripts/tools/card-sim/run.ts shape --slug pdl-s2 --seed 1",
+ "tables": [
+  {
+   "title": "1. Baseline shape (pdl-s2)",
+   "measured": "1000 games, hard vs hard, equal random decks (target rating 75; realised 74.7, average strength 4.72), first player alternating between the two decks.",
+   "columns": [
+    "Measure",
+    "Value"
+   ],
+   "rows": [
+    [
+     "Games / stalled (80 player turns, no winner)",
+     "1000 / 0"
+    ],
+    [
+     "First player (side 0) wins",
+     "42.9% [39.9–46.0]"
+    ],
+    [
+     "Player turns per game: mean / median / p10 / p90",
+     "10.5 / 10.0 / 9.0 / 12.0"
+    ],
+    [
+     "Rounds per game (both players moved): mean",
+     "5.2"
+    ],
+    [
+     "Final score winner : loser (mean)",
+     "10.27 : 6.57"
+    ],
+    [
+     "Fights per game: mean / median / p10 / p90",
+     "6.4 / 6.0 / 4.0 / 9.0"
+    ],
+    [
+     "Hits per fight: mean / median / p10 / p90",
+     "2.9 / 3.0 / 1.0 / 5.0"
+    ],
+    [
+     "Fight rounds per fight: mean / median / p90 / max",
+     "1.45 / 1 / 2 / 4"
+    ],
+    [
+     "Units per fight (both sides): mean",
+     "3.80"
+    ],
+    [
+     "Fight outcomes (attacker view): took / held / repelled / wiped",
+     "94.1% / 5.9% / 0.0% / 0.0%"
+    ],
+    [
+     "Card deploys per side per game: mean",
+     "11.46"
+    ],
+    [
+     "Group move actions per side per game: mean",
+     "6.33"
+    ],
+    [
+     "Groups moved (= orders spent on moves, before Smoke) per side per game: mean",
+     "5.97"
+    ],
+    [
+     "Fight hits made per side per game: mean",
+     "9.50"
+    ],
+    [
+     "Orders per turn (budget): mean",
+     "3.08"
+    ],
+    [
+     "Unused orders per turn: mean",
+     "0.09"
+    ],
+    [
+     "Unused orders per turn: share 0 / 1 / 2 / 3+",
+     "91.5% / 7.7% / 0.8% / 0.0%"
+    ],
+    [
+     "Hand size at the start of a turn: mean",
+     "4.54"
+    ],
+    [
+     "Turns starting with an empty hand",
+     "0.0%"
+    ]
+   ]
+  }
+ ],
+ "data": {
+  "firstPlayerWins": 429,
+  "decided": 1000,
+  "turnsHistogram": {
+   "6": 1,
+   "7": 7,
+   "8": 58,
+   "9": 214,
+   "10": 236,
+   "11": 257,
+   "12": 131,
+   "13": 70,
+   "14": 19,
+   "15": 6,
+   "16": 1
+  },
+  "hitsHistogram": {
+   "1": 2259,
+   "2": 66,
+   "3": 1973,
+   "4": 1044,
+   "5": 484,
+   "6": 343,
+   "7": 171,
+   "8": 70,
+   "9": 25,
+   "10": 5
+  },
+  "roundsHistogram": {
+   "1": 3760,
+   "2": 2490,
+   "3": 189,
+   "4": 1
+  },
+  "unusedOrdersHistogram": {
+   "0": 9597,
+   "1": 810,
+   "2": 79
+  },
+  "fightsPerGameHistogram": {
+   "2": 2,
+   "3": 16,
+   "4": 88,
+   "5": 209,
+   "6": 256,
+   "7": 178,
+   "8": 124,
+   "9": 80,
+   "10": 28,
+   "11": 12,
+   "12": 6,
+   "13": 1
+  }
+ }
+}

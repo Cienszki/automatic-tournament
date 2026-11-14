@@ -1,0 +1,125 @@
+{
+ "experiment": "e15",
+ "slug": "wiosenna",
+ "seed": 1,
+ "gamesPlayed": 9600,
+ "gamesArg": 800,
+ "ms": 337285,
+ "command": "npx tsx scripts/tools/card-sim/run-v2.ts e15 --slug wiosenna --seed 1 --games 800",
+ "tables": [
+  {
+   "title": "E15. Aura once per objective, and the Comeback card, on the settled rules (wiosenna)",
+   "measured": "Each row changes one rule from the defaults. Rounds, comeback, unused orders and planner != greedy: planner vs planner with the same `best` veteran deck. Veteran win rate: the E2 cell (veteran 40 packs vs new player 10 packs, own collections). 800 games per cell.",
+   "columns": [
+    "Change",
+    "Rounds per match",
+    "P(win | behind after round 3)",
+    "Veteran wins vs new player",
+    "Unused orders per side per match",
+    "Planner != greedy"
+   ],
+   "rows": [
+    [
+     "settled rules (Aura once per objective)",
+     "5.75",
+     "41.0% [37.3–44.7]",
+     "65.4% [62.0–68.6]",
+     "1.70",
+     "75.8%"
+    ],
+    [
+     "Aura stacks",
+     "5.78",
+     "38.7% [35.1–42.5]",
+     "68.8% [65.5–71.9]",
+     "1.72",
+     "76.0%"
+    ],
+    [
+     "no Comeback card",
+     "5.60",
+     "26.4% [23.2–29.8]",
+     "61.6% [58.2–64.9]",
+     "1.51",
+     "78.0%"
+    ],
+    [
+     "Aura stacks, no Comeback card",
+     "5.64",
+     "23.6% [20.6–26.9]",
+     "63.6% [60.2–66.9]",
+     "1.53",
+     "78.3%"
+    ],
+    [
+     "budget 60",
+     "5.75",
+     "41.9% [38.2–45.6]",
+     "60.2% [56.8–63.5]",
+     "1.61",
+     "75.1%"
+    ],
+    [
+     "hp 14",
+     "6.38",
+     "45.5% [41.7–49.4]",
+     "72.5% [69.3–75.5]",
+     "2.15",
+     "71.7%"
+    ]
+   ]
+  }
+ ],
+ "data": {
+  "rows": [
+   [
+    "settled rules (Aura once per objective)",
+    "5.75",
+    "41.0% [37.3–44.7]",
+    "65.4% [62.0–68.6]",
+    "1.70",
+    "75.8%"
+   ],
+   [
+    "Aura stacks",
+    "5.78",
+    "38.7% [35.1–42.5]",
+    "68.8% [65.5–71.9]",
+    "1.72",
+    "76.0%"
+   ],
+   [
+    "no Comeback card",
+    "5.60",
+    "26.4% [23.2–29.8]",
+    "61.6% [58.2–64.9]",
+    "1.51",
+    "78.0%"
+   ],
+   [
+    "Aura stacks, no Comeback card",
+    "5.64",
+    "23.6% [20.6–26.9]",
+    "63.6% [60.2–66.9]",
+    "1.53",
+    "78.3%"
+   ],
+   [
+    "budget 60",
+    "5.75",
+    "41.9% [38.2–45.6]",
+    "60.2% [56.8–63.5]",
+    "1.61",
+    "75.1%"
+   ],
+   [
+    "hp 14",
+    "6.38",
+    "45.5% [41.7–49.4]",
+    "72.5% [69.3–75.5]",
+    "2.15",
+    "71.7%"
+   ]
+  ]
+ }
+}
