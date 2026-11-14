@@ -101,7 +101,7 @@ One finding is about packs, not rules. Packs hold only each team's last series, 
 Keep the rules and fix the numbers and the edges: flatten card strength (4 to 8 in place of 1 to 9), resolve fights automatically, build the first deck for the player, shorten the tutorial, and add the reasons to play of section 7.
 
 - **For it.** The smallest change: two or three work packages. Nothing the owner chose is reversed. The screens stay.
-- **Against it.** It does not reach the causes. WP-51 measured it on today's engine: with strength flattened to 4 to 8, a 10-pack deck still loses to a 40-pack deck 84% of the time (90% today). *(The result of today's game with a deck budget is added in section 9 when its run finishes.)* And no number can change the structure: with alternating turns and every unit visible a turn before it acts, there is still nothing to read, and the strongest card in hand is still always the right one to play.
+- **Against it.** It does not reach the causes. WP-51 measured it on today's engine: with strength flattened to 4 to 8, a 10-pack deck still loses to a 40-pack deck 84% of the time (90% today). Adding this document's deck budget to today's game brings that to 71%, which helps but is still far from fair. And no number can change the structure: with alternating turns and every unit visible a turn before it acts, there is still nothing to read, and the strongest card in hand is still always the right one to play.
 
 ### Direction B: the same board, a new round (recommended)
 
@@ -426,7 +426,7 @@ Each target was set before the prototype ran.
 | No seat advantage | 50% | First player wins 43% | No first player exists | Yes |
 | No dominant deck | A deck built around one position wins 40 to 60% against the best ordinary deck | The strongest twenty always win | 42 to 57% (section 9.4) | Yes |
 | A ladder of skill | Each computer level beats the one below at least 60% | | 94%, 78%, then **56%** between the two strongest | Partly |
-| Objectives are even | Holding any objective in round 2 wins 45 to 65% | First-taker wins 40 to 55% | *(from the final run)* | |
+| Objectives are even | Holding any objective in round 2 wins 45 to 65% | First-taker wins 40 to 55% | 47% (Twin Gates) to 63% (Lotus Pool) | Yes |
 
 The one target missed is the top step of the skill ladder: the two strongest computer players are closer to each other than intended. This is a statement about those two programs, and it limits what the simulations can say about the very top of human play. The trial with people (WP-62) is where that gets answered.
 
@@ -469,9 +469,16 @@ All five positions sit between 42 and 57%, so none is a mistake to build around 
 
 ### 9.5 Direction A, measured
 
-Run on today's engine with the harness of WP-50 (`E10`):
+Run on today's engine with the harness of WP-50 (experiment E10), a 10-pack deck against a 40-pack deck, the same computer level on both sides, 1,000 games each:
 
-*(Added from the final run.)*
+| Today's game with... | The 40-pack deck wins |
+|---|---|
+| Nothing changed | 90% |
+| Strength flattened to 4 to 8 | 84% |
+| A deck budget (20 cards, at most 90 strength) | 71% |
+| For comparison, the recommended game | 59% |
+
+A budget is the most useful single change that today's game could take, and it is in the recommended game for that reason. It does not make the strongest card in hand any less the right one to play, and it gives the players nothing to read.
 
 ### 9.6 Kolejka and the economy
 
