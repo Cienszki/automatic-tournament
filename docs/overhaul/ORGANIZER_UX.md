@@ -8,7 +8,7 @@ Written in S2 (2026-11-14) by Fable. It covers the owner's concern 2 (the admin 
 
 1. **The panel is organized around what needs the organizer, not around features.** Today's 17 tabs become one home screen and five work areas. The home screen answers three questions: where the tournament is, what needs a decision, and what the platform did by itself.
 2. **Most controls disappear.** Of the 112 controls counted in today's panel, 49 are kept, 28 are merged into another control, 14 are replaced by automation, 5 move to the platform's super admin, and 16 are dropped. So an organizer meets fewer than half of today's controls, and most of those sit behind defaults. Section 4 lists every one.
-3. **The wizard produces a tournament that is ready to open registration.** The format, the ranking rules, the bot, the rulebook and the look all start from defaults that work. Nothing after the wizard is required before publishing.
+3. **The wizard produces a tournament that is ready to open registration.** The format, the ranking rules, the bot, the rulebook and the look all start from defaults that work. Nothing after the wizard is required before publishing. One thing is required before the first match: the id of the organizer's league in Dota 2, which only they can create.
 4. **A season runs without the panel.** Registration closes, groups are drawn, the schedule is generated, lobbies are created, results arrive, tables move, the bracket is seeded and the season is closed. The organizer confirms a few of these steps and is messaged on Discord only when a decision is needed.
 5. **Customization has three levels:** a preset and a logo in the wizard; colours, fonts, hero and sponsors on the look screen with a live preview of the real site; and the organizer's own domain. Layout, spacing and text contrast are never editable, which is what keeps every tournament looking good.
 
@@ -62,7 +62,7 @@ Removed: asking the owner for access by private message; the separate `/creator`
 Three steps and a live preview. Section 5.2 has the screen.
 
 1. **Format.** The organizer picks one of six formats and says roughly how many teams they expect. The preview draws the structure: groups, how many advance, the bracket.
-2. **Name and dates.** Name, address (suggested from the name), when registration closes, when the season starts, and on which evenings matches are played.
+2. **Name and dates.** Name, address (suggested from the name), when registration closes, when the season starts, and how match times are set: fixed (for example every Wednesday at 20:00, set once and never touched again) or agreed by the captains inside each round's window.
 3. **Look.** A preset, a logo and one colour. The preview is the tournament's real home page.
 
 "Utwórz" creates a draft tournament and opens its home screen. Everything else already has a value:
@@ -72,11 +72,13 @@ Three steps and a live preview. Section 5.2 has the screen.
 | Stages, groups, best-of per stage, ranking rules, tie-breakers, who advances where | the format preset (ADR-11 defaults) |
 | Lobby bot on, lobby settings, lateness rules | platform defaults, the same PDL uses |
 | A rulebook | a template whose paragraphs about format, lateness, stand-ins and transfers are generated from the settings |
-| Team size 5, stand-ins allowed, captains agree match times inside each round's window | defaults |
+| Team size 5, stand-ins allowed | defaults |
 | Fantasy and pick'em on, where the format supports them | defaults; the role-based fantasy formula (owner's decision 11) |
 | Language, time zone, Dota server region | the organizer's browser, shown and editable in step 2 |
 
-Removed: entering a Valve league id (question S2-1), enabling the bot, creating a division, choosing a playoff size, writing rules before anything can be published.
+Removed: enabling the bot, creating a division, choosing a playoff size, writing rules before anything can be published.
+
+**The one step the platform cannot take for the organizer: the Dota 2 league.** Every tournament has its own league, created by the organizer in the Dota 2 client, and its id is how results are found (the owner's answer to question 21; ADR-11 stands). The wizard's second step has a field for it that may be left empty. While it is empty, the home screen carries the decision "Podaj ID ligi Dota 2" from the first day, with the two or three steps of creating a league in the client shown as pictures of the client, not as paragraphs. When an id is entered the platform looks the league up and shows its name, so a mistyped id is seen at once. Registration can open without it; the season cannot start without it.
 
 ### 3.3 Before the season: look, domain, teams
 
@@ -84,14 +86,14 @@ The draft's home screen shows one primary action, **"Opublikuj i otwórz zapisy"
 
 - **Look.** Optional. The look screen (section 5.5) edits colours, fonts, hero and sponsors against a live preview and publishes them in one step.
 - **Domain.** Optional. Under Settings, the organizer enters a domain, gets the DNS record to add, and watches the state change to connected (section 6.4).
-- **Inviting teams.** Publishing gives the organizer one registration link and a ready-made announcement text for Discord. A captain signs in, names the team, and adds players, who each confirm and link Steam. A team that is complete and has Steam linked for every player is accepted automatically. The organizer sees a team only when something is off: over the MMR cap, a player already on another roster, a name that needs a look.
+- **Inviting teams.** Publishing gives the organizer one registration link and a ready-made announcement text for Discord. A captain signs in, names the team, and adds players, who each confirm and link Steam. The form refuses an incomplete team, as it does today. What happens to a complete one is the organizer's choice under Zapisy i składy: "akceptuj automatycznie", where the organizer sees a team only when something is off (over the MMR cap, a player already on another roster), or "weryfikuj każdą drużynę", where every team waits for the organizer, which is how the owner filters out cheaters before a season. New tournaments start on automatic; a new edition copies the previous edition's choice.
 - **Registration closes by itself** at the set time. If the number of teams does not fit the format (for example 13 teams for two groups of 8), the home screen says so and offers the choices: extend registration, change the group sizes, or continue with a bye.
 
-Removed: approving every team by hand; the status dropdown and the bulk save; resolving Steam vanity addresses; refreshing avatars and hero data; closing registration by changing a status.
+Removed: approving every team by hand, unless the organizer chooses to; the status dropdown and the bulk save; resolving Steam vanity addresses; refreshing avatars and hero data; closing registration by changing a status.
 
 ### 3.4 Starting the season
 
-When registration has closed the primary action becomes **"Rozlosuj grupy i wygeneruj terminarz"**.
+When registration has closed the primary action becomes **"Rozlosuj grupy i wygeneruj terminarz"**. It needs the league id; without one, the league decision holds the primary button.
 
 1. The platform proposes the groups (seeded by MMR in a snake order, or drawn at random, as the format says) and the full schedule on the chosen match evenings.
 2. The organizer sees the proposal as the public pages would show it, can drag a team to another group or move a match day, and presses "Rozpocznij sezon".
@@ -114,14 +116,15 @@ On a normal match day the organizer does nothing.
 | Tables, stats, fantasy points and card rewards update | platform |
 | Captains agree a new time inside the allowed window | captains; the lobby follows |
 | A stand-in inside the limits, approved by the opposing captain | captains; the lobby follows |
-| The next Swiss round is paired when the last result arrives | platform; the organizer confirms before it is published (can be set to publish by itself) |
+| The next Swiss round is paired when the last result arrives | platform; the organizer confirms before it is published, or, with "publikuj bez potwierdzenia" set once, it is published at once on the fixed match times |
 | Fantasy rounds open and lock with the match days | platform |
 
 The organizer is needed only for what the rules cannot settle. Each of these is one row in "needs a decision" and one Discord message with a link straight to it:
 
 | Decision | Appears when |
 |---|---|
-| Team needs a look | registration flagged it (MMR over the cap, player on two rosters) |
+| League id missing | from creation until it is entered |
+| Team needs a look | registration flagged it (MMR over the cap, player on two rosters), or the tournament verifies every team |
 | Stand-in appeal | a captain appeals a rejected stand-in |
 | Match has no time | the round's window is ending and the captains have not agreed |
 | Reschedule outside the rules | captains ask for a time the rules do not allow |
@@ -199,7 +202,7 @@ Why seven and not seventeen: the old tabs were named after the feature that was 
 | Launch card (checklist, preview link, publish) | Merge | Przegląd in the draft state. The checklist is not needed because the wizard leaves nothing unfinished; the preview link and the publish action stay. |
 | Basic info: name, short name, description | Keep | Ustawienia, Podstawy. |
 | Basic info: hero title, layout, media, video, trailer | Merge | Wygląd, with the hero editor. They are look, not settings. |
-| Basic info: Valve league id | Merge | Ustawienia, Automat, as an optional field (question S2-1). Today it also exists in the Bot tab. |
+| Basic info: Valve league id | Merge | One field under Ustawienia, Automat, also offered in the wizard. Required before the season starts, and checked against Dota when entered. Today it exists in two tabs, and a missing one silently imports another tournament's games. |
 | Basic info: social links | Keep | Wygląd, Linki. Organization-level links are the default. |
 | Basic info: Discord server gate | Keep | Ustawienia, Zapisy i składy ("tylko członkowie serwera"). |
 | Status select and visibility | Automate | The status follows the journey: publish, start, final played, archive after 30 days. Visibility is derived from status. "Cofnij etap" in Strefa zagrożenia is the manual way back. A dropdown that lets anyone set "completed" mid-season is how tournaments break. |
@@ -229,7 +232,7 @@ Why seven and not seventeen: the old tabs were named after the feature that was 
 | Custom font upload | Keep | Heading font only, with the checks in section 6.3. |
 | Navbar sponsor strip | Keep | Wygląd, Sponsorzy. |
 | Hero panels editor | Keep | Wygląd, Hero. The legacy left, right and promo image fields are dropped; the import maps them into the hero media. |
-| Hero video upload (super admin only today) | Keep | A link to a hosted video for everyone; upload to the platform's video host stays with the super admin (question S2-4). |
+| Hero video upload (super admin only today) | Keep | A link to a hosted video for everyone; upload to the platform's video host stays with the super admin (the owner agreed, question 24). |
 | News: create, edit, delete, publish, notify | Keep | Treść, Aktualności. "Powiadom" is a checkbox on publishing, not a second step. |
 | Rules: sections, paragraphs, markdown | Keep | Treść, Regulamin. Each paragraph saves by itself; paragraphs generated from settings are marked and edited by changing the setting. |
 | Prizes: switch, display mode, image, list | Merge | Treść, Nagrody. The switch is dropped: the page is public when it has content. |
@@ -238,7 +241,7 @@ Why seven and not seventeen: the old tabs were named after the feature that was 
 
 | Control today | Verdict | Where, and why |
 |---|---|---|
-| Team status select with bulk save | Merge | "Przyjmij" and "Odrzuć" on a flagged team. Complete, valid teams are accepted by the platform. "Eliminated" is derived from results. |
+| Team status select with bulk save | Merge | "Przyjmij" and "Odrzuć" on a team that waits: a flagged one, or every one when the tournament verifies teams. "Eliminated" is derived from results. |
 | Change captain (one-time code) | Keep | Team page. |
 | Ban team | Keep | Team page. Lists the walkovers it causes before confirming. |
 | Delete team | Merge | Before the season: delete. After it started: "Wycofaj drużynę", which keeps history. |
@@ -295,11 +298,11 @@ Why seven and not seventeen: the old tabs were named after the feature that was 
 | Lobby settings: cheats, fill with bots | Super admin | Test options. An organizer's test lobby (below) does not need them. |
 | Ready-check commands | Drop | Platform constants. Nobody needs their own word for "ready". |
 | Chat messages | Keep | Automat, "Wiadomości bota", under "więcej", with defaults in the tournament's language. |
-| Custom commands | Drop | No known use (question S2-5). |
+| Custom commands | Drop | Never used (the owner agreed, question 25). |
 | Post-match: auto-sync, delay, close phases | Automate | Always on. |
 | Enforcement: kick players who are not on the roster, show the password | Keep | Automat, Lobby. |
 | Late policy (Bot tab) and late-penalty minutes (General tab) | Merge | Automat, Spóźnienia: when a game is forfeited, when the series is, and whether teams may vote to wait. The rulebook paragraph is generated from it. |
-| Bot personality | Drop | Cosmetic and unexplained (question S2-5). |
+| Bot personality | Drop | Never used (the owner agreed, question 25). |
 | Lobby whitelist | Keep | Automat, "Dodatkowe osoby w lobby". Casters are added by themselves. |
 | Manual test session | Keep | Automat, "Lobby testowe": the organizer gets a lobby with themselves in it, to see the bot work before the first match day. Limited per day. |
 | Bot pool status, run orchestrator, active sessions | Super admin | `/platform`. An organizer sees a live lobby as the state of its match. |
@@ -402,7 +405,7 @@ Przegląd   Mecze   Drużyny   Format   Treść   Wygląd   Ustawienia
 
 | State | Phase line | Do decyzji | Rest |
 |---|---|---|---|
-| Draft | "Szkic", with `[ Opublikuj i otwórz zapisy ]` | empty | The preview link with "Kopiuj". Automat is hidden until there is something in it. |
+| Draft | "Szkic", with `[ Opublikuj i otwórz zapisy ]` | "Podaj ID ligi Dota 2", until it is entered | The preview link with "Kopiuj". Automat is hidden until there is something in it. |
 | Registration open | "Zapisy", "11 z 16 drużyn", closing date | flagged teams, if any | The registration link with "Kopiuj" and "Kopiuj ogłoszenie". |
 | Registration closed, count fits | `[ Rozlosuj grupy i wygeneruj terminarz ]` | | |
 | Registration closed, count does not fit | "13 drużyn, format zakłada 16" | one decision with three actions: "Przedłuż zapisy", "Zmień grupy", "Graj z wolnym losem" | |
@@ -447,7 +450,7 @@ Nowy turniej                                   Format · Nazwa i terminy · Wygl
 ```
 
 - **Step 1, Format.** Six formats, each a word an organizer knows. Selecting one draws it on the right; the drawing is the explanation, so the formats carry no description text. The team count is a guess used for the drawing and the defaults; the real structure is fixed when registration closes. Two or three follow-up choices appear per format (how many advance, bracket type), each with a default. The line under the drawing answers the question organizers actually have: how many matches and how long.
-- **Step 2, Nazwa i terminy.** Name; address (`dota2inhouse.pl/` plus a slug suggested from the name, checked as it is typed); registration closes; season starts; match evenings (weekday chips and a time). Language, time zone and Dota server region are one quiet line with the detected values and "Zmień ›". The right side becomes a calendar strip showing registration, each stage and the final on real dates.
+- **Step 2, Nazwa i terminy.** Name; address (`dota2inhouse.pl/` plus a slug suggested from the name, checked as it is typed); registration closes; season starts; match times, as one choice between "stałe terminy" (weekday chips and a time) and "kapitanowie ustalają" (the same chips mark the round's window); the Dota 2 league id, which may be left for later. Language, time zone and Dota server region are one quiet line with the detected values and "Zmień ›". The right side becomes a calendar strip showing registration, each stage and the final on real dates.
 - **Step 3, Wygląd.** Eight presets as small renderings of a real home page; a logo; one colour. The right side is the tournament's real home page with the name, dates and format already in it. "Utwórz turniej" is the primary button.
 - Going back keeps everything. Leaving and returning restores the draft from the browser. Nothing is saved on the server until "Utwórz turniej".
 - **An experienced organizer** starts from "Nowa edycja" on the organizer page and gets the same three steps pre-filled from the last edition; step 1 is skipped unless they open it.
@@ -458,7 +461,7 @@ Nowy turniej                                   Format · Nazwa i terminy · Wygl
 |---|---|---|
 | Liga | one round robin, in divisions | each pair once, BO2, 2/1/0 points |
 | Grupy i playoff | round-robin groups, then a bracket | top half advances; cross-seeded; double elimination; final BO5 |
-| Swiss | one Swiss stage | rounds from the team count; BO3; Buchholz |
+| Swiss | one Swiss stage | rounds from the team count; BO3; Buchholz; one extra choice: rounds wait for confirmation or are published by themselves |
 | Swiss i playoff | Swiss, then a bracket | top 8 advance, seeded by place |
 | Puchar | one bracket | seeded by MMR; single elimination |
 | Kwalifikacje LAN | the PDL S2 format | as PDL S2 |
@@ -685,7 +688,7 @@ The second selling point is design that each organizer can make their own. The r
 |---|---|---|
 | 1. In the wizard | step 3 | A preset; the logo; one colour. Enough for a tournament that looks finished. |
 | 2. On the look screen | Wygląd | Everything in the table below. |
-| 3. The address | Ustawienia, Adres | The slug; the organizer's own domain. |
+| 3. The address | Ustawienia, Adres | The slug. The organizer's own domain, in the highest paid plan only (the owner's answer to question 27; plans are S4's). |
 
 | Group | Choices | Derived by the platform |
 |---|---|---|
@@ -726,7 +729,7 @@ They are enforced in the theme's schema (WP-27), so no path, including an import
 
 - **Draft and preview.** Changes on the look screen are stored as a draft beside the published look. The preview renders the tournament's real pages with the draft for the organizer only; those responses are never cached for viewers. "Opublikuj wygląd" replaces the published look in one command, which invalidates the tournament's pages. "Historia" restores an earlier published look.
 - **The draft tournament** as a whole has the preview link it has today: anyone with the link sees the unpublished tournament.
-- **The domain.** Under Adres the organizer types a domain. The screen shows the one DNS record to create, in the words their registrar's form uses (type, name, value), each with "Kopiuj". The state under it moves by itself: "czeka na rekord DNS", "sprawdzanie", "połączono". Once connected, the tournament's links, link previews and sign-in work on that domain (ADR-08), and the platform address keeps working and points to it. A failed check after a day becomes a decision on Przegląd with what the check saw in place of the expected value.
+- **The domain** is a feature of the highest paid plan; on other plans Adres shows the slug only, and how the plan is offered there is S4's. Under Adres the organizer types a domain. The screen shows the one DNS record to create, in the words their registrar's form uses (type, name, value), each with "Kopiuj". The state under it moves by itself: "czeka na rekord DNS", "sprawdzanie", "połączono". Once connected, the tournament's links, link previews and sign-in work on that domain (ADR-08), and the platform address keeps working and points to it. A failed check after a day becomes a decision on Przegląd with what the check saw in place of the expected value.
 - A domain can belong to the organization instead, with each tournament at a path under it. This is the same control on the organizer page.
 
 ## 7. Other places with the same problems
@@ -747,7 +750,7 @@ Lower priority. These were not read in this session; the findings come from the 
 
 Nothing here changes a decision record. It adds data and a few rules, listed so the work packages can cite them.
 
-**One clarification of ADR-11, which depends on question S2-1.** ADR-11 says a tournament without a Steam league id cannot sync. In the new design the bot reports each finished game with its Dota match id (ADR-10 point 5), so a game played in a bot lobby is identified without listing a league. This document assumes the league id is therefore optional: it is needed only to pick up games played outside bot lobbies automatically, and for the lobby to appear as a league game in Dota. WP-47 checks whether full stats can be fetched for a lobby game that belongs to no league. If they cannot, the fallback is in the question.
+**ADR-11 stands as written.** A tournament without a league id cannot sync and says so. The first version of this document assumed the id could become optional; the owner answered that every tournament keeps its own Dota 2 league (question 21), so the design asks for it instead (section 3.2).
 
 **Additions to the schema** (each an additive migration in the work package that needs it):
 
@@ -755,9 +758,9 @@ Nothing here changes a decision record. It adds data and a few rules, listed so 
 |---|---|
 | `tournaments.theme_draft` (jsonb, null) | the look's draft (6.4). History comes from the audit rows of the publish command, which hold the previous look. |
 | `settings.scheduling.matchEvenings` (`[{ weekday, time }]`) | schedule proposals |
-| `settings.registration.autoAccept` (default true), `minTeams` | automatic acceptance; "count does not fit" |
+| `settings.registration.minTeams` | "count does not fit". Acceptance uses the existing `requireApproval` (false for new tournaments). |
 | `teams.flags` (jsonb: reasons registration marked the team) | "team needs a look" |
-| `stages.settings.autoPublishRounds` (Swiss, default false) | rounds that publish themselves |
+| `stages.settings.autoPublishRounds` (Swiss, default false) | rounds that publish themselves. Fixed match times use the existing `settings.scheduling.method: 'fixed'` with `matchEvenings`. |
 | `rule_paragraphs.generated_from` (text, null: the settings key) | generated rulebook paragraphs |
 | `creation_requests` (user, text, contact, state, decided by) | the request form before launch |
 | `member_invites` (scope, role, token, expires, used by) | invitation links for staff; caster requests are a row with the user set and no token |
@@ -789,15 +792,17 @@ WP-41 builds these as clickable prototypes with mock data. Until the owner has c
 | Format | Line of stages, selected stage below | One long page | Edit on the public pages | It shows the relation between stages, which is the hard part of any format, and has a place for the draw and the schedule. |
 | Wygląd | Controls beside the real site | Edit on the site | Presets only | The range of the second selling point at a fraction of version 2's cost. Version 3 is the fallback if time is short: it is version 1 with most groups hidden. |
 
-## 10. Questions for the owner
+## 10. The owner's answers
 
-They are also in `STATUS.md` (questions 21 to 28) with the same numbers in brackets. Work continues on each recommendation; all are easy to change before the screens are built.
+The owner answered questions 21 to 28 on 2026-11-14 (`STATUS.md`). The text above already includes them.
 
-- **S2-1 (21). The Valve league id.** Today every tournament needs its own, and getting one is a step outside the platform that a new organizer may not manage. Recommendation: the platform holds one league of its own, every bot lobby is created in it, and results are tied to matches by the bot's report, so an organizer never hears the words "league id"; an organizer who has their own league may enter it. This needs your knowledge of Valve's rules: how you got the ids for PDL and Wiosenna, what it costs, and whether one league may hold many tournaments' games. If a platform league is not possible, the fallback is: bot lobbies without a league, with results from the bot's own report and full stats only where the data source provides them (WP-47 measures this).
-- **S2-2 (22). Accept complete teams automatically?** Recommendation: yes by default, with a switch "wymagaj akceptacji" for organizers who want to approve each team.
-- **S2-3 (23). Lateness forfeits.** Recommendation: the bot applies them by the tournament's settings and the organizer can take one back, instead of the organizer confirming each one. A forfeit that waits for a person at 20:15 on a match evening is not automation.
-- **S2-4 (24). Video in the hero.** Recommendation: organizers give a link to a hosted video; uploading to the platform's video host stays with the super admin until a paid plan covers its cost.
-- **S2-5 (25). Three bot controls to drop:** bot personality, custom chat commands, and custom words for the ready check. Recommendation: drop all three; keep editable chat messages. Say if any of them matters to you.
-- **S2-6 (26). Swiss rounds.** Recommendation: the next round is paired automatically and waits for the organizer's confirmation by default, with a setting to publish without waiting.
-- **S2-7 (27). Free subdomains** (`pdl.dota2inhouse.pl`). Recommendation: not now. The path address is the free option and the organizer's own domain is the upgrade; a third kind of address adds work and no clear sale. S4 may revisit it as a plan feature.
-- **S2-8 (28). The six formats in the wizard** and their names: Liga, Grupy i playoff, Swiss, Swiss i playoff, Puchar, Kwalifikacje LAN. Recommendation: these six, with Kwalifikacje LAN shown to everyone. Say if a format you have been asked for is missing.
+| Question | Answer | What it changed here |
+|---|---|---|
+| 21. The Valve league id | Each tournament keeps its own league, created by the organizer in Dota 2; every system works this way. | The id is asked for, checked, and required before the season starts (3.2). No platform league; WP-47 dropped. |
+| 22. Accept complete teams automatically | The form already refuses incomplete teams; verification exists to filter out cheaters; organizers must be able to choose. | A choice between automatic acceptance and verifying every team (3.3). |
+| 23. Lateness forfeits | Keep it as it was built. | No change: the bot applies the tournament's lateness settings, and the organizer can take a forfeit back. As today, the rule is off until the organizer turns it on. |
+| 24. Hero video by link | Yes. | |
+| 25. Drop three bot controls | Yes; never used. | |
+| 26. Swiss rounds | Confirmation by default, and an organizer must be able to set it once and never touch it: fixed match times and rounds published without review. | Fixed match times as a first-class choice in the wizard; "publikuj bez potwierdzenia" (3.2, 3.5, 5.2). |
+| 27. Free subdomains and domains | Domains only in the highest paid plan; decide the rest later. | The organizer's own domain is gated by plan (6.1, 6.4). |
+| 28. The six formats | Enough for now; many more later. | None. Formats are data (section 8), so adding one is a preset, not a screen. |

@@ -21,7 +21,7 @@ Written in S1 (2026-11-13) by Fable, and rewritten the same day after the owner'
 | M1 Fast and read-only | 07, 13a, 15, 08, 09, 10, 11, 35, 39 | Every public page is served complete from the CDN out of PostgreSQL. **Go-live step one:** Letnia and finished seasons are served by the new platform, and PDL S2 is mirrored on it and compared with the old site every day |
 | M2 Results run themselves | 14, 13b, 34, 16 | A played game becomes a result, standings, stats and fantasy points with no admin action; organizers' ranking rules decide ties and playoff places |
 | M3 Organizers run a season | 24, 17, 42, 43, 18, 44, 38, 40, 46, 19 | Everything an organizer, referee or captain does is a command behind S2's new screens; a season runs from publishing to the final with the organizer confirming steps, not performing them; the browser has no database access |
-| M4 A bot we can maintain | 20, 21, 47, 22, 23 | Bot source in TypeScript with tests, a written contract, its own database role, a plan to scale out |
+| M4 A bot we can maintain | 20, 21, 22, 23 | Bot source in TypeScript with tests, a written contract, its own database role, a plan to scale out |
 | M5 A platform | 26, 27, 45, 29, 36 | Custom domains, guarded themes, one translation system, backups and tournament export |
 | M6 Proven and live | 30, 31, 48, 37 | End-to-end flows green; load test passed. **Go-live step two:** PDL S2 moves to the new platform while it is being played. **Step three:** new seasons start there. **Step four:** the old site retires |
 
@@ -488,6 +488,7 @@ What waits for the owner: WP-03 (staging part), WP-06 and WP-35 need the account
   - Sign-in hand-off: generalise the Discord flow to "sign in on the platform origin, return a custom token to an allowed origin". Google sign-in moves to the same flow. Allowed origins come from `domains` plus configuration.
   - Commands: add domain (returns the DNS records to set), check verification, remove. Attach and detach through the hosting API. The free hosting plan allows 50 domains per project; the command refuses with a clear message at the limit.
 - **Acceptance.** On staging, a test domain serves a tournament at its root; every link stays on the domain; sign-in with Discord and Google works there and on the platform domain; removing the domain stops serving it; end-to-end flow 12 passes; `grep` finds no hand-built tournament path.
+- **Plan.** Added by S2: the owner wants own domains only in the highest paid plan (question 27). The add-domain command checks `organizations.plan`; which plans exist is S4's. The screen is Ustawienia, Adres (`ORGANIZER_UX.md` 6.4).
 - **Dependencies.** WP-08, WP-24, WP-38 (accounts).
 - **Size.** L. **Review.** Fable.
 
@@ -610,6 +611,8 @@ For each part of WP-18, "the part's S2 acceptance criteria" are: every control t
 - **Files.** New `src/features/formats/domain/presets.ts`, `src/features/tournaments/{commands.ts,domain/defaults.ts,domain/rulebook-template.ts}`, `src/app/organizer/{page.tsx,new/page.tsx}`, redirects from `/creator`, `/creator/new`, `/create`; delete `src/app/creator/`, `src/components/creator/`, `src/lib/api/tournaments.ts` `createTournament`; a migration for `creation_requests`.
 - **Design.** Sections 3.1, 3.2, 5.2, 5.6 and 8.
   - `preset(name, teamCount, options)` returns stages with settings, ranking and advancement for the six formats, and the numbers the wizard draws. Kwalifikacje LAN reproduces PDL S2's structure; check it against the imported tournament.
+  - The Dota 2 league id is optional at creation and required by `startSeason` (WP-44). A command `setLeagueId` looks the league up through the Steam Web API and stores the id only if the league exists, returning its name; the home screen's decision "Podaj ID ligi Dota 2" (WP-42) leads to it. Read how the old bot tab uses its "League ID (Valve)" (`BotTab.tsx:1208`) and find out whether bot accounts must be added to the league as admins; if so, the same step lists the accounts to add.
+  - Step 2 offers the two ways of setting match times (`settings.scheduling.method` `fixed` or `captain`, with `matchEvenings`); a Swiss format also offers rounds published without confirmation (`autoPublishRounds`).
   - `createTournament` creates the organization on first use, the tournament as a draft with every default of section 3.2 (bot on, lobby and lateness defaults, features, the rulebook from the template), and the creator's membership, in one transaction. The slug is checked against the reserved list and the unique index.
   - `createNextEdition(tournamentId)` copies format, settings, look, rulebook and staff into a new draft in the same series.
   - Before launch: the allowlist setting (ADR-06) and the request form; approving a request is a command used by WP-46.
@@ -617,7 +620,7 @@ For each part of WP-18, "the part's S2 acceptance criteria" are: every control t
 - **Acceptance.** For each format and for team counts 6, 8, 12, 16 and 24, the preset passes the stage schemas and the bracket generator accepts its advancement (property test: every advancing place has exactly one slot); a tournament created with only a name and defaults can be published at once and its public pages render; the seed tool (WP-03) builds its tournaments through the same preset function; a second edition copies everything section 3.8 lists; a user outside the allowlist sees the request form; the old creator code is gone.
 - **Tests.** Level 1 for presets and defaults; level 4 for the two commands; an end-to-end flow: sign in, three steps, draft exists, publish.
 - **Risks and rollback.** A preset that the Format screen cannot later express. Presets produce only data the Format screen edits; a test loads every preset into the Format screen's schema.
-- **Dependencies.** WP-07, WP-24, WP-34 (advancement schema and generator), WP-42. The owner's choice from WP-41 for 5.2; answer to question 28 (the six formats).
+- **Dependencies.** WP-07, WP-24, WP-34 (advancement schema and generator), WP-42. The owner's choice from WP-41 for 5.2.
 - **Size.** L. **Review.** Fable.
 
 ### WP-44. The season runs itself: registration and lifecycle automation
@@ -626,13 +629,13 @@ For each part of WP-18, "the part's S2 acceptance criteria" are: every control t
 - **Files.** `src/features/tournaments/{jobs.ts,domain/lifecycle.ts}`, `src/features/teams/{domain/acceptance.ts,commands.ts}`, migrations for `teams.flags` and the two registration settings.
 - **Design.** Sections 3.3, 3.4, 3.8 and 8.
   - `lifecycle.ts` is a pure function from the tournament, its stages and the clock to the phase and the next step (whose it is, and which command). The phase line (WP-42) renders it. The status column changes only through lifecycle commands and jobs: `publish`, `close-registration` (a job at the closing time), `startSeason` (confirms the draw and schedule), `complete` (a job enqueued when the last match of the last stage is recorded), `archive` (a job thirty days later), and `stepBack` with a reason.
-  - `acceptance.ts` decides whether a registered team is accepted automatically: roster complete, every player has Steam linked, within the MMR cap, no player on another accepted roster. Otherwise it returns flags, stored on the team and shown as a decision. `settings.registration.autoAccept` off sends every team to the organizer.
+  - `acceptance.ts` decides whether a registered team is accepted automatically: roster complete, every player has Steam linked, within the MMR cap, no player on another accepted roster. Otherwise it returns flags, stored on the team and shown as a decision. `settings.registration.requireApproval` on sends every complete team to the organizer (the owner's way of filtering out cheaters); new tournaments start with it off, and a new edition copies the previous one.
   - Registration closed with a team count the format does not fit produces the decision of section 5.1 with its three commands: extend, regroup (calls the preset with the real count), or continue with byes.
   - Jobs that are now automatic and have no control: avatar refresh, hero and draft-preparation data refresh, fantasy rounds following match days.
 - **Acceptance.** On the seeded tournament with a fake bot: after publishing, the only organizer commands needed to reach "completed" for a 16-team groups-and-playoff season are start the season and publish the bracket (asserted by counting audit rows with a human actor); each automatic step leaves an audit row and appears in the activity list; `stepBack` restores the previous phase and its job; a team with a player on another roster is flagged, not accepted.
 - **Tests.** Level 1 for `lifecycle` (a table over phases and clocks) and `acceptance`; level 4 for the jobs (idempotent, safe when run late).
 - **Risks and rollback.** An automatic step fires when it should not (a final recorded by mistake completes the tournament). Every step is reversible with `stepBack`, and completing waits ten minutes after the last result.
-- **Dependencies.** WP-13b, WP-14, WP-17, WP-34, WP-42. Answers to questions 22 and 23; without them, the recommendations.
+- **Dependencies.** WP-13b, WP-14, WP-17, WP-34, WP-42. `startSeason` refuses without a league id. With fixed match times and `autoPublishRounds`, a Swiss tournament needs no organizer action between rounds; add this as a second counted scenario in the acceptance test.
 - **Size.** L. **Review.** Fable.
 
 ### WP-45. The look screen: draft, live preview, publish, history
@@ -648,7 +651,7 @@ For each part of WP-18, "the part's S2 acceptance criteria" are: every control t
 - **Acceptance.** Changing a colour shows in the preview without publishing and is invisible to a signed-out visitor; a look that fails contrast cannot be published and the nearest working colour is offered; restoring a look from history brings back the exact earlier tokens; the imported tournaments' looks are unchanged until edited (screenshots against WP-27's baseline); every preset passes the visual suite at three widths; the wizard's step 3 (WP-43) uses the same presets and derivation.
 - **Tests.** Level 1 for derivation (property: any palette either derives a look that passes contrast or is refused); level 4 for the commands; visual tests per preset.
 - **Risks and rollback.** Derived text colours differ from what an existing tournament shows today. Imported themes keep their stored values, so nothing changes without the organizer's action.
-- **Dependencies.** WP-27, WP-42. The owner's choice from WP-41 for 5.5; answer to question 24.
+- **Dependencies.** WP-27, WP-42. The owner's choice from WP-41 for 5.5.
 - **Size.** L. **Review.** Opus, with the owner looking at the presets.
 
 ### WP-46. The platform console
@@ -660,16 +663,6 @@ For each part of WP-18, "the part's S2 acceptance criteria" are: every control t
 - **Tests.** Level 4 for authorization of each page's query and command.
 - **Dependencies.** WP-14, WP-22, WP-24, WP-43 (requests).
 - **Size.** M. **Review.** Opus.
-
-### WP-47. Spike: results from a bot lobby without the organizer's own Valve league
-
-- **Goal.** Know whether an organizer can run a fully automatic tournament without obtaining a Valve league id, and choose the default.
-- **Files.** `docs/overhaul/spikes/WP-47.md`. Throwaway code only.
-- **Design.** `ORGANIZER_UX.md` section 8 and question 21. On staging, with test Steam accounts and the bot from WP-20: (1) play one short lobby game with no league and one inside an existing league; (2) record what the bot itself receives at game end (winner, duration, Dota match id, players); (3) ask the Steam Web API and OpenDota for both match ids, immediately and after a parse request, and record which fields come back; (4) with the owner's answer about Valve's league rules, state whether one platform-owned league can carry every tournament's lobbies.
-- **Acceptance.** The report answers: can a game's winner be recorded with no league (from the bot alone); can full player stats be fetched with no league; what a platform league would need. It recommends one default of the three (platform league; no league with reduced stats; the organizer's own league required) and lists the changes to WP-13b, WP-21 and the Automat settings that follow.
-- **Risks and rollback.** None; nothing merges. Needs a person at two Steam clients for a few minutes, so the owner or a tester takes part.
-- **Dependencies.** WP-20; the staging bot accounts (TEST_STRATEGY, "what the owner must create", point 8).
-- **Size.** S. **Review.** Fable.
 
 ### WP-48. Proof of the test: a new organizer runs a season to the final
 
@@ -698,6 +691,7 @@ For each part of WP-18, "the part's S2 acceptance criteria" are: every control t
 | WP-02 | Test the Firestore rules and close their holes | The new platform has no browser database access, so there are no rules to test. The old site's rules stay as they are until it retires, by the owner's decision not to change production. Storage rules are handled in WP-19. |
 | WP-25 | Move Letnia into the tournament tree | Letnia is imported as an ordinary tournament by WP-33. |
 | WP-28 | Move the database to Europe | The new database is created in Frankfurt from the start. |
+| WP-47 | Spike: results from a bot lobby without the organizer's own Valve league | The owner decided every tournament keeps its own Dota 2 league (question 21), so there is nothing to measure. |
 
 ## Things deliberately left out of S1's packages
 
