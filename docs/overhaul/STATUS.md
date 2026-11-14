@@ -55,7 +55,7 @@ One line per WP: id, name, branch, state (planned / in progress / in review / me
 | WP-10 | Home page on server data, deep links without redirects | `wp/10-home-server-data` | planned | L, Fable review |
 | WP-11 | Performance budgets in CI, lighter bundle | `wp/11-perf-budgets` | planned | M, Opus review |
 | WP-12 | Capture tool and parity fixtures | `wp/12-capture-fixtures` | merged 2026-11-13 | Four tournaments captured without credentials into `data-exports/` (10 MB, git-ignored); fixtures for pdl-s2 and wiosenna with published tables in `fixtures/exports/`; field list in `EXPORT_FORMAT.md`. A re-capture of pdl-s2 takes 41 s. Private collections (users, accounts, admins, card game, bot config) answer 403 and need the owner's export |
-| WP-13a | Standings and ranking rules as pure functions | `wp/13a-ranking` | in progress | M, Fable review. Implementer started 2026-11-13 |
+| WP-13a | Standings and ranking rules as pure functions | `wp/13a-ranking` | merged 2026-11-14 | `src/features/formats`: one `computeStandings` with a tie-breaker catalogue; reproduces every published table of pdl-s2 and Wiosenna; 81 tests. Decisions: ban forfeits import as completed (not void), pdl-s2 stays one table, the ranking JSON is parsed in `formats/queries.ts`. Form (last five) is left for WP-09b |
 | WP-13b | `results` feature: one way to change a result | `wp/13b-results` | planned | L, Fable review |
 | WP-14 | Job queue in the database | `wp/14-jobs` | planned | M, Fable review |
 | WP-15 | `stats` feature: one compute from PostgreSQL | `wp/15-stats` | planned | L, Fable review |
