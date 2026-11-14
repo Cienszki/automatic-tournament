@@ -416,7 +416,7 @@ Each target was set before the prototype ran.
 | Goal | Target | Today's game | Recommended game | Met |
 |---|---|---|---|---|
 | Short matches (G2) | 5 to 7 rounds; nearly all end with an Ancient destroyed | 10.4 turns, 6.5 fights, 19 hits | **5.7 rounds**; 97% of matches last 5 to 7; 99.8% end with an Ancient destroyed | Yes |
-| Skill over collection (G4) | A new player's deck loses to a veteran's at most 60% | **90%** | **59%** (56 to 62). Without the budget: 88% | Yes, at the edge |
+| Skill over collection (G4) | A new player's deck loses to a veteran's at most 60% | **90%** | **59%** (56 to 62). Without the budget: 88% | Yes on Wiosenna, at the edge; **no on PDL S2 (66%)**, see below |
 | Skill decides (G4) | The good player beats the obvious-move player at least 70% | Not comparable | **78%** | Yes |
 | Skill beats collection | The good player with a new deck beats the obvious-move player with a veteran deck | Loses 58% (best computer level, 10 packs against 40) | **Wins 67%** | Yes |
 | A real choice each round (G5) | The good player's plan differs from the obvious plan in most rounds | The strongest card in hand was played 100% of the time | **77%** of rounds | Yes |
@@ -427,6 +427,8 @@ Each target was set before the prototype ran.
 | No dominant deck | A deck built around one position wins 40 to 60% against the best ordinary deck | The strongest twenty always win | 42 to 57% (section 9.4) | Yes |
 | A ladder of skill | Each computer level beats the one below at least 60% | | 94%, 78%, then **56%** between the two strongest | Partly |
 | Objectives are even | Holding any objective in round 2 wins 45 to 65% | First-taker wins 40 to 55% | 47% (Twin Gates) to 63% (Lotus Pool) | Yes |
+
+**On PDL S2,** a much smaller tournament (12 teams, 117 cards), matches have the same shape (5.6 rounds, 99% end with an Ancient destroyed), and the budget brings the veteran's win rate from 84% without it to **66%**. That is above the 60% target. Today's game gives 81.5% there, so the gain is real but smaller than on Wiosenna. The likely cause, not yet tested, is the team-of-the-round cards: PDL S2's packs hold five of them among 58 cards, against two among 95 on Wiosenna, and their +1 is free under the budget, so the bigger collection carries about two points more strength at the same cost. WP-52 tests counting that +1 in the cost for small tournaments and sets the rule from the result.
 
 The one target missed is the top step of the skill ladder: the two strongest computer players are closer to each other than intended. This is a statement about those two programs, and it limits what the simulations can say about the very top of human play. The trial with people (WP-62) is where that gets answered.
 

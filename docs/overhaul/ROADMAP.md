@@ -710,6 +710,7 @@ Added in S3 (2026-11-14) by Fable. The design is `GAME_DESIGN.md`; section numbe
 - **Goal.** One pure, tested module that is the game: the rules of section 4 with their final numbers, and nothing else decides a match anywhere.
 - **Files.** `src/features/cards/domain/v2/` (from WP-51): `rules.ts`, `resolve.ts`, `plan.ts`, `gank.ts`, `strength.ts`, `setup.ts`, `view.ts`, `deck.ts`, `types.ts`; new `first-match.ts`, `team-deck.ts`, `auto-deck.ts`, `schema.ts`; `scripts/tools/card-sim/v2/` for the balance check.
 - **Design.** Sections 4, 6 and 9.
+  - **Open balance item.** On PDL S2 the veteran still wins 66% against a new player (target 60%; section 9.2). Run E2 on `pdl-s2` with `costMode: 'full'` (the team-of-the-round +1 counted in the cost) and with the pack rule unchanged; if it brings PDL S2 to 60% or under without hurting Wiosenna, make it the default and say so in section 4.1, otherwise report what does.
   - Set `DEFAULT_RULES` to the table in section 4.6. Keep every number in `Rules`; delete knobs the design dropped only if nothing in the simulations uses them.
   - `resolveRound` returns the events the screen plays back in order (plays and moves revealed, ganks, each bonus added, control per objective, damage, Farma, draws). The screen must not compute anything the engine already knows.
   - `viewFor(state, side)` hides the rival's hand, deck order and plan; a test proves that no hidden card id reaches the view.
