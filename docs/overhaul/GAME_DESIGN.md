@@ -252,12 +252,12 @@ Each ability is a reading question. Gank asks where the rival's best unit will b
 
 The budget turns the deck screen into a set of trades.
 
-- **Few strong cards or many middling ones.** A 9 and a 1 cost the same as two 5s. The 9 wins an objective alone but is the gank's first target; the two 5s hold two places.
+- **Few strong cards or many middling ones.** A 9 and a 1 cost the same as two 5s. The 9 wins an objective alone but is the gank's first target; the two 5s hold two places. In the simulations this trade is not yet even: stars with cheap fillers beat evenly middling decks clearly (section 9.4), so for now the budget rewards finding and protecting a few strong cards.
 - **Positions.** One of each is required; the other seven slots are the deck's character. Mids to disrupt, Carries to grow, an Offlane for each Carry worth protecting, a Hard Support for each objective to be held.
 - **Real teams.** Teammates on one objective get +1 each, and the bonus costs nothing. A deck built around one or two real teams is stronger than its budget says, if the player has collected those teams.
 - **Team-of-the-round cards.** Their +1 is free, so each one is worth chasing.
 
-*(The measured strength of each kind of deck against the others is added here from the final simulation run.)*
+Measured against each other (section 9.4), decks built around any one position win 44 to 53% against the field, a deck built around real teams wins 59%, and the shape of the costs matters more than the positions: few strong cards with cheap fillers win 66%, evenly middling cards 34%.
 
 A new player does not have to think about any of this: the first deck is built for them. A competitor has a puzzle with no single answer.
 
@@ -424,13 +424,13 @@ Each target was set before the prototype ran.
 | Comebacks | The player behind after round 3 wins at least 25% | The side ahead after three turns each wins 85.5% | **35%** | Yes |
 | Leads change | The winner was never behind in at most 55% of matches | Not comparable | **46%** | Yes |
 | No seat advantage | 50% | First player wins 43% | No first player exists | Yes |
-| No dominant deck | A deck built around one position wins 40 to 60% against the best ordinary deck | The strongest twenty always win | 42 to 57% (section 9.4) | Yes |
+| No dominant deck | No kind of deck wins more than 60% against the field of the others | The strongest twenty always win | By position: 44 to 53%. By shape: stars with fillers win **66%**, even decks 34% (section 9.4) | Partly |
 | A ladder of skill | Each computer level beats the one below at least 60% | | 94%, 78%, then **56%** between the two strongest | Partly |
 | Objectives are even | Holding any objective in round 2 wins 45 to 65% | First-taker wins 40 to 55% | 47% (Twin Gates) to 63% (Lotus Pool) | Yes |
 
 **On PDL S2,** a much smaller tournament (12 teams, 117 cards), matches have the same shape (5.6 rounds, 99% end with an Ancient destroyed), and the budget brings the veteran's win rate from 84% without it to **66%**. That is above the 60% target. Today's game gives 81.5% there, so the gain is real but smaller than on Wiosenna. The likely cause, not yet tested, is the team-of-the-round cards: PDL S2's packs hold five of them among 58 cards, against two among 95 on Wiosenna, and their +1 is free under the budget, so the bigger collection carries about two points more strength at the same cost. WP-52 tests counting that +1 in the cost for small tournaments and sets the rule from the result.
 
-The one target missed is the top step of the skill ladder: the two strongest computer players are closer to each other than intended. This is a statement about those two programs, and it limits what the simulations can say about the very top of human play. The trial with people (WP-62) is where that gets answered.
+Three targets are not fully met. On PDL S2 the collector's edge is 66% (above). Among deck shapes, stars with cheap fillers are too good (section 9.4). And the top step of the skill ladder is short: the two strongest computer players are closer to each other than intended. This is a statement about those two programs, and it limits what the simulations can say about the very top of human play. The trial with people (WP-62) is where that gets answered.
 
 ### 9.3 What the first candidate got wrong, and what fixed it
 
@@ -467,7 +467,21 @@ All five positions sit between 42 and 57%, so none is a mistake to build around 
 
 **Switching an ability off** changes the comeback rate most for Gank (from 36% to 27% when it is off) and Aura (to 29%). Gank is the game's main way back into a match, which is why it had to be kept and tamed, not removed.
 
-*(The full table of deck kinds against each other, E6, is added from the final run.)*
+**Kinds of deck against each other** (experiment E6; every deck spends the same budget of 60; 300 games per pair from 30 simulated veteran collections, so single cells are good to about six points):
+
+| Deck | Wins against the field of the other eight |
+|---|---|
+| Few strong cards and cheap fillers | 66% |
+| As many cards of one real team as possible | 59% |
+| Three Mids | 53% |
+| The automatic "best" deck | 49% |
+| Three Carries | 49% |
+| Three Hard Supports | 49% |
+| Three Supports | 48% |
+| Three Offlanes | 44% |
+| Evenly middling cards | 34% |
+
+Two readings. First, no position is a trap and none is required: the five sit within nine points of each other. Second, **the shape of the costs is not balanced.** A deck of stars and fillers beats the automatic deck 67% and an even deck 77%. With only three places per side on an objective, a strong card uses a place better than two middling ones. This is the one known imbalance in the settled rules. It does not harm the new player (the budget is the same for everyone, and ten packs hold a few strong cards), but it narrows deck building more than intended. WP-52 tests the two obvious levers, four places per side on an objective and a higher cost for the strongest cards, and also makes the automatic deck builder choose this shape, since a new player's first deck should be a good one.
 
 ### 9.5 Direction A, measured
 
