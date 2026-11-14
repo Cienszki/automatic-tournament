@@ -56,7 +56,7 @@ A game has depth when a player regularly faces a choice in which the options tra
 
 On top of this, **the collection decides the match.** The earlier sessions measured that with equal play, a deck rated 10 higher wins about 86% of matches, and the strongest computer level needs a deck 8 points better to be a challenge. A new player with the ten welcome packs cannot beat a player who has collected for a season, whatever they do. For a game that hopes people will challenge each other, that is the most damaging number.
 
-**The measurements.** WP-50 built a simulation harness (`scripts/tools/card-sim/`) that plays today's game, computer against computer, with the real cards of Wiosenna (851 cards) and PDL S2 (117 cards). The full tables are in `docs/overhaul/sim/baseline/REPORT.md` on branch `wp/50-card-sim`. Each number below is from 1,000 or more games on Wiosenna, between two computer players of the same level ("Trudny") unless stated.
+**The measurements.** WP-50 built a simulation harness (`scripts/tools/card-sim/`) that plays today's game, computer against computer, with the real cards of Wiosenna (851 cards) and PDL S2 (117 cards). The full tables are in `docs/overhaul/sim/baseline/REPORT.md`. Each number below is from 1,000 or more games on Wiosenna, between two computer players of the same level ("Trudny") unless stated.
 
 | Claim | Measurement |
 |---|---|
@@ -126,7 +126,7 @@ Start again from the asset. Two shapes were considered. One is a draft game: bef
 
 ## 4. The rules of the recommended game
 
-The game keeps its name, "Kontrola mapy". Every number below is a setting in one rules object in the prototype (`src/features/cards/domain/v2/rules.ts` on branch `wp/51-card-proto`), and each was chosen by simulation (section 9).
+The game keeps its name, "Kontrola mapy". Every number below is a setting in one rules object in the prototype (`src/features/cards/domain/v2/rules.ts`), and each was chosen by simulation (section 9).
 
 ### 4.1 The deck
 
@@ -399,7 +399,7 @@ Three, all existing: the game on or off, packs per round, and giving packs. The 
 
 The rules of section 4 were not written and then tested. They were found. WP-51 built the game as a pure rules engine in which every number and every ability variant is a setting, wrote computer players for it, and ran about 400,000 simulated matches on the real cards of Wiosenna and PDL S2. The first candidate rules missed three targets; seven rounds of changes, each tested, led to the rules in section 4.
 
-- The engine: `src/features/cards/domain/v2/` on branch `wp/51-card-proto`, with 93 tests.
+- The engine: `src/features/cards/domain/v2/`, with 93 tests.
 - The experiments: `scripts/tools/card-sim/v2/`. Every run is seeded, and the command that reproduces a table is printed under it.
 - The results: `docs/overhaul/sim/v2/REPORT.md` for the settled rules, and `docs/overhaul/sim/v2-first/REPORT.md` for the first candidate and the steps between.
 

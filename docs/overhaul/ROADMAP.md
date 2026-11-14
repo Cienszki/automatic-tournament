@@ -697,13 +697,13 @@ Added in S3 (2026-11-14) by Fable. The design is `GAME_DESIGN.md`; section numbe
 
 ### WP-50. Card game simulation harness and baseline measurements
 
-- **State.** Done in S3, branch `wp/50-card-sim`, in review. A loader from the fixtures to cards, a seeded runner for v1 computer-against-computer games, eight experiments, results in `docs/overhaul/sim/baseline/REPORT.md`. `GAME_DESIGN.md` section 2 uses its numbers.
-- **Review.** Opus reviewer: the loader test (the site's own dataset builder gives the same cards), determinism, and that nothing under `src/lib/card-lab` changed.
+- **State.** Done in S3 and merged (branch `wp/50-card-sim`). A loader from the fixtures to cards, a seeded runner for v1 computer-against-computer games, eight experiments, results in `docs/overhaul/sim/baseline/REPORT.md`. `GAME_DESIGN.md` section 2 uses its numbers.
+- **Review.** Checked by Fable before merging: the loader test (the site's own dataset builder gives the same cards), determinism, and that nothing under `src/lib/card-lab` changed.
 
 ### WP-51. Prototype of the v2 core, with simulations
 
-- **State.** Done in S3, branch `wp/51-card-proto` (contains WP-50), in review. A pure v2 engine in `src/features/cards/domain/v2/`, computer players in `v2/ai/`, deck builders and experiments in `scripts/tools/card-sim/v2/`, results in `docs/overhaul/sim/v2/REPORT.md`. `GAME_DESIGN.md` sections 3, 4 and 9 use its numbers. The engine is a prototype: every rule is a knob, and WP-52 settles it.
-- **Review.** Fable or an Opus reviewer: the engine tests cover each numbered rule of section 4; no computer player except the one named `omniscient` reads the rival's hand, deck or plan.
+- **State.** Done in S3 and merged (branch `wp/51-card-proto`, which contains WP-50). A pure v2 engine in `src/features/cards/domain/v2/`, computer players in `v2/ai/`, deck builders and experiments in `scripts/tools/card-sim/v2/`, results in `docs/overhaul/sim/v2/REPORT.md` (settled rules) and `docs/overhaul/sim/v2-first/REPORT.md` (the first candidate and the steps between). `GAME_DESIGN.md` sections 3, 4 and 9 use its numbers. The engine is a prototype: every rule is a setting, older rule variants are still in the code for the record, and WP-52 settles it and deletes them.
+- **Review.** Written partly by Fable in the session, so it has had no independent review. An Opus reviewer should check, before WP-52 builds on it: that the engine tests cover each numbered rule of section 4, and that no computer player except `omniscient` and `exploiter` reads the rival's hand, deck or plan.
 
 ### WP-52. The v2 rules engine, settled
 
