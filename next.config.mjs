@@ -158,40 +158,28 @@ const buildConfig = (phase) => {
   return withNextIntl(nextConfig);
 };
 
+// Sentry's build step. It never talks to the network unless SENTRY_AUTH_TOKEN is
+// set: then it creates the release and uploads source maps; otherwise it only
+// injects the release name. Runtime set-up is in src/platform/errors/sentry.ts.
+const sentryAuthToken = process.env.SENTRY_AUTH_TOKEN || undefined;
+const sentryUpload = Boolean(sentryAuthToken);
+// The commit being built, from the hosting provider (Vercel) or CI (GitHub Actions).
+const release =
+  process.env.SENTRY_RELEASE || process.env.VERCEL_GIT_COMMIT_SHA || process.env.GITHUB_SHA || undefined;
+
 export default withSentryConfig(buildConfig, {
-  // For all available options, see:
-  // https://docs.sentry.io/platforms/javascript/guides/nextjs/sourcemaps/uploading/bundler-plugin-options/
-
-  org: "polish-dota2-inhouse",
-
-  project: "tournament-web",
-
-  // Only print logs for uploading source maps in CI
-  silent: !process.env.CI,
-
-  // For all available options, see:
-  // https://docs.sentry.io/platforms/javascript/guides/nextjs/manual-setup/
-
-  // Upload a larger set of source maps for prettier stack traces (increases build time)
+  org: 'polish-dota2-inhouse',
+  project: 'tournament-web',
+  authToken: sentryAuthToken,
+  silent: !sentryUpload,
+  telemetry: false,
+  release: { name: release, create: sentryUpload, finalize: sentryUpload },
+  sourcemaps: { disable: !sentryUpload, deleteSourcemapsAfterUpload: true },
   widenClientFileUpload: true,
-
-  // Route browser requests to Sentry through a Next.js rewrite to circumvent ad-blockers.
-  // This can increase your server load as well as your hosting bill.
-  // Note: Check that the configured route will not match with your Next.js middleware, otherwise reporting of client-
-  // side errors will fail.
-  tunnelRoute: "/monitoring",
-
-  webpack: {
-    // Enables automatic instrumentation of Vercel Cron Monitors. (Does not yet work with App Router route handlers.)
-    // See the following for more information:
-    // https://docs.sentry.io/product/crons/
-    // https://vercel.com/docs/cron-jobs
-    automaticVercelMonitors: true,
-
-    // Tree-shaking options for reducing bundle size
-    treeshake: {
-      // Automatically tree-shake Sentry logger statements to reduce bundle size
-      removeDebugLogging: true,
-    },
-  }
+  bundleSizeOptimizations: {
+    excludeDebugStatements: true,
+    excludeReplayIframe: true,
+    excludeReplayShadowDom: true,
+    excludeReplayWorker: true,
+  },
 });

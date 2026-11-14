@@ -46,7 +46,7 @@ One line per WP: id, name, branch, state (planned / in progress / in review / me
 | WP-01 | Close unauthenticated server actions on the old site | `wp/01-server-action-auth` | on request | Not scheduled: the owner will not change production now. Ready to run if that changes |
 | WP-02 | Test the Firestore rules | — | dropped | No browser database access on the new platform |
 | WP-03 | Environments: local database, seed, CI, previews | `wp/03-environments` | planned | M, Opus review. Staging part needs question 5 |
-| WP-04 | Error monitoring and structured logs | `wp/04-observability` | planned | S, Opus review. Branch exists with Sentry's wizard output as a starting point |
+| WP-04 | Error monitoring and structured logs | `wp/04-observability` | in review | S, Opus review. `src/platform/{log,errors,alerts}`; Sentry only with a DSN (loaded lazily), no PII, no replay, no tracing by default; build makes no Sentry call without `SENTRY_AUTH_TOKEN`. Deferred: web-vitals reporter, usage-check stub (WP-14). Needs `NEXT_PUBLIC_SENTRY_DSN` added on Vercel and a preview deploy to verify events |
 | WP-05 | Delete dead code | `wp/05-dead-code` | merged 2026-11-13 | 385 files and 801k lines deleted (27k in `src`, 749k in `_archive/`). `npm run check:unreachable` runs in CI and fails on a new unreachable file. CI now also runs on `wp/**` pushes. Follow-ups: `.firebase/` deploy caches are tracked in git; `genkit` packages and a few Radix packages may now be unused |
 | WP-06 | Trial: fast page on Vercel and Supabase, forwarding to the old site | `wp/06-hosting-trial` | planned | M, Fable review. Decision gate. Needs question 5 |
 | WP-07 | Platform kernel and enforced boundaries | `wp/07-platform-kernel` | planned | L, Fable review |

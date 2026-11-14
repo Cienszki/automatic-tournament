@@ -4,6 +4,7 @@ import React, { createContext, useContext, useState, useEffect, useLayoutEffect,
 import { TournamentConfig, TournamentSummary, TournamentTheme } from '@/types/tournament';
 import { PDL_THEME, LETNIA_THEME, getThemeCssVariables, getThemeBySlug } from '@/lib/themes';
 import { fetchTournaments, fetchTournamentBySlug } from '@/lib/api/tournaments';
+import { setErrorContext } from '@/platform/errors/context';
 
 // Re-export themes for convenience
 export { PDL_THEME, LETNIA_THEME };
@@ -65,6 +66,9 @@ export function TournamentProvider({ children, initialTournamentSlug }: Tourname
   // Initialize with static tournaments to avoid SSR issues
   const [tournament, setTournament] = useState<TournamentConfig | null>(null);
   const [tournamentSlug, setTournamentSlug] = useState<string | null>(initialTournamentSlug || null);
+  useEffect(() => {
+    setErrorContext({ tournamentId: tournament?.id ?? null, tournamentSlug: tournament?.slug ?? tournamentSlug });
+  }, [tournament?.id, tournament?.slug, tournamentSlug]);
   const [tournaments, setTournaments] = useState<TournamentSummary[]>([
     {
       id: 'letnia-2025',

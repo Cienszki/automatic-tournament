@@ -1,28 +1,21 @@
-// This file configures the initialization of Sentry on the client.
-// The added config here will be used whenever a users loads a page in their browser.
-// https://docs.sentry.io/platforms/javascript/guides/nextjs/
+import { initSentry } from '@/platform/errors';
 
-import * as Sentry from "@sentry/nextjs";
+// Browser start-up. NEXT_PUBLIC_* values are inlined at build time; with the DSN
+// blank, the Sentry SDK chunk is never requested.
+type TransitionHook = (href: string, navigationType: string) => void;
+let transitionHook: TransitionHook | null = null;
 
-Sentry.init({
-  dsn: "https://33b00db8f974bce15b068b752b831b91@o4512423303643136.ingest.de.sentry.io/4512423309148240",
+if (process.env.NEXT_PUBLIC_SENTRY_DSN) {
+  void initSentry({
+    runtime: 'browser',
+    dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
+    tracesSampleRate: process.env.NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE,
+    environment: process.env.NEXT_PUBLIC_SENTRY_ENVIRONMENT || process.env.NEXT_PUBLIC_VERCEL_ENV,
+  }).then(async (started) => {
+    if (started) transitionHook = (await import('@sentry/nextjs')).captureRouterTransitionStart;
+  });
+}
 
-  // Define how likely traces are sampled. Adjust this value in production, or use tracesSampler for greater control.
-  tracesSampleRate: 1,
-
-  // Turns off collection of data that could identify users. Adjust per category:
-  // https://docs.sentry.io/platforms/javascript/configuration/options/#dataCollection
-  dataCollection: {
-    userInfo: false,
-    graphQL: { document: false, variables: false },
-    genAI: { inputs: false, outputs: false },
-    databaseQueryData: false,
-    queues: false,
-    httpBodies: [],
-    httpHeaders: { deny: ["forwarded", "-ip", "remote-", "via", "-user"] },
-    cookies: { deny: ["forwarded", "-ip", "remote-", "via", "-user"] },
-    urlQueryParams: { deny: ["forwarded", "-ip", "remote-", "via", "-user"] },
-  },
-});
-
-export const onRouterTransitionStart = Sentry.captureRouterTransitionStart;
+export function onRouterTransitionStart(href: string, navigationType: string): void {
+  transitionHook?.(href, navigationType);
+}
