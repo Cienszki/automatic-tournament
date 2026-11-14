@@ -1,6 +1,6 @@
 # Roadmap
 
-Written in S1 (2026-11-13) by Fable, and rewritten the same day after the owner's answers (new database, production untouched until the new platform is ready, free plans first). It turns `ARCHITECTURE.md` into work packages (WPs). Each WP is written so that an Opus implementer can do it from this text, `BRIEF.md`, `CONVENTIONS.md` and the linked decision record (ADR), without the context of the session that planned it. S2 (organizer experience) and S3 (card game) add their own WPs to this file in the same format.
+Written in S1 (2026-11-13) by Fable, and rewritten the same day after the owner's answers (new database, production untouched until the new platform is ready, free plans first). It turns `ARCHITECTURE.md` into work packages (WPs). Each WP is written so that an Opus implementer can do it from this text, `BRIEF.md`, `CONVENTIONS.md` and the linked decision record (ADR), without the context of the session that planned it. S2 (organizer experience) added WP-41 to WP-49 on 2026-11-14, in the section "S2. The organizer experience" near the end; S3 (card game) adds its own in the same format.
 
 ## How to read and run this
 
@@ -20,12 +20,12 @@ Written in S1 (2026-11-13) by Fable, and rewritten the same day after the owner'
 | M0 Ground | 05, 12, 03, 32, 33, 06, 04 | Dead code gone; a database schema with tests; real tournament data imported into it; staging exists; the hosting and database choice is proven by measurement |
 | M1 Fast and read-only | 07, 13a, 15, 08, 09, 10, 11, 35, 39 | Every public page is served complete from the CDN out of PostgreSQL. **Go-live step one:** Letnia and finished seasons are served by the new platform, and PDL S2 is mirrored on it and compared with the old site every day |
 | M2 Results run themselves | 14, 13b, 34, 16 | A played game becomes a result, standings, stats and fantasy points with no admin action; organizers' ranking rules decide ties and playoff places |
-| M3 Organizers run a season | 24, 17, 18, 38, 40, 19 | Everything an organizer, referee or captain does is a command behind S2's new screens; the browser has no database access |
-| M4 A bot we can maintain | 20, 21, 22, 23 | Bot source in TypeScript with tests, a written contract, its own database role, a plan to scale out |
-| M5 A platform | 26, 27, 29, 36 | Custom domains, guarded themes, one translation system, backups and tournament export |
-| M6 Proven and live | 30, 31, 37 | End-to-end flows green; load test passed. **Go-live step two:** PDL S2 moves to the new platform while it is being played. **Step three:** new seasons start there. **Step four:** the old site retires |
+| M3 Organizers run a season | 24, 17, 42, 43, 18, 44, 38, 40, 46, 19 | Everything an organizer, referee or captain does is a command behind S2's new screens; a season runs from publishing to the final with the organizer confirming steps, not performing them; the browser has no database access |
+| M4 A bot we can maintain | 20, 21, 47, 22, 23 | Bot source in TypeScript with tests, a written contract, its own database role, a plan to scale out |
+| M5 A platform | 26, 27, 45, 29, 36 | Custom domains, guarded themes, one translation system, backups and tournament export |
+| M6 Proven and live | 30, 31, 48, 37 | End-to-end flows green; load test passed. **Go-live step two:** PDL S2 moves to the new platform while it is being played. **Step three:** new seasons start there. **Step four:** the old site retires |
 
-What can run in parallel: WP-05, WP-12 and WP-20 can start now and need nothing from the owner. M4 runs beside M1 to M3 (different folders). WP-04 runs beside anything. S2 must have run before WP-18 starts, because WP-18 builds S2's screens. The card game moves as it is in WP-40; S3 redesigns it later.
+What can run in parallel: WP-05, WP-12 and WP-20 can start now and need nothing from the owner. M4 runs beside M1 to M3 (different folders). WP-04 runs beside anything. S2 has run: WP-18 builds its screens from `ORGANIZER_UX.md`. WP-41 (prototypes for the owner to choose from) needs nothing and can run at any time; the real screens start from version 1 of each if the owner has not chosen yet. The card game moves as it is in WP-40; S3 redesigns it later.
 
 What waits for the owner: WP-03 (staging part), WP-06 and WP-35 need the accounts in `TEST_STRATEGY.md`, "What the owner must create". Question 8 is answered: the role-based formula is the default for new tournaments.
 
@@ -556,6 +556,141 @@ What waits for the owner: WP-03 (staging part), WP-06 and WP-35 need the account
 
 ---
 
+## S2. The organizer experience
+
+Added in S2 (2026-11-14) by Fable. The design is `ORGANIZER_UX.md`; section numbers below refer to it. These packages build what WP-18, WP-24, WP-26 and WP-27 do not already cover, and the table says which screen each existing package now builds. Every screen follows the owner's product rules in `BRIEF.md` and the shared patterns of section 5.7; a reviewer checks both.
+
+**Which package builds which screen.**
+
+| Screen (section) | Commands and rules | Screen |
+|---|---|---|
+| Panel frame, Przegląd (5.1, 5.7) | WP-42 | WP-42 |
+| Wizard, organizer page (5.2, 5.6) | WP-43 | WP-43 |
+| Ustawienia: Podstawy, Zapisy i składy, Terminy, Automat, Historia zmian, Strefa zagrożenia (4.1, 5.6) | WP-18a | WP-18a |
+| Ustawienia: Ludzie (5.6) | WP-24 | WP-18a |
+| Ustawienia: Adres (6.4) | WP-26 | WP-26 |
+| Drużyny (5.6) | WP-18b, WP-44 | WP-18b |
+| Mecze and the match page (5.3) | WP-13b, WP-18c | WP-18c |
+| Format (5.4) | WP-34, WP-18d | WP-18d |
+| Treść, Ustawienia: Dla widzów (5.6) | WP-18e | WP-18e |
+| Wygląd (5.5, 6) | WP-27 | WP-45 |
+| `/platform` (5.6) | WP-14, WP-22, WP-46 | WP-46 |
+
+For each part of WP-18, "the part's S2 acceptance criteria" are: every control that section 4.2 marks Keep or Merge for that screen exists and works through a command; no control marked Automate, Super admin or Drop exists; the states listed for the screen in section 5 can each be reached on the seeded tournaments; the screen works at 390 px where section 5.7 requires it; a referee sees only what section 2 gives them. WP-18a no longer includes tournament creation (WP-43) or the look (WP-45). WP-18d includes `proposeDraw` and `proposeSchedule` (section 8). WP-18e includes generated rulebook paragraphs (`rule_paragraphs.generated_from`).
+
+### WP-41. Clickable prototypes of the five key screens
+
+- **Goal.** The owner can click through each key screen in two or three versions and choose, before the real screens are built.
+- **Files.** New `src/app/prototype/organizer/{overview,wizard,match,format,look}/page.tsx`, `src/app/prototype/_shared/` (the `?v=N` picker, collapsed and fixed in a corner; mock data for one tournament in each state), `src/lib/reserved-slugs.ts` (add `prototype`). Delete the folder when the last real screen has replaced it.
+- **Design.** Sections 5.1 to 5.5 and 9. Version 1 of each screen is the recommended one and gets the most care; versions 2 and 3 as described. Mock data only: no database, no command, no network call. Each prototype has a second picker, `?s=`, for the screen's states (section 5 lists them). Reuse the public pages' components (team rows, match rows, standings, bracket) and the tournament theme. Copy in Polish from the wireframes. Follow the product rules strictly: this is where the owner judges them.
+- **Acceptance.** Fifteen versions exist, three per screen (if time runs short: every version 1 and 2 in full, and version 3 as a rough layout); every state of each version 1 is reachable; a Playwright job in CI saves a screenshot of every version and state at 390 and 1440 px as an artifact, and the implementer reads them and fixes overflow, boxes inside boxes and unreadable contrast before finishing; a preview deployment address is in the report for the owner; no prototype imports a query, a command or Firebase.
+- **Tests.** The screenshot job. Nothing else: this code is thrown away.
+- **Risks and rollback.** Time spent polishing versions nobody chooses. Build version 1 fully, the others far enough to judge. The folder is deleted later.
+- **Dependencies.** None. Can run now, beside anything.
+- **Size.** L. **Review.** The owner chooses; Fable or an Opus reviewer checks the product rules against the screenshots first.
+
+### WP-42. The panel's frame, shared patterns, decisions and activity
+
+- **Goal.** The panel exists at `/{slug}/admin` with its navigation by role and its home screen, and every later screen has the shared parts to build from.
+- **Files.** New `src/app/[tournamentSlug]/admin/{layout,page}.tsx` (the old `page.tsx` and tabs stay beside it under `admin/old` until WP-18's parts delete them), new `src/features/console/` (`queries.ts`: `getDecisions`, `getActivity`, `getPhaseLine`; `domain/decisions.ts`, `domain/activity-sentences.ts`, `domain/inverses.ts`; `jobs.ts`: `notify-decisions`; `components/`), new `src/ui/` parts (decision row, activity line, state mark, a field that saves itself, a confirmation that lists consequences), a migration for `decision_notices`.
+- **Design.** Sections 5.1, 5.7 and 8.
+  - `getDecisions` is computed from state, never stored. Start with the kinds whose data exists when this package runs, and add a kind with each feature that brings one; the list of kinds and the package that adds each goes in `domain/decisions.ts` as a typed union, so a missing kind is a compile error in the renderer.
+  - `getActivity` reads audit rows with no human actor; `activity-sentences.ts` maps each action to a sentence key in `messages/pl.json`; `inverses.ts` maps an action to the command that undoes it.
+  - `notify-decisions` compares current decision keys with `decision_notices` and sends one Discord message per new decision to the tournament's admins and, for match decisions, referees, with a link that opens the decision.
+  - Navigation shows only the places the actor may open (section 4.1).
+- **Acceptance.** Each state in the table of section 5.1 renders from seeded tournaments at those stages; a decision disappears when its cause does, with no write to a decisions table (there is none); the same decision is messaged once; a referee sees three places and no primary action; an admin of another tournament gets "not found"; Przegląd works at 390 px.
+- **Tests.** Level 1 for decisions from state (a table test per kind) and for sentences (every auditable action has one, checked against the action list); level 4 for the queries and the job's idempotency; a component test for the phase line in each state.
+- **Risks and rollback.** Decisions that depend on features not built yet. The typed union makes the gaps explicit; the home screen is useful from the first kinds.
+- **Dependencies.** WP-07, WP-08, WP-14, WP-24. The owner's choice from WP-41 for 5.1; without it, version 1.
+- **Size.** L. **Review.** Fable.
+
+### WP-43. Format presets, the wizard and the organizer page
+
+- **Goal.** A signed-in user creates a tournament in three steps and gets one that can open registration with nothing else set.
+- **Files.** New `src/features/formats/domain/presets.ts`, `src/features/tournaments/{commands.ts,domain/defaults.ts,domain/rulebook-template.ts}`, `src/app/organizer/{page.tsx,new/page.tsx}`, redirects from `/creator`, `/creator/new`, `/create`; delete `src/app/creator/`, `src/components/creator/`, `src/lib/api/tournaments.ts` `createTournament`; a migration for `creation_requests`.
+- **Design.** Sections 3.1, 3.2, 5.2, 5.6 and 8.
+  - `preset(name, teamCount, options)` returns stages with settings, ranking and advancement for the six formats, and the numbers the wizard draws. Kwalifikacje LAN reproduces PDL S2's structure; check it against the imported tournament.
+  - `createTournament` creates the organization on first use, the tournament as a draft with every default of section 3.2 (bot on, lobby and lateness defaults, features, the rulebook from the template), and the creator's membership, in one transaction. The slug is checked against the reserved list and the unique index.
+  - `createNextEdition(tournamentId)` copies format, settings, look, rulebook and staff into a new draft in the same series.
+  - Before launch: the allowlist setting (ADR-06) and the request form; approving a request is a command used by WP-46.
+  - The wizard holds its state in the browser until "Utwórz turniej".
+- **Acceptance.** For each format and for team counts 6, 8, 12, 16 and 24, the preset passes the stage schemas and the bracket generator accepts its advancement (property test: every advancing place has exactly one slot); a tournament created with only a name and defaults can be published at once and its public pages render; the seed tool (WP-03) builds its tournaments through the same preset function; a second edition copies everything section 3.8 lists; a user outside the allowlist sees the request form; the old creator code is gone.
+- **Tests.** Level 1 for presets and defaults; level 4 for the two commands; an end-to-end flow: sign in, three steps, draft exists, publish.
+- **Risks and rollback.** A preset that the Format screen cannot later express. Presets produce only data the Format screen edits; a test loads every preset into the Format screen's schema.
+- **Dependencies.** WP-07, WP-24, WP-34 (advancement schema and generator), WP-42. The owner's choice from WP-41 for 5.2; answer to question 28 (the six formats).
+- **Size.** L. **Review.** Fable.
+
+### WP-44. The season runs itself: registration and lifecycle automation
+
+- **Goal.** A tournament moves from published to archived with the organizer confirming steps, not performing them.
+- **Files.** `src/features/tournaments/{jobs.ts,domain/lifecycle.ts}`, `src/features/teams/{domain/acceptance.ts,commands.ts}`, migrations for `teams.flags` and the two registration settings.
+- **Design.** Sections 3.3, 3.4, 3.8 and 8.
+  - `lifecycle.ts` is a pure function from the tournament, its stages and the clock to the phase and the next step (whose it is, and which command). The phase line (WP-42) renders it. The status column changes only through lifecycle commands and jobs: `publish`, `close-registration` (a job at the closing time), `startSeason` (confirms the draw and schedule), `complete` (a job enqueued when the last match of the last stage is recorded), `archive` (a job thirty days later), and `stepBack` with a reason.
+  - `acceptance.ts` decides whether a registered team is accepted automatically: roster complete, every player has Steam linked, within the MMR cap, no player on another accepted roster. Otherwise it returns flags, stored on the team and shown as a decision. `settings.registration.autoAccept` off sends every team to the organizer.
+  - Registration closed with a team count the format does not fit produces the decision of section 5.1 with its three commands: extend, regroup (calls the preset with the real count), or continue with byes.
+  - Jobs that are now automatic and have no control: avatar refresh, hero and draft-preparation data refresh, fantasy rounds following match days.
+- **Acceptance.** On the seeded tournament with a fake bot: after publishing, the only organizer commands needed to reach "completed" for a 16-team groups-and-playoff season are start the season and publish the bracket (asserted by counting audit rows with a human actor); each automatic step leaves an audit row and appears in the activity list; `stepBack` restores the previous phase and its job; a team with a player on another roster is flagged, not accepted.
+- **Tests.** Level 1 for `lifecycle` (a table over phases and clocks) and `acceptance`; level 4 for the jobs (idempotent, safe when run late).
+- **Risks and rollback.** An automatic step fires when it should not (a final recorded by mistake completes the tournament). Every step is reversible with `stepBack`, and completing waits ten minutes after the last result.
+- **Dependencies.** WP-13b, WP-14, WP-17, WP-34, WP-42. Answers to questions 22 and 23; without them, the recommendations.
+- **Size.** L. **Review.** Fable.
+
+### WP-45. The look screen: draft, live preview, publish, history
+
+- **Goal.** An organizer changes their tournament's look against the real site and cannot publish one that is unreadable.
+- **Files.** New `src/app/[tournamentSlug]/admin/look/`, `src/features/tournaments/{commands.ts,domain/theme-derive.ts,domain/presets-look.ts}`, a migration for `tournaments.theme_draft`, the tournament layout (render the draft for an admin's preview request), `platform/files` (image conversion and limits).
+- **Design.** Sections 5.5 and 6. WP-27 owns the theme's schema, the contrast checks and the visual tests; this package owns the screen and what it adds.
+  - `theme-derive.ts`: from the organizer's choices (palette, mode, style choices) to the full token set, including every text colour. An imported theme with stored values the choices cannot express is kept as it is and marked custom until the organizer resets a group.
+  - About eight look presets, each a fixture of the visual suite.
+  - Commands: `saveThemeDraft`, `publishTheme` (refuses a failing look and names the failing pair), `discardThemeDraft`, `restoreTheme(auditId)`.
+  - The preview is the real page in a frame, requested with the draft and never cached.
+  - Uploads are resized and converted on the server; limits from section 6.3.
+- **Acceptance.** Changing a colour shows in the preview without publishing and is invisible to a signed-out visitor; a look that fails contrast cannot be published and the nearest working colour is offered; restoring a look from history brings back the exact earlier tokens; the imported tournaments' looks are unchanged until edited (screenshots against WP-27's baseline); every preset passes the visual suite at three widths; the wizard's step 3 (WP-43) uses the same presets and derivation.
+- **Tests.** Level 1 for derivation (property: any palette either derives a look that passes contrast or is refused); level 4 for the commands; visual tests per preset.
+- **Risks and rollback.** Derived text colours differ from what an existing tournament shows today. Imported themes keep their stored values, so nothing changes without the organizer's action.
+- **Dependencies.** WP-27, WP-42. The owner's choice from WP-41 for 5.5; answer to question 24.
+- **Size.** L. **Review.** Opus, with the owner looking at the presets.
+
+### WP-46. The platform console
+
+- **Goal.** Everything that is about the platform and not about one tournament is in one place that only the super admin sees.
+- **Files.** New `src/app/platform/` (layout and pages), `src/features/platform-console/`, `src/lib/reserved-slugs.ts` (add `platform`); the pages WP-14 (jobs) and WP-22 (bot accounts and workers) built move here.
+- **Design.** Sections 4.1 and 5.6. Pages: bot accounts and workers; live lobby sessions; the job queue with retry; creation requests and the allowlist; organizations and their tournaments, with "open this tournament's panel"; card-game bug reports; the mirror report (WP-39); usage against free-plan limits (ADR-13). Plain tables from the shared parts; no design work beyond that.
+- **Acceptance.** A platform admin can do from here everything section 4.2 marks "Super admin"; any other user gets "not found" for every address under `/platform` and for the commands behind it; opening another organization's tournament as platform admin leaves an audit row.
+- **Tests.** Level 4 for authorization of each page's query and command.
+- **Dependencies.** WP-14, WP-22, WP-24, WP-43 (requests).
+- **Size.** M. **Review.** Opus.
+
+### WP-47. Spike: results from a bot lobby without the organizer's own Valve league
+
+- **Goal.** Know whether an organizer can run a fully automatic tournament without obtaining a Valve league id, and choose the default.
+- **Files.** `docs/overhaul/spikes/WP-47.md`. Throwaway code only.
+- **Design.** `ORGANIZER_UX.md` section 8 and question 21. On staging, with test Steam accounts and the bot from WP-20: (1) play one short lobby game with no league and one inside an existing league; (2) record what the bot itself receives at game end (winner, duration, Dota match id, players); (3) ask the Steam Web API and OpenDota for both match ids, immediately and after a parse request, and record which fields come back; (4) with the owner's answer about Valve's league rules, state whether one platform-owned league can carry every tournament's lobbies.
+- **Acceptance.** The report answers: can a game's winner be recorded with no league (from the bot alone); can full player stats be fetched with no league; what a platform league would need. It recommends one default of the three (platform league; no league with reduced stats; the organizer's own league required) and lists the changes to WP-13b, WP-21 and the Automat settings that follow.
+- **Risks and rollback.** None; nothing merges. Needs a person at two Steam clients for a few minutes, so the owner or a tester takes part.
+- **Dependencies.** WP-20; the staging bot accounts (TEST_STRATEGY, "what the owner must create", point 8).
+- **Size.** S. **Review.** Fable.
+
+### WP-48. Proof of the test: a new organizer runs a season to the final
+
+- **Goal.** Evidence for the sentence this design is judged by, from a machine and from people.
+- **Files.** `e2e/organizer-season.spec.ts`, the fake bot script (WP-21), `docs/overhaul/runbooks/organizer-trial.md`, `docs/overhaul/ORGANIZER_TRIAL_RESULTS.md`.
+- **Design.**
+  - **Machine.** One end-to-end flow: a new user signs in, creates a groups-and-playoff tournament in the wizard, publishes it; sixteen seeded captains register; registration closes; the organizer starts the season; the fake bot plays every match, including one late team and one game outside a lobby; a tie appears and is settled by a tiebreaker match; the bracket is published; the final is played; the tournament is completed. The test counts the organizer's actions and fails above a fixed number (start with 10) and on any action through a control that section 4.2 says should not exist.
+  - **People.** A script for the owner to run with two or three organizers who have never seen the panel, on staging with test teams and the fake bot: the tasks (create, publish, handle a flagged team, start, fix a wrong result, settle a tie, publish the bracket), what to watch for, and what to record (where they stopped, what they asked, whether they would use it again). An agent writes the script and later turns the owner's notes into findings and follow-up packages.
+- **Acceptance.** The flow is green in CI three runs in a row; the trial has been run with at least two people and its findings are written down with a decision on each.
+- **Dependencies.** WP-18 (all parts), WP-42, WP-43, WP-44, WP-21 (fake bot).
+- **Size.** M. **Review.** Fable for the findings.
+
+### WP-49. On request: the captain's, caster's and viewer's screens with the same problems
+
+- **State.** Not scheduled, and not designed. `ORGANIZER_UX.md` section 7 lists the places (the captain's team page, registration, the account page, the caster desk, fantasy and pick'em pages, the platform's front page) and a direction for each. Each needs a short design pass like S2's before an implementer can build it; an Opus session can draft one from section 7 and the patterns of section 5.7, marked "(drafted by Opus)" for the owner's closer review.
+- **Order when it is scheduled.** Registration by invitation link first, because automatic acceptance (WP-44) works best with it; then the captain's page; then the rest.
+- **Dependencies.** WP-17, WP-16, WP-38.
+- **Size.** XL, to be split per place. **Review.** Fable.
+
+---
+
 ## Dropped packages
 
 | WP | Was | Why dropped |
@@ -566,6 +701,6 @@ What waits for the owner: WP-03 (staging part), WP-06 and WP-35 need the account
 
 ## Things deliberately left out of S1's packages
 
-- The new admin panel and wizard (S2), the card game (S3), business material (S4).
+- The card game (S3), business material (S4). The new admin panel and wizard were left to S2 and are now WP-41 to WP-49.
 - A redesign of the bot's lobby logic. Open bot gaps recorded in the owner's notes (forfeit voting, coin toss, Immortal Draft seat) are product work to schedule after WP-21.
 - Per-visitor language switching, free subdomains, organization-owned bot pools, billing, a second region. Each has a place in the design (ADR-08, ADR-10, ADR-05, ADR-17) and no package yet.
