@@ -2,9 +2,9 @@
 
 Written in S3 (2026-11-14) by Fable. It covers the owner's concern 3: the card game lacks depth, new players are confused, and they see no reason to play. It diagnoses today's game, compares three directions, and specifies the recommended one. The work packages are in `ROADMAP.md` under "S3. The card game".
 
-**Status of this file: sections 1 and 2 are written. Sections 3 to 9 wait for the simulation results of WP-50 and WP-51 (see `STATUS.md`, "Next step").**
+**In short.** Today's game is decided by the collection (a new player's deck loses to a season-long collector's 90% of the time), has nothing to read, and asks for a long setup before the first match. The recommended game keeps the board, the cards and the look, and changes three things: both players plan a round at the same time and reveal together; cards go straight onto objectives and totals are compared; and a deck of 12 has a budget. Around it: a first match that starts without sign-in and teaches in four rounds, a solo mode against the real teams of each real round, and real results that pay out cards. The rules were found by simulation, not written and then defended; section 9 has the numbers. Nine decisions are the owner's to confirm (section 12).
 
-Sources: the rules engine (`src/lib/card-lab/`), the game's screens (`src/components/card-lab/`), `inventory/CARDS.md`, the owner's decision log (`card-game-design.md` in the memory folder), and simulations run for this session (`docs/overhaul/sim/`). Nobody could watch a real player for this document, and there are no usage numbers; section 9 says how to get both.
+Sources: the rules engine (`src/lib/card-lab/`), the game's screens (`src/components/card-lab/`), `inventory/CARDS.md`, the owner's decision log (`card-game-design.md` in the memory folder), and simulations run for this session (`docs/overhaul/sim/`). Nobody could watch a real player for this document, and there are no usage numbers; section 11 says how to get both.
 
 ## 1. What the game is for, and for whom
 
@@ -343,7 +343,7 @@ A user whose account is linked to a roster player receives each card of their ow
 
 Live duels stay as the owner decided: by challenge or by link, with no automatic matchmaking, an Elo ranking per tournament, and no prizes for winning. Three things change.
 
-- **A match is quicker and cannot hang.** Both players plan at the same time, so there is one clock per round for both, and a match of six to eight rounds ends in about five minutes by construction. The hit-by-hit fight, which caused the stuck matches and most of the waiting, no longer exists.
+- **A match is quicker and cannot hang.** Both players plan at the same time, so there is one clock per round for both, and a match of five to eight rounds ends in about five minutes by construction. The hit-by-hit fight, which caused the stuck matches and most of the waiting, no longer exists.
 - **Open tables are visible.** A player who opens a link lobby today waits alone. The cards screen lists the lobbies that are open now ("Wolne stoły"), and a tournament that has a Discord webhook gets one message when a lobby opens. This is a list of invitations that already exist, so it stays within the owner's decision against matchmaking.
 - **A new player is not shut out.** With the deck budget (section 4), a welcome-pack deck meets a season-long collection on nearly equal strength.
 
