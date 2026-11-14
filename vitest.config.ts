@@ -9,6 +9,8 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: ['./src/__tests__/setup.ts'],
+    // Migrates the test database copy once per run (src/platform/db/testing.ts).
+    globalSetup: ['./src/platform/db/test-global-setup.ts'],
     include: ['src/**/*.{test,spec}.{ts,tsx}', 'scripts/tools/**/*.test.ts'],
     coverage: {
       provider: 'v8',
