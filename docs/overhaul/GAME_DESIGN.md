@@ -433,18 +433,38 @@ The one target missed is the top step of the skill ladder: the two strongest com
 
 | Problem found | Evidence | Change | After |
 |---|---|---|---|
-| The collector still won too often with a budget | Veteran won 67 to 74% | Count the position's modifier in a card's cost (an Offlane's +1 was free strength), and lower the budget from 66 to 60 so a new collection can spend all of it | 58.7% |
-| The leader stayed ahead | The player behind after round 3 won 18%; the winner had never trailed in 66% of matches | High Ground's bonus only for units standing on it (it had been applied to every unit by a misreading of the rule); Tank changed; and the Comeback card at 3 or more hit points behind | 32% and 54% |
-| Tank did nothing useful | Blocked ganks outnumbered successful ones 0.45 to 0.34 a match; switching Tank off left an Offlane-heavy deck exactly as strong | The Offlane takes the gank on itself | About one gank a match per player now lands |
-| Smoke was nearly unused | 0.3 free moves a match; a Support-heavy deck won 37% against the field, the lowest | Smoke acts when the Support is played, and brings a unit with it | See the deck table below |
-| Aura swamped the cards | With supports costing less, the best decks stacked Hard Supports | One Aura per objective | |
-| Any-deficit catch-up was too strong | An extra card for any deficit made the player behind after round 3 win 40% and raised the veteran's win rate by four points | Only at 3 or more hit points behind | 32%, and no effect on the veteran's rate |
+| The collector still won too often with a budget | Veteran won 67 to 74% | Count the position's modifier in a card's cost (an Offlane's +1 was free strength), and lower the budget from 66 to 60 so that a new collection can spend all of it | 59% |
+| The leader stayed ahead | The player behind after round 3 won 18%; the winner had never trailed in 66% of matches | High Ground's bonus only for units standing on it (it had been applied to every unit by a misreading of the rule), and the Comeback card at 3 or more hit points behind | 35% and 46% |
+| Tank did nothing useful | Blocked ganks outnumbered successful ones, 0.45 to 0.34 a match; switching Tank off left an Offlane-heavy deck exactly as strong | The Offlane takes the gank on itself | Ganks land 1.4 times a match per player |
+| Smoke was nearly unused | 0.3 free moves a match; a Support-heavy deck was the weakest, 37% against the field | Smoke acts when the Support is played, and brings a unit with it | 0.9 a match; a Support-heavy deck wins 49% against the best deck |
+| Aura swamped the cards | With supports costing less, the best decks stacked Hard Supports | One Aura per objective | A Hard Support-heavy deck wins 52% |
+| A catch-up card for any deficit was too strong | The player behind after round 3 won 40%, and the veteran's win rate rose four points | Only at 3 or more hit points behind | 35%, with no effect on the veteran's rate |
+| **Gank was the best thing in the game** | Once the Offlane no longer blocked it, a deck of eight Mids beat the best ordinary deck **93%**. Every extra Mid added about eight points | The ganked unit is out for one round and stays on the board (it used to return to its owner's hand), and a deck holds at most three cards of a position | Decks with one, two and three Mids win 47 to 53% against each other |
 
-Three things were tested and rejected: three orders a round (a third of orders went unused), drawing two cards a round (the veteran's win rate rose to 79%), and removing the late-game doubling (matches ran a round longer and comebacks fell).
+The last row is the reason to simulate before settling anything. The return-to-hand Gank reads well on paper and passed every test until the Tank change let it through; then one deck beat everything. No amount of reading the rules would have found it.
+
+Things tested and rejected: three orders a round (a third of orders went unused), drawing two cards a round (the veteran's win rate rose to 79%), removing the late-game doubling (matches ran a round longer and comebacks fell), a Gank that reaches only units no stronger than the Mid (it fixed the Mid deck but gave the advantage back to the bigger collection, 67%), and a Gank on the weakest unit (the Mid deck still won 91%).
 
 ### 9.4 Decks and abilities
 
-*(The table of deck kinds against each other, and the effect of switching each ability off, are added here from the final run.)*
+**A deck built around one position**, against the best ordinary deck from the same collection (400 games each, the stronger computer player on both sides):
+
+| Deck | Wins against the best deck | With that ability switched off |
+|---|---|---|
+| Three Carries | 53% | 49% |
+| Three Mids | 57% | 46% |
+| Three Offlanes | 42% | 48% |
+| Three Supports | 49% | 51% |
+| Three Hard Supports | 52% | 48% |
+| As many cards of one real team as possible | 63% | 60% |
+
+All five positions sit between 42 and 57%, so none is a mistake to build around and none is the only answer. The Offlane is the weakest to stack, which fits its job: it protects others at its own cost. The real-team deck is the strongest, by design: it is the reward for collecting a team, and it needs the right cards.
+
+**What each ability does in a match** (per player): Farma adds 3.8 strength; 1.4 ganks land; Smoke brings a unit 0.9 times; teammates together add 9 strength over the match; a unit is replaced on a full objective 0.9 times; 1.7 of about 12 orders go unused.
+
+**Switching an ability off** changes the comeback rate most for Gank (from 36% to 27% when it is off) and Aura (to 29%). Gank is the game's main way back into a match, which is why it had to be kept and tamed, not removed.
+
+*(The full table of deck kinds against each other, E6, is added from the final run.)*
 
 ### 9.5 Direction A, measured
 
