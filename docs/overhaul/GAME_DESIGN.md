@@ -149,7 +149,7 @@ In one sentence: **both players secretly give two orders, each one a card played
 
 In full:
 
-1. **Start.** Each player draws one card. The opening hand is four cards, with no draw in round 1. The hand holds at most seven. Each player gets two orders.
+1. **Start.** Each player draws one card. A player who is 3 or more hit points behind draws one more ("Comeback"). The opening hand is four cards, with no draw in round 1. The hand holds at most seven. Each player gets two orders.
 2. **Plan, hidden.** An order does one of two things:
    - **Play** a card from the hand onto an objective. If the player already has three units there, the new card replaces one of them, which is discarded.
    - **Move** a unit from one objective to any other. A unit moves once a round, and not in the round it was played.
@@ -203,7 +203,7 @@ Two abilities work as today (Farma, and Aura apart from the limit of one per obj
 | Units per side per objective | 3 | Limits how much strength can pile on one objective |
 | Orders per round | 2 | With 3, a third of all orders went unused |
 | Opening hand / draw per round / hand limit | 4 / 1 / 7 | Drawing 2 let the bigger collection matter more |
-| Catch-up rule | None | An extra card for the player behind was tested. It lifted the trailing player's chances from about 26% to 41%, which makes an early lead worth too little, and it is one more rule. The game meets its comeback target without it |
+| Comeback | +1 card when 3 or more hit points behind | Without it the player behind after round 3 wins about 23%; with it about 35%. Given for any deficit, it gave 40% and helped the bigger collection, so it starts at 3 |
 | Roshan | 2 damage | Makes one objective worth fighting over, and the other two a way round it |
 | Late game | Damage doubled from round 5 | Without it matches run a round longer and comebacks are rarer |
 | Farma maximum | +3 | |
@@ -326,7 +326,7 @@ Nothing is sold and nothing is traded. Packs are earned, found or given. If paid
 | Twoje karty | The player's own card for each series | New. Tournament players only |
 | Found on the site | As now (`finds.ts`) | Kept |
 | Given by the organizer | As now ("Daj paczki") | Kept |
-| Shards | 20 shards buy a pack | New, from the owner's original plan |
+| Shards | 30 shards buy a pack | New, from the owner's original plan |
 
 A player who plays each round earns three packs a round as today, plus the followed team's cards. The owner's earlier target of about 40 packs in a season, with four or five elite cards among them, still holds for packs; the team cards add a known, small amount on top. The organizer's setting "packs per round" keeps its meaning: it is the total of the automatic pack and the two earned ones, and the game splits it.
 
@@ -334,7 +334,7 @@ A player who plays each round earns three packs a round as today, plus the follo
 
 ### Duplicates and shards
 
-A duplicate is a second copy of the same card: same player, same series, same team-of-the-round mark. When a pack contains one, the reveal shows it turning into shards. Proposed values: wooden 1, bronze 2, silver 3, gold 5, elite 8, team of the round 10; a pack costs 20. These numbers are a starting point. The economy work package simulates a season and sets them so that shards add 10 to 20% to a regular player's packs.
+A duplicate is a second copy of the same card: same player, same series, same team-of-the-round mark. When a pack contains one, the reveal shows it turning into shards. Proposed values: wooden 1, bronze 2, silver 3, gold 5, elite 8, team of the round 10; a pack costs 30. A simulated Wiosenna season of 37 packs (the welcome ten and three a round) gives 185 cards, of which 68 are duplicates, mostly wooden and bronze. At these values they are worth about 180 shards, which is six more packs, or 16%. The economy work package repeats this with the new sources of cards and sets the final numbers, keeping shards at 10 to 20% of a regular player's packs.
 
 ### What packs contain
 
