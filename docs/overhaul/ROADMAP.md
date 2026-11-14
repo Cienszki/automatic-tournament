@@ -684,6 +684,144 @@ For each part of WP-18, "the part's S2 acceptance criteria" are: every control t
 
 ---
 
+## S3. The card game
+
+Added in S3 (2026-11-14) by Fable. The design is `GAME_DESIGN.md`; section numbers below refer to it. The game is rebuilt around a new core ("v2"): both players plan a round at the same time, cards go straight onto objectives, totals are compared, and a deck has a budget. Today's game ("v1") keeps running until v2 replaces it.
+
+**Order.** WP-50 and WP-51 ran inside S3. Then: WP-52 (engine), WP-53 (computer players), WP-54 (screen prototypes, the owner chooses), WP-55 (match screen), WP-56 (first run), WP-57 (deck screen). Those six need nothing from the new platform: they are pure code and client screens, and the result is a complete game against the computer that can be shown on a preview address. Then, on the new platform after WP-40: WP-58 (live duels), WP-59 (Kolejka), WP-60 (tournament links), WP-61 (economy), WP-62 (measurement and a trial with people), WP-63 (v1 is deleted).
+
+**How this meets WP-40.** WP-40 moves v1 to the new platform unchanged so that PDL S2 keeps its game. If WP-58 is ready before WP-40 reaches duels, WP-40 skips `duels.ts`, `useDuel.ts` and the duel tables, and takes only collections, packs, rewards, finds, grants and reports; that saves about a third of WP-40 (question 29 in `STATUS.md`). Collections are not affected by v2: the cards are the same cards.
+
+**Every screen** follows the owner's product rules in `BRIEF.md`. Website copy is Polish; the Polish terms the design fixes are in `GAME_DESIGN.md` sections 4 and 6.
+
+### WP-50. Card game simulation harness and baseline measurements
+
+- **State.** Done in S3, branch `wp/50-card-sim`, in review. A loader from the fixtures to cards, a seeded runner for v1 computer-against-computer games, eight experiments, results in `docs/overhaul/sim/baseline/REPORT.md`. `GAME_DESIGN.md` section 2 uses its numbers.
+- **Review.** Opus reviewer: the loader test (the site's own dataset builder gives the same cards), determinism, and that nothing under `src/lib/card-lab` changed.
+
+### WP-51. Prototype of the v2 core, with simulations
+
+- **State.** Done in S3, branch `wp/51-card-proto` (contains WP-50), in review. A pure v2 engine in `src/features/cards/domain/v2/`, computer players in `v2/ai/`, deck builders and experiments in `scripts/tools/card-sim/v2/`, results in `docs/overhaul/sim/v2/REPORT.md`. `GAME_DESIGN.md` sections 3, 4 and 9 use its numbers. The engine is a prototype: every rule is a knob, and WP-52 settles it.
+- **Review.** Fable or an Opus reviewer: the engine tests cover each numbered rule of section 4; no computer player except the one named `omniscient` reads the rival's hand, deck or plan.
+
+### WP-52. The v2 rules engine, settled
+
+- **Goal.** One pure, tested module that is the game: the rules of section 4 with their final numbers, and nothing else decides a match anywhere.
+- **Files.** `src/features/cards/domain/v2/` (from WP-51): `rules.ts`, `resolve.ts`, `plan.ts`, `gank.ts`, `strength.ts`, `setup.ts`, `view.ts`, `deck.ts`, `types.ts`; new `first-match.ts`, `team-deck.ts`, `auto-deck.ts`, `schema.ts`; `scripts/tools/card-sim/v2/` for the balance check.
+- **Design.** Sections 4, 6 and 9.
+  - Set `DEFAULT_RULES` to the table in section 4.6. Keep every number in `Rules`; delete knobs the design dropped only if nothing in the simulations uses them.
+  - `resolveRound` returns the events the screen plays back in order (plays and moves revealed, ganks, each bonus added, control per objective, damage, Farma, draws). The screen must not compute anything the engine already knows.
+  - `viewFor(state, side)` hides the rival's hand, deck order and plan; a test proves that no hidden card id reaches the view.
+  - `schema.ts`: a zod schema for the stored match state and for a submitted plan.
+  - `first-match.ts`: the fixed first match of section 6 (hands, the rival's four plans, Ancients at 6), built from a tournament's cards; a test plays it with the intended moves and with random legal moves, and the player wins both ways.
+  - `team-deck.ts`: a real team's deck for a round (section 7.1). `auto-deck.ts`: the best legal deck within the budget from a collection (the `best` builder of WP-51, moved from `scripts/`).
+  - **Balance check in CI.** A fixed-seed run of a few hundred games per cell asserts the bands of section 9 (match length, new player against veteran, skill ladder, comeback rate). A rule change that leaves a band fails the build, so balance cannot drift unnoticed.
+- **Acceptance.** Every numbered rule of section 4 has a test; the balance check passes on both fixtures; the module imports nothing from React, the database or `src/lib/card-lab` except card types and `baseMight`/`cardStrength` (moved here if WP-40 has already moved the card code).
+- **Tests.** Level 1, including property tests: a random legal plan never throws; capacity, hand limit and HP bookkeeping hold after any round; the same seed and plans give the same state.
+- **Risks and rollback.** The owner overrules a rule after seeing it (section 12). Every number is a knob with a simulation behind it, so a change is a knob and a re-run.
+- **Dependencies.** WP-51. **Size.** M. **Review.** Fable.
+
+### WP-53. Computer players for v2
+
+- **Goal.** Three practice levels that feel like people of different strength, and none of them cheats.
+- **Files.** `src/features/cards/domain/v2/ai/`.
+- **Design.** Section 9.3. Łatwy is `greedy` with mistakes, Średni is `responder`, Trudny is `planner` with mixed choices. A decision takes under 150 ms on a mid-range phone (measure in a browser test; lower the search width before lowering strength). The level that plays Kolejka's team decks is fixed (Średni) so that difficulty comes from the real team's cards. No level reads hidden information; the `omniscient` and `exploiter` players stay in `scripts/` as measuring tools.
+- **Acceptance.** With equal decks, each level beats the one below it between 60 and 85% over 1,000 games; the time limit holds; the ladder is part of WP-52's balance check.
+- **Dependencies.** WP-52. **Size.** S. **Review.** Opus.
+
+### WP-54. Prototypes of the match screen
+
+- **Goal.** The owner chooses how a round looks and feels before it is built: planning, the reveal, and the phone layout.
+- **Files.** New `src/app/prototype/cards/{match,first-match,deck}/page.tsx`, sharing WP-41's `?v=N` picker if it exists.
+- **Design.** Sections 4.7, 5 and 6. Three versions of the match screen on the real engine against the Łatwy computer, each at 390 px (portrait) and 1440 px: (1) the board as a map with the three objectives placed as today, hand at the bottom, plan by drag or tap-then-tap; (2) three columns, one per objective, the rival above and the player below, built for the phone first; (3) version 2 with the reveal played objective by objective as a short sequence instead of all at once. Each version shows the reveal with bonuses counting up and the Ancient being hit. The first match and the deck screen with its budget bar get one version each. Reuse the card face, objective models, Ancient models and end screen of v1.
+- **Acceptance.** All versions playable to the end of a match on a preview address; a Playwright job saves screenshots at both widths, and the implementer reads them and fixes overflow and boxes inside boxes; the report names what each version makes easy and hard.
+- **Tests.** The screenshot job only; this code is replaced by WP-55.
+- **Dependencies.** WP-52, WP-53. **Size.** L. **Review.** The owner chooses; Fable checks the product rules first.
+
+### WP-55. The match screen
+
+- **Goal.** A complete v2 match against the computer, on a phone and on a desktop.
+- **Files.** New `src/features/cards/components/match/` (board, objective, unit, hand, plan state, reveal player, end screen), replacing `src/components/card-lab/OutpostsGame.tsx` (1,743 lines) for v2; no file over 300 lines.
+- **Design.** Sections 4.7 and 6, in the version the owner chose (version 2 if none).
+  - Plan state lives in one reducer on the client; nothing is sent or resolved until "Zatwierdź". A plan can be undone action by action.
+  - The reveal is a player of the engine's events, with a "skip" tap. It never computes a result.
+  - What can be done glows; an illegal drop springs back with no text. The only texts on the board are names, numbers, the one line of section 6 and the "?" page.
+  - The planning screen shows the player's own totals and never a predicted result.
+  - Below 900 px the portrait layout is used. The notice "open on a computer" is deleted.
+- **Acceptance.** A match can be played to the end by touch at 390 px and by mouse at 1440 px; every ability and objective effect is named on the board the first time it happens and never in a panel; the reveal of a round takes under 6 seconds and can be skipped; component tests for the reducer and the reveal player; an end-to-end test plays a whole match with fixed seeds.
+- **Dependencies.** WP-52, WP-53, WP-54. **Size.** L. **Review.** Fable.
+
+### WP-56. The first run
+
+- **Goal.** A visitor makes their first move within a minute, and after the first win has cards, a deck and a next opponent without having read anything.
+- **Files.** `src/features/cards/components/first-run/`, the cards section entry (`CardLab.tsx` successor), `src/features/cards/guest.ts` (browser-only guest state); delete the intro overlay, `src/components/tour/` uses in the game, the hints list and the coach steps.
+- **Design.** Section 6. Guest play with no sign-in; the first match from `first-match.ts`; the pack as the reward; sign-in asked at the pack ("Zachowaj karty"); the team choice; the deck built by `auto-deck.ts`; "Otwórz wszystkie" after the first pack; the play button pointing at the next thing. Guest state is moved to the account on sign-in and grants nothing on the server by itself.
+- **Acceptance.** An end-to-end test from a fresh browser: first move possible within 10 seconds of load with no sign-in; the first match is won by the intended moves and by random legal moves; after sign-in the account has ten packs, a legal deck and a followed team; nothing in the flow is a panel of rules. The time from page load to the first move is recorded as an event (WP-62).
+- **Dependencies.** WP-55. On the old data layer this can run against today's `/api/cards`; on the new platform it uses WP-40's commands. **Size.** M. **Review.** Fable.
+
+### WP-57. The deck screen with a budget
+
+- **Goal.** Building a deck of 12 within the budget is quick, and the trade-offs are visible.
+- **Files.** `src/features/cards/components/deck/`, replacing `DeckBuilder.tsx`; deck storage (12 slots, version 2) beside the v1 deck until WP-63.
+- **Design.** Sections 4.1 and 7.5. One budget bar that fills as cards go in; each card shows its cost where today it shows only strength; cards that would break the budget or the one-per-player rule are dimmed, not hidden; "Ułóż za mnie" fills or completes the deck; teammates in the deck are joined by a mark, because that is the bonus to build around. A v1 deck is not converted: the first v2 deck is built automatically.
+- **Acceptance.** An illegal deck cannot be saved and the screen shows which rule it breaks by highlighting, not by a sentence; works at 390 px; a deck is built from an empty state in one tap.
+- **Dependencies.** WP-52. **Size.** M. **Review.** Opus.
+
+### WP-58. Live duels on v2
+
+- **Goal.** Two people play a v2 match live; it cannot hang, and a player who opens a table can be found.
+- **Files.** `src/features/cards/{commands.ts,queries.ts,jobs.ts}`, tables in `src/platform/db/schema/cards.ts` (`card_matches` with state and both pending plans, `card_tables` for open lobbies), the duel page.
+- **Design.** Sections 4.8 and 7.4; ADR-16.
+  - Commands: `openTable`, `takeSeat`, `submitPlan(matchId, round, plan)`, `resign`. `submitPlan` stores the plan; when both are in, or the round clock has run out, one transaction calls `resolveRound` and stores the new state and the events. A plan for a round that has already resolved is refused. A missing plan at the deadline counts as the plan as last saved (the client saves the draft plan as it is built), or an empty plan.
+  - One clock per round for both players, from the existing paces; no per-action clocks. A job settles matches whose deadline passed with no request.
+  - Each player reads only their own view. The rival's plan is never sent before the round resolves; a test asserts this on the wire format.
+  - "Wolne stoły": a query of open tables shown on the cards screen; one Discord message per opened table where the tournament has a webhook.
+  - Elo as today (`eloDelta` moves unchanged). Rankings start fresh for v2, since v1's were wiped on 2026-11-07 and hold almost nothing.
+- **Acceptance.** Two test users play a match to the end; a player who closes the tab mid-round loses nothing but that round's unsent actions; a match with one silent player ends by the clock with no manual step; the hidden-plan test passes; requests per player per round: one submit and polling as ADR-16 allows.
+- **Tests.** Level 4 for commands and the job (idempotent resolve, late plan, double submit, both silent); an end-to-end duel.
+- **Dependencies.** WP-52, WP-55, WP-40 (collections on the new platform) or its tables. **Size.** L. **Review.** Fable.
+
+### WP-59. Kolejka
+
+- **Goal.** After every real round there is something to play alone that counts.
+- **Files.** `src/features/cards/kolejka/{domain.ts,commands.ts,queries.ts,jobs.ts}`, tables `card_rounds`, `card_round_results`; the Kolejka view in the cards section.
+- **Design.** Section 7.1. A job opens a Kolejka when a round's games are in (the trigger of today's `rewards.ts`): it stores the opponents (team decks from `team-deck.ts`, five at most, chosen as the section says) so they never change afterwards. A counted match is played on the server: the client submits plans, the server runs the computer and the engine, so a result cannot be forged. Practice replays run on the client and store nothing. Points, the season ranking, and the two earned packs (first counted match finished, first counted win), each granted once.
+- **Acceptance.** On seeded tournaments: a Kolejka opens once per round with fixed opponents; a second counted match against the same opponent in the same round is refused; packs are granted once (idempotency test); the ranking sums correctly; a tournament with 100 teams shows five opponents; a tournament whose round has two teams shows two.
+- **Dependencies.** WP-52, WP-53, WP-55, WP-40, WP-14 (jobs). **Size.** L. **Review.** Fable.
+
+### WP-60. The tournament in the game, and the game on the site
+
+- **Goal.** A real result is felt in the game the same evening, and the site leads to the game.
+- **Files.** `src/features/cards/rewards/` (followed team, own cards), the series page, the team-of-the-round announcement, the notification job.
+- **Design.** Sections 7.2, 7.3 and 7.6. "Twoja drużyna": one followed team per user per tournament, changeable between rounds; when its series is final, grant that series' cards (five on a win, one on a loss) once. "Twoje karty": a user linked to a roster player is granted their own card for each series. The series page shows the cards issued from it; a card links to its series. One notification per real round per user, combining Kolejka, the followed team and own cards.
+- **Acceptance.** Grants are idempotent and survive a corrected result (a result changed after the grant does not grant twice and does not take cards back); a user who follows no team gets nothing and no error; one notification per round at most.
+- **Dependencies.** WP-40, WP-13b (results), WP-38 (accounts linked to roster players). **Size.** M. **Review.** Opus.
+
+### WP-61. Economy: shards and the season simulation
+
+- **Goal.** Duplicates have a use, and the numbers of section 8 are set by a simulated season.
+- **Files.** `scripts/tools/card-sim/v2/exp/economy.ts`, `src/features/cards/domain/shards.ts`, the pack reveal, the collection commands.
+- **Design.** Section 8. Simulate full seasons on both fixtures with the income of section 8 for three kinds of player (collector who never plays, regular, tournament player), and set the shard values and pack price so that shards add 10 to 20% to a regular player's packs. Report elite cards, complete teams and budget-legal deck quality at mid-season and at the end. Then build: a duplicate turns into shards at the reveal; a pack is bought with shards.
+- **Acceptance.** The simulation report is committed with the chosen numbers; buying a pack is idempotent; existing duplicates in imported collections are converted once by a script with a dry run.
+- **Dependencies.** WP-51 (its duplicates experiment), WP-40. **Size.** M. **Review.** Opus.
+
+### WP-62. Measurement, and a trial with people
+
+- **Goal.** Evidence for goals G1, G2 and G7 from real players, which no simulation can give.
+- **Files.** Events in `src/features/cards/events.ts` (through the platform's logging, no third-party tracker), `docs/overhaul/runbooks/card-trial.md`, `docs/overhaul/CARD_TRIAL_RESULTS.md`.
+- **Design.** Section 11. Events: section opened, first move (with seconds since load), first match finished, sign-in at the pack, second match started, match length, Kolejka match played, return within a day of a real round. A script for the owner to run with five people who have never seen the game: what to say (nothing), what to watch, what to record. An agent turns the notes into findings and follow-up packages.
+- **Acceptance.** A page in `/platform` shows the funnel per tournament; the trial has been run with at least five people and each finding has a decision.
+- **Dependencies.** WP-56, WP-59. **Size.** M. **Review.** Fable for the findings. The owner runs the trial.
+
+### WP-63. Retire v1
+
+- **Goal.** One card game in the code.
+- **Files.** Delete `outposts.ts`, `outposts-ai.ts`, `tutorial.ts`, `pvp.ts` and their successors under `features/cards`, `OutpostsGame.tsx`, v1 duel code and tables, v1 deck storage, the v1 experiments in `scripts/tools/card-sim/` (keep the loader).
+- **Acceptance.** `check:unreachable` passes; no import of a v1 module remains; a user with only a v1 deck gets an automatic v2 deck.
+- **Dependencies.** WP-58, WP-59 live for one full real round with no open defect. **Size.** S. **Review.** Opus.
+
+---
+
 ## Dropped packages
 
 | WP | Was | Why dropped |
