@@ -132,7 +132,7 @@ The game keeps its name, "Kontrola mapy". Every number below is a setting in one
 
 - 12 cards, at least one of each position.
 - One card per player and team, as today.
-- **Budget: the cards' strength adds up to at most 66.** A card's cost is the strength printed on it. The +1 of a team-of-the-round card is free: it adds strength without adding cost.
+- **Budget: the cards' strength adds up to at most 60.** A card's cost is the strength printed on it. The +1 of a team-of-the-round card is free: it adds strength without adding cost.
 
 A new player's ten packs hold about 50 cards, enough to spend the whole budget. A larger collection gives more ways to spend it, not more of it.
 
@@ -149,7 +149,7 @@ In one sentence: **both players secretly give two orders, each one a card played
 
 In full:
 
-1. **Start.** Each player draws one card. A player with fewer hit points than the rival draws one more ("Comeback"). The opening hand is four cards, with no draw in round 1. The hand holds at most seven. Each player gets two orders.
+1. **Start.** Each player draws one card. The opening hand is four cards, with no draw in round 1. The hand holds at most seven. Each player gets two orders.
 2. **Plan, hidden.** An order does one of two things:
    - **Play** a card from the hand onto an objective. If the player already has three units there, the new card replaces one of them, which is discarded.
    - **Move** a unit from one objective to any other. A unit moves once a round, and not in the round it was played.
@@ -172,13 +172,14 @@ A unit's strength is its card's strength plus its bonuses. A card's strength com
 | Mid | | **Gank** | When played from the hand, the rival's strongest unit on that objective returns to the rival's hand |
 | Offlane | +1 | **Tank** | A gank on its objective takes the Offlane, and spares everyone else |
 | Support | −1 | **Smoke** | When played from the hand, one of the player's other units may move to its objective without an order |
-| Hard Support | −1 | **Aura** | +1 strength to each of the player's units on its objective, itself included |
+| Hard Support | −1 | **Aura** | +1 strength to each of the player's units on its objective, itself included. A second Hard Support on the same objective adds nothing more |
 
 Two more bonuses: **Drużyna**, +1 to each unit that shares an objective with a card of the same real team; and **Drużyna kolejki**, +1 on a team-of-the-round card.
 
-Three of the five abilities work as today. Two changed, and the simulations are the reason:
+Two abilities work as today (Farma, and Aura apart from the limit of one per objective). Three changed, and the simulations are the reason:
 
 - **Tank.** In the first prototype an Offlane blocked ganks outright. Blocked ganks outnumbered successful ones, and switching Tank off changed nothing for a deck full of Offlanes. Now the Offlane takes the gank on itself: the gank always does something, and the Offlane still protects the Carry beside it.
+- **Aura.** When every Hard Support on an objective added its own +1 to everyone, the best decks were stacks of Hard Supports and the bonus outweighed the cards. One Aura per objective keeps a Hard Support worth having on each objective and makes a second one there a waste.
 - **Smoke.** As a free move from where the Support stood, it was used once in three matches and a Support-heavy deck was the weakest of all. Now it acts when the Support arrives, bringing a second unit with it. That is what a smoke is for in Dota: several heroes turn up where one was expected.
 
 ### 4.5 Objectives
@@ -197,12 +198,12 @@ Three of the five abilities work as today. Two changed, and the simulations are 
 | Setting | Value | Why |
 |---|---|---|
 | Deck size / minimum per position | 12 / 1 | A choice for a 50-card collection; most of the deck is seen in a match |
-| Budget | 66 | 5.5 per card; a 10-pack collection can spend it all |
+| Budget | 60 | 5 per card. A 10-pack collection can spend all of it; at 66 it could not, and the collector gained from that |
 | Ancient hit points | 12 | Matches of five to six rounds |
 | Units per side per objective | 3 | Limits how much strength can pile on one objective |
 | Orders per round | 2 | With 3, a third of all orders went unused |
 | Opening hand / draw per round / hand limit | 4 / 1 / 7 | Drawing 2 let the bigger collection matter more |
-| Comeback | +1 card for the player behind | Raises the trailing player's chances without changing who is favoured (section 9) |
+| Catch-up rule | None | An extra card for the player behind was tested. It lifted the trailing player's chances from about 26% to 41%, which makes an early lead worth too little, and it is one more rule. The game meets its comeback target without it |
 | Roshan | 2 damage | Makes one objective worth fighting over, and the other two a way round it |
 | Late game | Damage doubled from round 5 | Without it matches run a round longer and comebacks are rarer |
 | Farma maximum | +3 | |
