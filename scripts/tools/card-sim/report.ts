@@ -31,7 +31,8 @@ export function writeReport(): void {
       lines.push('');
       for (const n of t.notes ?? []) lines.push(n, '');
     }
-    lines.push(`Run: \`${r.command}\` (${r.gamesPlayed} games, ${(r.ms / 1000).toFixed(1)} s).`, '');
+    const reused = r.experiment === 'snowball' || r.experiment === 'abilities';
+    lines.push(`Run: \`${r.command}\` (${r.gamesPlayed} games, ${(r.ms / 1000).toFixed(1)} s${reused ? '; run after `shape` in one process it reuses those games, alone it plays them again, with the same result' : ''}).`, '');
   }
   writeFileSync(join(OUT_DIR, 'REPORT.md'), lines.join('\n'));
 }

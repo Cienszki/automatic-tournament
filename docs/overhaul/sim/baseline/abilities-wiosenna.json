@@ -1,0 +1,124 @@
+{
+ "experiment": "abilities",
+ "slug": "wiosenna",
+ "seed": 1,
+ "gamesPlayed": 1000,
+ "gamesArg": null,
+ "ms": 12,
+ "command": "npx tsx scripts/tools/card-sim/run.ts abilities --slug wiosenna --seed 1",
+ "tables": [
+  {
+   "title": "6a. Abilities in use, per game (wiosenna)",
+   "measured": "Hard vs hard, equal decks, the games of table 1; per-game averages over both sides.",
+   "columns": [
+    "Measure",
+    "Per game"
+   ],
+   "rows": [
+    [
+     "Smoke: turns with a free group move",
+     "3.54"
+    ],
+    [
+     "Mid (Gank): units planned objective-to-objective",
+     "0.95"
+    ],
+    [
+     "Twin Gates: non-Mid units planned objective-to-objective",
+     "0.31"
+    ],
+    [
+     "Carry (Farma): strength gained in total (both sides)",
+     "1.80"
+    ],
+    [
+     "Offlane (Tank): hits where an alive enemy Offlane made other alive targets illegal",
+     "3.62"
+    ],
+    [
+     "Hits in total (for scale)",
+     "19.01"
+    ],
+    [
+     "Hard Supp (Aura): units fighting with an aura bonus",
+     "8.73"
+    ],
+    [
+     "   of those with a bonus from another Hard Supp (not only its own +1)",
+     "5.27"
+    ],
+    [
+     "Drużyna: units fighting with the team bonus",
+     "1.75"
+    ],
+    [
+     "Units fighting in total (for scale)",
+     "24.36"
+    ]
+   ]
+  },
+  {
+   "title": "6b. Objectives (wiosenna)",
+   "measured": "Same games (decided ones). Each game uses 3 of the 6 objectives. First-taker = the side that took it first in that game.",
+   "columns": [
+    "Objective",
+    "Games with it",
+    "Taken at least once",
+    "First-taker wins [95% CI]",
+    "Takes per game",
+    "Owner effect triggered"
+   ],
+   "rows": [
+    [
+     "roshan",
+     488,
+     "488",
+     "44.9% [40.5–49.3]",
+     "3.97",
+     "takes worth 2: 3.97 per game"
+    ],
+    [
+     "outpost",
+     485,
+     "484",
+     "40.5% [36.2–44.9]",
+     "3.26",
+     "turns with 4 orders: 1.77; of those the 4th order was used: 80.8%"
+    ],
+    [
+     "lotus",
+     529,
+     "529",
+     "43.3% [39.1–47.5]",
+     "3.42",
+     "turns owned: 1.78; extra cards actually drawn: 1.38"
+    ],
+    [
+     "highground",
+     500,
+     "490",
+     "48.4% [44.0–52.8]",
+     "2.46",
+     "defenders with the +1: 2.50 per game, in 1.52 fights"
+    ],
+    [
+     "gates",
+     509,
+     "496",
+     "54.6% [50.2–59.0]",
+     "2.45",
+     "non-Mid objective-to-objective units: 0.61 per game"
+    ],
+    [
+     "tormentor",
+     489,
+     "480",
+     "49.0% [44.5–53.4]",
+     "2.93",
+     "takes: 2.93 per game; cards drawn for it: 5.49 per game"
+    ]
+   ]
+  }
+ ],
+ "data": {}
+}

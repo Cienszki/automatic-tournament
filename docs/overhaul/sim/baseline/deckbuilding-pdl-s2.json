@@ -1,0 +1,197 @@
+{
+ "experiment": "deckbuilding",
+ "slug": "pdl-s2",
+ "seed": 1,
+ "gamesPlayed": 16000,
+ "gamesArg": null,
+ "ms": 418928,
+ "command": "npx tsx scripts/tools/card-sim/run.ts deckbuilding --slug pdl-s2 --seed 1",
+ "tables": [
+  {
+   "title": "7. Deck building: challengers against autoDeck from the same 40-pack collection (pdl-s2)",
+   "measured": "200 collections x 10 games per challenger, hard vs hard, first player alternating. Gaps are challenger minus autoDeck.",
+   "columns": [
+    "Challenger",
+    "Challenger wins [95% CI]",
+    "Decided / stalled",
+    "Strength gap",
+    "Rating gap",
+    "Cards with a teammate: challenger vs autoDeck",
+    "Cards of the role",
+    "Illegal decks"
+   ],
+   "rows": [
+    [
+     "(i) most real-team pairs, then strongest",
+     "43.5% [41.3–45.6]",
+     "2000 / 0",
+     "-0.86",
+     "-4.4",
+     "20.0 vs 19.3",
+     "",
+     0
+    ],
+    [
+     "(ii) 2 per role, then all free slots Carry",
+     "42.4% [40.3–44.6]",
+     "2000 / 0",
+     "-1.33",
+     "-9.1",
+     "13.3 vs 19.3",
+     "10.8",
+     0
+    ],
+    [
+     "(ii) 2 per role, then all free slots Mid",
+     "38.9% [36.7–41.0]",
+     "2000 / 0",
+     "-1.34",
+     "-8.7",
+     "12.3 vs 19.3",
+     "11.6",
+     0
+    ],
+    [
+     "(ii) 2 per role, then all free slots Offlane",
+     "47.9% [45.8–50.1]",
+     "2000 / 0",
+     "-0.95",
+     "-9.1",
+     "13.0 vs 19.3",
+     "11.6",
+     0
+    ],
+    [
+     "(ii) 2 per role, then all free slots Soft Support",
+     "45.9% [43.7–48.1]",
+     "2000 / 0",
+     "-1.66",
+     "-8.1",
+     "13.9 vs 19.3",
+     "10.7",
+     0
+    ],
+    [
+     "(ii) 2 per role, then all free slots Hard Support",
+     "56.9% [54.7–59.0]",
+     "2000 / 0",
+     "-1.80",
+     "-9.2",
+     "13.0 vs 19.3",
+     "11.6",
+     0
+    ],
+    [
+     "(iii) random legal deck",
+     "8.7% [7.5–10.0]",
+     "2000 / 0",
+     "-3.03",
+     "-18.8",
+     "16.0 vs 19.3",
+     "",
+     0
+    ],
+    [
+     "(iv) strongest, 3 best swapped for next-best unused",
+     "18.2% [16.6–20.0]",
+     "2000 / 0",
+     "-0.58",
+     "-3.0",
+     "19.6 vs 19.3",
+     "",
+     0
+    ]
+   ]
+  }
+ ],
+ "data": {
+  "(i) most real-team pairs, then strongest": {
+   "wins": 869,
+   "decided": 2000,
+   "stalled": 0,
+   "mightGap": -0.8625000000000004,
+   "ratingGap": -4.389250000000005,
+   "teamPaired": 20,
+   "bestTeamPaired": 19.285,
+   "ofRole": null,
+   "illegal": 0
+  },
+  "(ii) 2 per role, then all free slots Carry": {
+   "wins": 848,
+   "decided": 2000,
+   "stalled": 0,
+   "mightGap": -1.334000000000001,
+   "ratingGap": -9.112500000000017,
+   "teamPaired": 13.335,
+   "bestTeamPaired": 19.285,
+   "ofRole": 10.795,
+   "illegal": 0
+  },
+  "(ii) 2 per role, then all free slots Mid": {
+   "wins": 777,
+   "decided": 2000,
+   "stalled": 0,
+   "mightGap": -1.3372499999999985,
+   "ratingGap": -8.66000000000002,
+   "teamPaired": 12.345,
+   "bestTeamPaired": 19.285,
+   "ofRole": 11.56,
+   "illegal": 0
+  },
+  "(ii) 2 per role, then all free slots Offlane": {
+   "wins": 959,
+   "decided": 2000,
+   "stalled": 0,
+   "mightGap": -0.9469999999999995,
+   "ratingGap": -9.067000000000009,
+   "teamPaired": 13.03,
+   "bestTeamPaired": 19.285,
+   "ofRole": 11.615,
+   "illegal": 0
+  },
+  "(ii) 2 per role, then all free slots Soft Support": {
+   "wins": 918,
+   "decided": 2000,
+   "stalled": 0,
+   "mightGap": -1.6572499999999988,
+   "ratingGap": -8.113999999999999,
+   "teamPaired": 13.895,
+   "bestTeamPaired": 19.285,
+   "ofRole": 10.725,
+   "illegal": 0
+  },
+  "(ii) 2 per role, then all free slots Hard Support": {
+   "wins": 1137,
+   "decided": 2000,
+   "stalled": 0,
+   "mightGap": -1.7962499999999986,
+   "ratingGap": -9.159249999999988,
+   "teamPaired": 13.035,
+   "bestTeamPaired": 19.285,
+   "ofRole": 11.55,
+   "illegal": 0
+  },
+  "(iii) random legal deck": {
+   "wins": 174,
+   "decided": 2000,
+   "stalled": 0,
+   "mightGap": -3.0315,
+   "ratingGap": -18.837749999999996,
+   "teamPaired": 15.98,
+   "bestTeamPaired": 19.285,
+   "ofRole": null,
+   "illegal": 0
+  },
+  "(iv) strongest, 3 best swapped for next-best unused": {
+   "wins": 364,
+   "decided": 2000,
+   "stalled": 0,
+   "mightGap": -0.5827499999999987,
+   "ratingGap": -3.0464999999999973,
+   "teamPaired": 19.555,
+   "bestTeamPaired": 19.285,
+   "ofRole": null,
+   "illegal": 0
+  }
+ }
+}
