@@ -43,7 +43,9 @@ describe('experiment cells', () => {
   it('a game is the same every time it is played from its cell and index', () => {
     const cell: CellSpec = { key: 't', slug: 'wiosenna', seed: 5, games: 2, seats: [{ agent: 'planner', deck: { kind: 'builder', builder: 'best', packs: 20 } }, { agent: 'greedy', deck: { kind: 'builder', builder: 'flat', packs: 20 } }] };
     const a = playCellGame(cell, 1); const b = playCellGame(cell, 1);
-    expect(JSON.stringify(a)).toBe(JSON.stringify(b));
+    // Thinking times are measured, not played: they differ between runs and are left out
+    const played = (g: typeof a) => JSON.stringify(g, (k, v) => (k === 'thinkMs' || k === 'slowestMs' ? undefined : v));
+    expect(played(a)).toBe(played(b));
     expect(a.xSide).toBe(1);
   });
 
