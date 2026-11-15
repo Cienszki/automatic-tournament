@@ -7,6 +7,7 @@ import { validatePlan } from '../plan';
 import type { Plan } from '../types';
 import { makeAgent, type Agent, type AgentName } from './agents';
 import { guessState } from './guess';
+import type { PlannerConfig } from './planner';
 import { mulberry32 } from './rng';
 import type { StrikePolicy } from './strikes';
 
@@ -22,12 +23,14 @@ export interface LevelSpec {
   strikes: StrikePolicy;
   /** Share of rounds in which it leaves the last action of its plan undone */
   slip: number;
+  /** Search settings, when they differ from the planner's own */
+  planner?: Partial<PlannerConfig>;
 }
 
 export const LEVELS: Record<Opponent, LevelSpec> = {
   easy: { name: 'Łatwy', color: '#3fbf7f', agent: 'greedy', strikes: 'obvious', slip: 0.3 },
   medium: { name: 'Średni', color: '#f0c419', agent: 'responder', strikes: 'mixed', slip: 0 },
-  hard: { name: 'Trudny', color: '#e5534b', agent: 'planner-mixed', strikes: 'mixed', slip: 0 },
+  hard: { name: 'Trudny', color: '#e5534b', agent: 'planner', strikes: 'mixed', slip: 0, planner: { samples: 6, width: 6, keep: 12 } },
   kolejka: { name: 'Kolejka', color: '#5ab0ff', agent: 'greedy', strikes: 'obvious', slip: 0 },
 };
 
@@ -36,7 +39,7 @@ export interface LevelOptions { pool: GCard[]; seed: number }
 /** The computer player for a level */
 export function makeOpponent(level: Opponent, opts: LevelOptions): Agent {
   const spec = LEVELS[level];
-  const base = makeAgent(spec.agent, { pool: opts.pool, seed: opts.seed, strikes: spec.strikes });
+  const base = makeAgent(spec.agent, { pool: opts.pool, seed: opts.seed, strikes: spec.strikes, planner: spec.planner });
   if (!spec.slip) return base;
   const rnd = mulberry32(opts.seed ^ 0x2545f491);
   return {

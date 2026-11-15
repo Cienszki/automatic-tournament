@@ -10,6 +10,7 @@ import { planCost } from '@/features/cards/domain/v2/plan';
 import { contested, powerWithout, type Strikes } from '@/features/cards/domain/v2/fight';
 import { finishRound, revealRound } from '@/features/cards/domain/v2/resolve';
 import type { StrikePolicy } from '@/features/cards/domain/v2/ai/strikes';
+import { makeOpponent, type Opponent } from '@/features/cards/domain/v2/ai/levels';
 import type { Rules } from '@/features/cards/domain/v2/rules';
 import { newMatch, type MatchOptions } from '@/features/cards/domain/v2/setup';
 import type { EndReason, MatchEvent, Plan, Side } from '@/features/cards/domain/v2/types';
@@ -28,6 +29,8 @@ export interface SideRecord {
   differsFromGreedy: number; decisions: number;
   /** Fight step: hits that put a unit out, hits the rival had guarded, contested objectives this side fought on */
   hits: number; hitsGuarded: number; fights: number;
+  /** Time this side's computer player took: all decisions of the match, and its slowest round (plan + fight), in ms */
+  thinkMs: number; slowestMs: number;
 }
 
 export interface MatchRecord {
@@ -48,7 +51,7 @@ export interface MatchRecord {
 
 const emptySide = (): SideRecord => ({
   plays: 0, moves: 0, freeMoves: 0, smokeMoves: 0, gatesMoves: 0, unusedOrders: 0, ordersTotal: 0, ganks: 0, gankBlocked: 0, gankEmpty: 0,
-  ganked: 0, replaces: 0, farmGrowth: 0, aura: 0, team: 0, highGround: 0, handEnd: 0, deckEnd: 0, damage: {}, differsFromGreedy: 0, decisions: 0, hits: 0, hitsGuarded: 0, fights: 0,
+  ganked: 0, replaces: 0, farmGrowth: 0, aura: 0, team: 0, highGround: 0, handEnd: 0, deckEnd: 0, damage: {}, differsFromGreedy: 0, decisions: 0, hits: 0, hitsGuarded: 0, fights: 0, thinkMs: 0, slowestMs: 0,
 });
 
 function count(rec: MatchRecord, events: MatchEvent[], objectives: ObjId[]): void {
@@ -90,18 +93,24 @@ export interface MatchSetup {
   planner?: Partial<PlannerConfig>;
   /** Fight policy per side, in place of each agent's own */
   strikes?: [StrikePolicy | undefined, StrikePolicy | undefined];
+  /** A practice level per side, in place of the agent named in `agents` */
+  opponents?: [Opponent | undefined, Opponent | undefined];
   keepEvents?: boolean;
 }
 
 export function playMatch(m: MatchSetup): MatchRecord {
   let s = newMatch(m.decks, stream(m.seed, 'deal'), m.rules, m.options);
-  const agents: [Agent, Agent] = [0, 1].map((i) => makeAgent(m.agents[i], { pool: m.pool, seed: subSeed(m.seed, 'agent', i), planner: m.planner, strikes: m.strikes?.[i] })) as [Agent, Agent];
+  const agents: [Agent, Agent] = [0, 1].map((i) => (m.opponents?.[i]
+    ? makeOpponent(m.opponents[i]!, { pool: m.pool, seed: subSeed(m.seed, 'agent', i) })
+    : makeAgent(m.agents[i], { pool: m.pool, seed: subSeed(m.seed, 'agent', i), planner: m.planner, strikes: m.strikes?.[i] }))) as [Agent, Agent];
+  const roundMs: [number, number] = [0, 0];
+  const timed = <T>(side: Side, f: () => T): T => { const t = performance.now(); const out = f(); roundMs[side] += performance.now() - t; return out; };
   const rec: MatchRecord = { winner: null, reason: 'draw', rounds: 0, objectives: [...s.objectives], hp: [], control: [], tiedRounds: 0, openRounds: 0, fightSlots: 0, fightFlips: 0, sides: [emptySide(), emptySide()], events: m.keepEvents ? [] : undefined };
   while (!s.result) {
     const plans: [Plan | null, Plan | null] = [null, null];
     for (const side of [0, 1] as Side[]) {
       if (agents[side].omniscient) continue;
-      const d = agents[side].decide(viewFor(s, side));
+      const d = timed(side, () => agents[side].decide(viewFor(s, side)));
       plans[side] = d.plan;
       if (d.greedy) { rec.sides[side].decisions++; if (planKey(d.greedy) !== planKey(d.plan)) rec.sides[side].differsFromGreedy++; }
     }
@@ -119,7 +128,7 @@ export function playMatch(m: MatchSetup): MatchRecord {
     let strikes: [Strikes, Strikes] | undefined;
     if (m.rules.fight !== 'none') {
       const before = contested(mid.state).map((at) => ({ at, p: powerWithout(mid.state, at, []) }));
-      strikes = [agents[0].strike(mid.state, 0), agents[1].strike(mid.state, 1)];
+      strikes = [timed(0, () => agents[0].strike(mid.state, 0)), timed(1, () => agents[1].strike(mid.state, 1))];
       const out2 = finishRound(mid.state, strikes);
       rec.fightSlots += before.length;
       for (const b of before) {
@@ -129,6 +138,7 @@ export function playMatch(m: MatchSetup): MatchRecord {
       }
     }
     const out = finishRound(mid.state, strikes, mid.events);
+    for (const side of [0, 1] as Side[]) { const r = rec.sides[side]; r.thinkMs += roundMs[side]; r.slowestMs = Math.max(r.slowestMs, roundMs[side]); roundMs[side] = 0; }
     count(rec, out.events, rec.objectives);
     rec.events?.push(out.events);
     s = out.state;
