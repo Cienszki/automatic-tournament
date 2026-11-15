@@ -136,6 +136,8 @@ The game keeps its name, "Kontrola mapy". Every number below is a setting in one
 
 A new player's ten packs hold about 50 cards, enough to spend the whole budget. A larger collection gives more ways to spend it, not more of it.
 
+**Where the budget applies.** In matches between people that count for the ranking, and in practice against the computer. It does **not** apply in Kolejka (section 7.1): there a player brings the strongest deck their collection can make, because that is where a collection is meant to pay. Two players may also agree to a duel without the budget ("bez limitu"); it is not ranked. So a player has two decks, a budget deck and a free one, each built for them at the start and each theirs to change.
+
 ### 4.2 The board
 
 - Three objectives, drawn from the six of today's game.
@@ -341,7 +343,18 @@ The game's clock is the real tournament. Each real round should give a player a 
 When a real round is finished and its games are in (the moment that already triggers round packs, `src/server/card-lab/rewards.ts`), the game opens that round's **Kolejka**.
 
 - **Opponents.** Every team that played in the round is an opponent, played by the computer. A team's deck is that team's own cards: the five players' cards from this round's series, filled up to the deck size with the same players' most recent earlier series. Early in a season a team has too few cards for that (after two rounds of PDL S2 the typical team deck held 5 cards, and the simulated average player beat four bands out of five more than half the time), so a short deck is filled by repeating the team's own cards until it has twelve. This last rule is not simulated yet; WP-59 checks it on the first rounds of both fixtures. The computer's team decks ignore the budget, the one-card-per-player rule and the limit of three per position. Their strength is whatever the team really did, so the bottom of the table is beatable by anyone and the team that dominated the round is a hard opponent. In a tournament with many teams, the game shows five: the weakest, the strongest, and three spread between them.
-- **How hard it is.** The computer plays team decks at its easiest honest level, so the difficulty comes from the team's real cards and not from the program. Simulated on Wiosenna's 19 teams over the season, with the team decks sorted into five bands by strength: a new player who makes the obvious move each round wins 92% against the weakest band, then 62%, 36%, 33%, and 10% against the strongest; a strong player with the same new collection wins 99%, 88%, 64%, 46% and 18%. With the computer on a stronger level the average player won under 20% from the third band up, which is why the level is fixed low.
+- **No budget here: this is where the collection pays.** The player's Kolejka deck has no budget (the other deck rules stay: twelve cards, one to three per position, one card per player and team). The real teams' decks have none either. So the opponents at the top of the table can be beaten only by a strong collection played well, and every pack opened moves a player up this ladder.
+- **How hard it is.** The computer plays team decks at its easiest honest level, so the difficulty comes from the team's real cards and not from the program. Simulated on Wiosenna's 19 teams over the season, with the team decks sorted into five bands by strength, weakest to strongest:
+
+  | Player | Collection | Band 1 | Band 2 | Band 3 | Band 4 | Band 5 |
+  |---|---|---|---|---|---|---|
+  | Makes the obvious move | 10 packs | 96% | 77% | 44% | 30% | 7% |
+  | Makes the obvious move | 20 packs | 100% | 92% | 75% | 57% | 21% |
+  | Makes the obvious move | 40 packs | 100% | 98% | 90% | 77% | 35% |
+  | Strong | 10 packs | 100% | 89% | 68% | 50% | 17% |
+  | Strong | 40 packs | 100% | 99% | 96% | 93% | 58% |
+
+  With the budget on, the same table barely moved with the size of the collection (the average player beat the top band 4% of the time with 10 packs and 9% with 40), which is the owner's objection in numbers. With the computer on a stronger level the average player won under 20% from the third band up, which is why the level is fixed low.
 - **One counted match per opponent per round.** A player may play each opponent once for points. They may replay any opponent, of this round or of past rounds, as often as they like for practice. This keeps the counted play to at most five matches a round, and makes each one matter.
 - **Points and the ranking.** Beating an opponent gives points equal to its place from the bottom (1 for the weakest of five, 5 for the strongest). The season's sum is the **Kolejka ranking** of the tournament. Anyone can climb it at any hour without another player online (goal G7).
 - **Packs.** One of the three round packs is earned here, for finishing a counted match (win or lose). One arrives by itself, so a collector who never plays keeps collecting. The third is for playing a person (section 7.4).
@@ -366,13 +379,16 @@ Live duels stay as the owner decided: by challenge or by link, with no automatic
 
 - **A match cannot hang, and nobody waits.** Both players plan at the same time and fight at the same time, so each step has one clock for both, and a match ends in about eight minutes by construction. The hit-by-hit fight, which caused the stuck matches and most of the waiting, is replaced by one hit and one guard a round.
 - **Open tables are visible.** A player who opens a link lobby today waits alone. The cards screen lists the lobbies that are open now ("Wolne stoły"), and a tournament that has a Discord webhook gets one message when a lobby opens. This is a list of invitations that already exist, so it stays within the owner's decision against matchmaking.
-- **A new player is not shut out.** With the deck budget (section 4), a welcome-pack deck meets a season-long collection on nearly equal strength.
+- **A new player is not shut out.** In ranked duels the deck budget (section 4.1) lets a welcome-pack deck meet a season-long collection on nearly equal strength. Two players who would rather bring everything they own can play "bez limitu", unranked.
 
 ### 7.5 The collection
 
 - **Duplicates become shards,** and shards buy packs, never chosen cards. The owner decided this at the start and it was never built (section 8).
 - **A complete team** (a card for each of its five positions) is marked in the album and unlocks that team's crest as a card back. More important, it is useful: the five can be played together for the team bonus.
 - **Cheap cards matter.** Under the budget, a deck needs good cards at low cost, so a wooden card with a useful position is a find and no longer waste.
+- **Strong cards matter most where there is no budget.** In Kolejka, and in duels played "bez limitu", the deck is the best twelve the collection holds. The table in section 7.1 is the reason to keep opening packs: a full collection turns the top teams from nearly unbeatable into an even match.
+
+**What a guest does not get.** Playing without signing in is a way in, not a way to stay. A guest has one fixed deck and practice against the easy computer. Packs, their own cards, both decks, Kolejka and its ranking, duels and the album all need an account, and the first pack is shown opened, face up, one sign-in away from being kept.
 
 ### 7.6 The site sends people to the game, and the game sends them back
 
@@ -400,7 +416,7 @@ Nothing is sold and nothing is traded. Packs are earned, found or given. If paid
 
 A player who plays each round earns three packs a round as today, plus the followed team's cards. The owner's earlier target of about 40 packs in a season, with four or five elite cards among them, still holds for packs; the team cards add a known, small amount on top. The organizer's setting "packs per round" keeps its meaning: it is the total of the automatic pack and the two earned ones, and the game splits it. A player with nobody to play gets two of the three; the list of open tables and the challenge by name (section 7.4) are there so that this is rare.
 
-**The budget changes what generosity costs.** Today, more packs mean a stronger deck, so every extra pack widens the gap between old and new players, and the earlier sessions had to tune drop rates with care. Under a deck budget, more cards give more choice but not more total strength. The organizer can give packs away freely on stream without damaging fairness.
+**Where a bigger collection pays, and where it does not.** In ranked duels the budget keeps the match fair, so giving packs away on stream does not spoil the ranking. In Kolejka and in duels without the budget, more and better cards are simply stronger, as the owner wanted from the start, and that is what packs are for.
 
 ### Duplicates and shards
 
@@ -541,7 +557,7 @@ Each decision recorded in `inventory/CARDS.md` and the decision log, with a verd
 | 6 | Duplicates become shards; shards buy packs only | Keep, and build it. It was decided and never built |
 | 7 | No one-time challenge lists; packs found while browsing | Keep. Kolejka is not a challenge list: it is at most five matches per real round, and it replaces packs that were given for nothing |
 | 8 | Live challenges only; no matchmaking; no play against other users' decks; the computer never uses a user's deck | Keep all four. The list of open tables shows invitations that already exist. Kolejka's decks are real teams' lineups, not users' decks |
-| 9 | **No cost to play a card; better cards must simply be better** | Keep on the table: a 9 beats a 5 and costs nothing to play. **Change in the deck:** a budget limits the total rating strength of a deck. Reason: without any price, deck building is a sort and the collection decides the match (section 2.1). The budget is the smallest price that fixes both, and it is paid once, on the deck screen, in a form fantasy players already know |
+| 9 | **No cost to play a card; better cards must simply be better** | Keep on the table: a 9 beats a 5 and costs nothing to play. Keep in Kolejka and in duels "bez limitu": the best twelve cards are the deck (revised after the owner's review). **Change in ranked duels:** a budget limits the total strength of a deck. Reason: without any price, deck building is a sort and the collection decides the match (section 2.1). The budget is the smallest price that fixes both, and it is paid once, on the deck screen, in a form fantasy players already know |
 | 10 | **Deck of 20: two per position and ten free** | **Change to 12: one to three per position.** Reason: a new player has about 50 cards; 20 of them is nearly all the good ones, and 12 is a choice. A smaller deck also means the player sees most of it in a match, so the deck they built is the deck they play |
 | 11 | Strength 1 to 9 on a curve (the owner declined a flatter 4 to 8) | Keep. The budget removes the reason to flatten it |
 | 12 | **Turn of three phases; cards enter through the base; moves are a plan; orders shared** | **Change:** both players plan one round at the same time; cards go straight onto objectives; orders stay, two a round. Reason: sections 2.1 and 2.2. Orders, planning before confirming, and "nothing happens until you confirm" are kept |
