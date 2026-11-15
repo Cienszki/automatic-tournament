@@ -554,7 +554,7 @@ Experiment E19, in `docs/overhaul/sim/v2-fight/REPORT.md`; the engine code is `s
 | None | | 79% | 5.7 | 35% | 58% |
 | A hit and a guard on every contested objective; a hit removes the unit for the round | 22% | **52%** | 5.7 | 37% | 55% |
 | One hit and one guard a round; a hit removes the unit for the round | 23% | 67% | 5.7 | 34% | 55% |
-| **One hit and one guard a round; a hit takes 3 strength (chosen), Ancients at 14** | **12%** | **73%** | **6.3** | **37%** | **60%** |
+| **One hit and one guard a round; a hit takes 3 strength (chosen), Ancients at 14** | **12%** | **73%** | **6.3** | **37%** | **60%** (58% in the 1,000-game run below) |
 | The same with a hit of 4 strength | 14% | 70% | 6.3 | 41% | 60% |
 | Today's game, for comparison | 5% | | | | |
 
@@ -571,7 +571,7 @@ The first form made the fight matter so much that the match became a guessing ga
 
 So the fight has the shape a reading game should have: doing the obvious beats doing nothing in particular, reading a predictable rival beats them heavily, and staying unpredictable is the defence.
 
-**With the fight step as a default** (1,000 games): matches last 6.3 rounds (5 to 7 in 92% of matches) and 98% end with an Ancient destroyed; the player behind after round 3 wins 34%; the winner was never behind in 42% of matches; 1.5 ganks land per player per match. The open items of 9.2 remain open: stars with fillers still beat even decks about 80% head to head, and the collector's edge on a small tournament has not been re-measured.
+**With the fight step as a default** (1,000 games): matches last 6.3 rounds (5 to 7 in 92% of matches) and 98% end with an Ancient destroyed; the player behind after round 3 wins 34%; the winner was never behind in 42% of matches; 1.5 ganks land per player per match; a new player's deck loses to a veteran's 58% of the time with the budget and 90% without it. The open items of 9.2 remain open: stars with fillers still beat even decks about 80% head to head, and the collector's edge on a small tournament has not been re-measured.
 
 The deck-kind tables (9.4), the skill ladder and the PDL S2 runs were not repeated with the fight step. WP-52 reruns the whole battery on the settled rules as its first step.
 
@@ -636,7 +636,7 @@ The owner read the first version and was not convinced. Their doubts, in their w
 
 **What changed.** The budget now applies only where fairness between two people is the point: ranked duels, and practice. Kolejka has no budget, and two players can agree to a duel without it. In Kolejka the same average player now beats the strongest teams 7% of the time with 10 packs, 21% with 20 and 35% with 40 (section 7.1). Collecting is how a player climbs that mode and its ranking.
 
-**What stays.** In ranked duels the budget stays, because without it a new player loses to a collector about 88% of the time, and nobody accepts a challenge they will lose nine times in ten.
+**What stays.** In ranked duels the budget stays, because without it a new player loses to a collector 90% of the time, and nobody accepts a challenge they will lose nine times in ten.
 
 ### "No fight screen is weird: it is where the player feels they are playing"
 

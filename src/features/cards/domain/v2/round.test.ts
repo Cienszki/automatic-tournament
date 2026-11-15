@@ -9,9 +9,9 @@ const deck = (tag: string) => Array.from({ length: 12 }, (_, i) => aCard({ id: `
 const seq = (xs: number[]) => { let i = 0; return () => xs[i++ % xs.length]; };
 
 describe('match start', () => {
-  it('deals 4 cards, keeps the rest as the deck, draws three objectives, 12 HP, 2 orders', () => {
+  it('deals 4 cards, keeps the rest as the deck, draws three objectives, 14 HP, 2 orders', () => {
     const s = newMatch([deck('a'), deck('b')], seq([0.1, 0.7, 0.3, 0.9, 0.5]), DEFAULT_RULES);
-    expect(s.sides.map((b) => [b.hand.length, b.deck.length, b.hp])).toEqual([[4, 8, 12], [4, 8, 12]]);
+    expect(s.sides.map((b) => [b.hand.length, b.deck.length, b.hp])).toEqual([[4, 8, 14], [4, 8, 14]]);
     expect(new Set(s.objectives).size).toBe(3);
     expect(s.orders).toEqual([2, 2]);
     expect(s.round).toBe(1);
@@ -121,6 +121,6 @@ describe('what a player sees', () => {
     expect(JSON.stringify(v0)).not.toContain('secret');
     expect(v0.deck.map((c) => c.id)).toEqual([...v0.deck.map((c) => c.id)].sort());
     expect(viewFor(st, 1).hand.map((c) => c.id).sort()).toEqual(['secret', 'x']);
-    expect(makeRules({}).hp).toBe(12);
+    expect(makeRules({}).hp).toBe(14);
   });
 });

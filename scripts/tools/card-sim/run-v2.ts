@@ -13,13 +13,14 @@ import type { Ctx, Outcome } from './v2/exp/common';
 import { e10 } from './v2/exp/current';
 import { e6, e7, e8, e13, e14, e15, e16, e17, e18 } from './v2/exp/design';
 import { e12 } from './v2/exp/duplicates';
+import { e19 } from './v2/exp/fight';
 import { e9 } from './v2/exp/objectives';
 import { e1, e2, e4 } from './v2/exp/shape';
 import { e3, e5 } from './v2/exp/skill';
 import { e11 } from './v2/exp/teams';
 import { OUT_DIR, writeReport } from './v2/report';
 
-const EXPERIMENTS: Record<string, (ctx: Ctx) => Promise<Outcome>> = { e1, e2, e3, e4, e5, e6, e7, e8, e9, e10, e11, e12, e13, e14, e15, e16, e17, e18 };
+const EXPERIMENTS: Record<string, (ctx: Ctx) => Promise<Outcome>> = { e1, e2, e3, e4, e5, e6, e7, e8, e9, e10, e11, e12, e13, e14, e15, e16, e17, e18, e19 };
 const SECOND_SLUG = ['e1', 'e2', 'e6', 'e11', 'e12'];
 
 function arg(name: string): string | undefined {
