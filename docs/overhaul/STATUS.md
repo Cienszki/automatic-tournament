@@ -4,6 +4,8 @@ Every session updates this file as it works, not only at the end. A new session,
 
 ## Next step
 
+**Quota, latest (owner, 2026-11-15 afternoon): both limits reset again** after Fable ran out in the middle of WP-54; its implementer was resumed. The rule below stands: spend from the fuller quota, commit and push often, because either can run out without warning.
+
 **Quota (owner, 2026-11-14 afternoon, after a manual reset):** Fable 0% used; all other models together 60% used. Before the reset the project had used 41% of a Fable week and more than a full week of the other quota, so the plan was the wrong way round. Until the next reset (Thursday 2026-11-19, 01:59) **Fable is the main worker**: it orchestrates, designs, reviews, and also implements (agents started with `model: "fable"`, or work done in the session). Opus is kept for large mechanical packages, and its remaining 40% should last the week. The rule is in `BRIEF.md`, "Models and quota". Update these two numbers whenever the owner gives new ones.
 
 So implementation no longer waits for the reset. After S3 is finished, a Fable session can start the path to PDL S2 directly (WP-33, WP-03, WP-06, WP-07 ...), with Fable implementers for the packages marked "Fable review" and Opus for the mechanical ones (for example WP-09, WP-29, WP-46).
