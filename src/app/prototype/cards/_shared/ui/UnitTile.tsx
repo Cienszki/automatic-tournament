@@ -77,7 +77,7 @@ export function UnitTile({ m, w, look = {}, dataRef, layoutId }: { m: UnitModel;
           {big ? (
             <div className="absolute" style={{ left: 7 * k, right: 7 * k, bottom: 6 * k, color: T.text }}>
               <Name text={m.card.name} size={Math.max(11, 13 * k)} />
-              <div className="flex items-center gap-1 font-bold uppercase tracking-wider" style={{ fontSize: Math.max(9.5, 10 * k), color: ACC_L }}>
+              <div className="flex items-center gap-1 font-bold uppercase tracking-wider whitespace-nowrap" style={{ fontSize: Math.max(9.5, 10 * k), color: ACC_L }}>
                 <Role style={{ width: 12 * k + 1, height: 12 * k + 1 }} />{KEYWORD[m.card.role].name}
                 {m.card.team && <span className="ml-auto rounded-full" style={{ width: 8, height: 8, background: teamColor(m.card.team.id) }} />}
               </div>

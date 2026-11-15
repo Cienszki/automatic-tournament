@@ -67,10 +67,10 @@ function Total({ side, value, size, verdict }: { side: Side; value: number; size
   const font = useHeaderFont();
   const won = verdict === side; const lost = verdict !== undefined && !won;
   return (
-    <motion.span className="absolute flex items-center justify-center font-logik-extended-bold leading-none tabular-nums"
-      initial={{ scale: 0 }} animate={{ scale: won ? 1.3 : 1, opacity: lost ? 0.5 : 1 }} transition={{ type: 'spring', stiffness: 320, damping: 18 }}
+    <motion.span className="absolute bottom-0 flex items-center justify-center font-logik-extended-bold leading-none tabular-nums"
+      initial={{ scale: 0 }} animate={{ scale: won ? 1.2 : 1, x: won ? (side === 0 ? -3 : 3) : 0, opacity: lost ? 0.5 : 1 }} transition={{ type: 'spring', stiffness: 320, damping: 18 }}
       style={{
-        bottom: -size * 0.18, [side === 0 ? 'left' : 'right']: -size * 0.42, width: size, height: size, fontSize: size * 0.62, zIndex: won ? 2 : 1,
+        [side === 0 ? 'left' : 'right']: 0, width: size, height: size, fontSize: size * 0.62, zIndex: won ? 2 : 1,
         borderRadius: side === 0 ? '50% 50% 12% 50%' : '50% 50% 50% 12%', background: sideColor(side), color: '#07080b',
         boxShadow: won ? `0 0 0 2px #fff, 0 0 22px ${sideColor(side)}` : '0 2px 8px rgba(0,0,0,0.7)', ...font,
       }}>
@@ -79,23 +79,29 @@ function Total({ side, value, size, verdict }: { side: Side; value: number; size
   );
 }
 
+/** The space an objective's mark takes for a model of `size` px: the two totals stand under it, side by side */
+export const medallionBox = (size: number): { w: number; h: number; total: number } => {
+  const total = Math.max(28, Math.round(size * 0.42));
+  return { w: Math.max(size, 2 * total + 4), h: size + Math.round(total * 0.6), total };
+};
+
 /**
  * `verdict`: undefined while nothing is decided; otherwise who controls it this round (null = nobody).
  * `lit`: the objective can take what the player holds.
  */
 export function Medallion({ at, o, size, verdict, lit }: { at: Slot; o: ObjectiveModel; size: number; verdict?: Side | null; lit?: boolean }) {
   const ring = verdict != null ? sideColor(verdict) : o.holder !== null ? sideColor(o.holder) : 'rgba(255,255,255,0.22)';
-  const total = Math.max(28, Math.round(size * 0.5));
+  const box = medallionBox(size);
   return (
-    <div data-obj={at} className="relative shrink-0" style={{ width: size, height: size }}>
-      <div className="absolute inset-0 rounded-full" style={{
-        background: 'radial-gradient(circle at 50% 35%, #2a2f3d, #0b0c11 72%)',
+    <div data-obj={at} className="relative shrink-0" style={{ width: box.w, height: box.h }}>
+      <div className="absolute rounded-full" style={{
+        left: (box.w - size) / 2, top: 0, width: size, height: size, background: 'radial-gradient(circle at 50% 35%, #2a2f3d, #0b0c11 72%)',
         boxShadow: `0 0 0 2px ${ring}, 0 0 ${verdict != null ? 26 : 12}px ${verdict != null ? ring : 'rgba(0,0,0,0.6)'}${lit ? `, 0 0 0 5px ${mix(ACC, 45)}` : ''}`, transition: 'box-shadow .3s',
       }} />
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={objModel(o.id)} alt="" draggable={false} className="absolute object-contain select-none pointer-events-none" style={{ inset: '-6%', width: '112%', height: '112%', filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.9))' }} />
-      {o.totals[0] !== null && <Total side={0} value={o.totals[0]} size={total} verdict={verdict} />}
-      {o.totals[1] !== null && <Total side={1} value={o.totals[1]} size={total} verdict={verdict} />}
+      <img src={objModel(o.id)} alt="" draggable={false} className="absolute object-contain select-none pointer-events-none" style={{ left: (box.w - size * 1.12) / 2, top: -size * 0.06, width: size * 1.12, height: size * 1.12, filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.9))' }} />
+      {o.totals[0] !== null && <Total side={0} value={o.totals[0]} size={box.total} verdict={verdict} />}
+      {o.totals[1] !== null && <Total side={1} value={o.totals[1]} size={box.total} verdict={verdict} />}
     </div>
   );
 }

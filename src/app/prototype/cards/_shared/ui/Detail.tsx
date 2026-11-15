@@ -37,7 +37,6 @@ export function Detail({ of, size }: { of: DetailOf; size: { w: number; h: numbe
         </>
       ) : (
         <>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
           <motion.img src={objModel(of.o.id)} alt="" draggable={false} style={{ width: Math.min(220, size.w * 0.5), height: Math.min(220, size.w * 0.5), objectFit: 'contain', filter: 'drop-shadow(0 10px 20px rgba(0,0,0,0.9))' }} initial={{ scale: 0.8 }} animate={{ scale: 1 }} />
           <div className="text-center" style={{ maxWidth: 320 }}>
             <div className="font-logik-extended-bold uppercase" style={{ fontSize: 22, color: of.o.holder === null ? T.text : sideColor(of.o.holder), ...font }}>{OBJECTIVES[of.o.id].name}</div>

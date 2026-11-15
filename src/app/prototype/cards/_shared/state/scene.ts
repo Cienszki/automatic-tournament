@@ -73,8 +73,10 @@ export interface Scene {
 
 export function unitModel(s: MatchState, u: Unit): UnitModel {
   const strength = strengthOf(s, u);
-  const whole = strengthOf(s, { ...u, hurt: undefined });
-  return { uid: u.uid, card: u.card, side: u.side, at: u.at, strength, parts: strengthParts(s, u), out: u.out === s.round, lost: whole - strength };
+  const parts = strengthParts(s, u);
+  // What a hit took: the parts add up to the strength before it
+  const whole = parts.base + parts.growth + parts.aura + parts.team + parts.highGround;
+  return { uid: u.uid, card: u.card, side: u.side, at: u.at, strength, parts, out: u.out === s.round, lost: whole - strength };
 }
 
 export type TotalsShown = 'mine' | 'both' | 'none';

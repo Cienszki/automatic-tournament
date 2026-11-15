@@ -54,12 +54,13 @@ export function BandMarks({ mode, onUndo }: { mode: BandMode; onUndo: () => void
   return null;
 }
 
-/** The round button of today's game. `ready` = nothing is left to choose: it calls for the tap. */
-export function ConfirmButton({ mode, ready, size, onConfirm }: { mode: BandMode; ready: boolean; size: number; onConfirm: () => void }) {
+/** The round button of today's game (`wide`: the site's pill, where a circle would be too small for
+ *  the word). `ready` = nothing is left to choose: it calls for the tap. */
+export function ConfirmButton({ mode, ready, size, wide, onConfirm }: { mode: BandMode; ready: boolean; size: number; wide?: boolean; onConfirm: () => void }) {
   const font = useHeaderFont();
   if (mode.kind === 'none') return null;
   if (mode.kind === 'show') {
-    return <span className="flex items-center justify-center rounded-full" style={{ width: size, height: size, color: T.muted, boxShadow: `inset 0 0 0 1.5px ${T.faint}` }}><SkipForward style={{ width: size * 0.3, height: size * 0.3 }} /></span>;
+    return <span className="flex items-center justify-center rounded-full" style={{ width: size, height: size, color: T.muted, boxShadow: `inset 0 0 0 1.5px ${T.faint}` }}><SkipForward style={{ width: Math.max(18, size * 0.3), height: Math.max(18, size * 0.3) }} /></span>;
   }
   return (
     <motion.button type="button" onClick={onConfirm} data-confirm className="relative flex items-center justify-center rounded-full font-logik-extended-bold uppercase text-white"
@@ -68,6 +69,6 @@ export function ConfirmButton({ mode, ready, size, onConfirm }: { mode: BandMode
         ? { boxShadow: [`0 0 0 3px ${ACC_L}, 0 0 8px ${mix(ACC, 60)}`, `0 0 0 3px ${ACC_L}, 0 0 34px ${ACC}`, `0 0 0 3px ${ACC_L}, 0 0 8px ${mix(ACC, 60)}`], backgroundColor: [mix(ACC, 75), ACC, mix(ACC, 75)] }
         : { boxShadow: `0 0 0 2px ${mix(ACC, 70)}`, backgroundColor: mix(ACC, 30) }}
       transition={ready ? { duration: 1.8, repeat: Infinity } : { duration: 0.3 }}
-      style={{ width: size, height: size, fontSize: Math.max(10, size * 0.125), letterSpacing: '0.04em', ...font }}>Zatwierdź</motion.button>
+      style={{ width: wide ? undefined : size, height: size, padding: wide ? '0 22px' : 0, fontSize: wide ? 13 : Math.max(10, size * 0.105), letterSpacing: wide ? '0.12em' : '0.02em', ...font }}>Zatwierdź</motion.button>
   );
 }

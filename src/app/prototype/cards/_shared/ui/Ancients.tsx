@@ -34,7 +34,7 @@ export function Ancient({ side, hp, max, incoming, tick, size, column, children 
         animate={hit ? { x: [0, -7, 7, -4, 0] } : undefined} transition={{ duration: 0.4 }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={ancientModel(side)} alt="" draggable={false} className="absolute inset-0 w-full h-full object-contain select-none"
-          style={{ filter: `drop-shadow(0 6px 14px rgba(0,0,0,0.9)) drop-shadow(0 0 ${size * 0.12}px ${mix(color, 40)})${left === 0 ? ' grayscale(1) brightness(0.5)' : ''}` }} />
+          style={{ filter: `drop-shadow(0 6px 14px rgba(0,0,0,0.9)) drop-shadow(0 0 ${size * 0.12}px ${mix(color, 40)})${left === 0 ? ' grayscale(1) brightness(0.5)' : side === 1 ? ' brightness(1.35)' : ''}` }} />
         {hit && <motion.div className="absolute inset-0 rounded-full pointer-events-none" initial={{ opacity: 0.8, scale: 0.6 }} animate={{ opacity: 0, scale: 1.5 }} transition={{ duration: 0.6 }} style={{ background: `radial-gradient(circle, ${T.pts}, transparent 65%)` }} />}
       </motion.div>
       <div className={`flex flex-col ${column ? 'items-center' : mirror ? 'items-end' : 'items-start'}`} style={{ gap: 5, paddingBottom: column ? 0 : size * 0.06 }}>

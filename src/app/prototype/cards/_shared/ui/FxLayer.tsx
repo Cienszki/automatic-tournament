@@ -35,12 +35,13 @@ export function FxLayer({ root, scene, tick, size, aiming, locked, preferred }: 
 }) {
   const font = useHeaderFont();
   const [, setMeasured] = useState(0);
+  const lockFrom = locked?.[0]; const lockTo = locked?.[1];
   // Positions are read after layout; once more shortly after, when sliding units have settled
   useLayoutEffect(() => {
     setMeasured((n) => n + 1);
     const t = setTimeout(() => setMeasured((n) => n + 1), 380);
     return () => clearTimeout(t);
-  }, [tick, size.w, size.h, locked?.[0], locked?.[1], root]);
+  }, [tick, size.w, size.h, lockFrom, lockTo, root]);
   const at = useCallback((selector: string): P | null => {
     const el = root?.querySelector(selector); const box = root?.getBoundingClientRect();
     if (!el || !box) return null;
