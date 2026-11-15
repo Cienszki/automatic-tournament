@@ -39,6 +39,16 @@ export function strikeOptions(s: MatchState, side: Side, at: Slot): Strike[] {
 
 /** Why these strikes are not allowed for this side now, or null */
 export function validateStrikes(s: MatchState, side: Side, strikes: Strikes): string | null {
+  if (s.rules.fight === 'oneStrike') {
+    // One hit and one guard for the whole board, in any entries of the list
+    const hits = strikes.filter((k) => k.target !== undefined);
+    const guarded = strikes.filter((k) => k.guard !== undefined);
+    if (hits.length > 1) return 'more than one hit';
+    if (guarded.length > 1) return 'more than one guard';
+    if (hits.length && !s.units.some((u) => u.uid === hits[0].target && u.side !== side && u.out !== s.round && contested(s).includes(u.at) && !(s.rules.abilities.tank && u.card.role === 'Offlane'))) return `${hits[0].target} cannot be hit`;
+    if (guarded.length && !s.units.some((u) => u.uid === guarded[0].guard && u.side === side && u.out !== s.round && contested(s).includes(u.at))) return `${guarded[0].guard} cannot be guarded`;
+    return null;
+  }
   const open = new Set(contested(s));
   const seen = new Set<Slot>();
   for (const k of strikes) {
