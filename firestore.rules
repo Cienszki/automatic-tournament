@@ -50,8 +50,8 @@ service cloud.firestore {
         'rekrutacja', 'streamy', 'wesprzyj-nas',
         // This app's own top-level routes
         'creator', 'fantasy', 'faq', 'fonts', 'groups', 'my-team', 'organizer',
-        'organizator', 'pickem', 'playoffs', 'register', 'rules', 'schedule',
-        'standins', 'stats', 'teams',
+        'organizator', 'pickem', 'playoffs', 'prototype', 'register', 'rules',
+        'schedule', 'standins', 'stats', 'teams',
         // Framework / static paths
         '_next', 'well-known', 'manifest', 'sw', 'opengraph-image',
         // Public asset folders

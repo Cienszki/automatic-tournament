@@ -29,8 +29,8 @@ export const RESERVED_SLUGS: ReadonlySet<string> = new Set([
   // Every directory in src/app must appear here. A tournament slug matching one
   // of these would be shadowed by the static route and never render.
   'creator', 'fantasy', 'faq', 'fonts', 'groups', 'my-team', 'organizer',
-  'pickem', 'playoffs', 'register', 'rules', 'schedule', 'standins', 'stats',
-  'teams',
+  'pickem', 'playoffs', 'prototype', 'register', 'rules', 'schedule', 'standins',
+  'stats', 'teams',
   // Polish spelling reserved too, so the route can be renamed later without a
   // tournament already sitting on the new name.
   'organizator',
