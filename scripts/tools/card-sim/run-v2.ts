@@ -1,6 +1,6 @@
 // The WP-51 experiments on the v2 prototype of the card game.
 //
-//   npx tsx scripts/tools/card-sim/run-v2.ts <e1..e12|all|report> [--slug wiosenna] [--games N] [--seed S]
+//   npx tsx scripts/tools/card-sim/run-v2.ts <e1..e19|battery|all|report> [--slug wiosenna] [--games N] [--seed S]
 //
 // `--games` is games per table cell (some cells use fewer and say so). Writes
 // docs/overhaul/sim/v2/<experiment>-<slug>.json and rebuilds docs/overhaul/sim/v2/REPORT.md from
@@ -47,6 +47,13 @@ async function main() {
   const seed = Number(arg('--seed') ?? 1);
   const games = arg('--games') ? Number(arg('--games')) : undefined;
   if (what === 'report') { writeReport(); return; }
+  if (what === 'battery') {
+    // The experiments GAME_DESIGN.md section 9 quotes, on the rules as they stand, in one process
+    for (const name of ['e1', 'e2', 'e4', 'e3', 'e5', 'e7', 'e9', 'e11', 'e12', 'e6']) await runOne(name, 'wiosenna', seed, name === 'e6' ? 300 : games);
+    for (const name of ['e1', 'e2', 'e4', 'e11', 'e12']) await runOne(name, 'pdl-s2', seed, games);
+    writeReport();
+    return;
+  }
   if (what === 'all') {
     for (const name of Object.keys(EXPERIMENTS)) await runOne(name, 'wiosenna', seed, games);
     for (const name of SECOND_SLUG) await runOne(name, 'pdl-s2', seed, games);
