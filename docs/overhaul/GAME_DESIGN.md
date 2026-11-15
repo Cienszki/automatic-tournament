@@ -2,7 +2,9 @@
 
 Written in S3 (2026-11-14) by Fable. It covers the owner's concern 3: the card game lacks depth, new players are confused, and they see no reason to play. It diagnoses today's game, compares three directions, and specifies the recommended one. The work packages are in `ROADMAP.md` under "S3. The card game".
 
-**In short.** Today's game is decided by the collection (a new player's deck loses to a season-long collector's 90% of the time), has nothing to read, and asks for a long setup before the first match. The recommended game keeps the board, the cards and the look, and changes three things: both players plan a round at the same time and reveal together; cards go straight onto objectives and totals are compared; and a deck of 12 has a budget. Around it: a first match that starts without sign-in and teaches in four rounds, a solo mode against the real teams of each real round, and real results that pay out cards. The rules were found by simulation, not written and then defended; section 9 has the numbers. Nine decisions are the owner's to confirm (section 12).
+**In short.** Today's game is decided by the collection (a new player's deck loses to a season-long collector's 90% of the time), has nothing to read, and asks for a long setup before the first match. The recommended game keeps the board, the cards and the look, and changes four things: both players plan a round at the same time and reveal together; cards go straight onto objectives and totals are compared; each round has one fight decision for each player, a hit and a guard, in place of the hit-by-hit fight; and a deck is 12 cards, with a budget in ranked duels and none in the solo mode. Around it: a first match that starts without sign-in and teaches in four rounds, a solo mode against the real teams of each real round where a bigger collection wins more, and real results that pay out cards. The rules were found by simulation, not written and then defended; section 9 has the numbers.
+
+**Revised on 2026-11-15 after the owner's review.** The owner doubted three things in the first version: that a budget leaves a reason to collect, that the fight should go, and that a shorter match is deeper. Section 13 answers each and says what changed: the fight is back in a new form, the budget no longer applies in the solo mode, and a match is a round longer with more decisions in it. Sections 4 to 10 are already updated; the tables in 9.2 to 9.5 were measured before the fight step and 9.8 gives the numbers with it.
 
 Sources: the rules engine (`src/lib/card-lab/`), the game's screens (`src/components/card-lab/`), `inventory/CARDS.md`, the owner's decision log (`card-game-design.md` in the memory folder), and simulations run for this session (`docs/overhaul/sim/`). Nobody could watch a real player for this document, and there are no usage numbers; section 11 says how to get both.
 
@@ -543,6 +545,36 @@ A budget is the most useful single change that today's game could take, and it i
 
 WP-52 turns the main rows of the table in 9.2 into a test that runs in CI on fixed seeds. A change to a rule, a card formula or the pack rule that moves a result out of its band fails the build. When players find something the computer players did not, the fix is a setting and a re-run.
 
+### 9.8 The fight step (added after the owner's review)
+
+Experiment E19, in `docs/overhaul/sim/v2-fight/REPORT.md`; the engine code is `src/features/cards/domain/v2/fight.ts`. Three forms of fight were built and measured, each as a step after the reveal. 600 games per cell; the first row is the game without a fight step.
+
+| Fight | Fights that change who holds the objective | Better planner beats the obvious-move player | Rounds | Player behind after round 3 wins | Veteran beats new player |
+|---|---|---|---|---|---|
+| None | | 79% | 5.7 | 35% | 58% |
+| A hit and a guard on every contested objective; a hit removes the unit for the round | 22% | **52%** | 5.7 | 37% | 55% |
+| One hit and one guard a round; a hit removes the unit for the round | 23% | 67% | 5.7 | 34% | 55% |
+| **One hit and one guard a round; a hit takes 3 strength (chosen), Ancients at 14** | **12%** | **73%** | **6.3** | **37%** | **60%** |
+| The same with a hit of 4 strength | 14% | 70% | 6.3 | 41% | 60% |
+| Today's game, for comparison | 5% | | | | |
+
+The first form made the fight matter so much that the match became a guessing game: the player who plans better won barely more than half. That would have been a real loss of depth dressed up as action. The chosen form keeps planning decisive (73%, above the 70% target), and the fight changes who holds an objective more than twice as often as today's does, with about six fight decisions a match in place of nineteen clicks.
+
+**Does fighting well matter?** Two players who plan identically, differing only in how they fight (chosen form, 600 games each):
+
+| One player | The other | The first wins |
+|---|---|---|
+| Fights the obvious way (hit the strongest, guard the own strongest) | Picks at random | 68% |
+| Expects the obvious and answers it | Fights the obvious way | **87%** |
+| Cannot be predicted | Fights the obvious way | 54% |
+| Cannot be predicted | Expects the obvious | 57% |
+
+So the fight has the shape a reading game should have: doing the obvious beats doing nothing in particular, reading a predictable rival beats them heavily, and staying unpredictable is the defence.
+
+**With the fight step as a default** (1,000 games): matches last 6.3 rounds (5 to 7 in 92% of matches) and 98% end with an Ancient destroyed; the player behind after round 3 wins 34%; the winner was never behind in 42% of matches; 1.5 ganks land per player per match. The open items of 9.2 remain open: stars with fillers still beat even decks about 80% head to head, and the collector's edge on a small tournament has not been re-measured.
+
+The deck-kind tables (9.4), the skill ladder and the PDL S2 runs were not repeated with the fight step. WP-52 reruns the whole battery on the settled rules as its first step.
+
 ## 10. The owner's earlier decisions
 
 Each decision recorded in `inventory/CARDS.md` and the decision log, with a verdict. "Keep" means unchanged. Where the verdict is "change", the reason is given plainly, and the owner can overrule it; section 12 lists these as questions.
@@ -589,14 +621,49 @@ Each decision recorded in `inventory/CARDS.md` and the decision log, with a verd
 
 ## 12. Questions for the owner
 
-Each has a recommendation, and the design proceeds on it. They are also in `STATUS.md`.
+The nine questions of the first version were answered on 2026-11-15 (section 13, and `STATUS.md` questions 29 to 37). Two remain:
 
-1. **The deck budget** (decision 9). Recommended: accept. Without it a new player loses nine matches in ten to a collector, and no other rule in this document fixes that.
-2. **No fight screen** (decision 13). Recommended: accept. If the owner wants a moment of direct action kept, the place for it is the reveal, and WP-54's third version plays the reveal objective by objective for that reason.
-3. **Both players plan at once** (decision 12). Recommended: accept. It is what gives the game something to read, and it removes most of the waiting in a match between people.
-4. **Deck of 12** (decision 10). Recommended: accept.
-5. **The first deck is built for the player, and the tutorial becomes a four-round first match** (decisions 19 and 20). Recommended: accept.
-6. **Two of the three round packs are earned in Kolejka.** Recommended: accept. The alternative that keeps today's income for people who never play is to leave all three automatic and make Kolejka's packs extra; that raises a regular player's income by two-thirds.
-7. **Kolejka's opponents are the real teams' lineups.** Recommended: accept. It does not use any user's deck. If a team objects to being "beaten" in a card game, the mode can be named after the round instead of the team.
-8. **A phone layout.** Recommended: yes; it is where the viewers are. It is the largest single piece of screen work in the plan (part of WP-54 and WP-55).
-9. **When v2 replaces v1 for PDL S2.** Recommended: at a round boundary as soon as WP-58 and WP-59 are proven, with collections untouched and rankings started fresh. If v2's live duels are ready before WP-40 moves v1's duels to the new platform, WP-40 skips them.
+1. **The fight in its new form** (section 4.3, step 5): one hit with the aim line and one guard each round, both players at once. Recommended: accept as the starting point, and judge it in the prototype of WP-54, which builds this moment first. If it still does not feel like playing, the place to add more is the number of hits per round, which is a setting.
+2. **When v2 replaces today's game for PDL S2.** Recommended: at a round boundary as soon as WP-58 and WP-59 are proven, with collections untouched and rankings started fresh. If v2's live duels are ready before WP-40 moves today's duels to the new platform, WP-40 skips them.
+
+## 13. The owner's review of 2026-11-15, and what changed
+
+The owner read the first version and was not convinced. Their doubts, in their words, are in `STATUS.md`. Each one was right in part, and each changed the design.
+
+### "A budget might leave no incentive to collect more cards"
+
+**What was true in it.** Under the budget, a collector's deck was barely stronger than a new player's. That was the point for fairness between people, but it applied everywhere, including the solo mode. Measured: against the strongest real teams, an average player won 4% of the time with 10 packs and 9% with 40. A season of collecting bought almost nothing there.
+
+**What changed.** The budget now applies only where fairness between two people is the point: ranked duels, and practice. Kolejka has no budget, and two players can agree to a duel without it. In Kolejka the same average player now beats the strongest teams 7% of the time with 10 packs, 21% with 20 and 35% with 40 (section 7.1). Collecting is how a player climbs that mode and its ranking.
+
+**What stays.** In ranked duels the budget stays, because without it a new player loses to a collector about 88% of the time, and nobody accepts a challenge they will lose nine times in ten.
+
+### "No fight screen is weird: it is where the player feels they are playing"
+
+**What was true in it.** A simulation counts decisions, not what a decision feels like. The first version removed the one moment where a player acts directly on the rival's cards, on the evidence that today's fight decides little. The evidence was right about today's fight and wrong as a reason to have none.
+
+**What changed.** Each round now has a fight: one hit, with the aim line the owner liked, and one guard, chosen by both players at once and shown together (section 4.3). Three forms were built and simulated before choosing (section 9.8). The chosen one changes who holds an objective more than twice as often as today's fight, takes one decision where today's takes about three clicks, and has real reading in it: a player who always does the obvious loses 87% of the time to one who expects it.
+
+**What was rejected, and why.** A fight on every objective with hits that remove a unit was the most dramatic form. It made the better planner win only 52%: the fight swallowed the rest of the game.
+
+### "The game being shorter feels like a step backwards"
+
+**What was true in it.** The first version aimed at a short match and treated that as a goal in itself. A match that is over quickly with few decisions in it is not deeper.
+
+**Two facts first.** Today's match is 10.4 player turns, which is 5.2 turns each; the first version had 5.7 rounds each. It was never shorter in turns. It was shorter on the clock because nobody waits for the other player, and because 19 hits that decide little were gone.
+
+**What changed.** Ancients have 14 hit points, so a match is 6.3 rounds, and every round now has two decisions for each player, a plan and a fight. That is about twenty decisions that matter in a match, against today's 27 clicks of which a third are hits that rarely change anything. A match between people takes about eight minutes.
+
+**Where more depth can come from next,** if playing it shows the need: a second hit in the late rounds, the hero and attribute traits of section 5.4, and deck shapes once the open balance item of section 9.4 is settled. Each is a setting or a small rule on a core that is now measured, which is a better position than adding rules to today's game.
+
+### What the owner accepted, and one change to it
+
+- Deck of 12 with one to three cards per position: accepted.
+- The first deck built for the player: accepted, "just make sure they still have incentive to log in and collect cards". Section 7.5 now lists what a guest does not get.
+- Kolejka against the real teams: accepted.
+- Three packs a round: accepted, with the pack for beating the computer replaced by a pack for playing a person (sections 7.4 and 8).
+- A phone layout: needed, later. Its design principles are fixed now (section 4.9) and bind every screen package.
+
+### What this does to the plan
+
+One package is added and four are changed (`ROADMAP.md`): WP-64 is the fight-step prototype of this revision, already done. WP-52 starts by re-running the full battery with the fight step. WP-54 prototypes the fight moment first. WP-57 builds two decks, the budget one and the free one. WP-58 adds the second clock, the unranked duel without a budget and the pack for playing a person. WP-59 uses the free deck.
