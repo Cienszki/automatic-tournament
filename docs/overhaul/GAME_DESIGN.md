@@ -139,13 +139,13 @@ A new player's ten packs hold about 50 cards, enough to spend the whole budget. 
 ### 4.2 The board
 
 - Three objectives, drawn from the six of today's game.
-- Each player has an Ancient with 12 hit points.
+- Each player has an Ancient with 14 hit points.
 - At most three units per player on one objective.
 - There is no base. A card goes from the hand straight onto an objective.
 
 ### 4.3 A round
 
-In one sentence: **both players secretly give two orders, each one a card played onto an objective or a unit moved to another; then everything is revealed, and on each objective the stronger side hurts the rival's Ancient.**
+In one sentence: **both players secretly give two orders, each one a card played onto an objective or a unit moved to another; everything is revealed; each player then hits one rival unit and guards one of their own; and on each objective the stronger side hurts the rival's Ancient.**
 
 In full:
 
@@ -157,10 +157,11 @@ In full:
    Nothing happens until the player confirms, and the plan can be changed freely until then.
 3. **Reveal.** Both plans happen at once.
 4. **Ganks** (see Mid, below).
-5. **Control.** On each objective the side with more total strength controls it this round. A side alone on an objective controls it. Equal totals mean nobody does.
-6. **Damage.** Each controlled objective deals 1 damage to the rival's Ancient; Roshan deals 2. From round 5 on, all damage is doubled.
-7. **Farma** and the objectives' effects (below).
-8. **End.** An Ancient at 0 is destroyed and its owner loses. If both fall in the same round, the one that took less damage beyond 0 wins. A match lasts at most 8 rounds; after that, the player with more hit points wins.
+5. **Fight ("Walka").** Looking at the revealed board, each player secretly names one rival unit to hit ("cios") and one of their own units to guard ("osłona"). Both choices are shown at once. A unit that is hit and was not guarded loses 3 strength for this round. Only units on objectives where both sides stand can be hit, and an Offlane cannot be hit at all. Both hits count even if the unit that would deal one is itself hit.
+6. **Control.** On each objective the side with more total strength controls it this round. A side alone on an objective controls it. Equal totals mean nobody does.
+7. **Damage.** Each controlled objective deals 1 damage to the rival's Ancient; Roshan deals 2. From round 5 on, all damage is doubled.
+8. **Farma** and the objectives' effects (below).
+9. **End.** An Ancient at 0 is destroyed and its owner loses. If both fall in the same round, the one that took less damage beyond 0 wins. A match lasts at most 8 rounds; after that, the player with more hit points wins.
 
 ### 4.4 Strength and abilities
 
@@ -170,7 +171,7 @@ A unit's strength is its card's strength plus its bonuses. A card's strength com
 |---|---|---|---|
 | Carry | | **Farma** | After every round on an objective its side controls, +1 strength, up to +3. Lost when the Carry is ganked |
 | Mid | | **Gank** | When played from the hand, the rival's strongest unit on that objective is out for this round: it stays on the board but counts for nothing, gives no bonus, and a Carry loses its Farma |
-| Offlane | +1 | **Tank** | A gank on its objective takes the Offlane, and spares everyone else |
+| Offlane | +1 | **Tank** | Cannot be hit in the fight. A gank on its objective takes the Offlane, and spares everyone else |
 | Support | −1 | **Smoke** | When played from the hand, one of the player's other units may move to its objective without an order |
 | Hard Support | −1 | **Aura** | +1 strength to each of the player's units on its objective, itself included. A second Hard Support on the same objective adds nothing more |
 
@@ -201,7 +202,8 @@ Farma works as today, and Aura does apart from the limit of one per objective. G
 |---|---|---|
 | Deck size / per position | 12 / 1 to 3 | A choice for a 50-card collection; most of the deck is seen in a match. The limit of three stops decks built from one ability |
 | Budget | 60 | 5 per card. A 10-pack collection can spend all of it; at 66 it could not, and the collector gained from that |
-| Ancient hit points | 12 | Matches of five to six rounds |
+| Ancient hit points | 14 | Matches of six to seven rounds |
+| Fight | One hit and one guard per player per round; a hit takes 3 strength for the round | Tested against a hit that removes the unit and against a hit on every objective: both turned the match into guessing (section 9.8) |
 | Units per side per objective | 3 | Limits how much strength can pile on one objective |
 | Orders per round | 2 | With 3, a third of all orders went unused |
 | Opening hand / draw per round / hand limit | 4 / 1 / 7 | Drawing 2 let the bigger collection matter more |
@@ -214,15 +216,30 @@ Farma works as today, and Aura does apart from the limit of one per objective. G
 ### 4.7 What the player sees
 
 - **Planning.** The board, the hand, two order marks. Cards and units that can still act glow. A card is dragged onto an objective, or tapped and then the objective tapped; a unit likewise. The player's own planned totals are shown on each objective. Nothing about the rival's round is shown, because nothing is known. One button confirms.
+- **Fight.** After the reveal the board holds still and one question is asked: the player drags an aim line from their side to one rival unit, and taps one of their own to put a shield on it. Units that can be hit are lit; Offlanes and units on uncontested objectives are not. Nothing shows what the hit would change. When both players have chosen, both aim lines and both shields appear together: a hit lands with a "−3", or breaks on a shield.
 - **Reveal.** The rival's cards turn over, moved units slide, a gank knocks its target out of the round, each bonus adds itself to the total as a small "+1" on the card that gives it, the two totals meet on each objective, and the Ancients take their damage. It takes a few seconds and can be skipped with a tap.
 - **Every number has one place.** A card shows its strength; a unit shows its current strength; an objective shows each side's total and its own effect. Nothing is repeated in a panel.
 
 ### 4.8 A match between people
 
 - Each player's plan goes to the server and stays hidden until both are in or the round's clock runs out. Then the server resolves the round and both see the same reveal.
-- One clock per round for both players, from today's paces (20, 30 or 60 seconds, or none). When it runs out, the plan counts as it stands at that moment. The computer never plays for a person.
+- Two clocks per round, each for both players at once: one for the plan, from today's paces (20, 30 or 60 seconds, or none), and a shorter one for the fight (10, 15 or 25 seconds, today's "hit" times). When the plan clock runs out, the plan counts as it stands at that moment. When the fight clock runs out, a player who has not chosen makes no hit and guards nothing. The computer never plays for a person.
 - A player away for 90 seconds loses, as today.
-- A match is at most 8 rounds, so with the 30-second pace it cannot last longer than about six minutes including reveals.
+- A match is at most 8 rounds and usually six or seven, so with the 30-second pace it lasts about eight minutes including the reveals, and cannot last longer than about ten.
+
+### 4.9 Design principles for the phone
+
+The phone layout is built after the desktop one, but these principles bind every screen package from the start, so that nothing has to be redesigned to fit a phone later.
+
+1. **Portrait, one thumb.** Everything a player acts on is in the lower two-thirds of the screen. Nothing depends on hovering: what a hover shows on a desktop, a long press shows on a phone.
+2. **One layout idea for both.** The board is three objectives, each with the rival's units on one side and the player's on the other, and the hand along the bottom edge. On a phone the objectives stack as three rows; on a desktop they sit on the map. The components are the same; only their placement differs. No feature exists on one and not the other.
+3. **Tap, then tap.** Every action works as two taps (a card, then an objective; a unit, then an objective; a rival unit to hit; an own unit to guard). Dragging is offered as well and is never required. Every target is at least 44 px.
+4. **One question on the screen at a time.** Plan, then fight, then watch. The screen never asks for two kinds of decision at once.
+5. **Numbers before pictures.** A unit's strength and an objective's two totals are readable at arm's length (16 px or more) on a 390 px screen. Card detail (ability text, team, the series it comes from) opens on a long press; it is not squeezed onto the unit.
+6. **No horizontal scrolling and nothing cut off** at 390 px, including the hand at seven cards (cards overlap and fan; the pressed one lifts).
+7. **A match survives the phone.** Locking the screen, switching apps or losing signal for a few seconds does not lose a match: the plan is saved as it is built, and the state is fetched again on return.
+8. **Light.** The computer's decision takes under 150 ms on a mid-range phone, the reveal runs smoothly without a graphics card, and the cards section stays within the page-weight budget of WP-11.
+9. **A match fits a break.** Against a person, about eight minutes. Against the computer, a match can be left after any round and continued later.
 
 ## 5. Where the depth comes from
 
@@ -236,7 +253,7 @@ A round asks three questions at once, and each has a cost.
 - **Where.** There are three objectives and a player cannot win all of them. Roshan is worth two, so both players want it, which makes the other two the way round it. With three units per side at most, strength cannot be piled without limit, and a full objective forces the question of which unit to give up.
 - **Now or later.** A card played early controls an objective for more rounds; a card kept is an answer the rival cannot see. A move costs the same order as a play, so repositioning is paid for with tempo. From round 5 damage doubles, so a player can plan to be weak early and strong late, or the reverse.
 
-A match is about 9 cards played and 3 moves made by each player over five or six rounds: around a dozen decisions, each of which matters, against 27 clicks in today's game of which a third decide nothing.
+A match is about 9 cards played, 3 moves and 6 fights for each player over six or seven rounds: around twenty decisions, each of which matters, against 27 clicks in today's game of which a third decide nothing.
 
 ### 5.2 Reading the rival
 
@@ -245,6 +262,8 @@ Because both plans are hidden until the reveal, the right play depends on what t
 - **How much is there to read?** A measuring program that is told the rival's plan each round beats the strongest honest computer player **92%** of the time with the same deck. Almost everything that separates a good round from a bad one is knowing where the rival goes.
 - **Is being predictable punished?** A program that knows exactly how the rival thinks, without seeing its hand, beats it 64%. A player with habits loses to a player who notices them.
 - **What there is to read.** The rival's board is open: where their Carry is growing, which objective they cannot afford to lose, whether their Offlane stands beside their best unit, how many cards they hold. Their hand is hidden. So a player reads intentions from position: "they must defend Roshan this round, so the Outpost is free" is the basic thought of the game, and it has no certain answer.
+
+**The fight is the reading game in its plainest form.** Each round every player picks one rival unit to hit and one of their own to guard. The obvious choice is to hit the rival's strongest unit and guard one's own, and a player who always does that is beaten **87%** of the time by a rival who expects it and otherwise plays the same (section 9.8). So the fight asks, every round: do they expect the obvious from me?
 
 Each ability is a reading question. Gank asks where the rival's best unit will be when the Mid lands. Tank asks whether to keep the Offlane beside the Carry or use its strength elsewhere. Smoke lets two units arrive where one was expected. Farma makes a visible target that grows more worth attacking each round.
 
@@ -325,7 +344,7 @@ When a real round is finished and its games are in (the moment that already trig
 - **How hard it is.** The computer plays team decks at its easiest honest level, so the difficulty comes from the team's real cards and not from the program. Simulated on Wiosenna's 19 teams over the season, with the team decks sorted into five bands by strength: a new player who makes the obvious move each round wins 92% against the weakest band, then 62%, 36%, 33%, and 10% against the strongest; a strong player with the same new collection wins 99%, 88%, 64%, 46% and 18%. With the computer on a stronger level the average player won under 20% from the third band up, which is why the level is fixed low.
 - **One counted match per opponent per round.** A player may play each opponent once for points. They may replay any opponent, of this round or of past rounds, as often as they like for practice. This keeps the counted play to at most five matches a round, and makes each one matter.
 - **Points and the ranking.** Beating an opponent gives points equal to its place from the bottom (1 for the weakest of five, 5 for the strongest). The season's sum is the **Kolejka ranking** of the tournament. Anyone can climb it at any hour without another player online (goal G7).
-- **Packs.** Two of the three round packs are earned here: one for finishing a counted match, one for winning one. The third still arrives by itself, so a collector who never plays keeps collecting.
+- **Packs.** One of the three round packs is earned here, for finishing a counted match (win or lose). One arrives by itself, so a collector who never plays keeps collecting. The third is for playing a person (section 7.4).
 
 This is the answer to "the only lasting goal needs another person online", and it uses the asset: the opponent is the real lineup of a real team from the matches just played. It needs nothing from the organizer.
 
@@ -341,9 +360,11 @@ A user whose account is linked to a roster player receives each card of their ow
 
 ### 7.4 Pojedynki: live matches between people
 
-Live duels stay as the owner decided: by challenge or by link, with no automatic matchmaking, an Elo ranking per tournament, and no prizes for winning. Three things change.
+Live duels stay as the owner decided: by challenge or by link, with no automatic matchmaking, an Elo ranking per tournament, and no prizes for winning. Four things change.
 
-- **A match is quicker and cannot hang.** Both players plan at the same time, so there is one clock per round for both, and a match of five to eight rounds ends in about five minutes by construction. The hit-by-hit fight, which caused the stuck matches and most of the waiting, no longer exists.
+- **A pack for playing a person.** The first finished match against another player in each real round gives a pack, to both players, whoever wins (the owner's choice of 2026-11-15, in place of a pack for beating the computer). It is for playing, not for winning, so it cannot be farmed by arranging results; it is one per round; and a match counts only if it reached round 4 or ended by an Ancient falling, so that two accounts cannot trade packs by resigning at once.
+
+- **A match cannot hang, and nobody waits.** Both players plan at the same time and fight at the same time, so each step has one clock for both, and a match ends in about eight minutes by construction. The hit-by-hit fight, which caused the stuck matches and most of the waiting, is replaced by one hit and one guard a round.
 - **Open tables are visible.** A player who opens a link lobby today waits alone. The cards screen lists the lobbies that are open now ("Wolne stoły"), and a tournament that has a Discord webhook gets one message when a lobby opens. This is a list of invitations that already exist, so it stays within the owner's decision against matchmaking.
 - **A new player is not shut out.** With the deck budget (section 4), a welcome-pack deck meets a season-long collection on nearly equal strength.
 
@@ -370,14 +391,14 @@ Nothing is sold and nothing is traded. Packs are earned, found or given. If paid
 | Welcome | 10 packs | Kept. Given at first sign-in |
 | Finished real round, automatic | 1 pack | Was 3 |
 | Kolejka: first counted match finished | 1 pack | New; replaces one automatic pack |
-| Kolejka: first counted win | 1 pack | New; replaces one automatic pack |
+| First finished match against a person in the round | 1 pack | New; replaces one automatic pack (the owner's choice) |
 | Twoja drużyna | 5 cards on a win, 1 on a loss | New. About two-thirds of a pack per round on average |
 | Twoje karty | The player's own card for each series | New. Tournament players only |
 | Found on the site | As now (`finds.ts`) | Kept |
 | Given by the organizer | As now ("Daj paczki") | Kept |
 | Shards | 30 shards buy a pack | New, from the owner's original plan |
 
-A player who plays each round earns three packs a round as today, plus the followed team's cards. The owner's earlier target of about 40 packs in a season, with four or five elite cards among them, still holds for packs; the team cards add a known, small amount on top. The organizer's setting "packs per round" keeps its meaning: it is the total of the automatic pack and the two earned ones, and the game splits it.
+A player who plays each round earns three packs a round as today, plus the followed team's cards. The owner's earlier target of about 40 packs in a season, with four or five elite cards among them, still holds for packs; the team cards add a known, small amount on top. The organizer's setting "packs per round" keeps its meaning: it is the total of the automatic pack and the two earned ones, and the game splits it. A player with nobody to play gets two of the three; the list of open tables and the challenge by name (section 7.4) are there so that this is rare.
 
 **The budget changes what generosity costs.** Today, more packs mean a stronger deck, so every extra pack widens the gap between old and new players, and the earlier sessions had to tune drop rates with care. Under a deck budget, more cards give more choice but not more total strength. The organizer can give packs away freely on stream without damaging fairness.
 
@@ -524,7 +545,7 @@ Each decision recorded in `inventory/CARDS.md` and the decision log, with a verd
 | 10 | **Deck of 20: two per position and ten free** | **Change to 12: one to three per position.** Reason: a new player has about 50 cards; 20 of them is nearly all the good ones, and 12 is a choice. A smaller deck also means the player sees most of it in a match, so the deck they built is the deck they play |
 | 11 | Strength 1 to 9 on a curve (the owner declined a flatter 4 to 8) | Keep. The budget removes the reason to flatten it |
 | 12 | **Turn of three phases; cards enter through the base; moves are a plan; orders shared** | **Change:** both players plan one round at the same time; cards go straight onto objectives; orders stay, two a round. Reason: sections 2.1 and 2.2. Orders, planning before confirming, and "nothing happens until you confirm" are kept |
-| 13 | **Fights hit by hit, to the end, with the aim line** | **Change: no fight screen.** Totals are compared when the round is revealed. Reason: the fight is where a match's time goes, and it decides about one fight in five. The reveal keeps the moment: cards turn over, bonuses count up, the Ancient is hit |
+| 13 | **Fights hit by hit, to the end, with the aim line** | **Change the fight, keep it** (revised after the owner's review of 2026-11-15; the first version of this document removed it). Each round both players make one hit, with the aim line, and one guard, both hidden until shown together. Reason for changing: today's fight is nineteen clicks a match and decides who holds an objective in 5% of fights. Reason for keeping: the owner is right that it is where a player feels they are playing, and the simulations show the new form decides twice as much with a third of the clicks (section 9.8) |
 | 14 | Second player is dealt six cards | No longer needed: there is no second player |
 | 15 | Draw two a turn; first to ten points | Replaced by the numbers in section 4 |
 | 16 | One ability per position: Farma, Gank, Tank, Smoke, Aura; +1 for teammates together | Keep the five names and the team bonus. Farma and Aura work as before. Gank, Tank and Smoke get new meanings that fit a round played at the same time (section 4.4) |
