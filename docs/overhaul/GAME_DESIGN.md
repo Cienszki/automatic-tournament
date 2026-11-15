@@ -19,7 +19,7 @@ Each goal has a number, so a later session can check it.
 | # | Goal | Measure |
 |---|---|---|
 | G1 | Playing within a minute | A first-time visitor makes their first move within 60 seconds of opening the page: no sign-in, no pack opening, no deck building, no page of rules before it |
-| G2 | Short matches | A match takes 4 to 6 minutes. In a match between people, nobody waits more than about 40 seconds without something to do |
+| G2 | Matches that fit a break | A match takes 6 to 9 minutes. In a match between people, nobody waits more than about 40 seconds without something to do |
 | G3 | Few rules | The round fits in one sentence and each position's ability in one. A player who has finished three matches has met every rule |
 | G4 | Skill over collection | With equal play, a new player's deck loses to a season-long collector's deck at most 60% of the time. With equal decks, the clearly better player wins at least 70% |
 | G5 | A real choice every round | In most rounds the best play depends on what the rival does, and the rival's play is hidden until both have chosen |
@@ -316,8 +316,8 @@ It is a fixed match of four rounds against a scripted rival, with Ancients at 6.
 | Round | New idea | How the board shows it | The line |
 |---|---|---|---|
 | 1 | Cards go on objectives; the higher total controls; control damages the Ancient; Roshan is worth 2 | One card and Roshan glow; the reveal counts both totals | "Przeciągnij kartę na Roshana" |
-| 2 | Two orders a round; cards add up; a Hard Support and a teammate each add +1 | Two order marks; "+1" chips appear on the cards as the total counts up | "Masz 2 rozkazy" |
-| 3 | A unit can move; the rival does not always go where expected | The rival's total on one objective is higher; the player's unit there and another objective glow | "Przesuń jednostkę" |
+| 2 | Two orders a round; cards add up; a Hard Support and a teammate each add +1. Then the first fight: a hit | Two order marks; "+1" chips appear on the cards as the total counts up. After the reveal one rival unit glows, and an aim line follows the finger to it | "Masz 2 rozkazy", then "Uderz" |
+| 3 | A unit can move; the rival does not always go where expected. In the fight: a guard | The rival's total on one objective is higher; the player's unit there and another objective glow. After the reveal the rival's aim line is shown pointing at the player's best unit, which glows until tapped and then carries a shield | "Przesuń jednostkę", then "Osłoń" |
 | 4 | The match ends when an Ancient falls | The rival's Ancient shows 2; Roshan shows 2 | none |
 
 The script only fixes what is in the hand and what the rival does. It does not refuse other moves. A player who does something else still plays a legal round and still wins this match, because the rival's script is weak; they have simply found a rule early.
@@ -454,7 +454,7 @@ Each target was set before the prototype ran.
 
 | Goal | Target | Today's game | Recommended game | Met |
 |---|---|---|---|---|
-| Short matches (G2) | 5 to 7 rounds; nearly all end with an Ancient destroyed | 10.4 turns, 6.5 fights, 19 hits | **5.7 rounds**; 97% of matches last 5 to 7; 99.8% end with an Ancient destroyed | Yes |
+| Matches that fit a break (G2) | 5 to 7 rounds; nearly all end with an Ancient destroyed | 10.4 turns, 6.5 fights, 19 hits | **5.7 rounds**; 97% of matches last 5 to 7; 99.8% end with an Ancient destroyed | Yes |
 | Skill over collection (G4) | A new player's deck loses to a veteran's at most 60% | **90%** | **59%** (56 to 62). Without the budget: 88% | Yes on Wiosenna, at the edge; **no on PDL S2 (66%)**, see below |
 | Skill decides (G4) | The good player beats the obvious-move player at least 70% | Not comparable | **78%** | Yes |
 | Skill beats collection | The good player with a new deck beats the obvious-move player with a veteran deck | Loses 58% (best computer level, 10 packs against 40) | **Wins 67%** | Yes |
