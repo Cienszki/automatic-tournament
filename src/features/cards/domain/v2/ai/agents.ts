@@ -8,13 +8,15 @@
 //   exploiter  knows the rival is the deterministic planner and repeats its reasoning on guessed
 //              hands (the planner's guesses use a public seed, so only its hand is unknown)
 import type { GCard } from '@/lib/card-lab/cards';
-import { other, type MatchState, type Plan } from '../types';
+import type { Strikes } from '../fight';
+import { other, type MatchState, type Plan, type Side } from '../types';
 import { viewFor, type MatchView } from '../view';
 import { candidateActions } from './actions';
 import { guessState, plausibleCards } from './guess';
 import { PLANNER, plannerDecide, type Decision, type PlannerConfig } from './planner';
 import { mulberry32, type Rnd } from './rng';
 import { beamSearch, rankPlans, type Scenario } from './search';
+import { chooseStrikes, type StrikePolicy } from './strikes';
 
 export type AgentName = 'random' | 'greedy' | 'responder' | 'planner' | 'planner-mixed' | 'omniscient' | 'exploiter';
 export const AGENT_NAMES: AgentName[] = ['random', 'greedy', 'responder', 'planner', 'planner-mixed', 'omniscient', 'exploiter'];
@@ -27,7 +29,15 @@ export interface Agent {
   /** True if the match runner must hand it the rival's plan */
   omniscient: boolean;
   decide(v: MatchView, insight?: Insight): Decision;
+  /** The fight step: the board after the reveal is public, so the agent gets the state itself */
+  strike(mid: MatchState, side: Side): Strikes;
 }
+
+/** How each player fights: the two weakest take the plain choice, the middle one answers it, the
+ *  strong ones cannot be predicted */
+const STRIKE_POLICY: Record<AgentName, StrikePolicy> = {
+  random: 'random', greedy: 'obvious', responder: 'answer', planner: 'mixed', 'planner-mixed': 'mixed', omniscient: 'mixed', exploiter: 'mixed',
+};
 
 const SEARCH = { width: PLANNER.width, keep: PLANNER.keep };
 
@@ -78,13 +88,15 @@ function exploiterPlan(v: MatchView, pool: GCard[], rnd: Rnd, samples: number, m
   return rankPlans(v.side, answers.map((p) => p.plan), predicted, { race: true })[0].plan;
 }
 
-export interface AgentOptions { pool: GCard[]; seed: number; planner?: Partial<PlannerConfig>; samples?: number }
+export interface AgentOptions { pool: GCard[]; seed: number; planner?: Partial<PlannerConfig>; samples?: number; strikes?: StrikePolicy }
 
 export function makeAgent(name: AgentName, opts: AgentOptions): Agent {
   const rnd = mulberry32(opts.seed);
   const cfg: PlannerConfig = { ...PLANNER, ...opts.planner, mixed: name === 'planner-mixed' || !!opts.planner?.mixed };
   const samples = opts.samples ?? PLANNER.samples;
-  const agent = (decide: Agent['decide'], omniscient = false): Agent => ({ name, omniscient, decide });
+  const strikeRnd = mulberry32(opts.seed ^ 0x5bd1e995);
+  const policy = opts.strikes ?? STRIKE_POLICY[name];
+  const agent = (decide: Agent['decide'], omniscient = false): Agent => ({ name, omniscient, decide, strike: (mid, side) => chooseStrikes(mid, side, policy, strikeRnd) });
   switch (name) {
     case 'random': return agent((v) => ({ plan: randomPlan(v, opts.pool, rnd) }));
     case 'greedy': return agent((v) => ({ plan: greedyPlan(v, opts.pool, rnd) }));

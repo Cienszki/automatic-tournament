@@ -7,7 +7,7 @@
 import { simCollection, type GCard } from '@/lib/card-lab/cards';
 import { baseMight } from '@/lib/card-lab/outposts';
 import { cost } from '@/features/cards/domain/v2/deck';
-import { DEFAULT_RULES } from '@/features/cards/domain/v2/rules';
+import { DEFAULT_RULES, makeRules } from '@/features/cards/domain/v2/rules';
 import { seasonPeriods } from '@/lib/stats-lab/season';
 import { loadPool } from '../../load-cards';
 import { stream } from '../../rng';
@@ -49,7 +49,7 @@ export async function e11(ctx: Ctx): Promise<Outcome> {
   const sorted = [...decks].sort((a, b) => a.might - b.might);
   const bands = [0, 1, 2, 3, 4].map((b) => sorted.slice(Math.floor((b * sorted.length) / 5), Math.floor(((b + 1) * sorted.length) / 5)));
   const proxyTotals = Object.entries(PACKS).map(([name, packs]) => {
-    const ds = Array.from({ length: 50 }, (_, i) => buildDeck('best', simCollection(cards, packs, stream(ctx.seed, 'e11-col', packs, i)), DEFAULT_RULES)!);
+    const ds = Array.from({ length: 50 }, (_, i) => buildDeck('best', simCollection(cards, packs, stream(ctx.seed, 'e11-col', packs, i)), makeRules(JSON.parse(process.env.SIM_RULES ?? '{}')))!);
     return [`best default-budget deck, ${name} (${packs} packs, 50 collections)`, five(ds.map((d) => d.reduce((a, c) => a + baseMight(c), 0))), five(ds.map((d) => d.reduce((a, c) => a + cost(c), 0))), '12'];
   });
   const small = decks.filter((d) => d.ids.length < DEFAULT_RULES.deckSize);

@@ -16,6 +16,8 @@ export interface Unit {
   side: Side;
   /** The round in which a gank put this unit out (it does not count in that round) */
   out?: number;
+  /** A hit that weakens instead: [round, strength lost in that round] */
+  hurt?: [number, number];
   at: Slot;
   /** Farma growth (Carry) */
   growth: number;
@@ -63,6 +65,8 @@ export type MatchEvent =
   | { kind: 'play'; side: Side; card: GCard; to: Slot; replaced?: GCard }
   | { kind: 'move'; side: Side; card: GCard; from: Slot; to: Slot; free?: FreeKind }
   | { kind: 'gank'; side: Side; mid: GCard; at: Slot; target: GCard | null; blocked: boolean; toHand: boolean }
+  /** Fight step: `side` hit `target` (null = no hit); `guarded` = the rival had guarded it */
+  | { kind: 'strike'; side: Side; at: Slot; target: GCard | null; guarded: boolean }
   | { kind: 'control'; at: Slot; power: [number, number]; controller: Side | null }
   | { kind: 'damage'; side: Side; at: Slot; amount: number }
   | { kind: 'farm'; side: Side; card: GCard; growth: number }

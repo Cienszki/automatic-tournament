@@ -1,0 +1,189 @@
+{
+ "experiment": "e19",
+ "slug": "wiosenna",
+ "seed": 1,
+ "gamesPlayed": 15000,
+ "gamesArg": 600,
+ "ms": 1270031,
+ "command": "npx tsx scripts/tools/card-sim/run-v2.ts e19 --slug wiosenna --seed 1 --games 600",
+ "tables": [
+  {
+   "title": "E19a. The fight step and the design's targets (wiosenna)",
+   "measured": "600 games per cell. Rounds, comeback, never trailed and the fight columns: planner vs planner with the same best deck. Veteran vs new: 200 collection pairs. Skill: planner vs greedy, same deck. Shape: a deck of few strong cards and cheap fillers against a deck of even cards (30 collections). Fights per match counts contested objectives over the match; a flip is a contested objective whose controller the fight changed.",
+   "columns": [
+    "Rules",
+    "Rounds",
+    "P(win | behind after round 3)",
+    "Winner never trailed",
+    "Veteran wins vs new",
+    "Planner beats greedy",
+    "Stars beat even decks",
+    "Fights per match",
+    "Hits landed / guarded per side",
+    "Fights that change control"
+   ],
+   "rows": [
+    [
+     "settled rules, no fight step",
+     "5.68",
+     "35.2% [31.2–39.4]",
+     "43.6%",
+     "57.9% [53.9–61.8]",
+     "78.7% [75.2–81.8]",
+     "80.3% [76.9–83.3]",
+     "—",
+     "—",
+     "—"
+    ],
+    [
+     "one hit a round, -3 strength",
+     "5.70",
+     "34.9% [30.9–39.1]",
+     "38.7%",
+     "60.9% [57.0–64.8]",
+     "74.8% [71.2–78.1]",
+     "80.0% [76.6–83.0]",
+     "11.79",
+     "3.06 / 2.17",
+     "11.6%"
+    ],
+    [
+     "one hit a round, -3 strength, Ancients 14 HP",
+     "6.30",
+     "36.8% [32.7–41.1]",
+     "42.9%",
+     "60.2% [56.2–64.0]",
+     "73.0% [69.3–76.4]",
+     "81.7% [78.4–84.6]",
+     "13.54",
+     "3.47 / 2.40",
+     "11.5%"
+    ],
+    [
+     "one hit a round, -4 strength, Ancients 14 HP",
+     "6.25",
+     "40.7% [36.6–45.0]",
+     "37.3%",
+     "60.4% [56.5–64.3]",
+     "70.0% [66.2–73.5]",
+     "81.0% [77.6–83.9]",
+     "13.34",
+     "3.42 / 2.40",
+     "13.8%"
+    ],
+    [
+     "one hit a round, -3 strength, Ancients 16 HP, last round 10",
+     "6.88",
+     "39.0% [34.9–43.3]",
+     "35.3%",
+     "60.3% [56.4–64.2]",
+     "72.8% [69.1–76.2]",
+     "84.0% [80.9–86.7]",
+     "15.52",
+     "3.92 / 2.58",
+     "11.3%"
+    ]
+   ]
+  },
+  {
+   "title": "E19b. Choosing well in the fight (wiosenna)",
+   "measured": "Both sides are the planner with the same deck and plan the same way; only how they fight differs. Rules: {\"fight\":\"oneStrike\",\"hitEffect\":3,\"hp\":14}. 600 games per pair. obvious = hit the strongest, guard the own strongest; answer = best choice against obvious; mixed = unpredictable (equilibrium weights); random = any choice.",
+   "columns": [
+    "Row fights",
+    "Rival fights",
+    "Row wins [95% CI]"
+   ],
+   "rows": [
+    [
+     "obvious",
+     "random",
+     "68.2% [64.4–71.8]"
+    ],
+    [
+     "answer",
+     "obvious",
+     "87.1% [84.2–89.6]"
+    ],
+    [
+     "mixed",
+     "obvious",
+     "53.8% [49.8–57.8]"
+    ],
+    [
+     "mixed",
+     "answer",
+     "57.3% [53.3–61.2]"
+    ],
+    [
+     "mixed",
+     "random",
+     "71.1% [67.4–74.6]"
+    ]
+   ]
+  }
+ ],
+ "data": {
+  "rows": [
+   [
+    "settled rules, no fight step",
+    "5.68",
+    "35.2% [31.2–39.4]",
+    "43.6%",
+    "57.9% [53.9–61.8]",
+    "78.7% [75.2–81.8]",
+    "80.3% [76.9–83.3]",
+    "—",
+    "—",
+    "—"
+   ],
+   [
+    "one hit a round, -3 strength",
+    "5.70",
+    "34.9% [30.9–39.1]",
+    "38.7%",
+    "60.9% [57.0–64.8]",
+    "74.8% [71.2–78.1]",
+    "80.0% [76.6–83.0]",
+    "11.79",
+    "3.06 / 2.17",
+    "11.6%"
+   ],
+   [
+    "one hit a round, -3 strength, Ancients 14 HP",
+    "6.30",
+    "36.8% [32.7–41.1]",
+    "42.9%",
+    "60.2% [56.2–64.0]",
+    "73.0% [69.3–76.4]",
+    "81.7% [78.4–84.6]",
+    "13.54",
+    "3.47 / 2.40",
+    "11.5%"
+   ],
+   [
+    "one hit a round, -4 strength, Ancients 14 HP",
+    "6.25",
+    "40.7% [36.6–45.0]",
+    "37.3%",
+    "60.4% [56.5–64.3]",
+    "70.0% [66.2–73.5]",
+    "81.0% [77.6–83.9]",
+    "13.34",
+    "3.42 / 2.40",
+    "13.8%"
+   ],
+   [
+    "one hit a round, -3 strength, Ancients 16 HP, last round 10",
+    "6.88",
+    "39.0% [34.9–43.3]",
+    "35.3%",
+    "60.3% [56.4–64.2]",
+    "72.8% [69.1–76.2]",
+    "84.0% [80.9–86.7]",
+    "15.52",
+    "3.92 / 2.58",
+    "11.3%"
+   ]
+  ]
+ }
+}

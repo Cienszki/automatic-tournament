@@ -23,7 +23,8 @@ export function strengthParts(s: MatchState, u: Unit, units: Unit[] = s.units): 
 
 export const strengthOf = (s: MatchState, u: Unit, units: Unit[] = s.units): number => {
   const p = strengthParts(s, u, units);
-  return p.base + p.growth + p.aura + p.team + p.highGround;
+  const total = p.base + p.growth + p.aura + p.team + p.highGround;
+  return u.hurt && u.hurt[0] === s.round ? Math.max(0, total - u.hurt[1]) : total;
 };
 
 /** Total strength of each side on an objective */

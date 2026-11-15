@@ -1,5 +1,6 @@
 // One round: both plans revealed and applied at once, ganks, control and damage, Farma, the
 // objectives' own effects, the end check, and the start of the next round.
+import { applyStrikes, obviousStrikes, type Strikes } from './fight';
 import { resolveGanks } from './gank';
 import { freeMoves, validatePlan } from './plan';
 import { startRound, drawCards } from './setup';
@@ -111,7 +112,17 @@ function endCheck(s: MatchState, control: MatchState['control']): MatchResult | 
  * Plays one round from both sides' plans. Pure: `prev` is not changed. Throws on an illegal plan.
  * `trusted` skips the legality check, for search code that only builds legal plans.
  */
-export function resolveRound(prev: MatchState, plans: [Plan, Plan], opts: { trusted?: boolean } = {}): RoundOutcome {
+export function resolveRound(prev: MatchState, plans: [Plan, Plan], opts: { trusted?: boolean; strikes?: [Strikes, Strikes] } = {}): RoundOutcome {
+  const mid = revealRound(prev, plans, opts);
+  return finishRound(mid.state, opts.strikes, mid.events);
+}
+
+/**
+ * The first half of a round: both plans applied and the ganks done. With a fight step in the rules,
+ * the players now choose their strikes on this board, and `finishRound` plays the rest.
+ * The returned state is in the middle of a round: only pass it to `finishRound`.
+ */
+export function revealRound(prev: MatchState, plans: [Plan, Plan], opts: { trusted?: boolean } = {}): RoundOutcome {
   if (prev.result) throw new Error('the match is over');
   for (const side of opts.trusted ? [] : SIDES) {
     const problem = validatePlan(prev, side, plans[side]);
@@ -121,6 +132,18 @@ export function resolveRound(prev: MatchState, plans: [Plan, Plan], opts: { trus
   const events: MatchEvent[] = [];
   applyPlans(prev, s, plans, events);
   resolveGanks(s, events);
+  return { state: s, events };
+}
+
+/**
+ * The second half of a round, from the state `revealRound` returned: the fight step (strikes not
+ * given are the plain ones: hit the strongest, guard the own strongest), control and damage, Farma,
+ * objective effects, the end check and the start of the next round. Pure.
+ */
+export function finishRound(mid: MatchState, strikes?: [Strikes, Strikes], before: MatchEvent[] = []): RoundOutcome {
+  const s = cloneState(mid);
+  const events: MatchEvent[] = [...before];
+  if (s.rules.fight !== 'none') applyStrikes(s, strikes ?? [obviousStrikes(s, 0), obviousStrikes(s, 1)], events);
   const control = score(s, events);
   farm(s, control, events);
   tormentor(s, control, events);

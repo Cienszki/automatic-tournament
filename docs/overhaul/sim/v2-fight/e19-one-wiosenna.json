@@ -1,0 +1,213 @@
+{
+ "experiment": "e19",
+ "slug": "wiosenna",
+ "seed": 1,
+ "gamesPlayed": 17400,
+ "gamesArg": 600,
+ "ms": 1218594,
+ "command": "npx tsx scripts/tools/card-sim/run-v2.ts e19 --slug wiosenna --seed 1 --games 600",
+ "tables": [
+  {
+   "title": "E19a. The fight step and the design's targets (wiosenna)",
+   "measured": "600 games per cell. Rounds, comeback, never trailed and the fight columns: planner vs planner with the same best deck. Veteran vs new: 200 collection pairs. Skill: planner vs greedy, same deck. Shape: a deck of few strong cards and cheap fillers against a deck of even cards (30 collections). Fights per match counts contested objectives over the match; a flip is a contested objective whose controller the fight changed.",
+   "columns": [
+    "Rules",
+    "Rounds",
+    "P(win | behind after round 3)",
+    "Winner never trailed",
+    "Veteran wins vs new",
+    "Planner beats greedy",
+    "Stars beat even decks",
+    "Fights per match",
+    "Hits landed / guarded per side",
+    "Fights that change control"
+   ],
+   "rows": [
+    [
+     "settled rules, no fight step",
+     "5.68",
+     "35.2% [31.2–39.4]",
+     "43.6%",
+     "57.9% [53.9–61.8]",
+     "78.7% [75.2–81.8]",
+     "80.3% [76.9–83.3]",
+     "—",
+     "—",
+     "—"
+    ],
+    [
+     "one hit and one guard a round",
+     "5.68",
+     "34.2% [30.3–38.4]",
+     "43.2%",
+     "54.8% [50.8–58.7]",
+     "67.4% [63.6–71.1]",
+     "74.7% [71.0–78.0]",
+     "11.69",
+     "3.08 / 2.13",
+     "22.9%"
+    ],
+    [
+     "one hit and one guard, Ancients 14 HP",
+     "6.27",
+     "36.4% [32.4–40.7]",
+     "44.6%",
+     "55.1% [51.1–59.1]",
+     "63.9% [60.0–67.7]",
+     "77.5% [74.0–80.7]",
+     "13.41",
+     "3.46 / 2.39",
+     "23.8%"
+    ],
+    [
+     "one hit and one guard, Ancients 14 HP, no Gank",
+     "6.26",
+     "32.8% [28.9–37.0]",
+     "52.0%",
+     "60.7% [56.7–64.5]",
+     "64.3% [60.4–68.0]",
+     "84.3% [81.2–87.0]",
+     "14.32",
+     "3.68 / 2.48",
+     "23.9%"
+    ],
+    [
+     "one hit and one guard, a hit takes 3 strength",
+     "5.75",
+     "35.3% [31.2–39.5]",
+     "42.0%",
+     "58.2% [54.2–62.0]",
+     "78.1% [74.6–81.3]",
+     "77.0% [73.4–80.2]",
+     "11.94",
+     "3.10 / 2.16",
+     "11.1%"
+    ],
+    [
+     "hit and guard on every objective, a hit takes 2 strength",
+     "5.70",
+     "37.2% [33.1–41.4]",
+     "41.2%",
+     "57.3% [53.3–61.2]",
+     "73.2% [69.5–76.6]",
+     "77.2% [73.6–80.3]",
+     "11.82",
+     "4.88 / 6.55",
+     "7.4%"
+    ]
+   ]
+  },
+  {
+   "title": "E19b. Choosing well in the fight (wiosenna)",
+   "measured": "Both sides are the planner with the same deck and plan the same way; only how they fight differs. Rules: {\"fight\":\"oneStrike\",\"hp\":14}. 600 games per pair. obvious = hit the strongest, guard the own strongest; answer = best choice against obvious; mixed = unpredictable (equilibrium weights); random = any choice.",
+   "columns": [
+    "Row fights",
+    "Rival fights",
+    "Row wins [95% CI]"
+   ],
+   "rows": [
+    [
+     "obvious",
+     "random",
+     "80.1% [76.8–83.1]"
+    ],
+    [
+     "answer",
+     "obvious",
+     "97.3% [95.7–98.4]"
+    ],
+    [
+     "mixed",
+     "obvious",
+     "55.8% [51.8–59.7]"
+    ],
+    [
+     "mixed",
+     "answer",
+     "52.3% [48.3–56.2]"
+    ],
+    [
+     "mixed",
+     "random",
+     "75.3% [71.7–78.6]"
+    ]
+   ]
+  }
+ ],
+ "data": {
+  "rows": [
+   [
+    "settled rules, no fight step",
+    "5.68",
+    "35.2% [31.2–39.4]",
+    "43.6%",
+    "57.9% [53.9–61.8]",
+    "78.7% [75.2–81.8]",
+    "80.3% [76.9–83.3]",
+    "—",
+    "—",
+    "—"
+   ],
+   [
+    "one hit and one guard a round",
+    "5.68",
+    "34.2% [30.3–38.4]",
+    "43.2%",
+    "54.8% [50.8–58.7]",
+    "67.4% [63.6–71.1]",
+    "74.7% [71.0–78.0]",
+    "11.69",
+    "3.08 / 2.13",
+    "22.9%"
+   ],
+   [
+    "one hit and one guard, Ancients 14 HP",
+    "6.27",
+    "36.4% [32.4–40.7]",
+    "44.6%",
+    "55.1% [51.1–59.1]",
+    "63.9% [60.0–67.7]",
+    "77.5% [74.0–80.7]",
+    "13.41",
+    "3.46 / 2.39",
+    "23.8%"
+   ],
+   [
+    "one hit and one guard, Ancients 14 HP, no Gank",
+    "6.26",
+    "32.8% [28.9–37.0]",
+    "52.0%",
+    "60.7% [56.7–64.5]",
+    "64.3% [60.4–68.0]",
+    "84.3% [81.2–87.0]",
+    "14.32",
+    "3.68 / 2.48",
+    "23.9%"
+   ],
+   [
+    "one hit and one guard, a hit takes 3 strength",
+    "5.75",
+    "35.3% [31.2–39.5]",
+    "42.0%",
+    "58.2% [54.2–62.0]",
+    "78.1% [74.6–81.3]",
+    "77.0% [73.4–80.2]",
+    "11.94",
+    "3.10 / 2.16",
+    "11.1%"
+   ],
+   [
+    "hit and guard on every objective, a hit takes 2 strength",
+    "5.70",
+    "37.2% [33.1–41.4]",
+    "41.2%",
+    "57.3% [53.3–61.2]",
+    "73.2% [69.5–76.6]",
+    "77.2% [73.6–80.3]",
+    "11.82",
+    "4.88 / 6.55",
+    "7.4%"
+   ]
+  ]
+ }
+}

@@ -21,8 +21,11 @@ export const PACKS = { new: 10, regular: 20, veteran: 40 } as const;
 export const seat = (agent: AgentName, builder: BuilderName = 'best', packs: number = PACKS.veteran, hp?: number): SeatSpec =>
   ({ agent, deck: { kind: 'builder', builder, packs }, hp });
 
+/** SIM_RULES: a JSON rules patch applied under every cell of the run (a cell's own rules win) */
+const ENV_RULES = JSON.parse(process.env.SIM_RULES ?? '{}') as RulesPatch;
+
 export function cell(ctx: Ctx, key: string, x: SeatSpec, y: SeatSpec, extra: Partial<CellSpec> = {}): CellSpec {
-  return { key, slug: ctx.slug, seats: [x, y], games: ctx.games ?? 1000, seed: subSeed(ctx.seed, ctx.slug, key), colSeed: subSeed(ctx.seed, ctx.slug, 'collections'), ...extra };
+  return { key, slug: ctx.slug, seats: [x, y], games: ctx.games ?? 1000, seed: subSeed(ctx.seed, ctx.slug, key), colSeed: subSeed(ctx.seed, ctx.slug, 'collections'), ...extra, rules: { ...ENV_RULES, ...extra.rules } };
 }
 
 /** Seat X's win rate over decided games, with the draws counted apart */
