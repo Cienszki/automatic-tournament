@@ -1,0 +1,102 @@
+{
+ "experiment": "e4",
+ "slug": "wiosenna",
+ "seed": 1,
+ "gamesPlayed": 1000,
+ "gamesArg": null,
+ "ms": 155220,
+ "command": "npx tsx scripts/tools/card-sim/run-v2.ts e4 --slug wiosenna --seed 1",
+ "tables": [
+  {
+   "title": "E4. Comebacks (wiosenna)",
+   "measured": "planner vs planner with the same `best` deck (one veteran collection per pair), N = 1000. Targets: P(win | behind after round 3) >= 25%; winner never trailed <= 55%.",
+   "columns": [
+    "Measure",
+    "Value"
+   ],
+   "rows": [
+    [
+     "P(win | behind on HP after round 2) (matches still going, HP not equal)",
+     "41.2% [37.8–44.7] (N=796)"
+    ],
+    [
+     "P(win | behind on HP after round 3) (matches still going, HP not equal)",
+     "33.5% [30.4–36.7] (N=845)"
+    ],
+    [
+     "P(win | behind on HP after round 4) (matches still going, HP not equal)",
+     "27.8% [24.9–30.8] (N=878)"
+    ],
+    [
+     "Lead changes per match (sign changes of the HP difference, equal HP skipped)",
+     "0.77"
+    ],
+    [
+     "Winner never trailed on HP after any round",
+     "41.5% [38.5–44.6]"
+    ],
+    [
+     "Final HP difference: mean / median",
+     "5.63 / 5.00"
+    ],
+    [
+     "Winner's remaining HP (count of matches)",
+     "0: 81, 1: 121, 2: 126, 3: 98, 4: 95, 5: 96, 6: 97, 7: 81, 8: 58, 9: 37, 10: 20, 11: 10, 12: 2, 13: 2, 14: 1, -8: 3, -7: 2, -3: 16, -2: 15, -1: 34"
+    ]
+   ]
+  }
+ ],
+ "data": {
+  "after": [
+   {
+    "after": 2,
+    "k": 328,
+    "n": 796,
+    "text": "41.2% [37.8–44.7]"
+   },
+   {
+    "after": 3,
+    "k": 283,
+    "n": 845,
+    "text": "33.5% [30.4–36.7]"
+   },
+   {
+    "after": 4,
+    "k": 244,
+    "n": 878,
+    "text": "27.8% [24.9–30.8]"
+   }
+  ],
+  "changes": 0.7658291457286432,
+  "neverTrailed": {
+   "k": 413,
+   "n": 995
+  },
+  "winnerHp": {
+   "0": 81,
+   "1": 121,
+   "2": 126,
+   "3": 98,
+   "4": 95,
+   "5": 96,
+   "6": 97,
+   "7": 81,
+   "8": 58,
+   "9": 37,
+   "10": 20,
+   "11": 10,
+   "12": 2,
+   "13": 2,
+   "14": 1,
+   "-8": 3,
+   "-7": 2,
+   "-3": 16,
+   "-2": 15,
+   "-1": 34
+  },
+  "margin": [
+   5.630150753768844,
+   5
+  ]
+ }
+}

@@ -40,7 +40,8 @@ export function teamDecks(slug: string, deckSize = DEFAULT_RULES.deckSize): Team
   return out;
 }
 
-const CPUS = ['greedy', 'responder', 'planner'] as const;
+// SIM_CPUS: which computer levels play the team decks (default all three)
+const CPUS = (process.env.SIM_CPUS ?? 'greedy,responder,planner').split(',') as Array<'greedy' | 'responder' | 'planner'>;
 const five = (xs: number[]) => [0, 0.25, 0.5, 0.75, 1].map((q) => num(quantile(xs, q), 0)).join(' / ');
 
 export async function e11(ctx: Ctx): Promise<Outcome> {
