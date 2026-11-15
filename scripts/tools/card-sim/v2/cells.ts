@@ -20,7 +20,8 @@ export type DeckSpec =
   | { kind: 'list'; decks: string[][] };
 
 import type { StrikePolicy } from '@/features/cards/domain/v2/ai/strikes';
-export interface SeatSpec { agent: AgentName; deck: DeckSpec; hp?: number; strikes?: StrikePolicy }
+import type { Opponent } from '@/features/cards/domain/v2/ai/levels';
+export interface SeatSpec { agent: AgentName; deck: DeckSpec; hp?: number; strikes?: StrikePolicy; level?: Opponent }
 
 export interface CellSpec {
   key: string;
@@ -94,6 +95,7 @@ export function playCellGame(cell: CellSpec, i: number): GameResult {
     seed: subSeed(cell.seed, 'game', i), pool: slugPool(cell.slug).guessPool,
     options: { objectives: cell.objectives, hp }, planner: cell.planner,
     strikes: [cell.seats[seatOn(0)].strikes, cell.seats[seatOn(1)].strikes],
+    opponents: [cell.seats[seatOn(0)].level, cell.seats[seatOn(1)].level],
   });
   const x = rec.winner === null ? 0.5 : rec.winner === xSide ? 1 : 0;
   return { i, x, xSide, rec, decks: [decks[xSide].map((c) => c.id), decks[1 - xSide].map((c) => c.id)] };
