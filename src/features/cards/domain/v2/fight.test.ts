@@ -77,6 +77,21 @@ describe('fight step: one hit and one guard a round', () => {
   });
 });
 
+describe('checking one hit and one guard', () => {
+  it('a hit and a guard on the same objective are two entries and legal', () => {
+    const s = board();
+    expect(validateStrikes(s, 1, [{ at: 0, target: '0:a9' }, { at: 0, guard: '1:b6' }])).toBeNull();
+    expect(validateStrikes(s, 1, [])).toBeNull();
+  });
+  it('two hits, two guards, a rival unit as guard or an own unit as target are refused', () => {
+    const s = board();
+    expect(validateStrikes(s, 1, [{ at: 0, target: '0:a9' }, { at: 0, target: '0:a2' }])).toMatch(/more than one hit/);
+    expect(validateStrikes(s, 1, [{ at: 0, guard: '1:b6' }, { at: 0, guard: '1:b4' }])).toMatch(/more than one guard/);
+    expect(validateStrikes(s, 1, [{ at: 0, guard: '0:a9' }])).toMatch(/cannot be guarded/);
+    expect(validateStrikes(s, 1, [{ at: 0, target: '1:b4' }])).toMatch(/cannot be hit/);
+  });
+});
+
 describe('fight step on every contested objective (the first variant)', () => {
   it('each side names a hit and a guard per objective', () => {
     const c5 = aCard({ id: 'c5', cost: 5 }); const d5 = aCard({ id: 'd5', cost: 5 });
