@@ -90,3 +90,16 @@ export function objectiveModels(s: MatchState, shown: (at: Slot) => TotalsShown,
     };
   }) as Scene['objectives'];
 }
+
+/**
+ * The unit a hit is drawn from. This is a picture, not a rule: a hit belongs to a side, and a unit
+ * can only be hit where both sides stand, so the hitting side always has a unit on that objective.
+ * `preferred` is the unit the player dragged from, when it stands there.
+ */
+export function aimOrigin(units: UnitModel[], side: Side, target: string, preferred?: string | null): string | null {
+  const t = units.find((u) => u.uid === target);
+  if (!t) return null;
+  const here = units.filter((u) => u.side === side && u.at === t.at && !u.out);
+  if (preferred && here.some((u) => u.uid === preferred)) return preferred;
+  return [...here].sort((a, b) => b.strength - a.strength || (a.uid < b.uid ? -1 : 1))[0]?.uid ?? null;
+}
