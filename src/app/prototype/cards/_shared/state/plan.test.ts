@@ -123,8 +123,8 @@ describe('the planning scene', () => {
     expect(scene.units.find((u) => u.uid === '0:a')?.planned).toBeUndefined();
     expect(scene.hand.map((c) => c.id)).toEqual(['h2', 'h3']);
     for (const [at, o] of scene.objectives.entries()) {
-      const sum = scene.units.filter((u) => u.side === ME && u.at === at).reduce((a, u) => a + u.strength, 0);
-      expect(o.totals).toEqual([sum, null]);
+      const here = scene.units.filter((u) => u.side === ME && u.at === at);
+      expect(o.totals).toEqual([here.length ? here.reduce((a, u) => a + u.strength, 0) : null, null]);
     }
     // The played Mid would gank the rival's unit, but that is the reveal's business
     const gank = planScene(viewFor(s, ME), run(s, { type: 'drop', ref: card('h2'), to: 0, replace: '0:c' }).plan);

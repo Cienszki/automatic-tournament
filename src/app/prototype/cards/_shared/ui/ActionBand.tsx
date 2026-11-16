@@ -62,13 +62,13 @@ export function ConfirmButton({ mode, ready, size, wide, onConfirm }: { mode: Ba
   if (mode.kind === 'show') {
     return <span className="flex items-center justify-center rounded-full" style={{ width: size, height: size, color: T.muted, boxShadow: `inset 0 0 0 1.5px ${T.faint}` }}><SkipForward style={{ width: Math.max(18, size * 0.3), height: Math.max(18, size * 0.3) }} /></span>;
   }
+  // The pulse is a CSS animation on a glow behind the label: the theme colour is a CSS variable,
+  // which a keyframe animation in JavaScript could not blend
   return (
-    <motion.button type="button" onClick={onConfirm} data-confirm className="relative flex items-center justify-center rounded-full font-logik-extended-bold uppercase text-white"
-      whileTap={{ scale: 0.94 }} initial={false}
-      animate={ready
-        ? { boxShadow: [`0 0 0 3px ${ACC_L}, 0 0 8px ${mix(ACC, 60)}`, `0 0 0 3px ${ACC_L}, 0 0 34px ${ACC}`, `0 0 0 3px ${ACC_L}, 0 0 8px ${mix(ACC, 60)}`], backgroundColor: [mix(ACC, 75), ACC, mix(ACC, 75)] }
-        : { boxShadow: `0 0 0 2px ${mix(ACC, 70)}`, backgroundColor: mix(ACC, 30) }}
-      transition={ready ? { duration: 1.8, repeat: Infinity } : { duration: 0.3 }}
-      style={{ width: wide ? undefined : size, height: size, padding: wide ? '0 22px' : 0, fontSize: wide ? 13 : Math.max(10, size * 0.105), letterSpacing: wide ? '0.12em' : '0.02em', ...font }}>Zatwierdź</motion.button>
+    <motion.button type="button" onClick={onConfirm} data-confirm className="relative flex items-center justify-center rounded-full font-logik-extended-bold uppercase text-white" whileTap={{ scale: 0.94 }}
+      style={{ width: wide ? undefined : size, height: size, padding: wide ? '0 22px' : 0, fontSize: wide ? 13 : Math.max(10, size * 0.105), letterSpacing: wide ? '0.12em' : '0.02em', background: ready ? mix(ACC, 78) : mix(ACC, 30), boxShadow: `0 0 0 ${ready ? 3 : 2}px ${ready ? ACC_L : mix(ACC, 70)}`, transition: 'background .3s, box-shadow .3s', ...font }}>
+      {ready && <span className="absolute inset-0 rounded-full pointer-events-none" style={{ background: mix(ACC, 55), boxShadow: `0 0 30px ${ACC}`, animation: 'proto-pulse 1.8s ease-in-out infinite' }} />}
+      <span className="relative">Zatwierdź</span>
+    </motion.button>
   );
 }

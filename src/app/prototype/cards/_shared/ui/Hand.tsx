@@ -31,7 +31,7 @@ export function Hand({ cards, width, cardW, glow, picked, away, hidden, sink = 0
   const step = n > 1 ? Math.min(cardW + 8, (width - cardW - 20) / (n - 1)) : 0;
   const cardH = Math.round(cardW * 1.42);
   return (
-    <motion.div className="absolute inset-x-0 bottom-0 pointer-events-none" style={{ height: cardH }} initial={false}
+    <motion.div data-hand className="absolute inset-x-0 bottom-0 pointer-events-none" style={{ height: cardH }} initial={false}
       animate={{ y: away ? cardH * 0.62 : cardH * sink, opacity: away ? 0.45 : 1 }} transition={{ type: 'spring', stiffness: 260, damping: 30 }}>
       {cards.map((c, i) => {
         const off = i - (n - 1) / 2;

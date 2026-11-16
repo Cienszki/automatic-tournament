@@ -58,7 +58,7 @@ export function FxLayer({ root, scene, tick, size, aiming, locked, preferred }: 
     if (f.kind === 'aim') {
       const from = aimOrigin(scene.units, f.side, f.target, f.side === 0 ? preferred : null);
       const a = from && unit(from); const b = unit(f.target);
-      if (a && b) bolts.push({ key: `${tick}-${f.side}`, d: bow(a, b, f.side === 0 ? 0.16 : -0.16), color: sideColor(f.side) });
+      if (a && b) bolts.push({ key: `${tick}-${f.side}`, d: bow(a, b), color: sideColor(f.side) });
     } else if (f.kind === 'block') {
       const p = unit(f.uid);
       if (p) sparks.push({ key: `${tick}-${f.uid}`, p });
@@ -98,11 +98,12 @@ export function FxLayer({ root, scene, tick, size, aiming, locked, preferred }: 
               initial={{ pathLength: 0, opacity: 1 }} animate={{ pathLength: 1, opacity: 1 }} exit={{ opacity: 0, transition: { duration: 0.2 } }} transition={{ duration: 0.38, ease: 'easeIn' }} />
           ))}
         </AnimatePresence>
-        {sparks.map((s) => Array.from({ length: 10 }, (_, i) => {
-          const a = (i / 10) * Math.PI * 2;
+        {sparks.map((s) => Array.from({ length: 12 }, (_, i) => {
+          const a = (i / 12) * Math.PI * 2 + 0.26; const far = i % 2 ? 58 : 44;
           return (
-            <motion.line key={`${s.key}-${i}`} x1={s.p.x} y1={s.p.y} x2={s.p.x} y2={s.p.y} stroke="#fff" strokeWidth={3} strokeLinecap="round" style={{ filter: `drop-shadow(0 0 5px ${T.guard})` }}
-              initial={{ opacity: 1 }} animate={{ x1: s.p.x + Math.cos(a) * 26, y1: s.p.y + Math.sin(a) * 26, x2: s.p.x + Math.cos(a) * 46, y2: s.p.y + Math.sin(a) * 46, opacity: [1, 1, 0.55] }} transition={{ duration: 0.4, ease: 'easeOut' }} />
+            <motion.line key={`${s.key}-${i}`} stroke="#fff" strokeWidth={3} strokeLinecap="round" style={{ filter: `drop-shadow(0 0 5px ${T.guard})` }}
+              initial={{ x1: s.p.x, y1: s.p.y, x2: s.p.x, y2: s.p.y, opacity: 1 }}
+              animate={{ x1: s.p.x + Math.cos(a) * (far - 16), y1: s.p.y + Math.sin(a) * (far - 16), x2: s.p.x + Math.cos(a) * far, y2: s.p.y + Math.sin(a) * far, opacity: 0.6 }} transition={{ duration: 0.45, ease: 'easeOut' }} />
           );
         }))}
       </svg>

@@ -6,7 +6,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { fightComplete, NO_CHOICE, reduceFight, type FightAction, type FightChoice } from './state/fight';
 import { confirmFight, confirmPlan, startAt, type Jump, type Stage } from './state/game';
-import { actors, EMPTY_PLAN, planScene, reducePlan, targetsOf, type PlanAction, type PlanState, type Target } from './state/plan';
+import { actors, EMPTY_PLAN, planScene, reducePlan, targetsOf, type PlanAction, type PlanState, type Ref, type Target } from './state/plan';
 import type { Mode } from './state/reveal';
 import { knownState, ME, type Scene } from './state/scene';
 
@@ -53,6 +53,8 @@ export function useMatch(o: StartOptions) {
     return targetsOf(known, ME, ps.plan, ps.pick);
   }, [known, ps]);
 
+  /** Where a card or unit may go, while it is being dragged */
+  const targetsFor = useCallback((ref: Ref): [Target, Target, Target] | null => (known ? targetsOf(known, ME, ps.plan, ref) : null), [known, ps.plan]);
   const plan = useCallback((a: PlanAction) => { if (stage.kind === 'plan') setPs((p) => reducePlan(p, a, knownState(stage.view), ME)); }, [stage]);
   const fight = useCallback((a: FightAction, from?: string | null) => {
     if (stage.kind !== 'fight') return;
@@ -71,5 +73,5 @@ export function useMatch(o: StartOptions) {
 
   const ready = stage.kind === 'plan' ? glow.cards.size + glow.units.size === 0 : stage.kind === 'fight' ? fightComplete(choice, stage.options) : false;
   const tick = stage.kind === 'show' ? `${scene.round}-${stage.steps[step].key}` : `${scene.round}-${stage.kind}`;
-  return { stage, scene, tick, ps, choice, aimFrom, glow, slots, ready, plan, fight, confirm, skip };
+  return { stage, scene, tick, ps, choice, aimFrom, glow, slots, targetsFor, ready, plan, fight, confirm, skip };
 }

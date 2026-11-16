@@ -64,7 +64,7 @@ export function UnitTile({ m, w, look = {}, dataRef, layoutId }: { m: UnitModel;
       className="relative shrink-0 touch-none select-none" style={{ width: w, height: h, perspective: 600, zIndex: look.picked ? 30 : look.struck || look.aimed ? 20 : undefined }}
       initial={false} animate={{ y: look.picked ? -Math.max(6, 10 * k) : 0, rotate: m.out ? -9 : 0, scale: look.lit === 'hit' || look.aimed ? 1.05 : 1 }}
       transition={{ type: 'spring', stiffness: 320, damping: 28 }}>
-      <motion.div className="absolute inset-0" style={{ transformStyle: 'preserve-3d' }} initial={false} animate={{ rotateY: m.faceDown ? 180 : 0 }} transition={{ duration: 0.4, ease: [0.3, 1.1, 0.5, 1] }}>
+      <motion.div className="absolute inset-0" style={{ transformStyle: 'preserve-3d', animation: look.struck !== undefined ? 'proto-shake 0.4s ease-out' : undefined }} initial={false} animate={{ rotateY: m.faceDown ? 180 : 0 }} transition={{ duration: 0.4, ease: [0.3, 1.1, 0.5, 1] }}>
         <div style={{
           ...face,
           background: `radial-gradient(120% 80% at 50% 100%, ${color}38, transparent 60%), linear-gradient(180deg, #1c1f29, #0a0b0f)`,
@@ -98,7 +98,7 @@ export function UnitTile({ m, w, look = {}, dataRef, layoutId }: { m: UnitModel;
       {!m.faceDown && (
         <motion.span key={bumps} className="absolute flex items-center justify-center font-logik-extended-bold leading-none tabular-nums"
           initial={bumps ? { scale: 1.7 } : false} animate={{ scale: 1 }} transition={{ type: 'spring', stiffness: 300, damping: 14 }}
-          style={{ left: -3, top: -3, width: badge, height: badge, fontSize: Math.round(badge * 0.64), borderRadius: '50% 50% 50% 12%', background: m.lost ? '#ff8a7a' : color, color: '#07080b', boxShadow: '0 2px 8px rgba(0,0,0,0.6)', ...font }}>{m.strength}</motion.span>
+          style={{ left: -3, top: -3, width: badge, height: badge, fontSize: Math.round(badge * 0.64), borderRadius: '50% 50% 50% 12%', background: color, color: m.lost ? '#7a0c05' : '#07080b', boxShadow: m.lost ? '0 0 0 2px #ff3b2f, 0 0 10px #ff3b2f' : '0 2px 8px rgba(0,0,0,0.6)', ...font }}>{m.strength}</motion.span>
       )}
       {m.card.totw && !m.faceDown && <Star className="absolute" style={{ left: badge - 6, top: -4, width: 12, height: 12, color: T.totw, fill: T.totw, filter: 'drop-shadow(0 0 3px #000)' }} />}
       <div className="absolute flex flex-col items-end gap-px pointer-events-none" style={{ right: -3, top: big ? 36 * k : 1 }}>
@@ -115,17 +115,22 @@ export function UnitTile({ m, w, look = {}, dataRef, layoutId }: { m: UnitModel;
       <AnimatePresence>
         {look.shield && (
           <motion.span key="shield" className="absolute left-1/2 pointer-events-none flex items-center justify-center" style={{ bottom: -6, width: w * 0.62, height: w * 0.62, marginLeft: -w * 0.31 }}
-            initial={{ scale: 0, y: 10 }} animate={{ scale: look.shield === 'blocked' ? [1, 1.7, 1.15] : 1, y: 0 }} exit={{ scale: 0, opacity: 0 }} transition={{ type: 'spring', stiffness: 380, damping: 18 }}>
+            initial={{ scale: 0, y: 10 }} animate={{ scale: look.shield === 'blocked' ? [1, 1.7, 1.15] : 1, y: 0 }} exit={{ scale: 0, opacity: 0 }} transition={look.shield === 'blocked' ? { duration: 0.45, times: [0, 0.35, 1], ease: 'easeOut' } : { type: 'spring', stiffness: 380, damping: 18 }}>
+            {look.shield === 'blocked' && <motion.span className="absolute rounded-full" style={{ inset: '-30%', boxShadow: `0 0 0 3px #fff, 0 0 18px ${T.guard}` }} initial={{ scale: 0.3, opacity: 1 }} animate={{ scale: 1.5, opacity: 0 }} transition={{ duration: 0.5, ease: 'easeOut' }} />}
             <Shield style={{ width: '100%', height: '100%', color: '#fff', fill: look.shield === 'blocked' ? '#fff' : T.guard, filter: `drop-shadow(0 0 ${look.shield === 'blocked' ? 14 : 7}px ${T.guard}) drop-shadow(0 2px 3px #000)` }} strokeWidth={1.6} />
           </motion.span>
         )}
         {look.struck !== undefined && (
-          <motion.span key="struck" className="absolute left-1/2 -translate-x-1/2 font-logik-extended-bold pointer-events-none whitespace-nowrap" style={{ top: '26%', fontSize: Math.max(24, w * 0.4), color: '#ff6b5b', textShadow: '0 0 10px #000, 0 2px 4px #000', ...font }}
-            initial={{ scale: 0.3, opacity: 0, y: 8 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ type: 'spring', stiffness: 400, damping: 14 }}>−{look.struck}</motion.span>
+          <span key="struck" className="absolute inset-x-0 flex justify-center pointer-events-none" style={{ top: '30%' }}>
+            <motion.span className="font-logik-extended-bold whitespace-nowrap leading-none" style={{ fontSize: Math.max(26, w * 0.4), color: '#ff5a48', textShadow: '0 0 10px #000, 0 0 3px #000, 0 2px 4px #000', ...font }}
+              initial={{ scale: 0.3, opacity: 0, y: 8 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ type: 'spring', stiffness: 400, damping: 14 }}>−{look.struck}</motion.span>
+          </span>
         )}
         {look.farmed && (
-          <motion.span key="farm" className="absolute left-1/2 -translate-x-1/2 font-logik-extended-bold pointer-events-none" style={{ top: -6, fontSize: Math.max(18, w * 0.26), color: T.me, textShadow: `0 0 10px ${T.me}, 0 2px 4px #000`, ...font }}
-            initial={{ y: 6, opacity: 0 }} animate={{ y: -14, opacity: 1 }} exit={{ opacity: 0 }}>+1</motion.span>
+          <span key="farm" className="absolute inset-x-0 flex justify-center pointer-events-none" style={{ bottom: '24%' }}>
+            <motion.span className="font-logik-extended-bold leading-none" style={{ fontSize: Math.max(20, w * 0.3), color: T.me, textShadow: `0 0 10px ${T.me}, 0 0 3px #000, 0 2px 4px #000`, ...font }}
+              initial={{ y: 12, opacity: 0, scale: 0.5 }} animate={{ y: 0, opacity: 1, scale: 1 }} exit={{ opacity: 0 }} transition={{ type: 'spring', stiffness: 360, damping: 16 }}>+1</motion.span>
+          </span>
         )}
       </AnimatePresence>
     </motion.div>

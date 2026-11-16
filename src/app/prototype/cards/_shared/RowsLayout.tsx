@@ -46,7 +46,8 @@ function Row({ at, p, m }: { at: Slot; p: LayoutProps; m: Metrics }) {
   const sideW = 3 * m.unitW + 2 * m.gap;
   const units = (side: Side): UnitModel[] => p.scene.units.filter((u) => u.side === side && u.at === at);
   const mine = units(0);
-  const free = target === 'ok' ? Math.max(0, p.rules.capacity - mine.length) : 0;
+  // One dashed place shows where the held card or unit would stand
+  const free = target === 'ok' && mine.length < p.rules.capacity ? 1 : 0;
   const tiles = (side: Side) => units(side).map((u) => (
     <div key={u.uid} style={{ opacity: p.dragged === u.uid ? 0 : 1 }}>
       <UnitTile m={u} w={m.unitW} look={p.look(u)} layoutId={u.uid} dataRef={side === 0 ? refOf(u) : `rival:${u.uid}`} />

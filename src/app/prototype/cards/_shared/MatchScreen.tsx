@@ -130,8 +130,9 @@ export function MatchScreen({ version, seed, jump, step, untouched, onAgain }: M
     : stage.kind === 'show' ? { kind: 'show' } : { kind: 'none' };
   const draggedUid = press.drag?.kind === 'carry' ? (press.drag.ref.startsWith('card:') ? `0:${press.drag.ref.slice(5)}` : press.drag.ref.slice(5)) : null;
   const dragged = draggedUid ? modelOf(draggedUid) : null;
+  const carried = press.drag?.kind === 'carry' ? parseRef(press.drag.ref) : null;
   const props: LayoutProps = {
-    scene, size, rules: DEFAULT_RULES, tick: m.tick, look, slots: m.slots, verdicts: fx.verdicts, dragged: draggedUid, band, ready: m.ready,
+    scene, size, rules: DEFAULT_RULES, tick: m.tick, look, slots: carried ? m.targetsFor(carried) : m.slots, verdicts: fx.verdicts, dragged: draggedUid, band, ready: m.ready,
     onUndo: () => m.plan({ type: 'undo' }), onConfirm: m.confirm,
     hand: { glow: m.glow.cards, picked: ps.pick?.kind === 'card' ? ps.pick.id : null, away: stage.kind !== 'plan' },
   };

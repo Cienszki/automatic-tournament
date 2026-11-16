@@ -125,7 +125,8 @@ export function planScene(view: MatchView, plan: Plan): Scene {
   const before = new Map(known.units.map((u) => [u.uid, u]));
   return {
     round: known.round,
-    objectives: objectiveModels(mine, () => 'mine'),
+    // A total is shown where the player has units; an empty side has nothing to add up
+    objectives: objectiveModels(mine, (at) => (mine.units.some((u) => u.side === ME && u.at === at) ? 'mine' : 'none')),
     units: [
       ...known.units.filter((u) => u.side === RIVAL).map((u) => unitModel(known, u)),
       ...mine.units.filter((u) => u.side === ME).map((u) => {
