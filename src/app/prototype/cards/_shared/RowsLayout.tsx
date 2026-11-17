@@ -10,7 +10,7 @@ import { mix } from '@/components/stats-lab/kit';
 import type { Side, Slot } from '@/features/cards/domain/v2/types';
 import type { LayoutProps } from './layout';
 import { refOf } from './layout';
-import type { UnitModel } from './state/scene';
+import type { UnitModel } from '@/features/cards/state/scene';
 import { BandMarks, ConfirmButton } from './ui/ActionBand';
 import { Ancient, incomingOf, RivalHand, RoundTrack } from './ui/Ancients';
 import { Hand } from './ui/Hand';

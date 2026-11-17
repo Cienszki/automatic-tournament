@@ -9,7 +9,7 @@ import { Crosshair, Mountain, Shield, Sprout, Star, Sun, Swords, Users } from 'l
 import { Avatar, HeroImg, mix, useHeaderFont } from '@/components/stats-lab/kit';
 import { useFitText } from '@/components/teams-section/fit';
 import { KEYWORD } from '@/lib/card-lab/outposts';
-import type { UnitModel } from '../state/scene';
+import type { UnitModel } from '@/features/cards/state/scene';
 import { ACC, ACC_L, ROLE_ICON, T, sideColor, teamColor } from './theme';
 
 export interface TileLook {

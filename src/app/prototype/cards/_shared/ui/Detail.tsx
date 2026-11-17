@@ -8,7 +8,7 @@ import { motion } from 'framer-motion';
 import { CardFace } from '@/components/card-lab/ui';
 import { useHeaderFont } from '@/components/stats-lab/kit';
 import { KEYWORD, OBJECTIVES } from '@/lib/card-lab/outposts';
-import type { ObjectiveModel, UnitModel } from '../state/scene';
+import type { ObjectiveModel, UnitModel } from '@/features/cards/state/scene';
 import { ABILITY, ACC_L, OBJECTIVE_RULE, T, objModel, sideColor } from './theme';
 
 export type DetailOf = { kind: 'unit'; m: UnitModel } | { kind: 'objective'; o: ObjectiveModel };

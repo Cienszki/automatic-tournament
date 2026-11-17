@@ -6,7 +6,7 @@ import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { mix, useHeaderFont } from '@/components/stats-lab/kit';
 import type { Side } from '@/features/cards/domain/v2/types';
-import type { Scene } from '../state/scene';
+import type { Scene } from '@/features/cards/state/scene';
 import { ACC, T, ancientModel, sideColor } from './theme';
 
 /** Hit points, held back until the damage flying at the Ancient has landed */

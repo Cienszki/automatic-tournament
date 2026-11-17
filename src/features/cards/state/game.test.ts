@@ -4,9 +4,10 @@ import { DEFAULT_RULES, makeRules, type Rules } from '@/features/cards/domain/v2
 import { planKey } from '@/features/cards/domain/v2/ai/actions';
 import { contested, oneGuard, oneTarget, validateStrikes } from '@/features/cards/domain/v2/fight';
 import type { Plan } from '@/features/cards/domain/v2/types';
-import { POOL } from '../data';
+import { castFor, POOL } from '@/app/prototype/cards/_shared/data';
+import { opponentFor, startAt } from './jump';
 import { fightComplete, fightOptions, NO_CHOICE, reduceFight, toStrikes, type FightChoice } from './fight';
-import { confirmFight, confirmPlan, firstStage, newSession, startAt, type Show, type Stage } from './game';
+import { confirmFight, confirmPlan, firstStage, newSession, rivalMid, rivalView, type Show, type Stage } from './game';
 import { EMPTY_PLAN, planScene, reducePlan, type PlanState } from './plan';
 import { HALF_MS, type Mode, type Step } from './reveal';
 import { knownState, ME, RIVAL, type Scene } from './scene';
@@ -33,7 +34,9 @@ function throughReducer(plan: Plan, stage: Extract<Stage, { kind: 'plan' }>): Pl
 }
 
 function playMatch(seed: number, mode: Mode, rules: Rules = DEFAULT_RULES) {
-  const se = newSession(seed, rules);
+  const cast = castFor(seed, rules);
+  const se = newSession(seed, cast);
+  const rival = opponentFor(seed, cast);
   const pilot = makeAgent('greedy', { pool: POOL, seed: seed + 100 });
   let stage: Stage = firstStage(se);
   let rounds = 0; let fights = 0;
@@ -50,7 +53,7 @@ function playMatch(seed: number, mode: Mode, rules: Rules = DEFAULT_RULES) {
     expect(planKey(ps.plan)).toBe(planKey(plan));
     expect(ps.refused).toBe(0);
     totalsAddUp(planScene(stage.view, ps.plan));
-    const shown = confirmPlan(se, stage.view, ps.plan, mode);
+    const shown = confirmPlan(se, stage.view, ps.plan, rival.decide(rivalView(se)).plan, mode);
     if (shown.next.kind !== 'fight') { check(shown, 2); stage = shown.next; continue; }
     check(shown, 1);
     fights++;
@@ -65,7 +68,7 @@ function playMatch(seed: number, mode: Mode, rules: Rules = DEFAULT_RULES) {
     expect(choice).toEqual({ target: t ?? null, guard: g ?? null });
     expect(fightComplete(choice, fight.options)).toBe(true);
     expect(validateStrikes(knownState(fight.mid), ME, toStrikes(knownState(fight.mid), choice))).toBeNull();
-    const clash = confirmFight(se, fight, choice, mode);
+    const clash = confirmFight(se, fight, choice, rival.strike(rivalMid(se), RIVAL), mode);
     check(clash, 1);
     const last = clash.steps[clash.steps.length - 1].scene;
     // The damage played back from the events lands on the engine's own hit points
@@ -108,14 +111,14 @@ describe('a whole match through the prototype state', () => {
 
 describe('jumping to a state by address', () => {
   it('stops in planning with a plan begun', () => {
-    const at = startAt(1, { to: 'plan' }, 'together');
+    const at = startAt(1, castFor(1), { to: 'plan' }, 'together');
     expect(at.stage.kind).toBe('plan');
     expect(at.stage.kind === 'plan' && at.stage.view.public.round).toBeGreaterThanOrEqual(3);
     expect(at.plan?.length).toBe(1);
   });
 
   it('stops in a fight with at least two contested objectives', () => {
-    const at = startAt(1, { to: 'fight' }, 'together');
+    const at = startAt(1, castFor(1), { to: 'fight' }, 'together');
     if (at.stage.kind !== 'fight') throw new Error(at.stage.kind);
     expect(contested(knownState(at.stage.mid)).length).toBeGreaterThanOrEqual(2);
     expect(at.choice?.target).toBeTruthy();
@@ -123,7 +126,7 @@ describe('jumping to a state by address', () => {
 
   it('stops inside a reveal, on the step where control is decided', () => {
     for (const mode of ['together', 'byObjective'] as Mode[]) {
-      const at = startAt(1, { to: 'reveal' }, mode);
+      const at = startAt(1, castFor(1), { to: 'reveal' }, mode);
       if (at.stage.kind !== 'show') throw new Error(at.stage.kind);
       expect(at.stage.steps[at.frozen!].key.startsWith('verdict')).toBe(true);
       expect(length(at.stage.steps)).toBeLessThan(6000);
@@ -131,15 +134,15 @@ describe('jumping to a state by address', () => {
   });
 
   it('stops at the end, and honours a round', () => {
-    expect(startAt(1, { to: 'end' }, 'together').stage.kind).toBe('end');
-    const at = startAt(2, { to: 'plan', round: 5 }, 'together');
+    expect(startAt(1, castFor(1), { to: 'end' }, 'together').stage.kind).toBe('end');
+    const at = startAt(2, castFor(2), { to: 'plan', round: 5 }, 'together');
     expect(at.stage.kind === 'plan' && at.stage.view.public.round).toBe(5);
   }, 60_000);
 });
 
 describe('the fight choice', () => {
   it('takes only units the engine allows, and a second tap takes the choice back', () => {
-    const at = startAt(1, { to: 'fight' }, 'together');
+    const at = startAt(1, castFor(1), { to: 'fight' }, 'together');
     if (at.stage.kind !== 'fight') throw new Error(at.stage.kind);
     const o = fightOptions(knownState(at.stage.mid), ME);
     expect(o).toEqual(at.stage.options);
