@@ -5,6 +5,7 @@ import type { ObjId } from '@/lib/card-lab/outposts';
 import { damageValue, power, strengthOf, strengthParts, type StrengthParts } from '@/features/cards/domain/v2/strength';
 import { other, SLOTS, type FreeKind, type MatchState, type Side, type SideState, type Slot, type Unit } from '@/features/cards/domain/v2/types';
 import type { MatchView } from '@/features/cards/domain/v2/view';
+import type { NameKind } from './names';
 
 /** The player is always side 0 in the prototype */
 export const ME: Side = 0;
@@ -60,7 +61,9 @@ export type Fx =
   /** `side` deals it: the other side's Ancient loses `amount` */
   | { kind: 'damage'; side: Side; at: Slot; amount: number }
   | { kind: 'farm'; uid: string }
-  | { kind: 'draw'; side: Side; cards: number };
+  | { kind: 'draw'; side: Side; cards: number }
+  /** An ability or objective effect named where it happens */
+  | { kind: 'name'; what: NameKind; text: string; uid?: string; at?: Slot };
 
 /** One objective's line: who held it last round, what it deals now, and the totals that may be shown */
 export interface ObjectiveModel { id: ObjId; holder: Side | null; damage: number; totals: [number | null, number | null] }
