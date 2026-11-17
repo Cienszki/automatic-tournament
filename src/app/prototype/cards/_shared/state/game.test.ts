@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { makeAgent } from '@/features/cards/domain/v2/ai/agents';
+import { DEFAULT_RULES, makeRules, type Rules } from '@/features/cards/domain/v2/rules';
 import { planKey } from '@/features/cards/domain/v2/ai/actions';
 import { contested, oneGuard, oneTarget, validateStrikes } from '@/features/cards/domain/v2/fight';
 import type { Plan } from '@/features/cards/domain/v2/types';
@@ -31,8 +32,8 @@ function throughReducer(plan: Plan, stage: Extract<Stage, { kind: 'plan' }>): Pl
   return ps;
 }
 
-function playMatch(seed: number, mode: Mode) {
-  const se = newSession(seed);
+function playMatch(seed: number, mode: Mode, rules: Rules = DEFAULT_RULES) {
+  const se = newSession(seed, rules);
   const pilot = makeAgent('greedy', { pool: POOL, seed: seed + 100 });
   let stage: Stage = firstStage(se);
   let rounds = 0; let fights = 0;
@@ -87,6 +88,16 @@ describe('a whole match through the prototype state', () => {
       }
     }, 120_000);
   }
+
+  it('plays to a result with four units per side on an objective', () => {
+    const rules = makeRules({ capacity: 4 });
+    for (const seed of [1, 2]) {
+      const m = playMatch(seed, 'together', rules);
+      expect(m.session.state.rules.capacity).toBe(4);
+      expect(m.result.round).toBe(m.rounds);
+      for (const at of [0, 1, 2]) for (const side of [0, 1]) expect(m.session.state.units.filter((u) => u.side === side && u.at === at).length).toBeLessThanOrEqual(4);
+    }
+  }, 120_000);
 
   it('is the same match every time for the same seed', () => {
     const a = playMatch(5, 'together'); const b = playMatch(5, 'together');

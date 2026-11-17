@@ -6,7 +6,7 @@ import { makeOpponent } from '@/features/cards/domain/v2/ai/levels';
 import { hashSeed, mulberry32 } from '@/features/cards/domain/v2/ai/rng';
 import { contested, oneGuard, oneTarget, type Strikes } from '@/features/cards/domain/v2/fight';
 import { finishRound, revealRound } from '@/features/cards/domain/v2/resolve';
-import { DEFAULT_RULES } from '@/features/cards/domain/v2/rules';
+import { DEFAULT_RULES, type Rules } from '@/features/cards/domain/v2/rules';
 import { newMatch } from '@/features/cards/domain/v2/setup';
 import type { MatchResult, MatchState, Plan } from '@/features/cards/domain/v2/types';
 import { viewFor, type MatchView } from '@/features/cards/domain/v2/view';
@@ -34,10 +34,10 @@ export type Stage =
 export type Show = Extract<Stage, { kind: 'show' }>;
 export type Fight = Extract<Stage, { kind: 'fight' }>;
 
-export function newSession(seed: number): Session {
+export function newSession(seed: number, rules: Rules = DEFAULT_RULES): Session {
   const n = DECKS.length;
   const mine = ((seed % n) + n) % n;
-  const state = newMatch([DECKS[mine], DECKS[(mine + 3) % n]], mulberry32(hashSeed(`deal:${seed}`)), DEFAULT_RULES);
+  const state = newMatch([DECKS[mine], DECKS[(mine + 3) % n]], mulberry32(hashSeed(`deal:${seed}`)), rules);
   return { seed, state, mid: null, rival: makeOpponent('easy', { pool: POOL, seed: hashSeed(`rival:${seed}`) }) };
 }
 
@@ -90,8 +90,8 @@ export interface Started {
 
 /** Plays the first rounds with the plain computer player in the player's seat, and stops in the
  *  asked state. `strict` asks for a fight with at least two contested objectives. */
-function runTo(seed: number, jump: Jump, mode: Mode, strict: boolean): Started | null {
-  const session = newSession(seed);
+function runTo(seed: number, jump: Jump, mode: Mode, strict: boolean, rules: Rules): Started | null {
+  const session = newSession(seed, rules);
   const pilot = makeAgent('greedy', { pool: POOL, seed: hashSeed(`pilot:${seed}`) });
   const from = jump.round ?? (jump.to === 'fight' ? 2 : 3);
   let stage = firstStage(session);
@@ -117,11 +117,11 @@ function runTo(seed: number, jump: Jump, mode: Mode, strict: boolean): Started |
   return jump.to === 'end' ? { session, stage } : null;
 }
 
-export function startAt(seed: number, jump: Jump | null, mode: Mode): Started {
+export function startAt(seed: number, jump: Jump | null, mode: Mode, rules: Rules = DEFAULT_RULES): Started {
   if (jump) {
-    const hit = runTo(seed, jump, mode, true) ?? runTo(seed, jump, mode, false) ?? runTo(seed, { to: jump.to, round: 1 }, mode, false);
+    const hit = runTo(seed, jump, mode, true, rules) ?? runTo(seed, jump, mode, false, rules) ?? runTo(seed, { to: jump.to, round: 1 }, mode, false, rules);
     if (hit) return hit;
   }
-  const session = newSession(seed);
+  const session = newSession(seed, rules);
   return { session, stage: firstStage(session) };
 }

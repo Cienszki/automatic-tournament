@@ -6,7 +6,7 @@
 // reveal is cut into steps, nothing else.
 import React, { useCallback, useLayoutEffect, useMemo, useState } from 'react';
 import { LayoutGroup } from 'framer-motion';
-import { DEFAULT_RULES } from '@/features/cards/domain/v2/rules';
+import type { Rules } from '@/features/cards/domain/v2/rules';
 import type { Side, Slot } from '@/features/cards/domain/v2/types';
 import type { LayoutProps } from './layout';
 import { MapLayout } from './MapLayout';
@@ -24,7 +24,7 @@ import { UnitTile, type TileLook } from './ui/UnitTile';
 import { nearestUid, useDragPoint, usePress, type Drag, type Hit, type PointStore } from './ui/usePress';
 import { useMatch } from './useMatch';
 
-export interface MatchProps { version: 1 | 2 | 3; seed: number; jump: Jump | null; step?: number; untouched?: boolean; onAgain: () => void }
+export interface MatchProps { version: 1 | 2 | 3; rules: Rules; seed: number; jump: Jump | null; step?: number; untouched?: boolean; onAgain: () => void }
 
 const parseRef = (ref: string): Ref | null => (ref.startsWith('card:') ? { kind: 'card', id: ref.slice(5) } : ref.startsWith('unit:') ? { kind: 'unit', uid: ref.slice(5) } : null);
 
@@ -39,8 +39,8 @@ function Effects({ store, drag, ...rest }: Omit<React.ComponentProps<typeof FxLa
   return <FxLayer {...rest} aiming={drag?.kind === 'aim' ? { from: drag.ref.startsWith('unit:') ? drag.ref.slice(5) : drag.start, to: p } : null} />;
 }
 
-export function MatchScreen({ version, seed, jump, step, untouched, onAgain }: MatchProps) {
-  const m = useMatch({ seed, jump, mode: version === 3 ? 'byObjective' : 'together', step, untouched });
+export function MatchScreen({ version, rules, seed, jump, step, untouched, onAgain }: MatchProps) {
+  const m = useMatch({ seed, jump, rules, mode: version === 3 ? 'byObjective' : 'together', step, untouched });
   const { stage, scene, ps, choice } = m;
   const [root, setRoot] = useState<HTMLDivElement | null>(null);
   const [size, setSize] = useState({ w: 0, h: 0 });
@@ -121,7 +121,7 @@ export function MatchScreen({ version, seed, jump, step, untouched, onAgain }: M
       if (stage.kind !== 'plan' || !r) return;
       if (hit.slot === null) { m.plan({ type: 'pick', ref: null }); return; }
       const over = hit.ref?.startsWith('unit:') ? scene.units.find((u) => u.uid === hit.ref!.slice(5)) : undefined;
-      m.plan({ type: 'drop', ref: r, to: hit.slot, replace: over && !over.planned && over.at === hit.slot && over.uid !== (r.kind === 'unit' ? r.uid : '') && isFull(scene.units, hit.slot) ? over.uid : undefined });
+      m.plan({ type: 'drop', ref: r, to: hit.slot, replace: over && !over.planned && over.at === hit.slot && over.uid !== (r.kind === 'unit' ? r.uid : '') && isFull(scene.units, hit.slot, rules.capacity) ? over.uid : undefined });
     },
   });
 
@@ -132,7 +132,7 @@ export function MatchScreen({ version, seed, jump, step, untouched, onAgain }: M
   const dragged = draggedUid ? modelOf(draggedUid) : null;
   const carried = press.drag?.kind === 'carry' ? parseRef(press.drag.ref) : null;
   const props: LayoutProps = {
-    scene, size, rules: DEFAULT_RULES, tick: m.tick, look, slots: carried ? m.targetsFor(carried) : m.slots, verdicts: fx.verdicts, dragged: draggedUid, band, ready: m.ready,
+    scene, size, rules, tick: m.tick, look, slots: carried ? m.targetsFor(carried) : m.slots, verdicts: fx.verdicts, dragged: draggedUid, band, ready: m.ready,
     onUndo: () => m.plan({ type: 'undo' }), onConfirm: m.confirm,
     hand: { glow: m.glow.cards, picked: ps.pick?.kind === 'card' ? ps.pick.id : null, away: stage.kind !== 'plan' },
   };
@@ -156,4 +156,4 @@ export function MatchScreen({ version, seed, jump, step, untouched, onAgain }: M
 
 const refOfPick = (r: Ref): string => (r.kind === 'card' ? `card:${r.id}` : `unit:${r.uid}`);
 /** The player's side of an objective has no free place */
-const isFull = (units: UnitModel[], at: Slot): boolean => units.filter((u) => u.side === ME && u.at === at).length >= DEFAULT_RULES.capacity;
+const isFull = (units: UnitModel[], at: Slot, capacity: number): boolean => units.filter((u) => u.side === ME && u.at === at).length >= capacity;

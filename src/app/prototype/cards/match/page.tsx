@@ -8,12 +8,15 @@
 //   &seed=N &round=N    which match, and from which round on to stop
 //   &step=N             with s=reveal: the step of the reveal to stand still on
 //   &pick=0             with s=plan or s=fight: nothing chosen yet
+//   &cap=N              N units per side on an objective in place of the rules' own number, to
+//                       see the layout under another capacity
 //   &shot=1             for screenshots: hides the development server's own corner mark
 //   &frame=390x844      shows the page in a frame of that size at the top left: a phone's screen
 //                       on a desktop, and the way to photograph it (a headless browser window
 //                       cannot be narrower than about 500 px)
 import React, { Suspense, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { DEFAULT_RULES, makeRules } from '@/features/cards/domain/v2/rules';
 import { MatchScreen } from '../_shared/MatchScreen';
 import type { Jump } from '../_shared/state/game';
 import { VersionPicker } from '../_shared/ui/VersionPicker';
@@ -38,13 +41,15 @@ function Match() {
   }
   const version = q.get('v') === '1' ? 1 : q.get('v') === '3' ? 3 : 2;
   const seed = int(q.get('seed')) ?? 1;
+  const cap = int(q.get('cap'));
+  const rules = cap && cap >= 1 && cap <= 6 ? makeRules({ capacity: cap }) : DEFAULT_RULES;
   const to = STATES.find((s) => s === q.get('s'));
   const round = int(q.get('round'));
   const jump: Jump | null = to ? { to, round } : round ? { to: 'plan', round } : null;
   return (
     <>
       {hideDevMark}
-      <MatchScreen key={`${version}-${seed}-${again}-${to}-${round}`} version={version} seed={seed + again} jump={again ? null : jump} step={int(q.get('step'))} untouched={q.get('pick') === '0'} onAgain={() => setAgain((n) => n + 1)} />
+      <MatchScreen key={`${version}-${seed}-${again}-${to}-${round}-${rules.capacity}`} version={version} rules={rules} seed={seed + again} jump={again ? null : jump} step={int(q.get('step'))} untouched={q.get('pick') === '0'} onAgain={() => setAgain((n) => n + 1)} />
       <VersionPicker current={version} query={q.toString()} />
     </>
   );

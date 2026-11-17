@@ -18,24 +18,33 @@ import { Medallion, medallionBox, ObjectiveLabel } from './ui/Medallion';
 import { ACC, ACC_L, T } from './ui/theme';
 import { UnitTile } from './ui/UnitTile';
 
-interface Metrics { phone: boolean; top: number; rowH: number; unitW: number; gap: number; centre: number; cardW: number; handH: number; band: number; side: number }
+interface Metrics { phone: boolean; top: number; rowH: number; unitW: number; gap: number; centre: number; cardW: number; handH: number; band: number; side: number; sideW: number }
 
-function metrics(w: number, h: number): Metrics {
+/** The narrowest a unit may get before units on one side overlap instead: its strength stays readable */
+const MIN_UNIT_W = 46;
+
+/** The gap between `cap` units of width `unitW` in `sideW` px: negative when they must overlap */
+const gapFor = (sideW: number, unitW: number, cap: number, want: number): number => (cap < 2 ? 0 : Math.min(want, (sideW - cap * unitW) / (cap - 1)));
+
+/** Sizes for a screen of w x h px with `cap` units per side on an objective */
+function metrics(w: number, h: number, cap: number): Metrics {
   if (w < 700) {
-    const gap = 3; const centre = 46;
-    const unitW = Math.min(64, Math.floor((w - 12 - medallionBox(centre).w - 8 - 4 * gap) / 6));
+    const centre = 46;
+    const sideW = Math.floor((w - 12 - medallionBox(centre).w - 8) / 2);
+    const unitW = Math.max(MIN_UNIT_W, Math.min(64, Math.floor((sideW - (cap - 1) * 3) / cap)));
     const rowH = Math.round(unitW * 1.42) + 46;
     const cardW = Math.min(104, Math.round(w * 0.256));
     const handH = Math.round(cardW * 1.42) + 10;
     const band = 70;
-    return { phone: true, top: Math.max(120, h - 3 * rowH - band - handH), rowH, unitW, gap, centre, cardW, handH, band, side: 0 };
+    return { phone: true, top: Math.max(120, h - 3 * rowH - band - handH), rowH, unitW, gap: gapFor(sideW, unitW, cap, 3), centre, cardW, handH, band, side: 0, sideW };
   }
   const cardW = Math.min(124, Math.round(h * 0.138));
   const handH = Math.round(cardW * 1.42) + 16;
   const top = 64;
   const unitH = Math.min(150, Math.floor((h - top - handH - 12) / 3) - 58);
   const unitW = Math.round(unitH / 1.42);
-  return { phone: false, top, rowH: unitH + 58, unitW, gap: 10, centre: Math.round(unitH * 0.7), cardW, handH, band: 0, side: Math.min(260, Math.round(w * 0.17)) };
+  const gap = 10;
+  return { phone: false, top, rowH: unitH + 58, unitW, gap, centre: Math.round(unitH * 0.7), cardW, handH, band: 0, side: Math.min(260, Math.round(w * 0.17)), sideW: cap * unitW + (cap - 1) * gap };
 }
 
 function Row({ at, p, m }: { at: Slot; p: LayoutProps; m: Metrics }) {
@@ -43,13 +52,14 @@ function Row({ at, p, m }: { at: Slot; p: LayoutProps; m: Metrics }) {
   const target = p.slots?.[at];
   const off = p.slots !== null && target === null;
   const wash = target === 'replace' ? T.hit : ACC;
-  const sideW = 3 * m.unitW + 2 * m.gap;
   const units = (side: Side): UnitModel[] => p.scene.units.filter((u) => u.side === side && u.at === at);
   const mine = units(0);
   // One dashed place shows where the held card or unit would stand
   const free = target === 'ok' && mine.length < p.rules.capacity ? 1 : 0;
-  const tiles = (side: Side) => units(side).map((u) => (
-    <div key={u.uid} style={{ opacity: p.dragged === u.uid ? 0 : 1 }}>
+  // When units overlap, the one nearer the objective lies on top on the player's side and below on
+  // the rival's, so that every strength badge (top left) stays in sight
+  const tiles = (side: Side) => units(side).map((u, i, all) => (
+    <div key={u.uid} className="relative shrink-0" style={{ opacity: p.dragged === u.uid ? 0 : 1, zIndex: side === 0 ? all.length - i : i }}>
       <UnitTile m={u} w={m.unitW} look={p.look(u)} layoutId={u.uid} dataRef={side === 0 ? refOf(u) : `rival:${u.uid}`} />
     </div>
   ));
@@ -63,12 +73,12 @@ function Row({ at, p, m }: { at: Slot; p: LayoutProps; m: Metrics }) {
         <span className="flex-1 h-px" style={{ background: `linear-gradient(270deg, transparent, ${o.holder === 1 ? mix(T.rival, 60) : T.line})` }} />
       </div>
       <div className="relative flex items-center justify-center" style={{ gap: m.phone ? 4 : 24, marginTop: m.phone ? 6 : 8 }}>
-        <div className="flex flex-row-reverse items-center" style={{ width: sideW, gap: m.gap }}>
+        <div className="flex flex-row-reverse items-center" style={{ width: m.sideW, gap: m.gap }}>
           {tiles(0)}
           {Array.from({ length: free }, (_, i) => <span key={i} className="shrink-0" style={{ width: m.unitW, height: Math.round(m.unitW * 1.42), borderRadius: Math.max(7, m.unitW * 0.11), border: `1.5px dashed ${ACC_L}`, opacity: 0.7 }} />)}
         </div>
         <Medallion at={at} o={o} size={m.centre} verdict={p.verdicts.get(at)} lit={!!target} />
-        <div className="flex items-center" style={{ width: sideW, gap: m.gap }}>{tiles(1)}</div>
+        <div className="flex items-center" style={{ width: m.sideW, gap: m.gap }}>{tiles(1)}</div>
       </div>
     </div>
   );
@@ -76,14 +86,14 @@ function Row({ at, p, m }: { at: Slot; p: LayoutProps; m: Metrics }) {
 
 export function RowsLayout(p: LayoutProps) {
   const { scene, size, rules, tick } = p;
-  const m = metrics(size.w, size.h);
+  const m = metrics(size.w, size.h, rules.capacity);
   const incoming = incomingOf(scene);
   const ancient = (side: Side, px: number, column: boolean) => (
     <Ancient side={side} hp={scene.hp[side]} max={rules.hp} incoming={incoming[side]} tick={tick} size={px} column={column}>
       {side === 1 && <RivalHand n={scene.rivalHand} />}
     </Ancient>
   );
-  const rowsW = m.phone ? size.w : 6 * m.unitW + 4 * m.gap + medallionBox(m.centre).w + 48 + 80;
+  const rowsW = m.phone ? size.w : 2 * m.sideW + medallionBox(m.centre).w + 48 + 80;
   return (
     <div className="absolute inset-0">
       {/* The map behind the Ancients, fading into the table */}

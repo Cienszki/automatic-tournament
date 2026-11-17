@@ -5,17 +5,18 @@
 // made in state/ (pure code); this hook only keeps them between renders.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { fightComplete, NO_CHOICE, reduceFight, type FightAction, type FightChoice } from './state/fight';
+import type { Rules } from '@/features/cards/domain/v2/rules';
 import { confirmFight, confirmPlan, startAt, type Jump, type Stage } from './state/game';
 import { actors, EMPTY_PLAN, planScene, reducePlan, targetsOf, type PlanAction, type PlanState, type Ref, type Target } from './state/plan';
 import type { Mode } from './state/reveal';
 import { knownState, ME, type Scene } from './state/scene';
 
-export interface StartOptions { seed: number; jump: Jump | null; mode: Mode; /** A reveal step to stand still on, in place of the default one */ step?: number; /** Start the fight or the plan untouched */ untouched?: boolean }
+export interface StartOptions { seed: number; jump: Jump | null; mode: Mode; rules: Rules; /** A reveal step to stand still on, in place of the default one */ step?: number; /** Start the fight or the plan untouched */ untouched?: boolean }
 
 const NOBODY = { cards: new Set<string>(), units: new Set<string>() };
 
 export function useMatch(o: StartOptions) {
-  const [boot] = useState(() => startAt(o.seed, o.jump, o.mode));
+  const [boot] = useState(() => startAt(o.seed, o.jump, o.mode, o.rules));
   const session = useRef(boot.session);
   const [stage, setStage] = useState<Stage>(boot.stage);
   const [step, setStep] = useState(() => (boot.stage.kind === 'show' ? Math.min(boot.stage.steps.length - 1, Math.max(0, o.step ?? boot.frozen ?? 0)) : 0));
