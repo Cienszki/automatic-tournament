@@ -34,7 +34,7 @@ import { useMatch, type MatchOptions } from './useMatch';
 
 export interface MatchScreenProps extends MatchOptions { onRematch: () => void; onNew: () => void; onExit: () => void }
 
-const TOP = 64; const BOTTOM = 206;
+const TOP = 64; const BOTTOM = 214;
 
 export function MatchScreen({ seed, cast, jump, onRematch, onNew, onExit }: MatchScreenProps) {
   const m = useMatch({ seed, cast, jump });
@@ -61,6 +61,7 @@ export function MatchScreen({ seed, cast, jump, onRematch, onNew, onExit }: Matc
   useEffect(() => { m.setPaused(logOpen || rulesOpen); }, [logOpen, rulesOpen]); // eslint-disable-line react-hooks/exhaustive-deps
   // Why a tap did nothing, long enough to read
   useEffect(() => { if (ps.why) setNote(ps.why); }, [ps.refused]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (ps.ask) setNote(null); }, [ps.ask]);
   useEffect(() => { if (!note) return; const t = setTimeout(() => setNote(null), Math.max(2600, note.length * 55)); return () => clearTimeout(t); }, [note, ps.refused]);
   // A new round: the banner, the board's edge lights up; in another tab a chime and a blinking title
   const roundNow = stage.kind === 'plan' ? stage.view.public.round : null;
@@ -126,7 +127,7 @@ export function MatchScreen({ seed, cast, jump, onRematch, onNew, onExit }: Matc
         </div>
         <div className="relative shrink-0 flex flex-col" style={{ height: BOTTOM }} onClick={(e) => e.stopPropagation()}>
           <PromptLine p={promptOf(m, note)} />
-          <div className="relative flex-1 flex items-end justify-center pb-3">
+          <div className="relative z-0 flex-1 flex items-end justify-center pb-3">
             <Hand cards={scene.hand} costMode={costMode} glow={m.glow.cards} picked={handPicked} dragged={carried.size ? new Set([...carried].map((u) => u.slice(2))) : new Set()} held={input.held}
               away={stage.kind !== 'plan' || m.waiting} dragging={!!input.carry.carry} onPress={(e, c) => input.pressCard(e, { kind: 'card', id: c.id })} />
             <div className="absolute bottom-3" style={{ right: Math.max(40, (CENTER_W - 124) / 2 + 20) }}>

@@ -80,7 +80,7 @@ export function Back({ card, side, w, strength, parts, lost, costMode, note }: F
     <div className="absolute inset-0 overflow-hidden flex flex-col" style={{ borderRadius: 12 * k, padding: 7 * k, background: 'linear-gradient(180deg, #1d2030, #0b0c12)', boxShadow: `0 0 0 1.5px ${ACC_L}, 0 16px 40px rgba(0,0,0,0.7)`, color: T.text }}>
       <div className="font-bold leading-tight break-words" style={{ fontSize: 10.5 * k }}>{card.name}</div>
       <div className="leading-tight break-words" style={{ fontSize: 7 * k, color: T.muted }}>{card.team?.name}{card.series.opp ? ` vs ${card.series.opp.name}` : ''}</div>
-      <div className="font-logik-extended-bold uppercase leading-none" style={{ fontSize: 9.5 * k, color: ACC_L, marginTop: 5 * k, ...font }}>{role.name} · {role.ability}</div>
+      <div className="font-logik-extended-bold uppercase leading-none whitespace-nowrap" style={{ fontSize: 7.6 * k, color: ACC_L, marginTop: 5 * k, ...font }}>{role.name} · {role.ability}</div>
       <div className="leading-tight" style={{ fontSize: 7.4 * k, marginTop: 2.5 * k }}>{ABILITY[card.role]}</div>
       <div className="mt-auto">
         {list.length > 0 && parts && (
