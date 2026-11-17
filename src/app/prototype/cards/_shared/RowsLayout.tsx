@@ -58,8 +58,10 @@ function Row({ at, p, m }: { at: Slot; p: LayoutProps; m: Metrics }) {
   const free = target === 'ok' && mine.length < p.rules.capacity ? 1 : 0;
   // When units overlap, the one nearer the objective lies on top on the player's side and below on
   // the rival's, so that every strength badge (top left) stays in sight
+  // The space before every unit but the first, on the side away from the objective
+  const step = (side: Side): React.CSSProperties => (side === 0 ? { marginRight: m.gap } : { marginLeft: m.gap });
   const tiles = (side: Side) => units(side).map((u, i, all) => (
-    <div key={u.uid} className="relative shrink-0" style={{ opacity: p.dragged === u.uid ? 0 : 1, zIndex: side === 0 ? all.length - i : i }}>
+    <div key={u.uid} className="relative shrink-0" style={{ opacity: p.dragged === u.uid ? 0 : 1, zIndex: side === 0 ? all.length - i : i, ...(i > 0 ? step(side) : {}) }}>
       <UnitTile m={u} w={m.unitW} look={p.look(u)} layoutId={u.uid} dataRef={side === 0 ? refOf(u) : `rival:${u.uid}`} />
     </div>
   ));
@@ -73,12 +75,12 @@ function Row({ at, p, m }: { at: Slot; p: LayoutProps; m: Metrics }) {
         <span className="flex-1 h-px" style={{ background: `linear-gradient(270deg, transparent, ${o.holder === 1 ? mix(T.rival, 60) : T.line})` }} />
       </div>
       <div className="relative flex items-center justify-center" style={{ gap: m.phone ? 4 : 24, marginTop: m.phone ? 6 : 8 }}>
-        <div className="flex flex-row-reverse items-center" style={{ width: m.sideW, gap: m.gap }}>
+        <div className="flex flex-row-reverse items-center" style={{ width: m.sideW }}>
           {tiles(0)}
-          {Array.from({ length: free }, (_, i) => <span key={i} className="shrink-0" style={{ width: m.unitW, height: Math.round(m.unitW * 1.42), borderRadius: Math.max(7, m.unitW * 0.11), border: `1.5px dashed ${ACC_L}`, opacity: 0.7 }} />)}
+          {Array.from({ length: free }, (_, i) => <span key={i} className="shrink-0" style={{ ...(mine.length ? step(0) : {}), width: m.unitW, height: Math.round(m.unitW * 1.42), borderRadius: Math.max(7, m.unitW * 0.11), border: `1.5px dashed ${ACC_L}`, opacity: 0.7 }} />)}
         </div>
         <Medallion at={at} o={o} size={m.centre} verdict={p.verdicts.get(at)} lit={!!target} />
-        <div className="flex items-center" style={{ width: m.sideW, gap: m.gap }}>{tiles(1)}</div>
+        <div className="flex items-center" style={{ width: m.sideW }}>{tiles(1)}</div>
       </div>
     </div>
   );
@@ -94,6 +96,7 @@ export function RowsLayout(p: LayoutProps) {
     </Ancient>
   );
   const rowsW = m.phone ? size.w : 2 * m.sideW + medallionBox(m.centre).w + 48 + 80;
+  const column = m.phone ? 0 : Math.max(150, Math.min(m.side, (size.w - (2 * m.sideW + medallionBox(m.centre).w + 48)) / 2 - 16));
   return (
     <div className="absolute inset-0">
       {/* The map behind the Ancients, fading into the table */}
@@ -111,8 +114,8 @@ export function RowsLayout(p: LayoutProps) {
         <>
           <div className="absolute inset-x-0 top-0 flex items-center justify-center" style={{ height: m.top, transform: 'scale(1.4)' }}><RoundTrack round={scene.round} cap={rules.roundCap} lateFrom={rules.lateFrom} /></div>
           {([0, 1] as Side[]).map((side) => (
-            <div key={side} className="absolute flex items-center justify-center" style={{ top: m.top, height: 3 * m.rowH, width: m.side, [side === 0 ? 'left' : 'right']: Math.max(0, (size.w - rowsW) / 2 - m.side - 20) }}>
-              {ancient(side, Math.min(230, m.side * 0.9), true)}
+            <div key={side} className="absolute flex items-center justify-center" style={{ top: m.top, height: 3 * m.rowH, width: column, [side === 0 ? 'left' : 'right']: Math.max(0, (size.w - rowsW) / 2 - column - 20) }}>
+              {ancient(side, Math.min(230, column * 0.9), true)}
             </div>
           ))}
         </>
