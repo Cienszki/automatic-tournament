@@ -3,7 +3,7 @@
 // value. Role counts are kept up to each role's minimum; a role whose maximum equals its minimum
 // takes no more cards once it is reached.
 import { deckKey, ROLE_KEYS, type GCard, type RoleKey } from '@/lib/card-lab/cards';
-import { cost, type DeckRules } from '@/features/cards/domain/v2/deck';
+import { cost, type DeckRules } from './deck';
 
 export interface RoleNeed { min: number; max: number }
 export type Needs = Record<RoleKey, RoleNeed>;

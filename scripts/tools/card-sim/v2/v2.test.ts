@@ -7,7 +7,7 @@ import { aCard } from '@/features/cards/domain/v2/testing';
 import { mulberry32 } from '../rng';
 import { playCellGame, slugPool, type CellSpec } from './cells';
 import { ARCHETYPES, buildDeck, totalCost } from './decks';
-import { minimums, pick } from './pick';
+import { minimums, pick } from '@/features/cards/domain/v2/pick';
 import { teamDecks } from './exp/teams';
 
 describe('deck optimiser', () => {

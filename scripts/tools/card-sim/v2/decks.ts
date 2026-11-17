@@ -17,43 +17,17 @@ import { ROLE_KEYS, type GCard, type RoleKey } from '@/lib/card-lab/cards';
 import { baseMight } from '@/lib/card-lab/outposts';
 import { cost, deckProblem, type DeckRules } from '@/features/cards/domain/v2/deck';
 import type { Rnd } from '../rng';
-import { minimums, pick, type Needs } from './pick';
+import { minimums, pick, type Needs } from '@/features/cards/domain/v2/pick';
+import { deckValue, expectedStrength, improveTeams, teamPaired } from '@/features/cards/domain/v2/auto-deck';
+
+export { expectedStrength, teamPaired };
 
 /** `count:Role:n` = exactly n cards of that role, the rest chosen like best */
 export type BuilderName = 'best' | 'topHeavy' | 'flat' | 'teamStack' | 'random' | `roleSkew:${RoleKey}` | `count:${RoleKey}:${number}`;
 export const ARCHETYPES: BuilderName[] = ['best', 'topHeavy', 'flat', 'teamStack', ...ROLE_KEYS.map((r) => `roleSkew:${r}` as BuilderName)];
 
-const ABILITY_STRENGTH: Partial<Record<RoleKey, number>> = { Carry: 1, 'Hard Support': 1 };
-export const expectedStrength = (c: GCard) => baseMight(c) + (ABILITY_STRENGTH[c.role] ?? 0);
-const TEAM_VALUE = 0.5;
 /** Tiny tie-break so equal choices are made the same way every time */
 const tie = (c: GCard) => c.ovr / 1e4;
-
-export function teamPaired(deck: GCard[]): number {
-  const n = new Map<string, number>();
-  for (const c of deck) if (c.team) n.set(c.team.id, (n.get(c.team.id) ?? 0) + 1);
-  return deck.filter((c) => c.team && n.get(c.team.id)! > 1).length;
-}
-
-const deckValue = (deck: GCard[]) => deck.reduce((a, c) => a + expectedStrength(c), 0) + TEAM_VALUE * teamPaired(deck);
-
-/** Single swaps (one card out, one in) while they raise deckValue and keep the deck legal */
-function improveTeams(deck: GCard[], col: GCard[], rules: DeckRules, needs: Needs): GCard[] {
-  let cur = deck;
-  const roleOk = (d: GCard[]) => ROLE_KEYS.every((r) => { const n = d.filter((c) => c.role === r).length; return n >= needs[r].min && n <= needs[r].max; });
-  for (let iter = 0; iter < 50; iter++) {
-    let best = { deck: cur, v: deckValue(cur) };
-    for (let i = 0; i < cur.length; i++) for (const c of col) {
-      if (cur.includes(c)) continue;
-      const d = [...cur.slice(0, i), c, ...cur.slice(i + 1)];
-      const v = deckValue(d);
-      if (v > best.v + 1e-9 && roleOk(d) && deckProblem(d, rules) === null) best = { deck: d, v };
-    }
-    if (best.deck === cur) return cur;
-    cur = best.deck;
-  }
-  return cur;
-}
 
 function teamStack(col: GCard[], rules: DeckRules, needs: Needs): GCard[] | null {
   const counts = new Map<string, number>();
