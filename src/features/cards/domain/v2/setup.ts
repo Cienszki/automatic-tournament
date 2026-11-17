@@ -1,6 +1,7 @@
 // Starting a match and the start-of-round steps (draws and orders).
 import { shuffle, type GCard } from '@/lib/card-lab/cards';
 import { OBJ_IDS, type ObjId } from '@/lib/card-lab/outposts';
+import { matchCard } from './card';
 import type { Rules } from './rules';
 import type { MatchEvent, MatchState, Side, SideState } from './types';
 
@@ -17,7 +18,7 @@ export interface MatchOptions {
 export function newMatch(decks: [GCard[], GCard[]], rnd: Rnd, rules: Rules, opts: MatchOptions = {}): MatchState {
   const objectives = opts.objectives ?? (shuffle(OBJ_IDS, rnd).slice(0, 3) as [ObjId, ObjId, ObjId]);
   const sides = decks.map((d, i): SideState => {
-    const x = shuffle(d, rnd);
+    const x = shuffle(d.map(matchCard), rnd);
     const n = Math.min(rules.startHand, rules.handMax);
     return { hp: opts.hp?.[i] ?? rules.hp, hand: x.slice(0, n), deck: x.slice(n), grave: [], known: [] };
   }) as [SideState, SideState];

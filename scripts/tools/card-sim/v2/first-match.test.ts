@@ -6,6 +6,7 @@ import { boardTargets, type Strikes } from '@/features/cards/domain/v2/fight';
 import { buildFirstMatch, FIRST_MATCH_HP, FIRST_MATCH_PLAYER_HP, rivalPlan, rivalStrikes, type FirstMatch } from '@/features/cards/domain/v2/first-match';
 import { validatePlan } from '@/features/cards/domain/v2/plan';
 import { finishRound, revealRound } from '@/features/cards/domain/v2/resolve';
+import { matchStateSchema } from '@/features/cards/domain/v2/schema';
 import { strengthOf } from '@/features/cards/domain/v2/strength';
 import type { MatchState, Plan } from '@/features/cards/domain/v2/types';
 import { viewFor } from '@/features/cards/domain/v2/view';
@@ -56,6 +57,12 @@ describe('the first match', () => {
       expect(fm.cast.teammate.team!.id).toBe(fm.cast.hardSupport.team!.id);
       const pids = new Set([...fm.state.sides[0].hand, ...fm.state.sides[0].deck].map((c) => c.pid));
       expect([...fm.state.sides[1].hand, ...fm.state.sides[1].deck].some((c) => pids.has(c.pid))).toBe(false);
+    });
+
+    it(`${slug}: a match of real cards can be stored as JSON and read back by the schema`, () => {
+      const json = JSON.parse(JSON.stringify(fm.state));
+      expect(matchStateSchema.safeParse(json).success).toBe(true);
+      expect(JSON.stringify(json).length).toBeLessThan(60_000);
     });
 
     it(`${slug}: the intended moves win, by round 4`, () => {
