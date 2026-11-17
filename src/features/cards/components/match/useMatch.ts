@@ -17,7 +17,8 @@ import { actors, EMPTY_PLAN, planScene, reducePlan, targetInfo, type PlanAction,
 import { knownState, ME, type Scene } from '@/features/cards/state/scene';
 import { useRival } from './useRival';
 
-export interface MatchOptions { seed: number; cast: Cast; jump: Jump | null }
+/** `step`: with a jump into a reveal, the step to stand still on (a number, or the start of its key) */
+export interface MatchOptions { seed: number; cast: Cast; jump: Jump | null; step?: string }
 const NOBODY = { cards: new Set<string>(), units: new Set<string>() };
 
 function bootPlan(stage: Stage, plan?: Plan): PlanState {
@@ -33,7 +34,12 @@ export function useMatch(o: MatchOptions) {
   const round0 = boot.session.state.round;
   const { decide, strike, thinking } = useRival({ level: o.cast.level, pool: o.cast.pool, seed: hashSeed(o.jump ? `rival:${o.seed}:${round0}` : `rival:${o.seed}`) });
   const [stage, setStage] = useState<Stage>(boot.stage);
-  const [step, setStep] = useState(() => (boot.stage.kind === 'show' ? boot.frozen ?? 0 : 0));
+  const [step, setStep] = useState(() => {
+    if (boot.stage.kind !== 'show') return 0;
+    const steps = boot.stage.steps;
+    const asked = o.step === undefined ? -1 : /^\d+$/.test(o.step) ? Math.min(steps.length - 1, Number(o.step)) : steps.findIndex((x) => x.key.startsWith(o.step!));
+    return asked >= 0 ? asked : boot.frozen ?? 0;
+  });
   const [frozen, setFrozen] = useState(boot.frozen !== undefined);
   const [ps, setPs] = useState<PlanState>(() => bootPlan(boot.stage, boot.plan));
   const [choice, setChoice] = useState<FightChoice>(boot.choice ?? NO_CHOICE);

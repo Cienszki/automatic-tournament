@@ -5,6 +5,7 @@
 //   ?level=easy|medium|hard     the computer (without it: the choice of level)
 //   &s=plan|fight|reveal|end    jump to that state (the first rounds are played by the computer)
 //   &seed=N &round=N            which match, and from which round on to stop
+//   &step=aim|impact|verdict|N  with s=reveal: the step of the reveal to stand still on
 //   &shot=1                     for screenshots: hides the development server's own corner mark
 import React, { Suspense, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -60,7 +61,7 @@ function Game() {
     <div className="fixed inset-0" style={{ background: T.bg }}>
       {hideDevMark}
       <FitStage>
-        <MatchScreen key={`${level}-${match.n}`} seed={seed0 + match.n} cast={cast} jump={match.n ? null : jump}
+        <MatchScreen key={`${level}-${match.n}`} seed={seed0 + match.n} cast={cast} jump={match.n ? null : jump} step={match.n ? undefined : q.get('step') ?? undefined}
           onRematch={() => next(match.theirs)}
           onNew={() => { let t = (match.theirs + 1) % DECKS.length; if (t === match.mine) t = (t + 1) % DECKS.length; next(t); }}
           onExit={() => go(null)} />

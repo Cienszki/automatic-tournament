@@ -27,8 +27,9 @@ export function FightLayer({ board, fit, tick, lines, live }: { board: HTMLEleme
 
   // From the side of the card that faces the rival, to the side of the target that faces back
   const edge = (uid: string, toward: 'right' | 'left') => { const p = pos[uid]; return p ? { x: toward === 'right' ? p.x + p.w + 2 : p.x - 2, y: p.y + p.h * 0.42 } : null; };
-  const path = (a: { x: number; y: number }, b: { x: number; y: number }) => {
-    const lift = Math.min(90, Math.abs(b.x - a.x) * 0.18);
+  // The player's line arcs above, the rival's below, so two hits between the same cards both show
+  const path = (a: { x: number; y: number }, b: { x: number; y: number }, side: Side = 0) => {
+    const lift = Math.min(90, Math.abs(b.x - a.x) * 0.18) * (side === 0 ? 1 : -0.7);
     return `M${a.x},${a.y} C${a.x + (b.x - a.x) * 0.3},${a.y - lift} ${a.x + (b.x - a.x) * 0.7},${b.y - lift} ${b.x},${b.y}`;
   };
   const from = live ? edge(live.from, 'right') : null;
@@ -46,8 +47,8 @@ export function FightLayer({ board, fit, tick, lines, live }: { board: HTMLEleme
         if (!a || !b) return null;
         const c = sideColor(l.side);
         return l.kind === 'aim'
-          ? <path key={`${l.from}-${l.to}`} d={path(a, b)} fill="none" stroke={c} strokeWidth={4} strokeDasharray="10 8" markerEnd={`url(#fl-head-${l.side})`} style={{ animation: 'karty-dash 0.9s linear infinite', filter: `drop-shadow(0 0 6px ${c})` }} />
-          : <motion.path key={`${tick}-${l.from}-${l.to}`} d={path(a, b)} fill="none" stroke={c} strokeWidth={6} strokeLinecap="round" markerEnd={`url(#fl-head-${l.side})`} style={{ filter: `drop-shadow(0 0 8px ${c})` }}
+          ? <path key={`${l.from}-${l.to}`} d={path(a, b, l.side)} fill="none" stroke={c} strokeWidth={4} strokeDasharray="10 8" markerEnd={`url(#fl-head-${l.side})`} style={{ animation: 'karty-dash 0.9s linear infinite', filter: `drop-shadow(0 0 6px ${c})` }} />
+          : <motion.path key={`${tick}-${l.from}-${l.to}`} d={path(a, b, l.side)} fill="none" stroke={c} strokeWidth={6} strokeLinecap="round" markerEnd={`url(#fl-head-${l.side})`} style={{ filter: `drop-shadow(0 0 8px ${c})` }}
               initial={{ pathLength: 0, opacity: 1 }} animate={{ pathLength: 1, opacity: 1 }} transition={{ duration: 0.45, delay: l.side === 0 ? 0 : 0.15, ease: 'easeOut' }} />;
       })}
       {live && from && <path d={path(from, { x: live.x, y: live.y })} fill="none" stroke={T.me} strokeWidth={4} strokeDasharray="10 8" markerEnd="url(#fl-head-0)" />}

@@ -36,8 +36,8 @@ export interface MatchScreenProps extends MatchOptions { onRematch: () => void; 
 
 const TOP = 64; const BOTTOM = 214;
 
-export function MatchScreen({ seed, cast, jump, onRematch, onNew, onExit }: MatchScreenProps) {
-  const m = useMatch({ seed, cast, jump });
+export function MatchScreen({ seed, cast, jump, step, onRematch, onNew, onExit }: MatchScreenProps) {
+  const m = useMatch({ seed, cast, jump, step });
   const fit = useFitScale();
   const [root, setRoot] = useState<HTMLDivElement | null>(null);
   const [rowsEl, setRowsEl] = useState<HTMLDivElement | null>(null);

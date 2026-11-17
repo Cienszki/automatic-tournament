@@ -117,7 +117,7 @@ function Marks({ look, k, side }: { look: Look; k: number; side: Side }) {
       <AnimatePresence>
         {look.shield && (
           <motion.span key={look.shield} className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none"
-            initial={{ scale: 0.4, opacity: 0 }} animate={look.shield === 'blocked' ? { scale: [1, 1.35, 1.6], opacity: [1, 1, 0] } : { scale: 1, opacity: 1 }}
+            initial={{ scale: 0.4, opacity: 0 }} animate={look.shield === 'blocked' ? { scale: [1, 1.35, 1.05], opacity: [1, 1, 0.45], rotate: [0, -8, 0] } : { scale: 1, opacity: 1 }}
             exit={{ opacity: 0 }} transition={look.shield === 'blocked' ? { duration: 0.9, times: [0, 0.4, 1] } : { type: 'spring', stiffness: 300, damping: 18 }}>
             <Shield style={{ width: 62 * k, height: 62 * k, color: T.guard, fill: `${T.guard}55`, filter: `drop-shadow(0 0 12px ${T.guard})` }} strokeWidth={2} />
           </motion.span>
