@@ -36,7 +36,9 @@ export interface Rules {
   fight: 'none' | 'hitGuard' | 'oneStrike';
   /** What a hit in the fight step does: 'out' = the unit does not count this round; a number = it
    *  loses that much strength this round (not below 0) */
-  hitEffect: 'out' | number;
+  hitEffect: 'out' | number | 'half';
+  /** A landed hit also switches off what the unit gives others this round (Aura, team bonus) */
+  hitDisables: boolean;
   /** Highest allowed sum of card costs (cost = rating strength 1-9); Infinity = no budget */
   budget: number;
   costMode: CostMode;
@@ -89,6 +91,7 @@ export const DEFAULT_RULES: Rules = {
   gankEffect: 'out',
   fight: 'oneStrike',
   hitEffect: 3,
+  hitDisables: false,
   budget: 60,
   costMode: 'steep',
   auraMode: 'once',

@@ -88,7 +88,10 @@ export const oneGuard = (k: Strikes): string | undefined => k.find((x) => x.guar
 
 /** Marks a unit as hit this round, by the rules' hit effect */
 export function hit<T extends Unit>(s: MatchState, u: T): T {
-  return s.rules.hitEffect === 'out' ? { ...u, out: s.round } : { ...u, hurt: [s.round, s.rules.hitEffect] };
+  if (s.rules.hitEffect === 'out') return { ...u, out: s.round };
+  // 'half': half the unit's strength at the moment of the hit, rounded up
+  const amount = s.rules.hitEffect === 'half' ? Math.ceil(strengthOf(s, u) / 2) : s.rules.hitEffect;
+  return { ...u, hurt: [s.round, amount] };
 }
 
 /** Who is put out on one objective by the two strikes (uids) */
