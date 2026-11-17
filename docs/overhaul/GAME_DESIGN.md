@@ -351,11 +351,12 @@ When a real round is finished and its games are in (the moment that already trig
 
   | Player | Collection | Band 1 | Band 2 | Band 3 | Band 4 | Band 5 |
   |---|---|---|---|---|---|---|
-  | Makes the obvious move | 10 packs | 96% | 77% | 44% | 30% | 7% |
-  | Makes the obvious move | 20 packs | 100% | 92% | 75% | 57% | 21% |
-  | Makes the obvious move | 40 packs | 100% | 98% | 90% | 77% | 35% |
-  | Strong | 10 packs | 100% | 89% | 68% | 50% | 17% |
-  | Strong | 40 packs | 100% | 99% | 96% | 93% | 58% |
+  | Makes the obvious move | 10 packs | 94% | 79% | 55% | 41% | 18% |
+  | Makes the obvious move | 40 packs | 98% | 93% | 86% | 80% | 47% |
+  | Strong | 10 packs | 100% | 95% | 81% | 72% | 38% |
+  | Strong | 40 packs | 100% | 100% | 99% | 98% | 80% |
+
+  (Final rules, `docs/overhaul/sim/v2-final/`, drafted by Opus.) **On PDL S2 the ladder is far too easy:** an average new player beats even the strongest band 80% of the time, because early in that season a team's deck holds four to ten cards. The simulation used team decks without the repeat-to-twelve rule above; WP-59 measures the rule on both fixtures before building, and if PDL S2 stays too easy, plays short team decks with a stronger computer level.
 
   With the budget on, the same table barely moved with the size of the collection (the average player beat the top band 4% of the time with 10 packs and 9% with 40), which is the owner's objection in numbers. With the computer on a stronger level the average player won under 20% from the third band up, which is why the level is fixed low.
 - **One counted match per opponent per round.** A player may play each opponent once for points. They may replay any opponent, of this round or of past rounds, as often as they like for practice. This keeps the counted play to at most five matches a round, and makes each one matter.
