@@ -11,6 +11,9 @@ import type { MatchResult, Side } from '@/features/cards/domain/v2/types';
 import { count } from '@/lib/plural';
 import { ACC, T, ancientModel } from './theme';
 
+/** The header font draws an empty Ż: that letter comes from the plain sans */
+const NO_GLYPH: React.CSSProperties = { fontFamily: 'var(--font-geist-sans), Arial, sans-serif', fontWeight: 900 };
+
 export interface EndProps { result: MatchResult; hp: [number, number]; rival: string; onRematch: () => void; onNew: () => void; onExit: () => void }
 
 export function EndScreen({ result, hp, rival, onRematch, onNew, onExit }: EndProps) {
@@ -51,7 +54,7 @@ export function EndScreen({ result, hp, rival, onRematch, onNew, onExit }: EndPr
       )))}
       <motion.div className="relative flex" initial={{ scale: 2.4, filter: 'blur(14px)' }} animate={{ scale: 1, filter: 'blur(0px)', x: [0, -12, 10, -6, 0] }} transition={{ duration: 0.7, x: { delay: 0.5, duration: 0.4 } }}>
         {word.split('').map((ch, i) => (
-          <motion.span key={i} className="font-logik-extended-bold uppercase text-[120px] leading-none" style={{ color, textShadow: `0 0 50px ${color}, 0 0 120px ${color}88, 0 6px 20px #000`, ...font }}
+          <motion.span key={i} className="font-logik-extended-bold uppercase text-[120px] leading-none" style={{ color, textShadow: `0 0 50px ${color}, 0 0 120px ${color}88, 0 6px 20px #000`, ...font, ...(/[żŻ]/.test(ch) ? NO_GLYPH : {}) }}
             initial={{ y: -80, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.15 + i * 0.05, type: 'spring', stiffness: 260, damping: 14 }}>{ch}</motion.span>
         ))}
       </motion.div>

@@ -19,7 +19,7 @@ function centre(root: HTMLElement, sel: string, fit: number): P | null {
 
 function Flyer({ f, root, fit, onLand }: { f: Flight; root: HTMLElement; fit: number; onLand: () => void }) {
   const font = useHeaderFont();
-  const [path] = useState(() => ({ from: centre(root, `[data-obj="${f.from}"] img`, fit) ?? { x: 960, y: 450 }, to: centre(root, `[data-ancient="${f.side}"]`, fit) ?? { x: 960, y: 30 } }));
+  const [path] = useState(() => ({ from: centre(root, `[data-obj="${f.from}"] [data-model]`, fit) ?? { x: 960, y: 450 }, to: centre(root, `[data-ancient="${f.side}"]`, fit) ?? { x: 960, y: 30 } }));
   const { from, to } = path;
   return (
     <motion.div className="absolute z-40 pointer-events-none font-logik-extended-bold whitespace-nowrap" style={{ left: 0, top: 0, color: T.pts, textShadow: `0 0 16px ${T.pts}, 0 2px 4px #000`, ...font }}
@@ -42,7 +42,7 @@ export function Names({ names, root, fit, tick }: { names: NameFx[]; root: HTMLE
   useLayoutEffect(() => {
     if (!root || !names.length) return;
     const add = names.flatMap((n, i) => {
-      const p = n.uid ? centre(root, `[data-uid="${n.uid}"]`, fit) : n.at !== undefined ? centre(root, `[data-obj="${n.at}"] img`, fit) : null;
+      const p = n.uid ? centre(root, `[data-uid="${n.uid}"]`, fit) : n.at !== undefined ? centre(root, `[data-obj="${n.at}"] [data-model]`, fit) : null;
       return p ? [{ ...n, ...p, key: `${tick}-${i}` }] : [];
     });
     setShown((s) => [...s, ...add]);

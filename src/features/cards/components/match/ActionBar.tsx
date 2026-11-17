@@ -64,7 +64,7 @@ export function ActionBar({ orders, canUndo, onUndo, button, onButton }: ActionB
           : { boxShadow: `0 0 0 2px ${button.enabled ? mix(ACC, 70) : T.faint}`, backgroundColor: button.enabled ? mix(ACC, 30) : '#1a1c22' }}
         transition={button.pulse ? { duration: 1.8, repeat: Infinity } : { duration: 0.3 }}
         style={{ color: button.enabled ? '#fff' : T.muted, ...font }}>
-        <span className="text-[16px] leading-tight text-center">{button.label}</span>
+        <span className="text-[14px] leading-tight text-center">{button.label}</span>
         {button.sub && <span className="text-[9px] tracking-widest mt-1 opacity-80">{button.sub}</span>}
       </motion.button>
     </div>

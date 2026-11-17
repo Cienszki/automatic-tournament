@@ -81,7 +81,7 @@ export function Row({ slot, o, units, capacity, w, h, draw, target, verdict, fx,
         <div className="flex items-center gap-2 my-1.5">
           <Total v={o.totals[0]} side={0} verdict={verdict} />
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={objModel(o.id)} alt="" className="w-[96px] h-[96px] object-contain -my-2" style={{ filter: `drop-shadow(0 6px 12px rgba(0,0,0,0.9))${holder != null ? ` drop-shadow(0 0 14px ${sideColor(holder)}88)` : ''}` }} />
+          <img data-model src={objModel(o.id)} alt="" className="w-[96px] h-[96px] object-contain -my-2" style={{ filter: `drop-shadow(0 6px 12px rgba(0,0,0,0.9))${holder != null ? ` drop-shadow(0 0 14px ${sideColor(holder)}88)` : ''}` }} />
           <Total v={o.totals[1]} side={1} verdict={verdict} />
         </div>
         <div className="h-[30px] flex items-center justify-center px-2">

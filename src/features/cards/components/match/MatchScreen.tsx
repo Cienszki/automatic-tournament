@@ -55,7 +55,7 @@ export function MatchScreen({ seed, cast, jump, onRematch, onNew, onExit }: Matc
     if (!rowsEl) return;
     const ro = new ResizeObserver(() => setRowH(rowsEl.clientHeight / 3)); ro.observe(rowsEl); return () => ro.disconnect();
   }, [rowsEl]);
-  const w = Math.round(Math.max(80, Math.min(140, (rowH - 22) / 1.34)));
+  const w = Math.round(Math.max(80, Math.min(168, (rowH - 22) / 1.34)));
 
   // The game waits while the log or the rules are open
   useEffect(() => { m.setPaused(logOpen || rulesOpen); }, [logOpen, rulesOpen]); // eslint-disable-line react-hooks/exhaustive-deps

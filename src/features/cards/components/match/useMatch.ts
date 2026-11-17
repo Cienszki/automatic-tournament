@@ -78,11 +78,12 @@ export function useMatch(o: MatchOptions) {
 
   // Damage takes off when its step shows; each ability is named the first time it happens
   useEffect(() => {
-    setLedger((l) => launch(l, tick, scene.fx));
-    const fresh = scene.fx.filter((f): f is NameFx => f.kind === 'name' && !seen.current.has(f.what));
-    fresh.forEach((f) => seen.current.add(f.what));
+    // Only a reveal launches damage: the end shows the last step's board, whose damage has flown
+    if (stage.kind === 'show') setLedger((l) => launch(l, tick, scene.fx));
+    const fresh: NameFx[] = [];
+    for (const f of scene.fx) if (f.kind === 'name' && !seen.current.has(f.what)) { seen.current.add(f.what); fresh.push(f); }
     if (fresh.length) setNames(fresh);
-  }, [tick, scene]);
+  }, [tick, scene, stage.kind]);
 
   const known = useMemo(() => (stage.kind === 'plan' ? knownState(stage.view) : null), [stage]);
   const glow = useMemo(() => (known ? actors(known, ME, ps.plan) : NOBODY), [known, ps.plan]);
