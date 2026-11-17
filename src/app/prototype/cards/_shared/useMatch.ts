@@ -27,7 +27,7 @@ export function useMatch(o: StartOptions) {
   const [ps, setPs] = useState<PlanState>(() => {
     if (boot.stage.kind !== 'plan' || !boot.plan || o.untouched) return EMPTY_PLAN;
     const s = knownState(boot.stage.view);
-    return boot.plan.reduce((p, a) => reducePlan(p, a.kind === 'play' ? { type: 'drop', ref: { kind: 'card', id: a.card }, to: a.to, replace: a.replace } : { type: 'drop', ref: { kind: 'unit', uid: a.unit }, to: a.to }, s, ME), EMPTY_PLAN);
+    return boot.plan.reduce((p, a) => reducePlan(p, a.kind === 'play' ? { type: 'drop', refs: [{ kind: 'card', id: a.card }], to: a.to, replace: a.replace } : { type: 'drop', refs: [{ kind: 'unit', uid: a.unit }], to: a.to }, s, ME), EMPTY_PLAN);
   });
   const [choice, setChoice] = useState<FightChoice>(o.untouched ? NO_CHOICE : boot.choice ?? NO_CHOICE);
   /** The own unit the player dragged the aim line from: only a picture */
@@ -52,9 +52,9 @@ export function useMatch(o: StartOptions) {
   }, [stage, ps.plan, step]);
   const glow = useMemo(() => (known ? actors(known, ME, ps.plan) : NOBODY), [known, ps.plan]);
   const slots: [Target, Target, Target] | null = useMemo(() => {
-    if (!known || !ps.pick) return null;
+    if (!known || !ps.picks[0]) return null;
     if (ps.ask) return [0, 1, 2].map((at) => (at === ps.ask!.to ? 'replace' : null)) as [Target, Target, Target];
-    return targetsOf(known, ME, ps.plan, ps.pick);
+    return targetsOf(known, ME, ps.plan, ps.picks[0]);
   }, [known, ps]);
 
   /** Where a card or unit may go, while it is being dragged */

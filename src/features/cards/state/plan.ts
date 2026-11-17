@@ -1,117 +1,104 @@
 // The plan a player builds before "Zatwierdź": one reducer. It only ever holds a plan the engine
 // accepts (validatePlan), so the confirm button can send it as it stands. Nothing here resolves a
 // round; the preview of the player's own side is the engine's reveal with an empty rival plan.
-import { planCost, validatePlan } from '@/features/cards/domain/v2/plan';
+//
+// Several things can be picked at once and sent with one tap, as in today's game: hand cards (as
+// many as the orders allow), or units shown on one objective. A group goes whole or not at all.
+import { freeMoves, planCost } from '@/features/cards/domain/v2/plan';
 import { revealRound } from '@/features/cards/domain/v2/resolve';
-import { SLOTS, type Action, type MatchState, type Plan, type Side, type Slot } from '@/features/cards/domain/v2/types';
+import type { MatchState, Plan, Side, Slot } from '@/features/cards/domain/v2/types';
 import type { MatchView } from '@/features/cards/domain/v2/view';
+import { actionOf, exists, freeOffers, placeGroup, place, sameRef, shownAt, targetInfo, trim, without, type Ask, type Ref } from './place';
 import { knownState, ME, objectiveModels, RIVAL, unitModel, type Scene } from './scene';
 
-/** A thing the player can give an order to: a card in the hand or an own unit on the board */
-export type Ref = { kind: 'card'; id: string } | { kind: 'unit'; uid: string };
+export { actionOf, actors, sameRef, targetsOf, targetInfo, type Ref, type Target, type TargetInfo } from './place';
 
 export interface PlanState {
   plan: Plan;
-  /** Tapped and waiting for its objective (tap, then tap) */
-  pick: Ref | null;
-  /** The picked card goes onto a full objective: one of these own units must make room */
-  ask: { to: Slot; options: string[] } | null;
+  /** Picked and waiting for an objective (tap, then tap): cards, or units shown on one objective */
+  picks: Ref[];
+  /** The picked group goes onto a full objective: one of these own units must make room */
+  ask: Ask | null;
   /** Counts refused actions, so the screen can spring the refused thing back */
   refused: number;
+  /** Why the last action was refused (Polish, for the prompt line) */
+  why: string | null;
 }
 
 export type PlanAction =
+  /** A tap on a card or unit: adds it to the group, or takes it out; null puts everything down */
   | { type: 'pick'; ref: Ref | null }
-  /** The picked thing goes to an objective */
+  /** The picked group goes to an objective; `replace` answers which own unit makes room */
   | { type: 'send'; to: Slot; replace?: string }
-  /** Pick and send in one (a drag) */
-  | { type: 'drop'; ref: Ref; to: Slot; replace?: string }
+  /** Pick and send in one (a drag); `replace` = it was dropped onto that own unit */
+  | { type: 'drop'; refs: Ref[]; to: Slot; replace?: string }
   /** Takes back one action: the one of `ref`, or the last one */
   | { type: 'undo'; ref?: Ref }
   | { type: 'clear' };
 
-export const EMPTY_PLAN: PlanState = { plan: [], pick: null, ask: null, refused: 0 };
+export const EMPTY_PLAN: PlanState = { plan: [], picks: [], ask: null, refused: 0, why: null };
 
-export const sameRef = (a: Ref | null, b: Ref | null): boolean =>
-  !!a && !!b && a.kind === b.kind && (a.kind === 'card' ? a.id === (b as typeof a).id : a.uid === (b as typeof a).uid);
+/** Can this card or unit be picked up at all: it has an order to change, or somewhere to go */
+const movable = (s: MatchState, side: Side, plan: Plan, ref: Ref): boolean =>
+  !!actionOf(plan, ref) || targetInfo(s, side, plan, [ref]).some((t) => t.kind === 'ok' || t.kind === 'replace');
 
-const isOf = (a: Action, ref: Ref): boolean => (a.kind === 'play' ? ref.kind === 'card' && a.card === ref.id : ref.kind === 'unit' && a.unit === ref.uid);
-/** The planned action of this card or unit, if it has one */
-export const actionOf = (plan: Plan, ref: Ref): Action | undefined => plan.find((a) => isOf(a, ref));
-const without = (plan: Plan, ref: Ref): Plan => plan.filter((a) => !isOf(a, ref));
-const legal = (s: MatchState, side: Side, plan: Plan): boolean => validatePlan(s, side, plan) === null;
+/** Could this group still be sent somewhere together */
+const sendable = (s: MatchState, side: Side, plan: Plan, refs: Ref[]): boolean =>
+  targetInfo(s, side, plan, refs).some((t) => t.kind === 'ok' || t.kind === 'replace');
 
-/** Drops actions from the end until the engine accepts what is left */
-function trim(s: MatchState, side: Side, plan: Plan): Plan {
-  let p = plan;
-  while (p.length && !legal(s, side, p)) p = p.slice(0, -1);
-  return p;
+/** Why a group cannot grow by one more: the orders, or no common place */
+function growWhy(s: MatchState, side: Side, plan: Plan): string {
+  const left = s.orders[side] - planCost(s, side, plan);
+  return left <= 0 ? 'Brak rozkazów' : `Masz ${left === 1 ? '1 rozkaz' : `${left} rozkazy`}`;
 }
 
-function exists(s: MatchState, side: Side, ref: Ref): boolean {
-  return ref.kind === 'card' ? s.sides[side].hand.some((c) => c.id === ref.id) : s.units.some((u) => u.uid === ref.uid && u.side === side);
+function pick(ps: PlanState, ref: Ref | null, s: MatchState, side: Side): PlanState {
+  const refuse = (why: string): PlanState => ({ ...ps, ask: null, refused: ps.refused + 1, why });
+  if (!ref) return { ...ps, picks: [], ask: null, why: null };
+  if (ps.picks.some((p) => sameRef(p, ref))) return { ...ps, picks: ps.picks.filter((p) => !sameRef(p, ref)), ask: null, why: null };
+  if (!exists(s, side, ref)) return refuse(ref.kind === 'unit' ? 'To jednostka rywala' : 'Tej karty nie masz');
+  if (!movable(s, side, ps.plan, ref)) return refuse(growWhy(s, side, ps.plan) === 'Brak rozkazów' ? 'Brak rozkazów' : 'Nie ma dokąd iść');
+  const first = ps.picks[0];
+  // A card after units, a unit after cards, or a unit from another objective starts a new group
+  const joins = first && first.kind === ref.kind && (ref.kind === 'card' || shownAt(s, ps.plan, first) === shownAt(s, ps.plan, ref));
+  if (!joins) return { ...ps, picks: [ref], ask: null, why: null };
+  const group = [...ps.picks, ref];
+  if (!sendable(s, side, ps.plan, group)) return refuse(growWhy(s, side, ps.plan));
+  return { ...ps, picks: group, ask: null, why: null };
 }
 
-type Placed = { plan: Plan } | { ask: string[] } | null;
-
-/** The plan with this card or unit sent to an objective (its earlier order, if any, is replaced) */
-function place(s: MatchState, side: Side, plan: Plan, ref: Ref, to: Slot, replace?: string): Placed {
-  if (!exists(s, side, ref)) return null;
-  const base = without(plan, ref);
-  if (ref.kind === 'unit') {
-    // Back to where it stands: the move is taken back
-    if (s.units.find((u) => u.uid === ref.uid)!.at === to) return actionOf(plan, ref) ? { plan: trim(s, side, base) } : null;
-    const next: Plan = [...base, { kind: 'move', unit: ref.uid, to }];
-    return legal(s, side, next) ? { plan: next } : null;
-  }
-  const play = (r?: string): Plan => [...base, { kind: 'play', card: ref.id, to, ...(r === undefined ? {} : { replace: r }) }];
-  if (replace !== undefined) return legal(s, side, play(replace)) ? { plan: play(replace) } : null;
-  if (legal(s, side, play())) return { plan: play() };
-  const options = s.units.filter((u) => u.side === side && u.at === to && legal(s, side, play(u.uid))).map((u) => u.uid);
-  return options.length ? { ask: options } : null;
-}
-
-export type Target = 'ok' | 'replace' | null;
-
-/** Where this card or unit may go now: 'replace' = only by discarding an own unit there */
-export function targetsOf(s: MatchState, side: Side, plan: Plan, ref: Ref): [Target, Target, Target] {
-  return SLOTS.map((to): Target => {
-    const r = place(s, side, plan, ref, to);
-    return !r ? null : 'ask' in r ? 'replace' : 'ok';
-  }) as [Target, Target, Target];
-}
-
-/** Cards and units that have no order yet and could still get one: these glow */
-export function actors(s: MatchState, side: Side, plan: Plan): { cards: Set<string>; units: Set<string> } {
-  const can = (ref: Ref) => !actionOf(plan, ref) && targetsOf(s, side, plan, ref).some((t) => t !== null);
-  return {
-    cards: new Set(s.sides[side].hand.filter((c) => can({ kind: 'card', id: c.id })).map((c) => c.id)),
-    units: new Set(s.units.filter((u) => u.side === side && can({ kind: 'unit', uid: u.uid })).map((u) => u.uid)),
+function send(ps: PlanState, refs: Ref[], to: Slot, s: MatchState, side: Side, replace?: string): PlanState {
+  const refuse = (): PlanState => {
+    const t = targetInfo(s, side, ps.plan, refs)[to];
+    return { ...ps, picks: [], ask: null, refused: ps.refused + 1, why: t.kind === 'off' ? t.why ?? null : null };
   };
+  if (!refs.length) return ps;
+  // The answer to an open question: the asked card replaces that unit, then the rest of the group
+  if (ps.ask && replace !== undefined && ps.ask.to === to && refs.length === ps.ask.rest.length + 1 && sameRef(refs[0], ps.ask.ref)) {
+    const r = place(s, side, ps.ask.done, ps.ask.ref, to, replace);
+    if (!r || 'ask' in r) return refuse();
+    const rest = placeGroup(s, side, r.plan, ps.ask.rest, to);
+    if (!rest) return refuse();
+    if ('ask' in rest) return { ...ps, picks: [rest.ask.ref, ...rest.ask.rest], ask: rest.ask, why: null };
+    return { ...ps, plan: rest.plan, picks: [], ask: null, why: null };
+  }
+  const r = placeGroup(s, side, ps.plan, refs, to, replace);
+  if (!r) return refuse();
+  if ('ask' in r) return { ...ps, picks: refs, ask: r.ask, why: null };
+  return { ...ps, plan: r.plan, picks: [], ask: null, why: null };
 }
 
 export function reducePlan(ps: PlanState, a: PlanAction, s: MatchState, side: Side): PlanState {
-  const refuse = (): PlanState => ({ ...ps, pick: null, ask: null, refused: ps.refused + 1 });
-  const send = (ref: Ref, to: Slot, replace?: string): PlanState => {
-    const r = place(s, side, ps.plan, ref, to, replace);
-    if (!r) return refuse();
-    if ('ask' in r) return { ...ps, pick: ref, ask: { to, options: r.ask } };
-    return { plan: r.plan, pick: null, ask: null, refused: ps.refused };
-  };
   switch (a.type) {
-    case 'pick': {
-      if (!a.ref || sameRef(ps.pick, a.ref)) return { ...ps, pick: null, ask: null };
-      if (!exists(s, side, a.ref)) return refuse();
-      // Something with no order and nowhere to go cannot be picked up
-      if (!actionOf(ps.plan, a.ref) && !targetsOf(s, side, ps.plan, a.ref).some((t) => t !== null)) return refuse();
-      return { ...ps, pick: a.ref, ask: null };
-    }
-    case 'send': return ps.pick ? send(ps.pick, a.to, a.replace) : ps;
-    case 'drop': return send(a.ref, a.to, a.replace);
+    case 'pick': return pick(ps, a.ref, s, side);
+    case 'send':
+      if (ps.ask) return send(ps, [ps.ask.ref, ...ps.ask.rest], a.to, s, side, a.replace);
+      return send(ps, ps.picks, a.to, s, side, a.replace);
+    case 'drop': return send({ ...ps, ask: null }, a.refs, a.to, s, side, a.replace);
     case 'undo': {
-      if (!ps.plan.length) return { ...ps, pick: null, ask: null };
+      if (!ps.plan.length) return { ...ps, picks: [], ask: null, why: null };
       const plan = trim(s, side, a.ref ? without(ps.plan, a.ref) : ps.plan.slice(0, -1));
-      return { plan, pick: null, ask: null, refused: ps.refused };
+      return { ...ps, plan, picks: [], ask: null, why: null };
     }
     case 'clear': return { ...EMPTY_PLAN, refused: ps.refused };
   }
@@ -123,6 +110,8 @@ export function planScene(view: MatchView, plan: Plan): Scene {
   const known = knownState(view);
   const mine = revealRound(known, view.side === ME ? [plan, []] : [[], plan]).state;
   const before = new Map(known.units.map((u) => [u.uid, u]));
+  const free = freeMoves(known, ME, plan);
+  const offers = freeOffers(known, ME, plan);
   return {
     round: known.round,
     // A total is shown where the player has units; an empty side has nothing to add up
@@ -131,7 +120,8 @@ export function planScene(view: MatchView, plan: Plan): Scene {
       ...known.units.filter((u) => u.side === RIVAL).map((u) => unitModel(known, u)),
       ...mine.units.filter((u) => u.side === ME).map((u) => {
         const was = before.get(u.uid);
-        return { ...unitModel(mine, u), ...(was ? (was.at !== u.at ? { planned: 'move' as const } : {}) : { planned: 'play' as const }) };
+        const planned = was ? (was.at !== u.at ? { planned: 'move' as const, free: free.get(u.uid) } : {}) : { planned: 'play' as const };
+        return { ...unitModel(mine, u), ...planned, ...(offers.has(u.uid) ? { offer: offers.get(u.uid) } : {}) };
       }),
     ],
     hp: [view.hp, view.rival.hp],

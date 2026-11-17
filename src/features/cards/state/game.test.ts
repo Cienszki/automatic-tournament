@@ -29,7 +29,7 @@ const length = (steps: Step[]) => steps.reduce((a, s) => a + s.ms, 0);
 function throughReducer(plan: Plan, stage: Extract<Stage, { kind: 'plan' }>): PlanState {
   const s = knownState(stage.view);
   let ps = EMPTY_PLAN;
-  for (const a of plan) ps = reducePlan(ps, a.kind === 'play' ? { type: 'drop', ref: { kind: 'card', id: a.card }, to: a.to, replace: a.replace } : { type: 'drop', ref: { kind: 'unit', uid: a.unit }, to: a.to }, s, ME);
+  for (const a of plan) ps = reducePlan(ps, a.kind === 'play' ? { type: 'drop', refs: [{ kind: 'card', id: a.card }], to: a.to, replace: a.replace } : { type: 'drop', refs: [{ kind: 'unit', uid: a.unit }], to: a.to }, s, ME);
   return ps;
 }
 
