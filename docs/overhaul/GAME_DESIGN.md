@@ -456,7 +456,7 @@ Each target was set before the prototype ran.
 | Goal | Target | Today's game | Recommended game | Met |
 |---|---|---|---|---|
 | Matches that fit a break (G2) | 5 to 7 rounds; nearly all end with an Ancient destroyed | 10.4 turns (5.2 each), 6.5 fights, 19 hits | **6.3 rounds**; 95% of matches last 5 to 7; 99% end with an Ancient destroyed | Yes |
-| Skill over collection in ranked play (G4) | A new player's deck loses to a veteran's at most 60% | **90%** | **61%** (58 to 64). Without the budget: 90% | At the edge on Wiosenna; PDL S2 below |
+| Skill over collection in ranked play (G4) | A new player's deck loses to a veteran's at most 60% | **90%** (PDL S2: 81.5%) | **61%** on Wiosenna (58 to 64), **52%** on PDL S2. Without the budget: 90% and 83% | Yes; at the edge on Wiosenna |
 | Skill decides (G4) | The good player beats the obvious-move player at least 70% | Not comparable | **83%** | Yes |
 | Skill beats collection | The good player with a new deck beats the obvious-move player with a veteran deck | Loses 58% (best computer level, 10 packs against 40) | **Wins 72%** | Yes |
 | A real choice each round (G5) | The good player's plan differs from the obvious plan in most rounds | The strongest card in hand was played 100% of the time | **81%** of rounds | Yes |
@@ -472,9 +472,9 @@ Each target was set before the prototype ran.
 
 Source: `docs/overhaul/sim/v2-final/REPORT.md`.
 
-**On PDL S2,** a much smaller tournament (12 teams, 117 cards), matches have the same shape (6.2 rounds, 99% end with an Ancient destroyed, the player behind after round 3 wins 37%), and the budget brings the veteran's win rate from 87% without it to **67%**. That is above the 60% target. Today's game gives 81.5% there, so the gain is real but smaller than on Wiosenna. Section 9.9 reports what was tried for it.
+**On PDL S2,** a much smaller tournament (12 teams, 117 cards), matches have the same shape (6.2 rounds, the player behind after round 3 wins 36%, the winner was never behind in 44%), and the budget brings the veteran's win rate from 83% without it to **52%** in ranked play. On the rules before the steep cost and the fourth place it was 67% (section 9.9).
 
-Two targets were not met on these rules: the collector's edge on a small tournament, and the shape of decks. Section 9.9 reports the change that fixed both.
+Both targets that the rules before the steep cost and the fourth place missed (the collector's edge on a small tournament, and the shape of decks) are met on the final rules; section 9.9 gives the change and its measurement.
 
 ### 9.3 What the first candidate got wrong, and what fixed it
 
@@ -593,7 +593,7 @@ After the whole battery was re-run with the fight step (sections 9.2 and 9.4), t
 
 Neither lever is enough alone; together they fix both items. With four places a middling card is no longer crowded out, and with the steep cost a star costs what it is worth. On PDL S2 the chosen rules also make stars and the automatic deck even (51%), while counting the team-of-the-round +1 as well over-corrects (stars then win 30%), so that +1 stays free.
 
-These are the defaults from WP-52 on. Every other table in section 9 was measured before this change, so `docs/overhaul/sim/v2-final/` re-runs the battery on the final rules, and sections 9.2 and 9.4 are updated from it when it finishes.
+These are the defaults from WP-52 on. The whole battery was re-run on them (`docs/overhaul/sim/v2-final/`); sections 9.2 and 9.4 hold its numbers. Sections 9.3, 9.5, 9.6 and 9.8 describe the steps on the way and keep the numbers of their time.
 
 ## 10. The owner's earlier decisions
 
