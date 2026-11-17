@@ -45,14 +45,15 @@ const EFFECT: Partial<Record<ObjId, { Icon: LucideIcon | 'gem'; text: string }>>
   tormentor: { Icon: RectangleVertical, text: '+1' },
 };
 
-/** The objective's name, what it deals to an Ancient this round, and its effect */
-export function ObjectiveLabel({ o, size = 10 }: { o: ObjectiveModel; size?: number }) {
+/** The objective's name, what it deals to an Ancient this round, and its effect. `stack` puts the
+ *  numbers on a second line, for a narrow column */
+export function ObjectiveLabel({ o, size = 10, stack }: { o: ObjectiveModel; size?: number; stack?: boolean }) {
   const font = useHeaderFont();
   const e = EFFECT[o.id];
   const tint = o.holder === null ? T.muted : sideColor(o.holder);
   return (
-    <span className="flex items-center whitespace-nowrap leading-none" style={{ gap: size * 0.6 }}>
-      <span className="font-logik-extended-bold uppercase" style={{ fontSize: size, letterSpacing: '0.08em', color: o.holder === null ? T.text : sideColor(o.holder), textShadow: '0 1px 6px #000', ...font }}>{OBJECTIVES[o.id].name}</span>
+    <span className={`flex items-center whitespace-nowrap leading-none ${stack ? 'flex-wrap justify-center' : ''}`} style={{ gap: size * 0.6, rowGap: 4, maxWidth: stack ? '100%' : undefined }}>
+      <span className="font-logik-extended-bold uppercase" style={{ fontSize: size, letterSpacing: '0.08em', color: o.holder === null ? T.text : sideColor(o.holder), textShadow: '0 1px 6px #000', flexBasis: stack ? '100%' : undefined, textAlign: 'center', ...font }}>{OBJECTIVES[o.id].name}</span>
       <span className="font-logik-extended-bold tabular-nums" style={{ fontSize: size * 1.15, color: T.pts, textShadow: '0 1px 6px #000', ...font }}>−{o.damage}</span>
       {e && (
         <span className="flex items-center font-bold tabular-nums" style={{ gap: 2, fontSize: size, color: tint }}>

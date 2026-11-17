@@ -84,7 +84,7 @@ function Column({ at, p, m }: { at: Slot; p: LayoutProps; m: Metrics }) {
       <div className="relative">{group(1, units(1).map(tile))}</div>
       <div className="relative flex flex-col items-center" style={{ gap: 6 }}>
         <Medallion at={at} o={o} size={m.centre} verdict={p.verdicts.get(at)} lit={!!target} />
-        <ObjectiveLabel o={o} size={m.phone ? 9 : 13} />
+        <ObjectiveLabel o={o} size={m.phone ? 10 : 13} stack={m.phone} />
       </div>
       <div className="relative">
         {group(0, <>
@@ -106,7 +106,8 @@ export function MapLayout(p: LayoutProps) {
     <div className="absolute inset-0">
       <div className="absolute inset-x-0 top-0 flex items-end justify-between" style={{ height: m.top, padding: m.phone ? '0 8px 6px' : '0 40px 8px' }}>
         <Ancient side={0} hp={scene.hp[0]} max={rules.hp} incoming={incoming[0]} tick={tick} size={ancientPx} />
-        <div className="flex flex-col items-center" style={{ gap: 8, paddingBottom: 10, transform: m.phone ? undefined : 'scale(1.3)' }}>
+        {/* On a phone the two Ancients take the whole width: the round track goes above them */}
+        <div className={m.phone ? 'absolute inset-x-0 flex justify-center' : 'flex flex-col items-center'} style={m.phone ? { top: 10 } : { paddingBottom: 10, transform: 'scale(1.3)' }}>
           <RoundTrack round={scene.round} cap={rules.roundCap} lateFrom={rules.lateFrom} />
         </div>
         <Ancient side={1} hp={scene.hp[1]} max={rules.hp} incoming={incoming[1]} tick={tick} size={ancientPx}><RivalHand n={scene.rivalHand} /></Ancient>
