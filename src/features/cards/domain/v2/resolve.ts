@@ -4,7 +4,7 @@ import { applyStrikes, obviousStrikes, type Strikes } from './fight';
 import { resolveGanks } from './gank';
 import { freeMoves, validatePlan } from './plan';
 import { startRound, drawCards } from './setup';
-import { damageValue, power, strengthParts } from './strength';
+import { damageValue, power, strengthOf, strengthParts } from './strength';
 import type { MatchEvent, MatchResult, MatchState, Plan, RoundOutcome, Side, Slot } from './types';
 
 const SIDES: Side[] = [0, 1];
@@ -50,6 +50,13 @@ function applyPlans(prev: MatchState, s: MatchState, plans: [Plan, Plan], events
 /** Control and damage on each objective; returns who controls each one this round */
 function score(s: MatchState, events: MatchEvent[]): MatchState['control'] {
   const control: MatchState['control'] = [null, null, null];
+  for (const u of s.units) {
+    if (u.out === s.round) continue;
+    const parts = strengthParts(s, u);
+    const full = parts.base + parts.growth + parts.aura + parts.team + parts.highGround;
+    const total = strengthOf(s, u);
+    events.push({ kind: 'strength', side: u.side, uid: u.uid, at: u.at, parts, hit: full - total, total });
+  }
   for (const at of [0, 1, 2] as Slot[]) {
     const p = power(s, at);
     const c: Side | null = p[0] > p[1] ? 0 : p[1] > p[0] ? 1 : null;

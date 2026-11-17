@@ -67,6 +67,9 @@ export type MatchEvent =
   | { kind: 'gank'; side: Side; mid: GCard; at: Slot; target: GCard | null; blocked: boolean; toHand: boolean }
   /** Fight step: `side` hit `target` (null = no hit); `guarded` = the rival had guarded it */
   | { kind: 'strike'; side: Side; at: Slot; target: GCard | null; guarded: boolean }
+  /** Each unit's strength as it counts for control this round, part by part (after the fight), so a
+   *  screen can show which card gives which bonus. `hit` is what a landed hit took off. */
+  | { kind: 'strength'; side: Side; uid: string; at: Slot; parts: { base: number; growth: number; aura: number; team: number; highGround: number }; hit: number; total: number }
   | { kind: 'control'; at: Slot; power: [number, number]; controller: Side | null }
   | { kind: 'damage'; side: Side; at: Slot; amount: number }
   | { kind: 'farm'; side: Side; card: GCard; growth: number }

@@ -121,7 +121,8 @@ export function applyStrikes(s: MatchState, strikes: [Strikes, Strikes], events:
       const { t } = named[side];
       const guarded = !!t && named[other(side)].g?.uid === t.uid;
       if (t && !guarded) gone.push(t.uid);
-      if (open.length) events.push({ kind: 'strike', side, at: t?.at ?? open[0], target: t?.card ?? null, guarded });
+      // A side that named no hit makes no strike event (there is nothing to show)
+      if (t) events.push({ kind: 'strike', side, at: t.at, target: t.card, guarded });
     }
     s.units = s.units.map((u) => (gone.includes(u.uid) ? hit(s, u) : u));
     return;
