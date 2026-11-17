@@ -104,6 +104,8 @@ function tryFile(base) {
 function readImports(file) {
   const text = fs.readFileSync(file, 'utf8');
   const specs = ts.preProcessFile(text, true, true).importedFiles.map((f) => f.fileName);
+  // Web workers and other modules the bundler loads by URL: new URL('./x.ts', import.meta.url)
+  for (const m of text.matchAll(/\bnew URL\(\s*['"](\.{1,2}\/[^'"]+)['"]\s*,\s*import\.meta\.url\s*\)/g)) specs.push(m[1]);
   // Template-literal dynamic imports: keep the static prefix up to the last `/`.
   const prefixes = [];
   for (const m of text.matchAll(/\bimport\(\s*`([^`$]*)\$\{/g)) {
