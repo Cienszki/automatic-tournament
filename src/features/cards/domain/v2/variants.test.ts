@@ -24,8 +24,16 @@ describe('card cost', () => {
   it('full: also counts the team-of-the-round bonus', () => {
     expect(cost(star, 'full')).toBe(6);
   });
-  it('the default is might', () => {
-    expect(DEFAULT_RULES.costMode).toBe('might');
+  it('steep: like might, and every point of strength above 7 costs double', () => {
+    const star = aCard({ role: 'Offlane', cost: 8 }); // might 9
+    const top = aCard({ role: 'Carry', cost: 9 }); // might 9
+    const mid = aCard({ role: 'Carry', cost: 7 }); // might 7
+    expect([star, top, mid].map((c) => cost(c, 'steep'))).toEqual([11, 11, 7]);
+    expect(cost(aCard({ role: 'Carry', cost: 9, totw: true }), 'steepFull')).toBe(13);
+  });
+  it('the default is steep, with four places per side on an objective', () => {
+    expect(DEFAULT_RULES.costMode).toBe('steep');
+    expect(DEFAULT_RULES.capacity).toBe(4);
   });
 });
 
