@@ -4,7 +4,7 @@ Simulations of the redesigned card-game core ("v2", `src/features/cards/domain/v
 
 There are two folders:
 
-- `docs/overhaul/sim/v2/` (this report when built without `SIM_OUT`): the **settled rules**, which are `DEFAULT_RULES` in `rules.ts`. These are the numbers `GAME_DESIGN.md` section 9 quotes.
+- `docs/overhaul/sim/v2/` (built without `SIM_OUT`): the rules as first settled on 2026-11-14, before the owner's review added the fight step. Kept as a record.
 - `docs/overhaul/sim/v2-first/` (built with `SIM_OUT=v2-first`): the road to the settled rules.
   - E1 to E10: the **first candidate rules** (`FIRST_RULES` in `rules.ts`: budget 66 counted on rating strength, Tank blocks ganks, a ganked unit returns to its owner's hand, Smoke frees a move from where the Support stood, every Hard Support adds its own Aura, High Ground helps all units, no Comeback card, no limit per position).
   - E8, E13, E14: one change at a time from the first rules.
@@ -16,6 +16,9 @@ There are two folders:
   - E1, E2, E4: the settled rules with the fight step as a default (`DEFAULT_RULES` from this revision on).
   - E11 in two files, run with `SIM_CPUS=greedy`: Kolejka with the deck budget, and without it (`SIM_RULES={"budget":999}`, file tag `nobudget`).
   - The reports in `sim/v2/` were measured before the fight step existed and have not been re-run with it.
+
+- `docs/overhaul/sim/v2-settled/` (built with `SIM_OUT=v2-settled`, 2026-11-15 to 17): the whole battery on the rules with the fight step but before the last change (cost = strength with the position modifier, three places per objective), and E21, the experiment that found the last change (a steep cost and four places), with E20 on the practice levels.
+- `docs/overhaul/sim/v2-final/` (built with `SIM_OUT=v2-final`, 2026-11-17): **the final rules**, `DEFAULT_RULES` from WP-52 on. These are the numbers `GAME_DESIGN.md` sections 9.2 and 9.4 quote. E11 has two files: with the budget, and without it (`nobudget`), which is how Kolejka is played.
 
 How to read the numbers:
 
