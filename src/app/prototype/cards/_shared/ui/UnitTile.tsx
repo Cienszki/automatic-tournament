@@ -60,7 +60,7 @@ export function UnitTile({ m, w, look = {}, dataRef, layoutId }: { m: UnitModel;
   ].filter((c) => c.v > 0 && !m.faceDown);
   const face: React.CSSProperties = { position: 'absolute', inset: 0, backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden', borderRadius: Math.max(7, 11 * k), overflow: 'hidden' };
   return (
-    <motion.div layoutId={layoutId} layout={layoutId ? 'position' : false} data-ref={dataRef} data-uid={m.uid}
+    <motion.div layoutId={layoutId} layout={layoutId ? 'position' : false} data-ref={dataRef} data-uid={m.uid} data-lit={look.lit} data-glow={look.glow ? '' : undefined}
       className="relative shrink-0 touch-none select-none" style={{ width: w, height: h, perspective: 600, zIndex: look.picked ? 30 : look.struck || look.aimed ? 20 : undefined }}
       initial={false} animate={{ y: look.picked ? -Math.max(6, 10 * k) : 0, rotate: m.out ? -9 : 0, scale: look.lit === 'hit' || look.aimed ? 1.05 : 1 }}
       transition={{ type: 'spring', stiffness: 320, damping: 28 }}>

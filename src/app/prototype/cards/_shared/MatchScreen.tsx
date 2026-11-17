@@ -139,7 +139,7 @@ export function MatchScreen({ version, seed, jump, step, untouched, onAgain }: M
   const locked: [string, string] | null = stage.kind === 'fight' && choice.target ? (() => { const from = aimOrigin(scene.units, ME, choice.target!, m.aimFrom); return from ? [from, choice.target!] as [string, string] : null; })() : null;
 
   return (
-    <div ref={setRoot} {...press.bind} className="fixed inset-0 overflow-hidden select-none touch-none" style={{ background: `radial-gradient(110% 80% at 45% 0%, #191c25, ${T.bg} 62%)`, color: T.text, height: '100dvh' }}>
+    <div ref={setRoot} {...press.bind} data-stage={stage.kind} className="fixed inset-0 overflow-hidden select-none touch-none" style={{ background: `radial-gradient(110% 80% at 45% 0%, #191c25, ${T.bg} 62%)`, color: T.text, height: '100dvh' }}>
       <style>{KEYFRAMES}</style>
       {size.w > 0 && (
         <LayoutGroup>

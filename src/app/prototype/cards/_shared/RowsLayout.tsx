@@ -54,7 +54,7 @@ function Row({ at, p, m }: { at: Slot; p: LayoutProps; m: Metrics }) {
     </div>
   ));
   return (
-    <div data-slot={at} className="relative flex flex-col items-center" style={{ height: m.rowH, opacity: off ? 0.4 : 1, transition: 'opacity .2s', cursor: target ? 'pointer' : undefined }}>
+    <div data-slot={at} data-target={target ?? undefined} className="relative flex flex-col items-center" style={{ height: m.rowH, opacity: off ? 0.4 : 1, transition: 'opacity .2s', cursor: target ? 'pointer' : undefined }}>
       <div className="absolute pointer-events-none" style={{ inset: m.phone ? '10px 0 -10px' : '0 -160px', background: `radial-gradient(ellipse ${m.phone ? 44 : 30}% 50% at ${m.phone ? 6 : 30}% 50%, ${mix(T.me, 14)}, transparent), radial-gradient(ellipse ${m.phone ? 44 : 30}% 50% at ${m.phone ? 94 : 70}% 50%, ${mix(T.rival, 14)}, transparent)` }} />
       {target && <div className="absolute inset-0 pointer-events-none" style={{ background: `linear-gradient(90deg, ${mix(wash, 26)}, ${mix(wash, 8)} 55%, transparent)`, boxShadow: `inset 0 1px 0 ${mix(wash, 70)}, inset 0 -1px 0 ${mix(wash, 70)}` }} />}
       <div className="relative flex items-center w-full" style={{ height: m.phone ? 20 : 24, gap: 10, padding: `0 ${m.phone ? 10 : 0}px` }}>
