@@ -134,7 +134,7 @@ The game keeps its name, "Kontrola mapy". Every number below is a setting in one
 
 - 12 cards: at least one and at most three of each position. A deck then looks like two or three Dota teams, and no single ability can be stacked.
 - One card per player and team, as today.
-- **Budget: the cards' strength adds up to at most 60.** A card's cost is the strength printed on it. The +1 of a team-of-the-round card is free: it adds strength without adding cost.
+- **Budget: the cards' costs add up to at most 60.** A card's cost is the strength printed on it, except that each point above 7 counts twice: a 7 costs 7, an 8 costs 9, a 9 costs 11, a 10 costs 13. The +1 of a team-of-the-round card is free: it adds strength without adding cost. The card shows its cost beside its strength, so nobody has to work it out. (Changed in WP-52 from cost = strength; section 9.9 gives the reason. Drafted by Opus.)
 
 A new player's ten packs hold about 50 cards, enough to spend the whole budget. A larger collection gives more ways to spend it, not more of it.
 
@@ -144,7 +144,7 @@ A new player's ten packs hold about 50 cards, enough to spend the whole budget. 
 
 - Three objectives, drawn from the six of today's game.
 - Each player has an Ancient with 14 hit points.
-- At most three units per player on one objective.
+- At most four units per player on one objective. (Was three; changed in WP-52, section 9.9.)
 - There is no base. A card goes from the hand straight onto an objective.
 
 ### 4.3 A round
@@ -155,7 +155,7 @@ In full:
 
 1. **Start.** Each player draws one card. A player who is 3 or more hit points behind draws one more ("Comeback"). The opening hand is four cards, with no draw in round 1. The hand holds at most seven. Each player gets two orders.
 2. **Plan, hidden.** An order does one of two things:
-   - **Play** a card from the hand onto an objective. If the player already has three units there, the new card replaces one of them, which is discarded.
+   - **Play** a card from the hand onto an objective. If the player already has four units there, the new card replaces one of them, which is discarded.
    - **Move** a unit from one objective to any other. A unit moves once a round, and not in the round it was played.
 
    Nothing happens until the player confirms, and the plan can be changed freely until then.
@@ -208,7 +208,8 @@ Farma works as today, and Aura does apart from the limit of one per objective. G
 | Budget | 60 | 5 per card. A 10-pack collection can spend all of it; at 66 it could not, and the collector gained from that |
 | Ancient hit points | 14 | Matches of six to seven rounds |
 | Fight | One hit and one guard per player per round; a hit takes 3 strength for the round | Tested against a hit that removes the unit and against a hit on every objective: both turned the match into guessing (section 9.8) |
-| Units per side per objective | 3 | Limits how much strength can pile on one objective |
+| Units per side per objective | 4 | Limits how much strength can pile on one objective. With three, a few strong cards beat every other kind of deck (section 9.9) |
+| Cost of a card | Its strength, each point above 7 counted twice | With cost equal to strength, a deck of stars and cheap fillers won 72% against the field (section 9.9) |
 | Orders per round | 2 | With 3, a third of all orders went unused |
 | Opening hand / draw per round / hand limit | 4 / 1 / 7 | Drawing 2 let the bigger collection matter more |
 | Comeback | +1 card when 3 or more hit points behind | Without it the player behind after round 3 wins about 23%; with it about 35%. Given for any deficit, it gave 40% and helped the bigger collection, so it starts at 3 |
@@ -254,7 +255,7 @@ The rule list is short. The depth comes from three places, and each is measured 
 A round asks three questions at once, and each has a cost.
 
 - **Which cards.** A hand holds three to five cards and there are two orders. Playing the strongest card is often wrong now: a Mid is worth most when the rival has just put a strong unit down, a Support is worth most when a unit elsewhere can come with it, and a Carry is worth most early, while it can still grow. In the simulations the strongest computer player chose a different plan from the obvious one in **77%** of rounds.
-- **Where.** There are three objectives and a player cannot win all of them. Roshan is worth two, so both players want it, which makes the other two the way round it. With three units per side at most, strength cannot be piled without limit, and a full objective forces the question of which unit to give up.
+- **Where.** There are three objectives and a player cannot win all of them. Roshan is worth two, so both players want it, which makes the other two the way round it. With four units per side at most, strength cannot be piled without limit, and a full objective forces the question of which unit to give up.
 - **Now or later.** A card played early controls an objective for more rounds; a card kept is an answer the rival cannot see. A move costs the same order as a play, so repositioning is paid for with tempo. From round 5 damage doubles, so a player can plan to be weak early and strong late, or the reverse.
 
 A match is about 9 cards played, 3 moves and 6 fights for each player over six or seven rounds: around twenty decisions, each of which matters, against 27 clicks in today's game of which a third decide nothing.
@@ -275,7 +276,7 @@ Each ability is a reading question. Gank asks where the rival's best unit will b
 
 The budget turns the deck screen into a set of trades.
 
-- **Few strong cards or many middling ones.** A 9 and a 1 cost the same as two 5s. The 9 wins an objective alone but is the gank's first target; the two 5s hold two places. In the simulations this trade is not yet even: stars with cheap fillers beat evenly middling decks clearly (section 9.4), so for now the budget rewards finding and protecting a few strong cards.
+- **Few strong cards or many middling ones.** A 9 and a 1 cost the same as two 5s. The 9 wins an objective alone but is the gank's first target; the two 5s hold two places. Stars cost more than their number (each point above 7 counts twice), and four units fit on an objective, so the two kinds of deck now win about equally often against each other (section 9.9).
 - **Positions.** One of each is required; the other seven slots are the deck's character. Mids to disrupt, Carries to grow, an Offlane for each Carry worth protecting, a Hard Support for each objective to be held.
 - **Real teams.** Teammates on one objective get +1 each, and the bonus costs nothing. A deck built around one or two real teams is stronger than its budget says, if the player has collected those teams.
 - **Team-of-the-round cards.** Their +1 is free, so each one is worth chasing.
@@ -472,7 +473,7 @@ Source: `docs/overhaul/sim/v2-settled/REPORT.md` (the whole battery, re-run on 2
 
 **On PDL S2,** a much smaller tournament (12 teams, 117 cards), matches have the same shape (6.2 rounds, 99% end with an Ancient destroyed, the player behind after round 3 wins 37%), and the budget brings the veteran's win rate from 87% without it to **67%**. That is above the 60% target. Today's game gives 81.5% there, so the gain is real but smaller than on Wiosenna. Section 9.9 reports what was tried for it.
 
-Two targets are not met: the collector's edge on a small tournament, and the shape of decks. Both are taken up in section 9.9.
+Two targets were not met on these rules: the collector's edge on a small tournament, and the shape of decks. Section 9.9 reports the change that fixed both.
 
 ### 9.3 What the first candidate got wrong, and what fixed it
 
@@ -523,7 +524,7 @@ All five positions sit between 46 and 54%, so none is a mistake to build around 
 | Three Offlanes | 46% |
 | Evenly middling cards | 31% |
 
-Two readings. First, no position is a trap and none is required: the five sit within six points of each other. Second, **the shape of the costs is not balanced.** A deck of stars and fillers beats every other kind. With only three places per side on an objective, a strong card uses a place better than two middling ones, and the fight step did not change that. This does not harm the new player in ranked play (the budget is the same for everyone, and ten packs hold a few strong cards), but it narrows deck building more than intended. Section 9.9 reports what was tried.
+Two readings. First, no position is a trap and none is required: the five sit within six points of each other. Second, **the shape of the costs is not balanced.** A deck of stars and fillers beats every other kind. With only three places per side on an objective, a strong card uses a place better than two middling ones, and the fight step did not change that. This does not harm the new player in ranked play (the budget is the same for everyone, and ten packs hold a few strong cards), but it narrows deck building more than intended. Section 9.9 reports the fix.
 
 ### 9.5 Direction A, measured
 
@@ -575,6 +576,23 @@ The first form made the fight matter so much that the match became a guessing ga
 So the fight has the shape a reading game should have: doing the obvious beats doing nothing in particular, reading a predictable rival beats them heavily, and staying unpredictable is the defence.
 
 The whole battery was then re-run with the fight step as a default (`docs/overhaul/sim/v2-settled/`); sections 9.2 and 9.4 hold its numbers.
+
+### 9.9 Deck shapes and the small tournament (WP-52, drafted by Opus)
+
+After the whole battery was re-run with the fight step (sections 9.2 and 9.4), two targets were still missed: a deck of a few strong cards and cheap fillers beat every other kind (72% against the field), and on PDL S2 a collector's deck beat a new player's 67% in ranked play. Experiment E21 (`docs/overhaul/sim/v2-settled/REPORT.md`) tried the levers `ROADMAP.md` named for WP-52, alone and together. 400 games per duel on Wiosenna and 300 on PDL S2; "stars" is the stars-and-fillers deck, "best" the automatic deck.
+
+| Rules | Stars beat best | Stars beat even | Veteran beats new (Wiosenna) | Veteran beats new (PDL S2) | Behind after round 3 still wins |
+|---|---|---|---|---|---|
+| Settled rules (cost = strength, three places) | 69% | 81% | 59% | 64% | 34% |
+| Four places per side on an objective | 62% | 73% | 61% | | 42% |
+| Steep cost (each point above 7 counts twice) | 67% | 69% | 64% | | 38% |
+| Team-of-the-round +1 counted in the cost | 70% | 80% | 57% | | 33% |
+| **Steep cost and four places (chosen)** | **50%** | **55%** | **60%** | **48%** | **40%** |
+| Steep cost with the team-of-the-round +1 counted, and four places | | | | 46% | 40% |
+
+Neither lever is enough alone; together they fix both items. With four places a middling card is no longer crowded out, and with the steep cost a star costs what it is worth. On PDL S2 the chosen rules also make stars and the automatic deck even (51%), while counting the team-of-the-round +1 as well over-corrects (stars then win 30%), so that +1 stays free.
+
+These are the defaults from WP-52 on. Every other table in section 9 was measured before this change, so `docs/overhaul/sim/v2-final/` re-runs the battery on the final rules, and sections 9.2 and 9.4 are updated from it when it finishes.
 
 ## 10. The owner's earlier decisions
 
