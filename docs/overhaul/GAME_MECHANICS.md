@@ -6,7 +6,7 @@ Written 2026-11-17 for the owner, who asked to know the game "like I built it fr
 
 - Two players, three objectives, two Ancients of 14 HP.
 - A match lasts 6.3 rounds on average: 16% end in round 5, 46% in round 6, 33% in round 7, 6% in round 8. 99% end with an Ancient destroyed; the rest at the round limit (8).
-- Each round each player has 2 orders. Over a match a player plays about 9.9 cards and makes about 3.6 moves. About 1.9 objectives per round have units of both sides on them ("contested").
+- Each round each player has 2 orders. Over a match a player plays about 9.9 cards and makes about 3.6 moves. About 1.9 objectives per round have units of both sides on them ("contested"); the fight changes who controls one of them 13% of the time.
 - On a contested objective each side has on average 2.9 units and a total strength of about 19 (10% of totals are under 6, 10% over 30).
 
 ## 2. Where a card's numbers come from
@@ -73,7 +73,7 @@ You may leave orders unused. Nothing happens until both players confirm.
 - one rival unit to **hit**: any rival unit on a contested objective that is not out and is not an Offlane, and
 - one of their own units to **guard**.
 
-Then both are applied together. A hit unit that its owner did not guard loses 3 strength **for this round only**, down to 0 at most. A unit that is hit still hits. Either choice can be left empty.
+Then both are applied together. A hit unit that its owner did not guard, **for this round only**: loses 3 strength (down to 0 at most), and gives nothing to others (its Aura and the team bonus it gives switch off). A unit that is hit still hits. Either choice can be left empty. (The second half was added on 2026-11-17, after the question "why hit this card and not another"; section 7.)
 
 **Control and damage:** on each objective the side with the strictly higher total controls it (a side alone there controls it with any total above 0; equal totals mean nobody does). Each controlled objective damages the other Ancient: 1, Roshan 2; from round 5 on, double (2, Roshan 4).
 
@@ -88,12 +88,14 @@ Strength = printed strength + Farma growth + Aura + team bonus + High Ground −
 | Part | Exactly |
 |---|---|
 | Farma | +1 per round this Carry spent on an objective its side controlled, up to +3; reset to 0 by a gank |
-| Aura | +1 if any Hard Support of your side stands on this objective and is not out; at most +1 however many Hard Supports are there; the Hard Support gets it too |
-| Team bonus | +1 if another unit of your side from the same real team stands on this objective and is not out |
+| Aura | +1 if any Hard Support of your side stands on this objective and is neither out nor hit; at most +1 however many Hard Supports are there; the Hard Support gets it too |
+| Team bonus | +1 if another unit of your side from the same real team stands on this objective and is neither out nor hit |
 | High Ground | +1 for units standing on High Ground, if your side controlled it at the end of the last round |
-| Hit | −3 this round, not below 0 |
+| Hit | −3 this round, not below 0; the hit unit also stops giving Aura and team bonus to others |
 
 **Worked example.** On Roshan you have a 7-rated Carry with 2 growth, a Hard Support printed 5, and an Offlane printed 6 from the Carry's real team. The Carry counts 7 + 2 + 1 (Aura) + 1 (team) = 11. The Hard Support: 5 + 1 (Aura) = 6. The Offlane: 6 + 1 (Aura) + 1 (team) = 8. Total 25. The bonuses come to 5 strength without costing a point of budget, and they all depend on the units standing together. Splitting them across objectives loses them.
+
+The same position under a hit. The Offlane cannot be hit. A hit on the **Carry** takes its 3 and the team bonus it gives the Offlane: 8 + 6 + 7 = 21, four less. A hit on the **Hard Support** takes its 3 and the Aura of all three: 2 + 10 + 7 = 19, six less. Which unit is hit now matters, and the Hard Support is the one to guard.
 
 ## 6. Control and damage: the race
 
@@ -105,51 +107,68 @@ Strength = printed strength + Farma growth + Aura + team bonus + High Ground −
 
 ## 7. The fight, in depth
 
-### What −3 does
+### What a hit does
 
-A hit takes 3 from one unit's own total for one round. It does not touch the bonuses that unit gives others: hitting a Hard Support takes 3 from the Hard Support, and everyone's Aura stays. So for control, a hit means "this side's total on that objective is 3 lower this round", and it is the same whichever unit you hit there, as long as that unit has at least 3 strength. Units of 1 or 2 strength lose only what they have.
+A landed hit takes 3 from the unit for one round, and for that round the unit gives nothing to the others: a hit Hard Support's Aura is gone from everyone on its objective, and a hit unit stops giving the team bonus to its teammates there. So the swing a hit causes on an objective is
+
+**3 + the Aura it was giving + the team bonuses it was giving**,
+
+which is 3 for a plain unit, up to 7 or more for a Hard Support on a full objective (3, its own Aura, and one Aura for each of up to three others), and 4 or 5 for a unit that links teammates. Units of 1 or 2 strength lose only what they have from the 3, but still lose what they give.
+
+**Why it works this way.** At first a hit was a flat −3 that left every bonus in place, and then every unit of 3 or more on an objective was the same target: the choice of unit was only a coin toss against the guard. Experiment E19 (`docs/overhaul/sim/v2-hit/`) compared that with this rule and with a hit that takes half the unit's strength:
+
+| Hit | Choosing the target well beats choosing at random | Fights that change control | Better planner beats the obvious-move player |
+|---|---|---|---|
+| −3 only | 65% | 9% | 86% |
+| **−3 and switches off what it gives (chosen)** | **83%** | **13%** | **80%** |
+| Half the strength | 72% | 12% | 82% |
+| Half, and switches off | 82% | 15% | 77% |
+
+The chosen rule makes the target matter most for the least loss of planning skill, and it keeps every balance target (the veteran's edge 59%, comebacks 36%).
 
 ### When a hit matters
 
-A hit changes the outcome on an objective only if the margin there is small. Measured on the board after the reveal, between strong players:
+A hit changes the outcome on an objective only if the margin there is within its swing. Measured on the board after the reveal between strong players (with the earlier flat hit, so the swing was 3; the margins themselves come from planning and are the same):
 
-| Margin between the two totals | Share of contested objectives | One landed hit by the side behind |
-|---|---|---|
-| 0 (tied) | 6% | wins it |
-| 1 or 2 | 21% | wins it |
-| 3 | 8% | makes it a tie: nobody controls it |
-| 4 or 5 | 14% | changes nothing |
-| 6 or more | 50% | changes nothing |
+| Margin between the two totals | Share of contested objectives | A plain hit (swing 3) by the side behind | A hit on a Hard Support with three others (swing 7) |
+|---|---|---|---|
+| 0 (tied) | 6% | wins it | wins it |
+| 1 or 2 | 21% | wins it | wins it |
+| 3 | 8% | makes it a tie | wins it |
+| 4 or 5 | 14% | changes nothing | wins it |
+| 6 or more | 50% | changes nothing | wins it at 6, ties at 7 |
 
-So on about a third of contested objectives the fight decides the result; on two thirds it was decided by the planning. Both sides also hit: two hits on the same objective cancel out. Overall a fight changes who controls an objective about 12% of the time; today's game's fights did it 5% of the time with three times the clicks.
+So on a third of contested objectives any hit decides the result, and on another fifth only a hit on the right unit does. Both sides hit: two hits on the same objective cancel out, partly or fully. Overall a fight now changes who controls an objective 13% of the time; today's game's fights did it 5% of the time with three times the clicks.
 
 ### Choosing the hit
 
-Because −3 is the same on any unit with 3 or more strength, the question is not "which unit is best to hit" but two others:
+Three questions, in this order:
 
-1. **Where.** The objective where a 3-point swing changes control, weighted by what it is worth: Roshan 2, others 1, double from round 5. If you are ahead somewhere by 1 to 3, the rival's hit there is the danger; if you are behind somewhere by 0 to 3, your hit there is the chance.
-2. **Which unit there, given the guard.** The rival will guard one unit. Hit a different one and the hit lands.
+1. **Where.** The objectives where a hit can change control, weighted by what they are worth (Roshan 2, others 1, double from round 5).
+2. **Which unit there.** The one whose loss swings the most: a Hard Support on a crowded objective first, then a unit that links teammates, then any unit of 3 or more. A Carry with growth is no better a target than another unit (the growth is its own strength, and a hit takes a flat 3); a gank is what resets growth.
+3. **Against the guard.** The rival can guard one unit. If the best target is obvious, they will guard it. Then the second-best target, or the same target on a different objective, is often the better hit.
 
 ### Choosing the guard
 
-The guard only helps if the rival hits exactly that unit. So it is a guess about the rival's hit: which objective they think is decisive, and which of your units there they will pick.
+The guard only helps if the rival hits exactly that unit. It is a guess about the rival's hit. The natural guard is your most valuable unit on the most valuable close objective, which is also what the rival expects.
 
-### The guessing game, and why "hit the strongest" is a trap
+### The guessing game
 
-The natural habit is "hit their strongest, guard my strongest". Since every unit of 3 or more loses the same 3, hitting the strongest gains nothing, and guarding your strongest only works against a rival with that same habit. A player who expects the habit hits a different unit and guards where the habit will hit. The simulations measured exactly this: a player who answers the habit beats a player who has it **87%** of the time, with everything else equal (measured with three places per objective, before the fourth was added).
+The habit "hit their most valuable unit, guard my most valuable unit" is the right first instinct now: it beats choosing at random 83% of the time. But it is predictable. A player who expects it hits the second-best target and guards where the habit will hit, and wins **87%** against the habit with everything else equal. Being unpredictable (mixing between the good options in the right proportions) only edges out the habit, 54%. The money is in reading a rival who has a pattern, and in not having one yourself.
 
-Against a player with no habit (who spreads the choice among the units that matter), the guard succeeds about as often as there are units to choose from: with the 2.45 hittable units per contested objective that the simulations show, about 40% (measured: 41% of hits were guarded). Being unpredictable in turn only edges out the habit: 54%. The money is in reading a rival who has a pattern.
+Against a player with no habit, a guard succeeds about 4 times in 10 (measured: 41% of hits were guarded).
 
 ### How positions change the guessing
 
 - **An Offlane cannot be hit.** An objective where your only hittable unit stands next to an Offlane leaves the rival one target, and your guard then stops the hit for certain. Offlanes make guards work.
 - **A lone star** is the same: one target, a certain guard. But a lone star is the Mid's target too (a gank takes the strongest).
-- **Many small units** give the rival many targets, so your guard rarely matters; but each of those units is below 3 less often, so the hit lands in full.
-- **Units under 3** are poor targets: a hit on a 2 takes only 2.
+- **A Hard Support on a crowded objective** is your most valuable and most exposed unit: it is worth the most to hit, so it is what the rival aims at and what you guard. Two objectives each with a Hard Support give the rival a choice you cannot cover with one guard.
+- **Many plain units** give the rival many equal targets, so your guard rarely matters; but no single hit swings more than 3.
+- **Units under 3** are poor targets for the 3 they lose, but still lose what they give.
 
 ### Is the fight solvable?
 
-Each round's fight is a small zero-sum game with simultaneous choices, so it has an optimal mixed strategy (a probability for each hit and guard), which the strongest computer player computes. A human cannot do that arithmetic, and does not need to: listing the objectives within 3, ranking them by what they are worth, and varying the choice among the units there gets close. What wins more than the optimum is noticing a habit.
+Each round's fight is a small zero-sum game with simultaneous choices, so it has an optimal mixed strategy (a probability for each hit and guard), which the strongest computer player computes. A human cannot do that arithmetic, and does not need to: listing the objectives a hit can change, ranking the targets by their swing, and varying the choice between the best two gets close. What wins more than the optimum is noticing a habit.
 
 ## 8. The abilities
 
@@ -159,7 +178,7 @@ Each round's fight is a small zero-sum game with simultaneous choices, so it has
 | Mid | Gank | When played: the rival's strongest unit there sits out the round (an Offlane takes it instead) | Into an objective where the rival relies on one big unit; played late in the reveal of a close objective | An Offlane beside the big unit; keeping Mids in the hand until it matters |
 | Offlane | Tank | +1 printed strength; cannot be hit in the fight; takes the gank instead of others | Next to your star: it absorbs the gank (losing its own strength for the round instead of the star's) and makes your guard certain | A hit on its neighbours, which it does not stop |
 | Support | Smoke | −1 printed; when played, one of your units moving to its objective is free | Turns two orders into three actions: play the Support and pull a unit across | None directly; the rival sees it only at the reveal |
-| Hard Support | Aura | −1 printed; +1 to each of your units on its objective, itself included (one Aura per objective) | On a crowded objective: with four units it adds 4 strength | A gank on it removes the Aura for the round; a second Hard Support on the same objective adds nothing |
+| Hard Support | Aura | −1 printed; +1 to each of your units on its objective, itself included (one Aura per objective) | On a crowded objective: with four units it adds 4 strength | A gank or a landed hit on it removes the Aura for the round, so it is the first unit to guard; a second Hard Support on the same objective adds nothing |
 
 Measured on the final rules: a deck heavy in any one position wins 46% to 60% against the automatic deck; three Mids is the strongest (60%), because ganks are the main way to break a strong position. Switching Gank off lowers the comeback rate from 37% to 29%: it is the game's main comeback tool.
 
@@ -203,7 +222,8 @@ Three of the six appear in each match. Lotus Pool is the strongest early because
 | Both plan at once | Alternating turns (today's game) | Today, every unit was seen a turn before it acted: nothing to read. Simultaneous plans make every round a prediction |
 | Two orders | Three | With three, a third of the orders went unused |
 | One draw a round | Two | With two, the bigger collection won more (79%) |
-| Fight: one hit and one guard, −3 | A hit and guard on every objective, removing the unit; −4 | The bigger fight made the better planner win only 52%: the fight swallowed the game. −3 keeps planning decisive (83%) and the fight still matters (12% of contested objectives) |
+| Fight: one hit and one guard, −3 | A hit and guard on every objective, removing the unit; −4 | The bigger fight made the better planner win only 52%: the fight swallowed the game. −3 keeps planning decisive and the fight still matters |
+| A hit also switches off what the unit gives | A flat −3; half the unit's strength | With a flat −3 the choice of unit did not matter (65% for choosing well); now it does (83%), and fights change control 13% of the time |
 | Gank: the target sits out the round | Back to the hand; only units no stronger than the Mid; the weakest unit | Back to the hand made a deck of Mids win 93%; the others gave the advantage back to collections |
 | Offlane takes the gank, cannot be hit | Blocking ganks | Blocking made Tank do nothing measurable |
 | Aura once per objective | Every Hard Support adds +1 | Stacking Hard Supports beat the cards themselves |
@@ -214,7 +234,7 @@ Three of the six appear in each match. Lotus Pool is the strongest early because
 
 ## 13. What is not settled, and weak spots
 
-- **Which unit you hit hardly matters.** Because a hit is a flat −3 and leaves the bonuses a unit gives others, every unit of 3 or more on an objective is the same target. The real choices are the objective and the guess against the guard; "this unit or that one" is only a coin toss to dodge the guard. That is shallower than it looks on the screen, where the player aims at a specific card. Candidate fixes, none tested yet: a hit that also switches off what the unit gives others (a hit Hard Support loses its Aura, a hit unit no longer gives the team bonus), so the target matters; or a hit that takes half the unit's strength instead of 3, so hitting the star is worth more and guarding it is a real decision. Each is one setting in `fight.ts` and a re-run of experiments E19 and the battery; worth doing before the fight screen of WP-55 is final.
+- **The target of a hit used to hardly matter** (a flat −3 on any unit). Fixed on 2026-11-17: a hit also switches off what the unit gives (section 7).
 - **Three Mids is at the edge** (60% against the automatic deck). The first thing to watch when people play.
 - **Kolejka on PDL S2 is too easy** (short team decks early in a season); WP-59 measures the fix.
 - **Weak units are poor targets**, so a deck of 1s and 2s on one objective shrugs off hits. The steep cost makes such decks rare, but it is a known hole.

@@ -161,7 +161,7 @@ In full:
    Nothing happens until the player confirms, and the plan can be changed freely until then.
 3. **Reveal.** Both plans happen at once.
 4. **Ganks** (see Mid, below).
-5. **Fight ("Walka").** Looking at the revealed board, each player secretly names one rival unit to hit ("cios") and one of their own units to guard ("osłona"). Both choices are shown at once. A unit that is hit and was not guarded loses 3 strength for this round. Only units on objectives where both sides stand can be hit, and an Offlane cannot be hit at all. Both hits count even if the unit that would deal one is itself hit.
+5. **Fight ("Walka").** Looking at the revealed board, each player secretly names one rival unit to hit ("cios") and one of their own units to guard ("osłona"). Both choices are shown at once. A unit that is hit and was not guarded loses 3 strength for this round, and for this round gives nothing to others (its Aura and the team bonus it gives switch off), so the most connected unit is the most valuable target. (Added in WP-65; `GAME_MECHANICS.md` section 7.) Only units on objectives where both sides stand can be hit, and an Offlane cannot be hit at all. Both hits count even if the unit that would deal one is itself hit.
 6. **Control.** On each objective the side with more total strength controls it this round. A side alone on an objective controls it. Equal totals mean nobody does.
 7. **Damage.** Each controlled objective deals 1 damage to the rival's Ancient; Roshan deals 2. From round 5 on, all damage is doubled.
 8. **Farma** and the objectives' effects (below).
@@ -207,7 +207,7 @@ Farma works as today, and Aura does apart from the limit of one per objective. G
 | Deck size / per position | 12 / 1 to 3 | A choice for a 50-card collection; most of the deck is seen in a match. The limit of three stops decks built from one ability |
 | Budget | 60 | 5 per card. A 10-pack collection can spend all of it; at 66 it could not, and the collector gained from that |
 | Ancient hit points | 14 | Matches of six to seven rounds |
-| Fight | One hit and one guard per player per round; a hit takes 3 strength for the round | Tested against a hit that removes the unit and against a hit on every objective: both turned the match into guessing (section 9.8) |
+| Fight | One hit and one guard per player per round; a hit takes 3 strength for the round and switches off the unit's Aura and team bonus | Tested against a hit that removes the unit and against a hit on every objective: both turned the match into guessing (section 9.8) |
 | Units per side per objective | 4 | Limits how much strength can pile on one objective. With three, a few strong cards beat every other kind of deck (section 9.9) |
 | Cost of a card | Its strength, each point above 7 counted twice | With cost equal to strength, a deck of stars and cheap fillers won 72% against the field (section 9.9) |
 | Orders per round | 2 | With 3, a third of all orders went unused |
