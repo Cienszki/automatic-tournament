@@ -64,7 +64,7 @@ export function Figure({ card, side, w, strength, parts, lost, look = {}, costMo
   const face: React.CSSProperties = { position: 'absolute', inset: 0, backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden' };
   const lean = look.lunge ? (side === 0 ? 34 : -34) : 0;
   return (
-    <motion.div layoutId={layoutId} layout={!!layoutId} transition={{ type: 'spring', stiffness: 300, damping: 30 }} data-uid={dataUid} data-ref={dataRef}
+    <motion.div layoutId={layoutId} layout={!!layoutId} transition={{ type: 'spring', stiffness: 300, damping: 30, x: { duration: look.struck ? 0.45 : 0.25, ease: 'easeOut' } }} data-uid={dataUid} data-ref={dataRef}
       initial={settle ? { scale: 1.12, opacity: 1 } : side === 1 && look.faceDown ? { y: -70, opacity: 0, scale: 0.8 } : { opacity: 0, scale: 0.75 }}
       animate={{ opacity: look.ghost ? 0 : 1, scale: big, x: look.struck ? [lean, -12, 12, -7, 0] : lean, y: reading && grow === 'up' ? -46 : look.picked && !reading ? -8 : 0 }}
       exit={{ opacity: 0, scale: 0.6, transition: { duration: 0.3 } }}

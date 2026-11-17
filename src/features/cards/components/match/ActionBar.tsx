@@ -15,7 +15,7 @@ export interface Prompt { label: string; text: string; warn?: boolean; wait?: bo
 export function PromptLine({ p }: { p: Prompt | null }) {
   const font = useHeaderFont();
   return (
-    <div className="relative z-50 h-[44px] flex items-center justify-center">
+    <div className="relative z-[75] h-[44px] flex items-center justify-center pointer-events-none">
       <AnimatePresence mode="wait">
         {p && (
           <motion.div key={p.label + p.text} className="flex items-center gap-3 px-5 h-[40px] rounded-full"
