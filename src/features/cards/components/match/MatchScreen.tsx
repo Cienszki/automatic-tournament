@@ -10,6 +10,7 @@ import { mix } from '@/components/stats-lab/kit';
 import { baseMight } from '@/lib/card-lab/outposts';
 import { useFitScale } from '@/components/card-lab/ui';
 import { chime, titleAlert } from '@/lib/card-lab/chime';
+import { pulseAt } from '@/components/tour/pulse';
 import { LEVELS } from '@/features/cards/domain/v2/ai/levels';
 import { SLOTS } from '@/features/cards/domain/v2/types';
 import { logRounds } from '@/features/cards/state/log';
@@ -60,7 +61,8 @@ export function MatchScreen({ seed, cast, jump, step, onRematch, onNew, onExit }
   // The game waits while the log or the rules are open
   useEffect(() => { m.setPaused(logOpen || rulesOpen); }, [logOpen, rulesOpen]); // eslint-disable-line react-hooks/exhaustive-deps
   // Why a tap did nothing, long enough to read
-  useEffect(() => { if (ps.why) setNote(ps.why); }, [ps.refused]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Why a refused tap did nothing; out of orders, the gems pulse
+  useEffect(() => { if (!ps.why) return; setNote(ps.why); if (/rozkaz/.test(ps.why)) pulseAt('[data-orders]'); }, [ps.refused]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { if (ps.ask) setNote(null); }, [ps.ask]);
   useEffect(() => { if (!note) return; const t = setTimeout(() => setNote(null), Math.max(2600, note.length * 55)); return () => clearTimeout(t); }, [note, ps.refused]);
   // A new round: the banner, the board's edge lights up; in another tab a chime and a blinking title

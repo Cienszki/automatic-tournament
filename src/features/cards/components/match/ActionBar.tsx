@@ -47,7 +47,7 @@ export function ActionBar({ orders, canUndo, onUndo, button, onButton }: ActionB
       <div className="flex flex-col items-center gap-3 min-w-[110px]">
         {orders && (
           <Tip content="Rozkazy tej rundy: każda zagrana karta i każdy ruch kosztuje 1. Migają te, które wydasz na to, co trzymasz.">
-            <div className="flex items-center gap-2.5 cursor-help h-[28px]">
+            <div data-orders className="flex items-center gap-2.5 cursor-help h-[28px]">
               {Array.from({ length: orders.have }, (_, i) => <Gem key={i} size={20} on={i < left} pending={i >= left - orders.pending && i < left} />)}
             </div>
           </Tip>
