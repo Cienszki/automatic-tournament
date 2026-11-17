@@ -214,6 +214,7 @@ Three of the six appear in each match. Lotus Pool is the strongest early because
 
 ## 13. What is not settled, and weak spots
 
+- **Which unit you hit hardly matters.** Because a hit is a flat −3 and leaves the bonuses a unit gives others, every unit of 3 or more on an objective is the same target. The real choices are the objective and the guess against the guard; "this unit or that one" is only a coin toss to dodge the guard. That is shallower than it looks on the screen, where the player aims at a specific card. Candidate fixes, none tested yet: a hit that also switches off what the unit gives others (a hit Hard Support loses its Aura, a hit unit no longer gives the team bonus), so the target matters; or a hit that takes half the unit's strength instead of 3, so hitting the star is worth more and guarding it is a real decision. Each is one setting in `fight.ts` and a re-run of experiments E19 and the battery; worth doing before the fight screen of WP-55 is final.
 - **Three Mids is at the edge** (60% against the automatic deck). The first thing to watch when people play.
 - **Kolejka on PDL S2 is too easy** (short team decks early in a season); WP-59 measures the fix.
 - **Weak units are poor targets**, so a deck of 1s and 2s on one objective shrugs off hits. The steep cost makes such decks rare, but it is a known hole.
