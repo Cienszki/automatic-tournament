@@ -1,0 +1,202 @@
+{
+ "experiment": "e11",
+ "slug": "pdl-s2",
+ "seed": 1,
+ "gamesPlayed": 9000,
+ "gamesArg": null,
+ "ms": 376281,
+ "command": "npx tsx scripts/tools/card-sim/run-v2.ts e11 --slug pdl-s2 --seed 1",
+ "tables": [
+  {
+   "title": "E11a. Team decks next to budget decks (pdl-s2)",
+   "measured": "22 team decks (team x period, 2 periods from seasonPeriods). 22 (100.0%) have fewer than 12 cards; smallest 4. Numbers are min / Q1 / median / Q3 / max.",
+   "columns": [
+    "Decks",
+    "Total baseMight",
+    "Total cost",
+    "Cards"
+   ],
+   "rows": [
+    [
+     "Team decks",
+     "8 / 18 / 28 / 42 / 67",
+     "8 / 19 / 28 / 43 / 67",
+     "4 / 5 / 5 / 10 / 10"
+    ],
+    [
+     "best default-budget deck, new (10 packs, 50 collections)",
+     "60 / 60 / 61 / 61 / 64",
+     "62 / 64 / 65 / 65 / 65",
+     "12"
+    ],
+    [
+     "best default-budget deck, regular (20 packs, 50 collections)",
+     "60 / 61 / 61 / 62 / 64",
+     "61 / 63 / 64 / 65 / 65",
+     "12"
+    ],
+    [
+     "best default-budget deck, veteran (40 packs, 50 collections)",
+     "60 / 62 / 63 / 63 / 65",
+     "62 / 63 / 64 / 65 / 65",
+     "12"
+    ]
+   ]
+  },
+  {
+   "title": "E11b. Human proxy vs team decks played by the greedy computer (pdl-s2)",
+   "measured": "Proxy (row) with a `best` default-budget deck from its collection vs the computer with a team deck from the band (team decks sorted by total baseMight, in fifths). 300 games per cell, both seats. Win rate of the proxy. Hoped for: greedy proxy about 80% against the weakest band down to 25-35% against the strongest.",
+   "columns": [
+    "Proxy",
+    "band 1 (might 8-16)",
+    "band 2 (might 18-19)",
+    "band 3 (might 20-31)",
+    "band 4 (might 31-44)",
+    "band 5 (might 48-67)"
+   ],
+   "rows": [
+    [
+     "greedy, new",
+     "100.0% [98.7–100.0]",
+     "100.0% [98.7–100.0]",
+     "90.0% [86.0–92.9]",
+     "71.9% [66.6–76.7]",
+     "33.7% [28.6–39.2]"
+    ],
+    [
+     "greedy, regular",
+     "100.0% [98.7–100.0]",
+     "100.0% [98.7–100.0]",
+     "95.3% [92.3–97.2]",
+     "75.4% [70.2–80.0]",
+     "37.3% [32.1–42.9]"
+    ],
+    [
+     "greedy, veteran",
+     "100.0% [98.7–100.0]",
+     "99.3% [97.6–99.8]",
+     "95.3% [92.3–97.2]",
+     "86.0% [81.6–89.5]",
+     "41.3% [35.9–47.0]"
+    ],
+    [
+     "planner, new",
+     "100.0% [98.7–100.0]",
+     "100.0% [98.7–100.0]",
+     "98.3% [96.2–99.3]",
+     "89.0% [85.0–92.1]",
+     "47.3% [41.8–53.0]"
+    ],
+    [
+     "planner, regular",
+     "100.0% [98.7–100.0]",
+     "100.0% [98.7–100.0]",
+     "98.3% [96.2–99.3]",
+     "90.7% [86.8–93.5]",
+     "52.3% [46.7–57.9]"
+    ],
+    [
+     "planner, veteran",
+     "100.0% [98.7–100.0]",
+     "100.0% [98.7–100.0]",
+     "99.0% [97.1–99.7]",
+     "91.3% [87.6–94.0]",
+     "57.7% [52.0–63.1]"
+    ]
+   ]
+  }
+ ],
+ "data": {
+  "decks": 22,
+  "small": 22,
+  "bands": [
+   [
+    "6lLwVula9Gd2g9V2iJpF@r1",
+    "fVRNSc9IjxmxobElp9Db@r1",
+    "W8MwNbnGJ47ClySu4T9r@r1",
+    "H3cMXhvvJQwhyY48iLq9@r1"
+   ],
+   [
+    "GA1fDvQSjqq238zJbBgB@r1",
+    "6lLwVula9Gd2g9V2iJpF@r2",
+    "NYmU8xmsy7zWwsnM60SW@r1",
+    "W8MwNbnGJ47ClySu4T9r@r2"
+   ],
+   [
+    "lJgvtuKElJqLo5iukMog@r1",
+    "fVRNSc9IjxmxobElp9Db@r2",
+    "2f2hIwdITgZW7UjwmGQY@r1",
+    "osYDYGGcjbOtOmPq9NKj@r1",
+    "xgdYNPVLXxxlh41wjvAU@r1"
+   ],
+   [
+    "rHdyBSmoIU4NDNMMShrm@r1",
+    "ukWZSzbPxHRFzeX2vCxj@r1",
+    "rHdyBSmoIU4NDNMMShrm@r2",
+    "ukWZSzbPxHRFzeX2vCxj@r2"
+   ],
+   [
+    "H3cMXhvvJQwhyY48iLq9@r2",
+    "NYmU8xmsy7zWwsnM60SW@r2",
+    "2f2hIwdITgZW7UjwmGQY@r2",
+    "GA1fDvQSjqq238zJbBgB@r2",
+    "osYDYGGcjbOtOmPq9NKj@r2"
+   ]
+  ],
+  "ladder": [
+   {
+    "cpu": "greedy",
+    "rows": [
+     [
+      "greedy, new",
+      "100.0% [98.7–100.0]",
+      "100.0% [98.7–100.0]",
+      "90.0% [86.0–92.9]",
+      "71.9% [66.6–76.7]",
+      "33.7% [28.6–39.2]"
+     ],
+     [
+      "greedy, regular",
+      "100.0% [98.7–100.0]",
+      "100.0% [98.7–100.0]",
+      "95.3% [92.3–97.2]",
+      "75.4% [70.2–80.0]",
+      "37.3% [32.1–42.9]"
+     ],
+     [
+      "greedy, veteran",
+      "100.0% [98.7–100.0]",
+      "99.3% [97.6–99.8]",
+      "95.3% [92.3–97.2]",
+      "86.0% [81.6–89.5]",
+      "41.3% [35.9–47.0]"
+     ],
+     [
+      "planner, new",
+      "100.0% [98.7–100.0]",
+      "100.0% [98.7–100.0]",
+      "98.3% [96.2–99.3]",
+      "89.0% [85.0–92.1]",
+      "47.3% [41.8–53.0]"
+     ],
+     [
+      "planner, regular",
+      "100.0% [98.7–100.0]",
+      "100.0% [98.7–100.0]",
+      "98.3% [96.2–99.3]",
+      "90.7% [86.8–93.5]",
+      "52.3% [46.7–57.9]"
+     ],
+     [
+      "planner, veteran",
+      "100.0% [98.7–100.0]",
+      "100.0% [98.7–100.0]",
+      "99.0% [97.1–99.7]",
+      "91.3% [87.6–94.0]",
+      "57.7% [52.0–63.1]"
+     ]
+    ]
+   }
+  ]
+ }
+}

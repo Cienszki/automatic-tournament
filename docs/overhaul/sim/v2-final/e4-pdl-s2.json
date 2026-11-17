@@ -1,0 +1,103 @@
+{
+ "experiment": "e4",
+ "slug": "pdl-s2",
+ "seed": 1,
+ "gamesPlayed": 1000,
+ "gamesArg": null,
+ "ms": 198756,
+ "command": "npx tsx scripts/tools/card-sim/run-v2.ts e4 --slug pdl-s2 --seed 1",
+ "tables": [
+  {
+   "title": "E4. Comebacks (pdl-s2)",
+   "measured": "planner vs planner with the same `best` deck (one veteran collection per pair), N = 1000. Targets: P(win | behind after round 3) >= 25%; winner never trailed <= 55%.",
+   "columns": [
+    "Measure",
+    "Value"
+   ],
+   "rows": [
+    [
+     "P(win | behind on HP after round 2) (matches still going, HP not equal)",
+     "40.2% [36.9–43.7] (N=805)"
+    ],
+    [
+     "P(win | behind on HP after round 3) (matches still going, HP not equal)",
+     "35.7% [32.5–38.9] (N=861)"
+    ],
+    [
+     "P(win | behind on HP after round 4) (matches still going, HP not equal)",
+     "28.8% [25.9–31.9] (N=885)"
+    ],
+    [
+     "Lead changes per match (sign changes of the HP difference, equal HP skipped)",
+     "0.74"
+    ],
+    [
+     "Winner never trailed on HP after any round",
+     "43.5% [40.5–46.6]"
+    ],
+    [
+     "Final HP difference: mean / median",
+     "5.50 / 5.00"
+    ],
+    [
+     "Winner's remaining HP (count of matches)",
+     "0: 89, 1: 140, 2: 139, 3: 92, 4: 87, 5: 99, 6: 107, 7: 80, 8: 53, 9: 31, 10: 12, 11: 7, 12: 3, 14: 1, -9: 1, -8: 1, -6: 1, -5: 2, -3: 11, -2: 18, -1: 23"
+    ]
+   ]
+  }
+ ],
+ "data": {
+  "after": [
+   {
+    "after": 2,
+    "k": 324,
+    "n": 805,
+    "text": "40.2% [36.9–43.7]"
+   },
+   {
+    "after": 3,
+    "k": 307,
+    "n": 861,
+    "text": "35.7% [32.5–38.9]"
+   },
+   {
+    "after": 4,
+    "k": 255,
+    "n": 885,
+    "text": "28.8% [25.9–31.9]"
+   }
+  ],
+  "changes": 0.7372116349047142,
+  "neverTrailed": {
+   "k": 434,
+   "n": 997
+  },
+  "winnerHp": {
+   "0": 89,
+   "1": 140,
+   "2": 139,
+   "3": 92,
+   "4": 87,
+   "5": 99,
+   "6": 107,
+   "7": 80,
+   "8": 53,
+   "9": 31,
+   "10": 12,
+   "11": 7,
+   "12": 3,
+   "14": 1,
+   "-9": 1,
+   "-8": 1,
+   "-6": 1,
+   "-5": 2,
+   "-3": 11,
+   "-2": 18,
+   "-1": 23
+  },
+  "margin": [
+   5.5035105315947845,
+   5
+  ]
+ }
+}

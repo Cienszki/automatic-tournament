@@ -1,6 +1,6 @@
 // The WP-51 experiments on the v2 prototype of the card game.
 //
-//   npx tsx scripts/tools/card-sim/run-v2.ts <e1..e12|all|report> [--slug wiosenna] [--games N] [--seed S]
+//   npx tsx scripts/tools/card-sim/run-v2.ts <e1..e19|battery|all|report> [--slug wiosenna] [--games N] [--seed S]
 //
 // `--games` is games per table cell (some cells use fewer and say so). Writes
 // docs/overhaul/sim/v2/<experiment>-<slug>.json and rebuilds docs/overhaul/sim/v2/REPORT.md from
@@ -15,13 +15,14 @@ import { e6, e7, e8, e13, e14, e15, e16, e17, e18 } from './v2/exp/design';
 import { e12 } from './v2/exp/duplicates';
 import { e19 } from './v2/exp/fight';
 import { e20 } from './v2/exp/levels';
+import { e21 } from './v2/exp/shapes';
 import { e9 } from './v2/exp/objectives';
 import { e1, e2, e4 } from './v2/exp/shape';
 import { e3, e5 } from './v2/exp/skill';
 import { e11 } from './v2/exp/teams';
 import { OUT_DIR, writeReport } from './v2/report';
 
-const EXPERIMENTS: Record<string, (ctx: Ctx) => Promise<Outcome>> = { e1, e2, e3, e4, e5, e6, e7, e8, e9, e10, e11, e12, e13, e14, e15, e16, e17, e18, e19, e20 };
+const EXPERIMENTS: Record<string, (ctx: Ctx) => Promise<Outcome>> = { e1, e2, e3, e4, e5, e6, e7, e8, e9, e10, e11, e12, e13, e14, e15, e16, e17, e18, e19, e20, e21 };
 const SECOND_SLUG = ['e1', 'e2', 'e6', 'e11', 'e12'];
 
 function arg(name: string): string | undefined {
@@ -48,6 +49,13 @@ async function main() {
   const seed = Number(arg('--seed') ?? 1);
   const games = arg('--games') ? Number(arg('--games')) : undefined;
   if (what === 'report') { writeReport(); return; }
+  if (what === 'battery') {
+    // The experiments GAME_DESIGN.md section 9 quotes, on the rules as they stand, in one process
+    for (const name of ['e1', 'e2', 'e4', 'e3', 'e5', 'e7', 'e9', 'e11', 'e12', 'e6']) await runOne(name, 'wiosenna', seed, name === 'e6' ? 300 : games);
+    for (const name of ['e1', 'e2', 'e4', 'e11', 'e12']) await runOne(name, 'pdl-s2', seed, games);
+    writeReport();
+    return;
+  }
   if (what === 'all') {
     for (const name of Object.keys(EXPERIMENTS)) await runOne(name, 'wiosenna', seed, games);
     for (const name of SECOND_SLUG) await runOne(name, 'pdl-s2', seed, games);

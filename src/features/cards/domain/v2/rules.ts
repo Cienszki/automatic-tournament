@@ -4,7 +4,7 @@
 export type GankMode = 'strongest' | 'weakest' | 'off';
 /** What a card costs against the budget: 'rating' = rating strength 1-9; 'might' = that plus the role
  *  modifier (Offlane +1, supports -1, at least 1); 'full' = 'might' plus the team-of-the-round +1 */
-export type CostMode = 'rating' | 'might' | 'full';
+export type CostMode = 'rating' | 'might' | 'full' | 'steep' | 'steepFull';
 
 export interface Abilities {
   /** Carry: +1 growth per round on an objective its side controls */
@@ -90,7 +90,7 @@ export const DEFAULT_RULES: Rules = {
   fight: 'oneStrike',
   hitEffect: 3,
   budget: 60,
-  costMode: 'might',
+  costMode: 'steep',
   auraMode: 'once',
   smokeMode: 'pull',
   tankMode: 'redirect',
@@ -98,7 +98,7 @@ export const DEFAULT_RULES: Rules = {
   catchUpDraw: 1,
   catchUpGap: 3,
   hp: 14,
-  capacity: 3,
+  capacity: 4,
   draw: 1,
   handMax: 7,
   startHand: 4,
@@ -123,4 +123,4 @@ export function makeRules(patch: RulesPatch = {}, base: Rules = DEFAULT_RULES): 
 
 /** The first candidate rule set of WP-51 (before the second round of simulations). The older engine
  *  tests describe these variants; the simulations of E1-E12 in `sim/v2-first` used them. */
-export const FIRST_RULES: Rules = makeRules({ budget: 66, costMode: 'rating', auraMode: 'stack', smokeMode: 'from', tankMode: 'block', catchUpDraw: 0, catchUpGap: 1, highGround: 'all', maxPerRole: Infinity, gankEffect: 'return', fight: 'none', hitEffect: 'out', hp: 12 });
+export const FIRST_RULES: Rules = makeRules({ budget: 66, costMode: 'rating', auraMode: 'stack', smokeMode: 'from', tankMode: 'block', catchUpDraw: 0, catchUpGap: 1, highGround: 'all', maxPerRole: Infinity, gankEffect: 'return', fight: 'none', hitEffect: 'out', hp: 12, capacity: 3 });

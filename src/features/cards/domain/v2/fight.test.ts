@@ -92,6 +92,17 @@ describe('checking one hit and one guard', () => {
   });
 });
 
+describe('what the fight and the count report', () => {
+  it('a side that makes no hit makes no strike event; each unit reports its strength part by part', () => {
+    const out = finishRound(board(), [[], [{ at: 0, target: '0:a9' }]]);
+    expect(strikes(out.events).map((e) => e.side)).toEqual([1]);
+    const a9 = out.events.find((e): e is Extract<MatchEvent, { kind: 'strength' }> => e.kind === 'strength' && e.uid === '0:a9')!;
+    expect(a9).toMatchObject({ side: 0, at: 0, hit: 3, total: a9.parts.base + a9.parts.growth + a9.parts.aura + a9.parts.team + a9.parts.highGround - 3 });
+    const sum = (side: 0 | 1) => out.events.filter((e): e is Extract<MatchEvent, { kind: 'strength' }> => e.kind === 'strength' && e.side === side && e.at === 0).reduce((t, e) => t + e.total, 0);
+    expect([sum(0), sum(1)]).toEqual(control(out.events, 0).power);
+  });
+});
+
 describe('fight step on every contested objective (the first variant)', () => {
   it('each side names a hit and a guard per objective', () => {
     const c5 = aCard({ id: 'c5', cost: 5 }); const d5 = aCard({ id: 'd5', cost: 5 });

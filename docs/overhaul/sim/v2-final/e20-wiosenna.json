@@ -1,0 +1,84 @@
+{
+ "experiment": "e20",
+ "slug": "wiosenna",
+ "seed": 1,
+ "gamesPlayed": 2400,
+ "gamesArg": null,
+ "ms": 318837,
+ "command": "npx tsx scripts/tools/card-sim/run-v2.ts e20 --slug wiosenna --seed 1",
+ "tables": [
+  {
+   "title": "E20a. Practice levels against each other (wiosenna)",
+   "measured": "Both sides play the same best budget deck from one veteran collection per pair; 600 games per pair, both seats. Target: each level beats the one below it between 60 and 85%.",
+   "columns": [
+    "Level",
+    "Against",
+    "Wins [95% CI]",
+    "Rounds"
+   ],
+   "rows": [
+    [
+     "Średni",
+     "Łatwy",
+     "90.8% [88.2–92.8]",
+     "5.90"
+    ],
+    [
+     "Trudny",
+     "Średni",
+     "60.4% [56.5–64.3]",
+     "6.22"
+    ],
+    [
+     "Trudny",
+     "Łatwy",
+     "93.3% [91.0–95.0]",
+     "5.74"
+    ],
+    [
+     "Łatwy",
+     "Kolejka",
+     "30.8% [27.2–34.6]",
+     "6.43"
+    ]
+   ]
+  },
+  {
+   "title": "E20b. Thinking time per level (wiosenna)",
+   "measured": "Milliseconds in Node on this machine, with other simulations running beside it, so an upper bound for a desktop; a phone is several times slower. Per round = plan and fight together.",
+   "columns": [
+    "Level",
+    "Mean per round",
+    "Median of the slowest round of a match",
+    "95th percentile of the slowest round"
+   ],
+   "rows": [
+    [
+     "Łatwy",
+     "16.7",
+     "32.5",
+     "56.0"
+    ],
+    [
+     "Średni",
+     "129.2",
+     "251.1",
+     "513.4"
+    ],
+    [
+     "Trudny",
+     "327.9",
+     "605.0",
+     "965.5"
+    ],
+    [
+     "Kolejka",
+     "15.0",
+     "29.4",
+     "47.6"
+    ]
+   ]
+  }
+ ],
+ "data": {}
+}

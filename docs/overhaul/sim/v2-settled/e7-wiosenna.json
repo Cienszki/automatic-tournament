@@ -1,0 +1,291 @@
+{
+ "experiment": "e7",
+ "slug": "wiosenna",
+ "seed": 1,
+ "gamesPlayed": 13000,
+ "gamesArg": null,
+ "ms": 1738588,
+ "command": "npx tsx scripts/tools/card-sim/run-v2.ts e7 --slug wiosenna --seed 1",
+ "tables": [
+  {
+   "title": "E7a. Each ability switched off for both sides (wiosenna)",
+   "measured": "Rounds and comeback rate: planner vs planner with the same `best` veteran deck, 1000 games. Last column: win rate of the deck that leans on that ability (roleSkew of its role; teamStack for Drużyna) against `best` built from the same collection, with the ability on -> off (500 games each).",
+   "columns": [
+    "Rules",
+    "Rounds per match",
+    "P(win | behind after round 3)",
+    "Skewed deck vs best: on -> off"
+   ],
+   "rows": [
+    [
+     "everything on",
+     "6.24",
+     "36.0% [32.8–39.3]",
+     "—"
+    ],
+    [
+     "Farma (Carry)",
+     "6.34",
+     "36.2% [33.1–39.5]",
+     "most Carry: 52.1% [47.7–56.5] -> 49.1% [44.7–53.5]"
+    ],
+    [
+     "Gank (Mid)",
+     "6.21",
+     "28.6% [25.7–31.7]",
+     "most Mid: 54.1% [49.7–58.5] -> 42.1% [37.8–46.5]"
+    ],
+    [
+     "Tank (Offlane)",
+     "6.25",
+     "36.6% [33.5–39.9]",
+     "most Offlane: 45.9% [41.6–50.3] -> 41.9% [37.7–46.3]"
+    ],
+    [
+     "Smoke (Soft Support)",
+     "6.28",
+     "36.3% [33.2–39.5]",
+     "most Support: 46.1% [41.7–50.5] -> 46.3% [42.0–50.7]"
+    ],
+    [
+     "Aura (Hard Support)",
+     "6.22",
+     "35.6% [32.5–38.9]",
+     "most Hard Supp: 50.4% [46.0–54.8] -> 52.1% [47.7–56.5]"
+    ],
+    [
+     "Drużyna (teams)",
+     "6.27",
+     "34.2% [31.1–37.4]",
+     "teamStack: 57.2% [52.8–61.5] -> 64.7% [60.4–68.7]"
+    ]
+   ]
+  },
+  {
+   "title": "E7b. Ability use per side per match, everything on (wiosenna)",
+   "measured": "Same matches as the first row above (N = 1000).",
+   "columns": [
+    "Measure",
+    "Per side per match"
+   ],
+   "rows": [
+    [
+     "Farma growth gained",
+     "4.29"
+    ],
+    [
+     "Ganks that returned a unit",
+     "1.48"
+    ],
+    [
+     "Ganks blocked by an Offlane (Tank)",
+     "0.00"
+    ],
+    [
+     "Smoke free moves",
+     "0.85"
+    ],
+    [
+     "Aura strength (summed over units and rounds)",
+     "22.98"
+    ],
+    [
+     "Drużyna strength (summed over units and rounds)",
+     "11.21"
+    ],
+    [
+     "High Ground strength (summed over units and rounds)",
+     "2.80"
+    ],
+    [
+     "Twin Gates free moves",
+     "0.47"
+    ]
+   ]
+  }
+ ],
+ "data": {
+  "rows": [
+   [
+    "everything on",
+    "6.24",
+    "36.0% [32.8–39.3]",
+    "—"
+   ],
+   [
+    "Farma (Carry)",
+    "6.34",
+    "36.2% [33.1–39.5]",
+    "most Carry: 52.1% [47.7–56.5] -> 49.1% [44.7–53.5]"
+   ],
+   [
+    "Gank (Mid)",
+    "6.21",
+    "28.6% [25.7–31.7]",
+    "most Mid: 54.1% [49.7–58.5] -> 42.1% [37.8–46.5]"
+   ],
+   [
+    "Tank (Offlane)",
+    "6.25",
+    "36.6% [33.5–39.9]",
+    "most Offlane: 45.9% [41.6–50.3] -> 41.9% [37.7–46.3]"
+   ],
+   [
+    "Smoke (Soft Support)",
+    "6.28",
+    "36.3% [33.2–39.5]",
+    "most Support: 46.1% [41.7–50.5] -> 46.3% [42.0–50.7]"
+   ],
+   [
+    "Aura (Hard Support)",
+    "6.22",
+    "35.6% [32.5–38.9]",
+    "most Hard Supp: 50.4% [46.0–54.8] -> 52.1% [47.7–56.5]"
+   ],
+   [
+    "Drużyna (teams)",
+    "6.27",
+    "34.2% [31.1–37.4]",
+    "teamStack: 57.2% [52.8–61.5] -> 64.7% [60.4–68.7]"
+   ]
+  ],
+  "usage": [
+   [
+    "Farma growth gained",
+    "4.29"
+   ],
+   [
+    "Ganks that returned a unit",
+    "1.48"
+   ],
+   [
+    "Ganks blocked by an Offlane (Tank)",
+    "0.00"
+   ],
+   [
+    "Smoke free moves",
+    "0.85"
+   ],
+   [
+    "Aura strength (summed over units and rounds)",
+    "22.98"
+   ],
+   [
+    "Drużyna strength (summed over units and rounds)",
+    "11.21"
+   ],
+   [
+    "High Ground strength (summed over units and rounds)",
+    "2.80"
+   ],
+   [
+    "Twin Gates free moves",
+    "0.47"
+   ]
+  ],
+  "skew": [
+   {
+    "deck": "roleSkew:Carry",
+    "on": {
+     "k": 260,
+     "n": 499,
+     "draws": 1,
+     "games": 500,
+     "text": "52.1% [47.7–56.5]"
+    },
+    "off": {
+     "k": 244,
+     "n": 497,
+     "draws": 3,
+     "games": 500,
+     "text": "49.1% [44.7–53.5]"
+    }
+   },
+   {
+    "deck": "roleSkew:Mid",
+    "on": {
+     "k": 269,
+     "n": 497,
+     "draws": 3,
+     "games": 500,
+     "text": "54.1% [49.7–58.5]"
+    },
+    "off": {
+     "k": 210,
+     "n": 499,
+     "draws": 1,
+     "games": 500,
+     "text": "42.1% [37.8–46.5]"
+    }
+   },
+   {
+    "deck": "roleSkew:Offlane",
+    "on": {
+     "k": 229,
+     "n": 499,
+     "draws": 1,
+     "games": 500,
+     "text": "45.9% [41.6–50.3]"
+    },
+    "off": {
+     "k": 208,
+     "n": 496,
+     "draws": 4,
+     "games": 500,
+     "text": "41.9% [37.7–46.3]"
+    }
+   },
+   {
+    "deck": "roleSkew:Soft Support",
+    "on": {
+     "k": 229,
+     "n": 497,
+     "draws": 3,
+     "games": 500,
+     "text": "46.1% [41.7–50.5]"
+    },
+    "off": {
+     "k": 231,
+     "n": 499,
+     "draws": 1,
+     "games": 500,
+     "text": "46.3% [42.0–50.7]"
+    }
+   },
+   {
+    "deck": "roleSkew:Hard Support",
+    "on": {
+     "k": 252,
+     "n": 500,
+     "draws": 0,
+     "games": 500,
+     "text": "50.4% [46.0–54.8]"
+    },
+    "off": {
+     "k": 260,
+     "n": 499,
+     "draws": 1,
+     "games": 500,
+     "text": "52.1% [47.7–56.5]"
+    }
+   },
+   {
+    "deck": "teamStack",
+    "on": {
+     "k": 286,
+     "n": 500,
+     "draws": 0,
+     "games": 500,
+     "text": "57.2% [52.8–61.5]"
+    },
+    "off": {
+     "k": 322,
+     "n": 498,
+     "draws": 2,
+     "games": 500,
+     "text": "64.7% [60.4–68.7]"
+    }
+   }
+  ]
+ }
+}

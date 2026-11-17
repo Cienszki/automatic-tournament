@@ -10,7 +10,7 @@ import { playGame } from '../../game';
 import { loadCards } from '../../load-cards';
 import { stream, subSeed } from '../../rng';
 import { mean, num, rate } from '../../stats';
-import { minimums, pick } from '../pick';
+import { minimums, pick } from '@/features/cards/domain/v2/pick';
 import { totalCost } from '../decks';
 import type { Ctx, Outcome, Table } from './common';
 

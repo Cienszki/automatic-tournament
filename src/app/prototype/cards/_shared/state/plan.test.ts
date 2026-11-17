@@ -15,8 +15,9 @@ function board() {
   const a = aCard({ id: 'a', cost: 5 }); const b = aCard({ id: 'b', role: 'Mid', cost: 4 }); const c = aCard({ id: 'c', role: 'Offlane', cost: 2 });
   const d = aCard({ id: 'd', role: 'Hard Support', cost: 3 });
   const r = aCard({ id: 'r', cost: 7 });
+  // Three places per side, so that three units make objective 0 full (the reducer is what is tested)
   return aBoard({
-    rules: DEFAULT_RULES, hands: [hand, []],
+    rules: { ...DEFAULT_RULES, capacity: 3 }, hands: [hand, []],
     units: [{ card: a, side: ME, at: 0 }, { card: b, side: ME, at: 0 }, { card: c, side: ME, at: 0 }, { card: d, side: ME, at: 1 }, { card: r, side: RIVAL, at: 0 }],
   });
 }

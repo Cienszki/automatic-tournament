@@ -1,0 +1,531 @@
+{
+ "experiment": "e6",
+ "slug": "wiosenna",
+ "seed": 1,
+ "gamesPlayed": 10800,
+ "gamesArg": 300,
+ "ms": 1281041,
+ "command": "npx tsx scripts/tools/card-sim/run-v2.ts e6 --slug wiosenna --seed 1 --games 300",
+ "tables": [
+  {
+   "title": "E6a. Deck archetypes: win rate of the row deck against the column deck (wiosenna)",
+   "measured": "planner vs planner; both decks built from the same veteran collection (40 packs, 30 collections), the default budget; 300 games per pair, both seats.",
+   "columns": [
+    "Row vs column",
+    "best",
+    "topHeavy",
+    "flat",
+    "teamStack",
+    "most Carry",
+    "most Mid",
+    "most Offlane",
+    "most Support",
+    "most Hard Supp"
+   ],
+   "rows": [
+    [
+     "best",
+     "—",
+     "29.4%",
+     "62.0%",
+     "43.0%",
+     "50.5%",
+     "43.2%",
+     "53.4%",
+     "50.8%",
+     "49.2%"
+    ],
+    [
+     "topHeavy",
+     "70.6%",
+     "—",
+     "83.7%",
+     "65.9%",
+     "70.4%",
+     "70.2%",
+     "76.3%",
+     "72.7%",
+     "69.1%"
+    ],
+    [
+     "flat",
+     "38.0%",
+     "16.3%",
+     "—",
+     "27.8%",
+     "37.5%",
+     "30.5%",
+     "30.7%",
+     "34.3%",
+     "31.6%"
+    ],
+    [
+     "teamStack",
+     "57.0%",
+     "34.1%",
+     "72.2%",
+     "—",
+     "59.1%",
+     "56.5%",
+     "65.2%",
+     "61.4%",
+     "59.0%"
+    ],
+    [
+     "most Carry",
+     "49.5%",
+     "29.6%",
+     "62.5%",
+     "40.9%",
+     "—",
+     "46.3%",
+     "50.3%",
+     "51.7%",
+     "51.7%"
+    ],
+    [
+     "most Mid",
+     "56.8%",
+     "29.8%",
+     "69.5%",
+     "43.5%",
+     "53.7%",
+     "—",
+     "54.0%",
+     "51.8%",
+     "52.2%"
+    ],
+    [
+     "most Offlane",
+     "46.6%",
+     "23.7%",
+     "69.3%",
+     "34.8%",
+     "49.7%",
+     "46.0%",
+     "—",
+     "48.3%",
+     "48.7%"
+    ],
+    [
+     "most Support",
+     "49.2%",
+     "27.3%",
+     "65.7%",
+     "38.6%",
+     "48.3%",
+     "48.2%",
+     "51.7%",
+     "—",
+     "48.0%"
+    ],
+    [
+     "most Hard Supp",
+     "50.8%",
+     "30.9%",
+     "68.4%",
+     "41.0%",
+     "48.3%",
+     "47.8%",
+     "51.3%",
+     "52.0%",
+     "—"
+    ]
+   ]
+  },
+  {
+   "title": "E6b. Deck archetypes against the field (wiosenna)",
+   "measured": "Each archetype's wins over all its games against the other eight. Targets: none above 60% or below 40%; best beats no other archetype by more than 60%.",
+   "columns": [
+    "Archetype",
+    "Against the field [95% CI]",
+    "Deck cost",
+    "Deck baseMight"
+   ],
+   "rows": [
+    [
+     "best",
+     "47.7% [45.7–49.7]",
+     "60.0",
+     "60.9"
+    ],
+    [
+     "topHeavy",
+     "72.4% [70.5–74.1]",
+     "59.9",
+     "60.7"
+    ],
+    [
+     "flat",
+     "30.8% [29.0–32.7]",
+     "60.0",
+     "60.4"
+    ],
+    [
+     "teamStack",
+     "58.1% [56.1–60.0]",
+     "59.4",
+     "60.3"
+    ],
+    [
+     "most Carry",
+     "47.8% [45.8–49.8]",
+     "60.0",
+     "60.9"
+    ],
+    [
+     "most Mid",
+     "51.4% [49.4–53.4]",
+     "60.0",
+     "60.9"
+    ],
+    [
+     "most Offlane",
+     "45.9% [43.9–47.9]",
+     "60.0",
+     "60.9"
+    ],
+    [
+     "most Support",
+     "47.1% [45.1–49.1]",
+     "60.0",
+     "60.9"
+    ],
+    [
+     "most Hard Supp",
+     "48.8% [46.8–50.8]",
+     "60.0",
+     "60.9"
+    ]
+   ]
+  }
+ ],
+ "data": {
+  "pairs": [
+   {
+    "x": "best",
+    "y": "topHeavy",
+    "k": 88,
+    "n": 299,
+    "draws": 1,
+    "games": 300,
+    "text": "29.4% [24.6–34.8]"
+   },
+   {
+    "x": "best",
+    "y": "flat",
+    "k": 184,
+    "n": 297,
+    "draws": 3,
+    "games": 300,
+    "text": "62.0% [56.3–67.3]"
+   },
+   {
+    "x": "best",
+    "y": "teamStack",
+    "k": 129,
+    "n": 300,
+    "draws": 0,
+    "games": 300,
+    "text": "43.0% [37.5–48.7]"
+   },
+   {
+    "x": "best",
+    "y": "roleSkew:Carry",
+    "k": 150,
+    "n": 297,
+    "draws": 3,
+    "games": 300,
+    "text": "50.5% [44.8–56.1]"
+   },
+   {
+    "x": "best",
+    "y": "roleSkew:Mid",
+    "k": 128,
+    "n": 296,
+    "draws": 4,
+    "games": 300,
+    "text": "43.2% [37.7–48.9]"
+   },
+   {
+    "x": "best",
+    "y": "roleSkew:Offlane",
+    "k": 159,
+    "n": 298,
+    "draws": 2,
+    "games": 300,
+    "text": "53.4% [47.7–58.9]"
+   },
+   {
+    "x": "best",
+    "y": "roleSkew:Soft Support",
+    "k": 152,
+    "n": 299,
+    "draws": 1,
+    "games": 300,
+    "text": "50.8% [45.2–56.5]"
+   },
+   {
+    "x": "best",
+    "y": "roleSkew:Hard Support",
+    "k": 147,
+    "n": 299,
+    "draws": 1,
+    "games": 300,
+    "text": "49.2% [43.5–54.8]"
+   },
+   {
+    "x": "topHeavy",
+    "y": "flat",
+    "k": 251,
+    "n": 300,
+    "draws": 0,
+    "games": 300,
+    "text": "83.7% [79.1–87.4]"
+   },
+   {
+    "x": "topHeavy",
+    "y": "teamStack",
+    "k": 197,
+    "n": 299,
+    "draws": 1,
+    "games": 300,
+    "text": "65.9% [60.3–71.0]"
+   },
+   {
+    "x": "topHeavy",
+    "y": "roleSkew:Carry",
+    "k": 209,
+    "n": 297,
+    "draws": 3,
+    "games": 300,
+    "text": "70.4% [64.9–75.3]"
+   },
+   {
+    "x": "topHeavy",
+    "y": "roleSkew:Mid",
+    "k": 210,
+    "n": 299,
+    "draws": 1,
+    "games": 300,
+    "text": "70.2% [64.8–75.1]"
+   },
+   {
+    "x": "topHeavy",
+    "y": "roleSkew:Offlane",
+    "k": 228,
+    "n": 299,
+    "draws": 1,
+    "games": 300,
+    "text": "76.3% [71.1–80.7]"
+   },
+   {
+    "x": "topHeavy",
+    "y": "roleSkew:Soft Support",
+    "k": 218,
+    "n": 300,
+    "draws": 0,
+    "games": 300,
+    "text": "72.7% [67.4–77.4]"
+   },
+   {
+    "x": "topHeavy",
+    "y": "roleSkew:Hard Support",
+    "k": 206,
+    "n": 298,
+    "draws": 2,
+    "games": 300,
+    "text": "69.1% [63.7–74.1]"
+   },
+   {
+    "x": "flat",
+    "y": "teamStack",
+    "k": 83,
+    "n": 299,
+    "draws": 1,
+    "games": 300,
+    "text": "27.8% [23.0–33.1]"
+   },
+   {
+    "x": "flat",
+    "y": "roleSkew:Carry",
+    "k": 112,
+    "n": 299,
+    "draws": 1,
+    "games": 300,
+    "text": "37.5% [32.2–43.1]"
+   },
+   {
+    "x": "flat",
+    "y": "roleSkew:Mid",
+    "k": 91,
+    "n": 298,
+    "draws": 2,
+    "games": 300,
+    "text": "30.5% [25.6–36.0]"
+   },
+   {
+    "x": "flat",
+    "y": "roleSkew:Offlane",
+    "k": 92,
+    "n": 300,
+    "draws": 0,
+    "games": 300,
+    "text": "30.7% [25.7–36.1]"
+   },
+   {
+    "x": "flat",
+    "y": "roleSkew:Soft Support",
+    "k": 103,
+    "n": 300,
+    "draws": 0,
+    "games": 300,
+    "text": "34.3% [29.2–39.9]"
+   },
+   {
+    "x": "flat",
+    "y": "roleSkew:Hard Support",
+    "k": 94,
+    "n": 297,
+    "draws": 3,
+    "games": 300,
+    "text": "31.6% [26.6–37.1]"
+   },
+   {
+    "x": "teamStack",
+    "y": "roleSkew:Carry",
+    "k": 176,
+    "n": 298,
+    "draws": 2,
+    "games": 300,
+    "text": "59.1% [53.4–64.5]"
+   },
+   {
+    "x": "teamStack",
+    "y": "roleSkew:Mid",
+    "k": 169,
+    "n": 299,
+    "draws": 1,
+    "games": 300,
+    "text": "56.5% [50.9–62.0]"
+   },
+   {
+    "x": "teamStack",
+    "y": "roleSkew:Offlane",
+    "k": 195,
+    "n": 299,
+    "draws": 1,
+    "games": 300,
+    "text": "65.2% [59.7–70.4]"
+   },
+   {
+    "x": "teamStack",
+    "y": "roleSkew:Soft Support",
+    "k": 183,
+    "n": 298,
+    "draws": 2,
+    "games": 300,
+    "text": "61.4% [55.8–66.8]"
+   },
+   {
+    "x": "teamStack",
+    "y": "roleSkew:Hard Support",
+    "k": 177,
+    "n": 300,
+    "draws": 0,
+    "games": 300,
+    "text": "59.0% [53.4–64.4]"
+   },
+   {
+    "x": "roleSkew:Carry",
+    "y": "roleSkew:Mid",
+    "k": 139,
+    "n": 300,
+    "draws": 0,
+    "games": 300,
+    "text": "46.3% [40.8–52.0]"
+   },
+   {
+    "x": "roleSkew:Carry",
+    "y": "roleSkew:Offlane",
+    "k": 151,
+    "n": 300,
+    "draws": 0,
+    "games": 300,
+    "text": "50.3% [44.7–56.0]"
+   },
+   {
+    "x": "roleSkew:Carry",
+    "y": "roleSkew:Soft Support",
+    "k": 154,
+    "n": 298,
+    "draws": 2,
+    "games": 300,
+    "text": "51.7% [46.0–57.3]"
+   },
+   {
+    "x": "roleSkew:Carry",
+    "y": "roleSkew:Hard Support",
+    "k": 155,
+    "n": 300,
+    "draws": 0,
+    "games": 300,
+    "text": "51.7% [46.0–57.3]"
+   },
+   {
+    "x": "roleSkew:Mid",
+    "y": "roleSkew:Offlane",
+    "k": 161,
+    "n": 298,
+    "draws": 2,
+    "games": 300,
+    "text": "54.0% [48.4–59.6]"
+   },
+   {
+    "x": "roleSkew:Mid",
+    "y": "roleSkew:Soft Support",
+    "k": 155,
+    "n": 299,
+    "draws": 1,
+    "games": 300,
+    "text": "51.8% [46.2–57.4]"
+   },
+   {
+    "x": "roleSkew:Mid",
+    "y": "roleSkew:Hard Support",
+    "k": 156,
+    "n": 299,
+    "draws": 1,
+    "games": 300,
+    "text": "52.2% [46.5–57.8]"
+   },
+   {
+    "x": "roleSkew:Offlane",
+    "y": "roleSkew:Soft Support",
+    "k": 144,
+    "n": 298,
+    "draws": 2,
+    "games": 300,
+    "text": "48.3% [42.7–54.0]"
+   },
+   {
+    "x": "roleSkew:Offlane",
+    "y": "roleSkew:Hard Support",
+    "k": 146,
+    "n": 300,
+    "draws": 0,
+    "games": 300,
+    "text": "48.7% [43.1–54.3]"
+   },
+   {
+    "x": "roleSkew:Soft Support",
+    "y": "roleSkew:Hard Support",
+    "k": 142,
+    "n": 296,
+    "draws": 4,
+    "games": 300,
+    "text": "48.0% [42.3–53.7]"
+   }
+  ]
+ }
+}

@@ -4,8 +4,12 @@ import { baseMight, cardStrength } from '@/lib/card-lab/outposts';
 import type { CostMode, Rules } from './rules';
 
 /** What a card costs against the deck budget: its rating strength 1-9, without role or TOTW bonus */
-export const cost = (c: GCard, mode: CostMode = 'rating'): number =>
-  mode === 'rating' ? cardStrength(c) : mode === 'full' ? baseMight(c) : baseMight({ ...c, totw: false });
+export function cost(c: GCard, mode: CostMode = 'rating'): number {
+  if (mode === 'rating') return cardStrength(c);
+  const m = mode === 'full' || mode === 'steepFull' ? baseMight(c) : baseMight({ ...c, totw: false });
+  // steep: every point of strength above 7 costs double, so stars are dearer than their number
+  return mode === 'steep' || mode === 'steepFull' ? m + Math.max(0, m - 7) : m;
+}
 export const deckCost = (deck: GCard[], mode: CostMode = 'rating'): number => deck.reduce((s, c) => s + cost(c, mode), 0);
 
 export type DeckRules = Pick<Rules, 'deckSize' | 'perRole' | 'budget'> & { costMode?: CostMode; maxPerRole?: number };
