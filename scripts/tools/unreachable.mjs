@@ -63,6 +63,8 @@ export const KEEP = {
   'src/components/app/GroupTable.tsx': 'WP-13a reads its ranking rule (lines 15-52) as a source',
   'src/components/fantasy/FantasyScoreCalculator.tsx':
     'WP-16 reads it as a source (the role-based fantasy formula copied into viewer copy)',
+  'src/features/cards/domain/v2/first-match.ts':
+    'WP-56 builds the first run on it; tested by scripts/tools/card-sim/v2/first-match.test.ts',
 };
 
 const NEXT_APP_CONVENTIONS = new Set([
