@@ -42,6 +42,11 @@ const SETS: Record<string, { variants: Array<{ name: string; rules: RulesPatch }
       { name: 'one hit a round, -3 strength, Ancients 16 HP, last round 10', rules: { fight: 'oneStrike', hitEffect: 3, hp: 16, roundCap: 10 } },
     ],
   },
+  // After the owner's question "why hit this card and not another": does the target choice matter?
+  'tgt-base': { duel: {}, variants: [{ name: 'final rules (a hit takes 3)', rules: {} }] },
+  'tgt-dis': { duel: { hitDisables: true }, variants: [{ name: 'a hit takes 3 and switches off what the unit gives others', rules: { hitDisables: true } }] },
+  'tgt-half': { duel: { hitEffect: 'half' }, variants: [{ name: 'a hit takes half the strength of the unit', rules: { hitEffect: 'half' } }] },
+  'tgt-halfdis': { duel: { hitEffect: 'half', hitDisables: true }, variants: [{ name: 'a hit takes half and switches off what the unit gives', rules: { hitEffect: 'half', hitDisables: true } }] },
 };
 const SET = SETS[process.env.SIM_SET ?? 'each'];
 const VARIANTS = SET.variants;

@@ -36,7 +36,9 @@ export interface Rules {
   fight: 'none' | 'hitGuard' | 'oneStrike';
   /** What a hit in the fight step does: 'out' = the unit does not count this round; a number = it
    *  loses that much strength this round (not below 0) */
-  hitEffect: 'out' | number;
+  hitEffect: 'out' | number | 'half';
+  /** A landed hit also switches off what the unit gives others this round (Aura, team bonus) */
+  hitDisables: boolean;
   /** Highest allowed sum of card costs (cost = rating strength 1-9); Infinity = no budget */
   budget: number;
   costMode: CostMode;
@@ -89,6 +91,7 @@ export const DEFAULT_RULES: Rules = {
   gankEffect: 'out',
   fight: 'oneStrike',
   hitEffect: 3,
+  hitDisables: true,
   budget: 60,
   costMode: 'steep',
   auraMode: 'once',
@@ -123,4 +126,4 @@ export function makeRules(patch: RulesPatch = {}, base: Rules = DEFAULT_RULES): 
 
 /** The first candidate rule set of WP-51 (before the second round of simulations). The older engine
  *  tests describe these variants; the simulations of E1-E12 in `sim/v2-first` used them. */
-export const FIRST_RULES: Rules = makeRules({ budget: 66, costMode: 'rating', auraMode: 'stack', smokeMode: 'from', tankMode: 'block', catchUpDraw: 0, catchUpGap: 1, highGround: 'all', maxPerRole: Infinity, gankEffect: 'return', fight: 'none', hitEffect: 'out', hp: 12, capacity: 3 });
+export const FIRST_RULES: Rules = makeRules({ budget: 66, costMode: 'rating', auraMode: 'stack', smokeMode: 'from', tankMode: 'block', catchUpDraw: 0, catchUpGap: 1, highGround: 'all', maxPerRole: Infinity, gankEffect: 'return', fight: 'none', hitEffect: 'out', hitDisables: false, hp: 12, capacity: 3 });
