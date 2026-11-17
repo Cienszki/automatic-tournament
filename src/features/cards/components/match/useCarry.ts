@@ -25,6 +25,8 @@ export interface CarryOptions {
   onDrop: (refs: Ref[], at: DropAt, overUid: string | null) => boolean;
   /** The place under a dragged card changed */
   onOver: (at: DropAt) => void;
+  /** Its width on screen when it is not turned over or lifted (hover makes it larger) */
+  naturalWidth: (ref: Ref) => number;
 }
 
 const MOVE_PX = 9; const HOLD_MS = 450;
@@ -68,7 +70,9 @@ export function useCarry(o: CarryOptions) {
     const el = e.currentTarget as HTMLElement; const r = el.getBoundingClientRect();
     const x0 = e.clientX; const y0 = e.clientY;
     let started = false; let held = false; let over: DropAt = null;
-    pointer.current = { x: x0, y: y0, gx: x0 - r.left, gy: y0 - r.top, tilt: 0, lastX: x0 };
+    // The grab point, scaled to the card's own size (it may be shown larger while turned over)
+    const f = Math.min(1, opts.current.naturalWidth(ref) / r.width);
+    pointer.current = { x: x0, y: y0, gx: (x0 - r.left) * f, gy: (y0 - r.top) * f, tilt: 0, lastX: x0 };
     const key = ref.kind === 'card' ? `card:${ref.id}` : `unit:${ref.uid}`;
     const hold = setTimeout(() => { held = true; opts.current.onHold(key); }, HOLD_MS);
     const onMove = (ev: PointerEvent) => {
@@ -77,7 +81,7 @@ export function useCarry(o: CarryOptions) {
         clearTimeout(hold);
         if (!opts.current.canDrag(ref)) return;
         started = true;
-        setCarry({ refs: opts.current.groupOf(ref), w: r.width });
+        setCarry({ refs: opts.current.groupOf(ref), w: opts.current.naturalWidth(ref) });
       }
       if (started) { const t = under(ev.clientX, ev.clientY).at; if (t !== over) { over = t; opts.current.onOver(t); } }
     };

@@ -10,12 +10,13 @@ import type { Slot } from '@/features/cards/domain/v2/types';
 import type { Ref } from '@/features/cards/state/plan';
 import { ME, type UnitModel } from '@/features/cards/state/scene';
 import type { MatchApi } from './useMatch';
+import { HAND_W } from './Hand';
 import { useCarry, type DropAt } from './useCarry';
 
 const refOf = (u: UnitModel): Ref => (u.planned === 'play' ? { kind: 'card', id: u.card.id } : { kind: 'unit', uid: u.uid });
 const keyOf = (r: Ref) => (r.kind === 'card' ? `card:${r.id}` : `unit:${r.uid}`);
 
-export function useInput(m: MatchApi, board: HTMLElement | null, fit: number) {
+export function useInput(m: MatchApi, board: HTMLElement | null, fit: number, unitW: number) {
   const [held, setHeld] = useState<string | null>(null);
   const [over, setOver] = useState<DropAt>(null);
   const [settled, setSettled] = useState<Set<string>>(new Set());
@@ -35,6 +36,7 @@ export function useInput(m: MatchApi, board: HTMLElement | null, fit: number) {
     onTap: (ref) => tapRef(ref),
     onHold: setHeld,
     onOver: setOver,
+    naturalWidth: (ref) => (ref.kind === 'card' && !mRef.current.scene.units.some((u) => u.planned === 'play' && u.card.id === ref.id) ? HAND_W : unitW) * fit,
     onDrop: (refs, at, overUid) => {
       const c = mRef.current;
       if (at === null) return false;

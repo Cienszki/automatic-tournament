@@ -48,7 +48,6 @@ export function MatchScreen({ seed, cast, jump, step, onRematch, onNew, onExit }
   const [note, setNote] = useState<string | null>(null);
   const [banner, setBanner] = useState<{ text: string; side: 0 | 1 | null; key: number } | null>(null);
   const [edge, setEdge] = useState(0);
-  const input = useInput(m, rowsEl, fit);
   const { stage, scene, ps } = m;
   const costMode = m.rules.costMode;
 
@@ -57,6 +56,7 @@ export function MatchScreen({ seed, cast, jump, step, onRematch, onNew, onExit }
     const ro = new ResizeObserver(() => setRowH(rowsEl.clientHeight / 3)); ro.observe(rowsEl); return () => ro.disconnect();
   }, [rowsEl]);
   const w = Math.round(Math.max(80, Math.min(168, (rowH - 22) / 1.34)));
+  const input = useInput(m, rowsEl, fit, w);
 
   // The game waits while the log or the rules are open
   useEffect(() => { m.setPaused(logOpen || rulesOpen); }, [logOpen, rulesOpen]); // eslint-disable-line react-hooks/exhaustive-deps
