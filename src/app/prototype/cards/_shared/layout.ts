@@ -2,8 +2,8 @@
 // now. The versions differ only in where they put the same pieces.
 import type { Rules } from '@/features/cards/domain/v2/rules';
 import type { Side, Slot } from '@/features/cards/domain/v2/types';
-import type { Target } from './state/plan';
-import type { Scene, UnitModel } from './state/scene';
+import type { Target } from '@/features/cards/state/plan';
+import type { Scene, UnitModel } from '@/features/cards/state/scene';
 import type { BandMode } from './ui/ActionBand';
 import type { TileLook } from './ui/UnitTile';
 

@@ -18,7 +18,7 @@ import React, { Suspense, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { DEFAULT_RULES, makeRules } from '@/features/cards/domain/v2/rules';
 import { MatchScreen } from '../_shared/MatchScreen';
-import type { Jump } from '../_shared/state/game';
+import type { Jump } from '@/features/cards/state/jump';
 import { VersionPicker } from '../_shared/ui/VersionPicker';
 
 const STATES = ['plan', 'fight', 'reveal', 'end'] as const;

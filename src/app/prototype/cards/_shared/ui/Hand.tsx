@@ -6,7 +6,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import type { GCard } from '@/lib/card-lab/cards';
 import { baseMight } from '@/lib/card-lab/outposts';
-import type { UnitModel } from '../state/scene';
+import type { UnitModel } from '@/features/cards/state/scene';
 import { UnitTile } from './UnitTile';
 
 /** A hand card drawn as a figure: its strength is the one printed on the card */

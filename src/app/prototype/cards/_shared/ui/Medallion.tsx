@@ -9,7 +9,7 @@ import { ArrowRightLeft, Mountain, RectangleVertical, type LucideIcon } from 'lu
 import { OBJECTIVES, type ObjId } from '@/lib/card-lab/outposts';
 import { mix, useHeaderFont } from '@/components/stats-lab/kit';
 import type { Side, Slot } from '@/features/cards/domain/v2/types';
-import type { ObjectiveModel } from '../state/scene';
+import type { ObjectiveModel } from '@/features/cards/state/scene';
 import { ACC, ACC_L, T, objModel, sideColor } from './theme';
 
 /** Shows a number, counting to it from what it showed before (from 0 the first time) */

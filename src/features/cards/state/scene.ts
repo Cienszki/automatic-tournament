@@ -3,8 +3,9 @@
 import type { GCard } from '@/lib/card-lab/cards';
 import type { ObjId } from '@/lib/card-lab/outposts';
 import { damageValue, power, strengthOf, strengthParts, type StrengthParts } from '@/features/cards/domain/v2/strength';
-import { other, SLOTS, type MatchState, type Side, type SideState, type Slot, type Unit } from '@/features/cards/domain/v2/types';
+import { other, SLOTS, type FreeKind, type MatchState, type Side, type SideState, type Slot, type Unit } from '@/features/cards/domain/v2/types';
 import type { MatchView } from '@/features/cards/domain/v2/view';
+import type { NameKind } from './names';
 
 /** The player is always side 0 in the prototype */
 export const ME: Side = 0;
@@ -41,6 +42,12 @@ export interface UnitModel {
   faceDown?: boolean;
   /** The player's own plan, not yet confirmed */
   planned?: 'play' | 'move';
+  /** A planned move that costs no order, and what pays for it */
+  free?: FreeKind;
+  /** A unit with no order that a free move could carry now (Smoke, Twin Gates) */
+  offer?: FreeKind;
+  /** The round it was played in */
+  played?: number;
 }
 
 export type Fx =
@@ -54,7 +61,9 @@ export type Fx =
   /** `side` deals it: the other side's Ancient loses `amount` */
   | { kind: 'damage'; side: Side; at: Slot; amount: number }
   | { kind: 'farm'; uid: string }
-  | { kind: 'draw'; side: Side; cards: number };
+  | { kind: 'draw'; side: Side; cards: number }
+  /** An ability or objective effect named where it happens */
+  | { kind: 'name'; what: NameKind; text: string; uid?: string; at?: Slot };
 
 /** One objective's line: who held it last round, what it deals now, and the totals that may be shown */
 export interface ObjectiveModel { id: ObjId; holder: Side | null; damage: number; totals: [number | null, number | null] }
@@ -76,7 +85,7 @@ export function unitModel(s: MatchState, u: Unit): UnitModel {
   const parts = strengthParts(s, u);
   // What a hit took: the parts add up to the strength before it
   const whole = parts.base + parts.growth + parts.aura + parts.team + parts.highGround;
-  return { uid: u.uid, card: u.card, side: u.side, at: u.at, strength, parts, out: u.out === s.round, lost: whole - strength };
+  return { uid: u.uid, card: u.card, side: u.side, at: u.at, strength, parts, out: u.out === s.round, lost: whole - strength, played: u.played };
 }
 
 export type TotalsShown = 'mine' | 'both' | 'none';

@@ -11,13 +11,12 @@
 //   pool   ids of the cards the computer guesses unseen rival cards from: what packs can give
 //          now, plus every team-of-the-round card
 //   decks  six ready decks (ids), each legal under DEFAULT_RULES and built by the `best` builder
-//          from a simulated 20-pack collection. Seeds are searched so that every deck holds a
-//          team-of-the-round card and at least two pairs of real teammates: the bonuses must be
-//          visible in a prototype match.
+//          from a random half of the tournament's cards, with no player in two decks, so the same
+//          person never appears on both sides of a demo match.
 // The result depends only on the fixture and the constants below.
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { packPool, simCollection, type GCard } from '@/lib/card-lab/cards';
+import { packPool, type GCard } from '@/lib/card-lab/cards';
 import { freezeCard } from '@/lib/card-lab/frozen';
 import { deckProblem } from '@/features/cards/domain/v2/deck';
 import { DEFAULT_RULES } from '@/features/cards/domain/v2/rules';
@@ -26,7 +25,6 @@ import { stream } from './rng';
 import { buildDeck, teamPaired } from './v2/decks';
 
 const SLUG = 'wiosenna';
-const PACKS = 20;
 const DECKS = 6;
 const OUT = join(__dirname, '..', '..', '..', 'src', 'app', 'prototype', 'cards', '_data', `${SLUG}.json`);
 
@@ -36,12 +34,19 @@ const pool: GCard[] = [
   ...cards.filter((c) => c.totw),
 ];
 
+// The decks share no player, so the same person never stands on both sides of a demo match. Each
+// deck is the best legal deck from the tournament's cards whose players are not in an earlier deck;
+// the budget keeps them close in strength. A deck is shuffled out of the order of choice by `seed`.
 const decks: GCard[][] = [];
-for (let seed = 1; decks.length < DECKS && seed < 5000; seed++) {
-  const deck = buildDeck('best', simCollection(cards, PACKS, stream(seed, 'prototype')), DEFAULT_RULES);
+const taken = new Set<string>();
+for (let i = 0; i < DECKS; i++) {
+  const rnd = stream(i + 1, 'prototype');
+  // A random half of the free cards, so that the decks differ in character and not only in strength
+  const col = cards.filter((c) => !taken.has(c.pid) && rnd() < 0.5);
+  const deck = buildDeck('best', col, DEFAULT_RULES);
   if (!deck || deckProblem(deck, DEFAULT_RULES) !== null) continue;
-  if (!deck.some((c) => c.totw) || teamPaired(deck) < 4) continue;
   decks.push(deck);
+  for (const c of deck) taken.add(c.pid);
 }
 if (decks.length < DECKS) throw new Error(`only ${decks.length} decks found`);
 

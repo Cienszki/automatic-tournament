@@ -12,8 +12,9 @@
 import { baseMight } from '@/lib/card-lab/outposts';
 import { boardTargets, hit, oneGuard, type Strikes } from '@/features/cards/domain/v2/fight';
 import { revealRound } from '@/features/cards/domain/v2/resolve';
-import { other, SLOTS, type MatchEvent, type MatchState, type Plan, type Side, type Slot } from '@/features/cards/domain/v2/types';
+import { other, SLOTS, type MatchEvent, type MatchState, type Plan, type Side, type Slot, type Unit } from '@/features/cards/domain/v2/types';
 import type { MatchView } from '@/features/cards/domain/v2/view';
+import { afterNames, bonusNames, damageNames, revealNames } from './names';
 import { planScene } from './plan';
 import { knownState, ME, objectiveModels, RIVAL, unitModel, type Fx, type Scene, type UnitModel } from './scene';
 
@@ -82,9 +83,11 @@ export function revealSteps(before: MatchView, plan: Plan, midView: MatchView, e
     }
     group.forEach((at) => { opened.add(at); settled.add(at); });
     const here = ganks.filter((g) => group.includes(g.at));
-    if (here.length) steps.push({ key: `gank${tag}`, ms: quick ? 550 : 700, scene: scene(new Set(opened), new Set(settled), new Set(counted), here) });
+    const named = revealNames(events, group);
+    if (here.length || named.length) steps.push({ key: `gank${tag}`, ms: quick ? 550 : 700, scene: scene(new Set(opened), new Set(settled), new Set(counted), [...here, ...named]) });
     group.forEach((at) => counted.add(at));
-    steps.push({ key: `count${tag}`, ms: quick ? 450 : 800, scene: scene(new Set(opened), new Set(settled), new Set(counted), group.map((at) => ({ kind: 'count', at }))) });
+    const counting = scene(new Set(opened), new Set(settled), new Set(counted), group.map((at) => ({ kind: 'count', at })));
+    steps.push({ key: `count${tag}`, ms: quick ? 450 : 800, scene: { ...counting, fx: [...counting.fx, ...bonusNames(counting.units, group)] } });
   }
   return fit(steps, HALF_MS);
 }
@@ -94,8 +97,15 @@ export function clashSteps(midView: MatchView, strikes: [Strikes, Strikes], even
   const mid = knownState(midView);
   const hits = events.flatMap((e) => (e.kind === 'strike' && e.target ? [{ side: e.side, uid: uidOf(other(e.side), e.target), guarded: e.guarded }] : []));
   const landed = new Set(hits.filter((h) => !h.guarded).map((h) => h.uid));
-  // The board with the hits on it: the engine's own `hit` on the units its strike events name
+  // The board with the hits on it: the engine's own `hit` on the units its strike events name, and
+  // every unit's strength as the engine's `strength` events give it after the fight (so whatever a
+  // hit takes, from the unit or from what it gives others, is shown as the engine counted it)
   const struck: MatchState = { ...mid, units: mid.units.map((u) => (landed.has(u.uid) ? hit(mid, u) : u)) };
+  const counted = new Map(events.flatMap((e) => (e.kind === 'strength' ? [[e.uid, e] as const] : [])));
+  const modelOf = (u: Unit): UnitModel => {
+    const m = unitModel(struck, u); const e = counted.get(u.uid);
+    return e ? { ...m, strength: e.total, parts: e.parts, lost: e.hit } : m;
+  };
   const shields: Fx[] = ([ME, RIVAL] as Side[]).flatMap((side) => {
     const g = oneGuard(strikes[side]);
     return g !== undefined && boardTargets(mid, other(side)).some((u) => u.uid === g) ? [{ kind: 'shield' as const, side, uid: g }] : [];
@@ -110,7 +120,7 @@ export function clashSteps(midView: MatchView, strikes: [Strikes, Strikes], even
   const full = new Set(occupied(mid));
   const after = (fx: Fx[]): Scene => ({
     ...base, fx, hp: [hp[0], hp[1]],
-    units: struck.units.map((u) => unitModel(struck, u)),
+    units: struck.units.map(modelOf),
     objectives: objectiveModels(struck, () => 'none', [...holder] as MatchState['control']).map((o, at) => {
       const t = totals.get(at as Slot);
       return { ...o, totals: t && full.has(at as Slot) ? [t[ME], t[RIVAL]] : [null, null] };
@@ -121,7 +131,7 @@ export function clashSteps(midView: MatchView, strikes: [Strikes, Strikes], even
   const steps: Step[] = [];
   if (aims.length || shields.length) {
     steps.push({ key: 'aim', ms: quick ? 600 : 700, scene: { ...base, fx: [...aims, ...shields] } });
-    const impact: Fx[] = hits.map((h) => (h.guarded ? { kind: 'block', uid: h.uid } : { kind: 'hit', uid: h.uid, lost: unitModel(struck, struck.units.find((u) => u.uid === h.uid)!).lost }));
+    const impact: Fx[] = hits.map((h) => (h.guarded ? { kind: 'block', uid: h.uid } : { kind: 'hit', uid: h.uid, lost: counted.get(h.uid)?.hit ?? modelOf(struck.units.find((u) => u.uid === h.uid)!).lost }));
     steps.push({ key: 'impact', ms: quick ? 500 : 650, scene: after([...impact, ...shields]) });
   }
   for (const group of groupsOf(mode, [...full])) {
@@ -130,10 +140,11 @@ export function clashSteps(midView: MatchView, strikes: [Strikes, Strikes], even
       if (e.kind === 'control' && group.includes(e.at)) { fx.push({ kind: 'verdict', at: e.at, controller: e.controller }); holder[e.at] = e.controller; }
       if (e.kind === 'damage' && group.includes(e.at)) { fx.push({ kind: 'damage', side: e.side, at: e.at, amount: e.amount }); hp[other(e.side)] -= e.amount; }
     }
-    steps.push({ key: `verdict${group.join('')}`, ms: quick ? 550 : 900, scene: after(fx) });
+    steps.push({ key: `verdict${group.join('')}`, ms: quick ? 550 : 900, scene: after([...fx, ...damageNames(mid, events, group)]) });
   }
   if (!events.some((e) => e.kind === 'end')) {
     const fx: Fx[] = events.flatMap((e): Fx[] => (e.kind === 'farm' ? [{ kind: 'farm', uid: uidOf(e.side, e.card) }] : e.kind === 'draw' ? [{ kind: 'draw', side: e.side, cards: e.cards }] : []));
+    fx.push(...afterNames(mid, events, [next.public.orders[ME], next.public.orders[RIVAL]]));
     steps.push({ key: 'next', ms: 500, scene: { ...planScene(next, []), fx } });
   }
   return fit(steps, HALF_MS);

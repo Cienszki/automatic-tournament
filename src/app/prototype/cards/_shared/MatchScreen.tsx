@@ -11,9 +11,9 @@ import type { Side, Slot } from '@/features/cards/domain/v2/types';
 import type { LayoutProps } from './layout';
 import { MapLayout } from './MapLayout';
 import { RowsLayout } from './RowsLayout';
-import type { Jump } from './state/game';
-import { actionOf, type Ref } from './state/plan';
-import { aimOrigin, ME, type UnitModel } from './state/scene';
+import type { Jump } from '@/features/cards/state/jump';
+import { actionOf, type Ref } from '@/features/cards/state/plan';
+import { aimOrigin, ME, type UnitModel } from '@/features/cards/state/scene';
 import type { BandMode } from './ui/ActionBand';
 import { Detail, type DetailOf } from './ui/Detail';
 import { EndScreen } from './ui/EndScreen';
@@ -42,6 +42,7 @@ function Effects({ store, drag, ...rest }: Omit<React.ComponentProps<typeof FxLa
 export function MatchScreen({ version, rules, seed, jump, step, untouched, onAgain }: MatchProps) {
   const m = useMatch({ seed, jump, rules, mode: version === 3 ? 'byObjective' : 'together', step, untouched });
   const { stage, scene, ps, choice } = m;
+  const pick = ps.picks[0] ?? null;
   const [root, setRoot] = useState<HTMLDivElement | null>(null);
   const [size, setSize] = useState({ w: 0, h: 0 });
   const [detail, setDetail] = useState<DetailOf | null>(null);
@@ -70,15 +71,15 @@ export function MatchScreen({ version, rules, seed, jump, step, untouched, onAga
   const look = useCallback((u: UnitModel): TileLook => {
     if (stage.kind === 'plan') {
       if (u.side !== ME) return {};
-      const picked = !!ps.pick && (ps.pick.kind === 'unit' ? ps.pick.uid === u.uid : u.planned === 'play' && ps.pick.id === u.card.id);
-      return { picked, glow: !ps.pick && m.glow.units.has(u.uid), lit: ps.ask?.options.includes(u.uid) ? 'room' : undefined };
+      const picked = !!pick && (pick.kind === 'unit' ? pick.uid === u.uid : u.planned === 'play' && pick.id === u.card.id);
+      return { picked, glow: !pick && m.glow.units.has(u.uid), lit: ps.ask?.options.includes(u.uid) ? 'room' : undefined };
     }
     if (stage.kind === 'fight') {
       if (u.side === ME) return choice.guard === u.uid ? { shield: 'on' } : stage.options.guards.includes(u.uid) ? { lit: 'guard' } : { dim: true };
       return choice.target === u.uid ? { aimed: true } : stage.options.targets.includes(u.uid) ? { lit: 'hit' } : { dim: true };
     }
     return { shield: fx.shields.get(u.uid), struck: fx.struck.get(u.uid), farmed: fx.farmed.has(u.uid), aimed: fx.aimed.has(u.uid) };
-  }, [stage, ps, choice, m.glow, fx]);
+  }, [stage, ps, pick, choice, m.glow, fx]);
 
   const modelOf = useCallback((uid: string): UnitModel | null => scene.units.find((u) => u.uid === uid) ?? (() => { const c = scene.hand.find((x) => `0:${x.id}` === uid); return c ? cardModel(c) : null; })(), [scene]);
 
@@ -102,7 +103,7 @@ export function MatchScreen({ version, rules, seed, jump, step, untouched, onAga
       const r = hit.ref ? parseRef(hit.ref) : null;
       if (ps.ask && r?.kind === 'unit' && ps.ask.options.includes(r.uid)) m.plan({ type: 'send', to: ps.ask.to, replace: r.uid });
       // With something in hand, a tap anywhere on an objective sends it there
-      else if (ps.pick && hit.slot !== null && !(r && hit.ref === refOfPick(ps.pick))) m.plan({ type: 'send', to: hit.slot });
+      else if (pick && hit.slot !== null && !(r && hit.ref === refOfPick(pick))) m.plan({ type: 'send', to: hit.slot });
       else if (r) m.plan({ type: 'pick', ref: r });
       else m.plan({ type: 'pick', ref: null });
     },
@@ -121,7 +122,7 @@ export function MatchScreen({ version, rules, seed, jump, step, untouched, onAga
       if (stage.kind !== 'plan' || !r) return;
       if (hit.slot === null) { m.plan({ type: 'pick', ref: null }); return; }
       const over = hit.ref?.startsWith('unit:') ? scene.units.find((u) => u.uid === hit.ref!.slice(5)) : undefined;
-      m.plan({ type: 'drop', ref: r, to: hit.slot, replace: over && !over.planned && over.at === hit.slot && over.uid !== (r.kind === 'unit' ? r.uid : '') && isFull(scene.units, hit.slot, rules.capacity) ? over.uid : undefined });
+      m.plan({ type: 'drop', refs: [r], to: hit.slot, replace: over && !over.planned && over.at === hit.slot && over.uid !== (r.kind === 'unit' ? r.uid : '') && isFull(scene.units, hit.slot, rules.capacity) ? over.uid : undefined });
     },
   });
 
@@ -134,7 +135,7 @@ export function MatchScreen({ version, rules, seed, jump, step, untouched, onAga
   const props: LayoutProps = {
     scene, size, rules, tick: m.tick, look, slots: carried ? m.targetsFor(carried) : m.slots, verdicts: fx.verdicts, dragged: draggedUid, band, ready: m.ready,
     onUndo: () => m.plan({ type: 'undo' }), onConfirm: m.confirm,
-    hand: { glow: m.glow.cards, picked: ps.pick?.kind === 'card' ? ps.pick.id : null, away: stage.kind !== 'plan' },
+    hand: { glow: m.glow.cards, picked: pick?.kind === 'card' ? pick.id : null, away: stage.kind !== 'plan' },
   };
   const locked: [string, string] | null = stage.kind === 'fight' && choice.target ? (() => { const from = aimOrigin(scene.units, ME, choice.target!, m.aimFrom); return from ? [from, choice.target!] as [string, string] : null; })() : null;
 

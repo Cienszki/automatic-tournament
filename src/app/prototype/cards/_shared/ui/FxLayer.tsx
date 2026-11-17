@@ -8,7 +8,7 @@ import React, { useCallback, useLayoutEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useHeaderFont } from '@/components/stats-lab/kit';
 import { other, type Side } from '@/features/cards/domain/v2/types';
-import { aimOrigin, type Scene } from '../state/scene';
+import { aimOrigin, type Scene } from '@/features/cards/state/scene';
 import { T, sideColor } from './theme';
 
 interface P { x: number; y: number }
