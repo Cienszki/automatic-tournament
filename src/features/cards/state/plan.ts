@@ -70,7 +70,7 @@ function pick(ps: PlanState, ref: Ref | null, s: MatchState, side: Side): PlanSt
 function send(ps: PlanState, refs: Ref[], to: Slot, s: MatchState, side: Side, replace?: string): PlanState {
   const refuse = (): PlanState => {
     const t = targetInfo(s, side, ps.plan, refs)[to];
-    return { ...ps, picks: [], ask: null, refused: ps.refused + 1, why: t.kind === 'off' ? t.why ?? null : null };
+    return { ...ps, ask: null, refused: ps.refused + 1, why: t.kind === 'off' ? t.why ?? null : null };
   };
   if (!refs.length) return ps;
   // The answer to an open question: the asked card replaces that unit, then the rest of the group
