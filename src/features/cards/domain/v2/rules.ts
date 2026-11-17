@@ -4,7 +4,7 @@
 export type GankMode = 'strongest' | 'weakest' | 'off';
 /** What a card costs against the budget: 'rating' = rating strength 1-9; 'might' = that plus the role
  *  modifier (Offlane +1, supports -1, at least 1); 'full' = 'might' plus the team-of-the-round +1 */
-export type CostMode = 'rating' | 'might' | 'full';
+export type CostMode = 'rating' | 'might' | 'full' | 'steep' | 'steepFull';
 
 export interface Abilities {
   /** Carry: +1 growth per round on an objective its side controls */

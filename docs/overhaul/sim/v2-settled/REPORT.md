@@ -394,3 +394,60 @@ Command: `npx tsx scripts/tools/card-sim/run-v2.ts e12 --slug wiosenna --seed 1`
 
 
 Command: `npx tsx scripts/tools/card-sim/run-v2.ts e12 --slug pdl-s2 --seed 1` (0 games, 1 s).
+
+### E20a. Practice levels against each other (wiosenna)
+
+Both sides play the same best budget deck from one veteran collection per pair; 400 games per pair, both seats. Target: each level beats the one below it between 60 and 85%.
+
+| Level | Against | Wins [95% CI] | Rounds |
+|---|---|---|---|
+| Średni | Łatwy | 84.5% [80.6–87.7] | 6.02 |
+| Trudny | Średni | 57.4% [52.5–62.2] | 6.18 |
+| Trudny | Łatwy | 89.5% [86.1–92.1] | 5.85 |
+| Łatwy | Kolejka | 36.9% [32.3–41.8] | 6.38 |
+
+### E20b. Thinking time per level (wiosenna)
+
+Milliseconds in Node on this machine, with other simulations running beside it, so an upper bound for a desktop; a phone is several times slower. Per round = plan and fight together.
+
+| Level | Mean per round | Median of the slowest round of a match | 95th percentile of the slowest round |
+|---|---|---|---|
+| Łatwy | 9.1 | 17.1 | 28.7 |
+| Średni | 68.4 | 125.2 | 190.5 |
+| Trudny | 195.9 | 337.3 | 472.7 |
+| Kolejka | 7.1 | 12.9 | 21.5 |
+
+
+
+Command: `npx tsx scripts/tools/card-sim/run-v2.ts e20 --slug wiosenna --seed 1 --games 400` (1600 games, 337 s).
+
+### E21. Deck shapes and the collector's edge, by rule variant (wiosenna)
+
+planner vs planner. Deck duels: both decks from the same veteran collection (40 collections), 400 games each; "stars" is the deck of few strong cards and cheap fillers, "even" the deck of evenly middling cards, "best" the automatic deck. Veteran vs new: 800 games, 200 collection pairs, both with the automatic deck, then both with the stars deck. Targets: no duel above 60%; veteran at most 60%.
+
+| Rules | Stars beat best | Stars beat even | Stars beat team deck | Best beats even | Team deck beats best | Veteran beats new (best decks) | Veteran beats new (stars decks) | Rounds | P(win \| behind after round 3) |
+|---|---|---|---|---|---|---|---|---|---|
+| settled rules | 68.8% [64.0–73.1] | 80.5% [76.3–84.1] | 59.3% [54.4–64.0] | 66.5% [61.7–71.0] | 59.3% [54.4–64.0] | 58.6% [55.1–62.0] | 76.6% [73.5–79.4] | 6.29 | 34.3% [29.5–39.4] |
+| four places per side on an objective | 62.4% [57.6–67.0] | 72.5% [67.9–76.6] | 53.1% [48.2–58.0] | 63.5% [58.7–68.1] | 58.3% [53.4–63.0] | 61.1% [57.6–64.4] | 68.5% [65.2–71.6] | 6.30 | 42.3% [37.1–47.6] |
+| steep cost (strength above 7 costs double) | 66.8% [62.0–71.2] | 68.8% [64.0–73.1] | 55.4% [50.5–60.2] | 64.1% [59.2–68.6] | 55.1% [50.2–59.9] | 63.7% [60.3–67.0] | 63.9% [60.5–67.2] | 6.30 | 37.9% [32.9–43.1] |
+| steep cost, team-of-the-round +1 counted | 58.8% [53.9–63.5] | 64.4% [59.6–69.0] | 49.9% [45.0–54.8] | 60.1% [55.2–64.7] | 56.3% [51.4–61.1] | 63.4% [60.0–66.7] | 57.0% [53.5–60.4] | 6.33 | 34.5% [29.6–39.8] |
+| team-of-the-round +1 counted | 69.7% [65.0–74.0] | 80.2% [76.0–83.8] | 62.4% [57.6–67.0] | 61.7% [56.8–66.3] | 61.6% [56.7–66.3] | 57.3% [53.9–60.7] | 73.7% [70.5–76.6] | 6.28 | 32.7% [28.0–37.9] |
+| steep cost and four places | 49.5% [44.6–54.4] | 55.3% [50.4–60.0] | 46.9% [42.0–51.8] | 60.9% [56.0–65.5] | 50.6% [45.7–55.5] | 60.3% [56.8–63.6] | 57.1% [53.6–60.5] | 6.31 | 40.1% [35.1–45.3] |
+
+
+
+Command: `npx tsx scripts/tools/card-sim/run-v2.ts e21 --slug wiosenna --seed 1` (24000 games, 3941 s).
+
+### E21. Deck shapes and the collector's edge, by rule variant (pdl-s2)
+
+planner vs planner. Deck duels: both decks from the same veteran collection (40 collections), 300 games each; "stars" is the deck of few strong cards and cheap fillers, "even" the deck of evenly middling cards, "best" the automatic deck. Veteran vs new: 600 games, 200 collection pairs, both with the automatic deck, then both with the stars deck. Targets: no duel above 60%; veteran at most 60%.
+
+| Rules | Stars beat best | Stars beat even | Stars beat team deck | Best beats even | Team deck beats best | Veteran beats new (best decks) | Veteran beats new (stars decks) | Rounds | P(win \| behind after round 3) |
+|---|---|---|---|---|---|---|---|---|---|
+| settled rules | 69.7% [64.2–74.6] | 87.6% [83.4–90.9] | 55.7% [50.0–61.2] | 83.6% [79.0–87.4] | 65.6% [60.0–70.7] | 64.3% [60.4–68.0] | 61.7% [57.7–65.5] | 6.16 | 35.5% [29.9–41.6] |
+| steep cost and four places | 51.0% [45.4–56.6] | 52.2% [46.5–57.8] | 38.3% [33.0–43.9] | 63.5% [57.9–68.8] | 60.0% [54.4–65.4] | 47.7% [43.8–51.7] | 53.4% [49.4–57.4] | 6.17 | 34.0% [28.5–39.9] |
+| steep cost with team-of-the-round +1 counted, and four places | 29.9% [25.0–35.3] | 36.5% [31.2–42.1] | 27.6% [22.8–33.0] | 61.0% [55.4–66.3] | 64.3% [58.8–69.5] | 45.8% [41.9–49.8] | 45.5% [41.6–49.5] | 6.25 | 39.8% [33.9–45.9] |
+
+
+
+Command: `npx tsx scripts/tools/card-sim/run-v2.ts e21 --slug pdl-s2 --seed 1 --games 300` (9000 games, 1721 s).

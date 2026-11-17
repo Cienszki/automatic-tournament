@@ -22,7 +22,7 @@ function groups(col: GCard[]): GCard[][] {
 export function pick(col: GCard[], rules: DeckRules, value: (c: GCard) => number, needs: Needs): GCard[] | null {
   const gs = groups(col);
   const size = rules.deckSize;
-  const cap = Math.min(rules.budget, 12 * size);
+  const cap = Math.min(rules.budget, 16 * size);
   const radix = ROLE_KEYS.map((r) => needs[r].min + 1);
   const stride = radix.map((_, i) => radix.slice(0, i).reduce((a, b) => a * b, 1));
   const states = radix.reduce((a, b) => a * b, 1);
