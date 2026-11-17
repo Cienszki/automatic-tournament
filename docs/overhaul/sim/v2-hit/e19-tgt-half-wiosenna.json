@@ -1,0 +1,93 @@
+{
+ "experiment": "e19",
+ "slug": "wiosenna",
+ "seed": 1,
+ "gamesPlayed": 4500,
+ "gamesArg": 500,
+ "ms": 707635,
+ "command": "npx tsx scripts/tools/card-sim/run-v2.ts e19 --slug wiosenna --seed 1 --games 500",
+ "tables": [
+  {
+   "title": "E19a. The fight step and the design's targets (wiosenna)",
+   "measured": "500 games per cell. Rounds, comeback, never trailed and the fight columns: planner vs planner with the same best deck. Veteran vs new: 200 collection pairs. Skill: planner vs greedy, same deck. Shape: a deck of few strong cards and cheap fillers against a deck of even cards (30 collections). Fights per match counts contested objectives over the match; a flip is a contested objective whose controller the fight changed.",
+   "columns": [
+    "Rules",
+    "Rounds",
+    "P(win | behind after round 3)",
+    "Winner never trailed",
+    "Veteran wins vs new",
+    "Planner beats greedy",
+    "Stars beat even decks",
+    "Fights per match",
+    "Hits landed / guarded per side",
+    "Fights that change control"
+   ],
+   "rows": [
+    [
+     "a hit takes half the strength of the unit",
+     "6.34",
+     "35.5% [31.0–40.3]",
+     "41.6%",
+     "58.6% [54.2–62.8]",
+     "82.1% [78.5–85.2]",
+     "55.5% [51.1–59.8]",
+     "12.08",
+     "3.70 / 2.26",
+     "11.9%"
+    ]
+   ]
+  },
+  {
+   "title": "E19b. Choosing well in the fight (wiosenna)",
+   "measured": "Both sides are the planner with the same deck and plan the same way; only how they fight differs. Rules: {\"hitEffect\":\"half\"}. 500 games per pair. obvious = hit the strongest, guard the own strongest; answer = best choice against obvious; mixed = unpredictable (equilibrium weights); random = any choice.",
+   "columns": [
+    "Row fights",
+    "Rival fights",
+    "Row wins [95% CI]"
+   ],
+   "rows": [
+    [
+     "obvious",
+     "random",
+     "71.9% [67.8–75.7]"
+    ],
+    [
+     "answer",
+     "obvious",
+     "87.8% [84.6–90.4]"
+    ],
+    [
+     "mixed",
+     "obvious",
+     "54.4% [50.0–58.7]"
+    ],
+    [
+     "mixed",
+     "answer",
+     "58.4% [54.1–62.7]"
+    ],
+    [
+     "mixed",
+     "random",
+     "67.9% [63.7–71.9]"
+    ]
+   ]
+  }
+ ],
+ "data": {
+  "rows": [
+   [
+    "a hit takes half the strength of the unit",
+    "6.34",
+    "35.5% [31.0–40.3]",
+    "41.6%",
+    "58.6% [54.2–62.8]",
+    "82.1% [78.5–85.2]",
+    "55.5% [51.1–59.8]",
+    "12.08",
+    "3.70 / 2.26",
+    "11.9%"
+   ]
+  ]
+ }
+}

@@ -1,0 +1,93 @@
+{
+ "experiment": "e19",
+ "slug": "wiosenna",
+ "seed": 1,
+ "gamesPlayed": 4500,
+ "gamesArg": 500,
+ "ms": 728057,
+ "command": "npx tsx scripts/tools/card-sim/run-v2.ts e19 --slug wiosenna --seed 1 --games 500",
+ "tables": [
+  {
+   "title": "E19a. The fight step and the design's targets (wiosenna)",
+   "measured": "500 games per cell. Rounds, comeback, never trailed and the fight columns: planner vs planner with the same best deck. Veteran vs new: 200 collection pairs. Skill: planner vs greedy, same deck. Shape: a deck of few strong cards and cheap fillers against a deck of even cards (30 collections). Fights per match counts contested objectives over the match; a flip is a contested objective whose controller the fight changed.",
+   "columns": [
+    "Rules",
+    "Rounds",
+    "P(win | behind after round 3)",
+    "Winner never trailed",
+    "Veteran wins vs new",
+    "Planner beats greedy",
+    "Stars beat even decks",
+    "Fights per match",
+    "Hits landed / guarded per side",
+    "Fights that change control"
+   ],
+   "rows": [
+    [
+     "final rules (a hit takes 3)",
+     "6.32",
+     "37.2% [32.7–41.9]",
+     "40.6%",
+     "61.8% [57.5–66.0]",
+     "86.0% [82.6–88.7]",
+     "57.1% [52.7–61.4]",
+     "11.99",
+     "3.76 / 2.19",
+     "9.0%"
+    ]
+   ]
+  },
+  {
+   "title": "E19b. Choosing well in the fight (wiosenna)",
+   "measured": "Both sides are the planner with the same deck and plan the same way; only how they fight differs. Rules: {}. 500 games per pair. obvious = hit the strongest, guard the own strongest; answer = best choice against obvious; mixed = unpredictable (equilibrium weights); random = any choice.",
+   "columns": [
+    "Row fights",
+    "Rival fights",
+    "Row wins [95% CI]"
+   ],
+   "rows": [
+    [
+     "obvious",
+     "random",
+     "65.1% [60.8–69.2]"
+    ],
+    [
+     "answer",
+     "obvious",
+     "84.0% [80.5–86.9]"
+    ],
+    [
+     "mixed",
+     "obvious",
+     "54.4% [50.0–58.7]"
+    ],
+    [
+     "mixed",
+     "answer",
+     "54.8% [50.4–59.1]"
+    ],
+    [
+     "mixed",
+     "random",
+     "65.4% [61.1–69.4]"
+    ]
+   ]
+  }
+ ],
+ "data": {
+  "rows": [
+   [
+    "final rules (a hit takes 3)",
+    "6.32",
+    "37.2% [32.7–41.9]",
+    "40.6%",
+    "61.8% [57.5–66.0]",
+    "86.0% [82.6–88.7]",
+    "57.1% [52.7–61.4]",
+    "11.99",
+    "3.76 / 2.19",
+    "9.0%"
+   ]
+  ]
+ }
+}
