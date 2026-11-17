@@ -79,7 +79,7 @@ export function MatchScreen({ version, rules, seed, jump, step, untouched, onAga
       return choice.target === u.uid ? { aimed: true } : stage.options.targets.includes(u.uid) ? { lit: 'hit' } : { dim: true };
     }
     return { shield: fx.shields.get(u.uid), struck: fx.struck.get(u.uid), farmed: fx.farmed.has(u.uid), aimed: fx.aimed.has(u.uid) };
-  }, [stage, ps, choice, m.glow, fx]);
+  }, [stage, ps, pick, choice, m.glow, fx]);
 
   const modelOf = useCallback((uid: string): UnitModel | null => scene.units.find((u) => u.uid === uid) ?? (() => { const c = scene.hand.find((x) => `0:${x.id}` === uid); return c ? cardModel(c) : null; })(), [scene]);
 
