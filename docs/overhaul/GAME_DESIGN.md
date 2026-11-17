@@ -4,7 +4,7 @@ Written in S3 (2026-11-14) by Fable. It covers the owner's concern 3: the card g
 
 **In short.** Today's game is decided by the collection (a new player's deck loses to a season-long collector's 90% of the time), has nothing to read, and asks for a long setup before the first match. The recommended game keeps the board, the cards and the look, and changes four things: both players plan a round at the same time and reveal together; cards go straight onto objectives and totals are compared; each round has one fight decision for each player, a hit and a guard, in place of the hit-by-hit fight; and a deck is 12 cards, with a budget in ranked duels and none in the solo mode. Around it: a first match that starts without sign-in and teaches in four rounds, a solo mode against the real teams of each real round where a bigger collection wins more, and real results that pay out cards. The rules were found by simulation, not written and then defended; section 9 has the numbers.
 
-**Revised on 2026-11-15 after the owner's review.** The owner doubted three things in the first version: that a budget leaves a reason to collect, that the fight should go, and that a shorter match is deeper. Section 13 answers each and says what changed: the fight is back in a new form, the budget no longer applies in the solo mode, and a match is a round longer with more decisions in it. The owner accepted the revision the same day. Every number in section 9.2 and 9.4 is measured on the rules as they now stand, with the fight step.
+**Revised on 2026-11-15 after the owner's review.** The owner doubted three things in the first version: that a budget leaves a reason to collect, that the fight should go, and that a shorter match is deeper. Section 13 answers each and says what changed: the fight is back in a new form, the budget no longer applies in the solo mode, and a match is a round longer with more decisions in it. The owner accepted the revision the same day. Every number in sections 9.2 and 9.4 is measured on the final rules (the fight step, the steep cost and four places per objective; re-measured on 2026-11-17, drafted by Opus).
 
 Sources: the rules engine (`src/lib/card-lab/`), the game's screens (`src/components/card-lab/`), `inventory/CARDS.md`, the owner's decision log (`card-game-design.md` in the memory folder), and simulations run for this session (`docs/overhaul/sim/`). Nobody could watch a real player for this document, and there are no usage numbers; section 11 says how to get both.
 
@@ -455,21 +455,22 @@ Each target was set before the prototype ran.
 
 | Goal | Target | Today's game | Recommended game | Met |
 |---|---|---|---|---|
-| Matches that fit a break (G2) | 5 to 7 rounds; nearly all end with an Ancient destroyed | 10.4 turns (5.2 each), 6.5 fights, 19 hits | **6.3 rounds**; 92% of matches last 5 to 7; 98% end with an Ancient destroyed | Yes |
-| Skill over collection in ranked play (G4) | A new player's deck loses to a veteran's at most 60% | **90%** | **58%** (55 to 61). Without the budget: 90% | Yes on Wiosenna; **no on PDL S2 (67%)**, see below |
-| Skill decides (G4) | The good player beats the obvious-move player at least 70% | Not comparable | **79%** | Yes |
-| Skill beats collection | The good player with a new deck beats the obvious-move player with a veteran deck | Loses 58% (best computer level, 10 packs against 40) | **Wins 64%** | Yes |
-| A real choice each round (G5) | The good player's plan differs from the obvious plan in most rounds | The strongest card in hand was played 100% of the time | **75%** of rounds | Yes |
-| Something to read (G5) | Knowing the rival's plan must be worth a lot | Nothing is hidden | A program told the rival's plan wins **81%** against the good player; a player who fights predictably loses 87% to one who expects it | Yes |
-| The fight matters | A fight changes who holds the objective more often than today's | 5% | **12%** | Yes |
-| Comebacks | The player behind after round 3 wins at least 25% | The side ahead after three turns each wins 85.5% | **34%** | Yes |
-| Leads change | The winner was never behind in at most 55% of matches | Not comparable | **42%** | Yes |
+| Matches that fit a break (G2) | 5 to 7 rounds; nearly all end with an Ancient destroyed | 10.4 turns (5.2 each), 6.5 fights, 19 hits | **6.3 rounds**; 95% of matches last 5 to 7; 99% end with an Ancient destroyed | Yes |
+| Skill over collection in ranked play (G4) | A new player's deck loses to a veteran's at most 60% | **90%** | **61%** (58 to 64). Without the budget: 90% | At the edge on Wiosenna; PDL S2 below |
+| Skill decides (G4) | The good player beats the obvious-move player at least 70% | Not comparable | **83%** | Yes |
+| Skill beats collection | The good player with a new deck beats the obvious-move player with a veteran deck | Loses 58% (best computer level, 10 packs against 40) | **Wins 72%** | Yes |
+| A real choice each round (G5) | The good player's plan differs from the obvious plan in most rounds | The strongest card in hand was played 100% of the time | **81%** of rounds | Yes |
+| Something to read (G5) | Knowing the rival's plan must be worth a lot | Nothing is hidden | A program told the rival's plan wins **85%** against the good player; a program that knows how the rival thinks wins 62% | Yes |
+| The fight matters | A fight changes who holds the objective more often than today's | 5% | **12%** (section 9.8; measured with three places, not re-measured) | Yes |
+| Comebacks | The player behind after round 3 wins at least 25% | The side ahead after three turns each wins 85.5% | **38%** | Yes |
+| Leads change | The winner was never behind in at most 55% of matches | Not comparable | **43%** | Yes |
 | No seat advantage | 50% | First player wins 43% | No first player exists | Yes |
-| A ladder of skill | Each computer player beats the one below at least 60% | | 97%, 93%, then **61%** between the two strongest | Yes |
-| Objectives are even | Holding any objective in round 2 wins 45 to 65% | First-taker wins 40 to 55% | 48% (Twin Gates) to 61% (Lotus Pool) | Yes |
-| No dominant deck | No kind of deck wins more than 60% against the field of the others | The strongest twenty always win | By position: 46 to 51%. By shape: stars with fillers win **72%**, even decks 31% (section 9.4) | **No** |
+| A ladder of skill | Each computer player beats the one below at least 60% | | 97%, 96%, then **64%** between the two strongest | Yes |
+| Practice levels | Each level beats the one below 60 to 85% | | Średni beats Łatwy 91%, Trudny beats Średni 60% | Partly: Łatwy is too easy for Średni |
+| Objectives are even | Holding any objective in round 2 wins 45 to 65% | First-taker wins 40 to 55% | 47% (High Ground) to 62% (Lotus Pool) | Yes |
+| No dominant deck | No kind of deck wins more than 60% against the field of the others | The strongest twenty always win | 40 to 55% for every kind (section 9.4) | Yes |
 
-Source: `docs/overhaul/sim/v2-settled/REPORT.md` (the whole battery, re-run on 2026-11-15 with the fight step).
+Source: `docs/overhaul/sim/v2-final/REPORT.md`.
 
 **On PDL S2,** a much smaller tournament (12 teams, 117 cards), matches have the same shape (6.2 rounds, 99% end with an Ancient destroyed, the player behind after round 3 wins 37%), and the budget brings the veteran's win rate from 87% without it to **67%**. That is above the 60% target. Today's game gives 81.5% there, so the gain is real but smaller than on Wiosenna. Section 9.9 reports what was tried for it.
 
@@ -497,34 +498,34 @@ Things tested and rejected: three orders a round (a third of orders went unused)
 
 | Deck | Wins against the automatic deck | With that ability switched off |
 |---|---|---|
-| Three Carries | 52% | 49% |
-| Three Mids | 54% | 42% |
-| Three Offlanes | 46% | 42% |
-| Three Supports | 46% | 46% |
-| Three Hard Supports | 50% | 52% |
-| As many cards of one real team as possible | 57% | 65% |
+| Three Carries | 49% | 51% |
+| Three Mids | 60% | 48% |
+| Three Offlanes | 48% | 42% |
+| Three Supports | 49% | 51% |
+| Three Hard Supports | 46% | 50% |
+| As many cards of one real team as possible | 56% | 56% |
 
-All five positions sit between 46 and 54%, so none is a mistake to build around and none is the only answer. The real-team deck is the strongest of these, by design: it is the reward for collecting a team. (It does even better with the team bonus switched off, which only says that the automatic deck leans on that bonus too.)
+All five positions sit between 46 and 60%, so none is a mistake to build around and none is the only answer. Three Mids is the strongest of them, and Gank is what makes it so; it is at the edge of the target and is the first thing to watch when people play.
 
-**What each ability does in a match** (per player): Farma adds 4.3 strength; 1.5 ganks land; Smoke brings a unit 0.9 times; teammates together add 11 strength over the match; a unit is replaced on a full objective once; 2.2 of about 14 orders go unused.
+**What each ability does in a match** (per player): Farma adds 5.3 strength; 1.6 ganks land; Smoke brings a unit once; teammates together add 13 strength over the match.
 
-**Switching an ability off** changes the comeback rate most for Gank (from 36% to 29% when it is off). Gank is the game's main way back into a match, which is why it had to be kept and tamed, not removed.
+**Switching an ability off** changes the comeback rate most for Gank (from 37% to 29% when it is off). Gank is the game's main way back into a match, which is why it had to be kept and tamed, not removed.
 
 **Kinds of deck against each other** (experiment E6; every deck spends the same budget of 60; 300 games per pair from 30 simulated veteran collections, so single cells are good to about six points):
 
 | Deck | Wins against the field of the other eight |
 |---|---|
-| Few strong cards and cheap fillers | 72% |
-| As many cards of one real team as possible | 58% |
-| Three Mids | 51% |
-| Three Hard Supports | 49% |
-| The automatic "best" deck | 48% |
-| Three Carries | 48% |
-| Three Supports | 47% |
-| Three Offlanes | 46% |
-| Evenly middling cards | 31% |
+| Three Mids | 55% |
+| As many cards of one real team as possible | 54% |
+| The automatic "best" deck | 53% |
+| Three Carries | 52% |
+| Three Hard Supports | 52% |
+| Three Supports | 51% |
+| Few strong cards and cheap fillers | 49% |
+| Three Offlanes | 45% |
+| Evenly middling cards | 40% |
 
-Two readings. First, no position is a trap and none is required: the five sit within six points of each other. Second, **the shape of the costs is not balanced.** A deck of stars and fillers beats every other kind. With only three places per side on an objective, a strong card uses a place better than two middling ones, and the fight step did not change that. This does not harm the new player in ranked play (the budget is the same for everyone, and ten packs hold a few strong cards), but it narrows deck building more than intended. Section 9.9 reports the fix.
+No kind of deck dominates any more: stars with fillers fell from 72% to 49% with the steep cost and the fourth place (section 9.9). Evenly middling cards remain the weakest choice, which is fair: they are the deck of a player who has not chosen anything.
 
 ### 9.5 Direction A, measured
 
