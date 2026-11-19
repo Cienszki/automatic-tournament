@@ -24,6 +24,46 @@ export async function getMatch(tournamentId: string, matchId: string) {
 
 const casterUids = (m: FirebaseFirestore.DocumentData) => ((m.casters ?? []) as MatchCaster[]).map(c => c.uid);
 
+/** Everyone with the caster role in the tournament (tournaments/{id}/casters/{uid}) */
+async function allCasterUids(tournamentId: string): Promise<string[]> {
+  const s = await db().collection('tournaments').doc(tournamentId).collection('casters').select().get();
+  return s.docs.map(d => d.id);
+}
+
+/** Who casts the match already, so a free caster sees at once whether it still needs one */
+function castLine(m: FirebaseFirestore.DocumentData): string {
+  const c = ((m.casters ?? []) as MatchCaster[]).slice().sort((a, b) => Number(b.main) - Number(a.main));
+  return c.length ? `Castuje: ${c.map(x => x.name).join(', ')}` : 'Nikt go jeszcze nie castuje';
+}
+
+/**
+ * New or moved match times for the tournament's casters who don't cast those matches (theirs get
+ * their own message): one message per caster, so a caster with a free evening can pick a match up.
+ */
+async function tellFreeCasters(t: TournamentInfo, matches: Array<{ id: string; data: FirebaseFirestore.DocumentData }>, fresh: boolean): Promise<number> {
+  const timed = matches.filter(m => m.data.scheduledFor)
+    .sort((p, q) => String(p.data.scheduledFor).localeCompare(String(q.data.scheduledFor)));
+  if (!timed.length) return 0;
+  const key = `${fresh ? 'new-matches' : 'new-times'}:${createHash('sha1').update(timed.map(m => `${m.id}@${m.data.scheduledFor}`).join(',')).digest('hex').slice(0, 16)}`;
+  let sent = 0;
+  for (const uid of await allCasterUids(t.id)) {
+    const open = timed.filter(m => !casterUids(m.data).includes(uid));
+    if (!open.length) continue;
+    const one = open.length === 1 ? open[0].data : null;
+    const lines = open.slice(0, 8).map(m => `${plDate(m.data.scheduledFor)} · ${m.data.teamA.name} vs ${m.data.teamB.name} · ${castLine(m.data)}`);
+    sent += await notify([uid], {
+      type: 'cast_schedule', key, href: `/${t.slug}/account`, tournament: t,
+      title: one
+        ? (fresh ? 'Nowy mecz do castowania' : `${one.teamA.name} vs ${one.teamB.name}: nowy termin`)
+        : (fresh ? `Nowe mecze do castowania (${open.length})` : `Nowe terminy meczów (${open.length})`),
+      body: one
+        ? `**${plDate(one.scheduledFor)}**${fresh ? ` · ${one.teamA.name} vs ${one.teamB.name}` : ''}\n${castLine(one)}.`
+        : lines.join('\n') + (open.length > lines.length ? `\n…i ${open.length - lines.length} więcej` : ''),
+    });
+  }
+  return sent;
+}
+
 // ── Match time ──────────────────────────────────────────────────────────────
 
 /** A captain proposed a new time, or the other captain answered */
@@ -51,11 +91,13 @@ export async function rescheduleEvent(tournamentId: string, matchId: string) {
       body: `Drużyna ${other?.name} przyjęła twoją propozycję. Mecz: **${plDate(rr.proposedDate)}**.`,
     });
     // Casters planned their evening around the old time
-    return n + await notify(casterUids(m.data), {
+    const mine = await notify(casterUids(m.data), {
       type: 'caster', key: `${key}:casters`, href, tournament: t,
       title: `${m.data.teamA?.name} vs ${m.data.teamB?.name}: nowy termin`,
       body: `Mecz przełożony na **${plDate(rr.proposedDate)}**.`,
     });
+    // …and the new time may fit a caster who couldn't make the old one
+    return n + mine + await tellFreeCasters(t, [{ id: matchId, data: { ...m.data, scheduledFor: m.data.scheduledFor ?? rr.proposedDate } }], false);
   }
   if (rr.status === 'rejected') {
     return notify(await teamUids(fromTeam, 'captain'), {
@@ -170,8 +212,8 @@ async function remind(t: TournamentInfo, matchId: string, m: FirebaseFirestore.D
 
 /**
  * An admin set or changed match times and chose to tell people: both captains and the match's
- * casters hear each time; `fresh` (a new round or new matches) also tells all the tournament's
- * casters, in one message, which matches they can pick now.
+ * casters hear each time; the tournament's other casters get one message listing the new or moved
+ * matches (`fresh` = a new round or new matches), so they can pick one up.
  */
 export async function matchTimeEvent(tournamentId: string, matchIds: string[], fresh: boolean) {
   const t = await tournamentInfo(tournamentId);
@@ -194,15 +236,6 @@ export async function matchTimeEvent(tournamentId: string, matchIds: string[], f
       title: `${x.teamA.name} vs ${x.teamB.name}: nowy termin`, body: `Mecz castujesz ${when}.`,
     });
   }
-  const timed = found.filter(m => m.data.scheduledFor).sort((p, q) => String(p.data.scheduledFor).localeCompare(String(q.data.scheduledFor)));
-  if (fresh && timed.length) {
-    const all = await db().collection('tournaments').doc(tournamentId).collection('casters').select().get();
-    const lines = timed.slice(0, 8).map(m => `${plDate(m.data.scheduledFor)} · ${m.data.teamA.name} vs ${m.data.teamB.name}`);
-    sent += await notify(all.docs.map(d => d.id), {
-      type: 'schedule', key: `new-matches:${createHash('sha1').update(timed.map(m => `${m.id}@${m.data.scheduledFor}`).join(',')).digest('hex').slice(0, 16)}`, href, tournament: t,
-      title: timed.length === 1 ? 'Nowy mecz do castowania' : `Nowe mecze do castowania (${timed.length})`,
-      body: lines.join('\n') + (timed.length > lines.length ? `\n…i ${timed.length - lines.length} więcej` : ''),
-    });
-  }
-  return sent;
+  // Every other caster of the tournament hears about new and moved times, in one message
+  return sent + await tellFreeCasters(t, found, fresh);
 }

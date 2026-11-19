@@ -1,13 +1,14 @@
 // The kinds of notifications an account can get. Every one lands in the site's inbox (the bell);
 // each person picks which of them also come as a Discord DM. Shared by the server and the bell.
 
-export type NotifyType = 'schedule' | 'standin' | 'match_soon' | 'caster' | 'duel' | 'packs' | 'announcement';
+export type NotifyType = 'schedule' | 'standin' | 'match_soon' | 'caster' | 'cast_schedule' | 'duel' | 'packs' | 'announcement';
 
 export const NOTIFY_TYPES: Record<NotifyType, { label: string; hint: string; discord: boolean }> = {
   schedule: { label: 'Terminy meczów', hint: 'Propozycje nowego terminu i odpowiedzi na twoje', discord: true },
   standin: { label: 'Standini', hint: 'Prośby o standina i decyzje w ich sprawie', discord: true },
   match_soon: { label: 'Mecz za godzinę', hint: 'Przypomnienie z nazwą lobby', discord: true },
   caster: { label: 'Casterzy', hint: 'Kto poprowadzi transmisję twojego meczu', discord: true },
+  cast_schedule: { label: 'Mecze do castowania', hint: 'Nowe mecze i zmiany terminów w turniejach, które castujesz', discord: true },
   duel: { label: 'Wyzwania w kartach', hint: 'Ktoś wyzywa cię na pojedynek', discord: true },
   packs: { label: 'Paczki kart', hint: 'Nowe paczki po kolejce i od organizatorów', discord: false },
   announcement: { label: 'Ogłoszenia', hint: 'Wiadomości od organizatorów', discord: false },
