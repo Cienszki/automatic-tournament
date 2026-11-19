@@ -13,6 +13,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- Linking a Discord that already has its own account (made by "Zaloguj przez Discord", with cards but no team or role) offers to merge that account instead of refusing: its cards, card-game ranking, Steam account and inbox move over, and where both accounts have cards for the same tournament the player chooses which collection stays.
 - Steam profile links resolve without the Steam API key (public profile page as a fallback), so a revoked key no longer breaks the lobby whitelist or saves standins with an empty Steam id, which got them kicked from bot lobbies.
 - A standin can no longer be approved without a readable Steam account.
 - Match sync names the cause when Steam rejects the API key, instead of a raw 403.
