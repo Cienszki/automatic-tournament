@@ -53,11 +53,11 @@ async function addSteam(uid: string, ids: Array<{ id: string; source: 'discord' 
 }
 
 /**
- * An account made only because someone once pressed "Zaloguj przez Discord" (no Google, no role, no
- * team, no cards). When its owner — signed in on their real account — links that Discord, it would
- * block the link forever; such an account is simply removed and the Discord moves over.
+ * An account made only because someone once pressed "Zaloguj przez Discord": no other way to sign in,
+ * no admin or caster role, no team. Its owner, signed in on their real account, may merge it into
+ * that one (./merge.ts) instead of being refused the Discord link.
  */
-async function isThrowaway(uid: string): Promise<boolean> {
+export async function isDiscordOnlyWithoutRoles(uid: string): Promise<boolean> {
   if (!uid.startsWith('discord_')) return false;
   const user = await getAdminAuth().getUser(uid).catch(() => null);
   if (user && user.providerData.length) return false;
@@ -70,20 +70,35 @@ async function isThrowaway(uid: string): Promise<boolean> {
     ]);
     if (caster.exists || admin.exists || !team.empty) return false;
   }
+  return true;
+}
+
+/** Such an account that also has no cards: nothing to keep, it is simply removed and the Discord moves over */
+async function isThrowaway(uid: string): Promise<boolean> {
+  if (!await isDiscordOnlyWithoutRoles(uid)) return false;
   const cards = await db().collection('cardCollections').where('uid', '==', uid).get();
   return cards.docs.every(c => !(c.data().cards ?? []).length);
 }
 
-/** Links a Discord user to an account (and the Steam accounts known for them). Refuses one held by another account. */
-export async function linkDiscord(uid: string, d: DiscordIdentity): Promise<{ ok: true; steamConflicts: string[] } | { error: string }> {
+/** How long the person has to confirm a merge after coming back from Discord */
+export const MERGE_TICKET_MS = 30 * 60_000;
+
+/**
+ * Links a Discord user to an account (and the Steam accounts known for them). Held by another account:
+ * an empty Discord-made one is removed; one with cards is offered for merging (`merge` = the ticket id
+ * the page confirms through /api/account/merge); anything else is refused.
+ */
+export async function linkDiscord(uid: string, d: DiscordIdentity): Promise<{ ok: true; steamConflicts: string[] } | { merge: string } | { error: string }> {
   const linkRef = db().collection('discordLinks').doc(d.id);
-  // Held by an empty account made by an earlier Discord sign-in: that one goes, the link moves here
   const holder = (await linkRef.get()).data()?.uid as string | undefined;
   if (holder && holder !== uid && await isThrowaway(holder)) {
     const inbox = await accountRef(holder).collection('inbox').get();
     await Promise.all(inbox.docs.map(x => x.ref.delete()));
     await db().collection('cardActivity').doc(holder).delete();
     await deleteAccount(holder);
+  } else if (holder && holder !== uid && await isDiscordOnlyWithoutRoles(holder)) {
+    const ticket = await db().collection('accountMerges').add({ to: uid, from: holder, discord: d, exp: Date.now() + MERGE_TICKET_MS, at: FieldValue.serverTimestamp() });
+    return { merge: ticket.id };
   }
   const res = await db().runTransaction<{ error: string } | { ok: true }>(async tx => {
     const owner = (await tx.get(linkRef)).data()?.uid;
@@ -122,7 +137,7 @@ export async function accountForDiscord(d: DiscordIdentity): Promise<string> {
   try { await auth.getUser(uid); } catch { await auth.createUser({ uid, displayName: d.name, ...(d.avatar ? { photoURL: d.avatar } : {}) }); }
   await db().collection('users').doc(uid).set({ uid, displayName: d.name, ...(d.avatar ? { photoURL: d.avatar } : {}) }, { merge: true });
   const r = await linkDiscord(uid, d);
-  if ('error' in r) throw new Error(r.error);
+  if (!('ok' in r)) throw new Error('error' in r ? r.error : 'Discord jest już połączony z innym kontem.');
   return uid;
 }
 
