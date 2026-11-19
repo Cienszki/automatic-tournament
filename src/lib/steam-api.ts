@@ -1,6 +1,8 @@
 // Steam API functions for fetching Dota 2 league matches
 // Replaces the Stratz API implementation
 
+import { STEAM_KEY_MESSAGE, steamKeyRejected } from './steam-community';
+
 export interface SteamMatchBasic {
   match_id: number;
   match_seq_num: number;
@@ -67,6 +69,7 @@ export async function fetchSteamLeagueMatches(
     });
 
     if (!response.ok) {
+      if (steamKeyRejected(response.status)) throw new Error(STEAM_KEY_MESSAGE);
       const errorText = await response.text();
       throw new Error(`Steam API request failed: ${response.status} ${response.statusText}\n${errorText}`);
     }
