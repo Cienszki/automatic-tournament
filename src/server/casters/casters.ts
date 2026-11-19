@@ -21,7 +21,7 @@ const casters = (t: string) => db().collection('tournaments').doc(t).collection(
 export interface CasterDoc { uid: string; name: string; avatar: string | null; steamId64: string | null; discord: string | null; stream: string | null }
 
 /** The caster's card from their account as it is now (name, picture, Steam, stream) */
-async function profile(uid: string): Promise<CasterDoc> {
+export async function profile(uid: string): Promise<CasterDoc> {
   const acc = await getAccount(uid);
   const steam = acc.steam?.[0]?.id ?? null;
   let avatar: string | null = null;

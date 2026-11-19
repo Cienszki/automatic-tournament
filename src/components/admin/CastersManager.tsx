@@ -1,7 +1,8 @@
 'use client';
 
-// Admin panel: who casts this tournament. Find an account by nick or Discord name and give it the
-// caster role; casters with Steam linked are let into every bot lobby (the bot's whitelist), the
+// Admin panel: who casts this tournament. People who asked to cast (from their account page) wait
+// at the top to be accepted or declined; any other account can be found by nick or Discord name
+// and given the caster role; casters with Steam linked are let into every bot lobby (the bot's whitelist), the
 // others are told to link Steam. Talks to /api/manage/casters.
 
 import React, { useCallback, useEffect, useState } from 'react';
@@ -14,6 +15,7 @@ import { streamLabel } from '@/lib/stream-link';
 
 interface Caster { uid: string; name: string; avatar: string | null; steamId64: string | null; discord: string | null; stream: string | null }
 interface Found { uid: string; name: string; discord: string | null; avatar: string | null }
+interface Request extends Caster { at: string }
 
 function Pic({ src, name }: { src: string | null; name: string }) {
   // eslint-disable-next-line @next/next/no-img-element
@@ -25,6 +27,7 @@ export function CastersManager() {
   const { user } = useAuth();
   const { tournament, theme } = useTournament();
   const [casters, setCasters] = useState<Caster[] | null>(null);
+  const [requests, setRequests] = useState<Request[]>([]);
   const [q, setQ] = useState('');
   const [found, setFound] = useState<Found[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
@@ -42,7 +45,9 @@ export function CastersManager() {
     return j;
   }, [user, tournament]);
 
-  useEffect(() => { if (user && tournament?.id) call('GET').then(j => setCasters(j.casters)).catch(e => setError(e.message)); }, [user, tournament?.id, call]);
+  useEffect(() => {
+    if (user && tournament?.id) call('GET').then(j => { setCasters(j.casters); setRequests(j.requests ?? []); }).catch(e => setError(e.message));
+  }, [user, tournament?.id, call]);
 
   // Search as you type
   useEffect(() => {
@@ -52,9 +57,13 @@ export function CastersManager() {
     return () => clearTimeout(t);
   }, [q, call]);
 
-  const act = async (method: 'POST' | 'DELETE', uid: string) => {
+  const act = async (method: 'POST' | 'DELETE', uid: string, request = false) => {
     setBusy(uid); setError(null);
-    try { setCasters((await call(method, { uid })).casters); if (method === 'POST') { setQ(''); setFound([]); } }
+    try {
+      const j = await call(method, { uid, ...(request ? { request: true } : {}) });
+      setCasters(j.casters); setRequests(j.requests ?? []);
+      if (method === 'POST') { setQ(''); setFound([]); }
+    }
     catch (e) { setError((e as Error).message); } finally { setBusy(null); }
   };
 
@@ -71,6 +80,30 @@ export function CastersManager() {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
+        {requests.length > 0 && (
+          <div>
+            <p className="text-xs font-bold uppercase tracking-widest mb-1" style={{ color: theme.primaryColor }}>Chcą castować</p>
+            <div className="divide-y divide-border border-y border-border">
+              {requests.map(r => (
+                <div key={r.uid} className="flex items-center gap-3 py-2.5">
+                  <Pic src={r.avatar} name={r.name} />
+                  <span className="flex-1 min-w-0">
+                    <span className="block font-bold truncate">{r.name}</span>
+                    <span className="block text-xs text-muted-foreground">
+                      {[r.discord && `Discord @${r.discord}`, r.stream && streamLabel(r.stream), new Date(r.at).toLocaleDateString('pl-PL', { day: 'numeric', month: 'short' })].filter(Boolean).join(' · ')}
+                    </span>
+                  </span>
+                  {busy === r.uid ? <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" /> : (
+                    <>
+                      <button type="button" onClick={() => act('DELETE', r.uid, true)} className="text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-red-500">Odrzuć</button>
+                      <button type="button" onClick={() => act('POST', r.uid)} className="text-xs font-bold uppercase tracking-widest hover:underline underline-offset-4" style={{ color: theme.primaryColor }}>Przyjmij</button>
+                    </>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
         <div className="relative">
           <Input value={q} onChange={e => setQ(e.target.value)} placeholder="Nick albo nazwa na Discordzie…" className="font-logik" />
           {found.length > 0 && (
