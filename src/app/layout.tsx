@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { Space_Mono } from 'next/font/google';
+import localFont from 'next/font/local';
 import { GeistSans } from 'geist/font/sans';
 import { NextIntlClientProvider } from 'next-intl';
 import { getLocale, getMessages } from 'next-intl/server';
@@ -11,12 +11,18 @@ import { TimeProvider } from '@/context/TimeContext';
 import { TournamentProvider } from '@/context/TournamentContext';
 import { neonBines, logik, logikExtendedBold, logikWideBlack, logikExtended8, logik3, logik4 } from '@/app/fonts';
 
-const spaceMono = Space_Mono({
+// Served from our own files, not next/font/google, so a build downloads nothing (WP-03). The
+// files are public/fonts/space-mono cut to Latin and Latin Extended, which covers Polish.
+const spaceMono = localFont({
+  src: [
+    { path: './fonts/space-mono/SpaceMono-Regular.woff2', weight: '400', style: 'normal' },
+    { path: './fonts/space-mono/SpaceMono-Bold.woff2', weight: '700', style: 'normal' },
+  ],
   variable: '--font-space-mono',
-  subsets: ['latin'],
-  weight: ['400', '700'],
   display: 'swap', // Performance: prevent FOIT
   preload: true,
+  fallback: ['ui-monospace', 'monospace'],
+  adjustFontFallback: false,
 });
 
 export const metadata: Metadata = {
