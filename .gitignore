@@ -172,3 +172,6 @@ data-exports/
 
 # Sentry Config File
 .env.sentry-build-plugin
+
+# Local databases written by scripts/import (PGlite folders)
+.local/
