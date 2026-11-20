@@ -26,6 +26,35 @@ Written in S1 (2026-11-13) by Fable, and rewritten the same day after the owner'
 | M6 Proven and live | 30, 31, 48, 37 | End-to-end flows green; load test passed. **Go-live step two:** PDL S2 moves to the new platform while it is being played. **Step three:** new seasons start there. **Step four:** the old site retires |
 | The card game (beside M1 to M6) | 52, 53, 54, 55, 56, 57, then 58, 59, 60, 61, 62, 63 | A new player makes a first move within a minute and plays a complete game against the computer on a phone or a desktop (52 to 57, no dependency on the new platform). Then live duels, Kolejka after every real round, real results paying out cards, and today's game retired (58 to 63, after WP-40) |
 
+## Complete and testable: the target before any go-live
+
+Set by the owner on 2026-11-20. **The overhaul is complete when the new platform is fully operational on staging and the owner can test all of it, while the old site stays in production for the players.** Nothing in this target changes production: the go-live packages (WP-35, WP-37) come after it, as separate decisions.
+
+"Fully operational" means, on the staging address with the staging database and a staging bot:
+- every public page of every imported tournament (Letnia, PDL, PDL S2, Wiosenna) is served by the new platform;
+- a played game becomes a result, standings, stats and fantasy points with no admin action, and the bot creates lobbies and reports results;
+- a new organizer signs up, creates a tournament in the wizard, runs a season to the final in the new panel, and customizes its look; captains register and manage their teams;
+- accounts, notifications, casters, draft preparation, and the card game work;
+- backups and the export of one tournament work; the end-to-end suite is green.
+
+**What is left, in order** (sizes as defined above: S half a day of agent work, M a day, L two to three days, XL split):
+
+| Stage | Packages | Size | What the owner can test at the end of it |
+|---|---|---|---|
+| 1. Foundations | WP-33 import, WP-03 environments and CI, WP-06 staging hosting trial | L, M, M | The real tournaments in the new database; a staging address that serves one fast page |
+| 2. The public site | WP-07 kernel, WP-15 stats, WP-08 shell, WP-09 subpages, WP-10 home page, WP-11 speed budgets | L, L, L, L, L, M | Every public page of every tournament on staging, fast |
+| 3. Results run themselves | WP-14 jobs, WP-13b results, WP-34 tiebreakers and brackets, WP-16 fantasy and pick'em | M, L, L, L | Entering or importing a game updates everything with no admin step |
+| 4. The bot on the new platform | WP-21 contract and own tables, WP-22 due work and secrets, WP-23 part 1 measure | L, M, S | The staging bot runs lobbies for staging matches |
+| 5. Organizers and captains | WP-24 organizations, WP-17 captains, WP-41 screen prototypes (optional), WP-42 panel frame, WP-43 wizard, WP-18a-e panel screens, WP-44 season automation, WP-38 accounts and the rest, WP-40 card game, WP-46 platform console, WP-19 no browser database | M, L, L, L, L, XL, L, L, L, M, S | A season from sign-up to the final, run by an organizer in the new panel |
+| 6. The platform | WP-26 custom domains, WP-27 theme tokens, WP-45 look screen, WP-29 translations, WP-36 backups and export | L, L, L, L, M | Own domains, themes, an English tournament, a restore |
+| 7. Proof | WP-30 end-to-end suite, WP-48 a new organizer runs a season (machine and people), WP-39 adapted: PDL S2 mirrored onto staging and compared daily | M, M, M | The owner's own full test, and a real season compared day by day |
+
+In agent days that is roughly 75, before reviews and fixes. Several packages run in parallel (the bot beside the site, the platform stage beside the organizer stage), so the calendar time depends mostly on the usage quotas.
+
+**Not needed for this target:** WP-35 and WP-37 (go-live), WP-31 (load test; before go-live of new seasons), WP-23 part 2 (more workers), WP-49 (other screens, on request), WP-01 (old site), and the rest of the card game redesign (WP-56 to 63), which waits for the owner's return to it. For the card game, WP-40 moves today's game as it is; the redesigned engine and match screen (WP-52 to 55) stay on `overhaul` for later.
+
+**What only the owner can do on the way:** approve preview deployments to the staging Vercel project (stage 1); export the private Firestore collections (users, accounts, card collections, bot config) with the script WP-33 writes, so the import can include them; create a staging bot service and test Steam accounts (stage 4); choose screen versions if WP-41 runs (stage 5); run the trial with organizers (stage 7).
+
 What can run in parallel: WP-05, WP-12 and WP-20 can start now and need nothing from the owner. M4 runs beside M1 to M3 (different folders). WP-04 runs beside anything. S2 has run: WP-18 builds its screens from `ORGANIZER_UX.md`. WP-41 (prototypes for the owner to choose from) needs nothing and can run at any time; the real screens start from version 1 of each if the owner has not chosen yet. The card game moves as it is in WP-40; S3 redesigned it (WP-52 to WP-63), and WP-52, 53 and 54 can start at any time.
 
 What waits for the owner: WP-03 (staging part), WP-06 and WP-35 need the accounts in `TEST_STRATEGY.md`, "What the owner must create". Question 8 is answered: the role-based formula is the default for new tournaments.
