@@ -12,9 +12,12 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "typecheck": "tsc --noEmit && tsc --noEmit -p scripts/tools/capture/tsconfig.json && tsc --noEmit -p scripts/tools/card-sim/tsconfig.json",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p scripts/tools/capture/tsconfig.json && tsc --noEmit -p scripts/tools/card-sim/tsconfig.json && tsc --noEmit -p scripts/seed/tsconfig.json",
     "check:unreachable": "node scripts/tools/unreachable.mjs",
     "db:generate": "drizzle-kit generate",
+    "db:migrate": "tsx scripts/db/migrate.ts",
+    "db:seed": "tsx scripts/seed/cli.ts",
+    "dev:local": "tsx scripts/db/dev-local.ts",
     "serve": "npm run build && firebase emulators:start --only functions,hosting,firestore",
     "deploy": "firebase deploy --only hosting"
   },
