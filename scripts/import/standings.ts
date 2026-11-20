@@ -132,5 +132,14 @@ function compareStored(groupId: string, groupName: string, rows: Rows, saved: St
     }
   }
   for (const p of saved.rows) if (!rows.some((r) => r.teamId === p.teamId)) differences.push(`${p.teamId}: in the stored standings, not in the imported group`);
-  return { groupId, groupName, against: 'stored', orderMatches: null, differences };
+  // A stored record that counts fewer matches than were played was not updated after them.
+  const stale = rows.filter((r) => {
+    const p = saved.rows.find((x) => x.teamId === r.teamId);
+    return p && p.matchesPlayed < r.record.played;
+  }).length;
+  const differing = new Set(differences.map((d) => d.split(':')[0])).size;
+  const explanation = differences.length && stale === differing
+    ? 'every team that differs has a stored record with fewer matches than it played: the stored standings were not updated after those matches. The old code computes group tables from the matches (calculateGroupStandings in src/lib/api/groups.ts), as the new code does'
+    : undefined;
+  return { groupId, groupName, against: 'stored', orderMatches: null, differences, ...(explanation ? { explanation } : {}) };
 }

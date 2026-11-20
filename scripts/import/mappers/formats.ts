@@ -35,7 +35,7 @@ export function mapFormats(state: MapState): void {
 
   if (preset === 'swiss') mapSwissStage(state, groupMatches);
   else mapRoundRobinStage(state, preset, groupMatches);
-  if (bracket.length) mapBracketStage(state, bracket, preset === 'swiss' ? 2 : 2);
+  if (bracket.length) mapBracketStage(state, bracket, 2);
   else if (obj(t.playoffs).enabled) {
     state.ctx.finding({ kind: 'tournaments', code: 'decision', reason: 'playoffs are configured but have no matches: no bracket stage is created (SCHEMA.md 3.1)', ref: tournamentDoc(state).path });
   }

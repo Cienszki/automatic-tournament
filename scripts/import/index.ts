@@ -62,7 +62,7 @@ async function main(): Promise<void> {
   console.error(`import: writing to the ${where}`);
   const { db, close } = await openTarget(target);
   try {
-    const result = await runImport(db, args.from, { anonymize: args.anonymize, prune: args.prune, publishedDirs: args.published });
+    const result = await runImport(db, args.from, { anonymize: args.anonymize, prune: args.prune, publishedDirs: [...args.published, 'fixtures/exports'] });
     const report = renderReport(result);
     if (args.report) writeFileSync(args.report, report);
     else console.log(report);

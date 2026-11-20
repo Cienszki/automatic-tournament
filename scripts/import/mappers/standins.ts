@@ -23,9 +23,10 @@ const STATUSES = new Set(['pending', 'approved', 'rejected', 'appeal_pending', '
 export function mapStandinRequests(state: MapState): void {
   const docs = docsOf(state.capture, KIND);
   state.ctx.read(KIND, docs);
+  const copies = approvedCopies(state);
   for (const doc of docs) {
     state.ctx.checkFields(KIND, doc, FIELDS);
-    const row = requestRow(state, doc);
+    const row = requestRow(state, doc, copies.get(doc.id));
     if (!row) continue;
     state.rows.add(s.standinRequests, row);
     state.ctx.outcome(KIND, 'mapped');
@@ -33,7 +34,16 @@ export function mapStandinRequests(state: MapState): void {
   checkMatchCopies(state);
 }
 
-function requestRow(state: MapState, doc: Doc): Record<string, unknown> | null {
+/** `matches.approvedStandins` by request id. */
+function approvedCopies(state: MapState): Map<string, Record<string, unknown>> {
+  const out = new Map<string, Record<string, unknown>>();
+  for (const match of docsOf(state.capture, 'matches')) {
+    for (const [requestId, raw] of Object.entries(obj(match.data.approvedStandins))) out.set(requestId, obj(raw));
+  }
+  return out;
+}
+
+function requestRow(state: MapState, doc: Doc, copy: Record<string, unknown> | undefined): Record<string, unknown> | null {
   const d = doc.data;
   const matchId = toText(d.matchId);
   const teamId = toText(d.teamId) ?? toText(d.requestingTeamId);
@@ -58,7 +68,12 @@ function requestRow(state: MapState, doc: Doc): Record<string, unknown> | null {
     state.ctx.finding({ kind: KIND, code: 'unmapped', reason: 'the stand-in is not in the stand-in pool; the request is imported without them', ref: `${doc.path} ${registrationId}` });
   }
   const url = toText(d.standinSteamProfileUrl);
-  const standinSteamId64 = registration?.steamId64 ?? toSteam64(d.standinSteamId32) ?? steam64FromProfileUrl(url);
+  let standinSteamId64 = registration?.steamId64 ?? toSteam64(d.standinSteamId32) ?? steam64FromProfileUrl(url);
+  if (!standinSteamId64 && toSteam64(copy?.steamId32)) {
+    // The request kept only a vanity profile link; the approval resolved it and stored it on the match.
+    standinSteamId64 = toSteam64(copy!.steamId32);
+    state.ctx.finding({ kind: KIND, code: 'decision', reason: 'the Steam id of the stand-in is taken from the approved copy on the match (the request has only a vanity profile link)', ref: doc.path });
+  }
   state.ctx.player(standinSteamId64, { nickname: toText(d.standinNickname) });
   let status = toText(d.status) ?? 'pending';
   if (!STATUSES.has(status)) {

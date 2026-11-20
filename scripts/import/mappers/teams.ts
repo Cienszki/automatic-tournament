@@ -4,7 +4,7 @@ import * as s from '@/platform/db/schema';
 import { smurfAccountsSchema, topHeroesSchema } from '@/platform/db/schema/json';
 import { fields } from '../context';
 import { ancestorId, docsOf, type Doc } from '../source';
-import { isSteam64, steam64FromProfileUrl, toInt, toSteam64, toText, withoutNulls } from '../values';
+import { steam64FromProfileUrl, toInt, toSteam64, toText, withoutNulls } from '../values';
 import { arr, createdOf, obj, timeOf, updatedOf } from './read';
 import { fitJson, type MapState } from './state';
 import { tournamentDoc } from './tournament';
@@ -99,25 +99,37 @@ function mapCoach(state: MapState, team: Doc): void {
   state.members.set(id, { teamId: team.id, steamId64, kind: 'coach', nickname: toText(c.nickname) ?? 'Coach' });
 }
 
-/** Steam ids that the tournament's game data uses, to settle rosters whose two Steam fields disagree. */
-function steamIdsInGames(state: MapState): Set<string> {
-  const ids = new Set<string>();
-  for (const p of docsOf(state.capture, 'matches.games.performances')) {
-    for (const v of [p.id, p.data.playerId, p.data.steamId]) if (isSteam64(v)) ids.add(v);
+/**
+ * Steam ids that some roster entry gives without disagreement (`steamId`, `steamId64` and
+ * `steamId32` all name it), with the team of that entry.
+ */
+function confidentSteamIds(state: MapState): Map<string, string> {
+  const out = new Map<string, string>();
+  for (const doc of docsOf(state.capture, 'teams.players')) {
+    const ids = [doc.data.steamId64, doc.data.steamId, doc.data.steamId32].map(toSteam64).filter((x): x is string => x !== null);
+    if (ids.length && ids.every((x) => x === ids[0])) out.set(ids[0], ancestorId(doc));
   }
-  return ids;
+  return out;
 }
 
-function rosterSteamId(state: MapState, doc: Doc, played: Set<string>): string | null {
+/**
+ * The Steam64 of a roster entry. When `steamId` and `steamId64` disagree (SCHEMA.md 9), the rule is
+ * steamId64 (it agrees with steamId32), unless another team's entry holds that id without any
+ * disagreement while `steamId` is free: then the entry's own `steamId` is the account. Every
+ * disagreement is reported for the owner to confirm.
+ */
+function rosterSteamId(state: MapState, doc: Doc, confident: Map<string, string>): string | null {
   const d = doc.data;
   const s64 = toSteam64(d.steamId64);
   const sid = toSteam64(d.steamId);
   const s32 = toSteam64(d.steamId32);
   if (s64 && sid && s64 !== sid) {
-    const chosen = played.has(sid) && !played.has(s64) ? sid : s64;
+    const teamId = ancestorId(doc);
+    const taken = (id: string) => confident.has(id) && confident.get(id) !== teamId;
+    const chosen = taken(s64) && !taken(sid) ? sid : s64;
     state.ctx.finding({
       kind: 'teams.players', code: 'conflict',
-      reason: 'steamId and steamId64 differ: the one the games were played on is used, else steamId64 (owner to confirm)',
+      reason: 'steamId and steamId64 differ: steamId64 is used (it agrees with steamId32) unless a player of another team holds it (owner to confirm)',
       ref: `${doc.path} steamId=${sid} steamId64=${s64} steamId32=${String(d.steamId32)} -> ${chosen}`,
     });
     return chosen;
@@ -134,7 +146,7 @@ function mapPlayers(state: MapState, rosters: Map<string, Record<string, unknown
   const { ctx } = state;
   const docs = docsOf(state.capture, 'teams.players');
   ctx.read('teams.players', docs);
-  const played = steamIdsInGames(state);
+  const confident = confidentSteamIds(state);
   const active = new Map<string, { id: string; joinedAt: Date; row: Record<string, unknown> }>();
   for (const doc of docs) {
     ctx.checkFields('teams.players', doc, PLAYER_FIELDS);
@@ -146,7 +158,7 @@ function mapPlayers(state: MapState, rosters: Map<string, Record<string, unknown
       ctx.outcome('teams.players', 'unmapped', 'the roster entry\'s team does not exist', doc.path);
       continue;
     }
-    const steamId64 = rosterSteamId(state, { ...doc, data: d }, played);
+    const steamId64 = rosterSteamId(state, { ...doc, data: d }, confident);
     if (!steamId64) {
       ctx.outcome('teams.players', 'unmapped', 'the roster entry has no Steam id', doc.path);
       continue;

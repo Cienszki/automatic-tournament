@@ -25,28 +25,50 @@ interface GameDraft { doc: Doc; row: Record<string, unknown>; forfeit: boolean; 
 export function mapGames(state: MapState): void {
   const docs = docsOf(state.capture, KIND);
   state.ctx.read(KIND, docs);
-  const byMatch = new Map<string, GameDraft[]>();
-  const seenDota = new Map<number, string>();
+  const drafts: Array<GameDraft & { matchId: string }> = [];
   for (const doc of docs) {
     state.ctx.checkFields(KIND, doc, GAME_FIELDS);
     const matchId = ancestorId(doc);
-    const match = state.matchTeams.get(matchId);
-    if (!match) {
-      state.ctx.outcome(KIND, 'unmapped', 'the game\'s match is not imported', doc.path);
+    if (!state.matchTeams.has(matchId)) {
+      state.ctx.outcome(KIND, 'unmapped', 'the match of the game is not imported', doc.path);
       continue;
     }
-    const draft = gameDraft(state, doc, matchId);
-    const dota = draft.row.dotaMatchId as number | null;
-    if (dota !== null && seenDota.has(dota)) {
-      state.ctx.outcome(KIND, 'unmapped', 'the same Dota game is stored under two matches; only the first is imported', `${doc.path} (first: ${seenDota.get(dota)})`);
-      continue;
-    }
-    if (dota !== null) seenDota.set(dota, doc.path);
-    if (!byMatch.has(matchId)) byMatch.set(matchId, []);
-    byMatch.get(matchId)!.push(draft);
+    drafts.push({ ...gameDraft(state, doc, matchId), matchId });
   }
-  for (const [matchId, drafts] of byMatch) numberGames(state, matchId, drafts);
+  const byMatch = new Map<string, GameDraft[]>();
+  for (const draft of keepOnePerDotaGame(state, drafts)) {
+    if (!byMatch.has(draft.matchId)) byMatch.set(draft.matchId, []);
+    byMatch.get(draft.matchId)!.push(draft);
+  }
+  for (const [matchId, list] of byMatch) numberGames(state, matchId, list);
   mapPerformances(state);
+}
+
+/**
+ * A Dota game stored under two matches (a playoff game also attached to the group match of the same
+ * two teams) is kept under the match it fits: the one whose series is not already full without it.
+ */
+function keepOnePerDotaGame<T extends GameDraft & { matchId: string }>(state: MapState, drafts: T[]): T[] {
+  const byDota = new Map<number, T[]>();
+  for (const d of drafts) {
+    const dota = d.row.dotaMatchId as number | null;
+    if (dota === null) continue;
+    if (!byDota.has(dota)) byDota.set(dota, []);
+    byDota.get(dota)!.push(d);
+  }
+  const games = (matchId: string) => drafts.filter((d) => d.matchId === matchId).length;
+  const dropped = new Set<T>();
+  for (const copies of byDota.values()) {
+    if (copies.length < 2) continue;
+    const fits = copies.filter((c) => games(c.matchId) - 1 < state.matchTeams.get(c.matchId)!.bestOf);
+    const keep = fits.length === 1 ? fits[0] : copies[0];
+    for (const c of copies) {
+      if (c === keep) continue;
+      dropped.add(c);
+      state.ctx.outcome(KIND, 'unmapped', 'the same Dota game is stored under two matches; it is kept under the match whose series it fits', `${c.doc.path} (kept: ${keep.doc.path})`);
+    }
+  }
+  return drafts.filter((d) => !dropped.has(d));
 }
 
 function teamOf(state: MapState, doc: Doc, side: 'radiant' | 'dire'): string | null {
