@@ -1,0 +1,207 @@
+{
+  "format": "dota2inhouse-firestore-export",
+  "version": 1,
+  "slug": "letnia",
+  "tournamentId": null,
+  "root": "",
+  "layout": "legacy-root",
+  "source": "firestore-rest-public",
+  "projectId": "tournament-tracker-f35tb",
+  "capturedAt": "2026-11-13T06:30:00.159Z",
+  "finishedAt": "2026-11-13T06:31:38.831Z",
+  "complete": true,
+  "requests": 336,
+  "collections": {
+    "announcements": {
+      "file": "announcements.jsonl",
+      "documents": 1,
+      "status": "ok",
+      "parentsListed": 1
+    },
+    "blockedGames": {
+      "file": "blockedGames.jsonl",
+      "documents": 0,
+      "status": "denied",
+      "parentsListed": 1,
+      "parentsDenied": 1
+    },
+    "configs": {
+      "file": "configs.jsonl",
+      "documents": 0,
+      "status": "ok",
+      "parentsListed": 1
+    },
+    "fantasyLeaderboards": {
+      "file": "fantasyLeaderboards.jsonl",
+      "documents": 0,
+      "status": "denied",
+      "parentsListed": 1,
+      "parentsDenied": 1
+    },
+    "fantasyLineups": {
+      "file": "fantasyLineups.jsonl",
+      "documents": 8,
+      "status": "ok",
+      "parentsListed": 1
+    },
+    "fantasyLineups.rounds": {
+      "file": "fantasyLineups.rounds.jsonl",
+      "documents": 16,
+      "status": "ok",
+      "parentsListed": 75
+    },
+    "fantasyPlayerStats": {
+      "file": "fantasyPlayerStats.jsonl",
+      "documents": 0,
+      "status": "denied",
+      "parentsListed": 1,
+      "parentsDenied": 1
+    },
+    "fantasyUserSummaries": {
+      "file": "fantasyUserSummaries.jsonl",
+      "documents": 0,
+      "status": "denied",
+      "parentsListed": 1,
+      "parentsDenied": 1
+    },
+    "fantasyUserTotals": {
+      "file": "fantasyUserTotals.jsonl",
+      "documents": 0,
+      "status": "denied",
+      "parentsListed": 1,
+      "parentsDenied": 1
+    },
+    "groups": {
+      "file": "groups.jsonl",
+      "documents": 6,
+      "status": "ok",
+      "parentsListed": 1
+    },
+    "matches": {
+      "file": "matches.jsonl",
+      "documents": 68,
+      "status": "ok",
+      "parentsListed": 1
+    },
+    "matches.games": {
+      "file": "matches.games.jsonl",
+      "documents": 141,
+      "status": "ok",
+      "parentsListed": 68
+    },
+    "matches.games.performances": {
+      "file": "matches.games.performances.jsonl",
+      "documents": 56,
+      "status": "ok",
+      "parentsListed": 141
+    },
+    "metaStats": {
+      "file": "metaStats.jsonl",
+      "documents": 0,
+      "status": "denied",
+      "parentsListed": 1,
+      "parentsDenied": 1
+    },
+    "pickems": {
+      "file": "pickems.jsonl",
+      "documents": 6,
+      "status": "ok",
+      "parentsListed": 1
+    },
+    "playerRoundStats": {
+      "file": "playerRoundStats.jsonl",
+      "documents": 0,
+      "status": "denied",
+      "parentsListed": 1,
+      "parentsDenied": 1
+    },
+    "playerStats": {
+      "file": "playerStats.jsonl",
+      "documents": 2,
+      "status": "ok",
+      "parentsListed": 1
+    },
+    "playoffs": {
+      "file": "playoffs.jsonl",
+      "documents": 1,
+      "status": "ok",
+      "parentsListed": 1
+    },
+    "processedGames": {
+      "file": "processedGames.jsonl",
+      "documents": 0,
+      "status": "denied",
+      "parentsListed": 1,
+      "parentsDenied": 1
+    },
+    "stages": {
+      "file": "stages.jsonl",
+      "documents": 0,
+      "status": "ok",
+      "parentsListed": 1
+    },
+    "standinRequests": {
+      "file": "standinRequests.jsonl",
+      "documents": 87,
+      "status": "ok",
+      "parentsListed": 1
+    },
+    "standins": {
+      "file": "standins.jsonl",
+      "documents": 34,
+      "status": "ok",
+      "parentsListed": 1
+    },
+    "teamStats": {
+      "file": "teamStats.jsonl",
+      "documents": 2,
+      "status": "ok",
+      "parentsListed": 1
+    },
+    "teams": {
+      "file": "teams.jsonl",
+      "documents": 26,
+      "status": "ok",
+      "parentsListed": 1
+    },
+    "teams.players": {
+      "file": "teams.players.jsonl",
+      "documents": 130,
+      "status": "ok",
+      "parentsListed": 26
+    },
+    "tournament": {
+      "file": "tournament.jsonl",
+      "documents": 1,
+      "status": "ok",
+      "parentsListed": 1
+    },
+    "tournamentPlayers": {
+      "file": "tournamentPlayers.jsonl",
+      "documents": 0,
+      "status": "denied",
+      "parentsListed": 1,
+      "parentsDenied": 1
+    },
+    "tournamentStats": {
+      "file": "tournamentStats.jsonl",
+      "documents": 1,
+      "status": "ok",
+      "parentsListed": 1
+    },
+    "userProfiles": {
+      "file": "userProfiles.jsonl",
+      "documents": 0,
+      "status": "denied",
+      "parentsListed": 1,
+      "parentsDenied": 1
+    }
+  },
+  "probes": [],
+  "notes": [
+    "Refused by the public rules, needs the owner's export: metaStats, processedGames, blockedGames, fantasyLeaderboards, fantasyPlayerStats, fantasyUserSummaries, fantasyUserTotals, tournamentPlayers, playerRoundStats, userProfiles.",
+    "Subcollections under a document that does not exist (a \"missing\" parent) cannot be found by anonymous reads: listing with showMissing is refused by the rules.",
+    "Reduced for the import tests by scripts/import/fixtures/make-letnia.ts: performances of 6 games, and the first documents of playerStats, teamStats, tournamentStats, fantasyLineups, pickems.",
+    "Reduced fixture: 65 Firebase user ids replaced by fake ids (user-<10 hex>); e-mail addresses, Discord names and ids, sign-in display names and tokens removed (scripts/tools/capture/lib/personal.ts). Nicknames and Steam ids kept."
+  ]
+}
