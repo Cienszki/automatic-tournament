@@ -5,8 +5,7 @@
 import type { MetadataRoute } from 'next';
 import { getAdminDb, ensureAdminInitialized } from '@/server/lib/admin';
 import type { TournamentType, TournamentStatus } from '@/types/tournament';
-
-const BASE_URL = 'https://dota2inhouse.pl';
+import { siteUrl } from '@/platform/origins';
 
 // Statuses that should NOT appear in the sitemap (not publicly visible)
 const EXCLUDED_STATUSES: TournamentStatus[] = ['draft'];
@@ -74,6 +73,7 @@ function toDateOrNull(value: unknown): Date | null {
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  const BASE_URL = siteUrl();
   const entries: MetadataRoute.Sitemap = [
     {
       url: BASE_URL,

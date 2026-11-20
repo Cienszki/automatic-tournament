@@ -1,9 +1,10 @@
 // src/app/robots.ts
 // Next.js Metadata API - generates /robots.txt automatically
 import type { MetadataRoute } from 'next';
+import { siteUrl } from '@/platform/origins';
 
 export default function robots(): MetadataRoute.Robots {
-  const baseUrl = 'https://dota2inhouse.pl';
+  const baseUrl = siteUrl();
 
   return {
     rules: [

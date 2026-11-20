@@ -12,8 +12,9 @@ import { ensureAdminInitialized, getAdminDb } from '@/server/lib/admin';
 import { NOTIFY_TYPES, type NotifyType } from '@/lib/notify-types';
 import { sendDm } from './discord-dm';
 import { steam64ToSteam32 } from '@/lib/steam-id-utils';
+import { siteUrl } from '@/platform/origins';
 
-export const SITE = 'https://dota2inhouse.pl';
+export const SITE = siteUrl();
 
 export interface Note {
   type: NotifyType;

@@ -1,6 +1,7 @@
 import 'server-only';
 import { createHash } from 'crypto';
 import { bunnyStreamConfig } from '@/config/bunny';
+import { siteUrl } from '@/platform/origins';
 import {
   candidateHeights,
   encodeState,
@@ -23,7 +24,7 @@ const UPLOAD_SIGNATURE_TTL_S = 6 * 60 * 60;
  * access" on, requests without a referrer get 403 — a real browser on our site
  * sends one, a server-side fetch does not.
  */
-const PROBE_REFERER = 'https://dota2inhouse.pl/';
+const PROBE_REFERER = `${siteUrl()}/`;
 
 function apiKey(): string {
   const key = process.env.BUNNY_STREAM_API_KEY;

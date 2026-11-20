@@ -1,11 +1,11 @@
-// On dota2inhouse.pl every request first goes through the community site (Vercel), which passes it on
-// to our Firebase app: ~0.1 s more per request. The card game's own API talks to Firebase directly
-// (its route allows these origins, see src/app/api/cards/duel/route.ts); elsewhere (localhost, the
-// Firebase host itself) the path stays relative.
+// Behind the community site every request first goes through its proxy, which passes it on to our
+// app: ~0.1 s more per request. When NEXT_PUBLIC_ASSET_ORIGIN names our own host, the card game's
+// API talks to it directly (its route allows the site's origins, see
+// src/app/api/cards/duel/route.ts). Without it, or on that host itself, the path stays relative.
 
-export const GAME_HOST = 'https://tournament-tracker-f35tb.web.app';
+const OWN_ORIGIN = process.env.NEXT_PUBLIC_ASSET_ORIGIN || '';
 
 export function gameApi(path: string): string {
-  if (typeof window === 'undefined') return path;
-  return /(^|\.)dota2inhouse\.pl$/.test(window.location.hostname) ? `${GAME_HOST}${path}` : path;
+  if (typeof window === 'undefined' || !OWN_ORIGIN) return path;
+  return window.location.origin === OWN_ORIGIN.replace(/\/+$/, '') ? path : `${OWN_ORIGIN.replace(/\/+$/, '')}${path}`;
 }

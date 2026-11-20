@@ -1,5 +1,8 @@
 import { withSentryConfig } from '@sentry/nextjs/config';
 import createNextIntlPlugin from 'next-intl/plugin';
+import {
+  resolveAssetOrigin, resolveServerActionHosts, resolveStorageHosts,
+} from './src/platform/origins/config.mjs';
 
 const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts');
 
@@ -10,7 +13,10 @@ const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts');
 // of Next's public API.
 const PHASE_DEVELOPMENT_SERVER = 'phase-development-server';
 
-const FIREBASE_ORIGIN = 'https://tournament-tracker-f35tb.web.app';
+// Where our own JS, CSS and optimized images are served from, when a proxy in front of us owns
+// /_next (the old site behind the community site). Blank: relative paths. Every address comes
+// from the environment, so a local or staging build never points at production (ADR-15).
+const ASSET_ORIGIN = resolveAssetOrigin(process.env);
 
 // NOTE: this file is .mjs (not .ts) ON PURPOSE.
 // firebase-tools' frameworks adapter only recognises next.config.js / .mjs
@@ -54,19 +60,19 @@ const buildConfig = (phase) => {
   const isDev = phase === PHASE_DEVELOPMENT_SERVER;
 
   const nextConfig = {
-    // Load our own JS/CSS from Firebase directly by absolute URL. After the
-    // dota2inhouse.pl → Vercel cutover the community site owns /_next/* at the
-    // root, so relative asset paths would round-trip through (or collide with)
-    // Vercel. Absolute URLs to our own origin bypass it entirely. Harmless while
-    // the domain is still ours. See the domain-cutover instructions.
-    assetPrefix: isDev ? undefined : FIREBASE_ORIGIN,
+    // Load our own JS/CSS from our own origin by absolute URL when NEXT_PUBLIC_ASSET_ORIGIN is
+    // set. Behind the community site's rewrite, the community site owns /_next/* at
+    // the root, so relative asset paths would round-trip through (or collide with)
+    // it. Absolute URLs to our own origin bypass it entirely.
+    assetPrefix: isDev ? undefined : ASSET_ORIGIN,
     // Server Actions reject any POST whose Origin differs from the (forwarded)
-    // host. Behind the dota2inhouse.pl → Vercel fallback rewrite the browser's
-    // Origin is dota2inhouse.pl while we see the Firebase host, so EVERY action
+    // host. Behind the community site's fallback rewrite the browser's Origin is
+    // the public domain while we see our hosting's own host, so every action
     // failed with the masked "error occurred in the Server Components render".
+    // The public site and ALLOWED_ORIGINS are allowed.
     experimental: {
         serverActions: {
-            allowedOrigins: ['dota2inhouse.pl', 'www.dota2inhouse.pl'],
+            allowedOrigins: resolveServerActionHosts(process.env),
         },
     },
     // Exclude archive folder from build
@@ -90,7 +96,7 @@ const buildConfig = (phase) => {
         // Enable Next.js image optimization for better performance
         unoptimized: false,
         formats: ['image/avif', 'image/webp'],
-        // Serve the image optimizer from our own Firebase origin by absolute URL.
+        // With NEXT_PUBLIC_ASSET_ORIGIN set, serve the image optimizer from that origin by absolute URL.
         // Why not the obvious alternatives:
         //   - assetPrefix does NOT cover /_next/image (only basePath does), so it
         //     alone would leave image requests hitting Vercel's optimizer after the
@@ -99,8 +105,8 @@ const buildConfig = (phase) => {
         //     (next-server 404s /_next/image when loader !== 'default').
         // Keeping the default loader + an absolute `images.path` routes optimized
         // images straight to our own optimizer, which honours the remotePatterns
-        // below. Dev stays on the relative default.
-        ...(isDev ? {} : { path: `${FIREBASE_ORIGIN}/_next/image` }),
+        // below. Dev, and any build without NEXT_PUBLIC_ASSET_ORIGIN, stays on the relative default.
+        ...(isDev || !ASSET_ORIGIN ? {} : { path: `${ASSET_ORIGIN}/_next/image` }),
         remotePatterns: [
             {
                 protocol: 'https',
@@ -114,10 +120,8 @@ const buildConfig = (phase) => {
                 protocol: 'https',
                 hostname: 'firebasestorage.googleapis.com',
             },
-            {
-                protocol: 'https',
-                hostname: 'tournament-tracker-f35tb.firebasestorage.app',
-            },
+            // The Firebase Storage bucket's own hostname, from NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET.
+            ...resolveStorageHosts(process.env).map((hostname) => ({ protocol: 'https', hostname })),
             {
                 protocol: 'https',
                 hostname: 'avatars.steamstatic.com',

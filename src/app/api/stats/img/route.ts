@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { storageHosts } from '@/platform/origins';
 
 // Same-origin copy of an allowlisted image, so the stats pages can draw it onto a <canvas> and
 // export it (Steam's hero CDN and Firebase Storage don't send CORS headers for our domain).
@@ -9,7 +10,8 @@ const ALLOWED_HOSTS = new Set([
   'avatars.steamstatic.com',
   'steamcdn-a.akamaihd.net',
   'firebasestorage.googleapis.com',
-  'tournament-tracker-f35tb.firebasestorage.app',
+  // The Firebase Storage bucket's own hostname, from NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET.
+  ...storageHosts(),
 ]);
 const MAX_BYTES = 3 * 1024 * 1024;
 

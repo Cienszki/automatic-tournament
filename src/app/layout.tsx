@@ -4,6 +4,7 @@ import { GeistSans } from 'geist/font/sans';
 import { NextIntlClientProvider } from 'next-intl';
 import { getLocale, getMessages } from 'next-intl/server';
 import './globals.css';
+import { siteUrl } from '@/platform/origins';
 import { Toaster } from "@/components/ui/toaster";
 import { AuthProvider } from '@/context/AuthContext';
 import { TimeProvider } from '@/context/TimeContext';
@@ -19,7 +20,7 @@ const spaceMono = Space_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://dota2inhouse.pl'),
+  metadataBase: new URL(siteUrl()),
   title: {
     default: 'dota2inhouse.pl - Polskie Turnieje Dota 2',
     template: '%s | dota2inhouse.pl',
@@ -30,7 +31,7 @@ export const metadata: Metadata = {
     siteName: 'dota2inhouse.pl',
     title: 'dota2inhouse.pl - Polskie Turnieje Dota 2',
     description: 'Platforma dla polskiej społeczności Dota 2 - turnieje, ligi i wydarzenia esportowe',
-    url: 'https://dota2inhouse.pl',
+    url: siteUrl(),
     images: [
       {
         url: '/logos/pd2ih/pd2ih-logo.png',
