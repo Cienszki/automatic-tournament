@@ -7,7 +7,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Bell, ChevronLeft } from 'lucide-react';
+import { Bell, BellOff, ChevronLeft } from 'lucide-react';
 import { collection, limit, onSnapshot, orderBy, query } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/context/AuthContext';
@@ -22,6 +22,8 @@ import { NOTIFY_ORDER, NOTIFY_TYPES, type InboxItem, type NotifyType } from '@/l
 interface Inbox {
   items: InboxItem[];
   unread: number;
+  /** Types the person turned off: no bell item, no DM */
+  muted: Record<NotifyType, boolean>;
   discord: { linked: boolean; problem: string | null; on: Record<NotifyType, boolean> };
   test?: 'sent' | 'blocked' | 'failed' | 'off';
 }
@@ -62,6 +64,8 @@ export function NotificationBell({ color }: { color?: string }) {
   const [fresh, setFresh] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const [testing, setTesting] = useState(false);
+  /** The type just turned off from an item, offered back with "Cofnij" */
+  const [offNow, setOffNow] = useState<NotifyType | null>(null);
 
   const call = useCallback(async (method: 'GET' | 'POST' | 'PUT', body?: object): Promise<Inbox> => {
     const token = await user!.getIdToken();
@@ -94,7 +98,7 @@ export function NotificationBell({ color }: { color?: string }) {
 
   const onOpen = (o: boolean) => {
     setOpen(o); setError(null);
-    if (!o) { setView('list'); setFresh(new Set()); return; }
+    if (!o) { setView('list'); setFresh(new Set()); setOffNow(null); return; }
     const unread = box?.items.filter(i => !i.read).map(i => i.id) ?? [];
     setFresh(new Set(unread));
     if (box?.unread) call('POST', { read: 'all' }).then(setBox).catch(() => {});
@@ -105,6 +109,12 @@ export function NotificationBell({ color }: { color?: string }) {
     if (!box) return;
     setBox({ ...box, discord: { ...box.discord, on: { ...box.discord.on, [t]: on } } });
     try { setBox(await call('PUT', { discord: { [t]: on } })); } catch (e) { setError((e as Error).message); }
+  };
+  const setOff = async (t: NotifyType, off: boolean) => {
+    if (!box) return;
+    setError(null);
+    setBox({ ...box, muted: { ...box.muted, [t]: off } });
+    try { setBox(await call('POST', { mute: t, ...(off ? {} : { on: true }) })); } catch (e) { setError((e as Error).message); }
   };
   const test = async () => {
     setTesting(true); setError(null);
@@ -118,7 +128,10 @@ export function NotificationBell({ color }: { color?: string }) {
   // Visitors get the way in instead
   if (!user) return loading ? null : <NavLogin color={color} />;
   const unread = box?.unread ?? 0;
-  const dmOn = box ? NOTIFY_ORDER.filter(t => box.discord.on[t]).length : 0;
+  // Casters' type only for those who get it; turned-off types are listed apart
+  const offered = box ? NOTIFY_ORDER.filter(t => !box.muted?.[t] && (t !== 'cast_schedule' || box.items.some(i => i.type === t))) : [];
+  const off = box ? NOTIFY_ORDER.filter(t => box.muted?.[t]) : [];
+  const dmOn = box ? offered.filter(t => box.discord.on[t]).length : 0;
 
   return (
     <Popover open={open} onOpenChange={onOpen}>
@@ -141,9 +154,15 @@ export function NotificationBell({ color }: { color?: string }) {
               <button type="button" onClick={() => setView('discord')} className="flex items-center gap-1.5 text-[12px] font-bold hover:underline underline-offset-4" style={{ color: C.muted }}
                 title="Wybierz, co ma przychodzić na Discordzie">
                 <DiscordMark className="w-4 h-4" />
-                {box?.discord.linked ? (dmOn ? `${dmOn} z ${NOTIFY_ORDER.length} na Discordzie` : 'Discord wyłączony') : 'Discord'}
+                {box?.discord.linked ? (dmOn ? `${dmOn} z ${offered.length} na Discordzie` : 'Discord wyłączony') : 'Discord'}
               </button>
             </div>
+            {offNow && box?.muted?.[offNow] && (
+              <div className="flex items-center gap-3 px-5 pb-3 text-[13px]" style={{ color: C.text }}>
+                <span className="flex-1 min-w-0">Wyłączone: <b style={{ color: C.heading }}>{NOTIFY_TYPES[offNow].label}</b></span>
+                <button type="button" onClick={() => { setOff(offNow, false); setOffNow(null); }} className="font-bold hover:underline underline-offset-4" style={{ color: C.primary }}>Cofnij</button>
+              </div>
+            )}
             <div className="max-h-[min(70vh,560px)] overflow-y-auto border-t" style={{ borderColor: ink(10) }}>
               {!box ? (
                 <div className="px-5 py-8 text-[13px]" style={{ color: C.muted }}>Wczytuję…</div>
@@ -153,16 +172,28 @@ export function NotificationBell({ color }: { color?: string }) {
                 </div>
               ) : box.items.map(i => {
                 const row = (
-                  <div className="relative px-5 py-3.5 border-b last:border-b-0" style={{ borderColor: ink(8), background: fresh.has(i.id) ? `color-mix(in srgb, ${C.primary} 9%, transparent)` : undefined }}>
+                  <div className="relative pl-5 pr-11 py-3.5" style={{ background: fresh.has(i.id) ? `color-mix(in srgb, ${C.primary} 9%, transparent)` : undefined }}>
                     {fresh.has(i.id) && <span className="absolute left-2 top-[22px] w-1.5 h-1.5 rounded-full" style={{ background: C.primary }} />}
                     <div className="text-[14px] font-bold leading-snug" style={{ color: C.heading }}>{i.title}</div>
                     <div className="mt-1 text-[13px] leading-snug whitespace-pre-line" style={{ color: C.text }}><Rich text={i.body} /></div>
                     <div className="mt-1.5 text-[11px]" style={{ color: C.muted }}>{[i.tournament, ago(i.at)].filter(Boolean).join(' · ')}</div>
                   </div>
                 );
-                return i.href
-                  ? <button key={i.id} type="button" className="block w-full text-left hover:brightness-125" onClick={() => { setOpen(false); router.push(i.href!); }}>{row}</button>
-                  : <div key={i.id}>{row}</div>;
+                const label = NOTIFY_TYPES[i.type]?.label;
+                return (
+                  <div key={i.id} className="group relative border-b last:border-b-0" style={{ borderColor: ink(8) }}>
+                    {i.href
+                      ? <button type="button" className="block w-full text-left hover:brightness-125" onClick={() => { setOpen(false); router.push(i.href!); }}>{row}</button>
+                      : row}
+                    {label && !box.muted?.[i.type] && (
+                      <button type="button" aria-label={`Wyłącz powiadomienia: ${label}`} title={`Wyłącz powiadomienia: ${label}`}
+                        onClick={() => { setOff(i.type, true); setOffNow(i.type); }}
+                        className="absolute right-3 top-3 p-1.5 opacity-40 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity" style={{ color: C.muted }}>
+                        <BellOff className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                );
               })}
             </div>
           </>
@@ -186,7 +217,7 @@ export function NotificationBell({ color }: { color?: string }) {
                   </div>
                 )}
                 <div className="border-t" style={{ borderColor: ink(10) }}>
-                  {NOTIFY_ORDER.map(t => (
+                  {offered.map(t => (
                     <label key={t} className="flex items-center gap-4 px-5 py-3 border-b cursor-pointer" style={{ borderColor: ink(8) }}>
                       <span className="flex-1 min-w-0">
                         <span className="block text-[14px] font-bold" style={{ color: C.heading }}>{NOTIFY_TYPES[t].label}</span>
@@ -203,6 +234,22 @@ export function NotificationBell({ color }: { color?: string }) {
                   {box.test === 'sent' && <span style={{ color: C.win }}>Wysłana, sprawdź Discord.</span>}
                 </div>
               </>
+            )}
+            {off.length > 0 && (
+              <div className="mt-4">
+                <div className="px-5 pb-2 text-[15px] font-bold" style={{ color: C.heading }}>Wyłączone</div>
+                <div className="border-t" style={{ borderColor: ink(10) }}>
+                  {off.map(t => (
+                    <div key={t} className="flex items-center gap-4 px-5 py-3 border-b" style={{ borderColor: ink(8) }}>
+                      <span className="flex-1 min-w-0">
+                        <span className="block text-[14px] font-bold" style={{ color: C.muted }}>{NOTIFY_TYPES[t].label}</span>
+                        <span className="block text-[12px]" style={{ color: C.muted }}>{NOTIFY_TYPES[t].hint}</span>
+                      </span>
+                      <button type="button" onClick={() => setOff(t, false)} className="text-[13px] font-bold hover:underline underline-offset-4" style={{ color: C.primary }}>Włącz</button>
+                    </div>
+                  ))}
+                </div>
+              </div>
             )}
             {error && <div className="px-5 pt-3 text-[13px] font-bold" style={{ color: C.loss }}>{error}</div>}
           </div>

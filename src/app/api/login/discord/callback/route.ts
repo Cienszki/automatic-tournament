@@ -29,6 +29,8 @@ export async function GET(req: NextRequest) {
     if (st.mode === 'link') {
       const r = await linkDiscord(st.uid!, d);
       if ('error' in r) return back(st.origin, st.next, { konto: 'blad', powod: r.error });
+      // That Discord has its own account with cards: the page asks whether to merge it into this one
+      if ('merge' in r) return back(st.origin, st.next, { konto: 'polacz', bilet: r.merge });
       // A caster's card shows the Discord (and any Steam it brought) at once; Steam joins the lobby whitelist
       await refreshCaster(st.uid!).catch(e => console.warn('[discord] caster refresh failed', e));
       return back(st.origin, st.next, { konto: 'discord', ...(r.steamConflicts.length ? { steam: 'zajety' } : {}) });

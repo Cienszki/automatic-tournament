@@ -5,7 +5,11 @@
 const API = 'https://discord.com/api/v10';
 
 export type DmResult = 'sent' | 'blocked' | 'failed' | 'off';
-export interface DmMessage { title: string; body: string; url?: string | null; footer?: string | null; color?: number | null }
+export interface DmMessage {
+  title: string; body: string; url?: string | null; footer?: string | null; color?: number | null;
+  /** Signed link that turns this kind of notification off (see ./mute.ts) */
+  offUrl?: string | null;
+}
 
 async function discord(path: string, body: object, retry = true): Promise<Response> {
   const r = await fetch(`${API}${path}`, {
@@ -28,6 +32,10 @@ export async function sendDm(discordId: string, m: DmMessage): Promise<DmResult>
     const ch = await discord('/users/@me/channels', { recipient_id: discordId });
     if (!ch.ok) return 'failed';
     const { id } = await ch.json() as { id: string };
+    const buttons = [
+      ...(m.url ? [{ type: 2, style: 5, label: 'Otwórz na stronie', url: m.url }] : []),
+      ...(m.offUrl ? [{ type: 2, style: 5, label: 'Wyłącz takie powiadomienia', url: m.offUrl }] : []),
+    ];
     const r = await discord(`/channels/${id}/messages`, {
       embeds: [{
         title: m.title.slice(0, 256),
@@ -36,7 +44,7 @@ export async function sendDm(discordId: string, m: DmMessage): Promise<DmResult>
         ...(m.color != null ? { color: m.color } : {}),
         ...(m.footer ? { footer: { text: m.footer.slice(0, 200) } } : {}),
       }],
-      ...(m.url ? { components: [{ type: 1, components: [{ type: 2, style: 5, label: 'Otwórz na stronie', url: m.url }] }] } : {}),
+      ...(buttons.length ? { components: [{ type: 1, components: buttons }] } : {}),
       allowed_mentions: { parse: [] },
     });
     if (r.ok) return 'sent';

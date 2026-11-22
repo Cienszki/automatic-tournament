@@ -1,7 +1,8 @@
 /**
  * The signed-in account's notifications (the bell).
- *   GET                              → { items, unread, discord: { linked, problem, on: {type: bool} } }
+ *   GET                              → { items, unread, muted: {type: bool}, discord: { linked, problem, on: {type: bool} } }
  *   POST { read: 'all' | string[] }  → marks items read
+ *   POST { mute: type, on?: true }   → turns that type off (no bell item, no DM); on: true = back on
  *   POST { test: true }              → a test DM (once a minute)
  *   PUT  { discord: { type: bool } } → which types also come as a Discord DM
  */
@@ -13,6 +14,7 @@ import { ensureAdminInitialized, getAdminDb } from '@/server/lib/admin';
 import { NOTIFY_ORDER, NOTIFY_TYPES, isNotifyType, type InboxItem, type NotifyType } from '@/lib/notify-types';
 import { sendDm } from '@/server/notify/discord-dm';
 import { SITE } from '@/server/notify/notify';
+import { setMuted } from '@/server/notify/mute';
 
 export const dynamic = 'force-dynamic';
 const bad = (error: string, status = 400) => NextResponse.json({ error }, { status });
@@ -27,6 +29,7 @@ async function view(uid: string) {
   ]);
   const a = acc.data() ?? {};
   const on = Object.fromEntries(NOTIFY_ORDER.map(t => [t, (a.notify?.discord?.[t] as boolean | undefined) ?? NOTIFY_TYPES[t].discord])) as Record<NotifyType, boolean>;
+  const muted = Object.fromEntries(NOTIFY_ORDER.map(t => [t, a.notify?.muted?.[t] === true])) as Record<NotifyType, boolean>;
   return {
     items: items.docs.map((d): InboxItem => {
       const x = d.data();
@@ -36,6 +39,7 @@ async function view(uid: string) {
       };
     }),
     unread: unread.data().count,
+    muted,
     discord: { linked: !!a.discord?.id, problem: (a.dmProblem as string | undefined) ?? null, on },
   };
 }
@@ -50,6 +54,11 @@ export async function POST(req: NextRequest) {
   const user = await requireUser(req); if (user instanceof NextResponse) return user;
   const b = await req.json().catch(() => null);
   try {
+    if (b?.mute !== undefined) {
+      if (!isNotifyType(b.mute)) return bad('Złe zapytanie');
+      await setMuted(`u:${user.uid}`, b.mute, b.on !== true);
+      return NextResponse.json(await view(user.uid));
+    }
     if (b?.test === true) {
       const ref = db().collection('accounts').doc(user.uid);
       const a = (await ref.get()).data() ?? {};

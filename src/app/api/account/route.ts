@@ -1,6 +1,7 @@
 /**
  * The signed-in account.
  *   GET  ?t=<tournamentId>                → profile, linked Discord / Steam / Google, admin / caster of this tournament
+ *                                           (casterRequest: their request to cast it, 'pending' | 'declined' | null)
  *   PUT  { nickname?, avatar?, stream? }  → profile (avatar: { source: 'google'|'discord'|'steam'|'url', url? }; stream: link or channel, '' clears)
  *   PUT  { unlink: 'discord' | steamId64 } → removes a link
  */
@@ -13,6 +14,7 @@ import { steamAvatar } from '@/server/accounts/identity';
 import { accountRef, getAccount, unlinkDiscord, unlinkSteam, type AvatarSource } from '@/server/accounts/store';
 import { parseStream } from '@/lib/stream-link';
 import { refreshCaster } from '@/server/casters/casters';
+import { requestState } from '@/server/casters/requests';
 
 export const dynamic = 'force-dynamic';
 const bad = (error: string, status = 400) => NextResponse.json({ error }, { status });
@@ -26,6 +28,7 @@ async function view(uid: string, tournamentId?: string | null) {
     tournamentId ? db.collection('tournaments').doc(tournamentId).collection('admins').doc(uid).get() : null,
     tournamentId ? db.collection('tournaments').doc(tournamentId).collection('casters').doc(uid).get() : null,
   ]);
+  const casterRequest = tournamentId && !caster?.exists ? await requestState(tournamentId, uid) : null;
   const google = user.providerData.find(p => p.providerId === 'google.com');
   const steam = await Promise.all((acc.steam ?? []).slice(0, 1).map(async s => ({ ...s, avatar: s.avatar ?? await steamAvatar(s.id) })));
   const pictures: Partial<Record<AvatarSource, string>> = {
@@ -46,6 +49,7 @@ async function view(uid: string, tournamentId?: string | null) {
     /** Roles in the tournament being viewed (the captain role shows as the team below) */
     admin: superAdmin.exists || !!tAdmin?.exists,
     caster: !!caster?.exists,
+    casterRequest,
     stream: acc.stream ?? null,
   };
 }
