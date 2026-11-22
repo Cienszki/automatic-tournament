@@ -1,15 +1,17 @@
 /**
  * Casters of a tournament, managed by its admins.
- *   GET    ?tournamentId=…            → { casters }
+ *   GET    ?tournamentId=…            → { casters, requests } (requests: people asking to cast, oldest first)
  *   GET    ?tournamentId=…&q=<text>   → { found }: accounts whose nick or Discord name matches
- *   POST   { tournamentId, uid }      → gives the role (and lobby access through the whitelist)
+ *   POST   { tournamentId, uid }      → gives the role (and lobby access through the whitelist); settles their request
  *   DELETE { tournamentId, uid }      → takes it away
+ *   DELETE { tournamentId, uid, request: true } → declines their request
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/server/lib/require-admin';
 import { ensureAdminInitialized, getAdminDb } from '@/server/lib/admin';
-import { addCaster, listCasters, removeCaster } from '@/server/casters/casters';
+import { listCasters, removeCaster } from '@/server/casters/casters';
+import { acceptRequest, declineRequest, pendingRequests } from '@/server/casters/requests';
 
 export const dynamic = 'force-dynamic';
 const ID = /^[A-Za-z0-9_-]{1,128}$/;
@@ -21,7 +23,7 @@ export async function GET(req: NextRequest) {
   const caller = await requireAdmin(req, t); if (caller instanceof NextResponse) return caller;
   try {
     const q = (req.nextUrl.searchParams.get('q') ?? '').trim().toLowerCase();
-    if (!q) return NextResponse.json({ casters: await listCasters(t) });
+    if (!q) { const [casters, requests] = await Promise.all([listCasters(t), pendingRequests(t)]); return NextResponse.json({ casters, requests }); }
     if (q.length < 2) return NextResponse.json({ found: [] });
     // Few enough accounts to filter here; Firestore has no "contains"
     ensureAdminInitialized();
@@ -36,7 +38,7 @@ export async function GET(req: NextRequest) {
 
 async function body(req: NextRequest) {
   const b = await req.json().catch(() => null);
-  return ID.test(b?.tournamentId ?? '') && ID.test(b?.uid ?? '') ? b as { tournamentId: string; uid: string } : null;
+  return ID.test(b?.tournamentId ?? '') && ID.test(b?.uid ?? '') ? b as { tournamentId: string; uid: string; request?: boolean } : null;
 }
 
 export async function POST(req: NextRequest) {
@@ -45,8 +47,9 @@ export async function POST(req: NextRequest) {
   try {
     const exists = (await getAdminDb().collection('accounts').doc(b.uid).get()).exists;
     if (!exists) return bad('Nie ma takiego konta.', 404);
-    await addCaster(b.tournamentId, b.uid, caller.uid);
-    return NextResponse.json({ casters: await listCasters(b.tournamentId) });
+    await acceptRequest(b.tournamentId, b.uid, caller.uid);
+    const [casters, requests] = await Promise.all([listCasters(b.tournamentId), pendingRequests(b.tournamentId)]);
+    return NextResponse.json({ casters, requests });
   } catch (e) { console.error('[manage/casters] post failed:', e); return bad('Nie udało się dodać castera', 500); }
 }
 
@@ -54,7 +57,9 @@ export async function DELETE(req: NextRequest) {
   const b = await body(req); if (!b) return bad('Złe zapytanie');
   const caller = await requireAdmin(req, b.tournamentId); if (caller instanceof NextResponse) return caller;
   try {
-    await removeCaster(b.tournamentId, b.uid);
-    return NextResponse.json({ casters: await listCasters(b.tournamentId) });
+    if (b.request) await declineRequest(b.tournamentId, b.uid, caller.uid);
+    else await removeCaster(b.tournamentId, b.uid);
+    const [casters, requests] = await Promise.all([listCasters(b.tournamentId), pendingRequests(b.tournamentId)]);
+    return NextResponse.json({ casters, requests });
   } catch (e) { console.error('[manage/casters] delete failed:', e); return bad('Nie udało się usunąć castera', 500); }
 }

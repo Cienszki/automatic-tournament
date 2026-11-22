@@ -576,7 +576,7 @@ After ADR-09 and ADR-10 there are four exchanges, all through tables that the bo
 |---|---|---|
 | website → bot | `bot.lobby_sessions` (request columns) | "create this lobby at this time with these players and settings"; updated on reschedule, stand-in or caster change; cancelled by the website |
 | bot → website | `bot.lobby_sessions` (state columns) | lobby state, ready check, current game, problems |
-| bot → website | a row in `jobs` of type `import-results` or `apply-forfeit` | "game ended, Dota match id M" or "team T did not show" |
+| bot → website | a row in `jobs` of type `import-results` or `apply-forfeit` | "game ended, Dota match id M, Radiant (team R) won" or "team T did not show". The result is recorded at once; the statistics follow when OpenDota has the match (owner, 2026-11-22; WP-13b) |
 | bot → website | `bot.workers` | heartbeat and capacity |
 
 The website never calls the bot, and the bot cannot read the website's tables. The Conductor's five-minute HTTP call disappears.

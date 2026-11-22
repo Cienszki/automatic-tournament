@@ -18,6 +18,7 @@ import { auth } from "@/lib/firebase";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { setErrorContext } from "@/platform/errors/context";
+import { AccountMergeDialog } from "@/components/auth/AccountMergeDialog";
 
 interface AuthContextType {
   user: User | null;
@@ -59,6 +60,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [loading, setLoading] = useState(true);
   const [choosing, setChoosing] = useState(false);
   const [discordOn, setDiscordOn] = useState<boolean | null>(null);
+  /** Back from linking a Discord that has its own account: the merge to confirm */
+  const [mergeTicket, setMergeTicket] = useState<string | null>(null);
   const { toast } = useToast();
 
   useEffect(() => onAuthStateChanged(auth, u => { setUser(u); setLoading(false); setErrorContext({ userId: u?.uid ?? null }); }), []);
@@ -75,7 +78,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const query = new URLSearchParams(window.location.search);
     const clean = () => {
       const u = new URL(window.location.href);
-      ["konto", "powod", "steam"].forEach(k => u.searchParams.delete(k));
+      ["konto", "powod", "steam", "bilet"].forEach(k => u.searchParams.delete(k));
       u.hash = "";
       window.history.replaceState(null, "", u.pathname + u.search);
     };
@@ -95,6 +98,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const k = query.get("konto");
     if (k || query.get("steam")) {
       if (k === "discord") toast({ title: "Discord połączony" });
+      else if (k === "polacz" && query.get("bilet")) setMergeTicket(query.get("bilet"));
       else if (k === "steam") toast({ title: "Steam połączony" });
       else if (k === "blad") toast({ title: "Nie udało się", description: query.get("powod") ?? "Spróbuj jeszcze raz.", variant: "destructive" });
       if (query.get("steam") === "zajety") toast({ title: "To konto Steam jest już połączone z innym kontem", variant: "destructive" });
@@ -145,6 +149,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   return (
     <AuthContext.Provider value={{ user, loading, signIn, signInWithGoogle: async () => signIn(), signInWithDiscord, signInGoogleDirect: google, discordLogin: discordOn, linkDiscord, connectSteam, signOut }}>
       {children}
+      {mergeTicket && user && <AccountMergeDialog id={mergeTicket} onClose={() => setMergeTicket(null)} />}
       <Dialog open={choosing} onOpenChange={setChoosing}>
         <DialogContent className="max-w-sm">
           <DialogHeader>

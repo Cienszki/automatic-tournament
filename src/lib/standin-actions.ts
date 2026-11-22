@@ -202,6 +202,10 @@ async function resolveMatchRef(tournamentId: string, matchId: string) {
 }
 
 /** Silently resolves steamId32 and steamId64 from a profile URL. Returns empty strings on failure. */
+/** An approval without a Steam id would let the bot kick the standin from the lobby, so it is refused */
+const unreadableSteamError = (url: string) =>
+  `Nie udało się odczytać konta Steam standina z linku ${url || '(brak linku)'}. Drużyna musi wysłać nowe zgłoszenie z poprawnym linkiem do profilu Steam.`;
+
 async function resolveSteamIds(profileUrl: string): Promise<{ steamId32: string; steamId64: string }> {
   if (!profileUrl) return { steamId32: '', steamId64: '' };
   try {
@@ -295,6 +299,7 @@ export async function approveStandinRequest(
     const req = reqSnap.data()!;
 
     const { steamId32, steamId64 } = await resolveSteamIds(req.standinSteamProfileUrl);
+    if (!steamId32) return { success: false, error: unreadableSteamError(req.standinSteamProfileUrl) };
 
     const conflict = await findConflictingApprovedStandin(tournamentId, req.matchId, requestId, req, steamId32);
     if (conflict) {
@@ -518,6 +523,7 @@ export async function approveStandinAppeal(
     const req = reqSnap.data()!;
 
     const { steamId32, steamId64 } = await resolveSteamIds(req.standinSteamProfileUrl);
+    if (!steamId32) return { success: false, error: unreadableSteamError(req.standinSteamProfileUrl) };
 
     const conflict = await findConflictingApprovedStandin(tournamentId, req.matchId, requestId, req, steamId32);
     if (conflict) {

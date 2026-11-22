@@ -7,6 +7,7 @@
 // and is signed with an HMAC, valid for 10 minutes.
 
 import { createHmac, randomBytes, timingSafeEqual } from 'crypto';
+import { communityProfile } from '@/lib/steam-community';
 import { isAllowedOrigin } from '@/platform/origins';
 
 export const DISCORD_SCOPES = 'identify connections';
@@ -109,14 +110,19 @@ export async function steamVerify(params: URLSearchParams, expectedReturn: strin
   return m ? m[1] : null;
 }
 
-/** Steam profile picture (Steam Web API) */
+/** Steam profile picture: the Steam Web API, else the public profile page (no key needed) */
 export async function steamAvatar(steamId64: string): Promise<string | null> {
-  const key = process.env.STEAM_API_KEY; if (!key) return null;
-  try {
-    const r = await fetch(`https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v2/?key=${key}&steamids=${steamId64}`);
-    const p = (await r.json())?.response?.players?.[0];
-    return p?.avatarfull ?? null;
-  } catch { return null; }
+  const key = process.env.STEAM_API_KEY;
+  if (key) {
+    try {
+      const r = await fetch(`https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v2/?key=${key}&steamids=${steamId64}`);
+      if (r.ok) {
+        const p = (await r.json())?.response?.players?.[0];
+        if (p?.avatarfull) return p.avatarfull;
+      }
+    } catch { /* the public profile below */ }
+  }
+  return (await communityProfile({ steamId64 }))?.avatarFull || null;
 }
 
 export const steam32to64 = (id32: string) => (BigInt(id32) + BigInt('76561197960265728')).toString();

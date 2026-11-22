@@ -862,6 +862,8 @@
     "forbidden": "Access denied",
     "serverError": "Server error",
     "networkError": "Network error",
+    "opendotaUnavailable": "OpenDota is not responding, try again later",
+    "stratzUnavailable": "STRATZ is not responding, try again later",
     "tryAgain": "Try again",
     "goBack": "Go back",
     "goHome": "Go to home"
