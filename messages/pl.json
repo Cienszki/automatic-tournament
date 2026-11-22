@@ -862,6 +862,8 @@
     "forbidden": "Brak dostępu",
     "serverError": "Błąd serwera",
     "networkError": "Błąd sieci",
+    "opendotaUnavailable": "OpenDota nie odpowiada, spróbuj później",
+    "stratzUnavailable": "STRATZ nie odpowiada, spróbuj później",
     "tryAgain": "Spróbuj ponownie",
     "goBack": "Wróć",
     "goHome": "Wróć do strony głównej"
