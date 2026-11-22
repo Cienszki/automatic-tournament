@@ -28,12 +28,12 @@ describe('notification "turn off" links', () => {
   });
 
   it('builds the DM button link, and none without a secret', () => {
-    expect(muteUrl('https://dota2inhouse.pl', 'd:123456789012345678', 'packs'))
-      .toMatch(/^https:\/\/dota2inhouse\.pl\/api\/notify\/off\?s=d%3A123456789012345678&t=packs&sig=[0-9a-f]{32}$/);
+    expect(muteUrl('https://example.org', 'd:123456789012345678', 'packs'))
+      .toMatch(/^https:\/\/example\.org\/api\/notify\/off\?s=d%3A123456789012345678&t=packs&sig=[0-9a-f]{32}$/);
     delete process.env.NOTIFY_SECRET;
     const cron = process.env.CRON_SECRET;
     delete process.env.CRON_SECRET;
-    expect(muteUrl('https://dota2inhouse.pl', 'u:abc123', 'packs')).toBeNull();
+    expect(muteUrl('https://example.org', 'u:abc123', 'packs')).toBeNull();
     if (cron !== undefined) process.env.CRON_SECRET = cron;
   });
 });
