@@ -6,7 +6,7 @@ import { requestJson, UpstreamError, type Budget, type FetchFn } from './upstrea
 // 15 minutes. So one client instance sends one request at a time with a gap between them, and
 // the monthly sweep must run from one place (WP-66 decides where).
 
-const URL = 'https://api.stratz.com/graphql';
+const STRATZ_URL = 'https://api.stratz.com/graphql';
 const PAGE = 100;
 const HERO_CHOICE_MODES = new Set(['ALL_PICK', 'ALL_PICK_RANKED', 'CAPTAINS_MODE', 'RANDOM_DRAFT', 'SINGLE_DRAFT', 'ALL_RANDOM', 'CAPTAINS_DRAFT']);
 const LEAGUE_LOBBIES = new Set(['PRACTICE', 'TOURNAMENT', 'BATTLE_CUP']);
@@ -14,28 +14,21 @@ const LEAGUE_LOBBIES = new Set(['PRACTICE', 'TOURNAMENT', 'BATTLE_CUP']);
 const QUERY =
   'query($id: Long!, $skip: Int!, $since: Long) { player(steamAccountId: $id) { matches(request: {take: 100, skip: $skip, startDateTime: $since}) { id startDateTime lobbyType gameMode players(steamAccountId: $id) { heroId position isVictory } } } }';
 
+const matchSchema = z.object({
+  id: z.union([z.number().int().positive(), z.string().regex(/^\d+$/)]),
+  startDateTime: z.number(),
+  lobbyType: z.string().nullable().optional(),
+  gameMode: z.string().nullable().optional(),
+  players: z
+    .array(z.object({ heroId: z.number().nullable().optional(), position: z.string().nullable().optional(), isVictory: z.boolean().nullable().optional() }))
+    .nullable()
+    .optional(),
+});
+
+// Entries are parsed one by one (below), so one odd game does not cost the whole account
 const pageSchema = z.object({
   data: z
-    .object({
-      player: z
-        .object({
-          matches: z
-            .array(
-              z.object({
-                id: z.union([z.number(), z.string()]),
-                startDateTime: z.number(),
-                lobbyType: z.string().nullable().optional(),
-                gameMode: z.string().nullable().optional(),
-                players: z
-                  .array(z.object({ heroId: z.number().nullable().optional(), position: z.string().nullable().optional(), isVictory: z.boolean().nullable().optional() }))
-                  .nullable()
-                  .optional(),
-              }),
-            )
-            .nullable(),
-        })
-        .nullable(),
-    })
+    .object({ player: z.object({ matches: z.array(z.unknown()).nullable() }).nullable() })
     .nullable()
     .optional(),
 });
@@ -84,7 +77,7 @@ export function createStratzClient(options: StratzClientOptions = {}): StratzCli
       requestJson(
         'stratz',
         fetchFn,
-        URL,
+        STRATZ_URL,
         {
           method: 'POST',
           headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', 'User-Agent': 'STRATZ_API' },
@@ -104,14 +97,18 @@ export function createStratzClient(options: StratzClientOptions = {}): StratzCli
         const parsed = pageSchema.safeParse(await page(token, Number(steamId32), p * PAGE, sinceUnix, budget));
         const matches = parsed.success ? parsed.data.data?.player?.matches : undefined;
         if (!matches) throw new UpstreamError('stratz', 'bad_response', 'player matches');
-        for (const m of matches) {
+        for (const entry of matches) {
+          const one = matchSchema.safeParse(entry);
+          if (!one.success) continue;
+          const m = one.data;
           const me = m.players?.[0];
-          if (!me?.heroId) continue;
+          // An unsettled result (isVictory null) is skipped: merged over OpenDota's row it would turn a win into a loss
+          if (!me?.heroId || typeof me.isVictory !== 'boolean') continue;
           out.push({
             matchId: Number(m.id),
             start: m.startDateTime,
             hero: me.heroId,
-            win: me.isVictory === true,
+            win: me.isVictory,
             league: LEAGUE_LOBBIES.has(m.lobbyType ?? ''),
             position: Number(String(me.position ?? '').replace('POSITION_', '')) || 0,
             heroChoiceMode: HERO_CHOICE_MODES.has(m.gameMode ?? ''),

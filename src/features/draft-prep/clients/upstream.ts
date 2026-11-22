@@ -84,8 +84,13 @@ export async function requestJson(
     } catch (e) {
       throw failure(source, controller.signal.aborted, limit < timeoutMs, what, e);
     }
-    if (res.status === 429) throw new UpstreamError(source, 'rate_limited', what, 429);
-    if (!res.ok) throw new UpstreamError(source, 'http', what, res.status);
+    if (!res.ok) {
+      // An unread error body holds its connection until garbage collection; a sweep during an outage would pile them up
+      void res.body?.cancel().catch(() => undefined);
+      throw res.status === 429
+        ? new UpstreamError(source, 'rate_limited', what, 429)
+        : new UpstreamError(source, 'http', what, res.status);
+    }
     try {
       return (await Promise.race([res.json(), stopped])) as unknown;
     } catch (e) {
@@ -99,7 +104,8 @@ export async function requestJson(
 }
 
 function failure(source: UpstreamSource, aborted: boolean, budgetBound: boolean, what: string, e: unknown): UpstreamError {
-  if (!aborted) return new UpstreamError(source, 'unreachable', `${what}: ${e instanceof Error ? e.message : String(e)}`);
+  // Some fetch implementations put the whole URL, key included, into their error text
+  if (!aborted) return new UpstreamError(source, 'unreachable', redact(`${what}: ${e instanceof Error ? e.message : String(e)}`));
   return new UpstreamError(source, budgetBound ? 'out_of_time' : 'timeout', what);
 }
 

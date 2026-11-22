@@ -60,6 +60,13 @@ describe('requestJson', () => {
     expect(e.message).toContain('date=3');
   });
 
+  it('keeps the API key out of an unreachable-host message that quotes the URL', async () => {
+    const leaky: FetchFn = async (url) => { throw new Error(`request to ${url} failed`); };
+    const e = await failureOf(requestJson('opendota', leaky, 'https://x/a?api_key=SECRET', {}, { timeoutMs: 100 }));
+    expect(e.failure).toBe('unreachable');
+    expect(e.message).not.toContain('SECRET');
+  });
+
   it('carries a code whose Polish message tells the user plainly', async () => {
     const e = await failureOf(requestJson('opendota', hanging, 'https://x/a', {}, { timeoutMs: 10 }));
     expect(e.code).toBe(UPSTREAM_CODES.opendota);

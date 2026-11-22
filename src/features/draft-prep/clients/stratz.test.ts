@@ -72,6 +72,16 @@ describe('STRATZ client', () => {
     await expect(client.playerGames('2', { sinceUnix: 0 })).resolves.toHaveLength(1);
   });
 
+  it('skips an odd entry and a game without a settled result, keeping the rest of the page', async () => {
+    const page = pageOf(2);
+    const matches: unknown[] = page.data.player.matches;
+    matches.push({ id: 50, startDateTime: null, lobbyType: 'UNRANKED', gameMode: 'ALL_PICK', players: [{ heroId: 3, position: 'POSITION_1', isVictory: true }] });
+    matches.push({ id: 'abc', startDateTime: 5, lobbyType: 'UNRANKED', gameMode: 'ALL_PICK', players: [{ heroId: 3, position: 'POSITION_1', isVictory: true }] });
+    matches.push({ id: 51, startDateTime: 6, lobbyType: 'UNRANKED', gameMode: 'ALL_PICK', players: [{ heroId: 3, position: 'POSITION_1', isVictory: null }] });
+    const games = await createStratzClient({ token: 'T', fetch: async () => json(page) }).playerGames('1', { sinceUnix: 0 });
+    expect(games.map((g) => g.matchId)).toEqual([1, 2]);
+  });
+
   it('refuses to run without a token', async () => {
     await expect(createStratzClient({ fetch: async () => json(pageOf(1)) }).playerGames('1', { sinceUnix: 0 })).rejects.toMatchObject({ failure: 'not_configured' });
   });
