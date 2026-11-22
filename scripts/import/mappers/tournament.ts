@@ -9,7 +9,7 @@ import { organizationFor, SERIES } from '../organizers';
 import { docsOf, type Doc } from '../source';
 import { isUserId, readTime, toInt, toText } from '../values';
 import { arr, createdOf, obj, timeOf, updatedOf } from './read';
-import { fitJson, type MapState } from './state';
+import type { MapState } from './state';
 import { mapFeatures, mapPresentation, mapSettings, mapTheme } from './tournament-json';
 
 const KIND = 'tournaments';
@@ -135,7 +135,14 @@ function mapBotConfig(state: MapState): unknown {
       addedAt: readTime(w.addedAt).value?.toISOString() ?? doc.updateTime ?? '2000-01-01T00:00:00.000Z',
       addedBy: toText(w.addedBy) ?? 'unknown',
     }));
-    result = fitJson(state, botSettingsSchema, c, `config ${doc.path} bot_settings`);
+    // The column may be empty, so a configuration that does not fit is reported, not forced.
+    const parsed = botSettingsSchema.safeParse(c);
+    if (!parsed.success) {
+      const issues = parsed.error.issues.slice(0, 5).map((i) => `${i.path.join('.')}: ${i.message}`).join('; ');
+      state.ctx.outcome('config', 'unmapped', 'the bot configuration does not fit bot_settings; the tournament gets none', `${doc.path} ${issues}`);
+      continue;
+    }
+    result = parsed.data;
     state.ctx.outcome('config', 'mapped');
   }
   return result;
