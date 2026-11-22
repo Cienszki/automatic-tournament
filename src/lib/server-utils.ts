@@ -1,39 +1,35 @@
 // src/lib/server-utils.ts
 'use server';
 
+import { communityProfile, STEAM_KEY_MESSAGE, steamKeyRejected } from './steam-community';
+
 /**
- * Resolves a Steam vanity URL to a Steam64 ID using the official Steam Web API.
- * This is the most reliable method for resolving custom URLs.
- * REQUIRES a STEAM_API_KEY environment variable to be set (server-only, not NEXT_PUBLIC_).
+ * Resolves a Steam vanity URL to a Steam64 ID: the official Steam Web API (STEAM_API_KEY, server-only),
+ * then the public profile page, which needs no key.
  * 
  * @param vanityName The custom part of the vanity URL (e.g., "Rhasnethtzent").
  * @returns A promise that resolves to the user's 64-bit Steam ID as a string.
- * @throws An error if the API key is missing or the vanity name cannot be resolved.
+ * @throws An error if no profile has this name.
  */
 async function resolveSteamVanityURL(vanityName: string): Promise<string> {
     const apiKey = process.env.STEAM_API_KEY;
-    if (!apiKey) {
-        throw new Error("STEAM_API_KEY environment variable is not set. This is required to resolve vanity URLs.");
-    }
-
-    const url = `https://api.steampowered.com/ISteamUser/ResolveVanityURL/v1/?key=${apiKey}&vanityurl=${vanityName}&url_type=1`;
-    
-    try {
-        const response = await fetch(url);
-        if (!response.ok) {
-            throw new Error(`Steam API request failed with status: ${response.status}`);
+    if (apiKey) {
+        try {
+            const response = await fetch(`https://api.steampowered.com/ISteamUser/ResolveVanityURL/v1/?key=${apiKey}&vanityurl=${encodeURIComponent(vanityName)}&url_type=1`);
+            if (response.ok) {
+                const data = await response.json();
+                if (data.response?.success === 1 && data.response?.steamid) return data.response.steamid;
+            } else if (steamKeyRejected(response.status)) {
+                console.error(`[resolveSteamVanityURL] ${STEAM_KEY_MESSAGE}`);
+            }
+        } catch (error) {
+            console.warn("[resolveSteamVanityURL] Steam API failed:", (error as Error).message);
         }
-
-        const data = await response.json();
-        if (data.response.success === 1) {
-            return data.response.steamid;
-        } else {
-            throw new Error(`Could not resolve Steam vanity URL: ${vanityName}. The profile may not exist or the vanity URL is incorrect.`);
-        }
-    } catch (error) {
-        console.error("Error calling Steam API:", error);
-        throw error; // Re-throw the error to be handled by the caller
     }
+    // The public profile page needs no key
+    const profile = await communityProfile({ vanity: vanityName });
+    if (profile) return profile.steamId64;
+    throw new Error(`Nie znaleziono profilu Steam „${vanityName}”. Sprawdź link do profilu.`);
 }
 
 /**
@@ -67,30 +63,23 @@ export async function getSteam64IdFromUrl(url: string): Promise<string> {
  */
 export async function getSteamPlayerSummary(steamId: string): Promise<any> {
     const apiKey = process.env.STEAM_API_KEY;
-    if (!apiKey) {
-        throw new Error("STEAM_API_KEY environment variable is not set.");
-    }
-
-    const url = `https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v2/?key=${apiKey}&steamids=${steamId}`;
-    
-    try {
-        const response = await fetch(url);
-        if (!response.ok) {
-            throw new Error(`Steam API request failed with status: ${response.status}`);
+    if (apiKey) {
+        try {
+            const response = await fetch(`https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v2/?key=${apiKey}&steamids=${steamId}`);
+            if (response.ok) {
+                const player = (await response.json()).response?.players?.[0];
+                if (player) return player;
+            } else if (steamKeyRejected(response.status)) {
+                console.error(`[getSteamPlayerSummary] ${STEAM_KEY_MESSAGE}`);
+            }
+        } catch (error) {
+            console.warn("[getSteamPlayerSummary] Steam API failed:", (error as Error).message);
         }
-
-        const data = await response.json();
-        const player = data.response.players[0];
-        
-        if (player) {
-            return player;
-        } else {
-            throw new Error("Could not find player summary in Steam API response.");
-        }
-    } catch (error) {
-        console.error("Error fetching Steam player summary:", error);
-        throw error;
     }
+    // The public profile page, in the API's shape
+    const p = await communityProfile({ steamId64: steamId });
+    if (!p) throw new Error("Nie znaleziono profilu Steam.");
+    return { steamid: p.steamId64, personaname: p.name, avatar: p.avatar, avatarmedium: p.avatarMedium, avatarfull: p.avatarFull, profileurl: `https://steamcommunity.com/profiles/${p.steamId64}` };
 }
 
 /**

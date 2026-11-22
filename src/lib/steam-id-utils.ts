@@ -1,6 +1,8 @@
 // src/lib/steam-id-utils.ts
 // Utilities for extracting and converting Steam IDs from profile URLs
 
+import { communityProfile, STEAM_KEY_MESSAGE, steamKeyRejected } from './steam-community';
+
 /**
  * Steam ID formats:
  * - Steam64: 76561198XXXXXXXXX (17 digits, starts with 76561198)
@@ -86,38 +88,47 @@ export async function extractSteamIdFromUrl(
 }
 
 /**
- * Resolve a custom Steam URL to Steam64 ID using Steam Web API
+ * Resolve a custom Steam URL to Steam64 ID: the Steam Web API first, then the public profile page
+ * (no key needed), so a revoked key doesn't stop registration, standins or the whitelist.
  */
 async function resolveSteamCustomUrl(customUrl: string): Promise<string> {
     // Server-only: uses STEAM_API_KEY (must not be exposed to client bundle)
     const apiKey = process.env.STEAM_API_KEY;
-
-    if (!apiKey) {
-        throw new Error('STEAM_API_KEY not configured - cannot resolve custom Steam URLs');
-    }
-
-    // Use v1 endpoint with url_type=1 as in server-utils.ts - this is more reliable
-    const url = `https://api.steampowered.com/ISteamUser/ResolveVanityURL/v1/?key=${apiKey}&vanityurl=${customUrl}&url_type=1`;
-
-    try {
-        const response = await fetch(url);
-        if (!response.ok) {
-            throw new Error(`Steam API request failed with status: ${response.status}`);
+    if (apiKey) {
+        try {
+            const response = await fetch(`https://api.steampowered.com/ISteamUser/ResolveVanityURL/v1/?key=${apiKey}&vanityurl=${encodeURIComponent(customUrl)}&url_type=1`);
+            if (response.ok) {
+                const data = await response.json();
+                if (data.response?.success === 1 && data.response?.steamid) return data.response.steamid;
+            } else if (steamKeyRejected(response.status)) {
+                console.error(`[resolveSteamCustomUrl] ${STEAM_KEY_MESSAGE}`);
+            }
+        } catch (error) {
+            console.warn('[resolveSteamCustomUrl] Steam API failed:', (error as Error).message);
         }
-        const data = await response.json();
-
-        if (data.response?.success === 1 && data.response?.steamid) {
-            return data.response.steamid;
-        } else {
-            throw new Error(`Failed to resolve custom URL "${customUrl}" - profile may not exist or be private`);
-        }
-    } catch (error) {
-        throw new Error(`Steam API error while resolving custom URL: ${(error as Error).message}`);
     }
+    const profile = await communityProfile({ vanity: customUrl });
+    if (profile) return profile.steamId64;
+    throw new Error(`Nie znaleziono profilu Steam „${customUrl}”. Sprawdź link do profilu.`);
+}
+
+const basicProfile = (steam64: string) => ({
+    personaname: 'Unknown',
+    avatar: '',
+    avatarmedium: '',
+    avatarfull: '',
+    profileurl: `https://steamcommunity.com/profiles/${steam64}`,
+});
+
+/** The public profile page when the Steam Web API can't answer */
+async function communitySummary(steam64: string) {
+    const p = await communityProfile({ steamId64: steam64 });
+    if (!p) return basicProfile(steam64);
+    return { personaname: p.name || 'Unknown', avatar: p.avatar, avatarmedium: p.avatarMedium, avatarfull: p.avatarFull, profileurl: `https://steamcommunity.com/profiles/${steam64}` };
 }
 
 /**
- * Fetch Steam profile data (avatar, persona name) using Steam Web API
+ * Fetch Steam profile data (avatar, persona name): the Steam Web API, else the public profile page
  */
 export async function fetchSteamProfile(steam64: string): Promise<{
     personaname: string;
@@ -127,76 +138,34 @@ export async function fetchSteamProfile(steam64: string): Promise<{
     profileurl: string;
 }> {
     const apiKey = process.env.STEAM_API_KEY;
-
     if (!apiKey) {
-        console.warn('STEAM_API_KEY not configured - returning basic profile data');
-        return {
-            personaname: 'Unknown',
-            avatar: '',
-            avatarmedium: '',
-            avatarfull: '',
-            profileurl: `https://steamcommunity.com/profiles/${steam64}`,
-        };
+        console.warn('STEAM_API_KEY not configured - using the public Steam profile');
+        return communitySummary(steam64);
     }
 
-    const url = `https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key=${apiKey}&steamids=${steam64}`;
-
     try {
-        const response = await fetch(url);
-
-        if (response.status === 403) {
-            console.error('[fetchSteamProfile] Steam API key is invalid or revoked (403 Forbidden). Update STEAM_API_KEY in environment variables.');
-            return {
-                personaname: 'Unknown',
-                avatar: '',
-                avatarmedium: '',
-                avatarfull: '',
-                profileurl: `https://steamcommunity.com/profiles/${steam64}`,
-            };
-        }
-
+        const response = await fetch(`https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key=${apiKey}&steamids=${steam64}`);
         if (!response.ok) {
-            console.error(`[fetchSteamProfile] Steam API returned HTTP ${response.status} for steamId ${steam64}`);
-            return {
-                personaname: 'Unknown',
-                avatar: '',
-                avatarmedium: '',
-                avatarfull: '',
-                profileurl: `https://steamcommunity.com/profiles/${steam64}`,
-            };
+            console.error(steamKeyRejected(response.status)
+                ? `[fetchSteamProfile] ${STEAM_KEY_MESSAGE}`
+                : `[fetchSteamProfile] Steam API returned HTTP ${response.status} for steamId ${steam64}`);
+            return communitySummary(steam64);
         }
-
-        const data = await response.json();
-
-        if (data.response?.players?.[0]) {
-            const player = data.response.players[0];
-            return {
-                personaname: player.personaname || 'Unknown',
-                avatar: player.avatar || '',
-                avatarmedium: player.avatarmedium || '',
-                avatarfull: player.avatarfull || '',
-                profileurl: player.profileurl || `https://steamcommunity.com/profiles/${steam64}`,
-            };
-        } else {
+        const player = (await response.json()).response?.players?.[0];
+        if (!player) {
             console.warn(`[fetchSteamProfile] No player data returned for steamId ${steam64} — profile may be private or deleted`);
-            return {
-                personaname: 'Unknown',
-                avatar: '',
-                avatarmedium: '',
-                avatarfull: '',
-                profileurl: `https://steamcommunity.com/profiles/${steam64}`,
-            };
+            return basicProfile(steam64);
         }
+        return {
+            personaname: player.personaname || 'Unknown',
+            avatar: player.avatar || '',
+            avatarmedium: player.avatarmedium || '',
+            avatarfull: player.avatarfull || '',
+            profileurl: player.profileurl || `https://steamcommunity.com/profiles/${steam64}`,
+        };
     } catch (error) {
         console.error('[fetchSteamProfile] Unexpected error fetching Steam profile:', error);
-        // Return fallback data instead of throwing
-        return {
-            personaname: 'Unknown',
-            avatar: '',
-            avatarmedium: '',
-            avatarfull: '',
-            profileurl: `https://steamcommunity.com/profiles/${steam64}`,
-        };
+        return communitySummary(steam64);
     }
 }
 

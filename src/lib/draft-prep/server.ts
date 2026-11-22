@@ -73,7 +73,7 @@ export async function buildContext(tournamentId: string | null): Promise<DpConte
         const prev = players.get(sid64);
         players.set(sid64, {
           sid64, sid32: p.steamId32 || prev?.sid32 || sid64To32(sid64), name: p.nickname || prev?.name || '?', role: p.role || prev?.role,
-          avatar: p.avatarmedium || p.avatarfull || p.avatar || prev?.avatar, mmr: typeof p.mmr === 'number' ? p.mmr : undefined,
+          avatar: p.avatarmedium || p.avatarfull || p.avatar || prev?.avatar, mmr: Number(p.mmr) > 0 ? Number(p.mmr) : undefined,
           smurfs: Array.isArray(p.smurfAccounts) ? p.smurfAccounts.length : 0,
         });
       }
@@ -81,7 +81,7 @@ export async function buildContext(tournamentId: string | null): Promise<DpConte
     // registration time, so lists follow the teams section order
     const c = t.createdAt;
     const registeredAt = typeof c?.toMillis === 'function' ? c.toMillis() : typeof c === 'string' && Number.isFinite(Date.parse(c)) ? Date.parse(c) : undefined;
-    return { id: d.id, name: (t.name || '').trim(), tag: t.tag || undefined, logoUrl: t.logoUrl || undefined, captainId: t.captainId || undefined, registeredAt, players: [...players.values()] };
+    return { id: d.id, name: (t.name || '').trim(), tag: t.tag || undefined, logoUrl: t.logoUrl || undefined, captainId: t.captainId || undefined, registeredAt, seedMmr: Number(t.seedMmr) > 0 ? Number(t.seedMmr) : undefined, players: [...players.values()] };
   }));
 
   // Standin requests that are not decided yet (approved ones are copied into the match doc)

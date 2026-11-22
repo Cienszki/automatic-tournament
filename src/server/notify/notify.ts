@@ -1,6 +1,7 @@
 // Notifications for accounts. Each one is an inbox item (accounts/{uid}/inbox/{id}, written only
 // here; the bell reads it through /api/inbox), plus a Discord DM when the person chose that for
-// its type (accounts/{uid}.notify.discord[type], defaults in NOTIFY_TYPES).
+// its type (accounts/{uid}.notify.discord[type], defaults in NOTIFY_TYPES). A type the person
+// turned off (accounts/{uid}.notify.muted[type], see ./mute.ts) sends neither.
 //
 // Every notification has a `key` naming the event (e.g. "reschedule:<match>:<request>:pending").
 // The item id comes from key + account, so sending the same event twice is a no-op: callers may
@@ -11,6 +12,7 @@ import { FieldValue } from 'firebase-admin/firestore';
 import { ensureAdminInitialized, getAdminDb } from '@/server/lib/admin';
 import { NOTIFY_TYPES, type NotifyType } from '@/lib/notify-types';
 import { sendDm } from './discord-dm';
+import { discordMuted, muteUrl } from './mute';
 import { steam64ToSteam32 } from '@/lib/steam-id-utils';
 
 export const SITE = 'https://dota2inhouse.pl';
@@ -41,6 +43,8 @@ export async function notify(uids: Iterable<string | null | undefined>, n: Note)
   const to = [...new Set([...uids].filter((u): u is string => !!u))];
   let fresh = 0;
   for (const uid of to) {
+    const acc = (await db().collection('accounts').doc(uid).get()).data();
+    if (acc?.notify?.muted?.[n.type] === true) continue; // they turned this kind off
     const id = createHash('sha1').update(`${n.key}|${uid}`).digest('hex').slice(0, 24);
     const ref = db().collection('accounts').doc(uid).collection('inbox').doc(id);
     try {
@@ -55,19 +59,19 @@ export async function notify(uids: Iterable<string | null | undefined>, n: Note)
       continue;
     }
     fresh++;
-    await deliverDm(uid, ref, n).catch(e => console.warn('[notify] dm step failed:', e));
+    await deliverDm(uid, ref, n, acc).catch(e => console.warn('[notify] dm step failed:', e));
   }
   return fresh;
 }
 
-async function deliverDm(uid: string, ref: FirebaseFirestore.DocumentReference, n: Note) {
-  const acc = (await db().collection('accounts').doc(uid).get()).data();
+async function deliverDm(uid: string, ref: FirebaseFirestore.DocumentReference, n: Note, acc: FirebaseFirestore.DocumentData | undefined) {
   const discordId = acc?.discord?.id as string | undefined;
   const wants = (acc?.notify?.discord?.[n.type] as boolean | undefined) ?? NOTIFY_TYPES[n.type].discord;
   if (!discordId || !wants) return;
   const res = await sendDm(discordId, {
     title: n.title, body: n.body,
     url: n.href ? `${SITE}${n.href}` : null,
+    offUrl: muteUrl(SITE, `u:${uid}`, n.type),
     footer: n.tournament?.name ?? null,
     color: n.tournament?.color ?? null,
   });
@@ -106,9 +110,14 @@ export async function notifySteam(steamIds64: Iterable<string>, n: Note): Promis
 /** A DM to someone without an account; false when this event already reached them */
 async function dmOnce(discordId: string, n: Note): Promise<boolean> {
   const ref = db().collection('dmLog').doc(createHash('sha1').update(`${n.key}|${discordId}`).digest('hex').slice(0, 24));
+  if (await discordMuted(discordId, n.type)) return false;
   try { await ref.create({ key: n.key, discordId, at: FieldValue.serverTimestamp() }); }
   catch (e) { if ((e as { code?: number }).code === 6) return false; throw e; }
-  const res = await sendDm(discordId, { title: n.title, body: n.body, url: n.href ? `${SITE}${n.href}` : null, footer: n.tournament?.name ?? null, color: n.tournament?.color ?? null });
+  const res = await sendDm(discordId, {
+    title: n.title, body: n.body, url: n.href ? `${SITE}${n.href}` : null,
+    offUrl: muteUrl(SITE, `d:${discordId}`, n.type),
+    footer: n.tournament?.name ?? null, color: n.tournament?.color ?? null,
+  });
   await ref.update({ dm: res });
   return res === 'sent';
 }
