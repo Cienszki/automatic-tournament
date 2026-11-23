@@ -18,7 +18,7 @@ Two rules every session keeps:
 | S6 | Stage 1: WP-03 environments, WP-33 import, WP-66 part 1, WP-06 local half | **done 2026-11-23** | WP-03, WP-33 and WP-66 part 1 merged; WP-06 local half built and reviewed on `wp/06-hosting-trial`, waiting for the staging run; questions 41 to 43 for the owner |
 | S7 | WP-06 staging run and the hosting decision | waiting for the owner's staging steps 1 to 4 | |
 | S8 | WP-15 statistics | ready (can run before S7) | |
-| S9 | The owner's answers to questions 41 to 43 folded into the design | waiting for the answers | |
+| S9 | The owner's answers to questions 41 to 43 folded into the design | waiting for the answers (41 and 43 revised 2026-11-23 after the owner's first replies) | |
 | S10 | WP-07 platform kernel | after S7 | |
 | S11 | WP-08 server-rendered shell | after S10 | |
 | S12 | WP-09a teams and schedule | after S11 | |
@@ -39,7 +39,7 @@ Every prompt below says "End as in PROMPTS.md". That means, in this order:
 1. Mark the step **done** in the step log above, with the date and a one-line result. If it could not finish, mark it "stopped" with what is left; the next session then uses "Continue a stopped step".
 2. Update `STATUS.md`: "Next step", the work-package rows, a log line.
 3. Update the prompts of the later steps with anything this step changed; add a prompt for any new step.
-4. Commit with Conventional Commits. Before pushing `overhaul` and `wp/*`, ask the owner once, in one line with one Polish sentence explaining the step (these pushes deploy nothing while previews are off; never push any other branch).
+4. Commit with Conventional Commits and push `overhaul` and the step's `wp/*` branches without asking (owner, 2026-11-23; these pushes deploy nothing while previews are off). Never push any other branch. Delete a `wp/*` branch and its worktree once it is merged and pushed, without asking: nothing deploys from it and no code is lost. Anything that touches production or a deployed service still needs the owner's yes, with one Polish sentence explaining the step.
 5. The last message to the owner: what was done; what the owner must do or decide, each item with full context (tournament, stage or round, the teams, the date, the score; never a bare id); the git state; and **"Next: paste step SN (name)"**. Refer to every file as a clickable markdown link relative to the `overhaul` worktree, for example [STATUS.md](docs/overhaul/STATUS.md). A file that exists only on another branch is linked in that branch's worktree, for example [WP-06.md](../wp-06-hosting-trial/docs/overhaul/spikes/WP-06.md).
 
 Rules inside every step: implementation goes to `implementer` agents, and every branch gets an Opus `reviewer` agent before it is merged (`--no-ff` into `overhaul`). A package that `ROADMAP.md` marks "Fable review" gets an Opus reviewer whose prompt lists what to check. Agents commit in small steps; an agent stopped by the 5-hour limit is resumed with a message after the reset, not restarted. Do not end a turn to wait for an agent: wait in the foreground.
@@ -80,7 +80,7 @@ Paste the prompt and write your answers under it, by number (for example "41a: y
 ```text
 Read docs/overhaul/BRIEF.md, docs/overhaul/STATUS.md (questions 41 to 43) and docs/overhaul/PROMPTS.md. You are running step S9: fold my answers below into the design.
 - Update ROADMAP.md (WP-13b, WP-14, WP-16, WP-17, WP-21, WP-44, WP-66 as needed), ORGANIZER_UX.md (the decisions table and the match page) and CONVENTIONS.md (how matches, teams and players are named in reports, findings and messages).
-- Record the data answers so the import applies them as owner corrections: a small data file and a test, through an implementer agent and an Opus reviewer, merged into overhaul.
+- Record the data answers so the import applies them as owner corrections: a small data file and a test, through an implementer agent and an Opus reviewer, merged into overhaul. In the same package the import places every game by date (a game listed on two matches belongs to the one on its date) and takes each game's teams from its players, not from its labels (question 43, "The bug behind most of these").
 - Move each answered question to the decisions in STATUS.md. Where an answer leaves a gap, ask me in one message with your recommendation.
 End as in PROMPTS.md.
 
