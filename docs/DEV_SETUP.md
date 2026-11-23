@@ -92,7 +92,7 @@ The job uses the secret `DATABASE_URL_SESSION` (the session pooler, port 5432) a
 **Seeding staging** (the owner, from the `overhaul` worktree, after the migrations):
 
 ```bash
-DATABASE_URL="$(grep '^DATABASE_URL_SESSION=' .env.staging.local | cut -d= -f2- | tr -d '')" npm run db:seed -- --staging
+DATABASE_URL="$(grep '^DATABASE_URL_SESSION=' .env.staging.local | cut -d= -f2- | tr -d '\r')" npm run db:seed -- --staging
 ```
 
 This is Git Bash syntax; it reads the session-pooler address from the file for that one command and prints nothing secret. Real tournaments reach staging only through the import tool with `--anonymize` (WP-33).
