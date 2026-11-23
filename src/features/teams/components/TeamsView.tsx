@@ -1,6 +1,7 @@
 // The public team list, rendered on the server with its data in the first response: no effect,
 // no loading screen. Colours come from the tournament's CSS variables (TournamentTheme).
 
+import Image from 'next/image';
 import { getTranslations } from 'next-intl/server';
 import { tournamentHref, type Linkable } from '@/features/tournaments';
 import type { TeamListItem, TeamListMember } from '../domain/team-list';
@@ -42,9 +43,9 @@ function TeamHeading({ team, status }: { team: TeamListItem; status: string | nu
   return (
     <div className="flex items-center gap-4">
       {team.logoUrl ? (
-        // Logos come from hosts the image optimizer may not allow; a plain image cannot fail the page.
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={team.logoUrl} alt="" width={56} height={56} loading="lazy" className="h-14 w-14 shrink-0 object-contain" />
+        // `unoptimized`: logos come from hosts the image optimizer may not allow, and an unknown host
+        // must not fail the page; the file is small and loaded as it is.
+        <Image src={team.logoUrl} alt="" width={56} height={56} unoptimized className="h-14 w-14 shrink-0 object-contain" />
       ) : (
         <span className="flex h-14 w-14 shrink-0 items-center justify-center text-2xl font-bold text-[var(--tournament-primary)]">
           {team.name.charAt(0)}
