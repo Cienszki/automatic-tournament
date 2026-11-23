@@ -88,6 +88,27 @@ describe('cachedQuery', () => {
     expect(() => get()).toThrow(/without tags/);
   });
 
+  it('does not store a null result when asked not to, and stores the rest', async () => {
+    const f = fakeCache();
+    const read = vi.fn(async (slug: string) => (slug === 'real' ? 'id-1' : null));
+    const find = createCachedQuery(f.cache)(read, { name: 'by_slug', tags: (slug) => [tags.slug(slug)], cacheNull: false });
+    expect(await find('made-up')).toBeNull();
+    expect(await find('made-up')).toBeNull();
+    expect(await find('real')).toBe('id-1');
+    expect(await find('real')).toBe('id-1');
+    expect(read.mock.calls.map((c) => c[0])).toEqual(['made-up', 'made-up', 'real']);
+    expect(f.entries.size).toBe(1);
+  });
+
+  it('stores a null result by default', async () => {
+    const f = fakeCache();
+    const read = vi.fn(async () => null);
+    const get = createCachedQuery(f.cache)(read, { name: 'nullable', tags: () => ['x'] });
+    await get();
+    await get();
+    expect(read).toHaveBeenCalledTimes(1);
+  });
+
   it('passes a time limit through when one is given', async () => {
     const f = fakeCache();
     await createCachedQuery(f.cache)(async () => 1, { name: 'timed', tags: () => ['x'], revalidate: 60 })();

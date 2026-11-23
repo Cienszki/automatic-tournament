@@ -51,9 +51,11 @@ export async function getTournamentFrameRow(db: Db, tournamentId: string): Promi
   return row ?? null;
 }
 
+// A slug that names no tournament is looked up again on every request instead of being cached:
+// otherwise each made-up slug a crawler tries would stay in the data cache for good.
 export const resolveTournamentSlug = cachedQuery(
   (slug: string) => findPublicTournamentId(getDb(), slug),
-  { name: 'tournaments.by_slug', tags: (slug) => [tags.slug(slug)] },
+  { name: 'tournaments.by_slug', tags: (slug) => [tags.slug(slug)], cacheNull: false },
 );
 
 export const getTournamentFrame = cachedQuery(

@@ -26,7 +26,15 @@ export interface CachedQueryOptions<A extends KeyPart[]> {
   tags: (...args: A) => string[];
   /** Seconds after which an entry is refreshed without an invalidation. Default: only by tag. */
   revalidate?: number | false;
+  /**
+   * `false`: a `null` result is returned but not stored. For lookups by a value from the URL (a
+   * slug), where every made-up value a crawler tries would otherwise stay in the cache for good.
+   */
+  cacheNull?: boolean;
 }
+
+/** Thrown inside the cache callback so that the cache stores nothing; never leaves this file. */
+class NotStored extends Error {}
 
 type CacheFn = typeof unstable_cache;
 
@@ -70,13 +78,17 @@ export function createCachedQuery(cache: CacheFn) {
       const run = cache(
         async () => {
           const result = await fn(...args);
+          if (result === null && options.cacheNull === false) throw new NotStored();
           assertCacheable(result);
           return result;
         },
         [KEY_VERSION, options.name, JSON.stringify(args)],
         { tags: tagList, revalidate: options.revalidate ?? false },
       );
-      return run();
+      return run().catch((error: unknown) => {
+        if (error instanceof NotStored) return null as R;
+        throw error;
+      });
     };
   };
 }
