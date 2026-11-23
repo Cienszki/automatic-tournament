@@ -55,9 +55,14 @@ async function insertChunks<T>(rows: T[], insert: (chunk: T[]) => Promise<unknow
   for (let i = 0; i < rows.length; i += CHUNK) await insert(rows.slice(i, i + CHUNK));
 }
 
-/** Writes the world. Global rows that already exist are left as they are. */
+/**
+ * Replaces the world's tournaments: deletes them and writes them again in one transaction, so a
+ * failed insert leaves the previous seed in place. Global rows that already exist are kept.
+ */
 export async function insertWorld(db: Db, w: SeedWorld): Promise<void> {
   await db.transaction(async (tx) => {
+    const ids = w.tournaments.map((t) => t.id);
+    if (ids.length) await tx.delete(s.tournaments).where(inArray(s.tournaments.id, ids));
     if (w.organizations.length) await tx.insert(s.organizations).values(w.organizations).onConflictDoNothing();
     if (w.users.length) await tx.insert(s.users).values(w.users).onConflictDoNothing();
     await insertChunks(w.players, (c) => tx.insert(s.players).values(c).onConflictDoNothing());

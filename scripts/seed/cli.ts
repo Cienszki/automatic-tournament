@@ -14,7 +14,7 @@ import { platformSettings } from '../../src/platform/db/schema';
 import { databaseUrlFrom, parseDbArgs } from '../db/args';
 import { openDatabase, readEnvironment } from '../db/open';
 import { assertMaySeed, describeTarget, parseDatabaseUrl } from '../db/target';
-import { buildSeed, countRows, insertWorld, removeTournaments, SEED_TOURNAMENTS } from './index';
+import { buildSeed, countRows, insertWorld, SEED_TOURNAMENTS } from './index';
 
 async function main() {
   const args = parseDbArgs(process.argv.slice(2));
@@ -32,8 +32,6 @@ async function main() {
       await open.db.insert(platformSettings).values({ key: 'environment', value: 'local' }).onConflictDoNothing();
     }
     console.log(`Seeding the ${describeTarget(target)}`);
-    const ids = world.tournaments.map((t) => t.id);
-    await removeTournaments(open.db, ids);
     await insertWorld(open.db, world);
     for (const t of world.tournaments) {
       const entry = SEED_TOURNAMENTS.find((s) => s.id === t.id)!;
