@@ -1,10 +1,15 @@
 # Scripts
 
-Tools for developers and CI. Each file says at the top how to run it. None of them reads secrets or writes to any database.
+Tools for developers and CI. Each file says at the top how to run it. None of them reads secrets. The database scripts write only to a local database, or to staging when CI's approved job or the owner asks for it; `db/target.ts` holds the rules. `docs/DEV_SETUP.md` shows how they fit together.
 
 | Script | What it does |
 |---|---|
 | `tools/unreachable.mjs` | Lists files under `src/` and `server/` that no entry point imports, and exits with code 1 if there are any. CI runs it. `--lines` adds line counts, `--json` prints the result as JSON. Files kept on purpose for a later work package are in its `KEEP` list, each with a reason. |
+| `db/migrate.ts` (`npm run db:migrate`) | Applies the migrations in `drizzle/` to the local database, a local PostgreSQL, or (with `--remote --expect staging`) staging. |
+| `seed/` (`npm run db:seed`) | Writes the four seed tournaments (league, groups with playoffs, Swiss, LAN qualifier) at chosen phases. The builders are reused by tests. |
+| `db/dev-local.ts` (`npm run dev:local`) | Serves the local database over the PostgreSQL protocol and starts `next dev` on port 3100 with every secret blank. |
+| `smoke/` (`npm run smoke`) | The read-only production smoke test: five pages of the site in `SMOKE_BASE_URL`. Refuses every request that could write. |
+| `tools/build-offline.mjs` | `next build` with every secret blank and every network connection refused; fails if anything tried the network. CI runs it. |
 | `tools/measure-pages.js` | Measures page loads in a real browser (time to first byte, Largest Contentful Paint, Firestore and API requests, JavaScript weight). Needs `puppeteer-core` and an installed Edge. |
 
 The 119 one-off scripts that used to live here (debugging, backfills, fantasy formula experiments, imports with the production service account) were deleted in WP-05. They are in git history before that commit, and in the tag `restore/pre-overhaul-2026-11-12`.
