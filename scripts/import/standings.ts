@@ -139,7 +139,7 @@ function compareStored(groupId: string, groupName: string, rows: Rows, saved: St
   }).length;
   const differing = new Set(differences.map((d) => d.split(':')[0])).size;
   const explanation = differences.length && stale === differing
-    ? 'every team that differs has a stored record with fewer matches than it played: the stored standings were not updated after those matches. The old code computes group tables from the matches (calculateGroupStandings in src/lib/api/groups.ts), as the new code does'
+    ? `${rows.length - differing} of ${rows.length} teams agree, and every team that differs has a stored record with fewer matches than it played: the stored standings were not updated after those matches. The old code wrote them from the matches (recalculateGroupStandingsAdmin in src/lib/post-sync-recalculations.ts) only when an admin ran it; the new code always computes them from the matches`
     : undefined;
   return { groupId, groupName, against: 'stored', orderMatches: null, differences, ...(explanation ? { explanation } : {}) };
 }
