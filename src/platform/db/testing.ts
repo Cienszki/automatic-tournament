@@ -26,6 +26,8 @@ export interface TestDb {
   /** The PGlite instance, for raw SQL (`client.query`, `client.exec`). */
   client: PGlite;
   close: () => Promise<void>;
+  /** The migrated copy this database started from (the file `ensureTemplate` made). */
+  template: string;
 }
 
 function migrationsHash(): string {
@@ -61,7 +63,7 @@ export async function createTestDb(): Promise<TestDb> {
   const client = new PGlite({ loadDataDir: new Blob([fs.readFileSync(file)]) });
   await client.waitReady;
   const db = drizzle(client, { schema }) as unknown as Db;
-  return { db, client, close: () => client.close() };
+  return { db, client, close: () => client.close(), template: file };
 }
 
 /**
