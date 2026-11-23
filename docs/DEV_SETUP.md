@@ -82,8 +82,14 @@ on conflict (key) do update set value = excluded.value;
 # 1. The environment with a required reviewer. Its branch rule (overhaul only) and the reviewer
 #    are set on the website: Settings -> Environments -> staging. Or from the terminal:
 gh api -X PUT 'repos/{owner}/{repo}/environments/staging' \
-  -F "reviewers[][type]=User" -F "reviewers[][id]=$(gh api user --jq .id)"
-# 2. Switch it on.
+  -F "reviewers[][type]=User" -F "reviewers[][id]=$(gh api user --jq .id)" \
+  -F "deployment_branch_policy[protected_branches]=false" -F "deployment_branch_policy[custom_branch_policies]=true"
+gh api -X POST 'repos/{owner}/{repo}/environments/staging/deployment-branch-policies' -f name=overhaul
+# 2. The database secret belongs to the environment, so only an approved job on overhaul can read it.
+#    (SETUP_STAGING.md step 6 set it as a repository secret; set it here and delete that one.)
+grep '^DATABASE_URL_SESSION=' .env.staging.local | cut -d= -f2- | tr -d '\r' | gh secret set DATABASE_URL_SESSION --env staging
+gh secret delete DATABASE_URL_SESSION
+# 3. Switch it on.
 gh variable set STAGING_MIGRATIONS --body on
 ```
 
@@ -100,11 +106,13 @@ This is Git Bash syntax; it reads the session-pooler address from the file for t
 **Previews.** Each push of a `wp/*` branch builds a Vercel preview against staging (`.github/workflows/preview.yml`). The preview uses the Vercel project's preview variables, which are the staging values. To switch it on:
 
 ```bash
-gh secret set VERCEL_TOKEN                    # paste a token from vercel.com -> Account settings -> Tokens
+gh secret set VERCEL_TOKEN                    # a token scoped to the team that holds only this project, with an expiry
 gh variable set VERCEL_ORG_ID --body <orgId>          # both ids are in .vercel/project.json
 gh variable set VERCEL_PROJECT_ID --body <projectId>  # of the linked overhaul worktree
 gh variable set STAGING_PREVIEWS --body on
 ```
+
+Do not use an account-wide token: the same Vercel account holds the community site, which is production for dota2inhouse.pl. The workflow gives the token only to the Vercel steps, not to `npm ci` or the branch's code. The Vercel project is not connected to GitHub; keep it that way, or Vercel would build every push a second time and deploy `overhaul` to its production address.
 
 The preview address appears on the workflow run's summary page. A branch that adds a migration needs the staging migration first, or its preview fails on the new tables. Nothing in these workflows deploys to production.
 
@@ -115,6 +123,16 @@ The preview address appears on the workflow run's summary page. A branch that ad
 ```bash
 firebase deploy --only hosting --project tournament-tracker-f35tb
 ```
+
+From WP-03 on, the site reads its own address and the origins it trusts from environment variables instead of constants in the code. The production branch does not have WP-03. If WP-03, or `overhaul`, is ever built for the old production hosting, these must be set for that build, or server actions, Steam and Discord linking, card-duel requests, notification links, `robots.txt` and the assets all point at `localhost`:
+
+```bash
+NEXT_PUBLIC_SITE_URL=https://dota2inhouse.pl
+ALLOWED_ORIGINS=https://www.dota2inhouse.pl,https://tournament-tracker-f35tb.web.app
+NEXT_PUBLIC_ASSET_ORIGIN=https://tournament-tracker-f35tb.web.app
+```
+
+The sitemap of such a build also needs `DATABASE_URL`; without it the sitemap lists only the home page.
 
 A push of that branch also redeploys the lobby bot on Railway, so it is pushed only when the bot should restart, and never while a game is being played. Agents never deploy, never push that branch, and never use the production service account.
 
