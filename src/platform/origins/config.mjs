@@ -45,7 +45,9 @@ export function resolveSiteUrl(env) {
  */
 export function resolveAllowedOrigins(env) {
   const extra = (env.ALLOWED_ORIGINS || '').split(',').map(toOrigin).filter(Boolean);
-  return [...new Set([resolveSiteUrl(env), ...extra])];
+  // A preview is also opened through its branch alias, which differs from VERCEL_URL
+  const branch = env.VERCEL_BRANCH_URL ? toOrigin(`https://${env.VERCEL_BRANCH_URL}`) : null;
+  return [...new Set([resolveSiteUrl(env), ...(branch ? [branch] : []), ...extra])];
 }
 
 /**
