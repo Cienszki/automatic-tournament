@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { getRewrittenUrl, unstable_getResponseFromNextConfig } from 'next/experimental/testing/server';
-import { legacyFallbackRewrites, platformRewrites, readRoutingConfig, routingHeaders, type RoutingConfig } from '.';
+import { legacyFallbackRewrites, platformRewrites, readRoutingConfig, routingHeaders, type RoutingConfig } from './index';
 
 const OLD = 'https://old.example';
 const on = (env: Record<string, string> = {}) => readRoutingConfig({ PLATFORM_ROUTING: 'on', ...env });
