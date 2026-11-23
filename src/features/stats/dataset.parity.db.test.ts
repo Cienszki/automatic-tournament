@@ -24,9 +24,17 @@ import { publishedDataset } from './testing/published';
  *   builder dropped them by accident: forfeited games share the id `forfeit_game1` in every
  *   match, so its de-duplication of games took them for copies (one such series, the first by
  *   id, survived). They count now, like every other completed series.
- * - `match *.completedAt` (Wiosenna bracket): the import takes the bracket document's result
- *   time (`playoff_matches.result.completedAt`, rewritten for the whole bracket on 2026-07-25)
- *   over the mirror match's own time, which the old payload used (finding for WP-33).
+ * - `match *.completedAt` (Wiosenna bracket): not a repair, an import defect. The import takes
+ *   the bracket document's result time (`playoff_matches.result.completedAt`), which was
+ *   rewritten for the whole bracket on 2026-07-25 at 17:46, over the mirror match's real finish
+ *   time, which the old payload used (`ub-r1-p1` really finished on 2026-07-12 at 21:43). The
+ *   new values are wrong; the WP-33 follow-up is recorded on overhaul. The hub's season numbers do
+ *   not read this time.
+ * - `player *.avatar`: where a roster document had no picture, the old builder fell back to the
+ *   team's roster map and took its small picture (`avatar`), never the map's `avatarmedium`.
+ *   The import puts the map's values on the player, so the medium picture the old builder
+ *   preferred (`avatarmedium`, then `avatarfull`, then `avatar`) is now there and used: the
+ *   same Steam picture at 64 instead of 32 pixels.
  * - `game *.matchId` (Wiosenna): two Dota games were stored under a group match and under the
  *   playoff match of the same teams. The old builder kept them under the group match; the import
  *   keeps them under the playoff match whose best of three they complete (WP-33).
@@ -35,7 +43,7 @@ import { publishedDataset } from './testing/published';
  *   that request out and the earlier nickname remains.
  */
 const EXPECTED: Record<FixtureSlug, Record<string, number>> = {
-  'pdl-s2': { 'perf *.fantasyPoints': 240 },
+  'pdl-s2': { 'perf *.fantasyPoints': 240, 'player *.avatar': 54 },
   wiosenna: {
     'perf *.fantasyPoints': 1630,
     'match *.round': 82,
@@ -43,6 +51,7 @@ const EXPECTED: Record<FixtureSlug, Record<string, number>> = {
     'match *.completedAt': 11,
     'game *.matchId': 2,
     'player *.name': 1,
+    'player *.avatar': 45,
   },
 };
 
@@ -74,6 +83,15 @@ describe.each(['pdl-s2', 'wiosenna'] as const)('the dataset of %s, imported and 
     const published = publishedDataset(slug);
     for (const kind of ['teams', 'groups', 'players', 'games', 'perfs'] as const) {
       expect({ kind, n: (ours[kind] ?? []).length }).toEqual({ kind, n: (published[kind] ?? []).length });
+    }
+  });
+
+  it('shows the same Steam picture, only the medium size of it', () => {
+    const lines = datasetDifferences(ours, publishedDataset(slug)).filter((l) => l.includes('.avatar:'));
+    expect(lines.length).toBeGreaterThan(0);
+    for (const l of lines) {
+      const [, mine, theirs] = /: ours "(.+)_medium\.jpg", published "(.+)\.jpg"$/.exec(l) ?? [];
+      expect({ l, same: !!mine && mine === theirs }).toEqual({ l, same: true });
     }
   });
 
