@@ -1,7 +1,7 @@
 // @vitest-environment node
 // Nothing combined is stored or updated piece by piece (WP-15): after a game is added, computing
-// on a fresh load equals computing on the old rows plus the new ones in memory, and no table of
-// the results holds a number that combines games.
+// on a fresh load equals computing on the old rows plus the new ones in memory. (That no table
+// holds a combined number is checked in schema-guard.db.test.ts.)
 
 import { eq, isNull, ne } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -82,56 +82,4 @@ describe('computing after a game is added', () => {
     computeTournament({ ...before, games: [...before.games, added.game], performances: [...before.performances, ...added.perfs] });
     expect(plain(computeTournament(before))).toEqual(first);
   });
-});
-
-/**
- * Every number column of the tables that results live in, with why it is not a combination of
- * games. A new column fails this test until it is added here with its reason, so a stored total,
- * average, ranking or record cannot slip in unnoticed.
- */
-const NUMBER_COLUMNS: Record<string, Record<string, string>> = {
-  tournaments: { league_id: 'Steam league id' },
-  stages: { position: 'order', default_best_of: 'setting' },
-  groups: { position: 'order', tier: 'setting' },
-  group_teams: { seed: 'set by the organizer' },
-  teams: { seed_mmr: 'given at registration', mmr_cap_at_registration: 'setting copied at registration' },
-  team_members: { mmr: 'given at registration' },
-  matches: {
-    round: 'schedule', matchday: 'schedule', best_of: 'setting', reschedule_max_hours_later: 'setting', bracket_position: 'bracket slot',
-    score_a: 'the series result as entered (forfeits and manual results have no games): a fact of one match',
-    score_b: 'the series result as entered (forfeits and manual results have no games): a fact of one match',
-  },
-  games: { number: 'position in the series', dota_match_id: 'id', duration_seconds: 'of this game', first_blood_seconds: 'of this game' },
-  performances: Object.fromEntries([
-    'player_slot', 'hero_id', 'kills', 'deaths', 'assists', 'last_hits', 'denies', 'gpm', 'xpm', 'net_worth', 'total_gold', 'gold_spent',
-    'hero_damage', 'tower_damage', 'hero_healing', 'obs_placed', 'sen_placed', 'observer_kills', 'sentry_kills', 'courier_kills',
-    'roshan_kills', 'tower_kills', 'neutral_kills', 'lane_kills', 'hero_kills', 'camps_stacked', 'runes_picked_up', 'buybacks',
-    'highest_kill_streak', 'double_kills', 'triple_kills', 'ultra_kills', 'rampages',
-  ].map((c) => [c, 'one player in one game'])),
-  players: {},
-};
-
-describe('the schema', () => {
-  it('holds no combined number in the tables of results', async () => {
-    const { rows } = await t.client.query<{ table_name: string; column_name: string }>(
-      `select table_name, column_name from information_schema.columns
-       where table_schema = 'app' and table_name = any($1)
-         and data_type in ('smallint', 'integer', 'bigint', 'numeric', 'real', 'double precision')`,
-      [Object.keys(NUMBER_COLUMNS)],
-    );
-    const found: Record<string, string[]> = Object.fromEntries(Object.keys(NUMBER_COLUMNS).map((k) => [k, []]));
-    for (const r of rows) found[r.table_name].push(r.column_name);
-    for (const table of Object.keys(found)) found[table].sort();
-    expect(found).toEqual(Object.fromEntries(Object.entries(NUMBER_COLUMNS).map(([k, v]) => [k, Object.keys(v).sort()])));
-  });
-
-  it('has no table of stored statistics, standings, rankings or leaderboards', async () => {
-    const { rows } = await t.client.query<{ name: string }>(
-      `select table_schema || '.' || table_name as name from information_schema.tables where table_schema in ('app', 'bot', 'public')`,
-    );
-    // card_ratings is the card game's own duel ladder (WP-40), not derived from tournament results.
-    const derived = rows.map((r) => r.name).filter((n) => /stat|standing|ranking|rating|leaderboard|total|aggregate|summary/.test(n));
-    expect(derived).toEqual(['app.card_ratings']);
-  });
-
 });
