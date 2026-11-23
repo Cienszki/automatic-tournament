@@ -17,7 +17,7 @@ Two rules every session keeps:
 | S5 | Implementation up to stage 1 (WP-04, 05, 12, 13a, 20, 32; card game WP-50 to 55, 64, 65) | done 2026-11-13 to 17 | Merged into `overhaul` |
 | S6 | Stage 1: WP-03 environments, WP-33 import, WP-66 part 1, WP-06 local half | **done 2026-11-23** | WP-03, WP-33 and WP-66 part 1 merged; WP-06 local half built and reviewed on `wp/06-hosting-trial`, waiting for the staging run; questions 41 to 43 for the owner |
 | S7 | WP-06 staging run and the hosting decision | waiting for the owner's staging steps 1 to 4 | |
-| S8 | WP-15 statistics | ready (can run before S7) | |
+| S8 | WP-15 statistics | **done 2026-11-23** | Merged: one `computeTournament` over all rows, 11 tenant-scoped reads in one snapshot, nothing combined stored, 55 ms on Wiosenna; pdl-s2 equals the published numbers, Wiosenna differs only where listed. Caching waits for WP-06 (S7) |
 | S9 | The owner's answers to questions 41 to 43 folded into the design | waiting for the answer to 42 and the PDL S1 Steam-id point of 43 (41 and the rest of 43 answered 2026-11-23, recorded in STATUS) | |
 | S10 | WP-07 platform kernel | after S7 | |
 | S11 | WP-08 server-rendered shell | after S10 | |
@@ -56,6 +56,7 @@ Read docs/overhaul/BRIEF.md, docs/overhaul/STATUS.md and docs/overhaul/PROMPTS.m
 2. Run steps 5 to 9 of WP-06.md against the preview (an implementer agent may do the runs). Never print a secret; read database addresses from .env.staging.local into variables as the doc shows. Step 6: do not add any domain to the production Firebase project. Step 7 needs a throwaway Vercel project: ask me once before creating it, because it is a deploy.
 3. Fill in the acceptance table and write the recommendation (go, go with changes, or the fallback of ADR-03), each claim backed by a measured number.
 4. Have an Opus reviewer check the numbers, the recommendation and that nothing in production was touched. Then merge the kept parts into overhaul with --no-ff and remove the trial code as step 10 says.
+5. Once src/platform/cache is merged, have an implementer wrap WP-15's getDataset (src/features/stats/queries.ts) in cachedQuery exactly as the WP-15 row in STATUS.md says (name 'stats.dataset', tags stats, teams and matches, cacheNull false), with a test that invalidating the tag gives fresh numbers; the reviewer of step 4 checks it too. Until then nothing may send traffic to /api/v1/stats/dataset.
 End as in PROMPTS.md.
 ```
 
@@ -80,7 +81,7 @@ Most of 41 and 43 is answered and recorded in `STATUS.md`. Paste the prompt and 
 ```text
 Read docs/overhaul/BRIEF.md, docs/overhaul/STATUS.md (questions 41 to 43) and docs/overhaul/PROMPTS.md. You are running step S9: fold the answers recorded in questions 41 and 43 and my answers below into the design.
 - Update ROADMAP.md (WP-13b, WP-14, WP-16, WP-17, WP-21, WP-44, WP-66 as needed; the bot-account test for ticketless games goes into WP-16; replay upload parsing goes to the backlog as "later"), ORGANIZER_UX.md (the decisions table: the captains' score flow, the lineup check, the organizer's manual forfeit, the "Napisz do organizatora" button; the match page: changing one match's format) and CONVENTIONS.md (how matches, teams and players are named in reports, findings and messages).
-- Record the data answers so the import applies them as owner corrections: a small data file and a test, through an implementer agent and an Opus reviewer, merged into overhaul. In the same package the import places every game by date (a game listed on two matches belongs to the one on its date) and takes each game's teams from its players, not from its labels (question 43, "The bug behind most of these").
+- Record the data answers so the import applies them as owner corrections: a small data file and a test, through an implementer agent and an Opus reviewer, merged into overhaul. In the same package the import places every game by date (a game listed on two matches belongs to the one on its date) and takes each game's teams from its players, not from its labels (question 43, "The bug behind most of these"). Also from WP-15: a bracket match's completion time comes from its mirror match in `matches` when `playoff_matches.result.completedAt` is a bulk rewrite (in Wiosenna all 11 bracket matches read 2026-07-25 17:46; `ub-r1-p1` really finished 2026-07-12 21:43); then update the expected differences in `src/features/stats/dataset.parity.db.test.ts`.
 - Move each answered question to the decisions in STATUS.md. Where an answer leaves a gap, ask me in one message with your recommendation.
 End as in PROMPTS.md.
 
@@ -111,7 +112,7 @@ Each is one package, run the same way. Paste the block and replace `<WP>` with t
 | S12 | WP-09a | Teams and schedule equal the old pages for all four imported tournaments, field by field |
 | S13 | WP-09b | Standings and brackets equal the published ones for every division, group and bracket |
 | S14 | WP-09c | Rules, news, prizes and the static pages are complete in the first response |
-| S15 | WP-10 | The home page keeps its design; deep links open the right section with no redirect |
+| S15 | WP-10 | The home page keeps its design; deep links open the right section with no redirect; the stats hub and the rankings page (`RankingsView`) read WP-15's cached `getDataset` and `computeTournament` and show the same numbers as the old pages; the old Firestore `src/lib/stats-lab/build-dataset.ts` and `/api/stats/dataset` lose their last users on the new platform |
 | S16 | WP-11 | The budgets fail CI when exceeded (show it); no page ships the Firebase data SDK |
 
 ```text
