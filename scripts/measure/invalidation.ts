@@ -2,31 +2,21 @@
 // shows that the cached page still has the old name, calls the invalidation, and polls the page
 // until the new name appears. Then puts the old name back and invalidates again.
 //
-//   npx tsx scripts/measure/invalidation.ts --base https://<address> --slug pdl-s2 \
-//       --database-url <url> [--expect staging] [--secret <PLATFORM_TRIAL_SECRET>] [--rounds 3] [--json out.json]
+//   MEASURE_DATABASE_URL=<url> npx tsx scripts/measure/invalidation.ts --base https://<address> --slug pdl-s2 //       [--secret <PLATFORM_TRIAL_SECRET>] [--rounds 3] [--json out.json]
 //
-// The database URL comes from --database-url or MEASURE_DATABASE_URL, never from a .env file. It
-// must point at this machine, or carry --expect staging and lead to a database whose
-// app.platform_settings row says it is staging (docs/DEV_SETUP.md). Production is refused.
+// The database URL comes from MEASURE_DATABASE_URL (or --database-url), never from a .env file. The
+// database must say what it is in app.platform_settings: "local" or "staging" on this machine,
+// "staging" anywhere else (target.ts). Production, and a database that says nothing, are refused.
+// Stopping the script mid-run leaves the team named with its ` ~xxxx` suffix: rename it back by hand.
 
-import postgres from 'postgres';
+import { sql } from 'drizzle-orm';
+import { openDatabase, readEnvironment } from '../db/open';
+import { parseDatabaseUrl } from '../db/target';
 import { baseUrl, invalidate, numberOption, option, parseOptions, round, run, sleep, timedFetch, trialSecret, useExtraHeaders, writeJson } from './lib';
+import { assertMayRename } from './target';
 
-const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1', '::1', '[::1]']);
-
-async function openDatabase(url: string, expect: string | undefined) {
-  const host = new URL(url).hostname.toLowerCase();
-  const sql = postgres(url, { prepare: false, max: 1, connect_timeout: 10, onnotice: () => {} });
-  if (!LOCAL_HOSTS.has(host)) {
-    if (expect !== 'staging') throw new Error(`Refusing a remote database (${host}) without --expect staging.`);
-    const rows = await sql<{ value: unknown }[]>`select value from app.platform_settings where key = 'environment'`;
-    if (rows[0]?.value !== 'staging') {
-      await sql.end();
-      throw new Error('Refusing: the database does not say it is staging (app.platform_settings).');
-    }
-  }
-  return sql;
-}
+type Row = Record<string, unknown>;
+const rowsOf = (result: unknown): Row[] => (Array.isArray(result) ? result : (result as { rows: Row[] }).rows);
 
 async function pollUntil(url: string, text: string, timeoutMs: number): Promise<{ ms: number; polls: number }> {
   const start = performance.now();
@@ -51,14 +41,19 @@ run(async () => {
   const secret = trialSecret(o);
   if (!secret) throw new Error('--secret or PLATFORM_TRIAL_SECRET is required (the trial invalidation endpoint)');
   const rounds = numberOption(o, 'rounds', 3);
-  const sql = await openDatabase(option(o, 'database-url', process.env.MEASURE_DATABASE_URL), o.expect?.at(-1));
+  const target = parseDatabaseUrl(option(o, 'database-url', process.env.MEASURE_DATABASE_URL));
+  if (target.kind === 'pglite') assertMayRename(target, null);
+  const open = await openDatabase(target);
+  const db = open.db;
   const pageUrl = `${base}/${slug}/teams`;
   const results: { round: number; staleBeforeInvalidation: boolean; invalidateCallMs: number; freshAfterMs: number; polls: number }[] = [];
 
   try {
-    const [team] = await sql<{ id: string; tid: string; name: string }[]>`
+    assertMayRename(target, await readEnvironment(db));
+    const [row] = rowsOf(await db.execute(sql`
       select t.id, t.tournament_id as tid, t.name from app.teams t join app.tournaments r on r.id = t.tournament_id
-      where r.slug = ${slug} order by t.name limit 1`;
+      where r.slug = ${slug} order by t.name limit 1`));
+    const team = row as { id: string; tid: string; name: string } | undefined;
     if (!team) throw new Error(`no team in tournament ${slug}`);
     console.log(`Renaming "${team.name}" in ${slug} and back, ${rounds} times, at ${base}`);
 
@@ -67,7 +62,7 @@ run(async () => {
       const warm = await timedFetch(pageUrl);
       if (!warm.body.includes(inHtml(team.name))) throw new Error('the page does not show the team before the change');
       const marked = `${team.name} ~${Date.now().toString(36)}`;
-      await sql`update app.teams set name = ${marked} where tournament_id = ${team.tid} and id = ${team.id}`;
+      await db.execute(sql`update app.teams set name = ${marked} where tournament_id = ${team.tid} and id = ${team.id}`);
       try {
         await sleep(500);
         const before = await timedFetch(pageUrl);
@@ -77,12 +72,12 @@ run(async () => {
         results.push({ round: r, staleBeforeInvalidation, invalidateCallMs, freshAfterMs: fresh.ms, polls: fresh.polls });
         console.log(`  round ${r}: cached page ${staleBeforeInvalidation ? 'still old' : 'ALREADY NEW'} before the call; invalidation call ${invalidateCallMs} ms; fresh after ${fresh.ms} ms (${fresh.polls} polls)`);
       } finally {
-        await sql`update app.teams set name = ${team.name} where tournament_id = ${team.tid} and id = ${team.id}`;
+        await db.execute(sql`update app.teams set name = ${team.name} where tournament_id = ${team.tid} and id = ${team.id}`);
         await invalidate(base, slug, secret, 'teams');
       }
     }
   } finally {
-    await sql.end();
+    await open.close();
   }
   writeJson(o, { base, slug, at: new Date().toISOString(), results });
 });
