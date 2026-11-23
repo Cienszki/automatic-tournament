@@ -1,7 +1,7 @@
 import { withSentryConfig } from '@sentry/nextjs/config';
 import createNextIntlPlugin from 'next-intl/plugin';
 import {
-  resolveAssetOrigin, resolveServerActionHosts, resolveStorageHosts,
+  resolveAssetOrigin, resolveLegacyOrigin, resolveServerActionHosts, resolveStorageHosts,
 } from './src/platform/origins/config.mjs';
 
 const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts');
@@ -17,6 +17,10 @@ const PHASE_DEVELOPMENT_SERVER = 'phase-development-server';
 // /_next (the old site behind the community site). Blank: relative paths. Every address comes
 // from the environment, so a local or staging build never points at production (ADR-15).
 const ASSET_ORIGIN = resolveAssetOrigin(process.env);
+
+// The old site, when the new platform sits in front of it (ADR-15, src/platform/routing). Read at
+// build time: Vercel and `next start` both apply rewrites from the built config.
+const LEGACY_ORIGIN = resolveLegacyOrigin(process.env);
 
 // NOTE: this file is .mjs (not .ts) ON PURPOSE.
 // firebase-tools' frameworks adapter only recognises next.config.js / .mjs
@@ -133,6 +137,14 @@ const buildConfig = (phase) => {
                 pathname: '/apps/dota2/**',
             },
         ],
+    },
+    // A path this build has no file or route for goes to the old site: above all the old site's own
+    // /_next/ files, which its pages load through us once they are forwarded. `fallback` runs after
+    // every page, file and dynamic route, just before the 404 (the community site uses the same
+    // rule in front of us). The middleware forwards the rest: old tournaments, unmoved pages, /api.
+    async rewrites() {
+        if (!LEGACY_ORIGIN) return [];
+        return { fallback: [{ source: '/:path*', destination: `${LEGACY_ORIGIN}/:path*` }] };
     },
     async redirects() {
         return [

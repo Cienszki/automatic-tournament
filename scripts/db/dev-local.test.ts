@@ -31,4 +31,8 @@ describe('localEnv', () => {
     expect(env.NEXT_PUBLIC_FIREBASE_PROJECT_ID).toBe('demo-dota2inhouse');
     expect(env.PATH).toBe('/bin');
   });
+  it('switches the new platform pages on, and forwards nothing unless the shell says where', () => {
+    expect(env.PLATFORM_ROUTING).toBe('on');
+    expect(env.LEGACY_ORIGIN).toBeUndefined();
+  });
 });

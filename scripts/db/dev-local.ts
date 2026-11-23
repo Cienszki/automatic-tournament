@@ -11,6 +11,8 @@
 //     too, so a .env.local holding production credentials cannot reach a local run;
 //   - a placeholder Firebase project (`demo-dota2inhouse`): sign-in and Firestore reads fail
 //     quietly, which is expected until the pages that read them move to PostgreSQL.
+//   - PLATFORM_ROUTING=on, so the pages moved to the new platform (src/platform/routing) render
+//     from the local database. Nothing is forwarded unless LEGACY_ORIGIN is set in the shell.
 // A local PostgreSQL in DATABASE_URL is used directly instead of the PGlite folder.
 // Port 3000 is refused: the owner's own dev server uses it.
 
@@ -65,6 +67,7 @@ export function localEnv(base: NodeJS.ProcessEnv, opts: { port: number; database
     ...env,
     DATABASE_URL: opts.databaseUrl,
     DATABASE_POOL_MAX: '1',
+    PLATFORM_ROUTING: env.PLATFORM_ROUTING || 'on',
     NEXT_PUBLIC_SITE_URL: `http://localhost:${opts.port}`,
     ALLOWED_ORIGINS: '',
     NEXT_PUBLIC_ASSET_ORIGIN: '',

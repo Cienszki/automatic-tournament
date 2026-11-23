@@ -7,6 +7,8 @@
 //                         the hosting provider's own address. The site's origin is always allowed.
 //   NEXT_PUBLIC_ASSET_ORIGIN  absolute origin for /_next assets and the image optimizer, when a proxy
 //                         in front of us owns /_next. Blank: relative paths.
+//   LEGACY_ORIGIN         the old site's address, used only with PLATFORM_ROUTING=on: what the new
+//                         platform does not serve is forwarded there (src/platform/routing).
 //
 // Every function takes the environment as an argument, so tests pass their own.
 
@@ -76,4 +78,15 @@ export function resolveAssetOrigin(env) {
 export function resolveStorageHosts(env) {
   const bucket = (env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || '').trim().toLowerCase();
   return /^[a-z0-9-]+\.firebasestorage\.app$/.test(bucket) ? [bucket] : [];
+}
+
+/**
+ * The old site's origin when the new platform forwards to it (PLATFORM_ROUTING=on and LEGACY_ORIGIN
+ * set), else undefined. next.config.mjs uses it for the fallback rewrite of the old site's /_next/
+ * files; the middleware reads the same two variables through src/platform/routing.
+ * @param {Env} env
+ */
+export function resolveLegacyOrigin(env) {
+  if ((env.PLATFORM_ROUTING || '').trim().toLowerCase() !== 'on') return undefined;
+  return toOrigin(env.LEGACY_ORIGIN) ?? undefined;
 }

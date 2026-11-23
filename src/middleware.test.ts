@@ -46,13 +46,39 @@ describe('middleware, as before WP-06 (routing off)', () => {
   });
 });
 
+describe('middleware with the forwarding rule on', () => {
+  const env = { PLATFORM_ROUTING: 'on', LEGACY_ORIGIN: 'https://old.example', LEGACY_SLUGS: 'pdl' };
+
+  it('rewrites a moved page of a new tournament to the platform, also for client navigation', async () => {
+    expect((await servedAt('/pdl-s2/teams', env)).url).toBe(`${BASE}/platform/pdl-s2/teams`);
+    const rsc = await servedAt('/pdl-s2/teams.rsc', env, { RSC: '1' });
+    expect(rsc.url).toBe(`${BASE}/platform/pdl-s2/teams`);
+  });
+
+  it('forwards an old-site tournament to the old site with its query', async () => {
+    expect((await servedAt('/pdl/teams?team=a', env)).url).toBe('https://old.example/pdl/teams?team=a');
+  });
+
+  it('forwards a client navigation to the old site without the .rsc suffix', async () => {
+    expect((await servedAt('/pdl/schedule.rsc', env, { RSC: '1' })).url).toBe('https://old.example/pdl/schedule');
+  });
+
+  it('answers 404 to the internal platform address', async () => {
+    expect((await servedAt('/platform/pdl-s2/teams', env)).res.status).toBe(404);
+  });
+
+  it('still closes /api/admin before anything is forwarded', async () => {
+    expect((await servedAt('/api/admin/x', env)).res.status).toBe(410);
+  });
+});
+
 describe('middleware matcher', () => {
   const matches = async (url: string) => {
     const { config } = await load();
     return unstable_doesMiddlewareMatch({ config, url });
   };
 
-  it.each(['/pdl-s2.rsc', '/pdl-s2/teams.prefetch.rsc', '/api/admin/x', '/api/admin'])('runs on %s', async (url) => {
+  it.each(['/pdl-s2.rsc', '/pdl-s2/teams.prefetch.rsc', '/api/admin/x', '/api/admin', '/pdl-s2/teams', '/', '/api/stats/dataset'])('runs on %s', async (url) => {
     expect(await matches(url)).toBe(true);
   });
 
