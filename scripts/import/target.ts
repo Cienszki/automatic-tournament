@@ -45,6 +45,34 @@ function parseUrl(url: string, variable: string): URL {
   return parsed;
 }
 
+/** The Supabase project a URL names: `db.<ref>.supabase.co`, or the pooler's user `postgres.<ref>`. */
+function supabaseRef(url: URL): string | null {
+  const host = /^db\.([a-z0-9]+)\.supabase\.co$/i.exec(url.hostname);
+  if (host) return host[1].toLowerCase();
+  const user = /^postgres\.([a-z0-9]+)$/i.exec(decodeURIComponent(url.username));
+  return user ? user[1].toLowerCase() : null;
+}
+
+/**
+ * Whether two URLs name the same database: the same host (any case), port (5432 when none is
+ * given) and database name, or the same Supabase project, whose pooler and direct addresses have
+ * different hosts, ports and users.
+ */
+export function sameDatabase(a: string, b: string): boolean {
+  let x: URL;
+  let y: URL;
+  try {
+    x = new URL(a);
+    y = new URL(b);
+  } catch {
+    return a === b;
+  }
+  const refX = supabaseRef(x);
+  if (refX && refX === supabaseRef(y)) return true;
+  const key = (u: URL) => [u.hostname.toLowerCase(), u.port || '5432', decodeURIComponent(u.pathname.replace(/^\//, '')) || decodeURIComponent(u.username)].join('|');
+  return key(x) === key(y);
+}
+
 /** The database to write to, or a `TargetRefused` with the reason. */
 export function resolveTarget(req: TargetRequest): Target {
   const present = CREDENTIAL_ENV.filter((k) => req.env[k]);
@@ -74,7 +102,7 @@ export function resolveTarget(req: TargetRequest): Target {
   const host = parseUrl(url, variable).hostname;
   if (LOCAL_HOSTS.has(host)) throw new TargetRefused(`${variable} points at this machine; use the local target`);
   const other = name === 'staging' ? req.env[TARGET_ENV.production] : req.env[TARGET_ENV.staging];
-  if (other && other === url) throw new TargetRefused(`${TARGET_ENV.staging} and ${TARGET_ENV.production} are the same database`);
+  if (other && sameDatabase(other, url)) throw new TargetRefused(`${TARGET_ENV.staging} and ${TARGET_ENV.production} are the same database`);
   if (/firebase|firestore|googleapis\.com/i.test(host)) throw new TargetRefused(`${variable} looks like a Firebase address (${host})`);
   return { name, driver: 'postgres', url, host };
 }

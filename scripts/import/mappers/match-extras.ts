@@ -27,7 +27,7 @@ export function mapMatchExtras(state: MapState, docs: readonly Doc[], match: Row
   mapAudit(state, lead, match);
 }
 
-/** `rescheduleRequest`, or Letnia's `proposedTime` with `proposedById` (a team) and `proposingCaptainId`. */
+/** `rescheduleRequest`, or the old root layout's `proposedTime` with `proposedById` (a team) and `proposingCaptainId`. */
 function rescheduleRow(state: MapState, doc: Doc, match: Row): Row | null {
   const d = doc.data;
   const kind = doc.path.includes('/playoff_matches/') ? 'playoff_matches' : 'matches';

@@ -80,6 +80,12 @@ export class ImportContext {
   /**
    * Record every top-level field of `doc` that is not in `known`. A field the mappers do not
    * name is not imported anywhere, so it must be visible in the report.
+   *
+   * Only top-level fields are checked. The nested objects were checked by hand against the
+   * mappers: a match's teamA/teamB, rescheduleRequest, forfeit, coachInfo and standinInfo, and
+   * the tournament's fantasy, pickem, registration, teams, matches, standins, lobbySettings,
+   * discordServer and navbarSponsor. Every key in them is mapped or is a copy of a value mapped
+   * elsewhere (rescheduleRequest.requestedByName is a copy of a name).
    */
   checkFields(kind: string, doc: Doc, known: ReadonlySet<string>): void {
     for (const field of Object.keys(doc.data)) {

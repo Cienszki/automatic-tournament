@@ -80,6 +80,21 @@ describe('target', () => {
     expect(refused({ target: 'production', env: { NEW_PRODUCTION_DATABASE_URL: prod, STAGING_DATABASE_URL: prod } })).toThrow(/same database/);
     expect(refused({ target: 'production', db: 'x', env: { NEW_PRODUCTION_DATABASE_URL: prod } })).toThrow(/--db/);
   });
+
+  it('knows two URLs of one database: host in any case, the default port, or one Supabase project', () => {
+    const both = (staging: string, production: string) => refused({ target: 'production', env: { NEW_PRODUCTION_DATABASE_URL: production, STAGING_DATABASE_URL: staging } });
+    expect(both('postgres://a:x@DB.Example.com/app', 'postgresql://b:y@db.example.com:5432/app')).toThrow(/same database/);
+    expect(both(
+      'postgres://postgres.abcdefghijklmnop:x@aws-0-eu-central-1.pooler.supabase.com:6543/postgres',
+      'postgres://postgres:y@db.abcdefghijklmnop.supabase.co:5432/postgres',
+    )).toThrow(/same database/);
+    expect(both('postgres://a:x@db.example.com/staging', 'postgres://a:x@db.example.com/app')).not.toThrow();
+    expect(both('postgres://a:x@db.example.com:5433/app', 'postgres://a:x@db.example.com/app')).not.toThrow();
+    expect(both(
+      'postgres://postgres.aaaaaaaaaaaaaaaa:x@aws-0-eu-central-1.pooler.supabase.com:6543/postgres',
+      'postgres://postgres:y@db.bbbbbbbbbbbbbbbb.supabase.co:5432/postgres',
+    )).not.toThrow();
+  });
 });
 
 describe('command line', () => {

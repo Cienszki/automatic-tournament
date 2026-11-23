@@ -74,7 +74,7 @@ describe('the owner\'s export', () => {
   it('turns a stub into a full user with links and roles, and maps the private tournament collections', async () => {
     const first = await runImport(t.db, [dir], OPTIONS);
     const [user] = await t.db.select().from(s.users).where(eq(s.users.id, CAPTAIN));
-    expect(user).toMatchObject({ isStub: false, email: 'kapitan@example.com', nickname: 'Kap', platformRole: 'admin', canCreateTournaments: true, avatarSource: 'discord' });
+    expect(user).toMatchObject({ isStub: false, email: 'kapitan@example.com', nickname: 'Kap', platformRole: 'admin', canCreateTournaments: true, avatarSource: 'discord', photoUrl: 'https://example.com/p.png', streamUrl: 'https://twitch.tv/kap' });
     const links = await t.db.select().from(s.userLinks).where(eq(s.userLinks.userId, CAPTAIN));
     expect(links.map((l) => [l.provider, l.externalId]).sort()).toEqual([['discord', '123456789012345678'], ['steam', '76561198001236924']]);
     const members = await t.db.select().from(s.tournamentMembers);
@@ -88,13 +88,15 @@ describe('the owner\'s export', () => {
     expect(totalChanges(await runImport(t.db, [dir], OPTIONS))).toBe(0);
   });
 
-  it('replaces e-mail addresses, Discord ids and names under --anonymize', async () => {
+  it('replaces e-mail addresses, Discord ids, names, pictures and streams under --anonymize', async () => {
     const anon = await createTestDb();
     try {
       await runImport(anon.db, [dir], { ...OPTIONS, anonymize: true });
       const [user] = await anon.db.select().from(s.users).where(eq(s.users.id, CAPTAIN));
       expect(user.email).toBeNull();
       expect(user.displayName).not.toBe('Kapitan');
+      expect(user.photoUrl).toBeNull();
+      expect(user.streamUrl).toBeNull();
       const [discord] = await anon.db.select().from(s.userLinks).where(eq(s.userLinks.provider, 'discord'));
       expect(discord.externalId).not.toBe('123456789012345678');
       expect(discord.externalId).toMatch(/^\d{18}$/);

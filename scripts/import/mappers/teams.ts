@@ -113,10 +113,11 @@ function confidentSteamIds(state: MapState): Map<string, string> {
 }
 
 /**
- * The Steam64 of a roster entry. When `steamId` and `steamId64` disagree (SCHEMA.md 9), the rule is
- * steamId64 (it agrees with steamId32), unless another team's entry holds that id without any
- * disagreement while `steamId` is free: then the entry's own `steamId` is the account. Every
- * disagreement is reported for the owner to confirm.
+ * The Steam64 of a roster entry. When `steamId` and `steamId64` disagree (SCHEMA.md 9), the one
+ * `steamId32` agrees with is the account. Without that, the rule is steamId64, unless another
+ * team's entry holds that id without any disagreement while `steamId` is free: then the entry's
+ * own `steamId`. (In the captures both rules give the id steamId32 agrees with, in all four cases.)
+ * Every disagreement is reported for the owner to confirm.
  */
 function rosterSteamId(state: MapState, doc: Doc, confident: Map<string, string>): string | null {
   const d = doc.data;
@@ -126,10 +127,11 @@ function rosterSteamId(state: MapState, doc: Doc, confident: Map<string, string>
   if (s64 && sid && s64 !== sid) {
     const teamId = ancestorId(doc);
     const taken = (id: string) => confident.has(id) && confident.get(id) !== teamId;
-    const chosen = taken(s64) && !taken(sid) ? sid : s64;
+    const by32 = s32 === s64 ? s64 : s32 === sid ? sid : null;
+    const chosen = by32 ?? (taken(s64) && !taken(sid) ? sid : s64);
     state.ctx.finding({
       kind: 'teams.players', code: 'conflict',
-      reason: 'steamId and steamId64 differ: steamId64 is used (it agrees with steamId32) unless a player of another team holds it (owner to confirm)',
+      reason: 'steamId and steamId64 differ: the id that steamId32 agrees with is used (owner to confirm)',
       ref: `${doc.path} steamId=${sid} steamId64=${s64} steamId32=${String(d.steamId32)} -> ${chosen}`,
     });
     return chosen;
@@ -228,7 +230,7 @@ function checkRosterCopies(state: MapState, teams: readonly Doc[]): void {
   if (filled) state.ctx.finding({ kind: 'teams.players', code: 'decision', reason: 'values the roster document lacks (nickname, MMR, role) were taken from the team roster map', ref: `${filled} values` });
 }
 
-/** Letnia's stand-in pool: `standins/{uid}` → `standin_registrations`. */
+/** The stand-in pool of the old root layout: `standins/{uid}` → `standin_registrations`. */
 export function mapStandinRegistrations(state: MapState): void {
   const { ctx } = state;
   const docs = docsOf(state.capture, 'standins');
