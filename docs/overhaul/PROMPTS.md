@@ -18,7 +18,7 @@ Two rules every session keeps:
 | S6 | Stage 1: WP-03 environments, WP-33 import, WP-66 part 1, WP-06 local half | **done 2026-11-23** | WP-03, WP-33 and WP-66 part 1 merged; WP-06 local half built and reviewed on `wp/06-hosting-trial`, waiting for the staging run; questions 41 to 43 for the owner |
 | S7 | WP-06 staging run and the hosting decision | waiting for the owner's staging steps 1 to 4 | |
 | S8 | WP-15 statistics | ready (can run before S7) | |
-| S9 | The owner's answers to questions 41 to 43 folded into the design | waiting for the answers (41 and 43 revised 2026-11-23 after the owner's first replies) | |
+| S9 | The owner's answers to questions 41 to 43 folded into the design | waiting for the answer to 42 and the open points of 41 and 43 (most of 41 and 43 answered 2026-11-23, recorded in STATUS) | |
 | S10 | WP-07 platform kernel | after S7 | |
 | S11 | WP-08 server-rendered shell | after S10 | |
 | S12 | WP-09a teams and schedule | after S11 | |
@@ -66,7 +66,7 @@ End as in PROMPTS.md.
 ```text
 Read docs/overhaul/BRIEF.md, docs/overhaul/STATUS.md, docs/overhaul/PROMPTS.md and docs/overhaul/ROADMAP.md section WP-15. You are running step S8: WP-15, the stats feature.
 1. Brief an implementer agent on branch wp/15-stats from overhaul. If WP-06's cache helpers (src/platform/cache) are not merged yet, build the pure compute and its tests first, and wire the cached queries once they are merged.
-2. Then an Opus reviewer with this list besides the acceptance criteria: the fixtures' published stats-hub totals are reproduced exactly; there is one compute and no old calculator was ported; every read is tenant-scoped; no file over 300 lines; the tests use fixtures and PGlite with no network.
+2. Then an Opus reviewer with this list besides the acceptance criteria: the fixtures' published stats-hub totals are reproduced exactly; there is one compute and no old calculator was ported; every read is tenant-scoped; nothing combined (tables, totals, averages, rankings) is stored or updated incrementally, everything comes from the one compute over all rows (ROADMAP WP-15, owner 2026-11-23); no file over 300 lines; the tests use fixtures and PGlite with no network.
 3. Apply the fixes, merge with --no-ff into overhaul, run the full checks.
 End as in PROMPTS.md.
 ```
@@ -75,11 +75,11 @@ End as in PROMPTS.md.
 
 ## S9 The owner's answers to questions 41 to 43
 
-Paste the prompt and write your answers under it, by number (for example "41a: yes. 41b: only the organizer gives a forfeit. 43, first match: it was 1:1").
+Most of 41 and 43 is answered and recorded in `STATUS.md`. Paste the prompt and write under it your answers to 42 and to the points marked "Still open" in 41 and 43, by number (for example "41a: Discord only. 42: yes to a and c, no to b.").
 
 ```text
-Read docs/overhaul/BRIEF.md, docs/overhaul/STATUS.md (questions 41 to 43) and docs/overhaul/PROMPTS.md. You are running step S9: fold my answers below into the design.
-- Update ROADMAP.md (WP-13b, WP-14, WP-16, WP-17, WP-21, WP-44, WP-66 as needed), ORGANIZER_UX.md (the decisions table and the match page) and CONVENTIONS.md (how matches, teams and players are named in reports, findings and messages).
+Read docs/overhaul/BRIEF.md, docs/overhaul/STATUS.md (questions 41 to 43) and docs/overhaul/PROMPTS.md. You are running step S9: fold the answers recorded in questions 41 and 43 and my answers below into the design.
+- Update ROADMAP.md (WP-13b, WP-14, WP-16, WP-17, WP-21, WP-44, WP-66 as needed; the bot-account test for ticketless games goes into WP-16; replay upload parsing goes to the backlog as "later"), ORGANIZER_UX.md (the decisions table: the captains' score flow, the lineup check, the organizer's manual forfeit; the match page: changing one match's format) and CONVENTIONS.md (how matches, teams and players are named in reports, findings and messages).
 - Record the data answers so the import applies them as owner corrections: a small data file and a test, through an implementer agent and an Opus reviewer, merged into overhaul. In the same package the import places every game by date (a game listed on two matches belongs to the one on its date) and takes each game's teams from its players, not from its labels (question 43, "The bug behind most of these").
 - Move each answered question to the decisions in STATUS.md. Where an answer leaves a gap, ask me in one message with your recommendation.
 End as in PROMPTS.md.
