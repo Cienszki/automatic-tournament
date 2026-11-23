@@ -6,7 +6,7 @@ import { and, eq, getTableColumns, getTableName, sql, type SQL } from 'drizzle-o
 import type { PgColumn, PgTable } from 'drizzle-orm/pg-core';
 import type { Db } from '@/platform/db/types';
 import * as s from '@/platform/db/schema';
-import { GLOBAL_TABLES, primaryKeyOf, tableName, type Row, type TableRows } from './rows';
+import { GLOBAL_TABLES, primaryKeyOf, tableName, type Row, type RowSet, type TableRows } from './rows';
 
 export interface TableWrite {
   table: string;
@@ -65,6 +65,19 @@ export async function upsertRows(db: Db, batch: TableRows): Promise<{ inserted: 
     for (const r of result) if (r.inserted) inserted++; else updated++;
   }
   return { inserted, updated };
+}
+
+/** Every batch of a row set, in write order, with the inserted and updated counts per table. */
+export async function writeBatches(db: Db, rows: RowSet): Promise<Map<PgTable, TableWrite>> {
+  const byTable = new Map<PgTable, TableWrite>();
+  for (const batch of rows.batches()) {
+    const { inserted, updated } = await upsertRows(db, batch);
+    const e = byTable.get(batch.table) ?? { table: tableName(batch.table), inserted: 0, updated: 0, stale: 0, deleted: 0 };
+    e.inserted += inserted;
+    e.updated += updated;
+    byTable.set(batch.table, e);
+  }
+  return byTable;
 }
 
 /** Audit rows have a generated id, so they are written once each, matched by what they record. */

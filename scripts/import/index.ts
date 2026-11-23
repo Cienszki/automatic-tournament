@@ -5,7 +5,7 @@
 //
 //   npx tsx scripts/import/index.ts --from <capture or folder of captures> [--from ...]
 //       [--target local|staging|production] [--db <PGlite folder>] [--anonymize] [--prune]
-//       [--published <folder>] [--report <file.md>]
+//       [--published <folder>] [--include <slug>] [--report <file.md>] [--redact]
 //
 //   --target local       (default) a PGlite folder (--db, default .local/import-db), or the
 //                        PostgreSQL on this machine named by LOCAL_DATABASE_URL
@@ -13,6 +13,9 @@
 //   --target production  NEW_PRODUCTION_DATABASE_URL (the new platform's database, never Firestore)
 //   --prune              delete rows of an imported tournament that its capture no longer has
 //                        (without it they are only counted as stale in the report)
+//   --include <slug>     import a tournament the tool skips by default (swiss-test, a test tournament)
+//   --redact             leave the examples (paths, user and Steam ids) out of the report's
+//                        findings, for a report that is shared or committed
 //
 // Example, all four tournaments into a local PGlite database:
 //   npx tsx scripts/import/index.ts --from ../overhaul/data-exports --report import-report.md
@@ -30,11 +33,13 @@ interface Args {
   anonymize: boolean;
   prune: boolean;
   published: string[];
+  include: string[];
   report?: string;
+  redact: boolean;
 }
 
 export function parseArgs(argv: readonly string[]): Args {
-  const args: Args = { from: [], target: 'local', anonymize: false, prune: false, published: [] };
+  const args: Args = { from: [], target: 'local', anonymize: false, prune: false, published: [], include: [], redact: false };
   for (let i = 0; i < argv.length; i++) {
     const flag = argv[i];
     const value = () => {
@@ -47,6 +52,8 @@ export function parseArgs(argv: readonly string[]): Args {
     else if (flag === '--db') args.db = value();
     else if (flag === '--published') args.published.push(value());
     else if (flag === '--report') args.report = value();
+    else if (flag === '--include') args.include.push(value());
+    else if (flag === '--redact') args.redact = true;
     else if (flag === '--anonymize') args.anonymize = true;
     else if (flag === '--prune') args.prune = true;
     else throw new Error(`unknown option ${flag}`);
@@ -62,8 +69,10 @@ async function main(): Promise<void> {
   console.error(`import: writing to the ${where}`);
   const { db, close } = await openTarget(target);
   try {
-    const result = await runImport(db, args.from, { anonymize: args.anonymize, prune: args.prune, publishedDirs: [...args.published, 'fixtures/exports'] });
-    const report = renderReport(result);
+    const result = await runImport(db, args.from, {
+      anonymize: args.anonymize, prune: args.prune, include: args.include, publishedDirs: [...args.published, 'fixtures/exports'],
+    });
+    const report = renderReport(result, { redact: args.redact });
     if (args.report) writeFileSync(args.report, report);
     else console.log(report);
     console.error(`import: ${result.tournaments.length} tournaments, ${totalChanges(result)} rows written${args.report ? `; report in ${args.report}` : ''}`);

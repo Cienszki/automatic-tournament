@@ -6,7 +6,7 @@
 import { createHash } from 'node:crypto';
 import * as s from '@/platform/db/schema';
 import { notifyPrefsSchema } from '@/platform/db/schema/json';
-import { docsOf, type Doc, type GlobalCapture } from '../source';
+import { docsOf, type Doc } from '../source';
 import { isSteam64, toText } from '../values';
 import { arr, createdOf, obj, timeOf, updatedOf } from './read';
 import { fitJson, type MapState } from './state';
@@ -38,17 +38,6 @@ export function mapPlayersTable(state: MapState): void {
       avatarFullUrl: toText(g.avatarfull) ?? p.avatarFullUrl ?? null,
       topHeroes: p.topHeroes ?? null,
     }, 'fill');
-  }
-}
-
-/** The global `players` collection is imported with the tournaments; its documents are counted once. */
-export function accountGlobalPlayers(state: MapState, global: GlobalCapture): void {
-  const docs = docsOf(global, 'players');
-  state.ctx.read('players (global)', docs);
-  const used = new Set(state.rows.get(s.players).map((r) => r.steamId64 as string));
-  for (const doc of docs) {
-    if (used.has(doc.id)) state.ctx.outcome('players (global)', 'mapped');
-    else state.ctx.outcome('players (global)', 'dropped', 'a player no row of this tournament refers to (imported with the tournament that does)');
   }
 }
 

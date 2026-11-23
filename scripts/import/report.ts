@@ -1,26 +1,55 @@
-// The import report, as Markdown: per tournament, what was read and what became of it, the rows
-// per table, every finding grouped by its reason, and the standings comparison. Ids in findings
-// are paths and ids from the capture; with `--anonymize` the report itself names no person.
+// The import report, as Markdown: the global collections, then per tournament what was read and
+// what became of it, the rows per table, every finding grouped by its reason, and the standings
+// comparison. Examples in findings are paths and ids from the capture, which can name a person
+// (a Steam id, a user id); `redact` leaves them out, for a report that is shared or committed.
 
 import type { Finding } from './context';
+import type { GlobalRun } from './global';
+import { TABLE_ORDER, tableName } from './rows';
 import type { RunResult, TournamentResult } from './run';
+import type { TableWrite } from './write';
 
 const EXAMPLES = 3;
 
-export function totalChanges(result: RunResult): number {
-  return result.tournaments.reduce((n, t) => n + t.writes.reduce((m, w) => m + w.inserted + w.updated + w.deleted, 0), 0);
+export interface ReportOptions {
+  /** Leave out the examples (paths, ids) of findings; keep counts, reasons and team names. */
+  redact?: boolean;
 }
 
-export function renderReport(result: RunResult): string {
+const changesOf = (writes: readonly TableWrite[]) => writes.reduce((m, w) => m + w.inserted + w.updated + w.deleted, 0);
+
+export function totalChanges(result: RunResult): number {
+  return result.tournaments.reduce((n, t) => n + changesOf(t.writes), changesOf(result.globalRun?.writes ?? []));
+}
+
+export function renderReport(result: RunResult, options: ReportOptions = {}): string {
   const lines: string[] = ['# Import report', ''];
   const changes = totalChanges(result);
   lines.push(`${result.tournaments.length} tournaments. Rows written: ${changes}${changes === 0 ? ' (nothing changed: the database already held this data)' : ''}.`, '');
+  for (const s of result.skipped) lines.push(`Not imported: ${s.slug}, ${s.reason}.`, '');
   if (!result.global) lines.push('No global capture was found: player profiles come from the rosters only, and every user is a stub.', '');
-  for (const t of result.tournaments) lines.push(...renderTournament(t));
+  if (result.globalRun) lines.push(...renderGlobal(result.globalRun, options));
+  for (const t of result.tournaments) lines.push(...renderTournament(t, options));
   return lines.join('\n');
 }
 
-function renderTournament(t: TournamentResult): string[] {
+const TABLES = new Map(TABLE_ORDER.map((t) => [tableName(t), t]));
+
+function renderGlobal(g: GlobalRun, options: ReportOptions): string[] {
+  const out = ['## Global collections', '', `Capture: ${g.capture.manifest.source}, ${g.capture.manifest.capturedAt}.`, ''];
+  out.push('| Collection | Documents | Status | What the import does with it |', '|---|---:|---|---|');
+  for (const k of g.kinds) out.push(`| ${k.kind} | ${k.documents} | ${k.status} | ${k.use} |`);
+  out.push('');
+  if (g.writes.length) {
+    out.push('Rows written from the owner\'s export, for every user it holds:', '', '| Table | Mapped | Inserted | Updated |', '|---|---:|---:|---:|');
+    for (const w of g.writes) out.push(`| ${w.table} | ${g.mapped.rows.get(TABLES.get(w.table)!).length} | ${w.inserted} | ${w.updated} |`);
+    out.push('');
+  }
+  if (g.mapped.ctx.findings.length) out.push(...renderFindings(g.mapped.ctx.findings, options));
+  return out;
+}
+
+function renderTournament(t: TournamentResult, options: ReportOptions): string[] {
   const { capture, ctx } = t.mapped;
   const out = [`## ${capture.slug} (id ${capture.tournamentId})`, ''];
   out.push(`Capture: ${capture.manifest.source}, ${capture.manifest.capturedAt}, layout ${capture.manifest.layout}.`, '');
@@ -36,12 +65,14 @@ function renderTournament(t: TournamentResult): string[] {
     const a = ctx.accounts.get(kind);
     if (!a && !inCapture) continue;
     const c = consumed.get(kind);
-    if (!a && c) {
+    // A kind the adapter folded into another one is accounted for there.
+    if (c && !a?.read) {
       out.push(`| ${kind} | ${c.documents} | → ${c.into} | | | | |`);
       continue;
     }
     const denied = capture.manifest.collections[kind]?.status === 'denied' ? ' (denied: needs the owner\'s export)' : '';
-    out.push(`| ${kind}${denied} | ${inCapture ?? '-'} | ${a?.read ?? 0} | ${a?.outcomes.mapped ?? 0} | ${a?.outcomes.merged ?? 0} | ${a?.outcomes.dropped ?? 0} | ${a?.outcomes.unmapped ?? 0} |`);
+    const split = c ? ` (→ ${c.into})` : '';
+    out.push(`| ${kind}${denied} | ${inCapture ?? '-'} | ${a?.read ?? 0}${split} | ${a?.outcomes.mapped ?? 0} | ${a?.outcomes.merged ?? 0} | ${a?.outcomes.dropped ?? 0} | ${a?.outcomes.unmapped ?? 0} |`);
   }
   out.push('');
   const reasons = [...ctx.accounts.entries()].flatMap(([kind, a]) => Object.entries(a.reasons).map(([r, n]) => `- ${kind}: ${r} (${n})`));
@@ -56,19 +87,7 @@ function renderTournament(t: TournamentResult): string[] {
   }
   out.push('');
 
-  out.push('### Findings', '');
-  const groups = groupFindings(ctx.findings);
-  if (!groups.length) out.push('None.', '');
-  for (const code of ['unmapped', 'conflict', 'unknown-field', 'decision'] as const) {
-    const list = groups.filter((g) => g.code === code);
-    if (!list.length) continue;
-    out.push(`${TITLES[code]}:`, '');
-    for (const g of list) {
-      const refs = g.refs.slice(0, EXAMPLES).map((r) => `\`${r}\``).join('; ');
-      out.push(`- ${g.kind}: ${g.reason} (${g.count})${refs ? ` — ${refs}${g.refs.length > EXAMPLES ? ' …' : ''}` : ''}`);
-    }
-    out.push('');
-  }
+  out.push(...renderFindings(ctx.findings, options));
 
   out.push('### Standings', '');
   if (!t.standings.length) out.push('No group stage or league table in this tournament.', '');
@@ -80,6 +99,25 @@ function renderTournament(t: TournamentResult): string[] {
     if (s.differences.length > 12) out.push(`  - … ${s.differences.length - 12} more`);
   }
   out.push('');
+  return out;
+}
+
+function renderFindings(findings: readonly Finding[], options: ReportOptions): string[] {
+  const out = ['### Findings', ''];
+  const groups = groupFindings(findings);
+  if (!groups.length) out.push('None.', '');
+  for (const code of ['unmapped', 'conflict', 'unknown-field', 'decision'] as const) {
+    const list = groups.filter((g) => g.code === code);
+    if (!list.length) continue;
+    out.push(`${TITLES[code]}:`, '');
+    for (const g of list) {
+      // A count ("65 values", "12 documents") names nobody and stays in a redacted report.
+      const shown = options.redact ? g.refs.filter((r) => /^\d+ [a-z]+$/.test(r)) : g.refs;
+      const refs = shown.slice(0, EXAMPLES).map((r) => `\`${r}\``).join('; ');
+      out.push(`- ${g.kind}: ${g.reason} (${g.count})${refs ? ` — ${refs}${shown.length > EXAMPLES ? ' …' : ''}` : ''}`);
+    }
+    out.push('');
+  }
   return out;
 }
 
