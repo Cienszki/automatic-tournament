@@ -25,7 +25,10 @@ const quoteIdent = (name: string) => `"${name.replace(/"/g, '""')}"`;
 /** The column that names the tournament a row belongs to (the tournament row itself: its id). */
 const tournamentColumn = (table: PgTable, columns: Record<string, PgColumn>) => (table === s.tournaments ? columns.id : columns.tournamentId);
 
-/** The columns any row sets, so that columns no row names keep their defaults and are never updated. */
+/**
+ * The columns any row sets, so that columns no row names keep their defaults and are never updated.
+ * A mapper leaves a column out (`undefined`) when this run's source cannot know its value.
+ */
 function columnsSet(rows: readonly Row[]): string[] {
   const keys = new Set<string>();
   for (const row of rows) for (const [k, v] of Object.entries(row)) if (v !== undefined) keys.add(k);
@@ -34,13 +37,14 @@ function columnsSet(rows: readonly Row[]): string[] {
 
 export async function upsertRows(db: Db, batch: TableRows): Promise<{ inserted: number; updated: number }> {
   const { table, mode, rows } = batch;
+  const keep = new Set(batch.keep ?? []);
   if (!rows.length) return { inserted: 0, updated: 0 };
   if (table === s.auditLog) return insertAuditRows(db, rows);
   const columns = getTableColumns(table) as Record<string, PgColumn>;
   const pk = primaryKeyOf(table);
   const keys = columnsSet(rows);
   for (const k of keys) if (!columns[k]) throw new Error(`${tableName(table)} has no column ${k}`);
-  const updatable = keys.filter((k) => !pk.includes(k));
+  const updatable = keys.filter((k) => !pk.includes(k) && !keep.has(k));
   const target = pk.map((k) => columns[k]);
   const name = quoteIdent(getTableName(table));
   const current = (k: string) => `${name}.${quoteIdent(columns[k].name)}`;

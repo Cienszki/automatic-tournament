@@ -80,6 +80,8 @@ describe('running again', () => {
       const manifestFile = join(copy, 'manifest.json');
       const manifest = JSON.parse(readFileSync(manifestFile, 'utf8'));
       manifest.collections.scrimSlots.documents = 0;
+      // --prune needs a complete capture: this one stands for the owner's export, refused nothing.
+      for (const entry of Object.values(manifest.collections) as Array<{ status: string }>) entry.status = 'ok';
       writeFileSync(manifestFile, JSON.stringify(manifest));
 
       const changed = await runImport(t.db, [copy], OPTIONS);

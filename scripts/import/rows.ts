@@ -65,11 +65,14 @@ export interface TableRows {
   table: PgTable;
   mode: WriteMode;
   rows: Row[];
+  /** Columns an existing row keeps: they are written when the row is inserted, never on update. */
+  keep?: readonly string[];
 }
 
 export class RowSet {
   /** Rows by table and write mode; one table can have rows of two modes (users: full and stub). */
   private readonly tables = new Map<PgTable, Map<WriteMode, Map<string, Row>>>();
+  private readonly kept = new Map<PgTable, Set<string>>();
 
   constructor(private readonly onConflict: (table: string, key: string, kept: Row, other: Row) => void = () => {}) {}
 
@@ -105,12 +108,22 @@ export class RowSet {
     return [...(this.tables.get(table)?.values() ?? [])].some((rows) => rows.has(key));
   }
 
+  /**
+   * Leave `column` of existing rows of `table` as it is: the source of this run cannot know its
+   * value (it comes from a collection the capture was refused), so only a new row gets one.
+   */
+  keepOnUpdate(table: PgTable, column: string): void {
+    if (!this.kept.has(table)) this.kept.set(table, new Set());
+    this.kept.get(table)!.add(column);
+  }
+
   /** Every table with rows, in write order; within a table, `replace` before `fill` before `insert-only`. */
   batches(): TableRows[] {
     const modes: WriteMode[] = ['replace', 'fill', 'insert-only'];
     return TABLE_ORDER.filter((t) => this.tables.has(t)).flatMap((table) => {
       const byMode = this.tables.get(table)!;
-      return modes.filter((m) => byMode.get(m)?.size).map((mode) => ({ table, mode, rows: [...byMode.get(mode)!.values()] }));
+      const keep = [...(this.kept.get(table) ?? [])];
+      return modes.filter((m) => byMode.get(m)?.size).map((mode) => ({ table, mode, rows: [...byMode.get(mode)!.values()], ...(keep.length ? { keep } : {}) }));
     });
   }
 }

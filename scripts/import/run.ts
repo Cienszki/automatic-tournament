@@ -10,6 +10,7 @@ import { accountGlobalKinds, runGlobal, type GlobalRun } from './global';
 import { readLegacyCapture, type LegacyCapture } from './legacy-letnia';
 import { mapCapture, type MappedTournament } from './map';
 import type { MapOptions } from './mappers/state';
+import { assertCompleteForPrune, unseenBy } from './private-sources';
 import { TABLE_ORDER, tableName } from './rows';
 import { docsOf, findCaptures, readGlobalCapture, readScopedCapture, type Capture, type GlobalCapture } from './source';
 import { compareStandings, type TableComparison } from './standings';
@@ -77,6 +78,7 @@ export async function runImport(db: Db, from: string[], options: RunOptions): Pr
     return !reason;
   });
   const captures = writeOrder(all.map(readCapture));
+  if (options.prune) assertCompleteForPrune(captures);
   const slugToId = new Map<string, string>();
   for (const doc of global ? docsOf(global, 'tournaments') : []) if (typeof doc.data.slug === 'string') slugToId.set(doc.data.slug, doc.id);
   for (const c of captures) slugToId.set(c.slug, c.tournamentId);
@@ -115,12 +117,15 @@ async function writeTournament(db: Db, mapped: MappedTournament, prune: boolean)
     }
   }
   const byTable = await writeBatches(db, rows);
+  const capture = mapped.capture;
   const entry = (table: PgTable) => {
     if (!byTable.has(table)) byTable.set(table, { table: tableName(table), inserted: 0, updated: 0, stale: 0, deleted: 0 });
     return byTable.get(table)!;
   };
   for (const table of [...TABLE_ORDER].reverse()) {
-    const stale = await staleRows(db, table, tournamentId, rows.get(table));
+    // Rows only a collection this capture was refused produces are not the source's to remove.
+    const unseen = unseenBy(capture, table);
+    const stale = (await staleRows(db, table, tournamentId, rows.get(table))).filter((key) => !unseen(key));
     if (!stale.length) continue;
     const e = entry(table);
     e.stale = stale.length;

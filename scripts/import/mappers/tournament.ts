@@ -6,6 +6,7 @@ import * as s from '@/platform/db/schema';
 import { botSettingsSchema } from '@/platform/db/schema/json';
 import { fields } from '../context';
 import { organizationFor, SERIES } from '../organizers';
+import { isDenied } from '../private-sources';
 import { docsOf, type Doc } from '../source';
 import { isUserId, readTime, toInt, toText } from '../values';
 import { arr, createdOf, obj, timeOf, updatedOf } from './read';
@@ -114,10 +115,14 @@ function redirectTarget(state: MapState, doc: Doc): string | null {
   return id;
 }
 
-/** `tournaments/{id}/config/bot` (owner's export only). */
+/**
+ * `tournaments/{id}/config/bot` (owner's export only). A capture that was refused `config` cannot
+ * know the configuration: the value is left out (`undefined`), so a stored one is kept.
+ */
 function mapBotConfig(state: MapState): unknown {
   const docs = docsOf(state.capture, 'config');
   state.ctx.read('config', docs);
+  if (isDenied(state.capture, 'config')) return undefined;
   let result: unknown = null;
   for (const doc of docs) {
     if (doc.id !== 'bot') {

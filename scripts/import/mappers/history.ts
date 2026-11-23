@@ -3,6 +3,7 @@
 // written from the code that writes them and tested on made-up documents.
 
 import * as s from '@/platform/db/schema';
+import { isDenied } from '../private-sources';
 import { ancestorId, docsOf } from '../source';
 import { steam64FromProfileUrl, toSteam64, toText } from '../values';
 import { createdOf, timeOf } from './read';
@@ -14,6 +15,12 @@ import type { MapState } from './state';
  * old site deleted their roster document.
  */
 export function mapTransfers(state: MapState): void {
+  // Without the transfers, a member's joining date can only be the roster document's creation
+  // time, which is wrong for a player whose `add` transfer set it. So existing members keep the
+  // stored date and only a new member gets the creation time. The rule covers the whole table:
+  // the other dates are creation times too, which do not change between captures, except a
+  // coach's (`coach.updatedAt`), which then also stays as first imported.
+  if (isDenied(state.capture, 'teams.transfers')) state.rows.keepOnUpdate(s.teamMembers, 'joinedAt');
   const docs = docsOf(state.capture, 'teams.transfers');
   state.ctx.read('teams.transfers', docs);
   const members = state.rows.get(s.teamMembers);
