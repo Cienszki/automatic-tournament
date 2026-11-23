@@ -5,6 +5,8 @@ export interface DbArgs {
   database?: string;
   remote: boolean;
   staging: boolean;
+  /** --expect <environment> (db:migrate): the environment the database must say it is. */
+  expect?: string;
   /** --phase <tournament>=<phase>, repeatable (db:seed). */
   phases: Record<string, string>;
   /** --only <tournament>, repeatable (db:seed). */
@@ -23,6 +25,7 @@ export function parseDbArgs(argv: string[]): DbArgs {
     if (key === '--database') args.database = next();
     else if (key === '--remote') args.remote = true;
     else if (key === '--staging') args.staging = true;
+    else if (key === '--expect') args.expect = next();
     else if (key === '--phase') {
       const [name, phase] = next().split('=');
       if (!name || !phase) throw new Error('--phase takes <tournament>=<phase>');

@@ -1,7 +1,7 @@
 // @vitest-environment node
 import path from 'path';
 import { describe, expect, it } from 'vitest';
-import { assertMayMigrate, assertMaySeed, describeTarget, parseDatabaseUrl } from './target';
+import { assertExpectedEnvironment, assertMayMigrate, assertMaySeed, describeTarget, parseDatabaseUrl } from './target';
 
 const ROOT = path.resolve('/repo');
 
@@ -57,5 +57,19 @@ describe('assertMaySeed', () => {
     expect(() => assertMaySeed(remote, { staging: true }, null)).toThrow(/missing/);
     expect(() => assertMaySeed(remote, { staging: true }, 'production')).toThrow(/"production"/);
     expect(() => assertMaySeed(remote, { staging: true }, 'staging')).not.toThrow();
+  });
+});
+
+describe('assertExpectedEnvironment', () => {
+  it('does nothing without --expect', () => {
+    expect(() => assertExpectedEnvironment(undefined, 'production', false)).not.toThrow();
+  });
+  it('allows the database that says it is the expected one, and an empty one', () => {
+    expect(() => assertExpectedEnvironment('staging', 'staging', false)).not.toThrow();
+    expect(() => assertExpectedEnvironment('staging', null, true)).not.toThrow();
+  });
+  it('refuses a migrated database that is another one or does not say', () => {
+    expect(() => assertExpectedEnvironment('staging', 'production', false)).toThrow(/"production"/);
+    expect(() => assertExpectedEnvironment('staging', null, false)).toThrow(/missing/);
   });
 });

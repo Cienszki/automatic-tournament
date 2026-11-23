@@ -53,6 +53,8 @@ export interface WriteFlags {
   remote?: boolean;
   /** db:seed: the caller means the staging database. */
   staging?: boolean;
+  /** db:migrate --expect <environment>: the database must say it is this one (CI's staging job). */
+  expect?: string;
 }
 
 /** Throws unless migrations may be applied to `target`. */
@@ -61,6 +63,20 @@ export function assertMayMigrate(target: DatabaseTarget, flags: WriteFlags): voi
   if (!flags.remote) {
     throw new Error(`Refusing to migrate a ${describeTarget(target)} without --remote.`);
   }
+}
+
+/**
+ * With --expect, throws unless the database says it is that environment. A database without the
+ * `app` schema is empty, so its first migration is allowed; the owner then writes the
+ * `environment` row (docs/DEV_SETUP.md) and every later run checks it. This stops a secret that
+ * holds another database's URL from migrating that database.
+ */
+export function assertExpectedEnvironment(expected: string | undefined, environment: string | null, empty: boolean): void {
+  if (!expected || empty || environment === expected) return;
+  throw new Error(
+    `Refusing to migrate: expected the "${expected}" database, but its app.platform_settings row ` +
+    `"environment" is ${environment === null ? 'missing' : `"${environment}"`}.`,
+  );
 }
 
 /**

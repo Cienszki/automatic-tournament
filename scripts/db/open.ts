@@ -96,3 +96,12 @@ export async function readEnvironment(db: Db): Promise<string | null> {
     return null; // not migrated yet
   }
 }
+
+/** Whether the database has no `app` schema yet, i.e. nothing was ever migrated into it. */
+export async function isEmptyDatabase(db: Db): Promise<boolean> {
+  const rows = await db.execute<{ n: number }>(
+    sql`select count(*)::int as n from information_schema.schemata where schema_name = 'app'`,
+  );
+  const list = Array.isArray(rows) ? rows : (rows as unknown as { rows: { n: number }[] }).rows;
+  return Number(list[0]?.n ?? 0) === 0;
+}
