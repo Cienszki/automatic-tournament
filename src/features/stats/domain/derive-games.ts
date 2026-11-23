@@ -47,6 +47,11 @@ export function derivePerfs(ds: StatsDataset, games: GameX[]): Perf[] {
   return perfs;
 }
 
+/** The game length every score is normalised to: the average over the scored performances. */
+export function scoringMinutes(scored: readonly Perf[]): number {
+  return scored.length ? scored.reduce((a, p) => a + p.min, 0) / scored.length : 40;
+}
+
 /**
  * The performance score of every performance that can be scored, and each game's MVP. Scored:
  * roster players with a role, playing for their own team, in games of at least
@@ -58,7 +63,7 @@ export function scorePerfs(ds: StatsDataset, perfs: Perf[], games: GameX[]): voi
     const info = rosterOf.get(p.pid);
     return !!info?.role && !info.standin && (!info.teamId || info.teamId === p.tid) && p.min >= MIN_SCORED_GAME_MINS;
   });
-  const avgGameMins = eligible.length ? eligible.reduce((a, p) => a + p.min, 0) / eligible.length : 40;
+  const avgGameMins = scoringMinutes(eligible);
   for (const p of perfs) p.score = NaN;
   for (const p of eligible) {
     p.score = calcPerformanceScore(rosterOf.get(p.pid)!.role!, { ...p, firstBloodClaimed: p.firstBloodClaimed > 0 }, p.min, avgGameMins).total;
