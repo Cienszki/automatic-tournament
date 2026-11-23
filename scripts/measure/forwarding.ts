@@ -1,6 +1,7 @@
 // Which app answers each path (WP-06, steps 3 and 4): the new platform, the old pages in this app,
-// or the old site through the forward. Reads the `x-platform-route` header the middleware sets
-// and the response's title.
+// or the old site through the forward. Prints the `x-platform-route` header, which the moved
+// pages carry (`platform`), and the response's title; forwards carry no mark of their own, so they
+// are recognised by the old site's content (locally, the stand-in's `x-old-site` header).
 //
 //   npx tsx scripts/measure/forwarding.ts --base https://<address> [--path /pdl-s2/teams --path /pdl/teams ...]
 //       [--rsc] [--json out.json]

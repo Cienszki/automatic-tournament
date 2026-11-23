@@ -35,7 +35,7 @@ Phases are `registration`, `mid-season`, `playoffs` (group stage with playoffs o
 
 **The real tournaments locally.** The import tool writes the four captured tournaments into the same folder (stop `dev:local` first): `npx tsx scripts/import/index.ts --from ../overhaul/data-exports --db .local/pglite`.
 
-**The new platform in front of the old site** (ADR-15, `src/platform/routing/rules.mjs`). Three variables, read by the middleware at run time and by `next.config.mjs` at build time, so a change needs a new build or deployment:
+**The new platform in front of the old site** (ADR-15, `src/platform/routing/rules.mjs`). Three variables, read by `next.config.mjs` when the app is built (`next dev` reads them when it starts), never at run time: a change needs a new build or deployment, and a malformed value fails the build:
 
 | Variable | Meaning | Local | Staging preview |
 |---|---|---|---|
