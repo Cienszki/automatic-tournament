@@ -1,15 +1,19 @@
 // @vitest-environment node
-// The owner's export script (scripts/tools/export-firestore.mjs) is never run by an agent or a
-// test. What can be checked without credentials: it names no write method of the Firestore SDK,
-// and its lines are in the format the import reads.
+// The owner's export script (scripts/tools/export-firestore.mjs) needs the production service
+// account, so no agent and no test ever runs it with credentials. What is checked here, without
+// any: it names no write method of the Firestore SDK, its lines are in the format the import
+// reads, and started without credentials it stops before it loads the SDK or touches a folder.
 
-import { readFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { parseLine, reviveTimestamps } from '../../tools/capture/lib/format';
 import * as script from '../../tools/export-firestore.mjs';
 
 const FILE = join(__dirname, '..', '..', 'tools', 'export-firestore.mjs');
+const CREDENTIALS = ['FIREBASE_SERVICE_ACCOUNT_BASE64', 'GOOGLE_APPLICATION_CREDENTIALS', 'FIREBASE_SERVICE_ACCOUNT'];
 
 describe('export-firestore.mjs', () => {
   it('calls no method that writes to Firestore', () => {
@@ -38,5 +42,26 @@ describe('export-firestore.mjs', () => {
     expect(script.kindOf('tournaments/T/matches/M/games/G', 'tournaments/T')).toBe('matches.games');
     expect(script.kindOf('tournaments/T', 'tournaments/T')).toBe('tournaments');
     expect(script.kindOf('accounts/U/inbox/I', '')).toBe('accounts.inbox');
+  });
+
+  it('wants the service account named, and never falls back to the machine\'s Google credentials', () => {
+    expect(() => script.credentialSource({})).toThrow(/no credentials/);
+    expect(script.credentialSource({ GOOGLE_APPLICATION_CREDENTIALS: 'sa.json' })).toBe('GOOGLE_APPLICATION_CREDENTIALS');
+    expect(script.credentialSource({ FIREBASE_SERVICE_ACCOUNT_BASE64: 'e30=' })).toBe('FIREBASE_SERVICE_ACCOUNT_BASE64');
+  });
+
+  it('started without credentials, stops before it writes anything', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'export-script-'));
+    try {
+      const env = { ...process.env };
+      for (const k of CREDENTIALS) delete env[k];
+      const out = join(dir, 'private');
+      const run = spawnSync(process.execPath, [FILE, '--out', out], { env, encoding: 'utf8', timeout: 30_000 });
+      expect(run.status).toBe(1);
+      expect(run.stderr).toMatch(/no credentials/);
+      expect(existsSync(out) || existsSync(`${out}.partial`)).toBe(false);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 });

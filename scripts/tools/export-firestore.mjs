@@ -1,5 +1,6 @@
-#!/usr/bin/env node
 // scripts/tools/export-firestore.mjs
+//
+// (No #! line: on a Windows checkout with CRLF endings it stops vitest from importing this file.)
 //
 // THE OWNER RUNS THIS, NEVER AN AGENT. It needs the production service account.
 //
@@ -168,7 +169,19 @@ async function exportTournament(db, out, doc) {
   console.error(`export: ${slug}: ${Object.values(folder.manifest.collections).reduce((n, c) => n + c.documents, 0)} documents`);
 }
 
+/**
+ * The service account must be named explicitly. Without this check the Admin SDK would fall back
+ * to whatever Google credentials the machine has (gcloud's application default), which is not a
+ * choice this script should make silently.
+ */
+export function credentialSource(env) {
+  if (env.FIREBASE_SERVICE_ACCOUNT_BASE64) return 'FIREBASE_SERVICE_ACCOUNT_BASE64';
+  if (env.GOOGLE_APPLICATION_CREDENTIALS) return 'GOOGLE_APPLICATION_CREDENTIALS';
+  throw new Error('no credentials: set GOOGLE_APPLICATION_CREDENTIALS (a service-account file) or FIREBASE_SERVICE_ACCOUNT_BASE64');
+}
+
 async function main() {
+  credentialSource(process.env);
   const argv = process.argv.slice(2);
   const outArg = argv[argv.indexOf('--out') + 1];
   if (!argv.includes('--out') || !outArg) throw new Error('usage: node scripts/tools/export-firestore.mjs --out <folder> [--include-bot-accounts]');
