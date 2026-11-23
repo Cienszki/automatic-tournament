@@ -1,8 +1,7 @@
 // Small shared helpers for the #48+ pages: positions, calendar weeks and score-based rankings.
 // Pure data, no React.
-import { pctRank, type GameX, type Model, type Perf, type PlayerX, type TeamX } from './derive';
+import { pctRank, type Model, type Perf, type PlayerX, type TeamX } from './derive';
 import type { MetricKey } from './metrics';
-import type { DsMatch } from './types';
 
 /** Roster roles in position order (as stored on the roster) */
 export const ROLES = ['Carry', 'Mid', 'Offlane', 'Soft Support', 'Hard Support'] as const;
@@ -191,28 +190,3 @@ export function eloTimeline(model: Model) {
 }
 export const winProb = (a: number, b: number) => 1 / (1 + Math.pow(10, (b - a) / 400));
 
-// ── League standings (2 points per series win, 1 per draw — as on the site) ──
-
-export interface StandRow { t: TeamX; played: number; w: number; d: number; l: number; gw: number; gl: number; pts: number; form: Array<'W' | 'D' | 'L'> }
-
-export function standings(model: Model, matches: DsMatch[]): StandRow[] {
-  const rows = new Map<string, StandRow>();
-  const row = (id: string) => {
-    const t = model.teamById.get(id); if (!t) return null;
-    let r = rows.get(id); if (!r) { r = { t, played: 0, w: 0, d: 0, l: 0, gw: 0, gl: 0, pts: 0, form: [] }; rows.set(id, r); }
-    return r;
-  };
-  for (const m of [...matches].sort((a, b) => (a.completedAt ?? 0) - (b.completedAt ?? 0))) {
-    const a = row(m.teamA); const b = row(m.teamB); if (!a || !b) continue;
-    a.played++; b.played++; a.gw += m.scoreA; a.gl += m.scoreB; b.gw += m.scoreB; b.gl += m.scoreA;
-    if (m.scoreA > m.scoreB) { a.w++; a.pts += 2; b.l++; a.form.push('W'); b.form.push('L'); }
-    else if (m.scoreB > m.scoreA) { b.w++; b.pts += 2; a.l++; b.form.push('W'); a.form.push('L'); }
-    else { a.d++; b.d++; a.pts++; b.pts++; a.form.push('D'); b.form.push('D'); }
-  }
-  return [...rows.values()].sort((x, y) => y.pts - x.pts || (y.gw - y.gl) - (x.gw - x.gl) || y.gw - x.gw || x.t.name.localeCompare(y.t.name));
-}
-
-/** Games of a series, in order */
-export function gamesOf(model: Model, matchId: string): GameX[] {
-  return model.games.filter(g => g.matchId === matchId).sort((a, b) => a.start - b.start);
-}
