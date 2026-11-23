@@ -31,7 +31,7 @@ const without = <T extends { rankingsView?: unknown; method?: unknown; datasetGe
 
 async function load(slug: FixtureSlug): Promise<{ t: TestDb; input: TournamentInput }> {
   const t = await importedDb([slug]);
-  return { t, input: (await loadTournamentInput(t.db, TOURNAMENT_ID[slug]))! };
+  return { t, input: (await loadTournamentInput(TOURNAMENT_ID[slug], t.db))! };
 }
 
 describe('pdl-s2: the season numbers and the rankings, computed from the imported rows', () => {

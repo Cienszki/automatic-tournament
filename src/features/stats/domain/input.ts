@@ -6,6 +6,8 @@ export interface InputTournament {
   id: string;
   /** `league`, `mmr-limited` or `swiss`: chooses how the hub slices the season into periods. */
   formatPreset: string;
+  /** `draft`, `registration`, `active`, `completed` or `archived`. */
+  status: string;
 }
 
 export interface InputStage {

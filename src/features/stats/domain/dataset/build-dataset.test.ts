@@ -31,7 +31,7 @@ const member = (id: string, teamId: string, over: Partial<InputMember> = {}): In
 
 function input(over: Partial<TournamentInput> = {}): TournamentInput {
   return {
-    tournament: { id: 't1', formatPreset: 'league' }, loadedAt: new Date('2026-11-23T10:00:00Z'),
+    tournament: { id: 't1', formatPreset: 'league', status: 'active' }, loadedAt: new Date('2026-11-23T10:00:00Z'),
     stages: [{ id: 'groups', position: 1, kind: 'round_robin', name: 'Grupy', ranking: null }, { id: 'po', position: 2, kind: 'bracket', name: 'Playoffy', ranking: null }],
     groups: [{ id: 'A', stageId: 'groups', name: 'Grupa A', position: 1, tier: null }],
     groupTeams: [],

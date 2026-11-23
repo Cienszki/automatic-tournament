@@ -1,12 +1,16 @@
 // @vitest-environment node
-// The loader: a fixed number of statements for any tournament size, every one filtered by the
-// tournament, and two tournaments in one database each see only their own rows.
+// The loader: a fixed number of reads in one read-only snapshot for any tournament size, every
+// one filtered by the tournament; drafts and unknown ids stop after the first read; two
+// tournaments in one database each see only their own rows.
 
-import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { eq } from 'drizzle-orm';
+import type { Transaction } from '@electric-sql/pglite';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { players, teamMembers, tournaments } from '@/platform/db';
 import type { TestDb } from '@/platform/db/testing';
 import { computeTournament } from './domain/compute';
 import type { TournamentInput } from './domain/input';
-import { getDataset, LOAD_STATEMENTS, loadTournamentInput } from './queries';
+import { getDataset, LOAD_READS, loadTournamentInput } from './queries';
 import { importedDb, TOURNAMENT_ID } from './testing/imported';
 import { publishedTotals, totalsOf } from './testing/published';
 
@@ -14,39 +18,94 @@ let t: TestDb;
 beforeAll(async () => { t = await importedDb(['pdl-s2', 'wiosenna']); }, 120_000);
 afterAll(() => t.close());
 
-/** The statements a call sends to the database, with their parameters. */
-async function recordStatements<T>(run: () => Promise<T>): Promise<{ result: T; statements: Array<{ sql: string; params: unknown[] }> }> {
-  const spy = vi.spyOn(t.client, 'query');
+interface Statement { sql: string; params: unknown[]; inTransaction: boolean }
+
+/**
+ * The statements a call sends: those on the PGlite instance and those inside its transactions.
+ * PGlite sends BEGIN and COMMIT itself, past this record; the `set transaction` that drizzle sends
+ * on PGlite is recorded (on postgres-js the same options go into BEGIN).
+ */
+async function recordStatements<T>(run: () => Promise<T>): Promise<{ result: T; statements: Statement[] }> {
+  const statements: Statement[] = [];
+  const push = (inTransaction: boolean, sql: unknown, params: unknown) => statements.push({ sql: String(sql), params: (params as unknown[]) ?? [], inTransaction });
+  const client = t.client;
+  const query = client.query;
+  const transaction = client.transaction;
+  client.query = ((sql: string, params?: unknown[], o?: unknown) => {
+    push(false, sql, params);
+    return query.call(client, sql, params, o as never);
+  }) as typeof client.query;
+  client.transaction = ((cb: (tx: Transaction) => Promise<unknown>) => transaction.call(client, (inner: Transaction) => {
+    const own = inner.query;
+    inner.query = ((sql: string, params?: unknown[], o?: unknown) => { push(true, sql, params); return own.call(inner, sql, params, o as never); }) as typeof inner.query;
+    return cb(inner);
+  })) as typeof client.transaction;
   try {
-    const result = await run();
-    return { result, statements: spy.mock.calls.map(([sql, params]) => ({ sql: String(sql), params: (params as unknown[]) ?? [] })) };
+    return { result: await run(), statements };
   } finally {
-    spy.mockRestore();
+    client.query = query;
+    client.transaction = transaction;
   }
 }
 
+const reads = (statements: Statement[]) => statements.filter((s) => s.sql.trimStart().toLowerCase().startsWith('select '));
+
 describe('loadTournamentInput', () => {
-  it('runs the same number of statements for a small and a seven times larger tournament', async () => {
-    const small = await recordStatements(() => loadTournamentInput(t.db, TOURNAMENT_ID['pdl-s2']));
-    const large = await recordStatements(() => loadTournamentInput(t.db, TOURNAMENT_ID.wiosenna));
+  it('reads the same number of times for a small and a seven times larger tournament, in one read-only snapshot', async () => {
+    const small = await recordStatements(() => loadTournamentInput(TOURNAMENT_ID['pdl-s2'], t.db));
+    const large = await recordStatements(() => loadTournamentInput(TOURNAMENT_ID.wiosenna, t.db));
     expect(large.result!.performances.length).toBeGreaterThan(6 * small.result!.performances.length);
-    expect(small.statements).toHaveLength(LOAD_STATEMENTS);
-    expect(large.statements).toHaveLength(LOAD_STATEMENTS);
+    for (const { statements } of [small, large]) {
+      expect(reads(statements)).toHaveLength(LOAD_READS);
+      expect(statements).toHaveLength(LOAD_READS + 1);
+      expect(statements.every((s) => s.inTransaction)).toBe(true);
+      expect(statements[0].sql).toBe('set transaction isolation level repeatable read read only');
+    }
   });
 
-  it('filters every statement by the tournament', async () => {
+  it('filters every read by the tournament', async () => {
     const id = TOURNAMENT_ID.wiosenna;
-    const { statements } = await recordStatements(() => loadTournamentInput(t.db, id));
-    for (const s of statements) {
+    const { statements } = await recordStatements(() => loadTournamentInput(id, t.db));
+    for (const s of reads(statements)) {
       const filter = s.sql.includes('from "app"."tournaments"') ? /"tournaments"\."id" = \$1/ : /"tournament_id" = \$1/;
       expect({ sql: s.sql, filtered: filter.test(s.sql) }).toEqual({ sql: s.sql, filtered: true });
       expect(s.params[0]).toBe(id);
     }
   });
 
-  it('gives null for a tournament that does not exist', async () => {
-    expect(await loadTournamentInput(t.db, 'no-such-tournament')).toBeNull();
+  it('gives null for a tournament that does not exist, after one read', async () => {
+    const { result, statements } = await recordStatements(() => loadTournamentInput('no-such-tournament', t.db));
+    expect(result).toBeNull();
+    expect(reads(statements)).toHaveLength(1);
     expect(await getDataset('no-such-tournament', t.db)).toBeNull();
+  });
+
+  it('treats a draft like an unknown tournament, unless drafts are asked for', async () => {
+    const id = TOURNAMENT_ID['pdl-s2'];
+    const [{ status }] = await t.db.select({ status: tournaments.status }).from(tournaments).where(eq(tournaments.id, id));
+    await t.db.update(tournaments).set({ status: 'draft' }).where(eq(tournaments.id, id));
+    try {
+      const { result, statements } = await recordStatements(() => loadTournamentInput(id, t.db));
+      expect(result).toBeNull();
+      expect(reads(statements)).toHaveLength(1);
+      expect(await getDataset(id, t.db)).toBeNull();
+      expect((await loadTournamentInput(id, t.db, { drafts: true }))?.tournament).toEqual({ id, formatPreset: 'swiss', status: 'draft' });
+    } finally {
+      await t.db.update(tournaments).set({ status }).where(eq(tournaments.id, id));
+    }
+  });
+
+  it('takes the medium Steam picture, then the full one, then the small one', async () => {
+    const id = TOURNAMENT_ID['pdl-s2'];
+    const [{ steamId64 }] = await t.db.select({ steamId64: teamMembers.steamId64 }).from(teamMembers).where(eq(teamMembers.tournamentId, id)).limit(1);
+    const urls = { avatarUrl: 'https://a/s.jpg', avatarMediumUrl: 'https://a/m.jpg', avatarFullUrl: 'https://a/f.jpg' };
+    const avatar = async () => (await loadTournamentInput(id, t.db))!.members.find((m) => m.steamId64 === steamId64)!.avatarUrl;
+    await t.db.update(players).set(urls).where(eq(players.steamId64, steamId64!));
+    expect(await avatar()).toBe(urls.avatarMediumUrl);
+    await t.db.update(players).set({ avatarMediumUrl: null }).where(eq(players.steamId64, steamId64!));
+    expect(await avatar()).toBe(urls.avatarFullUrl);
+    await t.db.update(players).set({ avatarFullUrl: null }).where(eq(players.steamId64, steamId64!));
+    expect(await avatar()).toBe(urls.avatarUrl);
   });
 });
 
@@ -54,8 +113,8 @@ describe('two tournaments in one database', () => {
   let pdl: TournamentInput;
   let wiosenna: TournamentInput;
   beforeAll(async () => {
-    pdl = (await loadTournamentInput(t.db, TOURNAMENT_ID['pdl-s2']))!;
-    wiosenna = (await loadTournamentInput(t.db, TOURNAMENT_ID.wiosenna))!;
+    pdl = (await loadTournamentInput(TOURNAMENT_ID['pdl-s2'], t.db))!;
+    wiosenna = (await loadTournamentInput(TOURNAMENT_ID.wiosenna, t.db))!;
   });
 
   it('each load holds only its own rows', () => {

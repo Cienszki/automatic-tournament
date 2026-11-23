@@ -32,7 +32,7 @@ let added: { matchId: string; game: InputGame; perfs: InputPerformance[]; teamA:
 
 beforeAll(async () => {
   t = await importedDb(['pdl-s2']);
-  before = (await loadTournamentInput(t.db, ID))!;
+  before = (await loadTournamentInput(ID, t.db))!;
   const match = before.matches.find((m) => m.status === 'scheduled' && m.teamAId && m.teamBId)!;
   const roster = await scoped(t.db, ID).select({ teamId: teamMembers.teamId, steamId64: teamMembers.steamId64 })
     .from(teamMembers, isNull(teamMembers.leftAt), ne(teamMembers.kind, 'coach'));
@@ -54,7 +54,7 @@ afterAll(() => t.close());
 
 describe('computing after a game is added', () => {
   it('equals computing on the old rows with the new ones added in memory', async () => {
-    const fresh = computeTournament((await loadTournamentInput(t.db, ID))!);
+    const fresh = computeTournament((await loadTournamentInput(ID, t.db))!);
     const inMemory: TournamentInput = {
       ...before,
       matches: before.matches.map((m) => (m.id === added.matchId
@@ -68,7 +68,7 @@ describe('computing after a game is added', () => {
 
   it('changes the season numbers, the standings and the rankings for every number the game touches', async () => {
     const old = computeTournament(before);
-    const fresh = computeTournament((await loadTournamentInput(t.db, ID))!);
+    const fresh = computeTournament((await loadTournamentInput(ID, t.db))!);
     expect(fresh.season.counts.games).toBe(old.season.counts.games + 1);
     expect(fresh.season.counts.matches).toBe(old.season.counts.matches + 1);
     expect(fresh.season.totals.kills).toBe(old.season.totals.kills + added.perfs.reduce((n, p) => n + p.kills, 0));

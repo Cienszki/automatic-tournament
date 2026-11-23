@@ -62,7 +62,7 @@ describe.each(['pdl-s2', 'wiosenna'] as const)('the dataset of %s, imported and 
   let ours: StatsDataset;
   beforeAll(async () => {
     t = await importedDb([slug]);
-    ours = computeTournament((await loadTournamentInput(t.db, TOURNAMENT_ID[slug]))!).dataset;
+    ours = computeTournament((await loadTournamentInput(TOURNAMENT_ID[slug], t.db))!).dataset;
   }, 120_000);
   afterAll(() => t.close());
 

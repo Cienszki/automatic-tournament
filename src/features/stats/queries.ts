@@ -12,14 +12,17 @@ import { buildDataset } from './domain/dataset/build-dataset';
 import type { TournamentInput } from './domain/input';
 import type { StatsDataset } from './domain/types';
 
-/** Statements `loadTournamentInput` runs, for any tournament. A test holds it to this number. */
-export const LOAD_STATEMENTS = 11;
+/**
+ * Reads `loadTournamentInput` runs for a tournament it loads: one for the tournament, then ten for
+ * its rows, whatever its size. An unknown tournament or a draft costs the first one only.
+ */
+export const LOAD_READS = 11;
 
 const MEMBER_COLUMNS = {
   id: teamMembers.id, teamId: teamMembers.teamId, steamId64: teamMembers.steamId64, kind: teamMembers.kind,
   position: teamMembers.position, nickname: teamMembers.nickname, mmr: teamMembers.mmr,
   joinedAt: teamMembers.joinedAt, leftAt: teamMembers.leftAt,
-  avatarUrl: sql<string | null>`coalesce(${players.avatarUrl}, ${players.avatarMediumUrl}, ${players.avatarFullUrl})`,
+  avatarUrl: sql<string | null>`coalesce(${players.avatarMediumUrl}, ${players.avatarFullUrl}, ${players.avatarUrl})`,
 };
 
 const MATCH_COLUMNS = {
@@ -51,15 +54,29 @@ const PERFORMANCE_COLUMNS = {
 
 const APPROVED = ['approved', 'appeal_approved'] as const;
 
+export interface LoadOptions {
+  /** Load a draft too. Only for its admins and preview-link holders (ARCHITECTURE.md 2.1); public reads leave it out. */
+  drafts?: boolean;
+}
+
 /**
- * Every row of one tournament that its statistics are computed from, or null when there is no
- * such tournament. Eleven statements, each filtered by the tournament (through `scoped`), none in
- * a loop: the count does not grow with the number of teams, matches or games.
+ * Every row of one tournament that its statistics are computed from; null when there is no such
+ * tournament, or it is a draft and `drafts` is not set. All reads run in one read-only
+ * repeatable-read transaction, so they see one snapshot even while a game is being recorded.
+ * Each is filtered by the tournament (through `scoped`) and none runs in a loop: the count does
+ * not grow with the number of teams, matches or games (LOAD_READS).
  */
-export async function loadTournamentInput(db: Db, tournamentId: string): Promise<TournamentInput | null> {
-  const t = scoped(db, tournamentId);
-  const [tournament, stageRows, groupRows, groupTeamRows, teamRows, memberRows, registrations, requests, matchRows, gameRows, perfRows] = await Promise.all([
-    db.select({ id: tournaments.id, formatPreset: tournaments.formatPreset }).from(tournaments).where(eq(tournaments.id, tournamentId)),
+export async function loadTournamentInput(tournamentId: string, db: Db, options: LoadOptions = {}): Promise<TournamentInput | null> {
+  return db.transaction(async (tx) => {
+    const [tournament] = await tx.select({ id: tournaments.id, formatPreset: tournaments.formatPreset, status: tournaments.status })
+      .from(tournaments).where(eq(tournaments.id, tournamentId));
+    if (!tournament || (tournament.status === 'draft' && !options.drafts)) return null;
+    return { tournament, loadedAt: new Date(), ...(await readRows(scoped(tx, tournamentId))) };
+  }, { isolationLevel: 'repeatable read', accessMode: 'read only' });
+}
+
+async function readRows(t: ReturnType<typeof scoped>): Promise<Omit<TournamentInput, 'tournament' | 'loadedAt'>> {
+  const [stageRows, groupRows, groupTeamRows, teamRows, memberRows, registrations, requests, matchRows, gameRows, perfRows] = await Promise.all([
     t.select({ id: stages.id, position: stages.position, kind: stages.kind, name: stages.name, ranking: stages.ranking }).from(stages),
     t.select({ id: groups.id, stageId: groups.stageId, name: groups.name, position: groups.position, tier: groups.tier }).from(groups),
     t.select({ groupId: groupTeams.groupId, teamId: groupTeams.teamId, seed: groupTeams.seed }).from(groupTeams),
@@ -73,10 +90,7 @@ export async function loadTournamentInput(db: Db, tournamentId: string): Promise
     t.select(GAME_COLUMNS).from(games).orderBy(asc(games.id)),
     t.select(PERFORMANCE_COLUMNS).from(performances).orderBy(asc(performances.gameId), asc(performances.steamId64)),
   ]);
-  if (!tournament[0]) return null;
   return {
-    tournament: tournament[0],
-    loadedAt: new Date(),
     stages: stageRows,
     groups: groupRows,
     groupTeams: groupTeamRows,
@@ -92,12 +106,18 @@ export async function loadTournamentInput(db: Db, tournamentId: string): Promise
 
 /**
  * The stats hub's dataset for a tournament, computed from all its rows on every call; null when
- * there is no such tournament.
+ * there is no such tournament or it is a draft (a public read).
  *
- * Not cached yet: WP-06's `cachedQuery` is not merged. It becomes
- * `cachedQuery(getDataset, { tags: (id) => [tags.stats(id)] })` without other changes.
+ * Not cached yet: WP-06's `cachedQuery` (platform/cache) is not merged. It takes only string,
+ * number or boolean arguments and needs a unique name, so the cached read will be
+ *   cachedQuery((id: string) => getDataset(id), {
+ *     name: 'stats.dataset', tags: (id) => tournamentTags(id, 'stats', 'teams', 'matches'), cacheNull: false,
+ *   })
+ * with the teams and matches tags as well as stats, because the dataset also reads teams, rosters
+ * and stand-ins. Until it is, nothing should send traffic to /api/v1/stats/dataset: every request
+ * runs the whole load.
  */
 export async function getDataset(tournamentId: string, db: Db = getDb()): Promise<StatsDataset | null> {
-  const input = await loadTournamentInput(db, tournamentId);
+  const input = await loadTournamentInput(tournamentId, db);
   return input ? buildDataset(input) : null;
 }
