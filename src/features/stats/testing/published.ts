@@ -21,7 +21,7 @@ export interface PublishedTotals {
 }
 
 export const publishedDataset = (slug: FixtureSlug) => readJson<StatsDataset>(`${FIXTURES}${slug}/published/stats-dataset.json`);
-export const publishedTotals = (slug: FixtureSlug) => readJson<PublishedTotals & Record<string, unknown>>(`${FIXTURES}${slug}/published/stats-totals.json`);
+export const publishedTotals = (slug: FixtureSlug) => readJson<PublishedTotals & { method: string; datasetGeneratedAt: string }>(`${FIXTURES}${slug}/published/stats-totals.json`);
 
 const player = (p: PlayerRef) => ({ id: p.id, name: p.name, teamId: p.teamId });
 
