@@ -9,7 +9,10 @@ import * as s from '@/platform/db/schema';
 import { jsonColumnSchemas } from '@/platform/db/schema/json';
 import { getTableColumns, getTableName } from 'drizzle-orm';
 import type { PgColumn, PgTable } from 'drizzle-orm/pg-core';
+import { ImportContext } from '../context';
 import { mapCapture } from '../map';
+import { checkScore, type GameDraft } from '../mappers/games';
+import type { MapState } from '../mappers/state';
 import { readScopedCapture } from '../source';
 import { TABLE_ORDER } from '../rows';
 
@@ -123,6 +126,25 @@ describe('wiosenna specifics', () => {
   it('turns a reschedule map into a row, reading a time with no zone as Warsaw time', () => {
     const r = m.rows.get(s.rescheduleRequests).find((x) => x.matchId === '003TxGPQS5Rps8vUjZUM')!;
     expect(r).toMatchObject({ id: '003TxGPQS5Rps8vUjZUM-reschedule', proposedAt: new Date('2026-06-14T17:00:00.000Z') });
+  });
+
+  it('flags a completed match whose stored score is not the count of its games, and keeps the score', () => {
+    const refs = m.ctx.findings.filter((f) => f.kind === 'matches' && f.reason.startsWith('the stored score disagrees')).map((f) => f.ref).sort();
+    expect(refs).toEqual(['HVwwRd87bSFsCzkph25p 1:2 vs games 1:1', 'cxozIoYGO0ViB55POI36 2:1 vs games 2:0', 'ub-r1-p3 2:1 vs games 2:0']);
+    expect(byId(matches, 'HVwwRd87bSFsCzkph25p')).toMatchObject({ scoreA: 1, scoreB: 2 });
+  });
+
+  it('does not check a series with a forfeited game, nor one that is not completed', () => {
+    const ctx = new ImportContext('t');
+    const state = { ctx } as unknown as MapState;
+    const game = (radiantWin: boolean | null, forfeit = false) => ({ forfeit, row: { radiantWin, radiantTeamId: 'a', direTeamId: 'b' } }) as unknown as GameDraft;
+    const match = { id: 'm', status: 'completed', teamAId: 'a', teamBId: 'b', scoreA: 2, scoreB: 0 };
+    checkScore(state, match, [game(true), game(true)]);
+    checkScore(state, match, [game(null, true), game(true)]);
+    checkScore(state, { ...match, status: 'scheduled' }, [game(false)]);
+    expect(ctx.findings).toEqual([]);
+    checkScore(state, match, [game(true), game(false)]);
+    expect(ctx.findings.map((f) => f.ref)).toEqual(['m 2:0 vs games 1:1']);
   });
 
   it('drops the unused groups collection and keeps pick\'em baskets', () => {

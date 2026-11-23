@@ -20,7 +20,7 @@ const GAME_FIELDS = fields(
   'resyncedAt', 'teamAssignmentUpdated', 'description',
 );
 
-interface GameDraft { doc: Doc; row: Record<string, unknown>; forfeit: boolean; number: number | null; start: number }
+export interface GameDraft { doc: Doc; row: Record<string, unknown>; forfeit: boolean; number: number | null; start: number }
 
 export function mapGames(state: MapState): void {
   const docs = docsOf(state.capture, KIND);
@@ -40,8 +40,37 @@ export function mapGames(state: MapState): void {
     if (!byMatch.has(draft.matchId)) byMatch.set(draft.matchId, []);
     byMatch.get(draft.matchId)!.push(draft);
   }
-  for (const [matchId, list] of byMatch) numberGames(state, matchId, list);
+  const matches = new Map(state.rows.get(s.matches).map((m) => [m.id as string, m]));
+  for (const [matchId, list] of byMatch) {
+    numberGames(state, matchId, list);
+    checkScore(state, matches.get(matchId), list);
+  }
   mapPerformances(state);
+}
+
+/**
+ * A completed match whose stored score is not the count of its games' winners. The stored score
+ * is kept (a draw in a series of two, or a result entered by hand, can be right), but the owner
+ * sees every case. Series with a forfeited game are not checked: their score counts the forfeit.
+ */
+export function checkScore(state: MapState, match: Record<string, unknown> | undefined, games: readonly GameDraft[]): void {
+  if (!match || match.status !== 'completed' || games.some((g) => g.forfeit)) return;
+  let wa = 0;
+  let wb = 0;
+  for (const { row } of games) {
+    if (typeof row.radiantWin !== 'boolean') continue;
+    const winner = row.radiantWin ? row.radiantTeamId : row.direTeamId;
+    if (winner && winner === match.teamAId) wa++;
+    else if (winner && winner === match.teamBId) wb++;
+  }
+  const scoreA = match.scoreA as number | null;
+  const scoreB = match.scoreB as number | null;
+  if (scoreA === wa && scoreB === wb) return;
+  state.ctx.finding({
+    kind: 'matches', code: 'conflict',
+    reason: 'the stored score disagrees with the imported games; the stored score is kept (owner to confirm)',
+    ref: `${String(match.id)} ${String(scoreA)}:${String(scoreB)} vs games ${wa}:${wb}`,
+  });
 }
 
 /**
