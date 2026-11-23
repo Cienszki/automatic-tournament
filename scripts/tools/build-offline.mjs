@@ -92,4 +92,10 @@ if (build.status !== 0) {
   process.exit(1);
 }
 if (attempts.length) process.exit(1);
+// next build runs its work in child processes; if the guard reached only this one, a Next upgrade
+// stopped passing NODE_OPTIONS on and the check proved nothing
+if (processes < 2) {
+  console.error(`build-offline: the guard ran in only ${processes} process(es); the build workers were not guarded.`);
+  process.exit(1);
+}
 console.log('build-offline: the build succeeded and opened no network connection.');

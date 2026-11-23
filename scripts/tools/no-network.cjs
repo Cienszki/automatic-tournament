@@ -57,3 +57,38 @@ dns.promises.lookup = async function lookup(hostname, options) {
   record('dns', hostname);
   throw offline('ENOTFOUND', hostname);
 };
+
+// dns.resolve* and dns.Resolver ask DNS servers directly (c-ares over UDP), past dns.lookup;
+// dgram covers any other UDP. Each is refused and recorded like a connection.
+const RESOLVE_METHODS = ['resolve', 'resolve4', 'resolve6', 'resolveAny', 'resolveCaa', 'resolveCname', 'resolveMx',
+  'resolveNaptr', 'resolveNs', 'resolvePtr', 'resolveSoa', 'resolveSrv', 'resolveTxt', 'reverse'];
+function refuseResolve(target, method) {
+  if (typeof target[method] !== 'function') return;
+  target[method] = function refused(hostname, ...rest) {
+    record('dns', String(hostname));
+    const cb = rest.reverse().find((a) => typeof a === 'function');
+    if (cb) process.nextTick(() => cb(offline('ENOTFOUND', String(hostname))));
+  };
+}
+function refuseResolveAsync(target, method) {
+  if (typeof target[method] !== 'function') return;
+  target[method] = async function refused(hostname) {
+    record('dns', String(hostname));
+    throw offline('ENOTFOUND', String(hostname));
+  };
+}
+for (const m of RESOLVE_METHODS) {
+  refuseResolve(dns, m);
+  refuseResolve(dns.Resolver.prototype, m);
+  refuseResolveAsync(dns.promises, m);
+  refuseResolveAsync(dns.promises.Resolver.prototype, m);
+}
+
+const dgram = require('dgram');
+dgram.Socket.prototype.send = function send(msg, ...rest) {
+  const port = rest.find((a) => typeof a === 'number');
+  const host = rest.find((a) => typeof a === 'string');
+  record('udp', `${host || '?'}:${port || '?'}`);
+  const cb = rest.find((a) => typeof a === 'function');
+  if (cb) process.nextTick(() => cb(offline('ECONNREFUSED', `${host}:${port}`)));
+};
