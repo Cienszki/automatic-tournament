@@ -5,7 +5,7 @@
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { TestDb } from '@/platform/db/testing';
-import { computeTournament } from './domain/compute';
+import { computeTournament } from './index';
 import type { StatsDataset } from './domain/types';
 import { loadTournamentInput } from './queries';
 import { datasetDifferences, differenceKinds } from './testing/dataset-diff';

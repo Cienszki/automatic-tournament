@@ -7,7 +7,7 @@
 import { readFileSync } from 'node:fs';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { TestDb } from '@/platform/db/testing';
-import { computeTournament } from './domain/compute';
+import { computeTournament } from './index';
 import type { TournamentInput } from './domain/input';
 import { loadTournamentInput } from './queries';
 import { asOldData, WIOSENNA_OLD } from './testing/as-old-data';
