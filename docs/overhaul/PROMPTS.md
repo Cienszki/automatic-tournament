@@ -1,12 +1,150 @@
 # Session prompts
 
-Start every session with Claude Code opened in the worktree folder `.claude/worktrees/overhaul`, so the agents in `.claude/agents/` load. Choose the model with `/model`. Set effort to `high` unless a session says otherwise. Paste the prompt as the first message.
+**How the overhaul is worked on (owner, 2026-11-23).** One step per session, because a long session gets expensive. The owner opens a new session, pastes the step's prompt (one message, sometimes a second with answers), the session does the step, and its last message says the step is done and which prompt to paste next. Start every session with Claude Code opened in the worktree folder `.claude/worktrees/overhaul`, so the agents in `.claude/agents/` load. Model: **Opus 5.5 for everything** (Fable can no longer be used). Effort: `high`.
 
-Order: S0 → S1 → S2 → S3 → S4 → S5+. S0 and S4 run on Opus, to save Fable for S1–S3. If Fable runs out, use the "Continue on Opus" prompt at the bottom.
+Two rules every session keeps:
+1. **The step log below is always true.** A session marks its step done there before it ends. This is the most important rule.
+2. **The prompts are always current.** When a step changes a design, a file name, the order or what a later step needs, it updates the later prompts in this file in the same session.
 
 ---
 
-## S0 Groundwork (Opus)
+## Step log
+
+| Step | What | State | Result |
+|---|---|---|---|
+| S0 to S3 | Groundwork, architecture, organizer experience, card game | done 2026-11-13 to 14 | See "Sessions" in `STATUS.md` |
+| S4 | Business and marketing | not started | Optional; prompt at the bottom |
+| S5 | Implementation up to stage 1 (WP-04, 05, 12, 13a, 20, 32; card game WP-50 to 55, 64, 65) | done 2026-11-13 to 17 | Merged into `overhaul` |
+| S6 | Stage 1: WP-03 environments, WP-33 import, WP-66 part 1, WP-06 local half | **done 2026-11-23** | WP-03, WP-33 and WP-66 part 1 merged; WP-06 local half built and reviewed on `wp/06-hosting-trial`, waiting for the staging run; questions 41 to 43 for the owner |
+| S7 | WP-06 staging run and the hosting decision | waiting for the owner's staging steps 1 to 4 | |
+| S8 | WP-15 statistics | ready (can run before S7) | |
+| S9 | The owner's answers to questions 41 to 43 folded into the design | waiting for the answers | |
+| S10 | WP-07 platform kernel | after S7 | |
+| S11 | WP-08 server-rendered shell | after S10 | |
+| S12 | WP-09a teams and schedule | after S11 | |
+| S13 | WP-09b standings and playoffs | after S12 | |
+| S14 | WP-09c content pages | after S12 (can run beside S13) | |
+| S15 | WP-10 home page and deep links | after S13, S14 and S8 | |
+| S16 | WP-11 speed budgets and a lighter bundle | after S15 | |
+| S17 | The owner's review kit (end of stage 2, question 40) | after S16 | |
+
+Stages 3 to 7 get their steps while stage 2 is under way (S9 and S17 may change them).
+
+---
+
+## Every step ends like this
+
+Every prompt below says "End as in PROMPTS.md". That means, in this order:
+
+1. Mark the step **done** in the step log above, with the date and a one-line result. If it could not finish, mark it "stopped" with what is left; the next session then uses "Continue a stopped step".
+2. Update `STATUS.md`: "Next step", the work-package rows, a log line.
+3. Update the prompts of the later steps with anything this step changed; add a prompt for any new step.
+4. Commit with Conventional Commits. Before pushing `overhaul` and `wp/*`, ask the owner once, in one line with one Polish sentence explaining the step (these pushes deploy nothing while previews are off; never push any other branch).
+5. The last message to the owner: what was done; what the owner must do or decide, each item with full context (tournament, stage or round, the teams, the date, the score; never a bare id); the git state; and **"Next: paste step SN (name)"**. Refer to every file as a clickable markdown link relative to the `overhaul` worktree, for example [STATUS.md](docs/overhaul/STATUS.md). A file that exists only on another branch is linked in that branch's worktree, for example [WP-06.md](../wp-06-hosting-trial/docs/overhaul/spikes/WP-06.md).
+
+Rules inside every step: implementation goes to `implementer` agents, and every branch gets an Opus `reviewer` agent before it is merged (`--no-ff` into `overhaul`). A package that `ROADMAP.md` marks "Fable review" gets an Opus reviewer whose prompt lists what to check. Agents commit in small steps; an agent stopped by the 5-hour limit is resumed with a message after the reset, not restarted. Do not end a turn to wait for an agent: wait in the foreground.
+
+---
+
+## S7 WP-06: the staging run and the hosting decision
+
+Before pasting: do steps 1 to 4 of "What remains, and needs the owner" in [WP-06.md](../wp-06-hosting-trial/docs/overhaul/spikes/WP-06.md) (switch on staging migrations and previews, import pdl-s2 anonymized, the Vercel preview variables and the scoped token).
+
+```text
+Read docs/overhaul/BRIEF.md, docs/overhaul/STATUS.md and docs/overhaul/PROMPTS.md. You are running step S7: the staging half of WP-06. The local half is built and reviewed on branch wp/06-hosting-trial (worktree .claude/worktrees/wp-06-hosting-trial); its report is docs/overhaul/spikes/WP-06.md there.
+1. Check that my steps 1 to 4 are done (gh variable list, the Staging migrations and Preview workflow runs, the preview address). If one is missing, tell me exactly which and stop.
+2. Run steps 5 to 9 of WP-06.md against the preview (an implementer agent may do the runs). Never print a secret; read database addresses from .env.staging.local into variables as the doc shows. Step 6: do not add any domain to the production Firebase project. Step 7 needs a throwaway Vercel project: ask me once before creating it, because it is a deploy.
+3. Fill in the acceptance table and write the recommendation (go, go with changes, or the fallback of ADR-03), each claim backed by a measured number.
+4. Have an Opus reviewer check the numbers, the recommendation and that nothing in production was touched. Then merge the kept parts into overhaul with --no-ff and remove the trial code as step 10 says.
+End as in PROMPTS.md.
+```
+
+---
+
+## S8 WP-15: statistics from one compute
+
+```text
+Read docs/overhaul/BRIEF.md, docs/overhaul/STATUS.md, docs/overhaul/PROMPTS.md and docs/overhaul/ROADMAP.md section WP-15. You are running step S8: WP-15, the stats feature.
+1. Brief an implementer agent on branch wp/15-stats from overhaul. If WP-06's cache helpers (src/platform/cache) are not merged yet, build the pure compute and its tests first, and wire the cached queries once they are merged.
+2. Then an Opus reviewer with this list besides the acceptance criteria: the fixtures' published stats-hub totals are reproduced exactly; there is one compute and no old calculator was ported; every read is tenant-scoped; no file over 300 lines; the tests use fixtures and PGlite with no network.
+3. Apply the fixes, merge with --no-ff into overhaul, run the full checks.
+End as in PROMPTS.md.
+```
+
+---
+
+## S9 The owner's answers to questions 41 to 43
+
+Paste the prompt and write your answers under it, by number (for example "41a: yes. 41b: only the organizer gives a forfeit. 43, first match: it was 1:1").
+
+```text
+Read docs/overhaul/BRIEF.md, docs/overhaul/STATUS.md (questions 41 to 43) and docs/overhaul/PROMPTS.md. You are running step S9: fold my answers below into the design.
+- Update ROADMAP.md (WP-13b, WP-14, WP-16, WP-17, WP-21, WP-44, WP-66 as needed), ORGANIZER_UX.md (the decisions table and the match page) and CONVENTIONS.md (how matches, teams and players are named in reports, findings and messages).
+- Record the data answers so the import applies them as owner corrections: a small data file and a test, through an implementer agent and an Opus reviewer, merged into overhaul.
+- Move each answered question to the decisions in STATUS.md. Where an answer leaves a gap, ask me in one message with your recommendation.
+End as in PROMPTS.md.
+
+My answers:
+```
+
+---
+
+## S10 WP-07: the platform kernel
+
+```text
+Read docs/overhaul/BRIEF.md, docs/overhaul/STATUS.md, docs/overhaul/PROMPTS.md, docs/overhaul/ROADMAP.md section WP-07 and the WP-06 result in docs/overhaul/spikes/WP-06.md. You are running step S10: WP-07.
+1. Implementer agent on branch wp/07-platform-kernel from overhaul. The cache helpers keep the shape WP-06 settled.
+2. Opus reviewer with this list besides the acceptance criteria: the lint rules really fail a forbidden import (show a failing example); every command checks permission before it writes and writes its audit row in the same transaction; nothing reaches the database outside platform/db and scoped; the old site's behaviour is unchanged.
+3. Fixes, merge with --no-ff, full checks.
+End as in PROMPTS.md.
+```
+
+---
+
+## S11 to S16: the rest of stage 2
+
+Each is one package, run the same way. Paste the block and replace `<WP>` with the step's package from this table.
+
+| Step | `<WP>` | What the reviewer must check besides the acceptance criteria |
+|---|---|---|
+| S11 | WP-08 | No page reads Firestore in the browser; the loading gate and the whole-collection read are gone; an unknown slug answers 404 (WP-06 found it answers 200); the 44 kB of translations is no longer on every page; old tournaments still work through the forwarding |
+| S12 | WP-09a | Teams and schedule equal the old pages for all four imported tournaments, field by field |
+| S13 | WP-09b | Standings and brackets equal the published ones for every division, group and bracket |
+| S14 | WP-09c | Rules, news, prizes and the static pages are complete in the first response |
+| S15 | WP-10 | The home page keeps its design; deep links open the right section with no redirect |
+| S16 | WP-11 | The budgets fail CI when exceeded (show it); no page ships the Firebase data SDK |
+
+```text
+Read docs/overhaul/BRIEF.md, docs/overhaul/STATUS.md, docs/overhaul/PROMPTS.md and docs/overhaul/ROADMAP.md section <WP>. You are running the step of PROMPTS.md whose package is <WP>.
+1. Implementer agent on the branch STATUS.md names for <WP>, from overhaul.
+2. Opus reviewer with the acceptance criteria and the checks PROMPTS.md lists for this step.
+3. Fixes, merge with --no-ff, full checks.
+End as in PROMPTS.md.
+```
+
+---
+
+## S17 The owner's review kit
+
+```text
+Read docs/overhaul/BRIEF.md, docs/overhaul/STATUS.md (question 40) and docs/overhaul/PROMPTS.md. You are running step S17: prepare my review of stage 2. Produce one page I can open: the staging link of every public page of Letnia, PDL, PDL S2 and Wiosenna; the old and the new page side by side with every difference listed (compare-sites; an implementer builds it if it does not exist); the import report with counts per table and every unmapped field; load times on a phone profile next to today's site. Name every match and team with its tournament, stage and date. Then tell me how to go through it.
+End as in PROMPTS.md.
+```
+
+---
+
+## Continue a stopped step
+
+```text
+Read docs/overhaul/BRIEF.md, docs/overhaul/STATUS.md and docs/overhaul/PROMPTS.md. The step marked "stopped" in the step log did not finish. Check git log, the branches and worktrees it used and its agents' commits, then continue it from where it stopped, following its prompt.
+End as in PROMPTS.md.
+```
+
+---
+
+## Earlier prompts (sessions S0 to S5, done; kept for reference)
+
+### S0 Groundwork (Opus)
 
 ```text
 Read docs/overhaul/BRIEF.md and docs/overhaul/STATUS.md. You are running session S0.
@@ -36,7 +174,7 @@ When S0 is done, set "Next step" in STATUS.md to S1, and push the overhaul branc
 
 ---
 
-## S1 Architecture, scale, code health and testing (Fable)
+### S1 Architecture, scale, code health and testing (Fable)
 
 ```text
 Read docs/overhaul/BRIEF.md, docs/overhaul/STATUS.md and every file in docs/overhaul/inventory/. You are running session S1, which covers the owner's concerns 1, 4, 5, 6 (the technical part) and 7.
@@ -62,7 +200,7 @@ Effort: `high`. If the quota allows, `xhigh` gives the most benefit in this sess
 
 ---
 
-## S2 Organizer experience (Fable)
+### S2 Organizer experience (Fable)
 
 ```text
 Read docs/overhaul/BRIEF.md, docs/overhaul/STATUS.md, docs/overhaul/ARCHITECTURE.md, docs/overhaul/inventory/ADMIN.md and docs/overhaul/inventory/PRODUCT.md. You are running session S2, which covers the owner's concern 2 and the organizer-facing part of concern 6.
@@ -84,7 +222,7 @@ Finish with the report described in the brief.
 
 ---
 
-## S3 Card game (Fable)
+### S3 Card game (Fable)
 
 ```text
 Read docs/overhaul/BRIEF.md, docs/overhaul/STATUS.md and docs/overhaul/inventory/CARDS.md. The rules engine is in src/lib/card-lab/ (outposts.ts, outposts-ai.ts, pvp.ts), and the UI is in src/components/card-lab/. You are running session S3, which covers the owner's concern 3.
@@ -105,7 +243,7 @@ Finish with the report described in the brief.
 
 ---
 
-## S4 Business and marketing (Opus, or Fable if quota is left)
+### S4 Business and marketing (Opus, or Fable if quota is left)
 
 ```text
 Read docs/overhaul/BRIEF.md, docs/overhaul/STATUS.md, docs/overhaul/inventory/PRODUCT.md and docs/overhaul/ORGANIZER_UX.md. You are running session S4, which covers the business part of concern 6. Write the results to docs/business/.
@@ -121,7 +259,7 @@ Finish with the report described in the brief.
 
 ---
 
-## S5+ Implementation (Fable or Opus as orchestrator)
+### S5+ Implementation (Fable or Opus as orchestrator)
 
 Run this as many times as needed. Opus can orchestrate. Fable is worth it for the WPs that ROADMAP.md marks as needing a Fable review.
 
@@ -138,7 +276,7 @@ Finish with the report described in the brief: the WPs merged, the behaviour cha
 
 ---
 
-## Continue on Opus
+### Continue on Opus
 
 Use this when a Fable session stopped because of the quota, or when any session stopped before it finished.
 
