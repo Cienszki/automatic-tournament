@@ -243,7 +243,7 @@ function adaptStandinRequests(capture: LegacyCapture): void {
     }
   }
   capture.kinds.set('standinRequests', out);
-  if (out.length !== docs.length) capture.consumed.push({ kind: 'standinRequests', documents: docs.length, into: `standinRequests (${out.length} after the split)` });
+  if (out.length !== docs.length) capture.consumed.push({ kind: 'standinRequests', documents: docs.length, into: `split into ${out.length}, one per player and stand-in pair` });
   capture.adapted.push(`standinRequests: ${docs.length} requests → ${out.length} (one per player and stand-in pair, by position in the two arrays)${unequal ? `; ${unequal} requests have arrays of unequal length` : ''}`);
 }
 

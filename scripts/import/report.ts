@@ -71,7 +71,7 @@ function renderTournament(t: TournamentResult, options: ReportOptions): string[]
       continue;
     }
     const denied = capture.manifest.collections[kind]?.status === 'denied' ? ' (denied: needs the owner\'s export)' : '';
-    const split = c ? ` (→ ${c.into})` : '';
+    const split = c ? ` (${c.into})` : '';
     out.push(`| ${kind}${denied} | ${inCapture ?? '-'} | ${a?.read ?? 0}${split} | ${a?.outcomes.mapped ?? 0} | ${a?.outcomes.merged ?? 0} | ${a?.outcomes.dropped ?? 0} | ${a?.outcomes.unmapped ?? 0} |`);
   }
   out.push('');
