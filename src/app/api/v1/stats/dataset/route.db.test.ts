@@ -2,7 +2,9 @@
 // The endpoint on an imported fixture: the dataset of the stats feature, gzipped, CDN-cacheable.
 
 import { gunzipSync } from 'node:zlib';
+import { eq } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { tournaments } from '@/platform/db';
 import type { TestDb } from '@/platform/db/testing';
 import { getDataset } from '@/features/stats/queries';
 import { importedDb, TOURNAMENT_ID } from '@/features/stats/testing/imported';
@@ -38,7 +40,23 @@ describe('GET /api/v1/stats/dataset', () => {
     expect((await call('?tournamentId=a%20b')).status).toBe(400);
   });
 
-  it('answers 404 for a tournament that does not exist', async () => {
-    expect((await call('?tournamentId=nope')).status).toBe(404);
+  it('answers 404 for a tournament that does not exist, and lets no cache keep it', async () => {
+    const res = await call('?tournamentId=nope');
+    expect(res.status).toBe(404);
+    expect(res.headers.get('Cache-Control')).toBe('no-store');
+  });
+
+  it('answers a draft exactly like a tournament that does not exist', async () => {
+    const id = TOURNAMENT_ID['pdl-s2'];
+    const [{ status }] = await t.db.select({ status: tournaments.status }).from(tournaments).where(eq(tournaments.id, id));
+    await t.db.update(tournaments).set({ status: 'draft' }).where(eq(tournaments.id, id));
+    try {
+      const [draft, unknown] = [await call(`?tournamentId=${id}`, { 'Accept-Encoding': 'gzip' }), await call('?tournamentId=nope')];
+      expect(draft.status).toBe(404);
+      expect(draft.headers.get('Cache-Control')).toBe('no-store');
+      expect(await draft.json()).toEqual(await unknown.json());
+    } finally {
+      await t.db.update(tournaments).set({ status }).where(eq(tournaments.id, id));
+    }
   });
 });
