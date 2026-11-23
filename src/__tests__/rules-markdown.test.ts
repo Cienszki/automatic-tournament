@@ -50,7 +50,7 @@ describe('sanitizeHref', () => {
     expect(sanitizeHref('https://a.pl')).toBe('https://a.pl');
     expect(sanitizeHref('mailto:a@b.pl')).toBe('mailto:a@b.pl');
     expect(sanitizeHref('/pdl-s2/rules')).toBe('/pdl-s2/rules');
-    expect(sanitizeHref('dota2inhouse.pl/pdl-s2')).toBe('https://dota2inhouse.pl/pdl-s2');
+    expect(sanitizeHref('example.org/pdl-s2')).toBe('https://example.org/pdl-s2');
     expect(sanitizeHref('javascript:alert(1)')).toBeNull();
     expect(sanitizeHref('//evil.com')).toBeNull();
   });

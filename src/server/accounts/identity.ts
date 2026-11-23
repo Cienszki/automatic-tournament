@@ -8,12 +8,15 @@
 
 import { createHmac, randomBytes, timingSafeEqual } from 'crypto';
 import { communityProfile } from '@/lib/steam-community';
+import { isAllowedOrigin } from '@/platform/origins';
 
 export const DISCORD_SCOPES = 'identify connections';
 
-/** Origins we may send people back to (the redirect URI must be registered in the Discord app) */
-const ORIGINS = ['https://dota2inhouse.pl', 'https://www.dota2inhouse.pl', 'https://tournament-tracker-f35tb.web.app', 'http://localhost:3000'];
-export const allowedOrigin = (o: unknown): o is string => typeof o === 'string' && ORIGINS.includes(o);
+/**
+ * Origins we may send people back to: the site and ALLOWED_ORIGINS (src/platform/origins). The
+ * redirect URI of each must be registered in the Discord app.
+ */
+export const allowedOrigin = isAllowedOrigin;
 /** A path on our site (never another host) */
 export const safeNext = (n: unknown) => (typeof n === 'string' && n.startsWith('/') && !n.startsWith('//') ? n : '/');
 

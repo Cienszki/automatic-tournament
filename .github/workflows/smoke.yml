@@ -1,0 +1,43 @@
+name: Smoke test
+
+# The read-only smoke test (scripts/smoke, WP-03), run by hand after a go-live step: Actions ->
+# Smoke test -> Run workflow, with the address that step changed. It never signs in and refuses
+# every request that could write, so it is safe against production. It needs no secret.
+
+on:
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: Address of the site to check (https://...)
+        required: true
+      tournaments:
+        description: Two tournament slugs, comma-separated (blank for the defaults in scripts/smoke/plan.ts)
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Smoke test
+        env:
+          SMOKE_BASE_URL: ${{ inputs.base_url }}
+          SMOKE_TOURNAMENTS: ${{ inputs.tournaments }}
+        run: npm run smoke
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: smoke-results
+          path: .local/smoke-results
+          retention-days: 7

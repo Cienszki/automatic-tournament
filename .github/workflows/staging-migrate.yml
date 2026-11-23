@@ -1,0 +1,56 @@
+name: Staging migrations
+
+# Applies the SQL migrations in drizzle/ to the staging database after they reach `overhaul`
+# (ADR-15, WP-03). It waits for a person to approve it in the `staging` environment, and it does
+# nothing at all until the owner has switched it on. docs/DEV_SETUP.md "Staging" has the setup:
+#   1. Settings -> Environments -> New environment `staging`; Required reviewers: the owner;
+#      Deployment branches: `overhaul` only.
+#   2. Settings -> Secrets and variables -> Actions -> Variables: STAGING_MIGRATIONS = on.
+# DATABASE_URL_SESSION is the staging session-pooler URL (an environment secret of `staging`, or
+# the repository secret of that name). Production's database is never a secret of this repository.
+
+on:
+  push:
+    branches: [overhaul]
+    paths: ['drizzle/**']
+  workflow_dispatch:
+
+concurrency:
+  group: staging-migrate
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  migrate:
+    if: vars.STAGING_MIGRATIONS == 'on' && github.ref == 'refs/heads/overhaul'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: staging
+    steps:
+      # The approval is the safety. If the environment has no required reviewer, GitHub would not
+      # have asked anyone, so the job stops here instead of migrating unapproved.
+      - name: The staging environment requires an approval
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          reviewers=$(gh api "repos/$GITHUB_REPOSITORY/environments/staging" --jq '[.protection_rules[]? | select(.type == "required_reviewers")] | length')
+          test "${reviewers:-0}" -ge 1 || { echo '::error::Environment "staging" has no required reviewer; add one before switching STAGING_MIGRATIONS on.'; exit 1; }
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Migrations match the table definitions
+        run: |
+          npm run db:generate
+          test -z "$(git status --porcelain drizzle)" || { echo '::error::drizzle/ is out of date with src/platform/db/schema'; exit 1; }
+      - name: Apply the migrations to staging
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL_SESSION }}
+        run: |
+          test -n "$DATABASE_URL" || { echo '::error::DATABASE_URL_SESSION is not set'; exit 1; }
+          npm run db:migrate -- --remote --expect staging

@@ -1,142 +1,35 @@
-// src/app/sitemap.ts
-// Next.js Metadata API - generates /sitemap.xml automatically.
-// Fetches tournaments dynamically from Firestore so any newly created tournament
-// is automatically included without any code changes.
+// /sitemap.xml, generated on request from the database and kept for an hour (WP-03). It is never
+// built ahead: a build reads no database. Without DATABASE_URL, or when the database cannot be
+// reached, it lists only the home page and says why in the log.
+
 import type { MetadataRoute } from 'next';
-import { getAdminDb, ensureAdminInitialized } from '@/server/lib/admin';
-import type { TournamentType, TournamentStatus } from '@/types/tournament';
+import { unstable_cache } from 'next/cache';
+import { sitemapEntries } from '@/features/tournaments';
+import { listListedTournaments } from '@/features/tournaments/queries';
+import { getDb } from '@/platform/db';
+import { log } from '@/platform/log';
+import { siteUrl } from '@/platform/origins';
 
-const BASE_URL = 'https://dota2inhouse.pl';
+export const dynamic = 'force-dynamic';
 
-// Statuses that should NOT appear in the sitemap (not publicly visible)
-const EXCLUDED_STATUSES: TournamentStatus[] = ['draft'];
+const ONE_HOUR = 3600;
 
-type PageDef = {
-  path: string;
-  changeFrequency: MetadataRoute.Sitemap[number]['changeFrequency'];
-  priority: number;
-};
-
-// Pages common to all tournament types
-const COMMON_PAGES: PageDef[] = [
-  { path: '',           changeFrequency: 'weekly',  priority: 1.0 }, // tournament home
-  { path: '/teams',     changeFrequency: 'weekly',  priority: 0.9 },
-  { path: '/schedule',  changeFrequency: 'daily',   priority: 0.9 },
-  { path: '/playoffs',  changeFrequency: 'weekly',  priority: 0.8 },
-  { path: '/stats',     changeFrequency: 'weekly',  priority: 0.8 },
-  { path: '/rules',     changeFrequency: 'monthly', priority: 0.7 },
-  { path: '/faq',       changeFrequency: 'monthly', priority: 0.6 },
-  { path: '/news',      changeFrequency: 'weekly',  priority: 0.7 },
-  { path: '/about',     changeFrequency: 'monthly', priority: 0.5 },
-];
-
-// Pages only for league-type tournaments (e.g. PDL)
-const LEAGUE_PAGES: PageDef[] = [
-  { path: '/divisions', changeFrequency: 'daily', priority: 0.9 },
-];
-
-// Pages only for MMR-limited tournaments (e.g. Letnia)
-const MMR_PAGES: PageDef[] = [
-  { path: '/groups', changeFrequency: 'daily', priority: 0.9 },
-];
-
-// Priority multiplier per status — active tournaments rank higher than archived ones
-function statusPriority(status: TournamentStatus): number {
-  switch (status) {
-    case 'active':
-    case 'registration': return 1.0;
-    case 'completed':    return 0.6;
-    case 'archived':     return 0.4;
-    default:             return 0.5;
-  }
-}
-
-/**
- * Coerce a Firestore Timestamp, an ISO string, or a Date into a Date.
- * Returns null for anything unusable so the caller can fall back.
- */
-function toDateOrNull(value: unknown): Date | null {
-  if (!value) return null;
-  if (value instanceof Date) return isNaN(value.getTime()) ? null : value;
-  if (typeof value === 'string') {
-    const d = new Date(value);
-    return isNaN(d.getTime()) ? null : d;
-  }
-  if (typeof value === 'object' && typeof (value as { toDate?: unknown }).toDate === 'function') {
-    try {
-      const d = (value as { toDate: () => Date }).toDate();
-      return isNaN(d.getTime()) ? null : d;
-    } catch {
-      return null;
-    }
-  }
-  return null;
-}
+const cachedEntries = unstable_cache(
+  async (baseUrl: string) => sitemapEntries(baseUrl, await listListedTournaments(getDb()), new Date()),
+  ['sitemap-entries'],
+  { revalidate: ONE_HOUR, tags: ['sitemap'] },
+);
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const entries: MetadataRoute.Sitemap = [
-    {
-      url: BASE_URL,
-      lastModified: new Date(),
-      changeFrequency: 'monthly',
-      priority: 0.8,
-    },
-  ];
-
-  try {
-    ensureAdminInitialized();
-    const db = getAdminDb();
-    const snapshot = await db.collection('tournaments').get();
-
-    for (const doc of snapshot.docs) {
-      const data = doc.data() as {
-        slug?: string;
-        type?: TournamentType;
-        status?: TournamentStatus;
-        // Written as a Firestore Timestamp by createTournament, but as an ISO
-        // string by several admin tabs. Both shapes occur in live data.
-        updatedAt?: { toDate?: () => Date } | string;
-        endDate?: string;
-        startDate?: string;
-      };
-
-      const { slug, type, status } = data;
-
-      // Skip tournaments without a slug or in excluded statuses
-      if (!slug || !status || EXCLUDED_STATUSES.includes(status)) continue;
-
-      // Determine last-modified date: prefer updatedAt, fall back to endDate or
-      // startDate. `updatedAt` must be probed rather than called directly — a
-      // plain string here used to throw and take the ENTIRE sitemap down to just
-      // the root URL, silently dropping every tournament page from SEO.
-      const lastModified =
-        toDateOrNull(data.updatedAt) ??
-        (data.endDate ? new Date(data.endDate) : null) ??
-        (data.startDate ? new Date(data.startDate) : new Date());
-
-      const mult = statusPriority(status);
-      const base = `${BASE_URL}/${slug}`;
-
-      const pages: PageDef[] = [
-        ...COMMON_PAGES,
-        ...(type === 'league' ? LEAGUE_PAGES : []),
-        ...(type === 'mmr-limited' ? MMR_PAGES : []),
-      ];
-
-      for (const page of pages) {
-        entries.push({
-          url: `${base}${page.path}`,
-          lastModified,
-          changeFrequency: page.changeFrequency,
-          priority: Math.round(page.priority * mult * 10) / 10,
-        });
-      }
-    }
-  } catch (err) {
-    // If Firestore is unavailable at build time, return just the root entry.
-    // This prevents a broken build — the sitemap will be regenerated at runtime.
-    console.error('[sitemap] Failed to fetch tournaments from Firestore:', err);
+  const baseUrl = siteUrl();
+  if (!process.env.DATABASE_URL) {
+    log.warn('sitemap.no_database', { reason: 'DATABASE_URL is not set' });
+    return sitemapEntries(baseUrl, [], new Date());
   }
-
-  return entries;
+  try {
+    return await cachedEntries(baseUrl);
+  } catch (error) {
+    log.error('sitemap.read_failed', { error: error instanceof Error ? error.message : String(error) });
+    return sitemapEntries(baseUrl, [], new Date());
+  }
 }

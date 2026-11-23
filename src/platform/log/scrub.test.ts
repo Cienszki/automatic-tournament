@@ -37,12 +37,12 @@ describe('scrub by key', () => {
 
   it('scrubs plain header objects the way Sentry stores a request', () => {
     const request = {
-      url: 'https://dota2inhouse.pl/pdl-s2/teams?token=abc123&v=2',
+      url: 'https://example.org/pdl-s2/teams?token=abc123&v=2',
       headers: { Authorization: 'Basic dXNlcjpwYXNzd29yZA==', 'User-Agent': 'Mozilla/5.0', Referer: 'https://x.pl/?key=zzz' },
       cookies: { __session: 'abc' },
     };
     expect(scrub(request)).toEqual({
-      url: `https://dota2inhouse.pl/pdl-s2/teams?token=${REDACTED}&v=2`,
+      url: `https://example.org/pdl-s2/teams?token=${REDACTED}&v=2`,
       headers: { Authorization: REDACTED, 'User-Agent': 'Mozilla/5.0', Referer: `https://x.pl/?key=${REDACTED}` },
       cookies: REDACTED,
     });

@@ -1,25 +1,32 @@
 import type { Metadata } from 'next';
-import { Space_Mono } from 'next/font/google';
+import localFont from 'next/font/local';
 import { GeistSans } from 'geist/font/sans';
 import { NextIntlClientProvider } from 'next-intl';
 import { getLocale, getMessages } from 'next-intl/server';
 import './globals.css';
+import { siteUrl } from '@/platform/origins';
 import { Toaster } from "@/components/ui/toaster";
 import { AuthProvider } from '@/context/AuthContext';
 import { TimeProvider } from '@/context/TimeContext';
 import { TournamentProvider } from '@/context/TournamentContext';
 import { neonBines, logik, logikExtendedBold, logikWideBlack, logikExtended8, logik3, logik4 } from '@/app/fonts';
 
-const spaceMono = Space_Mono({
+// Served from our own files, not next/font/google, so a build downloads nothing (WP-03). The
+// files are public/fonts/space-mono cut to Latin and Latin Extended, which covers Polish.
+const spaceMono = localFont({
+  src: [
+    { path: './fonts/space-mono/SpaceMono-Regular.woff2', weight: '400', style: 'normal' },
+    { path: './fonts/space-mono/SpaceMono-Bold.woff2', weight: '700', style: 'normal' },
+  ],
   variable: '--font-space-mono',
-  subsets: ['latin'],
-  weight: ['400', '700'],
   display: 'swap', // Performance: prevent FOIT
   preload: true,
+  fallback: ['ui-monospace', 'monospace'],
+  adjustFontFallback: false,
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://dota2inhouse.pl'),
+  metadataBase: new URL(siteUrl()),
   title: {
     default: 'dota2inhouse.pl - Polskie Turnieje Dota 2',
     template: '%s | dota2inhouse.pl',
@@ -30,7 +37,7 @@ export const metadata: Metadata = {
     siteName: 'dota2inhouse.pl',
     title: 'dota2inhouse.pl - Polskie Turnieje Dota 2',
     description: 'Platforma dla polskiej społeczności Dota 2 - turnieje, ligi i wydarzenia esportowe',
-    url: 'https://dota2inhouse.pl',
+    url: siteUrl(),
     images: [
       {
         url: '/logos/pd2ih/pd2ih-logo.png',

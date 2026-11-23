@@ -1,0 +1,65 @@
+name: Preview
+
+# A Vercel preview of each work-package branch, against staging (ADR-15, WP-03). The preview's
+# environment variables are the Vercel project's "Preview" values, which are the staging ones;
+# this workflow passes no database or Firebase secret of its own. It never deploys to production:
+# there is no `--prod` anywhere here.
+#
+# Off until the owner switches it on (docs/DEV_SETUP.md "Staging"):
+#   - secret VERCEL_TOKEN, scoped to the team that holds only this project and with an expiry
+#     (the account also holds the community site); it is given only to the Vercel steps, not to npm ci;
+#   - variables VERCEL_ORG_ID and VERCEL_PROJECT_ID (from .vercel/project.json after `vercel link`);
+#   - variable STAGING_PREVIEWS = on.
+# A branch with a new migration needs the staging job (staging-migrate.yml) before its preview
+# can read the new tables; until then that preview may fail on them.
+
+on:
+  push:
+    branches: ['wp/**']
+  workflow_dispatch:
+
+concurrency:
+  group: preview-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  preview:
+    if: vars.STAGING_PREVIEWS == 'on' && startsWith(github.ref, 'refs/heads/wp/')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
+      NEXT_TELEMETRY_DISABLED: '1'
+    steps:
+      - name: The Vercel settings are present
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          for name in VERCEL_ORG_ID VERCEL_PROJECT_ID VERCEL_TOKEN; do
+            test -n "${!name}" || { echo "::error::$name is not set"; exit 1; }
+          done
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Pull the preview settings
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: npx --yes vercel@65.15.0 pull --yes --environment=preview --token="$VERCEL_TOKEN"
+      - name: Build
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: npx --yes vercel@65.15.0 build --token="$VERCEL_TOKEN"
+      - name: Deploy the preview
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          url=$(npx --yes vercel@65.15.0 deploy --prebuilt --token="$VERCEL_TOKEN")
+          echo "Preview of \`${GITHUB_REF_NAME}\`: $url" >> "$GITHUB_STEP_SUMMARY"
+          echo "::notice title=Preview::$url"

@@ -12,6 +12,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { isAllowedOrigin } from '@/platform/origins';
 import { requireUser } from '@/server/lib/require-user';
 import { ensureAdminInitialized, getAdminDb } from '@/server/lib/admin';
 import { NEED_NAME, hasName, validKey } from '@/server/card-lab/collection';
@@ -113,12 +114,11 @@ async function post(req: NextRequest) {
   } catch (e) { console.error('[duel] post failed:', e); return bad('Nie udało się', 500); }
 }
 
-// On dota2inhouse.pl the game calls this route on the Firebase host directly (src/lib/card-lab/game-api.ts),
-// skipping the Vercel proxy: those origins may (CORS), with the browser's preflight answered here.
-const ORIGINS = new Set(['https://dota2inhouse.pl', 'https://www.dota2inhouse.pl']);
+// Behind a proxy the game calls this route on our own host directly (src/lib/card-lab/game-api.ts),
+// skipping the proxy: the site's origins may (CORS), with the browser's preflight answered here.
 function cors(req: NextRequest, res: Response): Response {
   const o = req.headers.get('origin');
-  if (o && ORIGINS.has(o)) { res.headers.set('Access-Control-Allow-Origin', o); res.headers.append('Vary', 'Origin'); }
+  if (o && isAllowedOrigin(o)) { res.headers.set('Access-Control-Allow-Origin', o); res.headers.append('Vary', 'Origin'); }
   return res;
 }
 export async function GET(req: NextRequest) { return cors(req, await get(req)); }
