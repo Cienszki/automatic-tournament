@@ -20,7 +20,7 @@ const ALLOWED: Record<string, string> = {
   'bot-worker/': 'a separate app with its own environment; its defaults are WP-22',
   'scripts/tools/capture/': 'reads the live site through its public pages, on purpose (WP-12)',
   'scripts/tools/measure-pages.js': 'an example command in its usage comment',
-  'src/lib/translations.ts': "Letnia's rules text names the tournament's official website",
+  'src/lib/translations.ts': "the old root tournament's rules text names its official website",
 };
 
 const isAllowed = (file: string) =>

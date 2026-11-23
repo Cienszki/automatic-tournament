@@ -173,5 +173,5 @@ data-exports/
 # Sentry Config File
 .env.sentry-build-plugin
 
-# Local databases (npm run db:seed, npm run dev:local; docs/DEV_SETUP.md)
+# Local databases (npm run db:seed, npm run dev:local, scripts/import; docs/DEV_SETUP.md)
 .local/

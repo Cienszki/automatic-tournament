@@ -37,7 +37,7 @@ export const SAMPLES = {
     logos: { main: 'https://example.com/logo.png' },
   },
   'app.tournaments.presentation': {
-    hero: { title: 'Letnia', layout: 'logo-promo', media: { promo: { type: 'video', video: { url: 'https://example.com/a.mp4' } } } },
+    hero: { title: 'Turniej', layout: 'logo-promo', media: { promo: { type: 'video', video: { url: 'https://example.com/a.mp4' } } } },
     sponsor: { enabled: true, slides: [{ id: 's1', type: 'text', content: 'Sponsor' }], intervalMs: 5000, widthPx: 300 },
     links: { discord: 'https://discord.gg/example' },
     prizesPage: {},

@@ -55,7 +55,7 @@ export const groupTeams = app.table('group_teams', {
 /** A roster entry. A player who left keeps the row with `left_at` set: that is the transfer history. */
 export const teamMembers = app.table('team_members', {
   tournamentId: tournamentIdColumn().references(() => tournaments.id, { onDelete: 'cascade' }),
-  /** The Firestore player document id (Letnia and older PDL performances refer to it). */
+  /** The Firestore player document id (older performances refer to it). */
   id: text('id').notNull(),
   teamId: text('team_id').notNull(),
   steamId64: text('steam_id64').references(() => players.steamId64),
