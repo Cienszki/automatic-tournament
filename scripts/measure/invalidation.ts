@@ -2,7 +2,8 @@
 // shows that the cached page still has the old name, calls the invalidation, and polls the page
 // until the new name appears. Then puts the old name back and invalidates again.
 //
-//   MEASURE_DATABASE_URL=<url> npx tsx scripts/measure/invalidation.ts --base https://<address> --slug pdl-s2 //       [--secret <PLATFORM_TRIAL_SECRET>] [--rounds 3] [--json out.json]
+//   MEASURE_DATABASE_URL=<url> npx tsx scripts/measure/invalidation.ts --base https://<address> --slug pdl-s2
+//       [--secret <PLATFORM_TRIAL_SECRET>] [--rounds 3] [--json out.json]
 //
 // The database URL comes from MEASURE_DATABASE_URL (or --database-url), never from a .env file. The
 // database must say what it is in app.platform_settings: "local" or "staging" on this machine,
