@@ -16,9 +16,9 @@ Two rules every session keeps:
 | S4 | Business and marketing | not started | Optional; prompt at the bottom |
 | S5 | Implementation up to stage 1 (WP-04, 05, 12, 13a, 20, 32; card game WP-50 to 55, 64, 65) | done 2026-11-13 to 17 | Merged into `overhaul` |
 | S6 | Stage 1: WP-03 environments, WP-33 import, WP-66 part 1, WP-06 local half | **done 2026-11-23** | WP-03, WP-33 and WP-66 part 1 merged; WP-06 local half built and reviewed on `wp/06-hosting-trial`, waiting for the staging run; questions 41 to 43 for the owner |
-| S7 | WP-06 staging run and the hosting decision | waiting for the owner's staging steps 1 to 4 | |
+| S7 | WP-06 staging run and the hosting decision | ready once the owner has restored the paused Supabase staging project (the rest of the setup was done 2026-11-23) | |
 | S8 | WP-15 statistics | **done 2026-11-23** | Merged: one `computeTournament` over all rows, 11 tenant-scoped reads in one snapshot, nothing combined stored, 55 ms on Wiosenna; pdl-s2 equals the published numbers, Wiosenna differs only where listed. Caching waits for WP-06 (S7) |
-| S9 | The owner's answers to questions 41 to 43 folded into the design | waiting for the answer to 42 and the PDL S1 Steam-id point of 43 (41 and the rest of 43 answered 2026-11-23, recorded in STATUS) | |
+| S9 | The owner's answers to questions 41 to 43 folded into the design | ready (all answered 2026-11-23 and recorded in STATUS; can run before or after S7) | |
 | S10 | WP-07 platform kernel | after S7 | |
 | S11 | WP-08 server-rendered shell | after S10 | |
 | S12 | WP-09a teams and schedule | after S11 | |
@@ -48,15 +48,21 @@ Rules inside every step: implementation goes to `implementer` agents, and every 
 
 ## S7 WP-06: the staging run and the hosting decision
 
-Before pasting: do steps 1 to 4 of "What remains, and needs the owner" in [WP-06.md](../wp-06-hosting-trial/docs/overhaul/spikes/WP-06.md) (switch on staging migrations and previews, import pdl-s2 anonymized, the Vercel preview variables and the scoped token).
+Before pasting: restore the paused Supabase staging project (supabase.com, Dashboard, the staging project, "Restore project"; wait until it shows "Healthy"). Everything else on the owner's list of WP-06 steps 1 to 4 was done by the S8 session on 2026-11-23 or is no longer needed (see the S7 note in `STATUS.md`, "Next step").
 
 ```text
-Read docs/overhaul/BRIEF.md, docs/overhaul/STATUS.md and docs/overhaul/PROMPTS.md. You are running step S7: the staging half of WP-06. The local half is built and reviewed on branch wp/06-hosting-trial (worktree .claude/worktrees/wp-06-hosting-trial); its report is docs/overhaul/spikes/WP-06.md there.
-1. Check that my steps 1 to 4 are done (gh variable list, the Staging migrations and Preview workflow runs, the preview address). If one is missing, tell me exactly which and stop.
-2. Run steps 5 to 9 of WP-06.md against the preview (an implementer agent may do the runs). Never print a secret; read database addresses from .env.staging.local into variables as the doc shows. Step 6: do not add any domain to the production Firebase project. Step 7 needs a throwaway Vercel project: ask me once before creating it, because it is a deploy.
-3. Fill in the acceptance table and write the recommendation (go, go with changes, or the fallback of ADR-03), each claim backed by a measured number.
-4. Have an Opus reviewer check the numbers, the recommendation and that nothing in production was touched. Then merge the kept parts into overhaul with --no-ff and remove the trial code as step 10 says.
-5. Once src/platform/cache is merged, have an implementer wrap WP-15's getDataset (src/features/stats/queries.ts) in cachedQuery exactly as the WP-15 row in STATUS.md says (name 'stats.dataset', tags stats, teams and matches, cacheNull false), with a test that invalidating the tag gives fresh numbers; the reviewer of step 4 checks it too. Until then nothing may send traffic to /api/v1/stats/dataset.
+Read docs/overhaul/BRIEF.md, docs/overhaul/STATUS.md and docs/overhaul/PROMPTS.md. You are running step S7: the staging half of WP-06. The local half is built and reviewed on branch wp/06-hosting-trial (worktree .claude/worktrees/wp-06-hosting-trial); its report is docs/overhaul/spikes/WP-06.md there. The S7 note in STATUS.md "Next step" says what the S8 session already set up.
+1. Check that the staging database answers (read DATABASE_URL_SESSION from .env.staging.local into a variable; never print it). If it does not, tell me exactly what to do in the Supabase dashboard and stop.
+2. Finish steps 1 to 4 of WP-06.md yourself; my paste of this prompt is my yes to them, including the preview deploys of the Vercel project tournament-platform (never --prod, never the community-site project):
+   - Migrations: the Staging migrations workflow cannot be started by hand (GitHub runs workflow_dispatch only for files on the default branch, master). Run the job's own command from the overhaul worktree: DATABASE_URL from DATABASE_URL_SESSION, then npm run db:migrate -- --remote --expect staging. Then write the environment = "staging" row of app.platform_settings (DEV_SETUP.md, "Staging").
+   - Import pdl-s2 into staging with --anonymize (WP-06.md step 2).
+   - The Vercel Preview variables are set (PLATFORM_ROUTING, LEGACY_ORIGIN, LEGACY_SLUGS, PLATFORM_TRIAL_SECRET; DATABASE_URL was there). Check with vercel env ls preview.
+   - The preview: no VERCEL_TOKEN in GitHub (the Vercel team PD2IH also holds the community site, so any token would reach production). Deploy the preview with the CLI that is already logged in on this machine, vercel deploy from the wp-06-hosting-trial worktree, after checking that no .env file, data-exports/ or .local/ is uploaded (.vercelignore). Check in the function logs that the region is fra1.
+3. Run steps 5 to 9 of WP-06.md against the preview (an implementer agent may do the runs). Never print a secret. Step 6: do not add any domain to the production Firebase project; sign-in on the preview needs the preview's address as an authorized domain of the staging Firebase project, which only I can add: tell me the exact address and where to click, and continue with the other steps meanwhile. Step 7 needs a throwaway Vercel project: ask me once before creating it.
+4. Fill in the acceptance table and write the recommendation (go, go with changes, or the fallback of ADR-03), each claim backed by a measured number.
+5. Have an Opus reviewer check the numbers, the recommendation and that nothing in production was touched. Then merge the kept parts into overhaul with --no-ff and remove the trial code as step 10 says.
+6. Once src/platform/cache is merged, have an implementer wrap WP-15's getDataset (src/features/stats/queries.ts) in cachedQuery exactly as the WP-15 row in STATUS.md says (name 'stats.dataset', tags stats, teams and matches, cacheNull false), with a test that invalidating the tag gives fresh numbers; the reviewer of step 5 checks it too. Until then nothing may send traffic to /api/v1/stats/dataset.
+7. My first look: give me the preview's address of the PDL S2 teams page as a clickable link, and say what I should see there.
 End as in PROMPTS.md.
 ```
 
@@ -76,16 +82,14 @@ End as in PROMPTS.md.
 
 ## S9 The owner's answers to questions 41 to 43
 
-Most of 41 and 43 is answered and recorded in `STATUS.md`. Paste the prompt and write under it your answers to 42 and to the point marked "Still open" in 43, by number (for example "42: yes to a and c, no to b.").
+All of 41 to 43 is answered and recorded in `STATUS.md` (42 and the last point of 43 on 2026-11-23). Paste the prompt as it is.
 
 ```text
-Read docs/overhaul/BRIEF.md, docs/overhaul/STATUS.md (questions 41 to 43) and docs/overhaul/PROMPTS.md. You are running step S9: fold the answers recorded in questions 41 and 43 and my answers below into the design.
-- Update ROADMAP.md (WP-13b, WP-14, WP-16, WP-17, WP-21, WP-44, WP-66 as needed; the bot-account test for ticketless games goes into WP-16; replay upload parsing goes to the backlog as "later"), ORGANIZER_UX.md (the decisions table: the captains' score flow, the lineup check, the organizer's manual forfeit, the "Napisz do organizatora" button; the match page: changing one match's format) and CONVENTIONS.md (how matches, teams and players are named in reports, findings and messages).
-- Record the data answers so the import applies them as owner corrections: a small data file and a test, through an implementer agent and an Opus reviewer, merged into overhaul. In the same package the import places every game by date (a game listed on two matches belongs to the one on its date) and takes each game's teams from its players, not from its labels (question 43, "The bug behind most of these"). Also from WP-15: a bracket match's completion time comes from its mirror match in `matches` when `playoff_matches.result.completedAt` is a bulk rewrite (in Wiosenna all 11 bracket matches read 2026-07-25 17:46; `ub-r1-p1` really finished 2026-07-12 21:43); then update the expected differences in `src/features/stats/dataset.parity.db.test.ts`.
+Read docs/overhaul/BRIEF.md, docs/overhaul/STATUS.md (questions 41 to 43) and docs/overhaul/PROMPTS.md. You are running step S9: fold the answers recorded in questions 41, 42 and 43 into the design.
+- Update ROADMAP.md (WP-13b, WP-14, WP-16, WP-17, WP-21, WP-44, WP-66 as needed; the bot-account test for ticketless games goes into WP-16; replay upload parsing goes to the backlog as "later"), ORGANIZER_UX.md (the decisions table: the captains' score flow, the lineup check, the organizer's manual forfeit, the "Napisz do organizatora" button; the match page: changing one match's format) and CONVENTIONS.md (how matches, teams and players are named in reports, findings and messages). Question 42: no visible match number; add the support lookup to WP-46 and write docs/support/queries.sql (read-only queries that find a match, team or player by team names, nickname, Steam id, Dota match id and date, each printing tournament, stage, teams, date and score), tested on PGlite with the fixtures.
+- Record the data answers so the import applies them as owner corrections: a small data file and a test, through an implementer agent and an Opus reviewer, merged into overhaul. In the same package: the PDL S1 Steam-id answers of question 43 (the six Kotwica Gaming games on account 313683754 are Kildren's, as an unregistered stand-in, not Joxxi's); and the import places every game by date (a game listed on two matches belongs to the one on its date) and takes each game's teams from its players, not from its labels (question 43, "The bug behind most of these"). Also from WP-15: a bracket match's completion time comes from its mirror match in `matches` when `playoff_matches.result.completedAt` is a bulk rewrite (in Wiosenna all 11 bracket matches read 2026-07-25 17:46; `ub-r1-p1` really finished 2026-07-12 21:43); then update the expected differences in `src/features/stats/dataset.parity.db.test.ts`.
 - Move each answered question to the decisions in STATUS.md. Where an answer leaves a gap, ask me in one message with your recommendation.
 End as in PROMPTS.md.
-
-My answers:
 ```
 
 ---
