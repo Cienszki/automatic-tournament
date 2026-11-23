@@ -65,14 +65,10 @@ These are the owner's own concerns from 2026-11-12, condensed.
 
 ### Models and quota
 
-There are two weekly quotas, and they are separate: one for Fable 5.2, and one shared by every other model (Opus and Sonnet together). Both reset on Thursday at 01:59. **Spend from the quota that has more left, and check `STATUS.md` ("Quota") for the last numbers the owner gave.**
+**Since 2026-11-23 (owner): Fable can no longer be used. Opus 5.5 does everything:** the orchestrating session, implementers, reviewers and design work. Never start an agent with `model: "fable"`. A package marked "Fable review" gets an Opus reviewer, and its prompt lists what the reviewer must check (the data-loss, safety and production risks of that package), because Opus stands in for Fable. Opus has a 5-hour usage limit as well as the weekly one, so agents commit in small steps.
 
-The first days of the overhaul (2026-11-12 to 14) got this wrong: nearly all implementation went to Opus, and the non-Fable quota ran out mid-task while most of the Fable quota was unused. The rule since 2026-11-14:
-
-- **While Fable has more left than the other quota, Fable does the implementation too.** Start the `implementer` and `reviewer` agents with `model: "fable"`, or do the work in the orchestrating session when it is small or needs the session's context (running simulations, reading results, documents).
-- **Use Opus for implementation only for large, well-specified, mechanical packages**, and only while the non-Fable quota is clearly the fuller one.
-- **Explorers run on Sonnet and draw on the non-Fable quota.** Use them for wide sweeps of many files. For a handful of files, read them directly.
-- **An agent stopped by a quota limit keeps its work** in its worktree and branch. Check the branch and continue from it on the other model; do not start again.
+- **Explorers run on Sonnet.** Use them for wide sweeps of many files. For a handful of files, read them directly.
+- **An agent stopped by a usage limit keeps its work** in its worktree and branch. Resume it with a message after the reset, or continue from its branch; do not start again.
 
 The agents in `.claude/agents/`, with their default models:
 
