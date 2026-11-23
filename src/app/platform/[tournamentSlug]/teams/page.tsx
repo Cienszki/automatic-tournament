@@ -35,9 +35,12 @@ async function load(slug: string) {
   return frame ? { frame, teams } : null;
 }
 
+// Known gap: an unknown slug answers with the not-found page and `noindex`, but status 200, because
+// the root loading.tsx puts the page inside a Suspense boundary and the status is sent first.
+// WP-08 removes the root loading screen (docs/overhaul/spikes/WP-06.md, "Found on the way").
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const data = await load((await params).tournamentSlug);
-  if (!data) return {};
+  if (!data) notFound();
   const t = await getTranslations('teams');
   return { title: `${t('title')} – ${data.frame.name}` };
 }
