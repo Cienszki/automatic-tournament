@@ -4,6 +4,7 @@
 
 import { readFileSync } from 'node:fs';
 import type { TournamentStats } from '../domain/compute';
+import type { RankingEntry } from '../domain/rankings';
 import type { PlayerRef } from '../domain/season-summary';
 import type { StatsDataset } from '../domain/types';
 import { FIXTURES, type FixtureSlug } from './imported';
@@ -11,13 +12,12 @@ import { FIXTURES, type FixtureSlug } from './imported';
 const round = (n: number, d = 4) => Math.round(n * 10 ** d) / 10 ** d;
 const readJson = <T>(file: string): T => JSON.parse(readFileSync(file, 'utf8')) as T;
 
-export interface PublishedRankingRow { name: string; teamName: string; games: number; avgScore: number }
 export interface PublishedTotals {
   counts: Record<string, number>;
   totals: Record<string, number>;
   overview: Record<string, unknown>;
   scoreRanking: unknown[];
-  rankingsView: Array<{ role: string; gameCount: number | null; entries: PublishedRankingRow[] }>;
+  rankingsView: Array<{ role: string; gameCount: number | null; entries: Array<{ name: string; teamName: string; games: number; avgScore: number }> }>;
 }
 
 export const publishedDataset = (slug: FixtureSlug) => readJson<StatsDataset>(`${FIXTURES}${slug}/published/stats-dataset.json`);
@@ -47,10 +47,19 @@ export function totalsOf(stats: TournamentStats): Omit<PublishedTotals, 'ranking
   };
 }
 
-/** The rankings page from the new compute, in the shape of the stored documents' copy. */
-export function rankingsViewOf(stats: TournamentStats): PublishedTotals['rankingsView'] {
+/** One list of the rankings page: a position's players, or the teams. */
+export interface RankingList { role: string; gameCount: number | null; entries: RankingEntry[] }
+
+/** The rankings page from the new compute, every field `RankingsView` draws. */
+export function rankingsViewOf(stats: TournamentStats): RankingList[] {
   const { gameCount, ...lists } = stats.rankings;
-  return Object.entries(lists).map(([role, entries]) => ({
-    role, gameCount, entries: entries.map((e) => ({ name: e.name, teamName: e.teamName, games: e.games, avgScore: e.avgScore })),
-  }));
+  return Object.entries(lists).map(([role, entries]) => ({ role, gameCount, entries }));
+}
+
+/** The old site's stored rankings documents (`performanceRankings/{role}`), with every field, as captured. */
+export function storedRankings(slug: FixtureSlug): RankingList[] {
+  return readFileSync(`${FIXTURES}${slug}/performanceRankings.jsonl`, 'utf8').split('\n').filter(Boolean).map((line) => {
+    const { path, data } = JSON.parse(line) as { path: string; data: { gameCount?: number; entries?: RankingEntry[] } };
+    return { role: path.slice(path.lastIndexOf('/') + 1), gameCount: data.gameCount ?? null, entries: data.entries ?? [] };
+  });
 }
