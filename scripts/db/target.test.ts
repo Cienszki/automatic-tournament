@@ -39,7 +39,10 @@ describe('assertMayMigrate', () => {
   });
   it('needs --remote for any other', () => {
     expect(() => assertMayMigrate(remote, {})).toThrow(/--remote/);
-    expect(() => assertMayMigrate(remote, { remote: true })).not.toThrow();
+    expect(() => assertMayMigrate(remote, { remote: true, expect: 'staging' })).not.toThrow();
+  });
+  it('needs --expect for a remote database, so a stray URL cannot be migrated', () => {
+    expect(() => assertMayMigrate(remote, { remote: true })).toThrow(/--expect/);
   });
 });
 

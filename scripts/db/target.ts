@@ -63,6 +63,9 @@ export function assertMayMigrate(target: DatabaseTarget, flags: WriteFlags): voi
   if (!flags.remote) {
     throw new Error(`Refusing to migrate a ${describeTarget(target)} without --remote.`);
   }
+  if (!flags.expect) {
+    throw new Error('Refusing to migrate a remote database without --expect <environment>.');
+  }
 }
 
 /**
