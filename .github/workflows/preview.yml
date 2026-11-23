@@ -6,7 +6,8 @@ name: Preview
 # there is no `--prod` anywhere here.
 #
 # Off until the owner switches it on (docs/DEV_SETUP.md "Staging"):
-#   - secret VERCEL_TOKEN (vercel.com -> Account settings -> Tokens);
+#   - secret VERCEL_TOKEN, scoped to the team that holds only this project and with an expiry
+#     (the account also holds the community site); it is given only to the Vercel steps, not to npm ci;
 #   - variables VERCEL_ORG_ID and VERCEL_PROJECT_ID (from .vercel/project.json after `vercel link`);
 #   - variable STAGING_PREVIEWS = on.
 # A branch with a new migration needs the staging job (staging-migrate.yml) before its preview
@@ -32,10 +33,11 @@ jobs:
     env:
       VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
       VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
-      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
       NEXT_TELEMETRY_DISABLED: '1'
     steps:
       - name: The Vercel settings are present
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         run: |
           for name in VERCEL_ORG_ID VERCEL_PROJECT_ID VERCEL_TOKEN; do
             test -n "${!name}" || { echo "::error::$name is not set"; exit 1; }
@@ -47,10 +49,16 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Pull the preview settings
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         run: npx --yes vercel@65.15.0 pull --yes --environment=preview --token="$VERCEL_TOKEN"
       - name: Build
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         run: npx --yes vercel@65.15.0 build --token="$VERCEL_TOKEN"
       - name: Deploy the preview
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         run: |
           url=$(npx --yes vercel@65.15.0 deploy --prebuilt --token="$VERCEL_TOKEN")
           echo "Preview of \`${GITHUB_REF_NAME}\`: $url" >> "$GITHUB_STEP_SUMMARY"
