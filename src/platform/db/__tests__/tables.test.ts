@@ -28,11 +28,16 @@ const fails = async (p: PromiseLike<unknown>) => {
 
 describe('test database', () => {
   it('starts migrated in under a second', async () => {
-    const started = Date.now();
-    const fresh = await createTestDb();
-    const elapsed = Date.now() - started;
-    await fresh.close();
-    expect(elapsed).toBeLessThan(1000);
+    // The fastest of three: one start can be slowed past a second by a busy CI runner, while
+    // losing the migrated copy (testing.ts) makes every start take several seconds
+    const times: number[] = [];
+    for (let i = 0; i < 3; i++) {
+      const started = Date.now();
+      const fresh = await createTestDb();
+      times.push(Date.now() - started);
+      await fresh.close();
+    }
+    expect(Math.min(...times)).toBeLessThan(1000);
   });
 });
 
