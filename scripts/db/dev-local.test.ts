@@ -23,6 +23,7 @@ describe('localEnv', () => {
   it('blanks known secrets even when no file names them', () => {
     expect(env.GEMINI_API_KEY).toBe('');
     expect(env.DISCORD_BOT_TOKEN).toBe('');
+    expect(env.NOTIFY_SECRET).toBe('');
   });
   it('points the app at the local database, the local address and a placeholder Firebase project', () => {
     expect(env.DATABASE_URL).toBe('postgres://postgres:postgres@127.0.0.1:54329/postgres');
