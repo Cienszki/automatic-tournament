@@ -1,0 +1,14 @@
+# What `vercel deploy` must never upload from a working copy (WP-06).
+# Vercel builds from the uploaded files, not from git, so anything git ignores would still be sent.
+# Secrets: every env file, including the staging values and Vercel's own link folder.
+.env*
+.vercel
+# Local databases, captured data (players' details) and owner exports.
+.local/
+data-exports/
+# Dependencies and build output: Vercel installs and builds its own.
+node_modules/
+.next/
+.firebase/
+tsconfig.tsbuildinfo
+*.log
