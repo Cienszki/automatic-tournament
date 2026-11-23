@@ -33,10 +33,12 @@ export function middleware(request: NextRequest) {
   const headers = routing.enabled ? { [ROUTE_HEADER]: decision.kind } : undefined;
   if (decision.kind === 'forward') return NextResponse.rewrite(new URL(decision.url), { headers });
   if (decision.kind === 'not-found') return new NextResponse(null, { status: 404, headers });
-  const target = decision.kind === 'platform' ? decision.pathname : pathname;
-  if (target === request.nextUrl.pathname) return NextResponse.next({ headers });
+  // With routing on, a moved page or a served path goes on unchanged: next.config.mjs rewrites the
+  // moved pages to /platform/... and strips the .rsc suffix (src/platform/routing/rules.mjs says
+  // why the middleware must not). With routing off, the suffix is stripped here, as before.
+  if (routing.enabled || pathname === request.nextUrl.pathname) return NextResponse.next({ headers });
   const url = request.nextUrl.clone();
-  url.pathname = target;
+  url.pathname = pathname;
   return NextResponse.rewrite(url, { headers });
 }
 

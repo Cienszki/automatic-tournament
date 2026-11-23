@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
 import {
-  resolveAllowedOrigins, resolveAssetOrigin, resolveLegacyOrigin, resolveServerActionHosts, resolveSiteUrl, resolveStorageHosts, toOrigin,
+  resolveAllowedOrigins, resolveAssetOrigin, resolveServerActionHosts, resolveSiteUrl, resolveStorageHosts, toOrigin,
 } from './config.mjs';
 
 describe('toOrigin', () => {
@@ -52,13 +52,5 @@ describe('resolveStorageHosts', () => {
     expect(resolveStorageHosts({ NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: 'demo-x.firebasestorage.app' })).toEqual(['demo-x.firebasestorage.app']);
     expect(resolveStorageHosts({ NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: 'demo-x.appspot.com' })).toEqual([]);
     expect(resolveStorageHosts({})).toEqual([]);
-  });
-});
-
-describe('resolveLegacyOrigin', () => {
-  it('gives the old site only when platform routing is on', () => {
-    expect(resolveLegacyOrigin({ LEGACY_ORIGIN: 'https://old.example' })).toBeUndefined();
-    expect(resolveLegacyOrigin({ PLATFORM_ROUTING: 'on' })).toBeUndefined();
-    expect(resolveLegacyOrigin({ PLATFORM_ROUTING: 'on', LEGACY_ORIGIN: 'https://old.example/x' })).toBe('https://old.example');
   });
 });

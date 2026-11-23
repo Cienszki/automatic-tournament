@@ -49,10 +49,12 @@ describe('middleware, as before WP-06 (routing off)', () => {
 describe('middleware with the forwarding rule on', () => {
   const env = { PLATFORM_ROUTING: 'on', LEGACY_ORIGIN: 'https://old.example', LEGACY_SLUGS: 'pdl' };
 
-  it('rewrites a moved page of a new tournament to the platform, also for client navigation', async () => {
-    expect((await servedAt('/pdl-s2/teams', env)).url).toBe(`${BASE}/platform/pdl-s2/teams`);
+  it('lets a moved page through to the config rewrite, which also strips the .rsc suffix', async () => {
+    const plain = await servedAt('/pdl-s2/teams', env);
+    expect(plain.url).toBe(`${BASE}/pdl-s2/teams`);
+    expect(plain.res.headers.get('x-platform-route')).toBe('platform');
     const rsc = await servedAt('/pdl-s2/teams.rsc', env, { RSC: '1' });
-    expect(rsc.url).toBe(`${BASE}/platform/pdl-s2/teams`);
+    expect(rsc.url).toBe(`${BASE}/pdl-s2/teams.rsc`);
   });
 
   it('forwards an old-site tournament to the old site with its query', async () => {

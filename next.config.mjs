@@ -1,8 +1,9 @@
 import { withSentryConfig } from '@sentry/nextjs/config';
 import createNextIntlPlugin from 'next-intl/plugin';
 import {
-  resolveAssetOrigin, resolveLegacyOrigin, resolveServerActionHosts, resolveStorageHosts,
+  resolveAssetOrigin, resolveServerActionHosts, resolveStorageHosts,
 } from './src/platform/origins/config.mjs';
+import { legacyFallbackRewrites, platformRewrites, readRoutingConfig } from './src/platform/routing/rules.mjs';
 
 const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts');
 
@@ -18,9 +19,9 @@ const PHASE_DEVELOPMENT_SERVER = 'phase-development-server';
 // from the environment, so a local or staging build never points at production (ADR-15).
 const ASSET_ORIGIN = resolveAssetOrigin(process.env);
 
-// The old site, when the new platform sits in front of it (ADR-15, src/platform/routing). Read at
-// build time: Vercel and `next start` both apply rewrites from the built config.
-const LEGACY_ORIGIN = resolveLegacyOrigin(process.env);
+// The new platform in front of the old site (ADR-15): PLATFORM_ROUTING, LEGACY_ORIGIN, LEGACY_SLUGS.
+// Read at build time; Vercel and `next start` both apply rewrites from the built config.
+const ROUTING = readRoutingConfig(process.env);
 
 // NOTE: this file is .mjs (not .ts) ON PURPOSE.
 // firebase-tools' frameworks adapter only recognises next.config.js / .mjs
@@ -138,13 +139,13 @@ const buildConfig = (phase) => {
             },
         ],
     },
-    // A path this build has no file or route for goes to the old site: above all the old site's own
-    // /_next/ files, which its pages load through us once they are forwarded. `fallback` runs after
-    // every page, file and dynamic route, just before the 404 (the community site uses the same
-    // rule in front of us). The middleware forwards the rest: old tournaments, unmoved pages, /api.
+    // With PLATFORM_ROUTING=on: the moved pages of new tournaments go to /platform/<slug>/<page>
+    // (`beforeFiles`, so before the old [tournamentSlug] pages), and a path this build has no file
+    // or route for goes to the old site (`fallback`, after every page, file and dynamic route; above
+    // all the old site's /_next/ files). The middleware forwards the rest: old tournaments, unmoved
+    // pages, /api. Both empty when routing is off.
     async rewrites() {
-        if (!LEGACY_ORIGIN) return [];
-        return { fallback: [{ source: '/:path*', destination: `${LEGACY_ORIGIN}/:path*` }] };
+        return { beforeFiles: platformRewrites(ROUTING), afterFiles: [], fallback: legacyFallbackRewrites(ROUTING) };
     },
     async redirects() {
         return [

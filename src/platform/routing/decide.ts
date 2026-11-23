@@ -3,32 +3,27 @@
 // page request: no database, no schema library, no logger.
 //
 // With routing on, the new platform serves:
-//   - the pages it has moved (PLATFORM_PAGES) of every tournament that is not on LEGACY_SLUGS,
-//     by rewriting /<slug>/<page> to /platform/<slug>/<page>;
+//   - the pages it has moved (PLATFORM_PAGES) of every tournament that is not on LEGACY_SLUGS;
+//     next.config.mjs rewrites them to /platform/<slug>/<page> (rules.mjs says why not here);
 //   - its own API under /api/platform/, and the prototypes.
 // Everything else (old-site tournaments, pages not moved yet, the old /api/ routes, the home page)
 // goes to LEGACY_ORIGIN when it is set, and otherwise to the old pages that are still in this app.
-// The old site's /_next/ files never reach the middleware: next.config.mjs forwards the ones this
-// build does not have with a fallback rewrite.
+// The old site's /_next/ files never reach the middleware: the config's fallback rewrite forwards
+// the ones this build does not have.
 
-import type { RoutingConfig } from './config';
-
-/** Tournament pages the new platform renders, as the path after the slug. WP-09 adds the rest. */
-export const PLATFORM_PAGES: ReadonlySet<string> = new Set(['/teams']);
-
-/** Where the moved pages live inside the app; never addressed from outside. */
-export const PLATFORM_PREFIX = '/platform';
+import { PLATFORM_PAGES, PLATFORM_PREFIX, SLUG_PATTERN, type RoutingConfig } from './rules.mjs';
 
 /** Paths of the new app that are never forwarded. */
 const OWN_PREFIXES = ['/api/platform/', '/prototype/'];
 const OWN_PATHS = new Set(['/api/platform', '/prototype']);
 
-const SLUG = /^[a-z0-9][a-z0-9-]{0,62}$/;
+const SLUG = new RegExp(`^${SLUG_PATTERN}$`);
+const PAGES: ReadonlySet<string> = new Set(PLATFORM_PAGES);
 
 export type RouteDecision =
   /** Serve the path in this app as it is. */
   | { kind: 'serve' }
-  /** Render this internal path instead (the URL in the browser does not change). */
+  /** A moved page: the config rewrites it to this internal path (the URL in the browser stays). */
   | { kind: 'platform'; pathname: string }
   /** Proxy the request to this absolute URL on the old site. */
   | { kind: 'forward'; url: string }
@@ -50,7 +45,7 @@ export function decideRoute(pathname: string, search: string, config: RoutingCon
   if (match) {
     const slug = match[1];
     const rest = (match[2] ?? '').replace(/\/+$/, '');
-    if (SLUG.test(slug) && !config.legacySlugs.has(slug) && PLATFORM_PAGES.has(rest)) {
+    if (SLUG.test(slug) && !config.legacySlugs.has(slug) && PAGES.has(rest)) {
       return { kind: 'platform', pathname: `${PLATFORM_PREFIX}/${slug}${rest}` };
     }
   }

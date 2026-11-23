@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { readRoutingConfig } from './config';
+import { unstable_getResponseFromNextConfig, getRewrittenUrl } from 'next/experimental/testing/server';
+import { legacyFallbackRewrites, platformRewrites, readRoutingConfig } from './rules.mjs';
 import { decideRoute } from './decide';
 
 const OLD = 'https://old.example';
@@ -98,5 +99,44 @@ describe('readRoutingConfig', () => {
   it('refuses settings that would forward to the wrong place', () => {
     expect(() => on({ LEGACY_ORIGIN: 'ftp://old.example' })).toThrow(/LEGACY_ORIGIN/);
     expect(() => on({ LEGACY_SLUGS: 'pdl, a b' })).toThrow(/LEGACY_SLUGS/);
+  });
+});
+
+describe('platformRewrites, as next.config.mjs applies them', () => {
+  const rewritten = async (path: string, config = forwarding) => {
+    const res = await unstable_getResponseFromNextConfig({
+      url: `http://localhost${path}`,
+      nextConfig: { rewrites: async () => ({ beforeFiles: platformRewrites(config), afterFiles: [], fallback: legacyFallbackRewrites(config) }) },
+    });
+    return getRewrittenUrl(res);
+  };
+
+  it('maps a moved page of a new tournament to the platform', async () => {
+    expect(await rewritten('/pdl-s2/teams')).toBe('http://localhost/platform/pdl-s2/teams');
+    expect(await rewritten('/seed-liga/teams')).toBe('http://localhost/platform/seed-liga/teams');
+  });
+
+  it('leaves old-site slugs and paths that are never a tournament alone', async () => {
+    for (const path of ['/pdl/teams', '/wiosenna/teams', '/api/teams', '/prototype/teams', '/platform/teams']) {
+      expect(await rewritten(path), path).not.toMatch(/\/platform\/[^/]+\/teams$/);
+    }
+  });
+
+  it('maps a client navigation with the .rsc suffix too, and strips the suffix from other paths', async () => {
+    expect(await rewritten('/pdl-s2/teams.rsc')).toBe('http://localhost/platform/pdl-s2/teams');
+    expect(await rewritten('/pdl-s2/teams.prefetch.rsc')).toBe('http://localhost/platform/pdl-s2/teams');
+    expect(await rewritten('/prototype/cards/game.rsc')).toBe('http://localhost/prototype/cards/game');
+    expect(await rewritten('/pdl/teams.rsc')).toBe('http://localhost/pdl/teams');
+  });
+
+  it('does not take a slug that merely starts like an old one', async () => {
+    expect(await rewritten('/pdl-s2/teams')).toBe('http://localhost/platform/pdl-s2/teams');
+    expect(await rewritten('/apix/teams')).toBe('http://localhost/platform/apix/teams');
+  });
+
+  it('is empty with routing off, and forwards the rest only with an old origin', () => {
+    expect(platformRewrites(readRoutingConfig({}))).toEqual([]);
+    expect(legacyFallbackRewrites(on())).toEqual([]);
+    expect(legacyFallbackRewrites(forwarding)).toEqual([{ source: '/:path*', destination: `${OLD}/:path*` }]);
   });
 });
