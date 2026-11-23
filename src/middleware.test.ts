@@ -63,6 +63,13 @@ describe('middleware with the forwarding rule on', () => {
     expect((await servedAt('/pdl/schedule.rsc', env, { RSC: '1' })).url).toBe('https://old.example/pdl/schedule');
   });
 
+  it('says which way each request went', async () => {
+    expect((await servedAt('/pdl-s2/teams', env)).res.headers.get('x-platform-route')).toBe('platform');
+    expect((await servedAt('/pdl/teams', env)).res.headers.get('x-platform-route')).toBe('forward');
+    expect((await servedAt('/prototype/cards/game', env)).res.headers.get('x-platform-route')).toBe('serve');
+    expect((await servedAt('/pdl-s2/teams')).res.headers.get('x-platform-route')).toBeNull();
+  });
+
   it('answers 404 to the internal platform address', async () => {
     expect((await servedAt('/platform/pdl-s2/teams', env)).res.status).toBe(404);
   });

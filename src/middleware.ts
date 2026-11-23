@@ -16,6 +16,8 @@ const RSC_SUFFIX = /(\.prefetch)?\.rsc$/;
 // claims every /api/admin* path on dota2inhouse.pl, so nothing of ours may live there.
 const CLOSED_PREFIX = '/api/admin';
 
+const ROUTE_HEADER = 'x-platform-route';
+
 // Read once per server process (or edge isolate); the variables are fixed per deployment.
 let routing: RoutingConfig | undefined;
 
@@ -27,13 +29,15 @@ export function middleware(request: NextRequest) {
   routing ??= readRoutingConfig(process.env);
   const decision = decideRoute(pathname, request.nextUrl.search, routing);
 
-  if (decision.kind === 'forward') return NextResponse.rewrite(new URL(decision.url));
-  if (decision.kind === 'not-found') return new NextResponse(null, { status: 404 });
+  // Says which way the request went, for the WP-06 measurements and for debugging a forward.
+  const headers = routing.enabled ? { [ROUTE_HEADER]: decision.kind } : undefined;
+  if (decision.kind === 'forward') return NextResponse.rewrite(new URL(decision.url), { headers });
+  if (decision.kind === 'not-found') return new NextResponse(null, { status: 404, headers });
   const target = decision.kind === 'platform' ? decision.pathname : pathname;
-  if (target === request.nextUrl.pathname) return NextResponse.next();
+  if (target === request.nextUrl.pathname) return NextResponse.next({ headers });
   const url = request.nextUrl.clone();
   url.pathname = target;
-  return NextResponse.rewrite(url);
+  return NextResponse.rewrite(url, { headers });
 }
 
 // Every page and route, but not this build's static files or files with an extension (images,
