@@ -11,7 +11,7 @@ npx tsx scripts/import/index.ts --from ../overhaul/data-exports --db <scratch>/i
 npx tsx scripts/import/index.ts --from ../overhaul/data-exports --db <scratch>/import-db --redact --report run2.md
 ```
 
-The first run printed `4 tournaments, 8361 rows written`, the second `4 tournaments, 0 rows written`. The full report of the first run follows below; it was written with `--redact`, which leaves document paths, user ids and Steam ids out of the findings and keeps counts, reasons, team names and nicknames. The unredacted report (with up to three example ids per finding) is what the tool prints without `--redact`.
+The first run printed `4 tournaments, 8361 rows written`, the second `4 tournaments, 0 rows written`. After the review fixes of the same day (a public re-run keeps private data; scores are checked against games) both runs were repeated on a fresh database with the same numbers: 8361 rows, then 0. The report has 208 findings (39 distinct reasons), 6 more than before the fixes: the score mismatches listed under "Open for the owner". The full report of the first run follows below; it was written with `--redact`, which leaves document paths, user ids and Steam ids out of the findings and keeps counts, reasons, team names and nicknames. The unredacted report (with up to three example ids per finding) is what the tool prints without `--redact`.
 
 `swiss-test`, the test tournament in `_global/tournaments`, has no capture folder and is skipped by rule in any case (`--include swiss-test` imports it).
 
@@ -48,12 +48,20 @@ Global tables after the run: 1 organization, 1 series, 344 players (320 of the 3
 - Derived data, dropped by rule (SCHEMA.md 3.2, 7.10): `playerStats`, `teamStats`, `stats`, `tournamentStats`, `performanceRankings`.
 - Wiosenna: 2 games stored under two matches (kept under the match whose series they fit) and their 20 performances; 1 stand-in request whose match no longer exists; 2 group documents that no team or match refers to.
 - Letnia: 1 game's `uploadedBy` is `admin`, not a user id, and is left empty.
-- Private collections, denied to the public capture: per tournament `admins`, `casters`, `config`, `fantasyRounds`, `skippedGames`, `teams.transfers`, `unparsedMatches`, and Letnia's `blockedGames`; globally `users`, `accounts`, `admins`, `tournamentCreators`, `discordLinks`, `steamLinks`. The mappers for them are tested on made-up documents (`scripts/import/__tests__/private.db.test.ts`); they run when the owner's export (`scripts/tools/export-firestore.mjs`) exists.
-- No field was found that no mapper names (`unknown-field` findings: none in any tournament).
+- Private collections, denied to the public capture: per tournament `admins`, `casters`, `config`, `fantasyRounds`, `skippedGames`, `teams.transfers`, `unparsedMatches`, and Letnia's `blockedGames`; globally `users`, `accounts`, `admins`, `tournamentCreators`, `discordLinks`, `steamLinks`. The mappers for them are tested on made-up documents (`scripts/import/__tests__/private.db.test.ts`); they run when the owner's export (`scripts/tools/export-firestore.mjs`) exists. A public capture read after the owner's export leaves what only that export can see as it is (`scripts/import/private-sources.ts`, tested in `public-rerun.db.test.ts`): the bot settings column, tournament admins and casters, the rows and joining dates from transfers, skipped games, fantasy rounds and lineups are neither overwritten nor counted stale, and `--prune` refuses any capture with a denied collection.
+- No field was found that no mapper names (`unknown-field` findings: none in any tournament). The check covers top-level fields only. The nested objects were checked by hand: a match's `teamA`/`teamB`, `rescheduleRequest`, `forfeit`, `coachInfo` and `standinInfo`, and the tournament's `fantasy`, `pickem`, `registration`, `teams`, `matches`, `standins`, `lobbySettings`, `discordServer` and `navbarSponsor`. Every key in them is mapped or is a copy of a value mapped elsewhere (`rescheduleRequest.requestedByName` is a copy of a name).
 
 ## Open for the owner
 
-- The 4 PDL S1 roster documents whose `steamId` and `steamId64` disagree: the import uses `steamId64` unless a player of another team holds it. The unredacted report lists them.
+- The 4 PDL S1 roster documents whose `steamId` and `steamId64` disagree: the import uses the id that `steamId32` agrees with (three times `steamId64`, once `steamId`, whose `steamId64` belongs to a player of another team). The unredacted report lists them.
+- Six completed matches whose stored score is not the count of their imported games' winners. The import keeps the stored score; each needs a decision:
+  - Wiosenna group match `HVwwRd87bSFsCzkph25p`: stored 1:2 for Adaś, but its two games are 1:1. Probably a draw in a best of two, inflated by a playoff game of the same two teams that was also stored under it (the import keeps that game under the playoff match). The live site shows the same wrong score.
+  - Wiosenna `cxozIoYGO0ViB55POI36`: stored 2:1, games 2:0.
+  - Wiosenna bracket match `ub-r1-p3`: stored 2:1, games 2:0.
+  - Letnia `3nsXHgbRZNL2Bo3w6R18`: stored 2:0, games 1:0.
+  - PDL S1 `0AxWzOilkXqKGYV6Dqgn`: stored 2:0, games 1:1.
+  - PDL S1 `z8jaivAAINvlU1Wqk78x`: stored 2:0, four games 3:1.
+- Letnia's lower-bracket round-one matches `lb-r1-m1` to `lb-r1-m4`: their match documents say `bo1`, but each has two games and a 2:0 score (0:2 in `lb-r1-m2`); these are the 4 "more games than its series length" findings of Letnia. Were they best of three? The import keeps best of one and both games.
 - Run the private export (`node scripts/tools/export-firestore.mjs --out data-exports/private` with the service account) and import it, to fill the user stubs, links, roles, bot settings, casters and transfers.
 
 ---
@@ -259,6 +267,7 @@ Not imported (a document or a value):
 
 Conflicts in the old data, and how they were settled:
 
+- matches: the stored score disagrees with the imported games; the stored score is kept (owner to confirm) (1)
 - matches.games: the match has more games than its series length; every game is imported (4)
 
 Decisions taken where the old data was ambiguous:
@@ -426,7 +435,8 @@ Why documents were dropped or not imported:
 
 Conflicts in the old data, and how they were settled:
 
-- teams.players: steamId and steamId64 differ: steamId64 is used (it agrees with steamId32) unless a player of another team holds it (owner to confirm) (4)
+- teams.players: steamId and steamId64 differ: the id that steamId32 agrees with is used (owner to confirm) (4)
+- matches: the stored score disagrees with the imported games; the stored score is kept (owner to confirm) (2)
 - matches.games: the match has more games than its series length; every game is imported (4)
 
 Decisions taken where the old data was ambiguous:
@@ -535,6 +545,7 @@ Conflicts in the old data, and how they were settled:
 
 - teams: teams.roster has another mmr than the roster document; the document is used (4)
 - matches: the bracket match and its mirror carry different reschedule requests; the later one is kept (4)
+- matches: the stored score disagrees with the imported games; the stored score is kept (owner to confirm) (3)
 
 Decisions taken where the old data was ambiguous:
 
