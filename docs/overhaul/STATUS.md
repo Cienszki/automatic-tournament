@@ -49,6 +49,14 @@ Added by the owner on 2026-11-22:
 13. **PDL S2 will still be played when the platform is complete on staging,** so it stays the season that is mirrored, compared daily and then moved (WP-39, WP-37).
 14. **Production fixes are carried into `overhaul`.** Production gained four changes on 2026-11-19 (caster corner, Steam without the API key, caster notifications and muting, account merge); they were merged into `overhaul` on 2026-11-22 and their behaviours added to WP-38's acceptance. Every implementation session starts with this merge (`BRIEF.md`).
 
+Added by the owner on 2026-11-24 (to be folded into the design by S9; the owner's words condensed):
+
+15. **Themes to choose from.** Detailed customization is too much for many organizers, and not all are good at visual design. So the look screen offers a list of themes: complete preset values for every customization setting (more settings will be added). Examples: "sakura" for Wiosenna, "synthwave" for Letnia, one for PDL and PDL S2 (name to be proposed), and for the owner's future tournaments cyberpunk, pixel art, ancient Rome, Chinese mythology, steampunk, brutalist, Studio Ghibli, ocean reef, Victorian and more. A theme may bring its own fonts, button shapes, background images, table styles and decorations. Any user can tinker with the settings and save the result as their own theme, which other users may use. A really rich theme, with more customized, is a premium service in the most expensive plan. This goes beyond today's design (`ORGANIZER_UX.md` section 6.3: about eight presets, and layout never editable), so S9 revises section 6.3, WP-27 and WP-45 and adds the theme library, user themes and sharing.
+16. **League import for any organizer.** As Letnia was imported from the old database, any organizer can import an existing tournament: they give the format it was played in, the Valve league id and other details, and much is learned from the games played in the league. The obvious first imports are every The International and many more tier-1 Dota 2 tournaments (professional leagues, which OpenDota does list, unlike ours: question 41). S9 adds a work package.
+17. **Other games, far in the future.** If it becomes possible, the platform branches out beyond Dota 2. The automation (lobbies, results) will be the hard part, but some games should allow it. Nothing is built for it now; new design should not tie the core (tournaments, stages, teams, matches, results) to Dota where it costs nothing to keep it general. S9 records this in `ARCHITECTURE.md`, next to the record on regions (ADR-17).
+
+Also on 2026-11-24: the owner looked at `/letnia` on the preview and found a lot still to do. On the preview `/letnia` is still the old site's Letnia (it is on `LEGACY_SLUGS` and not imported into staging); the new platform shows it once its pages move (WP-08 to WP-10) and it is imported into staging.
+
 ## Sessions
 
 | Session | Model | State | Output |

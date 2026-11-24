@@ -18,7 +18,7 @@ Two rules every session keeps:
 | S6 | Stage 1: WP-03 environments, WP-33 import, WP-66 part 1, WP-06 local half | **done 2026-11-23** | WP-03, WP-33 and WP-66 part 1 merged; WP-06 local half built and reviewed on `wp/06-hosting-trial`, waiting for the staging run; questions 41 to 43 for the owner |
 | S7 | WP-06 staging run and the hosting decision | **done 2026-11-24** | Go with changes: Vercel Hobby `fra1` and Supabase Free Frankfurt; warm pages about 30 ms TTFB and 100 ms LCP, fresh 0.4 to 0.7 s after an invalidation; the transaction-pooler hang fixed; WP-06, WP-15b (cached stats dataset) and WP-06b (`/api/v1` routing) merged |
 | S8 | WP-15 statistics | **done 2026-11-23** | Merged: one `computeTournament` over all rows, 11 tenant-scoped reads in one snapshot, nothing combined stored, 55 ms on Wiosenna; pdl-s2 equals the published numbers, Wiosenna differs only where listed. Caching waits for WP-06 (S7) |
-| S9 | The owner's answers to questions 41 to 43 folded into the design | ready (all answered 2026-11-23 and recorded in STATUS; can run before or after S7) | |
+| S9 | The owner's answers to questions 41 to 43, and decisions 15 to 17 (themes, league import, other games), folded into the design | ready (all answered 2026-11-23 and recorded in STATUS; can run before or after S7) | |
 | S10 | WP-07 platform kernel | after S7 | |
 | S11 | WP-08 server-rendered shell | after S10 | |
 | S12 | WP-09a teams and schedule | after S11 | |
@@ -84,12 +84,13 @@ End as in PROMPTS.md.
 
 ## S9 The owner's answers to questions 41 to 43
 
-All of 41 to 43 is answered and recorded in `STATUS.md` (42 and the last point of 43 on 2026-11-23). Paste the prompt as it is.
+Decisions 15 to 17 (2026-11-24) are recorded in `STATUS.md` too. All of 41 to 43 is answered and recorded in `STATUS.md` (42 and the last point of 43 on 2026-11-23). Paste the prompt as it is.
 
 ```text
 Read docs/overhaul/BRIEF.md, docs/overhaul/STATUS.md (questions 41 to 43) and docs/overhaul/PROMPTS.md. You are running step S9: fold the answers recorded in questions 41, 42 and 43 into the design.
 - Update ROADMAP.md (WP-13b, WP-14, WP-16, WP-17, WP-21, WP-44, WP-66 as needed; the bot-account test for ticketless games goes into WP-16; replay upload parsing goes to the backlog as "later"), ORGANIZER_UX.md (the decisions table: the captains' score flow, the lineup check, the organizer's manual forfeit, the "Napisz do organizatora" button; the match page: changing one match's format) and CONVENTIONS.md (how matches, teams and players are named in reports, findings and messages). Question 42: no visible match number; add the support lookup to WP-46 and write docs/support/queries.sql (read-only queries that find a match, team or player by team names, nickname, Steam id, Dota match id and date, each printing tournament, stage, teams, date and score), tested on PGlite with the fixtures.
 - Record the data answers so the import applies them as owner corrections: a small data file and a test, through an implementer agent and an Opus reviewer, merged into overhaul. In the same package: the PDL S1 Steam-id answers of question 43 (the six Kotwica Gaming games on account 313683754 are Kildren's, as an unregistered stand-in, not Joxxi's); and the import places every game by date (a game listed on two matches belongs to the one on its date) and takes each game's teams from its players, not from its labels (question 43, "The bug behind most of these"). Also from WP-15: a bracket match's completion time comes from its mirror match in `matches` when `playoff_matches.result.completedAt` is a bulk rewrite (in Wiosenna all 11 bracket matches read 2026-07-25 17:46; `ub-r1-p1` really finished 2026-07-12 21:43); then update the expected differences in `src/features/stats/dataset.parity.db.test.ts`.
+- Fold in the owner's decisions 15 to 17 of 2026-11-24 (STATUS.md, "Decisions that changed the plan"): (15) themes: revise ORGANIZER_UX.md section 6.3 and ROADMAP WP-27 and WP-45 so a theme is a complete, named set of values for every look setting, may bring its own fonts, button shapes, background images, table styles and decorations, can be saved by any user from their own settings and shared with other users, and rich themes are a premium plan feature; propose the starting list (sakura for Wiosenna, synthwave for Letnia, a name for the PDL and PDL S2 theme) and what still keeps every theme readable; add a work package for the theme library and sharing. (16) League import: a work package for importing a finished tournament from its Valve league id, the format it was played in and what the league's games tell (OpenDota lists professional leagues), with The International as the first target; say what it reuses from WP-33's import tool. (17) Other games: a short record in ARCHITECTURE.md next to ADR-17, no work now.
 - Move each answered question to the decisions in STATUS.md. Where an answer leaves a gap, ask me in one message with your recommendation.
 End as in PROMPTS.md.
 ```
@@ -114,7 +115,7 @@ Each is one package, run the same way. Paste the block and replace `<WP>` with t
 
 | Step | `<WP>` | What the reviewer must check besides the acceptance criteria |
 |---|---|---|
-| S11 | WP-08 | No page reads Firestore in the browser; the loading gate and the whole-collection read are gone; an unknown slug answers 404 (WP-06 found it answers 200); the 44 kB of translations is no longer on every page; the root layout no longer preloads 16 font files on every page (WP-06 measured 51 CDN requests per cold view; `COSTS.md`); old tournaments still work through the forwarding |
+| S11 | WP-08 | No page reads Firestore in the browser; the loading gate and the whole-collection read are gone, and moving between pages of a tournament and between tournaments shows no loading screen (the owner sees it on every move today, WP-06 step 11); an unknown slug answers 404 (WP-06 found it answers 200); the 44 kB of translations is no longer on every page; the root layout no longer preloads 16 font files on every page (WP-06 measured 51 CDN requests per cold view; `COSTS.md`); old tournaments still work through the forwarding |
 | S12 | WP-09a | Teams and schedule equal the old pages for all four imported tournaments, field by field |
 | S13 | WP-09b | Standings and brackets equal the published ones for every division, group and bracket |
 | S14 | WP-09c | Rules, news, prizes and the static pages are complete in the first response |
