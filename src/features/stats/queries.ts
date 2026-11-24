@@ -122,6 +122,13 @@ export async function getDataset(tournamentId: string, db: Db = getDb()): Promis
  * dataset also reads teams, rosters and stand-ins: a renamed team or a recorded game must refresh
  * it. A null (unknown id or draft) is not stored, so ids a crawler makes up never fill the cache,
  * and a draft is public as soon as it is published.
+ *
+ * The dataset also reads the tournament's status, format, stages and groups, which are `core` data
+ * and not among these tags. So a command that changes them (unpublishing to draft above all, or a
+ * format or stage edit) must invalidate the whole tournament, `tags.tournament(id)`, which every
+ * cached query of a tournament carries; invalidating only `core` would leave this dataset public.
+ * A player's profile (nickname, avatar) belongs to no tournament: the job that refreshes it must
+ * invalidate every tournament the player is in. The route's CDN copy lives up to 5 more minutes.
  */
 export function createDatasetQuery(cached: typeof cachedQuery): (tournamentId: string) => Promise<StatsDataset | null> {
   return cached((tournamentId: string) => getDataset(tournamentId), {
