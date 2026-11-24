@@ -43,7 +43,7 @@ Phases are `registration`, `mid-season`, `playoffs` (group stage with playoffs o
 | `LEGACY_ORIGIN` | the old site's address; unset means nothing is forwarded | unset | the old site's hosting address |
 | `LEGACY_SLUGS` | comma-separated slugs the old site still serves; they are forwarded whole | unset | every captured slug that is not imported into staging |
 
-`PLATFORM_TRIAL_SECRET` switches on the hosting trial's two endpoints under `/api/platform/trial/` (they answer 404 without it). The steps of the trial are in `docs/overhaul/spikes/WP-06.md`.
+The hosting trial's endpoints under `/api/platform/trial/` (behind `PLATFORM_TRIAL_SECRET`) were removed after the trial on 2026-11-24; its steps and results are in `docs/overhaul/spikes/WP-06.md`. The measuring scripts that invalidate a tournament or probe the database (`ttfb.ts`, `invalidation.ts`, `concurrency.ts`) need an equivalent endpoint again, from WP-07's commands.
 
 **A local PostgreSQL instead of PGlite.** Any PostgreSQL 15 or later on this machine works; give its address:
 

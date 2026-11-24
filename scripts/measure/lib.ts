@@ -161,6 +161,12 @@ export function trialSecret(o: Options): string | undefined {
   return v && v !== 'true' ? v : undefined;
 }
 
+/**
+ * Calls the hosting trial's invalidation endpoint. That endpoint and the trial's database probe
+ * (concurrency.ts) were removed after WP-06 (2026-11-24); ttfb.ts, invalidation.ts and
+ * concurrency.ts need an equivalent again, which WP-07's commands provide. Until then they only
+ * run against a build of the trial branch's history.
+ */
 export async function invalidate(base: string, slug: string, secret: string, kind?: string): Promise<number> {
   const query = new URLSearchParams({ slug, ...(kind ? { kind } : {}) });
   const start = performance.now();
