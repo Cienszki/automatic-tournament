@@ -35,8 +35,11 @@ export const NOT_SLUGS = ['api', 'platform', 'prototype', '_next'];
 export const SLUG_PATTERN = '[a-z0-9][a-z0-9-]{0,62}';
 const SLUG = new RegExp(`^${SLUG_PATTERN}$`);
 
-/** Paths of the new app that are never forwarded: its internal pages, its API, prototypes, assets. */
-const OWN = ['platform', 'prototype', '_next', 'api/platform'];
+/**
+ * Paths of the new app that are never forwarded: its internal pages, its API (`/api/v1/...`, the
+ * versioned public API, and `/api/platform/...`), prototypes, assets. The old site has no `/api/v1`.
+ */
+const OWN = ['platform', 'prototype', '_next', 'api/platform', 'api/v1'];
 
 /** Files of this build, served as they are (`.rsc` is a client navigation, not a file). */
 const FILE_EXTENSIONS = 'png|jpe?g|gif|svg|webp|avif|ico|woff2?|ttf|otf|mp4|webm|txt|xml|json|webmanifest|js|mjs|css|map';

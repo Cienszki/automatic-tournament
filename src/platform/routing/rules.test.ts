@@ -54,11 +54,13 @@ describe('the rewrites with an old site to forward to', () => {
     expect((await routed('/')).url).toBe(`${OLD}/`);
     expect((await routed('/api/stats/dataset?t=pdl')).url).toBe(`${OLD}/api/stats/dataset?t=pdl`);
     expect((await routed('/api/teams')).url).toBe(`${OLD}/api/teams`);
+    // Only the exact segment is the new API: a path that merely starts with v1 is the old site's.
+    expect((await routed('/api/v1x/stats')).url).toBe(`${OLD}/api/v1x/stats`);
     expect((await routed('/creator')).url).toBe(`${OLD}/creator`);
   });
 
   it("keep the new app's own API, prototypes, assets and files", async () => {
-    for (const path of ['/api/platform/trial/db', '/prototype/cards/game', '/_next/static/chunks/a.js', '/robots.txt', '/sitemap.xml', '/images/x.png']) {
+    for (const path of ['/api/platform/trial/db', '/api/v1/stats/dataset?tournamentId=x', '/api/v1', '/prototype/cards/game', '/_next/static/chunks/a.js', '/robots.txt', '/sitemap.xml', '/images/x.png']) {
       expect((await routed(path)).url, path).toBeNull();
     }
     expect((await routed('/prototype/cards/game.rsc')).url).toBe('http://localhost/prototype/cards/game');
