@@ -3,6 +3,8 @@
 //   npm run db:seed            once, or whenever you want fresh seed tournaments
 //   npm run dev:local          http://localhost:3100
 //   npm run dev:local -- --port 3200
+//   npm run dev:local -- --start   `next start` of the last build instead of `next dev`, for
+//                                  measuring a production build (node scripts/tools/build-offline.mjs)
 //
 // It serves the local PGlite folder (.local/pglite) over the PostgreSQL protocol on 127.0.0.1, so
 // the app talks to it exactly as it talks to staging, then starts `next dev` with:
@@ -11,6 +13,8 @@
 //     too, so a .env.local holding production credentials cannot reach a local run;
 //   - a placeholder Firebase project (`demo-dota2inhouse`): sign-in and Firestore reads fail
 //     quietly, which is expected until the pages that read them move to PostgreSQL.
+//   - PLATFORM_ROUTING=on, so the pages moved to the new platform (src/platform/routing) render
+//     from the local database. Nothing is forwarded unless LEGACY_ORIGIN is set in the shell.
 // A local PostgreSQL in DATABASE_URL is used directly instead of the PGlite folder.
 // Port 3000 is refused: the owner's own dev server uses it.
 
@@ -34,10 +38,11 @@ const SECRETS = [
 ];
 
 function parseArgs(argv: string[]) {
-  const out = { port: 3100, dbPort: 54329 };
+  const out = { port: 3100, dbPort: 54329, start: false };
   for (let i = 0; i < argv.length; i++) {
     if (argv[i] === '--port') out.port = Number(argv[++i]);
     else if (argv[i] === '--db-port') out.dbPort = Number(argv[++i]);
+    else if (argv[i] === '--start') out.start = true;
     else throw new Error(`Unknown option ${argv[i]}`);
   }
   if (out.port === 3000) throw new Error('Port 3000 is the owner\'s dev server. Use another one (default 3100).');
@@ -65,6 +70,7 @@ export function localEnv(base: NodeJS.ProcessEnv, opts: { port: number; database
     ...env,
     DATABASE_URL: opts.databaseUrl,
     DATABASE_POOL_MAX: '1',
+    PLATFORM_ROUTING: env.PLATFORM_ROUTING || 'on',
     NEXT_PUBLIC_SITE_URL: `http://localhost:${opts.port}`,
     ALLOWED_ORIGINS: '',
     NEXT_PUBLIC_ASSET_ORIGIN: '',
@@ -97,7 +103,7 @@ async function servePglite(dataDir: string, dbPort: number) {
 }
 
 async function main() {
-  const { port, dbPort } = parseArgs(process.argv.slice(2));
+  const { port, dbPort, start } = parseArgs(process.argv.slice(2));
   const cwd = process.cwd();
   const target = parseDatabaseUrl(process.env.DATABASE_URL);
   if (target.kind === 'postgres' && !target.local) {
@@ -110,7 +116,7 @@ async function main() {
   console.log(`Site: http://localhost:${port}`);
 
   const nextBin = require.resolve('next/dist/bin/next');
-  const child = spawn(process.execPath, [nextBin, 'dev', '-p', String(port)], {
+  const child = spawn(process.execPath, [nextBin, start ? 'start' : 'dev', '-p', String(port)], {
     cwd, stdio: 'inherit', env: localEnv(process.env, { port, databaseUrl: database.url, cwd }),
   });
   let stopping = false;

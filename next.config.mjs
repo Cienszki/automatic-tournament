@@ -3,6 +3,9 @@ import createNextIntlPlugin from 'next-intl/plugin';
 import {
   resolveAssetOrigin, resolveServerActionHosts, resolveStorageHosts,
 } from './src/platform/origins/config.mjs';
+import {
+  legacyFallbackRewrites, platformRewrites, readRoutingConfig, routingHeaders,
+} from './src/platform/routing/rules.mjs';
 
 const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts');
 
@@ -17,6 +20,10 @@ const PHASE_DEVELOPMENT_SERVER = 'phase-development-server';
 // /_next (the old site behind the community site). Blank: relative paths. Every address comes
 // from the environment, so a local or staging build never points at production (ADR-15).
 const ASSET_ORIGIN = resolveAssetOrigin(process.env);
+
+// The new platform in front of the old site (ADR-15): PLATFORM_ROUTING, LEGACY_ORIGIN, LEGACY_SLUGS.
+// Read at build time; Vercel and `next start` both apply rewrites from the built config.
+const ROUTING = readRoutingConfig(process.env);
 
 // NOTE: this file is .mjs (not .ts) ON PURPOSE.
 // firebase-tools' frameworks adapter only recognises next.config.js / .mjs
@@ -134,6 +141,18 @@ const buildConfig = (phase) => {
             },
         ],
     },
+    // With PLATFORM_ROUTING=on (src/platform/routing/rules.mjs): before the app's own pages, the
+    // moved pages of new tournaments go to /platform/<slug>/<page> and everything that is not the
+    // new app's own goes to the old site (`beforeFiles`); a path this build has no file or route
+    // for, above all the old site's /_next/ files, goes there too (`fallback`). All empty when off.
+    async rewrites() {
+        return { beforeFiles: platformRewrites(ROUTING), afterFiles: [], fallback: legacyFallbackRewrites(ROUTING) };
+    },
+    async headers() {
+        return routingHeaders(ROUTING);
+    },
+    // The middleware's copy of the switch, fixed at build time like the rewrites above.
+    env: { PLATFORM_ROUTING_AT_BUILD: ROUTING.enabled ? 'on' : 'off' },
     async redirects() {
         return [
             // Creator shorthand

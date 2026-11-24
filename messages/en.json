@@ -332,6 +332,7 @@
     "player": "Player",
     "roster": "Roster",
     "coach": "Coach",
+    "substitute": "Substitute",
     "matches": "Matches",
     "wins": "Wins",
     "losses": "Losses",

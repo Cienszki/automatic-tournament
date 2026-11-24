@@ -31,6 +31,8 @@ export const RESERVED_SLUGS: ReadonlySet<string> = new Set([
   'creator', 'fantasy', 'faq', 'fonts', 'groups', 'my-team', 'organizer',
   'pickem', 'playoffs', 'prototype', 'register', 'rules', 'schedule', 'standins',
   'stats', 'teams',
+  // The new platform's pages before WP-08; the middleware rewrites tournament paths there.
+  'platform',
   // Polish spelling reserved too, so the route can be renamed later without a
   // tournament already sitting on the new name.
   'organizator',

@@ -1,13 +1,17 @@
 // @vitest-environment node
 // The tables accept realistic rows, refuse what they promise to refuse, and the JSON columns
-// round-trip; `scoped` keeps every statement inside one tournament; `createTestDb` is fast.
+// round-trip; `scoped` keeps every statement inside one tournament; `createTestDb` starts from the
+// migrated copy.
 
 import { getTableConfig, PgTable } from 'drizzle-orm/pg-core';
 import { and, eq } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import * as schema from '../schema';
 import { getDb, ID_PATTERN, jsonColumnSchemas, newId, scoped, type JsonColumn } from '../index';
-import { createTestDb, type TestDb } from '../testing';
+import fs from 'fs';
+import path from 'path';
+import { MIGRATIONS_FOLDER } from '../migrations';
+import { createTestDb, ensureTemplate, type TestDb } from '../testing';
 import { SAMPLES } from './samples';
 import { insertGlobals, insertTournament, STEAM_A } from './rows';
 
@@ -27,17 +31,21 @@ const fails = async (p: PromiseLike<unknown>) => {
 };
 
 describe('test database', () => {
-  it('starts migrated in under a second', async () => {
-    // The fastest of three: one start can be slowed past a second by a busy CI runner, while
-    // losing the migrated copy (testing.ts) makes every start take several seconds
-    const times: number[] = [];
-    for (let i = 0; i < 3; i++) {
-      const started = Date.now();
-      const fresh = await createTestDb();
-      times.push(Date.now() - started);
+  // Structural rather than timed: a start must load the migrated copy that ensureTemplate made
+  // once, not migrate again (which made every test file seconds slower).
+  it('starts from the migrated copy, already migrated, without making the copy again', async () => {
+    const template = await ensureTemplate();
+    const before = fs.statSync(template).mtimeMs;
+    const fresh = await createTestDb();
+    try {
+      expect(fresh.template).toBe(template);
+      const journal = JSON.parse(fs.readFileSync(path.join(MIGRATIONS_FOLDER, 'meta', '_journal.json'), 'utf8')) as { entries: unknown[] };
+      const { rows } = await fresh.client.query<{ n: number }>('select count(*)::int as n from drizzle.__drizzle_migrations');
+      expect(rows[0].n).toBe(journal.entries.length);
+    } finally {
       await fresh.close();
     }
-    expect(Math.min(...times)).toBeLessThan(1000);
+    expect(fs.statSync(template).mtimeMs).toBe(before);
   });
 });
 

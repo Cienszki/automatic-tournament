@@ -29,9 +29,21 @@ npm run db:seed -- --only seed-grupy --phase seed-grupy=mid-season
 
 Phases are `registration`, `mid-season`, `playoffs` (group stage with playoffs only) and `finished`.
 
-`dev:local` serves the database folder over the PostgreSQL protocol on `127.0.0.1:54329` and starts `next dev` with every secret blank. It also blanks every value from `.env` files, so a `.env.local` with real credentials cannot reach a local run. Options: `--port 3200`, `--db-port 54330`. Port 3000 is refused, because the owner's own dev server uses it. Stop it with Ctrl+C. Only one process can open the database folder: stop `dev:local` before running `db:seed` again.
+`dev:local` serves the database folder over the PostgreSQL protocol on `127.0.0.1:54329` and starts `next dev` with every secret blank and `PLATFORM_ROUTING=on` (below). With `--start` it runs `next start` on the last production build instead, for measuring one (`node scripts/tools/build-offline.mjs` builds it). It also blanks every value from `.env` files, so a `.env.local` with real credentials cannot reach a local run. Options: `--port 3200`, `--db-port 54330`. Port 3000 is refused, because the owner's own dev server uses it. Stop it with Ctrl+C. Only one process can open the database folder: stop `dev:local` before running `db:seed` again.
 
-**What works locally.** Only pages moved to the new platform read the local database. So far that is `/sitemap.xml` (it lists the four seed tournaments and their pages) and `/robots.txt`. The card game prototypes (`/prototype/cards/game`, `/prototype/cards/match`) need no database. The other pages are still the old site's: they render their frame and show no data, because they read Firestore from the browser and the local run has no Firebase project. Each work package that moves a page makes it work here.
+**What works locally.** Only pages moved to the new platform read the local database. So far that is `/<slug>/teams` of every tournament in it (WP-06), `/sitemap.xml` (it lists the tournaments and their pages) and `/robots.txt`. The card game prototypes (`/prototype/cards/game`, `/prototype/cards/match`) need no database. The other pages are still the old site's: they render their frame and show no data, because they read Firestore from the browser and the local run has no Firebase project. Each work package that moves a page makes it work here.
+
+**The real tournaments locally.** The import tool writes the four captured tournaments into the same folder (stop `dev:local` first): `npx tsx scripts/import/index.ts --from ../overhaul/data-exports --db .local/pglite`.
+
+**The new platform in front of the old site** (ADR-15, `src/platform/routing/rules.mjs`). Three variables, read by `next.config.mjs` when the app is built (`next dev` reads them when it starts), never at run time: a change needs a new build or deployment, and a malformed value fails the build:
+
+| Variable | Meaning | Local | Staging preview |
+|---|---|---|---|
+| `PLATFORM_ROUTING` | `on`: moved pages of tournaments not on the old site render from PostgreSQL; the rest is forwarded. Anything else: everything as before WP-06 | `on` (set by `dev:local`) | `on` |
+| `LEGACY_ORIGIN` | the old site's address; unset means nothing is forwarded | unset | the old site's hosting address |
+| `LEGACY_SLUGS` | comma-separated slugs the old site still serves; they are forwarded whole | unset | every captured slug that is not imported into staging |
+
+The hosting trial's endpoints under `/api/platform/trial/` (behind `PLATFORM_TRIAL_SECRET`) were removed after the trial on 2026-11-24; its steps and results are in `docs/overhaul/spikes/WP-06.md`. The measuring scripts that invalidate a tournament or probe the database (`ttfb.ts`, `invalidation.ts`, `concurrency.ts`) need an equivalent endpoint again, from WP-07's commands.
 
 **A local PostgreSQL instead of PGlite.** Any PostgreSQL 15 or later on this machine works; give its address:
 
