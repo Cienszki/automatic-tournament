@@ -11,7 +11,7 @@ export const MIGRATIONS_FOLDER = path.resolve(process.cwd(), 'drizzle');
 
 /** Applies every pending migration to the database at `url`, as the role in the URL. */
 export async function migrateDatabase(url: string): Promise<void> {
-  const client = postgres(url, { max: 1, onnotice: () => {} });
+  const client = postgres(url, { max: 1, max_pipeline: 1, onnotice: () => {} });
   try {
     await migrate(drizzle(client), { migrationsFolder: MIGRATIONS_FOLDER });
   } finally {

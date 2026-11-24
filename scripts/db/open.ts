@@ -73,7 +73,7 @@ export async function openDatabase(target: DatabaseTarget): Promise<OpenDatabase
       throw e;
     }
   }
-  const client = postgres(target.url, { max: 1, prepare: false, onnotice: () => {}, connect_timeout: 15 });
+  const client = postgres(target.url, { max: 1, max_pipeline: 1, prepare: false, onnotice: () => {}, connect_timeout: 15 });
   const db = drizzlePostgres(client, { schema }) as unknown as Db;
   return {
     db,

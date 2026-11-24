@@ -26,7 +26,7 @@ export async function openTarget(target: Target): Promise<OpenDb> {
     return { db: drizzlePglite(client, { schema }) as unknown as Db, close: () => client.close() };
   }
   if (target.name === 'local') await migrateDatabase(target.url);
-  const client = postgres(target.url, { max: 1, prepare: false, onnotice: () => {} });
+  const client = postgres(target.url, { max: 1, max_pipeline: 1, prepare: false, onnotice: () => {} });
   const db = drizzlePostgres(client, { schema }) as unknown as Db;
   const [row] = await db.execute<{ ok: boolean }>(sql`select to_regclass('app.tournaments') is not null as ok`) as unknown as Array<{ ok: boolean }>;
   if (!row?.ok) {
