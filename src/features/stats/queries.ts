@@ -1,9 +1,11 @@
 // Reads of the stats feature (server only). One loader reads every row a tournament's statistics
 // need, in a fixed number of statements however big the tournament is; everything derived is
-// computed from those rows by domain/compute.ts. Nothing derived is stored.
+// computed from those rows by domain/compute.ts. Nothing derived is stored; the public read of the
+// dataset is kept in the data cache instead (getCachedDataset).
 
 import 'server-only';
 import { asc, eq, inArray, sql } from 'drizzle-orm';
+import { cachedQuery, tournamentTags } from '@/platform/cache';
 import {
   games, getDb, groups, groupTeams, matches, performances, players, scoped, stages, standinRegistrations,
   standinRequests, teamMembers, teams, tournaments, type Db,
@@ -106,18 +108,28 @@ async function readRows(t: ReturnType<typeof scoped>): Promise<Omit<TournamentIn
 
 /**
  * The stats hub's dataset for a tournament, computed from all its rows on every call; null when
- * there is no such tournament or it is a draft (a public read).
- *
- * Not cached yet: WP-06's `cachedQuery` (platform/cache) is not merged. It takes only string,
- * number or boolean arguments and needs a unique name, so the cached read will be
- *   cachedQuery((id: string) => getDataset(id), {
- *     name: 'stats.dataset', tags: (id) => tournamentTags(id, 'stats', 'teams', 'matches'), cacheNull: false,
- *   })
- * with the teams and matches tags as well as stats, because the dataset also reads teams, rosters
- * and stand-ins. Until it is, nothing should send traffic to /api/v1/stats/dataset: every request
- * runs the whole load.
+ * there is no such tournament or it is a draft (a public read). Takes the database handle so tests
+ * and jobs run it on their own database; public reads go through `getCachedDataset`.
  */
 export async function getDataset(tournamentId: string, db: Db = getDb()): Promise<StatsDataset | null> {
   const input = await loadTournamentInput(tournamentId, db);
   return input ? buildDataset(input) : null;
 }
+
+/**
+ * `getDataset` kept in the data cache, built on the given `cachedQuery` so a test can run the
+ * production wiring on a fake cache. Tagged with teams and matches as well as stats, because the
+ * dataset also reads teams, rosters and stand-ins: a renamed team or a recorded game must refresh
+ * it. A null (unknown id or draft) is not stored, so ids a crawler makes up never fill the cache,
+ * and a draft is public as soon as it is published.
+ */
+export function createDatasetQuery(cached: typeof cachedQuery): (tournamentId: string) => Promise<StatsDataset | null> {
+  return cached((tournamentId: string) => getDataset(tournamentId), {
+    name: 'stats.dataset',
+    tags: (tournamentId) => tournamentTags(tournamentId, 'stats', 'teams', 'matches'),
+    cacheNull: false,
+  });
+}
+
+/** The public read of the stats hub's dataset (/api/v1/stats/dataset). */
+export const getCachedDataset = createDatasetQuery(cachedQuery);
