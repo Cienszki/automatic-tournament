@@ -11,9 +11,37 @@
 // suffix> (repeatable) aborts the requests to those hosts; aborted requests are still counted.
 // Playwright turns the browser cache off while requests are intercepted, so with --block the warm
 // views are not warm: read their requests, not their timings.
+//
+// A page behind a front (WP-06 step 7) loads its scripts from a second protected address, which
+// needs that project's own bypass secret: --bypass-cookie <origin>=<secret> (repeatable) asks the
+// origin once for Vercel's bypass cookie and gives it to every browser context, so nothing is
+// intercepted and the browser cache keeps working.
 
 import { chromium, type Browser, type Page } from 'playwright';
 import { baseUrl, extraHeaders, numberOption, option, parseOptions, round, run, summarize, formatSummary, writeJson } from './lib';
+
+interface Cookie { name: string; value: string; domain: string; path: string; secure: boolean; sameSite: 'None' }
+
+/** Vercel's bypass cookie for each `<origin>=<secret>`, set with SameSite=None for cross-site loads. */
+async function fetchBypassCookies(specs: string[]): Promise<Cookie[]> {
+  const cookies: Cookie[] = [];
+  for (const spec of specs) {
+    const i = spec.indexOf('=');
+    if (i <= 0) throw new Error('--bypass-cookie must be <origin>=<secret>');
+    const origin = new URL(spec.slice(0, i));
+    const res = await fetch(`${origin.origin}/`, {
+      redirect: 'manual',
+      headers: { 'x-vercel-protection-bypass': spec.slice(i + 1), 'x-vercel-set-bypass-cookie': 'samesitenone' },
+    });
+    const set = res.headers.getSetCookie().map((c) => c.split(';')[0]).filter((c) => c.startsWith('_vercel_jwt='));
+    if (!set.length) throw new Error(`no bypass cookie from ${origin.origin} (status ${res.status})`);
+    for (const c of set) {
+      const j = c.indexOf('=');
+      cookies.push({ name: c.slice(0, j), value: c.slice(j + 1), domain: origin.hostname, path: '/', secure: true, sameSite: 'None' });
+    }
+  }
+  return cookies;
+}
 
 interface View {
   path: string;
@@ -87,6 +115,7 @@ run(async () => {
   const base = baseUrl(o);
   const origin = new URL(base).origin;
   const runs = numberOption(o, 'runs', 3);
+  const bypassCookies = await fetchBypassCookies(o['bypass-cookie'] ?? []);
   const browser = await openBrowser(o.cdp ? option(o, 'cdp') : undefined, o.channel ? option(o, 'channel') : undefined);
   const views: View[] = [];
   try {
@@ -95,6 +124,7 @@ run(async () => {
         const context = await browser.newContext({
           locale: 'pl-PL', viewport: { width: 1366, height: 900 }, serviceWorkers: 'block', extraHTTPHeaders: extraHeaders(o),
         });
+        if (bypassCookies.length) await context.addCookies(bypassCookies);
         await context.addInitScript(LCP_PROBE);
         for (const suffix of o.block ?? []) {
           await context.route((url) => url.hostname === suffix || url.hostname.endsWith(`.${suffix}`), (route) => route.abort());
