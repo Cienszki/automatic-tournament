@@ -16,7 +16,7 @@ Two rules every session keeps:
 | S4 | Business and marketing | not started | Optional; prompt at the bottom |
 | S5 | Implementation up to stage 1 (WP-04, 05, 12, 13a, 20, 32; card game WP-50 to 55, 64, 65) | done 2026-11-13 to 17 | Merged into `overhaul` |
 | S6 | Stage 1: WP-03 environments, WP-33 import, WP-66 part 1, WP-06 local half | **done 2026-11-23** | WP-03, WP-33 and WP-66 part 1 merged; WP-06 local half built and reviewed on `wp/06-hosting-trial`, waiting for the staging run; questions 41 to 43 for the owner |
-| S7 | WP-06 staging run and the hosting decision | ready once the owner has restored the paused Supabase staging project (the rest of the setup was done 2026-11-23) | |
+| S7 | WP-06 staging run and the hosting decision | **stopped 2026-11-24**, waiting for the owner's protection-bypass secret | Done: staging migrated and marked `staging`, seeded, pdl-s2 imported anonymized; preview `tournament-platform-cwov6snzg-pd-2-ih.vercel.app` deployed (functions in `fra1`); `pg_cron` and `pg_net` proven (WP-06 step 8). Left: steps 5 to 7 and 9 to 10 of `WP-06.md`, the review, the merge, the `getDataset` cache wrapping. The preview is behind Vercel's login; see the S7 note in `STATUS.md` |
 | S8 | WP-15 statistics | **done 2026-11-23** | Merged: one `computeTournament` over all rows, 11 tenant-scoped reads in one snapshot, nothing combined stored, 55 ms on Wiosenna; pdl-s2 equals the published numbers, Wiosenna differs only where listed. Caching waits for WP-06 (S7) |
 | S9 | The owner's answers to questions 41 to 43 folded into the design | ready (all answered 2026-11-23 and recorded in STATUS; can run before or after S7) | |
 | S10 | WP-07 platform kernel | after S7 | |
@@ -49,6 +49,8 @@ Rules inside every step: implementation goes to `implementer` agents, and every 
 ## S7 WP-06: the staging run and the hosting decision
 
 Before pasting: restore the paused Supabase staging project (supabase.com, Dashboard, the staging project, "Restore project"; wait until it shows "Healthy"). Everything else on the owner's list of WP-06 steps 1 to 4 was done by the S8 session on 2026-11-23 or is no longer needed (see the S7 note in `STATUS.md`, "Next step").
+
+**State after the first S7 session (2026-11-24):** points 1 and 2 below are done (the "staging run" section of `WP-06.md` on `wp/06-hosting-trial` has the details), and step 8 of `WP-06.md` too. The session stopped because the preview is behind Vercel's login and the agent may not create the bypass secret. Once the owner has put `VERCEL_PROTECTION_BYPASS` in `.env.staging.local`, continue with "Continue a stopped step". Three rules learned: always deploy with `vercel deploy --environment preview` (the CLI made a plain `vercel deploy` a production deployment), always add `--env FIREBASE_SERVICE_ACCOUNT_BASE64=null --build-env FIREBASE_SERVICE_ACCOUNT_BASE64=null`, and export `VERCEL_PROTECTION_BYPASS` from the file for the measuring scripts. A new deployment has a new address (no stable alias for CLI deployments), so step 7's redeploy changes the address that Firebase must list.
 
 ```text
 Read docs/overhaul/BRIEF.md, docs/overhaul/STATUS.md and docs/overhaul/PROMPTS.md. You are running step S7: the staging half of WP-06. The local half is built and reviewed on branch wp/06-hosting-trial (worktree .claude/worktrees/wp-06-hosting-trial); its report is docs/overhaul/spikes/WP-06.md there. The S7 note in STATUS.md "Next step" says what the S8 session already set up.
