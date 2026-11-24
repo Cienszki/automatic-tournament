@@ -5,6 +5,7 @@
 import 'server-only';
 import postgres from 'postgres';
 import { drizzle } from 'drizzle-orm/postgres-js';
+import { poolOptions } from './pool-options';
 import * as schema from './schema';
 import type { Db } from './types';
 
@@ -14,13 +15,8 @@ export function getDb(): Db {
   if (instance) return instance;
   const url = process.env.DATABASE_URL;
   if (!url) throw new Error('DATABASE_URL is not set');
-  const client = postgres(url, {
-    // Supabase's pooler in transaction mode cannot keep prepared statements between requests.
-    prepare: false,
-    max: Number(process.env.DATABASE_POOL_MAX ?? 5),
-    idle_timeout: 20,
-    connect_timeout: 10,
-  });
+  // Supabase's pooler in transaction mode: no prepared statements, no pipelining (pool-options.ts).
+  const client = postgres(url, poolOptions({ DATABASE_POOL_MAX: process.env.DATABASE_POOL_MAX }));
   instance = drizzle(client, { schema });
   return instance;
 }
