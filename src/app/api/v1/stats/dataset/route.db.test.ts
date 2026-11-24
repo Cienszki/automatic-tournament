@@ -1,5 +1,6 @@
 // @vitest-environment node
-// The endpoint on an imported fixture: the dataset of the stats feature, gzipped, CDN-cacheable.
+// The endpoint on an imported fixture: the dataset of the stats feature, read through the data
+// cache, gzipped, CDN-cacheable.
 
 import { gunzipSync } from 'node:zlib';
 import { eq } from 'drizzle-orm';
@@ -9,8 +10,18 @@ import type { TestDb } from '@/platform/db/testing';
 import { getDataset } from '@/features/stats/queries';
 import { importedDb, TOURNAMENT_ID } from '@/features/stats/testing/imported';
 
-const state = vi.hoisted(() => ({ db: null as unknown }));
+const state = vi.hoisted(() => ({ db: null as unknown, cacheKeys: [] as string[][] }));
 vi.mock('@/platform/db/client', () => ({ getDb: () => state.db }));
+// Next's data cache does not run outside a Next server. Here it stores nothing and records the key
+// it was given, so every call reads the test database; what the cache keeps and when it refreshes
+// is tested on the same query in src/features/stats/cached-dataset.db.test.ts.
+vi.mock('next/cache', () => ({
+  unstable_cache: (cb: () => Promise<unknown>, keyParts: string[]) => {
+    state.cacheKeys.push(keyParts);
+    return cb;
+  },
+  revalidateTag: () => {},
+}));
 
 const { GET } = await import('./route');
 
@@ -27,6 +38,7 @@ describe('GET /api/v1/stats/dataset', () => {
   it('serves the tournament dataset gzipped, for the CDN to keep', async () => {
     const res = await call(`?tournamentId=${TOURNAMENT_ID['pdl-s2']}`, { 'Accept-Encoding': 'gzip' });
     expect(res.status).toBe(200);
+    expect(state.cacheKeys.at(-1)).toEqual(['v1', 'stats.dataset', JSON.stringify([TOURNAMENT_ID['pdl-s2']])]);
     expect(res.headers.get('Content-Encoding')).toBe('gzip');
     expect(res.headers.get('Cache-Control')).toMatch(/^public, max-age=0, s-maxage=300, stale-while-revalidate=600$/);
     const body = JSON.parse(gunzipSync(Buffer.from(await res.arrayBuffer())).toString('utf8'));

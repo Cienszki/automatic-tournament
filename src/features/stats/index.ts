@@ -2,8 +2,8 @@
 // from a tournament's rows to the stats hub's dataset and season numbers, the standings of every
 // group (through the formats feature) and the rankings page. Nothing derived is stored.
 // Does not own results (matches, games, performances: the `results` feature) or fantasy scoring
-// (WP-16). Entry points: computeTournament (pure); the server reads loadTournamentInput and
-// getDataset are in queries.ts.
+// (WP-16). Entry points: computeTournament (pure); the server reads loadTournamentInput, getDataset
+// and its cached public form getCachedDataset are in queries.ts.
 
 export { computeTournament, type TournamentStats } from './domain/compute';
 export { buildDataset } from './domain/dataset/build-dataset';
