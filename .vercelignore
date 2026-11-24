@@ -12,3 +12,8 @@ node_modules/
 .firebase/
 tsconfig.tsbuildinfo
 *.log
+# Key files, in case one is ever saved in the working copy.
+*.pem
+*.key
+*adminsdk*.json
+*service-account*.json
