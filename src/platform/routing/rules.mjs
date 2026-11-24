@@ -37,7 +37,8 @@ const SLUG = new RegExp(`^${SLUG_PATTERN}$`);
 
 /**
  * Paths of the new app that are never forwarded: its internal pages, its API (`/api/v1/...`, the
- * versioned public API, and `/api/platform/...`), prototypes, assets. The old site has no `/api/v1`.
+ * versioned public API, and `/api/platform/...`), prototypes, assets. Each entry reserves every path
+ * under it, so the old site must never add a route under `/api/v1` while forwarding is on (it has none).
  */
 const OWN = ['platform', 'prototype', '_next', 'api/platform', 'api/v1'];
 
