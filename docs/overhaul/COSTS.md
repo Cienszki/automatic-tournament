@@ -49,7 +49,7 @@ What to watch in this phase, because a free plan stops instead of billing:
 
 | Limit | Free allowance | Estimated use | What happens at the limit |
 |---|---|---|---|
-| Vercel CDN requests | 1,000,000 a month | about 75,000 per active tournament, so 10 to 15 tournaments | the site is paused until 30 days have passed |
+| Vercel CDN requests | 1,000,000 a month | measured in WP-06 (2026-11-24): 51 per cold page view, because the root layout preloads 16 font files on every page; so about 127,000 per active tournament at 2,500 views, about 7 to 8 tournaments. Back to about 75,000 (10 to 15 tournaments) once WP-08 or WP-11 drops the font preloads | the site is paused until 30 days have passed |
 | Vercel data transfer | 100 GB a month | well under, with cached pages | same |
 | Supabase database size | 500 MB | 100 or more tournaments | writes are refused |
 | Supabase backups | none | | a nightly dump from CI replaces them (WP-36) |

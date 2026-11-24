@@ -101,7 +101,7 @@ End as in PROMPTS.md.
 ```text
 Read docs/overhaul/BRIEF.md, docs/overhaul/STATUS.md, docs/overhaul/PROMPTS.md, docs/overhaul/ROADMAP.md section WP-07 and the WP-06 result in docs/overhaul/spikes/WP-06.md. You are running step S10: WP-07.
 1. Implementer agent on branch wp/07-platform-kernel from overhaul. The cache helpers keep the shape WP-06 settled.
-2. Opus reviewer with this list besides the acceptance criteria: the lint rules really fail a forbidden import (show a failing example); every command checks permission before it writes and writes its audit row in the same transaction; nothing reaches the database outside platform/db and scoped; the old site's behaviour is unchanged.
+2. Opus reviewer with this list besides the acceptance criteria: the lint rules really fail a forbidden import (show a failing example); every command checks permission before it writes and writes its audit row in the same transaction; nothing reaches the database outside platform/db and scoped; every client of Supabase's transaction pooler uses `poolOptions` (`max_pipeline: 1`; WP-06 found that pipelined statements hang there until the function's time limit); the old site's behaviour is unchanged.
 3. Fixes, merge with --no-ff, full checks.
 End as in PROMPTS.md.
 ```
@@ -114,12 +114,12 @@ Each is one package, run the same way. Paste the block and replace `<WP>` with t
 
 | Step | `<WP>` | What the reviewer must check besides the acceptance criteria |
 |---|---|---|
-| S11 | WP-08 | No page reads Firestore in the browser; the loading gate and the whole-collection read are gone; an unknown slug answers 404 (WP-06 found it answers 200); the 44 kB of translations is no longer on every page; old tournaments still work through the forwarding |
+| S11 | WP-08 | No page reads Firestore in the browser; the loading gate and the whole-collection read are gone; an unknown slug answers 404 (WP-06 found it answers 200); the 44 kB of translations is no longer on every page; the root layout no longer preloads 16 font files on every page (WP-06 measured 51 CDN requests per cold view; `COSTS.md`); old tournaments still work through the forwarding |
 | S12 | WP-09a | Teams and schedule equal the old pages for all four imported tournaments, field by field |
 | S13 | WP-09b | Standings and brackets equal the published ones for every division, group and bracket |
 | S14 | WP-09c | Rules, news, prizes and the static pages are complete in the first response |
 | S15 | WP-10 | The home page keeps its design; deep links open the right section with no redirect; the stats hub and the rankings page (`RankingsView`) read WP-15's cached `getDataset` and `computeTournament` and show the same numbers as the old pages; the old Firestore `src/lib/stats-lab/build-dataset.ts` and `/api/stats/dataset` lose their last users on the new platform |
-| S16 | WP-11 | The budgets fail CI when exceeded (show it); no page ships the Firebase data SDK |
+| S16 | WP-11 | The budgets fail CI when exceeded (show it), including a budget for requests per cold page view (WP-06 measured 51; target about 30, `COSTS.md`); no page ships the Firebase data SDK |
 
 ```text
 Read docs/overhaul/BRIEF.md, docs/overhaul/STATUS.md, docs/overhaul/PROMPTS.md and docs/overhaul/ROADMAP.md section <WP>. You are running the step of PROMPTS.md whose package is <WP>.
