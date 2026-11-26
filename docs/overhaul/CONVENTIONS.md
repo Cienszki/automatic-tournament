@@ -216,3 +216,15 @@ Added in S9 (2026-11-26) from the owner's answer to `STATUS.md` question 42. Ids
 - **The id comes after the words, in brackets,** when a reader may need to look the row up: "... 1:1 (match HVwwRd87…)". Never the id alone, and never a bare id in a sentence the owner or an organizer reads.
 - **In code,** one helper builds each label from rows (`describeMatch`, `describeGame`, `describeTeam`, `describePlayer` in the feature that owns the rows), so every tool prints the same words. A finding or log line that names a match uses it.
 - **For players and organizers** the site says only "team A – team B" with the date; nothing else is needed (owner, 2026-11-23). There is no visible match number. A super admin finds a match with the support lookup (WP-46) or `docs/support/queries.sql`, and an organizer asking for help sends the match page's link ("Kopiuj link").
+
+## 14. Text in six languages and three writing systems
+
+Owner, decision 18 of 2026-11-26: Polish, English, Russian, Ukrainian, Spanish and Chinese (simplified) at the public launch. Polish first while building, but no code may assume it.
+
+- **No text in code.** Every word a person reads comes from `messages/*.json` by key (WP-29). Commands, errors, notifications and job results carry a code and parameters; the page or the message sender turns them into words in the reader's language. Data and logs stay in English.
+- **No sentences glued together.** Use ICU messages with plurals and selects; Russian and Ukrainian have three plural forms.
+- **Formatting through `src/platform/format/`.** Dates, times, numbers, lists and sorting use `Intl` with the locale. No `toLocaleString('pl-PL')` and no hand-written date patterns.
+- **Layouts that survive any language.** No fixed width around text; allow about 40% longer text than Polish; truncate only with a tooltip or a full value nearby. Never carry meaning by `text-transform: uppercase` or letter spacing; Chinese has no case and needs no letter spacing. Lines must break without spaces (Chinese). Line height fits Chinese characters.
+- **Fonts by writing system.** Use the theme's font stack, which always ends in a fallback for Cyrillic and the platform's Chinese stack (`ORGANIZER_UX.md` 6.3). Never set a single font family without fallbacks.
+- **Names people type** (teams, players, tournaments, themes) may be in any script: never transliterate them for display, test components with Cyrillic and Chinese names, and build slugs from a transliteration only when the name has no Latin form.
+- **Test it.** A component that shows text is in the visual suite with the long pseudo-locale and the Chinese one (WP-29, WP-27).
