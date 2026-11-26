@@ -39,17 +39,20 @@ match_rows AS (
         WHEN 'upper' THEN 'drabinka górna' WHEN 'lower' THEN 'drabinka dolna' WHEN 'final' THEN 'finał'
         WHEN 'wildcard' THEN 'wildcard' WHEN 'third_place' THEN 'mecz o 3. miejsce' END),
       'runda ' || mt.round,
-      CASE WHEN mt.kind <> 'regular' THEN coalesce(mt.kind_note, mt.kind) END) AS group_round,
+      CASE WHEN mt.kind <> 'regular' THEN coalesce(mt.kind_note, CASE mt.kind
+        WHEN 'tiebreak' THEN 'tiebreaker' WHEN 'rematch' THEN 'rewanż' WHEN 'showmatch' THEN 'mecz pokazowy'
+        ELSE 'inny mecz' END) END) AS group_round,
     mt.code AS bracket_code,
     coalesce(ta.name, '—') AS team_a,
     coalesce(tb.name, '—') AS team_b,
-    coalesce(to_char(w.at AT TIME ZONE 'Europe/Warsaw', 'YYYY-MM-DD HH24:MI'), 'bez terminu') AS date_time_pl,
+    coalesce(to_char(w.at AT TIME ZONE 'Europe/Warsaw', 'YYYY-MM-DD HH24:MI') || w.source, 'bez terminu') AS date_time_pl,
     CASE
       WHEN mt.status = 'bye' THEN 'wolny los'
       WHEN mt.status = 'void' THEN 'unieważniony'
       WHEN mt.forfeit_scope = 'series' THEN concat(coalesce(mt.score_a, 0), ':', coalesce(mt.score_b, 0), ' walkower (oddaje ', tf.name, ')')
       WHEN mt.forfeit_scope = 'games' THEN concat(coalesce(mt.score_a, 0), ':', coalesce(mt.score_b, 0), ' z walkowerem w grach (oddaje ', tf.name, ')')
       WHEN mt.status = 'live' THEN concat(coalesce(mt.score_a, 0), ':', coalesce(mt.score_b, 0), ' trwa')
+      WHEN mt.status = 'completed' AND (mt.score_a IS NULL OR mt.score_b IS NULL) THEN 'zakończony, bez wyniku'
       WHEN mt.status = 'scheduled' OR mt.score_a IS NULL OR mt.score_b IS NULL THEN 'nierozegrany'
       ELSE mt.score_a || ':' || mt.score_b
     END AS score,
@@ -67,11 +70,12 @@ match_rows AS (
   LEFT JOIN app.teams ta ON ta.tournament_id = mt.tournament_id AND ta.id = mt.team_a_id
   LEFT JOIN app.teams tb ON tb.tournament_id = mt.tournament_id AND tb.id = mt.team_b_id
   LEFT JOIN app.teams tf ON tf.tournament_id = mt.tournament_id AND tf.id = mt.forfeit_team_id
-  -- Not every finished match kept its scheduled time: then the first game's start, then the result's.
+  -- Not every finished match kept its scheduled time: then the first game's start, then the time
+  -- the result was entered, each marked after the time.
   CROSS JOIN LATERAL (
-    SELECT coalesce(mt.scheduled_at,
-      (SELECT min(gm.started_at) FROM app.games gm WHERE gm.tournament_id = mt.tournament_id AND gm.match_id = mt.id),
-      mt.completed_at) AS at
+    SELECT coalesce(mt.scheduled_at, fg.at, mt.completed_at) AS at,
+           CASE WHEN mt.scheduled_at IS NOT NULL THEN '' WHEN fg.at IS NOT NULL THEN ' (1. gra)' ELSE ' (wpis wyniku)' END AS source
+    FROM (SELECT min(gm.started_at) AS at FROM app.games gm WHERE gm.tournament_id = mt.tournament_id AND gm.match_id = mt.id) fg
   ) w
 )
 SELECT m.tournament, m.tournament_slug, m.stage, m.group_round, m.bracket_code, m.team_a, m.team_b,
@@ -100,17 +104,20 @@ match_rows AS (
         WHEN 'upper' THEN 'drabinka górna' WHEN 'lower' THEN 'drabinka dolna' WHEN 'final' THEN 'finał'
         WHEN 'wildcard' THEN 'wildcard' WHEN 'third_place' THEN 'mecz o 3. miejsce' END),
       'runda ' || mt.round,
-      CASE WHEN mt.kind <> 'regular' THEN coalesce(mt.kind_note, mt.kind) END) AS group_round,
+      CASE WHEN mt.kind <> 'regular' THEN coalesce(mt.kind_note, CASE mt.kind
+        WHEN 'tiebreak' THEN 'tiebreaker' WHEN 'rematch' THEN 'rewanż' WHEN 'showmatch' THEN 'mecz pokazowy'
+        ELSE 'inny mecz' END) END) AS group_round,
     mt.code AS bracket_code,
     coalesce(ta.name, '—') AS team_a,
     coalesce(tb.name, '—') AS team_b,
-    coalesce(to_char(w.at AT TIME ZONE 'Europe/Warsaw', 'YYYY-MM-DD HH24:MI'), 'bez terminu') AS date_time_pl,
+    coalesce(to_char(w.at AT TIME ZONE 'Europe/Warsaw', 'YYYY-MM-DD HH24:MI') || w.source, 'bez terminu') AS date_time_pl,
     CASE
       WHEN mt.status = 'bye' THEN 'wolny los'
       WHEN mt.status = 'void' THEN 'unieważniony'
       WHEN mt.forfeit_scope = 'series' THEN concat(coalesce(mt.score_a, 0), ':', coalesce(mt.score_b, 0), ' walkower (oddaje ', tf.name, ')')
       WHEN mt.forfeit_scope = 'games' THEN concat(coalesce(mt.score_a, 0), ':', coalesce(mt.score_b, 0), ' z walkowerem w grach (oddaje ', tf.name, ')')
       WHEN mt.status = 'live' THEN concat(coalesce(mt.score_a, 0), ':', coalesce(mt.score_b, 0), ' trwa')
+      WHEN mt.status = 'completed' AND (mt.score_a IS NULL OR mt.score_b IS NULL) THEN 'zakończony, bez wyniku'
       WHEN mt.status = 'scheduled' OR mt.score_a IS NULL OR mt.score_b IS NULL THEN 'nierozegrany'
       ELSE mt.score_a || ':' || mt.score_b
     END AS score,
@@ -128,11 +135,12 @@ match_rows AS (
   LEFT JOIN app.teams ta ON ta.tournament_id = mt.tournament_id AND ta.id = mt.team_a_id
   LEFT JOIN app.teams tb ON tb.tournament_id = mt.tournament_id AND tb.id = mt.team_b_id
   LEFT JOIN app.teams tf ON tf.tournament_id = mt.tournament_id AND tf.id = mt.forfeit_team_id
-  -- Not every finished match kept its scheduled time: then the first game's start, then the result's.
+  -- Not every finished match kept its scheduled time: then the first game's start, then the time
+  -- the result was entered, each marked after the time.
   CROSS JOIN LATERAL (
-    SELECT coalesce(mt.scheduled_at,
-      (SELECT min(gm.started_at) FROM app.games gm WHERE gm.tournament_id = mt.tournament_id AND gm.match_id = mt.id),
-      mt.completed_at) AS at
+    SELECT coalesce(mt.scheduled_at, fg.at, mt.completed_at) AS at,
+           CASE WHEN mt.scheduled_at IS NOT NULL THEN '' WHEN fg.at IS NOT NULL THEN ' (1. gra)' ELSE ' (wpis wyniku)' END AS source
+    FROM (SELECT min(gm.started_at) AS at FROM app.games gm WHERE gm.tournament_id = mt.tournament_id AND gm.match_id = mt.id) fg
   ) w
 )
 SELECT m.tournament, m.tournament_slug, m.stage, m.group_round, m.bracket_code, m.team_a, m.team_b,
@@ -285,17 +293,20 @@ match_rows AS (
         WHEN 'upper' THEN 'drabinka górna' WHEN 'lower' THEN 'drabinka dolna' WHEN 'final' THEN 'finał'
         WHEN 'wildcard' THEN 'wildcard' WHEN 'third_place' THEN 'mecz o 3. miejsce' END),
       'runda ' || mt.round,
-      CASE WHEN mt.kind <> 'regular' THEN coalesce(mt.kind_note, mt.kind) END) AS group_round,
+      CASE WHEN mt.kind <> 'regular' THEN coalesce(mt.kind_note, CASE mt.kind
+        WHEN 'tiebreak' THEN 'tiebreaker' WHEN 'rematch' THEN 'rewanż' WHEN 'showmatch' THEN 'mecz pokazowy'
+        ELSE 'inny mecz' END) END) AS group_round,
     mt.code AS bracket_code,
     coalesce(ta.name, '—') AS team_a,
     coalesce(tb.name, '—') AS team_b,
-    coalesce(to_char(w.at AT TIME ZONE 'Europe/Warsaw', 'YYYY-MM-DD HH24:MI'), 'bez terminu') AS date_time_pl,
+    coalesce(to_char(w.at AT TIME ZONE 'Europe/Warsaw', 'YYYY-MM-DD HH24:MI') || w.source, 'bez terminu') AS date_time_pl,
     CASE
       WHEN mt.status = 'bye' THEN 'wolny los'
       WHEN mt.status = 'void' THEN 'unieważniony'
       WHEN mt.forfeit_scope = 'series' THEN concat(coalesce(mt.score_a, 0), ':', coalesce(mt.score_b, 0), ' walkower (oddaje ', tf.name, ')')
       WHEN mt.forfeit_scope = 'games' THEN concat(coalesce(mt.score_a, 0), ':', coalesce(mt.score_b, 0), ' z walkowerem w grach (oddaje ', tf.name, ')')
       WHEN mt.status = 'live' THEN concat(coalesce(mt.score_a, 0), ':', coalesce(mt.score_b, 0), ' trwa')
+      WHEN mt.status = 'completed' AND (mt.score_a IS NULL OR mt.score_b IS NULL) THEN 'zakończony, bez wyniku'
       WHEN mt.status = 'scheduled' OR mt.score_a IS NULL OR mt.score_b IS NULL THEN 'nierozegrany'
       ELSE mt.score_a || ':' || mt.score_b
     END AS score,
@@ -313,11 +324,12 @@ match_rows AS (
   LEFT JOIN app.teams ta ON ta.tournament_id = mt.tournament_id AND ta.id = mt.team_a_id
   LEFT JOIN app.teams tb ON tb.tournament_id = mt.tournament_id AND tb.id = mt.team_b_id
   LEFT JOIN app.teams tf ON tf.tournament_id = mt.tournament_id AND tf.id = mt.forfeit_team_id
-  -- Not every finished match kept its scheduled time: then the first game's start, then the result's.
+  -- Not every finished match kept its scheduled time: then the first game's start, then the time
+  -- the result was entered, each marked after the time.
   CROSS JOIN LATERAL (
-    SELECT coalesce(mt.scheduled_at,
-      (SELECT min(gm.started_at) FROM app.games gm WHERE gm.tournament_id = mt.tournament_id AND gm.match_id = mt.id),
-      mt.completed_at) AS at
+    SELECT coalesce(mt.scheduled_at, fg.at, mt.completed_at) AS at,
+           CASE WHEN mt.scheduled_at IS NOT NULL THEN '' WHEN fg.at IS NOT NULL THEN ' (1. gra)' ELSE ' (wpis wyniku)' END AS source
+    FROM (SELECT min(gm.started_at) AS at FROM app.games gm WHERE gm.tournament_id = mt.tournament_id AND gm.match_id = mt.id) fg
   ) w
 ),
 entries AS (
@@ -378,17 +390,20 @@ match_rows AS (
         WHEN 'upper' THEN 'drabinka górna' WHEN 'lower' THEN 'drabinka dolna' WHEN 'final' THEN 'finał'
         WHEN 'wildcard' THEN 'wildcard' WHEN 'third_place' THEN 'mecz o 3. miejsce' END),
       'runda ' || mt.round,
-      CASE WHEN mt.kind <> 'regular' THEN coalesce(mt.kind_note, mt.kind) END) AS group_round,
+      CASE WHEN mt.kind <> 'regular' THEN coalesce(mt.kind_note, CASE mt.kind
+        WHEN 'tiebreak' THEN 'tiebreaker' WHEN 'rematch' THEN 'rewanż' WHEN 'showmatch' THEN 'mecz pokazowy'
+        ELSE 'inny mecz' END) END) AS group_round,
     mt.code AS bracket_code,
     coalesce(ta.name, '—') AS team_a,
     coalesce(tb.name, '—') AS team_b,
-    coalesce(to_char(w.at AT TIME ZONE 'Europe/Warsaw', 'YYYY-MM-DD HH24:MI'), 'bez terminu') AS date_time_pl,
+    coalesce(to_char(w.at AT TIME ZONE 'Europe/Warsaw', 'YYYY-MM-DD HH24:MI') || w.source, 'bez terminu') AS date_time_pl,
     CASE
       WHEN mt.status = 'bye' THEN 'wolny los'
       WHEN mt.status = 'void' THEN 'unieważniony'
       WHEN mt.forfeit_scope = 'series' THEN concat(coalesce(mt.score_a, 0), ':', coalesce(mt.score_b, 0), ' walkower (oddaje ', tf.name, ')')
       WHEN mt.forfeit_scope = 'games' THEN concat(coalesce(mt.score_a, 0), ':', coalesce(mt.score_b, 0), ' z walkowerem w grach (oddaje ', tf.name, ')')
       WHEN mt.status = 'live' THEN concat(coalesce(mt.score_a, 0), ':', coalesce(mt.score_b, 0), ' trwa')
+      WHEN mt.status = 'completed' AND (mt.score_a IS NULL OR mt.score_b IS NULL) THEN 'zakończony, bez wyniku'
       WHEN mt.status = 'scheduled' OR mt.score_a IS NULL OR mt.score_b IS NULL THEN 'nierozegrany'
       ELSE mt.score_a || ':' || mt.score_b
     END AS score,
@@ -406,11 +421,12 @@ match_rows AS (
   LEFT JOIN app.teams ta ON ta.tournament_id = mt.tournament_id AND ta.id = mt.team_a_id
   LEFT JOIN app.teams tb ON tb.tournament_id = mt.tournament_id AND tb.id = mt.team_b_id
   LEFT JOIN app.teams tf ON tf.tournament_id = mt.tournament_id AND tf.id = mt.forfeit_team_id
-  -- Not every finished match kept its scheduled time: then the first game's start, then the result's.
+  -- Not every finished match kept its scheduled time: then the first game's start, then the time
+  -- the result was entered, each marked after the time.
   CROSS JOIN LATERAL (
-    SELECT coalesce(mt.scheduled_at,
-      (SELECT min(gm.started_at) FROM app.games gm WHERE gm.tournament_id = mt.tournament_id AND gm.match_id = mt.id),
-      mt.completed_at) AS at
+    SELECT coalesce(mt.scheduled_at, fg.at, mt.completed_at) AS at,
+           CASE WHEN mt.scheduled_at IS NOT NULL THEN '' WHEN fg.at IS NOT NULL THEN ' (1. gra)' ELSE ' (wpis wyniku)' END AS source
+    FROM (SELECT min(gm.started_at) AS at FROM app.games gm WHERE gm.tournament_id = mt.tournament_id AND gm.match_id = mt.id) fg
   ) w
 )
 SELECT m.tournament, m.tournament_slug, m.stage, m.group_round, m.bracket_code, m.team_a, m.team_b,
@@ -448,17 +464,20 @@ match_rows AS (
         WHEN 'upper' THEN 'drabinka górna' WHEN 'lower' THEN 'drabinka dolna' WHEN 'final' THEN 'finał'
         WHEN 'wildcard' THEN 'wildcard' WHEN 'third_place' THEN 'mecz o 3. miejsce' END),
       'runda ' || mt.round,
-      CASE WHEN mt.kind <> 'regular' THEN coalesce(mt.kind_note, mt.kind) END) AS group_round,
+      CASE WHEN mt.kind <> 'regular' THEN coalesce(mt.kind_note, CASE mt.kind
+        WHEN 'tiebreak' THEN 'tiebreaker' WHEN 'rematch' THEN 'rewanż' WHEN 'showmatch' THEN 'mecz pokazowy'
+        ELSE 'inny mecz' END) END) AS group_round,
     mt.code AS bracket_code,
     coalesce(ta.name, '—') AS team_a,
     coalesce(tb.name, '—') AS team_b,
-    coalesce(to_char(w.at AT TIME ZONE 'Europe/Warsaw', 'YYYY-MM-DD HH24:MI'), 'bez terminu') AS date_time_pl,
+    coalesce(to_char(w.at AT TIME ZONE 'Europe/Warsaw', 'YYYY-MM-DD HH24:MI') || w.source, 'bez terminu') AS date_time_pl,
     CASE
       WHEN mt.status = 'bye' THEN 'wolny los'
       WHEN mt.status = 'void' THEN 'unieważniony'
       WHEN mt.forfeit_scope = 'series' THEN concat(coalesce(mt.score_a, 0), ':', coalesce(mt.score_b, 0), ' walkower (oddaje ', tf.name, ')')
       WHEN mt.forfeit_scope = 'games' THEN concat(coalesce(mt.score_a, 0), ':', coalesce(mt.score_b, 0), ' z walkowerem w grach (oddaje ', tf.name, ')')
       WHEN mt.status = 'live' THEN concat(coalesce(mt.score_a, 0), ':', coalesce(mt.score_b, 0), ' trwa')
+      WHEN mt.status = 'completed' AND (mt.score_a IS NULL OR mt.score_b IS NULL) THEN 'zakończony, bez wyniku'
       WHEN mt.status = 'scheduled' OR mt.score_a IS NULL OR mt.score_b IS NULL THEN 'nierozegrany'
       ELSE mt.score_a || ':' || mt.score_b
     END AS score,
@@ -476,11 +495,12 @@ match_rows AS (
   LEFT JOIN app.teams ta ON ta.tournament_id = mt.tournament_id AND ta.id = mt.team_a_id
   LEFT JOIN app.teams tb ON tb.tournament_id = mt.tournament_id AND tb.id = mt.team_b_id
   LEFT JOIN app.teams tf ON tf.tournament_id = mt.tournament_id AND tf.id = mt.forfeit_team_id
-  -- Not every finished match kept its scheduled time: then the first game's start, then the result's.
+  -- Not every finished match kept its scheduled time: then the first game's start, then the time
+  -- the result was entered, each marked after the time.
   CROSS JOIN LATERAL (
-    SELECT coalesce(mt.scheduled_at,
-      (SELECT min(gm.started_at) FROM app.games gm WHERE gm.tournament_id = mt.tournament_id AND gm.match_id = mt.id),
-      mt.completed_at) AS at
+    SELECT coalesce(mt.scheduled_at, fg.at, mt.completed_at) AS at,
+           CASE WHEN mt.scheduled_at IS NOT NULL THEN '' WHEN fg.at IS NOT NULL THEN ' (1. gra)' ELSE ' (wpis wyniku)' END AS source
+    FROM (SELECT min(gm.started_at) AS at FROM app.games gm WHERE gm.tournament_id = mt.tournament_id AND gm.match_id = mt.id) fg
   ) w
 )
 SELECT m.tournament, m.tournament_slug, m.stage, m.group_round, m.bracket_code, m.team_a, m.team_b,
