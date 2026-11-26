@@ -180,11 +180,11 @@ SELECT
   tm.captain_user_id,
   (SELECT string_agg(r.nickname || ' [' || coalesce(r.steam_id64, r.profile_url, '?') || ']'
            || CASE r.kind WHEN 'substitute' THEN ' rezerwowy' WHEN 'coach' THEN ' trener' ELSE '' END,
-           ', ' ORDER BY r.kind, r.position NULLS LAST, r.nickname)
+           ', ' ORDER BY r.kind, r.position NULLS LAST, r.nickname, r.id)
      FROM app.team_members r
     WHERE r.tournament_id = tm.tournament_id AND r.team_id = tm.id AND r.left_at IS NULL) AS roster,
   (SELECT string_agg(r.nickname || ' [' || coalesce(r.steam_id64, r.profile_url, '?') || '] do '
-           || to_char(r.left_at AT TIME ZONE 'Europe/Warsaw', 'YYYY-MM-DD'), ', ' ORDER BY r.left_at)
+           || to_char(r.left_at AT TIME ZONE 'Europe/Warsaw', 'YYYY-MM-DD'), ', ' ORDER BY r.left_at, r.nickname)
      FROM app.team_members r
     WHERE r.tournament_id = tm.tournament_id AND r.team_id = tm.id AND r.left_at IS NOT NULL) AS former_members,
   to_char(tm.registered_at AT TIME ZONE 'Europe/Warsaw', 'YYYY-MM-DD HH24:MI') AS registered_at_pl,
@@ -220,7 +220,7 @@ names AS (
   UNION SELECT steam_id64, persona_name FROM app.players WHERE persona_name IS NOT NULL
 ),
 found AS (
-  SELECT n.steam_id64, string_agg(DISTINCT n2.nickname, ' / ') AS known_as
+  SELECT n.steam_id64, string_agg(DISTINCT n2.nickname, ' / ' ORDER BY n2.nickname) AS known_as
   FROM names n
   CROSS JOIN p
   JOIN names n2 ON n2.steam_id64 = n.steam_id64
@@ -242,7 +242,7 @@ entries AS (
   UNION ALL
   -- A stand-in given only by a profile link has no Steam id: found by the name in the request.
   SELECT sr.tournament_id, sr.team_id, sr.standin_steam_id64, sr.standin_profile_url, 'stand-in', sr.standin_nickname,
-         min(sr.created_at), concat(count(*), ' próśb: ', string_agg(DISTINCT sr.status, ', '))
+         min(sr.created_at), concat(count(*), ' próśb: ', string_agg(DISTINCT sr.status, ', ' ORDER BY sr.status))
     FROM app.standin_requests sr
     CROSS JOIN p
    WHERE sr.standin_steam_id64 IN (SELECT steam_id64 FROM found)
