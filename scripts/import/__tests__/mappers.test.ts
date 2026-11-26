@@ -149,9 +149,11 @@ describe('wiosenna specifics', () => {
   it('takes a bracket match\'s finish time from its mirror when the bracket times are a bulk rewrite', () => {
     expect(byId(matches, 'ub-r1-p1').completedAt).toEqual(new Date('2026-07-12T21:43:24.991Z'));
     expect(m.ctx.findings.filter((f) => f.reason.startsWith('the bracket result time is a bulk rewrite')).map((f) => f.about?.matchId).sort())
-      .toEqual(['ub-r1-p1', 'ub-r1-p3', 'ub-r1-p5', 'ub-r1-p7', 'ub-r2-p1', 'ub-r2-p2', 'ub-r2-p3', 'ub-r2-p4', 'ub-r3-p1', 'ub-r3-p2', 'ub-r4-p1']);
-    // A bye has no mirror time: its bracket time stays.
+      .toEqual(['ub-r1-p1', 'ub-r1-p3', 'ub-r1-p5', 'ub-r1-p7', 'ub-r2-p1', 'ub-r2-p2', 'ub-r2-p3', 'ub-r2-p4', 'ub-r3-p1', 'ub-r3-p2']);
+    // A bye has no mirror time: its bracket time stays. The final shares that time with the byes,
+    // which do not count, so it is no bulk rewrite and keeps its bracket time.
     expect(byId(matches, 'ub-r1-p2').completedAt).toEqual(new Date('2026-07-26T16:53:48.118Z'));
+    expect(byId(matches, 'ub-r4-p1').completedAt).toEqual(new Date('2026-07-26T16:53:48.118Z'));
   });
 
   it('keeps each game stored under two matches under the playoff match it was played in, with its own performances', () => {

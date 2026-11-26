@@ -31,9 +31,12 @@ import { publishedDataset } from './testing/published';
  *   Robotę? is a 1:1 draw (was 1:2 for Adaś, so its winner goes too); Grupa B, 30 June 2026,
  *   Puck It! vs Adaś is 2:0 (was 2:1); upper bracket round 1 (U1C), 14 July 2026, Adaś vs Dwa
  *   Razy I Do Bazy is 2:0 (was 2:1).
- * - No `match *.completedAt` lines any more (WP-33b): the bracket document's result times were
- *   rewritten for the whole bracket on 2026-07-25 at 17:46; the import now recognizes that bulk
- *   rewrite and takes the mirror match's finish time, as the old payload did.
+ * - `match *.completedAt` (Wiosenna grand final only; WP-33b). The bracket's result times of the
+ *   ten earlier bracket matches were rewritten on 2026-07-25 at 17:46; the import recognizes that
+ *   bulk rewrite and takes the mirror's earlier time, as the old payload did, so those ten agree.
+ *   The final's bracket time (26 July 16:53:48.118) shares its timestamp only with the byes, which
+ *   do not count as a rewrite, so the import keeps it; the old payload used the mirror's, 0.8
+ *   seconds earlier. Both are after the final's last game ended (16:31).
  * - `player *.avatar`: where a roster document had no picture, the old builder fell back to the
  *   team's roster map and took its small picture (`avatar`), never the map's `avatarmedium`.
  *   The import puts the map's values on the player, so the medium picture the old builder
@@ -55,6 +58,7 @@ const EXPECTED: Record<FixtureSlug, Record<string, number>> = {
     'match *: only in ours': 10,
     'match *.scoreB': 3,
     'match *.winnerId': 1,
+    'match *.completedAt': 1,
     'game *.matchId': 2,
     'player *.name': 1,
     'player *.avatar': 45,
@@ -74,6 +78,7 @@ const WIOSENNA_LINES = [
   'match HVwwRd87bSFsCzkph25p.winnerId: ours null, published "u6kMrDWsUi2WF6GKhWH5"',
   'match cxozIoYGO0ViB55POI36.scoreB: ours 0, published 1',
   'match ub-r1-p3.scoreB: ours 0, published 1',
+  'match ub-r4-p1.completedAt: ours 1785084828118, published 1785084827299',
 ];
 
 describe.each(['pdl-s2', 'wiosenna'] as const)('the dataset of %s, imported and computed', (slug) => {
@@ -108,7 +113,7 @@ describe.each(['pdl-s2', 'wiosenna'] as const)('the dataset of %s, imported and 
   if (slug === 'wiosenna') {
     it('names each one-off difference', () => {
       const lines = datasetDifferences(ours, publishedDataset(slug));
-      const oneOff = lines.filter((l) => / only in ours$|\.matchId:|\.name:|\.scoreB:|\.winnerId:/.test(l));
+      const oneOff = lines.filter((l) => / only in ours$|\.matchId:|\.name:|\.scoreB:|\.winnerId:|\.completedAt:/.test(l));
       expect(oneOff.sort()).toEqual([...WIOSENNA_LINES].sort());
       for (const l of lines.filter((x) => x.includes('.round:'))) expect(l).toMatch(/^match (ub|lb)-.*: ours [1-9], published none$|: ours 1, published none$/);
     });
