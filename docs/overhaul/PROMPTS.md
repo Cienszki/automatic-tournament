@@ -28,7 +28,7 @@ Two rules every session keeps:
 | S16 | WP-11 speed budgets and a lighter bundle | after S15 | |
 | S17 | The owner's review kit (end of stage 2, question 40) | after S16 | |
 
-Stages 3 to 7 get their steps while stage 2 is under way (S9 and S17 may change them).
+Stages 3 to 7 get their steps while stage 2 is under way (S17 may change them). S9 changed them as follows, and their prompts must carry it: stage 3's WP-13b has grown (the captains' score, the lineup check, placement by date, forfeits by hand, one match's format) and may split into a second branch; its reviewer list is in `ROADMAP.md` WP-13b; it moves WP-33b's placement and team rules into `features/results/domain`. WP-14 adds the league poll and four job types. WP-16 includes the bot-account test for ticketless games (needs a staging Steam account, stage 4). Stage 6 gains WP-67 (theme library and sharing) after WP-27 and WP-45. WP-68 (league import, The International first) is outside the target and can run after WP-13b and WP-34. Every report and message to the owner names matches, teams and players as `CONVENTIONS.md` section 13 says.
 
 ---
 
