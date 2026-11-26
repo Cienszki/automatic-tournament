@@ -1,6 +1,6 @@
 # Code conventions
 
-Written in S1 (2026-11-13) by Fable, and revised the same day for the new database (ADR-04). These rules apply to all new code from now on. Old code in `src/lib` and `src/components` is not brought in line; it is replaced, and deleted by the work package that replaces it. The reasons for the structure are in `ARCHITECTURE.md` (ADR-14 for modules, ADR-07 for writes, ADR-02 for reads).
+Written in S1 (2026-11-13) by Fable, and revised the same day for the new database (ADR-04). Section 13 (how matches, teams and players are named for people) was added in S9 on 2026-11-26. These rules apply to all new code from now on. Old code in `src/lib` and `src/components` is not brought in line; it is replaced, and deleted by the work package that replaces it. The reasons for the structure are in `ARCHITECTURE.md` (ADR-14 for modules, ADR-07 for writes, ADR-02 for reads).
 
 The test for every rule: a new developer, or an AI agent with no memory of this project, opens one file and can tell what it does, what it may depend on, and how to check that a change works.
 
@@ -203,3 +203,16 @@ So that these rules do not depend on memory, the ESLint config (set up in WP-07)
 | `console.log` | new folders |
 
 The ratchet: CI stores the current count of `any`, of lint warnings, of `"use client"` files and of lines in the old folders, and fails when a count goes up.
+
+## 13. Naming matches, teams and players for people
+
+Added in S9 (2026-11-26) from the owner's answer to `STATUS.md` question 42. Ids are random strings (`HVwwRd87bSFsCzkph25p`), and they stay: every old link and the import depend on them. An id alone tells a reader nothing, so anything a person reads names the thing in words.
+
+- **Where it applies:** reports (import, mirror, comparison, review kits), findings and warnings printed by tools, audit sentences, decision rows, Discord and inbox messages, error reports, commit and pull-request text, and an agent's messages to the owner.
+- **A match** is named by tournament, stage and round or group (and the bracket code where there is one, `U1C`), the two teams, the date (Polish time), and the score: "Wiosenna, Grupa B, 24 czerwca 2026, Chrupek zamknij się – Adaś, ile za tę Robotę? 1:1". In English text the same parts in the same order: "Wiosenna, Grupa B, 24 June 2026, Chrupek zamknij się vs Adaś, ile za tę Robotę?, 1:1".
+- **A game** is its match plus the game number and the Dota match id: "..., game 3 (8910469903)".
+- **A team** is its name and its tournament: "Kotwica Gaming (PDL S1)".
+- **A player** is the nickname, the team and tournament where it matters, and the Steam id in one form, named: "Kildren, stand-in for Kotwica Gaming (PDL S1), Steam 76561198273949482".
+- **The id comes after the words, in brackets,** when a reader may need to look the row up: "... 1:1 (match HVwwRd87…)". Never the id alone, and never a bare id in a sentence the owner or an organizer reads.
+- **In code,** one helper builds each label from rows (`describeMatch`, `describeGame`, `describeTeam`, `describePlayer` in the feature that owns the rows), so every tool prints the same words. A finding or log line that names a match uses it.
+- **For players and organizers** the site says only "team A – team B" with the date; nothing else is needed (owner, 2026-11-23). There is no visible match number. A super admin finds a match with the support lookup (WP-46) or `docs/support/queries.sql`, and an organizer asking for help sends the match page's link ("Kopiuj link").

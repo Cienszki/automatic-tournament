@@ -14,7 +14,7 @@ The facts come from the S0 inventories and from four explorer reports made in S1
 6. The website and the bot share one written contract, and the bot's source code is brought back under version control.
 7. The new platform is built beside the old site and takes over one tournament at a time. Production does not change until then.
 
-Part 1 describes the old site and stays true until it retires. Part 2 was revised on 2026-11-13 after the owner's answers in `STATUS.md`.
+Part 1 describes the old site and stays true until it retires. Part 2 was revised on 2026-11-13 after the owner's answers in `STATUS.md`. ADR-18 (other games than Dota 2) was added in S9 on 2026-11-26.
 
 ## Part 1. The current architecture
 
@@ -567,6 +567,24 @@ Rollback of any step is removing that tournament from the new database or switch
 **What keeps option 2 open.** A tournament's rows are a closed set: every one carries `tournament_id` and points only at its own tournament or at global tables. The export and import tool (ADR-05 rule 5) can lift a tournament out of one database and into another. The database client is obtained in one place (`platform/db`), which is where a per-tournament choice of database would go. Nothing else would change.
 
 **What organizers can choose from the start:** the Dota server region for their lobbies, the time zone, and the language.
+
+---
+
+#### ADR-18. Dota 2 only now; the core stays general where that costs nothing
+
+Added in S9 (2026-11-26) from the owner's decision 17 of 2026-11-24 (`STATUS.md`). A record, not a plan: no work package builds anything for it.
+
+**Context.** Far in the future, if it becomes possible, the platform may run tournaments of other games. The owner expects the automation (lobbies and results) to be the hard part, and that some games will allow it.
+
+**What is game-specific today, and what is not.**
+- **General already:** tournaments, organizations, stages and their ranking and advancement rules (ADR-11), groups, teams and members, matches as series with a format, the schedule, stand-ins, reschedules, the panel and its decisions, the look, domains, notifications, pick'em.
+- **Dota-specific by nature:** the lobby bot and its Steam accounts (ADR-10), the league id and the Steam league list, OpenDota parsing, `games.dota_match_id`, picks and bans, heroes, the per-player statistics and fantasy formulas, draft preparation, the card game's cards (built from Dota performances), Steam ids as the player's identity in a game.
+
+**Choice.** Build for Dota 2 only. In new design, keep the general parts free of Dota where it costs nothing: a stage, a match or a result does not import from the Dota parts; Dota fields live on the game, performance and lobby rows and in the `results`, `lobby`, `stats` and `draft-prep` features, not on tournaments or stages; a player's game account is a link on the person (`user_links`), not a column every table needs. Where keeping it general would cost work now, choose Dota and move on.
+
+**What a second game would need, so nobody plans for it early:** a `game` value on the tournament; for that game, a results source (an API, a bot, or the captains' score entry that already exists for games without the bot, `STATUS.md` question 41) and its own statistics; its own fantasy formula or none. The captains' score flow, stages, ranking rules and the panel would work unchanged.
+
+**What the reviewer checks** in packages that touch `formats`, `tournaments`, `results` or the schema: a Dota term in a general table or in `src/features/formats` needs a reason.
 
 ### 2.3 How the website and the bot talk
 
