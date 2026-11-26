@@ -18,12 +18,12 @@ const LETNIA = join(ROOT, 'fixtures', 'import', 'letnia');
 const mapLetnia = (dir = LETNIA) => mapCapture(readCapture(dir), null, { anonymize: false }, new Map());
 
 describe('the owner corrections file', () => {
-  it('holds every correction of STATUS.md question 43, each with ids, a label, a reason and a source', () => {
+  it('holds every correction of STATUS.md questions 43 and 44, each with ids, a label, a reason and a source', () => {
     const byKind = (kind: string, tournament?: string) => OWNER_CORRECTIONS.filter((c) => c.kind === kind && (!tournament || ('tournament' in c && c.tournament === tournament))).length;
     expect({ wiosennaMatches: byKind('match', 'wiosenna'), wiosennaGames: byKind('game', 'wiosenna'), letnia: byKind('match', 'letnia'), pdl: byKind('match', 'pdl') })
       .toEqual({ wiosennaMatches: 3, wiosennaGames: 2, letnia: 4, pdl: 2 });
     expect({ steam: byKind('roster-steam'), standins: byKind('standin'), members: byKind('member'), players: byKind('player') })
-      .toEqual({ steam: 4, standins: 5, members: 1, players: 1 });
+      .toEqual({ steam: 4, standins: 6, members: 1, players: 1 });
     for (const c of OWNER_CORRECTIONS) expect(c.source).toMatch(/2026-11-2\d/);
   });
 

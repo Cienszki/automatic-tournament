@@ -217,8 +217,8 @@
         "leftReason": "removed"
       },
       "label": "POLISH DOTA2 LEAGUE Season 1, Bociarnia Junior, roster player Przepraszam (Kildren, account 313683754)",
-      "reason": "He was on Bociarnia Junior's roster only briefly and was replaced; he stays as a former member, with his four games for the team (19 February vs PD2IH Team, 25 February vs Bociarnia). Left at: the day after the last match in which a stand-in request names him as the replaced player (1 April 2026, Slavic Underdogs vs Bociarnia Junior; Ytsuqen's requests were approved on 3 and 14 March and pending on 21 and 29 March), so 2 April 2026, 00:00 in Warsaw.",
-      "source": "owner, 2026-11-23, STATUS.md question 43 (former member); the left time is the orchestrator default from the data; owner to confirm"
+      "reason": "He was on Bociarnia Junior's roster only briefly and was replaced; he stays as a former member, with his four games for the team (19 February vs PD2IH Team, 25 February vs Bociarnia), which stay his. Left at: the day after the last match in which a stand-in request names him as the replaced player (1 April 2026, Slavic Underdogs vs Bociarnia Junior; Ytsuqen's requests were approved on 3 and 14 March and pending on 21 and 29 March), so 2 April 2026, 00:00 in Warsaw.",
+      "source": "owner, 2026-11-23, STATUS.md question 43 (former member); the four games and the left time confirmed by the owner, 2026-11-26, STATUS.md question 44b"
     },
     {
       "id": "pdl-kotwica-kildren-roll",
@@ -281,9 +281,22 @@
       "steamId64": "76561198273949482",
       "nickname": "Kildren",
       "replacedMemberId": "KXhEeRKyHEajWCRwWOW4",
-      "label": "POLISH DOTA2 LEAGUE Season 1, Challenger, matchday 3, 6 March 2026, Kotwica Gaming vs Voodoo Monkey, 0:2: Kildren for Joxxi. A second account not on Kotwica Gaming's roster, 76561198069911128 (Lukash, on Power Rangers' roster), also played both games for Kotwica Gaming; Joxxi and Siusiak12 did not. No request is added for that account",
-      "reason": "Account 313683754 also played both games of this match for Kotwica Gaming (OpenDota 8718370162 lists Przepraszam on Radiant with Quince), with no stand-in request; the same case as the three matches the owner named.",
-      "source": "WP-33b, 2026-11-26, from the capture and OpenDota, on the owner's answer to STATUS.md question 43 (owner to confirm)"
+      "label": "POLISH DOTA2 LEAGUE Season 1, Challenger, matchday 3, 6 March 2026, Kotwica Gaming vs Voodoo Monkey, 0:2: Kildren for Joxxi",
+      "reason": "Account 313683754 also played both games of this match for Kotwica Gaming (OpenDota 8718370162 lists Przepraszam on Radiant with Quince), with no stand-in request; the same case as the three matches the owner named. Joxxi did not play. The other player who was not on Kotwica Gaming's roster, Lukash, stood in for Siusiak12 (pdl-kotwica-lukash-voodoo).",
+      "source": "WP-33b, 2026-11-26, from the capture and OpenDota; confirmed in WP-33c, 2026-11-26, owner's answer to STATUS.md question 44c (left to us)"
+    },
+    {
+      "id": "pdl-kotwica-lukash-voodoo",
+      "kind": "standin",
+      "tournament": "pdl",
+      "matchId": "XVwKIZt4leCFWR6vUewS",
+      "teamId": "YgBE0C7RHWlqAE1fQQWE",
+      "steamId64": "76561198069911128",
+      "nickname": "Lukash",
+      "replacedMemberId": "vYmSk6R9WXDYYhONnyl7",
+      "label": "POLISH DOTA2 LEAGUE Season 1, Challenger, matchday 3, 6 March 2026, Kotwica Gaming vs Voodoo Monkey, 0:2: Lukash (on Power Rangers' roster) for Siusiak12",
+      "reason": "Lukash played both games of this match for Kotwica Gaming (8718370162 and 8718434807) in place of Siusiak12, who did not play. He stays a Power Rangers member; this approved stand-in is what counts him for Kotwica Gaming in this one match. The capture already holds an approved request for him (6 March 2026, 10:54), with only a vanity profile link; its Steam id comes from the approved copy on the match, and this entry confirms it.",
+      "source": "WP-33c, 2026-11-26, owner's answer to STATUS.md question 44c (left to us)"
     }
   ]
 }
