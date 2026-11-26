@@ -48,7 +48,7 @@ function requestRow(state: MapState, doc: Doc, copy: Record<string, unknown> | u
   const matchId = toText(d.matchId);
   const teamId = toText(d.teamId) ?? toText(d.requestingTeamId);
   if (!matchId || !state.matchTeams.has(matchId)) {
-    state.ctx.outcome(KIND, 'unmapped', 'the request\'s match is not imported', doc.path);
+    state.ctx.outcome(KIND, 'unmapped', 'the request\'s match is not imported', doc.path, matchId ? { matchId } : undefined);
     return null;
   }
   if (!teamId || !state.teamIds.has(teamId)) {

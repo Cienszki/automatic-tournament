@@ -109,10 +109,10 @@ export class ImportContext {
   }
 
   /** A user id from the data, or null (with a finding) when the value is not one. */
-  user(value: unknown, where: string): string | null {
+  user(value: unknown, where: string, about?: Subject): string | null {
     if (value === null || value === undefined || value === '') return null;
     if (!isUserId(value)) {
-      this.finding({ kind: where.split(':')[0], code: 'unmapped', reason: 'a user reference is not a Firebase user id; left empty', ref: `${where} = ${String(value)}` });
+      this.finding({ kind: where.split(':')[0], code: 'unmapped', reason: 'a user reference is not a Firebase user id; left empty', ref: `${where} = ${String(value)}`, about });
       return null;
     }
     if (!this.userRefs.has(value)) this.userRefs.set(value, where);

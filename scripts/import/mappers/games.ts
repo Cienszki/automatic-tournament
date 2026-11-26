@@ -119,7 +119,7 @@ function gameDraft(state: MapState, doc: Doc, matchId: string): GameDraft {
     })), `${KIND} ${doc.path} picksBans`),
     parsed: d.isParsed === true,
     source: manual ? 'manual' : 'league-sync',
-    importedBy: state.ctx.user(d.uploadedBy, `${KIND}:uploadedBy`),
+    importedBy: state.ctx.user(d.uploadedBy, `${KIND}:uploadedBy`, { matchId, game: doc.id }),
     importedAt: timeOf(state, KIND, doc, 'uploadedAt', d.uploadedAt) ?? new Date(doc.createTime ?? doc.updateTime ?? '2000-01-01T00:00:00Z'),
   };
   return { doc, row, forfeit, number: toInt(d.game_number), start: toInt(d.start_time) ?? Number.MAX_SAFE_INTEGER };

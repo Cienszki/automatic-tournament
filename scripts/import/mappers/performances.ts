@@ -72,7 +72,9 @@ export function mapPerformances(state: MapState): void {
     const gameId = state.gameIds.get(matchId)?.get(ancestorId(doc));
     const game = gameId ? games.get(gameId) : undefined;
     if (!game) {
-      state.ctx.outcome(KIND, 'unmapped', 'the performance\'s game is not imported', doc.path);
+      // A copy of a game stored under two matches: the copy that is kept brings its own performances.
+      const copy = games.has(ancestorId(doc));
+      state.ctx.outcome(KIND, 'unmapped', copy ? 'the performance belongs to a second copy of a game; the kept copy\'s performances are imported' : 'the performance\'s game is not imported', doc.path);
       continue;
     }
     const steamId64 = steamOf(state, doc);
