@@ -63,6 +63,7 @@ export function placeGames(games: readonly PlacementGame[], matches: readonly Pl
   const rulesApplied = new Set<string>();
   const ruleOf = new Map(rules.map((r) => [r.dotaMatchId, r]));
   // Games on a match other than `game`: forfeits and other Dota games, each counted once.
+  // Quadratic in the games: fine for an import, but it must not go into the per-game live path as is (WP-13b).
   const others = (matchId: string, dota: number | null) => new Set(games
     .filter((g) => placed.get(g.key) === matchId && (g.dotaMatchId === null || g.dotaMatchId !== dota))
     .map((g) => (g.dotaMatchId === null ? g.key : String(g.dotaMatchId)))).size;
@@ -122,14 +123,17 @@ function settle(placed: Map<string, string>, list: readonly PlacementGame[], fir
 
 const time = (d: Date | null) => d?.getTime() ?? Number.MAX_SAFE_INTEGER;
 
-/** The match scheduled nearest the start; unscheduled matches last; ties keep the given order. */
-function nearest(ids: readonly string[], start: Date | null, byId: ReadonlyMap<string, PlacementMatch>): string {
-  if (!start) return ids[0];
-  const distance = (id: string) => {
-    const at = byId.get(id)?.scheduledAt;
-    return at ? Math.abs(at.getTime() - start.getTime()) : Number.POSITIVE_INFINITY;
-  };
-  return ids.reduce((best, id) => (distance(id) < distance(best) ? id : best), ids[0]);
+/**
+ * The match scheduled nearest the start (without a start, every match is equally near).
+ * Ties, in order: the earlier scheduled match, then a scheduled one before an unscheduled one,
+ * then the lower match id. Never the order the capture happens to list them in.
+ */
+export function nearest(ids: readonly string[], start: Date | null, byId: ReadonlyMap<string, PlacementMatch>): string {
+  const at = (id: string) => byId.get(id)?.scheduledAt?.getTime() ?? Number.POSITIVE_INFINITY;
+  const distance = (id: string) => (start && Number.isFinite(at(id)) ? Math.abs(at(id) - start.getTime()) : Number.POSITIVE_INFINITY);
+  // Infinity - Infinity is NaN, which is falsy: two unscheduled matches fall through to the id.
+  const order = (x: string, y: string) => distance(x) - distance(y) || at(x) - at(y) || (x < y ? -1 : x > y ? 1 : 0);
+  return [...ids].sort(order)[0];
 }
 
 /** Another match of the same two teams scheduled on the game's day, when the game's own match is on another day. */

@@ -1,7 +1,7 @@
 // Where a game goes (placement.ts): by date, never onto a full format, an owner correction first.
 
 import { describe, expect, it } from 'vitest';
-import { isFull, placeGames, warsawDay, type PlacementGame, type PlacementMatch } from '../mappers/placement';
+import { isFull, nearest, placeGames, warsawDay, type PlacementGame, type PlacementMatch } from '../mappers/placement';
 
 const at = (iso: string) => new Date(iso);
 const match = (id: string, over: Partial<PlacementMatch> = {}): PlacementMatch => ({
@@ -118,6 +118,29 @@ describe('a game stored under one match only', () => {
   it('reads the day in Warsaw: 23:30 UTC on 23 July is 24 July there', () => {
     expect(warsawDay(at('2026-07-23T23:30:00Z'))).toBe('2026-07-24');
     expect(warsawDay(at('2026-07-23T21:59:00Z'))).toBe('2026-07-23');
+  });
+});
+
+describe('a tie between matches equally near', () => {
+  const start = at('2026-07-01T18:00:00Z');
+  const byId = (ms: PlacementMatch[]) => new Map(ms.map((m) => [m.id, m]));
+
+  it.each([
+    ['the earlier scheduled match, one hour before and one after', [match('z', { scheduledAt: at('2026-07-01T19:00:00Z') }), match('y', { scheduledAt: at('2026-07-01T17:00:00Z') })], start, 'y'],
+    ['the lower match id when both are scheduled at the same time', [match('m2', { scheduledAt: at('2026-07-01T17:00:00Z') }), match('m1', { scheduledAt: at('2026-07-01T17:00:00Z') })], start, 'm1'],
+    ['a scheduled match over unscheduled ones', [match('a'), match('b', { scheduledAt: at('2026-09-01T00:00:00Z') })], start, 'b'],
+    ['the lower match id when none is scheduled, whatever the capture order', [match('m9'), match('m3'), match('m5')], start, 'm3'],
+    ['the earlier scheduled match when the game has no start', [match('late', { scheduledAt: at('2026-08-01T00:00:00Z') }), match('early', { scheduledAt: at('2026-06-01T00:00:00Z') })], null, 'early'],
+  ])('goes to %s', (_what, ms, when, to) => {
+    expect(nearest(ms.map((m) => m.id), when, byId(ms))).toBe(to);
+    expect(nearest([...ms].reverse().map((m) => m.id), when, byId(ms))).toBe(to);
+  });
+
+  it('places a game stored under two equally near matches on the earlier one, whichever copy comes first', () => {
+    const ms = [match('m1', { scheduledAt: at('2026-07-01T19:00:00Z') }), match('m2', { scheduledAt: at('2026-07-01T17:00:00Z') })];
+    const copies = [game('m1/g', 'm1', 9, '2026-07-01T18:00:00Z'), game('m2/g', 'm2', 9, '2026-07-01T18:00:00Z')];
+    expect([...placeGames(copies, ms).placed]).toEqual([['m2/g', 'm2']]);
+    expect([...placeGames([...copies].reverse(), ms).placed]).toEqual([['m2/g', 'm2']]);
   });
 });
 
