@@ -8,7 +8,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createTestDb, type TestDb } from '@/platform/db/testing';
-import { runImport } from '../../../scripts/import/run';
+import { runImport } from '../run';
 
 const ROOT = join(__dirname, '..', '..', '..');
 const SQL_FILE = join(ROOT, 'docs', 'support', 'queries.sql');
