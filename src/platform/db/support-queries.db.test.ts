@@ -223,6 +223,21 @@ describe('player-by-nickname', () => {
     expect(rows[0].known_as).toBe('Maruda / Marudeiro');
   });
 
+  it('leaves the game count empty on a stand-in registration, which has no team', async () => {
+    const { rows } = await run('player-by-nickname', { nickname: 'marudeiro' });
+    expect(rows.filter((r) => r.role === 'zgłoszony stand-in').map((r) => [r.tournament_slug, r.team, r.games])).toEqual([['letnia', null, null]]);
+  });
+
+  it('finds a stand-in who has no Steam id by the name in the request, with his profile link', async () => {
+    const pick = (r: Row) => [r.tournament_slug, r.team, r.role, r.nickname, r.steam_id64, r.steam_id32, r.profile_url, r.games];
+    const szwedka = (await run('player-by-nickname', { nickname: 'szwedka' })).rows.map(pick);
+    expect(szwedka).toContainEqual(['wiosenna', 'Keo Esports', 'stand-in', 'Szwedka', null, null, 'idk', null]);
+    // The same name with a Steam id also shows the games that request could not be tied to.
+    expect(szwedka).toContainEqual(['wiosenna', 'Keo Esports', 'grał bez zgłoszenia', 'Szwedka', '76561198992706911', 1032441183, null, 2]);
+    expect((await run('player-by-nickname', { nickname: 'SIUSIAK' })).rows.map(pick))
+      .toContainEqual(['wiosenna', 'Keo Esports', 'stand-in', 'siusiak12', null, null, 'https://steamcommunity.com/id/Stredrwr/', null]);
+  });
+
   it('matches a nickname with Polish letters typed without them', async () => {
     const { rows } = await run('player-by-nickname', { nickname: 'LYSY' });
     expect(rows.map((r) => [r.tournament_slug, r.team, r.nickname])).toContainEqual(['letnia', 'Na Pałę Gaming', 'Łysy']);

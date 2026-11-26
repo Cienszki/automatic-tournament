@@ -201,7 +201,7 @@ LEFT JOIN LATERAL (
 ) cap ON true
 WHERE strpos(translate(lower(tm.name), 'ąćęłńóśźżĄĆĘŁŃÓŚŹŻ', 'acelnoszzacelnoszz'), p.q) > 0
    OR lower(tm.tag) = p.tag
-ORDER BY coalesce(t.starts_at, t.created_at) DESC, tm.name;
+ORDER BY coalesce(t.starts_at, t.created_at) DESC, t.slug, tm.name, tm.id;
 
 
 -- name: player-by-nickname
@@ -225,28 +225,42 @@ found AS (
   GROUP BY n.steam_id64
 ),
 entries AS (
-  SELECT r.tournament_id, r.team_id, r.steam_id64,
+  SELECT r.tournament_id, r.team_id, r.steam_id64, r.profile_url,
          CASE r.kind WHEN 'substitute' THEN 'rezerwowy' WHEN 'coach' THEN 'trener' ELSE 'gracz' END AS role,
          r.nickname, r.joined_at AS at,
          concat('od ', to_char(r.joined_at AT TIME ZONE 'Europe/Warsaw', 'YYYY-MM-DD'),
                 CASE WHEN r.left_at IS NOT NULL THEN ' do ' || to_char(r.left_at AT TIME ZONE 'Europe/Warsaw', 'YYYY-MM-DD') END) AS detail
-    FROM app.team_members r JOIN found f ON f.steam_id64 = r.steam_id64
+    FROM app.team_members r
+    CROSS JOIN p
+   WHERE r.steam_id64 IN (SELECT steam_id64 FROM found)
+      -- A coach may have no Steam id, only a profile link: found by the roster name.
+      OR (r.steam_id64 IS NULL
+          AND strpos(translate(lower(r.nickname), 'ąćęłńóśźżĄĆĘŁŃÓŚŹŻ', 'acelnoszzacelnoszz'), p.q) > 0)
   UNION ALL
-  SELECT sr.tournament_id, sr.team_id, sr.standin_steam_id64, 'stand-in', sr.standin_nickname, min(sr.created_at),
-         concat(count(*), ' próśb: ', string_agg(DISTINCT sr.status, ', '))
-    FROM app.standin_requests sr JOIN found f ON f.steam_id64 = sr.standin_steam_id64
-   GROUP BY sr.tournament_id, sr.team_id, sr.standin_steam_id64, sr.standin_nickname
+  -- A stand-in given only by a profile link has no Steam id: found by the name in the request.
+  SELECT sr.tournament_id, sr.team_id, sr.standin_steam_id64, sr.standin_profile_url, 'stand-in', sr.standin_nickname,
+         min(sr.created_at), concat(count(*), ' próśb: ', string_agg(DISTINCT sr.status, ', '))
+    FROM app.standin_requests sr
+    CROSS JOIN p
+   WHERE sr.standin_steam_id64 IN (SELECT steam_id64 FROM found)
+      OR (sr.standin_steam_id64 IS NULL
+          AND strpos(translate(lower(sr.standin_nickname), 'ąćęłńóśźżĄĆĘŁŃÓŚŹŻ', 'acelnoszzacelnoszz'), p.q) > 0)
+   GROUP BY sr.tournament_id, sr.team_id, sr.standin_steam_id64, sr.standin_profile_url, sr.standin_nickname
   UNION ALL
-  SELECT sg.tournament_id, NULL, sg.steam_id64, 'zgłoszony stand-in', sg.nickname, sg.created_at, sg.status
+  SELECT sg.tournament_id, NULL, sg.steam_id64, NULL, 'zgłoszony stand-in', sg.nickname, sg.created_at, sg.status
     FROM app.standin_registrations sg JOIN found f ON f.steam_id64 = sg.steam_id64
   UNION ALL
-  SELECT mc.tournament_id, mc.team_id, mc.steam_id64, 'trener na mecz', mc.nickname, min(mc.assigned_at),
+  SELECT mc.tournament_id, mc.team_id, mc.steam_id64, mc.profile_url, 'trener na mecz', mc.nickname, min(mc.assigned_at),
          concat(count(*), ' meczów')
-    FROM app.match_coaches mc JOIN found f ON f.steam_id64 = mc.steam_id64
-   GROUP BY mc.tournament_id, mc.team_id, mc.steam_id64, mc.nickname
+    FROM app.match_coaches mc
+    CROSS JOIN p
+   WHERE mc.steam_id64 IN (SELECT steam_id64 FROM found)
+      OR (mc.steam_id64 IS NULL
+          AND strpos(translate(lower(mc.nickname), 'ąćęłńóśźżĄĆĘŁŃÓŚŹŻ', 'acelnoszzacelnoszz'), p.q) > 0)
+   GROUP BY mc.tournament_id, mc.team_id, mc.steam_id64, mc.profile_url, mc.nickname
   UNION ALL
   -- Games for a team whose roster and stand-in requests do not name him.
-  SELECT pf.tournament_id, pf.team_id, pf.steam_id64, 'grał bez zgłoszenia', pl.nickname, min(gm.started_at), NULL
+  SELECT pf.tournament_id, pf.team_id, pf.steam_id64, NULL, 'grał bez zgłoszenia', pl.nickname, min(gm.started_at), NULL
     FROM app.performances pf
     JOIN found f ON f.steam_id64 = pf.steam_id64
     JOIN app.games gm ON gm.tournament_id = pf.tournament_id AND gm.id = pf.game_id
@@ -263,18 +277,22 @@ SELECT
   tm.name AS team,
   e.role,
   e.nickname,
-  f.known_as,
+  coalesce(f.known_as, e.nickname) AS known_as,
   e.steam_id64,
   e.steam_id64::bigint - 76561197960265728 AS steam_id32,
-  (SELECT count(*) FROM app.performances pf
-    WHERE pf.tournament_id = e.tournament_id AND pf.steam_id64 = e.steam_id64
-      AND pf.team_id IS NOT DISTINCT FROM e.team_id) AS games,
+  e.profile_url,
+  -- Not counted where there is no team (a stand-in registration) or no Steam id to count by.
+  CASE WHEN e.team_id IS NOT NULL AND e.steam_id64 IS NOT NULL THEN
+    (SELECT count(*) FROM app.performances pf
+      WHERE pf.tournament_id = e.tournament_id AND pf.steam_id64 = e.steam_id64 AND pf.team_id = e.team_id)
+  END AS games,
   e.detail
 FROM entries e
-JOIN found f ON f.steam_id64 = e.steam_id64
 JOIN app.tournaments t ON t.id = e.tournament_id
+LEFT JOIN found f ON f.steam_id64 = e.steam_id64
 LEFT JOIN app.teams tm ON tm.tournament_id = e.tournament_id AND tm.id = e.team_id
-ORDER BY coalesce(t.starts_at, t.created_at) DESC, e.at DESC NULLS LAST, tm.name;
+ORDER BY coalesce(t.starts_at, t.created_at) DESC, e.at DESC NULLS LAST, t.slug, tm.name NULLS LAST,
+         e.role, e.nickname, e.steam_id64 NULLS LAST, e.profile_url NULLS LAST;
 
 
 -- name: player-by-steam-id
