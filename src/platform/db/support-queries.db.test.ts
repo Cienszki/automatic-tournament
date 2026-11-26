@@ -38,7 +38,8 @@ function parseQueries(text: string): Query[] {
   });
 }
 
-const text = readFileSync(SQL_FILE, 'utf8');
+// A Windows checkout (core.autocrlf) gives the file CRLF line ends; the patterns below expect LF.
+const text = readFileSync(SQL_FILE, 'utf8').replace(/\r\n/g, '\n');
 const queries = parseQueries(text);
 const byName = (name: string): Query => {
   const q = queries.find((x) => x.name === name);
