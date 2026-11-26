@@ -3,6 +3,7 @@
 // mapped, merged into another row, dropped by a rule, or listed as not imported.
 
 import { ImportContext } from './context';
+import { applyMatchCorrections, applyMemberCorrections, applyStandinCorrections, finishCorrections } from './mappers/apply-corrections';
 import { mapContent } from './mappers/content';
 import { mapFormats } from './mappers/formats';
 import { mapGames } from './mappers/games';
@@ -65,9 +66,13 @@ export function mapCapture(capture: Capture, global: GlobalCapture | null, optio
   mapTeams(state);
   mapStandinRegistrations(state);
   mapTransfers(state);
+  applyMemberCorrections(state);
   mapMatches(state);
-  mapGames(state);
+  applyMatchCorrections(state);
+  // Before the games: a game's teams are told apart by its players, approved stand-ins included.
   mapStandinRequests(state);
+  applyStandinCorrections(state);
+  mapGames(state);
   mapContent(state);
   mapViewers(state);
   mapIgnoredGames(state);
@@ -88,5 +93,6 @@ export function mapCapture(capture: Capture, global: GlobalCapture | null, optio
   }
   mapPlayersTable(state);
   mapUsers(state);
+  finishCorrections(state);
   return { capture, rows, ctx, state };
 }

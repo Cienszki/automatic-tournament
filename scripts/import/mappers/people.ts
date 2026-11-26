@@ -8,6 +8,7 @@ import * as s from '@/platform/db/schema';
 import { notifyPrefsSchema } from '@/platform/db/schema/json';
 import { docsOf, type Doc } from '../source';
 import { isSteam64, toText } from '../values';
+import { playerCorrectionRows } from './apply-corrections';
 import { arr, createdOf, obj, timeOf, updatedOf } from './read';
 import { fitJson, type MapState } from './state';
 
@@ -39,6 +40,8 @@ export function mapPlayersTable(state: MapState): void {
       topHeroes: p.topHeroes ?? null,
     }, 'fill');
   }
+  // An owner's name for a player is not a gap to fill: it replaces what the old data said.
+  state.rows.add(s.players, playerCorrectionRows(state), 'replace');
 }
 
 /** Users: full rows where the owner's export has them, stubs for the rest. */

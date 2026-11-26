@@ -48,7 +48,7 @@ const RICH = new Set([
 const AT_MINUTE = /^(gold|xp|lh)At(10|20|30)$/;
 
 /** The Steam64 of a performance: its own Steam fields, else the roster entry it names. */
-function steamOf(state: MapState, doc: Doc): string | null {
+export function steamOf(state: MapState, doc: Doc): string | null {
   const d = doc.data;
   for (const v of [d.steamId, doc.id, d.playerId]) if (isSteam64(v)) return v;
   for (const v of [d.playerId, doc.id]) {

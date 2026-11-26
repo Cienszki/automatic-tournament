@@ -1,0 +1,238 @@
+{
+  "corrections": [
+    {
+      "id": "wiosenna-b-chrupek-adas-draw",
+      "kind": "match",
+      "tournament": "wiosenna",
+      "matchId": "HVwwRd87bSFsCzkph25p",
+      "label": "Wiosenna Furia, Grupa B, 24 June 2026, Chrupek zamknij się vs Adaś, ile za tę Robotę? (best of 2), stored 1:2",
+      "set": { "scoreA": 1, "scoreB": 1, "winner": "none" },
+      "reason": "The group games are 1:1 (Adaś won the first, Chrupek the second): a draw. The third game listed on it (8910469903, 23 July 23:13) is game 3 of the same teams' upper-bracket round 3 match.",
+      "source": "owner, 2026-11-23, STATUS.md question 43"
+    },
+    {
+      "id": "wiosenna-game-8910469903",
+      "kind": "game",
+      "tournament": "wiosenna",
+      "dotaMatchId": 8910469903,
+      "matchId": "ub-r3-p1",
+      "notMatchId": "HVwwRd87bSFsCzkph25p",
+      "label": "Wiosenna Furia, upper bracket round 3 (U3A), 23 July 2026, Chrupek zamknij się vs Adaś, ile za tę Robotę?, 1:2: game 3 (Dota 8910469903, 23:13)",
+      "reason": "Game 3 of the upper-bracket round 3 match (2:1 for Adaś), also stored under the Grupa B match of 24 June.",
+      "source": "owner, 2026-11-23, STATUS.md question 43"
+    },
+    {
+      "id": "wiosenna-b-puck-adas",
+      "kind": "match",
+      "tournament": "wiosenna",
+      "matchId": "cxozIoYGO0ViB55POI36",
+      "label": "Wiosenna Furia, Grupa B, 30 June 2026, Puck It! vs Adaś, ile za tę Robotę? (best of 2), stored 2:1",
+      "set": { "scoreA": 2, "scoreB": 0, "winner": "a" },
+      "reason": "The group games are 2:0 for Puck It!. The third game listed on it (8904592446, 19 July 21:57) is game 3 of the upper-bracket round 2 match.",
+      "source": "owner, 2026-11-23, STATUS.md question 43"
+    },
+    {
+      "id": "wiosenna-game-8904592446",
+      "kind": "game",
+      "tournament": "wiosenna",
+      "dotaMatchId": 8904592446,
+      "matchId": "ub-r2-p2",
+      "notMatchId": "cxozIoYGO0ViB55POI36",
+      "label": "Wiosenna Furia, upper bracket round 2 (U2B), 19 July 2026, Adaś, ile za tę Robotę? vs Puck It!, 2:1: game 3 (Dota 8904592446, 21:57)",
+      "reason": "Game 3 of the upper-bracket round 2 match (2:1 for Adaś), also stored under the Grupa B match of 30 June.",
+      "source": "owner, 2026-11-23, STATUS.md question 43"
+    },
+    {
+      "id": "wiosenna-u1c-adas-dwa-razy",
+      "kind": "match",
+      "tournament": "wiosenna",
+      "matchId": "ub-r1-p3",
+      "label": "Wiosenna Furia, upper bracket round 1 (U1C), 14 July 2026, Adaś, ile za tę Robotę? vs Dwa Razy I Do Bazy (best of 3), stored 2:1",
+      "set": { "scoreA": 2, "scoreB": 0, "winner": "a" },
+      "reason": "Only two games were played (19:27 and 20:46, both won by Adaś; three players' histories on OpenDota agree). The winner and the bracket do not change.",
+      "source": "owner, 2026-11-23, STATUS.md question 43"
+    },
+    {
+      "id": "letnia-lb1-m1-bo3",
+      "kind": "match",
+      "tournament": "letnia",
+      "matchId": "KdDxXJ3e06yYYzED7cQ2",
+      "label": "Letnia 2025, lower bracket round 1 (lb-r1-m1), 7 September 2025, Na Pałę Gaming vs Klałn Fiesta, 2:0",
+      "set": { "bestOf": 3 },
+      "reason": "Two full games with the same winner; the match document says bo1, but the round was played as best of three.",
+      "source": "owner, 2026-11-23, STATUS.md question 43"
+    },
+    {
+      "id": "letnia-lb1-m2-bo3",
+      "kind": "match",
+      "tournament": "letnia",
+      "matchId": "qDpsM6eYXHeVcbxcNg63",
+      "label": "Letnia 2025, lower bracket round 1 (lb-r1-m2), 8 September 2025, Meld z Zaskoczenia vs Sparta Sklejka Orzechowo, 0:2",
+      "set": { "bestOf": 3 },
+      "reason": "Two full games with the same winner; the match document says bo1, but the round was played as best of three.",
+      "source": "owner, 2026-11-23, STATUS.md question 43"
+    },
+    {
+      "id": "letnia-lb1-m3-bo3",
+      "kind": "match",
+      "tournament": "letnia",
+      "matchId": "crcyKVJNpznmURLUcD2V",
+      "label": "Letnia 2025, lower bracket round 1 (lb-r1-m3), 10 September 2025, divine 640x480 vs winagrdium leviosaaa, 2:0",
+      "set": { "bestOf": 3 },
+      "reason": "Two full games with the same winner; the match document says bo1, but the round was played as best of three.",
+      "source": "owner, 2026-11-23, STATUS.md question 43"
+    },
+    {
+      "id": "letnia-lb1-m4-bo3",
+      "kind": "match",
+      "tournament": "letnia",
+      "matchId": "e6jRYDOg61Z4duIBnr9B",
+      "label": "Letnia 2025, lower bracket round 1 (lb-r1-m4), 10 September 2025, Psychiatryk vs Skorupiaki, 2:0",
+      "set": { "bestOf": 3 },
+      "reason": "Two full games with the same winner; the match document says bo1, but the round was played as best of three.",
+      "source": "owner, 2026-11-23, STATUS.md question 43"
+    },
+    {
+      "id": "pdl-elite-md4-bociarnia-junior-dream-stack",
+      "kind": "match",
+      "tournament": "pdl",
+      "matchId": "0AxWzOilkXqKGYV6Dqgn",
+      "label": "PDL S1, Elite, matchday 4, 9 March 2026, Bociarnia Junior vs Dream Stack (best of 2), games 1:1, stored 2:0",
+      "set": { "scoreA": 2, "scoreB": 0, "winner": "a", "forfeit": { "team": "b", "reason": "Dream Stack played with a stand-in who was not approved" } },
+      "reason": "Both games were played (1:1); the organizer then gave the match to Bociarnia Junior because Dream Stack had used a stand-in who was not approved. The two games stay as played games for the stats.",
+      "source": "owner, 2026-11-23, STATUS.md question 43"
+    },
+    {
+      "id": "pdl-elite-md7-team-poland-bociarnia-bo5",
+      "kind": "match",
+      "tournament": "pdl",
+      "matchId": "z8jaivAAINvlU1Wqk78x",
+      "label": "PDL S1, Elite, matchday 7, 1 April 2026, Team Poland vs Bociarnia (best of 2), four games 3:1, stored 2:0",
+      "set": { "bestOf": 5, "scoreA": 3, "scoreB": 1, "winner": "a" },
+      "reason": "The teams agreed to play a best of five; Team Poland won 3:1. In the table the win counts 2 points like any win; the game columns show 3 and 1.",
+      "source": "owner, 2026-11-23, STATUS.md question 43"
+    },
+    {
+      "id": "pdl-kotwica-joxxi-account",
+      "kind": "roster-steam",
+      "tournament": "pdl",
+      "memberId": "KXhEeRKyHEajWCRwWOW4",
+      "teamId": "YgBE0C7RHWlqAE1fQQWE",
+      "steamId64": "76561198074277210",
+      "status": "confirmed",
+      "label": "PDL S1, Kotwica Gaming, roster player Joxxi (steamId 76561198273949482, steamId64 76561198074277210, steamId32 114011482)",
+      "reason": "Joxxi's account is 32-bit 114011482 (also his in Letnia for CINCO PERROS). The other id, 313683754, is Kildren's.",
+      "source": "owner, 2026-11-23, STATUS.md question 43"
+    },
+    {
+      "id": "pdl-bestie-godspell-account",
+      "kind": "roster-steam",
+      "tournament": "pdl",
+      "memberId": "0qESQ4ER7LUyAQkFtiXU",
+      "teamId": "SzXRBRA870NoIOPU1FyZ",
+      "steamId64": "76561199635175535",
+      "status": "confirmed",
+      "label": "PDL S1, Mechaniczne Bestie, roster player godspell (steamId 76561199635175535, steamId64 76561198056980796)",
+      "reason": "steamId is the account his six games were played on. No correction.",
+      "source": "owner, 2026-11-23, STATUS.md question 43"
+    },
+    {
+      "id": "pdl-palchykivka-drit-account",
+      "kind": "roster-steam",
+      "tournament": "pdl",
+      "memberId": "BqZP4ck6vAfZPp42Newc",
+      "teamId": "2gn1YvR9pV1920gG3EmR",
+      "steamId64": "76561198975511804",
+      "status": "confirmed",
+      "label": "PDL S1, Palchykivka Junior, roster player Drit (steamId 76561199466970771, steamId64 76561198975511804)",
+      "reason": "Neither account played a PDL S1 game; the one steamId32 agrees with stays. No correction.",
+      "source": "owner, 2026-11-23, STATUS.md question 43"
+    },
+    {
+      "id": "pdl-pora-na-przygode-blyskawica-account",
+      "kind": "roster-steam",
+      "tournament": "pdl",
+      "memberId": "wIEGLilPlKcUar9S3CzW",
+      "teamId": "rsWbPIl6RIkmstpPMToS",
+      "steamId64": "76561198195753628",
+      "status": "confirmed",
+      "label": "PDL S1, Pora Na Przygode, roster player Błyskawica (steamId 76561198974478081, steamId64 76561198195753628)",
+      "reason": "Neither account played a PDL S1 game; the one steamId32 agrees with stays. No correction.",
+      "source": "owner, 2026-11-23, STATUS.md question 43"
+    },
+    {
+      "id": "player-kildren",
+      "kind": "player",
+      "steamId64": "76561198273949482",
+      "nickname": "Kildren",
+      "aliases": ["Przepraszam"],
+      "label": "Kildren (also Przepraszam), Steam account 313683754: PDL S1 Bociarnia Junior (former member), stand-in for Kotwica Gaming, Wiosenna Furia Adaś, ile za tę Robotę?",
+      "reason": "The player on account 313683754 is Kildren, who also uses the name Przepraszam. Players are one row per Steam account across tournaments, so this names him in every tournament.",
+      "source": "owner, 2026-11-23, STATUS.md question 43"
+    },
+    {
+      "id": "pdl-bociarnia-junior-kildren-left",
+      "kind": "member",
+      "tournament": "pdl",
+      "memberId": "YlTarCnXL1O0qUMw1I49",
+      "teamId": "SI1wtAIlxoxniyRcdk8Y",
+      "steamId64": "76561198273949482",
+      "set": { "leftAt": "2026-03-02T18:22:52.454Z", "leftReason": "removed" },
+      "label": "PDL S1, Bociarnia Junior, roster player Przepraszam (Kildren, account 313683754)",
+      "reason": "He was on Bociarnia Junior's roster only briefly and was replaced; he stays as a former member. Left at: the first stand-in request that replaced him (2 March 2026, Ytsuqen).",
+      "source": "owner, 2026-11-23, STATUS.md question 43 (the left time chosen by WP-33b from the stand-in requests)"
+    },
+    {
+      "id": "pdl-kotwica-kildren-roll",
+      "kind": "standin",
+      "tournament": "pdl",
+      "matchId": "NvmNJAaAhOR1sziVe47I",
+      "teamId": "YgBE0C7RHWlqAE1fQQWE",
+      "steamId64": "76561198273949482",
+      "nickname": "Kildren",
+      "replacedMemberId": "KXhEeRKyHEajWCRwWOW4",
+      "label": "PDL S1, Challenger, matchday 4, 13 March 2026, Roll z Zaskoczenia vs Kotwica Gaming, 1:1: Kildren for Joxxi",
+      "reason": "Kildren (Przepraszam) played both games for Kotwica Gaming on account 313683754 as a stand-in, not Joxxi.",
+      "source": "owner, 2026-11-23, STATUS.md question 43"
+    },
+    {
+      "id": "pdl-kotwica-kildren-power-rangers",
+      "kind": "standin",
+      "tournament": "pdl",
+      "matchId": "CBN6rpbexZN7Qq0rVop4",
+      "teamId": "YgBE0C7RHWlqAE1fQQWE",
+      "steamId64": "76561198273949482",
+      "nickname": "Kildren",
+      "replacedMemberId": "KXhEeRKyHEajWCRwWOW4",
+      "label": "PDL S1, Challenger, matchday 6, 25 March 2026, Power Rangers vs Kotwica Gaming, 1:1: Kildren for Joxxi",
+      "reason": "Kildren (Przepraszam) played both games for Kotwica Gaming on account 313683754 as a stand-in, not Joxxi.",
+      "source": "owner, 2026-11-23, STATUS.md question 43"
+    },
+    {
+      "id": "pdl-kotwica-kildren-bestie",
+      "kind": "standin",
+      "tournament": "pdl",
+      "matchId": "x8zKgAY1lWJYz4ej562l",
+      "teamId": "YgBE0C7RHWlqAE1fQQWE",
+      "steamId64": "76561198273949482",
+      "nickname": "Kildren",
+      "replacedMemberId": "KXhEeRKyHEajWCRwWOW4",
+      "label": "PDL S1, Challenger, matchday 7, 31 March 2026, Mechaniczne Bestie vs Kotwica Gaming, 2:0: Kildren for Joxxi",
+      "reason": "Kildren (Przepraszam) played both games for Kotwica Gaming on account 313683754 as a stand-in, not Joxxi.",
+      "source": "owner, 2026-11-23, STATUS.md question 43"
+    },
+    {
+      "id": "pdl-kotwica-kildren-voodoo",
+      "kind": "standin",
+      "tournament": "pdl",
+      "matchId": "XVwKIZt4leCFWR6vUewS",
+      "teamId": "YgBE0C7RHWlqAE1fQQWE",
+      "steamId64": "76561198273949482",
+      "nickname": "Kildren",
+      "replacedMemberId": "KXhEeRKyHEajWCRwWOW4",
+      "label": "PDL S1, Challenger, matchday 3, 6 March 2026, Kotwica Gaming vs Voodoo Monkey, 0:2: Kildren for Joxxi",
+      "reason": "Account 313683754 also played both games of this match for Kotwica Gaming (OpenDota 8718370162 lists Przepraszam on Radiant with Quince), with no stand-in request; the same case as the three matches the owner named.",
+      "source": "WP-33b, 2026-11-26, from the capture and OpenDota, on the owner's answer to STATUS.md question 43 (owner to confirm)"
+    }
+  ]
+}

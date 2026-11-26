@@ -1,13 +1,15 @@
 // Games and performances (SCHEMA.md 7.3, 7.5). A real game keeps its Dota match id as its id; a
 // forfeited game, whose old id (`forfeit_game1`) repeats in every match, becomes
 // `<matchId>-forfeit-<n>`. Forfeited games keep their numbers; played games take the free numbers
-// in order of start time.
+// in order of start time. Each game is placed on its match by date and its teams are taken from
+// its players (games-assign.ts), not from where and how the old site stored it.
 
 import * as s from '@/platform/db/schema';
 import { picksBansSchema } from '@/platform/db/schema/json';
 import { fields } from '../context';
 import { ancestorId, docsOf, type Doc } from '../source';
 import { fromUnixSeconds, toBool, toInt, toText } from '../values';
+import { placeDrafts, resolveTeams, type Draft } from './games-assign';
 import { arr, obj, timeOf } from './read';
 import { mapPerformances } from './performances';
 import { fitJson, type MapState } from './state';
@@ -20,12 +22,12 @@ const GAME_FIELDS = fields(
   'resyncedAt', 'teamAssignmentUpdated', 'description',
 );
 
-export interface GameDraft { doc: Doc; row: Record<string, unknown>; forfeit: boolean; number: number | null; start: number }
+export type GameDraft = Pick<Draft, 'doc' | 'row' | 'forfeit' | 'number' | 'start'>;
 
 export function mapGames(state: MapState): void {
   const docs = docsOf(state.capture, KIND);
   state.ctx.read(KIND, docs);
-  const drafts: Array<GameDraft & { matchId: string }> = [];
+  const drafts: Draft[] = [];
   for (const doc of docs) {
     state.ctx.checkFields(KIND, doc, GAME_FIELDS);
     const matchId = ancestorId(doc);
@@ -33,17 +35,23 @@ export function mapGames(state: MapState): void {
       state.ctx.outcome(KIND, 'unmapped', 'the match of the game is not imported', doc.path);
       continue;
     }
-    drafts.push({ ...gameDraft(state, doc, matchId), matchId });
+    drafts.push({ ...gameDraft(state, doc, matchId), sourceMatchId: matchId });
   }
-  const byMatch = new Map<string, GameDraft[]>();
-  for (const draft of keepOnePerDotaGame(state, drafts)) {
-    if (!byMatch.has(draft.matchId)) byMatch.set(draft.matchId, []);
-    byMatch.get(draft.matchId)!.push(draft);
+  const kept = placeDrafts(state, drafts);
+  resolveTeams(state, kept);
+  const byMatch = new Map<string, Draft[]>();
+  for (const draft of kept) {
+    const matchId = draft.row.matchId as string;
+    byMatch.set(matchId, [...(byMatch.get(matchId) ?? []), draft]);
   }
   const matches = new Map(state.rows.get(s.matches).map((m) => [m.id as string, m]));
   for (const [matchId, list] of byMatch) {
     numberGames(state, matchId, list);
     checkScore(state, matches.get(matchId), list);
+  }
+  for (const d of kept) {
+    if (!state.gameIds.has(d.sourceMatchId)) state.gameIds.set(d.sourceMatchId, new Map());
+    state.gameIds.get(d.sourceMatchId)!.set(d.doc.id, d.row.id as string);
   }
   mapPerformances(state);
 }
@@ -51,10 +59,12 @@ export function mapGames(state: MapState): void {
 /**
  * A completed match whose stored score is not the count of its games' winners. The stored score
  * is kept (a draw in a series of two, or a result entered by hand, can be right), but the owner
- * sees every case. Series with a forfeited game are not checked: their score counts the forfeit.
+ * sees every case. Not checked: series with a forfeited game (their score counts the forfeit), and
+ * series given to one side by the organizer over the played games (a series forfeit).
  */
 export function checkScore(state: MapState, match: Record<string, unknown> | undefined, games: readonly GameDraft[]): void {
   if (!match || match.status !== 'completed' || games.some((g) => g.forfeit)) return;
+  if (match.forfeitTeamId && match.forfeitScope === 'series') return;
   let wa = 0;
   let wb = 0;
   for (const { row } of games) {
@@ -67,39 +77,13 @@ export function checkScore(state: MapState, match: Record<string, unknown> | und
   const scoreB = match.scoreB as number | null;
   if (scoreA === wa && scoreB === wb) return;
   state.ctx.finding({
-    kind: 'matches', code: 'conflict',
+    kind: 'matches', code: 'conflict', about: { matchId: String(match.id) },
     reason: 'the stored score disagrees with the imported games; the stored score is kept (owner to confirm)',
     ref: `${String(match.id)} ${String(scoreA)}:${String(scoreB)} vs games ${wa}:${wb}`,
   });
 }
 
-/**
- * A Dota game stored under two matches (a playoff game also attached to the group match of the same
- * two teams) is kept under the match it fits: the one whose series is not already full without it.
- */
-function keepOnePerDotaGame<T extends GameDraft & { matchId: string }>(state: MapState, drafts: T[]): T[] {
-  const byDota = new Map<number, T[]>();
-  for (const d of drafts) {
-    const dota = d.row.dotaMatchId as number | null;
-    if (dota === null) continue;
-    if (!byDota.has(dota)) byDota.set(dota, []);
-    byDota.get(dota)!.push(d);
-  }
-  const games = (matchId: string) => drafts.filter((d) => d.matchId === matchId).length;
-  const dropped = new Set<T>();
-  for (const copies of byDota.values()) {
-    if (copies.length < 2) continue;
-    const fits = copies.filter((c) => games(c.matchId) - 1 < state.matchTeams.get(c.matchId)!.bestOf);
-    const keep = fits.length === 1 ? fits[0] : copies[0];
-    for (const c of copies) {
-      if (c === keep) continue;
-      dropped.add(c);
-      state.ctx.outcome(KIND, 'unmapped', 'the same Dota game is stored under two matches; it is kept under the match whose series it fits', `${c.doc.path} (kept: ${keep.doc.path})`);
-    }
-  }
-  return drafts.filter((d) => !dropped.has(d));
-}
-
+/** The team a stored label names; the players decide later (games-assign.ts), the label is the fallback. */
 function teamOf(state: MapState, doc: Doc, side: 'radiant' | 'dire'): string | null {
   const d = doc.data;
   const manual = obj(obj(d.manualTeamMapping)[side]);
@@ -163,16 +147,15 @@ function numberGames(state: MapState, matchId: string, drafts: GameDraft[]): voi
   }
   const forfeits = drafts.filter((x) => x.forfeit).map((g) => g.row.number as number);
   if (played.length && forfeits.some((n) => n > Math.min(...played.map((p) => p.row.number as number)))) {
-    state.ctx.finding({ kind: KIND, code: 'decision', reason: 'a series has forfeited games after played ones; numbers follow the forfeit numbers, then start time', ref: matchId });
+    state.ctx.finding({ kind: KIND, code: 'decision', reason: 'a series has forfeited games after played ones; numbers follow the forfeit numbers, then start time', ref: matchId, about: { matchId } });
   }
   const bestOf = state.matchTeams.get(matchId)!.bestOf;
   if (drafts.length > bestOf) {
-    state.ctx.finding({ kind: KIND, code: 'conflict', reason: 'the match has more games than its series length; every game is imported', ref: `${matchId}: ${drafts.length} games in a best of ${bestOf} (${forfeits.length} forfeited)` });
+    state.ctx.finding({ kind: KIND, code: 'conflict', reason: 'the match has more games than its series length; every game is imported', ref: `${matchId}: ${drafts.length} games in a best of ${bestOf} (${forfeits.length} forfeited)`, about: { matchId } });
   }
   state.gameCounts.set(matchId, drafts.length);
   for (const g of drafts) {
     state.rows.add(s.games, g.row);
     state.ctx.outcome(KIND, 'mapped');
   }
-  state.gameIds.set(matchId, new Map(drafts.map((g) => [g.doc.id, g.row.id as string])));
 }

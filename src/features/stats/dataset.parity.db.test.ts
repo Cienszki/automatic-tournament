@@ -24,12 +24,16 @@ import { publishedDataset } from './testing/published';
  *   builder dropped them by accident: forfeited games share the id `forfeit_game1` in every
  *   match, so its de-duplication of games took them for copies (one such series, the first by
  *   id, survived). They count now, like every other completed series.
- * - `match *.completedAt` (Wiosenna bracket): not a repair, an import defect. The import takes
- *   the bracket document's result time (`playoff_matches.result.completedAt`), which was
- *   rewritten for the whole bracket on 2026-07-25 at 17:46, over the mirror match's real finish
- *   time, which the old payload used (`ub-r1-p1` really finished on 2026-07-12 at 21:43). The
- *   new values are wrong; the WP-33 follow-up is recorded on overhaul. The hub's season numbers do
- *   not read this time.
+ * - `match *.scoreB` and `match *.winnerId` (Wiosenna): repairs, the owner's corrections
+ *   (STATUS.md question 43, scripts/import/owner-corrections.json). The old payload carried the
+ *   stored scores, which counted a playoff game that was also stored under a group match, and a
+ *   game that was never played: Grupa B, 24 June 2026, Chrupek zamknij się vs Adaś, ile za tę
+ *   Robotę? is a 1:1 draw (was 1:2 for Adaś, so its winner goes too); Grupa B, 30 June 2026,
+ *   Puck It! vs Adaś is 2:0 (was 2:1); upper bracket round 1 (U1C), 14 July 2026, Adaś vs Dwa
+ *   Razy I Do Bazy is 2:0 (was 2:1).
+ * - No `match *.completedAt` lines any more (WP-33b): the bracket document's result times were
+ *   rewritten for the whole bracket on 2026-07-25 at 17:46; the import now recognizes that bulk
+ *   rewrite and takes the mirror match's finish time, as the old payload did.
  * - `player *.avatar`: where a roster document had no picture, the old builder fell back to the
  *   team's roster map and took its small picture (`avatar`), never the map's `avatarmedium`.
  *   The import puts the map's values on the player, so the medium picture the old builder
@@ -37,7 +41,8 @@ import { publishedDataset } from './testing/published';
  *   same Steam picture at 64 instead of 32 pixels.
  * - `game *.matchId` (Wiosenna): two Dota games were stored under a group match and under the
  *   playoff match of the same teams. The old builder kept them under the group match; the import
- *   keeps them under the playoff match whose best of three they complete (WP-33).
+ *   keeps them under the playoff match they were played in, on the owner's word and by date
+ *   (WP-33b).
  * - `player *.name` (Wiosenna): a stand-in with two approved requests under two nicknames. The
  *   later one ("sylwek") belongs to a match that is not in the tournament, so the import leaves
  *   that request out and the earlier nickname remains.
@@ -48,7 +53,8 @@ const EXPECTED: Record<FixtureSlug, Record<string, number>> = {
     'perf *.fantasyPoints': 1630,
     'match *.round': 82,
     'match *: only in ours': 10,
-    'match *.completedAt': 11,
+    'match *.scoreB': 3,
+    'match *.winnerId': 1,
     'game *.matchId': 2,
     'player *.name': 1,
     'player *.avatar': 45,
@@ -64,6 +70,10 @@ const WIOSENNA_LINES = [
   'game 8904592446.matchId: ours "ub-r2-p2", published "cxozIoYGO0ViB55POI36"',
   'game 8910469903.matchId: ours "ub-r3-p1", published "HVwwRd87bSFsCzkph25p"',
   'player 76561198117411098.name: ours "Icarus Drive", published "sylwek"',
+  'match HVwwRd87bSFsCzkph25p.scoreB: ours 1, published 2',
+  'match HVwwRd87bSFsCzkph25p.winnerId: ours null, published "u6kMrDWsUi2WF6GKhWH5"',
+  'match cxozIoYGO0ViB55POI36.scoreB: ours 0, published 1',
+  'match ub-r1-p3.scoreB: ours 0, published 1',
 ];
 
 describe.each(['pdl-s2', 'wiosenna'] as const)('the dataset of %s, imported and computed', (slug) => {
@@ -98,10 +108,9 @@ describe.each(['pdl-s2', 'wiosenna'] as const)('the dataset of %s, imported and 
   if (slug === 'wiosenna') {
     it('names each one-off difference', () => {
       const lines = datasetDifferences(ours, publishedDataset(slug));
-      const oneOff = lines.filter((l) => / only in ours$|\.matchId:|\.name:/.test(l));
+      const oneOff = lines.filter((l) => / only in ours$|\.matchId:|\.name:|\.scoreB:|\.winnerId:/.test(l));
       expect(oneOff.sort()).toEqual([...WIOSENNA_LINES].sort());
       for (const l of lines.filter((x) => x.includes('.round:'))) expect(l).toMatch(/^match (ub|lb)-.*: ours [1-9], published none$|: ours 1, published none$/);
-      for (const l of lines.filter((x) => x.includes('.completedAt:'))) expect(l).toMatch(/^match (ub|lb)-/);
     });
   }
 });

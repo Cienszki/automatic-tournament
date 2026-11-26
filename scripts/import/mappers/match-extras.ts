@@ -17,7 +17,7 @@ export function mapMatchExtras(state: MapState, docs: readonly Doc[], match: Row
     // A bracket match and its mirror can both carry the request; the later one is kept.
     requests.sort((a, b) => (a.createdAt as Date).getTime() - (b.createdAt as Date).getTime());
     if (requests.length > 1 && JSON.stringify(requests[0]) !== JSON.stringify(requests[1])) {
-      state.ctx.finding({ kind: 'matches', code: 'conflict', reason: 'the bracket match and its mirror carry different reschedule requests; the later one is kept', ref: String(match.id) });
+      state.ctx.finding({ kind: 'matches', code: 'conflict', reason: 'the bracket match and its mirror carry different reschedule requests; the later one is kept', ref: String(match.id), about: { matchId: String(match.id) } });
     }
     state.rows.add(s.rescheduleRequests, requests[requests.length - 1]);
   }

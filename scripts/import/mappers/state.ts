@@ -4,6 +4,7 @@
 
 import type { ZodTypeAny, z } from 'zod';
 import type { ImportContext } from '../context';
+import { CorrectionLog, OWNER_CORRECTIONS, type Correction } from '../corrections';
 import type { RowSet } from '../rows';
 import type { Capture, GlobalCapture } from '../source';
 
@@ -22,6 +23,8 @@ export interface RegistrationInfo {
 
 export interface MapOptions {
   anonymize: boolean;
+  /** The owner corrections to apply; owner-corrections.json when not given (tests pass their own). */
+  corrections?: readonly Correction[];
 }
 
 export interface MapState {
@@ -45,8 +48,12 @@ export interface MapState {
   registrations: Map<string, RegistrationInfo>;
   /** Games per match (real and forfeited). */
   gameCounts: Map<string, number>;
-  /** Match id → old game document id → new game id. */
+  /** Match id the game document is stored under → old game document id → new game id. */
   gameIds: Map<string, Map<string, string>>;
+  /** The owner corrections of this tournament and what became of each. */
+  corrections: CorrectionLog;
+  /** Match rows as the source had them, before an owner correction changed them (for the standings check). */
+  matchesBefore: Map<string, Record<string, unknown>>;
 }
 
 export function newMapState(base: Pick<MapState, 'capture' | 'global' | 'ctx' | 'rows' | 'options' | 'slugToId'>): MapState {
@@ -63,6 +70,8 @@ export function newMapState(base: Pick<MapState, 'capture' | 'global' | 'ctx' | 
     registrations: new Map(),
     gameCounts: new Map(),
     gameIds: new Map(),
+    corrections: CorrectionLog.forTournament(base.options.corrections ?? OWNER_CORRECTIONS, base.capture.slug),
+    matchesBefore: new Map(),
   };
 }
 

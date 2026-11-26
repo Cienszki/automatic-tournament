@@ -129,6 +129,11 @@ function rosterSteamId(state: MapState, doc: Doc, confident: Map<string, string>
     const taken = (id: string) => confident.has(id) && confident.get(id) !== teamId;
     const by32 = s32 === s64 ? s64 : s32 === sid ? sid : null;
     const chosen = by32 ?? (taken(s64) && !taken(sid) ? sid : s64);
+    const owner = state.corrections.of('roster-steam').find((c) => c.memberId === doc.id && c.teamId === teamId && (c.steamId64 === s64 || c.steamId64 === sid));
+    if (owner) {
+      state.corrections.applied(owner, owner.steamId64 === chosen ? `the import's choice ${chosen} confirmed` : `account ${chosen} → ${owner.steamId64}`);
+      return owner.steamId64;
+    }
     state.ctx.finding({
       kind: 'teams.players', code: 'conflict',
       reason: 'steamId and steamId64 differ: the id that steamId32 agrees with is used (owner to confirm)',
