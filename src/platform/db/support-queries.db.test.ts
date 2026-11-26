@@ -230,13 +230,24 @@ describe('player-by-nickname', () => {
 });
 
 describe('player-by-steam-id', () => {
-  it('gives the same rows for the 64-bit id, the 32-bit id and a [U:1:...] id', async () => {
+  it('gives the same rows for every form of his Steam id', async () => {
     const long = await run('player-by-steam-id', { steam_id: OBSTACLE.steam64 });
-    const short = await run('player-by-steam-id', { steam_id: OBSTACLE.steam32 });
-    const bracketed = await run('player-by-steam-id', { steam_id: `[U:1:${OBSTACLE.steam32}]` });
     expect(long.rows.length).toBeGreaterThan(5);
-    expect(short.rows).toEqual(long.rows);
-    expect(bracketed.rows).toEqual(long.rows);
+    const forms = [
+      OBSTACLE.steam32, `[U:1:${OBSTACLE.steam32}]`, 'STEAM_0:0:68002503', 'STEAM_1:0:68002503',
+      `https://www.opendota.com/players/${OBSTACLE.steam32}?date=30`,
+      `https://www.dotabuff.com/players/${OBSTACLE.steam32}/matches?date=week`,
+      `https://steamcommunity.com/profiles/${OBSTACLE.steam64}/?l=polish`,
+    ];
+    for (const form of forms) {
+      expect({ form, rows: (await run('player-by-steam-id', { steam_id: form })).rows }).toEqual({ form, rows: long.rows });
+    }
+  });
+
+  it('finds nothing, without an error, for a vanity link or text with no id', async () => {
+    for (const form of ['https://steamcommunity.com/id/Stredrwr/', 'idk']) {
+      expect((await run('player-by-steam-id', { steam_id: form })).rows).toEqual([]);
+    }
   });
 
   it('lists his roster entries and every game he played, each with its match', async () => {
@@ -258,7 +269,7 @@ describe('match-by-dota-id', () => {
       bracket_code: null, team_a: 'Sparta Orzechowo', team_b: 'Voodoo Monkey', date_time_pl: '2026-10-21 19:45', score: '0:2',
       match_id: '6zajMro0SSDCrqXjyLfU',
     };
-    for (const id of ['9055588439', 'https://www.opendota.com/matches/9055588439']) {
+    for (const id of ['9055588439', 'https://www.opendota.com/matches/9055588439?date=30', 'dotabuff.com/matches/9055588439/builds']) {
       const { rows } = await run('match-by-dota-id', { dota_match_id: id });
       expect(rows.map(matchOf)).toEqual([expected]);
       expect(rows.map((r) => [r.game, r.game_winner])).toEqual([[1, 'Voodoo Monkey']]);

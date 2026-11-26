@@ -11,8 +11,10 @@
 --
 -- Matching: names and nicknames match a part of the name, ignoring case and Polish letters
 -- ("na pale" finds "Na Pałę Gaming"). A team tag must match whole (case ignored). Steam ids may
--- be given in either form, 64-bit (76561198096270734) or 32-bit (136005006), or as a profile link
--- or "[U:1:136005006]": the last run of digits counts.
+-- be given in either form, 64-bit (76561198096270734) or 32-bit (136005006), or as
+-- "[U:1:136005006]", "STEAM_0:0:68002503", or a steamcommunity.com/profiles/, OpenDota or
+-- Dotabuff /players/ link. A vanity link (steamcommunity.com/id/<name>) does not work and finds
+-- nothing: search by nickname instead. A Dota match id may be a number or a /matches/ link.
 --
 -- A row that is a match shows: tournament and its slug, the stage, the group or bracket side and
 -- round, the bracket code, the two teams, the date and time in Polish time, the score ("walkower"
@@ -281,7 +283,15 @@ WITH params AS (SELECT '76561198096270734' AS steam_id),
 player AS (
   SELECT (CASE WHEN n < 76561197960265728 THEN n + 76561197960265728 ELSE n END)::text AS steam_id64,
          CASE WHEN n < 76561197960265728 THEN n ELSE n - 76561197960265728 END AS steam_id32
-  FROM (SELECT substring(trim(steam_id) FROM '(\d+)\D*$')::bigint AS n FROM params) x
+  -- The first form that fits: a Steam64 anywhere, [U:1:n], a /profiles/ or /players/ link,
+  -- STEAM_X:Y:Z (32-bit = 2Z + Y), a bare number. A vanity link (/id/name) gives no id.
+  FROM (SELECT coalesce(
+          substring(s FROM '7656119\d{10}')::bigint,
+          substring(s FROM 'U:1:(\d+)')::bigint,
+          substring(s FROM '/(?:profiles|players)/(\d+)')::bigint,
+          substring(s FROM 'STEAM_\d:[01]:(\d+)')::bigint * 2 + substring(s FROM 'STEAM_\d:([01]):\d+')::bigint,
+          substring(s FROM '^(\d+)$')::bigint) AS n
+        FROM (SELECT trim(steam_id) AS s FROM params) i) x
 ),
 match_rows AS (
   SELECT
@@ -379,7 +389,11 @@ ORDER BY coalesce(t.starts_at, t.created_at) DESC, e.sort, coalesce(m.at, e.at) 
 -- name: match-by-dota-id
 -- The match a Dota match id belongs to (a number, or an OpenDota or Dotabuff link), with that game.
 WITH params AS (SELECT '9055588439' AS dota_match_id),
-p AS (SELECT substring(trim(dota_match_id) FROM '(\d+)\D*$')::bigint AS id FROM params),
+-- A /matches/ link (any query string after it is ignored), else a bare number.
+p AS (
+  SELECT coalesce(substring(s FROM '/matches/(\d+)'), substring(s FROM '^(\d+)$'))::bigint AS id
+  FROM (SELECT trim(dota_match_id) AS s FROM params) i
+),
 match_rows AS (
   SELECT
     t.name AS tournament,
