@@ -708,7 +708,7 @@ These follow the same patterns and need no versions.
 - **Errors** say what happened and what to do, in the organizer's words, where the action was taken: "Ten adres jest już zajęty", not "Błąd 409". An unexpected failure says so, keeps what was typed, and is reported to error monitoring (ADR-13) with nothing for the organizer to copy.
 - **Empty areas** show what will be there or the next event, in one line. They never show an illustration or a paragraph of help.
 - **Phone.** Przegląd, Mecze, the match page and Drużyny must work fully at 390 px, because referees and organizers act on match evenings from a phone. Format and Wygląd are built for a wide screen and must still fit and be usable at 390 px (stacked, preview on a second tab).
-- **Language.** The panel's copy goes through the one translation system (WP-29) from the start, in the six languages of decision 18 (Polish first while building; all six at the public launch). Whose language the panel follows is `STATUS.md` question 45.
+- **Language.** The panel's copy goes through the one translation system (WP-29) from the start, in the six languages of decision 18 (Polish first while building; all six at the public launch). The panel follows the signed-in person's language; the public site has the tournament's main language plus the ones the organizer turns on in Ustawienia, Podstawy (owner, question 45).
 - **Roles** come from `authorize` (ADR-06). A person never sees a control they may not use; nothing is shown disabled for lack of permission.
 
 ## 6. Customization
