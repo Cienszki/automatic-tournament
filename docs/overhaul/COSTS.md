@@ -6,12 +6,12 @@ Written on 2026-11-13 by Fable, for the owner. It follows the decisions in `ARCH
 
 ## 1. What is paid today
 
-I cannot see the bills. Please fill in the last column once; it turns the estimates below into real differences.
+I cannot see the bills. The owner's estimate (2026-11-26, `STATUS.md` question 17): about 20 zł a month for Firebase while a tournament is running, "not sure", plus the Railway subscription. The other rows are unknown and small.
 
 | Service | Used for | Plan, as far as the code shows | Your monthly cost |
 |---|---|---|---|
-| Firebase (project `tournament-tracker-f35tb`) | hosting on Cloud Run, Firestore, sign-in, files | Blaze, pay per use | ? |
-| Railway | the tournament bot (one container) | Hobby is $5 including $5 of usage | ? |
+| Firebase (project `tournament-tracker-f35tb`) | hosting on Cloud Run, Firestore, sign-in, files | Blaze, pay per use | about 20 zł a month while a tournament runs (owner's estimate) |
+| Railway | the tournament bot (one container) | Hobby is $5 including $5 of usage | the subscription (owner) |
 | Vercel | the community site, which owns the domain | Hobby (free) or Pro | ? |
 | Bunny | hero videos | pay per use | ? |
 | Domain `dota2inhouse.pl` | | yearly | ? |
