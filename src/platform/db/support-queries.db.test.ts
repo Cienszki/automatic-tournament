@@ -28,6 +28,19 @@ interface Result { columns: string[]; rows: Row[] }
 
 const PARAMS_LINE = /^WITH params AS \(SELECT (.*)\),$/m;
 
+/** Words a lookup never needs: a write, a session or lock change, or a call that acts on the server. */
+const FORBIDDEN = [
+  'INSERT', 'UPDATE', 'DELETE', 'ALTER', 'DROP', 'TRUNCATE', 'CREATE', 'SET', 'COPY', 'GRANT', 'REVOKE', 'MERGE',
+  'CALL', 'DO', 'LOCK', 'INTO', 'nextval', 'setval', 'set_config', 'pg_advisory\\w*', 'pg_terminate_backend',
+  'pg_cancel_backend', 'dblink',
+];
+const FORBIDDEN_WORD = new RegExp(`(?<![\\w$])(?:${FORBIDDEN.join('|')})(?![\\w$])`, 'gi');
+/** The forbidden words in SQL code, outside comments, string literals and quoted identifiers. */
+const forbiddenIn = (sql: string) => sql.replace(/--[^\n]*|'(?:[^']|'')*'|"(?:[^"]|"")*"/g, ' ').match(FORBIDDEN_WORD);
+/** How a query keeps a day: the Polish calendar day of the match's time. */
+const DAY_FILTER = "(m.at AT TIME ZONE 'Europe/Warsaw')::date";
+const PDL = 'iqsu1EY1Bj7zAeRYjTkj';
+
 function parseQueries(text: string): Query[] {
   return text.split(/^(?=-- name: )/m).slice(1).map((sql) => {
     const name = /^-- name: (\S+)/.exec(sql)?.[1] ?? '';
@@ -77,6 +90,18 @@ async function runReadOnly(sql: string): Promise<Result> {
 
 const run = (name: string, values: Record<string, Value>): Promise<Result> => runReadOnly(withParams(byName(name), values));
 
+/** A query run after adding rows the fixtures lack; everything is rolled back afterwards. */
+async function runWith(setup: string, name: string, values: Record<string, Value>): Promise<Result> {
+  await t.client.exec('BEGIN');
+  try {
+    await t.client.exec(setup);
+    const r = await t.client.query<Row>(withParams(byName(name), values));
+    return { columns: r.fields.map((f) => f.name), rows: r.rows };
+  } finally {
+    await t.client.exec('ROLLBACK');
+  }
+}
+
 /** The match fields of a row, for comparing with what support expects to see. */
 const matchOf = (row: Row) => Object.fromEntries([...MATCH_COLUMNS, 'match_id'].map((c) => [c, row[c]]));
 
@@ -100,6 +125,8 @@ describe('the file', () => {
     expect(header).toMatch(/psql/);
     expect(header).toMatch(/only reads/);
     expect(header).toMatch(/64-bit.*32-bit/s);
+    expect(header).toMatch(/permission denied/);
+    expect(header).toMatch(/\\encoding UTF8/);
   });
 
   it('starts every query with a params line that the user edits', () => {
@@ -109,11 +136,14 @@ describe('the file', () => {
     }
   });
 
-  it('has no statement that writes', () => {
-    for (const q of queries) {
-      const code = q.sql.replace(/--.*$/gm, '');
-      expect({ query: q.name, writes: code.match(/\b(INSERT|UPDATE|DELETE|ALTER|DROP|TRUNCATE|CREATE)\b/gi) })
-        .toEqual({ query: q.name, writes: null });
+  it('has no word that writes or acts on the server, outside comments and strings', () => {
+    for (const q of queries) expect({ query: q.name, found: forbiddenIn(q.sql) }).toEqual({ query: q.name, found: null });
+  });
+
+  it('spots those words as whole words in code, and only there', () => {
+    expect(forbiddenIn(`SELECT 'do', "into", team_set, offset_x -- update\nFROM t`)).toBeNull();
+    for (const sql of ['UPDATE t SET a = 1', "SELECT set_config('a', 'b', false)", 'SELECT pg_advisory_lock(1)', 'do $$ begin end $$', 'select x into y']) {
+      expect({ sql, found: forbiddenIn(sql) }).not.toEqual({ sql, found: null });
     }
   });
 
@@ -136,6 +166,14 @@ describe('running the queries', () => {
       expect({ query: q.name, found: r.rows.length > 0 }).toEqual({ query: q.name, found: true });
       if (process.env.PRINT_SUPPORT_ROWS) console.info(q.name, r.rows[0]);
     }
+  });
+
+  it('keeps a day by Polish time, across midnight UTC and both clock changes', async () => {
+    for (const name of ['match-by-teams', 'matches-on-day']) expect(byName(name).sql).toContain(`${DAY_FILTER} = p.day`);
+    const { rows } = await t.client.query<{ day: string }>(`SELECT ${DAY_FILTER}::text AS day FROM (VALUES
+      (timestamptz '2026-03-28 23:30:00Z'), (timestamptz '2026-06-01 22:30:00Z'),
+      (timestamptz '2026-11-04 22:59:00Z'), (timestamptz '2026-11-04 23:00:00Z')) m(at)`);
+    expect(rows.map((r) => r.day)).toEqual(['2026-03-29', '2026-06-02', '2026-11-04', '2026-11-05']);
   });
 
   it('prints the match fields on every match row, with the match id last', async () => {
@@ -178,6 +216,27 @@ describe('match-by-teams', () => {
     }
   });
 
+  it('accepts a whole tag for either team', async () => {
+    const { rows } = await run('match-by-teams', { team_a: 'BJ', team_b: 'bocian', day: null });
+    expect(rows.map(matchOf)).toContainEqual(bociarniaDerby);
+    expect((await run('match-by-teams', { team_a: 'Bociarnia', team_b: 'bj', day: null })).rows.map(matchOf)).toContainEqual(bociarniaDerby);
+  });
+
+  it('marks a date taken from the first game', async () => {
+    const { rows } = await run('match-by-teams', { team_a: 'houndgaming', team_b: 'mid diff', day: null });
+    expect(rows.map((r) => [r.group_round, r.date_time_pl, r.score])).toContainEqual(['Grupa A, runda 1', '2026-06-24 22:03 (1. gra)', '2:0 z walkowerem w grach (oddaje mid diff)']);
+  });
+
+  it('says zakończony, bez wyniku for a finished match with no score, and names its kind in Polish', async () => {
+    const setup = `INSERT INTO app.matches (tournament_id, id, stage_id, group_id, round, kind, team_a_id, team_b_id, best_of, status, scheduled_at)
+      SELECT '${PDL}', 'support-no-score', 'qualifier', 'swiss', 4, 'showmatch', a.id, b.id, 3, 'completed', '2026-12-01T19:00:00Z'
+        FROM app.teams a JOIN app.teams b ON b.tournament_id = a.tournament_id AND b.name = 'KS Bystra'
+       WHERE a.tournament_id = '${PDL}' AND a.name = 'Statek'`;
+    const { rows } = await runWith(setup, 'match-by-teams', { team_a: 'statek', team_b: 'bystra', day: '2026-12-01' });
+    expect(rows.map((r) => [r.group_round, r.date_time_pl, r.score, r.match_id]))
+      .toEqual([['Swiss, runda 4, mecz pokazowy', '2026-12-01 20:00', 'zakończony, bez wyniku', 'support-no-score']]);
+  });
+
   it('says walkower for a forfeit and nierozegrany for a match not played yet', async () => {
     const forfeit = await run('match-by-teams', { team_a: 'cucaracha', team_b: 'syzyf', day: null });
     expect(forfeit.rows.map((r) => [r.group_round, r.score])).toEqual([['Grupa A, runda 1', '0:2 walkower (oddaje La Cucaracha)']]);
@@ -191,8 +250,12 @@ describe('matches-of-team', () => {
     const byTeamName = await run('matches-of-team', { team: 'bociarnia junior' });
     expect(byTeamName.rows.map(matchOf)).toContainEqual(bociarniaDerby);
     expect(byTeamName.rows.map(matchOf)).toContainEqual(expect.objectContaining({ group_round: 'Grupa A, runda 1', team_a: 'Czosnek', team_b: 'Bociarnia Junior', date_time_pl: '2026-06-12 20:45', score: '2:0' }));
-    const dates = byTeamName.rows.map((r) => String(r.date_time_pl));
+    // Compare the time only: a guessed date carries a note after it, and "bez terminu" comes last.
+    const shown = byTeamName.rows.map((r) => String(r.date_time_pl));
+    const dates = shown.filter((d) => d !== 'bez terminu').map((d) => d.slice(0, 16));
     expect(dates).toEqual([...dates].sort().reverse());
+    expect(shown.slice(dates.length).every((d) => d === 'bez terminu')).toBe(true);
+    expect(shown).toContain('2026-06-12 22:26 (wpis wyniku)');
     const byTag = await run('matches-of-team', { team: 'bj' });
     expect(byTag.rows.filter((r) => r.tournament_slug === 'pdl-s2').map((r) => r.match_id))
       .toEqual(byTeamName.rows.filter((r) => r.tournament_slug === 'pdl-s2').map((r) => r.match_id));
@@ -257,6 +320,16 @@ describe('player-by-steam-id', () => {
     for (const form of forms) {
       expect({ form, rows: (await run('player-by-steam-id', { steam_id: form })).rows }).toEqual({ form, rows: long.rows });
     }
+  });
+
+  it('lists his stand-in registrations and the matches he coached, with the match', async () => {
+    const maruda = await run('player-by-steam-id', { steam_id: '76561198143191825' });
+    expect(maruda.rows.map((r) => [r.tournament_slug, r.entry, r.team, r.detail])).toContainEqual(['letnia', 'zgłoszony stand-in', null, 'verified']);
+    const setup = `INSERT INTO app.match_coaches (tournament_id, match_id, team_id, steam_id64, nickname)
+      SELECT '${PDL}', 'DZwQbEYOhwbAYrceDKNZ', id, '${OBSTACLE.steam64}', 'Obstacle' FROM app.teams WHERE tournament_id = '${PDL}' AND name = 'Bociarnia'`;
+    const { rows } = await runWith(setup, 'player-by-steam-id', { steam_id: OBSTACLE.steam32 });
+    const coach = rows.find((r) => r.entry === 'trener na mecz');
+    expect(coach && [coach.team, matchOf(coach)]).toEqual(['Bociarnia', bociarniaDerby]);
   });
 
   it('finds nothing, without an error, for a vanity link or text with no id', async () => {

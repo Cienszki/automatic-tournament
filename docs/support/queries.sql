@@ -1,11 +1,12 @@
 -- Support lookups: find a match, a team or a player when an organizer asks for help.
 --
 -- How to run: copy one block (from its "-- name:" line to its ";") into the Supabase SQL editor,
--- or into psql (`psql "$DATABASE_URL"`, then paste). Change only the values in the first line,
+-- or into psql (`psql "$DATABASE_URL"`, then paste; on Windows run `\encoding UTF8` first, or
+-- Polish letters in names do not match). Change only the values in the first line,
 -- `WITH params AS (SELECT ...)`; each block runs as it is. In psql you can wrap a block in
--- `BEGIN READ ONLY; ... ROLLBACK;` to make the database refuse any write. Run them as the
--- database owner (the SQL editor's `postgres` role): the tables have row-level security, so
--- another role may see no rows at all.
+-- `BEGIN READ ONLY; ... ROLLBACK;` to make the database refuse any write. Run them as the role
+-- that owns the tables (the one the migrations ran as; on Supabase the SQL editor's `postgres`
+-- role). Every other role has its rights on schema `app` revoked and gets "permission denied".
 --
 -- Every query only reads. None of them changes a row.
 --
@@ -23,11 +24,13 @@
 
 
 -- name: match-by-teams
--- A match between two teams, given in either order; optionally only on one day (Polish time).
+-- A match between two teams (part of a name, or the whole tag), in either order; optionally on one day (Polish time).
 WITH params AS (SELECT 'czosnek' AS team_a, 'hound' AS team_b, NULL::date AS day),
 p AS (
   SELECT translate(lower(trim(team_a)), 'ąćęłńóśźżĄĆĘŁŃÓŚŹŻ', 'acelnoszzacelnoszz') AS a,
          translate(lower(trim(team_b)), 'ąćęłńóśźżĄĆĘŁŃÓŚŹŻ', 'acelnoszzacelnoszz') AS b,
+         lower(trim(team_a)) AS a_tag,
+         lower(trim(team_b)) AS b_tag,
          day
   FROM params
 ),
@@ -83,10 +86,10 @@ match_rows AS (
 SELECT m.tournament, m.tournament_slug, m.stage, m.group_round, m.bracket_code, m.team_a, m.team_b,
        m.date_time_pl, m.score, m.match_id
 FROM match_rows m, p
-WHERE ((strpos(m.team_a_norm, p.a) > 0 AND strpos(m.team_b_norm, p.b) > 0)
-    OR (strpos(m.team_a_norm, p.b) > 0 AND strpos(m.team_b_norm, p.a) > 0))
+WHERE (((strpos(m.team_a_norm, p.a) > 0 OR m.team_a_tag = p.a_tag) AND (strpos(m.team_b_norm, p.b) > 0 OR m.team_b_tag = p.b_tag))
+    OR ((strpos(m.team_a_norm, p.b) > 0 OR m.team_a_tag = p.b_tag) AND (strpos(m.team_b_norm, p.a) > 0 OR m.team_b_tag = p.a_tag)))
   AND (p.day IS NULL OR (m.at AT TIME ZONE 'Europe/Warsaw')::date = p.day)
-ORDER BY m.at DESC NULLS LAST;
+ORDER BY m.at DESC NULLS LAST, m.tournament_slug, m.bracket_code NULLS LAST, m.match_id;
 
 
 -- name: matches-of-team
@@ -150,7 +153,7 @@ SELECT m.tournament, m.tournament_slug, m.stage, m.group_round, m.bracket_code, 
 FROM match_rows m, p
 WHERE strpos(m.team_a_norm, p.q) > 0 OR strpos(m.team_b_norm, p.q) > 0
    OR m.team_a_tag = p.tag OR m.team_b_tag = p.tag
-ORDER BY m.at DESC NULLS LAST;
+ORDER BY m.at DESC NULLS LAST, m.tournament_slug, m.bracket_code NULLS LAST, m.match_id;
 
 
 -- name: team-by-name
@@ -296,7 +299,7 @@ ORDER BY coalesce(t.starts_at, t.created_at) DESC, e.at DESC NULLS LAST, t.slug,
 
 
 -- name: player-by-steam-id
--- A player by Steam id (64-bit or 32-bit): roster entries, stand-in requests and every game played, each with its match.
+-- A player by Steam id (any form, see the header): roster, stand-in and coach entries and every game played, each with its match.
 WITH params AS (SELECT '76561198096270734' AS steam_id),
 player AS (
   SELECT (CASE WHEN n < 76561197960265728 THEN n + 76561197960265728 ELSE n END)::text AS steam_id64,
@@ -363,16 +366,22 @@ match_rows AS (
 entries AS (
   SELECT r.tournament_id, 1 AS sort, r.team_id,
          CASE r.kind WHEN 'substitute' THEN 'skład: rezerwowy' WHEN 'coach' THEN 'skład: trener' ELSE 'skład: gracz' END AS entry,
-         r.nickname, r.joined_at AS at, NULL AS match_id,
+         r.nickname, r.joined_at AS at, NULL AS match_id, NULL::smallint AS game_number,
          concat('od ', to_char(r.joined_at AT TIME ZONE 'Europe/Warsaw', 'YYYY-MM-DD'),
                 CASE WHEN r.left_at IS NOT NULL THEN ' do ' || to_char(r.left_at AT TIME ZONE 'Europe/Warsaw', 'YYYY-MM-DD') END) AS detail
     FROM app.team_members r JOIN player pl ON pl.steam_id64 = r.steam_id64
   UNION ALL
-  SELECT sr.tournament_id, 2, sr.team_id, 'stand-in', sr.standin_nickname, sr.created_at, sr.match_id,
+  SELECT sg.tournament_id, 2, NULL, 'zgłoszony stand-in', sg.nickname, sg.created_at, NULL, NULL, sg.status
+    FROM app.standin_registrations sg JOIN player pl ON pl.steam_id64 = sg.steam_id64
+  UNION ALL
+  SELECT sr.tournament_id, 3, sr.team_id, 'stand-in', sr.standin_nickname, sr.created_at, sr.match_id, NULL,
          concat(sr.status, CASE WHEN cardinality(sr.game_numbers) > 0 THEN ', gry ' || array_to_string(sr.game_numbers, ', ') END)
     FROM app.standin_requests sr JOIN player pl ON pl.steam_id64 = sr.standin_steam_id64
   UNION ALL
-  SELECT pf.tournament_id, 3, pf.team_id, 'gra', pp.nickname, gm.started_at, gm.match_id,
+  SELECT mc.tournament_id, 4, mc.team_id, 'trener na mecz', mc.nickname, mc.assigned_at, mc.match_id, NULL, NULL
+    FROM app.match_coaches mc JOIN player pl ON pl.steam_id64 = mc.steam_id64
+  UNION ALL
+  SELECT pf.tournament_id, 5, pf.team_id, 'gra', pp.nickname, gm.started_at, gm.match_id, gm.number,
          concat('gra ', gm.number, ', Dota ', gm.dota_match_id, ', hero ', pf.hero_id, ', ',
                 pf.kills, '/', pf.deaths, '/', pf.assists,
                 CASE CASE WHEN pf.team_id = gm.radiant_team_id THEN gm.radiant_win
@@ -401,7 +410,8 @@ CROSS JOIN player pl
 JOIN app.tournaments t ON t.id = e.tournament_id
 LEFT JOIN app.teams tm ON tm.tournament_id = e.tournament_id AND tm.id = e.team_id
 LEFT JOIN match_rows m ON m.tournament_id = e.tournament_id AND m.match_id = e.match_id
-ORDER BY coalesce(t.starts_at, t.created_at) DESC, e.sort, coalesce(m.at, e.at) DESC NULLS LAST;
+ORDER BY coalesce(t.starts_at, t.created_at) DESC, t.slug, e.sort, coalesce(m.at, e.at) DESC NULLS LAST,
+         e.match_id NULLS LAST, e.game_number NULLS LAST, tm.name NULLS LAST, e.entry, e.nickname;
 
 
 -- name: match-by-dota-id
@@ -475,7 +485,7 @@ JOIN p ON gm.dota_match_id = p.id
 JOIN match_rows m ON m.tournament_id = gm.tournament_id AND m.match_id = gm.match_id
 LEFT JOIN app.teams rt ON rt.tournament_id = gm.tournament_id AND rt.id = gm.radiant_team_id
 LEFT JOIN app.teams dt ON dt.tournament_id = gm.tournament_id AND dt.id = gm.dire_team_id
-ORDER BY m.at DESC NULLS LAST;
+ORDER BY m.at DESC NULLS LAST, m.tournament_slug, m.bracket_code NULLS LAST, m.match_id, gm.number;
 
 
 -- name: matches-on-day
@@ -541,4 +551,4 @@ FROM match_rows m, p
 WHERE (m.at AT TIME ZONE 'Europe/Warsaw')::date = p.day
   AND (p.slug IS NULL OR m.tournament_slug = p.slug
        OR strpos(translate(lower(m.tournament), 'ąćęłńóśźżĄĆĘŁŃÓŚŹŻ', 'acelnoszzacelnoszz'), p.q) > 0)
-ORDER BY m.at DESC NULLS LAST;
+ORDER BY m.at DESC NULLS LAST, m.tournament_slug, m.bracket_code NULLS LAST, m.match_id;
