@@ -1,8 +1,10 @@
 # WP-33: import of the four captured tournaments
 
-Run on 2026-11-23 from branch `wp/33-import`, into a local PGlite database (never staging, production or Firestore). The source is the WP-12 captures of 2026-11-13 (`letnia`, `pdl`, `pdl-s2`, `wiosenna` and `_global`), which are public reads only: the private collections (users, accounts, admins, bot configuration and the like) are not in them and wait for the owner's export.
+Run on 2026-11-23 from branch `wp/33-import`, into a local PGlite database (never staging, production or Firestore). The source is the WP-12 captures of 2026-11-13 (`letnia`, `pdl`, `pdl-s2`, `wiosenna` and `_global`), which are public reads only: the private collections (users, accounts, admins, bot configuration and the like) are not in them and wait for the owner's export. Re-run on 2026-11-26 from branch `wp/33b-owner-corrections` (WP-33b, below).
 
 **Result.** All four tournaments import with matching counts: for every tournament table, the rows the mappers produced equal the rows in the database after the run. A second run over the same database writes 0 rows. Letnia is in the same tables as the others, with id and slug `letnia`. Every source document is accounted for as mapped, merged, dropped by a rule, or not imported with a reason; nothing is dropped silently. The standings the new code computes (WP-13a's `computeStandings`, on the imported rows, with the ranking rules stored on each stage) equal every published table: the Swiss table of pdl-s2, the three divisions of PDL S1 and the two groups of Wiosenna. Letnia has no published table; its 26 group records equal a recount from the raw match documents, and its playoff seeding agrees with the computed group places.
+
+**WP-33b (2026-11-26, branch `wp/33b-owner-corrections`).** The owner's answers to STATUS.md question 43 are now data (`scripts/import/owner-corrections.json`, 21 corrections, checked by `scripts/import/corrections.ts`) and the import applies them on every run; the report lists each one with what it changed. Three rules changed with them: a game stored under two matches goes to the match scheduled nearest its start whose format is not already full (and a game stored under one match moves to the same two teams' match on its day, when its own match is on another day); a game's Radiant and Dire come from its players, the stored labels only when the players decide nothing; a bracket match's finish time comes from its mirror match when the bracket's result times are a bulk rewrite. Every finding about a match or a game names it as tournament, stage and round, the two teams, the date and the score, with the id in brackets. The run below is the WP-33b run: 8363 rows, then 0 (2 more than before: the stand-in request the Kildren correction adds, and the player row it renames, written once and filled once). Findings, counted the same way on both reports, before → after: letnia 16 → 12, pdl 72 → 65, pdl-s2 7 → 7, wiosenna 115 → 123 (−3 score mismatches, +11 notes that a bulk-rewritten bracket time was replaced by the mirror's).
 
 ## How it was run
 
@@ -24,10 +26,10 @@ Source documents in the capture, and the rows they became. Counts were also chec
 | teams | 26 → 26 | 24 → 24 | 12 → 12 | 22 → 22 |
 | roster documents → team_members | 130 → 130 | 120 → 125 (and 5 coaches from the team documents) | 60 → 60 | 110 → 110 |
 | matches (with bracket matches) → matches | 68 → 68 (24 bracket matches built from `playoffs/main-playoffs`, their match documents merged in as mirrors) | 84 → 84 | 17 → 17 | 121 + 15 → 125 (11 mirrors merged into their bracket match) |
-| games | 141 → 141 | 176 → 176 | 26 → 26 | 190 → 188 (2 games stored under two matches, kept once) |
+| games | 141 → 141 | 176 → 176 | 26 → 26 | 190 → 188 (2 games stored under two matches, each kept once, under the playoff match it was played in) |
 | performances | 1401 → 1401 | 1200 → 1200 | 240 → 240 | 1650 → 1630 (the 20 of those 2 duplicate games) |
 | stages / groups | 2 / 6 | 1 / 3 | 1 / 1 (Swiss) | 2 / 2 |
-| stand-in requests | 87 → 95 (split per pair) | 67 → 67 | 9 → 9 | 108 → 107 (1 for a match deleted in Firestore) |
+| stand-in requests | 87 → 95 (split per pair) | 67 → 68 (one added by an owner correction) | 9 → 9 | 108 → 107 (1 for a match deleted in Firestore) |
 | reschedule requests (from the match documents) | 1 | 37 | 5 | 88 |
 | rules sections / paragraphs | - | 15 / 98 | 15 / 124 | 17 / 130 |
 | other | 34 stand-in registrations, 1 announcement, 8 fantasy rounds, 780 fantasy lineup rows (156 round lineups), 39 pick'em | 5 announcements, 3 scrim slots, 12 match coaches | 1 scrim slot | 1 prize, 90 scrim slots, 15 pick'em |
@@ -39,36 +41,44 @@ Global tables after the run: 1 organization, 1 series, 344 players (320 of the 3
 | Tournament | Table | Compared with | Result |
 |---|---|---|---|
 | pdl-s2 | Swiss | published table (WP-12) | order and every value equal |
-| pdl | Elite, Challenger, Adept | published tables | order and every value equal |
-| wiosenna | Grupa A, Grupa B | published tables | order and every value equal; games won and lost not compared, because the old page shows 0:0 for every team |
+| pdl | Elite, Challenger, Adept | published tables | order and every value equal, except the game columns of Team Poland and Bociarnia in Elite, which the owner's best-of-five correction changes (14:2 and 11:5, published 13:1 and 10:4) |
+| wiosenna | Grupa A, Grupa B | published tables | Grupa A: order and every value equal. Grupa B: equal except where the owner's correction of 24 June (a 1:1 draw, not 1:2) changes it: Adaś, ile za tę Robotę? 13 points and fourth (published 14, second), Chrupek zamknij się 15 and second, Samci Savci third, and the Neustadtl values that follow. Games won and lost not compared, because the old page shows 0:0 for every team |
 | letnia | 6 groups | no published table exists | 26 of 26 group records (played, wins, draws, losses, points) equal a recount from the raw match documents. The 18 teams seeded into the playoff bracket sit where the computed places put them: every group winner and the second places of the two five-team groups in the upper bracket, the other second places and the third places of the five-team groups in the lower bracket, the third places of the four-team groups in the wildcard round. This includes the tied groups (three teams on 4 points in Grupa Chillowa, two on 3 in Grupa Afterowa). The standings stored on the old group documents differ for 23 of the 26 teams because an admin last recalculated them before the final group matches (every differing stored record counts fewer matches than were played) |
 
 ## Not imported, by reason
 
 - Derived data, dropped by rule (SCHEMA.md 3.2, 7.10): `playerStats`, `teamStats`, `stats`, `tournamentStats`, `performanceRankings`.
-- Wiosenna: 2 games stored under two matches (kept under the match whose series they fit) and their 20 performances; 1 stand-in request whose match no longer exists; 2 group documents that no team or match refers to.
+- Wiosenna: 2 games stored under two matches (each kept under the playoff match it was played in, on the owner's word and by date) and the 20 performances of their second copies; 1 stand-in request whose match no longer exists; 2 group documents that no team or match refers to.
 - Letnia: 1 game's `uploadedBy` is `admin`, not a user id, and is left empty.
 - Private collections, denied to the public capture: per tournament `admins`, `casters`, `config`, `fantasyRounds`, `skippedGames`, `teams.transfers`, `unparsedMatches`, and Letnia's `blockedGames`; globally `users`, `accounts`, `admins`, `tournamentCreators`, `discordLinks`, `steamLinks`. The mappers for them are tested on made-up documents (`scripts/import/__tests__/private.db.test.ts`); they run when the owner's export (`scripts/tools/export-firestore.mjs`) exists. A public capture read after the owner's export leaves what only that export can see as it is (`scripts/import/private-sources.ts`, tested in `public-rerun.db.test.ts`): the bot settings column, tournament admins and casters, the rows and joining dates from transfers, skipped games, fantasy rounds and lineups are neither overwritten nor counted stale, and `--prune` refuses any capture with a denied collection.
 - No field was found that no mapper names (`unknown-field` findings: none in any tournament). The check covers top-level fields only. The nested objects were checked by hand: a match's `teamA`/`teamB`, `rescheduleRequest`, `forfeit`, `coachInfo` and `standinInfo`, and the tournament's `fantasy`, `pickem`, `registration`, `teams`, `matches`, `standins`, `lobbySettings`, `discordServer` and `navbarSponsor`. Every key in them is mapped or is a copy of a value mapped elsewhere (`rescheduleRequest.requestedByName` is a copy of a name).
 
 ## Open for the owner
 
-- The 4 PDL S1 roster documents whose `steamId` and `steamId64` disagree: the import uses the id that `steamId32` agrees with (three times `steamId64`, once `steamId`, whose `steamId64` belongs to a player of another team). The unredacted report lists them.
-- Six completed matches whose stored score is not the count of their imported games' winners. The import keeps the stored score; each needs a decision:
-  - Wiosenna group match `HVwwRd87bSFsCzkph25p`: stored 1:2 for Adaś, but its two games are 1:1. Probably a draw in a best of two, inflated by a playoff game of the same two teams that was also stored under it (the import keeps that game under the playoff match). The live site shows the same wrong score.
-  - Wiosenna `cxozIoYGO0ViB55POI36`: stored 2:1, games 2:0.
-  - Wiosenna bracket match `ub-r1-p3`: stored 2:1, games 2:0.
-  - Letnia `3nsXHgbRZNL2Bo3w6R18`: stored 2:0, games 1:0.
-  - PDL S1 `0AxWzOilkXqKGYV6Dqgn`: stored 2:0, games 1:1.
-  - PDL S1 `z8jaivAAINvlU1Wqk78x`: stored 2:0, four games 3:1.
-- Letnia's lower-bracket round-one matches `lb-r1-m1` to `lb-r1-m4`: their match documents say `bo1`, but each has two games and a 2:0 score (0:2 in `lb-r1-m2`); these are the 4 "more games than its series length" findings of Letnia. Were they best of three? The import keeps best of one and both games.
+**Applied (WP-33b).** Every point of STATUS.md question 43 is an owner correction the import applies; all 21 matched their rows on the full run (`scripts/import/__tests__/full-run.db.test.ts`). The six "stored score disagrees", the four Steam-id and the four Letnia "more games than its series length" findings of the first run are gone; each is an "Applied owner correction" line in its tournament's section below.
+
+- Wiosenna Furia, Grupa B, 24 June 2026, Chrupek zamknij się vs Adaś, ile za tę Robotę? (`HVwwRd87bSFsCzkph25p`): stored 1:1, a draw; game 8910469903 (23 July, 23:13) is game 3 of the upper-bracket round 3 match of the same teams (`ub-r3-p1`, 1:2), not of this one.
+- Wiosenna Furia, Grupa B, 30 June 2026, Puck It! vs Adaś, ile za tę Robotę? (`cxozIoYGO0ViB55POI36`): stored 2:0 for Puck It!; game 8904592446 (19 July, 21:57) is game 3 of the upper-bracket round 2 match (`ub-r2-p2`, 2:1 for Adaś).
+- Wiosenna Furia, upper bracket round 1 (U1C), 14 July 2026, Adaś, ile za tę Robotę? vs Dwa Razy I Do Bazy (`ub-r1-p3`): stored 2:0.
+- Letnia Batalia, lower bracket round 1, 7 to 10 September 2025: Na Pałę Gaming vs Klałn Fiesta 2:0 (`KdDxXJ3e06yYYzED7cQ2`, lb-r1-m1), Meld z Zaskoczenia vs Sparta Sklejka Orzechowo 0:2 (`qDpsM6eYXHeVcbxcNg63`, lb-r1-m2), divine 640x480 vs winagrdium leviosaaa 2:0 (`crcyKVJNpznmURLUcD2V`, lb-r1-m3), Psychiatryk vs Skorupiaki 2:0 (`e6jRYDOg61Z4duIBnr9B`, lb-r1-m4): stored as best of three.
+- PDL S1, Elite, matchday 4, 9 March 2026, Bociarnia Junior vs Dream Stack (`0AxWzOilkXqKGYV6Dqgn`): 2:0 for Bociarnia Junior as the organizer's decision, stored as a series forfeit against Dream Stack with the reason "Dream Stack played with a stand-in who was not approved"; both played games (1:1) stay and count in the stats. The table counts it 2:0.
+- PDL S1, Elite, matchday 7, 1 April 2026, Team Poland vs Bociarnia (`z8jaivAAINvlU1Wqk78x`): best of five, 3:1. The win is 2 points; the game columns of the two teams now show one game more each than the published table (14:2 and 11:5 against 13:1 and 10:4), listed as owner corrections under Elite below.
+- PDL S1, account 313683754 is Kildren (also Przepraszam): the player row is named Kildren (one row per Steam account, so Wiosenna Furia, where he played for Adaś, ile za tę Robotę?, names him the same way); his Bociarnia Junior roster entry is a former member (left 2 March 2026, when Bociarnia Junior first asked for a stand-in in his place); in Kotwica Gaming's matches of 13, 25 and 31 March the approved stand-in requests the captain filed for "Przepraszam" in Joxxi's place now name Kildren, and his games there were already stored on his own account with Kotwica Gaming as their team, never Joxxi's. Joxxi keeps 114011482. godspell, Drit and Błyskawica: the import's choice is confirmed, no change.
+- Letnia Batalia, Grupa Foczek, 25 August 2025, Ja w sprawie pumy 2:0 Kępski Kryształ (`3nsXHgbRZNL2Bo3w6R18`): game 2 (8433022489) takes its teams from its players (Kępski Kryształ Radiant, Ja w sprawie pumy Dire), so the stored score and the games agree; the disagreement with its labels is one finding under Letnia.
+
+**Still for the owner to decide**, each with a recommendation:
+
+1. **Wiosenna Furia, Grupa B changes order.** With the 24 June match a 1:1 draw, Adaś, ile za tę Robotę? has 13 points, not 14, and falls from second to fourth; Chrupek zamknij się (15) goes from third to second and Samci Savci from fourth to third. The playoff bracket was seeded from the old table. Recommendation: keep the corrected table (it is what was played) and leave the bracket as it was played; the new platform shows the corrected table.
+2. **Kildren also played games the answer did not name.** OpenDota confirms account 313683754 in four Bociarnia Junior games (19 February 2026 vs PD2IH Team, 1:1, and 25 February vs Bociarnia, 0:2, both on the Bociarnia Junior side), so "a former member with no games" is not what the games show; the import keeps those games as his for Bociarnia Junior, from before he left. He also played both games of Kotwica Gaming vs Voodoo Monkey, 6 March 2026 (0:2), with no stand-in request; WP-33b treats it like the three named matches and adds an approved stand-in request for it (`pdl-kotwica-kildren-voodoo`, marked "owner to confirm"). Recommendation: confirm both; to undo the second, delete that entry from the data file.
+3. **Kotwica Gaming's requests for Kildren were approved.** The three matches the answer names already had approved stand-in requests (for "Przepraszam" replacing Joxxi), so he was not unregistered in the import's sense; nothing else changes. Recommendation: none needed; noted so the lineup check (WP-14) does not flag these games.
+4. **The finish time of the 24 June match.** Its stored completion time (23 July, 23:00) is when the stray playoff game was attached, not when it ended. Recommendation: add `completedAt` to the match correction (the end of its second game, on 24 June) in a later change; nothing reads it for the tables today.
 - Run the private export (`node scripts/tools/export-firestore.mjs --out data-exports/private` with the service account) and import it, to fill the user stubs, links, roles, bot settings, casters and transfers.
 
 ---
 
 ## Full report (redacted)
 
-4 tournaments. Rows written: 8361.
+4 tournaments. Rows written: 8363.
 
 ### Global collections
 
@@ -259,16 +269,26 @@ Why documents were dropped or not imported:
 | app.fantasy_lineups | 780 | 780 | 780 | 0 | 0 | 0 |
 | app.pickem_picks | 39 | 39 | 39 | 0 | 0 | 0 |
 
+#### Owner corrections
+
+4 of 4 applied (scripts/import/owner-corrections.json).
+
+- Applied owner correction: Letnia 2025, lower bracket round 1 (lb-r1-m1), 7 September 2025, Na Pałę Gaming vs Klałn Fiesta, 2:0. Best of 1 → 3. Two full games with the same winner; the match document says bo1, but the round was played as best of three. (`letnia-lb1-m1-bo3`; owner, 2026-11-23, STATUS.md question 43)
+- Applied owner correction: Letnia 2025, lower bracket round 1 (lb-r1-m2), 8 September 2025, Meld z Zaskoczenia vs Sparta Sklejka Orzechowo, 0:2. Best of 1 → 3. Two full games with the same winner; the match document says bo1, but the round was played as best of three. (`letnia-lb1-m2-bo3`; owner, 2026-11-23, STATUS.md question 43)
+- Applied owner correction: Letnia 2025, lower bracket round 1 (lb-r1-m3), 10 September 2025, divine 640x480 vs winagrdium leviosaaa, 2:0. Best of 1 → 3. Two full games with the same winner; the match document says bo1, but the round was played as best of three. (`letnia-lb1-m3-bo3`; owner, 2026-11-23, STATUS.md question 43)
+- Applied owner correction: Letnia 2025, lower bracket round 1 (lb-r1-m4), 10 September 2025, Psychiatryk vs Skorupiaki, 2:0. Best of 1 → 3. Two full games with the same winner; the match document says bo1, but the round was played as best of three. (`letnia-lb1-m4-bo3`; owner, 2026-11-23, STATUS.md question 43)
+
 #### Findings
 
 Not imported (a document or a value):
 
 - matches.games: a user reference is not a Firebase user id; left empty (1)
+  - Letnia Batalia, Grupa Foczek, 23 August 2025, Meld z Zaskoczenia vs Ja w sprawie pumy, 0:2, game 1 (Dota 8430102930; match 7VdHDXHUb0uSjOOiaD9r)
 
 Conflicts in the old data, and how they were settled:
 
-- matches: the stored score disagrees with the imported games; the stored score is kept (owner to confirm) (1)
-- matches.games: the match has more games than its series length; every game is imported (4)
+- matches.games: the players of a game are of other teams than its stored labels; the teams are taken from the players (1)
+  - Letnia Batalia, Grupa Foczek, 25 August 2025, Ja w sprawie pumy vs Kępski Kryształ, 2:0, game 2 (Dota 8433022489 at 18:57; match 3nsXHgbRZNL2Bo3w6R18)
 
 Decisions taken where the old data was ambiguous:
 
@@ -276,7 +296,14 @@ Decisions taken where the old data was ambiguous:
 - tournaments: "endDate" has no time zone and was read as Warsaw time (1)
 - tournaments: fantasy_preset left empty: WP-16 checks the old points against the presets (SCHEMA.md question 10); the old numbers are in features.fantasy.legacyScoring (1)
 - matches.games.performances: a performance without teamId takes the team of its side of the game (2)
+  - Letnia Batalia, Grupa Foczek, 23 August 2025, Meld z Zaskoczenia vs Ja w sprawie pumy, 0:2, game 1 (Dota 8430102930; match 7VdHDXHUb0uSjOOiaD9r)
+  - Letnia Batalia, Grupa Afterowa, 21 August 2025, gwiazda vs CINCO PERROS, 0:2, game 1 (Dota 8427125277; match o2H30RJvnYByDcM2dINB)
 - matches.games.performances: a performance without teamId takes the team whose roster has the player (5)
+  - Letnia Batalia, Grupa Afterowa, 18 August 2025, Pora na Przygode vs CINCO PERROS, 0:2, game 2 (Dota 8423006415 at 21:58; match KWrwrjEWK7yL7r6GOipp)
+  - Letnia Batalia, Grupa Afterowa, 18 August 2025, Pora na Przygode vs CINCO PERROS, 0:2, game 2 (Dota 8423006415 at 21:58; match KWrwrjEWK7yL7r6GOipp)
+  - Letnia Batalia, Grupa Afterowa, 18 August 2025, Pora na Przygode vs CINCO PERROS, 0:2, game 2 (Dota 8423006415 at 21:58; match KWrwrjEWK7yL7r6GOipp)
+  - Letnia Batalia, Grupa Afterowa, 18 August 2025, Pora na Przygode vs CINCO PERROS, 0:2, game 2 (Dota 8423006415 at 21:58; match KWrwrjEWK7yL7r6GOipp)
+  - Letnia Batalia, Grupa Afterowa, 18 August 2025, Pora na Przygode vs CINCO PERROS, 0:2, game 2 (Dota 8423006415 at 21:58; match KWrwrjEWK7yL7r6GOipp)
 
 #### Standings
 
@@ -412,7 +439,7 @@ Why documents were dropped or not imported:
 | app.users | 25 | global | 12 | 0 | 0 | 0 |
 | app.organization_members | 1 | global | 0 | 0 | 0 | 0 |
 | app.series | 1 | global | 0 | 0 | 0 | 0 |
-| app.players | 148 | global | 75 | 61 | 0 | 0 |
+| app.players | 149 | global | 75 | 62 | 0 | 0 |
 | app.tournaments | 1 | 1 | 1 | 0 | 0 | 0 |
 | app.stages | 1 | 1 | 1 | 0 | 0 | 0 |
 | app.groups | 3 | 3 | 3 | 0 | 0 | 0 |
@@ -423,7 +450,7 @@ Why documents were dropped or not imported:
 | app.games | 176 | 176 | 176 | 0 | 0 | 0 |
 | app.performances | 1200 | 1200 | 1200 | 0 | 0 | 0 |
 | app.match_coaches | 12 | 12 | 12 | 0 | 0 | 0 |
-| app.standin_requests | 67 | 67 | 67 | 0 | 0 | 0 |
+| app.standin_requests | 68 | 68 | 68 | 0 | 0 | 0 |
 | app.reschedule_requests | 37 | 37 | 37 | 0 | 0 | 0 |
 | app.announcements | 5 | 5 | 5 | 0 | 0 | 0 |
 | app.rule_sections | 15 | 15 | 15 | 0 | 0 | 0 |
@@ -431,13 +458,31 @@ Why documents were dropped or not imported:
 | app.scrim_slots | 3 | 3 | 3 | 0 | 0 | 0 |
 | app.audit_log | 30 | global | 30 | 0 | 0 | 0 |
 
+#### Owner corrections
+
+12 of 12 applied (scripts/import/owner-corrections.json).
+
+- Applied owner correction: PDL S1, Elite, matchday 4, 9 March 2026, Bociarnia Junior vs Dream Stack (best of 2), games 1:1, stored 2:0. Winner none → Bociarnia Junior, given against none → Dream Stack, forfeit scope none → series, reason none → Dream Stack played with a stand-in who was not approved. Both games were played (1:1); the organizer then gave the match to Bociarnia Junior because Dream Stack had used a stand-in who was not approved. The two games stay as played games for the stats. (`pdl-elite-md4-bociarnia-junior-dream-stack`; owner, 2026-11-23, STATUS.md question 43)
+- Applied owner correction: PDL S1, Elite, matchday 7, 1 April 2026, Team Poland vs Bociarnia (best of 2), four games 3:1, stored 2:0. Best of 2 → 5, score 2:0 → 3:1. The teams agreed to play a best of five; Team Poland won 3:1. In the table the win counts 2 points like any win; the game columns show 3 and 1. (`pdl-elite-md7-team-poland-bociarnia-bo5`; owner, 2026-11-23, STATUS.md question 43)
+- Applied owner correction: PDL S1, Kotwica Gaming, roster player Joxxi (steamId a Steam account, steamId64 a Steam account, steamId32 114011482). The import's choice a Steam account confirmed. Joxxi's account is 32-bit 114011482 (also his in Letnia for CINCO PERROS). The other id, 313683754, is Kildren's. (`pdl-kotwica-joxxi-account`; owner, 2026-11-23, STATUS.md question 43)
+- Applied owner correction: PDL S1, Mechaniczne Bestie, roster player godspell (steamId a Steam account, steamId64 a Steam account). The import's choice a Steam account confirmed. steamId is the account his six games were played on. No correction. (`pdl-bestie-godspell-account`; owner, 2026-11-23, STATUS.md question 43)
+- Applied owner correction: PDL S1, Palchykivka Junior, roster player Drit (steamId a Steam account, steamId64 a Steam account). The import's choice a Steam account confirmed. Neither account played a PDL S1 game; the one steamId32 agrees with stays. No correction. (`pdl-palchykivka-drit-account`; owner, 2026-11-23, STATUS.md question 43)
+- Applied owner correction: PDL S1, Pora Na Przygode, roster player Błyskawica (steamId a Steam account, steamId64 a Steam account). The import's choice a Steam account confirmed. Neither account played a PDL S1 game; the one steamId32 agrees with stays. No correction. (`pdl-pora-na-przygode-blyskawica-account`; owner, 2026-11-23, STATUS.md question 43)
+- Applied owner correction: Kildren (also Przepraszam), Steam account 313683754: PDL S1 Bociarnia Junior (former member), stand-in for Kotwica Gaming, Wiosenna Furia Adaś, ile za tę Robotę?. Nickname "Kildren" (also Przepraszam). The player on account 313683754 is Kildren, who also uses the name Przepraszam. Players are one row per Steam account across tournaments, so this names him in every tournament. (`player-kildren`; owner, 2026-11-23, STATUS.md question 43)
+- Applied owner correction: PDL S1, Bociarnia Junior, roster player Przepraszam (Kildren, account 313683754). Left at none → 2026-03-02T18:22:52.454Z, left reason none → removed. He was on Bociarnia Junior's roster only briefly and was replaced; he stays as a former member. Left at: the first stand-in request that replaced him (2 March 2026, Ytsuqen). (`pdl-bociarnia-junior-kildren-left`; owner, 2026-11-23, STATUS.md question 43 (the left time chosen by WP-33b from the stand-in requests))
+- Applied owner correction: PDL S1, Challenger, matchday 4, 13 March 2026, Roll z Zaskoczenia vs Kotwica Gaming, 1:1: Kildren for Joxxi. Request k1MuNwwOCcfwf59mT5UG: stand-in name Przepraszam → Kildren. Kildren (Przepraszam) played both games for Kotwica Gaming on account 313683754 as a stand-in, not Joxxi. (`pdl-kotwica-kildren-roll`; owner, 2026-11-23, STATUS.md question 43)
+- Applied owner correction: PDL S1, Challenger, matchday 6, 25 March 2026, Power Rangers vs Kotwica Gaming, 1:1: Kildren for Joxxi. Request xyKprcRdMyPq4PtW2IqE: stand-in name Przepraszam → Kildren. Kildren (Przepraszam) played both games for Kotwica Gaming on account 313683754 as a stand-in, not Joxxi. (`pdl-kotwica-kildren-power-rangers`; owner, 2026-11-23, STATUS.md question 43)
+- Applied owner correction: PDL S1, Challenger, matchday 7, 31 March 2026, Mechaniczne Bestie vs Kotwica Gaming, 2:0: Kildren for Joxxi. Request dCpqT2kDfnlQVCtxO7HD: stand-in name Przepraszam → Kildren. Kildren (Przepraszam) played both games for Kotwica Gaming on account 313683754 as a stand-in, not Joxxi. (`pdl-kotwica-kildren-bestie`; owner, 2026-11-23, STATUS.md question 43)
+- Applied owner correction: PDL S1, Challenger, matchday 3, 6 March 2026, Kotwica Gaming vs Voodoo Monkey, 0:2: Kildren for Joxxi. Approved stand-in added (request owner-pdl-kotwica-kildren-voodoo). Account 313683754 also played both games of this match for Kotwica Gaming (OpenDota 8718370162 lists Przepraszam on Radiant with Quince), with no stand-in request; the same case as the three matches the owner named. (`pdl-kotwica-kildren-voodoo`; WP-33b, 2026-11-26, from the capture and OpenDota, on the owner's answer to STATUS.md question 43 (owner to confirm))
+
 #### Findings
 
 Conflicts in the old data, and how they were settled:
 
-- teams.players: steamId and steamId64 differ: the id that steamId32 agrees with is used (owner to confirm) (4)
-- matches: the stored score disagrees with the imported games; the stored score is kept (owner to confirm) (2)
-- matches.games: the match has more games than its series length; every game is imported (4)
+- matches.games: the match has more games than its series length; every game is imported (3)
+  - POLISH DOTA2 LEAGUE Season 1, Challenger, matchday 1, 17 February 2026, Mechaniczne Bestie vs Aniołki Andrzeja, 2:0 (33lzc025WRNyREXeKk7D)
+  - POLISH DOTA2 LEAGUE Season 1, Challenger, matchday 2, 25 February 2026, Dicaprio vs Aniołki Andrzeja, 2:0 (5GrcyD0Ga8nh6HhLfhHx)
+  - POLISH DOTA2 LEAGUE Season 1, Challenger, matchday 4, 11 March 2026, Aniołki Andrzeja vs Voodoo Monkey, 1:3 (ey2lUW3EnzcxrvVBWgKP)
 
 Decisions taken where the old data was ambiguous:
 
@@ -446,13 +491,48 @@ Decisions taken where the old data was ambiguous:
 - tournaments: the tournament's divisions[] list is an older copy; only its matchday labels are kept, matched to the divisions by name (1)
 - tournaments: playoffs are configured but have no matches: no bracket stage is created (SCHEMA.md 3.1) (1)
 - matches: "rescheduleRequest.proposedDate" has no time zone and was read as Warsaw time (37)
+  - POLISH DOTA2 LEAGUE Season 1, Elite, matchday 4, 9 March 2026, Bociarnia Junior vs Dream Stack, 2:0 (0AxWzOilkXqKGYV6Dqgn)
+  - POLISH DOTA2 LEAGUE Season 1, Challenger, matchday 1, 18 February 2026, Kotwica Gaming vs Dicaprio, 0:2 (0zmtErPsXSvAQ8xsfcXx)
+  - POLISH DOTA2 LEAGUE Season 1, Adept, matchday 3, 9 March 2026, TEAM TOTALNA PORAŻKA vs Ultimate On Creep, 1:1 (2Vg36E0ryKEjt9nW3UH6)
+  - POLISH DOTA2 LEAGUE Season 1, Challenger, matchday 7, 1 April 2026, Voodoo Monkey vs Dicaprio, 2:0 (2cTTct0Kh8ap4u3f2NoG)
+  - POLISH DOTA2 LEAGUE Season 1, Challenger, matchday 1, 17 February 2026, Mechaniczne Bestie vs Aniołki Andrzeja, 2:0 (33lzc025WRNyREXeKk7D)
+  - POLISH DOTA2 LEAGUE Season 1, Challenger, matchday 1, 19 February 2026, Roll z Zaskoczenia vs Power Rangers, 1:1 (4f2WeRsoohNCIHdjiV8r)
+  - POLISH DOTA2 LEAGUE Season 1, Adept, matchday 4, 12 March 2026, Bubliny Team vs Legendy Legendy, 2:0 (58aT9SR41Qa3VA2JIbGE)
+  - POLISH DOTA2 LEAGUE Season 1, Challenger, matchday 2, 25 February 2026, Dicaprio vs Aniołki Andrzeja, 2:0 (5GrcyD0Ga8nh6HhLfhHx)
+  - POLISH DOTA2 LEAGUE Season 1, Adept, matchday 2, 27 February 2026, PD2IH Junior vs Legendy Legendy, 1:1 (5tDsic8fbrmbut59iLXV)
+  - POLISH DOTA2 LEAGUE Season 1, Challenger, matchday 2, 1 March 2026, Roll z Zaskoczenia vs Voodoo Monkey, 0:2 (8OLZcixq0CohtB6yGa6R)
+  - POLISH DOTA2 LEAGUE Season 1, Challenger, matchday 2, 24 February 2026, Mechaniczne Bestie vs Power Rangers, 2:0 (8qxwDV1vHCl6GO7bpKI9)
+  - POLISH DOTA2 LEAGUE Season 1, Challenger, matchday 3, 4 March 2026, Dicaprio vs Power Rangers, 2:0 (AmFFO895FsFwKRfq3Ncb)
+  - … 25 more
 - matches: "rescheduleRequest.originalDate" has no time zone and was read as Warsaw time (3)
-- matches.games: a series has forfeited games after played ones; numbers follow the forfeit numbers, then start time (2)
+  - POLISH DOTA2 LEAGUE Season 1, Challenger, matchday 7, 1 April 2026, Voodoo Monkey vs Dicaprio, 2:0 (2cTTct0Kh8ap4u3f2NoG)
+  - POLISH DOTA2 LEAGUE Season 1, Adept, matchday 4, 12 March 2026, Bubliny Team vs Legendy Legendy, 2:0 (58aT9SR41Qa3VA2JIbGE)
+  - POLISH DOTA2 LEAGUE Season 1, Elite, matchday 6, 28 March 2026, Chief Industries vs PD2IH Team, 1:1 (RZPojUklP5YhCUXN4YAZ)
 - standinRequests: the Steam id of the stand-in is taken from the approved copy on the match (the request has only a vanity profile link) (16)
+  - POLISH DOTA2 LEAGUE Season 1, Challenger, matchday 4, 12 March 2026, Dicaprio vs Mechaniczne Bestie, 1:1 (IaUQV0rQ9eY8S97G9ISb)
+  - POLISH DOTA2 LEAGUE Season 1, Elite, matchday 5, 18 March 2026, Bociarnia vs PD2IH Team, 2:0 (8HNpWvSDYSUfoALUWwtx)
+  - POLISH DOTA2 LEAGUE Season 1, Challenger, matchday 1, 1 March 2026, Voodoo Monkey vs Pora Na Przygode, 2:0 (X50ltG1z3Tka5fkuCMpi)
+  - POLISH DOTA2 LEAGUE Season 1, Elite, matchday 5, 15 March 2026, Team Poland vs Bociarnia Junior, 2:0 (g6p3WAI9pOUlER8gX0hG)
+  - POLISH DOTA2 LEAGUE Season 1, Elite, matchday 6, 28 March 2026, Chief Industries vs PD2IH Team, 1:1 (RZPojUklP5YhCUXN4YAZ)
+  - POLISH DOTA2 LEAGUE Season 1, Elite, matchday 4, 9 March 2026, Bociarnia Junior vs Dream Stack, 2:0 (0AxWzOilkXqKGYV6Dqgn)
+  - POLISH DOTA2 LEAGUE Season 1, Challenger, matchday 4, 13 March 2026, Roll z Zaskoczenia vs Kotwica Gaming, 1:1 (NvmNJAaAhOR1sziVe47I)
+  - POLISH DOTA2 LEAGUE Season 1, Challenger, matchday 5, 19 March 2026, Roll z Zaskoczenia vs Dicaprio, 1:1 (FRkYJ7Ks48bOvRVeDYXm)
+  - POLISH DOTA2 LEAGUE Season 1, Challenger, matchday 1, 18 February 2026, Kotwica Gaming vs Dicaprio, 0:2 (0zmtErPsXSvAQ8xsfcXx)
+  - POLISH DOTA2 LEAGUE Season 1, Adept, matchday 7, 2 April 2026, Ultimate On Creep vs The Andrzejs, 2:0 (UIVHEW4sGGDum0OUZfpH)
+  - POLISH DOTA2 LEAGUE Season 1, Adept, matchday 2, 27 February 2026, PD2IH Junior vs Legendy Legendy, 1:1 (5tDsic8fbrmbut59iLXV)
+  - POLISH DOTA2 LEAGUE Season 1, Challenger, matchday 7, 31 March 2026, Mechaniczne Bestie vs Kotwica Gaming, 2:0 (x8zKgAY1lWJYz4ej562l)
+  - … 4 more
+- matches.games: a series has forfeited games after played ones; numbers follow the forfeit numbers, then start time (2)
+  - POLISH DOTA2 LEAGUE Season 1, Elite, matchday 2, 2 March 2026, Dream Stack vs Chief Industries, 0:2 (UeLYKB2tw4xbcPNT69WH)
+  - POLISH DOTA2 LEAGUE Season 1, Elite, matchday 1, 17 February 2026, Team Poland vs Chief Industries, 2:0 (mmhhKkdQyjW06Yj3SLEj)
 
 #### Standings
 
-- **Elite** (`division-1769544151371`) against the published table: matches.
+- **Elite** (`division-1769544151371`) against the published table: matches, apart from 4 values that an owner correction changed.
+  - owner correction: Team Poland: gamesWon published 13, computed 14
+  - owner correction: Team Poland: gamesLost published 1, computed 2
+  - owner correction: Bociarnia: gamesWon published 10, computed 11
+  - owner correction: Bociarnia: gamesLost published 4, computed 5
 - **Challenger** (`division-1769544174025`) against the published table: matches.
 - **Adept** (`division-1769544200306`) against the published table: matches.
 
@@ -500,9 +580,9 @@ Capture: firestore-rest-public, 2026-11-13T06:33:06.792Z, layout scoped.
 Why documents were dropped or not imported:
 
 - groups: dropped: a group document no team or match refers to (2)
-- matches.games: unmapped: the same Dota game is stored under two matches; it is kept under the match whose series it fits (2)
-- matches.games.performances: unmapped: the performance's game is not imported (20)
 - standinRequests: unmapped: the request's match is not imported (1)
+- matches.games: unmapped: the same Dota game is stored under two matches; it is kept under the match an owner correction names (2)
+- matches.games.performances: unmapped: the performance belongs to a second copy of a game; the kept copy's performances are imported (20)
 - playerStats: dropped: derived statistics (computed from performances) (120)
 - teamStats: dropped: derived statistics (computed from performances) (19)
 - stats: dropped: derived season totals (1)
@@ -514,7 +594,7 @@ Why documents were dropped or not imported:
 |---|---:|---:|---:|---:|---:|---:|
 | app.organizations | 1 | global | 0 | 0 | 0 | 0 |
 | app.users | 32 | global | 16 | 0 | 0 | 0 |
-| app.players | 141 | global | 73 | 21 | 0 | 0 |
+| app.players | 142 | global | 73 | 21 | 0 | 0 |
 | app.tournaments | 1 | 1 | 1 | 0 | 0 | 0 |
 | app.stages | 2 | 2 | 2 | 0 | 0 | 0 |
 | app.groups | 2 | 2 | 2 | 0 | 0 | 0 |
@@ -533,19 +613,49 @@ Why documents were dropped or not imported:
 | app.pickem_picks | 15 | 15 | 15 | 0 | 0 | 0 |
 | app.audit_log | 49 | global | 49 | 0 | 0 | 0 |
 
+#### Owner corrections
+
+6 of 6 applied (scripts/import/owner-corrections.json).
+
+- Applied owner correction: Wiosenna Furia, Grupa B, 24 June 2026, Chrupek zamknij się vs Adaś, ile za tę Robotę? (best of 2), stored 1:2. Score 1:2 → 1:1, winner Adaś, ile za tę Robotę? → none. The group games are 1:1 (Adaś won the first, Chrupek the second): a draw. The third game listed on it (8910469903, 23 July 23:13) is game 3 of the same teams' upper-bracket round 3 match. (`wiosenna-b-chrupek-adas-draw`; owner, 2026-11-23, STATUS.md question 43)
+- Applied owner correction: Wiosenna Furia, upper bracket round 3 (U3A), 23 July 2026, Chrupek zamknij się vs Adaś, ile za tę Robotę?, 1:2: game 3 (Dota 8910469903, 23:13). Kept under ub-r3-p1, not HVwwRd87bSFsCzkph25p. Game 3 of the upper-bracket round 3 match (2:1 for Adaś), also stored under the Grupa B match of 24 June. (`wiosenna-game-8910469903`; owner, 2026-11-23, STATUS.md question 43)
+- Applied owner correction: Wiosenna Furia, Grupa B, 30 June 2026, Puck It! vs Adaś, ile za tę Robotę? (best of 2), stored 2:1. Score 2:1 → 2:0. The group games are 2:0 for Puck It!. The third game listed on it (8904592446, 19 July 21:57) is game 3 of the upper-bracket round 2 match. (`wiosenna-b-puck-adas`; owner, 2026-11-23, STATUS.md question 43)
+- Applied owner correction: Wiosenna Furia, upper bracket round 2 (U2B), 19 July 2026, Adaś, ile za tę Robotę? vs Puck It!, 2:1: game 3 (Dota 8904592446, 21:57). Kept under ub-r2-p2, not cxozIoYGO0ViB55POI36. Game 3 of the upper-bracket round 2 match (2:1 for Adaś), also stored under the Grupa B match of 30 June. (`wiosenna-game-8904592446`; owner, 2026-11-23, STATUS.md question 43)
+- Applied owner correction: Wiosenna Furia, upper bracket round 1 (U1C), 14 July 2026, Adaś, ile za tę Robotę? vs Dwa Razy I Do Bazy (best of 3), stored 2:1. Score 2:1 → 2:0. Only two games were played (19:27 and 20:46, both won by Adaś; three players' histories on OpenDota agree). The winner and the bracket do not change. (`wiosenna-u1c-adas-dwa-razy`; owner, 2026-11-23, STATUS.md question 43)
+- Applied owner correction: Kildren (also Przepraszam), Steam account 313683754: PDL S1 Bociarnia Junior (former member), stand-in for Kotwica Gaming, Wiosenna Furia Adaś, ile za tę Robotę?. Nickname "Kildren" (also Przepraszam). The player on account 313683754 is Kildren, who also uses the name Przepraszam. Players are one row per Steam account across tournaments, so this names him in every tournament. (`player-kildren`; owner, 2026-11-23, STATUS.md question 43)
+
 #### Findings
 
 Not imported (a document or a value):
 
-- matches.games: the same Dota game is stored under two matches; it is kept under the match whose series it fits (2)
-- matches.games.performances: the performance's game is not imported (20)
 - standinRequests: the request's match is not imported (1)
+  - match dcvC9IBTTsgU5jnI1i9o (not imported)
+- matches.games: the same Dota game is stored under two matches; it is kept under the match an owner correction names (2)
+  - Wiosenna Furia, upper bracket round 2 (U2B), 19 July 2026, Adaś, ile za tę Robotę? vs Puck It!, 2:1, game 3 (Dota 8904592446 at 21:57; match ub-r2-p2); also stored under Wiosenna Furia, Grupa B, 30 June 2026, Puck It! vs Adaś, ile za tę Robotę?, 2:0 (cxozIoYGO0ViB55POI36)
+  - Wiosenna Furia, upper bracket round 3 (U3A), 23 July 2026, Chrupek zamknij się vs Adaś, ile za tę Robotę?, 1:2, game 3 (Dota 8910469903 at 23:13; match ub-r3-p1); also stored under Wiosenna Furia, Grupa B, 24 June 2026, Chrupek zamknij się vs Adaś, ile za tę Robotę?, 1:1 (HVwwRd87bSFsCzkph25p)
+- matches.games.performances: the performance belongs to a second copy of a game; the kept copy's performances are imported (20)
+  - Wiosenna Furia, upper bracket round 3 (U3A), 23 July 2026, Chrupek zamknij się vs Adaś, ile za tę Robotę?, 1:2, game 3 (Dota 8910469903 at 23:13; match ub-r3-p1)
+  - Wiosenna Furia, upper bracket round 3 (U3A), 23 July 2026, Chrupek zamknij się vs Adaś, ile za tę Robotę?, 1:2, game 3 (Dota 8910469903 at 23:13; match ub-r3-p1)
+  - Wiosenna Furia, upper bracket round 3 (U3A), 23 July 2026, Chrupek zamknij się vs Adaś, ile za tę Robotę?, 1:2, game 3 (Dota 8910469903 at 23:13; match ub-r3-p1)
+  - Wiosenna Furia, upper bracket round 3 (U3A), 23 July 2026, Chrupek zamknij się vs Adaś, ile za tę Robotę?, 1:2, game 3 (Dota 8910469903 at 23:13; match ub-r3-p1)
+  - Wiosenna Furia, upper bracket round 3 (U3A), 23 July 2026, Chrupek zamknij się vs Adaś, ile za tę Robotę?, 1:2, game 3 (Dota 8910469903 at 23:13; match ub-r3-p1)
+  - Wiosenna Furia, upper bracket round 3 (U3A), 23 July 2026, Chrupek zamknij się vs Adaś, ile za tę Robotę?, 1:2, game 3 (Dota 8910469903 at 23:13; match ub-r3-p1)
+  - Wiosenna Furia, upper bracket round 3 (U3A), 23 July 2026, Chrupek zamknij się vs Adaś, ile za tę Robotę?, 1:2, game 3 (Dota 8910469903 at 23:13; match ub-r3-p1)
+  - Wiosenna Furia, upper bracket round 3 (U3A), 23 July 2026, Chrupek zamknij się vs Adaś, ile za tę Robotę?, 1:2, game 3 (Dota 8910469903 at 23:13; match ub-r3-p1)
+  - Wiosenna Furia, upper bracket round 3 (U3A), 23 July 2026, Chrupek zamknij się vs Adaś, ile za tę Robotę?, 1:2, game 3 (Dota 8910469903 at 23:13; match ub-r3-p1)
+  - Wiosenna Furia, upper bracket round 3 (U3A), 23 July 2026, Chrupek zamknij się vs Adaś, ile za tę Robotę?, 1:2, game 3 (Dota 8910469903 at 23:13; match ub-r3-p1)
+  - Wiosenna Furia, upper bracket round 2 (U2B), 19 July 2026, Adaś, ile za tę Robotę? vs Puck It!, 2:1, game 3 (Dota 8904592446 at 21:57; match ub-r2-p2)
+  - Wiosenna Furia, upper bracket round 2 (U2B), 19 July 2026, Adaś, ile za tę Robotę? vs Puck It!, 2:1, game 3 (Dota 8904592446 at 21:57; match ub-r2-p2)
+  - … 8 more
 
 Conflicts in the old data, and how they were settled:
 
 - teams: teams.roster has another mmr than the roster document; the document is used (4)
 - matches: the bracket match and its mirror carry different reschedule requests; the later one is kept (4)
-- matches: the stored score disagrees with the imported games; the stored score is kept (owner to confirm) (3)
+  - Wiosenna Furia, upper bracket round 1 (U1A), 12 July 2026, Gramy Dla Wujka vs Agresywny Pilates, 0:2 (ub-r1-p1)
+  - Wiosenna Furia, upper bracket round 1 (U1C), 14 July 2026, Adaś, ile za tę Robotę? vs Dwa Razy I Do Bazy, 2:0 (ub-r1-p3)
+  - Wiosenna Furia, upper bracket round 1 (U1E), 12 July 2026, Bociarnia Junior vs Voodoo Monkey, 2:1 (ub-r1-p5)
+  - Wiosenna Furia, upper bracket round 1 (U1G), 12 July 2026, Gang sylwka vs Syzyf, 2:0 (ub-r1-p7)
 
 Decisions taken where the old data was ambiguous:
 
@@ -553,11 +663,73 @@ Decisions taken where the old data was ambiguous:
 - tournaments: fantasy_preset left empty: WP-16 checks the old points against the presets (SCHEMA.md question 10); the old numbers are in features.fantasy.legacyScoring (1)
 - teams.players: values the roster document lacks (nickname, MMR, role) were taken from the team roster map (1) — `113 values`
 - matches: "scheduledFor" has no time zone and was read as Warsaw time (14)
+  - Wiosenna Furia, Grupa B, 14 June 2026, PSY vs Sparta Orzechowo, 1:1 (003TxGPQS5Rps8vUjZUM)
+  - Wiosenna Furia, Grupa B, 12 June 2026, PSY vs Voodoo Monkey, 1:1 (3yntFiqVibvbrGVR9Ary)
+  - Wiosenna Furia, Grupa B, 14 June 2026, PSY vs Chrupek zamknij się, 0:2 (AL6MkqF6FyLqT2E7aseL)
+  - Wiosenna Furia, Grupa B, 15 June 2026, PSY vs Adaś, ile za tę Robotę?, 0:2 (He5lHiRaCguMbTPxic2U)
+  - Wiosenna Furia, Grupa B, 14 June 2026, Gang sylwka vs Voodoo Monkey, 2:0 (JhD9SZlc19W5RXWZcS2Q)
+  - Wiosenna Furia, Grupa A, 10 June 2026, HoundGaming vs Agresywny Pilates, 0:2 (NaKKapDOft4YtuNPeh5Z)
+  - Wiosenna Furia, Grupa B, 17 June 2026, SEX vs Sparta Orzechowo, 0:2 (W40ideLfNSHjgWxzfgLi)
+  - Wiosenna Furia, Grupa A, 12 June 2026, Czosnek vs Bociarnia Junior, 2:0 (ba6gXhZZx1oNKbZWv4HH)
+  - Wiosenna Furia, Grupa A, 11 June 2026, HoundGaming vs Keo Esports, 0:2 (dBkCelez2HQpkvFcr6gN)
+  - Wiosenna Furia, Grupa B, 15 June 2026, SEX vs PSY, 0:2 (nLAAdJFbyWI4F9P9Y0xe)
+  - Wiosenna Furia, Grupa B, 16 June 2026, Sparta Orzechowo vs Adaś, ile za tę Robotę?, 0:2 (pUw3GgX1i9nsC7axWqBS)
+  - Wiosenna Furia, Grupa A, 11 June 2026, Agresywny Pilates vs mid diff, 2:0 (srCOOFzKe9TS6MnWL3xN)
+  - … 2 more
 - matches: "rescheduleRequest.proposedDate" has no time zone and was read as Warsaw time (57)
+  - Wiosenna Furia, Grupa B, 14 June 2026, PSY vs Sparta Orzechowo, 1:1 (003TxGPQS5Rps8vUjZUM)
+  - Wiosenna Furia, Grupa B, 3 June 2026, SEX vs Gang sylwka, 0:2 (36yJWNgnXC8fCKZIyzz8)
+  - Wiosenna Furia, Grupa B, 12 June 2026, PSY vs Voodoo Monkey, 1:1 (3yntFiqVibvbrGVR9Ary)
+  - Wiosenna Furia, Grupa B, 25 June 2026, Puck It! vs Chrupek zamknij się, 1:1 (4zF5YY8ph2DWp82dAqxh)
+  - Wiosenna Furia, Grupa B, 17 June 2026, Sparta Orzechowo vs Gang sylwka, 1:1 (7K05jKLDC7kWEZ5xZzJL)
+  - Wiosenna Furia, Grupa A, 15 June 2026, HoundGaming vs Dwa Razy I Do Bazy, 0:2 (9gSNQYR2vmH6DsTYbf4C)
+  - Wiosenna Furia, Grupa B, 14 June 2026, PSY vs Chrupek zamknij się, 0:2 (AL6MkqF6FyLqT2E7aseL)
+  - Wiosenna Furia, Grupa A, 7 June 2026, Bociarnia Junior vs Syzyf, 1:1 (BRve3B0gCZVqCRl6cta7)
+  - Wiosenna Furia, Grupa A, 16 June 2026, Agresywny Pilates vs Syzyf, 2:0 (C9tZk6lWLxAoqzE37zKi)
+  - Wiosenna Furia, Grupa A, 10 June 2026, Czosnek vs Gramy Dla Wujka, 2:0 (CCdCS63GxqpnUlsJmhAI)
+  - Wiosenna Furia, Grupa B, 2 June 2026, Chrupek zamknij się vs Bubliny Team, 1:1 (CshqZi7f45gckOhGHbMT)
+  - Wiosenna Furia, Grupa A, 21 June 2026, Dwa Razy I Do Bazy vs Gramy Dla Wujka, 0:2 (Cy8GmB25JXTWLZZZUUcS)
+  - … 45 more
 - matches: "rescheduleRequest.originalDate" has no time zone and was read as Warsaw time (4)
+  - Wiosenna Furia, Grupa B, 12 June 2026, PSY vs Voodoo Monkey, 1:1 (3yntFiqVibvbrGVR9Ary)
+  - Wiosenna Furia, Grupa A, 8 June 2026, Czosnek vs Syzyf, 0:2 (mNyjYy99QCl6w5I1WiGV)
+  - Wiosenna Furia, Grupa B, 19 June 2026, Samci Savci vs SEX, 2:0 (wI19YdtRV0ScrOrCybOh)
+  - Wiosenna Furia, Grupa B, 26 June 2026, SEX vs Voodoo Monkey, 0:2 (zLDzQpSCKxX2dUn4w2FI)
+- playoff_matches: the bracket result time is a bulk rewrite (saved with at least two other bracket results within 10 minutes); the mirror match's completion time is used (11)
+  - Wiosenna Furia, upper bracket round 1 (U1A), 12 July 2026, Gramy Dla Wujka vs Agresywny Pilates, 0:2 (ub-r1-p1)
+  - Wiosenna Furia, upper bracket round 1 (U1C), 14 July 2026, Adaś, ile za tę Robotę? vs Dwa Razy I Do Bazy, 2:0 (ub-r1-p3)
+  - Wiosenna Furia, upper bracket round 1 (U1E), 12 July 2026, Bociarnia Junior vs Voodoo Monkey, 2:1 (ub-r1-p5)
+  - Wiosenna Furia, upper bracket round 1 (U1G), 12 July 2026, Gang sylwka vs Syzyf, 2:0 (ub-r1-p7)
+  - Wiosenna Furia, upper bracket round 2 (U2A), 19 July 2026, Agresywny Pilates vs Chrupek zamknij się, 0:2 (ub-r2-p1)
+  - Wiosenna Furia, upper bracket round 2 (U2B), 19 July 2026, Adaś, ile za tę Robotę? vs Puck It!, 2:1 (ub-r2-p2)
+  - Wiosenna Furia, upper bracket round 2 (U2C), 18 July 2026, Bociarnia Junior vs Keo Esports, 0:2 (ub-r2-p3)
+  - Wiosenna Furia, upper bracket round 2 (U2D), 19 July 2026, Gang sylwka vs Czosnek, 2:0 (ub-r2-p4)
+  - Wiosenna Furia, upper bracket round 3 (U3A), 23 July 2026, Chrupek zamknij się vs Adaś, ile za tę Robotę?, 1:2 (ub-r3-p1)
+  - Wiosenna Furia, upper bracket round 3 (U3B), 23 July 2026, Keo Esports vs Gang sylwka, 0:2 (ub-r3-p2)
+  - Wiosenna Furia, final (GF), 26 July 2026, Adaś, ile za tę Robotę? vs Gang sylwka, 0:3 (ub-r4-p1)
 - matches.games: a series has forfeited games after played ones; numbers follow the forfeit numbers, then start time (3)
+  - Wiosenna Furia, Grupa A, 21 June 2026, Czosnek vs Keo Esports, 0:2 (PGwjaJ2oppSICBuA7WUZ)
+  - Wiosenna Furia, Grupa A, 29 June 2026, HoundGaming vs Gramy Dla Wujka, 1:1 (dG8tOZDUNfTeLnoD1WWP)
+  - Wiosenna Furia, Grupa B, 7 June 2026, Puck It! vs Sparta Orzechowo, 1:1 (lhUmzPYyQm1aCcDiohw3)
 
 #### Standings
 
 - **Grupa A** (`division-1779915039749`) against the published table: matches. games won and lost are not compared: the old page shows 0:0 for every team (it reads a stored total the server never wrote for group tournaments; WP-13a).
-- **Grupa B** (`division-1779915124727`) against the published table: matches. games won and lost are not compared: the old page shows 0:0 for every team (it reads a stored total the server never wrote for group tournaments; WP-13a).
+- **Grupa B** (`division-1779915124727`) against the published table: matches, apart from 17 values that an owner correction changed. games won and lost are not compared: the old page shows 0:0 for every team (it reads a stored total the server never wrote for group tournaments; WP-13a).
+  - owner correction: order: published VLI67jzh3hYFx9Eysnbn, u6kMrDWsUi2WF6GKhWH5, nVzav95nziXL8mddtpix, H3HMslxOZ1zcTd7oX2Ro, n5uP41hQfGnnZdaHW72h, zO8OY2bf8lYsydnqKTrQ, ipWCrBDspzP77i2ErR27, vuFoaCjeDtrCrawOqWRw, x2vbMbrLklQ5Fogl1poE, bQVSbkopKwi333zDlvH5, U58HjwnnhLO1jIcasGF6; computed VLI67jzh3hYFx9Eysnbn, nVzav95nziXL8mddtpix, H3HMslxOZ1zcTd7oX2Ro, u6kMrDWsUi2WF6GKhWH5, n5uP41hQfGnnZdaHW72h, zO8OY2bf8lYsydnqKTrQ, ipWCrBDspzP77i2ErR27, vuFoaCjeDtrCrawOqWRw, x2vbMbrLklQ5Fogl1poE, bQVSbkopKwi333zDlvH5, U58HjwnnhLO1jIcasGF6
+  - owner correction: Puck It!: neustadtl published 69.5, computed 69
+  - owner correction: Chrupek zamknij się: draws published 4, computed 5
+  - owner correction: Chrupek zamknij się: losses published 1, computed 0
+  - owner correction: Chrupek zamknij się: points published 14, computed 15
+  - owner correction: Chrupek zamknij się: neustadtl published 61, computed 67.5
+  - owner correction: Chrupek zamknij się: place published 3, computed 2
+  - owner correction: Samci Savci: neustadtl published 51, computed 50.5
+  - owner correction: Samci Savci: place published 4, computed 3
+  - owner correction: Adaś, ile za tę Robotę?: wins published 6, computed 5
+  - owner correction: Adaś, ile za tę Robotę?: draws published 2, computed 3
+  - owner correction: Adaś, ile za tę Robotę?: points published 14, computed 13
+  - owner correction: Adaś, ile za tę Robotę?: neustadtl published 55, computed 48.5
+  - owner correction: Adaś, ile za tę Robotę?: place published 2, computed 4
+  - owner correction: Voodoo Monkey: neustadtl published 50.5, computed 49.5
+  - owner correction: Siusiaczki: neustadtl published 20.5, computed 21
+  - owner correction: Bubliny Team: neustadtl published 14.5, computed 15

@@ -88,7 +88,7 @@ function renderTournament(t: TournamentResult, options: ReportOptions): string[]
   }
   out.push('');
 
-  out.push(...renderCorrections(t.mapped.state.corrections.finish()));
+  out.push(...renderCorrections(t.mapped.state.corrections.finish(), options));
   out.push(...renderFindings(ctx.findings, options, new MatchLabels(t.mapped.rows, capture.slug)));
 
   out.push('### Standings', '');

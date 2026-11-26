@@ -13,7 +13,7 @@ import { computeTournament } from '@/features/stats';
 import { loadTournamentInput } from '@/features/stats/queries';
 import * as s from '@/platform/db/schema';
 import { createTestDb, type TestDb } from '@/platform/db/testing';
-import { totalChanges } from '../report';
+import { renderReport, totalChanges } from '../report';
 import { runImport, type RunOptions, type RunResult } from '../run';
 import { computeImportedStandings } from '../standings';
 import { JOXXI, KILDREN, TEAMS, writePdlCapture } from './pdl-capture';
@@ -100,6 +100,13 @@ describe('the PDL S1 corrections', () => {
   it('tell the teams of Kildren\'s games apart by their players', async () => {
     const games = await t.db.select().from(s.games).where(and(eq(s.games.tournamentId, T), eq(s.games.matchId, 'XVwKIZt4leCFWR6vUewS')));
     for (const g of games) expect([g.radiantTeamId, g.direTeamId]).toEqual([TEAMS.kotwica, TEAMS.voodoo]);
+  });
+
+  it('list each correction readably in the report, with no Steam id when redacted', () => {
+    const redacted = renderReport(first, { redact: true });
+    expect(redacted).toMatch(/Applied owner correction: PDL S1, Elite, matchday 4, 9 March 2026, Bociarnia Junior vs Dream Stack .*Winner none → Bociarnia Junior, given against none → Dream Stack/);
+    expect(redacted).toMatch(/12 of 12 applied/);
+    expect(redacted).not.toMatch(/7656\d{13}/);
   });
 
   it('write nothing the second time', async () => {

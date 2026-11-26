@@ -77,16 +77,18 @@ function renderGroup(g: FindingGroup, options: FindingOptions, labels: MatchLabe
   return [`- ${g.kind}: ${g.reason} (${g.count})${refs ? ` — ${refs}${shown.length > EXAMPLES ? ' …' : ''}` : ''}`];
 }
 
-/** The owner corrections of one tournament: what each changed, or that it matched nothing. */
-export function renderCorrections(outcomes: readonly CorrectionOutcome[]): string[] {
+/** The owner corrections of one tournament: what each changed, or that it matched nothing. Redacted, Steam ids are left out. */
+export function renderCorrections(outcomes: readonly CorrectionOutcome[], options: FindingOptions = {}): string[] {
   if (!outcomes.length) return [];
   const applied = outcomes.filter((o) => o.status === 'applied').length;
   const out = ['### Owner corrections', '', `${applied} of ${outcomes.length} applied (scripts/import/owner-corrections.json).`, ''];
   for (const o of outcomes) {
-    out.push(`- ${o.status === 'applied' ? 'Applied owner correction' : '**Matched no row**'}: ${o.label}. ${capital(o.change)}. ${o.reason} (\`${o.id}\`; ${o.source})`);
+    const line = `- ${o.status === 'applied' ? 'Applied owner correction' : '**Matched no row**'}: ${o.label}. ${capital(o.change)}. ${o.reason} (\`${o.id}\`; ${o.source})`;
+    out.push(options.redact ? line.replace(STEAM64, 'a Steam account') : line);
   }
   out.push('');
   return out;
 }
 
+const STEAM64 = /7656\d{13}/g;
 const capital = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);

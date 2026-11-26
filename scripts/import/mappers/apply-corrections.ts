@@ -14,12 +14,12 @@ const APPROVED = new Set(['approved', 'appeal_approved']);
 const show = (v: unknown) => (v === null || v === undefined ? 'none' : v instanceof Date ? v.toISOString() : String(v));
 
 /** Set `key` on `row` and describe the change, or nothing when it already had the value. */
-function change(row: Row, key: string, value: unknown, label = key): string | null {
+function change(row: Row, key: string, value: unknown, label = key, fmt: (v: unknown) => string = show): string | null {
   const before = row[key];
   const same = before instanceof Date && value instanceof Date ? before.getTime() === value.getTime() : before === value;
   if (same) return null;
   row[key] = value;
-  return `${label} ${show(before)} → ${show(value)}`;
+  return `${label} ${fmt(before)} → ${fmt(value)}`;
 }
 
 const describe = (changes: Array<string | null>) => changes.filter(Boolean).join(', ') || 'already so';
@@ -31,13 +31,13 @@ export function applyMatchCorrections(state: MapState): void {
     const row = rows.get(c.matchId);
     if (!row) continue;
     if (!state.matchesBefore.has(c.matchId)) state.matchesBefore.set(c.matchId, { ...row });
-    state.corrections.applied(c, describe(matchChanges(row, c)));
+    state.corrections.applied(c, describe(matchChanges(row, c, (v) => (typeof v === 'string' ? state.teamNames.get(v)?.trim() ?? v : show(v)))));
     const teams = state.matchTeams.get(c.matchId);
     if (teams) teams.bestOf = row.bestOf as number;
   }
 }
 
-function matchChanges(row: Row, c: MatchCorrection): Array<string | null> {
+function matchChanges(row: Row, c: MatchCorrection, team: (v: unknown) => string): Array<string | null> {
   const { set } = c;
   const side = (x: 'a' | 'b') => (x === 'a' ? row.teamAId : row.teamBId) as string | null;
   const out: Array<string | null> = [];
@@ -50,9 +50,9 @@ function matchChanges(row: Row, c: MatchCorrection): Array<string | null> {
     row.scoreA = a;
     row.scoreB = b;
   }
-  if (set.winner !== undefined) out.push(change(row, 'winnerTeamId', set.winner === 'none' ? null : side(set.winner), 'winner'));
+  if (set.winner !== undefined) out.push(change(row, 'winnerTeamId', set.winner === 'none' ? null : side(set.winner), 'winner', team));
   if (set.forfeit) {
-    out.push(change(row, 'forfeitTeamId', side(set.forfeit.team), 'given against'));
+    out.push(change(row, 'forfeitTeamId', side(set.forfeit.team), 'given against', team));
     out.push(change(row, 'forfeitScope', 'series', 'forfeit scope'));
     out.push(change(row, 'forfeitReason', set.forfeit.reason, 'reason'));
   }
