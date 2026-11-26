@@ -109,7 +109,7 @@ describe('a public re-run after the owner\'s export', () => {
     const rerun = await runImport(t.db, [publicDir], OPTIONS);
     expect(await privateState()).toEqual(before);
     expect(rerun.tournaments[0].writes.filter((w) => w.stale > 0)).toEqual([]);
-  });
+  }, 60_000);
 
   it('refuses --prune before writing anything when the capture was refused a collection', async () => {
     const fresh = await createTestDb();

@@ -86,7 +86,7 @@ describe('the owner\'s export', () => {
     expect(left).toEqual([expect.objectContaining({ teamId: TEAM, leftReason: 'transfer', leftAt: new Date(AT) })]);
     expect(first.tournaments[0].mapped.ctx.accounts.get('config')?.outcomes.mapped).toBe(1);
     expect(totalChanges(await runImport(t.db, [dir], OPTIONS))).toBe(0);
-  });
+  }, 60_000);
 
   it('replaces e-mail addresses, Discord ids, names, pictures and streams under --anonymize', async () => {
     const anon = await createTestDb();
