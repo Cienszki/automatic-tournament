@@ -18,11 +18,11 @@ export const JOXXI = '76561198074277210';
 export const TEAMS = {
   bociarniaJunior: 'SI1wtAIlxoxniyRcdk8Y', dreamStack: 'KUdIieu6eM7tiVvtVi5i', teamPoland: '3dkzIWuFD6ZYTFtlVALw', bociarnia: 'ghoBqZiO3hup5H5z6llI',
   kotwica: 'YgBE0C7RHWlqAE1fQQWE', roll: 'C0LeY1k40GZ9ICruOeQa', powerRangers: 'sL4C6mkCMKxfLK1fz6Mr', bestie: 'SzXRBRA870NoIOPU1FyZ',
-  voodoo: 'S2mhvWQqAP69DXVd74HV', palchykivka: '2gn1YvR9pV1920gG3EmR', pora: 'rsWbPIl6RIkmstpPMToS',
+  voodoo: 'S2mhvWQqAP69DXVd74HV', aniolki: 'pbxZdhd4Rh3YnrvWyMax', palchykivka: '2gn1YvR9pV1920gG3EmR', pora: 'rsWbPIl6RIkmstpPMToS',
 } as const;
 const NAMES: Record<string, string> = {
   bociarniaJunior: 'Bociarnia Junior', dreamStack: 'Dream Stack ', teamPoland: 'Team Poland', bociarnia: 'Bociarnia', kotwica: 'Kotwica Gaming',
-  roll: 'Roll z Zaskoczenia', powerRangers: 'Power Rangers', bestie: 'Mechaniczne Bestie', voodoo: 'Voodoo Monkey', palchykivka: 'Palchykivka Junior', pora: 'Pora Na Przygode',
+  roll: 'Roll z Zaskoczenia', powerRangers: 'Power Rangers', bestie: 'Mechaniczne Bestie', voodoo: 'Voodoo Monkey', aniolki: 'Aniołki Andrzeja', palchykivka: 'Palchykivka Junior', pora: 'Pora Na Przygode',
 };
 const ELITE_TEAMS = new Set(['bociarniaJunior', 'dreamStack', 'teamPoland', 'bociarnia']);
 
@@ -72,6 +72,8 @@ export const MATCHES: MatchSpec[] = [
     id, division: CHALLENGER, matchday, at, a: other, b: 'kotwica', score: [score[0], score[1]],
     games: dotas.map((dota, i) => ({ dota, start: new Date(Date.parse(at) + (i + 1) * 3_600_000).toISOString(), radiant: 'kotwica', radiantWin: score[1] > i, lineups: { kotwica: KOTWICA_WITH_KILDREN } })),
   })),
+  // Forfeited by Aniołki Andrzeja: no game was played.
+  { id: 'W2dzawVdnGqOsZJR3Yho', division: CHALLENGER, matchday: 5, at: '2026-03-19T19:00:00.000Z', a: 'aniolki', b: 'kotwica', score: [0, 2], games: [] },
   { id: 'XVwKIZt4leCFWR6vUewS', division: CHALLENGER, matchday: 3, at: '2026-03-06T18:00:00.000Z', a: 'kotwica', b: 'voodoo', score: [0, 2], games: [
     { dota: 8718370162, start: '2026-03-06T18:04:31Z', radiant: 'kotwica', radiantWin: false, lineups: { kotwica: KOTWICA_WITH_KILDREN } },
     { dota: 8718434807, start: '2026-03-06T18:56:03Z', radiant: 'kotwica', radiantWin: false, lineups: { kotwica: KOTWICA_WITH_KILDREN } },
@@ -80,7 +82,7 @@ export const MATCHES: MatchSpec[] = [
 
 /** Approved requests of Kotwica Gaming for "Przepraszam" in Joxxi's place, as captured. */
 const REQUESTS: Array<[string, string]> = [
-  ['k1MuNwwOCcfwf59mT5UG', 'NvmNJAaAhOR1sziVe47I'], ['xyKprcRdMyPq4PtW2IqE', 'CBN6rpbexZN7Qq0rVop4'], ['dCpqT2kDfnlQVCtxO7HD', 'x8zKgAY1lWJYz4ej562l'],
+  ['k1MuNwwOCcfwf59mT5UG', 'NvmNJAaAhOR1sziVe47I'], ['xyKprcRdMyPq4PtW2IqE', 'CBN6rpbexZN7Qq0rVop4'], ['dCpqT2kDfnlQVCtxO7HD', 'x8zKgAY1lWJYz4ej562l'], ['EaOzdW7EcWnPVWMfvyJU', 'W2dzawVdnGqOsZJR3Yho'],
 ];
 
 /** The tournament document: PDL S2's settings and theme (the fixture's), as a league named PDL S1. */
@@ -134,7 +136,7 @@ function matchRecords(m: MatchSpec, out: Record<string, Rec[]>): Rec[] {
   }
   const winner = m.score[0] > m.score[1] ? TEAMS[m.a] : m.score[1] > m.score[0] ? TEAMS[m.b] : null;
   return [{ path, data: {
-    divisionId: m.division, matchday: m.matchday, round: 1, bestOf: 2, status: 'completed', scheduled_for: m.at, completedAt: m.games.at(-1)!.start,
+    divisionId: m.division, matchday: m.matchday, round: 1, bestOf: 2, status: 'completed', scheduled_for: m.at, completedAt: m.games.at(-1)?.start ?? m.at,
     teamA: { id: TEAMS[m.a], name: NAMES[m.a], score: m.score[0] }, teamB: { id: TEAMS[m.b], name: NAMES[m.b], score: m.score[1] },
     ...(winner && m.id !== '0AxWzOilkXqKGYV6Dqgn' ? { winnerId: winner } : {}), createdAt: '2026-02-15T23:38:40.199Z',
   } }];

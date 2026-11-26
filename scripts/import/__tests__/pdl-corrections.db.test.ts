@@ -45,7 +45,7 @@ describe('the PDL S1 corrections', () => {
   it('match a row each, and the run says so', () => {
     const outcomes = first.tournaments[0].mapped.state.corrections.finish();
     expect(outcomes.filter((o) => o.status !== 'applied')).toEqual([]);
-    expect(outcomes).toHaveLength(12);
+    expect(outcomes).toHaveLength(13);
     expect(first.tournaments[0].mapped.ctx.findings.filter((f) => /stored score disagrees|steamId and steamId64|more games than its series/.test(f.reason))).toEqual([]);
   });
 
@@ -84,6 +84,7 @@ describe('the PDL S1 corrections', () => {
     expect(requests.map((r) => [r.matchId, r.standinSteamId64, r.standinNickname, r.status, r.replacedMemberId]).sort()).toEqual([
       ['CBN6rpbexZN7Qq0rVop4', KILDREN, 'Kildren', 'approved', 'KXhEeRKyHEajWCRwWOW4'],
       ['NvmNJAaAhOR1sziVe47I', KILDREN, 'Kildren', 'approved', 'KXhEeRKyHEajWCRwWOW4'],
+      ['W2dzawVdnGqOsZJR3Yho', KILDREN, 'Kildren', 'approved', 'KXhEeRKyHEajWCRwWOW4'],
       ['XVwKIZt4leCFWR6vUewS', KILDREN, 'Kildren', 'approved', 'KXhEeRKyHEajWCRwWOW4'],
       ['x8zKgAY1lWJYz4ej562l', KILDREN, 'Kildren', 'approved', 'KXhEeRKyHEajWCRwWOW4'],
     ]);
@@ -91,7 +92,7 @@ describe('the PDL S1 corrections', () => {
 
   it('keep Kildren as a former member of Bociarnia Junior, Joxxi on his own account, and name the player Kildren', async () => {
     const members = await t.db.select().from(s.teamMembers).where(eq(s.teamMembers.tournamentId, T));
-    expect(members.find((m) => m.id === 'YlTarCnXL1O0qUMw1I49')).toMatchObject({ teamId: TEAMS.bociarniaJunior, steamId64: KILDREN, leftAt: new Date('2026-03-02T18:22:52.454Z'), leftReason: 'removed' });
+    expect(members.find((m) => m.id === 'YlTarCnXL1O0qUMw1I49')).toMatchObject({ teamId: TEAMS.bociarniaJunior, steamId64: KILDREN, leftAt: new Date('2026-04-01T22:00:00.000Z'), leftReason: 'removed' });
     expect(members.find((m) => m.id === 'KXhEeRKyHEajWCRwWOW4')).toMatchObject({ teamId: TEAMS.kotwica, steamId64: JOXXI, leftAt: null });
     const [player] = await t.db.select().from(s.players).where(eq(s.players.steamId64, KILDREN));
     expect(player.nickname).toBe('Kildren');
@@ -104,8 +105,8 @@ describe('the PDL S1 corrections', () => {
 
   it('list each correction readably in the report, with no Steam id when redacted', () => {
     const redacted = renderReport(first, { redact: true });
-    expect(redacted).toMatch(/Applied owner correction: PDL S1, Elite, matchday 4, 9 March 2026, Bociarnia Junior vs Dream Stack .*Winner none → Bociarnia Junior, given against none → Dream Stack/);
-    expect(redacted).toMatch(/12 of 12 applied/);
+    expect(redacted).toMatch(/Applied owner correction: POLISH DOTA2 LEAGUE Season 1, Elite, matchday 4, 9 March 2026, Bociarnia Junior vs Dream Stack .*Winner none → Bociarnia Junior, given against none → Dream Stack/);
+    expect(redacted).toMatch(/13 of 13 applied/);
     expect(redacted).not.toMatch(/7656\d{13}/);
   });
 

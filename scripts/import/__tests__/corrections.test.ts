@@ -23,8 +23,21 @@ describe('the owner corrections file', () => {
     expect({ wiosennaMatches: byKind('match', 'wiosenna'), wiosennaGames: byKind('game', 'wiosenna'), letnia: byKind('match', 'letnia'), pdl: byKind('match', 'pdl') })
       .toEqual({ wiosennaMatches: 3, wiosennaGames: 2, letnia: 4, pdl: 2 });
     expect({ steam: byKind('roster-steam'), standins: byKind('standin'), members: byKind('member'), players: byKind('player') })
-      .toEqual({ steam: 4, standins: 4, members: 1, players: 1 });
+      .toEqual({ steam: 4, standins: 5, members: 1, players: 1 });
     for (const c of OWNER_CORRECTIONS) expect(c.source).toMatch(/2026-11-2\d/);
+  });
+
+  it('names each tournament as the import\'s findings do', () => {
+    const names = {
+      letnia: new MatchLabels(mapLetnia().rows, 'letnia').match('KdDxXJ3e06yYYzED7cQ2').split(',')[0],
+      wiosenna: new MatchLabels(mapCapture(readCapture(join(ROOT, 'fixtures', 'exports', 'wiosenna')), null, { anonymize: false }, new Map()).rows, 'wiosenna').match('HVwwRd87bSFsCzkph25p').split(',')[0],
+      pdl: 'POLISH DOTA2 LEAGUE Season 1',
+    };
+    expect(names).toEqual({ letnia: 'Letnia Batalia', wiosenna: 'Wiosenna Furia', pdl: 'POLISH DOTA2 LEAGUE Season 1' });
+    for (const c of OWNER_CORRECTIONS) {
+      if (c.kind === 'player') continue;
+      expect({ id: c.id, starts: c.label.startsWith(`${names[c.tournament as keyof typeof names]}, `) }).toEqual({ id: c.id, starts: true });
+    }
   });
 
   it('refuses an entry without a readable label, and a repeated id', () => {
