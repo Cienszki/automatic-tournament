@@ -788,7 +788,7 @@ Added in S9 (2026-11-26) from the owner's decision 15. Built by WP-67.
 
 **Using a shared theme.** A tournament keeps the theme's version it was published with. When the author publishes a new version, the organizer sees "Nowa wersja motywu" on the look screen with a preview, and chooses; nothing changes on its own. If the author deletes or unlists the theme, tournaments that use it keep their version. A tournament's own changes (Marka, the groups it changed) are kept across versions.
 
-**The starting library** (proposed; the owner may rename any of them). The first three are our own tournaments' looks, built as themes so the import converts each tournament to its theme with no visible change, and so organizers see real examples:
+**The starting library** (proposed; the owner may rename any of them). The first three are for our own tournaments, so organizers see real examples. Karmazyn is today's PDL look, so the import links PDL and PDL S2 to it with no visible change. Sakura and Synthwave are new looks; Wiosenna and Letnia keep their imported looks until the owner switches them:
 
 | Theme | For | The look | Kind |
 |---|---|---|---|
