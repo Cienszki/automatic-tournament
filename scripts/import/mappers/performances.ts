@@ -8,6 +8,7 @@ import * as s from '@/platform/db/schema';
 import { performanceExtraSchema } from '@/platform/db/schema/json';
 import { ancestorId, docsOf, type Doc } from '../source';
 import { isSteam32, isSteam64, toBool, toInt, toSteam64, toText } from '../values';
+import { approvedStandins } from './apply-corrections';
 import { obj } from './read';
 import { fitJson, type MapState } from './state';
 
@@ -67,6 +68,8 @@ export function mapPerformances(state: MapState): void {
   state.ctx.read(KIND, docs);
   const games = new Map(state.rows.get(s.games).map((g) => [g.id as string, g]));
   const unknownFields = new Map<string, number>();
+  const standins = new Map<string, Map<string, string>>();
+  const standinsOf = (matchId: string) => standins.get(matchId) ?? standins.set(matchId, approvedStandins(state, matchId)).get(matchId)!;
   for (const doc of docs) {
     const matchId = ancestorId(doc, 2);
     const gameId = state.gameIds.get(matchId)?.get(ancestorId(doc));
@@ -98,7 +101,7 @@ export function mapPerformances(state: MapState): void {
     if (fb === null) missing.push('firstBlood');
     row.firstBlood = fb ?? false;
     row.heroId = toInt(d.heroId);
-    row.teamId = teamOf(state, doc, steamId64, game);
+    row.teamId = teamOf(state, doc, steamId64, game, standinsOf(game.matchId as string));
     const extra: Record<string, unknown> = {};
     const atMinute: Record<string, Record<string, unknown>> = {};
     for (const [field, value] of Object.entries(d)) {
@@ -124,12 +127,27 @@ export function mapPerformances(state: MapState): void {
   }
 }
 
-/** `teamId`, else the roster the player was on, else the side of the game they played; null when unknown. */
-function teamOf(state: MapState, doc: Doc, steamId64: string, game: Record<string, unknown>): string | null {
+/**
+ * `teamId`, else the team the player stood in for, else the roster the player was on, else the
+ * side of the game they played; null when unknown. A stand-in approved for the match plays for
+ * that team only, even when another team of the tournament has them on its roster (WP-33c:
+ * Lukash, on Power Rangers' roster, for Kotwica Gaming): a `teamId` outside the match gives way
+ * to it.
+ */
+function teamOf(state: MapState, doc: Doc, steamId64: string, game: Record<string, unknown>, standins: ReadonlyMap<string, string>): string | null {
   const id = toText(doc.data.teamId);
-  if (id && state.teamIds.has(id)) return id;
-  if (id) state.ctx.finding({ kind: KIND, code: 'unmapped', reason: 'teamId is not a team of this tournament', ref: `${doc.path} ${id}` });
   const match = state.matchTeams.get(game.matchId as string);
+  const standinFor = standins.get(steamId64);
+  if (id && state.teamIds.has(id)) {
+    if (!standinFor || standinFor === id || id === match?.a || id === match?.b) return id;
+    state.ctx.finding({ kind: KIND, code: 'conflict', reason: 'teamId is a team outside the match; the team the player is an approved stand-in for is used', ref: `${doc.path} ${id}` });
+    return standinFor;
+  }
+  if (id) state.ctx.finding({ kind: KIND, code: 'unmapped', reason: 'teamId is not a team of this tournament', ref: `${doc.path} ${id}` });
+  if (standinFor) {
+    state.ctx.finding({ kind: KIND, code: 'decision', reason: 'a performance without teamId takes the team its player is an approved stand-in for in the match', ref: doc.path });
+    return standinFor;
+  }
   const onRoster = [match?.a, match?.b].find((t) => t && state.memberBySteam.has(`${t}/${steamId64}`));
   if (onRoster) {
     state.ctx.finding({ kind: KIND, code: 'decision', reason: 'a performance without teamId takes the team whose roster has the player', ref: doc.path });

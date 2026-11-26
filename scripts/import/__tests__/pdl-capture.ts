@@ -1,7 +1,10 @@
 // A small made-up capture of PDL S1 (slug `pdl`) for the tests of the owner corrections: the
 // teams, roster entries, matches, games and stand-in requests the corrections name, with their
 // real Firestore ids, Dota ids and Steam accounts, and made-up accounts for everyone else. The
-// full capture is git-ignored, so CI tests on this.
+// full capture is git-ignored, so CI tests on this. Kotwica Gaming vs Voodoo Monkey is as captured:
+// Kildren and Lukash (on Power Rangers' roster) for Joxxi and Siusiak12, their performances keyed
+// by their roster document ids, and the approved request for Lukash with only a vanity profile
+// link, its Steam id on the match's approved copy.
 
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -14,6 +17,12 @@ const ELITE = 'division-1769544151371';
 const CHALLENGER = 'division-1769544174025';
 export const KILDREN = '76561198273949482';
 export const JOXXI = '76561198074277210';
+export const LUKASH = '76561198069911128';
+/** Made up: Siusiak12's account is not in the corrections. */
+export const SIUSIAK = '76561198000000409';
+export const VOODOO_MATCH = 'XVwKIZt4leCFWR6vUewS';
+export const LUKASH_REQUEST = 'o5qN7Y2tDJeWed6K2P1O';
+export const MEMBERS = { joxxi: 'KXhEeRKyHEajWCRwWOW4', siusiak: 'vYmSk6R9WXDYYhONnyl7', lukash: 'HGSJHI40P8Jq5IzpOH0N', kildrenJunior: 'YlTarCnXL1O0qUMw1I49' } as const;
 
 export const TEAMS = {
   bociarniaJunior: 'SI1wtAIlxoxniyRcdk8Y', dreamStack: 'KUdIieu6eM7tiVvtVi5i', teamPoland: '3dkzIWuFD6ZYTFtlVALw', bociarnia: 'ghoBqZiO3hup5H5z6llI',
@@ -31,17 +40,26 @@ export const fake = (teamIndex: number, n: number) => `76561198000${String(teamI
 
 /** Roster entries whose ids the corrections name; the others are made up. */
 const REAL: Record<string, Array<{ id: string; data: Data }>> = {
-  kotwica: [{ id: 'KXhEeRKyHEajWCRwWOW4', data: { nickname: 'Joxxi', steamId: KILDREN, steamId64: JOXXI, steamId32: '114011482' } }],
-  bociarniaJunior: [{ id: 'YlTarCnXL1O0qUMw1I49', data: { nickname: 'Przepraszam', steamId64: KILDREN, steamId32: '313683754' } }],
+  kotwica: [
+    { id: MEMBERS.joxxi, data: { nickname: 'Joxxi', steamId: KILDREN, steamId64: JOXXI, steamId32: '114011482' } },
+    { id: MEMBERS.siusiak, data: { nickname: 'Siusiak12', steamId64: SIUSIAK } },
+  ],
+  powerRangers: [{ id: MEMBERS.lukash, data: { nickname: 'Lukash', steamId64: LUKASH, steamId32: '109645400' } }],
+  bociarniaJunior: [{ id: MEMBERS.kildrenJunior, data: { nickname: 'Przepraszam', steamId64: KILDREN, steamId32: '313683754' } }],
   bestie: [{ id: '0qESQ4ER7LUyAQkFtiXU', data: { nickname: 'godspell', steamId: '76561199635175535', steamId64: '76561198056980796', steamId32: '1674909807' } }],
   palchykivka: [{ id: 'BqZP4ck6vAfZPp42Newc', data: { nickname: 'Drit', steamId: '76561199466970771', steamId64: '76561198975511804', steamId32: '1015246076' } }],
   pora: [{ id: 'wIEGLilPlKcUar9S3CzW', data: { nickname: 'Błyskawica', steamId: '76561198974478081', steamId64: '76561198195753628', steamId32: '235487900' } }],
 };
 
+/** Accounts of real roster entries that play in the made-up games. */
+const PLAYING = new Set([KILDREN, JOXXI, SIUSIAK, LUKASH]);
+/** Performances keyed by the roster document id, as the capture keys them (no steamId field). */
+const BY_MEMBER: Record<string, string> = { [KILDREN]: MEMBERS.kildrenJunior, [LUKASH]: MEMBERS.lukash };
+
 /** Each team's five roster accounts, real ones first. */
 export function rosterOf(team: keyof typeof TEAMS): string[] {
   const index = Object.keys(TEAMS).indexOf(team);
-  const real = (REAL[team] ?? []).map((r) => (r.data.steamId64 === KILDREN || r.data.steamId64 === JOXXI ? r.data.steamId64 as string : null)).filter((x): x is string => !!x);
+  const real = (REAL[team] ?? []).map((r) => (PLAYING.has(r.data.steamId64 as string) ? r.data.steamId64 as string : null)).filter((x): x is string => !!x);
   return [...real, ...[1, 2, 3, 4, 5].map((n) => fake(index, n))].slice(0, 5);
 }
 
@@ -50,6 +68,8 @@ interface MatchSpec { id: string; division: string; matchday: number; at: string
 
 /** Kotwica with Kildren in Joxxi's place. */
 const KOTWICA_WITH_KILDREN = [KILDREN, ...rosterOf('kotwica').slice(1)];
+/** Kotwica vs Voodoo Monkey: Kildren for Joxxi and Lukash for Siusiak12. */
+const KOTWICA_VS_VOODOO = [KILDREN, LUKASH, ...rosterOf('kotwica').slice(2)];
 /** Bociarnia Junior with a stand-in (Ytsuqen in the capture) in Kildren's place. */
 const JUNIOR_WITH_STANDIN = [fake(99, 9), ...rosterOf('bociarniaJunior').slice(1)];
 
@@ -74,9 +94,9 @@ export const MATCHES: MatchSpec[] = [
   })),
   // Forfeited by Aniołki Andrzeja: no game was played.
   { id: 'W2dzawVdnGqOsZJR3Yho', division: CHALLENGER, matchday: 5, at: '2026-03-19T19:00:00.000Z', a: 'aniolki', b: 'kotwica', score: [0, 2], games: [] },
-  { id: 'XVwKIZt4leCFWR6vUewS', division: CHALLENGER, matchday: 3, at: '2026-03-06T18:00:00.000Z', a: 'kotwica', b: 'voodoo', score: [0, 2], games: [
-    { dota: 8718370162, start: '2026-03-06T18:04:31Z', radiant: 'kotwica', radiantWin: false, lineups: { kotwica: KOTWICA_WITH_KILDREN } },
-    { dota: 8718434807, start: '2026-03-06T18:56:03Z', radiant: 'kotwica', radiantWin: false, lineups: { kotwica: KOTWICA_WITH_KILDREN } },
+  { id: VOODOO_MATCH, division: CHALLENGER, matchday: 3, at: '2026-03-06T18:00:00.000Z', a: 'kotwica', b: 'voodoo', score: [0, 2], games: [
+    { dota: 8718370162, start: '2026-03-06T18:04:31Z', radiant: 'kotwica', radiantWin: false, lineups: { kotwica: KOTWICA_VS_VOODOO } },
+    { dota: 8718434807, start: '2026-03-06T18:56:03Z', radiant: 'kotwica', radiantWin: false, lineups: { kotwica: KOTWICA_VS_VOODOO } },
   ] },
 ];
 
@@ -114,6 +134,12 @@ function records(): Record<string, Rec[]> {
       standinSteamProfileUrl: `https://steamcommunity.com/profiles/${KILDREN}/`, createdAt: '2026-03-12T13:39:11.849Z', updatedAt: '2026-03-12T13:40:12.776Z',
     } });
   }
+  // Lukash for Siusiak12, approved on the match day; the vanity link is made up.
+  out.standinRequests.push({ path: `${ROOT}/standinRequests/${LUKASH_REQUEST}`, data: {
+    matchId: VOODOO_MATCH, teamId: TEAMS.kotwica, requestingTeamId: TEAMS.kotwica, status: 'approved', replacedPlayerId: MEMBERS.siusiak,
+    replacedPlayerNickname: 'Siusiak12', standinNickname: 'Lukash', standinSteamProfileUrl: 'https://steamcommunity.com/id/kotwica-standin/',
+    createdAt: '2026-03-06T09:07:36.881Z', updatedAt: '2026-03-06T09:54:25.021Z', respondedAt: '2026-03-06T09:54:25.021Z',
+  } });
   return out;
 }
 
@@ -129,9 +155,13 @@ function matchRecords(m: MatchSpec, out: Record<string, Rec[]>): Rec[] {
       radiant_team: { id: TEAMS[g.radiant], name: NAMES[g.radiant] }, dire_team: { id: TEAMS[dire], name: NAMES[dire] },
     } });
     for (const [team, side] of sides) {
-      (g.lineups?.[team] ?? rosterOf(team)).forEach((steam, n) => out['matches.games.performances'].push({
-        path: `${gamePath}/performances/${steam}`, data: { steamId: steam, teamId: TEAMS[team], heroId: side * 10 + n + 1, kills: n, deaths: 1, assists: 2 },
-      }));
+      (g.lineups?.[team] ?? rosterOf(team)).forEach((steam, n) => {
+        const stats = { teamId: TEAMS[team], heroId: side * 10 + n + 1, kills: n, deaths: 1, assists: 2 };
+        const member = m.id === VOODOO_MATCH ? BY_MEMBER[steam] : undefined;
+        out['matches.games.performances'].push(member
+          ? { path: `${gamePath}/performances/${member}`, data: { playerId: member, ...stats } }
+          : { path: `${gamePath}/performances/${steam}`, data: { steamId: steam, ...stats } });
+      });
     }
   }
   const winner = m.score[0] > m.score[1] ? TEAMS[m.a] : m.score[1] > m.score[0] ? TEAMS[m.b] : null;
@@ -139,6 +169,10 @@ function matchRecords(m: MatchSpec, out: Record<string, Rec[]>): Rec[] {
     divisionId: m.division, matchday: m.matchday, round: 1, bestOf: 2, status: 'completed', scheduled_for: m.at, completedAt: m.games.at(-1)?.start ?? m.at,
     teamA: { id: TEAMS[m.a], name: NAMES[m.a], score: m.score[0] }, teamB: { id: TEAMS[m.b], name: NAMES[m.b], score: m.score[1] },
     ...(winner && m.id !== '0AxWzOilkXqKGYV6Dqgn' ? { winnerId: winner } : {}), createdAt: '2026-02-15T23:38:40.199Z',
+    ...(m.id === VOODOO_MATCH ? { approvedStandins: { [LUKASH_REQUEST]: {
+      steamId32: '109645400', nickname: 'Lukash', teamId: TEAMS.kotwica, playerDocId: MEMBERS.lukash, replacedPlayerId: MEMBERS.siusiak,
+      replacedPlayerNickname: 'Siusiak12', approvedAt: '2026-03-06T09:54:25.021Z',
+    } } } : {}),
   } }];
 }
 

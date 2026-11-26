@@ -107,11 +107,17 @@ export function applyStandinCorrections(state: MapState): void {
   }
 }
 
-/** Approved stand-ins of a match by team: Steam64 → team id, for telling the teams of a game apart. */
+/**
+ * Approved stand-ins of a match by team: Steam64 → team id, for telling the teams of a game apart
+ * and for the team of a performance. A request whose team is not one of its match's two teams
+ * counts for no team (mapStandinRequests reports it).
+ */
 export function approvedStandins(state: MapState, matchId: string): Map<string, string> {
   const out = new Map<string, string>();
+  const match = state.matchTeams.get(matchId);
   for (const r of state.rows.get(s.standinRequests)) {
-    if (r.matchId === matchId && APPROVED.has(r.status as string) && typeof r.standinSteamId64 === 'string') out.set(r.standinSteamId64, r.teamId as string);
+    if (r.matchId !== matchId || !APPROVED.has(r.status as string) || typeof r.standinSteamId64 !== 'string') continue;
+    if (r.teamId === match?.a || r.teamId === match?.b) out.set(r.standinSteamId64, r.teamId as string);
   }
   return out;
 }

@@ -6,11 +6,14 @@
 
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
+import { and, eq } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import * as s from '@/platform/db/schema';
 import { createTestDb, type TestDb } from '@/platform/db/testing';
 import { OWNER_CORRECTIONS } from '../corrections';
 import { totalChanges } from '../report';
 import { runImport, type RunOptions, type RunResult } from '../run';
+import { computeImportedStandings } from '../standings';
 
 const ROOT = join(__dirname, '..', '..', '..');
 const EXPORTS = [process.env.IMPORT_DATA_EXPORTS, join(ROOT, 'data-exports'), join(ROOT, '..', 'overhaul', 'data-exports')]
@@ -43,6 +46,16 @@ describe.skipIf(!EXPORTS)('the import of the four full captures', () => {
     const published = first.tournaments.flatMap((tr) => tr.standings.filter((x) => x.against === 'published'));
     for (const c of published) expect({ group: c.groupName, differences: c.differences }).toEqual({ group: c.groupName, differences: [] });
     expect(published.filter((c) => c.corrected.length).map((c) => c.groupName).sort()).toEqual(['Elite', 'Grupa B']);
+  });
+
+  it('shows Wiosenna Furia\'s Grupa B as corrected and keeps the bracket as it was played (question 44a)', async () => {
+    const wiosenna = first.tournaments.find((tr) => tr.mapped.capture.slug === 'wiosenna')!.mapped.capture.tournamentId;
+    const teams = new Map((await t.db.select().from(s.teams).where(eq(s.teams.tournamentId, wiosenna))).map((x) => [x.id, x.name.trim()]));
+    const groupB = (await computeImportedStandings(t.db, wiosenna)).find((x) => x.group.name === 'Grupa B')!;
+    const top = groupB.standings.rows.slice(0, 4).map((r) => [teams.get(r.teamId), r.record.points]);
+    expect(top.slice(1)).toEqual([['Chrupek zamknij się', 15], ['Samci Savci', expect.any(Number)], ['Adaś, ile za tę Robotę?', 13]]);
+    const [u1c] = await t.db.select().from(s.matches).where(and(eq(s.matches.tournamentId, wiosenna), eq(s.matches.id, 'ub-r1-p3')));
+    expect([teams.get(u1c.teamAId!), teams.get(u1c.teamBId!)]).toEqual(['Adaś, ile za tę Robotę?', 'Dwa Razy I Do Bazy']);
   });
 
   it('writes nothing the second time', async () => {
