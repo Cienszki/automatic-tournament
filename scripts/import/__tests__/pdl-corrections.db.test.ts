@@ -108,6 +108,10 @@ describe('the PDL S1 corrections', () => {
     expect(redacted).toMatch(/Applied owner correction: POLISH DOTA2 LEAGUE Season 1, Elite, matchday 4, 9 March 2026, Bociarnia Junior vs Dream Stack .*Winner none → Bociarnia Junior, given against none → Dream Stack/);
     expect(redacted).toMatch(/13 of 13 applied/);
     expect(redacted).not.toMatch(/7656\d{13}/);
+    // Nor a 32-bit one (Kildren's 313683754, Joxxi's 114011482), while Dota match ids stay.
+    for (const steam32 of ['313683754', '114011482', '1674909807', '1015246076', '235487900']) expect(redacted).not.toContain(steam32);
+    expect(redacted).toMatch(/OpenDota 8718370162/);
+    expect(renderReport(first)).toContain('313683754');
   });
 
   it('write nothing the second time', async () => {

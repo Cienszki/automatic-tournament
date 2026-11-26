@@ -5,6 +5,7 @@
 
 import type { Finding } from './context';
 import type { CorrectionOutcome } from './corrections';
+import { steam64ToSteam32 } from '@/lib/steam-id-utils';
 import type { MatchLabels } from './labels';
 
 /** Examples shown per group: plain references, and readable match or game labels. */
@@ -84,11 +85,28 @@ export function renderCorrections(outcomes: readonly CorrectionOutcome[], option
   const out = ['### Owner corrections', '', `${applied} of ${outcomes.length} applied (scripts/import/owner-corrections.json).`, ''];
   for (const o of outcomes) {
     const line = `- ${o.status === 'applied' ? 'Applied owner correction' : '**Matched no row**'}: ${o.label}. ${capital(o.change)}. ${o.reason} (\`${o.id}\`; ${o.source})`;
-    out.push(options.redact ? line.replace(STEAM64, 'a Steam account') : line);
+    out.push(options.redact ? withoutSteamIds(line, steam32Of(outcomes)) : line);
   }
   out.push('');
   return out;
 }
 
 const STEAM64 = /7656\d{13}/g;
+/** A number named as a 32-bit Steam account in the corrections' own words. */
+const NAMED_STEAM32 = /\b(account|accounts|steamId32|32-bit)\s+\d{4,10}\b/g;
+
+/** The 32-bit forms of every 64-bit Steam id the outcomes mention. */
+function steam32Of(outcomes: readonly CorrectionOutcome[]): Set<string> {
+  const text = outcomes.map((o) => `${o.label} ${o.change} ${o.reason}`).join(' ');
+  return new Set([...text.matchAll(STEAM64)].map((m) => steam64ToSteam32(m[0])));
+}
+
+/**
+ * A line with every Steam id taken out: 64-bit ids, their 32-bit forms, and numbers the text names
+ * as an account. Dota match ids (10 digits, never written as an account) stay.
+ */
+export function withoutSteamIds(line: string, steam32: ReadonlySet<string>): string {
+  const out = line.replace(STEAM64, 'a Steam account').replace(NAMED_STEAM32, (_m, word: string) => `${word} (Steam id left out)`);
+  return out.replace(/\b\d{4,10}\b/g, (n) => (steam32.has(n) ? '(Steam id left out)' : n));
+}
 const capital = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
