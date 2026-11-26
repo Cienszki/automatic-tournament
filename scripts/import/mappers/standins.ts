@@ -55,6 +55,11 @@ function requestRow(state: MapState, doc: Doc, copy: Record<string, unknown> | u
     state.ctx.outcome(KIND, 'unmapped', 'the request\'s team does not exist', doc.path);
     return null;
   }
+  const teams = state.matchTeams.get(matchId)!;
+  if (teamId !== teams.a && teamId !== teams.b) {
+    state.ctx.finding({ kind: KIND, code: 'conflict', about: { matchId }, ref: `${doc.path} ${teamId}`,
+      reason: 'the request\'s team is not one of its match\'s two teams; it is imported, but its stand-in counts for no team in that match' });
+  }
   // The replaced player: by roster id (older layout) or by Steam64 on the requesting team.
   const replacedRef = toText(d.replacedMemberId) ?? toText(d.replacedPlayerId);
   let replacedMemberId: string | null = null;

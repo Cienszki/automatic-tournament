@@ -85,8 +85,13 @@ describe('the roster accounts of a game', () => {
     member('gone', 'k3', { leftAt: new Date('2025-08-20T00:00:00Z') }),
     member('coach', 'k4', { kind: 'coach' }),
   ]);
-  rows.add(s.standinRequests, [{ tournamentId: 't', id: 'r', matchId: 'm', teamId: 'pumy', standinSteamId64: 'k1', status: 'approved' }]);
-  const state = { rows } as unknown as MapState;
+  rows.add(s.standinRequests, [
+    { tournamentId: 't', id: 'r', matchId: 'm', teamId: 'pumy', standinSteamId64: 'k1', status: 'approved' },
+    // Names a team that is not in its match: counts for no team.
+    { tournamentId: 't', id: 'r3', matchId: 'm', teamId: 'third', standinSteamId64: 'k2', status: 'approved' },
+  ]);
+  const matchTeams = new Map([['m', { a: 'kepski', b: 'pumy', bestOf: 3 }], ['other', { a: 'kepski', b: 'pumy', bestOf: 3 }]]);
+  const state = { rows, matchTeams } as unknown as MapState;
   const start = new Date('2025-08-25T16:57:50Z');
 
   it('leave out members who joined after the game started or left before it, and coaches', () => {
@@ -95,5 +100,9 @@ describe('the roster accounts of a game', () => {
 
   it('give a stand-in approved for the match to that team only', () => {
     expect(rosterAccounts(state, 'm', start).get('k1')).toEqual(['pumy']);
+  });
+
+  it('ignore an approved request whose team is not one of the match\'s two teams', () => {
+    expect(rosterAccounts(state, 'm', start).has('k2')).toBe(false);
   });
 });

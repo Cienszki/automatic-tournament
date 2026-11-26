@@ -14,6 +14,7 @@ import { computeTournament } from '@/features/stats';
 import { loadTournamentInput } from '@/features/stats/queries';
 import * as s from '@/platform/db/schema';
 import { createTestDb, type TestDb } from '@/platform/db/testing';
+import { OWNER_CORRECTIONS } from '../corrections';
 import { mapCapture } from '../map';
 import { renderReport, totalChanges } from '../report';
 import { readCapture, runImport, type RunOptions, type RunResult } from '../run';
@@ -170,21 +171,25 @@ describe('a stand-in on another team\'s roster (Lukash, Power Rangers, for Kotwi
   afterAll(() => rmSync(tmp, { recursive: true, force: true }));
 
   type Rec = { path: string; data: Record<string, unknown> };
-  /** The mapped capture with each line of `file` passed through `edit` (null drops it). */
-  const mappedWith = (file: string, edit: (rec: Rec) => Rec | null) => {
-    const path = join(base, file);
-    const before = readFileSync(path, 'utf8');
-    const recs = before.split('\n').filter(Boolean).map((l) => edit(JSON.parse(l) as Rec)).filter((r): r is Rec => r !== null);
-    writeFileSync(path, recs.map((r) => JSON.stringify(r)).join('\n') + '\n');
+  type Edit = (rec: Rec) => Rec | null;
+  /** The mapped capture with each line of each named file passed through its edit (null drops it). */
+  const mappedWithAll = (edits: Record<string, Edit>, corrections = OWNER_CORRECTIONS) => {
+    const saved = Object.keys(edits).map((file) => [join(base, file), readFileSync(join(base, file), 'utf8')] as const);
+    for (const [path, before] of saved) {
+      const edit = edits[path.slice(base.length + 1)];
+      const recs = before.split('\n').filter(Boolean).map((l) => edit(JSON.parse(l) as Rec)).filter((r): r is Rec => r !== null);
+      writeFileSync(path, recs.map((r) => JSON.stringify(r)).join('\n') + '\n');
+    }
     try {
-      return mapCapture(readCapture(base), null, { anonymize: false }, new Map());
+      return mapCapture(readCapture(base), null, { anonymize: false, corrections }, new Map());
     } finally {
-      writeFileSync(path, before);
+      for (const [path, before] of saved) writeFileSync(path, before);
     }
   };
-  const lukashTeams = (m: ReturnType<typeof mapCapture>) => {
-    const voodoo = new Set(m.rows.get(s.games).filter((g) => g.matchId === VOODOO_MATCH).map((g) => g.id));
-    return m.rows.get(s.performances).filter((p) => p.steamId64 === LUKASH && voodoo.has(p.gameId as string)).map((p) => p.teamId);
+  const mappedWith = (file: string, edit: Edit) => mappedWithAll({ [file]: edit });
+  const lukashTeams = (m: ReturnType<typeof mapCapture>, matchId = VOODOO_MATCH) => {
+    const games = new Set(m.rows.get(s.games).filter((g) => g.matchId === matchId).map((g) => g.id));
+    return m.rows.get(s.performances).filter((p) => p.steamId64 === LUKASH && games.has(p.gameId as string)).map((p) => p.teamId);
   };
   const isLukashPerf = (r: Rec) => r.path.includes(`/matches/${VOODOO_MATCH}/`) && r.path.endsWith(`/performances/${MEMBERS.lukash}`);
 
@@ -206,5 +211,29 @@ describe('a stand-in on another team\'s roster (Lukash, Power Rangers, for Kotwi
     const m = mappedWith('matches.games.performances.jsonl', (r) => (isLukashPerf(r) ? { ...r, data: { ...r.data, teamId: TEAMS.powerRangers } } : r));
     expect(lukashTeams(m)).toEqual([TEAMS.kotwica, TEAMS.kotwica]);
     expect(m.ctx.findings.filter((f) => f.reason.startsWith('teamId is a team outside the match'))).toHaveLength(2);
+  });
+
+  it('keeps a stored team of the match over the stand-in request (teamId Voodoo Monkey stays Voodoo Monkey)', () => {
+    const m = mappedWith('matches.games.performances.jsonl', (r) => (isLukashPerf(r) ? { ...r, data: { ...r.data, teamId: TEAMS.voodoo } } : r));
+    expect(lukashTeams(m)).toEqual([TEAMS.voodoo, TEAMS.voodoo]);
+  });
+
+  it('uses the request for its own match only: his Power Rangers games vs Kotwica Gaming with no teamId go to Power Rangers', () => {
+    const inPowerRangersMatch = (r: Rec) => r.path.includes('/matches/CBN6rpbexZN7Qq0rVop4/') && r.path.endsWith(`/performances/${LUKASH}`);
+    const m = mappedWith('matches.games.performances.jsonl', (r) => (inPowerRangersMatch(r) ? { ...r, data: { ...r.data, teamId: undefined } } : r));
+    expect(lukashTeams(m, 'CBN6rpbexZN7Qq0rVop4')).toEqual([TEAMS.powerRangers, TEAMS.powerRangers]);
+    expect(lukashTeams(m)).toEqual([TEAMS.kotwica, TEAMS.kotwica]);
+  });
+
+  it('counts an approved request that names a third team for no team, and reports it', () => {
+    const third = (r: Rec) => (r.path.endsWith(LUKASH_REQUEST) ? { ...r, data: { ...r.data, teamId: TEAMS.powerRangers, requestingTeamId: TEAMS.powerRangers } } : r);
+    const withoutLukash = OWNER_CORRECTIONS.filter((c) => c.id !== 'pdl-kotwica-lukash-voodoo');
+    const noTeam = (r: Rec) => (isLukashPerf(r) ? { ...r, data: { ...r.data, teamId: undefined } } : r);
+    const m = mappedWithAll({ 'standinRequests.jsonl': third, 'matches.games.performances.jsonl': noTeam }, withoutLukash);
+    expect(m.rows.get(s.standinRequests).find((r) => r.id === LUKASH_REQUEST)).toMatchObject({ teamId: TEAMS.powerRangers, status: 'approved' });
+    expect(m.ctx.findings.filter((f) => f.reason.startsWith('the request\'s team is not one of its match\'s two teams'))).toHaveLength(1);
+    // His performances stored without a team get none from it: neither Power Rangers nor Kotwica Gaming.
+    expect(lukashTeams(m)).toEqual([null, null]);
+    for (const g of m.rows.get(s.games).filter((x) => x.matchId === VOODOO_MATCH)) expect([g.radiantTeamId, g.direTeamId]).toEqual([TEAMS.kotwica, TEAMS.voodoo]);
   });
 });
