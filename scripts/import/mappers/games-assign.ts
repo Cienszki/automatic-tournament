@@ -76,7 +76,7 @@ function performancesByGame(state: MapState): Map<string, Doc[]> {
 }
 
 /** Account → the teams it can play for in a game of `matchId` that started at `start`. */
-function rosterAccounts(state: MapState, matchId: string, start: Date | null): Map<string, string[]> {
+export function rosterAccounts(state: MapState, matchId: string, start: Date | null): Map<string, string[]> {
   const out = new Map<string, string[]>();
   const add = (steam: unknown, team: string) => {
     if (typeof steam !== 'string') return;
@@ -84,8 +84,10 @@ function rosterAccounts(state: MapState, matchId: string, start: Date | null): M
   };
   for (const m of state.rows.get(s.teamMembers)) {
     if (m.kind === 'coach') continue;
+    // Only members on the roster when the game started: joined before it, not yet left.
     const left = asDate(m.leftAt);
-    if (left && start && left <= start) continue;
+    const joined = asDate(m.joinedAt);
+    if (start && ((left && left <= start) || (joined && joined > start))) continue;
     add(m.steamId64, m.teamId as string);
     for (const smurf of arr(m.smurfAccounts)) add(obj(smurf).steamId64, m.teamId as string);
   }
@@ -119,11 +121,10 @@ export function resolveTeams(state: MapState, drafts: readonly Draft[]): void {
         reason: 'the players of a game are of other teams than its stored labels; the teams are taken from the players',
       });
     }
-    const ofMatch = (team: string | null) => team === match?.a || team === match?.b;
-    if (result.by === 'players' && match && (!ofMatch(result.radiant) || !ofMatch(result.dire))) {
+    if (result.otherTeam) {
       state.ctx.finding({
-        kind: KIND, code: 'conflict', about: { matchId, game }, ref: `${d.doc.path} ${names(result.radiant)} / ${names(result.dire)}`,
-        reason: 'the players of a game are of other teams than its match; the players\' teams are kept (owner to confirm)',
+        kind: KIND, code: 'conflict', about: { matchId, game }, ref: `${d.doc.path} ${names(result.otherTeam)}`,
+        reason: 'most accounts on one side of a game are on the roster of a team outside its match; the game keeps the match\'s teams (owner to confirm)',
       });
     }
   }
