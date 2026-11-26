@@ -2,6 +2,7 @@
 // merged into another row, dropped by a rule, or not imported), every finding worth a line in the
 // report, and the people and players that rows refer to.
 
+import { subjectOf } from './labels';
 import type { Doc } from './source';
 import { isUserId, toSteam64 } from './values';
 
@@ -17,6 +18,19 @@ export interface Finding {
   reason: string;
   /** The document or value it is about. */
   ref?: string;
+  /**
+   * The match (and game) it is about, named readably in the report (labels.ts). Taken from a
+   * match or game path in `ref` when not given.
+   */
+  about?: Subject;
+}
+
+/** A match, or one game of it by its row id or source document id. */
+export interface Subject {
+  matchId: string;
+  game?: string;
+  /** Other matches the game was also stored under. */
+  alsoUnder?: string[];
 }
 
 export interface KindAccount {
@@ -60,11 +74,11 @@ export class ImportContext {
     this.account(kind).read += docs.length;
   }
 
-  outcome(kind: string, outcome: Outcome, reason?: string, ref?: string): void {
+  outcome(kind: string, outcome: Outcome, reason?: string, ref?: string, about?: Subject): void {
     const a = this.account(kind);
     a.outcomes[outcome]++;
     if (reason) a.reasons[`${outcome}: ${reason}`] = (a.reasons[`${outcome}: ${reason}`] ?? 0) + 1;
-    if (outcome === 'unmapped' && reason) this.finding({ kind, code: 'unmapped', reason, ref });
+    if (outcome === 'unmapped' && reason) this.finding({ kind, code: 'unmapped', reason, ref, about });
   }
 
   /** A whole kind dropped by a rule of SCHEMA.md (derived or bookkeeping data). */
@@ -74,7 +88,8 @@ export class ImportContext {
   }
 
   finding(f: Finding): void {
-    this.findings.push(f);
+    const about = f.about ?? subjectOf(f.ref) ?? undefined;
+    this.findings.push(about ? { ...f, about } : f);
   }
 
   /**
@@ -94,10 +109,10 @@ export class ImportContext {
   }
 
   /** A user id from the data, or null (with a finding) when the value is not one. */
-  user(value: unknown, where: string): string | null {
+  user(value: unknown, where: string, about?: Subject): string | null {
     if (value === null || value === undefined || value === '') return null;
     if (!isUserId(value)) {
-      this.finding({ kind: where.split(':')[0], code: 'unmapped', reason: 'a user reference is not a Firebase user id; left empty', ref: `${where} = ${String(value)}` });
+      this.finding({ kind: where.split(':')[0], code: 'unmapped', reason: 'a user reference is not a Firebase user id; left empty', ref: `${where} = ${String(value)}`, about });
       return null;
     }
     if (!this.userRefs.has(value)) this.userRefs.set(value, where);

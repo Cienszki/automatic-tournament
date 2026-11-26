@@ -48,7 +48,7 @@ function requestRow(state: MapState, doc: Doc, copy: Record<string, unknown> | u
   const matchId = toText(d.matchId);
   const teamId = toText(d.teamId) ?? toText(d.requestingTeamId);
   if (!matchId || !state.matchTeams.has(matchId)) {
-    state.ctx.outcome(KIND, 'unmapped', 'the request\'s match is not imported', doc.path);
+    state.ctx.outcome(KIND, 'unmapped', 'the request\'s match is not imported', doc.path, matchId ? { matchId } : undefined);
     return null;
   }
   if (!teamId || !state.teamIds.has(teamId)) {
@@ -60,24 +60,24 @@ function requestRow(state: MapState, doc: Doc, copy: Record<string, unknown> | u
   let replacedMemberId: string | null = null;
   if (replacedRef) {
     replacedMemberId = state.members.has(replacedRef) ? replacedRef : state.memberBySteam.get(`${teamId}/${toSteam64(replacedRef) ?? replacedRef}`) ?? null;
-    if (!replacedMemberId) state.ctx.finding({ kind: KIND, code: 'unmapped', reason: 'the replaced player is not on the team\'s roster; left empty', ref: `${doc.path} ${replacedRef}` });
+    if (!replacedMemberId) state.ctx.finding({ kind: KIND, code: 'unmapped', about: { matchId }, reason: 'the replaced player is not on the team\'s roster; left empty', ref: `${doc.path} ${replacedRef}` });
   }
   const registrationId = toText(d.standinRegistrationUserId);
   const registration = registrationId ? state.registrations.get(registrationId) : undefined;
   if (registrationId && !registration) {
-    state.ctx.finding({ kind: KIND, code: 'unmapped', reason: 'the stand-in is not in the stand-in pool; the request is imported without them', ref: `${doc.path} ${registrationId}` });
+    state.ctx.finding({ kind: KIND, code: 'unmapped', about: { matchId }, reason: 'the stand-in is not in the stand-in pool; the request is imported without them', ref: `${doc.path} ${registrationId}` });
   }
   const url = toText(d.standinSteamProfileUrl);
   let standinSteamId64 = registration?.steamId64 ?? toSteam64(d.standinSteamId32) ?? steam64FromProfileUrl(url);
   if (!standinSteamId64 && toSteam64(copy?.steamId32)) {
     // The request kept only a vanity profile link; the approval resolved it and stored it on the match.
     standinSteamId64 = toSteam64(copy!.steamId32);
-    state.ctx.finding({ kind: KIND, code: 'decision', reason: 'the Steam id of the stand-in is taken from the approved copy on the match (the request has only a vanity profile link)', ref: doc.path });
+    state.ctx.finding({ kind: KIND, code: 'decision', about: { matchId }, reason: 'the Steam id of the stand-in is taken from the approved copy on the match (the request has only a vanity profile link)', ref: doc.path });
   }
   state.ctx.player(standinSteamId64, { nickname: toText(d.standinNickname) });
   let status = toText(d.status) ?? 'pending';
   if (!STATUSES.has(status)) {
-    state.ctx.finding({ kind: KIND, code: 'unmapped', reason: `request status "${status}" imported as pending`, ref: doc.path });
+    state.ctx.finding({ kind: KIND, code: 'unmapped', about: { matchId }, reason: `request status "${status}" imported as pending`, ref: doc.path });
     status = 'pending';
   }
   return {

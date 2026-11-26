@@ -72,6 +72,15 @@ describe('buildDataset: which series count', () => {
     expect(ds.games[0]).toEqual({ id: 'g1', matchId: 'played', radiant: 'red', dire: 'blue', radiantWin: true, duration: 2000, start: at(1).getTime() / 1000, firstBlood: 60, pb: [[5, 0, 1, 0]] });
   });
 
+  it('keeps a series given against a now-banned team when its games were played', () => {
+    const decided = buildDataset(input({
+      matches: [match('decided', { forfeitTeamId: 'blue', forfeitScope: 'series', scoreA: 2, scoreB: 0 })],
+      games: [game('d1', 'decided', 1), game('d2', 'decided', 1, { radiantWin: false })],
+    }));
+    expect(decided.matches.map((m) => m.id)).toEqual(['decided']);
+    expect(decided.games.map((g) => g.id)).toEqual(['d1', 'd2']);
+  });
+
   it('trims team names and keeps every team', () => {
     expect(ds.teams).toEqual([{ id: 'blue', name: 'Blue' }, { id: 'red', name: 'Red', tag: 'R' }]);
     expect(ds.generatedAt).toBe('2026-11-23T10:00:00.000Z');

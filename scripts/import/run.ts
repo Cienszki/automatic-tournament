@@ -94,7 +94,7 @@ export async function runImport(db: Db, from: string[], options: RunOptions): Pr
       const inDatabase = await countRows(db, table, capture.tournamentId);
       if (rows.length || inDatabase) counts.push({ table: tableName(table), mapped: rows.length, inDatabase });
     }
-    const standings = await compareStandings(db, capture, options.publishedDirs, (capture as LegacyCapture).storedStandings);
+    const standings = await compareStandings(db, capture, options.publishedDirs, (capture as LegacyCapture).storedStandings, mapped.state.matchesBefore);
     tournaments.push({ mapped, writes, counts, standings });
   }
   if (globalRun) {

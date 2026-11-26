@@ -7,7 +7,8 @@ import * as s from '@/platform/db/schema';
 import { draftPenaltiesSchema } from '@/platform/db/schema/json';
 import { fields } from '../context';
 import { docsOf, type Doc } from '../source';
-import { toBestOf, toInt, toText } from '../values';
+import { readTime, toBestOf, toInt, toText } from '../values';
+import { bracketCompletion } from './completion';
 import { mapMatchExtras } from './match-extras';
 import { arr, createdOf, obj, timeOf, updatedOf } from './read';
 import { fitJson, type MapState } from './state';
@@ -32,6 +33,15 @@ const BRACKET_FIELDS = fields(
 
 /** Placeholders the old site used for the empty side of a bye. */
 const isByeTeam = (id: unknown) => typeof id === 'string' && (id.startsWith('__PLAYOFF_BYE__') || id === 'swiss-bye');
+const isBracketBye = (doc: Doc) => doc.data.status === 'bye' || isByeTeam(obj(doc.data.teamA).id) || isByeTeam(obj(doc.data.teamB).id);
+
+/** When the last game stored under a match ended: its start plus its duration (or just its start). */
+function lastGameEnd(state: MapState, matchId: string): Date | null {
+  const ends = docsOf(state.capture, 'matches.games')
+    .filter((g) => g.path.split('/').at(-3) === matchId && toInt(g.data.start_time) !== null)
+    .map((g) => (toInt(g.data.start_time)! + (toInt(g.data.duration) ?? 0)) * 1000);
+  return ends.length ? new Date(Math.max(...ends)) : null;
+}
 
 const SCHEDULE_STATES: Record<string, [string, string | null]> = {
   confirmed: ['confirmed', null], unscheduled: ['unscheduled', null], proposed: ['proposed', null],
@@ -48,6 +58,9 @@ export function mapMatches(state: MapState): void {
   state.ctx.read('playoff_matches', bracket);
   const mirrors = new Map(matches.map((m) => [m.id, m]));
   const bracketIds = new Set(bracket.map((b) => b.id));
+  // Byes are left out: their result times come from the bracket's bookkeeping, not from a match.
+  const resultTimes = bracket.filter((b) => !isBracketBye(b))
+    .map((b) => readTime(obj(b.data.result).completedAt).value).filter((t): t is Date => t !== null);
   for (const doc of matches) {
     if (bracketIds.has(doc.id)) continue;
     state.ctx.checkFields(KIND, doc, MATCH_FIELDS);
@@ -67,7 +80,7 @@ export function mapMatches(state: MapState): void {
       state.ctx.checkFields(KIND, mirror, MATCH_FIELDS);
       state.ctx.outcome(KIND, 'merged');
     }
-    addMatch(state, mirror ? [mirror, doc] : [doc], bracketRow(state, doc, mirror));
+    addMatch(state, mirror ? [mirror, doc] : [doc], bracketRow(state, doc, mirror, resultTimes));
     state.ctx.outcome('playoff_matches', 'mapped');
   }
   checkBracketLinks(state);
@@ -151,7 +164,7 @@ function baseRow(state: MapState, doc: Doc, timing: Doc, stageId: string, groupI
 const slotOf = (value: unknown) => (value === 'teamA' || value === 'a' ? 'a' : value === 'teamB' || value === 'b' ? 'b' : null);
 
 /** A bracket match: structure and result from `playoff_matches`, schedule and games from the mirror. */
-function bracketRow(state: MapState, doc: Doc, mirror: Doc | undefined): Record<string, unknown> {
+function bracketRow(state: MapState, doc: Doc, mirror: Doc | undefined, resultTimes: readonly Date[]): Record<string, unknown> {
   const p = doc.data;
   const row = baseRow(state, doc, mirror ?? doc, 'playoffs', null);
   const result = obj(p.result);
@@ -176,7 +189,16 @@ function bracketRow(state: MapState, doc: Doc, mirror: Doc | undefined): Record<
     row.scoreA = ra;
     row.scoreB = rb;
     row.winnerTeamId = teamRef(state, doc, result.winnerId, 'result.winnerId');
-    row.completedAt = timeOf(state, 'playoff_matches', doc, 'result.completedAt', result.completedAt) ?? row.completedAt;
+    const bracketTime = timeOf(state, 'playoff_matches', doc, 'result.completedAt', result.completedAt);
+    const chosen = bracketCompletion(bracketTime, row.completedAt as Date | null, isBracketBye(doc) ? [] : resultTimes, lastGameEnd(state, doc.id));
+    if (chosen.fromMirror) {
+      state.ctx.finding({
+        kind: 'playoff_matches', code: 'decision', about: { matchId: doc.id },
+        reason: 'the bracket result time is a bulk rewrite (saved with at least two other bracket results within 10 minutes); the mirror match\'s earlier time, not before its last game ended, is used',
+        ref: `${doc.path} ${bracketTime?.toISOString()} / ${(row.completedAt as Date).toISOString()}`,
+      });
+    }
+    row.completedAt = chosen.value;
   }
   if (!row.scheduledAt) row.scheduledAt = timeOf(state, 'playoff_matches', doc, 'scheduledFor', p.scheduledFor);
   if (!row.deadlineAt) row.deadlineAt = timeOf(state, 'playoff_matches', doc, 'deadline', p.deadline);
@@ -198,7 +220,7 @@ function checkBracketLinks(state: MapState): void {
     for (const [idKey, slotKey] of [['nextWinnerMatchId', 'nextWinnerSlot'], ['nextLoserMatchId', 'nextLoserSlot']] as const) {
       const next = row[idKey] as string | null;
       if (next && (!ids.has(next) || !row[slotKey])) {
-        state.ctx.finding({ kind: 'playoff_matches', code: 'unmapped', reason: 'a bracket link points at a match that is not imported, or has no slot; the link is left out', ref: `${String(row.id)} ${idKey} = ${next}` });
+        state.ctx.finding({ kind: 'playoff_matches', code: 'unmapped', reason: 'a bracket link points at a match that is not imported, or has no slot; the link is left out', ref: `${String(row.id)} ${idKey} = ${next}`, about: { matchId: String(row.id) } });
         row[idKey] = null;
         row[slotKey] = null;
       }

@@ -92,14 +92,32 @@ describe('wiosenna: the season numbers and the rankings, computed from the impor
   });
 });
 
+/**
+ * Tables whose order an owner correction changes (STATUS.md question 43). Wiosenna Grupa B:
+ * Chrupek zamknij się vs Adaś, ile za tę Robotę? (24 June 2026) is a 1:1 draw, not 1:2 for Adaś,
+ * so Adaś has 13 points, not 14, and falls from second to fourth; Chrupek zamknij się (15) and
+ * Samci Savci move up one place each. The old page showed the table with the wrong score.
+ */
+const CORRECTED_MOVES: Record<string, { team: string; from: number; to: number }> = {
+  'division-1779915124727': { team: 'u6kMrDWsUi2WF6GKhWH5', from: 1, to: 3 },
+};
+
+function withMove(order: readonly string[], move: { team: string; from: number; to: number } | undefined): string[] {
+  if (!move) return [...order];
+  const out = order.filter((id) => id !== move.team);
+  expect(order[move.from]).toBe(move.team);
+  out.splice(move.to, 0, move.team);
+  return out;
+}
+
 describe.each(SLUGS)('%s: the standings, computed from the imported rows', (slug) => {
-  it('list every published table in its published order', () => {
+  it('list every published table in its published order, apart from the owner\'s corrections', () => {
     const published = JSON.parse(readFileSync(`${FIXTURES}${slug}/published/standings.json`, 'utf8')) as { tables: Array<{ groupId: string; order: string[] }> };
     const ours = computeTournament(input(slug)).standings;
     expect(ours.map((g) => g.groupId).sort()).toEqual(published.tables.map((p) => p.groupId).sort());
     for (const table of published.tables) {
       const group = ours.find((g) => g.groupId === table.groupId)!;
-      expect(group.standings.rows.map((r) => r.teamId)).toEqual(table.order);
+      expect(group.standings.rows.map((r) => r.teamId)).toEqual(withMove(table.order, CORRECTED_MOVES[table.groupId]));
     }
   });
 });

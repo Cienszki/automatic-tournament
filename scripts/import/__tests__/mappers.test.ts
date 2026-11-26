@@ -129,9 +129,39 @@ describe('wiosenna specifics', () => {
   });
 
   it('flags a completed match whose stored score is not the count of its games, and keeps the score', () => {
-    const refs = m.ctx.findings.filter((f) => f.kind === 'matches' && f.reason.startsWith('the stored score disagrees')).map((f) => f.ref).sort();
+    const raw = mapCapture(readScopedCapture(join(FIXTURES, 'wiosenna')), null, { anonymize: false, corrections: [] }, new Map());
+    const refs = raw.ctx.findings.filter((f) => f.kind === 'matches' && f.reason.startsWith('the stored score disagrees')).map((f) => f.ref).sort();
     expect(refs).toEqual(['HVwwRd87bSFsCzkph25p 1:2 vs games 1:1', 'cxozIoYGO0ViB55POI36 2:1 vs games 2:0', 'ub-r1-p3 2:1 vs games 2:0']);
-    expect(byId(matches, 'HVwwRd87bSFsCzkph25p')).toMatchObject({ scoreA: 1, scoreB: 2 });
+    expect(byId(raw.rows.get(s.matches), 'HVwwRd87bSFsCzkph25p')).toMatchObject({ scoreA: 1, scoreB: 2 });
+  });
+
+  it('applies the owner\'s corrections to those three scores, so no stored score disagrees', () => {
+    expect(m.ctx.findings.filter((f) => f.reason.startsWith('the stored score disagrees'))).toEqual([]);
+    expect(byId(matches, 'HVwwRd87bSFsCzkph25p')).toMatchObject({ scoreA: 1, scoreB: 1, winnerTeamId: null });
+    expect(byId(matches, 'cxozIoYGO0ViB55POI36')).toMatchObject({ scoreA: 2, scoreB: 0, winnerTeamId: 'VLI67jzh3hYFx9Eysnbn' });
+    expect(byId(matches, 'ub-r1-p3')).toMatchObject({ scoreA: 2, scoreB: 0, winnerTeamId: 'u6kMrDWsUi2WF6GKhWH5' });
+    expect(m.state.corrections.finish().map((o) => [o.id, o.status])).toEqual([
+      ['wiosenna-b-chrupek-adas-draw', 'applied'], ['wiosenna-game-8910469903', 'applied'], ['wiosenna-b-puck-adas', 'applied'],
+      ['wiosenna-game-8904592446', 'applied'], ['wiosenna-u1c-adas-dwa-razy', 'applied'], ['player-kildren', 'applied'],
+    ]);
+  });
+
+  it('takes a bracket match\'s finish time from its mirror when the bracket times are a bulk rewrite', () => {
+    expect(byId(matches, 'ub-r1-p1').completedAt).toEqual(new Date('2026-07-12T21:43:24.991Z'));
+    expect(m.ctx.findings.filter((f) => f.reason.startsWith('the bracket result time is a bulk rewrite')).map((f) => f.about?.matchId).sort())
+      .toEqual(['ub-r1-p1', 'ub-r1-p3', 'ub-r1-p5', 'ub-r1-p7', 'ub-r2-p1', 'ub-r2-p2', 'ub-r2-p3', 'ub-r2-p4', 'ub-r3-p1', 'ub-r3-p2']);
+    // A bye has no mirror time: its bracket time stays. The final shares that time with the byes,
+    // which do not count, so it is no bulk rewrite and keeps its bracket time.
+    expect(byId(matches, 'ub-r1-p2').completedAt).toEqual(new Date('2026-07-26T16:53:48.118Z'));
+    expect(byId(matches, 'ub-r4-p1').completedAt).toEqual(new Date('2026-07-26T16:53:48.118Z'));
+  });
+
+  it('keeps each game stored under two matches under the playoff match it was played in, with its own performances', () => {
+    const games = m.rows.get(s.games);
+    expect(byId(games, '8910469903')).toMatchObject({ matchId: 'ub-r3-p1', number: 3 });
+    expect(byId(games, '8904592446')).toMatchObject({ matchId: 'ub-r2-p2', number: 3 });
+    expect(games.filter((g) => g.matchId === 'HVwwRd87bSFsCzkph25p')).toHaveLength(2);
+    expect(m.rows.get(s.performances).filter((p) => p.gameId === '8910469903')).toHaveLength(10);
   });
 
   it('does not check a series with a forfeited game, nor one that is not completed', () => {
