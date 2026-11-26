@@ -18,8 +18,8 @@ Two rules every session keeps:
 | S6 | Stage 1: WP-03 environments, WP-33 import, WP-66 part 1, WP-06 local half | **done 2026-11-23** | WP-03, WP-33 and WP-66 part 1 merged; WP-06 local half built and reviewed on `wp/06-hosting-trial`, waiting for the staging run; questions 41 to 43 for the owner |
 | S7 | WP-06 staging run and the hosting decision | **done 2026-11-24** | Go with changes: Vercel Hobby `fra1` and Supabase Free Frankfurt; warm pages about 30 ms TTFB and 100 ms LCP, fresh 0.4 to 0.7 s after an invalidation; the transaction-pooler hang fixed; WP-06, WP-15b (cached stats dataset) and WP-06b (`/api/v1` routing) merged |
 | S8 | WP-15 statistics | **done 2026-11-23** | Merged: one `computeTournament` over all rows, 11 tenant-scoped reads in one snapshot, nothing combined stored, 55 ms on Wiosenna; pdl-s2 equals the published numbers, Wiosenna differs only where listed. Caching waits for WP-06 (S7) |
-| S9 | The owner's answers to questions 41 to 43, and decisions 15 to 17 (themes, league import, other games), folded into the design | ready (all answered 2026-11-23 and recorded in STATUS; can run before or after S7) | |
-| S10 | WP-07 platform kernel | after S7 | |
+| S9 | The owner's answers to questions 41 to 43, and decisions 15 to 17 (themes, league import, other games), folded into the design | **done 2026-11-26** | `ORGANIZER_UX.md` (match day without the bot, match page, themes), `ROADMAP.md` (11 packages revised, WP-67 theme library and WP-68 league import new, "Later"), `CONVENTIONS.md` 13, ADR-18; WP-46a (support queries) and WP-33b (owner corrections in the import) merged; question 44 open with recommendations |
+| S10 | WP-07 platform kernel | **next** (S7 done) | |
 | S11 | WP-08 server-rendered shell | after S10 | |
 | S12 | WP-09a teams and schedule | after S11 | |
 | S13 | WP-09b standings and playoffs | after S12 | |
